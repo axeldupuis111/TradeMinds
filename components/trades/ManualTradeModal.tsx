@@ -1,5 +1,6 @@
 "use client";
 
+import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { useState } from "react";
 
@@ -19,6 +20,7 @@ export default function ManualTradeModal({
   onClose,
   onSaved,
 }: Props) {
+  const { t } = useLanguage();
   const supabase = createClient();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +47,7 @@ export default function ManualTradeModal({
     setError(null);
 
     if (!form.pair || !form.entry_price || !form.pnl) {
-      setError("Paire, prix d'entrée et P&L sont requis.");
+      setError(t("manual_required"));
       return;
     }
 
@@ -55,7 +57,7 @@ export default function ManualTradeModal({
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) {
-      setError("Non connecté.");
+      setError(t("not_connected"));
       setSaving(false);
       return;
     }
@@ -91,7 +93,7 @@ export default function ManualTradeModal({
       <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold text-foreground">
-            Ajouter un trade
+            {t("manual_title")}
           </h2>
           <button
             onClick={onClose}
@@ -106,7 +108,7 @@ export default function ManualTradeModal({
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm text-muted mb-1">Ouverture</label>
+              <label className="block text-sm text-muted mb-1">{t("manual_open")}</label>
               <input
                 type="datetime-local"
                 value={form.open_time}
@@ -115,7 +117,7 @@ export default function ManualTradeModal({
               />
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">Fermeture</label>
+              <label className="block text-sm text-muted mb-1">{t("manual_close")}</label>
               <input
                 type="datetime-local"
                 value={form.close_time}
@@ -127,7 +129,7 @@ export default function ManualTradeModal({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm text-muted mb-1">Paire</label>
+              <label className="block text-sm text-muted mb-1">{t("manual_pair")}</label>
               <select
                 value={form.pair}
                 onChange={(e) => update("pair", e.target.value)}
@@ -151,7 +153,7 @@ export default function ManualTradeModal({
               </select>
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">Direction</label>
+              <label className="block text-sm text-muted mb-1">{t("manual_direction")}</label>
               <select
                 value={form.direction}
                 onChange={(e) => update("direction", e.target.value)}
@@ -165,7 +167,7 @@ export default function ManualTradeModal({
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm text-muted mb-1">Lot</label>
+              <label className="block text-sm text-muted mb-1">{t("manual_lot")}</label>
               <input
                 type="number"
                 step="0.01"
@@ -176,7 +178,7 @@ export default function ManualTradeModal({
               />
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">Entrée</label>
+              <label className="block text-sm text-muted mb-1">{t("manual_entry")}</label>
               <input
                 type="number"
                 step="any"
@@ -186,7 +188,7 @@ export default function ManualTradeModal({
               />
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">Sortie</label>
+              <label className="block text-sm text-muted mb-1">{t("manual_exit")}</label>
               <input
                 type="number"
                 step="any"
@@ -199,7 +201,7 @@ export default function ManualTradeModal({
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm text-muted mb-1">SL</label>
+              <label className="block text-sm text-muted mb-1">{t("manual_sl")}</label>
               <input
                 type="number"
                 step="any"
@@ -209,7 +211,7 @@ export default function ManualTradeModal({
               />
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">TP</label>
+              <label className="block text-sm text-muted mb-1">{t("manual_tp")}</label>
               <input
                 type="number"
                 step="any"
@@ -219,7 +221,7 @@ export default function ManualTradeModal({
               />
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">P&L</label>
+              <label className="block text-sm text-muted mb-1">{t("manual_pnl")}</label>
               <input
                 type="number"
                 step="any"
@@ -231,12 +233,12 @@ export default function ManualTradeModal({
           </div>
 
           <div>
-            <label className="block text-sm text-muted mb-1">Notes</label>
+            <label className="block text-sm text-muted mb-1">{t("manual_notes")}</label>
             <textarea
               value={form.notes}
               onChange={(e) => update("notes", e.target.value)}
               rows={3}
-              placeholder="Contexte du trade, émotions, respect de la stratégie…"
+              placeholder={t("manual_notes_placeholder")}
               className={inputClass}
             />
           </div>
@@ -250,13 +252,13 @@ export default function ManualTradeModal({
             disabled={saving}
             className="flex-1 py-2 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50"
           >
-            {saving ? "Sauvegarde…" : "Sauvegarder"}
+            {saving ? t("manual_saving") : t("manual_save")}
           </button>
           <button
             onClick={onClose}
             className="px-5 py-2 bg-[#1a1a1a] border border-[#2a2a2a] text-foreground rounded-lg hover:bg-[#2a2a2a] transition-colors"
           >
-            Annuler
+            {t("manual_cancel")}
           </button>
         </div>
       </div>
