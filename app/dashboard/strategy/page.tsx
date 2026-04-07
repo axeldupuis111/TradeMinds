@@ -1,5 +1,6 @@
 "use client";
 
+import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
 
@@ -25,6 +26,7 @@ interface ParsedRules {
 }
 
 export default function StrategyPage() {
+  const { t } = useLanguage();
   const supabase = createClient();
 
   const [rawText, setRawText] = useState("");
@@ -75,7 +77,7 @@ export default function StrategyPage() {
 
   async function handleAnalyze() {
     if (!rawText.trim()) {
-      setMessage({ type: "error", text: "Écris ta stratégie d'abord." });
+      setMessage({ type: "error", text: t("strategy_write_first") });
       return;
     }
 
@@ -112,7 +114,7 @@ export default function StrategyPage() {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) {
-      setMessage({ type: "error", text: "Non connecté." });
+      setMessage({ type: "error", text: t("strategy_not_connected") });
       setSaving(false);
       return;
     }
@@ -151,7 +153,7 @@ export default function StrategyPage() {
     if (error) {
       setMessage({ type: "error", text: error.message });
     } else {
-      setMessage({ type: "success", text: "Stratégie sauvegardée avec succès." });
+      setMessage({ type: "success", text: t("strategy_saved") });
     }
   }
 
@@ -200,8 +202,8 @@ export default function StrategyPage() {
   if (loading) {
     return (
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Ma Stratégie</h1>
-        <p className="text-muted mt-2 text-sm">Décris ta stratégie en langage naturel</p>
+        <h1 className="text-2xl font-bold text-foreground">{t("strategy_title")}</h1>
+        <p className="text-muted mt-2 text-sm">{t("strategy_loading_sub")}</p>
         <div className="mt-6 space-y-6">
           <div className="bg-card border border-border rounded-xl p-6">
             <div className="skeleton h-4 w-40 mb-4" />
@@ -220,16 +222,12 @@ export default function StrategyPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-foreground">Ma Stratégie</h1>
-      <p className="text-muted mt-1">
-        Décris ta stratégie et l&apos;IA extraira tes règles automatiquement.
-      </p>
+      <h1 className="text-2xl font-bold text-foreground">{t("strategy_title")}</h1>
+      <p className="text-muted mt-1">{t("strategy_subtitle")}</p>
 
       {/* Strategy name */}
       <div className="mt-6">
-        <label className="block text-sm text-muted mb-1">
-          Nom de la stratégie
-        </label>
+        <label className="block text-sm text-muted mb-1">{t("strategy_name")}</label>
         <input
           type="text"
           value={name}
@@ -241,9 +239,7 @@ export default function StrategyPage() {
 
       {/* Raw text input */}
       <div className="mt-4">
-        <label className="block text-sm text-muted mb-1">
-          Décris ta stratégie en langage naturel
-        </label>
+        <label className="block text-sm text-muted mb-1">{t("strategy_describe")}</label>
         <textarea
           value={rawText}
           onChange={(e) => setRawText(e.target.value)}
@@ -262,7 +258,7 @@ export default function StrategyPage() {
         {analyzing && (
           <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
         )}
-        {analyzing ? "Analyse en cours…" : "Analyser ma stratégie avec l'IA"}
+        {analyzing ? t("strategy_analyzing") : t("strategy_analyze")}
       </button>
 
       {/* Parsed rules */}
@@ -282,17 +278,13 @@ export default function StrategyPage() {
                 d="M5 13l4 4L19 7"
               />
             </svg>
-            <h2 className="text-lg font-semibold text-foreground">
-              Règles extraites
-            </h2>
-            <span className="text-muted text-sm">— modifiable</span>
+            <h2 className="text-lg font-semibold text-foreground">{t("strategy_rules_extracted")}</h2>
+            <span className="text-muted text-sm">{t("strategy_editable")}</span>
           </div>
 
           {/* Pairs */}
           <div className="bg-card border border-border rounded-xl p-4">
-            <label className="block text-sm text-muted mb-2">
-              Paires tradées
-            </label>
+            <label className="block text-sm text-muted mb-2">{t("strategy_pairs")}</label>
             <div className="flex flex-wrap gap-2">
               {parsed.pairs.map((pair) => (
                 <span
@@ -309,16 +301,14 @@ export default function StrategyPage() {
                 </span>
               ))}
               {parsed.pairs.length === 0 && (
-                <span className="text-muted text-sm">Toutes les paires</span>
+                <span className="text-muted text-sm">{t("strategy_all_pairs")}</span>
               )}
             </div>
           </div>
 
           {/* Sessions */}
           <div className="bg-card border border-border rounded-xl p-4">
-            <label className="block text-sm text-muted mb-2">
-              Sessions autorisées
-            </label>
+            <label className="block text-sm text-muted mb-2">{t("strategy_sessions")}</label>
             <div className="space-y-2">
               {Object.entries(SESSION_LABELS).map(([id, label]) => (
                 <label key={id} className="flex items-center gap-3 cursor-pointer">
@@ -336,12 +326,10 @@ export default function StrategyPage() {
 
           {/* Risk management */}
           <div className="bg-card border border-border rounded-xl p-4">
-            <label className="block text-sm text-muted mb-3">
-              Risk Management
-            </label>
+            <label className="block text-sm text-muted mb-3">{t("strategy_risk")}</label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <div>
-                <label className="block text-xs text-muted mb-1">RR min</label>
+                <label className="block text-xs text-muted mb-1">{t("strategy_rr")}</label>
                 <input
                   type="number"
                   step="0.1"
@@ -357,9 +345,7 @@ export default function StrategyPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-muted mb-1">
-                  SL max (pips)
-                </label>
+                <label className="block text-xs text-muted mb-1">{t("strategy_sl_max")}</label>
                 <input
                   type="number"
                   value={parsed.max_sl_pips ?? ""}
@@ -374,9 +360,7 @@ export default function StrategyPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-muted mb-1">
-                  Perte max/jour (%)
-                </label>
+                <label className="block text-xs text-muted mb-1">{t("strategy_daily_loss")}</label>
                 <input
                   type="number"
                   step="0.1"
@@ -392,9 +376,7 @@ export default function StrategyPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-muted mb-1">
-                  Trades max/jour
-                </label>
+                <label className="block text-xs text-muted mb-1">{t("strategy_max_trades")}</label>
                 <input
                   type="number"
                   value={parsed.max_trades_per_day ?? ""}
@@ -409,9 +391,7 @@ export default function StrategyPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-muted mb-1">
-                  Pertes consec. max
-                </label>
+                <label className="block text-xs text-muted mb-1">{t("strategy_consec_losses")}</label>
                 <input
                   type="number"
                   value={parsed.max_consecutive_losses ?? ""}
@@ -430,9 +410,7 @@ export default function StrategyPage() {
 
           {/* Setup rules */}
           <div className="bg-card border border-border rounded-xl p-4">
-            <label className="block text-sm text-muted mb-2">
-              Règles de setup
-            </label>
+            <label className="block text-sm text-muted mb-2">{t("strategy_setup_rules")}</label>
             <div className="space-y-2">
               {parsed.setup_rules.map((rule, i) => (
                 <div key={i} className="flex gap-2">
@@ -467,7 +445,7 @@ export default function StrategyPage() {
               onClick={addRule}
               className="mt-2 text-sm text-accent hover:text-blue-400 transition-colors"
             >
-              + Ajouter une règle
+              {t("strategy_add_rule")}
             </button>
           </div>
 
@@ -487,7 +465,7 @@ export default function StrategyPage() {
               disabled={saving}
               className="w-full sm:w-auto px-6 py-2.5 bg-profit text-white rounded-lg font-medium hover:bg-green-600 transition-colors disabled:opacity-50"
             >
-              {saving ? "Sauvegarde…" : "Valider et sauvegarder"}
+              {saving ? t("strategy_saving") : t("strategy_save")}
             </button>
           </div>
         </div>

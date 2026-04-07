@@ -3,10 +3,12 @@
 import CsvImport from "@/components/trades/CsvImport";
 import ManualTradeModal from "@/components/trades/ManualTradeModal";
 import TradeList from "@/components/trades/TradeList";
+import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
 
 export default function TradesPage() {
+  const { t } = useLanguage();
   const supabase = createClient();
   const [refreshKey, setRefreshKey] = useState(0);
   const [showModal, setShowModal] = useState(false);
@@ -43,14 +45,14 @@ export default function TradesPage() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Mes Trades</h1>
-          <p className="text-muted mt-1">Importe, ajoute et consulte tes trades.</p>
+          <h1 className="text-2xl font-bold text-foreground">{t("trades_title")}</h1>
+          <p className="text-muted mt-1">{t("trades_subtitle")}</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
           className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors"
         >
-          + Ajouter un trade
+          {t("trades_add")}
         </button>
       </div>
 

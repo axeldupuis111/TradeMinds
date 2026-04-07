@@ -1,5 +1,6 @@
 "use client";
 
+import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
 
@@ -35,13 +36,13 @@ interface SavedReview {
   analysis: Analysis;
 }
 
-const severityColors: Record<string, { bg: string; text: string; label: string }> = {
-  high: { bg: "bg-loss/10", text: "text-loss", label: "Élevée" },
-  medium: { bg: "bg-orange-500/10", text: "text-orange-400", label: "Moyenne" },
-  low: { bg: "bg-yellow-500/10", text: "text-yellow-400", label: "Faible" },
+const severityColors: Record<string, { bg: string; text: string; labelKey: string }> = {
+  high: { bg: "bg-loss/10", text: "text-loss", labelKey: "severity_high" },
+  medium: { bg: "bg-orange-500/10", text: "text-orange-400", labelKey: "severity_medium" },
+  low: { bg: "bg-yellow-500/10", text: "text-yellow-400", labelKey: "severity_low" },
 };
 
-function ScoreCircle({ score }: { score: number }) {
+function ScoreCircle({ score, label }: { score: number; label: string }) {
   const radius = 54;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
@@ -79,12 +80,13 @@ function ScoreCircle({ score }: { score: number }) {
           <span className={`text-3xl font-bold ${color}`}>{score}</span>
         </div>
       </div>
-      <p className="text-muted text-sm mt-2">Score de discipline</p>
+      <p className="text-muted text-sm mt-2">{label}</p>
     </div>
   );
 }
 
 export default function AnalysisPage() {
+  const { t } = useLanguage();
   const supabase = createClient();
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loading, setLoading] = useState(false);
@@ -204,7 +206,7 @@ export default function AnalysisPage() {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) {
-      setSaveMessage("Non connecté.");
+      setSaveMessage(t("not_connected"));
       setSaving(false);
       return;
     }
@@ -221,7 +223,7 @@ export default function AnalysisPage() {
     if (error) {
       setSaveMessage(error.message);
     } else {
-      setSaveMessage("Analyse sauvegardée.");
+      setSaveMessage(t("analysis_saved"));
       loadHistory();
     }
   }
@@ -237,21 +239,19 @@ export default function AnalysisPage() {
 
   return (
     <div className="max-w-3xl">
-      <h1 className="text-2xl font-bold text-foreground">Analyse IA</h1>
-      <p className="text-muted mt-1">
-        Compare tes trades à ta stratégie pour identifier tes forces et faiblesses.
-      </p>
+      <h1 className="text-2xl font-bold text-foreground">{t("analysis_title")}</h1>
+      <p className="text-muted mt-1">{t("analysis_subtitle")}</p>
 
       {/* Launch button */}
       <div className="mt-6">
         {!hasStrategy && (
           <p className="text-loss text-sm mb-3">
-            Définis d&apos;abord ta stratégie dans l&apos;onglet Stratégie.
+            {t("analysis_no_strategy")}
           </p>
         )}
         {tradeCount === 0 && (
           <p className="text-loss text-sm mb-3">
-            Importe d&apos;abord des trades dans l&apos;onglet Mes Trades.
+            {t("analysis_no_trades")}
           </p>
         )}
         <button
@@ -259,11 +259,11 @@ export default function AnalysisPage() {
           disabled={loading || !hasStrategy || tradeCount === 0}
           className="px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50"
         >
-          {loading ? "Analyse en cours…" : "Lancer l'analyse IA"}
+          {loading ? t("analysis_running") : t("analysis_run")}
         </button>
         {tradeCount > 0 && (
           <span className="text-muted text-sm ml-3">
-            {tradeCount} trade{tradeCount > 1 ? "s" : ""} à analyser
+            {tradeCount} {t("analysis_trades_count")}
           </span>
         )}
       </div>
@@ -272,7 +272,7 @@ export default function AnalysisPage() {
       {loading && (
         <div className="mt-8 flex items-center gap-3">
           <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-          <p className="text-muted">L&apos;IA analyse vos trades…</p>
+          <p className="text-muted">{t("analysis_loading")}</p>
         </div>
       )}
 
@@ -286,7 +286,7 @@ export default function AnalysisPage() {
         <div className="mt-8 space-y-8">
           {viewingHistory && (
             <div className="bg-accent/10 border border-accent/20 rounded-lg px-4 py-2 text-sm text-accent">
-              Vous consultez une analyse précédente.
+              {t("analysis_viewing_history")}
               <button
                 onClick={() => {
                   setAnalysis(null);
@@ -294,20 +294,20 @@ export default function AnalysisPage() {
                 }}
                 className="ml-2 underline hover:no-underline"
               >
-                Fermer
+                {t("analysis_close")}
               </button>
             </div>
           )}
 
           {/* Score */}
           <div className="bg-card border border-border rounded-xl p-6 flex flex-col sm:flex-row items-center gap-6">
-            <ScoreCircle score={displayedAnalysis.discipline_score} />
+            <ScoreCircle score={displayedAnalysis.discipline_score} label={t("dash_discipline")} />
             <div>
               <p className="text-foreground text-lg font-semibold">
-                {displayedAnalysis.conforming_trades} / {displayedAnalysis.total_trades} trades conformes
+                {displayedAnalysis.conforming_trades} / {displayedAnalysis.total_trades} {t("analysis_conforming")}
               </p>
               <p className="text-muted text-sm mt-1">
-                {displayedAnalysis.violations.length} violation{displayedAnalysis.violations.length > 1 ? "s" : ""} détectée{displayedAnalysis.violations.length > 1 ? "s" : ""}
+                {displayedAnalysis.violations.length} {t("analysis_violations_detected")}
               </p>
             </div>
           </div>
@@ -315,9 +315,7 @@ export default function AnalysisPage() {
           {/* Violations */}
           {displayedAnalysis.violations.length > 0 && (
             <section>
-              <h2 className="text-lg font-semibold text-foreground mb-3">
-                Violations détectées
-              </h2>
+              <h2 className="text-lg font-semibold text-foreground mb-3">{t("analysis_violations")}</h2>
               <div className="space-y-2">
                 {displayedAnalysis.violations.map((v, i) => (
                   <div
@@ -353,9 +351,7 @@ export default function AnalysisPage() {
           {/* Patterns */}
           {displayedAnalysis.patterns.length > 0 && (
             <section>
-              <h2 className="text-lg font-semibold text-foreground mb-3">
-                Patterns détectés
-              </h2>
+              <h2 className="text-lg font-semibold text-foreground mb-3">{t("analysis_patterns")}</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {displayedAnalysis.patterns.map((p, i) => {
                   const sev = severityColors[p.severity] || severityColors.low;
@@ -368,7 +364,7 @@ export default function AnalysisPage() {
                         <span
                           className={`px-2 py-0.5 rounded text-xs font-medium ${sev.bg} ${sev.text}`}
                         >
-                          {sev.label}
+                          {t(sev.labelKey)}
                         </span>
                         <span className="text-foreground text-sm font-medium">
                           {p.type}
@@ -385,9 +381,7 @@ export default function AnalysisPage() {
           {/* Strengths */}
           {displayedAnalysis.strengths.length > 0 && (
             <section>
-              <h2 className="text-lg font-semibold text-foreground mb-3">
-                Points forts
-              </h2>
+              <h2 className="text-lg font-semibold text-foreground mb-3">{t("analysis_strengths")}</h2>
               <div className="space-y-2">
                 {displayedAnalysis.strengths.map((s, i) => (
                   <div key={i} className="flex items-start gap-3">
@@ -414,9 +408,7 @@ export default function AnalysisPage() {
           {/* Recommendations */}
           {displayedAnalysis.recommendations.length > 0 && (
             <section>
-              <h2 className="text-lg font-semibold text-foreground mb-3">
-                Recommandations
-              </h2>
+              <h2 className="text-lg font-semibold text-foreground mb-3">{t("analysis_recommendations")}</h2>
               <div className="space-y-2">
                 {displayedAnalysis.recommendations.map((r, i) => (
                   <div
@@ -441,7 +433,7 @@ export default function AnalysisPage() {
                 disabled={saving}
                 className="px-5 py-2 bg-card border border-border text-foreground rounded-lg text-sm font-medium hover:bg-border transition-colors disabled:opacity-50"
               >
-                {saving ? "Sauvegarde…" : "Sauvegarder cette analyse"}
+                {saving ? t("analysis_saving") : t("analysis_save")}
               </button>
               {saveMessage && (
                 <span className="text-sm text-profit">{saveMessage}</span>
@@ -454,7 +446,7 @@ export default function AnalysisPage() {
       {/* History */}
       <section className="mt-12 mb-8">
         <h2 className="text-lg font-semibold text-foreground">
-          Historique des analyses
+          {t("analysis_history")}
         </h2>
         <div className="h-px bg-[#1e1e1e] mt-2 mb-4" />
 
@@ -470,7 +462,7 @@ export default function AnalysisPage() {
             ))}
           </div>
         ) : history.length === 0 ? (
-          <p className="text-muted text-sm">Aucune analyse sauvegardée.</p>
+          <p className="text-muted text-sm">{t("analysis_no_history")}</p>
         ) : (
           <div className="space-y-2">
             {history.map((r) => (

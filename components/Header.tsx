@@ -1,9 +1,12 @@
 "use client";
 
+import LanguageSelector from "@/components/LanguageSelector";
+import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
 export default function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
+  const { t } = useLanguage();
   const router = useRouter();
   const supabase = createClient();
 
@@ -27,12 +30,15 @@ export default function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
         <span className="text-sm font-semibold text-foreground lg:hidden">TradeMinds</span>
       </div>
 
-      <button
-        onClick={handleSignOut}
-        className="text-sm text-muted hover:text-foreground transition-colors"
-      >
-        Déconnexion
-      </button>
+      <div className="flex items-center gap-3">
+        <LanguageSelector />
+        <button
+          onClick={handleSignOut}
+          className="text-sm text-muted hover:text-foreground transition-colors"
+        >
+          {t("header_signout")}
+        </button>
+      </div>
     </header>
   );
 }

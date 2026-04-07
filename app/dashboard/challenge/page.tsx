@@ -1,5 +1,6 @@
 "use client";
 
+import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState, useCallback } from "react";
 
@@ -65,6 +66,7 @@ function ProgressBar({
 }
 
 export default function ChallengePage() {
+  const { t } = useLanguage();
   const supabase = createClient();
 
   // Form state
@@ -175,7 +177,7 @@ export default function ChallengePage() {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) {
-      setMessage({ type: "error", text: "Non connecté." });
+      setMessage({ type: "error", text: t("not_connected") });
       setSaving(false);
       return;
     }
@@ -198,15 +200,15 @@ export default function ChallengePage() {
     if (error) {
       setMessage({ type: "error", text: error.message });
     } else {
-      setMessage({ type: "success", text: "Challenge créé." });
+      setMessage({ type: "success", text: t("challenge_created") });
       loadData();
     }
   }
 
   async function handleStatusChange(status: "passed" | "failed") {
     if (!activeChallenge) return;
-    const label = status === "passed" ? "réussi" : "échoué";
-    if (!confirm(`Marquer ce challenge comme ${label} ?`)) return;
+    const confirmMsg = status === "passed" ? t("challenge_confirm_passed") : t("challenge_confirm_failed");
+    if (!confirm(confirmMsg)) return;
 
     const { error } = await supabase
       .from("prop_challenges")
@@ -216,7 +218,7 @@ export default function ChallengePage() {
     if (error) {
       setMessage({ type: "error", text: error.message });
     } else {
-      setMessage({ type: "success", text: `Challenge marqué comme ${label}.` });
+      setMessage({ type: "success", text: status === "passed" ? t("challenge_marked_passed") : t("challenge_marked_failed") });
       loadData();
     }
   }
@@ -224,8 +226,8 @@ export default function ChallengePage() {
   if (loading) {
     return (
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Challenge Prop Firm</h1>
-        <p className="text-muted mt-2 text-sm">Suivi de tes challenges prop firm</p>
+        <h1 className="text-2xl font-bold text-foreground">{t("challenge_title")}</h1>
+        <p className="text-muted mt-2 text-sm">{t("challenge_loading_sub")}</p>
         <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
             <div key={i} className="bg-card border border-border rounded-xl p-5">
@@ -270,8 +272,8 @@ export default function ChallengePage() {
 
   return (
     <div className="max-w-3xl">
-      <h1 className="text-2xl font-bold text-foreground">Challenge Prop Firm</h1>
-      <p className="text-muted mt-1">Suis ton challenge et respecte tes limites.</p>
+      <h1 className="text-2xl font-bold text-foreground">{t("challenge_title")}</h1>
+      <p className="text-muted mt-1">{t("challenge_subtitle")}</p>
 
       {/* SECTION 2 — ACTIVE CHALLENGE DASHBOARD */}
       {ac && (
@@ -283,11 +285,11 @@ export default function ChallengePage() {
                   {ac.firm} — {ac.account_size.toLocaleString()}€
                 </h2>
                 <p className="text-muted text-sm">
-                  Démarré le {new Date(ac.start_date).toLocaleDateString("fr-FR")}
+                  {t("challenge_started")} {new Date(ac.start_date).toLocaleDateString()}
                 </p>
               </div>
               <span className="px-3 py-1 rounded-full text-xs font-medium bg-accent/10 text-accent">
-                En cours
+                {t("challenge_in_progress")}
               </span>
             </div>
 
@@ -297,20 +299,20 @@ export default function ChallengePage() {
                 value={Math.max(0, currentPnl)}
                 max={profitTargetAmount}
                 color="bg-profit"
-                label="Profit target"
+                label={t("challenge_profit_target")}
               />
               <ProgressBar
                 value={totalDdUsed}
                 max={maxTotalDdAmount}
                 color="bg-loss"
-                label="Drawdown total"
+                label={t("challenge_total_dd")}
                 alert
               />
               <ProgressBar
                 value={dailyDdUsed}
                 max={maxDailyDdAmount}
                 color="bg-loss"
-                label="Drawdown journalier"
+                label={t("challenge_daily_dd")}
                 alert
               />
             </div>
@@ -318,14 +320,14 @@ export default function ChallengePage() {
             {/* Stats grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
               <div className="bg-[#0f0f0f] rounded-lg p-3">
-                <p className="text-xs text-muted">Balance</p>
+                <p className="text-xs text-muted">{t("challenge_balance")}</p>
                 <p className="text-lg font-bold text-foreground">
                   {balance.toLocaleString("fr-FR", { maximumFractionDigits: 0 })}€
                 </p>
-                <p className="text-xs text-muted mt-0.5">calculée depuis les trades</p>
+                <p className="text-xs text-muted mt-0.5">{t("challenge_from_trades")}</p>
               </div>
               <div className="bg-[#0f0f0f] rounded-lg p-3">
-                <p className="text-xs text-muted">P&L total</p>
+                <p className="text-xs text-muted">{t("challenge_total_pnl")}</p>
                 <p
                   className={`text-lg font-bold ${
                     currentPnl >= 0 ? "text-profit" : "text-loss"
@@ -336,7 +338,7 @@ export default function ChallengePage() {
                 </p>
               </div>
               <div className="bg-[#0f0f0f] rounded-lg p-3">
-                <p className="text-xs text-muted">P&L aujourd&apos;hui</p>
+                <p className="text-xs text-muted">{t("challenge_today_pnl")}</p>
                 <p
                   className={`text-lg font-bold ${
                     todayPnl >= 0 ? "text-profit" : "text-loss"
@@ -347,13 +349,13 @@ export default function ChallengePage() {
                 </p>
               </div>
               <div className="bg-[#0f0f0f] rounded-lg p-3">
-                <p className="text-xs text-muted">Jours</p>
+                <p className="text-xs text-muted">{t("challenge_days")}</p>
                 <p className="text-lg font-bold text-foreground">
                   {daysElapsed}j
                   {daysRemaining !== null && (
                     <span className="text-muted text-sm font-normal">
                       {" "}
-                      / {daysRemaining}j restants
+                      / {daysRemaining} {t("challenge_days_remaining")}
                     </span>
                   )}
                 </p>
@@ -366,13 +368,13 @@ export default function ChallengePage() {
                 onClick={() => handleStatusChange("passed")}
                 className="flex-1 py-2 bg-profit/10 border border-profit/20 text-profit rounded-lg text-sm font-medium hover:bg-profit/20 transition-colors"
               >
-                ✓ Challenge réussi
+                {t("challenge_passed")}
               </button>
               <button
                 onClick={() => handleStatusChange("failed")}
                 className="flex-1 py-2 bg-loss/10 border border-loss/20 text-loss rounded-lg text-sm font-medium hover:bg-loss/20 transition-colors"
               >
-                ✗ Challenge échoué
+                {t("challenge_failed")}
               </button>
             </div>
           </div>
@@ -382,20 +384,20 @@ export default function ChallengePage() {
       {/* SECTION 1 — CREATE CHALLENGE */}
       <section className="mt-8">
         <h2 className="text-lg font-semibold text-foreground">
-          {ac ? "Créer un nouveau challenge" : "Créer un challenge"}
+          {ac ? t("challenge_create_new") : t("challenge_create")}
         </h2>
         <div className="h-px bg-[#1e1e1e] mt-2 mb-4" />
 
         {ac && (
           <p className="text-orange-400 text-sm mb-4">
-            ⚠ Un challenge est déjà actif. Termine-le avant d&apos;en créer un nouveau.
+            {t("challenge_active_warning")}
           </p>
         )}
 
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm text-muted mb-1">Prop Firm</label>
+              <label className="block text-sm text-muted mb-1">{t("challenge_firm")}</label>
               <select
                 value={firm}
                 onChange={(e) => setFirm(e.target.value)}
@@ -409,9 +411,7 @@ export default function ChallengePage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">
-                Taille du compte (€)
-              </label>
+              <label className="block text-sm text-muted mb-1">{t("challenge_account_size")}</label>
               <input
                 type="number"
                 value={accountSize}
@@ -424,9 +424,7 @@ export default function ChallengePage() {
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm text-muted mb-1">
-                Profit target (%)
-              </label>
+              <label className="block text-sm text-muted mb-1">{t("challenge_profit_target_pct")}</label>
               <input
                 type="number"
                 step="0.1"
@@ -436,7 +434,7 @@ export default function ChallengePage() {
               />
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">DD journal. (%)</label>
+              <label className="block text-sm text-muted mb-1">{t("challenge_daily_dd_pct")}</label>
               <input
                 type="number"
                 step="0.1"
@@ -446,7 +444,7 @@ export default function ChallengePage() {
               />
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">DD total (%)</label>
+              <label className="block text-sm text-muted mb-1">{t("challenge_total_dd_pct")}</label>
               <input
                 type="number"
                 step="0.1"
@@ -459,7 +457,7 @@ export default function ChallengePage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm text-muted mb-1">Date de début</label>
+              <label className="block text-sm text-muted mb-1">{t("challenge_start_date")}</label>
               <input
                 type="date"
                 value={startDate}
@@ -468,9 +466,7 @@ export default function ChallengePage() {
               />
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">
-                Date de fin (opt.)
-              </label>
+              <label className="block text-sm text-muted mb-1">{t("challenge_end_date")}</label>
               <input
                 type="date"
                 value={endDate}
@@ -496,17 +492,17 @@ export default function ChallengePage() {
           disabled={saving || !!ac}
           className="mt-4 px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50"
         >
-          {saving ? "Création…" : "Créer le challenge"}
+          {saving ? t("challenge_creating") : t("challenge_create_btn")}
         </button>
       </section>
 
       {/* SECTION 3 — HISTORY */}
       <section className="mt-10 mb-8">
-        <h2 className="text-lg font-semibold text-foreground">Historique</h2>
+        <h2 className="text-lg font-semibold text-foreground">{t("challenge_history")}</h2>
         <div className="h-px bg-[#1e1e1e] mt-2 mb-4" />
 
         {history.length === 0 ? (
-          <p className="text-muted text-sm">Aucun challenge terminé.</p>
+          <p className="text-muted text-sm">{t("challenge_no_history")}</p>
         ) : (
           <div className="space-y-3">
             {history.map((c) => {
@@ -528,7 +524,7 @@ export default function ChallengePage() {
                             : "bg-loss/10 text-loss"
                         }`}
                       >
-                        {c.status === "passed" ? "Réussi" : "Échoué"}
+                        {c.status === "passed" ? t("challenge_status_passed") : t("challenge_status_failed")}
                       </span>
                     </div>
                     <p className="text-muted text-sm mt-1">
@@ -547,7 +543,7 @@ export default function ChallengePage() {
                       {pnl.toFixed(0)}€
                     </p>
                     <p className="text-muted text-sm">
-                      Balance finale : {c.balance.toLocaleString()}€
+                      {t("challenge_final_balance")} {c.balance.toLocaleString()}€
                     </p>
                   </div>
                 </div>
