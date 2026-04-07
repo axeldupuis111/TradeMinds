@@ -3,11 +3,12 @@ import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
   try {
-    const apiKey = process.env.CLAUDE_API_KEY;
+    const apiKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
+      console.error("Neither CLAUDE_API_KEY nor ANTHROPIC_API_KEY is defined in environment.");
       return NextResponse.json(
-        { error: "Clé API Anthropic non configurée." },
-        { status: 500 }
+        { error: "Service d'analyse temporairement indisponible. Contactez le support." },
+        { status: 503 }
       );
     }
 

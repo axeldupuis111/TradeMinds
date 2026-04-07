@@ -39,13 +39,13 @@ const SESSION_MAP: Record<string, string> = {
 
 export async function POST(request: Request) {
   try {
-    const apiKey = process.env.CLAUDE_API_KEY;
-    console.log("CLAUDE_API_KEY defined:", apiKey ? apiKey.substring(0, 10) + "…" : "MISSING");
+    const apiKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY;
 
     if (!apiKey) {
+      console.error("Neither CLAUDE_API_KEY nor ANTHROPIC_API_KEY is defined in environment.");
       return NextResponse.json(
-        { error: "Clé API Anthropic non configurée." },
-        { status: 500 }
+        { error: "Service d'analyse temporairement indisponible. Contactez le support." },
+        { status: 503 }
       );
     }
 
