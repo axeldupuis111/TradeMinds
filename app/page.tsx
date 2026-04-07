@@ -282,7 +282,7 @@ const problems = [
       </svg>
     ),
     title: "Revenge Trading",
-    desc: "Tu reprends un trade 2 minutes apr\u00e8s une perte. Tu le sais. Mais tu le fais quand m\u00eame.",
+    desc: "Tu reprends un trade 2 minutes après une perte. Tu le sais. Mais tu le fais quand même.",
   },
   {
     icon: (
@@ -301,7 +301,7 @@ const problems = [
       </svg>
     ),
     title: "Pas de journal",
-    desc: "Tu as la flemme. Excel c\u2019est chiant. Et tu oublies la moiti\u00e9 de tes trades.",
+    desc: "Tu as la flemme. Excel c'est chiant. Et tu oublies la moitié de tes trades.",
   },
   {
     icon: (
@@ -319,8 +319,8 @@ const problems = [
         />
       </svg>
     ),
-    title: "R\u00e8gles ignor\u00e9es",
-    desc: "Tu connais tes r\u00e8gles. Tu ne les respectes pas. Et tu ne sais m\u00eame pas \u00e0 quel point.",
+    title: "Règles ignorées",
+    desc: "Tu connais tes règles. Tu ne les respectes pas. Et tu ne sais même pas à quel point.",
   },
 ];
 
@@ -375,7 +375,7 @@ const features = [
       </svg>
     ),
     title: "Import automatique",
-    desc: "Upload ton CSV MT4/MT5. Tes trades sont l\u00e0 en 2 secondes.",
+    desc: "Upload ton CSV MT4/MT5. Tes trades sont là en 2 secondes.",
   },
   {
     icon: (
@@ -394,7 +394,7 @@ const features = [
       </svg>
     ),
     title: "IA Coach",
-    desc: "D\u00e9cris ta strat\u00e9gie en texte libre. L\u2019IA la comprend et juge chaque trade.",
+    desc: "Décris ta stratégie en texte libre. L'IA la comprend et juge chaque trade.",
   },
   {
     icon: (
@@ -413,7 +413,7 @@ const features = [
       </svg>
     ),
     title: "Score de discipline",
-    desc: "Un score de 0 \u00e0 100. Pas de bullshit. Tu sais exactement o\u00f9 tu en es.",
+    desc: "Un score de 0 à 100. Pas de bullshit. Tu sais exactement où tu en es.",
   },
   {
     icon: (
@@ -432,7 +432,7 @@ const features = [
       </svg>
     ),
     title: "Suivi Challenge",
-    desc: "Drawdown, profit target, jours restants. Tout en un coup d\u2019\u0153il.",
+    desc: "Drawdown, profit target, jours restants. Tout en un coup d'œil.",
   },
 ];
 
@@ -472,8 +472,8 @@ function Features() {
 const steps = [
   {
     num: "1",
-    title: "D\u00e9cris ta strat\u00e9gie",
-    desc: "En langage naturel. L\u2019IA fait le reste.",
+    title: "Décris ta stratégie",
+    desc: "En langage naturel. L'IA fait le reste.",
   },
   {
     num: "2",
@@ -482,7 +482,7 @@ const steps = [
   },
   {
     num: "3",
-    title: "Re\u00e7ois ton analyse",
+    title: "Reçois ton analyse",
     desc: "Score, violations, patterns, recommandations. En 10 secondes.",
   },
 ];
@@ -492,7 +492,7 @@ function HowItWorks() {
     <section className="py-24 px-6 border-t border-white/5">
       <RevealSection className="max-w-4xl mx-auto">
         <h2 className="text-3xl sm:text-4xl font-bold text-foreground text-center">
-          Comment \u00e7a marche
+          Comment ça marche
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">
           {steps.map((s, i) => (
@@ -517,15 +517,15 @@ function HowItWorks() {
 
 /* ── Pricing ── */
 const earlyFeatures = [
-  "Import CSV illimit\u00e9",
+  "Import CSV illimité",
   "Analyse IA de tes trades",
   "Score de discipline",
   "Suivi challenge prop firm",
-  "Strat\u00e9gie assist\u00e9e par IA",
+  "Stratégie assistée par IA",
 ];
 const proFeatures = [
   "Tout le plan Early Access",
-  "Analyses illimit\u00e9es",
+  "Analyses illimitées",
   "Rapport hebdomadaire par email",
   "Connexion API broker",
   "Support prioritaire",
