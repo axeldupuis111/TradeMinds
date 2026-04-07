@@ -1,7 +1,8 @@
 "use client";
 
+import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /* ── Scroll animation hook ── */
 function useScrollReveal() {
@@ -530,6 +531,112 @@ const proFeatures = [
   "Support prioritaire",
 ];
 
+function ProCard() {
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "duplicate" | "error">("idle");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email) return;
+    setStatus("loading");
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.from("waitlist").insert({ email });
+      if (error) {
+        if (error.code === "23505") {
+          setStatus("duplicate");
+        } else {
+          setStatus("error");
+        }
+      } else {
+        setStatus("success");
+      }
+    } catch {
+      setStatus("error");
+    }
+  }
+
+  return (
+    <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-8 flex flex-col opacity-70">
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-semibold text-foreground uppercase tracking-wider">
+          Pro
+        </span>
+        <span className="text-[10px] font-semibold bg-white/10 text-muted px-2 py-0.5 rounded-full">
+          Bient&ocirc;t disponible
+        </span>
+      </div>
+      <div className="mt-3">
+        <span className="text-5xl font-bold text-foreground">19&euro;</span>
+        <span className="text-muted text-sm">/mois</span>
+      </div>
+      <p className="text-muted mt-2 text-sm">
+        Pour les traders s&eacute;rieux
+      </p>
+      <ul className="mt-8 space-y-3 flex-1">
+        {proFeatures.map((item) => (
+          <li key={item} className="flex items-center gap-3 text-sm">
+            <svg
+              className="w-4 h-4 text-muted shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+            <span className="text-muted">{item}</span>
+          </li>
+        ))}
+      </ul>
+
+      {status === "success" ? (
+        <div className="mt-8 bg-profit/10 border border-profit/20 rounded-xl px-4 py-3">
+          <p className="text-profit text-sm font-medium">
+            Merci ! Tu seras notifi&eacute; au lancement du plan Pro.
+          </p>
+        </div>
+      ) : status === "duplicate" ? (
+        <div className="mt-8 bg-accent/10 border border-accent/20 rounded-xl px-4 py-3">
+          <p className="text-accent text-sm font-medium">
+            Tu es d&eacute;j&agrave; inscrit !
+          </p>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="mt-8 flex gap-2">
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="ton@email.com"
+            className="flex-1 min-w-0 px-3 py-2.5 bg-[#0a0a0a] border border-white/[0.06] rounded-xl text-foreground text-sm placeholder-[#444] focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent"
+          />
+          <button
+            type="submit"
+            disabled={status === "loading"}
+            className="px-4 py-2.5 bg-white/[0.06] border border-white/[0.06] text-foreground rounded-xl text-sm font-semibold hover:bg-white/[0.1] disabled:opacity-50 shrink-0"
+          >
+            {status === "loading" ? (
+              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
+            ) : (
+              "Notifier"
+            )}
+          </button>
+        </form>
+      )}
+
+      {status === "error" && (
+        <p className="text-loss text-xs mt-2">Une erreur est survenue. R&eacute;essaie.</p>
+      )}
+    </div>
+  );
+}
+
 function Pricing() {
   return (
     <section className="py-24 px-6 border-t border-white/5">
@@ -576,49 +683,7 @@ function Pricing() {
           </div>
 
           {/* Pro */}
-          <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-8 flex flex-col opacity-70">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-foreground uppercase tracking-wider">
-                Pro
-              </span>
-              <span className="text-[10px] font-semibold bg-white/10 text-muted px-2 py-0.5 rounded-full">
-                Bient&ocirc;t disponible
-              </span>
-            </div>
-            <div className="mt-3">
-              <span className="text-5xl font-bold text-foreground">19&euro;</span>
-              <span className="text-muted text-sm">/mois</span>
-            </div>
-            <p className="text-muted mt-2 text-sm">
-              Pour les traders s&eacute;rieux
-            </p>
-            <ul className="mt-8 space-y-3 flex-1">
-              {proFeatures.map((item) => (
-                <li key={item} className="flex items-center gap-3 text-sm">
-                  <svg
-                    className="w-4 h-4 text-muted shrink-0"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  <span className="text-muted">{item}</span>
-                </li>
-              ))}
-            </ul>
-            <button
-              disabled
-              className="mt-8 w-full py-3 bg-white/[0.04] border border-white/[0.06] text-muted rounded-xl font-semibold cursor-not-allowed"
-            >
-              &Ecirc;tre notifi&eacute;
-            </button>
-          </div>
+          <ProCard />
         </div>
       </RevealSection>
     </section>
