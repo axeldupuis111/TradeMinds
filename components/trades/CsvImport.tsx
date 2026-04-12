@@ -69,21 +69,22 @@ export default function CsvImport({ strategyId, onImported }: Props) {
 
       setPreview(result.trades);
 
-      // Auto-match account number
+      // Auto-match account number (client-side partial matching)
       if (result.accountNumber) {
         setDetectedAccountNumber(result.accountNumber);
+        const csvNum = result.accountNumber.replace(/\D/g, "");
 
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        console.log("[CsvImport] CSV account number (cleaned):", JSON.stringify(csvNum));
+        console.log("[CsvImport] Active accounts:", activeAccounts.map(a => ({ id: a.id, firm: a.firm, account_number: a.account_number })));
 
-        const { data: matched } = await supabase
-          .from("prop_challenges")
-          .select("id, firm, account_number, account_size")
-          .eq("user_id", user.id)
-          .eq("account_number", result.accountNumber)
-          .eq("status", "active")
-          .limit(1)
-          .single();
+        // Partial match: CSV number contains stored number, or stored number contains CSV number
+        const matched = activeAccounts.find((a) => {
+          if (!a.account_number) return false;
+          const storedNum = a.account_number.replace(/\D/g, "");
+          return storedNum === csvNum || csvNum.includes(storedNum) || storedNum.includes(csvNum);
+        });
+
+        console.log("[CsvImport] Match result:", matched ? `${matched.firm} — ${matched.account_number}` : "no match");
 
         if (matched) {
           setMatchedChallengeId(matched.id);
@@ -94,7 +95,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
       }
     };
     reader.readAsText(file);
-  }, [t, supabase]);
+  }, [t, activeAccounts]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();

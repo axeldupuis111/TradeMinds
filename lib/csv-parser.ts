@@ -60,10 +60,16 @@ function extractAccountNumber(lines: string[]): string | null {
   // Look for "Compte:" or "Account:" in the first ~20 lines
   for (let i = 0; i < Math.min(lines.length, 20); i++) {
     const line = lines[i].trim();
-    // French: "Compte:	1512882131" or "Compte;1512882131"
+    // French: "Compte:	1512882131 (EUR, FTMO-Demo)" or "Compte;1512882131"
     // English: "Account:	1512882131" or "Account;1512882131"
-    const match = line.match(/^(?:Compte|Account)\s*[;:\t]\s*(\d+)/i);
-    if (match) return match[1];
+    const match = line.match(/^(?:Compte|Account)\s*[;:\t]\s*(.+)/i);
+    if (match) {
+      // Clean: keep only digits before first space, parenthesis, or comma
+      const raw = match[1].trim();
+      const cleaned = raw.replace(/[^0-9].*$/, "").trim();
+      console.log("[csv-parser] Raw account value:", JSON.stringify(raw), "→ cleaned:", JSON.stringify(cleaned));
+      if (cleaned) return cleaned;
+    }
   }
   return null;
 }
