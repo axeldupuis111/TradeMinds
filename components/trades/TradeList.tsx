@@ -36,6 +36,8 @@ export default function TradeList({ refreshKey }: Props) {
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [globalStats, setGlobalStats] = useState({
     count: 0,
     wins: 0,
@@ -48,6 +50,11 @@ export default function TradeList({ refreshKey }: Props) {
     loadTrades();
     loadGlobalStats();
   }, [page, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Clear selection when page or data changes
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [page, refreshKey]);
 
   async function loadTrades() {
     setLoading(true);
@@ -104,9 +111,44 @@ export default function TradeList({ refreshKey }: Props) {
     setDeletingId(id);
     await supabase.from("trades").delete().eq("id", id);
     setDeletingId(null);
+    setSelectedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
     loadTrades();
     loadGlobalStats();
   }
+
+  async function handleBulkDelete() {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    const msg = t("trades_confirm_delete_mass").replace("{count}", String(ids.length));
+    if (!confirm(msg)) return;
+
+    setBulkDeleting(true);
+    await supabase.from("trades").delete().in("id", ids);
+    setBulkDeleting(false);
+    setSelectedIds(new Set());
+    loadTrades();
+    loadGlobalStats();
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (trades.every((tr) => selectedIds.has(tr.id))) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(trades.map((tr) => tr.id)));
+    }
+  }
+
+  const allSelected = trades.length > 0 && trades.every((tr) => selectedIds.has(tr.id));
+  const someSelected = selectedIds.size > 0;
 
   const { count: statsCount, wins, totalPnl, best, worst } = globalStats;
   const winrate = statsCount > 0 ? ((wins / statsCount) * 100).toFixed(1) : "—";
@@ -147,6 +189,28 @@ export default function TradeList({ refreshKey }: Props) {
         ))}
       </div>
 
+      {/* Bulk action bar */}
+      {someSelected && (
+        <div className="flex items-center gap-3 mb-3 p-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg">
+          <span className="text-sm text-foreground font-medium">
+            {selectedIds.size} {t("trades_selected")}
+          </span>
+          <button
+            onClick={handleBulkDelete}
+            disabled={bulkDeleting}
+            className="px-3 py-1.5 text-sm bg-loss/10 text-loss border border-loss/30 rounded-lg font-medium hover:bg-loss/20 transition-colors disabled:opacity-50"
+          >
+            {bulkDeleting ? "..." : t("trades_delete_selection")}
+          </button>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="px-3 py-1.5 text-sm text-muted hover:text-foreground transition-colors"
+          >
+            {t("trades_deselect_all")}
+          </button>
+        </div>
+      )}
+
       {/* Table */}
       {loading ? (
         <p className="text-muted py-4">{t("trades_loading")}</p>
@@ -158,6 +222,14 @@ export default function TradeList({ refreshKey }: Props) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-[#141414] text-muted text-left">
+                  <th className="px-3 py-2 w-8">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={toggleSelectAll}
+                      className="accent-accent w-4 h-4 cursor-pointer"
+                    />
+                  </th>
                   <th className="px-3 py-2 font-medium">{t("trades_col_date")}</th>
                   <th className="px-3 py-2 font-medium">{t("trades_col_account")}</th>
                   <th className="px-3 py-2 font-medium">{t("trades_col_pair")}</th>
@@ -173,7 +245,15 @@ export default function TradeList({ refreshKey }: Props) {
               </thead>
               <tbody>
                 {trades.map((tr, i) => (
-                  <tr key={tr.id} className={i % 2 === 0 ? "bg-[#0f0f0f]" : "bg-[#141414]"}>
+                  <tr key={tr.id} className={`${i % 2 === 0 ? "bg-[#0f0f0f]" : "bg-[#141414]"} ${selectedIds.has(tr.id) ? "!bg-accent/5" : ""}`}>
+                    <td className="px-3 py-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(tr.id)}
+                        onChange={() => toggleSelect(tr.id)}
+                        className="accent-accent w-4 h-4 cursor-pointer"
+                      />
+                    </td>
                     <td className="px-3 py-2 text-foreground whitespace-nowrap">
                       {tr.open_time ? new Date(tr.open_time).toLocaleDateString() : "—"}
                     </td>
