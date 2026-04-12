@@ -333,6 +333,20 @@ const translations: Record<Lang, Record<string, string>> = {
     challenge_closed: "Clôturé",
     challenge_confirm_closed: "Clôturer ce suivi ?",
     challenge_marked_closed: "Suivi clôturé.",
+
+    // Multi-account & CSV matching
+    challenge_account_number: "Numéro de compte",
+    challenge_account_number_placeholder: "ex: 1512882131",
+    challenge_account_number_required: "Le numéro de compte est obligatoire.",
+    csv_account_detected: "Compte détecté :",
+    csv_account_matched: "Suivi trouvé :",
+    csv_account_not_found: "Aucun suivi trouvé pour le compte",
+    csv_account_not_found_hint: "Crée d'abord un suivi de compte.",
+    csv_select_account: "Associer à un suivi",
+    csv_no_account: "Aucun (pas d'association)",
+    trades_col_account: "Compte",
+    dash_all_accounts: "Tous les comptes",
+    dash_select_account: "Sélectionner un compte",
   },
 
   // ─── ENGLISH ───
@@ -634,6 +648,19 @@ const translations: Record<Lang, Record<string, string>> = {
     challenge_closed: "Closed",
     challenge_confirm_closed: "Close this tracking?",
     challenge_marked_closed: "Tracking closed.",
+
+    challenge_account_number: "Account number",
+    challenge_account_number_placeholder: "e.g. 1512882131",
+    challenge_account_number_required: "Account number is required.",
+    csv_account_detected: "Account detected:",
+    csv_account_matched: "Tracking found:",
+    csv_account_not_found: "No tracking found for account",
+    csv_account_not_found_hint: "Create a tracking first.",
+    csv_select_account: "Associate to a tracking",
+    csv_no_account: "None (no association)",
+    trades_col_account: "Account",
+    dash_all_accounts: "All accounts",
+    dash_select_account: "Select an account",
   },
 
   // ─── GERMAN ───
@@ -936,6 +963,19 @@ const translations: Record<Lang, Record<string, string>> = {
     challenge_closed: "Geschlossen",
     challenge_confirm_closed: "Dieses Tracking schließen?",
     challenge_marked_closed: "Tracking geschlossen.",
+
+    challenge_account_number: "Kontonummer",
+    challenge_account_number_placeholder: "z.B. 1512882131",
+    challenge_account_number_required: "Kontonummer ist erforderlich.",
+    csv_account_detected: "Konto erkannt:",
+    csv_account_matched: "Tracking gefunden:",
+    csv_account_not_found: "Kein Tracking gefunden für Konto",
+    csv_account_not_found_hint: "Erstelle zuerst ein Tracking.",
+    csv_select_account: "Einem Tracking zuordnen",
+    csv_no_account: "Keines (keine Zuordnung)",
+    trades_col_account: "Konto",
+    dash_all_accounts: "Alle Konten",
+    dash_select_account: "Konto auswählen",
   },
 
   // ─── SPANISH ───
@@ -1238,6 +1278,19 @@ const translations: Record<Lang, Record<string, string>> = {
     challenge_closed: "Cerrado",
     challenge_confirm_closed: "¿Cerrar este seguimiento?",
     challenge_marked_closed: "Seguimiento cerrado.",
+
+    challenge_account_number: "Número de cuenta",
+    challenge_account_number_placeholder: "ej: 1512882131",
+    challenge_account_number_required: "El número de cuenta es obligatorio.",
+    csv_account_detected: "Cuenta detectada:",
+    csv_account_matched: "Seguimiento encontrado:",
+    csv_account_not_found: "No se encontró seguimiento para la cuenta",
+    csv_account_not_found_hint: "Crea primero un seguimiento de cuenta.",
+    csv_select_account: "Asociar a un seguimiento",
+    csv_no_account: "Ninguno (sin asociación)",
+    trades_col_account: "Cuenta",
+    dash_all_accounts: "Todas las cuentas",
+    dash_select_account: "Seleccionar una cuenta",
   },
 };
 

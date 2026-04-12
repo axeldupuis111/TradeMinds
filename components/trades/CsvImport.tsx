@@ -3,7 +3,14 @@
 import { useLanguage } from "@/lib/LanguageContext";
 import { parseCSV, type ParsedTrade } from "@/lib/csv-parser";
 import { createClient } from "@/lib/supabase/client";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+interface ActiveAccount {
+  id: string;
+  firm: string;
+  account_number: string | null;
+  account_size: number;
+}
 
 interface Props {
   strategyId: string | null;
@@ -19,20 +26,75 @@ export default function CsvImport({ strategyId, onImported }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
 
-  const handleFile = useCallback((file: File) => {
+  // Account matching state
+  const [detectedAccountNumber, setDetectedAccountNumber] = useState<string | null>(null);
+  const [matchedChallengeId, setMatchedChallengeId] = useState<string | null>(null);
+  const [matchedLabel, setMatchedLabel] = useState<string | null>(null);
+  const [accountNotFound, setAccountNotFound] = useState(false);
+  const [activeAccounts, setActiveAccounts] = useState<ActiveAccount[]>([]);
+  const [selectedChallengeId, setSelectedChallengeId] = useState<string | null>(null);
+
+  // Load active accounts on mount
+  useEffect(() => {
+    async function load() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("prop_challenges")
+        .select("id, firm, account_number, account_size")
+        .eq("user_id", user.id)
+        .eq("status", "active");
+      setActiveAccounts(data || []);
+    }
+    load();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleFile = useCallback(async (file: File) => {
     setMessage(null);
+    setDetectedAccountNumber(null);
+    setMatchedChallengeId(null);
+    setMatchedLabel(null);
+    setAccountNotFound(false);
+    setSelectedChallengeId(null);
+
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       const text = e.target?.result as string;
-      const trades = parseCSV(text);
-      if (trades.length === 0) {
+      const result = parseCSV(text);
+
+      if (result.trades.length === 0) {
         setMessage({ type: "error", text: t("csv_no_trades") });
         return;
       }
-      setPreview(trades);
+
+      setPreview(result.trades);
+
+      // Auto-match account number
+      if (result.accountNumber) {
+        setDetectedAccountNumber(result.accountNumber);
+
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: matched } = await supabase
+          .from("prop_challenges")
+          .select("id, firm, account_number, account_size")
+          .eq("user_id", user.id)
+          .eq("account_number", result.accountNumber)
+          .eq("status", "active")
+          .limit(1)
+          .single();
+
+        if (matched) {
+          setMatchedChallengeId(matched.id);
+          setMatchedLabel(`${matched.firm} — ${matched.account_number}`);
+        } else {
+          setAccountNotFound(true);
+        }
+      }
     };
     reader.readAsText(file);
-  }, [t]);
+  }, [t, supabase]);
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
@@ -50,18 +112,20 @@ export default function CsvImport({ strategyId, onImported }: Props) {
     setImporting(true);
     setMessage(null);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       setMessage({ type: "error", text: t("not_connected") });
       setImporting(false);
       return;
     }
 
+    // Determine which challenge_id to use
+    const challengeId = matchedChallengeId || selectedChallengeId || null;
+
     const rows = preview.map((tr) => ({
       user_id: user.id,
       strategy_id: strategyId,
+      challenge_id: challengeId,
       open_time: tr.open_time || null,
       close_time: tr.close_time || null,
       pair: tr.pair,
@@ -84,6 +148,11 @@ export default function CsvImport({ strategyId, onImported }: Props) {
     } else {
       setMessage({ type: "success", text: `${rows.length} ${t("csv_imported")}` });
       setPreview([]);
+      setDetectedAccountNumber(null);
+      setMatchedChallengeId(null);
+      setMatchedLabel(null);
+      setAccountNotFound(false);
+      setSelectedChallengeId(null);
       onImported();
     }
   }
@@ -112,6 +181,45 @@ export default function CsvImport({ strategyId, onImported }: Props) {
         </div>
       ) : (
         <div>
+          {/* Account matching info */}
+          {detectedAccountNumber && (
+            <div className="mb-4 p-3 rounded-lg border border-[#2a2a2a] bg-[#141414]">
+              <p className="text-sm text-muted">
+                {t("csv_account_detected")} <span className="text-foreground font-medium">{detectedAccountNumber}</span>
+              </p>
+              {matchedLabel && (
+                <p className="text-sm text-profit mt-1">
+                  {t("csv_account_matched")} <span className="font-medium">{matchedLabel}</span>
+                </p>
+              )}
+              {accountNotFound && (
+                <p className="text-sm text-orange-400 mt-1">
+                  {t("csv_account_not_found")} {detectedAccountNumber}. {t("csv_account_not_found_hint")}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Manual account selector (when no account detected from CSV) */}
+          {!detectedAccountNumber && activeAccounts.length > 0 && (
+            <div className="mb-4">
+              <label className="block text-sm text-muted mb-1">{t("csv_select_account")}</label>
+              <select
+                value={selectedChallengeId || ""}
+                onChange={(e) => setSelectedChallengeId(e.target.value || null)}
+                className="w-full px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
+              >
+                <option value="">{t("csv_no_account")}</option>
+                {activeAccounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.firm} — {a.account_number || a.account_size.toLocaleString() + "€"}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Preview table */}
           <div className="overflow-x-auto rounded-lg border border-[#1e1e1e]">
             <table className="w-full text-sm">
               <thead>
@@ -160,7 +268,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
               {importing ? t("csv_importing") : `${t("csv_import_btn")} ${preview.length} trades`}
             </button>
             <button
-              onClick={() => setPreview([])}
+              onClick={() => { setPreview([]); setDetectedAccountNumber(null); setMatchedChallengeId(null); setAccountNotFound(false); }}
               className="px-5 py-2 bg-[#1a1a1a] border border-[#2a2a2a] text-foreground rounded-lg hover:bg-[#2a2a2a] transition-colors"
             >
               {t("csv_cancel")}

@@ -3,66 +3,138 @@
 import EquityCurve from "@/components/charts/EquityCurve";
 import { useLanguage } from "@/lib/LanguageContext";
 import Link from "next/link";
+import { useCallback, useMemo, useState } from "react";
 
-interface RecentTrade {
-  id: string;
-  open_time: string | null;
-  pair: string;
-  direction: string;
+interface TradeData {
   pnl: number;
   commission: number | null;
   swap: number | null;
+  challenge_id: string | null;
+}
+
+interface TradeWithTime extends TradeData {
+  open_time: string;
+}
+
+interface RecentTrade extends TradeWithTime {
+  id: string;
+  pair: string;
+  direction: string;
+}
+
+interface ActiveAccount {
+  id: string;
+  firm: string;
+  account_number: string | null;
+  account_size: number;
+  profit_target_pct: number;
+  max_total_dd_pct: number;
+  balance: number;
+  type: string;
 }
 
 interface Props {
   displayName: string;
   score: number | null;
   scoreColor: string;
-  weekCount: number;
-  weekWinrate: string;
-  todayPnl: number;
-  ac: {
-    firm: string;
-    account_size: number;
-    profit_target_pct: number;
-    max_total_dd_pct: number;
-    balance: number;
-  } | null;
-  challengePct: number;
-  ddPct: number;
-  challengeDdUsed: number;
-  challengeDdMax: number;
+  weekTrades: TradeData[];
+  todayTrades: TradeData[];
+  activeAccounts: ActiveAccount[];
   recentTrades: RecentTrade[];
   lastReview: { discipline_score: number; created_at: string } | null;
-  equityCurveData: { date: string; balance: number }[];
-  initialBalance: number;
+  allTrades: TradeWithTime[];
+}
+
+function netPnl(t: { pnl: number; commission: number | null; swap: number | null }) {
+  return t.pnl + (t.commission || 0) + (t.swap || 0);
 }
 
 export default function DashboardContent({
   displayName,
   score,
   scoreColor,
-  weekCount,
-  weekWinrate,
-  todayPnl,
-  ac,
-  challengePct,
-  ddPct,
-  challengeDdUsed,
-  challengeDdMax,
+  weekTrades,
+  todayTrades,
+  activeAccounts,
   recentTrades,
   lastReview,
-  equityCurveData,
-  initialBalance,
+  allTrades,
 }: Props) {
   const { t } = useLanguage();
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+
+  // Filter trades by selected account
+  const filterByAccount = useCallback(<T extends { challenge_id: string | null }>(trades: T[]): T[] => {
+    if (!selectedAccountId) return trades;
+    return trades.filter((tr) => tr.challenge_id === selectedAccountId);
+  }, [selectedAccountId]);
+
+  const filteredWeek = useMemo(() => filterByAccount(weekTrades), [filterByAccount, weekTrades]);
+  const filteredToday = useMemo(() => filterByAccount(todayTrades), [filterByAccount, todayTrades]);
+  const filteredAll = useMemo(() => filterByAccount(allTrades), [filterByAccount, allTrades]);
+  const filteredRecent = useMemo(() => filterByAccount(recentTrades), [filterByAccount, recentTrades]);
+
+  // Computed stats
+  const weekCount = filteredWeek.length;
+  const weekWins = filteredWeek.filter((tr) => netPnl(tr) > 0).length;
+  const weekWinrate = weekCount > 0 ? ((weekWins / weekCount) * 100).toFixed(0) : "0";
+  const todayPnl = filteredToday.reduce((sum, tr) => sum + netPnl(tr), 0);
+
+  // Selected account info
+  const selectedAccount = selectedAccountId
+    ? activeAccounts.find((a) => a.id === selectedAccountId) ?? null
+    : null;
+
+  // Challenge progress for selected account (or first active)
+  const displayAccount = selectedAccount || (activeAccounts.length === 1 ? activeAccounts[0] : null);
+  const challengePct = displayAccount
+    ? Math.max(0, Math.min(100, ((displayAccount.balance - displayAccount.account_size) / (displayAccount.account_size * displayAccount.profit_target_pct / 100)) * 100))
+    : 0;
+
+  // Drawdown
+  const ddMax = displayAccount ? displayAccount.account_size * displayAccount.max_total_dd_pct / 100 : 0;
+  const ddUsed = displayAccount ? Math.max(0, displayAccount.account_size - displayAccount.balance) : 0;
+  const ddPct = ddMax > 0 ? (ddUsed / ddMax) * 100 : 0;
+
+  // Equity curve
+  const equityCurveData = useMemo(() => {
+    if (filteredAll.length === 0) return [];
+    const initial = displayAccount?.account_size ?? 0;
+    let running = initial;
+    return filteredAll.map((tr) => {
+      running += netPnl(tr);
+      return { date: tr.open_time.split("T")[0] || tr.open_time, balance: running };
+    });
+  }, [filteredAll, displayAccount]);
+
+  const initialBalance = displayAccount?.account_size ?? 0;
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-foreground">
-        {t("dash_welcome")} {displayName}
-      </h1>
-      <p className="text-muted mt-1">{t("dash_overview")}</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">
+            {t("dash_welcome")} {displayName}
+          </h1>
+          <p className="text-muted mt-1">{t("dash_overview")}</p>
+        </div>
+
+        {/* Account selector */}
+        {activeAccounts.length > 0 && (
+          <select
+            value={selectedAccountId || ""}
+            onChange={(e) => setSelectedAccountId(e.target.value || null)}
+            className="px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent w-full sm:w-auto"
+          >
+            <option value="">{t("dash_all_accounts")}</option>
+            {activeAccounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.firm} — {a.account_number || a.account_size.toLocaleString() + "€"}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
 
       {/* Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
@@ -115,7 +187,7 @@ export default function DashboardContent({
           </p>
         </div>
 
-        {/* Card 4 — Challenge */}
+        {/* Card 4 — Active account */}
         <div className="bg-card border border-border rounded-xl p-5">
           <div className="flex items-center gap-2 mb-1">
             <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -123,15 +195,23 @@ export default function DashboardContent({
             </svg>
             <p className="text-sm text-muted">{t("dash_active_challenge")}</p>
           </div>
-          {ac ? (
+          {displayAccount ? (
             <div className="mt-1">
               <p className="text-lg font-bold text-foreground">
-                {ac.firm}
+                {displayAccount.firm}
+                {displayAccount.account_number && (
+                  <span className="text-muted text-sm ml-1">#{displayAccount.account_number}</span>
+                )}
                 <span className="text-accent ml-2 text-base">{challengePct.toFixed(0)}%</span>
               </p>
               <div className="h-1.5 bg-[#1e1e1e] rounded-full mt-2 overflow-hidden">
-                <div className="h-full bg-profit rounded-full transition-all" style={{ width: `${challengePct}%` }} />
+                <div className="h-full bg-profit rounded-full transition-all" style={{ width: `${Math.min(100, challengePct)}%` }} />
               </div>
+            </div>
+          ) : activeAccounts.length > 1 ? (
+            <div className="mt-1">
+              <p className="text-lg font-bold text-foreground">{activeAccounts.length}</p>
+              <p className="text-xs text-muted">{t("dash_select_account")}</p>
             </div>
           ) : (
             <div className="mt-1">
@@ -145,9 +225,11 @@ export default function DashboardContent({
       </div>
 
       {/* Equity Curve */}
-      <div className="mt-8">
-        <EquityCurve data={equityCurveData} initialBalance={initialBalance} />
-      </div>
+      {equityCurveData.length > 0 && (
+        <div className="mt-8">
+          <EquityCurve data={equityCurveData} initialBalance={initialBalance} />
+        </div>
+      )}
 
       {/* Bonus sections */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
@@ -159,12 +241,12 @@ export default function DashboardContent({
               {t("dash_see_all")}
             </Link>
           </div>
-          {recentTrades.length === 0 ? (
+          {filteredRecent.length === 0 ? (
             <p className="text-muted text-sm">{t("dash_no_trades")}</p>
           ) : (
             <div className="space-y-2">
-              {recentTrades.map((tr) => {
-                const net = (tr.pnl || 0) + (tr.commission || 0) + (tr.swap || 0);
+              {filteredRecent.map((tr) => {
+                const net = netPnl(tr);
                 return (
                   <div key={tr.id} className="flex items-center justify-between py-1.5 border-b border-[#1e1e1e] last:border-0">
                     <div className="flex items-center gap-3">
@@ -207,8 +289,8 @@ export default function DashboardContent({
             )}
           </Link>
 
-          {/* Alerts */}
-          {ac && ddPct > 75 && (
+          {/* Drawdown alert */}
+          {displayAccount && ddPct > 75 && (
             <div className={`border rounded-xl p-5 ${ddPct > 90 ? "bg-loss/10 border-loss/30" : "bg-orange-500/10 border-orange-500/30"}`}>
               <div className="flex items-center gap-2 mb-1">
                 <svg className={`w-5 h-5 ${ddPct > 90 ? "text-loss" : "text-orange-400"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -219,8 +301,8 @@ export default function DashboardContent({
                 </h2>
               </div>
               <p className="text-foreground text-sm">
-                {ac.firm} — Drawdown{" "}
-                <span className="font-bold">{ddPct.toFixed(1)}%</span> ({challengeDdUsed.toFixed(0)}€ / {challengeDdMax.toFixed(0)}€).
+                {displayAccount.firm} — Drawdown{" "}
+                <span className="font-bold">{ddPct.toFixed(1)}%</span> ({ddUsed.toFixed(0)}€ / {ddMax.toFixed(0)}€).
                 {ddPct > 90 ? ` ${t("dash_dd_stop")}` : ` ${t("dash_dd_careful")}`}
               </p>
             </div>

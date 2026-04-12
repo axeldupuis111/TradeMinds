@@ -50,15 +50,34 @@ function mapDirection(val: string): "long" | "short" {
   return "short";
 }
 
-export function parseCSV(text: string): ParsedTrade[] {
+export interface ParseResult {
+  trades: ParsedTrade[];
+  accountNumber: string | null;
+}
+
+/** Extract account number from MT5 CSV metadata header */
+function extractAccountNumber(lines: string[]): string | null {
+  // Look for "Compte:" or "Account:" in the first ~20 lines
+  for (let i = 0; i < Math.min(lines.length, 20); i++) {
+    const line = lines[i].trim();
+    // French: "Compte:	1512882131" or "Compte;1512882131"
+    // English: "Account:	1512882131" or "Account;1512882131"
+    const match = line.match(/^(?:Compte|Account)\s*[;:\t]\s*(\d+)/i);
+    if (match) return match[1];
+  }
+  return null;
+}
+
+export function parseCSV(text: string): ParseResult {
   const lines = text.split(/\r?\n/);
+  const accountNumber = extractAccountNumber(lines);
 
   // Try MT5/FTMO format first
   const mt5Result = tryParseMT5(lines);
-  if (mt5Result.length > 0) return mt5Result;
+  if (mt5Result.length > 0) return { trades: mt5Result, accountNumber };
 
   // Fallback to generic format
-  return parseGeneric(lines);
+  return { trades: parseGeneric(lines), accountNumber };
 }
 
 /**

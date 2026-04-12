@@ -18,6 +18,8 @@ interface Trade {
   pnl: number;
   commission: number | null;
   swap: number | null;
+  challenge_id: string | null;
+  prop_challenges?: { firm: string; account_number: string | null } | null;
 }
 
 interface Props {
@@ -59,7 +61,7 @@ export default function TradeList({ refreshKey }: Props) {
 
     const { data, count } = await supabase
       .from("trades")
-      .select("*", { count: "exact" })
+      .select("*, prop_challenges(firm, account_number)", { count: "exact" })
       .eq("user_id", user.id)
       .order("open_time", { ascending: false })
       .range(from, to);
@@ -157,6 +159,7 @@ export default function TradeList({ refreshKey }: Props) {
               <thead>
                 <tr className="bg-[#141414] text-muted text-left">
                   <th className="px-3 py-2 font-medium">{t("trades_col_date")}</th>
+                  <th className="px-3 py-2 font-medium">{t("trades_col_account")}</th>
                   <th className="px-3 py-2 font-medium">{t("trades_col_pair")}</th>
                   <th className="px-3 py-2 font-medium">{t("trades_col_dir")}</th>
                   <th className="px-3 py-2 font-medium">{t("trades_col_lot")}</th>
@@ -173,6 +176,11 @@ export default function TradeList({ refreshKey }: Props) {
                   <tr key={tr.id} className={i % 2 === 0 ? "bg-[#0f0f0f]" : "bg-[#141414]"}>
                     <td className="px-3 py-2 text-foreground whitespace-nowrap">
                       {tr.open_time ? new Date(tr.open_time).toLocaleDateString() : "—"}
+                    </td>
+                    <td className="px-3 py-2 text-muted text-xs whitespace-nowrap">
+                      {tr.prop_challenges
+                        ? `${tr.prop_challenges.firm}${tr.prop_challenges.account_number ? ` #${tr.prop_challenges.account_number}` : ""}`
+                        : "—"}
                     </td>
                     <td className="px-3 py-2 text-foreground font-medium">{tr.pair}</td>
                     <td className="px-3 py-2">
