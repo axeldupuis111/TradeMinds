@@ -1,5 +1,6 @@
 "use client";
 
+import EquityCurve from "@/components/charts/EquityCurve";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState, useCallback } from "react";
@@ -7,6 +8,7 @@ import { useEffect, useState, useCallback } from "react";
 interface Challenge {
   id: string;
   user_id: string;
+  type: "prop" | "personal";
   firm: string;
   account_size: number;
   profit_target_pct: number;
@@ -70,6 +72,7 @@ export default function ChallengePage() {
   const supabase = createClient();
 
   // Form state
+  const [accountType, setAccountType] = useState<"prop" | "personal">("prop");
   const [firm, setFirm] = useState(FIRMS[0]);
   const [accountSize, setAccountSize] = useState("50000");
   const [profitTarget, setProfitTarget] = useState("8");
@@ -87,6 +90,7 @@ export default function ChallengePage() {
 
   const [todayPnl, setTodayPnl] = useState(0);
   const [calculatedBalance, setCalculatedBalance] = useState<number | null>(null);
+  const [equityCurveData, setEquityCurveData] = useState<{ date: string; balance: number }[]>([]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -127,9 +131,10 @@ export default function ChallengePage() {
       const [{ data: challengeTrades }, { data: todayTrades }] = await Promise.all([
         supabase
           .from("trades")
-          .select("pnl, commission, swap")
+          .select("open_time, pnl, commission, swap")
           .eq("user_id", user.id)
-          .gte("open_time", active.start_date),
+          .gte("open_time", active.start_date)
+          .order("open_time", { ascending: true }),
         supabase
           .from("trades")
           .select("pnl, commission, swap")
@@ -153,6 +158,20 @@ export default function ChallengePage() {
           .eq("id", active.id);
         setActiveChallenge({ ...active, balance: newBalance });
       }
+
+      // Equity curve data
+      let running = active.account_size;
+      const eqData = (challengeTrades || []).map((t) => {
+        const net = (t.pnl || 0) + (t.commission || 0) + (t.swap || 0);
+        running += net;
+        return {
+          date: t.open_time
+            ? new Date(t.open_time).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })
+            : "—",
+          balance: Math.round(running * 100) / 100,
+        };
+      });
+      setEquityCurveData(eqData);
 
       // Today's PnL
       const todayTotal = (todayTrades || []).reduce(
@@ -185,13 +204,14 @@ export default function ChallengePage() {
     const size = parseFloat(accountSize) || 50000;
     const { error } = await supabase.from("prop_challenges").insert({
       user_id: user.id,
+      type: accountType,
       firm,
       account_size: size,
-      profit_target_pct: parseFloat(profitTarget) || 8,
-      max_daily_dd_pct: parseFloat(maxDailyDd) || 5,
-      max_total_dd_pct: parseFloat(maxTotalDd) || 10,
+      profit_target_pct: accountType === "prop" ? (parseFloat(profitTarget) || 8) : 0,
+      max_daily_dd_pct: accountType === "prop" ? (parseFloat(maxDailyDd) || 5) : 0,
+      max_total_dd_pct: accountType === "prop" ? (parseFloat(maxTotalDd) || 10) : 0,
       start_date: startDate || new Date().toISOString().split("T")[0],
-      end_date: endDate || null,
+      end_date: accountType === "prop" ? (endDate || null) : null,
       balance: size,
       status: "active",
     });
@@ -289,36 +309,38 @@ export default function ChallengePage() {
                 </p>
               </div>
               <span className="px-3 py-1 rounded-full text-xs font-medium bg-accent/10 text-accent">
-                {t("challenge_in_progress")}
+                {(ac.type ?? "prop") === "prop" ? t("challenge_type_prop") : t("challenge_type_personal")}
               </span>
             </div>
 
-            {/* Progress bars */}
-            <div className="space-y-4">
-              <ProgressBar
-                value={Math.max(0, currentPnl)}
-                max={profitTargetAmount}
-                color="bg-profit"
-                label={t("challenge_profit_target")}
-              />
-              <ProgressBar
-                value={totalDdUsed}
-                max={maxTotalDdAmount}
-                color="bg-loss"
-                label={t("challenge_total_dd")}
-                alert
-              />
-              <ProgressBar
-                value={dailyDdUsed}
-                max={maxDailyDdAmount}
-                color="bg-loss"
-                label={t("challenge_daily_dd")}
-                alert
-              />
-            </div>
+            {/* Progress bars — only for prop firm */}
+            {(ac.type ?? "prop") === "prop" && (
+              <div className="space-y-4">
+                <ProgressBar
+                  value={Math.max(0, currentPnl)}
+                  max={profitTargetAmount}
+                  color="bg-profit"
+                  label={t("challenge_profit_target")}
+                />
+                <ProgressBar
+                  value={totalDdUsed}
+                  max={maxTotalDdAmount}
+                  color="bg-loss"
+                  label={t("challenge_total_dd")}
+                  alert
+                />
+                <ProgressBar
+                  value={dailyDdUsed}
+                  max={maxDailyDdAmount}
+                  color="bg-loss"
+                  label={t("challenge_daily_dd")}
+                  alert
+                />
+              </div>
+            )}
 
             {/* Stats grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
+            <div className={`grid grid-cols-2 ${(ac.type ?? "prop") === "prop" ? "sm:grid-cols-4" : "sm:grid-cols-3"} gap-3 mt-6`}>
               <div className="bg-[#0f0f0f] rounded-lg p-3">
                 <p className="text-xs text-muted">{t("challenge_balance")}</p>
                 <p className="text-lg font-bold text-foreground">
@@ -348,35 +370,56 @@ export default function ChallengePage() {
                   {todayPnl.toFixed(2)}€
                 </p>
               </div>
-              <div className="bg-[#0f0f0f] rounded-lg p-3">
-                <p className="text-xs text-muted">{t("challenge_days")}</p>
-                <p className="text-lg font-bold text-foreground">
-                  {daysElapsed}j
-                  {daysRemaining !== null && (
-                    <span className="text-muted text-sm font-normal">
-                      {" "}
-                      / {daysRemaining} {t("challenge_days_remaining")}
-                    </span>
-                  )}
-                </p>
-              </div>
+              {(ac.type ?? "prop") === "prop" && (
+                <div className="bg-[#0f0f0f] rounded-lg p-3">
+                  <p className="text-xs text-muted">{t("challenge_days")}</p>
+                  <p className="text-lg font-bold text-foreground">
+                    {daysElapsed}j
+                    {daysRemaining !== null && (
+                      <span className="text-muted text-sm font-normal">
+                        {" "}
+                        / {daysRemaining} {t("challenge_days_remaining")}
+                      </span>
+                    )}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Status buttons */}
             <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => handleStatusChange("passed")}
-                className="flex-1 py-2 bg-profit/10 border border-profit/20 text-profit rounded-lg text-sm font-medium hover:bg-profit/20 transition-colors"
-              >
-                {t("challenge_passed")}
-              </button>
-              <button
-                onClick={() => handleStatusChange("failed")}
-                className="flex-1 py-2 bg-loss/10 border border-loss/20 text-loss rounded-lg text-sm font-medium hover:bg-loss/20 transition-colors"
-              >
-                {t("challenge_failed")}
-              </button>
+              {(ac.type ?? "prop") === "prop" ? (
+                <>
+                  <button
+                    onClick={() => handleStatusChange("passed")}
+                    className="flex-1 py-2 bg-profit/10 border border-profit/20 text-profit rounded-lg text-sm font-medium hover:bg-profit/20 transition-colors"
+                  >
+                    {t("challenge_passed")}
+                  </button>
+                  <button
+                    onClick={() => handleStatusChange("failed")}
+                    className="flex-1 py-2 bg-loss/10 border border-loss/20 text-loss rounded-lg text-sm font-medium hover:bg-loss/20 transition-colors"
+                  >
+                    {t("challenge_failed")}
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => {
+                    if (!confirm(t("challenge_confirm_closed"))) return;
+                    handleStatusChange("passed");
+                  }}
+                  className="flex-1 py-2 bg-white/5 border border-white/10 text-foreground rounded-lg text-sm font-medium hover:bg-white/10 transition-colors"
+                >
+                  {t("challenge_closed")}
+                </button>
+              )}
             </div>
+          </div>
+
+          {/* Equity curve for this account */}
+          <div className="mt-6">
+            <EquityCurve data={equityCurveData} initialBalance={ac.account_size} />
           </div>
         </section>
       )}
@@ -395,6 +438,35 @@ export default function ChallengePage() {
         )}
 
         <div className="space-y-4">
+          {/* Account type selector */}
+          <div>
+            <label className="block text-sm text-muted mb-2">{t("challenge_account_type")}</label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setAccountType("prop")}
+                className={`py-2.5 px-4 rounded-lg text-sm font-medium border transition-colors ${
+                  accountType === "prop"
+                    ? "bg-accent/10 border-accent text-accent"
+                    : "bg-[#1a1a1a] border-[#2a2a2a] text-muted hover:text-foreground"
+                }`}
+              >
+                {t("challenge_type_prop")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setAccountType("personal")}
+                className={`py-2.5 px-4 rounded-lg text-sm font-medium border transition-colors ${
+                  accountType === "personal"
+                    ? "bg-accent/10 border-accent text-accent"
+                    : "bg-[#1a1a1a] border-[#2a2a2a] text-muted hover:text-foreground"
+                }`}
+              >
+                {t("challenge_type_personal")}
+              </button>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm text-muted mb-1">{t("challenge_firm")}</label>
@@ -422,59 +494,79 @@ export default function ChallengePage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="block text-sm text-muted mb-1">{t("challenge_profit_target_pct")}</label>
-              <input
-                type="number"
-                step="0.1"
-                value={profitTarget}
-                onChange={(e) => setProfitTarget(e.target.value)}
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-muted mb-1">{t("challenge_daily_dd_pct")}</label>
-              <input
-                type="number"
-                step="0.1"
-                value={maxDailyDd}
-                onChange={(e) => setMaxDailyDd(e.target.value)}
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-muted mb-1">{t("challenge_total_dd_pct")}</label>
-              <input
-                type="number"
-                step="0.1"
-                value={maxTotalDd}
-                onChange={(e) => setMaxTotalDd(e.target.value)}
-                className={inputClass}
-              />
-            </div>
-          </div>
+          {/* Prop firm specific fields */}
+          {accountType === "prop" && (
+            <>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-sm text-muted mb-1">{t("challenge_profit_target_pct")}</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={profitTarget}
+                    onChange={(e) => setProfitTarget(e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-muted mb-1">{t("challenge_daily_dd_pct")}</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={maxDailyDd}
+                    onChange={(e) => setMaxDailyDd(e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-muted mb-1">{t("challenge_total_dd_pct")}</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={maxTotalDd}
+                    onChange={(e) => setMaxTotalDd(e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+              </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm text-muted mb-1">{t("challenge_start_date")}</label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className={inputClass}
-              />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm text-muted mb-1">{t("challenge_start_date")}</label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-muted mb-1">{t("challenge_end_date")}</label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Personal account: just start date */}
+          {accountType === "personal" && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm text-muted mb-1">{t("challenge_start_date")}</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm text-muted mb-1">{t("challenge_end_date")}</label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className={inputClass}
-              />
-            </div>
-          </div>
+          )}
         </div>
 
         {message && (

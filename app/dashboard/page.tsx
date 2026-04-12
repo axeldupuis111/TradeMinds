@@ -31,6 +31,7 @@ export default async function DashboardPage() {
     { data: todayTrades },
     { data: activeChallenge },
     { data: recentTrades },
+    { data: allTrades },
   ] = await Promise.all([
     supabase
       .from("session_reviews")
@@ -62,6 +63,12 @@ export default async function DashboardPage() {
       .eq("user_id", userId!)
       .order("open_time", { ascending: false })
       .limit(5),
+    // All trades for equity curve
+    supabase
+      .from("trades")
+      .select("open_time, pnl, commission, swap")
+      .eq("user_id", userId!)
+      .order("open_time", { ascending: true }),
   ]);
 
   // --- Card 1: Discipline score ---
@@ -97,6 +104,20 @@ export default async function DashboardPage() {
   const challengeDdMax = ac ? ac.account_size * (ac.max_total_dd_pct / 100) : 0;
   const ddPct = challengeDdMax > 0 ? (challengeDdUsed / challengeDdMax) * 100 : 0;
 
+  // --- Equity curve ---
+  const initialBalance = ac?.account_size ?? 50000;
+  let runningBalance = initialBalance;
+  const equityCurveData = (allTrades ?? []).map((t) => {
+    const net = (t.pnl || 0) + (t.commission || 0) + (t.swap || 0);
+    runningBalance += net;
+    return {
+      date: t.open_time
+        ? new Date(t.open_time).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })
+        : "—",
+      balance: Math.round(runningBalance * 100) / 100,
+    };
+  });
+
   return (
     <DashboardContent
       displayName={displayName}
@@ -120,6 +141,8 @@ export default async function DashboardPage() {
         swap: t.swap,
       }))}
       lastReview={lastReview ? { discipline_score: lastReview.discipline_score, created_at: lastReview.created_at } : null}
+      equityCurveData={equityCurveData}
+      initialBalance={initialBalance}
     />
   );
 }

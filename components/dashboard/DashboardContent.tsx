@@ -1,5 +1,6 @@
 "use client";
 
+import EquityCurve from "@/components/charts/EquityCurve";
 import { useLanguage } from "@/lib/LanguageContext";
 import Link from "next/link";
 
@@ -33,6 +34,8 @@ interface Props {
   challengeDdMax: number;
   recentTrades: RecentTrade[];
   lastReview: { discipline_score: number; created_at: string } | null;
+  equityCurveData: { date: string; balance: number }[];
+  initialBalance: number;
 }
 
 export default function DashboardContent({
@@ -49,6 +52,8 @@ export default function DashboardContent({
   challengeDdMax,
   recentTrades,
   lastReview,
+  equityCurveData,
+  initialBalance,
 }: Props) {
   const { t } = useLanguage();
 
@@ -137,6 +142,11 @@ export default function DashboardContent({
             </div>
           )}
         </div>
+      </div>
+
+      {/* Equity Curve */}
+      <div className="mt-8">
+        <EquityCurve data={equityCurveData} initialBalance={initialBalance} />
       </div>
 
       {/* Bonus sections */}
