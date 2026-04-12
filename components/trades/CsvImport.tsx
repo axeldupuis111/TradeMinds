@@ -88,6 +88,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
 
         if (matched) {
           setMatchedChallengeId(matched.id);
+          setSelectedChallengeId(matched.id);
           setMatchedLabel(`${matched.firm} — ${matched.account_number}`);
         } else {
           setAccountNotFound(true);
@@ -120,8 +121,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
       return;
     }
 
-    // Determine which challenge_id to use
-    const challengeId = matchedChallengeId || selectedChallengeId || null;
+    const challengeId = selectedChallengeId || null;
 
     const rows = preview.map((tr) => ({
       user_id: user.id,
@@ -201,8 +201,8 @@ export default function CsvImport({ strategyId, onImported }: Props) {
             </div>
           )}
 
-          {/* Manual account selector (when no account detected from CSV) */}
-          {!detectedAccountNumber && activeAccounts.length > 0 && (
+          {/* Account selector (always shown when accounts exist) */}
+          {activeAccounts.length > 0 && (
             <div className="mb-4">
               <label className="block text-sm text-muted mb-1">{t("csv_select_account")}</label>
               <select
@@ -217,6 +217,9 @@ export default function CsvImport({ strategyId, onImported }: Props) {
                   </option>
                 ))}
               </select>
+              {!selectedChallengeId && !matchedChallengeId && (
+                <p className="text-sm text-orange-400 mt-1">{t("csv_select_account_hint")}</p>
+              )}
             </div>
           )}
 
@@ -263,7 +266,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
           <div className="flex items-center gap-3 mt-4">
             <button
               onClick={handleImport}
-              disabled={importing}
+              disabled={importing || (activeAccounts.length > 0 && !selectedChallengeId)}
               className="px-5 py-2 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50"
             >
               {importing ? t("csv_importing") : `${t("csv_import_btn")} ${preview.length} trades`}
