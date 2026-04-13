@@ -1,6 +1,7 @@
 "use client";
 
 import { useLanguage } from "@/lib/LanguageContext";
+import { usePlan } from "@/lib/PlanContext";
 import { parseCSV, type ParsedTrade } from "@/lib/csv-parser";
 import { createClient } from "@/lib/supabase/client";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -19,6 +20,7 @@ interface Props {
 
 export default function CsvImport({ strategyId, onImported }: Props) {
   const { t } = useLanguage();
+  const { plan } = usePlan();
   const [preview, setPreview] = useState<ParsedTrade[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -34,20 +36,44 @@ export default function CsvImport({ strategyId, onImported }: Props) {
   const [activeAccounts, setActiveAccounts] = useState<ActiveAccount[]>([]);
   const [selectedChallengeId, setSelectedChallengeId] = useState<string | null>(null);
 
-  // Load active accounts on mount
+  // Free plan import cooldown
+  const [lastImportAt, setLastImportAt] = useState<string | null>(null);
+  const [importCooldownLoading, setImportCooldownLoading] = useState(true);
+
+  // Load active accounts + last import date on mount
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data } = await supabase
-        .from("prop_challenges")
-        .select("id, firm, account_number, account_size")
-        .eq("user_id", user.id)
-        .eq("status", "active");
-      setActiveAccounts(data || []);
+      if (!user) { setImportCooldownLoading(false); return; }
+
+      const [{ data: accounts }, { data: profile }] = await Promise.all([
+        supabase
+          .from("prop_challenges")
+          .select("id, firm, account_number, account_size")
+          .eq("user_id", user.id)
+          .eq("status", "active"),
+        supabase
+          .from("profiles")
+          .select("last_import_at")
+          .eq("id", user.id)
+          .single(),
+      ]);
+
+      setActiveAccounts(accounts || []);
+      setLastImportAt(profile?.last_import_at || null);
+      setImportCooldownLoading(false);
     }
     load();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Compute cooldown for free plan
+  const now = new Date();
+  const lastImportDate = lastImportAt ? new Date(lastImportAt) : null;
+  const cooldownEnd = lastImportDate ? new Date(lastImportDate.getTime() + 7 * 24 * 60 * 60 * 1000) : null;
+  const isCooldownActive = plan === "free" && cooldownEnd !== null && cooldownEnd > now;
+  const nextImportDate = cooldownEnd
+    ? cooldownEnd.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })
+    : null;
 
   const handleFile = useCallback(async (file: File) => {
     setMessage(null);
@@ -147,6 +173,11 @@ export default function CsvImport({ strategyId, onImported }: Props) {
     if (error) {
       setMessage({ type: "error", text: error.message });
     } else {
+      // Update last_import_at for free plan cooldown
+      const nowIso = new Date().toISOString();
+      await supabase.from("profiles").upsert({ id: user.id, last_import_at: nowIso });
+      setLastImportAt(nowIso);
+
       setMessage({ type: "success", text: `${rows.length} ${t("csv_imported")}` });
       setPreview([]);
       setDetectedAccountNumber(null);
@@ -163,14 +194,31 @@ export default function CsvImport({ strategyId, onImported }: Props) {
       <h2 className="text-lg font-semibold text-foreground">{t("csv_title")}</h2>
       <div className="h-px bg-[#1e1e1e] mt-2 mb-4" />
 
+      {/* Free plan cooldown banner */}
+      {!importCooldownLoading && isCooldownActive && (
+        <div className="mb-4 p-4 rounded-xl border border-orange-500/30 bg-orange-500/5 flex items-start gap-3">
+          <svg className="w-5 h-5 text-orange-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div>
+            <p className="text-sm text-foreground">{t("csv_free_cooldown").replace("{date}", nextImportDate || "")}</p>
+            <a href="/dashboard/upgrade" className="text-sm text-accent font-medium hover:underline mt-1 inline-block">{t("plan_upgrade_btn")}</a>
+          </div>
+        </div>
+      )}
+
       {preview.length === 0 ? (
         <div
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragOver={(e) => { if (!isCooldownActive) { e.preventDefault(); setDragOver(true); } }}
           onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          onClick={() => fileRef.current?.click()}
-          className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
-            dragOver ? "border-accent bg-accent/5" : "border-[#2a2a2a] hover:border-accent/50"
+          onDrop={(e) => { if (!isCooldownActive) handleDrop(e); else e.preventDefault(); }}
+          onClick={() => { if (!isCooldownActive) fileRef.current?.click(); }}
+          className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
+            isCooldownActive
+              ? "border-[#2a2a2a] opacity-50 cursor-not-allowed"
+              : dragOver
+                ? "border-accent bg-accent/5 cursor-pointer"
+                : "border-[#2a2a2a] hover:border-accent/50 cursor-pointer"
           }`}
         >
           <svg className="w-10 h-10 mx-auto text-muted mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -178,7 +226,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
           </svg>
           <p className="text-foreground font-medium">{t("csv_drop_title")}</p>
           <p className="text-muted text-sm mt-1">{t("csv_drop_sub")}</p>
-          <input ref={fileRef} type="file" accept=".csv,.txt" onChange={handleFileInput} className="hidden" />
+          <input ref={fileRef} type="file" accept=".csv,.txt" onChange={handleFileInput} disabled={isCooldownActive} className="hidden" />
         </div>
       ) : (
         <div>
