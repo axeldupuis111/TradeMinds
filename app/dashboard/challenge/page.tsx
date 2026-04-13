@@ -29,7 +29,8 @@ interface AccountStats {
   equityCurveData: { date: string; balance: number }[];
 }
 
-const FIRMS = ["FTMO", "The5ers", "FundedNext", "MyFundedFX", "TFT", "Autre"];
+const PROP_FIRMS = ["FTMO", "The5ers", "FundedNext", "MyFundedFX", "TFT", "MyForexFunds", "Autre"];
+const BROKERS = ["IC Markets", "Pepperstone", "XM", "Exness", "OANDA", "Interactive Brokers", "eToro", "XTB", "Admiral Markets", "Vantage", "FP Markets", "Fusion Markets", "Autre"];
 
 const inputClass =
   "w-full px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-foreground placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent";
@@ -198,7 +199,8 @@ export default function ChallengePage() {
 
   // Form state
   const [accountType, setAccountType] = useState<"prop" | "personal">("prop");
-  const [firm, setFirm] = useState(FIRMS[0]);
+  const firmList = accountType === "prop" ? PROP_FIRMS : BROKERS;
+  const [firm, setFirm] = useState(PROP_FIRMS[0]);
   const [accountNumber, setAccountNumber] = useState("");
   const [accountSize, setAccountSize] = useState("50000");
   const [profitTarget, setProfitTarget] = useState("8");
@@ -401,11 +403,11 @@ export default function ChallengePage() {
           <div>
             <label className="block text-sm text-muted mb-2">{t("challenge_account_type")}</label>
             <div className="grid grid-cols-2 gap-3">
-              <button type="button" onClick={() => setAccountType("prop")}
+              <button type="button" onClick={() => { setAccountType("prop"); setFirm(PROP_FIRMS[0]); }}
                 className={`py-2.5 px-4 rounded-lg text-sm font-medium border transition-colors ${accountType === "prop" ? "bg-accent/10 border-accent text-accent" : "bg-[#1a1a1a] border-[#2a2a2a] text-muted hover:text-foreground"}`}>
                 {t("challenge_type_prop")}
               </button>
-              <button type="button" onClick={() => setAccountType("personal")}
+              <button type="button" onClick={() => { setAccountType("personal"); setFirm(BROKERS[0]); }}
                 className={`py-2.5 px-4 rounded-lg text-sm font-medium border transition-colors ${accountType === "personal" ? "bg-accent/10 border-accent text-accent" : "bg-[#1a1a1a] border-[#2a2a2a] text-muted hover:text-foreground"}`}>
                 {t("challenge_type_personal")}
               </button>
@@ -414,9 +416,9 @@ export default function ChallengePage() {
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm text-muted mb-1">{t("challenge_firm")}</label>
+              <label className="block text-sm text-muted mb-1">{accountType === "prop" ? t("challenge_label_prop_firm") : t("challenge_label_broker")}</label>
               <select value={firm} onChange={(e) => setFirm(e.target.value)} className={inputClass}>
-                {FIRMS.map((f) => (<option key={f} value={f}>{f}</option>))}
+                {firmList.map((f) => (<option key={f} value={f}>{f}</option>))}
               </select>
             </div>
             <div>
