@@ -43,12 +43,15 @@ export default function AdminPage() {
     setUpdating(true);
     setMessage(null);
 
-    // Look up user by email in profiles table
+    // Look up user by email in profiles table (case-insensitive)
     const { data: profile, error: lookupError } = await supabase
       .from("profiles")
       .select("id, email, plan")
-      .eq("email", email)
+      .ilike("email", email.trim())
+      .limit(1)
       .single();
+
+    console.log("[Admin] Lookup email:", JSON.stringify(email.trim()), "→ profile:", profile, "error:", lookupError);
 
     if (lookupError || !profile) {
       setMessage({ type: "error", text: t("admin_user_not_found").replace("{email}", email) });
