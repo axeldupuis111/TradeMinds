@@ -1,6 +1,7 @@
 "use client";
 
 import EquityCurve from "@/components/charts/EquityCurve";
+import TradingCalendar from "@/components/charts/TradingCalendar";
 import { useLanguage } from "@/lib/LanguageContext";
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
@@ -14,6 +15,8 @@ interface TradeData {
 
 interface TradeWithTime extends TradeData {
   open_time: string;
+  pair: string;
+  direction: string;
 }
 
 interface RecentTrade extends TradeWithTime {
@@ -230,6 +233,11 @@ export default function DashboardContent({
           <EquityCurve data={equityCurveData} initialBalance={initialBalance} />
         </div>
       )}
+
+      {/* Trading Calendar */}
+      <div className="mt-8">
+        <TradingCalendar trades={allTrades} selectedAccountId={selectedAccountId} />
+      </div>
 
       {/* Bonus sections */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">

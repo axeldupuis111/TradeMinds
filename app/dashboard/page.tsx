@@ -33,7 +33,7 @@ export default async function DashboardPage() {
     supabase.from("trades").select("pnl, commission, swap, challenge_id").eq("user_id", userId!).gte("open_time", today),
     supabase.from("prop_challenges").select("id, firm, account_number, account_size, profit_target_pct, max_total_dd_pct, balance, type").eq("user_id", userId!).eq("status", "active").order("created_at", { ascending: false }),
     supabase.from("trades").select("id, open_time, pair, direction, pnl, commission, swap, challenge_id").eq("user_id", userId!).order("open_time", { ascending: false }).limit(5),
-    supabase.from("trades").select("open_time, pnl, commission, swap, challenge_id").eq("user_id", userId!).order("open_time", { ascending: true }),
+    supabase.from("trades").select("open_time, pair, direction, pnl, commission, swap, challenge_id").eq("user_id", userId!).order("open_time", { ascending: true }),
   ]);
 
   const score = lastReview?.discipline_score ?? null;
@@ -56,7 +56,7 @@ export default async function DashboardPage() {
       }))}
       lastReview={lastReview ? { discipline_score: lastReview.discipline_score, created_at: lastReview.created_at } : null}
       allTrades={(allTrades ?? []).map(t => ({
-        open_time: t.open_time, pnl: t.pnl, commission: t.commission, swap: t.swap, challenge_id: t.challenge_id,
+        open_time: t.open_time, pair: t.pair, direction: t.direction, pnl: t.pnl, commission: t.commission, swap: t.swap, challenge_id: t.challenge_id,
       }))}
     />
   );
