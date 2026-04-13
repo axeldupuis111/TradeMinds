@@ -4,7 +4,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
 
-const ADMIN_EMAIL = "axeldupuis111@gmail.com";
+const ADMIN_EMAIL = "axel.dupuis111@gmail.com";
 
 const inputClass =
   "w-full px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-foreground placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent";
