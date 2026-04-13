@@ -3,6 +3,7 @@
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
+import TradeDetailPanel, { type TradeDetail } from "./TradeDetailPanel";
 
 interface Trade {
   id: string;
@@ -18,6 +19,11 @@ interface Trade {
   pnl: number;
   commission: number | null;
   swap: number | null;
+  tags: string[];
+  emotion: string | null;
+  setup_quality: number | null;
+  notes: string | null;
+  screenshot_url: string | null;
   challenge_id: string | null;
   prop_challenges?: { firm: string; account_number: string | null } | null;
 }
@@ -38,6 +44,7 @@ export default function TradeList({ refreshKey }: Props) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [selectedTrade, setSelectedTrade] = useState<TradeDetail | null>(null);
   const [globalStats, setGlobalStats] = useState({
     count: 0,
     wins: 0,
@@ -68,7 +75,7 @@ export default function TradeList({ refreshKey }: Props) {
 
     const { data, count } = await supabase
       .from("trades")
-      .select("*, prop_challenges(firm, account_number)", { count: "exact" })
+      .select("*, tags, emotion, setup_quality, notes, screenshot_url, prop_challenges(firm, account_number)", { count: "exact" })
       .eq("user_id", user.id)
       .order("open_time", { ascending: false })
       .range(from, to);
@@ -245,8 +252,12 @@ export default function TradeList({ refreshKey }: Props) {
               </thead>
               <tbody>
                 {trades.map((tr, i) => (
-                  <tr key={tr.id} className={`${i % 2 === 0 ? "bg-[#0f0f0f]" : "bg-[#141414]"} ${selectedIds.has(tr.id) ? "!bg-accent/5" : ""}`}>
-                    <td className="px-3 py-2">
+                  <tr
+                    key={tr.id}
+                    onClick={() => setSelectedTrade(tr as TradeDetail)}
+                    className={`cursor-pointer hover:bg-accent/5 transition-colors ${i % 2 === 0 ? "bg-[#0f0f0f]" : "bg-[#141414]"} ${selectedIds.has(tr.id) ? "!bg-accent/5" : ""}`}
+                  >
+                    <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
                         checked={selectedIds.has(tr.id)}
@@ -281,7 +292,7 @@ export default function TradeList({ refreshKey }: Props) {
                         </td>
                       );
                     })()}
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => handleDelete(tr.id)}
                         disabled={deletingId === tr.id}
@@ -324,6 +335,14 @@ export default function TradeList({ refreshKey }: Props) {
             </div>
           )}
         </>
+      )}
+
+      {selectedTrade && (
+        <TradeDetailPanel
+          trade={selectedTrade}
+          onClose={() => setSelectedTrade(null)}
+          onSaved={() => { loadTrades(); loadGlobalStats(); }}
+        />
       )}
     </section>
   );
