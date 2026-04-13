@@ -58,6 +58,10 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       .single();
 
     if (data) {
+      // Ensure email is synced in profile
+      if (user.email) {
+        await supabase.from("profiles").update({ email: user.email }).eq("id", user.id);
+      }
       // Check expiration
       let effectivePlan: PlanType = (data.plan as PlanType) || "free";
       if (data.plan_expires_at && new Date(data.plan_expires_at) < new Date()) {
@@ -78,6 +82,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       // No profile row yet — create one
       await supabase.from("profiles").upsert({
         id: user.id,
+        email: user.email,
         plan: "free",
         daily_ai_count: 0,
       });

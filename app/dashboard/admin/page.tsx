@@ -34,70 +34,44 @@ export default function AdminPage() {
   }
 
   async function handleUpdate() {
-    if (!targetEmail.trim()) {
-      setMessage({ type: "error", text: "Email requis." });
+    const email = targetEmail.trim().toLowerCase();
+    if (!email) {
+      setMessage({ type: "error", text: t("admin_email_required") });
       return;
     }
 
     setUpdating(true);
     setMessage(null);
 
-    // Find user by email in auth.users via a workaround:
-    // We look for a profile row linked to the email.
-    // Since we can't query auth.users directly from client, we use a different approach:
-    // The admin provides the email, we look up all profiles and find the matching user_id.
+    // Look up user by email in profiles table
+    const { data: profile, error: lookupError } = await supabase
+      .from("profiles")
+      .select("id, email, plan")
+      .eq("email", email)
+      .single();
 
-    // First, find user_id from auth admin or use RPC.
-    // Simplest approach: use the Supabase admin API or store email in profiles.
-    // For now, let's query profiles joined with the user id:
-
-    // Alternative: since we can't easily query auth.users from client,
-    // we'll store the target user_id. Let's search in profiles directly.
-    // We need the user to have a profile. Let's try a different approach:
-    // Use supabase.rpc or just update by email match.
-
-    // Simplest: We add an email column lookup. Since profiles.id = auth.users.id,
-    // we can use a server function. For MVP, let's just accept user_id directly.
-
-    // Actually, let's use the Supabase auth admin to look up user.
-    // Client-side we can't do that. So let's accept either email or user_id.
-    // For now, let's search trades/strategies for a user with that email pattern.
-
-    // Simplest MVP: update profiles where id matches a known user.
-    // Let's just do an RPC-less approach: search by iterating.
-    // OR: just have admin paste the user UUID.
-
-    // Best simple approach: use supabase to find the user via their email in auth
-    // We can use the admin endpoint or just accept a UUID.
-
-    // For simplicity, let's make the admin provide the user_id OR email.
-    // If it looks like a UUID, use it directly. Otherwise, search.
-
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetEmail.trim());
-
-    let userId: string | null = null;
-
-    if (isUuid) {
-      userId = targetEmail.trim();
-    } else {
-      // Try to find a user by checking if any table has this user's email
-      // We'll look for the user through the Supabase auth API
-      // Since we can't query auth.users from client, we'll use a workaround:
-      // Store email in profiles on signup, or just use UUID.
-      setMessage({ type: "error", text: "Utilise l'UUID de l'utilisateur (visible dans Supabase Dashboard > Auth > Users)." });
+    if (lookupError || !profile) {
+      setMessage({ type: "error", text: t("admin_user_not_found").replace("{email}", email) });
       setUpdating(false);
       return;
     }
 
     const { error } = await supabase
       .from("profiles")
-      .upsert({ id: userId, plan: targetPlan, daily_ai_count: 0 });
+      .update({ plan: targetPlan, daily_ai_count: 0 })
+      .eq("id", profile.id);
 
     setUpdating(false);
     if (error) {
       setMessage({ type: "error", text: error.message });
     } else {
-      setMessage({ type: "success", text: `Plan mis à jour vers "${targetPlan}" pour ${userId}.` });
+      setMessage({
+        type: "success",
+        text: t("admin_success")
+          .replace("{email}", email)
+          .replace("{old}", profile.plan || "free")
+          .replace("{new}", targetPlan),
+      });
       setTargetEmail("");
     }
   }
@@ -121,12 +95,12 @@ export default function AdminPage() {
 
       <div className="mt-6 bg-card border border-border rounded-xl p-6 space-y-4">
         <div>
-          <label className="block text-sm text-muted mb-1">{t("admin_user_id")}</label>
+          <label className="block text-sm text-muted mb-1">{t("admin_email")}</label>
           <input
-            type="text"
+            type="email"
             value={targetEmail}
             onChange={(e) => setTargetEmail(e.target.value)}
-            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            placeholder="user@email.com"
             className={inputClass}
           />
         </div>
