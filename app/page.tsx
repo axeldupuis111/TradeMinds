@@ -2,7 +2,6 @@
 
 import LanguageSelector from "@/components/LanguageSelector";
 import { useLanguage } from "@/lib/LanguageContext";
-import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
@@ -297,101 +296,91 @@ function HowItWorks() {
   );
 }
 
-/* ── Pro Card ── */
-function ProCard() {
-  const { t } = useLanguage();
-  const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "duplicate" | "error">("idle");
-  const proFeatures = [t("pricing_pro_1"), t("pricing_pro_2"), t("pricing_pro_3"), t("pricing_pro_4"), t("pricing_pro_5")];
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!email) return;
-    setStatus("loading");
-    try {
-      const supabase = createClient();
-      const { error } = await supabase.from("waitlist").insert({ email });
-      if (error) {
-        setStatus(error.code === "23505" ? "duplicate" : "error");
-      } else {
-        setStatus("success");
-      }
-    } catch {
-      setStatus("error");
-    }
-  }
-
-  return (
-    <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-8 flex flex-col opacity-70">
-      <div className="flex items-center gap-2">
-        <span className="text-xs font-semibold text-foreground uppercase tracking-wider">{t("pricing_pro")}</span>
-        <span className="text-[10px] font-semibold bg-white/10 text-muted px-2 py-0.5 rounded-full">{t("pricing_coming")}</span>
-      </div>
-      <div className="mt-3">
-        <span className="text-5xl font-bold text-foreground">19€</span>
-        <span className="text-muted text-sm">{t("pricing_month")}</span>
-      </div>
-      <p className="text-muted mt-2 text-sm">{t("pricing_serious")}</p>
-      <ul className="mt-8 space-y-3 flex-1">
-        {proFeatures.map((item) => (
-          <li key={item} className="flex items-center gap-3 text-sm">
-            <svg className="w-4 h-4 text-muted shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-            <span className="text-muted">{item}</span>
-          </li>
-        ))}
-      </ul>
-
-      {status === "success" ? (
-        <div className="mt-8 bg-profit/10 border border-profit/20 rounded-xl px-4 py-3">
-          <p className="text-profit text-sm font-medium">{t("pricing_notify_success")}</p>
-        </div>
-      ) : status === "duplicate" ? (
-        <div className="mt-8 bg-accent/10 border border-accent/20 rounded-xl px-4 py-3">
-          <p className="text-accent text-sm font-medium">{t("pricing_notify_duplicate")}</p>
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="mt-8 flex gap-2">
-          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" className="flex-1 min-w-0 px-3 py-2.5 bg-[#0a0a0a] border border-white/[0.06] rounded-xl text-foreground text-sm placeholder-[#444] focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent" />
-          <button type="submit" disabled={status === "loading"} className="px-4 py-2.5 bg-white/[0.06] border border-white/[0.06] text-foreground rounded-xl text-sm font-semibold hover:bg-white/[0.1] disabled:opacity-50 shrink-0">
-            {status === "loading" ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" /> : t("pricing_notify")}
-          </button>
-        </form>
-      )}
-
-      {status === "error" && (
-        <p className="text-loss text-xs mt-2">{t("pricing_notify_error")}</p>
-      )}
-    </div>
-  );
-}
-
 /* ── Pricing ── */
 function Pricing() {
   const { t } = useLanguage();
-  const earlyFeatures = [t("pricing_early_1"), t("pricing_early_2"), t("pricing_early_3"), t("pricing_early_4"), t("pricing_early_5")];
+  const [annual, setAnnual] = useState(false);
+
+  const freeFeats = [t("plan_feat_csv_import") + " (1/" + t("plan_week") + ")", t("plan_feat_accounts") + " (1)", t("plan_feat_calendar"), t("plan_feat_equity_curve")];
+  const plusFeats = [t("plan_feat_csv_import") + " (" + t("plan_unlimited") + ")", t("plan_feat_accounts") + " (" + t("plan_unlimited") + ")", t("plan_feat_strategy_ai"), t("plan_feat_analysis_ai") + " (1/" + t("plan_day") + ")", t("plan_feat_calendar"), t("plan_feat_equity_curve")];
+  const premiumFeats = [t("pricing_lp_all_plus"), t("plan_feat_analysis_ai") + " (" + t("plan_unlimited") + ")", t("plan_feat_priority_support"), t("plan_feat_badge_premium")];
+
+  const plans = [
+    { name: t("plan_free"), monthlyPrice: "0€", annualPrice: "0€", annualMonthly: "", feats: freeFeats, btnKey: "pricing_start_free", border: "border-white/[0.06]", btnClass: "bg-[#1a1a1a] border border-white/[0.06] text-foreground hover:bg-white/[0.06]" },
+    { name: t("plan_plus"), monthlyPrice: "9.99€", annualPrice: "89.99€", annualMonthly: "7.50€", feats: plusFeats, btnKey: "pricing_choose_plus", border: "border-accent/30", btnClass: "bg-accent text-white hover:bg-blue-600 glow-blue", highlight: true },
+    { name: t("plan_premium"), monthlyPrice: "19.99€", annualPrice: "179.99€", annualMonthly: "15€", feats: premiumFeats, btnKey: "pricing_choose_premium", border: "border-yellow-500/30", btnClass: "bg-yellow-500 text-black hover:bg-yellow-400" },
+  ];
 
   return (
     <section className="py-24 px-6 border-t border-white/5">
-      <RevealSection className="max-w-3xl mx-auto">
+      <RevealSection className="max-w-5xl mx-auto">
         <h2 className="text-3xl sm:text-4xl font-bold text-foreground text-center">{t("pricing_title")}</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-12">
-          <div className="bg-white/[0.02] border border-accent/20 rounded-2xl p-8 flex flex-col">
-            <div className="text-xs font-semibold text-accent uppercase tracking-wider">{t("pricing_early")}</div>
-            <div className="mt-3 text-5xl font-bold text-foreground">{t("pricing_free")}</div>
-            <p className="text-muted mt-2 text-sm">{t("pricing_beta")}</p>
-            <ul className="mt-8 space-y-3 flex-1">
-              {earlyFeatures.map((item) => (
-                <li key={item} className="flex items-center gap-3 text-sm">
-                  <svg className="w-4 h-4 text-profit shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                  <span className="text-foreground">{item}</span>
-                </li>
-              ))}
-            </ul>
-            <Link href="/login" className="mt-8 block w-full py-3 bg-accent text-white rounded-xl font-semibold hover:bg-blue-600 glow-blue text-center">
-              {t("pricing_create_account")}
-            </Link>
-          </div>
-          <ProCard />
+
+        {/* Toggle monthly/annual */}
+        <div className="flex items-center justify-center gap-3 mt-8">
+          <span className={`text-sm font-medium transition-colors ${!annual ? "text-foreground" : "text-muted"}`}>
+            {t("plan_monthly")}
+          </span>
+          <button
+            onClick={() => setAnnual(!annual)}
+            className="relative w-14 h-7 rounded-full bg-white/[0.06] border border-white/[0.1] transition-colors"
+          >
+            <div
+              className={`absolute top-0.5 w-6 h-6 rounded-full transition-all duration-300 ${
+                annual ? "left-[30px] bg-accent" : "left-0.5 bg-[#555]"
+              }`}
+            />
+          </button>
+          <span className={`text-sm font-medium transition-colors ${annual ? "text-foreground" : "text-muted"}`}>
+            {t("plan_annual")}
+          </span>
+          {annual && (
+            <span className="px-2 py-0.5 bg-profit/10 text-profit text-xs font-bold rounded-full">
+              -25%
+            </span>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-10">
+          {plans.map((p) => {
+            const price = annual ? p.annualPrice : p.monthlyPrice;
+            const period = annual ? `/${t("plan_year")}` : `/${t("plan_month")}`;
+            const showSavings = annual && p.annualMonthly;
+
+            return (
+              <div key={p.name} className={`relative bg-white/[0.02] border ${p.border} rounded-2xl p-8 flex flex-col ${p.highlight ? "shadow-lg shadow-accent/10" : ""}`}>
+                {p.highlight && (
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-white text-xs font-bold px-3 py-0.5 rounded-full">
+                    {t("plan_popular")}
+                  </span>
+                )}
+                <div className="text-xs font-semibold text-foreground uppercase tracking-wider">{p.name}</div>
+                <div className="mt-3">
+                  <span className="text-4xl font-bold text-foreground transition-all duration-300">{price}</span>
+                  <span className="text-muted text-sm">{period}</span>
+                </div>
+                {showSavings && (
+                  <p className="text-profit text-xs mt-1">{t("plan_equiv")} {p.annualMonthly}/{t("plan_month")}</p>
+                )}
+                {!showSavings && p.annualMonthly && (
+                  <p className="text-xs mt-1 text-transparent select-none">.</p>
+                )}
+
+                <ul className="mt-8 space-y-3 flex-1">
+                  {p.feats.map((item) => (
+                    <li key={item} className="flex items-center gap-3 text-sm">
+                      <svg className="w-4 h-4 text-profit shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                      <span className="text-foreground">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <Link href="/login" className={`mt-8 block w-full py-3 rounded-xl font-semibold text-center transition-colors ${p.btnClass}`}>
+                  {t(p.btnKey)}
+                </Link>
+              </div>
+            );
+          })}
         </div>
       </RevealSection>
     </section>

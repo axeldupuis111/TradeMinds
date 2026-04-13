@@ -2,6 +2,7 @@
 
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
+import { useState } from "react";
 
 interface PlanFeature {
   key: string;
@@ -11,24 +12,47 @@ interface PlanFeature {
 }
 
 const features: PlanFeature[] = [
-  { key: "plan_feat_manual_trades", free: true, plus: true, premium: true },
-  { key: "plan_feat_csv_import", free: false, plus: true, premium: true },
+  { key: "plan_feat_csv_import", free: "1/plan_week", plus: "plan_unlimited", premium: "plan_unlimited" },
   { key: "plan_feat_accounts", free: "1", plus: "plan_unlimited", premium: "plan_unlimited" },
-  { key: "plan_feat_strategy_ai", free: false, plus: true, premium: true },
-  { key: "plan_feat_analysis_ai", free: false, plus: "1/plan_day", premium: "plan_unlimited" },
   { key: "plan_feat_calendar", free: true, plus: true, premium: true },
   { key: "plan_feat_equity_curve", free: true, plus: true, premium: true },
+  { key: "plan_feat_strategy_ai", free: false, plus: true, premium: true },
+  { key: "plan_feat_analysis_ai", free: false, plus: "1/plan_day", premium: "plan_unlimited" },
   { key: "plan_feat_priority_support", free: false, plus: false, premium: true },
+  { key: "plan_feat_badge_premium", free: false, plus: false, premium: true },
 ];
 
 export default function UpgradePage() {
   const { t } = useLanguage();
   const { plan: currentPlan } = usePlan();
+  const [annual, setAnnual] = useState(false);
 
   const plans = [
-    { id: "free", name: t("plan_free"), price: "0€", period: `/${t("plan_month")}`, color: "border-[#2a2a2a]" },
-    { id: "plus", name: t("plan_plus"), price: "9.99€", period: `/${t("plan_month")}`, color: "border-accent", highlight: true },
-    { id: "premium", name: t("plan_premium"), price: "24.99€", period: `/${t("plan_month")}`, color: "border-yellow-500" },
+    {
+      id: "free",
+      name: t("plan_free"),
+      monthlyPrice: "0€",
+      annualPrice: "0€",
+      annualMonthly: "",
+      color: "border-[#2a2a2a]",
+    },
+    {
+      id: "plus",
+      name: t("plan_plus"),
+      monthlyPrice: "9.99€",
+      annualPrice: "89.99€",
+      annualMonthly: "7.50€",
+      color: "border-accent",
+      highlight: true,
+    },
+    {
+      id: "premium",
+      name: t("plan_premium"),
+      monthlyPrice: "19.99€",
+      annualPrice: "179.99€",
+      annualMonthly: "15€",
+      color: "border-yellow-500",
+    },
   ];
 
   function renderValue(val: boolean | string): React.ReactNode {
@@ -46,7 +70,6 @@ export default function UpgradePage() {
         </svg>
       );
     }
-    // String values like "1" or "1/plan_day" or "plan_unlimited"
     if (val.includes("/")) {
       const parts = val.split("/");
       return <span className="text-foreground text-sm">{parts[0]}/{t(parts[1])}</span>;
@@ -62,10 +85,39 @@ export default function UpgradePage() {
       <h1 className="text-2xl font-bold text-foreground">{t("plan_upgrade_title")}</h1>
       <p className="text-muted mt-1">{t("plan_upgrade_subtitle")}</p>
 
+      {/* Toggle monthly/annual */}
+      <div className="flex items-center justify-center gap-3 mt-8">
+        <span className={`text-sm font-medium transition-colors ${!annual ? "text-foreground" : "text-muted"}`}>
+          {t("plan_monthly")}
+        </span>
+        <button
+          onClick={() => setAnnual(!annual)}
+          className="relative w-14 h-7 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] transition-colors"
+        >
+          <div
+            className={`absolute top-0.5 w-6 h-6 rounded-full transition-all duration-300 ${
+              annual ? "left-[30px] bg-accent" : "left-0.5 bg-[#555]"
+            }`}
+          />
+        </button>
+        <span className={`text-sm font-medium transition-colors ${annual ? "text-foreground" : "text-muted"}`}>
+          {t("plan_annual")}
+        </span>
+        {annual && (
+          <span className="px-2 py-0.5 bg-profit/10 text-profit text-xs font-bold rounded-full">
+            -25%
+          </span>
+        )}
+      </div>
+
       {/* Plans grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
         {plans.map((p) => {
           const isCurrent = p.id === currentPlan;
+          const price = annual ? p.annualPrice : p.monthlyPrice;
+          const period = annual ? `/${t("plan_year")}` : `/${t("plan_month")}`;
+          const showSavings = annual && p.annualMonthly;
+
           return (
             <div
               key={p.id}
@@ -85,9 +137,19 @@ export default function UpgradePage() {
               )}
 
               <h3 className="text-lg font-bold text-foreground">{p.name}</h3>
-              <div className="mt-2 flex items-baseline gap-1">
-                <span className="text-3xl font-bold text-foreground">{p.price}</span>
-                <span className="text-muted text-sm">{p.period}</span>
+              <div className="mt-2">
+                <div className="flex items-baseline gap-1 transition-all duration-300">
+                  <span className="text-3xl font-bold text-foreground">{price}</span>
+                  <span className="text-muted text-sm">{period}</span>
+                </div>
+                {showSavings && (
+                  <p className="text-profit text-xs mt-1 transition-all duration-300">
+                    {t("plan_equiv")} {p.annualMonthly}/{t("plan_month")}
+                  </p>
+                )}
+                {!showSavings && p.id !== "free" && (
+                  <p className="text-xs mt-1 text-transparent select-none">.</p>
+                )}
               </div>
 
               <div className="mt-6 space-y-3">
