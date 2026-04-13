@@ -1,6 +1,8 @@
 "use client";
 
+import UpgradeBanner from "@/components/UpgradeBanner";
 import { useLanguage } from "@/lib/LanguageContext";
+import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
 
@@ -27,6 +29,7 @@ interface ParsedRules {
 
 export default function StrategyPage() {
   const { t } = useLanguage();
+  const { canUseStrategy, loading: planLoading } = usePlan();
   const supabase = createClient();
 
   const [rawText, setRawText] = useState("");
@@ -199,7 +202,7 @@ export default function StrategyPage() {
     setParsed({ ...parsed, setup_rules: [...parsed.setup_rules, ""] });
   }
 
-  if (loading) {
+  if (loading || planLoading) {
     return (
       <div>
         <h1 className="text-2xl font-bold text-foreground">{t("strategy_title")}</h1>
@@ -215,6 +218,18 @@ export default function StrategyPage() {
             <div className="skeleton h-3 w-3/4" />
             <div className="skeleton h-3 w-5/6" />
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!canUseStrategy) {
+    return (
+      <div className="max-w-2xl">
+        <h1 className="text-2xl font-bold text-foreground">{t("strategy_title")}</h1>
+        <p className="text-muted mt-1">{t("strategy_subtitle")}</p>
+        <div className="mt-6">
+          <UpgradeBanner message={t("plan_strategy_locked")} />
         </div>
       </div>
     );

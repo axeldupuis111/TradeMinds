@@ -2,6 +2,7 @@
 
 import EquityCurve from "@/components/charts/EquityCurve";
 import { useLanguage } from "@/lib/LanguageContext";
+import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState, useCallback } from "react";
 
@@ -195,6 +196,7 @@ function AccountCard({
 
 export default function ChallengePage() {
   const { t } = useLanguage();
+  const { maxAccounts } = usePlan();
   const supabase = createClient();
 
   // Form state
@@ -398,7 +400,17 @@ export default function ChallengePage() {
         </h2>
         <div className="h-px bg-[#1e1e1e] mt-2 mb-4" />
 
-        <div className="space-y-4">
+        {maxAccounts !== null && activeAccounts.length >= maxAccounts && (
+          <div className="rounded-xl border border-accent/30 bg-accent/5 p-4 mb-4 flex items-center gap-3">
+            <svg className="w-5 h-5 text-accent shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            <p className="text-sm text-foreground">{t("plan_max_accounts_reached")}</p>
+            <a href="/dashboard/upgrade" className="ml-auto text-sm text-accent font-medium hover:underline shrink-0">{t("plan_upgrade_btn")}</a>
+          </div>
+        )}
+
+        <div className="space-y-4" style={maxAccounts !== null && activeAccounts.length >= maxAccounts ? { opacity: 0.4, pointerEvents: "none" as const } : {}}>
           {/* Account type selector */}
           <div>
             <label className="block text-sm text-muted mb-2">{t("challenge_account_type")}</label>

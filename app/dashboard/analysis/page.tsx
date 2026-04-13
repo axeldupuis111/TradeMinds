@@ -1,6 +1,8 @@
 "use client";
 
+import UpgradeBanner from "@/components/UpgradeBanner";
 import { useLanguage } from "@/lib/LanguageContext";
+import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
 
@@ -87,6 +89,7 @@ function ScoreCircle({ score, label }: { score: number; label: string }) {
 
 export default function AnalysisPage() {
   const { t } = useLanguage();
+  const { canUseAI, aiRemaining, plan, incrementAIUsage, loading: planLoading } = usePlan();
   const supabase = createClient();
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loading, setLoading] = useState(false);
@@ -190,6 +193,10 @@ export default function AnalysisPage() {
       if (!res.ok) throw new Error(data.error || "Erreur serveur.");
 
       setAnalysis(data);
+      // Increment AI usage counter for Plus plan
+      if (plan === "plus") {
+        await incrementAIUsage();
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
     } finally {
@@ -237,6 +244,30 @@ export default function AnalysisPage() {
 
   const displayedAnalysis = analysis;
 
+  if (planLoading) {
+    return (
+      <div className="max-w-3xl">
+        <h1 className="text-2xl font-bold text-foreground">{t("analysis_title")}</h1>
+        <p className="text-muted mt-2 text-sm">{t("analysis_subtitle")}</p>
+        <div className="mt-6 skeleton h-10 w-48 rounded-lg" />
+      </div>
+    );
+  }
+
+  if (!canUseAI) {
+    return (
+      <div className="max-w-3xl">
+        <h1 className="text-2xl font-bold text-foreground">{t("analysis_title")}</h1>
+        <p className="text-muted mt-1">{t("analysis_subtitle")}</p>
+        <div className="mt-6">
+          <UpgradeBanner message={t("plan_analysis_locked")} />
+        </div>
+      </div>
+    );
+  }
+
+  const aiLimitReached = plan === "plus" && aiRemaining === 0;
+
   return (
     <div className="max-w-3xl">
       <h1 className="text-2xl font-bold text-foreground">{t("analysis_title")}</h1>
@@ -254,9 +285,14 @@ export default function AnalysisPage() {
             {t("analysis_no_trades")}
           </p>
         )}
+        {aiLimitReached && (
+          <p className="text-orange-400 text-sm mb-3">
+            {t("plan_ai_limit_reached")}
+          </p>
+        )}
         <button
           onClick={runAnalysis}
-          disabled={loading || !hasStrategy || tradeCount === 0}
+          disabled={loading || !hasStrategy || tradeCount === 0 || aiLimitReached}
           className="px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50"
         >
           {loading ? t("analysis_running") : t("analysis_run")}
@@ -264,6 +300,11 @@ export default function AnalysisPage() {
         {tradeCount > 0 && (
           <span className="text-muted text-sm ml-3">
             {tradeCount} {t("analysis_trades_count")}
+          </span>
+        )}
+        {plan === "plus" && aiRemaining !== null && !aiLimitReached && (
+          <span className="text-muted text-sm ml-3">
+            ({aiRemaining} {t("plan_ai_remaining")})
           </span>
         )}
       </div>

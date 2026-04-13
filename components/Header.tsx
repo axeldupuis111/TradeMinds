@@ -2,11 +2,19 @@
 
 import LanguageSelector from "@/components/LanguageSelector";
 import { useLanguage } from "@/lib/LanguageContext";
+import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
+const planBadgeStyles: Record<string, string> = {
+  free: "bg-[#2a2a2a] text-muted",
+  plus: "bg-accent/20 text-accent",
+  premium: "bg-yellow-500/20 text-yellow-400",
+};
+
 export default function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
   const { t } = useLanguage();
+  const { plan, loading } = usePlan();
   const router = useRouter();
   const supabase = createClient();
 
@@ -31,6 +39,11 @@ export default function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
       </div>
 
       <div className="flex items-center gap-3">
+        {!loading && (
+          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${planBadgeStyles[plan] || planBadgeStyles.free}`}>
+            {plan}
+          </span>
+        )}
         <LanguageSelector />
         <button
           onClick={handleSignOut}
