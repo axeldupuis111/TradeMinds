@@ -40,6 +40,10 @@ export default function CsvImport({ strategyId, onImported }: Props) {
   const [lastImportAt, setLastImportAt] = useState<string | null>(null);
   const [importCooldownLoading, setImportCooldownLoading] = useState(true);
 
+  // Daily summary
+  const [dailySummary, setDailySummary] = useState<string | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+
   // Load active accounts + last import date on mount
   useEffect(() => {
     async function load() {
@@ -173,6 +177,16 @@ export default function CsvImport({ strategyId, onImported }: Props) {
     if (error) {
       setMessage({ type: "error", text: error.message });
     } else {
+      // Capture trades for summary before clearing
+      const importedTrades = preview.map((tr) => ({
+        open_time: tr.open_time,
+        pair: tr.pair,
+        direction: tr.direction,
+        pnl: tr.pnl,
+        commission: tr.commission,
+        swap: tr.swap,
+      }));
+
       // Update last_import_at for free plan cooldown
       const nowIso = new Date().toISOString();
       await supabase.from("profiles").upsert({ id: user.id, last_import_at: nowIso });
@@ -186,6 +200,33 @@ export default function CsvImport({ strategyId, onImported }: Props) {
       setAccountNotFound(false);
       setSelectedChallengeId(null);
       onImported();
+
+      // Generate daily summary for Plus/Premium
+      if (plan === "plus" || plan === "premium") {
+        setSummaryLoading(true);
+        try {
+          const { data: strat } = await supabase
+            .from("strategies")
+            .select("name")
+            .eq("user_id", user.id)
+            .limit(1)
+            .single();
+
+          const res = await fetch("/api/daily-summary", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ trades: importedTrades, strategyName: strat?.name || null }),
+          });
+          const data = await res.json();
+          if (res.ok && data.summary) {
+            setDailySummary(data.summary);
+          }
+        } catch {
+          // Silent fail — summary is optional
+        } finally {
+          setSummaryLoading(false);
+        }
+      }
     }
   }
 
@@ -333,6 +374,28 @@ export default function CsvImport({ strategyId, onImported }: Props) {
         <p className={`text-sm mt-3 ${message.type === "success" ? "text-profit" : "text-loss"}`}>
           {message.text}
         </p>
+      )}
+
+      {/* Daily summary */}
+      {summaryLoading && (
+        <div className="mt-4 p-4 rounded-xl border border-accent/20 bg-accent/5 flex items-center gap-3">
+          <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-muted">{t("summary_generating")}</p>
+        </div>
+      )}
+      {dailySummary && !summaryLoading && (
+        <div className="mt-4 p-4 rounded-xl border border-accent/20 bg-accent/5">
+          <div className="flex items-center gap-2 mb-2">
+            <svg className="w-4 h-4 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+            <span className="text-sm font-medium text-accent">{t("summary_title")}</span>
+          </div>
+          <p className="text-sm text-foreground leading-relaxed">{dailySummary}</p>
+          <button onClick={() => setDailySummary(null)} className="text-xs text-muted hover:text-foreground mt-2 transition-colors">
+            {t("summary_dismiss")}
+          </button>
+        </div>
       )}
     </section>
   );

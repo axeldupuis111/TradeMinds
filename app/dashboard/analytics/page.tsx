@@ -20,9 +20,22 @@ interface TradeRow {
   commission: number | null;
   swap: number | null;
   pair: string;
+  direction: string;
   emotion: string | null;
   setup_quality: number | null;
   challenge_id: string | null;
+}
+
+interface ViolationTrade {
+  trade_date: string;
+  pair: string;
+}
+
+interface SessionReview {
+  created_at: string;
+  analysis: {
+    violations: ViolationTrade[];
+  };
 }
 
 interface Account {
@@ -58,6 +71,7 @@ export default function AnalyticsPage() {
   const supabase = createClient();
   const [trades, setTrades] = useState<TradeRow[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [reviews, setReviews] = useState<SessionReview[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<"7d" | "30d" | "90d" | "all">("all");
   const [accountFilter, setAccountFilter] = useState<string>("all");
@@ -67,10 +81,10 @@ export default function AnalyticsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const [{ data: tradeData }, { data: accountData }] = await Promise.all([
+      const [{ data: tradeData }, { data: accountData }, { data: reviewData }] = await Promise.all([
         supabase
           .from("trades")
-          .select("open_time, pnl, commission, swap, pair, emotion, setup_quality, challenge_id")
+          .select("open_time, pnl, commission, swap, pair, direction, emotion, setup_quality, challenge_id")
           .eq("user_id", user.id)
           .order("open_time", { ascending: true }),
         supabase
@@ -78,10 +92,17 @@ export default function AnalyticsPage() {
           .select("id, firm, account_number, account_size")
           .eq("user_id", user.id)
           .eq("status", "active"),
+        supabase
+          .from("session_reviews")
+          .select("created_at, analysis")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(20),
       ]);
 
       setTrades(tradeData || []);
       setAccounts(accountData || []);
+      setReviews(reviewData || []);
       setLoading(false);
     }
     load();
@@ -205,6 +226,59 @@ export default function AnalyticsPage() {
     }));
   }, [filtered]);
 
+  // 7. Discipline vs Results
+  const violatedPairs = useMemo(() => {
+    const set = new Set<string>();
+    reviews.forEach((r) => {
+      if (r.analysis?.violations) {
+        r.analysis.violations.forEach((v) => {
+          set.add(`${v.trade_date}|${v.pair}`);
+        });
+      }
+    });
+    return set;
+  }, [reviews]);
+
+  const disciplineStats = useMemo(() => {
+    if (filtered.length === 0 || violatedPairs.size === 0) return null;
+    const rulesFollowed = { pnl: 0, count: 0, wins: 0 };
+    const rulesBroken = { pnl: 0, count: 0, wins: 0 };
+    filtered.forEach((tr) => {
+      const date = tr.open_time ? tr.open_time.split("T")[0] : "";
+      const key = `${date}|${tr.pair}`;
+      const net = netPnl(tr);
+      const isWin = net > 0;
+      if (violatedPairs.has(key)) {
+        rulesBroken.pnl += net;
+        rulesBroken.count++;
+        if (isWin) rulesBroken.wins++;
+      } else {
+        rulesFollowed.pnl += net;
+        rulesFollowed.count++;
+        if (isWin) rulesFollowed.wins++;
+      }
+    });
+    return { rulesFollowed, rulesBroken };
+  }, [filtered, violatedPairs]);
+
+  // Winrate by emotion (for discipline section)
+  const winrateByEmotion = useMemo(() => {
+    const map: Record<string, { wins: number; total: number }> = {};
+    filtered.forEach((tr) => {
+      if (!tr.emotion) return;
+      if (!map[tr.emotion]) map[tr.emotion] = { wins: 0, total: 0 };
+      map[tr.emotion].total++;
+      if (netPnl(tr) > 0) map[tr.emotion].wins++;
+    });
+    return Object.entries(map)
+      .map(([em, d]) => ({
+        name: `${EMOTION_EMOJIS[em] || ""} ${t(EMOTION_KEYS[em] || em)}`,
+        winrate: d.total > 0 ? Number(((d.wins / d.total) * 100).toFixed(1)) : 0,
+        count: d.total,
+      }))
+      .sort((a, b) => b.winrate - a.winrate);
+  }, [filtered, t]);
+
   const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) => {
     if (!active || !payload?.length) return null;
     return (
@@ -294,6 +368,7 @@ export default function AnalyticsPage() {
       {filtered.length === 0 ? (
         <p className="text-muted py-10 text-center">{t("analytics_no_data")}</p>
       ) : (
+        <>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <ChartSection title={t("analytics_by_day")} data={byDayOfWeek} />
           <ChartSection title={t("analytics_by_hour")} data={byHour} />
@@ -319,6 +394,77 @@ export default function AnalyticsPage() {
             </ResponsiveContainer>
           </div>
         </div>
+
+        {/* Discipline vs Results section */}
+        {(disciplineStats || winrateByEmotion.length > 0) && (
+          <div className="mt-8">
+            <h2 className="text-xl font-bold text-foreground mb-4">{t("discipline_title")}</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* P&L rules followed vs broken */}
+              {disciplineStats && (
+                <>
+                  <div className="bg-card border border-border rounded-xl p-5">
+                    <p className="text-sm text-muted mb-1">{t("discipline_followed")}</p>
+                    <p className={`text-2xl font-bold ${disciplineStats.rulesFollowed.pnl >= 0 ? "text-profit" : "text-loss"}`}>
+                      {disciplineStats.rulesFollowed.pnl >= 0 ? "+" : ""}{disciplineStats.rulesFollowed.pnl.toFixed(2)} &euro;
+                    </p>
+                    <p className="text-xs text-muted mt-1">
+                      {disciplineStats.rulesFollowed.count} trades &mdash; {disciplineStats.rulesFollowed.count > 0 ? ((disciplineStats.rulesFollowed.wins / disciplineStats.rulesFollowed.count) * 100).toFixed(0) : 0}% WR
+                    </p>
+                  </div>
+                  <div className="bg-card border border-border rounded-xl p-5">
+                    <p className="text-sm text-muted mb-1">{t("discipline_broken")}</p>
+                    <p className={`text-2xl font-bold ${disciplineStats.rulesBroken.pnl >= 0 ? "text-profit" : "text-loss"}`}>
+                      {disciplineStats.rulesBroken.pnl >= 0 ? "+" : ""}{disciplineStats.rulesBroken.pnl.toFixed(2)} &euro;
+                    </p>
+                    <p className="text-xs text-muted mt-1">
+                      {disciplineStats.rulesBroken.count} trades &mdash; {disciplineStats.rulesBroken.count > 0 ? ((disciplineStats.rulesBroken.wins / disciplineStats.rulesBroken.count) * 100).toFixed(0) : 0}% WR
+                    </p>
+                  </div>
+                  {/* Cost of indiscipline */}
+                  {disciplineStats.rulesBroken.pnl < 0 && (
+                    <div className="bg-loss/10 border border-loss/30 rounded-xl p-5">
+                      <p className="text-sm text-loss/70 mb-1">{t("discipline_cost")}</p>
+                      <p className="text-3xl font-bold text-loss">
+                        {Math.abs(disciplineStats.rulesBroken.pnl).toFixed(2)} &euro;
+                      </p>
+                      <p className="text-xs text-loss/70 mt-1">{t("discipline_cost_desc")}</p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Winrate by emotion chart */}
+            {winrateByEmotion.length > 0 && (
+              <div className="bg-card border border-border rounded-xl p-5 mt-4">
+                <h3 className="text-foreground font-semibold mb-4">{t("discipline_winrate_emotion")}</h3>
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={winrateByEmotion} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e1e1e" />
+                    <XAxis dataKey="name" tick={{ fill: "#6b7280", fontSize: 12 }} axisLine={{ stroke: "#1e1e1e" }} />
+                    <YAxis tick={{ fill: "#6b7280", fontSize: 12 }} axisLine={{ stroke: "#1e1e1e" }} domain={[0, 100]} />
+                    <Tooltip content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null;
+                      return (
+                        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm">
+                          <p className="text-foreground font-medium">{label}</p>
+                          <p className="text-accent">{payload[0].value}% WR</p>
+                        </div>
+                      );
+                    }} />
+                    <Bar dataKey="winrate" radius={[4, 4, 0, 0]}>
+                      {winrateByEmotion.map((entry, idx) => (
+                        <Cell key={idx} fill={entry.winrate >= 50 ? PROFIT_COLOR : LOSS_COLOR} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+        )}
+        </>
       )}
     </div>
   );

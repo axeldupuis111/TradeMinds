@@ -471,6 +471,46 @@ const translations: Record<Lang, Record<string, string>> = {
     analytics_thu: "Jeu",
     analytics_fri: "Ven",
     analytics_sat: "Sam",
+
+    // Coach IA
+    coach_title: "Coach IA",
+    coach_subtitle: "Pose des questions sur tes trades en langage naturel.",
+    coach_locked: "Le Coach IA est réservé aux plans Plus et Premium.",
+    coach_empty: "Pose une question sur tes trades...",
+    coach_placeholder: "Ex: Pourquoi je perds le lundi ?",
+    coach_suggestion_1: "Quel est mon meilleur setup ?",
+    coach_suggestion_2: "Est-ce que je trade trop après une perte ?",
+    coach_suggestion_3: "Compare mes performances par émotion",
+    coach_remaining: "{n} message(s) restant(s) aujourd'hui",
+    coach_limit_reached: "Limite atteinte pour aujourd'hui. Reviens demain ou passe en Premium.",
+
+    // Discipline section
+    discipline_title: "Discipline vs Résultats",
+    discipline_followed: "P&L quand tu suis tes règles",
+    discipline_broken: "P&L quand tu les enfreins",
+    discipline_cost: "Coût de l'indiscipline",
+    discipline_cost_desc: "Montant total perdu sur les trades hors règles.",
+    discipline_winrate_emotion: "Winrate par émotion",
+
+    // Goals & Streaks
+    goals_title: "Objectifs & Discipline",
+    goals_streak_days: "jours de discipline",
+    goals_streak_desc: "Jours consécutifs sans violation de règles",
+    goals_weekly: "Objectif hebdo : 0 revenge trade",
+    goals_weekly_desc: "Aucun trade pris sous l'émotion cette semaine",
+    goals_on_track: "En bonne voie",
+    goals_violations: "violation(s)",
+    goals_badges: "Badges",
+    badge_discipline_3: "3 jours de discipline",
+    badge_discipline_10: "10 jours de discipline",
+    badge_discipline_30: "30 jours de discipline",
+    badge_winrate_60: "Winrate > 60% (50+ trades)",
+    badge_score_80: "Score > 80 pendant 1 mois",
+
+    // Daily summary
+    summary_generating: "Génération du résumé IA...",
+    summary_title: "Résumé de la session",
+    summary_dismiss: "Fermer",
   },
 
   // ─── ENGLISH ───
@@ -909,6 +949,46 @@ const translations: Record<Lang, Record<string, string>> = {
     analytics_thu: "Thu",
     analytics_fri: "Fri",
     analytics_sat: "Sat",
+
+    // Coach IA
+    coach_title: "AI Coach",
+    coach_subtitle: "Ask questions about your trades in natural language.",
+    coach_locked: "AI Coach is available on Plus and Premium plans.",
+    coach_empty: "Ask a question about your trades...",
+    coach_placeholder: "E.g.: Why do I lose on Mondays?",
+    coach_suggestion_1: "What is my best setup?",
+    coach_suggestion_2: "Do I trade too much after a loss?",
+    coach_suggestion_3: "Compare my performance by emotion",
+    coach_remaining: "{n} message(s) remaining today",
+    coach_limit_reached: "Limit reached for today. Come back tomorrow or upgrade to Premium.",
+
+    // Discipline section
+    discipline_title: "Discipline vs Results",
+    discipline_followed: "P&L when following rules",
+    discipline_broken: "P&L when breaking rules",
+    discipline_cost: "Cost of indiscipline",
+    discipline_cost_desc: "Total lost on trades that violate your rules.",
+    discipline_winrate_emotion: "Winrate by emotion",
+
+    // Goals & Streaks
+    goals_title: "Goals & Discipline",
+    goals_streak_days: "days of discipline",
+    goals_streak_desc: "Consecutive days without rule violations",
+    goals_weekly: "Weekly goal: 0 revenge trades",
+    goals_weekly_desc: "No emotional trades this week",
+    goals_on_track: "On track",
+    goals_violations: "violation(s)",
+    goals_badges: "Badges",
+    badge_discipline_3: "3 days of discipline",
+    badge_discipline_10: "10 days of discipline",
+    badge_discipline_30: "30 days of discipline",
+    badge_winrate_60: "Winrate > 60% (50+ trades)",
+    badge_score_80: "Score > 80 for 1 month",
+
+    // Daily summary
+    summary_generating: "Generating AI summary...",
+    summary_title: "Session summary",
+    summary_dismiss: "Dismiss",
   },
 
   // ─── GERMAN ───
@@ -1348,6 +1428,46 @@ const translations: Record<Lang, Record<string, string>> = {
     analytics_thu: "Do",
     analytics_fri: "Fr",
     analytics_sat: "Sa",
+
+    // Coach IA
+    coach_title: "KI-Coach",
+    coach_subtitle: "Stelle Fragen zu deinen Trades in natürlicher Sprache.",
+    coach_locked: "Der KI-Coach ist für Plus- und Premium-Pläne verfügbar.",
+    coach_empty: "Stelle eine Frage zu deinen Trades...",
+    coach_placeholder: "Z.B.: Warum verliere ich montags?",
+    coach_suggestion_1: "Was ist mein bestes Setup?",
+    coach_suggestion_2: "Trade ich zu viel nach einem Verlust?",
+    coach_suggestion_3: "Vergleiche meine Performance nach Emotion",
+    coach_remaining: "{n} Nachricht(en) heute verbleibend",
+    coach_limit_reached: "Limit für heute erreicht. Komm morgen wieder oder upgrade auf Premium.",
+
+    // Discipline section
+    discipline_title: "Disziplin vs Ergebnisse",
+    discipline_followed: "P&L bei Regelbeachtung",
+    discipline_broken: "P&L bei Regelverstoß",
+    discipline_cost: "Kosten der Undiszipliniertheit",
+    discipline_cost_desc: "Gesamtverlust bei regelwidrigen Trades.",
+    discipline_winrate_emotion: "Winrate nach Emotion",
+
+    // Goals & Streaks
+    goals_title: "Ziele & Disziplin",
+    goals_streak_days: "Tage Disziplin",
+    goals_streak_desc: "Aufeinanderfolgende Tage ohne Regelverstöße",
+    goals_weekly: "Wochenziel: 0 Rache-Trades",
+    goals_weekly_desc: "Keine emotionalen Trades diese Woche",
+    goals_on_track: "Auf Kurs",
+    goals_violations: "Verstoß/Verstöße",
+    goals_badges: "Abzeichen",
+    badge_discipline_3: "3 Tage Disziplin",
+    badge_discipline_10: "10 Tage Disziplin",
+    badge_discipline_30: "30 Tage Disziplin",
+    badge_winrate_60: "Winrate > 60% (50+ Trades)",
+    badge_score_80: "Score > 80 für 1 Monat",
+
+    // Daily summary
+    summary_generating: "KI-Zusammenfassung wird erstellt...",
+    summary_title: "Sitzungszusammenfassung",
+    summary_dismiss: "Schließen",
   },
 
   // ─── SPANISH ───
@@ -1787,6 +1907,46 @@ const translations: Record<Lang, Record<string, string>> = {
     analytics_thu: "Jue",
     analytics_fri: "Vie",
     analytics_sat: "Sáb",
+
+    // Coach IA
+    coach_title: "Coach IA",
+    coach_subtitle: "Haz preguntas sobre tus trades en lenguaje natural.",
+    coach_locked: "El Coach IA está disponible en los planes Plus y Premium.",
+    coach_empty: "Haz una pregunta sobre tus trades...",
+    coach_placeholder: "Ej: ¿Por qué pierdo los lunes?",
+    coach_suggestion_1: "¿Cuál es mi mejor setup?",
+    coach_suggestion_2: "¿Opero demasiado después de una pérdida?",
+    coach_suggestion_3: "Compara mi rendimiento por emoción",
+    coach_remaining: "{n} mensaje(s) restante(s) hoy",
+    coach_limit_reached: "Límite alcanzado hoy. Vuelve mañana o pasa a Premium.",
+
+    // Discipline section
+    discipline_title: "Disciplina vs Resultados",
+    discipline_followed: "P&L siguiendo tus reglas",
+    discipline_broken: "P&L violando tus reglas",
+    discipline_cost: "Coste de la indisciplina",
+    discipline_cost_desc: "Total perdido en trades que violan tus reglas.",
+    discipline_winrate_emotion: "Winrate por emoción",
+
+    // Goals & Streaks
+    goals_title: "Objetivos & Disciplina",
+    goals_streak_days: "días de disciplina",
+    goals_streak_desc: "Días consecutivos sin violaciones de reglas",
+    goals_weekly: "Objetivo semanal: 0 revenge trades",
+    goals_weekly_desc: "Ningún trade emocional esta semana",
+    goals_on_track: "En buen camino",
+    goals_violations: "violación(es)",
+    goals_badges: "Insignias",
+    badge_discipline_3: "3 días de disciplina",
+    badge_discipline_10: "10 días de disciplina",
+    badge_discipline_30: "30 días de disciplina",
+    badge_winrate_60: "Winrate > 60% (50+ trades)",
+    badge_score_80: "Score > 80 durante 1 mes",
+
+    // Daily summary
+    summary_generating: "Generando resumen IA...",
+    summary_title: "Resumen de la sesión",
+    summary_dismiss: "Cerrar",
   },
 };
 

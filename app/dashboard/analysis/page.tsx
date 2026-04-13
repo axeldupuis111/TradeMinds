@@ -4,7 +4,12 @@ import UpgradeBanner from "@/components/UpgradeBanner";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
 
 interface Violation {
   trade_date: string;
@@ -101,6 +106,110 @@ export default function AnalysisPage() {
   const [tradeCount, setTradeCount] = useState(0);
   const [hasStrategy, setHasStrategy] = useState(false);
   const [viewingHistory, setViewingHistory] = useState<string | null>(null);
+
+  // Chat coach state
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatDailyCount, setChatDailyCount] = useState(0);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  const chatLimit = plan === "premium" ? null : plan === "plus" ? 5 : 0;
+  const chatRemaining = chatLimit === null ? null : Math.max(0, chatLimit - chatDailyCount);
+  const canChat = plan === "plus" || plan === "premium";
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages]);
+
+  // Load chat daily count
+  useEffect(() => {
+    async function loadChatCount() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("daily_chat_count, daily_chat_reset")
+        .eq("id", user.id)
+        .single();
+      if (data) {
+        const today = new Date().toISOString().split("T")[0];
+        if (data.daily_chat_reset === today) {
+          setChatDailyCount(data.daily_chat_count || 0);
+        }
+      }
+    }
+    loadChatCount();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const sendChatMessage = useCallback(async () => {
+    const msg = chatInput.trim();
+    if (!msg || chatLoading) return;
+    if (chatRemaining !== null && chatRemaining <= 0) return;
+
+    const newMessages: ChatMessage[] = [...chatMessages, { role: "user", content: msg }];
+    setChatMessages(newMessages);
+    setChatInput("");
+    setChatLoading(true);
+
+    try {
+      // Build trades context
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Non connecté");
+
+      const [{ data: trades }, { data: strategy }] = await Promise.all([
+        supabase
+          .from("trades")
+          .select("open_time, close_time, pair, direction, lot_size, entry_price, exit_price, sl, tp, pnl, commission, swap, emotion, setup_quality, tags")
+          .eq("user_id", user.id)
+          .order("open_time", { ascending: false })
+          .limit(60),
+        supabase
+          .from("strategies")
+          .select("*")
+          .eq("user_id", user.id)
+          .limit(1)
+          .single(),
+      ]);
+
+      const tradesContext = (trades || []).map((t) => {
+        const net = t.pnl + (t.commission || 0) + (t.swap || 0);
+        return `${t.open_time} | ${t.pair} | ${t.direction} | lot=${t.lot_size} | P&L=${net.toFixed(2)} | emotion=${t.emotion || "N/A"} | quality=${t.setup_quality || "N/A"} | tags=${(t.tags || []).join(",")}`;
+      }).join("\n");
+
+      const strategyContext = strategy
+        ? `Nom: ${strategy.name || "N/A"}, Paires: ${(strategy.pairs || []).join(",")}, Sessions: ${(strategy.sessions || []).join(",")}, RR min: ${strategy.risk_reward ?? "N/A"}, Règles: ${(strategy.setup_rules || []).join("; ")}`
+        : "Aucune stratégie définie";
+
+      const res = await fetch("/api/chat-coach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: newMessages.slice(-10), // keep last 10 messages for context
+          tradesContext,
+          strategyContext,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erreur serveur");
+
+      setChatMessages([...newMessages, { role: "assistant", content: data.reply }]);
+
+      // Increment daily chat count
+      const newCount = chatDailyCount + 1;
+      setChatDailyCount(newCount);
+      const today = new Date().toISOString().split("T")[0];
+      await supabase
+        .from("profiles")
+        .update({ daily_chat_count: newCount, daily_chat_reset: today })
+        .eq("id", user.id);
+    } catch (err) {
+      setChatMessages([...newMessages, { role: "assistant", content: `Erreur : ${err instanceof Error ? err.message : "Erreur inconnue"}` }]);
+    } finally {
+      setChatLoading(false);
+    }
+  }, [chatInput, chatMessages, chatLoading, chatDailyCount, chatRemaining, supabase]);
 
   useEffect(() => {
     loadPrerequisites();
@@ -483,6 +592,94 @@ export default function AnalysisPage() {
           )}
         </div>
       )}
+
+      {/* Coach IA Chat */}
+      <section className="mt-12">
+        <h2 className="text-lg font-semibold text-foreground">{t("coach_title")}</h2>
+        <p className="text-muted text-sm mt-1 mb-4">{t("coach_subtitle")}</p>
+
+        {!canChat ? (
+          <UpgradeBanner message={t("coach_locked")} />
+        ) : (
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
+            {/* Messages */}
+            <div className="max-h-[400px] overflow-y-auto p-4 space-y-3">
+              {chatMessages.length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-muted text-sm">{t("coach_empty")}</p>
+                  <div className="flex flex-wrap justify-center gap-2 mt-3">
+                    {[t("coach_suggestion_1"), t("coach_suggestion_2"), t("coach_suggestion_3")].map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => { setChatInput(s); }}
+                        className="px-3 py-1.5 text-xs bg-[#1a1a1a] border border-[#2a2a2a] rounded-full text-muted hover:text-foreground hover:border-accent/50 transition-colors"
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {chatMessages.map((msg, i) => (
+                <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                  <div className={`max-w-[80%] rounded-xl px-4 py-2.5 text-sm ${
+                    msg.role === "user"
+                      ? "bg-accent text-white rounded-br-sm"
+                      : "bg-[#1a1a1a] border border-[#2a2a2a] text-foreground rounded-bl-sm"
+                  }`}>
+                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                  </div>
+                </div>
+              ))}
+              {chatLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl px-4 py-2.5 rounded-bl-sm">
+                    <div className="flex gap-1">
+                      <span className="w-2 h-2 bg-muted rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                      <span className="w-2 h-2 bg-muted rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                      <span className="w-2 h-2 bg-muted rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div ref={chatEndRef} />
+            </div>
+
+            {/* Input */}
+            <div className="border-t border-border p-3 flex gap-2">
+              <input
+                type="text"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChatMessage(); } }}
+                placeholder={t("coach_placeholder")}
+                disabled={chatLoading || (chatRemaining !== null && chatRemaining <= 0)}
+                className="flex-1 px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-foreground text-sm placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent disabled:opacity-50"
+              />
+              <button
+                onClick={sendChatMessage}
+                disabled={chatLoading || !chatInput.trim() || (chatRemaining !== null && chatRemaining <= 0)}
+                className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors disabled:opacity-50"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Remaining messages */}
+            {chatRemaining !== null && (
+              <div className="px-3 pb-2">
+                <p className="text-xs text-muted">
+                  {chatRemaining > 0
+                    ? t("coach_remaining").replace("{n}", String(chatRemaining))
+                    : t("coach_limit_reached")}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
 
       {/* History */}
       <section className="mt-12 mb-8">

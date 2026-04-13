@@ -2,6 +2,7 @@
 
 import EquityCurve from "@/components/charts/EquityCurve";
 import TradingCalendar from "@/components/charts/TradingCalendar";
+import GoalsStreaks from "@/components/dashboard/GoalsStreaks";
 import { useLanguage } from "@/lib/LanguageContext";
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
@@ -237,6 +238,11 @@ export default function DashboardContent({
       {/* Trading Calendar */}
       <div className="mt-8">
         <TradingCalendar trades={allTrades} selectedAccountId={selectedAccountId} />
+      </div>
+
+      {/* Goals & Streaks */}
+      <div className="mt-8">
+        <GoalsStreaks />
       </div>
 
       {/* Bonus sections */}
