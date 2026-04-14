@@ -46,6 +46,7 @@ export async function POST(req: Request) {
         password,
         server,
         platform,
+        magic: 0,
       }),
     });
 
