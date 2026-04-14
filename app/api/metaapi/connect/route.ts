@@ -41,15 +41,11 @@ export async function POST(req: Request) {
       },
       body: JSON.stringify({
         name: name || `TradeMinds-${login}`,
-        type: "cloud",
+        type: "cloud-g2",
         login: String(login),
         password,
         server,
         platform,
-        magic: 0,
-        application: "MetaApi",
-        connectionStatus: "disconnected",
-        keywords: ["trademinds"],
       }),
     });
 
