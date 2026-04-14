@@ -1,6 +1,8 @@
 "use client";
 
+import MtConnectModal from "@/components/challenge/MtConnectModal";
 import EquityCurve from "@/components/charts/EquityCurve";
+import UpgradeBanner from "@/components/UpgradeBanner";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
@@ -21,6 +23,11 @@ interface Challenge {
   balance: number;
   status: "active" | "passed" | "failed";
   created_at: string;
+  metaapi_account_id: string | null;
+  mt_login: string | null;
+  mt_server: string | null;
+  mt_platform: string | null;
+  last_sync_at: string | null;
 }
 
 interface AccountStats {
@@ -81,11 +88,21 @@ function AccountCard({
   ac,
   stats,
   onStatusChange,
+  onConnect,
+  onSync,
+  syncing,
+  syncStatus,
+  canUseMt,
   t,
 }: {
   ac: Challenge;
   stats: AccountStats;
   onStatusChange: (id: string, status: "passed" | "failed") => void;
+  onConnect: (id: string) => void;
+  onSync: (id: string) => void;
+  syncing: boolean;
+  syncStatus: { imported: number; at: string } | null;
+  canUseMt: boolean;
   t: (key: string) => string;
 }) {
   const balance = stats.balance;
@@ -186,6 +203,64 @@ function AccountCard({
         )}
       </div>
 
+      {/* MT4/MT5 connection */}
+      <div className="mt-6 pt-6 border-t border-[#1e1e1e]">
+        {ac.metaapi_account_id ? (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-profit" />
+                <span className="text-sm text-foreground font-medium">
+                  {t("mt_connected")} · {ac.mt_platform?.toUpperCase()}
+                </span>
+                {ac.mt_server && <span className="text-xs text-muted">{ac.mt_server}</span>}
+              </div>
+              <button
+                onClick={() => onSync(ac.id)}
+                disabled={syncing}
+                className="px-3 py-1.5 bg-accent/10 border border-accent/30 text-accent rounded-lg text-xs font-medium hover:bg-accent/20 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {syncing ? (
+                  <>
+                    <div className="w-3 h-3 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                    {t("mt_syncing")}
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    {t("mt_sync_btn")}
+                  </>
+                )}
+              </button>
+            </div>
+            {syncStatus && (
+              <p className="text-xs text-muted">
+                {t("mt_last_sync")} {new Date(syncStatus.at).toLocaleString()} — {syncStatus.imported} {t("mt_new_trades")}
+              </p>
+            )}
+            {!syncStatus && ac.last_sync_at && (
+              <p className="text-xs text-muted">
+                {t("mt_last_sync")} {new Date(ac.last_sync_at).toLocaleString()}
+              </p>
+            )}
+          </div>
+        ) : canUseMt ? (
+          <button
+            onClick={() => onConnect(ac.id)}
+            className="w-full py-2.5 bg-[#0f0f0f] border border-[#2a2a2a] text-foreground rounded-lg text-sm font-medium hover:border-accent hover:text-accent transition-colors flex items-center justify-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+            {t("mt_connect_action")}
+          </button>
+        ) : (
+          <UpgradeBanner message={t("mt_locked")} />
+        )}
+      </div>
+
       {/* Equity curve */}
       <div className="mt-6">
         <EquityCurve data={stats.equityCurveData} initialBalance={ac.account_size} />
@@ -196,8 +271,13 @@ function AccountCard({
 
 export default function ChallengePage() {
   const { t } = useLanguage();
-  const { maxAccounts } = usePlan();
+  const { plan, maxAccounts } = usePlan();
   const supabase = createClient();
+  const canUseMt = plan === "plus" || plan === "premium";
+
+  const [mtConnectChallengeId, setMtConnectChallengeId] = useState<string | null>(null);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [syncStatusMap, setSyncStatusMap] = useState<Record<string, { imported: number; at: string }>>({});
 
   // Form state
   const [accountType, setAccountType] = useState<"prop" | "personal">("prop");
@@ -342,6 +422,38 @@ export default function ChallengePage() {
     }
   }
 
+  async function handleSync(challengeId: string) {
+    const challenge = activeAccounts.find((a) => a.id === challengeId);
+    if (!challenge || !challenge.metaapi_account_id) return;
+
+    setSyncingId(challengeId);
+    try {
+      const res = await fetch("/api/metaapi/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          challengeId,
+          metaapiAccountId: challenge.metaapi_account_id,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMessage({ type: "error", text: data.error || t("mt_sync_error") });
+      } else {
+        setSyncStatusMap((prev) => ({
+          ...prev,
+          [challengeId]: { imported: data.imported || 0, at: new Date().toISOString() },
+        }));
+        setMessage({ type: "success", text: `${data.imported || 0} ${t("mt_new_trades")}` });
+        loadData();
+      }
+    } catch (err) {
+      setMessage({ type: "error", text: err instanceof Error ? err.message : t("mt_sync_error") });
+    } finally {
+      setSyncingId(null);
+    }
+  }
+
   async function handleStatusChange(challengeId: string, status: "passed" | "failed") {
     const confirmMsg = status === "passed" ? t("challenge_confirm_passed") : t("challenge_confirm_failed");
     if (!confirm(confirmMsg)) return;
@@ -387,6 +499,11 @@ export default function ChallengePage() {
               ac={ac}
               stats={accountStatsMap[ac.id] || { balance: ac.balance, currentPnl: 0, todayPnl: 0, equityCurveData: [] }}
               onStatusChange={handleStatusChange}
+              onConnect={(id) => setMtConnectChallengeId(id)}
+              onSync={handleSync}
+              syncing={syncingId === ac.id}
+              syncStatus={syncStatusMap[ac.id] || null}
+              canUseMt={canUseMt}
               t={t}
             />
           ))}
@@ -497,6 +614,17 @@ export default function ChallengePage() {
           {saving ? t("challenge_creating") : t("challenge_create_btn")}
         </button>
       </section>
+
+      {mtConnectChallengeId && (
+        <MtConnectModal
+          challengeId={mtConnectChallengeId}
+          onClose={() => setMtConnectChallengeId(null)}
+          onConnected={() => {
+            setMessage({ type: "success", text: t("mt_connected_success") });
+            loadData();
+          }}
+        />
+      )}
 
       {/* HISTORY */}
       <section className="mt-10 mb-8">
