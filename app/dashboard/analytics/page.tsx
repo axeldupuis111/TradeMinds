@@ -1,5 +1,6 @@
 "use client";
 
+import ExportPdfButton from "@/components/analytics/ExportPdfButton";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useMemo, useState } from "react";
@@ -362,6 +363,7 @@ export default function AnalyticsPage() {
               ))}
             </select>
           )}
+          <ExportPdfButton />
         </div>
       </div>
 
