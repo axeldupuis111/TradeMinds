@@ -1,8 +1,9 @@
 "use client";
 
+import ExportGuideModal from "@/components/trades/ExportGuideModal";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
-import { parseCSV, type ParsedTrade } from "@/lib/csv-parser";
+import { parseCSV, parseXlsx, type ParsedTrade } from "@/lib/csv-parser";
 import { createClient } from "@/lib/supabase/client";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -43,6 +44,9 @@ export default function CsvImport({ strategyId, onImported }: Props) {
   // Daily summary
   const [dailySummary, setDailySummary] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
+
+  // Export guide modal
+  const [showGuide, setShowGuide] = useState(false);
 
   // Load active accounts + last import date on mount
   useEffect(() => {
@@ -87,11 +91,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
     setAccountNotFound(false);
     setSelectedChallengeId(null);
 
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const text = e.target?.result as string;
-      const result = parseCSV(text);
-
+    const applyResult = (result: { trades: ParsedTrade[]; accountNumber: string | null }) => {
       if (result.trades.length === 0) {
         setMessage({ type: "error", text: t("csv_no_trades") });
         return;
@@ -99,15 +99,13 @@ export default function CsvImport({ strategyId, onImported }: Props) {
 
       setPreview(result.trades);
 
-      // Auto-match account number (client-side partial matching)
       if (result.accountNumber) {
         setDetectedAccountNumber(result.accountNumber);
         const csvNum = result.accountNumber.replace(/\D/g, "");
 
-        console.log("[CsvImport] CSV account number (cleaned):", JSON.stringify(csvNum));
+        console.log("[CsvImport] File account number (cleaned):", JSON.stringify(csvNum));
         console.log("[CsvImport] Active accounts:", activeAccounts.map(a => ({ id: a.id, firm: a.firm, account_number: a.account_number })));
 
-        // Partial match: CSV number contains stored number, or stored number contains CSV number
         const matched = activeAccounts.find((a) => {
           if (!a.account_number) return false;
           const storedNum = a.account_number.replace(/\D/g, "");
@@ -125,7 +123,27 @@ export default function CsvImport({ strategyId, onImported }: Props) {
         }
       }
     };
-    reader.readAsText(file);
+
+    const isXlsx = /\.xlsx$/i.test(file.name);
+
+    if (isXlsx) {
+      try {
+        const buf = await file.arrayBuffer();
+        const result = await parseXlsx(buf);
+        applyResult(result);
+      } catch (err) {
+        console.error("[CsvImport] XLSX parse error", err);
+        setMessage({ type: "error", text: t("csv_no_trades") });
+      }
+    } else {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target?.result as string;
+        const result = parseCSV(text);
+        applyResult(result);
+      };
+      reader.readAsText(file);
+    }
   }, [t, activeAccounts]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleDrop(e: React.DragEvent) {
@@ -232,8 +250,22 @@ export default function CsvImport({ strategyId, onImported }: Props) {
 
   return (
     <section>
-      <h2 className="text-lg font-semibold text-foreground">{t("csv_title")}</h2>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <h2 className="text-lg font-semibold text-foreground">{t("csv_title")}</h2>
+        <button
+          type="button"
+          onClick={() => setShowGuide(true)}
+          className="text-sm text-accent hover:underline inline-flex items-center gap-1.5"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {t("csv_guide_btn")}
+        </button>
+      </div>
       <div className="h-px bg-[#1e1e1e] mt-2 mb-4" />
+
+      {showGuide && <ExportGuideModal onClose={() => setShowGuide(false)} />}
 
       {/* Free plan cooldown banner */}
       {!importCooldownLoading && isCooldownActive && (
@@ -267,7 +299,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
           </svg>
           <p className="text-foreground font-medium">{t("csv_drop_title")}</p>
           <p className="text-muted text-sm mt-1">{t("csv_drop_sub")}</p>
-          <input ref={fileRef} type="file" accept=".csv,.txt" onChange={handleFileInput} disabled={isCooldownActive} className="hidden" />
+          <input ref={fileRef} type="file" accept=".csv,.txt,.xlsx" onChange={handleFileInput} disabled={isCooldownActive} className="hidden" />
         </div>
       ) : (
         <div>

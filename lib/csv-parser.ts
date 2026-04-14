@@ -87,6 +87,37 @@ export function parseCSV(text: string): ParseResult {
 }
 
 /**
+ * Parse an MT5 xlsx export (exported via "Report > Open XML (MS Office Excel 2007)").
+ * The .xlsx has the same structure as the CSV: metadata rows, then a "Positions"
+ * header row, then the trade rows. We flatten each row to a semicolon-delimited
+ * line so the existing MT5 parser handles it verbatim.
+ */
+export async function parseXlsx(data: ArrayBuffer): Promise<ParseResult> {
+  const XLSX = await import("xlsx");
+  const wb = XLSX.read(data, { type: "array", cellDates: false, raw: false });
+  const firstSheetName = wb.SheetNames[0];
+  if (!firstSheetName) return { trades: [], accountNumber: null };
+  const sheet = wb.Sheets[firstSheetName];
+
+  // Get the full grid as arrays of strings. defval:"" keeps empty cells so
+  // column indexes align with the CSV layout.
+  const rows: string[][] = XLSX.utils.sheet_to_json(sheet, {
+    header: 1,
+    defval: "",
+    blankrows: false,
+    raw: false,
+  }) as string[][];
+
+  // Flatten each row into a ";"-joined line, matching the MT5 CSV format.
+  const lines = rows.map((r) => r.map((c) => (c == null ? "" : String(c))).join(";"));
+
+  const accountNumber = extractAccountNumber(lines);
+  const mt5Result = tryParseMT5(lines);
+  if (mt5Result.length > 0) return { trades: mt5Result, accountNumber };
+  return { trades: parseGeneric(lines), accountNumber };
+}
+
+/**
  * MT5/FTMO format:
  * - Metadata lines before "Positions" marker
  * - Headers: Heure;Position;Symbole;Type;Volume;Prix;S / L;T / P;Heure;Prix;Commission;Echange;Profit;;
