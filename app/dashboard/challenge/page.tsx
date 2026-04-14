@@ -92,6 +92,7 @@ function AccountCard({
   onSync,
   syncing,
   syncStatus,
+  syncDebug,
   canUseMt,
   t,
 }: {
@@ -102,6 +103,7 @@ function AccountCard({
   onSync: (id: string) => void;
   syncing: boolean;
   syncStatus: { imported: number; at: string } | null;
+  syncDebug: string[] | null;
   canUseMt: boolean;
   t: (key: string) => string;
 }) {
@@ -245,6 +247,16 @@ function AccountCard({
                 {t("mt_last_sync")} {new Date(ac.last_sync_at).toLocaleString()}
               </p>
             )}
+            {syncDebug && syncDebug.length > 0 && (
+              <details className="mt-2">
+                <summary className="text-xs text-muted cursor-pointer hover:text-foreground">
+                  Debug ({syncDebug.length} log{syncDebug.length > 1 ? "s" : ""})
+                </summary>
+                <pre className="mt-2 p-3 bg-[#0a0a0a] border border-[#1e1e1e] rounded-lg text-[10px] text-muted whitespace-pre-wrap break-all max-h-60 overflow-y-auto font-mono">
+                  {syncDebug.join("\n")}
+                </pre>
+              </details>
+            )}
           </div>
         ) : canUseMt ? (
           <button
@@ -278,6 +290,7 @@ export default function ChallengePage() {
   const [mtConnectChallengeId, setMtConnectChallengeId] = useState<string | null>(null);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [syncStatusMap, setSyncStatusMap] = useState<Record<string, { imported: number; at: string }>>({});
+  const [syncDebugMap, setSyncDebugMap] = useState<Record<string, string[]>>({});
 
   // Form state
   const [accountType, setAccountType] = useState<"prop" | "personal">("prop");
@@ -437,6 +450,12 @@ export default function ChallengePage() {
         }),
       });
       const data = await res.json();
+      // Expose debug logs to the browser console and to the UI
+      if (Array.isArray(data.debug)) {
+        // eslint-disable-next-line no-console
+        console.log("[metaapi/sync debug]", data);
+        setSyncDebugMap((prev) => ({ ...prev, [challengeId]: data.debug }));
+      }
       if (!res.ok) {
         setMessage({ type: "error", text: data.error || t("mt_sync_error") });
       } else {
@@ -503,6 +522,7 @@ export default function ChallengePage() {
               onSync={handleSync}
               syncing={syncingId === ac.id}
               syncStatus={syncStatusMap[ac.id] || null}
+              syncDebug={syncDebugMap[ac.id] || null}
               canUseMt={canUseMt}
               t={t}
             />

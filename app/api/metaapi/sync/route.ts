@@ -12,7 +12,7 @@ interface SyncBody {
 interface MetaDeal {
   id: string;
   platform?: string;
-  type: string; // DEAL_TYPE_BUY / DEAL_TYPE_SELL / DEAL_TYPE_BALANCE ...
+  type: string;
   time: string;
   symbol?: string;
   volume?: number;
@@ -20,78 +20,129 @@ interface MetaDeal {
   commission?: number;
   swap?: number;
   profit?: number;
-  entryType?: string; // DEAL_ENTRY_IN / DEAL_ENTRY_OUT
+  entryType?: string;
   positionId?: string;
   orderId?: string;
 }
 
-async function fetchAccountInfo(accountId: string) {
-  const res = await fetch(`${PROVISIONING_BASE}/users/current/accounts/${accountId}`, {
-    headers: { "auth-token": METAAPI_TOKEN },
-  });
-  if (!res.ok) throw new Error(`Failed to fetch MetaApi account: ${await res.text()}`);
-  return res.json();
-}
-
-async function fetchDeals(accountId: string, region: string, startISO: string, endISO: string): Promise<MetaDeal[]> {
-  const base = `https://mt-client-api-v1.${region}.agiliumtrade.agiliumtrade.ai`;
-  const url = `${base}/users/current/accounts/${accountId}/history-deals/time/${encodeURIComponent(startISO)}/${encodeURIComponent(endISO)}`;
-  const res = await fetch(url, {
-    headers: { "auth-token": METAAPI_TOKEN },
-  });
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`MetaApi history-deals error: ${errText}`);
-  }
-  return res.json();
-}
-
 export async function POST(req: Request) {
+  const debug: string[] = [];
+  const log = (msg: string) => {
+    console.log("[metaapi/sync]", msg);
+    debug.push(msg);
+  };
+
   if (!METAAPI_TOKEN) {
-    return NextResponse.json({ error: "METAAPI_TOKEN not configured" }, { status: 500 });
+    return NextResponse.json({ error: "METAAPI_TOKEN not configured", debug }, { status: 500 });
   }
 
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: "Not authenticated", debug }, { status: 401 });
 
   let body: SyncBody;
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid JSON body", debug }, { status: 400 });
   }
 
   const { challengeId, metaapiAccountId } = body;
+  log(`Received challengeId=${challengeId} metaapiAccountId=${metaapiAccountId}`);
+
   if (!challengeId || !metaapiAccountId) {
-    return NextResponse.json({ error: "Missing challengeId or metaapiAccountId" }, { status: 400 });
+    return NextResponse.json({ error: "Missing challengeId or metaapiAccountId", debug }, { status: 400 });
   }
 
-  // Verify ownership of challenge
   const { data: challenge } = await supabase
     .from("prop_challenges")
-    .select("id, user_id, last_sync_at")
+    .select("id, user_id, last_sync_at, start_date")
     .eq("id", challengeId)
     .eq("user_id", user.id)
     .single();
 
   if (!challenge) {
-    return NextResponse.json({ error: "Challenge not found" }, { status: 404 });
+    return NextResponse.json({ error: "Challenge not found", debug }, { status: 404 });
   }
+  log(`Challenge found start_date=${challenge.start_date} last_sync_at=${challenge.last_sync_at}`);
 
   try {
-    const account = await fetchAccountInfo(metaapiAccountId);
-    const region = account.region || "new-york";
+    // 1. Fetch account info and verify deployment
+    const accountUrl = `${PROVISIONING_BASE}/users/current/accounts/${metaapiAccountId}`;
+    log(`GET ${accountUrl}`);
+    const accountRes = await fetch(accountUrl, { headers: { "auth-token": METAAPI_TOKEN } });
+    const accountText = await accountRes.text();
+    log(`Account status=${accountRes.status} body=${accountText.slice(0, 500)}`);
+    if (!accountRes.ok) {
+      return NextResponse.json({ error: `Account fetch failed: ${accountText}`, debug }, { status: 500 });
+    }
+    const account = JSON.parse(accountText);
+    const state = account.state || account.connectionStatus;
+    const region = account.region || null;
+    log(`Account state=${state} region=${region || "(none)"}`);
 
-    // Start from last sync or 90 days ago
+    if (state && state !== "DEPLOYED") {
+      log(`Account not DEPLOYED (state=${state}), triggering deploy`);
+      const deployRes = await fetch(`${accountUrl}/deploy`, {
+        method: "POST",
+        headers: { "auth-token": METAAPI_TOKEN },
+      });
+      log(`Deploy trigger status=${deployRes.status}`);
+      return NextResponse.json({
+        error: `Account is ${state}. Deployment triggered. Retry sync in 30-60s.`,
+        debug,
+      }, { status: 409 });
+    }
+
+    // 2. Compute time range: from challenge start (or 1 year ago) to now
+    const startFallback = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
     const since = challenge.last_sync_at
       ? new Date(challenge.last_sync_at)
-      : new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+      : challenge.start_date
+        ? new Date(challenge.start_date)
+        : startFallback;
     const until = new Date();
+    log(`Time range: ${since.toISOString()} -> ${until.toISOString()}`);
 
-    const deals = await fetchDeals(metaapiAccountId, region, since.toISOString(), until.toISOString());
+    // 3. Try regional base first, fallback to generic
+    const bases: string[] = [];
+    if (region) bases.push(`https://mt-client-api-v1.${region}.agiliumtrade.agiliumtrade.ai`);
+    bases.push("https://mt-client-api-v1.agiliumtrade.agiliumtrade.ai");
+    bases.push("https://mt-client-api-v1.new-york.agiliumtrade.agiliumtrade.ai");
+    bases.push("https://mt-client-api-v1.london.agiliumtrade.agiliumtrade.ai");
 
-    // Group deals by positionId → build trades (IN = open, OUT = close)
+    let deals: MetaDeal[] | null = null;
+    let lastError = "";
+    for (const base of bases) {
+      const url = `${base}/users/current/accounts/${metaapiAccountId}/history-deals/time/${encodeURIComponent(since.toISOString())}/${encodeURIComponent(until.toISOString())}`;
+      log(`GET ${url}`);
+      try {
+        const res = await fetch(url, { headers: { "auth-token": METAAPI_TOKEN } });
+        const text = await res.text();
+        log(`history-deals status=${res.status} bodyLen=${text.length} body=${text.slice(0, 300)}`);
+        if (res.ok) {
+          deals = JSON.parse(text);
+          log(`Parsed ${deals?.length ?? 0} deals from ${base}`);
+          break;
+        } else {
+          lastError = `${res.status}: ${text.slice(0, 200)}`;
+        }
+      } catch (e) {
+        lastError = e instanceof Error ? e.message : String(e);
+        log(`Fetch error on ${base}: ${lastError}`);
+      }
+    }
+
+    if (!deals) {
+      return NextResponse.json({
+        error: `All history-deals endpoints failed. Last error: ${lastError}`,
+        debug,
+      }, { status: 500 });
+    }
+
+    log(`Total deals fetched: ${deals.length}`);
+
+    // 4. Group deals by positionId
     const byPosition: Record<string, { opens: MetaDeal[]; closes: MetaDeal[] }> = {};
     for (const d of deals) {
       if (!d.positionId) continue;
@@ -102,6 +153,7 @@ export async function POST(req: Request) {
         byPosition[d.positionId].closes.push(d);
       }
     }
+    log(`Grouped into ${Object.keys(byPosition).length} positions`);
 
     const rows: Array<Record<string, unknown>> = [];
     for (const [posId, { opens, closes }] of Object.entries(byPosition)) {
@@ -129,18 +181,20 @@ export async function POST(req: Request) {
         pnl: totalProfit,
       });
     }
+    log(`Built ${rows.length} trade rows ready to upsert`);
 
     let inserted = 0;
     if (rows.length > 0) {
-      // Use upsert on external_deal_id to skip duplicates
       const { data, error } = await supabase
         .from("trades")
         .upsert(rows, { onConflict: "external_deal_id", ignoreDuplicates: true })
         .select("id");
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        log(`Upsert error: ${error.message}`);
+        return NextResponse.json({ error: error.message, debug }, { status: 500 });
       }
       inserted = data?.length || 0;
+      log(`Upsert inserted=${inserted}`);
     }
 
     await supabase
@@ -152,9 +206,11 @@ export async function POST(req: Request) {
       imported: inserted,
       totalDealsFetched: deals.length,
       positionsProcessed: Object.keys(byPosition).length,
+      debug,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: msg }, { status: 500 });
+    log(`Uncaught: ${msg}`);
+    return NextResponse.json({ error: msg, debug }, { status: 500 });
   }
 }
