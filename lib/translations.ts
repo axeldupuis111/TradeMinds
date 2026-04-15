@@ -496,6 +496,9 @@ const translations: Record<Lang, Record<string, string>> = {
     coach_suggestion_3: "Compare mes performances par émotion",
     coach_remaining: "{n} message(s) restant(s) aujourd'hui",
     coach_limit_reached: "Limite atteinte pour aujourd'hui. Reviens demain ou passe en Premium.",
+    coach_clear_history: "Effacer l'historique",
+    coach_clear_confirm: "Effacer tout l'historique du chat ? Cette action est irréversible.",
+    coach_show_older: "Voir les messages précédents",
 
     // Discipline section
     discipline_title: "Discipline vs Résultats",
@@ -552,6 +555,9 @@ const translations: Record<Lang, Record<string, string>> = {
     session_started_title: "Session démarrée !",
     session_started_desc: "Tu es prêt. Respecte ton plan. Bonne chance.",
     session_back_dashboard: "Aller au dashboard",
+    session_in_progress: "Session en cours",
+    session_end_button: "Terminer ma session",
+    day_session_active_since: "Session active depuis",
     pretrade_default_1: "J'ai dormi suffisamment (7h+)",
     pretrade_default_2: "Je suis calme et concentré",
     pretrade_default_3: "J'ai vérifié les news économiques du jour",
@@ -1053,6 +1059,9 @@ const translations: Record<Lang, Record<string, string>> = {
     coach_suggestion_3: "Compare my performance by emotion",
     coach_remaining: "{n} message(s) remaining today",
     coach_limit_reached: "Limit reached for today. Come back tomorrow or upgrade to Premium.",
+    coach_clear_history: "Clear history",
+    coach_clear_confirm: "Clear the entire chat history? This cannot be undone.",
+    coach_show_older: "Show previous messages",
 
     // Discipline section
     discipline_title: "Discipline vs Results",
@@ -1109,6 +1118,9 @@ const translations: Record<Lang, Record<string, string>> = {
     session_started_title: "Session started!",
     session_started_desc: "You are ready. Stick to your plan. Good luck.",
     session_back_dashboard: "Go to dashboard",
+    session_in_progress: "Session in progress",
+    session_end_button: "End my session",
+    day_session_active_since: "Session active since",
     pretrade_default_1: "I slept enough (7h+)",
     pretrade_default_2: "I am calm and focused",
     pretrade_default_3: "I checked today's economic news",
@@ -1611,6 +1623,9 @@ const translations: Record<Lang, Record<string, string>> = {
     coach_suggestion_3: "Vergleiche meine Performance nach Emotion",
     coach_remaining: "{n} Nachricht(en) heute verbleibend",
     coach_limit_reached: "Limit für heute erreicht. Komm morgen wieder oder upgrade auf Premium.",
+    coach_clear_history: "Verlauf löschen",
+    coach_clear_confirm: "Gesamten Chatverlauf löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+    coach_show_older: "Frühere Nachrichten anzeigen",
 
     // Discipline section
     discipline_title: "Disziplin vs Ergebnisse",
@@ -1667,6 +1682,9 @@ const translations: Record<Lang, Record<string, string>> = {
     session_started_title: "Sitzung gestartet!",
     session_started_desc: "Du bist bereit. Halte dich an deinen Plan. Viel Erfolg.",
     session_back_dashboard: "Zum Dashboard",
+    session_in_progress: "Sitzung läuft",
+    session_end_button: "Sitzung beenden",
+    day_session_active_since: "Sitzung aktiv seit",
     pretrade_default_1: "Ich habe genug geschlafen (7h+)",
     pretrade_default_2: "Ich bin ruhig und fokussiert",
     pretrade_default_3: "Ich habe die Wirtschaftsnews des Tages geprüft",
@@ -2169,6 +2187,9 @@ const translations: Record<Lang, Record<string, string>> = {
     coach_suggestion_3: "Compara mi rendimiento por emoción",
     coach_remaining: "{n} mensaje(s) restante(s) hoy",
     coach_limit_reached: "Límite alcanzado hoy. Vuelve mañana o pasa a Premium.",
+    coach_clear_history: "Borrar historial",
+    coach_clear_confirm: "¿Borrar todo el historial del chat? Esta acción es irreversible.",
+    coach_show_older: "Ver mensajes anteriores",
 
     // Discipline section
     discipline_title: "Disciplina vs Resultados",
@@ -2225,6 +2246,9 @@ const translations: Record<Lang, Record<string, string>> = {
     session_started_title: "¡Sesión iniciada!",
     session_started_desc: "Estás listo. Sigue tu plan. Buena suerte.",
     session_back_dashboard: "Ir al dashboard",
+    session_in_progress: "Sesión en curso",
+    session_end_button: "Terminar mi sesión",
+    day_session_active_since: "Sesión activa desde",
     pretrade_default_1: "He dormido lo suficiente (7h+)",
     pretrade_default_2: "Estoy tranquilo y concentrado",
     pretrade_default_3: "He revisado las noticias económicas del día",

@@ -2,6 +2,7 @@
 
 import EquityCurve from "@/components/charts/EquityCurve";
 import TradingCalendar from "@/components/charts/TradingCalendar";
+import DayStatus from "@/components/DayStatus";
 import GoalsStreaks from "@/components/dashboard/GoalsStreaks";
 import { useLanguage } from "@/lib/LanguageContext";
 import Link from "next/link";
@@ -226,6 +227,11 @@ export default function DashboardContent({
             </div>
           )}
         </div>
+      </div>
+
+      {/* Day status */}
+      <div className="mt-8">
+        <DayStatus />
       </div>
 
       {/* Equity Curve */}

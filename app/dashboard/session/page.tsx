@@ -1,5 +1,6 @@
 "use client";
 
+import DayStatus from "@/components/DayStatus";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
@@ -21,6 +22,13 @@ interface Strategy {
   pretrade_checklist: string[] | null;
 }
 
+interface ActiveSession {
+  id: string;
+  created_at: string;
+  emotion_before: string | null;
+  checklist_completed: boolean | null;
+}
+
 const EMOTIONS = [
   { key: "confident", emoji: "\u{1F60E}", risky: false },
   { key: "neutral", emoji: "\u{1F610}", risky: false },
@@ -30,10 +38,6 @@ const EMOTIONS = [
   { key: "revenge", emoji: "\u{1F621}", risky: true },
 ];
 
-function netPnl(t: { pnl: number; commission: number | null; swap: number | null }) {
-  return t.pnl + (t.commission || 0) + (t.swap || 0);
-}
-
 export default function SessionPage() {
   const { t } = useLanguage();
   const supabase = createClient();
@@ -42,13 +46,10 @@ export default function SessionPage() {
   const [checklist, setChecklist] = useState<string[]>([]);
   const [checkedItems, setCheckedItems] = useState<Set<number>>(new Set());
   const [newItemText, setNewItemText] = useState("");
-  const [todayPnl, setTodayPnl] = useState(0);
-  const [todayCount, setTodayCount] = useState(0);
-  const [streak, setStreak] = useState(0);
   const [selectedEmotion, setSelectedEmotion] = useState<string | null>(null);
-  const [accountSize, setAccountSize] = useState<number>(0);
-  const [sessionStarted, setSessionStarted] = useState(false);
+  const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
   const [saving, setSaving] = useState(false);
+  const [ending, setEnding] = useState(false);
 
   useEffect(() => {
     load();
@@ -60,11 +61,25 @@ export default function SessionPage() {
 
     const today = new Date().toISOString().split("T")[0];
 
-    const [{ data: strat }, { data: trades }, { data: reviews }, { data: accounts }] = await Promise.all([
-      supabase.from("strategies").select("*").eq("user_id", user.id).limit(1).single(),
-      supabase.from("trades").select("pnl, commission, swap").eq("user_id", user.id).gte("open_time", today),
-      supabase.from("session_reviews").select("created_at, analysis").eq("user_id", user.id).order("created_at", { ascending: false }).limit(30),
-      supabase.from("prop_challenges").select("account_size").eq("user_id", user.id).eq("status", "active").limit(1).single(),
+    // Auto-close any session older than today that is still flagged active
+    await supabase
+      .from("sessions")
+      .update({ active: false, ended_at: new Date(today + "T00:00:00").toISOString() })
+      .eq("user_id", user.id)
+      .eq("active", true)
+      .lt("created_at", today);
+
+    const [{ data: strat }, { data: session }] = await Promise.all([
+      supabase.from("strategies").select("*").eq("user_id", user.id).limit(1).maybeSingle(),
+      supabase
+        .from("sessions")
+        .select("id, created_at, emotion_before, checklist_completed")
+        .eq("user_id", user.id)
+        .eq("active", true)
+        .gte("created_at", today)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
     ]);
 
     if (strat) {
@@ -77,25 +92,7 @@ export default function SessionPage() {
       setChecklist(DEFAULT_CHECKLIST.map((k) => t(k)));
     }
 
-    if (accounts) setAccountSize(accounts.account_size || 0);
-
-    const todaysTrades = trades || [];
-    setTodayCount(todaysTrades.length);
-    setTodayPnl(todaysTrades.reduce((s, tr) => s + netPnl(tr), 0));
-
-    // Calculate discipline streak
-    const reviewList = reviews || [];
-    let streakCount = 0;
-    const seenDays = new Set<string>();
-    for (const r of reviewList) {
-      const day = r.created_at.split("T")[0];
-      if (seenDays.has(day)) continue;
-      seenDays.add(day);
-      const violations = (r.analysis as { violations?: unknown[] })?.violations;
-      if (!violations || violations.length === 0) streakCount++;
-      else break;
-    }
-    setStreak(streakCount);
+    if (session) setActiveSession(session);
 
     setLoading(false);
   }
@@ -140,23 +137,36 @@ export default function SessionPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setSaving(false); return; }
 
-    await supabase.from("sessions").insert({
-      user_id: user.id,
-      emotion_before: selectedEmotion,
-      checklist_completed: checkedItems.size === checklist.length,
-    });
+    const { data: inserted } = await supabase
+      .from("sessions")
+      .insert({
+        user_id: user.id,
+        emotion_before: selectedEmotion,
+        checklist_completed: checkedItems.size === checklist.length,
+        active: true,
+      })
+      .select("id, created_at, emotion_before, checklist_completed")
+      .single();
 
-    setSessionStarted(true);
+    if (inserted) setActiveSession(inserted);
     setSaving(false);
+  }
+
+  async function endSession() {
+    if (!activeSession) return;
+    setEnding(true);
+    await supabase
+      .from("sessions")
+      .update({ active: false, ended_at: new Date().toISOString() })
+      .eq("id", activeSession.id);
+    setActiveSession(null);
+    setSelectedEmotion(null);
+    setCheckedItems(new Set());
+    setEnding(false);
   }
 
   const riskyEmotion = selectedEmotion && EMOTIONS.find((e) => e.key === selectedEmotion)?.risky;
   const allChecked = checklist.length > 0 && checkedItems.size === checklist.length;
-
-  const maxDailyLoss = strategy?.max_daily_loss ?? null; // in %
-  const maxLossEuro = maxDailyLoss !== null && accountSize > 0 ? (accountSize * maxDailyLoss) / 100 : null;
-  const remainingBudget = maxLossEuro !== null ? Math.max(0, maxLossEuro + todayPnl) : null;
-  const budgetPct = maxLossEuro !== null && remainingBudget !== null ? (remainingBudget / maxLossEuro) * 100 : 100;
 
   if (loading) {
     return (
@@ -167,17 +177,42 @@ export default function SessionPage() {
     );
   }
 
-  if (sessionStarted) {
+  // Active session view
+  if (activeSession) {
+    const activeEmotion = EMOTIONS.find((e) => e.key === activeSession.emotion_before);
     return (
-      <div className="max-w-2xl">
-        <div className="bg-profit/10 border border-profit/30 rounded-xl p-8 text-center">
-          <div className="text-5xl mb-3">{"\u{1F680}"}</div>
-          <h1 className="text-2xl font-bold text-foreground mb-2">{t("session_started_title")}</h1>
-          <p className="text-muted mb-4">{t("session_started_desc")}</p>
-          <Link href="/dashboard" className="inline-block px-5 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors">
-            {t("session_back_dashboard")}
-          </Link>
+      <div className="max-w-3xl">
+        <h1 className="text-2xl font-bold text-foreground">{t("session_title")}</h1>
+        <p className="text-muted mt-1 mb-6">{t("session_subtitle")}</p>
+
+        <div className="bg-profit/5 border border-profit/30 rounded-xl p-6 mb-5">
+          <div className="flex items-start justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <div className="text-4xl">{activeEmotion?.emoji ?? "\u{1F680}"}</div>
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">{t("session_in_progress")}</h2>
+                <p className="text-muted text-sm mt-0.5">
+                  {t("day_session_active_since")} {new Date(activeSession.created_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={endSession}
+              disabled={ending}
+              className="px-5 py-2 bg-loss/10 border border-loss/30 text-loss rounded-lg text-sm font-medium hover:bg-loss/20 transition-colors disabled:opacity-50"
+            >
+              {ending ? "..." : t("session_end_button")}
+            </button>
+          </div>
         </div>
+
+        <div className="mb-5">
+          <DayStatus />
+        </div>
+
+        <Link href="/dashboard" className="inline-block px-5 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors">
+          {t("session_back_dashboard")}
+        </Link>
       </div>
     );
   }
@@ -250,55 +285,9 @@ export default function SessionPage() {
       </section>
 
       {/* B — State of the day */}
-      <section className="bg-card border border-border rounded-xl p-5 mb-5">
-        <h2 className="text-lg font-semibold text-foreground mb-4">{t("session_state_title")}</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div>
-            <p className="text-xs text-muted">{t("session_today_pnl")}</p>
-            <p className={`text-xl font-bold mt-1 ${todayPnl >= 0 ? "text-profit" : "text-loss"}`}>
-              {todayPnl >= 0 ? "+" : ""}{todayPnl.toFixed(2)} &euro;
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-muted">{t("session_today_trades")}</p>
-            <p className="text-xl font-bold mt-1 text-foreground">
-              {todayCount}{strategy?.max_trades_per_day ? ` / ${strategy.max_trades_per_day}` : ""}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-muted">{t("session_streak")}</p>
-            <p className="text-xl font-bold mt-1 text-foreground">
-              {streak > 0 ? "\u{1F525}" : "\u{2744}\u{FE0F}"} {streak}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-muted">{t("session_risk_budget")}</p>
-            {maxLossEuro !== null && remainingBudget !== null ? (
-              <p className={`text-xl font-bold mt-1 ${budgetPct > 50 ? "text-profit" : budgetPct > 20 ? "text-orange-400" : "text-loss"}`}>
-                {remainingBudget.toFixed(0)} &euro;
-              </p>
-            ) : (
-              <p className="text-xl font-bold mt-1 text-muted">&mdash;</p>
-            )}
-          </div>
-        </div>
-
-        {/* Risk budget progress bar */}
-        {maxLossEuro !== null && (
-          <div className="mt-4">
-            <div className="flex justify-between text-xs text-muted mb-1">
-              <span>{t("session_budget_label")}</span>
-              <span>{budgetPct.toFixed(0)}%</span>
-            </div>
-            <div className="h-2 bg-[#1e1e1e] rounded-full overflow-hidden">
-              <div
-                className={`h-full transition-all ${budgetPct > 50 ? "bg-profit" : budgetPct > 20 ? "bg-orange-400" : "bg-loss"}`}
-                style={{ width: `${Math.min(100, Math.max(0, budgetPct))}%` }}
-              />
-            </div>
-          </div>
-        )}
-      </section>
+      <div className="mb-5">
+        <DayStatus />
+      </div>
 
       {/* C — Emotional state */}
       <section className="bg-card border border-border rounded-xl p-5 mb-5">

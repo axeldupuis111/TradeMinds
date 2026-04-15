@@ -7,8 +7,10 @@ import { createClient } from "@/lib/supabase/client";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 interface ChatMessage {
+  id?: string;
   role: "user" | "assistant";
   content: string;
+  created_at?: string;
 }
 
 interface Violation {
@@ -112,6 +114,9 @@ export default function AnalysisPage() {
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [chatDailyCount, setChatDailyCount] = useState(0);
+  const [showOlderChat, setShowOlderChat] = useState(false);
+  const [hasOlderChat, setHasOlderChat] = useState(false);
+  const [clearingChat, setClearingChat] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const chatLimit = plan === "premium" ? null : plan === "plus" ? 5 : 0;
@@ -122,7 +127,7 @@ export default function AnalysisPage() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
 
-  // Load chat daily count
+  // Load chat daily count + persisted chat history
   useEffect(() => {
     async function loadChatCount() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -139,8 +144,60 @@ export default function AnalysisPage() {
         }
       }
     }
+    async function loadChatHistory() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const today = new Date().toISOString().split("T")[0];
+      // Load today's messages (chronological) — up to 50
+      const { data: todayRows } = await supabase
+        .from("chat_messages")
+        .select("id, role, content, created_at")
+        .eq("user_id", user.id)
+        .gte("created_at", today)
+        .order("created_at", { ascending: true })
+        .limit(50);
+      if (todayRows) {
+        setChatMessages(todayRows as ChatMessage[]);
+      }
+      // Check if older messages exist
+      const { count } = await supabase
+        .from("chat_messages")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .lt("created_at", today);
+      setHasOlderChat((count || 0) > 0);
+    }
     loadChatCount();
+    loadChatHistory();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const loadOlderChat = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase
+      .from("chat_messages")
+      .select("id, role, content, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (data) {
+      // data is newest first — reverse to chronological
+      setChatMessages((data as ChatMessage[]).slice().reverse());
+      setShowOlderChat(true);
+    }
+  }, [supabase]);
+
+  const clearChatHistory = useCallback(async () => {
+    if (!confirm(t("coach_clear_confirm"))) return;
+    setClearingChat(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setClearingChat(false); return; }
+    await supabase.from("chat_messages").delete().eq("user_id", user.id);
+    setChatMessages([]);
+    setHasOlderChat(false);
+    setShowOlderChat(false);
+    setClearingChat(false);
+  }, [supabase, t]);
 
   const sendChatMessage = useCallback(async () => {
     const msg = chatInput.trim();
@@ -195,6 +252,12 @@ export default function AnalysisPage() {
       if (!res.ok) throw new Error(data.error || "Erreur serveur");
 
       setChatMessages([...newMessages, { role: "assistant", content: data.reply }]);
+
+      // Persist both messages
+      await supabase.from("chat_messages").insert([
+        { user_id: user.id, role: "user", content: msg },
+        { user_id: user.id, role: "assistant", content: data.reply },
+      ]);
 
       // Increment daily chat count
       const newCount = chatDailyCount + 1;
@@ -595,8 +658,24 @@ export default function AnalysisPage() {
 
       {/* Coach IA Chat */}
       <section className="mt-12">
-        <h2 className="text-lg font-semibold text-foreground">{t("coach_title")}</h2>
-        <p className="text-muted text-sm mt-1 mb-4">{t("coach_subtitle")}</p>
+        <div className="flex items-start justify-between flex-wrap gap-2">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">{t("coach_title")}</h2>
+            <p className="text-muted text-sm mt-1 mb-4">{t("coach_subtitle")}</p>
+          </div>
+          {canChat && chatMessages.length > 0 && (
+            <button
+              onClick={clearChatHistory}
+              disabled={clearingChat}
+              className="text-xs text-muted hover:text-loss transition-colors flex items-center gap-1.5 disabled:opacity-50"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22m-6 0V5a2 2 0 00-2-2H9a2 2 0 00-2 2v2" />
+              </svg>
+              {clearingChat ? "..." : t("coach_clear_history")}
+            </button>
+          )}
+        </div>
 
         {!canChat ? (
           <UpgradeBanner message={t("coach_locked")} />
@@ -604,6 +683,16 @@ export default function AnalysisPage() {
           <div className="bg-card border border-border rounded-xl overflow-hidden">
             {/* Messages */}
             <div className="max-h-[400px] overflow-y-auto p-4 space-y-3">
+              {hasOlderChat && !showOlderChat && (
+                <div className="flex justify-center">
+                  <button
+                    onClick={loadOlderChat}
+                    className="text-xs text-accent hover:underline"
+                  >
+                    {t("coach_show_older")}
+                  </button>
+                </div>
+              )}
               {chatMessages.length === 0 && (
                 <div className="text-center py-8">
                   <p className="text-muted text-sm">{t("coach_empty")}</p>
