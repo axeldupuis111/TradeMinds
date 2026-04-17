@@ -90,6 +90,22 @@ export default function LoginPage() {
               </div>
             )}
 
+            <div className="flex justify-end -mt-1">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!email) { setError(t("login_fill_fields")); return; }
+                  setLoading(true);
+                  await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/dashboard` });
+                  setLoading(false);
+                  setSuccess(t("login_reset_sent") || "Email de réinitialisation envoyé.");
+                }}
+                className="text-xs text-muted hover:text-accent transition-colors"
+              >
+                {t("login_forgot_password") || "Mot de passe oublié ?"}
+              </button>
+            </div>
+
             <button onClick={handleSignIn} disabled={loading} className="w-full py-2.5 bg-accent text-white rounded-xl font-semibold hover:bg-blue-600 disabled:opacity-50 glow-blue">
               {loading ? (
                 <span className="flex items-center justify-center gap-2">

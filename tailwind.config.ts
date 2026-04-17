@@ -9,14 +9,24 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "#0a0a0a",
-        foreground: "#e5e5e5",
-        card: "#141414",
-        border: "#1e1e1e",
-        muted: "#737373",
+        background: "#09090b",
+        foreground: "#fafafa",
+        card: "#111113",
+        border: "#1c1c1e",
+        muted: "#71717a",
         accent: "#3b82f6",
         profit: "#22c55e",
         loss: "#ef4444",
+        warning: "#f59e0b",
+        gold: "#eab308",
+      },
+      fontFamily: {
+        sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
+        mono: ["var(--font-geist-mono)", "ui-monospace", "monospace"],
+      },
+      borderRadius: {
+        xl: "12px",
+        "2xl": "16px",
       },
     },
   },

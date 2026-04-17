@@ -371,6 +371,70 @@ export default function AnalyticsPage() {
         <p className="text-muted py-10 text-center">{t("analytics_no_data")}</p>
       ) : (
         <>
+        {/* KPI Summary row */}
+        {(() => {
+          const totalPnl = filtered.reduce((s, tr) => s + netPnl(tr), 0);
+          const wins = filtered.filter((tr) => netPnl(tr) > 0).length;
+          const winrate = filtered.length > 0 ? (wins / filtered.length) * 100 : 0;
+          const pnls = filtered.map(netPnl);
+          const best = pnls.length > 0 ? Math.max(...pnls) : 0;
+          const worst = pnls.length > 0 ? Math.min(...pnls) : 0;
+          // Insight: worst day, best hour, risky pair, risky emotion
+          const worstDay = [...byDayOfWeek].sort((a, b) => a.pnl - b.pnl)[0];
+          const bestHour = [...byHour].sort((a, b) => b.pnl - a.pnl)[0];
+          const riskyPair = [...byPair].sort((a, b) => a.pnl - b.pnl)[0];
+          const riskyEmotion = [...byEmotion].sort((a, b) => a.pnl - b.pnl)[0];
+          return (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+                {[
+                  { label: t("analytics_kpi_pnl"), value: `${totalPnl >= 0 ? "+" : ""}${totalPnl.toFixed(2)}€`, color: totalPnl >= 0 ? "text-profit" : "text-loss" },
+                  { label: t("analytics_kpi_winrate"), value: `${winrate.toFixed(1)}%`, color: winrate >= 50 ? "text-profit" : "text-loss" },
+                  { label: t("analytics_kpi_trades"), value: String(filtered.length), color: "text-foreground" },
+                  { label: t("analytics_kpi_best"), value: `+${best.toFixed(2)}€`, color: "text-profit" },
+                  { label: t("analytics_kpi_worst"), value: `${worst.toFixed(2)}€`, color: "text-loss" },
+                  { label: t("analytics_kpi_title"), value: wins > filtered.length / 2 ? "📈" : "📉", color: "text-foreground" },
+                ].map((kpi, i) => (
+                  <div key={i} className="bg-card border border-border rounded-xl p-4 card-shadow">
+                    <p className="text-xs text-muted mb-1">{kpi.label}</p>
+                    <p className={`text-xl font-bold tabular-nums ${kpi.color}`}>{kpi.value}</p>
+                  </div>
+                ))}
+              </div>
+              {/* Insight cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+                {worstDay && (
+                  <div className="bg-loss/5 border border-loss/20 rounded-xl p-4">
+                    <p className="text-xs text-loss/70 mb-1">{t("analytics_insight_worst_day")}</p>
+                    <p className="text-sm font-semibold text-foreground">{worstDay.name}</p>
+                    <p className="text-xs text-loss tabular-nums">{worstDay.pnl.toFixed(2)}€</p>
+                  </div>
+                )}
+                {bestHour && (
+                  <div className="bg-profit/5 border border-profit/20 rounded-xl p-4">
+                    <p className="text-xs text-profit/70 mb-1">{t("analytics_insight_best_hour")}</p>
+                    <p className="text-sm font-semibold text-foreground">{bestHour.name}</p>
+                    <p className="text-xs text-profit tabular-nums">+{bestHour.pnl.toFixed(2)}€</p>
+                  </div>
+                )}
+                {riskyPair && (
+                  <div className="bg-warning/5 border border-warning/20 rounded-xl p-4">
+                    <p className="text-xs text-warning/70 mb-1">{t("analytics_insight_risk_pair")}</p>
+                    <p className="text-sm font-semibold text-foreground">{riskyPair.name}</p>
+                    <p className="text-xs text-loss tabular-nums">{riskyPair.pnl.toFixed(2)}€</p>
+                  </div>
+                )}
+                {riskyEmotion && (
+                  <div className="bg-accent/5 border border-accent/20 rounded-xl p-4">
+                    <p className="text-xs text-accent/70 mb-1">{t("analytics_insight_emotion")}</p>
+                    <p className="text-sm font-semibold text-foreground">{riskyEmotion.name}</p>
+                    <p className="text-xs text-loss tabular-nums">{riskyEmotion.pnl.toFixed(2)}€</p>
+                  </div>
+                )}
+              </div>
+            </>
+          );
+        })()}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <ChartSection title={t("analytics_by_day")} data={byDayOfWeek} />
           <ChartSection title={t("analytics_by_hour")} data={byHour} />

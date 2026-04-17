@@ -46,12 +46,25 @@ interface Props {
   todayTrades: TradeData[];
   activeAccounts: ActiveAccount[];
   recentTrades: RecentTrade[];
-  lastReview: { discipline_score: number; created_at: string } | null;
+  lastReview: { discipline_score: number; created_at: string; analysis?: { recommendations?: string[]; strengths?: string[]; patterns?: { type: string; description: string }[] } } | null;
   allTrades: TradeWithTime[];
 }
 
 function netPnl(t: { pnl: number; commission: number | null; swap: number | null }) {
   return t.pnl + (t.commission || 0) + (t.swap || 0);
+}
+
+function MiniScoreCircle({ score }: { score: number }) {
+  const radius = 14;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (score / 100) * circumference;
+  const color = score >= 75 ? "#22c55e" : score >= 50 ? "#f59e0b" : "#ef4444";
+  return (
+    <svg width="36" height="36" viewBox="0 0 36 36" className="shrink-0">
+      <circle cx="18" cy="18" r={radius} fill="none" stroke="#1c1c1e" strokeWidth="3" />
+      <circle cx="18" cy="18" r={radius} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={offset} transform="rotate(-90 18 18)" className="transition-all duration-700" />
+    </svg>
+  );
 }
 
 export default function DashboardContent({
@@ -68,7 +81,6 @@ export default function DashboardContent({
   const { t } = useLanguage();
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
 
-  // Filter trades by selected account
   const filterByAccount = useCallback(<T extends { challenge_id: string | null }>(trades: T[]): T[] => {
     if (!selectedAccountId) return trades;
     return trades.filter((tr) => tr.challenge_id === selectedAccountId);
@@ -79,29 +91,21 @@ export default function DashboardContent({
   const filteredAll = useMemo(() => filterByAccount(allTrades), [filterByAccount, allTrades]);
   const filteredRecent = useMemo(() => filterByAccount(recentTrades), [filterByAccount, recentTrades]);
 
-  // Computed stats
   const weekCount = filteredWeek.length;
   const weekWins = filteredWeek.filter((tr) => netPnl(tr) > 0).length;
   const weekWinrate = weekCount > 0 ? ((weekWins / weekCount) * 100).toFixed(0) : "0";
   const todayPnl = filteredToday.reduce((sum, tr) => sum + netPnl(tr), 0);
 
-  // Selected account info
-  const selectedAccount = selectedAccountId
-    ? activeAccounts.find((a) => a.id === selectedAccountId) ?? null
-    : null;
-
-  // Challenge progress for selected account (or first active)
+  const selectedAccount = selectedAccountId ? activeAccounts.find((a) => a.id === selectedAccountId) ?? null : null;
   const displayAccount = selectedAccount || (activeAccounts.length === 1 ? activeAccounts[0] : null);
   const challengePct = displayAccount
     ? Math.max(0, Math.min(100, ((displayAccount.balance - displayAccount.account_size) / (displayAccount.account_size * displayAccount.profit_target_pct / 100)) * 100))
     : 0;
 
-  // Drawdown
   const ddMax = displayAccount ? displayAccount.account_size * displayAccount.max_total_dd_pct / 100 : 0;
   const ddUsed = displayAccount ? Math.max(0, displayAccount.account_size - displayAccount.balance) : 0;
   const ddPct = ddMax > 0 ? (ddUsed / ddMax) * 100 : 0;
 
-  // Equity curve
   const equityCurveData = useMemo(() => {
     if (filteredAll.length === 0) return [];
     const initial = displayAccount?.account_size ?? 0;
@@ -114,173 +118,216 @@ export default function DashboardContent({
 
   const initialBalance = displayAccount?.account_size ?? 0;
 
+  // AI Insights from last review
+  const insights = useMemo(() => {
+    if (!lastReview?.analysis) return [];
+    const items: string[] = [];
+    const a = lastReview.analysis;
+    if (a.patterns && a.patterns.length > 0) {
+      items.push(a.patterns[0].description);
+    }
+    if (a.recommendations && a.recommendations.length > 0) {
+      items.push(a.recommendations[0]);
+    }
+    if (a.strengths && a.strengths.length > 0) {
+      items.push(a.strengths[0]);
+    }
+    return items.slice(0, 4);
+  }, [lastReview]);
+
+  // Date string
+  const now = new Date();
+  const dateStr = now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            {t("dash_welcome")} {displayName}
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">
+            {t("dash_greeting")} {displayName}
           </h1>
-          <p className="text-muted mt-1">{t("dash_overview")}</p>
+          <p className="text-muted text-sm mt-0.5 capitalize">{dateStr}</p>
         </div>
 
-        {/* Account selector */}
-        {activeAccounts.length > 0 && (
-          <select
-            value={selectedAccountId || ""}
-            onChange={(e) => setSelectedAccountId(e.target.value || null)}
-            className="px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent w-full sm:w-auto"
-          >
-            <option value="">{t("dash_all_accounts")}</option>
-            {activeAccounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.firm} — {a.account_number || a.account_size.toLocaleString() + "€"}
-              </option>
-            ))}
-          </select>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {activeAccounts.length > 0 && (
+            <select
+              value={selectedAccountId || ""}
+              onChange={(e) => setSelectedAccountId(e.target.value || null)}
+              className="px-3 py-1.5 bg-[#18181b] border border-[#27272a] rounded-lg text-foreground text-xs font-medium focus:outline-none focus:ring-1 focus:ring-accent"
+            >
+              <option value="">{t("dash_all_accounts")}</option>
+              {activeAccounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.firm} — {a.account_number || a.account_size.toLocaleString() + "€"}
+                </option>
+              ))}
+            </select>
+          )}
+          <Link href="/dashboard/trades" className="px-3 py-1.5 bg-[#18181b] border border-[#27272a] rounded-lg text-xs font-medium text-muted hover:text-foreground hover:border-[#3f3f46] btn-scale flex items-center gap-1.5">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
+            {t("dash_action_import")}
+          </Link>
+          <Link href="/dashboard/analysis" className="px-3 py-1.5 bg-[#18181b] border border-[#27272a] rounded-lg text-xs font-medium text-muted hover:text-foreground hover:border-[#3f3f46] btn-scale flex items-center gap-1.5">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12" /></svg>
+            {t("dash_action_analyze")}
+          </Link>
+          <Link href="/dashboard/session" className="px-3 py-1.5 bg-accent/10 border border-accent/20 rounded-lg text-xs font-medium text-accent hover:bg-accent/15 btn-scale flex items-center gap-1.5">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" /></svg>
+            {t("dash_action_session")}
+          </Link>
+        </div>
       </div>
 
-      {/* Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-        {/* Card 1 — Score */}
-        <div className="bg-card border border-border rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-1">
-            <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p className="text-sm text-muted">{t("dash_discipline")}</p>
+      {/* Stat Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
+        {/* Discipline Score */}
+        <div className="bg-card border border-border rounded-xl p-5 card-shadow">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-muted font-medium uppercase tracking-wider">{t("dash_discipline")}</p>
+              {score !== null ? (
+                <p className={`text-2xl font-bold mt-1 tabular-nums ${scoreColor}`}>{score}/100</p>
+              ) : (
+                <p className="text-2xl font-bold mt-1 text-muted">—</p>
+              )}
+            </div>
+            {score !== null && <MiniScoreCircle score={score} />}
           </div>
           {score !== null ? (
-            <p className={`text-2xl font-bold mt-1 ${scoreColor}`}>{score}/100</p>
+            <p className="text-[11px] text-muted mt-2">{score >= 75 ? t("dash_score_good") : score >= 50 ? t("dash_score_ok") : t("dash_score_bad")}</p>
           ) : (
-            <div className="mt-1">
-              <p className="text-2xl font-bold text-muted">—</p>
-              <Link href="/dashboard/analysis" className="text-xs text-accent hover:underline">
-                {t("dash_run_analysis")}
-              </Link>
-            </div>
+            <Link href="/dashboard/analysis" className="text-[11px] text-accent hover:underline mt-2 inline-block">
+              {t("dash_run_analysis")}
+            </Link>
           )}
         </div>
 
-        {/* Card 2 — Week trades */}
-        <div className="bg-card border border-border rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-1">
-            <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-            </svg>
-            <p className="text-sm text-muted">{t("dash_week_trades")}</p>
-          </div>
-          <p className="text-2xl font-bold mt-1 text-foreground">
+        {/* Week Trades */}
+        <div className="bg-card border border-border rounded-xl p-5 card-shadow">
+          <p className="text-xs text-muted font-medium uppercase tracking-wider">{t("dash_week_trades")}</p>
+          <p className="text-2xl font-bold mt-1 text-foreground tabular-nums">
             {weekCount}
-            <span className="text-sm font-normal text-muted ml-2">
-              ({weekWinrate}% WR)
-            </span>
+            <span className="text-sm font-medium text-muted ml-2">({weekWinrate}% WR)</span>
+          </p>
+          <p className="text-[11px] text-muted mt-2">
+            {weekWins} {t("dash_wins")} · {weekCount - weekWins} {t("dash_losses")}
           </p>
         </div>
 
-        {/* Card 3 — Today PnL */}
-        <div className="bg-card border border-border rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-1">
-            <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p className="text-sm text-muted">{t("dash_today_pnl")}</p>
-          </div>
-          <p className={`text-2xl font-bold mt-1 ${todayPnl >= 0 ? "text-profit" : "text-loss"}`}>
+        {/* Today P&L */}
+        <div className={`border rounded-xl p-5 card-shadow ${todayPnl >= 0 ? "bg-[#0a1a0a] border-profit/10" : "bg-[#1a0a0a] border-loss/10"}`}>
+          <p className="text-xs text-muted font-medium uppercase tracking-wider">{t("dash_today_pnl")}</p>
+          <p className={`text-2xl font-bold mt-1 tabular-nums ${todayPnl >= 0 ? "text-profit" : "text-loss"}`}>
             {todayPnl >= 0 ? "+" : ""}{todayPnl.toFixed(2)} €
           </p>
+          <p className="text-[11px] text-muted mt-2">{filteredToday.length} trade{filteredToday.length !== 1 ? "s" : ""} {t("dash_today_label")}</p>
         </div>
 
-        {/* Card 4 — Active account */}
-        <div className="bg-card border border-border rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-1">
-            <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3l3.057-3 3.943 3H5zm4 6V7H7v2H4l1 12h8l1-12h-5zm2-4H7l1-2h2l1 2z" />
-            </svg>
-            <p className="text-sm text-muted">{t("dash_active_challenge")}</p>
-          </div>
+        {/* Active Account */}
+        <div className="bg-card border border-border rounded-xl p-5 card-shadow">
+          <p className="text-xs text-muted font-medium uppercase tracking-wider">{t("dash_active_challenge")}</p>
           {displayAccount ? (
             <div className="mt-1">
               <p className="text-lg font-bold text-foreground">
                 {displayAccount.firm}
-                {displayAccount.account_number && (
-                  <span className="text-muted text-sm ml-1">#{displayAccount.account_number}</span>
-                )}
-                <span className="text-accent ml-2 text-base">{challengePct.toFixed(0)}%</span>
+                <span className="text-accent ml-2 text-sm tabular-nums">{challengePct.toFixed(0)}%</span>
               </p>
-              <div className="h-1.5 bg-[#1e1e1e] rounded-full mt-2 overflow-hidden">
+              <div className="h-1.5 bg-[#1c1c1e] rounded-full mt-2 overflow-hidden">
                 <div className="h-full bg-profit rounded-full transition-all" style={{ width: `${Math.min(100, challengePct)}%` }} />
               </div>
+              {displayAccount.account_number && <p className="text-[11px] text-muted mt-1.5">#{displayAccount.account_number}</p>}
             </div>
           ) : activeAccounts.length > 1 ? (
             <div className="mt-1">
-              <p className="text-lg font-bold text-foreground">{activeAccounts.length}</p>
-              <p className="text-xs text-muted">{t("dash_select_account")}</p>
+              <p className="text-2xl font-bold text-foreground tabular-nums">{activeAccounts.length}</p>
+              <p className="text-[11px] text-muted mt-1">{t("dash_select_account")}</p>
             </div>
           ) : (
             <div className="mt-1">
-              <p className="text-2xl font-bold text-muted">{t("dash_no_challenge")}</p>
-              <Link href="/dashboard/challenge" className="text-xs text-accent hover:underline">
-                {t("dash_create_challenge")}
-              </Link>
+              <p className="text-lg font-bold text-muted">{t("dash_no_challenge")}</p>
+              <Link href="/dashboard/challenge" className="text-[11px] text-accent hover:underline mt-1 inline-block">{t("dash_create_challenge")}</Link>
             </div>
           )}
         </div>
       </div>
 
       {/* Day status */}
-      <div className="mt-8">
+      <div className="mt-6">
         <DayStatus />
+      </div>
+
+      {/* AI Insights */}
+      <div className="mt-6">
+        <section className="bg-card border border-border rounded-xl p-5 card-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <svg className="w-4 h-4 text-accent" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12" />
+              </svg>
+              <h2 className="text-sm font-semibold text-foreground">{t("dash_insights_title")}</h2>
+            </div>
+            <Link href="/dashboard/analysis" className="text-xs text-accent hover:underline">{t("dash_insights_see_all")}</Link>
+          </div>
+          {insights.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {insights.map((ins, i) => (
+                <div key={i} className="flex items-start gap-2.5 p-3 rounded-lg bg-[#0f0f11] border border-[#1c1c1e]">
+                  <span className="text-accent text-sm shrink-0 mt-0.5">
+                    {["💡", "📊", "✅", "⚡"][i % 4]}
+                  </span>
+                  <p className="text-xs text-muted leading-relaxed">{ins}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted">{t("dash_insights_empty")}</p>
+          )}
+        </section>
       </div>
 
       {/* Equity Curve */}
       {equityCurveData.length > 0 && (
-        <div className="mt-8">
+        <div className="mt-6">
           <EquityCurve data={equityCurveData} initialBalance={initialBalance} />
         </div>
       )}
 
       {/* Trading Calendar */}
-      <div className="mt-8">
+      <div className="mt-6">
         <TradingCalendar trades={allTrades} selectedAccountId={selectedAccountId} />
       </div>
 
       {/* Goals & Streaks */}
-      <div className="mt-8">
+      <div className="mt-6">
         <GoalsStreaks />
       </div>
 
-      {/* Bonus sections */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+      {/* Bottom sections */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6">
         {/* Recent trades */}
-        <section className="bg-card border border-border rounded-xl p-5">
+        <section className="bg-card border border-border rounded-xl p-5 card-shadow">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-foreground">{t("dash_recent_trades")}</h2>
-            <Link href="/dashboard/trades" className="text-xs text-accent hover:underline">
-              {t("dash_see_all")}
-            </Link>
+            <Link href="/dashboard/trades" className="text-xs text-accent hover:underline">{t("dash_see_all")}</Link>
           </div>
           {filteredRecent.length === 0 ? (
             <p className="text-muted text-sm">{t("dash_no_trades")}</p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-0.5">
               {filteredRecent.map((tr) => {
                 const net = netPnl(tr);
                 return (
-                  <div key={tr.id} className="flex items-center justify-between py-1.5 border-b border-[#1e1e1e] last:border-0">
+                  <div key={tr.id} className="flex items-center justify-between py-2 border-b border-[#1c1c1e] last:border-0">
                     <div className="flex items-center gap-3">
-                      <span className="text-muted text-xs w-16">
-                        {tr.open_time
-                          ? new Date(tr.open_time).toLocaleDateString(undefined, { day: "2-digit", month: "2-digit" })
-                          : "—"}
+                      <span className="text-muted text-xs tabular-nums w-12">
+                        {tr.open_time ? new Date(tr.open_time).toLocaleDateString(undefined, { day: "2-digit", month: "2-digit" }) : "—"}
                       </span>
                       <span className="text-foreground text-sm font-medium">{tr.pair}</span>
-                      <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${tr.direction === "long" ? "bg-profit/10 text-profit" : "bg-loss/10 text-loss"}`}>
-                        {tr.direction?.toUpperCase()}
-                      </span>
+                      <span className={`w-1.5 h-1.5 rounded-full ${tr.direction === "long" ? "bg-profit" : "bg-loss"}`} />
                     </div>
-                    <span className={`text-sm font-medium ${net >= 0 ? "text-profit" : "text-loss"}`}>
+                    <span className={`text-sm font-medium tabular-nums ${net >= 0 ? "text-profit" : "text-loss"}`}>
                       {net >= 0 ? "+" : ""}{net.toFixed(2)}
                     </span>
                   </div>
@@ -290,17 +337,17 @@ export default function DashboardContent({
           )}
         </section>
 
-        {/* Last analysis + Alerts */}
-        <div className="space-y-6">
+        {/* Right column */}
+        <div className="space-y-4">
           {/* Last analysis */}
-          <Link href="/dashboard/analysis" className="block bg-card border border-border rounded-xl p-5 hover:border-accent/30 transition-colors">
+          <Link href="/dashboard/analysis" className="block bg-card border border-border rounded-xl p-5 card-shadow hover:border-[#2a2a2e] transition-colors">
             <h2 className="text-sm font-semibold text-foreground mb-2">{t("dash_last_analysis")}</h2>
             {lastReview ? (
               <div className="flex items-center justify-between">
                 <span className="text-muted text-sm">
                   {new Date(lastReview.created_at).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}
                 </span>
-                <span className={`text-2xl font-bold ${lastReview.discipline_score >= 75 ? "text-profit" : lastReview.discipline_score >= 50 ? "text-orange-400" : "text-loss"}`}>
+                <span className={`text-2xl font-bold tabular-nums ${lastReview.discipline_score >= 75 ? "text-profit" : lastReview.discipline_score >= 50 ? "text-warning" : "text-loss"}`}>
                   {lastReview.discipline_score}/100
                 </span>
               </div>
@@ -311,19 +358,18 @@ export default function DashboardContent({
 
           {/* Drawdown alert */}
           {displayAccount && ddPct > 75 && (
-            <div className={`border rounded-xl p-5 ${ddPct > 90 ? "bg-loss/10 border-loss/30" : "bg-orange-500/10 border-orange-500/30"}`}>
+            <div className={`border rounded-xl p-5 card-shadow ${ddPct > 90 ? "bg-loss/5 border-loss/20" : "bg-warning/5 border-warning/20"}`}>
               <div className="flex items-center gap-2 mb-1">
-                <svg className={`w-5 h-5 ${ddPct > 90 ? "text-loss" : "text-orange-400"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01M10.29 3.86l-8.6 14.86A1 1 0 002.56 20h18.88a1 1 0 00.87-1.28l-8.6-14.86a1 1 0 00-1.72 0z" />
+                <svg className={`w-5 h-5 ${ddPct > 90 ? "text-loss" : "text-warning"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                 </svg>
-                <h2 className={`text-sm font-semibold ${ddPct > 90 ? "text-loss" : "text-orange-400"}`}>
+                <h2 className={`text-sm font-semibold ${ddPct > 90 ? "text-loss" : "text-warning"}`}>
                   {ddPct > 90 ? t("dash_dd_critical") : t("dash_dd_high")}
                 </h2>
               </div>
               <p className="text-foreground text-sm">
                 {displayAccount.firm} — Drawdown{" "}
-                <span className="font-bold">{ddPct.toFixed(1)}%</span> ({ddUsed.toFixed(0)}€ / {ddMax.toFixed(0)}€).
-                {ddPct > 90 ? ` ${t("dash_dd_stop")}` : ` ${t("dash_dd_careful")}`}
+                <span className="font-bold tabular-nums">{ddPct.toFixed(1)}%</span> ({ddUsed.toFixed(0)}€ / {ddMax.toFixed(0)}€)
               </p>
             </div>
           )}

@@ -441,62 +441,68 @@ export default function AnalysisPage() {
   const aiLimitReached = plan === "plus" && aiRemaining === 0;
 
   return (
-    <div className="max-w-3xl">
+    <div>
       <h1 className="text-2xl font-bold text-foreground">{t("analysis_title")}</h1>
       <p className="text-muted mt-1">{t("analysis_subtitle")}</p>
 
-      {/* Launch button */}
-      <div className="mt-6">
-        {!hasStrategy && (
-          <p className="text-loss text-sm mb-3">
-            {t("analysis_no_strategy")}
-          </p>
-        )}
-        {tradeCount === 0 && (
-          <p className="text-loss text-sm mb-3">
-            {t("analysis_no_trades")}
-          </p>
-        )}
-        {aiLimitReached && (
-          <p className="text-orange-400 text-sm mb-3">
-            {t("plan_ai_limit_reached")}
-          </p>
-        )}
-        <button
-          onClick={runAnalysis}
-          disabled={loading || !hasStrategy || tradeCount === 0 || aiLimitReached}
-          className="px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50"
-        >
-          {loading ? t("analysis_running") : t("analysis_run")}
-        </button>
-        {tradeCount > 0 && (
-          <span className="text-muted text-sm ml-3">
-            {tradeCount} {t("analysis_trades_count")}
-          </span>
-        )}
-        {plan === "plus" && aiRemaining !== null && !aiLimitReached && (
-          <span className="text-muted text-sm ml-3">
-            ({aiRemaining} {t("plan_ai_remaining")})
-          </span>
-        )}
-      </div>
+      <div className="mt-6 flex flex-col lg:flex-row gap-6 items-start">
+        {/* ── LEFT COLUMN (60%) ── */}
+        <div className="flex-1 min-w-0 space-y-6">
 
-      {/* Loading */}
-      {loading && (
-        <div className="mt-8 flex items-center gap-3">
-          <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-          <p className="text-muted">{t("analysis_loading")}</p>
+        {/* Launch button */}
+        <div>
+          {!hasStrategy && (
+            <p className="text-loss text-sm mb-3">
+              {t("analysis_no_strategy")}
+            </p>
+          )}
+          {tradeCount === 0 && (
+            <p className="text-loss text-sm mb-3">
+              {t("analysis_no_trades")}
+            </p>
+          )}
+          {aiLimitReached && (
+            <p className="text-orange-400 text-sm mb-3">
+              {t("plan_ai_limit_reached")}
+            </p>
+          )}
+          <div className="flex items-center gap-3 flex-wrap">
+            <button
+              onClick={runAnalysis}
+              disabled={loading || !hasStrategy || tradeCount === 0 || aiLimitReached}
+              className="px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50 btn-scale"
+            >
+              {loading ? t("analysis_running") : t("analysis_run")}
+            </button>
+            {tradeCount > 0 && (
+              <span className="text-muted text-sm">
+                {tradeCount} {t("analysis_trades_count")}
+              </span>
+            )}
+            {plan === "plus" && aiRemaining !== null && !aiLimitReached && (
+              <span className="text-muted text-sm">
+                ({aiRemaining} {t("plan_ai_remaining")})
+              </span>
+            )}
+          </div>
         </div>
-      )}
 
-      {/* Error */}
-      {error && (
-        <p className="mt-4 text-loss text-sm">{error}</p>
-      )}
+        {/* Loading */}
+        {loading && (
+          <div className="flex items-center gap-3">
+            <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+            <p className="text-muted">{t("analysis_loading")}</p>
+          </div>
+        )}
 
-      {/* Results */}
-      {displayedAnalysis && !loading && (
-        <div className="mt-8 space-y-8">
+        {/* Error */}
+        {error && (
+          <p className="text-loss text-sm">{error}</p>
+        )}
+
+        {/* Results */}
+        {displayedAnalysis && !loading && (
+          <div className="space-y-8">
           {viewingHistory && (
             <div className="bg-accent/10 border border-accent/20 rounded-lg px-4 py-2 text-sm text-accent">
               {t("analysis_viewing_history")}
@@ -512,8 +518,8 @@ export default function AnalysisPage() {
             </div>
           )}
 
-          {/* Score */}
-          <div className="bg-card border border-border rounded-xl p-6 flex flex-col sm:flex-row items-center gap-6">
+          {/* Score (compact, shown in left on mobile) */}
+          <div className="lg:hidden bg-card border border-border rounded-xl p-6 flex flex-col sm:flex-row items-center gap-6">
             <ScoreCircle score={displayedAnalysis.discipline_score} label={t("dash_discipline")} />
             <div>
               <p className="text-foreground text-lg font-semibold">
@@ -653,36 +659,36 @@ export default function AnalysisPage() {
               )}
             </div>
           )}
-        </div>
-      )}
-
-      {/* Coach IA Chat */}
-      <section className="mt-12">
-        <div className="flex items-start justify-between flex-wrap gap-2">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">{t("coach_title")}</h2>
-            <p className="text-muted text-sm mt-1 mb-4">{t("coach_subtitle")}</p>
           </div>
-          {canChat && chatMessages.length > 0 && (
-            <button
-              onClick={clearChatHistory}
-              disabled={clearingChat}
-              className="text-xs text-muted hover:text-loss transition-colors flex items-center gap-1.5 disabled:opacity-50"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22m-6 0V5a2 2 0 00-2-2H9a2 2 0 00-2 2v2" />
-              </svg>
-              {clearingChat ? "..." : t("coach_clear_history")}
-            </button>
-          )}
-        </div>
+        )}
 
-        {!canChat ? (
-          <UpgradeBanner message={t("coach_locked")} />
-        ) : (
-          <div className="bg-card border border-border rounded-xl overflow-hidden">
-            {/* Messages */}
-            <div className="max-h-[400px] overflow-y-auto p-4 space-y-3">
+        {/* Coach IA Chat */}
+        <section>
+          <div className="flex items-start justify-between flex-wrap gap-2">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">{t("coach_title")}</h2>
+              <p className="text-muted text-sm mt-1 mb-4">{t("coach_subtitle")}</p>
+            </div>
+            {canChat && chatMessages.length > 0 && (
+              <button
+                onClick={clearChatHistory}
+                disabled={clearingChat}
+                className="text-xs text-muted hover:text-loss transition-colors flex items-center gap-1.5 disabled:opacity-50"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22m-6 0V5a2 2 0 00-2-2H9a2 2 0 00-2 2v2" />
+                </svg>
+                {clearingChat ? "..." : t("coach_clear_history")}
+              </button>
+            )}
+          </div>
+
+          {!canChat ? (
+            <UpgradeBanner message={t("coach_locked")} />
+          ) : (
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+              {/* Messages */}
+              <div className="min-h-[500px] max-h-[600px] overflow-y-auto p-4 space-y-4">
               {hasOlderChat && !showOlderChat && (
                 <div className="flex justify-center">
                   <button
@@ -710,14 +716,35 @@ export default function AnalysisPage() {
                 </div>
               )}
               {chatMessages.map((msg, i) => (
-                <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                  <div className={`max-w-[80%] rounded-xl px-4 py-2.5 text-sm ${
-                    msg.role === "user"
-                      ? "bg-accent text-white rounded-br-sm"
-                      : "bg-[#1a1a1a] border border-[#2a2a2a] text-foreground rounded-bl-sm"
-                  }`}>
-                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                <div key={i} className={`flex gap-2.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                  {msg.role === "assistant" && (
+                    <div className="w-7 h-7 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center shrink-0 mt-0.5">
+                      <svg className="w-3.5 h-3.5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                      </svg>
+                    </div>
+                  )}
+                  <div className="flex flex-col gap-1 max-w-[80%]">
+                    <div className={`rounded-xl px-4 py-2.5 text-sm ${
+                      msg.role === "user"
+                        ? "bg-accent text-white rounded-br-sm"
+                        : "bg-[#1a1a1a] border border-[#2a2a2a] text-foreground rounded-bl-sm"
+                    }`}>
+                      <p className="whitespace-pre-wrap">{msg.content}</p>
+                    </div>
+                    {msg.created_at && (
+                      <p className={`text-[10px] text-muted/60 ${msg.role === "user" ? "text-right" : "text-left"}`}>
+                        {new Date(msg.created_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    )}
                   </div>
+                  {msg.role === "user" && (
+                    <div className="w-7 h-7 rounded-full bg-foreground/10 border border-white/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <svg className="w-3.5 h-3.5 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                      </svg>
+                    </div>
+                  )}
                 </div>
               ))}
               {chatLoading && (
@@ -767,16 +794,81 @@ export default function AnalysisPage() {
               </div>
             )}
           </div>
-        )}
-      </section>
+          )}
+        </section>
+        </div>{/* end left column */}
 
-      {/* History */}
-      <section className="mt-12 mb-8">
-        <h2 className="text-lg font-semibold text-foreground">
-          {t("analysis_history")}
-        </h2>
+        {/* ── RIGHT COLUMN (40%) ── hidden on mobile */}
+        <div className="hidden lg:flex lg:w-[360px] shrink-0 flex-col gap-4 sticky top-6">
+          {/* Score card */}
+          {displayedAnalysis ? (
+            <div className="bg-card border border-border rounded-xl p-6 card-shadow flex flex-col items-center text-center">
+              <ScoreCircle score={displayedAnalysis.discipline_score} label={t("dash_discipline")} />
+              <p className="text-foreground text-sm font-semibold mt-4">
+                {displayedAnalysis.conforming_trades} / {displayedAnalysis.total_trades} {t("analysis_conforming")}
+              </p>
+              <p className="text-muted text-sm mt-1">
+                {displayedAnalysis.violations.length} {t("analysis_violations_detected")}
+              </p>
+            </div>
+          ) : (
+            <div className="bg-card border border-border rounded-xl p-6 card-shadow flex flex-col items-center text-center">
+              <div className="w-24 h-24 rounded-full border-4 border-border flex items-center justify-center mb-3">
+                <span className="text-3xl text-muted">—</span>
+              </div>
+              <p className="text-muted text-sm">{t("analysis_run")}</p>
+            </div>
+          )}
+
+          {/* History */}
+          <div className="bg-card border border-border rounded-xl p-4 card-shadow">
+            <h2 className="text-sm font-semibold text-foreground mb-3">{t("analysis_history")}</h2>
+            {historyLoading ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center gap-3 py-2">
+                    <div className="skeleton h-3 w-24 rounded" />
+                    <div className="flex-1" />
+                    <div className="skeleton h-5 w-10 rounded" />
+                  </div>
+                ))}
+              </div>
+            ) : history.length === 0 ? (
+              <p className="text-muted text-xs">{t("analysis_no_history")}</p>
+            ) : (
+              <div className="space-y-1.5">
+                {history.map((r) => (
+                  <button
+                    key={r.id}
+                    onClick={() => viewHistoryItem(r)}
+                    className={`w-full text-left rounded-lg px-3 py-2.5 flex items-center justify-between transition-colors hover:bg-border/50 ${
+                      viewingHistory === r.id ? "bg-accent/10 border border-accent/30" : "border border-transparent"
+                    }`}
+                  >
+                    <div>
+                      <p className="text-foreground text-xs font-medium">
+                        {new Date(r.created_at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
+                      </p>
+                      <p className="text-muted text-[11px]">
+                        {r.conforming_trades}/{r.total_trades} trades
+                      </p>
+                    </div>
+                    <span className={`text-lg font-bold tabular-nums ${r.discipline_score >= 75 ? "text-profit" : r.discipline_score >= 50 ? "text-orange-400" : "text-loss"}`}>
+                      {r.discipline_score}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>{/* end right column */}
+
+      </div>{/* end flex row */}
+
+      {/* Mobile history (visible only on mobile) */}
+      <section className="lg:hidden mt-8 mb-8">
+        <h2 className="text-lg font-semibold text-foreground">{t("analysis_history")}</h2>
         <div className="h-px bg-[#1e1e1e] mt-2 mb-4" />
-
         {historyLoading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
@@ -796,37 +888,17 @@ export default function AnalysisPage() {
               <button
                 key={r.id}
                 onClick={() => viewHistoryItem(r)}
-                className={`w-full text-left bg-card border rounded-lg p-4 flex items-center justify-between transition-colors hover:bg-border/50 ${
-                  viewingHistory === r.id
-                    ? "border-accent"
-                    : "border-border"
-                }`}
+                className={`w-full text-left bg-card border rounded-lg p-4 flex items-center justify-between transition-colors hover:bg-border/50 ${viewingHistory === r.id ? "border-accent" : "border-border"}`}
               >
                 <div>
                   <p className="text-foreground text-sm font-medium">
-                    {new Date(r.created_at).toLocaleDateString("fr-FR", {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+                    {new Date(r.created_at).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}
                   </p>
-                  <p className="text-muted text-sm">
-                    {r.conforming_trades}/{r.total_trades} trades conformes
-                  </p>
+                  <p className="text-muted text-sm">{r.conforming_trades}/{r.total_trades} trades</p>
                 </div>
-                <div
-                  className={`text-2xl font-bold ${
-                    r.discipline_score >= 75
-                      ? "text-profit"
-                      : r.discipline_score >= 50
-                        ? "text-orange-400"
-                        : "text-loss"
-                  }`}
-                >
+                <span className={`text-2xl font-bold ${r.discipline_score >= 75 ? "text-profit" : r.discipline_score >= 50 ? "text-orange-400" : "text-loss"}`}>
                   {r.discipline_score}
-                </div>
+                </span>
               </button>
             ))}
           </div>
