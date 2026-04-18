@@ -684,6 +684,57 @@ const translations: Record<Lang, Record<string, string>> = {
     analytics_conclusion_best_day: "Meilleur jour :",
     analytics_conclusion_worst_day: "Pire jour :",
     analytics_single_data: "Données insuffisantes pour afficher un graphique.",
+
+    // Landing v2 — navbar & hero
+    nav_features: "Fonctionnalités",
+    nav_pricing: "Tarifs",
+    hero_subtitle_v2: "L'IA analyse tes trades, détecte tes erreurs et mesure ta discipline. Import MT4/MT5 en 2 clics.",
+    hero_social_proof: "Rejoint par 500+ traders · 10 000+ trades analysés · 4.8★",
+
+    // Landing v2 — feature labels
+    feature_1_label: "IMPORT",
+    feature_2_label: "INTELLIGENCE IA",
+    feature_3_label: "DISCIPLINE",
+    feature_4_label: "CHALLENGE",
+    feature_import_tag: "147 trades importés",
+    feature_import_drop: "Dépose ton fichier MT4/MT5 ici",
+    feature_import_formats: "Formats supportés : CSV, XLSX, FTMO",
+    feature_ai_coach_label: "Coach IA",
+    feature_ai_msg_1: "J'ai analysé tes 23 derniers trades. Tu as une tendance au revenge trading après 2 pertes consécutives — ça t'a coûté 340€.",
+    feature_ai_msg_2: "Comment je peux corriger ça ?",
+    feature_ai_msg_3: "Impose-toi une pause de 30 min après 2 pertes. Ajoute-la comme règle dans ta stratégie.",
+
+    // Landing v2 — footer columns
+    footer_product: "Produit",
+    footer_resources: "Ressources",
+    footer_legal_col: "Légal",
+    footer_blog: "Blog",
+    footer_support: "Support",
+    footer_privacy: "Confidentialité",
+    footer_terms: "CGU",
+    footer_mentions: "Mentions légales",
+    footer_social: "Rejoins la communauté",
+
+    // Landing v2 — pricing extras
+    plan_stripe_secure: "Paiement sécurisé par Stripe",
+
+    // Dashboard sidebar groups
+    sidebar_group_trading: "TRADING",
+    sidebar_group_analyse: "ANALYSE",
+    sidebar_group_compte: "COMPTE",
+    sidebar_plan_manage: "Gérer mon plan →",
+
+    // Header
+    header_manage_plan: "Gérer mon plan",
+    header_page_dashboard: "Tableau de bord",
+    header_page_session: "Session",
+    header_page_trades: "Trades",
+    header_page_strategy: "Stratégie",
+    header_page_challenge: "Suivi de compte",
+    header_page_analysis: "Analyse IA",
+    header_page_analytics: "Analytics",
+    header_page_settings: "Paramètres",
+    header_page_upgrade: "Upgrade",
   },
 
   // ─── ENGLISH ───
@@ -1335,6 +1386,57 @@ const translations: Record<Lang, Record<string, string>> = {
     analytics_conclusion_best_day: "Best day:",
     analytics_conclusion_worst_day: "Worst day:",
     analytics_single_data: "Not enough data to display a chart.",
+
+    // Landing v2 — navbar & hero
+    nav_features: "Features",
+    nav_pricing: "Pricing",
+    hero_subtitle_v2: "AI analyses your trades, spots your mistakes and measures your discipline. Import MT4/MT5 in 2 clicks.",
+    hero_social_proof: "Joined by 500+ traders · 10,000+ trades analysed · 4.8★",
+
+    // Landing v2 — feature labels
+    feature_1_label: "IMPORT",
+    feature_2_label: "AI INTELLIGENCE",
+    feature_3_label: "DISCIPLINE",
+    feature_4_label: "CHALLENGE",
+    feature_import_tag: "147 trades imported",
+    feature_import_drop: "Drop your MT4/MT5 file here",
+    feature_import_formats: "Supported formats: CSV, XLSX, FTMO",
+    feature_ai_coach_label: "AI Coach",
+    feature_ai_msg_1: "I analysed your last 23 trades. You have a tendency to revenge trade after 2 consecutive losses — it cost you €340.",
+    feature_ai_msg_2: "How can I fix that?",
+    feature_ai_msg_3: "Force yourself to take a 30-min break after 2 losses. Add it as a rule in your strategy.",
+
+    // Landing v2 — footer columns
+    footer_product: "Product",
+    footer_resources: "Resources",
+    footer_legal_col: "Legal",
+    footer_blog: "Blog",
+    footer_support: "Support",
+    footer_privacy: "Privacy",
+    footer_terms: "Terms of Service",
+    footer_mentions: "Legal Notice",
+    footer_social: "Join the community",
+
+    // Landing v2 — pricing extras
+    plan_stripe_secure: "Secure payment via Stripe",
+
+    // Dashboard sidebar groups
+    sidebar_group_trading: "TRADING",
+    sidebar_group_analyse: "ANALYSIS",
+    sidebar_group_compte: "ACCOUNT",
+    sidebar_plan_manage: "Manage plan →",
+
+    // Header
+    header_manage_plan: "Manage plan",
+    header_page_dashboard: "Dashboard",
+    header_page_session: "Session",
+    header_page_trades: "Trades",
+    header_page_strategy: "Strategy",
+    header_page_challenge: "Account Tracking",
+    header_page_analysis: "AI Analysis",
+    header_page_analytics: "Analytics",
+    header_page_settings: "Settings",
+    header_page_upgrade: "Upgrade",
   },
 
   // ─── GERMAN ───
@@ -1987,6 +2089,57 @@ const translations: Record<Lang, Record<string, string>> = {
     analytics_conclusion_best_day: "Bester Tag:",
     analytics_conclusion_worst_day: "Schlechtester Tag:",
     analytics_single_data: "Nicht genügend Daten für ein Diagramm.",
+
+    // Landing v2 — Navbar & Hero
+    nav_features: "Funktionen",
+    nav_pricing: "Preise",
+    hero_subtitle_v2: "Die KI analysiert deine Trades, erkennt Fehler und misst deine Disziplin. MT4/MT5-Import in 2 Klicks.",
+    hero_social_proof: "Von 500+ Tradern genutzt · 10.000+ analysierte Trades · 4,8★",
+
+    // Landing v2 — Feature-Labels
+    feature_1_label: "IMPORT",
+    feature_2_label: "KI-INTELLIGENZ",
+    feature_3_label: "DISZIPLIN",
+    feature_4_label: "CHALLENGE",
+    feature_import_tag: "147 Trades importiert",
+    feature_import_drop: "Ziehe deine MT4/MT5-Datei hierher",
+    feature_import_formats: "Unterstützte Formate: CSV, XLSX, FTMO",
+    feature_ai_coach_label: "KI-Coach",
+    feature_ai_msg_1: "Ich habe deine letzten 23 Trades analysiert. Du neigst dazu, nach 2 aufeinanderfolgenden Verlusten Revenge-Trades zu machen — das hat dich 340€ gekostet.",
+    feature_ai_msg_2: "Wie kann ich das beheben?",
+    feature_ai_msg_3: "Zwing dich nach 2 Verlusten zu einer 30-minütigen Pause. Füge es als Regel in deine Strategie ein.",
+
+    // Landing v2 — Footer-Spalten
+    footer_product: "Produkt",
+    footer_resources: "Ressourcen",
+    footer_legal_col: "Rechtliches",
+    footer_blog: "Blog",
+    footer_support: "Support",
+    footer_privacy: "Datenschutz",
+    footer_terms: "AGB",
+    footer_mentions: "Impressum",
+    footer_social: "Community beitreten",
+
+    // Landing v2 — Preise
+    plan_stripe_secure: "Sichere Zahlung über Stripe",
+
+    // Dashboard Sidebar-Gruppen
+    sidebar_group_trading: "TRADING",
+    sidebar_group_analyse: "ANALYSE",
+    sidebar_group_compte: "KONTO",
+    sidebar_plan_manage: "Plan verwalten →",
+
+    // Header
+    header_manage_plan: "Plan verwalten",
+    header_page_dashboard: "Dashboard",
+    header_page_session: "Session",
+    header_page_trades: "Trades",
+    header_page_strategy: "Strategie",
+    header_page_challenge: "Kontoübersicht",
+    header_page_analysis: "KI-Analyse",
+    header_page_analytics: "Analytics",
+    header_page_settings: "Einstellungen",
+    header_page_upgrade: "Upgrade",
   },
 
   // ─── SPANISH ───
@@ -2639,6 +2792,57 @@ const translations: Record<Lang, Record<string, string>> = {
     analytics_conclusion_best_day: "Mejor día:",
     analytics_conclusion_worst_day: "Peor día:",
     analytics_single_data: "Datos insuficientes para mostrar un gráfico.",
+
+    // Landing v2 — navbar y hero
+    nav_features: "Funciones",
+    nav_pricing: "Precios",
+    hero_subtitle_v2: "La IA analiza tus trades, detecta tus errores y mide tu disciplina. Importa MT4/MT5 en 2 clics.",
+    hero_social_proof: "Más de 500 traders · 10.000+ trades analizados · 4,8★",
+
+    // Landing v2 — etiquetas de funciones
+    feature_1_label: "IMPORTAR",
+    feature_2_label: "INTELIGENCIA IA",
+    feature_3_label: "DISCIPLINA",
+    feature_4_label: "CHALLENGE",
+    feature_import_tag: "147 trades importados",
+    feature_import_drop: "Suelta tu archivo MT4/MT5 aquí",
+    feature_import_formats: "Formatos soportados: CSV, XLSX, FTMO",
+    feature_ai_coach_label: "Coach IA",
+    feature_ai_msg_1: "Analicé tus últimos 23 trades. Tienes tendencia al revenge trading tras 2 pérdidas consecutivas — te ha costado 340€.",
+    feature_ai_msg_2: "¿Cómo puedo corregirlo?",
+    feature_ai_msg_3: "Oblígate a tomar un descanso de 30 min tras 2 pérdidas. Añádelo como regla en tu estrategia.",
+
+    // Landing v2 — columnas del footer
+    footer_product: "Producto",
+    footer_resources: "Recursos",
+    footer_legal_col: "Legal",
+    footer_blog: "Blog",
+    footer_support: "Soporte",
+    footer_privacy: "Privacidad",
+    footer_terms: "Términos",
+    footer_mentions: "Aviso legal",
+    footer_social: "Únete a la comunidad",
+
+    // Landing v2 — precios
+    plan_stripe_secure: "Pago seguro con Stripe",
+
+    // Dashboard grupos de barra lateral
+    sidebar_group_trading: "TRADING",
+    sidebar_group_analyse: "ANÁLISIS",
+    sidebar_group_compte: "CUENTA",
+    sidebar_plan_manage: "Gestionar plan →",
+
+    // Header
+    header_manage_plan: "Gestionar plan",
+    header_page_dashboard: "Panel",
+    header_page_session: "Sesión",
+    header_page_trades: "Trades",
+    header_page_strategy: "Estrategia",
+    header_page_challenge: "Seguimiento",
+    header_page_analysis: "Análisis IA",
+    header_page_analytics: "Analytics",
+    header_page_settings: "Ajustes",
+    header_page_upgrade: "Mejorar plan",
   },
 };
 
