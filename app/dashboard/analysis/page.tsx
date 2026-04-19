@@ -273,7 +273,7 @@ export default function AnalysisPage() {
     } finally {
       setChatLoading(false);
     }
-  }, [chatInput, chatMessages, chatLoading, chatDailyCount, chatRemaining, supabase]);
+  }, [chatInput, chatMessages, chatLoading, chatDailyCount, chatRemaining, supabase, lang]);
 
   useEffect(() => {
     loadPrerequisites();

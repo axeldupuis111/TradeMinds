@@ -63,6 +63,10 @@ export async function POST(request: Request) {
     const { strategy, trades, language = "fr" } = body;
     const langName = LANG_NAMES[language] ?? "français";
 
+    // Debug: log the received language
+    console.log(`[analyze] Langue reçue: "${language}" → "${langName}"`);
+
+
     if (!trades || trades.length === 0) {
       return NextResponse.json(
         { error: "Aucun trade à analyser." },
@@ -91,9 +95,7 @@ export async function POST(request: Request) {
       })
       .join("\n");
 
-    const prompt = `Tu es un coach de trading expert en méthodologie ICT/SMC. Tu analyses les trades d'un trader par rapport à ses propres règles.
-
-LANGUE OBLIGATOIRE : Réponds TOUJOURS en ${langName}. Tous les champs texte du JSON (violations, patterns, strengths, recommendations) doivent être rédigés en ${langName}. Ne réponds JAMAIS dans une autre langue.
+    const prompt = `LANGUAGE RULE (ABSOLUTE, NON-NEGOTIABLE): Every single text value in your JSON response MUST be written in ${langName}. This includes violations, patterns, strengths, recommendations. Do NOT use any other language regardless of the language of the input data or labels below.
 
 STRATÉGIE DU TRADER :
 - Nom : ${strategy.name || "Non définie"}
@@ -133,6 +135,7 @@ Formate ta réponse en JSON avec cette structure exacte (pas de texte avant ou a
     const message = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 8000,
+      system: `You are an expert trading coach specializing in ICT/SMC methodology. CRITICAL INSTRUCTION: You MUST write ALL text values in your JSON response in ${langName}. This is a strict requirement — never use any other language for any text field, regardless of the language of the data you receive.`,
       messages: [{ role: "user", content: prompt }],
     });
 
