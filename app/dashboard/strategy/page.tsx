@@ -28,7 +28,7 @@ interface ParsedRules {
 }
 
 export default function StrategyPage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { canUseStrategy, loading: planLoading } = usePlan();
   const supabase = createClient();
 
@@ -91,7 +91,7 @@ export default function StrategyPage() {
       const res = await fetch("/api/parse-strategy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: rawText }),
+        body: JSON.stringify({ text: rawText, language: lang }),
       });
 
       const data = await res.json();

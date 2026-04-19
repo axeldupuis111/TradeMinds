@@ -20,7 +20,7 @@ interface Props {
 }
 
 export default function CsvImport({ strategyId, onImported }: Props) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { plan } = usePlan();
   const [preview, setPreview] = useState<ParsedTrade[]>([]);
   const [dragOver, setDragOver] = useState(false);
@@ -233,7 +233,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
           const res = await fetch("/api/daily-summary", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ trades: importedTrades, strategyName: strat?.name || null }),
+            body: JSON.stringify({ trades: importedTrades, strategyName: strat?.name || null, language: lang }),
           });
           const data = await res.json();
           if (res.ok && data.summary) {

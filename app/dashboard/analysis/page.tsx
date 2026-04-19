@@ -95,7 +95,7 @@ function ScoreCircle({ score, label }: { score: number; label: string }) {
 }
 
 export default function AnalysisPage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { canUseAI, aiRemaining, plan, incrementAIUsage, loading: planLoading } = usePlan();
   const supabase = createClient();
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
@@ -245,6 +245,7 @@ export default function AnalysisPage() {
           messages: newMessages.slice(-10), // keep last 10 messages for context
           tradesContext,
           strategyContext,
+          language: lang,
         }),
       });
 
@@ -358,7 +359,7 @@ export default function AnalysisPage() {
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ strategy, trades }),
+        body: JSON.stringify({ strategy, trades, language: lang }),
       });
 
       const data = await res.json();

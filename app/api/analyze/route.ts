@@ -2,7 +2,15 @@ import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
 
+const LANG_NAMES: Record<string, string> = {
+  fr: "français",
+  en: "English",
+  de: "Deutsch",
+  es: "español",
+};
+
 interface AnalyzeRequest {
+  language?: string;
   strategy: {
     name: string;
     pairs: string[];
@@ -52,7 +60,8 @@ export async function POST(request: Request) {
     const client = new Anthropic({ apiKey });
 
     const body: AnalyzeRequest = await request.json();
-    const { strategy, trades } = body;
+    const { strategy, trades, language = "fr" } = body;
+    const langName = LANG_NAMES[language] ?? "français";
 
     if (!trades || trades.length === 0) {
       return NextResponse.json(
@@ -84,6 +93,8 @@ export async function POST(request: Request) {
 
     const prompt = `Tu es un coach de trading expert en méthodologie ICT/SMC. Tu analyses les trades d'un trader par rapport à ses propres règles.
 
+LANGUE OBLIGATOIRE : Réponds TOUJOURS en ${langName}. Tous les champs texte du JSON (violations, patterns, strengths, recommendations) doivent être rédigés en ${langName}. Ne réponds JAMAIS dans une autre langue.
+
 STRATÉGIE DU TRADER :
 - Nom : ${strategy.name || "Non définie"}
 - Paires autorisées : ${strategy.pairs.length > 0 ? strategy.pairs.join(", ") : "Toutes"}
@@ -107,7 +118,7 @@ Analyse chaque trade et produis :
 4. POINTS FORTS : ce que le trader fait bien
 5. RECOMMANDATIONS : 3 conseils concrets et spécifiques basés sur les données
 
-Réponds en français. Sois direct et sans complaisance. Utilise les données, pas des généralités.
+Sois direct et sans complaisance. Utilise les données, pas des généralités.
 Formate ta réponse en JSON avec cette structure exacte (pas de texte avant ou après le JSON) :
 {
   "discipline_score": number,

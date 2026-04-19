@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     }
 
     const client = new Anthropic({ apiKey });
-    const { text } = await request.json();
+    const { text, language = "fr" } = await request.json();
 
     if (!text || text.trim().length === 0) {
       return NextResponse.json(
@@ -22,7 +22,12 @@ export async function POST(request: Request) {
       );
     }
 
+    const LANG_NAMES: Record<string, string> = { fr: "français", en: "English", de: "Deutsch", es: "español" };
+    const langName = LANG_NAMES[language] ?? "français";
+
     const prompt = `Tu es un assistant spécialisé en trading. Le trader décrit sa stratégie en langage naturel. Extrais les règles structurées.
+
+LANGUE OBLIGATOIRE : Les valeurs textuelles du JSON (notamment "setup_rules") doivent être rédigées en ${langName}.
 
 TEXTE DU TRADER :
 """

@@ -10,7 +10,15 @@ interface ChatRequest {
   messages: ChatMessage[];
   tradesContext: string;
   strategyContext: string;
+  language?: string;
 }
+
+const LANG_NAMES: Record<string, string> = {
+  fr: "français",
+  en: "English",
+  de: "Deutsch",
+  es: "español",
+};
 
 export async function POST(request: Request) {
   try {
@@ -24,11 +32,13 @@ export async function POST(request: Request) {
 
     const client = new Anthropic({ apiKey });
     const body: ChatRequest = await request.json();
-    const { messages, tradesContext, strategyContext } = body;
+    const { messages, tradesContext, strategyContext, language = "fr" } = body;
 
     if (!messages || messages.length === 0) {
       return NextResponse.json({ error: "Aucun message." }, { status: 400 });
     }
+
+    const langName = LANG_NAMES[language] ?? "français";
 
     const systemPrompt = `Tu es un coach de trading expert, spécialisé en psychologie du trading et méthodologie ICT/SMC. Tu as accès aux données de trading et à la stratégie du trader. Réponds de manière concise, directe et basée sur les données. Utilise des chiffres précis quand possible.
 
@@ -41,7 +51,7 @@ DONNÉES DE TRADING (derniers trades) :
 ${tradesContext}
 
 Règles :
-- Réponds en français par défaut, sauf si le trader écrit dans une autre langue
+- LANGUE OBLIGATOIRE : Tu dois TOUJOURS répondre en ${langName}. Ne réponds JAMAIS dans une autre langue, quelle que soit la langue des données ou des messages précédents.
 - Sois concis (3-5 phrases max par réponse)
 - Utilise les données ci-dessus pour personnaliser tes réponses
 - Ne répète pas les données brutes, analyse-les
