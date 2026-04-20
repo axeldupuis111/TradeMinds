@@ -244,32 +244,44 @@ function Problem() {
 ───────────────────────────────────────────── */
 
 /* Feature screenshots */
+const LANDING_PLATFORMS = ["MT5", "MT4", "cTrader", "Binance", "Bybit", "OKX", "Bitget", "TradingView"];
+
 function ScreenshotImport({ t }: { t: (k: string) => string }) {
   return (
-    <div className="feature-screenshot p-5">
-      <div className="border-2 border-dashed border-[#2a2a2e] rounded-xl p-8 flex flex-col items-center gap-4 text-center">
-        <div className="w-12 h-12 bg-accent/10 rounded-xl flex items-center justify-center text-accent">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="feature-screenshot p-5 space-y-3">
+      <div className="border-2 border-dashed border-[#2a2a2e] rounded-xl p-6 flex flex-col items-center gap-3 text-center">
+        <div className="w-10 h-10 bg-accent/10 rounded-xl flex items-center justify-center text-accent">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
           </svg>
         </div>
         <div>
           <p className="text-sm text-foreground font-medium">{t("feature_import_drop")}</p>
-          <p className="text-xs text-muted mt-1">{t("feature_import_formats")}</p>
         </div>
         <div className="w-full">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-6 h-6 bg-accent/10 rounded flex items-center justify-center text-accent">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-5 h-5 bg-accent/10 rounded flex items-center justify-center text-accent">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
             <span className="text-xs text-foreground">trades_history.csv</span>
             <span className="ml-auto text-[10px] text-profit font-medium">{t("feature_import_tag")}</span>
           </div>
-          <div className="w-full bg-[#1c1c1e] rounded-full h-1.5">
-            <div className="bg-accent h-1.5 rounded-full w-full transition-all" />
+          <div className="w-full bg-[#1c1c1e] rounded-full h-1">
+            <div className="bg-accent h-1 rounded-full w-full" />
           </div>
+        </div>
+      </div>
+      {/* Platform badges */}
+      <div>
+        <p className="text-[10px] text-muted mb-1.5">{t("feature_import_formats")}</p>
+        <div className="flex flex-wrap gap-1">
+          {LANDING_PLATFORMS.map((name) => (
+            <span key={name} className="px-2 py-0.5 rounded text-[10px] font-medium text-muted/80 border border-[#27272a] bg-[#18181b]">
+              {name}
+            </span>
+          ))}
         </div>
       </div>
     </div>

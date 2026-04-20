@@ -3,7 +3,7 @@
 import ExportGuideModal from "@/components/trades/ExportGuideModal";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
-import { parseCSV, parseXlsx, type ParsedTrade } from "@/lib/csv-parser";
+import { applyManualMapping, parseCSV, parseXlsx, type ParsedTrade } from "@/lib/csv-parser";
 import { createClient } from "@/lib/supabase/client";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -18,6 +18,145 @@ interface Props {
   strategyId: string | null;
   onImported: () => void;
 }
+
+// ─── Supported platforms badge list ──────────────────────────────────────────
+
+const PLATFORMS = [
+  "MetaTrader 5", "MetaTrader 4", "cTrader", "TradeLocker",
+  "Bybit", "Binance", "Bitget", "OKX", "KuCoin", "MEXC",
+  "Exness", "Blofin", "TradingView",
+];
+
+// ─── Column mapping field definitions ────────────────────────────────────────
+
+type MappableField = "open_time" | "close_time" | "pair" | "direction" | "lot_size" | "entry_price" | "exit_price" | "pnl" | "sl" | "tp" | "commission" | "swap";
+
+const MAPPING_FIELDS: { key: MappableField; labelKey: string; required: boolean }[] = [
+  { key: "pair",        labelKey: "csv_col_pair",        required: true },
+  { key: "direction",   labelKey: "csv_col_direction",   required: true },
+  { key: "pnl",        labelKey: "csv_col_pnl",         required: true },
+  { key: "open_time",  labelKey: "csv_col_open_time",   required: false },
+  { key: "close_time", labelKey: "csv_col_close_time",  required: false },
+  { key: "lot_size",   labelKey: "csv_col_lot",         required: false },
+  { key: "entry_price",labelKey: "csv_col_entry",       required: false },
+  { key: "exit_price", labelKey: "csv_col_exit",        required: false },
+  { key: "sl",         labelKey: "csv_col_sl",          required: false },
+  { key: "tp",         labelKey: "csv_col_tp",          required: false },
+  { key: "commission", labelKey: "csv_col_commission",  required: false },
+  { key: "swap",       labelKey: "csv_col_swap",        required: false },
+];
+
+// ─── Template download ────────────────────────────────────────────────────────
+
+function downloadTemplate() {
+  const header = "Date,Pair,Direction,Lot,Entry,Exit,SL,TP,PnL,Commission,Notes";
+  const example = "2024-01-15 10:00,EURUSD,long,0.10,1.1000,1.1050,1.0950,1.1100,50,,";
+  const csv = `${header}\n${example}\n`;
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "trademinds_template.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─── Column Mapping Modal ─────────────────────────────────────────────────────
+
+function ColumnMappingModal({
+  rawHeaders,
+  rawRows,
+  onApply,
+  onCancel,
+  t,
+}: {
+  rawHeaders: string[];
+  rawRows: Record<string, string>[];
+  onApply: (trades: ParsedTrade[]) => void;
+  onCancel: () => void;
+  t: (k: string) => string;
+}) {
+  const [mapping, setMapping] = useState<Partial<Record<MappableField, string>>>({});
+
+  const mandatoryMapped = MAPPING_FIELDS.filter((f) => f.required).every((f) => mapping[f.key]);
+
+  function handleApply() {
+    const trades = applyManualMapping(rawHeaders, rawRows, mapping);
+    onApply(trades);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={onCancel}>
+      <div
+        className="bg-card border border-border rounded-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between mb-1">
+          <h2 className="text-base font-semibold text-foreground">{t("csv_mapping_title")}</h2>
+          <button onClick={onCancel} className="text-muted hover:text-foreground ml-4 shrink-0">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <p className="text-muted text-xs mb-4">{t("csv_mapping_subtitle")}</p>
+
+        <div className="space-y-2.5">
+          {MAPPING_FIELDS.map((f) => (
+            <div key={f.key} className="flex items-center gap-3">
+              <label className={`text-xs w-44 shrink-0 ${f.required ? "text-foreground font-medium" : "text-muted"}`}>
+                {t(f.labelKey)}
+              </label>
+              <select
+                value={mapping[f.key] || ""}
+                onChange={(e) => setMapping((m) => ({ ...m, [f.key]: e.target.value || undefined }))}
+                className="flex-1 px-2 py-1.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
+              >
+                <option value="">{t("csv_col_ignore")}</option>
+                {rawHeaders.map((h) => (
+                  <option key={h} value={h}>{h}</option>
+                ))}
+              </select>
+            </div>
+          ))}
+        </div>
+
+        {/* Preview first row */}
+        {rawRows.length > 0 && (
+          <div className="mt-4 p-3 bg-[#0f0f0f] rounded-lg border border-[#1c1c1e]">
+            <p className="text-[10px] text-muted mb-1.5">Aperçu ligne 1 :</p>
+            <div className="text-[10px] text-foreground space-y-0.5 overflow-hidden">
+              {Object.entries(rawRows[0]).slice(0, 6).map(([k, v]) => (
+                <div key={k} className="flex gap-2">
+                  <span className="text-muted shrink-0 w-28 truncate">{k}</span>
+                  <span className="truncate">{v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-3 mt-5">
+          <button
+            onClick={handleApply}
+            disabled={!mandatoryMapped}
+            className="flex-1 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors disabled:opacity-40"
+          >
+            {t("csv_mapping_apply")}
+          </button>
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 bg-[#1a1a1a] border border-[#2a2a2a] text-muted rounded-lg text-sm hover:text-foreground transition-colors"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main CsvImport component ─────────────────────────────────────────────────
 
 export default function CsvImport({ strategyId, onImported }: Props) {
   const { t, lang } = useLanguage();
@@ -48,6 +187,9 @@ export default function CsvImport({ strategyId, onImported }: Props) {
   // Export guide modal
   const [showGuide, setShowGuide] = useState(false);
 
+  // Manual column mapping modal
+  const [mappingData, setMappingData] = useState<{ rawHeaders: string[]; rawRows: Record<string, string>[] } | null>(null);
+
   // Load active accounts + last import date on mount
   useEffect(() => {
     async function load() {
@@ -55,16 +197,8 @@ export default function CsvImport({ strategyId, onImported }: Props) {
       if (!user) { setImportCooldownLoading(false); return; }
 
       const [{ data: accounts }, { data: profile }] = await Promise.all([
-        supabase
-          .from("prop_challenges")
-          .select("id, firm, account_number, account_size")
-          .eq("user_id", user.id)
-          .eq("status", "active"),
-        supabase
-          .from("profiles")
-          .select("last_import_at")
-          .eq("id", user.id)
-          .single(),
+        supabase.from("prop_challenges").select("id, firm, account_number, account_size").eq("user_id", user.id).eq("status", "active"),
+        supabase.from("profiles").select("last_import_at").eq("id", user.id).single(),
       ]);
 
       setActiveAccounts(accounts || []);
@@ -74,7 +208,6 @@ export default function CsvImport({ strategyId, onImported }: Props) {
     load();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Compute cooldown for free plan
   const now = new Date();
   const lastImportDate = lastImportAt ? new Date(lastImportAt) : null;
   const cooldownEnd = lastImportDate ? new Date(lastImportDate.getTime() + 7 * 24 * 60 * 60 * 1000) : null;
@@ -83,6 +216,38 @@ export default function CsvImport({ strategyId, onImported }: Props) {
     ? cooldownEnd.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })
     : null;
 
+  const applyResult = useCallback((result: { trades: ParsedTrade[]; accountNumber: string | null; needsMapping?: boolean; rawHeaders?: string[]; rawRows?: Record<string, string>[] }) => {
+    // Needs manual mapping?
+    if (result.needsMapping && result.rawHeaders && result.rawRows) {
+      setMappingData({ rawHeaders: result.rawHeaders, rawRows: result.rawRows });
+      return;
+    }
+
+    if (result.trades.length === 0) {
+      setMessage({ type: "error", text: t("csv_no_trades") });
+      return;
+    }
+
+    setPreview(result.trades);
+
+    if (result.accountNumber) {
+      setDetectedAccountNumber(result.accountNumber);
+      const csvNum = result.accountNumber.replace(/\D/g, "");
+      const matched = activeAccounts.find((a) => {
+        if (!a.account_number) return false;
+        const storedNum = a.account_number.replace(/\D/g, "");
+        return storedNum === csvNum || csvNum.includes(storedNum) || storedNum.includes(csvNum);
+      });
+      if (matched) {
+        setMatchedChallengeId(matched.id);
+        setSelectedChallengeId(matched.id);
+        setMatchedLabel(`${matched.firm} — ${matched.account_number}`);
+      } else {
+        setAccountNotFound(true);
+      }
+    }
+  }, [t, activeAccounts]);
+
   const handleFile = useCallback(async (file: File) => {
     setMessage(null);
     setDetectedAccountNumber(null);
@@ -90,42 +255,9 @@ export default function CsvImport({ strategyId, onImported }: Props) {
     setMatchedLabel(null);
     setAccountNotFound(false);
     setSelectedChallengeId(null);
-
-    const applyResult = (result: { trades: ParsedTrade[]; accountNumber: string | null }) => {
-      if (result.trades.length === 0) {
-        setMessage({ type: "error", text: t("csv_no_trades") });
-        return;
-      }
-
-      setPreview(result.trades);
-
-      if (result.accountNumber) {
-        setDetectedAccountNumber(result.accountNumber);
-        const csvNum = result.accountNumber.replace(/\D/g, "");
-
-        console.log("[CsvImport] File account number (cleaned):", JSON.stringify(csvNum));
-        console.log("[CsvImport] Active accounts:", activeAccounts.map(a => ({ id: a.id, firm: a.firm, account_number: a.account_number })));
-
-        const matched = activeAccounts.find((a) => {
-          if (!a.account_number) return false;
-          const storedNum = a.account_number.replace(/\D/g, "");
-          return storedNum === csvNum || csvNum.includes(storedNum) || storedNum.includes(csvNum);
-        });
-
-        console.log("[CsvImport] Match result:", matched ? `${matched.firm} — ${matched.account_number}` : "no match");
-
-        if (matched) {
-          setMatchedChallengeId(matched.id);
-          setSelectedChallengeId(matched.id);
-          setMatchedLabel(`${matched.firm} — ${matched.account_number}`);
-        } else {
-          setAccountNotFound(true);
-        }
-      }
-    };
+    setMappingData(null);
 
     const isXlsx = /\.xlsx$/i.test(file.name);
-
     if (isXlsx) {
       try {
         const buf = await file.arrayBuffer();
@@ -144,7 +276,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
       };
       reader.readAsText(file);
     }
-  }, [t, activeAccounts]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [t, applyResult]);
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
@@ -156,6 +288,15 @@ export default function CsvImport({ strategyId, onImported }: Props) {
   function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (file) handleFile(file);
+  }
+
+  function handleMappingApply(trades: ParsedTrade[]) {
+    setMappingData(null);
+    if (trades.length === 0) {
+      setMessage({ type: "error", text: t("csv_no_trades") });
+      return;
+    }
+    setPreview(trades);
   }
 
   async function handleImport() {
@@ -170,7 +311,6 @@ export default function CsvImport({ strategyId, onImported }: Props) {
     }
 
     const challengeId = selectedChallengeId || null;
-
     const rows = preview.map((tr) => ({
       user_id: user.id,
       strategy_id: strategyId,
@@ -195,7 +335,6 @@ export default function CsvImport({ strategyId, onImported }: Props) {
     if (error) {
       setMessage({ type: "error", text: error.message });
     } else {
-      // Capture trades for summary before clearing
       const importedTrades = preview.map((tr) => ({
         open_time: tr.open_time,
         pair: tr.pair,
@@ -205,7 +344,6 @@ export default function CsvImport({ strategyId, onImported }: Props) {
         swap: tr.swap,
       }));
 
-      // Update last_import_at for free plan cooldown
       const nowIso = new Date().toISOString();
       await supabase.from("profiles").upsert({ id: user.id, last_import_at: nowIso });
       setLastImportAt(nowIso);
@@ -219,28 +357,20 @@ export default function CsvImport({ strategyId, onImported }: Props) {
       setSelectedChallengeId(null);
       onImported();
 
-      // Generate daily summary for Plus/Premium
+      // Generate daily summary for Plus
       if (plan === "plus" || plan === "premium") {
         setSummaryLoading(true);
         try {
-          const { data: strat } = await supabase
-            .from("strategies")
-            .select("name")
-            .eq("user_id", user.id)
-            .limit(1)
-            .single();
-
+          const { data: strat } = await supabase.from("strategies").select("name").eq("user_id", user.id).limit(1).single();
           const res = await fetch("/api/daily-summary", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ trades: importedTrades, strategyName: strat?.name || null, language: lang }),
           });
           const data = await res.json();
-          if (res.ok && data.summary) {
-            setDailySummary(data.summary);
-          }
+          if (res.ok && data.summary) setDailySummary(data.summary);
         } catch {
-          // Silent fail — summary is optional
+          // Silent fail
         } finally {
           setSummaryLoading(false);
         }
@@ -250,6 +380,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
 
   return (
     <section>
+      {/* Header */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h2 className="text-lg font-semibold text-foreground">{t("csv_title")}</h2>
         <button
@@ -267,6 +398,17 @@ export default function CsvImport({ strategyId, onImported }: Props) {
 
       {showGuide && <ExportGuideModal onClose={() => setShowGuide(false)} />}
 
+      {/* Manual column mapping modal */}
+      {mappingData && (
+        <ColumnMappingModal
+          rawHeaders={mappingData.rawHeaders}
+          rawRows={mappingData.rawRows}
+          onApply={handleMappingApply}
+          onCancel={() => setMappingData(null)}
+          t={t}
+        />
+      )}
+
       {/* Free plan cooldown banner */}
       {!importCooldownLoading && isCooldownActive && (
         <div className="mb-4 p-4 rounded-xl border border-orange-500/30 bg-orange-500/5 flex items-start gap-3">
@@ -281,25 +423,59 @@ export default function CsvImport({ strategyId, onImported }: Props) {
       )}
 
       {preview.length === 0 ? (
-        <div
-          onDragOver={(e) => { if (!isCooldownActive) { e.preventDefault(); setDragOver(true); } }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={(e) => { if (!isCooldownActive) handleDrop(e); else e.preventDefault(); }}
-          onClick={() => { if (!isCooldownActive) fileRef.current?.click(); }}
-          className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
-            isCooldownActive
-              ? "border-[#2a2a2a] opacity-50 cursor-not-allowed"
-              : dragOver
-                ? "border-accent bg-accent/5 cursor-pointer"
-                : "border-[#2a2a2a] hover:border-accent/50 cursor-pointer"
-          }`}
-        >
-          <svg className="w-10 h-10 mx-auto text-muted mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-          </svg>
-          <p className="text-foreground font-medium">{t("csv_drop_title")}</p>
-          <p className="text-muted text-sm mt-1">{t("csv_drop_sub")}</p>
-          <input ref={fileRef} type="file" accept=".csv,.txt,.xlsx" onChange={handleFileInput} disabled={isCooldownActive} className="hidden" />
+        <div className="space-y-4">
+          {/* Drop zone */}
+          <div
+            onDragOver={(e) => { if (!isCooldownActive) { e.preventDefault(); setDragOver(true); } }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => { if (!isCooldownActive) handleDrop(e); else e.preventDefault(); }}
+            onClick={() => { if (!isCooldownActive) fileRef.current?.click(); }}
+            className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
+              isCooldownActive
+                ? "border-[#2a2a2a] opacity-50 cursor-not-allowed"
+                : dragOver
+                  ? "border-accent bg-accent/5 cursor-pointer"
+                  : "border-[#2a2a2a] hover:border-accent/50 cursor-pointer"
+            }`}
+          >
+            <svg className="w-10 h-10 mx-auto text-muted mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            <p className="text-foreground font-medium">{t("csv_drop_title")}</p>
+            <p className="text-muted text-sm mt-1">{t("csv_drop_sub")}</p>
+            <input ref={fileRef} type="file" accept=".csv,.txt,.xlsx" onChange={handleFileInput} disabled={isCooldownActive} className="hidden" />
+          </div>
+
+          {/* Supported platforms */}
+          <div>
+            <p className="text-xs text-muted mb-2">{t("csv_compatible_with")}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {PLATFORMS.map((name) => (
+                <span
+                  key={name}
+                  className="px-3 py-1 rounded-lg text-xs font-medium text-muted border border-[#27272a] bg-[#18181b] whitespace-nowrap"
+                >
+                  {name}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Template download */}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={downloadTemplate}
+              className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              {t("csv_download_template")}
+            </button>
+            <span className="text-[#333] select-none">·</span>
+            <span className="text-xs text-muted">{t("csv_template_hint")}</span>
+          </div>
         </div>
       ) : (
         <div>
@@ -322,7 +498,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
             </div>
           )}
 
-          {/* Account selector (always shown when accounts exist) */}
+          {/* Account selector */}
           {activeAccounts.length > 0 && (
             <div className="mb-4">
               <label className="block text-sm text-muted mb-1">{t("csv_select_account")}</label>
