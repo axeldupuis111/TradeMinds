@@ -7,9 +7,8 @@ import { createClient } from "@/lib/supabase/client";
 import { usePathname, useRouter } from "next/navigation";
 
 const planBadgeStyles: Record<string, string> = {
-  free:    "bg-[#2a2a2a] text-muted",
-  plus:    "bg-accent/20 text-accent",
-  premium: "bg-yellow-500/20 text-yellow-400",
+  free: "bg-[#2a2a2a] text-muted",
+  plus: "bg-accent/20 text-accent",
 };
 
 const PAGE_KEYS: Record<string, string> = {

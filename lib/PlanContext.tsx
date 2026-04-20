@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 
+// "premium" is kept for DB backward-compat but treated as "plus" everywhere in UI
 export type PlanType = "free" | "plus" | "premium";
 
 interface PlanContextValue {
@@ -67,6 +68,10 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       if (data.plan_expires_at && new Date(data.plan_expires_at) < new Date()) {
         effectivePlan = "free";
       }
+      // Premium is discontinued — treat as plus
+      if (effectivePlan === "premium") {
+        effectivePlan = "plus";
+      }
       setPlan(effectivePlan);
 
       const today = new Date().toISOString().split("T")[0];
@@ -115,17 +120,18 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
   }, [supabase, dailyAiCount, dailyAiReset]);
 
   // Derived permissions
+  // (premium is already mapped to plus above, kept here as safety net)
   const canUseStrategy = plan === "plus" || plan === "premium";
   const canUseAI = plan === "plus" || plan === "premium";
 
   const today = new Date().toISOString().split("T")[0];
   const effectiveCount = dailyAiReset === today ? dailyAiCount : 0;
+
+  // Plus: 1 AI analysis per day. Free: none.
   const aiRemaining =
-    plan === "premium"
-      ? null // unlimited
-      : plan === "plus"
-        ? Math.max(0, 1 - effectiveCount)
-        : 0;
+    plan === "plus" || plan === "premium"
+      ? Math.max(0, 1 - effectiveCount)
+      : 0;
 
   const canImportCSV = plan === "plus" || plan === "premium";
   const maxAccounts = plan === "free" ? 1 : null;

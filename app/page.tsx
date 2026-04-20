@@ -570,6 +570,75 @@ function HowItWorks() {
 }
 
 /* ─────────────────────────────────────────────
+   PREMIUM COMING SOON CARD
+───────────────────────────────────────────── */
+function PremiumComingSoon({ t }: { t: (k: string) => string }) {
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "duplicate" | "error">("idle");
+
+  async function handleNotify() {
+    const trimmed = email.trim();
+    if (!trimmed) return;
+    setStatus("loading");
+    try {
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmed }),
+      });
+      const data = await res.json();
+      if (data.duplicate) setStatus("duplicate");
+      else if (res.ok) setStatus("success");
+      else setStatus("error");
+    } catch {
+      setStatus("error");
+    }
+  }
+
+  return (
+    <div className="relative bg-[#111113] border border-[#1c1c1e] rounded-2xl p-7 opacity-60">
+      <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#1e1e1e] border border-[#2a2a2a] text-muted text-[11px] font-bold px-3 py-0.5 rounded-full">
+        {t("plan_premium_coming")}
+      </span>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-6">
+        <div className="flex-1">
+          <div className="text-xs font-bold text-muted uppercase tracking-widest">{t("plan_premium")}</div>
+          <p className="text-muted text-sm mt-2 max-w-md">{t("plan_premium_desc")}</p>
+        </div>
+        <div className="sm:w-72 shrink-0">
+          {status === "success" ? (
+            <p className="text-profit text-sm font-medium">{t("pricing_notify_success")}</p>
+          ) : status === "duplicate" ? (
+            <p className="text-orange-400 text-sm">{t("pricing_notify_duplicate")}</p>
+          ) : (
+            <div className="flex gap-2">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleNotify(); }}
+                placeholder="email@exemple.com"
+                className="flex-1 min-w-0 px-3 py-2.5 bg-[#1a1a1a] border border-[#27272a] rounded-xl text-foreground text-sm placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent/40"
+              />
+              <button
+                onClick={handleNotify}
+                disabled={status === "loading" || !email.trim()}
+                className="px-4 py-2.5 bg-[#1e1e1e] border border-[#2a2a2a] text-foreground text-sm rounded-xl hover:bg-[#2a2a2a] transition-colors disabled:opacity-50 whitespace-nowrap"
+              >
+                {status === "loading" ? "..." : t("plan_premium_notify_btn")}
+              </button>
+            </div>
+          )}
+          {status === "error" && (
+            <p className="text-loss text-xs mt-1">{t("pricing_notify_error")}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
    PRICING
 ───────────────────────────────────────────── */
 function Pricing() {
@@ -582,7 +651,7 @@ function Pricing() {
     setTimeout(() => { setAnnual(val); setPriceVisible(true); }, 180);
   }
 
-  const plans = [
+  const activePlans = [
     {
       name: t("plan_free"),
       sub: t("plan_sub_free"),
@@ -590,10 +659,10 @@ function Pricing() {
       annualPrice: "0€",
       annualMonthly: "",
       feats: [
-        { text: t("plan_benefit_free_1"), hint: "" },
-        { text: t("plan_benefit_free_2"), hint: "" },
-        { text: t("plan_benefit_free_3"), hint: "" },
-        { text: t("plan_benefit_free_4"), hint: "" },
+        t("plan_benefit_free_1"),
+        t("plan_benefit_free_2"),
+        t("plan_benefit_free_3"),
+        t("plan_benefit_free_4"),
       ],
       btnKey: "pricing_start_free",
       btnClass: "bg-[#1a1a1a] border border-[#27272a] text-[#d4d4d8] hover:border-[#3f3f46]",
@@ -606,33 +675,18 @@ function Pricing() {
       annualPrice: "89.99€",
       annualMonthly: "7.50€",
       feats: [
-        { text: t("plan_benefit_plus_1"), hint: "" },
-        { text: t("plan_benefit_plus_2"), hint: "" },
-        { text: t("plan_benefit_plus_3"), hint: "" },
-        { text: t("plan_benefit_plus_4"), hint: "L'IA compare chaque trade à ta stratégie" },
-        { text: t("plan_benefit_plus_5"), hint: "Pose tes questions directement dans le chat" },
-        { text: t("plan_benefit_plus_6"), hint: "" },
+        t("plan_benefit_plus_1"),
+        t("plan_benefit_plus_2"),
+        t("plan_benefit_plus_3"),
+        t("plan_benefit_plus_4"),
+        t("plan_benefit_plus_5"),
+        t("plan_benefit_plus_6"),
+        t("plan_benefit_plus_7"),
       ],
       btnKey: "pricing_choose_plus",
       btnClass: "bg-accent text-white hover:bg-blue-600 glow-blue",
       cardClass: "card-gradient-border-blue shadow-lg shadow-accent/10",
       highlight: true,
-    },
-    {
-      name: t("plan_premium"),
-      sub: t("plan_sub_premium"),
-      monthlyPrice: "19.99€",
-      annualPrice: "179.99€",
-      annualMonthly: "15€",
-      feats: [
-        { text: t("plan_benefit_premium_1"), hint: "" },
-        { text: t("plan_benefit_premium_2"), hint: "Sans limite quotidienne" },
-        { text: t("plan_benefit_premium_3"), hint: "" },
-        { text: t("plan_benefit_premium_4"), hint: "Réponse sous 24h" },
-      ],
-      btnKey: "pricing_choose_premium",
-      btnClass: "bg-yellow-500 text-black hover:bg-yellow-400",
-      cardClass: "card-gradient-border-gold shadow-lg shadow-yellow-500/5",
     },
   ];
 
@@ -662,8 +716,9 @@ function Pricing() {
           </button>
         </Reveal>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-10">
-          {plans.map((p, i) => {
+        {/* Active plans: Free + Plus */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-10 max-w-3xl mx-auto">
+          {activePlans.map((p, i) => {
             const price = annual ? p.annualPrice : p.monthlyPrice;
             const period = annual ? `/${t("plan_year")}` : `/${t("plan_month")}`;
             const showSavings = annual && p.annualMonthly;
@@ -691,14 +746,11 @@ function Pricing() {
 
                   <ul className="mt-7 space-y-3 flex-1">
                     {p.feats.map((feat) => (
-                      <li key={feat.text} className="space-y-0.5">
-                        <div className="flex items-start gap-2.5 text-sm">
-                          <svg className="w-4 h-4 text-profit shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                          <span className="text-foreground">{feat.text}</span>
-                        </div>
-                        {feat.hint && <p className="pl-6 text-[11px] text-muted">{feat.hint}</p>}
+                      <li key={feat} className="flex items-start gap-2.5 text-sm">
+                        <svg className="w-4 h-4 text-profit shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span className="text-foreground">{feat}</span>
                       </li>
                     ))}
                   </ul>
@@ -711,6 +763,11 @@ function Pricing() {
             );
           })}
         </div>
+
+        {/* Premium — Coming soon */}
+        <Reveal className="mt-6 max-w-3xl mx-auto">
+          <PremiumComingSoon t={t} />
+        </Reveal>
 
         {/* Badges */}
         <Reveal className="flex flex-wrap items-center justify-center gap-5 mt-8 text-xs text-muted">

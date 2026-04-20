@@ -119,7 +119,7 @@ export default function AnalysisPage() {
   const [clearingChat, setClearingChat] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const chatLimit = plan === "premium" ? null : plan === "plus" ? 5 : 0;
+  const chatLimit = plan === "plus" || plan === "premium" ? 10 : 0;
   const chatRemaining = chatLimit === null ? null : Math.max(0, chatLimit - chatDailyCount);
   const canChat = plan === "plus" || plan === "premium";
 

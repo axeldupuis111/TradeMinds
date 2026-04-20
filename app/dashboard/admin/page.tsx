@@ -15,7 +15,7 @@ export default function AdminPage() {
   const [authorized, setAuthorized] = useState(false);
   const [loading, setLoading] = useState(true);
   const [targetEmail, setTargetEmail] = useState("");
-  const [targetPlan, setTargetPlan] = useState<"free" | "plus" | "premium">("plus");
+  const [targetPlan, setTargetPlan] = useState<"free" | "plus">("plus");
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [updating, setUpdating] = useState(false);
 
@@ -112,12 +112,11 @@ export default function AdminPage() {
           <label className="block text-sm text-muted mb-1">{t("admin_plan")}</label>
           <select
             value={targetPlan}
-            onChange={(e) => setTargetPlan(e.target.value as "free" | "plus" | "premium")}
+            onChange={(e) => setTargetPlan(e.target.value as "free" | "plus")}
             className={inputClass}
           >
             <option value="free">Free</option>
             <option value="plus">Plus</option>
-            <option value="premium">Premium</option>
           </select>
         </div>
 
