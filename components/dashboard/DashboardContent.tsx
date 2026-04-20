@@ -5,6 +5,7 @@ import TradingCalendar from "@/components/charts/TradingCalendar";
 import DayStatus from "@/components/DayStatus";
 import GoalsStreaks from "@/components/dashboard/GoalsStreaks";
 import { useLanguage } from "@/lib/LanguageContext";
+import { usePlan } from "@/lib/PlanContext";
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 
@@ -79,7 +80,9 @@ export default function DashboardContent({
   allTrades,
 }: Props) {
   const { t } = useLanguage();
+  const { plan } = usePlan();
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const [upsellDismissed, setUpsellDismissed] = useState(false);
 
   const filterByAccount = useCallback(<T extends { challenge_id: string | null }>(trades: T[]): T[] => {
     if (!selectedAccountId) return trades;
@@ -141,6 +144,28 @@ export default function DashboardContent({
 
   return (
     <div>
+      {/* Free user upsell banner */}
+      {plan === "free" && !upsellDismissed && (
+        <div className="mb-4 flex items-center gap-3 px-4 py-3 bg-accent/5 border border-accent/20 rounded-xl">
+          <svg className="w-4 h-4 text-accent shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+          </svg>
+          <p className="text-sm text-foreground flex-1">{t("upsell_banner_text")}</p>
+          <Link href="/dashboard/upgrade" className="text-xs font-semibold text-accent hover:underline whitespace-nowrap">
+            {t("upsell_banner_cta")}
+          </Link>
+          <button
+            onClick={() => setUpsellDismissed(true)}
+            className="text-muted hover:text-foreground transition-colors"
+            aria-label="Dismiss"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
@@ -258,8 +283,8 @@ export default function DashboardContent({
         <DayStatus />
       </div>
 
-      {/* AI Insights */}
-      <div className="mt-6">
+      {/* AI Insights + Equity Curve — side by side on large screens */}
+      <div className={`mt-6 grid gap-4 ${equityCurveData.length > 0 ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"}`}>
         <section className="bg-card border border-border rounded-xl p-5 card-shadow">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -285,14 +310,11 @@ export default function DashboardContent({
             <p className="text-xs text-muted">{t("dash_insights_empty")}</p>
           )}
         </section>
-      </div>
 
-      {/* Equity Curve */}
-      {equityCurveData.length > 0 && (
-        <div className="mt-6">
+        {equityCurveData.length > 0 && (
           <EquityCurve data={equityCurveData} initialBalance={initialBalance} />
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Trading Calendar */}
       <div className="mt-6">

@@ -67,7 +67,7 @@ const translations: Record<Lang, Record<string, string>> = {
     how_3_desc: "Score, violations, patterns, recommandations. En 10 secondes.",
 
     // Pricing
-    pricing_title: "Pricing",
+    pricing_title: "Choisis ton plan",
     pricing_early: "Early Access",
     pricing_free: "Gratuit",
     pricing_beta: "Pendant la bêta",
@@ -710,7 +710,7 @@ const translations: Record<Lang, Record<string, string>> = {
     plan_benefit_premium_3: "Accès prioritaire aux nouvelles fonctionnalités",
     plan_benefit_premium_4: "Support prioritaire",
     plan_premium_coming: "Bientôt disponible",
-    plan_premium_desc: "Connexion automatique MT4/MT5, synchronisation en temps réel, analyses illimitées, et bien plus. Sois le premier informé.",
+    plan_premium_desc: "Connexion directe aux plateformes, synchronisation en temps réel, analyses illimitées, signaux avancés et bien plus. Sois le premier informé.",
     plan_premium_notify_btn: "Être notifié",
     pricing_no_commitment: "Sans engagement · Annulation à tout moment · Accès immédiat",
 
@@ -745,7 +745,7 @@ const translations: Record<Lang, Record<string, string>> = {
     feature_4_label: "CHALLENGE",
     feature_import_tag: "147 trades importés",
     feature_import_drop: "Dépose ton fichier MT4/MT5 ici",
-    feature_import_formats: "MT4 · MT5 · cTrader · Binance · Bybit · et plus",
+    feature_import_formats: "MT5 · cTrader · Binance · Bybit · TradingView · et +",
     feature_ai_coach_label: "Coach IA",
     feature_ai_msg_1: "J'ai analysé tes 23 derniers trades. Tu as une tendance au revenge trading après 2 pertes consécutives — ça t'a coûté 340€.",
     feature_ai_msg_2: "Comment je peux corriger ça ?",
@@ -782,6 +782,41 @@ const translations: Record<Lang, Record<string, string>> = {
     header_page_analytics: "Analytics",
     header_page_settings: "Paramètres",
     header_page_upgrade: "Upgrade",
+
+    // Sidebar plan badge
+    sidebar_current_plan: "Plan actuel",
+
+    // Theme
+    theme_light: "Mode clair",
+    theme_dark: "Mode sombre",
+
+    // Upsell banner (dashboard)
+    upsell_banner_text: "Passe à Plus pour débloquer le Coach IA et l'analyse illimitée",
+    upsell_banner_cta: "Passer à Plus →",
+    upsell_banner_dismiss: "Plus tard",
+
+    // Legal / signup terms
+    terms_agree: "J'accepte les",
+    terms_link: "conditions d'utilisation",
+    terms_and: "et la",
+    privacy_link: "politique de confidentialité",
+    terms_required: "Tu dois accepter les conditions pour créer un compte.",
+    legal_terms_title: "Conditions d'utilisation",
+    legal_terms_last_updated: "Dernière mise à jour : avril 2026",
+    legal_privacy_title: "Politique de confidentialité",
+    legal_privacy_last_updated: "Dernière mise à jour : avril 2026",
+
+    // AI coach disclaimer
+    ai_coach_disclaimer: "Coach IA spécialisé en trading — je réponds uniquement aux questions liées au trading, à la psychologie du marché et à l'analyse de tes trades.",
+
+    // Settings — account section
+    settings_account_title: "Compte",
+    settings_account_email: "Adresse email",
+    settings_sign_out: "Se déconnecter",
+    settings_lang_title: "Langue de l'interface",
+    settings_lang_desc: "Choisissez la langue dans laquelle TradeMinds s'affiche.",
+    settings_theme_title: "Apparence",
+    settings_theme_desc: "Basculez entre le mode sombre et clair.",
   },
 
   // ─── ENGLISH ───
@@ -836,7 +871,7 @@ const translations: Record<Lang, Record<string, string>> = {
     how_3_title: "Get your analysis",
     how_3_desc: "Score, violations, patterns, recommendations. In 10 seconds.",
 
-    pricing_title: "Pricing",
+    pricing_title: "Choose your plan",
     pricing_early: "Early Access",
     pricing_free: "Free",
     pricing_beta: "During the beta",
@@ -1459,7 +1494,7 @@ const translations: Record<Lang, Record<string, string>> = {
     plan_benefit_premium_3: "Priority access to new features",
     plan_benefit_premium_4: "Priority support",
     plan_premium_coming: "Coming soon",
-    plan_premium_desc: "Automatic MT4/MT5 connection, real-time sync, unlimited analyses, and much more. Be the first to know.",
+    plan_premium_desc: "Direct platform connection, real-time sync, unlimited analyses, advanced signals and much more. Be the first to know.",
     plan_premium_notify_btn: "Notify me",
     pricing_no_commitment: "No commitment · Cancel anytime · Immediate access",
 
@@ -1494,7 +1529,7 @@ const translations: Record<Lang, Record<string, string>> = {
     feature_4_label: "CHALLENGE",
     feature_import_tag: "147 trades imported",
     feature_import_drop: "Drop your MT4/MT5 file here",
-    feature_import_formats: "MT4 · MT5 · cTrader · Binance · Bybit · and more",
+    feature_import_formats: "MT5 · cTrader · Binance · Bybit · TradingView · and more",
     feature_ai_coach_label: "AI Coach",
     feature_ai_msg_1: "I analysed your last 23 trades. You have a tendency to revenge trade after 2 consecutive losses — it cost you €340.",
     feature_ai_msg_2: "How can I fix that?",
@@ -1531,6 +1566,41 @@ const translations: Record<Lang, Record<string, string>> = {
     header_page_analytics: "Analytics",
     header_page_settings: "Settings",
     header_page_upgrade: "Upgrade",
+
+    // Sidebar plan badge
+    sidebar_current_plan: "Current plan",
+
+    // Theme
+    theme_light: "Light mode",
+    theme_dark: "Dark mode",
+
+    // Upsell banner (dashboard)
+    upsell_banner_text: "Upgrade to Plus to unlock the AI Coach and unlimited analysis",
+    upsell_banner_cta: "Upgrade to Plus →",
+    upsell_banner_dismiss: "Later",
+
+    // Legal / signup terms
+    terms_agree: "I agree to the",
+    terms_link: "terms of service",
+    terms_and: "and the",
+    privacy_link: "privacy policy",
+    terms_required: "You must accept the terms to create an account.",
+    legal_terms_title: "Terms of Service",
+    legal_terms_last_updated: "Last updated: April 2026",
+    legal_privacy_title: "Privacy Policy",
+    legal_privacy_last_updated: "Last updated: April 2026",
+
+    // AI coach disclaimer
+    ai_coach_disclaimer: "AI Coach specialized in trading — I only answer questions related to trading, market psychology, and your trade analysis.",
+
+    // Settings — account section
+    settings_account_title: "Account",
+    settings_account_email: "Email address",
+    settings_sign_out: "Sign out",
+    settings_lang_title: "Interface language",
+    settings_lang_desc: "Choose the language in which TradeMinds is displayed.",
+    settings_theme_title: "Appearance",
+    settings_theme_desc: "Switch between dark and light mode.",
   },
 
   // ─── GERMAN ───
@@ -1585,7 +1655,7 @@ const translations: Record<Lang, Record<string, string>> = {
     how_3_title: "Erhalte deine Analyse",
     how_3_desc: "Score, Verstöße, Muster, Empfehlungen. In 10 Sekunden.",
 
-    pricing_title: "Preise",
+    pricing_title: "Wähle deinen Plan",
     pricing_early: "Early Access",
     pricing_free: "Kostenlos",
     pricing_beta: "Während der Beta",
@@ -2209,7 +2279,7 @@ const translations: Record<Lang, Record<string, string>> = {
     plan_benefit_premium_3: "Prioritätszugang zu neuen Funktionen",
     plan_benefit_premium_4: "Prioritätssupport",
     plan_premium_coming: "Demnächst verfügbar",
-    plan_premium_desc: "Automatische MT4/MT5-Verbindung, Echtzeit-Synchronisation, unbegrenzte Analysen und vieles mehr. Sei der Erste, der es erfährt.",
+    plan_premium_desc: "Direkte Plattformverbindung, Echtzeit-Synchronisation, unbegrenzte Analysen, erweiterte Signale und vieles mehr. Sei der Erste.",
     plan_premium_notify_btn: "Benachrichtigen",
     pricing_no_commitment: "Keine Bindung · Jederzeit kündbar · Sofortzugang",
 
@@ -2244,7 +2314,7 @@ const translations: Record<Lang, Record<string, string>> = {
     feature_4_label: "CHALLENGE",
     feature_import_tag: "147 Trades importiert",
     feature_import_drop: "Ziehe deine MT4/MT5-Datei hierher",
-    feature_import_formats: "MT4 · MT5 · cTrader · Binance · Bybit · und mehr",
+    feature_import_formats: "MT5 · cTrader · Binance · Bybit · TradingView · und mehr",
     feature_ai_coach_label: "KI-Coach",
     feature_ai_msg_1: "Ich habe deine letzten 23 Trades analysiert. Du neigst dazu, nach 2 aufeinanderfolgenden Verlusten Revenge-Trades zu machen — das hat dich 340€ gekostet.",
     feature_ai_msg_2: "Wie kann ich das beheben?",
@@ -2281,6 +2351,41 @@ const translations: Record<Lang, Record<string, string>> = {
     header_page_analytics: "Analytics",
     header_page_settings: "Einstellungen",
     header_page_upgrade: "Upgrade",
+
+    // Sidebar plan badge
+    sidebar_current_plan: "Aktueller Plan",
+
+    // Theme
+    theme_light: "Hell-Modus",
+    theme_dark: "Dunkel-Modus",
+
+    // Upsell banner (dashboard)
+    upsell_banner_text: "Upgrade auf Plus, um den KI-Coach und unbegrenzte Analysen freizuschalten",
+    upsell_banner_cta: "Auf Plus upgraden →",
+    upsell_banner_dismiss: "Später",
+
+    // Legal / signup terms
+    terms_agree: "Ich stimme den",
+    terms_link: "Nutzungsbedingungen",
+    terms_and: "und der",
+    privacy_link: "Datenschutzerklärung",
+    terms_required: "Du musst die Bedingungen akzeptieren, um ein Konto zu erstellen.",
+    legal_terms_title: "Nutzungsbedingungen",
+    legal_terms_last_updated: "Letzte Aktualisierung: April 2026",
+    legal_privacy_title: "Datenschutzerklärung",
+    legal_privacy_last_updated: "Letzte Aktualisierung: April 2026",
+
+    // AI coach disclaimer
+    ai_coach_disclaimer: "KI-Coach spezialisiert auf Trading — ich beantworte nur Fragen rund um Trading, Marktpsychologie und deine Trade-Analyse.",
+
+    // Settings — account section
+    settings_account_title: "Konto",
+    settings_account_email: "E-Mail-Adresse",
+    settings_sign_out: "Abmelden",
+    settings_lang_title: "Sprache der Oberfläche",
+    settings_lang_desc: "Wähle die Sprache, in der TradeMinds angezeigt wird.",
+    settings_theme_title: "Erscheinungsbild",
+    settings_theme_desc: "Wechsle zwischen dunklem und hellem Modus.",
   },
 
   // ─── SPANISH ───
@@ -2335,7 +2440,7 @@ const translations: Record<Lang, Record<string, string>> = {
     how_3_title: "Recibe tu análisis",
     how_3_desc: "Score, violaciones, patrones, recomendaciones. En 10 segundos.",
 
-    pricing_title: "Precios",
+    pricing_title: "Elige tu plan",
     pricing_early: "Early Access",
     pricing_free: "Gratis",
     pricing_beta: "Durante la beta",
@@ -2959,7 +3064,7 @@ const translations: Record<Lang, Record<string, string>> = {
     plan_benefit_premium_3: "Acceso prioritario a nuevas funciones",
     plan_benefit_premium_4: "Soporte prioritario",
     plan_premium_coming: "Próximamente",
-    plan_premium_desc: "Conexión automática MT4/MT5, sincronización en tiempo real, análisis ilimitados y mucho más. Sé el primero en enterarte.",
+    plan_premium_desc: "Conexión directa a plataformas, sincronización en tiempo real, análisis ilimitados, señales avanzadas y mucho más. Sé el primero.",
     plan_premium_notify_btn: "Avisarme",
     pricing_no_commitment: "Sin compromiso · Cancela cuando quieras · Acceso inmediato",
 
@@ -2994,7 +3099,7 @@ const translations: Record<Lang, Record<string, string>> = {
     feature_4_label: "CHALLENGE",
     feature_import_tag: "147 trades importados",
     feature_import_drop: "Suelta tu archivo MT4/MT5 aquí",
-    feature_import_formats: "MT4 · MT5 · cTrader · Binance · Bybit · y más",
+    feature_import_formats: "MT5 · cTrader · Binance · Bybit · TradingView · y más",
     feature_ai_coach_label: "Coach IA",
     feature_ai_msg_1: "Analicé tus últimos 23 trades. Tienes tendencia al revenge trading tras 2 pérdidas consecutivas — te ha costado 340€.",
     feature_ai_msg_2: "¿Cómo puedo corregirlo?",
@@ -3031,6 +3136,41 @@ const translations: Record<Lang, Record<string, string>> = {
     header_page_analytics: "Analytics",
     header_page_settings: "Ajustes",
     header_page_upgrade: "Mejorar plan",
+
+    // Sidebar plan badge
+    sidebar_current_plan: "Plan actual",
+
+    // Theme
+    theme_light: "Modo claro",
+    theme_dark: "Modo oscuro",
+
+    // Upsell banner (dashboard)
+    upsell_banner_text: "Actualiza a Plus para desbloquear el Coach IA y los análisis ilimitados",
+    upsell_banner_cta: "Actualizar a Plus →",
+    upsell_banner_dismiss: "Más tarde",
+
+    // Legal / signup terms
+    terms_agree: "Acepto los",
+    terms_link: "términos de uso",
+    terms_and: "y la",
+    privacy_link: "política de privacidad",
+    terms_required: "Debes aceptar los términos para crear una cuenta.",
+    legal_terms_title: "Términos de uso",
+    legal_terms_last_updated: "Última actualización: abril 2026",
+    legal_privacy_title: "Política de privacidad",
+    legal_privacy_last_updated: "Última actualización: abril 2026",
+
+    // AI coach disclaimer
+    ai_coach_disclaimer: "Coach IA especializado en trading — solo respondo preguntas relacionadas con el trading, la psicología del mercado y el análisis de tus trades.",
+
+    // Settings — account section
+    settings_account_title: "Cuenta",
+    settings_account_email: "Dirección de correo",
+    settings_sign_out: "Cerrar sesión",
+    settings_lang_title: "Idioma de la interfaz",
+    settings_lang_desc: "Elige el idioma en que se muestra TradeMinds.",
+    settings_theme_title: "Apariencia",
+    settings_theme_desc: "Cambia entre el modo oscuro y claro.",
   },
 };
 

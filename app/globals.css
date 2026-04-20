@@ -5,6 +5,58 @@
 :root {
   --background: #09090b;
   --foreground: #fafafa;
+  --card-bg: #111113;
+  --border-color: #1c1c1e;
+  --muted-color: #71717a;
+}
+
+/* Light mode overrides */
+html.light {
+  --background: #f8f9fa;
+  --foreground: #111113;
+  --card-bg: #ffffff;
+  --border-color: #e4e4e7;
+  --muted-color: #71717a;
+}
+
+html.light body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* Light mode card / border overrides */
+html.light .bg-card {
+  background-color: #ffffff !important;
+}
+html.light .border-border {
+  border-color: #e4e4e7 !important;
+}
+html.light .bg-\[\#111113\], html.light .bg-\[\#111111\], html.light .bg-\[\#0a0a0c\] {
+  background-color: #ffffff !important;
+}
+html.light .bg-\[\#1a1a1a\], html.light .bg-\[\#18181b\] {
+  background-color: #f4f4f5 !important;
+}
+html.light .text-muted {
+  color: #71717a !important;
+}
+html.light .border-\[\#1c1c1e\], html.light .border-\[\#2a2a2a\], html.light .border-\[\#27272a\] {
+  border-color: #e4e4e7 !important;
+}
+html.light .bg-\[\#0f0f0f\], html.light .bg-\[\#0f0f11\] {
+  background-color: #f9f9f9 !important;
+}
+
+html.light ::-webkit-scrollbar-thumb {
+  background: #d4d4d8;
+}
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: #a1a1aa;
+}
+
+html.light .skeleton {
+  background: linear-gradient(90deg, #f4f4f5 25%, #e4e4e7 50%, #f4f4f5 75%);
+  background-size: 200% 100%;
 }
 
 body {

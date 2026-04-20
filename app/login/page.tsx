@@ -14,6 +14,8 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [signupMode, setSignupMode] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -36,6 +38,10 @@ export default function LoginPage() {
     setSuccess(null);
     if (!email || !password) {
       setError(t("login_fill_fields"));
+      return;
+    }
+    if (!termsAccepted) {
+      setError(t("terms_required"));
       return;
     }
     setLoading(true);
@@ -117,7 +123,29 @@ export default function LoginPage() {
               )}
             </button>
 
-            <button onClick={handleSignUp} disabled={loading} className="w-full py-2.5 bg-white/[0.03] border border-white/[0.06] text-foreground rounded-xl font-medium hover:bg-white/[0.06] disabled:opacity-50">
+            {/* Terms checkbox — shown in signup mode */}
+            {signupMode && (
+              <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  className="mt-0.5 accent-accent w-4 h-4 cursor-pointer shrink-0"
+                />
+                <span className="text-xs text-muted leading-relaxed">
+                  {t("terms_agree")}{" "}
+                  <Link href="/legal/terms" className="text-accent hover:underline">{t("terms_link")}</Link>{" "}
+                  {t("terms_and")}{" "}
+                  <Link href="/legal/privacy" className="text-accent hover:underline">{t("privacy_link")}</Link>
+                </span>
+              </label>
+            )}
+
+            <button
+              onClick={() => { setSignupMode(true); handleSignUp(); }}
+              disabled={loading}
+              className="w-full py-2.5 bg-white/[0.03] border border-white/[0.06] text-foreground rounded-xl font-medium hover:bg-white/[0.06] disabled:opacity-50"
+            >
               {t("login_signup")}
             </button>
           </div>

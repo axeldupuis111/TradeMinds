@@ -668,7 +668,13 @@ export default function AnalysisPage() {
           <div className="flex items-start justify-between flex-wrap gap-2">
             <div>
               <h2 className="text-lg font-semibold text-foreground">{t("coach_title")}</h2>
-              <p className="text-muted text-sm mt-1 mb-4">{t("coach_subtitle")}</p>
+              <p className="text-muted text-sm mt-1">{t("coach_subtitle")}</p>
+              <p className="text-xs text-muted/60 mt-0.5 mb-4 flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                </svg>
+                {t("ai_coach_disclaimer")}
+              </p>
             </div>
             {canChat && chatMessages.length > 0 && (
               <button

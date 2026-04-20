@@ -1,6 +1,7 @@
 "use client";
 
 import LanguageSelector from "@/components/LanguageSelector";
+import ThemeToggle from "@/components/ThemeToggle";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
@@ -62,13 +63,14 @@ export default function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
         </div>
       </div>
 
-      {/* Right: language, plan badge, signout */}
+      {/* Right: language, theme, plan badge, signout */}
       <div className="flex items-center gap-2">
         <LanguageSelector />
+        <ThemeToggle />
 
         {!loading && (
           <span className={`hidden sm:inline px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${planBadgeStyles[plan] || planBadgeStyles.free}`}>
-            {plan}
+            {plan === "plus" ? t("plan_plus") : plan === "premium" ? t("plan_premium") : t("plan_free")}
           </span>
         )}
 

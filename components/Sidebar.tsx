@@ -76,10 +76,10 @@ const analyseItems = [
   },
 ];
 
-const planBadgeConfig: Record<string, { label: string; className: string }> = {
-  free:    { label: "FREE",    className: "bg-[#2a2a2a] text-muted" },
-  plus:    { label: "PLUS",    className: "bg-accent/20 text-accent shadow-[0_0_8px_rgba(59,130,246,0.3)]" },
-  premium: { label: "PREMIUM", className: "bg-yellow-500/20 text-yellow-400 shadow-[0_0_8px_rgba(234,179,8,0.3)]" },
+const planBadgeClass: Record<string, string> = {
+  free:    "bg-[#2a2a2a] text-muted",
+  plus:    "bg-accent/20 text-accent shadow-[0_0_8px_rgba(59,130,246,0.3)]",
+  premium: "bg-yellow-500/20 text-yellow-400 shadow-[0_0_8px_rgba(234,179,8,0.3)]",
 };
 
 
@@ -89,7 +89,8 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
   const { plan } = usePlan();
   const pathname = usePathname();
   const showUpgrade = plan === "free" || plan === "plus";
-  const badge = planBadgeConfig[plan] || planBadgeConfig.free;
+  const badgeClass = planBadgeClass[plan] || planBadgeClass.free;
+  const planLabel = plan === "plus" ? t("plan_plus") : plan === "premium" ? t("plan_premium") : t("plan_free");
 
   function NavItem({ href, icon, labelKey }: { href: string; icon: React.ReactNode; labelKey: string }) {
     const active = pathname === href;
@@ -203,9 +204,9 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
           {/* Plan badge */}
           <div className="mt-3 mx-1 p-3 bg-[#0f0f0f] border border-[#1c1c1e] rounded-xl">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-[11px] text-muted">Plan actuel</p>
-              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${badge.className}`}>
-                {badge.label}
+              <p className="text-[11px] text-muted">{t("sidebar_current_plan")}</p>
+              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${badgeClass}`}>
+                {planLabel}
               </span>
             </div>
             <Link

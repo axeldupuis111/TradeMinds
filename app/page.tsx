@@ -447,12 +447,6 @@ function Features() {
                   </span>
                   <h3 className="text-2xl sm:text-3xl font-bold text-foreground">{f.title}</h3>
                   <p className="text-muted mt-4 leading-relaxed">{f.desc}</p>
-                  <Link href="/login" className="inline-flex items-center gap-1.5 mt-6 text-sm text-accent hover:underline font-medium">
-                    {t("hero_cta")}
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                    </svg>
-                  </Link>
                 </div>
                 {/* Screenshot */}
                 <div className="w-full lg:w-[420px] shrink-0">
@@ -608,43 +602,61 @@ function PremiumComingSoon({ t }: { t: (k: string) => string }) {
   }
 
   return (
-    <div className="relative bg-[#111113] border border-[#1c1c1e] rounded-2xl p-7 opacity-60">
-      <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#1e1e1e] border border-[#2a2a2a] text-muted text-[11px] font-bold px-3 py-0.5 rounded-full">
+    <div className="relative bg-[#111113] border border-[#1c1c1e] rounded-2xl p-7 flex flex-col h-full">
+      {/* Overlay */}
+      <div className="absolute inset-0 rounded-2xl bg-[#09090b]/60 backdrop-blur-[1px] z-10 flex flex-col items-center justify-center gap-3">
+        <span className="text-2xl">🔒</span>
+        <span className="bg-[#1e1e1e] border border-[#2a2a2a] text-muted text-[11px] font-bold px-3 py-1 rounded-full">
+          {t("plan_premium_coming")}
+        </span>
+        {status === "success" ? (
+          <p className="text-profit text-xs font-medium text-center px-4">{t("pricing_notify_success")}</p>
+        ) : status === "duplicate" ? (
+          <p className="text-orange-400 text-xs text-center px-4">{t("pricing_notify_duplicate")}</p>
+        ) : (
+          <div className="flex gap-2 px-4 w-full max-w-xs">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleNotify(); }}
+              placeholder="email@exemple.com"
+              className="flex-1 min-w-0 px-3 py-2 bg-[#1a1a1a] border border-[#27272a] rounded-xl text-foreground text-xs placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent/40"
+            />
+            <button
+              onClick={handleNotify}
+              disabled={status === "loading" || !email.trim()}
+              className="px-3 py-2 bg-[#1e1e1e] border border-[#2a2a2a] text-foreground text-xs rounded-xl hover:bg-[#2a2a2a] transition-colors disabled:opacity-50 whitespace-nowrap"
+            >
+              {status === "loading" ? "..." : t("plan_premium_notify_btn")}
+            </button>
+          </div>
+        )}
+        {status === "error" && (
+          <p className="text-loss text-xs">{t("pricing_notify_error")}</p>
+        )}
+      </div>
+
+      {/* Card content (visible behind overlay) */}
+      <div className="text-xs font-bold text-muted uppercase tracking-widest">{t("plan_premium")}</div>
+      <p className="text-muted text-xs mt-1">{t("plan_premium_desc")}</p>
+      <div className="mt-5">
+        <span className="text-4xl font-bold text-muted">—</span>
+        <span className="text-muted text-sm ml-1">/ mo</span>
+      </div>
+      <div className="h-4" />
+      <ul className="mt-7 space-y-3 flex-1 opacity-40">
+        {[t("plan_premium_coming"), "...", "...", "..."].map((feat, i) => (
+          <li key={i} className="flex items-start gap-2.5 text-sm">
+            <svg className="w-4 h-4 text-muted shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span className="text-muted">{feat}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-8 block w-full py-3 rounded-xl font-semibold text-center bg-[#1a1a1a] border border-[#27272a] text-muted opacity-40 cursor-not-allowed">
         {t("plan_premium_coming")}
-      </span>
-      <div className="flex flex-col sm:flex-row sm:items-center gap-6">
-        <div className="flex-1">
-          <div className="text-xs font-bold text-muted uppercase tracking-widest">{t("plan_premium")}</div>
-          <p className="text-muted text-sm mt-2 max-w-md">{t("plan_premium_desc")}</p>
-        </div>
-        <div className="sm:w-72 shrink-0">
-          {status === "success" ? (
-            <p className="text-profit text-sm font-medium">{t("pricing_notify_success")}</p>
-          ) : status === "duplicate" ? (
-            <p className="text-orange-400 text-sm">{t("pricing_notify_duplicate")}</p>
-          ) : (
-            <div className="flex gap-2">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleNotify(); }}
-                placeholder="email@exemple.com"
-                className="flex-1 min-w-0 px-3 py-2.5 bg-[#1a1a1a] border border-[#27272a] rounded-xl text-foreground text-sm placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent/40"
-              />
-              <button
-                onClick={handleNotify}
-                disabled={status === "loading" || !email.trim()}
-                className="px-4 py-2.5 bg-[#1e1e1e] border border-[#2a2a2a] text-foreground text-sm rounded-xl hover:bg-[#2a2a2a] transition-colors disabled:opacity-50 whitespace-nowrap"
-              >
-                {status === "loading" ? "..." : t("plan_premium_notify_btn")}
-              </button>
-            </div>
-          )}
-          {status === "error" && (
-            <p className="text-loss text-xs mt-1">{t("pricing_notify_error")}</p>
-          )}
-        </div>
       </div>
     </div>
   );
@@ -728,8 +740,8 @@ function Pricing() {
           </button>
         </Reveal>
 
-        {/* Active plans: Free + Plus */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-10 max-w-3xl mx-auto">
+        {/* Plans grid: Free + Plus + Premium (3 cols) */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-10 max-w-5xl mx-auto">
           {activePlans.map((p, i) => {
             const price = annual ? p.annualPrice : p.monthlyPrice;
             const period = annual ? `/${t("plan_year")}` : `/${t("plan_month")}`;
@@ -774,12 +786,12 @@ function Pricing() {
               </Reveal>
             );
           })}
-        </div>
 
-        {/* Premium — Coming soon */}
-        <Reveal className="mt-6 max-w-3xl mx-auto">
-          <PremiumComingSoon t={t} />
-        </Reveal>
+          {/* Premium — Coming soon as 3rd card inside grid */}
+          <Reveal delay={120}>
+            <PremiumComingSoon t={t} />
+          </Reveal>
+        </div>
 
         {/* Badges */}
         <Reveal className="flex flex-wrap items-center justify-center gap-5 mt-8 text-xs text-muted">
@@ -934,13 +946,9 @@ function Footer() {
           <div>
             <p className="text-foreground font-semibold text-sm mb-4">{t("footer_legal_col")}</p>
             <ul className="space-y-2.5">
-              {[
-                { href: "#", label: t("footer_terms") },
-                { href: "#", label: t("footer_privacy") },
-                { href: "#", label: t("footer_mentions") },
-              ].map((l) => (
-                <li key={l.label}><a href={l.href} className="text-muted text-sm hover:text-foreground transition-colors">{l.label}</a></li>
-              ))}
+              <li><a href="/legal/terms" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_terms")}</a></li>
+              <li><a href="/legal/privacy" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_privacy")}</a></li>
+              <li><a href="#" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_mentions")}</a></li>
             </ul>
           </div>
         </div>
