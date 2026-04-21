@@ -114,6 +114,11 @@ function Hero() {
               {t("hero_features")}
             </a>
           </div>
+
+          {/* AI exclusive mention */}
+          <p className="mt-5 text-xs text-muted/70 max-w-lg mx-auto leading-relaxed">
+            {t("hero_ai_exclusive")}
+          </p>
         </Reveal>
 
         {/* Dashboard mockup */}
@@ -288,44 +293,67 @@ function ScreenshotImport({ t }: { t: (k: string) => string }) {
   );
 }
 
+/* Avatars réutilisables */
+function AIAvatar() {
+  return (
+    <div className="w-6 h-6 rounded-full bg-accent/20 shrink-0 flex items-center justify-center">
+      <svg className="w-3 h-3 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+      </svg>
+    </div>
+  );
+}
+function UserAvatar() {
+  return (
+    <div className="w-6 h-6 rounded-full bg-white/10 border border-white/10 shrink-0 flex items-center justify-center text-[9px] font-bold text-muted">
+      T
+    </div>
+  );
+}
+
 function ScreenshotAI({ t }: { t: (k: string) => string }) {
+  const msgs = [
+    { side: "ai",   text: t("feature_ai_msg_1"), time: "14:02" },
+    { side: "user", text: t("feature_ai_msg_2"), time: "14:03" },
+    { side: "ai",   text: t("feature_ai_msg_3"), time: "14:03" },
+    { side: "user", text: t("feature_ai_msg_4"), time: "14:04" },
+    { side: "ai",   text: t("feature_ai_msg_5"), time: "14:04" },
+  ];
   return (
     <div className="feature-screenshot">
+      {/* Header */}
       <div className="p-3 border-b border-[#1c1c1e] flex items-center gap-2">
-        <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center text-accent">
-          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-          </svg>
+        <AIAvatar />
+        <div className="flex-1 min-w-0">
+          <span className="text-xs font-semibold text-foreground">{t("feature_ai_coach_label")}</span>
+          <p className="text-[10px] text-profit leading-none">● Online</p>
         </div>
-        <span className="text-xs font-semibold text-foreground">{t("feature_ai_coach_label")}</span>
-        <span className="ml-auto text-[10px] text-profit">● Online</span>
       </div>
-      <div className="p-4 space-y-3">
-        <div className="flex gap-2 items-start">
-          <div className="w-6 h-6 rounded-full bg-accent/20 shrink-0 mt-0.5 flex items-center justify-center">
-            <svg className="w-3 h-3 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-            </svg>
-          </div>
-          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl rounded-bl-sm px-3 py-2 text-xs text-foreground max-w-[85%] leading-relaxed">
-            {t("feature_ai_msg_1")}
-          </div>
-        </div>
-        <div className="flex gap-2 justify-end items-start">
-          <div className="bg-accent rounded-xl rounded-br-sm px-3 py-2 text-xs text-white max-w-[72%]">
-            {t("feature_ai_msg_2")}
-          </div>
-        </div>
-        <div className="flex gap-2 items-start">
-          <div className="w-6 h-6 rounded-full bg-accent/20 shrink-0 mt-0.5 flex items-center justify-center">
-            <svg className="w-3 h-3 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-            </svg>
-          </div>
-          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl rounded-bl-sm px-3 py-2 text-xs text-foreground max-w-[85%] leading-relaxed">
-            {t("feature_ai_msg_3")}
-          </div>
-        </div>
+      {/* Messages */}
+      <div className="p-4 space-y-3 max-h-[300px] overflow-y-auto">
+        {msgs.map((m, i) => (
+          m.side === "ai" ? (
+            <div key={i} className="flex gap-2 items-end">
+              <AIAvatar />
+              <div className="flex flex-col gap-0.5">
+                <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl rounded-bl-sm px-3 py-2 text-xs text-foreground max-w-[85%] leading-relaxed">
+                  {m.text}
+                </div>
+                <span className="text-[9px] text-muted/60 pl-1">{m.time}</span>
+              </div>
+            </div>
+          ) : (
+            <div key={i} className="flex gap-2 justify-end items-end">
+              <div className="flex flex-col items-end gap-0.5">
+                <div className="bg-accent rounded-xl rounded-br-sm px-3 py-2 text-xs text-white max-w-[72%]">
+                  {m.text}
+                </div>
+                <span className="text-[9px] text-muted/60 pr-1">{m.time}</span>
+              </div>
+              <UserAvatar />
+            </div>
+          )
+        ))}
       </div>
     </div>
   );
@@ -333,27 +361,51 @@ function ScreenshotAI({ t }: { t: (k: string) => string }) {
 
 function ScreenshotScore({ t }: { t: (k: string) => string }) {
   const r = 36, circ = 2 * Math.PI * r;
+  const rules = [
+    { label: "SL ≤ 1%",        ok: true  },
+    { label: "RR ≥ 2:1",       ok: true  },
+    { label: "Max 3 trades/j",  ok: false },
+    { label: "Trading Plan",    ok: true  },
+    { label: "Pas de revanche", ok: false },
+  ];
   return (
     <div className="feature-screenshot p-5">
       <div className="flex flex-col items-center gap-4">
-        <div className="relative w-28 h-28">
-          <svg className="w-28 h-28 -rotate-90" viewBox="0 0 88 88">
-            <circle cx="44" cy="44" r={r} fill="none" stroke="#1e1e1e" strokeWidth="7" />
-            <circle cx="44" cy="44" r={r} fill="none" stroke="#3b82f6" strokeWidth="7" strokeLinecap="round"
-              strokeDasharray={`${0.78 * circ} ${circ}`} />
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-3xl font-bold text-foreground">78</span>
-            <span className="text-[9px] text-muted leading-none mt-0.5">{t("preview_discipline")}</span>
+        {/* Score ring */}
+        <div className="flex items-center gap-6">
+          <div className="relative w-24 h-24 shrink-0">
+            <svg className="w-24 h-24 -rotate-90" viewBox="0 0 88 88">
+              <circle cx="44" cy="44" r={r} fill="none" stroke="#1e1e1e" strokeWidth="7" />
+              <circle cx="44" cy="44" r={r} fill="none" stroke="#3b82f6" strokeWidth="7" strokeLinecap="round"
+                strokeDasharray={`${0.78 * circ} ${circ}`} />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-2xl font-bold text-foreground">78</span>
+              <span className="text-[9px] text-muted leading-none mt-0.5">{t("preview_discipline")}</span>
+            </div>
+          </div>
+          {/* Rules checklist */}
+          <div className="flex-1 space-y-1.5">
+            {rules.map((rule) => (
+              <div key={rule.label} className="flex items-center gap-2">
+                <svg className={`w-3.5 h-3.5 shrink-0 ${rule.ok ? "text-profit" : "text-loss"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {rule.ok
+                    ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                    : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />}
+                </svg>
+                <span className="text-[10px] text-foreground/80">{rule.label}</span>
+              </div>
+            ))}
           </div>
         </div>
+        {/* Conformes / Violations */}
         <div className="grid grid-cols-2 gap-3 w-full">
-          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3 text-center">
-            <p className="text-[10px] text-muted">Conformes</p>
+          <div className="bg-profit/5 border border-profit/15 rounded-lg p-3 text-center">
+            <p className="text-[10px] text-muted">{t("feature_score_conformes")}</p>
             <p className="text-lg font-bold text-profit">18/23</p>
           </div>
-          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3 text-center">
-            <p className="text-[10px] text-muted">Violations</p>
+          <div className="bg-loss/5 border border-loss/15 rounded-lg p-3 text-center">
+            <p className="text-[10px] text-muted">{t("feature_score_violations")}</p>
             <p className="text-lg font-bold text-loss">5</p>
           </div>
         </div>
@@ -436,24 +488,47 @@ function Features() {
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground text-center">{t("features_title")}</h2>
         </Reveal>
 
-        <div className="mt-16 space-y-20">
-          {features.map((f) => (
-            <Reveal key={f.title}>
-              <div className={`flex flex-col ${f.reverse ? "lg:flex-row-reverse" : "lg:flex-row"} items-center gap-10 lg:gap-16`}>
-                {/* Text */}
-                <div className="flex-1 min-w-0">
-                  <span className={`inline-block text-[11px] font-bold tracking-widest px-2.5 py-1 rounded-md mb-4 ${f.labelColor}`}>
-                    {f.label}
-                  </span>
-                  <h3 className="text-2xl sm:text-3xl font-bold text-foreground">{f.title}</h3>
-                  <p className="text-muted mt-4 leading-relaxed">{f.desc}</p>
+        <div className="mt-16">
+          {features.map((f, idx) => (
+            <div key={f.title}>
+              {idx > 0 && (
+                <div className="flex items-center gap-4 my-14">
+                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                  <div className="w-6 h-6 rounded-full border border-white/10 flex items-center justify-center shrink-0">
+                    <svg className="w-3 h-3 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
                 </div>
-                {/* Screenshot */}
-                <div className="w-full lg:w-[420px] shrink-0">
-                  {f.screenshot}
+              )}
+              <Reveal>
+                <div className={`flex flex-col ${f.reverse ? "lg:flex-row-reverse" : "lg:flex-row"} items-center gap-10 lg:gap-12`}>
+                  {/* Text */}
+                  <div className="flex-1 min-w-0">
+                    <span className={`inline-block text-[11px] font-bold tracking-widest px-2.5 py-1 rounded-md mb-4 ${f.labelColor}`}>
+                      {f.label}
+                    </span>
+                    <h3 className="text-2xl sm:text-3xl font-bold text-foreground">{f.title}</h3>
+                    <p className="text-muted mt-4 leading-relaxed">{f.desc}</p>
+                  </div>
+                  {/* Arrow connector — desktop only */}
+                  <div className="hidden lg:flex items-center justify-center shrink-0">
+                    <svg
+                      className="w-6 h-6 text-accent/40"
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                      style={{ transform: f.reverse ? "scaleX(-1)" : undefined }}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                  {/* Screenshot */}
+                  <div className="w-full lg:w-[400px] shrink-0">
+                    {f.screenshot}
+                  </div>
                 </div>
-              </div>
-            </Reveal>
+              </Reveal>
+            </div>
           ))}
         </div>
       </div>
@@ -511,7 +586,31 @@ function SocialProof() {
       <div className="max-w-5xl mx-auto">
         <Reveal className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground">{t("social_title")}</h2>
-          <p className="text-muted mt-3 text-sm">{t("social_stats")}</p>
+          {/* Social proof mini-cards */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-6">
+            <div className="flex flex-col items-center px-6 py-4 bg-white/[0.03] border border-white/[0.08] rounded-2xl min-w-[140px]">
+              <span className="text-3xl font-bold text-foreground tabular-nums">500+</span>
+              <span className="text-xs text-muted mt-1">{t("social_stat_1_label")}</span>
+            </div>
+            <div className="flex flex-col items-center px-6 py-4 bg-white/[0.03] border border-white/[0.08] rounded-2xl min-w-[140px]">
+              <span className="text-3xl font-bold text-foreground tabular-nums">10 000+</span>
+              <span className="text-xs text-muted mt-1">{t("social_stat_2_label")}</span>
+            </div>
+            <div className="flex flex-col items-center px-6 py-4 bg-white/[0.03] border border-white/[0.08] rounded-2xl min-w-[140px]">
+              <div className="flex items-center gap-1">
+                <span className="text-3xl font-bold text-foreground tabular-nums">4.8</span>
+                <span className="text-xl font-bold text-gold">/5</span>
+              </div>
+              <div className="flex gap-0.5 mt-0.5">
+                {Array.from({ length: 5 }).map((_, s) => (
+                  <svg key={s} className="w-3 h-3 text-gold" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                  </svg>
+                ))}
+              </div>
+              <span className="text-xs text-muted mt-1">{t("social_stat_3_label")}</span>
+            </div>
+          </div>
         </Reveal>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {testimonials.map((tm, i) => (
@@ -968,7 +1067,7 @@ function Footer() {
 ───────────────────────────────────────────── */
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-background force-dark">
+    <div className="min-h-screen bg-background force-dark landing-page">
       <Nav />
       <Hero />
       <Problem />
