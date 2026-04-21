@@ -14,7 +14,7 @@ const SESSION_LABELS: Record<string, string> = {
 };
 
 const inputClass =
-  "w-full px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-foreground placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent";
+  "w-full px-3 py-2 bg-surface border border-border rounded-lg text-foreground placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent";
 
 interface ParsedRules {
   pairs: string[];
@@ -331,7 +331,7 @@ export default function StrategyPage() {
                     type="checkbox"
                     checked={parsed.sessions.includes(id)}
                     onChange={() => toggleSession(id)}
-                    className="w-4 h-4 rounded border-[#2a2a2a] bg-[#1a1a1a] text-accent focus:ring-accent focus:ring-offset-0"
+                    className="w-4 h-4 rounded border-border bg-surface text-accent focus:ring-accent focus:ring-offset-0"
                   />
                   <span className="text-foreground text-sm">{label}</span>
                 </label>

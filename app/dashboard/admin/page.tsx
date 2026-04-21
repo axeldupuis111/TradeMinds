@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 const ADMIN_EMAIL = "axel.dupuis111@gmail.com";
 
 const inputClass =
-  "w-full px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-foreground placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent";
+  "w-full px-3 py-2 bg-surface border border-border rounded-lg text-foreground placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent";
 
 export default function AdminPage() {
   const { t } = useLanguage();

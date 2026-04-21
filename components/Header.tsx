@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { usePathname, useRouter } from "next/navigation";
 
 const planBadgeStyles: Record<string, string> = {
-  free: "bg-[#2a2a2a] text-muted",
+  free: "bg-surface text-muted",
   plus: "bg-accent/20 text-accent",
 };
 
@@ -40,7 +40,7 @@ export default function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
   }
 
   return (
-    <header className="h-14 bg-[#111113] border-b border-[#1c1c1e] flex items-center justify-between px-5 shrink-0">
+    <header className="h-14 bg-card border-b border-border flex items-center justify-between px-5 shrink-0">
       {/* Left: hamburger (mobile) + breadcrumb */}
       <div className="flex items-center gap-3">
         <button
@@ -85,7 +85,7 @@ export default function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
             </svg>
           </button>
-          <div className="absolute right-0 top-full mt-1.5 hidden group-hover:block bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-foreground whitespace-nowrap shadow-lg z-50">
+          <div className="absolute right-0 top-full mt-1.5 hidden group-hover:block bg-surface border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground whitespace-nowrap shadow-lg z-50">
             {t("header_signout")}
           </div>
         </div>

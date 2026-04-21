@@ -12,7 +12,7 @@ interface Props {
 }
 
 const inputClass =
-  "w-full px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-foreground placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent";
+  "w-full px-3 py-2 bg-surface border border-border rounded-lg text-foreground placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent";
 
 export default function ManualTradeModal({
   pairs,
@@ -90,7 +90,7 @@ export default function ManualTradeModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-      <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
+      <div className="bg-card border border-border rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold text-foreground">
             {t("manual_title")}
@@ -256,7 +256,7 @@ export default function ManualTradeModal({
           </button>
           <button
             onClick={onClose}
-            className="px-5 py-2 bg-[#1a1a1a] border border-[#2a2a2a] text-foreground rounded-lg hover:bg-[#2a2a2a] transition-colors"
+            className="px-5 py-2 bg-surface border border-border text-foreground rounded-lg hover:bg-border transition-colors"
           >
             {t("manual_cancel")}
           </button>

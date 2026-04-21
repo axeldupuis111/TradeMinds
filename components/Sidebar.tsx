@@ -77,7 +77,7 @@ const analyseItems = [
 ];
 
 const planBadgeClass: Record<string, string> = {
-  free:    "bg-[#2a2a2a] text-muted",
+  free:    "bg-surface text-muted",
   plus:    "bg-accent/20 text-accent shadow-[0_0_8px_rgba(59,130,246,0.3)]",
   premium: "bg-yellow-500/20 text-yellow-400 shadow-[0_0_8px_rgba(234,179,8,0.3)]",
 };
@@ -100,8 +100,8 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
         onClick={onClose}
         className={`relative flex items-center gap-3 px-3 py-[10px] rounded-lg text-[13px] font-medium transition-all duration-200 ${
           active
-            ? "bg-accent/10 text-white"
-            : "text-[#71717a] hover:text-[#a1a1aa] hover:bg-white/[0.03]"
+            ? "bg-accent/10 text-accent"
+            : "text-muted hover:text-foreground hover:bg-black/[0.03]"
         }`}
       >
         {active && (
@@ -123,12 +123,12 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
       )}
 
       <aside
-        className={`fixed top-0 left-0 z-50 h-full w-[240px] bg-[#111113] border-r border-[#1c1c1e] flex flex-col transition-transform duration-200 lg:translate-x-0 lg:static lg:z-auto ${
+        className={`fixed top-0 left-0 z-50 h-full w-[240px] bg-card border-r border-border flex flex-col transition-transform duration-200 lg:translate-x-0 lg:static lg:z-auto ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         {/* Logo */}
-        <div className="h-14 flex items-center gap-2.5 px-5 border-b border-[#1c1c1e]">
+        <div className="h-14 flex items-center gap-2.5 px-5 border-b border-border">
           <div className="w-6 h-6 flex items-center justify-center rounded-md bg-accent/15">
             <svg className="w-3.5 h-3.5 text-accent" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
@@ -152,7 +152,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
           </div>
 
           {/* Separator */}
-          <div className="h-px bg-[#1c1c1e] mx-1" />
+          <div className="h-px bg-border mx-1" />
 
           {/* ANALYSE group */}
           <div>
@@ -169,7 +169,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
 
         {/* Bottom section */}
         <div className="px-2.5 pb-3 space-y-0.5">
-          <div className="h-px bg-[#1c1c1e] mx-1 mb-2" />
+          <div className="h-px bg-border mx-1 mb-2" />
 
           {/* COMPTE group label */}
           <p className="text-[10px] font-semibold text-muted/40 tracking-[0.1em] uppercase px-3 mb-1.5">
@@ -202,7 +202,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
           )}
 
           {/* Plan badge */}
-          <div className="mt-3 mx-1 p-3 bg-[#0f0f0f] border border-[#1c1c1e] rounded-xl">
+          <div className="mt-3 mx-1 p-3 bg-background border border-border rounded-xl">
             <div className="flex items-center justify-between mb-2">
               <p className="text-[11px] text-muted">{t("sidebar_current_plan")}</p>
               <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${badgeClass}`}>

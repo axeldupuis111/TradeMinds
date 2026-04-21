@@ -85,7 +85,7 @@ export default function UpgradePage() {
       monthlyPrice: "0€",
       annualPrice: "0€",
       annualMonthly: "",
-      color: "border-[#2a2a2a]",
+      color: "border-border",
     },
     {
       id: "plus",
@@ -111,11 +111,11 @@ export default function UpgradePage() {
         </span>
         <button
           onClick={() => setAnnual(!annual)}
-          className="relative w-14 h-7 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] transition-colors"
+          className="relative w-14 h-7 rounded-full bg-surface border border-border transition-colors"
         >
           <div
             className={`absolute top-0.5 w-6 h-6 rounded-full transition-all duration-300 ${
-              annual ? "left-[30px] bg-accent" : "left-0.5 bg-[#555]"
+              annual ? "left-[30px] bg-accent" : "left-0.5 bg-muted"
             }`}
           />
         </button>
@@ -187,10 +187,10 @@ export default function UpgradePage() {
                 disabled={isCurrent}
                 className={`w-full mt-6 py-2.5 rounded-lg font-medium text-sm transition-colors ${
                   isCurrent
-                    ? "bg-[#1e1e1e] text-muted cursor-default"
+                    ? "bg-surface text-muted cursor-default"
                     : p.id === "plus"
                       ? "bg-accent text-white hover:bg-blue-600"
-                      : "bg-[#1a1a1a] border border-[#2a2a2a] text-foreground hover:bg-[#2a2a2a]"
+                      : "bg-surface border border-border text-foreground hover:bg-border"
                 }`}
               >
                 {isCurrent ? t("plan_current_plan") : t("plan_choose")}
@@ -202,9 +202,9 @@ export default function UpgradePage() {
 
       {/* Premium — Coming soon card */}
       <div className="mt-6 max-w-2xl mx-auto">
-        <div className="relative rounded-xl border-2 border-[#2a2a2a] p-6 opacity-70">
+        <div className="relative rounded-xl border-2 border-border p-6 opacity-70">
           {/* Badge */}
-          <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#2a2a2a] text-muted text-xs font-bold px-3 py-0.5 rounded-full">
+          <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-surface text-muted text-xs font-bold px-3 py-0.5 rounded-full">
             {t("plan_premium_coming")}
           </span>
 
@@ -232,12 +232,12 @@ export default function UpgradePage() {
                     onChange={(e) => setNotifyEmail(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") handleNotify(); }}
                     placeholder="email@exemple.com"
-                    className="flex-1 min-w-0 px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-foreground text-sm placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent/50 focus:border-accent/50"
+                    className="flex-1 min-w-0 px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent/50 focus:border-accent/50"
                   />
                   <button
                     onClick={handleNotify}
                     disabled={notifyStatus === "loading" || !notifyEmail.trim()}
-                    className="px-3 py-2 bg-[#1e1e1e] border border-[#2a2a2a] text-foreground text-sm rounded-lg hover:bg-[#2a2a2a] transition-colors disabled:opacity-50 whitespace-nowrap"
+                    className="px-3 py-2 bg-surface border border-border text-foreground text-sm rounded-lg hover:bg-border transition-colors disabled:opacity-50 whitespace-nowrap"
                   >
                     {notifyStatus === "loading" ? "..." : t("plan_premium_notify_btn")}
                   </button>
@@ -257,7 +257,7 @@ export default function UpgradePage() {
         <div className="rounded-xl border border-border overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border bg-[#0f0f0f]">
+              <tr className="border-b border-border bg-surface">
                 <th className="text-left px-4 py-3 text-muted font-medium">{t("plan_feature")}</th>
                 <th className="text-center px-4 py-3 text-muted font-medium">{t("plan_free")}</th>
                 <th className="text-center px-4 py-3 text-accent font-semibold">{t("plan_plus")}</th>

@@ -131,7 +131,7 @@ export default function StopTradingGuard() {
         </div>
 
         {/* Quote */}
-        <div className="mt-8 p-5 rounded-xl border border-[#1e1e1e] bg-[#0f0f0f]">
+        <div className="mt-8 p-5 rounded-xl border border-border bg-background">
           <p className="text-foreground italic text-sm leading-relaxed">&laquo; {quote.text} &raquo;</p>
           <p className="text-muted text-xs mt-2 text-right">&mdash; {quote.author}</p>
         </div>

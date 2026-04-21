@@ -110,7 +110,7 @@ function ColumnMappingModal({
               <select
                 value={mapping[f.key] || ""}
                 onChange={(e) => setMapping((m) => ({ ...m, [f.key]: e.target.value || undefined }))}
-                className="flex-1 px-2 py-1.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
+                className="flex-1 px-2 py-1.5 bg-surface border border-border rounded-lg text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
               >
                 <option value="">{t("csv_col_ignore")}</option>
                 {rawHeaders.map((h) => (
@@ -123,7 +123,7 @@ function ColumnMappingModal({
 
         {/* Preview first row */}
         {rawRows.length > 0 && (
-          <div className="mt-4 p-3 bg-[#0f0f0f] rounded-lg border border-[#1c1c1e]">
+          <div className="mt-4 p-3 bg-background rounded-lg border border-border">
             <p className="text-[10px] text-muted mb-1.5">Aperçu ligne 1 :</p>
             <div className="text-[10px] text-foreground space-y-0.5 overflow-hidden">
               {Object.entries(rawRows[0]).slice(0, 6).map(([k, v]) => (
@@ -146,7 +146,7 @@ function ColumnMappingModal({
           </button>
           <button
             onClick={onCancel}
-            className="px-4 py-2 bg-[#1a1a1a] border border-[#2a2a2a] text-muted rounded-lg text-sm hover:text-foreground transition-colors"
+            className="px-4 py-2 bg-surface border border-border text-muted rounded-lg text-sm hover:text-foreground transition-colors"
           >
             ✕
           </button>
@@ -394,7 +394,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
           {t("csv_guide_btn")}
         </button>
       </div>
-      <div className="h-px bg-[#1e1e1e] mt-2 mb-4" />
+      <div className="h-px bg-border mt-2 mb-4" />
 
       {showGuide && <ExportGuideModal onClose={() => setShowGuide(false)} />}
 
@@ -432,10 +432,10 @@ export default function CsvImport({ strategyId, onImported }: Props) {
             onClick={() => { if (!isCooldownActive) fileRef.current?.click(); }}
             className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
               isCooldownActive
-                ? "border-[#2a2a2a] opacity-50 cursor-not-allowed"
+                ? "border-border opacity-50 cursor-not-allowed"
                 : dragOver
                   ? "border-accent bg-accent/5 cursor-pointer"
-                  : "border-[#2a2a2a] hover:border-accent/50 cursor-pointer"
+                  : "border-border hover:border-accent/50 cursor-pointer"
             }`}
           >
             <svg className="w-10 h-10 mx-auto text-muted mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -453,7 +453,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
               {PLATFORMS.map((name) => (
                 <span
                   key={name}
-                  className="px-3 py-1 rounded-lg text-xs font-medium text-muted border border-[#27272a] bg-[#18181b] whitespace-nowrap"
+                  className="px-3 py-1 rounded-lg text-xs font-medium text-muted border border-border bg-surface whitespace-nowrap"
                 >
                   {name}
                 </span>
@@ -481,7 +481,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
         <div>
           {/* Account matching info */}
           {detectedAccountNumber && (
-            <div className="mb-4 p-3 rounded-lg border border-[#2a2a2a] bg-[#141414]">
+            <div className="mb-4 p-3 rounded-lg border border-border bg-surface">
               <p className="text-sm text-muted">
                 {t("csv_account_detected")} <span className="text-foreground font-medium">{detectedAccountNumber}</span>
               </p>
@@ -505,7 +505,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
               <select
                 value={selectedChallengeId || ""}
                 onChange={(e) => setSelectedChallengeId(e.target.value || null)}
-                className="w-full px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
+                className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
               >
                 <option value="">{t("csv_no_account")}</option>
                 {activeAccounts.map((a) => (
@@ -521,10 +521,10 @@ export default function CsvImport({ strategyId, onImported }: Props) {
           )}
 
           {/* Preview table */}
-          <div className="overflow-x-auto rounded-lg border border-[#1e1e1e]">
+          <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-[#141414] text-muted text-left">
+                <tr className="bg-surface text-muted text-left">
                   <th className="px-3 py-2 font-medium">{t("trades_col_date")}</th>
                   <th className="px-3 py-2 font-medium">{t("trades_col_pair")}</th>
                   <th className="px-3 py-2 font-medium">{t("trades_col_dir")}</th>
@@ -536,7 +536,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
               </thead>
               <tbody>
                 {preview.map((tr, i) => (
-                  <tr key={i} className={i % 2 === 0 ? "bg-[#0f0f0f]" : "bg-[#141414]"}>
+                  <tr key={i} className={i % 2 === 0 ? "bg-card" : "bg-surface"}>
                     <td className="px-3 py-2 text-foreground">{tr.open_time}</td>
                     <td className="px-3 py-2 text-foreground">{tr.pair}</td>
                     <td className="px-3 py-2">
@@ -570,7 +570,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
             </button>
             <button
               onClick={() => { setPreview([]); setDetectedAccountNumber(null); setMatchedChallengeId(null); setAccountNotFound(false); }}
-              className="px-5 py-2 bg-[#1a1a1a] border border-[#2a2a2a] text-foreground rounded-lg hover:bg-[#2a2a2a] transition-colors"
+              className="px-5 py-2 bg-surface border border-border text-foreground rounded-lg hover:bg-border transition-colors"
             >
               {t("csv_cancel")}
             </button>

@@ -2,261 +2,277 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── CSS Variable tokens (RGB channels for Tailwind alpha utilities) ───────
+   background  = page background
+   foreground  = primary text
+   card        = card / panel background
+   surface     = input / secondary background (one level lighter than card)
+   border      = default border colour
+   muted       = secondary / placeholder text
+   ──────────────────────────────────────────────────────────────────────── */
+
 :root {
-  --background: #09090b;
-  --foreground: #fafafa;
-  --card-bg: #111113;
-  --border-color: #1c1c1e;
-  --muted-color: #71717a;
+  /* Dark mode — default */
+  --background: 9 9 11;       /* #09090b */
+  --foreground: 250 250 250;  /* #fafafa */
+  --card:       17 17 19;     /* #111113 */
+  --surface:    26 26 26;     /* #1a1a1a */
+  --border:     28 28 30;     /* #1c1c1e */
+  --muted:      113 113 122;  /* #71717a */
 }
 
-/* Light mode overrides */
 html.light {
-  --background: #f8f9fa;
-  --foreground: #111113;
-  --card-bg: #ffffff;
-  --border-color: #e4e4e7;
-  --muted-color: #71717a;
-}
-
-html.light body {
-  background: var(--background);
-  color: var(--foreground);
-}
-
-/* Light mode card / border overrides */
-html.light .bg-card {
-  background-color: #ffffff !important;
-}
-html.light .border-border {
-  border-color: #e4e4e7 !important;
-}
-html.light .bg-\[\#111113\], html.light .bg-\[\#111111\], html.light .bg-\[\#0a0a0c\] {
-  background-color: #ffffff !important;
-}
-html.light .bg-\[\#1a1a1a\], html.light .bg-\[\#18181b\] {
-  background-color: #f4f4f5 !important;
-}
-html.light .text-muted {
-  color: #71717a !important;
-}
-html.light .border-\[\#1c1c1e\], html.light .border-\[\#2a2a2a\], html.light .border-\[\#27272a\] {
-  border-color: #e4e4e7 !important;
-}
-html.light .bg-\[\#0f0f0f\], html.light .bg-\[\#0f0f11\] {
-  background-color: #f9f9f9 !important;
-}
-
-html.light ::-webkit-scrollbar-thumb {
-  background: #d4d4d8;
-}
-html.light ::-webkit-scrollbar-thumb:hover {
-  background: #a1a1aa;
-}
-
-html.light .skeleton {
-  background: linear-gradient(90deg, #f4f4f5 25%, #e4e4e7 50%, #f4f4f5 75%);
-  background-size: 200% 100%;
+  /* Light mode overrides */
+  --background: 248 249 250;  /* #f8f9fa */
+  --foreground: 17 24 39;     /* #111827 */
+  --card:       255 255 255;  /* #ffffff */
+  --surface:    243 244 246;  /* #f3f4f6 */
+  --border:     229 231 235;  /* #e5e7eb */
+  --muted:      107 114 128;  /* #6b7280 */
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
+  color: rgb(var(--foreground));
+  background: rgb(var(--background));
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
-/* Smooth transitions globally */
+/* ─── Light-mode overrides for hardcoded dark colours ───────────────────── */
+
+/* Panels & cards with specific dark hex values */
+html.light [class~="bg-\[\#111113\]"],
+html.light [class~="bg-\[\#111111\]"],
+html.light [class~="bg-\[\#0f0f0f\]"],
+html.light [class~="bg-\[\#0f0f11\]"],
+html.light [class~="bg-\[\#0c0c0e\]"] {
+  background-color: rgb(var(--card)) !important;
+}
+
+html.light [class~="bg-\[\#0a0a0c\]"],
+html.light [class~="bg-\[\#09090b\]"],
+html.light [class~="bg-\[\#0a0a0b\]"],
+html.light [class~="bg-\[\#0a0a0a\]"],
+html.light [class~="bg-\[\#0c0c0c\]"] {
+  background-color: rgb(var(--background)) !important;
+}
+
+html.light [class~="bg-\[\#141414\]"],
+html.light [class~="bg-\[\#101010\]"] {
+  background-color: rgb(var(--surface)) !important;
+}
+
+html.light [class~="bg-\[\#1a1a1a\]"],
+html.light [class~="bg-\[\#18181b\]"],
+html.light [class~="bg-\[\#1c1c1e\]"],
+html.light [class~="bg-\[\#1e1e1e\]"] {
+  background-color: rgb(var(--surface)) !important;
+}
+
+html.light [class~="bg-\[\#2a2a2a\]"],
+html.light [class~="bg-\[\#27272a\]"],
+html.light [class~="bg-\[\#3f3f46\]"],
+html.light [class~="bg-\[\#2a2a2e\]"] {
+  background-color: rgb(var(--border)) !important;
+}
+
+/* Borders */
+html.light [class~="border-\[\#1c1c1e\]"],
+html.light [class~="border-\[\#2a2a2a\]"],
+html.light [class~="border-\[\#27272a\]"],
+html.light [class~="border-\[\#3f3f46\]"],
+html.light [class~="border-\[\#2a2a2e\]"],
+html.light [class~="border-\[\#1e1e1e\]"],
+html.light [class~="border-\[\#3a3a3a\]"] {
+  border-color: rgb(var(--border)) !important;
+}
+
+/* Hover state overrides for hardcoded dark colours */
+html.light *:hover[class*="hover\:bg-\[\#2a2a2a\]"],
+html.light *:hover[class*="hover\:bg-\[\#3f3f46\]"],
+html.light *:hover[class*="hover\:bg-\[\#1e1e1e\]"] {
+  background-color: rgb(var(--border)) !important;
+}
+html.light *:hover[class*="hover\:border-\[\#2a2a2e\]"],
+html.light *:hover[class*="hover\:border-\[\#3a3a3a\]"] {
+  border-color: rgb(var(--muted)) !important;
+}
+
+/* Divide colours */
+html.light [class~="divide-\[\#1c1c1e\]"] > * + * {
+  border-color: rgb(var(--border)) !important;
+}
+
+/* Text */
+html.light .text-\[\#fafafa\],
+html.light .text-\[\#d4d4d8\],
+html.light .text-\[\#c4c4c4\],
+html.light .text-\[\#a1a1aa\] {
+  color: rgb(var(--foreground) / 0.85) !important;
+}
+
+html.light .text-\[\#71717a\] {
+  color: rgb(var(--muted)) !important;
+}
+
+/* Stroke colours on SVG axes / grids (recharts) */
+html.light .recharts-cartesian-axis-tick text {
+  fill: rgb(var(--muted)) !important;
+}
+html.light .recharts-cartesian-grid line {
+  stroke: rgb(var(--border)) !important;
+}
+
+/* Sidebar in light mode */
+html.light aside {
+  background-color: rgb(var(--card)) !important;
+  border-color: rgb(var(--border)) !important;
+}
+
+/* Header in light mode */
+html.light header {
+  background-color: rgb(var(--card)) !important;
+  border-color: rgb(var(--border)) !important;
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: rgb(var(--surface)); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: rgb(var(--border)); }
+
+/* ─── Skeleton ──────────────────────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+.skeleton {
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 0.75rem;
+  background-image: linear-gradient(
+    90deg,
+    rgb(var(--card)) 25%,
+    rgb(var(--surface)) 50%,
+    rgb(var(--card)) 75%
+  );
+}
+
+/* ─── Smooth transitions ────────────────────────────────────────────────── */
 * {
   transition-property: background-color, border-color, color, opacity;
   transition-duration: 200ms;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
-
-/* Reset transition for animations and transforms */
 [class*="animate-"],
 [class*="transition-"] {
   transition-property: all;
 }
 
 /* Table row hover */
-tbody tr {
-  transition: background-color 200ms ease;
-}
-tbody tr:hover {
-  background-color: rgba(59, 130, 246, 0.04) !important;
-}
+tbody tr { transition: background-color 200ms ease; }
+tbody tr:hover { background-color: rgba(59, 130, 246, 0.04) !important; }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #27272a;
-  border-radius: 9999px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46;
-}
-
-/* Skeleton animation */
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-.skeleton {
-  background: linear-gradient(90deg, #111113 25%, #1c1c1e 50%, #111113 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s ease-in-out infinite;
-  border-radius: 0.75rem;
-}
-
-/* Landing page gradient */
+/* ─── Landing page ──────────────────────────────────────────────────────── */
 @keyframes gradient-shift {
   0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+  50%       { background-position: 100% 50%; }
 }
-
 .hero-gradient {
   background: linear-gradient(135deg, #09090b 0%, #0a1628 25%, #09090b 50%, #0f172a 75%, #09090b 100%);
   background-size: 400% 400%;
   animation: gradient-shift 15s ease infinite;
 }
 
-/* Glow effect for CTA */
-.glow-blue {
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.15), 0 0 60px rgba(59, 130, 246, 0.05);
-}
-.glow-blue:hover {
-  box-shadow: 0 0 30px rgba(59, 130, 246, 0.25), 0 0 80px rgba(59, 130, 246, 0.1);
-}
+/* ─── Glow effects ──────────────────────────────────────────────────────── */
+.glow-blue { box-shadow: 0 0 20px rgba(59,130,246,0.15), 0 0 60px rgba(59,130,246,0.05); }
+.glow-blue:hover { box-shadow: 0 0 30px rgba(59,130,246,0.25), 0 0 80px rgba(59,130,246,0.1); }
 
-/* Scroll reveal animation */
+/* ─── Scroll reveal ─────────────────────────────────────────────────────── */
 .reveal-on-scroll {
   opacity: 0;
   transform: translateY(30px);
-  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.7s cubic-bezier(0.16,1,0.3,1), transform 0.7s cubic-bezier(0.16,1,0.3,1);
 }
-.reveal-on-scroll.revealed {
-  opacity: 1;
-  transform: translateY(0);
-}
+.reveal-on-scroll.revealed { opacity: 1; transform: translateY(0); }
 
-/* Button hover scale */
-.btn-scale {
-  transition: transform 200ms ease, background-color 200ms ease, box-shadow 200ms ease;
-}
-.btn-scale:hover {
-  transform: scale(1.02);
-}
-.btn-scale:active {
-  transform: scale(0.98);
-}
+/* ─── Button scale ──────────────────────────────────────────────────────── */
+.btn-scale { transition: transform 200ms ease, background-color 200ms ease, box-shadow 200ms ease; }
+.btn-scale:hover  { transform: scale(1.02); }
+.btn-scale:active { transform: scale(0.98); }
 
-/* Tabular numbers for stats */
-.tabular-nums {
-  font-variant-numeric: tabular-nums;
-}
+/* ─── Tabular numbers ───────────────────────────────────────────────────── */
+.tabular-nums { font-variant-numeric: tabular-nums; }
 
-/* Card subtle shadow */
-.card-shadow {
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.02);
-}
+/* ─── Card shadow ───────────────────────────────────────────────────────── */
+.card-shadow { box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.02); }
+html.light .card-shadow { box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04); }
 
-/* Flame animation for streaks */
+/* ─── Flame animation ───────────────────────────────────────────────────── */
 @keyframes flame-flicker {
-  0%, 100% { transform: scale(1) rotate(0deg); }
-  25% { transform: scale(1.05) rotate(-2deg); }
-  50% { transform: scale(1.1) rotate(1deg); }
-  75% { transform: scale(1.03) rotate(-1deg); }
+  0%,100% { transform: scale(1) rotate(0deg); }
+  25%      { transform: scale(1.05) rotate(-2deg); }
+  50%      { transform: scale(1.1) rotate(1deg); }
+  75%      { transform: scale(1.03) rotate(-1deg); }
 }
-.flame-animate {
-  animation: flame-flicker 1.5s ease-in-out infinite;
-  display: inline-block;
-}
+.flame-animate { animation: flame-flicker 1.5s ease-in-out infinite; display: inline-block; }
 
-/* Gradient bar budget */
-.gradient-budget {
-  background: linear-gradient(90deg, #ef4444 0%, #f59e0b 40%, #22c55e 100%);
-}
+/* ─── Gradient bar ──────────────────────────────────────────────────────── */
+.gradient-budget { background: linear-gradient(90deg, #ef4444 0%, #f59e0b 40%, #22c55e 100%); }
 
-/* Hero CTA glow pulse */
+/* ─── Glow pulse ────────────────────────────────────────────────────────── */
 @keyframes glow-pulse {
-  0%, 100% { box-shadow: 0 0 20px rgba(59,130,246,0.3), 0 0 60px rgba(59,130,246,0.1); }
-  50% { box-shadow: 0 0 35px rgba(59,130,246,0.5), 0 0 80px rgba(59,130,246,0.2); }
+  0%,100% { box-shadow: 0 0 20px rgba(59,130,246,0.3), 0 0 60px rgba(59,130,246,0.1); }
+  50%     { box-shadow: 0 0 35px rgba(59,130,246,0.5), 0 0 80px rgba(59,130,246,0.2); }
 }
-.glow-pulse {
-  animation: glow-pulse 2.5s ease-in-out infinite;
-}
+.glow-pulse { animation: glow-pulse 2.5s ease-in-out infinite; }
 
-/* Badge pulse (pricing -25%) */
+/* ─── Badge pulse ───────────────────────────────────────────────────────── */
 @keyframes badge-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.85; transform: scale(1.04); }
+  0%,100% { opacity: 1; transform: scale(1); }
+  50%     { opacity: 0.85; transform: scale(1.04); }
 }
-.badge-pulse {
-  animation: badge-pulse 2s ease-in-out infinite;
-}
+.badge-pulse { animation: badge-pulse 2s ease-in-out infinite; }
 
-/* Icon pulse on AI detection cards */
+/* ─── Icon pulse ────────────────────────────────────────────────────────── */
 @keyframes icon-pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.08); opacity: 0.85; }
+  0%,100% { transform: scale(1); opacity: 1; }
+  50%     { transform: scale(1.08); opacity: 0.85; }
 }
-.icon-pulse {
-  animation: icon-pulse 2.5s ease-in-out infinite;
-}
+.icon-pulse { animation: icon-pulse 2.5s ease-in-out infinite; }
 
-/* Score circle fill animation */
+/* ─── Score circle ──────────────────────────────────────────────────────── */
 @keyframes score-fill {
   from { stroke-dashoffset: var(--circumference); }
   to   { stroke-dashoffset: var(--offset); }
 }
-.score-animate {
-  animation: score-fill 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
+.score-animate { animation: score-fill 1.2s cubic-bezier(0.4,0,0.2,1) forwards; }
 
-/* Fade-in + slide-up for scroll-reveal cards */
+/* ─── Reveal card ───────────────────────────────────────────────────────── */
 .reveal-card {
   opacity: 0;
   transform: translateY(12px);
-  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.5s cubic-bezier(0.16,1,0.3,1), transform 0.5s cubic-bezier(0.16,1,0.3,1);
 }
-.reveal-card.revealed {
-  opacity: 1;
-  transform: translateY(0);
-}
+.reveal-card.revealed { opacity: 1; transform: translateY(0); }
 
-/* Pricing price transition */
-.price-transition {
-  transition: opacity 250ms ease, transform 250ms ease;
-}
-.price-exit {
-  opacity: 0;
-  transform: translateY(-6px);
-}
-.price-enter {
-  opacity: 1;
-  transform: translateY(0);
-}
+/* ─── Price transition ──────────────────────────────────────────────────── */
+.price-transition { transition: opacity 250ms ease, transform 250ms ease; }
+.price-exit  { opacity: 0; transform: translateY(-6px); }
+.price-enter { opacity: 1; transform: translateY(0); }
 
-/* Feature screenshot card */
+/* ─── Feature screenshot card ───────────────────────────────────────────── */
 .feature-screenshot {
-  background: #0a0a0c;
-  border: 1px solid #1c1c1e;
+  background: rgb(var(--card));
+  border: 1px solid rgb(var(--border));
   border-radius: 12px;
   overflow: hidden;
 }
 
-/* Gradient border utility for Plus plan card */
-.card-gradient-border-blue {
-  position: relative;
-}
+/* ─── Gradient borders ──────────────────────────────────────────────────── */
+.card-gradient-border-blue { position: relative; }
 .card-gradient-border-blue::before {
   content: '';
   position: absolute;
@@ -270,10 +286,7 @@ tbody tr:hover {
   pointer-events: none;
 }
 
-/* Gradient border for Premium plan card */
-.card-gradient-border-gold {
-  position: relative;
-}
+.card-gradient-border-gold { position: relative; }
 .card-gradient-border-gold::before {
   content: '';
   position: absolute;
@@ -287,13 +300,11 @@ tbody tr:hover {
   pointer-events: none;
 }
 
-/* Radial glow for CTA section */
+/* ─── Radial glow ───────────────────────────────────────────────────────── */
 .radial-glow-blue {
   background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(59,130,246,0.12) 0%, transparent 70%);
 }
 
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+  .text-balance { text-wrap: balance; }
 }

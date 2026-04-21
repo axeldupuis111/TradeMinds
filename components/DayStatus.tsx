@@ -142,7 +142,7 @@ export default function DayStatus() {
             <span>{t("session_budget_label")}</span>
             <span>{budgetPct.toFixed(0)}%</span>
           </div>
-          <div className="h-2 bg-[#1e1e1e] rounded-full overflow-hidden">
+          <div className="h-2 bg-border rounded-full overflow-hidden">
             <div
               className={`h-full transition-all ${budgetPct > 50 ? "bg-profit" : budgetPct > 20 ? "bg-orange-400" : "bg-loss"}`}
               style={{ width: `${Math.min(100, Math.max(0, budgetPct))}%` }}

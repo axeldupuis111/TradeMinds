@@ -34,7 +34,7 @@ const PROP_FIRMS = ["FTMO", "The5ers", "FundedNext", "MyFundedFX", "TFT", "MyFor
 const BROKERS = ["IC Markets", "Pepperstone", "XM", "Exness", "OANDA", "Interactive Brokers", "eToro", "XTB", "Admiral Markets", "Vantage", "FP Markets", "Fusion Markets", "Autre"];
 
 const inputClass =
-  "w-full px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-foreground placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent";
+  "w-full px-3 py-2 bg-surface border border-border rounded-lg text-foreground placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent";
 
 function ProgressBar({
   value,
@@ -61,7 +61,7 @@ function ProgressBar({
           {value.toFixed(0)}€ / {max.toFixed(0)}€ — {pct.toFixed(1)}%
         </span>
       </div>
-      <div className="h-3 bg-[#1e1e1e] rounded-full overflow-hidden">
+      <div className="h-3 bg-border rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-500 ${
             alert && alertLevel === "critical"
@@ -133,27 +133,27 @@ function AccountCard({
 
       {/* Stats grid */}
       <div className={`grid grid-cols-2 ${isProp ? "sm:grid-cols-4" : "sm:grid-cols-3"} gap-3 mt-6`}>
-        <div className="bg-[#0f0f0f] rounded-lg p-3">
+        <div className="bg-background rounded-lg p-3">
           <p className="text-xs text-muted">{t("challenge_balance")}</p>
           <p className="text-lg font-bold text-foreground">
             {balance.toLocaleString("fr-FR", { maximumFractionDigits: 0 })}€
           </p>
           <p className="text-xs text-muted mt-0.5">{t("challenge_from_trades")}</p>
         </div>
-        <div className="bg-[#0f0f0f] rounded-lg p-3">
+        <div className="bg-background rounded-lg p-3">
           <p className="text-xs text-muted">{t("challenge_total_pnl")}</p>
           <p className={`text-lg font-bold ${currentPnl >= 0 ? "text-profit" : "text-loss"}`}>
             {currentPnl >= 0 ? "+" : ""}{currentPnl.toFixed(2)}€
           </p>
         </div>
-        <div className="bg-[#0f0f0f] rounded-lg p-3">
+        <div className="bg-background rounded-lg p-3">
           <p className="text-xs text-muted">{t("challenge_today_pnl")}</p>
           <p className={`text-lg font-bold ${todayPnl >= 0 ? "text-profit" : "text-loss"}`}>
             {todayPnl >= 0 ? "+" : ""}{todayPnl.toFixed(2)}€
           </p>
         </div>
         {isProp && (
-          <div className="bg-[#0f0f0f] rounded-lg p-3">
+          <div className="bg-background rounded-lg p-3">
             <p className="text-xs text-muted">{t("challenge_days")}</p>
             <p className="text-lg font-bold text-foreground">
               {daysElapsed}j
@@ -398,7 +398,7 @@ export default function ChallengePage() {
         <h2 className="text-lg font-semibold text-foreground">
           {activeAccounts.length > 0 ? t("challenge_create_new") : t("challenge_create")}
         </h2>
-        <div className="h-px bg-[#1e1e1e] mt-2 mb-4" />
+        <div className="h-px bg-border mt-2 mb-4" />
 
         {maxAccounts !== null && activeAccounts.length >= maxAccounts && (
           <div className="rounded-xl border border-accent/30 bg-accent/5 p-4 mb-4 flex items-center gap-3">
@@ -416,11 +416,11 @@ export default function ChallengePage() {
             <label className="block text-sm text-muted mb-2">{t("challenge_account_type")}</label>
             <div className="grid grid-cols-2 gap-3">
               <button type="button" onClick={() => { setAccountType("prop"); setFirm(PROP_FIRMS[0]); }}
-                className={`py-2.5 px-4 rounded-lg text-sm font-medium border transition-colors ${accountType === "prop" ? "bg-accent/10 border-accent text-accent" : "bg-[#1a1a1a] border-[#2a2a2a] text-muted hover:text-foreground"}`}>
+                className={`py-2.5 px-4 rounded-lg text-sm font-medium border transition-colors ${accountType === "prop" ? "bg-accent/10 border-accent text-accent" : "bg-surface border-border text-muted hover:text-foreground"}`}>
                 {t("challenge_type_prop")}
               </button>
               <button type="button" onClick={() => { setAccountType("personal"); setFirm(BROKERS[0]); }}
-                className={`py-2.5 px-4 rounded-lg text-sm font-medium border transition-colors ${accountType === "personal" ? "bg-accent/10 border-accent text-accent" : "bg-[#1a1a1a] border-[#2a2a2a] text-muted hover:text-foreground"}`}>
+                className={`py-2.5 px-4 rounded-lg text-sm font-medium border transition-colors ${accountType === "personal" ? "bg-accent/10 border-accent text-accent" : "bg-surface border-border text-muted hover:text-foreground"}`}>
                 {t("challenge_type_personal")}
               </button>
             </div>
@@ -501,7 +501,7 @@ export default function ChallengePage() {
       {/* HISTORY */}
       <section className="mt-10 mb-8">
         <h2 className="text-lg font-semibold text-foreground">{t("challenge_history")}</h2>
-        <div className="h-px bg-[#1e1e1e] mt-2 mb-4" />
+        <div className="h-px bg-border mt-2 mb-4" />
 
         {history.length === 0 ? (
           <p className="text-muted text-sm">{t("challenge_no_history")}</p>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useChartColors } from "@/lib/useChartColors";
 import { useLanguage } from "@/lib/LanguageContext";
 import {
   AreaChart,
@@ -24,13 +25,12 @@ interface Props {
 
 export default function EquityCurve({ data, initialBalance }: Props) {
   const { t } = useLanguage();
+  const c = useChartColors();
 
   if (data.length === 0) {
     return (
       <div className="bg-card border border-border rounded-xl p-6">
-        <h2 className="text-sm font-semibold text-foreground mb-4">
-          {t("equity_title")}
-        </h2>
+        <h2 className="text-sm font-semibold text-foreground mb-4">{t("equity_title")}</h2>
         <p className="text-muted text-sm">{t("equity_empty")}</p>
       </div>
     );
@@ -42,15 +42,12 @@ export default function EquityCurve({ data, initialBalance }: Props) {
   const yMin = Math.floor(minBalance - padding);
   const yMax = Math.ceil(maxBalance + padding);
 
-  // Determine if current balance is above or below initial
   const lastBalance = data[data.length - 1]?.balance ?? initialBalance;
   const isAbove = lastBalance >= initialBalance;
 
   return (
     <div className="bg-card border border-border rounded-xl p-6">
-      <h2 className="text-sm font-semibold text-foreground mb-4">
-        {t("equity_title")}
-      </h2>
+      <h2 className="text-sm font-semibold text-foreground mb-4">{t("equity_title")}</h2>
       <div style={{ width: "100%", height: 300 }}>
         <ResponsiveContainer>
           <AreaChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
@@ -64,35 +61,38 @@ export default function EquityCurve({ data, initialBalance }: Props) {
                 <stop offset="100%" stopColor="#ef4444" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1e1e1e" />
+            <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
             <XAxis
               dataKey="date"
-              tick={{ fill: "#666", fontSize: 11 }}
+              tick={{ fill: c.axis, fontSize: 11 }}
               tickLine={false}
-              axisLine={{ stroke: "#1e1e1e" }}
+              axisLine={{ stroke: c.axisLine }}
             />
             <YAxis
               domain={[yMin, yMax]}
-              tick={{ fill: "#666", fontSize: 11 }}
+              tick={{ fill: c.axis, fontSize: 11 }}
               tickLine={false}
-              axisLine={{ stroke: "#1e1e1e" }}
+              axisLine={{ stroke: c.axisLine }}
               tickFormatter={(v: number) => `${v.toLocaleString()}€`}
               width={80}
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: "#141414",
-                border: "1px solid #2a2a2a",
+                backgroundColor: c.tooltipBg,
+                border: `1px solid ${c.tooltipBorder}`,
                 borderRadius: "8px",
                 fontSize: 13,
               }}
-              labelStyle={{ color: "#888" }}
-              formatter={(value: unknown) => [`${Number(value).toLocaleString("fr-FR", { maximumFractionDigits: 2 })}€`, t("equity_balance")]}
+              labelStyle={{ color: c.tooltipText }}
+              formatter={(value: unknown) => [
+                `${Number(value).toLocaleString("fr-FR", { maximumFractionDigits: 2 })}€`,
+                t("equity_balance"),
+              ]}
               labelFormatter={(label: unknown) => String(label)}
             />
             <ReferenceLine
               y={initialBalance}
-              stroke="#444"
+              stroke={c.referenceLine}
               strokeDasharray="4 4"
               strokeWidth={1}
             />
@@ -103,7 +103,7 @@ export default function EquityCurve({ data, initialBalance }: Props) {
               strokeWidth={2}
               fill={isAbove ? "url(#gradProfit)" : "url(#gradLoss)"}
               dot={false}
-              activeDot={{ r: 4, stroke: isAbove ? "#22c55e" : "#ef4444", strokeWidth: 2, fill: "#141414" }}
+              activeDot={{ r: 4, stroke: isAbove ? "#22c55e" : "#ef4444", strokeWidth: 2, fill: c.dotFill }}
             />
           </AreaChart>
         </ResponsiveContainer>

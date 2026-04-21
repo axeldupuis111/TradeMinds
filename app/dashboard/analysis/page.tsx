@@ -69,7 +69,7 @@ function ScoreCircle({ score, label }: { score: number; label: string }) {
             cy="60"
             r={radius}
             fill="none"
-            stroke="#1e1e1e"
+            stroke="rgb(var(--border))"
             strokeWidth="8"
           />
           <circle
@@ -714,7 +714,7 @@ export default function AnalysisPage() {
                       <button
                         key={s}
                         onClick={() => { setChatInput(s); }}
-                        className="px-3 py-1.5 text-xs bg-[#1a1a1a] border border-[#2a2a2a] rounded-full text-muted hover:text-foreground hover:border-accent/50 transition-colors"
+                        className="px-3 py-1.5 text-xs bg-surface border border-border rounded-full text-muted hover:text-foreground hover:border-accent/50 transition-colors"
                       >
                         {s}
                       </button>
@@ -735,7 +735,7 @@ export default function AnalysisPage() {
                     <div className={`rounded-xl px-4 py-2.5 text-sm ${
                       msg.role === "user"
                         ? "bg-accent text-white rounded-br-sm"
-                        : "bg-[#1a1a1a] border border-[#2a2a2a] text-foreground rounded-bl-sm"
+                        : "bg-surface border border-border text-foreground rounded-bl-sm"
                     }`}>
                       <p className="whitespace-pre-wrap">{msg.content}</p>
                     </div>
@@ -756,7 +756,7 @@ export default function AnalysisPage() {
               ))}
               {chatLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl px-4 py-2.5 rounded-bl-sm">
+                  <div className="bg-surface border border-border rounded-xl px-4 py-2.5 rounded-bl-sm">
                     <div className="flex gap-1">
                       <span className="w-2 h-2 bg-muted rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
                       <span className="w-2 h-2 bg-muted rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
@@ -777,7 +777,7 @@ export default function AnalysisPage() {
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChatMessage(); } }}
                 placeholder={t("coach_placeholder")}
                 disabled={chatLoading || (chatRemaining !== null && chatRemaining <= 0)}
-                className="flex-1 px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-foreground text-sm placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent disabled:opacity-50"
+                className="flex-1 px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent disabled:opacity-50"
               />
               <button
                 onClick={sendChatMessage}
@@ -875,7 +875,7 @@ export default function AnalysisPage() {
       {/* Mobile history (visible only on mobile) */}
       <section className="lg:hidden mt-8 mb-8">
         <h2 className="text-lg font-semibold text-foreground">{t("analysis_history")}</h2>
-        <div className="h-px bg-[#1e1e1e] mt-2 mb-4" />
+        <div className="h-px bg-border mt-2 mb-4" />
         {historyLoading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (

@@ -102,7 +102,7 @@ export default function TradingCalendar({ trades, selectedAccountId }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-3">
-          <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-[#1e1e1e] text-muted hover:text-foreground transition-colors">
+          <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-border text-muted hover:text-foreground transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
@@ -110,7 +110,7 @@ export default function TradingCalendar({ trades, selectedAccountId }: Props) {
           <h2 className="text-lg font-semibold text-foreground capitalize">
             {monthNames[month]} {year}
           </h2>
-          <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-[#1e1e1e] text-muted hover:text-foreground transition-colors">
+          <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-border text-muted hover:text-foreground transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
@@ -154,12 +154,12 @@ export default function TradingCalendar({ trades, selectedAccountId }: Props) {
           const isSelected = selectedDay === dayNum.toString() && isCurrentMonth;
 
           const bgColor = !isCurrentMonth
-            ? "bg-[#0c0c0c]"
+            ? "bg-background/50"
             : hasTrades
               ? isPositive
-                ? "bg-[#0a2e0a]"
-                : "bg-[#2e0a0a]"
-              : "bg-[#141414]";
+                ? "bg-profit/10"
+                : "bg-loss/10"
+              : "bg-surface";
 
           return (
             <button
@@ -172,13 +172,13 @@ export default function TradingCalendar({ trades, selectedAccountId }: Props) {
               className={`relative p-1.5 sm:p-2 min-h-[56px] sm:min-h-[72px] rounded-lg border transition-all duration-200 text-left ${bgColor} ${
                 isSelected
                   ? "border-accent ring-1 ring-accent"
-                  : "border-[#1e1e1e]"
-              } ${isCurrentMonth && hasTrades ? "cursor-pointer hover:border-[#3a3a3a]" : "cursor-default"}`}
+                  : "border-border"
+              } ${isCurrentMonth && hasTrades ? "cursor-pointer hover:border-muted" : "cursor-default"}`}
             >
               <span
                 className={`text-xs sm:text-sm font-medium ${
                   !isCurrentMonth
-                    ? "text-[#333]"
+                    ? "text-muted/40"
                     : hasTrades
                       ? isPositive
                         ? "text-profit"
@@ -209,7 +209,7 @@ export default function TradingCalendar({ trades, selectedAccountId }: Props) {
 
       {/* Day detail panel */}
       {selectedDayData && selectedDay && (
-        <div className="mt-4 p-4 bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg animate-in fade-in duration-200">
+        <div className="mt-4 p-4 bg-background border border-border rounded-lg animate-in fade-in duration-200">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-foreground">
               {selectedDay} {monthNames[month]} — {selectedDayData.count} trade{selectedDayData.count > 1 ? "s" : ""}
@@ -220,7 +220,7 @@ export default function TradingCalendar({ trades, selectedAccountId }: Props) {
           </div>
           <div className="space-y-1.5">
             {selectedDayData.trades.map((tr, i) => (
-              <div key={i} className="flex items-center justify-between py-1 border-b border-[#1e1e1e] last:border-0">
+              <div key={i} className="flex items-center justify-between py-1 border-b border-border last:border-0">
                 <div className="flex items-center gap-2">
                   <span className="text-foreground text-sm font-medium">{tr.pair}</span>
                   <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${tr.direction === "long" ? "bg-profit/10 text-profit" : "bg-loss/10 text-loss"}`}>

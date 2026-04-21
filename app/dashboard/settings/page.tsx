@@ -142,7 +142,7 @@ export default function SettingsPage() {
         <div className="space-y-4">
           <div>
             <label className="block text-sm text-muted mb-1">{t("settings_account_email")}</label>
-            <p className="text-foreground text-sm px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg">
+            <p className="text-foreground text-sm px-3 py-2 bg-surface border border-border rounded-lg">
               {userEmail || "—"}
             </p>
           </div>
@@ -170,7 +170,7 @@ export default function SettingsPage() {
               className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
                 lang === l.code
                   ? "bg-accent/10 border-accent text-accent"
-                  : "bg-[#1a1a1a] border-[#2a2a2a] text-muted hover:text-foreground"
+                  : "bg-surface border-border text-muted hover:text-foreground"
               }`}
             >
               {l.label}
@@ -191,7 +191,7 @@ export default function SettingsPage() {
               className={`flex items-center gap-2.5 px-4 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
                 theme === mode
                   ? "bg-accent/10 border-accent text-accent"
-                  : "bg-[#1a1a1a] border-[#2a2a2a] text-muted hover:text-foreground"
+                  : "bg-surface border-border text-muted hover:text-foreground"
               }`}
             >
               {mode === "dark" ? (
@@ -225,7 +225,7 @@ export default function SettingsPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="johndoe"
-                className="w-full px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-foreground placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
+                className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-foreground placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
               />
               <p className="text-xs text-muted mt-1">{t("settings_username_hint")}</p>
             </div>
@@ -244,7 +244,7 @@ export default function SettingsPage() {
             </div>
 
             {publicProfile && username && originalUsername && (
-              <div className="p-3 rounded-lg bg-[#0f0f0f] border border-[#1e1e1e]">
+              <div className="p-3 rounded-lg bg-background border border-border">
                 <p className="text-xs text-muted mb-1">{t("settings_your_link")}</p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 text-sm text-accent font-mono truncate">
@@ -252,7 +252,7 @@ export default function SettingsPage() {
                   </code>
                   <button
                     onClick={copyLink}
-                    className="px-3 py-1 text-xs bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-foreground hover:bg-border transition-colors"
+                    className="px-3 py-1 text-xs bg-surface border border-border rounded-lg text-foreground hover:bg-border transition-colors"
                   >
                     {t("settings_copy")}
                   </button>

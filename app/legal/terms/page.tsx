@@ -71,7 +71,7 @@ export default function TermsPage() {
           </section>
         </div>
 
-        <div className="mt-12 pt-8 border-t border-[#1c1c1e] flex gap-4">
+        <div className="mt-12 pt-8 border-t border-border flex gap-4">
           <Link href="/legal/privacy" className="text-sm text-accent hover:underline">{t("legal_privacy_title")}</Link>
           <Link href="/" className="text-sm text-muted hover:text-foreground">&larr; TradeMinds</Link>
         </div>

@@ -62,7 +62,7 @@ function MiniScoreCircle({ score }: { score: number }) {
   const color = score >= 75 ? "#22c55e" : score >= 50 ? "#f59e0b" : "#ef4444";
   return (
     <svg width="36" height="36" viewBox="0 0 36 36" className="shrink-0">
-      <circle cx="18" cy="18" r={radius} fill="none" stroke="#1c1c1e" strokeWidth="3" />
+      <circle cx="18" cy="18" r={radius} fill="none" stroke="rgb(var(--border))" strokeWidth="3" />
       <circle cx="18" cy="18" r={radius} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={offset} transform="rotate(-90 18 18)" className="transition-all duration-700" />
     </svg>
   );
@@ -180,7 +180,7 @@ export default function DashboardContent({
             <select
               value={selectedAccountId || ""}
               onChange={(e) => setSelectedAccountId(e.target.value || null)}
-              className="px-3 py-1.5 bg-[#18181b] border border-[#27272a] rounded-lg text-foreground text-xs font-medium focus:outline-none focus:ring-1 focus:ring-accent"
+              className="px-3 py-1.5 bg-surface border border-border rounded-lg text-foreground text-xs font-medium focus:outline-none focus:ring-1 focus:ring-accent"
             >
               <option value="">{t("dash_all_accounts")}</option>
               {activeAccounts.map((a) => (
@@ -190,11 +190,11 @@ export default function DashboardContent({
               ))}
             </select>
           )}
-          <Link href="/dashboard/trades" className="px-3 py-1.5 bg-[#18181b] border border-[#27272a] rounded-lg text-xs font-medium text-muted hover:text-foreground hover:border-[#3f3f46] btn-scale flex items-center gap-1.5">
+          <Link href="/dashboard/trades" className="px-3 py-1.5 bg-surface border border-border rounded-lg text-xs font-medium text-muted hover:text-foreground hover:border-muted btn-scale flex items-center gap-1.5">
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
             {t("dash_action_import")}
           </Link>
-          <Link href="/dashboard/analysis" className="px-3 py-1.5 bg-[#18181b] border border-[#27272a] rounded-lg text-xs font-medium text-muted hover:text-foreground hover:border-[#3f3f46] btn-scale flex items-center gap-1.5">
+          <Link href="/dashboard/analysis" className="px-3 py-1.5 bg-surface border border-border rounded-lg text-xs font-medium text-muted hover:text-foreground hover:border-muted btn-scale flex items-center gap-1.5">
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12" /></svg>
             {t("dash_action_analyze")}
           </Link>
@@ -242,7 +242,7 @@ export default function DashboardContent({
         </div>
 
         {/* Today P&L */}
-        <div className={`border rounded-xl p-5 card-shadow ${todayPnl >= 0 ? "bg-[#0a1a0a] border-profit/10" : "bg-[#1a0a0a] border-loss/10"}`}>
+        <div className={`border rounded-xl p-5 card-shadow ${todayPnl >= 0 ? "bg-profit/5 border-profit/10" : "bg-loss/5 border-loss/10"}`}>
           <p className="text-xs text-muted font-medium uppercase tracking-wider">{t("dash_today_pnl")}</p>
           <p className={`text-2xl font-bold mt-1 tabular-nums ${todayPnl >= 0 ? "text-profit" : "text-loss"}`}>
             {todayPnl >= 0 ? "+" : ""}{todayPnl.toFixed(2)} €
@@ -259,7 +259,7 @@ export default function DashboardContent({
                 {displayAccount.firm}
                 <span className="text-accent ml-2 text-sm tabular-nums">{challengePct.toFixed(0)}%</span>
               </p>
-              <div className="h-1.5 bg-[#1c1c1e] rounded-full mt-2 overflow-hidden">
+              <div className="h-1.5 bg-border rounded-full mt-2 overflow-hidden">
                 <div className="h-full bg-profit rounded-full transition-all" style={{ width: `${Math.min(100, challengePct)}%` }} />
               </div>
               {displayAccount.account_number && <p className="text-[11px] text-muted mt-1.5">#{displayAccount.account_number}</p>}
@@ -298,7 +298,7 @@ export default function DashboardContent({
           {insights.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {insights.map((ins, i) => (
-                <div key={i} className="flex items-start gap-2.5 p-3 rounded-lg bg-[#0f0f11] border border-[#1c1c1e]">
+                <div key={i} className="flex items-start gap-2.5 p-3 rounded-lg bg-surface border border-border">
                   <span className="text-accent text-sm shrink-0 mt-0.5">
                     {["💡", "📊", "✅", "⚡"][i % 4]}
                   </span>
@@ -341,7 +341,7 @@ export default function DashboardContent({
               {filteredRecent.map((tr) => {
                 const net = netPnl(tr);
                 return (
-                  <div key={tr.id} className="flex items-center justify-between py-2 border-b border-[#1c1c1e] last:border-0">
+                  <div key={tr.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
                     <div className="flex items-center gap-3">
                       <span className="text-muted text-xs tabular-nums w-12">
                         {tr.open_time ? new Date(tr.open_time).toLocaleDateString(undefined, { day: "2-digit", month: "2-digit" }) : "—"}
@@ -362,7 +362,7 @@ export default function DashboardContent({
         {/* Right column */}
         <div className="space-y-4">
           {/* Last analysis */}
-          <Link href="/dashboard/analysis" className="block bg-card border border-border rounded-xl p-5 card-shadow hover:border-[#2a2a2e] transition-colors">
+          <Link href="/dashboard/analysis" className="block bg-card border border-border rounded-xl p-5 card-shadow hover:border-muted transition-colors">
             <h2 className="text-sm font-semibold text-foreground mb-2">{t("dash_last_analysis")}</h2>
             {lastReview ? (
               <div className="flex items-center justify-between">

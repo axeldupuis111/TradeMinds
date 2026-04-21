@@ -72,16 +72,16 @@ export default function LoginPage() {
           <p className="mt-2 text-muted text-sm">{t("login_subtitle")}</p>
         </div>
 
-        <div className="bg-[#111111] border border-white/[0.06] rounded-2xl p-8 shadow-2xl shadow-black/50">
+        <div className="bg-card border border-border rounded-2xl p-8 shadow-2xl shadow-black/10">
           <div className="space-y-5">
             <div>
               <label htmlFor="email" className="block text-sm text-muted mb-1.5">{t("login_email")}</label>
-              <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={handleKeyDown} className="w-full px-4 py-2.5 bg-[#0a0a0a] border border-white/[0.06] rounded-xl text-foreground placeholder-[#444] focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent" placeholder="you@example.com" />
+              <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={handleKeyDown} className="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent" placeholder="you@example.com" />
             </div>
 
             <div>
               <label htmlFor="password" className="block text-sm text-muted mb-1.5">{t("login_password")}</label>
-              <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={handleKeyDown} className="w-full px-4 py-2.5 bg-[#0a0a0a] border border-white/[0.06] rounded-xl text-foreground placeholder-[#444] focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent" placeholder="••••••••" />
+              <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={handleKeyDown} className="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent" placeholder="••••••••" />
             </div>
 
             {error && (

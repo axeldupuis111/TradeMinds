@@ -9,23 +9,26 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "#09090b",
-        foreground: "#fafafa",
-        card: "#111113",
-        border: "#1c1c1e",
-        muted: "#71717a",
-        accent: "#3b82f6",
-        profit: "#22c55e",
-        loss: "#ef4444",
+        // Semantic tokens — driven by CSS variables, auto-switch with dark/light
+        background: "rgb(var(--background) / <alpha-value>)",
+        foreground: "rgb(var(--foreground) / <alpha-value>)",
+        card:       "rgb(var(--card) / <alpha-value>)",
+        surface:    "rgb(var(--surface) / <alpha-value>)",
+        border:     "rgb(var(--border) / <alpha-value>)",
+        muted:      "rgb(var(--muted) / <alpha-value>)",
+        // Fixed colors — same in both modes
+        accent:  "#3b82f6",
+        profit:  "#22c55e",
+        loss:    "#ef4444",
         warning: "#f59e0b",
-        gold: "#eab308",
+        gold:    "#eab308",
       },
       fontFamily: {
         sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
         mono: ["var(--font-geist-mono)", "ui-monospace", "monospace"],
       },
       borderRadius: {
-        xl: "12px",
+        xl:   "12px",
         "2xl": "16px",
       },
     },

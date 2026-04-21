@@ -184,7 +184,7 @@ export default function TradeList({ refreshKey }: Props) {
   return (
     <section>
       <h2 className="text-lg font-semibold text-foreground">{t("trades_list_title")}</h2>
-      <div className="h-px bg-[#1e1e1e] mt-2 mb-4" />
+      <div className="h-px bg-border mt-2 mb-4" />
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
@@ -198,7 +198,7 @@ export default function TradeList({ refreshKey }: Props) {
 
       {/* Bulk action bar */}
       {someSelected && (
-        <div className="flex items-center gap-3 mb-3 p-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg">
+        <div className="flex items-center gap-3 mb-3 p-3 bg-surface border border-border rounded-lg">
           <span className="text-sm text-foreground font-medium">
             {selectedIds.size} {t("trades_selected")}
           </span>
@@ -225,10 +225,10 @@ export default function TradeList({ refreshKey }: Props) {
         <p className="text-muted py-4">{t("trades_empty")}</p>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-lg border border-[#1e1e1e]">
+          <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-[#141414] text-muted text-left">
+                <tr className="bg-surface text-muted text-left">
                   <th className="px-3 py-2 w-8">
                     <input
                       type="checkbox"
@@ -255,7 +255,7 @@ export default function TradeList({ refreshKey }: Props) {
                   <tr
                     key={tr.id}
                     onClick={() => setSelectedTrade(tr as TradeDetail)}
-                    className={`cursor-pointer hover:bg-accent/5 transition-colors ${i % 2 === 0 ? "bg-[#0f0f0f]" : "bg-[#141414]"} ${selectedIds.has(tr.id) ? "!bg-accent/5" : ""}`}
+                    className={`cursor-pointer hover:bg-accent/5 transition-colors ${i % 2 === 0 ? "bg-card" : "bg-surface"} ${selectedIds.has(tr.id) ? "!bg-accent/5" : ""}`}
                   >
                     <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                       <input
@@ -320,14 +320,14 @@ export default function TradeList({ refreshKey }: Props) {
                 <button
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
                   disabled={page === 0}
-                  className="px-3 py-1 text-sm bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-foreground disabled:opacity-30 hover:bg-[#2a2a2a] transition-colors"
+                  className="px-3 py-1 text-sm bg-surface border border-border rounded-lg text-foreground disabled:opacity-30 hover:bg-border transition-colors"
                 >
                   {t("trades_prev")}
                 </button>
                 <button
                   onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
                   disabled={page >= totalPages - 1}
-                  className="px-3 py-1 text-sm bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-foreground disabled:opacity-30 hover:bg-[#2a2a2a] transition-colors"
+                  className="px-3 py-1 text-sm bg-surface border border-border rounded-lg text-foreground disabled:opacity-30 hover:bg-border transition-colors"
                 >
                   {t("trades_next")}
                 </button>

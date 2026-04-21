@@ -153,7 +153,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
 
         <div className="p-5 space-y-6">
           {/* Trade info */}
-          <div className="bg-[#0f0f0f] rounded-lg p-4 space-y-2">
+          <div className="bg-background rounded-lg p-4 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-foreground font-semibold text-lg">{trade.pair}</span>
               <span className={`px-2 py-0.5 rounded text-xs font-medium ${trade.direction === "long" ? "bg-profit/10 text-profit" : "bg-loss/10 text-loss"}`}>
@@ -168,7 +168,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
               <div><span className="text-muted">{t("trades_col_sl")}:</span> <span className="text-foreground">{trade.sl ?? "—"}</span></div>
               <div><span className="text-muted">{t("trades_col_tp")}:</span> <span className="text-foreground">{trade.tp ?? "—"}</span></div>
             </div>
-            <div className="pt-2 border-t border-[#1e1e1e]">
+            <div className="pt-2 border-t border-border">
               <span className="text-muted text-sm">{t("trades_col_pnl")}:</span>
               <span className={`ml-2 text-lg font-bold ${net >= 0 ? "text-profit" : "text-loss"}`}>
                 {net >= 0 ? "+" : ""}{net.toFixed(2)} €
@@ -187,7 +187,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
                   className={`flex flex-col items-center gap-1 py-2 rounded-lg border text-sm transition-all ${
                     emotion === em.key
                       ? "border-accent bg-accent/10"
-                      : "border-[#2a2a2a] bg-[#141414] hover:border-[#3a3a3a]"
+                      : "border-border bg-surface hover:border-muted"
                   }`}
                 >
                   <span className="text-xl">{em.emoji}</span>
@@ -208,7 +208,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
                   className="p-1 transition-colors"
                 >
                   <svg
-                    className={`w-7 h-7 ${(quality || 0) >= star ? "text-yellow-400" : "text-[#2a2a2a]"}`}
+                    className={`w-7 h-7 ${(quality || 0) >= star ? "text-yellow-400" : "text-border"}`}
                     fill="currentColor"
                     viewBox="0 0 24 24"
                   >
@@ -237,15 +237,15 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={handleTagKeyDown}
                 placeholder={t("detail_tags_placeholder")}
-                className="w-full px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-foreground text-sm placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
+                className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
               />
               {tagInput && filteredSuggestions.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden z-10">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-surface border border-border rounded-lg overflow-hidden z-10">
                   {filteredSuggestions.map((s) => (
                     <button
                       key={s}
                       onClick={() => addTag(s)}
-                      className="block w-full text-left px-3 py-2 text-sm text-foreground hover:bg-[#2a2a2a] transition-colors"
+                      className="block w-full text-left px-3 py-2 text-sm text-foreground hover:bg-border transition-colors"
                     >
                       {s}
                     </button>
@@ -263,7 +263,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
               onChange={(e) => setNotes(e.target.value)}
               rows={4}
               placeholder={t("detail_notes_placeholder")}
-              className="w-full px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-foreground text-sm placeholder-muted resize-y focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
+              className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm placeholder-muted resize-y focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
             />
           </div>
 
@@ -272,7 +272,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
             <label className="block text-sm text-muted mb-2">{t("detail_screenshot")}</label>
             {screenshotUrl && (
               <div className="mb-2 relative group">
-                <img src={screenshotUrl} alt="Trade screenshot" className="w-full rounded-lg border border-[#2a2a2a]" />
+                <img src={screenshotUrl} alt="Trade screenshot" className="w-full rounded-lg border border-border" />
                 <button
                   onClick={() => setScreenshotUrl(null)}
                   className="absolute top-2 right-2 p-1 bg-black/70 rounded-full text-muted hover:text-loss opacity-0 group-hover:opacity-100 transition-opacity"
@@ -283,7 +283,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
                 </button>
               </div>
             )}
-            <label className={`block border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${uploading ? "opacity-50" : "border-[#2a2a2a] hover:border-accent/50"}`}>
+            <label className={`block border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${uploading ? "opacity-50" : "border-border hover:border-accent/50"}`}>
               <svg className="w-6 h-6 mx-auto text-muted mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>

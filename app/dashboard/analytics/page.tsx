@@ -1,6 +1,7 @@
 "use client";
 
 import ExportPdfButton from "@/components/analytics/ExportPdfButton";
+import { useChartColors } from "@/lib/useChartColors";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useMemo, useState } from "react";
@@ -69,6 +70,7 @@ const EMOTION_EMOJIS: Record<string, string> = {
 
 export default function AnalyticsPage() {
   const { t } = useLanguage();
+  const c = useChartColors();
   const supabase = createClient();
   const [trades, setTrades] = useState<TradeRow[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -283,7 +285,7 @@ export default function AnalyticsPage() {
   const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) => {
     if (!active || !payload?.length) return null;
     return (
-      <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm">
+      <div className="bg-surface border border-border rounded-lg px-3 py-2 text-sm">
         <p className="text-foreground font-medium">{label}</p>
         <p className={payload[0].value >= 0 ? "text-profit" : "text-loss"}>
           {payload[0].value >= 0 ? "+" : ""}{payload[0].value.toFixed(2)}
@@ -295,14 +297,14 @@ export default function AnalyticsPage() {
   const HistogramTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) => {
     if (!active || !payload?.length) return null;
     return (
-      <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm">
+      <div className="bg-surface border border-border rounded-lg px-3 py-2 text-sm">
         <p className="text-foreground font-medium">{label}</p>
         <p className="text-muted">{payload[0].value} trades</p>
       </div>
     );
   };
 
-  const selectClass = "px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent";
+  const selectClass = "px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent";
 
   function ChartSection({ title, data, dataKey = "pnl", tooltip }: { title: string; data: Array<Record<string, unknown>>; dataKey?: string; tooltip?: React.ReactElement }) {
     if (data.length === 0) return null;
@@ -311,9 +313,9 @@ export default function AnalyticsPage() {
         <h3 className="text-foreground font-semibold mb-4">{title}</h3>
         <ResponsiveContainer width="100%" height={280}>
           <BarChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1e1e1e" />
-            <XAxis dataKey="name" tick={{ fill: "#6b7280", fontSize: 12 }} axisLine={{ stroke: "#1e1e1e" }} />
-            <YAxis tick={{ fill: "#6b7280", fontSize: 12 }} axisLine={{ stroke: "#1e1e1e" }} />
+            <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
+            <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
+            <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
             <Tooltip content={tooltip || <CustomTooltip />} />
             <Bar dataKey={dataKey} radius={[4, 4, 0, 0]}>
               {data.map((entry, idx) => (
@@ -447,9 +449,9 @@ export default function AnalyticsPage() {
             <h3 className="text-foreground font-semibold mb-4">{t("analytics_distribution")}</h3>
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={pnlDistribution} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e1e1e" />
-                <XAxis dataKey="name" tick={{ fill: "#6b7280", fontSize: 12 }} axisLine={{ stroke: "#1e1e1e" }} />
-                <YAxis tick={{ fill: "#6b7280", fontSize: 12 }} axisLine={{ stroke: "#1e1e1e" }} />
+                <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
+                <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
+                <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
                 <Tooltip content={<HistogramTooltip />} />
                 <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                   {pnlDistribution.map((entry, idx) => (
@@ -507,13 +509,13 @@ export default function AnalyticsPage() {
                 <h3 className="text-foreground font-semibold mb-4">{t("discipline_winrate_emotion")}</h3>
                 <ResponsiveContainer width="100%" height={280}>
                   <BarChart data={winrateByEmotion} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1e1e1e" />
-                    <XAxis dataKey="name" tick={{ fill: "#6b7280", fontSize: 12 }} axisLine={{ stroke: "#1e1e1e" }} />
-                    <YAxis tick={{ fill: "#6b7280", fontSize: 12 }} axisLine={{ stroke: "#1e1e1e" }} domain={[0, 100]} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
+                    <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
+                    <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} domain={[0, 100]} />
                     <Tooltip content={({ active, payload, label }) => {
                       if (!active || !payload?.length) return null;
                       return (
-                        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm">
+                        <div className="bg-surface border border-border rounded-lg px-3 py-2 text-sm">
                           <p className="text-foreground font-medium">{label}</p>
                           <p className="text-accent">{payload[0].value}% WR</p>
                         </div>

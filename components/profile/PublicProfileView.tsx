@@ -83,7 +83,7 @@ export default function PublicProfileView({
   }, [trades, reviews]);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-foreground">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="max-w-4xl mx-auto px-6 py-10">
         {/* Header */}
         <div className="flex items-center justify-between mb-10">
@@ -149,12 +149,12 @@ export default function PublicProfileView({
                     <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e1e1e" />
-                <XAxis dataKey="date" tick={{ fill: "#6b7280", fontSize: 11 }} axisLine={{ stroke: "#1e1e1e" }} />
-                <YAxis tick={{ fill: "#6b7280", fontSize: 11 }} axisLine={{ stroke: "#1e1e1e" }} tickFormatter={(v) => `${v.toFixed(0)}%`} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" />
+                <XAxis dataKey="date" tick={{ fill: "rgb(var(--muted))", fontSize: 11 }} axisLine={{ stroke: "rgb(var(--border))" }} />
+                <YAxis tick={{ fill: "rgb(var(--muted))", fontSize: 11 }} axisLine={{ stroke: "rgb(var(--border))" }} tickFormatter={(v) => `${v.toFixed(0)}%`} />
                 <Tooltip
-                  contentStyle={{ background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 8 }}
-                  labelStyle={{ color: "#6b7280" }}
+                  contentStyle={{ background: "rgb(var(--surface))", border: "1px solid rgb(var(--border))", borderRadius: 8 }}
+                  labelStyle={{ color: "rgb(var(--muted))" }}
                   formatter={(v) => [`${Number(v).toFixed(2)}%`, "P&L"]}
                 />
                 <Area type="monotone" dataKey="value" stroke="#22c55e" fill="url(#gradient)" strokeWidth={2} />

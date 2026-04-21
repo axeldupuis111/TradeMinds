@@ -153,7 +153,7 @@ export default function GoalsStreaks() {
       </div>
 
       {/* Weekly goal */}
-      <div className="mb-4 p-3 rounded-lg bg-[#0f0f0f] border border-[#1e1e1e]">
+      <div className="mb-4 p-3 rounded-lg bg-background border border-border">
         <div className="flex items-center justify-between mb-2">
           <p className="text-sm text-foreground font-medium">{t("goals_weekly")}</p>
           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${weeklyProgress.met ? "bg-profit/10 text-profit" : "bg-loss/10 text-loss"}`}>
@@ -161,7 +161,7 @@ export default function GoalsStreaks() {
           </span>
         </div>
         <p className="text-xs text-muted">{t("goals_weekly_desc")}</p>
-        <div className="h-1.5 bg-[#1e1e1e] rounded-full mt-2 overflow-hidden">
+        <div className="h-1.5 bg-border rounded-full mt-2 overflow-hidden">
           <div
             className={`h-full rounded-full transition-all ${weeklyProgress.met ? "bg-profit" : "bg-loss"}`}
             style={{ width: weeklyProgress.met ? "100%" : `${Math.max(10, 100 - weeklyProgress.current * 25)}%` }}
@@ -181,7 +181,7 @@ export default function GoalsStreaks() {
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border ${
                   unlocked
                     ? "bg-accent/10 border-accent/30 text-accent"
-                    : "bg-[#0f0f0f] border-[#1e1e1e] text-muted opacity-50"
+                    : "bg-background border-border text-muted opacity-50"
                 }`}
                 title={t(badge.labelKey)}
               >

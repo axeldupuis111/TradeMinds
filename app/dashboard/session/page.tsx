@@ -229,7 +229,7 @@ export default function SessionPage() {
 
         {/* Strategy rules reminder */}
         {strategy && strategy.setup_rules && strategy.setup_rules.length > 0 && (
-          <div className="mb-4 p-3 rounded-lg bg-[#0f0f0f] border border-[#1e1e1e]">
+          <div className="mb-4 p-3 rounded-lg bg-background border border-border">
             <p className="text-xs text-muted mb-2 font-medium">{t("session_your_rules")}</p>
             <ul className="space-y-1">
               {strategy.setup_rules.map((r, i) => (
@@ -272,12 +272,12 @@ export default function SessionPage() {
             onChange={(e) => setNewItemText(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") addChecklistItem(); }}
             placeholder={t("session_add_placeholder")}
-            className="flex-1 px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-foreground text-sm placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
+            className="flex-1 px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
           />
           <button
             onClick={addChecklistItem}
             disabled={!newItemText.trim()}
-            className="px-4 py-2 bg-[#1a1a1a] border border-[#2a2a2a] text-foreground rounded-lg text-sm hover:bg-border transition-colors disabled:opacity-50"
+            className="px-4 py-2 bg-surface border border-border text-foreground rounded-lg text-sm hover:bg-border transition-colors disabled:opacity-50"
           >
             {t("session_add")}
           </button>
@@ -302,7 +302,7 @@ export default function SessionPage() {
               className={`flex flex-col items-center gap-1 p-3 rounded-lg border transition-all ${
                 selectedEmotion === em.key
                   ? "bg-accent/10 border-accent"
-                  : "bg-[#0f0f0f] border-[#1e1e1e] hover:border-[#2a2a2a]"
+                  : "bg-background border-border hover:border-muted"
               }`}
             >
               <span className="text-2xl">{em.emoji}</span>

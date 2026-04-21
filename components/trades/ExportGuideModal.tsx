@@ -66,7 +66,7 @@ export default function ExportGuideModal({ onClose }: Props) {
               className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
                 platform === p.id
                   ? "bg-accent/10 border-accent text-accent"
-                  : "bg-[#1a1a1a] border-[#2a2a2a] text-muted hover:text-foreground hover:border-[#3a3a3a]"
+                  : "bg-surface border-border text-muted hover:text-foreground hover:border-muted"
               }`}
             >
               {p.label}
