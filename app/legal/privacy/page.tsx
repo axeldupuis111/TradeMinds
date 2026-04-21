@@ -6,7 +6,7 @@ import Link from "next/link";
 export default function PrivacyPage() {
   const { t } = useLanguage();
   return (
-    <div className="min-h-screen bg-background px-6 py-16">
+    <div className="min-h-screen bg-background px-6 py-16 force-dark">
       <div className="max-w-3xl mx-auto">
         <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground mb-8 transition-colors">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

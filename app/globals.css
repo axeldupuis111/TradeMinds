@@ -31,6 +31,25 @@ html.light {
   --muted:      107 114 128;  /* #6b7280 */
 }
 
+/* ─── Force-dark: public pages always stay in dark mode ─────────────────────
+   Applied on the root element of landing, login, and legal pages.
+   Direct CSS custom-property declarations beat inherited values (html.light),
+   so all children of .force-dark will use dark tokens regardless of theme.
+   ──────────────────────────────────────────────────────────────────────── */
+.force-dark,
+html.light .force-dark {
+  --background: 9 9 11;
+  --foreground: 250 250 250;
+  --card:       17 17 19;
+  --surface:    26 26 26;
+  --border:     28 28 30;
+  --muted:      113 113 122;
+  color-scheme: dark;
+  /* Ensure body-level bg/text picks up local variables */
+  background-color: rgb(var(--background));
+  color: rgb(var(--foreground));
+}
+
 body {
   color: rgb(var(--foreground));
   background: rgb(var(--background));
