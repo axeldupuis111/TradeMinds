@@ -91,7 +91,7 @@ function Hero() {
             {t("hero_social_proof")}
           </div>
 
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-foreground leading-[1.05] tracking-tight text-balance">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground leading-[1.05] tracking-tight text-balance">
             {t("hero_title_1")}{" "}
             <span className="text-accent">{t("hero_title_2")}</span>
           </h1>
