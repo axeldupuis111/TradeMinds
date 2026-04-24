@@ -46,7 +46,7 @@ const translations: Record<Lang, Record<string, string>> = {
     // Features
     features_title: "TradeMinds fait le travail à ta place",
     feature_1_title: "Import automatique",
-    feature_1_desc: "Upload ton CSV MT4/MT5. Tes trades sont là en 2 secondes.",
+    feature_1_desc: "Importe tes trades depuis ta plateforme de trading. Compatible MT4, MT5, cTrader, Binance, Bybit, TradingView et plus encore.",
     feature_2_title: "IA Coach",
     feature_2_desc:
       "Décris ta stratégie en texte libre. L'IA la comprend et juge chaque trade.",
@@ -55,7 +55,7 @@ const translations: Record<Lang, Record<string, string>> = {
       "Un score de 0 à 100. Pas de bullshit. Tu sais exactement où tu en es.",
     feature_4_title: "Suivi Challenge",
     feature_4_desc:
-      "Drawdown, profit target, jours restants. Tout en un coup d'œil.",
+      "Drawdown, profit target, jours restants. Prop firm ou compte propre. Tout en un coup d'œil.",
 
     // How it works
     how_title: "Comment ça marche",
@@ -735,8 +735,15 @@ const translations: Record<Lang, Record<string, string>> = {
     // Landing v2 — navbar & hero
     nav_features: "Fonctionnalités",
     nav_pricing: "Tarifs",
-    hero_subtitle_v2: "L'IA analyse tes trades, détecte tes erreurs et mesure ta discipline. Import MT4/MT5 en 2 clics.",
+    nav_faq: "FAQ",
+    hero_subtitle_v2: "L'IA analyse tes trades, détecte tes erreurs et mesure ta discipline. Import MT4/MT5, cTrader, TradingView ou toute autre plateforme en 2 clics.",
     hero_social_proof: "Rejoint par 500+ traders · 10 000+ trades analysés · 4.8★",
+    hero_ai_exclusive: "Notre IA est conçue exclusivement pour le trading. Elle analyse tes trades, ta stratégie et ta discipline — rien d'autre.",
+
+    // Landing v2 — social proof cards
+    social_stat_1_label: "traders actifs",
+    social_stat_2_label: "trades analysés",
+    social_stat_3_label: "note moyenne",
 
     // Landing v2 — feature labels
     feature_1_label: "IMPORT",
@@ -744,12 +751,16 @@ const translations: Record<Lang, Record<string, string>> = {
     feature_3_label: "DISCIPLINE",
     feature_4_label: "CHALLENGE",
     feature_import_tag: "147 trades importés",
-    feature_import_drop: "Dépose ton fichier MT4/MT5 ici",
+    feature_import_drop: "Dépose ton fichier ici",
     feature_import_formats: "MT5 · cTrader · Binance · Bybit · TradingView · et +",
     feature_ai_coach_label: "Coach IA",
     feature_ai_msg_1: "J'ai analysé tes 23 derniers trades. Tu as une tendance au revenge trading après 2 pertes consécutives — ça t'a coûté 340€.",
     feature_ai_msg_2: "Comment je peux corriger ça ?",
     feature_ai_msg_3: "Impose-toi une pause de 30 min après 2 pertes. Ajoute-la comme règle dans ta stratégie.",
+    feature_ai_msg_4: "Et si je prends un trade sans attendre la confirmation ?",
+    feature_ai_msg_5: "C'est ta règle la plus souvent violée. 7 trades sur 10 perdants viennent de là.",
+    feature_score_conformes: "conformes",
+    feature_score_violations: "violations",
 
     // Landing v2 — footer columns
     footer_product: "Produit",
@@ -852,7 +863,7 @@ const translations: Record<Lang, Record<string, string>> = {
 
     features_title: "TradeMinds does the work for you",
     feature_1_title: "Auto import",
-    feature_1_desc: "Upload your MT4/MT5 CSV. Your trades are there in 2 seconds.",
+    feature_1_desc: "Import your trades from your trading platform. Compatible with MT4, MT5, cTrader, Binance, Bybit, TradingView and more.",
     feature_2_title: "AI Coach",
     feature_2_desc:
       "Describe your strategy in plain text. The AI understands it and judges every trade.",
@@ -861,7 +872,7 @@ const translations: Record<Lang, Record<string, string>> = {
       "A score from 0 to 100. No fluff. You know exactly where you stand.",
     feature_4_title: "Challenge tracker",
     feature_4_desc:
-      "Drawdown, profit target, days left. Everything at a glance.",
+      "Drawdown, profit target, days left. Prop firm or personal account. Everything at a glance.",
 
     how_title: "How it works",
     how_1_title: "Describe your strategy",
@@ -1444,7 +1455,7 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Landing page — social proof
     social_title: "They trade with discipline",
-    social_stats: "500+ trades analysed · 50+ active traders · 4.8/5 satisfaction",
+    social_stats: "500+ active traders · 10,000+ trades analysed · 4.8/5 satisfaction",
     testimonial_1_text: "I passed my FTMO challenge in 8 days thanks to the discipline score. I could see exactly where I was slipping.",
     testimonial_1_author: "Thomas — prop firm trader",
     testimonial_2_text: "The AI analysis made me realise I was losing 40% of my capital to revenge trading. I had no idea.",
@@ -1519,8 +1530,15 @@ const translations: Record<Lang, Record<string, string>> = {
     // Landing v2 — navbar & hero
     nav_features: "Features",
     nav_pricing: "Pricing",
-    hero_subtitle_v2: "AI analyses your trades, spots your mistakes and measures your discipline. Import MT4/MT5 in 2 clicks.",
+    nav_faq: "FAQ",
+    hero_subtitle_v2: "AI analyses your trades, spots your mistakes and measures your discipline. Import MT4/MT5, cTrader, TradingView or any other platform in 2 clicks.",
     hero_social_proof: "Joined by 500+ traders · 10,000+ trades analysed · 4.8★",
+    hero_ai_exclusive: "Our AI is designed exclusively for trading. It analyses your trades, your strategy and your discipline — nothing else.",
+
+    // Landing v2 — social proof cards
+    social_stat_1_label: "active traders",
+    social_stat_2_label: "trades analyzed",
+    social_stat_3_label: "average rating",
 
     // Landing v2 — feature labels
     feature_1_label: "IMPORT",
@@ -1528,12 +1546,16 @@ const translations: Record<Lang, Record<string, string>> = {
     feature_3_label: "DISCIPLINE",
     feature_4_label: "CHALLENGE",
     feature_import_tag: "147 trades imported",
-    feature_import_drop: "Drop your MT4/MT5 file here",
+    feature_import_drop: "Drop your file here",
     feature_import_formats: "MT5 · cTrader · Binance · Bybit · TradingView · and more",
     feature_ai_coach_label: "AI Coach",
     feature_ai_msg_1: "I analysed your last 23 trades. You have a tendency to revenge trade after 2 consecutive losses — it cost you €340.",
     feature_ai_msg_2: "How can I fix that?",
     feature_ai_msg_3: "Force yourself to take a 30-min break after 2 losses. Add it as a rule in your strategy.",
+    feature_ai_msg_4: "What if I take a trade without waiting for confirmation?",
+    feature_ai_msg_5: "That's your most broken rule. 7 out of 10 losing trades come from it.",
+    feature_score_conformes: "compliant",
+    feature_score_violations: "violations",
 
     // Landing v2 — footer columns
     footer_product: "Product",
@@ -1636,7 +1658,7 @@ const translations: Record<Lang, Record<string, string>> = {
 
     features_title: "TradeMinds erledigt die Arbeit für dich",
     feature_1_title: "Auto-Import",
-    feature_1_desc: "Lade dein MT4/MT5-CSV hoch. Deine Trades sind in 2 Sekunden da.",
+    feature_1_desc: "Importiere deine Trades von deiner Trading-Plattform. Kompatibel mit MT4, MT5, cTrader, Binance, Bybit, TradingView und mehr.",
     feature_2_title: "KI-Coach",
     feature_2_desc:
       "Beschreibe deine Strategie in Freitext. Die KI versteht sie und bewertet jeden Trade.",
@@ -1645,7 +1667,7 @@ const translations: Record<Lang, Record<string, string>> = {
       "Ein Score von 0 bis 100. Kein Blabla. Du weißt genau, wo du stehst.",
     feature_4_title: "Challenge-Tracking",
     feature_4_desc:
-      "Drawdown, Profit-Target, verbleibende Tage. Alles auf einen Blick.",
+      "Drawdown, Profit-Target, verbleibende Tage. Prop Firm oder eigenes Konto. Alles auf einen Blick.",
 
     how_title: "So funktioniert's",
     how_1_title: "Beschreibe deine Strategie",
@@ -2229,7 +2251,7 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Landingpage — Social Proof
     social_title: "Sie traden mit Disziplin",
-    social_stats: "500+ analysierte Trades · 50+ aktive Trader · 4,8/5 Zufriedenheit",
+    social_stats: "500+ aktive Trader · 10.000+ analysierte Trades · 4,8/5 Zufriedenheit",
     testimonial_1_text: "Ich habe meine FTMO-Challenge dank des Disziplin-Scores in 8 Tagen bestanden. Ich konnte genau sehen, wo ich nachgelassen habe.",
     testimonial_1_author: "Thomas — Prop-Firm-Trader",
     testimonial_2_text: "Die KI-Analyse hat mir klar gemacht, dass ich 40% meines Kapitals durch Revenge-Trading verliere. Ich hatte keine Ahnung.",
@@ -2304,8 +2326,15 @@ const translations: Record<Lang, Record<string, string>> = {
     // Landing v2 — Navbar & Hero
     nav_features: "Funktionen",
     nav_pricing: "Preise",
-    hero_subtitle_v2: "Die KI analysiert deine Trades, erkennt Fehler und misst deine Disziplin. MT4/MT5-Import in 2 Klicks.",
+    nav_faq: "FAQ",
+    hero_subtitle_v2: "Die KI analysiert deine Trades, erkennt Fehler und misst deine Disziplin. Import von MT4/MT5, cTrader, TradingView oder jeder anderen Plattform in 2 Klicks.",
     hero_social_proof: "Von 500+ Tradern genutzt · 10.000+ analysierte Trades · 4,8★",
+    hero_ai_exclusive: "Unsere KI wurde ausschließlich für Trading entwickelt. Sie analysiert deine Trades, deine Strategie und deine Disziplin — nichts anderes.",
+
+    // Landing v2 — social proof cards
+    social_stat_1_label: "aktive Trader",
+    social_stat_2_label: "analysierte Trades",
+    social_stat_3_label: "Durchschnittsbewertung",
 
     // Landing v2 — Feature-Labels
     feature_1_label: "IMPORT",
@@ -2313,12 +2342,16 @@ const translations: Record<Lang, Record<string, string>> = {
     feature_3_label: "DISZIPLIN",
     feature_4_label: "CHALLENGE",
     feature_import_tag: "147 Trades importiert",
-    feature_import_drop: "Ziehe deine MT4/MT5-Datei hierher",
+    feature_import_drop: "Datei hier ablegen",
     feature_import_formats: "MT5 · cTrader · Binance · Bybit · TradingView · und mehr",
     feature_ai_coach_label: "KI-Coach",
     feature_ai_msg_1: "Ich habe deine letzten 23 Trades analysiert. Du neigst dazu, nach 2 aufeinanderfolgenden Verlusten Revenge-Trades zu machen — das hat dich 340€ gekostet.",
     feature_ai_msg_2: "Wie kann ich das beheben?",
     feature_ai_msg_3: "Zwing dich nach 2 Verlusten zu einer 30-minütigen Pause. Füge es als Regel in deine Strategie ein.",
+    feature_ai_msg_4: "Was ist, wenn ich einen Trade ohne Bestätigung eingehe?",
+    feature_ai_msg_5: "Das ist deine am häufigsten gebrochene Regel. 7 von 10 Verlust-Trades kommen daher.",
+    feature_score_conformes: "konform",
+    feature_score_violations: "Verstöße",
 
     // Landing v2 — Footer-Spalten
     footer_product: "Produkt",
@@ -2421,7 +2454,7 @@ const translations: Record<Lang, Record<string, string>> = {
 
     features_title: "TradeMinds hace el trabajo por ti",
     feature_1_title: "Importación automática",
-    feature_1_desc: "Sube tu CSV de MT4/MT5. Tus trades están ahí en 2 segundos.",
+    feature_1_desc: "Importa tus trades desde tu plataforma de trading. Compatible con MT4, MT5, cTrader, Binance, Bybit, TradingView y más.",
     feature_2_title: "Coach IA",
     feature_2_desc:
       "Describe tu estrategia en texto libre. La IA la entiende y evalúa cada trade.",
@@ -2430,7 +2463,7 @@ const translations: Record<Lang, Record<string, string>> = {
       "Un score de 0 a 100. Sin rodeos. Sabes exactamente dónde estás.",
     feature_4_title: "Seguimiento de Challenge",
     feature_4_desc:
-      "Drawdown, profit target, días restantes. Todo de un vistazo.",
+      "Drawdown, profit target, días restantes. Prop firm o cuenta propia. Todo de un vistazo.",
 
     how_title: "Cómo funciona",
     how_1_title: "Describe tu estrategia",
@@ -3089,8 +3122,15 @@ const translations: Record<Lang, Record<string, string>> = {
     // Landing v2 — navbar y hero
     nav_features: "Funciones",
     nav_pricing: "Precios",
-    hero_subtitle_v2: "La IA analiza tus trades, detecta tus errores y mide tu disciplina. Importa MT4/MT5 en 2 clics.",
+    nav_faq: "FAQ",
+    hero_subtitle_v2: "La IA analiza tus trades, detecta tus errores y mide tu disciplina. Importa MT4/MT5, cTrader, TradingView o cualquier otra plataforma en 2 clics.",
     hero_social_proof: "Más de 500 traders · 10.000+ trades analizados · 4,8★",
+    hero_ai_exclusive: "Nuestra IA está diseñada exclusivamente para el trading. Analiza tus trades, tu estrategia y tu disciplina — nada más.",
+
+    // Landing v2 — social proof cards
+    social_stat_1_label: "traders activos",
+    social_stat_2_label: "trades analizados",
+    social_stat_3_label: "valoración media",
 
     // Landing v2 — etiquetas de funciones
     feature_1_label: "IMPORTAR",
@@ -3098,12 +3138,16 @@ const translations: Record<Lang, Record<string, string>> = {
     feature_3_label: "DISCIPLINA",
     feature_4_label: "CHALLENGE",
     feature_import_tag: "147 trades importados",
-    feature_import_drop: "Suelta tu archivo MT4/MT5 aquí",
+    feature_import_drop: "Suelta tu archivo aquí",
     feature_import_formats: "MT5 · cTrader · Binance · Bybit · TradingView · y más",
     feature_ai_coach_label: "Coach IA",
     feature_ai_msg_1: "Analicé tus últimos 23 trades. Tienes tendencia al revenge trading tras 2 pérdidas consecutivas — te ha costado 340€.",
     feature_ai_msg_2: "¿Cómo puedo corregirlo?",
     feature_ai_msg_3: "Oblígate a tomar un descanso de 30 min tras 2 pérdidas. Añádelo como regla en tu estrategia.",
+    feature_ai_msg_4: "¿Qué pasa si entro a un trade sin esperar confirmación?",
+    feature_ai_msg_5: "Esa es tu regla más incumplida. 7 de cada 10 trades perdedores vienen de ahí.",
+    feature_score_conformes: "conformes",
+    feature_score_violations: "violaciones",
 
     // Landing v2 — columnas del footer
     footer_product: "Producto",

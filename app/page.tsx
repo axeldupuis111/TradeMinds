@@ -115,10 +115,7 @@ function Hero() {
             </a>
           </div>
 
-          {/* AI exclusive mention */}
-          <p className="mt-5 text-xs text-muted/70 max-w-lg mx-auto leading-relaxed">
-            {t("hero_ai_exclusive")}
-          </p>
+
         </Reveal>
 
         {/* Dashboard mockup */}
