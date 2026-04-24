@@ -2,29 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Landing page typography ────────────────────────────────────────────────
-   Instrument Serif (Google Fonts) for h1/h2 on landing page only.
-   Inter / Geist with tight tracking for all other text.
-   Scoped to .landing-page to avoid affecting dashboard.
+/* ─── Typography ─────────────────────────────────────────────────────────────
+   Instrument Serif italic for all headings (h1–h3) — consistent across
+   landing page, dashboard, login, and every other page.
+   Body / UI text uses Geist Sans (via --font-geist-sans Tailwind default).
    ──────────────────────────────────────────────────────────────────────── */
-.landing-page {
-  letter-spacing: -0.03em;
-}
-.landing-page h1,
-.landing-page h2 {
+h1, h2, h3 {
   font-family: "Instrument Serif", Georgia, serif;
   font-style: italic;
   font-weight: 400;
   letter-spacing: -0.02em;
 }
-/* Keep badges, labels, nav, buttons at normal tracking */
+
+/* Landing page body-text tracking — tighter than default for visual rhythm */
+.landing-page {
+  letter-spacing: -0.03em;
+}
+/* Reset tracking on UI elements that should not inherit it */
 .landing-page nav,
 .landing-page button,
 .landing-page .btn-scale,
 .landing-page .font-bold.text-xs,
 .landing-page .font-bold.text-\[11px\],
 .landing-page .tracking-widest {
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
   font-style: normal;
   letter-spacing: normal;
 }
