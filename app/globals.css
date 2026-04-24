@@ -2,31 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Landing page typography ────────────────────────────────────────────────
-   Instrument Serif (Google Fonts) for h1/h2 on landing page only.
-   Inter / Geist with tight tracking for all other text.
-   Scoped to .landing-page to avoid affecting dashboard.
+/* ─── Global typography ──────────────────────────────────────────────────────
+   Inter for body/UI text, Instrument Serif italic for headings (h1–h3).
+   Applied globally across all pages — landing, dashboard, login, etc.
    ──────────────────────────────────────────────────────────────────────── */
-.landing-page {
+h1, h2, h3 {
+  font-family: var(--font-instrument-serif), Georgia, serif;
+  font-style: italic;
   letter-spacing: -0.03em;
 }
-.landing-page h1,
-.landing-page h2 {
-  font-family: "Instrument Serif", Georgia, serif;
-  font-style: italic;
-  font-weight: 400;
+
+h4, h5, h6 {
+  font-family: var(--font-inter), system-ui, sans-serif;
   letter-spacing: -0.02em;
-}
-/* Keep badges, labels, nav, buttons at normal tracking */
-.landing-page nav,
-.landing-page button,
-.landing-page .btn-scale,
-.landing-page .font-bold.text-xs,
-.landing-page .font-bold.text-\[11px\],
-.landing-page .tracking-widest {
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
-  font-style: normal;
-  letter-spacing: normal;
 }
 
 /* ─── CSS Variable tokens (RGB channels for Tailwind alpha utilities) ───────
@@ -78,6 +66,8 @@ html.light .force-dark {
 }
 
 body {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  letter-spacing: -0.02em;
   color: rgb(var(--foreground));
   background: rgb(var(--background));
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
