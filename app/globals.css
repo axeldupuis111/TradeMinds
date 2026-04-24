@@ -2,17 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Typography ─────────────────────────────────────────────────────────────
-   Playfair Display (700–900) for all headings, Inter for body/UI text.
-   Applied globally across landing page, dashboard, login, and all pages.
+/* ─── Landing page typography ────────────────────────────────────────────────
+   Instrument Serif (Google Fonts) for h1/h2 on landing page only.
+   Inter / Geist with tight tracking for all other text.
+   Scoped to .landing-page to avoid affecting dashboard.
    ──────────────────────────────────────────────────────────────────────── */
-body {
-  font-family: var(--font-inter), system-ui, sans-serif;
+.landing-page {
+  letter-spacing: -0.03em;
 }
-
-h1, h2, h3 {
-  font-family: var(--font-playfair), Georgia, serif;
-  font-weight: 800;
+.landing-page h1,
+.landing-page h2 {
+  font-family: "Instrument Serif", Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+/* Keep badges, labels, nav, buttons at normal tracking */
+.landing-page nav,
+.landing-page button,
+.landing-page .btn-scale,
+.landing-page .font-bold.text-xs,
+.landing-page .font-bold.text-\[11px\],
+.landing-page .tracking-widest {
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-style: normal;
+  letter-spacing: normal;
 }
 
 /* ─── CSS Variable tokens (RGB channels for Tailwind alpha utilities) ───────
