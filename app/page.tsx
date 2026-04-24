@@ -1041,8 +1041,8 @@ function Footer() {
           <div>
             <p className="text-foreground font-semibold text-sm mb-4">{t("footer_legal_col")}</p>
             <ul className="space-y-2.5">
-              <li><a href="/legal/terms" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_terms")}</a></li>
-              <li><a href="/legal/privacy" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_privacy")}</a></li>
+              <li><a href="/cgu" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_terms")}</a></li>
+              <li><a href="/confidentialite" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_privacy")}</a></li>
               <li><a href="/mentions-legales" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_mentions")}</a></li>
             </ul>
           </div>
