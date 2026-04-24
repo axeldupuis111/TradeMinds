@@ -3,30 +3,16 @@
 @tailwind utilities;
 
 /* ─── Typography ─────────────────────────────────────────────────────────────
-   Instrument Serif italic for all headings (h1–h3) — consistent across
-   landing page, dashboard, login, and every other page.
-   Body / UI text uses Geist Sans (via --font-geist-sans Tailwind default).
+   Playfair Display (700–900) for all headings, Inter for body/UI text.
+   Applied globally across landing page, dashboard, login, and all pages.
    ──────────────────────────────────────────────────────────────────────── */
-h1, h2, h3 {
-  font-family: "Instrument Serif", Georgia, serif;
-  font-style: italic;
-  font-weight: 400;
-  letter-spacing: -0.02em;
+body {
+  font-family: var(--font-inter), system-ui, sans-serif;
 }
 
-/* Landing page body-text tracking — tighter than default for visual rhythm */
-.landing-page {
-  letter-spacing: -0.03em;
-}
-/* Reset tracking on UI elements that should not inherit it */
-.landing-page nav,
-.landing-page button,
-.landing-page .btn-scale,
-.landing-page .font-bold.text-xs,
-.landing-page .font-bold.text-\[11px\],
-.landing-page .tracking-widest {
-  font-style: normal;
-  letter-spacing: normal;
+h1, h2, h3 {
+  font-family: var(--font-playfair), Georgia, serif;
+  font-weight: 800;
 }
 
 /* ─── CSS Variable tokens (RGB channels for Tailwind alpha utilities) ───────
