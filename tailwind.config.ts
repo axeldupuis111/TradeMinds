@@ -24,9 +24,8 @@ const config: Config = {
         gold:    "#eab308",
       },
       fontFamily: {
-        sans:  ["var(--font-inter)", "system-ui", "sans-serif"],
-        serif: ["var(--font-instrument-serif)", "Georgia", "serif"],
-        mono:  ["var(--font-geist-mono)", "ui-monospace", "monospace"],
+        sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
+        mono: ["var(--font-geist-mono)", "ui-monospace", "monospace"],
       },
       borderRadius: {
         xl:   "12px",
