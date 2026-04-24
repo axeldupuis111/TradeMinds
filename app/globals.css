@@ -2,6 +2,33 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Landing page typography ────────────────────────────────────────────────
+   Instrument Serif (Google Fonts) for h1/h2 on landing page only.
+   Inter / Geist with tight tracking for all other text.
+   Scoped to .landing-page to avoid affecting dashboard.
+   ──────────────────────────────────────────────────────────────────────── */
+.landing-page {
+  letter-spacing: -0.03em;
+}
+.landing-page h1,
+.landing-page h2 {
+  font-family: "Instrument Serif", Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+/* Keep badges, labels, nav, buttons at normal tracking */
+.landing-page nav,
+.landing-page button,
+.landing-page .btn-scale,
+.landing-page .font-bold.text-xs,
+.landing-page .font-bold.text-\[11px\],
+.landing-page .tracking-widest {
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-style: normal;
+  letter-spacing: normal;
+}
+
 /* ─── CSS Variable tokens (RGB channels for Tailwind alpha utilities) ───────
    background  = page background
    foreground  = primary text
@@ -54,6 +81,20 @@ body {
   color: rgb(var(--foreground));
   background: rgb(var(--background));
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+/* ─── Browser autofill override — prevents yellow/olive background ──────────
+   Chrome/Edge inject a yellow background via :-webkit-autofill. Override it
+   globally so all inputs stay dark regardless of autofill state.
+   ──────────────────────────────────────────────────────────────────────── */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #1a1a1a inset !important;
+  -webkit-text-fill-color: #e5e5e5 !important;
+  caret-color: #e5e5e5;
+  transition: background-color 9999s ease-in-out 0s;
 }
 
 /* ─── Light-mode overrides for hardcoded dark colours ───────────────────── */

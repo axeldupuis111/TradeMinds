@@ -115,6 +115,10 @@ function Hero() {
             </a>
           </div>
 
+          <p className="mt-5 text-xs text-muted/60 max-w-lg mx-auto leading-relaxed">
+            {t("hero_ai_badge")}
+          </p>
+
 
         </Reveal>
 
@@ -549,7 +553,7 @@ function AIDetection() {
       <div className="max-w-5xl mx-auto">
         <Reveal className="text-center mb-14">
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground">{t("ai_detect_title")}</h2>
-          <p className="text-muted mt-3 max-w-2xl mx-auto">{t("hero_subtitle_v2")}</p>
+          <p className="text-muted mt-3 max-w-2xl mx-auto">{t("ai_detect_subtitle")}</p>
         </Reveal>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {detections.map((d, idx) => (
@@ -892,10 +896,6 @@ function Pricing() {
         {/* Badges */}
         <Reveal className="flex flex-wrap items-center justify-center gap-5 mt-8 text-xs text-muted">
           <span className="flex items-center gap-1.5">
-            <svg className="w-4 h-4 text-profit" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-            {t("plan_stripe_secure")}
-          </span>
-          <span className="flex items-center gap-1.5">
             <svg className="w-4 h-4 text-profit" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
             {t("pricing_no_commitment")}
           </span>
@@ -998,7 +998,7 @@ function Footer() {
               </div>
               <span className="font-bold text-foreground">TradeMinds</span>
             </div>
-            <p className="text-muted text-xs leading-relaxed">{t("hero_subtitle_v2")}</p>
+            <p className="text-muted text-xs leading-relaxed">{t("footer_brand_desc")}</p>
             {/* Social icons */}
             <div className="flex gap-3 mt-4">
               <a href="#" aria-label="Twitter/X" className="w-8 h-8 rounded-lg border border-[#1c1c1e] flex items-center justify-center text-muted hover:text-foreground hover:border-[#2a2a2e] transition-colors">
@@ -1052,7 +1052,6 @@ function Footer() {
         {/* Bottom bar */}
         <div className="border-t border-[#1c1c1e] pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-muted">© 2026 TradeMinds. {t("footer_legal")}.</p>
-          <p className="text-xs text-muted">{t("plan_stripe_secure")}</p>
         </div>
       </div>
     </footer>

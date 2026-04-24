@@ -116,6 +116,7 @@ const translations: Record<Lang, Record<string, string>> = {
     login_fill_fields: "Remplis ton email et ton mot de passe.",
     login_check_email: "Vérifie ton email pour confirmer ton compte.",
     login_back: "← Retour à l'accueil",
+    login_forgot_password: "Mot de passe oublié ?",
 
     // Sidebar
     sidebar_dashboard: "Dashboard",
@@ -670,6 +671,7 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Landing page — AI detection section
     ai_detect_title: "L'IA voit ce que tu ne vois pas",
+    ai_detect_subtitle: "Chaque trade cache un pattern. TradeMinds les identifie, les classe, et t'explique comment les corriger.",
     ai_detect_1: "Tu trades trop souvent après une perte — le revenge trading te coûte cher",
     ai_detect_2: "Tu performes mieux entre 14h et 17h — et mal le matin",
     ai_detect_3: "Tu violes souvent la même règle — sans t'en rendre compte",
@@ -737,7 +739,8 @@ const translations: Record<Lang, Record<string, string>> = {
     nav_pricing: "Tarifs",
     nav_faq: "FAQ",
     hero_subtitle_v2: "L'IA analyse tes trades, détecte tes erreurs et mesure ta discipline. Import MT4/MT5, cTrader, TradingView ou toute autre plateforme en 2 clics.",
-    hero_social_proof: "Rejoint par 500+ traders · 10 000+ trades analysés · 4.8★",
+    hero_social_proof: "✓ Gratuit pour commencer · ✓ Analyse IA en 10 secondes · ✓ Aucune carte requise",
+    hero_ai_badge: "🧠 IA entraînée spécifiquement sur les comportements des traders — pas un chatbot générique.",
     hero_ai_exclusive: "Notre IA est conçue exclusivement pour le trading. Elle analyse tes trades, ta stratégie et ta discipline — rien d'autre.",
 
     // Landing v2 — social proof cards
@@ -772,6 +775,7 @@ const translations: Record<Lang, Record<string, string>> = {
     footer_terms: "CGU",
     footer_mentions: "Mentions légales",
     footer_social: "Rejoins la communauté",
+    footer_brand_desc: "Conçu pour les traders sérieux. Pas un outil générique — une IA entraînée sur les patterns comportementaux du trading, pour t'aider à respecter ton plan quand les émotions prennent le dessus.",
 
     // Landing v2 — pricing extras
     plan_stripe_secure: "Paiement sécurisé par Stripe",
@@ -927,6 +931,7 @@ const translations: Record<Lang, Record<string, string>> = {
     login_fill_fields: "Please fill in your email and password.",
     login_check_email: "Check your email to confirm your account.",
     login_back: "← Back to home",
+    login_forgot_password: "Forgot your password?",
 
     sidebar_dashboard: "Dashboard",
     sidebar_trades: "My Trades",
@@ -1465,6 +1470,7 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Landing page — AI detection section
     ai_detect_title: "The AI sees what you don't",
+    ai_detect_subtitle: "Every trade hides a pattern. TradeMinds identifies them, classifies them, and explains how to fix them.",
     ai_detect_1: "You trade too often after a loss — revenge trading is costing you",
     ai_detect_2: "You perform better between 2pm and 5pm — and poorly in the morning",
     ai_detect_3: "You often break the same rule — without realising it",
@@ -1532,7 +1538,8 @@ const translations: Record<Lang, Record<string, string>> = {
     nav_pricing: "Pricing",
     nav_faq: "FAQ",
     hero_subtitle_v2: "AI analyses your trades, spots your mistakes and measures your discipline. Import MT4/MT5, cTrader, TradingView or any other platform in 2 clicks.",
-    hero_social_proof: "Joined by 500+ traders · 10,000+ trades analysed · 4.8★",
+    hero_social_proof: "✓ Free to start · ✓ AI analysis in 10 seconds · ✓ No card required",
+    hero_ai_badge: "🧠 AI trained specifically on trader behaviours — not a generic chatbot.",
     hero_ai_exclusive: "Our AI is designed exclusively for trading. It analyses your trades, your strategy and your discipline — nothing else.",
 
     // Landing v2 — social proof cards
@@ -1567,6 +1574,7 @@ const translations: Record<Lang, Record<string, string>> = {
     footer_terms: "Terms of Service",
     footer_mentions: "Legal Notice",
     footer_social: "Join the community",
+    footer_brand_desc: "Built for serious traders. Not a generic tool — an AI trained on trading behavioural patterns, to help you stick to your plan when emotions take over.",
 
     // Landing v2 — pricing extras
     plan_stripe_secure: "Secure payment via Stripe",
@@ -1723,6 +1731,7 @@ const translations: Record<Lang, Record<string, string>> = {
     login_fill_fields: "Bitte gib deine E-Mail und dein Passwort ein.",
     login_check_email: "Prüfe deine E-Mails, um dein Konto zu bestätigen.",
     login_back: "← Zurück zur Startseite",
+    login_forgot_password: "Passwort vergessen?",
 
     sidebar_dashboard: "Dashboard",
     sidebar_trades: "Meine Trades",
@@ -2261,6 +2270,7 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Landingpage — KI-Erkennungsbereich
     ai_detect_title: "Die KI sieht, was du nicht siehst",
+    ai_detect_subtitle: "Jeder Trade verbirgt ein Muster. TradeMinds identifiziert sie, klassifiziert sie und erklärt, wie du sie behebst.",
     ai_detect_1: "Du tradest nach einem Verlust zu oft — Revenge-Trading kostet dich viel",
     ai_detect_2: "Du performst zwischen 14 und 17 Uhr besser — und morgens schlechter",
     ai_detect_3: "Du verletzt oft dieselbe Regel — ohne es zu merken",
@@ -2328,7 +2338,8 @@ const translations: Record<Lang, Record<string, string>> = {
     nav_pricing: "Preise",
     nav_faq: "FAQ",
     hero_subtitle_v2: "Die KI analysiert deine Trades, erkennt Fehler und misst deine Disziplin. Import von MT4/MT5, cTrader, TradingView oder jeder anderen Plattform in 2 Klicks.",
-    hero_social_proof: "Von 500+ Tradern genutzt · 10.000+ analysierte Trades · 4,8★",
+    hero_social_proof: "✓ Kostenlos starten · ✓ KI-Analyse in 10 Sekunden · ✓ Keine Karte erforderlich",
+    hero_ai_badge: "🧠 KI speziell auf das Verhalten von Tradern trainiert — kein generischer Chatbot.",
     hero_ai_exclusive: "Unsere KI wurde ausschließlich für Trading entwickelt. Sie analysiert deine Trades, deine Strategie und deine Disziplin — nichts anderes.",
 
     // Landing v2 — social proof cards
@@ -2363,6 +2374,7 @@ const translations: Record<Lang, Record<string, string>> = {
     footer_terms: "AGB",
     footer_mentions: "Impressum",
     footer_social: "Community beitreten",
+    footer_brand_desc: "Entwickelt für ernsthafte Trader. Kein generisches Tool — eine KI, die auf Trading-Verhaltensmustern trainiert wurde, damit du deinen Plan befolgst, wenn Emotionen überhandnehmen.",
 
     // Landing v2 — Preise
     plan_stripe_secure: "Sichere Zahlung über Stripe",
@@ -2519,6 +2531,7 @@ const translations: Record<Lang, Record<string, string>> = {
     login_fill_fields: "Introduce tu email y contraseña.",
     login_check_email: "Revisa tu email para confirmar tu cuenta.",
     login_back: "← Volver al inicio",
+    login_forgot_password: "¿Olvidaste tu contraseña?",
 
     sidebar_dashboard: "Dashboard",
     sidebar_trades: "Mis Trades",
@@ -3057,6 +3070,7 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Landing page — sección de detección IA
     ai_detect_title: "La IA ve lo que tú no ves",
+    ai_detect_subtitle: "Cada trade esconde un patrón. TradeMinds los identifica, los clasifica y te explica cómo corregirlos.",
     ai_detect_1: "Operas demasiado seguido después de una pérdida — el revenge trading te cuesta caro",
     ai_detect_2: "Rindes mejor entre las 14h y las 17h — y mal por las mañanas",
     ai_detect_3: "A menudo incumples la misma regla — sin darte cuenta",
@@ -3124,7 +3138,8 @@ const translations: Record<Lang, Record<string, string>> = {
     nav_pricing: "Precios",
     nav_faq: "FAQ",
     hero_subtitle_v2: "La IA analiza tus trades, detecta tus errores y mide tu disciplina. Importa MT4/MT5, cTrader, TradingView o cualquier otra plataforma en 2 clics.",
-    hero_social_proof: "Más de 500 traders · 10.000+ trades analizados · 4,8★",
+    hero_social_proof: "✓ Gratis para empezar · ✓ Análisis IA en 10 segundos · ✓ Sin tarjeta requerida",
+    hero_ai_badge: "🧠 IA entrenada específicamente en comportamientos de traders — no es un chatbot genérico.",
     hero_ai_exclusive: "Nuestra IA está diseñada exclusivamente para el trading. Analiza tus trades, tu estrategia y tu disciplina — nada más.",
 
     // Landing v2 — social proof cards
@@ -3159,6 +3174,7 @@ const translations: Record<Lang, Record<string, string>> = {
     footer_terms: "Términos",
     footer_mentions: "Aviso legal",
     footer_social: "Únete a la comunidad",
+    footer_brand_desc: "Diseñado para traders serios. No es una herramienta genérica — una IA entrenada en patrones de comportamiento del trading, para ayudarte a respetar tu plan cuando las emociones se apoderan de ti.",
 
     // Landing v2 — precios
     plan_stripe_secure: "Pago seguro con Stripe",
