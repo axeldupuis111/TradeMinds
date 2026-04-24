@@ -34,7 +34,7 @@ export default function MentionsLegalesPage() {
           <section>
             <h2 className="text-lg font-semibold text-[#fafafa] mb-3" style={{ fontStyle: "normal" }}>Propriété intellectuelle</h2>
             <p>
-              L'ensemble du contenu de ce site (code, design, textes, marque) est la propriété exclusive de
+              L&apos;ensemble du contenu de ce site (code, design, textes, marque) est la propriété exclusive de
               TradeMinds et est protégé par les lois relatives à la propriété intellectuelle. Toute reproduction
               ou distribution sans autorisation écrite est interdite.
             </p>
@@ -54,7 +54,7 @@ export default function MentionsLegalesPage() {
           <section>
             <h2 className="text-lg font-semibold text-[#fafafa] mb-3" style={{ fontStyle: "normal" }}>Limitation de responsabilité</h2>
             <p>
-              TradeMinds est un outil d'analyse et de journal de trading. Il ne constitue pas un conseil financier
+              TradeMinds est un outil d&apos;analyse et de journal de trading. Il ne constitue pas un conseil financier
               ou en investissement. Toute décision de trading reste sous votre entière responsabilité.
               Le trading implique un risque significatif de perte en capital.
             </p>
