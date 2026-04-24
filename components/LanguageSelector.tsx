@@ -27,7 +27,6 @@ export default function LanguageSelector() {
         onClick={() => setOpen(!open)}
         className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-muted hover:text-foreground rounded-lg hover:bg-white/5 transition-colors"
       >
-        <span>{current.flag}</span>
         <span className="text-xs font-medium">{current.label}</span>
         <svg
           className={`w-3 h-3 transition-transform ${open ? "rotate-180" : ""}`}

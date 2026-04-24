@@ -715,6 +715,7 @@ const translations: Record<Lang, Record<string, string>> = {
     plan_premium_desc: "Connexion directe aux plateformes, synchronisation en temps réel, analyses illimitées, signaux avancés et bien plus. Sois le premier informé.",
     plan_premium_notify_btn: "Être notifié",
     pricing_no_commitment: "Sans engagement · Annulation à tout moment · Accès immédiat",
+    pricing_coming_soon_note: "Paiement disponible prochainement",
 
     // Analytics new keys
     analytics_kpi_title: "Synthèse",
@@ -739,7 +740,7 @@ const translations: Record<Lang, Record<string, string>> = {
     nav_pricing: "Tarifs",
     nav_faq: "FAQ",
     hero_subtitle_v2: "L'IA analyse tes trades, détecte tes erreurs et mesure ta discipline. Import MT4/MT5, cTrader, TradingView ou toute autre plateforme en 2 clics.",
-    hero_social_proof: "✓ Gratuit pour commencer · ✓ Analyse IA en 10 secondes · ✓ Aucune carte requise",
+    hero_social_proof: "✓ Import en 2 clics · ✓ Score de discipline instantané · ✓ Rejoins 500+ traders",
     hero_ai_badge: "🧠 IA entraînée spécifiquement sur les comportements des traders — pas un chatbot générique.",
     hero_ai_exclusive: "Notre IA est conçue exclusivement pour le trading. Elle analyse tes trades, ta stratégie et ta discipline — rien d'autre.",
 
@@ -1514,6 +1515,7 @@ const translations: Record<Lang, Record<string, string>> = {
     plan_premium_desc: "Direct platform connection, real-time sync, unlimited analyses, advanced signals and much more. Be the first to know.",
     plan_premium_notify_btn: "Notify me",
     pricing_no_commitment: "No commitment · Cancel anytime · Immediate access",
+    pricing_coming_soon_note: "Payment coming soon",
 
     // Analytics new keys
     analytics_kpi_title: "Summary",
@@ -1538,7 +1540,7 @@ const translations: Record<Lang, Record<string, string>> = {
     nav_pricing: "Pricing",
     nav_faq: "FAQ",
     hero_subtitle_v2: "AI analyses your trades, spots your mistakes and measures your discipline. Import MT4/MT5, cTrader, TradingView or any other platform in 2 clicks.",
-    hero_social_proof: "✓ Free to start · ✓ AI analysis in 10 seconds · ✓ No card required",
+    hero_social_proof: "✓ Import in 2 clicks · ✓ Instant discipline score · ✓ Join 500+ traders",
     hero_ai_badge: "🧠 AI trained specifically on trader behaviours — not a generic chatbot.",
     hero_ai_exclusive: "Our AI is designed exclusively for trading. It analyses your trades, your strategy and your discipline — nothing else.",
 
@@ -2314,6 +2316,7 @@ const translations: Record<Lang, Record<string, string>> = {
     plan_premium_desc: "Direkte Plattformverbindung, Echtzeit-Synchronisation, unbegrenzte Analysen, erweiterte Signale und vieles mehr. Sei der Erste.",
     plan_premium_notify_btn: "Benachrichtigen",
     pricing_no_commitment: "Keine Bindung · Jederzeit kündbar · Sofortzugang",
+    pricing_coming_soon_note: "Zahlung demnächst verfügbar",
 
     // Analytics neue Schlüssel
     analytics_kpi_title: "Zusammenfassung",
@@ -2338,7 +2341,7 @@ const translations: Record<Lang, Record<string, string>> = {
     nav_pricing: "Preise",
     nav_faq: "FAQ",
     hero_subtitle_v2: "Die KI analysiert deine Trades, erkennt Fehler und misst deine Disziplin. Import von MT4/MT5, cTrader, TradingView oder jeder anderen Plattform in 2 Klicks.",
-    hero_social_proof: "✓ Kostenlos starten · ✓ KI-Analyse in 10 Sekunden · ✓ Keine Karte erforderlich",
+    hero_social_proof: "✓ Import in 2 Klicks · ✓ Sofortiger Disziplin-Score · ✓ Tritt 500+ Tradern bei",
     hero_ai_badge: "🧠 KI speziell auf das Verhalten von Tradern trainiert — kein generischer Chatbot.",
     hero_ai_exclusive: "Unsere KI wurde ausschließlich für Trading entwickelt. Sie analysiert deine Trades, deine Strategie und deine Disziplin — nichts anderes.",
 
@@ -3114,6 +3117,7 @@ const translations: Record<Lang, Record<string, string>> = {
     plan_premium_desc: "Conexión directa a plataformas, sincronización en tiempo real, análisis ilimitados, señales avanzadas y mucho más. Sé el primero.",
     plan_premium_notify_btn: "Avisarme",
     pricing_no_commitment: "Sin compromiso · Cancela cuando quieras · Acceso inmediato",
+    pricing_coming_soon_note: "Pago disponible próximamente",
 
     // Analytics nuevas claves
     analytics_kpi_title: "Resumen",
@@ -3138,7 +3142,7 @@ const translations: Record<Lang, Record<string, string>> = {
     nav_pricing: "Precios",
     nav_faq: "FAQ",
     hero_subtitle_v2: "La IA analiza tus trades, detecta tus errores y mide tu disciplina. Importa MT4/MT5, cTrader, TradingView o cualquier otra plataforma en 2 clics.",
-    hero_social_proof: "✓ Gratis para empezar · ✓ Análisis IA en 10 segundos · ✓ Sin tarjeta requerida",
+    hero_social_proof: "✓ Importa en 2 clics · ✓ Score de disciplina instantáneo · ✓ Únete a 500+ traders",
     hero_ai_badge: "🧠 IA entrenada específicamente en comportamientos de traders — no es un chatbot genérico.",
     hero_ai_exclusive: "Nuestra IA está diseñada exclusivamente para el trading. Analiza tus trades, tu estrategia y tu disciplina — nada más.",
 

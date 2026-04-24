@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 /* ─────────────────────────────────────────────
    Scroll-reveal helper
 ───────────────────────────────────────────── */
-function useReveal(threshold = 0.1) {
+function useReveal(threshold = 0) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = ref.current;
@@ -91,9 +91,9 @@ function Hero() {
             {t("hero_social_proof")}
           </div>
 
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold not-italic text-foreground leading-[1.05] tracking-tight text-balance">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground leading-[1.05] tracking-tight text-balance" style={{ fontStyle: "normal" }}>
             {t("hero_title_1")}{" "}
-            <span className="text-accent not-italic">{t("hero_title_2")}</span>
+            <span className="text-accent" style={{ fontStyle: "normal" }}>{t("hero_title_2")}</span>
           </h1>
 
           <p className="mt-6 text-lg sm:text-xl text-muted max-w-2xl mx-auto leading-relaxed">
@@ -882,6 +882,9 @@ function Pricing() {
                   <Link href="/login" className={`mt-8 block w-full py-3 rounded-xl font-semibold text-center transition-colors btn-scale ${p.btnClass}`}>
                     {t(p.btnKey)}
                   </Link>
+                  {p.highlight && (
+                    <p className="text-center text-xs text-muted/50 mt-2">{t("pricing_coming_soon_note")}</p>
+                  )}
                 </div>
               </Reveal>
             );
@@ -1028,13 +1031,9 @@ function Footer() {
           <div>
             <p className="text-foreground font-semibold text-sm mb-4">{t("footer_resources")}</p>
             <ul className="space-y-2.5">
-              {[
-                { href: "#", label: t("footer_blog") },
-                { href: "#", label: t("footer_contact") },
-                { href: "#", label: t("footer_support") },
-              ].map((l) => (
-                <li key={l.label}><a href={l.href} className="text-muted text-sm hover:text-foreground transition-colors">{l.label}</a></li>
-              ))}
+              <li><span className="text-muted/40 text-sm cursor-not-allowed select-none">{t("footer_blog")}</span></li>
+              <li><a href="mailto:contact@trademinds.app" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_contact")}</a></li>
+              <li><a href="mailto:support@trademinds.app" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_support")}</a></li>
             </ul>
           </div>
 
@@ -1044,7 +1043,7 @@ function Footer() {
             <ul className="space-y-2.5">
               <li><a href="/legal/terms" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_terms")}</a></li>
               <li><a href="/legal/privacy" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_privacy")}</a></li>
-              <li><a href="#" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_mentions")}</a></li>
+              <li><a href="/mentions-legales" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_mentions")}</a></li>
             </ul>
           </div>
         </div>
