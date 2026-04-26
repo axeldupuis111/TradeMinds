@@ -157,7 +157,7 @@ export default function GoalsStreaks() {
         <div className="flex items-center justify-between mb-2">
           <p className="text-sm text-foreground font-medium">{t("goals_weekly")}</p>
           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${weeklyProgress.met ? "bg-profit/10 text-profit" : "bg-loss/10 text-loss"}`}>
-            {weeklyProgress.met ? t("goals_on_track") : `${weeklyProgress.current} ${t("goals_violations")}`}
+            {weeklyProgress.met ? t("goals_on_track") : `${weeklyProgress.current} ${weeklyProgress.current === 1 ? t("goals_violation_one") : t("goals_violations")}`}
           </span>
         </div>
         <p className="text-xs text-muted">{t("goals_weekly_desc")}</p>

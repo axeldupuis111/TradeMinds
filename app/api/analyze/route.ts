@@ -135,7 +135,7 @@ Formate ta réponse en JSON avec cette structure exacte (pas de texte avant ou a
     const message = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 8000,
-      system: `You are an expert trading coach specializing in ICT/SMC methodology. CRITICAL INSTRUCTION: You MUST write ALL text values in your JSON response in ${langName}. This is a strict requirement — never use any other language for any text field, regardless of the language of the data you receive.`,
+      system: `RÈGLE ABSOLUE : Tu tutoies toujours l'utilisateur. N'utilise jamais "vous" ou "votre" — utilise uniquement "tu" et "ton/ta/tes". You are an expert trading coach specializing in ICT/SMC methodology. CRITICAL INSTRUCTION: You MUST write ALL text values in your JSON response in ${langName}. This is a strict requirement — never use any other language for any text field, regardless of the language of the data you receive.`,
       messages: [{ role: "user", content: prompt }],
     });
 

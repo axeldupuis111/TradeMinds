@@ -336,7 +336,7 @@ export default function SessionPage() {
           <p className={`text-sm font-medium ${allChecked ? "text-profit" : "text-orange-400"}`}>
             {allChecked
               ? t("session_all_ready")
-              : t("session_items_remaining").replace("{N}", String(checklist.length - checkedItems.size))}
+              : (checklist.length - checkedItems.size === 1 ? t("session_item_remaining_one") : t("session_items_remaining")).replace("{N}", String(checklist.length - checkedItems.size))}
           </p>
         )}
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full">

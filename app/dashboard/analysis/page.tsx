@@ -5,6 +5,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
 
 interface ChatMessage {
   id?: string;
@@ -366,6 +367,23 @@ export default function AnalysisPage() {
       if (!res.ok) throw new Error(data.error || "Erreur serveur.");
 
       setAnalysis(data);
+
+      // Auto-save to history
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) {
+        const { error: saveErr } = await supabase.from("session_reviews").insert({
+          user_id: authUser.id,
+          discipline_score: data.discipline_score,
+          total_trades: data.total_trades,
+          conforming_trades: data.conforming_trades,
+          analysis: data,
+        });
+        if (!saveErr) {
+          setSaveMessage(t("analysis_saved"));
+          loadHistory();
+        }
+      }
+
       // Increment AI usage counter for Plus plan
       if (plan === "plus") {
         await incrementAIUsage();
@@ -471,18 +489,18 @@ export default function AnalysisPage() {
             <button
               onClick={runAnalysis}
               disabled={loading || !hasStrategy || tradeCount === 0 || aiLimitReached}
-              className="px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50 btn-scale"
+              className={`px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50 btn-scale ${aiLimitReached ? "cursor-not-allowed pointer-events-none" : ""}`}
             >
-              {loading ? t("analysis_running") : t("analysis_run")}
+              {loading ? t("analysis_running") : aiLimitReached ? t("analysis_run_limit") : t("analysis_run")}
             </button>
             {tradeCount > 0 && (
               <span className="text-muted text-sm">
-                {tradeCount} {t("analysis_trades_count")}
+                {tradeCount} {tradeCount === 1 ? t("analysis_trade_count_one") : t("analysis_trades_count")}
               </span>
             )}
             {plan === "plus" && aiRemaining !== null && !aiLimitReached && (
               <span className="text-muted text-sm">
-                ({aiRemaining} {t("plan_ai_remaining")})
+                ({aiRemaining} {aiRemaining === 1 ? t("plan_ai_remaining_one") : t("plan_ai_remaining")})
               </span>
             )}
           </div>
@@ -527,7 +545,7 @@ export default function AnalysisPage() {
                 {displayedAnalysis.conforming_trades} / {displayedAnalysis.total_trades} {t("analysis_conforming")}
               </p>
               <p className="text-muted text-sm mt-1">
-                {displayedAnalysis.violations.length} {t("analysis_violations_detected")}
+                {displayedAnalysis.violations.length} {displayedAnalysis.violations.length === 1 ? t("analysis_violation_detected_one") : t("analysis_violations_detected")}
               </p>
             </div>
           </div>
@@ -645,20 +663,9 @@ export default function AnalysisPage() {
             </section>
           )}
 
-          {/* Save button */}
-          {!viewingHistory && (
-            <div className="flex items-center gap-3">
-              <button
-                onClick={saveAnalysis}
-                disabled={saving}
-                className="px-5 py-2 bg-card border border-border text-foreground rounded-lg text-sm font-medium hover:bg-border transition-colors disabled:opacity-50"
-              >
-                {saving ? t("analysis_saving") : t("analysis_save")}
-              </button>
-              {saveMessage && (
-                <span className="text-sm text-profit">{saveMessage}</span>
-              )}
-            </div>
+          {/* Auto-save confirmation */}
+          {!viewingHistory && saveMessage && (
+            <p className="text-sm text-profit">{saveMessage}</p>
           )}
           </div>
         )}
@@ -737,7 +744,13 @@ export default function AnalysisPage() {
                         ? "bg-accent text-white rounded-br-sm"
                         : "bg-surface border border-border text-foreground rounded-bl-sm"
                     }`}>
-                      <p className="whitespace-pre-wrap">{msg.content}</p>
+                      {msg.role === "assistant" ? (
+                        <div className="prose prose-sm max-w-none dark:prose-invert [&>p]:mb-2 [&>p:last-child]:mb-0 [&>ul]:list-disc [&>ul]:pl-4 [&>ol]:list-decimal [&>ol]:pl-4 [&>li]:mb-0.5 [&>strong]:font-semibold [&>em]:italic">
+                          <ReactMarkdown>{msg.content}</ReactMarkdown>
+                        </div>
+                      ) : (
+                        <p className="whitespace-pre-wrap">{msg.content}</p>
+                      )}
                     </div>
                     {msg.created_at && (
                       <p className={`text-[10px] text-muted/60 ${msg.role === "user" ? "text-right" : "text-left"}`}>
@@ -795,7 +808,7 @@ export default function AnalysisPage() {
               <div className="px-3 pb-2">
                 <p className="text-xs text-muted">
                   {chatRemaining > 0
-                    ? t("coach_remaining").replace("{n}", String(chatRemaining))
+                    ? (chatRemaining === 1 ? t("coach_remaining_one") : t("coach_remaining")).replace("{n}", String(chatRemaining))
                     : t("coach_limit_reached")}
                 </p>
               </div>
@@ -815,15 +828,17 @@ export default function AnalysisPage() {
                 {displayedAnalysis.conforming_trades} / {displayedAnalysis.total_trades} {t("analysis_conforming")}
               </p>
               <p className="text-muted text-sm mt-1">
-                {displayedAnalysis.violations.length} {t("analysis_violations_detected")}
+                {displayedAnalysis.violations.length} {displayedAnalysis.violations.length === 1 ? t("analysis_violation_detected_one") : t("analysis_violations_detected")}
               </p>
             </div>
           ) : (
             <div className="bg-card border border-border rounded-xl p-6 card-shadow flex flex-col items-center text-center">
-              <div className="w-24 h-24 rounded-full border-4 border-border flex items-center justify-center mb-3">
-                <span className="text-3xl text-muted">—</span>
+              <div className="w-20 h-20 rounded-full border-2 border-dashed border-border flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 text-muted/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                </svg>
               </div>
-              <p className="text-muted text-sm">{t("analysis_run")}</p>
+              <p className="text-muted text-sm">{t("analysis_score_empty")}</p>
             </div>
           )}
 
