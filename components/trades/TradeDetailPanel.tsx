@@ -1,7 +1,9 @@
 "use client";
 
+import { ICT_CHECKLIST_ITEMS, ICT_EMOTIONS, ICT_ENTRY_ZONES, ICT_KILLZONES, ICT_LIQUIDITY_TARGETS, ICT_SETUPS, ICT_TIMEFRAMES, getEmotionColor } from "@/lib/ict-constants";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
+import type { Lang } from "@/lib/translations";
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 
@@ -24,6 +26,14 @@ export interface TradeDetail {
   setup_quality: number | null;
   notes: string | null;
   screenshot_url: string | null;
+  // ICT fields
+  ict_setup?: string | null;
+  ict_entry_zone?: string | null;
+  ict_liquidity_target?: string | null;
+  ict_killzone?: string | null;
+  ict_timeframe?: string | null;
+  ict_checklist?: Record<string, boolean> | null;
+  ict_confluence_score?: number | null;
 }
 
 const EMOTIONS: { key: string; emoji: string; labelKey: string }[] = [
@@ -43,8 +53,17 @@ interface Props {
   onSaved: () => void;
 }
 
+function ICTBadge({ color, label }: { color: string; label: string }) {
+  return (
+    <span className="px-2 py-0.5 rounded-full text-xs font-medium text-white" style={{ backgroundColor: color }}>
+      {label}
+    </span>
+  );
+}
+
 export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const l = lang as Lang;
   const supabase = createClient();
 
   const [emotion, setEmotion] = useState<string | null>(trade.emotion);
@@ -71,9 +90,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
 
   function addTag(tag: string) {
     const trimmed = tag.trim();
-    if (trimmed && !tags.includes(trimmed)) {
-      setTags([...tags, trimmed]);
-    }
+    if (trimmed && !tags.includes(trimmed)) setTags([...tags, trimmed]);
     setTagInput("");
   }
 
@@ -96,14 +113,9 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
     const ext = file.name.split(".").pop() || "png";
     const path = `${user.id}/${trade.id}.${ext}`;
 
-    const { error } = await supabase.storage
-      .from("screenshots")
-      .upload(path, file, { upsert: true });
-
+    const { error } = await supabase.storage.from("screenshots").upload(path, file, { upsert: true });
     if (!error) {
-      const { data: urlData } = supabase.storage
-        .from("screenshots")
-        .getPublicUrl(path);
+      const { data: urlData } = supabase.storage.from("screenshots").getPublicUrl(path);
       setScreenshotUrl(urlData.publicUrl);
     }
     setUploading(false);
@@ -113,13 +125,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
     setSaving(true);
     const { error } = await supabase
       .from("trades")
-      .update({
-        emotion,
-        setup_quality: quality,
-        tags,
-        notes: notes || null,
-        screenshot_url: screenshotUrl,
-      })
+      .update({ emotion, setup_quality: quality, tags, notes: notes || null, screenshot_url: screenshotUrl })
       .eq("id", trade.id);
 
     setSaving(false);
@@ -130,17 +136,24 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
     }
   }, [emotion, quality, tags, notes, screenshotUrl, trade.id, supabase, onSaved]);
 
-  // Filter tag suggestions
   const filteredSuggestions = TAG_SUGGESTIONS.filter(
     (s) => !tags.includes(s) && s.toLowerCase().includes(tagInput.toLowerCase())
   );
 
+  // ICT data helpers
+  const hasICTTags = trade.ict_setup || trade.ict_entry_zone || trade.ict_liquidity_target || trade.ict_killzone;
+  const checklistItems = trade.ict_checklist || {};
+  const checkedCount = ICT_CHECKLIST_ITEMS.filter((i) => checklistItems[i.key]).length;
+
+  function getLabel<T extends { value: string; label: Record<Lang, string> }>(list: T[], value: string | null | undefined): string {
+    if (!value) return "";
+    return list.find((x) => x.value === value)?.label[l] ?? value;
+  }
+
   return (
     <>
-      {/* Backdrop */}
       <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} />
 
-      {/* Panel */}
       <div className="fixed top-0 right-0 z-50 h-full w-full sm:w-[440px] bg-card border-l border-border overflow-y-auto animate-in slide-in-from-right duration-200">
         {/* Header */}
         <div className="sticky top-0 bg-card border-b border-border px-5 py-4 flex items-center justify-between z-10">
@@ -177,6 +190,58 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
             </div>
           </div>
 
+          {/* ICT Tags display */}
+          <div>
+            <p className="text-sm text-muted mb-2">{t("ict_analysis_section")}</p>
+            {hasICTTags ? (
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-1.5">
+                  {trade.ict_setup && (
+                    <ICTBadge color="#3b82f6" label={getLabel(ICT_SETUPS, trade.ict_setup)} />
+                  )}
+                  {trade.ict_entry_zone && (
+                    <ICTBadge color="#8b5cf6" label={getLabel(ICT_ENTRY_ZONES, trade.ict_entry_zone)} />
+                  )}
+                  {trade.ict_liquidity_target && (
+                    <ICTBadge color="#f59e0b" label={getLabel(ICT_LIQUIDITY_TARGETS, trade.ict_liquidity_target)} />
+                  )}
+                  {trade.ict_killzone && (
+                    <ICTBadge color="#10b981" label={getLabel(ICT_KILLZONES, trade.ict_killzone)} />
+                  )}
+                  {trade.ict_timeframe && (
+                    <ICTBadge color="#6b7280" label={ICT_TIMEFRAMES.find((x) => x.value === trade.ict_timeframe)?.label ?? trade.ict_timeframe} />
+                  )}
+                  {trade.emotion && (
+                    <ICTBadge
+                      color={getEmotionColor(trade.emotion)}
+                      label={ICT_EMOTIONS.find((x) => x.value === trade.emotion)?.label[l] ?? trade.emotion}
+                    />
+                  )}
+                </div>
+                {/* Checklist progress */}
+                {Object.keys(checklistItems).length > 0 && (
+                  <div className="mt-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-muted">{t("ict_checklist_title")} {checkedCount}/7</span>
+                      <span className="text-xs text-muted">{Math.round((checkedCount / 7) * 100)}%</span>
+                    </div>
+                    <div className="h-1.5 bg-border rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{
+                          width: `${(checkedCount / 7) * 100}%`,
+                          backgroundColor: checkedCount >= 6 ? "#22c55e" : checkedCount >= 4 ? "#f59e0b" : "#ef4444",
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-muted/70 italic">{t("ict_no_ict_tags")}</p>
+            )}
+          </div>
+
           {/* Emotion */}
           <div>
             <label className="block text-sm text-muted mb-2">{t("detail_emotion")}</label>
@@ -186,9 +251,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
                   key={em.key}
                   onClick={() => setEmotion(emotion === em.key ? null : em.key)}
                   className={`flex flex-col items-center gap-1 py-2 rounded-lg border text-sm transition-all ${
-                    emotion === em.key
-                      ? "border-accent bg-accent/10"
-                      : "border-border bg-surface hover:border-muted"
+                    emotion === em.key ? "border-accent bg-accent/10" : "border-border bg-surface hover:border-muted"
                   }`}
                 >
                   <span className="text-xl">{em.emoji}</span>
@@ -203,16 +266,8 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
             <label className="block text-sm text-muted mb-2">{t("detail_quality")}</label>
             <div className="flex gap-1">
               {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  onClick={() => setQuality(quality === star ? null : star)}
-                  className="p-1 transition-colors"
-                >
-                  <svg
-                    className={`w-7 h-7 ${(quality || 0) >= star ? "text-yellow-400" : "text-border"}`}
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
+                <button key={star} onClick={() => setQuality(quality === star ? null : star)} className="p-1 transition-colors">
+                  <svg className={`w-7 h-7 ${(quality || 0) >= star ? "text-yellow-400" : "text-border"}`} fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                   </svg>
                 </button>
@@ -243,11 +298,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
               {tagInput && filteredSuggestions.length > 0 && (
                 <div className="absolute top-full left-0 right-0 mt-1 bg-surface border border-border rounded-lg overflow-hidden z-10">
                   {filteredSuggestions.map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => addTag(s)}
-                      className="block w-full text-left px-3 py-2 text-sm text-foreground hover:bg-border transition-colors"
-                    >
+                    <button key={s} onClick={() => addTag(s)} className="block w-full text-left px-3 py-2 text-sm text-foreground hover:bg-border transition-colors">
                       {s}
                     </button>
                   ))}
@@ -289,16 +340,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
               <span className="text-muted text-xs">{uploading ? "..." : t("detail_upload")}</span>
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                disabled={uploading}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleScreenshotUpload(file);
-                }}
-              />
+              <input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={(e) => { const file = e.target.files?.[0]; if (file) handleScreenshotUpload(file); }} />
             </label>
           </div>
 

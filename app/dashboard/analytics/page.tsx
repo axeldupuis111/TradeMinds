@@ -1,9 +1,12 @@
 "use client";
 
 import ExportPdfButton from "@/components/analytics/ExportPdfButton";
+import { computeDisciplineScore } from "@/lib/discipline-score";
+import { ICT_EMOTIONS, ICT_ENTRY_ZONES, ICT_KILLZONES, ICT_SETUPS, getEmotionColor } from "@/lib/ict-constants";
 import { useChartColors } from "@/lib/useChartColors";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
+import type { Lang } from "@/lib/translations";
 import { useEffect, useMemo, useState } from "react";
 import {
   BarChart,
@@ -31,6 +34,14 @@ interface TradeRow {
   emotion: string | null;
   setup_quality: number | null;
   challenge_id: string | null;
+  // ICT fields
+  ict_setup?: string | null;
+  ict_entry_zone?: string | null;
+  ict_killzone?: string | null;
+  ict_checklist?: Record<string, boolean> | null;
+  sl?: number | null;
+  tp?: number | null;
+  entry_price?: number | null;
 }
 
 interface ViolationTrade {
@@ -85,7 +96,7 @@ const EMOTION_EMOJIS: Record<string, string> = {
 type Period = "today" | "week" | "month" | "30d" | "90d" | "all";
 
 export default function AnalyticsPage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const c = useChartColors();
   const supabase = createClient();
   const [trades, setTrades] = useState<TradeRow[]>([]);
@@ -103,7 +114,7 @@ export default function AnalyticsPage() {
       const [{ data: tradeData }, { data: accountData }, { data: reviewData }] = await Promise.all([
         supabase
           .from("trades")
-          .select("open_time, pnl, commission, swap, pair, direction, emotion, setup_quality, challenge_id")
+          .select("open_time, pnl, commission, swap, pair, direction, emotion, setup_quality, challenge_id, ict_setup, ict_entry_zone, ict_killzone, ict_checklist, sl, tp, entry_price")
           .eq("user_id", user.id)
           .order("open_time", { ascending: true }),
         supabase
@@ -423,6 +434,93 @@ export default function AnalyticsPage() {
       .sort((a, b) => b.winrate - a.winrate);
   }, [filtered, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ─── ICT Analytics ─────────────────────────────────────────────────────────
+
+  const ictTaggedCount = useMemo(() => filtered.filter((tr) => tr.ict_setup || tr.ict_entry_zone || tr.ict_killzone).length, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const disciplineResult = useMemo(() => computeDisciplineScore(filtered.map((tr) => ({
+    ict_setup: tr.ict_setup,
+    ict_killzone: tr.ict_killzone,
+    ict_checklist: tr.ict_checklist,
+    emotion: tr.emotion,
+    sl: tr.sl,
+    tp: tr.tp,
+    entry_price: tr.entry_price,
+    direction: tr.direction,
+  }))), [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const byICTSetup = useMemo(() => {
+    const map: Record<string, { wins: number; total: number }> = {};
+    filtered.forEach((tr) => {
+      if (!tr.ict_setup) return;
+      if (!map[tr.ict_setup]) map[tr.ict_setup] = { wins: 0, total: 0 };
+      map[tr.ict_setup].total++;
+      if (netPnl(tr) > 0) map[tr.ict_setup].wins++;
+    });
+    return Object.entries(map)
+      .map(([setup, d]) => ({ setup, winrate: d.total > 0 ? Math.round((d.wins / d.total) * 100) : 0, count: d.total }))
+      .sort((a, b) => b.winrate - a.winrate);
+  }, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const byICTEntryZone = useMemo(() => {
+    const map: Record<string, { wins: number; total: number }> = {};
+    filtered.forEach((tr) => {
+      if (!tr.ict_entry_zone) return;
+      if (!map[tr.ict_entry_zone]) map[tr.ict_entry_zone] = { wins: 0, total: 0 };
+      map[tr.ict_entry_zone].total++;
+      if (netPnl(tr) > 0) map[tr.ict_entry_zone].wins++;
+    });
+    return Object.entries(map)
+      .map(([zone, d]) => ({ zone, winrate: d.total > 0 ? Math.round((d.wins / d.total) * 100) : 0, count: d.total }))
+      .sort((a, b) => b.winrate - a.winrate);
+  }, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const byKillzone = useMemo(() => {
+    const kzMap: Record<string, { total: number; pnl: number; wins: number; best: number; worst: number }> = {};
+    ICT_KILLZONES.forEach((kz) => { kzMap[kz.value] = { total: 0, pnl: 0, wins: 0, best: -Infinity, worst: Infinity }; });
+    filtered.forEach((tr) => {
+      if (!tr.ict_killzone) return;
+      const kz = kzMap[tr.ict_killzone];
+      if (!kz) return;
+      const net = netPnl(tr);
+      kz.total++;
+      kz.pnl += net;
+      if (net > 0) kz.wins++;
+      if (net > kz.best) kz.best = net;
+      if (net < kz.worst) kz.worst = net;
+    });
+    return ICT_KILLZONES.map((kz) => {
+      const d = kzMap[kz.value];
+      return {
+        name: kz.value,
+        pnl: Number(d.pnl.toFixed(2)),
+        count: d.total,
+        winrate: d.total > 0 ? Math.round((d.wins / d.total) * 100) : 0,
+        best: d.total > 0 ? Number(d.best.toFixed(2)) : 0,
+        worst: d.total > 0 ? Number(d.worst.toFixed(2)) : 0,
+      };
+    });
+  }, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const byICTEmotion = useMemo(() => {
+    const map: Record<string, { wins: number; total: number; pnl: number }> = {};
+    filtered.forEach((tr) => {
+      if (!tr.emotion) return;
+      if (!map[tr.emotion]) map[tr.emotion] = { wins: 0, total: 0, pnl: 0 };
+      map[tr.emotion].total++;
+      map[tr.emotion].pnl += netPnl(tr);
+      if (netPnl(tr) > 0) map[tr.emotion].wins++;
+    });
+    return Object.entries(map)
+      .map(([em, d]) => ({
+        emotion: em,
+        winrate: d.total > 0 ? Math.round((d.wins / d.total) * 100) : 0,
+        count: d.total,
+        pnl: Number(d.pnl.toFixed(2)),
+      }))
+      .sort((a, b) => b.winrate - a.winrate);
+  }, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ─── Tooltip components ────────────────────────────────────────────────────
 
   const DayTooltip = ({ active, payload, label }: { active?: boolean; payload?: unknown[]; label?: string }) => {
@@ -554,6 +652,21 @@ export default function AnalyticsPage() {
     );
   };
 
+  const l = lang as Lang;
+
+  function getICTSetupLabel(value: string) {
+    return ICT_SETUPS.find((x) => x.value === value)?.label[l] ?? value;
+  }
+  function getICTZoneLabel(value: string) {
+    return ICT_ENTRY_ZONES.find((x) => x.value === value)?.label[l] ?? value;
+  }
+  function getKillzoneLabel(value: string) {
+    return ICT_KILLZONES.find((x) => x.value === value)?.label[l] ?? value;
+  }
+  function getEmotionLabel(value: string) {
+    return ICT_EMOTIONS.find((x) => x.value === value)?.label[l] ?? value;
+  }
+
   const selectClass = "px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent";
 
   if (loading) {
@@ -627,6 +740,17 @@ export default function AnalyticsPage() {
               {profitFactor !== null && (
                 <p className="text-xs text-muted mt-1">
                   PF : {isFinite(profitFactor) ? profitFactor.toFixed(2) : "∞"}
+                </p>
+              )}
+            </div>
+            {/* ICT Discipline score card */}
+            <div className="bg-card border border-border rounded-xl p-4 card-shadow">
+              <p className="text-xs text-muted mb-1">{t("ict_kpi_discipline")}</p>
+              {disciplineResult.insufficient ? (
+                <p className="text-base font-bold text-muted">—</p>
+              ) : (
+                <p className={`text-xl font-bold tabular-nums ${disciplineResult.score >= 70 ? "text-profit" : disciplineResult.score >= 40 ? "text-orange-400" : "text-loss"}`}>
+                  {disciplineResult.score}/100
                 </p>
               )}
             </div>
@@ -853,6 +977,150 @@ export default function AnalyticsPage() {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
+            )}
+          </div>
+
+          {/* ─── ICT Analytics Section ─── */}
+          <div className="mt-8">
+            <div className="flex items-center gap-3 mb-2">
+              <h2 className="text-xl font-bold text-foreground">{t("ict_section_title")}</h2>
+              <span className="px-2 py-0.5 rounded text-xs font-bold bg-accent/20 text-accent">ICT</span>
+            </div>
+            <p className="text-muted text-sm mb-4">{t("ict_section_subtitle")}</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Graph 1: Winrate by ICT Setup */}
+              {byICTSetup.length > 0 && (
+                <div className="bg-card border border-border rounded-xl p-5">
+                  <h3 className="text-foreground font-semibold mb-4">{t("ict_winrate_by_setup")}</h3>
+                  <div className="space-y-2">
+                    {byICTSetup.map((entry) => (
+                      <div key={entry.setup} className="flex items-center gap-2">
+                        <div className="w-32 shrink-0 text-xs text-muted truncate">{getICTSetupLabel(entry.setup)}</div>
+                        <div className="flex-1 h-5 bg-border/30 rounded overflow-hidden">
+                          <div
+                            className="h-full rounded transition-all"
+                            style={{
+                              width: `${entry.winrate}%`,
+                              backgroundColor: entry.winrate > 60 ? "#22c55e" : entry.winrate >= 40 ? "#f59e0b" : "#ef4444",
+                            }}
+                          />
+                        </div>
+                        <span className="text-xs text-muted w-28 shrink-0 text-right">
+                          {entry.winrate}% ({entry.count} trades)
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Graph 2: Winrate by Entry Zone */}
+              {byICTEntryZone.length > 0 && (
+                <div className="bg-card border border-border rounded-xl p-5">
+                  <h3 className="text-foreground font-semibold mb-4">{t("ict_winrate_by_zone")}</h3>
+                  <div className="space-y-2">
+                    {byICTEntryZone.map((entry) => (
+                      <div key={entry.zone} className="flex items-center gap-2">
+                        <div className="w-32 shrink-0 text-xs text-muted truncate">{getICTZoneLabel(entry.zone)}</div>
+                        <div className="flex-1 h-5 bg-border/30 rounded overflow-hidden">
+                          <div
+                            className="h-full rounded transition-all"
+                            style={{
+                              width: `${entry.winrate}%`,
+                              backgroundColor: entry.winrate > 60 ? "#22c55e" : entry.winrate >= 40 ? "#f59e0b" : "#ef4444",
+                            }}
+                          />
+                        </div>
+                        <span className="text-xs text-muted w-28 shrink-0 text-right">
+                          {entry.winrate}% ({entry.count} trades)
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Graph 3: Performance by Killzone */}
+              {byKillzone.some((k) => k.count > 0) && (
+                <div className="bg-card border border-border rounded-xl p-5">
+                  <h3 className="text-foreground font-semibold mb-4">{t("ict_perf_by_killzone")}</h3>
+                  <ResponsiveContainer width="100%" height={260}>
+                    <BarChart data={byKillzone} margin={{ top: 5, right: 10, left: 0, bottom: 40 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
+                      <XAxis
+                        dataKey="name"
+                        tick={{ fill: c.axis, fontSize: 10 }}
+                        axisLine={{ stroke: c.axisLine }}
+                        tickFormatter={(v) => getKillzoneLabel(v).split(" ")[0]}
+                        angle={-30}
+                        textAnchor="end"
+                        interval={0}
+                      />
+                      <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
+                      <Tooltip
+                        content={({ active, payload }) => {
+                          if (!active || !payload?.length) return null;
+                          const entry = byKillzone.find((k) => k.name === payload[0]?.payload?.name);
+                          if (!entry) return null;
+                          return (
+                            <div style={TOOLTIP_STYLE}>
+                              <p style={{ fontWeight: 600, marginBottom: 4 }}>{getKillzoneLabel(entry.name)}</p>
+                              {entry.count === 0 ? (
+                                <p style={{ color: "#888" }}>0 trades</p>
+                              ) : (
+                                <>
+                                  <p style={{ color: entry.pnl >= 0 ? PROFIT_COLOR : LOSS_COLOR }}>
+                                    {entry.pnl >= 0 ? "+" : ""}{entry.pnl.toFixed(2)}€
+                                  </p>
+                                  <p style={{ color: "#aaa" }}>{entry.count} trades · WR {entry.winrate}%</p>
+                                  <p style={{ color: PROFIT_COLOR }}>Best: +{entry.best.toFixed(2)}€</p>
+                                  <p style={{ color: LOSS_COLOR }}>Worst: {entry.worst.toFixed(2)}€</p>
+                                </>
+                              )}
+                            </div>
+                          );
+                        }}
+                      />
+                      <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
+                        {byKillzone.map((entry, idx) => (
+                          <Cell key={idx} fill={entry.count === 0 ? "#555" : entry.pnl >= 0 ? PROFIT_COLOR : LOSS_COLOR} opacity={entry.count === 0 ? 0.3 : 1} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+
+              {/* Graph 4: Emotion impact on winrate */}
+              {byICTEmotion.length > 0 && (
+                <div className="bg-card border border-border rounded-xl p-5">
+                  <h3 className="text-foreground font-semibold mb-4">{t("ict_emotion_impact")}</h3>
+                  <div className="space-y-2">
+                    {byICTEmotion.map((entry) => (
+                      <div key={entry.emotion} className="flex items-center gap-2">
+                        <div className="w-28 shrink-0 text-xs text-muted truncate">{getEmotionLabel(entry.emotion)}</div>
+                        <div className="flex-1 h-5 bg-border/30 rounded overflow-hidden">
+                          <div
+                            className="h-full rounded transition-all"
+                            style={{ width: `${entry.winrate}%`, backgroundColor: getEmotionColor(entry.emotion) }}
+                          />
+                        </div>
+                        <span className="text-xs text-muted w-36 shrink-0 text-right">
+                          {entry.winrate}% WR ({entry.count}t, {entry.pnl >= 0 ? "+" : ""}{entry.pnl.toFixed(0)}€)
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Prompt to tag trades */}
+            {ictTaggedCount < 10 && (
+              <p className="mt-4 text-xs text-muted/70">
+                {t("ict_no_tags_msg")} {ictTaggedCount}/{filtered.length} {t("ict_no_tags_msg2")}
+              </p>
             )}
           </div>
 

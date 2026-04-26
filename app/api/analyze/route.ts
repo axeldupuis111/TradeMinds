@@ -35,6 +35,13 @@ interface AnalyzeRequest {
     pnl: number;
     commission: number | null;
     swap: number | null;
+    ict_setup?: string | null;
+    ict_entry_zone?: string | null;
+    ict_liquidity_target?: string | null;
+    ict_killzone?: string | null;
+    ict_timeframe?: string | null;
+    ict_confluence_score?: number | null;
+    emotion?: string | null;
   }[];
 }
 
@@ -91,7 +98,16 @@ export async function POST(request: Request) {
     const tradesText = recentTrades
       .map((t) => {
         const net = t.pnl + (t.commission || 0) + (t.swap || 0);
-        return `${t.open_time} | ${t.pair} | ${t.direction} | lot=${t.lot_size} | entrée=${t.entry_price} | sortie=${t.exit_price} | SL=${t.sl ?? "N/A"} | TP=${t.tp ?? "N/A"} | P&L net=${net.toFixed(2)}`;
+        const ictParts = [];
+        if (t.ict_setup) ictParts.push(`Setup:${t.ict_setup}`);
+        if (t.ict_entry_zone) ictParts.push(`Zone:${t.ict_entry_zone}`);
+        if (t.ict_liquidity_target) ictParts.push(`Liquidité:${t.ict_liquidity_target}`);
+        if (t.ict_killzone) ictParts.push(`Killzone:${t.ict_killzone}`);
+        if (t.ict_timeframe) ictParts.push(`TF:${t.ict_timeframe}`);
+        if (t.ict_confluence_score != null) ictParts.push(`Checklist:${t.ict_confluence_score}/7`);
+        if (t.emotion) ictParts.push(`Émotion:${t.emotion}`);
+        const ictStr = ictParts.length > 0 ? ` | ${ictParts.join(" | ")}` : "";
+        return `${t.open_time} | ${t.pair} | ${t.direction} | lot=${t.lot_size} | entrée=${t.entry_price} | sortie=${t.exit_price} | SL=${t.sl ?? "N/A"} | TP=${t.tp ?? "N/A"} | P&L net=${net.toFixed(2)}${ictStr}`;
       })
       .join("\n");
 
@@ -135,7 +151,11 @@ Formate ta réponse en JSON avec cette structure exacte (pas de texte avant ou a
     const message = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 8000,
-      system: `RÈGLE ABSOLUE : Tu tutoies toujours l'utilisateur. N'utilise jamais "vous" ou "votre" — utilise uniquement "tu" et "ton/ta/tes". You are an expert trading coach specializing in ICT/SMC methodology. CRITICAL INSTRUCTION: You MUST write ALL text values in your JSON response in ${langName}. This is a strict requirement — never use any other language for any text field, regardless of the language of the data you receive.`,
+      system: `Tu es un coach de trading spécialisé dans la méthodologie ICT (Inner Circle Trading) et SMC (Smart Money Concepts). Tu maîtrises parfaitement : Order Blocks (OB), Fair Value Gaps (FVG), Breaker Blocks, Mitigation Blocks, Buy/Sell Side Liquidity (BSL/SSL), Market Structure Shift (MSS), Change of Character (ChoCh), Break of Structure (BOS), Unicorn Model, Judas Swing, Turtle Soup, Silver Bullet, OTE, Killzones (Asia/London/NY), Premium/Discount zones.
+
+Quand tu analyses des trades avec des tags ICT (ict_setup, ict_entry_zone, ict_killzone), utilise TOUJOURS la terminologie ICT/SMC dans ton analyse.
+
+RÈGLE ABSOLUE : Tu tutoies toujours l'utilisateur. N'utilise jamais "vous" ou "votre" — utilise uniquement "tu" et "ton/ta/tes". CRITICAL INSTRUCTION: You MUST write ALL text values in your JSON response in ${langName}. This is a strict requirement — never use any other language for any text field, regardless of the language of the data you receive.`,
       messages: [{ role: "user", content: prompt }],
     });
 

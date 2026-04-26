@@ -1,9 +1,11 @@
 "use client";
 
 import UpgradeBanner from "@/components/UpgradeBanner";
+import { computeDisciplineScore } from "@/lib/discipline-score";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
@@ -109,6 +111,9 @@ export default function AnalysisPage() {
   const [hasStrategy, setHasStrategy] = useState(false);
   const [viewingHistory, setViewingHistory] = useState<string | null>(null);
 
+  // ICT discipline score
+  const [ictDisciplineResult, setIctDisciplineResult] = useState<ReturnType<typeof computeDisciplineScore> | null>(null);
+
   // Chat coach state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
@@ -119,9 +124,9 @@ export default function AnalysisPage() {
   const [clearingChat, setClearingChat] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const chatLimit = plan === "plus" || plan === "premium" ? 10 : plan === "free" ? 3 : 0;
+  const chatLimit = plan === "plus" || plan === "premium" ? 10 : 0;
   const chatRemaining = Math.max(0, chatLimit - chatDailyCount);
-  const canChat = true;
+  const canChat = plan === "plus" || plan === "premium";
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -217,7 +222,7 @@ export default function AnalysisPage() {
       const [{ data: trades }, { data: strategy }] = await Promise.all([
         supabase
           .from("trades")
-          .select("open_time, close_time, pair, direction, lot_size, entry_price, exit_price, sl, tp, pnl, commission, swap, emotion, setup_quality, tags")
+          .select("open_time, close_time, pair, direction, lot_size, entry_price, exit_price, sl, tp, pnl, commission, swap, emotion, setup_quality, tags, ict_setup, ict_entry_zone, ict_liquidity_target, ict_killzone, ict_timeframe, ict_confluence_score, ict_checklist")
           .eq("user_id", user.id)
           .order("open_time", { ascending: false })
           .limit(60),
@@ -231,7 +236,14 @@ export default function AnalysisPage() {
 
       const tradesContext = (trades || []).map((t) => {
         const net = t.pnl + (t.commission || 0) + (t.swap || 0);
-        return `${t.open_time} | ${t.pair} | ${t.direction} | lot=${t.lot_size} | P&L=${net.toFixed(2)} | emotion=${t.emotion || "N/A"} | quality=${t.setup_quality || "N/A"} | tags=${(t.tags || []).join(",")}`;
+        const ictParts = [];
+        if (t.ict_setup) ictParts.push(`Setup:${t.ict_setup}`);
+        if (t.ict_entry_zone) ictParts.push(`Zone:${t.ict_entry_zone}`);
+        if (t.ict_killzone) ictParts.push(`Killzone:${t.ict_killzone}`);
+        if (t.ict_timeframe) ictParts.push(`TF:${t.ict_timeframe}`);
+        if (t.ict_confluence_score != null) ictParts.push(`Checklist:${t.ict_confluence_score}/7`);
+        const ictStr = ictParts.length > 0 ? ` | ${ictParts.join(" | ")}` : "";
+        return `${t.open_time} | ${t.pair} | ${t.direction} | lot=${t.lot_size} | P&L=${net.toFixed(2)} | emotion=${t.emotion || "N/A"} | quality=${t.setup_quality || "N/A"} | tags=${(t.tags || []).join(",")}${ictStr}`;
       }).join("\n");
 
       const strategyContext = strategy
@@ -278,7 +290,20 @@ export default function AnalysisPage() {
   useEffect(() => {
     loadPrerequisites();
     loadHistory();
+    loadIctScore();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function loadIctScore() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data: trades } = await supabase
+      .from("trades")
+      .select("ict_setup, ict_killzone, ict_checklist, emotion, sl, tp, entry_price, direction")
+      .eq("user_id", user.id);
+    if (trades) {
+      setIctDisciplineResult(computeDisciplineScore(trades));
+    }
+  }
 
   async function loadPrerequisites() {
     const {
@@ -421,6 +446,25 @@ export default function AnalysisPage() {
         <p className="text-muted mt-1">{t("analysis_subtitle")}</p>
         <div className="mt-6">
           <UpgradeBanner message={t("plan_analysis_locked")} />
+        </div>
+
+        {/* Free demo of AI analysis */}
+        <div className="mt-8 relative">
+          <div className="bg-card border border-border rounded-xl p-6 opacity-70 select-none pointer-events-none">
+            <div className="absolute top-4 right-4 px-3 py-1 bg-muted/20 border border-border rounded text-xs font-bold text-muted tracking-widest">
+              {t("ict_demo_overlay")}
+            </div>
+            <h2 className="text-lg font-semibold text-foreground mb-3">{t("ict_demo_title")}</h2>
+            <p className="text-foreground/80 text-sm leading-relaxed">{t("ict_demo_text")}</p>
+          </div>
+          <div className="mt-4 flex flex-col sm:flex-row items-center gap-3">
+            <Link
+              href="/dashboard/upgrade"
+              className="px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors text-sm"
+            >
+              {t("ict_demo_cta")} → {t("ict_demo_cta_sub")}
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -813,6 +857,75 @@ export default function AnalysisPage() {
               <p className="text-muted text-sm">{t("analysis_score_empty")}</p>
             </div>
           )}
+
+          {/* ICT Discipline Score card */}
+          <div className="bg-card border border-border rounded-xl p-6 card-shadow">
+            <div className="flex items-center gap-2 mb-4">
+              <h3 className="text-sm font-semibold text-foreground">{t("ict_discipline_score")}</h3>
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-accent/20 text-accent">ICT</span>
+            </div>
+            {ictDisciplineResult === null ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => <div key={i} className="skeleton h-3 rounded w-full" />)}
+              </div>
+            ) : ictDisciplineResult.insufficient ? (
+              <div>
+                <p className="text-muted text-xs mb-3">{t("ict_score_insufficient")}</p>
+                <Link href="/dashboard/trades" className="text-xs text-accent hover:underline">
+                  {t("ict_goto_trades")} →
+                </Link>
+              </div>
+            ) : (
+              <div>
+                {/* Circular gauge */}
+                <div className="flex justify-center mb-4">
+                  {(() => {
+                    const score = ictDisciplineResult.score;
+                    const radius = 40;
+                    const circ = 2 * Math.PI * radius;
+                    const offset = circ - (score / 100) * circ;
+                    const strokeColor = score >= 70 ? "#22c55e" : score >= 40 ? "#f59e0b" : "#ef4444";
+                    const textColor = score >= 70 ? "text-profit" : score >= 40 ? "text-orange-400" : "text-loss";
+                    return (
+                      <div className="relative w-24 h-24">
+                        <svg className="w-24 h-24 -rotate-90" viewBox="0 0 100 100">
+                          <circle cx="50" cy="50" r={radius} fill="none" stroke="rgb(var(--border))" strokeWidth="8" />
+                          <circle cx="50" cy="50" r={radius} fill="none" stroke={strokeColor} strokeWidth="8" strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset} className="transition-all duration-1000" />
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <span className={`text-2xl font-bold ${textColor}`}>{score}</span>
+                          <span className="text-muted text-[10px]">/100</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+                {/* Sub-scores */}
+                <div className="space-y-1.5">
+                  {[
+                    { key: "ict_sub_checklist", val: ictDisciplineResult.subScores.checklist },
+                    { key: "ict_sub_killzones", val: ictDisciplineResult.subScores.killzones },
+                    { key: "ict_sub_rr", val: ictDisciplineResult.subScores.riskReward },
+                    { key: "ict_sub_emotions", val: ictDisciplineResult.subScores.emotions },
+                    { key: "ict_sub_setup", val: ictDisciplineResult.subScores.setupTagged },
+                  ].map(({ key, val }) => (
+                    <div key={key}>
+                      <div className="flex justify-between text-xs mb-0.5">
+                        <span className="text-muted">{t(key)}</span>
+                        <span className="text-foreground font-medium">{val}%</span>
+                      </div>
+                      <div className="h-1 bg-border rounded-full overflow-hidden">
+                        <div className="h-full rounded-full" style={{ width: `${val}%`, backgroundColor: val >= 70 ? "#22c55e" : val >= 40 ? "#f59e0b" : "#ef4444" }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted mt-3">
+                  {t("ict_score_based_on")} {ictDisciplineResult.taggedCount} {t("ict_score_tagged_trades")}
+                </p>
+              </div>
+            )}
+          </div>
 
           {/* History */}
           <div className="bg-card border border-border rounded-xl p-4 card-shadow">
