@@ -9,6 +9,14 @@ import {
   useState,
 } from "react";
 
+function getWeekStart(date: Date): string {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  d.setDate(diff);
+  return d.toISOString().split("T")[0];
+}
+
 // "premium" is kept for DB backward-compat but treated as "plus" everywhere in UI
 export type PlanType = "free" | "plus" | "premium";
 
@@ -75,10 +83,12 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       setPlan(effectivePlan);
 
       const today = new Date().toISOString().split("T")[0];
-      if (data.daily_ai_reset !== today) {
-        // Reset counter for new day
+      const weekStart = getWeekStart(new Date());
+      // Free plan tracks weekly usage; plus/premium tracks daily
+      const resetKey = effectivePlan === "free" ? weekStart : today;
+      if (data.daily_ai_reset !== resetKey) {
         setDailyAiCount(0);
-        setDailyAiReset(today);
+        setDailyAiReset(resetKey);
       } else {
         setDailyAiCount(data.daily_ai_count || 0);
         setDailyAiReset(data.daily_ai_reset);
@@ -108,30 +118,32 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
 
     const today = new Date().toISOString().split("T")[0];
-    const newCount = dailyAiReset === today ? dailyAiCount + 1 : 1;
+    const weekStart = getWeekStart(new Date());
+    const resetKey = plan === "free" ? weekStart : today;
+    const newCount = dailyAiReset === resetKey ? dailyAiCount + 1 : 1;
 
     await supabase
       .from("profiles")
-      .update({ daily_ai_count: newCount, daily_ai_reset: today })
+      .update({ daily_ai_count: newCount, daily_ai_reset: resetKey })
       .eq("id", user.id);
 
     setDailyAiCount(newCount);
-    setDailyAiReset(today);
-  }, [supabase, dailyAiCount, dailyAiReset]);
+    setDailyAiReset(resetKey);
+  }, [supabase, dailyAiCount, dailyAiReset, plan]);
 
   // Derived permissions
-  // (premium is already mapped to plus above, kept here as safety net)
-  const canUseStrategy = plan === "plus" || plan === "premium";
-  const canUseAI = plan === "plus" || plan === "premium";
+  // Free: strategy unlocked, AI unlocked (1/week), coach (3/day)
+  // Plus/premium: AI (1/day), coach (10/day), unlimited imports
+  const canUseStrategy = true;
+  const canUseAI = true;
 
   const today = new Date().toISOString().split("T")[0];
-  const effectiveCount = dailyAiReset === today ? dailyAiCount : 0;
+  const weekStart = getWeekStart(new Date());
+  const effectiveResetKey = plan === "free" ? weekStart : today;
+  const effectiveCount = dailyAiReset === effectiveResetKey ? dailyAiCount : 0;
 
-  // Plus: 1 AI analysis per day. Free: none.
-  const aiRemaining =
-    plan === "plus" || plan === "premium"
-      ? Math.max(0, 1 - effectiveCount)
-      : 0;
+  // Free: 1 AI analysis per week. Plus: 1 per day.
+  const aiRemaining = Math.max(0, 1 - effectiveCount);
 
   const canImportCSV = plan === "plus" || plan === "premium";
   const maxAccounts = plan === "free" ? 1 : null;

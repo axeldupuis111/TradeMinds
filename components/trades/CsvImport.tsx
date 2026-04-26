@@ -210,7 +210,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
 
   const now = new Date();
   const lastImportDate = lastImportAt ? new Date(lastImportAt) : null;
-  const cooldownEnd = lastImportDate ? new Date(lastImportDate.getTime() + 7 * 24 * 60 * 60 * 1000) : null;
+  const cooldownEnd = lastImportDate ? new Date(lastImportDate.getTime() + 24 * 60 * 60 * 1000) : null;
   const isCooldownActive = plan === "free" && cooldownEnd !== null && cooldownEnd > now;
   const nextImportDate = cooldownEnd
     ? cooldownEnd.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })

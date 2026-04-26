@@ -119,9 +119,9 @@ export default function AnalysisPage() {
   const [clearingChat, setClearingChat] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const chatLimit = plan === "plus" || plan === "premium" ? 10 : 0;
-  const chatRemaining = chatLimit === null ? null : Math.max(0, chatLimit - chatDailyCount);
-  const canChat = plan === "plus" || plan === "premium";
+  const chatLimit = plan === "plus" || plan === "premium" ? 10 : plan === "free" ? 3 : 0;
+  const chatRemaining = Math.max(0, chatLimit - chatDailyCount);
+  const canChat = true;
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -426,7 +426,7 @@ export default function AnalysisPage() {
     );
   }
 
-  const aiLimitReached = plan === "plus" && aiRemaining === 0;
+  const aiLimitReached = aiRemaining === 0;
 
   return (
     <div>
@@ -451,7 +451,7 @@ export default function AnalysisPage() {
           )}
           {aiLimitReached && (
             <p className="text-orange-400 text-sm mb-3">
-              {t("plan_ai_limit_reached")}
+              {plan === "free" ? t("plan_ai_limit_reached_weekly") : t("plan_ai_limit_reached")}
             </p>
           )}
           <div className="flex items-center gap-3 flex-wrap">
@@ -467,9 +467,12 @@ export default function AnalysisPage() {
                 {tradeCount} {tradeCount === 1 ? t("analysis_trade_count_one") : t("analysis_trades_count")}
               </span>
             )}
-            {plan === "plus" && aiRemaining !== null && !aiLimitReached && (
+            {aiRemaining !== null && !aiLimitReached && aiRemaining > 0 && (
               <span className="text-muted text-sm">
-                ({aiRemaining} {aiRemaining === 1 ? t("plan_ai_remaining_one") : t("plan_ai_remaining")})
+                ({aiRemaining} {plan === "free"
+                  ? (aiRemaining === 1 ? t("plan_ai_remaining_week_one") : t("plan_ai_remaining_week"))
+                  : (aiRemaining === 1 ? t("plan_ai_remaining_one") : t("plan_ai_remaining"))
+                })
               </span>
             )}
           </div>
