@@ -102,7 +102,6 @@ export default function AnalysisPage() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [history, setHistory] = useState<SavedReview[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
@@ -395,36 +394,6 @@ export default function AnalysisPage() {
     }
   }
 
-  async function saveAnalysis() {
-    if (!analysis) return;
-    setSaving(true);
-    setSaveMessage(null);
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      setSaveMessage(t("not_connected"));
-      setSaving(false);
-      return;
-    }
-
-    const { error } = await supabase.from("session_reviews").insert({
-      user_id: user.id,
-      discipline_score: analysis.discipline_score,
-      total_trades: analysis.total_trades,
-      conforming_trades: analysis.conforming_trades,
-      analysis,
-    });
-
-    setSaving(false);
-    if (error) {
-      setSaveMessage(error.message);
-    } else {
-      setSaveMessage(t("analysis_saved"));
-      loadHistory();
-    }
-  }
 
   function viewHistoryItem(review: SavedReview) {
     setAnalysis(review.analysis);
