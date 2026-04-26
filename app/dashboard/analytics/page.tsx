@@ -159,7 +159,7 @@ export default function AnalyticsPage() {
   }, [trades, period, accountFilter]);
 
   // KPI aggregates
-  const { totalPnl, wins, winrate, best, worst } = useMemo(() => {
+  const { totalPnl, winrate, best, worst } = useMemo(() => {
     const pnls = filtered.map(netPnl);
     const w = filtered.filter((tr) => netPnl(tr) > 0).length;
     return {

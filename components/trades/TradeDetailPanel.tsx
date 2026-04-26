@@ -2,6 +2,7 @@
 
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
+import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 
 export interface TradeDetail {
@@ -272,7 +273,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
             <label className="block text-sm text-muted mb-2">{t("detail_screenshot")}</label>
             {screenshotUrl && (
               <div className="mb-2 relative group">
-                <img src={screenshotUrl} alt="Trade screenshot" className="w-full rounded-lg border border-border" />
+                <Image src={screenshotUrl} alt="Trade screenshot" width={800} height={600} className="w-full rounded-lg border border-border" style={{ height: "auto" }} />
                 <button
                   onClick={() => setScreenshotUrl(null)}
                   className="absolute top-2 right-2 p-1 bg-black/70 rounded-full text-muted hover:text-loss opacity-0 group-hover:opacity-100 transition-opacity"
