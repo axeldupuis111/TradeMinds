@@ -14,7 +14,18 @@ export default async function DashboardPage() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const displayName = user?.user_metadata?.first_name || user?.email?.split("@")[0] || "Trader";
+  function formatEmailName(email: string): string {
+    const local = email.split("@")[0];
+    const withoutTrailingDigits = local.replace(/\d+$/, "");
+    const firstWord = withoutTrailingDigits.split(/[._\-]/)[0];
+    const name = firstWord || withoutTrailingDigits;
+    return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+  }
+  const rawName = user?.user_metadata?.display_name
+    || user?.user_metadata?.full_name?.split(" ")[0]
+    || user?.user_metadata?.first_name
+    || (user?.email ? formatEmailName(user.email) : "Trader");
+  const displayName = rawName;
   const userId = user?.id;
 
   const today = new Date().toISOString().split("T")[0];

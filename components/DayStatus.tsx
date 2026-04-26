@@ -121,7 +121,7 @@ export default function DayStatus() {
         <div>
           <p className="text-xs text-muted">{t("session_streak")}</p>
           <p className="text-xl font-bold mt-1 text-foreground">
-            {streak > 0 ? "\u{1F525}" : "\u{2744}\u{FE0F}"} {streak}
+            {streak > 0 ? `🔥 ${streak}` : "—"}
           </p>
         </div>
         <div>
@@ -138,16 +138,21 @@ export default function DayStatus() {
 
       {maxLossEuro !== null && (
         <div className="mt-4">
-          <div className="flex justify-between text-xs text-muted mb-1">
-            <span>{t("session_budget_label")}</span>
-            <span>{budgetPct.toFixed(0)}%</span>
-          </div>
-          <div className="h-2 bg-border rounded-full overflow-hidden">
-            <div
-              className={`h-full transition-all ${budgetPct > 50 ? "bg-profit" : budgetPct > 20 ? "bg-orange-400" : "bg-loss"}`}
-              style={{ width: `${Math.min(100, Math.max(0, budgetPct))}%` }}
-            />
-          </div>
+          {(() => {
+            const consumedPct = Math.min(100, Math.max(0, 100 - budgetPct));
+            const barColor = consumedPct <= 50 ? "bg-profit" : consumedPct <= 80 ? "bg-orange-400" : "bg-loss";
+            return (
+              <>
+                <div className="flex justify-between text-xs text-muted mb-1">
+                  <span>{t("session_budget_label")}</span>
+                  <span>{consumedPct.toFixed(0)}%</span>
+                </div>
+                <div className="h-2 bg-border rounded-full overflow-hidden">
+                  <div className={`h-full transition-all ${barColor}`} style={{ width: `${consumedPct}%` }} />
+                </div>
+              </>
+            );
+          })()}
         </div>
       )}
     </section>

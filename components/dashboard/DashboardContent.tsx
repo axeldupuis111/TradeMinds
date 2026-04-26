@@ -170,7 +170,7 @@ export default function DashboardContent({
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight">
-            {t("dash_greeting")} {displayName}
+            {t("dash_greeting")} {displayName} 👋
           </h1>
           <p className="text-muted text-sm mt-0.5 capitalize">{dateStr}</p>
         </div>
@@ -263,6 +263,7 @@ export default function DashboardContent({
                 <div className="h-full bg-profit rounded-full transition-all" style={{ width: `${Math.min(100, challengePct)}%` }} />
               </div>
               {displayAccount.account_number && <p className="text-[11px] text-muted mt-1.5">#{displayAccount.account_number}</p>}
+              <Link href="/dashboard/challenge" className="text-[11px] text-accent hover:underline mt-1.5 inline-block">{t("dash_manage_accounts")}</Link>
             </div>
           ) : activeAccounts.length > 1 ? (
             <div className="mt-1">
@@ -306,8 +307,20 @@ export default function DashboardContent({
                 </div>
               ))}
             </div>
+          ) : filteredAll.length > 0 ? (
+            <div className="space-y-3">
+              <p className="text-xs text-muted">{t("dash_insights_has_trades").replace("{count}", String(filteredAll.length))}</p>
+              <Link href="/dashboard/analysis" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 border border-accent/20 text-accent text-xs font-medium hover:bg-accent/15 transition-colors btn-scale">
+                {t("dash_action_analyze")} →
+              </Link>
+            </div>
           ) : (
-            <p className="text-xs text-muted">{t("dash_insights_empty")}</p>
+            <div className="space-y-3">
+              <p className="text-xs text-muted">{t("dash_insights_no_trades")}</p>
+              <Link href="/dashboard/trades" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border text-muted text-xs font-medium hover:text-foreground hover:border-muted transition-colors btn-scale">
+                {t("dash_action_import")} →
+              </Link>
+            </div>
           )}
         </section>
 
@@ -342,12 +355,14 @@ export default function DashboardContent({
                 const net = netPnl(tr);
                 return (
                   <div key={tr.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                       <span className="text-muted text-xs tabular-nums w-12">
                         {tr.open_time ? new Date(tr.open_time).toLocaleDateString(undefined, { day: "2-digit", month: "2-digit" }) : "—"}
                       </span>
                       <span className="text-foreground text-sm font-medium">{tr.pair}</span>
-                      <span className={`w-1.5 h-1.5 rounded-full ${tr.direction === "long" ? "bg-profit" : "bg-loss"}`} />
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${tr.direction === "long" || tr.direction === "buy" ? "bg-profit/10 text-profit" : "bg-loss/10 text-loss"}`}>
+                        {tr.direction === "long" || tr.direction === "buy" ? "BUY" : "SELL"}
+                      </span>
                     </div>
                     <span className={`text-sm font-medium tabular-nums ${net >= 0 ? "text-profit" : "text-loss"}`}>
                       {net >= 0 ? "+" : ""}{net.toFixed(2)}
@@ -362,21 +377,23 @@ export default function DashboardContent({
         {/* Right column */}
         <div className="space-y-4">
           {/* Last analysis */}
-          <Link href="/dashboard/analysis" className="block bg-card border border-border rounded-xl p-5 card-shadow hover:border-muted transition-colors">
+          <div className="bg-card border border-border rounded-xl p-5 card-shadow">
             <h2 className="text-sm font-semibold text-foreground mb-2">{t("dash_last_analysis")}</h2>
             {lastReview ? (
-              <div className="flex items-center justify-between">
+              <Link href="/dashboard/analysis" className="flex items-center justify-between hover:opacity-80 transition-opacity">
                 <span className="text-muted text-sm">
                   {new Date(lastReview.created_at).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}
                 </span>
                 <span className={`text-2xl font-bold tabular-nums ${lastReview.discipline_score >= 75 ? "text-profit" : lastReview.discipline_score >= 50 ? "text-warning" : "text-loss"}`}>
                   {lastReview.discipline_score}/100
                 </span>
-              </div>
+              </Link>
             ) : (
-              <p className="text-muted text-sm">{t("dash_no_analysis")}</p>
+              <Link href="/dashboard/analysis" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-500/30 bg-blue-500/5 text-blue-400 text-sm font-medium hover:bg-blue-500/10 hover:border-blue-500/50 transition-colors cursor-pointer">
+                {t("dash_run_ai_analysis")}
+              </Link>
             )}
-          </Link>
+          </div>
 
           {/* Drawdown alert */}
           {displayAccount && ddPct > 75 && (

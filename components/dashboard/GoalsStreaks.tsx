@@ -143,10 +143,10 @@ export default function GoalsStreaks() {
 
       {/* Streak */}
       <div className="flex items-center gap-3 mb-4">
-        <span className="text-3xl">{streak > 0 ? "\u{1F525}" : "\u{2744}\u{FE0F}"}</span>
+        {streak > 0 && <span className="text-3xl">🔥</span>}
         <div>
           <p className="text-foreground font-bold text-lg">
-            {streak} {t("goals_streak_days")}
+            {streak > 0 ? `${streak} ${t("goals_streak_days")}` : "—"}
           </p>
           <p className="text-muted text-xs">{t("goals_streak_desc")}</p>
         </div>

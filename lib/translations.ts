@@ -408,6 +408,7 @@ const translations: Record<Lang, Record<string, string>> = {
     trades_col_account: "Compte",
     dash_all_accounts: "Tous les comptes",
     dash_select_account: "Sélectionner un compte",
+    dash_manage_accounts: "Gérer mes comptes →",
 
     // Calendar
     cal_trading_days: "Jours de trading",
@@ -649,6 +650,9 @@ const translations: Record<Lang, Record<string, string>> = {
     dash_insights_title: "Insights IA",
     dash_insights_see_all: "Voir l'analyse →",
     dash_insights_empty: "Lance une analyse IA pour obtenir des insights personnalisés.",
+    dash_insights_has_trades: "Tu as {count} trades analysables. Lance une analyse pour découvrir tes patterns.",
+    dash_insights_no_trades: "Importe tes trades pour recevoir des insights personnalisés.",
+    dash_run_ai_analysis: "🧠 Lancer une analyse IA",
     dash_wins: "gains",
     dash_losses: "pertes",
     dash_score_good: "Excellent — continue comme ça",
@@ -1208,6 +1212,7 @@ const translations: Record<Lang, Record<string, string>> = {
     trades_col_account: "Account",
     dash_all_accounts: "All accounts",
     dash_select_account: "Select an account",
+    dash_manage_accounts: "Manage my accounts →",
 
     // Calendar
     cal_trading_days: "Trading days",
@@ -1449,6 +1454,9 @@ const translations: Record<Lang, Record<string, string>> = {
     dash_insights_title: "AI Insights",
     dash_insights_see_all: "See full analysis →",
     dash_insights_empty: "Run an AI analysis to get personalised insights.",
+    dash_insights_has_trades: "You have {count} analysable trades. Run an analysis to discover your patterns.",
+    dash_insights_no_trades: "Import your trades to receive personalised insights.",
+    dash_run_ai_analysis: "🧠 Run AI analysis",
     dash_wins: "wins",
     dash_losses: "losses",
     dash_score_good: "Excellent — keep it up",
@@ -2009,6 +2017,7 @@ const translations: Record<Lang, Record<string, string>> = {
     trades_col_account: "Konto",
     dash_all_accounts: "Alle Konten",
     dash_select_account: "Konto auswählen",
+    dash_manage_accounts: "Konten verwalten →",
 
     // Calendar
     cal_trading_days: "Handelstage",
@@ -2250,6 +2259,9 @@ const translations: Record<Lang, Record<string, string>> = {
     dash_insights_title: "KI-Einblicke",
     dash_insights_see_all: "Vollständige Analyse →",
     dash_insights_empty: "Führe eine KI-Analyse durch, um personalisierte Einblicke zu erhalten.",
+    dash_insights_has_trades: "Du hast {count} analysierbare Trades. Starte eine Analyse, um deine Muster zu entdecken.",
+    dash_insights_no_trades: "Importiere deine Trades, um personalisierte Einblicke zu erhalten.",
+    dash_run_ai_analysis: "🧠 KI-Analyse starten",
     dash_wins: "Gewinne",
     dash_losses: "Verluste",
     dash_score_good: "Ausgezeichnet — weiter so",
@@ -2810,6 +2822,7 @@ const translations: Record<Lang, Record<string, string>> = {
     trades_col_account: "Cuenta",
     dash_all_accounts: "Todas las cuentas",
     dash_select_account: "Seleccionar una cuenta",
+    dash_manage_accounts: "Gestionar mis cuentas →",
 
     // Calendar
     cal_trading_days: "Días de trading",
@@ -3051,6 +3064,9 @@ const translations: Record<Lang, Record<string, string>> = {
     dash_insights_title: "Insights IA",
     dash_insights_see_all: "Ver análisis completo →",
     dash_insights_empty: "Ejecuta un análisis IA para obtener insights personalizados.",
+    dash_insights_has_trades: "Tienes {count} trades analizables. Lanza un análisis para descubrir tus patrones.",
+    dash_insights_no_trades: "Importa tus trades para recibir insights personalizados.",
+    dash_run_ai_analysis: "🧠 Iniciar análisis IA",
     dash_wins: "ganancias",
     dash_losses: "pérdidas",
     dash_score_good: "Excelente — sigue así",
