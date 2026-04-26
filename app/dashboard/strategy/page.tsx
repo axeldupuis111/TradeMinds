@@ -4,7 +4,7 @@ import UpgradeBanner from "@/components/UpgradeBanner";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const SESSION_LABELS: Record<string, string> = {
   london: "London (08:00–12:00 UTC)",
@@ -27,6 +27,11 @@ interface ParsedRules {
   setup_rules: string[];
 }
 
+interface Toast {
+  type: "success" | "error";
+  text: string;
+}
+
 export default function StrategyPage() {
   const { t, lang } = useLanguage();
   const { canUseStrategy, loading: planLoading } = usePlan();
@@ -39,11 +44,53 @@ export default function StrategyPage() {
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
+  const [toast, setToast] = useState<Toast | null>(null);
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const pendingNavRef = useRef<string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     loadStrategy();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Warn on browser close/refresh when dirty
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
+
+  // Intercept in-app link navigation when dirty
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: MouseEvent) => {
+      const anchor = (e.target as HTMLElement).closest("a");
+      if (!anchor || !anchor.href) return;
+      try {
+        const url = new URL(anchor.href);
+        if (url.pathname === window.location.pathname) return;
+      } catch {
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      pendingNavRef.current = anchor.href;
+      setShowUnsavedModal(true);
+    };
+    document.addEventListener("click", handler, true);
+    return () => document.removeEventListener("click", handler, true);
+  }, [isDirty]);
+
+  function showToast(type: "success" | "error", text: string) {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ type, text });
+    toastTimerRef.current = setTimeout(() => setToast(null), 3000);
+  }
 
   async function loadStrategy() {
     const {
@@ -80,29 +127,22 @@ export default function StrategyPage() {
 
   async function handleAnalyze() {
     if (!rawText.trim()) {
-      setMessage({ type: "error", text: t("strategy_write_first") });
+      showToast("error", t("strategy_write_first"));
       return;
     }
-
-    setMessage(null);
     setAnalyzing(true);
-
     try {
       const res = await fetch("/api/parse-strategy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: rawText, language: lang }),
       });
-
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erreur serveur.");
-
       setParsed(data);
+      setIsDirty(true);
     } catch (err: unknown) {
-      setMessage({
-        type: "error",
-        text: err instanceof Error ? err.message : "Erreur inconnue",
-      });
+      showToast("error", err instanceof Error ? err.message : "Erreur inconnue");
     } finally {
       setAnalyzing(false);
     }
@@ -110,14 +150,13 @@ export default function StrategyPage() {
 
   async function handleSave() {
     if (!parsed) return;
-    setMessage(null);
     setSaving(true);
 
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) {
-      setMessage({ type: "error", text: t("strategy_not_connected") });
+      showToast("error", t("strategy_not_connected"));
       setSaving(false);
       return;
     }
@@ -154,24 +193,30 @@ export default function StrategyPage() {
 
     setSaving(false);
     if (error) {
-      setMessage({ type: "error", text: error.message });
+      showToast("error", t("strategy_toast_error"));
     } else {
-      setMessage({ type: "success", text: t("strategy_saved") });
+      showToast("success", t("strategy_toast_success"));
+      setIsDirty(false);
     }
   }
 
-  // Editable helpers
+  function markDirty() {
+    setIsDirty(true);
+  }
+
   function updateParsedField<K extends keyof ParsedRules>(
     field: K,
     value: ParsedRules[K]
   ) {
     if (!parsed) return;
     setParsed({ ...parsed, [field]: value });
+    markDirty();
   }
 
   function removePair(pair: string) {
     if (!parsed) return;
     setParsed({ ...parsed, pairs: parsed.pairs.filter((p) => p !== pair) });
+    markDirty();
   }
 
   function toggleSession(id: string) {
@@ -180,6 +225,7 @@ export default function StrategyPage() {
       ? parsed.sessions.filter((s) => s !== id)
       : [...parsed.sessions, id];
     setParsed({ ...parsed, sessions });
+    markDirty();
   }
 
   function updateRule(index: number, value: string) {
@@ -187,6 +233,7 @@ export default function StrategyPage() {
     const rules = [...parsed.setup_rules];
     rules[index] = value;
     setParsed({ ...parsed, setup_rules: rules });
+    markDirty();
   }
 
   function removeRule(index: number) {
@@ -195,11 +242,13 @@ export default function StrategyPage() {
       ...parsed,
       setup_rules: parsed.setup_rules.filter((_, i) => i !== index),
     });
+    markDirty();
   }
 
   function addRule() {
     if (!parsed) return;
     setParsed({ ...parsed, setup_rules: [...parsed.setup_rules, ""] });
+    markDirty();
   }
 
   if (loading || planLoading) {
@@ -236,7 +285,47 @@ export default function StrategyPage() {
   }
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-2xl pb-24">
+      {/* Toast notification */}
+      {toast && (
+        <div
+          className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg text-white text-sm font-medium shadow-lg ${
+            toast.type === "success" ? "bg-green-800" : "bg-red-700"
+          }`}
+        >
+          {toast.text}
+        </div>
+      )}
+
+      {/* Unsaved changes modal */}
+      {showUnsavedModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-card border border-border rounded-xl p-6 max-w-sm w-full mx-4 space-y-4">
+            <p className="text-foreground text-sm">{t("strategy_unsaved_warning")}</p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowUnsavedModal(false)}
+                className="px-4 py-2 text-sm border border-border rounded-lg text-foreground hover:bg-surface transition-colors"
+              >
+                {t("strategy_stay")}
+              </button>
+              <button
+                onClick={() => {
+                  setShowUnsavedModal(false);
+                  setIsDirty(false);
+                  if (pendingNavRef.current) {
+                    window.location.href = pendingNavRef.current;
+                  }
+                }}
+                className="px-4 py-2 text-sm bg-loss text-white rounded-lg hover:opacity-90 transition-opacity"
+              >
+                {t("strategy_leave")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <h1 className="text-2xl font-bold text-foreground">{t("strategy_title")}</h1>
       <p className="text-muted mt-1">{t("strategy_subtitle")}</p>
 
@@ -246,7 +335,7 @@ export default function StrategyPage() {
         <input
           type="text"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => { setName(e.target.value); markDirty(); }}
           placeholder="ICT Gold Scalping"
           className={inputClass}
         />
@@ -257,11 +346,14 @@ export default function StrategyPage() {
         <label className="block text-sm text-muted mb-1">{t("strategy_describe")}</label>
         <textarea
           value={rawText}
-          onChange={(e) => setRawText(e.target.value)}
+          onChange={(e) => { setRawText(e.target.value); markDirty(); }}
           rows={10}
-          className={`${inputClass} min-h-[200px] resize-y`}
-          placeholder={`Décris ta stratégie de trading ici en langage naturel. Par exemple :\n\nJe trade le gold (XAUUSD) pendant les sessions London et New York. J'utilise la méthodologie ICT. J'attends un sweep de liquidité (BSL ou SSL) sur le M15, puis je cherche un Order Block ou un FVG sur le M5 pour entrer. Mon RR minimum est de 1:2. Je ne risque jamais plus de 1% par trade et maximum 3 trades par jour. Je ne trade pas les vendredis et pendant les annonces économiques majeures.`}
+          className={`${inputClass} min-h-[300px] resize-y`}
+          placeholder={t("strategy_placeholder")}
         />
+        <p className="text-right text-xs text-muted mt-1">
+          {rawText.length} {t("strategy_chars")}
+        </p>
       </div>
 
       {/* Analyze button */}
@@ -279,22 +371,32 @@ export default function StrategyPage() {
       {/* Parsed rules */}
       {parsed && (
         <div className="mt-8 space-y-6">
-          <div className="flex items-center gap-2">
-            <svg
-              className="w-5 h-5 text-profit"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          {/* Header with inline outline save button */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <svg
+                className="w-5 h-5 text-profit"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              <h2 className="text-lg font-semibold text-foreground">{t("strategy_rules_extracted")}</h2>
+              <span className="text-muted text-sm">{t("strategy_editable")}</span>
+            </div>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="px-4 py-1.5 border border-profit text-profit text-sm rounded-lg font-medium hover:bg-profit/10 transition-colors disabled:opacity-50 whitespace-nowrap"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
-            <h2 className="text-lg font-semibold text-foreground">{t("strategy_rules_extracted")}</h2>
-            <span className="text-muted text-sm">{t("strategy_editable")}</span>
+              {saving ? t("strategy_saving") : t("strategy_save")}
+            </button>
           </div>
 
           {/* Pairs */}
@@ -355,7 +457,7 @@ export default function StrategyPage() {
                       e.target.value ? parseFloat(e.target.value) : null
                     )
                   }
-                  placeholder="—"
+                  placeholder={t("strategy_not_set")}
                   className={inputClass}
                 />
               </div>
@@ -370,7 +472,7 @@ export default function StrategyPage() {
                       e.target.value ? parseFloat(e.target.value) : null
                     )
                   }
-                  placeholder="—"
+                  placeholder={t("strategy_not_set")}
                   className={inputClass}
                 />
               </div>
@@ -386,7 +488,7 @@ export default function StrategyPage() {
                       e.target.value ? parseFloat(e.target.value) : null
                     )
                   }
-                  placeholder="—"
+                  placeholder={t("strategy_not_set")}
                   className={inputClass}
                 />
               </div>
@@ -401,7 +503,7 @@ export default function StrategyPage() {
                       e.target.value ? parseInt(e.target.value) : null
                     )
                   }
-                  placeholder="—"
+                  placeholder={t("strategy_not_set")}
                   className={inputClass}
                 />
               </div>
@@ -416,7 +518,7 @@ export default function StrategyPage() {
                       e.target.value ? parseInt(e.target.value) : null
                     )
                   }
-                  placeholder="—"
+                  placeholder={t("strategy_not_set")}
                   className={inputClass}
                 />
               </div>
@@ -428,16 +530,17 @@ export default function StrategyPage() {
             <label className="block text-sm text-muted mb-2">{t("strategy_setup_rules")}</label>
             <div className="space-y-2">
               {parsed.setup_rules.map((rule, i) => (
-                <div key={i} className="flex gap-2">
-                  <input
-                    type="text"
+                <div key={i} className="flex gap-2 items-start">
+                  <textarea
                     value={rule}
+                    title={rule}
                     onChange={(e) => updateRule(i, e.target.value)}
-                    className={`${inputClass} flex-1`}
+                    rows={2}
+                    className={`${inputClass} flex-1 resize-y`}
                   />
                   <button
                     onClick={() => removeRule(i)}
-                    className="px-3 py-2 text-muted hover:text-loss transition-colors"
+                    className="px-3 py-2 text-muted hover:text-loss transition-colors mt-1 shrink-0"
                   >
                     <svg
                       className="w-4 h-4"
@@ -463,38 +566,20 @@ export default function StrategyPage() {
               {t("strategy_add_rule")}
             </button>
           </div>
-
-          {/* Save */}
-          <div className="mb-8">
-            {message && (
-              <p
-                className={`text-sm mb-3 ${
-                  message.type === "success" ? "text-profit" : "text-loss"
-                }`}
-              >
-                {message.text}
-              </p>
-            )}
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="w-full sm:w-auto px-6 py-2.5 bg-profit text-white rounded-lg font-medium hover:bg-green-600 transition-colors disabled:opacity-50"
-            >
-              {saving ? t("strategy_saving") : t("strategy_save")}
-            </button>
-          </div>
         </div>
       )}
 
-      {/* Show message if no parsed yet */}
-      {!parsed && message && (
-        <p
-          className={`text-sm mt-4 ${
-            message.type === "success" ? "text-profit" : "text-loss"
-          }`}
-        >
-          {message.text}
-        </p>
+      {/* Sticky save button */}
+      {parsed && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center p-4 bg-background/80 backdrop-blur-sm border-t border-border">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-8 py-2.5 bg-profit text-white rounded-lg font-medium hover:bg-green-600 transition-colors disabled:opacity-50"
+          >
+            {saving ? t("strategy_saving") : t("strategy_save")}
+          </button>
+        </div>
       )}
     </div>
   );
