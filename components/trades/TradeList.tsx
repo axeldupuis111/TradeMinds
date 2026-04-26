@@ -28,11 +28,25 @@ interface Trade {
   prop_challenges?: { firm: string; account_number: string | null } | null;
 }
 
+interface Filters {
+  pair: string;
+  direction: string;
+  result: string;
+  dateFrom: string;
+  dateTo: string;
+}
+
 interface Props {
   refreshKey: number;
 }
 
 const PAGE_SIZE = 20;
+
+function normalizeDirection(dir: string): "long" | "short" {
+  const d = dir.toLowerCase();
+  if (d === "long" || d === "buy") return "long";
+  return "short";
+}
 
 export default function TradeList({ refreshKey }: Props) {
   const { t } = useLanguage();
@@ -45,6 +59,14 @@ export default function TradeList({ refreshKey }: Props) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [selectedTrade, setSelectedTrade] = useState<TradeDetail | null>(null);
+  const [allPairs, setAllPairs] = useState<string[]>([]);
+  const [filters, setFilters] = useState<Filters>({
+    pair: "",
+    direction: "",
+    result: "",
+    dateFrom: "",
+    dateTo: "",
+  });
   const [globalStats, setGlobalStats] = useState({
     count: 0,
     wins: 0,
@@ -54,14 +76,36 @@ export default function TradeList({ refreshKey }: Props) {
   });
 
   useEffect(() => {
+    loadAllPairs();
+  }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    setPage(0);
+  }, [filters]);
+
+  useEffect(() => {
     loadTrades();
     loadGlobalStats();
-  }, [page, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [page, refreshKey, filters]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Clear selection when page or data changes
   useEffect(() => {
     setSelectedIds(new Set());
   }, [page, refreshKey]);
+
+  async function loadAllPairs() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase
+      .from("trades")
+      .select("pair")
+      .eq("user_id", user.id);
+    if (data) {
+      const unique = Array.from(new Set(data.map((r) => r.pair as string))).sort();
+      setAllPairs(unique);
+    }
+  }
 
   async function loadTrades() {
     setLoading(true);
@@ -73,14 +117,39 @@ export default function TradeList({ refreshKey }: Props) {
     const from = page * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
 
-    const { data, count } = await supabase
+    let query = supabase
       .from("trades")
       .select("*, tags, emotion, setup_quality, notes, screenshot_url, prop_challenges(firm, account_number)", { count: "exact" })
       .eq("user_id", user.id)
       .order("open_time", { ascending: false })
-      .range(from, to);
+      .order("id", { ascending: false });
 
-    setTrades(data || []);
+    if (filters.pair) query = query.eq("pair", filters.pair);
+    if (filters.direction) query = query.eq("direction", filters.direction);
+    if (filters.dateFrom) query = query.gte("open_time", filters.dateFrom);
+    if (filters.dateTo) query = query.lte("open_time", filters.dateTo + "T23:59:59");
+
+    const { data, count } = await query.range(from, to);
+
+    let rows = (data || []) as Trade[];
+
+    // Deduplicate by (open_time, pair, entry_price) — handles double-import bugs
+    const seen = new Set<string>();
+    rows = rows.filter((tr) => {
+      const key = `${tr.open_time}|${tr.pair}|${tr.entry_price}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    // Client-side result filter (win/loss) applied after dedup
+    if (filters.result === "win") {
+      rows = rows.filter((tr) => tr.pnl + (tr.commission || 0) + (tr.swap || 0) > 0);
+    } else if (filters.result === "loss") {
+      rows = rows.filter((tr) => tr.pnl + (tr.commission || 0) + (tr.swap || 0) <= 0);
+    }
+
+    setTrades(rows);
     setTotal(count || 0);
     setLoading(false);
   }
@@ -154,6 +223,11 @@ export default function TradeList({ refreshKey }: Props) {
     }
   }
 
+  function resetFilters() {
+    setFilters({ pair: "", direction: "", result: "", dateFrom: "", dateTo: "" });
+  }
+
+  const hasActiveFilters = filters.pair || filters.direction || filters.result || filters.dateFrom || filters.dateTo;
   const allSelected = trades.length > 0 && trades.every((tr) => selectedIds.has(tr.id));
   const someSelected = selectedIds.size > 0;
 
@@ -194,6 +268,86 @@ export default function TradeList({ refreshKey }: Props) {
             <p className={`text-lg font-bold mt-0.5 ${s.color || "text-foreground"}`}>{s.value}</p>
           </div>
         ))}
+      </div>
+
+      {/* Filter bar */}
+      <div className="bg-card border border-border rounded-lg p-3 mb-4">
+        <div className="flex flex-wrap gap-3 items-end">
+          {/* Pair */}
+          <div className="flex flex-col gap-1 min-w-[140px]">
+            <label className="text-xs text-muted">{t("trades_filter_label_pair")}</label>
+            <select
+              value={filters.pair}
+              onChange={(e) => setFilters((f) => ({ ...f, pair: e.target.value }))}
+              className="bg-surface border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-accent"
+            >
+              <option value="">{t("trades_filter_all_pairs")}</option>
+              {allPairs.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Direction */}
+          <div className="flex flex-col gap-1 min-w-[120px]">
+            <label className="text-xs text-muted">{t("trades_filter_label_dir")}</label>
+            <select
+              value={filters.direction}
+              onChange={(e) => setFilters((f) => ({ ...f, direction: e.target.value }))}
+              className="bg-surface border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-accent"
+            >
+              <option value="">{t("trades_filter_all")}</option>
+              <option value="long">LONG</option>
+              <option value="short">SHORT</option>
+            </select>
+          </div>
+
+          {/* Result */}
+          <div className="flex flex-col gap-1 min-w-[120px]">
+            <label className="text-xs text-muted">{t("trades_filter_label_result")}</label>
+            <select
+              value={filters.result}
+              onChange={(e) => setFilters((f) => ({ ...f, result: e.target.value }))}
+              className="bg-surface border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-accent"
+            >
+              <option value="">{t("trades_filter_all")}</option>
+              <option value="win">{t("trades_filter_winners")}</option>
+              <option value="loss">{t("trades_filter_losers")}</option>
+            </select>
+          </div>
+
+          {/* Date from */}
+          <div className="flex flex-col gap-1 min-w-[130px]">
+            <label className="text-xs text-muted">{t("trades_filter_date_from")}</label>
+            <input
+              type="date"
+              value={filters.dateFrom}
+              onChange={(e) => setFilters((f) => ({ ...f, dateFrom: e.target.value }))}
+              className="bg-surface border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-accent"
+            />
+          </div>
+
+          {/* Date to */}
+          <div className="flex flex-col gap-1 min-w-[130px]">
+            <label className="text-xs text-muted">{t("trades_filter_date_to")}</label>
+            <input
+              type="date"
+              value={filters.dateTo}
+              onChange={(e) => setFilters((f) => ({ ...f, dateTo: e.target.value }))}
+              className="bg-surface border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-accent"
+            />
+          </div>
+
+          {/* Reset */}
+          {hasActiveFilters && (
+            <button
+              onClick={resetFilters}
+              className="px-3 py-1.5 text-sm text-muted border border-border rounded-lg hover:text-foreground hover:bg-surface transition-colors self-end"
+            >
+              {t("trades_filter_reset")}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Bulk action bar */}
@@ -251,61 +405,64 @@ export default function TradeList({ refreshKey }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {trades.map((tr, i) => (
-                  <tr
-                    key={tr.id}
-                    onClick={() => setSelectedTrade(tr as TradeDetail)}
-                    className={`cursor-pointer hover:bg-accent/5 transition-colors ${i % 2 === 0 ? "bg-card" : "bg-surface"} ${selectedIds.has(tr.id) ? "!bg-accent/5" : ""}`}
-                  >
-                    <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(tr.id)}
-                        onChange={() => toggleSelect(tr.id)}
-                        className="accent-accent w-4 h-4 cursor-pointer"
-                      />
-                    </td>
-                    <td className="px-3 py-2 text-foreground whitespace-nowrap">
-                      {tr.open_time ? new Date(tr.open_time).toLocaleDateString() : "—"}
-                    </td>
-                    <td className="px-3 py-2 text-muted text-xs whitespace-nowrap">
-                      {tr.prop_challenges
-                        ? `${tr.prop_challenges.firm}${tr.prop_challenges.account_number ? ` #${tr.prop_challenges.account_number}` : ""}`
-                        : "—"}
-                    </td>
-                    <td className="px-3 py-2 text-foreground font-medium">{tr.pair}</td>
-                    <td className="px-3 py-2">
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${tr.direction === "long" ? "bg-profit/10 text-profit" : "bg-loss/10 text-loss"}`}>
-                        {tr.direction.toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-foreground">{tr.lot_size}</td>
-                    <td className="px-3 py-2 text-foreground">{tr.entry_price}</td>
-                    <td className="px-3 py-2 text-foreground">{tr.exit_price}</td>
-                    <td className="px-3 py-2 text-muted">{tr.sl ?? "—"}</td>
-                    <td className="px-3 py-2 text-muted">{tr.tp ?? "—"}</td>
-                    {(() => {
-                      const net = tr.pnl + (tr.commission || 0) + (tr.swap || 0);
-                      return (
-                        <td className={`px-3 py-2 font-medium ${net >= 0 ? "text-profit" : "text-loss"}`}>
-                          {net >= 0 ? "+" : ""}{net.toFixed(2)}
-                        </td>
-                      );
-                    })()}
-                    <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() => handleDelete(tr.id)}
-                        disabled={deletingId === tr.id}
-                        className="text-muted hover:text-loss transition-colors disabled:opacity-50"
-                        title={t("trades_delete")}
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {trades.map((tr, i) => {
+                  const dir = normalizeDirection(tr.direction);
+                  return (
+                    <tr
+                      key={tr.id}
+                      onClick={() => setSelectedTrade(tr as TradeDetail)}
+                      className={`cursor-pointer hover:bg-accent/5 transition-colors ${i % 2 === 0 ? "bg-card" : "bg-surface"} ${selectedIds.has(tr.id) ? "!bg-accent/5" : ""}`}
+                    >
+                      <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(tr.id)}
+                          onChange={() => toggleSelect(tr.id)}
+                          className="accent-accent w-4 h-4 cursor-pointer"
+                        />
+                      </td>
+                      <td className="px-3 py-2 text-foreground whitespace-nowrap">
+                        {tr.open_time ? new Date(tr.open_time).toLocaleDateString() : "—"}
+                      </td>
+                      <td className="px-3 py-2 text-muted text-xs whitespace-nowrap">
+                        {tr.prop_challenges
+                          ? `${tr.prop_challenges.firm}${tr.prop_challenges.account_number ? ` #${tr.prop_challenges.account_number}` : ""}`
+                          : "—"}
+                      </td>
+                      <td className="px-3 py-2 text-foreground font-medium">{tr.pair}</td>
+                      <td className="px-3 py-2">
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${dir === "long" ? "bg-profit/10 text-profit" : "bg-loss/10 text-loss"}`}>
+                          {dir === "long" ? "LONG" : "SHORT"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-foreground">{tr.lot_size}</td>
+                      <td className="px-3 py-2 text-foreground">{tr.entry_price}</td>
+                      <td className="px-3 py-2 text-foreground">{tr.exit_price}</td>
+                      <td className="px-3 py-2 text-muted">{tr.sl ?? "—"}</td>
+                      <td className="px-3 py-2 text-muted">{tr.tp ?? "—"}</td>
+                      {(() => {
+                        const net = tr.pnl + (tr.commission || 0) + (tr.swap || 0);
+                        return (
+                          <td className={`px-3 py-2 font-medium ${net >= 0 ? "text-profit" : "text-loss"}`}>
+                            {net >= 0 ? "+" : ""}{net.toFixed(2)}
+                          </td>
+                        );
+                      })()}
+                      <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => handleDelete(tr.id)}
+                          disabled={deletingId === tr.id}
+                          className="text-muted hover:text-loss transition-colors disabled:opacity-50"
+                          title={t("trades_delete")}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
