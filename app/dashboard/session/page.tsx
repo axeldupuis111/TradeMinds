@@ -50,6 +50,7 @@ export default function SessionPage() {
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
   const [saving, setSaving] = useState(false);
   const [ending, setEnding] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
 
   useEffect(() => {
     load();
@@ -229,19 +230,27 @@ export default function SessionPage() {
 
         {/* Strategy rules reminder */}
         {strategy && strategy.setup_rules && strategy.setup_rules.length > 0 && (
-          <div className="mb-4 p-3 rounded-lg bg-background border border-border">
-            <p className="text-xs text-muted mb-2 font-medium">{t("session_your_rules")}</p>
-            <ul className="space-y-1">
-              {strategy.setup_rules.map((r, i) => (
-                <li key={i} className="text-foreground text-sm">&bull; {r}</li>
-              ))}
-            </ul>
+          <div className="mb-4 rounded-lg bg-background border border-border overflow-hidden">
+            <button
+              onClick={() => setRulesOpen((v) => !v)}
+              className="w-full flex items-center justify-between px-3 py-2 text-xs text-muted font-medium hover:text-foreground transition-colors"
+            >
+              <span>📋 {rulesOpen ? t("session_hide_rules") : t("session_show_rules")}</span>
+              <span>{rulesOpen ? "▲" : "▼"}</span>
+            </button>
+            {rulesOpen && (
+              <ul className="px-3 pb-3 space-y-1">
+                {strategy.setup_rules.map((r, i) => (
+                  <li key={i} className="text-foreground text-sm">&bull; {r}</li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
 
         <div className="space-y-2">
           {checklist.map((item, idx) => (
-            <div key={idx} className="flex items-start gap-3 group">
+            <div key={idx} className={`flex items-start gap-3 group rounded-lg transition-colors ${!checkedItems.has(idx) && !allChecked ? "border border-orange-400/40 px-2 py-1" : "px-2 py-1"}`}>
               <input
                 type="checkbox"
                 checked={checkedItems.has(idx)}
@@ -301,7 +310,7 @@ export default function SessionPage() {
               onClick={() => setSelectedEmotion(em.key)}
               className={`flex flex-col items-center gap-1 p-3 rounded-lg border transition-all ${
                 selectedEmotion === em.key
-                  ? "bg-accent/10 border-accent"
+                  ? "border-2 border-blue-500 bg-blue-500/10 scale-110"
                   : "bg-background border-border hover:border-muted"
               }`}
             >
@@ -322,20 +331,26 @@ export default function SessionPage() {
       </section>
 
       {/* D — Start button */}
-      <div className="flex flex-col sm:flex-row items-center gap-3">
-        <button
-          onClick={startSession}
-          disabled={!allChecked || !selectedEmotion || saving}
-          className="w-full sm:w-auto px-8 py-3 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50"
-        >
-          {saving ? "..." : t("session_start_button")}
-        </button>
-        {!allChecked && (
-          <p className="text-xs text-muted">{t("session_check_all_first")}</p>
+      <div className="flex flex-col items-start gap-2">
+        {checklist.length > 0 && (
+          <p className={`text-sm font-medium ${allChecked ? "text-profit" : "text-orange-400"}`}>
+            {allChecked
+              ? t("session_all_ready")
+              : t("session_items_remaining").replace("{N}", String(checklist.length - checkedItems.size))}
+          </p>
         )}
-        {allChecked && !selectedEmotion && (
-          <p className="text-xs text-muted">{t("session_select_emotion_first")}</p>
-        )}
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+          <button
+            onClick={startSession}
+            disabled={!allChecked || !selectedEmotion || saving}
+            className="w-full sm:w-auto px-8 py-3 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50"
+          >
+            {saving ? "..." : t("session_start_button")}
+          </button>
+          {allChecked && !selectedEmotion && (
+            <p className="text-xs text-muted">{t("session_select_emotion_first")}</p>
+          )}
+        </div>
       </div>
     </div>
   );

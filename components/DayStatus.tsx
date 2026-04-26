@@ -121,7 +121,7 @@ export default function DayStatus() {
         <div>
           <p className="text-xs text-muted">{t("session_streak")}</p>
           <p className="text-xl font-bold mt-1 text-foreground">
-            {streak > 0 ? `🔥 ${streak}` : "—"}
+            {streak > 0 ? `🔥 ${streak}` : "0"}
           </p>
         </div>
         <div>
