@@ -778,7 +778,7 @@ export default function AnalysisPage() {
                 <p className="text-xs text-muted">
                   {chatRemaining > 0
                     ? (chatRemaining === 1 ? t("coach_remaining_one") : t("coach_remaining")).replace("{n}", String(chatRemaining))
-                    : t("coach_limit_reached")}
+                    : t("coach_no_messages")}
                 </p>
               </div>
             )}
