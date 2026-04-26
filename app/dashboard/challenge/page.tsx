@@ -35,6 +35,8 @@ const BROKERS = ["IC Markets", "Pepperstone", "XM", "Exness", "OANDA", "Interact
 
 const inputClass =
   "w-full px-3 py-2 bg-surface border border-border rounded-lg text-foreground placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent";
+const inputErrorClass =
+  "w-full px-3 py-2 bg-surface border border-red-500 rounded-lg text-foreground placeholder-muted focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500";
 
 function ProgressBar({
   value,
@@ -77,6 +79,39 @@ function ProgressBar({
   );
 }
 
+function StatusBadge({ status, t }: { status: string; t: (key: string) => string }) {
+  if (status === "active") {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-green-500/30 text-green-400 select-none">
+        <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+        {t("challenge_status_active")}
+      </span>
+    );
+  }
+  if (status === "passed") {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-green-500/30 text-green-400 select-none">
+        <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+        {t("challenge_status_passed")}
+      </span>
+    );
+  }
+  if (status === "failed") {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-red-500/30 text-red-400 select-none">
+        <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+        {t("challenge_status_failed")}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-gray-500/30 text-gray-400 select-none">
+      <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+      {t("challenge_closed")}
+    </span>
+  );
+}
+
 function AccountCard({
   ac,
   stats,
@@ -91,6 +126,7 @@ function AccountCard({
   const balance = stats.balance;
   const currentPnl = stats.currentPnl;
   const todayPnl = stats.todayPnl;
+  const hasNoTrades = stats.equityCurveData.length === 0;
   const profitTargetAmount = ac.account_size * (ac.profit_target_pct / 100);
   const maxTotalDdAmount = ac.account_size * (ac.max_total_dd_pct / 100);
   const maxDailyDdAmount = ac.account_size * (ac.max_daily_dd_pct / 100);
@@ -117,9 +153,12 @@ function AccountCard({
             {t("challenge_started")} {new Date(ac.start_date).toLocaleDateString()}
           </p>
         </div>
-        <span className="px-3 py-1 rounded-full text-xs font-medium bg-accent/10 text-accent">
-          {isProp ? t("challenge_type_prop") : t("challenge_type_personal")}
-        </span>
+        <div className="flex flex-col items-end gap-2">
+          <span className="px-3 py-1 rounded-full text-xs font-medium bg-accent/10 text-accent">
+            {isProp ? t("challenge_type_prop") : t("challenge_type_personal")}
+          </span>
+          <StatusBadge status={ac.status} t={t} />
+        </div>
       </div>
 
       {/* Progress bars — only for prop firm */}
@@ -142,9 +181,13 @@ function AccountCard({
         </div>
         <div className="bg-background rounded-lg p-3">
           <p className="text-xs text-muted">{t("challenge_total_pnl")}</p>
-          <p className={`text-lg font-bold ${currentPnl >= 0 ? "text-profit" : "text-loss"}`}>
-            {currentPnl >= 0 ? "+" : ""}{currentPnl.toFixed(2)}€
-          </p>
+          {hasNoTrades ? (
+            <p className="text-sm text-muted italic mt-1">{t("challenge_no_trades")}</p>
+          ) : (
+            <p className={`text-lg font-bold ${currentPnl >= 0 ? "text-profit" : "text-loss"}`}>
+              {currentPnl >= 0 ? "+" : ""}{currentPnl.toFixed(2)}€
+            </p>
+          )}
         </div>
         <div className="bg-background rounded-lg p-3">
           <p className="text-xs text-muted">{t("challenge_today_pnl")}</p>
@@ -165,30 +208,53 @@ function AccountCard({
         )}
       </div>
 
-      {/* Status buttons */}
-      <div className="flex gap-3 mt-6">
-        {isProp ? (
-          <>
-            <button onClick={() => onStatusChange(ac.id, "passed")} className="flex-1 py-2 bg-profit/10 border border-profit/20 text-profit rounded-lg text-sm font-medium hover:bg-profit/20 transition-colors">
-              {t("challenge_passed")}
-            </button>
-            <button onClick={() => onStatusChange(ac.id, "failed")} className="flex-1 py-2 bg-loss/10 border border-loss/20 text-loss rounded-lg text-sm font-medium hover:bg-loss/20 transition-colors">
-              {t("challenge_failed")}
-            </button>
-          </>
-        ) : (
-          <button
-            onClick={() => onStatusChange(ac.id, "passed")}
-            className="flex-1 py-2 bg-white/5 border border-white/10 text-foreground rounded-lg text-sm font-medium hover:bg-white/10 transition-colors"
-          >
-            {t("challenge_closed")}
+      {/* Action buttons — prop only */}
+      {isProp && (
+        <div className="flex gap-3 mt-6">
+          <button onClick={() => onStatusChange(ac.id, "passed")} className="flex-1 py-2 bg-profit/10 border border-profit/20 text-profit rounded-lg text-sm font-medium hover:bg-profit/20 transition-colors">
+            {t("challenge_passed")}
           </button>
-        )}
-      </div>
+          <button onClick={() => onStatusChange(ac.id, "failed")} className="flex-1 py-2 bg-loss/10 border border-loss/20 text-loss rounded-lg text-sm font-medium hover:bg-loss/20 transition-colors">
+            {t("challenge_failed")}
+          </button>
+        </div>
+      )}
 
       {/* Equity curve */}
       <div className="mt-6">
         <EquityCurve data={stats.equityCurveData} initialBalance={ac.account_size} />
+      </div>
+    </div>
+  );
+}
+
+function DeleteModal({
+  onConfirm,
+  onCancel,
+  t,
+}: {
+  onConfirm: () => void;
+  onCancel: () => void;
+  t: (key: string) => string;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+      <div className="bg-card border border-border rounded-xl p-6 max-w-sm w-full mx-4 shadow-xl">
+        <p className="text-foreground text-sm leading-relaxed">{t("challenge_delete_history_confirm")}</p>
+        <div className="flex gap-3 mt-5">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-2 bg-surface border border-border text-muted rounded-lg text-sm font-medium hover:text-foreground transition-colors"
+          >
+            {t("csv_cancel")}
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 py-2 bg-loss/10 border border-loss/20 text-loss rounded-lg text-sm font-medium hover:bg-loss/20 transition-colors"
+          >
+            {t("challenge_delete_btn")}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -210,6 +276,7 @@ export default function ChallengePage() {
   const [maxTotalDd, setMaxTotalDd] = useState("10");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [formErrors, setFormErrors] = useState<{ accountNumber?: boolean; accountSize?: boolean; startDate?: boolean }>({});
 
   // Data state
   const [activeAccounts, setActiveAccounts] = useState<Challenge[]>([]);
@@ -218,6 +285,10 @@ export default function ChallengePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [deleteModal, setDeleteModal] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
+  const [tooltipId, setTooltipId] = useState<string | null>(null);
+
+  const isFormValid = accountNumber.trim() !== "" && accountSize !== "" && parseFloat(accountSize) > 0 && startDate !== "";
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -307,10 +378,16 @@ export default function ChallengePage() {
   async function handleCreate() {
     setMessage(null);
 
-    if (!accountNumber.trim()) {
-      setMessage({ type: "error", text: t("challenge_account_number_required") });
+    const errors: { accountNumber?: boolean; accountSize?: boolean; startDate?: boolean } = {};
+    if (!accountNumber.trim()) errors.accountNumber = true;
+    if (!accountSize || parseFloat(accountSize) <= 0) errors.accountSize = true;
+    if (!startDate) errors.startDate = true;
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
       return;
     }
+    setFormErrors({});
 
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
@@ -338,6 +415,7 @@ export default function ChallengePage() {
     } else {
       setMessage({ type: "success", text: t("challenge_created") });
       setAccountNumber("");
+      setStartDate("");
       loadData();
     }
   }
@@ -353,6 +431,17 @@ export default function ChallengePage() {
     } else {
       setMessage({ type: "success", text: status === "passed" ? t("challenge_marked_passed") : t("challenge_marked_failed") });
       loadData();
+    }
+  }
+
+  async function handleDeleteHistory(id: string) {
+    const { error } = await supabase.from("prop_challenges").delete().eq("id", id);
+    setDeleteModal({ open: false, id: null });
+    if (error) {
+      setMessage({ type: "error", text: error.message });
+    } else {
+      setHistory((prev) => prev.filter((c) => c.id !== id));
+      setMessage({ type: "success", text: t("challenge_delete_success") });
     }
   }
 
@@ -434,14 +523,34 @@ export default function ChallengePage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">{t("challenge_account_number")} *</label>
-              <input type="text" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)}
-                placeholder={t("challenge_account_number_placeholder")} className={inputClass} />
+              <label className="block text-sm text-muted mb-1">
+                {t("challenge_account_number")} <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={accountNumber}
+                onChange={(e) => { setAccountNumber(e.target.value); if (formErrors.accountNumber) setFormErrors((p) => ({ ...p, accountNumber: false })); }}
+                placeholder={t("challenge_account_number_placeholder")}
+                className={formErrors.accountNumber ? inputErrorClass : inputClass}
+              />
+              {formErrors.accountNumber && (
+                <p className="text-red-500 text-xs mt-1">{t("challenge_field_required")}</p>
+              )}
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">{t("challenge_account_size")}</label>
-              <input type="number" value={accountSize} onChange={(e) => setAccountSize(e.target.value)}
-                placeholder="50000" className={inputClass} />
+              <label className="block text-sm text-muted mb-1">
+                {t("challenge_account_size")} <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                value={accountSize}
+                onChange={(e) => { setAccountSize(e.target.value); if (formErrors.accountSize) setFormErrors((p) => ({ ...p, accountSize: false })); }}
+                placeholder="50000"
+                className={formErrors.accountSize ? inputErrorClass : inputClass}
+              />
+              {formErrors.accountSize && (
+                <p className="text-red-500 text-xs mt-1">{t("challenge_field_required")}</p>
+              )}
             </div>
           </div>
 
@@ -464,8 +573,18 @@ export default function ChallengePage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm text-muted mb-1">{t("challenge_start_date")}</label>
-                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputClass} />
+                  <label className="block text-sm text-muted mb-1">
+                    {t("challenge_start_date")} <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => { setStartDate(e.target.value); if (formErrors.startDate) setFormErrors((p) => ({ ...p, startDate: false })); }}
+                    className={formErrors.startDate ? inputErrorClass : inputClass}
+                  />
+                  {formErrors.startDate && (
+                    <p className="text-red-500 text-xs mt-1">{t("challenge_field_required")}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm text-muted mb-1">{t("challenge_end_date")}</label>
@@ -479,8 +598,18 @@ export default function ChallengePage() {
           {accountType === "personal" && (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm text-muted mb-1">{t("challenge_start_date")}</label>
-                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputClass} />
+                <label className="block text-sm text-muted mb-1">
+                  {t("challenge_start_date")} <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => { setStartDate(e.target.value); if (formErrors.startDate) setFormErrors((p) => ({ ...p, startDate: false })); }}
+                  className={formErrors.startDate ? inputErrorClass : inputClass}
+                />
+                {formErrors.startDate && (
+                  <p className="text-red-500 text-xs mt-1">{t("challenge_field_required")}</p>
+                )}
               </div>
             </div>
           )}
@@ -492,8 +621,11 @@ export default function ChallengePage() {
           </p>
         )}
 
-        <button onClick={handleCreate} disabled={saving}
-          className="mt-4 px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50">
+        <button
+          onClick={handleCreate}
+          disabled={saving || !isFormValid}
+          className={`mt-4 px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50 ${!isFormValid ? "cursor-not-allowed" : ""}`}
+        >
           {saving ? t("challenge_creating") : t("challenge_create_btn")}
         </button>
       </section>
@@ -509,8 +641,9 @@ export default function ChallengePage() {
           <div className="space-y-3">
             {history.map((c) => {
               const pnl = c.balance - c.account_size;
+              const showPnlTooltip = c.status === "passed" && pnl < 0;
               return (
-                <div key={c.id} className="bg-card border border-border rounded-lg p-4 flex items-center justify-between">
+                <div key={c.id} className="bg-card border border-border rounded-lg p-4 flex items-center justify-between relative">
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-foreground font-medium">
@@ -522,19 +655,47 @@ export default function ChallengePage() {
                       <span className={`px-2 py-0.5 rounded text-xs font-medium ${c.status === "passed" ? "bg-profit/10 text-profit" : "bg-loss/10 text-loss"}`}>
                         {c.status === "passed" ? t("challenge_status_passed") : t("challenge_status_failed")}
                       </span>
+                      {showPnlTooltip && (
+                        <span className="relative inline-block">
+                          <button
+                            className="text-muted hover:text-foreground transition-colors"
+                            onMouseEnter={() => setTooltipId(c.id)}
+                            onMouseLeave={() => setTooltipId(null)}
+                            aria-label="Info"
+                          >
+                            ℹ️
+                          </button>
+                          {tooltipId === c.id && (
+                            <span className="absolute left-0 top-6 z-20 w-64 bg-card border border-border rounded-lg p-3 text-xs text-muted shadow-xl">
+                              {t("challenge_pnl_negative_tooltip")}
+                            </span>
+                          )}
+                        </span>
+                      )}
                     </div>
                     <p className="text-muted text-sm mt-1">
                       {new Date(c.start_date).toLocaleDateString("fr-FR")}
                       {c.end_date && ` → ${new Date(c.end_date).toLocaleDateString("fr-FR")}`}
                     </p>
                   </div>
-                  <div className="text-right">
-                    <p className={`text-lg font-bold ${pnl >= 0 ? "text-profit" : "text-loss"}`}>
-                      {pnl >= 0 ? "+" : ""}{pnl.toFixed(0)}€
-                    </p>
-                    <p className="text-muted text-sm">
-                      {t("challenge_final_balance")} {c.balance.toLocaleString()}€
-                    </p>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <p className={`text-lg font-bold ${pnl >= 0 ? "text-profit" : "text-loss"}`}>
+                        {pnl >= 0 ? "+" : ""}{pnl.toFixed(0)}€
+                      </p>
+                      <p className="text-muted text-sm">
+                        {t("challenge_final_balance")} {c.balance.toLocaleString()}€
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setDeleteModal({ open: true, id: c.id })}
+                      className="text-muted hover:text-loss transition-colors p-1 rounded"
+                      aria-label="Delete"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
                   </div>
                 </div>
               );
@@ -542,6 +703,15 @@ export default function ChallengePage() {
           </div>
         )}
       </section>
+
+      {/* DELETE MODAL */}
+      {deleteModal.open && deleteModal.id && (
+        <DeleteModal
+          onConfirm={() => handleDeleteHistory(deleteModal.id!)}
+          onCancel={() => setDeleteModal({ open: false, id: null })}
+          t={t}
+        />
+      )}
     </div>
   );
 }

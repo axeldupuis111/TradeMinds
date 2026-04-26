@@ -95,6 +95,7 @@ export default function EquityCurve({ data, initialBalance }: Props) {
               stroke={c.referenceLine}
               strokeDasharray="4 4"
               strokeWidth={1}
+              label={{ value: t("challenge_initial_capital"), position: "right", fill: c.axis, fontSize: 10 }}
             />
             <Area
               type="monotone"
