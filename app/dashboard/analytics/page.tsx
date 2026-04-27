@@ -2,7 +2,8 @@
 
 import ExportPdfButton from "@/components/analytics/ExportPdfButton";
 import { computeDisciplineScore } from "@/lib/discipline-score";
-import { ICT_EMOTIONS, ICT_ENTRY_ZONES, ICT_KILLZONES, ICT_SETUPS, getEmotionColor } from "@/lib/ict-constants";
+import { ICT_EMOTIONS, ICT_KILLZONES, getEmotionColor } from "@/lib/ict-constants";
+import { useStrategyTags } from "@/lib/hooks/useStrategyTags";
 import { useChartColors } from "@/lib/useChartColors";
 import { formatCurrencyAxis } from "@/lib/utils";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -100,6 +101,7 @@ export default function AnalyticsPage() {
   const { t, lang } = useLanguage();
   const c = useChartColors();
   const supabase = createClient();
+  const stratTags = useStrategyTags();
   const [trades, setTrades] = useState<TradeRow[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [reviews, setReviews] = useState<SessionReview[]>([]);
@@ -656,10 +658,10 @@ export default function AnalyticsPage() {
   const l = lang as Lang;
 
   function getICTSetupLabel(value: string) {
-    return ICT_SETUPS.find((x) => x.value === value)?.label[l] ?? value;
+    return stratTags.setups.find((x) => x.value === value)?.label[l] ?? value;
   }
   function getICTZoneLabel(value: string) {
-    return ICT_ENTRY_ZONES.find((x) => x.value === value)?.label[l] ?? value;
+    return stratTags.entry_zones.find((x) => x.value === value)?.label[l] ?? value;
   }
   function getKillzoneLabel(value: string) {
     return ICT_KILLZONES.find((x) => x.value === value)?.label[l] ?? value;
@@ -981,11 +983,15 @@ export default function AnalyticsPage() {
             )}
           </div>
 
-          {/* ─── ICT Analytics Section ─── */}
+          {/* ─── ICT / Strategy Analytics Section ─── */}
           <div className="mt-8">
             <div className="flex items-center gap-3 mb-2">
-              <h2 className="text-xl font-bold text-foreground">{t("ict_section_title")}</h2>
-              <span className="px-2 py-0.5 rounded text-xs font-bold bg-accent/20 text-accent">ICT</span>
+              <h2 className="text-xl font-bold text-foreground">
+                {stratTags.isDefault ? t("ict_section_title") : t("analytics_strategy_title")}
+              </h2>
+              {stratTags.isDefault && (
+                <span className="px-2 py-0.5 rounded text-xs font-bold bg-accent/20 text-accent">ICT</span>
+              )}
             </div>
             <p className="text-muted text-sm mb-4">{t("ict_section_subtitle")}</p>
 
