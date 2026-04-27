@@ -1,11 +1,11 @@
 "use client";
 
-import { ICT_CHECKLIST_ITEMS, ICT_EMOTIONS, ICT_ENTRY_ZONES, ICT_KILLZONES, ICT_LIQUIDITY_TARGETS, ICT_SETUPS, ICT_TIMEFRAMES, getEmotionColor } from "@/lib/ict-constants";
+import { ICT_CHECKLIST_ITEMS, ICT_EMOTIONS, ICT_ENTRY_ZONES, ICT_KILLZONES, ICT_LIQUIDITY_TARGETS, ICT_SETUPS, ICT_TIMEFRAMES, detectKillzone } from "@/lib/ict-constants";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import type { Lang } from "@/lib/translations";
 import Image from "next/image";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface TradeDetail {
   id: string;
@@ -36,14 +36,31 @@ export interface TradeDetail {
   ict_confluence_score?: number | null;
 }
 
-const EMOTIONS: { key: string; emoji: string; labelKey: string }[] = [
-  { key: "confident", emoji: "\u{1F60E}", labelKey: "emotion_confident" },
-  { key: "neutral", emoji: "\u{1F610}", labelKey: "emotion_neutral" },
-  { key: "anxious", emoji: "\u{1F630}", labelKey: "emotion_anxious" },
-  { key: "frustrated", emoji: "\u{1F624}", labelKey: "emotion_frustrated" },
-  { key: "fomo", emoji: "\u{1F911}", labelKey: "emotion_fomo" },
-  { key: "revenge", emoji: "\u{1F621}", labelKey: "emotion_revenge" },
-];
+const EMOTION_EMOJIS: Record<string, string> = {
+  confident: "😎",
+  calm: "😌",
+  fomo: "🤑",
+  revenge: "😡",
+  anxious: "😰",
+  frustrated: "😤",
+  greedy: "🤑",
+  hesitant: "😟",
+  overconfident: "💪",
+  neutral: "😐",
+};
+
+const EMOTION_LABEL_KEYS: Record<string, string> = {
+  confident: "emotion_confident",
+  calm: "emotion_calm",
+  fomo: "emotion_fomo",
+  revenge: "emotion_revenge",
+  anxious: "emotion_anxious",
+  frustrated: "emotion_frustrated",
+  greedy: "emotion_greedy",
+  hesitant: "emotion_hesitant",
+  overconfident: "emotion_overconfident",
+  neutral: "emotion_neutral",
+};
 
 const TAG_SUGGESTIONS = ["Breakout", "Pullback", "Reversal", "Scalp", "Swing", "News", "Contre-tendance"];
 
@@ -53,11 +70,9 @@ interface Props {
   onSaved: () => void;
 }
 
-function ICTBadge({ color, label }: { color: string; label: string }) {
+function SavedIndicator({ visible }: { visible: boolean }) {
   return (
-    <span className="px-2 py-0.5 rounded-full text-xs font-medium text-white" style={{ backgroundColor: color }}>
-      {label}
-    </span>
+    <span className={`text-profit text-xs ml-1 transition-opacity duration-300 ${visible ? "opacity-100" : "opacity-0"}`}>✓</span>
   );
 }
 
@@ -76,7 +91,17 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
   const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  // Reset when trade changes
+  // ICT state
+  const [ictSetup, setIctSetup] = useState<string>(trade.ict_setup || "");
+  const [ictEntryZone, setIctEntryZone] = useState<string>(trade.ict_entry_zone || "");
+  const [ictLiquidityTarget, setIctLiquidityTarget] = useState<string>(trade.ict_liquidity_target || "");
+  const [ictKillzone, setIctKillzone] = useState<string>(trade.ict_killzone || "");
+  const [ictTimeframe, setIctTimeframe] = useState<string>(trade.ict_timeframe || "");
+  const [ictChecklist, setIctChecklist] = useState<Record<string, boolean>>(trade.ict_checklist || {});
+  const [killzoneAutoDetected, setKillzoneAutoDetected] = useState(false);
+  const [savedField, setSavedField] = useState<string | null>(null);
+  const debounceRefs = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
   useEffect(() => {
     setEmotion(trade.emotion);
     setQuality(trade.setup_quality);
@@ -84,9 +109,50 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
     setNotes(trade.notes || "");
     setScreenshotUrl(trade.screenshot_url);
     setSaved(false);
+    setIctSetup(trade.ict_setup || "");
+    setIctEntryZone(trade.ict_entry_zone || "");
+    setIctLiquidityTarget(trade.ict_liquidity_target || "");
+    setIctChecklist(trade.ict_checklist || {});
+    setIctTimeframe(trade.ict_timeframe || "");
+    setKillzoneAutoDetected(false);
+
+    if (!trade.ict_killzone && trade.open_time) {
+      const detected = detectKillzone(trade.open_time);
+      setIctKillzone(detected || "");
+      setKillzoneAutoDetected(!!detected);
+    } else {
+      setIctKillzone(trade.ict_killzone || "");
+    }
   }, [trade.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const net = trade.pnl + (trade.commission || 0) + (trade.swap || 0);
+
+  function showSavedIndicator(field: string) {
+    setSavedField(field);
+    setTimeout(() => setSavedField(null), 1500);
+  }
+
+  function saveIctField(field: string, value: string | Record<string, boolean>) {
+    if (debounceRefs.current[field]) clearTimeout(debounceRefs.current[field]);
+    debounceRefs.current[field] = setTimeout(async () => {
+      const dbValue = typeof value === "string" && value === "" ? null : value;
+      await supabase.from("trades").update({ [field]: dbValue }).eq("id", trade.id);
+      showSavedIndicator(field);
+      onSaved();
+    }, 500);
+  }
+
+  function handleIctSetup(value: string) { setIctSetup(value); saveIctField("ict_setup", value); }
+  function handleIctEntryZone(value: string) { setIctEntryZone(value); saveIctField("ict_entry_zone", value); }
+  function handleIctLiquidityTarget(value: string) { setIctLiquidityTarget(value); saveIctField("ict_liquidity_target", value); }
+  function handleIctKillzone(value: string) { setIctKillzone(value); setKillzoneAutoDetected(false); saveIctField("ict_killzone", value); }
+  function handleIctTimeframe(value: string) { setIctTimeframe(value); saveIctField("ict_timeframe", value); }
+
+  function handleIctChecklist(key: string, checked: boolean) {
+    const updated = { ...ictChecklist, [key]: checked };
+    setIctChecklist(updated);
+    saveIctField("ict_checklist", updated);
+  }
 
   function addTag(tag: string) {
     const trimmed = tag.trim();
@@ -140,15 +206,8 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
     (s) => !tags.includes(s) && s.toLowerCase().includes(tagInput.toLowerCase())
   );
 
-  // ICT data helpers
-  const hasICTTags = trade.ict_setup || trade.ict_entry_zone || trade.ict_liquidity_target || trade.ict_killzone;
-  const checklistItems = trade.ict_checklist || {};
-  const checkedCount = ICT_CHECKLIST_ITEMS.filter((i) => checklistItems[i.key]).length;
-
-  function getLabel<T extends { value: string; label: Record<Lang, string> }>(list: T[], value: string | null | undefined): string {
-    if (!value) return "";
-    return list.find((x) => x.value === value)?.label[l] ?? value;
-  }
+  const checkedCount = ICT_CHECKLIST_ITEMS.filter((i) => ictChecklist[i.key]).length;
+  const selectClass = "w-full px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent";
 
   return (
     <>
@@ -190,72 +249,136 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
             </div>
           </div>
 
-          {/* ICT Tags display */}
-          <div>
-            <p className="text-sm text-muted mb-2">{t("ict_analysis_section")}</p>
-            {hasICTTags ? (
-              <div className="space-y-2">
-                <div className="flex flex-wrap gap-1.5">
-                  {trade.ict_setup && (
-                    <ICTBadge color="#3b82f6" label={getLabel(ICT_SETUPS, trade.ict_setup)} />
-                  )}
-                  {trade.ict_entry_zone && (
-                    <ICTBadge color="#8b5cf6" label={getLabel(ICT_ENTRY_ZONES, trade.ict_entry_zone)} />
-                  )}
-                  {trade.ict_liquidity_target && (
-                    <ICTBadge color="#f59e0b" label={getLabel(ICT_LIQUIDITY_TARGETS, trade.ict_liquidity_target)} />
-                  )}
-                  {trade.ict_killzone && (
-                    <ICTBadge color="#10b981" label={getLabel(ICT_KILLZONES, trade.ict_killzone)} />
-                  )}
-                  {trade.ict_timeframe && (
-                    <ICTBadge color="#6b7280" label={ICT_TIMEFRAMES.find((x) => x.value === trade.ict_timeframe)?.label ?? trade.ict_timeframe} />
-                  )}
-                  {trade.emotion && (
-                    <ICTBadge
-                      color={getEmotionColor(trade.emotion)}
-                      label={ICT_EMOTIONS.find((x) => x.value === trade.emotion)?.label[l] ?? trade.emotion}
-                    />
-                  )}
-                </div>
-                {/* Checklist progress */}
-                {Object.keys(checklistItems).length > 0 && (
-                  <div className="mt-2">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs text-muted">{t("ict_checklist_title")} {checkedCount}/7</span>
-                      <span className="text-xs text-muted">{Math.round((checkedCount / 7) * 100)}%</span>
-                    </div>
-                    <div className="h-1.5 bg-border rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all"
-                        style={{
-                          width: `${(checkedCount / 7) * 100}%`,
-                          backgroundColor: checkedCount >= 6 ? "#22c55e" : checkedCount >= 4 ? "#f59e0b" : "#ef4444",
-                        }}
-                      />
-                    </div>
-                  </div>
+          {/* ICT Analysis — editable */}
+          <div className="border-l-[3px] border-blue-500 pl-4">
+            <p className="text-sm font-medium text-foreground mb-0.5">{t("ict_analysis_section")}</p>
+            <p className="text-xs text-muted italic mb-3">{t("ict_no_ict_tags")}</p>
+
+            <div className="space-y-3">
+              {/* Setup ICT */}
+              <div>
+                <label className="block text-xs text-muted mb-1">
+                  {t("ict_setup")}
+                  <SavedIndicator visible={savedField === "ict_setup"} />
+                </label>
+                <select value={ictSetup} onChange={(e) => handleIctSetup(e.target.value)} className={selectClass}>
+                  <option value="">{t("ict_select_setup")}</option>
+                  {ICT_SETUPS.map((s) => (
+                    <option key={s.value} value={s.value}>{s.label[l]}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Zone d'entrée */}
+              <div>
+                <label className="block text-xs text-muted mb-1">
+                  {t("ict_entry_zone")}
+                  <SavedIndicator visible={savedField === "ict_entry_zone"} />
+                </label>
+                <select value={ictEntryZone} onChange={(e) => handleIctEntryZone(e.target.value)} className={selectClass}>
+                  <option value="">{t("ict_select_zone")}</option>
+                  {ICT_ENTRY_ZONES.map((s) => (
+                    <option key={s.value} value={s.value}>{s.label[l]}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Liquidité visée */}
+              <div>
+                <label className="block text-xs text-muted mb-1">
+                  {t("ict_liquidity_target")}
+                  <SavedIndicator visible={savedField === "ict_liquidity_target"} />
+                </label>
+                <select value={ictLiquidityTarget} onChange={(e) => handleIctLiquidityTarget(e.target.value)} className={selectClass}>
+                  <option value="">{t("ict_select_liquidity")}</option>
+                  {ICT_LIQUIDITY_TARGETS.map((s) => (
+                    <option key={s.value} value={s.value}>{s.label[l]}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Killzone */}
+              <div>
+                <label className="block text-xs text-muted mb-1">
+                  {t("ict_killzone")}
+                  <SavedIndicator visible={savedField === "ict_killzone"} />
+                </label>
+                <select value={ictKillzone} onChange={(e) => handleIctKillzone(e.target.value)} className={selectClass}>
+                  <option value="">{t("ict_select_killzone")}</option>
+                  {ICT_KILLZONES.map((s) => (
+                    <option key={s.value} value={s.value}>{s.label[l]}</option>
+                  ))}
+                </select>
+                {killzoneAutoDetected && (
+                  <p className="text-xs text-muted italic mt-1">{t("ict_autodetected_killzone")}</p>
                 )}
               </div>
-            ) : (
-              <p className="text-xs text-muted/70 italic">{t("ict_no_ict_tags")}</p>
-            )}
+
+              {/* Timeframe */}
+              <div>
+                <label className="block text-xs text-muted mb-1">
+                  {t("ict_timeframe")}
+                  <SavedIndicator visible={savedField === "ict_timeframe"} />
+                </label>
+                <select value={ictTimeframe} onChange={(e) => handleIctTimeframe(e.target.value)} className={selectClass}>
+                  <option value="">{t("ict_select_timeframe")}</option>
+                  {ICT_TIMEFRAMES.map((s) => (
+                    <option key={s.value} value={s.value}>{s.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* ICT Checklist */}
+            <div className="mt-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-muted">
+                  {t("ict_checklist_title")} {checkedCount}/7
+                  <SavedIndicator visible={savedField === "ict_checklist"} />
+                </span>
+                <span className="text-xs text-muted">{Math.round((checkedCount / 7) * 100)}%</span>
+              </div>
+              <div className="h-1.5 bg-border rounded-full overflow-hidden mb-3">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${(checkedCount / 7) * 100}%`,
+                    backgroundColor: checkedCount >= 6 ? "#22c55e" : checkedCount >= 4 ? "#f59e0b" : "#ef4444",
+                  }}
+                />
+              </div>
+              <div className="space-y-2">
+                {ICT_CHECKLIST_ITEMS.map((item) => (
+                  <label key={item.key} className="flex items-center gap-2 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={ictChecklist[item.key] || false}
+                      onChange={(e) => handleIctChecklist(item.key, e.target.checked)}
+                      className="w-4 h-4 rounded accent-blue-500"
+                    />
+                    <span className="text-xs text-foreground group-hover:text-accent transition-colors">{item.label[l]}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Emotion */}
           <div>
             <label className="block text-sm text-muted mb-2">{t("detail_emotion")}</label>
-            <div className="grid grid-cols-3 gap-2">
-              {EMOTIONS.map((em) => (
+            <div className="grid grid-cols-2 gap-2">
+              {ICT_EMOTIONS.map((em) => (
                 <button
-                  key={em.key}
-                  onClick={() => setEmotion(emotion === em.key ? null : em.key)}
-                  className={`flex flex-col items-center gap-1 py-2 rounded-lg border text-sm transition-all ${
-                    emotion === em.key ? "border-accent bg-accent/10" : "border-border bg-surface hover:border-muted"
+                  key={em.value}
+                  onClick={() => setEmotion(emotion === em.value ? null : em.value)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${
+                    emotion === em.value ? "border-accent bg-accent/10" : "border-border bg-surface hover:border-muted"
                   }`}
                 >
-                  <span className="text-xl">{em.emoji}</span>
-                  <span className={emotion === em.key ? "text-accent" : "text-muted"}>{t(em.labelKey)}</span>
+                  <span className="text-lg">{EMOTION_EMOJIS[em.value] || "😶"}</span>
+                  <span className={`text-xs ${emotion === em.value ? "text-accent" : "text-muted"}`}>
+                    {t(EMOTION_LABEL_KEYS[em.value] || em.value)}
+                  </span>
                 </button>
               ))}
             </div>
@@ -344,7 +467,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
             </label>
           </div>
 
-          {/* Save button */}
+          {/* Save button — emotion, quality, tags, notes, screenshot */}
           <button
             onClick={handleSave}
             disabled={saving}
