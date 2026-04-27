@@ -96,7 +96,7 @@ function Hero() {
             <span className="text-accent" style={{ fontStyle: "normal" }}>{t("hero_title_2")}</span>
           </h1>
 
-          <p className="mt-6 text-lg sm:text-xl text-muted max-w-2xl mx-auto leading-relaxed">
+          <p className="mt-6 text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
             {t("hero_subtitle_v2")}
           </p>
 
@@ -416,12 +416,27 @@ function ScreenshotScore({ t }: { t: (k: string) => string }) {
 }
 
 function ScreenshotChallenge() {
+  const [mode, setMode] = useState<"prop" | "own">("prop");
   return (
     <div className="feature-screenshot p-5">
+      {/* Mode toggle */}
+      <div className="flex rounded-lg border border-[#2a2a2e] overflow-hidden mb-4 text-xs font-medium">
+        <button onClick={() => setMode("prop")} className={`flex-1 py-1.5 transition-colors ${mode === "prop" ? "bg-accent text-white" : "text-muted hover:text-foreground"}`}>Prop Firm</button>
+        <button onClick={() => setMode("own")} className={`flex-1 py-1.5 transition-colors ${mode === "own" ? "bg-accent text-white" : "text-muted hover:text-foreground"}`}>Fonds Propres</button>
+      </div>
       <div className="flex items-center justify-between mb-4">
         <div>
-          <p className="text-sm font-semibold text-foreground">FTMO — 50 000€</p>
-          <p className="text-xs text-muted">Compte #12345 · Jour 8</p>
+          {mode === "prop" ? (
+            <>
+              <p className="text-sm font-semibold text-foreground">FTMO — 50 000€</p>
+              <p className="text-xs text-muted">Compte #12345 · Jour 8</p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-semibold text-foreground">Compte perso — 10 000€</p>
+              <p className="text-xs text-muted">Depuis le 01/01/2025</p>
+            </>
+          )}
         </div>
         <span className="text-[11px] px-2.5 py-1 bg-accent/10 text-accent rounded-full font-medium">Actif</span>
       </div>
@@ -449,7 +464,11 @@ function ScreenshotChallenge() {
 function Features() {
   const { t } = useLanguage();
 
-  const features = [
+  const features: Array<{
+    label: string; labelColor: string; title: string; desc: string;
+    screenshot: React.ReactNode; reverse?: boolean; screenshotGlow?: boolean;
+    bullets?: string[]; wideScreenshot?: boolean;
+  }> = [
     {
       label: t("feature_1_label"),
       labelColor: "text-accent bg-accent/10",
@@ -462,7 +481,13 @@ function Features() {
       labelColor: "text-purple-400 bg-purple-400/10",
       title: t("feature_2_title"),
       desc: t("feature_2_desc"),
+      bullets: [
+        "🔍 Détecte tes patterns invisibles (revenge, FOMO, overtrading)",
+        "📊 Score de discipline objectif — pas de bullshit",
+        "💬 Pose-lui des questions en langage naturel",
+      ],
       screenshot: <ScreenshotAI t={t} />,
+      screenshotGlow: true,
       reverse: true,
     },
     {
@@ -479,6 +504,7 @@ function Features() {
       desc: t("feature_4_desc"),
       screenshot: <ScreenshotChallenge />,
       reverse: true,
+      wideScreenshot: false,
     },
   ];
 
@@ -512,6 +538,16 @@ function Features() {
                     </span>
                     <h3 className="text-2xl sm:text-3xl font-bold text-foreground">{f.title}</h3>
                     <p className="text-muted mt-4 leading-relaxed">{f.desc}</p>
+                    {f.bullets && (
+                      <ul className="mt-5 space-y-2">
+                        {f.bullets.map((b, bi) => (
+                          <li key={bi} className="flex items-start gap-2 text-sm text-foreground/80">
+                            <span className="shrink-0">{b.split(" ")[0]}</span>
+                            <span>{b.slice(b.indexOf(" ") + 1)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                   {/* Arrow connector — desktop only */}
                   <div className="hidden lg:flex items-center justify-center shrink-0">
@@ -524,7 +560,7 @@ function Features() {
                     </svg>
                   </div>
                   {/* Screenshot */}
-                  <div className="w-full lg:w-[400px] shrink-0">
+                  <div className={`w-full shrink-0 ${f.screenshotGlow ? "lg:w-[50%]" : "lg:w-[400px]"} ${f.screenshotGlow ? "shadow-[0_0_40px_rgba(139,92,246,0.2),0_0_80px_rgba(59,130,246,0.1)] rounded-xl" : ""}`}>
                     {f.screenshot}
                   </div>
                 </div>
@@ -701,62 +737,67 @@ function PremiumComingSoon({ t }: { t: (k: string) => string }) {
     }
   }
 
+  const premiumFeats = [
+    t("plan_benefit_premium_1"),
+    t("plan_benefit_premium_2"),
+    t("plan_benefit_premium_3"),
+    t("plan_benefit_premium_4"),
+  ];
+
   return (
-    <div className="relative bg-[#111113] border border-[#1c1c1e] rounded-2xl p-7 flex flex-col h-full">
-      {/* Overlay */}
-      <div className="absolute inset-0 rounded-2xl bg-[#09090b]/60 backdrop-blur-[1px] z-10 flex flex-col items-center justify-center gap-3">
-        <span className="text-2xl">🔒</span>
-        <span className="bg-[#1e1e1e] border border-[#2a2a2a] text-muted text-[11px] font-bold px-3 py-1 rounded-full">
-          {t("plan_premium_coming")}
-        </span>
+    <div className="relative bg-[#111113] card-gradient-border-gold rounded-2xl p-7 flex flex-col h-full">
+      {/* Coming soon badge — top right */}
+      <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 text-[11px] font-bold px-3 py-0.5 rounded-full">
+        🔒 {t("plan_premium_coming")}
+      </div>
+
+      <div className="text-xs font-bold text-yellow-400 uppercase tracking-widest">{t("plan_premium")}</div>
+      <p className="text-muted text-xs mt-1">{t("plan_premium_desc")}</p>
+      <div className="mt-5">
+        <span className="text-4xl font-bold text-foreground">19.99€</span>
+        <span className="text-muted text-sm ml-1">/ mois</span>
+      </div>
+      <div className="h-2" />
+
+      <ul className="mt-5 space-y-3 flex-1">
+        {premiumFeats.map((feat, i) => (
+          <li key={i} className="flex items-start gap-2.5 text-sm">
+            <svg className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span className="text-foreground">{feat}</span>
+          </li>
+        ))}
+      </ul>
+
+      {/* Email notification */}
+      <div className="mt-6">
         {status === "success" ? (
-          <p className="text-profit text-xs font-medium text-center px-4">{t("pricing_notify_success")}</p>
+          <p className="text-profit text-sm font-medium text-center py-3">{t("pricing_notify_success")}</p>
         ) : status === "duplicate" ? (
-          <p className="text-orange-400 text-xs text-center px-4">{t("pricing_notify_duplicate")}</p>
+          <p className="text-orange-400 text-sm text-center py-3">{t("pricing_notify_duplicate")}</p>
         ) : (
-          <div className="flex gap-2 px-4 w-full max-w-xs">
+          <div className="flex gap-2">
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") handleNotify(); }}
               placeholder="email@exemple.com"
-              className="flex-1 min-w-0 px-3 py-2 bg-[#1a1a1a] border border-[#27272a] rounded-xl text-foreground text-xs placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent/40"
+              className="flex-1 min-w-0 px-3 py-2 bg-[#1a1a1a] border border-[#27272a] rounded-xl text-foreground text-sm placeholder-muted focus:outline-none focus:ring-1 focus:ring-yellow-500/40"
             />
             <button
               onClick={handleNotify}
               disabled={status === "loading" || !email.trim()}
-              className="px-3 py-2 bg-[#1e1e1e] border border-[#2a2a2a] text-foreground text-xs rounded-xl hover:bg-[#2a2a2a] transition-colors disabled:opacity-50 whitespace-nowrap"
+              className="px-4 py-2 bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 text-sm font-semibold rounded-xl hover:bg-yellow-500/30 transition-colors disabled:opacity-50 whitespace-nowrap"
             >
               {status === "loading" ? "..." : t("plan_premium_notify_btn")}
             </button>
           </div>
         )}
         {status === "error" && (
-          <p className="text-loss text-xs">{t("pricing_notify_error")}</p>
+          <p className="text-loss text-xs mt-1">{t("pricing_notify_error")}</p>
         )}
-      </div>
-
-      {/* Card content (visible behind overlay) */}
-      <div className="text-xs font-bold text-muted uppercase tracking-widest">{t("plan_premium")}</div>
-      <p className="text-muted text-xs mt-1">{t("plan_premium_desc")}</p>
-      <div className="mt-5">
-        <span className="text-4xl font-bold text-muted">—</span>
-        <span className="text-muted text-sm ml-1">/ mo</span>
-      </div>
-      <div className="h-4" />
-      <ul className="mt-7 space-y-3 flex-1 opacity-40">
-        {[t("plan_premium_coming"), "...", "...", "..."].map((feat, i) => (
-          <li key={i} className="flex items-start gap-2.5 text-sm">
-            <svg className="w-4 h-4 text-muted shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <span className="text-muted">{feat}</span>
-          </li>
-        ))}
-      </ul>
-      <div className="mt-8 block w-full py-3 rounded-xl font-semibold text-center bg-[#1a1a1a] border border-[#27272a] text-muted opacity-40 cursor-not-allowed">
-        {t("plan_premium_coming")}
       </div>
     </div>
   );

@@ -232,9 +232,9 @@ export default function DashboardContent({
             {score !== null && <MiniScoreCircle score={score} />}
           </div>
           {score !== null ? (
-            <p className="text-[11px] text-muted mt-2">{score >= 75 ? t("dash_score_good") : score >= 50 ? t("dash_score_ok") : t("dash_score_bad")}</p>
+            <p className="text-xs text-muted mt-2">{score >= 75 ? t("dash_score_good") : score >= 50 ? t("dash_score_ok") : t("dash_score_bad")}</p>
           ) : (
-            <p className="text-[11px] text-muted mt-2">
+            <p className="text-xs text-muted mt-2">
               {ictTaggedCount < 5 ? t("dash_tag_ict_trades") : t("dash_run_analysis")}
             </p>
           )}
@@ -249,7 +249,7 @@ export default function DashboardContent({
             {weekCount}
             <span className="text-sm font-medium text-muted ml-2">({weekWinrate}% WR)</span>
           </p>
-          <p className="text-[11px] text-muted mt-2">
+          <p className="text-xs text-muted mt-2">
             {weekWins} {t("dash_wins")} · {weekCount - weekWins} {t("dash_losses")}
           </p>
         </div>
@@ -260,7 +260,7 @@ export default function DashboardContent({
           <p className={`text-2xl font-bold mt-1 tabular-nums ${todayPnl >= 0 ? "text-profit" : "text-loss"}`}>
             {todayPnl >= 0 ? "+" : ""}{todayPnl.toFixed(2)} €
           </p>
-          <p className="text-[11px] text-muted mt-2">{filteredToday.length} trade{filteredToday.length !== 1 ? "s" : ""} {t("dash_today_label")}</p>
+          <p className="text-xs text-muted mt-2">{filteredToday.length} trade{filteredToday.length !== 1 ? "s" : ""} {t("dash_today_label")}</p>
         </div>
 
         {/* Active Account */}
@@ -275,8 +275,8 @@ export default function DashboardContent({
               <div className="h-1.5 bg-border rounded-full mt-2 overflow-hidden">
                 <div className="h-full bg-profit rounded-full transition-all" style={{ width: `${Math.min(100, challengePct)}%` }} />
               </div>
-              {displayAccount.account_number && <p className="text-[11px] text-muted mt-1.5">#{displayAccount.account_number}</p>}
-              <Link href="/dashboard/challenge" className="text-[11px] text-accent hover:underline mt-1.5 inline-block">{t("dash_manage_accounts")}</Link>
+              {displayAccount.account_number && <p className="text-xs text-muted mt-1.5">#{displayAccount.account_number}</p>}
+              <Link href="/dashboard/challenge" className="text-xs text-accent hover:underline mt-1.5 inline-block">{t("dash_manage_accounts")}</Link>
             </div>
           ) : activeAccounts.length > 1 ? (
             <div className="mt-1">
@@ -286,12 +286,12 @@ export default function DashboardContent({
               <p className={`text-lg font-bold mt-0.5 tabular-nums ${totalPnl >= 0 ? "text-profit" : "text-loss"}`}>
                 {totalPnl >= 0 ? "+" : ""}{totalPnl.toLocaleString("fr-FR", { maximumFractionDigits: 2 })}€
               </p>
-              <Link href="/dashboard/challenge" className="text-[11px] text-accent hover:underline mt-1 inline-block">{t("dash_manage_accounts")}</Link>
+              <Link href="/dashboard/challenge" className="text-xs text-accent hover:underline mt-1 inline-block">{t("dash_manage_accounts")}</Link>
             </div>
           ) : (
             <div className="mt-1">
               <p className="text-lg font-bold text-muted">{t("dash_no_challenge")}</p>
-              <Link href="/dashboard/challenge" className="text-[11px] text-accent hover:underline mt-1 inline-block">{t("dash_create_challenge")}</Link>
+              <Link href="/dashboard/challenge" className="text-xs text-accent hover:underline mt-1 inline-block">{t("dash_create_challenge")}</Link>
             </div>
           )}
         </div>
@@ -310,31 +310,31 @@ export default function DashboardContent({
               <svg className="w-4 h-4 text-accent" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12" />
               </svg>
-              <h2 className="text-sm font-semibold text-foreground">{t("dash_insights_title")}</h2>
+              <h2 className="text-base font-semibold text-foreground">{t("dash_insights_title")}</h2>
             </div>
             <Link href="/dashboard/analysis" className="text-xs text-accent hover:underline">{t("dash_insights_see_all")}</Link>
           </div>
           {insights.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {insights.map((ins, i) => (
-                <div key={i} className="flex items-start gap-2.5 p-3 rounded-lg bg-surface border border-border">
-                  <span className="text-accent text-sm shrink-0 mt-0.5">
+                <div key={i} className="flex items-start gap-2.5 p-5 rounded-lg bg-surface border border-border">
+                  <span className="text-lg shrink-0 mt-0.5">
                     {["💡", "📊", "✅", "⚡"][i % 4]}
                   </span>
-                  <p className="text-xs text-muted leading-relaxed">{ins}</p>
+                  <p className="text-sm text-muted leading-relaxed">{ins}</p>
                 </div>
               ))}
             </div>
           ) : filteredAll.length > 0 ? (
             <div className="space-y-3">
-              <p className="text-xs text-muted">{t("dash_insights_has_trades").replace("{count}", String(filteredAll.length))}</p>
+              <p className="text-sm text-muted">{t("dash_insights_has_trades").replace("{count}", String(filteredAll.length))}</p>
               <Link href="/dashboard/analysis" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 border border-accent/20 text-accent text-xs font-medium hover:bg-accent/15 transition-colors btn-scale">
                 {t("dash_action_analyze")} →
               </Link>
             </div>
           ) : (
             <div className="space-y-3">
-              <p className="text-xs text-muted">{t("dash_insights_no_trades")}</p>
+              <p className="text-sm text-muted">{t("dash_insights_no_trades")}</p>
               <Link href="/dashboard/trades" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border text-muted text-xs font-medium hover:text-foreground hover:border-muted transition-colors btn-scale">
                 {t("dash_action_import")} →
               </Link>

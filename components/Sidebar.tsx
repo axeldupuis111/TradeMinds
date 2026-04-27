@@ -98,7 +98,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
       <Link
         href={href}
         onClick={onClose}
-        className={`relative flex items-center gap-3 px-3 py-[10px] rounded-lg text-[13px] font-medium transition-all duration-200 ${
+        className={`relative flex items-center gap-3 px-3 py-[10px] rounded-lg text-sm font-medium transition-all duration-200 ${
           active
             ? "bg-accent/10 text-accent"
             : "text-muted hover:text-foreground hover:bg-black/[0.03]"
@@ -192,9 +192,9 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
             <Link
               href="/dashboard/upgrade"
               onClick={onClose}
-              className="flex items-center gap-3 px-3 py-[10px] rounded-lg text-[13px] font-medium bg-gradient-to-r from-gold/10 to-gold/5 border border-gold/20 text-gold hover:from-gold/15 hover:to-gold/10 transition-all"
+              className="flex items-center gap-3 px-4 py-3 rounded-lg text-base font-semibold bg-gradient-to-r from-accent to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 transition-all shadow-md shadow-accent/20"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+              <svg className="w-5 h-5 icon-pulse shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
               </svg>
               {t("sidebar_upgrade")}
@@ -204,15 +204,15 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
           {/* Plan badge */}
           <div className="mt-3 mx-1 p-3 bg-background border border-border rounded-xl">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-[11px] text-muted">{t("sidebar_current_plan")}</p>
-              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${badgeClass}`}>
+              <p className="text-xs text-muted">{t("sidebar_current_plan")}</p>
+              <span className={`text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${badgeClass}`}>
                 {planLabel}
               </span>
             </div>
             <Link
               href="/dashboard/upgrade"
               onClick={onClose}
-              className="text-[11px] text-muted hover:text-accent transition-colors"
+              className="text-xs text-muted hover:text-accent transition-colors"
             >
               {t("sidebar_plan_manage")}
             </Link>

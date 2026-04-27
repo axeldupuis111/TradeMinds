@@ -13,6 +13,16 @@ const DEFAULT_CHECKLIST = [
   "pretrade_default_4",
 ];
 
+const DAILY_QUOTES = [
+  "Le meilleur trade est souvent celui que tu ne prends pas.",
+  "La discipline bat le talent quand le talent manque de discipline.",
+  "Un trader rentable ne cherche pas à avoir raison, il cherche à perdre peu.",
+  "La patience est la compétence la plus sous-estimée en trading.",
+  "Protège ton capital d'abord. Les profits viennent d'eux-mêmes.",
+  "Respecter son plan, c'est respecter son futur.",
+  "Le marché est là chaque jour. Ta discipline, elle, se construit maintenant.",
+];
+
 interface Strategy {
   id: string;
   name: string;
@@ -29,6 +39,14 @@ interface ActiveSession {
   checklist_completed: boolean | null;
 }
 
+interface SessionHistory {
+  id: string;
+  created_at: string;
+  emotion_before: string | null;
+  checklist_completed: boolean | null;
+  ended_at: string | null;
+}
+
 const EMOTIONS = [
   { key: "confident", emoji: "\u{1F60E}", risky: false },
   { key: "neutral", emoji: "\u{1F610}", risky: false },
@@ -38,9 +56,12 @@ const EMOTIONS = [
   { key: "revenge", emoji: "\u{1F621}", risky: true },
 ];
 
+const dailyQuote = DAILY_QUOTES[new Date().getDay() % DAILY_QUOTES.length];
+
 export default function SessionPage() {
   const { t } = useLanguage();
   const supabase = createClient();
+  const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [strategy, setStrategy] = useState<Strategy | null>(null);
   const [loading, setLoading] = useState(true);
   const [checklist, setChecklist] = useState<string[]>([]);
@@ -48,6 +69,7 @@ export default function SessionPage() {
   const [newItemText, setNewItemText] = useState("");
   const [selectedEmotion, setSelectedEmotion] = useState<string | null>(null);
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
+  const [sessionHistory, setSessionHistory] = useState<SessionHistory[]>([]);
   const [saving, setSaving] = useState(false);
   const [ending, setEnding] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
@@ -71,8 +93,8 @@ export default function SessionPage() {
       .eq("active", true)
       .lt("created_at", today);
 
-    const [{ data: strat }, { data: session }] = await Promise.all([
-      supabase.from("strategies").select("*").eq("user_id", user.id).limit(1).maybeSingle(),
+    const [{ data: strats }, { data: session }, { data: history }] = await Promise.all([
+      supabase.from("strategies").select("*").eq("user_id", user.id).order("created_at", { ascending: true }),
       supabase
         .from("sessions")
         .select("id, created_at, emotion_before, checklist_completed")
@@ -82,12 +104,22 @@ export default function SessionPage() {
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle(),
+      supabase
+        .from("sessions")
+        .select("id, created_at, emotion_before, checklist_completed, ended_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(5),
     ]);
 
-    if (strat) {
-      setStrategy(strat);
-      const customChecklist = strat.pretrade_checklist && strat.pretrade_checklist.length > 0
-        ? strat.pretrade_checklist
+    const stratList = strats || [];
+    setStrategies(stratList);
+
+    const firstStrat = stratList[0] ?? null;
+    if (firstStrat) {
+      setStrategy(firstStrat);
+      const customChecklist = firstStrat.pretrade_checklist && firstStrat.pretrade_checklist.length > 0
+        ? firstStrat.pretrade_checklist
         : DEFAULT_CHECKLIST.map((k) => t(k));
       setChecklist(customChecklist);
     } else {
@@ -95,8 +127,23 @@ export default function SessionPage() {
     }
 
     if (session) setActiveSession(session);
+    setSessionHistory(history || []);
 
     setLoading(false);
+  }
+
+  function handleStrategyChange(stratId: string) {
+    const s = strategies.find((st) => st.id === stratId) ?? null;
+    setStrategy(s);
+    setCheckedItems(new Set());
+    if (s) {
+      const cl = s.pretrade_checklist && s.pretrade_checklist.length > 0
+        ? s.pretrade_checklist
+        : DEFAULT_CHECKLIST.map((k) => t(k));
+      setChecklist(cl);
+    } else {
+      setChecklist(DEFAULT_CHECKLIST.map((k) => t(k)));
+    }
   }
 
   function toggleCheck(idx: number) {
@@ -229,7 +276,7 @@ export default function SessionPage() {
   }
 
   return (
-    <div className="max-w-3xl">
+    <div>
       <h1 className="text-2xl font-bold text-foreground">{t("session_title")}</h1>
       <p className="text-muted mt-1 mb-6">{t("session_subtitle")}</p>
 
@@ -257,141 +304,209 @@ export default function SessionPage() {
         </div>
       )}
 
-      {/* A — Checklist */}
-      <section className="bg-card border border-border rounded-xl p-5 mb-5">
-        <h2 className="text-lg font-semibold text-foreground mb-0.5">{t("session_checklist_title")}</h2>
-        <p className="text-xs text-accent mb-1">{t("session_checklist_subtitle")}</p>
-        <p className="text-muted text-sm mb-4">{t("session_checklist_desc")}</p>
+      {/* 2-column layout on desktop */}
+      <div className="flex flex-col lg:flex-row gap-6">
 
-        {/* Strategy rules reminder */}
-        {strategy && strategy.setup_rules && strategy.setup_rules.length > 0 && (
-          <div className="mb-4 rounded-lg bg-background border border-border overflow-hidden">
-            <button
-              onClick={() => setRulesOpen((v) => !v)}
-              className="w-full flex items-center justify-between px-3 py-2 text-xs text-muted font-medium hover:text-foreground transition-colors"
-            >
-              <span>📋 {rulesOpen ? t("session_hide_rules") : t("session_show_rules")}</span>
-              <span>{rulesOpen ? "▲" : "▼"}</span>
-            </button>
-            {rulesOpen && (
-              <ul className="px-3 pb-3 space-y-1">
-                {strategy.setup_rules.map((r, i) => (
-                  <li key={i} className="text-foreground text-sm">&bull; {r}</li>
-                ))}
-              </ul>
+        {/* LEFT column — 60% — Checklist + Emotion + Start */}
+        <div className="flex-1 min-w-0 space-y-5">
+
+          {/* A — Checklist */}
+          <section className="bg-card border border-border rounded-xl p-5">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground mb-0.5">{t("session_checklist_title")}</h2>
+                <p className="text-xs text-accent">{t("session_checklist_subtitle")}</p>
+              </div>
+              {/* Strategy selector */}
+              {strategies.length > 1 && (
+                <select
+                  value={strategy?.id || ""}
+                  onChange={(e) => handleStrategyChange(e.target.value)}
+                  className="px-2 py-1 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-accent shrink-0"
+                >
+                  {strategies.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+            <p className="text-muted text-sm mb-4">{t("session_checklist_desc")}</p>
+
+            {/* Strategy rules reminder */}
+            {strategy && strategy.setup_rules && strategy.setup_rules.length > 0 && (
+              <div className="mb-4 rounded-lg bg-background border border-border overflow-hidden">
+                <button
+                  onClick={() => setRulesOpen((v) => !v)}
+                  className="w-full flex items-center justify-between px-3 py-2 text-xs text-muted font-medium hover:text-foreground transition-colors"
+                >
+                  <span>📋 {rulesOpen ? t("session_hide_rules") : t("session_show_rules")}{strategy && ` — ${strategy.name}`}</span>
+                  <span>{rulesOpen ? "▲" : "▼"}</span>
+                </button>
+                {rulesOpen && (
+                  <ul className="px-3 pb-3 space-y-1">
+                    {strategy.setup_rules.map((r, i) => (
+                      <li key={i} className="text-foreground text-sm">&bull; {r}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             )}
-          </div>
-        )}
 
-        <div className="space-y-2">
-          {checklist.map((item, idx) => (
-            <div key={idx} className={`flex items-start gap-3 group rounded-lg transition-colors ${!checkedItems.has(idx) && !allChecked ? "border border-orange-400/40 px-2 py-1" : "px-2 py-1"}`}>
+            {strategies.length === 0 && (
+              <div className="mb-4 p-3 rounded-lg bg-surface border border-border text-sm text-muted flex items-center justify-between">
+                <span>Aucune stratégie définie</span>
+                <Link href="/dashboard/strategy" className="text-accent hover:underline">Définir ma stratégie →</Link>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              {checklist.map((item, idx) => (
+                <div key={idx} className={`flex items-start gap-3 group rounded-lg transition-colors ${!checkedItems.has(idx) && !allChecked ? "border border-orange-400/40 px-2 py-1" : "px-2 py-1"}`}>
+                  <input
+                    type="checkbox"
+                    checked={checkedItems.has(idx)}
+                    onChange={() => toggleCheck(idx)}
+                    className="accent-accent w-5 h-5 mt-0.5 cursor-pointer shrink-0"
+                  />
+                  <label className={`flex-1 text-sm cursor-pointer ${checkedItems.has(idx) ? "line-through text-muted" : "text-foreground"}`} onClick={() => toggleCheck(idx)}>
+                    {item}
+                  </label>
+                  <button
+                    onClick={() => removeChecklistItem(idx)}
+                    className="text-muted hover:text-loss transition-colors opacity-0 group-hover:opacity-100"
+                    title={t("session_remove")}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Add item */}
+            <div className="flex gap-2 mt-4">
               <input
-                type="checkbox"
-                checked={checkedItems.has(idx)}
-                onChange={() => toggleCheck(idx)}
-                className="accent-accent w-5 h-5 mt-0.5 cursor-pointer shrink-0"
+                type="text"
+                value={newItemText}
+                onChange={(e) => setNewItemText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") addChecklistItem(); }}
+                placeholder={t("session_add_placeholder")}
+                className="flex-1 px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
               />
-              <label className={`flex-1 text-sm cursor-pointer ${checkedItems.has(idx) ? "line-through text-muted" : "text-foreground"}`} onClick={() => toggleCheck(idx)}>
-                {item}
-              </label>
               <button
-                onClick={() => removeChecklistItem(idx)}
-                className="text-muted hover:text-loss transition-colors opacity-0 group-hover:opacity-100"
-                title={t("session_remove")}
+                onClick={addChecklistItem}
+                disabled={!newItemText.trim()}
+                className="px-4 py-2 bg-surface border border-border text-foreground rounded-lg text-sm hover:bg-border transition-colors disabled:opacity-50"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                {t("session_add")}
               </button>
             </div>
-          ))}
-        </div>
 
-        {/* Add item */}
-        <div className="flex gap-2 mt-4">
-          <input
-            type="text"
-            value={newItemText}
-            onChange={(e) => setNewItemText(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") addChecklistItem(); }}
-            placeholder={t("session_add_placeholder")}
-            className="flex-1 px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
-          />
-          <button
-            onClick={addChecklistItem}
-            disabled={!newItemText.trim()}
-            className="px-4 py-2 bg-surface border border-border text-foreground rounded-lg text-sm hover:bg-border transition-colors disabled:opacity-50"
-          >
-            {t("session_add")}
-          </button>
-        </div>
+            {/* Strategy checklist link */}
+            <div className="mt-4 pt-3 border-t border-border">
+              <Link href="/dashboard/trades" className="text-xs text-muted hover:text-accent transition-colors">
+                {strategy ? `Voir checklist technique — ${strategy.name} →` : t("session_ict_link") + " →"}
+              </Link>
+            </div>
+          </section>
 
-        {/* ICT technical checklist link */}
-        <div className="mt-4 pt-3 border-t border-border">
-          <Link href="/dashboard/trades" className="text-xs text-muted hover:text-accent transition-colors">
-            {t("session_ict_link")} →
-          </Link>
-        </div>
-      </section>
+          {/* C — Emotional state */}
+          <section className="bg-card border border-border rounded-xl p-5">
+            <h2 className="text-lg font-semibold text-foreground mb-1">{t("session_emotion_title")}</h2>
+            <p className="text-muted text-sm mb-4">{t("session_emotion_desc")}</p>
 
-      {/* B — State of the day */}
-      <div className="mb-5">
-        <DayStatus />
-      </div>
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+              {EMOTIONS.map((em) => (
+                <button
+                  key={em.key}
+                  onClick={() => setSelectedEmotion(em.key)}
+                  className={`flex flex-col items-center gap-1 p-3 rounded-lg border transition-all ${
+                    selectedEmotion === em.key
+                      ? "border-2 border-blue-500 bg-blue-500/10 scale-110"
+                      : "bg-background border-border hover:border-muted"
+                  }`}
+                >
+                  <span className="text-2xl">{em.emoji}</span>
+                  <span className="text-xs text-muted">{t(`emotion_${em.key}`)}</span>
+                </button>
+              ))}
+            </div>
 
-      {/* C — Emotional state */}
-      <section className="bg-card border border-border rounded-xl p-5 mb-5">
-        <h2 className="text-lg font-semibold text-foreground mb-1">{t("session_emotion_title")}</h2>
-        <p className="text-muted text-sm mb-4">{t("session_emotion_desc")}</p>
+            {riskyEmotion && (
+              <div className="mt-4 p-3 rounded-lg bg-loss/10 border border-loss/30 flex items-start gap-3">
+                <svg className="w-5 h-5 text-loss shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01M10.29 3.86l-8.6 14.86A1 1 0 002.56 20h18.88a1 1 0 00.87-1.28l-8.6-14.86a1 1 0 00-1.72 0z" />
+                </svg>
+                <p className="text-sm text-loss">{t("session_emotion_warning")}</p>
+              </div>
+            )}
+          </section>
 
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-          {EMOTIONS.map((em) => (
-            <button
-              key={em.key}
-              onClick={() => setSelectedEmotion(em.key)}
-              className={`flex flex-col items-center gap-1 p-3 rounded-lg border transition-all ${
-                selectedEmotion === em.key
-                  ? "border-2 border-blue-500 bg-blue-500/10 scale-110"
-                  : "bg-background border-border hover:border-muted"
-              }`}
-            >
-              <span className="text-2xl">{em.emoji}</span>
-              <span className="text-xs text-muted">{t(`emotion_${em.key}`)}</span>
-            </button>
-          ))}
-        </div>
-
-        {riskyEmotion && (
-          <div className="mt-4 p-3 rounded-lg bg-loss/10 border border-loss/30 flex items-start gap-3">
-            <svg className="w-5 h-5 text-loss shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01M10.29 3.86l-8.6 14.86A1 1 0 002.56 20h18.88a1 1 0 00.87-1.28l-8.6-14.86a1 1 0 00-1.72 0z" />
-            </svg>
-            <p className="text-sm text-loss">{t("session_emotion_warning")}</p>
+          {/* D — Start button */}
+          <div className="flex flex-col items-start gap-2">
+            {checklist.length > 0 && (
+              <p className={`text-sm font-medium ${allChecked ? "text-profit" : "text-orange-400"}`}>
+                {allChecked
+                  ? t("session_all_ready")
+                  : (checklist.length - checkedItems.size === 1 ? t("session_item_remaining_one") : t("session_items_remaining")).replace("{N}", String(checklist.length - checkedItems.size))}
+              </p>
+            )}
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+              <button
+                onClick={handleStartClick}
+                disabled={!selectedEmotion || saving}
+                className={`w-full sm:w-auto px-8 py-3 text-white rounded-lg font-medium transition-colors disabled:opacity-50 ${allChecked ? "bg-accent hover:bg-blue-600" : "bg-accent/80 hover:bg-accent"}`}
+              >
+                {saving ? "..." : t("session_start_button")}
+              </button>
+              {!selectedEmotion && (
+                <p className="text-xs text-muted">{t("session_select_emotion_first")}</p>
+              )}
+            </div>
           </div>
-        )}
-      </section>
+        </div>
 
-      {/* D — Start button */}
-      <div className="flex flex-col items-start gap-2">
-        {checklist.length > 0 && (
-          <p className={`text-sm font-medium ${allChecked ? "text-profit" : "text-orange-400"}`}>
-            {allChecked
-              ? t("session_all_ready")
-              : (checklist.length - checkedItems.size === 1 ? t("session_item_remaining_one") : t("session_items_remaining")).replace("{N}", String(checklist.length - checkedItems.size))}
-          </p>
-        )}
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
-          <button
-            onClick={handleStartClick}
-            disabled={!selectedEmotion || saving}
-            className={`w-full sm:w-auto px-8 py-3 text-white rounded-lg font-medium transition-colors disabled:opacity-50 ${allChecked ? "bg-accent hover:bg-blue-600" : "bg-accent/80 hover:bg-accent"}`}
-          >
-            {saving ? "..." : t("session_start_button")}
-          </button>
-          {!selectedEmotion && (
-            <p className="text-xs text-muted">{t("session_select_emotion_first")}</p>
+        {/* RIGHT column — 40% — DayStatus + History + Quote */}
+        <div className="lg:w-[40%] shrink-0 space-y-5">
+
+          {/* Day status */}
+          <DayStatus />
+
+          {/* Session history */}
+          {sessionHistory.length > 0 && (
+            <section className="bg-card border border-border rounded-xl p-5">
+              <h2 className="text-base font-semibold text-foreground mb-3">📅 Historique des sessions</h2>
+              <div className="space-y-2">
+                {sessionHistory.map((s) => {
+                  const emotion = EMOTIONS.find((e) => e.key === s.emotion_before);
+                  const date = new Date(s.created_at).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+                  return (
+                    <div key={s.id} className="flex items-center gap-3 py-2 border-b border-border last:border-0">
+                      <span className="text-xl shrink-0">{emotion?.emoji ?? "—"}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-foreground font-medium capitalize">{date}</p>
+                        <p className="text-xs text-muted">
+                          Checklist : {s.checklist_completed ? <span className="text-profit">complète</span> : <span className="text-orange-400">incomplète</span>}
+                        </p>
+                      </div>
+                      {s.ended_at ? (
+                        <span className="text-xs text-muted shrink-0">{new Date(s.ended_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</span>
+                      ) : (
+                        <span className="text-xs text-profit shrink-0">En cours</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
           )}
+
+          {/* Daily quote */}
+          <div className="bg-surface border border-border rounded-xl p-5">
+            <p className="text-xs text-muted uppercase tracking-wider mb-2">💡 Conseil du jour</p>
+            <p className="text-sm text-foreground leading-relaxed italic">&ldquo;{dailyQuote}&rdquo;</p>
+          </div>
         </div>
       </div>
     </div>

@@ -49,20 +49,20 @@ const translations: Record<Lang, Record<string, string>> = {
     feature_1_desc: "Importe tes trades depuis ta plateforme de trading. Compatible MT4, MT5, cTrader, Binance, Bybit, TradingView et plus encore.",
     feature_2_title: "IA Coach",
     feature_2_desc:
-      "Décris ta stratégie en texte libre. L'IA la comprend et juge chaque trade.",
+      "Ton coach personnel disponible 24/7. Il analyse chaque trade, détecte le revenge trading, le FOMO, le surlevier — et te donne des recommandations concrètes pour progresser.",
     feature_3_title: "Score de discipline",
     feature_3_desc:
       "Un score de 0 à 100. Pas de bullshit. Tu sais exactement où tu en es.",
-    feature_4_title: "Suivi Challenge",
+    feature_4_title: "Suivi Challenge & Fonds Propres",
     feature_4_desc:
-      "Drawdown, profit target, jours restants. Prop firm ou compte propre. Tout en un coup d'œil.",
+      "Que tu trades sur un challenge FTMO ou avec ton capital propre, suis ton drawdown, ton profit target et ta progression jour par jour. Tout en un coup d'œil.",
 
     // How it works
     how_title: "Comment ça marche",
     how_1_title: "Décris ta stratégie",
     how_1_desc: "En langage naturel. L'IA fait le reste.",
     how_2_title: "Importe tes trades",
-    how_2_desc: "CSV depuis MT4/MT5. 2 clics.",
+    how_2_desc: "Importe depuis MT4, MT5, cTrader, Binance, TradingView et 10+ plateformes. CSV, XLSX ou template universel.",
     how_3_title: "Reçois ton analyse",
     how_3_desc: "Score, violations, patterns, recommandations. En 10 secondes.",
 
@@ -314,7 +314,7 @@ const translations: Record<Lang, Record<string, string>> = {
     // CsvImport
     csv_title: "Import CSV",
     csv_drop_title: "Glisse ton fichier CSV ou XLSX ici",
-    csv_drop_sub: "ou clique pour parcourir — format MT4/MT5, CSV ou Excel",
+    csv_drop_sub: "ou clique pour parcourir — MT4, MT5, cTrader, Binance, TradingView, CSV, XLSX",
     csv_guide_btn: "Guide d'export",
     csv_compatible_with: "Compatible avec les exports de :",
     csv_download_template: "Télécharger le template CSV",
@@ -840,7 +840,7 @@ const translations: Record<Lang, Record<string, string>> = {
     nav_features: "Fonctionnalités",
     nav_pricing: "Tarifs",
     nav_faq: "FAQ",
-    hero_subtitle_v2: "L'IA analyse tes trades, détecte tes erreurs et mesure ta discipline. Import MT4/MT5, cTrader, TradingView ou toute autre plateforme en 2 clics.",
+    hero_subtitle_v2: "L'IA qui transforme ton journal de trading en coach personnel. Elle détecte tes patterns destructeurs, mesure ta discipline et te dit exactement ce qui te coûte de l'argent — avant que tu ne le perdes.",
     hero_social_proof: "✓ Import en 2 clics · ✓ Score de discipline instantané · ✓ Rejoins 500+ traders",
     hero_ai_badge: "🧠 IA entraînée spécifiquement sur les comportements des traders — pas un chatbot générique.",
     hero_ai_exclusive: "Notre IA est conçue exclusivement pour le trading. Elle analyse tes trades, ta stratégie et ta discipline — rien d'autre.",
@@ -1054,19 +1054,19 @@ const translations: Record<Lang, Record<string, string>> = {
     feature_1_desc: "Import your trades from your trading platform. Compatible with MT4, MT5, cTrader, Binance, Bybit, TradingView and more.",
     feature_2_title: "AI Coach",
     feature_2_desc:
-      "Describe your strategy in plain text. The AI understands it and judges every trade.",
+      "Your personal coach available 24/7. It analyses every trade, detects revenge trading, FOMO, over-leveraging — and gives you concrete recommendations to improve.",
     feature_3_title: "Discipline score",
     feature_3_desc:
       "A score from 0 to 100. No fluff. You know exactly where you stand.",
-    feature_4_title: "Challenge tracker",
+    feature_4_title: "Challenge & Personal Capital",
     feature_4_desc:
-      "Drawdown, profit target, days left. Prop firm or personal account. Everything at a glance.",
+      "Whether you're trading a FTMO challenge or with your own capital, track your drawdown, profit target and progress day by day. Everything at a glance.",
 
     how_title: "How it works",
     how_1_title: "Describe your strategy",
     how_1_desc: "In plain language. The AI does the rest.",
     how_2_title: "Import your trades",
-    how_2_desc: "CSV from MT4/MT5. 2 clicks.",
+    how_2_desc: "Import from MT4, MT5, cTrader, Binance, TradingView and 10+ platforms. CSV, XLSX or universal template.",
     how_3_title: "Get your analysis",
     how_3_desc: "Score, violations, patterns, recommendations. In 10 seconds.",
 
@@ -1302,7 +1302,7 @@ const translations: Record<Lang, Record<string, string>> = {
 
     csv_title: "CSV Import",
     csv_drop_title: "Drop your CSV or XLSX file here",
-    csv_drop_sub: "or click to browse — MT4/MT5, CSV or Excel format",
+    csv_drop_sub: "or click to browse — MT4, MT5, cTrader, Binance, TradingView, CSV, XLSX",
     csv_guide_btn: "Export guide",
     csv_compatible_with: "Compatible with exports from:",
     csv_download_template: "Download CSV template",
@@ -1823,7 +1823,7 @@ const translations: Record<Lang, Record<string, string>> = {
     nav_features: "Features",
     nav_pricing: "Pricing",
     nav_faq: "FAQ",
-    hero_subtitle_v2: "AI analyses your trades, spots your mistakes and measures your discipline. Import MT4/MT5, cTrader, TradingView or any other platform in 2 clicks.",
+    hero_subtitle_v2: "The AI that turns your trading journal into a personal coach. It detects your destructive patterns, measures your discipline and tells you exactly what's costing you money — before you lose it.",
     hero_social_proof: "✓ Import in 2 clicks · ✓ Instant discipline score · ✓ Join 500+ traders",
     hero_ai_badge: "🧠 AI trained specifically on trader behaviours — not a generic chatbot.",
     hero_ai_exclusive: "Our AI is designed exclusively for trading. It analyses your trades, your strategy and your discipline — nothing else.",
@@ -2037,19 +2037,19 @@ const translations: Record<Lang, Record<string, string>> = {
     feature_1_desc: "Importiere deine Trades von deiner Trading-Plattform. Kompatibel mit MT4, MT5, cTrader, Binance, Bybit, TradingView und mehr.",
     feature_2_title: "KI-Coach",
     feature_2_desc:
-      "Beschreibe deine Strategie in Freitext. Die KI versteht sie und bewertet jeden Trade.",
+      "Dein persönlicher Coach rund um die Uhr. Er analysiert jeden Trade, erkennt Revenge-Trading, FOMO, Überhebeln — und gibt dir konkrete Empfehlungen zur Verbesserung.",
     feature_3_title: "Disziplin-Score",
     feature_3_desc:
       "Ein Score von 0 bis 100. Kein Blabla. Du weißt genau, wo du stehst.",
-    feature_4_title: "Challenge-Tracking",
+    feature_4_title: "Challenge & Eigenkapital",
     feature_4_desc:
-      "Drawdown, Profit-Target, verbleibende Tage. Prop Firm oder eigenes Konto. Alles auf einen Blick.",
+      "Ob du ein FTMO-Challenge tradest oder mit eigenem Kapital — verfolge deinen Drawdown, Profit-Target und Fortschritt täglich. Alles auf einen Blick.",
 
     how_title: "So funktioniert's",
     how_1_title: "Beschreibe deine Strategie",
     how_1_desc: "In natürlicher Sprache. Die KI macht den Rest.",
     how_2_title: "Importiere deine Trades",
-    how_2_desc: "CSV von MT4/MT5. 2 Klicks.",
+    how_2_desc: "Importiere von MT4, MT5, cTrader, Binance, TradingView und 10+ Plattformen. CSV, XLSX oder universelle Vorlage.",
     how_3_title: "Erhalte deine Analyse",
     how_3_desc: "Score, Verstöße, Muster, Empfehlungen. In 10 Sekunden.",
 
@@ -2286,7 +2286,7 @@ const translations: Record<Lang, Record<string, string>> = {
 
     csv_title: "CSV-Import",
     csv_drop_title: "Ziehe deine CSV- oder XLSX-Datei hierher",
-    csv_drop_sub: "oder klicke zum Durchsuchen \u2014 MT4/MT5, CSV oder Excel",
+    csv_drop_sub: "oder klicke zum Durchsuchen \u2014 MT4, MT5, cTrader, Binance, TradingView, CSV, XLSX",
     csv_guide_btn: "Export-Guide",
     csv_compatible_with: "Kompatibel mit Exporten von:",
     csv_download_template: "CSV-Vorlage herunterladen",
@@ -2807,7 +2807,7 @@ const translations: Record<Lang, Record<string, string>> = {
     nav_features: "Funktionen",
     nav_pricing: "Preise",
     nav_faq: "FAQ",
-    hero_subtitle_v2: "Die KI analysiert deine Trades, erkennt Fehler und misst deine Disziplin. Import von MT4/MT5, cTrader, TradingView oder jeder anderen Plattform in 2 Klicks.",
+    hero_subtitle_v2: "Die KI, die dein Trading-Journal in einen persönlichen Coach verwandelt. Sie erkennt destruktive Muster, misst deine Disziplin und sagt dir genau, was dich Geld kostet — bevor du es verlierst.",
     hero_social_proof: "✓ Import in 2 Klicks · ✓ Sofortiger Disziplin-Score · ✓ Tritt 500+ Tradern bei",
     hero_ai_badge: "🧠 KI speziell auf das Verhalten von Tradern trainiert — kein generischer Chatbot.",
     hero_ai_exclusive: "Unsere KI wurde ausschließlich für Trading entwickelt. Sie analysiert deine Trades, deine Strategie und deine Disziplin — nichts anderes.",
@@ -3021,19 +3021,19 @@ const translations: Record<Lang, Record<string, string>> = {
     feature_1_desc: "Importa tus trades desde tu plataforma de trading. Compatible con MT4, MT5, cTrader, Binance, Bybit, TradingView y más.",
     feature_2_title: "Coach IA",
     feature_2_desc:
-      "Describe tu estrategia en texto libre. La IA la entiende y evalúa cada trade.",
+      "Tu coach personal disponible 24/7. Analiza cada trade, detecta revenge trading, FOMO, sobrepalanqueo — y te da recomendaciones concretas para mejorar.",
     feature_3_title: "Score de disciplina",
     feature_3_desc:
       "Un score de 0 a 100. Sin rodeos. Sabes exactamente dónde estás.",
-    feature_4_title: "Seguimiento de Challenge",
+    feature_4_title: "Challenge & Capital Propio",
     feature_4_desc:
-      "Drawdown, profit target, días restantes. Prop firm o cuenta propia. Todo de un vistazo.",
+      "Ya sea en un challenge FTMO o con tu propio capital, sigue tu drawdown, profit target y progreso día a día. Todo de un vistazo.",
 
     how_title: "Cómo funciona",
     how_1_title: "Describe tu estrategia",
     how_1_desc: "En lenguaje natural. La IA hace el resto.",
     how_2_title: "Importa tus trades",
-    how_2_desc: "CSV desde MT4/MT5. 2 clics.",
+    how_2_desc: "Importa desde MT4, MT5, cTrader, Binance, TradingView y 10+ plataformas. CSV, XLSX o plantilla universal.",
     how_3_title: "Recibe tu análisis",
     how_3_desc: "Score, violaciones, patrones, recomendaciones. En 10 segundos.",
 
@@ -3270,7 +3270,7 @@ const translations: Record<Lang, Record<string, string>> = {
 
     csv_title: "Importar CSV",
     csv_drop_title: "Arrastra tu archivo CSV o XLSX aquí",
-    csv_drop_sub: "o haz clic para buscar — MT4/MT5, CSV o Excel",
+    csv_drop_sub: "o haz clic para buscar — MT4, MT5, cTrader, Binance, TradingView, CSV, XLSX",
     csv_guide_btn: "Guía de exportación",
     csv_compatible_with: "Compatible con exportaciones de:",
     csv_download_template: "Descargar plantilla CSV",
@@ -3791,7 +3791,7 @@ const translations: Record<Lang, Record<string, string>> = {
     nav_features: "Funciones",
     nav_pricing: "Precios",
     nav_faq: "FAQ",
-    hero_subtitle_v2: "La IA analiza tus trades, detecta tus errores y mide tu disciplina. Importa MT4/MT5, cTrader, TradingView o cualquier otra plataforma en 2 clics.",
+    hero_subtitle_v2: "La IA que convierte tu diario de trading en un coach personal. Detecta tus patrones destructores, mide tu disciplina y te dice exactamente qué te cuesta dinero — antes de que lo pierdas.",
     hero_social_proof: "✓ Importa en 2 clics · ✓ Score de disciplina instantáneo · ✓ Únete a 500+ traders",
     hero_ai_badge: "🧠 IA entrenada específicamente en comportamientos de traders — no es un chatbot genérico.",
     hero_ai_exclusive: "Nuestra IA está diseñada exclusivamente para el trading. Analiza tus trades, tu estrategia y tu disciplina — nada más.",
