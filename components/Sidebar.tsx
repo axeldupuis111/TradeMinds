@@ -84,16 +84,20 @@ const planBadgeClass: Record<string, string> = {
 
 
 
+const AI_DEMO_HREFS = new Set(["/dashboard/strategy", "/dashboard/analysis"]);
+
 export default function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useLanguage();
   const { plan } = usePlan();
   const pathname = usePathname();
   const showUpgrade = plan === "free" || plan === "plus";
+  const isFree = plan === "free";
   const badgeClass = planBadgeClass[plan] || planBadgeClass.free;
   const planLabel = plan === "plus" ? t("plan_plus") : plan === "premium" ? t("plan_premium") : t("plan_free");
 
   function NavItem({ href, icon, labelKey }: { href: string; icon: React.ReactNode; labelKey: string }) {
     const active = pathname === href;
+    const showDemoBadge = isFree && AI_DEMO_HREFS.has(href);
     return (
       <Link
         href={href}
@@ -108,7 +112,12 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
           <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-accent rounded-r-full" />
         )}
         {icon}
-        {t(labelKey)}
+        <span className="flex-1">{t(labelKey)}</span>
+        {showDemoBadge && (
+          <span className="text-[10px] font-bold bg-accent text-white px-1.5 py-0.5 rounded-full leading-none">
+            {t("sidebar_demo_badge")}
+          </span>
+        )}
       </Link>
     );
   }

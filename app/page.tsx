@@ -837,8 +837,8 @@ function Pricing() {
       name: t("plan_plus"),
       sub: t("plan_sub_plus"),
       monthlyPrice: "9.99€",
-      annualPrice: "89.99€",
-      annualMonthly: "7.50€",
+      annualPrice: "95.88€",
+      annualMonthly: "7.99€",
       feats: [
         t("plan_benefit_plus_1"),
         t("plan_benefit_plus_2"),
@@ -876,7 +876,7 @@ function Pricing() {
           >
             {t("plan_annual")}
             <span className="ml-2 px-1.5 py-0.5 bg-profit/10 text-profit text-[11px] font-bold rounded-full badge-pulse inline-block">
-              -25%
+              -20%
             </span>
           </button>
         </Reveal>

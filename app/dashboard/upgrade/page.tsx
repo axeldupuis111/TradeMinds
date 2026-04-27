@@ -3,28 +3,32 @@
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
+import Link from "next/link";
 import { useRef, useState } from "react";
 
 interface PlanFeature {
   key: string;
   free: boolean | string;
   plus: boolean | string;
+  demoHref?: string;
 }
 
 const features: PlanFeature[] = [
-  { key: "plan_feat_csv_import",    free: "1/plan_day",  plus: "plan_unlimited" },
-  { key: "plan_feat_accounts",       free: "1",           plus: "plan_unlimited" },
-  { key: "plan_feat_calendar",       free: true,          plus: true             },
-  { key: "plan_feat_equity_curve",   free: true,          plus: true             },
-  { key: "plan_feat_manual_trades",  free: true,          plus: true             },
-  { key: "plan_feat_strategy_ai",    free: true,          plus: true             },
-  { key: "plan_feat_analysis_ai",    free: "1/plan_week", plus: "1/plan_day"     },
-  { key: "plan_feat_coach_ai",       free: "3/plan_day",  plus: "10/plan_day"    },
-  { key: "plan_feat_tags_emotions",  free: false,         plus: true             },
-  { key: "plan_feat_pdf_export",     free: false,         plus: true             },
-  { key: "plan_feat_analytics",      free: false,         plus: true             },
-  { key: "plan_feat_public_profile", free: false,         plus: true             },
-  { key: "plan_feat_daily_summary",  free: false,         plus: true             },
+  { key: "plan_feat_csv_import",        free: "1/plan_day",  plus: "plan_unlimited"                          },
+  { key: "plan_feat_accounts",          free: "1",           plus: "plan_unlimited"                          },
+  { key: "plan_feat_calendar",          free: true,          plus: true                                      },
+  { key: "plan_feat_equity_curve",      free: true,          plus: true                                      },
+  { key: "plan_feat_manual_trades",     free: true,          plus: true                                      },
+  { key: "plan_feat_session_pretrade",  free: true,          plus: true                                      },
+  { key: "plan_feat_strategy_ai",       free: false,         plus: true,  demoHref: "/dashboard/strategy"    },
+  { key: "plan_feat_analysis_ai",       free: false,         plus: "1/plan_day", demoHref: "/dashboard/analysis" },
+  { key: "plan_feat_coach_ai",          free: false,         plus: "10/plan_day", demoHref: "/dashboard/analysis" },
+  { key: "plan_feat_tags_emotions",     free: false,         plus: true                                      },
+  { key: "plan_feat_pdf_export",        free: false,         plus: true                                      },
+  { key: "plan_feat_analytics",         free: false,         plus: true                                      },
+  { key: "plan_feat_public_profile",    free: false,         plus: true                                      },
+  { key: "plan_feat_daily_summary",     free: false,         plus: true                                      },
+  { key: "plan_feat_stop_trading",      free: false,         plus: true                                      },
 ];
 
 const faqKeys = [
@@ -202,6 +206,11 @@ export default function UpgradePage() {
                   <div key={f.key} className="flex items-center gap-3">
                     <div className="w-6 flex justify-center shrink-0">{renderValue(f.free)}</div>
                     <span className="text-sm text-foreground">{t(f.key)}</span>
+                    {f.free === false && f.demoHref && (
+                      <Link href={f.demoHref} className="text-xs text-accent hover:underline shrink-0">
+                        {t("demo_see")}
+                      </Link>
+                    )}
                   </div>
                 ))}
               </div>
@@ -302,15 +311,19 @@ export default function UpgradePage() {
 
       {/* Premium — Coming soon card */}
       <div className="mt-6 max-w-2xl mx-auto" ref={premiumRef} id="premium-notify">
-        <div className="relative rounded-xl border-2 border-border p-6 opacity-70">
-          <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-surface text-muted text-xs font-bold px-3 py-0.5 rounded-full">
+        <div className="relative rounded-xl border-2 border-yellow-500/30 p-6 bg-card/80 shadow-lg shadow-yellow-500/5">
+          <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-yellow-500/20 text-yellow-400 text-xs font-bold px-3 py-0.5 rounded-full border border-yellow-500/30">
             {t("plan_premium_coming")}
           </span>
 
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div className="flex-1">
-              <h3 className="text-lg font-bold text-foreground">{t("plan_premium")}</h3>
-              <p className="text-muted text-sm mt-1 max-w-md">{t("plan_premium_desc")}</p>
+              <h3 className="text-lg font-bold text-yellow-400">{t("plan_premium")}</h3>
+              <div className="flex items-baseline gap-1 mt-1">
+                <span className="text-2xl font-bold text-foreground/70">19.99€</span>
+                <span className="text-muted text-sm">/{t("plan_month")}</span>
+              </div>
+              <p className="text-muted text-sm mt-2 max-w-md">{t("plan_premium_desc")}</p>
             </div>
 
             <div className="sm:w-64 shrink-0">

@@ -471,27 +471,196 @@ export default function AnalysisPage() {
       <div className="max-w-3xl">
         <h1 className="text-2xl font-bold text-foreground">{t("analysis_title")}</h1>
         <p className="text-muted mt-1">{t("analysis_subtitle")}</p>
-        <div className="mt-6">
-          <UpgradeBanner message={t("plan_analysis_locked")} />
+
+        {/* Demo banner */}
+        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3 rounded-xl bg-gradient-to-r from-accent to-purple-600 text-white shadow-lg">
+          <span className="text-sm font-medium">{t("demo_banner_analysis")}</span>
+          <Link
+            href="/dashboard/upgrade"
+            className="shrink-0 px-4 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap"
+          >
+            {t("demo_unlock_analysis")}
+          </Link>
         </div>
 
-        {/* Free demo of AI analysis */}
-        <div className="mt-8 relative">
-          <div className="bg-card border border-border rounded-xl p-6 opacity-70 select-none pointer-events-none">
-            <div className="absolute top-4 right-4 px-3 py-1 bg-muted/20 border border-border rounded text-xs font-bold text-muted tracking-widest">
-              {t("ict_demo_overlay")}
-            </div>
-            <h2 className="text-lg font-semibold text-foreground mb-3">{t("ict_demo_title")}</h2>
-            <p className="text-foreground/80 text-sm leading-relaxed">{t("ict_demo_text")}</p>
+        {/* Full demo report */}
+        <div className="mt-6 relative overflow-hidden">
+          {/* Watermark */}
+          <div className="pointer-events-none select-none absolute inset-0 flex items-center justify-center z-10 overflow-hidden">
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <span
+                key={i}
+                className="absolute text-foreground font-bold tracking-widest"
+                style={{
+                  fontSize: 80,
+                  opacity: 0.04,
+                  transform: `rotate(-30deg) translate(${(i % 3) * 260 - 260}px, ${Math.floor(i / 3) * 200 - 100}px)`,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {t("demo_watermark")}
+              </span>
+            ))}
           </div>
-          <div className="mt-4 flex flex-col sm:flex-row items-center gap-3">
+
+          <div className="space-y-6">
+            {/* Score + summary */}
+            <div className="bg-card border border-border rounded-xl p-6 flex flex-col sm:flex-row items-center gap-6">
+              <ScoreCircle score={42} label={t("demo_section_summary")} />
+              <div>
+                <p className="text-foreground text-sm font-semibold mb-2">47 trades · Mars 2024</p>
+                <p className="text-muted text-sm leading-relaxed">{t("demo_analysis_summary")}</p>
+              </div>
+            </div>
+
+            {/* Insights */}
+            <div className="bg-card border border-border rounded-xl p-6">
+              <h2 className="text-base font-semibold text-foreground mb-4">{t("demo_section_insights")}</h2>
+              <div className="space-y-4">
+                <div className="flex gap-3">
+                  <span className="text-xl shrink-0">💡</span>
+                  <div>
+                    <p className="text-foreground text-sm font-semibold">{t("demo_insight_1_title")}</p>
+                    <p className="text-muted text-sm mt-1">{t("demo_insight_1_text")}</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <span className="text-xl shrink-0">🚨</span>
+                  <div>
+                    <p className="text-foreground text-sm font-semibold">{t("demo_insight_2_title")}</p>
+                    <p className="text-muted text-sm mt-1">{t("demo_insight_2_text")}</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <span className="text-xl shrink-0">✅</span>
+                  <div>
+                    <p className="text-foreground text-sm font-semibold">{t("demo_insight_3_title")}</p>
+                    <p className="text-muted text-sm mt-1">{t("demo_insight_3_text")}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Recommendations */}
+            <div className="bg-card border border-border rounded-xl p-6">
+              <h2 className="text-base font-semibold text-foreground mb-4">{t("demo_section_recommendations")}</h2>
+              <div className="space-y-2">
+                {[t("demo_reco_1"), t("demo_reco_2"), t("demo_reco_3")].map((r, i) => (
+                  <div key={i} className="bg-accent/5 border border-accent/20 rounded-lg p-3 flex gap-3">
+                    <span className="text-accent font-bold text-sm shrink-0">{i + 1}.</span>
+                    <p className="text-foreground text-sm">{r}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Demo Coach section */}
+        <div className="mt-8">
+          {/* Coach demo banner */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-accent text-white shadow-lg mb-6">
+            <span className="text-sm font-medium">{t("demo_banner_coach")}</span>
             <Link
               href="/dashboard/upgrade"
-              className="px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors text-sm"
+              className="shrink-0 px-4 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap"
             >
-              {t("ict_demo_cta")} → {t("ict_demo_cta_sub")}
+              {t("demo_unlock_coach")}
             </Link>
           </div>
+
+          {/* Demo chat */}
+          <div className="bg-card border border-border rounded-xl overflow-hidden relative">
+            {/* Watermark */}
+            <div className="pointer-events-none select-none absolute inset-0 flex items-center justify-center z-10 overflow-hidden">
+              {[0, 1].map((i) => (
+                <span
+                  key={i}
+                  className="absolute text-foreground font-bold tracking-widest"
+                  style={{
+                    fontSize: 80,
+                    opacity: 0.04,
+                    transform: `rotate(-30deg) translate(${i * 280 - 140}px, 0px)`,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {t("demo_watermark")}
+                </span>
+              ))}
+            </div>
+
+            <div className="p-4 space-y-4 min-h-[400px]">
+              {[
+                { role: "user", msg: t("demo_coach_user_1") },
+                { role: "assistant", msg: t("demo_coach_reply_1") },
+                { role: "user", msg: t("demo_coach_user_2") },
+                { role: "assistant", msg: t("demo_coach_reply_2") },
+                { role: "user", msg: t("demo_coach_user_3") },
+                { role: "assistant", msg: t("demo_coach_reply_3") },
+              ].map((m, i) => (
+                <div key={i} className={`flex gap-2.5 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                  {m.role === "assistant" && (
+                    <div className="w-7 h-7 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center shrink-0 mt-0.5">
+                      <svg className="w-3.5 h-3.5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                      </svg>
+                    </div>
+                  )}
+                  <div className={`rounded-xl px-4 py-2.5 text-sm max-w-[80%] whitespace-pre-wrap ${
+                    m.role === "user"
+                      ? "bg-accent text-white rounded-br-sm"
+                      : "bg-surface border border-border text-foreground rounded-bl-sm"
+                  }`}>
+                    {m.msg}
+                  </div>
+                  {m.role === "user" && (
+                    <div className="w-7 h-7 rounded-full bg-foreground/10 border border-white/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <svg className="w-3.5 h-3.5 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Disabled input */}
+            <div className="border-t border-border p-3 flex gap-2">
+              <input
+                type="text"
+                disabled
+                placeholder={t("demo_coach_input_placeholder")}
+                className="flex-1 px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm placeholder-muted opacity-50 cursor-not-allowed"
+              />
+              <button disabled className="px-4 py-2 bg-accent/50 text-white rounded-lg text-sm font-medium cursor-not-allowed opacity-50">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Coach CTA */}
+          <div className="mt-4 bg-card border border-accent/30 rounded-xl p-5">
+            <p className="text-muted text-sm">{t("demo_cta_coach_text")}</p>
+            <Link
+              href="/dashboard/upgrade"
+              className="mt-3 inline-block px-5 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors text-sm"
+            >
+              {t("demo_cta_coach_btn")}
+            </Link>
+          </div>
+        </div>
+
+        {/* Analysis CTA */}
+        <div className="mt-6 bg-card border border-accent/30 rounded-xl p-5">
+          <p className="text-muted text-sm">{t("demo_cta_analysis_text")}</p>
+          <Link
+            href="/dashboard/upgrade"
+            className="mt-3 inline-block px-5 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors text-sm"
+          >
+            {t("demo_cta_analysis_btn")}
+          </Link>
         </div>
       </div>
     );

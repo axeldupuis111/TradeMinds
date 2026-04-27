@@ -1,7 +1,7 @@
 "use client";
 
-import UpgradeBanner from "@/components/UpgradeBanner";
 import { useLanguage } from "@/lib/LanguageContext";
+import Link from "next/link";
 import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useRef, useState } from "react";
@@ -353,8 +353,105 @@ export default function StrategyPage() {
       <div className="max-w-2xl">
         <h1 className="text-2xl font-bold text-foreground">{t("strategy_title")}</h1>
         <p className="text-muted mt-1">{t("strategy_subtitle")}</p>
-        <div className="mt-6">
-          <UpgradeBanner message={t("plan_strategy_locked")} />
+
+        {/* Demo banner */}
+        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3 rounded-xl bg-gradient-to-r from-accent to-purple-600 text-white shadow-lg">
+          <span className="text-sm font-medium">{t("demo_banner_strategy")}</span>
+          <Link
+            href="/dashboard/upgrade"
+            className="shrink-0 px-4 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap"
+          >
+            {t("demo_unlock_strategy")}
+          </Link>
+        </div>
+
+        {/* Demo strategy — read-only */}
+        <div className="mt-6 relative">
+          {/* Watermark */}
+          <div className="pointer-events-none select-none absolute inset-0 flex items-center justify-center z-10 overflow-hidden rounded-xl">
+            {[0, 1].map((i) => (
+              <span
+                key={i}
+                className="absolute text-foreground font-bold tracking-widest"
+                style={{
+                  fontSize: 80,
+                  opacity: 0.05,
+                  transform: `rotate(-30deg) translate(${i * 260 - 130}px, 0px)`,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {t("demo_watermark")}
+              </span>
+            ))}
+          </div>
+
+          <div className="space-y-4">
+            {/* Strategy name */}
+            <div className="bg-card border border-border rounded-xl p-5">
+              <label className="text-xs text-muted uppercase tracking-wider font-semibold">{t("strategy_name") || "Nom"}</label>
+              <div className="mt-2 px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm opacity-70">
+                {t("demo_strategy_name")}
+              </div>
+            </div>
+
+            {/* Strategy description */}
+            <div className="bg-card border border-border rounded-xl p-5">
+              <label className="text-xs text-muted uppercase tracking-wider font-semibold">{t("strategy_raw_label") || "Description"}</label>
+              <div className="mt-2 px-3 py-3 bg-surface border border-border rounded-lg text-foreground text-sm opacity-70 leading-relaxed">
+                {t("demo_strategy_desc")}
+              </div>
+            </div>
+
+            {/* Parsed rules */}
+            <div className="bg-card border border-border rounded-xl p-5">
+              <h3 className="text-sm font-semibold text-foreground mb-4">{t("demo_strategy_rules_title")}</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-muted uppercase tracking-wider mb-1">{t("strategy_pairs") || "Paires"}</p>
+                  <p className="text-sm text-foreground">{t("demo_strategy_pairs")}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted uppercase tracking-wider mb-1">{t("strategy_sessions") || "Sessions"}</p>
+                  <p className="text-sm text-foreground">{t("demo_strategy_sessions")}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted uppercase tracking-wider mb-1">{t("strategy_rr") || "RR minimum"}</p>
+                  <p className="text-sm text-foreground">{t("demo_strategy_rr")}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted uppercase tracking-wider mb-1">{t("strategy_max_trades") || "Max trades/session"}</p>
+                  <p className="text-sm text-foreground">{t("demo_strategy_max_trades")}</p>
+                </div>
+              </div>
+              <div className="mt-4">
+                <p className="text-xs text-muted uppercase tracking-wider mb-2">{t("strategy_setup_rules") || "Règles"}</p>
+                <div className="space-y-1.5">
+                  {[
+                    t("demo_strategy_rule_1"),
+                    t("demo_strategy_rule_2"),
+                    t("demo_strategy_rule_3"),
+                    t("demo_strategy_rule_4"),
+                    t("demo_strategy_rule_5"),
+                  ].map((rule, i) => (
+                    <div key={i} className="flex items-start gap-2 text-sm text-foreground/70">
+                      <span className="text-accent font-bold shrink-0">{i + 1}.</span>
+                      <span>{rule}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* CTA */}
+        <div className="mt-6 bg-card border border-accent/30 rounded-xl p-5">
+          <Link
+            href="/dashboard/upgrade"
+            className="inline-block px-5 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors text-sm"
+          >
+            {t("demo_cta_strategy_btn")}
+          </Link>
         </div>
       </div>
     );

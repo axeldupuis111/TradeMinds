@@ -144,7 +144,8 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
   // Free: 1 AI analysis per week. Plus: 1 per day.
   const aiRemaining = Math.max(0, 1 - effectiveCount);
 
-  const canImportCSV = plan === "plus" || plan === "premium";
+  // Free users can import CSV (1/day limit enforced in CsvImport component)
+  const canImportCSV = true;
   const maxAccounts = plan === "free" ? 1 : null;
 
   return (
