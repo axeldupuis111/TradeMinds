@@ -410,6 +410,8 @@ const translations: Record<Lang, Record<string, string>> = {
     challenge_delete_history_confirm: "Supprimer ce compte de l'historique ? Cette action est irréversible.",
     challenge_delete_btn: "Supprimer",
     challenge_delete_success: "Compte supprimé de l'historique.",
+    challenge_rename_title: "Renommer le compte",
+    challenge_rename_save: "Enregistrer",
     challenge_pnl_negative_tooltip: "Un challenge peut être réussi même avec un P&L négatif si les règles de drawdown et de profit target ont été respectées.",
 
     // Multi-account & CSV matching
@@ -596,6 +598,8 @@ const translations: Record<Lang, Record<string, string>> = {
     coach_clear_history: "Effacer l'historique",
     coach_clear_confirm: "Effacer tout l'historique du chat ? Cette action est irréversible.",
     coach_show_older: "Voir les messages précédents",
+    coach_history_title: "Historique Q&R Coach IA",
+    coach_history_empty: "Aucun échange enregistré.",
 
     // Discipline section
     discipline_title: "Discipline vs Résultats",
@@ -1375,6 +1379,8 @@ const translations: Record<Lang, Record<string, string>> = {
     challenge_delete_history_confirm: "Delete this account from history? This action is irreversible.",
     challenge_delete_btn: "Delete",
     challenge_delete_success: "Account removed from history.",
+    challenge_rename_title: "Rename account",
+    challenge_rename_save: "Save",
     challenge_pnl_negative_tooltip: "A challenge can be passed even with a negative P&L if the drawdown and profit target rules were respected.",
 
     challenge_account_number: "Account number",
@@ -1560,6 +1566,8 @@ const translations: Record<Lang, Record<string, string>> = {
     coach_clear_history: "Clear history",
     coach_clear_confirm: "Clear the entire chat history? This cannot be undone.",
     coach_show_older: "Show previous messages",
+    coach_history_title: "AI Coach Q&A History",
+    coach_history_empty: "No exchanges recorded yet.",
 
     // Discipline section
     discipline_title: "Discipline vs Results",
@@ -2340,6 +2348,8 @@ const translations: Record<Lang, Record<string, string>> = {
     challenge_delete_history_confirm: "Dieses Konto aus dem Verlauf löschen? Diese Aktion ist unwiderruflich.",
     challenge_delete_btn: "Löschen",
     challenge_delete_success: "Konto aus dem Verlauf entfernt.",
+    challenge_rename_title: "Konto umbenennen",
+    challenge_rename_save: "Speichern",
     challenge_pnl_negative_tooltip: "Eine Challenge kann auch mit negativem P&L bestanden werden, wenn die Drawdown- und Profit-Target-Regeln eingehalten wurden.",
 
     challenge_account_number: "Kontonummer",
@@ -2525,6 +2535,8 @@ const translations: Record<Lang, Record<string, string>> = {
     coach_clear_history: "Verlauf löschen",
     coach_clear_confirm: "Gesamten Chatverlauf löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
     coach_show_older: "Frühere Nachrichten anzeigen",
+    coach_history_title: "KI-Coach Q&A-Verlauf",
+    coach_history_empty: "Noch keine Einträge aufgezeichnet.",
 
     // Discipline section
     discipline_title: "Disziplin vs Ergebnisse",
@@ -3305,6 +3317,8 @@ const translations: Record<Lang, Record<string, string>> = {
     challenge_delete_history_confirm: "¿Eliminar esta cuenta del historial? Esta acción es irreversible.",
     challenge_delete_btn: "Eliminar",
     challenge_delete_success: "Cuenta eliminada del historial.",
+    challenge_rename_title: "Renombrar cuenta",
+    challenge_rename_save: "Guardar",
     challenge_pnl_negative_tooltip: "Un challenge puede superarse incluso con un P&L negativo si se respetaron las reglas de drawdown y profit target.",
 
     challenge_account_number: "Número de cuenta",
@@ -3490,6 +3504,8 @@ const translations: Record<Lang, Record<string, string>> = {
     coach_clear_history: "Borrar historial",
     coach_clear_confirm: "¿Borrar todo el historial del chat? Esta acción es irreversible.",
     coach_show_older: "Ver mensajes anteriores",
+    coach_history_title: "Historial Q&A Coach IA",
+    coach_history_empty: "Ningún intercambio registrado.",
 
     // Discipline section
     discipline_title: "Disciplina vs Resultados",

@@ -4,6 +4,7 @@ import ExportPdfButton from "@/components/analytics/ExportPdfButton";
 import { computeDisciplineScore } from "@/lib/discipline-score";
 import { ICT_EMOTIONS, ICT_ENTRY_ZONES, ICT_KILLZONES, ICT_SETUPS, getEmotionColor } from "@/lib/ict-constants";
 import { useChartColors } from "@/lib/useChartColors";
+import { formatCurrencyAxis } from "@/lib/utils";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import type { Lang } from "@/lib/translations";
@@ -810,7 +811,7 @@ export default function AnalyticsPage() {
                 <ComposedChart data={equityCurve} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
                   <XAxis dataKey="date" tick={{ fill: c.axis, fontSize: 10 }} axisLine={{ stroke: c.axisLine }} interval={Math.floor(equityCurve.length / 8)} />
-                  <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
+                  <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
                   <ReferenceLine y={0} stroke="#333" strokeDasharray="4 4" />
                   <Tooltip content={<EquityTooltip />} />
                   <Area type="monotone" dataKey="pos" fill="rgba(34,197,94,0.1)" stroke="none" baseValue={0} />
@@ -830,7 +831,7 @@ export default function AnalyticsPage() {
                 <BarChart data={byDayOfWeek} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
                   <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
-                  <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
+                  <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
                   <Tooltip content={<DayTooltip />} />
                   <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
                     {byDayOfWeek.map((entry, idx) => (
@@ -852,7 +853,7 @@ export default function AnalyticsPage() {
                 <BarChart data={byHour} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
                   <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 10 }} axisLine={{ stroke: c.axisLine }} interval={1} />
-                  <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
+                  <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
                   <Tooltip content={<HourTooltip />} />
                   <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
                     {byHour.map((entry, idx) => (
@@ -875,7 +876,7 @@ export default function AnalyticsPage() {
                   <BarChart data={byPair} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
                     <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
-                    <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
+                    <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
                     <Tooltip content={<PairTooltip />} />
                     <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
                       {byPair.map((entry, idx) => (
@@ -903,7 +904,7 @@ export default function AnalyticsPage() {
                 <BarChart data={bySessions} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
                   <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
-                  <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
+                  <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
                   <Tooltip content={<SessionTooltip />} />
                   <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
                     {bySessions.map((entry, idx) => (
@@ -926,7 +927,7 @@ export default function AnalyticsPage() {
                   <BarChart data={byEmotion} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
                     <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
-                    <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
+                    <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
                     <Tooltip content={<GenericTooltip />} />
                     <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
                       {byEmotion.map((entry, idx) => (
@@ -967,7 +968,7 @@ export default function AnalyticsPage() {
                   <BarChart data={byQuality} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
                     <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
-                    <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
+                    <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
                     <Tooltip content={<GenericTooltip />} />
                     <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
                       {byQuality.map((entry, idx) => (
@@ -1057,7 +1058,7 @@ export default function AnalyticsPage() {
                         textAnchor="end"
                         interval={0}
                       />
-                      <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
+                      <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
                       <Tooltip
                         content={({ active, payload }) => {
                           if (!active || !payload?.length) return null;

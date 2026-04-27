@@ -124,6 +124,10 @@ export default function AnalysisPage() {
   const [clearingChat, setClearingChat] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // AI analysis history
+  const [aiHistory, setAIHistory] = useState<{ id: string; question: string; answer: string; created_at: string }[]>([]);
+  const [aiHistoryLoading, setAIHistoryLoading] = useState(true);
+
   const chatLimit = plan === "plus" || plan === "premium" ? 10 : 0;
   const chatRemaining = Math.max(0, chatLimit - chatDailyCount);
   const canChat = plan === "plus" || plan === "premium";
@@ -272,6 +276,14 @@ export default function AnalysisPage() {
         { user_id: user.id, role: "assistant", content: data.reply },
       ]);
 
+      // Save Q&A pair to history
+      await supabase.from("ai_analysis_history").insert({
+        user_id: user.id,
+        question: msg,
+        answer: data.reply,
+      });
+      loadAIHistory();
+
       // Increment daily chat count
       const newCount = chatDailyCount + 1;
       setChatDailyCount(newCount);
@@ -285,13 +297,28 @@ export default function AnalysisPage() {
     } finally {
       setChatLoading(false);
     }
-  }, [chatInput, chatMessages, chatLoading, chatDailyCount, chatRemaining, supabase, lang]);
+  }, [chatInput, chatMessages, chatLoading, chatDailyCount, chatRemaining, supabase, lang]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     loadPrerequisites();
     loadHistory();
     loadIctScore();
+    loadAIHistory();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function loadAIHistory() {
+    setAIHistoryLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setAIHistoryLoading(false); return; }
+    const { data } = await supabase
+      .from("ai_analysis_history")
+      .select("id, question, answer, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(10);
+    setAIHistory(data || []);
+    setAIHistoryLoading(false);
+  }
 
   async function loadIctScore() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -926,6 +953,30 @@ export default function AnalysisPage() {
               </div>
             )}
           </div>
+
+          {/* AI Coach Q&A History */}
+          {canChat && (
+            <div className="bg-card border border-border rounded-xl p-4 card-shadow">
+              <h2 className="text-sm font-semibold text-foreground mb-3">{t("coach_history_title")}</h2>
+              {aiHistoryLoading ? (
+                <div className="space-y-2">
+                  {[1, 2].map((i) => <div key={i} className="skeleton h-12 rounded w-full" />)}
+                </div>
+              ) : aiHistory.length === 0 ? (
+                <p className="text-muted text-xs">{t("coach_history_empty")}</p>
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {aiHistory.map((item) => (
+                    <div key={item.id} className="border border-border rounded-lg p-2.5">
+                      <p className="text-xs text-accent font-medium truncate">Q: {item.question}</p>
+                      <p className="text-[11px] text-muted mt-1 line-clamp-2">{item.answer}</p>
+                      <p className="text-[10px] text-muted/50 mt-1">{new Date(item.created_at).toLocaleDateString()}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* History */}
           <div className="bg-card border border-border rounded-xl p-4 card-shadow">

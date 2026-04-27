@@ -223,7 +223,7 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
           </div>
 
           {/* ─── ICT Analysis Section ─── */}
-          <div className="border-l-4 border-accent pl-4 mt-6 space-y-4">
+          <div className="border-l-[3px] border-blue-500 pl-4 mt-6 space-y-4">
             <p className="text-sm font-semibold text-foreground">{t("ict_analysis_section")}</p>
 
             <div className="grid grid-cols-2 gap-3">

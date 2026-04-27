@@ -2,6 +2,7 @@
 
 import { useChartColors } from "@/lib/useChartColors";
 import { useLanguage } from "@/lib/LanguageContext";
+import { formatCurrencyAxis } from "@/lib/utils";
 import {
   AreaChart,
   Area,
@@ -73,7 +74,7 @@ export default function EquityCurve({ data, initialBalance }: Props) {
               tick={{ fill: c.axis, fontSize: 11 }}
               tickLine={false}
               axisLine={{ stroke: c.axisLine }}
-              tickFormatter={(v: number) => `${v.toLocaleString()}€`}
+              tickFormatter={formatCurrencyAxis}
               width={80}
             />
             <Tooltip

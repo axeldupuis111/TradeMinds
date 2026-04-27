@@ -112,17 +112,57 @@ function StatusBadge({ status, t }: { status: string; t: (key: string) => string
   );
 }
 
+function RenameModal({
+  currentName,
+  onConfirm,
+  onCancel,
+  t,
+}: {
+  currentName: string;
+  onConfirm: (name: string) => void;
+  onCancel: () => void;
+  t: (key: string) => string;
+}) {
+  const [name, setName] = useState(currentName);
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+      <div className="bg-card border border-border rounded-xl p-6 max-w-sm w-full mx-4 shadow-xl">
+        <h3 className="text-foreground font-semibold mb-4">{t("challenge_rename_title")}</h3>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent mb-4"
+          autoFocus
+          onKeyDown={(e) => { if (e.key === "Enter" && name.trim()) onConfirm(name.trim()); }}
+        />
+        <div className="flex gap-3">
+          <button onClick={onCancel} className="flex-1 py-2 bg-surface border border-border text-muted rounded-lg text-sm font-medium hover:text-foreground transition-colors">
+            {t("csv_cancel")}
+          </button>
+          <button onClick={() => name.trim() && onConfirm(name.trim())} className="flex-1 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
+            {t("challenge_rename_save")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AccountCard({
   ac,
   stats,
   onStatusChange,
+  onRename,
   t,
 }: {
   ac: Challenge;
   stats: AccountStats;
   onStatusChange: (id: string, status: "passed" | "failed") => void;
+  onRename: (id: string, name: string) => void;
   t: (key: string) => string;
 }) {
+  const [showRename, setShowRename] = useState(false);
   const balance = stats.balance;
   const currentPnl = stats.currentPnl;
   const todayPnl = stats.todayPnl;
@@ -143,11 +183,30 @@ function AccountCard({
 
   return (
     <div className="bg-card border border-border rounded-xl p-6">
+      {showRename && (
+        <RenameModal
+          currentName={ac.firm}
+          onConfirm={(name) => { onRename(ac.id, name); setShowRename(false); }}
+          onCancel={() => setShowRename(false)}
+          t={t}
+        />
+      )}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">
-            {ac.firm} — {ac.account_size.toLocaleString()}€
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-foreground">
+              {ac.firm} — {ac.account_size.toLocaleString()}€
+            </h2>
+            <button
+              onClick={() => setShowRename(true)}
+              className="text-muted hover:text-foreground transition-colors"
+              title={t("challenge_rename_title")}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 0l.172.172a2 2 0 010 2.828L12 15H9v-2z" />
+              </svg>
+            </button>
+          </div>
           <p className="text-muted text-sm">
             {ac.account_number && <span className="text-foreground">#{ac.account_number} · </span>}
             {t("challenge_started")} {new Date(ac.start_date).toLocaleDateString()}
@@ -434,6 +493,11 @@ export default function ChallengePage() {
     }
   }
 
+  async function handleRename(challengeId: string, name: string) {
+    const { error } = await supabase.from("prop_challenges").update({ firm: name }).eq("id", challengeId);
+    if (!error) loadData();
+  }
+
   async function handleDeleteHistory(id: string) {
     const { error } = await supabase.from("prop_challenges").delete().eq("id", id);
     setDeleteModal({ open: false, id: null });
@@ -476,6 +540,7 @@ export default function ChallengePage() {
               ac={ac}
               stats={accountStatsMap[ac.id] || { balance: ac.balance, currentPnl: 0, todayPnl: 0, equityCurveData: [] }}
               onStatusChange={handleStatusChange}
+              onRename={handleRename}
               t={t}
             />
           ))}
