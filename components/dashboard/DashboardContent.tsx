@@ -43,7 +43,9 @@ interface Props {
   displayName: string;
   score: number | null;
   scoreColor: string;
+  ictTaggedCount: number;
   weekTrades: TradeData[];
+  monthTrades: TradeData[];
   todayTrades: TradeData[];
   activeAccounts: ActiveAccount[];
   recentTrades: RecentTrade[];
@@ -72,7 +74,9 @@ export default function DashboardContent({
   displayName,
   score,
   scoreColor,
+  ictTaggedCount,
   weekTrades,
+  monthTrades,
   todayTrades,
   activeAccounts,
   recentTrades,
@@ -90,14 +94,21 @@ export default function DashboardContent({
   }, [selectedAccountId]);
 
   const filteredWeek = useMemo(() => filterByAccount(weekTrades), [filterByAccount, weekTrades]);
+  const filteredMonth = useMemo(() => filterByAccount(monthTrades), [filterByAccount, monthTrades]);
   const filteredToday = useMemo(() => filterByAccount(todayTrades), [filterByAccount, todayTrades]);
   const filteredAll = useMemo(() => filterByAccount(allTrades), [filterByAccount, allTrades]);
   const filteredRecent = useMemo(() => filterByAccount(recentTrades), [filterByAccount, recentTrades]);
 
-  const weekCount = filteredWeek.length;
-  const weekWins = filteredWeek.filter((tr) => netPnl(tr) > 0).length;
+  // Week trades fallback: if no week trades, use month; if no month, show last trade info
+  const useMonthFallback = filteredWeek.length === 0 && filteredMonth.length > 0;
+  const activePeriodTrades = useMonthFallback ? filteredMonth : filteredWeek;
+  const weekCount = activePeriodTrades.length;
+  const weekWins = activePeriodTrades.filter((tr) => netPnl(tr) > 0).length;
   const weekWinrate = weekCount > 0 ? ((weekWins / weekCount) * 100).toFixed(0) : "0";
   const todayPnl = filteredToday.reduce((sum, tr) => sum + netPnl(tr), 0);
+
+  // Total P&L across all accounts
+  const totalPnl = useMemo(() => filteredAll.reduce((sum, tr) => sum + netPnl(tr), 0), [filteredAll]);
 
   const selectedAccount = selectedAccountId ? activeAccounts.find((a) => a.id === selectedAccountId) ?? null : null;
   const displayAccount = selectedAccount || (activeAccounts.length === 1 ? activeAccounts[0] : null);
@@ -207,7 +218,7 @@ export default function DashboardContent({
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
-        {/* Discipline Score */}
+        {/* Discipline Score — ICT computed */}
         <div className="bg-card border border-border rounded-xl p-5 card-shadow">
           <div className="flex items-center justify-between">
             <div>
@@ -223,15 +234,17 @@ export default function DashboardContent({
           {score !== null ? (
             <p className="text-[11px] text-muted mt-2">{score >= 75 ? t("dash_score_good") : score >= 50 ? t("dash_score_ok") : t("dash_score_bad")}</p>
           ) : (
-            <Link href="/dashboard/analysis" className="text-[11px] text-accent hover:underline mt-2 inline-block">
-              {t("dash_run_analysis")}
-            </Link>
+            <p className="text-[11px] text-muted mt-2">
+              {ictTaggedCount < 5 ? t("dash_tag_ict_trades") : t("dash_run_analysis")}
+            </p>
           )}
         </div>
 
-        {/* Week Trades */}
+        {/* Week / Month Trades (fallback) */}
         <div className="bg-card border border-border rounded-xl p-5 card-shadow">
-          <p className="text-xs text-muted font-medium uppercase tracking-wider">{t("dash_week_trades")}</p>
+          <p className="text-xs text-muted font-medium uppercase tracking-wider">
+            {useMonthFallback ? t("dash_month_trades") : t("dash_week_trades")}
+          </p>
           <p className="text-2xl font-bold mt-1 text-foreground tabular-nums">
             {weekCount}
             <span className="text-sm font-medium text-muted ml-2">({weekWinrate}% WR)</span>
@@ -267,8 +280,13 @@ export default function DashboardContent({
             </div>
           ) : activeAccounts.length > 1 ? (
             <div className="mt-1">
-              <p className="text-2xl font-bold text-foreground tabular-nums">{activeAccounts.length}</p>
-              <p className="text-[11px] text-muted mt-1">{t("dash_select_account")}</p>
+              <p className="text-base font-bold text-foreground tabular-nums">
+                {activeAccounts.length} {t("dash_accounts_count")}
+              </p>
+              <p className={`text-lg font-bold mt-0.5 tabular-nums ${totalPnl >= 0 ? "text-profit" : "text-loss"}`}>
+                {totalPnl >= 0 ? "+" : ""}{totalPnl.toLocaleString("fr-FR", { maximumFractionDigits: 2 })}€
+              </p>
+              <Link href="/dashboard/challenge" className="text-[11px] text-accent hover:underline mt-1 inline-block">{t("dash_manage_accounts")}</Link>
             </div>
           ) : (
             <div className="mt-1">
@@ -378,16 +396,26 @@ export default function DashboardContent({
         <div className="space-y-4">
           {/* Last analysis */}
           <div className="bg-card border border-border rounded-xl p-5 card-shadow">
-            <h2 className="text-sm font-semibold text-foreground mb-2">{t("dash_last_analysis")}</h2>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-sm font-semibold text-foreground">{t("dash_last_analysis")}</h2>
+              {lastReview && (
+                <Link href="/dashboard/analysis" className="text-xs text-accent hover:underline">{t("dash_see_all")}</Link>
+              )}
+            </div>
             {lastReview ? (
-              <Link href="/dashboard/analysis" className="flex items-center justify-between hover:opacity-80 transition-opacity">
-                <span className="text-muted text-sm">
-                  {new Date(lastReview.created_at).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}
-                </span>
-                <span className={`text-2xl font-bold tabular-nums ${lastReview.discipline_score >= 75 ? "text-profit" : lastReview.discipline_score >= 50 ? "text-warning" : "text-loss"}`}>
-                  {lastReview.discipline_score}/100
-                </span>
-              </Link>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-muted text-xs">
+                    {new Date(lastReview.created_at).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}
+                  </span>
+                  <span className={`text-xl font-bold tabular-nums ${lastReview.discipline_score >= 75 ? "text-profit" : lastReview.discipline_score >= 50 ? "text-warning" : "text-loss"}`}>
+                    {lastReview.discipline_score}/100
+                  </span>
+                </div>
+                {insights.length > 0 && (
+                  <p className="text-xs text-muted leading-relaxed line-clamp-2">{insights[0]}</p>
+                )}
+              </div>
             ) : (
               <Link href="/dashboard/analysis" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-500/30 bg-blue-500/5 text-blue-400 text-sm font-medium hover:bg-blue-500/10 hover:border-blue-500/50 transition-colors cursor-pointer">
                 {t("dash_run_ai_analysis")}

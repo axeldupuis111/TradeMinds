@@ -261,7 +261,7 @@ export default function TradeList({ refreshKey }: Props) {
       <div className="h-px bg-border mt-2 mb-4" />
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-2">
         {stats.map((s) => (
           <div key={s.label} className="bg-card border border-border rounded-lg p-3">
             <p className="text-xs text-muted">{s.label}</p>
@@ -269,6 +269,13 @@ export default function TradeList({ refreshKey }: Props) {
           </div>
         ))}
       </div>
+
+      {/* Filter context note */}
+      <p className="text-[11px] text-muted mb-4">
+        {hasActiveFilters
+          ? t("trades_filtered_by").replace("{count}", String(total))
+          : t("trades_all_accounts").replace("{count}", String(statsCount))}
+      </p>
 
       {/* Filter bar */}
       <div className="bg-card border border-border rounded-lg p-3 mb-4">

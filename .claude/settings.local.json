@@ -36,7 +36,9 @@
       "Bash(PATH=\"/c/Program Files/nodejs:$PATH\" git log --oneline -5)",
       "Bash(PATH=\"/c/Program Files/nodejs:$PATH\" git push origin main)",
       "Bash(git show *)",
-      "Bash(git checkout *)"
+      "Bash(git checkout *)",
+      "Bash(npx tsc *)",
+      "Bash(xargs grep *)"
     ]
   }
 }

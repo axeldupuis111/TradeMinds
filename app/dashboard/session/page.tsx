@@ -51,6 +51,7 @@ export default function SessionPage() {
   const [saving, setSaving] = useState(false);
   const [ending, setEnding] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
+  const [showEmptyChecklistModal, setShowEmptyChecklistModal] = useState(false);
 
   useEffect(() => {
     load();
@@ -130,6 +131,15 @@ export default function SessionPage() {
   async function saveChecklist(list: string[]) {
     if (!strategy) return;
     await supabase.from("strategies").update({ pretrade_checklist: list }).eq("id", strategy.id);
+  }
+
+  async function handleStartClick() {
+    if (!selectedEmotion) return;
+    if (checkedItems.size === 0 && checklist.length > 0) {
+      setShowEmptyChecklistModal(true);
+      return;
+    }
+    await startSession();
   }
 
   async function startSession() {
@@ -223,9 +233,34 @@ export default function SessionPage() {
       <h1 className="text-2xl font-bold text-foreground">{t("session_title")}</h1>
       <p className="text-muted mt-1 mb-6">{t("session_subtitle")}</p>
 
+      {/* Empty checklist confirmation modal */}
+      {showEmptyChecklistModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="bg-card border border-border rounded-xl p-6 max-w-sm w-full space-y-4">
+            <h3 className="text-base font-semibold text-foreground">{t("session_empty_checklist_title")}</h3>
+            <p className="text-muted text-sm">{t("session_empty_checklist_body")}</p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowEmptyChecklistModal(false)}
+                className="px-4 py-2 text-sm border border-border rounded-lg text-foreground hover:bg-surface transition-colors"
+              >
+                {t("session_empty_checklist_cancel")}
+              </button>
+              <button
+                onClick={async () => { setShowEmptyChecklistModal(false); await startSession(); }}
+                className="px-4 py-2 text-sm bg-warning/10 border border-warning/30 text-warning rounded-lg hover:bg-warning/20 transition-colors"
+              >
+                {t("session_empty_checklist_confirm")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* A — Checklist */}
       <section className="bg-card border border-border rounded-xl p-5 mb-5">
-        <h2 className="text-lg font-semibold text-foreground mb-1">{t("session_checklist_title")}</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-0.5">{t("session_checklist_title")}</h2>
+        <p className="text-xs text-accent mb-1">{t("session_checklist_subtitle")}</p>
         <p className="text-muted text-sm mb-4">{t("session_checklist_desc")}</p>
 
         {/* Strategy rules reminder */}
@@ -291,6 +326,13 @@ export default function SessionPage() {
             {t("session_add")}
           </button>
         </div>
+
+        {/* ICT technical checklist link */}
+        <div className="mt-4 pt-3 border-t border-border">
+          <Link href="/dashboard/trades" className="text-xs text-muted hover:text-accent transition-colors">
+            {t("session_ict_link")} →
+          </Link>
+        </div>
       </section>
 
       {/* B — State of the day */}
@@ -341,13 +383,13 @@ export default function SessionPage() {
         )}
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
           <button
-            onClick={startSession}
-            disabled={!allChecked || !selectedEmotion || saving}
-            className="w-full sm:w-auto px-8 py-3 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50"
+            onClick={handleStartClick}
+            disabled={!selectedEmotion || saving}
+            className={`w-full sm:w-auto px-8 py-3 text-white rounded-lg font-medium transition-colors disabled:opacity-50 ${allChecked ? "bg-accent hover:bg-blue-600" : "bg-accent/80 hover:bg-accent"}`}
           >
             {saving ? "..." : t("session_start_button")}
           </button>
-          {allChecked && !selectedEmotion && (
+          {!selectedEmotion && (
             <p className="text-xs text-muted">{t("session_select_emotion_first")}</p>
           )}
         </div>

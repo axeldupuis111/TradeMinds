@@ -17,11 +17,20 @@ interface Props {
 const inputClass =
   "w-full px-3 py-2 bg-surface border border-border rounded-lg text-foreground placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent";
 
-const EMOTION_CATEGORY_COLORS: Record<string, string> = {
-  positive: "bg-profit/10 border-profit/30 text-profit",
-  negative: "bg-loss/10 border-loss/30 text-loss",
-  warning: "bg-orange-500/10 border-orange-500/30 text-orange-400",
-  neutral: "bg-surface border-border text-muted",
+// Selected state: filled background
+const EMOTION_SELECTED_COLORS: Record<string, string> = {
+  positive: "bg-profit border-profit text-white",
+  negative: "bg-loss border-loss text-white",
+  warning: "bg-orange-500 border-orange-500 text-white",
+  neutral: "bg-muted border-muted text-white",
+};
+
+// Unselected state: tinted border to indicate category
+const EMOTION_UNSELECTED_COLORS: Record<string, string> = {
+  positive: "border-profit/50 text-profit hover:bg-profit/10",
+  negative: "border-loss/50 text-loss hover:bg-loss/10",
+  warning: "border-orange-500/50 text-orange-400 hover:bg-orange-500/10",
+  neutral: "border-muted/50 text-muted hover:bg-surface",
 };
 
 export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, initialChecklist }: Props) {
@@ -270,8 +279,8 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
                     onClick={() => update("emotion", form.emotion === em.value ? "" : em.value)}
                     className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-all ${
                       form.emotion === em.value
-                        ? EMOTION_CATEGORY_COLORS[em.category]
-                        : "bg-surface border-border text-muted hover:border-muted"
+                        ? EMOTION_SELECTED_COLORS[em.category]
+                        : `bg-surface/50 ${EMOTION_UNSELECTED_COLORS[em.category]}`
                     }`}
                   >
                     {em.label[l]}
@@ -282,9 +291,20 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
 
             {/* ICT Checklist */}
             <div>
-              <label className="block text-sm text-muted mb-2">
+              <label className="block text-sm text-muted mb-1">
                 {t("ict_checklist_title")} — {ICT_CHECKLIST_ITEMS.filter((i) => checklist[i.key]).length}/7
               </label>
+              {/* Progress bar */}
+              {(() => {
+                const checked = ICT_CHECKLIST_ITEMS.filter((i) => checklist[i.key]).length;
+                const pct = (checked / 7) * 100;
+                const barColor = checked <= 3 ? "bg-loss" : checked <= 5 ? "bg-warning" : "bg-profit";
+                return (
+                  <div className="h-1 w-full bg-surface rounded-full mb-3 overflow-hidden">
+                    <div className={`h-full rounded-full transition-all duration-300 ${barColor}`} style={{ width: `${pct}%` }} />
+                  </div>
+                );
+              })()}
               <div className="space-y-2">
                 {ICT_CHECKLIST_ITEMS.map((item) => (
                   <label key={item.key} className="flex items-center gap-3 cursor-pointer group">

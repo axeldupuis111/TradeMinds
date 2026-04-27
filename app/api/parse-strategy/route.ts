@@ -55,7 +55,14 @@ Pour les sessions, utilise ces correspondances :
 
 Pour les paires, normalise en majuscules (XAUUSD, EURUSD, etc.). "Gold" = XAUUSD, "Nas" / "Nasdaq" = NAS100, "Dow" = US30.
 
-Pour setup_rules, extrait chaque condition d'entrée, règle de gestion, ou contrainte mentionnée comme un élément séparé.`;
+Pour setup_rules, extrait chaque condition d'entrée, règle de gestion, ou contrainte mentionnée comme un élément séparé.
+
+IMPORTANT — Si le trader n'a pas mentionné de max_sl_pips ou de max_consecutive_losses, suggère des valeurs raisonnables selon le contexte :
+- Pour du scalping sur XAUUSD/Gold : max_sl_pips entre 50 et 100, max_consecutive_losses entre 2 et 3
+- Pour du swing trading Forex : max_sl_pips entre 50 et 150, max_consecutive_losses entre 3 et 5
+- Pour des indices (NAS100, US30) : max_sl_pips entre 50 et 200, max_consecutive_losses entre 2 et 4
+- Si aucun contexte ne permet de deviner : max_sl_pips = 100, max_consecutive_losses = 3
+Ne mets null que si tu ne peux vraiment pas estimer.`;
 
     const message = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
