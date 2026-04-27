@@ -132,24 +132,28 @@ export default function StrategyPage() {
 
       // Load existing strategy_tags from DB to display even before re-analysis
       let existingTags: StrategyTagsFromAI | undefined;
-      const { data: tagsData, error: tagsError } = await supabase
-        .from("strategy_tags")
-        .select("*")
-        .eq("strategy_id", data.id)
-        .order("sort_order");
+      try {
+        const { data: tagsData, error: tagsError } = await supabase
+          .from("strategy_tags")
+          .select("*")
+          .eq("strategy_id", data.id)
+          .order("sort_order");
 
-      if (!tagsError && tagsData && tagsData.length > 0) {
-        const groupTag = (type: string): StrategyTagAI[] =>
-          tagsData!
-            .filter((t) => t.tag_type === type)
-            .map((t) => ({ value: t.value, label_fr: t.label_fr, label_en: t.label_en, label_de: t.label_de, label_es: t.label_es }));
-        existingTags = {
-          setups: groupTag("setup"),
-          entry_zones: groupTag("entry_zone"),
-          targets: groupTag("target"),
-          timing: groupTag("timing"),
-          checklist: groupTag("checklist"),
-        };
+        if (!tagsError && tagsData && tagsData.length > 0) {
+          const groupTag = (type: string): StrategyTagAI[] =>
+            tagsData
+              .filter((t) => t.tag_type === type)
+              .map((t) => ({ value: t.value, label_fr: t.label_fr, label_en: t.label_en, label_de: t.label_de, label_es: t.label_es }));
+          existingTags = {
+            setups: groupTag("setup"),
+            entry_zones: groupTag("entry_zone"),
+            targets: groupTag("target"),
+            timing: groupTag("timing"),
+            checklist: groupTag("checklist"),
+          };
+        }
+      } catch (tagsErr) {
+        console.error("strategy_tags load failed (table may not exist yet):", tagsErr);
       }
 
       setParsed({
@@ -178,7 +182,13 @@ export default function StrategyPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erreur serveur.");
-      setParsed(data);
+      setParsed({
+        ...data,
+        pairs: Array.isArray(data.pairs) ? data.pairs : [],
+        sessions: Array.isArray(data.sessions) ? data.sessions : [],
+        setup_rules: Array.isArray(data.setup_rules) ? data.setup_rules : [],
+        strategy_tags: data.strategy_tags || undefined,
+      });
       setIsDirty(true);
     } catch (err: unknown) {
       showToast("error", err instanceof Error ? err.message : "Erreur inconnue");
@@ -225,34 +235,38 @@ export default function StrategyPage() {
 
     // Save strategy_tags if present and we have a strategy ID
     if (!error && strategyId && parsed.strategy_tags) {
-      await supabase.from("strategy_tags").delete().eq("strategy_id", strategyId).eq("user_id", user.id);
+      try {
+        await supabase.from("strategy_tags").delete().eq("strategy_id", strategyId).eq("user_id", user.id);
 
-      const tagRows: Record<string, unknown>[] = [];
-      const mapping: [keyof StrategyTagsFromAI, string][] = [
-        ["setups", "setup"],
-        ["entry_zones", "entry_zone"],
-        ["targets", "target"],
-        ["timing", "timing"],
-        ["checklist", "checklist"],
-      ];
-      mapping.forEach(([key, tag_type]) => {
-        (parsed.strategy_tags![key] || []).forEach((item, i) => {
-          tagRows.push({
-            user_id: user.id,
-            strategy_id: strategyId,
-            tag_type,
-            value: item.value,
-            label_fr: item.label_fr,
-            label_en: item.label_en,
-            label_de: item.label_de,
-            label_es: item.label_es,
-            sort_order: i,
+        const tagRows: Record<string, unknown>[] = [];
+        const mapping: [keyof StrategyTagsFromAI, string][] = [
+          ["setups", "setup"],
+          ["entry_zones", "entry_zone"],
+          ["targets", "target"],
+          ["timing", "timing"],
+          ["checklist", "checklist"],
+        ];
+        mapping.forEach(([key, tag_type]) => {
+          (parsed.strategy_tags?.[key] || []).forEach((item, i) => {
+            tagRows.push({
+              user_id: user.id,
+              strategy_id: strategyId,
+              tag_type,
+              value: item.value,
+              label_fr: item.label_fr,
+              label_en: item.label_en,
+              label_de: item.label_de,
+              label_es: item.label_es,
+              sort_order: i,
+            });
           });
         });
-      });
 
-      if (tagRows.length > 0) {
-        await supabase.from("strategy_tags").insert(tagRows);
+        if (tagRows.length > 0) {
+          await supabase.from("strategy_tags").insert(tagRows);
+        }
+      } catch (tagsErr) {
+        console.error("strategy_tags save failed (table may not exist yet):", tagsErr);
       }
     }
 
