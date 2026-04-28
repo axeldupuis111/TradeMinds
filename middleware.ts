@@ -36,7 +36,15 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Public routes: "/" and "/login" are accessible without auth
-  const isPublic = pathname === "/" || pathname === "/login";
+  // Public API routes don't require authentication either
+  const isPublic =
+    pathname === "/" ||
+    pathname === "/login" ||
+    pathname.startsWith("/api/waitlist") ||
+    pathname.startsWith("/cgu") ||
+    pathname.startsWith("/confidentialite") ||
+    pathname.startsWith("/mentions-legales") ||
+    pathname.startsWith("/legal/");
 
   // Redirect unauthenticated users to /login (only for /dashboard/* routes)
   if (!user && !isPublic) {
