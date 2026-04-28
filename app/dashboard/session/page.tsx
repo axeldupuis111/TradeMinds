@@ -45,6 +45,7 @@ interface SessionHistory {
   emotion_before: string | null;
   checklist_completed: boolean | null;
   ended_at: string | null;
+  pnl?: number;
 }
 
 const EMOTIONS = [
@@ -93,7 +94,11 @@ export default function SessionPage() {
       .eq("active", true)
       .lt("created_at", today);
 
-    const [{ data: strats }, { data: session }, { data: history }] = await Promise.all([
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const sevenDaysAgoStr = sevenDaysAgo.toISOString().split("T")[0];
+
+    const [{ data: strats }, { data: session }, { data: history }, { data: recentTrades }] = await Promise.all([
       supabase.from("strategies").select("*").eq("user_id", user.id).order("created_at", { ascending: true }),
       supabase
         .from("sessions")
@@ -110,6 +115,11 @@ export default function SessionPage() {
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(5),
+      supabase
+        .from("trades")
+        .select("pnl, commission, swap, open_time")
+        .eq("user_id", user.id)
+        .gte("open_time", sevenDaysAgoStr),
     ]);
 
     const stratList = strats || [];
@@ -126,8 +136,22 @@ export default function SessionPage() {
       setChecklist(DEFAULT_CHECKLIST.map((k) => t(k)));
     }
 
+    // Compute P&L per day from recent trades
+    const pnlByDay: Record<string, number> = {};
+    for (const tr of recentTrades || []) {
+      const day = (tr.open_time || "").split("T")[0];
+      if (!day) continue;
+      pnlByDay[day] = (pnlByDay[day] || 0) + (tr.pnl || 0) + (tr.commission || 0) + (tr.swap || 0);
+    }
+
+    // Attach P&L to each session history entry by date
+    const historyWithPnl = (history || []).map((s) => ({
+      ...s,
+      pnl: pnlByDay[s.created_at.split("T")[0]] ?? undefined,
+    }));
+
     if (session) setActiveSession(session);
-    setSessionHistory(history || []);
+    setSessionHistory(historyWithPnl);
 
     setLoading(false);
   }
@@ -482,19 +506,23 @@ export default function SessionPage() {
                   const emotion = EMOTIONS.find((e) => e.key === s.emotion_before);
                   const date = new Date(s.created_at).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
                   return (
-                    <div key={s.id} className="flex items-center gap-3 py-2 border-b border-border last:border-0">
-                      <span className="text-xl shrink-0">{emotion?.emoji ?? "—"}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-foreground font-medium capitalize">{date}</p>
-                        <p className="text-xs text-muted">
-                          Checklist : {s.checklist_completed ? <span className="text-profit">complète</span> : <span className="text-orange-400">incomplète</span>}
-                        </p>
-                      </div>
-                      {s.ended_at ? (
-                        <span className="text-xs text-muted shrink-0">{new Date(s.ended_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</span>
-                      ) : (
-                        <span className="text-xs text-profit shrink-0">En cours</span>
-                      )}
+                    <div key={s.id} className="flex items-center gap-2 py-2 border-b border-border last:border-0">
+                      <span className="text-lg shrink-0">{emotion?.emoji ?? "—"}</span>
+                      <span className="text-sm text-foreground font-medium capitalize shrink-0">{date}</span>
+                      <span className="text-xs text-muted">
+                        · Checklist : {s.checklist_completed ? <span className="text-profit">complète</span> : <span className="text-orange-400">incomplète</span>}
+                      </span>
+                      <span className="ml-auto shrink-0">
+                        {s.pnl !== undefined ? (
+                          <span className={`text-xs font-medium tabular-nums ${s.pnl >= 0 ? "text-profit" : "text-loss"}`}>
+                            {s.pnl >= 0 ? "+" : ""}{s.pnl.toFixed(2)}€
+                          </span>
+                        ) : s.ended_at ? (
+                          <span className="text-xs text-muted">{new Date(s.ended_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</span>
+                        ) : (
+                          <span className="text-xs text-profit">En cours</span>
+                        )}
+                      </span>
                     </div>
                   );
                 })}

@@ -5,10 +5,12 @@ import Sidebar from "@/components/Sidebar";
 import StopTradingGuard from "@/components/dashboard/StopTradingGuard";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 function SessionReminderBanner() {
   const [show, setShow] = useState(false);
+  const pathname = usePathname();
   const supabase = createClient();
 
   useEffect(() => {
@@ -30,7 +32,7 @@ function SessionReminderBanner() {
     check();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!show) return null;
+  if (!show || pathname === "/dashboard/session") return null;
 
   function dismiss() {
     sessionStorage.setItem("session_banner_dismissed", "1");

@@ -8,33 +8,39 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
 
+interface Strategy {
+  id: string;
+  name: string;
+  setup_rules: string[];
+  pairs: string[];
+}
+
 export default function TradesPage() {
   const { t } = useLanguage();
   const supabase = createClient();
   const [refreshKey, setRefreshKey] = useState(0);
   const [showModal, setShowModal] = useState(false);
-  const [strategyId, setStrategyId] = useState<string | null>(null);
-  const [strategyPairs, setStrategyPairs] = useState<string[]>([]);
+  const [strategies, setStrategies] = useState<Strategy[]>([]);
+  const [selectedStrategy, setSelectedStrategy] = useState<Strategy | null>(null);
   const [initialChecklist, setInitialChecklist] = useState<Record<string, boolean> | undefined>(undefined);
 
   useEffect(() => {
-    async function loadStrategy() {
+    async function loadStrategies() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
       const { data } = await supabase
         .from("strategies")
-        .select("id, pairs")
+        .select("id, name, setup_rules, pairs")
         .eq("user_id", user.id)
-        .limit(1)
-        .single();
+        .order("created_at", { ascending: true });
 
-      if (data) {
-        setStrategyId(data.id);
-        setStrategyPairs(data.pairs || []);
+      if (data && data.length > 0) {
+        setStrategies(data);
+        setSelectedStrategy(data[0]);
       }
     }
-    loadStrategy();
+    loadStrategies();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function refresh() {
@@ -45,6 +51,9 @@ export default function TradesPage() {
     setInitialChecklist(checklist);
     setShowModal(true);
   }
+
+  const strategyId = selectedStrategy?.id ?? null;
+  const strategyPairs = selectedStrategy?.pairs ?? [];
 
   return (
     <div className="space-y-8">
@@ -61,8 +70,13 @@ export default function TradesPage() {
         </button>
       </div>
 
-      {/* ICT Pre-trade checklist */}
-      <ChecklistPreTrade onAddTrade={openModalWithChecklist} />
+      {/* Strategy-linked pre-trade checklist */}
+      <ChecklistPreTrade
+        onAddTrade={openModalWithChecklist}
+        strategies={strategies}
+        selectedStrategy={selectedStrategy}
+        onStrategyChange={(id) => setSelectedStrategy(strategies.find((s) => s.id === id) ?? null)}
+      />
 
       <CsvImport strategyId={strategyId} onImported={refresh} />
 

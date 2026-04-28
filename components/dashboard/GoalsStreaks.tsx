@@ -18,12 +18,12 @@ interface Review {
   };
 }
 
-const BADGE_DEFS: { key: string; labelKey: string; emoji: string; check: (ctx: BadgeContext) => boolean }[] = [
-  { key: "discipline_3", labelKey: "badge_discipline_3", emoji: "\u{1F525}", check: (c) => c.streak >= 3 },
-  { key: "discipline_10", labelKey: "badge_discipline_10", emoji: "\u{1F3C6}", check: (c) => c.streak >= 10 },
-  { key: "discipline_30", labelKey: "badge_discipline_30", emoji: "\u{1F48E}", check: (c) => c.streak >= 30 },
-  { key: "winrate_60", labelKey: "badge_winrate_60", emoji: "\u{1F3AF}", check: (c) => c.totalTrades >= 50 && c.winrate >= 60 },
-  { key: "score_80_month", labelKey: "badge_score_80", emoji: "\u{2B50}", check: (c) => c.avgScore >= 80 && c.reviewCount >= 4 },
+const BADGE_DEFS: { key: string; labelKey: string; emoji: string; condition: string; check: (ctx: BadgeContext) => boolean }[] = [
+  { key: "discipline_3", labelKey: "badge_discipline_3", emoji: "\u{1F525}", condition: "3 jours consécutifs sans violation de règles", check: (c) => c.streak >= 3 },
+  { key: "discipline_10", labelKey: "badge_discipline_10", emoji: "\u{1F3C6}", condition: "10 jours consécutifs sans violation de règles", check: (c) => c.streak >= 10 },
+  { key: "discipline_30", labelKey: "badge_discipline_30", emoji: "\u{1F48E}", condition: "30 jours consécutifs sans violation de règles", check: (c) => c.streak >= 30 },
+  { key: "winrate_60", labelKey: "badge_winrate_60", emoji: "\u{1F3AF}", condition: "Winrate supérieur à 60% sur 50+ trades", check: (c) => c.totalTrades >= 50 && c.winrate >= 60 },
+  { key: "score_80_month", labelKey: "badge_score_80", emoji: "\u{2B50}", condition: "Score de discipline moyen ≥ 80 sur les 4 dernières analyses", check: (c) => c.avgScore >= 80 && c.reviewCount >= 4 },
 ];
 
 interface BadgeContext {
@@ -136,6 +136,9 @@ export default function GoalsStreaks() {
   }
 
   const unlockedKeys = new Set(achievements.map((a) => a.key));
+  const latestUnlocked = achievements.length > 0
+    ? achievements.reduce((a, b) => a.unlocked_at > b.unlocked_at ? a : b).key
+    : null;
 
   return (
     <section className="bg-card border border-border rounded-xl p-5">
@@ -171,22 +174,30 @@ export default function GoalsStreaks() {
 
       {/* Badges */}
       <div>
-        <p className="text-sm text-muted mb-2">{t("goals_badges")}</p>
-        <div className="flex flex-wrap gap-2">
+        <p className="text-sm text-muted mb-3">{t("goals_badges")}</p>
+        <div className="flex flex-wrap gap-3">
           {BADGE_DEFS.map((badge) => {
             const unlocked = unlockedKeys.has(badge.key);
+            const isLatest = unlocked && badge.key === latestUnlocked;
             return (
               <div
                 key={badge.key}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border ${
+                title={badge.condition}
+                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all ${
                   unlocked
-                    ? "bg-accent/10 border-accent/30 text-accent"
-                    : "bg-background border-border text-muted opacity-50"
+                    ? isLatest
+                      ? "bg-accent/10 border-accent/50 text-accent shadow-[0_0_12px_rgba(59,130,246,0.3)]"
+                      : "bg-accent/10 border-accent/30 text-accent"
+                    : "bg-background border-border text-muted opacity-40"
                 }`}
-                title={t(badge.labelKey)}
               >
-                <span>{badge.emoji}</span>
-                <span>{t(badge.labelKey)}</span>
+                <div className="relative">
+                  <span className="text-2xl">{badge.emoji}</span>
+                  {!unlocked && (
+                    <span className="absolute -top-1 -right-1 text-[10px]">🔒</span>
+                  )}
+                </div>
+                <span className="text-sm text-center leading-tight max-w-[80px]">{t(badge.labelKey)}</span>
               </div>
             );
           })}
