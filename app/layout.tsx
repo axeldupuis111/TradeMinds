@@ -17,7 +17,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "TradeMinds",
+  title: "TradeDiscipline",
   description: "Journal de trading intelligent",
 };
 

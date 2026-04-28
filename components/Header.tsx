@@ -55,7 +55,7 @@ export default function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
 
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm">
-          <span className="text-muted hidden sm:inline">TradeMinds</span>
+          <span className="text-muted hidden sm:inline">TradeDiscipline</span>
           <svg className="w-3.5 h-3.5 text-muted/40 hidden sm:inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.25 4.5l7.5 7.5-7.5 7.5" />
           </svg>

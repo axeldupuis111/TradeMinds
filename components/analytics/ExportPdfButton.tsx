@@ -116,7 +116,7 @@ export default function ExportPdfButton() {
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(20);
       doc.setFont("helvetica", "bold");
-      doc.text("TradeMinds", margin, 15);
+      doc.text("TradeDiscipline", margin, 15);
       doc.setFontSize(11);
       doc.setFont("helvetica", "normal");
       const monthLabel = `${MONTHS_FR[now.getMonth()]} ${now.getFullYear()}`;
@@ -286,14 +286,14 @@ export default function ExportPdfButton() {
         doc.setTextColor(150, 150, 150);
         doc.setFont("helvetica", "normal");
         doc.text(
-          "Genere par TradeMinds - trademinds.vercel.app",
+          "Genere par TradeDiscipline - TradeDiscipline.vercel.app",
           pageWidth / 2,
           doc.internal.pageSize.getHeight() - 8,
           { align: "center" }
         );
       }
 
-      doc.save(`trademinds-rapport-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}.pdf`);
+      doc.save(`TradeDiscipline-rapport-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}.pdf`);
     } catch (err) {
       console.error("PDF generation error:", err);
       alert(t("pdf_error"));

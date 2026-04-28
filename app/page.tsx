@@ -51,7 +51,7 @@ function Nav() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
             </svg>
           </div>
-          <span className="text-[15px] font-bold text-foreground tracking-tight">TradeMinds</span>
+          <span className="text-[15px] font-bold text-foreground tracking-tight">TradeDiscipline</span>
         </Link>
 
         {/* Centre links — desktop only */}
@@ -1040,7 +1040,7 @@ function Footer() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
                 </svg>
               </div>
-              <span className="font-bold text-foreground">TradeMinds</span>
+              <span className="font-bold text-foreground">TradeDiscipline</span>
             </div>
             <p className="text-muted text-xs leading-relaxed">{t("footer_brand_desc")}</p>
             {/* Social icons */}
@@ -1073,8 +1073,8 @@ function Footer() {
             <p className="text-foreground font-semibold text-sm mb-4">{t("footer_resources")}</p>
             <ul className="space-y-2.5">
               <li><span className="text-muted/40 text-sm cursor-not-allowed select-none">{t("footer_blog")}</span></li>
-              <li><a href="mailto:contact@trademinds.app" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_contact")}</a></li>
-              <li><a href="mailto:support@trademinds.app" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_support")}</a></li>
+              <li><a href="mailto:contact@TradeDiscipline.app" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_contact")}</a></li>
+              <li><a href="mailto:support@TradeDiscipline.app" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_support")}</a></li>
             </ul>
           </div>
 
@@ -1091,7 +1091,7 @@ function Footer() {
 
         {/* Bottom bar */}
         <div className="border-t border-[#1c1c1e] pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p className="text-xs text-muted">© 2026 TradeMinds. {t("footer_legal")}.</p>
+          <p className="text-xs text-muted">© 2026 TradeDiscipline. {t("footer_legal")}.</p>
         </div>
       </div>
     </footer>

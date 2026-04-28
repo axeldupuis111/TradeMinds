@@ -25,7 +25,7 @@ function detectLang(): Lang {
   if (typeof window === "undefined") return "fr";
 
   // Check localStorage first
-  const stored = localStorage.getItem("trademinds_lang");
+  const stored = localStorage.getItem("TradeDiscipline_lang");
   if (stored && (stored === "fr" || stored === "en" || stored === "de" || stored === "es")) {
     return stored as Lang;
   }
@@ -49,7 +49,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   const setLang = useCallback((newLang: Lang) => {
     setLangState(newLang);
-    localStorage.setItem("trademinds_lang", newLang);
+    localStorage.setItem("TradeDiscipline_lang", newLang);
   }, []);
 
   const t = useCallback(

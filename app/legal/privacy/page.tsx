@@ -12,7 +12,7 @@ export default function PrivacyPage() {
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
           </svg>
-          TradeMinds
+          TradeDiscipline
         </Link>
 
         <h1 className="text-3xl font-bold text-foreground mb-2">{t("legal_privacy_title")}</h1>
@@ -22,7 +22,7 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">1. Data Controller</h2>
-            <p>TradeMinds is responsible for the processing of your personal data. You can contact us at <span className="text-accent">privacy@trademinds.app</span>.</p>
+            <p>TradeDiscipline is responsible for the processing of your personal data. You can contact us at <span className="text-accent">privacy@TradeDiscipline.app</span>.</p>
           </section>
 
           <section>
@@ -38,7 +38,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">3. Purpose of Processing</h2>
             <ul className="list-disc list-inside space-y-1.5 text-foreground/70">
-              <li>Provide and improve the TradeMinds service</li>
+              <li>Provide and improve the TradeDiscipline service</li>
               <li>Generate personalized AI analyses from your trading data</li>
               <li>Manage your subscription and payments</li>
               <li>Send service-related communications (no marketing without consent)</li>
@@ -75,12 +75,12 @@ export default function PrivacyPage() {
               <li>Right to data portability</li>
               <li>Right to object</li>
             </ul>
-            <p className="mt-3">To exercise these rights, contact us at <span className="text-accent">privacy@trademinds.app</span>.</p>
+            <p className="mt-3">To exercise these rights, contact us at <span className="text-accent">privacy@TradeDiscipline.app</span>.</p>
           </section>
 
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">8. Cookies</h2>
-            <p>TradeMinds only uses cookies strictly necessary for the service (authentication session). No advertising or third-party tracking cookies are used.</p>
+            <p>TradeDiscipline only uses cookies strictly necessary for the service (authentication session). No advertising or third-party tracking cookies are used.</p>
           </section>
 
           <section>
@@ -91,13 +91,13 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">10. Contact &amp; Complaints</h2>
             <p>In case of a complaint, you may contact the relevant data protection authority in your country.</p>
-            <p className="mt-2">Contact: <span className="text-accent">privacy@trademinds.app</span></p>
+            <p className="mt-2">Contact: <span className="text-accent">privacy@TradeDiscipline.app</span></p>
           </section>
         </div>
 
         <div className="mt-12 pt-8 border-t border-border flex gap-4">
           <Link href="/legal/terms" className="text-sm text-accent hover:underline">{t("legal_terms_title")}</Link>
-          <Link href="/" className="text-sm text-muted hover:text-foreground">&larr; TradeMinds</Link>
+          <Link href="/" className="text-sm text-muted hover:text-foreground">&larr; TradeDiscipline</Link>
         </div>
       </div>
     </div>

@@ -438,7 +438,7 @@ function parseGeneric(lines: string[]): { trades: ParsedTrade[]; needsMapping?: 
   const tvResult = tryParseTradingView(rawHeaders, rawRows);
   if (tvResult && tvResult.length > 0) return { trades: tvResult };
 
-  // 4. Try simple TradeMinds template format
+  // 4. Try simple TradeDiscipline template format
   const isSimple = headers.some((h) => h === "pnl");
   if (isSimple) {
     const trades = normalizedRows.map((row) => parseSimpleRow(row)).filter((t): t is ParsedTrade => t !== null);
@@ -495,7 +495,7 @@ export async function parseXlsx(data: ArrayBuffer): Promise<ParseResult> {
 
 /**
  * Apply a manual column mapping chosen by the user in the mapping UI.
- * `columnMap` maps TradeMinds field names to original CSV header names.
+ * `columnMap` maps TradeDiscipline field names to original CSV header names.
  */
 export function applyManualMapping(
   rawHeaders: string[],

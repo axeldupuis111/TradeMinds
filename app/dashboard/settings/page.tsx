@@ -255,7 +255,7 @@ export default function SettingsPage() {
 
   const canShare = plan === "plus" || plan === "premium";
   const confirmWord = t("settings_delete_confirm_word");
-  const profileUrl = `trademinds.vercel.app/u/${originalUsername}`;
+  const profileUrl = `TradeDiscipline.vercel.app/u/${originalUsername}`;
 
   return (
     <div className="max-w-2xl space-y-6">
