@@ -467,8 +467,63 @@ export default function AnalysisPage() {
   }
 
   if (!canUseAI) {
+    // ── Demo data (hardcoded, read from translations) ──────────────────────
+    const demoViolations = [
+      { pair: "XAUUSD",     date: "09/03/2026 11:08", ruleKey: "demo_v1_rule", textKey: "demo_v1_text" },
+      { pair: "XAUUSD",     date: "05/03/2026 12:03", ruleKey: "demo_v2_rule", textKey: "demo_v2_text" },
+      { pair: "XAUUSD",     date: "05/03/2026 12:07", ruleKey: "demo_v3_rule", textKey: "demo_v3_text" },
+      { pair: "XAUUSD",     date: "19/02/2026 12:46", ruleKey: "demo_v4_rule", textKey: "demo_v4_text" },
+      { pair: "XAUUSD",     date: "02/01/2026 15:35", ruleKey: "demo_v5_rule", textKey: "demo_v5_text" },
+      { pair: "US100.CASH", date: "07/01/2026 16:55", ruleKey: "demo_v6_rule", textKey: "demo_v6_text" },
+      { pair: "XAUUSD",     date: "04/02/2026 13:33", ruleKey: "demo_v7_rule", textKey: "demo_v7_text" },
+      { pair: "XAUUSD",     date: "07/03/2026 16:22", ruleKey: "demo_v8_rule", textKey: "demo_v8_text" },
+    ] as const;
+    const demoPatterns = [
+      { severity: "high"   as const, typeKey: "demo_p1_type", textKey: "demo_p1_text" },
+      { severity: "high"   as const, typeKey: "demo_p2_type", textKey: "demo_p2_text" },
+      { severity: "high"   as const, typeKey: "demo_p3_type", textKey: "demo_p3_text" },
+      { severity: "high"   as const, typeKey: "demo_p4_type", textKey: "demo_p4_text" },
+      { severity: "medium" as const, typeKey: "demo_p5_type", textKey: "demo_p5_text" },
+      { severity: "medium" as const, typeKey: "demo_p6_type", textKey: "demo_p6_text" },
+    ];
+    const demoIctSubScores = [
+      { key: "ict_sub_checklist", val: 0 },
+      { key: "ict_sub_killzones", val: 0 },
+      { key: "ict_sub_rr",        val: 71 },
+      { key: "ict_sub_emotions",  val: 0 },
+      { key: "ict_sub_setup",     val: 0 },
+    ];
+    const demoHistory = [
+      { date: "28 avr. 2026", score: 32 },
+      { date: "21 avr. 2026", score: 28 },
+      { date: "14 avr. 2026", score: 45 },
+    ];
+
+    // ── Reusable watermark ──────────────────────────────────────────────────
+    const Watermark = () => (
+      <div className="pointer-events-none select-none absolute inset-0 z-10 overflow-hidden">
+        {[-1, 0, 1, 2].map((row) =>
+          [-1, 0, 1].map((col) => (
+            <span
+              key={`${row}-${col}`}
+              className="absolute text-foreground font-bold tracking-widest whitespace-nowrap"
+              style={{
+                fontSize: 72,
+                opacity: 0.045,
+                transform: `rotate(-30deg) translate(${col * 300}px, ${row * 200}px)`,
+                top: "50%",
+                left: "50%",
+              }}
+            >
+              {t("demo_watermark")}
+            </span>
+          ))
+        )}
+      </div>
+    );
+
     return (
-      <div className="max-w-3xl">
+      <div>
         <h1 className="text-2xl font-bold text-foreground">{t("analysis_title")}</h1>
         <p className="text-muted mt-1">{t("analysis_subtitle")}</p>
 
@@ -483,72 +538,224 @@ export default function AnalysisPage() {
           </Link>
         </div>
 
-        {/* Full demo report */}
-        <div className="mt-6 relative overflow-hidden">
-          {/* Watermark */}
-          <div className="pointer-events-none select-none absolute inset-0 flex items-center justify-center z-10 overflow-hidden">
-            {[0, 1, 2, 3, 4, 5].map((i) => (
-              <span
-                key={i}
-                className="absolute text-foreground font-bold tracking-widest"
-                style={{
-                  fontSize: 80,
-                  opacity: 0.04,
-                  transform: `rotate(-30deg) translate(${(i % 3) * 260 - 260}px, ${Math.floor(i / 3) * 200 - 100}px)`,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {t("demo_watermark")}
-              </span>
-            ))}
-          </div>
+        {/* ── 2-column layout (same as real page) ── */}
+        <div className="mt-6 flex flex-col lg:flex-row gap-6 items-start">
 
-          <div className="space-y-6">
-            {/* Score + summary */}
-            <div className="bg-card border border-border rounded-xl p-6 flex flex-col sm:flex-row items-center gap-6">
-              <ScoreCircle score={42} label={t("demo_section_summary")} />
-              <div>
-                <p className="text-foreground text-sm font-semibold mb-2">47 trades · Mars 2024</p>
-                <p className="text-muted text-sm leading-relaxed">{t("demo_analysis_summary")}</p>
-              </div>
-            </div>
+          {/* ── LEFT COLUMN ── */}
+          <div className="flex-1 min-w-0 space-y-6 relative">
+            <Watermark />
 
-            {/* Insights */}
-            <div className="bg-card border border-border rounded-xl p-6">
-              <h2 className="text-base font-semibold text-foreground mb-4">{t("demo_section_insights")}</h2>
-              <div className="space-y-4">
-                <div className="flex gap-3">
-                  <span className="text-xl shrink-0">💡</span>
-                  <div>
-                    <p className="text-foreground text-sm font-semibold">{t("demo_insight_1_title")}</p>
-                    <p className="text-muted text-sm mt-1">{t("demo_insight_1_text")}</p>
+            {/* Violations */}
+            <section>
+              <h2 className="text-lg font-semibold text-foreground mb-3">{t("analysis_violations")}</h2>
+              <div className="space-y-2">
+                {demoViolations.map((v, i) => (
+                  <div key={i} className="bg-card border border-border rounded-lg p-4 flex gap-3">
+                    <svg className="w-5 h-5 text-loss shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01M10.29 3.86l-8.6 14.86A1 1 0 002.56 20h18.88a1 1 0 00.87-1.28l-8.6-14.86a1 1 0 00-1.72 0z" />
+                    </svg>
+                    <div>
+                      <p className="text-foreground text-sm font-medium">{v.pair} — {v.date}</p>
+                      <p className="text-loss text-sm">{t(v.ruleKey)}</p>
+                      <p className="text-muted text-sm mt-1">{t(v.textKey)}</p>
+                    </div>
                   </div>
-                </div>
-                <div className="flex gap-3">
-                  <span className="text-xl shrink-0">🚨</span>
-                  <div>
-                    <p className="text-foreground text-sm font-semibold">{t("demo_insight_2_title")}</p>
-                    <p className="text-muted text-sm mt-1">{t("demo_insight_2_text")}</p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <span className="text-xl shrink-0">✅</span>
-                  <div>
-                    <p className="text-foreground text-sm font-semibold">{t("demo_insight_3_title")}</p>
-                    <p className="text-muted text-sm mt-1">{t("demo_insight_3_text")}</p>
-                  </div>
-                </div>
+                ))}
               </div>
-            </div>
+            </section>
+
+            {/* Patterns */}
+            <section>
+              <h2 className="text-lg font-semibold text-foreground mb-3">{t("analysis_patterns")}</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {demoPatterns.map((p, i) => {
+                  const sev = severityColors[p.severity];
+                  return (
+                    <div key={i} className="bg-card border border-border rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${sev.bg} ${sev.text}`}>
+                          {t(sev.labelKey)}
+                        </span>
+                        <span className="text-foreground text-sm font-medium">{t(p.typeKey)}</span>
+                      </div>
+                      <p className="text-muted text-sm">{t(p.textKey)}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            {/* Strengths */}
+            <section>
+              <h2 className="text-lg font-semibold text-foreground mb-3">{t("analysis_strengths")}</h2>
+              <div className="space-y-2">
+                {(["demo_s1", "demo_s2", "demo_s3"] as const).map((key) => (
+                  <div key={key} className="flex items-start gap-3">
+                    <svg className="w-5 h-5 text-profit shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <p className="text-foreground text-sm">{t(key)}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
 
             {/* Recommendations */}
-            <div className="bg-card border border-border rounded-xl p-6">
-              <h2 className="text-base font-semibold text-foreground mb-4">{t("demo_section_recommendations")}</h2>
+            <section>
+              <h2 className="text-lg font-semibold text-foreground mb-3">{t("analysis_recommendations")}</h2>
               <div className="space-y-2">
-                {[t("demo_reco_1"), t("demo_reco_2"), t("demo_reco_3")].map((r, i) => (
-                  <div key={i} className="bg-accent/5 border border-accent/20 rounded-lg p-3 flex gap-3">
-                    <span className="text-accent font-bold text-sm shrink-0">{i + 1}.</span>
-                    <p className="text-foreground text-sm">{r}</p>
+                {[
+                  { key: "demo_reco_1", border: "border-loss/40",        num: "text-loss" },
+                  { key: "demo_reco_2", border: "border-orange-500/40",   num: "text-orange-400" },
+                  { key: "demo_reco_3", border: "border-orange-500/40",   num: "text-orange-400" },
+                ].map((r, i) => (
+                  <div key={i} className={`bg-card border ${r.border} rounded-lg p-4 flex gap-3`}>
+                    <span className={`${r.num} font-bold text-sm shrink-0`}>{i + 1}.</span>
+                    <p className="text-foreground text-sm">{t(r.key as Parameters<typeof t>[0])}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Coach demo */}
+            <section>
+              <div className="flex items-start justify-between flex-wrap gap-2 mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">{t("coach_title")}</h2>
+                  <p className="text-muted text-sm mt-1">{t("coach_subtitle")}</p>
+                </div>
+              </div>
+
+              {/* Coach banner */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-accent text-white shadow-lg mb-4">
+                <span className="text-sm font-medium">{t("demo_banner_coach")}</span>
+                <Link href="/dashboard/upgrade" className="shrink-0 px-4 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap">
+                  {t("demo_unlock_coach")}
+                </Link>
+              </div>
+
+              <div className="bg-card border border-border rounded-xl overflow-hidden relative">
+                <Watermark />
+                <div className="p-4 space-y-4 min-h-[400px]">
+                  {[
+                    { role: "user",      msg: t("demo_coach_user_1")  },
+                    { role: "assistant", msg: t("demo_coach_reply_1") },
+                    { role: "user",      msg: t("demo_coach_user_2")  },
+                    { role: "assistant", msg: t("demo_coach_reply_2") },
+                    { role: "user",      msg: t("demo_coach_user_3")  },
+                    { role: "assistant", msg: t("demo_coach_reply_3") },
+                  ].map((m, i) => (
+                    <div key={i} className={`flex gap-2.5 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                      {m.role === "assistant" && (
+                        <div className="w-7 h-7 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center shrink-0 mt-0.5">
+                          <svg className="w-3.5 h-3.5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                          </svg>
+                        </div>
+                      )}
+                      <div className={`rounded-xl px-4 py-2.5 text-sm max-w-[80%] whitespace-pre-wrap ${m.role === "user" ? "bg-accent text-white rounded-br-sm" : "bg-surface border border-border text-foreground rounded-bl-sm"}`}>
+                        {m.msg}
+                      </div>
+                      {m.role === "user" && (
+                        <div className="w-7 h-7 rounded-full bg-foreground/10 border border-white/10 flex items-center justify-center shrink-0 mt-0.5">
+                          <svg className="w-3.5 h-3.5 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t border-border p-3 flex gap-2">
+                  <input type="text" disabled placeholder={t("demo_coach_input_placeholder")} className="flex-1 px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm placeholder-muted opacity-50 cursor-not-allowed" />
+                  <button disabled className="px-4 py-2 bg-accent/50 text-white rounded-lg text-sm font-medium cursor-not-allowed opacity-50">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-4 bg-card border border-accent/30 rounded-xl p-5">
+                <p className="text-muted text-sm">{t("demo_cta_coach_text")}</p>
+                <Link href="/dashboard/upgrade" className="mt-3 inline-block px-5 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors text-sm">
+                  {t("demo_cta_coach_btn")}
+                </Link>
+              </div>
+            </section>
+          </div>
+
+          {/* ── RIGHT COLUMN (hidden on mobile) ── */}
+          <div className="hidden lg:flex lg:w-[360px] shrink-0 flex-col gap-4 sticky top-6">
+
+            {/* Score card */}
+            <div className="bg-card border border-border rounded-xl p-6 card-shadow flex flex-col items-center text-center">
+              <ScoreCircle score={32} label={t("dash_discipline")} />
+              <p className="text-foreground text-sm font-semibold mt-4">26 / 80 {t("analysis_conforming")}</p>
+              <p className="text-muted text-sm mt-1">34 {t("analysis_violations_detected")}</p>
+            </div>
+
+            {/* ICT Discipline Score */}
+            <div className="bg-card border border-border rounded-xl p-6 card-shadow">
+              <div className="flex items-center gap-2 mb-4">
+                <h3 className="text-sm font-semibold text-foreground">{t("ict_discipline_score")}</h3>
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-accent/20 text-accent">ICT</span>
+              </div>
+              {/* Circular gauge */}
+              <div className="flex justify-center mb-4">
+                {(() => {
+                  const score = 11;
+                  const radius = 40;
+                  const circ = 2 * Math.PI * radius;
+                  const offset = circ - (score / 100) * circ;
+                  return (
+                    <div className="relative w-24 h-24">
+                      <svg className="w-24 h-24 -rotate-90" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r={radius} fill="none" stroke="rgb(var(--border))" strokeWidth="8" />
+                        <circle cx="50" cy="50" r={radius} fill="none" stroke="#ef4444" strokeWidth="8" strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset} />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-2xl font-bold text-loss">{score}</span>
+                        <span className="text-muted text-[10px]">/100</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+              {/* Sub-scores */}
+              <div className="space-y-1.5">
+                {demoIctSubScores.map(({ key, val }) => (
+                  <div key={key}>
+                    <div className="flex justify-between text-xs mb-0.5">
+                      <span className="text-muted">{t(key as Parameters<typeof t>[0])}</span>
+                      <span className="text-foreground font-medium">{val}%</span>
+                    </div>
+                    <div className="h-1 bg-border rounded-full overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${val}%`, backgroundColor: val >= 70 ? "#22c55e" : val >= 40 ? "#f59e0b" : "#ef4444" }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted mt-3">{t("ict_score_based_on")} 80 {t("ict_score_tagged_trades")}</p>
+            </div>
+
+            {/* Coach Q&A History */}
+            <div className="bg-card border border-border rounded-xl p-4 card-shadow">
+              <h2 className="text-sm font-semibold text-foreground mb-3">{t("coach_history_title")}</h2>
+              <p className="text-muted text-xs">{t("coach_history_empty")}</p>
+            </div>
+
+            {/* Analysis history */}
+            <div className="bg-card border border-border rounded-xl p-4 card-shadow">
+              <h2 className="text-sm font-semibold text-foreground mb-3">{t("analysis_history")}</h2>
+              <div className="space-y-1.5">
+                {demoHistory.map((h, i) => (
+                  <div key={i} className="w-full text-left rounded-lg px-3 py-2.5 flex items-center justify-between border border-transparent">
+                    <div>
+                      <p className="text-foreground text-xs font-medium">{h.date}</p>
+                      <p className="text-muted text-[11px]">26/80 trades</p>
+                    </div>
+                    <span className={`text-lg font-bold tabular-nums ${h.score >= 75 ? "text-profit" : h.score >= 50 ? "text-orange-400" : "text-loss"}`}>
+                      {h.score}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -556,109 +763,21 @@ export default function AnalysisPage() {
           </div>
         </div>
 
-        {/* Demo Coach section */}
-        <div className="mt-8">
-          {/* Coach demo banner */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-accent text-white shadow-lg mb-6">
-            <span className="text-sm font-medium">{t("demo_banner_coach")}</span>
-            <Link
-              href="/dashboard/upgrade"
-              className="shrink-0 px-4 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap"
-            >
-              {t("demo_unlock_coach")}
-            </Link>
-          </div>
-
-          {/* Demo chat */}
-          <div className="bg-card border border-border rounded-xl overflow-hidden relative">
-            {/* Watermark */}
-            <div className="pointer-events-none select-none absolute inset-0 flex items-center justify-center z-10 overflow-hidden">
-              {[0, 1].map((i) => (
-                <span
-                  key={i}
-                  className="absolute text-foreground font-bold tracking-widest"
-                  style={{
-                    fontSize: 80,
-                    opacity: 0.04,
-                    transform: `rotate(-30deg) translate(${i * 280 - 140}px, 0px)`,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {t("demo_watermark")}
-                </span>
-              ))}
+        {/* Mobile right-column equivalent */}
+        <div className="lg:hidden mt-6 space-y-4">
+          <div className="bg-card border border-border rounded-xl p-6 flex flex-col sm:flex-row items-center gap-6">
+            <ScoreCircle score={32} label={t("dash_discipline")} />
+            <div>
+              <p className="text-foreground text-sm font-semibold">26 / 80 {t("analysis_conforming")}</p>
+              <p className="text-muted text-sm mt-1">34 {t("analysis_violations_detected")}</p>
             </div>
-
-            <div className="p-4 space-y-4 min-h-[400px]">
-              {[
-                { role: "user", msg: t("demo_coach_user_1") },
-                { role: "assistant", msg: t("demo_coach_reply_1") },
-                { role: "user", msg: t("demo_coach_user_2") },
-                { role: "assistant", msg: t("demo_coach_reply_2") },
-                { role: "user", msg: t("demo_coach_user_3") },
-                { role: "assistant", msg: t("demo_coach_reply_3") },
-              ].map((m, i) => (
-                <div key={i} className={`flex gap-2.5 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                  {m.role === "assistant" && (
-                    <div className="w-7 h-7 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center shrink-0 mt-0.5">
-                      <svg className="w-3.5 h-3.5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                      </svg>
-                    </div>
-                  )}
-                  <div className={`rounded-xl px-4 py-2.5 text-sm max-w-[80%] whitespace-pre-wrap ${
-                    m.role === "user"
-                      ? "bg-accent text-white rounded-br-sm"
-                      : "bg-surface border border-border text-foreground rounded-bl-sm"
-                  }`}>
-                    {m.msg}
-                  </div>
-                  {m.role === "user" && (
-                    <div className="w-7 h-7 rounded-full bg-foreground/10 border border-white/10 flex items-center justify-center shrink-0 mt-0.5">
-                      <svg className="w-3.5 h-3.5 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-                      </svg>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {/* Disabled input */}
-            <div className="border-t border-border p-3 flex gap-2">
-              <input
-                type="text"
-                disabled
-                placeholder={t("demo_coach_input_placeholder")}
-                className="flex-1 px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm placeholder-muted opacity-50 cursor-not-allowed"
-              />
-              <button disabled className="px-4 py-2 bg-accent/50 text-white rounded-lg text-sm font-medium cursor-not-allowed opacity-50">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          {/* Coach CTA */}
-          <div className="mt-4 bg-card border border-accent/30 rounded-xl p-5">
-            <p className="text-muted text-sm">{t("demo_cta_coach_text")}</p>
-            <Link
-              href="/dashboard/upgrade"
-              className="mt-3 inline-block px-5 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors text-sm"
-            >
-              {t("demo_cta_coach_btn")}
-            </Link>
           </div>
         </div>
 
-        {/* Analysis CTA */}
+        {/* Bottom CTA */}
         <div className="mt-6 bg-card border border-accent/30 rounded-xl p-5">
           <p className="text-muted text-sm">{t("demo_cta_analysis_text")}</p>
-          <Link
-            href="/dashboard/upgrade"
-            className="mt-3 inline-block px-5 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors text-sm"
-          >
+          <Link href="/dashboard/upgrade" className="mt-3 inline-block px-5 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors text-sm">
             {t("demo_cta_analysis_btn")}
           </Link>
         </div>
