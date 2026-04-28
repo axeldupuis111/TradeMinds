@@ -40,7 +40,9 @@ export async function POST(request: Request) {
 
     const langName = LANG_NAMES[language] ?? "français";
 
-    const systemPrompt = `Tu es un coach de trading spécialisé dans la méthodologie ICT (Inner Circle Trading) et SMC (Smart Money Concepts). Tu maîtrises parfaitement ces concepts :
+    const systemPrompt = `IMPORTANT: Tu dois répondre UNIQUEMENT en ${langName}. Tous tes messages doivent être rédigés en ${langName}. N'utilise aucune autre langue, quelle que soit la langue des données ou des messages précédents.
+
+Tu es un coach de trading spécialisé dans la méthodologie ICT (Inner Circle Trading) et SMC (Smart Money Concepts). Tu maîtrises parfaitement ces concepts :
 - Order Blocks (OB), Fair Value Gaps (FVG), Breaker Blocks, Mitigation Blocks
 - Liquidité : Buy Side Liquidity (BSL), Sell Side Liquidity (SSL), Equal Highs/Lows, Liquidity Sweeps
 - Structure de marché : Market Structure Shift (MSS), Change of Character (ChoCh), Break of Structure (BOS)
@@ -72,7 +74,6 @@ RECENT TRADE DATA:
 ${tradesContext}
 
 RULES:
-- MANDATORY LANGUAGE: You MUST ALWAYS reply in ${langName}. Never use any other language regardless of the language of the data or previous messages.
 - Be concise (3-5 sentences max per response)
 - Use the data above to personalize your responses
 - Analyze data, do not repeat it raw
