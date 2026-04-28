@@ -313,29 +313,35 @@ export default function UpgradePage() {
       <div className="mt-6 max-w-2xl mx-auto" ref={premiumRef} id="premium-notify">
         <div className="relative rounded-xl border-2 border-yellow-500/30 p-6 bg-card/80 shadow-lg shadow-yellow-500/5">
           <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-yellow-500/20 text-yellow-400 text-xs font-bold px-3 py-0.5 rounded-full border border-yellow-500/30">
-            {t("plan_premium_coming")}
+            🔒 {t("plan_premium_coming")}
           </span>
 
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            <div className="flex-1">
-              <h3 className="text-lg font-bold text-yellow-400">{t("plan_premium")}</h3>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-2xl font-bold text-foreground/70">19.99€</span>
-                <span className="text-muted text-sm">/{t("plan_month")}</span>
-              </div>
-              <p className="text-muted text-sm mt-2 max-w-md">{t("plan_premium_desc")}</p>
-            </div>
+          <h3 className="text-lg font-bold text-yellow-400">{t("plan_premium")}</h3>
+          <p className="text-muted text-sm mt-1">{t("plan_premium_desc")}</p>
 
-            <div className="sm:w-64 shrink-0">
-              {notifyStatus === "success" ? (
-                <p className="text-profit text-sm font-medium text-center py-2.5">
-                  {t("pricing_notify_success")}
-                </p>
-              ) : notifyStatus === "duplicate" ? (
-                <p className="text-orange-400 text-sm text-center py-2.5">
-                  {t("pricing_notify_duplicate")}
-                </p>
-              ) : (
+          <ul className="mt-4 space-y-2">
+            {(["plan_benefit_premium_1","plan_benefit_premium_2","plan_benefit_premium_3","plan_benefit_premium_4","plan_benefit_premium_5"] as const).map((key) => (
+              <li key={key} className="flex items-center gap-2 text-sm text-foreground">
+                <svg className="w-4 h-4 text-yellow-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                {t(key)}
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-5">
+            {notifyStatus === "success" ? (
+              <p className="text-profit text-sm font-medium text-center py-2.5">
+                {t("pricing_notify_success")}
+              </p>
+            ) : notifyStatus === "duplicate" ? (
+              <p className="text-orange-400 text-sm text-center py-2.5">
+                {t("pricing_notify_duplicate")}
+              </p>
+            ) : (
+              <>
+                <p className="text-muted text-sm mb-2">{t("plan_premium_notify_label")}</p>
                 <div className="flex gap-2">
                   <input
                     type="email"
@@ -343,21 +349,21 @@ export default function UpgradePage() {
                     onChange={(e) => setNotifyEmail(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") handleNotify(); }}
                     placeholder="email@exemple.com"
-                    className="flex-1 min-w-0 px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent/50 focus:border-accent/50"
+                    className="flex-1 min-w-0 px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm placeholder-muted focus:outline-none focus:ring-1 focus:ring-yellow-500/40"
                   />
                   <button
                     onClick={handleNotify}
                     disabled={notifyStatus === "loading" || !notifyEmail.trim()}
-                    className="px-3 py-2 bg-surface border border-border text-foreground text-sm rounded-lg hover:bg-border transition-colors disabled:opacity-50 whitespace-nowrap"
+                    className="px-3 py-2 bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 text-sm font-semibold rounded-lg hover:bg-yellow-500/30 transition-colors disabled:opacity-50 whitespace-nowrap"
                   >
                     {notifyStatus === "loading" ? "..." : t("plan_premium_notify_btn")}
                   </button>
                 </div>
-              )}
-              {notifyStatus === "error" && (
-                <p className="text-loss text-xs mt-1">{t("pricing_notify_error")}</p>
-              )}
-            </div>
+              </>
+            )}
+            {notifyStatus === "error" && (
+              <p className="text-loss text-xs mt-1">{t("pricing_notify_error")}</p>
+            )}
           </div>
         </div>
       </div>
