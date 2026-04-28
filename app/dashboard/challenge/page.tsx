@@ -31,22 +31,23 @@ interface AccountStats {
 }
 
 const PROP_FIRMS = [
-  "FTMO", "The5ers", "FundedNext", "MyFundedFX", "TFT", "E8 Funding",
   "Alpha Capital Group", "Apex Trader Funding", "Aquafunded", "Blue Guardian",
-  "Bulenox", "City Traders Imperium", "Earn2Trade", "FXIFY",
-  "Funded Trading Plus", "Funding Pips", "Goat Funded Trader", "Hola Prime",
-  "Instant Funding", "Lux Trading Firm", "Maven Trading", "Ment Funding",
-  "MyForexFunds", "OFP Funding", "Skilled Funded Trader", "TopStep",
-  "Trade The Pool", "Traders With Edge", "True Forex Funds", "Ux Funding",
+  "Bulenox", "City Traders Imperium", "E8 Funding", "Earn2Trade",
+  "FTMO", "FXIFY", "FundedNext", "Funded Trading Plus", "Funding Pips",
+  "Goat Funded Trader", "Hola Prime", "Instant Funding", "Lux Trading Firm",
+  "Maven Trading", "Ment Funding", "MyForexFunds", "MyFundedFX",
+  "OFP Funding", "Skilled Funded Trader", "TFT", "The5ers",
+  "TopStep", "Trade The Pool", "Traders With Edge", "True Forex Funds", "Ux Funding",
 ];
 const BROKERS = [
-  "IC Markets", "Pepperstone", "XM", "Exness", "OANDA", "Interactive Brokers",
-  "eToro", "XTB", "Admiral Markets", "Vantage", "FP Markets", "Fusion Markets",
-  "ActivTrades", "Axi", "BDSwiss", "BlackBull Markets", "Capital.com",
-  "CMC Markets", "DEGIRO", "Dukascopy", "FXCM", "FXPRO", "HF Markets",
-  "IG Group", "InstaForex", "LiteFinance", "Moneta Markets", "MultiBank",
-  "OctaFX", "Plus500", "RoboForex", "Saxo Bank", "Skilling", "Swissquote",
-  "ThinkMarkets", "Tickmill", "Trade Nation", "Tradovate",
+  "ActivTrades", "Admiral Markets", "Axi", "BDSwiss", "BlackBull Markets",
+  "Capital.com", "CMC Markets", "DEGIRO", "Dukascopy", "eToro",
+  "Exness", "FP Markets", "Fusion Markets", "FXCM", "FXPRO",
+  "HF Markets", "IC Markets", "IG Group", "InstaForex", "Interactive Brokers",
+  "LiteFinance", "Moneta Markets", "MultiBank", "OANDA", "OctaFX",
+  "Pepperstone", "Plus500", "RoboForex", "Saxo Bank", "Skilling",
+  "Swissquote", "ThinkMarkets", "Tickmill", "Trade Nation", "Tradovate",
+  "Vantage", "XM", "XTB",
 ];
 const CUSTOM_VALUE = "__custom__";
 
