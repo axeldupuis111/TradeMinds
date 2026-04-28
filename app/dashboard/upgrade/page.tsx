@@ -22,7 +22,7 @@ const features: PlanFeature[] = [
   { key: "plan_feat_session_pretrade",  free: true,          plus: true                                      },
   { key: "plan_feat_strategy_ai",       free: false,         plus: true,  demoHref: "/dashboard/strategy"    },
   { key: "plan_feat_analysis_ai",       free: false,         plus: "1/plan_day", demoHref: "/dashboard/analysis" },
-  { key: "plan_feat_coach_ai",          free: false,         plus: "10/plan_day", demoHref: "/dashboard/analysis" },
+  { key: "plan_feat_coach_ai",          free: false,         plus: "5/plan_day", demoHref: "/dashboard/analysis" },
   { key: "plan_feat_tags_emotions",     free: false,         plus: true                                      },
   { key: "plan_feat_pdf_export",        free: false,         plus: true                                      },
   { key: "plan_feat_analytics",         free: false,         plus: true                                      },

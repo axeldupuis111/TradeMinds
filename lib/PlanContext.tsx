@@ -132,7 +132,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
   }, [supabase, dailyAiCount, dailyAiReset, plan]);
 
   // Derived permissions
-  // Free: no AI features (cost-saving). Plus/premium: AI (1/day), coach (10/day)
+  // Free: no AI features (cost-saving). Plus/premium: AI (1/day), coach (5/day)
   const canUseStrategy = plan === "plus" || plan === "premium";
   const canUseAI = plan === "plus" || plan === "premium";
 

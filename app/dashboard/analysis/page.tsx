@@ -128,7 +128,7 @@ export default function AnalysisPage() {
   const [aiHistory, setAIHistory] = useState<{ id: string; question: string; answer: string; created_at: string }[]>([]);
   const [aiHistoryLoading, setAIHistoryLoading] = useState(true);
 
-  const chatLimit = plan === "plus" || plan === "premium" ? 10 : 0;
+  const chatLimit = plan === "plus" || plan === "premium" ? 5 : 0;
   const chatRemaining = Math.max(0, chatLimit - chatDailyCount);
   const canChat = plan === "plus" || plan === "premium";
 
