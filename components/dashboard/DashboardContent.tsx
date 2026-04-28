@@ -84,7 +84,7 @@ export default function DashboardContent({
   allTrades,
 }: Props) {
   const { t } = useLanguage();
-  const { plan } = usePlan();
+  const { plan, canUseAI } = usePlan();
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [upsellDismissed, setUpsellDismissed] = useState(false);
 
@@ -302,50 +302,58 @@ export default function DashboardContent({
         <DayStatus />
       </div>
 
-      {/* AI Insights + Equity Curve — side by side on large screens */}
-      <div className={`mt-6 grid gap-4 ${equityCurveData.length > 0 ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"}`}>
-        <section className="bg-card border border-border rounded-xl p-5 card-shadow">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <svg className="w-4 h-4 text-accent" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12" />
-              </svg>
-              <h2 className="text-base font-semibold text-foreground">{t("dash_insights_title")}</h2>
+      {/* AI Insights + Equity Curve — side by side on large screens (Plus only for AI insights) */}
+      {canUseAI ? (
+        <div className={`mt-6 grid gap-4 ${equityCurveData.length > 0 ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"}`}>
+          <section className="bg-card border border-border rounded-xl p-5 card-shadow">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-accent" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12" />
+                </svg>
+                <h2 className="text-base font-semibold text-foreground">{t("dash_insights_title")}</h2>
+              </div>
+              <Link href="/dashboard/analysis" className="text-xs text-accent hover:underline">{t("dash_insights_see_all")}</Link>
             </div>
-            <Link href="/dashboard/analysis" className="text-xs text-accent hover:underline">{t("dash_insights_see_all")}</Link>
-          </div>
-          {insights.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {insights.map((ins, i) => (
-                <div key={i} className="flex items-start gap-2.5 p-5 rounded-lg bg-surface border border-border">
-                  <span className="text-lg shrink-0 mt-0.5">
-                    {["💡", "📊", "✅", "⚡"][i % 4]}
-                  </span>
-                  <p className="text-sm text-muted leading-relaxed">{ins}</p>
-                </div>
-              ))}
-            </div>
-          ) : filteredAll.length > 0 ? (
-            <div className="space-y-3">
-              <p className="text-sm text-muted">{t("dash_insights_has_trades").replace("{count}", String(filteredAll.length))}</p>
-              <Link href="/dashboard/analysis" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 border border-accent/20 text-accent text-xs font-medium hover:bg-accent/15 transition-colors btn-scale">
-                {t("dash_action_analyze")} →
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <p className="text-sm text-muted">{t("dash_insights_no_trades")}</p>
-              <Link href="/dashboard/trades" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border text-muted text-xs font-medium hover:text-foreground hover:border-muted transition-colors btn-scale">
-                {t("dash_action_import")} →
-              </Link>
-            </div>
-          )}
-        </section>
+            {insights.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {insights.map((ins, i) => (
+                  <div key={i} className="flex items-start gap-2.5 p-5 rounded-lg bg-surface border border-border">
+                    <span className="text-lg shrink-0 mt-0.5">
+                      {["💡", "📊", "✅", "⚡"][i % 4]}
+                    </span>
+                    <p className="text-sm text-muted leading-relaxed">{ins}</p>
+                  </div>
+                ))}
+              </div>
+            ) : filteredAll.length > 0 ? (
+              <div className="space-y-3">
+                <p className="text-sm text-muted">{t("dash_insights_has_trades").replace("{count}", String(filteredAll.length))}</p>
+                <Link href="/dashboard/analysis" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 border border-accent/20 text-accent text-xs font-medium hover:bg-accent/15 transition-colors btn-scale">
+                  {t("dash_action_analyze")} →
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-muted">{t("dash_insights_no_trades")}</p>
+                <Link href="/dashboard/trades" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border text-muted text-xs font-medium hover:text-foreground hover:border-muted transition-colors btn-scale">
+                  {t("dash_action_import")} →
+                </Link>
+              </div>
+            )}
+          </section>
 
-        {equityCurveData.length > 0 && (
-          <EquityCurve data={equityCurveData} initialBalance={initialBalance} />
-        )}
-      </div>
+          {equityCurveData.length > 0 && (
+            <EquityCurve data={equityCurveData} initialBalance={initialBalance} />
+          )}
+        </div>
+      ) : (
+        equityCurveData.length > 0 && (
+          <div className="mt-6">
+            <EquityCurve data={equityCurveData} initialBalance={initialBalance} />
+          </div>
+        )
+      )}
 
       {/* Trading Calendar */}
       <div className="mt-6">
@@ -358,7 +366,7 @@ export default function DashboardContent({
       </div>
 
       {/* Bottom sections */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6">
+      <div className={`grid grid-cols-1 gap-4 mt-6 ${(canUseAI || (displayAccount && ddPct > 75)) ? "lg:grid-cols-2" : ""}`}>
         {/* Recent trades */}
         <section className="bg-card border border-border rounded-xl p-5 card-shadow">
           <div className="flex items-center justify-between mb-4">
@@ -392,55 +400,59 @@ export default function DashboardContent({
           )}
         </section>
 
-        {/* Right column */}
-        <div className="space-y-4">
-          {/* Last analysis */}
-          <div className="bg-card border border-border rounded-xl p-5 card-shadow">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-sm font-semibold text-foreground">{t("dash_last_analysis")}</h2>
-              {lastReview && (
-                <Link href="/dashboard/analysis" className="text-xs text-accent hover:underline">{t("dash_see_all")}</Link>
-              )}
-            </div>
-            {lastReview ? (
-              <div>
+        {/* Right column — only rendered when there is content to show */}
+        {(canUseAI || (displayAccount && ddPct > 75)) && (
+          <div className="space-y-4">
+            {/* Last analysis — Plus only */}
+            {canUseAI && (
+              <div className="bg-card border border-border rounded-xl p-5 card-shadow">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-muted text-xs">
-                    {new Date(lastReview.created_at).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}
-                  </span>
-                  <span className={`text-xl font-bold tabular-nums ${lastReview.discipline_score >= 75 ? "text-profit" : lastReview.discipline_score >= 50 ? "text-warning" : "text-loss"}`}>
-                    {lastReview.discipline_score}/100
-                  </span>
+                  <h2 className="text-sm font-semibold text-foreground">{t("dash_last_analysis")}</h2>
+                  {lastReview && (
+                    <Link href="/dashboard/analysis" className="text-xs text-accent hover:underline">{t("dash_see_all")}</Link>
+                  )}
                 </div>
-                {insights.length > 0 && (
-                  <p className="text-xs text-muted leading-relaxed line-clamp-2">{insights[0]}</p>
+                {lastReview ? (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-muted text-xs">
+                        {new Date(lastReview.created_at).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}
+                      </span>
+                      <span className={`text-xl font-bold tabular-nums ${lastReview.discipline_score >= 75 ? "text-profit" : lastReview.discipline_score >= 50 ? "text-warning" : "text-loss"}`}>
+                        {lastReview.discipline_score}/100
+                      </span>
+                    </div>
+                    {insights.length > 0 && (
+                      <p className="text-xs text-muted leading-relaxed line-clamp-2">{insights[0]}</p>
+                    )}
+                  </div>
+                ) : (
+                  <Link href="/dashboard/analysis" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-500/30 bg-blue-500/5 text-blue-400 text-sm font-medium hover:bg-blue-500/10 hover:border-blue-500/50 transition-colors cursor-pointer">
+                    {t("dash_run_ai_analysis")}
+                  </Link>
                 )}
               </div>
-            ) : (
-              <Link href="/dashboard/analysis" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-500/30 bg-blue-500/5 text-blue-400 text-sm font-medium hover:bg-blue-500/10 hover:border-blue-500/50 transition-colors cursor-pointer">
-                {t("dash_run_ai_analysis")}
-              </Link>
+            )}
+
+            {/* Drawdown alert — all plans */}
+            {displayAccount && ddPct > 75 && (
+              <div className={`border rounded-xl p-5 card-shadow ${ddPct > 90 ? "bg-loss/5 border-loss/20" : "bg-warning/5 border-warning/20"}`}>
+                <div className="flex items-center gap-2 mb-1">
+                  <svg className={`w-5 h-5 ${ddPct > 90 ? "text-loss" : "text-warning"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                  </svg>
+                  <h2 className={`text-sm font-semibold ${ddPct > 90 ? "text-loss" : "text-warning"}`}>
+                    {ddPct > 90 ? t("dash_dd_critical") : t("dash_dd_high")}
+                  </h2>
+                </div>
+                <p className="text-foreground text-sm">
+                  {displayAccount.firm} — Drawdown{" "}
+                  <span className="font-bold tabular-nums">{ddPct.toFixed(1)}%</span> ({ddUsed.toFixed(0)}€ / {ddMax.toFixed(0)}€)
+                </p>
+              </div>
             )}
           </div>
-
-          {/* Drawdown alert */}
-          {displayAccount && ddPct > 75 && (
-            <div className={`border rounded-xl p-5 card-shadow ${ddPct > 90 ? "bg-loss/5 border-loss/20" : "bg-warning/5 border-warning/20"}`}>
-              <div className="flex items-center gap-2 mb-1">
-                <svg className={`w-5 h-5 ${ddPct > 90 ? "text-loss" : "text-warning"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                </svg>
-                <h2 className={`text-sm font-semibold ${ddPct > 90 ? "text-loss" : "text-warning"}`}>
-                  {ddPct > 90 ? t("dash_dd_critical") : t("dash_dd_high")}
-                </h2>
-              </div>
-              <p className="text-foreground text-sm">
-                {displayAccount.firm} — Drawdown{" "}
-                <span className="font-bold tabular-nums">{ddPct.toFixed(1)}%</span> ({ddUsed.toFixed(0)}€ / {ddMax.toFixed(0)}€)
-              </p>
-            </div>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );
