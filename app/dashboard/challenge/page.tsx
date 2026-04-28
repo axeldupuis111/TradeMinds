@@ -30,8 +30,25 @@ interface AccountStats {
   equityCurveData: { date: string; balance: number }[];
 }
 
-const PROP_FIRMS = ["FTMO", "The5ers", "FundedNext", "MyFundedFX", "TFT", "MyForexFunds", "Autre"];
-const BROKERS = ["IC Markets", "Pepperstone", "XM", "Exness", "OANDA", "Interactive Brokers", "eToro", "XTB", "Admiral Markets", "Vantage", "FP Markets", "Fusion Markets", "Autre"];
+const PROP_FIRMS = [
+  "FTMO", "The5ers", "FundedNext", "MyFundedFX", "TFT", "E8 Funding",
+  "Alpha Capital Group", "Apex Trader Funding", "Aquafunded", "Blue Guardian",
+  "Bulenox", "City Traders Imperium", "Earn2Trade", "FXIFY",
+  "Funded Trading Plus", "Funding Pips", "Goat Funded Trader", "Hola Prime",
+  "Instant Funding", "Lux Trading Firm", "Maven Trading", "Ment Funding",
+  "MyForexFunds", "OFP Funding", "Skilled Funded Trader", "TopStep",
+  "Trade The Pool", "Traders With Edge", "True Forex Funds", "Ux Funding",
+];
+const BROKERS = [
+  "IC Markets", "Pepperstone", "XM", "Exness", "OANDA", "Interactive Brokers",
+  "eToro", "XTB", "Admiral Markets", "Vantage", "FP Markets", "Fusion Markets",
+  "ActivTrades", "Axi", "BDSwiss", "BlackBull Markets", "Capital.com",
+  "CMC Markets", "DEGIRO", "Dukascopy", "FXCM", "FXPRO", "HF Markets",
+  "IG Group", "InstaForex", "LiteFinance", "Moneta Markets", "MultiBank",
+  "OctaFX", "Plus500", "RoboForex", "Saxo Bank", "Skilling", "Swissquote",
+  "ThinkMarkets", "Tickmill", "Trade Nation", "Tradovate",
+];
+const CUSTOM_VALUE = "__custom__";
 
 const inputClass =
   "w-full px-3 py-2 bg-surface border border-border rounded-lg text-foreground placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent";
@@ -328,6 +345,8 @@ export default function ChallengePage() {
   const [accountType, setAccountType] = useState<"prop" | "personal">("prop");
   const firmList = accountType === "prop" ? PROP_FIRMS : BROKERS;
   const [firm, setFirm] = useState(PROP_FIRMS[0]);
+  const [customFirm, setCustomFirm] = useState("");
+  const effectiveFirm = firm === CUSTOM_VALUE ? customFirm.trim() : firm;
   const [accountNumber, setAccountNumber] = useState("");
   const [accountSize, setAccountSize] = useState("50000");
   const [profitTarget, setProfitTarget] = useState("8");
@@ -347,7 +366,7 @@ export default function ChallengePage() {
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
   const [tooltipId, setTooltipId] = useState<string | null>(null);
 
-  const isFormValid = accountNumber.trim() !== "" && accountSize !== "" && parseFloat(accountSize) > 0 && startDate !== "";
+  const isFormValid = accountNumber.trim() !== "" && accountSize !== "" && parseFloat(accountSize) > 0 && startDate !== "" && effectiveFirm !== "";
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -456,7 +475,7 @@ export default function ChallengePage() {
     const { error } = await supabase.from("prop_challenges").insert({
       user_id: user.id,
       type: accountType,
-      firm,
+      firm: effectiveFirm,
       account_number: accountNumber.trim(),
       account_size: size,
       profit_target_pct: accountType === "prop" ? (parseFloat(profitTarget) || 8) : 0,
@@ -569,11 +588,11 @@ export default function ChallengePage() {
           <div>
             <label className="block text-sm text-muted mb-2">{t("challenge_account_type")}</label>
             <div className="grid grid-cols-2 gap-3">
-              <button type="button" onClick={() => { setAccountType("prop"); setFirm(PROP_FIRMS[0]); }}
+              <button type="button" onClick={() => { setAccountType("prop"); setFirm(PROP_FIRMS[0]); setCustomFirm(""); }}
                 className={`py-2.5 px-4 rounded-lg text-sm font-medium border transition-colors ${accountType === "prop" ? "bg-accent/10 border-accent text-accent" : "bg-surface border-border text-muted hover:text-foreground"}`}>
                 {t("challenge_type_prop")}
               </button>
-              <button type="button" onClick={() => { setAccountType("personal"); setFirm(BROKERS[0]); }}
+              <button type="button" onClick={() => { setAccountType("personal"); setFirm(BROKERS[0]); setCustomFirm(""); }}
                 className={`py-2.5 px-4 rounded-lg text-sm font-medium border transition-colors ${accountType === "personal" ? "bg-accent/10 border-accent text-accent" : "bg-surface border-border text-muted hover:text-foreground"}`}>
                 {t("challenge_type_personal")}
               </button>
@@ -583,9 +602,24 @@ export default function ChallengePage() {
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-sm text-muted mb-1">{accountType === "prop" ? t("challenge_label_prop_firm") : t("challenge_label_broker")}</label>
-              <select value={firm} onChange={(e) => setFirm(e.target.value)} className={inputClass}>
+              <select
+                value={firm}
+                onChange={(e) => { setFirm(e.target.value); setCustomFirm(""); }}
+                className={inputClass}
+              >
                 {firmList.map((f) => (<option key={f} value={f}>{f}</option>))}
+                <option value={CUSTOM_VALUE}>— {accountType === "prop" ? "Autre prop firm" : "Autre broker"}</option>
               </select>
+              {firm === CUSTOM_VALUE && (
+                <input
+                  type="text"
+                  value={customFirm}
+                  onChange={(e) => setCustomFirm(e.target.value)}
+                  placeholder={accountType === "prop" ? "Nom de la prop firm" : "Nom du broker"}
+                  className={`${inputClass} mt-2`}
+                  autoFocus
+                />
+              )}
             </div>
             <div>
               <label className="block text-sm text-muted mb-1">
