@@ -43,7 +43,7 @@ function Nav() {
   const { t } = useLanguage();
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-[#1c1c1e] bg-[#09090b]/80 backdrop-blur-[12px]">
-      <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between gap-4">
+      <div className="max-w-6xl mx-auto px-6 h-14 relative flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 shrink-0">
           <div className="w-6 h-6 flex items-center justify-center rounded-md bg-accent/20">
@@ -54,8 +54,8 @@ function Nav() {
           <span className="text-[15px] font-bold text-foreground tracking-tight">TradeDiscipline</span>
         </Link>
 
-        {/* Centre links — desktop only */}
-        <div className="hidden md:flex items-center gap-6">
+        {/* Centre links — desktop only, absolutely centred */}
+        <div className="hidden md:flex items-center gap-6 absolute left-1/2 -translate-x-1/2">
           <a href="#features" className="text-sm text-muted hover:text-foreground transition-colors">{t("nav_features")}</a>
           <a href="#pricing" className="text-sm text-muted hover:text-foreground transition-colors">{t("nav_pricing")}</a>
           <a href="#faq" className="text-sm text-muted hover:text-foreground transition-colors">{t("nav_faq")}</a>
