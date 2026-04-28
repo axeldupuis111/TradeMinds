@@ -448,7 +448,7 @@ function ScreenshotChallenge() {
         <div>
           {mode === "prop" ? (
             <>
-              <p className="text-sm font-semibold text-foreground">FTMO — 50 000€</p>
+              <p className="text-sm font-semibold text-foreground">Prop Firm — 50 000€</p>
               <p className="text-xs text-muted">Compte #12345 · Jour 8</p>
             </>
           ) : (
@@ -762,22 +762,18 @@ function PremiumComingSoon({ t }: { t: (k: string) => string }) {
     t("plan_benefit_premium_2"),
     t("plan_benefit_premium_3"),
     t("plan_benefit_premium_4"),
+    t("plan_benefit_premium_5"),
   ];
 
   return (
     <div className="relative bg-[#111113] card-gradient-border-gold rounded-2xl p-7 flex flex-col h-full">
-      {/* Coming soon badge — top right */}
+      {/* Coming soon badge */}
       <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 text-[11px] font-bold px-3 py-0.5 rounded-full">
         🔒 {t("plan_premium_coming")}
       </div>
 
       <div className="text-xs font-bold text-yellow-400 uppercase tracking-widest">{t("plan_premium")}</div>
       <p className="text-gray-400 text-base mt-1">{t("plan_premium_desc")}</p>
-      <div className="mt-5">
-        <span className="text-4xl font-bold text-foreground">19.99€</span>
-        <span className="text-muted text-sm ml-1">/ mois</span>
-      </div>
-      <div className="h-2" />
 
       <ul className="mt-5 space-y-3 flex-1">
         {premiumFeats.map((feat, i) => (
@@ -797,7 +793,9 @@ function PremiumComingSoon({ t }: { t: (k: string) => string }) {
         ) : status === "duplicate" ? (
           <p className="text-orange-400 text-sm text-center py-3">{t("pricing_notify_duplicate")}</p>
         ) : (
-          <div className="flex gap-2">
+          <>
+            <p className="text-muted text-sm mb-2">{t("plan_premium_notify_label")}</p>
+            <div className="flex gap-2">
             <input
               type="email"
               value={email}
@@ -814,6 +812,7 @@ function PremiumComingSoon({ t }: { t: (k: string) => string }) {
               {status === "loading" ? "..." : t("plan_premium_notify_btn")}
             </button>
           </div>
+          </>
         )}
         {status === "error" && (
           <p className="text-loss text-xs mt-1">{t("pricing_notify_error")}</p>
