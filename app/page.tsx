@@ -115,9 +115,16 @@ function Hero() {
             </a>
           </div>
 
-          <p className="mt-5 text-xs text-muted/60 max-w-lg mx-auto leading-relaxed">
-            {t("hero_ai_badge")}
-          </p>
+          <div className="mt-6 flex justify-center">
+            <div className="inline-flex items-center bg-blue-500/10 border border-blue-500/20 rounded-full px-5 py-2.5 max-w-xl text-center">
+              <span className="text-base leading-relaxed">
+                <strong className="text-foreground font-semibold">{t("hero_ai_badge").split(" — ")[0]}</strong>
+                {t("hero_ai_badge").includes(" — ") && (
+                  <span className="text-muted font-normal"> — {t("hero_ai_badge").split(" — ").slice(1).join(" — ")}</span>
+                )}
+              </span>
+            </div>
+          </div>
 
 
         </Reveal>
@@ -143,10 +150,16 @@ function Hero() {
               <div className="col-span-2 sm:col-span-1 flex flex-col items-center justify-center bg-white/[0.03] rounded-xl p-4 border border-white/5 gap-2">
                 <svg width="76" height="76" viewBox="0 0 76 76">
                   <circle cx="38" cy="38" r="32" fill="none" stroke="#1e1e1e" strokeWidth="6" />
-                  <circle cx="38" cy="38" r="32" fill="none" stroke="#3b82f6" strokeWidth="6" strokeLinecap="round"
-                    strokeDasharray={`${0.78 * 2 * Math.PI * 32} ${2 * Math.PI * 32}`}
+                  <circle cx="38" cy="38" r="32" fill="none" stroke="url(#scoreGrad)" strokeWidth="6" strokeLinecap="round"
+                    strokeDasharray={`${0.85 * 2 * Math.PI * 32} ${2 * Math.PI * 32}`}
                     transform="rotate(-90 38 38)" />
-                  <text x="38" y="36" textAnchor="middle" fill="#fafafa" fontSize="17" fontWeight="bold">78</text>
+                  <defs>
+                    <linearGradient id="scoreGrad" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stopColor="#3b82f6" />
+                      <stop offset="100%" stopColor="#22c55e" />
+                    </linearGradient>
+                  </defs>
+                  <text x="38" y="36" textAnchor="middle" fill="#fafafa" fontSize="17" fontWeight="bold">85</text>
                   <text x="38" y="48" textAnchor="middle" fill="#71717a" fontSize="8">{t("preview_discipline")}</text>
                 </svg>
               </div>
@@ -156,42 +169,49 @@ function Hero() {
                 <svg viewBox="0 0 120 45" className="w-full h-11" preserveAspectRatio="none">
                   <defs>
                     <linearGradient id="eq2" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#22c55e" stopOpacity="0.25" />
+                      <stop offset="0%" stopColor="#22c55e" stopOpacity="0.3" />
                       <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
                     </linearGradient>
                   </defs>
-                  <path d="M0,38 L15,33 L30,36 L45,26 L55,28 L65,20 L80,16 L95,18 L105,10 L120,6" fill="none" stroke="#22c55e" strokeWidth="2" />
-                  <path d="M0,38 L15,33 L30,36 L45,26 L55,28 L65,20 L80,16 L95,18 L105,10 L120,6 L120,45 L0,45Z" fill="url(#eq2)" />
+                  <path d="M0,42 L10,39 L22,41 L34,33 L46,28 L58,23 L70,18 L82,14 L94,10 L107,6 L120,3" fill="none" stroke="#22c55e" strokeWidth="2" />
+                  <path d="M0,42 L10,39 L22,41 L34,33 L46,28 L58,23 L70,18 L82,14 L94,10 L107,6 L120,3 L120,45 L0,45Z" fill="url(#eq2)" />
                 </svg>
               </div>
               {/* Stats */}
               <div className="bg-white/[0.03] rounded-xl p-4 border border-white/5">
                 <p className="text-[10px] text-muted uppercase tracking-wider">{t("preview_winrate")}</p>
-                <p className="text-xl font-bold text-foreground mt-0.5">62%</p>
+                <p className="text-xl font-bold text-foreground mt-0.5">68%</p>
                 <p className="text-[10px] text-muted uppercase tracking-wider mt-2">{t("preview_trades")}</p>
-                <p className="text-xl font-bold text-foreground mt-0.5">31</p>
+                <p className="text-xl font-bold text-foreground mt-0.5">47</p>
               </div>
               {/* P&L */}
               <div className="bg-white/[0.03] rounded-xl p-4 border border-white/5">
                 <p className="text-[10px] text-muted uppercase tracking-wider">{t("preview_pnl_total")}</p>
-                <p className="text-xl font-bold text-profit mt-0.5">+1 840€</p>
+                <p className="text-xl font-bold text-profit mt-0.5">+3 240€</p>
                 <p className="text-[10px] text-muted uppercase tracking-wider mt-2">{t("preview_challenge")}</p>
                 <div className="mt-1.5 h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
-                  <div className="h-full w-[71%] bg-accent rounded-full" />
+                  <div className="h-full w-[89%] bg-accent rounded-full" />
                 </div>
-                <p className="text-[10px] text-muted mt-1">71%</p>
+                <p className="text-[10px] text-muted mt-1">89%</p>
               </div>
             </div>
 
+            {/* AI Insight banner */}
+            <div className="mt-4 flex items-center gap-2.5 bg-profit/5 border border-profit/15 rounded-lg px-3.5 py-2.5">
+              <span className="text-profit text-sm shrink-0">✅</span>
+              <p className="text-xs text-foreground/80 leading-snug">12 jours de discipline consécutifs — <span className="text-profit font-semibold">nouveau record</span></p>
+            </div>
+
             {/* Fake trade rows */}
-            <div className="mt-4 border-t border-white/5 pt-3 space-y-2">
+            <div className="mt-3 border-t border-white/5 pt-3 space-y-2">
               {[
-                { pair: "EUR/USD", dir: "BUY",  pnl: "+82.50",  win: true  },
-                { pair: "GBP/JPY", dir: "SELL", pnl: "-34.20",  win: false },
-                { pair: "XAU/USD", dir: "BUY",  pnl: "+156.00", win: true  },
+                { pair: "EUR/USD", dir: "BUY",  pnl: "+182.50", win: true,  date: "28/04" },
+                { pair: "GBP/JPY", dir: "SELL", pnl: "-47.20",  win: false, date: "27/04" },
+                { pair: "XAU/USD", dir: "BUY",  pnl: "+316.00", win: true,  date: "26/04" },
               ].map((tr) => (
                 <div key={tr.pair} className="flex items-center gap-3 text-xs">
-                  <span className="text-foreground font-medium w-16">{tr.pair}</span>
+                  <span className="text-muted/50 tabular-nums w-9 shrink-0">{tr.date}</span>
+                  <span className="text-foreground font-medium w-14">{tr.pair}</span>
                   <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${tr.dir === "BUY" ? "bg-profit/10 text-profit" : "bg-loss/10 text-loss"}`}>{tr.dir}</span>
                   <div className="flex-1 h-px bg-white/[0.04]" />
                   <span className={`font-semibold tabular-nums ${tr.win ? "text-profit" : "text-loss"}`}>{tr.pnl}€</span>
@@ -752,7 +772,7 @@ function PremiumComingSoon({ t }: { t: (k: string) => string }) {
       </div>
 
       <div className="text-xs font-bold text-yellow-400 uppercase tracking-widest">{t("plan_premium")}</div>
-      <p className="text-muted text-xs mt-1">{t("plan_premium_desc")}</p>
+      <p className="text-gray-400 text-base mt-1">{t("plan_premium_desc")}</p>
       <div className="mt-5">
         <span className="text-4xl font-bold text-foreground">19.99€</span>
         <span className="text-muted text-sm ml-1">/ mois</span>
@@ -896,7 +916,7 @@ function Pricing() {
                     </span>
                   )}
                   <div className="text-xs font-bold text-foreground uppercase tracking-widest">{p.name}</div>
-                  <p className="text-muted text-xs mt-1">{p.sub}</p>
+                  <p className="text-gray-400 text-base mt-1">{p.sub}</p>
 
                   <div className={`mt-5 transition-all duration-200 ${priceVisible ? "opacity-100" : "opacity-0 -translate-y-1"}`}>
                     <span className="text-4xl font-bold text-foreground">{price}</span>
@@ -1043,15 +1063,6 @@ function Footer() {
               <span className="font-bold text-foreground">TradeDiscipline</span>
             </div>
             <p className="text-muted text-xs leading-relaxed">{t("footer_brand_desc")}</p>
-            {/* Social icons */}
-            <div className="flex gap-3 mt-4">
-              <a href="#" aria-label="Twitter/X" className="w-8 h-8 rounded-lg border border-[#1c1c1e] flex items-center justify-center text-muted hover:text-foreground hover:border-[#2a2a2e] transition-colors">
-                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-              </a>
-              <a href="#" aria-label="Discord" className="w-8 h-8 rounded-lg border border-[#1c1c1e] flex items-center justify-center text-muted hover:text-foreground hover:border-[#2a2a2e] transition-colors">
-                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.085.117 18.11.125 18.132a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
-              </a>
-            </div>
           </div>
 
           {/* Produit */}
