@@ -43,39 +43,25 @@ export default function AdminPage() {
     setUpdating(true);
     setMessage(null);
 
-    // Look up user by email in profiles table (case-insensitive)
-    const { data: profile, error: lookupError } = await supabase
-      .from("profiles")
-      .select("id, email, plan")
-      .ilike("email", email.trim())
-      .limit(1)
-      .single();
-
-    console.log("[Admin] Lookup email:", JSON.stringify(email.trim()), "→ profile:", profile, "error:", lookupError);
-
-    if (lookupError || !profile) {
-      setMessage({ type: "error", text: t("admin_user_not_found").replace("{email}", email) });
-      setUpdating(false);
-      return;
-    }
-
-    const { error } = await supabase
-      .from("profiles")
-      .update({ plan: targetPlan, daily_ai_count: 0 })
-      .eq("id", profile.id);
-
-    setUpdating(false);
-    if (error) {
-      setMessage({ type: "error", text: error.message });
-    } else {
-      setMessage({
-        type: "success",
-        text: t("admin_success")
-          .replace("{email}", email)
-          .replace("{old}", profile.plan || "free")
-          .replace("{new}", targetPlan),
+    try {
+      const res = await fetch("/api/admin/update-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, plan: targetPlan }),
       });
-      setTargetEmail("");
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setMessage({ type: "error", text: data.message || t("admin_user_not_found").replace("{email}", email) });
+      } else {
+        setMessage({ type: "success", text: data.message });
+        setTargetEmail("");
+      }
+    } catch {
+      setMessage({ type: "error", text: "Erreur réseau" });
+    } finally {
+      setUpdating(false);
     }
   }
 
