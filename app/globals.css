@@ -387,3 +387,8 @@ html.light .card-shadow { box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 0 0 1px rgba
 .recharts-wrapper svg *:focus {
   outline: none !important;
 }
+
+/* Empêche le highlight blanc des barres Recharts au survol */
+.recharts-active-bar {
+  display: none !important;
+}
