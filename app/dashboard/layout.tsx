@@ -14,7 +14,8 @@ function SessionReminderBanner() {
   const supabase = createClient();
 
   useEffect(() => {
-    if (typeof window !== "undefined" && sessionStorage.getItem("session_banner_dismissed")) return;
+    const todayKey = `session_banner_dismissed_${new Date().toISOString().split("T")[0]}`;
+    if (typeof window !== "undefined" && localStorage.getItem(todayKey)) return;
 
     async function check() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -35,7 +36,8 @@ function SessionReminderBanner() {
   if (!show || pathname === "/dashboard/session") return null;
 
   function dismiss() {
-    sessionStorage.setItem("session_banner_dismissed", "1");
+    const todayKey = `session_banner_dismissed_${new Date().toISOString().split("T")[0]}`;
+    localStorage.setItem(todayKey, "1");
     setShow(false);
   }
 
