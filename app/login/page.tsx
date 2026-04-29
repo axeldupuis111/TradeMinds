@@ -112,9 +112,9 @@ export default function LoginPage() {
                 onClick={async () => {
                   if (!email) { setError(t("login_fill_fields")); return; }
                   setLoading(true);
-                  await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/dashboard` });
+                  await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/auth/reset-password` });
                   setLoading(false);
-                  setSuccess(t("login_reset_sent") || "Email de réinitialisation envoyé.");
+                  setSuccess(t("login_reset_sent"));
                 }}
                 className="text-xs text-muted hover:text-accent transition-colors"
               >
