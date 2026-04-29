@@ -369,3 +369,21 @@ html.light .card-shadow { box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 0 0 1px rgba
 @layer utilities {
   .text-balance { text-wrap: balance; }
 }
+
+/* Suppression des outlines focus sur les graphiques Recharts (dark theme) */
+.recharts-wrapper *:focus,
+.recharts-wrapper *:focus-visible,
+.recharts-bar-rectangle:focus,
+.recharts-surface:focus,
+.recharts-surface:focus-visible,
+.recharts-rectangle:focus,
+.recharts-rectangle:focus-visible,
+.recharts-active-bar:focus,
+.recharts-active-bar:focus-visible {
+  outline: none !important;
+}
+
+/* Sécurité : tous les éléments SVG dans les charts */
+.recharts-wrapper svg *:focus {
+  outline: none !important;
+}
