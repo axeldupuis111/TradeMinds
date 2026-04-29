@@ -834,7 +834,7 @@ export default function AnalyticsPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
                   <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
                   <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
-                  <Tooltip content={<DayTooltip />} />
+                  <Tooltip content={<DayTooltip />} cursor={false} />
                   <Bar dataKey="pnl" radius={[4, 4, 0, 0]} activeBar={false}>
                     {byDayOfWeek.map((entry, idx) => (
                       <Cell
@@ -856,7 +856,7 @@ export default function AnalyticsPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
                   <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 10 }} axisLine={{ stroke: c.axisLine }} interval={1} />
                   <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
-                  <Tooltip content={<HourTooltip />} />
+                  <Tooltip content={<HourTooltip />} cursor={false} />
                   <Bar dataKey="pnl" radius={[4, 4, 0, 0]} activeBar={false}>
                     {byHour.map((entry, idx) => (
                       <Cell
@@ -879,7 +879,7 @@ export default function AnalyticsPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
                     <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
                     <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
-                    <Tooltip content={<PairTooltip />} />
+                    <Tooltip content={<PairTooltip />} cursor={false} />
                     <Bar dataKey="pnl" radius={[4, 4, 0, 0]} activeBar={false}>
                       {byPair.map((entry, idx) => (
                         <Cell key={idx} fill={entry.pnl >= 0 ? PROFIT_COLOR : LOSS_COLOR} />
@@ -907,7 +907,7 @@ export default function AnalyticsPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
                   <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
                   <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
-                  <Tooltip content={<SessionTooltip />} />
+                  <Tooltip content={<SessionTooltip />} cursor={false} />
                   <Bar dataKey="pnl" radius={[4, 4, 0, 0]} activeBar={false}>
                     {bySessions.map((entry, idx) => (
                       <Cell
@@ -930,7 +930,7 @@ export default function AnalyticsPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
                     <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
                     <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
-                    <Tooltip content={<GenericTooltip />} />
+                    <Tooltip content={<GenericTooltip />} cursor={false} />
                     <Bar dataKey="pnl" radius={[4, 4, 0, 0]} activeBar={false}>
                       {byEmotion.map((entry, idx) => (
                         <Cell key={idx} fill={entry.pnl >= 0 ? PROFIT_COLOR : LOSS_COLOR} />
@@ -951,7 +951,7 @@ export default function AnalyticsPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
                     <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
                     <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
-                    <Tooltip content={<HistogramTooltip />} />
+                    <Tooltip content={<HistogramTooltip />} cursor={false} />
                     <Bar dataKey="count" radius={[4, 4, 0, 0]} activeBar={false}>
                       {pnlDistribution.map((entry, idx) => (
                         <Cell key={idx} fill={entry.avg >= 0 ? PROFIT_COLOR : LOSS_COLOR} />
@@ -971,7 +971,7 @@ export default function AnalyticsPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
                     <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
                     <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
-                    <Tooltip content={<GenericTooltip />} />
+                    <Tooltip content={<GenericTooltip />} cursor={false} />
                     <Bar dataKey="pnl" radius={[4, 4, 0, 0]} activeBar={false}>
                       {byQuality.map((entry, idx) => (
                         <Cell key={idx} fill={entry.pnl >= 0 ? PROFIT_COLOR : LOSS_COLOR} />
@@ -1088,6 +1088,7 @@ export default function AnalyticsPage() {
                             </div>
                           );
                         }}
+                        cursor={false}
                       />
                       <Bar dataKey="pnl" radius={[4, 4, 0, 0]} activeBar={false}>
                         {byKillzone.map((entry, idx) => (
@@ -1177,7 +1178,7 @@ export default function AnalyticsPage() {
                       <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
                       <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
                       <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} domain={[0, 100]} />
-                      <Tooltip content={<WinrateTooltip />} />
+                      <Tooltip content={<WinrateTooltip />} cursor={false} />
                       <Bar dataKey="winrate" radius={[4, 4, 0, 0]} activeBar={false}>
                         {winrateByEmotion.map((entry, idx) => (
                           <Cell key={idx} fill={entry.winrate >= 50 ? PROFIT_COLOR : LOSS_COLOR} />

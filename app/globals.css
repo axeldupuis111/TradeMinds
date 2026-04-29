@@ -392,3 +392,8 @@ html.light .card-shadow { box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 0 0 1px rgba
 .recharts-active-bar {
   display: none !important;
 }
+
+/* Désactive le rectangle de fond du Tooltip Recharts au survol */
+.recharts-tooltip-cursor {
+  display: none !important;
+}
