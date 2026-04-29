@@ -23,7 +23,7 @@ interface Trade {
   emotion: string | null;
   setup_quality: number | null;
   notes: string | null;
-  screenshot_url: string | null;
+  screenshot_path: string | null;
   challenge_id: string | null;
   prop_challenges?: { firm: string; account_number: string | null } | null;
 }
@@ -119,7 +119,7 @@ export default function TradeList({ refreshKey }: Props) {
 
     let query = supabase
       .from("trades")
-      .select("*, tags, emotion, setup_quality, notes, screenshot_url, prop_challenges(firm, account_number)", { count: "exact" })
+      .select("*, tags, emotion, setup_quality, notes, screenshot_path, prop_challenges(firm, account_number)", { count: "exact" })
       .eq("user_id", user.id)
       .order("open_time", { ascending: false })
       .order("id", { ascending: false });
@@ -185,6 +185,12 @@ export default function TradeList({ refreshKey }: Props) {
   async function handleDelete(id: string) {
     if (!confirm(t("trades_confirm_delete"))) return;
     setDeletingId(id);
+
+    const trade = trades.find((tr) => tr.id === id);
+    if (trade?.screenshot_path) {
+      await supabase.storage.from("trade-screenshots").remove([trade.screenshot_path]);
+    }
+
     await supabase.from("trades").delete().eq("id", id);
     setDeletingId(null);
     setSelectedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
@@ -199,6 +205,14 @@ export default function TradeList({ refreshKey }: Props) {
     if (!confirm(msg)) return;
 
     setBulkDeleting(true);
+
+    const pathsToDelete = trades
+      .filter((tr) => ids.includes(tr.id) && tr.screenshot_path)
+      .map((tr) => tr.screenshot_path as string);
+    if (pathsToDelete.length > 0) {
+      await supabase.storage.from("trade-screenshots").remove(pathsToDelete);
+    }
+
     await supabase.from("trades").delete().in("id", ids);
     setBulkDeleting(false);
     setSelectedIds(new Set());

@@ -26,7 +26,7 @@ export interface TradeDetail {
   emotion: string | null;
   setup_quality: number | null;
   notes: string | null;
-  screenshot_url: string | null;
+  screenshot_path: string | null;
   // ICT fields
   ict_setup?: string | null;
   ict_entry_zone?: string | null;
@@ -88,7 +88,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
   const [tags, setTags] = useState<string[]>(trade.tags || []);
   const [tagInput, setTagInput] = useState("");
   const [notes, setNotes] = useState(trade.notes || "");
-  const [screenshotUrl, setScreenshotUrl] = useState<string | null>(trade.screenshot_url);
+  const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -103,14 +103,22 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
   const [killzoneAutoDetected, setKillzoneAutoDetected] = useState(false);
   const [savedField, setSavedField] = useState<string | null>(null);
   const debounceRefs = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const screenshotPathRef = useRef<string | null>(null);
 
   useEffect(() => {
     setEmotion(trade.emotion);
     setQuality(trade.setup_quality);
     setTags(trade.tags || []);
     setNotes(trade.notes || "");
-    setScreenshotUrl(trade.screenshot_url);
     setSaved(false);
+    if (trade.screenshot_path) {
+      screenshotPathRef.current = trade.screenshot_path;
+      supabase.storage.from("trade-screenshots").createSignedUrl(trade.screenshot_path, 3600)
+        .then(({ data }) => { if (data) setScreenshotUrl(data.signedUrl); });
+    } else {
+      screenshotPathRef.current = null;
+      setScreenshotUrl(null);
+    }
     setIctSetup(trade.ict_setup || "");
     setIctEntryZone(trade.ict_entry_zone || "");
     setIctLiquidityTarget(trade.ict_liquidity_target || "");
@@ -181,19 +189,29 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
     const ext = file.name.split(".").pop() || "png";
     const path = `${user.id}/${trade.id}.${ext}`;
 
-    const { error } = await supabase.storage.from("screenshots").upload(path, file, { upsert: true });
+    const { error } = await supabase.storage.from("trade-screenshots").upload(path, file, { upsert: true });
     if (!error) {
-      const { data: urlData } = supabase.storage.from("screenshots").getPublicUrl(path);
-      setScreenshotUrl(urlData.publicUrl);
+      screenshotPathRef.current = path;
+      const { data: signedData } = await supabase.storage.from("trade-screenshots").createSignedUrl(path, 3600);
+      if (signedData) setScreenshotUrl(signedData.signedUrl);
     }
     setUploading(false);
   }
 
   const handleSave = useCallback(async () => {
     setSaving(true);
+
+    const userWantsScreenshot = screenshotUrl !== null;
+    const finalPath = userWantsScreenshot ? screenshotPathRef.current : null;
+
+    if (!userWantsScreenshot && screenshotPathRef.current) {
+      await supabase.storage.from("trade-screenshots").remove([screenshotPathRef.current]);
+      screenshotPathRef.current = null;
+    }
+
     const { error } = await supabase
       .from("trades")
-      .update({ emotion, setup_quality: quality, tags, notes: notes || null, screenshot_url: screenshotUrl })
+      .update({ emotion, setup_quality: quality, tags, notes: notes || null, screenshot_path: finalPath })
       .eq("id", trade.id);
 
     setSaving(false);

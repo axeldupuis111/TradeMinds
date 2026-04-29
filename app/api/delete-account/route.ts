@@ -39,6 +39,20 @@ export async function DELETE() {
     supabase.from("chat_messages").delete().eq("user_id", userId),
   ]);
 
+  const { data: storageFiles, error: listError } = await supabase.storage
+    .from("trade-screenshots")
+    .list(userId, { limit: 1000 });
+  if (listError) {
+    console.error("Failed to list user screenshots for cleanup:", listError);
+  }
+  if (storageFiles && storageFiles.length > 0) {
+    const paths = storageFiles.map((f) => `${userId}/${f.name}`);
+    const { error: removeError } = await supabase.storage.from("trade-screenshots").remove(paths);
+    if (removeError) {
+      console.error("Failed to remove user screenshots:", removeError);
+    }
+  }
+
   await supabase.from("profiles").delete().eq("id", userId);
 
   // Delete auth user via admin client (requires service role key)
