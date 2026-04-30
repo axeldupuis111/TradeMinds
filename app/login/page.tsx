@@ -1,6 +1,7 @@
 "use client";
 
 import LanguageSelector from "@/components/LanguageSelector";
+import PasswordRequirements, { isPasswordValid } from "@/components/auth/PasswordRequirements";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
@@ -43,6 +44,10 @@ export default function LoginPage() {
     }
     if (!termsAccepted) {
       setError(t("terms_required"));
+      return;
+    }
+    if (!isPasswordValid(password)) {
+      setError(t("password_invalid_requirements"));
       return;
     }
     setLoading(true);
@@ -92,6 +97,7 @@ export default function LoginPage() {
                   )}
                 </button>
               </div>
+              {signupMode && <PasswordRequirements password={password} />}
             </div>
 
             {error && (

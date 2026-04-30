@@ -1,5 +1,6 @@
 "use client";
 
+import PasswordRequirements, { isPasswordValid } from "@/components/auth/PasswordRequirements";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
@@ -38,8 +39,8 @@ export default function ResetPasswordPage() {
       setError(t("reset_password_mismatch"));
       return;
     }
-    if (password.length < 6) {
-      setError(t("reset_password_error"));
+    if (!isPasswordValid(password)) {
+      setError(t("password_invalid_requirements"));
       return;
     }
 
@@ -106,6 +107,7 @@ export default function ResetPasswordPage() {
                     )}
                   </button>
                 </div>
+                <PasswordRequirements password={password} />
               </div>
 
               <div>
