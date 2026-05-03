@@ -109,7 +109,20 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     loadPlan();
-  }, [loadPlan]);
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        loadPlan();
+      } else if (event === "SIGNED_OUT") {
+        setPlan("free");
+        setDailyAiCount(0);
+        setDailyAiReset(null);
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [loadPlan]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const incrementAIUsage = useCallback(async () => {
     const {
