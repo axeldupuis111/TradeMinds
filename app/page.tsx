@@ -1083,7 +1083,8 @@ function Footer() {
             <p className="text-foreground font-semibold text-sm mb-4">{t("footer_resources")}</p>
             <ul className="space-y-2.5">
               <li><span className="text-muted/40 text-sm cursor-not-allowed select-none">{t("footer_blog")}</span></li>
-              <li><a href="mailto:contact@TradeDiscipline.app" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_contact")}</a></li>
+              <li><a href="/contact" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_contact")}</a></li>
+              <li><a href="/faq" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_faq")}</a></li>
               <li><a href="mailto:support@TradeDiscipline.app" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_support")}</a></li>
             </ul>
           </div>
