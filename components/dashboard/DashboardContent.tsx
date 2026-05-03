@@ -112,9 +112,12 @@ export default function DashboardContent({
 
   const selectedAccount = selectedAccountId ? activeAccounts.find((a) => a.id === selectedAccountId) ?? null : null;
   const displayAccount = selectedAccount || (activeAccounts.length === 1 ? activeAccounts[0] : null);
-  const challengePct = displayAccount
-    ? Math.max(0, Math.min(100, ((displayAccount.balance - displayAccount.account_size) / (displayAccount.account_size * displayAccount.profit_target_pct / 100)) * 100))
+  const profitTargetAmount = displayAccount && displayAccount.profit_target_pct > 0
+    ? displayAccount.account_size * displayAccount.profit_target_pct / 100
     : 0;
+  const challengePct = profitTargetAmount > 0
+    ? Math.max(0, Math.min(100, ((displayAccount!.balance - displayAccount!.account_size) / profitTargetAmount) * 100))
+    : null;
 
   const ddMax = displayAccount ? displayAccount.account_size * displayAccount.max_total_dd_pct / 100 : 0;
   const ddUsed = displayAccount ? Math.max(0, displayAccount.account_size - displayAccount.balance) : 0;
@@ -270,11 +273,20 @@ export default function DashboardContent({
             <div className="mt-1">
               <p className="text-lg font-bold text-foreground">
                 {displayAccount.firm}
-                <span className="text-accent ml-2 text-sm tabular-nums">{challengePct.toFixed(0)}%</span>
+                {challengePct !== null && (
+                  <span className="text-accent ml-2 text-sm tabular-nums">{challengePct.toFixed(0)}%</span>
+                )}
               </p>
-              <div className="h-1.5 bg-border rounded-full mt-2 overflow-hidden">
-                <div className="h-full bg-profit rounded-full transition-all" style={{ width: `${Math.min(100, challengePct)}%` }} />
-              </div>
+              {challengePct !== null ? (
+                <div className="h-1.5 bg-border rounded-full mt-2 overflow-hidden">
+                  <div className="h-full bg-profit rounded-full transition-all" style={{ width: `${Math.min(100, challengePct)}%` }} />
+                </div>
+              ) : (
+                <p className="text-sm text-profit mt-1 tabular-nums">
+                  {(displayAccount.balance - displayAccount.account_size) >= 0 ? "+" : ""}
+                  {(displayAccount.balance - displayAccount.account_size).toFixed(2)}€
+                </p>
+              )}
               {displayAccount.account_number && <p className="text-xs text-muted mt-1.5">#{displayAccount.account_number}</p>}
               <Link href="/dashboard/challenge" className="text-xs text-accent hover:underline mt-1.5 inline-block">{t("dash_manage_accounts")}</Link>
             </div>
