@@ -130,36 +130,140 @@ function StatusBadge({ status, t }: { status: string; t: (key: string) => string
   );
 }
 
-function RenameModal({
-  currentName,
+function EditAccountModal({
+  account,
   onConfirm,
   onCancel,
   t,
 }: {
-  currentName: string;
-  onConfirm: (name: string) => void;
+  account: Challenge;
+  onConfirm: (data: Partial<Challenge>) => void;
   onCancel: () => void;
   t: (key: string) => string;
 }) {
-  const [name, setName] = useState(currentName);
+  const [firm, setFirm] = useState(account.firm);
+  const [accountNumber, setAccountNumber] = useState(account.account_number || "");
+  const [accountType, setAccountType] = useState<"prop" | "personal">(account.type);
+  const [accountSize, setAccountSize] = useState(String(account.account_size));
+  const [profitTarget, setProfitTarget] = useState(String(account.profit_target_pct));
+  const [maxDailyDd, setMaxDailyDd] = useState(String(account.max_daily_dd_pct));
+  const [maxTotalDd, setMaxTotalDd] = useState(String(account.max_total_dd_pct));
+  const [startDate, setStartDate] = useState(account.start_date);
+  const [endDate, setEndDate] = useState(account.end_date || "");
+  const [status, setStatus] = useState(account.status);
+
+  function handleSubmit() {
+    if (!firm.trim() || !accountSize || parseFloat(accountSize) <= 0) return;
+    onConfirm({
+      firm: firm.trim(),
+      account_number: accountNumber.trim() || null,
+      type: accountType,
+      account_size: parseFloat(accountSize),
+      profit_target_pct: accountType === "prop" ? (parseFloat(profitTarget) || 0) : 0,
+      max_daily_dd_pct: accountType === "prop" ? (parseFloat(maxDailyDd) || 0) : 0,
+      max_total_dd_pct: accountType === "prop" ? (parseFloat(maxTotalDd) || 0) : 0,
+      start_date: startDate,
+      end_date: endDate || null,
+      status,
+    });
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-card border border-border rounded-xl p-6 max-w-sm w-full mx-4 shadow-xl">
-        <h3 className="text-foreground font-semibold mb-4">{t("challenge_rename_title")}</h3>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent mb-4"
-          autoFocus
-          onKeyDown={(e) => { if (e.key === "Enter" && name.trim()) onConfirm(name.trim()); }}
-        />
-        <div className="flex gap-3">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+      <div className="bg-card border border-border rounded-xl p-6 max-w-md w-full shadow-xl max-h-[90vh] overflow-y-auto">
+        <h3 className="text-foreground font-semibold mb-4">{t("challenge_edit_title")}</h3>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm text-muted mb-1">{t("challenge_edit_name")}</label>
+            <input type="text" value={firm} onChange={(e) => setFirm(e.target.value)} className={inputClass} />
+          </div>
+          <div>
+            <label className="block text-sm text-muted mb-1">{t("challenge_account_number")}</label>
+            <input type="text" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} className={inputClass} />
+          </div>
+          <div>
+            <label className="block text-sm text-muted mb-1">{t("challenge_account_type")}</label>
+            <select value={accountType} onChange={(e) => setAccountType(e.target.value as "prop" | "personal")} className={inputClass}>
+              <option value="prop">{t("challenge_type_prop")}</option>
+              <option value="personal">{t("challenge_type_personal")}</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm text-muted mb-1">{t("challenge_account_size")}</label>
+            <input type="number" value={accountSize} onChange={(e) => setAccountSize(e.target.value)} className={inputClass} />
+          </div>
+          {accountType === "prop" && (
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-sm text-muted mb-1">{t("challenge_profit_target_pct")}</label>
+                <input type="number" step="0.1" value={profitTarget} onChange={(e) => setProfitTarget(e.target.value)} className={inputClass} />
+              </div>
+              <div>
+                <label className="block text-sm text-muted mb-1">{t("challenge_daily_dd_pct")}</label>
+                <input type="number" step="0.1" value={maxDailyDd} onChange={(e) => setMaxDailyDd(e.target.value)} className={inputClass} />
+              </div>
+              <div>
+                <label className="block text-sm text-muted mb-1">{t("challenge_total_dd_pct")}</label>
+                <input type="number" step="0.1" value={maxTotalDd} onChange={(e) => setMaxTotalDd(e.target.value)} className={inputClass} />
+              </div>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm text-muted mb-1">{t("challenge_start_date")}</label>
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-sm text-muted mb-1">{t("challenge_end_date")}</label>
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputClass} />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm text-muted mb-1">{t("challenge_edit_status")}</label>
+            <select value={status} onChange={(e) => setStatus(e.target.value as Challenge["status"])} className={inputClass}>
+              <option value="active">{t("challenge_status_active")}</option>
+              <option value="passed">{t("challenge_status_passed")}</option>
+              <option value="failed">{t("challenge_status_failed")}</option>
+            </select>
+          </div>
+        </div>
+        <div className="flex gap-3 mt-5">
           <button onClick={onCancel} className="flex-1 py-2 bg-surface border border-border text-muted rounded-lg text-sm font-medium hover:text-foreground transition-colors">
             {t("csv_cancel")}
           </button>
-          <button onClick={() => name.trim() && onConfirm(name.trim())} className="flex-1 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
-            {t("challenge_rename_save")}
+          <button onClick={handleSubmit} className="flex-1 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
+            {t("challenge_edit_save")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DeleteAccountModal({
+  accountName,
+  onConfirm,
+  onCancel,
+  t,
+}: {
+  accountName: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  t: (key: string) => string;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+      <div className="bg-card border border-border rounded-xl p-6 max-w-sm w-full shadow-xl">
+        <h3 className="text-loss font-semibold mb-3">{t("challenge_delete_account_title")}</h3>
+        <p className="text-foreground text-sm leading-relaxed">
+          {t("challenge_delete_account_confirm").replace("{name}", accountName)}
+        </p>
+        <div className="flex gap-3 mt-5">
+          <button onClick={onCancel} className="flex-1 py-2 bg-surface border border-border text-muted rounded-lg text-sm font-medium hover:text-foreground transition-colors">
+            {t("csv_cancel")}
+          </button>
+          <button onClick={onConfirm} className="flex-1 py-2 bg-loss text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors">
+            {t("challenge_delete_btn")}
           </button>
         </div>
       </div>
@@ -171,16 +275,19 @@ function AccountCard({
   ac,
   stats,
   onStatusChange,
-  onRename,
+  onEdit,
+  onDelete,
   t,
 }: {
   ac: Challenge;
   stats: AccountStats;
   onStatusChange: (id: string, status: "passed" | "failed") => void;
-  onRename: (id: string, name: string) => void;
+  onEdit: (id: string, data: Partial<Challenge>) => void;
+  onDelete: (id: string) => void;
   t: (key: string) => string;
 }) {
-  const [showRename, setShowRename] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const balance = stats.balance;
   const currentPnl = stats.currentPnl;
   const todayPnl = stats.todayPnl;
@@ -201,11 +308,19 @@ function AccountCard({
 
   return (
     <div className="bg-card border border-border rounded-xl p-6">
-      {showRename && (
-        <RenameModal
-          currentName={ac.firm}
-          onConfirm={(name) => { onRename(ac.id, name); setShowRename(false); }}
-          onCancel={() => setShowRename(false)}
+      {showEdit && (
+        <EditAccountModal
+          account={ac}
+          onConfirm={(data) => { onEdit(ac.id, data); setShowEdit(false); }}
+          onCancel={() => setShowEdit(false)}
+          t={t}
+        />
+      )}
+      {showDeleteConfirm && (
+        <DeleteAccountModal
+          accountName={ac.firm}
+          onConfirm={() => { onDelete(ac.id); setShowDeleteConfirm(false); }}
+          onCancel={() => setShowDeleteConfirm(false)}
           t={t}
         />
       )}
@@ -215,15 +330,6 @@ function AccountCard({
             <h2 className="text-lg font-semibold text-foreground">
               {ac.firm} — {ac.account_size.toLocaleString()}€
             </h2>
-            <button
-              onClick={() => setShowRename(true)}
-              className="text-muted hover:text-foreground transition-colors"
-              title={t("challenge_rename_title")}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 0l.172.172a2 2 0 010 2.828L12 15H9v-2z" />
-              </svg>
-            </button>
           </div>
           <p className="text-muted text-sm">
             {ac.account_number && <span className="text-foreground">#{ac.account_number} · </span>}
@@ -296,6 +402,22 @@ function AccountCard({
           </button>
         </div>
       )}
+
+      {/* Edit / Delete buttons */}
+      <div className="flex gap-3 mt-4">
+        <button onClick={() => setShowEdit(true)} className="px-4 py-2 bg-surface border border-border text-foreground rounded-lg text-sm font-medium hover:bg-border transition-colors flex items-center gap-2">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 0l.172.172a2 2 0 010 2.828L12 15H9v-2z" />
+          </svg>
+          {t("challenge_edit_btn")}
+        </button>
+        <button onClick={() => setShowDeleteConfirm(true)} className="px-4 py-2 bg-loss/10 border border-loss/20 text-loss rounded-lg text-sm font-medium hover:bg-loss/20 transition-colors flex items-center gap-2">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+          {t("challenge_delete_account_btn")}
+        </button>
+      </div>
 
       {/* Equity curve */}
       <div className="mt-6">
@@ -513,9 +635,24 @@ export default function ChallengePage() {
     }
   }
 
-  async function handleRename(challengeId: string, name: string) {
-    const { error } = await supabase.from("prop_challenges").update({ firm: name }).eq("id", challengeId);
-    if (!error) loadData();
+  async function handleEdit(challengeId: string, data: Partial<Challenge>) {
+    const { error } = await supabase.from("prop_challenges").update(data).eq("id", challengeId);
+    if (error) {
+      setMessage({ type: "error", text: error.message });
+    } else {
+      setMessage({ type: "success", text: t("challenge_edit_success") });
+      loadData();
+    }
+  }
+
+  async function handleDeleteAccount(challengeId: string) {
+    const { error } = await supabase.from("prop_challenges").delete().eq("id", challengeId);
+    if (error) {
+      setMessage({ type: "error", text: error.message });
+    } else {
+      setMessage({ type: "success", text: t("challenge_delete_success") });
+      loadData();
+    }
   }
 
   async function handleDeleteHistory(id: string) {
@@ -560,7 +697,8 @@ export default function ChallengePage() {
               ac={ac}
               stats={accountStatsMap[ac.id] || { balance: ac.balance, currentPnl: 0, todayPnl: 0, equityCurveData: [] }}
               onStatusChange={handleStatusChange}
-              onRename={handleRename}
+              onEdit={handleEdit}
+              onDelete={handleDeleteAccount}
               t={t}
             />
           ))}
