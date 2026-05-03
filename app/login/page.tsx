@@ -61,7 +61,10 @@ export default function LoginPage() {
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter") handleSignIn();
+    if (e.key === "Enter") {
+      if (signupMode) handleSignUp();
+      else handleSignIn();
+    }
   }
 
   return (
@@ -112,34 +115,24 @@ export default function LoginPage() {
               </div>
             )}
 
-            <div className="flex justify-end -mt-1">
-              <button
-                type="button"
-                onClick={async () => {
-                  if (!email) { setError(t("login_fill_fields")); return; }
-                  setLoading(true);
-                  await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/auth/reset-password` });
-                  setLoading(false);
-                  setSuccess(t("login_reset_sent"));
-                }}
-                className="text-xs text-muted hover:text-accent transition-colors"
-              >
-                {t("login_forgot_password")}
-              </button>
-            </div>
+            {!signupMode && (
+              <div className="flex justify-end -mt-1">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!email) { setError(t("login_fill_fields")); return; }
+                    setLoading(true);
+                    await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/auth/reset-password` });
+                    setLoading(false);
+                    setSuccess(t("login_reset_sent"));
+                  }}
+                  className="text-xs text-muted hover:text-accent transition-colors"
+                >
+                  {t("login_forgot_password")}
+                </button>
+              </div>
+            )}
 
-            <button onClick={handleSignIn} disabled={loading} className="w-full py-2.5 bg-accent text-white rounded-xl font-semibold hover:bg-blue-600 disabled:opacity-50 glow-blue">
-              {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  {t("login_signing_in")}
-                </span>
-              ) : (
-                t("login_signin")
-              )}
-            </button>
-
-            {/* Terms checkbox — shown in signup mode */}
             {signupMode && (
               <label className="flex items-start gap-2.5 cursor-pointer select-none">
                 <input
@@ -157,13 +150,29 @@ export default function LoginPage() {
               </label>
             )}
 
-            <button
-              onClick={() => { setSignupMode(true); handleSignUp(); }}
-              disabled={loading}
-              className="w-full py-2.5 bg-white/[0.03] border border-white/[0.06] text-foreground rounded-xl font-medium hover:bg-white/[0.06] disabled:opacity-50"
-            >
-              {t("login_signup")}
+            <button onClick={signupMode ? handleSignUp : handleSignIn} disabled={loading} className="w-full py-2.5 bg-accent text-white rounded-xl font-semibold hover:bg-blue-600 disabled:opacity-50 glow-blue">
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  {t("login_signing_in")}
+                </span>
+              ) : (
+                signupMode ? t("login_signup") : t("login_signin")
+              )}
             </button>
+
+            <div className="text-center mt-4">
+              <button
+                type="button"
+                onClick={() => { setSignupMode(!signupMode); setError(null); setSuccess(null); }}
+                className="text-sm text-muted"
+              >
+                {signupMode ? t("login_have_account") : t("login_no_account")}{" "}
+                <span className="text-accent hover:underline">
+                  {signupMode ? t("login_signin") : t("login_signup")}
+                </span>
+              </button>
+            </div>
           </div>
         </div>
 
