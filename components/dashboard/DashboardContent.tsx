@@ -84,7 +84,7 @@ export default function DashboardContent({
   allTrades,
 }: Props) {
   const { t } = useLanguage();
-  const { plan, canUseAI } = usePlan();
+  const { plan, canUseAI, loading: planLoading } = usePlan();
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [upsellDismissed, setUpsellDismissed] = useState(false);
 
@@ -159,7 +159,7 @@ export default function DashboardContent({
   return (
     <div>
       {/* Free user upsell banner */}
-      {plan === "free" && !upsellDismissed && (
+      {!planLoading && plan === "free" && !upsellDismissed && (
         <div className="mb-4 flex items-center gap-3 px-4 py-3 bg-accent/5 border border-accent/20 rounded-xl">
           <svg className="w-4 h-4 text-accent shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />

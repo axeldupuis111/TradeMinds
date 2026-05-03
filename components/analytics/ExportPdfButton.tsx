@@ -14,12 +14,12 @@ const MONTHS_FR = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juill
 
 export default function ExportPdfButton() {
   const { t } = useLanguage();
-  const { plan } = usePlan();
+  const { plan, loading: planLoading } = usePlan();
   const supabase = createClient();
   const [generating, setGenerating] = useState(false);
   const [showLocked, setShowLocked] = useState(false);
 
-  const canExport = plan === "plus" || plan === "premium";
+  const canExport = !planLoading && (plan === "plus" || plan === "premium");
 
   async function generatePdf() {
     if (!canExport) {
