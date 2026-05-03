@@ -32,12 +32,38 @@ const EMOTION_UNSELECTED_COLORS: Record<string, string> = {
   neutral: "border-muted/50 text-muted hover:bg-surface",
 };
 
+interface Account {
+  id: string;
+  firm: string;
+  account_number: string | null;
+}
+
 export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, initialChecklist }: Props) {
   const { t, lang } = useLanguage();
   const supabase = createClient();
   const stratTags = useStrategyTags();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState<string>("");
+
+  useEffect(() => {
+    async function loadAccounts() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("prop_challenges")
+        .select("id, firm, account_number")
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .order("created_at", { ascending: false });
+      if (data && data.length > 0) {
+        setAccounts(data);
+        setSelectedAccountId(data[0].id);
+      }
+    }
+    loadAccounts();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const defaultPair = pairs[0] || "XAUUSD";
   const [form, setForm] = useState({
@@ -106,6 +132,7 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
     const { error: dbError } = await supabase.from("trades").insert({
       user_id: user.id,
       strategy_id: strategyId,
+      challenge_id: selectedAccountId || null,
       open_time: form.open_time || null,
       close_time: form.close_time || null,
       pair: form.pair,
@@ -150,6 +177,31 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
         </div>
 
         <div className="space-y-4">
+          {/* Account selector */}
+          {accounts.length > 0 ? (
+            <div>
+              <label className="block text-sm text-muted mb-1">{t("manual_account")}</label>
+              <select value={selectedAccountId} onChange={(e) => setSelectedAccountId(e.target.value)} className={inputClass}>
+                <option value="">{t("manual_no_account")}</option>
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.firm}{a.account_number ? ` (#${a.account_number})` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-3 flex items-center gap-2">
+              <svg className="w-4 h-4 text-orange-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+              </svg>
+              <p className="text-xs text-orange-300">
+                {t("manual_no_account_warning")}{" "}
+                <a href="/dashboard/challenge" className="text-accent hover:underline">{t("manual_create_account_link")}</a>
+              </p>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm text-muted mb-1">{t("manual_open")}</label>

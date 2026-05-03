@@ -323,6 +323,10 @@ const translations: Record<Lang, Record<string, string>> = {
     manual_save: "Sauvegarder",
     manual_saving: "Sauvegarde…",
     manual_cancel: "Annuler",
+    manual_account: "Compte",
+    manual_no_account: "Aucun compte (trade non lié)",
+    manual_no_account_warning: "Tu dois créer un compte avant d'ajouter un trade manuel.",
+    manual_create_account_link: "Créer un compte →",
 
     // Common
     not_connected: "Non connecté.",
@@ -1427,6 +1431,10 @@ const translations: Record<Lang, Record<string, string>> = {
     manual_save: "Save",
     manual_saving: "Saving…",
     manual_cancel: "Cancel",
+    manual_account: "Account",
+    manual_no_account: "No account (unlinked trade)",
+    manual_no_account_warning: "You need to create an account before adding a manual trade.",
+    manual_create_account_link: "Create an account →",
 
     not_connected: "Not connected.",
     server_error: "Server error.",
@@ -2526,6 +2534,10 @@ const translations: Record<Lang, Record<string, string>> = {
     manual_save: "Speichern",
     manual_saving: "Speichere…",
     manual_cancel: "Abbrechen",
+    manual_account: "Konto",
+    manual_no_account: "Kein Konto (nicht verknüpfter Trade)",
+    manual_no_account_warning: "Du musst ein Konto erstellen, bevor du einen manuellen Trade hinzufügst.",
+    manual_create_account_link: "Konto erstellen →",
 
     not_connected: "Nicht verbunden.",
     server_error: "Serverfehler.",
@@ -3624,6 +3636,10 @@ const translations: Record<Lang, Record<string, string>> = {
     manual_save: "Guardar",
     manual_saving: "Guardando…",
     manual_cancel: "Cancelar",
+    manual_account: "Cuenta",
+    manual_no_account: "Sin cuenta (trade no vinculado)",
+    manual_no_account_warning: "Debes crear una cuenta antes de añadir un trade manual.",
+    manual_create_account_link: "Crear una cuenta →",
 
     not_connected: "No conectado.",
     server_error: "Error del servidor.",
