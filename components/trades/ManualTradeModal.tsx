@@ -1,6 +1,7 @@
 "use client";
 
 import { detectKillzone, ICT_EMOTIONS, ICT_TIMEFRAMES } from "@/lib/ict-constants";
+import { INSTRUMENTS, INSTRUMENT_CATEGORIES } from "@/lib/instruments";
 import { useStrategyTags } from "@/lib/hooks/useStrategyTags";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
@@ -216,19 +217,22 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm text-muted mb-1">{t("manual_pair")}</label>
-              <select value={form.pair} onChange={(e) => update("pair", e.target.value)} className={inputClass}>
-                {pairs.length > 0 ? (
-                  pairs.map((p) => <option key={p} value={p}>{p}</option>)
-                ) : (
-                  <>
-                    <option value="XAUUSD">XAUUSD</option>
-                    <option value="EURUSD">EURUSD</option>
-                    <option value="GBPUSD">GBPUSD</option>
-                    <option value="USDJPY">USDJPY</option>
-                    <option value="NAS100">NAS100</option>
-                  </>
-                )}
-              </select>
+              <input
+                type="text"
+                list="instrument-list"
+                value={form.pair}
+                onChange={(e) => update("pair", e.target.value.toUpperCase())}
+                placeholder="XAUUSD"
+                className={inputClass}
+              />
+              <datalist id="instrument-list">
+                {pairs.length > 0 && pairs.map((p) => <option key={`s-${p}`} value={p} />)}
+                {Object.entries(INSTRUMENTS).map(([cat, items]) => (
+                  items.map((item) => (
+                    <option key={item} value={item} label={`${item} — ${INSTRUMENT_CATEGORIES[cat]}`} />
+                  ))
+                ))}
+              </datalist>
             </div>
             <div>
               <label className="block text-sm text-muted mb-1">{t("manual_direction")}</label>
