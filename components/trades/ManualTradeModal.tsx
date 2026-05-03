@@ -39,10 +39,11 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const defaultPair = pairs[0] || "XAUUSD";
   const [form, setForm] = useState({
     open_time: "",
     close_time: "",
-    pair: pairs[0] || "",
+    pair: defaultPair,
     direction: "long" as "long" | "short",
     lot_size: "",
     entry_price: "",
@@ -88,7 +89,9 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
 
   async function handleSave() {
     setError(null);
-    if (!form.pair || !form.entry_price || !form.pnl) {
+    const hasEntry = form.entry_price.trim() !== "" && !isNaN(parseFloat(form.entry_price));
+    const hasPnl = form.pnl.trim() !== "" && !isNaN(parseFloat(form.pnl));
+    if (!form.pair || !hasEntry || !hasPnl) {
       setError(t("manual_required"));
       return;
     }
