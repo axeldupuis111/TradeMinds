@@ -42,10 +42,13 @@ export async function middleware(request: NextRequest) {
     pathname === "/login" ||
     pathname.startsWith("/auth/") ||
     pathname.startsWith("/api/waitlist") ||
+    pathname.startsWith("/api/contact") ||
     pathname.startsWith("/cgu") ||
     pathname.startsWith("/confidentialite") ||
     pathname.startsWith("/mentions-legales") ||
-    pathname.startsWith("/legal/");
+    pathname.startsWith("/legal/") ||
+    pathname.startsWith("/contact") ||
+    pathname.startsWith("/faq");
 
   // Redirect unauthenticated users to /login (only for /dashboard/* routes)
   if (!user && !isPublic) {

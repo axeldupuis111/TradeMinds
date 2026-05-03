@@ -1071,7 +1071,6 @@ function Footer() {
               {[
                 { href: "#features", label: t("nav_features") },
                 { href: "#pricing",  label: t("nav_pricing") },
-                { href: "#faq",      label: t("nav_faq") },
               ].map((l) => (
                 <li key={l.href}><a href={l.href} className="text-muted text-sm hover:text-foreground transition-colors">{l.label}</a></li>
               ))}
@@ -1085,7 +1084,6 @@ function Footer() {
               <li><span className="text-muted/40 text-sm cursor-not-allowed select-none">{t("footer_blog")}</span></li>
               <li><a href="/contact" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_contact")}</a></li>
               <li><a href="/faq" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_faq")}</a></li>
-              <li><a href="mailto:support@TradeDiscipline.app" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_support")}</a></li>
             </ul>
           </div>
 
