@@ -88,10 +88,10 @@ const AI_DEMO_HREFS = new Set(["/dashboard/strategy", "/dashboard/analysis"]);
 
 export default function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useLanguage();
-  const { plan } = usePlan();
+  const { plan, loading } = usePlan();
   const pathname = usePathname();
-  const showUpgrade = plan === "free" || plan === "plus";
-  const isFree = plan === "free";
+  const showUpgrade = !loading && (plan === "free" || plan === "plus");
+  const isFree = !loading && plan === "free";
   const badgeClass = planBadgeClass[plan] || planBadgeClass.free;
   const planLabel = plan === "plus" ? t("plan_plus") : plan === "premium" ? t("plan_premium") : t("plan_free");
 
@@ -211,21 +211,31 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
           )}
 
           {/* Plan badge */}
-          <div className="mt-3 mx-1 p-3 bg-background border border-border rounded-xl">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs text-muted">{t("sidebar_current_plan")}</p>
-              <span className={`text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${badgeClass}`}>
-                {planLabel}
-              </span>
+          {loading ? (
+            <div className="mt-3 mx-1 p-3 bg-background border border-border rounded-xl">
+              <div className="flex items-center justify-between mb-2">
+                <div className="h-3 w-20 bg-gray-700/50 animate-pulse rounded" />
+                <div className="h-4 w-14 bg-gray-700/50 animate-pulse rounded-full" />
+              </div>
+              <div className="h-3 w-28 bg-gray-700/30 animate-pulse rounded" />
             </div>
-            <Link
-              href="/dashboard/upgrade"
-              onClick={onClose}
-              className="text-xs text-muted hover:text-accent transition-colors"
-            >
-              {t("sidebar_plan_manage")}
-            </Link>
-          </div>
+          ) : (
+            <div className="mt-3 mx-1 p-3 bg-background border border-border rounded-xl">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-muted">{t("sidebar_current_plan")}</p>
+                <span className={`text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${badgeClass}`}>
+                  {planLabel}
+                </span>
+              </div>
+              <Link
+                href="/dashboard/upgrade"
+                onClick={onClose}
+                className="text-xs text-muted hover:text-accent transition-colors"
+              >
+                {t("sidebar_plan_manage")}
+              </Link>
+            </div>
+          )}
         </div>
       </aside>
     </>
