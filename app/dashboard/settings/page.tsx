@@ -255,7 +255,7 @@ export default function SettingsPage() {
 
   const canShare = plan === "plus" || plan === "premium";
   const confirmWord = t("settings_delete_confirm_word");
-  const profileUrl = `TradeDiscipline.vercel.app/u/${originalUsername}`;
+  const profileUrl = `${window.location.origin}/profile/${originalUsername}`;
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -468,7 +468,7 @@ export default function SettingsPage() {
                       </div>
                     </div>
                     <a
-                      href={`https://${profileUrl}`}
+                      href={profileUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-block text-xs text-accent hover:underline"

@@ -48,7 +48,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/mentions-legales") ||
     pathname.startsWith("/legal/") ||
     pathname.startsWith("/contact") ||
-    pathname.startsWith("/faq");
+    pathname.startsWith("/faq") ||
+    pathname.startsWith("/profile/");
 
   // Redirect unauthenticated users to /login (only for /dashboard/* routes)
   if (!user && !isPublic) {

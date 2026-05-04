@@ -100,7 +100,7 @@ export default function PublicProfileView({
             href="/"
             className="text-xs text-muted hover:text-foreground transition-colors"
           >
-            TradeDiscipline.vercel.app
+            tradediscipline.app
           </a>
         </div>
 
