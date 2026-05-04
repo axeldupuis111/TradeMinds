@@ -6,7 +6,7 @@ import { useStrategyTags } from "@/lib/hooks/useStrategyTags";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import type { Lang } from "@/lib/translations";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 interface Props {
   pairs: string[];
@@ -38,6 +38,12 @@ interface Account {
   firm: string;
   account_number: string | null;
 }
+
+const AI_BADGE = (
+  <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 font-medium dark:bg-blue-900/30 dark:text-blue-400">
+    IA
+  </span>
+);
 
 export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, initialChecklist }: Props) {
   const { t, lang } = useLanguage();
@@ -89,10 +95,8 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
     emotion: "",
   });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-
   const [checklist, setChecklist] = useState<Record<string, boolean>>(initialChecklist || {});
 
-  // Re-initialize checklist keys when strategy tags load (for new trades without initialChecklist)
   useEffect(() => {
     if (!initialChecklist && !stratTags.loading && stratTags.checklist.length > 0) {
       setChecklist((prev) => {
@@ -102,6 +106,27 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
       });
     }
   }, [stratTags.loading, stratTags.checklist, initialChecklist]);
+
+  // AI completeness score — 13 level-2 fields
+  const aiScore = useMemo(() => {
+    const checklistHasItem = Object.values(checklist).some(Boolean);
+    const filled = [
+      !!form.open_hour,
+      !!form.close_date,
+      !!form.close_hour,
+      form.exit_price.trim() !== "" && !isNaN(parseFloat(form.exit_price)),
+      form.sl.trim() !== "" && !isNaN(parseFloat(form.sl)),
+      form.tp.trim() !== "" && !isNaN(parseFloat(form.tp)),
+      !!form.ict_setup,
+      !!form.ict_entry_zone,
+      !!form.ict_liquidity_target,
+      !!form.ict_killzone,
+      !!form.ict_timeframe,
+      !!form.emotion,
+      checklistHasItem,
+    ].filter(Boolean).length;
+    return { filled, total: 13, pct: Math.round((filled / 13) * 100) };
+  }, [form, checklist]);
 
   function update(field: string, value: string) {
     setForm((prev) => {
@@ -129,6 +154,8 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
     const errors: Record<string, string> = {};
     if (!form.open_date) errors.open_date = t("manual_err_open_date");
     if (!form.pair) errors.pair = t("manual_err_pair");
+    const hasLot = form.lot_size.trim() !== "" && parseFloat(form.lot_size) > 0;
+    if (!hasLot) errors.lot_size = t("manual_required_lot");
     const hasEntry = form.entry_price.trim() !== "" && !isNaN(parseFloat(form.entry_price));
     if (!hasEntry) errors.entry_price = t("manual_err_entry");
     const hasPnl = form.pnl.trim() !== "" && !isNaN(parseFloat(form.pnl));
@@ -162,12 +189,12 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
         close_time: closeTime,
         pair: form.pair,
         direction: form.direction,
-        lot_size: parseFloat(form.lot_size) || 0,
-        entry_price: parseFloat(form.entry_price) || 0,
+        lot_size: parseFloat(form.lot_size),
+        entry_price: parseFloat(form.entry_price),
         exit_price: parseFloat(form.exit_price) || 0,
         sl: parseFloat(form.sl) || null,
         tp: parseFloat(form.tp) || null,
-        pnl: parseFloat(form.pnl) || 0,
+        pnl: parseFloat(form.pnl),
         notes: form.notes || null,
         ict_setup: form.ict_setup || null,
         ict_entry_zone: form.ict_entry_zone || null,
@@ -177,6 +204,7 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
         ict_confluence_score: checkedCount,
         ict_checklist: checklist,
         emotion: form.emotion || null,
+        ai_completeness_score: aiScore.pct,
       });
 
       setSaving(false);
@@ -200,16 +228,58 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
   const checklistTotal = checklistItems.length || 7;
   const sectionTitle = stratTags.isDefault ? t("ict_analysis_section") : t("trade_analysis_section");
 
+  // AI completeness banner
+  let aiBanner: { bg: string; text: string; icon: string; label: string; hint?: string };
+  if (aiScore.pct >= 80) {
+    aiBanner = {
+      bg: "bg-profit/10 border-profit/20",
+      text: "text-profit",
+      icon: "✅",
+      label: t("ai_completeness_full"),
+    };
+  } else if (aiScore.pct >= 40) {
+    aiBanner = {
+      bg: "bg-orange-500/10 border-orange-500/20",
+      text: "text-orange-400",
+      icon: "⚠️",
+      label: t("ai_completeness_partial"),
+      hint: t("ai_completeness_hint_partial"),
+    };
+  } else {
+    aiBanner = {
+      bg: "bg-accent/10 border-accent/20",
+      text: "text-accent",
+      icon: "ℹ️",
+      label: t("ai_completeness_low"),
+      hint: t("ai_completeness_hint_low"),
+    };
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
       <div className="bg-card border border-border rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-foreground">{t("manual_title")}</h2>
           <button onClick={onClose} className="text-muted hover:text-foreground transition-colors">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
+        </div>
+
+        {/* AI completeness banner */}
+        <div className={`rounded-lg border px-3 py-2 mb-4 ${aiBanner.bg}`}>
+          <div className="flex items-center justify-between">
+            <span className={`text-xs font-medium ${aiBanner.text}`}>
+              {aiBanner.icon} {aiBanner.label}
+            </span>
+            <span className={`text-xs tabular-nums ${aiBanner.text}`}>
+              {aiScore.filled}/{aiScore.total}
+            </span>
+          </div>
+          {aiBanner.hint && (
+            <p className={`text-xs mt-0.5 opacity-80 ${aiBanner.text}`}>{aiBanner.hint}</p>
+          )}
         </div>
 
         <div className="space-y-4">
@@ -238,6 +308,7 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
             </div>
           )}
 
+          {/* Open date / time */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm text-muted mb-1">
@@ -247,28 +318,30 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
               {fieldErrors.open_date && <p className="text-loss text-xs mt-1">{fieldErrors.open_date}</p>}
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">
-                {t("manual_open_time")} <span className="text-muted text-xs">{t("manual_optional")}</span>
+              <label className="block text-sm text-muted mb-1 flex items-center">
+                {t("manual_open_time")} {AI_BADGE}
               </label>
               <input type="time" value={form.open_hour} onChange={(e) => update("open_hour", e.target.value)} className={inputClass} />
             </div>
           </div>
 
+          {/* Close date / time */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm text-muted mb-1">
-                {t("manual_close_date")} <span className="text-muted text-xs">{t("manual_optional")}</span>
+              <label className="block text-sm text-muted mb-1 flex items-center">
+                {t("manual_close_date")} {AI_BADGE}
               </label>
               <input type="date" value={form.close_date} onChange={(e) => update("close_date", e.target.value)} className={inputClass} />
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">
-                {t("manual_close_time")} <span className="text-muted text-xs">{t("manual_optional")}</span>
+              <label className="block text-sm text-muted mb-1 flex items-center">
+                {t("manual_close_time")} {AI_BADGE}
               </label>
               <input type="time" value={form.close_hour} onChange={(e) => update("close_hour", e.target.value)} className={inputClass} />
             </div>
           </div>
 
+          {/* Pair / Direction */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm text-muted mb-1">
@@ -293,7 +366,9 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
               </datalist>
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">{t("manual_direction")}</label>
+              <label className="block text-sm text-muted mb-1">
+                {t("manual_direction")} <span className="text-loss">*</span>
+              </label>
               <select value={form.direction} onChange={(e) => update("direction", e.target.value)} className={inputClass}>
                 <option value="long">Long</option>
                 <option value="short">Short</option>
@@ -301,10 +376,14 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
             </div>
           </div>
 
+          {/* Lot / Entry / Exit */}
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm text-muted mb-1">{t("manual_lot")}</label>
-              <input type="number" step="0.01" value={form.lot_size} onChange={(e) => update("lot_size", e.target.value)} placeholder="0.10" className={inputClass} />
+              <label className="block text-sm text-muted mb-1">
+                {t("manual_lot")} <span className="text-loss">*</span>
+              </label>
+              <input type="number" step="0.01" min="0.01" value={form.lot_size} onChange={(e) => update("lot_size", e.target.value)} placeholder="0.10" className={`${inputClass} ${fieldErrors.lot_size ? "!border-loss" : ""}`} />
+              {fieldErrors.lot_size && <p className="text-loss text-xs mt-1">{fieldErrors.lot_size}</p>}
             </div>
             <div>
               <label className="block text-sm text-muted mb-1">
@@ -314,18 +393,25 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
               {fieldErrors.entry_price && <p className="text-loss text-xs mt-1">{fieldErrors.entry_price}</p>}
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">{t("manual_exit")}</label>
+              <label className="block text-sm text-muted mb-1 flex items-center">
+                {t("manual_exit")} {AI_BADGE}
+              </label>
               <input type="number" step="any" value={form.exit_price} onChange={(e) => update("exit_price", e.target.value)} className={inputClass} />
             </div>
           </div>
 
+          {/* SL / TP / P&L */}
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm text-muted mb-1">{t("manual_sl")}</label>
+              <label className="block text-sm text-muted mb-1 flex items-center">
+                {t("manual_sl")} {AI_BADGE}
+              </label>
               <input type="number" step="any" value={form.sl} onChange={(e) => update("sl", e.target.value)} className={inputClass} />
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">{t("manual_tp")}</label>
+              <label className="block text-sm text-muted mb-1 flex items-center">
+                {t("manual_tp")} {AI_BADGE}
+              </label>
               <input type="number" step="any" value={form.tp} onChange={(e) => update("tp", e.target.value)} className={inputClass} />
             </div>
             <div>
@@ -337,8 +423,11 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
             </div>
           </div>
 
+          {/* Notes */}
           <div>
-            <label className="block text-sm text-muted mb-1">{t("manual_notes")}</label>
+            <label className="block text-sm text-muted mb-1">
+              {t("manual_notes")} <span className="text-muted text-xs">{t("manual_optional")}</span>
+            </label>
             <textarea value={form.notes} onChange={(e) => update("notes", e.target.value)} rows={3} placeholder={t("manual_notes_placeholder")} className={inputClass} />
           </div>
 
@@ -356,14 +445,18 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
               <>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm text-muted mb-1">{t("ict_setup")}</label>
+                    <label className="block text-sm text-muted mb-1 flex items-center">
+                      {t("ict_setup")} {AI_BADGE}
+                    </label>
                     <select value={form.ict_setup} onChange={(e) => update("ict_setup", e.target.value)} className={inputClass}>
                       <option value="">{t("ict_select_setup")}</option>
                       {stratTags.setups.map((s) => <option key={s.value} value={s.value}>{s.label[l]}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm text-muted mb-1">{t("ict_entry_zone")}</label>
+                    <label className="block text-sm text-muted mb-1 flex items-center">
+                      {t("ict_entry_zone")} {AI_BADGE}
+                    </label>
                     <select value={form.ict_entry_zone} onChange={(e) => update("ict_entry_zone", e.target.value)} className={inputClass}>
                       <option value="">{t("ict_select_zone")}</option>
                       {stratTags.entry_zones.map((z) => <option key={z.value} value={z.value}>{z.label[l]}</option>)}
@@ -373,14 +466,18 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm text-muted mb-1">{t("ict_liquidity_target")}</label>
+                    <label className="block text-sm text-muted mb-1 flex items-center">
+                      {t("ict_liquidity_target")} {AI_BADGE}
+                    </label>
                     <select value={form.ict_liquidity_target} onChange={(e) => update("ict_liquidity_target", e.target.value)} className={inputClass}>
                       <option value="">{t("ict_select_liquidity")}</option>
                       {stratTags.targets.map((lt) => <option key={lt.value} value={lt.value}>{lt.label[l]}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm text-muted mb-1">{t("ict_killzone")}</label>
+                    <label className="block text-sm text-muted mb-1 flex items-center">
+                      {t("ict_killzone")} {AI_BADGE}
+                    </label>
                     <select value={form.ict_killzone} onChange={(e) => update("ict_killzone", e.target.value)} className={inputClass}>
                       <option value="">{t("ict_select_killzone")}</option>
                       {stratTags.timing.map((kz) => <option key={kz.value} value={kz.value}>{kz.label[l]}</option>)}
@@ -389,7 +486,9 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
                 </div>
 
                 <div>
-                  <label className="block text-sm text-muted mb-1">{t("ict_timeframe")}</label>
+                  <label className="block text-sm text-muted mb-1 flex items-center">
+                    {t("ict_timeframe")} {AI_BADGE}
+                  </label>
                   <select value={form.ict_timeframe} onChange={(e) => update("ict_timeframe", e.target.value)} className={`${inputClass} w-1/2`}>
                     <option value="">{t("ict_select_timeframe")}</option>
                     {ICT_TIMEFRAMES.map((tf) => <option key={tf.value} value={tf.value}>{tf.label}</option>)}
@@ -398,7 +497,9 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
 
                 {/* Emotion buttons */}
                 <div>
-                  <label className="block text-sm text-muted mb-2">{t("ict_emotion")}</label>
+                  <label className="block text-sm text-muted mb-2 flex items-center">
+                    {t("ict_emotion")} {AI_BADGE}
+                  </label>
                   <div className="flex flex-wrap gap-2">
                     {ICT_EMOTIONS.map((em) => (
                       <button
@@ -419,8 +520,8 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
 
                 {/* Checklist */}
                 <div>
-                  <label className="block text-sm text-muted mb-1">
-                    {t("ict_checklist_title")} — {checkedCount}/{checklistTotal}
+                  <label className="block text-sm text-muted mb-1 flex items-center">
+                    {t("ict_checklist_title")} — {checkedCount}/{checklistTotal} {AI_BADGE}
                   </label>
                   {(() => {
                     const pct = (checkedCount / checklistTotal) * 100;
