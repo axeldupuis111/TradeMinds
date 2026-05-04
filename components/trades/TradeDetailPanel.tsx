@@ -3,6 +3,7 @@
 import { ICT_EMOTIONS, ICT_TIMEFRAMES, detectKillzone } from "@/lib/ict-constants";
 import { useStrategyTags } from "@/lib/hooks/useStrategyTags";
 import { useLanguage } from "@/lib/LanguageContext";
+import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
 import type { Lang } from "@/lib/translations";
 import Image from "next/image";
@@ -80,8 +81,11 @@ function SavedIndicator({ visible }: { visible: boolean }) {
 export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
   const { t, lang } = useLanguage();
   const l = lang as Lang;
+  const { plan, loading: planLoading } = usePlan();
+  const isFree = !planLoading && plan === "free";
   const supabase = createClient();
   const stratTags = useStrategyTags();
+  const [hasStrategy, setHasStrategy] = useState<boolean | null>(null);
 
   const [emotion, setEmotion] = useState<string | null>(trade.emotion);
   const [quality, setQuality] = useState<number | null>(trade.setup_quality);
@@ -134,6 +138,23 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
       setIctKillzone(trade.ict_killzone || "");
     }
   }, [trade.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (isFree) return;
+    async function loadStrategy() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("strategies")
+        .select("id, name")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      setHasStrategy(!!data);
+    }
+    loadStrategy();
+  }, [isFree]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const showAnalysis = !isFree && hasStrategy === true;
 
   const net = trade.pnl + (trade.commission || 0) + (trade.swap || 0);
 
@@ -272,148 +293,172 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
             </div>
           </div>
 
-          {/* Analysis section — dynamic or ICT */}
-          <div className="border-l-[3px] border-blue-500 pl-4">
-            <p className="text-sm font-medium text-foreground mb-0.5">{sectionTitle}</p>
-            <p className="text-xs text-muted italic mb-3">{t("ict_no_ict_tags")}</p>
-
-            {stratTags.loading ? (
-              <div className="space-y-3">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="skeleton h-9 w-full rounded-lg" />
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {/* Setup */}
-                <div>
-                  <label className="block text-xs text-muted mb-1">
-                    {t("ict_setup")}
-                    <SavedIndicator visible={savedField === "ict_setup"} />
-                  </label>
-                  <select value={ictSetup} onChange={(e) => handleIctSetup(e.target.value)} className={selectClass}>
-                    <option value="">{t("ict_select_setup")}</option>
-                    {stratTags.setups.map((s) => (
-                      <option key={s.value} value={s.value}>{s.label[l]}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Entry zone */}
-                <div>
-                  <label className="block text-xs text-muted mb-1">
-                    {t("ict_entry_zone")}
-                    <SavedIndicator visible={savedField === "ict_entry_zone"} />
-                  </label>
-                  <select value={ictEntryZone} onChange={(e) => handleIctEntryZone(e.target.value)} className={selectClass}>
-                    <option value="">{t("ict_select_zone")}</option>
-                    {stratTags.entry_zones.map((s) => (
-                      <option key={s.value} value={s.value}>{s.label[l]}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Target / liquidity */}
-                <div>
-                  <label className="block text-xs text-muted mb-1">
-                    {t("ict_liquidity_target")}
-                    <SavedIndicator visible={savedField === "ict_liquidity_target"} />
-                  </label>
-                  <select value={ictLiquidityTarget} onChange={(e) => handleIctLiquidityTarget(e.target.value)} className={selectClass}>
-                    <option value="">{t("ict_select_liquidity")}</option>
-                    {stratTags.targets.map((s) => (
-                      <option key={s.value} value={s.value}>{s.label[l]}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Timing / killzone */}
-                <div>
-                  <label className="block text-xs text-muted mb-1">
-                    {t("ict_killzone")}
-                    <SavedIndicator visible={savedField === "ict_killzone"} />
-                  </label>
-                  <select value={ictKillzone} onChange={(e) => handleIctKillzone(e.target.value)} className={selectClass}>
-                    <option value="">{t("ict_select_killzone")}</option>
-                    {stratTags.timing.map((s) => (
-                      <option key={s.value} value={s.value}>{s.label[l]}</option>
-                    ))}
-                  </select>
-                  {killzoneAutoDetected && (
-                    <p className="text-xs text-muted italic mt-1">{t("ict_autodetected_killzone")}</p>
-                  )}
-                </div>
-
-                {/* Timeframe — always ICT since not in strategy tags */}
-                <div>
-                  <label className="block text-xs text-muted mb-1">
-                    {t("ict_timeframe")}
-                    <SavedIndicator visible={savedField === "ict_timeframe"} />
-                  </label>
-                  <select value={ictTimeframe} onChange={(e) => handleIctTimeframe(e.target.value)} className={selectClass}>
-                    <option value="">{t("ict_select_timeframe")}</option>
-                    {ICT_TIMEFRAMES.map((s) => (
-                      <option key={s.value} value={s.value}>{s.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Checklist */}
-                <div className="mt-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-muted">
-                      {t("ict_checklist_title")} {checkedCount}/{checklistTotal}
-                      <SavedIndicator visible={savedField === "ict_checklist"} />
-                    </span>
-                    <span className="text-xs text-muted">{Math.round((checkedCount / checklistTotal) * 100)}%</span>
-                  </div>
-                  <div className="h-1.5 bg-border rounded-full overflow-hidden mb-3">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{
-                        width: `${(checkedCount / checklistTotal) * 100}%`,
-                        backgroundColor: checkedCount >= Math.round(checklistTotal * 0.86) ? "#22c55e" : checkedCount >= Math.round(checklistTotal * 0.57) ? "#f59e0b" : "#ef4444",
-                      }}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    {checklistItems.map((item) => (
-                      <label key={item.key} className="flex items-center gap-2 cursor-pointer group">
-                        <input
-                          type="checkbox"
-                          checked={ictChecklist[item.key] || false}
-                          onChange={(e) => handleIctChecklist(item.key, e.target.checked)}
-                          className="w-4 h-4 rounded accent-blue-500"
-                        />
-                        <span className="text-xs text-foreground group-hover:text-accent transition-colors">{item.label[l]}</span>
-                      </label>
-                    ))}
-                  </div>
+          {/* Analysis section — gated by plan + strategy */}
+          {isFree ? (
+            <div className="border border-blue-200 bg-blue-50 rounded-lg p-4 dark:border-blue-800 dark:bg-blue-950/40">
+              <div className="flex items-start gap-3">
+                <span className="text-blue-600 text-xl">🔒</span>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-blue-900 dark:text-blue-200 mb-1">{t("analysis_locked_title")}</h4>
+                  <p className="text-sm text-blue-800 dark:text-blue-300 mb-3">{t("analysis_locked_description")}</p>
+                  <a href="/dashboard/upgrade" className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+                    {t("analysis_locked_cta")}
+                  </a>
                 </div>
               </div>
-            )}
-          </div>
-
-          {/* Emotion */}
-          <div>
-            <label className="block text-sm text-muted mb-2">{t("detail_emotion")}</label>
-            <div className="grid grid-cols-2 gap-2">
-              {ICT_EMOTIONS.map((em) => (
-                <button
-                  key={em.value}
-                  onClick={() => setEmotion(emotion === em.value ? null : em.value)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${
-                    emotion === em.value ? "border-accent bg-accent/10" : "border-border bg-surface hover:border-muted"
-                  }`}
-                >
-                  <span className="text-lg">{EMOTION_EMOJIS[em.value] || "😶"}</span>
-                  <span className={`text-xs ${emotion === em.value ? "text-accent" : "text-muted"}`}>
-                    {t(EMOTION_LABEL_KEYS[em.value] || em.value)}
-                  </span>
-                </button>
-              ))}
             </div>
-          </div>
+          ) : hasStrategy === false ? (
+            <div className="border border-amber-200 bg-amber-50 rounded-lg p-4 dark:border-amber-800 dark:bg-amber-950/40">
+              <div className="flex items-start gap-3">
+                <span className="text-amber-600 text-xl">⚠️</span>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-amber-900 dark:text-amber-200 mb-1">{t("analysis_no_strategy_title")}</h4>
+                  <p className="text-sm text-amber-800 dark:text-amber-300 mb-3">{t("analysis_no_strategy_description")}</p>
+                  <a href="/dashboard/strategy" className="inline-flex items-center gap-1 text-sm font-medium text-amber-700 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300">
+                    {t("analysis_no_strategy_cta")}
+                  </a>
+                </div>
+              </div>
+            </div>
+          ) : showAnalysis ? (
+            <>
+              <div className="border-l-[3px] border-blue-500 pl-4">
+                <p className="text-sm font-medium text-foreground mb-0.5">{sectionTitle}</p>
+                <p className="text-xs text-muted italic mb-3">{t("ict_no_ict_tags")}</p>
+
+                {stratTags.loading ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <div key={i} className="skeleton h-9 w-full rounded-lg" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs text-muted mb-1">
+                        {t("ict_setup")}
+                        <SavedIndicator visible={savedField === "ict_setup"} />
+                      </label>
+                      <select value={ictSetup} onChange={(e) => handleIctSetup(e.target.value)} className={selectClass}>
+                        <option value="">{t("ict_select_setup")}</option>
+                        {stratTags.setups.map((s) => (
+                          <option key={s.value} value={s.value}>{s.label[l]}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs text-muted mb-1">
+                        {t("ict_entry_zone")}
+                        <SavedIndicator visible={savedField === "ict_entry_zone"} />
+                      </label>
+                      <select value={ictEntryZone} onChange={(e) => handleIctEntryZone(e.target.value)} className={selectClass}>
+                        <option value="">{t("ict_select_zone")}</option>
+                        {stratTags.entry_zones.map((s) => (
+                          <option key={s.value} value={s.value}>{s.label[l]}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs text-muted mb-1">
+                        {t("ict_liquidity_target")}
+                        <SavedIndicator visible={savedField === "ict_liquidity_target"} />
+                      </label>
+                      <select value={ictLiquidityTarget} onChange={(e) => handleIctLiquidityTarget(e.target.value)} className={selectClass}>
+                        <option value="">{t("ict_select_liquidity")}</option>
+                        {stratTags.targets.map((s) => (
+                          <option key={s.value} value={s.value}>{s.label[l]}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs text-muted mb-1">
+                        {t("ict_killzone")}
+                        <SavedIndicator visible={savedField === "ict_killzone"} />
+                      </label>
+                      <select value={ictKillzone} onChange={(e) => handleIctKillzone(e.target.value)} className={selectClass}>
+                        <option value="">{t("ict_select_killzone")}</option>
+                        {stratTags.timing.map((s) => (
+                          <option key={s.value} value={s.value}>{s.label[l]}</option>
+                        ))}
+                      </select>
+                      {killzoneAutoDetected && (
+                        <p className="text-xs text-muted italic mt-1">{t("ict_autodetected_killzone")}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-xs text-muted mb-1">
+                        {t("ict_timeframe")}
+                        <SavedIndicator visible={savedField === "ict_timeframe"} />
+                      </label>
+                      <select value={ictTimeframe} onChange={(e) => handleIctTimeframe(e.target.value)} className={selectClass}>
+                        <option value="">{t("ict_select_timeframe")}</option>
+                        {ICT_TIMEFRAMES.map((s) => (
+                          <option key={s.value} value={s.value}>{s.label}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="mt-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs text-muted">
+                          {t("ict_checklist_title")} {checkedCount}/{checklistTotal}
+                          <SavedIndicator visible={savedField === "ict_checklist"} />
+                        </span>
+                        <span className="text-xs text-muted">{Math.round((checkedCount / checklistTotal) * 100)}%</span>
+                      </div>
+                      <div className="h-1.5 bg-border rounded-full overflow-hidden mb-3">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{
+                            width: `${(checkedCount / checklistTotal) * 100}%`,
+                            backgroundColor: checkedCount >= Math.round(checklistTotal * 0.86) ? "#22c55e" : checkedCount >= Math.round(checklistTotal * 0.57) ? "#f59e0b" : "#ef4444",
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        {checklistItems.map((item) => (
+                          <label key={item.key} className="flex items-center gap-2 cursor-pointer group">
+                            <input
+                              type="checkbox"
+                              checked={ictChecklist[item.key] || false}
+                              onChange={(e) => handleIctChecklist(item.key, e.target.checked)}
+                              className="w-4 h-4 rounded accent-blue-500"
+                            />
+                            <span className="text-xs text-foreground group-hover:text-accent transition-colors">{item.label[l]}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Emotion */}
+              <div>
+                <label className="block text-sm text-muted mb-2">{t("detail_emotion")}</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {ICT_EMOTIONS.map((em) => (
+                    <button
+                      key={em.value}
+                      onClick={() => setEmotion(emotion === em.value ? null : em.value)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${
+                        emotion === em.value ? "border-accent bg-accent/10" : "border-border bg-surface hover:border-muted"
+                      }`}
+                    >
+                      <span className="text-lg">{EMOTION_EMOJIS[em.value] || "😶"}</span>
+                      <span className={`text-xs ${emotion === em.value ? "text-accent" : "text-muted"}`}>
+                        {t(EMOTION_LABEL_KEYS[em.value] || em.value)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : null}
 
           {/* Setup quality */}
           <div>

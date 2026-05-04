@@ -4,6 +4,7 @@ import { detectKillzone, ICT_EMOTIONS, ICT_TIMEFRAMES } from "@/lib/ict-constant
 import { INSTRUMENTS, INSTRUMENT_CATEGORIES } from "@/lib/instruments";
 import { useStrategyTags } from "@/lib/hooks/useStrategyTags";
 import { useLanguage } from "@/lib/LanguageContext";
+import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
 import type { Lang } from "@/lib/translations";
 import { useEffect, useMemo, useState } from "react";
@@ -47,9 +48,12 @@ const AI_BADGE = (
 
 export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, initialChecklist }: Props) {
   const { t, lang } = useLanguage();
+  const { plan, loading: planLoading } = usePlan();
+  const isFree = !planLoading && plan === "free";
   const supabase = createClient();
   const stratTags = useStrategyTags();
   const [saving, setSaving] = useState(false);
+  const [hasStrategy, setHasStrategy] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<string>("");
@@ -71,6 +75,23 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
     }
     loadAccounts();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (isFree) return;
+    async function loadStrategy() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("strategies")
+        .select("id, name")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      setHasStrategy(!!data);
+    }
+    loadStrategy();
+  }, [isFree]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const showAnalysis = !isFree && hasStrategy === true;
 
   const defaultPair = pairs[0] || "XAUUSD";
   const [form, setForm] = useState({
@@ -267,21 +288,6 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
           </button>
         </div>
 
-        {/* AI completeness banner */}
-        <div className={`rounded-lg border px-3 py-2 mb-4 ${aiBanner.bg}`}>
-          <div className="flex items-center justify-between">
-            <span className={`text-xs font-medium ${aiBanner.text}`}>
-              {aiBanner.icon} {aiBanner.label}
-            </span>
-            <span className={`text-xs tabular-nums ${aiBanner.text}`}>
-              {aiScore.filled}/{aiScore.total}
-            </span>
-          </div>
-          {aiBanner.hint && (
-            <p className={`text-xs mt-0.5 opacity-80 ${aiBanner.text}`}>{aiBanner.hint}</p>
-          )}
-        </div>
-
         <div className="space-y-4">
           {/* Account selector */}
           {accounts.length > 0 ? (
@@ -431,129 +437,174 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
             <textarea value={form.notes} onChange={(e) => update("notes", e.target.value)} rows={3} placeholder={t("manual_notes_placeholder")} className={inputClass} />
           </div>
 
-          {/* Analysis section */}
-          <div className="border-l-[3px] border-blue-500 pl-4 mt-6 space-y-4">
-            <p className="text-sm font-semibold text-foreground">{sectionTitle}</p>
-
-            {stratTags.loading ? (
-              <div className="space-y-3">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="skeleton h-9 w-full rounded-lg" />
-                ))}
+          {/* Analysis section — gated by plan + strategy */}
+          {isFree ? (
+            <div className="border border-blue-200 bg-blue-50 rounded-lg p-4 my-4 dark:border-blue-800 dark:bg-blue-950/40">
+              <div className="flex items-start gap-3">
+                <span className="text-blue-600 text-xl">🔒</span>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-blue-900 dark:text-blue-200 mb-1">{t("analysis_locked_title")}</h4>
+                  <p className="text-sm text-blue-800 dark:text-blue-300 mb-3">{t("analysis_locked_description")}</p>
+                  <a href="/dashboard/upgrade" className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+                    {t("analysis_locked_cta")}
+                  </a>
+                </div>
               </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm text-muted mb-1 flex items-center">
-                      {t("ict_setup")} {AI_BADGE}
-                    </label>
-                    <select value={form.ict_setup} onChange={(e) => update("ict_setup", e.target.value)} className={inputClass}>
-                      <option value="">{t("ict_select_setup")}</option>
-                      {stratTags.setups.map((s) => <option key={s.value} value={s.value}>{s.label[l]}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm text-muted mb-1 flex items-center">
-                      {t("ict_entry_zone")} {AI_BADGE}
-                    </label>
-                    <select value={form.ict_entry_zone} onChange={(e) => update("ict_entry_zone", e.target.value)} className={inputClass}>
-                      <option value="">{t("ict_select_zone")}</option>
-                      {stratTags.entry_zones.map((z) => <option key={z.value} value={z.value}>{z.label[l]}</option>)}
-                    </select>
-                  </div>
+            </div>
+          ) : hasStrategy === false ? (
+            <div className="border border-amber-200 bg-amber-50 rounded-lg p-4 my-4 dark:border-amber-800 dark:bg-amber-950/40">
+              <div className="flex items-start gap-3">
+                <span className="text-amber-600 text-xl">⚠️</span>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-amber-900 dark:text-amber-200 mb-1">{t("analysis_no_strategy_title")}</h4>
+                  <p className="text-sm text-amber-800 dark:text-amber-300 mb-3">{t("analysis_no_strategy_description")}</p>
+                  <a href="/dashboard/strategy" className="inline-flex items-center gap-1 text-sm font-medium text-amber-700 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300">
+                    {t("analysis_no_strategy_cta")}
+                  </a>
                 </div>
+              </div>
+            </div>
+          ) : showAnalysis ? (
+            <div className="border-l-[3px] border-blue-500 pl-4 mt-6 space-y-4">
+              <p className="text-sm font-semibold text-foreground">{sectionTitle}</p>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm text-muted mb-1 flex items-center">
-                      {t("ict_liquidity_target")} {AI_BADGE}
-                    </label>
-                    <select value={form.ict_liquidity_target} onChange={(e) => update("ict_liquidity_target", e.target.value)} className={inputClass}>
-                      <option value="">{t("ict_select_liquidity")}</option>
-                      {stratTags.targets.map((lt) => <option key={lt.value} value={lt.value}>{lt.label[l]}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm text-muted mb-1 flex items-center">
-                      {t("ict_killzone")} {AI_BADGE}
-                    </label>
-                    <select value={form.ict_killzone} onChange={(e) => update("ict_killzone", e.target.value)} className={inputClass}>
-                      <option value="">{t("ict_select_killzone")}</option>
-                      {stratTags.timing.map((kz) => <option key={kz.value} value={kz.value}>{kz.label[l]}</option>)}
-                    </select>
-                  </div>
+              {stratTags.loading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="skeleton h-9 w-full rounded-lg" />
+                  ))}
                 </div>
-
-                <div>
-                  <label className="block text-sm text-muted mb-1 flex items-center">
-                    {t("ict_timeframe")} {AI_BADGE}
-                  </label>
-                  <select value={form.ict_timeframe} onChange={(e) => update("ict_timeframe", e.target.value)} className={`${inputClass} w-1/2`}>
-                    <option value="">{t("ict_select_timeframe")}</option>
-                    {ICT_TIMEFRAMES.map((tf) => <option key={tf.value} value={tf.value}>{tf.label}</option>)}
-                  </select>
-                </div>
-
-                {/* Emotion buttons */}
-                <div>
-                  <label className="block text-sm text-muted mb-2 flex items-center">
-                    {t("ict_emotion")} {AI_BADGE}
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {ICT_EMOTIONS.map((em) => (
-                      <button
-                        key={em.value}
-                        type="button"
-                        onClick={() => update("emotion", form.emotion === em.value ? "" : em.value)}
-                        className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-all ${
-                          form.emotion === em.value
-                            ? EMOTION_SELECTED_COLORS[em.category]
-                            : `bg-surface/50 ${EMOTION_UNSELECTED_COLORS[em.category]}`
-                        }`}
-                      >
-                        {em.label[l]}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Checklist */}
-                <div>
-                  <label className="block text-sm text-muted mb-1 flex items-center">
-                    {t("ict_checklist_title")} — {checkedCount}/{checklistTotal} {AI_BADGE}
-                  </label>
-                  {(() => {
-                    const pct = (checkedCount / checklistTotal) * 100;
-                    const barColor = checkedCount <= Math.round(checklistTotal * 0.43) ? "bg-loss" : checkedCount <= Math.round(checklistTotal * 0.71) ? "bg-warning" : "bg-profit";
-                    return (
-                      <div className="h-1 w-full bg-surface rounded-full mb-3 overflow-hidden">
-                        <div className={`h-full rounded-full transition-all duration-300 ${barColor}`} style={{ width: `${pct}%` }} />
-                      </div>
-                    );
-                  })()}
-                  <div className="space-y-2">
-                    {checklistItems.map((item) => (
-                      <label key={item.key} className="flex items-center gap-3 cursor-pointer group">
-                        <input
-                          type="checkbox"
-                          checked={!!checklist[item.key]}
-                          onChange={() => toggleChecklist(item.key)}
-                          className="w-4 h-4 accent-accent rounded"
-                        />
-                        <span className={`text-sm transition-colors ${checklist[item.key] ? "text-profit" : "text-muted group-hover:text-foreground"}`}>
-                          {item.label[l]}
-                        </span>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm text-muted mb-1 flex items-center">
+                        {t("ict_setup")} {AI_BADGE}
                       </label>
-                    ))}
+                      <select value={form.ict_setup} onChange={(e) => update("ict_setup", e.target.value)} className={inputClass}>
+                        <option value="">{t("ict_select_setup")}</option>
+                        {stratTags.setups.map((s) => <option key={s.value} value={s.value}>{s.label[l]}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-muted mb-1 flex items-center">
+                        {t("ict_entry_zone")} {AI_BADGE}
+                      </label>
+                      <select value={form.ict_entry_zone} onChange={(e) => update("ict_entry_zone", e.target.value)} className={inputClass}>
+                        <option value="">{t("ict_select_zone")}</option>
+                        {stratTags.entry_zones.map((z) => <option key={z.value} value={z.value}>{z.label[l]}</option>)}
+                      </select>
+                    </div>
                   </div>
-                </div>
-              </>
-            )}
-          </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm text-muted mb-1 flex items-center">
+                        {t("ict_liquidity_target")} {AI_BADGE}
+                      </label>
+                      <select value={form.ict_liquidity_target} onChange={(e) => update("ict_liquidity_target", e.target.value)} className={inputClass}>
+                        <option value="">{t("ict_select_liquidity")}</option>
+                        {stratTags.targets.map((lt) => <option key={lt.value} value={lt.value}>{lt.label[l]}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-muted mb-1 flex items-center">
+                        {t("ict_killzone")} {AI_BADGE}
+                      </label>
+                      <select value={form.ict_killzone} onChange={(e) => update("ict_killzone", e.target.value)} className={inputClass}>
+                        <option value="">{t("ict_select_killzone")}</option>
+                        {stratTags.timing.map((kz) => <option key={kz.value} value={kz.value}>{kz.label[l]}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-muted mb-1 flex items-center">
+                      {t("ict_timeframe")} {AI_BADGE}
+                    </label>
+                    <select value={form.ict_timeframe} onChange={(e) => update("ict_timeframe", e.target.value)} className={`${inputClass} w-1/2`}>
+                      <option value="">{t("ict_select_timeframe")}</option>
+                      {ICT_TIMEFRAMES.map((tf) => <option key={tf.value} value={tf.value}>{tf.label}</option>)}
+                    </select>
+                  </div>
+
+                  {/* Emotion buttons */}
+                  <div>
+                    <label className="block text-sm text-muted mb-2 flex items-center">
+                      {t("ict_emotion")} {AI_BADGE}
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {ICT_EMOTIONS.map((em) => (
+                        <button
+                          key={em.value}
+                          type="button"
+                          onClick={() => update("emotion", form.emotion === em.value ? "" : em.value)}
+                          className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-all ${
+                            form.emotion === em.value
+                              ? EMOTION_SELECTED_COLORS[em.category]
+                              : `bg-surface/50 ${EMOTION_UNSELECTED_COLORS[em.category]}`
+                          }`}
+                        >
+                          {em.label[l]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Checklist */}
+                  <div>
+                    <label className="block text-sm text-muted mb-1 flex items-center">
+                      {t("ict_checklist_title")} — {checkedCount}/{checklistTotal} {AI_BADGE}
+                    </label>
+                    {(() => {
+                      const pct = (checkedCount / checklistTotal) * 100;
+                      const barColor = checkedCount <= Math.round(checklistTotal * 0.43) ? "bg-loss" : checkedCount <= Math.round(checklistTotal * 0.71) ? "bg-warning" : "bg-profit";
+                      return (
+                        <div className="h-1 w-full bg-surface rounded-full mb-3 overflow-hidden">
+                          <div className={`h-full rounded-full transition-all duration-300 ${barColor}`} style={{ width: `${pct}%` }} />
+                        </div>
+                      );
+                    })()}
+                    <div className="space-y-2">
+                      {checklistItems.map((item) => (
+                        <label key={item.key} className="flex items-center gap-3 cursor-pointer group">
+                          <input
+                            type="checkbox"
+                            checked={!!checklist[item.key]}
+                            onChange={() => toggleChecklist(item.key)}
+                            className="w-4 h-4 accent-accent rounded"
+                          />
+                          <span className={`text-sm transition-colors ${checklist[item.key] ? "text-profit" : "text-muted group-hover:text-foreground"}`}>
+                            {item.label[l]}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : null}
         </div>
 
         {error && <p className="text-loss text-sm mt-3">{error}</p>}
+
+        {/* AI completeness banner — only for paying users with strategy */}
+        {showAnalysis && (
+          <div className={`rounded-lg border px-3 py-2 mt-4 ${aiBanner.bg}`}>
+            <div className="flex items-center justify-between">
+              <span className={`text-xs font-medium ${aiBanner.text}`}>
+                {aiBanner.icon} {aiBanner.label}
+              </span>
+              <span className={`text-xs tabular-nums ${aiBanner.text}`}>
+                {aiScore.filled}/{aiScore.total}
+              </span>
+            </div>
+            {aiBanner.hint && (
+              <p className={`text-xs mt-0.5 opacity-80 ${aiBanner.text}`}>{aiBanner.hint}</p>
+            )}
+          </div>
+        )}
 
         <div className="flex gap-3 mt-6">
           <button onClick={handleSave} disabled={saving} className="flex-1 py-2 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50">
