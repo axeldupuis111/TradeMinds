@@ -68,8 +68,10 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
 
   const defaultPair = pairs[0] || "XAUUSD";
   const [form, setForm] = useState({
-    open_time: "",
-    close_time: "",
+    open_date: "",
+    open_hour: "",
+    close_date: "",
+    close_hour: "",
     pair: defaultPair,
     direction: "long" as "long" | "short",
     lot_size: "",
@@ -86,6 +88,7 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
     ict_timeframe: "",
     emotion: "",
   });
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const [checklist, setChecklist] = useState<Record<string, boolean>>(initialChecklist || {});
 
@@ -103,11 +106,18 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
   function update(field: string, value: string) {
     setForm((prev) => {
       const next = { ...prev, [field]: value };
-      if (field === "open_time" && value && !prev.ict_killzone) {
-        next.ict_killzone = detectKillzone(value);
+      if ((field === "open_date" || field === "open_hour") && !prev.ict_killzone) {
+        const date = field === "open_date" ? value : prev.open_date;
+        const hour = field === "open_hour" ? value : prev.open_hour;
+        if (date && hour) {
+          next.ict_killzone = detectKillzone(`${date}T${hour}`);
+        }
       }
       return next;
     });
+    if (fieldErrors[field]) {
+      setFieldErrors((prev) => { const n = { ...prev }; delete n[field]; return n; });
+    }
   }
 
   function toggleChecklist(key: string) {
@@ -116,47 +126,72 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
 
   async function handleSave() {
     setError(null);
+    const errors: Record<string, string> = {};
+    if (!form.open_date) errors.open_date = t("manual_err_open_date");
+    if (!form.pair) errors.pair = t("manual_err_pair");
     const hasEntry = form.entry_price.trim() !== "" && !isNaN(parseFloat(form.entry_price));
+    if (!hasEntry) errors.entry_price = t("manual_err_entry");
     const hasPnl = form.pnl.trim() !== "" && !isNaN(parseFloat(form.pnl));
-    if (!form.pair || !hasEntry || !hasPnl) {
-      setError(t("manual_required"));
+    if (!hasPnl) errors.pnl = t("manual_err_pnl");
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       return;
     }
+    setFieldErrors({});
     setSaving(true);
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setError(t("not_connected")); setSaving(false); return; }
 
+    const openTime = form.open_hour
+      ? `${form.open_date}T${form.open_hour}:00`
+      : `${form.open_date}T00:00:00`;
+    const closeTime = form.close_date
+      ? (form.close_hour ? `${form.close_date}T${form.close_hour}:00` : `${form.close_date}T00:00:00`)
+      : null;
+
     const checklistItems = stratTags.checklist;
     const checkedCount = checklistItems.filter((i) => checklist[i.key]).length;
 
-    const { error: dbError } = await supabase.from("trades").insert({
-      user_id: user.id,
-      strategy_id: strategyId,
-      challenge_id: selectedAccountId || null,
-      open_time: form.open_time || null,
-      close_time: form.close_time || null,
-      pair: form.pair,
-      direction: form.direction,
-      lot_size: parseFloat(form.lot_size) || 0,
-      entry_price: parseFloat(form.entry_price) || 0,
-      exit_price: parseFloat(form.exit_price) || 0,
-      sl: parseFloat(form.sl) || null,
-      tp: parseFloat(form.tp) || null,
-      pnl: parseFloat(form.pnl) || 0,
-      notes: form.notes || null,
-      ict_setup: form.ict_setup || null,
-      ict_entry_zone: form.ict_entry_zone || null,
-      ict_liquidity_target: form.ict_liquidity_target || null,
-      ict_killzone: form.ict_killzone || null,
-      ict_timeframe: form.ict_timeframe || null,
-      ict_confluence_score: checkedCount,
-      ict_checklist: checklist,
-      emotion: form.emotion || null,
-    });
+    try {
+      const { error: dbError } = await supabase.from("trades").insert({
+        user_id: user.id,
+        strategy_id: strategyId,
+        challenge_id: selectedAccountId || null,
+        open_time: openTime,
+        close_time: closeTime,
+        pair: form.pair,
+        direction: form.direction,
+        lot_size: parseFloat(form.lot_size) || 0,
+        entry_price: parseFloat(form.entry_price) || 0,
+        exit_price: parseFloat(form.exit_price) || 0,
+        sl: parseFloat(form.sl) || null,
+        tp: parseFloat(form.tp) || null,
+        pnl: parseFloat(form.pnl) || 0,
+        notes: form.notes || null,
+        ict_setup: form.ict_setup || null,
+        ict_entry_zone: form.ict_entry_zone || null,
+        ict_liquidity_target: form.ict_liquidity_target || null,
+        ict_killzone: form.ict_killzone || null,
+        ict_timeframe: form.ict_timeframe || null,
+        ict_confluence_score: checkedCount,
+        ict_checklist: checklist,
+        emotion: form.emotion || null,
+      });
 
-    setSaving(false);
-    if (dbError) { setError(dbError.message); } else { onSaved(); onClose(); }
+      setSaving(false);
+      if (dbError) {
+        console.error("Trade insert failed:", dbError);
+        setError(t("manual_err_save"));
+      } else {
+        onSaved();
+        onClose();
+      }
+    } catch (e) {
+      console.error("Unexpected error:", e);
+      setSaving(false);
+      setError(t("manual_err_save"));
+    }
   }
 
   const l = lang as Lang;
@@ -205,26 +240,49 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm text-muted mb-1">{t("manual_open")}</label>
-              <input type="datetime-local" value={form.open_time} onChange={(e) => update("open_time", e.target.value)} className={inputClass} />
+              <label className="block text-sm text-muted mb-1">
+                {t("manual_open_date")} <span className="text-loss">*</span>
+              </label>
+              <input type="date" value={form.open_date} onChange={(e) => update("open_date", e.target.value)} className={`${inputClass} ${fieldErrors.open_date ? "!border-loss" : ""}`} />
+              {fieldErrors.open_date && <p className="text-loss text-xs mt-1">{fieldErrors.open_date}</p>}
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">{t("manual_close")}</label>
-              <input type="datetime-local" value={form.close_time} onChange={(e) => update("close_time", e.target.value)} className={inputClass} />
+              <label className="block text-sm text-muted mb-1">
+                {t("manual_open_time")} <span className="text-muted text-xs">{t("manual_optional")}</span>
+              </label>
+              <input type="time" value={form.open_hour} onChange={(e) => update("open_hour", e.target.value)} className={inputClass} />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm text-muted mb-1">{t("manual_pair")}</label>
+              <label className="block text-sm text-muted mb-1">
+                {t("manual_close_date")} <span className="text-muted text-xs">{t("manual_optional")}</span>
+              </label>
+              <input type="date" value={form.close_date} onChange={(e) => update("close_date", e.target.value)} className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-sm text-muted mb-1">
+                {t("manual_close_time")} <span className="text-muted text-xs">{t("manual_optional")}</span>
+              </label>
+              <input type="time" value={form.close_hour} onChange={(e) => update("close_hour", e.target.value)} className={inputClass} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm text-muted mb-1">
+                {t("manual_pair")} <span className="text-loss">*</span>
+              </label>
               <input
                 type="text"
                 list="instrument-list"
                 value={form.pair}
                 onChange={(e) => update("pair", e.target.value.toUpperCase())}
                 placeholder="XAUUSD"
-                className={inputClass}
+                className={`${inputClass} ${fieldErrors.pair ? "!border-loss" : ""}`}
               />
+              {fieldErrors.pair && <p className="text-loss text-xs mt-1">{fieldErrors.pair}</p>}
               <datalist id="instrument-list">
                 {pairs.length > 0 && pairs.map((p) => <option key={`s-${p}`} value={p} />)}
                 {Object.entries(INSTRUMENTS).map(([cat, items]) => (
@@ -249,8 +307,11 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
               <input type="number" step="0.01" value={form.lot_size} onChange={(e) => update("lot_size", e.target.value)} placeholder="0.10" className={inputClass} />
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">{t("manual_entry")}</label>
-              <input type="number" step="any" value={form.entry_price} onChange={(e) => update("entry_price", e.target.value)} className={inputClass} />
+              <label className="block text-sm text-muted mb-1">
+                {t("manual_entry")} <span className="text-loss">*</span>
+              </label>
+              <input type="number" step="any" value={form.entry_price} onChange={(e) => update("entry_price", e.target.value)} className={`${inputClass} ${fieldErrors.entry_price ? "!border-loss" : ""}`} />
+              {fieldErrors.entry_price && <p className="text-loss text-xs mt-1">{fieldErrors.entry_price}</p>}
             </div>
             <div>
               <label className="block text-sm text-muted mb-1">{t("manual_exit")}</label>
@@ -268,8 +329,11 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
               <input type="number" step="any" value={form.tp} onChange={(e) => update("tp", e.target.value)} className={inputClass} />
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">{t("manual_pnl")}</label>
-              <input type="number" step="any" value={form.pnl} onChange={(e) => update("pnl", e.target.value)} className={inputClass} />
+              <label className="block text-sm text-muted mb-1">
+                {t("manual_pnl")} <span className="text-loss">*</span>
+              </label>
+              <input type="number" step="any" value={form.pnl} onChange={(e) => update("pnl", e.target.value)} className={`${inputClass} ${fieldErrors.pnl ? "!border-loss" : ""}`} />
+              {fieldErrors.pnl && <p className="text-loss text-xs mt-1">{fieldErrors.pnl}</p>}
             </div>
           </div>
 
