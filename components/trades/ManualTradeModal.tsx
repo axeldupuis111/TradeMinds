@@ -40,11 +40,17 @@ interface Account {
   account_number: string | null;
 }
 
-const AI_BADGE = (
-  <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 font-medium dark:bg-blue-900/30 dark:text-blue-400">
-    IA
-  </span>
-);
+function AiBadge({ visible, t }: { visible: boolean; t: (key: string) => string }) {
+  if (!visible) return null;
+  return (
+    <span
+      className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 font-medium cursor-help"
+      title={t("ai_badge_tooltip")}
+    >
+      {t("ai_badge")}
+    </span>
+  );
+}
 
 export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, initialChecklist }: Props) {
   const { t, lang } = useLanguage();
@@ -92,6 +98,7 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
   }, [isFree]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const showAnalysis = !isFree && hasStrategy === true;
+  const showAiBadge = !isFree && hasStrategy === true;
 
   const defaultPair = pairs[0] || "XAUUSD";
   const [form, setForm] = useState({
@@ -115,6 +122,7 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
     ict_timeframe: "",
     emotion: "",
   });
+  const [closedManually, setClosedManually] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [checklist, setChecklist] = useState<Record<string, boolean>>(initialChecklist || {});
 
@@ -179,6 +187,10 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
     if (!hasLot) errors.lot_size = t("manual_required_lot");
     const hasEntry = form.entry_price.trim() !== "" && !isNaN(parseFloat(form.entry_price));
     if (!hasEntry) errors.entry_price = t("manual_err_entry");
+    if (!closedManually) {
+      if (!form.sl.trim() || isNaN(parseFloat(form.sl))) errors.sl = t("manual_required_sl");
+      if (!form.tp.trim() || isNaN(parseFloat(form.tp))) errors.tp = t("manual_required_tp");
+    }
     const hasPnl = form.pnl.trim() !== "" && !isNaN(parseFloat(form.pnl));
     if (!hasPnl) errors.pnl = t("manual_err_pnl");
     if (Object.keys(errors).length > 0) {
@@ -226,6 +238,7 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
         ict_checklist: checklist,
         emotion: form.emotion || null,
         ai_completeness_score: aiScore.pct,
+        closed_manually: closedManually,
       });
 
       setSaving(false);
@@ -325,7 +338,7 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
             </div>
             <div>
               <label className="block text-sm text-muted mb-1 flex items-center">
-                {t("manual_open_time")} {AI_BADGE}
+                {t("manual_open_time")} <AiBadge visible={showAiBadge} t={t} />
               </label>
               <input type="time" value={form.open_hour} onChange={(e) => update("open_hour", e.target.value)} className={inputClass} />
             </div>
@@ -335,13 +348,13 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm text-muted mb-1 flex items-center">
-                {t("manual_close_date")} {AI_BADGE}
+                {t("manual_close_date")} <AiBadge visible={showAiBadge} t={t} />
               </label>
               <input type="date" value={form.close_date} onChange={(e) => update("close_date", e.target.value)} className={inputClass} />
             </div>
             <div>
               <label className="block text-sm text-muted mb-1 flex items-center">
-                {t("manual_close_time")} {AI_BADGE}
+                {t("manual_close_time")} <AiBadge visible={showAiBadge} t={t} />
               </label>
               <input type="time" value={form.close_hour} onChange={(e) => update("close_hour", e.target.value)} className={inputClass} />
             </div>
@@ -400,25 +413,51 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
             </div>
             <div>
               <label className="block text-sm text-muted mb-1 flex items-center">
-                {t("manual_exit")} {AI_BADGE}
+                {t("manual_exit")} <AiBadge visible={showAiBadge} t={t} />
               </label>
               <input type="number" step="any" value={form.exit_price} onChange={(e) => update("exit_price", e.target.value)} className={inputClass} />
             </div>
           </div>
 
+          {/* Closed manually checkbox */}
+          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <input
+              type="checkbox"
+              checked={closedManually}
+              onChange={(e) => {
+                setClosedManually(e.target.checked);
+                if (e.target.checked) {
+                  setFieldErrors((prev) => { const n = { ...prev }; delete n.sl; delete n.tp; return n; });
+                }
+              }}
+              className="rounded"
+            />
+            <span>{t("trade_closed_manually")}</span>
+            <span
+              className="text-xs text-gray-500 dark:text-gray-400 cursor-help"
+              title={t("trade_closed_manually_tooltip")}
+            >
+              (?)
+            </span>
+          </label>
+
           {/* SL / TP / P&L */}
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-sm text-muted mb-1 flex items-center">
-                {t("manual_sl")} {AI_BADGE}
+                {t("manual_sl")} {closedManually ? <AiBadge visible={showAiBadge} t={t} /> : <span className="text-loss ml-1">*</span>}
+                {closedManually && <span className="text-xs text-muted ml-1">({t("manual_optional")})</span>}
               </label>
-              <input type="number" step="any" value={form.sl} onChange={(e) => update("sl", e.target.value)} className={inputClass} />
+              <input type="number" step="any" value={form.sl} onChange={(e) => update("sl", e.target.value)} className={`${inputClass} ${fieldErrors.sl ? "!border-loss" : ""}`} />
+              {fieldErrors.sl && <p className="text-loss text-xs mt-1">{fieldErrors.sl}</p>}
             </div>
             <div>
               <label className="block text-sm text-muted mb-1 flex items-center">
-                {t("manual_tp")} {AI_BADGE}
+                {t("manual_tp")} {closedManually ? <AiBadge visible={showAiBadge} t={t} /> : <span className="text-loss ml-1">*</span>}
+                {closedManually && <span className="text-xs text-muted ml-1">({t("manual_optional")})</span>}
               </label>
-              <input type="number" step="any" value={form.tp} onChange={(e) => update("tp", e.target.value)} className={inputClass} />
+              <input type="number" step="any" value={form.tp} onChange={(e) => update("tp", e.target.value)} className={`${inputClass} ${fieldErrors.tp ? "!border-loss" : ""}`} />
+              {fieldErrors.tp && <p className="text-loss text-xs mt-1">{fieldErrors.tp}</p>}
             </div>
             <div>
               <label className="block text-sm text-muted mb-1">
@@ -479,7 +518,7 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-sm text-muted mb-1 flex items-center">
-                        {t("ict_setup")} {AI_BADGE}
+                        {t("ict_setup")} <AiBadge visible={showAiBadge} t={t} />
                       </label>
                       <select value={form.ict_setup} onChange={(e) => update("ict_setup", e.target.value)} className={inputClass}>
                         <option value="">{t("ict_select_setup")}</option>
@@ -488,7 +527,7 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
                     </div>
                     <div>
                       <label className="block text-sm text-muted mb-1 flex items-center">
-                        {t("ict_entry_zone")} {AI_BADGE}
+                        {t("ict_entry_zone")} <AiBadge visible={showAiBadge} t={t} />
                       </label>
                       <select value={form.ict_entry_zone} onChange={(e) => update("ict_entry_zone", e.target.value)} className={inputClass}>
                         <option value="">{t("ict_select_zone")}</option>
@@ -500,7 +539,7 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-sm text-muted mb-1 flex items-center">
-                        {t("ict_liquidity_target")} {AI_BADGE}
+                        {t("ict_liquidity_target")} <AiBadge visible={showAiBadge} t={t} />
                       </label>
                       <select value={form.ict_liquidity_target} onChange={(e) => update("ict_liquidity_target", e.target.value)} className={inputClass}>
                         <option value="">{t("ict_select_liquidity")}</option>
@@ -509,7 +548,7 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
                     </div>
                     <div>
                       <label className="block text-sm text-muted mb-1 flex items-center">
-                        {t("ict_killzone")} {AI_BADGE}
+                        {t("ict_killzone")} <AiBadge visible={showAiBadge} t={t} />
                       </label>
                       <select value={form.ict_killzone} onChange={(e) => update("ict_killzone", e.target.value)} className={inputClass}>
                         <option value="">{t("ict_select_killzone")}</option>
@@ -520,7 +559,7 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
 
                   <div>
                     <label className="block text-sm text-muted mb-1 flex items-center">
-                      {t("ict_timeframe")} {AI_BADGE}
+                      {t("ict_timeframe")} <AiBadge visible={showAiBadge} t={t} />
                     </label>
                     <select value={form.ict_timeframe} onChange={(e) => update("ict_timeframe", e.target.value)} className={`${inputClass} w-1/2`}>
                       <option value="">{t("ict_select_timeframe")}</option>
@@ -531,7 +570,7 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
                   {/* Emotion buttons */}
                   <div>
                     <label className="block text-sm text-muted mb-2 flex items-center">
-                      {t("ict_emotion")} {AI_BADGE}
+                      {t("ict_emotion")} <AiBadge visible={showAiBadge} t={t} />
                     </label>
                     <div className="flex flex-wrap gap-2">
                       {ICT_EMOTIONS.map((em) => (
@@ -554,7 +593,7 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
                   {/* Checklist */}
                   <div>
                     <label className="block text-sm text-muted mb-1 flex items-center">
-                      {t("ict_checklist_title")} — {checkedCount}/{checklistTotal} {AI_BADGE}
+                      {t("ict_checklist_title")} — {checkedCount}/{checklistTotal} <AiBadge visible={showAiBadge} t={t} />
                     </label>
                     {(() => {
                       const pct = (checkedCount / checklistTotal) * 100;
