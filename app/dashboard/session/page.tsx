@@ -1,10 +1,20 @@
 "use client";
 
 import DayStatus from "@/components/DayStatus";
+import EmotionalCheck from "@/components/session/EmotionalCheck";
+import QuickTradeLogger from "@/components/session/QuickTradeLogger";
+import RealTimeGuards from "@/components/session/RealTimeGuards";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+
+const SESSION_LABELS: Record<string, string> = {
+  london: "London (08:00–12:00 UTC)",
+  new_york: "New York (13:00–17:00 UTC)",
+  asian: "Asian (00:00–06:00 UTC)",
+  london_ny_overlap: "London-NY Overlap (13:00–16:00 UTC)",
+};
 
 const DEFAULT_CHECKLIST = [
   "pretrade_default_1",
@@ -29,7 +39,12 @@ interface Strategy {
   setup_rules: string[];
   max_daily_loss: number | null;
   max_trades_per_day: number | null;
+  max_consecutive_losses: number | null;
   pretrade_checklist: string[] | null;
+  pairs: string[] | null;
+  sessions: string[] | null;
+  risk_reward: number | null;
+  max_sl_pips: number | null;
 }
 
 interface ActiveSession {
@@ -75,6 +90,11 @@ export default function SessionPage() {
   const [ending, setEnding] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [showEmptyChecklistModal, setShowEmptyChecklistModal] = useState(false);
+  // Active session extras
+  const [accountSize, setAccountSize] = useState(0);
+  const [showQuickLogger, setShowQuickLogger] = useState(false);
+  const [emotionFeedback, setEmotionFeedback] = useState<{ type: "warning" | "ok"; message: string } | null>(null);
+  const [showStopConfirm, setShowStopConfirm] = useState(false);
 
   useEffect(() => {
     load();
@@ -98,7 +118,7 @@ export default function SessionPage() {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const sevenDaysAgoStr = sevenDaysAgo.toISOString().split("T")[0];
 
-    const [{ data: strats }, { data: session }, { data: history }, { data: recentTrades }] = await Promise.all([
+    const [{ data: strats }, { data: session }, { data: history }, { data: recentTrades }, { data: account }] = await Promise.all([
       supabase.from("strategies").select("*").eq("user_id", user.id).order("created_at", { ascending: true }),
       supabase
         .from("sessions")
@@ -120,7 +140,16 @@ export default function SessionPage() {
         .select("pnl, commission, swap, open_time")
         .eq("user_id", user.id)
         .gte("open_time", sevenDaysAgoStr),
+      supabase
+        .from("prop_challenges")
+        .select("account_size")
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .limit(1)
+        .maybeSingle(),
     ]);
+
+    if (account?.account_size) setAccountSize(account.account_size);
 
     const stratList = strats || [];
     setStrategies(stratList);
@@ -262,19 +291,57 @@ export default function SessionPage() {
   // Active session view
   if (activeSession) {
     const activeEmotion = EMOTIONS.find((e) => e.key === activeSession.emotion_before);
-    return (
-      <div className="max-w-3xl">
-        <h1 className="text-2xl font-bold text-foreground">{t("session_title")}</h1>
-        <p className="text-muted mt-1 mb-6">{t("session_subtitle")}</p>
+    const strategyPairs = strategy?.pairs && strategy.pairs.length > 0 ? strategy.pairs : [];
 
-        <div className="bg-profit/5 border border-profit/30 rounded-xl p-6 mb-5">
+    return (
+      <div className="max-w-4xl space-y-5">
+        {/* Quick logger modal */}
+        {showQuickLogger && (
+          <QuickTradeLogger
+            strategyId={strategy?.id ?? null}
+            pairs={strategyPairs}
+            onClose={() => setShowQuickLogger(false)}
+            onSaved={() => setShowQuickLogger(false)}
+          />
+        )}
+
+        {/* Stop confirm modal */}
+        {showStopConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+            <div className="bg-card border border-border rounded-xl p-6 max-w-sm w-full space-y-4">
+              <h3 className="text-base font-semibold text-foreground">{t("session_active_stop_trading")}</h3>
+              <p className="text-muted text-sm">{t("session_active_stop_confirm")}</p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowStopConfirm(false)}
+                  className="px-4 py-2 text-sm border border-border rounded-lg text-foreground hover:bg-surface transition-colors"
+                >
+                  {t("manual_cancel")}
+                </button>
+                <button
+                  onClick={async () => { setShowStopConfirm(false); await endSession(); }}
+                  disabled={ending}
+                  className="px-4 py-2 text-sm bg-loss/10 border border-loss/30 text-loss rounded-lg hover:bg-loss/20 transition-colors disabled:opacity-50"
+                >
+                  {ending ? "..." : t("session_active_stop_trading")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <h1 className="text-2xl font-bold text-foreground">{t("session_title")}</h1>
+
+        {/* Section 1 — Session header */}
+        <div className="bg-profit/5 border border-profit/30 rounded-xl p-5">
           <div className="flex items-start justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
-              <div className="text-4xl">{activeEmotion?.emoji ?? "\u{1F680}"}</div>
+              <div className="text-4xl">{activeEmotion?.emoji ?? "🚀"}</div>
               <div>
                 <h2 className="text-lg font-semibold text-foreground">{t("session_in_progress")}</h2>
                 <p className="text-muted text-sm mt-0.5">
-                  {t("day_session_active_since")} {new Date(activeSession.created_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                  {t("day_session_active_since")}{" "}
+                  {new Date(activeSession.created_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
                 </p>
               </div>
             </div>
@@ -288,13 +355,110 @@ export default function SessionPage() {
           </div>
         </div>
 
-        <div className="mb-5">
-          <DayStatus />
+        {/* Section 2 — Strategy rules */}
+        {strategy ? (
+          <div className="bg-card border border-border rounded-xl p-5">
+            <h3 className="text-sm font-semibold text-foreground mb-3">{t("session_active_rules_title")}</h3>
+            <ul className="space-y-1.5">
+              {strategy.sessions && strategy.sessions.length > 0 && (
+                <li className="text-sm text-foreground flex gap-2">
+                  <span className="text-muted shrink-0">🕐</span>
+                  <span>{strategy.sessions.map((s) => SESSION_LABELS[s] || s).join(" · ")}</span>
+                </li>
+              )}
+              {strategy.pairs && strategy.pairs.length > 0 && (
+                <li className="text-sm text-foreground flex gap-2">
+                  <span className="text-muted shrink-0">💱</span>
+                  <span>{strategy.pairs.join(" · ")}</span>
+                </li>
+              )}
+              {strategy.risk_reward !== null && (
+                <li className="text-sm text-foreground flex gap-2">
+                  <span className="text-muted shrink-0">⚖️</span>
+                  <span>RR minimum : {strategy.risk_reward}</span>
+                </li>
+              )}
+              {strategy.max_trades_per_day !== null && (
+                <li className="text-sm text-foreground flex gap-2">
+                  <span className="text-muted shrink-0">🔢</span>
+                  <span>Max {strategy.max_trades_per_day} trades/jour</span>
+                </li>
+              )}
+              {strategy.max_daily_loss !== null && (
+                <li className="text-sm text-foreground flex gap-2">
+                  <span className="text-muted shrink-0">🛡️</span>
+                  <span>Perte max journalière : {strategy.max_daily_loss}%</span>
+                </li>
+              )}
+              {strategy.max_consecutive_losses !== null && (
+                <li className="text-sm text-foreground flex gap-2">
+                  <span className="text-muted shrink-0">⛔</span>
+                  <span>Stop après {strategy.max_consecutive_losses} pertes consécutives</span>
+                </li>
+              )}
+              {strategy.max_sl_pips !== null && (
+                <li className="text-sm text-foreground flex gap-2">
+                  <span className="text-muted shrink-0">📏</span>
+                  <span>SL max : {strategy.max_sl_pips} pips</span>
+                </li>
+              )}
+            </ul>
+          </div>
+        ) : (
+          <div className="bg-card border border-border rounded-xl p-5 flex items-center justify-between">
+            <span className="text-sm text-muted">{t("session_active_no_strategy")}</span>
+            <Link href="/dashboard/strategy" className="text-sm text-accent hover:underline">
+              {t("session_active_define_strategy")} →
+            </Link>
+          </div>
+        )}
+
+        {/* Section 3 — Real-time guards */}
+        <RealTimeGuards strategy={strategy} accountSize={accountSize} />
+
+        {/* Section 4 — Quick logger */}
+        <div>
+          <button
+            onClick={() => setShowQuickLogger(true)}
+            className="w-full sm:w-auto px-6 py-3 bg-accent text-white rounded-xl font-medium text-sm hover:bg-blue-600 transition-colors"
+          >
+            {t("session_active_log_trade")}
+          </button>
         </div>
 
-        <Link href="/dashboard" className="inline-block px-5 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors">
-          {t("session_back_dashboard")}
-        </Link>
+        {/* Section 5 — Emotional check */}
+        <EmotionalCheck
+          sessionId={activeSession.id}
+          onFeedback={(fb) => {
+            setEmotionFeedback(fb);
+            setTimeout(() => setEmotionFeedback(null), 8000);
+          }}
+        />
+        {emotionFeedback && (
+          <div
+            className={`rounded-xl border p-4 text-sm font-medium ${
+              emotionFeedback.type === "warning"
+                ? "bg-loss/10 border-loss/30 text-loss"
+                : "bg-profit/10 border-profit/30 text-profit"
+            }`}
+          >
+            {emotionFeedback.type === "warning" ? "⚠️ " : "✅ "}
+            {emotionFeedback.message}
+          </div>
+        )}
+
+        {/* Section 7 — Day status */}
+        <DayStatus />
+
+        {/* Section 6 — Stop trading (bottom) */}
+        <div className="flex justify-end pt-2 pb-6">
+          <button
+            onClick={() => setShowStopConfirm(true)}
+            className="px-6 py-3 bg-loss/10 border border-loss/30 text-loss rounded-xl font-medium text-sm hover:bg-loss/20 transition-colors"
+          >
+            {t("session_active_stop_trading")}
+          </button>
+        </div>
       </div>
     );
   }
