@@ -84,6 +84,19 @@ body {
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
+/* ─── Native date/time picker colour-scheme ─────────────────────────────────
+   Tells the browser to render the calendar/clock picker in dark by default,
+   and switch to light when the app is in light mode.
+   ──────────────────────────────────────────────────────────────────────── */
+input[type="date"],
+input[type="time"] {
+  color-scheme: dark;
+}
+html.light input[type="date"],
+html.light input[type="time"] {
+  color-scheme: light;
+}
+
 /* ─── Browser autofill override — prevents yellow/olive background ──────────
    Chrome/Edge inject a yellow background via :-webkit-autofill. Override it
    globally so all inputs stay dark regardless of autofill state.

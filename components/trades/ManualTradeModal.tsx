@@ -443,9 +443,9 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
               <div className="flex items-start gap-3">
                 <span className="text-blue-600 text-xl">🔒</span>
                 <div className="flex-1">
-                  <h4 className="font-semibold text-blue-900 dark:text-blue-200 mb-1">{t("analysis_locked_title")}</h4>
-                  <p className="text-sm text-blue-800 dark:text-blue-300 mb-3">{t("analysis_locked_description")}</p>
-                  <a href="/dashboard/upgrade" className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+                  <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">{t("analysis_locked_title")}</h4>
+                  <p className="text-sm text-blue-800 dark:text-blue-200 mb-3">{t("analysis_locked_description")}</p>
+                  <a href="/dashboard/upgrade" className="inline-flex items-center gap-1 text-sm font-medium text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200">
                     {t("analysis_locked_cta")}
                   </a>
                 </div>
@@ -456,9 +456,9 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
               <div className="flex items-start gap-3">
                 <span className="text-amber-600 text-xl">⚠️</span>
                 <div className="flex-1">
-                  <h4 className="font-semibold text-amber-900 dark:text-amber-200 mb-1">{t("analysis_no_strategy_title")}</h4>
-                  <p className="text-sm text-amber-800 dark:text-amber-300 mb-3">{t("analysis_no_strategy_description")}</p>
-                  <a href="/dashboard/strategy" className="inline-flex items-center gap-1 text-sm font-medium text-amber-700 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300">
+                  <h4 className="font-semibold text-amber-900 dark:text-amber-100 mb-1">{t("analysis_no_strategy_title")}</h4>
+                  <p className="text-sm text-amber-800 dark:text-amber-200 mb-3">{t("analysis_no_strategy_description")}</p>
+                  <a href="/dashboard/strategy" className="inline-flex items-center gap-1 text-sm font-medium text-amber-700 dark:text-amber-300 hover:text-amber-800 dark:hover:text-amber-200">
                     {t("analysis_no_strategy_cta")}
                   </a>
                 </div>
