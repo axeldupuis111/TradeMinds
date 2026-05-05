@@ -3,36 +3,20 @@
 import LanguageSelector from "@/components/LanguageSelector";
 import { useLanguage } from "@/lib/LanguageContext";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
+import { motion, useInView, useReducedMotion } from "framer-motion";
+import FadeUp from "@/components/animations/FadeUp";
+import CountUp from "@/components/animations/CountUp";
+import StaggerContainer, { StaggerItem } from "@/components/animations/StaggerContainer";
 
 /* ─────────────────────────────────────────────
-   Scroll-reveal helper
+   Scroll-reveal helper (Framer Motion)
 ───────────────────────────────────────────── */
-function useReveal(threshold = 0) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting) { el.classList.add("revealed"); obs.unobserve(el); } },
-      { threshold }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [threshold]);
-  return ref;
-}
-
 function Reveal({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
-  const ref = useReveal();
   return (
-    <div
-      ref={ref}
-      className={`reveal-on-scroll ${className}`}
-      style={delay ? { transitionDelay: `${delay}ms` } : undefined}
-    >
+    <FadeUp className={className} delay={delay / 1000}>
       {children}
-    </div>
+    </FadeUp>
   );
 }
 
@@ -81,6 +65,7 @@ function Nav() {
 ───────────────────────────────────────────── */
 function Hero() {
   const { t } = useLanguage();
+  const prefersReducedMotion = useReducedMotion();
   return (
     <section className="hero-gradient pt-28 pb-20 px-6 overflow-hidden">
       <div className="max-w-4xl mx-auto text-center">
@@ -129,97 +114,130 @@ function Hero() {
 
         </Reveal>
 
-        {/* Dashboard mockup */}
-        <Reveal className="mt-16">
-          <div
-            className="relative rounded-2xl border border-white/[0.08] bg-[#111113] p-5 sm:p-7 shadow-[0_25px_50px_rgba(0,0,0,0.5)]"
-            style={{ transform: "perspective(1200px) rotateX(2deg)", transformOrigin: "center bottom" }}
-          >
-            {/* Blue glow behind */}
-            <div className="absolute -inset-4 bg-gradient-to-b from-accent/8 via-transparent to-transparent rounded-3xl blur-2xl -z-10 pointer-events-none" />
+        {/* Dashboard mockup — stagger animation */}
+        <StaggerContainer className="mt-16" staggerDelay={0.15}>
+          <StaggerItem>
+            <div
+              className="relative rounded-2xl border border-white/[0.08] bg-[#111113] p-5 sm:p-7 shadow-[0_25px_50px_rgba(0,0,0,0.5)]"
+              style={{ transform: "perspective(1200px) rotateX(2deg)", transformOrigin: "center bottom" }}
+            >
+              {/* Blue glow behind */}
+              <div className="absolute -inset-4 bg-gradient-to-b from-accent/8 via-transparent to-transparent rounded-3xl blur-2xl -z-10 pointer-events-none" />
 
-            {/* Fake toolbar */}
-            <div className="flex items-center gap-1.5 mb-4">
-              <span className="w-2.5 h-2.5 rounded-full bg-loss/60" />
-              <span className="w-2.5 h-2.5 rounded-full bg-warning/60" />
-              <span className="w-2.5 h-2.5 rounded-full bg-profit/60" />
-            </div>
+              {/* Fake toolbar */}
+              <div className="flex items-center gap-1.5 mb-4">
+                <span className="w-2.5 h-2.5 rounded-full bg-loss/60" />
+                <span className="w-2.5 h-2.5 rounded-full bg-warning/60" />
+                <span className="w-2.5 h-2.5 rounded-full bg-profit/60" />
+              </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-              {/* Score circle */}
-              <div className="col-span-2 sm:col-span-1 flex flex-col items-center justify-center bg-white/[0.03] rounded-xl p-4 border border-white/5 gap-2">
-                <svg width="76" height="76" viewBox="0 0 76 76">
-                  <circle cx="38" cy="38" r="32" fill="none" stroke="#1e1e1e" strokeWidth="6" />
-                  <circle cx="38" cy="38" r="32" fill="none" stroke="url(#scoreGrad)" strokeWidth="6" strokeLinecap="round"
-                    strokeDasharray={`${0.85 * 2 * Math.PI * 32} ${2 * Math.PI * 32}`}
-                    transform="rotate(-90 38 38)" />
-                  <defs>
-                    <linearGradient id="scoreGrad" x1="0" y1="0" x2="1" y2="1">
-                      <stop offset="0%" stopColor="#3b82f6" />
-                      <stop offset="100%" stopColor="#22c55e" />
-                    </linearGradient>
-                  </defs>
-                  <text x="38" y="36" textAnchor="middle" fill="#fafafa" fontSize="17" fontWeight="bold">85</text>
-                  <text x="38" y="48" textAnchor="middle" fill="#71717a" fontSize="8">{t("preview_discipline")}</text>
-                </svg>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                {/* Score circle — scale entrance */}
+                <motion.div
+                  className="col-span-2 sm:col-span-1 flex flex-col items-center justify-center bg-white/[0.03] rounded-xl p-4 border border-white/5 gap-2"
+                  initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
+                >
+                  <svg width="76" height="76" viewBox="0 0 76 76">
+                    <circle cx="38" cy="38" r="32" fill="none" stroke="#1e1e1e" strokeWidth="6" />
+                    <circle cx="38" cy="38" r="32" fill="none" stroke="url(#scoreGrad)" strokeWidth="6" strokeLinecap="round"
+                      strokeDasharray={`${0.85 * 2 * Math.PI * 32} ${2 * Math.PI * 32}`}
+                      transform="rotate(-90 38 38)" />
+                    <defs>
+                      <linearGradient id="scoreGrad" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stopColor="#3b82f6" />
+                        <stop offset="100%" stopColor="#22c55e" />
+                      </linearGradient>
+                    </defs>
+                    <text x="38" y="36" textAnchor="middle" fill="#fafafa" fontSize="17" fontWeight="bold">85</text>
+                    <text x="38" y="48" textAnchor="middle" fill="#71717a" fontSize="8">{t("preview_discipline")}</text>
+                  </svg>
+                </motion.div>
+                {/* Equity */}
+                <motion.div
+                  className="col-span-2 sm:col-span-1 bg-white/[0.03] rounded-xl p-4 border border-white/5"
+                  initial={prefersReducedMotion ? false : { opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.55, ease: "easeOut" }}
+                >
+                  <p className="text-[10px] text-muted uppercase tracking-wider mb-2">{t("preview_equity")}</p>
+                  <svg viewBox="0 0 120 45" className="w-full h-11" preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient id="eq2" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#22c55e" stopOpacity="0.3" />
+                        <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+                    <path d="M0,42 L10,39 L22,41 L34,33 L46,28 L58,23 L70,18 L82,14 L94,10 L107,6 L120,3" fill="none" stroke="#22c55e" strokeWidth="2" />
+                    <path d="M0,42 L10,39 L22,41 L34,33 L46,28 L58,23 L70,18 L82,14 L94,10 L107,6 L120,3 L120,45 L0,45Z" fill="url(#eq2)" />
+                  </svg>
+                </motion.div>
+                {/* Stats */}
+                <motion.div
+                  className="bg-white/[0.03] rounded-xl p-4 border border-white/5"
+                  initial={prefersReducedMotion ? false : { opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.7, ease: "easeOut" }}
+                >
+                  <p className="text-[10px] text-muted uppercase tracking-wider">{t("preview_winrate")}</p>
+                  <p className="text-xl font-bold text-foreground mt-0.5">68%</p>
+                  <p className="text-[10px] text-muted uppercase tracking-wider mt-2">{t("preview_trades")}</p>
+                  <p className="text-xl font-bold text-foreground mt-0.5">47</p>
+                </motion.div>
+                {/* P&L */}
+                <motion.div
+                  className="bg-white/[0.03] rounded-xl p-4 border border-white/5"
+                  initial={prefersReducedMotion ? false : { opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.85, ease: "easeOut" }}
+                >
+                  <p className="text-[10px] text-muted uppercase tracking-wider">{t("preview_pnl_total")}</p>
+                  <p className="text-xl font-bold text-profit mt-0.5">+3 240€</p>
+                  <p className="text-[10px] text-muted uppercase tracking-wider mt-2">{t("preview_challenge")}</p>
+                  <div className="mt-1.5 h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+                    <div className="h-full w-[89%] bg-accent rounded-full" />
+                  </div>
+                  <p className="text-[10px] text-muted mt-1">89%</p>
+                </motion.div>
               </div>
-              {/* Equity */}
-              <div className="col-span-2 sm:col-span-1 bg-white/[0.03] rounded-xl p-4 border border-white/5">
-                <p className="text-[10px] text-muted uppercase tracking-wider mb-2">{t("preview_equity")}</p>
-                <svg viewBox="0 0 120 45" className="w-full h-11" preserveAspectRatio="none">
-                  <defs>
-                    <linearGradient id="eq2" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#22c55e" stopOpacity="0.3" />
-                      <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
-                    </linearGradient>
-                  </defs>
-                  <path d="M0,42 L10,39 L22,41 L34,33 L46,28 L58,23 L70,18 L82,14 L94,10 L107,6 L120,3" fill="none" stroke="#22c55e" strokeWidth="2" />
-                  <path d="M0,42 L10,39 L22,41 L34,33 L46,28 L58,23 L70,18 L82,14 L94,10 L107,6 L120,3 L120,45 L0,45Z" fill="url(#eq2)" />
-                </svg>
-              </div>
-              {/* Stats */}
-              <div className="bg-white/[0.03] rounded-xl p-4 border border-white/5">
-                <p className="text-[10px] text-muted uppercase tracking-wider">{t("preview_winrate")}</p>
-                <p className="text-xl font-bold text-foreground mt-0.5">68%</p>
-                <p className="text-[10px] text-muted uppercase tracking-wider mt-2">{t("preview_trades")}</p>
-                <p className="text-xl font-bold text-foreground mt-0.5">47</p>
-              </div>
-              {/* P&L */}
-              <div className="bg-white/[0.03] rounded-xl p-4 border border-white/5">
-                <p className="text-[10px] text-muted uppercase tracking-wider">{t("preview_pnl_total")}</p>
-                <p className="text-xl font-bold text-profit mt-0.5">+3 240€</p>
-                <p className="text-[10px] text-muted uppercase tracking-wider mt-2">{t("preview_challenge")}</p>
-                <div className="mt-1.5 h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
-                  <div className="h-full w-[89%] bg-accent rounded-full" />
-                </div>
-                <p className="text-[10px] text-muted mt-1">89%</p>
-              </div>
-            </div>
 
-            {/* AI Insight banner */}
-            <div className="mt-4 flex items-center gap-2.5 bg-profit/5 border border-profit/15 rounded-lg px-3.5 py-2.5">
-              <span className="text-profit text-sm shrink-0">✅</span>
-              <p className="text-xs text-foreground/80 leading-snug">12 jours de discipline consécutifs — <span className="text-profit font-semibold">nouveau record</span></p>
-            </div>
+              {/* AI Insight banner */}
+              <motion.div
+                className="mt-4 flex items-center gap-2.5 bg-profit/5 border border-profit/15 rounded-lg px-3.5 py-2.5"
+                initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 1.0, ease: "easeOut" }}
+              >
+                <span className="text-profit text-sm shrink-0">✅</span>
+                <p className="text-xs text-foreground/80 leading-snug">12 jours de discipline consécutifs — <span className="text-profit font-semibold">nouveau record</span></p>
+              </motion.div>
 
-            {/* Fake trade rows */}
-            <div className="mt-3 border-t border-white/5 pt-3 space-y-2">
-              {[
-                { pair: "EUR/USD", dir: "BUY",  pnl: "+182.50", win: true,  date: "28/04" },
-                { pair: "GBP/JPY", dir: "SELL", pnl: "-47.20",  win: false, date: "27/04" },
-                { pair: "XAU/USD", dir: "BUY",  pnl: "+316.00", win: true,  date: "26/04" },
-              ].map((tr) => (
-                <div key={tr.pair} className="flex items-center gap-3 text-xs">
-                  <span className="text-muted/50 tabular-nums w-9 shrink-0">{tr.date}</span>
-                  <span className="text-foreground font-medium w-14">{tr.pair}</span>
-                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${tr.dir === "BUY" ? "bg-profit/10 text-profit" : "bg-loss/10 text-loss"}`}>{tr.dir}</span>
-                  <div className="flex-1 h-px bg-white/[0.04]" />
-                  <span className={`font-semibold tabular-nums ${tr.win ? "text-profit" : "text-loss"}`}>{tr.pnl}€</span>
-                </div>
-              ))}
+              {/* Fake trade rows */}
+              <div className="mt-3 border-t border-white/5 pt-3 space-y-2">
+                {[
+                  { pair: "EUR/USD", dir: "BUY",  pnl: "+182.50", win: true,  date: "28/04" },
+                  { pair: "GBP/JPY", dir: "SELL", pnl: "-47.20",  win: false, date: "27/04" },
+                  { pair: "XAU/USD", dir: "BUY",  pnl: "+316.00", win: true,  date: "26/04" },
+                ].map((tr, idx) => (
+                  <motion.div
+                    key={tr.pair}
+                    className="flex items-center gap-3 text-xs"
+                    initial={prefersReducedMotion ? false : { opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.4, delay: 1.1 + idx * 0.1, ease: "easeOut" }}
+                  >
+                    <span className="text-muted/50 tabular-nums w-9 shrink-0">{tr.date}</span>
+                    <span className="text-foreground font-medium w-14">{tr.pair}</span>
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${tr.dir === "BUY" ? "bg-profit/10 text-profit" : "bg-loss/10 text-loss"}`}>{tr.dir}</span>
+                    <div className="flex-1 h-px bg-white/[0.04]" />
+                    <span className={`font-semibold tabular-nums ${tr.win ? "text-profit" : "text-loss"}`}>{tr.pnl}€</span>
+                  </motion.div>
+                ))}
+              </div>
             </div>
-          </div>
-        </Reveal>
+          </StaggerItem>
+        </StaggerContainer>
       </div>
     </section>
   );
@@ -249,14 +267,18 @@ function Problem() {
         </Reveal>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-14">
           {problems.map((p, i) => (
-            <Reveal key={p.title} delay={i * 80}>
-              <div className="bg-[#111113] border border-[#1c1c1e] rounded-2xl p-8 hover:border-white/10 hover:bg-[#111113]/80 transition-all h-full">
+            <Reveal key={p.title} delay={i * 100}>
+              <motion.div
+                className="bg-[#111113] border border-[#1c1c1e] rounded-2xl p-8 hover:border-white/10 hover:bg-[#111113]/80 transition-colors h-full"
+                whileHover={{ y: -4, borderColor: "rgba(255,255,255,0.12)" }}
+                transition={{ duration: 0.2 }}
+              >
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${p.bg} ${p.iconColor} mb-5`}>
                   {p.svg}
                 </div>
                 <h3 className="text-xl font-bold text-foreground">{p.title}</h3>
                 <p className="text-[#71717a] mt-2 text-sm leading-relaxed line-clamp-3">{p.desc}</p>
-              </div>
+              </motion.div>
             </Reveal>
           ))}
         </div>
@@ -643,19 +665,19 @@ function SocialProof() {
       <div className="max-w-5xl mx-auto">
         <Reveal className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground">{t("social_title")}</h2>
-          {/* Social proof mini-cards */}
+          {/* Social proof mini-cards with animated counters */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-6">
             <div className="flex flex-col items-center px-6 py-4 bg-white/[0.03] border border-white/[0.08] rounded-2xl min-w-[140px]">
-              <span className="text-3xl font-bold text-foreground tabular-nums">500+</span>
+              <span className="text-3xl font-bold text-foreground tabular-nums"><CountUp end={500} suffix="+" /></span>
               <span className="text-xs text-muted mt-1">{t("social_stat_1_label")}</span>
             </div>
             <div className="flex flex-col items-center px-6 py-4 bg-white/[0.03] border border-white/[0.08] rounded-2xl min-w-[140px]">
-              <span className="text-3xl font-bold text-foreground tabular-nums">10 000+</span>
+              <span className="text-3xl font-bold text-foreground tabular-nums"><CountUp end={10000} suffix="+" /></span>
               <span className="text-xs text-muted mt-1">{t("social_stat_2_label")}</span>
             </div>
             <div className="flex flex-col items-center px-6 py-4 bg-white/[0.03] border border-white/[0.08] rounded-2xl min-w-[140px]">
               <div className="flex items-center gap-1">
-                <span className="text-3xl font-bold text-foreground tabular-nums">4.8</span>
+                <span className="text-3xl font-bold text-foreground tabular-nums"><CountUp end={4.8} decimals={1} /></span>
                 <span className="text-xl font-bold text-gold">/5</span>
               </div>
               <div className="flex gap-0.5 mt-0.5">
@@ -671,7 +693,7 @@ function SocialProof() {
         </Reveal>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {testimonials.map((tm, i) => (
-            <Reveal key={i} delay={i * 80}>
+            <Reveal key={i} delay={i * 150}>
               <div className="bg-[#111113] border border-[#1c1c1e] rounded-2xl p-6 flex flex-col hover:border-white/10 transition-all h-full">
                 {/* Stars */}
                 <div className="flex gap-1 mb-4">
@@ -702,6 +724,9 @@ function SocialProof() {
 ───────────────────────────────────────────── */
 function HowItWorks() {
   const { t } = useLanguage();
+  const prefersReducedMotion = useReducedMotion();
+  const lineRef = useRef<HTMLDivElement>(null);
+  const lineInView = useInView(lineRef, { once: true, margin: "-100px" });
   const steps = [
     { num: "1", title: t("how_1_title"), desc: t("how_1_desc") },
     { num: "2", title: t("how_2_title"), desc: t("how_2_desc") },
@@ -714,10 +739,20 @@ function HowItWorks() {
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground text-center">{t("how_title")}</h2>
         </Reveal>
         <div className="relative grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">
-          {/* Connecting line */}
-          <div className="hidden md:block absolute top-8 left-[calc(16.66%+28px)] right-[calc(16.66%+28px)] h-px bg-gradient-to-r from-accent/20 via-accent/40 to-accent/20" />
+          {/* Connecting line — progressive width animation */}
+          <div
+            ref={lineRef}
+            className="hidden md:block absolute top-8 left-[calc(16.66%+28px)] right-[calc(16.66%+28px)] h-px overflow-hidden"
+          >
+            <motion.div
+              className="h-full bg-gradient-to-r from-accent/20 via-accent/40 to-accent/20"
+              initial={prefersReducedMotion ? { width: "100%" } : { width: "0%" }}
+              animate={lineInView ? { width: "100%" } : { width: "0%" }}
+              transition={{ duration: 1.2, delay: 0.3, ease: "easeOut" }}
+            />
+          </div>
           {steps.map((s, i) => (
-            <Reveal key={s.num} delay={i * 100} className="text-center">
+            <Reveal key={s.num} delay={i * 200} className="text-center">
               <div className="w-14 h-14 mx-auto flex items-center justify-center rounded-2xl bg-gradient-to-br from-accent to-blue-700 text-white text-2xl font-bold shadow-lg shadow-accent/20 relative z-10">
                 {s.num}
               </div>
@@ -908,7 +943,11 @@ function Pricing() {
             const showSavings = annual && p.annualMonthly;
             return (
               <Reveal key={p.name} delay={i * 60}>
-                <div className={`relative bg-[#111113] border rounded-2xl p-7 flex flex-col h-full ${p.cardClass}`}>
+                <motion.div
+                  className={`relative bg-[#111113] border rounded-2xl p-7 flex flex-col h-full ${p.cardClass}`}
+                  whileHover={{ borderColor: "rgba(59,130,246,0.3)", boxShadow: "0 0 20px rgba(59,130,246,0.1)" }}
+                  transition={{ duration: 0.25 }}
+                >
                   {p.highlight && (
                     <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-white text-[11px] font-bold px-3 py-0.5 rounded-full shadow-md">
                       {t("plan_popular")}
@@ -939,13 +978,15 @@ function Pricing() {
                     ))}
                   </ul>
 
-                  <Link href="/login" className={`mt-8 block w-full py-3 rounded-xl font-semibold text-center transition-colors btn-scale ${p.btnClass}`}>
-                    {t(p.btnKey)}
-                  </Link>
+                  <motion.div whileHover={{ scale: 1.03 }} transition={{ duration: 0.2 }}>
+                    <Link href="/login" className={`mt-8 block w-full py-3 rounded-xl font-semibold text-center transition-colors ${p.btnClass}`}>
+                      {t(p.btnKey)}
+                    </Link>
+                  </motion.div>
                   {p.highlight && (
                     <p className="text-center text-xs text-muted/50 mt-2">{t("pricing_coming_soon_note")}</p>
                   )}
-                </div>
+                </motion.div>
               </Reveal>
             );
           })}
