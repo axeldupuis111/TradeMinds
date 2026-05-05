@@ -21,14 +21,23 @@ function SessionReminderBanner() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const today = new Date().toISOString().split("T")[0];
-      const { data } = await supabase
-        .from("sessions")
-        .select("id")
-        .eq("user_id", user.id)
-        .gte("created_at", today)
-        .limit(1)
-        .maybeSingle();
-      if (!data) setShow(true);
+      const [{ data: todaySession }, { data: activeSession }] = await Promise.all([
+        supabase
+          .from("sessions")
+          .select("id")
+          .eq("user_id", user.id)
+          .gte("created_at", today)
+          .limit(1)
+          .maybeSingle(),
+        supabase
+          .from("sessions")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("active", true)
+          .limit(1)
+          .maybeSingle(),
+      ]);
+      if (!todaySession && !activeSession) setShow(true);
     }
     check();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
