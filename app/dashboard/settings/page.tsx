@@ -221,8 +221,9 @@ export default function SettingsPage() {
   async function handleResetPassword() {
     if (!userEmail) return;
     setIsResettingPassword(true);
+    const localePath = lang === "en" ? "" : `/${lang}`;
     const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
-      redirectTo: `${window.location.origin}/auth/reset-password`,
+      redirectTo: `${window.location.origin}${localePath}/auth/reset-password`,
     });
     if (error) {
       showToast("error", t("settings_save_error"));
