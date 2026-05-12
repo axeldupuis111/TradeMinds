@@ -1,5 +1,9 @@
 "use client";
 
+// TODO: les données écrites dans session_emotional_checks ne sont pas encore lues.
+// Prévu pour une feature future : corrélation émotion → résultat de session dans analytics/page.tsx
+// Voir conversation produit du 4 mai 2026.
+
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { useState } from "react";

@@ -31,12 +31,15 @@ export async function DELETE() {
   // Delete user data from all tables
   await Promise.all([
     supabase.from("trades").delete().eq("user_id", userId),
+    supabase.from("strategy_tags").delete().eq("user_id", userId),
     supabase.from("strategies").delete().eq("user_id", userId),
+    supabase.from("session_emotional_checks").delete().eq("user_id", userId),
     supabase.from("session_reviews").delete().eq("user_id", userId),
     supabase.from("prop_challenges").delete().eq("user_id", userId),
     supabase.from("sessions").delete().eq("user_id", userId),
     supabase.from("achievements").delete().eq("user_id", userId),
     supabase.from("chat_messages").delete().eq("user_id", userId),
+    supabase.from("ai_analysis_history").delete().eq("user_id", userId),
   ]);
 
   const { data: storageFiles, error: listError } = await supabase.storage

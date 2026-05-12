@@ -406,8 +406,6 @@ export default function AnalysisPage() {
       if (!strategy) throw new Error("Aucune stratégie définie.");
       if (!trades || trades.length === 0) throw new Error("Aucun trade à analyser.");
 
-      console.log("[Analyse IA] Envoi de", trades.length, "trades vers /api/analyze (POST)");
-
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

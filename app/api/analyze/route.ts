@@ -70,10 +70,6 @@ export async function POST(request: Request) {
     const { strategy, trades, language = "fr" } = body;
     const langName = LANG_NAMES[language] ?? "français";
 
-    // Debug: log the received language
-    console.log(`[analyze] Langue reçue: "${language}" → "${langName}"`);
-
-
     if (!trades || trades.length === 0) {
       return NextResponse.json(
         { error: "Aucun trade à analyser." },
@@ -188,7 +184,6 @@ RÈGLE ABSOLUE : Tu tutoies toujours l'utilisateur. N'utilise jamais "vous" ou "
       );
     }
 
-    console.log("JSON to parse (first 200 chars):", jsonStr.substring(0, 200));
     const analysis = JSON.parse(jsonStr);
     return NextResponse.json(analysis);
   } catch (err: unknown) {
