@@ -3,6 +3,7 @@
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const STORAGE_KEY = "onboarding_completed";
@@ -60,6 +61,7 @@ const ALL_STEPS: Step[] = [
 export default function OnboardingGuide() {
   const { t } = useLanguage();
   const { plan, loading } = usePlan();
+  const pathname = usePathname();
   const [visible, setVisible] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
 
@@ -73,7 +75,7 @@ export default function OnboardingGuide() {
     }
   }, [loading]);
 
-  if (!visible || loading) return null;
+  if (!visible || loading || pathname !== "/dashboard") return null;
 
   const isPaid = plan === "plus" || plan === "premium";
   const steps = isPaid ? ALL_STEPS : ALL_STEPS.filter((s) => !s.plusOnly);
