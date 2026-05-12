@@ -90,7 +90,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
   const { t } = useLanguage();
   const { plan, loading } = usePlan();
   const pathname = usePathname();
-  const showUpgrade = !loading && (plan === "free" || plan === "plus");
+  const showUpgrade = !loading && plan === "free";
   const isFree = !loading && plan === "free";
   const badgeClass = planBadgeClass[plan] || planBadgeClass.free;
   const planLabel = plan === "plus" ? t("plan_plus") : plan === "premium" ? t("plan_premium") : t("plan_free");

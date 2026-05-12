@@ -173,6 +173,42 @@ export default function AnalyticsPage() {
     return result;
   }, [trades, period, accountFilter]);
 
+  const prevFiltered = useMemo(() => {
+    if (period === "all") return [];
+    let result = trades;
+    if (accountFilter !== "all") result = result.filter((tr) => tr.challenge_id === accountFilter);
+    const now = new Date();
+    let start: Date, end: Date;
+    if (period === "today") {
+      end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      start = new Date(end); start.setDate(start.getDate() - 1);
+    } else if (period === "week") {
+      const day = now.getDay();
+      const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+      end = new Date(now.getFullYear(), now.getMonth(), diff);
+      start = new Date(end); start.setDate(start.getDate() - 7);
+    } else if (period === "month") {
+      end = new Date(now.getFullYear(), now.getMonth(), 1);
+      start = new Date(end); start.setMonth(start.getMonth() - 1);
+    } else {
+      const days = period === "30d" ? 30 : 90;
+      end = new Date(); end.setDate(end.getDate() - days);
+      start = new Date(end); start.setDate(start.getDate() - days);
+    }
+    return result.filter((tr) => tr.open_time && new Date(tr.open_time) >= start && new Date(tr.open_time) < end);
+  }, [trades, period, accountFilter]);
+
+  const prevKpis = useMemo(() => {
+    if (prevFiltered.length === 0) return null;
+    const pnls = prevFiltered.map(netPnl);
+    const w = prevFiltered.filter((tr) => netPnl(tr) > 0).length;
+    return {
+      totalPnl: pnls.reduce((s, v) => s + v, 0),
+      winrate: prevFiltered.length > 0 ? (w / prevFiltered.length) * 100 : 0,
+      trades: prevFiltered.length,
+    };
+  }, [prevFiltered]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // KPI aggregates
   const { totalPnl, winrate, best, worst } = useMemo(() => {
     const pnls = filtered.map(netPnl);
@@ -731,15 +767,20 @@ export default function AnalyticsPage() {
           {/* KPI Summary row */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
             {[
-              { label: t("analytics_kpi_pnl"), value: `${totalPnl >= 0 ? "+" : ""}${totalPnl.toFixed(2)}€`, color: totalPnl >= 0 ? "text-profit" : "text-loss" },
-              { label: t("analytics_kpi_winrate"), value: `${winrate.toFixed(1)}%`, color: winrate >= 50 ? "text-profit" : "text-loss" },
-              { label: t("analytics_kpi_trades"), value: String(filtered.length), color: "text-foreground" },
-              { label: t("analytics_kpi_best"), value: `+${best.toFixed(2)}€`, color: "text-profit" },
-              { label: t("analytics_kpi_worst"), value: `${worst.toFixed(2)}€`, color: "text-loss" },
+              { label: t("analytics_kpi_pnl"), value: `${totalPnl >= 0 ? "+" : ""}${totalPnl.toFixed(2)}€`, color: totalPnl >= 0 ? "text-profit" : "text-loss", diff: prevKpis ? totalPnl - prevKpis.totalPnl : null },
+              { label: t("analytics_kpi_winrate"), value: `${winrate.toFixed(1)}%`, color: winrate >= 50 ? "text-profit" : "text-loss", diff: prevKpis ? winrate - prevKpis.winrate : null, suffix: "pp" },
+              { label: t("analytics_kpi_trades"), value: String(filtered.length), color: "text-foreground", diff: prevKpis ? filtered.length - prevKpis.trades : null },
+              { label: t("analytics_kpi_best"), value: `+${best.toFixed(2)}€`, color: "text-profit", diff: null },
+              { label: t("analytics_kpi_worst"), value: `${worst.toFixed(2)}€`, color: "text-loss", diff: null },
             ].map((kpi, i) => (
               <div key={i} className="bg-card border border-border rounded-xl p-4 card-shadow">
                 <p className="text-xs text-muted mb-1">{kpi.label}</p>
                 <p className={`text-xl font-bold tabular-nums ${kpi.color}`}>{kpi.value}</p>
+                {kpi.diff !== null && kpi.diff !== 0 && (
+                  <p className={`text-[10px] mt-1 ${kpi.diff > 0 ? "text-profit" : "text-loss"}`}>
+                    {kpi.diff > 0 ? "↑" : "↓"} {Math.abs(kpi.diff).toFixed(kpi.suffix ? 1 : 2)}{kpi.suffix || ""}
+                  </p>
+                )}
               </div>
             ))}
             {/* Summary card — Synthèse */}

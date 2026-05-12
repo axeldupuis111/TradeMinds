@@ -241,6 +241,76 @@ export default function TradeList({ refreshKey }: Props) {
     setFilters({ pair: "", direction: "", result: "", dateFrom: "", dateTo: "" });
   }
 
+  const [sortCol, setSortCol] = useState<string>("");
+  const [sortAsc, setSortAsc] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  function handleSort(col: string) {
+    if (sortCol === col) setSortAsc(!sortAsc);
+    else { setSortCol(col); setSortAsc(true); }
+  }
+
+  function sortedTrades(list: Trade[]) {
+    if (!sortCol) return list;
+    return [...list].sort((a, b) => {
+      let va: number | string = 0, vb: number | string = 0;
+      if (sortCol === "date") { va = a.open_time || ""; vb = b.open_time || ""; }
+      else if (sortCol === "pair") { va = a.pair; vb = b.pair; }
+      else if (sortCol === "pnl") { va = a.pnl + (a.commission || 0) + (a.swap || 0); vb = b.pnl + (b.commission || 0) + (b.swap || 0); }
+      else if (sortCol === "lot") { va = a.lot_size; vb = b.lot_size; }
+      if (va < vb) return sortAsc ? -1 : 1;
+      if (va > vb) return sortAsc ? 1 : -1;
+      return 0;
+    });
+  }
+
+  async function exportCSV() {
+    setExporting(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setExporting(false); return; }
+
+    let query = supabase
+      .from("trades")
+      .select("open_time, close_time, pair, direction, lot_size, entry_price, exit_price, sl, tp, pnl, commission, swap, emotion, tags, notes")
+      .eq("user_id", user.id)
+      .order("open_time", { ascending: false });
+
+    if (filters.pair) query = query.eq("pair", filters.pair);
+    if (filters.direction) query = query.eq("direction", filters.direction);
+    if (filters.dateFrom) query = query.gte("open_time", filters.dateFrom);
+    if (filters.dateTo) query = query.lte("open_time", filters.dateTo + "T23:59:59");
+
+    const { data } = await query;
+    if (!data || data.length === 0) { setExporting(false); return; }
+
+    let rows = data;
+    if (filters.result === "win") rows = rows.filter((tr) => (tr.pnl as number) + ((tr.commission as number) || 0) + ((tr.swap as number) || 0) > 0);
+    else if (filters.result === "loss") rows = rows.filter((tr) => (tr.pnl as number) + ((tr.commission as number) || 0) + ((tr.swap as number) || 0) <= 0);
+
+    const headers = ["Date", "Pair", "Direction", "Lot", "Entry", "Exit", "SL", "TP", "PnL", "Commission", "Swap", "Net PnL", "Emotion", "Tags", "Notes"];
+    const csvRows = rows.map((tr) => {
+      const net = (tr.pnl as number) + ((tr.commission as number) || 0) + ((tr.swap as number) || 0);
+      return [
+        tr.open_time ? new Date(tr.open_time as string).toISOString().split("T")[0] : "",
+        tr.pair, tr.direction, tr.lot_size, tr.entry_price, tr.exit_price,
+        tr.sl ?? "", tr.tp ?? "", tr.pnl, tr.commission ?? 0, tr.swap ?? 0,
+        net.toFixed(2), tr.emotion ?? "",
+        Array.isArray(tr.tags) ? (tr.tags as string[]).join("; ") : "",
+        (tr.notes as string || "").replace(/"/g, '""'),
+      ].map((v) => `"${v}"`).join(",");
+    });
+
+    const csv = [headers.join(","), ...csvRows].join("\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `trades_${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setExporting(false);
+  }
+
   const hasActiveFilters = filters.pair || filters.direction || filters.result || filters.dateFrom || filters.dateTo;
   const allSelected = trades.length > 0 && trades.every((tr) => selectedIds.has(tr.id));
   const someSelected = selectedIds.size > 0;
@@ -368,6 +438,15 @@ export default function TradeList({ refreshKey }: Props) {
               {t("trades_filter_reset")}
             </button>
           )}
+
+          {/* CSV Export */}
+          <button
+            onClick={exportCSV}
+            disabled={exporting}
+            className="px-3 py-1.5 text-sm text-accent border border-accent/30 rounded-lg hover:bg-accent/10 transition-colors self-end ml-auto disabled:opacity-50"
+          >
+            {exporting ? "..." : t("trades_export_csv")}
+          </button>
         </div>
       </div>
 
@@ -412,21 +491,21 @@ export default function TradeList({ refreshKey }: Props) {
                       className="accent-accent w-4 h-4 cursor-pointer"
                     />
                   </th>
-                  <th className="px-3 py-2 font-medium">{t("trades_col_date")}</th>
+                  <th className="px-3 py-2 font-medium cursor-pointer hover:text-foreground select-none" onClick={() => handleSort("date")}>{t("trades_col_date")} {sortCol === "date" ? (sortAsc ? "↑" : "↓") : ""}</th>
                   <th className="px-3 py-2 font-medium">{t("trades_col_account")}</th>
-                  <th className="px-3 py-2 font-medium">{t("trades_col_pair")}</th>
+                  <th className="px-3 py-2 font-medium cursor-pointer hover:text-foreground select-none" onClick={() => handleSort("pair")}>{t("trades_col_pair")} {sortCol === "pair" ? (sortAsc ? "↑" : "↓") : ""}</th>
                   <th className="px-3 py-2 font-medium">{t("trades_col_dir")}</th>
-                  <th className="px-3 py-2 font-medium">{t("trades_col_lot")}</th>
+                  <th className="px-3 py-2 font-medium cursor-pointer hover:text-foreground select-none" onClick={() => handleSort("lot")}>{t("trades_col_lot")} {sortCol === "lot" ? (sortAsc ? "↑" : "↓") : ""}</th>
                   <th className="px-3 py-2 font-medium">{t("trades_col_entry")}</th>
                   <th className="px-3 py-2 font-medium">{t("trades_col_exit")}</th>
                   <th className="px-3 py-2 font-medium">{t("trades_col_sl")}</th>
                   <th className="px-3 py-2 font-medium">{t("trades_col_tp")}</th>
-                  <th className="px-3 py-2 font-medium">{t("trades_col_pnl")}</th>
+                  <th className="px-3 py-2 font-medium cursor-pointer hover:text-foreground select-none" onClick={() => handleSort("pnl")}>{t("trades_col_pnl")} {sortCol === "pnl" ? (sortAsc ? "↑" : "↓") : ""}</th>
                   <th className="px-3 py-2 font-medium"></th>
                 </tr>
               </thead>
               <tbody>
-                {trades.map((tr, i) => {
+                {sortedTrades(trades).map((tr, i) => {
                   const dir = normalizeDirection(tr.direction);
                   return (
                     <tr

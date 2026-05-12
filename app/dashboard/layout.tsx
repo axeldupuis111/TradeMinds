@@ -15,6 +15,7 @@ function SessionReminderBanner() {
   const supabase = createClient();
 
   useEffect(() => {
+    if (typeof window !== "undefined" && localStorage.getItem("session_reminder_disabled") === "1") return;
     const todayKey = `session_banner_dismissed_${new Date().toISOString().split("T")[0]}`;
     if (typeof window !== "undefined" && localStorage.getItem(todayKey)) return;
 

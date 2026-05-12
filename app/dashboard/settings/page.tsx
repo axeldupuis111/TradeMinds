@@ -97,6 +97,10 @@ export default function SettingsPage() {
   const [authProvider, setAuthProvider] = useState<string | null>(null);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [sessionReminderEnabled, setSessionReminderEnabled] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("session_reminder_disabled") !== "1";
+  });
   const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -499,6 +503,27 @@ export default function SettingsPage() {
           {saving ? "..." : t("settings_save")}
         </button>
       </div>
+
+      {/* Notifications */}
+      <section className="bg-card border border-border rounded-xl p-5">
+        <h2 className="text-lg font-semibold text-foreground mb-1">{t("settings_notif_title")}</h2>
+        <p className="text-muted text-sm mb-4">{t("settings_notif_subtitle")}</p>
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={sessionReminderEnabled}
+            onChange={(e) => {
+              const enabled = e.target.checked;
+              setSessionReminderEnabled(enabled);
+              if (enabled) localStorage.removeItem("session_reminder_disabled");
+              else localStorage.setItem("session_reminder_disabled", "1");
+              showToast("success", t("settings_saved"));
+            }}
+            className="accent-accent w-4 h-4"
+          />
+          <span className="text-sm text-foreground">{t("settings_notif_session")}</span>
+        </label>
+      </section>
 
       {/* Danger zone */}
       <section className="border-2 border-loss/30 rounded-xl p-5">
