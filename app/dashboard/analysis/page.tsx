@@ -433,8 +433,8 @@ export default function AnalysisPage() {
         }
       }
 
-      // Increment AI usage counter for Plus plan
-      if (plan === "plus") {
+      // Increment AI usage counter
+      if (plan === "free" || plan === "plus") {
         await incrementAIUsage();
       }
     } catch (err: unknown) {

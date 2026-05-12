@@ -145,9 +145,9 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
   }, [supabase, dailyAiCount, dailyAiReset, plan]);
 
   // Derived permissions
-  // Free: no AI features (cost-saving). Plus/premium: AI (1/day), coach (5/day)
-  const canUseStrategy = plan === "plus" || plan === "premium";
-  const canUseAI = plan === "plus" || plan === "premium";
+  // Free: 1 AI analysis/week (real results, not demo). Plus/premium: 1/day + coach (5/day)
+  const canUseStrategy = true;
+  const canUseAI = true;
 
   const today = new Date().toISOString().split("T")[0];
   const weekStart = getWeekStart(new Date());

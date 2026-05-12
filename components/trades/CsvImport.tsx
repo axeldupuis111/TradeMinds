@@ -311,7 +311,40 @@ export default function CsvImport({ strategyId, onImported }: Props) {
     }
 
     const challengeId = selectedChallengeId || null;
-    const rows = preview.map((tr) => ({
+
+    // Duplicate detection: fetch existing trades matching open_time range
+    const openTimes = preview.map((tr) => tr.open_time).filter(Boolean) as string[];
+    let existingKeys = new Set<string>();
+    if (openTimes.length > 0) {
+      const minTime = openTimes.reduce((a, b) => (a < b ? a : b));
+      const maxTime = openTimes.reduce((a, b) => (a > b ? a : b));
+      const { data: existing } = await supabase
+        .from("trades")
+        .select("open_time, pair, direction, lot_size")
+        .eq("user_id", user.id)
+        .gte("open_time", minTime)
+        .lte("open_time", maxTime);
+      if (existing) {
+        existingKeys = new Set(
+          existing.map((t) => `${t.open_time}|${t.pair}|${t.direction}|${t.lot_size}`)
+        );
+      }
+    }
+
+    const uniqueTrades = preview.filter((tr) => {
+      const key = `${tr.open_time || ""}|${tr.pair}|${tr.direction}|${tr.lot_size}`;
+      return !existingKeys.has(key);
+    });
+
+    const skippedCount = preview.length - uniqueTrades.length;
+
+    if (uniqueTrades.length === 0) {
+      setImporting(false);
+      setMessage({ type: "error", text: t("csv_all_duplicates") });
+      return;
+    }
+
+    const rows = uniqueTrades.map((tr) => ({
       user_id: user.id,
       strategy_id: strategyId,
       challenge_id: challengeId,
@@ -348,7 +381,8 @@ export default function CsvImport({ strategyId, onImported }: Props) {
       await supabase.from("profiles").upsert({ id: user.id, last_import_at: nowIso });
       setLastImportAt(nowIso);
 
-      setMessage({ type: "success", text: `${rows.length} ${t("csv_imported")}` });
+      const dupMsg = skippedCount > 0 ? ` (${skippedCount} ${t("csv_duplicates_skipped")})` : "";
+      setMessage({ type: "success", text: `${rows.length} ${t("csv_imported")}${dupMsg}` });
       setPreview([]);
       setDetectedAccountNumber(null);
       setMatchedChallengeId(null);

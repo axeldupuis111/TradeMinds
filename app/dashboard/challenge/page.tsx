@@ -28,6 +28,8 @@ interface AccountStats {
   currentPnl: number;
   todayPnl: number;
   equityCurveData: { date: string; balance: number }[];
+  tradeCount: number;
+  winrate: number;
 }
 
 const PROP_FIRMS = [
@@ -277,6 +279,7 @@ function AccountCard({
   onStatusChange,
   onEdit,
   onDelete,
+  onExportPdf,
   t,
 }: {
   ac: Challenge;
@@ -284,6 +287,7 @@ function AccountCard({
   onStatusChange: (id: string, status: "passed" | "failed") => void;
   onEdit: (id: string, data: Partial<Challenge>) => void;
   onDelete: (id: string) => void;
+  onExportPdf: () => void;
   t: (key: string) => string;
 }) {
   const [showEdit, setShowEdit] = useState(false);
@@ -403,13 +407,19 @@ function AccountCard({
         </div>
       )}
 
-      {/* Edit / Delete buttons */}
-      <div className="flex gap-3 mt-4">
+      {/* Edit / Delete / Export buttons */}
+      <div className="flex flex-wrap gap-3 mt-4">
         <button onClick={() => setShowEdit(true)} className="px-4 py-2 bg-surface border border-border text-foreground rounded-lg text-sm font-medium hover:bg-border transition-colors flex items-center gap-2">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 0l.172.172a2 2 0 010 2.828L12 15H9v-2z" />
           </svg>
           {t("challenge_edit_btn")}
+        </button>
+        <button onClick={onExportPdf} className="px-4 py-2 bg-surface border border-border text-foreground rounded-lg text-sm font-medium hover:bg-border transition-colors flex items-center gap-2">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          {t("challenge_export_pdf")}
         </button>
         <button onClick={() => setShowDeleteConfirm(true)} className="px-4 py-2 bg-loss/10 border border-loss/20 text-loss rounded-lg text-sm font-medium hover:bg-loss/20 transition-colors flex items-center gap-2">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -560,11 +570,15 @@ export default function ChallengePage() {
         (sum, t) => sum + (t.pnl || 0) + (t.commission || 0) + (t.swap || 0), 0
       );
 
+      const allTrades = challengeTrades || [];
+      const wins = allTrades.filter((t) => (t.pnl || 0) + (t.commission || 0) + (t.swap || 0) > 0).length;
       statsMap[ac.id] = {
         balance: newBalance,
         currentPnl: totalPnl,
         todayPnl: todayTotal,
         equityCurveData: eqData,
+        tradeCount: allTrades.length,
+        winrate: allTrades.length > 0 ? (wins / allTrades.length) * 100 : 0,
       };
     }
 
@@ -691,17 +705,40 @@ export default function ChallengePage() {
       {/* ACTIVE ACCOUNTS */}
       {activeAccounts.length > 0 && (
         <div className="mt-8 space-y-6">
-          {activeAccounts.map((ac) => (
-            <AccountCard
-              key={ac.id}
-              ac={ac}
-              stats={accountStatsMap[ac.id] || { balance: ac.balance, currentPnl: 0, todayPnl: 0, equityCurveData: [] }}
-              onStatusChange={handleStatusChange}
-              onEdit={handleEdit}
-              onDelete={handleDeleteAccount}
-              t={t}
-            />
-          ))}
+          {activeAccounts.map((ac) => {
+            const s = accountStatsMap[ac.id] || { balance: ac.balance, currentPnl: 0, todayPnl: 0, equityCurveData: [], tradeCount: 0, winrate: 0 };
+            return (
+              <AccountCard
+                key={ac.id}
+                ac={ac}
+                stats={s}
+                onStatusChange={handleStatusChange}
+                onEdit={handleEdit}
+                onDelete={handleDeleteAccount}
+                onExportPdf={() => {
+                  import("@/lib/export-pdf").then(({ exportAccountPdf }) => {
+                    exportAccountPdf({
+                      firm: ac.firm,
+                      accountNumber: ac.account_number,
+                      accountSize: ac.account_size,
+                      balance: s.balance,
+                      totalPnl: s.currentPnl,
+                      todayPnl: s.todayPnl,
+                      startDate: ac.start_date,
+                      tradeCount: s.tradeCount,
+                      winrate: s.winrate,
+                      equityCurve: s.equityCurveData,
+                      type: ac.type ?? "prop",
+                      profitTargetPct: ac.profit_target_pct,
+                      maxDailyDdPct: ac.max_daily_dd_pct,
+                      maxTotalDdPct: ac.max_total_dd_pct,
+                    });
+                  });
+                }}
+                t={t}
+              />
+            );
+          })}
         </div>
       )}
 

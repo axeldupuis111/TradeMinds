@@ -387,6 +387,8 @@ const translations: Record<Lang, Record<string, string>> = {
     guide_other_step4: "Si les colonnes ne correspondent pas, TradeDiscipline te proposera de les associer manuellement.",
     csv_no_trades: "Aucun trade détecté dans le fichier.",
     csv_imported: "trades importés avec succès.",
+    csv_duplicates_skipped: "doublons ignorés",
+    csv_all_duplicates: "Tous les trades existent déjà. Aucun doublon importé.",
     csv_import_btn: "Importer",
 
     // TradeList
@@ -468,6 +470,7 @@ const translations: Record<Lang, Record<string, string>> = {
     challenge_edit_status: "Statut",
     challenge_edit_save: "Enregistrer",
     challenge_edit_btn: "Modifier",
+    challenge_export_pdf: "Exporter PDF",
     challenge_edit_success: "Compte modifié avec succès.",
     challenge_delete_account_title: "Supprimer le compte",
     challenge_delete_account_confirm: "Es-tu sûr de vouloir supprimer « {name} » ? Cela supprimera aussi tous les trades associés.",
@@ -1613,6 +1616,8 @@ const translations: Record<Lang, Record<string, string>> = {
     guide_other_step4: "If columns don\u2019t match, TradeDiscipline will ask you to map them manually.",
     csv_no_trades: "No trades detected in the file.",
     csv_imported: "trades imported successfully.",
+    csv_duplicates_skipped: "duplicates skipped",
+    csv_all_duplicates: "All trades already exist. No duplicates imported.",
     csv_import_btn: "Import",
 
     trades_list_title: "My Trades",
@@ -1690,6 +1695,7 @@ const translations: Record<Lang, Record<string, string>> = {
     challenge_edit_status: "Status",
     challenge_edit_save: "Save",
     challenge_edit_btn: "Edit",
+    challenge_export_pdf: "Export PDF",
     challenge_edit_success: "Account updated successfully.",
     challenge_delete_account_title: "Delete account",
     challenge_delete_account_confirm: "Are you sure you want to delete \"{name}\"? This will also delete all associated trades.",
@@ -2836,6 +2842,8 @@ const translations: Record<Lang, Record<string, string>> = {
     guide_other_step4: "Falls Spalten nicht übereinstimmen, bietet TradeDiscipline manuelles Mapping an.",
     csv_no_trades: "Keine Trades in der Datei erkannt.",
     csv_imported: "Trades erfolgreich importiert.",
+    csv_duplicates_skipped: "Duplikate übersprungen",
+    csv_all_duplicates: "Alle Trades existieren bereits. Keine Duplikate importiert.",
     csv_import_btn: "Importieren",
 
     trades_list_title: "Meine Trades",
@@ -2913,6 +2921,7 @@ const translations: Record<Lang, Record<string, string>> = {
     challenge_edit_status: "Status",
     challenge_edit_save: "Speichern",
     challenge_edit_btn: "Bearbeiten",
+    challenge_export_pdf: "PDF exportieren",
     challenge_edit_success: "Konto erfolgreich aktualisiert.",
     challenge_delete_account_title: "Konto löschen",
     challenge_delete_account_confirm: "Bist du sicher, dass du \"{name}\" löschen möchtest? Alle zugehörigen Trades werden ebenfalls gelöscht.",
@@ -4058,6 +4067,8 @@ const translations: Record<Lang, Record<string, string>> = {
     guide_other_step4: "Si las columnas no coinciden, TradeDiscipline te pedirá mapearlas manualmente.",
     csv_no_trades: "No se detectaron trades en el archivo.",
     csv_imported: "trades importados con éxito.",
+    csv_duplicates_skipped: "duplicados omitidos",
+    csv_all_duplicates: "Todos los trades ya existen. Ningún duplicado importado.",
     csv_import_btn: "Importar",
 
     trades_list_title: "Mis Trades",
@@ -4135,6 +4146,7 @@ const translations: Record<Lang, Record<string, string>> = {
     challenge_edit_status: "Estado",
     challenge_edit_save: "Guardar",
     challenge_edit_btn: "Editar",
+    challenge_export_pdf: "Exportar PDF",
     challenge_edit_success: "Cuenta actualizada con éxito.",
     challenge_delete_account_title: "Eliminar cuenta",
     challenge_delete_account_confirm: "¿Estás seguro de que quieres eliminar \"{name}\"? Esto también eliminará todos los trades asociados.",
