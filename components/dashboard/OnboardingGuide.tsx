@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 const STORAGE_KEY = "onboarding_completed";
+const STEP_KEY = "onboarding_step";
 
 interface Step {
   icon: string;
@@ -65,7 +66,11 @@ export default function OnboardingGuide() {
   useEffect(() => {
     if (loading) return;
     const done = localStorage.getItem(STORAGE_KEY);
-    if (!done) setVisible(true);
+    if (!done) {
+      const saved = localStorage.getItem(STEP_KEY);
+      if (saved) setCurrentStep(parseInt(saved, 10));
+      setVisible(true);
+    }
   }, [loading]);
 
   if (!visible || loading) return null;
@@ -75,12 +80,18 @@ export default function OnboardingGuide() {
 
   function dismiss() {
     localStorage.setItem(STORAGE_KEY, "1");
+    localStorage.removeItem(STEP_KEY);
     setVisible(false);
   }
 
   function next() {
-    if (currentStep < steps.length - 1) setCurrentStep(currentStep + 1);
-    else dismiss();
+    if (currentStep < steps.length - 1) {
+      const nextStep = currentStep + 1;
+      setCurrentStep(nextStep);
+      localStorage.setItem(STEP_KEY, String(nextStep));
+    } else {
+      dismiss();
+    }
   }
 
   function prev() {
@@ -98,7 +109,7 @@ export default function OnboardingGuide() {
             {isPaid ? t("onboarding_title_plus") : t("onboarding_title_free")}
           </h2>
           <button
-            onClick={dismiss}
+            onClick={() => setVisible(false)}
             className="text-muted hover:text-foreground transition-colors"
             aria-label="Close"
           >
@@ -144,7 +155,7 @@ export default function OnboardingGuide() {
           {/* CTA link */}
           <Link
             href={step.href}
-            onClick={dismiss}
+            onClick={next}
             className="mt-4 flex items-center justify-center gap-2 w-full py-2.5 bg-accent text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors"
           >
             {t(step.ctaKey)} →
