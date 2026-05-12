@@ -1,6 +1,7 @@
 "use client";
 
 import Header from "@/components/Header";
+import OnboardingGuide from "@/components/dashboard/OnboardingGuide";
 import Sidebar from "@/components/Sidebar";
 import StopTradingGuard from "@/components/dashboard/StopTradingGuard";
 import { createClient } from "@/lib/supabase/client";
@@ -86,6 +87,7 @@ export default function DashboardLayout({
         <SessionReminderBanner />
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
+      <OnboardingGuide />
     </div>
   );
 }
