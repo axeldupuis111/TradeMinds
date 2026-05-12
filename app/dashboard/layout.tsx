@@ -42,7 +42,8 @@ function SessionReminderBanner() {
     check();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!show || pathname === "/dashboard/session") return null;
+  const hideOnPages = ["/dashboard/session", "/dashboard/analysis", "/dashboard/analytics", "/dashboard/strategy", "/dashboard/settings"];
+  if (!show || hideOnPages.some((p) => pathname === p)) return null;
 
   function dismiss() {
     const todayKey = `session_banner_dismissed_${new Date().toISOString().split("T")[0]}`;

@@ -9,6 +9,7 @@ import { formatCurrencyAxis } from "@/lib/utils";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import type { Lang } from "@/lib/translations";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   BarChart,
@@ -388,15 +389,22 @@ export default function AnalyticsPage() {
   }, [byPair]);
 
   // Discipline vs Results
+  const normalizePair = (p: string) => p.replace(/[\/\s\-_.]/g, "").toUpperCase();
+
   const violatedPairs = useMemo(() => {
     const set = new Set<string>();
     reviews.forEach((r) => {
       if (r.analysis?.violations) {
-        r.analysis.violations.forEach((v) => set.add(`${v.trade_date}|${v.pair}`));
+        r.analysis.violations.forEach((v) => {
+          const date = v.trade_date?.includes("T") ? v.trade_date.split("T")[0] : v.trade_date;
+          set.add(`${date}|${normalizePair(v.pair)}`);
+        });
       }
     });
     return set;
   }, [reviews]);
+
+  const hasAnalysis = reviews.length > 0;
 
   const disciplineStats = useMemo(() => {
     if (filtered.length === 0 || violatedPairs.size === 0) return null;
@@ -404,7 +412,7 @@ export default function AnalyticsPage() {
     const rulesBroken = { pnl: 0, count: 0, wins: 0 };
     filtered.forEach((tr) => {
       const date = tr.open_time ? tr.open_time.split("T")[0] : "";
-      const key = `${date}|${tr.pair}`;
+      const key = `${date}|${normalizePair(tr.pair || "")}`;
       const net = netPnl(tr);
       const isWin = net > 0;
       if (violatedPairs.has(key)) {
@@ -1126,16 +1134,35 @@ export default function AnalyticsPage() {
 
             {/* Prompt to tag trades */}
             {ictTaggedCount < 10 && (
-              <p className="mt-4 text-xs text-muted/70">
-                {t("ict_no_tags_msg")} {ictTaggedCount}/{filtered.length} {t("ict_no_tags_msg2")}
-              </p>
+              <div className="mt-4 flex items-center gap-3 p-3 bg-accent/5 border border-accent/20 rounded-lg">
+                <p className="text-xs text-muted/70 flex-1">
+                  {t("ict_no_tags_msg")} {ictTaggedCount}/{filtered.length} {t("ict_no_tags_msg2")}
+                </p>
+                <Link href="/dashboard/trades" className="shrink-0 px-3 py-1.5 bg-accent text-white text-xs font-medium rounded-lg hover:bg-blue-600 transition-colors">
+                  {t("ict_goto_trades")} →
+                </Link>
+              </div>
             )}
           </div>
 
           {/* Discipline vs Results section */}
-          {(disciplineStats || winrateByEmotion.length > 0) && (
+          {(disciplineStats || !hasAnalysis || winrateByEmotion.length > 0) && (
             <div className="mt-8">
               <h2 className="text-xl font-bold text-foreground mb-4">{t("discipline_title")}</h2>
+
+              {!hasAnalysis && !disciplineStats && (
+                <div className="flex items-center gap-3 p-4 bg-accent/5 border border-accent/20 rounded-xl">
+                  <span className="text-xl shrink-0">🔍</span>
+                  <div className="flex-1">
+                    <p className="text-sm text-foreground font-medium">{t("discipline_no_analysis")}</p>
+                    <p className="text-xs text-muted mt-0.5">{t("discipline_no_analysis_desc")}</p>
+                  </div>
+                  <Link href="/dashboard/analysis" className="shrink-0 px-3 py-1.5 bg-accent text-white text-xs font-medium rounded-lg hover:bg-blue-600 transition-colors">
+                    {t("discipline_run_analysis")} →
+                  </Link>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {disciplineStats && (
                   <>

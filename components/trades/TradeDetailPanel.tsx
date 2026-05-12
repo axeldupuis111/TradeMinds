@@ -28,6 +28,7 @@ export interface TradeDetail {
   setup_quality: number | null;
   notes: string | null;
   screenshot_path: string | null;
+  challenge_id?: string | null;
   // ICT fields
   ict_setup?: string | null;
   ict_entry_zone?: string | null;
@@ -36,6 +37,12 @@ export interface TradeDetail {
   ict_timeframe?: string | null;
   ict_checklist?: Record<string, boolean> | null;
   ict_confluence_score?: number | null;
+}
+
+interface AccountOption {
+  id: string;
+  firm: string;
+  account_number: string | null;
 }
 
 const EMOTION_EMOJIS: Record<string, string> = {
@@ -96,6 +103,8 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [accounts, setAccounts] = useState<AccountOption[]>([]);
+  const [challengeId, setChallengeId] = useState<string | null>(trade.challenge_id || null);
 
   // ICT state
   const [ictSetup, setIctSetup] = useState<string>(trade.ict_setup || "");
@@ -130,6 +139,8 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
     setIctTimeframe(trade.ict_timeframe || "");
     setKillzoneAutoDetected(false);
 
+    setChallengeId(trade.challenge_id || null);
+
     if (!trade.ict_killzone && trade.open_time) {
       const detected = detectKillzone(trade.open_time);
       setIctKillzone(detected || "");
@@ -138,6 +149,20 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
       setIctKillzone(trade.ict_killzone || "");
     }
   }, [trade.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    async function loadAccounts() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("prop_challenges")
+        .select("id, firm, account_number")
+        .eq("user_id", user.id)
+        .eq("status", "active");
+      setAccounts(data || []);
+    }
+    loadAccounts();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (isFree) return;
@@ -171,6 +196,14 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
       showSavedIndicator(field);
       onSaved();
     }, 500);
+  }
+
+  async function handleAccountChange(value: string) {
+    const newId = value === "" ? null : value;
+    setChallengeId(newId);
+    await supabase.from("trades").update({ challenge_id: newId }).eq("id", trade.id);
+    showSavedIndicator("challenge_id");
+    onSaved();
   }
 
   function handleIctSetup(value: string) { setIctSetup(value); saveIctField("ict_setup", value); }
@@ -292,6 +325,28 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
               </span>
             </div>
           </div>
+
+          {/* Account assignment */}
+          {accounts.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1.5">
+                {t("detail_account")}
+                <SavedIndicator visible={savedField === "challenge_id"} />
+              </label>
+              <select
+                value={challengeId || ""}
+                onChange={(e) => handleAccountChange(e.target.value)}
+                className={selectClass}
+              >
+                <option value="">{t("detail_no_account")}</option>
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.firm}{a.account_number ? ` — #${a.account_number}` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Analysis section — gated by plan + strategy */}
           {isFree ? (

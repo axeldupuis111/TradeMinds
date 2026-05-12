@@ -797,14 +797,27 @@ export default function AnalysisPage() {
         {/* Launch button */}
         <div>
           {!hasStrategy && (
-            <p className="text-loss text-sm mb-3">
-              {t("analysis_no_strategy")}
-            </p>
+            <div className="flex items-start gap-3 p-4 mb-4 bg-loss/10 border border-loss/30 rounded-xl animate-in fade-in duration-300">
+              <span className="text-loss text-xl shrink-0">⚠️</span>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-loss">{t("analysis_no_strategy")}</p>
+                <p className="text-xs text-loss/70 mt-1">{t("analysis_no_strategy_description")}</p>
+                <Link href="/dashboard/strategy" className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline mt-2">
+                  {t("analysis_no_strategy_cta")}
+                </Link>
+              </div>
+            </div>
           )}
           {tradeCount === 0 && (
-            <p className="text-loss text-sm mb-3">
-              {t("analysis_no_trades")}
-            </p>
+            <div className="flex items-start gap-3 p-4 mb-4 bg-loss/10 border border-loss/30 rounded-xl animate-in fade-in duration-300">
+              <span className="text-loss text-xl shrink-0">📊</span>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-loss">{t("analysis_no_trades")}</p>
+                <Link href="/dashboard/trades" className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline mt-1">
+                  {t("dash_action_import")} →
+                </Link>
+              </div>
+            </div>
           )}
           {aiLimitReached && (
             <p className="text-orange-400 text-sm mb-3">
@@ -845,7 +858,13 @@ export default function AnalysisPage() {
 
         {/* Error */}
         {error && (
-          <p className="text-loss text-sm">{error}</p>
+          <div className="flex items-start gap-3 p-4 bg-loss/10 border border-loss/30 rounded-xl animate-in fade-in duration-300">
+            <span className="text-loss text-xl shrink-0">❌</span>
+            <div>
+              <p className="text-sm font-semibold text-loss">{error}</p>
+              <button onClick={() => setError(null)} className="text-xs text-muted hover:text-foreground mt-1">{t("analysis_dismiss") || "Fermer"}</button>
+            </div>
+          </div>
         )}
 
         {/* Results */}
@@ -1236,6 +1255,9 @@ export default function AnalysisPage() {
                 <p className="text-xs text-muted mt-3">
                   {t("ict_score_based_on")} {ictDisciplineResult.taggedCount} {t("ict_score_tagged_trades")}
                 </p>
+                {ictDisciplineResult.score < 50 && (
+                  <p className="text-[10px] text-muted/60 mt-1">{t("dash_score_explainer")}</p>
+                )}
               </div>
             )}
           </div>

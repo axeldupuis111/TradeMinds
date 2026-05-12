@@ -235,7 +235,10 @@ export default function DashboardContent({
             {score !== null && <MiniScoreCircle score={score} />}
           </div>
           {score !== null ? (
-            <p className="text-xs text-muted mt-2">{score >= 75 ? t("dash_score_good") : score >= 50 ? t("dash_score_ok") : t("dash_score_bad")}</p>
+            <div className="mt-2">
+              <p className="text-xs text-muted">{score >= 75 ? t("dash_score_good") : score >= 50 ? t("dash_score_ok") : t("dash_score_bad")}</p>
+              {score < 50 && <p className="text-[10px] text-muted/60 mt-1">{t("dash_score_explainer")}</p>}
+            </div>
           ) : (
             <p className="text-xs text-muted mt-2">
               {ictTaggedCount < 5 ? t("dash_tag_ict_trades") : t("dash_run_analysis")}
