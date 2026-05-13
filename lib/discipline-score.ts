@@ -1,120 +1,128 @@
-import { getEmotionCategory } from "./ict-constants";
-
-export interface TradeForScore {
-  ict_setup?: string | null;
-  ict_killzone?: string | null;
-  ict_checklist?: Record<string, boolean> | null;
-  emotion?: string | null;
-  sl?: number | null;
-  tp?: number | null;
-  entry_price?: number | null;
-  direction?: string | null;
+export interface Violation {
+  category: "strategy" | "behavior" | "execution";
+  type: ViolationType;
+  trade_ids: number[];
+  occurrences: number;
+  explanation: string;
 }
 
-export interface DisciplineSubScores {
-  checklist: number;
-  killzones: number;
-  riskReward: number;
-  emotions: number;
-  setupTagged: number;
+export type ViolationType =
+  | "wrong_pair"
+  | "wrong_session"
+  | "low_rr"
+  | "sl_too_wide"
+  | "max_trades_day"
+  | "max_daily_loss"
+  | "consecutive_losses"
+  | "revenge_trading"
+  | "overtrading"
+  | "lot_increase_after_loss"
+  | "fomo"
+  | "missing_sl"
+  | "missing_tp"
+  | "missing_setup_tag";
+
+export interface ViolationPenalty {
+  type: ViolationType;
+  category: "strategy" | "behavior" | "execution";
+  points: number;
+  occurrences: number;
+  explanation: string;
+}
+
+export interface CategoryBreakdown {
+  category: "strategy" | "behavior" | "execution";
+  cap: number;
+  totalRaw: number;
+  totalCapped: number;
+  penalties: ViolationPenalty[];
 }
 
 export interface DisciplineResult {
   score: number;
-  subScores: DisciplineSubScores;
-  taggedCount: number;
   insufficient: boolean;
+  totalTrades: number;
+  breakdown: CategoryBreakdown[];
+  totalDeducted: number;
 }
 
-const CHECKLIST_KEYS = [
-  "bias_identified",
-  "liquidity_taken",
-  "poi_identified",
-  "killzone_active",
-  "structure_confirmed",
-  "rr_minimum",
-  "risk_managed",
-];
+const PENALTY_MAP: Record<ViolationType, { perOccurrence: number }> = {
+  wrong_pair: { perOccurrence: 10 },
+  wrong_session: { perOccurrence: 8 },
+  low_rr: { perOccurrence: 6 },
+  sl_too_wide: { perOccurrence: 6 },
+  max_trades_day: { perOccurrence: 12 },
+  max_daily_loss: { perOccurrence: 15 },
+  consecutive_losses: { perOccurrence: 15 },
+  revenge_trading: { perOccurrence: 20 },
+  overtrading: { perOccurrence: 15 },
+  lot_increase_after_loss: { perOccurrence: 15 },
+  fomo: { perOccurrence: 10 },
+  missing_sl: { perOccurrence: 5 },
+  missing_tp: { perOccurrence: 3 },
+  missing_setup_tag: { perOccurrence: 2 },
+};
 
-function computeRR(trade: TradeForScore): number | null {
-  const { entry_price, sl, tp, direction } = trade;
-  if (!entry_price || !sl || !tp) return null;
-  const risk = Math.abs(entry_price - sl);
-  const reward = Math.abs(tp - entry_price);
-  if (risk === 0) return null;
-  // For long: tp > entry > sl; for short: tp < entry < sl
-  if (direction === "long") {
-    if (tp <= entry_price || sl >= entry_price) return null;
-  } else {
-    if (tp >= entry_price || sl <= entry_price) return null;
+const CATEGORY_CAPS: Record<string, number> = {
+  strategy: 40,
+  behavior: 40,
+  execution: 20,
+};
+
+export function computeDisciplineScore(
+  violations: Violation[],
+  totalTrades: number,
+): DisciplineResult {
+  if (totalTrades < 3) {
+    return {
+      score: 0,
+      insufficient: true,
+      totalTrades,
+      breakdown: [],
+      totalDeducted: 0,
+    };
   }
-  return reward / risk;
-}
 
-export function computeDisciplineScore(trades: TradeForScore[]): DisciplineResult {
-  const tagged = trades.filter(
-    (t) => t.ict_setup || t.ict_killzone || t.ict_checklist || t.emotion
-  );
+  const categoryPenalties: Record<string, ViolationPenalty[]> = {
+    strategy: [],
+    behavior: [],
+    execution: [],
+  };
 
-  if (tagged.length < 5) {
-    return { score: 0, subScores: { checklist: 0, killzones: 0, riskReward: 0, emotions: 0, setupTagged: 0 }, taggedCount: tagged.length, insufficient: true };
+  for (const v of violations) {
+    const penalty = PENALTY_MAP[v.type];
+    if (!penalty) continue;
+    const points = penalty.perOccurrence * v.occurrences;
+    categoryPenalties[v.category].push({
+      type: v.type,
+      category: v.category,
+      points,
+      occurrences: v.occurrences,
+      explanation: v.explanation,
+    });
   }
 
-  // 1. Checklist score: avg of items checked per trade
-  let totalChecked = 0;
-  let checkedTrades = 0;
-  for (const t of tagged) {
-    if (t.ict_checklist && typeof t.ict_checklist === "object") {
-      const checked = CHECKLIST_KEYS.filter((k) => t.ict_checklist![k]).length;
-      totalChecked += checked;
-      checkedTrades++;
-    }
-  }
-  const checklistScore = checkedTrades > 0 ? (totalChecked / checkedTrades / 7) * 100 : 0;
-
-  // 2. Killzone score: % trades during active killzone
-  const withKillzone = tagged.filter((t) => t.ict_killzone);
-  const inKillzone = withKillzone.filter((t) => t.ict_killzone !== "off_session").length;
-  const killzoneScore = withKillzone.length > 0 ? (inKillzone / withKillzone.length) * 100 : 0;
-
-  // 3. RR score: % of trades with RR >= 1:2
-  const withRR = tagged.filter((t) => {
-    const rr = computeRR(t);
-    return rr !== null;
+  const breakdown: CategoryBreakdown[] = (["strategy", "behavior", "execution"] as const).map((cat) => {
+    const penalties = categoryPenalties[cat];
+    const totalRaw = penalties.reduce((sum, p) => sum + p.points, 0);
+    const cap = CATEGORY_CAPS[cat];
+    return {
+      category: cat,
+      cap,
+      totalRaw,
+      totalCapped: Math.min(totalRaw, cap),
+      penalties,
+    };
   });
-  const goodRR = withRR.filter((t) => (computeRR(t) ?? 0) >= 2).length;
-  const rrScore = withRR.length > 0 ? (goodRR / withRR.length) * 100 : 0;
 
-  // 4. Emotion score: % with positive emotion (confident, calm, neutral)
-  const withEmotion = tagged.filter((t) => t.emotion);
-  const positiveEmotions = withEmotion.filter((t) => {
-    const cat = getEmotionCategory(t.emotion!);
-    return cat === "positive" || cat === "neutral";
-  }).length;
-  const emotionScore = withEmotion.length > 0 ? (positiveEmotions / withEmotion.length) * 100 : 0;
-
-  // 5. Setup tagged score: % trades with a setup identified
-  const setupTagged = tagged.filter((t) => t.ict_setup && t.ict_setup !== "").length;
-  const setupScore = (setupTagged / tagged.length) * 100;
-
-  const score = Math.round(
-    checklistScore * 0.35 +
-    killzoneScore * 0.20 +
-    rrScore * 0.15 +
-    emotionScore * 0.15 +
-    setupScore * 0.15
-  );
+  const totalDeducted = breakdown.reduce((sum, b) => sum + b.totalCapped, 0);
+  const score = Math.max(0, Math.min(100, 100 - totalDeducted));
 
   return {
-    score: Math.min(100, Math.max(0, score)),
-    subScores: {
-      checklist: Math.round(checklistScore),
-      killzones: Math.round(killzoneScore),
-      riskReward: Math.round(rrScore),
-      emotions: Math.round(emotionScore),
-      setupTagged: Math.round(setupScore),
-    },
-    taggedCount: tagged.length,
+    score,
     insufficient: false,
+    totalTrades,
+    breakdown,
+    totalDeducted,
   };
 }
