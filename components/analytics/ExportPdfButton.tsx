@@ -100,7 +100,13 @@ export default function ExportPdfButton() {
       });
 
       // Violations from last review
-      const violations = (lastReview?.analysis as { violations?: Array<{ pair: string; rule_violated: string; trade_date: string }> })?.violations || [];
+      const rawViolations = (lastReview?.analysis as { violations?: Array<Record<string, string>> })?.violations || [];
+      const violations = rawViolations.map((v) => ({
+        pair: v.pair || "",
+        rule_violated: v.rule_violated || v.type || "",
+        trade_date: v.trade_date || "",
+        explanation: v.explanation || "",
+      }));
       const recommendations = (lastReview?.analysis as { recommendations?: string[] })?.recommendations || [];
 
       // Generate PDF
@@ -256,7 +262,8 @@ export default function ExportPdfButton() {
           doc.setFont("helvetica", "normal");
           violations.slice(0, 5).forEach((v) => {
             if (y > 270) { doc.addPage(); y = margin; }
-            const lines = doc.splitTextToSize(`- ${v.pair} (${v.trade_date}): ${v.rule_violated}`, pageWidth - 2 * margin);
+            const label = v.pair && v.trade_date ? `${v.pair} (${v.trade_date}): ${v.rule_violated}` : `${v.rule_violated}: ${v.explanation}`;
+            const lines = doc.splitTextToSize(`- ${label}`, pageWidth - 2 * margin);
             doc.text(lines, margin, y);
             y += lines.length * 5;
           });

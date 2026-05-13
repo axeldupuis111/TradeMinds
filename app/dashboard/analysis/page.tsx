@@ -1,7 +1,7 @@
 "use client";
 
 import UpgradeBanner from "@/components/UpgradeBanner";
-import { computeDisciplineScore } from "@/lib/discipline-score";
+import type { CategoryBreakdown } from "@/lib/discipline-score";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
@@ -17,9 +17,17 @@ interface ChatMessage {
 }
 
 interface Violation {
-  trade_date: string;
-  pair: string;
-  rule_violated: string;
+  category: "strategy" | "behavior" | "execution";
+  type: string;
+  trade_ids: number[];
+  occurrences: number;
+  explanation: string;
+}
+
+interface LegacyViolation {
+  trade_date?: string;
+  pair?: string;
+  rule_violated?: string;
   explanation: string;
 }
 
@@ -32,11 +40,12 @@ interface Pattern {
 interface Analysis {
   discipline_score: number;
   total_trades: number;
-  conforming_trades: number;
-  violations: Violation[];
+  conforming_trades?: number;
+  violations: (Violation | LegacyViolation)[];
   patterns: Pattern[];
   strengths: string[];
   recommendations: string[];
+  score_breakdown?: CategoryBreakdown[];
 }
 
 interface SavedReview {
@@ -44,8 +53,9 @@ interface SavedReview {
   created_at: string;
   discipline_score: number;
   total_trades: number;
-  conforming_trades: number;
+  conforming_trades?: number;
   analysis: Analysis;
+  score_breakdown?: CategoryBreakdown[];
 }
 
 const severityColors: Record<string, { bg: string; text: string; labelKey: string }> = {
@@ -59,9 +69,9 @@ function ScoreCircle({ score, label }: { score: number; label: string }) {
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
   const color =
-    score >= 75 ? "text-profit" : score >= 50 ? "text-orange-400" : "text-loss";
+    score >= 90 ? "text-profit" : score >= 75 ? "text-green-400" : score >= 60 ? "text-yellow-400" : score >= 40 ? "text-orange-400" : "text-loss";
   const strokeColor =
-    score >= 75 ? "#22c55e" : score >= 50 ? "#f97316" : "#ef4444";
+    score >= 90 ? "#22c55e" : score >= 75 ? "#4ade80" : score >= 60 ? "#facc15" : score >= 40 ? "#f97316" : "#ef4444";
 
   return (
     <div className="flex flex-col items-center">
@@ -97,6 +107,86 @@ function ScoreCircle({ score, label }: { score: number; label: string }) {
   );
 }
 
+const VIOLATION_TYPE_LABELS: Record<string, string> = {
+  wrong_pair: "violation_wrong_pair",
+  wrong_session: "violation_wrong_session",
+  low_rr: "violation_low_rr",
+  sl_too_wide: "violation_sl_too_wide",
+  max_trades_day: "violation_max_trades_day",
+  max_daily_loss: "violation_max_daily_loss",
+  consecutive_losses: "violation_consecutive_losses",
+  revenge_trading: "violation_revenge_trading",
+  overtrading: "violation_overtrading",
+  lot_increase_after_loss: "violation_lot_increase",
+  fomo: "violation_fomo",
+  missing_sl: "violation_missing_sl",
+  missing_tp: "violation_missing_tp",
+  missing_setup_tag: "violation_missing_setup",
+};
+
+function ScoreBreakdownCard({ breakdown, score, t, className }: { breakdown: CategoryBreakdown[]; score: number; t: (k: string) => string; className?: string }) {
+  const [open, setOpen] = useState(false);
+  const hasDeductions = breakdown.some((b) => b.totalCapped > 0);
+
+  return (
+    <div className={`bg-card border border-border rounded-xl p-5 card-shadow ${className || ""}`}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between text-left"
+      >
+        <h3 className="text-sm font-semibold text-foreground">{t("score_breakdown_title")}</h3>
+        <svg className={`w-4 h-4 text-muted transition-transform ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="mt-4 space-y-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-muted">{t("score_starting")}</span>
+            <span className="text-foreground font-bold">100</span>
+          </div>
+
+          {breakdown.map((cat) => {
+            if (cat.totalCapped === 0) return null;
+            const catColor = cat.category === "strategy" ? "text-loss" : cat.category === "behavior" ? "text-orange-400" : "text-yellow-400";
+            return (
+              <div key={cat.category} className="border-t border-border pt-2">
+                <div className="flex justify-between text-xs mb-1">
+                  <span className={`font-medium ${catColor}`}>
+                    {t(`violation_cat_${cat.category}`)}
+                    {cat.totalRaw > cat.totalCapped && (
+                      <span className="text-muted ml-1">({t("score_capped")} -{cat.cap})</span>
+                    )}
+                  </span>
+                  <span className={`font-bold ${catColor}`}>-{cat.totalCapped}</span>
+                </div>
+                {cat.penalties.map((p, i) => (
+                  <div key={i} className="flex justify-between text-xs ml-3 text-muted">
+                    <span>{t(VIOLATION_TYPE_LABELS[p.type] || p.type)} {p.occurrences > 1 ? `×${p.occurrences}` : ""}</span>
+                    <span>-{p.points}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+
+          <div className="border-t border-border pt-2 flex justify-between text-sm">
+            <span className="text-foreground font-semibold">{t("score_final")}</span>
+            <span className={`font-bold ${score >= 90 ? "text-profit" : score >= 75 ? "text-green-400" : score >= 60 ? "text-yellow-400" : score >= 40 ? "text-orange-400" : "text-loss"}`}>
+              {score}/100
+            </span>
+          </div>
+
+          {!hasDeductions && (
+            <p className="text-xs text-profit">{t("score_perfect")}</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AnalysisPage() {
   const { t, lang } = useLanguage();
   const { canUseAI, aiRemaining, plan, incrementAIUsage, loading: planLoading } = usePlan();
@@ -112,9 +202,6 @@ export default function AnalysisPage() {
   const [viewingHistory, setViewingHistory] = useState<string | null>(null);
   const [compareMode, setCompareMode] = useState(false);
   const [compareSelection, setCompareSelection] = useState<string[]>([]);
-
-  // ICT discipline score
-  const [ictDisciplineResult, setIctDisciplineResult] = useState<ReturnType<typeof computeDisciplineScore> | null>(null);
 
   // Chat coach state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -304,7 +391,6 @@ export default function AnalysisPage() {
   useEffect(() => {
     loadPrerequisites();
     loadHistory();
-    loadIctScore();
     loadAIHistory();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -320,18 +406,6 @@ export default function AnalysisPage() {
       .limit(10);
     setAIHistory(data || []);
     setAIHistoryLoading(false);
-  }
-
-  async function loadIctScore() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data: trades } = await supabase
-      .from("trades")
-      .select("ict_setup, ict_killzone, ict_checklist, emotion, sl, tp, entry_price, direction")
-      .eq("user_id", user.id);
-    if (trades) {
-      setIctDisciplineResult(computeDisciplineScore(trades));
-    }
   }
 
   async function loadPrerequisites() {
@@ -426,8 +500,9 @@ export default function AnalysisPage() {
           user_id: authUser.id,
           discipline_score: data.discipline_score,
           total_trades: data.total_trades,
-          conforming_trades: data.conforming_trades,
+          conforming_trades: data.total_trades - (data.violations?.length || 0),
           analysis: data,
+          score_breakdown: data.score_breakdown || null,
         });
         if (!saveErr) {
           setSaveMessage(t("analysis_saved"));
@@ -501,13 +576,6 @@ export default function AnalysisPage() {
       { severity: "high"   as const, typeKey: "demo_p4_type", textKey: "demo_p4_text" },
       { severity: "medium" as const, typeKey: "demo_p5_type", textKey: "demo_p5_text" },
       { severity: "medium" as const, typeKey: "demo_p6_type", textKey: "demo_p6_text" },
-    ];
-    const demoIctSubScores = [
-      { key: "ict_sub_checklist", val: 0 },
-      { key: "ict_sub_killzones", val: 0 },
-      { key: "ict_sub_rr",        val: 71 },
-      { key: "ict_sub_emotions",  val: 0 },
-      { key: "ict_sub_setup",     val: 0 },
     ];
     const demoHistory = [
       { date: "28 avr. 2026", score: 32 },
@@ -705,52 +773,9 @@ export default function AnalysisPage() {
             {/* Score card */}
             <div className="bg-card border border-border rounded-xl p-6 card-shadow flex flex-col items-center text-center">
               <ScoreCircle score={32} label={t("dash_discipline")} />
-              <p className="text-foreground text-sm font-semibold mt-4">26 / 80 {t("analysis_conforming")}</p>
+              <p className="text-foreground text-sm font-semibold mt-4">80 trades</p>
               <p className="text-muted text-sm mt-1">34 {t("analysis_violations_detected")}</p>
-            </div>
-
-            {/* ICT Discipline Score */}
-            <div className="bg-card border border-border rounded-xl p-6 card-shadow">
-              <div className="flex items-center gap-2 mb-4">
-                <h3 className="text-sm font-semibold text-foreground">{t("ict_discipline_score")}</h3>
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-accent/20 text-accent">ICT</span>
-              </div>
-              {/* Circular gauge */}
-              <div className="flex justify-center mb-4">
-                {(() => {
-                  const score = 11;
-                  const radius = 40;
-                  const circ = 2 * Math.PI * radius;
-                  const offset = circ - (score / 100) * circ;
-                  return (
-                    <div className="relative w-24 h-24">
-                      <svg className="w-24 h-24 -rotate-90" viewBox="0 0 100 100">
-                        <circle cx="50" cy="50" r={radius} fill="none" stroke="rgb(var(--border))" strokeWidth="8" />
-                        <circle cx="50" cy="50" r={radius} fill="none" stroke="#ef4444" strokeWidth="8" strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset} />
-                      </svg>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-2xl font-bold text-loss">{score}</span>
-                        <span className="text-muted text-[10px]">/100</span>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-              {/* Sub-scores */}
-              <div className="space-y-1.5">
-                {demoIctSubScores.map(({ key, val }) => (
-                  <div key={key}>
-                    <div className="flex justify-between text-xs mb-0.5">
-                      <span className="text-muted">{t(key as Parameters<typeof t>[0])}</span>
-                      <span className="text-foreground font-medium">{val}%</span>
-                    </div>
-                    <div className="h-1 bg-border rounded-full overflow-hidden">
-                      <div className="h-full rounded-full" style={{ width: `${val}%`, backgroundColor: val >= 70 ? "#22c55e" : val >= 40 ? "#f59e0b" : "#ef4444" }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs text-muted mt-3">{t("ict_score_based_on")} 80 {t("ict_score_tagged_trades")}</p>
+              <p className="text-xs text-muted mt-2">{t("band_bad")}</p>
             </div>
 
             {/* Coach Q&A History */}
@@ -908,7 +933,7 @@ export default function AnalysisPage() {
             <ScoreCircle score={displayedAnalysis.discipline_score} label={t("dash_discipline")} />
             <div>
               <p className="text-foreground text-lg font-semibold">
-                {displayedAnalysis.conforming_trades} / {displayedAnalysis.total_trades} {t("analysis_conforming")}
+                {displayedAnalysis.total_trades} trades
               </p>
               <p className="text-muted text-sm mt-1">
                 {displayedAnalysis.violations.length} {displayedAnalysis.violations.length === 1 ? t("analysis_violation_detected_one") : t("analysis_violations_detected")}
@@ -916,38 +941,69 @@ export default function AnalysisPage() {
             </div>
           </div>
 
+          {/* Score breakdown (mobile) */}
+          {displayedAnalysis.score_breakdown && displayedAnalysis.score_breakdown.length > 0 && (
+            <ScoreBreakdownCard breakdown={displayedAnalysis.score_breakdown} score={displayedAnalysis.discipline_score} t={t} />
+          )}
+
           {/* Violations */}
           {displayedAnalysis.violations.length > 0 && (
             <section>
               <h2 className="text-lg font-semibold text-foreground mb-3">{t("analysis_violations")}</h2>
               <div className="space-y-2">
-                {displayedAnalysis.violations.map((v, i) => (
-                  <div
-                    key={i}
-                    className="bg-card border border-border rounded-lg p-4 flex gap-3"
-                  >
-                    <svg
-                      className="w-5 h-5 text-loss shrink-0 mt-0.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
+                {displayedAnalysis.violations.map((v, i) => {
+                  const isNew = "category" in v;
+                  return (
+                    <div
+                      key={i}
+                      className="bg-card border border-border rounded-lg p-4 flex gap-3"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M12 9v2m0 4h.01M10.29 3.86l-8.6 14.86A1 1 0 002.56 20h18.88a1 1 0 00.87-1.28l-8.6-14.86a1 1 0 00-1.72 0z"
-                      />
-                    </svg>
-                    <div>
-                      <p className="text-foreground text-sm font-medium">
-                        {v.pair} — {v.trade_date}
-                      </p>
-                      <p className="text-loss text-sm">{v.rule_violated}</p>
-                      <p className="text-muted text-sm mt-1">{v.explanation}</p>
+                      <svg
+                        className="w-5 h-5 text-loss shrink-0 mt-0.5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M12 9v2m0 4h.01M10.29 3.86l-8.6 14.86A1 1 0 002.56 20h18.88a1 1 0 00.87-1.28l-8.6-14.86a1 1 0 00-1.72 0z"
+                        />
+                      </svg>
+                      <div>
+                        {isNew ? (
+                          <>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                (v as Violation).category === "strategy" ? "bg-loss/10 text-loss" :
+                                (v as Violation).category === "behavior" ? "bg-orange-500/10 text-orange-400" :
+                                "bg-yellow-500/10 text-yellow-400"
+                              }`}>
+                                {t(`violation_cat_${(v as Violation).category}` as Parameters<typeof t>[0])}
+                              </span>
+                              <span className="text-foreground text-sm font-medium">
+                                {t(`violation_${(v as Violation).type}` as Parameters<typeof t>[0])}
+                              </span>
+                              {(v as Violation).occurrences > 1 && (
+                                <span className="text-muted text-xs">×{(v as Violation).occurrences}</span>
+                              )}
+                            </div>
+                            <p className="text-muted text-sm">{v.explanation}</p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-foreground text-sm font-medium">
+                              {(v as LegacyViolation).pair} — {(v as LegacyViolation).trade_date}
+                            </p>
+                            <p className="text-loss text-sm">{(v as LegacyViolation).rule_violated}</p>
+                            <p className="text-muted text-sm mt-1">{v.explanation}</p>
+                          </>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
           )}
@@ -1191,10 +1247,17 @@ export default function AnalysisPage() {
             <div className="bg-card border border-border rounded-xl p-6 card-shadow flex flex-col items-center text-center">
               <ScoreCircle score={displayedAnalysis.discipline_score} label={t("dash_discipline")} />
               <p className="text-foreground text-sm font-semibold mt-4">
-                {displayedAnalysis.conforming_trades} / {displayedAnalysis.total_trades} {t("analysis_conforming")}
+                {displayedAnalysis.total_trades} trades
               </p>
               <p className="text-muted text-sm mt-1">
                 {displayedAnalysis.violations.length} {displayedAnalysis.violations.length === 1 ? t("analysis_violation_detected_one") : t("analysis_violations_detected")}
+              </p>
+              <p className="text-xs text-muted mt-2">
+                {displayedAnalysis.discipline_score >= 90 ? t("band_excellent") :
+                 displayedAnalysis.discipline_score >= 75 ? t("band_good") :
+                 displayedAnalysis.discipline_score >= 60 ? t("band_ok") :
+                 displayedAnalysis.discipline_score >= 40 ? t("band_weak") :
+                 t("band_bad")}
               </p>
             </div>
           ) : (
@@ -1208,77 +1271,10 @@ export default function AnalysisPage() {
             </div>
           )}
 
-          {/* ICT Discipline Score card */}
-          <div className="bg-card border border-border rounded-xl p-6 card-shadow">
-            <div className="flex items-center gap-2 mb-4">
-              <h3 className="text-sm font-semibold text-foreground">{t("ict_discipline_score")}</h3>
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-accent/20 text-accent">ICT</span>
-            </div>
-            {ictDisciplineResult === null ? (
-              <div className="space-y-2">
-                {[1, 2, 3].map((i) => <div key={i} className="skeleton h-3 rounded w-full" />)}
-              </div>
-            ) : ictDisciplineResult.insufficient ? (
-              <div>
-                <p className="text-muted text-xs mb-3">{t("ict_score_insufficient")}</p>
-                <Link href="/dashboard/trades" className="text-xs text-accent hover:underline">
-                  {t("ict_goto_trades")} →
-                </Link>
-              </div>
-            ) : (
-              <div>
-                {/* Circular gauge */}
-                <div className="flex justify-center mb-4">
-                  {(() => {
-                    const score = ictDisciplineResult.score;
-                    const radius = 40;
-                    const circ = 2 * Math.PI * radius;
-                    const offset = circ - (score / 100) * circ;
-                    const strokeColor = score >= 70 ? "#22c55e" : score >= 40 ? "#f59e0b" : "#ef4444";
-                    const textColor = score >= 70 ? "text-profit" : score >= 40 ? "text-orange-400" : "text-loss";
-                    return (
-                      <div className="relative w-24 h-24">
-                        <svg className="w-24 h-24 -rotate-90" viewBox="0 0 100 100">
-                          <circle cx="50" cy="50" r={radius} fill="none" stroke="rgb(var(--border))" strokeWidth="8" />
-                          <circle cx="50" cy="50" r={radius} fill="none" stroke={strokeColor} strokeWidth="8" strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset} className="transition-all duration-1000" />
-                        </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                          <span className={`text-2xl font-bold ${textColor}`}>{score}</span>
-                          <span className="text-muted text-[10px]">/100</span>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-                {/* Sub-scores */}
-                <div className="space-y-1.5">
-                  {[
-                    { key: "ict_sub_checklist", val: ictDisciplineResult.subScores.checklist },
-                    { key: "ict_sub_killzones", val: ictDisciplineResult.subScores.killzones },
-                    { key: "ict_sub_rr", val: ictDisciplineResult.subScores.riskReward },
-                    { key: "ict_sub_emotions", val: ictDisciplineResult.subScores.emotions },
-                    { key: "ict_sub_setup", val: ictDisciplineResult.subScores.setupTagged },
-                  ].map(({ key, val }) => (
-                    <div key={key}>
-                      <div className="flex justify-between text-xs mb-0.5">
-                        <span className="text-muted">{t(key)}</span>
-                        <span className="text-foreground font-medium">{val}%</span>
-                      </div>
-                      <div className="h-1 bg-border rounded-full overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: `${val}%`, backgroundColor: val >= 70 ? "#22c55e" : val >= 40 ? "#f59e0b" : "#ef4444" }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs text-muted mt-3">
-                  {t("ict_score_based_on")} {ictDisciplineResult.taggedCount} {t("ict_score_tagged_trades")}
-                </p>
-                {ictDisciplineResult.score < 50 && (
-                  <p className="text-[10px] text-muted/60 mt-1">{t("dash_score_explainer")}</p>
-                )}
-              </div>
-            )}
-          </div>
+          {/* Score breakdown card (desktop) */}
+          {displayedAnalysis?.score_breakdown && displayedAnalysis.score_breakdown.length > 0 && (
+            <ScoreBreakdownCard breakdown={displayedAnalysis.score_breakdown} score={displayedAnalysis.discipline_score} t={t} className="hidden lg:block" />
+          )}
 
           {/* AI Coach Q&A History */}
           {canChat && (
@@ -1360,10 +1356,10 @@ export default function AnalysisPage() {
                         {new Date(r.created_at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
                       </p>
                       <p className="text-muted text-[11px]">
-                        {r.conforming_trades}/{r.total_trades} trades
+                        {r.total_trades} trades
                       </p>
                     </div>
-                    <span className={`text-lg font-bold tabular-nums ${r.discipline_score >= 75 ? "text-profit" : r.discipline_score >= 50 ? "text-orange-400" : "text-loss"}`}>
+                    <span className={`text-lg font-bold tabular-nums ${r.discipline_score >= 90 ? "text-profit" : r.discipline_score >= 75 ? "text-green-400" : r.discipline_score >= 60 ? "text-yellow-400" : r.discipline_score >= 40 ? "text-orange-400" : "text-loss"}`}>
                       {r.discipline_score}
                     </span>
                   </button>
@@ -1391,11 +1387,11 @@ export default function AnalysisPage() {
 
             {/* Score */}
             <div className="text-sm font-medium text-foreground">{t("analysis_compare_score")}</div>
-            <div className={`text-center text-2xl font-bold ${compareA.discipline_score >= 75 ? "text-profit" : compareA.discipline_score >= 50 ? "text-orange-400" : "text-loss"}`}>
+            <div className={`text-center text-2xl font-bold ${compareA.discipline_score >= 90 ? "text-profit" : compareA.discipline_score >= 75 ? "text-green-400" : compareA.discipline_score >= 60 ? "text-yellow-400" : compareA.discipline_score >= 40 ? "text-orange-400" : "text-loss"}`}>
               {compareA.discipline_score}
             </div>
             <div className="text-center">
-              <span className={`text-2xl font-bold ${compareB.discipline_score >= 75 ? "text-profit" : compareB.discipline_score >= 50 ? "text-orange-400" : "text-loss"}`}>
+              <span className={`text-2xl font-bold ${compareB.discipline_score >= 90 ? "text-profit" : compareB.discipline_score >= 75 ? "text-green-400" : compareB.discipline_score >= 60 ? "text-yellow-400" : compareB.discipline_score >= 40 ? "text-orange-400" : "text-loss"}`}>
                 {compareB.discipline_score}
               </span>
               {compareB.discipline_score !== compareA.discipline_score && (
@@ -1407,8 +1403,8 @@ export default function AnalysisPage() {
 
             {/* Trades */}
             <div className="text-sm font-medium text-foreground">Trades</div>
-            <div className="text-center text-sm text-foreground">{compareA.conforming_trades}/{compareA.total_trades}</div>
-            <div className="text-center text-sm text-foreground">{compareB.conforming_trades}/{compareB.total_trades}</div>
+            <div className="text-center text-sm text-foreground">{compareA.total_trades}</div>
+            <div className="text-center text-sm text-foreground">{compareB.total_trades}</div>
 
             {/* Violations */}
             <div className="text-sm font-medium text-foreground">{t("analysis_compare_violations")}</div>
@@ -1475,7 +1471,7 @@ export default function AnalysisPage() {
                   </p>
                   <p className="text-muted text-sm">{r.conforming_trades}/{r.total_trades} trades</p>
                 </div>
-                <span className={`text-2xl font-bold ${r.discipline_score >= 75 ? "text-profit" : r.discipline_score >= 50 ? "text-orange-400" : "text-loss"}`}>
+                <span className={`text-2xl font-bold ${r.discipline_score >= 90 ? "text-profit" : r.discipline_score >= 75 ? "text-green-400" : r.discipline_score >= 60 ? "text-yellow-400" : r.discipline_score >= 40 ? "text-orange-400" : "text-loss"}`}>
                   {r.discipline_score}
                 </span>
               </button>

@@ -43,7 +43,6 @@ interface Props {
   displayName: string;
   score: number | null;
   scoreColor: string;
-  ictTaggedCount: number;
   weekTrades: TradeData[];
   monthTrades: TradeData[];
   todayTrades: TradeData[];
@@ -61,7 +60,7 @@ function MiniScoreCircle({ score }: { score: number }) {
   const radius = 14;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
-  const color = score >= 75 ? "#22c55e" : score >= 50 ? "#f59e0b" : "#ef4444";
+  const color = score >= 90 ? "#22c55e" : score >= 75 ? "#4ade80" : score >= 60 ? "#facc15" : score >= 40 ? "#f97316" : "#ef4444";
   return (
     <svg width="36" height="36" viewBox="0 0 36 36" className="shrink-0">
       <circle cx="18" cy="18" r={radius} fill="none" stroke="rgb(var(--border))" strokeWidth="3" />
@@ -74,7 +73,6 @@ export default function DashboardContent({
   displayName,
   score,
   scoreColor,
-  ictTaggedCount,
   weekTrades,
   monthTrades,
   todayTrades,
@@ -236,12 +234,11 @@ export default function DashboardContent({
           </div>
           {score !== null ? (
             <div className="mt-2">
-              <p className="text-xs text-muted">{score >= 75 ? t("dash_score_good") : score >= 50 ? t("dash_score_ok") : t("dash_score_bad")}</p>
-              {score < 50 && <p className="text-[10px] text-muted/60 mt-1">{t("dash_score_explainer")}</p>}
+              <p className="text-xs text-muted">{score >= 90 ? t("dash_score_excellent") : score >= 75 ? t("dash_score_good") : score >= 60 ? t("dash_score_ok") : score >= 40 ? t("dash_score_weak") : t("dash_score_bad")}</p>
             </div>
           ) : (
             <p className="text-xs text-muted mt-2">
-              {ictTaggedCount < 5 ? t("dash_tag_ict_trades") : t("dash_run_analysis")}
+              {t("dash_no_score_yet")}
             </p>
           )}
         </div>
@@ -433,7 +430,7 @@ export default function DashboardContent({
                       <span className="text-muted text-xs">
                         {new Date(lastReview.created_at).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}
                       </span>
-                      <span className={`text-xl font-bold tabular-nums ${lastReview.discipline_score >= 75 ? "text-profit" : lastReview.discipline_score >= 50 ? "text-warning" : "text-loss"}`}>
+                      <span className={`text-xl font-bold tabular-nums ${lastReview.discipline_score >= 90 ? "text-profit" : lastReview.discipline_score >= 75 ? "text-green-400" : lastReview.discipline_score >= 60 ? "text-yellow-400" : lastReview.discipline_score >= 40 ? "text-orange-400" : "text-loss"}`}>
                         {lastReview.discipline_score}/100
                       </span>
                     </div>

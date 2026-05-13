@@ -2,7 +2,7 @@
 
 import EmotionalTrendChart from "@/components/charts/EmotionalTrendChart";
 import ExportPdfButton from "@/components/analytics/ExportPdfButton";
-import { computeDisciplineScore } from "@/lib/discipline-score";
+// discipline-score is now computed server-side via the analysis API
 import { ICT_EMOTIONS, ICT_KILLZONES, getEmotionColor } from "@/lib/ict-constants";
 import { useStrategyTags } from "@/lib/hooks/useStrategyTags";
 import { useChartColors } from "@/lib/useChartColors";
@@ -55,6 +55,7 @@ interface ViolationTrade {
 
 interface SessionReview {
   created_at: string;
+  discipline_score?: number;
   analysis: {
     violations: ViolationTrade[];
   };
@@ -129,7 +130,7 @@ export default function AnalyticsPage() {
           .eq("status", "active"),
         supabase
           .from("session_reviews")
-          .select("created_at, analysis")
+          .select("created_at, discipline_score, analysis")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false })
           .limit(20),
@@ -486,17 +487,6 @@ export default function AnalyticsPage() {
 
   const ictTaggedCount = useMemo(() => filtered.filter((tr) => tr.ict_setup || tr.ict_entry_zone || tr.ict_killzone).length, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const disciplineResult = useMemo(() => computeDisciplineScore(filtered.map((tr) => ({
-    ict_setup: tr.ict_setup,
-    ict_killzone: tr.ict_killzone,
-    ict_checklist: tr.ict_checklist,
-    emotion: tr.emotion,
-    sl: tr.sl,
-    tp: tr.tp,
-    entry_price: tr.entry_price,
-    direction: tr.direction,
-  }))), [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const byICTSetup = useMemo(() => {
     const map: Record<string, { wins: number; total: number }> = {};
     filtered.forEach((tr) => {
@@ -796,16 +786,19 @@ export default function AnalyticsPage() {
                 </p>
               )}
             </div>
-            {/* ICT Discipline score card */}
+            {/* Discipline score card — from latest analysis */}
             <div className="bg-card border border-border rounded-xl p-4 card-shadow">
               <p className="text-xs text-muted mb-1">{t("ict_kpi_discipline")}</p>
-              {disciplineResult.insufficient ? (
-                <p className="text-base font-bold text-muted">—</p>
-              ) : (
-                <p className={`text-xl font-bold tabular-nums ${disciplineResult.score >= 70 ? "text-profit" : disciplineResult.score >= 40 ? "text-orange-400" : "text-loss"}`}>
-                  {disciplineResult.score}/100
-                </p>
-              )}
+              {(() => {
+                const latestScore = reviews.length > 0 ? reviews[0].discipline_score : undefined;
+                return latestScore != null ? (
+                  <p className={`text-xl font-bold tabular-nums ${latestScore >= 90 ? "text-profit" : latestScore >= 75 ? "text-green-400" : latestScore >= 60 ? "text-yellow-400" : latestScore >= 40 ? "text-orange-400" : "text-loss"}`}>
+                    {latestScore}/100
+                  </p>
+                ) : (
+                  <p className="text-base font-bold text-muted">—</p>
+                );
+              })()}
             </div>
           </div>
 
