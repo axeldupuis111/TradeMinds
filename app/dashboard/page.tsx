@@ -41,7 +41,7 @@ export default async function DashboardPage() {
     { data: recentTrades },
     { data: allTrades },
   ] = await Promise.all([
-    supabase.from("session_reviews").select("discipline_score, created_at, analysis, score_breakdown").eq("user_id", userId!).order("created_at", { ascending: false }).limit(1).single(),
+    supabase.from("session_reviews").select("discipline_score, created_at, analysis, score_breakdown").eq("user_id", userId!).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     supabase.from("trades").select("pnl, commission, swap, challenge_id").eq("user_id", userId!).gte("open_time", monday),
     supabase.from("trades").select("pnl, commission, swap, challenge_id").eq("user_id", userId!).gte("open_time", monthStart),
     supabase.from("trades").select("pnl, commission, swap, challenge_id").eq("user_id", userId!).gte("open_time", today),

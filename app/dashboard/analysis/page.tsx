@@ -324,7 +324,7 @@ export default function AnalysisPage() {
           .select("*")
           .eq("user_id", user.id)
           .limit(1)
-          .single(),
+          .maybeSingle(),
       ]);
 
       const tradesContext = (trades || []).map((t) => {
@@ -424,7 +424,7 @@ export default function AnalysisPage() {
         .select("id")
         .eq("user_id", user.id)
         .limit(1)
-        .single(),
+        .maybeSingle(),
     ]);
 
     setTradeCount(count || 0);
@@ -471,7 +471,7 @@ export default function AnalysisPage() {
           .select("*")
           .eq("user_id", user.id)
           .limit(1)
-          .single(),
+          .maybeSingle(),
         supabase
           .from("trades")
           .select("open_time, close_time, pair, direction, lot_size, entry_price, exit_price, sl, tp, pnl, commission, swap")

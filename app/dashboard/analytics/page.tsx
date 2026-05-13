@@ -49,8 +49,11 @@ interface TradeRow {
 }
 
 interface ViolationTrade {
-  trade_date: string;
-  pair: string;
+  trade_date?: string;
+  pair?: string;
+  category?: string;
+  type?: string;
+  trade_ids?: number[];
 }
 
 interface SessionReview {
@@ -434,7 +437,8 @@ export default function AnalyticsPage() {
     reviews.forEach((r) => {
       if (r.analysis?.violations) {
         r.analysis.violations.forEach((v) => {
-          const date = v.trade_date?.includes("T") ? v.trade_date.split("T")[0] : v.trade_date;
+          if (!v.pair || !v.trade_date) return;
+          const date = v.trade_date.includes("T") ? v.trade_date.split("T")[0] : v.trade_date;
           set.add(`${date}|${normalizePair(v.pair)}`);
         });
       }
