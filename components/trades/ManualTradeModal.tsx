@@ -4,6 +4,7 @@ import { detectKillzone, ICT_EMOTIONS, ICT_TIMEFRAMES } from "@/lib/ict-constant
 import { INSTRUMENTS, INSTRUMENT_CATEGORIES } from "@/lib/instruments";
 import { useStrategyTags } from "@/lib/hooks/useStrategyTags";
 import { useLanguage } from "@/lib/LanguageContext";
+import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
 import type { Lang } from "@/lib/translations";
 import { useEffect, useMemo, useState } from "react";
@@ -53,7 +54,8 @@ function AiBadge({ visible, t }: { visible: boolean; t: (key: string) => string 
 
 export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, initialChecklist }: Props) {
   const { t, lang } = useLanguage();
-  const isFree = false;
+  const { plan, loading: planLoading } = usePlan();
+  const isFree = !planLoading && plan === "free";
   const supabase = createClient();
   const stratTags = useStrategyTags();
   const [saving, setSaving] = useState(false);

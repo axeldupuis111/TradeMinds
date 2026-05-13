@@ -72,11 +72,13 @@ export default function StrategyPage() {
   const [isDirty, setIsDirty] = useState(false);
   const [toast, setToast] = useState<Toast | null>(null);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const [strategies, setStrategies] = useState<{ id: string; name: string }[]>([]);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const pendingNavRef = useRef<string | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    loadStrategy();
+    loadStrategies();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -115,60 +117,103 @@ export default function StrategyPage() {
     toastTimerRef.current = setTimeout(() => setToast(null), 3000);
   }
 
-  async function loadStrategy() {
+  async function loadStrategies(selectId?: string) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
 
-    const { data } = await supabase
+    const { data: allStrats } = await supabase
       .from("strategies")
       .select("*")
       .eq("user_id", user.id)
-      .single();
+      .order("created_at", { ascending: true });
 
-    if (data) {
-      setExistingId(data.id);
-      setName(data.name || "");
-      setRawText(data.raw_text || "");
+    const list = (allStrats || []).map((s: Record<string, unknown>) => ({ id: s.id as string, name: (s.name as string) || "" }));
+    setStrategies(list);
 
-      // Load existing strategy_tags from DB to display even before re-analysis
-      let existingTags: StrategyTagsFromAI | undefined;
-      try {
-        const { data: tagsData, error: tagsError } = await supabase
-          .from("strategy_tags")
-          .select("*")
-          .eq("strategy_id", data.id)
-          .order("sort_order");
-
-        if (!tagsError && tagsData && tagsData.length > 0) {
-          const groupTag = (type: string): StrategyTagAI[] =>
-            tagsData
-              .filter((t) => t.tag_type === type)
-              .map((t) => ({ value: t.value, label_fr: t.label_fr, label_en: t.label_en, label_de: t.label_de, label_es: t.label_es }));
-          existingTags = {
-            setups: groupTag("setup"),
-            entry_zones: groupTag("entry_zone"),
-            targets: groupTag("target"),
-            timing: groupTag("timing"),
-            checklist: groupTag("checklist"),
-          };
-        }
-      } catch (tagsErr) {
-        console.error("strategy_tags load failed (table may not exist yet):", tagsErr);
-      }
-
-      setParsed({
-        pairs: data.pairs || [],
-        sessions: data.sessions || [],
-        risk_reward: data.risk_reward,
-        max_sl_pips: data.max_sl_pips,
-        max_daily_loss: data.max_daily_loss,
-        max_trades_per_day: data.max_trades_per_day,
-        max_consecutive_losses: data.max_consecutive_losses,
-        setup_rules: data.setup_rules || [],
-        strategy_tags: existingTags,
-      });
+    const target = selectId ? allStrats?.find((s: Record<string, unknown>) => s.id === selectId) : allStrats?.[0];
+    if (target) {
+      loadSingleStrategy(target);
+    } else {
+      resetForm();
     }
     setLoading(false);
+  }
+
+  function resetForm() {
+    setExistingId(null);
+    setName("");
+    setRawText("");
+    setParsed(null);
+    setIsDirty(false);
+  }
+
+  async function loadSingleStrategy(data: Record<string, unknown>) {
+    setExistingId(data.id as string);
+    setName((data.name as string) || "");
+    setRawText((data.raw_text as string) || "");
+
+    let existingTags: StrategyTagsFromAI | undefined;
+    try {
+      const { data: tagsData, error: tagsError } = await supabase
+        .from("strategy_tags")
+        .select("*")
+        .eq("strategy_id", data.id as string)
+        .order("sort_order");
+
+      if (!tagsError && tagsData && tagsData.length > 0) {
+        const groupTag = (type: string): StrategyTagAI[] =>
+          tagsData
+            .filter((t) => t.tag_type === type)
+            .map((t) => ({ value: t.value, label_fr: t.label_fr, label_en: t.label_en, label_de: t.label_de, label_es: t.label_es }));
+        existingTags = {
+          setups: groupTag("setup"),
+          entry_zones: groupTag("entry_zone"),
+          targets: groupTag("target"),
+          timing: groupTag("timing"),
+          checklist: groupTag("checklist"),
+        };
+      }
+    } catch (tagsErr) {
+      console.error("strategy_tags load failed:", tagsErr);
+    }
+
+    setParsed({
+      pairs: (data.pairs as string[]) || [],
+      sessions: (data.sessions as string[]) || [],
+      risk_reward: data.risk_reward as number | null,
+      max_sl_pips: data.max_sl_pips as number | null,
+      max_daily_loss: data.max_daily_loss as number | null,
+      max_trades_per_day: data.max_trades_per_day as number | null,
+      max_consecutive_losses: data.max_consecutive_losses as number | null,
+      setup_rules: (data.setup_rules as string[]) || [],
+      strategy_tags: existingTags,
+    });
+    setIsDirty(false);
+  }
+
+  function handleNewStrategy() {
+    if (isDirty && !confirm(t("strategy_unsaved_warning"))) return;
+    resetForm();
+  }
+
+  async function handleDelete() {
+    if (!existingId) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    await supabase.from("strategy_tags").delete().eq("strategy_id", existingId);
+    await supabase.from("strategies").delete().eq("id", existingId);
+    showToast("success", t("strategy_deleted"));
+    setShowDeleteConfirm(false);
+    await loadStrategies();
+  }
+
+  async function handleSwitchStrategy(id: string) {
+    if (isDirty && !confirm(t("strategy_unsaved_warning"))) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase.from("strategies").select("*").eq("id", id).single();
+    if (data) loadSingleStrategy(data);
   }
 
   async function handleAnalyze() {
@@ -276,6 +321,7 @@ export default function StrategyPage() {
     } else {
       showToast("success", t("strategy_toast_success"));
       setIsDirty(false);
+      await loadStrategies(strategyId || undefined);
     }
   }
 
@@ -508,6 +554,48 @@ export default function StrategyPage() {
       <h1 className="text-2xl font-bold text-foreground">{t("strategy_title")}</h1>
       <p className="text-muted mt-1">{t("strategy_subtitle")}</p>
 
+      {/* Strategy tabs */}
+      {strategies.length > 0 && (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {strategies.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => handleSwitchStrategy(s.id)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                s.id === existingId
+                  ? "bg-accent text-white"
+                  : "bg-surface border border-border text-foreground hover:bg-card"
+              }`}
+            >
+              {s.name || t("strategy_select")}
+            </button>
+          ))}
+          <button
+            onClick={handleNewStrategy}
+            className="px-3 py-1.5 rounded-lg text-sm font-medium border border-dashed border-accent text-accent hover:bg-accent/10 transition-colors"
+          >
+            {t("strategy_new")}
+          </button>
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-card border border-border rounded-xl p-6 max-w-sm w-full mx-4 space-y-4">
+            <p className="text-foreground text-sm">{t("strategy_delete_confirm")}</p>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setShowDeleteConfirm(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-foreground hover:bg-surface transition-colors">
+                {t("strategy_stay")}
+              </button>
+              <button onClick={handleDelete} className="px-4 py-2 text-sm bg-loss text-white rounded-lg hover:opacity-90 transition-opacity">
+                {t("strategy_delete")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mt-6">
         <label className="block text-sm text-muted mb-1">{t("strategy_name")}</label>
         <input
@@ -659,7 +747,15 @@ export default function StrategyPage() {
       )}
 
       {parsed && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center p-4 bg-background/80 backdrop-blur-sm border-t border-border">
+        <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center gap-3 p-4 bg-background/80 backdrop-blur-sm border-t border-border">
+          {existingId && (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="px-6 py-2.5 border border-loss text-loss rounded-lg font-medium hover:bg-loss/10 transition-colors"
+            >
+              {t("strategy_delete")}
+            </button>
+          )}
           <button
             onClick={handleSave}
             disabled={saving}

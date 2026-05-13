@@ -101,6 +101,8 @@ export default function SettingsPage() {
     if (typeof window === "undefined") return true;
     return localStorage.getItem("session_reminder_disabled") !== "1";
   });
+  const [emailNotifSession, setEmailNotifSession] = useState(false);
+  const [emailNotifLoading, setEmailNotifLoading] = useState(false);
   const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -131,7 +133,7 @@ export default function SettingsPage() {
 
     const { data } = await supabase
       .from("profiles")
-      .select("username, public_profile, timezone, currency")
+      .select("username, public_profile, timezone, currency, email_notif_session")
       .eq("id", user.id)
       .single();
 
@@ -146,6 +148,7 @@ export default function SettingsPage() {
       const curr = (data as Record<string, unknown>).currency as string || "EUR";
       setCurrency(curr);
       setOriginalCurrency(curr);
+      setEmailNotifSession(!!(data as Record<string, unknown>).email_notif_session);
     } else {
       const tz = detectBrowserTimezone();
       setTimezone(tz);
@@ -522,6 +525,26 @@ export default function SettingsPage() {
             className="accent-accent w-4 h-4"
           />
           <span className="text-sm text-foreground">{t("settings_notif_session")}</span>
+        </label>
+        <label className="flex items-center gap-3 cursor-pointer mt-3">
+          <input
+            type="checkbox"
+            checked={emailNotifSession}
+            disabled={emailNotifLoading}
+            onChange={async (e) => {
+              const enabled = e.target.checked;
+              setEmailNotifLoading(true);
+              setEmailNotifSession(enabled);
+              const { data: { user } } = await supabase.auth.getUser();
+              if (user) {
+                await supabase.from("profiles").update({ email_notif_session: enabled }).eq("id", user.id);
+              }
+              setEmailNotifLoading(false);
+              showToast("success", t("settings_saved"));
+            }}
+            className="accent-accent w-4 h-4"
+          />
+          <span className="text-sm text-foreground">{t("settings_notif_email_session")}</span>
         </label>
       </section>
 

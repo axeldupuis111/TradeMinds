@@ -1,5 +1,6 @@
 "use client";
 
+import EmotionalTrendChart from "@/components/charts/EmotionalTrendChart";
 import ExportPdfButton from "@/components/analytics/ExportPdfButton";
 import { computeDisciplineScore } from "@/lib/discipline-score";
 import { ICT_EMOTIONS, ICT_KILLZONES, getEmotionColor } from "@/lib/ict-constants";
@@ -1259,6 +1260,13 @@ export default function AnalyticsPage() {
             </div>
           )}
         </>
+      )}
+
+      {/* Emotional trend chart */}
+      {!loading && filtered.length > 0 && (
+        <div className="mt-6">
+          <EmotionalTrendChart />
+        </div>
       )}
     </div>
   );

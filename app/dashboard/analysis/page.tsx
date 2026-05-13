@@ -110,6 +110,8 @@ export default function AnalysisPage() {
   const [tradeCount, setTradeCount] = useState(0);
   const [hasStrategy, setHasStrategy] = useState(false);
   const [viewingHistory, setViewingHistory] = useState<string | null>(null);
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareSelection, setCompareSelection] = useState<string[]>([]);
 
   // ICT discipline score
   const [ictDisciplineResult, setIctDisciplineResult] = useState<ReturnType<typeof computeDisciplineScore> | null>(null);
@@ -434,7 +436,7 @@ export default function AnalysisPage() {
       }
 
       // Increment AI usage counter
-      if (plan === "free" || plan === "plus") {
+      if (plan === "plus") {
         await incrementAIUsage();
       }
     } catch (err: unknown) {
@@ -446,11 +448,27 @@ export default function AnalysisPage() {
 
 
   function viewHistoryItem(review: SavedReview) {
+    if (compareMode) {
+      setCompareSelection((prev) => {
+        if (prev.includes(review.id)) return prev.filter((id) => id !== review.id);
+        if (prev.length >= 2) return [prev[1], review.id];
+        return [...prev, review.id];
+      });
+      return;
+    }
     setAnalysis(review.analysis);
     setViewingHistory(review.id);
     setSaveMessage(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
+
+  function toggleCompareMode() {
+    setCompareMode((prev) => !prev);
+    setCompareSelection([]);
+  }
+
+  const compareA = compareSelection.length >= 2 ? history.find((h) => h.id === compareSelection[0]) : null;
+  const compareB = compareSelection.length >= 2 ? history.find((h) => h.id === compareSelection[1]) : null;
 
   const displayedAnalysis = analysis;
 
@@ -1288,7 +1306,22 @@ export default function AnalysisPage() {
 
           {/* History */}
           <div className="bg-card border border-border rounded-xl p-4 card-shadow">
-            <h2 className="text-sm font-semibold text-foreground mb-3">{t("analysis_history")}</h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-foreground">{t("analysis_history")}</h2>
+              {history.length >= 2 && (
+                <button
+                  onClick={toggleCompareMode}
+                  className={`text-xs px-2 py-1 rounded-md transition-colors ${
+                    compareMode ? "bg-accent text-white" : "text-accent hover:bg-accent/10"
+                  }`}
+                >
+                  {t("analysis_compare")}
+                </button>
+              )}
+            </div>
+            {compareMode && (
+              <p className="text-xs text-muted mb-2">{t("analysis_compare_select")}</p>
+            )}
             {historyLoading ? (
               <div className="space-y-2">
                 {[1, 2, 3].map((i) => (
@@ -1308,10 +1341,21 @@ export default function AnalysisPage() {
                     key={r.id}
                     onClick={() => viewHistoryItem(r)}
                     className={`w-full text-left rounded-lg px-3 py-2.5 flex items-center justify-between transition-colors hover:bg-border/50 ${
-                      viewingHistory === r.id ? "bg-accent/10 border border-accent/30" : "border border-transparent"
+                      compareMode && compareSelection.includes(r.id)
+                        ? "bg-accent/10 border border-accent/30"
+                        : viewingHistory === r.id && !compareMode
+                          ? "bg-accent/10 border border-accent/30"
+                          : "border border-transparent"
                     }`}
                   >
-                    <div>
+                    {compareMode && (
+                      <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-xs mr-2 shrink-0 ${
+                        compareSelection.includes(r.id) ? "border-accent bg-accent text-white" : "border-border"
+                      }`}>
+                        {compareSelection.includes(r.id) ? (compareSelection.indexOf(r.id) + 1) : ""}
+                      </span>
+                    )}
+                    <div className="flex-1 min-w-0">
                       <p className="text-foreground text-xs font-medium">
                         {new Date(r.created_at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
                       </p>
@@ -1330,6 +1374,75 @@ export default function AnalysisPage() {
         </div>{/* end right column */}
 
       </div>{/* end flex row */}
+
+      {/* Comparison view */}
+      {compareMode && compareA && compareB && (
+        <div className="mt-6 bg-card border border-border rounded-xl p-5 card-shadow">
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t("analysis_compare_title")}</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Dates */}
+            <div />
+            <div className="text-center text-sm text-muted font-medium">
+              {new Date(compareA.created_at).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
+            </div>
+            <div className="text-center text-sm text-muted font-medium">
+              {new Date(compareB.created_at).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
+            </div>
+
+            {/* Score */}
+            <div className="text-sm font-medium text-foreground">{t("analysis_compare_score")}</div>
+            <div className={`text-center text-2xl font-bold ${compareA.discipline_score >= 75 ? "text-profit" : compareA.discipline_score >= 50 ? "text-orange-400" : "text-loss"}`}>
+              {compareA.discipline_score}
+            </div>
+            <div className="text-center">
+              <span className={`text-2xl font-bold ${compareB.discipline_score >= 75 ? "text-profit" : compareB.discipline_score >= 50 ? "text-orange-400" : "text-loss"}`}>
+                {compareB.discipline_score}
+              </span>
+              {compareB.discipline_score !== compareA.discipline_score && (
+                <span className={`ml-2 text-xs font-medium ${compareB.discipline_score > compareA.discipline_score ? "text-profit" : "text-loss"}`}>
+                  {compareB.discipline_score > compareA.discipline_score ? "+" : ""}{compareB.discipline_score - compareA.discipline_score}
+                </span>
+              )}
+            </div>
+
+            {/* Trades */}
+            <div className="text-sm font-medium text-foreground">Trades</div>
+            <div className="text-center text-sm text-foreground">{compareA.conforming_trades}/{compareA.total_trades}</div>
+            <div className="text-center text-sm text-foreground">{compareB.conforming_trades}/{compareB.total_trades}</div>
+
+            {/* Violations */}
+            <div className="text-sm font-medium text-foreground">{t("analysis_compare_violations")}</div>
+            <div className="text-center text-sm text-foreground">{compareA.analysis.violations.length}</div>
+            <div className="text-center">
+              <span className="text-sm text-foreground">{compareB.analysis.violations.length}</span>
+              {compareB.analysis.violations.length !== compareA.analysis.violations.length && (
+                <span className={`ml-2 text-xs font-medium ${compareB.analysis.violations.length < compareA.analysis.violations.length ? "text-profit" : "text-loss"}`}>
+                  {compareB.analysis.violations.length < compareA.analysis.violations.length ? "" : "+"}{compareB.analysis.violations.length - compareA.analysis.violations.length}
+                </span>
+              )}
+            </div>
+
+            {/* Strengths */}
+            <div className="text-sm font-medium text-foreground">{t("analysis_compare_strengths")}</div>
+            <div className="text-center text-sm text-foreground">{compareA.analysis.strengths.length}</div>
+            <div className="text-center text-sm text-foreground">{compareB.analysis.strengths.length}</div>
+          </div>
+
+          {/* Evolution summary */}
+          <div className="mt-4 pt-4 border-t border-border">
+            <p className="text-sm text-foreground">
+              <span className="font-medium">{t("analysis_evolution")}:</span>{" "}
+              {compareB.discipline_score > compareA.discipline_score ? (
+                <span className="text-profit">+{compareB.discipline_score - compareA.discipline_score} pts — {t("analysis_improved")}</span>
+              ) : compareB.discipline_score < compareA.discipline_score ? (
+                <span className="text-loss">{compareB.discipline_score - compareA.discipline_score} pts — {t("analysis_declined")}</span>
+              ) : (
+                <span className="text-muted">= stable</span>
+              )}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Mobile history (visible only on mobile) */}
       <section className="lg:hidden mt-8 mb-8">

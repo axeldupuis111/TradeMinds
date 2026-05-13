@@ -95,6 +95,8 @@ export default function SessionPage() {
   const [showQuickLogger, setShowQuickLogger] = useState(false);
   const [emotionFeedback, setEmotionFeedback] = useState<{ type: "warning" | "ok"; message: string } | null>(null);
   const [showStopConfirm, setShowStopConfirm] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [pausedAt, setPausedAt] = useState<string | null>(null);
 
   useEffect(() => {
     load();
@@ -179,7 +181,14 @@ export default function SessionPage() {
       pnl: pnlByDay[s.created_at.split("T")[0]] ?? undefined,
     }));
 
-    if (session) setActiveSession(session);
+    if (session) {
+      setActiveSession(session);
+      const stored = localStorage.getItem(`session_paused_${session.id}`);
+      if (stored) {
+        setPaused(true);
+        setPausedAt(stored);
+      }
+    }
     setSessionHistory(historyWithPnl);
 
     setLoading(false);
@@ -263,9 +272,24 @@ export default function SessionPage() {
     setSaving(false);
   }
 
+  function togglePause() {
+    if (!activeSession) return;
+    if (paused) {
+      localStorage.removeItem(`session_paused_${activeSession.id}`);
+      setPaused(false);
+      setPausedAt(null);
+    } else {
+      const now = new Date().toISOString();
+      localStorage.setItem(`session_paused_${activeSession.id}`, now);
+      setPaused(true);
+      setPausedAt(now);
+    }
+  }
+
   async function endSession() {
     if (!activeSession) return;
     setEnding(true);
+    localStorage.removeItem(`session_paused_${activeSession.id}`);
     await supabase
       .from("sessions")
       .update({ active: false, ended_at: new Date().toISOString() })
@@ -273,6 +297,8 @@ export default function SessionPage() {
     setActiveSession(null);
     setSelectedEmotion(null);
     setCheckedItems(new Set());
+    setPaused(false);
+    setPausedAt(null);
     setEnding(false);
   }
 
@@ -345,15 +371,40 @@ export default function SessionPage() {
                 </p>
               </div>
             </div>
-            <button
-              onClick={endSession}
-              disabled={ending}
-              className="px-5 py-2 bg-loss/10 border border-loss/30 text-loss rounded-lg text-sm font-medium hover:bg-loss/20 transition-colors disabled:opacity-50"
-            >
-              {ending ? "..." : t("session_end_button")}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={togglePause}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  paused
+                    ? "bg-profit/10 border border-profit/30 text-profit hover:bg-profit/20"
+                    : "bg-orange-500/10 border border-orange-500/30 text-orange-500 hover:bg-orange-500/20"
+                }`}
+              >
+                {paused ? t("session_resume") : t("session_pause")}
+              </button>
+              <button
+                onClick={endSession}
+                disabled={ending}
+                className="px-5 py-2 bg-loss/10 border border-loss/30 text-loss rounded-lg text-sm font-medium hover:bg-loss/20 transition-colors disabled:opacity-50"
+              >
+                {ending ? "..." : t("session_end_button")}
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* Paused banner */}
+        {paused && pausedAt && (
+          <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 flex items-center gap-3">
+            <span className="text-2xl">⏸️</span>
+            <div>
+              <p className="text-sm font-semibold text-orange-500">{t("session_paused")}</p>
+              <p className="text-xs text-muted">
+                {t("session_paused_at")} {new Date(pausedAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Section 2 — Strategy rules */}
         {strategy ? (

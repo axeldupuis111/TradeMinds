@@ -181,9 +181,9 @@ const translations: Record<Lang, Record<string, string>> = {
     trades_saving: "Sauvegarde…",
 
     // Strategy page
-    strategy_title: "Ma Stratégie",
+    strategy_title: "Mes Stratégies",
     strategy_subtitle:
-      "Décris ta stratégie et l'IA extraira tes règles automatiquement.",
+      "Décris tes stratégies et l'IA extraira tes règles automatiquement.",
     strategy_loading_sub: "Décris ta stratégie en langage naturel",
     strategy_name: "Nom de la stratégie",
     strategy_describe: "Décris ta stratégie en langage naturel",
@@ -215,6 +215,33 @@ const translations: Record<Lang, Record<string, string>> = {
     strategy_toast_success: "✅ Stratégie sauvegardée",
     strategy_toast_error: "❌ Erreur lors de la sauvegarde. Réessaie.",
     strategy_chars: "caractères",
+    strategy_new: "+ Nouvelle stratégie",
+    strategy_delete: "Supprimer",
+    strategy_delete_confirm: "Supprimer cette stratégie ? Cette action est irréversible.",
+    strategy_deleted: "Stratégie supprimée",
+    strategy_select: "Sélectionner une stratégie",
+
+    // Session pause
+    session_pause: "Pause",
+    session_resume: "Reprendre",
+    session_paused: "Session en pause",
+    session_paused_at: "En pause depuis",
+
+    // Analysis comparison
+    analysis_compare: "Comparer",
+    analysis_compare_title: "Comparaison d'analyses",
+    analysis_compare_select: "Sélectionne 2 analyses à comparer",
+    analysis_compare_score: "Score de discipline",
+    analysis_compare_violations: "Violations",
+    analysis_compare_strengths: "Points forts",
+    analysis_evolution: "Évolution",
+    analysis_improved: "amélioré",
+    analysis_declined: "décliné",
+
+    // Emotional trend
+    emotional_trend_title: "Tendance émotionnelle",
+    emotional_trend_subtitle: "Émotions vs performance sur les 30 derniers jours",
+    emotional_trend_no_data: "Pas assez de données émotionnelles",
 
     // Analysis page
     analysis_title: "Analyse IA",
@@ -1162,6 +1189,7 @@ const translations: Record<Lang, Record<string, string>> = {
     settings_notif_title: "Notifications",
     settings_notif_subtitle: "Gère tes préférences de notifications.",
     settings_notif_session: "Rappel de session quotidien",
+    settings_notif_email_session: "Recevoir un email de rappel quotidien",
     settings_danger_title: "Zone dangereuse",
     settings_danger_subtitle: "Ces actions sont irréversibles.",
     settings_delete_account: "Supprimer mon compte et toutes mes données",
@@ -1416,9 +1444,9 @@ const translations: Record<Lang, Record<string, string>> = {
     trades_save: "Save",
     trades_saving: "Saving…",
 
-    strategy_title: "My Strategy",
+    strategy_title: "My Strategies",
     strategy_subtitle:
-      "Describe your strategy and AI will automatically extract your rules.",
+      "Describe your strategies and AI will automatically extract your rules.",
     strategy_loading_sub: "Describe your strategy in plain language",
     strategy_name: "Strategy name",
     strategy_describe: "Describe your strategy in plain language",
@@ -1450,6 +1478,33 @@ const translations: Record<Lang, Record<string, string>> = {
     strategy_toast_success: "✅ Strategy saved",
     strategy_toast_error: "❌ Error saving. Please try again.",
     strategy_chars: "characters",
+    strategy_new: "+ New strategy",
+    strategy_delete: "Delete",
+    strategy_delete_confirm: "Delete this strategy? This action is irreversible.",
+    strategy_deleted: "Strategy deleted",
+    strategy_select: "Select a strategy",
+
+    // Session pause
+    session_pause: "Pause",
+    session_resume: "Resume",
+    session_paused: "Session paused",
+    session_paused_at: "Paused since",
+
+    // Analysis comparison
+    analysis_compare: "Compare",
+    analysis_compare_title: "Analysis comparison",
+    analysis_compare_select: "Select 2 analyses to compare",
+    analysis_compare_score: "Discipline score",
+    analysis_compare_violations: "Violations",
+    analysis_compare_strengths: "Strengths",
+    analysis_evolution: "Evolution",
+    analysis_improved: "improved",
+    analysis_declined: "declined",
+
+    // Emotional trend
+    emotional_trend_title: "Emotional trend",
+    emotional_trend_subtitle: "Emotions vs performance over the last 30 days",
+    emotional_trend_no_data: "Not enough emotional data",
 
     analysis_title: "AI Analysis",
     analysis_subtitle:
@@ -2386,6 +2441,7 @@ const translations: Record<Lang, Record<string, string>> = {
     settings_notif_title: "Notifications",
     settings_notif_subtitle: "Manage your notification preferences.",
     settings_notif_session: "Daily session reminder",
+    settings_notif_email_session: "Receive a daily reminder email",
     settings_danger_title: "Danger zone",
     settings_danger_subtitle: "These actions are irreversible.",
     settings_delete_account: "Delete my account and all my data",
@@ -2642,9 +2698,9 @@ const translations: Record<Lang, Record<string, string>> = {
     trades_save: "Speichern",
     trades_saving: "Speichere…",
 
-    strategy_title: "Meine Strategie",
+    strategy_title: "Meine Strategien",
     strategy_subtitle:
-      "Beschreibe deine Strategie und die KI extrahiert automatisch deine Regeln.",
+      "Beschreibe deine Strategien und die KI extrahiert automatisch deine Regeln.",
     strategy_loading_sub: "Beschreibe deine Strategie in natürlicher Sprache",
     strategy_name: "Name der Strategie",
     strategy_describe: "Beschreibe deine Strategie in natürlicher Sprache",
@@ -2676,6 +2732,30 @@ const translations: Record<Lang, Record<string, string>> = {
     strategy_toast_success: "✅ Strategie gespeichert",
     strategy_toast_error: "❌ Fehler beim Speichern. Bitte erneut versuchen.",
     strategy_chars: "Zeichen",
+    strategy_new: "+ Neue Strategie",
+    strategy_delete: "Löschen",
+    strategy_delete_confirm: "Diese Strategie löschen? Diese Aktion ist unwiderruflich.",
+    strategy_deleted: "Strategie gelöscht",
+    strategy_select: "Strategie auswählen",
+
+    session_pause: "Pause",
+    session_resume: "Fortsetzen",
+    session_paused: "Session pausiert",
+    session_paused_at: "Pausiert seit",
+
+    analysis_compare: "Vergleichen",
+    analysis_compare_title: "Analyse-Vergleich",
+    analysis_compare_select: "Wähle 2 Analysen zum Vergleichen",
+    analysis_compare_score: "Disziplin-Score",
+    analysis_compare_violations: "Verstöße",
+    analysis_compare_strengths: "Stärken",
+    analysis_evolution: "Entwicklung",
+    analysis_improved: "verbessert",
+    analysis_declined: "verschlechtert",
+
+    emotional_trend_title: "Emotionaler Trend",
+    emotional_trend_subtitle: "Emotionen vs Performance der letzten 30 Tage",
+    emotional_trend_no_data: "Nicht genug emotionale Daten",
 
     analysis_title: "KI-Analyse",
     analysis_subtitle:
@@ -3612,6 +3692,7 @@ const translations: Record<Lang, Record<string, string>> = {
     settings_notif_title: "Benachrichtigungen",
     settings_notif_subtitle: "Verwalte deine Benachrichtigungseinstellungen.",
     settings_notif_session: "Tägliche Sitzungserinnerung",
+    settings_notif_email_session: "Tägliche Erinnerungs-E-Mail erhalten",
     settings_danger_title: "Gefahrenzone",
     settings_danger_subtitle: "Diese Aktionen sind unwiderruflich.",
     settings_delete_account: "Mein Konto und alle Daten löschen",
@@ -3867,9 +3948,9 @@ const translations: Record<Lang, Record<string, string>> = {
     trades_save: "Guardar",
     trades_saving: "Guardando…",
 
-    strategy_title: "Mi Estrategia",
+    strategy_title: "Mis Estrategias",
     strategy_subtitle:
-      "Describe tu estrategia y la IA extraerá tus reglas automáticamente.",
+      "Describe tus estrategias y la IA extraerá tus reglas automáticamente.",
     strategy_loading_sub: "Describe tu estrategia en lenguaje natural",
     strategy_name: "Nombre de la estrategia",
     strategy_describe: "Describe tu estrategia en lenguaje natural",
@@ -3901,6 +3982,30 @@ const translations: Record<Lang, Record<string, string>> = {
     strategy_toast_success: "✅ Estrategia guardada",
     strategy_toast_error: "❌ Error al guardar. Inténtalo de nuevo.",
     strategy_chars: "caracteres",
+    strategy_new: "+ Nueva estrategia",
+    strategy_delete: "Eliminar",
+    strategy_delete_confirm: "¿Eliminar esta estrategia? Esta acción es irreversible.",
+    strategy_deleted: "Estrategia eliminada",
+    strategy_select: "Seleccionar una estrategia",
+
+    session_pause: "Pausa",
+    session_resume: "Reanudar",
+    session_paused: "Sesión en pausa",
+    session_paused_at: "En pausa desde",
+
+    analysis_compare: "Comparar",
+    analysis_compare_title: "Comparación de análisis",
+    analysis_compare_select: "Selecciona 2 análisis para comparar",
+    analysis_compare_score: "Puntuación de disciplina",
+    analysis_compare_violations: "Violaciones",
+    analysis_compare_strengths: "Fortalezas",
+    analysis_evolution: "Evolución",
+    analysis_improved: "mejorado",
+    analysis_declined: "empeorado",
+
+    emotional_trend_title: "Tendencia emocional",
+    emotional_trend_subtitle: "Emociones vs rendimiento de los últimos 30 días",
+    emotional_trend_no_data: "No hay suficientes datos emocionales",
 
     analysis_title: "Análisis IA",
     analysis_subtitle:
@@ -4837,6 +4942,7 @@ const translations: Record<Lang, Record<string, string>> = {
     settings_notif_title: "Notificaciones",
     settings_notif_subtitle: "Gestiona tus preferencias de notificaciones.",
     settings_notif_session: "Recordatorio de sesión diario",
+    settings_notif_email_session: "Recibir un email de recordatorio diario",
     settings_danger_title: "Zona peligrosa",
     settings_danger_subtitle: "Estas acciones son irreversibles.",
     settings_delete_account: "Eliminar mi cuenta y todos mis datos",
