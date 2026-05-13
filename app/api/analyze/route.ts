@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
+import { computeDisciplineScore, type Violation } from "@/lib/discipline-score";
 
 
 const LANG_NAMES: Record<string, string> = {
@@ -77,10 +78,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Limite à 80 trades les plus récents pour ne pas dépasser les limites
-    // de tokens de l'API Claude (les trades sont déjà triés par date croissante
-    // côté client, on prend les 80 derniers = les plus récents)
-    // TODO: optimiser avec un système d'analyse par période
     const recentTrades = trades.slice(-80);
 
     const sessionsText = strategy.sessions
@@ -92,7 +89,7 @@ export async function POST(request: Request) {
       : "Aucune règle définie";
 
     const tradesText = recentTrades
-      .map((t) => {
+      .map((t, idx) => {
         const net = t.pnl + (t.commission || 0) + (t.swap || 0);
         const ictParts = [];
         if (t.ict_setup) ictParts.push(`Setup:${t.ict_setup}`);
@@ -103,11 +100,11 @@ export async function POST(request: Request) {
         if (t.ict_confluence_score != null) ictParts.push(`Checklist:${t.ict_confluence_score}/7`);
         if (t.emotion) ictParts.push(`Émotion:${t.emotion}`);
         const ictStr = ictParts.length > 0 ? ` | ${ictParts.join(" | ")}` : "";
-        return `${t.open_time} | ${t.pair} | ${t.direction} | lot=${t.lot_size} | entrée=${t.entry_price} | sortie=${t.exit_price} | SL=${t.sl ?? "N/A"} | TP=${t.tp ?? "N/A"} | P&L net=${net.toFixed(2)}${ictStr}`;
+        return `[${idx}] ${t.open_time} | ${t.pair} | ${t.direction} | lot=${t.lot_size} | entrée=${t.entry_price} | sortie=${t.exit_price} | SL=${t.sl ?? "N/A"} | TP=${t.tp ?? "N/A"} | P&L net=${net.toFixed(2)}${ictStr}`;
       })
       .join("\n");
 
-    const prompt = `LANGUAGE RULE (ABSOLUTE, NON-NEGOTIABLE): Every single text value in your JSON response MUST be written in ${langName}. This includes violations, patterns, strengths, recommendations. Do NOT use any other language regardless of the language of the input data or labels below.
+    const prompt = `LANGUAGE RULE (ABSOLUTE, NON-NEGOTIABLE): Every single text value in your JSON response MUST be written in ${langName}. This includes all "explanation", "description", "strengths", and "recommendations" fields. Do NOT use any other language regardless of the language of the input data or labels below.
 
 STRATÉGIE DU TRADER :
 - Nom : ${strategy.name || "Non définie"}
@@ -121,24 +118,47 @@ STRATÉGIE DU TRADER :
 - Règles de setup :
 ${rulesText}
 
-TRADES À ANALYSER (${recentTrades.length} trades les plus récents sur ${trades.length} au total) :
+TRADES À ANALYSER (${recentTrades.length} trades les plus récents sur ${trades.length} au total, indexés [0] à [${recentTrades.length - 1}]) :
 ${tradesText}
 
-Analyse chaque trade et produis :
+MISSION : Analyse chaque trade par rapport à la stratégie définie ci-dessus et détecte les VIOLATIONS AVÉRÉES.
 
-1. SCORE DE DISCIPLINE (0-100) : pourcentage de trades conformes aux règles
-2. VIOLATIONS DÉTECTÉES : pour chaque trade non conforme, explique quelle règle a été violée (trade hors session, paire non autorisée, RR insuffisant, trop de trades dans la journée, perte journalière dépassée, etc.)
-3. PATTERNS COMPORTEMENTAUX : détecte le revenge trading (trade pris rapidement après une perte), l'overtrading, l'augmentation du lot après des pertes, le trading hors sessions
-4. POINTS FORTS : ce que le trader fait bien
-5. RECOMMANDATIONS : 3 conseils concrets et spécifiques basés sur les données
+RÈGLES D'ANALYSE :
+- Ne liste une violation que si elle est PROUVÉE par les données. Pas de suspicions.
+- Si une règle de la stratégie n'est pas définie (valeur "Non défini" ou "Toutes"), NE PAS vérifier cette règle.
+- Pour les patterns comportementaux (revenge trading, overtrading, etc.), base-toi sur des signaux objectifs : timing entre trades, augmentation de lot après perte, nombre de trades excessif.
+- "occurrences" = le nombre de fois où la pénalité s'applique. Pour les violations par trade (wrong_pair, wrong_session, low_rr, sl_too_wide, missing_sl, missing_tp, missing_setup_tag), c'est le nombre de trades concernés. Pour les violations par jour/événement (max_trades_day, max_daily_loss, consecutive_losses), c'est le nombre de jours/événements. Pour les patterns (revenge_trading, overtrading, lot_increase_after_loss, fomo), c'est 1 si détecté.
 
-Sois direct et sans complaisance. Utilise les données, pas des généralités.
+TYPES DE VIOLATIONS POSSIBLES :
+- category "strategy" :
+  * "wrong_pair" : trade sur une paire non autorisée
+  * "wrong_session" : trade hors session autorisée
+  * "low_rr" : Risk/Reward inférieur au minimum défini
+  * "sl_too_wide" : Stop Loss au-delà du maximum défini (en pips)
+  * "max_trades_day" : dépassement du nombre max de trades par jour
+  * "max_daily_loss" : dépassement de la perte max journalière
+  * "consecutive_losses" : continuation du trading après N pertes consécutives
+- category "behavior" :
+  * "revenge_trading" : trade pris rapidement après une perte significative, avec augmentation de risque ou sans setup clair
+  * "overtrading" : nombre de trades excessif par rapport aux règles ou au pattern normal du trader
+  * "lot_increase_after_loss" : augmentation notable de la taille de position après une ou plusieurs pertes
+  * "fomo" : entrée précipitée hors plan, sans setup identifié
+- category "execution" :
+  * "missing_sl" : trade sans Stop Loss défini
+  * "missing_tp" : trade sans Take Profit défini
+  * "missing_setup_tag" : trade sans tag de setup identifié
+
 Formate ta réponse en JSON avec cette structure exacte (pas de texte avant ou après le JSON) :
 {
-  "discipline_score": number,
-  "total_trades": number,
-  "conforming_trades": number,
-  "violations": [{"trade_date": "string", "pair": "string", "rule_violated": "string", "explanation": "string"}],
+  "violations": [
+    {
+      "category": "strategy" | "behavior" | "execution",
+      "type": "<type from list above>",
+      "trade_ids": [0, 3, 7],
+      "occurrences": 3,
+      "explanation": "short explanation for the user"
+    }
+  ],
   "patterns": [{"type": "string", "description": "string", "severity": "high" | "medium" | "low"}],
   "strengths": ["string"],
   "recommendations": ["string"]
@@ -147,11 +167,13 @@ Formate ta réponse en JSON avec cette structure exacte (pas de texte avant ou a
     const message = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 8000,
-      system: `IMPORTANT: Tu dois répondre UNIQUEMENT en ${langName}. Tous les textes des champs violations, patterns, strengths, recommendations doivent être rédigés en ${langName}. N'utilise aucune autre langue, quelle que soit la langue des données reçues.
+      system: `IMPORTANT: Tu dois répondre UNIQUEMENT en ${langName}. Tous les textes des champs explanation, description, strengths, recommendations doivent être rédigés en ${langName}. N'utilise aucune autre langue, quelle que soit la langue des données reçues.
 
 Tu es un coach de trading expert. Tu maîtrises toutes les méthodologies de trading (ICT/SMC, Price Action, analyse technique classique, etc.). Tu adaptes ton analyse à la stratégie définie par l'utilisateur ci-dessous.
 
 Quand tu analyses des trades avec des tags de stratégie (ict_setup, ict_entry_zone, ict_killzone), utilise la terminologie correspondant à la stratégie de l'utilisateur dans ton analyse.
+
+Tu es STRICT mais JUSTE : ne signale une violation que si elle est clairement prouvée par les données. Ne déduis pas, ne suppose pas.
 
 RÈGLE ABSOLUE : Tu tutoies toujours l'utilisateur. N'utilise jamais "vous" ou "votre" — utilise uniquement "tu" et "ton/ta/tes".`,
       messages: [{ role: "user", content: prompt }],
@@ -165,17 +187,13 @@ RÈGLE ABSOLUE : Tu tutoies toujours l'utilisateur. N'utilise jamais "vous" ou "
       );
     }
 
-    // Extract JSON from response (handle markdown code blocks)
     let jsonStr = textBlock.text.trim();
-    // Remove ```json ... ``` wrapper if present
     jsonStr = jsonStr.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "").trim();
-    // Fallback: extract first { ... } block
     if (!jsonStr.startsWith("{")) {
       const match = jsonStr.match(/\{[\s\S]*\}/);
       if (match) jsonStr = match[0].trim();
     }
 
-    // Vérifie que le JSON n'est pas tronqué
     if (!jsonStr.startsWith("{") || !jsonStr.endsWith("}")) {
       console.error("Réponse Claude tronquée — début:", jsonStr.substring(0, 100), "— fin:", jsonStr.substring(jsonStr.length - 100));
       return NextResponse.json(
@@ -184,7 +202,28 @@ RÈGLE ABSOLUE : Tu tutoies toujours l'utilisateur. N'utilise jamais "vous" ou "
       );
     }
 
-    const analysis = JSON.parse(jsonStr);
+    const aiResult = JSON.parse(jsonStr);
+
+    const violations: Violation[] = (aiResult.violations || []).map((v: Violation) => ({
+      category: v.category,
+      type: v.type,
+      trade_ids: v.trade_ids || [],
+      occurrences: v.occurrences || 1,
+      explanation: v.explanation || "",
+    }));
+
+    const disciplineResult = computeDisciplineScore(violations, recentTrades.length);
+
+    const analysis = {
+      discipline_score: disciplineResult.score,
+      total_trades: recentTrades.length,
+      violations: aiResult.violations || [],
+      patterns: aiResult.patterns || [],
+      strengths: aiResult.strengths || [],
+      recommendations: aiResult.recommendations || [],
+      score_breakdown: disciplineResult.breakdown,
+    };
+
     return NextResponse.json(analysis);
   } catch (err: unknown) {
     console.error("Analyze full error:", err);
@@ -193,7 +232,6 @@ RÈGLE ABSOLUE : Tu tutoies toujours l'utilisateur. N'utilise jamais "vous" ou "
       console.error("Analyze error message:", err.message);
       console.error("Analyze error stack:", err.stack);
     }
-    // Log Anthropic API specific error fields
     const apiErr = err as Record<string, unknown>;
     if (apiErr?.status) console.error("Analyze API status:", apiErr.status);
     if (apiErr?.error) console.error("Analyze API error body:", JSON.stringify(apiErr.error));
