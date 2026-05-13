@@ -122,7 +122,7 @@ export default function PublicProfileView({
           </div>
           <div className="bg-card border border-border rounded-xl p-5">
             <p className="text-xs text-muted">Discipline</p>
-            <p className={`text-2xl font-bold mt-1 ${stats.avgScore >= 75 ? "text-profit" : stats.avgScore >= 50 ? "text-orange-400" : "text-loss"}`}>
+            <p className={`text-2xl font-bold mt-1 ${stats.avgScore >= 90 ? "text-profit" : stats.avgScore >= 75 ? "text-green-400" : stats.avgScore >= 60 ? "text-yellow-400" : stats.avgScore >= 40 ? "text-orange-400" : "text-loss"}`}>
               {stats.avgScore.toFixed(0)}/100
             </p>
           </div>
