@@ -1,6 +1,6 @@
 "use client";
 
-import { ICT_EMOTIONS, ICT_TIMEFRAMES, detectKillzone } from "@/lib/ict-constants";
+import { ICT_EMOTIONS, detectKillzone } from "@/lib/ict-constants";
 import { useStrategyTags } from "@/lib/hooks/useStrategyTags";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
@@ -73,7 +73,6 @@ const EMOTION_LABEL_KEYS: Record<string, string> = {
   neutral: "emotion_neutral",
 };
 
-const TAG_SUGGESTIONS = ["Breakout", "Pullback", "Reversal", "Scalp", "Swing", "News", "Contre-tendance"];
 
 function IctAccordion({ defaultOpen, label, children }: { defaultOpen: boolean; label: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -124,7 +123,6 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
   const [emotion, setEmotion] = useState<string | null>(trade.emotion);
   const [quality, setQuality] = useState<number | null>(trade.setup_quality);
   const [tags, setTags] = useState<string[]>(trade.tags || []);
-  const [tagInput, setTagInput] = useState("");
   const [notes, setNotes] = useState(trade.notes || "");
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -139,10 +137,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
 
   // ICT state
   const [ictSetup, setIctSetup] = useState<string>(trade.ict_setup || "");
-  const [ictEntryZone, setIctEntryZone] = useState<string>(trade.ict_entry_zone || "");
-  const [ictLiquidityTarget, setIctLiquidityTarget] = useState<string>(trade.ict_liquidity_target || "");
   const [ictKillzone, setIctKillzone] = useState<string>(trade.ict_killzone || "");
-  const [ictTimeframe, setIctTimeframe] = useState<string>(trade.ict_timeframe || "");
   const [ictChecklist, setIctChecklist] = useState<Record<string, boolean>>(trade.ict_checklist || {});
   const [killzoneAutoDetected, setKillzoneAutoDetected] = useState(false);
   const [savedField, setSavedField] = useState<string | null>(null);
@@ -166,10 +161,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
       setScreenshotUrl(null);
     }
     setIctSetup(trade.ict_setup || "");
-    setIctEntryZone(trade.ict_entry_zone || "");
-    setIctLiquidityTarget(trade.ict_liquidity_target || "");
     setIctChecklist(trade.ict_checklist || {});
-    setIctTimeframe(trade.ict_timeframe || "");
     setKillzoneAutoDetected(false);
 
     setChallengeId(trade.challenge_id || null);
@@ -262,10 +254,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
   }
 
   function handleIctSetup(value: string) { setIctSetup(value); saveIctField("ict_setup", value); }
-  function handleIctEntryZone(value: string) { setIctEntryZone(value); saveIctField("ict_entry_zone", value); }
-  function handleIctLiquidityTarget(value: string) { setIctLiquidityTarget(value); saveIctField("ict_liquidity_target", value); }
   function handleIctKillzone(value: string) { setIctKillzone(value); setKillzoneAutoDetected(false); saveIctField("ict_killzone", value); }
-  function handleIctTimeframe(value: string) { setIctTimeframe(value); saveIctField("ict_timeframe", value); }
 
   function handleIctChecklist(key: string, checked: boolean) {
     const updated = { ...ictChecklist, [key]: checked };
@@ -273,22 +262,6 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
     saveIctField("ict_checklist", updated);
   }
 
-  function addTag(tag: string) {
-    const trimmed = tag.trim();
-    if (trimmed && !tags.includes(trimmed)) setTags([...tags, trimmed]);
-    setTagInput("");
-  }
-
-  function removeTag(tag: string) {
-    setTags(tags.filter((t) => t !== tag));
-  }
-
-  function handleTagKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter" || e.key === ",") {
-      e.preventDefault();
-      addTag(tagInput);
-    }
-  }
 
   async function handleScreenshotUpload(file: File) {
     setUploading(true);
@@ -331,15 +304,10 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
     }
   }, [emotion, quality, tags, notes, screenshotUrl, trade.id, supabase, onSaved]);
 
-  const filteredSuggestions = TAG_SUGGESTIONS.filter(
-    (s) => !tags.includes(s) && s.toLowerCase().includes(tagInput.toLowerCase())
-  );
-
   const checklistItems = stratTags.checklist;
   const checkedCount = checklistItems.filter((i) => ictChecklist[i.key]).length;
   const checklistTotal = checklistItems.length || 7;
 
-  const sectionTitle = stratTags.isDefault ? t("ict_analysis_section") : t("trade_analysis_section");
   const selectClass = "w-full px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent";
 
   return (
