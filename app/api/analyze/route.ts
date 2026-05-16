@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { computeDisciplineScore, type Violation } from "@/lib/discipline-score";
+import { calculatePips, getTradeResult } from "@/lib/pips";
 
 
 const LANG_NAMES: Record<string, string> = {
@@ -92,7 +93,16 @@ export async function POST(request: Request) {
 
     const tradesText = recentTrades
       .map((t, idx) => {
-        const net = t.pnl + (t.commission || 0) + (t.swap || 0);
+        const pnlNet = t.pnl + (t.commission || 0) + (t.swap || 0);
+        const riskPips = t.sl != null ? calculatePips(t.pair, t.entry_price, t.sl) : null;
+        const rewardPips = t.tp != null ? calculatePips(t.pair, t.entry_price, t.tp) : null;
+        const realizedPips = calculatePips(t.pair, t.entry_price, t.exit_price);
+        const rrPlanned = riskPips && rewardPips ? Math.round((rewardPips / riskPips) * 100) / 100 : null;
+        const result = getTradeResult(pnlNet);
+        const pipsDirection = t.exit_price > t.entry_price
+          ? (t.direction.toLowerCase() === "buy" ? "gain" : "perte")
+          : (t.direction.toLowerCase() === "buy" ? "perte" : "gain");
+
         const ictParts = [];
         if (t.ict_setup) ictParts.push(`Setup:${t.ict_setup}`);
         if (t.ict_entry_zone) ictParts.push(`Zone:${t.ict_entry_zone}`);
@@ -101,10 +111,14 @@ export async function POST(request: Request) {
         if (t.ict_timeframe) ictParts.push(`TF:${t.ict_timeframe}`);
         if (t.ict_confluence_score != null) ictParts.push(`Checklist:${t.ict_confluence_score}/7`);
         if (t.emotion) ictParts.push(`Émotion:${t.emotion}`);
-        const ictStr = ictParts.length > 0 ? ` | ${ictParts.join(" | ")}` : "";
-        return `[${idx}] ${t.open_time} | ${t.pair} | ${t.direction} | lot=${t.lot_size} | entrée=${t.entry_price} | sortie=${t.exit_price} | SL=${t.sl ?? "N/A"} | TP=${t.tp ?? "N/A"} | P&L net=${net.toFixed(2)}${ictStr}`;
+        const ictStr = ictParts.length > 0 ? `\n  ${ictParts.join(" | ")}` : "";
+
+        return `[${idx}] ${t.open_time} | ${t.pair} | ${t.direction} | Lot:${t.lot_size}
+  Entry:${t.entry_price} | SL:${t.sl ?? "non renseigné"} | TP:${t.tp ?? "non renseigné"} | Close:${t.exit_price}
+  Risque: ${riskPips != null ? `${riskPips} pips` : "non renseigné"} | Reward planifié: ${rewardPips != null ? `${rewardPips} pips` : "non renseigné"} | RR planifié: ${rrPlanned != null ? `1:${rrPlanned}` : "non renseigné"}
+  Pips réalisés: ${realizedPips} (${pipsDirection}) | Résultat: ${result.toUpperCase()} | P&L net: ${pnlNet.toFixed(2)}${ictStr}`;
       })
-      .join("\n");
+      .join("\n\n");
 
     const periodInfo = periodLabel ? `Période analysée : ${periodLabel} — ${recentTrades.length} trades.\n\n` : "";
 
@@ -121,6 +135,12 @@ ${periodInfo}STRATÉGIE DU TRADER :
 - Trades perdants consécutifs avant stop : ${strategy.max_consecutive_losses ?? "Non défini"}
 - Règles de setup :
 ${rulesText}
+
+RÈGLES D'INTERPRÉTATION (IMPORTANT) :
+- Toutes les métriques (pips, RR, résultat) ont été précalculées côté serveur. NE LES RECALCULE PAS, utilise-les telles quelles.
+- Un trade BREAK-EVEN (résultat BREAKEVEN) n'est ni un win ni un loss. Ne félicite pas l'utilisateur sur la "gestion du risque" si le trade est BE par chance — analyse si le BE était volontaire (sortie manuelle, SL déplacé) ou subi.
+- Le nombre de pips dépend de l'actif et a déjà été normalisé. Un risque de 4 pips sur XAUUSD est strict, pas faible.
+- Quand tu mentionnes une distance en pips, utilise toujours la valeur fournie, jamais une valeur recalculée depuis les prix bruts.
 
 TRADES À ANALYSER (${recentTrades.length} trades, indexés [0] à [${recentTrades.length - 1}]) :
 ${tradesText}
