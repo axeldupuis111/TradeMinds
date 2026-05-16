@@ -56,6 +56,8 @@ interface SavedReview {
   conforming_trades?: number;
   analysis: Analysis;
   score_breakdown?: CategoryBreakdown[];
+  period?: string;
+  period_label?: string;
 }
 
 const severityColors: Record<string, { bg: string; text: string; labelKey: string }> = {
@@ -187,6 +189,61 @@ function ScoreBreakdownCard({ breakdown, score, t, className }: { breakdown: Cat
   );
 }
 
+type PeriodKey = "today" | "yesterday" | "this_week" | "this_month" | "last_7_days" | "last_30_days" | "all";
+
+const PERIOD_OPTIONS: { key: PeriodKey; labelKey: string }[] = [
+  { key: "today", labelKey: "period_today" },
+  { key: "yesterday", labelKey: "period_yesterday" },
+  { key: "this_week", labelKey: "period_this_week" },
+  { key: "this_month", labelKey: "period_this_month" },
+  { key: "last_7_days", labelKey: "period_last_7_days" },
+  { key: "last_30_days", labelKey: "period_last_30_days" },
+  { key: "all", labelKey: "period_all" },
+];
+
+function getFilteredTrades(trades: { close_time: string }[], period: PeriodKey) {
+  if (period === "all") return trades;
+  const now = new Date();
+  let start: Date;
+  let end: Date | null = null;
+
+  switch (period) {
+    case "today":
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      break;
+    case "yesterday": {
+      const y = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+      start = y;
+      end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      break;
+    }
+    case "this_week": {
+      const day = now.getDay();
+      const diff = day === 0 ? 6 : day - 1;
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diff);
+      break;
+    }
+    case "this_month":
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      break;
+    case "last_7_days":
+      start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case "last_30_days":
+      start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      break;
+    default:
+      return trades;
+  }
+
+  return trades.filter((t) => {
+    const d = new Date(t.close_time);
+    if (d < start) return false;
+    if (end && d >= end) return false;
+    return true;
+  });
+}
+
 export default function AnalysisPage() {
   const { t, lang } = useLanguage();
   const { canUseAI, aiRemaining, plan, incrementAIUsage, loading: planLoading } = usePlan();
@@ -202,6 +259,8 @@ export default function AnalysisPage() {
   const [viewingHistory, setViewingHistory] = useState<string | null>(null);
   const [compareMode, setCompareMode] = useState(false);
   const [compareSelection, setCompareSelection] = useState<string[]>([]);
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodKey>("this_week");
+  const [allTrades, setAllTrades] = useState<{ close_time: string }[]>([]);
 
   // Chat coach state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -414,7 +473,7 @@ export default function AnalysisPage() {
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    const [{ count }, { data: strat }] = await Promise.all([
+    const [{ count }, { data: strat }, { data: trades }] = await Promise.all([
       supabase
         .from("trades")
         .select("*", { count: "exact", head: true })
@@ -425,10 +484,16 @@ export default function AnalysisPage() {
         .eq("user_id", user.id)
         .limit(1)
         .maybeSingle(),
+      supabase
+        .from("trades")
+        .select("close_time")
+        .eq("user_id", user.id)
+        .order("close_time", { ascending: true }),
     ]);
 
     setTradeCount(count || 0);
     setHasStrategy(!!strat);
+    setAllTrades(trades || []);
   }
 
   async function loadHistory() {
@@ -451,6 +516,9 @@ export default function AnalysisPage() {
     setHistory(data || []);
     setHistoryLoading(false);
   }
+
+  const filteredTradeCount = getFilteredTrades(allTrades, selectedPeriod).length;
+  const periodLabel = t(PERIOD_OPTIONS.find((p) => p.key === selectedPeriod)!.labelKey);
 
   async function runAnalysis() {
     setError(null);
@@ -482,10 +550,19 @@ export default function AnalysisPage() {
       if (!strategy) throw new Error("Aucune stratégie définie.");
       if (!trades || trades.length === 0) throw new Error("Aucun trade à analyser.");
 
+      const filteredTrades = getFilteredTrades(trades, selectedPeriod);
+      if (filteredTrades.length === 0) throw new Error(t("period_no_trades"));
+
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ strategy, trades, language: lang }),
+        body: JSON.stringify({
+          strategy,
+          trades: filteredTrades,
+          language: lang,
+          period: selectedPeriod,
+          periodLabel,
+        }),
       });
 
       const data = await res.json();
@@ -503,6 +580,8 @@ export default function AnalysisPage() {
           conforming_trades: data.total_trades - (data.violations?.length || 0),
           analysis: data,
           score_breakdown: data.score_breakdown || null,
+          period: selectedPeriod,
+          period_label: periodLabel,
         });
         if (!saveErr) {
           setSaveMessage(t("analysis_saved"));
@@ -867,19 +946,38 @@ export default function AnalysisPage() {
               {plan === "free" ? t("plan_ai_limit_reached_weekly") : t("plan_ai_limit_reached")}
             </p>
           )}
+          {/* Period selector */}
+          <div className="flex items-center gap-3 flex-wrap mb-3">
+            <select
+              value={selectedPeriod}
+              onChange={(e) => setSelectedPeriod(e.target.value as PeriodKey)}
+              className="px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
+            >
+              {PERIOD_OPTIONS.map((opt) => (
+                <option key={opt.key} value={opt.key}>{t(opt.labelKey)}</option>
+              ))}
+            </select>
+            <span className={`text-sm ${filteredTradeCount === 0 ? "text-muted" : "text-foreground"}`}>
+              {filteredTradeCount === 0
+                ? t("period_no_trades")
+                : filteredTradeCount === 1
+                  ? t("period_trades_count_one")
+                  : t("period_trades_count").replace("{n}", String(filteredTradeCount))}
+            </span>
+          </div>
           <div className="flex items-center gap-3 flex-wrap">
             <button
-              onClick={runAnalysis}
-              disabled={loading || !hasStrategy || tradeCount === 0 || aiLimitReached}
+              onClick={() => {
+                if (selectedPeriod === "all" && filteredTradeCount > 200) {
+                  alert(t("period_warning_large").replace("{n}", String(filteredTradeCount)));
+                }
+                runAnalysis();
+              }}
+              disabled={loading || !hasStrategy || tradeCount === 0 || filteredTradeCount === 0 || aiLimitReached}
               className={`px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50 btn-scale ${aiLimitReached ? "cursor-not-allowed pointer-events-none" : ""}`}
             >
               {loading ? t("analysis_running") : aiLimitReached ? t("analysis_run_limit") : t("analysis_run")}
             </button>
-            {tradeCount > 0 && (
-              <span className="text-muted text-sm">
-                {tradeCount} {tradeCount === 1 ? t("analysis_trade_count_one") : t("analysis_trades_count")}
-              </span>
-            )}
             {aiRemaining !== null && !aiLimitReached && aiRemaining > 0 && (
               <span className="text-muted text-sm">
                 ({aiRemaining} {plan === "free"
@@ -1354,6 +1452,7 @@ export default function AnalysisPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-foreground text-xs font-medium">
                         {new Date(r.created_at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
+                        {r.period_label && <span className="text-muted font-normal"> — {r.period_label}</span>}
                       </p>
                       <p className="text-muted text-[11px]">
                         {r.total_trades} trades
@@ -1468,6 +1567,7 @@ export default function AnalysisPage() {
                 <div>
                   <p className="text-foreground text-sm font-medium">
                     {new Date(r.created_at).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}
+                    {r.period_label && <span className="text-muted font-normal"> — {r.period_label}</span>}
                   </p>
                   <p className="text-muted text-sm">{r.conforming_trades}/{r.total_trades} trades</p>
                 </div>

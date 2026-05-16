@@ -12,6 +12,8 @@ const LANG_NAMES: Record<string, string> = {
 
 interface AnalyzeRequest {
   language?: string;
+  period?: string;
+  periodLabel?: string;
   strategy: {
     name: string;
     pairs: string[];
@@ -68,7 +70,7 @@ export async function POST(request: Request) {
     const client = new Anthropic({ apiKey });
 
     const body: AnalyzeRequest = await request.json();
-    const { strategy, trades, language = "fr" } = body;
+    const { strategy, trades, language = "fr", periodLabel } = body;
     const langName = LANG_NAMES[language] ?? "français";
 
     if (!trades || trades.length === 0) {
@@ -78,7 +80,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const recentTrades = trades.slice(-80);
+    const recentTrades = trades;
 
     const sessionsText = strategy.sessions
       .map((s) => SESSION_MAP[s] || s)
@@ -104,9 +106,11 @@ export async function POST(request: Request) {
       })
       .join("\n");
 
+    const periodInfo = periodLabel ? `Période analysée : ${periodLabel} — ${recentTrades.length} trades.\n\n` : "";
+
     const prompt = `LANGUAGE RULE (ABSOLUTE, NON-NEGOTIABLE): Every single text value in your JSON response MUST be written in ${langName}. This includes all "explanation", "description", "strengths", and "recommendations" fields. Do NOT use any other language regardless of the language of the input data or labels below.
 
-STRATÉGIE DU TRADER :
+${periodInfo}STRATÉGIE DU TRADER :
 - Nom : ${strategy.name || "Non définie"}
 - Paires autorisées : ${strategy.pairs.length > 0 ? strategy.pairs.join(", ") : "Toutes"}
 - Sessions autorisées : ${sessionsText || "Toutes"}
@@ -118,7 +122,7 @@ STRATÉGIE DU TRADER :
 - Règles de setup :
 ${rulesText}
 
-TRADES À ANALYSER (${recentTrades.length} trades les plus récents sur ${trades.length} au total, indexés [0] à [${recentTrades.length - 1}]) :
+TRADES À ANALYSER (${recentTrades.length} trades, indexés [0] à [${recentTrades.length - 1}]) :
 ${tradesText}
 
 MISSION : Analyse chaque trade par rapport à la stratégie définie ci-dessus et détecte les VIOLATIONS AVÉRÉES.
