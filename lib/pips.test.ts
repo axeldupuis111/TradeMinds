@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { calculatePips, detectAssetType, getPipValue, getTradeResult } from "./pips";
+import { calculatePips, detectAssetType, getTradeResult } from "./pips";
 
 describe("detectAssetType", () => {
   it("detects XAUUSD variants", () => {
