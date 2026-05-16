@@ -36,6 +36,8 @@ interface AnalyzeRequest {
     exit_price: number;
     sl: number | null;
     tp: number | null;
+    sl_initial?: number | null;
+    tp_initial?: number | null;
     pnl: number;
     commission: number | null;
     swap: number | null;
@@ -94,11 +96,15 @@ export async function POST(request: Request) {
     const tradesText = recentTrades
       .map((t, idx) => {
         const pnlNet = t.pnl + (t.commission || 0) + (t.swap || 0);
-        const riskPips = t.sl != null ? calculatePips(t.pair, t.entry_price, t.sl) : null;
-        const rewardPips = t.tp != null ? calculatePips(t.pair, t.entry_price, t.tp) : null;
+        const effectiveSL = t.sl_initial ?? t.sl;
+        const effectiveTP = t.tp_initial ?? t.tp;
+        const riskPips = effectiveSL != null ? calculatePips(t.pair, t.entry_price, effectiveSL) : null;
+        const rewardPips = effectiveTP != null ? calculatePips(t.pair, t.entry_price, effectiveTP) : null;
         const realizedPips = calculatePips(t.pair, t.entry_price, t.exit_price);
         const rrPlanned = riskPips && rewardPips ? Math.round((rewardPips / riskPips) * 100) / 100 : null;
         const result = getTradeResult(pnlNet);
+        const slWasModified = t.sl_initial != null && t.sl_initial !== t.sl;
+        const tpWasModified = t.tp_initial != null && t.tp_initial !== t.tp;
         const pipsDirection = t.exit_price > t.entry_price
           ? (t.direction.toLowerCase() === "buy" ? "gain" : "perte")
           : (t.direction.toLowerCase() === "buy" ? "perte" : "gain");
@@ -113,8 +119,11 @@ export async function POST(request: Request) {
         if (t.emotion) ictParts.push(`Émotion:${t.emotion}`);
         const ictStr = ictParts.length > 0 ? `\n  ${ictParts.join(" | ")}` : "";
 
+        const slNote = slWasModified ? ` [SL initial: ${t.sl_initial}, SL final CSV: ${t.sl}]` : "";
+        const tpNote = tpWasModified ? ` [TP initial: ${t.tp_initial}, TP final CSV: ${t.tp}]` : "";
+
         return `[${idx}] ${t.open_time} | ${t.pair} | ${t.direction} | Lot:${t.lot_size}
-  Entry:${t.entry_price} | SL:${t.sl ?? "non renseigné"} | TP:${t.tp ?? "non renseigné"} | Close:${t.exit_price}
+  Entry:${t.entry_price} | SL:${effectiveSL ?? "non renseigné"}${slNote} | TP:${effectiveTP ?? "non renseigné"}${tpNote} | Close:${t.exit_price}
   Risque: ${riskPips != null ? `${riskPips} pips` : "non renseigné"} | Reward planifié: ${rewardPips != null ? `${rewardPips} pips` : "non renseigné"} | RR planifié: ${rrPlanned != null ? `1:${rrPlanned}` : "non renseigné"}
   Pips réalisés: ${realizedPips} (${pipsDirection}) | Résultat: ${result.toUpperCase()} | P&L net: ${pnlNet.toFixed(2)}${ictStr}`;
       })
@@ -141,6 +150,24 @@ RÈGLES D'INTERPRÉTATION (IMPORTANT) :
 - Un trade BREAK-EVEN (résultat BREAKEVEN) n'est ni un win ni un loss. Ne félicite pas l'utilisateur sur la "gestion du risque" si le trade est BE par chance — analyse si le BE était volontaire (sortie manuelle, SL déplacé) ou subi.
 - Le nombre de pips dépend de l'actif et a déjà été normalisé. Un risque de 4 pips sur XAUUSD est strict, pas faible.
 - Quand tu mentionnes une distance en pips, utilise toujours la valeur fournie, jamais une valeur recalculée depuis les prix bruts.
+
+GESTION DU SL/TP DÉPLACÉ :
+Pour chaque trade, deux scénarios sont possibles :
+
+Cas 1 — "[SL initial: X, SL final CSV: Y]" est affiché :
+  Le trader a explicitement indiqué son SL initial à l'ouverture.
+  → Utilise le SL initial (valeur affichée dans "Risque:") pour évaluer le risque.
+  → Si SL initial != SL final, le SL a été déplacé pendant le trade.
+  → Analyse : sécurisation au BE = bonne gestion, élargissement du SL = mauvaise gestion.
+
+Cas 2 — Pas d'annotation "[SL initial...]" :
+  Le trader n'a pas précisé son SL initial. Deux sous-cas :
+  a) Si le SL est proche ou égal au prix d'entrée (distance < 5% de la distance entry-TP) :
+     → Le SL est probablement déplacé au BE après ouverture.
+     → NE FÉLICITE PAS l'utilisateur pour un "excellent risk management" sur ce trade.
+     → Mentionne : "Le SL semble avoir été déplacé au break-even. Je ne peux pas évaluer le risque initial. Renseigne le SL initial dans la fiche du trade pour une analyse plus précise."
+  b) Si le SL est à une distance significative de l'entrée :
+     → Analyse normalement.
 
 TRADES À ANALYSER (${recentTrades.length} trades, indexés [0] à [${recentTrades.length - 1}]) :
 ${tradesText}

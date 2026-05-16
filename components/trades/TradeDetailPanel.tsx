@@ -20,6 +20,8 @@ export interface TradeDetail {
   exit_price: number;
   sl: number | null;
   tp: number | null;
+  sl_initial: number | null;
+  tp_initial: number | null;
   pnl: number;
   commission: number | null;
   swap: number | null;
@@ -106,6 +108,10 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
   const [accounts, setAccounts] = useState<AccountOption[]>([]);
   const [challengeId, setChallengeId] = useState<string | null>(trade.challenge_id || null);
 
+  // Initial SL/TP state
+  const [slInitial, setSlInitial] = useState<string>(trade.sl_initial != null ? String(trade.sl_initial) : "");
+  const [tpInitial, setTpInitial] = useState<string>(trade.tp_initial != null ? String(trade.tp_initial) : "");
+
   // ICT state
   const [ictSetup, setIctSetup] = useState<string>(trade.ict_setup || "");
   const [ictEntryZone, setIctEntryZone] = useState<string>(trade.ict_entry_zone || "");
@@ -124,6 +130,8 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
     setTags(trade.tags || []);
     setNotes(trade.notes || "");
     setSaved(false);
+    setSlInitial(trade.sl_initial != null ? String(trade.sl_initial) : "");
+    setTpInitial(trade.tp_initial != null ? String(trade.tp_initial) : "");
     if (trade.screenshot_path) {
       screenshotPathRef.current = trade.screenshot_path;
       supabase.storage.from("trade-screenshots").createSignedUrl(trade.screenshot_path, 3600)
@@ -204,6 +212,28 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
     await supabase.from("trades").update({ challenge_id: newId }).eq("id", trade.id);
     showSavedIndicator("challenge_id");
     onSaved();
+  }
+
+  function handleSlInitial(value: string) {
+    setSlInitial(value);
+    if (debounceRefs.current["sl_initial"]) clearTimeout(debounceRefs.current["sl_initial"]);
+    debounceRefs.current["sl_initial"] = setTimeout(async () => {
+      const dbValue = value.trim() === "" ? null : parseFloat(value);
+      await supabase.from("trades").update({ sl_initial: dbValue }).eq("id", trade.id);
+      showSavedIndicator("sl_initial");
+      onSaved();
+    }, 500);
+  }
+
+  function handleTpInitial(value: string) {
+    setTpInitial(value);
+    if (debounceRefs.current["tp_initial"]) clearTimeout(debounceRefs.current["tp_initial"]);
+    debounceRefs.current["tp_initial"] = setTimeout(async () => {
+      const dbValue = value.trim() === "" ? null : parseFloat(value);
+      await supabase.from("trades").update({ tp_initial: dbValue }).eq("id", trade.id);
+      showSavedIndicator("tp_initial");
+      onSaved();
+    }, 500);
   }
 
   function handleIctSetup(value: string) { setIctSetup(value); saveIctField("ict_setup", value); }
@@ -347,6 +377,42 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
               </select>
             </div>
           )}
+
+          {/* Initial SL/TP section */}
+          <div className="border border-border rounded-lg p-4 space-y-3">
+            <p className="text-sm font-medium text-foreground">{t("initial_values_title")}</p>
+            <p className="text-xs text-muted">{t("initial_values_help")}</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-muted mb-1">
+                  {t("sl_initial_label")}
+                  <SavedIndicator visible={savedField === "sl_initial"} />
+                </label>
+                <input
+                  type="number"
+                  step="0.00001"
+                  value={slInitial}
+                  onChange={(e) => handleSlInitial(e.target.value)}
+                  placeholder={trade.sl != null ? `${t("initial_current")}: ${trade.sl}` : "—"}
+                  className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-muted mb-1">
+                  {t("tp_initial_label")}
+                  <SavedIndicator visible={savedField === "tp_initial"} />
+                </label>
+                <input
+                  type="number"
+                  step="0.00001"
+                  value={tpInitial}
+                  onChange={(e) => handleTpInitial(e.target.value)}
+                  placeholder={trade.tp != null ? `${t("initial_current")}: ${trade.tp}` : "—"}
+                  className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
+                />
+              </div>
+            </div>
+          </div>
 
           {/* Analysis section — gated by plan + strategy */}
           {isFree ? (

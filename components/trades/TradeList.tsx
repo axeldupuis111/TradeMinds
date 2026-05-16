@@ -16,6 +16,8 @@ interface Trade {
   exit_price: number;
   sl: number | null;
   tp: number | null;
+  sl_initial: number | null;
+  tp_initial: number | null;
   pnl: number;
   commission: number | null;
   swap: number | null;
@@ -538,8 +540,18 @@ export default function TradeList({ refreshKey }: Props) {
                       <td className="px-3 py-2 text-foreground">{tr.lot_size}</td>
                       <td className="px-3 py-2 text-foreground">{tr.entry_price}</td>
                       <td className="px-3 py-2 text-foreground">{tr.exit_price}</td>
-                      <td className="px-3 py-2 text-muted">{tr.sl ?? "—"}</td>
-                      <td className="px-3 py-2 text-muted">{tr.tp ?? "—"}</td>
+                      <td className="px-3 py-2 text-muted">
+                        {tr.sl ?? "—"}
+                        {tr.sl_initial != null && (
+                          <span className="ml-1 inline-block w-2 h-2 rounded-full bg-accent/60" title={`${t("sl_initial_set")}: ${tr.sl_initial}`} />
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-muted">
+                        {tr.tp ?? "—"}
+                        {tr.tp_initial != null && (
+                          <span className="ml-1 inline-block w-2 h-2 rounded-full bg-accent/60" title={`${t("tp_initial_set")}: ${tr.tp_initial}`} />
+                        )}
+                      </td>
                       {(() => {
                         const net = tr.pnl + (tr.commission || 0) + (tr.swap || 0);
                         return (
