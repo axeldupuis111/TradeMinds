@@ -37,6 +37,14 @@ interface Pattern {
   severity: "high" | "medium" | "low";
 }
 
+interface DataFields {
+  setup: boolean;
+  timing: boolean;
+  emotion: boolean;
+  rr: boolean;
+  checklist: boolean;
+}
+
 interface Analysis {
   discipline_score: number;
   total_trades: number;
@@ -46,6 +54,7 @@ interface Analysis {
   strengths: string[];
   recommendations: string[];
   score_breakdown?: CategoryBreakdown[];
+  data_fields?: DataFields;
 }
 
 interface SavedReview {
@@ -187,6 +196,29 @@ function ScoreBreakdownCard({ breakdown, score, t, className }: { breakdown: Cat
       )}
     </div>
   );
+}
+
+const DATA_FIELD_LABELS: Record<string, Record<string, string>> = {
+  setup: { fr: "Setup", en: "Setup", de: "Setup", es: "Setup" },
+  timing: { fr: "Timing", en: "Timing", de: "Timing", es: "Timing" },
+  emotion: { fr: "Émotion", en: "Emotion", de: "Emotion", es: "Emoción" },
+  rr: { fr: "RR", en: "RR", de: "RR", es: "RR" },
+  checklist: { fr: "Checklist", en: "Checklist", de: "Checkliste", es: "Checklist" },
+};
+
+function DataFieldsSummary({ fields, lang, t }: { fields?: DataFields; lang: string; t: (k: string) => string }) {
+  if (!fields) return null;
+  const all = ["setup", "timing", "emotion", "rr", "checklist"];
+  const missing = all.filter((k) => !fields[k as keyof DataFields]);
+  const provided = all.length - missing.length;
+
+  if (missing.length === 0) {
+    return <p className="text-xs text-muted/70 mt-1">{t("score_based_on_all")}</p>;
+  }
+
+  const missingLabels = missing.map((k) => DATA_FIELD_LABELS[k][lang] || k).join(", ");
+  const base = t("score_based_on_n").replace("{n}", String(provided));
+  return <p className="text-xs text-muted/70 mt-1">{base} ({missingLabels})</p>;
 }
 
 type PeriodKey = "today" | "yesterday" | "this_week" | "this_month" | "last_7_days" | "last_30_days" | "all";
@@ -1038,7 +1070,10 @@ export default function AnalysisPage() {
 
           {/* Score (compact, shown in left on mobile) */}
           <div className="lg:hidden bg-card border border-border rounded-xl p-6 flex flex-col sm:flex-row items-center gap-6">
-            <ScoreCircle score={displayedAnalysis.discipline_score} label={t("dash_discipline")} />
+            <div className="flex flex-col items-center">
+              <ScoreCircle score={displayedAnalysis.discipline_score} label={t("dash_discipline")} />
+              <DataFieldsSummary fields={displayedAnalysis.data_fields} lang={lang} t={t} />
+            </div>
             <div>
               <p className="text-foreground text-lg font-semibold">
                 {displayedAnalysis.total_trades} trades
@@ -1367,6 +1402,7 @@ export default function AnalysisPage() {
                  displayedAnalysis.discipline_score >= 40 ? t("band_weak") :
                  t("band_bad")}
               </p>
+              <DataFieldsSummary fields={displayedAnalysis.data_fields} lang={lang} t={t} />
             </div>
           ) : (
             <div className="bg-card border border-border rounded-xl p-6 card-shadow flex flex-col items-center text-center">

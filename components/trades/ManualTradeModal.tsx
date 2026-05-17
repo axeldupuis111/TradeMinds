@@ -545,21 +545,29 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              <div id="manual-strat-accordion" className="overflow-hidden transition-all duration-200" style={{ maxHeight: "0px" }}>
+              <div id="manual-strat-accordion" className="overflow-hidden transition-all duration-200" style={{ maxHeight: "300px" }}>
                 <div className="px-4 pb-4 space-y-3">
                   <div>
                     <label className="block text-xs text-muted mb-1">{t("ict_setup")}</label>
-                    <select value={form.ict_setup} onChange={(e) => update("ict_setup", e.target.value)} className={inputClass}>
-                      <option value="">{t("ict_select_setup")}</option>
-                      {stratTags.setups.map((s) => <option key={s.value} value={s.value}>{s.label[l]}</option>)}
-                    </select>
+                    {stratTags.isDefault || stratTags.setups.length > 0 ? (
+                      <select value={form.ict_setup} onChange={(e) => update("ict_setup", e.target.value)} className={inputClass}>
+                        <option value="">{t("ict_select_setup")}</option>
+                        {stratTags.setups.map((s) => <option key={s.value} value={s.value}>{s.label[l]}</option>)}
+                      </select>
+                    ) : (
+                      <p className="text-xs text-muted italic py-2">{t("ict_no_setup_tags")}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs text-muted mb-1">{t("ict_killzone")}</label>
-                    <select value={form.ict_killzone} onChange={(e) => update("ict_killzone", e.target.value)} className={inputClass}>
-                      <option value="">{t("ict_select_killzone")}</option>
-                      {stratTags.timing.map((kz) => <option key={kz.value} value={kz.value}>{kz.label[l]}</option>)}
-                    </select>
+                    {stratTags.isDefault || stratTags.timing.length > 0 ? (
+                      <select value={form.ict_killzone} onChange={(e) => update("ict_killzone", e.target.value)} className={inputClass}>
+                        <option value="">{t("ict_select_killzone")}</option>
+                        {stratTags.timing.map((kz) => <option key={kz.value} value={kz.value}>{kz.label[l]}</option>)}
+                      </select>
+                    ) : (
+                      <p className="text-xs text-muted italic py-2">{t("ict_no_timing_tags")}</p>
+                    )}
                   </div>
                 </div>
               </div>

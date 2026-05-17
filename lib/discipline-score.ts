@@ -73,7 +73,7 @@ export function computeDisciplineScore(
   violations: Violation[],
   totalTrades: number,
 ): DisciplineResult {
-  if (totalTrades < 3) {
+  if (totalTrades < 1) {
     return {
       score: 0,
       insufficient: true,
