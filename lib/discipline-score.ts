@@ -60,7 +60,7 @@ const PENALTY_MAP: Record<ViolationType, { perOccurrence: number }> = {
   fomo: { perOccurrence: 10 },
   missing_sl: { perOccurrence: 5 },
   missing_tp: { perOccurrence: 3 },
-  missing_setup_tag: { perOccurrence: 2 },
+  missing_setup_tag: { perOccurrence: 1 },
 };
 
 const CATEGORY_CAPS: Record<string, number> = {
@@ -73,7 +73,7 @@ export function computeDisciplineScore(
   violations: Violation[],
   totalTrades: number,
 ): DisciplineResult {
-  if (totalTrades < 3) {
+  if (totalTrades < 1) {
     return {
       score: 0,
       insufficient: true,

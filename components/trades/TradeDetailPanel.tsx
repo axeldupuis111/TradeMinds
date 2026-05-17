@@ -531,7 +531,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
           {/* ICT Details accordion */}
           {showAnalysis && !stratTags.loading && (
             <IctAccordion
-              defaultOpen={!!ictSetup || !!ictKillzone}
+              defaultOpen={true}
               label={t("ict_accordion_title")}
             >
               <div className="space-y-3">
@@ -540,24 +540,32 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
                     {t("ict_setup")}
                     <SavedIndicator visible={savedField === "ict_setup"} />
                   </label>
-                  <select value={ictSetup} onChange={(e) => handleIctSetup(e.target.value)} className={selectClass}>
-                    <option value="">{t("ict_select_setup")}</option>
-                    {stratTags.setups.map((s) => (
-                      <option key={s.value} value={s.value}>{s.label[l]}</option>
-                    ))}
-                  </select>
+                  {stratTags.isDefault || stratTags.setups.length > 0 ? (
+                    <select value={ictSetup} onChange={(e) => handleIctSetup(e.target.value)} className={selectClass}>
+                      <option value="">{t("ict_select_setup")}</option>
+                      {stratTags.setups.map((s) => (
+                        <option key={s.value} value={s.value}>{s.label[l]}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <p className="text-xs text-muted italic py-2">{t("ict_no_setup_tags")}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs text-muted mb-1">
                     {t("ict_killzone")}
                     <SavedIndicator visible={savedField === "ict_killzone"} />
                   </label>
-                  <select value={ictKillzone} onChange={(e) => handleIctKillzone(e.target.value)} className={selectClass}>
-                    <option value="">{t("ict_select_killzone")}</option>
-                    {stratTags.timing.map((s) => (
-                      <option key={s.value} value={s.value}>{s.label[l]}</option>
-                    ))}
-                  </select>
+                  {stratTags.isDefault || stratTags.timing.length > 0 ? (
+                    <select value={ictKillzone} onChange={(e) => handleIctKillzone(e.target.value)} className={selectClass}>
+                      <option value="">{t("ict_select_killzone")}</option>
+                      {stratTags.timing.map((s) => (
+                        <option key={s.value} value={s.value}>{s.label[l]}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <p className="text-xs text-muted italic py-2">{t("ict_no_timing_tags")}</p>
+                  )}
                   {killzoneAutoDetected && (
                     <p className="text-xs text-muted italic mt-1">{t("ict_autodetected_killzone")}</p>
                   )}
