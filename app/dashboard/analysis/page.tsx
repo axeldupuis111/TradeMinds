@@ -246,7 +246,7 @@ function getFilteredTrades(trades: { close_time: string }[], period: PeriodKey) 
 
 export default function AnalysisPage() {
   const { t, lang } = useLanguage();
-  const { canUseAI, aiRemaining, plan, incrementAIUsage, loading: planLoading } = usePlan();
+  const { canUseAI, aiRemaining, plan, refreshPlan, loading: planLoading } = usePlan();
   const supabase = createClient();
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loading, setLoading] = useState(false);
@@ -414,7 +414,13 @@ export default function AnalysisPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Erreur serveur");
+      if (!res.ok) {
+        if (res.status === 401) throw new Error(t("api_error_unauthorized"));
+        if (res.status === 403) throw new Error(t("api_error_forbidden"));
+        if (res.status === 413) throw new Error(t("api_error_payload_too_large"));
+        if (res.status === 429) throw new Error(t("api_error_rate_limited"));
+        throw new Error(data.error || "Erreur serveur");
+      }
 
       setChatMessages([...newMessages, { role: "assistant", content: data.reply }]);
 
@@ -566,7 +572,13 @@ export default function AnalysisPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Erreur serveur.");
+      if (!res.ok) {
+        if (res.status === 401) throw new Error(t("api_error_unauthorized"));
+        if (res.status === 403) throw new Error(t("api_error_forbidden"));
+        if (res.status === 413) throw new Error(t("api_error_payload_too_large"));
+        if (res.status === 429) throw new Error(t("api_error_rate_limited"));
+        throw new Error(data.error || "Erreur serveur.");
+      }
 
       setAnalysis(data);
 
@@ -589,10 +601,8 @@ export default function AnalysisPage() {
         }
       }
 
-      // Increment AI usage counter
-      if (plan === "plus") {
-        await incrementAIUsage();
-      }
+      // Refresh plan state — server already incremented the quota
+      await refreshPlan();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
     } finally {

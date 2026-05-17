@@ -427,6 +427,11 @@ const translations: Record<Lang, Record<string, string>> = {
     csv_imported: "trades importés avec succès.",
     csv_duplicates_skipped: "doublons ignorés",
     csv_all_duplicates: "Tous les trades existent déjà. Aucun doublon importé.",
+    csv_file_too_large: "Fichier trop volumineux (max 5 Mo).",
+    api_error_unauthorized: "Vous devez être connecté.",
+    api_error_forbidden: "Cette fonctionnalité n'est pas disponible avec votre plan.",
+    api_error_payload_too_large: "Trop de données — réduisez la sélection.",
+    api_error_rate_limited: "Limite quotidienne atteinte — réessayez demain.",
     csv_import_btn: "Importer",
 
     // TradeList
@@ -1724,6 +1729,11 @@ const translations: Record<Lang, Record<string, string>> = {
     csv_imported: "trades imported successfully.",
     csv_duplicates_skipped: "duplicates skipped",
     csv_all_duplicates: "All trades already exist. No duplicates imported.",
+    csv_file_too_large: "File too large (max 5 MB).",
+    api_error_unauthorized: "You must be logged in.",
+    api_error_forbidden: "This feature is not available on your plan.",
+    api_error_payload_too_large: "Too much data — reduce your selection.",
+    api_error_rate_limited: "Daily limit reached — try again tomorrow.",
     csv_import_btn: "Import",
 
     trades_list_title: "My Trades",
@@ -3015,6 +3025,11 @@ const translations: Record<Lang, Record<string, string>> = {
     csv_imported: "Trades erfolgreich importiert.",
     csv_duplicates_skipped: "Duplikate übersprungen",
     csv_all_duplicates: "Alle Trades existieren bereits. Keine Duplikate importiert.",
+    csv_file_too_large: "Datei zu groß (max. 5 MB).",
+    api_error_unauthorized: "Sie müssen angemeldet sein.",
+    api_error_forbidden: "Diese Funktion ist mit Ihrem Plan nicht verfügbar.",
+    api_error_payload_too_large: "Zu viele Daten — reduzieren Sie die Auswahl.",
+    api_error_rate_limited: "Tageslimit erreicht — versuchen Sie es morgen erneut.",
     csv_import_btn: "Importieren",
 
     trades_list_title: "Meine Trades",
@@ -4305,6 +4320,11 @@ const translations: Record<Lang, Record<string, string>> = {
     csv_imported: "trades importados con éxito.",
     csv_duplicates_skipped: "duplicados omitidos",
     csv_all_duplicates: "Todos los trades ya existen. Ningún duplicado importado.",
+    csv_file_too_large: "Archivo demasiado grande (máx. 5 MB).",
+    api_error_unauthorized: "Debe iniciar sesión.",
+    api_error_forbidden: "Esta función no está disponible en su plan.",
+    api_error_payload_too_large: "Demasiados datos — reduzca la selección.",
+    api_error_rate_limited: "Límite diario alcanzado — inténtelo de nuevo mañana.",
     csv_import_btn: "Importar",
 
     trades_list_title: "Mis Trades",
