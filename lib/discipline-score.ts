@@ -60,7 +60,7 @@ const PENALTY_MAP: Record<ViolationType, { perOccurrence: number }> = {
   fomo: { perOccurrence: 10 },
   missing_sl: { perOccurrence: 5 },
   missing_tp: { perOccurrence: 3 },
-  missing_setup_tag: { perOccurrence: 2 },
+  missing_setup_tag: { perOccurrence: 1 },
 };
 
 const CATEGORY_CAPS: Record<string, number> = {
