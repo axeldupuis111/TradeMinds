@@ -156,6 +156,8 @@ function ColumnMappingModal({
   );
 }
 
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+
 // ─── Main CsvImport component ─────────────────────────────────────────────────
 
 export default function CsvImport({ strategyId, onImported }: Props) {
@@ -256,6 +258,11 @@ export default function CsvImport({ strategyId, onImported }: Props) {
     setAccountNotFound(false);
     setSelectedChallengeId(null);
     setMappingData(null);
+
+    if (file.size > MAX_FILE_SIZE) {
+      setMessage({ type: "error", text: t("csv_file_too_large") });
+      return;
+    }
 
     const isXlsx = /\.xlsx$/i.test(file.name);
     if (isXlsx) {
