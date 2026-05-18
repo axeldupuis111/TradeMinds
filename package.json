@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",
+    "@stripe/stripe-js": "^9.6.0",
     "@supabase/ssr": "^0.10.0",
     "@supabase/supabase-js": "^2.101.1",
     "@tailwindcss/typography": "^0.5.19",
@@ -24,6 +25,7 @@
     "react-markdown": "^10.1.0",
     "recharts": "^3.8.1",
     "resend": "^6.12.2",
+    "stripe": "^22.1.1",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
