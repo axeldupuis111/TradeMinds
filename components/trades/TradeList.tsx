@@ -476,7 +476,44 @@ export default function TradeList({ refreshKey }: Props) {
 
       {/* Table */}
       {loading ? (
-        <p className="text-muted py-4">{t("trades_loading")}</p>
+        <div className="overflow-x-auto rounded-lg border border-border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-surface text-muted text-left">
+                <th className="px-3 py-2 w-8"><div className="skeleton h-4 w-4 rounded" /></th>
+                <th className="px-3 py-2 font-medium">{t("trades_col_date")}</th>
+                <th className="px-3 py-2 font-medium">{t("trades_col_account")}</th>
+                <th className="px-3 py-2 font-medium">{t("trades_col_pair")}</th>
+                <th className="px-3 py-2 font-medium">{t("trades_col_dir")}</th>
+                <th className="px-3 py-2 font-medium">{t("trades_col_lot")}</th>
+                <th className="px-3 py-2 font-medium">{t("trades_col_entry")}</th>
+                <th className="px-3 py-2 font-medium">{t("trades_col_exit")}</th>
+                <th className="px-3 py-2 font-medium">{t("trades_col_sl")}</th>
+                <th className="px-3 py-2 font-medium">{t("trades_col_tp")}</th>
+                <th className="px-3 py-2 font-medium">{t("trades_col_pnl")}</th>
+                <th className="px-3 py-2 font-medium"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <tr key={i} className={i % 2 === 0 ? "bg-card" : "bg-surface"}>
+                  <td className="px-3 py-2"><div className="skeleton h-4 w-4 rounded" /></td>
+                  <td className="px-3 py-2"><div className="skeleton h-4 w-20 rounded" /></td>
+                  <td className="px-3 py-2"><div className="skeleton h-4 w-16 rounded" /></td>
+                  <td className="px-3 py-2"><div className="skeleton h-4 w-16 rounded" /></td>
+                  <td className="px-3 py-2"><div className="skeleton h-4 w-10 rounded" /></td>
+                  <td className="px-3 py-2"><div className="skeleton h-4 w-10 rounded" /></td>
+                  <td className="px-3 py-2"><div className="skeleton h-4 w-16 rounded" /></td>
+                  <td className="px-3 py-2"><div className="skeleton h-4 w-16 rounded" /></td>
+                  <td className="px-3 py-2"><div className="skeleton h-4 w-14 rounded" /></td>
+                  <td className="px-3 py-2"><div className="skeleton h-4 w-14 rounded" /></td>
+                  <td className="px-3 py-2"><div className="skeleton h-4 w-14 rounded" /></td>
+                  <td className="px-3 py-2"><div className="skeleton h-4 w-6 rounded" /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : trades.length === 0 ? (
         <p className="text-muted py-4">{t("trades_empty")}</p>
       ) : (
