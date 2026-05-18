@@ -171,7 +171,7 @@ export default function UpgradePage() {
         </span>
         {annual && (
           <span className="px-2 py-0.5 bg-profit/10 text-profit text-xs font-bold rounded-full">
-            -20%
+            -25%
           </span>
         )}
       </div>
@@ -260,14 +260,14 @@ export default function UpgradePage() {
                     <span className="text-muted text-sm line-through">9.99€/{t("plan_month")}</span>
                   </div>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold text-foreground">7.99€</span>
+                    <span className="text-3xl font-bold text-foreground">7.50€</span>
                     <span className="text-muted text-sm">/{t("plan_month")}</span>
                   </div>
                   <span className="inline-block mt-1 px-2 py-0.5 bg-profit/10 text-profit text-xs font-bold rounded-full">
                     {t("plan_two_months_free")}
                   </span>
                   <p className="text-muted text-xs mt-1">
-                    {t("plan_billed_annual").replace("{price}", "95.88€")}
+                    {t("plan_billed_annual").replace("{price}", "89.99€")}
                   </p>
                 </div>
               ) : (
