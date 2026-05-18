@@ -55,6 +55,16 @@ function readStoredLang(): Lang | null {
   return null;
 }
 
+function detectBrowserLang(): Lang {
+  if (typeof navigator === "undefined") return DEFAULT_LANG;
+  const languages = navigator.languages ?? [navigator.language];
+  for (const tag of languages) {
+    const prefix = tag.split("-")[0].toLowerCase();
+    if (LOCALES.includes(prefix as Lang)) return prefix as Lang;
+  }
+  return DEFAULT_LANG;
+}
+
 function writeCookie(value: Lang) {
   if (typeof document === "undefined") return;
   document.cookie = `${COOKIE_NAME}=${value}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`;
@@ -70,15 +80,27 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [storageLang, setStorageLang] = useState<Lang>(DEFAULT_LANG);
   const [mounted, setMounted] = useState(false);
 
-  // Au mount, on lit le localStorage (sert uniquement quand l'URL n'a pas de locale)
+  // Au mount : localStorage > navigator.language > défaut
   useEffect(() => {
     const stored = readStoredLang();
-    if (stored) setStorageLang(stored);
+    if (stored) {
+      setStorageLang(stored);
+    } else {
+      const detected = detectBrowserLang();
+      setStorageLang(detected);
+      try { localStorage.setItem(STORAGE_KEY, detected); } catch {}
+      writeCookie(detected);
+    }
     setMounted(true);
   }, []);
 
   // Source de vérité : URL > localStorage > défaut
   const lang: Lang = urlLocale ?? storageLang ?? DEFAULT_LANG;
+
+  // Keep <html lang> in sync
+  useEffect(() => {
+    if (mounted) document.documentElement.lang = lang;
+  }, [mounted, lang]);
 
   const setLang = useCallback(
     (newLang: Lang) => {

@@ -40,7 +40,7 @@ export default function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
   }
 
   return (
-    <header className="h-14 bg-card border-b border-border flex items-center justify-between px-5 shrink-0">
+    <header className="h-14 bg-card border-b border-border flex items-center justify-between px-5 shrink-0 relative z-[60]">
       {/* Left: hamburger (mobile) + breadcrumb */}
       <div className="flex items-center gap-3">
         <button
