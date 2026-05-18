@@ -27,12 +27,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         {/* Prevent flash of wrong theme — must run before paint */}
         <script
           dangerouslySetInnerHTML={{
             __html: `try{var t=localStorage.getItem('tm-theme');if(t==='light'){document.documentElement.classList.add('light');}else{document.documentElement.classList.remove('light');}}catch(e){}`,
+          }}
+        />
+        {/* Set html lang attribute from stored preference or browser language */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var s=['fr','en','de','es'];var l=localStorage.getItem('TradeDiscipline_lang');if(!l){var n=(navigator.languages||[navigator.language]);for(var i=0;i<n.length;i++){var p=n[i].split('-')[0].toLowerCase();if(s.indexOf(p)!==-1){l=p;break;}}if(!l)l='en';}if(s.indexOf(l)!==-1)document.documentElement.lang=l;}catch(e){}`,
           }}
         />
       </head>
