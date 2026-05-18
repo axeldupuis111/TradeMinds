@@ -1334,6 +1334,12 @@ const translations: Record<Lang, Record<string, string>> = {
     onboarding_next: "Suivant",
     onboarding_skip: "Passer",
     onboarding_finish: "Terminer",
+
+    // Error boundary
+    error_title: "Oups, une erreur est survenue",
+    error_subtitle: "Pas de panique, tes données sont en sécurité.",
+    error_retry: "Réessayer",
+    error_back_dashboard: "Retour au dashboard",
   },
 
   // ─── ENGLISH ───
@@ -2635,6 +2641,12 @@ const translations: Record<Lang, Record<string, string>> = {
     onboarding_next: "Next",
     onboarding_skip: "Skip",
     onboarding_finish: "Finish",
+
+    // Error boundary
+    error_title: "Something went wrong",
+    error_subtitle: "Don't worry, your data is safe.",
+    error_retry: "Try again",
+    error_back_dashboard: "Back to dashboard",
   },
 
   // ─── GERMAN ───
@@ -3935,6 +3947,12 @@ const translations: Record<Lang, Record<string, string>> = {
     onboarding_next: "Weiter",
     onboarding_skip: "Überspringen",
     onboarding_finish: "Fertig",
+
+    // Error boundary
+    error_title: "Ups, ein Fehler ist aufgetreten",
+    error_subtitle: "Keine Sorge, deine Daten sind sicher.",
+    error_retry: "Erneut versuchen",
+    error_back_dashboard: "Zurück zum Dashboard",
   },
 
   // ─── SPANISH ───
@@ -5234,6 +5252,12 @@ const translations: Record<Lang, Record<string, string>> = {
     onboarding_next: "Siguiente",
     onboarding_skip: "Saltar",
     onboarding_finish: "Terminar",
+
+    // Error boundary
+    error_title: "Ups, algo salió mal",
+    error_subtitle: "No te preocupes, tus datos están seguros.",
+    error_retry: "Reintentar",
+    error_back_dashboard: "Volver al dashboard",
   },
 };
 
