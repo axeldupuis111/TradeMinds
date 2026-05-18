@@ -47,8 +47,9 @@ export default function UpgradePage() {
   const [notifyStatus, setNotifyStatus] = useState<"idle" | "loading" | "success" | "duplicate" | "error">("idle");
   const [showDowngradeModal, setShowDowngradeModal] = useState(false);
   const [downgrading, setDowngrading] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const premiumRef = useRef<HTMLDivElement>(null);
 
   async function handleNotify() {
@@ -83,10 +84,35 @@ export default function UpgradePage() {
     }
   }
 
-  function handlePlusClick() {
-    setToast(t("plan_stripe_toast"));
-    setTimeout(() => setToast(null), 6000);
-    premiumRef.current?.scrollIntoView({ behavior: "smooth" });
+  async function handleCheckout() {
+    setIsCheckoutLoading(true);
+    setCheckoutError(null);
+
+    try {
+      const interval = annual ? "yearly" : "monthly";
+
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ interval }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || t("upgrade_checkout_error"));
+      }
+
+      if (!data.url) {
+        throw new Error(t("upgrade_checkout_error"));
+      }
+
+      window.location.href = data.url;
+    } catch (error) {
+      console.error("[Checkout] Error:", error);
+      setCheckoutError(error instanceof Error ? error.message : t("upgrade_checkout_error"));
+      setIsCheckoutLoading(false);
+    }
   }
 
   function renderValue(val: boolean | string): React.ReactNode {
@@ -116,13 +142,6 @@ export default function UpgradePage() {
 
   return (
     <div>
-      {/* Toast */}
-      {toast && (
-        <div className="fixed top-4 right-4 z-50 px-4 py-3 rounded-lg bg-accent text-white text-sm font-medium shadow-lg max-w-sm">
-          {toast}
-        </div>
-      )}
-
       {/* Downgrade confirmation modal */}
       {showDowngradeModal && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
@@ -297,12 +316,18 @@ export default function UpgradePage() {
                   {t("plan_current_plan")}
                 </button>
               ) : (
-                <button
-                  onClick={handlePlusClick}
-                  className="w-full mt-6 py-2.5 rounded-lg font-medium text-sm bg-accent text-white hover:bg-blue-600 transition-colors"
-                >
-                  {t("plan_choose")}
-                </button>
+                <>
+                  <button
+                    onClick={handleCheckout}
+                    disabled={isCheckoutLoading}
+                    className="w-full mt-6 py-2.5 rounded-lg font-medium text-sm bg-accent text-white hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isCheckoutLoading ? t("upgrade_redirecting") : t("plan_choose")}
+                  </button>
+                  {checkoutError && (
+                    <p className="text-red-500 text-sm mt-2 text-center">{checkoutError}</p>
+                  )}
+                </>
               )}
             </div>
           );
