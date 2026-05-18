@@ -983,7 +983,7 @@ const translations: Record<Lang, Record<string, string>> = {
     violation_fomo: "FOMO",
     violation_missing_sl: "Pas de Stop Loss",
     violation_missing_tp: "Pas de Take Profit",
-    violation_missing_setup: "Pas de setup taggé",
+    violation_missing_setup: "Setup non renseigné",
     dash_today_label: "aujourd'hui",
 
     // Sidebar
@@ -2284,7 +2284,7 @@ const translations: Record<Lang, Record<string, string>> = {
     violation_fomo: "FOMO",
     violation_missing_sl: "No Stop Loss",
     violation_missing_tp: "No Take Profit",
-    violation_missing_setup: "No setup tagged",
+    violation_missing_setup: "Setup not provided",
     dash_today_label: "today",
 
     // Sidebar
@@ -3584,7 +3584,7 @@ const translations: Record<Lang, Record<string, string>> = {
     violation_fomo: "FOMO",
     violation_missing_sl: "Kein Stop Loss",
     violation_missing_tp: "Kein Take Profit",
-    violation_missing_setup: "Kein Setup markiert",
+    violation_missing_setup: "Setup nicht angegeben",
     dash_today_label: "heute",
 
     // Seitenleiste
@@ -4883,7 +4883,7 @@ const translations: Record<Lang, Record<string, string>> = {
     violation_fomo: "FOMO",
     violation_missing_sl: "Sin Stop Loss",
     violation_missing_tp: "Sin Take Profit",
-    violation_missing_setup: "Sin setup etiquetado",
+    violation_missing_setup: "Setup no especificado",
     dash_today_label: "hoy",
 
     // Barra lateral
