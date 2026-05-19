@@ -3,8 +3,10 @@
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
+import { WelcomePlusModal } from "@/components/upgrade/WelcomePlusModal";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface PlanFeature {
   key: string;
@@ -50,7 +52,56 @@ export default function UpgradePage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [isPlanReady, setIsPlanReady] = useState(false);
+  const [showCanceledToast, setShowCanceledToast] = useState(false);
   const premiumRef = useRef<HTMLDivElement>(null);
+
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const handleCloseWelcomeModal = useCallback(() => {
+    setShowWelcomeModal(false);
+    router.replace(pathname, { scroll: false });
+    refreshPlan();
+  }, [router, pathname, refreshPlan]);
+
+  useEffect(() => {
+    const success = searchParams.get("success");
+    const canceled = searchParams.get("canceled");
+
+    if (success === "true") {
+      setShowWelcomeModal(true);
+
+      let pollCount = 0;
+      const maxPolls = 7;
+
+      const checkPlan = async () => {
+        pollCount++;
+        await refreshPlan();
+
+        if (currentPlan === "plus" || pollCount >= 3) {
+          setIsPlanReady(true);
+        }
+        if (currentPlan === "plus" || pollCount >= maxPolls) {
+          clearInterval(intervalId);
+        }
+      };
+
+      const intervalId = setInterval(checkPlan, 1500);
+      checkPlan();
+
+      return () => clearInterval(intervalId);
+    }
+
+    if (canceled === "true") {
+      setShowCanceledToast(true);
+      const timeout = setTimeout(() => setShowCanceledToast(false), 4000);
+      router.replace(pathname, { scroll: false });
+      return () => clearTimeout(timeout);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleNotify() {
     const email = notifyEmail.trim();
@@ -447,6 +498,21 @@ export default function UpgradePage() {
           ))}
         </div>
       </div>
+
+      {/* Modal de bienvenue Plus */}
+      <WelcomePlusModal
+        isOpen={showWelcomeModal}
+        onClose={handleCloseWelcomeModal}
+        isPlanReady={isPlanReady}
+      />
+
+      {/* Toast de paiement annulé */}
+      {showCanceledToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-surface border border-border text-foreground px-6 py-3 rounded-lg shadow-lg flex items-center gap-3">
+          <span className="text-muted">ℹ️</span>
+          <span className="text-sm">{t("upgrade_canceled_message")}</span>
+        </div>
+      )}
     </div>
   );
 }
