@@ -20,6 +20,8 @@ function getWeekStart(date: Date): string {
 // "premium" is kept for DB backward-compat but treated as "plus" everywhere in UI
 export type PlanType = "free" | "plus" | "premium";
 
+export type SubscriptionStatus = "active" | "past_due" | "canceling" | "trialing" | null;
+
 interface PlanContextValue {
   plan: PlanType;
   loading: boolean;
@@ -28,6 +30,9 @@ interface PlanContextValue {
   canImportCSV: boolean;
   aiRemaining: number | null; // null = unlimited
   maxAccounts: number | null; // null = unlimited
+  subscriptionStatus: SubscriptionStatus;
+  cancelAtPeriodEnd: boolean;
+  currentPeriodEnd: Date | null;
   incrementAIUsage: () => Promise<void>;
   refreshPlan: () => Promise<void>;
 }
@@ -40,6 +45,9 @@ const PlanContext = createContext<PlanContextValue>({
   canImportCSV: false,
   aiRemaining: 0,
   maxAccounts: 1,
+  subscriptionStatus: null,
+  cancelAtPeriodEnd: false,
+  currentPeriodEnd: null,
   incrementAIUsage: async () => {},
   refreshPlan: async () => {},
 });
@@ -50,6 +58,9 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [dailyAiCount, setDailyAiCount] = useState(0);
   const [dailyAiReset, setDailyAiReset] = useState<string | null>(null);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus>(null);
+  const [cancelAtPeriodEnd, setCancelAtPeriodEnd] = useState(false);
+  const [currentPeriodEnd, setCurrentPeriodEnd] = useState<Date | null>(null);
 
   const loadPlan = useCallback(async () => {
     const {
@@ -104,6 +115,39 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       setPlan("free");
       setDailyAiCount(0);
     }
+
+    // Fetch active subscription for billing banners
+    const { data: sub } = await supabase
+      .from("subscriptions")
+      .select("status, cancel_at_period_end, current_period_end")
+      .eq("user_id", user.id)
+      .in("status", ["active", "past_due", "trialing"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (sub) {
+      setCancelAtPeriodEnd(sub.cancel_at_period_end ?? false);
+      setCurrentPeriodEnd(
+        sub.current_period_end ? new Date(sub.current_period_end) : null
+      );
+      if (sub.status === "past_due") {
+        setSubscriptionStatus("past_due");
+      } else if (sub.cancel_at_period_end) {
+        setSubscriptionStatus("canceling");
+      } else if (sub.status === "active") {
+        setSubscriptionStatus("active");
+      } else if (sub.status === "trialing") {
+        setSubscriptionStatus("trialing");
+      } else {
+        setSubscriptionStatus(null);
+      }
+    } else {
+      setSubscriptionStatus(null);
+      setCancelAtPeriodEnd(false);
+      setCurrentPeriodEnd(null);
+    }
+
     setLoading(false);
   }, [supabase]);
 
@@ -117,6 +161,9 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
         setPlan("free");
         setDailyAiCount(0);
         setDailyAiReset(null);
+        setSubscriptionStatus(null);
+        setCancelAtPeriodEnd(false);
+        setCurrentPeriodEnd(null);
         setLoading(false);
       }
     });
@@ -171,6 +218,9 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
         canImportCSV,
         aiRemaining,
         maxAccounts,
+        subscriptionStatus,
+        cancelAtPeriodEnd,
+        currentPeriodEnd,
         incrementAIUsage,
         refreshPlan: loadPlan,
       }}
