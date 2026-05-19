@@ -36,9 +36,42 @@ export default function StopTradingGuard() {
   const [quote, setQuote] = useState(QUOTES[0]);
 
   useEffect(() => {
-    check();
-    // Pick a random quote
-    setQuote(QUOTES[Math.floor(Math.random() * QUOTES.length)]);
+    let isMounted = true;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    const init = async () => {
+      await check();
+      setQuote(QUOTES[Math.floor(Math.random() * QUOTES.length)]);
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !isMounted) return;
+
+      channel = supabase
+        .channel(`stop-guard-${user.id}`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "trades", filter: `user_id=eq.${user.id}` },
+          () => { if (isMounted) check(); }
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "strategies", filter: `user_id=eq.${user.id}` },
+          () => { if (isMounted) check(); }
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "prop_challenges", filter: `user_id=eq.${user.id}` },
+          () => { if (isMounted) check(); }
+        )
+        .subscribe();
+    };
+
+    init();
+
+    return () => {
+      isMounted = false;
+      if (channel) supabase.removeChannel(channel);
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
