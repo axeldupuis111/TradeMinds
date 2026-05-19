@@ -5,6 +5,7 @@ import OnboardingGuide from "@/components/dashboard/OnboardingGuide";
 import QuickTradeFAB from "@/components/dashboard/QuickTradeFAB";
 import Sidebar from "@/components/Sidebar";
 import StopTradingGuard from "@/components/dashboard/StopTradingGuard";
+import { SubscriptionBanner } from "@/components/SubscriptionBanner";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -86,6 +87,7 @@ export default function DashboardLayout({
       <div className="flex-1 flex flex-col overflow-hidden">
         <StopTradingGuard />
         <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
+        <SubscriptionBanner />
         <SessionReminderBanner />
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
