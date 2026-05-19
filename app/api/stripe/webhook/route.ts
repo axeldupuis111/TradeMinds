@@ -232,10 +232,15 @@ async function handleInvoicePaymentFailed(
 ) {
   console.log('[Webhook] invoice.payment_failed:', invoice.id)
 
-  // L'invoice a une subscription_id si c'est lié à un abonnement
-  const subscriptionId = typeof (invoice as any).subscription === 'string'
-    ? (invoice as any).subscription
-    : (invoice as any).subscription?.id
+  // Stripe SDK v22 typing: 'subscription' field exists on Invoice but isn't in the strict type.
+  // We type it explicitly to avoid ESLint no-explicit-any.
+  type InvoiceWithSubscription = Stripe.Invoice & {
+    subscription?: string | Stripe.Subscription | null
+  }
+  const invoiceWithSub = invoice as InvoiceWithSubscription
+  const subscriptionId = typeof invoiceWithSub.subscription === 'string'
+    ? invoiceWithSub.subscription
+    : invoiceWithSub.subscription?.id
 
   if (!subscriptionId) {
     console.log('[Webhook] Invoice not tied to a subscription, skipping')
@@ -280,8 +285,14 @@ async function upsertSubscription(
     return
   }
 
-  // Cast pour accéder aux champs de période (Stripe v22 typing edge case)
-  const sub = subscription as any
+  // Stripe SDK v22 with API version 2026-04-22.dahlia moved current_period_start/end
+  // from the subscription level to the item level in some types.
+  // We accept both shapes via a typed cast.
+  type SubscriptionWithPeriod = Stripe.Subscription & {
+    current_period_start?: number
+    current_period_end?: number
+  }
+  const sub = subscription as SubscriptionWithPeriod
 
   const subscriptionData = {
     user_id: userId,
