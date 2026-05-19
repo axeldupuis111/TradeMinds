@@ -52,6 +52,13 @@ export default function UpgradePage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Reset loading state on mount (handles browser back button restoring stale state)
+    setIsCheckoutLoading(false);
+    setCheckoutError(null);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [isPlanReady, setIsPlanReady] = useState(false);
   const [showCanceledToast, setShowCanceledToast] = useState(false);
