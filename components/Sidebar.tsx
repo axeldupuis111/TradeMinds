@@ -3,7 +3,8 @@
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
 
 /* ─── Nav groups ─── */
 const tradingItems = [
@@ -90,6 +91,8 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
   const { t } = useLanguage();
   const { plan, loading } = usePlan();
   const pathname = usePathname();
+  const router = useRouter();
+  const [isPortalLoading, setIsPortalLoading] = useState(false);
   const showUpgrade = !loading && plan === "free";
   const isFree = !loading && plan === "free";
   const badgeClass = planBadgeClass[plan] || planBadgeClass.free;
@@ -227,13 +230,35 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
                   {planLabel}
                 </span>
               </div>
-              <Link
-                href="/dashboard/upgrade"
-                onClick={onClose}
-                className="text-xs text-muted hover:text-accent transition-colors"
+              <button
+                onClick={async () => {
+                  if (plan !== "plus") {
+                    onClose();
+                    router.push("/dashboard/upgrade");
+                    return;
+                  }
+                  setIsPortalLoading(true);
+                  try {
+                    const res = await fetch("/api/stripe/portal", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                    });
+                    const data = await res.json();
+                    if (!res.ok || !data.url) {
+                      throw new Error(data.error || "Failed to open portal");
+                    }
+                    window.location.href = data.url;
+                  } catch (error) {
+                    console.error("[Manage Plan] Error:", error);
+                    onClose();
+                    router.push("/dashboard/upgrade");
+                  }
+                }}
+                disabled={isPortalLoading}
+                className="text-xs text-muted hover:text-accent transition-colors disabled:opacity-50"
               >
-                {t("sidebar_plan_manage")}
-              </Link>
+                {isPortalLoading ? t("sidebar_manage_plan_loading") : t("sidebar_plan_manage")}
+              </button>
             </div>
           )}
         </div>

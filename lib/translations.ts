@@ -1197,6 +1197,7 @@ const translations: Record<Lang, Record<string, string>> = {
     sidebar_group_analyse: "ANALYSE",
     sidebar_group_compte: "COMPTE",
     sidebar_plan_manage: "Gérer mon plan →",
+    sidebar_manage_plan_loading: "Chargement...",
 
     // Header
     header_manage_plan: "Gérer mon plan",
@@ -2518,6 +2519,7 @@ const translations: Record<Lang, Record<string, string>> = {
     sidebar_group_analyse: "ANALYSIS",
     sidebar_group_compte: "ACCOUNT",
     sidebar_plan_manage: "Manage plan →",
+    sidebar_manage_plan_loading: "Loading...",
 
     // Header
     header_manage_plan: "Manage plan",
@@ -3838,6 +3840,7 @@ const translations: Record<Lang, Record<string, string>> = {
     sidebar_group_analyse: "ANALYSE",
     sidebar_group_compte: "KONTO",
     sidebar_plan_manage: "Plan verwalten →",
+    sidebar_manage_plan_loading: "Lädt...",
 
     // Header
     header_manage_plan: "Plan verwalten",
@@ -5157,6 +5160,7 @@ const translations: Record<Lang, Record<string, string>> = {
     sidebar_group_analyse: "ANÁLISIS",
     sidebar_group_compte: "CUENTA",
     sidebar_plan_manage: "Gestionar plan →",
+    sidebar_manage_plan_loading: "Cargando...",
 
     // Header
     header_manage_plan: "Gestionar plan",
