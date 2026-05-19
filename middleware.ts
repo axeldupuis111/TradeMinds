@@ -49,6 +49,11 @@ function isPublicPath(pathname: string): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Stripe webhook: called by Stripe (no user session), secured by signature verification
+  if (pathname === "/api/stripe/webhook") {
+    return NextResponse.next();
+  }
+
   // ────────────────────────────────────────────────────────────────
   // 1. Redirects 301 permanents (dédoublonnage légal)
   // ────────────────────────────────────────────────────────────────
