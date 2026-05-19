@@ -294,6 +294,32 @@ async function upsertSubscription(
   }
   const sub = subscription as SubscriptionWithPeriod
 
+  // Detect cancellation: old convention (cancel_at_period_end) or new (cancel_at + reason)
+  // Stripe API 2026-04-22.dahlia no longer sets cancel_at_period_end=true on portal cancellations.
+  type SubscriptionWithCancellation = Stripe.Subscription & {
+    cancel_at?: number | null
+    cancellation_details?: {
+      reason?: string | null
+      feedback?: string | null
+      comment?: string | null
+    } | null
+  }
+  const subWithCancel = subscription as SubscriptionWithCancellation
+
+  const hasUserRequestedCancellation =
+    subWithCancel.cancel_at !== null &&
+    subWithCancel.cancel_at !== undefined &&
+    subWithCancel.cancellation_details?.reason === "cancellation_requested"
+
+  const isCancelingAtPeriodEnd =
+    subscription.cancel_at_period_end || hasUserRequestedCancellation
+
+  const canceledAtTimestamp = subscription.canceled_at
+    ? new Date(subscription.canceled_at * 1000).toISOString()
+    : hasUserRequestedCancellation
+      ? new Date().toISOString()
+      : null
+
   const subscriptionData = {
     user_id: userId,
     stripe_subscription_id: subscription.id,
@@ -306,10 +332,8 @@ async function upsertSubscription(
     interval: planInfo.interval,
     current_period_start: new Date((sub.current_period_start ?? item.current_period_start) * 1000).toISOString(),
     current_period_end: new Date((sub.current_period_end ?? item.current_period_end) * 1000).toISOString(),
-    cancel_at_period_end: subscription.cancel_at_period_end,
-    canceled_at: subscription.canceled_at
-      ? new Date(subscription.canceled_at * 1000).toISOString()
-      : null,
+    cancel_at_period_end: isCancelingAtPeriodEnd,
+    canceled_at: canceledAtTimestamp,
     trial_start: subscription.trial_start
       ? new Date(subscription.trial_start * 1000).toISOString()
       : null,
