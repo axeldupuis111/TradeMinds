@@ -70,9 +70,14 @@ export default function UpgradePage() {
 
   const handleCloseWelcomeModal = useCallback(() => {
     setShowWelcomeModal(false);
-    router.replace(pathname, { scroll: false });
     refreshPlan();
-  }, [router, pathname, refreshPlan]);
+  }, [refreshPlan]);
+
+  useEffect(() => {
+    return () => {
+      setShowWelcomeModal(false);
+    };
+  }, []);
 
   useEffect(() => {
     const success = searchParams.get("success");
@@ -80,6 +85,7 @@ export default function UpgradePage() {
 
     if (success === "true") {
       setShowWelcomeModal(true);
+      router.replace(pathname, { scroll: false });
 
       let pollCount = 0;
       const maxPolls = 7;
