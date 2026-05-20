@@ -61,8 +61,6 @@ export default function StopTradingGuard() {
 
     const init = async () => {
       await check();
-      const quotes = stopQuotes[lang];
-      setQuote(quotes[Math.floor(Math.random() * quotes.length)]);
 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || !isMounted) return;
@@ -94,6 +92,13 @@ export default function StopTradingGuard() {
       if (channel) supabase.removeChannel(channel);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const quotes = stopQuotes[lang] ?? stopQuotes.en;
+    if (quotes.length > 0) {
+      setQuote(quotes[Math.floor(Math.random() * quotes.length)]);
+    }
+  }, [lang]);
 
   async function check() {
     const { data: { user } } = await supabase.auth.getUser();
