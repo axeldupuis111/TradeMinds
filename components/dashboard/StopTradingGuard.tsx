@@ -13,6 +13,37 @@ interface Strategy {
   max_consecutive_losses: number | null;
 }
 
+interface DismissRecord {
+  date: string;
+  type: LimitType;
+}
+
+const STORAGE_KEY = "stop_overlay_dismissed";
+
+function readDismiss(): DismissRecord | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    if (!raw.startsWith("{")) return null;
+    const parsed: DismissRecord = JSON.parse(raw);
+    if (!parsed.date || !parsed.type) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeDismiss(record: DismissRecord): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(record));
+}
+
+function clearDismiss(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(STORAGE_KEY);
+}
+
 function netPnl(t: { pnl: number; commission: number | null; swap: number | null }) {
   return t.pnl + (t.commission || 0) + (t.swap || 0);
 }
@@ -64,13 +95,6 @@ export default function StopTradingGuard() {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    // Check if overlay was dismissed today
-    const today = new Date().toISOString().split("T")[0];
-    const dismissed = localStorage.getItem("stop_overlay_dismissed");
-    if (dismissed === today) setOverlayDismissed(true);
-  }, []);
-
   async function check() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -88,39 +112,56 @@ export default function StopTradingGuard() {
     const todayTrades = trades || [];
     const accountSize = accounts?.account_size || 10000;
 
+    let detectedLimit: LimitType | null = null;
+
     // Check daily loss
     const todayPnl = todayTrades.reduce((s, tr) => s + netPnl(tr), 0);
     if (strategy.max_daily_loss !== null) {
       const maxLossEuro = (accountSize * strategy.max_daily_loss) / 100;
       if (todayPnl <= -maxLossEuro) {
-        setLimitReached("daily_loss");
-        return;
+        detectedLimit = "daily_loss";
       }
     }
 
     // Check max trades per day
-    if (strategy.max_trades_per_day !== null && todayTrades.length >= strategy.max_trades_per_day) {
-      setLimitReached("max_trades");
-      return;
+    if (!detectedLimit && strategy.max_trades_per_day !== null && todayTrades.length >= strategy.max_trades_per_day) {
+      detectedLimit = "max_trades";
     }
 
     // Check consecutive losses today
-    if (strategy.max_consecutive_losses !== null) {
+    if (!detectedLimit && strategy.max_consecutive_losses !== null) {
       let consecutiveLosses = 0;
       for (const tr of todayTrades) {
         if (netPnl(tr) < 0) consecutiveLosses++;
         else consecutiveLosses = 0;
       }
       if (consecutiveLosses >= strategy.max_consecutive_losses) {
-        setLimitReached("consecutive_losses");
-        return;
+        detectedLimit = "consecutive_losses";
       }
     }
+
+    if (!detectedLimit) {
+      clearDismiss();
+      setOverlayDismissed(false);
+      setLimitReached(null);
+      return;
+    }
+
+    const dismissed = readDismiss();
+    if (dismissed && dismissed.date === today && dismissed.type === detectedLimit) {
+      setOverlayDismissed(true);
+    } else {
+      setOverlayDismissed(false);
+    }
+    setLimitReached(detectedLimit);
   }
 
   function dismiss() {
-    const today = new Date().toISOString().split("T")[0];
-    localStorage.setItem("stop_overlay_dismissed", today);
+    if (!limitReached) return;
+    writeDismiss({
+      date: new Date().toISOString().split("T")[0],
+      type: limitReached,
+    });
     setOverlayDismissed(true);
   }
 
