@@ -1,20 +1,9 @@
 "use client";
 
 import { useLanguage } from "@/lib/LanguageContext";
+import { stopQuotes } from "@/lib/translations";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
-
-const QUOTES: { text: string; author: string }[] = [
-  { text: "The goal of a successful trader is to make the best trades. Money is secondary.", author: "Alexander Elder" },
-  { text: "The market can stay irrational longer than you can stay solvent.", author: "John Maynard Keynes" },
-  { text: "Risk comes from not knowing what you're doing.", author: "Warren Buffett" },
-  { text: "I have two basic rules about winning in trading as well as in life: 1. If you don't bet, you can't win. 2. If you lose all your chips, you can't bet.", author: "Larry Hite" },
-  { text: "Every trader has strengths and weaknesses. Some are good holders of winners, but may hold their losers a little too long.", author: "Michael Marcus" },
-  { text: "Winning traders are not separated by their knowledge of the markets, but by the control of their emotions.", author: "Mark Douglas" },
-  { text: "Don't focus on making money; focus on protecting what you have.", author: "Paul Tudor Jones" },
-  { text: "The elements of good trading are: (1) cutting losses, (2) cutting losses, and (3) cutting losses.", author: "Ed Seykota" },
-  { text: "A loss never bothers me after I take it. I forget it overnight. But being wrong and not taking the loss — that is what does damage.", author: "Jesse Livermore" },
-];
 
 type LimitType = "daily_loss" | "max_trades" | "consecutive_losses";
 
@@ -29,11 +18,11 @@ function netPnl(t: { pnl: number; commission: number | null; swap: number | null
 }
 
 export default function StopTradingGuard() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const supabase = createClient();
   const [limitReached, setLimitReached] = useState<LimitType | null>(null);
   const [overlayDismissed, setOverlayDismissed] = useState(false);
-  const [quote, setQuote] = useState(QUOTES[0]);
+  const [quote, setQuote] = useState(stopQuotes.en[0]);
 
   useEffect(() => {
     let isMounted = true;
@@ -41,7 +30,8 @@ export default function StopTradingGuard() {
 
     const init = async () => {
       await check();
-      setQuote(QUOTES[Math.floor(Math.random() * QUOTES.length)]);
+      const quotes = stopQuotes[lang];
+      setQuote(quotes[Math.floor(Math.random() * quotes.length)]);
 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || !isMounted) return;
