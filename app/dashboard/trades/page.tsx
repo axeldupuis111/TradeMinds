@@ -19,7 +19,6 @@ export default function TradesPage() {
   const supabase = createClient();
   const [refreshKey, setRefreshKey] = useState(0);
   const [showModal, setShowModal] = useState(false);
-  const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [selectedStrategy, setSelectedStrategy] = useState<Strategy | null>(null);
 
   useEffect(() => {
@@ -34,7 +33,6 @@ export default function TradesPage() {
         .order("created_at", { ascending: true });
 
       if (data && data.length > 0) {
-        setStrategies(data);
         setSelectedStrategy(data[0]);
       }
     }
