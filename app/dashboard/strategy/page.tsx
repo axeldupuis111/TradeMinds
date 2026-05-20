@@ -523,7 +523,7 @@ export default function StrategyPage() {
   return (
     <div className="max-w-2xl pb-24">
       {toast && (
-        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg text-white text-sm font-medium shadow-lg ${toast.type === "success" ? "bg-green-800" : "bg-red-700"}`}>
+        <div className={`fixed bottom-6 right-6 z-[100] px-4 py-3 rounded-lg text-white text-sm font-medium shadow-lg ${toast.type === "success" ? "bg-green-800" : "bg-red-700"}`}>
           {toast.text}
         </div>
       )}
