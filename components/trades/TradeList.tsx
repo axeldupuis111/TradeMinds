@@ -102,7 +102,8 @@ export default function TradeList({ refreshKey }: Props) {
     const { data } = await supabase
       .from("trades")
       .select("pair")
-      .eq("user_id", user.id);
+      .eq("user_id", user.id)
+      .eq("status", "closed");
     if (data) {
       const unique = Array.from(new Set(data.map((r) => r.pair as string))).sort();
       setAllPairs(unique);
@@ -123,6 +124,7 @@ export default function TradeList({ refreshKey }: Props) {
       .from("trades")
       .select("*, tags, emotion, setup_quality, notes, screenshot_path, prop_challenges(firm, account_number)", { count: "exact" })
       .eq("user_id", user.id)
+      .eq("status", "closed")
       .order("open_time", { ascending: false })
       .order("id", { ascending: false });
 
@@ -165,7 +167,8 @@ export default function TradeList({ refreshKey }: Props) {
     const { data } = await supabase
       .from("trades")
       .select("pnl, commission, swap")
-      .eq("user_id", user.id);
+      .eq("user_id", user.id)
+      .eq("status", "closed");
 
     if (!data || data.length === 0) {
       setGlobalStats({ count: 0, wins: 0, totalPnl: 0, best: 0, worst: 0 });
@@ -275,6 +278,7 @@ export default function TradeList({ refreshKey }: Props) {
       .from("trades")
       .select("open_time, close_time, pair, direction, lot_size, entry_price, exit_price, sl, tp, pnl, commission, swap, emotion, tags, notes")
       .eq("user_id", user.id)
+      .eq("status", "closed")
       .order("open_time", { ascending: false });
 
     if (filters.pair) query = query.eq("pair", filters.pair);

@@ -108,7 +108,7 @@ export default function StopTradingGuard() {
 
     const [{ data: strat }, { data: trades }, { data: accounts }] = await Promise.all([
       supabase.from("strategies").select("max_daily_loss, max_trades_per_day, max_consecutive_losses").eq("user_id", user.id).limit(1).single(),
-      supabase.from("trades").select("pnl, commission, swap, open_time").eq("user_id", user.id).gte("open_time", today).order("open_time", { ascending: true }),
+      supabase.from("trades").select("pnl, commission, swap, open_time, status").eq("user_id", user.id).gte("open_time", today).order("open_time", { ascending: true }),
       supabase.from("prop_challenges").select("account_size").eq("user_id", user.id).eq("status", "active").limit(1).single(),
     ]);
 
@@ -120,7 +120,7 @@ export default function StopTradingGuard() {
     let detectedLimit: LimitType | null = null;
 
     // Check daily loss
-    const todayPnl = todayTrades.reduce((s, tr) => s + netPnl(tr), 0);
+    const todayPnl = todayTrades.filter((tr) => tr.status === "closed").reduce((s, tr) => s + netPnl(tr), 0);
     if (strategy.max_daily_loss !== null) {
       const maxLossEuro = (accountSize * strategy.max_daily_loss) / 100;
       if (todayPnl <= -maxLossEuro) {
@@ -135,8 +135,9 @@ export default function StopTradingGuard() {
 
     // Check consecutive losses today
     if (!detectedLimit && strategy.max_consecutive_losses !== null) {
+      const closedTrades = todayTrades.filter((tr) => tr.status === "closed");
       let consecutiveLosses = 0;
-      for (const tr of todayTrades) {
+      for (const tr of closedTrades) {
         if (netPnl(tr) < 0) consecutiveLosses++;
         else consecutiveLosses = 0;
       }

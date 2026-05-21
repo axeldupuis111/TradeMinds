@@ -10,6 +10,7 @@ interface Trade {
   swap: number | null;
   close_time: string | null;
   open_time: string;
+  status: "open" | "closed";
 }
 
 interface Props {
@@ -43,7 +44,7 @@ export default function RealTimeGuards({ strategy, accountSize }: Props) {
     const today = new Date().toISOString().split("T")[0];
     const { data } = await supabase
       .from("trades")
-      .select("pnl, commission, swap, close_time, open_time")
+      .select("pnl, commission, swap, close_time, open_time, status")
       .eq("user_id", user.id)
       .gte("open_time", today + "T00:00:00")
       .lte("open_time", today + "T23:59:59")
@@ -61,7 +62,9 @@ export default function RealTimeGuards({ strategy, accountSize }: Props) {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const todayPnl = trades.reduce((s, tr) => s + netPnl(tr), 0);
+  const todayPnl = trades
+    .filter((tr) => tr.status === "closed")
+    .reduce((s, tr) => s + netPnl(tr), 0);
   const tradeCount = trades.length;
   const maxTrades = strategy?.max_trades_per_day ?? null;
   const tradePct = maxTrades ? tradeCount / maxTrades : 0;
