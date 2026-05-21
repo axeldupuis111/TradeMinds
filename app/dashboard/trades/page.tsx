@@ -1,5 +1,6 @@
 "use client";
 
+import CloseTradeModal from "@/components/trades/CloseTradeModal";
 import CsvImport from "@/components/trades/CsvImport";
 import ManualTradeModal from "@/components/trades/ManualTradeModal";
 import OpenTradesSection from "@/components/trades/OpenTradesSection";
@@ -20,6 +21,7 @@ export default function TradesPage() {
   const supabase = createClient();
   const [refreshKey, setRefreshKey] = useState(0);
   const [showModal, setShowModal] = useState(false);
+  const [closingTradeId, setClosingTradeId] = useState<string | null>(null);
   const [selectedStrategy, setSelectedStrategy] = useState<Strategy | null>(null);
 
   useEffect(() => {
@@ -66,9 +68,7 @@ export default function TradesPage() {
 
       <OpenTradesSection
         refreshKey={refreshKey}
-        onCloseTrade={(tradeId) => {
-          alert("Modal de clôture — étape 4 à venir (trade " + tradeId + ")");
-        }}
+        onCloseTrade={(tradeId) => setClosingTradeId(tradeId)}
       />
 
       <TradeList refreshKey={refreshKey} />
@@ -80,6 +80,14 @@ export default function TradesPage() {
           onClose={() => setShowModal(false)}
           onSaved={refresh}
 />
+      )}
+
+      {closingTradeId && (
+        <CloseTradeModal
+          tradeId={closingTradeId}
+          onClose={() => setClosingTradeId(null)}
+          onSaved={() => { refresh(); setClosingTradeId(null); }}
+        />
       )}
     </div>
   );
