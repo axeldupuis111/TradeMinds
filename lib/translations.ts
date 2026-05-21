@@ -180,6 +180,19 @@ const translations: Record<Lang, Record<string, string>> = {
     trades_save: "Sauvegarder",
     trades_saving: "Sauvegarde…",
 
+    // Open trades section
+    open_trades_title: "Trades en cours",
+    open_trades_badge: "LIVE",
+    open_trades_count_one: "1 trade ouvert",
+    open_trades_count_many: "{n} trades ouverts",
+    open_trades_opened_since: "Ouvert il y a {duration}",
+    open_trades_close_button: "Clôturer",
+    open_trades_today: "Aujourd'hui",
+    open_trades_yesterday: "Hier",
+    open_trades_duration_min: "{m} min",
+    open_trades_duration_hm: "{h}h {m}min",
+    open_trades_duration_days: "{d}j",
+
     // Strategy page
     strategy_title: "Mes Stratégies",
     strategy_subtitle:
@@ -753,6 +766,8 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Trade detail panel
     detail_title: "Détail du trade",
+    detail_account: "Compte associé",
+    detail_no_account: "Aucun compte",
     detail_emotion: "Émotion ressentie",
     emotion_confident: "Confiant",
     emotion_neutral: "Neutre",
@@ -1520,6 +1535,19 @@ const translations: Record<Lang, Record<string, string>> = {
     trades_save: "Save",
     trades_saving: "Saving…",
 
+    // Open trades section
+    open_trades_title: "Open trades",
+    open_trades_badge: "LIVE",
+    open_trades_count_one: "1 open trade",
+    open_trades_count_many: "{n} open trades",
+    open_trades_opened_since: "Opened {duration} ago",
+    open_trades_close_button: "Close",
+    open_trades_today: "Today",
+    open_trades_yesterday: "Yesterday",
+    open_trades_duration_min: "{m} min",
+    open_trades_duration_hm: "{h}h {m}min",
+    open_trades_duration_days: "{d}d",
+
     strategy_title: "My Strategies",
     strategy_subtitle:
       "Describe your strategies and AI will automatically extract your rules.",
@@ -2081,6 +2109,8 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Trade detail panel
     detail_title: "Trade Detail",
+    detail_account: "Associated account",
+    detail_no_account: "No account",
     detail_emotion: "Emotion felt",
     emotion_confident: "Confident",
     emotion_neutral: "Neutral",
@@ -2850,6 +2880,19 @@ const translations: Record<Lang, Record<string, string>> = {
     trades_save: "Speichern",
     trades_saving: "Speichere…",
 
+    // Open trades section
+    open_trades_title: "Offene Trades",
+    open_trades_badge: "LIVE",
+    open_trades_count_one: "1 offener Trade",
+    open_trades_count_many: "{n} offene Trades",
+    open_trades_opened_since: "Vor {duration} eröffnet",
+    open_trades_close_button: "Schließen",
+    open_trades_today: "Heute",
+    open_trades_yesterday: "Gestern",
+    open_trades_duration_min: "{m} Min",
+    open_trades_duration_hm: "{h}Std {m}Min",
+    open_trades_duration_days: "{d}T",
+
     strategy_title: "Meine Strategien",
     strategy_subtitle:
       "Beschreibe deine Strategien und die KI extrahiert automatisch deine Regeln.",
@@ -3408,6 +3451,8 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Trade detail panel
     detail_title: "Trade-Detail",
+    detail_account: "Zugehöriges Konto",
+    detail_no_account: "Kein Konto",
     detail_emotion: "Empfundene Emotion",
     emotion_confident: "Zuversichtlich",
     emotion_neutral: "Neutral",
@@ -4176,6 +4221,19 @@ const translations: Record<Lang, Record<string, string>> = {
     trades_save: "Guardar",
     trades_saving: "Guardando…",
 
+    // Open trades section
+    open_trades_title: "Trades abiertos",
+    open_trades_badge: "LIVE",
+    open_trades_count_one: "1 trade abierto",
+    open_trades_count_many: "{n} trades abiertos",
+    open_trades_opened_since: "Abierto hace {duration}",
+    open_trades_close_button: "Cerrar",
+    open_trades_today: "Hoy",
+    open_trades_yesterday: "Ayer",
+    open_trades_duration_min: "{m} min",
+    open_trades_duration_hm: "{h}h {m}min",
+    open_trades_duration_days: "{d}d",
+
     strategy_title: "Mis Estrategias",
     strategy_subtitle:
       "Describe tus estrategias y la IA extraerá tus reglas automáticamente.",
@@ -4734,6 +4792,8 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Trade detail panel
     detail_title: "Detalle del trade",
+    detail_account: "Cuenta asociada",
+    detail_no_account: "Sin cuenta",
     detail_emotion: "Emoción sentida",
     emotion_confident: "Confiado",
     emotion_neutral: "Neutral",
