@@ -2,6 +2,7 @@
 
 import CsvImport from "@/components/trades/CsvImport";
 import ManualTradeModal from "@/components/trades/ManualTradeModal";
+import OpenTradesSection from "@/components/trades/OpenTradesSection";
 import TradeList from "@/components/trades/TradeList";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
@@ -62,6 +63,13 @@ export default function TradesPage() {
       </div>
 
       <CsvImport strategyId={strategyId} onImported={refresh} />
+
+      <OpenTradesSection
+        refreshKey={refreshKey}
+        onCloseTrade={(tradeId) => {
+          alert("Modal de clôture — étape 4 à venir (trade " + tradeId + ")");
+        }}
+      />
 
       <TradeList refreshKey={refreshKey} />
 
