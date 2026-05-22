@@ -6,6 +6,7 @@ import QuickTradeFAB from "@/components/dashboard/QuickTradeFAB";
 import Sidebar from "@/components/Sidebar";
 import StopTradingGuard from "@/components/dashboard/StopTradingGuard";
 import { SubscriptionBanner } from "@/components/SubscriptionBanner";
+import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -74,6 +75,105 @@ function SessionReminderBanner() {
   );
 }
 
+function SessionDurationBanner() {
+  const [overMinutes, setOverMinutes] = useState<number | null>(null);
+  const [limitMinutes, setLimitMinutes] = useState<number | null>(null);
+  const { t } = useLanguage();
+  const pathname = usePathname();
+  const supabase = createClient();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function check() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || cancelled) return;
+
+      const today = new Date().toISOString().split("T")[0];
+
+      // Active session for today
+      const { data: session } = await supabase
+        .from("sessions")
+        .select("id, created_at")
+        .eq("user_id", user.id)
+        .eq("active", true)
+        .gte("created_at", today)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!session || cancelled) {
+        setOverMinutes(null);
+        setLimitMinutes(null);
+        return;
+      }
+
+      // Strategy max_session_minutes
+      const { data: strat } = await supabase
+        .from("strategies")
+        .select("max_session_minutes")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      const maxMin = strat?.max_session_minutes ?? null;
+      if (!maxMin || maxMin <= 0 || cancelled) {
+        setOverMinutes(null);
+        setLimitMinutes(null);
+        return;
+      }
+
+      // Duration — frozen at pause timestamp if paused (localStorage)
+      const start = new Date(session.created_at).getTime();
+      const pausedRaw =
+        typeof window !== "undefined"
+          ? localStorage.getItem(`session_paused_${session.id}`)
+          : null;
+      const end = pausedRaw ? new Date(pausedRaw).getTime() : Date.now();
+      const durationMin = Math.max(0, Math.floor((end - start) / 60000));
+
+      if (durationMin >= maxMin) {
+        setOverMinutes(durationMin);
+        setLimitMinutes(maxMin);
+      } else {
+        setOverMinutes(null);
+        setLimitMinutes(null);
+      }
+    }
+
+    check();
+    const interval = setInterval(check, 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Hidden on the session page itself (widget already shows it there)
+  if (pathname === "/dashboard/session") return null;
+  if (overMinutes === null || limitMinutes === null) return null;
+
+  return (
+    <div className="flex items-center gap-3 px-4 py-3 bg-orange-500/10 border-b border-orange-500/20 text-sm">
+      <span className="shrink-0">⏱️</span>
+      <p className="flex-1 text-foreground">
+        <span className="font-semibold">{t("session_duration_banner_title")}</span>
+        {" — "}
+        {t("session_duration_banner_message")
+          .replace("{over}", String(overMinutes))
+          .replace("{limit}", String(limitMinutes))}
+      </p>
+      <Link
+        href="/dashboard/session"
+        className="shrink-0 text-orange-500 font-semibold hover:underline whitespace-nowrap"
+      >
+        {t("session_duration_banner_cta")}
+      </Link>
+    </div>
+  );
+}
+
 export default function DashboardLayout({
   children,
 }: {
@@ -89,6 +189,7 @@ export default function DashboardLayout({
         <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
         <SubscriptionBanner />
         <SessionReminderBanner />
+        <SessionDurationBanner />
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
       <QuickTradeFAB />
