@@ -17,6 +17,7 @@ interface Props {
   strategy: {
     max_daily_loss: number | null;
     max_trades_per_day: number | null;
+    max_session_minutes: number | null;
   } | null;
   accountSize: number;
   sessionStartedAt: string | null;
@@ -94,6 +95,14 @@ export default function RealTimeGuards({ strategy, accountSize, sessionStartedAt
   const sessionDurationMin = sessionStartedAt
     ? Math.floor((now - new Date(sessionStartedAt).getTime()) / 60000)
     : null;
+
+  const maxSessionMin = strategy?.max_session_minutes ?? null;
+  const sessionRatio =
+    maxSessionMin && maxSessionMin > 0 && sessionDurationMin !== null
+      ? sessionDurationMin / maxSessionMin
+      : 0;
+  const sessionOverLimit = sessionRatio >= 1;
+  const sessionNearLimit = sessionRatio >= 0.8 && sessionRatio < 1;
 
   // — Trade count card —
   let tradeColor = "text-profit";
@@ -173,29 +182,50 @@ export default function RealTimeGuards({ strategy, accountSize, sessionStartedAt
       </div>
 
       {/* Counter 3 — Session duration */}
-      <div
-        className={`rounded-xl border p-5 flex flex-col gap-2 ${
-          isPaused ? "bg-orange-500/10 border-orange-500/30" : "bg-card border-border"
-        }`}
-      >
-        <p className="text-xs text-muted uppercase tracking-wider font-medium">
-          {t("session_active_session_duration")}
-        </p>
-        <p
-          className={`text-5xl md:text-6xl font-bold tabular-nums leading-none ${
-            isPaused ? "text-orange-400" : "text-foreground"
-          }`}
-        >
-          {sessionDurationMin !== null
-            ? formatSessionDuration(sessionDurationMin, t)
-            : "—"}
-        </p>
-        {isPaused && (
-          <p className="text-xs font-medium text-orange-400">
-            ⏸ {t("session_active_duration_paused")}
-          </p>
-        )}
-      </div>
+      {(() => {
+        let durBg = "bg-card border-border";
+        let durValueColor = "text-foreground";
+        let durMsg = "";
+        let durMsgColor = "";
+
+        if (isPaused) {
+          durBg = "bg-orange-500/5 border-orange-500/30";
+        } else if (sessionOverLimit) {
+          durBg = "bg-loss/10 border-loss/30 animate-pulse";
+          durValueColor = "text-loss";
+          durMsg = `🚨 ${t("session_active_duration_over")}`;
+          durMsgColor = "text-loss";
+        } else if (sessionNearLimit) {
+          durBg = "bg-orange-500/10 border-orange-500/30";
+          durValueColor = "text-orange-400";
+          durMsg = `⚠️ ${t("session_active_duration_near")}`;
+          durMsgColor = "text-orange-400";
+        }
+
+        return (
+          <div className={`rounded-xl border p-5 flex flex-col gap-2 ${durBg}`}>
+            <p className="text-xs text-muted uppercase tracking-wider font-medium">
+              {t("session_active_session_duration")}
+            </p>
+            <p className={`text-5xl md:text-6xl font-bold tabular-nums leading-none ${durValueColor}`}>
+              {sessionDurationMin !== null
+                ? formatSessionDuration(sessionDurationMin, t)
+                : "—"}
+              {maxSessionMin !== null && (
+                <span className="text-3xl text-muted font-normal"> / {formatSessionDuration(maxSessionMin, t)}</span>
+              )}
+            </p>
+            {isPaused && (
+              <p className="text-xs font-medium text-orange-400">
+                ⏸️ {t("session_active_duration_paused")}
+              </p>
+            )}
+            {!isPaused && durMsg && (
+              <p className={`text-xs font-medium ${durMsgColor}`}>{durMsg}</p>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }

@@ -45,6 +45,7 @@ Réponds UNIQUEMENT en JSON valide, sans texte avant ou après :
   "max_daily_loss": number ou null (en % du capital),
   "max_trades_per_day": number ou null,
   "max_consecutive_losses": number ou null,
+  "max_session_minutes": number ou null (durée max d'une session de trading en minutes),
   "setup_rules": ["règle 1", "règle 2", ...] (liste des conditions d'entrée et règles de trading extraites du texte),
   "strategy_tags": {
     "setups": [
@@ -75,6 +76,8 @@ IMPORTANT — Si le trader n'a pas mentionné de max_sl_pips ou de max_consecuti
 - Pour des indices (NAS100, US30) : max_sl_pips entre 50 et 200, max_consecutive_losses entre 2 et 4
 - Si aucun contexte ne permet de deviner : max_sl_pips = 100, max_consecutive_losses = 3
 Ne mets null que si tu ne peux vraiment pas estimer.
+
+Pour max_session_minutes : si le trader mentionne une durée max devant les écrans (ex: "pas plus d'1h", "max 90 minutes de session"), convertis en minutes. Sinon null.
 
 INSTRUCTIONS POUR strategy_tags — Extrait les concepts clés pour créer des catégories de tagging personnalisées :
 

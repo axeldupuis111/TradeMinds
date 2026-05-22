@@ -40,6 +40,7 @@ interface ParsedRules {
   max_daily_loss: number | null;
   max_trades_per_day: number | null;
   max_consecutive_losses: number | null;
+  max_session_minutes: number | null;
   setup_rules: string[];
   strategy_tags?: StrategyTagsFromAI;
 }
@@ -185,6 +186,7 @@ export default function StrategyPage() {
       max_daily_loss: data.max_daily_loss as number | null,
       max_trades_per_day: data.max_trades_per_day as number | null,
       max_consecutive_losses: data.max_consecutive_losses as number | null,
+      max_session_minutes: data.max_session_minutes as number | null,
       setup_rules: (data.setup_rules as string[]) || [],
       strategy_tags: existingTags,
     });
@@ -264,6 +266,7 @@ export default function StrategyPage() {
       max_daily_loss: parsed.max_daily_loss,
       max_trades_per_day: parsed.max_trades_per_day,
       max_consecutive_losses: parsed.max_consecutive_losses,
+      max_session_minutes: parsed.max_session_minutes,
       setup_rules: parsed.setup_rules,
     };
 
@@ -693,6 +696,16 @@ export default function StrategyPage() {
               <div>
                 <label className="block text-xs text-muted mb-1">{t("strategy_consec_losses")}</label>
                 <input type="number" value={parsed.max_consecutive_losses ?? ""} onChange={(e) => updateParsedField("max_consecutive_losses", e.target.value ? parseInt(e.target.value) : null)} placeholder={t("strategy_not_set")} className={inputClass} />
+              </div>
+              <div>
+                <label className="block text-xs text-muted mb-1">{t("strategy_max_session")}</label>
+                <input
+                  type="number"
+                  value={parsed.max_session_minutes ?? ""}
+                  onChange={(e) => updateParsedField("max_session_minutes", e.target.value ? parseInt(e.target.value) : null)}
+                  placeholder={t("strategy_not_set")}
+                  className={inputClass}
+                />
               </div>
             </div>
           </div>

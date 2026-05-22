@@ -40,6 +40,7 @@ interface Strategy {
   max_daily_loss: number | null;
   max_trades_per_day: number | null;
   max_consecutive_losses: number | null;
+  max_session_minutes: number | null;
   pretrade_checklist: string[] | null;
   pairs: string[] | null;
   sessions: string[] | null;
@@ -445,6 +446,12 @@ export default function SessionPage() {
                 <li className="text-sm text-foreground flex gap-2">
                   <span className="text-muted shrink-0">⛔</span>
                   <span>Stop après {strategy.max_consecutive_losses} pertes consécutives</span>
+                </li>
+              )}
+              {strategy.max_session_minutes !== null && (
+                <li className="text-sm text-foreground flex gap-2">
+                  <span className="text-muted shrink-0">⏱️</span>
+                  <span>{t("session_rule_max_duration").replace("{m}", String(strategy.max_session_minutes))}</span>
                 </li>
               )}
               {strategy.max_sl_pips !== null && (
