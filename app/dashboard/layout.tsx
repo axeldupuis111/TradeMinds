@@ -143,12 +143,12 @@ function SessionDurationBanner() {
     }
 
     check();
-    const interval = setInterval(check, 60000);
+    const interval = setInterval(check, 30000);
     return () => {
       cancelled = true;
       clearInterval(interval);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Hidden on the session page itself (widget already shows it there)
   if (pathname === "/dashboard/session") return null;
