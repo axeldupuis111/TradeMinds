@@ -19,6 +19,8 @@ interface Props {
     max_trades_per_day: number | null;
   } | null;
   accountSize: number;
+  sessionStartedAt: string | null;
+  sessionPausedAt: string | null;
 }
 
 function netPnl(tr: Trade) {
@@ -32,7 +34,26 @@ function formatTimeSince(minutes: number) {
   return m > 0 ? `${h}h ${m}min` : `${h}h`;
 }
 
-export default function RealTimeGuards({ strategy, accountSize }: Props) {
+function formatSessionDuration(
+  minutes: number,
+  t: (k: string) => string
+): string {
+  if (minutes < 60)
+    return t("session_duration_mins").replace("{m}", String(minutes));
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h < 24)
+    return t("session_duration_hours_mins")
+      .replace("{h}", String(h))
+      .replace("{m}", String(m));
+  const d = Math.floor(h / 24);
+  const rh = h % 24;
+  return t("session_duration_days_hours")
+    .replace("{d}", String(d))
+    .replace("{h}", String(rh));
+}
+
+export default function RealTimeGuards({ strategy, accountSize, sessionStartedAt, sessionPausedAt }: Props) {
   const { t } = useLanguage();
   const supabase = createClient();
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -75,16 +96,11 @@ export default function RealTimeGuards({ strategy, accountSize }: Props) {
       : null;
   const lossConsumed = maxLossEuro !== null ? Math.abs(Math.min(0, todayPnl)) / maxLossEuro : 0;
 
-  // Find last closed trade (closest close_time to now)
-  const lastClosedTrade = trades
-    .filter((tr) => tr.close_time !== null)
-    .sort((a, b) => new Date(b.close_time!).getTime() - new Date(a.close_time!).getTime())[0] ?? null;
-  const timeSinceMs = lastClosedTrade?.close_time
-    ? now - new Date(lastClosedTrade.close_time).getTime()
+  // Session duration
+  const isPaused = sessionPausedAt !== null;
+  const sessionDurationMin = sessionStartedAt
+    ? Math.floor((now - new Date(sessionStartedAt).getTime()) / 60000)
     : null;
-  const timeSinceMin = timeSinceMs !== null ? Math.floor(timeSinceMs / 60000) : null;
-  const lastTradeWasLoss = lastClosedTrade ? netPnl(lastClosedTrade) < 0 : false;
-  const isRevengeRisk = lastTradeWasLoss && timeSinceMin !== null && timeSinceMin < 15;
 
   // — Trade count card —
   let tradeColor = "text-profit";
@@ -163,25 +179,27 @@ export default function RealTimeGuards({ strategy, accountSize }: Props) {
         {pnlMsg && <p className={`text-xs font-medium ${pnlColor}`}>{pnlMsg}</p>}
       </div>
 
-      {/* Counter 3 — Time since last trade */}
+      {/* Counter 3 — Session duration */}
       <div
         className={`rounded-xl border p-5 flex flex-col gap-2 ${
-          isRevengeRisk ? "bg-loss/10 border-loss/30 animate-pulse" : "bg-card border-border"
+          isPaused ? "bg-orange-500/10 border-orange-500/30" : "bg-card border-border"
         }`}
       >
         <p className="text-xs text-muted uppercase tracking-wider font-medium">
-          {t("session_active_time_since_last_trade")}
+          {t("session_active_session_duration")}
         </p>
         <p
           className={`text-5xl md:text-6xl font-bold tabular-nums leading-none ${
-            isRevengeRisk ? "text-loss" : "text-foreground"
+            isPaused ? "text-orange-400" : "text-foreground"
           }`}
         >
-          {timeSinceMin !== null ? formatTimeSince(timeSinceMin) : "—"}
+          {sessionDurationMin !== null
+            ? formatSessionDuration(sessionDurationMin, t)
+            : "—"}
         </p>
-        {isRevengeRisk && (
-          <p className="text-xs font-medium text-loss">
-            ⚠️ {t("session_active_revenge_warning")}
+        {isPaused && (
+          <p className="text-xs font-medium text-orange-400">
+            ⏸ {t("session_active_duration_paused")}
           </p>
         )}
       </div>

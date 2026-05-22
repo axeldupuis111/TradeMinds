@@ -465,7 +465,12 @@ export default function SessionPage() {
         )}
 
         {/* Section 3 — Real-time guards */}
-        <RealTimeGuards strategy={strategy} accountSize={accountSize} />
+        <RealTimeGuards
+          strategy={strategy}
+          accountSize={accountSize}
+          sessionStartedAt={activeSession?.created_at ?? null}
+          sessionPausedAt={paused ? pausedAt : null}
+        />
 
         {/* Section 4 — Quick logger */}
         <div>
