@@ -27,13 +27,6 @@ function netPnl(tr: Trade) {
   return tr.pnl + (tr.commission || 0) + (tr.swap || 0);
 }
 
-function formatTimeSince(minutes: number) {
-  if (minutes < 60) return `${minutes} min`;
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return m > 0 ? `${h}h ${m}min` : `${h}h`;
-}
-
 function formatSessionDuration(
   minutes: number,
   t: (k: string) => string
