@@ -5,6 +5,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { useTheme } from "@/lib/ThemeContext";
 import { createClient } from "@/lib/supabase/client";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -506,6 +507,23 @@ export default function SettingsPage() {
           {saving ? "..." : t("settings_save")}
         </button>
       </div>
+
+      {/* Exchange connections */}
+      <section className="bg-card border border-border rounded-xl p-5">
+        <h2 className="text-lg font-semibold text-foreground mb-1">Connexions exchange</h2>
+        <p className="text-muted text-sm mb-4">
+          Connecte tes comptes exchange crypto pour synchroniser tes trades automatiquement.
+        </p>
+        <Link
+          href="/dashboard/settings/exchanges"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-surface text-foreground text-sm hover:bg-border transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+          </svg>
+          Gérer les connexions
+        </Link>
+      </section>
 
       {/* Notifications */}
       <section className="bg-card border border-border rounded-xl p-5">
