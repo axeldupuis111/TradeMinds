@@ -128,7 +128,7 @@ export default function ExchangeSettingsPage() {
       {/* Toast */}
       {toast && (
         <div
-          className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium max-w-sm ${
+          className={`fixed top-20 right-4 z-[70] px-4 py-3 rounded-lg shadow-lg text-sm font-medium max-w-sm break-words ${
             toast.type === "success"
               ? "bg-profit/10 border border-profit/30 text-profit"
               : toast.type === "warning"
