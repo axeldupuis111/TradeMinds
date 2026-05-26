@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   aggregateFills,
   type BinanceFill,
-  type AggregatedPosition,
 } from "./binance-aggregate";
 
 // ─── Test helpers ─────────────────────────────────────────────────────────────
