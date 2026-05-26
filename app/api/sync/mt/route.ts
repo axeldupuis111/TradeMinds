@@ -154,7 +154,7 @@ export async function POST(req: NextRequest) {
   if (frozenErr) {
     console.error("[MT Sync] frozen query error:", frozenErr.message);
     return NextResponse.json(
-      { error: "Erreur interne.", debug: frozenErr.message },
+      { error: "Erreur interne." },
       { status: 500 },
     );
   }
@@ -197,21 +197,64 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // ── Upsert ───────────────────────────────────────────────────────────────
-  const { data: upserted, error: upsertErr } = await admin
-    .from("trades")
-    .upsert(rows, { onConflict: "user_id,source,external_id" })
-    .select("id");
+  // ── Insert new / Update existing (two-step, partial-index safe) ─────────
+  // The unique index on (user_id, source, external_id) is partial
+  // (WHERE external_id IS NOT NULL), so PostgREST's ON CONFLICT cannot
+  // target it. Instead we split into inserts (new tickets) and updates
+  // (existing tickets whose sync-sourced fields may have changed).
 
-  if (upsertErr) {
-    console.error("[MT Sync] upsert error:", upsertErr.message);
-    return NextResponse.json(
-      { error: "Erreur lors de l'enregistrement des trades.", debug: upsertErr.message },
-      { status: 500 },
-    );
+  const rowExternalIds = rows.map((r) => r.external_id);
+
+  const { data: existingRows } = await admin
+    .from("trades")
+    .select("id, external_id")
+    .eq("user_id", userId)
+    .eq("source", "mt5")
+    .in("external_id", rowExternalIds);
+
+  const existingMap = new Map(
+    (existingRows ?? []).map((r: { id: string; external_id: string }) => [r.external_id, r.id]),
+  );
+
+  const toInsert = rows.filter((r) => !existingMap.has(r.external_id));
+  const toUpdate = rows.filter((r) => existingMap.has(r.external_id));
+
+  let synced = 0;
+
+  // Insert new trades
+  if (toInsert.length > 0) {
+    const { data: inserted, error: insertErr } = await admin
+      .from("trades")
+      .insert(toInsert)
+      .select("id");
+
+    if (insertErr) {
+      console.error("[MT Sync] insert error:", insertErr.message);
+      return NextResponse.json(
+        { error: "Erreur lors de l'enregistrement des trades." },
+        { status: 500 },
+      );
+    }
+    synced += inserted?.length ?? 0;
   }
 
-  const synced = upserted?.length ?? 0;
+  // Update existing trades (sync fields only)
+  for (const row of toUpdate) {
+    const tradeId = existingMap.get(row.external_id)!;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { user_id: _uid, source: _src, external_id: _eid, ...updateFields } = row;
+    const { error: updateErr } = await admin
+      .from("trades")
+      .update(updateFields)
+      .eq("id", tradeId);
+
+    if (updateErr) {
+      console.error("[MT Sync] update error:", updateErr.message);
+      // Non-fatal: continue with remaining trades
+      continue;
+    }
+    synced++;
+  }
 
   return NextResponse.json({
     received: rawTrades.length,
