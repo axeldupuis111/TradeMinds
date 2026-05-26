@@ -179,8 +179,6 @@ export async function POST(req: NextRequest) {
       status: "closed" as const,
       source: "mt5" as const,
       external_id: String(t.ticket),
-      strategy_id: null,
-      challenge_id: null,
     }));
 
   if (rows.length === 0) {
