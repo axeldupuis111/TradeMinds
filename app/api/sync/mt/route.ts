@@ -77,11 +77,30 @@ function isValidTrade(t: unknown): t is MtTrade {
 
 export async function POST(req: NextRequest) {
   // ── Parse body ───────────────────────────────────────────────────────────
+  // Read as raw text first, then parse. MetaTrader (MQL5) strings are
+  // null-terminated C strings — the EA's WebRequest often appends a \0 byte
+  // that causes req.json() to throw even though the payload is valid JSON.
   let body: RequestBody;
+  let raw = "";
   try {
-    body = await req.json();
+    raw = await req.text();
   } catch {
-    return NextResponse.json({ error: "Corps JSON invalide." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Corps JSON invalide.", received: "(impossible de lire le corps)" },
+      { status: 400 },
+    );
+  }
+
+  // Strip null bytes and surrounding whitespace that non-browser clients may add
+  const cleaned = raw.replace(/\0/g, "").trim();
+
+  try {
+    body = JSON.parse(cleaned);
+  } catch {
+    return NextResponse.json(
+      { error: "Corps JSON invalide.", received: cleaned.slice(0, 200) || "(corps vide)" },
+      { status: 400 },
+    );
   }
 
   const { token } = body;
