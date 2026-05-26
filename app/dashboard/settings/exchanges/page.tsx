@@ -35,6 +35,8 @@ export default function ExchangeSettingsPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  const [syncingId, setSyncingId] = useState<string | null>(null);
+
   function showToast(type: ToastType, text: string) {
     setToast({ type, text });
     setTimeout(() => setToast(null), 5000);
@@ -84,6 +86,44 @@ export default function ExchangeSettingsPage() {
     setApiKey("");
     setApiSecret("");
     fetchConnections();
+  }
+
+  async function handleSync(id: string) {
+    setSyncingId(id);
+    try {
+      const res = await fetch(`/api/exchanges/${id}/sync`, { method: "POST" });
+      const data = await res.json();
+
+      if (!res.ok) {
+        showToast("error", data.error || "Erreur lors de la synchronisation.");
+        return;
+      }
+
+      const parts: string[] = [];
+      if (data.inserted > 0) {
+        parts.push(`${data.inserted} nouveau${data.inserted > 1 ? "x" : ""} trade${data.inserted > 1 ? "s" : ""} ajouté${data.inserted > 1 ? "s" : ""}`);
+      }
+      if (data.synced > 0 && data.inserted === 0) {
+        parts.push("aucun nouveau trade");
+      }
+      if (data.open > 0) {
+        parts.push(`${data.open} position${data.open > 1 ? "s" : ""} ouverte${data.open > 1 ? "s" : ""} en cours`);
+      }
+      if (data.synced === 0 && data.open === 0) {
+        parts.push("aucun trade trouvé sur les 30 derniers jours");
+      }
+
+      const msg = data.synced > 0
+        ? `${data.synced} trade${data.synced > 1 ? "s" : ""} synchronisé${data.synced > 1 ? "s" : ""} (${parts.join(", ")}).`
+        : parts.join(", ").replace(/^./, (c) => c.toUpperCase()) + ".";
+
+      showToast("success", msg);
+      fetchConnections();
+    } catch {
+      showToast("error", "Impossible de contacter le serveur.");
+    } finally {
+      setSyncingId(null);
+    }
   }
 
   async function handleDelete() {
@@ -149,7 +189,12 @@ export default function ExchangeSettingsPage() {
 
       {/* Liste des connexions */}
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold text-foreground">Comptes connectés</h2>
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Comptes connectés</h2>
+          <p className="text-muted text-xs mt-0.5">
+            La synchronisation couvre les trades Binance Futures USD-M des 30 derniers jours.
+          </p>
+        </div>
 
         {connections.length === 0 ? (
           <div className="bg-card border border-border rounded-xl p-5 text-center">
@@ -176,12 +221,25 @@ export default function ExchangeSettingsPage() {
                     <span>Dernière sync : {formatDate(conn.last_synced_at)}</span>
                   </div>
                 </div>
-                <button
-                  onClick={() => setDeleteId(conn.id)}
-                  className="flex-shrink-0 px-3 py-1.5 rounded-lg border border-loss/20 bg-loss/5 text-loss text-xs hover:bg-loss/10 transition-colors"
-                >
-                  Supprimer
-                </button>
+                <div className="flex gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => handleSync(conn.id)}
+                    disabled={syncingId === conn.id}
+                    className={`px-3 py-1.5 rounded-lg border text-xs transition-colors ${
+                      syncingId === conn.id
+                        ? "border-border bg-surface text-muted opacity-50 cursor-not-allowed"
+                        : "border-accent/20 bg-accent/5 text-accent hover:bg-accent/10"
+                    }`}
+                  >
+                    {syncingId === conn.id ? "..." : "Synchroniser"}
+                  </button>
+                  <button
+                    onClick={() => setDeleteId(conn.id)}
+                    className="px-3 py-1.5 rounded-lg border border-loss/20 bg-loss/5 text-loss text-xs hover:bg-loss/10 transition-colors"
+                  >
+                    Supprimer
+                  </button>
+                </div>
               </div>
             );
           })
