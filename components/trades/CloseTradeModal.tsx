@@ -146,6 +146,7 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
         pnl: pnlNum,
         close_time: closeIso,
         closed_at: closeIso,
+        closed_manually: true,
         notes: mergedNotes,
       })
       .eq("id", trade.id)

@@ -105,6 +105,12 @@ export default function SettingsPage() {
   const [emailNotifSession, setEmailNotifSession] = useState(false);
   const [emailNotifLoading, setEmailNotifLoading] = useState(false);
   const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
+
+  // MetaTrader sync token
+  const [mtToken, setMtToken] = useState<string | null>(null);
+  const [mtLoading, setMtLoading] = useState(true);
+  const [mtGenerating, setMtGenerating] = useState(false);
+  const [showMtRegenModal, setShowMtRegenModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const hasChanges =
@@ -113,8 +119,43 @@ export default function SettingsPage() {
     timezone !== originalTimezone ||
     currency !== originalCurrency;
 
+  async function fetchMtToken() {
+    setMtLoading(true);
+    try {
+      const res = await fetch("/api/mt/token");
+      if (res.ok) {
+        const data = await res.json();
+        setMtToken(data.token);
+      }
+    } catch {
+      // silent — token section will show generate button
+    } finally {
+      setMtLoading(false);
+    }
+  }
+
+  async function generateMtToken() {
+    setMtGenerating(true);
+    try {
+      const res = await fetch("/api/mt/token", { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setMtToken(data.token);
+        showToast("success", t("settings_saved"));
+      } else {
+        showToast("error", t("settings_save_error"));
+      }
+    } catch {
+      showToast("error", t("settings_save_error"));
+    } finally {
+      setMtGenerating(false);
+      setShowMtRegenModal(false);
+    }
+  }
+
   useEffect(() => {
     load();
+    fetchMtToken();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function showToast(type: "success" | "error", text: string) {
@@ -507,6 +548,87 @@ export default function SettingsPage() {
           {saving ? "..." : t("settings_save")}
         </button>
       </div>
+
+      {/* MetaTrader sync token */}
+      <section className="bg-card border border-border rounded-xl p-5">
+        <h2 className="text-lg font-semibold text-foreground mb-1">Synchronisation MetaTrader</h2>
+        <p className="text-muted text-sm mb-4">
+          Ce token permet de connecter MetaTrader (Expert Advisor) à TradeDiscipline pour
+          synchroniser automatiquement tes trades. Tu le copieras dans la configuration de
+          l&apos;EA. Ne le partage pas — il donne accès à l&apos;envoi de trades sur ton compte.
+        </p>
+
+        {mtLoading ? (
+          <div className="skeleton h-10 w-full rounded-lg" />
+        ) : mtToken ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={mtToken}
+                readOnly
+                className="flex-1 px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm font-mono cursor-text focus:outline-none select-all"
+              />
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(mtToken);
+                  showToast("success", t("settings_link_copied"));
+                }}
+                className="px-3 py-2 rounded-lg border border-border bg-surface text-foreground text-sm hover:bg-border transition-colors flex-shrink-0"
+              >
+                Copier
+              </button>
+              <button
+                onClick={() => setShowMtRegenModal(true)}
+                disabled={mtGenerating}
+                className="px-3 py-2 rounded-lg border border-loss/20 bg-loss/5 text-loss text-sm hover:bg-loss/10 transition-colors flex-shrink-0 disabled:opacity-50"
+              >
+                {mtGenerating ? "..." : "Régénérer"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={generateMtToken}
+            disabled={mtGenerating}
+            className={`px-5 py-2.5 rounded-lg font-medium text-sm transition-colors ${
+              mtGenerating
+                ? "bg-surface border border-border text-muted opacity-50 cursor-not-allowed"
+                : "bg-accent text-white hover:bg-blue-600"
+            }`}
+          >
+            {mtGenerating ? "..." : "Générer un token"}
+          </button>
+        )}
+      </section>
+
+      {/* MetaTrader regenerate confirmation modal */}
+      {showMtRegenModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-card border border-border rounded-xl p-6 max-w-md w-full space-y-4">
+            <h3 className="text-lg font-semibold text-foreground">Régénérer le token ?</h3>
+            <p className="text-sm text-muted">
+              Le token actuel deviendra immédiatement invalide. Tu devras reconfigurer
+              l&apos;Expert Advisor dans MetaTrader avec le nouveau token.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowMtRegenModal(false)}
+                className="px-4 py-2 rounded-lg border border-border bg-surface text-foreground text-sm hover:bg-border transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={generateMtToken}
+                disabled={mtGenerating}
+                className="px-4 py-2 rounded-lg bg-loss text-white text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {mtGenerating ? "..." : "Régénérer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Exchange connections */}
       <section className="bg-card border border-border rounded-xl p-5">
