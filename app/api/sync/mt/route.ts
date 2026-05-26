@@ -143,13 +143,21 @@ export async function POST(req: NextRequest) {
   // ── Exclude trades manually closed by the user ───────────────────────────
   const externalIds = validTrades.map((t) => String(t.ticket));
 
-  const { data: frozenRows } = await admin
+  const { data: frozenRows, error: frozenErr } = await admin
     .from("trades")
     .select("external_id")
     .eq("user_id", userId)
     .eq("source", "mt5")
     .eq("closed_manually", true)
     .in("external_id", externalIds);
+
+  if (frozenErr) {
+    console.error("[MT Sync] frozen query error:", frozenErr.message);
+    return NextResponse.json(
+      { error: "Erreur interne.", debug: frozenErr.message },
+      { status: 500 },
+    );
+  }
 
   const frozenIds = new Set(
     (frozenRows ?? []).map((r: { external_id: string }) => r.external_id),
@@ -198,7 +206,7 @@ export async function POST(req: NextRequest) {
   if (upsertErr) {
     console.error("[MT Sync] upsert error:", upsertErr.message);
     return NextResponse.json(
-      { error: "Erreur lors de l'enregistrement des trades." },
+      { error: "Erreur lors de l'enregistrement des trades.", debug: upsertErr.message },
       { status: 500 },
     );
   }
