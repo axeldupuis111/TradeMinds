@@ -54,6 +54,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // MetaTrader sync: called by EA (no user session), authenticated via mt_sync_token in body
+  if (pathname === "/api/sync/mt") {
+    return NextResponse.next();
+  }
+
   // ────────────────────────────────────────────────────────────────
   // 1. Redirects 301 permanents (dédoublonnage légal)
   // ────────────────────────────────────────────────────────────────
