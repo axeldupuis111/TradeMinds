@@ -42,7 +42,9 @@ function isPublicPath(pathname: string): boolean {
     p.startsWith("/legal/") ||
     p.startsWith("/contact") ||
     p.startsWith("/faq") ||
-    p.startsWith("/profile/")
+    p.startsWith("/profile/") ||
+    p === "/TradeDiscipline_MT5.mq5" ||
+    p === "/TradeDiscipline_MT4.mq4"
   );
 }
 
