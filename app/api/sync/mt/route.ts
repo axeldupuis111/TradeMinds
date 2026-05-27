@@ -172,7 +172,7 @@ export async function POST(req: NextRequest) {
 
   // ── Exclude trades manually closed by the user ───────────────────────────
   const externalIds = validTrades.map((t) => String(t.ticket));
-  const distinctSources = [...new Set(validTrades.map((t) => mapSource(t.source)))];
+  const distinctSources = Array.from(new Set(validTrades.map((t) => mapSource(t.source))));
 
   const { data: frozenRows, error: frozenErr } = await admin
     .from("trades")
@@ -239,7 +239,7 @@ export async function POST(req: NextRequest) {
   // (existing tickets whose sync-sourced fields may have changed).
 
   const rowExternalIds = rows.map((r) => r.external_id);
-  const rowSources = [...new Set(rows.map((r) => r.source))];
+  const rowSources = Array.from(new Set(rows.map((r) => r.source)));
 
   const { data: existingRows } = await admin
     .from("trades")
