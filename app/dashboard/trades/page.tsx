@@ -7,6 +7,7 @@ import OpenTradesSection from "@/components/trades/OpenTradesSection";
 import TradeList from "@/components/trades/TradeList";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 interface Strategy {
@@ -23,6 +24,23 @@ export default function TradesPage() {
   const [showModal, setShowModal] = useState(false);
   const [closingTradeId, setClosingTradeId] = useState<string | null>(null);
   const [selectedStrategy, setSelectedStrategy] = useState<Strategy | null>(null);
+  const [showMtBanner, setShowMtBanner] = useState(false);
+
+  useEffect(() => {
+    async function checkMtTrades() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { count } = await supabase
+        .from("trades")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .in("source", ["mt4", "mt5"]);
+
+      if (count === 0) setShowMtBanner(true);
+    }
+    checkMtTrades();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     async function loadStrategies() {
@@ -63,6 +81,26 @@ export default function TradesPage() {
           {t("trades_add")}
         </button>
       </div>
+
+      {showMtBanner && (
+        <div className="p-4 rounded-xl border border-accent/20 bg-accent/5 flex items-center justify-between gap-4 flex-wrap">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-foreground">
+              Synchronise tes trades MetaTrader automatiquement
+            </p>
+            <p className="text-xs text-muted">
+              Connecte MetaTrader 4 ou 5 pour que tes trades remontent
+              automatiquement dans ton journal, dès qu&apos;ils se ferment.
+            </p>
+          </div>
+          <Link
+            href="/dashboard/settings#metatrader"
+            className="px-4 py-2 rounded-lg bg-accent text-white text-sm font-medium hover:bg-blue-600 transition-colors whitespace-nowrap flex-shrink-0"
+          >
+            Configurer la synchronisation
+          </Link>
+        </div>
+      )}
 
       <CsvImport strategyId={strategyId} onImported={refresh} />
 

@@ -550,7 +550,7 @@ export default function SettingsPage() {
       </div>
 
       {/* MetaTrader sync token */}
-      <section className="bg-card border border-border rounded-xl p-5">
+      <section id="metatrader" className="bg-card border border-border rounded-xl p-5 scroll-mt-6">
         <h2 className="text-lg font-semibold text-foreground mb-1">Synchronisation MetaTrader</h2>
         <p className="text-muted text-sm mb-4">
           Ce token permet de connecter MetaTrader (Expert Advisor) à TradeDiscipline pour
