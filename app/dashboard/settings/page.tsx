@@ -110,6 +110,7 @@ export default function SettingsPage() {
   const [mtLoading, setMtLoading] = useState(true);
   const [mtGenerating, setMtGenerating] = useState(false);
   const [showMtRegenModal, setShowMtRegenModal] = useState(false);
+  const [showMtGuide, setShowMtGuide] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const hasChanges =
@@ -599,6 +600,112 @@ export default function SettingsPage() {
             {mtGenerating ? "..." : "Générer un token"}
           </button>
         )}
+
+        {/* Installation guide — collapsible */}
+        <div className="mt-4 bg-surface border border-border rounded-lg overflow-hidden">
+          <button
+            onClick={() => setShowMtGuide(!showMtGuide)}
+            className="w-full text-left px-4 py-3 flex items-center justify-between gap-3"
+          >
+            <span className="text-foreground font-medium text-sm">
+              Comment connecter MetaTrader
+            </span>
+            <svg
+              className={`w-4 h-4 text-muted shrink-0 transition-transform ${showMtGuide ? "rotate-180" : ""}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          {showMtGuide && (
+            <div className="px-4 pb-4">
+              <ol className="space-y-2.5 text-sm text-muted leading-relaxed list-decimal list-inside">
+                <li>
+                  <strong className="text-foreground">Copie ton token</strong> à
+                  l&apos;aide du bouton Copier ci-dessus.
+                </li>
+                <li>
+                  <strong className="text-foreground">
+                    Télécharge l&apos;Expert Advisor
+                  </strong>{" "}
+                  TradeDiscipline : fichier{" "}
+                  <code className="text-xs bg-background px-1 py-0.5 rounded">.mq5</code>{" "}
+                  pour MetaTrader 5,{" "}
+                  <code className="text-xs bg-background px-1 py-0.5 rounded">.mq4</code>{" "}
+                  pour MetaTrader 4. Le fichier est fourni par
+                  TradeDiscipline (lien de téléchargement à venir).
+                </li>
+                <li>
+                  <strong className="text-foreground">
+                    Ouvre le fichier dans MetaEditor
+                  </strong>{" "}
+                  (touche{" "}
+                  <kbd className="text-xs bg-background px-1.5 py-0.5 rounded border border-border">F4</kbd>{" "}
+                  dans MetaTrader) et compile-le (touche{" "}
+                  <kbd className="text-xs bg-background px-1.5 py-0.5 rounded border border-border">F7</kbd>).
+                </li>
+                <li>
+                  Dans MetaTrader, va dans{" "}
+                  <strong className="text-foreground">Outils → Options</strong>,
+                  onglet{" "}
+                  <strong className="text-foreground">Expert Advisors</strong>{" "}
+                  (MT4) ou{" "}
+                  <strong className="text-foreground">Expert Consultants</strong>{" "}
+                  (MT5). Coche « Autoriser le trading algorithmique » et
+                  « Autoriser les WebRequest pour les URL listées », puis
+                  ajoute l&apos;URL{" "}
+                  <code className="text-xs bg-background px-1 py-0.5 rounded break-all">
+                    https://www.tradediscipline.app
+                  </code>.
+                </li>
+                <li>
+                  <strong className="text-foreground">
+                    Glisse l&apos;Expert Advisor
+                  </strong>{" "}
+                  sur n&apos;importe quel graphique. Dans la fenêtre qui
+                  s&apos;ouvre : onglet{" "}
+                  <strong className="text-foreground">Général</strong> → coche
+                  « Autoriser le trading algorithmique » (MT5) /
+                  « Autoriser Trading en direct » (MT4) ; onglet{" "}
+                  <strong className="text-foreground">
+                    Paramètres d&apos;entrée
+                  </strong>{" "}
+                  (MT5) /{" "}
+                  <strong className="text-foreground">
+                    Données d&apos;entrée
+                  </strong>{" "}
+                  (MT4) → colle le token dans le champ prévu.
+                </li>
+                <li>
+                  <strong className="text-foreground">Valide.</strong> Les trades
+                  des 90 derniers jours se synchronisent, puis les nouveaux
+                  trades arrivent automatiquement tant que MetaTrader reste
+                  ouvert.
+                </li>
+              </ol>
+
+              {/* Bon à savoir */}
+              <div className="mt-4 p-3 rounded-lg bg-accent/5 border border-accent/20">
+                <p className="text-sm font-medium text-foreground mb-2">
+                  Bon à savoir
+                </p>
+                <ul className="space-y-1.5 text-sm text-muted leading-relaxed list-disc list-inside">
+                  <li>
+                    TradeDiscipline affiche le P&amp;L net (commissions et
+                    frais inclus) ; ce montant peut donc différer du profit
+                    brut affiché par MetaTrader.
+                  </li>
+                  <li>
+                    La synchronisation fonctionne lorsque MetaTrader est
+                    ouvert sur ton ordinateur.
+                  </li>
+                </ul>
+              </div>
+            </div>
+          )}
+        </div>
       </section>
 
       {/* MetaTrader regenerate confirmation modal */}
