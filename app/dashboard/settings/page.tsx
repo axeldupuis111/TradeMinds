@@ -753,10 +753,6 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Exchange connections — hidden until Binance sync is complete.
-         Code lives in app/dashboard/settings/exchanges/ and app/api/exchanges/.
-         Uncomment this section to re-enable the UI entry point. */}
-
       {/* Notifications */}
       <section className="bg-card border border-border rounded-xl p-5">
         <h2 className="text-lg font-semibold text-foreground mb-1">{t("settings_notif_title")}</h2>
