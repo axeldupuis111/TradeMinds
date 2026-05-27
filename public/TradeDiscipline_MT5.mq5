@@ -3,7 +3,7 @@
 //|        Synchronise les trades fermes vers TradeDiscipline        |
 //+------------------------------------------------------------------+
 #property copyright "TradeDiscipline"
-#property version   "1.03"
+#property version   "1.06"
 #property strict
 
 // --- Parametres configurables par l'utilisateur ---
@@ -96,10 +96,14 @@ void SendClosedTrades(datetime fromTime)
       datetime closeTime   = (datetime)HistoryDealGetInteger(dealTicket, DEAL_TIME);
       long     positionId  = HistoryDealGetInteger(dealTicket,  DEAL_POSITION_ID);
 
+      // SL/TP de la position au moment de la cloture (deal de sortie).
+      double   sl          = HistoryDealGetDouble(dealTicket,  DEAL_SL);
+      double   tp          = HistoryDealGetDouble(dealTicket,  DEAL_TP);
+
       long dealType = HistoryDealGetInteger(dealTicket, DEAL_TYPE);
       string direction = (dealType == DEAL_TYPE_SELL) ? "buy" : "sell";
 
-      // --- Donnees du deal d'ouverture (meme position) ---
+      // --- Donnees du deal d'ouverture (prix, heure, commission) ---
       double   openPrice = 0;
       datetime openTime  = 0;
       double   openComm  = 0;
@@ -120,8 +124,8 @@ void SendClosedTrades(datetime fromTime)
       json += "\"profit\":"      + DoubleToString(profit, 2)         + ",";
       json += "\"commission\":"  + DoubleToString(commission, 2)     + ",";
       json += "\"swap\":"        + DoubleToString(swap, 2)           + ",";
-      json += "\"sl\":0,";
-      json += "\"tp\":0";
+      json += "\"sl\":"          + DoubleToString(sl, 5)             + ",";
+      json += "\"tp\":"          + DoubleToString(tp, 5);
       json += "}";
 
       if(PostTrade(json, positionId))
@@ -135,7 +139,7 @@ void SendClosedTrades(datetime fromTime)
 }
 
 //+------------------------------------------------------------------+
-//| Retrouve le deal d'ouverture d'une position donnee               |
+//| Retrouve le deal d'ouverture (prix, heure, commission)           |
 //+------------------------------------------------------------------+
 void FindOpenDeal(long positionId, double &openPrice, datetime &openTime,
                   double &openComm)
@@ -179,7 +183,7 @@ bool PostTrade(string tradeJson, long positionId)
       int err = GetLastError();
       Print("TradeDiscipline ERREUR : trade ", positionId,
             " - WebRequest a echoue, code ", err,
-            ". Si code 4014 : l'URL n'est pas autorisee (Outils > Options > Expert Consultants).");
+            ". Si code 4014 : l'URL n'est pas autorisee (Outils > Options > Expert Advisors).");
       return(false);
    }
 
