@@ -18,6 +18,7 @@ interface MtTrade {
   swap: number;
   sl: number | null;
   tp: number | null;
+  source?: string; // "mt4" | "mt5" (optional, defaults to "mt5")
 }
 
 interface RequestBody {
@@ -27,6 +28,16 @@ interface RequestBody {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Validate and normalize the source field. Defaults to "mt5". */
+function mapSource(val: unknown): "mt4" | "mt5" {
+  if (typeof val === "string") {
+    const v = val.trim().toLowerCase();
+    if (v === "mt4") return "mt4";
+    if (v === "mt5") return "mt5";
+  }
+  return "mt5";
+}
 
 function mapDirection(val: string): "long" | "short" | null {
   const v = val.trim().toLowerCase();
@@ -161,12 +172,13 @@ export async function POST(req: NextRequest) {
 
   // ── Exclude trades manually closed by the user ───────────────────────────
   const externalIds = validTrades.map((t) => String(t.ticket));
+  const distinctSources = [...new Set(validTrades.map((t) => mapSource(t.source)))];
 
   const { data: frozenRows, error: frozenErr } = await admin
     .from("trades")
-    .select("external_id")
+    .select("external_id, source")
     .eq("user_id", userId)
-    .eq("source", "mt5")
+    .in("source", distinctSources)
     .eq("closed_manually", true)
     .in("external_id", externalIds);
 
@@ -178,8 +190,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const frozenIds = new Set(
-    (frozenRows ?? []).map((r: { external_id: string }) => r.external_id),
+  // Composite key "source:external_id" — ticket numbers are platform-specific,
+  // so mt4 ticket 12345 and mt5 ticket 12345 are distinct trades.
+  const frozenKeys = new Set(
+    (frozenRows ?? []).map(
+      (r: { external_id: string; source: string }) => `${r.source}:${r.external_id}`,
+    ),
   );
 
   // ── Build rows for upsert ────────────────────────────────────────────────
@@ -188,7 +204,7 @@ export async function POST(req: NextRequest) {
   // manual fields (notes, emotion, tags, strategy_id, sl_initial, tp_initial,
   // screenshot_path, etc.) ensures they are never overwritten on re-sync.
   const rows = validTrades
-    .filter((t) => !frozenIds.has(String(t.ticket)))
+    .filter((t) => !frozenKeys.has(`${mapSource(t.source)}:${String(t.ticket)}`))
     .map((t) => ({
       user_id: userId,
       pair: t.symbol.toUpperCase(),
@@ -204,7 +220,7 @@ export async function POST(req: NextRequest) {
       sl: t.sl ?? null,
       tp: t.tp ?? null,
       status: "closed" as const,
-      source: "mt5" as const,
+      source: mapSource(t.source),
       external_id: String(t.ticket),
     }));
 
@@ -223,20 +239,23 @@ export async function POST(req: NextRequest) {
   // (existing tickets whose sync-sourced fields may have changed).
 
   const rowExternalIds = rows.map((r) => r.external_id);
+  const rowSources = [...new Set(rows.map((r) => r.source))];
 
   const { data: existingRows } = await admin
     .from("trades")
-    .select("id, external_id")
+    .select("id, external_id, source")
     .eq("user_id", userId)
-    .eq("source", "mt5")
+    .in("source", rowSources)
     .in("external_id", rowExternalIds);
 
   const existingMap = new Map(
-    (existingRows ?? []).map((r: { id: string; external_id: string }) => [r.external_id, r.id]),
+    (existingRows ?? []).map(
+      (r: { id: string; external_id: string; source: string }) => [`${r.source}:${r.external_id}`, r.id],
+    ),
   );
 
-  const toInsert = rows.filter((r) => !existingMap.has(r.external_id));
-  const toUpdate = rows.filter((r) => existingMap.has(r.external_id));
+  const toInsert = rows.filter((r) => !existingMap.has(`${r.source}:${r.external_id}`));
+  const toUpdate = rows.filter((r) => existingMap.has(`${r.source}:${r.external_id}`));
 
   let synced = 0;
 
@@ -259,7 +278,7 @@ export async function POST(req: NextRequest) {
 
   // Update existing trades (sync fields only)
   for (const row of toUpdate) {
-    const tradeId = existingMap.get(row.external_id)!;
+    const tradeId = existingMap.get(`${row.source}:${row.external_id}`)!;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { user_id: _uid, source: _src, external_id: _eid, ...updateFields } = row;
     const { error: updateErr } = await admin
