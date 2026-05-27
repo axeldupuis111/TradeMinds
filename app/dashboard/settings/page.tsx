@@ -630,12 +630,29 @@ export default function SettingsPage() {
                   <strong className="text-foreground">
                     Télécharge l&apos;Expert Advisor
                   </strong>{" "}
-                  TradeDiscipline : fichier{" "}
-                  <code className="text-xs bg-background px-1 py-0.5 rounded">.mq5</code>{" "}
-                  pour MetaTrader 5,{" "}
-                  <code className="text-xs bg-background px-1 py-0.5 rounded">.mq4</code>{" "}
-                  pour MetaTrader 4. Le fichier est fourni par
-                  TradeDiscipline (lien de téléchargement à venir).
+                  TradeDiscipline :
+                  <span className="flex gap-2 mt-1.5">
+                    <a
+                      href="/TradeDiscipline_MT5.mq5"
+                      download
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-accent/30 bg-accent/5 text-accent text-xs font-medium hover:bg-accent/10 transition-colors"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                      </svg>
+                      MetaTrader 5 (.mq5)
+                    </a>
+                    <a
+                      href="/TradeDiscipline_MT4.mq4"
+                      download
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-accent/30 bg-accent/5 text-accent text-xs font-medium hover:bg-accent/10 transition-colors"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                      </svg>
+                      MetaTrader 4 (.mq4)
+                    </a>
+                  </span>
                 </li>
                 <li>
                   <strong className="text-foreground">
