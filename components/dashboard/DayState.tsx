@@ -7,7 +7,8 @@
  * toujours utilisé par la page Session.)
  */
 
-import { Card, CardTitle } from "@/components/ui/Card";
+import { CardTitle } from "@/components/ui/Card";
+import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/cn";
@@ -102,7 +103,7 @@ export default function DayState() {
   const barColor = consumedPct <= 50 ? "bg-profit" : consumedPct <= 80 ? "bg-warning" : "bg-loss";
 
   return (
-    <Card padding="md">
+    <KpiCardPremium layout="full" intensity="default" accentColor="cyan">
       <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
         <CardTitle>{t("session_state_title")}</CardTitle>
         {activeSessionStartedAt && (
@@ -177,6 +178,6 @@ export default function DayState() {
           </div>
         </div>
       )}
-    </Card>
+    </KpiCardPremium>
   );
 }

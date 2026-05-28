@@ -3,10 +3,13 @@
 /**
  * KpiCardPremium — carte KPI direction artistique "Terminal de précision".
  *
- * Dark mode : fond en dégradé profond, sheen supérieur, aura colorée dans
- * le coin, ombre portée deep. Hover : lift translateY(-4px).
- * Light mode : dégradé subtil clair-sur-clair, ombre colorée teintée,
- * pas d'aura (rend sale sur fond clair).
+ * Deux modes :
+ * - layout="kpi"  (défaut) : slots prédéfinis label / value / sublabel / visual
+ * - layout="full"          : shell premium seul. children gèrent toute la structure.
+ *
+ * Dark : fond dégradé profond, sheen supérieur, double aura colorée, ombre deep.
+ * Light : dégradé clair-sur-clair, ombre colorée teintée, pas d'aura.
+ * Hover : lift translateY(-4px) via .kpi-premium.
  */
 
 import { cn } from "@/lib/cn";
@@ -14,7 +17,7 @@ import { useTheme } from "@/lib/ThemeContext";
 
 export type AccentColor = "cyan" | "green" | "amber";
 
-// CSS token to use for aura radial gradient (RGB channels, space-separated)
+// CSS token (RGB channels space-separated) pour le radial-gradient d'aura
 const AURA_TOKEN: Record<AccentColor, string> = {
   cyan:  "var(--accent-glow)",
   green: "var(--profit)",
@@ -22,13 +25,18 @@ const AURA_TOKEN: Record<AccentColor, string> = {
 };
 
 export interface KpiCardPremiumProps {
-  label: string;
-  value: React.ReactNode;
+  /**
+   * "kpi"  → slots standard (label / value / sublabel / visual). Par défaut.
+   * "full" → shell premium seul. Tout le contenu passe dans children.
+   */
+  layout?: "kpi" | "full";
+  label?: string;
+  value?: React.ReactNode;
   sublabel?: React.ReactNode;
   trend?: "up" | "down" | "neutral";
   accentColor?: AccentColor;
   /**
-   * "hero"    → aura intense (card signature pleine largeur)
+   * "hero"    → aura intense (card signature pleine largeur Score)
    * "default" → aura discrète (cards secondaires)
    */
   intensity?: "hero" | "default";
@@ -39,6 +47,7 @@ export interface KpiCardPremiumProps {
 }
 
 export function KpiCardPremium({
+  layout = "kpi",
   label,
   value,
   sublabel,
@@ -53,7 +62,7 @@ export function KpiCardPremium({
   const { theme } = useTheme();
   const isDark = theme !== "light";
 
-  // Intensités d'aura selon le rôle de la card
+  // Configuration d'aura selon le rôle de la card
   const aura = intensity === "hero"
     ? {
         primaryEllipse:   "100% 80%",
@@ -84,13 +93,13 @@ export function KpiCardPremium({
         boxShadow: `var(--glow-shadow)`,
       }}
     >
-      {/* Sheen — top highlight line (bright in dark, subtle inner shadow in light) */}
+      {/* Sheen — top highlight line */}
       <div
         className="absolute top-0 inset-x-0 h-[2px] pointer-events-none z-20"
         style={{ background: `var(--sheen)` }}
       />
 
-      {/* Double aura — intensité selon `intensity` prop. Dark only. */}
+      {/* Double aura — intensité selon `intensity`. Dark only. */}
       {isDark && (
         <div
           className="absolute inset-0 pointer-events-none z-0"
@@ -103,63 +112,73 @@ export function KpiCardPremium({
         />
       )}
 
-      {/* Content */}
-      <div className="relative z-10 p-5">
+      {/* ── Content ─────────────────────────────────────────────────────── */}
 
-        {/* Label — uppercase, tracked, muted */}
-        <p
-          className="text-[10px] font-semibold uppercase text-foreground-muted mb-3 leading-none"
-          style={{ letterSpacing: "0.12em" }}
-        >
-          {label}
-        </p>
+      {layout === "full" ? (
+        /* Full layout — children gèrent toute la structure interne */
+        <div className="relative z-10 p-5">
+          {children}
+        </div>
+      ) : (
+        /* KPI layout — slots prédéfinis */
+        <div className="relative z-10 p-5">
 
-        {/* Main row: value + visual */}
-        <div className="flex items-start justify-between gap-3">
+          {/* Label — uppercase, tracké, muted */}
+          {label && (
+            <p
+              className="text-[10px] font-semibold uppercase text-foreground-muted mb-3 leading-none"
+              style={{ letterSpacing: "0.12em" }}
+            >
+              {label}
+            </p>
+          )}
 
-          {/* Left: value + sublabel */}
-          <div className="flex-1 min-w-0">
-            {/* Value — consumer sets content (CountUp etc.) */}
-            <div className="text-2xl font-black tabular-nums text-foreground leading-none">
-              {value}
+          {/* Rangée principale : valeur + visual */}
+          <div className="flex items-start justify-between gap-3">
+
+            {/* Gauche : valeur + sublabel */}
+            <div className="flex-1 min-w-0">
+              <div className="text-2xl font-black tabular-nums text-foreground leading-none">
+                {value}
+              </div>
+
+              {/* Sublabel + flèche de tendance */}
+              {(sublabel != null || trend) && (
+                <div className="flex items-center gap-1 mt-2">
+                  {trend === "up" && (
+                    <span className="text-profit text-[11px] font-bold leading-none">↑</span>
+                  )}
+                  {trend === "down" && (
+                    <span className="text-loss text-[11px] font-bold leading-none">↓</span>
+                  )}
+                  {trend === "neutral" && (
+                    <span className="text-warning text-[11px] font-bold leading-none">→</span>
+                  )}
+                  {sublabel != null && (
+                    <p className="text-xs text-foreground-muted leading-snug truncate">
+                      {sublabel}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* Sublabel + trend arrow */}
-            {(sublabel != null || trend) && (
-              <div className="flex items-center gap-1 mt-2">
-                {trend === "up" && (
-                  <span className="text-profit text-[11px] font-bold leading-none">↑</span>
-                )}
-                {trend === "down" && (
-                  <span className="text-loss text-[11px] font-bold leading-none">↓</span>
-                )}
-                {trend === "neutral" && (
-                  <span className="text-warning text-[11px] font-bold leading-none">→</span>
-                )}
-                {sublabel != null && (
-                  <p className="text-xs text-foreground-muted leading-snug truncate">
-                    {sublabel}
-                  </p>
-                )}
+            {/* Droite : slot visual (ScoreRing, WinRateGauge, Sparkline, icône…) */}
+            {visual && (
+              <div className="shrink-0 flex-none">
+                {visual}
               </div>
             )}
           </div>
 
-          {/* Right: visual slot (ScoreRing, WinRateGauge, Sparkline, icon…) */}
-          {visual && (
-            <div className="shrink-0 flex-none">
-              {visual}
-            </div>
-          )}
+          {/* Badge */}
+          {badge && <div className="mt-3">{badge}</div>}
+
+          {/* Children supplémentaires (barres de progression, liens…) */}
+          {children && <div className="mt-3 space-y-1.5">{children}</div>}
+
         </div>
-
-        {/* Badge */}
-        {badge && <div className="mt-3">{badge}</div>}
-
-        {/* Extra children (progress bars, links…) */}
-        {children && <div className="mt-3 space-y-1.5">{children}</div>}
-
-      </div>
+      )}
     </div>
   );
 }

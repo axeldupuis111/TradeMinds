@@ -6,7 +6,8 @@ import { AiInsights } from "@/components/dashboard/AiInsights";
 import DayState from "@/components/dashboard/DayState";
 import GoalsStreaks from "@/components/dashboard/GoalsStreaks";
 import { KpiCards } from "@/components/dashboard/KpiCards";
-import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
+import { CardHeader, CardTitle } from "@/components/ui/Card";
+import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -325,7 +326,7 @@ export default function DashboardContent({
       )}>
 
         {/* Recent trades */}
-        <Card padding="md">
+        <KpiCardPremium layout="full" intensity="default" accentColor="cyan">
           <CardHeader>
             <CardTitle>{t("dash_recent_trades")}</CardTitle>
             <Link href="/dashboard/trades" className="text-xs text-accent hover:underline">
@@ -363,7 +364,7 @@ export default function DashboardContent({
               })}
             </div>
           )}
-        </Card>
+        </KpiCardPremium>
 
         {/* Right column */}
         {(canUseAI || (displayAccount && ddPct > 75)) && (
@@ -371,7 +372,7 @@ export default function DashboardContent({
 
             {/* Last analysis — Plus only */}
             {canUseAI && (
-              <Card padding="md">
+              <KpiCardPremium layout="full" intensity="default" accentColor="cyan">
                 <CardHeader>
                   <CardTitle>{t("dash_last_analysis")}</CardTitle>
                   {lastReview && (
@@ -404,7 +405,7 @@ export default function DashboardContent({
                     {t("dash_run_ai_analysis")}
                   </Link>
                 )}
-              </Card>
+              </KpiCardPremium>
             )}
 
             {/* Drawdown alert */}
