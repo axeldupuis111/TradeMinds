@@ -66,7 +66,7 @@ export function AnalyticsKpiCards({
           sublabel={
             wrDiff !== null && wrDiff !== 0
               ? `${wrDiff > 0 ? "↑" : "↓"} ${Math.abs(wrDiff).toFixed(1)}pp`
-              : undefined
+              : `${wins}/${tradesCount}`
           }
         />
       </Card>
