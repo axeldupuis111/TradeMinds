@@ -6,7 +6,7 @@ import { ScoreRing } from "@/components/dashboard/ScoreRing";
 import { WinRateGauge } from "@/components/dashboard/WinRateGauge";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/lib/LanguageContext";
-import { TrendingDown, TrendingUp } from "lucide-react";
+import { TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import Link from "next/link";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -114,13 +114,13 @@ export function KpiCards({
           visual={
             <div
               className={cn(
-                "w-10 h-10 rounded-xl flex items-center justify-center",
+                "w-12 h-12 rounded-xl flex items-center justify-center",
                 pnlSign ? "bg-profit/10" : "bg-loss/10"
               )}
             >
               {pnlSign
-                ? <TrendingUp className="w-5 h-5 text-profit" strokeWidth={1.75} />
-                : <TrendingDown className="w-5 h-5 text-loss" strokeWidth={1.75} />
+                ? <TrendingUp className="w-6 h-6 text-profit" strokeWidth={1.75} />
+                : <TrendingDown className="w-6 h-6 text-loss" strokeWidth={1.75} />
               }
             </div>
           }
@@ -144,6 +144,11 @@ export function KpiCards({
                 challengePct !== null
                   ? (challengePct >= 50 ? "up" : "neutral")
                   : (displayAccount.balanceChange >= 0 ? "up" : "down")
+              }
+              visual={
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-accent/10">
+                  <Wallet className="w-6 h-6 text-accent" strokeWidth={1.75} />
+                </div>
               }
             />
             {challengePct !== null && (
@@ -174,6 +179,11 @@ export function KpiCards({
               value={`${activeAccountsCount} ${t("dash_accounts_count")}`}
               sublabel={`${totalPnl >= 0 ? "+" : ""}${totalPnl.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} €`}
               trend={totalPnl >= 0 ? "up" : "down"}
+              visual={
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-accent/10">
+                  <Wallet className="w-6 h-6 text-accent" strokeWidth={1.75} />
+                </div>
+              }
             />
             <Link
               href="/dashboard/challenge"
@@ -189,6 +199,11 @@ export function KpiCards({
               label={t("dash_active_challenge")}
               value="—"
               sublabel={t("dash_no_challenge")}
+              visual={
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-accent/10">
+                  <Wallet className="w-6 h-6 text-accent" strokeWidth={1.75} />
+                </div>
+              }
             />
             <Link
               href="/dashboard/challenge"

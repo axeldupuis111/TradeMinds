@@ -3,6 +3,7 @@
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
+import { Flame, Trophy, Gem, Target, Star, Lock, type LucideIcon } from "lucide-react";
 
 interface Achievement {
   id: string;
@@ -18,12 +19,12 @@ interface Review {
   };
 }
 
-const BADGE_DEFS: { key: string; labelKey: string; emoji: string; condition: string; check: (ctx: BadgeContext) => boolean }[] = [
-  { key: "discipline_3", labelKey: "badge_discipline_3", emoji: "\u{1F525}", condition: "3 jours consécutifs sans violation de règles", check: (c) => c.streak >= 3 },
-  { key: "discipline_10", labelKey: "badge_discipline_10", emoji: "\u{1F3C6}", condition: "10 jours consécutifs sans violation de règles", check: (c) => c.streak >= 10 },
-  { key: "discipline_30", labelKey: "badge_discipline_30", emoji: "\u{1F48E}", condition: "30 jours consécutifs sans violation de règles", check: (c) => c.streak >= 30 },
-  { key: "winrate_60", labelKey: "badge_winrate_60", emoji: "\u{1F3AF}", condition: "Winrate supérieur à 60% sur 50+ trades", check: (c) => c.totalTrades >= 50 && c.winrate >= 60 },
-  { key: "score_80_month", labelKey: "badge_score_80", emoji: "\u{2B50}", condition: "Score de discipline moyen ≥ 80 sur les 4 dernières analyses", check: (c) => c.avgScore >= 80 && c.reviewCount >= 4 },
+const BADGE_DEFS: { key: string; labelKey: string; icon: LucideIcon; condition: string; check: (ctx: BadgeContext) => boolean }[] = [
+  { key: "discipline_3",  labelKey: "badge_discipline_3",  icon: Flame,  condition: "3 jours consécutifs sans violation de règles",               check: (c) => c.streak >= 3 },
+  { key: "discipline_10", labelKey: "badge_discipline_10", icon: Trophy, condition: "10 jours consécutifs sans violation de règles",              check: (c) => c.streak >= 10 },
+  { key: "discipline_30", labelKey: "badge_discipline_30", icon: Gem,    condition: "30 jours consécutifs sans violation de règles",              check: (c) => c.streak >= 30 },
+  { key: "winrate_60",    labelKey: "badge_winrate_60",    icon: Target, condition: "Winrate supérieur à 60% sur 50+ trades",                    check: (c) => c.totalTrades >= 50 && c.winrate >= 60 },
+  { key: "score_80_month",labelKey: "badge_score_80",      icon: Star,   condition: "Score de discipline moyen ≥ 80 sur les 4 dernières analyses", check: (c) => c.avgScore >= 80 && c.reviewCount >= 4 },
 ];
 
 interface BadgeContext {
@@ -146,7 +147,7 @@ export default function GoalsStreaks() {
 
       {/* Streak */}
       <div className="flex items-center gap-3 mb-4">
-        {streak > 0 && <span className="text-3xl">🔥</span>}
+        {streak > 0 && <Flame className="w-7 h-7 text-warning shrink-0" strokeWidth={1.75} />}
         <div>
           <p className="text-foreground font-bold text-lg">
             {streak > 0 ? `${streak} ${t("goals_streak_days")}` : `0 ${t("goals_streak_days")}`}
@@ -186,15 +187,15 @@ export default function GoalsStreaks() {
                 className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all ${
                   unlocked
                     ? isLatest
-                      ? "bg-accent/10 border-accent/50 text-accent shadow-[0_0_12px_rgba(59,130,246,0.3)]"
+                      ? "bg-accent/10 border-accent/50 text-accent shadow-[0_0_12px_rgb(var(--accent)_/_0.3)]"
                       : "bg-accent/10 border-accent/30 text-accent"
                     : "bg-background border-border text-muted opacity-40"
                 }`}
               >
                 <div className="relative">
-                  <span className="text-2xl">{badge.emoji}</span>
+                  <badge.icon className="w-6 h-6" strokeWidth={1.75} />
                   {!unlocked && (
-                    <span className="absolute -top-1 -right-1 text-[10px]">🔒</span>
+                    <Lock className="absolute -top-1 -right-1 w-3 h-3" strokeWidth={2} />
                   )}
                 </div>
                 <span className="text-sm text-center leading-tight max-w-[80px]">{t(badge.labelKey)}</span>

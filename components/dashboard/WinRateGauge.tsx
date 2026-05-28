@@ -1,6 +1,7 @@
 /**
  * WinRateGauge — jauge semi-circulaire style Focuspips pour le win rate.
- * Partie gagnante en profit, fond en border. Affiche le % en dessous.
+ * Partie gagnante en profit/warning/loss selon le taux.
+ * Le % est affiché en HTML sous la jauge (Tailwind token, pas SVG fill attribute).
  */
 
 interface WinRateGaugeProps {
@@ -8,16 +9,18 @@ interface WinRateGaugeProps {
   total: number;
 }
 
-// SVG constants
+// ─── SVG constants ────────────────────────────────────────────────────────────
+
 const CX = 40;
 const CY = 38;
 const R = 30;
 const SW = 7;
 const START_X = CX - R; // 10
-const START_Y = CY;      // 38
-const END_X = CX + R;   // 70
-const END_Y = CY;        // 38
-// Track: M 10 38 A 30 30 0 0 0 70 38  (counterclockwise = upward arc)
+const START_Y = CY;     // 38
+const END_X = CX + R;  // 70
+const END_Y = CY;       // 38
+// viewBox height = 44 : arc bottom ≈ CY + SW/2 = 41.5, padding 2.5px
+// Track: M 10 38 A 30 30 0 0 0 70 38  (sweep=0 → counterclockwise = upward)
 
 function gaugeColor(winRate: number): string {
   if (winRate >= 60) return "rgb(var(--profit))";
@@ -25,9 +28,7 @@ function gaugeColor(winRate: number): string {
   return "rgb(var(--loss))";
 }
 
-function fillPath(winRate: number): string {
-  if (winRate <= 0) return "";
-  // Clamp to avoid degenerate 0% / 100% cases
+function buildFillPath(winRate: number): string {
   const clamped = Math.min(99.9, Math.max(0.1, winRate));
   const angleDeg = 180 - (clamped / 100) * 180;
   const angleRad = (angleDeg * Math.PI) / 180;
@@ -42,43 +43,32 @@ export function WinRateGauge({ wins, total }: WinRateGaugeProps) {
   const trackPath = `M ${START_X} ${START_Y} A ${R} ${R} 0 0 0 ${END_X} ${END_Y}`;
 
   return (
-    <svg
-      width="80"
-      height="52"
-      viewBox="0 0 80 52"
-      className="shrink-0"
-      aria-hidden="true"
-    >
-      {/* Background track */}
-      <path
-        d={trackPath}
-        fill="none"
-        stroke="rgb(var(--border))"
-        strokeWidth={SW}
-        strokeLinecap="round"
-      />
-      {/* Win-rate fill */}
-      {total > 0 && winRate > 0 && (
+    <div className="flex flex-col items-center gap-1 shrink-0">
+      {/* SVG arc — no text inside to avoid fill attribute issues */}
+      <svg width="80" height="44" viewBox="0 0 80 44" aria-hidden="true">
+        {/* Background track */}
         <path
-          d={fillPath(winRate)}
+          d={trackPath}
           fill="none"
-          stroke={color}
+          stroke="rgb(var(--border))"
           strokeWidth={SW}
           strokeLinecap="round"
         />
-      )}
-      {/* Percentage label */}
-      <text
-        x={CX}
-        y="50"
-        textAnchor="middle"
-        fill="rgb(var(--foreground))"
-        fontSize="12"
-        fontWeight="700"
-        fontFamily="inherit"
-      >
+        {/* Win-rate fill */}
+        {total > 0 && winRate > 0 && (
+          <path
+            d={buildFillPath(winRate)}
+            fill="none"
+            stroke={color}
+            strokeWidth={SW}
+            strokeLinecap="round"
+          />
+        )}
+      </svg>
+      {/* Percentage — HTML span so Tailwind token resolves correctly in dark & light */}
+      <span className="text-xs font-bold tabular-nums text-foreground leading-none">
         {total > 0 ? `${Math.round(winRate)}%` : "—"}
-      </text>
-    </svg>
+      </span>
+    </div>
   );
 }

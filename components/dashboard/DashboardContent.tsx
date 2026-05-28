@@ -6,7 +6,7 @@ import { AiInsights } from "@/components/dashboard/AiInsights";
 import DayState from "@/components/dashboard/DayState";
 import GoalsStreaks from "@/components/dashboard/GoalsStreaks";
 import { KpiCards } from "@/components/dashboard/KpiCards";
-import { Card } from "@/components/ui/Card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -309,12 +309,12 @@ export default function DashboardContent({
 
         {/* Recent trades */}
         <Card padding="md">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-foreground">{t("dash_recent_trades")}</h2>
+          <CardHeader>
+            <CardTitle>{t("dash_recent_trades")}</CardTitle>
             <Link href="/dashboard/trades" className="text-xs text-accent hover:underline">
               {t("dash_see_all")}
             </Link>
-          </div>
+          </CardHeader>
           {filteredRecent.length === 0 ? (
             <p className="text-foreground-muted text-sm">{t("dash_no_trades")}</p>
           ) : (
@@ -355,14 +355,14 @@ export default function DashboardContent({
             {/* Last analysis — Plus only */}
             {canUseAI && (
               <Card padding="md">
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-sm font-semibold text-foreground">{t("dash_last_analysis")}</h2>
+                <CardHeader>
+                  <CardTitle>{t("dash_last_analysis")}</CardTitle>
                   {lastReview && (
                     <Link href="/dashboard/analysis" className="text-xs text-accent hover:underline">
                       {t("dash_see_all")}
                     </Link>
                   )}
-                </div>
+                </CardHeader>
                 {lastReview ? (
                   <div>
                     <div className="flex items-center justify-between mb-2">
