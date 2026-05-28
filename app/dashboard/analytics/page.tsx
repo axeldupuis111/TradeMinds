@@ -24,7 +24,6 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
-  Cell,
   LabelList,
   ComposedChart,
   Area,
@@ -96,6 +95,33 @@ type Period = "today" | "week" | "month" | "30d" | "90d" | "all";
 
 // Color for bars with no data (empty buckets) — uses border token
 const EMPTY_BAR = "rgb(var(--border))";
+
+// Custom rounded-bar SVG shape.
+// Rounds the "tip" end away from zero so both positive and negative bars
+// look polished. Recharts' built-in radius=[4,4,0,0] rounds the wrong end
+// on negative bars in v3.
+interface BarShapeProps {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  value?: number;
+  payload?: Record<string, number>;
+}
+function RoundedBar({
+  x = 0, y = 0, width = 0, height = 0, value = 0, fill, fillOpacity,
+}: BarShapeProps & { fill?: string; fillOpacity?: number }) {
+  if (!width || !height) return null;
+  const r = Math.min(4, Math.abs(height) / 2, width / 2);
+  const h = Math.abs(height);
+  // positive → round top corners (visual tip going up)
+  // negative → round bottom corners (visual tip going down)
+  const d =
+    value >= 0
+      ? `M${x},${y + r} Q${x},${y} ${x + r},${y} L${x + width - r},${y} Q${x + width},${y} ${x + width},${y + r} L${x + width},${y + h} L${x},${y + h} Z`
+      : `M${x},${y} L${x + width},${y} L${x + width},${y + h - r} Q${x + width},${y + h} ${x + width - r},${y + h} L${x + r},${y + h} Q${x},${y + h} ${x},${y + h - r} Z`;
+  return <path d={d} fill={fill} fillOpacity={fillOpacity} />;
+}
 
 export default function AnalyticsPage() {
   const { t, lang } = useLanguage();
@@ -838,15 +864,15 @@ export default function AnalyticsPage() {
                   <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
                   <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
                   <Tooltip content={<DayTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
-                  <Bar dataKey="pnl" radius={[4, 4, 0, 0]} activeBar={false}>
-                    {byDayOfWeek.map((entry, idx) => (
-                      <Cell
-                        key={idx}
-                        fill={entry.count === 0 ? EMPTY_BAR : entry.pnl >= 0 ? c.profit : c.loss}
-                        fillOpacity={entry.count === 0 ? 0.4 : 0.88}
-                      />
-                    ))}
-                  </Bar>
+                  <Bar
+                    dataKey="pnl"
+                    shape={(props: unknown) => {
+                      const { x, y, width, height, value, payload } = props as BarShapeProps;
+                      const empty = (payload?.count ?? 1) === 0;
+                      return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={empty ? EMPTY_BAR : (value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={empty ? 0.3 : 0.72} />;
+                    }}
+                    activeBar={false}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </Card>
@@ -862,15 +888,15 @@ export default function AnalyticsPage() {
                   <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 10 }} tickLine={false} axisLine={{ stroke: c.axisLine }} interval={1} />
                   <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
                   <Tooltip content={<HourTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
-                  <Bar dataKey="pnl" radius={[4, 4, 0, 0]} activeBar={false}>
-                    {byHour.map((entry, idx) => (
-                      <Cell
-                        key={idx}
-                        fill={entry.count === 0 ? EMPTY_BAR : entry.pnl >= 0 ? c.profit : c.loss}
-                        fillOpacity={entry.count === 0 ? 0.4 : 0.88}
-                      />
-                    ))}
-                  </Bar>
+                  <Bar
+                    dataKey="pnl"
+                    shape={(props: unknown) => {
+                      const { x, y, width, height, value, payload } = props as BarShapeProps;
+                      const empty = (payload?.count ?? 1) === 0;
+                      return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={empty ? EMPTY_BAR : (value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={empty ? 0.3 : 0.72} />;
+                    }}
+                    activeBar={false}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </Card>
@@ -887,10 +913,14 @@ export default function AnalyticsPage() {
                     <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
                     <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
                     <Tooltip content={<PairTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
-                    <Bar dataKey="pnl" radius={[4, 4, 0, 0]} activeBar={false}>
-                      {byPair.map((entry, idx) => (
-                        <Cell key={idx} fill={entry.pnl >= 0 ? c.profit : c.loss} fillOpacity={0.88} />
-                      ))}
+                    <Bar
+                      dataKey="pnl"
+                      shape={(props: unknown) => {
+                        const { x, y, width, height, value } = props as BarShapeProps;
+                        return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={(value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={0.72} />;
+                      }}
+                      activeBar={false}
+                    >
                       <LabelList
                         dataKey="pnl"
                         position="top"
@@ -917,15 +947,15 @@ export default function AnalyticsPage() {
                   <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
                   <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
                   <Tooltip content={<SessionTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
-                  <Bar dataKey="pnl" radius={[4, 4, 0, 0]} activeBar={false}>
-                    {bySessions.map((entry, idx) => (
-                      <Cell
-                        key={idx}
-                        fill={entry.count === 0 ? EMPTY_BAR : entry.pnl >= 0 ? c.profit : c.loss}
-                        fillOpacity={entry.count === 0 ? 0.4 : 0.88}
-                      />
-                    ))}
-                  </Bar>
+                  <Bar
+                    dataKey="pnl"
+                    shape={(props: unknown) => {
+                      const { x, y, width, height, value, payload } = props as BarShapeProps;
+                      const empty = (payload?.count ?? 1) === 0;
+                      return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={empty ? EMPTY_BAR : (value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={empty ? 0.3 : 0.72} />;
+                    }}
+                    activeBar={false}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </Card>
@@ -942,11 +972,14 @@ export default function AnalyticsPage() {
                     <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
                     <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
                     <Tooltip content={<GenericTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
-                    <Bar dataKey="pnl" radius={[4, 4, 0, 0]} activeBar={false}>
-                      {byEmotion.map((entry, idx) => (
-                        <Cell key={idx} fill={entry.pnl >= 0 ? c.profit : c.loss} fillOpacity={0.88} />
-                      ))}
-                    </Bar>
+                    <Bar
+                      dataKey="pnl"
+                      shape={(props: unknown) => {
+                        const { x, y, width, height, value } = props as BarShapeProps;
+                        return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={(value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={0.72} />;
+                      }}
+                      activeBar={false}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </Card>
@@ -965,11 +998,14 @@ export default function AnalyticsPage() {
                     <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
                     <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
                     <Tooltip content={<HistogramTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
-                    <Bar dataKey="count" radius={[4, 4, 0, 0]} activeBar={false}>
-                      {pnlDistribution.map((entry, idx) => (
-                        <Cell key={idx} fill={entry.avg >= 0 ? c.profit : c.loss} fillOpacity={0.88} />
-                      ))}
-                    </Bar>
+                    <Bar
+                      dataKey="count"
+                      shape={(props: unknown) => {
+                        const { x, y, width, height, value, payload } = props as BarShapeProps;
+                        return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={(payload?.avg ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={0.72} />;
+                      }}
+                      activeBar={false}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </Card>
@@ -987,11 +1023,14 @@ export default function AnalyticsPage() {
                     <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
                     <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
                     <Tooltip content={<GenericTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
-                    <Bar dataKey="pnl" radius={[4, 4, 0, 0]} activeBar={false}>
-                      {byQuality.map((entry, idx) => (
-                        <Cell key={idx} fill={entry.pnl >= 0 ? c.profit : c.loss} fillOpacity={0.88} />
-                      ))}
-                    </Bar>
+                    <Bar
+                      dataKey="pnl"
+                      shape={(props: unknown) => {
+                        const { x, y, width, height, value } = props as BarShapeProps;
+                        return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={(value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={0.72} />;
+                      }}
+                      activeBar={false}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </Card>
@@ -1116,15 +1155,15 @@ export default function AnalyticsPage() {
                         }}
                         cursor={{ fill: "rgb(var(--foreground) / 0.04)" }}
                       />
-                      <Bar dataKey="pnl" radius={[4, 4, 0, 0]} activeBar={false}>
-                        {byKillzone.map((entry, idx) => (
-                          <Cell
-                            key={idx}
-                            fill={entry.count === 0 ? EMPTY_BAR : entry.pnl >= 0 ? c.profit : c.loss}
-                            fillOpacity={entry.count === 0 ? 0.4 : 0.88}
-                          />
-                        ))}
-                      </Bar>
+                      <Bar
+                        dataKey="pnl"
+                        shape={(props: unknown) => {
+                          const { x, y, width, height, value, payload } = props as BarShapeProps;
+                          const empty = (payload?.count ?? 1) === 0;
+                          return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={empty ? EMPTY_BAR : (value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={empty ? 0.3 : 0.72} />;
+                        }}
+                        activeBar={false}
+                      />
                     </BarChart>
                   </ResponsiveContainer>
                 </Card>
@@ -1272,11 +1311,14 @@ export default function AnalyticsPage() {
                       <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
                       <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} domain={[0, 100]} />
                       <Tooltip content={<WinrateTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
-                      <Bar dataKey="winrate" radius={[4, 4, 0, 0]} activeBar={false}>
-                        {winrateByEmotion.map((entry, idx) => (
-                          <Cell key={idx} fill={entry.winrate >= 50 ? c.profit : c.loss} fillOpacity={0.88} />
-                        ))}
-                      </Bar>
+                      <Bar
+                        dataKey="winrate"
+                        shape={(props: unknown) => {
+                          const { x, y, width, height, value } = props as BarShapeProps;
+                          return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={(value ?? 0) >= 50 ? c.profit : c.loss} fillOpacity={0.72} />;
+                        }}
+                        activeBar={false}
+                      />
                     </BarChart>
                   </ResponsiveContainer>
                 </Card>
