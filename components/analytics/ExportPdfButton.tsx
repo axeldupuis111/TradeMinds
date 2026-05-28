@@ -1,9 +1,11 @@
 "use client";
 
 import UpgradeBanner from "@/components/UpgradeBanner";
+import { Button } from "@/components/ui/Button";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
+import { FileDown } from "lucide-react";
 import { useState } from "react";
 
 function netPnl(t: { pnl: number; commission: number | null; swap: number | null }) {
@@ -311,25 +313,15 @@ export default function ExportPdfButton() {
 
   return (
     <>
-      <button
+      <Button
+        variant="secondary"
+        size="md"
+        icon={FileDown}
+        loading={generating}
         onClick={generatePdf}
-        disabled={generating}
-        className="px-4 py-2 bg-surface border border-border text-foreground rounded-lg text-sm font-medium hover:bg-border transition-colors disabled:opacity-50 flex items-center gap-2"
       >
-        {generating ? (
-          <>
-            <div className="w-4 h-4 border-2 border-foreground border-t-transparent rounded-full animate-spin" />
-            {t("pdf_generating")}
-          </>
-        ) : (
-          <>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            {t("pdf_export")}
-          </>
-        )}
-      </button>
+        {generating ? t("pdf_generating") : t("pdf_export")}
+      </Button>
 
       {showLocked && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-6" onClick={() => setShowLocked(false)}>
