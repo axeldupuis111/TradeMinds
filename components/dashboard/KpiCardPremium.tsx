@@ -27,6 +27,11 @@ export interface KpiCardPremiumProps {
   sublabel?: React.ReactNode;
   trend?: "up" | "down" | "neutral";
   accentColor?: AccentColor;
+  /**
+   * "hero"    → aura intense (card signature pleine largeur)
+   * "default" → aura discrète (cards secondaires)
+   */
+  intensity?: "hero" | "default";
   visual?: React.ReactNode;
   badge?: React.ReactNode;
   className?: string;
@@ -39,6 +44,7 @@ export function KpiCardPremium({
   sublabel,
   trend,
   accentColor = "cyan",
+  intensity = "default",
   visual,
   badge,
   className,
@@ -46,6 +52,25 @@ export function KpiCardPremium({
 }: KpiCardPremiumProps) {
   const { theme } = useTheme();
   const isDark = theme !== "light";
+
+  // Intensités d'aura selon le rôle de la card
+  const aura = intensity === "hero"
+    ? {
+        primaryEllipse:   "100% 80%",
+        primaryPos:       "85% 0%",
+        primaryOpacity:   0.38,
+        secondaryEllipse: "50% 40%",
+        secondaryPos:     "0% 100%",
+        secondaryOpacity: 0.12,
+      }
+    : {
+        primaryEllipse:   "60% 50%",
+        primaryPos:       "95% -5%",
+        primaryOpacity:   0.18,
+        secondaryEllipse: "30% 25%",
+        secondaryPos:     "0% 100%",
+        secondaryOpacity: 0.06,
+      };
 
   return (
     <div
@@ -65,14 +90,14 @@ export function KpiCardPremium({
         style={{ background: `var(--sheen)` }}
       />
 
-      {/* Double aura — coin haut-droit intense + coin bas-gauche subtil. Dark only. */}
+      {/* Double aura — intensité selon `intensity` prop. Dark only. */}
       {isDark && (
         <div
           className="absolute inset-0 pointer-events-none z-0"
           style={{
             background: [
-              `radial-gradient(ellipse 100% 80% at 85% 0%, rgb(${AURA_TOKEN[accentColor]} / 0.38) 0%, transparent 70%)`,
-              `radial-gradient(ellipse 50% 40% at 0% 100%, rgb(${AURA_TOKEN[accentColor]} / 0.12) 0%, transparent 60%)`,
+              `radial-gradient(ellipse ${aura.primaryEllipse} at ${aura.primaryPos}, rgb(${AURA_TOKEN[accentColor]} / ${aura.primaryOpacity}) 0%, transparent 70%)`,
+              `radial-gradient(ellipse ${aura.secondaryEllipse} at ${aura.secondaryPos}, rgb(${AURA_TOKEN[accentColor]} / ${aura.secondaryOpacity}) 0%, transparent 60%)`,
             ].join(", "),
           }}
         />

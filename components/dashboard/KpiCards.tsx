@@ -300,6 +300,7 @@ export function KpiCards({
         value={<span className="text-foreground-muted">—</span>}
         sublabel={t("dash_no_score_yet")}
         accentColor="cyan"
+        intensity="hero"
       />
     );
 
@@ -437,7 +438,7 @@ export function KpiCards({
       {heroCard}
 
       {/* 3 autres KPI */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
         {card2}
         {card3}
         {card4}

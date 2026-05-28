@@ -66,7 +66,7 @@
   --accent-glow:   0 229 208;          /* #00E5D0 — vivid cyan for dark-mode auras */
   --card-grad-top: 22 22 30;           /* #16161e — top of card gradient */
   --card-grad-bot: 8 8 12;             /* #08080c — bottom of card gradient */
-  --glow-shadow:   0 30px 70px -20px rgba(0,0,0,.95), inset 0 0 0 1px rgba(255,255,255,.02), 0 0 40px -10px rgba(0,229,208,.15);
+  --glow-shadow:   0 30px 70px -20px rgba(0,0,0,.95), inset 0 0 0 1px rgba(255,255,255,.025), 0 0 80px -20px rgba(0,229,208,.28);
   --sheen:         rgba(255,255,255,.22);
 }
 
