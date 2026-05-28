@@ -17,13 +17,21 @@ import { useTheme } from "@/lib/ThemeContext";
 
 interface ScoreRingProps {
   score: number;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
+}
+
+/** Gradient stops selon le niveau de score */
+function gradientColors(score: number): [string, string] {
+  if (score >= 75) return ["rgb(var(--profit))", "rgb(var(--accent-glow))"];
+  if (score >= 50) return ["rgb(var(--warning))", "rgb(var(--accent-glow))"];
+  return ["rgb(var(--loss))", "rgb(var(--warning))"];
 }
 
 const sizeMeta = {
   sm: { px: 36, cx: 18, cy: 18, r: 14, sw: 3 },
   md: { px: 48, cx: 24, cy: 24, r: 20, sw: 3.5 },
   lg: { px: 64, cx: 32, cy: 32, r: 28, sw: 4 },
+  xl: { px: 96, cx: 48, cy: 48, r: 40, sw: 5 },
 } as const;
 
 function ringColor(score: number): string {
@@ -80,8 +88,9 @@ export function ScoreRing({ score, size = "sm" }: ScoreRingProps) {
     };
   }, [targetOffset, circumference, prefersReducedMotion]);
 
-  // Use gradient stroke only for top scores in dark mode
-  const useGradient = isDark && score >= 75;
+  // Gradient actif en dark mode pour tous les scores (couleurs adaptées au niveau)
+  const useGradient = isDark;
+  const [gradFrom, gradTo] = gradientColors(score);
   const strokeColor = useGradient ? `url(#${gradId})` : solidColor;
 
   return (
@@ -93,7 +102,7 @@ export function ScoreRing({ score, size = "sm" }: ScoreRingProps) {
       aria-hidden="true"
     >
       <defs>
-        {/* Gradient stroke: profit green → vivid accent-glow cyan */}
+        {/* Gradient stroke adapté au niveau de score */}
         {useGradient && (
           <linearGradient
             id={gradId}
@@ -101,15 +110,15 @@ export function ScoreRing({ score, size = "sm" }: ScoreRingProps) {
             x2={cx + r} y2="0"
             gradientUnits="userSpaceOnUse"
           >
-            <stop offset="0%"   stopColor="rgb(var(--profit))" />
-            <stop offset="100%" stopColor="rgb(var(--accent-glow))" />
+            <stop offset="0%"   stopColor={gradFrom} />
+            <stop offset="100%" stopColor={gradTo} />
           </linearGradient>
         )}
 
         {/* Glow filter — dark mode only */}
         {isDark && (
           <filter id={filterId} x="-30%" y="-30%" width="160%" height="160%">
-            <feGaussianBlur stdDeviation="2" result="blur" />
+            <feGaussianBlur stdDeviation="3" result="blur" />
             <feMerge>
               <feMergeNode in="blur" />
               <feMergeNode in="SourceGraphic" />

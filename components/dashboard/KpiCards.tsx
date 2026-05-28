@@ -1,13 +1,14 @@
 "use client";
 
 /**
- * KpiCards — grille des 4 KPI du Dashboard.
+ * KpiCards — grille des KPI du Dashboard.
  *
- * Utilise KpiCardPremium (direction artistique "Terminal de précision") :
- * Card 1 : Score de discipline — ScoreRing animé, aura cyan
- * Card 2 : Trades / Win rate   — WinRateGauge animé, aura verte
- * Card 3 : P&L du jour         — Sparkline animée, aura cyan/amber
- * Card 4 : Compte actif        — icône Wallet, barre de progression
+ * Layout "Terminal de précision" :
+ * - Score hero — pleine largeur, composition horizontale avec anneau XL + stats riches
+ * - 3 autres cards — grille 3 colonnes en-dessous
+ *
+ * Sparkline P&L : série du jour si ≥ 2 points, sinon fallback sur les 7
+ * derniers points d'equity. Si vraiment vide : état texte "Pas encore de données".
  */
 
 import CountUp from "@/components/animations/CountUp";
@@ -15,7 +16,9 @@ import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { ScoreRing } from "@/components/dashboard/ScoreRing";
 import { Sparkline } from "@/components/dashboard/Sparkline";
 import { WinRateGauge } from "@/components/dashboard/WinRateGauge";
+import { cn } from "@/lib/cn";
 import { useLanguage } from "@/lib/LanguageContext";
+import { useTheme } from "@/lib/ThemeContext";
 import { Wallet } from "lucide-react";
 import Link from "next/link";
 
@@ -40,6 +43,8 @@ export interface KpiCardsProps {
   filteredTodayCount: number;
   /** Cumulative P&L series for today's sparkline */
   todayPnlSeries: number[];
+  /** Last ≤7 equity values — sparkline fallback when no today trades */
+  equitySparkSeries: number[];
   // Active account
   displayAccount: DisplayAccount | null;
   challengePct: number | null;
@@ -57,10 +62,47 @@ function scoreSubLabel(score: number, t: (k: string) => string): string {
   return t("dash_score_bad");
 }
 
-function scoreTrend(score: number): "up" | "neutral" | "down" {
-  if (score >= 75) return "up";
-  if (score >= 40) return "neutral";
-  return "down";
+/** Phrase de contexte en fonction du niveau de discipline */
+function scoreContextPhrase(score: number): string {
+  if (score >= 90) return "Tu respectes tes règles sur la quasi-totalité de tes trades.";
+  if (score >= 75) return "Tu respectes tes règles sur la majorité de tes trades.";
+  if (score >= 60) return "Quelques écarts de discipline — reste vigilant sur tes entrées.";
+  if (score >= 40) return "Plusieurs violations détectées. Revois tes règles d'entrée.";
+  return "La discipline est insuffisante pour protéger ton capital sur la durée.";
+}
+
+/** Mini-stat verticale : label tracé, valeur colorée */
+function MiniStat({
+  label,
+  value,
+  positive,
+}: {
+  label: string;
+  value: string;
+  positive?: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span
+        className="text-[9px] font-semibold uppercase text-foreground-subtle leading-none"
+        style={{ letterSpacing: "0.1em" }}
+      >
+        {label}
+      </span>
+      <span
+        className={cn(
+          "text-sm font-bold tabular-nums leading-tight",
+          positive === true
+            ? "text-profit"
+            : positive === false
+              ? "text-loss"
+              : "text-foreground"
+        )}
+      >
+        {value}
+      </span>
+    </div>
+  );
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -73,38 +115,193 @@ export function KpiCards({
   todayPnl,
   filteredTodayCount,
   todayPnlSeries,
+  equitySparkSeries,
   displayAccount,
   challengePct,
   activeAccountsCount,
   totalPnl,
 }: KpiCardsProps) {
   const { t } = useLanguage();
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
 
   const pnlPositive = todayPnl >= 0;
 
-  // ── Card 1 — Score de discipline ──────────────────────────────────────────
-  const card1 = score !== null ? (
-    <KpiCardPremium
-      label={t("dash_discipline")}
-      value={
-        <span>
-          <CountUp end={score} duration={1.5} />
-          <span className="text-sm font-semibold text-foreground-muted opacity-70">/100</span>
-        </span>
-      }
-      sublabel={scoreSubLabel(score, t)}
-      trend={scoreTrend(score)}
-      accentColor="cyan"
-      visual={<ScoreRing score={score} size="md" />}
-    />
-  ) : (
-    <KpiCardPremium
-      label={t("dash_discipline")}
-      value={<span className="text-foreground-muted">—</span>}
-      sublabel={t("dash_no_score_yet")}
-      accentColor="cyan"
-    />
-  );
+  // ── Sparkline — série du jour, fallback equity, fallback état vide ────────
+  const usingTodayPnl = todayPnlSeries.length >= 2;
+  const usingEquity   = !usingTodayPnl && equitySparkSeries.length >= 2;
+  const sparkSeries   = usingTodayPnl
+    ? todayPnlSeries
+    : usingEquity
+      ? equitySparkSeries
+      : [];
+  const sparkPositive = usingTodayPnl
+    ? pnlPositive
+    : usingEquity
+      ? (equitySparkSeries[equitySparkSeries.length - 1] ?? 0) >=
+        (equitySparkSeries[0] ?? 0)
+      : true;
+
+  const sparklineElement =
+    sparkSeries.length >= 2 ? (
+      <Sparkline
+        data={sparkSeries}
+        positive={sparkPositive}
+        width={80}
+        height={36}
+      />
+    ) : (
+      <p className="text-[10px] text-foreground-subtle italic leading-snug">
+        Pas encore
+        <br />
+        de données
+      </p>
+    );
+
+  // ── Card 1 — Score hero ───────────────────────────────────────────────────
+  // Composition horizontale pleine largeur : anneau XL à gauche + stats riches à droite.
+  // Si score = null : fallback card simple pleine largeur.
+  const heroCard =
+    score !== null ? (
+      <div
+        className={cn(
+          "kpi-premium relative overflow-hidden rounded-xl cursor-default",
+          isDark ? "border border-white/[0.08]" : "border border-border"
+        )}
+        style={{
+          background: `linear-gradient(160deg, rgb(var(--card-grad-top)) 0%, rgb(var(--card-grad-bot)) 100%)`,
+          boxShadow: `var(--glow-shadow)`,
+        }}
+      >
+        {/* Sheen */}
+        <div
+          className="absolute top-0 inset-x-0 h-[2px] pointer-events-none z-20"
+          style={{ background: `var(--sheen)` }}
+        />
+
+        {/* Double aura cyan — dark uniquement */}
+        {isDark && (
+          <div
+            className="absolute inset-0 pointer-events-none z-0"
+            style={{
+              background: [
+                "radial-gradient(ellipse 100% 80% at 85% 0%, rgb(var(--accent-glow) / 0.38) 0%, transparent 70%)",
+                "radial-gradient(ellipse 50% 40% at 0% 100%, rgb(var(--accent-glow) / 0.12) 0%, transparent 60%)",
+              ].join(", "),
+            }}
+          />
+        )}
+
+        {/* Content */}
+        <div className="relative z-10 p-6 flex flex-col sm:flex-row gap-6">
+
+          {/* ── Colonne gauche : anneau XL ── */}
+          <div className="flex sm:flex-col items-center justify-center shrink-0">
+            <ScoreRing score={score} size="xl" />
+          </div>
+
+          {/* Séparateur vertical desktop */}
+          <div
+            className={cn(
+              "hidden sm:block w-px self-stretch",
+              isDark ? "bg-white/[0.06]" : "bg-border"
+            )}
+          />
+
+          {/* ── Colonne droite : infos riches ── */}
+          <div className="flex-1 min-w-0 flex flex-col gap-3">
+
+            {/* Label */}
+            <p
+              className="text-[10px] font-semibold uppercase text-foreground-muted leading-none"
+              style={{ letterSpacing: "0.12em" }}
+            >
+              {t("dash_discipline")}
+            </p>
+
+            {/* Score numérique + pill de tendance */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-3xl font-black tabular-nums text-foreground leading-none">
+                  <CountUp end={score} duration={1.5} />
+                </span>
+                <span className="text-sm font-semibold text-foreground-muted opacity-60">
+                  /100
+                </span>
+              </div>
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full leading-none",
+                  score >= 75
+                    ? "bg-profit/15 text-profit"
+                    : score >= 40
+                      ? "bg-warning/15 text-warning"
+                      : "bg-loss/15 text-loss"
+                )}
+              >
+                {score >= 75 ? "↑" : score >= 40 ? "→" : "↓"}{" "}
+                {scoreSubLabel(score, t)}
+              </span>
+            </div>
+
+            {/* Phrase de contexte */}
+            <p className="text-sm text-foreground-muted leading-snug max-w-sm">
+              {scoreContextPhrase(score)}
+            </p>
+
+            {/* Séparateur horizontal */}
+            <div
+              className={cn(
+                "h-px",
+                isDark ? "bg-white/[0.05]" : "bg-border/60"
+              )}
+            />
+
+            {/* Mini-stats */}
+            <div className="flex items-start gap-6 flex-wrap">
+              <MiniStat
+                label={
+                  useMonthFallback
+                    ? t("dash_month_trades")
+                    : t("dash_week_trades")
+                }
+                value={weekCount > 0 ? String(weekCount) : "—"}
+              />
+              <MiniStat
+                label="Win rate"
+                value={
+                  weekCount > 0
+                    ? `${Math.round((weekWins / weekCount) * 100)}%`
+                    : "—"
+                }
+                positive={
+                  weekCount > 0 ? weekWins / weekCount >= 0.5 : undefined
+                }
+              />
+              <MiniStat
+                label={t("dash_today_pnl")}
+                value={
+                  filteredTodayCount > 0
+                    ? `${todayPnl >= 0 ? "+" : ""}${todayPnl.toFixed(0)} €`
+                    : "—"
+                }
+                positive={
+                  filteredTodayCount > 0 ? todayPnl >= 0 : undefined
+                }
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    ) : (
+      /* Fallback : pas encore de score — card simple pleine largeur */
+      <KpiCardPremium
+        label={t("dash_discipline")}
+        value={<span className="text-foreground-muted">—</span>}
+        sublabel={t("dash_no_score_yet")}
+        accentColor="cyan"
+      />
+    );
 
   // ── Card 2 — Trades / Win rate ────────────────────────────────────────────
   const card2 = (
@@ -118,26 +315,6 @@ export function KpiCards({
   );
 
   // ── Card 3 — P&L du jour ──────────────────────────────────────────────────
-  const sparkline = todayPnlSeries.length >= 2 ? (
-    <Sparkline
-      data={todayPnlSeries}
-      positive={pnlPositive}
-      width={80}
-      height={36}
-    />
-  ) : (
-    /* No data yet — subtle icon container */
-    <div
-      className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-        pnlPositive ? "bg-profit/10" : "bg-loss/10"
-      }`}
-    >
-      <span className={`text-lg ${pnlPositive ? "text-profit" : "text-loss"}`}>
-        {pnlPositive ? "↑" : "↓"}
-      </span>
-    </div>
-  );
-
   const card3 = (
     <KpiCardPremium
       label={t("dash_today_pnl")}
@@ -153,7 +330,7 @@ export function KpiCards({
       sublabel={`${filteredTodayCount} trade${filteredTodayCount !== 1 ? "s" : ""} ${t("dash_today_label")}`}
       trend={pnlPositive ? "up" : "down"}
       accentColor={pnlPositive ? "cyan" : "amber"}
-      visual={sparkline}
+      visual={sparklineElement}
     />
   );
 
@@ -176,9 +353,10 @@ export function KpiCards({
   let card4: React.ReactNode;
 
   if (displayAccount) {
-    const challengeSubLabel = challengePct !== null
-      ? `${challengePct.toFixed(0)}% ${t("dash_challenge_target") || "objectif"}`
-      : `${displayAccount.balanceChange >= 0 ? "+" : ""}${displayAccount.balanceChange.toFixed(2)} €`;
+    const challengeSubLabel =
+      challengePct !== null
+        ? `${challengePct.toFixed(0)}% ${t("dash_challenge_target") || "objectif"}`
+        : `${displayAccount.balanceChange >= 0 ? "+" : ""}${displayAccount.balanceChange.toFixed(2)} €`;
 
     card4 = (
       <KpiCardPremium
@@ -191,8 +369,12 @@ export function KpiCards({
         sublabel={challengeSubLabel}
         trend={
           challengePct !== null
-            ? (challengePct >= 50 ? "up" : "neutral")
-            : (displayAccount.balanceChange >= 0 ? "up" : "down")
+            ? challengePct >= 50
+              ? "up"
+              : "neutral"
+            : displayAccount.balanceChange >= 0
+              ? "up"
+              : "down"
         }
         accentColor="cyan"
         visual={walletVisual}
@@ -217,8 +399,16 @@ export function KpiCards({
     card4 = (
       <KpiCardPremium
         label={t("dash_active_challenge")}
-        value={<CountUp end={activeAccountsCount} duration={1} suffix={` ${t("dash_accounts_count")}`} />}
-        sublabel={`${totalPnl >= 0 ? "+" : ""}${totalPnl.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} €`}
+        value={
+          <CountUp
+            end={activeAccountsCount}
+            duration={1}
+            suffix={` ${t("dash_accounts_count")}`}
+          />
+        }
+        sublabel={`${totalPnl >= 0 ? "+" : ""}${totalPnl.toLocaleString("fr-FR", {
+          maximumFractionDigits: 2,
+        })} €`}
         trend={totalPnl >= 0 ? "up" : "down"}
         accentColor="cyan"
         visual={walletVisual}
@@ -240,13 +430,18 @@ export function KpiCards({
     );
   }
 
-  // ── Grid ───────────────────────────────────────────────────────────────────
+  // ── Layout : Score hero (pleine largeur) + 3-col grid ────────────────────
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {card1}
-      {card2}
-      {card3}
-      {card4}
+    <div className="space-y-4">
+      {/* Score hero — pleine largeur */}
+      {heroCard}
+
+      {/* 3 autres KPI */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {card2}
+        {card3}
+        {card4}
+      </div>
     </div>
   );
 }

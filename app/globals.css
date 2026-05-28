@@ -64,10 +64,10 @@
 
   /* ── Effect tokens — KPI Premium cards ──────────────────────────────── */
   --accent-glow:   0 229 208;          /* #00E5D0 — vivid cyan for dark-mode auras */
-  --card-grad-top: 18 18 24;           /* #121218 — top of card gradient */
-  --card-grad-bot: 11 11 17;           /* #0b0b11 — bottom of card gradient */
-  --glow-shadow:   0 24px 60px -24px rgba(0,0,0,.9), 0 2px 8px rgba(0,0,0,.45);
-  --sheen:         rgba(255,255,255,.14);
+  --card-grad-top: 22 22 30;           /* #16161e — top of card gradient */
+  --card-grad-bot: 8 8 12;             /* #08080c — bottom of card gradient */
+  --glow-shadow:   0 30px 70px -20px rgba(0,0,0,.95), inset 0 0 0 1px rgba(255,255,255,.02), 0 0 40px -10px rgba(0,229,208,.15);
+  --sheen:         rgba(255,255,255,.22);
 }
 
 html.light {
@@ -97,9 +97,9 @@ html.light {
   /* ── Effect tokens — KPI Premium cards ──────────────────────────────── */
   --accent-glow:   0 168 172;
   --card-grad-top: 255 255 255;
-  --card-grad-bot: 250 250 252;
-  --glow-shadow:   0 16px 40px -20px rgba(0,168,172,.18), 0 2px 8px rgba(0,0,0,.04);
-  --sheen:         rgba(0,0,0,.04);
+  --card-grad-bot: 248 250 252;
+  --glow-shadow:   0 20px 50px -20px rgba(0,168,172,.25), 0 4px 12px -2px rgba(0,0,0,.06);
+  --sheen:         rgba(0,0,0,.06);
 }
 
 /* ─── Force-dark: public pages always stay in dark mode ─────────────────────

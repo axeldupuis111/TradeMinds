@@ -94,7 +94,7 @@ export function WinRateGauge({ wins, total }: WinRateGaugeProps) {
         <defs>
           {isDark && (
             <filter id={filterId} x="-30%" y="-30%" width="160%" height="160%">
-              <feGaussianBlur stdDeviation="2" result="blur" />
+              <feGaussianBlur stdDeviation="3" result="blur" />
               <feMerge>
                 <feMergeNode in="blur" />
                 <feMergeNode in="SourceGraphic" />

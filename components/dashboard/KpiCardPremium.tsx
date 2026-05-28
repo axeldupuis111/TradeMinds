@@ -61,16 +61,19 @@ export function KpiCardPremium({
     >
       {/* Sheen — top highlight line (bright in dark, subtle inner shadow in light) */}
       <div
-        className="absolute top-0 inset-x-0 h-px pointer-events-none z-20"
+        className="absolute top-0 inset-x-0 h-[2px] pointer-events-none z-20"
         style={{ background: `var(--sheen)` }}
       />
 
-      {/* Aura — radial glow in top-right corner, dark mode only */}
+      {/* Double aura — coin haut-droit intense + coin bas-gauche subtil. Dark only. */}
       {isDark && (
         <div
           className="absolute inset-0 pointer-events-none z-0"
           style={{
-            background: `radial-gradient(ellipse 80% 60% at 90% 5%, rgb(${AURA_TOKEN[accentColor]} / 0.18) 0%, transparent 70%)`,
+            background: [
+              `radial-gradient(ellipse 100% 80% at 85% 0%, rgb(${AURA_TOKEN[accentColor]} / 0.38) 0%, transparent 70%)`,
+              `radial-gradient(ellipse 50% 40% at 0% 100%, rgb(${AURA_TOKEN[accentColor]} / 0.12) 0%, transparent 60%)`,
+            ].join(", "),
           }}
         />
       )}

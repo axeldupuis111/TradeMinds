@@ -189,6 +189,12 @@ export default function DashboardContent({
     });
   }, [filteredToday]);
 
+  // ── Equity fallback sparkline — derniers 7 points de l'equity curve ───────
+  const equitySparkSeries = useMemo(
+    () => equityCurveData.slice(-7).map((d) => d.balance),
+    [equityCurveData]
+  );
+
   // ── KpiCards props ─────────────────────────────────────────────────────────
   const kpiDisplayAccount = displayAccount
     ? {
@@ -270,6 +276,7 @@ export default function DashboardContent({
           todayPnl={todayPnl}
           filteredTodayCount={filteredToday.length}
           todayPnlSeries={todayPnlSeries}
+          equitySparkSeries={equitySparkSeries}
           displayAccount={kpiDisplayAccount}
           challengePct={challengePct}
           activeAccountsCount={activeAccounts.length}
