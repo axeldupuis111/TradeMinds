@@ -10,8 +10,8 @@ export interface CardProps extends HTMLAttributes<HTMLDivElement> {
 
 const variantClasses: Record<NonNullable<CardProps["variant"]>, string> = {
   default:     "",
-  interactive: "transition-colors duration-150 hover:border-border/80 hover:bg-surface/40 cursor-pointer",
-  accent:      "border-accent/30 bg-accent/[0.03]",
+  interactive: "transition-all duration-150 hover:border-accent/30 hover:bg-surface/60 hover:shadow-sm cursor-pointer",
+  accent:      "border-accent/40 bg-accent/[0.06]",
 };
 
 const paddingClasses: Record<NonNullable<CardProps["padding"]>, string> = {
