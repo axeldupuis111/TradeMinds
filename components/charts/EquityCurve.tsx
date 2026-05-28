@@ -1,5 +1,6 @@
 "use client";
 
+import { Card, CardTitle } from "@/components/ui/Card";
 import { useChartColors } from "@/lib/useChartColors";
 import { useLanguage } from "@/lib/LanguageContext";
 import { formatCurrencyAxis } from "@/lib/utils";
@@ -30,10 +31,10 @@ export default function EquityCurve({ data, initialBalance }: Props) {
 
   if (data.length === 0) {
     return (
-      <div className="bg-card border border-border rounded-xl p-6">
-        <h2 className="text-sm font-semibold text-foreground mb-4">{t("equity_title")}</h2>
-        <p className="text-muted text-sm">{t("equity_empty")}</p>
-      </div>
+      <Card padding="lg">
+        <CardTitle className="mb-4">{t("equity_title")}</CardTitle>
+        <p className="text-foreground-muted text-sm">{t("equity_empty")}</p>
+      </Card>
     );
   }
 
@@ -47,8 +48,8 @@ export default function EquityCurve({ data, initialBalance }: Props) {
   const isAbove = lastBalance >= initialBalance;
 
   return (
-    <div className="bg-card border border-border rounded-xl p-6">
-      <h2 className="text-sm font-semibold text-foreground mb-4">{t("equity_title")}</h2>
+    <Card padding="lg">
+      <CardTitle className="mb-4">{t("equity_title")}</CardTitle>
       <div style={{ width: "100%", height: 300 }}>
         <ResponsiveContainer>
           <AreaChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
@@ -62,7 +63,13 @@ export default function EquityCurve({ data, initialBalance }: Props) {
                 <stop offset="100%" stopColor={c.loss} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
+            {/* Horizontal gridlines only — cleaner, less visual noise */}
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke={c.grid}
+              strokeOpacity={0.5}
+              vertical={false}
+            />
             <XAxis
               dataKey="date"
               tick={{ fill: c.axis, fontSize: 11 }}
@@ -110,6 +117,6 @@ export default function EquityCurve({ data, initialBalance }: Props) {
           </AreaChart>
         </ResponsiveContainer>
       </div>
-    </div>
+    </Card>
   );
 }
