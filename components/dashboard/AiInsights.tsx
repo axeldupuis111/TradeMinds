@@ -1,6 +1,7 @@
 "use client";
 
-import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
+import { CardHeader, CardTitle } from "@/components/ui/Card";
+import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { useLanguage } from "@/lib/LanguageContext";
 import {
   AlertTriangle,
@@ -39,7 +40,7 @@ export function AiInsights({ insights, filteredAllLength }: AiInsightsProps) {
   const { t } = useLanguage();
 
   return (
-    <Card padding="md">
+    <KpiCardPremium layout="full" intensity="default" accentColor="cyan">
       <CardHeader>
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-accent" strokeWidth={1.5} />
@@ -91,6 +92,6 @@ export function AiInsights({ insights, filteredAllLength }: AiInsightsProps) {
           </Link>
         </div>
       )}
-    </Card>
+    </KpiCardPremium>
   );
 }

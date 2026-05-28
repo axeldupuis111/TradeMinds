@@ -4,6 +4,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
 import { Flame, Trophy, Gem, Target, Star, Lock, type LucideIcon } from "lucide-react";
+import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 
 interface Achievement {
   id: string;
@@ -142,7 +143,7 @@ export default function GoalsStreaks() {
     : null;
 
   return (
-    <section className="bg-card border border-border rounded-xl p-5">
+    <KpiCardPremium layout="full" intensity="default" accentColor="cyan">
       <h2 className="text-sm font-semibold text-foreground mb-4">{t("goals_title")}</h2>
 
       {/* Streak */}
@@ -204,7 +205,7 @@ export default function GoalsStreaks() {
           })}
         </div>
       </div>
-    </section>
+    </KpiCardPremium>
   );
 }
 

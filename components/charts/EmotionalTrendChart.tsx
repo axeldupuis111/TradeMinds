@@ -1,5 +1,7 @@
 "use client";
 
+import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
+import { useChartColors } from "@/lib/useChartColors";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
@@ -40,6 +42,7 @@ interface DataPoint {
 
 export default function EmotionalTrendChart() {
   const { t } = useLanguage();
+  const c = useChartColors();
   const supabase = createClient();
   const [data, setData] = useState<DataPoint[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,45 +102,63 @@ export default function EmotionalTrendChart() {
 
   if (loading) {
     return (
-      <div className="bg-card border border-border rounded-xl p-5">
+      <Card padding="md">
         <div className="skeleton h-4 w-40 mb-2" />
         <div className="skeleton h-48 w-full rounded-lg" />
-      </div>
+      </Card>
     );
   }
 
   const hasEmotions = data.some((d) => d.emotionScore != null);
   if (!hasEmotions) {
     return (
-      <div className="bg-card border border-border rounded-xl p-5">
-        <h3 className="text-sm font-semibold text-foreground mb-1">{t("emotional_trend_title")}</h3>
-        <p className="text-xs text-muted">{t("emotional_trend_no_data")}</p>
-      </div>
+      <Card padding="md">
+        <CardHeader>
+          <CardTitle>{t("emotional_trend_title")}</CardTitle>
+        </CardHeader>
+        <p className="text-xs text-foreground-muted">{t("emotional_trend_no_data")}</p>
+      </Card>
     );
   }
 
+  const tooltipStyle: React.CSSProperties = {
+    backgroundColor: c.tooltipBg    || "rgb(var(--card))",
+    border:          `1px solid ${c.tooltipBorder || "rgb(var(--border))"}`,
+    borderRadius:    8,
+    padding:         "8px 12px",
+    fontSize:        12,
+  };
+
   return (
-    <div className="bg-card border border-border rounded-xl p-5">
-      <h3 className="text-sm font-semibold text-foreground mb-1">{t("emotional_trend_title")}</h3>
-      <p className="text-xs text-muted mb-4">{t("emotional_trend_subtitle")}</p>
+    <Card padding="md">
+      <div className="mb-4">
+        <CardTitle>{t("emotional_trend_title")}</CardTitle>
+        <p className="text-xs text-foreground-muted mt-1">{t("emotional_trend_subtitle")}</p>
+      </div>
       <ResponsiveContainer width="100%" height={200}>
         <LineChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+          <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.5} />
           <XAxis
             dataKey="date"
-            tick={{ fontSize: 10, fill: "var(--color-muted)" }}
+            tick={{ fontSize: 10, fill: c.axis }}
+            tickLine={false}
+            axisLine={{ stroke: c.axisLine }}
             tickFormatter={(v: string) => v.slice(5)}
           />
           <YAxis
             yAxisId="emotion"
             domain={[0, 5]}
-            tick={{ fontSize: 10, fill: "var(--color-muted)" }}
+            tick={{ fontSize: 10, fill: c.axis }}
+            tickLine={false}
+            axisLine={{ stroke: c.axisLine }}
             tickFormatter={(v: number) => ["", "\u{1F621}", "\u{1F624}", "", "\u{1F610}", "\u{1F60E}"][v] || ""}
           />
           <YAxis
             yAxisId="pnl"
             orientation="right"
-            tick={{ fontSize: 10, fill: "var(--color-muted)" }}
+            tick={{ fontSize: 10, fill: c.axis }}
+            tickLine={false}
+            axisLine={{ stroke: c.axisLine }}
             tickFormatter={(v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(0)}`}
           />
           <Tooltip
@@ -148,28 +169,38 @@ export default function EmotionalTrendChart() {
               const point = data.find((d) => d.date === label);
               const emoji = point?.emotionKey ? EMOTION_EMOJI[point.emotionKey] || "" : "";
               return (
-                <div style={{ backgroundColor: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 8, padding: "8px 12px", fontSize: 12 }}>
-                  <p style={{ fontWeight: 600, marginBottom: 4 }}>{new Date(label as string).toLocaleDateString(undefined, { day: "numeric", month: "short" })}</p>
-                  {emotionEntry?.value != null && <p>{emoji} Emotion: {String(emotionEntry.value)}/5</p>}
-                  {pnlEntry?.value != null && <p style={{ color: Number(pnlEntry.value) >= 0 ? "rgb(var(--profit))" : "rgb(var(--loss))" }}>P&L: {Number(pnlEntry.value) >= 0 ? "+" : ""}{Number(pnlEntry.value).toFixed(2)}€</p>}
+                <div style={tooltipStyle}>
+                  <p style={{ fontWeight: 600, marginBottom: 4, color: c.tooltipText || "inherit" }}>
+                    {new Date(label as string).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
+                  </p>
+                  {emotionEntry?.value != null && (
+                    <p style={{ color: c.accent }}>{emoji} Emotion: {String(emotionEntry.value)}/5</p>
+                  )}
+                  {pnlEntry?.value != null && (
+                    <p style={{ color: Number(pnlEntry.value) >= 0 ? c.profit : c.loss }}>
+                      P&L: {Number(pnlEntry.value) >= 0 ? "+" : ""}{Number(pnlEntry.value).toFixed(2)}€
+                    </p>
+                  )}
                 </div>
               );
             }}
           />
+          {/* Emotion trend line — accent color */}
           <Line
             yAxisId="emotion"
             type="monotone"
             dataKey="emotionScore"
-            stroke="rgb(var(--accent))"
+            stroke={c.accent || "rgb(var(--accent))"}
             strokeWidth={2}
-            dot={{ r: 3 }}
+            dot={{ r: 3, fill: c.accent || "rgb(var(--accent))", strokeWidth: 0 }}
             connectNulls
           />
+          {/* P&L trend line — profit color, dashed */}
           <Line
             yAxisId="pnl"
             type="monotone"
             dataKey="pnl"
-            stroke="rgb(var(--profit))"
+            stroke={c.profit || "rgb(var(--profit))"}
             strokeWidth={1.5}
             strokeDasharray="5 5"
             dot={false}
@@ -177,14 +208,28 @@ export default function EmotionalTrendChart() {
           />
         </LineChart>
       </ResponsiveContainer>
-      <div className="flex items-center gap-4 mt-2 text-xs text-muted">
-        <span className="flex items-center gap-1">
-          <span className="w-3 h-0.5 bg-blue-500 inline-block" /> Emotion
+
+      {/* Legend — using token colors via inline style */}
+      <div className="flex items-center gap-4 mt-2 text-xs text-foreground-muted">
+        <span className="flex items-center gap-1.5">
+          <span
+            className="inline-block w-3 h-0.5 rounded"
+            style={{ backgroundColor: c.accent || "rgb(var(--accent))" }}
+          />
+          Emotion
         </span>
-        <span className="flex items-center gap-1">
-          <span className="w-3 h-0.5 bg-green-500 inline-block border-dashed" /> P&L
+        <span className="flex items-center gap-1.5">
+          <span
+            className="inline-block w-3 rounded"
+            style={{
+              height: 1,
+              backgroundColor: c.profit || "rgb(var(--profit))",
+              borderTop: `1px dashed ${c.profit || "rgb(var(--profit))"}`,
+            }}
+          />
+          P&L
         </span>
       </div>
-    </div>
+    </Card>
   );
 }

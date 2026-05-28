@@ -1,5 +1,6 @@
 "use client";
 
+import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useMemo, useState } from "react";
 
@@ -98,7 +99,7 @@ export default function TradingCalendar({ trades, selectedAccountId }: Props) {
   const selectedDayData = selectedDay ? dayMap[selectedDay] : null;
 
   return (
-    <div className="bg-card border border-border rounded-xl p-5">
+    <KpiCardPremium layout="full" intensity="default" accentColor="cyan">
       {/* Header */}
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-3">
@@ -235,6 +236,6 @@ export default function TradingCalendar({ trades, selectedAccountId }: Props) {
           </div>
         </div>
       )}
-    </div>
+    </KpiCardPremium>
   );
 }

@@ -1,8 +1,10 @@
 "use client";
 
-import { Card, CardTitle } from "@/components/ui/Card";
+import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
+import { CardTitle } from "@/components/ui/Card";
 import { useChartColors } from "@/lib/useChartColors";
 import { useLanguage } from "@/lib/LanguageContext";
+import { useTheme } from "@/lib/ThemeContext";
 import { formatCurrencyAxis } from "@/lib/utils";
 import {
   AreaChart,
@@ -28,13 +30,15 @@ interface Props {
 export default function EquityCurve({ data, initialBalance }: Props) {
   const { t } = useLanguage();
   const c = useChartColors();
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
 
   if (data.length === 0) {
     return (
-      <Card padding="lg">
+      <KpiCardPremium layout="full" intensity="default" accentColor="cyan">
         <CardTitle className="mb-4">{t("equity_title")}</CardTitle>
         <p className="text-foreground-muted text-sm">{t("equity_empty")}</p>
-      </Card>
+      </KpiCardPremium>
     );
   }
 
@@ -48,21 +52,34 @@ export default function EquityCurve({ data, initialBalance }: Props) {
   const isAbove = lastBalance >= initialBalance;
 
   return (
-    <Card padding="lg">
+    <KpiCardPremium layout="full" intensity="default" accentColor="cyan">
       <CardTitle className="mb-4">{t("equity_title")}</CardTitle>
       <div style={{ width: "100%", height: 300 }}>
         <ResponsiveContainer>
           <AreaChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
             <defs>
+              {/* Dégradé d'aire — opacité 0.25 (légèrement intensifié) */}
               <linearGradient id="gradProfit" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={c.profit} stopOpacity={0.2} />
+                <stop offset="0%" stopColor={c.profit} stopOpacity={0.25} />
                 <stop offset="100%" stopColor={c.profit} stopOpacity={0} />
               </linearGradient>
               <linearGradient id="gradLoss" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={c.loss} stopOpacity={0.2} />
+                <stop offset="0%" stopColor={c.loss} stopOpacity={0.25} />
                 <stop offset="100%" stopColor={c.loss} stopOpacity={0} />
               </linearGradient>
+
+              {/* Filtre glow sur la courbe — dark mode uniquement */}
+              {isDark && (
+                <filter id="equityLineGlow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              )}
             </defs>
+
             {/* Horizontal gridlines only — cleaner, less visual noise */}
             <CartesianGrid
               strokeDasharray="3 3"
@@ -113,10 +130,11 @@ export default function EquityCurve({ data, initialBalance }: Props) {
               fill={isAbove ? "url(#gradProfit)" : "url(#gradLoss)"}
               dot={false}
               activeDot={{ r: 4, stroke: isAbove ? c.profit : c.loss, strokeWidth: 2, fill: c.dotFill }}
+              filter={isDark ? "url(#equityLineGlow)" : undefined}
             />
           </AreaChart>
         </ResponsiveContainer>
       </div>
-    </Card>
+    </KpiCardPremium>
   );
 }

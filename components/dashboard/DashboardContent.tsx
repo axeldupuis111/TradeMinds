@@ -6,7 +6,8 @@ import { AiInsights } from "@/components/dashboard/AiInsights";
 import DayState from "@/components/dashboard/DayState";
 import GoalsStreaks from "@/components/dashboard/GoalsStreaks";
 import { KpiCards } from "@/components/dashboard/KpiCards";
-import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
+import { CardHeader, CardTitle } from "@/components/ui/Card";
+import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -180,6 +181,21 @@ export default function DashboardContent({
     weekday: "long", day: "numeric", month: "long", year: "numeric",
   });
 
+  // ── Sparkline series for P&L card (cumulative today PnL per trade) ────────
+  const todayPnlSeries = useMemo(() => {
+    let running = 0;
+    return filteredToday.map((tr) => {
+      running += netPnl(tr);
+      return running;
+    });
+  }, [filteredToday]);
+
+  // ── Equity fallback sparkline — derniers 7 points de l'equity curve ───────
+  const equitySparkSeries = useMemo(
+    () => equityCurveData.slice(-7).map((d) => d.balance),
+    [equityCurveData]
+  );
+
   // ── KpiCards props ─────────────────────────────────────────────────────────
   const kpiDisplayAccount = displayAccount
     ? {
@@ -260,6 +276,8 @@ export default function DashboardContent({
           useMonthFallback={useMonthFallback}
           todayPnl={todayPnl}
           filteredTodayCount={filteredToday.length}
+          todayPnlSeries={todayPnlSeries}
+          equitySparkSeries={equitySparkSeries}
           displayAccount={kpiDisplayAccount}
           challengePct={challengePct}
           activeAccountsCount={activeAccounts.length}
@@ -308,7 +326,7 @@ export default function DashboardContent({
       )}>
 
         {/* Recent trades */}
-        <Card padding="md">
+        <KpiCardPremium layout="full" intensity="default" accentColor="cyan">
           <CardHeader>
             <CardTitle>{t("dash_recent_trades")}</CardTitle>
             <Link href="/dashboard/trades" className="text-xs text-accent hover:underline">
@@ -346,7 +364,7 @@ export default function DashboardContent({
               })}
             </div>
           )}
-        </Card>
+        </KpiCardPremium>
 
         {/* Right column */}
         {(canUseAI || (displayAccount && ddPct > 75)) && (
@@ -354,7 +372,7 @@ export default function DashboardContent({
 
             {/* Last analysis — Plus only */}
             {canUseAI && (
-              <Card padding="md">
+              <KpiCardPremium layout="full" intensity="default" accentColor="cyan">
                 <CardHeader>
                   <CardTitle>{t("dash_last_analysis")}</CardTitle>
                   {lastReview && (
@@ -387,7 +405,7 @@ export default function DashboardContent({
                     {t("dash_run_ai_analysis")}
                   </Link>
                 )}
-              </Card>
+              </KpiCardPremium>
             )}
 
             {/* Drawdown alert */}

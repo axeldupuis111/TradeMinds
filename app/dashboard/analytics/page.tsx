@@ -1,17 +1,21 @@
 "use client";
 
+import { AnalyticsInsightCards } from "@/components/analytics/AnalyticsInsightCards";
+import { AnalyticsKpiCards } from "@/components/analytics/AnalyticsKpiCards";
 import EmotionalTrendChart from "@/components/charts/EmotionalTrendChart";
 import ExportPdfButton from "@/components/analytics/ExportPdfButton";
-// discipline-score is now computed server-side via the analysis API
+import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { ICT_EMOTIONS, ICT_KILLZONES, getEmotionColor } from "@/lib/ict-constants";
 import { useStrategyTags } from "@/lib/hooks/useStrategyTags";
 import { useChartColors } from "@/lib/useChartColors";
 import { formatCurrencyAxis } from "@/lib/utils";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/cn";
 import type { Lang } from "@/lib/translations";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { Search, ShieldCheck, ShieldAlert } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -20,7 +24,6 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
-  Cell,
   LabelList,
   ComposedChart,
   Area,
@@ -38,7 +41,6 @@ interface TradeRow {
   emotion: string | null;
   setup_quality: number | null;
   challenge_id: string | null;
-  // ICT fields
   ict_setup?: string | null;
   ict_entry_zone?: string | null;
   ict_killzone?: string | null;
@@ -71,18 +73,6 @@ interface Account {
   account_size: number;
 }
 
-const PROFIT_COLOR = "rgb(var(--profit))";
-const LOSS_COLOR = "rgb(var(--loss))";
-
-const TOOLTIP_STYLE: React.CSSProperties = {
-  background: "rgb(var(--card))",
-  border: "1px solid rgb(var(--border))",
-  borderRadius: 8,
-  padding: 12,
-  color: "rgb(var(--foreground))",
-  fontSize: 13,
-};
-
 const DAY_KEYS = ["analytics_sun", "analytics_mon", "analytics_tue", "analytics_wed", "analytics_thu", "analytics_fri", "analytics_sat"];
 const EMOTION_KEYS: Record<string, string> = {
   confident: "emotion_confident",
@@ -102,6 +92,42 @@ const EMOTION_EMOJIS: Record<string, string> = {
 };
 
 type Period = "today" | "week" | "month" | "30d" | "90d" | "all";
+
+// Color for bars with no data (empty buckets) — uses border token
+const EMPTY_BAR = "rgb(var(--border))";
+
+// Custom rounded-bar SVG shape.
+// Recharts v3 passes:
+//   positive bar → y = tip (small SVG y, visually high), height > 0 down to baseline
+//   negative bar → y = tip (large SVG y, visually low), height < 0 up to baseline
+// We round the "tip" end (away from zero) on both cases.
+interface BarShapeProps {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  value?: number;
+  payload?: Record<string, number>;
+}
+function RoundedBar({
+  x = 0, y = 0, width = 0, height = 0, value = 0, fill, fillOpacity,
+}: BarShapeProps & { fill?: string; fillOpacity?: number }) {
+  if (!width || !height) return null;
+  const r = Math.min(4, Math.abs(height) / 2, width / 2);
+
+  let d: string;
+  if (value >= 0) {
+    // height > 0: y = tip (top), y + height = baseline (bottom)
+    // Round TOP corners (tip end, away from zero)
+    d = `M${x},${y + r} Q${x},${y} ${x + r},${y} L${x + width - r},${y} Q${x + width},${y} ${x + width},${y + r} L${x + width},${y + height} L${x},${y + height} Z`;
+  } else {
+    // height < 0: y = tip (bottom, large SVG y), y + height = baseline (top, small SVG y)
+    // Draw rect from baseline down to tip, round BOTTOM corners (tip end, away from zero)
+    const top = y + height; // baseline
+    d = `M${x},${top} L${x + width},${top} L${x + width},${y - r} Q${x + width},${y} ${x + width - r},${y} L${x + r},${y} Q${x},${y} ${x},${y - r} Z`;
+  }
+  return <path d={d} fill={fill} fillOpacity={fillOpacity} />;
+}
 
 export default function AnalyticsPage() {
   const { t, lang } = useLanguage();
@@ -214,8 +240,8 @@ export default function AnalyticsPage() {
     };
   }, [prevFiltered]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // KPI aggregates
-  const { totalPnl, winrate, best, worst } = useMemo(() => {
+  // KPI aggregates — wins now destructured for WinRateGauge
+  const { totalPnl, wins, winrate, best, worst } = useMemo(() => {
     const pnls = filtered.map(netPnl);
     const w = filtered.filter((tr) => netPnl(tr) > 0).length;
     return {
@@ -383,10 +409,10 @@ export default function AnalyticsPage() {
   // Performance by trading session (hour-based)
   const bySessions = useMemo(() => {
     const sessions = {
-      asia: { label: t("analytics_session_asia"), total: 0, count: 0, wins: 0, best: -Infinity, worst: Infinity },
+      asia:   { label: t("analytics_session_asia"),   total: 0, count: 0, wins: 0, best: -Infinity, worst: Infinity },
       london: { label: t("analytics_session_london"), total: 0, count: 0, wins: 0, best: -Infinity, worst: Infinity },
-      ny: { label: t("analytics_session_ny"), total: 0, count: 0, wins: 0, best: -Infinity, worst: Infinity },
-      eod: { label: t("analytics_session_eod"), total: 0, count: 0, wins: 0, best: -Infinity, worst: Infinity },
+      ny:     { label: t("analytics_session_ny"),     total: 0, count: 0, wins: 0, best: -Infinity, worst: Infinity },
+      eod:    { label: t("analytics_session_eod"),    total: 0, count: 0, wins: 0, best: -Infinity, worst: Infinity },
     };
     filtered.forEach((tr) => {
       if (!tr.open_time) return;
@@ -406,13 +432,13 @@ export default function AnalyticsPage() {
         pnl: Number(s.total.toFixed(2)),
         count: s.count,
         winrate: s.count > 0 ? Math.round((s.wins / s.count) * 100) : 0,
-        best: s.count > 0 ? Number(s.best.toFixed(2)) : 0,
+        best:  s.count > 0 ? Number(s.best.toFixed(2)) : 0,
         worst: s.count > 0 ? Number(s.worst.toFixed(2)) : 0,
       };
     });
   }, [filtered, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Insight: worst day, best hour, risky pair
+  // Insight cards — worst day, best hour, risky pair
   const worstDay = useMemo(
     () => [...byDayOfWeek].filter((d) => d.count > 0).sort((a, b) => a.pnl - b.pnl)[0] ?? null,
     [byDayOfWeek]
@@ -451,7 +477,7 @@ export default function AnalyticsPage() {
   const disciplineStats = useMemo(() => {
     if (filtered.length === 0 || violatedPairs.size === 0) return null;
     const rulesFollowed = { pnl: 0, count: 0, wins: 0 };
-    const rulesBroken = { pnl: 0, count: 0, wins: 0 };
+    const rulesBroken   = { pnl: 0, count: 0, wins: 0 };
     filtered.forEach((tr) => {
       const date = tr.open_time ? tr.open_time.split("T")[0] : "";
       const key = `${date}|${normalizePair(tr.pair || "")}`;
@@ -489,7 +515,10 @@ export default function AnalyticsPage() {
 
   // ─── ICT Analytics ─────────────────────────────────────────────────────────
 
-  const ictTaggedCount = useMemo(() => filtered.filter((tr) => tr.ict_setup || tr.ict_entry_zone || tr.ict_killzone).length, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
+  const ictTaggedCount = useMemo(
+    () => filtered.filter((tr) => tr.ict_setup || tr.ict_entry_zone || tr.ict_killzone).length,
+    [filtered] // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   const byICTSetup = useMemo(() => {
     const map: Record<string, { wins: number; total: number }> = {};
@@ -538,7 +567,7 @@ export default function AnalyticsPage() {
         pnl: Number(d.pnl.toFixed(2)),
         count: d.total,
         winrate: d.total > 0 ? Math.round((d.wins / d.total) * 100) : 0,
-        best: d.total > 0 ? Number(d.best.toFixed(2)) : 0,
+        best:  d.total > 0 ? Number(d.best.toFixed(2)) : 0,
         worst: d.total > 0 ? Number(d.worst.toFixed(2)) : 0,
       };
     });
@@ -563,23 +592,34 @@ export default function AnalyticsPage() {
       .sort((a, b) => b.winrate - a.winrate);
   }, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── Tooltip components ────────────────────────────────────────────────────
+  // ─── Tooltip style (uses chart color tokens) ────────────────────────────────
+
+  const tooltipStyle: React.CSSProperties = {
+    backgroundColor: c.tooltipBg    || "rgb(var(--card))",
+    border:          `1px solid ${c.tooltipBorder || "rgb(var(--border))"}`,
+    borderRadius:    8,
+    padding:         12,
+    color:           c.tooltipText  || "rgb(var(--foreground))",
+    fontSize:        13,
+  };
+
+  // ─── Inline tooltip components (close over c & tooltipStyle) ───────────────
 
   const DayTooltip = ({ active, payload, label }: { active?: boolean; payload?: unknown[]; label?: string }) => {
     if (!active || !payload?.length) return null;
     const entry = byDayOfWeek.find((d) => d.name === label);
     if (!entry) return null;
     return (
-      <div style={TOOLTIP_STYLE}>
+      <div style={tooltipStyle}>
         <p style={{ fontWeight: 600, marginBottom: 4 }}>{label}</p>
         {entry.count === 0 ? (
-          <p style={{ color: "rgb(var(--muted))" }}>0 trades</p>
+          <p style={{ color: c.axis }}>0 trades</p>
         ) : (
           <>
-            <p style={{ color: entry.pnl >= 0 ? PROFIT_COLOR : LOSS_COLOR }}>
+            <p style={{ color: entry.pnl >= 0 ? c.profit : c.loss }}>
               {entry.pnl >= 0 ? "+" : ""}{entry.pnl.toFixed(2)}€
             </p>
-            <p style={{ color: "rgb(var(--foreground-muted))" }}>{entry.count} trades · WR {entry.winrate}%</p>
+            <p style={{ color: c.axis }}>{entry.count} trades · WR {entry.winrate}%</p>
           </>
         )}
       </div>
@@ -591,16 +631,16 @@ export default function AnalyticsPage() {
     const entry = byHour.find((h) => h.name === label);
     if (!entry) return null;
     return (
-      <div style={TOOLTIP_STYLE}>
+      <div style={tooltipStyle}>
         <p style={{ fontWeight: 600, marginBottom: 4 }}>{label}</p>
         {entry.count === 0 ? (
-          <p style={{ color: "rgb(var(--muted))" }}>0 trades</p>
+          <p style={{ color: c.axis }}>0 trades</p>
         ) : (
           <>
-            <p style={{ color: entry.pnl >= 0 ? PROFIT_COLOR : LOSS_COLOR }}>
+            <p style={{ color: entry.pnl >= 0 ? c.profit : c.loss }}>
               {entry.pnl >= 0 ? "+" : ""}{entry.pnl.toFixed(2)}€
             </p>
-            <p style={{ color: "#aaa" }}>{entry.count} trades</p>
+            <p style={{ color: c.axis }}>{entry.count} trades</p>
           </>
         )}
       </div>
@@ -612,12 +652,12 @@ export default function AnalyticsPage() {
     const entry = byPair.find((p) => p.name === label);
     if (!entry) return null;
     return (
-      <div style={TOOLTIP_STYLE}>
+      <div style={tooltipStyle}>
         <p style={{ fontWeight: 600, marginBottom: 4 }}>{label}</p>
-        <p style={{ color: entry.pnl >= 0 ? PROFIT_COLOR : LOSS_COLOR }}>
+        <p style={{ color: entry.pnl >= 0 ? c.profit : c.loss }}>
           {entry.pnl >= 0 ? "+" : ""}{entry.pnl.toFixed(2)}€
         </p>
-        <p style={{ color: "rgb(var(--foreground-muted))" }}>{entry.count} trades · WR {entry.winrate}%</p>
+        <p style={{ color: c.axis }}>{entry.count} trades · WR {entry.winrate}%</p>
       </div>
     );
   };
@@ -627,12 +667,12 @@ export default function AnalyticsPage() {
     const point = equityCurve.find((d) => d.date === label);
     if (!point) return null;
     return (
-      <div style={TOOLTIP_STYLE}>
+      <div style={tooltipStyle}>
         <p style={{ fontWeight: 600, marginBottom: 4 }}>{label}</p>
-        <p style={{ color: point.tradePnl >= 0 ? PROFIT_COLOR : LOSS_COLOR }}>
+        <p style={{ color: point.tradePnl >= 0 ? c.profit : c.loss }}>
           {point.tradePnl >= 0 ? "+" : ""}{point.tradePnl.toFixed(2)}€ ({point.count} trades)
         </p>
-        <p style={{ color: point.cumulative >= 0 ? PROFIT_COLOR : LOSS_COLOR }}>
+        <p style={{ color: point.cumulative >= 0 ? c.profit : c.loss }}>
           Cumulé : {point.cumulative >= 0 ? "+" : ""}{point.cumulative.toFixed(2)}€
         </p>
       </div>
@@ -644,18 +684,18 @@ export default function AnalyticsPage() {
     const entry = bySessions.find((s) => s.name === label);
     if (!entry) return null;
     return (
-      <div style={TOOLTIP_STYLE}>
+      <div style={tooltipStyle}>
         <p style={{ fontWeight: 600, marginBottom: 4 }}>{label}</p>
         {entry.count === 0 ? (
-          <p style={{ color: "rgb(var(--muted))" }}>0 trades</p>
+          <p style={{ color: c.axis }}>0 trades</p>
         ) : (
           <>
-            <p style={{ color: entry.pnl >= 0 ? PROFIT_COLOR : LOSS_COLOR }}>
+            <p style={{ color: entry.pnl >= 0 ? c.profit : c.loss }}>
               {entry.pnl >= 0 ? "+" : ""}{entry.pnl.toFixed(2)}€
             </p>
-            <p style={{ color: "rgb(var(--foreground-muted))" }}>{entry.count} trades · WR {entry.winrate}%</p>
-            <p style={{ color: PROFIT_COLOR }}>Best: +{entry.best.toFixed(2)}€</p>
-            <p style={{ color: LOSS_COLOR }}>Worst: {entry.worst.toFixed(2)}€</p>
+            <p style={{ color: c.axis }}>{entry.count} trades · WR {entry.winrate}%</p>
+            <p style={{ color: c.profit }}>Best: +{entry.best.toFixed(2)}€</p>
+            <p style={{ color: c.loss }}>Worst: {entry.worst.toFixed(2)}€</p>
           </>
         )}
       </div>
@@ -665,9 +705,9 @@ export default function AnalyticsPage() {
   const HistogramTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) => {
     if (!active || !payload?.length) return null;
     return (
-      <div style={TOOLTIP_STYLE}>
+      <div style={tooltipStyle}>
         <p style={{ fontWeight: 600, marginBottom: 4 }}>{label}€</p>
-        <p style={{ color: "rgb(var(--foreground-muted))" }}>{payload[0].value} trades</p>
+        <p style={{ color: c.axis }}>{payload[0].value} trades</p>
       </div>
     );
   };
@@ -675,9 +715,9 @@ export default function AnalyticsPage() {
   const GenericTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) => {
     if (!active || !payload?.length) return null;
     return (
-      <div style={TOOLTIP_STYLE}>
+      <div style={tooltipStyle}>
         <p style={{ fontWeight: 600, marginBottom: 4 }}>{label}</p>
-        <p style={{ color: payload[0].value >= 0 ? PROFIT_COLOR : LOSS_COLOR }}>
+        <p style={{ color: payload[0].value >= 0 ? c.profit : c.loss }}>
           {payload[0].value >= 0 ? "+" : ""}{payload[0].value.toFixed(2)}€
         </p>
       </div>
@@ -687,9 +727,9 @@ export default function AnalyticsPage() {
   const WinrateTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) => {
     if (!active || !payload?.length) return null;
     return (
-      <div style={TOOLTIP_STYLE}>
+      <div style={tooltipStyle}>
         <p style={{ fontWeight: 600, marginBottom: 4 }}>{label}</p>
-        <p style={{ color: "rgb(var(--accent))" }}>{payload[0].value}% WR</p>
+        <p style={{ color: c.accent }}>{payload[0].value}% WR</p>
       </div>
     );
   };
@@ -724,13 +764,15 @@ export default function AnalyticsPage() {
     );
   }
 
+  const latestScore = reviews.length > 0 ? reviews[0].discipline_score : undefined;
+
   return (
     <div>
-      {/* Header */}
+      {/* ── Header ──────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t("analytics_title")}</h1>
-          <p className="text-muted text-sm mt-1">{t("analytics_subtitle")}</p>
+          <p className="text-foreground-muted text-sm mt-1">{t("analytics_subtitle")}</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           <select value={period} onChange={(e) => setPeriod(e.target.value as Period)} className={selectClass}>
@@ -756,181 +798,135 @@ export default function AnalyticsPage() {
       </div>
 
       {filtered.length === 0 ? (
-        <p className="text-muted py-10 text-center">{t("analytics_no_data")}</p>
+        <p className="text-foreground-muted py-10 text-center">{t("analytics_no_data")}</p>
       ) : (
         <>
-          {/* KPI Summary row */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-            {[
-              { label: t("analytics_kpi_pnl"), value: `${totalPnl >= 0 ? "+" : ""}${totalPnl.toFixed(2)}€`, color: totalPnl >= 0 ? "text-profit" : "text-loss", diff: prevKpis ? totalPnl - prevKpis.totalPnl : null },
-              { label: t("analytics_kpi_winrate"), value: `${winrate.toFixed(1)}%`, color: winrate >= 50 ? "text-profit" : "text-loss", diff: prevKpis ? winrate - prevKpis.winrate : null, suffix: "pp" },
-              { label: t("analytics_kpi_trades"), value: String(filtered.length), color: "text-foreground", diff: prevKpis ? filtered.length - prevKpis.trades : null },
-              { label: t("analytics_kpi_best"), value: `+${best.toFixed(2)}€`, color: "text-profit", diff: null },
-              { label: t("analytics_kpi_worst"), value: `${worst.toFixed(2)}€`, color: "text-loss", diff: null },
-            ].map((kpi, i) => (
-              <div key={i} className="bg-card border border-border rounded-xl p-4 card-shadow">
-                <p className="text-xs text-muted mb-1">{kpi.label}</p>
-                <p className={`text-xl font-bold tabular-nums ${kpi.color}`}>{kpi.value}</p>
-                {kpi.diff !== null && kpi.diff !== 0 && (
-                  <p className={`text-[10px] mt-1 ${kpi.diff > 0 ? "text-profit" : "text-loss"}`}>
-                    {kpi.diff > 0 ? "↑" : "↓"} {Math.abs(kpi.diff).toFixed(kpi.suffix ? 1 : 2)}{kpi.suffix || ""}
-                  </p>
-                )}
-              </div>
-            ))}
-            {/* Summary card — Synthèse */}
-            <div className="bg-card border border-border rounded-xl p-4 card-shadow">
-              <p className="text-xs text-muted mb-1">{t("analytics_kpi_title")}</p>
-              <p className={`text-base font-bold ${totalPnl >= 0 ? "text-profit" : "text-loss"}`}>
-                {totalPnl >= 0 ? t("analytics_kpi_profitable") : t("analytics_kpi_in_loss")}
-              </p>
-              {profitFactor !== null && (
-                <p className="text-xs text-muted mt-1">
-                  PF : {isFinite(profitFactor) ? profitFactor.toFixed(2) : "∞"}
-                </p>
-              )}
-            </div>
-            {/* Discipline score card — from latest analysis */}
-            <div className="bg-card border border-border rounded-xl p-4 card-shadow">
-              <p className="text-xs text-muted mb-1">{t("ict_kpi_discipline")}</p>
-              {(() => {
-                const latestScore = reviews.length > 0 ? reviews[0].discipline_score : undefined;
-                return latestScore != null ? (
-                  <p className={`text-xl font-bold tabular-nums ${latestScore >= 90 ? "text-profit" : latestScore >= 75 ? "text-green-400" : latestScore >= 60 ? "text-yellow-400" : latestScore >= 40 ? "text-orange-400" : "text-loss"}`}>
-                    {latestScore}/100
-                  </p>
-                ) : (
-                  <p className="text-base font-bold text-muted">—</p>
-                );
-              })()}
-            </div>
-          </div>
+          {/* ── KPI cards ───────────────────────────────────────────── */}
+          <AnalyticsKpiCards
+            totalPnl={totalPnl}
+            winrate={winrate}
+            wins={wins}
+            tradesCount={filtered.length}
+            best={best}
+            worst={worst}
+            profitFactor={profitFactor}
+            disciplineScore={latestScore}
+            prevKpis={prevKpis}
+          />
 
-          {/* Insight cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-            {worstDay && (
-              <div className="bg-loss/5 border border-loss/20 rounded-xl p-4">
-                <p className="text-xs text-loss/70 mb-1">{t("analytics_insight_worst_day")}</p>
-                <p className="text-sm font-semibold text-foreground">{worstDay.name} ({worstDay.count} trades)</p>
-                <p className="text-xs text-loss tabular-nums">{worstDay.pnl.toFixed(2)}€ · WR {worstDay.winrate}%</p>
-              </div>
-            )}
-            {bestHour && (
-              <div className="bg-profit/5 border border-profit/20 rounded-xl p-4">
-                <p className="text-xs text-profit/70 mb-1">{t("analytics_insight_best_hour")}</p>
-                <p className="text-sm font-semibold text-foreground">{bestHour.name} ({bestHour.count} trades)</p>
-                <p className="text-xs text-profit tabular-nums">+{bestHour.pnl.toFixed(2)}€ · WR {bestHour.winrate}%</p>
-              </div>
-            )}
-            {riskyPairInfo.type !== "insufficient" && (
-              <div className={`${riskyPairInfo.type === "good" ? "bg-profit/5 border-profit/20" : "bg-warning/5 border-warning/20"} border rounded-xl p-4`}>
-                <p className="text-xs text-warning/70 mb-1">{t("analytics_insight_risk_pair")}</p>
-                {riskyPairInfo.type === "good" ? (
-                  <p className="text-sm font-semibold text-profit">{t("analytics_no_risk_pair")}</p>
-                ) : (
-                  <>
-                    <p className="text-sm font-semibold text-foreground">{riskyPairInfo.pair} · WR {riskyPairInfo.winrate}%</p>
-                    <p className="text-xs text-loss tabular-nums">{riskyPairInfo.pnl.toFixed(2)}€</p>
-                  </>
-                )}
-              </div>
-            )}
-            {byEmotion.length > 0 && (
-              <div className="bg-accent/5 border border-accent/20 rounded-xl p-4">
-                <p className="text-xs text-accent/70 mb-1">{t("analytics_insight_emotion")}</p>
-                {(() => {
-                  const riskyEmotion = [...byEmotion].sort((a, b) => a.pnl - b.pnl)[0];
-                  return (
-                    <>
-                      <p className="text-sm font-semibold text-foreground">{riskyEmotion.name}</p>
-                      <p className="text-xs text-loss tabular-nums">{riskyEmotion.pnl.toFixed(2)}€</p>
-                    </>
-                  );
-                })()}
-              </div>
-            )}
-          </div>
+          {/* ── Insight cards ───────────────────────────────────────── */}
+          <AnalyticsInsightCards
+            worstDay={worstDay}
+            bestHour={bestHour}
+            riskyPairInfo={riskyPairInfo}
+            byEmotion={byEmotion}
+          />
 
-          {/* Equity Curve — full width */}
+          {/* ── Equity Curve — full width ──────────────────────────── */}
           {equityCurve.length > 1 && (
-            <div className="bg-card border border-border rounded-xl p-5 mb-4">
-              <h3 className="text-foreground font-semibold">{t("analytics_equity_title")}</h3>
-              <p className="text-xs text-muted mb-4">{t("analytics_equity_subtitle")}</p>
+            <Card padding="md" className="mb-4">
+              <div className="mb-4">
+                <CardTitle>{t("analytics_equity_title")}</CardTitle>
+                <p className="text-xs text-foreground-muted mt-1">{t("analytics_equity_subtitle")}</p>
+              </div>
               <ResponsiveContainer width="100%" height={300}>
                 <ComposedChart data={equityCurve} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
-                  <XAxis dataKey="date" tick={{ fill: c.axis, fontSize: 10 }} axisLine={{ stroke: c.axisLine }} interval={Math.floor(equityCurve.length / 8)} />
-                  <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
-                  <ReferenceLine y={0} stroke="rgb(var(--border))" strokeDasharray="4 4" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.5} />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fill: c.axis, fontSize: 10 }}
+                    tickLine={false}
+                    axisLine={{ stroke: c.axisLine }}
+                    interval={Math.floor(equityCurve.length / 8)}
+                  />
+                  <YAxis
+                    tick={{ fill: c.axis, fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={{ stroke: c.axisLine }}
+                    tickFormatter={formatCurrencyAxis}
+                    width={80}
+                  />
+                  <ReferenceLine y={0} stroke={c.grid} strokeDasharray="4 4" />
                   <Tooltip content={<EquityTooltip />} />
-                  <Area type="monotone" dataKey="pos" fill="rgb(var(--profit) / 0.1)" stroke="none" baseValue={0} />
-                  <Area type="monotone" dataKey="neg" fill="rgb(var(--loss) / 0.1)" stroke="none" baseValue={0} />
-                  <Line type="monotone" dataKey="cumulative" stroke="rgb(var(--accent))" dot={false} strokeWidth={2} />
+                  <Area type="monotone" dataKey="pos" fill={c.profit || "rgb(var(--profit))"} fillOpacity={0.1} stroke="none" baseValue={0} />
+                  <Area type="monotone" dataKey="neg" fill={c.loss || "rgb(var(--loss))"} fillOpacity={0.1} stroke="none" baseValue={0} />
+                  <Line type="monotone" dataKey="cumulative" stroke={c.accent || "rgb(var(--accent))"} dot={false} strokeWidth={2} />
                 </ComposedChart>
               </ResponsiveContainer>
-            </div>
+            </Card>
           )}
 
-          {/* Charts grid */}
+          {/* ── Charts grid ─────────────────────────────────────────── */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Performance by day — all 7 days, greyed when no trades */}
-            <div className="bg-card border border-border rounded-xl p-5">
-              <h3 className="text-foreground font-semibold mb-4">{t("analytics_by_day")}</h3>
+
+            {/* Performance by day */}
+            <Card padding="md">
+              <CardHeader>
+                <CardTitle>{t("analytics_by_day")}</CardTitle>
+              </CardHeader>
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={byDayOfWeek} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
-                  <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
-                  <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
-                  <Tooltip content={<DayTooltip />} cursor={false} />
-                  <Bar dataKey="pnl" radius={[4, 4, 0, 0]} activeBar={false}>
-                    {byDayOfWeek.map((entry, idx) => (
-                      <Cell
-                        key={idx}
-                        fill={entry.count === 0 ? "#555" : entry.pnl >= 0 ? PROFIT_COLOR : LOSS_COLOR}
-                        opacity={entry.count === 0 ? 0.3 : 1}
-                      />
-                    ))}
-                  </Bar>
+                  <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
+                  <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
+                  <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
+                  <Tooltip content={<DayTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
+                  <Bar
+                    dataKey="pnl"
+                    shape={(props: unknown) => {
+                      const { x, y, width, height, value, payload } = props as BarShapeProps;
+                      const empty = (payload?.count ?? 1) === 0;
+                      return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={empty ? EMPTY_BAR : (value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={empty ? 0.3 : 0.72} />;
+                    }}
+                    activeBar={false}
+                  />
                 </BarChart>
               </ResponsiveContainer>
-            </div>
+            </Card>
 
-            {/* Performance by hour — all 24 hours */}
-            <div className="bg-card border border-border rounded-xl p-5">
-              <h3 className="text-foreground font-semibold mb-4">{t("analytics_by_hour")}</h3>
+            {/* Performance by hour */}
+            <Card padding="md">
+              <CardHeader>
+                <CardTitle>{t("analytics_by_hour")}</CardTitle>
+              </CardHeader>
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={byHour} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
-                  <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 10 }} axisLine={{ stroke: c.axisLine }} interval={1} />
-                  <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
-                  <Tooltip content={<HourTooltip />} cursor={false} />
-                  <Bar dataKey="pnl" radius={[4, 4, 0, 0]} activeBar={false}>
-                    {byHour.map((entry, idx) => (
-                      <Cell
-                        key={idx}
-                        fill={entry.count === 0 ? "#555" : entry.pnl >= 0 ? PROFIT_COLOR : LOSS_COLOR}
-                        opacity={entry.count === 0 ? 0.3 : 1}
-                      />
-                    ))}
-                  </Bar>
+                  <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
+                  <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 10 }} tickLine={false} axisLine={{ stroke: c.axisLine }} interval={1} />
+                  <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
+                  <Tooltip content={<HourTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
+                  <Bar
+                    dataKey="pnl"
+                    shape={(props: unknown) => {
+                      const { x, y, width, height, value, payload } = props as BarShapeProps;
+                      const empty = (payload?.count ?? 1) === 0;
+                      return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={empty ? EMPTY_BAR : (value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={empty ? 0.3 : 0.72} />;
+                    }}
+                    activeBar={false}
+                  />
                 </BarChart>
               </ResponsiveContainer>
-            </div>
+            </Card>
 
-            {/* Performance by pair — with value labels */}
+            {/* Performance by pair */}
             {byPair.length > 0 && (
-              <div className="bg-card border border-border rounded-xl p-5">
-                <h3 className="text-foreground font-semibold mb-4">{t("analytics_by_pair")}</h3>
+              <Card padding="md">
+                <CardHeader>
+                  <CardTitle>{t("analytics_by_pair")}</CardTitle>
+                </CardHeader>
                 <ResponsiveContainer width="100%" height={280}>
                   <BarChart data={byPair} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
-                    <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
-                    <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
-                    <Tooltip content={<PairTooltip />} cursor={false} />
-                    <Bar dataKey="pnl" radius={[4, 4, 0, 0]} activeBar={false}>
-                      {byPair.map((entry, idx) => (
-                        <Cell key={idx} fill={entry.pnl >= 0 ? PROFIT_COLOR : LOSS_COLOR} />
-                      ))}
+                    <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
+                    <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
+                    <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
+                    <Tooltip content={<PairTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
+                    <Bar
+                      dataKey="pnl"
+                      shape={(props: unknown) => {
+                        const { x, y, width, height, value } = props as BarShapeProps;
+                        return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={(value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={0.72} />;
+                      }}
+                      activeBar={false}
+                    >
                       <LabelList
                         dataKey="pnl"
                         position="top"
@@ -938,99 +934,117 @@ export default function AnalyticsPage() {
                           const n = Number(v);
                           return `${n >= 0 ? "+" : ""}${n.toFixed(0)}€`;
                         }}
-                        style={{ fill: "#aaa", fontSize: 10 }}
+                        style={{ fill: c.axis || "rgb(var(--foreground-muted))", fontSize: 10 }}
                       />
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
-              </div>
+              </Card>
             )}
 
             {/* Performance by session */}
-            <div className="bg-card border border-border rounded-xl p-5">
-              <h3 className="text-foreground font-semibold mb-4">{t("analytics_by_session")}</h3>
+            <Card padding="md">
+              <CardHeader>
+                <CardTitle>{t("analytics_by_session")}</CardTitle>
+              </CardHeader>
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={bySessions} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
-                  <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
-                  <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
-                  <Tooltip content={<SessionTooltip />} cursor={false} />
-                  <Bar dataKey="pnl" radius={[4, 4, 0, 0]} activeBar={false}>
-                    {bySessions.map((entry, idx) => (
-                      <Cell
-                        key={idx}
-                        fill={entry.count === 0 ? "#555" : entry.pnl >= 0 ? PROFIT_COLOR : LOSS_COLOR}
-                        opacity={entry.count === 0 ? 0.3 : 1}
-                      />
-                    ))}
-                  </Bar>
+                  <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
+                  <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
+                  <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
+                  <Tooltip content={<SessionTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
+                  <Bar
+                    dataKey="pnl"
+                    shape={(props: unknown) => {
+                      const { x, y, width, height, value, payload } = props as BarShapeProps;
+                      const empty = (payload?.count ?? 1) === 0;
+                      return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={empty ? EMPTY_BAR : (value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={empty ? 0.3 : 0.72} />;
+                    }}
+                    activeBar={false}
+                  />
                 </BarChart>
               </ResponsiveContainer>
-            </div>
+            </Card>
 
             {/* Performance by emotion */}
             {byEmotion.length > 0 && (
-              <div className="bg-card border border-border rounded-xl p-5">
-                <h3 className="text-foreground font-semibold mb-4">{t("analytics_by_emotion")}</h3>
+              <Card padding="md">
+                <CardHeader>
+                  <CardTitle>{t("analytics_by_emotion")}</CardTitle>
+                </CardHeader>
                 <ResponsiveContainer width="100%" height={280}>
                   <BarChart data={byEmotion} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
-                    <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
-                    <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
-                    <Tooltip content={<GenericTooltip />} cursor={false} />
-                    <Bar dataKey="pnl" radius={[4, 4, 0, 0]} activeBar={false}>
-                      {byEmotion.map((entry, idx) => (
-                        <Cell key={idx} fill={entry.pnl >= 0 ? PROFIT_COLOR : LOSS_COLOR} />
-                      ))}
-                    </Bar>
+                    <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
+                    <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
+                    <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
+                    <Tooltip content={<GenericTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
+                    <Bar
+                      dataKey="pnl"
+                      shape={(props: unknown) => {
+                        const { x, y, width, height, value } = props as BarShapeProps;
+                        return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={(value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={0.72} />;
+                      }}
+                      activeBar={false}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
-              </div>
+              </Card>
             )}
 
             {/* P&L Distribution Histogram */}
             {pnlDistribution.length > 0 && (
-              <div className="bg-card border border-border rounded-xl p-5">
-                <h3 className="text-foreground font-semibold">{t("analytics_distribution")}</h3>
-                <p className="text-xs text-muted mb-4">{t("analytics_distribution_subtitle")}</p>
+              <Card padding="md">
+                <div className="mb-4">
+                  <CardTitle>{t("analytics_distribution")}</CardTitle>
+                  <p className="text-xs text-foreground-muted mt-1">{t("analytics_distribution_subtitle")}</p>
+                </div>
                 <ResponsiveContainer width="100%" height={280}>
                   <BarChart data={pnlDistribution} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
-                    <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
-                    <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
-                    <Tooltip content={<HistogramTooltip />} cursor={false} />
-                    <Bar dataKey="count" radius={[4, 4, 0, 0]} activeBar={false}>
-                      {pnlDistribution.map((entry, idx) => (
-                        <Cell key={idx} fill={entry.avg >= 0 ? PROFIT_COLOR : LOSS_COLOR} />
-                      ))}
-                    </Bar>
+                    <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
+                    <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
+                    <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
+                    <Tooltip content={<HistogramTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
+                    <Bar
+                      dataKey="count"
+                      shape={(props: unknown) => {
+                        const { x, y, width, height, value, payload } = props as BarShapeProps;
+                        return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={(payload?.avg ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={0.72} />;
+                      }}
+                      activeBar={false}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
-              </div>
+              </Card>
             )}
 
             {/* Performance by setup quality */}
             {byQuality.length > 0 && (
-              <div className="bg-card border border-border rounded-xl p-5">
-                <h3 className="text-foreground font-semibold mb-4">{t("analytics_by_quality")}</h3>
+              <Card padding="md">
+                <CardHeader>
+                  <CardTitle>{t("analytics_by_quality")}</CardTitle>
+                </CardHeader>
                 <ResponsiveContainer width="100%" height={280}>
                   <BarChart data={byQuality} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
-                    <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
-                    <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
-                    <Tooltip content={<GenericTooltip />} cursor={false} />
-                    <Bar dataKey="pnl" radius={[4, 4, 0, 0]} activeBar={false}>
-                      {byQuality.map((entry, idx) => (
-                        <Cell key={idx} fill={entry.pnl >= 0 ? PROFIT_COLOR : LOSS_COLOR} />
-                      ))}
-                    </Bar>
+                    <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
+                    <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
+                    <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
+                    <Tooltip content={<GenericTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
+                    <Bar
+                      dataKey="pnl"
+                      shape={(props: unknown) => {
+                        const { x, y, width, height, value } = props as BarShapeProps;
+                        return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={(value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={0.72} />;
+                      }}
+                      activeBar={false}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
-              </div>
+              </Card>
             )}
+
           </div>
 
-          {/* ─── ICT / Strategy Analytics Section ─── */}
+          {/* ── ICT / Strategy Analytics ────────────────────────────── */}
           <div className="mt-8">
             <div className="flex items-center gap-3 mb-2">
               <h2 className="text-xl font-bold text-foreground">
@@ -1040,226 +1054,287 @@ export default function AnalyticsPage() {
                 <span className="px-2 py-0.5 rounded text-xs font-bold bg-accent/20 text-accent">ICT</span>
               )}
             </div>
-            <p className="text-muted text-sm mb-4">{t("ict_section_subtitle")}</p>
+            <p className="text-foreground-muted text-sm mb-4">{t("ict_section_subtitle")}</p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Graph 1: Winrate by ICT Setup */}
+
+              {/* Winrate by ICT Setup */}
               {byICTSetup.length > 0 && (
-                <div className="bg-card border border-border rounded-xl p-5">
-                  <h3 className="text-foreground font-semibold mb-4">{t("ict_winrate_by_setup")}</h3>
+                <Card padding="md">
+                  <CardHeader>
+                    <CardTitle>{t("ict_winrate_by_setup")}</CardTitle>
+                  </CardHeader>
                   <div className="space-y-2">
                     {byICTSetup.map((entry) => (
                       <div key={entry.setup} className="flex items-center gap-2">
-                        <div className="w-32 shrink-0 text-xs text-muted truncate">{getICTSetupLabel(entry.setup)}</div>
+                        <div className="w-32 shrink-0 text-xs text-foreground-muted truncate">{getICTSetupLabel(entry.setup)}</div>
                         <div className="flex-1 h-5 bg-border/30 rounded overflow-hidden">
                           <div
                             className="h-full rounded transition-all"
                             style={{
                               width: `${entry.winrate}%`,
-                              backgroundColor: entry.winrate > 60 ? "rgb(var(--profit))" : entry.winrate >= 40 ? "rgb(var(--warning))" : "rgb(var(--loss))",
+                              backgroundColor: entry.winrate > 60 ? c.profit : entry.winrate >= 40 ? c.warning : c.loss,
+                              opacity: 0.88,
                             }}
                           />
                         </div>
-                        <span className="text-xs text-muted w-28 shrink-0 text-right">
+                        <span className="text-xs text-foreground-muted w-28 shrink-0 text-right">
                           {entry.winrate}% ({entry.count} trades)
                         </span>
                       </div>
                     ))}
                   </div>
-                </div>
+                </Card>
               )}
 
-              {/* Graph 2: Winrate by Entry Zone */}
+              {/* Winrate by Entry Zone */}
               {byICTEntryZone.length > 0 && (
-                <div className="bg-card border border-border rounded-xl p-5">
-                  <h3 className="text-foreground font-semibold mb-4">{t("ict_winrate_by_zone")}</h3>
+                <Card padding="md">
+                  <CardHeader>
+                    <CardTitle>{t("ict_winrate_by_zone")}</CardTitle>
+                  </CardHeader>
                   <div className="space-y-2">
                     {byICTEntryZone.map((entry) => (
                       <div key={entry.zone} className="flex items-center gap-2">
-                        <div className="w-32 shrink-0 text-xs text-muted truncate">{getICTZoneLabel(entry.zone)}</div>
+                        <div className="w-32 shrink-0 text-xs text-foreground-muted truncate">{getICTZoneLabel(entry.zone)}</div>
                         <div className="flex-1 h-5 bg-border/30 rounded overflow-hidden">
                           <div
                             className="h-full rounded transition-all"
                             style={{
                               width: `${entry.winrate}%`,
-                              backgroundColor: entry.winrate > 60 ? "rgb(var(--profit))" : entry.winrate >= 40 ? "rgb(var(--warning))" : "rgb(var(--loss))",
+                              backgroundColor: entry.winrate > 60 ? c.profit : entry.winrate >= 40 ? c.warning : c.loss,
+                              opacity: 0.88,
                             }}
                           />
                         </div>
-                        <span className="text-xs text-muted w-28 shrink-0 text-right">
+                        <span className="text-xs text-foreground-muted w-28 shrink-0 text-right">
                           {entry.winrate}% ({entry.count} trades)
                         </span>
                       </div>
                     ))}
                   </div>
-                </div>
+                </Card>
               )}
 
-              {/* Graph 3: Performance by Killzone */}
+              {/* Killzone performance chart */}
               {byKillzone.some((k) => k.count > 0) && (
-                <div className="bg-card border border-border rounded-xl p-5">
-                  <h3 className="text-foreground font-semibold mb-4">{t("ict_perf_by_killzone")}</h3>
+                <Card padding="md">
+                  <CardHeader>
+                    <CardTitle>{t("ict_perf_by_killzone")}</CardTitle>
+                  </CardHeader>
                   <ResponsiveContainer width="100%" height={260}>
                     <BarChart data={byKillzone} margin={{ top: 5, right: 10, left: 0, bottom: 40 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
+                      <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
                       <XAxis
                         dataKey="name"
                         tick={{ fill: c.axis, fontSize: 10 }}
+                        tickLine={false}
                         axisLine={{ stroke: c.axisLine }}
                         tickFormatter={(v) => getKillzoneLabel(v).split(" ")[0]}
                         angle={-30}
                         textAnchor="end"
                         interval={0}
                       />
-                      <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
+                      <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
                       <Tooltip
                         content={({ active, payload }) => {
                           if (!active || !payload?.length) return null;
                           const entry = byKillzone.find((k) => k.name === payload[0]?.payload?.name);
                           if (!entry) return null;
                           return (
-                            <div style={TOOLTIP_STYLE}>
+                            <div style={tooltipStyle}>
                               <p style={{ fontWeight: 600, marginBottom: 4 }}>{getKillzoneLabel(entry.name)}</p>
                               {entry.count === 0 ? (
-                                <p style={{ color: "rgb(var(--muted))" }}>0 trades</p>
+                                <p style={{ color: c.axis }}>0 trades</p>
                               ) : (
                                 <>
-                                  <p style={{ color: entry.pnl >= 0 ? PROFIT_COLOR : LOSS_COLOR }}>
+                                  <p style={{ color: entry.pnl >= 0 ? c.profit : c.loss }}>
                                     {entry.pnl >= 0 ? "+" : ""}{entry.pnl.toFixed(2)}€
                                   </p>
-                                  <p style={{ color: "rgb(var(--foreground-muted))" }}>{entry.count} trades · WR {entry.winrate}%</p>
-                                  <p style={{ color: PROFIT_COLOR }}>Best: +{entry.best.toFixed(2)}€</p>
-                                  <p style={{ color: LOSS_COLOR }}>Worst: {entry.worst.toFixed(2)}€</p>
+                                  <p style={{ color: c.axis }}>{entry.count} trades · WR {entry.winrate}%</p>
+                                  <p style={{ color: c.profit }}>Best: +{entry.best.toFixed(2)}€</p>
+                                  <p style={{ color: c.loss }}>Worst: {entry.worst.toFixed(2)}€</p>
                                 </>
                               )}
                             </div>
                           );
                         }}
-                        cursor={false}
+                        cursor={{ fill: "rgb(var(--foreground) / 0.04)" }}
                       />
-                      <Bar dataKey="pnl" radius={[4, 4, 0, 0]} activeBar={false}>
-                        {byKillzone.map((entry, idx) => (
-                          <Cell key={idx} fill={entry.count === 0 ? "#555" : entry.pnl >= 0 ? PROFIT_COLOR : LOSS_COLOR} opacity={entry.count === 0 ? 0.3 : 1} />
-                        ))}
-                      </Bar>
+                      <Bar
+                        dataKey="pnl"
+                        shape={(props: unknown) => {
+                          const { x, y, width, height, value, payload } = props as BarShapeProps;
+                          const empty = (payload?.count ?? 1) === 0;
+                          return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={empty ? EMPTY_BAR : (value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={empty ? 0.3 : 0.72} />;
+                        }}
+                        activeBar={false}
+                      />
                     </BarChart>
                   </ResponsiveContainer>
-                </div>
+                </Card>
               )}
 
-              {/* Graph 4: Emotion impact on winrate */}
+              {/* Emotion impact on winrate */}
               {byICTEmotion.length > 0 && (
-                <div className="bg-card border border-border rounded-xl p-5">
-                  <h3 className="text-foreground font-semibold mb-4">{t("ict_emotion_impact")}</h3>
+                <Card padding="md">
+                  <CardHeader>
+                    <CardTitle>{t("ict_emotion_impact")}</CardTitle>
+                  </CardHeader>
                   <div className="space-y-2">
                     {byICTEmotion.map((entry) => (
                       <div key={entry.emotion} className="flex items-center gap-2">
-                        <div className="w-28 shrink-0 text-xs text-muted truncate">{getEmotionLabel(entry.emotion)}</div>
+                        <div className="w-28 shrink-0 text-xs text-foreground-muted truncate">{getEmotionLabel(entry.emotion)}</div>
                         <div className="flex-1 h-5 bg-border/30 rounded overflow-hidden">
                           <div
                             className="h-full rounded transition-all"
-                            style={{ width: `${entry.winrate}%`, backgroundColor: getEmotionColor(entry.emotion) }}
+                            style={{ width: `${entry.winrate}%`, backgroundColor: getEmotionColor(entry.emotion), opacity: 0.88 }}
                           />
                         </div>
-                        <span className="text-xs text-muted w-36 shrink-0 text-right">
+                        <span className="text-xs text-foreground-muted w-36 shrink-0 text-right">
                           {entry.winrate}% WR ({entry.count}t, {entry.pnl >= 0 ? "+" : ""}{entry.pnl.toFixed(0)}€)
                         </span>
                       </div>
                     ))}
                   </div>
-                </div>
+                </Card>
               )}
+
             </div>
 
-            {/* Prompt to tag trades */}
+            {/* Tag trades prompt — Card variant accent */}
             {ictTaggedCount < 10 && (
-              <div className="mt-4 flex items-center gap-3 p-3 bg-accent/5 border border-accent/20 rounded-lg">
-                <p className="text-xs text-muted/70 flex-1">
-                  {t("ict_no_tags_msg")} {ictTaggedCount}/{filtered.length} {t("ict_no_tags_msg2")}
-                </p>
-                <Link href="/dashboard/trades" className="shrink-0 px-3 py-1.5 bg-accent text-white text-xs font-medium rounded-lg hover:bg-blue-600 transition-colors">
-                  {t("ict_goto_trades")} →
-                </Link>
-              </div>
+              <Card variant="accent" padding="sm" className="mt-4">
+                <div className="flex items-center gap-3">
+                  <p className="text-xs text-foreground-muted flex-1">
+                    {t("ict_no_tags_msg")} {ictTaggedCount}/{filtered.length} {t("ict_no_tags_msg2")}
+                  </p>
+                  <Link
+                    href="/dashboard/trades"
+                    className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
+                  >
+                    {t("ict_goto_trades")} →
+                  </Link>
+                </div>
+              </Card>
             )}
           </div>
 
-          {/* Discipline vs Results section */}
+          {/* ── Discipline vs Results ────────────────────────────────── */}
           {(disciplineStats || !hasAnalysis || winrateByEmotion.length > 0) && (
             <div className="mt-8">
               <h2 className="text-xl font-bold text-foreground mb-4">{t("discipline_title")}</h2>
 
+              {/* No analysis yet — accent banner */}
               {!hasAnalysis && !disciplineStats && (
-                <div className="flex items-center gap-3 p-4 bg-accent/5 border border-accent/20 rounded-xl">
-                  <span className="text-xl shrink-0">🔍</span>
-                  <div className="flex-1">
-                    <p className="text-sm text-foreground font-medium">{t("discipline_no_analysis")}</p>
-                    <p className="text-xs text-muted mt-0.5">{t("discipline_no_analysis_desc")}</p>
+                <Card variant="accent" padding="md" className="mb-4">
+                  <div className="flex items-center gap-3">
+                    <Search className="w-5 h-5 text-accent shrink-0" strokeWidth={1.75} />
+                    <div className="flex-1">
+                      <p className="text-sm text-foreground font-medium">{t("discipline_no_analysis")}</p>
+                      <p className="text-xs text-foreground-muted mt-0.5">{t("discipline_no_analysis_desc")}</p>
+                    </div>
+                    <Link
+                      href="/dashboard/analysis"
+                      className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
+                    >
+                      {t("discipline_run_analysis")} →
+                    </Link>
                   </div>
-                  <Link href="/dashboard/analysis" className="shrink-0 px-3 py-1.5 bg-accent text-white text-xs font-medium rounded-lg hover:bg-blue-600 transition-colors">
-                    {t("discipline_run_analysis")} →
-                  </Link>
+                </Card>
+              )}
+
+              {/* Discipline stat cards */}
+              {disciplineStats && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+
+                  {/* Rules followed */}
+                  <Card padding="md" className="bg-profit/[0.03] border-profit/20">
+                    <div className="flex items-start gap-2.5">
+                      <ShieldCheck className="w-5 h-5 text-profit mt-0.5 shrink-0" strokeWidth={1.75} />
+                      <div>
+                        <p className="text-sm text-foreground-muted mb-1">{t("discipline_followed")}</p>
+                        <p className={cn("text-2xl font-bold", disciplineStats.rulesFollowed.pnl >= 0 ? "text-profit" : "text-loss")}>
+                          {disciplineStats.rulesFollowed.pnl >= 0 ? "+" : ""}{disciplineStats.rulesFollowed.pnl.toFixed(2)} €
+                        </p>
+                        <p className="text-xs text-foreground-muted mt-1">
+                          {disciplineStats.rulesFollowed.count} trades &mdash;{" "}
+                          {disciplineStats.rulesFollowed.count > 0
+                            ? ((disciplineStats.rulesFollowed.wins / disciplineStats.rulesFollowed.count) * 100).toFixed(0)
+                            : 0}% WR
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Rules broken */}
+                  <Card padding="md">
+                    <div className="flex items-start gap-2.5">
+                      <ShieldAlert className="w-5 h-5 text-warning mt-0.5 shrink-0" strokeWidth={1.75} />
+                      <div>
+                        <p className="text-sm text-foreground-muted mb-1">{t("discipline_broken")}</p>
+                        <p className={cn("text-2xl font-bold", disciplineStats.rulesBroken.pnl >= 0 ? "text-profit" : "text-loss")}>
+                          {disciplineStats.rulesBroken.pnl >= 0 ? "+" : ""}{disciplineStats.rulesBroken.pnl.toFixed(2)} €
+                        </p>
+                        <p className="text-xs text-foreground-muted mt-1">
+                          {disciplineStats.rulesBroken.count} trades &mdash;{" "}
+                          {disciplineStats.rulesBroken.count > 0
+                            ? ((disciplineStats.rulesBroken.wins / disciplineStats.rulesBroken.count) * 100).toFixed(0)
+                            : 0}% WR
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Cost of indiscipline */}
+                  {disciplineStats.rulesBroken.pnl < 0 && (
+                    <Card padding="md" className="bg-loss/[0.06] border-loss/30">
+                      <div className="flex items-start gap-2.5">
+                        <ShieldAlert className="w-5 h-5 text-loss mt-0.5 shrink-0" strokeWidth={1.75} />
+                        <div>
+                          <p className="text-sm text-loss/80 mb-1">{t("discipline_cost")}</p>
+                          <p className="text-3xl font-bold text-loss">
+                            {Math.abs(disciplineStats.rulesBroken.pnl).toFixed(2)} €
+                          </p>
+                          <p className="text-xs text-loss/70 mt-1">{t("discipline_cost_desc")}</p>
+                        </div>
+                      </div>
+                    </Card>
+                  )}
+
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {disciplineStats && (
-                  <>
-                    <div className="bg-card border border-border rounded-xl p-5">
-                      <p className="text-sm text-muted mb-1">{t("discipline_followed")}</p>
-                      <p className={`text-2xl font-bold ${disciplineStats.rulesFollowed.pnl >= 0 ? "text-profit" : "text-loss"}`}>
-                        {disciplineStats.rulesFollowed.pnl >= 0 ? "+" : ""}{disciplineStats.rulesFollowed.pnl.toFixed(2)} &euro;
-                      </p>
-                      <p className="text-xs text-muted mt-1">
-                        {disciplineStats.rulesFollowed.count} trades &mdash; {disciplineStats.rulesFollowed.count > 0 ? ((disciplineStats.rulesFollowed.wins / disciplineStats.rulesFollowed.count) * 100).toFixed(0) : 0}% WR
-                      </p>
-                    </div>
-                    <div className="bg-card border border-border rounded-xl p-5">
-                      <p className="text-sm text-muted mb-1">{t("discipline_broken")}</p>
-                      <p className={`text-2xl font-bold ${disciplineStats.rulesBroken.pnl >= 0 ? "text-profit" : "text-loss"}`}>
-                        {disciplineStats.rulesBroken.pnl >= 0 ? "+" : ""}{disciplineStats.rulesBroken.pnl.toFixed(2)} &euro;
-                      </p>
-                      <p className="text-xs text-muted mt-1">
-                        {disciplineStats.rulesBroken.count} trades &mdash; {disciplineStats.rulesBroken.count > 0 ? ((disciplineStats.rulesBroken.wins / disciplineStats.rulesBroken.count) * 100).toFixed(0) : 0}% WR
-                      </p>
-                    </div>
-                    {disciplineStats.rulesBroken.pnl < 0 && (
-                      <div className="bg-loss/10 border border-loss/30 rounded-xl p-5">
-                        <p className="text-sm text-loss/70 mb-1">{t("discipline_cost")}</p>
-                        <p className="text-3xl font-bold text-loss">
-                          {Math.abs(disciplineStats.rulesBroken.pnl).toFixed(2)} &euro;
-                        </p>
-                        <p className="text-xs text-loss/70 mt-1">{t("discipline_cost_desc")}</p>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-
+              {/* Winrate by emotion chart */}
               {winrateByEmotion.length > 0 && (
-                <div className="bg-card border border-border rounded-xl p-5 mt-4">
-                  <h3 className="text-foreground font-semibold mb-4">{t("discipline_winrate_emotion")}</h3>
+                <Card padding="md">
+                  <CardHeader>
+                    <CardTitle>{t("discipline_winrate_emotion")}</CardTitle>
+                  </CardHeader>
                   <ResponsiveContainer width="100%" height={280}>
                     <BarChart data={winrateByEmotion} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
-                      <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} />
-                      <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} domain={[0, 100]} />
-                      <Tooltip content={<WinrateTooltip />} cursor={false} />
-                      <Bar dataKey="winrate" radius={[4, 4, 0, 0]} activeBar={false}>
-                        {winrateByEmotion.map((entry, idx) => (
-                          <Cell key={idx} fill={entry.winrate >= 50 ? PROFIT_COLOR : LOSS_COLOR} />
-                        ))}
-                      </Bar>
+                      <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
+                      <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
+                      <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} domain={[0, 100]} />
+                      <Tooltip content={<WinrateTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
+                      <Bar
+                        dataKey="winrate"
+                        shape={(props: unknown) => {
+                          const { x, y, width, height, value } = props as BarShapeProps;
+                          return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={(value ?? 0) >= 50 ? c.profit : c.loss} fillOpacity={0.72} />;
+                        }}
+                        activeBar={false}
+                      />
                     </BarChart>
                   </ResponsiveContainer>
-                </div>
+                </Card>
               )}
             </div>
           )}
         </>
       )}
 
-      {/* Emotional trend chart */}
+      {/* ── Emotional Trend Chart ──────────────────────────────────── */}
       {!loading && filtered.length > 0 && (
         <div className="mt-6">
           <EmotionalTrendChart />
