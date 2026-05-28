@@ -485,7 +485,7 @@ export default function UpgradePage() {
       {/* FAQ */}
       <div className="mt-10 max-w-2xl mx-auto pb-4">
         <h2 className="text-base font-semibold text-foreground mb-4">{t("faq_upgrade_title")}</h2>
-        <div className="rounded-xl border border-border overflow-hidden divide-y divide-border bg-[#1a1a1a]">
+        <div className="rounded-xl border border-border overflow-hidden divide-y divide-border bg-surface">
           {faqKeys.map(({ q, a }, i) => (
             <div key={q}>
               <button

@@ -91,7 +91,7 @@ export default function ResetPasswordPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     minLength={6}
-                    className="w-full px-4 py-2.5 pr-10 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl text-[#e5e5e5] placeholder-muted focus:outline-none focus:border-accent focus:ring-0"
+                    className="w-full px-4 py-2.5 pr-10 bg-surface border border-border rounded-xl text-foreground placeholder-muted focus:outline-none focus:border-accent focus:ring-0"
                     placeholder="••••••••"
                   />
                   <button
@@ -122,7 +122,7 @@ export default function ResetPasswordPage() {
                   onChange={(e) => setConfirm(e.target.value)}
                   required
                   minLength={6}
-                  className="w-full px-4 py-2.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl text-[#e5e5e5] placeholder-muted focus:outline-none focus:border-accent focus:ring-0"
+                  className="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-foreground placeholder-muted focus:outline-none focus:border-accent focus:ring-0"
                   placeholder="••••••••"
                 />
               </div>

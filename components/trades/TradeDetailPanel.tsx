@@ -471,7 +471,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
                   className="h-full rounded-full transition-all"
                   style={{
                     width: `${(checkedCount / checklistTotal) * 100}%`,
-                    backgroundColor: checkedCount >= Math.round(checklistTotal * 0.86) ? "#22c55e" : checkedCount >= Math.round(checklistTotal * 0.57) ? "#f59e0b" : "#ef4444",
+                    backgroundColor: checkedCount >= Math.round(checklistTotal * 0.86) ? "rgb(var(--profit))" : checkedCount >= Math.round(checklistTotal * 0.57) ? "rgb(var(--warning))" : "rgb(var(--loss))",
                   }}
                 />
               </div>

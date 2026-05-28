@@ -6,7 +6,7 @@ export const alt = "TradeDiscipline";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-const ACCENT_COLOR = "#3b82f6";
+const ACCENT_COLOR = "#00D4D8";
 
 const titleByLocale: Record<Locale, string> = {
   en: "Stop repeating the same mistakes.",

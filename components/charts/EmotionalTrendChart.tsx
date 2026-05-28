@@ -151,7 +151,7 @@ export default function EmotionalTrendChart() {
                 <div style={{ backgroundColor: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 8, padding: "8px 12px", fontSize: 12 }}>
                   <p style={{ fontWeight: 600, marginBottom: 4 }}>{new Date(label as string).toLocaleDateString(undefined, { day: "numeric", month: "short" })}</p>
                   {emotionEntry?.value != null && <p>{emoji} Emotion: {String(emotionEntry.value)}/5</p>}
-                  {pnlEntry?.value != null && <p style={{ color: Number(pnlEntry.value) >= 0 ? "#22c55e" : "#ef4444" }}>P&L: {Number(pnlEntry.value) >= 0 ? "+" : ""}{Number(pnlEntry.value).toFixed(2)}€</p>}
+                  {pnlEntry?.value != null && <p style={{ color: Number(pnlEntry.value) >= 0 ? "rgb(var(--profit))" : "rgb(var(--loss))" }}>P&L: {Number(pnlEntry.value) >= 0 ? "+" : ""}{Number(pnlEntry.value).toFixed(2)}€</p>}
                 </div>
               );
             }}
@@ -160,7 +160,7 @@ export default function EmotionalTrendChart() {
             yAxisId="emotion"
             type="monotone"
             dataKey="emotionScore"
-            stroke="#3b82f6"
+            stroke="rgb(var(--accent))"
             strokeWidth={2}
             dot={{ r: 3 }}
             connectNulls
@@ -169,7 +169,7 @@ export default function EmotionalTrendChart() {
             yAxisId="pnl"
             type="monotone"
             dataKey="pnl"
-            stroke="#22c55e"
+            stroke="rgb(var(--profit))"
             strokeWidth={1.5}
             strokeDasharray="5 5"
             dot={false}

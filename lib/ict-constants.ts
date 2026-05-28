@@ -73,10 +73,10 @@ export const ICT_EMOTIONS: { value: string; label: LabelMap; category: "positive
 ];
 
 export const EMOTION_COLORS: Record<string, string> = {
-  positive: "#22c55e",
-  negative: "#ef4444",
-  warning: "#f59e0b",
-  neutral: "#6b7280",
+  positive: "rgb(var(--profit))",
+  negative: "rgb(var(--loss))",
+  warning: "rgb(var(--warning))",
+  neutral: "rgb(var(--muted))",
 };
 
 export const ICT_CHECKLIST_ITEMS: { key: string; label: LabelMap }[] = [

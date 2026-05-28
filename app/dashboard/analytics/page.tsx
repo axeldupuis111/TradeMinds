@@ -71,15 +71,15 @@ interface Account {
   account_size: number;
 }
 
-const PROFIT_COLOR = "#22c55e";
-const LOSS_COLOR = "#ef4444";
+const PROFIT_COLOR = "rgb(var(--profit))";
+const LOSS_COLOR = "rgb(var(--loss))";
 
 const TOOLTIP_STYLE: React.CSSProperties = {
-  background: "#1a1a1a",
-  border: "1px solid #333",
+  background: "rgb(var(--card))",
+  border: "1px solid rgb(var(--border))",
   borderRadius: 8,
   padding: 12,
-  color: "#e5e5e5",
+  color: "rgb(var(--foreground))",
   fontSize: 13,
 };
 
@@ -573,13 +573,13 @@ export default function AnalyticsPage() {
       <div style={TOOLTIP_STYLE}>
         <p style={{ fontWeight: 600, marginBottom: 4 }}>{label}</p>
         {entry.count === 0 ? (
-          <p style={{ color: "#888" }}>0 trades</p>
+          <p style={{ color: "rgb(var(--muted))" }}>0 trades</p>
         ) : (
           <>
             <p style={{ color: entry.pnl >= 0 ? PROFIT_COLOR : LOSS_COLOR }}>
               {entry.pnl >= 0 ? "+" : ""}{entry.pnl.toFixed(2)}€
             </p>
-            <p style={{ color: "#aaa" }}>{entry.count} trades · WR {entry.winrate}%</p>
+            <p style={{ color: "rgb(var(--foreground-muted))" }}>{entry.count} trades · WR {entry.winrate}%</p>
           </>
         )}
       </div>
@@ -594,7 +594,7 @@ export default function AnalyticsPage() {
       <div style={TOOLTIP_STYLE}>
         <p style={{ fontWeight: 600, marginBottom: 4 }}>{label}</p>
         {entry.count === 0 ? (
-          <p style={{ color: "#888" }}>0 trades</p>
+          <p style={{ color: "rgb(var(--muted))" }}>0 trades</p>
         ) : (
           <>
             <p style={{ color: entry.pnl >= 0 ? PROFIT_COLOR : LOSS_COLOR }}>
@@ -617,7 +617,7 @@ export default function AnalyticsPage() {
         <p style={{ color: entry.pnl >= 0 ? PROFIT_COLOR : LOSS_COLOR }}>
           {entry.pnl >= 0 ? "+" : ""}{entry.pnl.toFixed(2)}€
         </p>
-        <p style={{ color: "#aaa" }}>{entry.count} trades · WR {entry.winrate}%</p>
+        <p style={{ color: "rgb(var(--foreground-muted))" }}>{entry.count} trades · WR {entry.winrate}%</p>
       </div>
     );
   };
@@ -647,13 +647,13 @@ export default function AnalyticsPage() {
       <div style={TOOLTIP_STYLE}>
         <p style={{ fontWeight: 600, marginBottom: 4 }}>{label}</p>
         {entry.count === 0 ? (
-          <p style={{ color: "#888" }}>0 trades</p>
+          <p style={{ color: "rgb(var(--muted))" }}>0 trades</p>
         ) : (
           <>
             <p style={{ color: entry.pnl >= 0 ? PROFIT_COLOR : LOSS_COLOR }}>
               {entry.pnl >= 0 ? "+" : ""}{entry.pnl.toFixed(2)}€
             </p>
-            <p style={{ color: "#aaa" }}>{entry.count} trades · WR {entry.winrate}%</p>
+            <p style={{ color: "rgb(var(--foreground-muted))" }}>{entry.count} trades · WR {entry.winrate}%</p>
             <p style={{ color: PROFIT_COLOR }}>Best: +{entry.best.toFixed(2)}€</p>
             <p style={{ color: LOSS_COLOR }}>Worst: {entry.worst.toFixed(2)}€</p>
           </>
@@ -667,7 +667,7 @@ export default function AnalyticsPage() {
     return (
       <div style={TOOLTIP_STYLE}>
         <p style={{ fontWeight: 600, marginBottom: 4 }}>{label}€</p>
-        <p style={{ color: "#aaa" }}>{payload[0].value} trades</p>
+        <p style={{ color: "rgb(var(--foreground-muted))" }}>{payload[0].value} trades</p>
       </div>
     );
   };
@@ -689,7 +689,7 @@ export default function AnalyticsPage() {
     return (
       <div style={TOOLTIP_STYLE}>
         <p style={{ fontWeight: 600, marginBottom: 4 }}>{label}</p>
-        <p style={{ color: "#3b82f6" }}>{payload[0].value}% WR</p>
+        <p style={{ color: "rgb(var(--accent))" }}>{payload[0].value}% WR</p>
       </div>
     );
   };
@@ -861,11 +861,11 @@ export default function AnalyticsPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
                   <XAxis dataKey="date" tick={{ fill: c.axis, fontSize: 10 }} axisLine={{ stroke: c.axisLine }} interval={Math.floor(equityCurve.length / 8)} />
                   <YAxis tick={{ fill: c.axis, fontSize: 12 }} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
-                  <ReferenceLine y={0} stroke="#333" strokeDasharray="4 4" />
+                  <ReferenceLine y={0} stroke="rgb(var(--border))" strokeDasharray="4 4" />
                   <Tooltip content={<EquityTooltip />} />
-                  <Area type="monotone" dataKey="pos" fill="rgba(34,197,94,0.1)" stroke="none" baseValue={0} />
-                  <Area type="monotone" dataKey="neg" fill="rgba(239,68,68,0.1)" stroke="none" baseValue={0} />
-                  <Line type="monotone" dataKey="cumulative" stroke="#3b82f6" dot={false} strokeWidth={2} />
+                  <Area type="monotone" dataKey="pos" fill="rgb(var(--profit) / 0.1)" stroke="none" baseValue={0} />
+                  <Area type="monotone" dataKey="neg" fill="rgb(var(--loss) / 0.1)" stroke="none" baseValue={0} />
+                  <Line type="monotone" dataKey="cumulative" stroke="rgb(var(--accent))" dot={false} strokeWidth={2} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -1056,7 +1056,7 @@ export default function AnalyticsPage() {
                             className="h-full rounded transition-all"
                             style={{
                               width: `${entry.winrate}%`,
-                              backgroundColor: entry.winrate > 60 ? "#22c55e" : entry.winrate >= 40 ? "#f59e0b" : "#ef4444",
+                              backgroundColor: entry.winrate > 60 ? "rgb(var(--profit))" : entry.winrate >= 40 ? "rgb(var(--warning))" : "rgb(var(--loss))",
                             }}
                           />
                         </div>
@@ -1082,7 +1082,7 @@ export default function AnalyticsPage() {
                             className="h-full rounded transition-all"
                             style={{
                               width: `${entry.winrate}%`,
-                              backgroundColor: entry.winrate > 60 ? "#22c55e" : entry.winrate >= 40 ? "#f59e0b" : "#ef4444",
+                              backgroundColor: entry.winrate > 60 ? "rgb(var(--profit))" : entry.winrate >= 40 ? "rgb(var(--warning))" : "rgb(var(--loss))",
                             }}
                           />
                         </div>
@@ -1121,13 +1121,13 @@ export default function AnalyticsPage() {
                             <div style={TOOLTIP_STYLE}>
                               <p style={{ fontWeight: 600, marginBottom: 4 }}>{getKillzoneLabel(entry.name)}</p>
                               {entry.count === 0 ? (
-                                <p style={{ color: "#888" }}>0 trades</p>
+                                <p style={{ color: "rgb(var(--muted))" }}>0 trades</p>
                               ) : (
                                 <>
                                   <p style={{ color: entry.pnl >= 0 ? PROFIT_COLOR : LOSS_COLOR }}>
                                     {entry.pnl >= 0 ? "+" : ""}{entry.pnl.toFixed(2)}€
                                   </p>
-                                  <p style={{ color: "#aaa" }}>{entry.count} trades · WR {entry.winrate}%</p>
+                                  <p style={{ color: "rgb(var(--foreground-muted))" }}>{entry.count} trades · WR {entry.winrate}%</p>
                                   <p style={{ color: PROFIT_COLOR }}>Best: +{entry.best.toFixed(2)}€</p>
                                   <p style={{ color: LOSS_COLOR }}>Worst: {entry.worst.toFixed(2)}€</p>
                                 </>

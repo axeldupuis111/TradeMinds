@@ -79,7 +79,7 @@ function Hero() {
         <StaggerContainer className="mt-16" staggerDelay={0.15}>
           <StaggerItem>
             <div
-              className="relative rounded-2xl border border-white/[0.08] bg-[#111113] p-5 sm:p-7 shadow-[0_25px_50px_rgba(0,0,0,0.5)]"
+              className="relative rounded-2xl border border-white/[0.08] bg-card p-5 sm:p-7 shadow-[0_25px_50px_rgba(0,0,0,0.5)]"
               style={{ transform: "perspective(1200px) rotateX(2deg)", transformOrigin: "center bottom" }}
             >
               {/* Blue glow behind */}
@@ -101,18 +101,18 @@ function Hero() {
                   transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
                 >
                   <svg width="76" height="76" viewBox="0 0 76 76">
-                    <circle cx="38" cy="38" r="32" fill="none" stroke="#1e1e1e" strokeWidth="6" />
+                    <circle cx="38" cy="38" r="32" fill="none" stroke="rgb(var(--border))" strokeWidth="6" />
                     <circle cx="38" cy="38" r="32" fill="none" stroke="url(#scoreGrad)" strokeWidth="6" strokeLinecap="round"
                       strokeDasharray={`${0.85 * 2 * Math.PI * 32} ${2 * Math.PI * 32}`}
                       transform="rotate(-90 38 38)" />
                     <defs>
                       <linearGradient id="scoreGrad" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0%" stopColor="#3b82f6" />
-                        <stop offset="100%" stopColor="#22c55e" />
+                        <stop offset="0%" stopColor="rgb(var(--accent))" />
+                        <stop offset="100%" stopColor="rgb(var(--profit))" />
                       </linearGradient>
                     </defs>
-                    <text x="38" y="36" textAnchor="middle" fill="#fafafa" fontSize="17" fontWeight="bold">85</text>
-                    <text x="38" y="48" textAnchor="middle" fill="#71717a" fontSize="8">{t("preview_discipline")}</text>
+                    <text x="38" y="36" textAnchor="middle" fill="rgb(var(--foreground))" fontSize="17" fontWeight="bold">85</text>
+                    <text x="38" y="48" textAnchor="middle" fill="rgb(var(--muted))" fontSize="8">{t("preview_discipline")}</text>
                   </svg>
                 </motion.div>
                 {/* Equity */}
@@ -126,11 +126,11 @@ function Hero() {
                   <svg viewBox="0 0 120 45" className="w-full h-11" preserveAspectRatio="none">
                     <defs>
                       <linearGradient id="eq2" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#22c55e" stopOpacity="0.3" />
-                        <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
+                        <stop offset="0%" stopColor="rgb(var(--profit))" stopOpacity="0.3" />
+                        <stop offset="100%" stopColor="rgb(var(--profit))" stopOpacity="0" />
                       </linearGradient>
                     </defs>
-                    <path d="M0,42 L10,39 L22,41 L34,33 L46,28 L58,23 L70,18 L82,14 L94,10 L107,6 L120,3" fill="none" stroke="#22c55e" strokeWidth="2" />
+                    <path d="M0,42 L10,39 L22,41 L34,33 L46,28 L58,23 L70,18 L82,14 L94,10 L107,6 L120,3" fill="none" stroke="rgb(var(--profit))" strokeWidth="2" />
                     <path d="M0,42 L10,39 L22,41 L34,33 L46,28 L58,23 L70,18 L82,14 L94,10 L107,6 L120,3 L120,45 L0,45Z" fill="url(#eq2)" />
                   </svg>
                 </motion.div>
@@ -156,7 +156,7 @@ function Hero() {
                   <p className="text-[10px] text-muted uppercase tracking-wider">{t("preview_pnl_total")}</p>
                   <p className="text-xl font-bold text-profit mt-0.5">+3 240€</p>
                   <p className="text-[10px] text-muted uppercase tracking-wider mt-2">{t("preview_challenge")}</p>
-                  <div className="mt-1.5 h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+                  <div className="mt-1.5 h-1.5 bg-surface rounded-full overflow-hidden">
                     <div className="h-full w-[89%] bg-accent rounded-full" />
                   </div>
                   <p className="text-[10px] text-muted mt-1">89%</p>
@@ -230,7 +230,7 @@ function Problem() {
           {problems.map((p, i) => (
             <Reveal key={p.title} delay={i * 100}>
               <motion.div
-                className="bg-[#111113] border border-[#1c1c1e] rounded-2xl p-8 hover:border-white/10 hover:bg-[#111113]/80 transition-colors h-full"
+                className="bg-card border border-border rounded-2xl p-8 hover:border-white/10 hover:bg-card/80 transition-colors h-full"
                 whileHover={{ y: -4, borderColor: "rgba(255,255,255,0.12)" }}
                 transition={{ duration: 0.2 }}
               >
@@ -238,7 +238,7 @@ function Problem() {
                   {p.svg}
                 </div>
                 <h3 className="text-xl font-bold text-foreground">{p.title}</h3>
-                <p className="text-[#71717a] mt-2 text-sm leading-relaxed line-clamp-3">{p.desc}</p>
+                <p className="text-muted mt-2 text-sm leading-relaxed line-clamp-3">{p.desc}</p>
               </motion.div>
             </Reveal>
           ))}
@@ -258,7 +258,7 @@ const LANDING_PLATFORMS = ["MT5", "MT4", "cTrader", "Binance", "Bybit", "OKX", "
 function ScreenshotImport({ t }: { t: (k: string) => string }) {
   return (
     <div className="feature-screenshot p-5 space-y-3">
-      <div className="border-2 border-dashed border-[#2a2a2e] rounded-xl p-6 flex flex-col items-center gap-3 text-center">
+      <div className="border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center gap-3 text-center">
         <div className="w-10 h-10 bg-accent/10 rounded-xl flex items-center justify-center text-accent">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -277,7 +277,7 @@ function ScreenshotImport({ t }: { t: (k: string) => string }) {
             <span className="text-xs text-foreground">trades_history.csv</span>
             <span className="ml-auto text-[10px] text-profit font-medium">{t("feature_import_tag")}</span>
           </div>
-          <div className="w-full bg-[#1c1c1e] rounded-full h-1">
+          <div className="w-full bg-border rounded-full h-1">
             <div className="bg-accent h-1 rounded-full w-full" />
           </div>
         </div>
@@ -287,7 +287,7 @@ function ScreenshotImport({ t }: { t: (k: string) => string }) {
         <p className="text-[10px] text-muted mb-1.5">{t("feature_import_formats")}</p>
         <div className="flex flex-wrap gap-1">
           {LANDING_PLATFORMS.map((name) => (
-            <span key={name} className="px-2 py-0.5 rounded text-[10px] font-medium text-muted/80 border border-[#27272a] bg-[#18181b]">
+            <span key={name} className="px-2 py-0.5 rounded text-[10px] font-medium text-muted/80 border border-border bg-surface">
               {name}
             </span>
           ))}
@@ -326,7 +326,7 @@ function ScreenshotAI({ t }: { t: (k: string) => string }) {
   return (
     <div className="feature-screenshot">
       {/* Header */}
-      <div className="p-3 border-b border-[#1c1c1e] flex items-center gap-2">
+      <div className="p-3 border-b border-border flex items-center gap-2">
         <AIAvatar />
         <div className="flex-1 min-w-0">
           <span className="text-xs font-semibold text-foreground">{t("feature_ai_coach_label")}</span>
@@ -340,7 +340,7 @@ function ScreenshotAI({ t }: { t: (k: string) => string }) {
             <div key={i} className="flex gap-2 items-end">
               <AIAvatar />
               <div className="flex flex-col gap-0.5">
-                <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl rounded-bl-sm px-3 py-2 text-xs text-foreground max-w-[85%] leading-relaxed">
+                <div className="bg-surface border border-border rounded-xl rounded-bl-sm px-3 py-2 text-xs text-foreground max-w-[85%] leading-relaxed">
                   {m.text}
                 </div>
                 <span className="text-[9px] text-muted/60 pl-1">{m.time}</span>
@@ -379,8 +379,8 @@ function ScreenshotScore({ t }: { t: (k: string) => string }) {
         <div className="flex items-center gap-6">
           <div className="relative w-24 h-24 shrink-0">
             <svg className="w-24 h-24 -rotate-90" viewBox="0 0 88 88">
-              <circle cx="44" cy="44" r={r} fill="none" stroke="#1e1e1e" strokeWidth="7" />
-              <circle cx="44" cy="44" r={r} fill="none" stroke="#3b82f6" strokeWidth="7" strokeLinecap="round"
+              <circle cx="44" cy="44" r={r} fill="none" stroke="rgb(var(--border))" strokeWidth="7" />
+              <circle cx="44" cy="44" r={r} fill="none" stroke="rgb(var(--accent))" strokeWidth="7" strokeLinecap="round"
                 strokeDasharray={`${0.78 * circ} ${circ}`} />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -423,7 +423,7 @@ function ScreenshotChallenge() {
   return (
     <div className="feature-screenshot p-5">
       {/* Mode toggle */}
-      <div className="flex rounded-lg border border-[#2a2a2e] overflow-hidden mb-4 text-xs font-medium">
+      <div className="flex rounded-lg border border-border overflow-hidden mb-4 text-xs font-medium">
         <button onClick={() => setMode("prop")} className={`flex-1 py-1.5 transition-colors ${mode === "prop" ? "bg-accent text-white" : "text-muted hover:text-foreground"}`}>Prop Firm</button>
         <button onClick={() => setMode("own")} className={`flex-1 py-1.5 transition-colors ${mode === "own" ? "bg-accent text-white" : "text-muted hover:text-foreground"}`}>Fonds Propres</button>
       </div>
@@ -454,7 +454,7 @@ function ScreenshotChallenge() {
               <span className="text-muted">{bar.label}</span>
               <span className="text-foreground font-medium tabular-nums">{bar.val}</span>
             </div>
-            <div className="h-2 bg-[#1e1e1e] rounded-full overflow-hidden">
+            <div className="h-2 bg-surface rounded-full overflow-hidden">
               <div className={`h-full ${bar.color} rounded-full transition-all`} style={{ width: `${bar.pct}%` }} />
             </div>
           </div>
@@ -588,7 +588,7 @@ function AIDetection() {
     { text: t("ai_detect_4"), color: "text-purple-400", bg: "bg-purple-400/5", border: "border-purple-400/15", icon: "📊" },
   ];
   return (
-    <section className="py-24 px-6 border-t border-white/5 bg-[#0c0c0e]">
+    <section className="py-24 px-6 border-t border-white/5 bg-background">
       <div className="max-w-5xl mx-auto">
         <Reveal className="text-center mb-14">
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground">{t("ai_detect_title")}</h2>
@@ -622,7 +622,7 @@ function SocialProof() {
     { text: t("testimonial_3_text"), author: t("testimonial_3_author"), initials: "M" },
   ];
   return (
-    <section className="py-24 px-6 border-t border-white/5 bg-[#0c0c0e]">
+    <section className="py-24 px-6 border-t border-white/5 bg-background">
       <div className="max-w-5xl mx-auto">
         <Reveal className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground">{t("social_title")}</h2>
@@ -655,7 +655,7 @@ function SocialProof() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {testimonials.map((tm, i) => (
             <Reveal key={i} delay={i * 150}>
-              <div className="bg-[#111113] border border-[#1c1c1e] rounded-2xl p-6 flex flex-col hover:border-white/10 transition-all h-full">
+              <div className="bg-card border border-border rounded-2xl p-6 flex flex-col hover:border-white/10 transition-all h-full">
                 {/* Stars */}
                 <div className="flex gap-1 mb-4">
                   {Array.from({ length: 5 }).map((_, s) => (
@@ -664,7 +664,7 @@ function SocialProof() {
                     </svg>
                   ))}
                 </div>
-                <p className="text-[#c4c4c4] text-sm leading-relaxed italic flex-1">&ldquo;{tm.text}&rdquo;</p>
+                <p className="text-foreground-muted text-sm leading-relaxed italic flex-1">&ldquo;{tm.text}&rdquo;</p>
                 <div className="flex items-center gap-3 mt-5">
                   <div className="w-8 h-8 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center text-accent text-xs font-bold shrink-0">
                     {tm.initials}
@@ -762,7 +762,7 @@ function PremiumComingSoon({ t }: { t: (k: string) => string }) {
   ];
 
   return (
-    <div className="relative bg-[#111113] card-gradient-border-gold rounded-2xl p-7 flex flex-col h-full">
+    <div className="relative bg-card card-gradient-border-gold rounded-2xl p-7 flex flex-col h-full">
       {/* Coming soon badge */}
       <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 text-[11px] font-bold px-3 py-0.5 rounded-full">
         🔒 {t("plan_premium_coming")}
@@ -798,7 +798,7 @@ function PremiumComingSoon({ t }: { t: (k: string) => string }) {
               onChange={(e) => setEmail(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") handleNotify(); }}
               placeholder="email@exemple.com"
-              className="flex-1 min-w-0 px-3 py-2 bg-[#1a1a1a] border border-[#27272a] rounded-xl text-foreground text-sm placeholder-muted focus:outline-none focus:ring-1 focus:ring-yellow-500/40"
+              className="flex-1 min-w-0 px-3 py-2 bg-surface border border-border rounded-xl text-foreground text-sm placeholder-muted focus:outline-none focus:ring-1 focus:ring-yellow-500/40"
             />
             <button
               onClick={handleNotify}
@@ -845,8 +845,8 @@ function Pricing() {
         t("plan_benefit_free_4"),
       ],
       btnKey: "pricing_start_free",
-      btnClass: "bg-[#1a1a1a] border border-[#27272a] text-[#d4d4d8] hover:border-[#3f3f46]",
-      cardClass: "border-[#1c1c1e]",
+      btnClass: "bg-surface border border-border text-foreground-muted hover:border-muted",
+      cardClass: "border-border",
     },
     {
       name: t("plan_plus"),
@@ -881,13 +881,13 @@ function Pricing() {
         <Reveal className="flex items-center justify-center gap-3 mt-8">
           <button
             onClick={() => toggleAnnual(false)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${!annual ? "bg-[#1c1c1e] text-foreground" : "text-muted"}`}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${!annual ? "bg-border text-foreground" : "text-muted"}`}
           >
             {t("plan_monthly")}
           </button>
           <button
             onClick={() => toggleAnnual(true)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${annual ? "bg-[#1c1c1e] text-foreground" : "text-muted"}`}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${annual ? "bg-border text-foreground" : "text-muted"}`}
           >
             {t("plan_annual")}
             <span className="ml-2 px-1.5 py-0.5 bg-profit/10 text-profit text-[11px] font-bold rounded-full badge-pulse inline-block">
@@ -905,7 +905,7 @@ function Pricing() {
             return (
               <Reveal key={p.name} delay={i * 60}>
                 <motion.div
-                  className={`relative bg-[#111113] border rounded-2xl p-7 flex flex-col h-full ${p.cardClass}`}
+                  className={`relative bg-card border rounded-2xl p-7 flex flex-col h-full ${p.cardClass}`}
                   whileHover={{ borderColor: "rgba(59,130,246,0.3)", boxShadow: "0 0 20px rgba(59,130,246,0.1)" }}
                   transition={{ duration: 0.25 }}
                 >
@@ -990,15 +990,15 @@ function FAQ() {
         <Reveal>
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground text-center mb-12">{t("faq_title")}</h2>
         </Reveal>
-        <div className="divide-y divide-[#1c1c1e] border border-[#1c1c1e] rounded-2xl overflow-hidden">
+        <div className="divide-y divide-border border border-border rounded-2xl overflow-hidden">
           {faqs.map((faq, i) => (
-            <div key={i} className="bg-[#111113]">
+            <div key={i} className="bg-card">
               <button
                 onClick={() => setOpenIdx(openIdx === i ? null : i)}
                 className="w-full flex items-center justify-between px-6 py-5 text-left hover:bg-white/[0.02] transition-colors"
               >
                 <span className="text-foreground font-medium text-sm pr-6">{faq.q}</span>
-                <div className={`w-5 h-5 flex items-center justify-center rounded-full border border-[#2a2a2e] text-muted shrink-0 transition-all duration-200 ${openIdx === i ? "bg-accent/10 border-accent/30 text-accent rotate-45" : ""}`}>
+                <div className={`w-5 h-5 flex items-center justify-center rounded-full border border-border text-muted shrink-0 transition-all duration-200 ${openIdx === i ? "bg-accent/10 border-accent/30 text-accent rotate-45" : ""}`}>
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
@@ -1050,7 +1050,7 @@ function FinalCTA() {
 function Footer() {
   const { t } = useLanguage();
   return (
-    <footer className="border-t border-[#1c1c1e] bg-[#0a0a0c] px-6 py-14">
+    <footer className="border-t border-border bg-background px-6 py-14">
       <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-12">
           {/* Brand */}
@@ -1101,7 +1101,7 @@ function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="border-t border-[#1c1c1e] pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="border-t border-border pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-muted">© 2026 TradeDiscipline. {t("footer_legal")}.</p>
         </div>
       </div>

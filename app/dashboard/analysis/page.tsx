@@ -82,7 +82,11 @@ function ScoreCircle({ score, label }: { score: number; label: string }) {
   const color =
     score >= 90 ? "text-profit" : score >= 75 ? "text-green-400" : score >= 60 ? "text-yellow-400" : score >= 40 ? "text-orange-400" : "text-loss";
   const strokeColor =
-    score >= 90 ? "#22c55e" : score >= 75 ? "#4ade80" : score >= 60 ? "#facc15" : score >= 40 ? "#f97316" : "#ef4444";
+    score >= 90 ? "rgb(var(--profit))" :
+    score >= 75 ? "rgb(var(--profit))" :
+    score >= 60 ? "rgb(var(--warning))" :
+    score >= 40 ? "rgb(var(--warning))" :
+    "rgb(var(--loss))";
 
   return (
     <div className="flex flex-col items-center">
