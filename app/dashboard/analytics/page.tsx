@@ -97,9 +97,10 @@ type Period = "today" | "week" | "month" | "30d" | "90d" | "all";
 const EMPTY_BAR = "rgb(var(--border))";
 
 // Custom rounded-bar SVG shape.
-// Rounds the "tip" end away from zero so both positive and negative bars
-// look polished. Recharts' built-in radius=[4,4,0,0] rounds the wrong end
-// on negative bars in v3.
+// Recharts v3 passes:
+//   positive bar → y = tip (small SVG y, visually high), height > 0 down to baseline
+//   negative bar → y = tip (large SVG y, visually low), height < 0 up to baseline
+// We round the "tip" end (away from zero) on both cases.
 interface BarShapeProps {
   x?: number;
   y?: number;
@@ -113,13 +114,18 @@ function RoundedBar({
 }: BarShapeProps & { fill?: string; fillOpacity?: number }) {
   if (!width || !height) return null;
   const r = Math.min(4, Math.abs(height) / 2, width / 2);
-  const h = Math.abs(height);
-  // positive → round top corners (visual tip going up)
-  // negative → round bottom corners (visual tip going down)
-  const d =
-    value >= 0
-      ? `M${x},${y + r} Q${x},${y} ${x + r},${y} L${x + width - r},${y} Q${x + width},${y} ${x + width},${y + r} L${x + width},${y + h} L${x},${y + h} Z`
-      : `M${x},${y} L${x + width},${y} L${x + width},${y + h - r} Q${x + width},${y + h} ${x + width - r},${y + h} L${x + r},${y + h} Q${x},${y + h} ${x},${y + h - r} Z`;
+
+  let d: string;
+  if (value >= 0) {
+    // height > 0: y = tip (top), y + height = baseline (bottom)
+    // Round TOP corners (tip end, away from zero)
+    d = `M${x},${y + r} Q${x},${y} ${x + r},${y} L${x + width - r},${y} Q${x + width},${y} ${x + width},${y + r} L${x + width},${y + height} L${x},${y + height} Z`;
+  } else {
+    // height < 0: y = tip (bottom, large SVG y), y + height = baseline (top, small SVG y)
+    // Draw rect from baseline down to tip, round BOTTOM corners (tip end, away from zero)
+    const top = y + height; // baseline
+    d = `M${x},${top} L${x + width},${top} L${x + width},${y - r} Q${x + width},${y} ${x + width - r},${y} L${x + r},${y} Q${x},${y} ${x},${y - r} Z`;
+  }
   return <path d={d} fill={fill} fillOpacity={fillOpacity} />;
 }
 
