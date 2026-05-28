@@ -1,7 +1,19 @@
+"use client";
+
 /**
  * ScoreRing — anneau SVG de progression pour le score de discipline.
- * Couleur sémantique selon le score, pas l'accent cyan.
+ *
+ * Améliorations direction artistique "Terminal de précision" :
+ * - Animation de remplissage ease-out ~1.5s via RAF (one-shot)
+ * - Dégradé sur le tracé (profit → accent-glow) pour score ≥ 75 en dark
+ * - Filtre SVG glow appliqué au tracé en dark mode uniquement
+ * - Couleur sémantique du score conservée (vert/amber/rouge selon seuils)
+ * - Respecte prefers-reduced-motion
  */
+
+import { useEffect, useId, useRef, useState } from "react";
+import { useReducedMotion } from "framer-motion";
+import { useTheme } from "@/lib/ThemeContext";
 
 interface ScoreRingProps {
   score: number;
@@ -23,8 +35,54 @@ function ringColor(score: number): string {
 export function ScoreRing({ score, size = "sm" }: ScoreRingProps) {
   const { px, cx, cy, r, sw } = sizeMeta[size];
   const circumference = 2 * Math.PI * r;
-  const offset = circumference - (Math.min(100, Math.max(0, score)) / 100) * circumference;
-  const color = ringColor(score);
+  const targetOffset = circumference - (Math.min(100, Math.max(0, score)) / 100) * circumference;
+  const solidColor = ringColor(score);
+
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
+  const prefersReducedMotion = useReducedMotion();
+
+  // Unique IDs for SVG defs (React 18 useId)
+  const uid = useId().replace(/:/g, "");
+  const filterId = `ring-glow-${uid}`;
+  const gradId   = `ring-grad-${uid}`;
+
+  // Animated dashoffset — starts full (empty ring), fills to target
+  const [currentOffset, setCurrentOffset] = useState(circumference);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    // Cancel any running animation
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+
+    if (prefersReducedMotion) {
+      setCurrentOffset(targetOffset);
+      return;
+    }
+
+    const DURATION = 1500; // ms
+    const startTime = performance.now();
+    const startOffset = circumference;
+
+    function animate(now: number) {
+      const progress = Math.min(1, (now - startTime) / DURATION);
+      // ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setCurrentOffset(startOffset + eased * (targetOffset - startOffset));
+      if (progress < 1) {
+        rafRef.current = requestAnimationFrame(animate);
+      }
+    }
+
+    rafRef.current = requestAnimationFrame(animate);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [targetOffset, circumference, prefersReducedMotion]);
+
+  // Use gradient stroke only for top scores in dark mode
+  const useGradient = isDark && score >= 75;
+  const strokeColor = useGradient ? `url(#${gradId})` : solidColor;
 
   return (
     <svg
@@ -34,6 +92,32 @@ export function ScoreRing({ score, size = "sm" }: ScoreRingProps) {
       className="shrink-0"
       aria-hidden="true"
     >
+      <defs>
+        {/* Gradient stroke: profit green → vivid accent-glow cyan */}
+        {useGradient && (
+          <linearGradient
+            id={gradId}
+            x1={cx - r} y1="0"
+            x2={cx + r} y2="0"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop offset="0%"   stopColor="rgb(var(--profit))" />
+            <stop offset="100%" stopColor="rgb(var(--accent-glow))" />
+          </linearGradient>
+        )}
+
+        {/* Glow filter — dark mode only */}
+        {isDark && (
+          <filter id={filterId} x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="2" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        )}
+      </defs>
+
       {/* Track */}
       <circle
         cx={cx} cy={cy} r={r}
@@ -41,17 +125,18 @@ export function ScoreRing({ score, size = "sm" }: ScoreRingProps) {
         stroke="rgb(var(--border))"
         strokeWidth={sw}
       />
-      {/* Fill */}
+
+      {/* Animated fill */}
       <circle
         cx={cx} cy={cy} r={r}
         fill="none"
-        stroke={color}
+        stroke={strokeColor}
         strokeWidth={sw}
         strokeLinecap="round"
         strokeDasharray={circumference}
-        strokeDashoffset={offset}
+        strokeDashoffset={currentOffset}
         transform={`rotate(-90 ${cx} ${cy})`}
-        className="transition-all duration-700"
+        filter={isDark ? `url(#${filterId})` : undefined}
       />
     </svg>
   );

@@ -180,6 +180,15 @@ export default function DashboardContent({
     weekday: "long", day: "numeric", month: "long", year: "numeric",
   });
 
+  // ── Sparkline series for P&L card (cumulative today PnL per trade) ────────
+  const todayPnlSeries = useMemo(() => {
+    let running = 0;
+    return filteredToday.map((tr) => {
+      running += netPnl(tr);
+      return running;
+    });
+  }, [filteredToday]);
+
   // ── KpiCards props ─────────────────────────────────────────────────────────
   const kpiDisplayAccount = displayAccount
     ? {
@@ -260,6 +269,7 @@ export default function DashboardContent({
           useMonthFallback={useMonthFallback}
           todayPnl={todayPnl}
           filteredTodayCount={filteredToday.length}
+          todayPnlSeries={todayPnlSeries}
           displayAccount={kpiDisplayAccount}
           challengePct={challengePct}
           activeAccountsCount={activeAccounts.length}
