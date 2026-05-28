@@ -22,7 +22,7 @@ export default function MentionsLegalesPage() {
             <section>
               <h2 className="text-lg font-semibold text-[#fafafa] mb-3" style={{ fontStyle: "normal" }}>Éditeur du site</h2>
               <p>TradeDiscipline est édité par une entreprise individuelle.</p>
-              <p className="mt-2">Contact : <a href="mailto:contact@TradeDiscipline.app" className="text-[#3b82f6] hover:underline">contact@TradeDiscipline.app</a></p>
+              <p className="mt-2">Contact : <a href="mailto:contact@TradeDiscipline.app" className="text-accent hover:underline">contact@TradeDiscipline.app</a></p>
             </section>
 
             <section>
@@ -43,7 +43,7 @@ export default function MentionsLegalesPage() {
               <h2 className="text-lg font-semibold text-[#fafafa] mb-3" style={{ fontStyle: "normal" }}>Données personnelles</h2>
               <p>
                 Le traitement de vos données personnelles est régi par notre{" "}
-                <Link href="/legal/privacy" className="text-[#3b82f6] hover:underline">
+                <Link href="/legal/privacy" className="text-accent hover:underline">
                   Politique de confidentialité
                 </Link>
                 .
@@ -63,16 +63,16 @@ export default function MentionsLegalesPage() {
               <h2 className="text-lg font-semibold text-[#fafafa] mb-3" style={{ fontStyle: "normal" }}>Contact</h2>
               <p>
                 Pour toute question relative aux présentes mentions légales :{" "}
-                <a href="mailto:contact@TradeDiscipline.app" className="text-[#3b82f6] hover:underline">
+                <a href="mailto:contact@TradeDiscipline.app" className="text-accent hover:underline">
                   contact@TradeDiscipline.app
                 </a>
               </p>
             </section>
           </div>
 
-          <div className="mt-12 pt-8 border-t border-[#1c1c1e] flex gap-4">
-            <Link href="/legal/terms" className="text-sm text-[#3b82f6] hover:underline">CGU</Link>
-            <Link href="/legal/privacy" className="text-sm text-[#3b82f6] hover:underline">Confidentialité</Link>
+          <div className="mt-12 pt-8 border-t border-border flex gap-4">
+            <Link href="/legal/terms" className="text-sm text-accent hover:underline">CGU</Link>
+            <Link href="/legal/privacy" className="text-sm text-accent hover:underline">Confidentialité</Link>
             <Link href={localizedHref("/", lang)} className="text-sm text-[#71717a] hover:text-[#fafafa]">&larr; TradeDiscipline</Link>
           </div>
         </div>

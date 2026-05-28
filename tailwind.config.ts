@@ -11,18 +11,22 @@ const config: Config = {
     extend: {
       colors: {
         // Semantic tokens — driven by CSS variables, auto-switch with dark/light
-        background: "rgb(var(--background) / <alpha-value>)",
-        foreground: "rgb(var(--foreground) / <alpha-value>)",
-        card:       "rgb(var(--card) / <alpha-value>)",
-        surface:    "rgb(var(--surface) / <alpha-value>)",
-        border:     "rgb(var(--border) / <alpha-value>)",
-        muted:      "rgb(var(--muted) / <alpha-value>)",
-        // Fixed colors — same in both modes
-        accent:  "#3b82f6",
-        profit:  "#22c55e",
-        loss:    "#ef4444",
-        warning: "#f59e0b",
-        gold:    "#eab308",
+        background:          "rgb(var(--background) / <alpha-value>)",
+        foreground:          "rgb(var(--foreground) / <alpha-value>)",
+        "foreground-muted":  "rgb(var(--foreground-muted) / <alpha-value>)",
+        "foreground-subtle": "rgb(var(--foreground-subtle) / <alpha-value>)",
+        card:                "rgb(var(--card) / <alpha-value>)",
+        surface:             "rgb(var(--surface) / <alpha-value>)",
+        border:              "rgb(var(--border) / <alpha-value>)",
+        muted:               "rgb(var(--muted) / <alpha-value>)",
+        // Accent — now CSS-variable driven for theme adaptability
+        accent:              "rgb(var(--accent) / <alpha-value>)",
+        "accent-hover":      "rgb(var(--accent-hover) / <alpha-value>)",
+        // Semantic trading colors — CSS-variable driven
+        profit:              "rgb(var(--profit) / <alpha-value>)",
+        loss:                "rgb(var(--loss) / <alpha-value>)",
+        warning:             "rgb(var(--warning) / <alpha-value>)",
+        gold:                "rgb(var(--gold) / <alpha-value>)",
       },
       fontFamily: {
         sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],

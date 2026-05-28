@@ -44,7 +44,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setTheme((prev) => {
       const next: Theme = prev === "dark" ? "light" : "dark";
       localStorage.setItem("tm-theme", next);
+      // Add transition class for smooth theme switch, remove after animation
+      const html = document.documentElement;
+      html.classList.add("theme-transition");
       applyTheme(next);
+      window.setTimeout(() => html.classList.remove("theme-transition"), 300);
       return next;
     });
   }

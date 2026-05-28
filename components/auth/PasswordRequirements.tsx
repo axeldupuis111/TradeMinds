@@ -28,7 +28,7 @@ export default function PasswordRequirements({ password }: PasswordRequirementsP
         const passed = req.test(password);
         return (
           <div key={req.key} className="flex items-center gap-2 text-xs">
-            <span className={`flex items-center justify-center w-4 h-4 rounded-full transition-colors ${passed ? "bg-profit/20" : "bg-[#1e1e1e]"}`}>
+            <span className={`flex items-center justify-center w-4 h-4 rounded-full transition-colors ${passed ? "bg-profit/20" : "bg-surface"}`}>
               {passed ? (
                 <svg className="w-2.5 h-2.5 text-profit" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />

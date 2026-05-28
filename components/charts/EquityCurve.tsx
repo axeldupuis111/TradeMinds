@@ -54,12 +54,12 @@ export default function EquityCurve({ data, initialBalance }: Props) {
           <AreaChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
             <defs>
               <linearGradient id="gradProfit" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#22c55e" stopOpacity={0.2} />
-                <stop offset="100%" stopColor="#22c55e" stopOpacity={0} />
+                <stop offset="0%" stopColor={c.profit} stopOpacity={0.2} />
+                <stop offset="100%" stopColor={c.profit} stopOpacity={0} />
               </linearGradient>
               <linearGradient id="gradLoss" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#ef4444" stopOpacity={0.2} />
-                <stop offset="100%" stopColor="#ef4444" stopOpacity={0} />
+                <stop offset="0%" stopColor={c.loss} stopOpacity={0.2} />
+                <stop offset="100%" stopColor={c.loss} stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
@@ -101,11 +101,11 @@ export default function EquityCurve({ data, initialBalance }: Props) {
             <Area
               type="monotone"
               dataKey="balance"
-              stroke={isAbove ? "#22c55e" : "#ef4444"}
+              stroke={isAbove ? c.profit : c.loss}
               strokeWidth={2}
               fill={isAbove ? "url(#gradProfit)" : "url(#gradLoss)"}
               dot={false}
-              activeDot={{ r: 4, stroke: isAbove ? "#22c55e" : "#ef4444", strokeWidth: 2, fill: c.dotFill }}
+              activeDot={{ r: 4, stroke: isAbove ? c.profit : c.loss, strokeWidth: 2, fill: c.dotFill }}
             />
           </AreaChart>
         </ResponsiveContainer>

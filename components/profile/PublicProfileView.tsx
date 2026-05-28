@@ -145,8 +145,8 @@ export default function PublicProfileView({
               <AreaChart data={stats.equity}>
                 <defs>
                   <linearGradient id="gradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                    <stop offset="5%" stopColor="rgb(var(--profit))" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="rgb(var(--profit))" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" />
@@ -157,7 +157,7 @@ export default function PublicProfileView({
                   labelStyle={{ color: "rgb(var(--muted))" }}
                   formatter={(v) => [`${Number(v).toFixed(2)}%`, "P&L"]}
                 />
-                <Area type="monotone" dataKey="value" stroke="#22c55e" fill="url(#gradient)" strokeWidth={2} />
+                <Area type="monotone" dataKey="value" stroke="rgb(var(--profit))" fill="url(#gradient)" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
           </div>

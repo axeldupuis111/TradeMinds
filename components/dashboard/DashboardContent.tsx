@@ -60,7 +60,12 @@ function MiniScoreCircle({ score }: { score: number }) {
   const radius = 14;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
-  const color = score >= 90 ? "#22c55e" : score >= 75 ? "#4ade80" : score >= 60 ? "#facc15" : score >= 40 ? "#f97316" : "#ef4444";
+  const color =
+    score >= 90 ? "rgb(var(--profit))" :
+    score >= 75 ? "rgb(var(--profit))" :
+    score >= 60 ? "rgb(var(--warning))" :
+    score >= 40 ? "rgb(var(--warning))" :
+    "rgb(var(--loss))";
   return (
     <svg width="36" height="36" viewBox="0 0 36 36" className="shrink-0">
       <circle cx="18" cy="18" r={radius} fill="none" stroke="rgb(var(--border))" strokeWidth="3" />

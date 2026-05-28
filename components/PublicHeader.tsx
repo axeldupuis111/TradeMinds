@@ -13,7 +13,7 @@ export default function PublicHeader({ showAnchors = false }: PublicHeaderProps)
   const { lang, t } = useLanguage();
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-[#1c1c1e] bg-[#09090b]/80 backdrop-blur-[12px]">
+    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-[12px]">
       <div className="max-w-6xl mx-auto px-6 h-14 relative flex items-center justify-between">
         {/* Logo */}
         <Link href={localizedHref("/", lang)} className="flex items-center gap-2 shrink-0">
