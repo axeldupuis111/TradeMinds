@@ -143,7 +143,7 @@ export default function GoalsStreaks() {
     : null;
 
   return (
-    <KpiCardPremium layout="full" intensity="default" accentColor="cyan">
+    <KpiCardPremium layout="full" intensity="default" accentColor="amber">
       <h2 className="text-sm font-semibold text-foreground mb-4">{t("goals_title")}</h2>
 
       {/* Streak */}

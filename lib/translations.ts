@@ -1053,6 +1053,7 @@ const translations: Record<Lang, Record<string, string>> = {
     violation_missing_tp: "Pas de Take Profit",
     violation_missing_setup: "Setup non renseigné",
     dash_today_label: "aujourd'hui",
+    live_indicator: "En direct",
 
     // Sidebar
     sidebar_settings: "Paramètres",
@@ -2429,6 +2430,7 @@ const translations: Record<Lang, Record<string, string>> = {
     violation_missing_tp: "No Take Profit",
     violation_missing_setup: "Setup not provided",
     dash_today_label: "today",
+    live_indicator: "Live",
 
     // Sidebar
     sidebar_settings: "Settings",
@@ -3804,6 +3806,7 @@ const translations: Record<Lang, Record<string, string>> = {
     violation_missing_tp: "Kein Take Profit",
     violation_missing_setup: "Setup nicht angegeben",
     dash_today_label: "heute",
+    live_indicator: "Live",
 
     // Seitenleiste
     sidebar_settings: "Einstellungen",
@@ -5178,6 +5181,7 @@ const translations: Record<Lang, Record<string, string>> = {
     violation_missing_tp: "Sin Take Profit",
     violation_missing_setup: "Setup no especificado",
     dash_today_label: "hoy",
+    live_indicator: "En vivo",
 
     // Barra lateral
     sidebar_settings: "Ajustes",

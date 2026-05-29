@@ -6,8 +6,10 @@ import { AiInsights } from "@/components/dashboard/AiInsights";
 import DayState from "@/components/dashboard/DayState";
 import GoalsStreaks from "@/components/dashboard/GoalsStreaks";
 import { KpiCards } from "@/components/dashboard/KpiCards";
+import { Sparkline } from "@/components/dashboard/Sparkline";
 import { CardHeader, CardTitle } from "@/components/ui/Card";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
+import { useTheme } from "@/lib/ThemeContext";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -21,6 +23,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
+import StaggerContainer, { StaggerItem } from "@/components/animations/StaggerContainer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -39,6 +42,10 @@ interface TradeWithTime extends TradeData {
 
 interface RecentTrade extends TradeWithTime {
   id: string;
+  close_time?: string | null;
+  lot_size?: number | null;
+  entry_price?: number | null;
+  exit_price?: number | null;
 }
 
 interface ActiveAccount {
@@ -79,6 +86,14 @@ function netPnl(t: { pnl: number; commission: number | null; swap: number | null
   return t.pnl + (t.commission || 0) + (t.swap || 0);
 }
 
+/** Smart price formatter — adapts decimal places to the instrument magnitude */
+function fmtPrice(p: number): string {
+  if (p >= 10000) return p.toFixed(0);
+  if (p >= 100)   return p.toFixed(2);
+  if (p >= 1)     return p.toFixed(4);
+  return p.toFixed(5);
+}
+
 /** Button-style class strings for action Links in the header */
 const linkBtnBase =
   "inline-flex items-center justify-center gap-1.5 font-medium rounded-lg transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 h-8 px-3 text-xs";
@@ -111,6 +126,8 @@ export default function DashboardContent({
 }: Props) {
   const { t } = useLanguage();
   const { plan, canUseAI, loading: planLoading } = usePlan();
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [upsellDismissed, setUpsellDismissed] = useState(false);
 
@@ -231,7 +248,16 @@ export default function DashboardContent({
           <h1 className="text-2xl font-bold text-foreground tracking-tight">
             {t("dash_greeting")} {displayName}
           </h1>
-          <p className="text-foreground-muted text-sm mt-0.5 capitalize">{dateStr}</p>
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            <p className="text-foreground-muted text-sm capitalize">{dateStr}</p>
+            <span className="inline-flex items-center gap-1.5 shrink-0">
+              <span
+                className="w-2 h-2 rounded-full bg-accent motion-safe:animate-pulse shrink-0"
+                style={isDark ? { boxShadow: "0 0 8px rgba(0,229,208,.5)" } : undefined}
+              />
+              <span className="text-xs text-foreground-muted">{t("live_indicator")}</span>
+            </span>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -267,8 +293,11 @@ export default function DashboardContent({
         </div>
       </div>
 
+      {/* ── Blocs Dashboard — stagger cascade au montage ────────────── */}
+      <StaggerContainer staggerDelay={0.08}>
+
       {/* ── KPI Cards ────────────────────────────────────────────────── */}
-      <div className="mt-6">
+      <StaggerItem className="mt-6">
         <KpiCards
           score={score}
           weekCount={weekCount}
@@ -283,50 +312,51 @@ export default function DashboardContent({
           activeAccountsCount={activeAccounts.length}
           totalPnl={totalPnl}
         />
-      </div>
+      </StaggerItem>
 
       {/* ── État du jour ─────────────────────────────────────────────── */}
-      <div className="mt-6">
+      <StaggerItem className="mt-6">
         <DayState />
-      </div>
+      </StaggerItem>
 
       {/* ── AI Insights + Equity Curve ───────────────────────────────── */}
-      {canUseAI ? (
-        <div className={cn(
-          "mt-6 grid gap-4",
-          equityCurveData.length > 0 ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"
-        )}>
-          <AiInsights insights={insights} filteredAllLength={filteredAll.length} />
-          {equityCurveData.length > 0 && (
-            <EquityCurve data={equityCurveData} initialBalance={initialBalance} />
-          )}
-        </div>
-      ) : (
-        equityCurveData.length > 0 && (
+      <StaggerItem>
+        {canUseAI ? (
+          <div className={cn(
+            "mt-6 grid gap-4",
+            equityCurveData.length > 0 ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"
+          )}>
+            <AiInsights insights={insights} filteredAllLength={filteredAll.length} />
+            {equityCurveData.length > 0 && (
+              <EquityCurve data={equityCurveData} initialBalance={initialBalance} />
+            )}
+          </div>
+        ) : equityCurveData.length > 0 ? (
           <div className="mt-6">
             <EquityCurve data={equityCurveData} initialBalance={initialBalance} />
           </div>
-        )
-      )}
+        ) : null}
+      </StaggerItem>
 
       {/* ── Trading Calendar ─────────────────────────────────────────── */}
-      <div className="mt-6">
+      <StaggerItem className="mt-6">
         <TradingCalendar trades={allTrades} selectedAccountId={selectedAccountId} />
-      </div>
+      </StaggerItem>
 
       {/* ── Goals & Streaks ──────────────────────────────────────────── */}
-      <div className="mt-6">
+      <StaggerItem className="mt-6">
         <GoalsStreaks />
-      </div>
+      </StaggerItem>
 
       {/* ── Bottom : Recent trades + Last analysis + DD alert ────────── */}
+      <StaggerItem>
       <div className={cn(
         "grid grid-cols-1 gap-4 mt-6",
         (canUseAI || (displayAccount && ddPct > 75)) ? "lg:grid-cols-2" : ""
       )}>
 
         {/* Recent trades */}
-        <KpiCardPremium layout="full" intensity="default" accentColor="cyan">
+        <KpiCardPremium layout="full" intensity="default" accentColor="violet">
           <CardHeader>
             <CardTitle>{t("dash_recent_trades")}</CardTitle>
             <Link href="/dashboard/trades" className="text-xs text-accent hover:underline">
@@ -336,27 +366,63 @@ export default function DashboardContent({
           {filteredRecent.length === 0 ? (
             <p className="text-foreground-muted text-sm">{t("dash_no_trades")}</p>
           ) : (
-            <div className="space-y-0.5">
+            <div className="space-y-0">
               {filteredRecent.map((tr) => {
                 const net = netPnl(tr);
                 const isBuy = tr.direction === "long" || tr.direction === "buy";
                 return (
                   <div
                     key={tr.id}
-                    className="flex items-center justify-between py-2 border-b border-border last:border-0"
+                    className="group flex items-center gap-3 py-2 border-b border-border last:border-0 -mx-1 px-1 rounded-lg transition-colors hover:bg-foreground/[0.04]"
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="text-foreground-muted text-xs tabular-nums w-12">
+                    {/* Left: date + pair + badge */}
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <span className="text-foreground-muted text-xs tabular-nums w-12 shrink-0">
                         {tr.open_time
                           ? new Date(tr.open_time).toLocaleDateString(undefined, { day: "2-digit", month: "2-digit" })
                           : "—"}
                       </span>
-                      <span className="text-foreground text-sm font-medium">{tr.pair}</span>
+                      <span className="text-foreground text-sm font-medium truncate">{tr.pair}</span>
                       <Badge variant={isBuy ? "success" : "danger"} size="sm">
                         {isBuy ? "BUY" : "SELL"}
                       </Badge>
                     </div>
-                    <span className={cn("text-sm font-medium tabular-nums", net >= 0 ? "text-profit" : "text-loss")}>
+                    {/* Sparkline / Reveal hover — conteneur fixe, pas de saut de layout */}
+                    <div className="shrink-0 w-[88px] h-[34px] sm:w-[104px] sm:h-[36px] relative overflow-hidden">
+                      {/* Sparkline — disparaît au hover */}
+                      <div className="absolute inset-0 flex items-center justify-center opacity-70 group-hover:opacity-0 transition-opacity duration-150">
+                        <Sparkline data={[0, net]} positive={net >= 0} width={80} height={18} glow={isDark} />
+                      </div>
+                      {/* Révélation enrichie : heure · lot / entry→exit / frais */}
+                      <div className="absolute inset-0 flex flex-col justify-center gap-px opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none">
+                        {/* Ligne 1 — heure + taille de lot */}
+                        <p className="text-[10px] text-foreground-muted tabular-nums leading-none">
+                          {tr.open_time
+                            ? new Date(tr.open_time).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
+                            : "—"}
+                          {tr.lot_size != null && tr.lot_size > 0
+                            ? ` · ${tr.lot_size}`
+                            : ""}
+                        </p>
+                        {/* Ligne 2 — prix entrée → sortie (si disponibles) */}
+                        {tr.entry_price != null && tr.exit_price != null && (
+                          <p className="text-[10px] text-foreground tabular-nums leading-none">
+                            {fmtPrice(tr.entry_price)}
+                            <span className="text-foreground-subtle mx-px">→</span>
+                            {fmtPrice(tr.exit_price)}
+                          </p>
+                        )}
+                        {/* Ligne 3 — frais (si non nuls) */}
+                        {((tr.commission ?? 0) + (tr.swap ?? 0)) !== 0 && (
+                          <p className="text-[9px] text-foreground-subtle tabular-nums leading-none">
+                            {((tr.commission ?? 0) + (tr.swap ?? 0)) > 0 ? "+" : ""}
+                            {((tr.commission ?? 0) + (tr.swap ?? 0)).toFixed(2)}€
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    {/* P&L */}
+                    <span className={cn("text-sm font-medium tabular-nums shrink-0", net >= 0 ? "text-profit" : "text-loss")}>
                       {net >= 0 ? "+" : ""}{net.toFixed(2)}
                     </span>
                   </div>
@@ -434,6 +500,9 @@ export default function DashboardContent({
           </div>
         )}
       </div>
+      </StaggerItem>
+
+      </StaggerContainer>
     </div>
   );
 }

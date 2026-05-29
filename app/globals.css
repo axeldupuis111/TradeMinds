@@ -63,7 +63,9 @@
   --foreground-subtle:  82 82 91;       /* #52525b — texte tertiaire/labels */
 
   /* ── Effect tokens — KPI Premium cards ──────────────────────────────── */
-  --accent-glow:   0 229 208;          /* #00E5D0 — vivid cyan for dark-mode auras */
+  --accent-glow:        0 229 208;     /* #00E5D0 — vivid cyan for dark-mode auras */
+  --accent-amber-glow:  251 191 36;    /* #fbbf24 — amber aura (DayState, GoalsStreaks) */
+  --accent-violet-glow: 167 139 250;   /* #a78bfa — violet aura (TradingCalendar, Recent trades) */
   --card-grad-top: 22 22 30;           /* #16161e — top of card gradient */
   --card-grad-bot: 8 8 12;             /* #08080c — bottom of card gradient */
   --glow-shadow:   0 30px 70px -20px rgba(0,0,0,.95), inset 0 0 0 1px rgba(255,255,255,.025), 0 0 80px -20px rgba(0,229,208,.28);
@@ -95,7 +97,9 @@ html.light {
   --foreground-subtle:  161 161 170;    /* #a1a1aa */
 
   /* ── Effect tokens — KPI Premium cards ──────────────────────────────── */
-  --accent-glow:   0 168 172;
+  --accent-glow:        0 168 172;     /* #00A8AC */
+  --accent-amber-glow:  217 119 6;     /* #d97706 — amber aura light */
+  --accent-violet-glow: 124 58 237;    /* #7c3aed — violet aura light */
   --card-grad-top: 255 255 255;
   --card-grad-bot: 248 250 252;
   --glow-shadow:   0 20px 50px -20px rgba(0,168,172,.25), 0 4px 12px -2px rgba(0,0,0,.06);

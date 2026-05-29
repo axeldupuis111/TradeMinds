@@ -20,6 +20,8 @@ interface SparklineProps {
   width?: number;
   height?: number;
   className?: string;
+  /** Ajoute un feGaussianBlur glow sur la ligne (activer en dark mode uniquement) */
+  glow?: boolean;
 }
 
 export function Sparkline({
@@ -28,10 +30,12 @@ export function Sparkline({
   width = 80,
   height = 36,
   className,
+  glow = false,
 }: SparklineProps) {
   const uid = useId();
   // Strip colons — SVG id must not contain ':'
   const gradId = `spark-grad-${uid.replace(/:/g, "")}`;
+  const glowId = `spark-glow-${uid.replace(/:/g, "")}`;
 
   if (data.length < 2) return null;
 
@@ -75,6 +79,16 @@ export function Sparkline({
           <stop offset="0%" stopColor={color} stopOpacity="0.35" />
           <stop offset="100%" stopColor={color} stopOpacity="0" />
         </linearGradient>
+        {/* Glow filter — dark mode only, actived via glow prop */}
+        {glow && (
+          <filter id={glowId} x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        )}
       </defs>
 
       {/* Area fill — no animation, appears instantly */}
@@ -89,6 +103,7 @@ export function Sparkline({
         strokeLinecap="round"
         strokeLinejoin="round"
         className="sparkline-line"
+        filter={glow ? `url(#${glowId})` : undefined}
       />
     </svg>
   );
