@@ -36,8 +36,12 @@ interface TradeData {
 
 interface TradeWithTime extends TradeData {
   open_time: string;
+  close_time?: string | null;
   pair: string;
   direction: string;
+  lot_size?: number | null;
+  entry_price?: number | null;
+  exit_price?: number | null;
 }
 
 interface RecentTrade extends TradeWithTime {
