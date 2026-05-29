@@ -42,6 +42,10 @@ interface TradeWithTime extends TradeData {
 
 interface RecentTrade extends TradeWithTime {
   id: string;
+  close_time?: string | null;
+  lot_size?: number | null;
+  entry_price?: number | null;
+  exit_price?: number | null;
 }
 
 interface ActiveAccount {
@@ -80,6 +84,14 @@ interface Props {
 
 function netPnl(t: { pnl: number; commission: number | null; swap: number | null }) {
   return t.pnl + (t.commission || 0) + (t.swap || 0);
+}
+
+/** Smart price formatter — adapts decimal places to the instrument magnitude */
+function fmtPrice(p: number): string {
+  if (p >= 10000) return p.toFixed(0);
+  if (p >= 100)   return p.toFixed(2);
+  if (p >= 1)     return p.toFixed(4);
+  return p.toFixed(5);
 }
 
 /** Button-style class strings for action Links in the header */
@@ -375,20 +387,36 @@ export default function DashboardContent({
                         {isBuy ? "BUY" : "SELL"}
                       </Badge>
                     </div>
-                    {/* Sparkline / Reveal hover — conteneur fixe 60×20, pas de saut de layout */}
-                    <div className="shrink-0 w-[60px] h-[20px] relative">
+                    {/* Sparkline / Reveal hover — conteneur fixe, pas de saut de layout */}
+                    <div className="shrink-0 w-[88px] h-[34px] sm:w-[104px] sm:h-[36px] relative overflow-hidden">
                       {/* Sparkline — disparaît au hover */}
-                      <div className="absolute inset-0 opacity-70 group-hover:opacity-0 transition-opacity duration-150">
-                        <Sparkline data={[0, net]} positive={net >= 0} width={60} height={20} glow={isDark} />
+                      <div className="absolute inset-0 flex items-center justify-center opacity-70 group-hover:opacity-0 transition-opacity duration-150">
+                        <Sparkline data={[0, net]} positive={net >= 0} width={80} height={18} glow={isDark} />
                       </div>
-                      {/* Révélation : heure + frais si non nuls */}
-                      <div className="absolute inset-0 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none">
+                      {/* Révélation enrichie : heure · lot / entry→exit / frais */}
+                      <div className="absolute inset-0 flex flex-col justify-center gap-px opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none">
+                        {/* Ligne 1 — heure + taille de lot */}
                         <p className="text-[10px] text-foreground-muted tabular-nums leading-none">
-                          {tr.open_time ? new Date(tr.open_time).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "—"}
+                          {tr.open_time
+                            ? new Date(tr.open_time).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
+                            : "—"}
+                          {tr.lot_size != null && tr.lot_size > 0
+                            ? ` · ${tr.lot_size}`
+                            : ""}
                         </p>
+                        {/* Ligne 2 — prix entrée → sortie (si disponibles) */}
+                        {tr.entry_price != null && tr.exit_price != null && (
+                          <p className="text-[10px] text-foreground tabular-nums leading-none">
+                            {fmtPrice(tr.entry_price)}
+                            <span className="text-foreground-subtle mx-px">→</span>
+                            {fmtPrice(tr.exit_price)}
+                          </p>
+                        )}
+                        {/* Ligne 3 — frais (si non nuls) */}
                         {((tr.commission ?? 0) + (tr.swap ?? 0)) !== 0 && (
-                          <p className="text-[9px] text-foreground-subtle tabular-nums leading-tight mt-0.5">
-                            {((tr.commission ?? 0) + (tr.swap ?? 0)) > 0 ? "+" : ""}{((tr.commission ?? 0) + (tr.swap ?? 0)).toFixed(2)}€
+                          <p className="text-[9px] text-foreground-subtle tabular-nums leading-none">
+                            {((tr.commission ?? 0) + (tr.swap ?? 0)) > 0 ? "+" : ""}
+                            {((tr.commission ?? 0) + (tr.swap ?? 0)).toFixed(2)}€
                           </p>
                         )}
                       </div>
