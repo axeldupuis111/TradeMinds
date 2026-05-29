@@ -35,13 +35,13 @@ const AURA_TOKEN: Record<AccentColor, string> = {
 const OUTER_GLOW_DARK: Record<AccentColor, string> = {
   cyan:   "rgba(0, 229, 208, 0.28)",
   green:  "rgba(52, 211, 153, 0.28)",
-  amber:  "rgba(251, 191, 36, 0.22)",
+  amber:  "rgba(251, 191, 36, 0.34)",
   violet: "rgba(167, 139, 250, 0.22)",
 };
 const OUTER_GLOW_LIGHT: Record<AccentColor, string> = {
   cyan:   "rgba(0, 168, 172, 0.25)",
   green:  "rgba(22, 163, 74, 0.20)",
-  amber:  "rgba(217, 119, 6, 0.20)",
+  amber:  "rgba(217, 119, 6, 0.28)",
   violet: "rgba(124, 58, 237, 0.18)",
 };
 
@@ -101,6 +101,13 @@ export function KpiCardPremium({
         secondaryPos:     "0% 100%",
         secondaryOpacity: 0.06,
       };
+
+  // Amber boost — luminosité visuelle plus basse que cyan/violet, compense par opacité renforcée.
+  // Uniquement amber : les autres couleurs restent inchangées.
+  if (accentColor === "amber") {
+    aura.primaryOpacity   = intensity === "hero" ? 0.46 : 0.28;
+    aura.secondaryOpacity = intensity === "hero" ? 0.12 : 0.10;
+  }
 
   // Box-shadow dynamique selon l'accent et le thème
   const outerGlow = isDark ? OUTER_GLOW_DARK[accentColor] : OUTER_GLOW_LIGHT[accentColor];
