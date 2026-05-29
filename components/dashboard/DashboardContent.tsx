@@ -6,8 +6,10 @@ import { AiInsights } from "@/components/dashboard/AiInsights";
 import DayState from "@/components/dashboard/DayState";
 import GoalsStreaks from "@/components/dashboard/GoalsStreaks";
 import { KpiCards } from "@/components/dashboard/KpiCards";
+import { Sparkline } from "@/components/dashboard/Sparkline";
 import { CardHeader, CardTitle } from "@/components/ui/Card";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
+import { useTheme } from "@/lib/ThemeContext";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -111,6 +113,8 @@ export default function DashboardContent({
 }: Props) {
   const { t } = useLanguage();
   const { plan, canUseAI, loading: planLoading } = usePlan();
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [upsellDismissed, setUpsellDismissed] = useState(false);
 
@@ -336,27 +340,39 @@ export default function DashboardContent({
           {filteredRecent.length === 0 ? (
             <p className="text-foreground-muted text-sm">{t("dash_no_trades")}</p>
           ) : (
-            <div className="space-y-0.5">
+            <div className="space-y-0">
               {filteredRecent.map((tr) => {
                 const net = netPnl(tr);
                 const isBuy = tr.direction === "long" || tr.direction === "buy";
                 return (
                   <div
                     key={tr.id}
-                    className="flex items-center justify-between py-2 border-b border-border last:border-0"
+                    className="group flex items-center gap-3 py-2 border-b border-border last:border-0 -mx-1 px-1 rounded-lg transition-colors hover:bg-foreground/[0.04]"
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="text-foreground-muted text-xs tabular-nums w-12">
+                    {/* Left: date + pair + badge */}
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <span className="text-foreground-muted text-xs tabular-nums w-12 shrink-0">
                         {tr.open_time
                           ? new Date(tr.open_time).toLocaleDateString(undefined, { day: "2-digit", month: "2-digit" })
                           : "—"}
                       </span>
-                      <span className="text-foreground text-sm font-medium">{tr.pair}</span>
+                      <span className="text-foreground text-sm font-medium truncate">{tr.pair}</span>
                       <Badge variant={isBuy ? "success" : "danger"} size="sm">
                         {isBuy ? "BUY" : "SELL"}
                       </Badge>
                     </div>
-                    <span className={cn("text-sm font-medium tabular-nums", net >= 0 ? "text-profit" : "text-loss")}>
+                    {/* Mini sparkline 2pts [0 → net] — visualise la direction et magnitude */}
+                    <div className="shrink-0 opacity-70 group-hover:opacity-100 transition-opacity">
+                      <Sparkline
+                        data={[0, net]}
+                        positive={net >= 0}
+                        width={60}
+                        height={20}
+                        glow={isDark}
+                      />
+                    </div>
+                    {/* P&L */}
+                    <span className={cn("text-sm font-medium tabular-nums shrink-0", net >= 0 ? "text-profit" : "text-loss")}>
                       {net >= 0 ? "+" : ""}{net.toFixed(2)}
                     </span>
                   </div>

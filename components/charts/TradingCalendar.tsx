@@ -37,6 +37,12 @@ export default function TradingCalendar({ trades, selectedAccountId }: Props) {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
+  // Today reference — pour le highlight de la cellule du jour actuel
+  const todayRef = new Date();
+  const todayYear = todayRef.getFullYear();
+  const todayMonth = todayRef.getMonth();
+  const todayDay = todayRef.getDate();
+
   // Filter by account
   const filtered = useMemo(() => {
     if (!selectedAccountId) return trades;
@@ -153,6 +159,11 @@ export default function TradingCalendar({ trades, selectedAccountId }: Props) {
           const hasTrades = !!data && data.count > 0;
           const isPositive = hasTrades && data.pnl >= 0;
           const isSelected = selectedDay === dayNum.toString() && isCurrentMonth;
+          // Highlight du jour actuel (uniquement si on affiche le bon mois)
+          const isToday = isCurrentMonth
+            && dayNum === todayDay
+            && year === todayYear
+            && month === todayMonth;
 
           const bgColor = !isCurrentMonth
             ? "bg-background/50"
@@ -189,6 +200,11 @@ export default function TradingCalendar({ trades, selectedAccountId }: Props) {
               >
                 {displayNum}
               </span>
+
+              {/* Pulse dot — jour actuel */}
+              {isToday && (
+                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-accent pointer-events-none motion-safe:animate-pulse" />
+              )}
 
               {hasTrades && (
                 <div className="mt-0.5">

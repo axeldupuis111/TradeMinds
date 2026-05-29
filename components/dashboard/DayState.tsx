@@ -10,9 +10,10 @@
 import { CardTitle } from "@/components/ui/Card";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { useLanguage } from "@/lib/LanguageContext";
+import { useTheme } from "@/lib/ThemeContext";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/cn";
-import { Flame } from "lucide-react";
+import { Flame, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { useEffect, useState } from "react";
 
 interface Strategy {
@@ -35,8 +36,81 @@ function netPnl(t: { pnl: number; commission: number | null; swap: number | null
   return t.pnl + (t.commission || 0) + (t.swap || 0);
 }
 
+// ─── Mini progress ring (Trades du jour) ──────────────────────────────────────
+
+function MiniRing({ value, max, size = 28, isDark }: { value: number; max: number; size?: number; isDark: boolean }) {
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = (size - 5) / 2;
+  const circumference = 2 * Math.PI * r;
+  const pct = max > 0 ? Math.min(1, value / max) : 0;
+  const offset = circumference * (1 - pct);
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true" className="shrink-0">
+      {isDark && (
+        <defs>
+          <filter id="daystate-ring-glow">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+      )}
+      {/* Track */}
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgb(var(--border))" strokeWidth={2.5} />
+      {/* Fill arc */}
+      {pct > 0 && (
+        <circle
+          cx={cx} cy={cy} r={r}
+          fill="none"
+          stroke="rgb(var(--accent))"
+          strokeWidth={2.5}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          transform={`rotate(-90 ${cx} ${cy})`}
+          filter={isDark ? "url(#daystate-ring-glow)" : undefined}
+        />
+      )}
+    </svg>
+  );
+}
+
+// ─── Mini segmented bar (Budget risque) ───────────────────────────────────────
+
+function MiniSegBar({ pct, isDark }: { pct: number; isDark: boolean }) {
+  const segments = 4;
+  const filledCount = Math.max(0, Math.round((pct / 100) * segments));
+  // Couleur selon budget restant (budgetPct : 100 = plein, 0 = épuisé)
+  const color = pct > 50 ? "bg-accent" : pct > 20 ? "bg-warning" : "bg-loss";
+  const glowColor = pct > 50
+    ? "0 0 6px rgba(0,212,216,0.55)"
+    : pct > 20
+      ? "0 0 6px rgba(245,158,11,0.50)"
+      : "0 0 6px rgba(239,68,68,0.50)";
+
+  return (
+    <div className="flex gap-0.5 mt-1.5" aria-hidden="true">
+      {Array.from({ length: segments }, (_, i) => (
+        <div
+          key={i}
+          className={cn("h-2.5 w-3 rounded-sm transition-colors", i < filledCount ? color : "bg-border")}
+          style={isDark && i < filledCount ? { boxShadow: glowColor } : undefined}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export default function DayState() {
   const { t } = useLanguage();
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
   const supabase = createClient();
   const [stats, setStats] = useState<DayStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -116,55 +190,68 @@ export default function DayState() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {/* P&L aujourd'hui */}
+
+        {/* P&L aujourd'hui — icône directionnelle */}
         <div>
           <p className="text-xs text-foreground-subtle font-medium uppercase tracking-wider">
             {t("session_today_pnl")}
           </p>
-          <p className={cn("text-xl font-bold mt-1 tabular-nums", todayPnl >= 0 ? "text-profit" : "text-loss")}>
-            {todayPnl >= 0 ? "+" : ""}{todayPnl.toFixed(2)} &euro;
+          <p className={cn("text-xl font-bold mt-1 tabular-nums flex items-center gap-1", todayPnl >= 0 ? "text-profit" : "text-loss")}>
+            <span>{todayPnl >= 0 ? "+" : ""}{todayPnl.toFixed(2)} &euro;</span>
+            {todayPnl > 0 && <TrendingUp className="w-4 h-4 shrink-0" strokeWidth={1.75} />}
+            {todayPnl < 0 && <TrendingDown className="w-4 h-4 shrink-0" strokeWidth={1.75} />}
+            {todayPnl === 0 && <Minus className="w-3.5 h-3.5 shrink-0 opacity-50" strokeWidth={1.75} />}
           </p>
         </div>
 
-        {/* Trades du jour */}
+        {/* Trades du jour — mini anneau de progression si maxTradesPerDay défini */}
         <div>
           <p className="text-xs text-foreground-subtle font-medium uppercase tracking-wider">
             {t("session_today_trades")}
           </p>
-          <p className="text-xl font-bold mt-1 text-foreground tabular-nums">
-            {todayCount}{maxTradesPerDay ? ` / ${maxTradesPerDay}` : ""}
-          </p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-xl font-bold text-foreground tabular-nums">
+              {todayCount}{maxTradesPerDay ? ` / ${maxTradesPerDay}` : ""}
+            </p>
+            {maxTradesPerDay && (
+              <MiniRing value={todayCount} max={maxTradesPerDay} size={28} isDark={isDark} />
+            )}
+          </div>
         </div>
 
-        {/* Streak */}
+        {/* Streak — flamme animée si streak > 0 */}
         <div>
           <p className="text-xs text-foreground-subtle font-medium uppercase tracking-wider">
             {t("session_streak")}
           </p>
           <p className="text-xl font-bold mt-1 text-foreground tabular-nums flex items-center gap-1.5">
             {streak > 0 && (
-              <Flame className="w-4 h-4 text-warning shrink-0" strokeWidth={1.75} />
+              <Flame className="w-4 h-4 text-warning shrink-0 motion-safe:animate-pulse" strokeWidth={1.75} />
             )}
             {streak}
           </p>
         </div>
 
-        {/* Budget risque */}
+        {/* Budget risque — mini-segments si data disponible */}
         <div>
           <p className="text-xs text-foreground-subtle font-medium uppercase tracking-wider">
             {t("session_risk_budget")}
           </p>
           {maxLossEuro !== null && remainingBudget !== null ? (
-            <p className={cn(
-              "text-xl font-bold mt-1 tabular-nums",
-              budgetPct > 50 ? "text-profit" : budgetPct > 20 ? "text-warning" : "text-loss"
-            )}>
-              {remainingBudget.toFixed(0)} &euro;
-            </p>
+            <>
+              <p className={cn(
+                "text-xl font-bold mt-1 tabular-nums",
+                budgetPct > 50 ? "text-profit" : budgetPct > 20 ? "text-warning" : "text-loss"
+              )}>
+                {remainingBudget.toFixed(0)} &euro;
+              </p>
+              <MiniSegBar pct={budgetPct} isDark={isDark} />
+            </>
           ) : (
             <p className="text-xl font-bold mt-1 text-foreground-muted">&mdash;</p>
           )}
         </div>
+
       </div>
 
       {maxLossEuro !== null && (
