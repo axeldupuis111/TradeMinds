@@ -1,18 +1,12 @@
 "use client";
 
-/**
- * AnalyticsInsightCards — 4 cartes contextuelles en dessous des KPIs.
- * Worst day / Best hour / Risky pair / Emotion risk.
- * Tokens sémantiques, icônes Lucide, fond subtil.
- */
-
-import { Card } from "@/components/ui/Card";
+import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/lib/LanguageContext";
 import { AlertTriangle, Brain, Clock, TrendingDown } from "lucide-react";
 
-interface DayEntry   { name: string; count: number; pnl: number; winrate: number }
-interface HourEntry  { name: string; count: number; pnl: number; winrate: number }
+interface DayEntry    { name: string; count: number; pnl: number; winrate: number }
+interface HourEntry   { name: string; count: number; pnl: number; winrate: number }
 interface EmotionEntry { name: string; pnl: number; count: number }
 
 type RiskyPairInfo =
@@ -43,7 +37,7 @@ export function AnalyticsInsightCards({ worstDay, bestHour, riskyPairInfo, byEmo
 
       {/* Worst day */}
       {worstDay && (
-        <Card padding="sm" className="bg-loss/[0.04] border-loss/20">
+        <KpiCardPremium layout="full" accentColor="loss">
           <div className="flex items-start gap-2">
             <TrendingDown className="w-4 h-4 text-loss mt-0.5 shrink-0" strokeWidth={1.75} />
             <div>
@@ -58,12 +52,12 @@ export function AnalyticsInsightCards({ worstDay, bestHour, riskyPairInfo, byEmo
               </p>
             </div>
           </div>
-        </Card>
+        </KpiCardPremium>
       )}
 
       {/* Best hour */}
       {bestHour && (
-        <Card padding="sm" className="bg-profit/[0.04] border-profit/20">
+        <KpiCardPremium layout="full" accentColor="green">
           <div className="flex items-start gap-2">
             <Clock className="w-4 h-4 text-profit mt-0.5 shrink-0" strokeWidth={1.75} />
             <div>
@@ -78,18 +72,14 @@ export function AnalyticsInsightCards({ worstDay, bestHour, riskyPairInfo, byEmo
               </p>
             </div>
           </div>
-        </Card>
+        </KpiCardPremium>
       )}
 
       {/* Risky pair */}
       {riskyPairInfo.type !== "insufficient" && (
-        <Card
-          padding="sm"
-          className={cn(
-            riskyPairInfo.type === "good"
-              ? "bg-profit/[0.04] border-profit/20"
-              : "bg-warning/[0.04] border-warning/20"
-          )}
+        <KpiCardPremium
+          layout="full"
+          accentColor={riskyPairInfo.type === "good" ? "green" : "amber"}
         >
           <div className="flex items-start gap-2">
             <AlertTriangle
@@ -117,14 +107,14 @@ export function AnalyticsInsightCards({ worstDay, bestHour, riskyPairInfo, byEmo
               )}
             </div>
           </div>
-        </Card>
+        </KpiCardPremium>
       )}
 
       {/* Emotion risk */}
       {byEmotion.length > 0 && (() => {
         const riskyEmotion = [...byEmotion].sort((a, b) => a.pnl - b.pnl)[0];
         return (
-          <Card padding="sm" className="bg-accent/[0.04] border-accent/20">
+          <KpiCardPremium layout="full" accentColor="cyan">
             <div className="flex items-start gap-2">
               <Brain className="w-4 h-4 text-accent mt-0.5 shrink-0" strokeWidth={1.75} />
               <div>
@@ -135,7 +125,7 @@ export function AnalyticsInsightCards({ worstDay, bestHour, riskyPairInfo, byEmo
                 <p className="text-xs text-loss tabular-nums mt-0.5">{riskyEmotion.pnl.toFixed(2)}€</p>
               </div>
             </div>
-          </Card>
+          </KpiCardPremium>
         );
       })()}
 
