@@ -173,6 +173,17 @@ export default function TradingCalendar({ trades, selectedAccountId }: Props) {
                 : "bg-loss/10"
               : "bg-surface";
 
+          // Border + glow : selected > today > default
+          const borderClass = isSelected
+            ? "border-accent ring-1 ring-accent"
+            : isToday
+              ? "border-accent"
+              : "border-border";
+          // Halo cyan diffus sur la cellule du jour actuel (désactivé si déjà selected)
+          const todayCellStyle = isToday && !isSelected
+            ? { boxShadow: "0 0 0 1px rgba(0,212,216,0.55), 0 0 16px -4px rgba(0,212,216,0.40)" }
+            : undefined;
+
           return (
             <button
               key={i}
@@ -181,11 +192,8 @@ export default function TradingCalendar({ trades, selectedAccountId }: Props) {
                   setSelectedDay(isSelected ? null : dayNum.toString());
                 }
               }}
-              className={`relative p-1.5 sm:p-2 min-h-[56px] sm:min-h-[72px] rounded-lg border transition-all duration-200 text-left ${bgColor} ${
-                isSelected
-                  ? "border-accent ring-1 ring-accent"
-                  : "border-border"
-              } ${isCurrentMonth && hasTrades ? "cursor-pointer hover:border-muted" : "cursor-default"}`}
+              className={`relative p-1.5 sm:p-2 min-h-[56px] sm:min-h-[72px] rounded-lg border transition-all duration-200 text-left ${bgColor} ${borderClass} ${isCurrentMonth && hasTrades ? "cursor-pointer hover:border-muted" : "cursor-default"}`}
+              style={todayCellStyle}
             >
               <span
                 className={`text-xs sm:text-sm font-medium ${
@@ -195,16 +203,13 @@ export default function TradingCalendar({ trades, selectedAccountId }: Props) {
                       ? isPositive
                         ? "text-profit"
                         : "text-loss"
-                      : "text-muted"
+                      : isToday
+                        ? "text-accent font-semibold"
+                        : "text-muted"
                 }`}
               >
                 {displayNum}
               </span>
-
-              {/* Pulse dot — jour actuel */}
-              {isToday && (
-                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-accent pointer-events-none motion-safe:animate-pulse" />
-              )}
 
               {hasTrades && (
                 <div className="mt-0.5">

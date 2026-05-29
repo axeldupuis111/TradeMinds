@@ -13,7 +13,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { useTheme } from "@/lib/ThemeContext";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/cn";
-import { Flame, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Flame, TrendingUp, TrendingDown } from "lucide-react";
 import { useEffect, useState } from "react";
 
 interface Strategy {
@@ -37,21 +37,25 @@ function netPnl(t: { pnl: number; commission: number | null; swap: number | null
 }
 
 // ─── Mini progress ring (Trades du jour) ──────────────────────────────────────
+// Toujours visible : track gris + arc cyan (même à 0% on voit le cercle de fond)
 
-function MiniRing({ value, max, size = 28, isDark }: { value: number; max: number; size?: number; isDark: boolean }) {
+function MiniRing({ value, max, size = 32, isDark }: { value: number; max: number; size?: number; isDark: boolean }) {
+  const sw = 3.5;
   const cx = size / 2;
   const cy = size / 2;
-  const r = (size - 5) / 2;
+  const r = (size - sw * 2 - 2) / 2;  // bord interne propre
   const circumference = 2 * Math.PI * r;
   const pct = max > 0 ? Math.min(1, value / max) : 0;
   const offset = circumference * (1 - pct);
+  // Track visible même en dark : blanc très transparent
+  const trackColor = isDark ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.10)";
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true" className="shrink-0">
       {isDark && (
         <defs>
-          <filter id="daystate-ring-glow">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" result="blur" />
+          <filter id="daystate-ring-glow" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur" />
             <feMerge>
               <feMergeNode in="blur" />
               <feMergeNode in="SourceGraphic" />
@@ -59,15 +63,20 @@ function MiniRing({ value, max, size = 28, isDark }: { value: number; max: numbe
           </filter>
         </defs>
       )}
-      {/* Track */}
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgb(var(--border))" strokeWidth={2.5} />
-      {/* Fill arc */}
+      {/* Track — toujours affiché pour ancrer le cercle visuellement */}
+      <circle
+        cx={cx} cy={cy} r={r}
+        fill="none"
+        stroke={trackColor}
+        strokeWidth={sw}
+      />
+      {/* Arc de remplissage — masqué si 0% */}
       {pct > 0 && (
         <circle
           cx={cx} cy={cy} r={r}
           fill="none"
           stroke="rgb(var(--accent))"
-          strokeWidth={2.5}
+          strokeWidth={sw}
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
@@ -84,7 +93,6 @@ function MiniRing({ value, max, size = 28, isDark }: { value: number; max: numbe
 function MiniSegBar({ pct, isDark }: { pct: number; isDark: boolean }) {
   const segments = 4;
   const filledCount = Math.max(0, Math.round((pct / 100) * segments));
-  // Couleur selon budget restant (budgetPct : 100 = plein, 0 = épuisé)
   const color = pct > 50 ? "bg-accent" : pct > 20 ? "bg-warning" : "bg-loss";
   const glowColor = pct > 50
     ? "0 0 6px rgba(0,212,216,0.55)"
@@ -191,20 +199,30 @@ export default function DayState() {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
 
-        {/* P&L aujourd'hui — icône directionnelle */}
+        {/* P&L aujourd'hui — badge directionnel bien visible */}
         <div>
           <p className="text-xs text-foreground-subtle font-medium uppercase tracking-wider">
             {t("session_today_pnl")}
           </p>
-          <p className={cn("text-xl font-bold mt-1 tabular-nums flex items-center gap-1", todayPnl >= 0 ? "text-profit" : "text-loss")}>
-            <span>{todayPnl >= 0 ? "+" : ""}{todayPnl.toFixed(2)} &euro;</span>
-            {todayPnl > 0 && <TrendingUp className="w-4 h-4 shrink-0" strokeWidth={1.75} />}
-            {todayPnl < 0 && <TrendingDown className="w-4 h-4 shrink-0" strokeWidth={1.75} />}
-            {todayPnl === 0 && <Minus className="w-3.5 h-3.5 shrink-0 opacity-50" strokeWidth={1.75} />}
-          </p>
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            <span className={cn("text-xl font-bold tabular-nums", todayPnl >= 0 ? "text-profit" : "text-loss")}>
+              {todayPnl >= 0 ? "+" : ""}{todayPnl.toFixed(2)} &euro;
+            </span>
+            {/* Badge icône — seulement si le P&L est non nul */}
+            {todayPnl > 0 && (
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-profit/15 text-profit shrink-0">
+                <TrendingUp className="w-3.5 h-3.5" strokeWidth={2.5} />
+              </span>
+            )}
+            {todayPnl < 0 && (
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-loss/15 text-loss shrink-0">
+                <TrendingDown className="w-3.5 h-3.5" strokeWidth={2.5} />
+              </span>
+            )}
+          </div>
         </div>
 
-        {/* Trades du jour — mini anneau de progression si maxTradesPerDay défini */}
+        {/* Trades du jour — anneau de progression (toujours visible si maxTradesPerDay défini) */}
         <div>
           <p className="text-xs text-foreground-subtle font-medium uppercase tracking-wider">
             {t("session_today_trades")}
@@ -214,7 +232,7 @@ export default function DayState() {
               {todayCount}{maxTradesPerDay ? ` / ${maxTradesPerDay}` : ""}
             </p>
             {maxTradesPerDay && (
-              <MiniRing value={todayCount} max={maxTradesPerDay} size={28} isDark={isDark} />
+              <MiniRing value={todayCount} max={maxTradesPerDay} size={32} isDark={isDark} />
             )}
           </div>
         </div>
