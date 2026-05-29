@@ -103,7 +103,7 @@ export default function DayState() {
   const barColor = consumedPct <= 50 ? "bg-profit" : consumedPct <= 80 ? "bg-warning" : "bg-loss";
 
   return (
-    <KpiCardPremium layout="full" intensity="default" accentColor="cyan">
+    <KpiCardPremium layout="full" intensity="default" accentColor="amber">
       <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
         <CardTitle>{t("session_state_title")}</CardTitle>
         {activeSessionStartedAt && (

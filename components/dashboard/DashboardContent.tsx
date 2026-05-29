@@ -326,7 +326,7 @@ export default function DashboardContent({
       )}>
 
         {/* Recent trades */}
-        <KpiCardPremium layout="full" intensity="default" accentColor="cyan">
+        <KpiCardPremium layout="full" intensity="default" accentColor="violet">
           <CardHeader>
             <CardTitle>{t("dash_recent_trades")}</CardTitle>
             <Link href="/dashboard/trades" className="text-xs text-accent hover:underline">

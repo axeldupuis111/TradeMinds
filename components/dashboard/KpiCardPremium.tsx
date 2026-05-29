@@ -10,18 +10,39 @@
  * Dark : fond dégradé profond, sheen supérieur, double aura colorée, ombre deep.
  * Light : dégradé clair-sur-clair, ombre colorée teintée, pas d'aura.
  * Hover : lift translateY(-4px) via .kpi-premium.
+ *
+ * accentColor détermine :
+ *  • la teinte de l'aura radial-gradient (dark only)
+ *  • la couleur du halo extérieur (box-shadow dynamique)
  */
 
 import { cn } from "@/lib/cn";
 import { useTheme } from "@/lib/ThemeContext";
 
-export type AccentColor = "cyan" | "green" | "amber";
+export type AccentColor = "cyan" | "green" | "amber" | "violet";
 
-// CSS token (RGB channels space-separated) pour le radial-gradient d'aura
+// RGB channels (space-separated) pour le radial-gradient d'aura interne — dark only.
+// On utilise des var() CSS pour bénéficier des overrides html.light automatiquement.
 const AURA_TOKEN: Record<AccentColor, string> = {
-  cyan:  "var(--accent-glow)",
-  green: "var(--profit)",
-  amber: "var(--warning)",
+  cyan:   "var(--accent-glow)",
+  green:  "var(--profit)",
+  amber:  "var(--accent-amber-glow)",
+  violet: "var(--accent-violet-glow)",
+};
+
+// Halo extérieur dans box-shadow : couleur RGBA hardcodée par thème
+// (pas de var() ici car on construit une string pour la propriété boxShadow)
+const OUTER_GLOW_DARK: Record<AccentColor, string> = {
+  cyan:   "rgba(0, 229, 208, 0.28)",
+  green:  "rgba(52, 211, 153, 0.28)",
+  amber:  "rgba(251, 191, 36, 0.22)",
+  violet: "rgba(167, 139, 250, 0.22)",
+};
+const OUTER_GLOW_LIGHT: Record<AccentColor, string> = {
+  cyan:   "rgba(0, 168, 172, 0.25)",
+  green:  "rgba(22, 163, 74, 0.20)",
+  amber:  "rgba(217, 119, 6, 0.20)",
+  violet: "rgba(124, 58, 237, 0.18)",
 };
 
 export interface KpiCardPremiumProps {
@@ -81,6 +102,12 @@ export function KpiCardPremium({
         secondaryOpacity: 0.06,
       };
 
+  // Box-shadow dynamique selon l'accent et le thème
+  const outerGlow = isDark ? OUTER_GLOW_DARK[accentColor] : OUTER_GLOW_LIGHT[accentColor];
+  const boxShadow = isDark
+    ? `0 30px 70px -20px rgba(0,0,0,.95), inset 0 0 0 1px rgba(255,255,255,.025), 0 0 80px -20px ${outerGlow}`
+    : `0 20px 50px -20px ${outerGlow}, 0 4px 12px -2px rgba(0,0,0,.06)`;
+
   return (
     <div
       className={cn(
@@ -90,7 +117,7 @@ export function KpiCardPremium({
       )}
       style={{
         background: `linear-gradient(160deg, rgb(var(--card-grad-top)) 0%, rgb(var(--card-grad-bot)) 100%)`,
-        boxShadow: `var(--glow-shadow)`,
+        boxShadow,
       }}
     >
       {/* Sheen — top highlight line */}

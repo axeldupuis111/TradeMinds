@@ -99,7 +99,7 @@ export default function TradingCalendar({ trades, selectedAccountId }: Props) {
   const selectedDayData = selectedDay ? dayMap[selectedDay] : null;
 
   return (
-    <KpiCardPremium layout="full" intensity="default" accentColor="cyan">
+    <KpiCardPremium layout="full" intensity="default" accentColor="violet">
       {/* Header */}
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-3">
