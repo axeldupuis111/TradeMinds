@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
+import StaggerContainer, { StaggerItem } from "@/components/animations/StaggerContainer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -235,7 +236,16 @@ export default function DashboardContent({
           <h1 className="text-2xl font-bold text-foreground tracking-tight">
             {t("dash_greeting")} {displayName}
           </h1>
-          <p className="text-foreground-muted text-sm mt-0.5 capitalize">{dateStr}</p>
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            <p className="text-foreground-muted text-sm capitalize">{dateStr}</p>
+            <span className="inline-flex items-center gap-1.5 shrink-0">
+              <span
+                className="w-2 h-2 rounded-full bg-accent motion-safe:animate-pulse shrink-0"
+                style={isDark ? { boxShadow: "0 0 8px rgba(0,229,208,.5)" } : undefined}
+              />
+              <span className="text-xs text-foreground-muted">{t("live_indicator")}</span>
+            </span>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -271,8 +281,11 @@ export default function DashboardContent({
         </div>
       </div>
 
+      {/* ── Blocs Dashboard — stagger cascade au montage ────────────── */}
+      <StaggerContainer staggerDelay={0.08}>
+
       {/* ── KPI Cards ────────────────────────────────────────────────── */}
-      <div className="mt-6">
+      <StaggerItem className="mt-6">
         <KpiCards
           score={score}
           weekCount={weekCount}
@@ -287,43 +300,44 @@ export default function DashboardContent({
           activeAccountsCount={activeAccounts.length}
           totalPnl={totalPnl}
         />
-      </div>
+      </StaggerItem>
 
       {/* ── État du jour ─────────────────────────────────────────────── */}
-      <div className="mt-6">
+      <StaggerItem className="mt-6">
         <DayState />
-      </div>
+      </StaggerItem>
 
       {/* ── AI Insights + Equity Curve ───────────────────────────────── */}
-      {canUseAI ? (
-        <div className={cn(
-          "mt-6 grid gap-4",
-          equityCurveData.length > 0 ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"
-        )}>
-          <AiInsights insights={insights} filteredAllLength={filteredAll.length} />
-          {equityCurveData.length > 0 && (
-            <EquityCurve data={equityCurveData} initialBalance={initialBalance} />
-          )}
-        </div>
-      ) : (
-        equityCurveData.length > 0 && (
+      <StaggerItem>
+        {canUseAI ? (
+          <div className={cn(
+            "mt-6 grid gap-4",
+            equityCurveData.length > 0 ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"
+          )}>
+            <AiInsights insights={insights} filteredAllLength={filteredAll.length} />
+            {equityCurveData.length > 0 && (
+              <EquityCurve data={equityCurveData} initialBalance={initialBalance} />
+            )}
+          </div>
+        ) : equityCurveData.length > 0 ? (
           <div className="mt-6">
             <EquityCurve data={equityCurveData} initialBalance={initialBalance} />
           </div>
-        )
-      )}
+        ) : null}
+      </StaggerItem>
 
       {/* ── Trading Calendar ─────────────────────────────────────────── */}
-      <div className="mt-6">
+      <StaggerItem className="mt-6">
         <TradingCalendar trades={allTrades} selectedAccountId={selectedAccountId} />
-      </div>
+      </StaggerItem>
 
       {/* ── Goals & Streaks ──────────────────────────────────────────── */}
-      <div className="mt-6">
+      <StaggerItem className="mt-6">
         <GoalsStreaks />
-      </div>
+      </StaggerItem>
 
       {/* ── Bottom : Recent trades + Last analysis + DD alert ────────── */}
+      <StaggerItem>
       <div className={cn(
         "grid grid-cols-1 gap-4 mt-6",
         (canUseAI || (displayAccount && ddPct > 75)) ? "lg:grid-cols-2" : ""
@@ -361,15 +375,23 @@ export default function DashboardContent({
                         {isBuy ? "BUY" : "SELL"}
                       </Badge>
                     </div>
-                    {/* Mini sparkline 2pts [0 → net] — visualise la direction et magnitude */}
-                    <div className="shrink-0 opacity-70 group-hover:opacity-100 transition-opacity">
-                      <Sparkline
-                        data={[0, net]}
-                        positive={net >= 0}
-                        width={60}
-                        height={20}
-                        glow={isDark}
-                      />
+                    {/* Sparkline / Reveal hover — conteneur fixe 60×20, pas de saut de layout */}
+                    <div className="shrink-0 w-[60px] h-[20px] relative">
+                      {/* Sparkline — disparaît au hover */}
+                      <div className="absolute inset-0 opacity-70 group-hover:opacity-0 transition-opacity duration-150">
+                        <Sparkline data={[0, net]} positive={net >= 0} width={60} height={20} glow={isDark} />
+                      </div>
+                      {/* Révélation : heure + frais si non nuls */}
+                      <div className="absolute inset-0 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none">
+                        <p className="text-[10px] text-foreground-muted tabular-nums leading-none">
+                          {tr.open_time ? new Date(tr.open_time).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "—"}
+                        </p>
+                        {((tr.commission ?? 0) + (tr.swap ?? 0)) !== 0 && (
+                          <p className="text-[9px] text-foreground-subtle tabular-nums leading-tight mt-0.5">
+                            {((tr.commission ?? 0) + (tr.swap ?? 0)) > 0 ? "+" : ""}{((tr.commission ?? 0) + (tr.swap ?? 0)).toFixed(2)}€
+                          </p>
+                        )}
+                      </div>
                     </div>
                     {/* P&L */}
                     <span className={cn("text-sm font-medium tabular-nums shrink-0", net >= 0 ? "text-profit" : "text-loss")}>
@@ -450,6 +472,9 @@ export default function DashboardContent({
           </div>
         )}
       </div>
+      </StaggerItem>
+
+      </StaggerContainer>
     </div>
   );
 }

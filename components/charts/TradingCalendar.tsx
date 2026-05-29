@@ -2,6 +2,7 @@
 
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { useLanguage } from "@/lib/LanguageContext";
+import { useTheme } from "@/lib/ThemeContext";
 import { useMemo, useState } from "react";
 
 interface CalendarTrade {
@@ -31,8 +32,11 @@ function netPnl(t: { pnl: number; commission: number | null; swap: number | null
 
 export default function TradingCalendar({ trades, selectedAccountId }: Props) {
   const { t } = useLanguage();
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [hoveredDay, setHoveredDay] = useState<string | null>(null);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -145,7 +149,7 @@ export default function TradingCalendar({ trades, selectedAccountId }: Props) {
       </div>
 
       {/* Calendar grid */}
-      <div className="grid grid-cols-7 gap-px">
+      <div className="grid grid-cols-7 gap-px" onMouseLeave={() => setHoveredDay(null)}>
         {Array.from({ length: totalCells }, (_, i) => {
           const dayNum = i - startOffset + 1;
           const isCurrentMonth = dayNum >= 1 && dayNum <= daysInMonth;
@@ -194,6 +198,8 @@ export default function TradingCalendar({ trades, selectedAccountId }: Props) {
               }}
               className={`relative p-1.5 sm:p-2 min-h-[56px] sm:min-h-[72px] rounded-lg border transition-all duration-200 text-left ${bgColor} ${borderClass} ${isCurrentMonth && hasTrades ? "cursor-pointer hover:border-muted" : "cursor-default"}`}
               style={todayCellStyle}
+              onMouseEnter={() => { if (isCurrentMonth && hasTrades) setHoveredDay(dayNum.toString()); }}
+              onMouseLeave={() => setHoveredDay(null)}
             >
               <span
                 className={`text-xs sm:text-sm font-medium ${
@@ -228,6 +234,36 @@ export default function TradingCalendar({ trades, selectedAccountId }: Props) {
           );
         })}
       </div>
+
+      {/* Hover preview panel — in-flow, pas de problème overflow-hidden */}
+      {hoveredDay && !selectedDay && dayMap[hoveredDay] && (() => {
+        const hd = dayMap[hoveredDay];
+        const topPairs = Array.from(new Set(hd.trades.map(tr => tr.pair))).slice(0, 2);
+        const hDate = new Date(year, month, parseInt(hoveredDay))
+          .toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+        return (
+          <div
+            className="mt-3 flex items-center justify-between gap-3 px-3 py-2 rounded-lg border bg-background animate-in fade-in duration-100"
+            style={isDark
+              ? { borderColor: "rgba(167,139,250,.25)", boxShadow: "0 0 16px -6px rgba(167,139,250,.28)" }
+              : { borderColor: "rgba(124,58,237,.18)" }
+            }
+          >
+            <div className="min-w-0">
+              <p className="text-xs text-foreground font-medium capitalize truncate">{hDate}</p>
+              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                <span className="text-[10px] text-muted">{hd.count} trade{hd.count > 1 ? "s" : ""}</span>
+                {topPairs.map(pair => (
+                  <span key={pair} className="text-[9px] px-1 py-0.5 rounded bg-surface border border-border text-foreground-muted">{pair}</span>
+                ))}
+              </div>
+            </div>
+            <span className={`text-sm font-bold tabular-nums shrink-0 ${hd.pnl >= 0 ? "text-profit" : "text-loss"}`}>
+              {hd.pnl >= 0 ? "+" : ""}{hd.pnl.toFixed(2)} €
+            </span>
+          </div>
+        );
+      })()}
 
       {/* Day detail panel */}
       {selectedDayData && selectedDay && (
