@@ -4,7 +4,9 @@ import { AnalyticsInsightCards } from "@/components/analytics/AnalyticsInsightCa
 import { AnalyticsKpiCards } from "@/components/analytics/AnalyticsKpiCards";
 import EmotionalTrendChart from "@/components/charts/EmotionalTrendChart";
 import ExportPdfButton from "@/components/analytics/ExportPdfButton";
+import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
+import StaggerContainer, { StaggerItem } from "@/components/animations/StaggerContainer";
 import { ICT_EMOTIONS, ICT_KILLZONES, getEmotionColor } from "@/lib/ict-constants";
 import { useStrategyTags } from "@/lib/hooks/useStrategyTags";
 import { useChartColors } from "@/lib/useChartColors";
@@ -15,7 +17,7 @@ import { cn } from "@/lib/cn";
 import type { Lang } from "@/lib/translations";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Search, ShieldCheck, ShieldAlert } from "lucide-react";
+import { Search, ShieldCheck, ShieldAlert, Filter, X } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -91,16 +93,10 @@ const EMOTION_EMOJIS: Record<string, string> = {
   revenge: "\u{1F621}",
 };
 
-type Period = "today" | "week" | "month" | "30d" | "90d" | "all";
+type Period = "7d" | "30d" | "90d" | "all" | "custom";
 
-// Color for bars with no data (empty buckets) — uses border token
 const EMPTY_BAR = "rgb(var(--border))";
 
-// Custom rounded-bar SVG shape.
-// Recharts v3 passes:
-//   positive bar → y = tip (small SVG y, visually high), height > 0 down to baseline
-//   negative bar → y = tip (large SVG y, visually low), height < 0 up to baseline
-// We round the "tip" end (away from zero) on both cases.
 interface BarShapeProps {
   x?: number;
   y?: number;
@@ -117,13 +113,9 @@ function RoundedBar({
 
   let d: string;
   if (value >= 0) {
-    // height > 0: y = tip (top), y + height = baseline (bottom)
-    // Round TOP corners (tip end, away from zero)
     d = `M${x},${y + r} Q${x},${y} ${x + r},${y} L${x + width - r},${y} Q${x + width},${y} ${x + width},${y + r} L${x + width},${y + height} L${x},${y + height} Z`;
   } else {
-    // height < 0: y = tip (bottom, large SVG y), y + height = baseline (top, small SVG y)
-    // Draw rect from baseline down to tip, round BOTTOM corners (tip end, away from zero)
-    const top = y + height; // baseline
+    const top = y + height;
     d = `M${x},${top} L${x + width},${top} L${x + width},${y - r} Q${x + width},${y} ${x + width - r},${y} L${x + r},${y} Q${x},${y} ${x},${y - r} Z`;
   }
   return <path d={d} fill={fill} fillOpacity={fillOpacity} />;
@@ -134,12 +126,32 @@ export default function AnalyticsPage() {
   const c = useChartColors();
   const supabase = createClient();
   const stratTags = useStrategyTags();
+
+  // ── Data state ────────────────────────────────────────────────────────────
   const [trades, setTrades] = useState<TradeRow[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [reviews, setReviews] = useState<SessionReview[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // ── Filter state ──────────────────────────────────────────────────────────
   const [period, setPeriod] = useState<Period>("all");
+  const [customDateFrom, setCustomDateFrom] = useState<string>("");
+  const [customDateTo, setCustomDateTo] = useState<string>("");
   const [accountFilter, setAccountFilter] = useState<string>("all");
+  const [direction, setDirection] = useState<"all" | "long" | "short">("all");
+
+  // Advanced filters (applied state)
+  const [selectedPairs, setSelectedPairs] = useState<string[]>([]);
+  const [pnlMin, setPnlMin] = useState<string>("");
+  const [pnlMax, setPnlMax] = useState<string>("");
+  const [winLossFilter, setWinLossFilter] = useState<"all" | "win" | "loss">("all");
+
+  // Advanced filter panel + staging state
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [stagingPairs, setStagingPairs] = useState<string[]>([]);
+  const [stagingPnlMin, setStagingPnlMin] = useState<string>("");
+  const [stagingPnlMax, setStagingPnlMax] = useState<string>("");
+  const [stagingWinLoss, setStagingWinLoss] = useState<"all" | "win" | "loss">("all");
 
   useEffect(() => {
     async function load() {
@@ -175,57 +187,82 @@ export default function AnalyticsPage() {
 
   const netPnl = (tr: TradeRow) => tr.pnl + (tr.commission || 0) + (tr.swap || 0);
 
+  // ── Available pairs for filter panel ─────────────────────────────────────
+  const availablePairs = useMemo(() => {
+    const set = new Set(trades.map((tr) => tr.pair).filter(Boolean));
+    return Array.from(set).sort();
+  }, [trades]);
+
+  // ── Has active advanced filters ───────────────────────────────────────────
+  const hasAdvancedFilters = selectedPairs.length > 0 || pnlMin !== "" || pnlMax !== "" || winLossFilter !== "all";
+
+  // ── Filtered trades ───────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     let result = trades;
 
+    // Account filter
     if (accountFilter !== "all") {
       result = result.filter((tr) => tr.challenge_id === accountFilter);
     }
 
+    // Period filter
     if (period !== "all") {
-      const now = new Date();
-      let cutoff: Date;
-      if (period === "today") {
-        cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      } else if (period === "week") {
-        const day = now.getDay();
-        const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-        cutoff = new Date(now.getFullYear(), now.getMonth(), diff);
-      } else if (period === "month") {
-        cutoff = new Date(now.getFullYear(), now.getMonth(), 1);
-      } else {
-        const days = period === "30d" ? 30 : 90;
-        cutoff = new Date();
-        cutoff.setDate(cutoff.getDate() - days);
+      let start: Date | null = null;
+      let end: Date | null = null;
+
+      if (period === "7d") {
+        start = new Date(); start.setDate(start.getDate() - 7);
+      } else if (period === "30d") {
+        start = new Date(); start.setDate(start.getDate() - 30);
+      } else if (period === "90d") {
+        start = new Date(); start.setDate(start.getDate() - 90);
+      } else if (period === "custom") {
+        if (customDateFrom) start = new Date(customDateFrom);
+        if (customDateTo) {
+          end = new Date(customDateTo);
+          end.setHours(23, 59, 59, 999);
+        }
       }
-      result = result.filter((tr) => tr.open_time && new Date(tr.open_time) >= cutoff);
+      if (start) result = result.filter((tr) => tr.open_time && new Date(tr.open_time) >= start!);
+      if (end)   result = result.filter((tr) => tr.open_time && new Date(tr.open_time) <= end!);
     }
+
+    // Direction filter
+    if (direction !== "all") {
+      result = result.filter((tr) => {
+        const d = (tr.direction || "").toLowerCase();
+        if (direction === "long")  return d === "long"  || d === "buy";
+        if (direction === "short") return d === "short" || d === "sell";
+        return true;
+      });
+    }
+
+    // Pair filter
+    if (selectedPairs.length > 0) {
+      result = result.filter((tr) => selectedPairs.includes(tr.pair));
+    }
+
+    // PnL min/max
+    const minVal = pnlMin !== "" ? parseFloat(pnlMin) : null;
+    const maxVal = pnlMax !== "" ? parseFloat(pnlMax) : null;
+    if (minVal !== null && !isNaN(minVal)) result = result.filter((tr) => netPnl(tr) >= minVal);
+    if (maxVal !== null && !isNaN(maxVal)) result = result.filter((tr) => netPnl(tr) <= maxVal);
+
+    // Win/Loss only
+    if (winLossFilter === "win")  result = result.filter((tr) => netPnl(tr) > 0);
+    if (winLossFilter === "loss") result = result.filter((tr) => netPnl(tr) < 0);
 
     return result;
-  }, [trades, period, accountFilter]);
+  }, [trades, period, accountFilter, direction, customDateFrom, customDateTo, selectedPairs, pnlMin, pnlMax, winLossFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Previous period (for KPI deltas) ─────────────────────────────────────
   const prevFiltered = useMemo(() => {
-    if (period === "all") return [];
+    if (period === "all" || period === "custom") return [];
     let result = trades;
     if (accountFilter !== "all") result = result.filter((tr) => tr.challenge_id === accountFilter);
-    const now = new Date();
-    let start: Date, end: Date;
-    if (period === "today") {
-      end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      start = new Date(end); start.setDate(start.getDate() - 1);
-    } else if (period === "week") {
-      const day = now.getDay();
-      const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-      end = new Date(now.getFullYear(), now.getMonth(), diff);
-      start = new Date(end); start.setDate(start.getDate() - 7);
-    } else if (period === "month") {
-      end = new Date(now.getFullYear(), now.getMonth(), 1);
-      start = new Date(end); start.setMonth(start.getMonth() - 1);
-    } else {
-      const days = period === "30d" ? 30 : 90;
-      end = new Date(); end.setDate(end.getDate() - days);
-      start = new Date(end); start.setDate(start.getDate() - days);
-    }
+    const days = period === "7d" ? 7 : period === "30d" ? 30 : 90;
+    const end = new Date(); end.setDate(end.getDate() - days);
+    const start = new Date(end); start.setDate(start.getDate() - days);
     return result.filter((tr) => tr.open_time && new Date(tr.open_time) >= start && new Date(tr.open_time) < end);
   }, [trades, period, accountFilter]);
 
@@ -240,7 +277,7 @@ export default function AnalyticsPage() {
     };
   }, [prevFiltered]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // KPI aggregates — wins now destructured for WinRateGauge
+  // ── KPI aggregates ────────────────────────────────────────────────────────
   const { totalPnl, wins, winrate, best, worst } = useMemo(() => {
     const pnls = filtered.map(netPnl);
     const w = filtered.filter((tr) => netPnl(tr) > 0).length;
@@ -253,7 +290,6 @@ export default function AnalyticsPage() {
     };
   }, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Profit factor
   const profitFactor = useMemo(() => {
     const gains = filtered.filter((tr) => netPnl(tr) > 0).reduce((s, tr) => s + netPnl(tr), 0);
     const losses = filtered.filter((tr) => netPnl(tr) < 0).reduce((s, tr) => s + Math.abs(netPnl(tr)), 0);
@@ -262,7 +298,9 @@ export default function AnalyticsPage() {
     return gains / losses;
   }, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Performance by day of week — all 7 days with winrate
+  // ── Chart data ────────────────────────────────────────────────────────────
+
+  // byDayOfWeek — kept for worstDay insight (chart removed, replaced by heatmap in Vague B)
   const byDayOfWeek = useMemo(() => {
     const map = Array.from({ length: 7 }, () => ({ total: 0, count: 0, wins: 0 }));
     filtered.forEach((tr) => {
@@ -281,7 +319,6 @@ export default function AnalyticsPage() {
     }));
   }, [filtered, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Performance by hour — all 24 hours
   const byHour = useMemo(() => {
     const map = Array.from({ length: 24 }, () => ({ total: 0, count: 0, wins: 0 }));
     filtered.forEach((tr) => {
@@ -300,7 +337,6 @@ export default function AnalyticsPage() {
     }));
   }, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Performance by pair — with winrate
   const byPair = useMemo(() => {
     const map: Record<string, { total: number; count: number; wins: number }> = {};
     filtered.forEach((tr) => {
@@ -320,7 +356,6 @@ export default function AnalyticsPage() {
       .sort((a, b) => b.pnl - a.pnl);
   }, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Performance by emotion
   const byEmotion = useMemo(() => {
     const map: Record<string, { total: number; count: number }> = {};
     filtered.forEach((tr) => {
@@ -338,7 +373,6 @@ export default function AnalyticsPage() {
       .sort((a, b) => b.pnl - a.pnl);
   }, [filtered, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Performance by setup quality
   const byQuality = useMemo(() => {
     const map = Array.from({ length: 5 }, () => ({ total: 0, count: 0 }));
     filtered.forEach((tr) => {
@@ -352,7 +386,6 @@ export default function AnalyticsPage() {
       .filter((d) => d.count > 0);
   }, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // P&L distribution histogram
   const pnlDistribution = useMemo(() => {
     const pnls = filtered.map(netPnl);
     if (pnls.length === 0) return [];
@@ -380,7 +413,6 @@ export default function AnalyticsPage() {
     }));
   }, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Equity curve — daily aggregated cumulative P&L
   const equityCurve = useMemo(() => {
     const byDate: Record<string, { tradePnl: number; count: number }> = {};
     filtered.forEach((tr) => {
@@ -406,39 +438,7 @@ export default function AnalyticsPage() {
       });
   }, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Performance by trading session (hour-based)
-  const bySessions = useMemo(() => {
-    const sessions = {
-      asia:   { label: t("analytics_session_asia"),   total: 0, count: 0, wins: 0, best: -Infinity, worst: Infinity },
-      london: { label: t("analytics_session_london"), total: 0, count: 0, wins: 0, best: -Infinity, worst: Infinity },
-      ny:     { label: t("analytics_session_ny"),     total: 0, count: 0, wins: 0, best: -Infinity, worst: Infinity },
-      eod:    { label: t("analytics_session_eod"),    total: 0, count: 0, wins: 0, best: -Infinity, worst: Infinity },
-    };
-    filtered.forEach((tr) => {
-      if (!tr.open_time) return;
-      const hour = new Date(tr.open_time).getHours();
-      const net = netPnl(tr);
-      const key: keyof typeof sessions = hour < 8 ? "asia" : hour < 13 ? "london" : hour < 17 ? "ny" : "eod";
-      sessions[key].total += net;
-      sessions[key].count++;
-      if (net > 0) sessions[key].wins++;
-      if (net > sessions[key].best) sessions[key].best = net;
-      if (net < sessions[key].worst) sessions[key].worst = net;
-    });
-    return (["asia", "london", "ny", "eod"] as const).map((key) => {
-      const s = sessions[key];
-      return {
-        name: s.label,
-        pnl: Number(s.total.toFixed(2)),
-        count: s.count,
-        winrate: s.count > 0 ? Math.round((s.wins / s.count) * 100) : 0,
-        best:  s.count > 0 ? Number(s.best.toFixed(2)) : 0,
-        worst: s.count > 0 ? Number(s.worst.toFixed(2)) : 0,
-      };
-    });
-  }, [filtered, t]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Insight cards — worst day, best hour, risky pair
+  // ── Insight computations ──────────────────────────────────────────────────
   const worstDay = useMemo(
     () => [...byDayOfWeek].filter((d) => d.count > 0).sort((a, b) => a.pnl - b.pnl)[0] ?? null,
     [byDayOfWeek]
@@ -455,7 +455,7 @@ export default function AnalyticsPage() {
     return { type: "risky" as const, pair: worst.name, winrate: worst.winrate, pnl: worst.pnl };
   }, [byPair]);
 
-  // Discipline vs Results
+  // ── Discipline ────────────────────────────────────────────────────────────
   const normalizePair = (p: string) => p.replace(/[\/\s\-_.]/g, "").toUpperCase();
 
   const violatedPairs = useMemo(() => {
@@ -513,8 +513,7 @@ export default function AnalyticsPage() {
       .sort((a, b) => b.winrate - a.winrate);
   }, [filtered, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── ICT Analytics ─────────────────────────────────────────────────────────
-
+  // ── ICT Analytics ─────────────────────────────────────────────────────────
   const ictTaggedCount = useMemo(
     () => filtered.filter((tr) => tr.ict_setup || tr.ict_entry_zone || tr.ict_killzone).length,
     [filtered] // eslint-disable-line react-hooks/exhaustive-deps
@@ -592,8 +591,7 @@ export default function AnalyticsPage() {
       .sort((a, b) => b.winrate - a.winrate);
   }, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── Tooltip style (uses chart color tokens) ────────────────────────────────
-
+  // ── Tooltip style ─────────────────────────────────────────────────────────
   const tooltipStyle: React.CSSProperties = {
     backgroundColor: c.tooltipBg    || "rgb(var(--card))",
     border:          `1px solid ${c.tooltipBorder || "rgb(var(--border))"}`,
@@ -603,29 +601,7 @@ export default function AnalyticsPage() {
     fontSize:        13,
   };
 
-  // ─── Inline tooltip components (close over c & tooltipStyle) ───────────────
-
-  const DayTooltip = ({ active, payload, label }: { active?: boolean; payload?: unknown[]; label?: string }) => {
-    if (!active || !payload?.length) return null;
-    const entry = byDayOfWeek.find((d) => d.name === label);
-    if (!entry) return null;
-    return (
-      <div style={tooltipStyle}>
-        <p style={{ fontWeight: 600, marginBottom: 4 }}>{label}</p>
-        {entry.count === 0 ? (
-          <p style={{ color: c.axis }}>0 trades</p>
-        ) : (
-          <>
-            <p style={{ color: entry.pnl >= 0 ? c.profit : c.loss }}>
-              {entry.pnl >= 0 ? "+" : ""}{entry.pnl.toFixed(2)}€
-            </p>
-            <p style={{ color: c.axis }}>{entry.count} trades · WR {entry.winrate}%</p>
-          </>
-        )}
-      </div>
-    );
-  };
-
+  // ── Tooltip components ────────────────────────────────────────────────────
   const HourTooltip = ({ active, payload, label }: { active?: boolean; payload?: unknown[]; label?: string }) => {
     if (!active || !payload?.length) return null;
     const entry = byHour.find((h) => h.name === label);
@@ -679,29 +655,6 @@ export default function AnalyticsPage() {
     );
   };
 
-  const SessionTooltip = ({ active, payload, label }: { active?: boolean; payload?: unknown[]; label?: string }) => {
-    if (!active || !payload?.length) return null;
-    const entry = bySessions.find((s) => s.name === label);
-    if (!entry) return null;
-    return (
-      <div style={tooltipStyle}>
-        <p style={{ fontWeight: 600, marginBottom: 4 }}>{label}</p>
-        {entry.count === 0 ? (
-          <p style={{ color: c.axis }}>0 trades</p>
-        ) : (
-          <>
-            <p style={{ color: entry.pnl >= 0 ? c.profit : c.loss }}>
-              {entry.pnl >= 0 ? "+" : ""}{entry.pnl.toFixed(2)}€
-            </p>
-            <p style={{ color: c.axis }}>{entry.count} trades · WR {entry.winrate}%</p>
-            <p style={{ color: c.profit }}>Best: +{entry.best.toFixed(2)}€</p>
-            <p style={{ color: c.loss }}>Worst: {entry.worst.toFixed(2)}€</p>
-          </>
-        )}
-      </div>
-    );
-  };
-
   const HistogramTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) => {
     if (!active || !payload?.length) return null;
     return (
@@ -749,8 +702,7 @@ export default function AnalyticsPage() {
     return ICT_EMOTIONS.find((x) => x.value === value)?.label[l] ?? value;
   }
 
-  const selectClass = "px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent";
-
+  // ── Loading ───────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="space-y-4">
@@ -766,579 +718,732 @@ export default function AnalyticsPage() {
 
   const latestScore = reviews.length > 0 ? reviews[0].discipline_score : undefined;
 
+  // ── Pill style helper ─────────────────────────────────────────────────────
+  const periodPillClass = (p: Period) =>
+    cn(
+      "px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-150 whitespace-nowrap",
+      period === p
+        ? "bg-accent/20 text-accent shadow-[0_0_10px_-3px_rgb(var(--accent)/0.5)]"
+        : "text-foreground-muted hover:text-foreground"
+    );
+
+  const dirPillClass = (d: "all" | "long" | "short") =>
+    cn(
+      "px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-150",
+      direction === d
+        ? "bg-accent/20 text-accent shadow-[0_0_10px_-3px_rgb(var(--accent)/0.5)]"
+        : "text-foreground-muted hover:text-foreground"
+    );
+
   return (
     <div>
-      {/* ── Header ──────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("analytics_title")}</h1>
-          <p className="text-foreground-muted text-sm mt-1">{t("analytics_subtitle")}</p>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <select value={period} onChange={(e) => setPeriod(e.target.value as Period)} className={selectClass}>
-            <option value="today">{t("analytics_period_today")}</option>
-            <option value="week">{t("analytics_period_week")}</option>
-            <option value="month">{t("analytics_period_month")}</option>
-            <option value="30d">{t("analytics_period_last30")}</option>
-            <option value="90d">{t("analytics_period_last90")}</option>
-            <option value="all">{t("analytics_all")}</option>
-          </select>
-          {accounts.length > 0 && (
-            <select value={accountFilter} onChange={(e) => setAccountFilter(e.target.value)} className={selectClass}>
-              <option value="all">{t("analytics_all_accounts")}</option>
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.firm} — {a.account_number || `${a.account_size.toLocaleString()}€`}
-                </option>
-              ))}
-            </select>
-          )}
-          <ExportPdfButton />
-        </div>
+      {/* ── Header ────────────────────────────────────────────────────────── */}
+      <div className="mb-4">
+        <h1 className="text-2xl font-bold text-foreground">{t("analytics_title")}</h1>
+        <p className="text-foreground-muted text-sm mt-1">{t("analytics_subtitle")}</p>
       </div>
 
+      {/* ── Filter bar — sticky ───────────────────────────────────────────── */}
+      <div className="sticky top-0 z-10 -mx-6 px-6 py-3 mb-6 flex flex-wrap gap-2 items-center border-b border-border/60 bg-surface/80 backdrop-blur-md">
+
+        {/* Period pills */}
+        <div className="flex items-center gap-0.5 bg-card/60 rounded-lg p-0.5 border border-border/50">
+          {(["7d", "30d", "90d", "all"] as Period[]).map((p) => (
+            <button key={p} onClick={() => setPeriod(p)} className={periodPillClass(p)}>
+              {p === "7d" ? "7j" : p === "30d" ? "30j" : p === "90d" ? "90j" : "Tout"}
+            </button>
+          ))}
+          <button onClick={() => setPeriod("custom")} className={periodPillClass("custom")}>
+            Custom
+          </button>
+        </div>
+
+        {/* Custom date range */}
+        {period === "custom" && (
+          <div className="flex items-center gap-1.5">
+            <input
+              type="date"
+              value={customDateFrom}
+              onChange={(e) => setCustomDateFrom(e.target.value)}
+              className="px-2 py-1.5 bg-card border border-border rounded-lg text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-accent"
+            />
+            <span className="text-foreground-muted text-xs">→</span>
+            <input
+              type="date"
+              value={customDateTo}
+              onChange={(e) => setCustomDateTo(e.target.value)}
+              className="px-2 py-1.5 bg-card border border-border rounded-lg text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-accent"
+            />
+          </div>
+        )}
+
+        {/* Account selector */}
+        {accounts.length > 0 && (
+          <select
+            value={accountFilter}
+            onChange={(e) => setAccountFilter(e.target.value)}
+            className="px-3 py-1.5 bg-card border border-border rounded-lg text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
+          >
+            <option value="all">{t("analytics_all_accounts")}</option>
+            {accounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.firm} — {a.account_number || `${a.account_size.toLocaleString()}€`}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {/* Direction pills */}
+        <div className="flex items-center gap-0.5 bg-card/60 rounded-lg p-0.5 border border-border/50">
+          <button onClick={() => setDirection("all")}   className={dirPillClass("all")}>Tout</button>
+          <button onClick={() => setDirection("long")}  className={dirPillClass("long")}>Long</button>
+          <button onClick={() => setDirection("short")} className={dirPillClass("short")}>Short</button>
+        </div>
+
+        <div className="flex-1" />
+
+        {/* Advanced filters button */}
+        <button
+          onClick={() => {
+            setStagingPairs(selectedPairs);
+            setStagingPnlMin(pnlMin);
+            setStagingPnlMax(pnlMax);
+            setStagingWinLoss(winLossFilter);
+            setShowAdvancedFilters(true);
+          }}
+          className={cn(
+            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-150",
+            hasAdvancedFilters
+              ? "bg-accent/15 text-accent border-accent/30"
+              : "bg-card border-border text-foreground-muted hover:text-foreground hover:border-border/80"
+          )}
+        >
+          <Filter className="w-3.5 h-3.5" />
+          Filtres avancés
+          {hasAdvancedFilters && <span className="w-1.5 h-1.5 rounded-full bg-accent" />}
+        </button>
+
+        <ExportPdfButton />
+      </div>
+
+      {/* ── Advanced Filters Panel ────────────────────────────────────────── */}
+      {showAdvancedFilters && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+            onClick={() => setShowAdvancedFilters(false)}
+          />
+          <div className="fixed top-0 right-0 z-50 h-full w-80 bg-card border-l border-border shadow-2xl flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <h3 className="text-sm font-bold text-foreground">Filtres avancés</h3>
+              <button
+                onClick={() => setShowAdvancedFilters(false)}
+                className="p-1 rounded hover:bg-border/40 transition-colors"
+              >
+                <X className="w-4 h-4 text-foreground-muted" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 space-y-6">
+              {/* Paires */}
+              {availablePairs.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-foreground-muted mb-2">Paires</p>
+                  <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+                    {availablePairs.map((pair) => (
+                      <label key={pair} className="flex items-center gap-2 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={stagingPairs.includes(pair)}
+                          onChange={(e) =>
+                            setStagingPairs((prev) =>
+                              e.target.checked ? [...prev, pair] : prev.filter((p) => p !== pair)
+                            )
+                          }
+                          className="rounded border-border accent-accent"
+                        />
+                        <span className="text-sm text-foreground group-hover:text-foreground-muted transition-colors">{pair}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Min/Max P&L */}
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-foreground-muted mb-2">P&L (€)</p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    placeholder="Min"
+                    value={stagingPnlMin}
+                    onChange={(e) => setStagingPnlMin(e.target.value)}
+                    className="flex-1 px-3 py-1.5 bg-surface border border-border rounded-lg text-sm text-foreground placeholder-foreground-muted/50 focus:outline-none focus:ring-1 focus:ring-accent"
+                  />
+                  <span className="text-foreground-muted text-xs shrink-0">→</span>
+                  <input
+                    type="number"
+                    placeholder="Max"
+                    value={stagingPnlMax}
+                    onChange={(e) => setStagingPnlMax(e.target.value)}
+                    className="flex-1 px-3 py-1.5 bg-surface border border-border rounded-lg text-sm text-foreground placeholder-foreground-muted/50 focus:outline-none focus:ring-1 focus:ring-accent"
+                  />
+                </div>
+              </div>
+
+              {/* Win/Loss filter */}
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-foreground-muted mb-2">Résultat</p>
+                <div className="flex items-center gap-0.5 bg-surface rounded-lg p-0.5 border border-border/50">
+                  {(["all", "win", "loss"] as const).map((wl) => (
+                    <button
+                      key={wl}
+                      onClick={() => setStagingWinLoss(wl)}
+                      className={cn(
+                        "flex-1 py-1.5 rounded-md text-xs font-semibold transition-all duration-150",
+                        stagingWinLoss === wl
+                          ? "bg-accent/20 text-accent"
+                          : "text-foreground-muted hover:text-foreground"
+                      )}
+                    >
+                      {wl === "all" ? "Tout" : wl === "win" ? "Win" : "Loss"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-5 border-t border-border flex gap-3">
+              <button
+                onClick={() => {
+                  setStagingPairs([]);
+                  setStagingPnlMin("");
+                  setStagingPnlMax("");
+                  setStagingWinLoss("all");
+                  setSelectedPairs([]);
+                  setPnlMin("");
+                  setPnlMax("");
+                  setWinLossFilter("all");
+                }}
+                className="flex-1 py-2 px-4 rounded-lg text-sm text-foreground-muted border border-border hover:bg-border/30 transition-colors"
+              >
+                Réinitialiser
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedPairs(stagingPairs);
+                  setPnlMin(stagingPnlMin);
+                  setPnlMax(stagingPnlMax);
+                  setWinLossFilter(stagingWinLoss);
+                  setShowAdvancedFilters(false);
+                }}
+                className="flex-1 py-2 px-4 rounded-lg text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
+              >
+                Appliquer
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Empty state ───────────────────────────────────────────────────── */}
       {filtered.length === 0 ? (
         <p className="text-foreground-muted py-10 text-center">{t("analytics_no_data")}</p>
       ) : (
-        <>
-          {/* ── KPI cards ───────────────────────────────────────────── */}
-          <AnalyticsKpiCards
-            totalPnl={totalPnl}
-            winrate={winrate}
-            wins={wins}
-            tradesCount={filtered.length}
-            best={best}
-            worst={worst}
-            profitFactor={profitFactor}
-            disciplineScore={latestScore}
-            prevKpis={prevKpis}
-          />
+        <StaggerContainer staggerDelay={0.08} className="space-y-4">
 
-          {/* ── Insight cards ───────────────────────────────────────── */}
-          <AnalyticsInsightCards
-            worstDay={worstDay}
-            bestHour={bestHour}
-            riskyPairInfo={riskyPairInfo}
-            byEmotion={byEmotion}
-          />
+          {/* ── KPI cards ─────────────────────────────────────────────── */}
+          <StaggerItem>
+            <AnalyticsKpiCards
+              totalPnl={totalPnl}
+              winrate={winrate}
+              wins={wins}
+              tradesCount={filtered.length}
+              best={best}
+              worst={worst}
+              profitFactor={profitFactor}
+              disciplineScore={latestScore}
+              prevKpis={prevKpis}
+            />
+          </StaggerItem>
 
-          {/* ── Equity Curve — full width ──────────────────────────── */}
+          {/* ── Insight cards ─────────────────────────────────────────── */}
+          <StaggerItem>
+            <AnalyticsInsightCards
+              worstDay={worstDay}
+              bestHour={bestHour}
+              riskyPairInfo={riskyPairInfo}
+              byEmotion={byEmotion}
+            />
+          </StaggerItem>
+
+          {/* ── Equity Curve — full width ─────────────────────────────── */}
           {equityCurve.length > 1 && (
-            <Card padding="md" className="mb-4">
-              <div className="mb-4">
-                <CardTitle>{t("analytics_equity_title")}</CardTitle>
-                <p className="text-xs text-foreground-muted mt-1">{t("analytics_equity_subtitle")}</p>
-              </div>
-              <ResponsiveContainer width="100%" height={300}>
-                <ComposedChart data={equityCurve} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.5} />
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fill: c.axis, fontSize: 10 }}
-                    tickLine={false}
-                    axisLine={{ stroke: c.axisLine }}
-                    interval={Math.floor(equityCurve.length / 8)}
-                  />
-                  <YAxis
-                    tick={{ fill: c.axis, fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={{ stroke: c.axisLine }}
-                    tickFormatter={formatCurrencyAxis}
-                    width={80}
-                  />
-                  <ReferenceLine y={0} stroke={c.grid} strokeDasharray="4 4" />
-                  <Tooltip content={<EquityTooltip />} />
-                  <Area type="monotone" dataKey="pos" fill={c.profit || "rgb(var(--profit))"} fillOpacity={0.1} stroke="none" baseValue={0} />
-                  <Area type="monotone" dataKey="neg" fill={c.loss || "rgb(var(--loss))"} fillOpacity={0.1} stroke="none" baseValue={0} />
-                  <Line type="monotone" dataKey="cumulative" stroke={c.accent || "rgb(var(--accent))"} dot={false} strokeWidth={2} />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </Card>
+            <StaggerItem>
+              <KpiCardPremium layout="full" accentColor="cyan" intensity="hero">
+                <div className="mb-4">
+                  <CardTitle>{t("analytics_equity_title")}</CardTitle>
+                  <p className="text-xs text-foreground-muted mt-1">{t("analytics_equity_subtitle")}</p>
+                </div>
+                <ResponsiveContainer width="100%" height={300}>
+                  <ComposedChart data={equityCurve} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.5} />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fill: c.axis, fontSize: 10 }}
+                      tickLine={false}
+                      axisLine={{ stroke: c.axisLine }}
+                      interval={Math.floor(equityCurve.length / 8)}
+                    />
+                    <YAxis
+                      tick={{ fill: c.axis, fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={{ stroke: c.axisLine }}
+                      tickFormatter={formatCurrencyAxis}
+                      width={80}
+                    />
+                    <ReferenceLine y={0} stroke={c.grid} strokeDasharray="4 4" />
+                    <Tooltip content={<EquityTooltip />} />
+                    <Area type="monotone" dataKey="pos" fill={c.profit || "rgb(var(--profit))"} fillOpacity={0.1} stroke="none" baseValue={0} />
+                    <Area type="monotone" dataKey="neg" fill={c.loss || "rgb(var(--loss))"} fillOpacity={0.1} stroke="none" baseValue={0} />
+                    <Line type="monotone" dataKey="cumulative" stroke={c.accent || "rgb(var(--accent))"} dot={false} strokeWidth={2} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </KpiCardPremium>
+            </StaggerItem>
           )}
 
-          {/* ── Charts grid ─────────────────────────────────────────── */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-            {/* Performance by day */}
-            <Card padding="md">
-              <CardHeader>
-                <CardTitle>{t("analytics_by_day")}</CardTitle>
-              </CardHeader>
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={byDayOfWeek} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
-                  <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
-                  <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
-                  <Tooltip content={<DayTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
-                  <Bar
-                    dataKey="pnl"
-                    shape={(props: unknown) => {
-                      const { x, y, width, height, value, payload } = props as BarShapeProps;
-                      const empty = (payload?.count ?? 1) === 0;
-                      return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={empty ? EMPTY_BAR : (value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={empty ? 0.3 : 0.72} />;
-                    }}
-                    activeBar={false}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </Card>
-
-            {/* Performance by hour */}
-            <Card padding="md">
-              <CardHeader>
-                <CardTitle>{t("analytics_by_hour")}</CardTitle>
-              </CardHeader>
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={byHour} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
-                  <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 10 }} tickLine={false} axisLine={{ stroke: c.axisLine }} interval={1} />
-                  <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
-                  <Tooltip content={<HourTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
-                  <Bar
-                    dataKey="pnl"
-                    shape={(props: unknown) => {
-                      const { x, y, width, height, value, payload } = props as BarShapeProps;
-                      const empty = (payload?.count ?? 1) === 0;
-                      return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={empty ? EMPTY_BAR : (value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={empty ? 0.3 : 0.72} />;
-                    }}
-                    activeBar={false}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </Card>
-
-            {/* Performance by pair */}
-            {byPair.length > 0 && (
-              <Card padding="md">
-                <CardHeader>
-                  <CardTitle>{t("analytics_by_pair")}</CardTitle>
-                </CardHeader>
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={byPair} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
-                    <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
-                    <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
-                    <Tooltip content={<PairTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
-                    <Bar
-                      dataKey="pnl"
-                      shape={(props: unknown) => {
-                        const { x, y, width, height, value } = props as BarShapeProps;
-                        return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={(value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={0.72} />;
-                      }}
-                      activeBar={false}
-                    >
-                      <LabelList
-                        dataKey="pnl"
-                        position="top"
-                        formatter={(v: unknown) => {
-                          const n = Number(v);
-                          return `${n >= 0 ? "+" : ""}${n.toFixed(0)}€`;
-                        }}
-                        style={{ fill: c.axis || "rgb(var(--foreground-muted))", fontSize: 10 }}
-                      />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </Card>
-            )}
-
-            {/* Performance by session */}
-            <Card padding="md">
-              <CardHeader>
-                <CardTitle>{t("analytics_by_session")}</CardTitle>
-              </CardHeader>
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={bySessions} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
-                  <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
-                  <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
-                  <Tooltip content={<SessionTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
-                  <Bar
-                    dataKey="pnl"
-                    shape={(props: unknown) => {
-                      const { x, y, width, height, value, payload } = props as BarShapeProps;
-                      const empty = (payload?.count ?? 1) === 0;
-                      return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={empty ? EMPTY_BAR : (value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={empty ? 0.3 : 0.72} />;
-                    }}
-                    activeBar={false}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </Card>
-
-            {/* Performance by emotion */}
-            {byEmotion.length > 0 && (
-              <Card padding="md">
-                <CardHeader>
-                  <CardTitle>{t("analytics_by_emotion")}</CardTitle>
-                </CardHeader>
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={byEmotion} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
-                    <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
-                    <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
-                    <Tooltip content={<GenericTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
-                    <Bar
-                      dataKey="pnl"
-                      shape={(props: unknown) => {
-                        const { x, y, width, height, value } = props as BarShapeProps;
-                        return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={(value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={0.72} />;
-                      }}
-                      activeBar={false}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </Card>
-            )}
-
-            {/* P&L Distribution Histogram */}
-            {pnlDistribution.length > 0 && (
-              <Card padding="md">
-                <div className="mb-4">
-                  <CardTitle>{t("analytics_distribution")}</CardTitle>
-                  <p className="text-xs text-foreground-muted mt-1">{t("analytics_distribution_subtitle")}</p>
-                </div>
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={pnlDistribution} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
-                    <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
-                    <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
-                    <Tooltip content={<HistogramTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
-                    <Bar
-                      dataKey="count"
-                      shape={(props: unknown) => {
-                        const { x, y, width, height, value, payload } = props as BarShapeProps;
-                        return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={(payload?.avg ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={0.72} />;
-                      }}
-                      activeBar={false}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </Card>
-            )}
-
-            {/* Performance by setup quality */}
-            {byQuality.length > 0 && (
-              <Card padding="md">
-                <CardHeader>
-                  <CardTitle>{t("analytics_by_quality")}</CardTitle>
-                </CardHeader>
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={byQuality} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
-                    <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
-                    <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
-                    <Tooltip content={<GenericTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
-                    <Bar
-                      dataKey="pnl"
-                      shape={(props: unknown) => {
-                        const { x, y, width, height, value } = props as BarShapeProps;
-                        return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={(value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={0.72} />;
-                      }}
-                      activeBar={false}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </Card>
-            )}
-
-          </div>
-
-          {/* ── ICT / Strategy Analytics ────────────────────────────── */}
-          <div className="mt-8">
-            <div className="flex items-center gap-3 mb-2">
-              <h2 className="text-xl font-bold text-foreground">
-                {stratTags.isDefault ? t("ict_section_title") : t("analytics_strategy_title")}
-              </h2>
-              {stratTags.isDefault && (
-                <span className="px-2 py-0.5 rounded text-xs font-bold bg-accent/20 text-accent">ICT</span>
-              )}
-            </div>
-            <p className="text-foreground-muted text-sm mb-4">{t("ict_section_subtitle")}</p>
-
+          {/* ── Charts grid ───────────────────────────────────────────── */}
+          <StaggerItem>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-              {/* Winrate by ICT Setup */}
-              {byICTSetup.length > 0 && (
-                <Card padding="md">
-                  <CardHeader>
-                    <CardTitle>{t("ict_winrate_by_setup")}</CardTitle>
-                  </CardHeader>
-                  <div className="space-y-2">
-                    {byICTSetup.map((entry) => (
-                      <div key={entry.setup} className="flex items-center gap-2">
-                        <div className="w-32 shrink-0 text-xs text-foreground-muted truncate">{getICTSetupLabel(entry.setup)}</div>
-                        <div className="flex-1 h-5 bg-border/30 rounded overflow-hidden">
-                          <div
-                            className="h-full rounded transition-all"
-                            style={{
-                              width: `${entry.winrate}%`,
-                              backgroundColor: entry.winrate > 60 ? c.profit : entry.winrate >= 40 ? c.warning : c.loss,
-                              opacity: 0.88,
-                            }}
-                          />
-                        </div>
-                        <span className="text-xs text-foreground-muted w-28 shrink-0 text-right">
-                          {entry.winrate}% ({entry.count} trades)
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              )}
+              {/* Performance by hour */}
+              <KpiCardPremium layout="full" accentColor="cyan">
+                <CardHeader>
+                  <CardTitle>{t("analytics_by_hour")}</CardTitle>
+                </CardHeader>
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={byHour} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
+                    <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 10 }} tickLine={false} axisLine={{ stroke: c.axisLine }} interval={1} />
+                    <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
+                    <Tooltip content={<HourTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
+                    <Bar
+                      dataKey="pnl"
+                      shape={(props: unknown) => {
+                        const { x, y, width, height, value, payload } = props as BarShapeProps;
+                        const empty = (payload?.count ?? 1) === 0;
+                        return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={empty ? EMPTY_BAR : (value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={empty ? 0.3 : 0.72} />;
+                      }}
+                      activeBar={false}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </KpiCardPremium>
 
-              {/* Winrate by Entry Zone */}
-              {byICTEntryZone.length > 0 && (
-                <Card padding="md">
+              {/* Performance by pair */}
+              {byPair.length > 0 && (
+                <KpiCardPremium layout="full" accentColor="violet">
                   <CardHeader>
-                    <CardTitle>{t("ict_winrate_by_zone")}</CardTitle>
+                    <CardTitle>{t("analytics_by_pair")}</CardTitle>
                   </CardHeader>
-                  <div className="space-y-2">
-                    {byICTEntryZone.map((entry) => (
-                      <div key={entry.zone} className="flex items-center gap-2">
-                        <div className="w-32 shrink-0 text-xs text-foreground-muted truncate">{getICTZoneLabel(entry.zone)}</div>
-                        <div className="flex-1 h-5 bg-border/30 rounded overflow-hidden">
-                          <div
-                            className="h-full rounded transition-all"
-                            style={{
-                              width: `${entry.winrate}%`,
-                              backgroundColor: entry.winrate > 60 ? c.profit : entry.winrate >= 40 ? c.warning : c.loss,
-                              opacity: 0.88,
-                            }}
-                          />
-                        </div>
-                        <span className="text-xs text-foreground-muted w-28 shrink-0 text-right">
-                          {entry.winrate}% ({entry.count} trades)
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              )}
-
-              {/* Killzone performance chart */}
-              {byKillzone.some((k) => k.count > 0) && (
-                <Card padding="md">
-                  <CardHeader>
-                    <CardTitle>{t("ict_perf_by_killzone")}</CardTitle>
-                  </CardHeader>
-                  <ResponsiveContainer width="100%" height={260}>
-                    <BarChart data={byKillzone} margin={{ top: 5, right: 10, left: 0, bottom: 40 }}>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={byPair} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
-                      <XAxis
-                        dataKey="name"
-                        tick={{ fill: c.axis, fontSize: 10 }}
-                        tickLine={false}
-                        axisLine={{ stroke: c.axisLine }}
-                        tickFormatter={(v) => getKillzoneLabel(v).split(" ")[0]}
-                        angle={-30}
-                        textAnchor="end"
-                        interval={0}
-                      />
+                      <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
                       <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
-                      <Tooltip
-                        content={({ active, payload }) => {
-                          if (!active || !payload?.length) return null;
-                          const entry = byKillzone.find((k) => k.name === payload[0]?.payload?.name);
-                          if (!entry) return null;
-                          return (
-                            <div style={tooltipStyle}>
-                              <p style={{ fontWeight: 600, marginBottom: 4 }}>{getKillzoneLabel(entry.name)}</p>
-                              {entry.count === 0 ? (
-                                <p style={{ color: c.axis }}>0 trades</p>
-                              ) : (
-                                <>
-                                  <p style={{ color: entry.pnl >= 0 ? c.profit : c.loss }}>
-                                    {entry.pnl >= 0 ? "+" : ""}{entry.pnl.toFixed(2)}€
-                                  </p>
-                                  <p style={{ color: c.axis }}>{entry.count} trades · WR {entry.winrate}%</p>
-                                  <p style={{ color: c.profit }}>Best: +{entry.best.toFixed(2)}€</p>
-                                  <p style={{ color: c.loss }}>Worst: {entry.worst.toFixed(2)}€</p>
-                                </>
-                              )}
-                            </div>
-                          );
-                        }}
-                        cursor={{ fill: "rgb(var(--foreground) / 0.04)" }}
-                      />
+                      <Tooltip content={<PairTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
                       <Bar
                         dataKey="pnl"
                         shape={(props: unknown) => {
-                          const { x, y, width, height, value, payload } = props as BarShapeProps;
-                          const empty = (payload?.count ?? 1) === 0;
-                          return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={empty ? EMPTY_BAR : (value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={empty ? 0.3 : 0.72} />;
+                          const { x, y, width, height, value } = props as BarShapeProps;
+                          return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={(value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={0.72} />;
+                        }}
+                        activeBar={false}
+                      >
+                        <LabelList
+                          dataKey="pnl"
+                          position="top"
+                          formatter={(v: unknown) => {
+                            const n = Number(v);
+                            return `${n >= 0 ? "+" : ""}${n.toFixed(0)}€`;
+                          }}
+                          style={{ fill: c.axis || "rgb(var(--foreground-muted))", fontSize: 10 }}
+                        />
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </KpiCardPremium>
+              )}
+
+              {/* Performance by emotion */}
+              {byEmotion.length > 0 && (
+                <KpiCardPremium layout="full" accentColor="cyan">
+                  <CardHeader>
+                    <CardTitle>{t("analytics_by_emotion")}</CardTitle>
+                  </CardHeader>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={byEmotion} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
+                      <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
+                      <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
+                      <Tooltip content={<GenericTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
+                      <Bar
+                        dataKey="pnl"
+                        shape={(props: unknown) => {
+                          const { x, y, width, height, value } = props as BarShapeProps;
+                          return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={(value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={0.72} />;
                         }}
                         activeBar={false}
                       />
                     </BarChart>
                   </ResponsiveContainer>
-                </Card>
+                </KpiCardPremium>
               )}
 
-              {/* Emotion impact on winrate */}
-              {byICTEmotion.length > 0 && (
-                <Card padding="md">
-                  <CardHeader>
-                    <CardTitle>{t("ict_emotion_impact")}</CardTitle>
-                  </CardHeader>
-                  <div className="space-y-2">
-                    {byICTEmotion.map((entry) => (
-                      <div key={entry.emotion} className="flex items-center gap-2">
-                        <div className="w-28 shrink-0 text-xs text-foreground-muted truncate">{getEmotionLabel(entry.emotion)}</div>
-                        <div className="flex-1 h-5 bg-border/30 rounded overflow-hidden">
-                          <div
-                            className="h-full rounded transition-all"
-                            style={{ width: `${entry.winrate}%`, backgroundColor: getEmotionColor(entry.emotion), opacity: 0.88 }}
-                          />
-                        </div>
-                        <span className="text-xs text-foreground-muted w-36 shrink-0 text-right">
-                          {entry.winrate}% WR ({entry.count}t, {entry.pnl >= 0 ? "+" : ""}{entry.pnl.toFixed(0)}€)
-                        </span>
-                      </div>
-                    ))}
+              {/* P&L Distribution Histogram */}
+              {pnlDistribution.length > 0 && (
+                <KpiCardPremium layout="full" accentColor="cyan">
+                  <div className="mb-4">
+                    <CardTitle>{t("analytics_distribution")}</CardTitle>
+                    <p className="text-xs text-foreground-muted mt-1">{t("analytics_distribution_subtitle")}</p>
                   </div>
-                </Card>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={pnlDistribution} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
+                      <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
+                      <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
+                      <Tooltip content={<HistogramTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
+                      <Bar
+                        dataKey="count"
+                        shape={(props: unknown) => {
+                          const { x, y, width, height, value, payload } = props as BarShapeProps;
+                          return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={(payload?.avg ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={0.72} />;
+                        }}
+                        activeBar={false}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </KpiCardPremium>
+              )}
+
+              {/* Performance by setup quality */}
+              {byQuality.length > 0 && (
+                <KpiCardPremium layout="full" accentColor="cyan">
+                  <CardHeader>
+                    <CardTitle>{t("analytics_by_quality")}</CardTitle>
+                  </CardHeader>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={byQuality} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
+                      <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
+                      <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
+                      <Tooltip content={<GenericTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
+                      <Bar
+                        dataKey="pnl"
+                        shape={(props: unknown) => {
+                          const { x, y, width, height, value } = props as BarShapeProps;
+                          return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={(value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={0.72} />;
+                        }}
+                        activeBar={false}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </KpiCardPremium>
               )}
 
             </div>
+          </StaggerItem>
 
-            {/* Tag trades prompt — Card variant accent */}
-            {ictTaggedCount < 10 && (
-              <Card variant="accent" padding="sm" className="mt-4">
-                <div className="flex items-center gap-3">
-                  <p className="text-xs text-foreground-muted flex-1">
-                    {t("ict_no_tags_msg")} {ictTaggedCount}/{filtered.length} {t("ict_no_tags_msg2")}
-                  </p>
-                  <Link
-                    href="/dashboard/trades"
-                    className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
-                  >
-                    {t("ict_goto_trades")} →
-                  </Link>
-                </div>
-              </Card>
-            )}
-          </div>
+          {/* ── ICT / Strategy Analytics ──────────────────────────────── */}
+          <StaggerItem>
+            <div className="mt-4">
+              <div className="flex items-center gap-3 mb-2">
+                <h2 className="text-xl font-bold text-foreground">
+                  {stratTags.isDefault ? t("ict_section_title") : t("analytics_strategy_title")}
+                </h2>
+                {stratTags.isDefault && (
+                  <span className="px-2 py-0.5 rounded text-xs font-bold bg-accent/20 text-accent">ICT</span>
+                )}
+              </div>
+              <p className="text-foreground-muted text-sm mb-4">{t("ict_section_subtitle")}</p>
 
-          {/* ── Discipline vs Results ────────────────────────────────── */}
-          {(disciplineStats || !hasAnalysis || winrateByEmotion.length > 0) && (
-            <div className="mt-8">
-              <h2 className="text-xl font-bold text-foreground mb-4">{t("discipline_title")}</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-              {/* No analysis yet — accent banner */}
-              {!hasAnalysis && !disciplineStats && (
-                <Card variant="accent" padding="md" className="mb-4">
-                  <div className="flex items-center gap-3">
-                    <Search className="w-5 h-5 text-accent shrink-0" strokeWidth={1.75} />
-                    <div className="flex-1">
-                      <p className="text-sm text-foreground font-medium">{t("discipline_no_analysis")}</p>
-                      <p className="text-xs text-foreground-muted mt-0.5">{t("discipline_no_analysis_desc")}</p>
+                {byICTSetup.length > 0 && (
+                  <KpiCardPremium layout="full" accentColor="violet">
+                    <CardHeader>
+                      <CardTitle>{t("ict_winrate_by_setup")}</CardTitle>
+                    </CardHeader>
+                    <div className="space-y-2">
+                      {byICTSetup.map((entry) => (
+                        <div key={entry.setup} className="flex items-center gap-2">
+                          <div className="w-32 shrink-0 text-xs text-foreground-muted truncate">{getICTSetupLabel(entry.setup)}</div>
+                          <div className="flex-1 h-5 bg-border/30 rounded overflow-hidden">
+                            <div
+                              className="h-full rounded transition-all"
+                              style={{
+                                width: `${entry.winrate}%`,
+                                backgroundColor: entry.winrate > 60 ? c.profit : entry.winrate >= 40 ? c.warning : c.loss,
+                                opacity: 0.88,
+                              }}
+                            />
+                          </div>
+                          <span className="text-xs text-foreground-muted w-28 shrink-0 text-right">
+                            {entry.winrate}% ({entry.count} trades)
+                          </span>
+                        </div>
+                      ))}
                     </div>
+                  </KpiCardPremium>
+                )}
+
+                {byICTEntryZone.length > 0 && (
+                  <KpiCardPremium layout="full" accentColor="violet">
+                    <CardHeader>
+                      <CardTitle>{t("ict_winrate_by_zone")}</CardTitle>
+                    </CardHeader>
+                    <div className="space-y-2">
+                      {byICTEntryZone.map((entry) => (
+                        <div key={entry.zone} className="flex items-center gap-2">
+                          <div className="w-32 shrink-0 text-xs text-foreground-muted truncate">{getICTZoneLabel(entry.zone)}</div>
+                          <div className="flex-1 h-5 bg-border/30 rounded overflow-hidden">
+                            <div
+                              className="h-full rounded transition-all"
+                              style={{
+                                width: `${entry.winrate}%`,
+                                backgroundColor: entry.winrate > 60 ? c.profit : entry.winrate >= 40 ? c.warning : c.loss,
+                                opacity: 0.88,
+                              }}
+                            />
+                          </div>
+                          <span className="text-xs text-foreground-muted w-28 shrink-0 text-right">
+                            {entry.winrate}% ({entry.count} trades)
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </KpiCardPremium>
+                )}
+
+                {byKillzone.some((k) => k.count > 0) && (
+                  <KpiCardPremium layout="full" accentColor="violet">
+                    <CardHeader>
+                      <CardTitle>{t("ict_perf_by_killzone")}</CardTitle>
+                    </CardHeader>
+                    <ResponsiveContainer width="100%" height={260}>
+                      <BarChart data={byKillzone} margin={{ top: 5, right: 10, left: 0, bottom: 40 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
+                        <XAxis
+                          dataKey="name"
+                          tick={{ fill: c.axis, fontSize: 10 }}
+                          tickLine={false}
+                          axisLine={{ stroke: c.axisLine }}
+                          tickFormatter={(v) => getKillzoneLabel(v).split(" ")[0]}
+                          angle={-30}
+                          textAnchor="end"
+                          interval={0}
+                        />
+                        <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            const entry = byKillzone.find((k) => k.name === payload[0]?.payload?.name);
+                            if (!entry) return null;
+                            return (
+                              <div style={tooltipStyle}>
+                                <p style={{ fontWeight: 600, marginBottom: 4 }}>{getKillzoneLabel(entry.name)}</p>
+                                {entry.count === 0 ? (
+                                  <p style={{ color: c.axis }}>0 trades</p>
+                                ) : (
+                                  <>
+                                    <p style={{ color: entry.pnl >= 0 ? c.profit : c.loss }}>
+                                      {entry.pnl >= 0 ? "+" : ""}{entry.pnl.toFixed(2)}€
+                                    </p>
+                                    <p style={{ color: c.axis }}>{entry.count} trades · WR {entry.winrate}%</p>
+                                    <p style={{ color: c.profit }}>Best: +{entry.best.toFixed(2)}€</p>
+                                    <p style={{ color: c.loss }}>Worst: {entry.worst.toFixed(2)}€</p>
+                                  </>
+                                )}
+                              </div>
+                            );
+                          }}
+                          cursor={{ fill: "rgb(var(--foreground) / 0.04)" }}
+                        />
+                        <Bar
+                          dataKey="pnl"
+                          shape={(props: unknown) => {
+                            const { x, y, width, height, value, payload } = props as BarShapeProps;
+                            const empty = (payload?.count ?? 1) === 0;
+                            return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={empty ? EMPTY_BAR : (value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={empty ? 0.3 : 0.72} />;
+                          }}
+                          activeBar={false}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </KpiCardPremium>
+                )}
+
+                {byICTEmotion.length > 0 && (
+                  <KpiCardPremium layout="full" accentColor="cyan">
+                    <CardHeader>
+                      <CardTitle>{t("ict_emotion_impact")}</CardTitle>
+                    </CardHeader>
+                    <div className="space-y-2">
+                      {byICTEmotion.map((entry) => (
+                        <div key={entry.emotion} className="flex items-center gap-2">
+                          <div className="w-28 shrink-0 text-xs text-foreground-muted truncate">{getEmotionLabel(entry.emotion)}</div>
+                          <div className="flex-1 h-5 bg-border/30 rounded overflow-hidden">
+                            <div
+                              className="h-full rounded transition-all"
+                              style={{ width: `${entry.winrate}%`, backgroundColor: getEmotionColor(entry.emotion), opacity: 0.88 }}
+                            />
+                          </div>
+                          <span className="text-xs text-foreground-muted w-36 shrink-0 text-right">
+                            {entry.winrate}% WR ({entry.count}t, {entry.pnl >= 0 ? "+" : ""}{entry.pnl.toFixed(0)}€)
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </KpiCardPremium>
+                )}
+
+              </div>
+
+              {ictTaggedCount < 10 && (
+                <Card variant="accent" padding="sm" className="mt-4">
+                  <div className="flex items-center gap-3">
+                    <p className="text-xs text-foreground-muted flex-1">
+                      {t("ict_no_tags_msg")} {ictTaggedCount}/{filtered.length} {t("ict_no_tags_msg2")}
+                    </p>
                     <Link
-                      href="/dashboard/analysis"
+                      href="/dashboard/trades"
                       className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
                     >
-                      {t("discipline_run_analysis")} →
+                      {t("ict_goto_trades")} →
                     </Link>
                   </div>
                 </Card>
               )}
+            </div>
+          </StaggerItem>
 
-              {/* Discipline stat cards */}
-              {disciplineStats && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+          {/* ── Discipline vs Results ─────────────────────────────────── */}
+          {(disciplineStats || !hasAnalysis || winrateByEmotion.length > 0) && (
+            <StaggerItem>
+              <div className="mt-4">
+                <h2 className="text-xl font-bold text-foreground mb-4">{t("discipline_title")}</h2>
 
-                  {/* Rules followed */}
-                  <Card padding="md" className="bg-profit/[0.03] border-profit/20">
-                    <div className="flex items-start gap-2.5">
-                      <ShieldCheck className="w-5 h-5 text-profit mt-0.5 shrink-0" strokeWidth={1.75} />
-                      <div>
-                        <p className="text-sm text-foreground-muted mb-1">{t("discipline_followed")}</p>
-                        <p className={cn("text-2xl font-bold", disciplineStats.rulesFollowed.pnl >= 0 ? "text-profit" : "text-loss")}>
-                          {disciplineStats.rulesFollowed.pnl >= 0 ? "+" : ""}{disciplineStats.rulesFollowed.pnl.toFixed(2)} €
-                        </p>
-                        <p className="text-xs text-foreground-muted mt-1">
-                          {disciplineStats.rulesFollowed.count} trades &mdash;{" "}
-                          {disciplineStats.rulesFollowed.count > 0
-                            ? ((disciplineStats.rulesFollowed.wins / disciplineStats.rulesFollowed.count) * 100).toFixed(0)
-                            : 0}% WR
-                        </p>
+                {!hasAnalysis && !disciplineStats && (
+                  <Card variant="accent" padding="md" className="mb-4">
+                    <div className="flex items-center gap-3">
+                      <Search className="w-5 h-5 text-accent shrink-0" strokeWidth={1.75} />
+                      <div className="flex-1">
+                        <p className="text-sm text-foreground font-medium">{t("discipline_no_analysis")}</p>
+                        <p className="text-xs text-foreground-muted mt-0.5">{t("discipline_no_analysis_desc")}</p>
                       </div>
+                      <Link
+                        href="/dashboard/analysis"
+                        className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
+                      >
+                        {t("discipline_run_analysis")} →
+                      </Link>
                     </div>
                   </Card>
+                )}
 
-                  {/* Rules broken */}
-                  <Card padding="md">
-                    <div className="flex items-start gap-2.5">
-                      <ShieldAlert className="w-5 h-5 text-warning mt-0.5 shrink-0" strokeWidth={1.75} />
-                      <div>
-                        <p className="text-sm text-foreground-muted mb-1">{t("discipline_broken")}</p>
-                        <p className={cn("text-2xl font-bold", disciplineStats.rulesBroken.pnl >= 0 ? "text-profit" : "text-loss")}>
-                          {disciplineStats.rulesBroken.pnl >= 0 ? "+" : ""}{disciplineStats.rulesBroken.pnl.toFixed(2)} €
-                        </p>
-                        <p className="text-xs text-foreground-muted mt-1">
-                          {disciplineStats.rulesBroken.count} trades &mdash;{" "}
-                          {disciplineStats.rulesBroken.count > 0
-                            ? ((disciplineStats.rulesBroken.wins / disciplineStats.rulesBroken.count) * 100).toFixed(0)
-                            : 0}% WR
-                        </p>
-                      </div>
-                    </div>
-                  </Card>
+                {disciplineStats && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
 
-                  {/* Cost of indiscipline */}
-                  {disciplineStats.rulesBroken.pnl < 0 && (
-                    <Card padding="md" className="bg-loss/[0.06] border-loss/30">
+                    <KpiCardPremium layout="full" accentColor="green">
                       <div className="flex items-start gap-2.5">
-                        <ShieldAlert className="w-5 h-5 text-loss mt-0.5 shrink-0" strokeWidth={1.75} />
+                        <ShieldCheck className="w-5 h-5 text-profit mt-0.5 shrink-0" strokeWidth={1.75} />
                         <div>
-                          <p className="text-sm text-loss/80 mb-1">{t("discipline_cost")}</p>
-                          <p className="text-3xl font-bold text-loss">
-                            {Math.abs(disciplineStats.rulesBroken.pnl).toFixed(2)} €
+                          <p className="text-sm text-foreground-muted mb-1">{t("discipline_followed")}</p>
+                          <p className={cn("text-2xl font-bold", disciplineStats.rulesFollowed.pnl >= 0 ? "text-profit" : "text-loss")}>
+                            {disciplineStats.rulesFollowed.pnl >= 0 ? "+" : ""}{disciplineStats.rulesFollowed.pnl.toFixed(2)} €
                           </p>
-                          <p className="text-xs text-loss/70 mt-1">{t("discipline_cost_desc")}</p>
+                          <p className="text-xs text-foreground-muted mt-1">
+                            {disciplineStats.rulesFollowed.count} trades &mdash;{" "}
+                            {disciplineStats.rulesFollowed.count > 0
+                              ? ((disciplineStats.rulesFollowed.wins / disciplineStats.rulesFollowed.count) * 100).toFixed(0)
+                              : 0}% WR
+                          </p>
                         </div>
                       </div>
-                    </Card>
-                  )}
+                    </KpiCardPremium>
 
-                </div>
-              )}
+                    <KpiCardPremium layout="full" accentColor="amber">
+                      <div className="flex items-start gap-2.5">
+                        <ShieldAlert className="w-5 h-5 text-warning mt-0.5 shrink-0" strokeWidth={1.75} />
+                        <div>
+                          <p className="text-sm text-foreground-muted mb-1">{t("discipline_broken")}</p>
+                          <p className={cn("text-2xl font-bold", disciplineStats.rulesBroken.pnl >= 0 ? "text-profit" : "text-loss")}>
+                            {disciplineStats.rulesBroken.pnl >= 0 ? "+" : ""}{disciplineStats.rulesBroken.pnl.toFixed(2)} €
+                          </p>
+                          <p className="text-xs text-foreground-muted mt-1">
+                            {disciplineStats.rulesBroken.count} trades &mdash;{" "}
+                            {disciplineStats.rulesBroken.count > 0
+                              ? ((disciplineStats.rulesBroken.wins / disciplineStats.rulesBroken.count) * 100).toFixed(0)
+                              : 0}% WR
+                          </p>
+                        </div>
+                      </div>
+                    </KpiCardPremium>
 
-              {/* Winrate by emotion chart */}
-              {winrateByEmotion.length > 0 && (
-                <Card padding="md">
-                  <CardHeader>
-                    <CardTitle>{t("discipline_winrate_emotion")}</CardTitle>
-                  </CardHeader>
-                  <ResponsiveContainer width="100%" height={280}>
-                    <BarChart data={winrateByEmotion} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
-                      <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
-                      <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} domain={[0, 100]} />
-                      <Tooltip content={<WinrateTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
-                      <Bar
-                        dataKey="winrate"
-                        shape={(props: unknown) => {
-                          const { x, y, width, height, value } = props as BarShapeProps;
-                          return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={(value ?? 0) >= 50 ? c.profit : c.loss} fillOpacity={0.72} />;
-                        }}
-                        activeBar={false}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </Card>
-              )}
-            </div>
+                    {disciplineStats.rulesBroken.pnl < 0 && (
+                      <KpiCardPremium layout="full" accentColor="loss">
+                        <div className="flex items-start gap-2.5">
+                          <ShieldAlert className="w-5 h-5 text-loss mt-0.5 shrink-0" strokeWidth={1.75} />
+                          <div>
+                            <p className="text-sm text-loss/80 mb-1">{t("discipline_cost")}</p>
+                            <p className="text-3xl font-bold text-loss">
+                              {Math.abs(disciplineStats.rulesBroken.pnl).toFixed(2)} €
+                            </p>
+                            <p className="text-xs text-loss/70 mt-1">{t("discipline_cost_desc")}</p>
+                          </div>
+                        </div>
+                      </KpiCardPremium>
+                    )}
+
+                  </div>
+                )}
+
+                {winrateByEmotion.length > 0 && (
+                  <KpiCardPremium layout="full" accentColor="amber">
+                    <CardHeader>
+                      <CardTitle>{t("discipline_winrate_emotion")}</CardTitle>
+                    </CardHeader>
+                    <ResponsiveContainer width="100%" height={280}>
+                      <BarChart data={winrateByEmotion} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
+                        <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
+                        <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} domain={[0, 100]} />
+                        <Tooltip content={<WinrateTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
+                        <Bar
+                          dataKey="winrate"
+                          shape={(props: unknown) => {
+                            const { x, y, width, height, value } = props as BarShapeProps;
+                            return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={(value ?? 0) >= 50 ? c.profit : c.loss} fillOpacity={0.72} />;
+                          }}
+                          activeBar={false}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </KpiCardPremium>
+                )}
+              </div>
+            </StaggerItem>
           )}
-        </>
-      )}
 
-      {/* ── Emotional Trend Chart ──────────────────────────────────── */}
-      {!loading && filtered.length > 0 && (
-        <div className="mt-6">
-          <EmotionalTrendChart />
-        </div>
+          {/* ── Emotional Trend Chart ──────────────────────────────────── */}
+          <StaggerItem>
+            <KpiCardPremium layout="full" accentColor="cyan">
+              <EmotionalTrendChart />
+            </KpiCardPremium>
+          </StaggerItem>
+
+        </StaggerContainer>
       )}
     </div>
   );

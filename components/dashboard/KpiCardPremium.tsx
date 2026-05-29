@@ -19,7 +19,7 @@
 import { cn } from "@/lib/cn";
 import { useTheme } from "@/lib/ThemeContext";
 
-export type AccentColor = "cyan" | "green" | "amber" | "violet";
+export type AccentColor = "cyan" | "green" | "amber" | "violet" | "loss";
 
 // RGB channels (space-separated) pour le radial-gradient d'aura interne — dark only.
 // On utilise des var() CSS pour bénéficier des overrides html.light automatiquement.
@@ -28,6 +28,7 @@ const AURA_TOKEN: Record<AccentColor, string> = {
   green:  "var(--profit)",
   amber:  "var(--accent-amber-glow)",
   violet: "var(--accent-violet-glow)",
+  loss:   "var(--loss)",
 };
 
 // Halo extérieur dans box-shadow : couleur RGBA hardcodée par thème
@@ -37,12 +38,14 @@ const OUTER_GLOW_DARK: Record<AccentColor, string> = {
   green:  "rgba(52, 211, 153, 0.28)",
   amber:  "rgba(251, 191, 36, 0.34)",
   violet: "rgba(167, 139, 250, 0.22)",
+  loss:   "rgba(239, 68, 68, 0.28)",
 };
 const OUTER_GLOW_LIGHT: Record<AccentColor, string> = {
   cyan:   "rgba(0, 168, 172, 0.25)",
   green:  "rgba(22, 163, 74, 0.20)",
   amber:  "rgba(217, 119, 6, 0.28)",
   violet: "rgba(124, 58, 237, 0.18)",
+  loss:   "rgba(220, 38, 38, 0.22)",
 };
 
 export interface KpiCardPremiumProps {
