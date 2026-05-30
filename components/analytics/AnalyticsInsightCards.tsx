@@ -82,13 +82,13 @@ export function AnalyticsInsightCards({ worstDay, bestHour, riskyPairInfo, byEmo
               className="w-4 h-4 mt-0.5 shrink-0 text-warning"
               strokeWidth={1.75}
             />
-            <div>
+            <div className="min-w-0 flex-1">
               <p className="text-[10px] text-warning/80 font-semibold uppercase tracking-wider mb-1">
                 {t("analytics_insight_risk_pair")}
               </p>
               {riskyPairInfo.type === "good" ? (
                 /* Neutre — pas de couleur "ça va bien" en vert sur fond amber */
-                <p className="text-sm font-semibold text-foreground-muted">{t("analytics_no_risk_pair")}</p>
+                <p className="text-sm font-semibold text-left text-foreground-muted">{t("analytics_no_risk_pair")}</p>
               ) : (
                 <>
                   <p className="text-sm font-semibold text-foreground">

@@ -7,6 +7,7 @@ import ExportPdfButton from "@/components/analytics/ExportPdfButton";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import StaggerContainer, { StaggerItem } from "@/components/animations/StaggerContainer";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ICT_EMOTIONS, ICT_KILLZONES, getEmotionColor } from "@/lib/ict-constants";
 import { useStrategyTags } from "@/lib/hooks/useStrategyTags";
 import { useChartColors } from "@/lib/useChartColors";
@@ -137,6 +138,7 @@ export default function AnalyticsPage() {
   const c = useChartColors();
   const supabase = createClient();
   const stratTags = useStrategyTags();
+  const reducedMotion = useReducedMotion();
 
   // ── Data state ────────────────────────────────────────────────────────────
   const [trades, setTrades] = useState<TradeRow[]>([]);
@@ -163,6 +165,15 @@ export default function AnalyticsPage() {
   const [stagingPnlMin, setStagingPnlMin] = useState<string>("");
   const [stagingPnlMax, setStagingPnlMax] = useState<string>("");
   const [stagingWinLoss, setStagingWinLoss] = useState<"all" | "win" | "loss">("all");
+
+  // ESC key closes the advanced filter panel
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setShowAdvancedFilters(false); };
+    if (showAdvancedFilters) {
+      document.addEventListener("keydown", onKey);
+      return () => document.removeEventListener("keydown", onKey);
+    }
+  }, [showAdvancedFilters]);
 
   useEffect(() => {
     async function load() {
@@ -838,13 +849,29 @@ export default function AnalyticsPage() {
       </div>
 
       {/* ── Advanced Filters Panel ────────────────────────────────────────── */}
+      <AnimatePresence>
       {showAdvancedFilters && (
         <>
-          <div
-            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+          <motion.div
+            key="adv-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: reducedMotion ? 0 : 0.2, ease: "easeOut" }}
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
             onClick={() => setShowAdvancedFilters(false)}
           />
-          <div className="fixed top-0 right-0 z-50 h-full w-80 bg-card border-l border-border shadow-2xl flex flex-col">
+          <motion.aside
+            key="adv-panel"
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ duration: reducedMotion ? 0 : 0.22, ease: "easeOut" }}
+            className="fixed top-0 right-0 z-50 h-full w-80 bg-card border-l border-border shadow-2xl flex flex-col"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Filtres avancés"
+          >
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
               <h3 className="text-sm font-bold text-foreground">Filtres avancés</h3>
               <button
@@ -953,9 +980,10 @@ export default function AnalyticsPage() {
                 Appliquer
               </button>
             </div>
-          </div>
+          </motion.aside>
         </>
       )}
+      </AnimatePresence>
 
       {/* ── Empty state ───────────────────────────────────────────────────── */}
       {filtered.length === 0 ? (
