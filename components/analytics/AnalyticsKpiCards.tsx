@@ -14,6 +14,8 @@ export interface AnalyticsKpiCardsProps {
   tradesCount: number;
   best: number;
   worst: number;
+  bestTrade?: { pnl: number; date: string } | null;
+  worstTrade?: { pnl: number; date: string } | null;
   profitFactor: number | null;
   disciplineScore: number | undefined;
   prevKpis: { totalPnl: number; winrate: number; trades: number } | null;
@@ -28,6 +30,8 @@ export function AnalyticsKpiCards({
   tradesCount,
   best,
   worst,
+  bestTrade,
+  worstTrade,
   profitFactor,
   disciplineScore,
   prevKpis,
@@ -129,6 +133,11 @@ export function AnalyticsKpiCards({
           label={t("analytics_kpi_best")}
           value={`+${best.toFixed(2)}€`}
           trend="up"
+          sublabel={
+            bestTrade?.date
+              ? new Date(bestTrade.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })
+              : undefined
+          }
         />
 
         {/* Worst trade */}
@@ -138,6 +147,11 @@ export function AnalyticsKpiCards({
           label={t("analytics_kpi_worst")}
           value={`${worst.toFixed(2)}€`}
           trend="down"
+          sublabel={
+            worstTrade?.date
+              ? new Date(worstTrade.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })
+              : undefined
+          }
         />
 
         {/* Synthèse — Profit Factor */}

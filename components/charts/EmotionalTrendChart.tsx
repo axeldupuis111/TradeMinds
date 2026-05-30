@@ -85,7 +85,7 @@ export default function EmotionalTrendChart() {
       }
 
       const allDays = new Set([...Object.keys(pnlByDay), ...Object.keys(emotionByDay)]);
-      const points: DataPoint[] = Array.from(allDays)
+      const allPoints: DataPoint[] = Array.from(allDays)
         .sort()
         .map((date) => ({
           date,
@@ -93,6 +93,13 @@ export default function EmotionalTrendChart() {
           emotionKey: emotionByDay[date] || null,
           pnl: pnlByDay[date] ?? null,
         }));
+
+      // Trim to actual data range — remove leading/trailing empty space
+      const firstDataIdx = allPoints.findIndex((p) => p.emotionScore != null || p.pnl != null);
+      const lastDataIdx  = [...allPoints].reverse().findIndex((p) => p.emotionScore != null || p.pnl != null);
+      const points = firstDataIdx === -1
+        ? allPoints
+        : allPoints.slice(firstDataIdx, allPoints.length - lastDataIdx);
 
       setData(points);
       setLoading(false);
@@ -110,13 +117,19 @@ export default function EmotionalTrendChart() {
   }
 
   const hasEmotions = data.some((d) => d.emotionScore != null);
-  if (!hasEmotions) {
+  const hasEnoughPoints = data.length >= 3;
+
+  if (!hasEmotions || !hasEnoughPoints) {
     return (
       <Card padding="md">
         <CardHeader>
           <CardTitle>{t("emotional_trend_title")}</CardTitle>
         </CardHeader>
-        <p className="text-xs text-foreground-muted">{t("emotional_trend_no_data")}</p>
+        <p className="text-xs text-foreground-muted">
+          {!hasEmotions
+            ? t("emotional_trend_no_data")
+            : "Pas assez de données pour analyser ta tendance émotionnelle. Au moins 3 jours de trades avec émotions enregistrées sont nécessaires."}
+        </p>
       </Card>
     );
   }

@@ -268,8 +268,20 @@ function detectPairConcentration(trades: AnalyticsTrade[]): Insight | null {
   if (sorted.length === 0) return null;
 
   const [topPair, topAbs] = sorted[0];
-  const pct = Math.round((topAbs / totalAbsPnl) * 100);
+  const pairShare = topAbs / totalAbsPnl;
+  const pct = Math.round(pairShare * 100);
   if (pct < 50) return null;
+
+  if (pairShare >= 0.7) {
+    return {
+      id: "pair-concentration",
+      severity: "negative",
+      icon: "alert-triangle",
+      title: "Surexposition à une paire",
+      description: `[[${topPair}]] représente [[${fmtPct(pct)}]] de ton P&L. Risque de surexposition à cette paire.`,
+      strength: Math.min(1, (pct - 50) / 50),
+    };
+  }
 
   return {
     id: "pair-concentration",

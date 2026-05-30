@@ -100,9 +100,18 @@ function DrawdownZone({ trades }: { trades: AnalyticsTrade[] }) {
 
         <p className="text-[10px] text-foreground-muted mt-1.5">
           {currentDrawdown > 0
-            ? `${currentDDPct.toFixed(1)} % du pic`
+            ? Math.round(currentDDPct) === 100
+              ? "Soit -100 % du pic"
+              : `Soit -${currentDDPct.toFixed(1)} % du pic`
             : "Aucun drawdown en cours"}
         </p>
+        {currentDrawdown > 0 && Math.round(currentDDPct) === 100 && (
+          <p className="text-[10px] text-loss mt-0.5">
+            {lastPoint && lastPoint.cumulative < 0
+              ? "Tu es passé sous ton point de départ"
+              : "Drawdown supérieur à ton pic maximum"}
+          </p>
+        )}
       </div>
 
     </div>

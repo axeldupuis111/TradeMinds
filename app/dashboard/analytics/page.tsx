@@ -303,15 +303,23 @@ export default function AnalyticsPage() {
   }, [prevFiltered]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── KPI aggregates ────────────────────────────────────────────────────────
-  const { totalPnl, wins, winrate, best, worst } = useMemo(() => {
+  const { totalPnl, wins, winrate, best, worst, bestTrade, worstTrade } = useMemo(() => {
     const pnls = filtered.map(netPnl);
     const w = filtered.filter((tr) => netPnl(tr) > 0).length;
+    let bestTr = filtered[0] ?? null;
+    let worstTr = filtered[0] ?? null;
+    for (const tr of filtered) {
+      if (netPnl(tr) > (bestTr ? netPnl(bestTr) : -Infinity)) bestTr = tr;
+      if (netPnl(tr) < (worstTr ? netPnl(worstTr) : Infinity))  worstTr = tr;
+    }
     return {
       totalPnl: pnls.reduce((s, v) => s + v, 0),
       wins: w,
       winrate: filtered.length > 0 ? (w / filtered.length) * 100 : 0,
       best: pnls.length > 0 ? Math.max(...pnls) : 0,
       worst: pnls.length > 0 ? Math.min(...pnls) : 0,
+      bestTrade:  bestTr  ? { pnl: netPnl(bestTr),  date: bestTr.open_time  } : null,
+      worstTrade: worstTr ? { pnl: netPnl(worstTr), date: worstTr.open_time } : null,
     };
   }, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -757,6 +765,24 @@ export default function AnalyticsPage() {
       <div className="mb-4">
         <h1 className="text-2xl font-bold text-foreground">{t("analytics_title")}</h1>
         <p className="text-foreground-muted text-sm mt-1">{t("analytics_subtitle")}</p>
+        {filtered.length > 0 && (() => {
+          const dates = filtered.map((tr) => tr.open_time?.split("T")[0]).filter(Boolean).sort() as string[];
+          const first = dates[0];
+          const last  = dates[dates.length - 1];
+          const diffDays = Math.round((new Date(last).getTime() - new Date(first).getTime()) / 86_400_000);
+          const duration = diffDays > 60
+            ? `${Math.round(diffDays / 30)} mois`
+            : diffDays > 14
+              ? `${Math.round(diffDays / 7)} semaines`
+              : `${diffDays} jours`;
+          const fmt = (d: string) =>
+            new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+          return (
+            <p className="text-xs text-foreground-muted mt-1">
+              {filtered.length} trades · du {fmt(first)} au {fmt(last)} · {duration}
+            </p>
+          );
+        })()}
       </div>
 
       {/* ── Filter bar — sticky ───────────────────────────────────────────── */}
@@ -994,6 +1020,8 @@ export default function AnalyticsPage() {
               tradesCount={filtered.length}
               best={best}
               worst={worst}
+              bestTrade={bestTrade}
+              worstTrade={worstTrade}
               profitFactor={profitFactor}
               disciplineScore={latestScore}
               prevKpis={prevKpis}
@@ -1083,10 +1111,21 @@ export default function AnalyticsPage() {
                 <CardHeader>
                   <CardTitle>{t("analytics_by_pair")}</CardTitle>
                 </CardHeader>
+                {(() => {
+                  const maxAbsPnL = Math.max(...byPair.map((p) => Math.abs(p.pnl)), 1);
+                  const minDisplay = maxAbsPnL * 0.02;
+                  const transformedByPair = byPair.map((p) => ({
+                    ...p,
+                    pnlReal: p.pnl,
+                    pnlDisplay: Math.abs(p.pnl) < minDisplay
+                      ? Math.sign(p.pnl || 1) * minDisplay
+                      : p.pnl,
+                  }));
+                  return (
                 <ResponsiveContainer width="100%" height={Math.max(220, byPair.length * 44)}>
                   <BarChart
                     layout="vertical"
-                    data={byPair}
+                    data={transformedByPair}
                     margin={{ top: 5, right: 80, left: 0, bottom: 5 }}
                     barSize={28}
                   >
@@ -1107,16 +1146,16 @@ export default function AnalyticsPage() {
                       axisLine={false}
                     />
                     <Tooltip content={<PairTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
-                    <Bar dataKey="pnl" activeBar={false} radius={[0, 3, 3, 0]}>
-                      {byPair.map((entry, index) => (
+                    <Bar dataKey="pnlDisplay" activeBar={false} radius={[0, 3, 3, 0]}>
+                      {transformedByPair.map((entry, index) => (
                         <Cell
                           key={`cell-${index}`}
-                          fill={(entry.pnl ?? 0) >= 0 ? c.profit : c.loss}
+                          fill={(entry.pnlReal ?? 0) >= 0 ? c.profit : c.loss}
                           fillOpacity={0.72}
                         />
                       ))}
                       <LabelList
-                        dataKey="pnl"
+                        dataKey="pnlReal"
                         position="right"
                         formatter={(v: unknown) => formatPnl(Number(v))}
                         style={{ fill: c.axis || "rgb(var(--foreground-muted))", fontSize: 11 }}
@@ -1124,6 +1163,8 @@ export default function AnalyticsPage() {
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
+                  );
+                })()}
               </KpiCardPremium>
             </StaggerItem>
           )}
@@ -1368,16 +1409,61 @@ export default function AnalyticsPage() {
 
               {ictTaggedCount < 10 && (
                 <Card variant="accent" padding="sm" className="mt-4">
-                  <div className="flex items-center gap-3">
-                    <p className="text-xs text-foreground-muted flex-1">
-                      {t("ict_no_tags_msg")} {ictTaggedCount}/{filtered.length} {t("ict_no_tags_msg2")}
-                    </p>
-                    <Link
-                      href="/dashboard/trades"
-                      className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
-                    >
-                      {t("ict_goto_trades")} →
-                    </Link>
+                  <div className="space-y-3">
+                    {/* Barre de progression */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <p className="text-xs text-foreground-muted">
+                          {ictTaggedCount} / {filtered.length} trades tagués
+                        </p>
+                        <span className="text-[10px] text-foreground-muted/60">
+                          {filtered.length > 0 ? Math.round((ictTaggedCount / filtered.length) * 100) : 0}%
+                        </span>
+                      </div>
+                      <div className="h-1.5 bg-foreground/8 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{
+                            width: filtered.length > 0 ? `${(ictTaggedCount / filtered.length) * 100}%` : "0%",
+                            backgroundColor: "rgb(var(--accent))",
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Chips concepts + bouton */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {ictTaggedCount === 0 ? (
+                        <>
+                          {["FVG", "Order Block", "Silver Bullet"].map((chip) => (
+                            <span
+                              key={chip}
+                              className="px-2 py-0.5 text-[10px] rounded-full border border-border bg-foreground/5 text-foreground-muted"
+                            >
+                              {chip}
+                            </span>
+                          ))}
+                        </>
+                      ) : (
+                        <>
+                          {byICTSetup.slice(0, 3).map((s) => (
+                            <span
+                              key={s.setup}
+                              className="px-2 py-0.5 text-[10px] rounded-full border border-border bg-foreground/5 text-foreground-muted"
+                            >
+                              {s.setup.replace(/_/g, " ")}
+                            </span>
+                          ))}
+                        </>
+                      )}
+                      <div className="flex-1" />
+                      <Link
+                        href="/dashboard/trades"
+                        className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
+                      >
+                        {t("ict_goto_trades")} →
+                      </Link>
+                    </div>
                   </div>
                 </Card>
               )}
