@@ -1,9 +1,13 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
+
 // ─── Props ────────────────────────────────────────────────────────────────────
+// `visible` est géré côté HourDayHeatmap via rendu conditionnel ; le tooltip
+// est donc toujours monté = visible, démonté = caché.
 
 export type HeatmapTooltipProps = {
-  visible: boolean;
   x: number;
   y: number;
   day: string;
@@ -17,18 +21,19 @@ export type HeatmapTooltipProps = {
 
 function fmtPnl(n: number): string {
   const r = Math.round(n);
-  if (r === 0) return "0 €";
-  return `${r > 0 ? "+" : ""}${r} €`;
+  if (r === 0) return "0 €";
+  return `${r > 0 ? "+" : ""}${r} €`;
 }
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const TOOLTIP_WIDTH = 180;
+const OFFSET_X      = 16;
+const OFFSET_Y      = 12;
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-const TOOLTIP_WIDTH = 180;
-const OFFSET_X = 16;
-const OFFSET_Y = 12;
-
 export function HeatmapTooltip({
-  visible,
   x,
   y,
   day,
@@ -37,20 +42,31 @@ export function HeatmapTooltip({
   pnl,
   winRate,
 }: HeatmapTooltipProps) {
-  const winW = typeof window !== "undefined" ? window.innerWidth : 9999;
+  // Fade-in au montage : opacity 0 → 1 après le premier paint.
+  // Le fade-out n'est pas nécessaire car le composant est démonté immédiatement.
+  const [opacity, setOpacity] = useState(0);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setOpacity(1));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  // SSR safety — createPortal n'existe qu'en environnement navigateur
+  if (typeof document === "undefined") return null;
+
+  const winW = window.innerWidth;
   const flipLeft = x + OFFSET_X + TOOLTIP_WIDTH > winW;
   const left = flipLeft ? x - TOOLTIP_WIDTH - 8 : x + OFFSET_X;
 
-  return (
+  return createPortal(
     <div
       style={{
         position: "fixed",
         top: y + OFFSET_Y,
         left,
         minWidth: TOOLTIP_WIDTH,
-        zIndex: 50,
+        zIndex: 9999,
         pointerEvents: "none",
-        opacity: visible ? 1 : 0,
+        opacity,
         transition: "opacity 100ms ease",
         background: "rgb(var(--card))",
         border: "1px solid rgb(var(--border))",
@@ -69,7 +85,7 @@ export function HeatmapTooltip({
           lineHeight: 1,
         }}
       >
-        {day} · {hour}h
+        {day} · {hour}h
       </p>
 
       {/* Body */}
@@ -126,11 +142,12 @@ export function HeatmapTooltip({
                 fontVariantNumeric: "tabular-nums",
               }}
             >
-              {Math.round(winRate * 100)} %
+              {Math.round(winRate * 100)} %
             </span>
           </div>
         </div>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -288,8 +288,18 @@ export function HourDayHeatmap({ trades }: Props) {
         </div>
       </div>
 
-      {/* ── Cursor-follow tooltip (FIX 3) ────────────────────────────────── */}
-      <HeatmapTooltip {...tooltip} />
+      {/* ── Cursor-follow tooltip — portal vers document.body ────────────── */}
+      {tooltip.visible && (
+        <HeatmapTooltip
+          x={tooltip.x}
+          y={tooltip.y}
+          day={tooltip.day}
+          hour={tooltip.hour}
+          trades={tooltip.trades}
+          pnl={tooltip.pnl}
+          winRate={tooltip.winRate}
+        />
+      )}
     </div>
   );
 }
