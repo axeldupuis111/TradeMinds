@@ -4,6 +4,7 @@ import { AnalyticsInsightCards } from "@/components/analytics/AnalyticsInsightCa
 import { AnalyticsKpiCards } from "@/components/analytics/AnalyticsKpiCards";
 import { AutoInsights } from "@/components/analytics/AutoInsights";
 import { HourDayHeatmap } from "@/components/analytics/HourDayHeatmap";
+import { ResilienceBlock } from "@/components/analytics/ResilienceBlock";
 import EmotionalTrendChart from "@/components/charts/EmotionalTrendChart";
 import ExportPdfButton from "@/components/analytics/ExportPdfButton";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
@@ -320,6 +321,18 @@ export default function AnalyticsPage() {
     if (filtered.length === 0) return null;
     if (losses === 0) return gains > 0 ? Infinity : null;
     return gains / losses;
+  }, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const { avgWin, avgLoss } = useMemo(() => {
+    const winTrades  = filtered.filter((tr) => netPnl(tr) > 0);
+    const lossTrades = filtered.filter((tr) => netPnl(tr) < 0);
+    const avgW = winTrades.length  > 0
+      ? winTrades.reduce((s, tr) => s + netPnl(tr), 0) / winTrades.length
+      : 0;
+    const avgL = lossTrades.length > 0
+      ? Math.abs(lossTrades.reduce((s, tr) => s + netPnl(tr), 0) / lossTrades.length)
+      : 0;
+    return { avgWin: avgW, avgLoss: avgL };
   }, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Chart data ────────────────────────────────────────────────────────────
@@ -984,6 +997,8 @@ export default function AnalyticsPage() {
               profitFactor={profitFactor}
               disciplineScore={latestScore}
               prevKpis={prevKpis}
+              avgWin={avgWin}
+              avgLoss={avgLoss}
             />
           </StaggerItem>
 
@@ -1054,6 +1069,11 @@ export default function AnalyticsPage() {
               </KpiCardPremium>
 
             </div>
+          </StaggerItem>
+
+          {/* ── Résilience ────────────────────────────────────────────── */}
+          <StaggerItem>
+            <ResilienceBlock trades={filtered} />
           </StaggerItem>
 
           {/* ── Performance par paire — pleine largeur ─────────────────── */}
