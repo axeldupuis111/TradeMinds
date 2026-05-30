@@ -2,11 +2,14 @@
 
 import { AnalyticsInsightCards } from "@/components/analytics/AnalyticsInsightCards";
 import { AnalyticsKpiCards } from "@/components/analytics/AnalyticsKpiCards";
+import { AutoInsights } from "@/components/analytics/AutoInsights";
+import { HourDayHeatmap } from "@/components/analytics/HourDayHeatmap";
 import EmotionalTrendChart from "@/components/charts/EmotionalTrendChart";
 import ExportPdfButton from "@/components/analytics/ExportPdfButton";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import StaggerContainer, { StaggerItem } from "@/components/animations/StaggerContainer";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ICT_EMOTIONS, ICT_KILLZONES, getEmotionColor } from "@/lib/ict-constants";
 import { useStrategyTags } from "@/lib/hooks/useStrategyTags";
 import { useChartColors } from "@/lib/useChartColors";
@@ -21,6 +24,7 @@ import { Search, ShieldCheck, ShieldAlert, Filter, X } from "lucide-react";
 import {
   BarChart,
   Bar,
+  Cell,
   XAxis,
   YAxis,
   Tooltip,
@@ -97,6 +101,16 @@ type Period = "7d" | "30d" | "90d" | "all" | "custom";
 
 const EMPTY_BAR = "rgb(var(--border))";
 
+/**
+ * Formatter P&L sécurisé : évite "-0€" pour les valeurs proches de zéro.
+ * Utilise Math.round pour traiter -0 comme 0.
+ */
+function formatPnl(n: number): string {
+  const rounded = Math.round(n);
+  if (rounded === 0) return "0€";
+  return `${rounded > 0 ? "+" : ""}${rounded}€`;
+}
+
 interface BarShapeProps {
   x?: number;
   y?: number;
@@ -126,6 +140,7 @@ export default function AnalyticsPage() {
   const c = useChartColors();
   const supabase = createClient();
   const stratTags = useStrategyTags();
+  const reducedMotion = useReducedMotion();
 
   // ── Data state ────────────────────────────────────────────────────────────
   const [trades, setTrades] = useState<TradeRow[]>([]);
@@ -152,6 +167,15 @@ export default function AnalyticsPage() {
   const [stagingPnlMin, setStagingPnlMin] = useState<string>("");
   const [stagingPnlMax, setStagingPnlMax] = useState<string>("");
   const [stagingWinLoss, setStagingWinLoss] = useState<"all" | "win" | "loss">("all");
+
+  // ESC key closes the advanced filter panel
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setShowAdvancedFilters(false); };
+    if (showAdvancedFilters) {
+      document.addEventListener("keydown", onKey);
+      return () => document.removeEventListener("keydown", onKey);
+    }
+  }, [showAdvancedFilters]);
 
   useEffect(() => {
     async function load() {
@@ -602,36 +626,15 @@ export default function AnalyticsPage() {
   };
 
   // ── Tooltip components ────────────────────────────────────────────────────
-  const HourTooltip = ({ active, payload, label }: { active?: boolean; payload?: unknown[]; label?: string }) => {
-    if (!active || !payload?.length) return null;
-    const entry = byHour.find((h) => h.name === label);
-    if (!entry) return null;
-    return (
-      <div style={tooltipStyle}>
-        <p style={{ fontWeight: 600, marginBottom: 4 }}>{label}</p>
-        {entry.count === 0 ? (
-          <p style={{ color: c.axis }}>0 trades</p>
-        ) : (
-          <>
-            <p style={{ color: entry.pnl >= 0 ? c.profit : c.loss }}>
-              {entry.pnl >= 0 ? "+" : ""}{entry.pnl.toFixed(2)}€
-            </p>
-            <p style={{ color: c.axis }}>{entry.count} trades</p>
-          </>
-        )}
-      </div>
-    );
-  };
-
   const PairTooltip = ({ active, payload, label }: { active?: boolean; payload?: unknown[]; label?: string }) => {
     if (!active || !payload?.length) return null;
     const entry = byPair.find((p) => p.name === label);
     if (!entry) return null;
     return (
       <div style={tooltipStyle}>
-        <p style={{ fontWeight: 600, marginBottom: 4 }}>{label}</p>
+        <p style={{ fontWeight: 600, marginBottom: 4 }}>{entry.name}</p>
         <p style={{ color: entry.pnl >= 0 ? c.profit : c.loss }}>
-          {entry.pnl >= 0 ? "+" : ""}{entry.pnl.toFixed(2)}€
+          {formatPnl(entry.pnl)}
         </p>
         <p style={{ color: c.axis }}>{entry.count} trades · WR {entry.winrate}%</p>
       </div>
@@ -744,7 +747,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* ── Filter bar — sticky ───────────────────────────────────────────── */}
-      <div className="sticky top-0 z-10 -mx-6 px-6 py-3 mb-6 flex flex-wrap gap-2 items-center border-b border-border/60 bg-surface/80 backdrop-blur-md">
+      <div className="sticky top-0 z-30 -mx-6 px-6 py-3 mb-6 flex flex-wrap gap-2 items-center border-b border-border bg-background/95 backdrop-blur-md">
 
         {/* Period pills */}
         <div className="flex items-center gap-0.5 bg-card/60 rounded-lg p-0.5 border border-border/50">
@@ -765,14 +768,14 @@ export default function AnalyticsPage() {
               type="date"
               value={customDateFrom}
               onChange={(e) => setCustomDateFrom(e.target.value)}
-              className="px-2 py-1.5 bg-card border border-border rounded-lg text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-accent"
+              className="px-3 py-1.5 bg-card border border-border rounded-lg text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
             />
             <span className="text-foreground-muted text-xs">→</span>
             <input
               type="date"
               value={customDateTo}
               onChange={(e) => setCustomDateTo(e.target.value)}
-              className="px-2 py-1.5 bg-card border border-border rounded-lg text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-accent"
+              className="px-3 py-1.5 bg-card border border-border rounded-lg text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
             />
           </div>
         )}
@@ -827,13 +830,29 @@ export default function AnalyticsPage() {
       </div>
 
       {/* ── Advanced Filters Panel ────────────────────────────────────────── */}
+      <AnimatePresence>
       {showAdvancedFilters && (
         <>
-          <div
-            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+          <motion.div
+            key="adv-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: reducedMotion ? 0 : 0.2, ease: "easeOut" }}
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
             onClick={() => setShowAdvancedFilters(false)}
           />
-          <div className="fixed top-0 right-0 z-50 h-full w-80 bg-card border-l border-border shadow-2xl flex flex-col">
+          <motion.aside
+            key="adv-panel"
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ duration: reducedMotion ? 0 : 0.22, ease: "easeOut" }}
+            className="fixed top-0 right-0 z-50 h-full w-80 bg-card border-l border-border shadow-2xl flex flex-col"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Filtres avancés"
+          >
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
               <h3 className="text-sm font-bold text-foreground">Filtres avancés</h3>
               <button
@@ -942,9 +961,10 @@ export default function AnalyticsPage() {
                 Appliquer
               </button>
             </div>
-          </div>
+          </motion.aside>
         </>
       )}
+      </AnimatePresence>
 
       {/* ── Empty state ───────────────────────────────────────────────────── */}
       {filtered.length === 0 ? (
@@ -1013,68 +1033,84 @@ export default function AnalyticsPage() {
             </StaggerItem>
           )}
 
-          {/* ── Charts grid ───────────────────────────────────────────── */}
+          {/* ── Heatmap jour×heure + Insights automatiques ────────────── */}
           <StaggerItem>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-              {/* Performance by hour */}
+              {/* Heatmap — 2/3 width */}
+              <KpiCardPremium layout="full" accentColor="violet" className="lg:col-span-2">
+                <CardHeader>
+                  <CardTitle>Tes patterns de trading</CardTitle>
+                </CardHeader>
+                <HourDayHeatmap trades={filtered} />
+              </KpiCardPremium>
+
+              {/* Auto-insights — 1/3 width */}
               <KpiCardPremium layout="full" accentColor="cyan">
                 <CardHeader>
-                  <CardTitle>{t("analytics_by_hour")}</CardTitle>
+                  <CardTitle>Ce qu&apos;on remarque</CardTitle>
                 </CardHeader>
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={byHour} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
-                    <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 10 }} tickLine={false} axisLine={{ stroke: c.axisLine }} interval={1} />
-                    <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
-                    <Tooltip content={<HourTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
-                    <Bar
-                      dataKey="pnl"
-                      shape={(props: unknown) => {
-                        const { x, y, width, height, value, payload } = props as BarShapeProps;
-                        const empty = (payload?.count ?? 1) === 0;
-                        return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={empty ? EMPTY_BAR : (value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={empty ? 0.3 : 0.72} />;
-                      }}
-                      activeBar={false}
+                <AutoInsights trades={filtered} />
+              </KpiCardPremium>
+
+            </div>
+          </StaggerItem>
+
+          {/* ── Performance par paire — pleine largeur ─────────────────── */}
+          {byPair.length > 0 && (
+            <StaggerItem>
+              <KpiCardPremium layout="full" accentColor="violet">
+                <CardHeader>
+                  <CardTitle>{t("analytics_by_pair")}</CardTitle>
+                </CardHeader>
+                <ResponsiveContainer width="100%" height={Math.max(220, byPair.length * 44)}>
+                  <BarChart
+                    layout="vertical"
+                    data={byPair}
+                    margin={{ top: 5, right: 80, left: 0, bottom: 5 }}
+                    barSize={28}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke={c.grid} horizontal={false} strokeOpacity={0.4} />
+                    <XAxis
+                      type="number"
+                      tick={{ fill: c.axis, fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={{ stroke: c.axisLine }}
+                      tickFormatter={formatCurrencyAxis}
                     />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      width={90}
+                      tick={{ fill: c.axis, fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <Tooltip content={<PairTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
+                    <Bar dataKey="pnl" activeBar={false} radius={[0, 3, 3, 0]}>
+                      {byPair.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={(entry.pnl ?? 0) >= 0 ? c.profit : c.loss}
+                          fillOpacity={0.72}
+                        />
+                      ))}
+                      <LabelList
+                        dataKey="pnl"
+                        position="right"
+                        formatter={(v: unknown) => formatPnl(Number(v))}
+                        style={{ fill: c.axis || "rgb(var(--foreground-muted))", fontSize: 11 }}
+                      />
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </KpiCardPremium>
+            </StaggerItem>
+          )}
 
-              {/* Performance by pair */}
-              {byPair.length > 0 && (
-                <KpiCardPremium layout="full" accentColor="violet">
-                  <CardHeader>
-                    <CardTitle>{t("analytics_by_pair")}</CardTitle>
-                  </CardHeader>
-                  <ResponsiveContainer width="100%" height={280}>
-                    <BarChart data={byPair} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
-                      <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
-                      <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
-                      <Tooltip content={<PairTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
-                      <Bar
-                        dataKey="pnl"
-                        shape={(props: unknown) => {
-                          const { x, y, width, height, value } = props as BarShapeProps;
-                          return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={(value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={0.72} />;
-                        }}
-                        activeBar={false}
-                      >
-                        <LabelList
-                          dataKey="pnl"
-                          position="top"
-                          formatter={(v: unknown) => {
-                            const n = Number(v);
-                            return `${n >= 0 ? "+" : ""}${n.toFixed(0)}€`;
-                          }}
-                          style={{ fill: c.axis || "rgb(var(--foreground-muted))", fontSize: 10 }}
-                        />
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </KpiCardPremium>
-              )}
+          {/* ── Autres charts (émotion, distribution, qualité) ─────────── */}
+          <StaggerItem>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
               {/* Performance by emotion */}
               {byEmotion.length > 0 && (

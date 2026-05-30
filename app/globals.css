@@ -160,6 +160,29 @@ input:-webkit-autofill:active {
 }
 
 
+/* ─── Date input theming ────────────────────────────────────────────────── */
+/* Dark mode (default) */
+input[type="date"] {
+  color-scheme: dark;
+}
+/* Calendar picker indicator — invert to match dark bg */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0.55;
+  filter: invert(1);
+  cursor: pointer;
+}
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 0.85;
+}
+/* Light mode overrides */
+html.light input[type="date"] {
+  color-scheme: light;
+}
+html.light input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: none;
+  opacity: 0.55;
+}
+
 /* Stroke colours on SVG axes / grids (recharts) */
 html.light .recharts-cartesian-axis-tick text {
   fill: rgb(var(--muted)) !important;

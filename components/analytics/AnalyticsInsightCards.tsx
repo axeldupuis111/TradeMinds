@@ -1,7 +1,6 @@
 "use client";
 
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
-import { cn } from "@/lib/cn";
 import { useLanguage } from "@/lib/LanguageContext";
 import { AlertTriangle, Brain, Clock, TrendingDown } from "lucide-react";
 
@@ -75,26 +74,21 @@ export function AnalyticsInsightCards({ worstDay, bestHour, riskyPairInfo, byEmo
         </KpiCardPremium>
       )}
 
-      {/* Risky pair */}
+      {/* Risky pair — aura toujours amber (la card existe pour alerter) */}
       {riskyPairInfo.type !== "insufficient" && (
-        <KpiCardPremium
-          layout="full"
-          accentColor={riskyPairInfo.type === "good" ? "green" : "amber"}
-        >
+        <KpiCardPremium layout="full" accentColor="amber">
           <div className="flex items-start gap-2">
             <AlertTriangle
-              className={cn(
-                "w-4 h-4 mt-0.5 shrink-0",
-                riskyPairInfo.type === "good" ? "text-profit" : "text-warning"
-              )}
+              className="w-4 h-4 mt-0.5 shrink-0 text-warning"
               strokeWidth={1.75}
             />
-            <div>
+            <div className="min-w-0 flex-1">
               <p className="text-[10px] text-warning/80 font-semibold uppercase tracking-wider mb-1">
                 {t("analytics_insight_risk_pair")}
               </p>
               {riskyPairInfo.type === "good" ? (
-                <p className="text-sm font-semibold text-profit">{t("analytics_no_risk_pair")}</p>
+                /* Neutre — pas de couleur "ça va bien" en vert sur fond amber */
+                <p className="text-sm font-semibold text-left text-foreground-muted">{t("analytics_no_risk_pair")}</p>
               ) : (
                 <>
                   <p className="text-sm font-semibold text-foreground">
