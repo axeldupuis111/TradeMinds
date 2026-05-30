@@ -52,6 +52,41 @@ export function buildHeatmap(trades: AnalyticsTrade[]): HeatmapCell[][] {
   );
 }
 
+// ─── Active bounds (for auto-crop) ───────────────────────────────────────────
+
+export type ActiveBounds = {
+  minDay: number;
+  maxDay: number;
+  minHour: number;
+  maxHour: number;
+  hasData: boolean;
+};
+
+/**
+ * Scan the 7×24 matrix and return the tightest bounding box that contains
+ * every cell that has at least one trade.
+ */
+export function getActiveBounds(cells: HeatmapCell[][]): ActiveBounds {
+  let minDay = 6, maxDay = 0, minHour = 23, maxHour = 0;
+  let hasData = false;
+
+  for (let d = 0; d < cells.length; d++) {
+    for (let h = 0; h < cells[d].length; h++) {
+      if (cells[d][h].trades > 0) {
+        hasData = true;
+        if (d < minDay)  minDay  = d;
+        if (d > maxDay)  maxDay  = d;
+        if (h < minHour) minHour = h;
+        if (h > maxHour) maxHour = h;
+      }
+    }
+  }
+
+  return hasData
+    ? { minDay, maxDay, minHour, maxHour, hasData: true }
+    : { minDay: 0, maxDay: 6, minHour: 0, maxHour: 23, hasData: false };
+}
+
 // ─── Percentile helper ────────────────────────────────────────────────────────
 
 /** Linear-interpolated percentile on a pre-sorted array. */
@@ -108,14 +143,14 @@ export function getHeatmapBounds(cells: HeatmapCell[][]): HeatmapBounds {
   positives.sort((a, b) => a - b);
   negatives.sort((a, b) => a - b); // ascending: most-negative first
 
-  // Use p90 of positives as ceiling (or raw max if pool too small)
+  // Use p95 of positives as ceiling (or raw max if pool too small)
   const pClipHigh =
-    positives.length >= 5 ? percentile(positives, 0.9) : maxPnl;
+    positives.length >= 5 ? percentile(positives, 0.95) : maxPnl;
 
-  // Use p10 of negatives as floor — p10 on ascending-sorted negatives gives
-  // the 10th-percentile, i.e. the value at 10 % from the most-negative end
+  // Use p05 of negatives as floor — p05 on ascending-sorted negatives gives
+  // the 5th-percentile, i.e. the value at 5 % from the most-negative end
   const pClipLow =
-    negatives.length >= 5 ? percentile(negatives, 0.1) : minPnl;
+    negatives.length >= 5 ? percentile(negatives, 0.05) : minPnl;
 
   return { pClipHigh, pClipLow, minPnl, maxPnl, totalTrades };
 }
