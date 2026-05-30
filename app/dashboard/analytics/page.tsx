@@ -2,6 +2,8 @@
 
 import { AnalyticsInsightCards } from "@/components/analytics/AnalyticsInsightCards";
 import { AnalyticsKpiCards } from "@/components/analytics/AnalyticsKpiCards";
+import { AutoInsights } from "@/components/analytics/AutoInsights";
+import { HourDayHeatmap } from "@/components/analytics/HourDayHeatmap";
 import EmotionalTrendChart from "@/components/charts/EmotionalTrendChart";
 import ExportPdfButton from "@/components/analytics/ExportPdfButton";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
@@ -624,27 +626,6 @@ export default function AnalyticsPage() {
   };
 
   // ── Tooltip components ────────────────────────────────────────────────────
-  const HourTooltip = ({ active, payload, label }: { active?: boolean; payload?: unknown[]; label?: string }) => {
-    if (!active || !payload?.length) return null;
-    const entry = byHour.find((h) => h.name === label);
-    if (!entry) return null;
-    return (
-      <div style={tooltipStyle}>
-        <p style={{ fontWeight: 600, marginBottom: 4 }}>{label}</p>
-        {entry.count === 0 ? (
-          <p style={{ color: c.axis }}>0 trades</p>
-        ) : (
-          <>
-            <p style={{ color: entry.pnl >= 0 ? c.profit : c.loss }}>
-              {entry.pnl >= 0 ? "+" : ""}{entry.pnl.toFixed(2)}€
-            </p>
-            <p style={{ color: c.axis }}>{entry.count} trades</p>
-          </>
-        )}
-      </div>
-    );
-  };
-
   const PairTooltip = ({ active, payload, label }: { active?: boolean; payload?: unknown[]; label?: string }) => {
     if (!active || !payload?.length) return null;
     const entry = byPair.find((p) => p.name === label);
@@ -1052,83 +1033,84 @@ export default function AnalyticsPage() {
             </StaggerItem>
           )}
 
-          {/* ── Charts grid ───────────────────────────────────────────── */}
+          {/* ── Heatmap jour×heure + Insights automatiques ────────────── */}
           <StaggerItem>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-              {/* Performance by hour */}
+              {/* Heatmap — 2/3 width */}
+              <KpiCardPremium layout="full" accentColor="violet" className="lg:col-span-2">
+                <CardHeader>
+                  <CardTitle>Tes patterns de trading</CardTitle>
+                </CardHeader>
+                <HourDayHeatmap trades={filtered} />
+              </KpiCardPremium>
+
+              {/* Auto-insights — 1/3 width */}
               <KpiCardPremium layout="full" accentColor="cyan">
                 <CardHeader>
-                  <CardTitle>{t("analytics_by_hour")}</CardTitle>
+                  <CardTitle>Ce qu&apos;on remarque</CardTitle>
                 </CardHeader>
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={byHour} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
-                    <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 10 }} tickLine={false} axisLine={{ stroke: c.axisLine }} interval={1} />
-                    <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
-                    <Tooltip content={<HourTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
-                    <Bar
-                      dataKey="pnl"
-                      shape={(props: unknown) => {
-                        const { x, y, width, height, value, payload } = props as BarShapeProps;
-                        const empty = (payload?.count ?? 1) === 0;
-                        return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={empty ? EMPTY_BAR : (value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={empty ? 0.3 : 0.72} />;
-                      }}
-                      activeBar={false}
+                <AutoInsights trades={filtered} />
+              </KpiCardPremium>
+
+            </div>
+          </StaggerItem>
+
+          {/* ── Performance par paire — pleine largeur ─────────────────── */}
+          {byPair.length > 0 && (
+            <StaggerItem>
+              <KpiCardPremium layout="full" accentColor="violet">
+                <CardHeader>
+                  <CardTitle>{t("analytics_by_pair")}</CardTitle>
+                </CardHeader>
+                <ResponsiveContainer width="100%" height={Math.max(220, byPair.length * 44)}>
+                  <BarChart
+                    layout="vertical"
+                    data={byPair}
+                    margin={{ top: 5, right: 80, left: 0, bottom: 5 }}
+                    barSize={28}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke={c.grid} horizontal={false} strokeOpacity={0.4} />
+                    <XAxis
+                      type="number"
+                      tick={{ fill: c.axis, fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={{ stroke: c.axisLine }}
+                      tickFormatter={formatCurrencyAxis}
                     />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      width={90}
+                      tick={{ fill: c.axis, fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <Tooltip content={<PairTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
+                    <Bar dataKey="pnl" activeBar={false} radius={[0, 3, 3, 0]}>
+                      {byPair.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={(entry.pnl ?? 0) >= 0 ? c.profit : c.loss}
+                          fillOpacity={0.72}
+                        />
+                      ))}
+                      <LabelList
+                        dataKey="pnl"
+                        position="right"
+                        formatter={(v: unknown) => formatPnl(Number(v))}
+                        style={{ fill: c.axis || "rgb(var(--foreground-muted))", fontSize: 11 }}
+                      />
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </KpiCardPremium>
+            </StaggerItem>
+          )}
 
-              {/* Performance by pair — horizontal bars */}
-              {byPair.length > 0 && (
-                <KpiCardPremium layout="full" accentColor="violet">
-                  <CardHeader>
-                    <CardTitle>{t("analytics_by_pair")}</CardTitle>
-                  </CardHeader>
-                  <ResponsiveContainer width="100%" height={Math.max(220, byPair.length * 44)}>
-                    <BarChart
-                      layout="vertical"
-                      data={byPair}
-                      margin={{ top: 5, right: 80, left: 0, bottom: 5 }}
-                      barSize={28}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke={c.grid} horizontal={false} strokeOpacity={0.4} />
-                      <XAxis
-                        type="number"
-                        tick={{ fill: c.axis, fontSize: 12 }}
-                        tickLine={false}
-                        axisLine={{ stroke: c.axisLine }}
-                        tickFormatter={formatCurrencyAxis}
-                      />
-                      <YAxis
-                        type="category"
-                        dataKey="name"
-                        width={90}
-                        tick={{ fill: c.axis, fontSize: 12 }}
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <Tooltip content={<PairTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
-                      <Bar dataKey="pnl" activeBar={false} radius={[0, 3, 3, 0]}>
-                        {byPair.map((entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={(entry.pnl ?? 0) >= 0 ? c.profit : c.loss}
-                            fillOpacity={0.72}
-                          />
-                        ))}
-                        <LabelList
-                          dataKey="pnl"
-                          position="right"
-                          formatter={(v: unknown) => formatPnl(Number(v))}
-                          style={{ fill: c.axis || "rgb(var(--foreground-muted))", fontSize: 11 }}
-                        />
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </KpiCardPremium>
-              )}
+          {/* ── Autres charts (émotion, distribution, qualité) ─────────── */}
+          <StaggerItem>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
               {/* Performance by emotion */}
               {byEmotion.length > 0 && (
