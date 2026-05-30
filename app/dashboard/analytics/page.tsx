@@ -21,6 +21,7 @@ import { Search, ShieldCheck, ShieldAlert, Filter, X } from "lucide-react";
 import {
   BarChart,
   Bar,
+  Cell,
   XAxis,
   YAxis,
   Tooltip,
@@ -96,6 +97,16 @@ const EMOTION_EMOJIS: Record<string, string> = {
 type Period = "7d" | "30d" | "90d" | "all" | "custom";
 
 const EMPTY_BAR = "rgb(var(--border))";
+
+/**
+ * Formatter P&L sécurisé : évite "-0€" pour les valeurs proches de zéro.
+ * Utilise Math.round pour traiter -0 comme 0.
+ */
+function formatPnl(n: number): string {
+  const rounded = Math.round(n);
+  if (rounded === 0) return "0€";
+  return `${rounded > 0 ? "+" : ""}${rounded}€`;
+}
 
 interface BarShapeProps {
   x?: number;
@@ -629,9 +640,9 @@ export default function AnalyticsPage() {
     if (!entry) return null;
     return (
       <div style={tooltipStyle}>
-        <p style={{ fontWeight: 600, marginBottom: 4 }}>{label}</p>
+        <p style={{ fontWeight: 600, marginBottom: 4 }}>{entry.name}</p>
         <p style={{ color: entry.pnl >= 0 ? c.profit : c.loss }}>
-          {entry.pnl >= 0 ? "+" : ""}{entry.pnl.toFixed(2)}€
+          {formatPnl(entry.pnl)}
         </p>
         <p style={{ color: c.axis }}>{entry.count} trades · WR {entry.winrate}%</p>
       </div>
@@ -744,7 +755,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* ── Filter bar — sticky ───────────────────────────────────────────── */}
-      <div className="sticky top-0 z-10 -mx-6 px-6 py-3 mb-6 flex flex-wrap gap-2 items-center border-b border-border/60 bg-surface/80 backdrop-blur-md">
+      <div className="sticky top-0 z-30 -mx-6 px-6 py-3 mb-6 flex flex-wrap gap-2 items-center border-b border-border bg-background/95 backdrop-blur-md">
 
         {/* Period pills */}
         <div className="flex items-center gap-0.5 bg-card/60 rounded-lg p-0.5 border border-border/50">
@@ -765,14 +776,14 @@ export default function AnalyticsPage() {
               type="date"
               value={customDateFrom}
               onChange={(e) => setCustomDateFrom(e.target.value)}
-              className="px-2 py-1.5 bg-card border border-border rounded-lg text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-accent"
+              className="px-3 py-1.5 bg-card border border-border rounded-lg text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
             />
             <span className="text-foreground-muted text-xs">→</span>
             <input
               type="date"
               value={customDateTo}
               onChange={(e) => setCustomDateTo(e.target.value)}
-              className="px-2 py-1.5 bg-card border border-border rounded-lg text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-accent"
+              className="px-3 py-1.5 bg-card border border-border rounded-lg text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
             />
           </div>
         )}
@@ -1041,34 +1052,49 @@ export default function AnalyticsPage() {
                 </ResponsiveContainer>
               </KpiCardPremium>
 
-              {/* Performance by pair */}
+              {/* Performance by pair — horizontal bars */}
               {byPair.length > 0 && (
                 <KpiCardPremium layout="full" accentColor="violet">
                   <CardHeader>
                     <CardTitle>{t("analytics_by_pair")}</CardTitle>
                   </CardHeader>
-                  <ResponsiveContainer width="100%" height={280}>
-                    <BarChart data={byPair} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
-                      <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
-                      <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
+                  <ResponsiveContainer width="100%" height={Math.max(220, byPair.length * 44)}>
+                    <BarChart
+                      layout="vertical"
+                      data={byPair}
+                      margin={{ top: 5, right: 80, left: 0, bottom: 5 }}
+                      barSize={28}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke={c.grid} horizontal={false} strokeOpacity={0.4} />
+                      <XAxis
+                        type="number"
+                        tick={{ fill: c.axis, fontSize: 12 }}
+                        tickLine={false}
+                        axisLine={{ stroke: c.axisLine }}
+                        tickFormatter={formatCurrencyAxis}
+                      />
+                      <YAxis
+                        type="category"
+                        dataKey="name"
+                        width={90}
+                        tick={{ fill: c.axis, fontSize: 12 }}
+                        tickLine={false}
+                        axisLine={false}
+                      />
                       <Tooltip content={<PairTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
-                      <Bar
-                        dataKey="pnl"
-                        shape={(props: unknown) => {
-                          const { x, y, width, height, value } = props as BarShapeProps;
-                          return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={(value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={0.72} />;
-                        }}
-                        activeBar={false}
-                      >
+                      <Bar dataKey="pnl" activeBar={false} radius={[0, 3, 3, 0]}>
+                        {byPair.map((entry, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={(entry.pnl ?? 0) >= 0 ? c.profit : c.loss}
+                            fillOpacity={0.72}
+                          />
+                        ))}
                         <LabelList
                           dataKey="pnl"
-                          position="top"
-                          formatter={(v: unknown) => {
-                            const n = Number(v);
-                            return `${n >= 0 ? "+" : ""}${n.toFixed(0)}€`;
-                          }}
-                          style={{ fill: c.axis || "rgb(var(--foreground-muted))", fontSize: 10 }}
+                          position="right"
+                          formatter={(v: unknown) => formatPnl(Number(v))}
+                          style={{ fill: c.axis || "rgb(var(--foreground-muted))", fontSize: 11 }}
                         />
                       </Bar>
                     </BarChart>
