@@ -295,12 +295,19 @@ function detectComeback(
 function detectAverageRecovery(series: DrawdownPoint[]): ResilienceInsight | null {
   if (series.length === 0) return null;
 
+  console.log('[detectAverageRecovery]', { seriesLength: series.length, threshold: 50 });
+
   const recoveryCounts: number[] = [];
+  let eventsDetected = 0;
+  let eventsRecovered = 0;
   let i = 0;
 
   while (i < series.length) {
     // Find start of a drawdown event (drawdown >= 50 €)
     if (series[i].drawdown < 50) { i++; continue; }
+
+    eventsDetected++;
+    console.log('[detectAverageRecovery] event found', { i, drawdown: series[i].drawdown });
 
     // We're in a drawdown >= 5% — record the peak we need to recover
     const targetPeak = series[i].peak;
@@ -316,29 +323,40 @@ function detectAverageRecovery(series: DrawdownPoint[]): ResilienceInsight | nul
     for (let j = troughIdx + 1; j < series.length; j++) {
       if (series[j].cumulative >= targetPeak) {
         recoveryCounts.push(j - troughIdx);
+        eventsRecovered++;
         recovered = true;
+        console.log('[detectAverageRecovery] recovered', { troughIdx, recoveryIndex: j, recoveryTrades: j - troughIdx });
         i = j + 1; // advance past this recovered event
         break;
       }
     }
 
     if (!recovered) {
+      console.log('[detectAverageRecovery] not recovered', { troughIdx });
       // Event not recovered — skip this entire drawdown
       i = troughIdx + 1;
     }
   }
 
-  if (recoveryCounts.length < 3) return null;
+  const med = recoveryCounts.length > 0 ? median(recoveryCounts) : null;
+  console.log('[detectAverageRecovery] result', {
+    eventsDetected,
+    eventsRecovered,
+    recoveryCounts,
+    medianRecovery: med,
+    blockedByMinEvents: recoveryCounts.length < 3,
+    blockedByMedian: med !== null && med > 5,
+  });
 
-  const med = median(recoveryCounts);
-  if (med > 5) return null;
+  if (recoveryCounts.length < 3) return null;
+  if (med! > 5) return null;
 
   return {
     id: "avg_recovery",
     type: "positive",
     title: "Récupération rapide",
-    description: `Tu reviens à ton pic en médiane ${Math.round(med)} trade${med > 1 ? "s" : ""} après un drawdown. Excellent contrôle de risque.`,
-    strength: Math.min(1, (6 - med) / 5),
+    description: `Tu reviens à ton pic en médiane ${Math.round(med!)} trade${med! > 1 ? "s" : ""} après un drawdown. Excellent contrôle de risque.`,
+    strength: Math.min(1, (6 - med!) / 5),
   };
 }
 
@@ -439,6 +457,7 @@ function detectAfterStreakPattern(
  * Returns [] if trades.length < 20 or no insights fire.
  */
 export function generateResilienceInsights(trades: AnalyticsTrade[]): ResilienceInsight[] {
+  console.log('[generateResilienceInsights]', { tradesCount: trades.length, blocked: trades.length < 20 });
   if (trades.length < 20) return [];
 
   const sorted = [...trades]

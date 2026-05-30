@@ -52,12 +52,27 @@ function DrawdownZone({ trades }: { trades: AnalyticsTrade[] }) {
           -{fmtEur(maxDD.maxDrawdown)}
         </p>
         <p className="mt-1 text-xs text-foreground-muted tabular-nums">
-          Soit&nbsp;
-          <span className="text-loss font-medium">
-            -{maxDD.maxDrawdownPct.toFixed(1)}&nbsp;%
-          </span>
-          &nbsp;du pic
+          {Math.round(maxDD.maxDrawdownPct) === 100 ? (
+            <>
+              Soit&nbsp;
+              <span className="text-loss font-medium">-100&nbsp;%</span>
+              &nbsp;du pic
+            </>
+          ) : (
+            <>
+              Soit&nbsp;
+              <span className="text-loss font-medium">
+                -{maxDD.maxDrawdownPct.toFixed(1)}&nbsp;%
+              </span>
+              &nbsp;du pic
+            </>
+          )}
         </p>
+        {Math.round(maxDD.maxDrawdownPct) === 100 && (
+          <p className="text-xs text-loss/80 mt-0.5">
+            Drawdown supérieur à ton pic maximum
+          </p>
+        )}
         {maxDD.recoveryTrades !== null && (
           <p className="mt-1 text-xs text-foreground-muted">
             Récupéré en&nbsp;

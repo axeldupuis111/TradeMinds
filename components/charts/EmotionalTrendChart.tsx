@@ -94,12 +94,14 @@ export default function EmotionalTrendChart() {
           pnl: pnlByDay[date] ?? null,
         }));
 
-      // Trim to actual data range — remove leading/trailing empty space
-      const firstDataIdx = allPoints.findIndex((p) => p.emotionScore != null || p.pnl != null);
-      const lastDataIdx  = [...allPoints].reverse().findIndex((p) => p.emotionScore != null || p.pnl != null);
-      const points = firstDataIdx === -1
-        ? allPoints
-        : allPoints.slice(firstDataIdx, allPoints.length - lastDataIdx);
+      // Trim to trade date range — sessions before first trade or after last trade are excluded.
+      // This removes visual "empty space" caused by emotion-only sessions outside the trading window.
+      const tradeDates   = Object.keys(pnlByDay).sort();
+      const firstTradeDay = tradeDates[0] ?? null;
+      const lastTradeDay  = tradeDates[tradeDates.length - 1] ?? null;
+      const points = firstTradeDay && lastTradeDay
+        ? allPoints.filter((p) => p.date >= firstTradeDay && p.date <= lastTradeDay)
+        : allPoints;
 
       setData(points);
       setLoading(false);
