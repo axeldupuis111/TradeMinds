@@ -299,8 +299,8 @@ function detectAverageRecovery(series: DrawdownPoint[]): ResilienceInsight | nul
   let i = 0;
 
   while (i < series.length) {
-    // Find start of a drawdown event (drawdownPct crosses 5%)
-    if (series[i].drawdownPct < 5) { i++; continue; }
+    // Find start of a drawdown event (drawdown >= 100 €)
+    if (series[i].drawdown < 100) { i++; continue; }
 
     // We're in a drawdown >= 5% — record the peak we need to recover
     const targetPeak = series[i].peak;

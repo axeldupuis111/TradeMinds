@@ -72,18 +72,38 @@ function DrawdownZone({ trades }: { trades: AnalyticsTrade[] }) {
         )}
       </div>
 
-      {/* ── Drawdown en cours ─────────────────────────────────────────────── */}
-      {currentDrawdown > 0 && (
-        <div className="pt-3 border-t border-border/40">
-          <p className="text-xs text-foreground-muted">Drawdown en cours</p>
-          <p className="mt-0.5 text-sm font-semibold tabular-nums text-loss">
-            -{fmtEur(currentDrawdown)}&nbsp;
-            <span className="font-normal text-foreground-muted">
-              ({currentDDPct.toFixed(1)}&nbsp;%)
-            </span>
+      {/* ── Drawdown actuel — barre de progression ───────────────────────── */}
+      <div className="mt-4">
+        <div className="flex justify-between items-baseline mb-1.5">
+          <p className="text-[10px] uppercase tracking-wider text-foreground-muted">
+            Drawdown actuel
+          </p>
+          <p className="text-xs font-medium" style={{ color: "rgb(var(--foreground))" }}>
+            {currentDrawdown === 0 ? "Au pic" : `-${fmtEur(currentDrawdown)}`}
           </p>
         </div>
-      )}
+
+        <div className="h-2 bg-foreground/5 rounded-full overflow-hidden relative">
+          {currentDrawdown > 0 ? (
+            <div
+              className="absolute top-0 left-0 h-full rounded-full transition-all"
+              style={{
+                width: `${Math.min(100, maxDD.maxDrawdown > 0 ? (currentDrawdown / maxDD.maxDrawdown) * 100 : 0)}%`,
+                background: "linear-gradient(to right, rgb(var(--loss) / 0.4), rgb(var(--loss) / 0.85))",
+              }}
+            />
+          ) : (
+            // Au pic : point cyan à droite
+            <div className="absolute right-1 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-accent" />
+          )}
+        </div>
+
+        <p className="text-[10px] text-foreground-muted mt-1.5">
+          {currentDrawdown > 0
+            ? `${currentDDPct.toFixed(1)} % du pic`
+            : "Aucun drawdown en cours"}
+        </p>
+      </div>
 
     </div>
   );
