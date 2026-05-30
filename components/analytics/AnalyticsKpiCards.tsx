@@ -120,7 +120,7 @@ export function AnalyticsKpiCards({
       </div>
 
       {/* ── Ligne 2 : 3 KPIs détail ──────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-stretch">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 
         {/* Best trade */}
         <KpiCardPremium

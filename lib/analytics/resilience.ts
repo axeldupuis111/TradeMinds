@@ -4,11 +4,11 @@ import { type AnalyticsTrade, netPnl } from "./types";
 
 export type DrawdownPoint = {
   tradeIndex: number;
-  cumPnl: number;
-  drawdown: number;       // € below running peak (always >= 0)
-  drawdownEuros: number;  // -(peak - cumPnl) ≤ 0, for chart Area
-  drawdownPct: number;    // drawdown / globalMaxPeak * 100
+  cumulative: number;     // cumulative P&L at this point
   peak: number;           // running peak at this point
+  drawdown: number;       // € below running peak (always >= 0)
+  drawdownEuros: number;  // -drawdown ≤ 0
+  drawdownPct: number;    // drawdown / globalMaxPeak * 100, clamped [0,100]
 };
 
 export type Streak = {
@@ -32,12 +32,14 @@ export type ResilienceInsight = {
  * Build a cumulative drawdown series, one point per trade sorted by open_time.
  *
  * Two-pass algorithm:
- *   Pass 1 — compute running cumPnl + peak to find globalMaxPeak.
- *   Pass 2 — compute drawdownPct = drawdown / globalMaxPeak (standard finance
- *             definition: all % are relative to the absolute peak ever reached).
+ *   Pass 1 — accumulate cumulative P&L to find globalMaxPeak (the highest
+ *             equity point ever reached across the entire series).
+ *   Pass 2 — walk the series again, tracking runningPeak (local high-water
+ *             mark up to each trade). drawdownPct = drawdown / globalMaxPeak,
+ *             clamped to [0, 100] — invariant always holds.
  *
- * drawdownEuros = -(peak - cumPnl) ≤ 0, ready for a Recharts Area chart
- * where 0 sits at the top and drawdowns dip below.
+ * INVARIANT: drawdownPct ∈ [0, 100].
+ * drawdownEuros = -drawdown ≤ 0 (kept for future chart use).
  */
 export function buildDrawdownSeries(trades: AnalyticsTrade[]): DrawdownPoint[] {
   if (trades.length === 0) return [];
@@ -46,34 +48,38 @@ export function buildDrawdownSeries(trades: AnalyticsTrade[]): DrawdownPoint[] {
     .filter((t) => t.open_time)
     .sort((a, b) => new Date(a.open_time).getTime() - new Date(b.open_time).getTime());
 
-  // ── Pass 1: find globalMaxPeak ───────────────────────────────────────────
-  let cum = 0;
+  // ── Pass 1: cumulative series + globalMaxPeak ────────────────────────────
+  let cumPnl = 0;
   let globalMaxPeak = 0;
+  const cumulativeSeries: number[] = [];
+
   for (const t of sorted) {
-    cum += netPnl(t);
-    if (cum > globalMaxPeak) globalMaxPeak = cum;
+    cumPnl += netPnl(t);
+    cumulativeSeries.push(cumPnl);
+    if (cumPnl > globalMaxPeak) globalMaxPeak = cumPnl;
   }
 
-  // ── Pass 2: build series with normalised drawdownPct ────────────────────
-  let cumPnl = 0;
-  let peak   = 0;
+  // ── Pass 2: drawdown point-by-point vs runningPeak ──────────────────────
+  let runningPeak = 0;
   const series: DrawdownPoint[] = [];
 
   for (let i = 0; i < sorted.length; i++) {
-    cumPnl += netPnl(sorted[i]);
-    if (cumPnl > peak) peak = cumPnl;
+    const cum = cumulativeSeries[i];
+    if (cum > runningPeak) runningPeak = cum;
 
-    const drawdown      = Math.max(0, peak - cumPnl);
-    const drawdownEuros = -(drawdown);                                      // ≤ 0
-    const drawdownPct   = globalMaxPeak > 0 ? (drawdown / globalMaxPeak) * 100 : 0;
+    const drawdownAmount = Math.max(0, runningPeak - cum);
+    const drawdownEuros  = -drawdownAmount;
+    const drawdownPct    = globalMaxPeak > 0
+      ? Math.min(100, (drawdownAmount / globalMaxPeak) * 100)
+      : 0;
 
     series.push({
-      tradeIndex: i,
-      cumPnl:        Number(cumPnl.toFixed(2)),
-      drawdown:      Number(drawdown.toFixed(2)),
+      tradeIndex:    i,
+      cumulative:    Number(cum.toFixed(2)),
+      peak:          Number(runningPeak.toFixed(2)),
+      drawdown:      Number(drawdownAmount.toFixed(2)),
       drawdownEuros: Number(drawdownEuros.toFixed(2)),
       drawdownPct:   Number(drawdownPct.toFixed(2)),
-      peak:          Number(peak.toFixed(2)),
     });
   }
 
@@ -112,10 +118,10 @@ export function getMaxDrawdown(series: DrawdownPoint[]): MaxDrawdownResult {
   // Find the peak value that was lost
   const peakAtMaxDD = series[maxDrawdownIdx].peak;
 
-  // Count trades from maxDrawdownIdx+1 until cumPnl >= peakAtMaxDD
+  // Count trades from maxDrawdownIdx+1 until cumulative >= peakAtMaxDD
   let recoveryTrades: number | null = null;
   for (let i = maxDrawdownIdx + 1; i < series.length; i++) {
-    if (series[i].cumPnl >= peakAtMaxDD) {
+    if (series[i].cumulative >= peakAtMaxDD) {
       recoveryTrades = i - maxDrawdownIdx;
       break;
     }
@@ -305,10 +311,10 @@ function detectAverageRecovery(series: DrawdownPoint[]): ResilienceInsight | nul
       troughIdx++;
     }
 
-    // From trough onwards, find recovery (cumPnl >= targetPeak)
+    // From trough onwards, find recovery (cumulative >= targetPeak)
     let recovered = false;
     for (let j = troughIdx + 1; j < series.length; j++) {
-      if (series[j].cumPnl >= targetPeak) {
+      if (series[j].cumulative >= targetPeak) {
         recoveryCounts.push(j - troughIdx);
         recovered = true;
         i = j + 1; // advance past this recovered event
