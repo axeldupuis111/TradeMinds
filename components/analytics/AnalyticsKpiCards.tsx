@@ -40,7 +40,7 @@ export function AnalyticsKpiCards({
   const synthAccent: AccentColor = totalPnl >= 0 ? "green" : "loss";
 
   return (
-    <div className="mb-6 space-y-3">
+    <div className="mb-6 space-y-2">
 
       {/* ── Ligne 1 : 4 KPIs principaux ──────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

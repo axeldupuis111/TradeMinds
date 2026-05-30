@@ -1,7 +1,12 @@
 "use client";
 
 import { Fragment, useMemo } from "react";
-import { buildHeatmap, getHeatmapBounds, type HeatmapCell } from "@/lib/analytics/heatmap";
+import {
+  buildHeatmap,
+  getHeatmapBounds,
+  type HeatmapBounds,
+  type HeatmapCell,
+} from "@/lib/analytics/heatmap";
 import type { AnalyticsTrade } from "@/lib/analytics/types";
 import { useLanguage } from "@/lib/LanguageContext";
 
@@ -18,42 +23,62 @@ const DAY_KEYS_MON_FIRST = [
   "analytics_sun",
 ] as const;
 
-// Only show tick labels at these hours; others are empty
-const LABELED_HOURS = new Set([0, 6, 12, 18, 23]);
+// ─── Session pivot hours ──────────────────────────────────────────────────────
+// Labels shown at these hours; guide lines on the column BEFORE each pivot.
+const PIVOT_HOURS = new Set([0, 6, 12, 18, 23]);
+// Columns that get a right-edge guide line (just before a session pivot)
+const GUIDE_HOURS = new Set([5, 11, 17]);
 
-// ─── Colour interpolation ─────────────────────────────────────────────────────
+const CELL_HEIGHT = 32; // px — FIX 6
 
-function cellBg(
-  cell: HeatmapCell,
-  bounds: { minPnl: number; maxPnl: number }
-): string {
-  if (cell.trades === 0) return "rgb(var(--foreground) / 0.04)";
-  if (cell.pnl === 0) return "rgb(var(--foreground-muted) / 0.18)";
-  if (cell.pnl > 0 && bounds.maxPnl > 0) {
-    const a = Math.max(0.12, Math.min(0.85, (cell.pnl / bounds.maxPnl) * 0.85));
-    return `rgb(var(--profit) / ${a.toFixed(2)})`;
-  }
-  if (cell.pnl < 0 && bounds.minPnl < 0) {
-    const a = Math.max(
-      0.12,
-      Math.min(0.85, (Math.abs(cell.pnl) / Math.abs(bounds.minPnl)) * 0.85)
-    );
-    return `rgb(var(--loss) / ${a.toFixed(2)})`;
-  }
-  return "rgb(var(--foreground-muted) / 0.18)";
+// ─── Colour interpolation (FIX 2 + 3) ────────────────────────────────────────
+
+/**
+ * Sqrt-boosted opacity: lifts mid-range cells so they read clearly without
+ * over-saturating the max cell.
+ *   ratio 0.0 → opacity 0.25
+ *   ratio 0.3 → opacity ~0.63  (sqrt(0.3)=0.55 → 0.25+0.55×0.70)
+ *   ratio 1.0 → opacity 0.95
+ */
+function boostedOpacity(ratio: number): number {
+  const clamped = Math.max(0, Math.min(1, ratio));
+  return 0.25 + Math.sqrt(clamped) * 0.70;
 }
 
-function fmtLegend(n: number): string {
+function cellBg(cell: HeatmapCell, bounds: HeatmapBounds): string {
+  // FIX 3 — empty cells: very subtle, border supplied separately
+  if (cell.trades === 0) return "rgb(var(--foreground-muted) / 0.06)";
+
+  if (cell.pnl === 0) return "rgb(var(--foreground-muted) / 0.15)";
+
+  if (cell.pnl > 0) {
+    const clip = bounds.pClipHigh > 0 ? bounds.pClipHigh : 1;
+    const opacity = boostedOpacity(cell.pnl / clip);
+    return `rgb(var(--profit) / ${opacity.toFixed(2)})`;
+  }
+
+  // cell.pnl < 0
+  const clip = bounds.pClipLow < 0 ? Math.abs(bounds.pClipLow) : 1;
+  const opacity = boostedOpacity(Math.abs(cell.pnl) / clip);
+  return `rgb(var(--loss) / ${opacity.toFixed(2)})`;
+}
+
+// ─── Formatting ───────────────────────────────────────────────────────────────
+
+function fmtPnl(n: number): string {
   const r = Math.round(n);
   if (r === 0) return "0 €";
   return `${r > 0 ? "+" : ""}${r} €`;
 }
 
 function fmtTooltip(cell: HeatmapCell, dayLabel: string): string {
-  if (cell.trades === 0) return `${dayLabel} ${cell.hour}h · Aucun trade`;
+  if (cell.trades === 0) return `${dayLabel} ${cell.hour}h · 0 trade`;
   const wr = Math.round(cell.winRate * 100);
-  const pnlStr = fmtLegend(cell.pnl);
-  return `${dayLabel} ${cell.hour}h · ${cell.trades} trade${cell.trades > 1 ? "s" : ""} · ${pnlStr} · WR ${wr} %`;
+  return (
+    `${dayLabel} ${cell.hour}h · ` +
+    `${cell.trades} trade${cell.trades > 1 ? "s" : ""} · ` +
+    `${fmtPnl(cell.pnl)} · WR ${wr} %`
+  );
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -62,7 +87,7 @@ export function HourDayHeatmap({ trades }: Props) {
   const { t } = useLanguage();
 
   const heatmap = useMemo(() => buildHeatmap(trades), [trades]);
-  const bounds = useMemo(() => getHeatmapBounds(heatmap), [heatmap]);
+  const bounds  = useMemo(() => getHeatmapBounds(heatmap), [heatmap]);
 
   if (bounds.totalTrades < 10) {
     return (
@@ -90,7 +115,7 @@ export function HourDayHeatmap({ trades }: Props) {
               {/* Day label */}
               <div
                 className="flex items-center justify-end pr-1.5 text-[10px] text-foreground-muted select-none"
-                style={{ height: 28 }}
+                style={{ height: CELL_HEIGHT }}
               >
                 {dayLabel}
               </div>
@@ -101,9 +126,17 @@ export function HourDayHeatmap({ trades }: Props) {
                   key={cell.hour}
                   title={fmtTooltip(cell, dayLabel)}
                   style={{
-                    height: 28,
+                    height: CELL_HEIGHT,
                     borderRadius: 4,
                     backgroundColor: cellBg(cell, bounds),
+                    // FIX 3 — subtle border on empty cells for grid structure
+                    border: cell.trades === 0
+                      ? "1px solid rgb(var(--foreground-muted) / 0.10)"
+                      : "1px solid transparent",
+                    // FIX 4 — guide line just before each session pivot
+                    borderRight: GUIDE_HOURS.has(cell.hour)
+                      ? "1px solid rgb(var(--foreground-muted) / 0.18)"
+                      : undefined,
                     cursor: "pointer",
                     transition: "opacity 100ms ease",
                   }}
@@ -114,36 +147,41 @@ export function HourDayHeatmap({ trades }: Props) {
           );
         })}
 
-        {/* Hour label row */}
-        <div style={{ height: 16 }} /> {/* spacer under day labels */}
+        {/* Hour label row (FIX 4) */}
+        <div style={{ height: 18 }} /> {/* spacer under day-label column */}
         {Array.from({ length: 24 }, (_, h) => (
           <div
             key={`hl-${h}`}
-            className="text-center text-foreground-muted select-none"
-            style={{ fontSize: 9, lineHeight: "16px" }}
+            className="text-center text-foreground-muted select-none font-mono"
+            style={{ fontSize: 9, lineHeight: "18px" }}
           >
-            {LABELED_HOURS.has(h) ? `${h}h` : ""}
+            {PIVOT_HOURS.has(h) ? `${h}h` : ""}
           </div>
         ))}
       </div>
 
-      {/* ── Legend ───────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-end gap-2 mt-3">
-        <span className="text-[10px] text-foreground-muted tabular-nums">
-          {fmtLegend(bounds.minPnl)}
+      {/* ── Legend (FIX 5) ───────────────────────────────────────────────── */}
+      <div className="flex flex-col items-end gap-1 mt-3">
+        <span className="text-[10px] text-foreground-muted/60 select-none">
+          P&amp;L par cellule
         </span>
-        <div
-          style={{
-            width: 80,
-            height: 8,
-            borderRadius: 4,
-            background:
-              "linear-gradient(to right, rgb(var(--loss) / 0.80), rgb(var(--foreground) / 0.08), rgb(var(--profit) / 0.80))",
-          }}
-        />
-        <span className="text-[10px] text-foreground-muted tabular-nums">
-          {fmtLegend(bounds.maxPnl)}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-foreground-muted tabular-nums">
+            {fmtPnl(bounds.minPnl)}
+          </span>
+          <div
+            style={{
+              width: 140,
+              height: 8,
+              borderRadius: 4,
+              background:
+                "linear-gradient(to right, rgb(var(--loss) / 0.90), rgb(var(--foreground) / 0.08), rgb(var(--profit) / 0.90))",
+            }}
+          />
+          <span className="text-[11px] text-foreground-muted tabular-nums">
+            {fmtPnl(bounds.maxPnl)}
+          </span>
+        </div>
       </div>
     </div>
   );

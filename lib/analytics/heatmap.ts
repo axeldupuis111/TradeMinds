@@ -19,7 +19,6 @@ export type HeatmapCell = {
  * Returns an empty (all-zero) matrix if trades is empty.
  */
 export function buildHeatmap(trades: AnalyticsTrade[]): HeatmapCell[][] {
-  // raw accumulators
   const raw: Array<Array<{ pnl: number; trades: number; wins: number }>> =
     Array.from({ length: 7 }, () =>
       Array.from({ length: 24 }, () => ({ pnl: 0, trades: 0, wins: 0 }))
@@ -53,12 +52,44 @@ export function buildHeatmap(trades: AnalyticsTrade[]): HeatmapCell[][] {
   );
 }
 
-/** Bounds for colour interpolation and legend. */
-export function getHeatmapBounds(cells: HeatmapCell[][]): {
+// ─── Percentile helper ────────────────────────────────────────────────────────
+
+/** Linear-interpolated percentile on a pre-sorted array. */
+function percentile(sorted: number[], p: number): number {
+  if (sorted.length === 0) return 0;
+  const idx = (sorted.length - 1) * p;
+  const lo = Math.floor(idx);
+  const hi = Math.ceil(idx);
+  if (lo === hi) return sorted[lo];
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+}
+
+// ─── Bounds ───────────────────────────────────────────────────────────────────
+
+export type HeatmapBounds = {
+  /** p90 of positive-PnL cells — clipping ceiling for green interpolation. */
+  pClipHigh: number;
+  /** p10 of negative-PnL cells (negative value) — clipping floor for red. */
+  pClipLow: number;
+  /** Raw min PnL across all active cells — used for legend label only. */
   minPnl: number;
+  /** Raw max PnL across all active cells — used for legend label only. */
   maxPnl: number;
   totalTrades: number;
-} {
+};
+
+/**
+ * Compute colour-interpolation bounds using separate percentile pools for
+ * positive and negative cells.
+ *
+ * Why separate pools: mixing positive + negative PnL values into a single
+ * p10/p90 calculation biases the clipping when the distribution is
+ * asymmetric (e.g. 80 % positive cells → p10 lands near 0 and nearly all
+ * negative cells saturate immediately).
+ */
+export function getHeatmapBounds(cells: HeatmapCell[][]): HeatmapBounds {
+  const positives: number[] = [];
+  const negatives: number[] = [];
   let minPnl = 0;
   let maxPnl = 0;
   let totalTrades = 0;
@@ -66,11 +97,25 @@ export function getHeatmapBounds(cells: HeatmapCell[][]): {
   for (const row of cells) {
     for (const cell of row) {
       if (cell.trades === 0) continue;
+      totalTrades += cell.trades;
       if (cell.pnl < minPnl) minPnl = cell.pnl;
       if (cell.pnl > maxPnl) maxPnl = cell.pnl;
-      totalTrades += cell.trades;
+      if (cell.pnl > 0) positives.push(cell.pnl);
+      if (cell.pnl < 0) negatives.push(cell.pnl);
     }
   }
 
-  return { minPnl, maxPnl, totalTrades };
+  positives.sort((a, b) => a - b);
+  negatives.sort((a, b) => a - b); // ascending: most-negative first
+
+  // Use p90 of positives as ceiling (or raw max if pool too small)
+  const pClipHigh =
+    positives.length >= 5 ? percentile(positives, 0.9) : maxPnl;
+
+  // Use p10 of negatives as floor — p10 on ascending-sorted negatives gives
+  // the 10th-percentile, i.e. the value at 10 % from the most-negative end
+  const pClipLow =
+    negatives.length >= 5 ? percentile(negatives, 0.1) : minPnl;
+
+  return { pClipHigh, pClipLow, minPnl, maxPnl, totalTrades };
 }
