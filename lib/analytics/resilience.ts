@@ -5,9 +5,10 @@ import { type AnalyticsTrade, netPnl } from "./types";
 export type DrawdownPoint = {
   tradeIndex: number;
   cumPnl: number;
-  drawdown: number;      // € below peak (always >= 0)
-  drawdownPct: number;   // % below peak
-  peak: number;          // running peak at this point
+  drawdown: number;       // € below running peak (always >= 0)
+  drawdownEuros: number;  // -(peak - cumPnl) ≤ 0, for chart Area
+  drawdownPct: number;    // drawdown / globalMaxPeak * 100
+  peak: number;           // running peak at this point
 };
 
 export type Streak = {
@@ -29,7 +30,14 @@ export type ResilienceInsight = {
 
 /**
  * Build a cumulative drawdown series, one point per trade sorted by open_time.
- * Drawdown is measured from the running all-time peak.
+ *
+ * Two-pass algorithm:
+ *   Pass 1 — compute running cumPnl + peak to find globalMaxPeak.
+ *   Pass 2 — compute drawdownPct = drawdown / globalMaxPeak (standard finance
+ *             definition: all % are relative to the absolute peak ever reached).
+ *
+ * drawdownEuros = -(peak - cumPnl) ≤ 0, ready for a Recharts Area chart
+ * where 0 sits at the top and drawdowns dip below.
  */
 export function buildDrawdownSeries(trades: AnalyticsTrade[]): DrawdownPoint[] {
   if (trades.length === 0) return [];
@@ -38,21 +46,34 @@ export function buildDrawdownSeries(trades: AnalyticsTrade[]): DrawdownPoint[] {
     .filter((t) => t.open_time)
     .sort((a, b) => new Date(a.open_time).getTime() - new Date(b.open_time).getTime());
 
+  // ── Pass 1: find globalMaxPeak ───────────────────────────────────────────
+  let cum = 0;
+  let globalMaxPeak = 0;
+  for (const t of sorted) {
+    cum += netPnl(t);
+    if (cum > globalMaxPeak) globalMaxPeak = cum;
+  }
+
+  // ── Pass 2: build series with normalised drawdownPct ────────────────────
   let cumPnl = 0;
-  let peak = 0;
+  let peak   = 0;
   const series: DrawdownPoint[] = [];
 
   for (let i = 0; i < sorted.length; i++) {
     cumPnl += netPnl(sorted[i]);
     if (cumPnl > peak) peak = cumPnl;
-    const drawdown = peak > 0 ? Math.max(0, peak - cumPnl) : 0;
-    const drawdownPct = peak > 0 ? (drawdown / peak) * 100 : 0;
+
+    const drawdown      = Math.max(0, peak - cumPnl);
+    const drawdownEuros = -(drawdown);                                      // ≤ 0
+    const drawdownPct   = globalMaxPeak > 0 ? (drawdown / globalMaxPeak) * 100 : 0;
+
     series.push({
       tradeIndex: i,
-      cumPnl: Number(cumPnl.toFixed(2)),
-      drawdown: Number(drawdown.toFixed(2)),
-      drawdownPct: Number(drawdownPct.toFixed(2)),
-      peak: Number(peak.toFixed(2)),
+      cumPnl:        Number(cumPnl.toFixed(2)),
+      drawdown:      Number(drawdown.toFixed(2)),
+      drawdownEuros: Number(drawdownEuros.toFixed(2)),
+      drawdownPct:   Number(drawdownPct.toFixed(2)),
+      peak:          Number(peak.toFixed(2)),
     });
   }
 

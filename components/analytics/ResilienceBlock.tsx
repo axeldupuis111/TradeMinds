@@ -4,8 +4,9 @@ import { useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Shield, RotateCcw, AlertTriangle } from "lucide-react";
 import {
-  ComposedChart,
+  AreaChart,
   Area,
+  YAxis,
   ResponsiveContainer,
   Tooltip as RechartsTooltip,
 } from "recharts";
@@ -35,67 +36,103 @@ function fmtEur(n: number): string {
 // ─── Zone 1 — Drawdown ────────────────────────────────────────────────────────
 
 function DrawdownZone({ trades }: { trades: AnalyticsTrade[] }) {
-  const series  = useMemo(() => buildDrawdownSeries(trades), [trades]);
-  const maxDD   = useMemo(() => getMaxDrawdown(series), [series]);
+  const series = useMemo(() => buildDrawdownSeries(trades), [trades]);
+  const maxDD  = useMemo(() => getMaxDrawdown(series), [series]);
 
-  const chartData = series.map((p, i) => ({
-    i,
-    dd: Number(p.drawdownPct.toFixed(2)),
+  // Chart data: drawdownEuros is ≤ 0 (0 = at peak, negative = underwater)
+  const chartData = series.map((p) => ({
+    i:             p.tradeIndex,
+    drawdownEuros: p.drawdownEuros,
+    drawdownPct:   p.drawdownPct,
   }));
+
+  const yMin = chartData.length > 0
+    ? Math.min(...chartData.map((d) => d.drawdownEuros))
+    : -1;
 
   return (
     <div className="flex flex-col gap-4">
-      {/* KPIs */}
-      <div className="flex flex-col gap-2">
+
+      {/* ── KPI ──────────────────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-1.5">
         <p
           className="text-[10px] font-semibold uppercase text-foreground-muted leading-none"
           style={{ letterSpacing: "0.12em" }}
         >
           Drawdown max
         </p>
-        <div className="text-2xl font-black tabular-nums text-loss leading-none">
+
+        {/* Primary value */}
+        <div className="text-xl font-bold tabular-nums text-loss leading-none">
           -{fmtEur(maxDD.maxDrawdown)}
         </div>
-        <div className="flex items-center gap-2 text-xs text-foreground-muted">
-          <span className="tabular-nums font-medium text-loss">
-            -{maxDD.maxDrawdownPct.toFixed(1)}%
+
+        {/* Sublabel 1 — % du pic */}
+        <p className="text-xs text-foreground-muted tabular-nums">
+          Soit&nbsp;
+          <span className="text-loss font-medium">
+            -{maxDD.maxDrawdownPct.toFixed(1)}&nbsp;%
           </span>
-          {maxDD.recoveryTrades !== null && (
-            <>
-              <span className="opacity-40">·</span>
-              <span>
-                Récupéré en{" "}
-                <span className="text-foreground font-semibold tabular-nums">
-                  {maxDD.recoveryTrades}
-                </span>{" "}
-                trade{maxDD.recoveryTrades !== 1 ? "s" : ""}
-              </span>
-            </>
-          )}
-          {maxDD.recoveryTrades === null && (
-            <>
-              <span className="opacity-40">·</span>
-              <span className="text-loss/70">Non récupéré</span>
-            </>
-          )}
-        </div>
+          &nbsp;du pic
+        </p>
+
+        {/* Sublabel 2 — récupération */}
+        {maxDD.recoveryTrades !== null && (
+          <p className="text-xs text-foreground-muted">
+            Récupéré en&nbsp;
+            <span className="text-foreground font-semibold tabular-nums">
+              {maxDD.recoveryTrades}
+            </span>
+            &nbsp;trade{maxDD.recoveryTrades !== 1 ? "s" : ""}
+          </p>
+        )}
+        {maxDD.recoveryTrades === null && maxDD.maxDrawdown > 0 && (
+          <p className="text-xs text-loss/70">Pas encore récupéré</p>
+        )}
       </div>
 
-      {/* Area chart — drawdown % curve */}
+      {/* ── Area chart — drawdown en € (négatif ou 0) ────────────────────── */}
       {chartData.length > 1 && (
-        <div style={{ height: 120 }}>
+        <div style={{ height: 140 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
+            <AreaChart
+              data={chartData}
+              margin={{ top: 4, right: 0, left: 0, bottom: 0 }}
+            >
               <defs>
                 <linearGradient id="ddGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="rgb(var(--loss))" stopOpacity={0.35} />
-                  <stop offset="95%" stopColor="rgb(var(--loss))" stopOpacity={0.04} />
+                  {/* 0 at top = no fill; bottom = deepest drawdown → opaque */}
+                  <stop offset="0%"   stopColor="rgb(var(--loss))" stopOpacity={0.0}  />
+                  <stop offset="100%" stopColor="rgb(var(--loss))" stopOpacity={0.45} />
                 </linearGradient>
               </defs>
+
+              {/* Y axis hidden, domain forced: dataMin (negative) → 0 */}
+              <YAxis hide domain={[yMin, 0]} />
+
               <RechartsTooltip
                 content={({ active, payload }) => {
                   if (!active || !payload?.length) return null;
-                  const v = payload[0].value as number;
+                  const dd  = payload[0].payload.drawdownEuros as number;
+                  const pct = payload[0].payload.drawdownPct   as number;
+                  const idx = (payload[0].payload.i as number) + 1;
+                  if (dd === 0) {
+                    return (
+                      <div
+                        style={{
+                          background: "rgb(var(--card))",
+                          border: "1px solid rgb(var(--border))",
+                          borderRadius: 6,
+                          padding: "6px 10px",
+                          fontSize: 11,
+                          color: "rgb(var(--foreground-muted))",
+                          pointerEvents: "none",
+                        }}
+                      >
+                        Trade&nbsp;#{idx}&nbsp;· Au pic
+                      </div>
+                    );
+                  }
                   return (
                     <div
                       style={{
@@ -108,21 +145,25 @@ function DrawdownZone({ trades }: { trades: AnalyticsTrade[] }) {
                         pointerEvents: "none",
                       }}
                     >
-                      -{v.toFixed(1)}%
+                      Trade&nbsp;#{idx}&nbsp;·&nbsp;
+                      {Math.round(dd)}&nbsp;€&nbsp;·&nbsp;
+                      -{pct.toFixed(1)}&nbsp;% du pic
                     </div>
                   );
                 }}
               />
+
               <Area
                 type="monotone"
-                dataKey="dd"
+                dataKey="drawdownEuros"
                 stroke="rgb(var(--loss))"
                 strokeWidth={1.5}
                 fill="url(#ddGrad)"
                 dot={false}
                 activeDot={{ r: 3, fill: "rgb(var(--loss))", strokeWidth: 0 }}
+                baseValue={0}
               />
-            </ComposedChart>
+            </AreaChart>
           </ResponsiveContainer>
         </div>
       )}
@@ -383,6 +424,9 @@ export function ResilienceBlock({ trades }: Props) {
       <KpiCardPremium layout="full" accentColor="loss">
         <CardHeader>
           <CardTitle>Ta résilience</CardTitle>
+          <p className="text-xs text-foreground-muted mt-1">
+            Drawdown, séries gagnantes et comportement post-perte
+          </p>
         </CardHeader>
         <div className="flex flex-col items-center justify-center py-12 gap-4">
           <Shield
@@ -411,6 +455,9 @@ export function ResilienceBlock({ trades }: Props) {
     <KpiCardPremium layout="full" accentColor="loss">
       <CardHeader>
         <CardTitle>Ta résilience</CardTitle>
+        <p className="text-xs text-foreground-muted mt-1">
+          Drawdown, séries gagnantes et comportement post-perte
+        </p>
       </CardHeader>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 lg:divide-x lg:divide-border/40 gap-y-6 lg:gap-y-0">
