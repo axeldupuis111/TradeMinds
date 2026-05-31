@@ -1,11 +1,19 @@
 "use client";
 
-import { ICT_EMOTIONS, detectKillzone } from "@/lib/ict-constants";
+import { ICT_EMOTIONS } from "@/lib/ict-constants";
+import {
+  computeConfluenceScore,
+  deriveSetupFromChecklist,
+  deriveTradeDuration,
+  formatDuration,
+  killzoneLabel,
+} from "@/lib/strategy/derive";
 import { useStrategyTags } from "@/lib/hooks/useStrategyTags";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
 import type { Lang } from "@/lib/translations";
+import { ChevronDown, Sparkles } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -74,30 +82,6 @@ const EMOTION_LABEL_KEYS: Record<string, string> = {
 };
 
 
-function IctAccordion({ defaultOpen, label, children }: { defaultOpen: boolean; label: string; children: React.ReactNode }) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div className="border border-border rounded-lg overflow-hidden">
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-4 py-3 text-sm text-muted hover:text-foreground transition-colors"
-      >
-        <span>{label}</span>
-        <svg className={`w-4 h-4 transition-transform duration-200 ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-      <div
-        className="transition-all duration-200 ease-in-out overflow-hidden"
-        style={{ maxHeight: open ? "500px" : "0px", opacity: open ? 1 : 0 }}
-      >
-        <div className="px-4 pb-4">
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 interface Props {
   trade: TradeDetail;
@@ -136,11 +120,9 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
   const [tpInitial, setTpInitial] = useState<string>(trade.tp_initial != null ? String(trade.tp_initial) : "");
 
   // ICT state
-  const [ictSetup, setIctSetup] = useState<string>(trade.ict_setup || "");
-  const [ictKillzone, setIctKillzone] = useState<string>(trade.ict_killzone || "");
   const [ictChecklist, setIctChecklist] = useState<Record<string, boolean>>(trade.ict_checklist || {});
-  const [killzoneAutoDetected, setKillzoneAutoDetected] = useState(false);
   const [savedField, setSavedField] = useState<string | null>(null);
+  const [derivedDetailsOpen, setDerivedDetailsOpen] = useState(false);
   const debounceRefs = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const screenshotPathRef = useRef<string | null>(null);
 
@@ -160,19 +142,8 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
       screenshotPathRef.current = null;
       setScreenshotUrl(null);
     }
-    setIctSetup(trade.ict_setup || "");
     setIctChecklist(trade.ict_checklist || {});
-    setKillzoneAutoDetected(false);
-
     setChallengeId(trade.challenge_id || null);
-
-    if (!trade.ict_killzone && trade.open_time) {
-      const detected = detectKillzone(trade.open_time);
-      setIctKillzone(detected || "");
-      setKillzoneAutoDetected(!!detected);
-    } else {
-      setIctKillzone(trade.ict_killzone || "");
-    }
   }, [trade.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -213,7 +184,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
     setTimeout(() => setSavedField(null), 1500);
   }
 
-  function saveIctField(field: string, value: string | Record<string, boolean>) {
+  function saveIctField(field: string, value: string | number | Record<string, boolean>) {
     if (debounceRefs.current[field]) clearTimeout(debounceRefs.current[field]);
     debounceRefs.current[field] = setTimeout(async () => {
       const dbValue = typeof value === "string" && value === "" ? null : value;
@@ -253,13 +224,21 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
     }, 500);
   }
 
-  function handleIctSetup(value: string) { setIctSetup(value); saveIctField("ict_setup", value); }
-  function handleIctKillzone(value: string) { setIctKillzone(value); setKillzoneAutoDetected(false); saveIctField("ict_killzone", value); }
-
   function handleIctChecklist(key: string, checked: boolean) {
     const updated = { ...ictChecklist, [key]: checked };
     setIctChecklist(updated);
     saveIctField("ict_checklist", updated);
+
+    // Auto-derive and save confluence score
+    const score = computeConfluenceScore(updated);
+    saveIctField("ict_confluence_score", score);
+
+    // Auto-derive and save setup from checklist mapping
+    const availableSetups = stratTags.setups.map((s) => s.value);
+    const derived = deriveSetupFromChecklist(updated, stratTags.checklistSetupMapping, availableSetups);
+    if (derived !== null) {
+      saveIctField("ict_setup", derived);
+    }
   }
 
 
@@ -309,6 +288,23 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
   const checklistTotal = checklistItems.length || 7;
 
   const selectClass = "w-full px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent";
+
+  // ── Derived values (read-only, computed from checklist + trade timestamps) ──
+  const derivedSetupValue = deriveSetupFromChecklist(
+    ictChecklist,
+    stratTags.checklistSetupMapping,
+    stratTags.setups.map((s) => s.value)
+  );
+  const derivedSetupLabel =
+    derivedSetupValue
+      ? (stratTags.setups.find((s) => s.value === derivedSetupValue)?.label[lang as Lang] ?? derivedSetupValue)
+      : null;
+  const derivedKillzone = trade.open_time ? killzoneLabel(trade.open_time) : "—";
+  const { category: durationCategory, minutes: durationMinutes } = trade.open_time && trade.close_time
+    ? deriveTradeDuration(trade.open_time, trade.close_time)
+    : { category: "scalp" as const, minutes: 0 };
+  const durationCategoryLabel: Record<string, string> = { scalp: "Scalp", intraday: "Intraday", swing: "Swing" };
+  const confluenceScore = computeConfluenceScore(ictChecklist);
 
   return (
     <>
@@ -528,50 +524,54 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
             </label>
           </div>
 
-          {/* ICT Details accordion */}
+          {/* Derived details — read-only, computed automatically */}
           {showAnalysis && !stratTags.loading && (
-            <IctAccordion
-              defaultOpen={true}
-              label={t("ict_accordion_title")}
-            >
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs text-muted mb-1">
-                    {t("ict_setup")}
-                    <SavedIndicator visible={savedField === "ict_setup"} />
-                  </label>
-                  {stratTags.isDefault || stratTags.setups.length > 0 ? (
-                    <select value={ictSetup} onChange={(e) => handleIctSetup(e.target.value)} className={selectClass}>
-                      <option value="">{t("ict_select_setup")}</option>
-                      {stratTags.setups.map((s) => (
-                        <option key={s.value} value={s.value}>{s.label[l]}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <p className="text-xs text-muted italic py-2">{t("ict_no_setup_tags")}</p>
-                  )}
+            <div className="border border-border rounded-lg overflow-hidden">
+              <button
+                onClick={() => setDerivedDetailsOpen((o) => !o)}
+                className="w-full flex items-center justify-between px-4 py-3 text-sm text-muted hover:text-foreground transition-colors"
+              >
+                <span className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-accent" />
+                  <span>Détails dérivés</span>
+                </span>
+                <ChevronDown
+                  className={`w-4 h-4 transition-transform duration-200 ${derivedDetailsOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+              {derivedDetailsOpen && (
+                <div className="px-4 pb-4 space-y-2 text-xs">
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-muted">Setup détecté :</span>
+                    <span className={`font-medium ${derivedSetupLabel ? "text-foreground" : "text-muted italic"}`}>
+                      {derivedSetupLabel ?? "Aucun setup matché"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-muted">Killzone :</span>
+                    <span className="text-foreground font-medium">{derivedKillzone}</span>
+                  </div>
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-muted">Durée :</span>
+                    <span className="text-foreground font-medium">
+                      {durationCategoryLabel[durationCategory]}
+                      {durationMinutes > 0 && (
+                        <span className="text-muted font-normal ml-1">({formatDuration(durationMinutes)})</span>
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-muted">Score conformité :</span>
+                    <span className="text-foreground font-medium tabular-nums">
+                      {confluenceScore}/{checklistTotal}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-muted italic mt-2">
+                    Détecté automatiquement depuis ta checklist et l&apos;heure d&apos;ouverture du trade.
+                  </p>
                 </div>
-                <div>
-                  <label className="block text-xs text-muted mb-1">
-                    {t("ict_killzone")}
-                    <SavedIndicator visible={savedField === "ict_killzone"} />
-                  </label>
-                  {stratTags.isDefault || stratTags.timing.length > 0 ? (
-                    <select value={ictKillzone} onChange={(e) => handleIctKillzone(e.target.value)} className={selectClass}>
-                      <option value="">{t("ict_select_killzone")}</option>
-                      {stratTags.timing.map((s) => (
-                        <option key={s.value} value={s.value}>{s.label[l]}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <p className="text-xs text-muted italic py-2">{t("ict_no_timing_tags")}</p>
-                  )}
-                  {killzoneAutoDetected && (
-                    <p className="text-xs text-muted italic mt-1">{t("ict_autodetected_killzone")}</p>
-                  )}
-                </div>
-              </div>
-            </IctAccordion>
+              )}
+            </div>
           )}
 
           {/* Save button */}

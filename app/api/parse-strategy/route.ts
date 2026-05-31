@@ -47,6 +47,9 @@ Réponds UNIQUEMENT en JSON valide, sans texte avant ou après :
   "max_consecutive_losses": number ou null,
   "max_session_minutes": number ou null (durée max d'une session de trading en minutes),
   "setup_rules": ["règle 1", "règle 2", ...] (liste des conditions d'entrée et règles de trading extraites du texte),
+  "checklist_to_setups": {
+    "<checklist_item_value>": ["<setup_value_1>", "<setup_value_2>"]
+  },
   "strategy_tags": {
     "setups": [
       { "value": "snake_case_id", "label_fr": "...", "label_en": "...", "label_de": "...", "label_es": "..." }
@@ -104,11 +107,25 @@ INSTRUCTIONS POUR strategy_tags — Extrait les concepts clés pour créer des c
 5. "checklist" : EXACTEMENT 5 à 8 conditions vérifiables avant chaque trade, adaptées à la méthodologie décrite. Chaque item doit être une condition binaire (oui/non) spécifique à cette stratégie.
 
 Pour chaque item, le "value" doit être un identifiant snake_case unique.
-Les labels doivent être traduits fidèlement dans les 4 langues.`;
+Les labels doivent être traduits fidèlement dans les 4 langues.
+
+INSTRUCTIONS POUR checklist_to_setups — Génère un mapping sémantique entre les items de checklist et les setups :
+
+Pour chaque item de checklist généré, liste dans "checklist_to_setups" les "value" des setups qui matchent sémantiquement cet item. Règles :
+- Si l'item concerne un pattern graphique visible (figure chartiste, structure de prix, zone de prix) → liste les setups correspondants à ce pattern.
+- Si l'item concerne un indicateur (RSI, MACD, momentum, MA) → liste les setups basés sur cet indicateur.
+- Si l'item est trop générique (ex: "la tendance est claire", "risque géré") → laisse son array vide [].
+- Ne référence que des "value" qui existent réellement dans la liste "setups" générée ci-dessus.
+
+Ajoute ce champ à la racine du JSON (pas dans strategy_tags) :
+"checklist_to_setups": {
+  "<checklist_item_value>": ["<setup_value>", ...],
+  ...
+}`;
 
     const message = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 4000,
+      max_tokens: 5000,
       messages: [{ role: "user", content: prompt }],
     });
 

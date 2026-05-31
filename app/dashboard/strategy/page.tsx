@@ -42,6 +42,7 @@ interface ParsedRules {
   max_consecutive_losses: number | null;
   max_session_minutes: number | null;
   setup_rules: string[];
+  checklist_to_setups?: Record<string, string[]>;
   strategy_tags?: StrategyTagsFromAI;
 }
 
@@ -255,6 +256,16 @@ export default function StrategyPage() {
       return;
     }
 
+    // Build validated checklist_setup_mapping: remove references to setups that don't exist
+    const validSetupValues = new Set(
+      (parsed.strategy_tags?.setups || []).map((s) => s.value)
+    );
+    const rawMapping = parsed.checklist_to_setups || {};
+    const validatedMapping: Record<string, string[]> = {};
+    for (const [checklistKey, setupValues] of Object.entries(rawMapping)) {
+      validatedMapping[checklistKey] = (setupValues as string[]).filter((v) => validSetupValues.has(v));
+    }
+
     const payload = {
       user_id: user.id,
       name,
@@ -268,6 +279,7 @@ export default function StrategyPage() {
       max_consecutive_losses: parsed.max_consecutive_losses,
       max_session_minutes: parsed.max_session_minutes,
       setup_rules: parsed.setup_rules,
+      checklist_setup_mapping: validatedMapping,
     };
 
     let strategyId = existingId;

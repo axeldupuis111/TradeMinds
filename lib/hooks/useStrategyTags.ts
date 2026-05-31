@@ -21,6 +21,8 @@ export interface StrategyTagsResult {
   targets: TagItem[];
   timing: TagItem[];
   checklist: ChecklistItem[];
+  /** AI-generated mapping: checklist item value → array of setup values it matches. */
+  checklistSetupMapping: Record<string, string[]>;
   isDefault: boolean;
   loading: boolean;
 }
@@ -31,6 +33,7 @@ const ICT_DEFAULT: StrategyTagsResult = {
   targets: ICT_LIQUIDITY_TARGETS,
   timing: ICT_KILLZONES,
   checklist: ICT_CHECKLIST_ITEMS,
+  checklistSetupMapping: {},
   isDefault: true,
   loading: false,
 };
@@ -46,7 +49,7 @@ export function useStrategyTags(): StrategyTagsResult {
 
       const { data: strategy } = await supabase
         .from("strategies")
-        .select("id")
+        .select("id, checklist_setup_mapping")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -87,12 +90,18 @@ export function useStrategyTags(): StrategyTagsResult {
       const hasCustom = setups.length + entry_zones.length + targets.length + timing.length + checklist.length > 0;
       if (!hasCustom) { setResult({ ...ICT_DEFAULT, loading: false }); return; }
 
+      const checklistSetupMapping: Record<string, string[]> =
+        strategy.checklist_setup_mapping && typeof strategy.checklist_setup_mapping === "object"
+          ? (strategy.checklist_setup_mapping as Record<string, string[]>)
+          : {};
+
       setResult({
         setups: setups.length > 0 ? setups : ICT_SETUPS,
         entry_zones: entry_zones.length > 0 ? entry_zones : ICT_ENTRY_ZONES,
         targets: targets.length > 0 ? targets : ICT_LIQUIDITY_TARGETS,
         timing: timing.length > 0 ? timing : ICT_KILLZONES,
         checklist: checklist.length > 0 ? checklist : ICT_CHECKLIST_ITEMS,
+        checklistSetupMapping,
         isDefault: false,
         loading: false,
       });
