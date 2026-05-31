@@ -11,7 +11,7 @@ import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import StaggerContainer, { StaggerItem } from "@/components/animations/StaggerContainer";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ICT_EMOTIONS, ICT_KILLZONES, getEmotionColor } from "@/lib/ict-constants";
+import { ICT_KILLZONES } from "@/lib/ict-constants";
 import { useStrategyTags } from "@/lib/hooks/useStrategyTags";
 import { useChartColors } from "@/lib/useChartColors";
 import { formatCurrencyAxis } from "@/lib/utils";
@@ -676,10 +676,6 @@ export default function AnalyticsPage() {
   function getKillzoneLabel(value: string) {
     return ICT_KILLZONES.find((x) => x.value === value)?.label[l] ?? value;
   }
-  function getEmotionLabel(value: string) {
-    return ICT_EMOTIONS.find((x) => x.value === value)?.label[l] ?? value;
-  }
-
   // ── Loading ───────────────────────────────────────────────────────────────
   if (loading) {
     return (
