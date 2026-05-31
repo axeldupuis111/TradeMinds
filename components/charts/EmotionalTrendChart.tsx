@@ -1,10 +1,11 @@
 "use client";
 
-import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Card, CardTitle } from "@/components/ui/Card";
 import { useChartColors } from "@/lib/useChartColors";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
+import { Brain } from "lucide-react";
 import {
   CartesianGrid,
   Line,
@@ -52,9 +53,7 @@ export default function EmotionalTrendChart() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; }
 
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const since = thirtyDaysAgo.toISOString().split("T")[0];
+      const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
 
       const [{ data: sessions }, { data: trades }] = await Promise.all([
         supabase
@@ -65,7 +64,7 @@ export default function EmotionalTrendChart() {
           .order("created_at", { ascending: true }),
         supabase
           .from("trades")
-          .select("open_time, pnl, commission, swap")
+          .select("open_time, pnl, commission, swap, emotion")
           .eq("user_id", user.id)
           .gte("open_time", since),
       ]);
@@ -77,15 +76,23 @@ export default function EmotionalTrendChart() {
         pnlByDay[day] = (pnlByDay[day] || 0) + (tr.pnl || 0) + (tr.commission || 0) + (tr.swap || 0);
       }
 
+      // Pass 1 — sessions (emotion_before)
       const emotionByDay: Record<string, string> = {};
       for (const s of sessions || []) {
         if (!s.emotion_before) continue;
         const day = s.created_at.split("T")[0];
         emotionByDay[day] = s.emotion_before;
       }
+      // Pass 2 — trades.emotion (priority: last trade of day wins)
+      for (const tr of trades || []) {
+        if (!tr.emotion) continue;
+        const day = (tr.open_time || "").split("T")[0];
+        if (!day) continue;
+        emotionByDay[day] = tr.emotion;
+      }
 
       const allDays = new Set([...Object.keys(pnlByDay), ...Object.keys(emotionByDay)]);
-      const points: DataPoint[] = Array.from(allDays)
+      const allPoints: DataPoint[] = Array.from(allDays)
         .sort()
         .map((date) => ({
           date,
@@ -93,6 +100,15 @@ export default function EmotionalTrendChart() {
           emotionKey: emotionByDay[date] || null,
           pnl: pnlByDay[date] ?? null,
         }));
+
+      // Trim to trade date range — sessions before first trade or after last trade are excluded.
+      // This removes visual "empty space" caused by emotion-only sessions outside the trading window.
+      const tradeDates   = Object.keys(pnlByDay).sort();
+      const firstTradeDay = tradeDates[0] ?? null;
+      const lastTradeDay  = tradeDates[tradeDates.length - 1] ?? null;
+      const points = firstTradeDay && lastTradeDay
+        ? allPoints.filter((p) => p.date >= firstTradeDay && p.date <= lastTradeDay)
+        : allPoints;
 
       setData(points);
       setLoading(false);
@@ -109,14 +125,30 @@ export default function EmotionalTrendChart() {
     );
   }
 
-  const hasEmotions = data.some((d) => d.emotionScore != null);
-  if (!hasEmotions) {
+  const tradesWithEmotion = data.filter((d) => d.emotionScore != null).length;
+  const hasEmotions = tradesWithEmotion > 0;
+  const EMOTION_THRESHOLD = 8;
+
+  if (!hasEmotions || tradesWithEmotion < EMOTION_THRESHOLD) {
+    const remaining = EMOTION_THRESHOLD - tradesWithEmotion;
     return (
       <Card padding="md">
-        <CardHeader>
+        <div className="mb-4">
           <CardTitle>{t("emotional_trend_title")}</CardTitle>
-        </CardHeader>
-        <p className="text-xs text-foreground-muted">{t("emotional_trend_no_data")}</p>
+          <p className="text-xs text-foreground-muted mt-1">{t("emotional_trend_subtitle")}</p>
+        </div>
+        <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+          <Brain className="w-12 h-12 text-foreground-muted opacity-30 mb-4" />
+          <p className="text-sm font-medium text-foreground mb-2">
+            Continue à logger tes émotions
+          </p>
+          <p className="text-xs text-foreground-muted max-w-md">
+            Encore {remaining} trade{remaining > 1 ? "s" : ""} avec émotion enregistrée pour débloquer ta tendance émotionnelle.
+          </p>
+          <p className="text-xs text-foreground-muted mt-1">
+            Progression : {tradesWithEmotion}/{EMOTION_THRESHOLD}
+          </p>
+        </div>
       </Card>
     );
   }

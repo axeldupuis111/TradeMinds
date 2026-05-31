@@ -4,13 +4,14 @@ import { AnalyticsInsightCards } from "@/components/analytics/AnalyticsInsightCa
 import { AnalyticsKpiCards } from "@/components/analytics/AnalyticsKpiCards";
 import { AutoInsights } from "@/components/analytics/AutoInsights";
 import { HourDayHeatmap } from "@/components/analytics/HourDayHeatmap";
+import { ResilienceBlock } from "@/components/analytics/ResilienceBlock";
 import EmotionalTrendChart from "@/components/charts/EmotionalTrendChart";
 import ExportPdfButton from "@/components/analytics/ExportPdfButton";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import StaggerContainer, { StaggerItem } from "@/components/animations/StaggerContainer";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ICT_EMOTIONS, ICT_KILLZONES, getEmotionColor } from "@/lib/ict-constants";
+import { ICT_KILLZONES } from "@/lib/ict-constants";
 import { useStrategyTags } from "@/lib/hooks/useStrategyTags";
 import { useChartColors } from "@/lib/useChartColors";
 import { formatCurrencyAxis } from "@/lib/utils";
@@ -302,15 +303,23 @@ export default function AnalyticsPage() {
   }, [prevFiltered]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── KPI aggregates ────────────────────────────────────────────────────────
-  const { totalPnl, wins, winrate, best, worst } = useMemo(() => {
+  const { totalPnl, wins, winrate, best, worst, bestTrade, worstTrade } = useMemo(() => {
     const pnls = filtered.map(netPnl);
     const w = filtered.filter((tr) => netPnl(tr) > 0).length;
+    let bestTr = filtered[0] ?? null;
+    let worstTr = filtered[0] ?? null;
+    for (const tr of filtered) {
+      if (netPnl(tr) > (bestTr ? netPnl(bestTr) : -Infinity)) bestTr = tr;
+      if (netPnl(tr) < (worstTr ? netPnl(worstTr) : Infinity))  worstTr = tr;
+    }
     return {
       totalPnl: pnls.reduce((s, v) => s + v, 0),
       wins: w,
       winrate: filtered.length > 0 ? (w / filtered.length) * 100 : 0,
       best: pnls.length > 0 ? Math.max(...pnls) : 0,
       worst: pnls.length > 0 ? Math.min(...pnls) : 0,
+      bestTrade:  bestTr  ? { pnl: netPnl(bestTr),  date: bestTr.open_time  } : null,
+      worstTrade: worstTr ? { pnl: netPnl(worstTr), date: worstTr.open_time } : null,
     };
   }, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -320,6 +329,18 @@ export default function AnalyticsPage() {
     if (filtered.length === 0) return null;
     if (losses === 0) return gains > 0 ? Infinity : null;
     return gains / losses;
+  }, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const { avgWin, avgLoss } = useMemo(() => {
+    const winTrades  = filtered.filter((tr) => netPnl(tr) > 0);
+    const lossTrades = filtered.filter((tr) => netPnl(tr) < 0);
+    const avgW = winTrades.length  > 0
+      ? winTrades.reduce((s, tr) => s + netPnl(tr), 0) / winTrades.length
+      : 0;
+    const avgL = lossTrades.length > 0
+      ? Math.abs(lossTrades.reduce((s, tr) => s + netPnl(tr), 0) / lossTrades.length)
+      : 0;
+    return { avgWin: avgW, avgLoss: avgL };
   }, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Chart data ────────────────────────────────────────────────────────────
@@ -520,23 +541,6 @@ export default function AnalyticsPage() {
     return { rulesFollowed, rulesBroken };
   }, [filtered, violatedPairs]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const winrateByEmotion = useMemo(() => {
-    const map: Record<string, { wins: number; total: number }> = {};
-    filtered.forEach((tr) => {
-      if (!tr.emotion) return;
-      if (!map[tr.emotion]) map[tr.emotion] = { wins: 0, total: 0 };
-      map[tr.emotion].total++;
-      if (netPnl(tr) > 0) map[tr.emotion].wins++;
-    });
-    return Object.entries(map)
-      .map(([em, d]) => ({
-        name: `${EMOTION_EMOJIS[em] || ""} ${t(EMOTION_KEYS[em] || em)}`,
-        winrate: d.total > 0 ? Number(((d.wins / d.total) * 100).toFixed(1)) : 0,
-        count: d.total,
-      }))
-      .sort((a, b) => b.winrate - a.winrate);
-  }, [filtered, t]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // ── ICT Analytics ─────────────────────────────────────────────────────────
   const ictTaggedCount = useMemo(
     () => filtered.filter((tr) => tr.ict_setup || tr.ict_entry_zone || tr.ict_killzone).length,
@@ -594,25 +598,6 @@ export default function AnalyticsPage() {
         worst: d.total > 0 ? Number(d.worst.toFixed(2)) : 0,
       };
     });
-  }, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const byICTEmotion = useMemo(() => {
-    const map: Record<string, { wins: number; total: number; pnl: number }> = {};
-    filtered.forEach((tr) => {
-      if (!tr.emotion) return;
-      if (!map[tr.emotion]) map[tr.emotion] = { wins: 0, total: 0, pnl: 0 };
-      map[tr.emotion].total++;
-      map[tr.emotion].pnl += netPnl(tr);
-      if (netPnl(tr) > 0) map[tr.emotion].wins++;
-    });
-    return Object.entries(map)
-      .map(([em, d]) => ({
-        emotion: em,
-        winrate: d.total > 0 ? Math.round((d.wins / d.total) * 100) : 0,
-        count: d.total,
-        pnl: Number(d.pnl.toFixed(2)),
-      }))
-      .sort((a, b) => b.winrate - a.winrate);
   }, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Tooltip style ─────────────────────────────────────────────────────────
@@ -680,16 +665,6 @@ export default function AnalyticsPage() {
     );
   };
 
-  const WinrateTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) => {
-    if (!active || !payload?.length) return null;
-    return (
-      <div style={tooltipStyle}>
-        <p style={{ fontWeight: 600, marginBottom: 4 }}>{label}</p>
-        <p style={{ color: c.accent }}>{payload[0].value}% WR</p>
-      </div>
-    );
-  };
-
   const l = lang as Lang;
 
   function getICTSetupLabel(value: string) {
@@ -701,10 +676,6 @@ export default function AnalyticsPage() {
   function getKillzoneLabel(value: string) {
     return ICT_KILLZONES.find((x) => x.value === value)?.label[l] ?? value;
   }
-  function getEmotionLabel(value: string) {
-    return ICT_EMOTIONS.find((x) => x.value === value)?.label[l] ?? value;
-  }
-
   // ── Loading ───────────────────────────────────────────────────────────────
   if (loading) {
     return (
@@ -744,6 +715,24 @@ export default function AnalyticsPage() {
       <div className="mb-4">
         <h1 className="text-2xl font-bold text-foreground">{t("analytics_title")}</h1>
         <p className="text-foreground-muted text-sm mt-1">{t("analytics_subtitle")}</p>
+        {filtered.length > 0 && (() => {
+          const dates = filtered.map((tr) => tr.open_time?.split("T")[0]).filter(Boolean).sort() as string[];
+          const first = dates[0];
+          const last  = dates[dates.length - 1];
+          const diffDays = Math.round((new Date(last).getTime() - new Date(first).getTime()) / 86_400_000);
+          const duration = diffDays > 60
+            ? `${Math.round(diffDays / 30)} mois`
+            : diffDays > 14
+              ? `${Math.round(diffDays / 7)} semaines`
+              : `${diffDays} jours`;
+          const fmt = (d: string) =>
+            new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+          return (
+            <p className="text-xs text-foreground-muted mt-1">
+              {filtered.length} trades · du {fmt(first)} au {fmt(last)} · {duration}
+            </p>
+          );
+        })()}
       </div>
 
       {/* ── Filter bar — sticky ───────────────────────────────────────────── */}
@@ -981,9 +970,13 @@ export default function AnalyticsPage() {
               tradesCount={filtered.length}
               best={best}
               worst={worst}
+              bestTrade={bestTrade}
+              worstTrade={worstTrade}
               profitFactor={profitFactor}
               disciplineScore={latestScore}
               prevKpis={prevKpis}
+              avgWin={avgWin}
+              avgLoss={avgLoss}
             />
           </StaggerItem>
 
@@ -1056,6 +1049,11 @@ export default function AnalyticsPage() {
             </div>
           </StaggerItem>
 
+          {/* ── Résilience ────────────────────────────────────────────── */}
+          <StaggerItem>
+            <ResilienceBlock trades={filtered} />
+          </StaggerItem>
+
           {/* ── Performance par paire — pleine largeur ─────────────────── */}
           {byPair.length > 0 && (
             <StaggerItem>
@@ -1063,10 +1061,21 @@ export default function AnalyticsPage() {
                 <CardHeader>
                   <CardTitle>{t("analytics_by_pair")}</CardTitle>
                 </CardHeader>
+                {(() => {
+                  const maxAbsPnL = Math.max(...byPair.map((p) => Math.abs(p.pnl)), 1);
+                  const minDisplay = maxAbsPnL * 0.02;
+                  const transformedByPair = byPair.map((p) => ({
+                    ...p,
+                    pnlReal: p.pnl,
+                    pnlDisplay: Math.abs(p.pnl) < minDisplay
+                      ? Math.sign(p.pnl || 1) * minDisplay
+                      : p.pnl,
+                  }));
+                  return (
                 <ResponsiveContainer width="100%" height={Math.max(220, byPair.length * 44)}>
                   <BarChart
                     layout="vertical"
-                    data={byPair}
+                    data={transformedByPair}
                     margin={{ top: 5, right: 80, left: 0, bottom: 5 }}
                     barSize={28}
                   >
@@ -1087,16 +1096,16 @@ export default function AnalyticsPage() {
                       axisLine={false}
                     />
                     <Tooltip content={<PairTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
-                    <Bar dataKey="pnl" activeBar={false} radius={[0, 3, 3, 0]}>
-                      {byPair.map((entry, index) => (
+                    <Bar dataKey="pnlDisplay" activeBar={false} radius={[0, 3, 3, 0]}>
+                      {transformedByPair.map((entry, index) => (
                         <Cell
                           key={`cell-${index}`}
-                          fill={(entry.pnl ?? 0) >= 0 ? c.profit : c.loss}
+                          fill={(entry.pnlReal ?? 0) >= 0 ? c.profit : c.loss}
                           fillOpacity={0.72}
                         />
                       ))}
                       <LabelList
-                        dataKey="pnl"
+                        dataKey="pnlReal"
                         position="right"
                         formatter={(v: unknown) => formatPnl(Number(v))}
                         style={{ fill: c.axis || "rgb(var(--foreground-muted))", fontSize: 11 }}
@@ -1104,6 +1113,8 @@ export default function AnalyticsPage() {
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
+                  );
+                })()}
               </KpiCardPremium>
             </StaggerItem>
           )}
@@ -1111,31 +1122,6 @@ export default function AnalyticsPage() {
           {/* ── Autres charts (émotion, distribution, qualité) ─────────── */}
           <StaggerItem>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-              {/* Performance by emotion */}
-              {byEmotion.length > 0 && (
-                <KpiCardPremium layout="full" accentColor="cyan">
-                  <CardHeader>
-                    <CardTitle>{t("analytics_by_emotion")}</CardTitle>
-                  </CardHeader>
-                  <ResponsiveContainer width="100%" height={280}>
-                    <BarChart data={byEmotion} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
-                      <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
-                      <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
-                      <Tooltip content={<GenericTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
-                      <Bar
-                        dataKey="pnl"
-                        shape={(props: unknown) => {
-                          const { x, y, width, height, value } = props as BarShapeProps;
-                          return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={(value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={0.72} />;
-                        }}
-                        activeBar={false}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </KpiCardPremium>
-              )}
 
               {/* P&L Distribution Histogram */}
               {pnlDistribution.length > 0 && (
@@ -1206,7 +1192,7 @@ export default function AnalyticsPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-                {byICTSetup.length > 0 && (
+                {byICTSetup.length > 0 && ictTaggedCount >= 5 && (
                   <KpiCardPremium layout="full" accentColor="violet">
                     <CardHeader>
                       <CardTitle>{t("ict_winrate_by_setup")}</CardTitle>
@@ -1320,44 +1306,65 @@ export default function AnalyticsPage() {
                   </KpiCardPremium>
                 )}
 
-                {byICTEmotion.length > 0 && (
-                  <KpiCardPremium layout="full" accentColor="cyan">
-                    <CardHeader>
-                      <CardTitle>{t("ict_emotion_impact")}</CardTitle>
-                    </CardHeader>
-                    <div className="space-y-2">
-                      {byICTEmotion.map((entry) => (
-                        <div key={entry.emotion} className="flex items-center gap-2">
-                          <div className="w-28 shrink-0 text-xs text-foreground-muted truncate">{getEmotionLabel(entry.emotion)}</div>
-                          <div className="flex-1 h-5 bg-border/30 rounded overflow-hidden">
-                            <div
-                              className="h-full rounded transition-all"
-                              style={{ width: `${entry.winrate}%`, backgroundColor: getEmotionColor(entry.emotion), opacity: 0.88 }}
-                            />
-                          </div>
-                          <span className="text-xs text-foreground-muted w-36 shrink-0 text-right">
-                            {entry.winrate}% WR ({entry.count}t, {entry.pnl >= 0 ? "+" : ""}{entry.pnl.toFixed(0)}€)
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </KpiCardPremium>
-                )}
-
               </div>
 
               {ictTaggedCount < 10 && (
                 <Card variant="accent" padding="sm" className="mt-4">
-                  <div className="flex items-center gap-3">
-                    <p className="text-xs text-foreground-muted flex-1">
-                      {t("ict_no_tags_msg")} {ictTaggedCount}/{filtered.length} {t("ict_no_tags_msg2")}
-                    </p>
-                    <Link
-                      href="/dashboard/trades"
-                      className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
-                    >
-                      {t("ict_goto_trades")} →
-                    </Link>
+                  <div className="space-y-3">
+                    {/* Barre de progression */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <p className="text-xs text-foreground-muted">
+                          {ictTaggedCount} / {filtered.length} trades tagués
+                        </p>
+                        <span className="text-[10px] text-foreground-muted/60">
+                          {filtered.length > 0 ? Math.round((ictTaggedCount / filtered.length) * 100) : 0}%
+                        </span>
+                      </div>
+                      <div className="h-1.5 bg-foreground/8 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{
+                            width: filtered.length > 0 ? `${(ictTaggedCount / filtered.length) * 100}%` : "0%",
+                            backgroundColor: "rgb(var(--accent))",
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Chips concepts + bouton */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {ictTaggedCount === 0 ? (
+                        <>
+                          {["FVG", "Order Block", "Silver Bullet"].map((chip) => (
+                            <span
+                              key={chip}
+                              className="px-2 py-0.5 text-[10px] rounded-full border border-border bg-foreground/5 text-foreground-muted"
+                            >
+                              {chip}
+                            </span>
+                          ))}
+                        </>
+                      ) : (
+                        <>
+                          {byICTSetup.slice(0, 3).map((s) => (
+                            <span
+                              key={s.setup}
+                              className="px-2 py-0.5 text-[10px] rounded-full border border-border bg-foreground/5 text-foreground-muted"
+                            >
+                              {s.setup.replace(/_/g, " ")}
+                            </span>
+                          ))}
+                        </>
+                      )}
+                      <div className="flex-1" />
+                      <Link
+                        href="/dashboard/trades"
+                        className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
+                      >
+                        {t("ict_goto_trades")} →
+                      </Link>
+                    </div>
                   </div>
                 </Card>
               )}
@@ -1365,7 +1372,7 @@ export default function AnalyticsPage() {
           </StaggerItem>
 
           {/* ── Discipline vs Results ─────────────────────────────────── */}
-          {(disciplineStats || !hasAnalysis || winrateByEmotion.length > 0) && (
+          {(disciplineStats || !hasAnalysis) && (
             <StaggerItem>
               <div className="mt-4">
                 <h2 className="text-xl font-bold text-foreground mb-4">{t("discipline_title")}</h2>
@@ -1445,29 +1452,6 @@ export default function AnalyticsPage() {
                   </div>
                 )}
 
-                {winrateByEmotion.length > 0 && (
-                  <KpiCardPremium layout="full" accentColor="amber">
-                    <CardHeader>
-                      <CardTitle>{t("discipline_winrate_emotion")}</CardTitle>
-                    </CardHeader>
-                    <ResponsiveContainer width="100%" height={280}>
-                      <BarChart data={winrateByEmotion} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
-                        <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
-                        <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} domain={[0, 100]} />
-                        <Tooltip content={<WinrateTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
-                        <Bar
-                          dataKey="winrate"
-                          shape={(props: unknown) => {
-                            const { x, y, width, height, value } = props as BarShapeProps;
-                            return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={(value ?? 0) >= 50 ? c.profit : c.loss} fillOpacity={0.72} />;
-                          }}
-                          activeBar={false}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </KpiCardPremium>
-                )}
               </div>
             </StaggerItem>
           )}
