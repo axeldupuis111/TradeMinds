@@ -277,7 +277,7 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Emotional trend
     emotional_trend_title: "Tendance émotionnelle",
-    emotional_trend_subtitle: "Émotions vs performance sur les 30 derniers jours",
+    emotional_trend_subtitle: "Émotions vs performance sur les 90 derniers jours",
     emotional_trend_no_data: "Pas assez de données émotionnelles",
 
     // Analysis page
@@ -1665,7 +1665,7 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Emotional trend
     emotional_trend_title: "Emotional trend",
-    emotional_trend_subtitle: "Emotions vs performance over the last 30 days",
+    emotional_trend_subtitle: "Emotions vs performance over the last 90 days",
     emotional_trend_no_data: "Not enough emotional data",
 
     analysis_title: "AI Analysis",
@@ -3041,7 +3041,7 @@ const translations: Record<Lang, Record<string, string>> = {
     analysis_declined: "verschlechtert",
 
     emotional_trend_title: "Emotionaler Trend",
-    emotional_trend_subtitle: "Emotionen vs Performance der letzten 30 Tage",
+    emotional_trend_subtitle: "Emotionen vs Performance der letzten 90 Tage",
     emotional_trend_no_data: "Nicht genug emotionale Daten",
 
     analysis_title: "KI-Analyse",
@@ -4416,7 +4416,7 @@ const translations: Record<Lang, Record<string, string>> = {
     analysis_declined: "empeorado",
 
     emotional_trend_title: "Tendencia emocional",
-    emotional_trend_subtitle: "Emociones vs rendimiento de los últimos 30 días",
+    emotional_trend_subtitle: "Emociones vs rendimiento de los últimos 90 días",
     emotional_trend_no_data: "No hay suficientes datos emocionales",
 
     analysis_title: "Análisis IA",

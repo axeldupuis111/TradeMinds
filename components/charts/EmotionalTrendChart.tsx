@@ -53,9 +53,7 @@ export default function EmotionalTrendChart() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; }
 
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const since = thirtyDaysAgo.toISOString().split("T")[0];
+      const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
 
       const [{ data: sessions }, { data: trades }] = await Promise.all([
         supabase
@@ -66,7 +64,7 @@ export default function EmotionalTrendChart() {
           .order("created_at", { ascending: true }),
         supabase
           .from("trades")
-          .select("open_time, pnl, commission, swap")
+          .select("open_time, pnl, commission, swap, emotion")
           .eq("user_id", user.id)
           .gte("open_time", since),
       ]);
@@ -78,11 +76,19 @@ export default function EmotionalTrendChart() {
         pnlByDay[day] = (pnlByDay[day] || 0) + (tr.pnl || 0) + (tr.commission || 0) + (tr.swap || 0);
       }
 
+      // Pass 1 — sessions (emotion_before)
       const emotionByDay: Record<string, string> = {};
       for (const s of sessions || []) {
         if (!s.emotion_before) continue;
         const day = s.created_at.split("T")[0];
         emotionByDay[day] = s.emotion_before;
+      }
+      // Pass 2 — trades.emotion (priority: last trade of day wins)
+      for (const tr of trades || []) {
+        if (!tr.emotion) continue;
+        const day = (tr.open_time || "").split("T")[0];
+        if (!day) continue;
+        emotionByDay[day] = tr.emotion;
       }
 
       const allDays = new Set([...Object.keys(pnlByDay), ...Object.keys(emotionByDay)]);
