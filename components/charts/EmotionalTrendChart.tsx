@@ -5,6 +5,7 @@ import { useChartColors } from "@/lib/useChartColors";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
+import { Brain } from "lucide-react";
 import {
   CartesianGrid,
   Line,
@@ -118,20 +119,30 @@ export default function EmotionalTrendChart() {
     );
   }
 
-  const hasEmotions = data.some((d) => d.emotionScore != null);
-  const hasEnoughPoints = data.length >= 3;
+  const tradesWithEmotion = data.filter((d) => d.emotionScore != null).length;
+  const hasEmotions = tradesWithEmotion > 0;
+  const EMOTION_THRESHOLD = 8;
 
-  if (!hasEmotions || !hasEnoughPoints) {
+  if (!hasEmotions || tradesWithEmotion < EMOTION_THRESHOLD) {
+    const remaining = EMOTION_THRESHOLD - tradesWithEmotion;
     return (
       <Card padding="md">
-        <CardHeader>
+        <div className="mb-4">
           <CardTitle>{t("emotional_trend_title")}</CardTitle>
-        </CardHeader>
-        <p className="text-xs text-foreground-muted">
-          {!hasEmotions
-            ? t("emotional_trend_no_data")
-            : "Pas assez de données pour analyser ta tendance émotionnelle. Au moins 3 jours de trades avec émotions enregistrées sont nécessaires."}
-        </p>
+          <p className="text-xs text-foreground-muted mt-1">{t("emotional_trend_subtitle")}</p>
+        </div>
+        <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+          <Brain className="w-12 h-12 text-foreground-muted opacity-30 mb-4" />
+          <p className="text-sm font-medium text-foreground mb-2">
+            Continue à logger tes émotions
+          </p>
+          <p className="text-xs text-foreground-muted max-w-md">
+            Encore {remaining} trade{remaining > 1 ? "s" : ""} avec émotion enregistrée pour débloquer ta tendance émotionnelle.
+          </p>
+          <p className="text-xs text-foreground-muted mt-1">
+            Progression : {tradesWithEmotion}/{EMOTION_THRESHOLD}
+          </p>
+        </div>
       </Card>
     );
   }

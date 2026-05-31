@@ -541,23 +541,6 @@ export default function AnalyticsPage() {
     return { rulesFollowed, rulesBroken };
   }, [filtered, violatedPairs]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const winrateByEmotion = useMemo(() => {
-    const map: Record<string, { wins: number; total: number }> = {};
-    filtered.forEach((tr) => {
-      if (!tr.emotion) return;
-      if (!map[tr.emotion]) map[tr.emotion] = { wins: 0, total: 0 };
-      map[tr.emotion].total++;
-      if (netPnl(tr) > 0) map[tr.emotion].wins++;
-    });
-    return Object.entries(map)
-      .map(([em, d]) => ({
-        name: `${EMOTION_EMOJIS[em] || ""} ${t(EMOTION_KEYS[em] || em)}`,
-        winrate: d.total > 0 ? Number(((d.wins / d.total) * 100).toFixed(1)) : 0,
-        count: d.total,
-      }))
-      .sort((a, b) => b.winrate - a.winrate);
-  }, [filtered, t]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // ── ICT Analytics ─────────────────────────────────────────────────────────
   const ictTaggedCount = useMemo(
     () => filtered.filter((tr) => tr.ict_setup || tr.ict_entry_zone || tr.ict_killzone).length,
@@ -615,25 +598,6 @@ export default function AnalyticsPage() {
         worst: d.total > 0 ? Number(d.worst.toFixed(2)) : 0,
       };
     });
-  }, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const byICTEmotion = useMemo(() => {
-    const map: Record<string, { wins: number; total: number; pnl: number }> = {};
-    filtered.forEach((tr) => {
-      if (!tr.emotion) return;
-      if (!map[tr.emotion]) map[tr.emotion] = { wins: 0, total: 0, pnl: 0 };
-      map[tr.emotion].total++;
-      map[tr.emotion].pnl += netPnl(tr);
-      if (netPnl(tr) > 0) map[tr.emotion].wins++;
-    });
-    return Object.entries(map)
-      .map(([em, d]) => ({
-        emotion: em,
-        winrate: d.total > 0 ? Math.round((d.wins / d.total) * 100) : 0,
-        count: d.total,
-        pnl: Number(d.pnl.toFixed(2)),
-      }))
-      .sort((a, b) => b.winrate - a.winrate);
   }, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Tooltip style ─────────────────────────────────────────────────────────
@@ -697,16 +661,6 @@ export default function AnalyticsPage() {
         <p style={{ color: payload[0].value >= 0 ? c.profit : c.loss }}>
           {payload[0].value >= 0 ? "+" : ""}{payload[0].value.toFixed(2)}€
         </p>
-      </div>
-    );
-  };
-
-  const WinrateTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) => {
-    if (!active || !payload?.length) return null;
-    return (
-      <div style={tooltipStyle}>
-        <p style={{ fontWeight: 600, marginBottom: 4 }}>{label}</p>
-        <p style={{ color: c.accent }}>{payload[0].value}% WR</p>
       </div>
     );
   };
@@ -1173,31 +1127,6 @@ export default function AnalyticsPage() {
           <StaggerItem>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-              {/* Performance by emotion */}
-              {byEmotion.length > 0 && (
-                <KpiCardPremium layout="full" accentColor="cyan">
-                  <CardHeader>
-                    <CardTitle>{t("analytics_by_emotion")}</CardTitle>
-                  </CardHeader>
-                  <ResponsiveContainer width="100%" height={280}>
-                    <BarChart data={byEmotion} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
-                      <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
-                      <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
-                      <Tooltip content={<GenericTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
-                      <Bar
-                        dataKey="pnl"
-                        shape={(props: unknown) => {
-                          const { x, y, width, height, value } = props as BarShapeProps;
-                          return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={(value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={0.72} />;
-                        }}
-                        activeBar={false}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </KpiCardPremium>
-              )}
-
               {/* P&L Distribution Histogram */}
               {pnlDistribution.length > 0 && (
                 <KpiCardPremium layout="full" accentColor="cyan">
@@ -1267,7 +1196,7 @@ export default function AnalyticsPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-                {byICTSetup.length > 0 && (
+                {byICTSetup.length > 0 && ictTaggedCount >= 5 && (
                   <KpiCardPremium layout="full" accentColor="violet">
                     <CardHeader>
                       <CardTitle>{t("ict_winrate_by_setup")}</CardTitle>
@@ -1381,30 +1310,6 @@ export default function AnalyticsPage() {
                   </KpiCardPremium>
                 )}
 
-                {byICTEmotion.length > 0 && (
-                  <KpiCardPremium layout="full" accentColor="cyan">
-                    <CardHeader>
-                      <CardTitle>{t("ict_emotion_impact")}</CardTitle>
-                    </CardHeader>
-                    <div className="space-y-2">
-                      {byICTEmotion.map((entry) => (
-                        <div key={entry.emotion} className="flex items-center gap-2">
-                          <div className="w-28 shrink-0 text-xs text-foreground-muted truncate">{getEmotionLabel(entry.emotion)}</div>
-                          <div className="flex-1 h-5 bg-border/30 rounded overflow-hidden">
-                            <div
-                              className="h-full rounded transition-all"
-                              style={{ width: `${entry.winrate}%`, backgroundColor: getEmotionColor(entry.emotion), opacity: 0.88 }}
-                            />
-                          </div>
-                          <span className="text-xs text-foreground-muted w-36 shrink-0 text-right">
-                            {entry.winrate}% WR ({entry.count}t, {entry.pnl >= 0 ? "+" : ""}{entry.pnl.toFixed(0)}€)
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </KpiCardPremium>
-                )}
-
               </div>
 
               {ictTaggedCount < 10 && (
@@ -1471,7 +1376,7 @@ export default function AnalyticsPage() {
           </StaggerItem>
 
           {/* ── Discipline vs Results ─────────────────────────────────── */}
-          {(disciplineStats || !hasAnalysis || winrateByEmotion.length > 0) && (
+          {(disciplineStats || !hasAnalysis) && (
             <StaggerItem>
               <div className="mt-4">
                 <h2 className="text-xl font-bold text-foreground mb-4">{t("discipline_title")}</h2>
@@ -1551,29 +1456,6 @@ export default function AnalyticsPage() {
                   </div>
                 )}
 
-                {winrateByEmotion.length > 0 && (
-                  <KpiCardPremium layout="full" accentColor="amber">
-                    <CardHeader>
-                      <CardTitle>{t("discipline_winrate_emotion")}</CardTitle>
-                    </CardHeader>
-                    <ResponsiveContainer width="100%" height={280}>
-                      <BarChart data={winrateByEmotion} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
-                        <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
-                        <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} domain={[0, 100]} />
-                        <Tooltip content={<WinrateTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
-                        <Bar
-                          dataKey="winrate"
-                          shape={(props: unknown) => {
-                            const { x, y, width, height, value } = props as BarShapeProps;
-                            return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={(value ?? 0) >= 50 ? c.profit : c.loss} fillOpacity={0.72} />;
-                          }}
-                          activeBar={false}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </KpiCardPremium>
-                )}
               </div>
             </StaggerItem>
           )}
