@@ -1,6 +1,7 @@
 "use client";
 
 import { ICT_EMOTIONS } from "@/lib/ict-constants";
+import { EMOTION_EMOJIS } from "@/lib/emotions";
 import {
   computeConfluenceScore,
   deriveSetupFromChecklist,
@@ -55,18 +56,6 @@ interface AccountOption {
   account_number: string | null;
 }
 
-const EMOTION_EMOJIS: Record<string, string> = {
-  confident: "😎",
-  calm: "😌",
-  fomo: "🤑",
-  revenge: "😡",
-  anxious: "😰",
-  frustrated: "😤",
-  greedy: "🤑",
-  hesitant: "😟",
-  overconfident: "💪",
-  neutral: "😐",
-};
 
 const EMOTION_LABEL_KEYS: Record<string, string> = {
   confident: "emotion_confident",

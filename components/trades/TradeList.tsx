@@ -1,9 +1,113 @@
 "use client";
 
+import { getEmotionDisplay } from "@/lib/emotions";
+import { useStrategyTags } from "@/lib/hooks/useStrategyTags";
+import { detectKillzone } from "@/lib/ict-constants";
+import {
+  KILLZONE_LABELS,
+  computeConfluenceScore,
+} from "@/lib/strategy/derive";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
-import { useEffect, useState } from "react";
+import { AlertCircle } from "lucide-react";
+import { useMemo, useEffect, useState } from "react";
 import TradeDetailPanel, { type TradeDetail } from "./TradeDetailPanel";
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatDurationCompact(openTime: string, closeTime: string): string {
+  const ms = new Date(closeTime).getTime() - new Date(openTime).getTime();
+  const minutes = ms / 60000;
+  if (minutes < 1) return "<1min";
+  if (minutes < 60) return `${Math.round(minutes)}min`;
+  if (minutes < 24 * 60) {
+    const h = Math.floor(minutes / 60);
+    const m = Math.round(minutes % 60);
+    return m > 0 ? `${h}h${m.toString().padStart(2, "0")}` : `${h}h`;
+  }
+  const days = Math.floor(minutes / (24 * 60));
+  return `${days}j`;
+}
+
+// ─── Mini composants inline ───────────────────────────────────────────────────
+
+function ConformityRing({ score, total }: { score: number; total: number }) {
+  if (total === 0) return <span className="text-muted">—</span>;
+  const radius = 6;
+  const circ = 2 * Math.PI * radius;
+  const filled = total > 0 ? (score / total) * circ : 0;
+  const isComplete = score === total;
+  return (
+    <div className="flex items-center gap-1.5">
+      <svg width="16" height="16" viewBox="0 0 16 16" className="shrink-0">
+        <circle cx="8" cy="8" r={radius} fill="none" strokeWidth="2" className="stroke-border" />
+        <circle
+          cx="8" cy="8" r={radius}
+          fill="none" strokeWidth="2"
+          stroke="var(--color-accent)"
+          strokeDasharray={`${filled} ${circ}`}
+          strokeLinecap="round"
+          transform="rotate(-90 8 8)"
+          opacity={score === 0 ? 0 : 1}
+        />
+      </svg>
+      <span className={`text-xs font-mono ${isComplete ? "text-accent" : "text-muted"}`}>
+        {score}/{total}
+      </span>
+    </div>
+  );
+}
+
+const KILLZONE_STYLES: Record<string, string> = {
+  asia:        "bg-violet-500/10 text-violet-400 border-violet-500/20",
+  london_open: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+  ny_am:       "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  ny_pm:       "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  off_session: "bg-muted/10 text-muted border-border",
+};
+
+function KillzonePill({ kz }: { kz: string }) {
+  const label = KILLZONE_LABELS[kz] ?? kz;
+  const style = KILLZONE_STYLES[kz] ?? "bg-muted/10 text-muted border-border";
+  return (
+    <span className={`inline-flex px-2 py-0.5 rounded-md text-xs border whitespace-nowrap ${style}`}>
+      {label}
+    </span>
+  );
+}
+
+function EmotionTag({
+  emotion,
+  checklist,
+}: {
+  emotion: string | null;
+  checklist: Record<string, boolean> | null;
+}) {
+  if (emotion) {
+    const display = getEmotionDisplay(emotion);
+    if (!display) return <span className="text-muted">—</span>;
+    return (
+      <span className="text-xs flex items-center gap-1 whitespace-nowrap">
+        <span>{display.emoji}</span>
+        <span className="text-foreground">{display.label}</span>
+      </span>
+    );
+  }
+
+  const hasChecklist = checklist && Object.values(checklist).some(Boolean);
+  if (!hasChecklist) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs text-amber-400 bg-amber-400/10 border border-amber-400/20 whitespace-nowrap">
+        <AlertCircle className="w-3 h-3 shrink-0" />
+        À annoter
+      </span>
+    );
+  }
+
+  return <span className="text-muted">—</span>;
+}
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Trade {
   id: string;
@@ -28,6 +132,10 @@ interface Trade {
   screenshot_path: string | null;
   challenge_id: string | null;
   prop_challenges?: { firm: string; account_number: string | null } | null;
+  ict_checklist?: Record<string, boolean> | null;
+  ict_killzone?: string | null;
+  ict_setup?: string | null;
+  ict_confluence_score?: number | null;
 }
 
 interface Filters {
@@ -51,9 +159,13 @@ function normalizeDirection(dir: string): "long" | "short" {
   return "short";
 }
 
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
   const { t } = useLanguage();
   const supabase = createClient();
+  const { checklist: checklistItems } = useStrategyTags();
+
   const [trades, setTrades] = useState<Trade[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -96,9 +208,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
   }, [page, refreshKey]);
 
   async function loadAllPairs() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const { data } = await supabase
       .from("trades")
@@ -113,9 +223,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
 
   async function loadTrades() {
     setLoading(true);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
     const from = page * PAGE_SIZE;
@@ -138,7 +246,6 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
 
     let rows = (data || []) as Trade[];
 
-    // Deduplicate by (open_time, pair, entry_price) — handles double-import bugs
     const seen = new Set<string>();
     rows = rows.filter((tr) => {
       const key = `${tr.open_time}|${tr.pair}|${tr.entry_price}`;
@@ -147,7 +254,6 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
       return true;
     });
 
-    // Client-side result filter (win/loss) applied after dedup
     if (filters.result === "win") {
       rows = rows.filter((tr) => tr.pnl + (tr.commission || 0) + (tr.swap || 0) > 0);
     } else if (filters.result === "loss") {
@@ -160,9 +266,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
   }
 
   async function loadGlobalStats() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
     const { data } = await supabase
@@ -263,7 +367,6 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
       if (sortCol === "date") { va = a.open_time || ""; vb = b.open_time || ""; }
       else if (sortCol === "pair") { va = a.pair; vb = b.pair; }
       else if (sortCol === "pnl") { va = a.pnl + (a.commission || 0) + (a.swap || 0); vb = b.pnl + (b.commission || 0) + (b.swap || 0); }
-      else if (sortCol === "lot") { va = a.lot_size; vb = b.lot_size; }
       if (va < vb) return sortAsc ? -1 : 1;
       if (va > vb) return sortAsc ? 1 : -1;
       return 0;
@@ -318,109 +421,109 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     setExporting(false);
   }
 
+  // ─── Top 3 glow (page courante uniquement) ───────────────────────────────────
+
+  const { top3GainIds, top3LossIds } = useMemo(() => {
+    const withNet = trades.map((tr) => ({ id: tr.id, net: tr.pnl + (tr.commission || 0) + (tr.swap || 0) }));
+    const sorted = [...withNet].sort((a, b) => b.net - a.net);
+    const top3GainIds = new Set(sorted.slice(0, 3).filter((x) => x.net > 0).map((x) => x.id));
+    const top3LossIds = new Set([...withNet].sort((a, b) => a.net - b.net).slice(0, 3).filter((x) => x.net < 0).map((x) => x.id));
+    return { top3GainIds, top3LossIds };
+  }, [trades]);
+
   const hasActiveFilters = filters.pair || filters.direction || filters.result || filters.dateFrom || filters.dateTo;
   const allSelected = trades.length > 0 && trades.every((tr) => selectedIds.has(tr.id));
   const someSelected = selectedIds.size > 0;
-
   const { count: statsCount } = globalStats;
   const totalPages = Math.ceil(total / PAGE_SIZE);
+  const checklistTotal = checklistItems.length;
 
   return (
     <section>
       {/* Filter bar — sticky */}
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border rounded-lg mb-4">
-        {/* Filter context note */}
         <p className="text-[11px] text-muted px-3 pt-3 pb-1">
           {hasActiveFilters
             ? t("trades_filtered_by").replace("{count}", String(total))
             : t("trades_all_accounts").replace("{count}", String(statsCount))}
         </p>
         <div className="p-3">
-        <div className="flex flex-wrap gap-3 items-end">
-          {/* Pair */}
-          <div className="flex flex-col gap-1 min-w-[140px]">
-            <label className="text-xs text-muted">{t("trades_filter_label_pair")}</label>
-            <select
-              value={filters.pair}
-              onChange={(e) => setFilters((f) => ({ ...f, pair: e.target.value }))}
-              className="bg-surface border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-accent"
-            >
-              <option value="">{t("trades_filter_all_pairs")}</option>
-              {allPairs.map((p) => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
-          </div>
+          <div className="flex flex-wrap gap-3 items-end">
+            <div className="flex flex-col gap-1 min-w-[140px]">
+              <label className="text-xs text-muted">{t("trades_filter_label_pair")}</label>
+              <select
+                value={filters.pair}
+                onChange={(e) => setFilters((f) => ({ ...f, pair: e.target.value }))}
+                className="bg-surface border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-accent"
+              >
+                <option value="">{t("trades_filter_all_pairs")}</option>
+                {allPairs.map((p) => (<option key={p} value={p}>{p}</option>))}
+              </select>
+            </div>
 
-          {/* Direction */}
-          <div className="flex flex-col gap-1 min-w-[120px]">
-            <label className="text-xs text-muted">{t("trades_filter_label_dir")}</label>
-            <select
-              value={filters.direction}
-              onChange={(e) => setFilters((f) => ({ ...f, direction: e.target.value }))}
-              className="bg-surface border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-accent"
-            >
-              <option value="">{t("trades_filter_all")}</option>
-              <option value="long">LONG</option>
-              <option value="short">SHORT</option>
-            </select>
-          </div>
+            <div className="flex flex-col gap-1 min-w-[120px]">
+              <label className="text-xs text-muted">{t("trades_filter_label_dir")}</label>
+              <select
+                value={filters.direction}
+                onChange={(e) => setFilters((f) => ({ ...f, direction: e.target.value }))}
+                className="bg-surface border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-accent"
+              >
+                <option value="">{t("trades_filter_all")}</option>
+                <option value="long">LONG</option>
+                <option value="short">SHORT</option>
+              </select>
+            </div>
 
-          {/* Result */}
-          <div className="flex flex-col gap-1 min-w-[120px]">
-            <label className="text-xs text-muted">{t("trades_filter_label_result")}</label>
-            <select
-              value={filters.result}
-              onChange={(e) => setFilters((f) => ({ ...f, result: e.target.value }))}
-              className="bg-surface border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-accent"
-            >
-              <option value="">{t("trades_filter_all")}</option>
-              <option value="win">{t("trades_filter_winners")}</option>
-              <option value="loss">{t("trades_filter_losers")}</option>
-            </select>
-          </div>
+            <div className="flex flex-col gap-1 min-w-[120px]">
+              <label className="text-xs text-muted">{t("trades_filter_label_result")}</label>
+              <select
+                value={filters.result}
+                onChange={(e) => setFilters((f) => ({ ...f, result: e.target.value }))}
+                className="bg-surface border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-accent"
+              >
+                <option value="">{t("trades_filter_all")}</option>
+                <option value="win">{t("trades_filter_winners")}</option>
+                <option value="loss">{t("trades_filter_losers")}</option>
+              </select>
+            </div>
 
-          {/* Date from */}
-          <div className="flex flex-col gap-1 min-w-[130px]">
-            <label className="text-xs text-muted">{t("trades_filter_date_from")}</label>
-            <input
-              type="date"
-              value={filters.dateFrom}
-              onChange={(e) => setFilters((f) => ({ ...f, dateFrom: e.target.value }))}
-              className="bg-surface border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-accent"
-            />
-          </div>
+            <div className="flex flex-col gap-1 min-w-[130px]">
+              <label className="text-xs text-muted">{t("trades_filter_date_from")}</label>
+              <input
+                type="date"
+                value={filters.dateFrom}
+                onChange={(e) => setFilters((f) => ({ ...f, dateFrom: e.target.value }))}
+                className="bg-surface border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-accent"
+              />
+            </div>
 
-          {/* Date to */}
-          <div className="flex flex-col gap-1 min-w-[130px]">
-            <label className="text-xs text-muted">{t("trades_filter_date_to")}</label>
-            <input
-              type="date"
-              value={filters.dateTo}
-              onChange={(e) => setFilters((f) => ({ ...f, dateTo: e.target.value }))}
-              className="bg-surface border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-accent"
-            />
-          </div>
+            <div className="flex flex-col gap-1 min-w-[130px]">
+              <label className="text-xs text-muted">{t("trades_filter_date_to")}</label>
+              <input
+                type="date"
+                value={filters.dateTo}
+                onChange={(e) => setFilters((f) => ({ ...f, dateTo: e.target.value }))}
+                className="bg-surface border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-accent"
+              />
+            </div>
 
-          {/* Reset */}
-          {hasActiveFilters && (
+            {hasActiveFilters && (
+              <button
+                onClick={resetFilters}
+                className="px-3 py-1.5 text-sm text-muted border border-border rounded-lg hover:text-foreground hover:bg-surface transition-colors self-end"
+              >
+                {t("trades_filter_reset")}
+              </button>
+            )}
+
             <button
-              onClick={resetFilters}
-              className="px-3 py-1.5 text-sm text-muted border border-border rounded-lg hover:text-foreground hover:bg-surface transition-colors self-end"
+              onClick={exportCSV}
+              disabled={exporting}
+              className="px-3 py-1.5 text-sm text-accent border border-accent/30 rounded-lg hover:bg-accent/10 transition-colors self-end ml-auto disabled:opacity-50"
             >
-              {t("trades_filter_reset")}
+              {exporting ? "..." : t("trades_export_csv")}
             </button>
-          )}
-
-          {/* CSV Export */}
-          <button
-            onClick={exportCSV}
-            disabled={exporting}
-            className="px-3 py-1.5 text-sm text-accent border border-accent/30 rounded-lg hover:bg-accent/10 transition-colors self-end ml-auto disabled:opacity-50"
-          >
-            {exporting ? "..." : t("trades_export_csv")}
-          </button>
-        </div>
+          </div>
         </div>
       </div>
 
@@ -453,34 +556,30 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
             <thead>
               <tr className="bg-surface text-muted text-left">
                 <th className="px-3 py-2 w-8"><div className="skeleton h-4 w-4 rounded" /></th>
-                <th className="px-3 py-2 font-medium">{t("trades_col_date")}</th>
-                <th className="px-3 py-2 font-medium">{t("trades_col_account")}</th>
-                <th className="px-3 py-2 font-medium">{t("trades_col_pair")}</th>
-                <th className="px-3 py-2 font-medium">{t("trades_col_dir")}</th>
-                <th className="px-3 py-2 font-medium">{t("trades_col_lot")}</th>
-                <th className="px-3 py-2 font-medium">{t("trades_col_entry")}</th>
-                <th className="px-3 py-2 font-medium">{t("trades_col_exit")}</th>
-                <th className="px-3 py-2 font-medium">{t("trades_col_sl")}</th>
-                <th className="px-3 py-2 font-medium">{t("trades_col_tp")}</th>
-                <th className="px-3 py-2 font-medium">{t("trades_col_pnl")}</th>
-                <th className="px-3 py-2 font-medium"></th>
+                <th className="px-3 py-2 font-medium">Date</th>
+                <th className="px-3 py-2 font-medium">Paire</th>
+                <th className="px-3 py-2 font-medium">Dir.</th>
+                <th className="px-3 py-2 font-medium">P&amp;L</th>
+                <th className="px-3 py-2 font-medium">Émotion</th>
+                <th className="px-3 py-2 font-medium">Discipline</th>
+                <th className="px-3 py-2 font-medium">Killzone</th>
+                <th className="px-3 py-2 font-medium">Durée</th>
+                <th className="px-3 py-2 w-8"></th>
               </tr>
             </thead>
             <tbody>
               {Array.from({ length: 6 }).map((_, i) => (
                 <tr key={i} className={i % 2 === 0 ? "bg-card" : "bg-surface"}>
                   <td className="px-3 py-2"><div className="skeleton h-4 w-4 rounded" /></td>
+                  <td className="px-3 py-2"><div className="skeleton h-4 w-24 rounded" /></td>
+                  <td className="px-3 py-2"><div className="skeleton h-4 w-16 rounded" /></td>
+                  <td className="px-3 py-2"><div className="skeleton h-4 w-12 rounded" /></td>
+                  <td className="px-3 py-2"><div className="skeleton h-4 w-16 rounded" /></td>
                   <td className="px-3 py-2"><div className="skeleton h-4 w-20 rounded" /></td>
-                  <td className="px-3 py-2"><div className="skeleton h-4 w-16 rounded" /></td>
-                  <td className="px-3 py-2"><div className="skeleton h-4 w-16 rounded" /></td>
-                  <td className="px-3 py-2"><div className="skeleton h-4 w-10 rounded" /></td>
-                  <td className="px-3 py-2"><div className="skeleton h-4 w-10 rounded" /></td>
-                  <td className="px-3 py-2"><div className="skeleton h-4 w-16 rounded" /></td>
-                  <td className="px-3 py-2"><div className="skeleton h-4 w-16 rounded" /></td>
-                  <td className="px-3 py-2"><div className="skeleton h-4 w-14 rounded" /></td>
-                  <td className="px-3 py-2"><div className="skeleton h-4 w-14 rounded" /></td>
-                  <td className="px-3 py-2"><div className="skeleton h-4 w-14 rounded" /></td>
-                  <td className="px-3 py-2"><div className="skeleton h-4 w-6 rounded" /></td>
+                  <td className="px-3 py-2"><div className="skeleton h-4 w-12 rounded" /></td>
+                  <td className="px-3 py-2"><div className="skeleton h-4 w-20 rounded" /></td>
+                  <td className="px-3 py-2"><div className="skeleton h-4 w-12 rounded" /></td>
+                  <td className="px-3 py-2"><div className="skeleton h-4 w-4 rounded" /></td>
                 </tr>
               ))}
             </tbody>
@@ -502,28 +601,50 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
                       className="accent-accent w-4 h-4 cursor-pointer"
                     />
                   </th>
-                  <th className="px-3 py-2 font-medium cursor-pointer hover:text-foreground select-none" onClick={() => handleSort("date")}>{t("trades_col_date")} {sortCol === "date" ? (sortAsc ? "↑" : "↓") : ""}</th>
-                  <th className="px-3 py-2 font-medium">{t("trades_col_account")}</th>
-                  <th className="px-3 py-2 font-medium cursor-pointer hover:text-foreground select-none" onClick={() => handleSort("pair")}>{t("trades_col_pair")} {sortCol === "pair" ? (sortAsc ? "↑" : "↓") : ""}</th>
-                  <th className="px-3 py-2 font-medium">{t("trades_col_dir")}</th>
-                  <th className="px-3 py-2 font-medium cursor-pointer hover:text-foreground select-none" onClick={() => handleSort("lot")}>{t("trades_col_lot")} {sortCol === "lot" ? (sortAsc ? "↑" : "↓") : ""}</th>
-                  <th className="px-3 py-2 font-medium">{t("trades_col_entry")}</th>
-                  <th className="px-3 py-2 font-medium">{t("trades_col_exit")}</th>
-                  <th className="px-3 py-2 font-medium">{t("trades_col_sl")}</th>
-                  <th className="px-3 py-2 font-medium">{t("trades_col_tp")}</th>
-                  <th className="px-3 py-2 font-medium cursor-pointer hover:text-foreground select-none" onClick={() => handleSort("pnl")}>{t("trades_col_pnl")} {sortCol === "pnl" ? (sortAsc ? "↑" : "↓") : ""}</th>
-                  <th className="px-3 py-2 font-medium"></th>
+                  <th className="px-3 py-2 font-medium cursor-pointer hover:text-foreground select-none" onClick={() => handleSort("date")}>
+                    Date {sortCol === "date" ? (sortAsc ? "↑" : "↓") : ""}
+                  </th>
+                  <th className="px-3 py-2 font-medium cursor-pointer hover:text-foreground select-none" onClick={() => handleSort("pair")}>
+                    Paire {sortCol === "pair" ? (sortAsc ? "↑" : "↓") : ""}
+                  </th>
+                  <th className="px-3 py-2 font-medium">Dir.</th>
+                  <th className="px-3 py-2 font-medium cursor-pointer hover:text-foreground select-none" onClick={() => handleSort("pnl")}>
+                    P&amp;L {sortCol === "pnl" ? (sortAsc ? "↑" : "↓") : ""}
+                  </th>
+                  <th className="px-3 py-2 font-medium">Émotion</th>
+                  <th className="px-3 py-2 font-medium">Discipline</th>
+                  <th className="px-3 py-2 font-medium">Killzone</th>
+                  <th className="px-3 py-2 font-medium">Durée</th>
+                  <th className="px-3 py-2 w-8"></th>
                 </tr>
               </thead>
               <tbody>
                 {sortedTrades(trades).map((tr, i) => {
                   const dir = normalizeDirection(tr.direction);
+                  const net = tr.pnl + (tr.commission || 0) + (tr.swap || 0);
+                  const isTopGain = top3GainIds.has(tr.id);
+                  const isTopLoss = top3LossIds.has(tr.id);
+
+                  const kzValue = tr.ict_killzone ?? detectKillzone(tr.open_time);
+                  const checklistScore = computeConfluenceScore(tr.ict_checklist ?? null);
+
+                  const dateObj = tr.open_time ? new Date(tr.open_time) : null;
+                  const dateStr = dateObj
+                    ? `${String(dateObj.getDate()).padStart(2, "0")}/${String(dateObj.getMonth() + 1).padStart(2, "0")} · ${String(dateObj.getHours()).padStart(2, "0")}:${String(dateObj.getMinutes()).padStart(2, "0")}`
+                    : "—";
+
+                  const duration =
+                    tr.open_time && tr.close_time
+                      ? formatDurationCompact(tr.open_time, tr.close_time)
+                      : "—";
+
                   return (
                     <tr
                       key={tr.id}
                       onClick={() => setSelectedTrade(tr as TradeDetail)}
-                      className={`cursor-pointer hover:bg-accent/5 transition-colors ${i % 2 === 0 ? "bg-card" : "bg-surface"} ${selectedIds.has(tr.id) ? "!bg-accent/5" : ""}`}
+                      className={`group cursor-pointer hover:bg-accent/5 transition-colors ${i % 2 === 0 ? "bg-card" : "bg-surface"} ${selectedIds.has(tr.id) ? "!bg-accent/5" : ""}`}
                     >
+                      {/* Checkbox */}
                       <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
@@ -532,48 +653,61 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
                           className="accent-accent w-4 h-4 cursor-pointer"
                         />
                       </td>
-                      <td className="px-3 py-2 text-foreground whitespace-nowrap">
-                        {tr.open_time ? new Date(tr.open_time).toLocaleDateString() : "—"}
+
+                      {/* Date + Heure */}
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        <span className="font-mono text-xs text-muted">{dateStr}</span>
                       </td>
-                      <td className="px-3 py-2 text-muted text-xs whitespace-nowrap">
-                        {tr.prop_challenges
-                          ? `${tr.prop_challenges.firm}${tr.prop_challenges.account_number ? ` #${tr.prop_challenges.account_number}` : ""}`
-                          : "—"}
-                      </td>
-                      <td className="px-3 py-2 text-foreground font-medium">{tr.pair}</td>
+
+                      {/* Paire */}
                       <td className="px-3 py-2">
-                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${dir === "long" ? "bg-profit/10 text-profit" : "bg-loss/10 text-loss"}`}>
+                        <span className="font-mono text-sm font-semibold text-foreground">{tr.pair}</span>
+                      </td>
+
+                      {/* Direction */}
+                      <td className="px-3 py-2">
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium uppercase ${dir === "long" ? "bg-profit/10 text-profit" : "bg-loss/10 text-loss"}`}>
                           {dir === "long" ? "LONG" : "SHORT"}
                         </span>
                       </td>
-                      <td className="px-3 py-2 text-foreground">{tr.lot_size}</td>
-                      <td className="px-3 py-2 text-foreground">{tr.entry_price}</td>
-                      <td className="px-3 py-2 text-foreground">{tr.exit_price}</td>
-                      <td className="px-3 py-2 text-muted">
-                        {tr.sl ?? "—"}
-                        {tr.sl_initial != null && (
-                          <span className="ml-1 inline-block w-2 h-2 rounded-full bg-accent/60" title={`${t("sl_initial_set")}: ${tr.sl_initial}`} />
+
+                      {/* P&L avec glow top 3 */}
+                      <td className={`px-3 py-2 ${isTopGain ? "bg-gradient-to-r from-profit/10 to-transparent" : isTopLoss ? "bg-gradient-to-r from-loss/10 to-transparent" : ""}`}>
+                        <span className={`font-mono font-semibold text-sm ${net >= 0 ? "text-profit" : "text-loss"}`}>
+                          {net >= 0 ? "+" : ""}{net.toFixed(2)}
+                        </span>
+                      </td>
+
+                      {/* Émotion */}
+                      <td className="px-3 py-2">
+                        <EmotionTag emotion={tr.emotion} checklist={tr.ict_checklist ?? null} />
+                      </td>
+
+                      {/* Discipline */}
+                      <td className="px-3 py-2">
+                        {tr.ict_checklist != null ? (
+                          <ConformityRing score={checklistScore} total={checklistTotal} />
+                        ) : (
+                          <span className="text-muted">—</span>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-muted">
-                        {tr.tp ?? "—"}
-                        {tr.tp_initial != null && (
-                          <span className="ml-1 inline-block w-2 h-2 rounded-full bg-accent/60" title={`${t("tp_initial_set")}: ${tr.tp_initial}`} />
-                        )}
+
+                      {/* Killzone */}
+                      <td className="px-3 py-2">
+                        <KillzonePill kz={kzValue} />
                       </td>
-                      {(() => {
-                        const net = tr.pnl + (tr.commission || 0) + (tr.swap || 0);
-                        return (
-                          <td className={`px-3 py-2 font-medium ${net >= 0 ? "text-profit" : "text-loss"}`}>
-                            {net >= 0 ? "+" : ""}{net.toFixed(2)}
-                          </td>
-                        );
-                      })()}
+
+                      {/* Durée */}
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        <span className="font-mono text-xs text-muted">{duration}</span>
+                      </td>
+
+                      {/* Supprimer — hover only */}
                       <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => handleDelete(tr.id)}
                           disabled={deletingId === tr.id}
-                          className="text-muted hover:text-loss transition-colors disabled:opacity-50"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted hover:text-loss disabled:opacity-50"
                           title={t("trades_delete")}
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
