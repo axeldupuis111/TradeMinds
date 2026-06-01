@@ -125,7 +125,7 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
 
   const aiScore = useMemo(() => {
     const checklistHasItem = Object.values(checklist).some(Boolean);
-    const total = 9;
+    const total = 8;
     const filled = [
       !!form.open_hour,
       !!form.close_date,
@@ -133,7 +133,6 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
       form.exit_price.trim() !== "" && !isNaN(parseFloat(form.exit_price)),
       form.sl.trim() !== "" && !isNaN(parseFloat(form.sl)),
       form.tp.trim() !== "" && !isNaN(parseFloat(form.tp)),
-      !!form.ict_setup,
       !!form.emotion,
       checklistHasItem,
     ].filter(Boolean).length;
@@ -143,7 +142,7 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
   function update(field: string, value: string) {
     setForm((prev) => {
       const next = { ...prev, [field]: value };
-      if ((field === "open_date" || field === "open_hour") && !prev.ict_killzone) {
+      if (field === "open_date" || field === "open_hour") {
         const date = field === "open_date" ? value : prev.open_date;
         const hour = field === "open_hour" ? value : prev.open_hour;
         if (date && hour) {
@@ -529,50 +528,6 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
             <textarea value={form.notes} onChange={(e) => update("notes", e.target.value)} rows={3} placeholder={t("detail_notes_placeholder_v2")} className={inputClass} />
           </div>
 
-          {/* Strategy details accordion — gated */}
-          {showAnalysis && !stratTags.loading && (
-            <div className="border border-border rounded-lg overflow-hidden">
-              <button
-                type="button"
-                onClick={() => {
-                  const el = document.getElementById("manual-strat-accordion");
-                  if (el) el.style.maxHeight = el.style.maxHeight === "0px" ? "300px" : "0px";
-                }}
-                className="w-full flex items-center justify-between px-4 py-3 text-sm text-muted hover:text-foreground transition-colors"
-              >
-                <span>{t("ict_accordion_title")}</span>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              <div id="manual-strat-accordion" className="overflow-hidden transition-all duration-200" style={{ maxHeight: "300px" }}>
-                <div className="px-4 pb-4 space-y-3">
-                  <div>
-                    <label className="block text-xs text-muted mb-1">{t("ict_setup")}</label>
-                    {stratTags.isDefault || stratTags.setups.length > 0 ? (
-                      <select value={form.ict_setup} onChange={(e) => update("ict_setup", e.target.value)} className={inputClass}>
-                        <option value="">{t("ict_select_setup")}</option>
-                        {stratTags.setups.map((s) => <option key={s.value} value={s.value}>{s.label[l]}</option>)}
-                      </select>
-                    ) : (
-                      <p className="text-xs text-muted italic py-2">{t("ict_no_setup_tags")}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-xs text-muted mb-1">{t("ict_killzone")}</label>
-                    {stratTags.isDefault || stratTags.timing.length > 0 ? (
-                      <select value={form.ict_killzone} onChange={(e) => update("ict_killzone", e.target.value)} className={inputClass}>
-                        <option value="">{t("ict_select_killzone")}</option>
-                        {stratTags.timing.map((kz) => <option key={kz.value} value={kz.value}>{kz.label[l]}</option>)}
-                      </select>
-                    ) : (
-                      <p className="text-xs text-muted italic py-2">{t("ict_no_timing_tags")}</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {error && <p className="text-loss text-sm mt-3">{error}</p>}
