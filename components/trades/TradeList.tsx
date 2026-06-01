@@ -478,6 +478,18 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const checklistTotal = checklistItems.length;
 
+  // ── Panel navigation ──────────────────────────────────────────────────────────
+  const selectedIndex = selectedTrade ? trades.findIndex((tr) => tr.id === selectedTrade.id) : -1;
+  const hasPanelPrev = selectedIndex > 0;
+  const hasPanelNext = selectedIndex >= 0 && selectedIndex < trades.length - 1;
+  function handlePanelPrev() {
+    if (selectedIndex > 0) setSelectedTrade(trades[selectedIndex - 1] as TradeDetail);
+  }
+  function handlePanelNext() {
+    if (selectedIndex >= 0 && selectedIndex < trades.length - 1)
+      setSelectedTrade(trades[selectedIndex + 1] as TradeDetail);
+  }
+
   return (
     <section>
       {/* Filter bar — sticky */}
@@ -788,6 +800,12 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
           trade={selectedTrade}
           onClose={() => setSelectedTrade(null)}
           onSaved={() => { loadTrades(); loadGlobalStats(); onTradeUpdated?.(); }}
+          onPrev={handlePanelPrev}
+          onNext={handlePanelNext}
+          hasPrev={hasPanelPrev}
+          hasNext={hasPanelNext}
+          navIndex={selectedIndex >= 0 ? selectedIndex : undefined}
+          navTotal={trades.length}
         />
       )}
     </section>

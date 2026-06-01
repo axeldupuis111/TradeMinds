@@ -14,7 +14,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
 import type { Lang } from "@/lib/translations";
-import { ChevronDown, Sparkles } from "lucide-react";
+import { ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -76,6 +76,12 @@ interface Props {
   trade: TradeDetail;
   onClose: () => void;
   onSaved: () => void;
+  onPrev?: () => void;
+  onNext?: () => void;
+  hasPrev?: boolean;
+  hasNext?: boolean;
+  navIndex?: number;   // 0-based index in current page
+  navTotal?: number;   // total trades in current page
 }
 
 function SavedIndicator({ visible }: { visible: boolean }) {
@@ -84,7 +90,7 @@ function SavedIndicator({ visible }: { visible: boolean }) {
   );
 }
 
-export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
+export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNext, hasPrev = false, hasNext = false, navIndex, navTotal }: Props) {
   const { t, lang } = useLanguage();
   const l = lang as Lang;
   const { plan, loading: planLoading } = usePlan();
@@ -114,6 +120,17 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
   const [derivedDetailsOpen, setDerivedDetailsOpen] = useState(false);
   const debounceRefs = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const screenshotPathRef = useRef<string | null>(null);
+  // Pending debounce saves — keyed by field name; value is the DB write closure
+  const pendingSavesRef = useRef<Record<string, () => Promise<void>>>({});
+  // Snapshot of "clean" values when the current trade loaded (for dirty detection)
+  const initialValuesRef = useRef({
+    emotion: trade.emotion,
+    notes: trade.notes || "",
+    quality: trade.setup_quality,
+    hasScreenshot: !!trade.screenshot_path,
+  });
+  const [screenshotModified, setScreenshotModified] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   useEffect(() => {
     setEmotion(trade.emotion);
@@ -133,6 +150,15 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
     }
     setIctChecklist(trade.ict_checklist || {});
     setChallengeId(trade.challenge_id || null);
+    // Reset dirty + transition tracking whenever we switch to a new trade
+    initialValuesRef.current = {
+      emotion: trade.emotion,
+      notes: trade.notes || "",
+      quality: trade.setup_quality,
+      hasScreenshot: !!trade.screenshot_path,
+    };
+    setScreenshotModified(false);
+    setIsTransitioning(false);
   }, [trade.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -175,9 +201,15 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
 
   function saveIctField(field: string, value: string | number | Record<string, boolean>) {
     if (debounceRefs.current[field]) clearTimeout(debounceRefs.current[field]);
+    const dbValue = typeof value === "string" && value === "" ? null : value;
+    const tradeId = trade.id;
+    // Register pending op so flushPendingDebounces can execute it immediately
+    pendingSavesRef.current[field] = async () => {
+      await supabase.from("trades").update({ [field]: dbValue }).eq("id", tradeId);
+    };
     debounceRefs.current[field] = setTimeout(async () => {
-      const dbValue = typeof value === "string" && value === "" ? null : value;
-      await supabase.from("trades").update({ [field]: dbValue }).eq("id", trade.id);
+      delete pendingSavesRef.current[field];
+      await supabase.from("trades").update({ [field]: dbValue }).eq("id", tradeId);
       showSavedIndicator(field);
       onSaved();
     }, 500);
@@ -194,9 +226,14 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
   function handleSlInitial(value: string) {
     setSlInitial(value);
     if (debounceRefs.current["sl_initial"]) clearTimeout(debounceRefs.current["sl_initial"]);
+    const dbValue = value.trim() === "" ? null : parseFloat(value);
+    const tradeId = trade.id;
+    pendingSavesRef.current["sl_initial"] = async () => {
+      await supabase.from("trades").update({ sl_initial: dbValue }).eq("id", tradeId);
+    };
     debounceRefs.current["sl_initial"] = setTimeout(async () => {
-      const dbValue = value.trim() === "" ? null : parseFloat(value);
-      await supabase.from("trades").update({ sl_initial: dbValue }).eq("id", trade.id);
+      delete pendingSavesRef.current["sl_initial"];
+      await supabase.from("trades").update({ sl_initial: dbValue }).eq("id", tradeId);
       showSavedIndicator("sl_initial");
       onSaved();
     }, 500);
@@ -205,9 +242,14 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
   function handleTpInitial(value: string) {
     setTpInitial(value);
     if (debounceRefs.current["tp_initial"]) clearTimeout(debounceRefs.current["tp_initial"]);
+    const dbValue = value.trim() === "" ? null : parseFloat(value);
+    const tradeId = trade.id;
+    pendingSavesRef.current["tp_initial"] = async () => {
+      await supabase.from("trades").update({ tp_initial: dbValue }).eq("id", tradeId);
+    };
     debounceRefs.current["tp_initial"] = setTimeout(async () => {
-      const dbValue = value.trim() === "" ? null : parseFloat(value);
-      await supabase.from("trades").update({ tp_initial: dbValue }).eq("id", trade.id);
+      delete pendingSavesRef.current["tp_initial"];
+      await supabase.from("trades").update({ tp_initial: dbValue }).eq("id", tradeId);
       showSavedIndicator("tp_initial");
       onSaved();
     }, 500);
@@ -243,12 +285,12 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
     if (!error) {
       screenshotPathRef.current = path;
       const { data: signedData } = await supabase.storage.from("trade-screenshots").createSignedUrl(path, 3600);
-      if (signedData) setScreenshotUrl(signedData.signedUrl);
+      if (signedData) { setScreenshotUrl(signedData.signedUrl); setScreenshotModified(true); }
     }
     setUploading(false);
   }
 
-  const handleSave = useCallback(async () => {
+  const handleSave = useCallback(async (): Promise<boolean> => {
     setSaving(true);
 
     const userWantsScreenshot = screenshotUrl !== null;
@@ -267,10 +309,77 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
     setSaving(false);
     if (!error) {
       setSaved(true);
+      // Update the clean snapshot so the dirty flag resets correctly
+      initialValuesRef.current = { ...initialValuesRef.current, emotion, notes, quality, hasScreenshot: userWantsScreenshot };
+      setScreenshotModified(false);
       onSaved();
       setTimeout(() => setSaved(false), 2000);
+      return true;
     }
+    return false;
   }, [emotion, quality, tags, notes, screenshotUrl, trade.id, supabase, onSaved]);
+
+  // ── Flush any pending debounce saves immediately (before navigation) ─────────
+  const flushPendingDebounces = useCallback(async (): Promise<void> => {
+    // Cancel all in-flight timers
+    Object.keys(debounceRefs.current).forEach((field) => {
+      clearTimeout(debounceRefs.current[field]);
+      delete debounceRefs.current[field];
+    });
+    // Execute pending writes immediately
+    const ops = Object.values(pendingSavesRef.current);
+    pendingSavesRef.current = {};
+    if (ops.length > 0) {
+      await Promise.all(ops.map((fn) => fn()));
+      onSaved();
+    }
+  }, [onSaved]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Dirty flag: true if emotion / notes / quality / screenshot changed ───────
+  const isDirty = useCallback((): boolean => {
+    const init = initialValuesRef.current;
+    if (emotion !== init.emotion) return true;
+    if (notes !== init.notes) return true;
+    if (quality !== init.quality) return true;
+    if (screenshotModified) return true;
+    return false;
+  }, [emotion, notes, quality, screenshotModified]);
+
+  // ── Navigate prev / next with flush + conditional save ───────────────────────
+  const handleNavigate = useCallback(async (direction: "prev" | "next") => {
+    // 1. Flush any debounced auto-saves that haven't fired yet
+    await flushPendingDebounces();
+    // 2. Save manually-edited fields only if they changed
+    if (isDirty()) {
+      const ok = await handleSave();
+      if (!ok) return; // save failed — stay on current trade
+    }
+    // 3. Fade out content, then switch trade
+    setIsTransitioning(true);
+    requestAnimationFrame(() => {
+      if (direction === "prev") onPrev?.();
+      else onNext?.();
+    });
+  }, [flushPendingDebounces, isDirty, handleSave, onPrev, onNext]);
+
+  // ── Keyboard shortcuts: ↑/↓ when focus is NOT in a form field ───────────────
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+      const active = document.activeElement;
+      if (
+        active instanceof HTMLInputElement ||
+        active instanceof HTMLTextAreaElement ||
+        active instanceof HTMLSelectElement ||
+        (active instanceof HTMLElement && active.isContentEditable)
+      ) return;
+      e.preventDefault();
+      if (e.key === "ArrowUp" && hasPrev) void handleNavigate("prev");
+      if (e.key === "ArrowDown" && hasNext) void handleNavigate("next");
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [hasPrev, hasNext, handleNavigate]);
 
   const checklistItems = stratTags.checklist;
   const checkedCount = checklistItems.filter((i) => ictChecklist[i.key]).length;
@@ -302,21 +411,55 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
       <div className="fixed top-0 right-0 z-50 h-full w-full sm:w-[440px] bg-card border-l border-border overflow-y-auto animate-in slide-in-from-right duration-200">
         <div className="sticky top-0 bg-card border-b border-border px-5 py-4 flex items-center justify-between z-10">
           <h2 className="text-lg font-semibold text-foreground">{t("detail_title")}</h2>
-          <button onClick={onClose} className="text-muted hover:text-foreground transition-colors">
+          <button
+            onClick={onClose}
+            aria-label="Fermer"
+            className="p-1.5 text-foreground/70 hover:text-foreground transition-colors"
+          >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        <div className="p-5 space-y-6">
+        <div className={`p-5 space-y-6 transition-opacity duration-150 motion-reduce:transition-none ${isTransitioning ? "opacity-0" : "opacity-100"}`}>
           {/* Trade info */}
           <div className="bg-background rounded-lg p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-foreground font-semibold text-lg">{trade.pair}</span>
-              <span className={`px-2 py-0.5 rounded text-xs font-medium ${trade.direction === "long" ? "bg-profit/10 text-profit" : "bg-loss/10 text-loss"}`}>
-                {trade.direction.toUpperCase()}
-              </span>
+            <div className="flex items-center justify-between gap-2">
+              {/* Nav prev/next — vrais boutons toujours visibles */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  onClick={() => void handleNavigate("prev")}
+                  disabled={!hasPrev}
+                  aria-label="Trade précédent"
+                  title="Trade précédent (↑)"
+                  className="p-1.5 bg-surface border border-border rounded-md text-foreground transition-colors hover:border-accent hover:text-accent disabled:opacity-40 disabled:cursor-not-allowed motion-reduce:transition-none"
+                >
+                  <ChevronUp className="w-[18px] h-[18px]" />
+                </button>
+                {navIndex !== undefined && navTotal !== undefined && navTotal > 1 && (
+                  <span className="text-sm font-mono text-foreground/80 select-none tabular-nums min-w-[36px] text-center">
+                    {navIndex + 1}/{navTotal}
+                  </span>
+                )}
+                <button
+                  onClick={() => void handleNavigate("next")}
+                  disabled={!hasNext}
+                  aria-label="Trade suivant"
+                  title="Trade suivant (↓)"
+                  className="p-1.5 bg-surface border border-border rounded-md text-foreground transition-colors hover:border-accent hover:text-accent disabled:opacity-40 disabled:cursor-not-allowed motion-reduce:transition-none"
+                >
+                  <ChevronDown className="w-[18px] h-[18px]" />
+                </button>
+              </div>
+
+              {/* Paire + direction */}
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <span className="text-foreground font-semibold text-lg truncate">{trade.pair}</span>
+                <span className={`shrink-0 px-2 py-0.5 rounded text-xs font-medium ${trade.direction === "long" ? "bg-profit/10 text-profit" : "bg-loss/10 text-loss"}`}>
+                  {trade.direction.toUpperCase()}
+                </span>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div><span className="text-muted">{t("trades_col_date")}:</span> <span className="text-foreground">{trade.open_time ? new Date(trade.open_time).toLocaleDateString() : "—"}</span></div>
@@ -495,7 +638,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved }: Props) {
               <div className="mb-2 relative group">
                 <Image src={screenshotUrl} alt="Trade screenshot" width={800} height={600} className="w-full rounded-lg border border-border" style={{ height: "auto" }} />
                 <button
-                  onClick={() => setScreenshotUrl(null)}
+                  onClick={() => { setScreenshotUrl(null); setScreenshotModified(true); }}
                   className="absolute top-2 right-2 p-1 bg-black/70 rounded-full text-muted hover:text-loss opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
