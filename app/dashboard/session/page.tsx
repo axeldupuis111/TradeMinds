@@ -357,7 +357,7 @@ export default function SessionPage() {
           </div>
         )}
 
-        <h1 className="text-2xl font-bold text-foreground">{t("session_title")}</h1>
+        <h1 className="text-2xl font-bold text-foreground">{t("session_active_title")}</h1>
 
         {/* Section 1 — Session header */}
         <div className="bg-profit/5 border border-profit/30 rounded-xl p-5">

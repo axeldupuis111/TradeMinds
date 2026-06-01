@@ -36,10 +36,12 @@ function formatSessionDuration(
     return t("session_duration_mins").replace("{m}", String(minutes));
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  if (h < 24)
+  if (h < 24) {
+    if (m === 0) return t("session_duration_hours").replace("{h}", String(h));
     return t("session_duration_hours_mins")
       .replace("{h}", String(h))
       .replace("{m}", String(m));
+  }
   const d = Math.floor(h / 24);
   const rh = h % 24;
   return t("session_duration_days_hours")
@@ -93,7 +95,7 @@ export default function RealTimeGuards({ strategy, accountSize, sessionStartedAt
   // Session duration
   const isPaused = sessionPausedAt !== null;
   const sessionDurationMin = sessionStartedAt
-    ? Math.floor((now - new Date(sessionStartedAt).getTime()) / 60000)
+    ? Math.max(0, Math.floor((now - new Date(sessionStartedAt).getTime()) / 60000))
     : null;
 
   const maxSessionMin = strategy?.max_session_minutes ?? null;
@@ -207,12 +209,12 @@ export default function RealTimeGuards({ strategy, accountSize, sessionStartedAt
             <p className="text-xs text-muted uppercase tracking-wider font-medium">
               {t("session_active_session_duration")}
             </p>
-            <p className={`text-5xl md:text-6xl font-bold tabular-nums leading-none ${durValueColor}`}>
+            <p className={`text-3xl md:text-4xl font-bold tabular-nums leading-none whitespace-nowrap ${durValueColor}`}>
               {sessionDurationMin !== null
                 ? formatSessionDuration(sessionDurationMin, t)
                 : "—"}
               {maxSessionMin !== null && (
-                <span className="text-3xl text-muted font-normal"> / {formatSessionDuration(maxSessionMin, t)}</span>
+                <span className="text-2xl text-muted font-normal"> / {formatSessionDuration(maxSessionMin, t)}</span>
               )}
             </p>
             {isPaused && (
