@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { PLAN_LIMITS } from "@/lib/plan-limits";
 import {
   createContext,
   useCallback,
@@ -17,7 +18,6 @@ function getWeekStart(date: Date): string {
   return d.toISOString().split("T")[0];
 }
 
-// "premium" is kept for DB backward-compat but treated as "plus" everywhere in UI
 export type PlanType = "free" | "plus" | "premium";
 
 export type SubscriptionStatus = "active" | "past_due" | "canceling" | "trialing" | null;
@@ -86,10 +86,6 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       let effectivePlan: PlanType = (data.plan as PlanType) || "free";
       if (data.plan_expires_at && new Date(data.plan_expires_at) < new Date()) {
         effectivePlan = "free";
-      }
-      // Premium is discontinued — treat as plus
-      if (effectivePlan === "premium") {
-        effectivePlan = "plus";
       }
       setPlan(effectivePlan);
 
@@ -192,7 +188,6 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
   }, [supabase, dailyAiCount, dailyAiReset, plan]);
 
   // Derived permissions
-  // Free: 1 AI analysis/week (real results, not demo). Plus/premium: 1/day + coach (5/day)
   const canUseStrategy = plan === "plus" || plan === "premium";
   const canUseAI = plan === "plus" || plan === "premium";
 
@@ -201,8 +196,8 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
   const effectiveResetKey = plan === "free" ? weekStart : today;
   const effectiveCount = dailyAiReset === effectiveResetKey ? dailyAiCount : 0;
 
-  // Free: 1 AI analysis per week. Plus: 1 per day.
-  const aiRemaining = Math.max(0, 1 - effectiveCount);
+  const aiLimit = PLAN_LIMITS.analyze[plan].limit;
+  const aiRemaining = Math.max(0, aiLimit - effectiveCount);
 
   // Free users can import CSV (1/day limit enforced in CsvImport component)
   const canImportCSV = true;

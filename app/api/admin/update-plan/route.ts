@@ -3,7 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
-const VALID_PLANS = ["free", "plus"] as const;
+const VALID_PLANS = ["free", "plus", "premium"] as const;
 type Plan = (typeof VALID_PLANS)[number];
 
 export async function POST(req: NextRequest) {
