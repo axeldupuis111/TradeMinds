@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import type { PlanType } from "@/lib/PlanContext";
+import { PLAN_LIMITS } from "@/lib/plan-limits";
 
 function getWeekStart(date: Date): string {
   const d = new Date(date);
@@ -72,10 +73,6 @@ interface QuotaResult {
   limit: number;
 }
 
-const LIMITS = {
-  analyze: { free: { limit: 1, resetMode: "week" as const }, plus: { limit: 1, resetMode: "day" as const }, premium: { limit: 10, resetMode: "day" as const } },
-  chat:    { free: { limit: 0, resetMode: "day" as const },  plus: { limit: 5, resetMode: "day" as const },  premium: { limit: 50, resetMode: "day" as const } },
-};
 
 interface ProfileQuotaRow {
   daily_ai_count: number | null;
@@ -93,7 +90,7 @@ function getQuotaFromProfile(profile: ProfileQuotaRow | null, feature: "analyze"
 }
 
 export async function checkQuota({ userId, plan, feature }: QuotaCheckParams): Promise<QuotaResult | NextResponse> {
-  const config = LIMITS[feature][plan];
+  const config = PLAN_LIMITS[feature][plan];
 
   if (config.limit === 0) {
     console.error(`[API Quota] Blocked ${feature} for free user ${userId}`);
@@ -124,7 +121,7 @@ export async function checkQuota({ userId, plan, feature }: QuotaCheckParams): P
 }
 
 export async function incrementQuota(userId: string, plan: PlanType, feature: "analyze" | "chat"): Promise<void> {
-  const config = LIMITS[feature][plan];
+  const config = PLAN_LIMITS[feature][plan];
   if (!config) return;
 
   const supabase = createSupabaseServer();

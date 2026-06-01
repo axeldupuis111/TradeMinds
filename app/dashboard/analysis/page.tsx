@@ -4,6 +4,7 @@ import UpgradeBanner from "@/components/UpgradeBanner";
 import type { CategoryBreakdown } from "@/lib/discipline-score";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
+import { PLAN_LIMITS } from "@/lib/plan-limits";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -312,7 +313,7 @@ export default function AnalysisPage() {
   const [aiHistory, setAIHistory] = useState<{ id: string; question: string; answer: string; created_at: string }[]>([]);
   const [aiHistoryLoading, setAIHistoryLoading] = useState(true);
 
-  const chatLimit = plan === "premium" ? 50 : plan === "plus" ? 5 : 0;
+  const chatLimit = PLAN_LIMITS.chat[plan].limit;
   const chatRemaining = Math.max(0, chatLimit - chatDailyCount);
   const canChat = plan === "plus" || plan === "premium";
 

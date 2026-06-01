@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { PLAN_LIMITS } from "@/lib/plan-limits";
 import {
   createContext,
   useCallback,
@@ -187,7 +188,6 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
   }, [supabase, dailyAiCount, dailyAiReset, plan]);
 
   // Derived permissions
-  // Free: 1 AI analysis/week (real results, not demo). Plus/premium: 1/day + coach (5/day)
   const canUseStrategy = plan === "plus" || plan === "premium";
   const canUseAI = plan === "plus" || plan === "premium";
 
@@ -196,8 +196,8 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
   const effectiveResetKey = plan === "free" ? weekStart : today;
   const effectiveCount = dailyAiReset === effectiveResetKey ? dailyAiCount : 0;
 
-  // Free: 1 AI analysis per week. Plus: 1 per day.
-  const aiRemaining = Math.max(0, 1 - effectiveCount);
+  const aiLimit = PLAN_LIMITS.analyze[plan].limit;
+  const aiRemaining = Math.max(0, aiLimit - effectiveCount);
 
   // Free users can import CSV (1/day limit enforced in CsvImport component)
   const canImportCSV = true;
