@@ -171,7 +171,7 @@ function Hero() {
                 transition={{ duration: 0.5, delay: 1.0, ease: "easeOut" }}
               >
                 <span className="text-profit text-sm shrink-0">✅</span>
-                <p className="text-xs text-foreground/80 leading-snug">12 jours de discipline consécutifs — <span className="text-profit font-semibold">nouveau record</span></p>
+                <p className="text-xs text-foreground/80 leading-snug">{t("mockup_streak_label")} — <span className="text-profit font-semibold">{t("mockup_streak_record")}</span></p>
               </motion.div>
 
               {/* Fake trade rows */}
@@ -366,11 +366,11 @@ function ScreenshotAI({ t }: { t: (k: string) => string }) {
 function ScreenshotScore({ t }: { t: (k: string) => string }) {
   const r = 36, circ = 2 * Math.PI * r;
   const rules = [
-    { label: "SL ≤ 1%",        ok: true  },
-    { label: "RR ≥ 2:1",       ok: true  },
-    { label: "Max 3 trades/j",  ok: false },
-    { label: "Trading Plan",    ok: true  },
-    { label: "Pas de revanche", ok: false },
+    { label: "SL ≤ 1%",                      ok: true  },
+    { label: "RR ≥ 2:1",                      ok: true  },
+    { label: t("mockup_rule_max_trades"),      ok: false },
+    { label: "Trading Plan",                   ok: true  },
+    { label: t("mockup_rule_no_revenge"),      ok: false },
   ];
   return (
     <div className="feature-screenshot p-5">
@@ -418,40 +418,40 @@ function ScreenshotScore({ t }: { t: (k: string) => string }) {
   );
 }
 
-function ScreenshotChallenge() {
+function ScreenshotChallenge({ t }: { t: (k: string) => string }) {
   const [mode, setMode] = useState<"prop" | "own">("prop");
   return (
     <div className="feature-screenshot p-5">
       {/* Mode toggle */}
       <div className="flex rounded-lg border border-border overflow-hidden mb-4 text-xs font-medium">
         <button onClick={() => setMode("prop")} className={`flex-1 py-1.5 transition-colors ${mode === "prop" ? "bg-accent text-white" : "text-muted hover:text-foreground"}`}>Prop Firm</button>
-        <button onClick={() => setMode("own")} className={`flex-1 py-1.5 transition-colors ${mode === "own" ? "bg-accent text-white" : "text-muted hover:text-foreground"}`}>Fonds Propres</button>
+        <button onClick={() => setMode("own")} className={`flex-1 py-1.5 transition-colors ${mode === "own" ? "bg-accent text-white" : "text-muted hover:text-foreground"}`}>{t("mockup_challenge_own_funds")}</button>
       </div>
       <div className="flex items-center justify-between mb-4">
         <div>
           {mode === "prop" ? (
             <>
-              <p className="text-sm font-semibold text-foreground">Prop Firm — 50 000€</p>
-              <p className="text-xs text-muted">Compte #12345 · Jour 8</p>
+              <p className="text-sm font-semibold text-foreground">{t("mockup_challenge_prop_title")}</p>
+              <p className="text-xs text-muted">{t("mockup_challenge_prop_subtitle")}</p>
             </>
           ) : (
             <>
-              <p className="text-sm font-semibold text-foreground">Compte perso — 10 000€</p>
-              <p className="text-xs text-muted">Depuis le 01/01/2025</p>
+              <p className="text-sm font-semibold text-foreground">{t("mockup_challenge_own_title")}</p>
+              <p className="text-xs text-muted">{t("mockup_challenge_own_subtitle")}</p>
             </>
           )}
         </div>
-        <span className="text-[11px] px-2.5 py-1 bg-accent/10 text-accent rounded-full font-medium">Actif</span>
+        <span className="text-[11px] px-2.5 py-1 bg-accent/10 text-accent rounded-full font-medium">{t("mockup_challenge_status_active")}</span>
       </div>
       <div className="space-y-3.5">
         {[
-          { label: "Objectif profit (8%)",     val: "+2 840€ / 4 000€", pct: 71, color: "bg-profit"    },
-          { label: "Drawdown journalier (5%)", val: "-340€ / 2 500€",  pct: 14, color: "bg-warning"   },
-          { label: "Drawdown total (10%)",     val: "-1 160€ / 5 000€",pct: 23, color: "bg-loss/70"   },
+          { labelKey: "mockup_challenge_profit_target", val: "+2 840€ / 4 000€", pct: 71, color: "bg-profit"    },
+          { labelKey: "mockup_challenge_daily_dd",      val: "-340€ / 2 500€",   pct: 14, color: "bg-warning"   },
+          { labelKey: "mockup_challenge_total_dd",      val: "-1 160€ / 5 000€", pct: 23, color: "bg-loss/70"   },
         ].map((bar) => (
-          <div key={bar.label}>
+          <div key={bar.labelKey}>
             <div className="flex justify-between text-[11px] mb-1.5">
-              <span className="text-muted">{bar.label}</span>
+              <span className="text-muted">{t(bar.labelKey)}</span>
               <span className="text-foreground font-medium tabular-nums">{bar.val}</span>
             </div>
             <div className="h-2 bg-surface rounded-full overflow-hidden">
@@ -485,9 +485,9 @@ function Features() {
       title: t("feature_2_title"),
       desc: t("feature_2_desc"),
       bullets: [
-        "🔍 Détecte tes patterns invisibles (revenge, FOMO, overtrading)",
-        "📊 Score de discipline objectif — pas de bullshit",
-        "💬 Pose-lui des questions en langage naturel",
+        `🔍 ${t("feature_2_bullet_1")}`,
+        `📊 ${t("feature_2_bullet_2")}`,
+        `💬 ${t("feature_2_bullet_3")}`,
       ],
       screenshot: <ScreenshotAI t={t} />,
       screenshotGlow: true,
@@ -505,7 +505,7 @@ function Features() {
       labelColor: "text-orange-400 bg-orange-400/10",
       title: t("feature_4_title"),
       desc: t("feature_4_desc"),
-      screenshot: <ScreenshotChallenge />,
+      screenshot: <ScreenshotChallenge t={t} />,
       reverse: true,
       wideScreenshot: false,
     },
@@ -1083,7 +1083,6 @@ function Footer() {
           <div>
             <p className="text-foreground font-semibold text-sm mb-4">{t("footer_resources")}</p>
             <ul className="space-y-2.5">
-              <li><span className="text-muted/40 text-sm cursor-not-allowed select-none">{t("footer_blog")}</span></li>
               <li><a href="/contact" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_contact")}</a></li>
               <li><a href="/faq" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_faq")}</a></li>
             </ul>
