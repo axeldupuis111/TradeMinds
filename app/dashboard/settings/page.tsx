@@ -551,12 +551,8 @@ export default function SettingsPage() {
 
       {/* MetaTrader sync token */}
       <section id="metatrader" className="bg-card border border-border rounded-xl p-5 scroll-mt-6">
-        <h2 className="text-lg font-semibold text-foreground mb-1">Synchronisation MetaTrader</h2>
-        <p className="text-muted text-sm mb-4">
-          Ce token permet de connecter MetaTrader (Expert Advisor) à TradeDiscipline pour
-          synchroniser automatiquement tes trades. Tu le copieras dans la configuration de
-          l&apos;EA. Ne le partage pas — il donne accès à l&apos;envoi de trades sur ton compte.
-        </p>
+        <h2 className="text-lg font-semibold text-foreground mb-1">{t("sync_mt_title")}</h2>
+        <p className="text-muted text-sm mb-4">{t("sync_mt_desc")}</p>
 
         {plan !== "premium" ? (
           <div className="relative rounded-xl border border-accent/30 bg-accent/5 p-6 text-center">
@@ -585,14 +581,14 @@ export default function SettingsPage() {
                 }}
                 className="px-3 py-2 rounded-lg border border-border bg-surface text-foreground text-sm hover:bg-border transition-colors flex-shrink-0"
               >
-                Copier
+                {t("sync_mt_copy")}
               </button>
               <button
                 onClick={() => setShowMtRegenModal(true)}
                 disabled={mtGenerating}
                 className="px-3 py-2 rounded-lg border border-loss/20 bg-loss/5 text-loss text-sm hover:bg-loss/10 transition-colors flex-shrink-0 disabled:opacity-50"
               >
-                {mtGenerating ? "..." : "Régénérer"}
+                {mtGenerating ? "..." : t("sync_mt_regen")}
               </button>
             </div>
           </div>
@@ -606,7 +602,7 @@ export default function SettingsPage() {
                 : "bg-accent text-white hover:bg-blue-600"
             }`}
           >
-            {mtGenerating ? "..." : "Générer un token"}
+            {mtGenerating ? "..." : t("sync_mt_generate")}
           </button>
         )}
 
@@ -618,7 +614,7 @@ export default function SettingsPage() {
             className="w-full text-left px-4 py-3 flex items-center justify-between gap-3"
           >
             <span className="text-foreground font-medium text-sm">
-              Comment connecter MetaTrader
+              {t("sync_mt_guide_title")}
             </span>
             <svg
               className={`w-4 h-4 text-muted shrink-0 transition-transform ${showMtGuide ? "rotate-180" : ""}`}
@@ -633,14 +629,12 @@ export default function SettingsPage() {
             <div className="px-4 pb-4">
               <ol className="space-y-2.5 text-sm text-muted leading-relaxed list-decimal list-inside">
                 <li>
-                  <strong className="text-foreground">Copie ton token</strong> à
-                  l&apos;aide du bouton Copier ci-dessus.
+                  <strong className="text-foreground">{t("sync_mt_step1_bold")}</strong>{" "}
+                  {t("sync_mt_step1_rest")}
                 </li>
                 <li>
-                  <strong className="text-foreground">
-                    Télécharge l&apos;Expert Advisor
-                  </strong>{" "}
-                  TradeDiscipline :
+                  <strong className="text-foreground">{t("sync_mt_step2_bold")}</strong>{" "}
+                  {t("sync_mt_step2_rest")}
                   <span className="flex gap-2 mt-1.5">
                     <a
                       href="/TradeDiscipline_MT5.mq5"
@@ -665,69 +659,43 @@ export default function SettingsPage() {
                   </span>
                 </li>
                 <li>
-                  <strong className="text-foreground">
-                    Ouvre le fichier dans MetaEditor
-                  </strong>{" "}
-                  (touche{" "}
-                  <kbd className="text-xs bg-background px-1.5 py-0.5 rounded border border-border">F4</kbd>{" "}
-                  dans MetaTrader) et compile-le (touche{" "}
-                  <kbd className="text-xs bg-background px-1.5 py-0.5 rounded border border-border">F7</kbd>).
+                  <strong className="text-foreground">{t("sync_mt_step3_bold")}</strong>{" "}
+                  {t("sync_mt_step3_rest")}
                 </li>
                 <li>
-                  Dans MetaTrader, va dans{" "}
-                  <strong className="text-foreground">Outils → Options</strong>,
-                  onglet{" "}
-                  <strong className="text-foreground">Expert Advisors</strong>{" "}
-                  (MT4) ou{" "}
-                  <strong className="text-foreground">Expert Consultants</strong>{" "}
-                  (MT5). Coche « Autoriser le trading algorithmique » et
-                  « Autoriser les WebRequest pour les URL listées », puis
-                  ajoute l&apos;URL{" "}
+                  {t("sync_mt_step4_pre")}{" "}
+                  <strong className="text-foreground">{t("sync_mt_step4_menu")}</strong>,
+                  {" "}<strong className="text-foreground">{t("sync_mt_step4_tab4")}</strong>{" "}
+                  (MT4) {" "}<strong className="text-foreground">{t("sync_mt_step4_tab5")}</strong>{" "}
+                  (MT5). {t("sync_mt_step4_rest")}{" "}
                   <code className="text-xs bg-background px-1 py-0.5 rounded break-all">
                     https://www.tradediscipline.app
                   </code>.
                 </li>
                 <li>
-                  <strong className="text-foreground">
-                    Glisse l&apos;Expert Advisor
-                  </strong>{" "}
-                  sur n&apos;importe quel graphique. Dans la fenêtre qui
-                  s&apos;ouvre : onglet{" "}
-                  <strong className="text-foreground">Général</strong> → coche
-                  « Autoriser le trading algorithmique » (MT5) /
-                  « Autoriser Trading en direct » (MT4) ; onglet{" "}
-                  <strong className="text-foreground">
-                    Paramètres d&apos;entrée
-                  </strong>{" "}
+                  <strong className="text-foreground">{t("sync_mt_step5_bold")}</strong>{" "}
+                  {t("sync_mt_step5_window")}{" "}
+                  <strong className="text-foreground">{t("sync_mt_step5_general")}</strong>{" "}
+                  {t("sync_mt_step5_check")}{" "}
+                  <strong className="text-foreground">{t("sync_mt_step5_params5")}</strong>{" "}
                   (MT5) /{" "}
-                  <strong className="text-foreground">
-                    Données d&apos;entrée
-                  </strong>{" "}
-                  (MT4) → colle le token dans le champ prévu.
+                  <strong className="text-foreground">{t("sync_mt_step5_params4")}</strong>{" "}
+                  {t("sync_mt_step5_rest")}
                 </li>
                 <li>
-                  <strong className="text-foreground">Valide.</strong> Les trades
-                  des 90 derniers jours se synchronisent, puis les nouveaux
-                  trades arrivent automatiquement tant que MetaTrader reste
-                  ouvert.
+                  <strong className="text-foreground">{t("sync_mt_step6_bold")}</strong>{" "}
+                  {t("sync_mt_step6_rest")}
                 </li>
               </ol>
 
-              {/* Bon à savoir */}
+              {/* Tips */}
               <div className="mt-4 p-3 rounded-lg bg-accent/5 border border-accent/20">
                 <p className="text-sm font-medium text-foreground mb-2">
-                  Bon à savoir
+                  {t("sync_mt_tips_title")}
                 </p>
                 <ul className="space-y-1.5 text-sm text-muted leading-relaxed list-disc list-inside">
-                  <li>
-                    TradeDiscipline affiche le P&amp;L net (commissions et
-                    frais inclus) ; ce montant peut donc différer du profit
-                    brut affiché par MetaTrader.
-                  </li>
-                  <li>
-                    La synchronisation fonctionne lorsque MetaTrader est
-                    ouvert sur ton ordinateur.
-                  </li>
+                  <li>{t("sync_mt_tip1")}</li>
+                  <li>{t("sync_mt_tip2")}</li>
                 </ul>
               </div>
             </div>
@@ -740,24 +708,21 @@ export default function SettingsPage() {
       {showMtRegenModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="bg-card border border-border rounded-xl p-6 max-w-md w-full space-y-4">
-            <h3 className="text-lg font-semibold text-foreground">Régénérer le token ?</h3>
-            <p className="text-sm text-muted">
-              Le token actuel deviendra immédiatement invalide. Tu devras reconfigurer
-              l&apos;Expert Advisor dans MetaTrader avec le nouveau token.
-            </p>
+            <h3 className="text-lg font-semibold text-foreground">{t("sync_mt_modal_title")}</h3>
+            <p className="text-sm text-muted">{t("sync_mt_modal_desc")}</p>
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setShowMtRegenModal(false)}
                 className="px-4 py-2 rounded-lg border border-border bg-surface text-foreground text-sm hover:bg-border transition-colors"
               >
-                Annuler
+                {t("downgrade_cancel")}
               </button>
               <button
                 onClick={generateMtToken}
                 disabled={mtGenerating}
                 className="px-4 py-2 rounded-lg bg-loss text-white text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
               >
-                {mtGenerating ? "..." : "Régénérer"}
+                {mtGenerating ? "..." : t("sync_mt_regen")}
               </button>
             </div>
           </div>
