@@ -3,6 +3,7 @@
 import { AnalyticsInsightCards } from "@/components/analytics/AnalyticsInsightCards";
 import { AnalyticsKpiCards } from "@/components/analytics/AnalyticsKpiCards";
 import { AutoInsights } from "@/components/analytics/AutoInsights";
+import { DisciplineAnalyticsBlock } from "@/components/analytics/DisciplineAnalyticsBlock";
 import { HourDayHeatmap } from "@/components/analytics/HourDayHeatmap";
 import { ResilienceBlock } from "@/components/analytics/ResilienceBlock";
 import EmotionalTrendChart from "@/components/charts/EmotionalTrendChart";
@@ -11,14 +12,13 @@ import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import StaggerContainer, { StaggerItem } from "@/components/animations/StaggerContainer";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ICT_KILLZONES } from "@/lib/ict-constants";
+
 import { useStrategyTags } from "@/lib/hooks/useStrategyTags";
 import { useChartColors } from "@/lib/useChartColors";
 import { formatCurrencyAxis } from "@/lib/utils";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/cn";
-import type { Lang } from "@/lib/translations";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Search, ShieldCheck, ShieldAlert, Filter, X } from "lucide-react";
@@ -40,6 +40,7 @@ import {
 
 interface TradeRow {
   open_time: string;
+  close_time?: string | null;
   pnl: number;
   commission: number | null;
   swap: number | null;
@@ -100,7 +101,6 @@ const EMOTION_EMOJIS: Record<string, string> = {
 
 type Period = "7d" | "30d" | "90d" | "all" | "custom";
 
-const EMPTY_BAR = "rgb(var(--border))";
 
 /**
  * Formatter P&L sécurisé : évite "-0€" pour les valeurs proches de zéro.
@@ -137,7 +137,7 @@ function RoundedBar({
 }
 
 export default function AnalyticsPage() {
-  const { t, lang } = useLanguage();
+  const { t } = useLanguage();
   const c = useChartColors();
   const supabase = createClient();
   const stratTags = useStrategyTags();
@@ -186,7 +186,7 @@ export default function AnalyticsPage() {
       const [{ data: tradeData }, { data: accountData }, { data: reviewData }] = await Promise.all([
         supabase
           .from("trades")
-          .select("open_time, pnl, commission, swap, pair, direction, emotion, setup_quality, challenge_id, ict_setup, ict_entry_zone, ict_killzone, ict_checklist, sl, tp, entry_price")
+          .select("open_time, close_time, pnl, commission, swap, pair, direction, emotion, setup_quality, challenge_id, ict_setup, ict_entry_zone, ict_killzone, ict_checklist, sl, tp, entry_price")
           .eq("user_id", user.id)
           .order("open_time", { ascending: true }),
         supabase
@@ -541,64 +541,6 @@ export default function AnalyticsPage() {
     return { rulesFollowed, rulesBroken };
   }, [filtered, violatedPairs]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── ICT Analytics ─────────────────────────────────────────────────────────
-  const ictTaggedCount = useMemo(
-    () => filtered.filter((tr) => tr.ict_setup || tr.ict_entry_zone || tr.ict_killzone).length,
-    [filtered] // eslint-disable-line react-hooks/exhaustive-deps
-  );
-
-  const byICTSetup = useMemo(() => {
-    const map: Record<string, { wins: number; total: number }> = {};
-    filtered.forEach((tr) => {
-      if (!tr.ict_setup) return;
-      if (!map[tr.ict_setup]) map[tr.ict_setup] = { wins: 0, total: 0 };
-      map[tr.ict_setup].total++;
-      if (netPnl(tr) > 0) map[tr.ict_setup].wins++;
-    });
-    return Object.entries(map)
-      .map(([setup, d]) => ({ setup, winrate: d.total > 0 ? Math.round((d.wins / d.total) * 100) : 0, count: d.total }))
-      .sort((a, b) => b.winrate - a.winrate);
-  }, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const byICTEntryZone = useMemo(() => {
-    const map: Record<string, { wins: number; total: number }> = {};
-    filtered.forEach((tr) => {
-      if (!tr.ict_entry_zone) return;
-      if (!map[tr.ict_entry_zone]) map[tr.ict_entry_zone] = { wins: 0, total: 0 };
-      map[tr.ict_entry_zone].total++;
-      if (netPnl(tr) > 0) map[tr.ict_entry_zone].wins++;
-    });
-    return Object.entries(map)
-      .map(([zone, d]) => ({ zone, winrate: d.total > 0 ? Math.round((d.wins / d.total) * 100) : 0, count: d.total }))
-      .sort((a, b) => b.winrate - a.winrate);
-  }, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const byKillzone = useMemo(() => {
-    const kzMap: Record<string, { total: number; pnl: number; wins: number; best: number; worst: number }> = {};
-    ICT_KILLZONES.forEach((kz) => { kzMap[kz.value] = { total: 0, pnl: 0, wins: 0, best: -Infinity, worst: Infinity }; });
-    filtered.forEach((tr) => {
-      if (!tr.ict_killzone) return;
-      const kz = kzMap[tr.ict_killzone];
-      if (!kz) return;
-      const net = netPnl(tr);
-      kz.total++;
-      kz.pnl += net;
-      if (net > 0) kz.wins++;
-      if (net > kz.best) kz.best = net;
-      if (net < kz.worst) kz.worst = net;
-    });
-    return ICT_KILLZONES.map((kz) => {
-      const d = kzMap[kz.value];
-      return {
-        name: kz.value,
-        pnl: Number(d.pnl.toFixed(2)),
-        count: d.total,
-        winrate: d.total > 0 ? Math.round((d.wins / d.total) * 100) : 0,
-        best:  d.total > 0 ? Number(d.best.toFixed(2)) : 0,
-        worst: d.total > 0 ? Number(d.worst.toFixed(2)) : 0,
-      };
-    });
-  }, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Tooltip style ─────────────────────────────────────────────────────────
   const tooltipStyle: React.CSSProperties = {
@@ -665,17 +607,6 @@ export default function AnalyticsPage() {
     );
   };
 
-  const l = lang as Lang;
-
-  function getICTSetupLabel(value: string) {
-    return stratTags.setups.find((x) => x.value === value)?.label[l] ?? value;
-  }
-  function getICTZoneLabel(value: string) {
-    return stratTags.entry_zones.find((x) => x.value === value)?.label[l] ?? value;
-  }
-  function getKillzoneLabel(value: string) {
-    return ICT_KILLZONES.find((x) => x.value === value)?.label[l] ?? value;
-  }
   // ── Loading ───────────────────────────────────────────────────────────────
   if (loading) {
     return (
@@ -1177,197 +1108,13 @@ export default function AnalyticsPage() {
             </div>
           </StaggerItem>
 
-          {/* ── ICT / Strategy Analytics ──────────────────────────────── */}
+          {/* ── Analytics par discipline ──────────────────────────────── */}
           <StaggerItem>
             <div className="mt-4">
-              <div className="flex items-center gap-3 mb-2">
-                <h2 className="text-xl font-bold text-foreground">
-                  {stratTags.isDefault ? t("ict_section_title") : t("analytics_strategy_title")}
-                </h2>
-                {stratTags.isDefault && (
-                  <span className="px-2 py-0.5 rounded text-xs font-bold bg-accent/20 text-accent">ICT</span>
-                )}
-              </div>
-              <p className="text-foreground-muted text-sm mb-4">{t("ict_section_subtitle")}</p>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                {byICTSetup.length > 0 && ictTaggedCount >= 5 && (
-                  <KpiCardPremium layout="full" accentColor="violet">
-                    <CardHeader>
-                      <CardTitle>{t("ict_winrate_by_setup")}</CardTitle>
-                    </CardHeader>
-                    <div className="space-y-2">
-                      {byICTSetup.map((entry) => (
-                        <div key={entry.setup} className="flex items-center gap-2">
-                          <div className="w-32 shrink-0 text-xs text-foreground-muted truncate">{getICTSetupLabel(entry.setup)}</div>
-                          <div className="flex-1 h-5 bg-border/30 rounded overflow-hidden">
-                            <div
-                              className="h-full rounded transition-all"
-                              style={{
-                                width: `${entry.winrate}%`,
-                                backgroundColor: entry.winrate > 60 ? c.profit : entry.winrate >= 40 ? c.warning : c.loss,
-                                opacity: 0.88,
-                              }}
-                            />
-                          </div>
-                          <span className="text-xs text-foreground-muted w-28 shrink-0 text-right">
-                            {entry.winrate}% ({entry.count} trades)
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </KpiCardPremium>
-                )}
-
-                {byICTEntryZone.length > 0 && (
-                  <KpiCardPremium layout="full" accentColor="violet">
-                    <CardHeader>
-                      <CardTitle>{t("ict_winrate_by_zone")}</CardTitle>
-                    </CardHeader>
-                    <div className="space-y-2">
-                      {byICTEntryZone.map((entry) => (
-                        <div key={entry.zone} className="flex items-center gap-2">
-                          <div className="w-32 shrink-0 text-xs text-foreground-muted truncate">{getICTZoneLabel(entry.zone)}</div>
-                          <div className="flex-1 h-5 bg-border/30 rounded overflow-hidden">
-                            <div
-                              className="h-full rounded transition-all"
-                              style={{
-                                width: `${entry.winrate}%`,
-                                backgroundColor: entry.winrate > 60 ? c.profit : entry.winrate >= 40 ? c.warning : c.loss,
-                                opacity: 0.88,
-                              }}
-                            />
-                          </div>
-                          <span className="text-xs text-foreground-muted w-28 shrink-0 text-right">
-                            {entry.winrate}% ({entry.count} trades)
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </KpiCardPremium>
-                )}
-
-                {byKillzone.some((k) => k.count > 0) && (
-                  <KpiCardPremium layout="full" accentColor="violet">
-                    <CardHeader>
-                      <CardTitle>{t("ict_perf_by_killzone")}</CardTitle>
-                    </CardHeader>
-                    <ResponsiveContainer width="100%" height={260}>
-                      <BarChart data={byKillzone} margin={{ top: 5, right: 10, left: 0, bottom: 40 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
-                        <XAxis
-                          dataKey="name"
-                          tick={{ fill: c.axis, fontSize: 10 }}
-                          tickLine={false}
-                          axisLine={{ stroke: c.axisLine }}
-                          tickFormatter={(v) => getKillzoneLabel(v).split(" ")[0]}
-                          angle={-30}
-                          textAnchor="end"
-                          interval={0}
-                        />
-                        <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
-                        <Tooltip
-                          content={({ active, payload }) => {
-                            if (!active || !payload?.length) return null;
-                            const entry = byKillzone.find((k) => k.name === payload[0]?.payload?.name);
-                            if (!entry) return null;
-                            return (
-                              <div style={tooltipStyle}>
-                                <p style={{ fontWeight: 600, marginBottom: 4 }}>{getKillzoneLabel(entry.name)}</p>
-                                {entry.count === 0 ? (
-                                  <p style={{ color: c.axis }}>0 trades</p>
-                                ) : (
-                                  <>
-                                    <p style={{ color: entry.pnl >= 0 ? c.profit : c.loss }}>
-                                      {entry.pnl >= 0 ? "+" : ""}{entry.pnl.toFixed(2)}€
-                                    </p>
-                                    <p style={{ color: c.axis }}>{entry.count} trades · WR {entry.winrate}%</p>
-                                    <p style={{ color: c.profit }}>Best: +{entry.best.toFixed(2)}€</p>
-                                    <p style={{ color: c.loss }}>Worst: {entry.worst.toFixed(2)}€</p>
-                                  </>
-                                )}
-                              </div>
-                            );
-                          }}
-                          cursor={{ fill: "rgb(var(--foreground) / 0.04)" }}
-                        />
-                        <Bar
-                          dataKey="pnl"
-                          shape={(props: unknown) => {
-                            const { x, y, width, height, value, payload } = props as BarShapeProps;
-                            const empty = (payload?.count ?? 1) === 0;
-                            return <RoundedBar x={x} y={y} width={width} height={height} value={value} fill={empty ? EMPTY_BAR : (value ?? 0) >= 0 ? c.profit : c.loss} fillOpacity={empty ? 0.3 : 0.72} />;
-                          }}
-                          activeBar={false}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </KpiCardPremium>
-                )}
-
-              </div>
-
-              {ictTaggedCount < 10 && (
-                <Card variant="accent" padding="sm" className="mt-4">
-                  <div className="space-y-3">
-                    {/* Barre de progression */}
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <p className="text-xs text-foreground-muted">
-                          {ictTaggedCount} / {filtered.length} trades tagués
-                        </p>
-                        <span className="text-[10px] text-foreground-muted/60">
-                          {filtered.length > 0 ? Math.round((ictTaggedCount / filtered.length) * 100) : 0}%
-                        </span>
-                      </div>
-                      <div className="h-1.5 bg-foreground/8 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all"
-                          style={{
-                            width: filtered.length > 0 ? `${(ictTaggedCount / filtered.length) * 100}%` : "0%",
-                            backgroundColor: "rgb(var(--accent))",
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Chips concepts + bouton */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {ictTaggedCount === 0 ? (
-                        <>
-                          {["FVG", "Order Block", "Silver Bullet"].map((chip) => (
-                            <span
-                              key={chip}
-                              className="px-2 py-0.5 text-[10px] rounded-full border border-border bg-foreground/5 text-foreground-muted"
-                            >
-                              {chip}
-                            </span>
-                          ))}
-                        </>
-                      ) : (
-                        <>
-                          {byICTSetup.slice(0, 3).map((s) => (
-                            <span
-                              key={s.setup}
-                              className="px-2 py-0.5 text-[10px] rounded-full border border-border bg-foreground/5 text-foreground-muted"
-                            >
-                              {s.setup.replace(/_/g, " ")}
-                            </span>
-                          ))}
-                        </>
-                      )}
-                      <div className="flex-1" />
-                      <Link
-                        href="/dashboard/trades"
-                        className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
-                      >
-                        {t("ict_goto_trades")} →
-                      </Link>
-                    </div>
-                  </div>
-                </Card>
-              )}
+              <DisciplineAnalyticsBlock
+                trades={filtered}
+                checklistItems={stratTags.checklist}
+              />
             </div>
           </StaggerItem>
 
