@@ -423,10 +423,6 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
         </div>
 
         <div className={`p-5 space-y-6 transition-opacity duration-150 motion-reduce:transition-none ${isTransitioning ? "opacity-0" : "opacity-100"}`}>
-          {/* DEBUG MARKER — à retirer après validation */}
-          <div style={{ background: 'red', color: 'white', padding: '12px', fontSize: '18px', borderRadius: '6px' }}>
-            NAV DEBUG — chevrons devraient être ici — index: {String(navIndex)} / total: {String(navTotal)}
-          </div>
           {/* Trade info */}
           <div className="bg-background rounded-lg p-4 space-y-2">
             <div className="flex items-center justify-between gap-2">
