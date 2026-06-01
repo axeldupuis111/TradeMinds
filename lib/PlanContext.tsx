@@ -17,7 +17,6 @@ function getWeekStart(date: Date): string {
   return d.toISOString().split("T")[0];
 }
 
-// "premium" is kept for DB backward-compat but treated as "plus" everywhere in UI
 export type PlanType = "free" | "plus" | "premium";
 
 export type SubscriptionStatus = "active" | "past_due" | "canceling" | "trialing" | null;
@@ -86,10 +85,6 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       let effectivePlan: PlanType = (data.plan as PlanType) || "free";
       if (data.plan_expires_at && new Date(data.plan_expires_at) < new Date()) {
         effectivePlan = "free";
-      }
-      // Premium is discontinued — treat as plus
-      if (effectivePlan === "premium") {
-        effectivePlan = "plus";
       }
       setPlan(effectivePlan);
 

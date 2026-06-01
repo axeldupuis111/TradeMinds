@@ -57,8 +57,6 @@ export async function requireAuth(): Promise<AuthResult | NextResponse> {
   if (profile?.plan_expires_at && new Date(profile.plan_expires_at) < new Date()) {
     plan = "free";
   }
-  if (plan === "premium") plan = "plus";
-
   return { userId: user.id, plan };
 }
 
@@ -75,8 +73,8 @@ interface QuotaResult {
 }
 
 const LIMITS = {
-  analyze: { free: { limit: 1, resetMode: "week" as const }, plus: { limit: 1, resetMode: "day" as const } },
-  chat:    { free: { limit: 0, resetMode: "day" as const },  plus: { limit: 5, resetMode: "day" as const } },
+  analyze: { free: { limit: 1, resetMode: "week" as const }, plus: { limit: 1, resetMode: "day" as const }, premium: { limit: 10, resetMode: "day" as const } },
+  chat:    { free: { limit: 0, resetMode: "day" as const },  plus: { limit: 5, resetMode: "day" as const },  premium: { limit: 50, resetMode: "day" as const } },
 };
 
 interface ProfileQuotaRow {
@@ -95,7 +93,7 @@ function getQuotaFromProfile(profile: ProfileQuotaRow | null, feature: "analyze"
 }
 
 export async function checkQuota({ userId, plan, feature }: QuotaCheckParams): Promise<QuotaResult | NextResponse> {
-  const config = LIMITS[feature][plan === "premium" ? "plus" : plan];
+  const config = LIMITS[feature][plan];
 
   if (config.limit === 0) {
     console.error(`[API Quota] Blocked ${feature} for free user ${userId}`);
@@ -126,7 +124,7 @@ export async function checkQuota({ userId, plan, feature }: QuotaCheckParams): P
 }
 
 export async function incrementQuota(userId: string, plan: PlanType, feature: "analyze" | "chat"): Promise<void> {
-  const config = LIMITS[feature][plan === "premium" ? "plus" : plan];
+  const config = LIMITS[feature][plan];
   if (!config) return;
 
   const supabase = createSupabaseServer();
