@@ -80,6 +80,8 @@ interface Props {
   onNext?: () => void;
   hasPrev?: boolean;
   hasNext?: boolean;
+  navIndex?: number;   // 0-based index in current page
+  navTotal?: number;   // total trades in current page
 }
 
 function SavedIndicator({ visible }: { visible: boolean }) {
@@ -88,7 +90,7 @@ function SavedIndicator({ visible }: { visible: boolean }) {
   );
 }
 
-export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNext, hasPrev = false, hasNext = false }: Props) {
+export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNext, hasPrev = false, hasNext = false, navIndex, navTotal }: Props) {
   const { t, lang } = useLanguage();
   const l = lang as Lang;
   const { plan, loading: planLoading } = usePlan();
@@ -415,23 +417,29 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
               disabled={!hasPrev}
               aria-label="Trade précédent"
               title="Trade précédent (↑)"
-              className="p-1.5 rounded-md text-muted transition-colors disabled:opacity-25 disabled:cursor-not-allowed enabled:hover:text-foreground enabled:hover:bg-surface"
+              className="p-1.5 rounded-md transition-colors text-foreground/70 hover:text-foreground hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed"
             >
               <ChevronUp className="w-4 h-4" />
             </button>
+            {navIndex !== undefined && navTotal !== undefined && navTotal > 1 && (
+              <span className="px-1 text-[11px] font-mono text-muted select-none tabular-nums">
+                {navIndex + 1}/{navTotal}
+              </span>
+            )}
             <button
               onClick={() => void handleNavigate("next")}
               disabled={!hasNext}
               aria-label="Trade suivant"
               title="Trade suivant (↓)"
-              className="p-1.5 rounded-md text-muted transition-colors disabled:opacity-25 disabled:cursor-not-allowed enabled:hover:text-foreground enabled:hover:bg-surface"
+              className="p-1.5 rounded-md transition-colors text-foreground/70 hover:text-foreground hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed"
             >
               <ChevronDown className="w-4 h-4" />
             </button>
+            <div className="w-px h-4 bg-border mx-1" />
             <button
               onClick={onClose}
               aria-label="Fermer"
-              className="ml-1 p-1.5 text-muted hover:text-foreground transition-colors"
+              className="p-1.5 text-foreground/70 hover:text-foreground transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

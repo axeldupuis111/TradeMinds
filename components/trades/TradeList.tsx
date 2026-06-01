@@ -804,6 +804,8 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
           onNext={handlePanelNext}
           hasPrev={hasPanelPrev}
           hasNext={hasPanelNext}
+          navIndex={selectedIndex >= 0 ? selectedIndex : undefined}
+          navTotal={trades.length}
         />
       )}
     </section>
