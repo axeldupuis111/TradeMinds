@@ -5,10 +5,10 @@ import CsvImport from "@/components/trades/CsvImport";
 import ManualTradeModal from "@/components/trades/ManualTradeModal";
 import OpenTradesSection from "@/components/trades/OpenTradesSection";
 import TradeList from "@/components/trades/TradeList";
-import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { Plus, Upload, X } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
 interface Strategy {
   id: string;
@@ -17,14 +17,45 @@ interface Strategy {
   pairs: string[];
 }
 
+interface Recap {
+  count: number;
+  wr: number;
+  pnl: number;
+}
+
 export default function TradesPage() {
-  const { t } = useLanguage();
   const supabase = createClient();
+  const prefersReducedMotion = useReducedMotion();
   const [refreshKey, setRefreshKey] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [closingTradeId, setClosingTradeId] = useState<string | null>(null);
   const [selectedStrategy, setSelectedStrategy] = useState<Strategy | null>(null);
   const [showMtBanner, setShowMtBanner] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [recap, setRecap] = useState<Recap | null>(null);
+
+  const loadRecap = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, count } = await supabase
+      .from("trades")
+      .select("pnl, commission, swap", { count: "exact" })
+      .eq("user_id", user.id)
+      .eq("status", "closed");
+
+    if (!data) return;
+
+    const netPnls = data.map((t) => (t.pnl as number) + ((t.commission as number) || 0) + ((t.swap as number) || 0));
+    const wins = netPnls.filter((p) => p > 0).length;
+    const totalPnl = netPnls.reduce((a, b) => a + b, 0);
+
+    setRecap({
+      count: count || 0,
+      wr: count ? (wins / count) * 100 : 0,
+      pnl: totalPnl,
+    });
+  }, [supabase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     async function checkMtTrades() {
@@ -60,6 +91,10 @@ export default function TradesPage() {
     loadStrategies();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    loadRecap();
+  }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
   function refresh() {
     setRefreshKey((k) => k + 1);
   }
@@ -68,18 +103,37 @@ export default function TradesPage() {
   const strategyPairs = selectedStrategy?.pairs ?? [];
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("trades_title")}</h1>
-          <p className="text-muted mt-1">{t("trades_subtitle")}</p>
+          <h1 className="text-2xl font-bold text-foreground">Mes Trades</h1>
+          {recap && (
+            <p className="text-sm text-muted mt-1">
+              {recap.count} trades · WR {recap.wr.toFixed(1)}% · P&amp;L{" "}
+              <span className={recap.pnl >= 0 ? "text-profit" : "text-loss"}>
+                {recap.pnl >= 0 ? "+" : ""}{recap.pnl.toFixed(2)}€
+              </span>
+            </p>
+          )}
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors"
-        >
-          {t("trades_add")}
-        </button>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsImportOpen((o) => !o)}
+            className="px-3 py-2 rounded-md border border-border text-sm text-muted hover:text-foreground hover:bg-card transition-colors flex items-center gap-2"
+          >
+            <Upload className="w-4 h-4" />
+            Importer CSV
+          </button>
+          <button
+            onClick={() => setShowModal(true)}
+            className="px-3 py-2 rounded-md bg-accent text-white text-sm font-medium hover:opacity-90 transition-opacity flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Ajouter un trade
+          </button>
+        </div>
       </div>
 
       {showMtBanner && (
@@ -93,38 +147,69 @@ export default function TradesPage() {
               automatiquement dans ton journal, dès qu&apos;ils se ferment.
             </p>
           </div>
-          <Link
+          <a
             href="/dashboard/settings#metatrader"
             className="px-4 py-2 rounded-lg bg-accent text-white text-sm font-medium hover:bg-blue-600 transition-colors whitespace-nowrap flex-shrink-0"
           >
             Configurer la synchronisation
-          </Link>
+          </a>
         </div>
       )}
 
-      <CsvImport strategyId={strategyId} onImported={refresh} />
+      {/* Import CSV collapsible */}
+      <AnimatePresence initial={false}>
+        {isImportOpen && (
+          <motion.div
+            initial={prefersReducedMotion ? false : { height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={prefersReducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="relative border border-border rounded-xl p-4 bg-card">
+              <button
+                onClick={() => setIsImportOpen(false)}
+                className="absolute top-3 right-3 z-10 p-1.5 rounded text-muted hover:text-foreground hover:bg-surface transition-colors"
+                aria-label="Fermer l'import"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <CsvImport
+                strategyId={strategyId}
+                onImported={() => {
+                  setIsImportOpen(false);
+                  refresh();
+                }}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <OpenTradesSection
         refreshKey={refreshKey}
         onCloseTrade={(tradeId) => setClosingTradeId(tradeId)}
       />
 
-      <TradeList refreshKey={refreshKey} />
+      <TradeList
+        refreshKey={refreshKey}
+        onTradeUpdated={loadRecap}
+      />
 
       {showModal && (
         <ManualTradeModal
           pairs={strategyPairs}
           strategyId={strategyId}
           onClose={() => setShowModal(false)}
-          onSaved={refresh}
-/>
+          onSaved={() => { refresh(); loadRecap(); }}
+        />
       )}
 
       {closingTradeId && (
         <CloseTradeModal
           tradeId={closingTradeId}
           onClose={() => setClosingTradeId(null)}
-          onSaved={() => { refresh(); setClosingTradeId(null); }}
+          onSaved={() => { refresh(); setClosingTradeId(null); loadRecap(); }}
         />
       )}
     </div>

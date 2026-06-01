@@ -40,6 +40,7 @@ interface Filters {
 
 interface Props {
   refreshKey: number;
+  onTradeUpdated?: () => void;
 }
 
 const PAGE_SIZE = 20;
@@ -50,7 +51,7 @@ function normalizeDirection(dir: string): "long" | "short" {
   return "short";
 }
 
-export default function TradeList({ refreshKey }: Props) {
+export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
   const { t } = useLanguage();
   const supabase = createClient();
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -321,54 +322,20 @@ export default function TradeList({ refreshKey }: Props) {
   const allSelected = trades.length > 0 && trades.every((tr) => selectedIds.has(tr.id));
   const someSelected = selectedIds.size > 0;
 
-  const { count: statsCount, wins, totalPnl, best, worst } = globalStats;
-  const winrate = statsCount > 0 ? ((wins / statsCount) * 100).toFixed(1) : "—";
+  const { count: statsCount } = globalStats;
   const totalPages = Math.ceil(total / PAGE_SIZE);
-
-  const stats = [
-    { label: t("trades_total"), value: String(statsCount) },
-    { label: t("trades_winrate"), value: winrate === "—" ? "—" : `${winrate}%` },
-    {
-      label: t("trades_pnl_total"),
-      value: `${totalPnl >= 0 ? "+" : ""}${totalPnl.toFixed(2)}`,
-      color: totalPnl >= 0 ? "text-profit" : "text-loss",
-    },
-    {
-      label: t("trades_best"),
-      value: `+${best.toFixed(2)}`,
-      color: "text-profit",
-    },
-    {
-      label: t("trades_worst"),
-      value: worst.toFixed(2),
-      color: "text-loss",
-    },
-  ];
 
   return (
     <section>
-      <h2 className="text-lg font-semibold text-foreground">{t("trades_list_title")}</h2>
-      <div className="h-px bg-border mt-2 mb-4" />
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-2">
-        {stats.map((s) => (
-          <div key={s.label} className="bg-card border border-border rounded-lg p-3">
-            <p className="text-xs text-muted">{s.label}</p>
-            <p className={`text-lg font-bold mt-0.5 ${s.color || "text-foreground"}`}>{s.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Filter context note */}
-      <p className="text-[11px] text-muted mb-4">
-        {hasActiveFilters
-          ? t("trades_filtered_by").replace("{count}", String(total))
-          : t("trades_all_accounts").replace("{count}", String(statsCount))}
-      </p>
-
-      {/* Filter bar */}
-      <div className="bg-card border border-border rounded-lg p-3 mb-4">
+      {/* Filter bar — sticky */}
+      <div className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border rounded-lg mb-4">
+        {/* Filter context note */}
+        <p className="text-[11px] text-muted px-3 pt-3 pb-1">
+          {hasActiveFilters
+            ? t("trades_filtered_by").replace("{count}", String(total))
+            : t("trades_all_accounts").replace("{count}", String(statsCount))}
+        </p>
+        <div className="p-3">
         <div className="flex flex-wrap gap-3 items-end">
           {/* Pair */}
           <div className="flex flex-col gap-1 min-w-[140px]">
@@ -453,6 +420,7 @@ export default function TradeList({ refreshKey }: Props) {
           >
             {exporting ? "..." : t("trades_export_csv")}
           </button>
+        </div>
         </div>
       </div>
 
@@ -651,7 +619,7 @@ export default function TradeList({ refreshKey }: Props) {
         <TradeDetailPanel
           trade={selectedTrade}
           onClose={() => setSelectedTrade(null)}
-          onSaved={() => { loadTrades(); loadGlobalStats(); }}
+          onSaved={() => { loadTrades(); loadGlobalStats(); onTradeUpdated?.(); }}
         />
       )}
     </section>
