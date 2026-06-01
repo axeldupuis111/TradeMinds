@@ -9,7 +9,7 @@ import {
 } from "@/lib/strategy/derive";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { useMemo, useEffect, useState } from "react";
 import TradeDetailPanel, { type TradeDetail } from "./TradeDetailPanel";
 
@@ -107,6 +107,49 @@ function EmotionTag({
   return <span className="text-muted">—</span>;
 }
 
+type SortColumn = "date" | "pair" | "direction" | "pnl" | "emotion" | "discipline" | "killzone";
+type SortState = { column: SortColumn | null; direction: "asc" | "desc" };
+
+const COLUMN_TO_DB: Record<SortColumn, string> = {
+  date:       "open_time",
+  pair:       "pair",
+  direction:  "direction",
+  pnl:        "pnl",
+  emotion:    "emotion",
+  discipline: "ict_confluence_score",
+  killzone:   "ict_killzone",
+};
+
+function SortableTh({
+  column,
+  label,
+  sort,
+  onSort,
+}: {
+  column: SortColumn;
+  label: string;
+  sort: SortState;
+  onSort: (col: SortColumn) => void;
+}) {
+  const isActive = sort.column === column;
+  const Icon = !isActive ? ArrowUpDown : sort.direction === "asc" ? ArrowUp : ArrowDown;
+  return (
+    <th className="px-3 py-2">
+      <button
+        onClick={() => onSort(column)}
+        className="group inline-flex items-center gap-1 cursor-pointer select-none font-medium hover:text-foreground transition-colors"
+      >
+        <span>{label}</span>
+        <Icon
+          className={`w-3 h-3 transition-opacity ${
+            isActive ? "text-accent opacity-100" : "text-muted opacity-0 group-hover:opacity-100"
+          }`}
+        />
+      </button>
+    </th>
+  );
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Trade {
@@ -189,6 +232,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     best: 0,
     worst: 0,
   });
+  const [sort, setSort] = useState<SortState>({ column: null, direction: "desc" });
 
   useEffect(() => {
     loadAllPairs();
@@ -196,12 +240,12 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
 
   useEffect(() => {
     setPage(0);
-  }, [filters]);
+  }, [filters, sort]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     loadTrades();
     loadGlobalStats();
-  }, [page, refreshKey, filters]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [page, refreshKey, filters, sort]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setSelectedIds(new Set());
@@ -233,14 +277,20 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
       .from("trades")
       .select("*, tags, emotion, setup_quality, notes, screenshot_path, prop_challenges(firm, account_number)", { count: "exact" })
       .eq("user_id", user.id)
-      .eq("status", "closed")
-      .order("open_time", { ascending: false })
-      .order("id", { ascending: false });
+      .eq("status", "closed");
 
     if (filters.pair) query = query.eq("pair", filters.pair);
     if (filters.direction) query = query.eq("direction", filters.direction);
     if (filters.dateFrom) query = query.gte("open_time", filters.dateFrom);
     if (filters.dateTo) query = query.lte("open_time", filters.dateTo + "T23:59:59");
+
+    if (sort.column === null) {
+      query = query.order("open_time", { ascending: false }).order("id", { ascending: false });
+    } else {
+      query = query
+        .order(COLUMN_TO_DB[sort.column], { ascending: sort.direction === "asc", nullsFirst: sort.direction === "desc" })
+        .order("id", { ascending: false });
+    }
 
     const { data, count } = await query.range(from, to);
 
@@ -351,26 +401,16 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     setFilters({ pair: "", direction: "", result: "", dateFrom: "", dateTo: "" });
   }
 
-  const [sortCol, setSortCol] = useState<string>("");
-  const [sortAsc, setSortAsc] = useState(false);
   const [exporting, setExporting] = useState(false);
 
-  function handleSort(col: string) {
-    if (sortCol === col) setSortAsc(!sortAsc);
-    else { setSortCol(col); setSortAsc(true); }
-  }
-
-  function sortedTrades(list: Trade[]) {
-    if (!sortCol) return list;
-    return [...list].sort((a, b) => {
-      let va: number | string = 0, vb: number | string = 0;
-      if (sortCol === "date") { va = a.open_time || ""; vb = b.open_time || ""; }
-      else if (sortCol === "pair") { va = a.pair; vb = b.pair; }
-      else if (sortCol === "pnl") { va = a.pnl + (a.commission || 0) + (a.swap || 0); vb = b.pnl + (b.commission || 0) + (b.swap || 0); }
-      if (va < vb) return sortAsc ? -1 : 1;
-      if (va > vb) return sortAsc ? 1 : -1;
-      return 0;
-    });
+  function handleSortClick(column: SortColumn) {
+    if (sort.column !== column) {
+      setSort({ column, direction: "asc" });
+    } else if (sort.direction === "asc") {
+      setSort({ column, direction: "desc" });
+    } else {
+      setSort({ column: null, direction: "desc" });
+    }
   }
 
   async function exportCSV() {
@@ -563,7 +603,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
                 <th className="px-3 py-2 font-medium">Émotion</th>
                 <th className="px-3 py-2 font-medium">Discipline</th>
                 <th className="px-3 py-2 font-medium">Killzone</th>
-                <th className="px-3 py-2 font-medium">Durée</th>
+                <th className="px-3 py-2 font-medium text-muted">Durée</th>
                 <th className="px-3 py-2 w-8"></th>
               </tr>
             </thead>
@@ -601,25 +641,19 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
                       className="accent-accent w-4 h-4 cursor-pointer"
                     />
                   </th>
-                  <th className="px-3 py-2 font-medium cursor-pointer hover:text-foreground select-none" onClick={() => handleSort("date")}>
-                    Date {sortCol === "date" ? (sortAsc ? "↑" : "↓") : ""}
-                  </th>
-                  <th className="px-3 py-2 font-medium cursor-pointer hover:text-foreground select-none" onClick={() => handleSort("pair")}>
-                    Paire {sortCol === "pair" ? (sortAsc ? "↑" : "↓") : ""}
-                  </th>
-                  <th className="px-3 py-2 font-medium">Dir.</th>
-                  <th className="px-3 py-2 font-medium cursor-pointer hover:text-foreground select-none" onClick={() => handleSort("pnl")}>
-                    P&amp;L {sortCol === "pnl" ? (sortAsc ? "↑" : "↓") : ""}
-                  </th>
-                  <th className="px-3 py-2 font-medium">Émotion</th>
-                  <th className="px-3 py-2 font-medium">Discipline</th>
-                  <th className="px-3 py-2 font-medium">Killzone</th>
-                  <th className="px-3 py-2 font-medium">Durée</th>
+                  <SortableTh column="date"       label="Date"       sort={sort} onSort={handleSortClick} />
+                  <SortableTh column="pair"       label="Paire"      sort={sort} onSort={handleSortClick} />
+                  <SortableTh column="direction"  label="Dir."       sort={sort} onSort={handleSortClick} />
+                  <SortableTh column="pnl"        label="P&L"        sort={sort} onSort={handleSortClick} />
+                  <SortableTh column="emotion"    label="Émotion"    sort={sort} onSort={handleSortClick} />
+                  <SortableTh column="discipline" label="Discipline" sort={sort} onSort={handleSortClick} />
+                  <SortableTh column="killzone"   label="Killzone"   sort={sort} onSort={handleSortClick} />
+                  <th className="px-3 py-2 font-medium text-muted">Durée</th>
                   <th className="px-3 py-2 w-8"></th>
                 </tr>
               </thead>
               <tbody>
-                {sortedTrades(trades).map((tr, i) => {
+                {trades.map((tr, i) => {
                   const dir = normalizeDirection(tr.direction);
                   const net = tr.pnl + (tr.commission || 0) + (tr.swap || 0);
                   const isTopGain = top3GainIds.has(tr.id);
