@@ -411,51 +411,55 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
       <div className="fixed top-0 right-0 z-50 h-full w-full sm:w-[440px] bg-card border-l border-border overflow-y-auto animate-in slide-in-from-right duration-200">
         <div className="sticky top-0 bg-card border-b border-border px-5 py-4 flex items-center justify-between z-10">
           <h2 className="text-lg font-semibold text-foreground">{t("detail_title")}</h2>
-          <div className="flex items-center gap-0.5">
-            <button
-              onClick={() => void handleNavigate("prev")}
-              disabled={!hasPrev}
-              aria-label="Trade précédent"
-              title="Trade précédent (↑)"
-              className="p-1.5 rounded-md transition-colors text-foreground/70 hover:text-foreground hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              <ChevronUp className="w-4 h-4" />
-            </button>
-            {navIndex !== undefined && navTotal !== undefined && navTotal > 1 && (
-              <span className="px-1 text-[11px] font-mono text-muted select-none tabular-nums">
-                {navIndex + 1}/{navTotal}
-              </span>
-            )}
-            <button
-              onClick={() => void handleNavigate("next")}
-              disabled={!hasNext}
-              aria-label="Trade suivant"
-              title="Trade suivant (↓)"
-              className="p-1.5 rounded-md transition-colors text-foreground/70 hover:text-foreground hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              <ChevronDown className="w-4 h-4" />
-            </button>
-            <div className="w-px h-4 bg-border mx-1" />
-            <button
-              onClick={onClose}
-              aria-label="Fermer"
-              className="p-1.5 text-foreground/70 hover:text-foreground transition-colors"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
+          <button
+            onClick={onClose}
+            aria-label="Fermer"
+            className="p-1.5 text-foreground/70 hover:text-foreground transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         <div className={`p-5 space-y-6 transition-opacity duration-150 motion-reduce:transition-none ${isTransitioning ? "opacity-0" : "opacity-100"}`}>
           {/* Trade info */}
           <div className="bg-background rounded-lg p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-foreground font-semibold text-lg">{trade.pair}</span>
-              <span className={`px-2 py-0.5 rounded text-xs font-medium ${trade.direction === "long" ? "bg-profit/10 text-profit" : "bg-loss/10 text-loss"}`}>
-                {trade.direction.toUpperCase()}
-              </span>
+            <div className="flex items-center justify-between gap-2">
+              {/* Nav prev/next — toujours visibles, disabled aux bords */}
+              <div className="flex items-center gap-0.5 shrink-0">
+                <button
+                  onClick={() => void handleNavigate("prev")}
+                  disabled={!hasPrev}
+                  aria-label="Trade précédent"
+                  title="Trade précédent (↑)"
+                  className="p-1 rounded transition-colors text-foreground/70 hover:text-foreground hover:bg-surface/60 disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronUp className="w-4 h-4" />
+                </button>
+                {navIndex !== undefined && navTotal !== undefined && navTotal > 1 && (
+                  <span className="px-0.5 text-[10px] font-mono text-muted select-none tabular-nums min-w-[28px] text-center">
+                    {navIndex + 1}/{navTotal}
+                  </span>
+                )}
+                <button
+                  onClick={() => void handleNavigate("next")}
+                  disabled={!hasNext}
+                  aria-label="Trade suivant"
+                  title="Trade suivant (↓)"
+                  className="p-1 rounded transition-colors text-foreground/70 hover:text-foreground hover:bg-surface/60 disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Paire + direction */}
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <span className="text-foreground font-semibold text-lg truncate">{trade.pair}</span>
+                <span className={`shrink-0 px-2 py-0.5 rounded text-xs font-medium ${trade.direction === "long" ? "bg-profit/10 text-profit" : "bg-loss/10 text-loss"}`}>
+                  {trade.direction.toUpperCase()}
+                </span>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div><span className="text-muted">{t("trades_col_date")}:</span> <span className="text-foreground">{trade.open_time ? new Date(trade.open_time).toLocaleDateString() : "—"}</span></div>
