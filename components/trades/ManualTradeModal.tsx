@@ -398,14 +398,14 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-sm text-muted mb-1 flex items-center">
-                {t("manual_sl")} {closedManually ? <span className="text-xs text-muted ml-1">({t("manual_optional")})</span> : <span className="text-loss ml-1">*</span>}
+                {t("manual_sl")} {closedManually ? <span className="text-xs text-muted ml-1">{t("manual_optional")}</span> : <span className="text-loss ml-1">*</span>}
               </label>
               <input type="number" step="any" value={form.sl} onChange={(e) => update("sl", e.target.value)} className={`${inputClass} ${fieldErrors.sl ? "!border-loss" : ""}`} />
               {fieldErrors.sl && <p className="text-loss text-xs mt-1">{fieldErrors.sl}</p>}
             </div>
             <div>
               <label className="block text-sm text-muted mb-1 flex items-center">
-                {t("manual_tp")} {closedManually ? <span className="text-xs text-muted ml-1">({t("manual_optional")})</span> : <span className="text-loss ml-1">*</span>}
+                {t("manual_tp")} {closedManually ? <span className="text-xs text-muted ml-1">{t("manual_optional")}</span> : <span className="text-loss ml-1">*</span>}
               </label>
               <input type="number" step="any" value={form.tp} onChange={(e) => update("tp", e.target.value)} className={`${inputClass} ${fieldErrors.tp ? "!border-loss" : ""}`} />
               {fieldErrors.tp && <p className="text-loss text-xs mt-1">{fieldErrors.tp}</p>}
@@ -423,13 +423,13 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm text-muted mb-1">
-                {t("sl_initial_label")} <span className="text-muted text-xs">({t("manual_optional")})</span>
+                {t("sl_initial_label")} <span className="text-muted text-xs">{t("manual_optional")}</span>
               </label>
               <input type="number" step="any" value={form.sl_initial} onChange={(e) => update("sl_initial", e.target.value)} placeholder={form.sl ? `${t("initial_current")}: ${form.sl}` : "—"} className={inputClass} />
             </div>
             <div>
               <label className="block text-sm text-muted mb-1">
-                {t("tp_initial_label")} <span className="text-muted text-xs">({t("manual_optional")})</span>
+                {t("tp_initial_label")} <span className="text-muted text-xs">{t("manual_optional")}</span>
               </label>
               <input type="number" step="any" value={form.tp_initial} onChange={(e) => update("tp_initial", e.target.value)} placeholder={form.tp ? `${t("initial_current")}: ${form.tp}` : "—"} className={inputClass} />
             </div>
@@ -523,7 +523,7 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
           {/* Notes */}
           <div>
             <label className="block text-sm text-muted mb-1">
-              {t("manual_notes")} <span className="text-muted text-xs">({t("manual_optional")})</span>
+              {t("manual_notes")} <span className="text-muted text-xs">{t("manual_optional")}</span>
             </label>
             <textarea value={form.notes} onChange={(e) => update("notes", e.target.value)} rows={3} placeholder={t("detail_notes_placeholder_v2")} className={inputClass} />
           </div>
