@@ -297,6 +297,13 @@ export default function AnalysisPage() {
   const [compareSelection, setCompareSelection] = useState<string[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodKey>("this_week");
   const [allTrades, setAllTrades] = useState<{ close_time: string }[]>([]);
+  // Snapshot of the exact filteredTrades array sent to the last AI call.
+  // Indices in violation.trade_ids map directly into this array.
+  const [lastFilteredTrades, setLastFilteredTrades] = useState<{
+    open_time: string; pair: string; direction: string;
+    pnl: number; commission: number | null; swap: number | null;
+  }[] | null>(null);
+  const [expandedViolations, setExpandedViolations] = useState<Set<number>>(new Set());
 
   // Chat coach state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -567,6 +574,8 @@ export default function AnalysisPage() {
     setAnalysis(null);
     setSaveMessage(null);
     setViewingHistory(null);
+    setLastFilteredTrades(null);
+    setExpandedViolations(new Set());
     setLoading(true);
 
     try {
@@ -594,6 +603,12 @@ export default function AnalysisPage() {
 
       const filteredTrades = getFilteredTrades(trades, selectedPeriod);
       if (filteredTrades.length === 0) throw new Error(t("period_no_trades"));
+
+      // Snapshot stored BEFORE the fetch so indices remain aligned with what the AI receives.
+      setLastFilteredTrades(filteredTrades as typeof filteredTrades & {
+        open_time: string; pair: string; direction: string;
+        pnl: number; commission: number | null; swap: number | null;
+      }[]);
 
       const res = await fetch("/api/analyze", {
         method: "POST",
@@ -659,6 +674,9 @@ export default function AnalysisPage() {
     setAnalysis(review.analysis);
     setViewingHistory(review.id);
     setSaveMessage(null);
+    // Nullify snapshot: trade_ids from a historical analysis don't map to lastFilteredTrades.
+    setLastFilteredTrades(null);
+    setExpandedViolations(new Set());
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -1100,6 +1118,24 @@ export default function AnalysisPage() {
               <div className="space-y-2">
                 {displayedAnalysis.violations.map((v, i) => {
                   const isNew = "category" in v;
+                  // Drill-down is only safe when lastFilteredTrades matches the current
+                  // analysis (viewingHistory === null guarantees it's the fresh run).
+                  const violation = isNew ? (v as Violation) : null;
+                  const canDrillDown =
+                    violation !== null &&
+                    viewingHistory === null &&
+                    lastFilteredTrades !== null &&
+                    violation.trade_ids.length > 0;
+                  const isExpanded = expandedViolations.has(i);
+
+                  function toggleExpand() {
+                    setExpandedViolations((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(i)) { next.delete(i); } else { next.add(i); }
+                      return next;
+                    });
+                  }
+
                   return (
                     <div
                       key={i}
@@ -1118,25 +1154,69 @@ export default function AnalysisPage() {
                           d="M12 9v2m0 4h.01M10.29 3.86l-8.6 14.86A1 1 0 002.56 20h18.88a1 1 0 00.87-1.28l-8.6-14.86a1 1 0 00-1.72 0z"
                         />
                       </svg>
-                      <div>
+                      <div className="flex-1 min-w-0">
                         {isNew ? (
                           <>
                             <div className="flex items-center gap-2 mb-1">
                               <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                (v as Violation).category === "strategy" ? "bg-loss/10 text-loss" :
-                                (v as Violation).category === "behavior" ? "bg-orange-500/10 text-orange-400" :
+                                violation!.category === "strategy" ? "bg-loss/10 text-loss" :
+                                violation!.category === "behavior" ? "bg-orange-500/10 text-orange-400" :
                                 "bg-yellow-500/10 text-yellow-400"
                               }`}>
-                                {t(`violation_cat_${(v as Violation).category}` as Parameters<typeof t>[0])}
+                                {t(`violation_cat_${violation!.category}` as Parameters<typeof t>[0])}
                               </span>
                               <span className="text-foreground text-sm font-medium">
-                                {t(`violation_${(v as Violation).type}` as Parameters<typeof t>[0])}
+                                {t(`violation_${violation!.type}` as Parameters<typeof t>[0])}
                               </span>
-                              {(v as Violation).occurrences > 1 && (
-                                <span className="text-muted text-xs">×{(v as Violation).occurrences}</span>
+                              {violation!.occurrences > 1 && (
+                                <span className="text-muted text-xs">×{violation!.occurrences}</span>
                               )}
                             </div>
                             <p className="text-muted text-sm">{v.explanation}</p>
+                            {canDrillDown && (
+                              <div className="mt-2">
+                                <button
+                                  onClick={toggleExpand}
+                                  className="flex items-center gap-1 text-xs text-muted hover:text-foreground transition-colors"
+                                  aria-expanded={isExpanded}
+                                >
+                                  <svg
+                                    className={`w-3.5 h-3.5 transition-transform motion-reduce:transition-none ${isExpanded ? "rotate-180" : ""}`}
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                  </svg>
+                                  {t("violation_view_trades")} ({violation!.trade_ids.length})
+                                </button>
+                                <div
+                                  className={`overflow-hidden transition-all motion-reduce:transition-none ${isExpanded ? "max-h-96 mt-2" : "max-h-0"}`}
+                                >
+                                  <ul className="border-l-2 border-border ml-1 pl-3 space-y-1">
+                                    {violation!.trade_ids.map((idx) => {
+                                      const trade = lastFilteredTrades![idx];
+                                      if (!trade) return null;
+                                      const pnlNet = trade.pnl + (trade.commission ?? 0) + (trade.swap ?? 0);
+                                      const dateStr = new Date(trade.open_time).toLocaleDateString(
+                                        lang === "fr" ? "fr-FR" : lang === "de" ? "de-DE" : lang === "es" ? "es-ES" : "en-GB",
+                                        { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" }
+                                      );
+                                      return (
+                                        <li key={idx} className="flex items-center gap-2 text-xs text-muted py-0.5">
+                                          <span className="text-muted/60 tabular-nums">{dateStr}</span>
+                                          <span className="font-medium text-foreground">{trade.pair}</span>
+                                          <span className="uppercase">{trade.direction}</span>
+                                          <span className={`ml-auto tabular-nums font-medium ${pnlNet >= 0 ? "text-profit" : "text-loss"}`}>
+                                            {pnlNet >= 0 ? "+" : ""}{pnlNet.toFixed(2)} €
+                                          </span>
+                                        </li>
+                                      );
+                                    })}
+                                  </ul>
+                                </div>
+                              </div>
+                            )}
                           </>
                         ) : (
                           <>
