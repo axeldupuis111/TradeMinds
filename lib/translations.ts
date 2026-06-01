@@ -902,6 +902,7 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Pre-trade Session
     session_title: "Avant la session",
+    session_active_title: "Session en cours",
     session_subtitle: "Prépare ton esprit avant de trader. La discipline commence maintenant.",
     session_checklist_title: "Checklist pré-trade",
     session_checklist_desc: "Coche chaque point avant de démarrer ta session.",
@@ -959,6 +960,7 @@ const translations: Record<Lang, Record<string, string>> = {
     session_duration_banner_cta: "Voir ma session →",
     session_duration_mins: "{m} min",
     session_duration_hours_mins: "{h}h {m}min",
+    session_duration_hours: "{h}h",
     session_duration_days_hours: "{d}j {h}h",
     session_active_log_trade: "+ Logger un trade en cours",
     session_active_emotional_check: "Comment je me sens là, maintenant ?",
@@ -2279,6 +2281,7 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Pre-trade Session
     session_title: "Pre-session",
+    session_active_title: "Session in progress",
     session_subtitle: "Prepare your mind before trading. Discipline starts now.",
     session_checklist_title: "Pre-trade checklist",
     session_checklist_desc: "Check every item before starting your session.",
@@ -2336,6 +2339,7 @@ const translations: Record<Lang, Record<string, string>> = {
     session_duration_banner_cta: "View my session →",
     session_duration_mins: "{m} min",
     session_duration_hours_mins: "{h}h {m}min",
+    session_duration_hours: "{h}h",
     session_duration_days_hours: "{d}d {h}h",
     session_active_log_trade: "+ Log a live trade",
     session_active_emotional_check: "How do I feel right now?",
@@ -3655,6 +3659,7 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Pre-trade Session
     session_title: "Vor der Session",
+    session_active_title: "Sitzung läuft",
     session_subtitle: "Bereite deinen Geist vor dem Trading vor. Disziplin beginnt jetzt.",
     session_checklist_title: "Pre-Trade-Checkliste",
     session_checklist_desc: "Hake jeden Punkt ab, bevor du startest.",
@@ -3712,6 +3717,7 @@ const translations: Record<Lang, Record<string, string>> = {
     session_duration_banner_cta: "Meine Sitzung ansehen →",
     session_duration_mins: "{m} Min",
     session_duration_hours_mins: "{h}h {m}Min",
+    session_duration_hours: "{h}h",
     session_duration_days_hours: "{d}T {h}h",
     session_active_log_trade: "+ Aktiven Trade erfassen",
     session_active_emotional_check: "Wie fühle ich mich gerade?",
@@ -5030,6 +5036,7 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Pre-trade Session
     session_title: "Antes de la sesión",
+    session_active_title: "Sesión en curso",
     session_subtitle: "Prepara tu mente antes de operar. La disciplina empieza ahora.",
     session_checklist_title: "Checklist pre-trade",
     session_checklist_desc: "Marca cada punto antes de empezar tu sesión.",
@@ -5087,6 +5094,7 @@ const translations: Record<Lang, Record<string, string>> = {
     session_duration_banner_cta: "Ver mi sesión →",
     session_duration_mins: "{m} min",
     session_duration_hours_mins: "{h}h {m}min",
+    session_duration_hours: "{h}h",
     session_duration_days_hours: "{d}d {h}h",
     session_active_log_trade: "+ Registrar un trade en curso",
     session_active_emotional_check: "¿Cómo me siento ahora?",
