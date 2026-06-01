@@ -558,7 +558,16 @@ export default function SettingsPage() {
           l&apos;EA. Ne le partage pas — il donne accès à l&apos;envoi de trades sur ton compte.
         </p>
 
-        {mtLoading ? (
+        {plan !== "premium" ? (
+          <div className="relative rounded-xl border border-accent/30 bg-accent/5 p-6 text-center">
+            <div className="flex flex-col items-center gap-3">
+              <svg className="w-10 h-10 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              <p className="text-foreground font-medium">{t("sync_mt_locked")}</p>
+            </div>
+          </div>
+        ) : mtLoading ? (
           <div className="skeleton h-10 w-full rounded-lg" />
         ) : mtToken ? (
           <div className="space-y-3">
@@ -601,7 +610,8 @@ export default function SettingsPage() {
           </button>
         )}
 
-        {/* Installation guide — collapsible */}
+        {/* Installation guide — collapsible (premium only) */}
+        {plan !== "premium" ? null : (
         <div className="mt-4 bg-surface border border-border rounded-lg overflow-hidden">
           <button
             onClick={() => setShowMtGuide(!showMtGuide)}
@@ -723,6 +733,7 @@ export default function SettingsPage() {
             </div>
           )}
         </div>
+        )}
       </section>
 
       {/* MetaTrader regenerate confirmation modal */}

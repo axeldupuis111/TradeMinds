@@ -1005,6 +1005,7 @@ const translations: Record<Lang, Record<string, string>> = {
     pdf_export: "Exporter PDF",
     pdf_generating: "Génération...",
     pdf_locked: "L'export PDF est réservé aux plans Plus et Premium.",
+    sync_mt_locked: "La synchronisation automatique MetaTrader est réservée au plan Premium.",
     pdf_no_data: "Aucun trade ce mois-ci. Impossible de générer le rapport.",
     pdf_error: "Erreur lors de la génération du PDF.",
 
@@ -2401,6 +2402,7 @@ const translations: Record<Lang, Record<string, string>> = {
     pdf_export: "Export PDF",
     pdf_generating: "Generating...",
     pdf_locked: "PDF export is reserved for Plus and Premium plans.",
+    sync_mt_locked: "MetaTrader auto-sync is reserved for the Premium plan.",
     pdf_no_data: "No trades this month. Cannot generate report.",
     pdf_error: "Error while generating the PDF.",
 
@@ -3796,6 +3798,7 @@ const translations: Record<Lang, Record<string, string>> = {
     pdf_export: "PDF exportieren",
     pdf_generating: "Wird generiert...",
     pdf_locked: "PDF-Export ist Plus- und Premium-Plänen vorbehalten.",
+    sync_mt_locked: "Die automatische MetaTrader-Synchronisierung ist dem Premium-Plan vorbehalten.",
     pdf_no_data: "Keine Trades in diesem Monat. Bericht kann nicht erstellt werden.",
     pdf_error: "Fehler beim Erstellen des PDF.",
 
@@ -5190,6 +5193,7 @@ const translations: Record<Lang, Record<string, string>> = {
     pdf_export: "Exportar PDF",
     pdf_generating: "Generando...",
     pdf_locked: "La exportación PDF está reservada a los planes Plus y Premium.",
+    sync_mt_locked: "La sincronización automática de MetaTrader está reservada al plan Premium.",
     pdf_no_data: "No hay trades este mes. No se puede generar el informe.",
     pdf_error: "Error al generar el PDF.",
 
