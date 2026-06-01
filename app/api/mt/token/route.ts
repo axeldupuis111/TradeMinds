@@ -8,6 +8,10 @@ export async function GET() {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
 
+  if (auth.plan !== "premium") {
+    return NextResponse.json({ error: "Premium plan required." }, { status: 403 });
+  }
+
   const supabase = createClient();
   const { data, error } = await supabase
     .from("profiles")
@@ -27,6 +31,10 @@ export async function GET() {
 export async function POST() {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
+
+  if (auth.plan !== "premium") {
+    return NextResponse.json({ error: "Premium plan required." }, { status: 403 });
+  }
 
   // 32 random bytes → 64 hex chars, prefixed with "mt_"
   const token = `mt_${randomBytes(32).toString("hex")}`;

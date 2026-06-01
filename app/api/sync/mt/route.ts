@@ -124,12 +124,16 @@ export async function POST(req: NextRequest) {
 
   const { data: profile, error: profileErr } = await admin
     .from("profiles")
-    .select("id")
+    .select("id, plan")
     .eq("mt_sync_token", token)
     .single();
 
   if (profileErr || !profile) {
     return NextResponse.json({ error: "Token invalide." }, { status: 401 });
+  }
+
+  if (profile.plan !== "premium") {
+    return NextResponse.json({ error: "Premium plan required for auto-sync." }, { status: 403 });
   }
 
   const userId: string = profile.id;
