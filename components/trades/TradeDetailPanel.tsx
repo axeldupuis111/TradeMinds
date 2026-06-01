@@ -426,19 +426,19 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
           {/* Trade info */}
           <div className="bg-background rounded-lg p-4 space-y-2">
             <div className="flex items-center justify-between gap-2">
-              {/* Nav prev/next — toujours visibles, disabled aux bords */}
-              <div className="flex items-center gap-0.5 shrink-0">
+              {/* Nav prev/next — vrais boutons toujours visibles */}
+              <div className="flex items-center gap-1.5 shrink-0">
                 <button
                   onClick={() => void handleNavigate("prev")}
                   disabled={!hasPrev}
                   aria-label="Trade précédent"
                   title="Trade précédent (↑)"
-                  className="p-1 rounded transition-colors text-foreground/70 hover:text-foreground hover:bg-surface/60 disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="p-1.5 bg-surface border border-border rounded-md text-foreground transition-colors hover:border-accent hover:text-accent disabled:opacity-40 disabled:cursor-not-allowed motion-reduce:transition-none"
                 >
-                  <ChevronUp className="w-4 h-4" />
+                  <ChevronUp className="w-[18px] h-[18px]" />
                 </button>
                 {navIndex !== undefined && navTotal !== undefined && navTotal > 1 && (
-                  <span className="px-0.5 text-[10px] font-mono text-muted select-none tabular-nums min-w-[28px] text-center">
+                  <span className="text-sm font-mono text-foreground/80 select-none tabular-nums min-w-[36px] text-center">
                     {navIndex + 1}/{navTotal}
                   </span>
                 )}
@@ -447,9 +447,9 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
                   disabled={!hasNext}
                   aria-label="Trade suivant"
                   title="Trade suivant (↓)"
-                  className="p-1 rounded transition-colors text-foreground/70 hover:text-foreground hover:bg-surface/60 disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="p-1.5 bg-surface border border-border rounded-md text-foreground transition-colors hover:border-accent hover:text-accent disabled:opacity-40 disabled:cursor-not-allowed motion-reduce:transition-none"
                 >
-                  <ChevronDown className="w-4 h-4" />
+                  <ChevronDown className="w-[18px] h-[18px]" />
                 </button>
               </div>
 
