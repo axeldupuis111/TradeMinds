@@ -113,6 +113,17 @@ export default function SettingsPage() {
   const [showMtGuide, setShowMtGuide] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  useEffect(() => {
+    if (planLoading || loading) return;
+    const hash = window.location.hash;
+    if (!hash) return;
+    const el = document.getElementById(hash.slice(1));
+    if (el) {
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    }
+  }, [planLoading, loading]);
+
   const hasChanges =
     username !== originalUsername ||
     publicProfile !== originalPublicProfile ||
