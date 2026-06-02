@@ -256,6 +256,8 @@ const translations: Record<Lang, Record<string, string>> = {
     strategy_delete: "Supprimer",
     strategy_delete_confirm: "Supprimer cette stratégie ? Cette action est irréversible.",
     strategy_deleted: "Stratégie supprimée",
+    strategy_delete_confirm_trades: "Cette stratégie est liée à {count} trade(s). Ils seront désassociés (passés à « Sans stratégie »), pas supprimés. Continuer ?",
+    strategy_delete_error: "Échec de la désassociation des trades. Stratégie non supprimée.",
     strategy_select: "Sélectionner une stratégie",
 
     // Session pause
@@ -1695,6 +1697,8 @@ const translations: Record<Lang, Record<string, string>> = {
     strategy_delete: "Delete",
     strategy_delete_confirm: "Delete this strategy? This action is irreversible.",
     strategy_deleted: "Strategy deleted",
+    strategy_delete_confirm_trades: "This strategy is linked to {count} trade(s). They will be unlinked (set to \"No strategy\"), not deleted. Continue?",
+    strategy_delete_error: "Failed to unlink trades. Strategy not deleted.",
     strategy_select: "Select a strategy",
 
     // Session pause
@@ -3125,6 +3129,8 @@ const translations: Record<Lang, Record<string, string>> = {
     strategy_delete: "Löschen",
     strategy_delete_confirm: "Diese Strategie löschen? Diese Aktion ist unwiderruflich.",
     strategy_deleted: "Strategie gelöscht",
+    strategy_delete_confirm_trades: "Diese Strategie ist mit {count} Trade(s) verknüpft. Sie werden getrennt (auf 'Keine Strategie' gesetzt), nicht gelöscht. Fortfahren?",
+    strategy_delete_error: "Trades konnten nicht getrennt werden. Strategie nicht gelöscht.",
     strategy_select: "Strategie auswählen",
 
     session_pause: "Pause",
@@ -4551,6 +4557,8 @@ const translations: Record<Lang, Record<string, string>> = {
     strategy_delete: "Eliminar",
     strategy_delete_confirm: "¿Eliminar esta estrategia? Esta acción es irreversible.",
     strategy_deleted: "Estrategia eliminada",
+    strategy_delete_confirm_trades: "Esta estrategia está vinculada a {count} trade(s). Serán desvinculados (puestos en «Sin estrategia»), no eliminados. ¿Continuar?",
+    strategy_delete_error: "No se pudieron desvincular los trades. Estrategia no eliminada.",
     strategy_select: "Seleccionar una estrategia",
 
     session_pause: "Pausa",

@@ -76,6 +76,7 @@ export default function StrategyPage() {
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const [strategies, setStrategies] = useState<{ id: string; name: string }[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTradeCount, setDeleteTradeCount] = useState(0);
   const pendingNavRef = useRef<string | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -199,10 +200,26 @@ export default function StrategyPage() {
     resetForm();
   }
 
+  async function openDeleteConfirm() {
+    if (!existingId) return;
+    const { count } = await supabase
+      .from("trades")
+      .select("id", { count: "exact", head: true })
+      .eq("strategy_id", existingId);
+    setDeleteTradeCount(count ?? 0);
+    setShowDeleteConfirm(true);
+  }
+
   async function handleDelete() {
     if (!existingId) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+
+    const { error: unlinkError } = await supabase
+      .from("trades")
+      .update({ strategy_id: null })
+      .eq("strategy_id", existingId);
+    if (unlinkError) { showToast("error", t("strategy_delete_error")); return; }
 
     await supabase.from("strategy_tags").delete().eq("strategy_id", existingId);
     await supabase.from("strategies").delete().eq("id", existingId);
@@ -598,7 +615,11 @@ export default function StrategyPage() {
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-card border border-border rounded-xl p-6 max-w-sm w-full mx-4 space-y-4">
-            <p className="text-foreground text-sm">{t("strategy_delete_confirm")}</p>
+            <p className="text-foreground text-sm">
+              {deleteTradeCount > 0
+                ? t("strategy_delete_confirm_trades").replace("{count}", String(deleteTradeCount))
+                : t("strategy_delete_confirm")}
+            </p>
             <div className="flex gap-3 justify-end">
               <button onClick={() => setShowDeleteConfirm(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-foreground hover:bg-surface transition-colors">
                 {t("strategy_stay")}
@@ -775,7 +796,7 @@ export default function StrategyPage() {
         <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center gap-3 p-4 bg-background/80 backdrop-blur-sm border-t border-border">
           {existingId && (
             <button
-              onClick={() => setShowDeleteConfirm(true)}
+              onClick={() => void openDeleteConfirm()}
               className="px-6 py-2.5 border border-loss text-loss rounded-lg font-medium hover:bg-loss/10 transition-colors"
             >
               {t("strategy_delete")}
