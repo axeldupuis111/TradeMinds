@@ -40,6 +40,7 @@ export interface TradeDetail {
   notes: string | null;
   screenshot_path: string | null;
   challenge_id?: string | null;
+  strategy_id?: string | null;
   // ICT fields
   ict_setup?: string | null;
   ict_entry_zone?: string | null;
@@ -96,8 +97,9 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
   const { plan, loading: planLoading } = usePlan();
   const isFree = !planLoading && plan === "free";
   const supabase = createClient();
-  const stratTags = useStrategyTags();
-  const [hasStrategy, setHasStrategy] = useState<boolean | null>(null);
+  const [selectedStrategyId, setSelectedStrategyId] = useState<string | null>(trade.strategy_id ?? null);
+  const stratTags = useStrategyTags(selectedStrategyId ?? undefined);
+  const [userStrategies, setUserStrategies] = useState<{ id: string; name: string }[] | null>(null);
 
   const [emotion, setEmotion] = useState<string | null>(trade.emotion);
   const [quality, setQuality] = useState<number | null>(trade.setup_quality);
@@ -150,6 +152,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
     }
     setIctChecklist(trade.ict_checklist || {});
     setChallengeId(trade.challenge_id || null);
+    setSelectedStrategyId(trade.strategy_id ?? null);
     // Reset dirty + transition tracking whenever we switch to a new trade
     initialValuesRef.current = {
       emotion: trade.emotion,
@@ -177,24 +180,34 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
 
   useEffect(() => {
     if (isFree) return;
-    async function loadStrategy() {
+    async function loadUserStrategies() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const { data } = await supabase
         .from("strategies")
         .select("id, name")
         .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      setHasStrategy(!!data);
+        .order("created_at", { ascending: false });
+      setUserStrategies(data || []);
     }
-    loadStrategy();
+    loadUserStrategies();
   }, [isFree]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const hasStrategy = userStrategies === null ? null : userStrategies.length > 0;
   const showAnalysis = !isFree && hasStrategy === true;
 
   const net = trade.pnl + (trade.commission || 0) + (trade.swap || 0);
+
+  async function handleStrategyChange(newId: string) {
+    const stratId = newId || null;
+    setSelectedStrategyId(stratId);
+    setIctChecklist({});
+    await supabase
+      .from("trades")
+      .update({ strategy_id: stratId, ict_checklist: null, ict_confluence_score: null })
+      .eq("id", trade.id);
+    showSavedIndicator("strategy_id");
+  }
 
   function showSavedIndicator(field: string) {
     setSavedField(field);
@@ -583,6 +596,26 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
                   </button>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Strategy selector */}
+          {!isFree && userStrategies && userStrategies.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1.5">
+                Stratégie
+                <SavedIndicator visible={savedField === "strategy_id"} />
+              </label>
+              <select
+                value={selectedStrategyId || ""}
+                onChange={(e) => void handleStrategyChange(e.target.value)}
+                className={selectClass}
+              >
+                <option value="">— Sans stratégie</option>
+                {userStrategies.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
             </div>
           )}
 

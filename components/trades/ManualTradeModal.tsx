@@ -46,7 +46,7 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
   const { plan, loading: planLoading } = usePlan();
   const isFree = !planLoading && plan === "free";
   const supabase = createClient();
-  const stratTags = useStrategyTags();
+  const stratTags = useStrategyTags(strategyId ?? undefined);
   const [saving, setSaving] = useState(false);
   const [hasStrategy, setHasStrategy] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);

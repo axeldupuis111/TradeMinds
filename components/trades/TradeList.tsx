@@ -1,11 +1,10 @@
 "use client";
 
 import { getEmotionDisplay } from "@/lib/emotions";
-import { useStrategyTags } from "@/lib/hooks/useStrategyTags";
+import type { ChecklistItem } from "@/lib/hooks/useStrategyTags";
 import { detectKillzone } from "@/lib/ict-constants";
 import {
   KILLZONE_LABELS,
-  computeConfluenceScore,
 } from "@/lib/strategy/derive";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
@@ -179,6 +178,7 @@ interface Trade {
   ict_killzone?: string | null;
   ict_setup?: string | null;
   ict_confluence_score?: number | null;
+  strategy_id?: string | null;
 }
 
 interface Filters {
@@ -207,7 +207,7 @@ function normalizeDirection(dir: string): "long" | "short" {
 export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
   const { t } = useLanguage();
   const supabase = createClient();
-  const { checklist: checklistItems } = useStrategyTags();
+  const [checklistMap, setChecklistMap] = useState<Record<string, ChecklistItem[]>>({});
 
   const [trades, setTrades] = useState<Trade[]>([]);
   const [total, setTotal] = useState(0);
@@ -313,6 +313,27 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     setTrades(rows);
     setTotal(count || 0);
     setLoading(false);
+
+    // Load checklist items for each distinct strategy in this page
+    const uniqueStrategyIds = Array.from(new Set(rows.map((r) => r.strategy_id).filter((id): id is string => !!id)));
+    if (uniqueStrategyIds.length > 0) {
+      const { data: tagData } = await supabase
+        .from("strategy_tags")
+        .select("strategy_id, value, label_fr, label_en, label_de, label_es")
+        .in("strategy_id", uniqueStrategyIds)
+        .eq("tag_type", "checklist")
+        .order("sort_order");
+      const map: Record<string, ChecklistItem[]> = {};
+      for (const tag of tagData || []) {
+        (map[tag.strategy_id] ??= []).push({
+          key: tag.value,
+          label: { fr: tag.label_fr, en: tag.label_en, de: tag.label_de, es: tag.label_es },
+        });
+      }
+      setChecklistMap(map);
+    } else {
+      setChecklistMap({});
+    }
   }
 
   async function loadGlobalStats() {
@@ -476,7 +497,6 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
   const someSelected = selectedIds.size > 0;
   const { count: statsCount } = globalStats;
   const totalPages = Math.ceil(total / PAGE_SIZE);
-  const checklistTotal = checklistItems.length;
 
   // ── Panel navigation ──────────────────────────────────────────────────────────
   const selectedIndex = selectedTrade ? trades.findIndex((tr) => tr.id === selectedTrade.id) : -1;
@@ -672,7 +692,11 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
                   const isTopLoss = top3LossIds.has(tr.id);
 
                   const kzValue = tr.ict_killzone ?? detectKillzone(tr.open_time);
-                  const checklistScore = computeConfluenceScore(tr.ict_checklist ?? null);
+                  const tradeChecklistItems = tr.strategy_id ? (checklistMap[tr.strategy_id] ?? null) : null;
+                  const checklistTotal = tradeChecklistItems?.length ?? 0;
+                  const checklistScore = tradeChecklistItems
+                    ? tradeChecklistItems.filter((item) => tr.ict_checklist?.[item.key]).length
+                    : 0;
 
                   const dateObj = tr.open_time ? new Date(tr.open_time) : null;
                   const dateStr = dateObj

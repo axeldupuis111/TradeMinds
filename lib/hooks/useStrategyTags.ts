@@ -38,22 +38,34 @@ const ICT_DEFAULT: StrategyTagsResult = {
   loading: false,
 };
 
-export function useStrategyTags(): StrategyTagsResult {
+export function useStrategyTags(strategyId?: string): StrategyTagsResult {
   const supabase = createClient();
   const [result, setResult] = useState<StrategyTagsResult>({ ...ICT_DEFAULT, loading: true });
 
   useEffect(() => {
+    setResult((prev) => ({ ...prev, loading: true }));
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setResult({ ...ICT_DEFAULT, loading: false }); return; }
 
-      const { data: strategy } = await supabase
-        .from("strategies")
-        .select("id, checklist_setup_mapping")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
+      let strategy: { id: string; checklist_setup_mapping: unknown } | null = null;
+      if (strategyId) {
+        const { data } = await supabase
+          .from("strategies")
+          .select("id, checklist_setup_mapping")
+          .eq("id", strategyId)
+          .maybeSingle();
+        strategy = data;
+      } else {
+        const { data } = await supabase
+          .from("strategies")
+          .select("id, checklist_setup_mapping")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+        strategy = data;
+      }
 
       if (!strategy) { setResult({ ...ICT_DEFAULT, loading: false }); return; }
 
@@ -107,7 +119,7 @@ export function useStrategyTags(): StrategyTagsResult {
       });
     }
     load();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [strategyId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return result;
 }
