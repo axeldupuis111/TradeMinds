@@ -514,26 +514,6 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
             </div>
           )}
 
-          {/* Strategy selector */}
-          {!isFree && userStrategies && userStrategies.length > 0 && (
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">
-                Stratégie
-                <SavedIndicator visible={savedField === "strategy_id"} />
-              </label>
-              <select
-                value={selectedStrategyId || ""}
-                onChange={(e) => void handleStrategyChange(e.target.value)}
-                className={selectClass}
-              >
-                <option value="">— Sans stratégie</option>
-                {userStrategies.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
           {/* Initial SL/TP section */}
           <div className="border border-border rounded-lg p-4 space-y-3">
             <p className="text-sm font-medium text-foreground">{t("initial_values_title")}</p>
@@ -616,6 +596,26 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
                   </button>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Strategy selector */}
+          {!isFree && userStrategies && userStrategies.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1.5">
+                Stratégie
+                <SavedIndicator visible={savedField === "strategy_id"} />
+              </label>
+              <select
+                value={selectedStrategyId || ""}
+                onChange={(e) => void handleStrategyChange(e.target.value)}
+                className={selectClass}
+              >
+                <option value="">— Sans stratégie</option>
+                {userStrategies.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
             </div>
           )}
 
