@@ -423,17 +423,18 @@ export default function AnalysisPage() {
           .maybeSingle(),
       ]);
 
-      // Build per-strategy checklist map for correct denominator
-      const chatChecklistMap: Record<string, number> = {};
+      // Build per-strategy checklist map: strategy_id → array of checklist item keys
+      const chatChecklistMap: Record<string, string[]> = {};
       const uniqueChatStratIds = Array.from(new Set((trades || []).map((t) => (t as { strategy_id?: string | null }).strategy_id).filter((id): id is string => !!id)));
       if (uniqueChatStratIds.length > 0) {
         const { data: chatTagData } = await supabase
           .from("strategy_tags")
-          .select("strategy_id")
+          .select("strategy_id, value")
           .in("strategy_id", uniqueChatStratIds)
-          .eq("tag_type", "checklist");
+          .eq("tag_type", "checklist")
+          .order("sort_order");
         for (const tag of chatTagData || []) {
-          chatChecklistMap[tag.strategy_id] = (chatChecklistMap[tag.strategy_id] ?? 0) + 1;
+          (chatChecklistMap[tag.strategy_id] ??= []).push(tag.value);
         }
       }
 
@@ -445,8 +446,11 @@ export default function AnalysisPage() {
         if (t.ict_killzone) ictParts.push(`Killzone:${t.ict_killzone}`);
         if (t.ict_timeframe) ictParts.push(`TF:${t.ict_timeframe}`);
         const chatStratId = (t as { strategy_id?: string | null }).strategy_id;
-        const chatChecklistTotal = chatStratId ? (chatChecklistMap[chatStratId] ?? 0) : 0;
-        if (t.ict_confluence_score != null && chatChecklistTotal > 0) ictParts.push(`Checklist:${t.ict_confluence_score}/${chatChecklistTotal}`);
+        const chatItems = chatStratId ? (chatChecklistMap[chatStratId] ?? null) : null;
+        if (chatItems && chatItems.length > 0) {
+          const score = chatItems.filter((k) => (t.ict_checklist as Record<string, boolean> | null)?.[k]).length;
+          ictParts.push(`Checklist:${score}/${chatItems.length}`);
+        }
         const ictStr = ictParts.length > 0 ? ` | ${ictParts.join(" | ")}` : "";
         return `${t.open_time} | ${t.pair} | ${t.direction} | lot=${t.lot_size} | P&L=${net.toFixed(2)} | emotion=${t.emotion || "N/A"} | quality=${t.setup_quality || "N/A"} | tags=${(t.tags || []).join(",")}${ictStr}`;
       }).join("\n");
