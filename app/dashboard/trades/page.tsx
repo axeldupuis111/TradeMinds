@@ -7,8 +7,10 @@ import OpenTradesSection from "@/components/trades/OpenTradesSection";
 import TradeList from "@/components/trades/TradeList";
 import { createClient } from "@/lib/supabase/client";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Plus, Upload, X } from "lucide-react";
+import { Lock, Plus, RefreshCw, Upload, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { usePlan } from "@/lib/PlanContext";
+import { useLanguage } from "@/lib/LanguageContext";
 
 interface Strategy {
   id: string;
@@ -26,6 +28,8 @@ interface Recap {
 export default function TradesPage() {
   const supabase = createClient();
   const prefersReducedMotion = useReducedMotion();
+  const { plan } = usePlan();
+  const { t } = useLanguage();
   const [refreshKey, setRefreshKey] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [closingTradeId, setClosingTradeId] = useState<string | null>(null);
@@ -126,6 +130,29 @@ export default function TradesPage() {
             <Upload className="w-4 h-4" />
             Importer CSV
           </button>
+          {plan === "premium" ? (
+            <a
+              href="/dashboard/settings#metatrader"
+              className="px-3 py-2 rounded-md border border-border text-sm text-muted hover:text-foreground hover:bg-card transition-colors flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              {t("sync_mt_shortcut")}
+            </a>
+          ) : (
+            <div className="relative group">
+              <a
+                href="/dashboard/settings#metatrader"
+                className="px-3 py-2 rounded-md border border-border text-sm text-muted hover:text-foreground hover:bg-card transition-colors flex items-center gap-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                {t("sync_mt_shortcut")}
+                <Lock className="w-3 h-3 text-muted" />
+              </a>
+              <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 hidden group-hover:block bg-surface border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground whitespace-nowrap shadow-lg z-50">
+                {t("sync_mt_tooltip_locked")}
+              </div>
+            </div>
+          )}
           <button
             onClick={() => setShowModal(true)}
             className="px-3 py-2 rounded-md bg-accent text-white text-sm font-medium hover:opacity-90 transition-opacity flex items-center gap-2"
