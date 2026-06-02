@@ -80,6 +80,8 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
         .from("strategies")
         .select("id, name")
         .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
       setHasStrategy(!!data);
     }
