@@ -184,6 +184,8 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
         .from("strategies")
         .select("id, name")
         .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
       setHasStrategy(!!data);
     }
