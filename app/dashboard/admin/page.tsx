@@ -141,6 +141,7 @@ export default function AdminPage() {
             >
               <option value="free">Free</option>
               <option value="plus">Plus</option>
+              <option value="premium">Premium</option>
             </select>
           </div>
 
