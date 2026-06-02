@@ -259,8 +259,8 @@ export default function UpgradePage() {
         )}
       </div>
 
-      {/* Active plans grid (Free + Plus) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 max-w-2xl mx-auto">
+      {/* Active plans grid (Free + Plus + Premium) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 max-w-4xl mx-auto">
         {/* Free plan */}
         {(() => {
           const isCurrent = currentPlan === "free";
@@ -396,11 +396,9 @@ export default function UpgradePage() {
             </div>
           );
         })()}
-      </div>
 
-      {/* Premium — Coming soon card */}
-      <div className="mt-6 max-w-2xl mx-auto" ref={premiumRef} id="premium-notify">
-        <div className="relative rounded-xl border-2 border-yellow-500/30 p-6 bg-card/80 shadow-lg shadow-yellow-500/5">
+        {/* Premium — Coming soon (3rd column) */}
+        <div className="relative rounded-xl border-2 border-yellow-500/30 p-6 bg-card/80 shadow-lg shadow-yellow-500/5" ref={premiumRef} id="premium-notify">
           <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-yellow-500/20 text-yellow-400 text-xs font-bold px-3 py-0.5 rounded-full border border-yellow-500/30">
             🔒 {t("plan_premium_coming")}
           </span>
@@ -458,7 +456,7 @@ export default function UpgradePage() {
       </div>
 
       {/* Feature comparison table */}
-      <div className="mt-10 max-w-2xl mx-auto">
+      <div className="mt-10 max-w-4xl mx-auto">
         <h2 className="text-base font-semibold text-foreground mb-4">{t("plan_compare_title")}</h2>
         <div className="rounded-xl border border-border overflow-hidden">
           <table className="w-full text-sm">
