@@ -51,6 +51,7 @@ interface AnalyzeRequest {
     ict_killzone?: string | null;
     ict_timeframe?: string | null;
     ict_confluence_score?: number | null;
+    checklist_total?: number | null;
     emotion?: string | null;
   }[];
 }
@@ -143,7 +144,7 @@ export async function POST(request: Request) {
         if (t.ict_liquidity_target) ictParts.push(`Liquidité:${sanitizeUserInput(t.ict_liquidity_target)}`);
         if (t.ict_killzone) ictParts.push(`Killzone:${sanitizeUserInput(t.ict_killzone)}`);
         if (t.ict_timeframe) ictParts.push(`TF:${sanitizeUserInput(t.ict_timeframe)}`);
-        if (t.ict_confluence_score != null) ictParts.push(`Checklist:${t.ict_confluence_score}/7`);
+        if (t.ict_confluence_score != null && (t.checklist_total ?? 0) > 0) ictParts.push(`Checklist:${t.ict_confluence_score}/${t.checklist_total}`);
         if (t.emotion) ictParts.push(`Émotion:${sanitizeUserInput(t.emotion)}`);
         const ictStr = ictParts.length > 0 ? `\n  ${ictParts.join(" | ")}` : "";
 

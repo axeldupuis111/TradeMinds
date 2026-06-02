@@ -411,7 +411,7 @@ export default function AnalysisPage() {
       const [{ data: trades }, { data: strategy }] = await Promise.all([
         supabase
           .from("trades")
-          .select("open_time, close_time, pair, direction, lot_size, entry_price, exit_price, sl, tp, pnl, commission, swap, emotion, setup_quality, tags, ict_setup, ict_entry_zone, ict_liquidity_target, ict_killzone, ict_timeframe, ict_confluence_score, ict_checklist")
+          .select("open_time, close_time, pair, direction, lot_size, entry_price, exit_price, sl, tp, pnl, commission, swap, emotion, setup_quality, tags, ict_setup, ict_entry_zone, ict_liquidity_target, ict_killzone, ict_timeframe, ict_confluence_score, ict_checklist, strategy_id")
           .eq("user_id", user.id)
           .order("open_time", { ascending: false })
           .limit(60),
@@ -423,6 +423,20 @@ export default function AnalysisPage() {
           .maybeSingle(),
       ]);
 
+      // Build per-strategy checklist map for correct denominator
+      const chatChecklistMap: Record<string, number> = {};
+      const uniqueChatStratIds = Array.from(new Set((trades || []).map((t) => (t as { strategy_id?: string | null }).strategy_id).filter((id): id is string => !!id)));
+      if (uniqueChatStratIds.length > 0) {
+        const { data: chatTagData } = await supabase
+          .from("strategy_tags")
+          .select("strategy_id")
+          .in("strategy_id", uniqueChatStratIds)
+          .eq("tag_type", "checklist");
+        for (const tag of chatTagData || []) {
+          chatChecklistMap[tag.strategy_id] = (chatChecklistMap[tag.strategy_id] ?? 0) + 1;
+        }
+      }
+
       const tradesContext = (trades || []).map((t) => {
         const net = t.pnl + (t.commission || 0) + (t.swap || 0);
         const ictParts = [];
@@ -430,7 +444,9 @@ export default function AnalysisPage() {
         if (t.ict_entry_zone) ictParts.push(`Zone:${t.ict_entry_zone}`);
         if (t.ict_killzone) ictParts.push(`Killzone:${t.ict_killzone}`);
         if (t.ict_timeframe) ictParts.push(`TF:${t.ict_timeframe}`);
-        if (t.ict_confluence_score != null) ictParts.push(`Checklist:${t.ict_confluence_score}/7`);
+        const chatStratId = (t as { strategy_id?: string | null }).strategy_id;
+        const chatChecklistTotal = chatStratId ? (chatChecklistMap[chatStratId] ?? 0) : 0;
+        if (t.ict_confluence_score != null && chatChecklistTotal > 0) ictParts.push(`Checklist:${t.ict_confluence_score}/${chatChecklistTotal}`);
         const ictStr = ictParts.length > 0 ? ` | ${ictParts.join(" | ")}` : "";
         return `${t.open_time} | ${t.pair} | ${t.direction} | lot=${t.lot_size} | P&L=${net.toFixed(2)} | emotion=${t.emotion || "N/A"} | quality=${t.setup_quality || "N/A"} | tags=${(t.tags || []).join(",")}${ictStr}`;
       }).join("\n");
