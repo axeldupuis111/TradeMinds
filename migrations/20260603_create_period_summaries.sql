@@ -41,12 +41,6 @@ CREATE POLICY "Users can update own period summaries"
   TO authenticated
   USING (user_id = auth.uid());
 
-CREATE POLICY "Users can delete own period summaries"
-  ON period_summaries
-  FOR DELETE
-  TO authenticated
-  USING (user_id = auth.uid());
-
 -- Auto-update updated_at on every UPDATE
 CREATE OR REPLACE FUNCTION update_period_summaries_updated_at()
 RETURNS TRIGGER AS $$
