@@ -728,92 +728,87 @@ function HowItWorks() {
 }
 
 /* ─────────────────────────────────────────────
-   PREMIUM COMING SOON CARD
+   PREMIUM CARD
 ───────────────────────────────────────────── */
-function PremiumComingSoon({ t }: { t: (k: string) => string }) {
-  const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "duplicate" | "error">("idle");
-
-  async function handleNotify() {
-    const trimmed = email.trim();
-    if (!trimmed) return;
-    setStatus("loading");
-    try {
-      const res = await fetch("/api/waitlist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: trimmed }),
-      });
-      const data = await res.json();
-      if (data.duplicate) setStatus("duplicate");
-      else if (res.ok) setStatus("success");
-      else setStatus("error");
-    } catch {
-      setStatus("error");
-    }
-  }
-
-  const premiumFeats = [
+function PremiumComingSoon({ t, annual }: { t: (k: string) => string; annual: boolean }) {
+  const exclusiveFeats = [
     t("plan_benefit_premium_1"),
     t("plan_benefit_premium_2"),
     t("plan_benefit_premium_3"),
-    t("plan_benefit_premium_4"),
-    t("plan_benefit_premium_5"),
+  ];
+
+  const plusFeats = [
+    t("plan_benefit_plus_1"),
+    t("plan_benefit_plus_2"),
+    t("plan_benefit_plus_3"),
+    t("plan_benefit_plus_4"),
+    t("plan_benefit_plus_5"),
+    t("plan_benefit_plus_6"),
+    t("plan_benefit_plus_7"),
   ];
 
   return (
     <div className="relative bg-card card-gradient-border-gold rounded-2xl p-7 flex flex-col h-full">
-      {/* Coming soon badge */}
-      <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 text-[11px] font-bold px-3 py-0.5 rounded-full">
-        🔒 {t("plan_premium_coming")}
-      </div>
-
       <div className="text-xs font-bold text-yellow-400 uppercase tracking-widest">{t("plan_premium")}</div>
       <p className="text-gray-400 text-base mt-1">{t("plan_premium_desc")}</p>
 
-      <ul className="mt-5 space-y-3 flex-1">
-        {premiumFeats.map((feat, i) => (
+      {/* Price */}
+      <div className={`mt-5 transition-all duration-200`}>
+        {annual ? (
+          <>
+            <div>
+              <span className="text-4xl font-bold text-foreground">179.88€</span>
+              <span className="text-muted text-sm ml-1">/{t("plan_year")}</span>
+            </div>
+            <p className="text-profit text-xs mt-1">{t("plan_equiv")} 14,99€/{t("plan_month")}</p>
+          </>
+        ) : (
+          <>
+            <div>
+              <span className="text-4xl font-bold text-foreground">19,99€</span>
+              <span className="text-muted text-sm ml-1">/{t("plan_month")}</span>
+            </div>
+            <div className="h-4" />
+          </>
+        )}
+      </div>
+
+      {/* Exclusive features */}
+      <ul className="mt-5 space-y-3">
+        {exclusiveFeats.map((feat, i) => (
           <li key={i} className="flex items-start gap-2.5 text-sm">
             <svg className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
-            <span className="text-foreground">{feat}</span>
+            <span className="text-foreground font-medium">{feat}</span>
           </li>
         ))}
       </ul>
 
-      {/* Email notification */}
-      <div className="mt-6">
-        {status === "success" ? (
-          <p className="text-profit text-sm font-medium text-center py-3">{t("pricing_notify_success")}</p>
-        ) : status === "duplicate" ? (
-          <p className="text-orange-400 text-sm text-center py-3">{t("pricing_notify_duplicate")}</p>
-        ) : (
-          <>
-            <p className="text-muted text-sm mb-2">{t("plan_premium_notify_label")}</p>
-            <div className="flex gap-2">
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleNotify(); }}
-              placeholder="email@exemple.com"
-              className="flex-1 min-w-0 px-3 py-2 bg-surface border border-border rounded-xl text-foreground text-sm placeholder-muted focus:outline-none focus:ring-1 focus:ring-yellow-500/40"
-            />
-            <button
-              onClick={handleNotify}
-              disabled={status === "loading" || !email.trim()}
-              className="px-4 py-2 bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 text-sm font-semibold rounded-xl hover:bg-yellow-500/30 transition-colors disabled:opacity-50 whitespace-nowrap"
-            >
-              {status === "loading" ? "..." : t("plan_premium_notify_btn")}
-            </button>
-          </div>
-          </>
-        )}
-        {status === "error" && (
-          <p className="text-loss text-xs mt-1">{t("pricing_notify_error")}</p>
-        )}
+      {/* Plus features included */}
+      <div className="mt-4 flex-1">
+        <p className="text-xs font-semibold text-yellow-400/70 uppercase tracking-wider mb-2">{t("plan_premium_includes_plus")}</p>
+        <ul className="space-y-2">
+          {plusFeats.map((feat, i) => (
+            <li key={i} className="flex items-start gap-2.5 text-sm">
+              <svg className="w-4 h-4 text-yellow-400/60 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span className="text-foreground/80">{feat}</span>
+            </li>
+          ))}
+        </ul>
       </div>
+
+      <motion.div whileHover={{ scale: 1.03 }} transition={{ duration: 0.2 }}>
+        <Link
+          href="/login"
+          className="mt-8 block w-full py-3 rounded-xl font-semibold text-center transition-colors bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/30"
+        >
+          {t("pricing_choose_premium")}
+        </Link>
+      </motion.div>
+      <p className="text-center text-xs text-muted/50 mt-2">{t("pricing_coming_soon_note")}</p>
     </div>
   );
 }
@@ -954,7 +949,7 @@ function Pricing() {
 
           {/* Premium — Coming soon as 3rd card inside grid */}
           <Reveal delay={120}>
-            <PremiumComingSoon t={t} />
+            <PremiumComingSoon t={t} annual={annual} />
           </Reveal>
         </div>
 
