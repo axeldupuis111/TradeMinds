@@ -45,8 +45,6 @@ export default function UpgradePage() {
   const { plan: currentPlan, refreshPlan } = usePlan();
   const supabase = createClient();
   const [annual, setAnnual] = useState(false);
-  const [notifyEmail, setNotifyEmail] = useState("");
-  const [notifyStatus, setNotifyStatus] = useState<"idle" | "loading" | "success" | "duplicate" | "error">("idle");
   const [showDowngradeModal, setShowDowngradeModal] = useState(false);
   const [downgrading, setDowngrading] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -115,25 +113,6 @@ export default function UpgradePage() {
       return () => clearTimeout(timeout);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  async function handleNotify() {
-    const email = notifyEmail.trim();
-    if (!email) return;
-    setNotifyStatus("loading");
-    try {
-      const res = await fetch("/api/waitlist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      const data = await res.json();
-      if (data.duplicate) setNotifyStatus("duplicate");
-      else if (res.ok) setNotifyStatus("success");
-      else setNotifyStatus("error");
-    } catch {
-      setNotifyStatus("error");
-    }
-  }
 
   async function handleDowngrade() {
     setDowngrading(true);
@@ -259,8 +238,8 @@ export default function UpgradePage() {
         )}
       </div>
 
-      {/* Active plans grid (Free + Plus) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 max-w-2xl mx-auto">
+      {/* Active plans grid (Free + Plus + Premium) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 max-w-4xl mx-auto">
         {/* Free plan */}
         {(() => {
           const isCurrent = currentPlan === "free";
@@ -396,69 +375,77 @@ export default function UpgradePage() {
             </div>
           );
         })()}
-      </div>
 
-      {/* Premium — Coming soon card */}
-      <div className="mt-6 max-w-2xl mx-auto" ref={premiumRef} id="premium-notify">
-        <div className="relative rounded-xl border-2 border-yellow-500/30 p-6 bg-card/80 shadow-lg shadow-yellow-500/5">
-          <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-yellow-500/20 text-yellow-400 text-xs font-bold px-3 py-0.5 rounded-full border border-yellow-500/30">
-            🔒 {t("plan_premium_coming")}
-          </span>
-
+        {/* Premium — 3rd column */}
+        <div
+          className="relative rounded-xl border-2 border-yellow-500/30 p-6 bg-card/80 shadow-lg shadow-yellow-500/5"
+          ref={premiumRef}
+          id="premium"
+        >
           <h3 className="text-lg font-bold text-yellow-400">{t("plan_premium")}</h3>
-          <p className="text-muted text-sm mt-1">{t("plan_premium_desc")}</p>
+          <p className="text-muted text-xs mt-0.5">{t("plan_premium_desc")}</p>
 
-          <ul className="mt-4 space-y-2">
-            {(["plan_benefit_premium_1","plan_benefit_premium_2","plan_benefit_premium_3","plan_benefit_premium_4","plan_benefit_premium_5"] as const).map((key) => (
-              <li key={key} className="flex items-center gap-2 text-sm text-foreground">
-                <svg className="w-4 h-4 text-yellow-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          {/* Price */}
+          {annual ? (
+            <div className="mt-3">
+              <div className="flex items-baseline gap-2">
+                <span className="text-muted text-sm line-through">19,99€/{t("plan_month")}</span>
+              </div>
+              <div className="flex items-baseline gap-1">
+                <span className="text-3xl font-bold text-foreground">14,99€</span>
+                <span className="text-muted text-sm">/{t("plan_month")}</span>
+              </div>
+              <div className="h-2" />
+            </div>
+          ) : (
+            <div className="mt-3">
+              <div className="flex items-baseline gap-1">
+                <span className="text-3xl font-bold text-foreground">19,99€</span>
+                <span className="text-muted text-sm">/{t("plan_month")}</span>
+              </div>
+              <div className="h-8" />
+            </div>
+          )}
+
+          {/* Exclusive features */}
+          <ul className="mt-2 space-y-2">
+            {(["plan_benefit_premium_1","plan_benefit_premium_2","plan_benefit_premium_3"] as const).map((key) => (
+              <li key={key} className="flex items-start gap-2 text-sm">
+                <svg className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                {t(key)}
+                <span className="text-foreground font-medium">{t(key)}</span>
               </li>
             ))}
           </ul>
 
-          <div className="mt-5">
-            {notifyStatus === "success" ? (
-              <p className="text-profit text-sm font-medium text-center py-2.5">
-                {t("pricing_notify_success")}
-              </p>
-            ) : notifyStatus === "duplicate" ? (
-              <p className="text-orange-400 text-sm text-center py-2.5">
-                {t("pricing_notify_duplicate")}
-              </p>
-            ) : (
-              <>
-                <p className="text-muted text-sm mb-2">{t("plan_premium_notify_label")}</p>
-                <div className="flex gap-2">
-                  <input
-                    type="email"
-                    value={notifyEmail}
-                    onChange={(e) => setNotifyEmail(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") handleNotify(); }}
-                    placeholder="email@exemple.com"
-                    className="flex-1 min-w-0 px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm placeholder-muted focus:outline-none focus:ring-1 focus:ring-yellow-500/40"
-                  />
-                  <button
-                    onClick={handleNotify}
-                    disabled={notifyStatus === "loading" || !notifyEmail.trim()}
-                    className="px-3 py-2 bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 text-sm font-semibold rounded-lg hover:bg-yellow-500/30 transition-colors disabled:opacity-50 whitespace-nowrap"
-                  >
-                    {notifyStatus === "loading" ? "..." : t("plan_premium_notify_btn")}
-                  </button>
-                </div>
-              </>
-            )}
-            {notifyStatus === "error" && (
-              <p className="text-loss text-xs mt-1">{t("pricing_notify_error")}</p>
-            )}
+          {/* Plus features included */}
+          <div className="mt-4">
+            <p className="text-xs font-semibold text-yellow-400/70 uppercase tracking-wider mb-2">{t("plan_premium_includes_plus")}</p>
+            <ul className="space-y-2">
+              {(["plan_benefit_plus_1","plan_benefit_plus_2","plan_benefit_plus_3","plan_benefit_plus_4","plan_benefit_plus_5","plan_benefit_plus_6","plan_benefit_plus_7"] as const).map((key) => (
+                <li key={key} className="flex items-start gap-2 text-sm">
+                  <svg className="w-4 h-4 text-yellow-400/60 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span className="text-foreground/80">{t(key)}</span>
+                </li>
+              ))}
+            </ul>
           </div>
+
+          <button
+            disabled
+            className="w-full mt-6 py-2.5 rounded-lg font-medium text-sm bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 opacity-70 cursor-default"
+          >
+            {t("pricing_choose_premium")}
+          </button>
+          <p className="text-center text-xs text-muted/50 mt-2">{t("pricing_coming_soon_note")}</p>
         </div>
       </div>
 
       {/* Feature comparison table */}
-      <div className="mt-10 max-w-2xl mx-auto">
+      <div className="mt-10 max-w-4xl mx-auto">
         <h2 className="text-base font-semibold text-foreground mb-4">{t("plan_compare_title")}</h2>
         <div className="rounded-xl border border-border overflow-hidden">
           <table className="w-full text-sm">
