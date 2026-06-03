@@ -12,25 +12,27 @@ interface PlanFeature {
   key: string;
   free: boolean | string;
   plus: boolean | string;
+  premium: boolean | string;
   demoHref?: string;
 }
 
 const features: PlanFeature[] = [
-  { key: "plan_feat_csv_import",        free: "1/plan_day",  plus: "plan_unlimited"                          },
-  { key: "plan_feat_accounts",          free: "1",           plus: "plan_unlimited"                          },
-  { key: "plan_feat_calendar",          free: true,          plus: true                                      },
-  { key: "plan_feat_equity_curve",      free: true,          plus: true                                      },
-  { key: "plan_feat_manual_trades",     free: true,          plus: true                                      },
-  { key: "plan_feat_session_pretrade",  free: true,          plus: true                                      },
-  { key: "plan_feat_strategy_ai",       free: false,         plus: true,  demoHref: "/dashboard/strategy"    },
-  { key: "plan_feat_analysis_ai",       free: false,         plus: "1/plan_day", demoHref: "/dashboard/analysis" },
-  { key: "plan_feat_coach_ai",          free: false,         plus: "5/plan_day", demoHref: "/dashboard/analysis" },
-  { key: "plan_feat_tags_emotions",     free: false,         plus: true                                      },
-  { key: "plan_feat_pdf_export",        free: false,         plus: true                                      },
-  { key: "plan_feat_analytics",         free: false,         plus: true                                      },
-  { key: "plan_feat_public_profile",    free: false,         plus: true                                      },
-  { key: "plan_feat_daily_summary",     free: false,         plus: true                                      },
-  { key: "plan_feat_stop_trading",      free: false,         plus: true                                      },
+  { key: "plan_feat_mt_sync",           free: false,         plus: false,           premium: true                                       },
+  { key: "plan_feat_csv_import",        free: "1/plan_day",  plus: "plan_unlimited", premium: "plan_unlimited"                          },
+  { key: "plan_feat_accounts",          free: "1",           plus: "plan_unlimited", premium: "plan_unlimited"                          },
+  { key: "plan_feat_calendar",          free: true,          plus: true,             premium: true                                      },
+  { key: "plan_feat_equity_curve",      free: true,          plus: true,             premium: true                                      },
+  { key: "plan_feat_manual_trades",     free: true,          plus: true,             premium: true                                      },
+  { key: "plan_feat_session_pretrade",  free: true,          plus: true,             premium: true                                      },
+  { key: "plan_feat_strategy_ai",       free: false,         plus: true,             premium: true,  demoHref: "/dashboard/strategy"    },
+  { key: "plan_feat_analysis_ai",       free: false,         plus: "1/plan_day",     premium: "10/plan_day", demoHref: "/dashboard/analysis" },
+  { key: "plan_feat_coach_ai",          free: false,         plus: "5/plan_day",     premium: "30/plan_day", demoHref: "/dashboard/analysis" },
+  { key: "plan_feat_tags_emotions",     free: false,         plus: true,             premium: true                                      },
+  { key: "plan_feat_pdf_export",        free: false,         plus: true,             premium: true                                      },
+  { key: "plan_feat_analytics",         free: false,         plus: true,             premium: true                                      },
+  { key: "plan_feat_public_profile",    free: false,         plus: true,             premium: true                                      },
+  { key: "plan_feat_daily_summary",     free: false,         plus: true,             premium: true                                      },
+  { key: "plan_feat_stop_trading",      free: false,         plus: true,             premium: true                                      },
 ];
 
 const faqKeys = [
@@ -458,7 +460,7 @@ export default function UpgradePage() {
       </div>
 
       {/* Feature comparison table */}
-      <div className="mt-10 max-w-2xl mx-auto">
+      <div className="mt-10 max-w-4xl mx-auto">
         <h2 className="text-base font-semibold text-foreground mb-4">{t("plan_compare_title")}</h2>
         <div className="rounded-xl border border-border overflow-hidden">
           <table className="w-full text-sm">
@@ -467,6 +469,7 @@ export default function UpgradePage() {
                 <th className="text-left px-4 py-3 text-muted font-medium">{t("plan_feature")}</th>
                 <th className="text-center px-4 py-3 text-muted font-medium">{t("plan_free")}</th>
                 <th className="text-center px-4 py-3 text-accent font-semibold">{t("plan_plus")}</th>
+                <th className="text-center px-4 py-3 text-yellow-400 font-semibold">{t("plan_premium")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -475,6 +478,7 @@ export default function UpgradePage() {
                   <td className="px-4 py-3 text-foreground">{t(f.key)}</td>
                   <td className="px-4 py-3 text-center">{renderValue(f.free)}</td>
                   <td className="px-4 py-3 text-center">{renderValue(f.plus)}</td>
+                  <td className="px-4 py-3 text-center">{renderValue(f.premium)}</td>
                 </tr>
               ))}
             </tbody>
