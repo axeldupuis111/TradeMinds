@@ -1006,6 +1006,16 @@ const translations: Record<Lang, Record<string, string>> = {
     stop_limit_max_trades: "Tu as atteint ton nombre maximum de trades pour aujourd'hui.",
     stop_limit_consecutive_losses: "Tu as atteint ta limite de pertes consécutives.",
 
+    // Challenge Guardian (Premium)
+    guardian_daily_dd_warning: "⚠️ {pct}% de ton DD journalier challenge consommé — {eur}€ restants",
+    guardian_total_dd_warning: "⚠️ {pct}% de ton DD total challenge consommé — {eur}€ restants",
+    guardian_daily_dd_critical: "Tu es à {pct}% de ton drawdown journalier challenge. Arrête-toi maintenant.",
+    guardian_total_dd_critical: "Tu es à {pct}% de ton drawdown total challenge. Arrête-toi maintenant.",
+    guardian_overlay_instruction: "Ferme ta position. Protège ton challenge.",
+    guardian_understand: "Compris, je stoppe",
+    guardian_banner_daily: "⚠️ DD journalier challenge : {pct}% — {eur}€ restants",
+    guardian_banner_total: "⚠️ DD total challenge : {pct}% — {eur}€ restants",
+
     // PDF Export
     pdf_export: "Exporter PDF",
     pdf_generating: "Génération...",
@@ -2435,6 +2445,16 @@ const translations: Record<Lang, Record<string, string>> = {
     stop_limit_max_trades: "You have reached your max trades for today.",
     stop_limit_consecutive_losses: "You have reached your consecutive losses limit.",
 
+    // Challenge Guardian (Premium)
+    guardian_daily_dd_warning: "⚠️ {pct}% of your challenge daily DD used — {eur}€ remaining",
+    guardian_total_dd_warning: "⚠️ {pct}% of your challenge total DD used — {eur}€ remaining",
+    guardian_daily_dd_critical: "You are at {pct}% of your challenge daily drawdown. Stop now.",
+    guardian_total_dd_critical: "You are at {pct}% of your challenge total drawdown. Stop now.",
+    guardian_overlay_instruction: "Close your position. Protect your challenge.",
+    guardian_understand: "Got it, I'm stopping",
+    guardian_banner_daily: "⚠️ Challenge daily DD: {pct}% — {eur}€ remaining",
+    guardian_banner_total: "⚠️ Challenge total DD: {pct}% — {eur}€ remaining",
+
     // PDF Export
     pdf_export: "Export PDF",
     pdf_generating: "Generating...",
@@ -3863,6 +3883,16 @@ const translations: Record<Lang, Record<string, string>> = {
     stop_limit_max_trades: "Du hast deine maximale Anzahl an Trades für heute erreicht.",
     stop_limit_consecutive_losses: "Du hast dein Limit an aufeinanderfolgenden Verlusten erreicht.",
 
+    // Challenge Guardian (Premium)
+    guardian_daily_dd_warning: "⚠️ {pct}% deines täglichen Challenge-DD verbraucht — {eur}€ übrig",
+    guardian_total_dd_warning: "⚠️ {pct}% deines gesamten Challenge-DD verbraucht — {eur}€ übrig",
+    guardian_daily_dd_critical: "Du bist bei {pct}% deines täglichen Challenge-Drawdowns. Stopp jetzt.",
+    guardian_total_dd_critical: "Du bist bei {pct}% deines gesamten Challenge-Drawdowns. Stopp jetzt.",
+    guardian_overlay_instruction: "Schließe deine Position. Schütze deine Challenge.",
+    guardian_understand: "Verstanden, ich stoppe",
+    guardian_banner_daily: "⚠️ Tagesl. Challenge-DD: {pct}% — {eur}€ übrig",
+    guardian_banner_total: "⚠️ Gesamt Challenge-DD: {pct}% — {eur}€ übrig",
+
     // PDF Export
     pdf_export: "PDF exportieren",
     pdf_generating: "Wird generiert...",
@@ -5289,6 +5319,16 @@ const translations: Record<Lang, Record<string, string>> = {
     stop_limit_daily_loss: "Has alcanzado tu pérdida máxima diaria.",
     stop_limit_max_trades: "Has alcanzado tu máximo de trades para hoy.",
     stop_limit_consecutive_losses: "Has alcanzado tu límite de pérdidas consecutivas.",
+
+    // Challenge Guardian (Premium)
+    guardian_daily_dd_warning: "⚠️ {pct}% de tu DD diario de challenge consumido — quedan {eur}€",
+    guardian_total_dd_warning: "⚠️ {pct}% de tu DD total de challenge consumido — quedan {eur}€",
+    guardian_daily_dd_critical: "Estás al {pct}% de tu drawdown diario de challenge. Para ahora.",
+    guardian_total_dd_critical: "Estás al {pct}% de tu drawdown total de challenge. Para ahora.",
+    guardian_overlay_instruction: "Cierra tu posición. Protege tu challenge.",
+    guardian_understand: "Entendido, paro",
+    guardian_banner_daily: "⚠️ DD diario challenge: {pct}% — quedan {eur}€",
+    guardian_banner_total: "⚠️ DD total challenge: {pct}% — quedan {eur}€",
 
     // PDF Export
     pdf_export: "Exportar PDF",

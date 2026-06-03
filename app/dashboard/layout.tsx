@@ -4,6 +4,7 @@ import Header from "@/components/Header";
 import OnboardingGuide from "@/components/dashboard/OnboardingGuide";
 import QuickTradeFAB from "@/components/dashboard/QuickTradeFAB";
 import Sidebar from "@/components/Sidebar";
+import ChallengeGuardian from "@/components/dashboard/ChallengeGuardian";
 import StopTradingGuard from "@/components/dashboard/StopTradingGuard";
 import { SubscriptionBanner } from "@/components/SubscriptionBanner";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -186,6 +187,7 @@ export default function DashboardLayout({
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <StopTradingGuard />
+        <ChallengeGuardian />
         <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
         <SubscriptionBanner />
         <SessionReminderBanner />

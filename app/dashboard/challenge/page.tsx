@@ -1,6 +1,7 @@
 "use client";
 
 import EquityCurve from "@/components/charts/EquityCurve";
+import { computeChallengeRules } from "@/lib/challenge-rules";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
@@ -348,12 +349,16 @@ function AccountCard({
   const currentPnl = stats.currentPnl;
   const todayPnl = stats.todayPnl;
   const hasNoTrades = stats.equityCurveData.length === 0;
-  const profitTargetAmount = ac.account_size * (ac.profit_target_pct / 100);
-  const maxTotalDdAmount = ac.account_size * (ac.max_total_dd_pct / 100);
-  const maxDailyDdAmount = ac.account_size * (ac.max_daily_dd_pct / 100);
-  const totalDdUsed = Math.max(0, ac.account_size - balance);
-  const dailyDdUsed = Math.max(0, -todayPnl);
   const isProp = (ac.type ?? "prop") === "prop";
+
+  // Shared DD / progress calculations via single-source-of-truth util.
+  // trailing_drawdown=false path is ISO vs. the previous inline code.
+  const rules = computeChallengeRules(
+    ac,
+    balance,
+    todayPnl,
+    stats.equityCurveData.map((d) => d.balance),
+  );
 
   const daysElapsed = Math.floor(
     (Date.now() - new Date(ac.start_date).getTime()) / (1000 * 60 * 60 * 24)
@@ -403,9 +408,9 @@ function AccountCard({
       {/* Progress bars — only for prop firm */}
       {isProp && (
         <div className="space-y-4">
-          <ProgressBar value={Math.max(0, currentPnl)} max={profitTargetAmount} color="bg-profit" label={t("challenge_profit_target")} />
-          <ProgressBar value={totalDdUsed} max={maxTotalDdAmount} color="bg-loss" label={t("challenge_total_dd")} alert />
-          <ProgressBar value={dailyDdUsed} max={maxDailyDdAmount} color="bg-loss" label={t("challenge_daily_dd")} alert />
+          <ProgressBar value={rules.profitUsed} max={rules.profitMax} color="bg-profit" label={t("challenge_profit_target")} />
+          <ProgressBar value={rules.totalDdUsed} max={rules.totalDdMax} color="bg-loss" label={t("challenge_total_dd")} alert />
+          <ProgressBar value={rules.dailyDdUsed} max={rules.dailyDdMax} color="bg-loss" label={t("challenge_daily_dd")} alert />
         </div>
       )}
 
