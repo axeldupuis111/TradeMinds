@@ -16,17 +16,17 @@ interface SummaryTrade {
   pnl: number;
   commission: number | null;
   swap: number | null;
-  discipline_score?: number | null; // optional — sourced from session_reviews
+  // NOTE: no per-trade discipline_score — discipline_avg is sourced from session_reviews
 }
 
 interface PeriodStats {
   total_trades: number;
   wins: number;
   losses: number;
-  win_rate: number;         // 0–100
+  win_rate: number;          // 0–100
   total_pnl: number;
-  profit_factor: number | null;
-  discipline_avg: number | null; // 0–100, null if no scores provided
+  profit_factor: number | null; // null when no losing trades (avoid division by zero)
+  discipline_avg: number | null; // 0–100, null when no session_reviews in the window
   best_pair: string | null;
   worst_pair: string | null;
 }
@@ -59,7 +59,11 @@ function netPnl(t: SummaryTrade): number {
   return t.pnl + (t.commission ?? 0) + (t.swap ?? 0);
 }
 
-function computeStats(trades: SummaryTrade[]): PeriodStats {
+/**
+ * Compute deterministic P&L aggregates for a set of trades.
+ * discipline_avg is injected separately (sourced from session_reviews).
+ */
+function computeStats(trades: SummaryTrade[], disciplineAvg: number | null): PeriodStats {
   const total_trades = trades.length;
   if (total_trades === 0) {
     return {
@@ -81,7 +85,6 @@ function computeStats(trades: SummaryTrade[]): PeriodStats {
   let grossLoss = 0;
   let total_pnl = 0;
   const pairPnl: Record<string, number> = {};
-  const disciplineScores: number[] = [];
 
   for (const t of trades) {
     const net = netPnl(t);
@@ -89,15 +92,11 @@ function computeStats(trades: SummaryTrade[]): PeriodStats {
     if (net > 0) { wins++; grossWin += net; }
     else if (net < 0) { losses++; grossLoss += Math.abs(net); }
     pairPnl[t.pair] = (pairPnl[t.pair] ?? 0) + net;
-    if (t.discipline_score != null) disciplineScores.push(t.discipline_score);
   }
 
   const win_rate = (wins / total_trades) * 100;
+  // profit_factor: null when no losing trades (no division by zero)
   const profit_factor = grossLoss > 0 ? +(grossWin / grossLoss).toFixed(2) : null;
-  const discipline_avg =
-    disciplineScores.length > 0
-      ? +(disciplineScores.reduce((s, v) => s + v, 0) / disciplineScores.length).toFixed(1)
-      : null;
 
   const pairs = Object.entries(pairPnl);
   const best_pair = pairs.length > 0
@@ -114,7 +113,7 @@ function computeStats(trades: SummaryTrade[]): PeriodStats {
     win_rate: +win_rate.toFixed(1),
     total_pnl: +total_pnl.toFixed(2),
     profit_factor,
-    discipline_avg,
+    discipline_avg: disciplineAvg,
     best_pair,
     worst_pair,
   };
@@ -130,6 +129,8 @@ function computeDeltas(cur: PeriodStats, prev: PeriodStats): PeriodDeltas {
         : null,
   };
 }
+
+// ── Supabase server client ────────────────────────────────────────────────────
 
 function createSupabaseServer() {
   const cookieStore = cookies();
@@ -149,6 +150,35 @@ function createSupabaseServer() {
       },
     }
   );
+}
+
+/**
+ * Fetch discipline_avg from session_reviews whose created_at falls within
+ * [windowStart 00:00:00, windowEnd 23:59:59] (inclusive on both ends).
+ * Returns null when no reviews exist in the window.
+ */
+async function fetchDisciplineAvg(
+  supabase: ReturnType<typeof createSupabaseServer>,
+  userId: string,
+  windowStart: string, // YYYY-MM-DD
+  windowEnd: string,   // YYYY-MM-DD
+): Promise<number | null> {
+  const { data, error } = await supabase
+    .from("session_reviews")
+    .select("discipline_score")
+    .eq("user_id", userId)
+    .gte("created_at", `${windowStart}T00:00:00.000Z`)
+    .lte("created_at", `${windowEnd}T23:59:59.999Z`);
+
+  if (error || !data || data.length === 0) return null;
+
+  const scores = (data as { discipline_score: number }[])
+    .map((r) => r.discipline_score)
+    .filter((s) => typeof s === "number" && !isNaN(s));
+
+  if (scores.length === 0) return null;
+
+  return +(scores.reduce((sum, s) => sum + s, 0) / scores.length).toFixed(1);
 }
 
 // ── Prompt builder ────────────────────────────────────────────────────────────
@@ -177,13 +207,16 @@ function buildPrompt(
 
   const pnlSign = (v: number) => (v >= 0 ? "+" : "") + v.toFixed(2);
 
+  const disciplineStr = (avg: number | null) =>
+    avg != null ? `${avg}/100` : "pas d'analyse de discipline sur cette période";
+
   const currentBlock = `
 Période analysée : ${periodStart} → ${periodEnd}
 Trades : ${cur.total_trades} | Gagnants : ${cur.wins} | Perdants : ${cur.losses}
 Win rate : ${cur.win_rate}%
 P&L net total : ${pnlSign(cur.total_pnl)}€
-Profit factor : ${cur.profit_factor != null ? cur.profit_factor : "N/A"}
-Score de discipline moyen : ${cur.discipline_avg != null ? cur.discipline_avg + "/100" : "N/A"}
+Profit factor : ${cur.profit_factor != null ? cur.profit_factor : "N/A (aucune perte)"}
+Score de discipline moyen : ${disciplineStr(cur.discipline_avg)}
 Meilleure paire : ${cur.best_pair ?? "N/A"}
 Moins bonne paire : ${cur.worst_pair ?? "N/A"}`.trim();
 
@@ -191,7 +224,7 @@ Moins bonne paire : ${cur.worst_pair ?? "N/A"}`.trim();
     ? `
 Période précédente (comparaison) :
 Trades : ${prev.total_trades} | Win rate : ${prev.win_rate}% | P&L : ${pnlSign(prev.total_pnl)}€
-Score discipline : ${prev.discipline_avg != null ? prev.discipline_avg + "/100" : "N/A"}
+Score discipline : ${disciplineStr(prev.discipline_avg)}
 
 Évolution :
 P&L : ${pnlSign(deltas.total_pnl!)}€
@@ -231,7 +264,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Service IA indisponible." }, { status: 503 });
     }
 
-    // ── 3. Parse body ──
+    // ── 3. Parse + validate body ──
     const body: RequestBody = await request.json();
     const {
       period_type,
@@ -244,14 +277,20 @@ export async function POST(request: Request) {
     } = body;
 
     if (!period_type || !["weekly", "monthly"].includes(period_type)) {
-      return NextResponse.json({ error: "period_type invalide." }, { status: 400 });
+      return NextResponse.json({ error: "period_type invalide (weekly|monthly)." }, { status: 400 });
     }
     if (!period_start || !period_end) {
       return NextResponse.json({ error: "period_start et period_end sont requis." }, { status: 400 });
     }
+
+    // Edge case: 0 trades on current period → early return, no AI call, no quota consumed
     if (!trades || trades.length === 0) {
-      return NextResponse.json({ error: "Aucun trade pour cette période." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Aucun trade sur cette période — le bilan ne peut pas être généré." },
+        { status: 400 }
+      );
     }
+
     if (trades.length > MAX_TRADES || prevTrades.length > MAX_TRADES) {
       return NextResponse.json({ error: `Too many trades (max ${MAX_TRADES})` }, { status: 413 });
     }
@@ -273,22 +312,30 @@ export async function POST(request: Request) {
       }
     }
 
-    // ── 5. Quota check (only for new generation) ──
+    // ── 5. Quota check ──
     const quota = await checkQuota({ userId, plan, feature: "period_summary" });
     if (quota instanceof NextResponse) return quota;
 
-    // ── 6. Compute deterministic aggregates ──
-    const currentStats = computeStats(trades);
-    const previousStats = prevTrades.length > 0 ? computeStats(prevTrades) : null;
+    // ── 6. Fetch discipline_avg from session_reviews for both windows ──
+    const prevWindow = _inferPrevWindow(period_type, period_start);
+
+    const [curDisciplineAvg, prevDisciplineAvg] = await Promise.all([
+      fetchDisciplineAvg(supabase, userId, period_start, period_end),
+      prevTrades.length > 0
+        ? fetchDisciplineAvg(supabase, userId, prevWindow.start, prevWindow.end)
+        : Promise.resolve(null),
+    ]);
+
+    // ── 7. Compute deterministic aggregates ──
+    const currentStats = computeStats(trades, curDisciplineAvg);
+    const previousStats = prevTrades.length > 0
+      ? computeStats(prevTrades, prevDisciplineAvg)
+      : null;
     const deltas = previousStats ? computeDeltas(currentStats, previousStats) : null;
 
-    const agg: AggregatedStats = {
-      current: currentStats,
-      previous: previousStats,
-      deltas,
-    };
+    const agg: AggregatedStats = { current: currentStats, previous: previousStats, deltas };
 
-    // ── 7. Prompt → Haiku ──
+    // ── 8. Prompt → Haiku ──
     const client = new Anthropic({ apiKey });
     const prompt = buildPrompt(period_type, period_start, period_end, language, agg);
 
@@ -304,7 +351,7 @@ export async function POST(request: Request) {
     }
     const content = textBlock.text.trim();
 
-    // ── 8. Upsert period_summaries ──
+    // ── 9. Upsert period_summaries ──
     const statsPayload = {
       ...agg.current,
       previous: agg.previous ?? null,
@@ -327,7 +374,7 @@ export async function POST(request: Request) {
         { onConflict: "user_id,period_type,period_start" }
       );
 
-    // ── 9. Increment quota ──
+    // ── 10. Increment quota ──
     await incrementQuota(userId, plan, "period_summary");
 
     return NextResponse.json({ content, stats: statsPayload, cached: false });
@@ -335,5 +382,35 @@ export async function POST(request: Request) {
     console.error("Period summary error:", err);
     const message = err instanceof Error ? err.message : "Erreur inconnue";
     return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+/**
+ * Infer the previous period window from current period_start.
+ * Used to query session_reviews for discipline_avg on the previous period.
+ */
+function _inferPrevWindow(
+  periodType: "weekly" | "monthly",
+  periodStart: string,
+): { start: string; end: string } {
+  const d = new Date(periodStart);
+  if (periodType === "weekly") {
+    const prevEnd = new Date(d);
+    prevEnd.setDate(prevEnd.getDate() - 1); // day before period_start = last day of prev week
+    const prevStart = new Date(prevEnd);
+    prevStart.setDate(prevStart.getDate() - 6); // 7-day window
+    return {
+      start: prevStart.toISOString().split("T")[0],
+      end: prevEnd.toISOString().split("T")[0],
+    };
+  } else {
+    // monthly: go back one month
+    const prevEnd = new Date(d);
+    prevEnd.setDate(prevEnd.getDate() - 1);
+    const prevStart = new Date(prevEnd.getFullYear(), prevEnd.getMonth(), 1);
+    return {
+      start: prevStart.toISOString().split("T")[0],
+      end: prevEnd.toISOString().split("T")[0],
+    };
   }
 }
