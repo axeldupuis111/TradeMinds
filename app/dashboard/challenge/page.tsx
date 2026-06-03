@@ -16,6 +16,7 @@ interface Challenge {
   profit_target_pct: number;
   max_daily_dd_pct: number;
   max_total_dd_pct: number;
+  trailing_drawdown: boolean;
   start_date: string;
   end_date: string | null;
   balance: number;
@@ -57,6 +58,52 @@ const inputClass =
   "w-full px-3 py-2 bg-surface border border-border rounded-lg text-foreground placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent";
 const inputErrorClass =
   "w-full px-3 py-2 bg-surface border border-red-500 rounded-lg text-foreground placeholder-muted focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500";
+
+function TrailingDdToggle({
+  value,
+  onChange,
+  t,
+}: {
+  value: boolean;
+  onChange: (v: boolean) => void;
+  t: (key: string) => string;
+}) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  return (
+    <div className="flex items-center gap-3">
+      <button
+        type="button"
+        role="switch"
+        aria-checked={value}
+        onClick={() => onChange(!value)}
+        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-card ${value ? "bg-accent" : "bg-border"}`}
+      >
+        <span
+          className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform duration-200 ${value ? "translate-x-4" : "translate-x-0"}`}
+        />
+      </button>
+      <span className="text-sm text-foreground">{t("challenge_trailing_dd")}</span>
+      <span className="relative inline-block">
+        <button
+          type="button"
+          className="text-muted hover:text-foreground transition-colors"
+          onMouseEnter={() => setShowTooltip(true)}
+          onMouseLeave={() => setShowTooltip(false)}
+          aria-label="Info"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
+        {showTooltip && (
+          <span className="absolute left-0 top-6 z-20 w-72 bg-card border border-border rounded-lg p-3 text-xs text-muted shadow-xl">
+            {t("challenge_trailing_dd_tooltip")}
+          </span>
+        )}
+      </span>
+    </div>
+  );
+}
 
 function ProgressBar({
   value,
@@ -150,6 +197,7 @@ function EditAccountModal({
   const [profitTarget, setProfitTarget] = useState(String(account.profit_target_pct));
   const [maxDailyDd, setMaxDailyDd] = useState(String(account.max_daily_dd_pct));
   const [maxTotalDd, setMaxTotalDd] = useState(String(account.max_total_dd_pct));
+  const [trailingDrawdown, setTrailingDrawdown] = useState(account.trailing_drawdown ?? false);
   const [startDate, setStartDate] = useState(account.start_date);
   const [endDate, setEndDate] = useState(account.end_date || "");
   const [status, setStatus] = useState(account.status);
@@ -164,6 +212,7 @@ function EditAccountModal({
       profit_target_pct: accountType === "prop" ? (parseFloat(profitTarget) || 0) : 0,
       max_daily_dd_pct: accountType === "prop" ? (parseFloat(maxDailyDd) || 0) : 0,
       max_total_dd_pct: accountType === "prop" ? (parseFloat(maxTotalDd) || 0) : 0,
+      trailing_drawdown: accountType === "prop" ? trailingDrawdown : false,
       start_date: startDate,
       end_date: endDate || null,
       status,
@@ -195,20 +244,23 @@ function EditAccountModal({
             <input type="number" value={accountSize} onChange={(e) => setAccountSize(e.target.value)} className={inputClass} />
           </div>
           {accountType === "prop" && (
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="block text-sm text-muted mb-1">{t("challenge_profit_target_pct")}</label>
-                <input type="number" step="0.1" value={profitTarget} onChange={(e) => setProfitTarget(e.target.value)} className={inputClass} />
+            <>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-sm text-muted mb-1">{t("challenge_profit_target_pct")}</label>
+                  <input type="number" step="0.1" value={profitTarget} onChange={(e) => setProfitTarget(e.target.value)} className={inputClass} />
+                </div>
+                <div>
+                  <label className="block text-sm text-muted mb-1">{t("challenge_daily_dd_pct")}</label>
+                  <input type="number" step="0.1" value={maxDailyDd} onChange={(e) => setMaxDailyDd(e.target.value)} className={inputClass} />
+                </div>
+                <div>
+                  <label className="block text-sm text-muted mb-1">{t("challenge_total_dd_pct")}</label>
+                  <input type="number" step="0.1" value={maxTotalDd} onChange={(e) => setMaxTotalDd(e.target.value)} className={inputClass} />
+                </div>
               </div>
-              <div>
-                <label className="block text-sm text-muted mb-1">{t("challenge_daily_dd_pct")}</label>
-                <input type="number" step="0.1" value={maxDailyDd} onChange={(e) => setMaxDailyDd(e.target.value)} className={inputClass} />
-              </div>
-              <div>
-                <label className="block text-sm text-muted mb-1">{t("challenge_total_dd_pct")}</label>
-                <input type="number" step="0.1" value={maxTotalDd} onChange={(e) => setMaxTotalDd(e.target.value)} className={inputClass} />
-              </div>
-            </div>
+              <TrailingDdToggle value={trailingDrawdown} onChange={setTrailingDrawdown} t={t} />
+            </>
           )}
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -485,6 +537,7 @@ export default function ChallengePage() {
   const [profitTarget, setProfitTarget] = useState("8");
   const [maxDailyDd, setMaxDailyDd] = useState("5");
   const [maxTotalDd, setMaxTotalDd] = useState("10");
+  const [trailingDrawdown, setTrailingDrawdown] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [formErrors, setFormErrors] = useState<{ accountNumber?: boolean; accountSize?: boolean; startDate?: boolean }>({});
@@ -618,6 +671,7 @@ export default function ChallengePage() {
       profit_target_pct: accountType === "prop" ? (parseFloat(profitTarget) || 8) : 0,
       max_daily_dd_pct: accountType === "prop" ? (parseFloat(maxDailyDd) || 5) : 0,
       max_total_dd_pct: accountType === "prop" ? (parseFloat(maxTotalDd) || 10) : 0,
+      trailing_drawdown: accountType === "prop" ? trailingDrawdown : false,
       start_date: startDate || new Date().toISOString().split("T")[0],
       end_date: accountType === "prop" ? (endDate || null) : null,
       balance: size,
@@ -846,6 +900,7 @@ export default function ChallengePage() {
                   <input type="number" step="0.1" value={maxTotalDd} onChange={(e) => setMaxTotalDd(e.target.value)} className={inputClass} />
                 </div>
               </div>
+              <TrailingDdToggle value={trailingDrawdown} onChange={setTrailingDrawdown} t={t} />
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm text-muted mb-1">
