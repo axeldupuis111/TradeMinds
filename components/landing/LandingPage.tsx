@@ -756,12 +756,9 @@ function PremiumComingSoon({ t, annual }: { t: (k: string) => string; annual: bo
       <div className={`mt-5 transition-all duration-200`}>
         {annual ? (
           <>
-            <div className="flex items-baseline gap-2">
-              <span className="text-muted text-sm line-through">19,99€/{t("plan_month")}</span>
-            </div>
             <div>
-              <span className="text-4xl font-bold text-foreground">14,99€</span>
-              <span className="text-muted text-sm ml-1">/{t("plan_month")}</span>
+              <span className="text-4xl font-bold text-foreground">179.88€</span>
+              <span className="text-muted text-sm ml-1">/{t("plan_year")}</span>
             </div>
             <p className="text-profit text-xs mt-1">{t("plan_equiv")} 14,99€/{t("plan_month")}</p>
           </>

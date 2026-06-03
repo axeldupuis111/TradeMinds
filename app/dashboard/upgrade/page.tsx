@@ -395,7 +395,12 @@ export default function UpgradePage() {
                 <span className="text-3xl font-bold text-foreground">14,99€</span>
                 <span className="text-muted text-sm">/{t("plan_month")}</span>
               </div>
-              <div className="h-2" />
+              <span className="inline-block mt-1 px-2 py-0.5 bg-profit/10 text-profit text-xs font-bold rounded-full">
+                {t("plan_two_months_free")}
+              </span>
+              <p className="text-muted text-xs mt-1">
+                {t("plan_billed_annual").replace("{price}", "179.88€")}
+              </p>
             </div>
           ) : (
             <div className="mt-3">
