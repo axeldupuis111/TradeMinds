@@ -46,6 +46,7 @@ interface Strategy {
   sessions: string[] | null;
   risk_reward: number | null;
   max_sl_pips: number | null;
+  risk_per_trade_pct: number | null;
 }
 
 interface ActiveSession {
