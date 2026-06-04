@@ -347,6 +347,39 @@ export default function DashboardContent({
         <TradingCalendar trades={allTrades} selectedAccountId={selectedAccountId} />
       </StaggerItem>
 
+      {/* ── Position sizer shortcut ──────────────────────────────────── */}
+      <StaggerItem className="mt-6">
+        <Link href="/dashboard/session" className="block group">
+          <KpiCardPremium layout="full" intensity="default" accentColor="cyan">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl" aria-hidden="true">📐</span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <CardTitle>{t("dash_sizer_card_title")}</CardTitle>
+                    {plan !== "premium" && (
+                      <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-accent/15 text-accent">
+                        Premium
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted mt-0.5">{t("dash_sizer_card_desc")}</p>
+                </div>
+              </div>
+              <svg
+                className="w-4 h-4 text-muted group-hover:text-accent transition-colors shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </KpiCardPremium>
+        </Link>
+      </StaggerItem>
+
       {/* ── Goals & Streaks ──────────────────────────────────────────── */}
       <StaggerItem className="mt-6">
         <GoalsStreaks />

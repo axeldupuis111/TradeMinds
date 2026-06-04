@@ -216,13 +216,16 @@ export default function PositionSizer({ strategy }: Props) {
   return (
     <div className="bg-card border border-border rounded-xl p-4 space-y-4">
       {/* Header */}
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-semibold text-foreground">
-          {t("sizer_title")}
-        </span>
-        <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-accent/15 text-accent">
-          Premium
-        </span>
+      <div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-foreground">
+            {t("sizer_title")}
+          </span>
+          <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-accent/15 text-accent">
+            Premium
+          </span>
+        </div>
+        <p className="text-xs text-muted mt-0.5">{t("sizer_subtitle")}</p>
       </div>
 
       {/* Risk display — common to both modes, currency symbol adapts */}
