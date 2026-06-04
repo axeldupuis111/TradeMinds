@@ -18,6 +18,7 @@ interface Challenge {
   max_daily_dd_pct: number;
   max_total_dd_pct: number;
   trailing_drawdown: boolean;
+  market_type: "cfd" | "futures";
   start_date: string;
   end_date: string | null;
   balance: number;
@@ -199,6 +200,7 @@ function EditAccountModal({
   const [maxDailyDd, setMaxDailyDd] = useState(String(account.max_daily_dd_pct));
   const [maxTotalDd, setMaxTotalDd] = useState(String(account.max_total_dd_pct));
   const [trailingDrawdown, setTrailingDrawdown] = useState(account.trailing_drawdown ?? false);
+  const [marketType, setMarketType] = useState<"cfd" | "futures">(account.market_type ?? "cfd");
   const [startDate, setStartDate] = useState(account.start_date);
   const [endDate, setEndDate] = useState(account.end_date || "");
   const [status, setStatus] = useState(account.status);
@@ -214,6 +216,7 @@ function EditAccountModal({
       max_daily_dd_pct: accountType === "prop" ? (parseFloat(maxDailyDd) || 0) : 0,
       max_total_dd_pct: accountType === "prop" ? (parseFloat(maxTotalDd) || 0) : 0,
       trailing_drawdown: accountType === "prop" ? trailingDrawdown : false,
+      market_type: marketType,
       start_date: startDate,
       end_date: endDate || null,
       status,
@@ -239,6 +242,19 @@ function EditAccountModal({
               <option value="prop">{t("challenge_type_prop")}</option>
               <option value="personal">{t("challenge_type_personal")}</option>
             </select>
+          </div>
+          <div>
+            <label className="block text-sm text-muted mb-2">{t("challenge_market_type")}</label>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setMarketType("cfd")}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${marketType === "cfd" ? "bg-accent text-white border-accent" : "border-border text-muted hover:border-accent/50"}`}>
+                {t("challenge_market_cfd")}
+              </button>
+              <button type="button" onClick={() => setMarketType("futures")}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${marketType === "futures" ? "bg-accent text-white border-accent" : "border-border text-muted hover:border-accent/50"}`}>
+                {t("challenge_market_futures")}
+              </button>
+            </div>
           </div>
           <div>
             <label className="block text-sm text-muted mb-1">{t("challenge_account_size")}</label>
@@ -543,6 +559,7 @@ export default function ChallengePage() {
   const [maxDailyDd, setMaxDailyDd] = useState("5");
   const [maxTotalDd, setMaxTotalDd] = useState("10");
   const [trailingDrawdown, setTrailingDrawdown] = useState(false);
+  const [marketType, setMarketType] = useState<"cfd" | "futures">("cfd");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [formErrors, setFormErrors] = useState<{ accountNumber?: boolean; accountSize?: boolean; startDate?: boolean }>({});
@@ -677,6 +694,7 @@ export default function ChallengePage() {
       max_daily_dd_pct: accountType === "prop" ? (parseFloat(maxDailyDd) || 5) : 0,
       max_total_dd_pct: accountType === "prop" ? (parseFloat(maxTotalDd) || 10) : 0,
       trailing_drawdown: accountType === "prop" ? trailingDrawdown : false,
+      market_type: marketType,
       start_date: startDate || new Date().toISOString().split("T")[0],
       end_date: accountType === "prop" ? (endDate || null) : null,
       balance: size,
@@ -885,6 +903,27 @@ export default function ChallengePage() {
               {formErrors.accountSize && (
                 <p className="text-red-500 text-xs mt-1">{t("challenge_field_required")}</p>
               )}
+            </div>
+          </div>
+
+          {/* Market type */}
+          <div>
+            <label className="block text-sm text-muted mb-2">{t("challenge_market_type")}</label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setMarketType("cfd")}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${marketType === "cfd" ? "bg-accent text-white border-accent" : "border-border text-muted hover:border-accent/50"}`}
+              >
+                {t("challenge_market_cfd")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMarketType("futures")}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${marketType === "futures" ? "bg-accent text-white border-accent" : "border-border text-muted hover:border-accent/50"}`}
+              >
+                {t("challenge_market_futures")}
+              </button>
             </div>
           </div>
 

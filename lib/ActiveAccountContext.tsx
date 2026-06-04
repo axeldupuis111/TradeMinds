@@ -24,6 +24,7 @@ export interface ActiveAccount {
   firm: string;
   account_number: string | null;
   type: string;
+  market_type: "cfd" | "futures";
   account_size: number;
   balance: number;
   profit_target_pct: number;
@@ -76,7 +77,7 @@ export function ActiveAccountProvider({ children }: { children: React.ReactNode 
       const { data } = await supabase
         .from("prop_challenges")
         .select(
-          "id, firm, account_number, type, account_size, balance, profit_target_pct, max_daily_dd_pct, max_total_dd_pct, trailing_drawdown"
+          "id, firm, account_number, type, market_type, account_size, balance, profit_target_pct, max_daily_dd_pct, max_total_dd_pct, trailing_drawdown"
         )
         .eq("user_id", user.id)
         .eq("status", "active")
@@ -87,6 +88,7 @@ export function ActiveAccountProvider({ children }: { children: React.ReactNode 
         firm: row.firm ?? "",
         account_number: row.account_number ?? null,
         type: row.type ?? "prop",
+        market_type: (row.market_type as "cfd" | "futures") ?? "cfd",
         account_size: row.account_size ?? 0,
         balance: row.balance ?? row.account_size ?? 0,
         profit_target_pct: row.profit_target_pct ?? 0,
