@@ -7,6 +7,7 @@ import Sidebar from "@/components/Sidebar";
 import ChallengeGuardian from "@/components/dashboard/ChallengeGuardian";
 import StopTradingGuard from "@/components/dashboard/StopTradingGuard";
 import { SubscriptionBanner } from "@/components/SubscriptionBanner";
+import { ActiveAccountProvider } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
@@ -183,6 +184,7 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
+    <ActiveAccountProvider>
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -197,5 +199,6 @@ export default function DashboardLayout({
       <QuickTradeFAB />
       <OnboardingGuide />
     </div>
+    </ActiveAccountProvider>
   );
 }

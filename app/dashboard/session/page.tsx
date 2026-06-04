@@ -5,6 +5,7 @@ import EmotionalCheck from "@/components/session/EmotionalCheck";
 import PositionSizer from "@/components/session/PositionSizer";
 import QuickTradeLogger from "@/components/session/QuickTradeLogger";
 import RealTimeGuards from "@/components/session/RealTimeGuards";
+import { useActiveAccount, type ActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
@@ -77,9 +78,77 @@ const EMOTIONS = [
 
 const dailyQuote = DAILY_QUOTES[new Date().getDay() % DAILY_QUOTES.length];
 
+// ── Account selector (inline pure UI component) ─────────────────────────────
+function accountLabel(a: ActiveAccount): string {
+  const parts = [a.firm];
+  if (a.account_number) parts.push(a.account_number);
+  parts.push(a.account_size.toLocaleString() + "€");
+  return parts.join(" · ");
+}
+
+function AccountSelector({
+  accounts,
+  selectedAccountId,
+  setSelectedAccountId,
+  loading,
+  t,
+}: {
+  accounts: ActiveAccount[];
+  selectedAccountId: string | null;
+  setSelectedAccountId: (id: string) => void;
+  loading: boolean;
+  t: (k: string) => string;
+}) {
+  if (loading) return null;
+
+  if (accounts.length === 0) {
+    return (
+      <p className="text-sm text-muted">{t("session_no_account")}</p>
+    );
+  }
+
+  if (accounts.length === 1) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted uppercase tracking-wider">{t("session_account_label")}</span>
+        <span className="text-sm font-medium text-foreground">{accountLabel(accounts[0])}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-3">
+      <label className="text-xs text-muted uppercase tracking-wider shrink-0">
+        {t("session_account_label")}
+      </label>
+      <select
+        value={selectedAccountId ?? ""}
+        onChange={(e) => setSelectedAccountId(e.target.value)}
+        className="bg-surface border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+      >
+        {accounts.map((a) => (
+          <option key={a.id} value={a.id}>
+            {accountLabel(a)}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 export default function SessionPage() {
   const { t } = useLanguage();
   const supabase = createClient();
+  // ── Active account (shared context — single source of truth) ──────────────
+  const {
+    accounts: activeAccounts,
+    selectedAccount,
+    selectedAccountId,
+    setSelectedAccountId,
+    loading: accountLoading,
+  } = useActiveAccount();
+  const accountSize = selectedAccount?.account_size ?? 0;
+
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [strategy, setStrategy] = useState<Strategy | null>(null);
   const [loading, setLoading] = useState(true);
@@ -93,8 +162,6 @@ export default function SessionPage() {
   const [ending, setEnding] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [showEmptyChecklistModal, setShowEmptyChecklistModal] = useState(false);
-  // Active session extras
-  const [accountSize, setAccountSize] = useState(0);
   const [showQuickLogger, setShowQuickLogger] = useState(false);
   const [emotionFeedback, setEmotionFeedback] = useState<{ type: "warning" | "ok"; message: string } | null>(null);
   const [showStopConfirm, setShowStopConfirm] = useState(false);
@@ -123,7 +190,7 @@ export default function SessionPage() {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const sevenDaysAgoStr = sevenDaysAgo.toISOString().split("T")[0];
 
-    const [{ data: strats }, { data: session }, { data: history }, { data: recentTrades }, { data: account }] = await Promise.all([
+    const [{ data: strats }, { data: session }, { data: history }, { data: recentTrades }] = await Promise.all([
       supabase.from("strategies").select("*").eq("user_id", user.id).order("created_at", { ascending: true }),
       supabase
         .from("sessions")
@@ -145,16 +212,7 @@ export default function SessionPage() {
         .select("pnl, commission, swap, open_time")
         .eq("user_id", user.id)
         .gte("open_time", sevenDaysAgoStr),
-      supabase
-        .from("prop_challenges")
-        .select("account_size")
-        .eq("user_id", user.id)
-        .eq("status", "active")
-        .limit(1)
-        .maybeSingle(),
     ]);
-
-    if (account?.account_size) setAccountSize(account.account_size);
 
     const stratList = strats || [];
     setStrategies(stratList);
@@ -361,6 +419,15 @@ export default function SessionPage() {
 
         <h1 className="text-2xl font-bold text-foreground">{t("session_active_title")}</h1>
 
+        {/* Account selector */}
+        <AccountSelector
+          accounts={activeAccounts}
+          selectedAccountId={selectedAccountId}
+          setSelectedAccountId={setSelectedAccountId}
+          loading={accountLoading}
+          t={t}
+        />
+
         {/* Section 1 — Session header */}
         <div className="bg-profit/5 border border-profit/30 rounded-xl p-5">
           <div className="flex items-start justify-between flex-wrap gap-3">
@@ -482,7 +549,7 @@ export default function SessionPage() {
         />
 
         {/* Section 4 — Position sizer (Premium) */}
-        <PositionSizer accountSize={accountSize} strategy={strategy} />
+        <PositionSizer strategy={strategy} />
 
         {/* Section 5 — Quick logger */}
         <div>
@@ -534,7 +601,18 @@ export default function SessionPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold text-foreground">{t("session_title")}</h1>
-      <p className="text-muted mt-1 mb-6">{t("session_subtitle")}</p>
+      <p className="text-muted mt-1 mb-4">{t("session_subtitle")}</p>
+
+      {/* Account selector */}
+      <div className="mb-6">
+        <AccountSelector
+          accounts={activeAccounts}
+          selectedAccountId={selectedAccountId}
+          setSelectedAccountId={setSelectedAccountId}
+          loading={accountLoading}
+          t={t}
+        />
+      </div>
 
       {/* Empty checklist confirmation modal */}
       {showEmptyChecklistModal && (

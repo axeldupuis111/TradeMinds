@@ -1,6 +1,7 @@
 "use client";
 
 import { computeChallengeRules } from "@/lib/challenge-rules";
+import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import {
   computeLotSize,
@@ -14,43 +15,47 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 interface Props {
-  accountSize: number;
   strategy: {
     risk_per_trade_pct: number | null;
     max_sl_pips: number | null;
   } | null;
 }
 
-interface ChallengeDD {
-  dailyDdRemainingEur: number;
-  totalDdRemainingEur: number;
-}
-
 const inputClass =
   "w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent";
 
-export default function PositionSizer({ accountSize, strategy }: Props) {
+export default function PositionSizer({ strategy }: Props) {
   const { t } = useLanguage();
   const { plan, loading: planLoading } = usePlan();
   const supabase = createClient();
 
-  // Challenge DD ceilings (null when no active challenge)
-  const [challengeDD, setChallengeDD] = useState<ChallengeDD | null>(null);
+  // ── Active account from shared context (same as session page) ─────────────
+  const { selectedAccount } = useActiveAccount();
+  const accountSize = selectedAccount?.account_size ?? 0;
 
-  // Calculator local state
-  const [symbol, setSymbol] = useState("");
-  const [slPips, setSlPips] = useState(
-    strategy?.max_sl_pips != null ? String(strategy.max_sl_pips) : ""
-  );
-  const [pipValue, setPipValue] = useState("");
+  // ── DD ceilings: computed from active account trades on mount + account change
+  const [dailyDdRemaining, setDailyDdRemaining] = useState<number | null>(null);
+  const [totalDdRemaining, setTotalDdRemaining] = useState<number | null>(null);
 
-  // Load challenge DD on mount (same approach as ChallengeGuardian)
   useEffect(() => {
-    if (plan !== "premium") return;
-    loadChallengeDD();
-  }, [plan]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (plan !== "premium" || !selectedAccount) {
+      setDailyDdRemaining(null);
+      setTotalDdRemaining(null);
+      return;
+    }
+    // Only prop-type accounts have DD rules; skip others.
+    if (selectedAccount.type !== "prop") {
+      setDailyDdRemaining(null);
+      setTotalDdRemaining(null);
+      return;
+    }
+    loadDD(selectedAccount.id, selectedAccount);
+  }, [plan, selectedAccount?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function loadChallengeDD() {
+  async function loadDD(
+    challengeId: string,
+    account: NonNullable<typeof selectedAccount>
+  ) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -58,36 +63,22 @@ export default function PositionSizer({ accountSize, strategy }: Props) {
 
     const today = new Date().toISOString().split("T")[0];
 
-    const { data: challenge } = await supabase
-      .from("prop_challenges")
-      .select(
-        "id, account_size, profit_target_pct, max_daily_dd_pct, max_total_dd_pct, trailing_drawdown, balance"
-      )
-      .eq("user_id", user.id)
-      .eq("status", "active")
-      .eq("type", "prop")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (!challenge) return;
-
     const [{ data: allTrades }, { data: todayTrades }] = await Promise.all([
       supabase
         .from("trades")
         .select("pnl, commission, swap")
         .eq("user_id", user.id)
-        .eq("challenge_id", challenge.id)
+        .eq("challenge_id", challengeId)
         .order("open_time", { ascending: true }),
       supabase
         .from("trades")
         .select("pnl, commission, swap, status")
         .eq("user_id", user.id)
-        .eq("challenge_id", challenge.id)
+        .eq("challenge_id", challengeId)
         .gte("open_time", today),
     ]);
 
-    let running = challenge.account_size;
+    let running = account.account_size;
     const equityCurveBalances = (allTrades || []).map((tr) => {
       running += (tr.pnl || 0) + (tr.commission || 0) + (tr.swap || 0);
       return running;
@@ -103,26 +94,31 @@ export default function PositionSizer({ accountSize, strategy }: Props) {
     const balance =
       equityCurveBalances.length > 0
         ? equityCurveBalances[equityCurveBalances.length - 1]
-        : challenge.balance;
+        : account.balance;
 
     const rules = computeChallengeRules(
       {
-        account_size: challenge.account_size,
-        profit_target_pct: challenge.profit_target_pct,
-        max_daily_dd_pct: challenge.max_daily_dd_pct,
-        max_total_dd_pct: challenge.max_total_dd_pct,
-        trailing_drawdown: challenge.trailing_drawdown ?? false,
+        account_size: account.account_size,
+        profit_target_pct: account.profit_target_pct,
+        max_daily_dd_pct: account.max_daily_dd_pct,
+        max_total_dd_pct: account.max_total_dd_pct,
+        trailing_drawdown: account.trailing_drawdown,
       },
       balance,
       todayPnl,
       equityCurveBalances
     );
 
-    setChallengeDD({
-      dailyDdRemainingEur: rules.dailyDdRemainingEur,
-      totalDdRemainingEur: rules.totalDdRemainingEur,
-    });
+    setDailyDdRemaining(rules.dailyDdRemainingEur);
+    setTotalDdRemaining(rules.totalDdRemainingEur);
   }
+
+  // Calculator local state
+  const [symbol, setSymbol] = useState("");
+  const [slPips, setSlPips] = useState(
+    strategy?.max_sl_pips != null ? String(strategy.max_sl_pips) : ""
+  );
+  const [pipValue, setPipValue] = useState("");
 
   // When symbol changes → auto-fill pip value default
   function handleSymbolChange(val: string) {
@@ -139,8 +135,8 @@ export default function PositionSizer({ accountSize, strategy }: Props) {
   const maxRisk = computeMaxRiskEur({
     riskPct: strategy?.risk_per_trade_pct ?? null,
     accountSize,
-    dailyDdRemainingEur: challengeDD?.dailyDdRemainingEur ?? null,
-    totalDdRemainingEur: challengeDD?.totalDdRemainingEur ?? null,
+    dailyDdRemainingEur: dailyDdRemaining,
+    totalDdRemainingEur: totalDdRemaining,
   });
 
   const slPipsNum = parseFloat(slPips);
