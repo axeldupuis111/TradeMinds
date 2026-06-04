@@ -4,11 +4,17 @@ import { computeChallengeRules } from "@/lib/challenge-rules";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import {
+  actualRiskForContracts,
+  computeContracts,
   computeLotSize,
   computeMaxRiskEur,
   getDefaultPipValuePerLot,
   type RiskCap,
 } from "@/lib/position-sizing";
+import {
+  FUTURES_CONTRACTS,
+  getFuturesContract,
+} from "@/lib/futures-contracts";
 import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
 import { Info, X } from "lucide-react";
@@ -114,7 +120,10 @@ export default function PositionSizer({ strategy }: Props) {
     setTotalDdRemaining(rules.totalDdRemainingEur);
   }
 
-  // Calculator local state
+  // ── Market type from active account ──────────────────────────────────────
+  const isFutures = selectedAccount?.market_type === "futures";
+
+  // ── CFD state ─────────────────────────────────────────────────────────────
   const [symbol, setSymbol] = useState("");
   const [slPips, setSlPips] = useState(
     strategy?.max_sl_pips != null ? String(strategy.max_sl_pips) : ""
@@ -122,18 +131,17 @@ export default function PositionSizer({ strategy }: Props) {
   const [pipValue, setPipValue] = useState("");
   const [showPipHelp, setShowPipHelp] = useState(false);
 
-  // When symbol changes → auto-fill pip value default
   function handleSymbolChange(val: string) {
     setSymbol(val);
     const def = getDefaultPipValuePerLot(val.trim());
-    if (def !== null) {
-      setPipValue(String(def));
-    } else {
-      setPipValue("");
-    }
+    setPipValue(def !== null ? String(def) : "");
   }
 
-  // ── Derived calculations ──────────────────────────────────────────────────
+  // ── Futures state ─────────────────────────────────────────────────────────
+  const [futuresSymbol, setFuturesSymbol] = useState(FUTURES_CONTRACTS[0].symbol);
+  const [slPoints, setSlPoints] = useState("");
+
+  // ── Shared derived: max risk (common to both modes) ───────────────────────
   const maxRisk = computeMaxRiskEur({
     riskPct: strategy?.risk_per_trade_pct ?? null,
     accountSize,
@@ -141,15 +149,38 @@ export default function PositionSizer({ strategy }: Props) {
     totalDdRemainingEur: totalDdRemaining,
   });
 
+  // ── CFD derived ───────────────────────────────────────────────────────────
   const slPipsNum = parseFloat(slPips);
   const pipValueNum = parseFloat(pipValue);
 
   const lotResult =
-    maxRisk && !isNaN(slPipsNum) && !isNaN(pipValueNum)
+    !isFutures && maxRisk && !isNaN(slPipsNum) && !isNaN(pipValueNum)
       ? computeLotSize({
           riskEur: maxRisk.riskEur,
           slPips: slPipsNum,
           pipValuePerLot: pipValueNum,
+        })
+      : null;
+
+  // ── Futures derived ───────────────────────────────────────────────────────
+  const futuresContract = getFuturesContract(futuresSymbol);
+  const slPointsNum = parseFloat(slPoints);
+
+  const contractCount =
+    isFutures && maxRisk && futuresContract && !isNaN(slPointsNum)
+      ? computeContracts({
+          riskAmount: maxRisk.riskEur,
+          slPoints: slPointsNum,
+          pointValue: futuresContract.pointValue,
+        })
+      : null;
+
+  const actualRisk =
+    contractCount !== null && futuresContract && !isNaN(slPointsNum)
+      ? actualRiskForContracts({
+          contracts: contractCount,
+          slPoints: slPointsNum,
+          pointValue: futuresContract.pointValue,
         })
       : null;
 
@@ -194,39 +225,28 @@ export default function PositionSizer({ strategy }: Props) {
         </span>
       </div>
 
-      {/* Risk € display — always prominent */}
+      {/* Risk display — common to both modes, currency symbol adapts */}
       {maxRisk && maxRisk.riskEur === 0 ? (
-        /* Limit fully consumed — block trading */
         <div className="rounded-lg px-4 py-3 flex items-start gap-3 bg-loss/10 border border-loss/40">
           <span className="text-loss text-lg leading-none mt-0.5">⛔</span>
           <div>
-            <p className="text-sm font-semibold text-loss">
-              {t("sizer_limit_reached")}
-            </p>
-            <p className="text-xs text-loss/80 mt-0.5">
-              {cappedByLabel(maxRisk.cappedBy)}
-            </p>
+            <p className="text-sm font-semibold text-loss">{t("sizer_limit_reached")}</p>
+            <p className="text-xs text-loss/80 mt-0.5">{cappedByLabel(maxRisk.cappedBy)}</p>
           </div>
         </div>
       ) : (
         <div
           className={`rounded-lg px-4 py-3 flex flex-col gap-0.5 ${
-            maxRisk
-              ? "bg-profit/10 border border-profit/30"
-              : "bg-surface border border-border"
+            maxRisk ? "bg-profit/10 border border-profit/30" : "bg-surface border border-border"
           }`}
         >
-          <span className="text-xs text-muted uppercase tracking-wider">
-            {t("sizer_max_risk_label")}
-          </span>
+          <span className="text-xs text-muted uppercase tracking-wider">{t("sizer_max_risk_label")}</span>
           {maxRisk ? (
             <>
               <span className="text-xl font-bold text-profit tabular-nums">
-                {maxRisk.riskEur.toFixed(2)} €
+                {maxRisk.riskEur.toFixed(2)} {isFutures ? "$" : "€"}
               </span>
-              <span className="text-xs text-muted">
-                {cappedByLabel(maxRisk.cappedBy)}
-              </span>
+              <span className="text-xs text-muted">{cappedByLabel(maxRisk.cappedBy)}</span>
             </>
           ) : (
             <span className="text-sm text-muted">{t("sizer_risk_undefined")}</span>
@@ -234,157 +254,212 @@ export default function PositionSizer({ strategy }: Props) {
         </div>
       )}
 
-      {/* Inputs + result — hidden when limit is fully consumed (riskEur === 0) */}
+      {/* Inputs + result — hidden when limit fully consumed */}
       {maxRisk?.riskEur !== 0 && (
         <>
-          {/* Inputs */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {/* Instrument */}
-            <div>
-              <label className="block text-xs text-muted mb-1">
-                {t("sizer_instrument")}
-              </label>
-              <input
-                type="text"
-                value={symbol}
-                onChange={(e) => handleSymbolChange(e.target.value)}
-                placeholder="XAUUSD"
-                className={inputClass}
-              />
-            </div>
+          {isFutures ? (
+            /* ── FUTURES MODE ────────────────────────────────────────────── */
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Contract selector */}
+                <div>
+                  <label className="block text-xs text-muted mb-1">
+                    {t("sizer_futures_contract")}
+                  </label>
+                  <select
+                    value={futuresSymbol}
+                    onChange={(e) => setFuturesSymbol(e.target.value)}
+                    className={inputClass}
+                  >
+                    {FUTURES_CONTRACTS.map((c) => (
+                      <option key={c.symbol} value={c.symbol}>
+                        {c.symbol} · {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  {futuresContract && (
+                    <p className="text-xs text-muted mt-1">
+                      {t("sizer_futures_point_value")
+                        .replace("{sym}", futuresContract.symbol)
+                        .replace("{val}", String(futuresContract.pointValue))}
+                    </p>
+                  )}
+                </div>
 
-            {/* SL pips */}
-            <div>
-              <label className="block text-xs text-muted mb-1">
-                {t("sizer_sl_pips")}
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="0.1"
-                value={slPips}
-                onChange={(e) => setSlPips(e.target.value)}
-                placeholder={strategy?.max_sl_pips != null ? String(strategy.max_sl_pips) : "20"}
-                className={inputClass}
-              />
-            </div>
-
-            {/* Pip value per lot */}
-            <div className="sm:col-span-1">
-              {/* Label row with info toggle */}
-              <div className="flex items-center gap-1 mb-1">
-                <label className="text-xs text-muted">
-                  {t("sizer_pip_value")}
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setShowPipHelp((v) => !v)}
-                  aria-label={t("sizer_pip_help_aria")}
-                  aria-expanded={showPipHelp}
-                  className="text-muted hover:text-accent transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded"
-                >
-                  <Info className="w-3.5 h-3.5" />
-                </button>
+                {/* SL in points */}
+                <div>
+                  <label className="block text-xs text-muted mb-1">
+                    {t("sizer_futures_sl_points")}
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step={futuresContract ? String(futuresContract.tickSize) : "0.25"}
+                    value={slPoints}
+                    onChange={(e) => setSlPoints(e.target.value)}
+                    placeholder={futuresContract ? String(futuresContract.tickSize * 4) : "1"}
+                    className={inputClass}
+                  />
+                </div>
               </div>
 
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={pipValue}
-                onChange={(e) => setPipValue(e.target.value)}
-                placeholder="10"
-                className={`${inputClass} ${
-                  symbol && !pipValue
-                    ? "border-amber-500/50 focus:ring-amber-500"
-                    : ""
+              {/* Futures result */}
+              <div
+                className={`rounded-lg px-4 py-3 border transition-colors ${
+                  contractCount !== null && contractCount > 0
+                    ? "bg-accent/10 border-accent/30"
+                    : contractCount === 0
+                    ? "bg-loss/5 border-loss/20"
+                    : "bg-surface border-border"
                 }`}
-              />
-              {symbol && !pipValue && (
-                <p className="text-xs text-amber-400 mt-1">
-                  {t("sizer_pip_value_manual")}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Pip value help panel — collapsible, full width */}
-          {showPipHelp && (
-            <div
-              className="rounded-lg border border-border bg-surface p-4 text-xs text-muted space-y-3 motion-safe:animate-[fadeIn_150ms_ease]"
-              role="region"
-              aria-label={t("sizer_pip_help_aria")}
-            >
-              {/* Header */}
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-foreground font-medium text-sm">
-                  {t("sizer_pip_help_title")}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setShowPipHelp(false)}
-                  aria-label={t("sizer_pip_help_close")}
-                  className="shrink-0 text-muted hover:text-foreground transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              {/* Definition */}
-              <p>{t("sizer_pip_help_def")}</p>
-
-              {/* Where to find it */}
-              <div>
-                <p className="font-medium text-foreground mb-1">{t("sizer_pip_help_where_title")}</p>
-                <ul className="space-y-1 list-disc list-inside">
-                  <li>{t("sizer_pip_help_where_broker")}</li>
-                  <li>{t("sizer_pip_help_where_mt")}</li>
-                  <li>{t("sizer_pip_help_where_trade")}</li>
-                </ul>
-              </div>
-
-              {/* Benchmarks */}
-              <div>
-                <p className="font-medium text-foreground mb-1">{t("sizer_pip_help_benchmarks_title")}</p>
-                <p>{t("sizer_pip_help_benchmarks")}</p>
-              </div>
-
-              {/* Warning */}
-              <p className="text-amber-400">{t("sizer_pip_help_warning")}</p>
-            </div>
-          )}
-
-          {/* Result */}
-          <div
-            className={`rounded-lg px-4 py-3 border transition-colors ${
-              lotResult
-                ? "bg-accent/10 border-accent/30"
-                : "bg-surface border-border"
-            }`}
-          >
-            {lotResult ? (
-              <div className="flex items-baseline gap-2 flex-wrap">
-                <span className="text-xs text-muted uppercase tracking-wider">
-                  {t("sizer_lot_label")}
-                </span>
-                <span className="text-2xl font-bold text-accent tabular-nums motion-safe:transition-all">
-                  {lotResult.lots.toFixed(2)}
-                </span>
-                <span className="text-xs text-muted">lots</span>
-                {Math.abs(lotResult.raw - lotResult.lots) >= 0.005 && (
-                  <span className="text-xs text-muted">
-                    ({t("sizer_raw_label")} {lotResult.raw.toFixed(3)})
-                  </span>
+              >
+                {contractCount === null ? (
+                  <p className="text-sm text-muted">{t("sizer_fill_sl_pip")}</p>
+                ) : contractCount === 0 ? (
+                  <p className="text-sm text-loss/90">{t("sizer_futures_no_contract")}</p>
+                ) : (
+                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-xs text-muted uppercase tracking-wider">
+                        {t("sizer_futures_contracts_label")}
+                      </span>
+                      <span className="text-2xl font-bold text-accent tabular-nums motion-safe:transition-all">
+                        {contractCount}
+                      </span>
+                    </div>
+                    {actualRisk !== null && (
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-xs text-muted">{t("sizer_futures_actual_risk")}</span>
+                        <span className="text-sm font-semibold text-foreground tabular-nums">
+                          {actualRisk.toFixed(2)} $
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
-            ) : (
-              <p className="text-sm text-muted">
-                {!slPips || !pipValue
-                  ? t("sizer_fill_sl_pip")
-                  : t("sizer_lot_unavailable")}
-              </p>
-            )}
-          </div>
+            </>
+          ) : (
+            /* ── CFD MODE (unchanged) ────────────────────────────────────── */
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* Instrument */}
+                <div>
+                  <label className="block text-xs text-muted mb-1">{t("sizer_instrument")}</label>
+                  <input
+                    type="text"
+                    value={symbol}
+                    onChange={(e) => handleSymbolChange(e.target.value)}
+                    placeholder="XAUUSD"
+                    className={inputClass}
+                  />
+                </div>
+
+                {/* SL pips */}
+                <div>
+                  <label className="block text-xs text-muted mb-1">{t("sizer_sl_pips")}</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={slPips}
+                    onChange={(e) => setSlPips(e.target.value)}
+                    placeholder={strategy?.max_sl_pips != null ? String(strategy.max_sl_pips) : "20"}
+                    className={inputClass}
+                  />
+                </div>
+
+                {/* Pip value per lot */}
+                <div className="sm:col-span-1">
+                  <div className="flex items-center gap-1 mb-1">
+                    <label className="text-xs text-muted">{t("sizer_pip_value")}</label>
+                    <button
+                      type="button"
+                      onClick={() => setShowPipHelp((v) => !v)}
+                      aria-label={t("sizer_pip_help_aria")}
+                      aria-expanded={showPipHelp}
+                      className="text-muted hover:text-accent transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded"
+                    >
+                      <Info className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={pipValue}
+                    onChange={(e) => setPipValue(e.target.value)}
+                    placeholder="10"
+                    className={`${inputClass} ${symbol && !pipValue ? "border-amber-500/50 focus:ring-amber-500" : ""}`}
+                  />
+                  {symbol && !pipValue && (
+                    <p className="text-xs text-amber-400 mt-1">{t("sizer_pip_value_manual")}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Pip help panel */}
+              {showPipHelp && (
+                <div
+                  className="rounded-lg border border-border bg-surface p-4 text-xs text-muted space-y-3 motion-safe:animate-[fadeIn_150ms_ease]"
+                  role="region"
+                  aria-label={t("sizer_pip_help_aria")}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-foreground font-medium text-sm">{t("sizer_pip_help_title")}</p>
+                    <button
+                      type="button"
+                      onClick={() => setShowPipHelp(false)}
+                      aria-label={t("sizer_pip_help_close")}
+                      className="shrink-0 text-muted hover:text-foreground transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <p>{t("sizer_pip_help_def")}</p>
+                  <div>
+                    <p className="font-medium text-foreground mb-1">{t("sizer_pip_help_where_title")}</p>
+                    <ul className="space-y-1 list-disc list-inside">
+                      <li>{t("sizer_pip_help_where_broker")}</li>
+                      <li>{t("sizer_pip_help_where_mt")}</li>
+                      <li>{t("sizer_pip_help_where_trade")}</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground mb-1">{t("sizer_pip_help_benchmarks_title")}</p>
+                    <p>{t("sizer_pip_help_benchmarks")}</p>
+                  </div>
+                  <p className="text-amber-400">{t("sizer_pip_help_warning")}</p>
+                </div>
+              )}
+
+              {/* CFD result */}
+              <div
+                className={`rounded-lg px-4 py-3 border transition-colors ${
+                  lotResult ? "bg-accent/10 border-accent/30" : "bg-surface border-border"
+                }`}
+              >
+                {lotResult ? (
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <span className="text-xs text-muted uppercase tracking-wider">{t("sizer_lot_label")}</span>
+                    <span className="text-2xl font-bold text-accent tabular-nums motion-safe:transition-all">
+                      {lotResult.lots.toFixed(2)}
+                    </span>
+                    <span className="text-xs text-muted">lots</span>
+                    {Math.abs(lotResult.raw - lotResult.lots) >= 0.005 && (
+                      <span className="text-xs text-muted">
+                        ({t("sizer_raw_label")} {lotResult.raw.toFixed(3)})
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted">
+                    {!slPips || !pipValue ? t("sizer_fill_sl_pip") : t("sizer_lot_unavailable")}
+                  </p>
+                )}
+              </div>
+            </>
+          )}
         </>
       )}
     </div>

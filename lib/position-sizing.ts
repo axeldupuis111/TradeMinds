@@ -101,3 +101,35 @@ export function computeLotSize(params: {
   const lots = Math.round(raw * 100) / 100; // 0.01 precision
   return { lots, raw };
 }
+
+// ---------------------------------------------------------------------------
+// Futures sizing
+// FLOOR (never round up) — must never exceed riskAmount.
+// ---------------------------------------------------------------------------
+
+/**
+ * Number of contracts to trade given a risk budget, SL in points, and
+ * the contract's point value ($/point/contract).
+ * Uses Math.floor so the actual risk never exceeds riskAmount.
+ */
+export function computeContracts(params: {
+  riskAmount: number;   // $ risk budget
+  slPoints: number;     // stop-loss distance in points
+  pointValue: number;   // $/point/contract (from FuturesContract.pointValue)
+}): number {
+  const { riskAmount, slPoints, pointValue } = params;
+  if (slPoints <= 0 || pointValue <= 0 || riskAmount <= 0) return 0;
+  return Math.floor(riskAmount / (slPoints * pointValue));
+}
+
+/**
+ * Actual $ risk for a given number of contracts (post-floor, ≤ riskAmount).
+ */
+export function actualRiskForContracts(params: {
+  contracts: number;
+  slPoints: number;
+  pointValue: number;
+}): number {
+  const { contracts, slPoints, pointValue } = params;
+  return contracts * slPoints * pointValue;
+}
