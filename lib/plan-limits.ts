@@ -9,9 +9,4 @@ export const PLAN_LIMITS = {
     plus:    { limit: 5,  resetMode: "day" as const },
     premium: { limit: 30, resetMode: "day" as const },
   },
-  period_summary: {
-    free:    { limit: 0, resetMode: "day" as const },
-    plus:    { limit: 0, resetMode: "day" as const },
-    premium: { limit: 5, resetMode: "day" as const },
-  },
 } as const;

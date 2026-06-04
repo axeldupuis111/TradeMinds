@@ -64,7 +64,7 @@ export async function requireAuth(): Promise<AuthResult | NextResponse> {
 interface QuotaCheckParams {
   userId: string;
   plan: PlanType;
-  feature: "analyze" | "chat" | "period_summary";
+  feature: "analyze" | "chat";
 }
 
 interface QuotaResult {
@@ -79,17 +79,12 @@ interface ProfileQuotaRow {
   daily_ai_reset: string | null;
   daily_chat_count: number | null;
   daily_chat_reset: string | null;
-  daily_summary_count: number | null;
-  daily_summary_reset: string | null;
 }
 
-function getQuotaFromProfile(profile: ProfileQuotaRow | null, feature: "analyze" | "chat" | "period_summary", resetKey: string): number {
+function getQuotaFromProfile(profile: ProfileQuotaRow | null, feature: "analyze" | "chat", resetKey: string): number {
   if (!profile) return 0;
   if (feature === "analyze") {
     return profile.daily_ai_reset === resetKey ? (profile.daily_ai_count || 0) : 0;
-  }
-  if (feature === "period_summary") {
-    return profile.daily_summary_reset === resetKey ? (profile.daily_summary_count || 0) : 0;
   }
   return profile.daily_chat_reset === resetKey ? (profile.daily_chat_count || 0) : 0;
 }
@@ -108,7 +103,7 @@ export async function checkQuota({ userId, plan, feature }: QuotaCheckParams): P
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("daily_ai_count, daily_ai_reset, daily_chat_count, daily_chat_reset, daily_summary_count, daily_summary_reset")
+    .select("daily_ai_count, daily_ai_reset, daily_chat_count, daily_chat_reset")
     .eq("id", userId)
     .single();
 
@@ -125,7 +120,7 @@ export async function checkQuota({ userId, plan, feature }: QuotaCheckParams): P
   return { allowed: true, remaining: config.limit - currentCount, limit: config.limit };
 }
 
-export async function incrementQuota(userId: string, plan: PlanType, feature: "analyze" | "chat" | "period_summary"): Promise<void> {
+export async function incrementQuota(userId: string, plan: PlanType, feature: "analyze" | "chat"): Promise<void> {
   const config = PLAN_LIMITS[feature][plan];
   if (!config) return;
 
@@ -135,7 +130,7 @@ export async function incrementQuota(userId: string, plan: PlanType, feature: "a
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("daily_ai_count, daily_ai_reset, daily_chat_count, daily_chat_reset, daily_summary_count, daily_summary_reset")
+    .select("daily_ai_count, daily_ai_reset, daily_chat_count, daily_chat_reset")
     .eq("id", userId)
     .single();
 
@@ -145,11 +140,6 @@ export async function incrementQuota(userId: string, plan: PlanType, feature: "a
     await supabase
       .from("profiles")
       .update({ daily_ai_count: currentCount + 1, daily_ai_reset: resetKey })
-      .eq("id", userId);
-  } else if (feature === "period_summary") {
-    await supabase
-      .from("profiles")
-      .update({ daily_summary_count: currentCount + 1, daily_summary_reset: resetKey })
       .eq("id", userId);
   } else {
     await supabase
