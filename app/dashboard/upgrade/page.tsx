@@ -248,7 +248,7 @@ export default function UpgradePage() {
           const isCurrent = currentPlan === "free";
           return (
             <div
-              className={`relative rounded-xl border-2 p-6 transition-all border-border ${
+              className={`relative rounded-xl border-2 p-6 transition-all border-border flex flex-col h-full ${
                 isCurrent ? "ring-2 ring-accent/50" : ""
               }`}
             >
@@ -266,7 +266,7 @@ export default function UpgradePage() {
                 </div>
                 <div className="h-8" />
               </div>
-              <div className="mt-5 space-y-2.5">
+              <div className="mt-5 space-y-2.5 flex-1">
                 {features.map((f) => (
                   <div key={f.key} className="flex items-center gap-3">
                     <div className="w-6 flex justify-center shrink-0">{renderValue(f.free)}</div>
@@ -303,7 +303,7 @@ export default function UpgradePage() {
           const isCurrent = currentPlan === "plus";
           return (
             <div
-              className={`relative rounded-xl border-2 p-6 transition-all border-accent ${
+              className={`relative rounded-xl border-2 p-6 transition-all border-accent flex flex-col h-full ${
                 !isCurrent ? "shadow-lg shadow-accent/10" : ""
               } ${isCurrent ? "ring-2 ring-accent/50" : ""}`}
             >
@@ -345,7 +345,7 @@ export default function UpgradePage() {
                 </div>
               )}
 
-              <div className="mt-5 space-y-2.5">
+              <div className="mt-5 space-y-2.5 flex-1">
                 {features.map((f) => (
                   <div key={f.key} className="flex items-center gap-3">
                     <div className="w-6 flex justify-center shrink-0">{renderValue(f.plus)}</div>
@@ -368,7 +368,7 @@ export default function UpgradePage() {
                     disabled={isCheckoutLoading}
                     className="w-full mt-6 py-2.5 rounded-lg font-medium text-sm bg-accent text-white hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isCheckoutLoading ? t("upgrade_redirecting") : t("plan_choose")}
+                    {isCheckoutLoading ? t("upgrade_redirecting") : t("pricing_choose_plus")}
                   </button>
                   {checkoutError && (
                     <p className="text-red-500 text-sm mt-2 text-center">{checkoutError}</p>
@@ -381,7 +381,7 @@ export default function UpgradePage() {
 
         {/* Premium — 3rd column */}
         <div
-          className="relative rounded-xl border-2 border-yellow-500/30 p-6 bg-card/80 shadow-lg shadow-yellow-500/5"
+          className="relative rounded-xl border-2 border-yellow-500/30 p-6 bg-card/80 shadow-lg shadow-yellow-500/5 flex flex-col h-full"
           ref={premiumRef}
           id="premium"
         >
@@ -415,31 +415,33 @@ export default function UpgradePage() {
             </div>
           )}
 
-          {/* Exclusive features */}
-          <ul className="mt-2 space-y-2">
-            {(["plan_benefit_premium_1","plan_benefit_premium_2","plan_benefit_premium_3"] as const).map((key) => (
-              <li key={key} className="flex items-start gap-2 text-sm">
-                <svg className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-foreground font-medium">{t(key)}</span>
-              </li>
-            ))}
-          </ul>
-
-          {/* Plus features included */}
-          <div className="mt-4">
-            <p className="text-xs font-semibold text-yellow-400/70 uppercase tracking-wider mb-2">{t("plan_premium_includes_plus")}</p>
-            <ul className="space-y-2">
-              {(["plan_benefit_plus_1","plan_benefit_plus_2","plan_benefit_plus_3","plan_benefit_plus_4","plan_benefit_plus_5","plan_benefit_plus_6","plan_benefit_plus_7"] as const).map((key) => (
+          {/* Exclusive features + Plus includes — flex-1 pushes CTA to card bottom */}
+          <div className="flex-1">
+            <ul className="mt-2 space-y-2">
+              {(["plan_benefit_premium_1","plan_benefit_premium_2","plan_benefit_premium_3"] as const).map((key) => (
                 <li key={key} className="flex items-start gap-2 text-sm">
-                  <svg className="w-4 h-4 text-yellow-400/60 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-foreground/80">{t(key)}</span>
+                  <span className="text-foreground font-medium">{t(key)}</span>
                 </li>
               ))}
             </ul>
+
+            {/* Plus features included */}
+            <div className="mt-4">
+              <p className="text-xs font-semibold text-yellow-400/70 uppercase tracking-wider mb-2">{t("plan_premium_includes_plus")}</p>
+              <ul className="space-y-2">
+                {(["plan_benefit_plus_1","plan_benefit_plus_2","plan_benefit_plus_3","plan_benefit_plus_4","plan_benefit_plus_5","plan_benefit_plus_6","plan_benefit_plus_7"] as const).map((key) => (
+                  <li key={key} className="flex items-start gap-2 text-sm">
+                    <svg className="w-4 h-4 text-yellow-400/60 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-foreground/80">{t(key)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
 
           <button
