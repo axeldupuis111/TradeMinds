@@ -45,7 +45,8 @@ const faqKeys = [
 
 export default function UpgradePage() {
   const { t } = useLanguage();
-  const { plan: currentPlan, refreshPlan } = usePlan();
+  const { plan: currentPlan, refreshPlan, subscriptionStatus } = usePlan();
+  const hasStripeSubscription = subscriptionStatus !== null;
   const supabase = createClient();
   const [annual, setAnnual] = useState(false);
   const [showDowngradeModal, setShowDowngradeModal] = useState(false);
@@ -53,6 +54,7 @@ export default function UpgradePage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [isPortalLoading, setIsPortalLoading] = useState(false);
 
   useEffect(() => {
     // Reset loading state on mount (handles browser back button restoring stale state)
@@ -510,6 +512,34 @@ export default function UpgradePage() {
           ))}
         </div>
       </div>
+
+      {/* Manage subscription — only visible for real Stripe subscribers */}
+      {hasStripeSubscription && (
+        <div className="mt-6 max-w-2xl mx-auto pb-2 flex justify-center">
+          <button
+            onClick={async () => {
+              setIsPortalLoading(true);
+              try {
+                const res = await fetch("/api/stripe/portal", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                });
+                const data = await res.json();
+                if (!res.ok || !data.url) throw new Error(data.error || "Portal error");
+                window.location.href = data.url;
+              } catch (err) {
+                console.error("[Manage subscription] Error:", err);
+              } finally {
+                setIsPortalLoading(false);
+              }
+            }}
+            disabled={isPortalLoading}
+            className="text-sm text-muted hover:text-accent transition-colors disabled:opacity-50 underline underline-offset-2"
+          >
+            {isPortalLoading ? t("upgrade_manage_subscription_loading") : t("upgrade_manage_subscription")}
+          </button>
+        </div>
+      )}
 
       {/* Modal de bienvenue Plus */}
       <WelcomePlusModal
