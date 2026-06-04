@@ -41,6 +41,7 @@ interface ParsedRules {
   max_trades_per_day: number | null;
   max_consecutive_losses: number | null;
   max_session_minutes: number | null;
+  risk_per_trade_pct: number | null;
   setup_rules: string[];
   checklist_to_setups?: Record<string, string[]>;
   strategy_tags?: StrategyTagsFromAI;
@@ -189,6 +190,7 @@ export default function StrategyPage() {
       max_trades_per_day: data.max_trades_per_day as number | null,
       max_consecutive_losses: data.max_consecutive_losses as number | null,
       max_session_minutes: data.max_session_minutes as number | null,
+      risk_per_trade_pct: data.risk_per_trade_pct as number | null,
       setup_rules: (data.setup_rules as string[]) || [],
       strategy_tags: existingTags,
     });
@@ -295,6 +297,7 @@ export default function StrategyPage() {
       max_trades_per_day: parsed.max_trades_per_day,
       max_consecutive_losses: parsed.max_consecutive_losses,
       max_session_minutes: parsed.max_session_minutes,
+      risk_per_trade_pct: parsed.risk_per_trade_pct,
       setup_rules: parsed.setup_rules,
       checklist_setup_mapping: validatedMapping,
     };
@@ -736,6 +739,21 @@ export default function StrategyPage() {
                   type="number"
                   value={parsed.max_session_minutes ?? ""}
                   onChange={(e) => updateParsedField("max_session_minutes", e.target.value ? parseInt(e.target.value) : null)}
+                  placeholder={t("strategy_not_set")}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-muted mb-1" title={t("strategy_risk_pct_tooltip")}>
+                  {t("strategy_risk_pct")}
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="100"
+                  value={parsed.risk_per_trade_pct ?? ""}
+                  onChange={(e) => updateParsedField("risk_per_trade_pct", e.target.value ? parseFloat(e.target.value) : null)}
                   placeholder={t("strategy_not_set")}
                   className={inputClass}
                 />
