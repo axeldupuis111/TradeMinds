@@ -2,6 +2,7 @@
 
 import DayStatus from "@/components/DayStatus";
 import EmotionalCheck from "@/components/session/EmotionalCheck";
+import PositionSizer from "@/components/session/PositionSizer";
 import QuickTradeLogger from "@/components/session/QuickTradeLogger";
 import RealTimeGuards from "@/components/session/RealTimeGuards";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -480,7 +481,10 @@ export default function SessionPage() {
           sessionPausedAt={paused ? pausedAt : null}
         />
 
-        {/* Section 4 — Quick logger */}
+        {/* Section 4 — Position sizer (Premium) */}
+        <PositionSizer accountSize={accountSize} strategy={strategy} />
+
+        {/* Section 5 — Quick logger */}
         <div>
           <button
             onClick={() => setShowQuickLogger(true)}
@@ -490,7 +494,7 @@ export default function SessionPage() {
           </button>
         </div>
 
-        {/* Section 5 — Emotional check */}
+        {/* Section 6 — Emotional check */}
         <EmotionalCheck
           sessionId={activeSession.id}
           onFeedback={(fb) => {
