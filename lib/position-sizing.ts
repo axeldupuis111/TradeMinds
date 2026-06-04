@@ -60,21 +60,24 @@ export function computeMaxRiskEur(params: ComputeMaxRiskParams): MaxRiskResult |
 
   const candidates: { value: number; cap: RiskCap }[] = [];
 
+  // risk_pct: null or 0 means "no rule defined" — skip.
   if (riskPct != null && riskPct > 0 && accountSize > 0) {
     candidates.push({ value: (riskPct / 100) * accountSize, cap: "risk_pct" });
   }
-  if (dailyDdRemainingEur != null && dailyDdRemainingEur > 0) {
+  // DD ceilings: 0 is a REAL ceiling (limit reached), not "unconfigured".
+  // Include whenever the value is defined (non-null), even if 0 or negative.
+  if (dailyDdRemainingEur != null) {
     candidates.push({ value: dailyDdRemainingEur, cap: "daily_dd" });
   }
-  if (totalDdRemainingEur != null && totalDdRemainingEur > 0) {
+  if (totalDdRemainingEur != null) {
     candidates.push({ value: totalDdRemainingEur, cap: "total_dd" });
   }
 
   if (candidates.length === 0) return null;
 
-  // Pick the most restrictive ceiling.
+  // Pick the most restrictive ceiling, clamped to 0 (never negative risk).
   const winner = candidates.reduce((min, c) => (c.value < min.value ? c : min));
-  return { riskEur: winner.value, cappedBy: winner.cap };
+  return { riskEur: Math.max(0, winner.value), cappedBy: winner.cap };
 }
 
 // ---------------------------------------------------------------------------

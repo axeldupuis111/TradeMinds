@@ -197,122 +197,142 @@ export default function PositionSizer({ accountSize, strategy }: Props) {
       </div>
 
       {/* Risk € display — always prominent */}
-      <div
-        className={`rounded-lg px-4 py-3 flex flex-col gap-0.5 ${
-          maxRisk
-            ? "bg-profit/10 border border-profit/30"
-            : "bg-surface border border-border"
-        }`}
-      >
-        <span className="text-xs text-muted uppercase tracking-wider">
-          {t("sizer_max_risk_label")}
-        </span>
-        {maxRisk ? (
-          <>
-            <span className="text-xl font-bold text-profit tabular-nums">
-              {maxRisk.riskEur.toFixed(2)} €
-            </span>
-            <span className="text-xs text-muted">
-              {cappedByLabel(maxRisk.cappedBy)}
-            </span>
-          </>
-        ) : (
-          <span className="text-sm text-muted">{t("sizer_risk_undefined")}</span>
-        )}
-      </div>
-
-      {/* Inputs */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {/* Instrument */}
-        <div>
-          <label className="block text-xs text-muted mb-1">
-            {t("sizer_instrument")}
-          </label>
-          <input
-            type="text"
-            value={symbol}
-            onChange={(e) => handleSymbolChange(e.target.value)}
-            placeholder="XAUUSD"
-            className={inputClass}
-          />
-        </div>
-
-        {/* SL pips */}
-        <div>
-          <label className="block text-xs text-muted mb-1">
-            {t("sizer_sl_pips")}
-          </label>
-          <input
-            type="number"
-            min="0"
-            step="0.1"
-            value={slPips}
-            onChange={(e) => setSlPips(e.target.value)}
-            placeholder={strategy?.max_sl_pips != null ? String(strategy.max_sl_pips) : "20"}
-            className={inputClass}
-          />
-        </div>
-
-        {/* Pip value per lot */}
-        <div>
-          <label
-            className="block text-xs text-muted mb-1"
-            title={t("sizer_pip_value_tooltip")}
-          >
-            {t("sizer_pip_value")}
-          </label>
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={pipValue}
-            onChange={(e) => setPipValue(e.target.value)}
-            placeholder="10"
-            className={`${inputClass} ${
-              symbol && !pipValue
-                ? "border-amber-500/50 focus:ring-amber-500"
-                : ""
-            }`}
-          />
-          {symbol && !pipValue && (
-            <p className="text-xs text-amber-400 mt-1">
-              {t("sizer_pip_value_manual")}
+      {maxRisk && maxRisk.riskEur === 0 ? (
+        /* Limit fully consumed — block trading */
+        <div className="rounded-lg px-4 py-3 flex items-start gap-3 bg-loss/10 border border-loss/40">
+          <span className="text-loss text-lg leading-none mt-0.5">⛔</span>
+          <div>
+            <p className="text-sm font-semibold text-loss">
+              {t("sizer_limit_reached")}
             </p>
+            <p className="text-xs text-loss/80 mt-0.5">
+              {cappedByLabel(maxRisk.cappedBy)}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div
+          className={`rounded-lg px-4 py-3 flex flex-col gap-0.5 ${
+            maxRisk
+              ? "bg-profit/10 border border-profit/30"
+              : "bg-surface border border-border"
+          }`}
+        >
+          <span className="text-xs text-muted uppercase tracking-wider">
+            {t("sizer_max_risk_label")}
+          </span>
+          {maxRisk ? (
+            <>
+              <span className="text-xl font-bold text-profit tabular-nums">
+                {maxRisk.riskEur.toFixed(2)} €
+              </span>
+              <span className="text-xs text-muted">
+                {cappedByLabel(maxRisk.cappedBy)}
+              </span>
+            </>
+          ) : (
+            <span className="text-sm text-muted">{t("sizer_risk_undefined")}</span>
           )}
         </div>
-      </div>
+      )}
 
-      {/* Result */}
-      <div
-        className={`rounded-lg px-4 py-3 border transition-colors ${
-          lotResult
-            ? "bg-accent/10 border-accent/30"
-            : "bg-surface border-border"
-        }`}
-      >
-        {lotResult ? (
-          <div className="flex items-baseline gap-2 flex-wrap">
-            <span className="text-xs text-muted uppercase tracking-wider">
-              {t("sizer_lot_label")}
-            </span>
-            <span className="text-2xl font-bold text-accent tabular-nums motion-safe:transition-all">
-              {lotResult.lots.toFixed(2)}
-            </span>
-            <span className="text-xs text-muted">lots</span>
-            {Math.abs(lotResult.raw - lotResult.lots) >= 0.005 && (
-              <span className="text-xs text-muted">
-                ({t("sizer_raw_label")} {lotResult.raw.toFixed(3)})
-              </span>
+      {/* Inputs + result — hidden when limit is fully consumed (riskEur === 0) */}
+      {maxRisk?.riskEur !== 0 && (
+        <>
+          {/* Inputs */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Instrument */}
+            <div>
+              <label className="block text-xs text-muted mb-1">
+                {t("sizer_instrument")}
+              </label>
+              <input
+                type="text"
+                value={symbol}
+                onChange={(e) => handleSymbolChange(e.target.value)}
+                placeholder="XAUUSD"
+                className={inputClass}
+              />
+            </div>
+
+            {/* SL pips */}
+            <div>
+              <label className="block text-xs text-muted mb-1">
+                {t("sizer_sl_pips")}
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.1"
+                value={slPips}
+                onChange={(e) => setSlPips(e.target.value)}
+                placeholder={strategy?.max_sl_pips != null ? String(strategy.max_sl_pips) : "20"}
+                className={inputClass}
+              />
+            </div>
+
+            {/* Pip value per lot */}
+            <div>
+              <label
+                className="block text-xs text-muted mb-1"
+                title={t("sizer_pip_value_tooltip")}
+              >
+                {t("sizer_pip_value")}
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={pipValue}
+                onChange={(e) => setPipValue(e.target.value)}
+                placeholder="10"
+                className={`${inputClass} ${
+                  symbol && !pipValue
+                    ? "border-amber-500/50 focus:ring-amber-500"
+                    : ""
+                }`}
+              />
+              {symbol && !pipValue && (
+                <p className="text-xs text-amber-400 mt-1">
+                  {t("sizer_pip_value_manual")}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Result */}
+          <div
+            className={`rounded-lg px-4 py-3 border transition-colors ${
+              lotResult
+                ? "bg-accent/10 border-accent/30"
+                : "bg-surface border-border"
+            }`}
+          >
+            {lotResult ? (
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <span className="text-xs text-muted uppercase tracking-wider">
+                  {t("sizer_lot_label")}
+                </span>
+                <span className="text-2xl font-bold text-accent tabular-nums motion-safe:transition-all">
+                  {lotResult.lots.toFixed(2)}
+                </span>
+                <span className="text-xs text-muted">lots</span>
+                {Math.abs(lotResult.raw - lotResult.lots) >= 0.005 && (
+                  <span className="text-xs text-muted">
+                    ({t("sizer_raw_label")} {lotResult.raw.toFixed(3)})
+                  </span>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted">
+                {!slPips || !pipValue
+                  ? t("sizer_fill_sl_pip")
+                  : t("sizer_lot_unavailable")}
+              </p>
             )}
           </div>
-        ) : (
-          <p className="text-sm text-muted">
-            {!slPips || !pipValue
-              ? t("sizer_fill_sl_pip")
-              : t("sizer_lot_unavailable")}
-          </p>
-        )}
-      </div>
+        </>
+      )}
     </div>
   );
 }
