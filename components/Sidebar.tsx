@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 
 const tradingItems = [
   { key: "sidebar_dashboard", href: "/dashboard",          icon: LayoutDashboard },
@@ -44,7 +43,6 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
   const { t } = useLanguage();
   const { plan, loading } = usePlan();
   const router = useRouter();
-  const [isPortalLoading, setIsPortalLoading] = useState(false);
 
   const showUpgrade = !loading && plan === "free";
   const isFree = !loading && plan === "free";
@@ -160,31 +158,10 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
                 </span>
               </div>
               <button
-                onClick={async () => {
-                  if (plan !== "plus") {
-                    onClose();
-                    router.push("/dashboard/upgrade");
-                    return;
-                  }
-                  setIsPortalLoading(true);
-                  try {
-                    const res = await fetch("/api/stripe/portal", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                    });
-                    const data = await res.json();
-                    if (!res.ok || !data.url) throw new Error(data.error || "Failed to open portal");
-                    window.location.href = data.url;
-                  } catch (error) {
-                    console.error("[Manage Plan] Error:", error);
-                    onClose();
-                    router.push("/dashboard/upgrade");
-                  }
-                }}
-                disabled={isPortalLoading}
-                className="text-xs text-muted hover:text-accent transition-colors disabled:opacity-50"
+                onClick={() => { onClose(); router.push("/dashboard/upgrade"); }}
+                className="text-xs text-muted hover:text-accent transition-colors"
               >
-                {isPortalLoading ? t("sidebar_manage_plan_loading") : t("sidebar_plan_manage")}
+                {t("sidebar_plan_manage")}
               </button>
             </div>
           )}
