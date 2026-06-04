@@ -17,8 +17,6 @@ interface PlanFeature {
 }
 
 const features: PlanFeature[] = [
-  { key: "plan_feat_challenge_guardian", free: false,         plus: false,           premium: true                                       },
-  { key: "plan_feat_mt_sync",           free: false,         plus: false,           premium: true                                       },
   { key: "plan_feat_csv_import",        free: "1/plan_day",  plus: "plan_unlimited", premium: "plan_unlimited"                          },
   { key: "plan_feat_accounts",          free: "1",           plus: "plan_unlimited", premium: "plan_unlimited"                          },
   { key: "plan_feat_calendar",          free: true,          plus: true,             premium: true                                      },
@@ -34,6 +32,8 @@ const features: PlanFeature[] = [
   { key: "plan_feat_public_profile",    free: false,         plus: true,             premium: true                                      },
   { key: "plan_feat_daily_summary",     free: false,         plus: true,             premium: true                                      },
   { key: "plan_feat_stop_trading",      free: false,         plus: true,             premium: true                                      },
+  { key: "plan_feat_challenge_guardian", free: false,        plus: false,            premium: true                                      },
+  { key: "plan_feat_mt_sync",           free: false,         plus: false,            premium: true                                      },
 ];
 
 const faqKeys = [
