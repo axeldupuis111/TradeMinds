@@ -11,6 +11,7 @@ import {
 } from "@/lib/position-sizing";
 import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
+import { Info, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -119,6 +120,7 @@ export default function PositionSizer({ strategy }: Props) {
     strategy?.max_sl_pips != null ? String(strategy.max_sl_pips) : ""
   );
   const [pipValue, setPipValue] = useState("");
+  const [showPipHelp, setShowPipHelp] = useState(false);
 
   // When symbol changes → auto-fill pip value default
   function handleSymbolChange(val: string) {
@@ -268,13 +270,23 @@ export default function PositionSizer({ strategy }: Props) {
             </div>
 
             {/* Pip value per lot */}
-            <div>
-              <label
-                className="block text-xs text-muted mb-1"
-                title={t("sizer_pip_value_tooltip")}
-              >
-                {t("sizer_pip_value")}
-              </label>
+            <div className="sm:col-span-1">
+              {/* Label row with info toggle */}
+              <div className="flex items-center gap-1 mb-1">
+                <label className="text-xs text-muted">
+                  {t("sizer_pip_value")}
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowPipHelp((v) => !v)}
+                  aria-label={t("sizer_pip_help_aria")}
+                  aria-expanded={showPipHelp}
+                  className="text-muted hover:text-accent transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded"
+                >
+                  <Info className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
               <input
                 type="number"
                 min="0"
@@ -295,6 +307,52 @@ export default function PositionSizer({ strategy }: Props) {
               )}
             </div>
           </div>
+
+          {/* Pip value help panel — collapsible, full width */}
+          {showPipHelp && (
+            <div
+              className="rounded-lg border border-border bg-surface p-4 text-xs text-muted space-y-3 motion-safe:animate-[fadeIn_150ms_ease]"
+              role="region"
+              aria-label={t("sizer_pip_help_aria")}
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-foreground font-medium text-sm">
+                  {t("sizer_pip_help_title")}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowPipHelp(false)}
+                  aria-label={t("sizer_pip_help_close")}
+                  className="shrink-0 text-muted hover:text-foreground transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* Definition */}
+              <p>{t("sizer_pip_help_def")}</p>
+
+              {/* Where to find it */}
+              <div>
+                <p className="font-medium text-foreground mb-1">{t("sizer_pip_help_where_title")}</p>
+                <ul className="space-y-1 list-disc list-inside">
+                  <li>{t("sizer_pip_help_where_broker")}</li>
+                  <li>{t("sizer_pip_help_where_mt")}</li>
+                  <li>{t("sizer_pip_help_where_trade")}</li>
+                </ul>
+              </div>
+
+              {/* Benchmarks */}
+              <div>
+                <p className="font-medium text-foreground mb-1">{t("sizer_pip_help_benchmarks_title")}</p>
+                <p>{t("sizer_pip_help_benchmarks")}</p>
+              </div>
+
+              {/* Warning */}
+              <p className="text-amber-400">{t("sizer_pip_help_warning")}</p>
+            </div>
+          )}
 
           {/* Result */}
           <div
