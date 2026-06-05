@@ -189,12 +189,40 @@ export default function AlertCenter() {
     );
   }
 
-  // ── Banner stack (dismissed criticals as reminders + warnings + infos) ───────
+  // ── Banner stack (dismissed criticals as grouped reminder + warnings + infos) ──
   if (bannerAlerts.length === 0) return null;
+
+  const dismissedCriticals = bannerAlerts.filter(
+    (a) => a.level === "critical" && a.dismissed
+  );
+  const nonCriticalBanners = bannerAlerts.filter((a) => a.level !== "critical");
 
   return (
     <>
-      {bannerAlerts.map((a) => (
+      {/* Dismissed criticals: ONE grouped reminder row, non-dismissable */}
+      {dismissedCriticals.length === 1 && (
+        <div className="border-b bg-loss/10 border-loss/30 text-loss px-4 py-2 flex items-center gap-2 text-sm">
+          <svg className="w-4 h-4 shrink-0 text-loss" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+              d="M12 9v2m0 4h.01M10.29 3.86l-8.6 14.86A1 1 0 002.56 20h18.88a1 1 0 00.87-1.28l-8.6-14.86a1 1 0 00-1.72 0z" />
+          </svg>
+          <span className="flex-1 font-medium truncate">{dismissedCriticals[0].message}</span>
+        </div>
+      )}
+      {dismissedCriticals.length > 1 && (
+        <div className="border-b bg-loss/10 border-loss/30 text-loss px-4 py-2 flex items-center gap-2 text-sm">
+          <svg className="w-4 h-4 shrink-0 text-loss" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+              d="M12 9v2m0 4h.01M10.29 3.86l-8.6 14.86A1 1 0 002.56 20h18.88a1 1 0 00.87-1.28l-8.6-14.86a1 1 0 00-1.72 0z" />
+          </svg>
+          <span className="font-medium">
+            {t("alert_center_critical_reminder_many").replace("{n}", String(dismissedCriticals.length))}
+          </span>
+        </div>
+      )}
+
+      {/* Warnings and info: one dismissable row each */}
+      {nonCriticalBanners.map((a) => (
         <BannerRow key={a.id} alert={a} onDismiss={dismissAlert} />
       ))}
     </>
