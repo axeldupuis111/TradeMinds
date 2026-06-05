@@ -48,6 +48,16 @@ export interface Alert {
   dismissKey?: string;
 }
 
+/** Alert enriched with its current dismiss state, as returned by useAlerts(). */
+export interface AlertWithDismiss extends Alert {
+  /**
+   * True when the alert has been dismissed today.
+   * - critical + dismissed → rendered as a persistent reminder banner (no ×)
+   * - warning/info + dismissed → excluded from output entirely
+   */
+  dismissed: boolean;
+}
+
 // ─── Internal types ───────────────────────────────────────────────────────────
 
 /** Set of alert IDs dismissed in-memory this session. */
@@ -55,10 +65,12 @@ type InMemoryDismissed = Set<string>;
 
 interface AlertsContextValue {
   /**
-   * Active alerts from all sources, filtered to exclude today's dismissed ones.
+   * Merged alerts from all sources with dismiss state attached.
+   * Criticals are always included (dismissed or not).
+   * Warnings/info are included only when NOT dismissed.
    * Sorted: critical first, then warning, then info.
    */
-  alerts: Alert[];
+  alerts: AlertWithDismiss[];
   /**
    * Replace all alerts for a given source key.
    * Pass an empty array to clear that source's alerts.
@@ -98,7 +110,7 @@ function persistDismiss(dismissKey: string): void {
 // ─── Context ──────────────────────────────────────────────────────────────────
 
 const AlertsContext = createContext<AlertsContextValue>({
-  alerts: [],
+  alerts: [] as AlertWithDismiss[],
   setSourceAlerts: () => {},
   dismissAlert: () => {},
 });
@@ -143,22 +155,37 @@ export function AlertsProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
-  // Build the merged, filtered, sorted alert list
-  const allAlerts: Alert[] = [];
+  // Build the merged alert list with dismiss flags.
+  // - Criticals: always included, dismissed flag reflects their state.
+  // - Warnings/info: included only when not dismissed.
+  const allAlerts: AlertWithDismiss[] = [];
   for (const group of Array.from(sourceMap.current.values())) {
     for (const alert of group) {
       const dismissedInMemory = inMemoryDismissed.has(alert.id);
       const dismissedPersistently =
         alert.dismissKey ? isPersistentlyDismissed(alert.dismissKey) : false;
-      if (!dismissedInMemory && !dismissedPersistently) {
-        allAlerts.push(alert);
+      const dismissed = dismissedInMemory || dismissedPersistently;
+
+      if (alert.level === "critical") {
+        // Criticals always appear — dismissed ones become a persistent reminder.
+        allAlerts.push({ ...alert, dismissed });
+      } else {
+        // Warnings and info are hidden once dismissed.
+        if (!dismissed) {
+          allAlerts.push({ ...alert, dismissed: false });
+        }
       }
     }
   }
 
-  // Sort: critical → warning → info
-  const levelOrder: Record<AlertLevel, number> = { critical: 0, warning: 1, info: 2 };
-  allAlerts.sort((a, b) => levelOrder[a.level] - levelOrder[b.level]);
+  // Sort: undismissed critical → dismissed critical → warning → info
+  const sortKey = (a: AlertWithDismiss) => {
+    if (a.level === "critical" && !a.dismissed) return 0;
+    if (a.level === "critical" && a.dismissed) return 1;
+    if (a.level === "warning") return 2;
+    return 3;
+  };
+  allAlerts.sort((a, b) => sortKey(a) - sortKey(b));
 
   // Re-sync dismissed state from localStorage on mount (SSR-safe)
   useEffect(() => {

@@ -6,20 +6,25 @@
  * Reads from AlertsContext (populated by sources in B2+).
  * In B1 the context is empty → renders nothing → zero regression.
  *
- * Critical alerts (undismissed) → full-screen blocking overlay listing all of them.
- * Warning + info + dismissed criticals → compact banner stack below the header.
+ * Rendering rules:
+ *   critical & !dismissed → full-screen STOP overlay listing all of them + coaching quote
+ *   critical & dismissed  → persistent reminder row in banner bar (no × — cannot be hidden)
+ *   warning/info & !dismissed → dismissable row in banner bar
+ *   warning/info & dismissed  → excluded by AlertsContext, never reaches here
  */
 
-import { type Alert, useAlerts } from "@/lib/AlertsContext";
+import { type AlertWithDismiss, useAlerts } from "@/lib/AlertsContext";
 import { useLanguage } from "@/lib/LanguageContext";
+import { stopQuotes } from "@/lib/translations";
 import Link from "next/link";
+import { useMemo } from "react";
 
 // ── Category → icon mapping ───────────────────────────────────────────────────
 
 function categoryIcon(category: string): string {
   switch (category) {
     case "daily_loss":
-    case "dd_challenge":
+    case "challenge":
       return "⛔";
     case "session_duration":
       return "⏱️";
@@ -36,64 +41,50 @@ function categoryIcon(category: string): string {
 
 function WarningIcon({ className }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-        d="M12 9v2m0 4h.01M10.29 3.86l-8.6 14.86A1 1 0 002.56 20h18.88a1 1 0 00.87-1.28l-8.6-14.86a1 1 0 00-1.72 0z"
-      />
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+        d="M12 9v2m0 4h.01M10.29 3.86l-8.6 14.86A1 1 0 002.56 20h18.88a1 1 0 00.87-1.28l-8.6-14.86a1 1 0 00-1.72 0z" />
     </svg>
   );
 }
 
 function CloseIcon({ className }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-        d="M6 18L18 6M6 6l12 12"
-      />
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
     </svg>
   );
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
+// ── Banner row ────────────────────────────────────────────────────────────────
 
-function BannerRow({ alert, onDismiss }: { alert: Alert; onDismiss: (id: string) => void }) {
+function BannerRow({
+  alert,
+  onDismiss,
+}: {
+  alert: AlertWithDismiss;
+  onDismiss: (id: string) => void;
+}) {
+  const isDismissedCritical = alert.level === "critical" && alert.dismissed;
   const isWarning = alert.level === "warning";
-  const isCriticalDismissed = alert.level === "critical"; // only dismissed criticals reach here
 
-  const colorClass = isCriticalDismissed
+  const colorClass = isDismissedCritical
     ? "bg-loss/10 border-loss/30 text-loss"
     : isWarning
     ? "bg-orange-500/15 border-orange-500/30 text-orange-400"
     : "bg-accent/10 border-accent/20 text-accent";
 
-  const iconColorClass = isCriticalDismissed
+  const iconColorClass = isDismissedCritical
     ? "text-loss"
     : isWarning
     ? "text-orange-400"
     : "text-accent";
 
+  // Dismissed criticals: no × button (persistent reminder until midnight)
+  const showDismiss = alert.dismissible && !isDismissedCritical;
+
   return (
-    <div
-      className={`border-b px-4 py-2 flex items-center gap-2 text-sm ${colorClass}`}
-    >
+    <div className={`border-b px-4 py-2 flex items-center gap-2 text-sm ${colorClass}`}>
       <WarningIcon className={`w-4 h-4 shrink-0 ${iconColorClass}`} />
       <span className="flex-1 font-medium truncate">{alert.message}</span>
       {alert.action && (
@@ -104,7 +95,7 @@ function BannerRow({ alert, onDismiss }: { alert: Alert; onDismiss: (id: string)
           {alert.action.label}
         </Link>
       )}
-      {alert.dismissible && (
+      {showDismiss && (
         <button
           onClick={() => onDismiss(alert.id)}
           aria-label="Fermer"
@@ -121,16 +112,20 @@ function BannerRow({ alert, onDismiss }: { alert: Alert; onDismiss: (id: string)
 
 export default function AlertCenter() {
   const { alerts, dismissAlert } = useAlerts();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+
+  // Pick a stable random coaching quote (re-rolls on page load, stable during session)
+  const quote = useMemo(() => {
+    const pool = stopQuotes[lang as keyof typeof stopQuotes] ?? stopQuotes.en;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }, [lang]);
 
   if (alerts.length === 0) return null;
 
-  const undismissedCriticals = alerts.filter((a) => a.level === "critical");
-  const bannerAlerts = alerts.filter((a) => a.level !== "critical");
-  // Dismissed criticals come back through the banner layer via the source
-  // re-pushing them with level "warning" after persist — handled in B2 per-source.
+  const undismissedCriticals = alerts.filter((a) => a.level === "critical" && !a.dismissed);
+  const bannerAlerts = alerts.filter((a) => a.level !== "critical" || a.dismissed);
 
-  // ── Critical overlay ────────────────────────────────────────────────────────
+  // ── Critical overlay (undismissed criticals) ────────────────────────────────
   if (undismissedCriticals.length > 0) {
     return (
       <div className="fixed inset-0 z-[101] bg-black/95 flex items-center justify-center p-6 overflow-y-auto motion-safe:animate-[fadeIn_120ms_ease]">
@@ -168,7 +163,17 @@ export default function AlertCenter() {
             ))}
           </div>
 
-          {/* Dismiss all button */}
+          {/* Coaching quote */}
+          {quote && (
+            <div className="mt-6 p-5 rounded-xl border border-border bg-background">
+              <p className="text-foreground italic text-sm leading-relaxed">
+                &laquo; {quote.text} &raquo;
+              </p>
+              <p className="text-muted text-xs mt-2 text-right">&mdash; {quote.author}</p>
+            </div>
+          )}
+
+          {/* Dismiss all — overlay closes, criticals become reminder banners */}
           <div className="mt-8 flex justify-center">
             <button
               onClick={() => {
@@ -184,7 +189,7 @@ export default function AlertCenter() {
     );
   }
 
-  // ── Banner stack (warnings + infos) ─────────────────────────────────────────
+  // ── Banner stack (dismissed criticals as reminders + warnings + infos) ───────
   if (bannerAlerts.length === 0) return null;
 
   return (
