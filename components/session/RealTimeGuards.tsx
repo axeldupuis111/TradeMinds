@@ -106,7 +106,7 @@ export default function RealTimeGuards({ strategy, accountSize, sessionStartedAt
   const sessionOverLimit = sessionRatio >= 1;
   const sessionNearLimit = sessionRatio >= 0.8 && sessionRatio < 1;
 
-  // — Trade count card —
+  // — Trade count card — informative only (colour scale, no alarming text)
   let tradeColor = "text-profit";
   let tradeBg = "bg-profit/5 border-profit/20";
   let tradeMsg = "";
@@ -114,8 +114,8 @@ export default function RealTimeGuards({ strategy, accountSize, sessionStartedAt
     const remaining = maxTrades - tradeCount;
     if (tradeCount >= maxTrades) {
       tradeColor = "text-loss";
-      tradeBg = "bg-loss/10 border-loss/30 animate-pulse";
-      tradeMsg = `⚠️ ${t("session_active_limit_reached")}`;
+      tradeBg = "bg-loss/10 border-loss/30";           // no animate-pulse
+      tradeMsg = t("session_active_trades_remaining").replace("{n}", "0");
     } else if (tradePct >= 0.7) {
       tradeColor = "text-orange-400";
       tradeBg = "bg-orange-500/10 border-orange-500/30";
@@ -128,15 +128,17 @@ export default function RealTimeGuards({ strategy, accountSize, sessionStartedAt
     }
   }
 
-  // — Drawdown card —
+  // — Drawdown card — informative only (colour scale, no alarming text)
   let pnlColor = todayPnl >= 0 ? "text-profit" : "text-foreground";
   let pnlBg = todayPnl >= 0 ? "bg-profit/5 border-profit/20" : "bg-card border-border";
   let pnlMsg = "";
   if (todayPnl < 0 && maxLossEuro !== null) {
     if (lossConsumed >= 0.8) {
       pnlColor = "text-loss";
-      pnlBg = "bg-loss/10 border-loss/30 animate-pulse";
-      pnlMsg = `🚨 ${t("session_active_stop_warning")}`;
+      pnlBg = "bg-loss/10 border-loss/30";             // no animate-pulse, no STOP text
+      // Show remaining budget in red — informative, not dramatic
+      const remaining = Math.max(0, maxLossEuro + todayPnl);
+      pnlMsg = t("session_active_margin_remaining").replace("{amount}", remaining.toFixed(0) + "€");
     } else if (lossConsumed >= 0.5) {
       pnlColor = "text-orange-400";
       pnlBg = "bg-orange-500/10 border-orange-500/30";

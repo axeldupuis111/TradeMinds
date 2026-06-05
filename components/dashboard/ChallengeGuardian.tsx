@@ -8,13 +8,14 @@
  * Renders nothing for free/plus users (StopTradingGuard still covers their
  * strategy-level limits).  For premium users with active prop challenges,
  * it subscribes to Realtime changes on `trades` and `prop_challenges` and
- * fires per account:
- *   ≥ 80% of a DD limit → persistent banner (warning)
- *   ≥ 95% of a DD limit → included in full-screen overlay (critical)
+ * fires ONE alert per account — the most critical dimension (daily or
+ * total, whichever has the higher used%):
+ *   ≥ 80% → persistent banner (warning)
+ *   ≥ 95% → included in full-screen overlay (critical)
  *
- * When multiple accounts are in critical state simultaneously, a single
- * overlay lists all of them. Dismiss is per account+ddType so dismissing
- * one never hides another.
+ * One account = one alert, preventing double banners for the same account.
+ * When multiple accounts are critical, a single overlay lists all of them.
+ * Dismiss is per account+ddType so dismissing one never hides another.
  */
 
 import { computeChallengeRules } from "@/lib/challenge-rules";
@@ -198,10 +199,15 @@ export default function ChallengeGuardian() {
         );
 
         const label = makeAccountLabel(challenge);
-        const found: AlertWithAccount[] = [];
+
+        // ONE alert per account — the single most critical dimension.
+        // If both daily and total are in alert territory, pick the one with
+        // the higher used % (the more urgent danger). This prevents two
+        // banners for the same account confusing the trader.
+        const candidates: AlertWithAccount[] = [];
 
         if (rules.ddDailyUsedPct >= 0.8 && rules.dailyDdMax > 0) {
-          found.push({
+          candidates.push({
             challengeId: challenge.id,
             accountLabel: label,
             ddType: "daily",
@@ -211,7 +217,7 @@ export default function ChallengeGuardian() {
           });
         }
         if (rules.ddTotalUsedPct >= 0.8 && rules.totalDdMax > 0) {
-          found.push({
+          candidates.push({
             challengeId: challenge.id,
             accountLabel: label,
             ddType: "total",
@@ -221,7 +227,14 @@ export default function ChallengeGuardian() {
           });
         }
 
-        return found;
+        if (candidates.length === 0) return [];
+
+        // Priority: critical > warning; within same level, highest usedPct wins.
+        const criticals = candidates.filter((c) => c.level === "critical");
+        const pool = criticals.length > 0 ? criticals : candidates;
+        const winner = pool.reduce((best, c) => (c.usedPct > best.usedPct ? c : best));
+
+        return [winner];
       })
     );
 
