@@ -4,10 +4,12 @@ import Header from "@/components/Header";
 import OnboardingGuide from "@/components/dashboard/OnboardingGuide";
 import QuickTradeFAB from "@/components/dashboard/QuickTradeFAB";
 import Sidebar from "@/components/Sidebar";
+import AlertCenter from "@/components/dashboard/AlertCenter";
 import ChallengeGuardian from "@/components/dashboard/ChallengeGuardian";
 import StopTradingGuard from "@/components/dashboard/StopTradingGuard";
 import { SubscriptionBanner } from "@/components/SubscriptionBanner";
 import { ActiveAccountProvider } from "@/lib/ActiveAccountContext";
+import { AlertsProvider } from "@/lib/AlertsContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
@@ -184,6 +186,7 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
+    <AlertsProvider>
     <ActiveAccountProvider>
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -191,6 +194,8 @@ export default function DashboardLayout({
         <StopTradingGuard />
         <ChallengeGuardian />
         <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
+        {/* AlertCenter: unified alert bus (inert until sources push in B2+) */}
+        <AlertCenter />
         <SubscriptionBanner />
         <SessionReminderBanner />
         <SessionDurationBanner />
@@ -200,5 +205,6 @@ export default function DashboardLayout({
       <OnboardingGuide />
     </div>
     </ActiveAccountProvider>
+    </AlertsProvider>
   );
 }
