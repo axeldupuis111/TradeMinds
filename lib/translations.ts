@@ -1063,6 +1063,11 @@ const translations: Record<Lang, Record<string, string>> = {
     guardian_understand: "Compris, je stoppe",
     guardian_banner_daily: "⚠️ DD journalier challenge : {pct}% — {eur}€ restants",
     guardian_banner_total: "⚠️ DD total challenge : {pct}% — {eur}€ restants",
+    guardian_overlay_accounts_title: "Comptes en danger critique",
+    guardian_banner_account_daily: "⚠️ {account} — DD journalier {pct}% — {eur}€ restants",
+    guardian_banner_account_total: "⚠️ {account} — DD total {pct}% — {eur}€ restants",
+    guardian_overlay_account_daily: "{account} : DD journalier à {pct}% — {eur}€ restants",
+    guardian_overlay_account_total: "{account} : DD total à {pct}% — {eur}€ restants",
 
     // PDF Export
     pdf_export: "Exporter PDF",
@@ -2550,6 +2555,11 @@ const translations: Record<Lang, Record<string, string>> = {
     guardian_understand: "Got it, I'm stopping",
     guardian_banner_daily: "⚠️ Challenge daily DD: {pct}% — {eur}€ remaining",
     guardian_banner_total: "⚠️ Challenge total DD: {pct}% — {eur}€ remaining",
+    guardian_overlay_accounts_title: "Accounts in critical danger",
+    guardian_banner_account_daily: "⚠️ {account} — Daily DD {pct}% — {eur}€ remaining",
+    guardian_banner_account_total: "⚠️ {account} — Total DD {pct}% — {eur}€ remaining",
+    guardian_overlay_account_daily: "{account}: daily DD at {pct}% — {eur}€ remaining",
+    guardian_overlay_account_total: "{account}: total DD at {pct}% — {eur}€ remaining",
 
     // PDF Export
     pdf_export: "Export PDF",
@@ -4036,6 +4046,11 @@ const translations: Record<Lang, Record<string, string>> = {
     guardian_understand: "Verstanden, ich stoppe",
     guardian_banner_daily: "⚠️ Tagesl. Challenge-DD: {pct}% — {eur}€ übrig",
     guardian_banner_total: "⚠️ Gesamt Challenge-DD: {pct}% — {eur}€ übrig",
+    guardian_overlay_accounts_title: "Konten in kritischer Gefahr",
+    guardian_banner_account_daily: "⚠️ {account} — Tages-DD {pct}% — {eur}€ übrig",
+    guardian_banner_account_total: "⚠️ {account} — Gesamt-DD {pct}% — {eur}€ übrig",
+    guardian_overlay_account_daily: "{account}: Tages-DD bei {pct}% — {eur}€ übrig",
+    guardian_overlay_account_total: "{account}: Gesamt-DD bei {pct}% — {eur}€ übrig",
 
     // PDF Export
     pdf_export: "PDF exportieren",
@@ -5521,6 +5536,11 @@ const translations: Record<Lang, Record<string, string>> = {
     guardian_understand: "Entendido, paro",
     guardian_banner_daily: "⚠️ DD diario challenge: {pct}% — quedan {eur}€",
     guardian_banner_total: "⚠️ DD total challenge: {pct}% — quedan {eur}€",
+    guardian_overlay_accounts_title: "Cuentas en peligro crítico",
+    guardian_banner_account_daily: "⚠️ {account} — DD diario {pct}% — quedan {eur}€",
+    guardian_banner_account_total: "⚠️ {account} — DD total {pct}% — quedan {eur}€",
+    guardian_overlay_account_daily: "{account}: DD diario al {pct}% — quedan {eur}€",
+    guardian_overlay_account_total: "{account}: DD total al {pct}% — quedan {eur}€",
 
     // PDF Export
     pdf_export: "Exportar PDF",
