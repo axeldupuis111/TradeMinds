@@ -1057,6 +1057,7 @@ const translations: Record<Lang, Record<string, string>> = {
     alert_center_critical_reminder_many: "{n} limites atteintes aujourd'hui — ne prends pas de nouveau trade",
     stop_banner: "Limite atteinte aujourd'hui. Continue à tes risques.",
     stop_limit_daily_loss: "Tu as atteint ta perte maximale journalière.",
+    stop_limit_daily_loss_account: "Limite de discipline journalière atteinte — compte {firm}. Arrête-toi maintenant.",
     stop_limit_max_trades: "Tu as atteint ton nombre maximum de trades pour aujourd'hui.",
     stop_limit_consecutive_losses: "Tu as atteint ta limite de pertes consécutives.",
 
@@ -2550,6 +2551,7 @@ const translations: Record<Lang, Record<string, string>> = {
     alert_center_critical_reminder_many: "{n} limits reached today — do not open a new trade",
     stop_banner: "Daily limit reached. Continue at your own risk.",
     stop_limit_daily_loss: "You have reached your max daily loss.",
+    stop_limit_daily_loss_account: "Daily discipline limit reached — account {firm}. Stop trading now.",
     stop_limit_max_trades: "You have reached your max trades for today.",
     stop_limit_consecutive_losses: "You have reached your consecutive losses limit.",
 
@@ -4042,6 +4044,7 @@ const translations: Record<Lang, Record<string, string>> = {
     alert_center_critical_reminder_many: "{n} Limits heute erreicht — eröffne keinen neuen Trade",
     stop_banner: "Tageslimit erreicht. Weitermachen auf eigenes Risiko.",
     stop_limit_daily_loss: "Du hast deinen maximalen Tagesverlust erreicht.",
+    stop_limit_daily_loss_account: "Tägliches Disziplin-Limit erreicht — Konto {firm}. Jetzt aufhören.",
     stop_limit_max_trades: "Du hast deine maximale Anzahl an Trades für heute erreicht.",
     stop_limit_consecutive_losses: "Du hast dein Limit an aufeinanderfolgenden Verlusten erreicht.",
 
@@ -5533,6 +5536,7 @@ const translations: Record<Lang, Record<string, string>> = {
     alert_center_critical_reminder_many: "{n} límites alcanzados hoy — no abras un nuevo trade",
     stop_banner: "Límite diario alcanzado. Continúa bajo tu responsabilidad.",
     stop_limit_daily_loss: "Has alcanzado tu pérdida máxima diaria.",
+    stop_limit_daily_loss_account: "Límite de disciplina diaria alcanzado — cuenta {firm}. Para de tradear ahora.",
     stop_limit_max_trades: "Has alcanzado tu máximo de trades para hoy.",
     stop_limit_consecutive_losses: "Has alcanzado tu límite de pérdidas consecutivas.",
 

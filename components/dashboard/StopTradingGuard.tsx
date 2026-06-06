@@ -3,11 +3,22 @@
 /**
  * StopTradingGuard — detector only (rendering moved to AlertCenter).
  *
- * Watches strategy limits (max_daily_loss / max_trades_per_day /
- * max_consecutive_losses) via Realtime and pushes Alert objects to
- * AlertsContext.  Renders nothing itself.
+ * Watches strategy limits (max_trades_per_day / max_consecutive_losses)
+ * and the account discipline daily-loss limit (max_daily_loss_pct from
+ * the ACTIVE ACCOUNT via ActiveAccountContext).
+ *
+ * Daily-loss guard:
+ *   - Source of truth: selectedAccount.max_daily_loss_pct (set by the
+ *     trader on their account, Phase 1).  No longer read from strategy.
+ *   - No active account OR max_daily_loss_pct null/0 → guard is off for
+ *     daily loss; no alert pushed.
+ *   - todayPnl scope: GLOBAL (all user's closed trades today) — unchanged
+ *     from previous behaviour; per-account scope is Phase 3.
+ *
+ * Other guards (max_trades, consecutive_losses) remain strategy-based.
  */
 
+import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useAlerts, type Alert } from "@/lib/AlertsContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
@@ -16,7 +27,6 @@ import { useEffect } from "react";
 type LimitType = "daily_loss" | "max_trades" | "consecutive_losses";
 
 interface Strategy {
-  max_daily_loss: number | null;
   max_trades_per_day: number | null;
   max_consecutive_losses: number | null;
 }
@@ -30,6 +40,7 @@ const SOURCE_KEY = "stop-trading";
 export default function StopTradingGuard() {
   const { t, lang } = useLanguage();
   const { setSourceAlerts } = useAlerts();
+  const { selectedAccount, loading: accountLoading } = useActiveAccount();
   const supabase = createClient();
 
   useEffect(() => {
@@ -67,26 +78,35 @@ export default function StopTradingGuard() {
     return () => {
       isMounted = false;
       if (channel) supabase.removeChannel(channel);
-      // Clear this source's alerts on unmount
       setSourceAlerts(SOURCE_KEY, []);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Re-push alerts with updated translations when language changes.
+  // Re-push alerts with updated translations on language change.
   useEffect(() => {
     check();
   }, [lang]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Re-check when the selected account changes (limit may differ).
+  useEffect(() => {
+    check();
+  }, [accountLoading, selectedAccount?.id, selectedAccount?.max_daily_loss_pct]); // eslint-disable-line react-hooks/exhaustive-deps
   async function check() {
+    // Wait for ActiveAccountContext to finish loading before evaluating
+    // the discipline limit — avoids overwriting with an empty alert list
+    // while selectedAccount is still null.
+    if (accountLoading) return;
+
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
     const today = new Date().toISOString().split("T")[0];
 
-    const [{ data: strat }, { data: trades }, { data: accounts }] = await Promise.all([
+    // Strategy is still the source for max_trades and consecutive_losses.
+    const [{ data: strat }, { data: trades }] = await Promise.all([
       supabase
         .from("strategies")
-        .select("max_daily_loss, max_trades_per_day, max_consecutive_losses")
+        .select("max_trades_per_day, max_consecutive_losses")
         .eq("user_id", user.id)
         .limit(1)
         .single(),
@@ -96,44 +116,55 @@ export default function StopTradingGuard() {
         .eq("user_id", user.id)
         .gte("open_time", today)
         .order("open_time", { ascending: true }),
-      supabase
-        .from("prop_challenges")
-        .select("account_size")
-        .eq("user_id", user.id)
-        .eq("status", "active")
-        .limit(1)
-        .single(),
     ]);
 
-    if (!strat) {
-      setSourceAlerts(SOURCE_KEY, []);
-      return;
-    }
-
-    const strategy: Strategy = strat;
+    const strategy: Strategy = strat ?? { max_trades_per_day: null, max_consecutive_losses: null };
     const todayTrades = trades || [];
-    const accountSize = accounts?.account_size || 10000;
 
-    const reached: LimitType[] = [];
-
-    // Check daily loss
+    // todayPnl — global (all accounts), unchanged scope for now.
     const todayPnl = todayTrades
       .filter((tr) => tr.status === "closed")
       .reduce((s, tr) => s + netPnl(tr), 0);
-    if (strategy.max_daily_loss !== null) {
-      const maxLossEuro = (accountSize * strategy.max_daily_loss) / 100;
-      if (todayPnl <= -maxLossEuro) reached.push("daily_loss");
+
+    const reached: LimitType[] = [];
+    const alerts: Alert[] = [];
+
+    // ── Daily loss — from ACTIVE ACCOUNT discipline limit ──────────────────
+    const accountLossPct = selectedAccount?.max_daily_loss_pct ?? null;
+    const accountSize = selectedAccount?.account_size ?? 0;
+    if (accountLossPct !== null && accountLossPct > 0 && accountSize > 0) {
+      const maxLossEuro = (accountSize * accountLossPct) / 100;
+      if (todayPnl <= -maxLossEuro) {
+        reached.push("daily_loss");
+        const firmLabel = selectedAccount?.firm ?? "";
+        alerts.push({
+          id: "stop_daily_loss",
+          level: "critical" as const,
+          category: "daily_loss",
+          message: t("stop_limit_daily_loss_account").replace("{firm}", firmLabel),
+          dismissible: true,
+          dismissKey: `stop_daily_loss_${today}`,
+        });
+      }
     }
 
-    // Check max trades per day
+    // ── Max trades per day — from strategy ────────────────────────────────
     if (
       strategy.max_trades_per_day !== null &&
       todayTrades.length >= strategy.max_trades_per_day
     ) {
       reached.push("max_trades");
+      alerts.push({
+        id: "stop_max_trades",
+        level: "critical" as const,
+        category: "daily_loss",
+        message: t("stop_limit_max_trades"),
+        dismissible: true,
+        dismissKey: `stop_max_trades_${today}`,
+      });
     }
 
-    // Check consecutive losses today
+    // ── Consecutive losses — from strategy ────────────────────────────────
     if (strategy.max_consecutive_losses !== null) {
       const closedTrades = todayTrades.filter((tr) => tr.status === "closed");
       let consecutiveLosses = 0;
@@ -143,23 +174,16 @@ export default function StopTradingGuard() {
       }
       if (consecutiveLosses >= strategy.max_consecutive_losses) {
         reached.push("consecutive_losses");
+        alerts.push({
+          id: "stop_consecutive_losses",
+          level: "critical" as const,
+          category: "daily_loss",
+          message: t("stop_limit_consecutive_losses"),
+          dismissible: true,
+          dismissKey: `stop_consecutive_losses_${today}`,
+        });
       }
     }
-
-    if (reached.length === 0) {
-      setSourceAlerts(SOURCE_KEY, []);
-      return;
-    }
-
-    // Build one Alert per reached limit
-    const alerts: Alert[] = reached.map((limitType) => ({
-      id: `stop_${limitType}`,
-      level: "critical" as const,
-      category: "daily_loss",
-      message: t(`stop_limit_${limitType}`),
-      dismissible: true,
-      dismissKey: `stop_${limitType}_${today}`,
-    }));
 
     setSourceAlerts(SOURCE_KEY, alerts);
   }
