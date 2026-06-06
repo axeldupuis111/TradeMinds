@@ -183,13 +183,18 @@ export default function ChallengeGuardian() {
           c.usedPct > best.usedPct ? c : best
         );
 
+        // Cap displayed values: % never exceeds 100 (trailing DD can push usedPct > 1),
+        // remaining € never goes below 0 — display only, thresholds unchanged.
+        const displayPct = Math.min(100, Math.round(winner.usedPct * 100));
+        const displayEur = Math.max(0, Math.round(winner.remainingEur));
+
         const ddLabel = winner.ddType === "daily"
           ? t("guardian_banner_daily")
-              .replace("{pct}", Math.round(winner.usedPct * 100).toString())
-              .replace("{eur}", Math.round(winner.remainingEur).toString())
+              .replace("{pct}", displayPct.toString())
+              .replace("{eur}", displayEur.toString())
           : t("guardian_banner_total")
-              .replace("{pct}", Math.round(winner.usedPct * 100).toString())
-              .replace("{eur}", Math.round(winner.remainingEur).toString());
+              .replace("{pct}", displayPct.toString())
+              .replace("{eur}", displayEur.toString());
 
         const message = `${label} — ${ddLabel.replace(/^⚠️\s*/, "")}`;
 
