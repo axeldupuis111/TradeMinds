@@ -33,7 +33,7 @@ function makeAccountLabel(row: {
 
 export default function ChallengeGuardian() {
   const { plan } = usePlan();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { setSourceAlerts } = useAlerts();
   const supabase = createClient();
 
@@ -77,6 +77,11 @@ export default function ChallengeGuardian() {
       setSourceAlerts(SOURCE_KEY, []);
     };
   }, [isPremium]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Re-push alerts with updated translations when language changes.
+  useEffect(() => {
+    if (isPremium) check();
+  }, [lang]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function check() {
     const { data: { user } } = await supabase.auth.getUser();
