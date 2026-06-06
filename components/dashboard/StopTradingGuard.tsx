@@ -28,7 +28,7 @@ function netPnl(tr: { pnl: number; commission: number | null; swap: number | nul
 const SOURCE_KEY = "stop-trading";
 
 export default function StopTradingGuard() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { setSourceAlerts } = useAlerts();
   const supabase = createClient();
 
@@ -71,6 +71,11 @@ export default function StopTradingGuard() {
       setSourceAlerts(SOURCE_KEY, []);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Re-push alerts with updated translations when language changes.
+  useEffect(() => {
+    check();
+  }, [lang]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function check() {
     const { data: { user } } = await supabase.auth.getUser();
