@@ -129,21 +129,54 @@ export default function StopTradingGuard() {
     const reached: LimitType[] = [];
     const alerts: Alert[] = [];
 
-    // ── Daily loss — from ACTIVE ACCOUNT discipline limit ──────────────────
+    // ── Daily loss — graduated paliers from ACTIVE ACCOUNT discipline limit ──
     const accountLossPct = selectedAccount?.max_daily_loss_pct ?? null;
     const accountSize = selectedAccount?.account_size ?? 0;
     if (accountLossPct !== null && accountLossPct > 0 && accountSize > 0) {
       const maxLossEuro = (accountSize * accountLossPct) / 100;
-      if (todayPnl <= -maxLossEuro) {
-        reached.push("daily_loss");
+      const usedPct = (-todayPnl) / maxLossEuro;
+      const remainingEur = Math.max(0, Math.round(maxLossEuro + todayPnl));
+      const pctRounded = Math.round(usedPct * 100);
+
+      if (usedPct >= 0.5) {
         const firmLabel = selectedAccount?.firm ?? "";
+        let level: "critical" | "warning" | "info";
+        let message: string;
+        let dismissible: boolean;
+        let dismissKey: string | undefined;
+
+        if (usedPct >= 1) {
+          level = "critical";
+          dismissible = true;
+          dismissKey = undefined; // in-memory only → overlay re-appears on reload
+          message = t("stop_limit_daily_loss_account").replace("{firm}", firmLabel);
+        } else if (usedPct >= 0.95) {
+          level = "warning";
+          dismissible = false;
+          message = t("stop_daily_loss_95")
+            .replace("{pct}", String(pctRounded))
+            .replace("{eur}", remainingEur.toLocaleString("fr-FR"));
+        } else if (usedPct >= 0.75) {
+          level = "warning";
+          dismissible = false;
+          message = t("stop_daily_loss_75")
+            .replace("{pct}", String(pctRounded))
+            .replace("{eur}", remainingEur.toLocaleString("fr-FR"));
+        } else {
+          level = "info";
+          dismissible = false;
+          message = t("stop_daily_loss_50")
+            .replace("{pct}", String(pctRounded))
+            .replace("{eur}", remainingEur.toLocaleString("fr-FR"));
+        }
+
         alerts.push({
           id: "stop_daily_loss",
-          level: "critical" as const,
+          level,
           category: "daily_loss",
-          message: t("stop_limit_daily_loss_account").replace("{firm}", firmLabel),
-          dismissible: true,
-          dismissKey: `stop_daily_loss_${today}`,
+          message,
+          dismissible,
+          ...(dismissKey ? { dismissKey } : {}),
         });
       }
     }

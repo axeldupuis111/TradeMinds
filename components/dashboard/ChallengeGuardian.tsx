@@ -162,14 +162,7 @@ export default function ChallengeGuardian() {
         };
         const candidates: Candidate[] = [];
 
-        if (rules.ddDailyUsedPct >= 0.8 && rules.dailyDdMax > 0) {
-          candidates.push({
-            ddType: "daily",
-            usedPct: rules.ddDailyUsedPct,
-            remainingEur: rules.dailyDdRemainingEur,
-            level: rules.ddDailyUsedPct >= 0.95 ? "critical" : "warning",
-          });
-        }
+        // Daily DD removed — covered by StopTradingGuard's graduated paliers.
         if (rules.ddTotalUsedPct >= 0.8 && rules.totalDdMax > 0) {
           candidates.push({
             ddType: "total",
