@@ -19,6 +19,7 @@ interface Challenge {
   max_total_dd_pct: number;
   trailing_drawdown: boolean;
   market_type: "cfd" | "futures";
+  max_daily_loss_pct: number | null;
   start_date: string;
   end_date: string | null;
   balance: number;
@@ -201,6 +202,9 @@ function EditAccountModal({
   const [maxTotalDd, setMaxTotalDd] = useState(String(account.max_total_dd_pct));
   const [trailingDrawdown, setTrailingDrawdown] = useState(account.trailing_drawdown ?? false);
   const [marketType, setMarketType] = useState<"cfd" | "futures">(account.market_type ?? "cfd");
+  const [maxDailyLoss, setMaxDailyLoss] = useState(
+    account.max_daily_loss_pct != null ? String(account.max_daily_loss_pct) : ""
+  );
   const [startDate, setStartDate] = useState(account.start_date);
   const [endDate, setEndDate] = useState(account.end_date || "");
   const [status, setStatus] = useState(account.status);
@@ -217,6 +221,7 @@ function EditAccountModal({
       max_total_dd_pct: accountType === "prop" ? (parseFloat(maxTotalDd) || 0) : 0,
       trailing_drawdown: accountType === "prop" ? trailingDrawdown : false,
       market_type: marketType,
+      max_daily_loss_pct: maxDailyLoss.trim() ? parseFloat(maxDailyLoss) : null,
       start_date: startDate,
       end_date: endDate || null,
       status,
@@ -277,6 +282,21 @@ function EditAccountModal({
                 </div>
               </div>
               <TrailingDdToggle value={trailingDrawdown} onChange={setTrailingDrawdown} t={t} />
+              {/* Discipline limit — personal stop-trading rule, optional */}
+              <div>
+                <label className="block text-sm text-muted mb-1">{t("challenge_max_daily_loss_pct")}</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="100"
+                  value={maxDailyLoss}
+                  onChange={(e) => setMaxDailyLoss(e.target.value)}
+                  placeholder={t("strategy_not_set")}
+                  className={inputClass}
+                />
+                <p className="text-xs text-muted mt-1">{t("challenge_max_daily_loss_pct_help")}</p>
+              </div>
             </>
           )}
           <div className="grid grid-cols-2 gap-3">
@@ -560,6 +580,7 @@ export default function ChallengePage() {
   const [maxTotalDd, setMaxTotalDd] = useState("10");
   const [trailingDrawdown, setTrailingDrawdown] = useState(false);
   const [marketType, setMarketType] = useState<"cfd" | "futures">("cfd");
+  const [maxDailyLoss, setMaxDailyLoss] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [formErrors, setFormErrors] = useState<{ accountNumber?: boolean; accountSize?: boolean; startDate?: boolean }>({});
@@ -695,6 +716,7 @@ export default function ChallengePage() {
       max_total_dd_pct: accountType === "prop" ? (parseFloat(maxTotalDd) || 10) : 0,
       trailing_drawdown: accountType === "prop" ? trailingDrawdown : false,
       market_type: marketType,
+      max_daily_loss_pct: maxDailyLoss.trim() ? parseFloat(maxDailyLoss) : null,
       start_date: startDate || new Date().toISOString().split("T")[0],
       end_date: accountType === "prop" ? (endDate || null) : null,
       balance: size,
@@ -945,6 +967,21 @@ export default function ChallengePage() {
                 </div>
               </div>
               <TrailingDdToggle value={trailingDrawdown} onChange={setTrailingDrawdown} t={t} />
+              {/* Discipline limit — personal stop-trading rule, optional */}
+              <div>
+                <label className="block text-sm text-muted mb-1">{t("challenge_max_daily_loss_pct")}</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="100"
+                  value={maxDailyLoss}
+                  onChange={(e) => setMaxDailyLoss(e.target.value)}
+                  placeholder={t("strategy_not_set")}
+                  className={inputClass}
+                />
+                <p className="text-xs text-muted mt-1">{t("challenge_max_daily_loss_pct_help")}</p>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm text-muted mb-1">
