@@ -22,7 +22,7 @@ import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useAlerts, type Alert } from "@/lib/AlertsContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 type LimitType = "daily_loss" | "max_trades" | "consecutive_losses";
 
@@ -43,6 +43,13 @@ export default function StopTradingGuard() {
   const { selectedAccount, loading: accountLoading } = useActiveAccount();
   const supabase = createClient();
 
+  // Always points to the latest check() — Realtime callbacks read this ref
+  // so they never use a stale closure from the mount render.
+  const checkRef = useRef<() => void>(() => {});
+
+  // Keep the ref in sync with the current render's check() after every render.
+  useEffect(() => { checkRef.current = check; });
+
   useEffect(() => {
     let isMounted = true;
     let channel: ReturnType<typeof supabase.channel> | null = null;
@@ -58,17 +65,17 @@ export default function StopTradingGuard() {
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "trades", filter: `user_id=eq.${user.id}` },
-          () => { if (isMounted) check(); }
+          () => { if (isMounted) checkRef.current(); }
         )
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "strategies", filter: `user_id=eq.${user.id}` },
-          () => { if (isMounted) check(); }
+          () => { if (isMounted) checkRef.current(); }
         )
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "prop_challenges", filter: `user_id=eq.${user.id}` },
-          () => { if (isMounted) check(); }
+          () => { if (isMounted) checkRef.current(); }
         )
         .subscribe();
     };
