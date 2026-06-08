@@ -1058,6 +1058,9 @@ const translations: Record<Lang, Record<string, string>> = {
     stop_banner: "Limite atteinte aujourd'hui. Continue à tes risques.",
     stop_limit_daily_loss: "Tu as atteint ta perte maximale journalière.",
     stop_limit_daily_loss_account: "Limite de discipline journalière atteinte — compte {firm}. Arrête-toi maintenant.",
+    stop_daily_loss_50: "Perte du jour : {pct} % de ta limite — il te reste {eur} €.",
+    stop_daily_loss_75: "{pct} % de ta limite atteint — il te reste {eur} €. Ralentis.",
+    stop_daily_loss_95: "{pct} % de ta limite — il te reste {eur} €. Ne prends aucun risque.",
     stop_limit_max_trades: "Tu as atteint ton nombre maximum de trades pour aujourd'hui.",
     stop_limit_consecutive_losses: "Tu as atteint ta limite de pertes consécutives.",
 
@@ -2552,6 +2555,9 @@ const translations: Record<Lang, Record<string, string>> = {
     stop_banner: "Daily limit reached. Continue at your own risk.",
     stop_limit_daily_loss: "You have reached your max daily loss.",
     stop_limit_daily_loss_account: "Daily discipline limit reached — account {firm}. Stop trading now.",
+    stop_daily_loss_50: "Daily loss: {pct}% of your limit — {eur} € left.",
+    stop_daily_loss_75: "{pct}% of your limit reached — {eur} € left. Slow down.",
+    stop_daily_loss_95: "{pct}% of your limit — {eur} € left. Don't take any risk.",
     stop_limit_max_trades: "You have reached your max trades for today.",
     stop_limit_consecutive_losses: "You have reached your consecutive losses limit.",
 
@@ -4045,6 +4051,9 @@ const translations: Record<Lang, Record<string, string>> = {
     stop_banner: "Tageslimit erreicht. Weitermachen auf eigenes Risiko.",
     stop_limit_daily_loss: "Du hast deinen maximalen Tagesverlust erreicht.",
     stop_limit_daily_loss_account: "Tägliches Disziplin-Limit erreicht — Konto {firm}. Jetzt aufhören.",
+    stop_daily_loss_50: "Tagesverlust: {pct} % deines Limits — noch {eur} € übrig.",
+    stop_daily_loss_75: "{pct} % deines Limits erreicht — noch {eur} € übrig. Langsamer werden.",
+    stop_daily_loss_95: "{pct} % deines Limits — noch {eur} € übrig. Kein Risiko eingehen.",
     stop_limit_max_trades: "Du hast deine maximale Anzahl an Trades für heute erreicht.",
     stop_limit_consecutive_losses: "Du hast dein Limit an aufeinanderfolgenden Verlusten erreicht.",
 
@@ -5537,6 +5546,9 @@ const translations: Record<Lang, Record<string, string>> = {
     stop_banner: "Límite diario alcanzado. Continúa bajo tu responsabilidad.",
     stop_limit_daily_loss: "Has alcanzado tu pérdida máxima diaria.",
     stop_limit_daily_loss_account: "Límite de disciplina diaria alcanzado — cuenta {firm}. Para de tradear ahora.",
+    stop_daily_loss_50: "Pérdida del día: {pct} % de tu límite — te quedan {eur} €.",
+    stop_daily_loss_75: "{pct} % de tu límite alcanzado — te quedan {eur} €. Ve más despacio.",
+    stop_daily_loss_95: "{pct} % de tu límite — te quedan {eur} €. No asumas ningún riesgo.",
     stop_limit_max_trades: "Has alcanzado tu máximo de trades para hoy.",
     stop_limit_consecutive_losses: "Has alcanzado tu límite de pérdidas consecutivas.",
 

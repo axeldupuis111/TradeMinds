@@ -146,10 +146,11 @@ export function AlertsProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      if (dismissKey) {
-        persistDismiss(dismissKey);
-      }
-      // Always also mark in-memory so re-render is immediate
+      // Only persist to localStorage when dismissKey is defined.
+      // Alerts without dismissKey are dismissed in-memory only →
+      // the overlay re-appears on next page load.
+      if (dismissKey) persistDismiss(dismissKey);
+      // Always mark in-memory for immediate re-render.
       setInMemoryDismissed((prev) => new Set(Array.from(prev).concat(id)));
     },
     []
