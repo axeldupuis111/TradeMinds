@@ -9,6 +9,7 @@ import { KpiCards } from "@/components/dashboard/KpiCards";
 import { Sparkline } from "@/components/dashboard/Sparkline";
 import { CardHeader, CardTitle } from "@/components/ui/Card";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
+import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useTheme } from "@/lib/ThemeContext";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
@@ -132,7 +133,7 @@ export default function DashboardContent({
   const { plan, canUseAI, loading: planLoading } = usePlan();
   const { theme } = useTheme();
   const isDark = theme !== "light";
-  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const { selectedAccountId, setSelectedAccountId } = useActiveAccount();
   const [upsellDismissed, setUpsellDismissed] = useState(false);
 
   // ── Filtering ──────────────────────────────────────────────────────────────
@@ -268,7 +269,7 @@ export default function DashboardContent({
           {activeAccounts.length > 0 && (
             <select
               value={selectedAccountId || ""}
-              onChange={(e) => setSelectedAccountId(e.target.value || null)}
+              onChange={(e) => setSelectedAccountId(e.target.value)}
               className="px-3 py-1.5 bg-surface border border-border rounded-lg text-foreground text-xs font-medium focus:outline-none focus:ring-1 focus:ring-accent"
             >
               <option value="">{t("dash_all_accounts")}</option>
