@@ -149,6 +149,71 @@ function ProgressBar({
   );
 }
 
+function DailyLossGauge({
+  lossEur,
+  stopEur,
+  challengeEur,
+  t,
+}: {
+  lossEur: number;
+  stopEur: number | null;
+  challengeEur: number;
+  t: (k: string) => string;
+}) {
+  const fillPct = challengeEur > 0 ? Math.min((lossEur / challengeEur) * 100, 100) : 0;
+  const stopPct =
+    stopEur != null && challengeEur > 0
+      ? Math.min((stopEur / challengeEur) * 100, 100)
+      : null;
+
+  const ref = stopEur && stopEur > 0 ? stopEur : challengeEur;
+  const ratio = ref > 0 ? lossEur / ref : 0;
+
+  const fillColor =
+    ratio >= 1 ? "bg-loss animate-pulse"
+    : ratio >= 0.75 ? "bg-orange-500"
+    : "bg-accent";
+
+  const statusColor =
+    ratio >= 1 ? "text-loss"
+    : ratio >= 0.75 ? "text-orange-500"
+    : "text-accent";
+
+  let status: string;
+  if (stopEur == null) {
+    status = `${Math.round(lossEur)}€ / ${Math.round(challengeEur)}€`;
+  } else if (lossEur >= stopEur) {
+    status = t("gauge_stop_exceeded").replace("{eur}", String(Math.round(lossEur - stopEur)));
+  } else {
+    status = t("gauge_remaining").replace("{eur}", String(Math.round(stopEur - lossEur)));
+  }
+
+  return (
+    <div>
+      <div className="flex justify-between text-sm mb-1">
+        <span>{t("gauge_daily_loss")}</span>
+        <span className={`font-medium ${statusColor}`}>{status}</span>
+      </div>
+      <div className="relative h-4 text-xs text-muted">
+        {stopPct != null && (
+          <span className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: `${stopPct}%` }}>
+            {t("gauge_stop_marker")} · {Math.round(stopEur as number)}€
+          </span>
+        )}
+      </div>
+      <div className="relative h-3 bg-border rounded-full">
+        <div className={`h-full rounded-full transition-all duration-500 ${fillColor}`} style={{ width: `${fillPct}%` }} />
+        {stopPct != null && (
+          <div className="absolute -top-1 -bottom-1 w-0.5 bg-foreground/40" style={{ left: `${stopPct}%` }} />
+        )}
+      </div>
+      <div className="text-right text-xs text-muted mt-1">
+        {t("gauge_challenge_marker")} · {Math.round(challengeEur)}€
+      </div>
+    </div>
+  );
+}
+
 function StatusBadge({ status, t }: { status: string; t: (key: string) => string }) {
   if (status === "active") {
     return (
@@ -446,7 +511,12 @@ function AccountCard({
         <div className="space-y-4">
           <ProgressBar value={rules.profitUsed} max={rules.profitMax} color="bg-profit" label={t("challenge_profit_target")} />
           <ProgressBar value={rules.totalDdUsed} max={rules.totalDdMax} color="bg-loss" label={t("challenge_total_dd")} alert />
-          <ProgressBar value={rules.dailyDdUsed} max={rules.dailyDdMax} color="bg-loss" label={t("challenge_daily_dd")} alert />
+          <DailyLossGauge
+            lossEur={rules.dailyDdUsed}
+            stopEur={ac.max_daily_loss_pct != null ? ac.account_size * (ac.max_daily_loss_pct / 100) : null}
+            challengeEur={rules.dailyDdMax}
+            t={t}
+          />
         </div>
       )}
 
