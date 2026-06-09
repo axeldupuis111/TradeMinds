@@ -138,7 +138,7 @@ export default function DayState() {
       supabase.from("strategies").select("max_daily_loss, max_trades_per_day").eq("user_id", user.id).limit(1).maybeSingle(),
       supabase.from("trades").select("pnl, commission, swap").eq("user_id", user.id).gte("open_time", today),
       supabase.from("session_reviews").select("created_at, analysis").eq("user_id", user.id).order("created_at", { ascending: false }).limit(30),
-      supabase.from("prop_challenges").select("account_size").eq("user_id", user.id).eq("status", "active").limit(1).maybeSingle(),
+      supabase.from("prop_challenges").select("account_size, max_daily_loss_pct").eq("user_id", user.id).eq("status", "active").limit(1).maybeSingle(),
       supabase.from("sessions").select("created_at").eq("user_id", user.id).eq("active", true).gte("created_at", today).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     ]);
 
@@ -161,7 +161,7 @@ export default function DayState() {
       else break;
     }
 
-    const maxDailyLoss = strategy?.max_daily_loss ?? null;
+    const maxDailyLoss = accounts?.max_daily_loss_pct ?? null;
     const maxLossEuro = maxDailyLoss !== null && accountSize > 0 ? (accountSize * maxDailyLoss) / 100 : null;
     const remainingBudget = maxLossEuro !== null ? Math.max(0, maxLossEuro + todayPnl) : null;
     const budgetPct = maxLossEuro !== null && remainingBudget !== null ? (remainingBudget / maxLossEuro) * 100 : 100;
