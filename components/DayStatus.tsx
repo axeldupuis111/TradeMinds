@@ -1,11 +1,11 @@
 "use client";
 
+import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
 
 interface Strategy {
-  max_daily_loss: number | null;
   max_trades_per_day: number | null;
 }
 
@@ -27,13 +27,15 @@ function netPnl(t: { pnl: number; commission: number | null; swap: number | null
 export default function DayStatus() {
   const { t } = useLanguage();
   const supabase = createClient();
+  const { selectedAccount, loading: accountLoading } = useActiveAccount();
   const [stats, setStats] = useState<DayStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (accountLoading) return;
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [accountLoading, selectedAccount?.id, selectedAccount?.max_daily_loss_pct, selectedAccount?.account_size]);
 
   async function load() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -41,16 +43,15 @@ export default function DayStatus() {
 
     const today = new Date().toISOString().split("T")[0];
 
-    const [{ data: strat }, { data: trades }, { data: reviews }, { data: accounts }, { data: activeSession }] = await Promise.all([
-      supabase.from("strategies").select("max_daily_loss, max_trades_per_day").eq("user_id", user.id).limit(1).maybeSingle(),
+    const [{ data: strat }, { data: trades }, { data: reviews }, { data: activeSession }] = await Promise.all([
+      supabase.from("strategies").select("max_trades_per_day").eq("user_id", user.id).limit(1).maybeSingle(),
       supabase.from("trades").select("pnl, commission, swap").eq("user_id", user.id).gte("open_time", today),
       supabase.from("session_reviews").select("created_at, analysis").eq("user_id", user.id).order("created_at", { ascending: false }).limit(30),
-      supabase.from("prop_challenges").select("account_size").eq("user_id", user.id).eq("status", "active").limit(1).maybeSingle(),
       supabase.from("sessions").select("created_at").eq("user_id", user.id).eq("active", true).gte("created_at", today).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     ]);
 
     const strategy = strat as Strategy | null;
-    const accountSize = accounts?.account_size || 0;
+    const accountSize = selectedAccount?.account_size ?? 0;
     const todaysTrades = trades || [];
     const todayCount = todaysTrades.length;
     const todayPnl = todaysTrades.reduce((s, tr) => s + netPnl(tr), 0);
@@ -68,7 +69,7 @@ export default function DayStatus() {
       else break;
     }
 
-    const maxDailyLoss = strategy?.max_daily_loss ?? null;
+    const maxDailyLoss = selectedAccount?.max_daily_loss_pct ?? null;
     const maxLossEuro = maxDailyLoss !== null && accountSize > 0 ? (accountSize * maxDailyLoss) / 100 : null;
     const remainingBudget = maxLossEuro !== null ? Math.max(0, maxLossEuro + todayPnl) : null;
     const budgetPct = maxLossEuro !== null && remainingBudget !== null ? (remainingBudget / maxLossEuro) * 100 : 100;
@@ -86,7 +87,7 @@ export default function DayStatus() {
     setLoading(false);
   }
 
-  if (loading) {
+  if (loading || accountLoading) {
     return <div className="bg-card border border-border rounded-xl p-5 skeleton h-40" />;
   }
   if (!stats) return null;
