@@ -1065,6 +1065,11 @@ const translations: Record<Lang, Record<string, string>> = {
     stop_limit_consecutive_losses: "Tu as atteint ta limite de pertes consécutives.",
     warn_max_trades: "Tu as atteint ton max de trades aujourd'hui — pose-toi.",
     warn_consecutive_losses: "{n} pertes d'affilée — fais une pause avant de reprendre.",
+    gauge_daily_loss: "Perte du jour",
+    gauge_stop_marker: "ton stop",
+    gauge_challenge_marker: "challenge perdu",
+    gauge_remaining: "il te reste {eur}€ avant ton stop",
+    gauge_stop_exceeded: "stop dépassé de {eur}€",
 
     // Challenge Guardian (Premium)
     guardian_daily_dd_warning: "⚠️ {pct}% de ton DD journalier challenge consommé — {eur}€ restants",
@@ -2564,6 +2569,11 @@ const translations: Record<Lang, Record<string, string>> = {
     stop_limit_consecutive_losses: "You have reached your consecutive losses limit.",
     warn_max_trades: "You've hit your max trades for today — take a break.",
     warn_consecutive_losses: "{n} losses in a row — take a break before continuing.",
+    gauge_daily_loss: "Daily loss",
+    gauge_stop_marker: "your stop",
+    gauge_challenge_marker: "challenge lost",
+    gauge_remaining: "{eur}€ left before your stop",
+    gauge_stop_exceeded: "stop exceeded by {eur}€",
 
     // Challenge Guardian (Premium)
     guardian_daily_dd_warning: "⚠️ {pct}% of your challenge daily DD used — {eur}€ remaining",
@@ -4062,6 +4072,11 @@ const translations: Record<Lang, Record<string, string>> = {
     stop_limit_consecutive_losses: "Du hast dein Limit an aufeinanderfolgenden Verlusten erreicht.",
     warn_max_trades: "Du hast dein Trade-Maximum für heute erreicht — mach eine Pause.",
     warn_consecutive_losses: "{n} Verluste in Folge — mach eine Pause, bevor du weitermachst.",
+    gauge_daily_loss: "Tagesverlust",
+    gauge_stop_marker: "dein Stopp",
+    gauge_challenge_marker: "Challenge verloren",
+    gauge_remaining: "noch {eur}€ bis zu deinem Stopp",
+    gauge_stop_exceeded: "Stopp um {eur}€ überschritten",
 
     // Challenge Guardian (Premium)
     guardian_daily_dd_warning: "⚠️ {pct}% deines täglichen Challenge-DD verbraucht — {eur}€ übrig",
@@ -5559,6 +5574,11 @@ const translations: Record<Lang, Record<string, string>> = {
     stop_limit_consecutive_losses: "Has alcanzado tu límite de pérdidas consecutivas.",
     warn_max_trades: "Has alcanzado tu máximo de operaciones de hoy — haz una pausa.",
     warn_consecutive_losses: "{n} pérdidas seguidas — haz una pausa antes de continuar.",
+    gauge_daily_loss: "Pérdida del día",
+    gauge_stop_marker: "tu límite",
+    gauge_challenge_marker: "challenge perdido",
+    gauge_remaining: "te quedan {eur}€ antes de tu límite",
+    gauge_stop_exceeded: "límite superado por {eur}€",
 
     // Challenge Guardian (Premium)
     guardian_daily_dd_warning: "⚠️ {pct}% de tu DD diario de challenge consumido — quedan {eur}€",
