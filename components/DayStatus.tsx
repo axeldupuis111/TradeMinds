@@ -38,6 +38,8 @@ export default function DayStatus() {
   }, [accountLoading, selectedAccount?.id, selectedAccount?.max_daily_loss_pct, selectedAccount?.account_size]);
 
   async function load() {
+    if (!selectedAccount) { setStats(null); setLoading(false); return; }
+
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
 
@@ -45,7 +47,7 @@ export default function DayStatus() {
 
     const [{ data: strat }, { data: trades }, { data: reviews }, { data: activeSession }] = await Promise.all([
       supabase.from("strategies").select("max_trades_per_day").eq("user_id", user.id).limit(1).maybeSingle(),
-      supabase.from("trades").select("pnl, commission, swap").eq("user_id", user.id).gte("open_time", today),
+      supabase.from("trades").select("pnl, commission, swap").eq("user_id", user.id).eq("challenge_id", selectedAccount.id).gte("open_time", today),
       supabase.from("session_reviews").select("created_at, analysis").eq("user_id", user.id).order("created_at", { ascending: false }).limit(30),
       supabase.from("sessions").select("created_at").eq("user_id", user.id).eq("active", true).gte("created_at", today).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     ]);
@@ -69,8 +71,8 @@ export default function DayStatus() {
       else break;
     }
 
-    const maxDailyLoss = selectedAccount?.max_daily_loss_pct ?? null;
-    const maxLossEuro = maxDailyLoss !== null && accountSize > 0 ? (accountSize * maxDailyLoss) / 100 : null;
+    const maxDailyLoss = selectedAccount?.max_daily_loss_pct ?? selectedAccount?.max_daily_dd_pct ?? null;
+    const maxLossEuro = maxDailyLoss !== null && maxDailyLoss > 0 && accountSize > 0 ? (accountSize * maxDailyLoss) / 100 : null;
     const remainingBudget = maxLossEuro !== null ? Math.max(0, maxLossEuro + todayPnl) : null;
     const budgetPct = maxLossEuro !== null && remainingBudget !== null ? (remainingBudget / maxLossEuro) * 100 : 100;
 
@@ -97,7 +99,10 @@ export default function DayStatus() {
   return (
     <section className="bg-card border border-border rounded-xl p-5">
       <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
-        <h2 className="text-lg font-semibold text-foreground">{t("session_state_title")}</h2>
+        <h2 className="text-lg font-semibold text-foreground">
+          {t("session_state_title")}
+          {selectedAccount && <span className="text-xs text-muted ml-2">· {selectedAccount.firm}</span>}
+        </h2>
         {activeSessionStartedAt && (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-profit/10 border border-profit/30 text-profit text-xs font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-profit animate-pulse" />
