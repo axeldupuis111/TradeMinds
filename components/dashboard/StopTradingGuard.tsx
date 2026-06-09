@@ -196,11 +196,10 @@ export default function StopTradingGuard() {
       reached.push("max_trades");
       alerts.push({
         id: "stop_max_trades",
-        level: "critical" as const,
+        level: "warning" as const,
         category: "daily_loss",
-        message: t("stop_limit_max_trades"),
-        dismissible: true,
-        dismissKey: `stop_max_trades_${today}`,
+        message: t("warn_max_trades"),
+        dismissible: false,
       });
     }
 
@@ -216,11 +215,10 @@ export default function StopTradingGuard() {
         reached.push("consecutive_losses");
         alerts.push({
           id: "stop_consecutive_losses",
-          level: "critical" as const,
+          level: "warning" as const,
           category: "daily_loss",
-          message: t("stop_limit_consecutive_losses"),
-          dismissible: true,
-          dismissKey: `stop_consecutive_losses_${today}`,
+          message: t("warn_consecutive_losses").replace("{n}", String(consecutiveLosses)),
+          dismissible: false,
         });
       }
     }
