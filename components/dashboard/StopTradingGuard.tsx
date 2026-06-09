@@ -97,7 +97,7 @@ export default function StopTradingGuard() {
   // Re-check when the selected account changes (limit may differ).
   useEffect(() => {
     check();
-  }, [accountLoading, selectedAccount?.id, selectedAccount?.max_daily_loss_pct]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [accountLoading, selectedAccount?.id, selectedAccount?.max_daily_loss_pct, selectedAccount?.account_size]); // eslint-disable-line react-hooks/exhaustive-deps
   async function check() {
     // Wait for ActiveAccountContext to finish loading before evaluating
     // the discipline limit — avoids overwriting with an empty alert list
@@ -106,6 +106,11 @@ export default function StopTradingGuard() {
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+
+    if (!selectedAccount) {
+      setSourceAlerts(SOURCE_KEY, []);
+      return;
+    }
 
     const today = new Date().toISOString().split("T")[0];
 
@@ -121,6 +126,7 @@ export default function StopTradingGuard() {
         .from("trades")
         .select("pnl, commission, swap, open_time, status")
         .eq("user_id", user.id)
+        .eq("challenge_id", selectedAccount.id)
         .gte("open_time", today)
         .order("open_time", { ascending: true }),
     ]);
@@ -128,7 +134,7 @@ export default function StopTradingGuard() {
     const strategy: Strategy = strat ?? { max_trades_per_day: null, max_consecutive_losses: null };
     const todayTrades = trades || [];
 
-    // todayPnl — global (all accounts), unchanged scope for now.
+    // todayPnl — scoped to the active account (challenge_id).
     const todayPnl = todayTrades
       .filter((tr) => tr.status === "closed")
       .reduce((s, tr) => s + netPnl(tr), 0);
