@@ -1,5 +1,6 @@
 "use client";
 
+import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { INSTRUMENTS } from "@/lib/instruments";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
@@ -22,6 +23,7 @@ function nowHHMM() {
 
 export default function QuickTradeLogger({ strategyId, pairs, onClose, onSaved }: Props) {
   const { t } = useLanguage();
+  const { selectedAccount } = useActiveAccount();
   const supabase = createClient();
 
   const todayStr = new Date().toISOString().split("T")[0];
@@ -65,6 +67,7 @@ export default function QuickTradeLogger({ strategyId, pairs, onClose, onSaved }
     const { error: dbError } = await supabase.from("trades").insert({
       user_id: user.id,
       strategy_id: strategyId,
+      challenge_id: selectedAccount?.id ?? null,
       open_time: openTime,
       close_time: null,
       pair: form.pair.toUpperCase(),
