@@ -2,6 +2,7 @@
 
 import EquityCurve from "@/components/charts/EquityCurve";
 import { computeChallengeRules } from "@/lib/challenge-rules";
+import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
@@ -430,6 +431,8 @@ function DeleteAccountModal({
 function AccountCard({
   ac,
   stats,
+  isSelected,
+  onSelect,
   onStatusChange,
   onEdit,
   onDelete,
@@ -438,6 +441,8 @@ function AccountCard({
 }: {
   ac: Challenge;
   stats: AccountStats;
+  isSelected: boolean;
+  onSelect: () => void;
   onStatusChange: (id: string, status: "passed" | "failed") => void;
   onEdit: (id: string, data: Partial<Challenge>) => void;
   onDelete: (id: string) => void;
@@ -469,7 +474,7 @@ function AccountCard({
     : null;
 
   return (
-    <div className="bg-card border border-border rounded-xl p-6">
+    <div className={`bg-card border rounded-xl p-6 transition-colors ${isSelected ? "border-accent ring-1 ring-accent" : "border-border"}`}>
       {showEdit && (
         <EditAccountModal
           account={ac}
@@ -499,6 +504,18 @@ function AccountCard({
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
+          {isSelected ? (
+            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-accent text-background">
+              {t("account_selected")}
+            </span>
+          ) : (
+            <button
+              onClick={onSelect}
+              className="px-3 py-1 rounded-full text-xs font-medium border border-border text-muted hover:text-accent hover:border-accent transition-colors"
+            >
+              {t("account_select_action")}
+            </button>
+          )}
           <span className="px-3 py-1 rounded-full text-xs font-medium bg-accent/10 text-accent">
             {isProp ? t("challenge_type_prop") : t("challenge_type_personal")}
           </span>
@@ -636,6 +653,7 @@ export default function ChallengePage() {
   const { t } = useLanguage();
   const { maxAccounts } = usePlan();
   const supabase = createClient();
+  const { selectedAccountId, setSelectedAccountId } = useActiveAccount();
 
   // Form state
   const [accountType, setAccountType] = useState<"prop" | "personal">("prop");
@@ -881,6 +899,8 @@ export default function ChallengePage() {
                 key={ac.id}
                 ac={ac}
                 stats={s}
+                isSelected={ac.id === selectedAccountId}
+                onSelect={() => setSelectedAccountId(ac.id)}
                 onStatusChange={handleStatusChange}
                 onEdit={handleEdit}
                 onDelete={handleDeleteAccount}
