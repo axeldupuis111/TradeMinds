@@ -1,5 +1,6 @@
 "use client";
 
+import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
@@ -15,7 +16,6 @@ interface Trade {
 
 interface Props {
   strategy: {
-    max_daily_loss: number | null;
     max_trades_per_day: number | null;
     max_session_minutes: number | null;
   } | null;
@@ -52,10 +52,12 @@ function formatSessionDuration(
 export default function RealTimeGuards({ strategy, accountSize, sessionStartedAt, sessionPausedAt }: Props) {
   const { t } = useLanguage();
   const supabase = createClient();
+  const { selectedAccount } = useActiveAccount();
   const [trades, setTrades] = useState<Trade[]>([]);
   const [now, setNow] = useState(Date.now());
 
   async function loadTrades() {
+    if (!selectedAccount) { setTrades([]); return; }
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const today = new Date().toISOString().split("T")[0];
@@ -63,6 +65,7 @@ export default function RealTimeGuards({ strategy, accountSize, sessionStartedAt
       .from("trades")
       .select("pnl, commission, swap, close_time, open_time, status")
       .eq("user_id", user.id)
+      .eq("challenge_id", selectedAccount.id)
       .gte("open_time", today + "T00:00:00")
       .lte("open_time", today + "T23:59:59")
       .order("open_time", { ascending: false });
@@ -77,7 +80,7 @@ export default function RealTimeGuards({ strategy, accountSize, sessionStartedAt
       clearInterval(tradeInterval);
       clearInterval(clockInterval);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedAccount?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const todayPnl = trades
     .filter((tr) => tr.status === "closed")
@@ -86,9 +89,10 @@ export default function RealTimeGuards({ strategy, accountSize, sessionStartedAt
   const maxTrades = strategy?.max_trades_per_day ?? null;
   const tradePct = maxTrades ? tradeCount / maxTrades : 0;
 
+  const lossPct = selectedAccount?.max_daily_loss_pct ?? selectedAccount?.max_daily_dd_pct ?? null;
   const maxLossEuro =
-    strategy?.max_daily_loss != null && accountSize > 0
-      ? (accountSize * strategy.max_daily_loss) / 100
+    lossPct != null && lossPct > 0 && accountSize > 0
+      ? (accountSize * lossPct) / 100
       : null;
   const lossConsumed = maxLossEuro !== null ? Math.abs(Math.min(0, todayPnl)) / maxLossEuro : 0;
 
