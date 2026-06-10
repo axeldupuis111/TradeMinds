@@ -24,8 +24,6 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useRef } from "react";
 
-type LimitType = "daily_loss" | "max_trades" | "consecutive_losses";
-
 interface Strategy {
   max_trades_per_day: number | null;
   max_consecutive_losses: number | null;
@@ -139,7 +137,6 @@ export default function StopTradingGuard() {
       .filter((tr) => tr.status === "closed")
       .reduce((s, tr) => s + netPnl(tr), 0);
 
-    const reached: LimitType[] = [];
     const alerts: Alert[] = [];
 
     // ── Daily loss — graduated paliers from ACTIVE ACCOUNT discipline limit ──
@@ -199,7 +196,6 @@ export default function StopTradingGuard() {
       strategy.max_trades_per_day !== null &&
       todayTrades.length >= strategy.max_trades_per_day
     ) {
-      reached.push("max_trades");
       alerts.push({
         id: "stop_max_trades",
         level: "warning" as const,
@@ -218,7 +214,6 @@ export default function StopTradingGuard() {
         else consecutiveLosses = 0;
       }
       if (consecutiveLosses >= strategy.max_consecutive_losses) {
-        reached.push("consecutive_losses");
         alerts.push({
           id: "stop_consecutive_losses",
           level: "warning" as const,
