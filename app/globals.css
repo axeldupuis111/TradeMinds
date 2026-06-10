@@ -252,6 +252,7 @@ tbody tr:hover { background-color: rgb(var(--accent) / 0.04); }
   animation: gradient-shift 15s ease infinite;
 }
 
+
 /* ─── Glow effects ──────────────────────────────────────────────────────── */
 .glow-blue { box-shadow: 0 0 20px rgba(59,130,246,0.15), 0 0 60px rgba(59,130,246,0.05); }
 .glow-blue:hover { box-shadow: 0 0 30px rgba(59,130,246,0.25), 0 0 80px rgba(59,130,246,0.1); }
@@ -371,6 +372,94 @@ html.light .card-shadow { box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 0 0 1px rgba
 
 @layer utilities {
   .text-balance { text-wrap: balance; }
+}
+
+/* ─── Aurora blobs — hero floating animation ─────────────────────────────── */
+@keyframes aurora-float-a {
+  0%, 100% { transform: translate(0px,   0px)  scale(1);    opacity: 0.08; }
+  33%       { transform: translate(28px, -22px) scale(1.07); opacity: 0.13; }
+  66%       { transform: translate(-20px, 14px) scale(0.94); opacity: 0.06; }
+}
+@keyframes aurora-float-b {
+  0%, 100% { transform: translate(0px,   0px)  scale(1);    opacity: 0.06; }
+  33%       { transform: translate(-24px, 18px) scale(1.05); opacity: 0.10; }
+  66%       { transform: translate(18px, -12px) scale(0.97); opacity: 0.04; }
+}
+.aurora-a { animation: aurora-float-a 14s ease-in-out infinite; }
+.aurora-b { animation: aurora-float-b 19s ease-in-out infinite; }
+.aurora-c { animation: aurora-float-a 10s ease-in-out infinite reverse; }
+@media (prefers-reduced-motion: reduce) {
+  .aurora-a, .aurora-b, .aurora-c { animation: none; }
+}
+
+/* ─── Gradient text shimmer (hero accent span) ───────────────────────────── */
+@keyframes text-shimmer {
+  0%   { background-position: 0%   50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0%   50%; }
+}
+.text-gradient-animated {
+  background-size: 300% 300% !important;
+  animation: text-shimmer 7s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .text-gradient-animated { animation: none; background-size: 100% 100% !important; }
+}
+
+/* ─── Pricing popular card — breathing glow ─────────────────────────────── */
+@keyframes card-breathe {
+  0%, 100% { box-shadow: 0 0 0 1px rgb(0 212 216/.12), 0 8px 40px -8px rgb(0 212 216/.14); }
+  50%       { box-shadow: 0 0 0 1px rgb(0 212 216/.22), 0 8px 40px -8px rgb(0 212 216/.30), 0 0 70px -24px rgb(0 212 216/.12); }
+}
+.card-breathe { animation: card-breathe 4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .card-breathe { animation: none; } }
+
+/* ─── AI typing dots ─────────────────────────────────────────────────────── */
+@keyframes typing-bounce {
+  0%, 80%, 100% { transform: scale(0.55); opacity: 0.35; }
+  40%            { transform: scale(1);    opacity: 1;    }
+}
+.typing-dot { width: 5px; height: 5px; border-radius: 50%; background: rgb(var(--muted)); display: inline-block; }
+.typing-dot-1 { animation: typing-bounce 1.2s ease-in-out infinite 0ms;    }
+.typing-dot-2 { animation: typing-bounce 1.2s ease-in-out infinite 200ms;  }
+.typing-dot-3 { animation: typing-bounce 1.2s ease-in-out infinite 400ms;  }
+@media (prefers-reduced-motion: reduce) {
+  .typing-dot-1, .typing-dot-2, .typing-dot-3 {
+    animation: none; transform: scale(1); opacity: 0.7;
+  }
+}
+
+/* ─── Online presence dot ────────────────────────────────────────────────── */
+@keyframes presence-pulse {
+  0%, 100% { opacity: 1;   transform: scale(1);    }
+  50%       { opacity: 0.5; transform: scale(0.8);  }
+}
+.presence-dot { animation: presence-pulse 2.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .presence-dot { animation: none; } }
+
+/* ─── CTA primary button — shimmer sweep on hover ───────────────────────── */
+@keyframes btn-sweep {
+  0%   { transform: translateX(-120%) skewX(-15deg); }
+  100% { transform: translateX(280%)  skewX(-15deg); }
+}
+.btn-primary-shimmer { position: relative; overflow: hidden; }
+.btn-primary-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.14) 50%, transparent 100%);
+  transform: translateX(-120%) skewX(-15deg);
+  pointer-events: none;
+}
+.btn-primary-shimmer:hover::after { animation: btn-sweep 0.55s ease-out forwards; }
+
+/* ─── Card inset glow (top-edge highlight) ───────────────────────────────── */
+.card-inset { box-shadow: inset 0 1px 0 rgba(255,255,255,0.05); }
+
+/* ─── Grid dots — radial fade mask ──────────────────────────────────────── */
+.grid-dots-mask {
+  -webkit-mask-image: radial-gradient(ellipse 85% 85% at 50% 50%, black 30%, transparent 100%);
+  mask-image: radial-gradient(ellipse 85% 85% at 50% 50%, black 30%, transparent 100%);
 }
 
 /* Suppression des outlines focus sur les graphiques Recharts (dark theme) */

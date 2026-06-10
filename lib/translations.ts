@@ -1304,6 +1304,15 @@ const translations: Record<Lang, Record<string, string>> = {
     feature_ai_msg_5: "C'est ta règle la plus souvent violée. 7 trades sur 10 perdants viennent de là.",
     feature_score_conformes: "conformes",
     feature_score_violations: "violations",
+    // Landing — sync feature (MT4/MT5 live)
+    feature_sync_label: "SYNC AUTO",
+    feature_sync_title: "Connexion MT4 & MT5 en direct",
+    feature_sync_desc: "Au-delà de l'import CSV : connecte ton compte MetaTrader une seule fois, et tes trades se synchronisent tout seuls, en temps réel. Plus rien à exporter, plus rien à oublier.",
+    feature_sync_node_mt: "MetaTrader",
+    feature_sync_node_app: "TradeDiscipline",
+    feature_sync_status: "Synchronisé il y a 2s",
+    feature_sync_live: "EN DIRECT",
+    feature_sync_vs_csv: "Import CSV aussi disponible — gratuit",
     // Landing mockup strings
     mockup_streak_label: "12 jours de discipline consécutifs",
     mockup_streak_record: "nouveau record",
@@ -2811,6 +2820,15 @@ const translations: Record<Lang, Record<string, string>> = {
     feature_ai_msg_5: "That's your most broken rule. 7 out of 10 losing trades come from it.",
     feature_score_conformes: "compliant",
     feature_score_violations: "violations",
+    // Landing — sync feature (MT4/MT5 live)
+    feature_sync_label: "AUTO SYNC",
+    feature_sync_title: "Live MT4 & MT5 connection",
+    feature_sync_desc: "Beyond CSV import: connect your MetaTrader account once and your trades sync on their own, in real time. Nothing to export, nothing to forget.",
+    feature_sync_node_mt: "MetaTrader",
+    feature_sync_node_app: "TradeDiscipline",
+    feature_sync_status: "Synced 2s ago",
+    feature_sync_live: "LIVE",
+    feature_sync_vs_csv: "CSV import also available — free",
     // Landing mockup strings
     mockup_streak_label: "12 consecutive discipline days",
     mockup_streak_record: "new record",
@@ -4317,6 +4335,15 @@ const translations: Record<Lang, Record<string, string>> = {
     feature_ai_msg_5: "Das ist deine am häufigsten gebrochene Regel. 7 von 10 Verlust-Trades kommen daher.",
     feature_score_conformes: "konform",
     feature_score_violations: "Verstöße",
+    // Landing — sync feature (MT4/MT5 live)
+    feature_sync_label: "AUTO-SYNC",
+    feature_sync_title: "Live-Verbindung zu MT4 & MT5",
+    feature_sync_desc: "Mehr als CSV-Import: Verbinde dein MetaTrader-Konto einmal, und deine Trades synchronisieren sich von selbst, in Echtzeit. Nichts mehr zu exportieren, nichts mehr zu vergessen.",
+    feature_sync_node_mt: "MetaTrader",
+    feature_sync_node_app: "TradeDiscipline",
+    feature_sync_status: "Vor 2 Sek. synchronisiert",
+    feature_sync_live: "LIVE",
+    feature_sync_vs_csv: "CSV-Import auch verfügbar — kostenlos",
     // Landing mockup strings
     mockup_streak_label: "12 aufeinanderfolgende Disziplintage",
     mockup_streak_record: "neuer Rekord",
@@ -5822,6 +5849,15 @@ const translations: Record<Lang, Record<string, string>> = {
     feature_ai_msg_5: "Esa es tu regla más incumplida. 7 de cada 10 trades perdedores vienen de ahí.",
     feature_score_conformes: "conformes",
     feature_score_violations: "violaciones",
+    // Landing — sync feature (MT4/MT5 live)
+    feature_sync_label: "SINC. AUTO",
+    feature_sync_title: "Conexión MT4 y MT5 en directo",
+    feature_sync_desc: "Más allá de la importación CSV: conecta tu cuenta MetaTrader una sola vez y tus operaciones se sincronizan solas, en tiempo real. Nada que exportar, nada que olvidar.",
+    feature_sync_node_mt: "MetaTrader",
+    feature_sync_node_app: "TradeDiscipline",
+    feature_sync_status: "Sincronizado hace 2s",
+    feature_sync_live: "EN DIRECTO",
+    feature_sync_vs_csv: "Importación CSV también disponible — gratis",
     // Landing mockup strings
     mockup_streak_label: "12 días consecutivos de disciplina",
     mockup_streak_record: "nuevo récord",
