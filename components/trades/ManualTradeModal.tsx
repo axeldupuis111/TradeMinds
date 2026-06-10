@@ -1,5 +1,6 @@
 "use client";
 
+import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { detectKillzone, ICT_EMOTIONS } from "@/lib/ict-constants";
 import { INSTRUMENTS, INSTRUMENT_CATEGORIES } from "@/lib/instruments";
 import { useStrategyTags } from "@/lib/hooks/useStrategyTags";
@@ -44,6 +45,7 @@ interface Account {
 export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, initialChecklist }: Props) {
   const { t, lang } = useLanguage();
   const { plan, loading: planLoading } = usePlan();
+  const { selectedAccountId: activeAccountId } = useActiveAccount();
   const isFree = !planLoading && plan === "free";
   const supabase = createClient();
   const stratTags = useStrategyTags(strategyId ?? undefined);
@@ -65,7 +67,7 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
         .order("created_at", { ascending: false });
       if (data && data.length > 0) {
         setAccounts(data);
-        setSelectedAccountId(data[0].id);
+        setSelectedAccountId(data.find((a) => a.id === activeAccountId)?.id ?? data[0].id);
       }
     }
     loadAccounts();
