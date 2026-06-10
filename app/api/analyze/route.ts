@@ -168,7 +168,6 @@ ${periodInfo}STRATÉGIE DU TRADER :
 - Sessions autorisées : ${sessionsText || "Toutes"}
 - Risk/Reward minimum : ${strategy.risk_reward ?? "Non défini"}
 - Stop Loss maximum (pips) : ${strategy.max_sl_pips ?? "Non défini"}
-- Perte max journalière (%) : ${strategy.max_daily_loss ?? "Non défini"}
 - Nombre max de trades/jour : ${strategy.max_trades_per_day ?? "Non défini"}
 - Trades perdants consécutifs avant stop : ${strategy.max_consecutive_losses ?? "Non défini"}
 - Règles de setup :
@@ -211,7 +210,7 @@ RÈGLES D'ANALYSE :
 - Ne liste une violation que si elle est PROUVÉE par les données. Pas de suspicions.
 - Si une règle de la stratégie n'est pas définie (valeur "Non défini" ou "Toutes"), NE PAS vérifier cette règle.
 - Pour les patterns comportementaux (revenge trading, overtrading, etc.), base-toi sur des signaux objectifs : timing entre trades, augmentation de lot après perte, nombre de trades excessif.
-- "occurrences" = le nombre de fois où la pénalité s'applique. Pour les violations par trade (wrong_pair, wrong_session, low_rr, sl_too_wide, missing_sl, missing_tp, missing_setup_tag), c'est le nombre de trades concernés. Pour les violations par jour/événement (max_trades_day, max_daily_loss, consecutive_losses), c'est le nombre de jours/événements. Pour les patterns (revenge_trading, overtrading, lot_increase_after_loss, fomo), c'est 1 si détecté.
+- "occurrences" = le nombre de fois où la pénalité s'applique. Pour les violations par trade (wrong_pair, wrong_session, low_rr, sl_too_wide, missing_sl, missing_tp, missing_setup_tag), c'est le nombre de trades concernés. Pour les violations par jour/événement (max_trades_day, consecutive_losses), c'est le nombre de jours/événements. Pour les patterns (revenge_trading, overtrading, lot_increase_after_loss, fomo), c'est 1 si détecté.
 - VOCABULAIRE : N'utilise jamais les mots "tag", "tagger", ou "tagging" dans tes réponses. Parle de "setup", "checklist", "compléter la checklist du trade". Le setup de chaque trade est dérivé automatiquement des éléments cochés dans sa checklist — pas de dropdown ni de saisie manuelle. Un trade sans setup = checklist vide.
 
 TYPES DE VIOLATIONS POSSIBLES :
@@ -221,7 +220,6 @@ TYPES DE VIOLATIONS POSSIBLES :
   * "low_rr" : Risk/Reward inférieur au minimum défini
   * "sl_too_wide" : Stop Loss au-delà du maximum défini (en pips)
   * "max_trades_day" : dépassement du nombre max de trades par jour
-  * "max_daily_loss" : dépassement de la perte max journalière
   * "consecutive_losses" : continuation du trading après N pertes consécutives
 - category "behavior" :
   * "revenge_trading" : trade pris rapidement après une perte significative, avec augmentation de risque ou sans setup clair

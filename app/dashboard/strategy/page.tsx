@@ -37,7 +37,6 @@ interface ParsedRules {
   sessions: string[];
   risk_reward: number | null;
   max_sl_pips: number | null;
-  max_daily_loss: number | null;
   max_trades_per_day: number | null;
   max_consecutive_losses: number | null;
   max_session_minutes: number | null;
@@ -186,7 +185,6 @@ export default function StrategyPage() {
       sessions: (data.sessions as string[]) || [],
       risk_reward: data.risk_reward as number | null,
       max_sl_pips: data.max_sl_pips as number | null,
-      max_daily_loss: data.max_daily_loss as number | null,
       max_trades_per_day: data.max_trades_per_day as number | null,
       max_consecutive_losses: data.max_consecutive_losses as number | null,
       max_session_minutes: data.max_session_minutes as number | null,
@@ -293,7 +291,6 @@ export default function StrategyPage() {
       sessions: parsed.sessions,
       risk_reward: parsed.risk_reward,
       max_sl_pips: parsed.max_sl_pips,
-      max_daily_loss: parsed.max_daily_loss,
       max_trades_per_day: parsed.max_trades_per_day,
       max_consecutive_losses: parsed.max_consecutive_losses,
       max_session_minutes: parsed.max_session_minutes,
@@ -720,10 +717,6 @@ export default function StrategyPage() {
               <div>
                 <label className="block text-xs text-muted mb-1">{t("strategy_sl_max")}</label>
                 <input type="number" value={parsed.max_sl_pips ?? ""} onChange={(e) => updateParsedField("max_sl_pips", e.target.value ? parseFloat(e.target.value) : null)} placeholder={t("strategy_not_set")} className={inputClass} />
-              </div>
-              <div>
-                <label className="block text-xs text-muted mb-1">{t("strategy_daily_loss")}</label>
-                <input type="number" step="0.1" value={parsed.max_daily_loss ?? ""} onChange={(e) => updateParsedField("max_daily_loss", e.target.value ? parseFloat(e.target.value) : null)} placeholder={t("strategy_not_set")} className={inputClass} />
               </div>
               <div>
                 <label className="block text-xs text-muted mb-1">{t("strategy_max_trades")}</label>
