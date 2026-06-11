@@ -32,6 +32,14 @@ interface Props {
 const inputClass =
   "w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent";
 
+// Common CFD instruments offered in the dropdown. Pip value is auto-derived
+// via getDefaultPipValuePerLot; indices (null pip) fall back to manual entry.
+const CFD_PRESETS = [
+  "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCHF", "USDCAD", "NZDUSD",
+  "EURJPY", "GBPJPY", "XAUUSD", "XAGUSD", "US30", "NAS100", "SPX500", "GER40",
+];
+const CUSTOM_INSTRUMENT = "__custom__";
+
 export default function PositionSizer({ strategy }: Props) {
   const { t } = useLanguage();
   const { plan, loading: planLoading } = usePlan();
@@ -123,6 +131,7 @@ export default function PositionSizer({ strategy }: Props) {
 
   // ── Market type from active account ──────────────────────────────────────
   const isFutures = selectedAccount?.market_type === "futures";
+  const cur = isFutures ? "$" : "€";
 
   // ── Common inputs: account balance + risk per trade (editable) ────────────
   // Prefilled from the active account / strategy, but the user can override —
@@ -139,17 +148,34 @@ export default function PositionSizer({ strategy }: Props) {
   }, [accountSize]);
 
   // ── CFD state ─────────────────────────────────────────────────────────────
-  const [symbol, setSymbol] = useState("");
+  // Default to XAUUSD so the calculator shows a result immediately once
+  // balance / risk / SL are present.
+  const [symbol, setSymbol] = useState("XAUUSD");
+  const [isCustomInstrument, setIsCustomInstrument] = useState(false);
   const [slPips, setSlPips] = useState(
     strategy?.max_sl_pips != null ? String(strategy.max_sl_pips) : ""
   );
-  const [pipValue, setPipValue] = useState("");
+  const [pipValue, setPipValue] = useState(() => {
+    const def = getDefaultPipValuePerLot("XAUUSD");
+    return def !== null ? String(def) : "";
+  });
   const [showPipHelp, setShowPipHelp] = useState(false);
 
   function handleSymbolChange(val: string) {
     setSymbol(val);
     const def = getDefaultPipValuePerLot(val.trim());
     setPipValue(def !== null ? String(def) : "");
+  }
+
+  function handleInstrumentSelect(val: string) {
+    if (val === CUSTOM_INSTRUMENT) {
+      setIsCustomInstrument(true);
+      setSymbol("");
+      setPipValue("");
+    } else {
+      setIsCustomInstrument(false);
+      handleSymbolChange(val);
+    }
   }
 
   // ── Futures state ─────────────────────────────────────────────────────────
@@ -262,7 +288,7 @@ export default function PositionSizer({ strategy }: Props) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {/* Account balance */}
         <div>
-          <label className="block text-xs text-muted mb-1">{t("sizer_balance_label")}</label>
+          <label className="block text-xs text-muted mb-1">{t("sizer_balance_label")} ({cur})</label>
           <input
             type="number"
             min="0"
@@ -303,7 +329,7 @@ export default function PositionSizer({ strategy }: Props) {
                   }`}
                   aria-pressed={riskMode === m}
                 >
-                  {m === "pct" ? "%" : "€"}
+                  {m === "pct" ? "%" : cur}
                 </button>
               ))}
             </div>
@@ -333,7 +359,7 @@ export default function PositionSizer({ strategy }: Props) {
           {maxRisk ? (
             <>
               <span className="text-xl font-bold text-profit tabular-nums">
-                {maxRisk.riskEur.toFixed(2)} {isFutures ? "$" : "€"}
+                {maxRisk.riskEur.toFixed(2)} {cur}
               </span>
               <span className="text-xs text-muted">{cappedByLabel(maxRisk.cappedBy)}</span>
             </>
@@ -420,7 +446,7 @@ export default function PositionSizer({ strategy }: Props) {
                       <div className="flex items-baseline gap-1">
                         <span className="text-xs text-muted">{t("sizer_futures_actual_risk")}</span>
                         <span className="text-sm font-semibold text-foreground tabular-nums">
-                          {actualRisk.toFixed(2)} $
+                          {actualRisk.toFixed(2)} {cur}
                         </span>
                       </div>
                     )}
@@ -432,16 +458,29 @@ export default function PositionSizer({ strategy }: Props) {
             /* ── CFD MODE (unchanged) ────────────────────────────────────── */
             <>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {/* Instrument */}
+                {/* Instrument — preset dropdown + custom fallback */}
                 <div>
                   <label className="block text-xs text-muted mb-1">{t("sizer_instrument")}</label>
-                  <input
-                    type="text"
-                    value={symbol}
-                    onChange={(e) => handleSymbolChange(e.target.value)}
-                    placeholder="XAUUSD"
+                  <select
+                    value={isCustomInstrument ? CUSTOM_INSTRUMENT : symbol}
+                    onChange={(e) => handleInstrumentSelect(e.target.value)}
                     className={inputClass}
-                  />
+                  >
+                    {CFD_PRESETS.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                    <option value={CUSTOM_INSTRUMENT}>{t("sizer_instrument_custom")}</option>
+                  </select>
+                  {isCustomInstrument && (
+                    <input
+                      type="text"
+                      value={symbol}
+                      onChange={(e) => handleSymbolChange(e.target.value)}
+                      placeholder="ex. BTCUSD"
+                      className={`${inputClass} mt-2`}
+                      autoFocus
+                    />
+                  )}
                 </div>
 
                 {/* SL pips */}
@@ -564,7 +603,12 @@ export default function PositionSizer({ strategy }: Props) {
                           <div>
                             <p className="text-[11px] text-muted uppercase tracking-wider">{t("sizer_funds_at_risk")}</p>
                             <p className="text-sm font-semibold text-foreground tabular-nums mt-0.5">
-                              {fundsAtRisk.toFixed(2)} €
+                              {fundsAtRisk.toFixed(2)} {cur}
+                              {balanceNum > 0 && (
+                                <span className="text-muted font-normal">
+                                  {" "}({((fundsAtRisk / balanceNum) * 100).toFixed(1)}%)
+                                </span>
+                              )}
                             </p>
                           </div>
                         </div>
