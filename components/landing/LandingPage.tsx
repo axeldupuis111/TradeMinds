@@ -943,10 +943,10 @@ function BentoStrategy({ t }: { t: (k: string) => string }) {
   // Auto-generated trading tags, grouped & colour-coded like the app.
   // Chips use universal ICT terminology on purpose — it shows the AI speaks the trader's language.
   const categories = [
-    { header: t("feature_strategy_cat_setups"),  rgb: "59,130,246",  chips: ["Sweep BSL/SSL", "FVG entry", "Break of Structure"] },
-    { header: t("feature_strategy_cat_zones"),   rgb: "167,139,250", chips: ["Order Block", "Liquidity zone", "FVG"] },
-    { header: t("feature_strategy_cat_targets"), rgb: "251,191,36",  chips: ["Opposite liquidity", "Prior high / low"] },
-    { header: t("feature_strategy_cat_timing"),  rgb: "34,197,94",   chips: ["London killzone", "Sweep confirmation"] },
+    { header: t("feature_strategy_cat_setups"),  rgb: "59,130,246",  chips: [t("feature_strategy_tag_setup_1"), t("feature_strategy_tag_setup_2")] },
+    { header: t("feature_strategy_cat_zones"),   rgb: "167,139,250", chips: [t("feature_strategy_tag_zone_1"), t("feature_strategy_tag_zone_2")] },
+    { header: t("feature_strategy_cat_targets"), rgb: "251,191,36",  chips: [t("feature_strategy_tag_target_1"), t("feature_strategy_tag_target_2")] },
+    { header: t("feature_strategy_cat_timing"),  rgb: "34,197,94",   chips: [t("feature_strategy_tag_timing_1"), t("feature_strategy_tag_timing_2")] },
   ];
 
   let chipIdx = 0; // global stagger index across all chips
