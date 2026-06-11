@@ -4,7 +4,7 @@ import PublicHeader from "@/components/PublicHeader";
 import { useLanguage } from "@/lib/LanguageContext";
 import Link from "next/link";
 import React, { useRef, useState, useEffect } from "react";
-import { motion, useInView, useReducedMotion, AnimatePresence, useMotionValue, useSpring, useTransform } from "framer-motion";
+import { motion, useInView, useReducedMotion, AnimatePresence, useMotionValue, useSpring, useTransform, useScroll } from "framer-motion";
 
 /* ─────────────────────────────────────────────
    ANIMATION PRIMITIVES
@@ -1173,6 +1173,114 @@ function HowItWorks() {
 }
 
 /* ─────────────────────────────────────────────
+   ROI BAND — "TradeDiscipline pays for itself"
+───────────────────────────────────────────── */
+function ROIBand({ t }: { t: (k: string) => string }) {
+  const stats = [
+    {
+      kind: "loss" as const,
+      prefix: "−",
+      value: 180,
+      decimals: 0,
+      suffix: "€",
+      label: t("pricing_roi_stat1_label"),
+      color: "rgb(var(--loss))",
+      tint: { background: "rgb(var(--loss)/0.06)", borderColor: "rgb(var(--loss)/0.15)" },
+    },
+    {
+      kind: "accent" as const,
+      prefix: "",
+      value: 9.99,
+      decimals: 2,
+      suffix: "€",
+      label: t("pricing_roi_stat2_label"),
+      color: "rgb(var(--accent))",
+      tint: { background: "rgb(var(--accent)/0.06)", borderColor: "rgb(var(--accent)/0.2)" },
+    },
+    {
+      kind: "text" as const,
+      textValue: t("pricing_roi_stat3_value"),
+      label: t("pricing_roi_stat3_label"),
+      color: "rgb(var(--profit))",
+      tint: { background: "rgb(var(--profit)/0.06)", borderColor: "rgb(var(--profit)/0.15)" },
+    },
+  ];
+
+  return (
+    <Reveal className="mb-14">
+      <div
+        className="relative rounded-2xl border overflow-hidden p-6 sm:p-8"
+        style={{
+          borderColor: "rgb(var(--accent)/0.15)",
+          background:
+            "radial-gradient(ellipse 80% 120% at 50% 0%, rgb(var(--accent)/0.06) 0%, transparent 60%), rgb(var(--card))",
+        }}
+      >
+        {/* eyebrow */}
+        <div className="flex items-center justify-center gap-2 mb-3">
+          <span className="eyebrow-dot w-1.5 h-1.5 rounded-full" style={{ background: "rgb(var(--accent))" }} aria-hidden />
+          <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}>
+            {t("pricing_roi_eyebrow")}
+          </p>
+        </div>
+
+        <h3 className="text-2xl sm:text-3xl font-bold text-center" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>
+          {t("pricing_roi_title")}
+        </h3>
+        <p className="mt-3 text-sm sm:text-base text-center max-w-2xl mx-auto leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>
+          {t("pricing_roi_sub")}
+        </p>
+
+        {/* Comparison stats */}
+        <div className="mt-7 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {stats.map((s, i) => (
+            <div key={i} className="relative">
+              <motion.div
+                className="rounded-xl border p-5 text-center h-full flex flex-col justify-center"
+                style={s.tint}
+                whileHover={{ y: -3, scale: 1.01 }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              >
+                {s.kind === "text" ? (
+                  <p className="text-2xl sm:text-3xl font-bold tracking-tight" style={{ color: s.color, fontStyle: "normal" }}>
+                    {s.textValue}
+                  </p>
+                ) : (
+                  <p className="text-3xl sm:text-4xl font-bold tracking-tight" style={{ color: s.color, fontStyle: "normal" }}>
+                    {s.prefix}
+                    <Counter end={s.value!} decimals={s.decimals!} suffix={s.suffix} />
+                  </p>
+                )}
+                <p className="mt-2 text-xs leading-snug" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{s.label}</p>
+              </motion.div>
+
+              {/* connector chevrons between cards (desktop) */}
+              {i < stats.length - 1 && (
+                <div className="hidden sm:flex absolute top-1/2 -right-3 -translate-y-1/2 z-10 items-center justify-center" aria-hidden>
+                  <div
+                    className="w-6 h-6 rounded-full flex items-center justify-center border"
+                    style={{ background: "rgb(var(--card))", borderColor: "rgb(var(--border))" }}
+                  >
+                    <svg className="w-3 h-3" style={{ color: "rgb(var(--muted))" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* kicker */}
+        <p className="mt-6 text-center text-sm font-medium max-w-xl mx-auto" style={{ color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}>
+          {t("pricing_roi_kicker")}
+        </p>
+      </div>
+    </Reveal>
+  );
+}
+
+/* ─────────────────────────────────────────────
    PRICING
 ───────────────────────────────────────────── */
 function Pricing() {
@@ -1188,6 +1296,7 @@ function Pricing() {
       annualMonthly: "",
       feats: [t("plan_benefit_free_1"), t("plan_benefit_free_2"), t("plan_benefit_free_3"), t("plan_benefit_free_4")],
       btnKey: "pricing_start_free",
+      roiKey: "",
       popular: false,
       gold: false,
     },
@@ -1202,6 +1311,7 @@ function Pricing() {
         t("plan_benefit_plus_4"), t("plan_benefit_plus_5"), t("plan_benefit_plus_6"), t("plan_benefit_plus_7"),
       ],
       btnKey: "pricing_choose_plus",
+      roiKey: "plan_roi_plus",
       popular: true,
       gold: false,
     },
@@ -1216,6 +1326,7 @@ function Pricing() {
         t("plan_benefit_plus_1"), t("plan_benefit_plus_2"), t("plan_benefit_plus_3"),
       ],
       btnKey: "pricing_choose_premium",
+      roiKey: "plan_roi_premium",
       popular: false,
       gold: true,
     },
@@ -1228,6 +1339,9 @@ function Pricing() {
           <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}>Pricing</p>
           <h2 className="text-4xl sm:text-5xl font-bold" style={{ color: "rgb(var(--foreground))" }}>{t("pricing_title")}</h2>
         </Reveal>
+
+        {/* ROI / value band — "it pays for itself" */}
+        <ROIBand t={t} />
 
         {/* Toggle */}
         <Reveal className="flex justify-center mb-10">
@@ -1273,7 +1387,7 @@ function Pricing() {
             return (
               <motion.div
                 key={p.name}
-                className={`relative rounded-2xl border flex flex-col p-6 ${p.popular ? "card-breathe" : ""}`}
+                className={`relative rounded-2xl border flex flex-col p-6 ${p.popular ? "card-breathe comet-border" : ""}`}
                 style={{
                   background: "rgb(var(--card))",
                   borderColor: p.popular
@@ -1363,6 +1477,17 @@ function Pricing() {
                 >
                   {t(p.btnKey)}
                 </Link>
+
+                {p.roiKey && (
+                  <div className="mt-3 flex items-center justify-center gap-1.5">
+                    <svg className="w-3.5 h-3.5 shrink-0" style={{ color: "rgb(var(--profit))" }} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                    <span className="text-[11px] font-medium text-center" style={{ color: "rgb(var(--profit))", fontStyle: "normal" }}>
+                      {t(p.roiKey)}
+                    </span>
+                  </div>
+                )}
               </motion.div>
             );
           })}
@@ -1577,11 +1702,27 @@ function Footer() {
 }
 
 /* ─────────────────────────────────────────────
+   SCROLL PROGRESS BAR
+───────────────────────────────────────────── */
+function ScrollProgress() {
+  const { scrollYProgress } = useScroll();
+  const scaleX = useSpring(scrollYProgress, { stiffness: 120, damping: 30, mass: 0.3 });
+  return (
+    <motion.div
+      className="scroll-progress fixed top-0 left-0 right-0 h-0.5 z-[60]"
+      style={{ scaleX }}
+      aria-hidden
+    />
+  );
+}
+
+/* ─────────────────────────────────────────────
    PAGE ROOT
 ───────────────────────────────────────────── */
 export default function LandingPage() {
   return (
     <div className="min-h-screen force-dark landing-page relative overflow-x-hidden" style={{ background: "rgb(var(--background))" }}>
+      <ScrollProgress />
       <GridBackground />
       <PublicHeader showAnchors />
       <main>
