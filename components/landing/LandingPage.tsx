@@ -1,6 +1,7 @@
 "use client";
 
 import DisciplineQuiz from "@/components/landing/DisciplineQuiz";
+import LiveDemo from "@/components/landing/LiveDemo";
 import PublicHeader from "@/components/PublicHeader";
 import { useLanguage } from "@/lib/LanguageContext";
 import Link from "next/link";
@@ -512,6 +513,51 @@ function DashboardMockup() {
         ))}
       </div>
     </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   PLATFORM MARQUEE
+   Défilement infini des plateformes compatibles
+───────────────────────────────────────────── */
+const MARQUEE_PLATFORMS = ["MetaTrader 4", "MetaTrader 5", "cTrader", "TradingView", "Binance", "Bybit", "CSV / Excel"];
+
+function PlatformMarquee() {
+  const { t } = useLanguage();
+  // Liste doublée pour la boucle infinie (translateX -50%)
+  const items = [...MARQUEE_PLATFORMS, ...MARQUEE_PLATFORMS];
+
+  return (
+    <section className="py-10 px-0 overflow-hidden" aria-label={t("marquee_caption")}>
+      <p className="text-center text-[11px] font-semibold uppercase tracking-[0.18em] mb-6" style={{ color: "rgb(var(--muted)/0.7)", fontStyle: "normal" }}>
+        {t("marquee_caption")}
+      </p>
+      <div
+        className="relative"
+        style={{
+          maskImage: "linear-gradient(90deg, transparent 0%, black 12%, black 88%, transparent 100%)",
+          WebkitMaskImage: "linear-gradient(90deg, transparent 0%, black 12%, black 88%, transparent 100%)",
+        }}
+      >
+        <div className="marquee-track flex items-center gap-3 w-max">
+          {items.map((name, i) => (
+            <span
+              key={`${name}-${i}`}
+              className="shrink-0 px-5 py-2.5 rounded-xl border text-sm font-semibold whitespace-nowrap"
+              style={{
+                borderColor: "rgb(var(--border))",
+                background: "rgb(var(--card))",
+                color: "rgb(var(--foreground)/0.75)",
+                fontStyle: "normal",
+              }}
+              aria-hidden={i >= MARQUEE_PLATFORMS.length}
+            >
+              {name}
+            </span>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -1242,6 +1288,11 @@ function AIDetection() {
           <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}>{t("eyebrow_ai_coach")}</p>
           <h2 className="text-4xl sm:text-5xl font-bold" style={{ color: "rgb(var(--foreground))" }}>{t("ai_detect_title")}</h2>
           <p className="mt-4 max-w-xl mx-auto text-base leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("ai_detect_subtitle")}</p>
+        </Reveal>
+
+        {/* Démo produit en boucle — le coach IA en action */}
+        <Reveal delay={0.1}>
+          <LiveDemo />
         </Reveal>
 
         <StaggerReveal className="grid grid-cols-1 sm:grid-cols-2 gap-3" stagger={0.09}>
@@ -1989,6 +2040,7 @@ export default function LandingPage() {
       <PublicHeader showAnchors />
       <main>
         <Hero />
+        <PlatformMarquee />
         <StatsStrip />
         <Problem />
         <DisciplineQuiz />

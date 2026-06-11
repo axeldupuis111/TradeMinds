@@ -82,6 +82,21 @@ const translations: Record<Lang, Record<string, string>> = {
     quiz_cta: "Découvre ton vrai score — gratuit",
     quiz_restart: "Refaire le test",
 
+    // Démo produit en boucle (landing)
+    demo_live: "En direct",
+    demo_sync_label: "Synchronisation MT5",
+    demo_alert_title: "Revenge trading détecté",
+    demo_alert_desc: "3 pertes en 7 minutes sur XAUUSD — comportement hors stratégie",
+    demo_coach_title: "Coach IA",
+    demo_coach_msg: "Stop conseillé. Protège ton capital — on analyse ça ensemble demain.",
+    demo_step_1: "Sync",
+    demo_step_2: "Détection",
+    demo_step_3: "Coaching",
+    demo_caption: "Démo en boucle — c'est exactement ce que TradeDiscipline fait pendant ta session.",
+
+    // Marquee plateformes (landing)
+    marquee_caption: "Compatible avec tes plateformes",
+
     // Nav
     nav_login: "Se connecter",
     nav_start: "Commencer",
@@ -1772,6 +1787,21 @@ const translations: Record<Lang, Record<string, string>> = {
     quiz_cta: "Discover your real score — free",
     quiz_restart: "Retake the test",
 
+    // Looping product demo (landing)
+    demo_live: "Live",
+    demo_sync_label: "MT5 synchronization",
+    demo_alert_title: "Revenge trading detected",
+    demo_alert_desc: "3 losses in 7 minutes on XAUUSD — behavior outside your strategy",
+    demo_coach_title: "AI Coach",
+    demo_coach_msg: "Stop recommended. Protect your capital — we'll review this together tomorrow.",
+    demo_step_1: "Sync",
+    demo_step_2: "Detection",
+    demo_step_3: "Coaching",
+    demo_caption: "Looping demo — this is exactly what TradeDiscipline does during your session.",
+
+    // Platform marquee (landing)
+    marquee_caption: "Works with your platforms",
+
     nav_login: "Sign in",
     nav_start: "Get started",
 
@@ -3435,6 +3465,21 @@ const translations: Record<Lang, Record<string, string>> = {
     quiz_cta: "Entdecke deinen echten Score — kostenlos",
     quiz_restart: "Test wiederholen",
 
+    // Produkt-Demo-Loop (Landing)
+    demo_live: "Live",
+    demo_sync_label: "MT5-Synchronisierung",
+    demo_alert_title: "Revenge Trading erkannt",
+    demo_alert_desc: "3 Verluste in 7 Minuten auf XAUUSD — Verhalten außerhalb deiner Strategie",
+    demo_coach_title: "KI-Coach",
+    demo_coach_msg: "Stopp empfohlen. Schütze dein Kapital — wir analysieren das morgen gemeinsam.",
+    demo_step_1: "Sync",
+    demo_step_2: "Erkennung",
+    demo_step_3: "Coaching",
+    demo_caption: "Demo-Loop — genau das macht TradeDiscipline während deiner Session.",
+
+    // Plattform-Marquee (Landing)
+    marquee_caption: "Kompatibel mit deinen Plattformen",
+
     nav_login: "Anmelden",
     nav_start: "Loslegen",
 
@@ -5096,6 +5141,21 @@ const translations: Record<Lang, Record<string, string>> = {
     quiz_disclaimer: "Estimación orientativa — tu score real se calcula con tus trades reales.",
     quiz_cta: "Descubre tu score real — gratis",
     quiz_restart: "Repetir el test",
+
+    // Demo del producto en bucle (landing)
+    demo_live: "En directo",
+    demo_sync_label: "Sincronización MT5",
+    demo_alert_title: "Revenge trading detectado",
+    demo_alert_desc: "3 pérdidas en 7 minutos en XAUUSD — comportamiento fuera de tu estrategia",
+    demo_coach_title: "Coach IA",
+    demo_coach_msg: "Stop recomendado. Protege tu capital — lo analizamos juntos mañana.",
+    demo_step_1: "Sync",
+    demo_step_2: "Detección",
+    demo_step_3: "Coaching",
+    demo_caption: "Demo en bucle — esto es exactamente lo que hace TradeDiscipline durante tu sesión.",
+
+    // Marquee de plataformas (landing)
+    marquee_caption: "Compatible con tus plataformas",
 
     nav_login: "Iniciar sesión",
     nav_start: "Empezar",

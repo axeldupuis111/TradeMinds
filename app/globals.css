@@ -229,6 +229,21 @@ html.light header {
   );
 }
 
+/* ─── Platform marquee (landing) ────────────────────────────────────────── */
+@keyframes marquee-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.marquee-track {
+  animation: marquee-scroll 30s linear infinite;
+}
+.marquee-track:hover {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track { animation: none; }
+}
+
 /* ─── Command palette (Ctrl+K) ──────────────────────────────────────────── */
 @keyframes cmdk-fade {
   from { opacity: 0; }
