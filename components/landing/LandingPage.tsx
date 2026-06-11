@@ -1156,10 +1156,34 @@ function Features() {
 function AIDetection() {
   const { t } = useLanguage();
   const detections = [
-    { text: t("ai_detect_1"), bgStyle: { background: "rgb(var(--loss)/0.05)", borderColor: "rgb(var(--loss)/0.12)" },    icon: "🔥" },
-    { text: t("ai_detect_2"), bgStyle: { background: "rgb(var(--profit)/0.05)", borderColor: "rgb(var(--profit)/0.12)" }, icon: "⏰" },
-    { text: t("ai_detect_3"), bgStyle: { background: "rgba(251,191,36,0.05)", borderColor: "rgba(251,191,36,0.12)" },     icon: "⚠️" },
-    { text: t("ai_detect_4"), bgStyle: { background: "rgba(167,139,250,0.05)", borderColor: "rgba(167,139,250,0.12)" },   icon: "📊" },
+    {
+      text: t("ai_detect_1"),
+      rgb: "239,68,68",
+      // flame — revenge trading
+      icon: "M12 2c1 3-1 4-2 6-1 1.5-1 3 0 4 1-.5 1.5-1.5 1.5-3 1 1 2 2.5 2 4a3.5 3.5 0 11-7 0c0-1 .3-2 1-3 .2 1 .8 1.5 1.5 1.5-1-2 1-4 3-9.5z",
+      filled: true,
+    },
+    {
+      text: t("ai_detect_2"),
+      rgb: "34,197,94",
+      // clock — best hours
+      icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
+      filled: false,
+    },
+    {
+      text: t("ai_detect_3"),
+      rgb: "251,191,36",
+      // warning — recurring rule break
+      icon: "M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z",
+      filled: false,
+    },
+    {
+      text: t("ai_detect_4"),
+      rgb: "167,139,250",
+      // chart — FOMO / setup analytics
+      icon: "M3 3v18h18M7 15l3-3 3 2 5-6",
+      filled: false,
+    },
   ];
 
   return (
@@ -1176,12 +1200,23 @@ function AIDetection() {
             <motion.div
               key={i}
               className="border rounded-2xl p-5 flex items-start gap-4"
-              style={d.bgStyle}
+              style={{ background: `rgba(${d.rgb},0.05)`, borderColor: `rgba(${d.rgb},0.14)` }}
               whileHover={{ y: -4, scale: 1.005, boxShadow: "0 16px 48px -12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)" }}
               transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0" style={{ background: "rgb(var(--surface))" }} aria-hidden>
-                {d.icon}
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: `rgba(${d.rgb},0.12)` }} aria-hidden>
+                <svg
+                  className="w-[18px] h-[18px]"
+                  style={{ color: `rgb(${d.rgb})` }}
+                  viewBox="0 0 24 24"
+                  fill={d.filled ? "currentColor" : "none"}
+                  stroke={d.filled ? "none" : "currentColor"}
+                  strokeWidth={1.7}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d={d.icon} />
+                </svg>
               </div>
               <p className="text-sm leading-relaxed" style={{ color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}>{d.text}</p>
             </motion.div>
@@ -1871,9 +1906,9 @@ export default function LandingPage() {
         <StatsStrip />
         <Problem />
         <Features />
+        <HowItWorks />
         <AIDetection />
         <SocialProof />
-        <HowItWorks />
         <Pricing />
         <FAQ />
         <FinalCTA />
