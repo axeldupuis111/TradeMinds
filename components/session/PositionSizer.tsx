@@ -129,8 +129,17 @@ export default function PositionSizer({ strategy }: Props) {
     setTotalDdRemaining(rules.totalDdRemainingEur);
   }
 
-  // ── Market type from active account ──────────────────────────────────────
-  const isFutures = selectedAccount?.market_type === "futures";
+  // ── Market type ───────────────────────────────────────────────────────────
+  // Mode follows the active account's market type, but the user can override
+  // (handles legacy accounts where market_type was never set → defaulted to cfd).
+  const [mode, setMode] = useState<"cfd" | "futures">(
+    selectedAccount?.market_type === "futures" ? "futures" : "cfd"
+  );
+  useEffect(() => {
+    setMode(selectedAccount?.market_type === "futures" ? "futures" : "cfd");
+  }, [selectedAccount?.id, selectedAccount?.market_type]);
+
+  const isFutures = mode === "futures";
   const cur = isFutures ? "$" : "€";
 
   // ── Common inputs: account balance + risk per trade (editable) ────────────
@@ -285,6 +294,23 @@ export default function PositionSizer({ strategy }: Props) {
           </span>
         </div>
         <p className="text-xs text-muted mt-0.5">{t("sizer_subtitle")}</p>
+      </div>
+
+      {/* Market type toggle — defaults to the active account, overridable */}
+      <div className="flex rounded-lg border border-border overflow-hidden w-fit text-sm">
+        {(["cfd", "futures"] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => setMode(m)}
+            aria-pressed={mode === m}
+            className={`px-4 py-1.5 font-medium transition-colors ${
+              mode === m ? "bg-accent text-white" : "bg-surface text-muted hover:text-foreground"
+            }`}
+          >
+            {m === "cfd" ? t("challenge_market_cfd") : t("challenge_market_futures")}
+          </button>
+        ))}
       </div>
 
       {/* Common inputs — account balance + risk per trade (editable) */}
