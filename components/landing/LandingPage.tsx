@@ -3,243 +3,538 @@
 import PublicHeader from "@/components/PublicHeader";
 import { useLanguage } from "@/lib/LanguageContext";
 import Link from "next/link";
-import { useRef, useState } from "react";
-import { motion, useInView, useReducedMotion } from "framer-motion";
-import FadeUp from "@/components/animations/FadeUp";
-import CountUp from "@/components/animations/CountUp";
-import StaggerContainer, { StaggerItem } from "@/components/animations/StaggerContainer";
+import React, { useRef, useState, useEffect } from "react";
+import { motion, useInView, useReducedMotion, AnimatePresence, useMotionValue, useSpring, useTransform, useScroll } from "framer-motion";
 
 /* ─────────────────────────────────────────────
-   Scroll-reveal helper (Framer Motion)
+   ANIMATION PRIMITIVES
+   - Use whileInView + viewport (SSR-safe, no hydration flash)
+   - No filter:blur on initial (causes paint cost + SSR mismatch)
+   - prefersReducedMotion: initial={false} disables entrance
 ───────────────────────────────────────────── */
-function Reveal({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
+const ease = [0.16, 1, 0.3, 1] as const;
+
+function Reveal({
+  children,
+  className = "",
+  delay = 0,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  delay?: number;
+}) {
+  const prefersReduced = useReducedMotion();
   return (
-    <FadeUp className={className} delay={delay / 1000}>
+    <motion.div
+      className={className}
+      initial={prefersReduced ? false : { opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.65, delay, ease }}
+    >
       {children}
-    </FadeUp>
+    </motion.div>
   );
 }
 
+function StaggerReveal({
+  children,
+  className = "",
+  stagger = 0.08,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  stagger?: number;
+}) {
+  const prefersReduced = useReducedMotion();
+  const items = React.Children.toArray(children);
+  return (
+    <div className={className}>
+      {items.map((child, i) => (
+        <motion.div
+          key={i}
+          initial={prefersReduced ? false : { opacity: 0, y: 18 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ duration: 0.55, delay: i * stagger, ease }}
+        >
+          {child}
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   ANIMATED COUNTER
+───────────────────────────────────────────── */
+function Counter({
+  end,
+  suffix = "",
+  decimals = 0,
+}: {
+  end: number;
+  suffix?: string;
+  decimals?: number;
+}) {
+  const [val, setVal] = useState(0);
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-40px" });
+  const prefersReduced = useReducedMotion();
+
+  useEffect(() => {
+    if (!inView) return;
+    if (prefersReduced) { setVal(end); return; }
+    const duration = 1400;
+    const step = 16;
+    const steps = duration / step;
+    const increment = end / steps;
+    let current = 0;
+    const timer = setInterval(() => {
+      current += increment;
+      if (current >= end) { setVal(end); clearInterval(timer); }
+      else setVal(current);
+    }, step);
+    return () => clearInterval(timer);
+  }, [inView, end, prefersReduced]);
+
+  return (
+    <span ref={ref} className="tabular-nums">
+      {decimals > 0 ? val.toFixed(decimals) : Math.floor(val).toLocaleString()}
+      {suffix}
+    </span>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   GRID BACKGROUND
+   absolute (not fixed) — scoped to landing page
+───────────────────────────────────────────── */
+function GridBackground() {
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden>
+      <div
+        className="absolute inset-0 opacity-[0.028] grid-dots-mask"
+        style={{
+          backgroundImage: `radial-gradient(circle, rgb(var(--foreground)) 1px, transparent 1px)`,
+          backgroundSize: "32px 32px",
+        }}
+      />
+    </div>
+  );
+}
 
 /* ─────────────────────────────────────────────
    HERO
 ───────────────────────────────────────────── */
 function Hero() {
   const { t } = useLanguage();
-  const prefersReducedMotion = useReducedMotion();
+  const prefersReduced = useReducedMotion();
+
   return (
-    <section className="hero-gradient pt-28 pb-20 px-6 overflow-hidden">
-      <div className="max-w-4xl mx-auto text-center">
-        <Reveal>
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-accent/20 bg-accent/5 text-xs text-accent font-medium mb-8">
-            <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-            {t("hero_social_proof")}
+    <section className="relative pt-32 pb-24 px-6 overflow-hidden">
+      {/* Gradient blobs — floating aurora effect */}
+      <div
+        className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[600px] pointer-events-none -z-0"
+        aria-hidden
+      >
+        <div className="aurora-a absolute top-0 left-1/4 w-80 h-80 rounded-full blur-[120px]"
+          style={{ background: "rgb(var(--accent)/0.09)" }} />
+        <div className="aurora-b absolute top-20 right-1/4 w-64 h-64 rounded-full blur-[100px]"
+          style={{ background: "rgba(59,130,246,0.07)" }} />
+        <div className="aurora-c absolute top-40 left-1/2 w-48 h-48 rounded-full blur-[90px]"
+          style={{ background: "rgba(167,139,250,0.04)" }} />
+      </div>
+
+      <div className="max-w-5xl mx-auto text-center relative z-10">
+        {/* Social proof badge */}
+        <motion.div
+          initial={prefersReduced ? false : { opacity: 0, y: 10, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.5, ease }}
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[rgb(var(--accent)/0.2)] bg-[rgb(var(--accent)/0.05)] text-xs font-medium mb-10"
+          style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-[rgb(var(--accent))] animate-pulse shrink-0" />
+          {t("hero_social_proof")}
+        </motion.div>
+
+        {/* H1 — Geist Sans (overrides landing-page serif) */}
+        <motion.h1
+          initial={prefersReduced ? false : { opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.75, delay: 0.1, ease }}
+          className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.05] tracking-tight text-balance"
+          style={{
+            fontFamily: "var(--font-geist-sans), system-ui, sans-serif",
+            fontStyle: "normal",
+            fontWeight: 700,
+          }}
+        >
+          {t("hero_title_1")}{" "}
+          <span
+            className="text-gradient-animated"
+            style={{
+              background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #60a5fa 40%, #a78bfa 70%, rgb(var(--accent)) 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+              fontStyle: "normal",
+            }}
+          >
+            {t("hero_title_2")}
+          </span>
+        </motion.h1>
+
+        {/* Subtitle */}
+        <motion.p
+          initial={prefersReduced ? false : { opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.65, delay: 0.22, ease }}
+          className="mt-6 text-base sm:text-lg md:text-xl max-w-2xl mx-auto leading-relaxed"
+          style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}
+        >
+          {t("hero_subtitle_v2")}
+        </motion.p>
+
+        {/* CTA buttons */}
+        <motion.div
+          initial={prefersReduced ? false : { opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.35, ease }}
+          className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3"
+        >
+          <Link
+            href="/login"
+            className="btn-primary-shimmer group relative px-7 py-3.5 rounded-xl font-semibold text-sm text-white transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--accent))]"
+            style={{
+              background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #3b82f6 100%)",
+              boxShadow: "0 0 0 1px rgb(var(--accent)/0.3), 0 4px 24px rgb(var(--accent)/0.2)",
+            }}
+          >
+            <span className="relative z-10">{t("hero_cta")}</span>
+          </Link>
+          <a
+            href="#features"
+            className="px-7 py-3.5 rounded-xl font-semibold text-sm border transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--accent))]"
+            style={{
+              color: "rgb(var(--foreground))",
+              borderColor: "rgb(var(--border))",
+              background: "rgb(var(--card))",
+              fontStyle: "normal",
+            }}
+          >
+            {t("hero_features")}
+          </a>
+        </motion.div>
+
+        {/* AI trust badge */}
+        <motion.div
+          initial={prefersReduced ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.5, ease }}
+          className="mt-5 flex justify-center"
+        >
+          <div
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border text-xs"
+            style={{
+              borderColor: "rgb(var(--border))",
+              background: "rgb(var(--card))",
+              color: "rgb(var(--muted))",
+              fontStyle: "normal",
+            }}
+          >
+            <svg className="w-3.5 h-3.5 shrink-0" style={{ color: "rgb(var(--accent))" }} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+            </svg>
+            {t("hero_ai_badge").split(" — ")[0]}
+            {t("hero_ai_badge").includes(" — ") && (
+              <><span className="opacity-30">·</span><span>{t("hero_ai_badge").split(" — ").slice(1).join(" — ")}</span></>
+            )}
           </div>
+        </motion.div>
 
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground leading-[1.05] tracking-tight text-balance" style={{ fontStyle: "normal" }}>
-            {t("hero_title_1")}{" "}
-            <span className="text-accent" style={{ fontStyle: "normal" }}>{t("hero_title_2")}</span>
-          </h1>
-
-          <p className="mt-6 text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
-            {t("hero_subtitle_v2")}
-          </p>
-
-          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link
-              href="/login"
-              className="px-8 py-3.5 bg-accent text-white rounded-xl font-semibold text-base hover:bg-blue-600 glow-pulse btn-scale"
-            >
-              {t("hero_cta")}
-            </Link>
-            <a
-              href="#features"
-              className="px-8 py-3.5 bg-white/5 border border-white/10 text-foreground rounded-xl font-semibold text-base hover:bg-white/10 btn-scale"
-            >
-              {t("hero_features")}
-            </a>
-          </div>
-
-          <div className="mt-6 flex justify-center">
-            <div className="inline-flex items-center bg-blue-500/10 border border-blue-500/20 rounded-full px-5 py-2.5 max-w-xl text-center">
-              <span className="text-base leading-relaxed">
-                <strong className="text-foreground font-semibold">{t("hero_ai_badge").split(" — ")[0]}</strong>
-                {t("hero_ai_badge").includes(" — ") && (
-                  <span className="text-muted font-normal"> — {t("hero_ai_badge").split(" — ").slice(1).join(" — ")}</span>
-                )}
-              </span>
-            </div>
-          </div>
-
-
-        </Reveal>
-
-        {/* Dashboard mockup — stagger animation */}
-        <StaggerContainer className="mt-16" staggerDelay={0.15}>
-          <StaggerItem>
-            <div
-              className="relative rounded-2xl border border-white/[0.08] bg-card p-5 sm:p-7 shadow-[0_25px_50px_rgba(0,0,0,0.5)]"
-              style={{ transform: "perspective(1200px) rotateX(2deg)", transformOrigin: "center bottom" }}
-            >
-              {/* Blue glow behind */}
-              <div className="absolute -inset-4 bg-gradient-to-b from-accent/8 via-transparent to-transparent rounded-3xl blur-2xl -z-10 pointer-events-none" />
-
-              {/* Fake toolbar */}
-              <div className="flex items-center gap-1.5 mb-4">
-                <span className="w-2.5 h-2.5 rounded-full bg-loss/60" />
-                <span className="w-2.5 h-2.5 rounded-full bg-warning/60" />
-                <span className="w-2.5 h-2.5 rounded-full bg-profit/60" />
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                {/* Score circle — scale entrance */}
-                <motion.div
-                  className="col-span-2 sm:col-span-1 flex flex-col items-center justify-center bg-white/[0.03] rounded-xl p-4 border border-white/5 gap-2"
-                  initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
-                >
-                  <svg width="76" height="76" viewBox="0 0 76 76">
-                    <circle cx="38" cy="38" r="32" fill="none" stroke="rgb(var(--border))" strokeWidth="6" />
-                    <circle cx="38" cy="38" r="32" fill="none" stroke="url(#scoreGrad)" strokeWidth="6" strokeLinecap="round"
-                      strokeDasharray={`${0.85 * 2 * Math.PI * 32} ${2 * Math.PI * 32}`}
-                      transform="rotate(-90 38 38)" />
-                    <defs>
-                      <linearGradient id="scoreGrad" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0%" stopColor="rgb(var(--accent))" />
-                        <stop offset="100%" stopColor="rgb(var(--profit))" />
-                      </linearGradient>
-                    </defs>
-                    <text x="38" y="36" textAnchor="middle" fill="rgb(var(--foreground))" fontSize="17" fontWeight="bold">85</text>
-                    <text x="38" y="48" textAnchor="middle" fill="rgb(var(--muted))" fontSize="8">{t("preview_discipline")}</text>
-                  </svg>
-                </motion.div>
-                {/* Equity */}
-                <motion.div
-                  className="col-span-2 sm:col-span-1 bg-white/[0.03] rounded-xl p-4 border border-white/5"
-                  initial={prefersReducedMotion ? false : { opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.55, ease: "easeOut" }}
-                >
-                  <p className="text-[10px] text-muted uppercase tracking-wider mb-2">{t("preview_equity")}</p>
-                  <svg viewBox="0 0 120 45" className="w-full h-11" preserveAspectRatio="none">
-                    <defs>
-                      <linearGradient id="eq2" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="rgb(var(--profit))" stopOpacity="0.3" />
-                        <stop offset="100%" stopColor="rgb(var(--profit))" stopOpacity="0" />
-                      </linearGradient>
-                    </defs>
-                    <path d="M0,42 L10,39 L22,41 L34,33 L46,28 L58,23 L70,18 L82,14 L94,10 L107,6 L120,3" fill="none" stroke="rgb(var(--profit))" strokeWidth="2" />
-                    <path d="M0,42 L10,39 L22,41 L34,33 L46,28 L58,23 L70,18 L82,14 L94,10 L107,6 L120,3 L120,45 L0,45Z" fill="url(#eq2)" />
-                  </svg>
-                </motion.div>
-                {/* Stats */}
-                <motion.div
-                  className="bg-white/[0.03] rounded-xl p-4 border border-white/5"
-                  initial={prefersReducedMotion ? false : { opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.7, ease: "easeOut" }}
-                >
-                  <p className="text-[10px] text-muted uppercase tracking-wider">{t("preview_winrate")}</p>
-                  <p className="text-xl font-bold text-foreground mt-0.5">68%</p>
-                  <p className="text-[10px] text-muted uppercase tracking-wider mt-2">{t("preview_trades")}</p>
-                  <p className="text-xl font-bold text-foreground mt-0.5">47</p>
-                </motion.div>
-                {/* P&L */}
-                <motion.div
-                  className="bg-white/[0.03] rounded-xl p-4 border border-white/5"
-                  initial={prefersReducedMotion ? false : { opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.85, ease: "easeOut" }}
-                >
-                  <p className="text-[10px] text-muted uppercase tracking-wider">{t("preview_pnl_total")}</p>
-                  <p className="text-xl font-bold text-profit mt-0.5">+3 240€</p>
-                  <p className="text-[10px] text-muted uppercase tracking-wider mt-2">{t("preview_challenge")}</p>
-                  <div className="mt-1.5 h-1.5 bg-surface rounded-full overflow-hidden">
-                    <div className="h-full w-[89%] bg-accent rounded-full" />
-                  </div>
-                  <p className="text-[10px] text-muted mt-1">89%</p>
-                </motion.div>
-              </div>
-
-              {/* AI Insight banner */}
-              <motion.div
-                className="mt-4 flex items-center gap-2.5 bg-profit/5 border border-profit/15 rounded-lg px-3.5 py-2.5"
-                initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 1.0, ease: "easeOut" }}
-              >
-                <span className="text-profit text-sm shrink-0">✅</span>
-                <p className="text-xs text-foreground/80 leading-snug">{t("mockup_streak_label")} — <span className="text-profit font-semibold">{t("mockup_streak_record")}</span></p>
-              </motion.div>
-
-              {/* Fake trade rows */}
-              <div className="mt-3 border-t border-white/5 pt-3 space-y-2">
-                {[
-                  { pair: "EUR/USD", dir: "BUY",  pnl: "+182.50", win: true,  date: "28/04" },
-                  { pair: "GBP/JPY", dir: "SELL", pnl: "-47.20",  win: false, date: "27/04" },
-                  { pair: "XAU/USD", dir: "BUY",  pnl: "+316.00", win: true,  date: "26/04" },
-                ].map((tr, idx) => (
-                  <motion.div
-                    key={tr.pair}
-                    className="flex items-center gap-3 text-xs"
-                    initial={prefersReducedMotion ? false : { opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.4, delay: 1.1 + idx * 0.1, ease: "easeOut" }}
-                  >
-                    <span className="text-muted/50 tabular-nums w-9 shrink-0">{tr.date}</span>
-                    <span className="text-foreground font-medium w-14">{tr.pair}</span>
-                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${tr.dir === "BUY" ? "bg-profit/10 text-profit" : "bg-loss/10 text-loss"}`}>{tr.dir}</span>
-                    <div className="flex-1 h-px bg-white/[0.04]" />
-                    <span className={`font-semibold tabular-nums ${tr.win ? "text-profit" : "text-loss"}`}>{tr.pnl}€</span>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          </StaggerItem>
-        </StaggerContainer>
+        {/* Dashboard mockup — with mouse-parallax 3D tilt */}
+        <HeroDashboard />
       </div>
     </section>
   );
 }
 
 /* ─────────────────────────────────────────────
-   PROBLEM
+   HERO DASHBOARD — cinematic mouse-parallax tilt
 ───────────────────────────────────────────── */
-function Problem() {
-  const { t } = useLanguage();
-  const problems = [
-    { icon: "loss",    bg: "bg-loss/10",    iconColor: "text-loss",    title: t("problem_1_title"), desc: t("problem_1_desc"),
-      svg: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg> },
-    { icon: "warning", bg: "bg-warning/10", iconColor: "text-warning", title: t("problem_2_title"), desc: t("problem_2_desc"),
-      svg: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg> },
-    { icon: "orange",  bg: "bg-orange-500/10", iconColor: "text-orange-400", title: t("problem_3_title"), desc: t("problem_3_desc"),
-      svg: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728A9 9 0 015.636 5.636" /></svg> },
-  ];
+function HeroDashboard() {
+  const prefersReduced = useReducedMotion();
+  const ref = useRef<HTMLDivElement>(null);
+
+  const mx = useMotionValue(0);
+  const my = useMotionValue(0);
+  const spring = { stiffness: 120, damping: 20, mass: 0.4 };
+  const rotateX = useSpring(useTransform(my, [-0.5, 0.5], [2.5, -2.5]), spring);
+  const rotateY = useSpring(useTransform(mx, [-0.5, 0.5], [-3.5, 3.5]), spring);
+
+  function handleMove(e: React.MouseEvent<HTMLDivElement>) {
+    if (prefersReduced || !ref.current) return;
+    const r = ref.current.getBoundingClientRect();
+    mx.set((e.clientX - r.left) / r.width - 0.5);
+    my.set((e.clientY - r.top) / r.height - 0.5);
+  }
+  function handleLeave() {
+    mx.set(0);
+    my.set(0);
+  }
+
   return (
-    <section className="py-24 px-6 border-t border-white/5">
-      <div className="max-w-5xl mx-auto">
-        <Reveal>
-          <h2 className="text-3xl sm:text-4xl font-bold text-foreground text-center leading-tight">
-            {t("problem_title")}<br />
-            <span className="text-muted">{t("problem_subtitle")}</span>
-          </h2>
-        </Reveal>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-14">
-          {problems.map((p, i) => (
-            <Reveal key={p.title} delay={i * 100}>
-              <motion.div
-                className="bg-card border border-border rounded-2xl p-8 hover:border-white/10 hover:bg-card/80 transition-colors h-full"
-                whileHover={{ y: -4, borderColor: "rgba(255,255,255,0.12)" }}
-                transition={{ duration: 0.2 }}
-              >
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${p.bg} ${p.iconColor} mb-5`}>
-                  {p.svg}
-                </div>
-                <h3 className="text-xl font-bold text-foreground">{p.title}</h3>
-                <p className="text-muted mt-2 text-sm leading-relaxed line-clamp-3">{p.desc}</p>
-              </motion.div>
+    <motion.div
+      ref={ref}
+      onMouseMove={handleMove}
+      onMouseLeave={handleLeave}
+      initial={prefersReduced ? false : { opacity: 0, y: 36 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.85, delay: 0.42, ease }}
+      className="mt-16 relative"
+      style={prefersReduced ? undefined : { perspective: 1600, rotateX, rotateY, transformStyle: "preserve-3d" }}
+    >
+      <div
+        className="absolute -inset-x-8 -top-8 -bottom-16 pointer-events-none -z-10"
+        aria-hidden
+        style={{
+          background: "radial-gradient(ellipse 70% 60% at 50% 40%, rgb(var(--accent)/0.1) 0%, transparent 70%)",
+        }}
+      />
+      <DashboardMockup />
+    </motion.div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   DASHBOARD MOCKUP
+───────────────────────────────────────────── */
+function DashboardMockup() {
+  const { t } = useLanguage();
+  const prefersReduced = useReducedMotion();
+
+  return (
+    <div
+      className="rounded-2xl border overflow-hidden"
+      style={{
+        borderColor: "rgb(var(--border))",
+        background: "rgb(var(--card))",
+        boxShadow: "0 32px 80px -12px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.03)",
+        /* Perspective tilt — subtle, removed via media query if no-motion */
+        transform: prefersReduced ? undefined : "perspective(1600px) rotateX(1.5deg)",
+        transformOrigin: "center bottom",
+      }}
+    >
+      {/* Window chrome bar */}
+      <div
+        className="flex items-center gap-2 px-4 py-3 border-b"
+        style={{ borderColor: "rgb(var(--border))", background: "rgb(var(--surface)/0.5)" }}
+      >
+        <span className="w-2.5 h-2.5 rounded-full" style={{ background: "rgb(var(--loss)/0.5)" }} aria-hidden />
+        <span className="w-2.5 h-2.5 rounded-full" style={{ background: "rgb(var(--warning)/0.5)" }} aria-hidden />
+        <span className="w-2.5 h-2.5 rounded-full" style={{ background: "rgb(var(--profit)/0.5)" }} aria-hidden />
+        <div
+          className="ml-3 flex items-center gap-2 px-3 py-1 rounded-md border text-[10px]"
+          style={{ background: "rgb(var(--card))", borderColor: "rgb(var(--border))", color: "rgb(var(--muted))", fontStyle: "normal" }}
+        >
+          <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+          </svg>
+          app.tradediscipline.com
+        </div>
+      </div>
+
+      {/* KPI grid */}
+      <div className="p-4 sm:p-6 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        {/* Discipline score */}
+        <motion.div
+          className="col-span-1 flex flex-col items-center justify-center rounded-xl p-4 gap-2 border"
+          style={{ background: "rgb(var(--surface)/0.5)", borderColor: "rgb(var(--border))" }}
+          initial={prefersReduced ? false : { opacity: 0, scale: 0.88 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.55, delay: 0.52, ease }}
+        >
+          <svg width="72" height="72" viewBox="0 0 72 72" aria-label="Discipline score 85%" role="img">
+            <defs>
+              <linearGradient id="scoreG" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="rgb(var(--accent))" />
+                <stop offset="100%" stopColor="rgb(var(--profit))" />
+              </linearGradient>
+            </defs>
+            {/* Track */}
+            <circle cx="36" cy="36" r="29" fill="none" stroke="rgb(var(--border))" strokeWidth="5.5" />
+            {/* Animated progress arc */}
+            <motion.circle
+              cx="36" cy="36" r="29" fill="none"
+              stroke="url(#scoreG)" strokeWidth="5.5" strokeLinecap="round"
+              strokeDasharray={`${2 * Math.PI * 29} ${2 * Math.PI * 29}`}
+              initial={prefersReduced ? false : { strokeDashoffset: 2 * Math.PI * 29 }}
+              animate={{ strokeDashoffset: 2 * Math.PI * 29 * (1 - 0.85) }}
+              transform="rotate(-90 36 36)"
+              transition={{ duration: 1.4, delay: 0.6, ease: [0.4, 0, 0.2, 1] }}
+            />
+            <text x="36" y="33" textAnchor="middle" fill="rgb(var(--foreground))" fontSize="16" fontWeight="700" fontStyle="normal">85</text>
+            <text x="36" y="44" textAnchor="middle" fill="rgb(var(--muted))" fontSize="7" fontStyle="normal">DISCIPLINE</text>
+          </svg>
+        </motion.div>
+
+        {/* Equity chart */}
+        <motion.div
+          className="col-span-1 rounded-xl p-3.5 border"
+          style={{ background: "rgb(var(--surface)/0.5)", borderColor: "rgb(var(--border))" }}
+          initial={prefersReduced ? false : { opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.62, ease }}
+        >
+          <p className="text-[9px] uppercase tracking-widest mb-2" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("preview_equity")}</p>
+          <svg viewBox="0 0 100 40" className="w-full h-9" preserveAspectRatio="none" aria-hidden>
+            <defs>
+              <linearGradient id="eqG" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="rgb(var(--profit))" stopOpacity="0.25" />
+                <stop offset="100%" stopColor="rgb(var(--profit))" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            {/* Animated fill area */}
+            <motion.path
+              d="M0,38 L9,35 L20,37 L31,28 L42,24 L53,19 L64,14 L76,10 L87,6 L100,2 L100,40 L0,40Z"
+              fill="url(#eqG)"
+              initial={prefersReduced ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6, delay: 1.6 }}
+            />
+            {/* Animated line drawing in */}
+            <motion.path
+              d="M0,38 L9,35 L20,37 L31,28 L42,24 L53,19 L64,14 L76,10 L87,6 L100,2"
+              fill="none" stroke="rgb(var(--profit))" strokeWidth="1.5"
+              initial={prefersReduced ? false : { pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: 1 }}
+              transition={{ duration: 1.6, delay: 0.65, ease: "easeOut" }}
+            />
+          </svg>
+          <p className="text-sm font-bold mt-1.5" style={{ color: "rgb(var(--profit))", fontStyle: "normal" }}>+3 240€</p>
+        </motion.div>
+
+        {/* Win rate */}
+        <motion.div
+          className="rounded-xl p-3.5 border"
+          style={{ background: "rgb(var(--surface)/0.5)", borderColor: "rgb(var(--border))" }}
+          initial={prefersReduced ? false : { opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.72, ease }}
+        >
+          <p className="text-[9px] uppercase tracking-widest" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("preview_winrate")}</p>
+          <p className="text-2xl font-bold mt-0.5 tracking-tight" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>68%</p>
+          <p className="text-[9px] uppercase tracking-widest mt-2.5" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("preview_trades")}</p>
+          <p className="text-2xl font-bold mt-0.5 tracking-tight" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>47</p>
+        </motion.div>
+
+        {/* Challenge progress */}
+        <motion.div
+          className="rounded-xl p-3.5 border"
+          style={{ background: "rgb(var(--surface)/0.5)", borderColor: "rgb(var(--border))" }}
+          initial={prefersReduced ? false : { opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.82, ease }}
+        >
+          <p className="text-[9px] uppercase tracking-widest" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("preview_pnl_total")}</p>
+          <p className="text-lg font-bold mt-0.5" style={{ color: "rgb(var(--profit))", fontStyle: "normal" }}>+3 240€</p>
+          <p className="text-[9px] uppercase tracking-widest mt-2.5" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("preview_challenge")}</p>
+          <div className="mt-1.5 h-1 rounded-full overflow-hidden" style={{ background: "rgb(var(--surface))" }}>
+            <motion.div
+              className="h-full rounded-full"
+              style={{ background: "linear-gradient(90deg, rgb(var(--accent)) 0%, rgb(var(--profit)) 100%)" }}
+              initial={{ width: "0%" }}
+              animate={{ width: "89%" }}
+              transition={{ duration: 1.2, delay: 1.0, ease: [0.4, 0, 0.2, 1] }}
+            />
+          </div>
+          <p className="text-[9px] mt-1" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>89%</p>
+        </motion.div>
+      </div>
+
+      {/* AI insight bar */}
+      <motion.div
+        className="mx-4 sm:mx-6 mb-3 flex items-center gap-2.5 rounded-lg px-4 py-2.5 border"
+        style={{
+          background: "rgb(var(--profit)/0.06)",
+          borderColor: "rgb(var(--profit)/0.15)",
+        }}
+        initial={prefersReduced ? false : { opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, delay: 1.0, ease }}
+      >
+        <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0" style={{ background: "rgb(var(--profit)/0.15)" }} aria-hidden>
+          <svg className="w-3 h-3" style={{ color: "rgb(var(--profit))" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+          </svg>
+        </div>
+        <p className="text-xs leading-snug" style={{ color: "rgb(var(--foreground)/0.8)", fontStyle: "normal" }}>
+          {t("mockup_streak_label")} — <span className="font-semibold" style={{ color: "rgb(var(--profit))" }}>{t("mockup_streak_record")}</span>
+        </p>
+      </motion.div>
+
+      {/* Trade rows */}
+      <div className="mx-4 sm:mx-6 mb-5 border rounded-xl overflow-hidden" style={{ borderColor: "rgb(var(--border))" }}>
+        {[
+          { pair: "EUR/USD", dir: "BUY",  pnl: "+182.50", win: true,  date: "28/04" },
+          { pair: "GBP/JPY", dir: "SELL", pnl: "-47.20",  win: false, date: "27/04" },
+          { pair: "XAU/USD", dir: "BUY",  pnl: "+316.00", win: true,  date: "26/04" },
+        ].map((tr, idx) => (
+          <motion.div
+            key={tr.pair}
+            className="flex items-center gap-3 px-4 py-2.5 text-xs transition-colors"
+            style={{
+              borderBottom: idx < 2 ? `1px solid rgb(var(--border))` : undefined,
+              fontStyle: "normal",
+            }}
+            initial={prefersReduced ? false : { opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.35, delay: 1.1 + idx * 0.07, ease }}
+          >
+            <span className="tabular-nums w-9 shrink-0" style={{ color: "rgb(var(--muted)/0.5)" }}>{tr.date}</span>
+            <span className="font-medium w-14" style={{ color: "rgb(var(--foreground))" }}>{tr.pair}</span>
+            <span
+              className="px-2 py-0.5 rounded-md text-[10px] font-semibold"
+              style={{
+                background: tr.dir === "BUY" ? "rgb(var(--profit)/0.1)" : "rgb(var(--loss)/0.1)",
+                color: tr.dir === "BUY" ? "rgb(var(--profit))" : "rgb(var(--loss))",
+              }}
+            >
+              {tr.dir}
+            </span>
+            <div className="flex-1 h-px" style={{ background: "rgb(var(--border))" }} aria-hidden />
+            <span className="font-bold tabular-nums" style={{ color: tr.win ? "rgb(var(--profit))" : "rgb(var(--loss))" }}>{tr.pnl}€</span>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   STATS STRIP
+───────────────────────────────────────────── */
+function StatsStrip() {
+  const { t } = useLanguage();
+  const stats = [
+    { value: 500,   suffix: "+",  label: t("social_stat_1_label"),  decimals: 0 },
+    { value: 10000, suffix: "+",  label: t("social_stat_2_label"),  decimals: 0 },
+    { value: 4.8,   suffix: "/5", label: t("social_stat_3_label"),  decimals: 1 },
+  ];
+
+  return (
+    <section className="py-12 px-6 border-y" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
+      <div className="max-w-4xl mx-auto">
+        <div className="grid grid-cols-3 divide-x" style={{ "--tw-divide-opacity": 1 } as React.CSSProperties}>
+          {stats.map((s, i) => (
+            <Reveal key={i} delay={i * 0.07} className="text-center px-4 sm:px-8">
+              <p className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight" style={{ fontStyle: "normal", color: "rgb(var(--foreground))" }}>
+                <Counter end={s.value} suffix={s.suffix} decimals={s.decimals} />
+              </p>
+              <p className="text-xs mt-1.5 font-medium tracking-wide" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{s.label}</p>
             </Reveal>
           ))}
         </div>
@@ -249,45 +544,121 @@ function Problem() {
 }
 
 /* ─────────────────────────────────────────────
-   FEATURES — alternating layout with screenshots
+   PROBLEM SECTION
 ───────────────────────────────────────────── */
+function Problem() {
+  const { t } = useLanguage();
+  const problems = [
+    {
+      colorClass: "text-[rgb(var(--loss))]",
+      bgStyle: { background: "rgb(var(--loss)/0.05)", borderColor: "rgb(var(--loss)/0.12)" },
+      accentBg: { background: "rgb(var(--loss)/0.12)" },
+      title: t("problem_1_title"),
+      desc: t("problem_1_desc"),
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+      ),
+    },
+    {
+      colorClass: "text-amber-400",
+      bgStyle: { background: "rgba(251,191,36,0.05)", borderColor: "rgba(251,191,36,0.12)" },
+      accentBg: { background: "rgba(251,191,36,0.12)" },
+      title: t("problem_2_title"),
+      desc: t("problem_2_desc"),
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      ),
+    },
+    {
+      colorClass: "text-purple-400",
+      bgStyle: { background: "rgba(167,139,250,0.05)", borderColor: "rgba(167,139,250,0.12)" },
+      accentBg: { background: "rgba(167,139,250,0.12)" },
+      title: t("problem_3_title"),
+      desc: t("problem_3_desc"),
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728A9 9 0 015.636 5.636" />
+        </svg>
+      ),
+    },
+  ];
 
-/* Feature screenshots */
-const LANDING_PLATFORMS = ["MT5", "MT4", "cTrader", "Binance", "Bybit", "OKX", "Bitget", "TradingView"];
-
-function ScreenshotImport({ t }: { t: (k: string) => string }) {
   return (
-    <div className="feature-screenshot p-5 space-y-3">
-      <div className="border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center gap-3 text-center">
-        <div className="w-10 h-10 bg-accent/10 rounded-xl flex items-center justify-center text-accent">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <section className="py-28 px-6">
+      <div className="max-w-5xl mx-auto">
+        <Reveal className="text-center mb-16">
+          <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}>
+            {t("eyebrow_problem")}
+          </p>
+          <h2 className="text-4xl sm:text-5xl font-bold leading-tight" style={{ color: "rgb(var(--foreground))" }}>
+            {t("problem_title")}
+            <br />
+            <span style={{ color: "rgb(var(--muted))" }}>{t("problem_subtitle")}</span>
+          </h2>
+        </Reveal>
+
+        <StaggerReveal className="grid grid-cols-1 md:grid-cols-3 gap-4" stagger={0.1}>
+          {problems.map((p) => (
+            <motion.div
+              key={p.title}
+              className={`border rounded-2xl p-7 ${p.colorClass}`}
+              style={p.bgStyle}
+              whileHover={{ y: -5, scale: 1.006, boxShadow: "0 20px 56px -12px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.07)" }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={p.accentBg}>
+                {p.icon}
+              </div>
+              <h3 className="text-base font-bold mb-2" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{p.title}</h3>
+              <p className="text-sm leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{p.desc}</p>
+            </motion.div>
+          ))}
+        </StaggerReveal>
+      </div>
+    </section>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   FEATURES — bento grid
+───────────────────────────────────────────── */
+const PLATFORMS = ["MT5", "MT4", "cTrader", "Binance", "Bybit", "OKX", "Bitget", "TradingView"];
+
+function BentoImport({ t }: { t: (k: string) => string }) {
+  return (
+    <div className="h-full flex flex-col gap-4 p-6">
+      <div
+        className="border-2 border-dashed rounded-xl p-5 flex flex-col items-center gap-3 text-center transition-colors"
+        style={{ borderColor: "rgb(var(--border))" }}
+      >
+        <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "rgb(var(--accent)/0.1)", color: "rgb(var(--accent))" }}>
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
           </svg>
         </div>
-        <div>
-          <p className="text-sm text-foreground font-medium">{t("feature_import_drop")}</p>
-        </div>
+        <p className="text-sm font-semibold" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{t("feature_import_drop")}</p>
         <div className="w-full">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-5 h-5 bg-accent/10 rounded flex items-center justify-center text-accent">
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <span className="text-xs text-foreground">trades_history.csv</span>
-            <span className="ml-auto text-[10px] text-profit font-medium">{t("feature_import_tag")}</span>
+          <div className="flex items-center gap-2 mb-2 px-1">
+            <svg className="w-3.5 h-3.5 shrink-0" style={{ color: "rgb(var(--accent))" }} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span className="text-xs" style={{ color: "rgb(var(--foreground)/0.7)", fontStyle: "normal" }}>trades_history.csv</span>
+            <span className="ml-auto text-[10px] font-semibold" style={{ color: "rgb(var(--profit))", fontStyle: "normal" }}>{t("feature_import_tag")}</span>
           </div>
-          <div className="w-full bg-border rounded-full h-1">
-            <div className="bg-accent h-1 rounded-full w-full" />
+          <div className="h-1 rounded-full overflow-hidden" style={{ background: "rgb(var(--border))" }}>
+            <div className="h-full rounded-full" style={{ width: "100%", background: "rgb(var(--accent))" }} />
           </div>
         </div>
       </div>
-      {/* Platform badges */}
       <div>
-        <p className="text-[10px] text-muted mb-1.5">{t("feature_import_formats")}</p>
-        <div className="flex flex-wrap gap-1">
-          {LANDING_PLATFORMS.map((name) => (
-            <span key={name} className="px-2 py-0.5 rounded text-[10px] font-medium text-muted/80 border border-border bg-surface">
+        <p className="text-[10px] mb-2 font-medium" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("feature_import_formats")}</p>
+        <div className="flex flex-wrap gap-1.5">
+          {PLATFORMS.map((name) => (
+            <span key={name} className="px-2 py-0.5 rounded-md text-[10px] font-medium border" style={{ color: "rgb(var(--muted)/0.8)", borderColor: "rgb(var(--border))", background: "rgb(var(--surface))", fontStyle: "normal" }}>
               {name}
             </span>
           ))}
@@ -297,168 +668,259 @@ function ScreenshotImport({ t }: { t: (k: string) => string }) {
   );
 }
 
-/* Avatars réutilisables */
-function AIAvatar() {
+function AiAvatar() {
   return (
-    <div className="w-6 h-6 rounded-full bg-accent/20 shrink-0 flex items-center justify-center">
-      <svg className="w-3 h-3 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: "rgb(var(--accent)/0.15)" }} aria-hidden>
+      <svg className="w-2.5 h-2.5" style={{ color: "rgb(var(--accent))" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
       </svg>
     </div>
   );
 }
-function UserAvatar() {
-  return (
-    <div className="w-6 h-6 rounded-full bg-white/10 border border-white/10 shrink-0 flex items-center justify-center text-[9px] font-bold text-muted">
-      T
-    </div>
-  );
-}
 
-function ScreenshotAI({ t }: { t: (k: string) => string }) {
-  const msgs = [
-    { side: "ai",   text: t("feature_ai_msg_1"), time: "14:02" },
-    { side: "user", text: t("feature_ai_msg_2"), time: "14:03" },
-    { side: "ai",   text: t("feature_ai_msg_3"), time: "14:03" },
-    { side: "user", text: t("feature_ai_msg_4"), time: "14:04" },
-    { side: "ai",   text: t("feature_ai_msg_5"), time: "14:04" },
+function BentoAIChat({ t }: { t: (k: string) => string }) {
+  const [showTyping, setShowTyping] = useState(true);
+  const prefersReduced = useReducedMotion();
+
+  useEffect(() => {
+    if (prefersReduced) { setShowTyping(false); return; }
+    const timer = setTimeout(() => setShowTyping(false), 2000);
+    return () => clearTimeout(timer);
+  }, [prefersReduced]);
+
+  const earlyMsgs = [
+    { side: "ai",   text: t("feature_ai_msg_1") },
+    { side: "user", text: t("feature_ai_msg_2") },
+    { side: "ai",   text: t("feature_ai_msg_3") },
   ];
+  const lastAiMsg = t("feature_ai_msg_5");
+
   return (
-    <div className="feature-screenshot">
+    <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-3 border-b border-border flex items-center gap-2">
-        <AIAvatar />
-        <div className="flex-1 min-w-0">
-          <span className="text-xs font-semibold text-foreground">{t("feature_ai_coach_label")}</span>
-          <p className="text-[10px] text-profit leading-none">● Online</p>
+      <div className="px-4 py-3 flex items-center gap-2 border-b" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
+        <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: "rgb(var(--accent)/0.15)" }}>
+          <svg className="w-3 h-3" style={{ color: "rgb(var(--accent))" }} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+          </svg>
+        </div>
+        <div>
+          <p className="text-xs font-semibold" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{t("feature_ai_coach_label")}</p>
+          <p className="presence-dot text-[9px] leading-none" style={{ color: "rgb(var(--profit))", fontStyle: "normal" }}>● Online</p>
         </div>
       </div>
+
       {/* Messages */}
-      <div className="p-4 space-y-3 max-h-[300px] overflow-y-auto">
-        {msgs.map((m, i) => (
+      <div className="flex-1 p-4 space-y-3 overflow-hidden">
+        {earlyMsgs.map((m, i) =>
           m.side === "ai" ? (
-            <div key={i} className="flex gap-2 items-end">
-              <AIAvatar />
-              <div className="flex flex-col gap-0.5">
-                <div className="bg-surface border border-border rounded-xl rounded-bl-sm px-3 py-2 text-xs text-foreground max-w-[85%] leading-relaxed">
-                  {m.text}
-                </div>
-                <span className="text-[9px] text-muted/60 pl-1">{m.time}</span>
+            <motion.div
+              key={i}
+              className="flex gap-2 items-end"
+              initial={prefersReduced ? false : { opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: i * 0.12, ease }}
+            >
+              <AiAvatar />
+              <div className="rounded-xl rounded-bl-sm px-3 py-2 text-[11px] max-w-[85%] leading-relaxed border card-inset" style={{ background: "rgb(var(--surface))", borderColor: "rgb(var(--border))", color: "rgb(var(--foreground))", fontStyle: "normal" }}>
+                {m.text}
               </div>
-            </div>
+            </motion.div>
           ) : (
-            <div key={i} className="flex gap-2 justify-end items-end">
-              <div className="flex flex-col items-end gap-0.5">
-                <div className="bg-accent rounded-xl rounded-br-sm px-3 py-2 text-xs text-white max-w-[72%]">
-                  {m.text}
-                </div>
-                <span className="text-[9px] text-muted/60 pr-1">{m.time}</span>
+            <motion.div
+              key={i}
+              className="flex justify-end"
+              initial={prefersReduced ? false : { opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: i * 0.12, ease }}
+            >
+              <div className="px-3 py-2 text-[11px] max-w-[72%] rounded-xl rounded-br-sm leading-relaxed text-white" style={{ background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #3b82f6 100%)", fontStyle: "normal" }}>
+                {m.text}
               </div>
-              <UserAvatar />
-            </div>
+            </motion.div>
           )
-        ))}
+        )}
+
+        {/* Typing indicator → fades out, last message fades in */}
+        <AnimatePresence mode="wait">
+          {showTyping ? (
+            <motion.div
+              key="typing"
+              className="flex gap-2 items-end"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4, transition: { duration: 0.2 } }}
+              transition={{ duration: 0.3, delay: 0.4 }}
+            >
+              <AiAvatar />
+              <div className="rounded-xl rounded-bl-sm px-3.5 py-2.5 border flex items-center gap-1.5" style={{ background: "rgb(var(--surface))", borderColor: "rgb(var(--border))" }}>
+                <span className="typing-dot typing-dot-1" />
+                <span className="typing-dot typing-dot-2" />
+                <span className="typing-dot typing-dot-3" />
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="last-msg"
+              className="flex gap-2 items-end"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, ease }}
+            >
+              <AiAvatar />
+              <div className="rounded-xl rounded-bl-sm px-3 py-2 text-[11px] max-w-[85%] leading-relaxed border card-inset" style={{ background: "rgb(var(--surface))", borderColor: "rgb(var(--border))", color: "rgb(var(--foreground))", fontStyle: "normal" }}>
+                {lastAiMsg}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
 }
 
-function ScreenshotScore({ t }: { t: (k: string) => string }) {
-  const r = 36, circ = 2 * Math.PI * r;
+function BentoDisciplineScore({ t }: { t: (k: string) => string }) {
+  const r = 34, circ = 2 * Math.PI * r;
   const rules = [
-    { label: "SL ≤ 1%",                      ok: true  },
-    { label: "RR ≥ 2:1",                      ok: true  },
-    { label: t("mockup_rule_max_trades"),      ok: false },
-    { label: "Trading Plan",                   ok: true  },
-    { label: t("mockup_rule_no_revenge"),      ok: false },
+    { label: "SL ≤ 1%",                 ok: true  },
+    { label: "RR ≥ 2:1",                 ok: true  },
+    { label: t("mockup_rule_max_trades"), ok: false },
+    { label: "Trading Plan",             ok: true  },
+    { label: t("mockup_rule_no_revenge"), ok: false },
   ];
   return (
-    <div className="feature-screenshot p-5">
-      <div className="flex flex-col items-center gap-4">
-        {/* Score ring */}
-        <div className="flex items-center gap-6">
-          <div className="relative w-24 h-24 shrink-0">
-            <svg className="w-24 h-24 -rotate-90" viewBox="0 0 88 88">
-              <circle cx="44" cy="44" r={r} fill="none" stroke="rgb(var(--border))" strokeWidth="7" />
-              <circle cx="44" cy="44" r={r} fill="none" stroke="rgb(var(--accent))" strokeWidth="7" strokeLinecap="round"
-                strokeDasharray={`${0.78 * circ} ${circ}`} />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-2xl font-bold text-foreground">78</span>
-              <span className="text-[9px] text-muted leading-none mt-0.5">{t("preview_discipline")}</span>
-            </div>
-          </div>
-          {/* Rules checklist */}
-          <div className="flex-1 space-y-1.5">
-            {rules.map((rule) => (
-              <div key={rule.label} className="flex items-center gap-2">
-                <svg className={`w-3.5 h-3.5 shrink-0 ${rule.ok ? "text-profit" : "text-loss"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  {rule.ok
-                    ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                    : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />}
-                </svg>
-                <span className="text-[10px] text-foreground/80">{rule.label}</span>
-              </div>
-            ))}
+    <div className="h-full p-5 flex flex-col gap-4">
+      <div className="flex items-center gap-5">
+        <div className="relative w-20 h-20 shrink-0">
+          <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80" aria-label="Discipline score 78%" role="img">
+            <circle cx="40" cy="40" r={r} fill="none" stroke="rgb(var(--border))" strokeWidth="6" />
+            <motion.circle
+              cx="40" cy="40" r={r} fill="none"
+              stroke="rgb(var(--accent))" strokeWidth="6" strokeLinecap="round"
+              strokeDasharray={`${circ} ${circ}`}
+              initial={{ strokeDashoffset: circ }}
+              whileInView={{ strokeDashoffset: circ * (1 - 0.78) }}
+              viewport={{ once: true }}
+              transition={{ duration: 1.3, delay: 0.2, ease: [0.4, 0, 0.2, 1] }}
+            />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-xl font-bold tracking-tight" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>78</span>
+            <span className="text-[8px] leading-none mt-0.5" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>SCORE</span>
           </div>
         </div>
-        {/* Conformes / Violations */}
-        <div className="grid grid-cols-2 gap-3 w-full">
-          <div className="bg-profit/5 border border-profit/15 rounded-lg p-3 text-center">
-            <p className="text-[10px] text-muted">{t("feature_score_conformes")}</p>
-            <p className="text-lg font-bold text-profit">18/23</p>
-          </div>
-          <div className="bg-loss/5 border border-loss/15 rounded-lg p-3 text-center">
-            <p className="text-[10px] text-muted">{t("feature_score_violations")}</p>
-            <p className="text-lg font-bold text-loss">5</p>
-          </div>
+        <div className="flex-1 space-y-1.5">
+          {rules.map((rule) => (
+            <div key={rule.label} className="flex items-center gap-2">
+              <div
+                className="w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0"
+                style={{ background: rule.ok ? "rgb(var(--profit)/0.15)" : "rgb(var(--loss)/0.15)" }}
+              >
+                <svg
+                  className="w-2 h-2"
+                  style={{ color: rule.ok ? "rgb(var(--profit))" : "rgb(var(--loss))" }}
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                  aria-hidden
+                >
+                  {rule.ok
+                    ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />}
+                </svg>
+              </div>
+              <span className="text-[10px]" style={{ color: "rgb(var(--foreground)/0.8)", fontStyle: "normal" }}>{rule.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2.5">
+        <div className="rounded-lg p-3 text-center border" style={{ background: "rgb(var(--profit)/0.06)", borderColor: "rgb(var(--profit)/0.12)" }}>
+          <p className="text-[9px] mb-0.5" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("feature_score_conformes")}</p>
+          <p className="text-base font-bold" style={{ color: "rgb(var(--profit))", fontStyle: "normal" }}>18/23</p>
+        </div>
+        <div className="rounded-lg p-3 text-center border" style={{ background: "rgb(var(--loss)/0.06)", borderColor: "rgb(var(--loss)/0.12)" }}>
+          <p className="text-[9px] mb-0.5" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("feature_score_violations")}</p>
+          <p className="text-base font-bold" style={{ color: "rgb(var(--loss))", fontStyle: "normal" }}>5</p>
         </div>
       </div>
     </div>
   );
 }
 
-function ScreenshotChallenge({ t }: { t: (k: string) => string }) {
-  const [mode, setMode] = useState<"prop" | "own">("prop");
+/* MetaTrader → TradeDiscipline live sync — animated connection */
+function BentoSync({ t }: { t: (k: string) => string }) {
+  const prefersReduced = useReducedMotion();
+
+  const Node = ({ label, sub, children }: { label: string; sub?: string; children: React.ReactNode }) => (
+    <div className="flex flex-col items-center gap-1.5 shrink-0">
+      <div
+        className="w-12 h-12 rounded-xl flex items-center justify-center border"
+        style={{ background: "rgb(var(--surface))", borderColor: "rgb(var(--border))" }}
+      >
+        {children}
+      </div>
+      <span className="text-[10px] font-semibold" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{label}</span>
+      {sub && <span className="text-[8px]" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{sub}</span>}
+    </div>
+  );
+
   return (
-    <div className="feature-screenshot p-5">
-      {/* Mode toggle */}
-      <div className="flex rounded-lg border border-border overflow-hidden mb-4 text-xs font-medium">
-        <button onClick={() => setMode("prop")} className={`flex-1 py-1.5 transition-colors ${mode === "prop" ? "bg-accent text-white" : "text-muted hover:text-foreground"}`}>Prop Firm</button>
-        <button onClick={() => setMode("own")} className={`flex-1 py-1.5 transition-colors ${mode === "own" ? "bg-accent text-white" : "text-muted hover:text-foreground"}`}>{t("mockup_challenge_own_funds")}</button>
-      </div>
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          {mode === "prop" ? (
-            <>
-              <p className="text-sm font-semibold text-foreground">{t("mockup_challenge_prop_title")}</p>
-              <p className="text-xs text-muted">{t("mockup_challenge_prop_subtitle")}</p>
-            </>
-          ) : (
-            <>
-              <p className="text-sm font-semibold text-foreground">{t("mockup_challenge_own_title")}</p>
-              <p className="text-xs text-muted">{t("mockup_challenge_own_subtitle")}</p>
-            </>
-          )}
+    <div className="h-full p-6 flex flex-col gap-5">
+      {/* Connection diagram */}
+      <div className="flex items-center justify-between gap-2">
+        <Node label={t("feature_sync_node_mt")} sub="MT4 / MT5">
+          <span className="text-base font-bold tracking-tight" style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}>MT</span>
+        </Node>
+
+        {/* Animated connector */}
+        <div className="relative flex-1 h-10 mx-1" aria-hidden>
+          {/* Base dashed line */}
+          <div
+            className="absolute top-1/2 left-0 right-0 -translate-y-1/2 h-px"
+            style={{
+              backgroundImage: "linear-gradient(90deg, rgb(var(--border)) 0 6px, transparent 6px 12px)",
+              backgroundSize: "12px 1px",
+            }}
+          />
+          {/* Active gradient overlay */}
+          <div
+            className="absolute top-1/2 left-0 right-0 -translate-y-1/2 h-px"
+            style={{ background: "linear-gradient(90deg, transparent, rgb(var(--accent)/0.5), transparent)" }}
+          />
+          {/* Traveling pulse */}
+          <motion.div
+            className="absolute top-1/2 w-2 h-2 rounded-full -translate-y-1/2"
+            style={{ background: "rgb(var(--accent))", boxShadow: "0 0 8px 2px rgb(var(--accent)/0.5)" }}
+            initial={prefersReduced ? { left: "50%", opacity: 1 } : { left: "4%", opacity: 0 }}
+            animate={prefersReduced ? {} : { left: ["4%", "92%"], opacity: [0, 1, 1, 0] }}
+            transition={prefersReduced ? undefined : { duration: 1.8, repeat: Infinity, ease: "easeInOut", times: [0, 0.1, 0.9, 1] }}
+          />
         </div>
-        <span className="text-[11px] px-2.5 py-1 bg-accent/10 text-accent rounded-full font-medium">{t("mockup_challenge_status_active")}</span>
+
+        <Node label={t("feature_sync_node_app")}>
+          <svg className="w-5 h-5" style={{ color: "rgb(var(--accent))" }} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+          </svg>
+        </Node>
       </div>
-      <div className="space-y-3.5">
-        {[
-          { labelKey: "mockup_challenge_profit_target", val: "+2 840€ / 4 000€", pct: 71, color: "bg-profit"    },
-          { labelKey: "mockup_challenge_daily_dd",      val: "-340€ / 2 500€",   pct: 14, color: "bg-warning"   },
-          { labelKey: "mockup_challenge_total_dd",      val: "-1 160€ / 5 000€", pct: 23, color: "bg-loss/70"   },
-        ].map((bar) => (
-          <div key={bar.labelKey}>
-            <div className="flex justify-between text-[11px] mb-1.5">
-              <span className="text-muted">{t(bar.labelKey)}</span>
-              <span className="text-foreground font-medium tabular-nums">{bar.val}</span>
-            </div>
-            <div className="h-2 bg-surface rounded-full overflow-hidden">
-              <div className={`h-full ${bar.color} rounded-full transition-all`} style={{ width: `${bar.pct}%` }} />
-            </div>
-          </div>
-        ))}
+
+      {/* Live status row */}
+      <div className="flex items-center gap-2.5 rounded-lg px-3.5 py-2.5 border" style={{ background: "rgb(var(--profit)/0.06)", borderColor: "rgb(var(--profit)/0.15)" }}>
+        <span className="presence-dot w-2 h-2 rounded-full shrink-0" style={{ background: "rgb(var(--profit))" }} aria-hidden />
+        <span className="text-xs flex-1" style={{ color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}>{t("feature_sync_status")}</span>
+        <span
+          className="text-[9px] font-bold tracking-wider px-2 py-0.5 rounded-full"
+          style={{ background: "rgb(var(--profit)/0.15)", color: "rgb(var(--profit))", fontStyle: "normal" }}
+        >
+          {t("feature_sync_live")}
+        </span>
+      </div>
+
+      {/* CSV note */}
+      <div className="flex items-center gap-2 mt-auto">
+        <svg className="w-3.5 h-3.5 shrink-0" style={{ color: "rgb(var(--muted))" }} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        <span className="text-[10px]" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("feature_sync_vs_csv")}</span>
       </div>
     </div>
   );
@@ -467,108 +929,79 @@ function ScreenshotChallenge({ t }: { t: (k: string) => string }) {
 function Features() {
   const { t } = useLanguage();
 
-  const features: Array<{
-    label: string; labelColor: string; title: string; desc: string;
-    screenshot: React.ReactNode; reverse?: boolean; screenshotGlow?: boolean;
-    bullets?: string[]; wideScreenshot?: boolean;
-  }> = [
+  const features = [
     {
-      label: t("feature_1_label"),
-      labelColor: "text-accent bg-accent/10",
+      tagStyle: { color: "rgb(var(--accent))", background: "rgb(var(--accent)/0.08)", borderColor: "rgb(var(--accent)/0.15)" },
+      tag: t("feature_1_label"),
       title: t("feature_1_title"),
       desc: t("feature_1_desc"),
-      screenshot: <ScreenshotImport t={t} />,
+      visual: <BentoImport t={t} />,
+      span: "",
     },
     {
-      label: t("feature_2_label"),
-      labelColor: "text-purple-400 bg-purple-400/10",
+      tagStyle: { color: "rgb(var(--accent))", background: "rgb(var(--accent)/0.08)", borderColor: "rgb(var(--accent)/0.15)" },
+      tag: t("feature_sync_label"),
+      title: t("feature_sync_title"),
+      desc: t("feature_sync_desc"),
+      visual: <BentoSync t={t} />,
+      span: "",
+    },
+    {
+      tagStyle: { color: "rgb(167,139,250)", background: "rgba(167,139,250,0.08)", borderColor: "rgba(167,139,250,0.15)" },
+      tag: t("feature_2_label"),
       title: t("feature_2_title"),
       desc: t("feature_2_desc"),
-      bullets: [
-        `🔍 ${t("feature_2_bullet_1")}`,
-        `📊 ${t("feature_2_bullet_2")}`,
-        `💬 ${t("feature_2_bullet_3")}`,
-      ],
-      screenshot: <ScreenshotAI t={t} />,
-      screenshotGlow: true,
-      reverse: true,
+      visual: <BentoAIChat t={t} />,
+      span: "",
     },
     {
-      label: t("feature_3_label"),
-      labelColor: "text-profit bg-profit/10",
+      tagStyle: { color: "rgb(var(--profit))", background: "rgb(var(--profit)/0.08)", borderColor: "rgb(var(--profit)/0.15)" },
+      tag: t("feature_3_label"),
       title: t("feature_3_title"),
       desc: t("feature_3_desc"),
-      screenshot: <ScreenshotScore t={t} />,
-    },
-    {
-      label: t("feature_4_label"),
-      labelColor: "text-orange-400 bg-orange-400/10",
-      title: t("feature_4_title"),
-      desc: t("feature_4_desc"),
-      screenshot: <ScreenshotChallenge t={t} />,
-      reverse: true,
-      wideScreenshot: false,
+      visual: <BentoDisciplineScore t={t} />,
+      span: "",
     },
   ];
 
   return (
-    <section id="features" className="py-24 px-6 border-t border-white/5">
+    <section id="features" className="py-28 px-6 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
       <div className="max-w-5xl mx-auto">
-        <Reveal>
-          <h2 className="text-3xl sm:text-4xl font-bold text-foreground text-center">{t("features_title")}</h2>
+        <Reveal className="text-center mb-16">
+          <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}>{t("eyebrow_features")}</p>
+          <h2 className="text-4xl sm:text-5xl font-bold" style={{ color: "rgb(var(--foreground))" }}>{t("features_title")}</h2>
         </Reveal>
 
-        <div className="mt-16">
-          {features.map((f, idx) => (
-            <div key={f.title}>
-              {idx > 0 && (
-                <div className="flex items-center gap-4 my-14">
-                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-                  <div className="w-6 h-6 rounded-full border border-white/10 flex items-center justify-center shrink-0">
-                    <svg className="w-3 h-3 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {features.map((f, i) => (
+            <Reveal key={f.title} delay={i * 0.07} className={f.span}>
+              <motion.div
+                className="relative rounded-2xl border overflow-hidden h-full group/card"
+                style={{ background: "rgb(var(--card))", borderColor: "rgb(var(--border))" }}
+                whileHover={{ y: -4, borderColor: "rgb(var(--accent)/0.28)", boxShadow: "0 0 0 1px rgb(var(--accent)/0.08), 0 24px 60px -12px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05)" }}
+                transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+              >
+                {/* Top-edge gradient shimmer on hover */}
+                <div
+                  className="absolute inset-x-0 top-0 h-px opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 pointer-events-none"
+                  style={{ background: "linear-gradient(90deg, transparent 0%, rgb(var(--accent)/0.6) 50%, transparent 100%)" }}
+                  aria-hidden
+                />
+                <div className="p-6 pb-0">
+                  <span
+                    className="inline-block text-[10px] font-bold tracking-widest px-2.5 py-1 rounded-md border mb-3"
+                    style={{ ...f.tagStyle, fontStyle: "normal" }}
+                  >
+                    {f.tag}
+                  </span>
+                  <h3 className="text-lg font-bold mb-1.5" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{f.title}</h3>
+                  <p className="text-sm leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{f.desc}</p>
                 </div>
-              )}
-              <Reveal>
-                <div className={`flex flex-col ${f.reverse ? "lg:flex-row-reverse" : "lg:flex-row"} items-center gap-10 lg:gap-12`}>
-                  {/* Text */}
-                  <div className="flex-1 min-w-0">
-                    <span className={`inline-block text-[11px] font-bold tracking-widest px-2.5 py-1 rounded-md mb-4 ${f.labelColor}`}>
-                      {f.label}
-                    </span>
-                    <h3 className="text-2xl sm:text-3xl font-bold text-foreground">{f.title}</h3>
-                    <p className="text-muted mt-4 leading-relaxed">{f.desc}</p>
-                    {f.bullets && (
-                      <ul className="mt-5 space-y-2">
-                        {f.bullets.map((b, bi) => (
-                          <li key={bi} className="flex items-start gap-2 text-sm text-foreground/80">
-                            <span className="shrink-0">{b.split(" ")[0]}</span>
-                            <span>{b.slice(b.indexOf(" ") + 1)}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                  {/* Arrow connector — desktop only */}
-                  <div className="hidden lg:flex items-center justify-center shrink-0">
-                    <svg
-                      className="w-6 h-6 text-accent/40"
-                      fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                      style={{ transform: f.reverse ? "scaleX(-1)" : undefined }}
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                  {/* Screenshot */}
-                  <div className={`w-full shrink-0 ${f.screenshotGlow ? "lg:w-[50%]" : "lg:w-[400px]"} ${f.screenshotGlow ? "shadow-[0_0_40px_rgba(139,92,246,0.2),0_0_80px_rgba(59,130,246,0.1)] rounded-xl" : ""}`}>
-                    {f.screenshot}
-                  </div>
+                <div className="mt-4 border-t" style={{ borderColor: "rgb(var(--border)/0.5)", background: "rgb(var(--surface)/0.3)" }}>
+                  {f.visual}
                 </div>
-              </Reveal>
-            </div>
+              </motion.div>
+            </Reveal>
           ))}
         </div>
       </div>
@@ -582,30 +1015,37 @@ function Features() {
 function AIDetection() {
   const { t } = useLanguage();
   const detections = [
-    { text: t("ai_detect_1"), color: "text-loss",    bg: "bg-loss/5",    border: "border-loss/15",    icon: "🔥" },
-    { text: t("ai_detect_2"), color: "text-profit",  bg: "bg-profit/5",  border: "border-profit/15",  icon: "⏰" },
-    { text: t("ai_detect_3"), color: "text-warning", bg: "bg-warning/5", border: "border-warning/15", icon: "⚠️" },
-    { text: t("ai_detect_4"), color: "text-purple-400", bg: "bg-purple-400/5", border: "border-purple-400/15", icon: "📊" },
+    { text: t("ai_detect_1"), bgStyle: { background: "rgb(var(--loss)/0.05)", borderColor: "rgb(var(--loss)/0.12)" },    icon: "🔥" },
+    { text: t("ai_detect_2"), bgStyle: { background: "rgb(var(--profit)/0.05)", borderColor: "rgb(var(--profit)/0.12)" }, icon: "⏰" },
+    { text: t("ai_detect_3"), bgStyle: { background: "rgba(251,191,36,0.05)", borderColor: "rgba(251,191,36,0.12)" },     icon: "⚠️" },
+    { text: t("ai_detect_4"), bgStyle: { background: "rgba(167,139,250,0.05)", borderColor: "rgba(167,139,250,0.12)" },   icon: "📊" },
   ];
+
   return (
-    <section className="py-24 px-6 border-t border-white/5 bg-background">
+    <section className="py-28 px-6 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
       <div className="max-w-5xl mx-auto">
         <Reveal className="text-center mb-14">
-          <h2 className="text-3xl sm:text-4xl font-bold text-foreground">{t("ai_detect_title")}</h2>
-          <p className="text-muted mt-3 max-w-2xl mx-auto">{t("ai_detect_subtitle")}</p>
+          <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}>{t("eyebrow_ai_coach")}</p>
+          <h2 className="text-4xl sm:text-5xl font-bold" style={{ color: "rgb(var(--foreground))" }}>{t("ai_detect_title")}</h2>
+          <p className="mt-4 max-w-xl mx-auto text-base leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("ai_detect_subtitle")}</p>
         </Reveal>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {detections.map((d, idx) => (
-            <Reveal key={idx} delay={idx * 60}>
-              <div className={`${d.bg} border ${d.border} rounded-2xl p-6 flex items-start gap-4 hover:scale-[1.01] transition-transform`}>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 text-xl shrink-0 icon-pulse">
-                  {d.icon}
-                </div>
-                <p className="text-foreground text-sm leading-relaxed">{d.text}</p>
+
+        <StaggerReveal className="grid grid-cols-1 sm:grid-cols-2 gap-3" stagger={0.09}>
+          {detections.map((d, i) => (
+            <motion.div
+              key={i}
+              className="border rounded-2xl p-5 flex items-start gap-4"
+              style={d.bgStyle}
+              whileHover={{ y: -4, scale: 1.005, boxShadow: "0 16px 48px -12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)" }}
+              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0" style={{ background: "rgb(var(--surface))" }} aria-hidden>
+                {d.icon}
               </div>
-            </Reveal>
+              <p className="text-sm leading-relaxed" style={{ color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}>{d.text}</p>
+            </motion.div>
           ))}
-        </div>
+        </StaggerReveal>
       </div>
     </section>
   );
@@ -621,60 +1061,47 @@ function SocialProof() {
     { text: t("testimonial_2_text"), author: t("testimonial_2_author"), initials: "S" },
     { text: t("testimonial_3_text"), author: t("testimonial_3_author"), initials: "M" },
   ];
+
   return (
-    <section className="py-24 px-6 border-t border-white/5 bg-background">
+    <section className="py-28 px-6 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
       <div className="max-w-5xl mx-auto">
-        <Reveal className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold text-foreground">{t("social_title")}</h2>
-          {/* Social proof mini-cards with animated counters */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-6">
-            <div className="flex flex-col items-center px-6 py-4 bg-white/[0.03] border border-white/[0.08] rounded-2xl min-w-[140px]">
-              <span className="text-3xl font-bold text-foreground tabular-nums"><CountUp end={500} suffix="+" /></span>
-              <span className="text-xs text-muted mt-1">{t("social_stat_1_label")}</span>
-            </div>
-            <div className="flex flex-col items-center px-6 py-4 bg-white/[0.03] border border-white/[0.08] rounded-2xl min-w-[140px]">
-              <span className="text-3xl font-bold text-foreground tabular-nums"><CountUp end={10000} suffix="+" /></span>
-              <span className="text-xs text-muted mt-1">{t("social_stat_2_label")}</span>
-            </div>
-            <div className="flex flex-col items-center px-6 py-4 bg-white/[0.03] border border-white/[0.08] rounded-2xl min-w-[140px]">
-              <div className="flex items-center gap-1">
-                <span className="text-3xl font-bold text-foreground tabular-nums"><CountUp end={4.8} decimals={1} /></span>
-                <span className="text-xl font-bold text-gold">/5</span>
-              </div>
-              <div className="flex gap-0.5 mt-0.5">
+        <Reveal className="text-center mb-16">
+          <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}>{t("eyebrow_social")}</p>
+          <h2 className="text-4xl sm:text-5xl font-bold" style={{ color: "rgb(var(--foreground))" }}>{t("social_title")}</h2>
+        </Reveal>
+
+        <StaggerReveal className="grid grid-cols-1 md:grid-cols-3 gap-4" stagger={0.1}>
+          {testimonials.map((tm, i) => (
+            <motion.div
+              key={i}
+              className="border rounded-2xl p-6 flex flex-col"
+              style={{ background: "rgb(var(--card))", borderColor: "rgb(var(--border))" }}
+              whileHover={{ y: -5, borderColor: "rgb(var(--accent)/0.25)", boxShadow: "0 20px 56px -12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)" }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div className="flex gap-0.5 mb-4" aria-label="5 stars" role="img">
                 {Array.from({ length: 5 }).map((_, s) => (
-                  <svg key={s} className="w-3 h-3 text-gold" fill="currentColor" viewBox="0 0 24 24">
+                  <svg key={s} className="w-3.5 h-3.5 text-amber-400" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
                     <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                   </svg>
                 ))}
               </div>
-              <span className="text-xs text-muted mt-1">{t("social_stat_3_label")}</span>
-            </div>
-          </div>
-        </Reveal>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {testimonials.map((tm, i) => (
-            <Reveal key={i} delay={i * 150}>
-              <div className="bg-card border border-border rounded-2xl p-6 flex flex-col hover:border-white/10 transition-all h-full">
-                {/* Stars */}
-                <div className="flex gap-1 mb-4">
-                  {Array.from({ length: 5 }).map((_, s) => (
-                    <svg key={s} className="w-3.5 h-3.5 text-gold" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                    </svg>
-                  ))}
+              <blockquote className="text-sm leading-relaxed flex-1" style={{ color: "rgb(var(--foreground)/0.75)", fontStyle: "normal" }}>
+                &ldquo;{tm.text}&rdquo;
+              </blockquote>
+              <div className="flex items-center gap-3 mt-5 pt-4 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+                  style={{ background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #3b82f6 100%)" }}
+                  aria-hidden
+                >
+                  {tm.initials}
                 </div>
-                <p className="text-foreground-muted text-sm leading-relaxed italic flex-1">&ldquo;{tm.text}&rdquo;</p>
-                <div className="flex items-center gap-3 mt-5">
-                  <div className="w-8 h-8 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center text-accent text-xs font-bold shrink-0">
-                    {tm.initials}
-                  </div>
-                  <p className="text-muted text-xs font-medium">{tm.author}</p>
-                </div>
+                <p className="text-xs font-medium" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{tm.author}</p>
               </div>
-            </Reveal>
+            </motion.div>
           ))}
-        </div>
+        </StaggerReveal>
       </div>
     </section>
   );
@@ -685,40 +1112,58 @@ function SocialProof() {
 ───────────────────────────────────────────── */
 function HowItWorks() {
   const { t } = useLanguage();
-  const prefersReducedMotion = useReducedMotion();
+  const prefersReduced = useReducedMotion();
   const lineRef = useRef<HTMLDivElement>(null);
-  const lineInView = useInView(lineRef, { once: true, margin: "-100px" });
+  const lineInView = useInView(lineRef, { once: true, margin: "-80px" });
+
   const steps = [
-    { num: "1", title: t("how_1_title"), desc: t("how_1_desc") },
-    { num: "2", title: t("how_2_title"), desc: t("how_2_desc") },
-    { num: "3", title: t("how_3_title"), desc: t("how_3_desc") },
+    { num: "01", title: t("how_1_title"), desc: t("how_1_desc") },
+    { num: "02", title: t("how_2_title"), desc: t("how_2_desc") },
+    { num: "03", title: t("how_3_title"), desc: t("how_3_desc") },
   ];
+
   return (
-    <section className="py-24 px-6 border-t border-white/5">
-      <div className="max-w-4xl mx-auto">
-        <Reveal>
-          <h2 className="text-3xl sm:text-4xl font-bold text-foreground text-center">{t("how_title")}</h2>
+    <section className="py-28 px-6 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
+      <div className="max-w-5xl mx-auto">
+        <Reveal className="text-center mb-20">
+          <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}>{t("eyebrow_how")}</p>
+          <h2 className="text-4xl sm:text-5xl font-bold" style={{ color: "rgb(var(--foreground))" }}>{t("how_title")}</h2>
         </Reveal>
-        <div className="relative grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">
-          {/* Connecting line — progressive width animation */}
+
+        <div className="relative grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* Animated connector line — hidden on mobile */}
           <div
             ref={lineRef}
-            className="hidden md:block absolute top-8 left-[calc(16.66%+28px)] right-[calc(16.66%+28px)] h-px overflow-hidden"
+            className="hidden md:block absolute top-7 left-[calc(16.66%+36px)] right-[calc(16.66%+36px)] h-px overflow-hidden"
+            aria-hidden
           >
             <motion.div
-              className="h-full bg-gradient-to-r from-accent/20 via-accent/40 to-accent/20"
-              initial={prefersReducedMotion ? { width: "100%" } : { width: "0%" }}
-              animate={lineInView ? { width: "100%" } : { width: "0%" }}
-              transition={{ duration: 1.2, delay: 0.3, ease: "easeOut" }}
+              className="h-full"
+              style={{ background: "linear-gradient(90deg, rgb(var(--accent)/0.2) 0%, rgb(var(--accent)/0.5) 50%, rgb(var(--accent)/0.2) 100%)" }}
+              initial={prefersReduced ? { width: "100%" } : { width: "0%" }}
+              animate={lineInView ? { width: "100%" } : {}}
+              transition={{ duration: 1.3, delay: 0.3, ease: [0.4, 0, 0.2, 1] }}
             />
           </div>
+
           {steps.map((s, i) => (
-            <Reveal key={s.num} delay={i * 200} className="text-center">
-              <div className="w-14 h-14 mx-auto flex items-center justify-center rounded-2xl bg-gradient-to-br from-accent to-blue-700 text-white text-2xl font-bold shadow-lg shadow-accent/20 relative z-10">
+            <Reveal key={s.num} delay={i * 0.12} className="text-center">
+              <motion.div
+                className="w-14 h-14 mx-auto flex items-center justify-center rounded-2xl text-sm font-bold relative z-10 border cursor-default"
+                style={{
+                  background: "linear-gradient(135deg, rgb(var(--accent)/0.12) 0%, rgb(var(--accent)/0.04) 100%)",
+                  borderColor: "rgb(var(--accent)/0.25)",
+                  color: "rgb(var(--foreground))",
+                  fontStyle: "normal",
+                }}
+                whileHover={{ scale: 1.08, borderColor: "rgb(var(--accent)/0.5)", background: "linear-gradient(135deg, rgb(var(--accent)/0.2) 0%, rgb(var(--accent)/0.08) 100%)", boxShadow: "0 0 0 4px rgb(var(--accent)/0.08), 0 8px 24px -6px rgb(var(--accent)/0.2)" }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                aria-label={`Step ${s.num}`}
+              >
                 {s.num}
-              </div>
-              <h3 className="text-lg font-bold text-foreground mt-5">{s.title}</h3>
-              <p className="text-muted mt-2 text-sm leading-relaxed">{s.desc}</p>
+              </motion.div>
+              <h3 className="text-base font-bold mt-5 mb-2" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{s.title}</h3>
+              <p className="text-sm leading-relaxed max-w-xs mx-auto" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{s.desc}</p>
             </Reveal>
           ))}
         </div>
@@ -728,88 +1173,110 @@ function HowItWorks() {
 }
 
 /* ─────────────────────────────────────────────
-   PREMIUM CARD
+   ROI BAND — "TradeDiscipline pays for itself"
 ───────────────────────────────────────────── */
-function PremiumComingSoon({ t, annual }: { t: (k: string) => string; annual: boolean }) {
-  const exclusiveFeats = [
-    t("plan_benefit_premium_1"),
-    t("plan_benefit_premium_2"),
-    t("plan_benefit_premium_3"),
-  ];
-
-  const plusFeats = [
-    t("plan_benefit_plus_1"),
-    t("plan_benefit_plus_2"),
-    t("plan_benefit_plus_3"),
-    t("plan_benefit_plus_4"),
-    t("plan_benefit_plus_5"),
-    t("plan_benefit_plus_6"),
-    t("plan_benefit_plus_7"),
+function ROIBand({ t }: { t: (k: string) => string }) {
+  const stats = [
+    {
+      kind: "loss" as const,
+      prefix: "−",
+      value: 180,
+      decimals: 0,
+      suffix: "€",
+      label: t("pricing_roi_stat1_label"),
+      color: "rgb(var(--loss))",
+      tint: { background: "rgb(var(--loss)/0.06)", borderColor: "rgb(var(--loss)/0.15)" },
+    },
+    {
+      kind: "accent" as const,
+      prefix: "",
+      value: 9.99,
+      decimals: 2,
+      suffix: "€",
+      label: t("pricing_roi_stat2_label"),
+      color: "rgb(var(--accent))",
+      tint: { background: "rgb(var(--accent)/0.06)", borderColor: "rgb(var(--accent)/0.2)" },
+    },
+    {
+      kind: "text" as const,
+      textValue: t("pricing_roi_stat3_value"),
+      label: t("pricing_roi_stat3_label"),
+      color: "rgb(var(--profit))",
+      tint: { background: "rgb(var(--profit)/0.06)", borderColor: "rgb(var(--profit)/0.15)" },
+    },
   ];
 
   return (
-    <div className="relative bg-card card-gradient-border-gold rounded-2xl p-7 flex flex-col h-full">
-      <div className="text-xs font-bold text-yellow-400 uppercase tracking-widest">{t("plan_premium")}</div>
-      <p className="text-gray-400 text-base mt-1">{t("plan_premium_desc")}</p>
+    <Reveal className="mb-14">
+      <div
+        className="relative rounded-2xl border overflow-hidden p-6 sm:p-8"
+        style={{
+          borderColor: "rgb(var(--accent)/0.15)",
+          background:
+            "radial-gradient(ellipse 80% 120% at 50% 0%, rgb(var(--accent)/0.06) 0%, transparent 60%), rgb(var(--card))",
+        }}
+      >
+        {/* eyebrow */}
+        <div className="flex items-center justify-center gap-2 mb-3">
+          <span className="eyebrow-dot w-1.5 h-1.5 rounded-full" style={{ background: "rgb(var(--accent))" }} aria-hidden />
+          <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}>
+            {t("pricing_roi_eyebrow")}
+          </p>
+        </div>
 
-      {/* Price */}
-      <div className={`mt-5 transition-all duration-200`}>
-        {annual ? (
-          <>
-            <div>
-              <span className="text-4xl font-bold text-foreground">179.88€</span>
-              <span className="text-muted text-sm ml-1">/{t("plan_year")}</span>
+        <h3 className="text-2xl sm:text-3xl font-bold text-center" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>
+          {t("pricing_roi_title")}
+        </h3>
+        <p className="mt-3 text-sm sm:text-base text-center max-w-2xl mx-auto leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>
+          {t("pricing_roi_sub")}
+        </p>
+
+        {/* Comparison stats */}
+        <div className="mt-7 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {stats.map((s, i) => (
+            <div key={i} className="relative">
+              <motion.div
+                className="rounded-xl border p-5 text-center h-full flex flex-col justify-center"
+                style={s.tint}
+                whileHover={{ y: -3, scale: 1.01 }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              >
+                {s.kind === "text" ? (
+                  <p className="text-2xl sm:text-3xl font-bold tracking-tight" style={{ color: s.color, fontStyle: "normal" }}>
+                    {s.textValue}
+                  </p>
+                ) : (
+                  <p className="text-3xl sm:text-4xl font-bold tracking-tight" style={{ color: s.color, fontStyle: "normal" }}>
+                    {s.prefix}
+                    <Counter end={s.value!} decimals={s.decimals!} suffix={s.suffix} />
+                  </p>
+                )}
+                <p className="mt-2 text-xs leading-snug" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{s.label}</p>
+              </motion.div>
+
+              {/* connector chevrons between cards (desktop) */}
+              {i < stats.length - 1 && (
+                <div className="hidden sm:flex absolute top-1/2 -right-3 -translate-y-1/2 z-10 items-center justify-center" aria-hidden>
+                  <div
+                    className="w-6 h-6 rounded-full flex items-center justify-center border"
+                    style={{ background: "rgb(var(--card))", borderColor: "rgb(var(--border))" }}
+                  >
+                    <svg className="w-3 h-3" style={{ color: "rgb(var(--muted))" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </div>
+              )}
             </div>
-            <p className="text-profit text-xs mt-1">{t("plan_equiv")} 14,99€/{t("plan_month")}</p>
-          </>
-        ) : (
-          <>
-            <div>
-              <span className="text-4xl font-bold text-foreground">19,99€</span>
-              <span className="text-muted text-sm ml-1">/{t("plan_month")}</span>
-            </div>
-            <div className="h-4" />
-          </>
-        )}
-      </div>
-
-      {/* Exclusive features */}
-      <ul className="mt-5 space-y-3">
-        {exclusiveFeats.map((feat, i) => (
-          <li key={i} className="flex items-start gap-2.5 text-sm">
-            <svg className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <span className="text-foreground font-medium">{feat}</span>
-          </li>
-        ))}
-      </ul>
-
-      {/* Plus features included */}
-      <div className="mt-4 flex-1">
-        <p className="text-xs font-semibold text-yellow-400/70 uppercase tracking-wider mb-2">{t("plan_premium_includes_plus")}</p>
-        <ul className="space-y-2">
-          {plusFeats.map((feat, i) => (
-            <li key={i} className="flex items-start gap-2.5 text-sm">
-              <svg className="w-4 h-4 text-yellow-400/60 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              <span className="text-foreground/80">{feat}</span>
-            </li>
           ))}
-        </ul>
-      </div>
+        </div>
 
-      <motion.div whileHover={{ scale: 1.03 }} transition={{ duration: 0.2 }}>
-        <Link
-          href="/login"
-          className="mt-8 block w-full py-3 rounded-xl font-semibold text-center transition-colors bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/30"
-        >
-          {t("pricing_choose_premium")}
-        </Link>
-      </motion.div>
-      <p className="text-center text-xs text-muted/50 mt-2">{t("pricing_coming_soon_note")}</p>
-    </div>
+        {/* kicker */}
+        <p className="mt-6 text-center text-sm font-medium max-w-xl mx-auto" style={{ color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}>
+          {t("pricing_roi_kicker")}
+        </p>
+      </div>
+    </Reveal>
   );
 }
 
@@ -819,29 +1286,19 @@ function PremiumComingSoon({ t, annual }: { t: (k: string) => string; annual: bo
 function Pricing() {
   const { t } = useLanguage();
   const [annual, setAnnual] = useState(false);
-  const [priceVisible, setPriceVisible] = useState(true);
 
-  function toggleAnnual(val: boolean) {
-    setPriceVisible(false);
-    setTimeout(() => { setAnnual(val); setPriceVisible(true); }, 180);
-  }
-
-  const activePlans = [
+  const plans = [
     {
       name: t("plan_free"),
       sub: t("plan_sub_free"),
       monthlyPrice: "0€",
       annualPrice: "0€",
       annualMonthly: "",
-      feats: [
-        t("plan_benefit_free_1"),
-        t("plan_benefit_free_2"),
-        t("plan_benefit_free_3"),
-        t("plan_benefit_free_4"),
-      ],
+      feats: [t("plan_benefit_free_1"), t("plan_benefit_free_2"), t("plan_benefit_free_3"), t("plan_benefit_free_4")],
       btnKey: "pricing_start_free",
-      btnClass: "bg-surface border border-border text-foreground-muted hover:border-muted",
-      cardClass: "border-border",
+      roiKey: "",
+      popular: false,
+      gold: false,
     },
     {
       name: t("plan_plus"),
@@ -850,115 +1307,204 @@ function Pricing() {
       annualPrice: "89.99€",
       annualMonthly: "7.50€",
       feats: [
-        t("plan_benefit_plus_1"),
-        t("plan_benefit_plus_2"),
-        t("plan_benefit_plus_3"),
-        t("plan_benefit_plus_4"),
-        t("plan_benefit_plus_5"),
-        t("plan_benefit_plus_6"),
-        t("plan_benefit_plus_7"),
+        t("plan_benefit_plus_1"), t("plan_benefit_plus_2"), t("plan_benefit_plus_3"),
+        t("plan_benefit_plus_4"), t("plan_benefit_plus_5"), t("plan_benefit_plus_6"), t("plan_benefit_plus_7"),
       ],
       btnKey: "pricing_choose_plus",
-      btnClass: "bg-accent text-white hover:bg-blue-600 glow-blue",
-      cardClass: "card-gradient-border-blue shadow-lg shadow-accent/10",
-      highlight: true,
+      roiKey: "plan_roi_plus",
+      popular: true,
+      gold: false,
+    },
+    {
+      name: t("plan_premium"),
+      sub: t("plan_premium_desc"),
+      monthlyPrice: "19.99€",
+      annualPrice: "179.88€",
+      annualMonthly: "14.99€",
+      feats: [
+        t("plan_benefit_premium_1"), t("plan_benefit_premium_2"), t("plan_benefit_premium_3"),
+        t("plan_benefit_plus_1"), t("plan_benefit_plus_2"), t("plan_benefit_plus_3"),
+      ],
+      btnKey: "pricing_choose_premium",
+      roiKey: "plan_roi_premium",
+      popular: false,
+      gold: true,
     },
   ];
 
   return (
-    <section id="pricing" className="py-24 px-6 border-t border-white/5">
+    <section id="pricing" className="py-28 px-6 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
       <div className="max-w-5xl mx-auto">
-        <Reveal>
-          <h2 className="text-3xl sm:text-4xl font-bold text-foreground text-center">{t("pricing_title")}</h2>
+        <Reveal className="text-center mb-12">
+          <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}>{t("eyebrow_pricing")}</p>
+          <h2 className="text-4xl sm:text-5xl font-bold" style={{ color: "rgb(var(--foreground))" }}>{t("pricing_title")}</h2>
         </Reveal>
+
+        {/* ROI / value band — "it pays for itself" */}
+        <ROIBand t={t} />
 
         {/* Toggle */}
-        <Reveal className="flex items-center justify-center gap-3 mt-8">
-          <button
-            onClick={() => toggleAnnual(false)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${!annual ? "bg-border text-foreground" : "text-muted"}`}
-          >
-            {t("plan_monthly")}
-          </button>
-          <button
-            onClick={() => toggleAnnual(true)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${annual ? "bg-border text-foreground" : "text-muted"}`}
-          >
-            {t("plan_annual")}
-            <span className="ml-2 px-1.5 py-0.5 bg-profit/10 text-profit text-[11px] font-bold rounded-full badge-pulse inline-block">
-              -25%
-            </span>
-          </button>
+        <Reveal className="flex justify-center mb-10">
+          <div className="inline-flex items-center gap-1 p-1 rounded-xl border" style={{ borderColor: "rgb(var(--border))", background: "rgb(var(--card))" }}>
+            <button
+              type="button"
+              onClick={() => setAnnual(false)}
+              className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-[rgb(var(--accent))]"
+              style={{
+                background: !annual ? "rgb(var(--surface))" : "transparent",
+                color: !annual ? "rgb(var(--foreground))" : "rgb(var(--muted))",
+                fontStyle: "normal",
+              }}
+              aria-pressed={!annual}
+            >
+              {t("plan_monthly")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setAnnual(true)}
+              className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[rgb(var(--accent))]"
+              style={{
+                background: annual ? "rgb(var(--surface))" : "transparent",
+                color: annual ? "rgb(var(--foreground))" : "rgb(var(--muted))",
+                fontStyle: "normal",
+              }}
+              aria-pressed={annual}
+            >
+              {t("plan_annual")}
+              <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full" style={{ background: "rgb(var(--profit)/0.12)", color: "rgb(var(--profit))", fontStyle: "normal" }}>
+                -25%
+              </span>
+            </button>
+          </div>
         </Reveal>
 
-        {/* Plans grid: Free + Plus + Premium (3 cols) */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-10 max-w-5xl mx-auto">
-          {activePlans.map((p, i) => {
+        <StaggerReveal className="grid grid-cols-1 sm:grid-cols-3 gap-4" stagger={0.07}>
+          {plans.map((p) => {
             const price = annual ? p.annualPrice : p.monthlyPrice;
             const period = annual ? `/${t("plan_year")}` : `/${t("plan_month")}`;
-            const showSavings = annual && p.annualMonthly;
+            const savings = annual && p.annualMonthly;
+
             return (
-              <Reveal key={p.name} delay={i * 60}>
-                <motion.div
-                  className={`relative bg-card border rounded-2xl p-7 flex flex-col h-full ${p.cardClass}`}
-                  whileHover={{ borderColor: "rgba(59,130,246,0.3)", boxShadow: "0 0 20px rgba(59,130,246,0.1)" }}
-                  transition={{ duration: 0.25 }}
-                >
-                  {p.highlight && (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-white text-[11px] font-bold px-3 py-0.5 rounded-full shadow-md">
-                      {t("plan_popular")}
-                    </span>
-                  )}
-                  <div className="text-xs font-bold text-foreground uppercase tracking-widest">{p.name}</div>
-                  <p className="text-gray-400 text-base mt-1">{p.sub}</p>
-
-                  <div className={`mt-5 transition-all duration-200 ${priceVisible ? "opacity-100" : "opacity-0 -translate-y-1"}`}>
-                    <span className="text-4xl font-bold text-foreground">{price}</span>
-                    <span className="text-muted text-sm ml-1">{period}</span>
+              <motion.div
+                key={p.name}
+                className={`relative rounded-2xl border flex flex-col p-6 ${p.popular ? "card-breathe comet-border" : ""}`}
+                style={{
+                  background: "rgb(var(--card))",
+                  borderColor: p.popular
+                    ? "rgb(var(--accent)/0.35)"
+                    : p.gold
+                    ? "rgba(245,158,11,0.3)"
+                    : "rgb(var(--border))",
+                }}
+                whileHover={{ y: -5, boxShadow: p.popular
+                  ? "0 0 0 1px rgb(var(--accent)/0.28), 0 24px 60px -12px rgba(0,0,0,0.5), 0 0 80px -24px rgb(var(--accent)/0.18)"
+                  : "0 20px 56px -12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04)"
+                }}
+                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              >
+                {p.popular && (
+                  <div
+                    className="absolute -top-3 left-1/2 -translate-x-1/2 text-white text-[10px] font-bold px-3 py-1 rounded-full"
+                    style={{ background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #3b82f6 100%)", fontStyle: "normal" }}
+                  >
+                    {t("plan_popular")}
                   </div>
+                )}
 
-                  {showSavings ? (
-                    <p className="text-profit text-xs mt-1">{t("plan_equiv")} {p.annualMonthly}/{t("plan_month")}</p>
-                  ) : (
-                    <div className="h-4" />
-                  )}
+                <p
+                  className="text-xs font-bold uppercase tracking-widest mb-1"
+                  style={{ color: p.gold ? "rgb(245,158,11)" : "rgb(var(--foreground))", fontStyle: "normal" }}
+                >
+                  {p.name}
+                </p>
+                <p className="text-xs mb-5" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{p.sub}</p>
 
-                  <ul className="mt-7 space-y-3 flex-1">
-                    {p.feats.map((feat) => (
-                      <li key={feat} className="flex items-start gap-2.5 text-sm">
-                        <svg className="w-4 h-4 text-profit shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        <span className="text-foreground">{feat}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <motion.div whileHover={{ scale: 1.03 }} transition={{ duration: 0.2 }}>
-                    <Link href="/login" className={`mt-8 block w-full py-3 rounded-xl font-semibold text-center transition-colors ${p.btnClass}`}>
-                      {t(p.btnKey)}
-                    </Link>
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={`${p.name}-${annual}`}
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 6 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    <div className="flex items-end gap-1">
+                      <span className="text-3xl font-bold tracking-tight" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{price}</span>
+                      <span className="text-sm mb-0.5" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{period}</span>
+                    </div>
+                    {savings
+                      ? <p className="text-xs mt-1 font-medium" style={{ color: "rgb(var(--profit))", fontStyle: "normal" }}>{t("plan_equiv")} {p.annualMonthly}/{t("plan_month")}</p>
+                      : <div className="h-5" aria-hidden />
+                    }
                   </motion.div>
-                  {p.highlight && (
-                    <p className="text-center text-xs text-muted/50 mt-2">{t("pricing_coming_soon_note")}</p>
-                  )}
-                </motion.div>
-              </Reveal>
+                </AnimatePresence>
+
+                <ul className="mt-5 space-y-2.5 flex-1">
+                  {p.feats.map((feat) => (
+                    <li key={feat} className="flex items-start gap-2.5 text-sm">
+                      <div
+                        className="w-4 h-4 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+                        style={{ background: p.gold ? "rgba(245,158,11,0.1)" : "rgb(var(--profit)/0.1)" }}
+                        aria-hidden
+                      >
+                        <svg className="w-2.5 h-2.5" style={{ color: p.gold ? "rgb(245,158,11)" : "rgb(var(--profit))" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      <span style={{ color: "rgb(var(--foreground)/0.8)", fontStyle: "normal" }}>{feat}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <Link
+                  href="/login"
+                  className="mt-7 block w-full py-2.5 rounded-xl font-semibold text-sm text-center transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--accent))]"
+                  style={p.popular ? {
+                    background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #3b82f6 100%)",
+                    boxShadow: "0 0 0 1px rgb(var(--accent)/0.3), 0 4px 16px rgb(var(--accent)/0.2)",
+                    color: "white",
+                    fontStyle: "normal",
+                  } : p.gold ? {
+                    background: "rgba(245,158,11,0.1)",
+                    border: "1px solid rgba(245,158,11,0.25)",
+                    color: "rgb(245,158,11)",
+                    fontStyle: "normal",
+                  } : {
+                    background: "rgb(var(--surface))",
+                    border: "1px solid rgb(var(--border))",
+                    color: "rgb(var(--foreground))",
+                    fontStyle: "normal",
+                  }}
+                >
+                  {t(p.btnKey)}
+                </Link>
+
+                {p.roiKey && (
+                  <div className="mt-3 flex items-center justify-center gap-1.5">
+                    <svg className="w-3.5 h-3.5 shrink-0" style={{ color: "rgb(var(--profit))" }} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                    <span className="text-[11px] font-medium text-center" style={{ color: "rgb(var(--profit))", fontStyle: "normal" }}>
+                      {t(p.roiKey)}
+                    </span>
+                  </div>
+                )}
+              </motion.div>
             );
           })}
+        </StaggerReveal>
 
-          {/* Premium — Coming soon as 3rd card inside grid */}
-          <Reveal delay={120}>
-            <PremiumComingSoon t={t} annual={annual} />
-          </Reveal>
-        </div>
-
-        {/* Badges */}
-        <Reveal className="flex flex-wrap items-center justify-center gap-5 mt-8 text-xs text-muted">
-          <span className="flex items-center gap-1.5">
-            <svg className="w-4 h-4 text-profit" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-            {t("pricing_no_commitment")}
-          </span>
+        <Reveal className="flex flex-wrap items-center justify-center gap-6 mt-8 text-xs text-[rgb(var(--muted))]">
+          {[
+            { icon: "M5 13l4 4L19 7", label: t("pricing_no_commitment") },
+            { icon: "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z", label: t("plan_stripe_secure") },
+          ].map((item) => (
+            <span key={item.label} className="flex items-center gap-1.5" style={{ fontStyle: "normal" }}>
+              <svg className="w-3.5 h-3.5 shrink-0" style={{ color: "rgb(var(--profit))" }} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
+              </svg>
+              {item.label}
+            </span>
+          ))}
         </Reveal>
       </div>
     </section>
@@ -979,33 +1525,58 @@ function FAQ() {
     { q: t("faq_q5"), a: t("faq_a5") },
     { q: t("faq_q6"), a: t("faq_a6") },
   ];
+
   return (
-    <section id="faq" className="py-24 px-6 border-t border-white/5">
-      <div className="max-w-3xl mx-auto">
-        <Reveal>
-          <h2 className="text-3xl sm:text-4xl font-bold text-foreground text-center mb-12">{t("faq_title")}</h2>
+    <section id="faq" className="py-28 px-6 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
+      <div className="max-w-2xl mx-auto">
+        <Reveal className="text-center mb-14">
+          <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}>{t("eyebrow_faq")}</p>
+          <h2 className="text-4xl sm:text-5xl font-bold" style={{ color: "rgb(var(--foreground))" }}>{t("faq_title")}</h2>
         </Reveal>
-        <div className="divide-y divide-border border border-border rounded-2xl overflow-hidden">
+
+        <div className="space-y-2">
           {faqs.map((faq, i) => (
-            <div key={i} className="bg-card">
-              <button
-                onClick={() => setOpenIdx(openIdx === i ? null : i)}
-                className="w-full flex items-center justify-between px-6 py-5 text-left hover:bg-white/[0.02] transition-colors"
-              >
-                <span className="text-foreground font-medium text-sm pr-6">{faq.q}</span>
-                <div className={`w-5 h-5 flex items-center justify-center rounded-full border border-border text-muted shrink-0 transition-all duration-200 ${openIdx === i ? "bg-accent/10 border-accent/30 text-accent rotate-45" : ""}`}>
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                </div>
-              </button>
-              <div
-                className="overflow-hidden transition-all duration-300"
-                style={{ maxHeight: openIdx === i ? "300px" : "0px" }}
-              >
-                <p className="px-6 pb-5 text-muted text-sm leading-relaxed">{faq.a}</p>
+            <Reveal key={i} delay={i * 0.04}>
+              <div className="border rounded-xl overflow-hidden" style={{ borderColor: "rgb(var(--border))", background: "rgb(var(--card))" }}>
+                <button
+                  type="button"
+                  onClick={() => setOpenIdx(openIdx === i ? null : i)}
+                  className="w-full flex items-center justify-between px-5 py-4 text-left transition-colors hover:bg-[rgb(var(--surface)/0.4)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[rgb(var(--accent))]"
+                  aria-expanded={openIdx === i}
+                  aria-controls={`faq-answer-${i}`}
+                  id={`faq-question-${i}`}
+                >
+                  <span className="text-sm font-medium pr-6" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{faq.q}</span>
+                  <motion.div
+                    animate={{ rotate: openIdx === i ? 45 : 0 }}
+                    transition={{ duration: 0.18 }}
+                    className="w-5 h-5 flex items-center justify-center rounded-md border shrink-0"
+                    style={{ borderColor: "rgb(var(--border))", color: "rgb(var(--muted))" }}
+                    aria-hidden
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </motion.div>
+                </button>
+                <AnimatePresence>
+                  {openIdx === i && (
+                    <motion.div
+                      id={`faq-answer-${i}`}
+                      role="region"
+                      aria-labelledby={`faq-question-${i}`}
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+                      className="overflow-hidden"
+                    >
+                      <p className="px-5 pb-4 text-sm leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{faq.a}</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
-            </div>
+            </Reveal>
           ))}
         </div>
       </div>
@@ -1018,21 +1589,51 @@ function FAQ() {
 ───────────────────────────────────────────── */
 function FinalCTA() {
   const { t } = useLanguage();
+
   return (
-    <section className="py-24 px-6 border-t border-white/5 relative overflow-hidden">
-      {/* Radial blue glow */}
-      <div className="absolute inset-0 radial-glow-blue pointer-events-none" />
+    <section className="py-28 px-6 border-t relative overflow-hidden" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
+      <div className="absolute inset-0 pointer-events-none" aria-hidden>
+        <div
+          className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full blur-[80px]"
+          style={{ background: "linear-gradient(180deg, rgb(var(--accent)/0.1) 0%, rgba(59,130,246,0.04) 60%, transparent 100%)" }}
+        />
+      </div>
+
       <div className="max-w-2xl mx-auto text-center relative z-10">
         <Reveal>
-          <h2 className="text-3xl sm:text-5xl font-bold text-foreground">{t("cta_title")}</h2>
-          <p className="text-muted mt-4 text-lg">{t("cta_subtitle")}</p>
-          <Link
-            href="/login"
-            className="mt-8 inline-block px-10 py-4 bg-accent text-white rounded-xl font-bold text-lg hover:bg-blue-600 glow-pulse btn-scale"
+          <div
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-medium mb-8"
+            style={{ borderColor: "rgb(var(--accent)/0.2)", background: "rgb(var(--accent)/0.05)", color: "rgb(var(--accent))", fontStyle: "normal" }}
           >
-            {t("cta_button")}
-          </Link>
-          <p className="text-muted text-xs mt-4">{t("pricing_no_commitment")}</p>
+            <span className="w-1.5 h-1.5 rounded-full bg-[rgb(var(--accent))] animate-pulse" aria-hidden />
+            {t("cta_free_badge")}
+          </div>
+
+          <h2
+            className="text-4xl sm:text-5xl md:text-6xl font-bold leading-[1.05] tracking-tight text-balance"
+            style={{ color: "rgb(var(--foreground))", fontFamily: "var(--font-geist-sans), system-ui, sans-serif", fontStyle: "normal" }}
+          >
+            {t("cta_title")}
+          </h2>
+
+          <p className="mt-5 text-lg leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>
+            {t("cta_subtitle")}
+          </p>
+
+          <div className="mt-10">
+            <Link
+              href="/login"
+              className="btn-primary-shimmer group relative inline-block px-8 py-3.5 rounded-xl font-bold text-base text-white transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--accent))]"
+              style={{
+                background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #3b82f6 100%)",
+                boxShadow: "0 0 0 1px rgb(var(--accent)/0.3), 0 8px 32px rgb(var(--accent)/0.25)",
+              }}
+            >
+              <span className="relative z-10">{t("cta_button")}</span>
+            </Link>
+          </div>
+
+          <p className="text-xs mt-4" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("pricing_no_commitment")}</p>
         </Reveal>
       </div>
     </section>
@@ -1044,59 +1645,56 @@ function FinalCTA() {
 ───────────────────────────────────────────── */
 function Footer() {
   const { t } = useLanguage();
+
   return (
-    <footer className="border-t border-border bg-background px-6 py-14">
-      <div className="max-w-6xl mx-auto">
+    <footer className="border-t px-6 py-14" style={{ borderColor: "rgb(var(--border)/0.5)", background: "rgb(var(--background))" }}>
+      <div className="max-w-5xl mx-auto">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-12">
-          {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-6 h-6 flex items-center justify-center rounded-md bg-accent/20">
-                <svg className="w-3.5 h-3.5 text-accent" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <div className="w-6 h-6 flex items-center justify-center rounded-md" style={{ background: "rgb(var(--accent)/0.12)" }}>
+                <svg className="w-3.5 h-3.5" style={{ color: "rgb(var(--accent))" }} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
                 </svg>
               </div>
-              <span className="font-bold text-foreground">TradeDiscipline</span>
+              <span className="font-bold text-sm" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>TradeDiscipline</span>
             </div>
-            <p className="text-muted text-xs leading-relaxed">{t("footer_brand_desc")}</p>
+            <p className="text-xs leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("footer_brand_desc")}</p>
           </div>
 
-          {/* Produit */}
-          <div>
-            <p className="text-foreground font-semibold text-sm mb-4">{t("footer_product")}</p>
-            <ul className="space-y-2.5">
-              {[
-                { href: "#features", label: t("nav_features") },
-                { href: "#pricing",  label: t("nav_pricing") },
-              ].map((l) => (
-                <li key={l.href}><a href={l.href} className="text-muted text-sm hover:text-foreground transition-colors">{l.label}</a></li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Ressources */}
-          <div>
-            <p className="text-foreground font-semibold text-sm mb-4">{t("footer_resources")}</p>
-            <ul className="space-y-2.5">
-              <li><a href="/contact" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_contact")}</a></li>
-              <li><a href="/faq" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_faq")}</a></li>
-            </ul>
-          </div>
-
-          {/* Légal */}
-          <div>
-            <p className="text-foreground font-semibold text-sm mb-4">{t("footer_legal_col")}</p>
-            <ul className="space-y-2.5">
-              <li><a href="/legal/terms" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_terms")}</a></li>
-              <li><a href="/legal/privacy" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_privacy")}</a></li>
-              <li><a href="/mentions-legales" className="text-muted text-sm hover:text-foreground transition-colors">{t("footer_mentions")}</a></li>
-            </ul>
-          </div>
+          {[
+            {
+              heading: t("footer_product"),
+              links: [{ href: "#features", label: t("nav_features") }, { href: "#pricing", label: t("nav_pricing") }],
+            },
+            {
+              heading: t("footer_resources"),
+              links: [{ href: "/contact", label: t("footer_contact") }, { href: "/faq", label: t("footer_faq") }],
+            },
+            {
+              heading: t("footer_legal_col"),
+              links: [
+                { href: "/legal/terms", label: t("footer_terms") },
+                { href: "/legal/privacy", label: t("footer_privacy") },
+                { href: "/mentions-legales", label: t("footer_mentions") },
+              ],
+            },
+          ].map((col) => (
+            <div key={col.heading}>
+              <p className="font-semibold text-xs uppercase tracking-wider mb-4" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{col.heading}</p>
+              <ul className="space-y-2.5">
+                {col.links.map((l) => (
+                  <li key={l.href}>
+                    <a href={l.href} className="text-sm transition-colors hover:text-[rgb(var(--foreground))]" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{l.label}</a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
 
-        {/* Bottom bar */}
-        <div className="border-t border-border pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p className="text-xs text-muted">© 2026 TradeDiscipline. {t("footer_legal")}.</p>
+        <div className="border-t pt-6" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
+          <p className="text-xs" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>© 2026 TradeDiscipline. {t("footer_legal")}.</p>
         </div>
       </div>
     </footer>
@@ -1104,21 +1702,41 @@ function Footer() {
 }
 
 /* ─────────────────────────────────────────────
-   PAGE
+   SCROLL PROGRESS BAR
+───────────────────────────────────────────── */
+function ScrollProgress() {
+  const { scrollYProgress } = useScroll();
+  const scaleX = useSpring(scrollYProgress, { stiffness: 120, damping: 30, mass: 0.3 });
+  return (
+    <motion.div
+      className="scroll-progress fixed top-0 left-0 right-0 h-0.5 z-[60]"
+      style={{ scaleX }}
+      aria-hidden
+    />
+  );
+}
+
+/* ─────────────────────────────────────────────
+   PAGE ROOT
 ───────────────────────────────────────────── */
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-background force-dark landing-page">
+    <div className="min-h-screen force-dark landing-page relative overflow-x-hidden" style={{ background: "rgb(var(--background))" }}>
+      <ScrollProgress />
+      <GridBackground />
       <PublicHeader showAnchors />
-      <Hero />
-      <Problem />
-      <Features />
-      <AIDetection />
-      <SocialProof />
-      <HowItWorks />
-      <Pricing />
-      <FAQ />
-      <FinalCTA />
+      <main>
+        <Hero />
+        <StatsStrip />
+        <Problem />
+        <Features />
+        <AIDetection />
+        <SocialProof />
+        <HowItWorks />
+        <Pricing />
+        <FAQ />
+        <FinalCTA />
+      </main>
       <Footer />
     </div>
   );
