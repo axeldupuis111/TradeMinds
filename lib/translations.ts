@@ -41,6 +41,15 @@ const translations: Record<Lang, Record<string, string>> = {
     share_copied: "Copiée !",
     share_hide_amounts: "Masquer les montants",
 
+    // Analyse du drawdown
+    dd_title: "Analyse du drawdown",
+    dd_subtitle: "Distance sous ton plus haut niveau de gains (courbe underwater)",
+    dd_max: "Max drawdown",
+    dd_current: "Drawdown actuel",
+    dd_at_high: "Au plus haut",
+    dd_longest: "Plus longue période sous le pic",
+    dd_days: "jours",
+
     // Nav
     nav_login: "Se connecter",
     nav_start: "Commencer",
@@ -1690,6 +1699,15 @@ const translations: Record<Lang, Record<string, string>> = {
     share_copied: "Copied!",
     share_hide_amounts: "Hide amounts",
 
+    // Drawdown analysis
+    dd_title: "Drawdown analysis",
+    dd_subtitle: "Distance below your highest gains (underwater curve)",
+    dd_max: "Max drawdown",
+    dd_current: "Current drawdown",
+    dd_at_high: "At high",
+    dd_longest: "Longest time under peak",
+    dd_days: "days",
+
     nav_login: "Sign in",
     nav_start: "Get started",
 
@@ -3312,6 +3330,15 @@ const translations: Record<Lang, Record<string, string>> = {
     share_copied: "Kopiert!",
     share_hide_amounts: "Beträge ausblenden",
 
+    // Drawdown-Analyse
+    dd_title: "Drawdown-Analyse",
+    dd_subtitle: "Abstand unter deinem höchsten Gewinnstand (Underwater-Kurve)",
+    dd_max: "Max. Drawdown",
+    dd_current: "Aktueller Drawdown",
+    dd_at_high: "Am Höchststand",
+    dd_longest: "Längste Zeit unter dem Hoch",
+    dd_days: "Tage",
+
     nav_login: "Anmelden",
     nav_start: "Loslegen",
 
@@ -4932,6 +4959,15 @@ const translations: Record<Lang, Record<string, string>> = {
     share_copy: "Copiar imagen",
     share_copied: "¡Copiada!",
     share_hide_amounts: "Ocultar importes",
+
+    // Análisis de drawdown
+    dd_title: "Análisis de drawdown",
+    dd_subtitle: "Distancia bajo tu nivel máximo de ganancias (curva underwater)",
+    dd_max: "Drawdown máximo",
+    dd_current: "Drawdown actual",
+    dd_at_high: "En máximos",
+    dd_longest: "Mayor tiempo bajo el pico",
+    dd_days: "días",
 
     nav_login: "Iniciar sesión",
     nav_start: "Empezar",

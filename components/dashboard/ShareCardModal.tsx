@@ -11,6 +11,7 @@
 import { useLanguage } from "@/lib/LanguageContext";
 import { Activity, Check, Copy, Download, Eye, EyeOff, X } from "lucide-react";
 import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 export interface ShareStats {
   pnl: number;
@@ -100,7 +101,9 @@ export default function ShareCardModal({ stats, onClose }: { stats: ShareStats; 
     { label: t("recap_profit_factor"), value: stats.profitFactor !== null ? stats.profitFactor.toFixed(2) : "—" },
   ];
 
-  return (
+  // Portal vers document.body : la carte parente (KpiCardPremium) a un
+  // transform + overflow-hidden qui casserait le positionnement fixed.
+  return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
@@ -227,6 +230,7 @@ export default function ShareCardModal({ stats, onClose }: { stats: ShareStats; 
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

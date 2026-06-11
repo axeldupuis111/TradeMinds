@@ -4,6 +4,7 @@ import { AnalyticsInsightCards } from "@/components/analytics/AnalyticsInsightCa
 import { AnalyticsKpiCards } from "@/components/analytics/AnalyticsKpiCards";
 import { AutoInsights } from "@/components/analytics/AutoInsights";
 import { DisciplineAnalyticsBlock } from "@/components/analytics/DisciplineAnalyticsBlock";
+import DrawdownBlock from "@/components/analytics/DrawdownBlock";
 import { HourDayHeatmap } from "@/components/analytics/HourDayHeatmap";
 import { ResilienceBlock } from "@/components/analytics/ResilienceBlock";
 import EmotionalTrendChart from "@/components/charts/EmotionalTrendChart";
@@ -954,6 +955,13 @@ export default function AnalyticsPage() {
                   </ComposedChart>
                 </ResponsiveContainer>
               </KpiCardPremium>
+            </StaggerItem>
+          )}
+
+          {/* ── Drawdown / underwater ─────────────────────────────────── */}
+          {equityCurve.length > 1 && (
+            <StaggerItem>
+              <DrawdownBlock data={equityCurve} />
             </StaggerItem>
           )}
 
