@@ -1058,50 +1058,79 @@ function BentoStrategy({ t }: { t: (k: string) => string }) {
   );
 }
 
+type FeatureDef = {
+  tagStyle: React.CSSProperties;
+  tag: string;
+  title: string;
+  desc: string;
+  visual: React.ReactNode;
+};
+
+function FeatureCard({ f }: { f: FeatureDef }) {
+  return (
+    <motion.div
+      className="relative rounded-2xl border overflow-hidden h-full group/card"
+      style={{ background: "rgb(var(--card))", borderColor: "rgb(var(--border))" }}
+      whileHover={{ y: -4, borderColor: "rgb(var(--accent)/0.28)", boxShadow: "0 0 0 1px rgb(var(--accent)/0.08), 0 24px 60px -12px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05)" }}
+      transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+    >
+      <div
+        className="absolute inset-x-0 top-0 h-px opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 pointer-events-none"
+        style={{ background: "linear-gradient(90deg, transparent 0%, rgb(var(--accent)/0.6) 50%, transparent 100%)" }}
+        aria-hidden
+      />
+      <div className="p-6 pb-0">
+        <span
+          className="inline-block text-[10px] font-bold tracking-widest px-2.5 py-1 rounded-md border mb-3"
+          style={{ ...f.tagStyle, fontStyle: "normal" }}
+        >
+          {f.tag}
+        </span>
+        <h3 className="text-lg sm:text-xl font-bold mb-1.5" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{f.title}</h3>
+        <p className="text-[15px] leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{f.desc}</p>
+      </div>
+      <div className="mt-4 border-t" style={{ borderColor: "rgb(var(--border)/0.5)", background: "rgb(var(--surface)/0.3)" }}>
+        {f.visual}
+      </div>
+    </motion.div>
+  );
+}
+
 function Features() {
   const { t } = useLanguage();
+  const prefersReduced = useReducedMotion();
 
+  const accentTag = { color: "rgb(var(--accent))", background: "rgb(var(--accent)/0.08)", borderColor: "rgb(var(--accent)/0.15)" };
   const violetTag = { color: "rgb(167,139,250)", background: "rgba(167,139,250,0.08)", borderColor: "rgba(167,139,250,0.15)" };
-  const features = [
+  const profitTag = { color: "rgb(var(--profit))", background: "rgb(var(--profit)/0.08)", borderColor: "rgb(var(--profit)/0.15)" };
+
+  // The feature blocks arranged as the real usage chronology.
+  const steps: { num: string; title: string; sub: string; cards: FeatureDef[] }[] = [
     {
-      tagStyle: { color: "rgb(var(--accent))", background: "rgb(var(--accent)/0.08)", borderColor: "rgb(var(--accent)/0.15)" },
-      tag: t("feature_1_label"),
-      title: t("feature_1_title"),
-      desc: t("feature_1_desc"),
-      visual: <BentoImport t={t} />,
-      span: "",
+      num: "1",
+      title: t("chrono_step_1"),
+      sub: t("chrono_step_1_sub"),
+      cards: [
+        { tagStyle: accentTag, tag: t("feature_1_label"), title: t("feature_1_title"), desc: t("feature_1_desc"), visual: <BentoImport t={t} /> },
+        { tagStyle: accentTag, tag: t("feature_sync_label"), title: t("feature_sync_title"), desc: t("feature_sync_desc"), visual: <BentoSync t={t} /> },
+      ],
     },
     {
-      tagStyle: { color: "rgb(var(--accent))", background: "rgb(var(--accent)/0.08)", borderColor: "rgb(var(--accent)/0.15)" },
-      tag: t("feature_sync_label"),
-      title: t("feature_sync_title"),
-      desc: t("feature_sync_desc"),
-      visual: <BentoSync t={t} />,
-      span: "",
+      num: "2",
+      title: t("chrono_step_2"),
+      sub: t("chrono_step_2_sub"),
+      cards: [
+        { tagStyle: violetTag, tag: t("feature_strategy_label"), title: t("feature_strategy_title"), desc: t("feature_strategy_desc"), visual: <BentoStrategy t={t} /> },
+      ],
     },
     {
-      tagStyle: violetTag,
-      tag: t("feature_strategy_label"),
-      title: t("feature_strategy_title"),
-      desc: t("feature_strategy_desc"),
-      visual: <BentoStrategy t={t} />,
-      span: "md:col-span-2",
-    },
-    {
-      tagStyle: violetTag,
-      tag: t("feature_2_label"),
-      title: t("feature_2_title"),
-      desc: t("feature_2_desc"),
-      visual: <BentoAIChat t={t} />,
-      span: "",
-    },
-    {
-      tagStyle: { color: "rgb(var(--profit))", background: "rgb(var(--profit)/0.08)", borderColor: "rgb(var(--profit)/0.15)" },
-      tag: t("feature_3_label"),
-      title: t("feature_3_title"),
-      desc: t("feature_3_desc"),
-      visual: <BentoDisciplineScore t={t} />,
-      span: "",
+      num: "3",
+      title: t("chrono_step_3"),
+      sub: t("chrono_step_3_sub"),
+      cards: [
+        { tagStyle: violetTag, tag: t("feature_2_label"), title: t("feature_2_title"), desc: t("feature_2_desc"), visual: <BentoAIChat t={t} /> },
+        { tagStyle: profitTag, tag: t("feature_3_label"), title: t("feature_3_title"), desc: t("feature_3_desc"), visual: <BentoDisciplineScore t={t} /> },
+      ],
     },
   ];
 
@@ -1109,40 +1138,59 @@ function Features() {
     <section id="features" className="py-28 px-6 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
       <div className="max-w-5xl mx-auto">
         <Reveal className="text-center mb-16">
-          <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}>{t("eyebrow_features")}</p>
+          <p className="text-[13px] font-bold uppercase tracking-widest mb-4" style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}>{t("eyebrow_features")}</p>
           <h2 className="text-4xl sm:text-5xl font-bold" style={{ color: "rgb(var(--foreground))" }}>{t("features_title")}</h2>
         </Reveal>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {features.map((f, i) => (
-            <Reveal key={f.title} delay={i * 0.07} className={f.span}>
-              <motion.div
-                className="relative rounded-2xl border overflow-hidden h-full group/card"
-                style={{ background: "rgb(var(--card))", borderColor: "rgb(var(--border))" }}
-                whileHover={{ y: -4, borderColor: "rgb(var(--accent)/0.28)", boxShadow: "0 0 0 1px rgb(var(--accent)/0.08), 0 24px 60px -12px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05)" }}
-                transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
-              >
-                {/* Top-edge gradient shimmer on hover */}
-                <div
-                  className="absolute inset-x-0 top-0 h-px opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 pointer-events-none"
-                  style={{ background: "linear-gradient(90deg, transparent 0%, rgb(var(--accent)/0.6) 50%, transparent 100%)" }}
-                  aria-hidden
-                />
-                <div className="p-6 pb-0">
-                  <span
-                    className="inline-block text-[10px] font-bold tracking-widest px-2.5 py-1 rounded-md border mb-3"
-                    style={{ ...f.tagStyle, fontStyle: "normal" }}
+        {/* Chronological flow — the blocks ARE the steps */}
+        <div className="space-y-6">
+          {steps.map((step, si) => (
+            <div key={step.num}>
+              {/* Connector between steps */}
+              {si > 0 && (
+                <div className="flex justify-center py-2" aria-hidden>
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="w-px h-6" style={{ background: "linear-gradient(180deg, rgb(var(--accent)/0.4), rgb(var(--accent)/0.15))" }} />
+                    <svg className="w-4 h-4 -mt-1" style={{ color: "rgb(var(--accent)/0.5)" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                  </div>
+                </div>
+              )}
+
+              <Reveal>
+                {/* Step header */}
+                <div className="flex items-center gap-4 mb-5">
+                  <motion.div
+                    className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl text-base font-bold border"
+                    style={{
+                      background: "linear-gradient(135deg, rgb(var(--accent)/0.16) 0%, rgb(var(--accent)/0.05) 100%)",
+                      borderColor: "rgb(var(--accent)/0.3)",
+                      color: "rgb(var(--accent))",
+                      fontStyle: "normal",
+                    }}
+                    initial={prefersReduced ? false : { scale: 0.8, opacity: 0 }}
+                    whileInView={{ scale: 1, opacity: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4, ease }}
+                    aria-label={`Étape ${step.num}`}
                   >
-                    {f.tag}
-                  </span>
-                  <h3 className="text-lg sm:text-xl font-bold mb-1.5" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{f.title}</h3>
-                  <p className="text-[15px] leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{f.desc}</p>
+                    {step.num}
+                  </motion.div>
+                  <div>
+                    <h3 className="text-xl sm:text-2xl font-bold leading-tight" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{step.title}</h3>
+                    <p className="text-[14px] mt-0.5" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{step.sub}</p>
+                  </div>
                 </div>
-                <div className="mt-4 border-t" style={{ borderColor: "rgb(var(--border)/0.5)", background: "rgb(var(--surface)/0.3)" }}>
-                  {f.visual}
+
+                {/* Step cards */}
+                <div className={`grid gap-4 ${step.cards.length > 1 ? "md:grid-cols-2" : "grid-cols-1"}`}>
+                  {step.cards.map((f) => (
+                    <FeatureCard key={f.title} f={f} />
+                  ))}
                 </div>
-              </motion.div>
-            </Reveal>
+              </Reveal>
+            </div>
           ))}
         </div>
       </div>
@@ -1278,108 +1326,6 @@ function SocialProof() {
             </motion.div>
           ))}
         </StaggerReveal>
-      </div>
-    </section>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   HOW IT WORKS
-───────────────────────────────────────────── */
-function HowItWorks() {
-  const { t } = useLanguage();
-  const prefersReduced = useReducedMotion();
-  const lineRef = useRef<HTMLDivElement>(null);
-  const lineInView = useInView(lineRef, { once: true, margin: "-120px" });
-
-  const steps = [
-    {
-      num: "01",
-      title: t("how_1_title"),
-      desc: t("how_1_desc"),
-      // pencil / describe
-      icon: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z",
-    },
-    {
-      num: "02",
-      title: t("how_2_title"),
-      desc: t("how_2_desc"),
-      // upload / import
-      icon: "M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12",
-    },
-    {
-      num: "03",
-      title: t("how_3_title"),
-      desc: t("how_3_desc"),
-      // sparkle / AI analysis
-      icon: "M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z",
-    },
-  ];
-
-  return (
-    <section className="py-28 px-6 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
-      <div className="max-w-2xl mx-auto">
-        <Reveal className="text-center mb-16">
-          <p className="text-[13px] font-bold uppercase tracking-widest mb-4" style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}>{t("eyebrow_how")}</p>
-          <h2 className="text-4xl sm:text-5xl font-bold" style={{ color: "rgb(var(--foreground))" }}>{t("how_title")}</h2>
-        </Reveal>
-
-        {/* Vertical timeline */}
-        <div ref={lineRef} className="relative">
-          {/* Track + animated progress line (behind nodes, centered on the 14px-radius node) */}
-          <div className="absolute left-7 top-7 bottom-7 w-px -translate-x-1/2" style={{ background: "rgb(var(--border))" }} aria-hidden />
-          <motion.div
-            className="absolute left-7 top-7 w-px -translate-x-1/2 origin-top"
-            style={{ background: "linear-gradient(180deg, rgb(var(--accent)) 0%, rgb(var(--accent)/0.4) 100%)", bottom: "1.75rem" }}
-            initial={prefersReduced ? { scaleY: 1 } : { scaleY: 0 }}
-            animate={lineInView ? { scaleY: 1 } : {}}
-            transition={{ duration: 1.4, delay: 0.2, ease: [0.4, 0, 0.2, 1] }}
-            aria-hidden
-          />
-
-          <div className="space-y-10">
-            {steps.map((s, i) => (
-              <motion.div
-                key={s.num}
-                className="relative flex items-start gap-5"
-                initial={prefersReduced ? false : { opacity: 0, y: 18 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-60px" }}
-                transition={{ duration: 0.55, delay: 0.2 + i * 0.18, ease }}
-              >
-                {/* Node */}
-                <motion.div
-                  className="relative z-10 w-14 h-14 shrink-0 flex items-center justify-center rounded-2xl border cursor-default"
-                  style={{
-                    background: "linear-gradient(135deg, rgb(var(--accent)/0.14) 0%, rgb(var(--accent)/0.04) 100%)",
-                    borderColor: "rgb(var(--accent)/0.3)",
-                  }}
-                  whileHover={{ scale: 1.06, borderColor: "rgb(var(--accent)/0.55)", boxShadow: "0 0 0 4px rgb(var(--accent)/0.08), 0 8px 24px -6px rgb(var(--accent)/0.22)" }}
-                  transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                  aria-label={`Étape ${s.num}`}
-                >
-                  <svg className="w-6 h-6" style={{ color: "rgb(var(--accent))" }} fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24" aria-hidden>
-                    <path strokeLinecap="round" strokeLinejoin="round" d={s.icon} />
-                  </svg>
-                  {/* Step number badge */}
-                  <span
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
-                    style={{ background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #3b82f6 100%)", fontStyle: "normal" }}
-                    aria-hidden
-                  >
-                    {s.num.replace("0", "")}
-                  </span>
-                </motion.div>
-
-                {/* Content */}
-                <div className="pt-1.5 flex-1">
-                  <h3 className="text-lg sm:text-xl font-bold mb-1.5" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{s.title}</h3>
-                  <p className="text-[15px] leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{s.desc}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
       </div>
     </section>
   );
@@ -1943,7 +1889,6 @@ export default function LandingPage() {
         <StatsStrip />
         <Problem />
         <Features />
-        <HowItWorks />
         <AIDetection />
         <SocialProof />
         <Pricing />
