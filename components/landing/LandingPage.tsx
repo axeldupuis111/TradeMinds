@@ -926,9 +926,142 @@ function BentoSync({ t }: { t: (k: string) => string }) {
   );
 }
 
+/* Strategy coach — natural language → setup rules, tags & params (real app behaviour) */
+function BentoStrategy({ t }: { t: (k: string) => string }) {
+  const prefersReduced = useReducedMotion();
+  const violet = "rgb(167,139,250)";
+
+  // Extracted risk/structure parameters (mirror the real Strategy page)
+  const params = [
+    t("feature_strategy_rule_pairs"),
+    t("feature_strategy_rule_session"),
+    t("feature_strategy_rule_rr"),
+    t("feature_strategy_rule_trades"),
+    t("feature_strategy_rule_risk"),
+  ];
+
+  // Auto-generated trading tags, grouped & colour-coded like the app.
+  // Chips use universal ICT terminology on purpose — it shows the AI speaks the trader's language.
+  const categories = [
+    { header: t("feature_strategy_cat_setups"),  rgb: "59,130,246",  chips: [t("feature_strategy_tag_setup_1"), t("feature_strategy_tag_setup_2")] },
+    { header: t("feature_strategy_cat_zones"),   rgb: "167,139,250", chips: [t("feature_strategy_tag_zone_1"), t("feature_strategy_tag_zone_2")] },
+    { header: t("feature_strategy_cat_targets"), rgb: "251,191,36",  chips: [t("feature_strategy_tag_target_1"), t("feature_strategy_tag_target_2")] },
+    { header: t("feature_strategy_cat_timing"),  rgb: "34,197,94",   chips: [t("feature_strategy_tag_timing_1"), t("feature_strategy_tag_timing_2")] },
+  ];
+
+  let chipIdx = 0; // global stagger index across all chips
+
+  return (
+    <div className="p-6">
+      <div className="flex flex-col lg:flex-row gap-4 lg:gap-5">
+        {/* Left — natural language prompt */}
+        <div className="lg:w-[36%] flex flex-col gap-2 shrink-0">
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0" style={{ background: "rgb(var(--surface))", border: "1px solid rgb(var(--border))", color: "rgb(var(--muted))" }} aria-hidden>T</div>
+            <span className="text-[10px] font-medium" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("feature_strategy_you")}</span>
+          </div>
+          <div
+            className="rounded-xl rounded-tl-sm px-3.5 py-3 text-[11px] leading-relaxed border flex-1"
+            style={{ background: "rgb(var(--surface))", borderColor: "rgb(var(--border))", color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}
+          >
+            {t("feature_strategy_prompt")}
+          </div>
+        </div>
+
+        {/* IA pulse + arrow */}
+        <div className="flex lg:flex-col items-center justify-center gap-1 shrink-0" aria-hidden>
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full" style={{ background: "rgba(167,139,250,0.12)" }}>
+            <motion.svg
+              className="w-3 h-3" style={{ color: violet }} fill="none" stroke="currentColor" viewBox="0 0 24 24"
+              animate={prefersReduced ? {} : { rotate: [0, 15, -10, 0], scale: [1, 1.15, 1] }}
+              transition={prefersReduced ? undefined : { duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+            </motion.svg>
+            <span className="text-[9px] font-bold tracking-wider" style={{ color: violet, fontStyle: "normal" }}>IA</span>
+          </div>
+          <svg className="w-4 h-4 rotate-90 lg:rotate-0" style={{ color: "rgb(var(--muted)/0.6)" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+
+        {/* Right — auto-generated output */}
+        <div className="flex-1 flex flex-col gap-4 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <svg className="w-3.5 h-3.5 shrink-0" style={{ color: violet }} fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+              <path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+            </svg>
+            <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: violet, fontStyle: "normal" }}>{t("feature_strategy_generated")}</span>
+          </div>
+
+          {/* Extracted parameters */}
+          <div>
+            <p className="text-[9px] uppercase tracking-widest mb-1.5" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("feature_strategy_params_label")}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {params.map((p, i) => (
+                <motion.span
+                  key={p}
+                  className="px-2 py-0.5 rounded-md text-[10px] font-medium border"
+                  style={{ color: "rgb(var(--foreground)/0.85)", background: "rgb(var(--accent)/0.06)", borderColor: "rgb(var(--accent)/0.2)", fontStyle: "normal" }}
+                  initial={prefersReduced ? false : { opacity: 0, y: 6 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.35, delay: 0.1 + i * 0.06, ease }}
+                >
+                  {p}
+                </motion.span>
+              ))}
+            </div>
+          </div>
+
+          {/* Generated tags by category */}
+          <div>
+            <p className="text-[9px] uppercase tracking-widest mb-2" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("feature_strategy_tags_label")}</p>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+              {categories.map((cat) => (
+                <div key={cat.header}>
+                  <p className="text-[9px] font-semibold mb-1" style={{ color: `rgb(${cat.rgb})`, fontStyle: "normal" }}>{cat.header}</p>
+                  <div className="flex flex-wrap gap-1">
+                    {cat.chips.map((chip) => {
+                      const delay = 0.45 + chipIdx * 0.05;
+                      chipIdx += 1;
+                      return (
+                        <motion.span
+                          key={chip}
+                          className="px-1.5 py-0.5 rounded text-[9.5px] font-medium border"
+                          style={{ color: `rgb(${cat.rgb})`, background: `rgba(${cat.rgb},0.08)`, borderColor: `rgba(${cat.rgb},0.2)`, fontStyle: "normal" }}
+                          initial={prefersReduced ? false : { opacity: 0, scale: 0.9 }}
+                          whileInView={{ opacity: 1, scale: 1 }}
+                          viewport={{ once: true }}
+                          transition={{ duration: 0.3, delay, ease }}
+                        >
+                          {chip}
+                        </motion.span>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Kicker — the "not generic ChatGPT" message */}
+      <div className="mt-5 pt-4 border-t flex items-start gap-2" style={{ borderColor: "rgb(var(--border)/0.6)" }}>
+        <svg className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: violet }} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+        <p className="text-[11px] leading-relaxed" style={{ color: "rgb(var(--foreground)/0.7)", fontStyle: "normal" }}>{t("feature_strategy_kicker")}</p>
+      </div>
+    </div>
+  );
+}
+
 function Features() {
   const { t } = useLanguage();
 
+  const violetTag = { color: "rgb(167,139,250)", background: "rgba(167,139,250,0.08)", borderColor: "rgba(167,139,250,0.15)" };
   const features = [
     {
       tagStyle: { color: "rgb(var(--accent))", background: "rgb(var(--accent)/0.08)", borderColor: "rgb(var(--accent)/0.15)" },
@@ -947,7 +1080,15 @@ function Features() {
       span: "",
     },
     {
-      tagStyle: { color: "rgb(167,139,250)", background: "rgba(167,139,250,0.08)", borderColor: "rgba(167,139,250,0.15)" },
+      tagStyle: violetTag,
+      tag: t("feature_strategy_label"),
+      title: t("feature_strategy_title"),
+      desc: t("feature_strategy_desc"),
+      visual: <BentoStrategy t={t} />,
+      span: "md:col-span-2",
+    },
+    {
+      tagStyle: violetTag,
       tag: t("feature_2_label"),
       title: t("feature_2_title"),
       desc: t("feature_2_desc"),
@@ -1015,10 +1156,34 @@ function Features() {
 function AIDetection() {
   const { t } = useLanguage();
   const detections = [
-    { text: t("ai_detect_1"), bgStyle: { background: "rgb(var(--loss)/0.05)", borderColor: "rgb(var(--loss)/0.12)" },    icon: "🔥" },
-    { text: t("ai_detect_2"), bgStyle: { background: "rgb(var(--profit)/0.05)", borderColor: "rgb(var(--profit)/0.12)" }, icon: "⏰" },
-    { text: t("ai_detect_3"), bgStyle: { background: "rgba(251,191,36,0.05)", borderColor: "rgba(251,191,36,0.12)" },     icon: "⚠️" },
-    { text: t("ai_detect_4"), bgStyle: { background: "rgba(167,139,250,0.05)", borderColor: "rgba(167,139,250,0.12)" },   icon: "📊" },
+    {
+      text: t("ai_detect_1"),
+      rgb: "239,68,68",
+      // flame — revenge trading
+      icon: "M12 2c1 3-1 4-2 6-1 1.5-1 3 0 4 1-.5 1.5-1.5 1.5-3 1 1 2 2.5 2 4a3.5 3.5 0 11-7 0c0-1 .3-2 1-3 .2 1 .8 1.5 1.5 1.5-1-2 1-4 3-9.5z",
+      filled: true,
+    },
+    {
+      text: t("ai_detect_2"),
+      rgb: "34,197,94",
+      // clock — best hours
+      icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
+      filled: false,
+    },
+    {
+      text: t("ai_detect_3"),
+      rgb: "251,191,36",
+      // warning — recurring rule break
+      icon: "M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z",
+      filled: false,
+    },
+    {
+      text: t("ai_detect_4"),
+      rgb: "167,139,250",
+      // chart — FOMO / setup analytics
+      icon: "M3 3v18h18M7 15l3-3 3 2 5-6",
+      filled: false,
+    },
   ];
 
   return (
@@ -1035,12 +1200,23 @@ function AIDetection() {
             <motion.div
               key={i}
               className="border rounded-2xl p-5 flex items-start gap-4"
-              style={d.bgStyle}
+              style={{ background: `rgba(${d.rgb},0.05)`, borderColor: `rgba(${d.rgb},0.14)` }}
               whileHover={{ y: -4, scale: 1.005, boxShadow: "0 16px 48px -12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)" }}
               transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0" style={{ background: "rgb(var(--surface))" }} aria-hidden>
-                {d.icon}
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: `rgba(${d.rgb},0.12)` }} aria-hidden>
+                <svg
+                  className="w-[18px] h-[18px]"
+                  style={{ color: `rgb(${d.rgb})` }}
+                  viewBox="0 0 24 24"
+                  fill={d.filled ? "currentColor" : "none"}
+                  stroke={d.filled ? "none" : "currentColor"}
+                  strokeWidth={1.7}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d={d.icon} />
+                </svg>
               </div>
               <p className="text-sm leading-relaxed" style={{ color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}>{d.text}</p>
             </motion.div>
@@ -1730,9 +1906,9 @@ export default function LandingPage() {
         <StatsStrip />
         <Problem />
         <Features />
+        <HowItWorks />
         <AIDetection />
         <SocialProof />
-        <HowItWorks />
         <Pricing />
         <FAQ />
         <FinalCTA />
