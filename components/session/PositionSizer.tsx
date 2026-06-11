@@ -206,8 +206,11 @@ export default function PositionSizer({ strategy }: Props) {
   });
 
   // ── CFD derived ───────────────────────────────────────────────────────────
+  // Pip value is auto-known for forex/metals → the user never has to find it.
+  // null = broker-dependent (indices/crypto) → manual entry.
+  const autoPip = getDefaultPipValuePerLot(symbol.trim());
   const slPipsNum = parseFloat(slPips);
-  const pipValueNum = parseFloat(pipValue);
+  const pipValueNum = autoPip ?? parseFloat(pipValue);
 
   const lotResult =
     !isFutures && maxRisk && !isNaN(slPipsNum) && !isNaN(pipValueNum)
@@ -497,31 +500,48 @@ export default function PositionSizer({ strategy }: Props) {
                   />
                 </div>
 
-                {/* Pip value per lot */}
+                {/* Pip value per lot — auto for forex/metals, manual otherwise */}
                 <div className="sm:col-span-1">
-                  <div className="flex items-center gap-1 mb-1">
-                    <label className="text-xs text-muted">{t("sizer_pip_value")}</label>
-                    <button
-                      type="button"
-                      onClick={() => setShowPipHelp((v) => !v)}
-                      aria-label={t("sizer_pip_help_aria")}
-                      aria-expanded={showPipHelp}
-                      className="text-muted hover:text-accent transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded"
-                    >
-                      <Info className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={pipValue}
-                    onChange={(e) => setPipValue(e.target.value)}
-                    placeholder="10"
-                    className={`${inputClass} ${symbol && !pipValue ? "border-amber-500/50 focus:ring-amber-500" : ""}`}
-                  />
-                  {symbol && !pipValue && (
-                    <p className="text-xs text-amber-400 mt-1">{t("sizer_pip_value_manual")}</p>
+                  {autoPip !== null ? (
+                    /* Auto: read-only, the user never has to find it */
+                    <>
+                      <label className="block text-xs text-muted mb-1">{t("sizer_pip_value")}</label>
+                      <div className="w-full bg-surface/60 border border-border rounded-lg px-3 py-2 flex items-center gap-2">
+                        <span className="text-sm text-foreground tabular-nums">{autoPip} {cur}/lot</span>
+                        <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-profit/15 text-profit">
+                          {t("sizer_pip_auto")}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted mt-1">{t("sizer_pip_auto_note")}</p>
+                    </>
+                  ) : (
+                    /* Manual: broker-dependent instruments (indices/crypto/custom) */
+                    <>
+                      <div className="flex items-center gap-1 mb-1">
+                        <label className="text-xs text-muted">{t("sizer_pip_value")}</label>
+                        <button
+                          type="button"
+                          onClick={() => setShowPipHelp((v) => !v)}
+                          aria-label={t("sizer_pip_help_aria")}
+                          aria-expanded={showPipHelp}
+                          className="text-muted hover:text-accent transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded"
+                        >
+                          <Info className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={pipValue}
+                        onChange={(e) => setPipValue(e.target.value)}
+                        placeholder="10"
+                        className={`${inputClass} ${symbol && !pipValue ? "border-amber-500/50 focus:ring-amber-500" : ""}`}
+                      />
+                      {symbol && !pipValue && (
+                        <p className="text-xs text-amber-400 mt-1">{t("sizer_pip_value_manual")}</p>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
