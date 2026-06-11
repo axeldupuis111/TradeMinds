@@ -10,6 +10,29 @@ export const LANGUAGES: { code: Lang; label: string; flag: string }[] = [
 const translations: Record<Lang, Record<string, string>> = {
   // ─── FRENCH ───
   fr: {
+    // Command palette (Ctrl+K)
+    cmdk_placeholder: "Rechercher une page ou une action…",
+    cmdk_group_nav: "Navigation",
+    cmdk_group_actions: "Actions rapides",
+    cmdk_group_lang: "Langue",
+    cmdk_no_results: "Aucun résultat",
+    cmdk_action_light: "Passer en thème clair",
+    cmdk_action_dark: "Passer en thème sombre",
+    cmdk_hint_navigate: "naviguer",
+    cmdk_hint_select: "ouvrir",
+    cmdk_hint_close: "fermer",
+    cmdk_open_button: "Rechercher",
+
+    // Bilan hebdo
+    recap_title: "Bilan de la semaine",
+    recap_subtitle: "vs semaine précédente",
+    recap_pnl: "P&L net",
+    recap_trades: "Trades",
+    recap_winrate: "Winrate",
+    recap_profit_factor: "Profit factor",
+    recap_best_trade: "Meilleur trade :",
+    recap_empty: "Aucun trade cette semaine pour l'instant.",
+
     // Nav
     nav_login: "Se connecter",
     nav_start: "Commencer",
@@ -1628,6 +1651,29 @@ const translations: Record<Lang, Record<string, string>> = {
 
   // ─── ENGLISH ───
   en: {
+    // Command palette (Ctrl+K)
+    cmdk_placeholder: "Search a page or action…",
+    cmdk_group_nav: "Navigation",
+    cmdk_group_actions: "Quick actions",
+    cmdk_group_lang: "Language",
+    cmdk_no_results: "No results",
+    cmdk_action_light: "Switch to light theme",
+    cmdk_action_dark: "Switch to dark theme",
+    cmdk_hint_navigate: "navigate",
+    cmdk_hint_select: "open",
+    cmdk_hint_close: "close",
+    cmdk_open_button: "Search",
+
+    // Weekly recap
+    recap_title: "This week's recap",
+    recap_subtitle: "vs last week",
+    recap_pnl: "Net P&L",
+    recap_trades: "Trades",
+    recap_winrate: "Winrate",
+    recap_profit_factor: "Profit factor",
+    recap_best_trade: "Best trade:",
+    recap_empty: "No trades this week yet.",
+
     nav_login: "Sign in",
     nav_start: "Get started",
 
@@ -3219,6 +3265,29 @@ const translations: Record<Lang, Record<string, string>> = {
 
   // ─── GERMAN ───
   de: {
+    // Command palette (Ctrl+K)
+    cmdk_placeholder: "Seite oder Aktion suchen…",
+    cmdk_group_nav: "Navigation",
+    cmdk_group_actions: "Schnellaktionen",
+    cmdk_group_lang: "Sprache",
+    cmdk_no_results: "Keine Ergebnisse",
+    cmdk_action_light: "Zum hellen Design wechseln",
+    cmdk_action_dark: "Zum dunklen Design wechseln",
+    cmdk_hint_navigate: "navigieren",
+    cmdk_hint_select: "öffnen",
+    cmdk_hint_close: "schließen",
+    cmdk_open_button: "Suchen",
+
+    // Wochenrückblick
+    recap_title: "Wochenrückblick",
+    recap_subtitle: "vs. Vorwoche",
+    recap_pnl: "Netto-P&L",
+    recap_trades: "Trades",
+    recap_winrate: "Winrate",
+    recap_profit_factor: "Profitfaktor",
+    recap_best_trade: "Bester Trade:",
+    recap_empty: "Diese Woche noch keine Trades.",
+
     nav_login: "Anmelden",
     nav_start: "Loslegen",
 
@@ -4809,6 +4878,29 @@ const translations: Record<Lang, Record<string, string>> = {
 
   // ─── SPANISH ───
   es: {
+    // Command palette (Ctrl+K)
+    cmdk_placeholder: "Buscar una página o acción…",
+    cmdk_group_nav: "Navegación",
+    cmdk_group_actions: "Acciones rápidas",
+    cmdk_group_lang: "Idioma",
+    cmdk_no_results: "Sin resultados",
+    cmdk_action_light: "Cambiar a tema claro",
+    cmdk_action_dark: "Cambiar a tema oscuro",
+    cmdk_hint_navigate: "navegar",
+    cmdk_hint_select: "abrir",
+    cmdk_hint_close: "cerrar",
+    cmdk_open_button: "Buscar",
+
+    // Resumen semanal
+    recap_title: "Resumen de la semana",
+    recap_subtitle: "vs semana anterior",
+    recap_pnl: "P&L neto",
+    recap_trades: "Trades",
+    recap_winrate: "Winrate",
+    recap_profit_factor: "Profit factor",
+    recap_best_trade: "Mejor trade:",
+    recap_empty: "Aún no hay trades esta semana.",
+
     nav_login: "Iniciar sesión",
     nav_start: "Empezar",
 

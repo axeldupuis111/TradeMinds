@@ -229,6 +229,16 @@ html.light header {
   );
 }
 
+/* ─── Command palette (Ctrl+K) ──────────────────────────────────────────── */
+@keyframes cmdk-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes cmdk-pop {
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 /* ─── Theme transition — applied only during theme switch ───────────────── */
 .theme-transition,
 .theme-transition * {

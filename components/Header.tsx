@@ -1,11 +1,14 @@
 "use client";
 
+import { OPEN_CMDK_EVENT } from "@/components/CommandPalette";
 import LanguageSelector from "@/components/LanguageSelector";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
+import { Search } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const planBadgeStyles: Record<string, string> = {
   free: "bg-surface text-muted",
@@ -32,6 +35,14 @@ export default function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
   const supabase = createClient();
 
   const pageKey = PAGE_KEYS[pathname] || "header_page_dashboard";
+
+  // Raccourci affiché selon la plateforme (⌘K sur Mac, Ctrl K ailleurs)
+  const [shortcutLabel, setShortcutLabel] = useState("Ctrl K");
+  useEffect(() => {
+    if (typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform)) {
+      setShortcutLabel("⌘K");
+    }
+  }, []);
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -63,8 +74,26 @@ export default function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
         </div>
       </div>
 
-      {/* Right: language, theme, plan badge, signout */}
+      {/* Right: search (Ctrl+K), language, theme, plan badge, signout */}
       <div className="flex items-center gap-2">
+        <button
+          onClick={() => window.dispatchEvent(new Event(OPEN_CMDK_EVENT))}
+          className="hidden md:flex items-center gap-2 h-8 px-2.5 rounded-lg border border-border bg-surface/60 text-muted hover:text-foreground hover:border-accent/30 transition-colors"
+          aria-label={t("cmdk_open_button")}
+        >
+          <Search className="w-3.5 h-3.5" strokeWidth={1.75} />
+          <span className="text-xs">{t("cmdk_open_button")}</span>
+          <kbd className="px-1.5 py-0.5 rounded border border-border bg-background text-[10px] font-medium leading-none">
+            {shortcutLabel}
+          </kbd>
+        </button>
+        <button
+          onClick={() => window.dispatchEvent(new Event(OPEN_CMDK_EVENT))}
+          className="md:hidden flex items-center justify-center w-8 h-8 rounded-lg text-muted hover:text-foreground hover:bg-white/5 transition-colors"
+          aria-label={t("cmdk_open_button")}
+        >
+          <Search className="w-4 h-4" strokeWidth={1.75} />
+        </button>
         <LanguageSelector />
         <ThemeToggle />
 

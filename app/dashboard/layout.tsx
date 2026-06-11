@@ -1,5 +1,6 @@
 "use client";
 
+import CommandPalette from "@/components/CommandPalette";
 import Header from "@/components/Header";
 import OnboardingGuide from "@/components/dashboard/OnboardingGuide";
 import QuickTradeFAB from "@/components/dashboard/QuickTradeFAB";
@@ -203,6 +204,7 @@ export default function DashboardLayout({
       </div>
       <QuickTradeFAB />
       <OnboardingGuide />
+      <CommandPalette />
     </div>
     </ActiveAccountProvider>
     </AlertsProvider>
