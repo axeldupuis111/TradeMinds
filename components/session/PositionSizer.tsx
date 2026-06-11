@@ -9,6 +9,7 @@ import {
   computeLotSize,
   computeMaxRiskEur,
   getDefaultPipValuePerLot,
+  getUnitsPerLot,
   type RiskCap,
 } from "@/lib/position-sizing";
 import {
@@ -30,6 +31,14 @@ interface Props {
 
 const inputClass =
   "w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent";
+
+// Common CFD instruments offered in the dropdown. Pip value is auto-derived
+// via getDefaultPipValuePerLot; indices (null pip) fall back to manual entry.
+const CFD_PRESETS = [
+  "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCHF", "USDCAD", "NZDUSD",
+  "EURJPY", "GBPJPY", "XAUUSD", "XAGUSD", "US30", "NAS100", "SPX500", "GER40",
+];
+const CUSTOM_INSTRUMENT = "__custom__";
 
 export default function PositionSizer({ strategy }: Props) {
   const { t } = useLanguage();
@@ -120,15 +129,45 @@ export default function PositionSizer({ strategy }: Props) {
     setTotalDdRemaining(rules.totalDdRemainingEur);
   }
 
-  // ── Market type from active account ──────────────────────────────────────
-  const isFutures = selectedAccount?.market_type === "futures";
+  // ── Market type ───────────────────────────────────────────────────────────
+  // Mode follows the active account's market type, but the user can override
+  // (handles legacy accounts where market_type was never set → defaulted to cfd).
+  const [mode, setMode] = useState<"cfd" | "futures">(
+    selectedAccount?.market_type === "futures" ? "futures" : "cfd"
+  );
+  useEffect(() => {
+    setMode(selectedAccount?.market_type === "futures" ? "futures" : "cfd");
+  }, [selectedAccount?.id, selectedAccount?.market_type]);
+
+  const isFutures = mode === "futures";
+  const cur = isFutures ? "$" : "€";
+
+  // ── Common inputs: account balance + risk per trade (editable) ────────────
+  // Prefilled from the active account / strategy, but the user can override —
+  // this is what makes it a real, transparent lot calculator.
+  const [balance, setBalance] = useState(accountSize > 0 ? String(accountSize) : "");
+  const [riskMode, setRiskMode] = useState<"pct" | "eur">("pct");
+  const [riskValue, setRiskValue] = useState(
+    strategy?.risk_per_trade_pct != null ? String(strategy.risk_per_trade_pct) : ""
+  );
+
+  // Keep balance in sync when the active account changes (only if untouched/empty-driven).
+  useEffect(() => {
+    if (accountSize > 0) setBalance(String(accountSize));
+  }, [accountSize]);
 
   // ── CFD state ─────────────────────────────────────────────────────────────
-  const [symbol, setSymbol] = useState("");
+  // Default to XAUUSD so the calculator shows a result immediately once
+  // balance / risk / SL are present.
+  const [symbol, setSymbol] = useState("XAUUSD");
+  const [isCustomInstrument, setIsCustomInstrument] = useState(false);
   const [slPips, setSlPips] = useState(
     strategy?.max_sl_pips != null ? String(strategy.max_sl_pips) : ""
   );
-  const [pipValue, setPipValue] = useState("");
+  const [pipValue, setPipValue] = useState(() => {
+    const def = getDefaultPipValuePerLot("XAUUSD");
+    return def !== null ? String(def) : "";
+  });
   const [showPipHelp, setShowPipHelp] = useState(false);
 
   function handleSymbolChange(val: string) {
@@ -137,21 +176,50 @@ export default function PositionSizer({ strategy }: Props) {
     setPipValue(def !== null ? String(def) : "");
   }
 
+  function handleInstrumentSelect(val: string) {
+    if (val === CUSTOM_INSTRUMENT) {
+      setIsCustomInstrument(true);
+      setSymbol("");
+      setPipValue("");
+    } else {
+      setIsCustomInstrument(false);
+      handleSymbolChange(val);
+    }
+  }
+
   // ── Futures state ─────────────────────────────────────────────────────────
   const [futuresSymbol, setFuturesSymbol] = useState(FUTURES_CONTRACTS[0].symbol);
   const [slPoints, setSlPoints] = useState("");
 
   // ── Shared derived: max risk (common to both modes) ───────────────────────
+  // The user-entered balance + risk define the intended risk; the challenge
+  // drawdown ceilings still cap it (TradeDiscipline's discipline guard).
+  const balanceNum = parseFloat(balance);
+  const riskNum = parseFloat(riskValue);
+  const intendedRiskEur =
+    riskMode === "pct"
+      ? !isNaN(riskNum) && !isNaN(balanceNum)
+        ? (riskNum / 100) * balanceNum
+        : NaN
+      : riskNum;
+
   const maxRisk = computeMaxRiskEur({
-    riskPct: strategy?.risk_per_trade_pct ?? null,
-    accountSize,
+    // express the intended risk as an equivalent % of balance so DD caps apply
+    riskPct:
+      !isNaN(intendedRiskEur) && balanceNum > 0
+        ? (intendedRiskEur / balanceNum) * 100
+        : null,
+    accountSize: balanceNum > 0 ? balanceNum : 0,
     dailyDdRemainingEur: dailyDdRemaining,
     totalDdRemainingEur: totalDdRemaining,
   });
 
   // ── CFD derived ───────────────────────────────────────────────────────────
+  // Pip value is auto-known for forex/metals → the user never has to find it.
+  // null = broker-dependent (indices/crypto) → manual entry.
+  const autoPip = getDefaultPipValuePerLot(symbol.trim());
   const slPipsNum = parseFloat(slPips);
-  const pipValueNum = parseFloat(pipValue);
+  const pipValueNum = autoPip ?? parseFloat(pipValue);
 
   const lotResult =
     !isFutures && maxRisk && !isNaN(slPipsNum) && !isNaN(pipValueNum)
@@ -228,6 +296,79 @@ export default function PositionSizer({ strategy }: Props) {
         <p className="text-xs text-muted mt-0.5">{t("sizer_subtitle")}</p>
       </div>
 
+      {/* Market type toggle — defaults to the active account, overridable */}
+      <div className="flex rounded-lg border border-border overflow-hidden w-fit text-sm">
+        {(["cfd", "futures"] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => setMode(m)}
+            aria-pressed={mode === m}
+            className={`px-4 py-1.5 font-medium transition-colors ${
+              mode === m ? "bg-accent text-white" : "bg-surface text-muted hover:text-foreground"
+            }`}
+          >
+            {m === "cfd" ? t("challenge_market_cfd") : t("challenge_market_futures")}
+          </button>
+        ))}
+      </div>
+
+      {/* Common inputs — account balance + risk per trade (editable) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* Account balance */}
+        <div>
+          <label className="block text-xs text-muted mb-1">{t("sizer_balance_label")} ({cur})</label>
+          <input
+            type="number"
+            min="0"
+            step="100"
+            value={balance}
+            onChange={(e) => setBalance(e.target.value)}
+            placeholder="10000"
+            className={inputClass}
+          />
+          {accountSize > 0 && (
+            <p className="text-xs text-muted mt-1">{t("sizer_balance_hint")}</p>
+          )}
+        </div>
+
+        {/* Risk per trade with %/€ toggle */}
+        <div>
+          <label className="block text-xs text-muted mb-1">{t("sizer_risk_label")}</label>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              min="0"
+              step={riskMode === "pct" ? "0.1" : "10"}
+              value={riskValue}
+              onChange={(e) => setRiskValue(e.target.value)}
+              placeholder={riskMode === "pct" ? "1" : "100"}
+              className={`${inputClass} flex-1`}
+            />
+            <div className="flex rounded-lg border border-border overflow-hidden shrink-0">
+              {(["pct", "eur"] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setRiskMode(m)}
+                  className={`px-3 text-sm font-medium transition-colors ${
+                    riskMode === m
+                      ? "bg-accent text-white"
+                      : "bg-surface text-muted hover:text-foreground"
+                  }`}
+                  aria-pressed={riskMode === m}
+                >
+                  {m === "pct" ? "%" : cur}
+                </button>
+              ))}
+            </div>
+          </div>
+          {strategy?.risk_per_trade_pct != null && (
+            <p className="text-xs text-muted mt-1">{t("sizer_risk_hint")}</p>
+          )}
+        </div>
+      </div>
+
       {/* Risk display — common to both modes, currency symbol adapts */}
       {maxRisk && maxRisk.riskEur === 0 ? (
         <div className="rounded-lg px-4 py-3 flex items-start gap-3 bg-loss/10 border border-loss/40">
@@ -247,7 +388,7 @@ export default function PositionSizer({ strategy }: Props) {
           {maxRisk ? (
             <>
               <span className="text-xl font-bold text-profit tabular-nums">
-                {maxRisk.riskEur.toFixed(2)} {isFutures ? "$" : "€"}
+                {maxRisk.riskEur.toFixed(2)} {cur}
               </span>
               <span className="text-xs text-muted">{cappedByLabel(maxRisk.cappedBy)}</span>
             </>
@@ -334,7 +475,7 @@ export default function PositionSizer({ strategy }: Props) {
                       <div className="flex items-baseline gap-1">
                         <span className="text-xs text-muted">{t("sizer_futures_actual_risk")}</span>
                         <span className="text-sm font-semibold text-foreground tabular-nums">
-                          {actualRisk.toFixed(2)} $
+                          {actualRisk.toFixed(2)} {cur}
                         </span>
                       </div>
                     )}
@@ -346,16 +487,29 @@ export default function PositionSizer({ strategy }: Props) {
             /* ── CFD MODE (unchanged) ────────────────────────────────────── */
             <>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {/* Instrument */}
+                {/* Instrument — preset dropdown + custom fallback */}
                 <div>
                   <label className="block text-xs text-muted mb-1">{t("sizer_instrument")}</label>
-                  <input
-                    type="text"
-                    value={symbol}
-                    onChange={(e) => handleSymbolChange(e.target.value)}
-                    placeholder="XAUUSD"
+                  <select
+                    value={isCustomInstrument ? CUSTOM_INSTRUMENT : symbol}
+                    onChange={(e) => handleInstrumentSelect(e.target.value)}
                     className={inputClass}
-                  />
+                  >
+                    {CFD_PRESETS.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                    <option value={CUSTOM_INSTRUMENT}>{t("sizer_instrument_custom")}</option>
+                  </select>
+                  {isCustomInstrument && (
+                    <input
+                      type="text"
+                      value={symbol}
+                      onChange={(e) => handleSymbolChange(e.target.value)}
+                      placeholder="ex. BTCUSD"
+                      className={`${inputClass} mt-2`}
+                      autoFocus
+                    />
+                  )}
                 </div>
 
                 {/* SL pips */}
@@ -372,31 +526,48 @@ export default function PositionSizer({ strategy }: Props) {
                   />
                 </div>
 
-                {/* Pip value per lot */}
+                {/* Pip value per lot — auto for forex/metals, manual otherwise */}
                 <div className="sm:col-span-1">
-                  <div className="flex items-center gap-1 mb-1">
-                    <label className="text-xs text-muted">{t("sizer_pip_value")}</label>
-                    <button
-                      type="button"
-                      onClick={() => setShowPipHelp((v) => !v)}
-                      aria-label={t("sizer_pip_help_aria")}
-                      aria-expanded={showPipHelp}
-                      className="text-muted hover:text-accent transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded"
-                    >
-                      <Info className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={pipValue}
-                    onChange={(e) => setPipValue(e.target.value)}
-                    placeholder="10"
-                    className={`${inputClass} ${symbol && !pipValue ? "border-amber-500/50 focus:ring-amber-500" : ""}`}
-                  />
-                  {symbol && !pipValue && (
-                    <p className="text-xs text-amber-400 mt-1">{t("sizer_pip_value_manual")}</p>
+                  {autoPip !== null ? (
+                    /* Auto: read-only, the user never has to find it */
+                    <>
+                      <label className="block text-xs text-muted mb-1">{t("sizer_pip_value")}</label>
+                      <div className="w-full bg-surface/60 border border-border rounded-lg px-3 py-2 flex items-center gap-2">
+                        <span className="text-sm text-foreground tabular-nums">{autoPip} {cur}/lot</span>
+                        <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-profit/15 text-profit">
+                          {t("sizer_pip_auto")}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted mt-1">{t("sizer_pip_auto_note")}</p>
+                    </>
+                  ) : (
+                    /* Manual: broker-dependent instruments (indices/crypto/custom) */
+                    <>
+                      <div className="flex items-center gap-1 mb-1">
+                        <label className="text-xs text-muted">{t("sizer_pip_value")}</label>
+                        <button
+                          type="button"
+                          onClick={() => setShowPipHelp((v) => !v)}
+                          aria-label={t("sizer_pip_help_aria")}
+                          aria-expanded={showPipHelp}
+                          className="text-muted hover:text-accent transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded"
+                        >
+                          <Info className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={pipValue}
+                        onChange={(e) => setPipValue(e.target.value)}
+                        placeholder="10"
+                        className={`${inputClass} ${symbol && !pipValue ? "border-amber-500/50 focus:ring-amber-500" : ""}`}
+                      />
+                      {symbol && !pipValue && (
+                        <p className="text-xs text-amber-400 mt-1">{t("sizer_pip_value_manual")}</p>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -436,25 +607,60 @@ export default function PositionSizer({ strategy }: Props) {
                 </div>
               )}
 
-              {/* CFD result */}
+              {/* CFD result — lots + units + funds at risk */}
               <div
                 className={`rounded-lg px-4 py-3 border transition-colors ${
                   lotResult ? "bg-accent/10 border-accent/30" : "bg-surface border-border"
                 }`}
               >
                 {lotResult ? (
-                  <div className="flex items-baseline gap-2 flex-wrap">
-                    <span className="text-xs text-muted uppercase tracking-wider">{t("sizer_lot_label")}</span>
-                    <span className="text-2xl font-bold text-accent tabular-nums motion-safe:transition-all">
-                      {lotResult.lots.toFixed(2)}
-                    </span>
-                    <span className="text-xs text-muted">lots</span>
-                    {Math.abs(lotResult.raw - lotResult.lots) >= 0.005 && (
-                      <span className="text-xs text-muted">
-                        ({t("sizer_raw_label")} {lotResult.raw.toFixed(3)})
-                      </span>
-                    )}
-                  </div>
+                  (() => {
+                    const unitsPerLot = getUnitsPerLot(symbol.trim());
+                    const units = unitsPerLot !== null ? lotResult.lots * unitsPerLot : null;
+                    const fundsAtRisk = lotResult.lots * slPipsNum * pipValueNum;
+                    return (
+                      <div className="space-y-2.5">
+                        {/* Lots — headline */}
+                        <div className="flex items-baseline gap-2 flex-wrap">
+                          <span className="text-xs text-muted uppercase tracking-wider">{t("sizer_lot_label")}</span>
+                          <span className="text-2xl font-bold text-accent tabular-nums motion-safe:transition-all">
+                            {lotResult.lots.toFixed(2)}
+                          </span>
+                          <span className="text-xs text-muted">lots</span>
+                          {Math.abs(lotResult.raw - lotResult.lots) >= 0.005 && (
+                            <span className="text-xs text-muted">
+                              ({t("sizer_raw_label")} {lotResult.raw.toFixed(3)})
+                            </span>
+                          )}
+                        </div>
+                        {/* Units + funds at risk */}
+                        <div className="grid grid-cols-2 gap-3 pt-2.5 border-t border-border/60">
+                          <div>
+                            <p className="text-[11px] text-muted uppercase tracking-wider">{t("sizer_units_label")}</p>
+                            <p className="text-sm font-semibold text-foreground tabular-nums mt-0.5">
+                              {units !== null ? units.toLocaleString(undefined, { maximumFractionDigits: 0 }) : "—"}
+                            </p>
+                            {unitsPerLot !== null && (
+                              <p className="text-[10px] text-muted/70 mt-0.5">
+                                {t("sizer_contract_size")}: {unitsPerLot.toLocaleString()}
+                              </p>
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-[11px] text-muted uppercase tracking-wider">{t("sizer_funds_at_risk")}</p>
+                            <p className="text-sm font-semibold text-foreground tabular-nums mt-0.5">
+                              {fundsAtRisk.toFixed(2)} {cur}
+                              {balanceNum > 0 && (
+                                <span className="text-muted font-normal">
+                                  {" "}({((fundsAtRisk / balanceNum) * 100).toFixed(1)}%)
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()
                 ) : (
                   <p className="text-sm text-muted">
                     {!slPips || !pipValue ? t("sizer_fill_sl_pip") : t("sizer_lot_unavailable")}
