@@ -34,6 +34,28 @@ export function getDefaultPipValuePerLot(symbol: string): number | null {
 }
 
 // ---------------------------------------------------------------------------
+// Units per standard lot (contract size). Lets us convert lots → units.
+//   forex : 1 lot = 100 000 units of base currency
+//   xauusd: 1 lot = 100 oz
+//   xagusd: 1 lot = 5 000 oz
+//   index/crypto/oil: contract specs vary by broker → null (unknown).
+// ---------------------------------------------------------------------------
+export const UNITS_PER_LOT: Record<AssetType, number | null> = {
+  forex_major: 100000,
+  forex_jpy: 100000,
+  xauusd: 100,
+  xagusd: 5000,
+  index: null,
+  crypto: null,
+  oil: null,
+  unknown: null,
+};
+
+export function getUnitsPerLot(symbol: string): number | null {
+  return UNITS_PER_LOT[detectAssetType(symbol)];
+}
+
+// ---------------------------------------------------------------------------
 // computeMaxRiskEur
 // Takes the MIN of all defined ceilings:
 //   a) risk_pct/100 * accountSize   (strategy rule)
