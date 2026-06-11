@@ -299,6 +299,22 @@ export default function DashboardContent({
         </div>
       </div>
 
+      {/* ── Compte sans trade alors que d'autres en ont ──────────────── */}
+      {selectedAccountId && filteredAll.length === 0 && allTrades.length > 0 && (
+        <div className="mt-4 flex flex-wrap items-center gap-3 px-4 py-3 bg-surface/60 border border-border rounded-xl">
+          <AlertTriangle className="w-4 h-4 text-warning shrink-0" strokeWidth={1.5} />
+          <p className="text-sm text-foreground flex-1 min-w-[200px]">
+            {t("dash_account_no_trades").replace("{count}", String(allTrades.length))}
+          </p>
+          <button
+            onClick={() => setSelectedAccountId("")}
+            className="text-xs font-semibold text-accent hover:underline whitespace-nowrap"
+          >
+            {t("dash_account_no_trades_cta")}
+          </button>
+        </div>
+      )}
+
       {/* ── Blocs Dashboard — stagger cascade au montage ────────────── */}
       <StaggerContainer staggerDelay={0.08}>
 

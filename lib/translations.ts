@@ -50,6 +50,10 @@ const translations: Record<Lang, Record<string, string>> = {
     dd_longest: "Plus longue période sous le pic",
     dd_days: "jours",
 
+    // Compte actif sans trades
+    dash_account_no_trades: "Aucun trade sur ce compte — {count} trades existent sur tes autres comptes.",
+    dash_account_no_trades_cta: "Voir tous les comptes",
+
     // Nav
     nav_login: "Se connecter",
     nav_start: "Commencer",
@@ -1708,6 +1712,10 @@ const translations: Record<Lang, Record<string, string>> = {
     dd_longest: "Longest time under peak",
     dd_days: "days",
 
+    // Active account without trades
+    dash_account_no_trades: "No trades on this account — {count} trades exist on your other accounts.",
+    dash_account_no_trades_cta: "View all accounts",
+
     nav_login: "Sign in",
     nav_start: "Get started",
 
@@ -3339,6 +3347,10 @@ const translations: Record<Lang, Record<string, string>> = {
     dd_longest: "Längste Zeit unter dem Hoch",
     dd_days: "Tage",
 
+    // Aktives Konto ohne Trades
+    dash_account_no_trades: "Keine Trades auf diesem Konto — {count} Trades auf deinen anderen Konten.",
+    dash_account_no_trades_cta: "Alle Konten anzeigen",
+
     nav_login: "Anmelden",
     nav_start: "Loslegen",
 
@@ -4968,6 +4980,10 @@ const translations: Record<Lang, Record<string, string>> = {
     dd_at_high: "En máximos",
     dd_longest: "Mayor tiempo bajo el pico",
     dd_days: "días",
+
+    // Cuenta activa sin trades
+    dash_account_no_trades: "Sin trades en esta cuenta — hay {count} trades en tus otras cuentas.",
+    dash_account_no_trades_cta: "Ver todas las cuentas",
 
     nav_login: "Iniciar sesión",
     nav_start: "Empezar",
