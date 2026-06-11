@@ -1,5 +1,6 @@
 "use client";
 
+import DisciplineQuiz from "@/components/landing/DisciplineQuiz";
 import PublicHeader from "@/components/PublicHeader";
 import { useLanguage } from "@/lib/LanguageContext";
 import Link from "next/link";
@@ -1876,6 +1877,108 @@ function ScrollProgress() {
 }
 
 /* ─────────────────────────────────────────────
+   STICKY MOBILE CTA
+   Barre fixe en bas (mobile only), apparaît après
+   le scroll du hero — boost de conversion mobile.
+───────────────────────────────────────────── */
+function StickyMobileCTA() {
+  const { t } = useLanguage();
+  const [visible, setVisible] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    function onScroll() {
+      setVisible(window.scrollY > 700);
+    }
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  return (
+    <AnimatePresence>
+      {visible && !dismissed && (
+        <motion.div
+          initial={{ y: 80, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 80, opacity: 0 }}
+          transition={{ duration: 0.3, ease }}
+          className="fixed bottom-0 inset-x-0 z-50 lg:hidden px-4 pb-4 pt-2 pointer-events-none"
+          style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+        >
+          <div
+            className="pointer-events-auto flex items-center gap-2 p-2 rounded-2xl border backdrop-blur-xl"
+            style={{
+              borderColor: "rgb(var(--border))",
+              background: "rgb(var(--card)/0.92)",
+              boxShadow: "0 -8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03)",
+            }}
+          >
+            <Link
+              href="/login"
+              className="flex-1 text-center px-5 py-3 rounded-xl font-semibold text-sm text-white"
+              style={{
+                background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #3b82f6 100%)",
+                boxShadow: "0 4px 16px rgb(var(--accent)/0.25)",
+                fontStyle: "normal",
+              }}
+            >
+              {t("hero_cta")}
+            </Link>
+            <button
+              type="button"
+              onClick={() => setDismissed(true)}
+              className="shrink-0 w-10 h-10 flex items-center justify-center rounded-xl transition-colors"
+              style={{ color: "rgb(var(--muted))" }}
+              aria-label="Fermer"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   STRUCTURED DATA — FAQ rich snippets (SEO)
+───────────────────────────────────────────── */
+function StructuredData() {
+  const { t } = useLanguage();
+
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: [1, 2, 3, 4, 5, 6].map((i) => ({
+      "@type": "Question",
+      name: t(`faq_q${i}`),
+      acceptedAnswer: { "@type": "Answer", text: t(`faq_a${i}`) },
+    })),
+  };
+
+  const appJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "TradeDiscipline",
+    applicationCategory: "FinanceApplication",
+    operatingSystem: "Web",
+    url: "https://tradediscipline.app",
+    description: t("hero_subtitle_v2"),
+    offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" },
+  };
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify([faqJsonLd, appJsonLd]) }}
+    />
+  );
+}
+
+/* ─────────────────────────────────────────────
    PAGE ROOT
 ───────────────────────────────────────────── */
 export default function LandingPage() {
@@ -1888,6 +1991,7 @@ export default function LandingPage() {
         <Hero />
         <StatsStrip />
         <Problem />
+        <DisciplineQuiz />
         <Features />
         <AIDetection />
         <SocialProof />
@@ -1896,6 +2000,8 @@ export default function LandingPage() {
         <FinalCTA />
       </main>
       <Footer />
+      <StickyMobileCTA />
+      <StructuredData />
     </div>
   );
 }
