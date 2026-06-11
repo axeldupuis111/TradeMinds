@@ -524,8 +524,10 @@ const MARQUEE_PLATFORMS = ["MetaTrader 4", "MetaTrader 5", "cTrader", "TradingVi
 
 function PlatformMarquee() {
   const { t } = useLanguage();
-  // Liste doublée pour la boucle infinie (translateX -50%)
-  const items = [...MARQUEE_PLATFORMS, ...MARQUEE_PLATFORMS];
+  // 6 copies : la piste doit faire ≥ 2× la largeur des grands écrans (1920px)
+  // pour que la boucle translateX(-50%) ne montre jamais de trou
+  // (½ piste = 3 copies exactes → raccord invisible).
+  const items = Array.from({ length: 6 }, () => MARQUEE_PLATFORMS).flat();
 
   return (
     <section className="py-10 px-0 overflow-hidden" aria-label={t("marquee_caption")}>
