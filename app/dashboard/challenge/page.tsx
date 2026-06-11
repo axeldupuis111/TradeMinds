@@ -884,10 +884,30 @@ export default function ChallengePage() {
     );
   }
 
+  // Portfolio aggregate across all active accounts (for the overview panel).
+  const portfolio = activeAccounts.reduce(
+    (acc, ac) => {
+      const s = accountStatsMap[ac.id];
+      if (s) {
+        acc.capital += s.balance || 0;
+        acc.pnl += s.currentPnl || 0;
+        acc.trades += s.tradeCount || 0;
+        acc.weightedWr += (s.winrate || 0) * (s.tradeCount || 0);
+      }
+      return acc;
+    },
+    { capital: 0, pnl: 0, trades: 0, weightedWr: 0 }
+  );
+  const portfolioWinrate = portfolio.trades > 0 ? portfolio.weightedWr / portfolio.trades : 0;
+  const hasAccounts = activeAccounts.length > 0;
+
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-6xl">
       <h1 className="text-2xl font-bold text-foreground">{t("challenge_title")}</h1>
       <p className="text-muted mt-1">{t("challenge_subtitle")}</p>
+
+      <div className={hasAccounts ? "lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8 lg:items-start mt-2" : ""}>
+        <div className="min-w-0">
 
       {/* ACTIVE ACCOUNTS */}
       {activeAccounts.length > 0 && (
@@ -1204,6 +1224,48 @@ export default function ChallengePage() {
           </div>
         )}
       </section>
+
+        </div>{/* end left column */}
+
+        {/* Right column — portfolio overview across all active accounts */}
+        {hasAccounts && (
+          <aside className="mt-8 lg:mt-0 lg:sticky lg:top-6">
+            <div className="bg-card border border-border rounded-xl p-4">
+              <h3 className="text-sm font-semibold text-foreground mb-3">{t("challenge_portfolio_title")}</h3>
+              <div className="space-y-3">
+                <div className="rounded-lg bg-surface border border-border p-3">
+                  <p className="text-[11px] text-muted uppercase tracking-wider">{t("challenge_portfolio_capital")}</p>
+                  <p className="text-xl font-bold text-foreground tabular-nums mt-0.5">
+                    {portfolio.capital.toLocaleString(undefined, { maximumFractionDigits: 0 })} €
+                  </p>
+                </div>
+                <div className="rounded-lg bg-surface border border-border p-3">
+                  <p className="text-[11px] text-muted uppercase tracking-wider">{t("challenge_portfolio_pnl")}</p>
+                  <p className={`text-xl font-bold tabular-nums mt-0.5 ${portfolio.pnl >= 0 ? "text-profit" : "text-loss"}`}>
+                    {portfolio.pnl >= 0 ? "+" : ""}{portfolio.pnl.toLocaleString(undefined, { maximumFractionDigits: 0 })} €
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg bg-surface border border-border p-3">
+                    <p className="text-[11px] text-muted uppercase tracking-wider">{t("challenge_portfolio_accounts")}</p>
+                    <p className="text-lg font-bold text-foreground tabular-nums mt-0.5">{activeAccounts.length}</p>
+                  </div>
+                  <div className="rounded-lg bg-surface border border-border p-3">
+                    <p className="text-[11px] text-muted uppercase tracking-wider">{t("trades_winrate")}</p>
+                    <p className="text-lg font-bold text-foreground tabular-nums mt-0.5">
+                      {portfolio.trades > 0 ? `${portfolioWinrate.toFixed(0)}%` : "—"}
+                    </p>
+                  </div>
+                </div>
+                <div className="rounded-lg bg-surface border border-border p-3">
+                  <p className="text-[11px] text-muted uppercase tracking-wider">{t("trades_total")}</p>
+                  <p className="text-lg font-bold text-foreground tabular-nums mt-0.5">{portfolio.trades}</p>
+                </div>
+              </div>
+            </div>
+          </aside>
+        )}
+      </div>{/* end 2-col grid */}
 
       {/* DELETE MODAL */}
       {deleteModal.open && deleteModal.id && (

@@ -77,12 +77,48 @@ export default function StrategyPage() {
   const [strategies, setStrategies] = useState<{ id: string; name: string }[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTradeCount, setDeleteTradeCount] = useState(0);
+  const [perf, setPerf] = useState<{
+    count: number;
+    winrate: number;
+    pnl: number;
+    avgWin: number;
+    avgLoss: number;
+  } | null>(null);
   const pendingNavRef = useRef<string | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     loadStrategies();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load real performance of the currently-selected strategy (trades tagged with it).
+  useEffect(() => {
+    if (!existingId) { setPerf(null); return; }
+    let cancelled = false;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("trades")
+        .select("pnl, commission, swap")
+        .eq("user_id", user.id)
+        .eq("strategy_id", existingId)
+        .not("pnl", "is", null);
+      if (cancelled) return;
+      const nets = (data || []).map((tr) => (tr.pnl || 0) + (tr.commission || 0) + (tr.swap || 0));
+      if (nets.length === 0) { setPerf({ count: 0, winrate: 0, pnl: 0, avgWin: 0, avgLoss: 0 }); return; }
+      const wins = nets.filter((n) => n > 0);
+      const losses = nets.filter((n) => n < 0);
+      setPerf({
+        count: nets.length,
+        winrate: (wins.length / nets.length) * 100,
+        pnl: nets.reduce((s, n) => s + n, 0),
+        avgWin: wins.length ? wins.reduce((s, n) => s + n, 0) / wins.length : 0,
+        avgLoss: losses.length ? losses.reduce((s, n) => s + n, 0) / losses.length : 0,
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [existingId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!isDirty) return;
@@ -553,7 +589,7 @@ export default function StrategyPage() {
   ];
 
   return (
-    <div className="max-w-2xl pb-24">
+    <div className="max-w-6xl pb-24">
       {toast && (
         <div className={`fixed bottom-6 right-6 z-[100] px-4 py-3 rounded-lg text-white text-sm font-medium shadow-lg ${toast.type === "success" ? "bg-green-800" : "bg-red-700"}`}>
           {toast.text}
@@ -583,6 +619,8 @@ export default function StrategyPage() {
         </div>
       )}
 
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-8 lg:items-start">
+        <div className="min-w-0">
       <h1 className="text-2xl font-bold text-foreground">{t("strategy_title")}</h1>
       <p className="text-muted mt-1">{t("strategy_subtitle")}</p>
 
@@ -802,6 +840,71 @@ export default function StrategyPage() {
           </div>
         </div>
       )}
+
+        </div>{/* end left column */}
+
+        {/* Right column — plan summary + real performance */}
+        <aside className="mt-8 lg:mt-0 space-y-4 lg:sticky lg:top-6">
+          {/* Plan de trading */}
+          {parsed && (
+            <div className="bg-card border border-border rounded-xl p-4">
+              <h3 className="text-sm font-semibold text-foreground mb-3">{t("strategy_plan_card")}</h3>
+              <dl className="space-y-2 text-sm">
+                {[
+                  { label: t("strategy_pairs"), value: parsed.pairs.length ? parsed.pairs.join(", ") : "—" },
+                  { label: t("strategy_sessions"), value: parsed.sessions.length ? parsed.sessions.map((s) => (SESSION_LABELS[s] || s).split(" ")[0]).join(", ") : "—" },
+                  { label: t("strategy_rr"), value: parsed.risk_reward != null ? `${parsed.risk_reward}:1` : "—" },
+                  { label: t("strategy_sl_max"), value: parsed.max_sl_pips != null ? `${parsed.max_sl_pips} pips` : "—" },
+                  { label: t("strategy_max_trades"), value: parsed.max_trades_per_day != null ? String(parsed.max_trades_per_day) : "—" },
+                  { label: t("strategy_risk_pct"), value: parsed.risk_per_trade_pct != null ? `${parsed.risk_per_trade_pct} %` : "—" },
+                ].map((row) => (
+                  <div key={row.label} className="flex items-baseline justify-between gap-3">
+                    <dt className="text-muted">{row.label}</dt>
+                    <dd className="text-foreground font-medium text-right tabular-nums">{row.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
+
+          {/* Performance of this strategy */}
+          <div className="bg-card border border-border rounded-xl p-4">
+            <h3 className="text-sm font-semibold text-foreground mb-3">{t("strategy_perf_card")}</h3>
+            {perf && perf.count > 0 ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg bg-surface border border-border p-3">
+                    <p className="text-[11px] text-muted uppercase tracking-wider">{t("trades_total")}</p>
+                    <p className="text-lg font-bold text-foreground tabular-nums mt-0.5">{perf.count}</p>
+                  </div>
+                  <div className="rounded-lg bg-surface border border-border p-3">
+                    <p className="text-[11px] text-muted uppercase tracking-wider">{t("trades_winrate")}</p>
+                    <p className="text-lg font-bold text-foreground tabular-nums mt-0.5">{perf.winrate.toFixed(0)}%</p>
+                  </div>
+                </div>
+                <div className="rounded-lg bg-surface border border-border p-3">
+                  <p className="text-[11px] text-muted uppercase tracking-wider">{t("trades_pnl_total")}</p>
+                  <p className={`text-xl font-bold tabular-nums mt-0.5 ${perf.pnl >= 0 ? "text-profit" : "text-loss"}`}>
+                    {perf.pnl >= 0 ? "+" : ""}{perf.pnl.toFixed(2)} €
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg bg-profit/5 border border-profit/15 p-3">
+                    <p className="text-[11px] text-muted uppercase tracking-wider">{t("strategy_perf_avg_win")}</p>
+                    <p className="text-sm font-semibold text-profit tabular-nums mt-0.5">+{perf.avgWin.toFixed(2)} €</p>
+                  </div>
+                  <div className="rounded-lg bg-loss/5 border border-loss/15 p-3">
+                    <p className="text-[11px] text-muted uppercase tracking-wider">{t("strategy_perf_avg_loss")}</p>
+                    <p className="text-sm font-semibold text-loss tabular-nums mt-0.5">{perf.avgLoss.toFixed(2)} €</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted leading-relaxed">{t("strategy_perf_empty")}</p>
+            )}
+          </div>
+        </aside>
+      </div>{/* end 2-col grid */}
 
       {parsed && (
         <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center gap-3 p-4 bg-background/80 backdrop-blur-sm border-t border-border">
