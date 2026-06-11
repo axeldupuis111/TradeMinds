@@ -17,6 +17,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://tradediscipline.app"),
   title: "TradeDiscipline",
   description: "Journal de trading intelligent",
 };

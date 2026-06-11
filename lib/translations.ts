@@ -33,6 +33,14 @@ const translations: Record<Lang, Record<string, string>> = {
     recap_best_trade: "Meilleur trade :",
     recap_empty: "Aucun trade cette semaine pour l'instant.",
 
+    // Carte de partage
+    share_button: "Partager",
+    share_modal_title: "Partage ta semaine",
+    share_download: "Télécharger l'image",
+    share_copy: "Copier l'image",
+    share_copied: "Copiée !",
+    share_hide_amounts: "Masquer les montants",
+
     // Nav
     nav_login: "Se connecter",
     nav_start: "Commencer",
@@ -1674,6 +1682,14 @@ const translations: Record<Lang, Record<string, string>> = {
     recap_best_trade: "Best trade:",
     recap_empty: "No trades this week yet.",
 
+    // Share card
+    share_button: "Share",
+    share_modal_title: "Share your week",
+    share_download: "Download image",
+    share_copy: "Copy image",
+    share_copied: "Copied!",
+    share_hide_amounts: "Hide amounts",
+
     nav_login: "Sign in",
     nav_start: "Get started",
 
@@ -3288,6 +3304,14 @@ const translations: Record<Lang, Record<string, string>> = {
     recap_best_trade: "Bester Trade:",
     recap_empty: "Diese Woche noch keine Trades.",
 
+    // Share-Karte
+    share_button: "Teilen",
+    share_modal_title: "Teile deine Woche",
+    share_download: "Bild herunterladen",
+    share_copy: "Bild kopieren",
+    share_copied: "Kopiert!",
+    share_hide_amounts: "Beträge ausblenden",
+
     nav_login: "Anmelden",
     nav_start: "Loslegen",
 
@@ -4900,6 +4924,14 @@ const translations: Record<Lang, Record<string, string>> = {
     recap_profit_factor: "Profit factor",
     recap_best_trade: "Mejor trade:",
     recap_empty: "Aún no hay trades esta semana.",
+
+    // Tarjeta para compartir
+    share_button: "Compartir",
+    share_modal_title: "Comparte tu semana",
+    share_download: "Descargar imagen",
+    share_copy: "Copiar imagen",
+    share_copied: "¡Copiada!",
+    share_hide_amounts: "Ocultar importes",
 
     nav_login: "Iniciar sesión",
     nav_start: "Empezar",

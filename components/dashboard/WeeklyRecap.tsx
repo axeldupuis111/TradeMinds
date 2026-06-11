@@ -11,11 +11,12 @@
  */
 
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
+import ShareCardModal from "@/components/dashboard/ShareCardModal";
 import { CardHeader, CardTitle } from "@/components/ui/Card";
 import { useLanguage } from "@/lib/LanguageContext";
 import { cn } from "@/lib/cn";
-import { CalendarRange, TrendingDown, TrendingUp } from "lucide-react";
-import { useMemo } from "react";
+import { CalendarRange, Share2, TrendingDown, TrendingUp } from "lucide-react";
+import { useMemo, useState } from "react";
 
 interface RecapTrade {
   open_time: string;
@@ -99,6 +100,7 @@ function DeltaBadge({ delta, suffix = "", invert = false }: { delta: number | nu
 
 export default function WeeklyRecap({ trades }: { trades: RecapTrade[] }) {
   const { t } = useLanguage();
+  const [shareOpen, setShareOpen] = useState(false);
 
   const { current, previous } = useMemo(() => {
     const now = new Date();
@@ -175,7 +177,19 @@ export default function WeeklyRecap({ trades }: { trades: RecapTrade[] }) {
           <CalendarRange className="w-4 h-4 text-accent" strokeWidth={1.75} />
           <CardTitle>{t("recap_title")}</CardTitle>
         </div>
-        <span className="text-[10px] text-foreground-muted uppercase tracking-wider">{t("recap_subtitle")}</span>
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] text-foreground-muted uppercase tracking-wider">{t("recap_subtitle")}</span>
+          {current.count > 0 && (
+            <button
+              onClick={() => setShareOpen(true)}
+              className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg border border-border bg-surface/60 text-xs font-medium text-foreground-muted hover:text-foreground hover:border-accent/30 transition-colors"
+              aria-label={t("share_modal_title")}
+            >
+              <Share2 className="w-3 h-3" strokeWidth={1.75} />
+              {t("share_button")}
+            </button>
+          )}
+        </div>
       </CardHeader>
 
       {current.count === 0 ? (
@@ -216,6 +230,8 @@ export default function WeeklyRecap({ trades }: { trades: RecapTrade[] }) {
           )}
         </>
       )}
+
+      {shareOpen && <ShareCardModal stats={current} onClose={() => setShareOpen(false)} />}
     </KpiCardPremium>
   );
 }
