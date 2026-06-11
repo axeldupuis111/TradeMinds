@@ -926,72 +926,133 @@ function BentoSync({ t }: { t: (k: string) => string }) {
   );
 }
 
-/* Strategy coach — natural language → extracted rules */
+/* Strategy coach — natural language → setup rules, tags & params (real app behaviour) */
 function BentoStrategy({ t }: { t: (k: string) => string }) {
   const prefersReduced = useReducedMotion();
   const violet = "rgb(167,139,250)";
-  const rules = [
-    { label: t("feature_strategy_rule_pairs"),   icon: "M3 3v18h18M7 14l4-4 3 3 5-6" },
-    { label: t("feature_strategy_rule_session"), icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" },
-    { label: t("feature_strategy_rule_rr"),      icon: "M3 17l6-6 4 4 8-8m0 0v5m0-5h-5" },
-    { label: t("feature_strategy_rule_trades"),  icon: "M9 17V7m4 10V11m4 6V9M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z" },
-    { label: t("feature_strategy_rule_risk"),    icon: "M12 9v2m0 4h.01M5.07 19h13.86a2 2 0 001.74-3L13.74 4a2 2 0 00-3.48 0L3.34 16a2 2 0 001.73 3z" },
+
+  // Extracted risk/structure parameters (mirror the real Strategy page)
+  const params = [
+    t("feature_strategy_rule_pairs"),
+    t("feature_strategy_rule_session"),
+    t("feature_strategy_rule_rr"),
+    t("feature_strategy_rule_trades"),
+    t("feature_strategy_rule_risk"),
   ];
 
+  // Auto-generated trading tags, grouped & colour-coded like the app.
+  // Chips use universal ICT terminology on purpose — it shows the AI speaks the trader's language.
+  const categories = [
+    { header: t("feature_strategy_cat_setups"),  rgb: "59,130,246",  chips: ["Sweep BSL/SSL", "FVG entry", "Break of Structure"] },
+    { header: t("feature_strategy_cat_zones"),   rgb: "167,139,250", chips: ["Order Block", "Liquidity zone", "FVG"] },
+    { header: t("feature_strategy_cat_targets"), rgb: "251,191,36",  chips: ["Opposite liquidity", "Prior high / low"] },
+    { header: t("feature_strategy_cat_timing"),  rgb: "34,197,94",   chips: ["London killzone", "Sweep confirmation"] },
+  ];
+
+  let chipIdx = 0; // global stagger index across all chips
+
   return (
-    <div className="p-6 flex flex-col lg:flex-row items-stretch gap-4 lg:gap-5">
-      {/* Left — natural language prompt */}
-      <div className="flex-1 flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0" style={{ background: "rgb(var(--surface))", border: "1px solid rgb(var(--border))", color: "rgb(var(--muted))" }} aria-hidden>T</div>
-          <span className="text-[10px] font-medium" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("feature_strategy_you")}</span>
-        </div>
-        <div
-          className="rounded-xl rounded-tl-sm px-3.5 py-3 text-[11px] leading-relaxed border flex-1"
-          style={{ background: "rgb(var(--surface))", borderColor: "rgb(var(--border))", color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}
-        >
-          {t("feature_strategy_prompt")}
-        </div>
-      </div>
-
-      {/* Arrow / IA pulse */}
-      <div className="flex lg:flex-col items-center justify-center gap-1 shrink-0" aria-hidden>
-        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full" style={{ background: "rgba(167,139,250,0.12)" }}>
-          <motion.svg
-            className="w-3 h-3" style={{ color: violet }} fill="none" stroke="currentColor" viewBox="0 0 24 24"
-            animate={prefersReduced ? {} : { rotate: [0, 15, -10, 0], scale: [1, 1.15, 1] }}
-            transition={prefersReduced ? undefined : { duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+    <div className="p-6">
+      <div className="flex flex-col lg:flex-row gap-4 lg:gap-5">
+        {/* Left — natural language prompt */}
+        <div className="lg:w-[36%] flex flex-col gap-2 shrink-0">
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0" style={{ background: "rgb(var(--surface))", border: "1px solid rgb(var(--border))", color: "rgb(var(--muted))" }} aria-hidden>T</div>
+            <span className="text-[10px] font-medium" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("feature_strategy_you")}</span>
+          </div>
+          <div
+            className="rounded-xl rounded-tl-sm px-3.5 py-3 text-[11px] leading-relaxed border flex-1"
+            style={{ background: "rgb(var(--surface))", borderColor: "rgb(var(--border))", color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-          </motion.svg>
-          <span className="text-[9px] font-bold tracking-wider" style={{ color: violet, fontStyle: "normal" }}>IA</span>
+            {t("feature_strategy_prompt")}
+          </div>
         </div>
-        <svg className="w-4 h-4 rotate-90 lg:rotate-0" style={{ color: "rgb(var(--muted)/0.6)" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
+
+        {/* IA pulse + arrow */}
+        <div className="flex lg:flex-col items-center justify-center gap-1 shrink-0" aria-hidden>
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full" style={{ background: "rgba(167,139,250,0.12)" }}>
+            <motion.svg
+              className="w-3 h-3" style={{ color: violet }} fill="none" stroke="currentColor" viewBox="0 0 24 24"
+              animate={prefersReduced ? {} : { rotate: [0, 15, -10, 0], scale: [1, 1.15, 1] }}
+              transition={prefersReduced ? undefined : { duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+            </motion.svg>
+            <span className="text-[9px] font-bold tracking-wider" style={{ color: violet, fontStyle: "normal" }}>IA</span>
+          </div>
+          <svg className="w-4 h-4 rotate-90 lg:rotate-0" style={{ color: "rgb(var(--muted)/0.6)" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+
+        {/* Right — auto-generated output */}
+        <div className="flex-1 flex flex-col gap-4 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <svg className="w-3.5 h-3.5 shrink-0" style={{ color: violet }} fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+              <path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+            </svg>
+            <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: violet, fontStyle: "normal" }}>{t("feature_strategy_generated")}</span>
+          </div>
+
+          {/* Extracted parameters */}
+          <div>
+            <p className="text-[9px] uppercase tracking-widest mb-1.5" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("feature_strategy_params_label")}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {params.map((p, i) => (
+                <motion.span
+                  key={p}
+                  className="px-2 py-0.5 rounded-md text-[10px] font-medium border"
+                  style={{ color: "rgb(var(--foreground)/0.85)", background: "rgb(var(--accent)/0.06)", borderColor: "rgb(var(--accent)/0.2)", fontStyle: "normal" }}
+                  initial={prefersReduced ? false : { opacity: 0, y: 6 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.35, delay: 0.1 + i * 0.06, ease }}
+                >
+                  {p}
+                </motion.span>
+              ))}
+            </div>
+          </div>
+
+          {/* Generated tags by category */}
+          <div>
+            <p className="text-[9px] uppercase tracking-widest mb-2" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("feature_strategy_tags_label")}</p>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+              {categories.map((cat) => (
+                <div key={cat.header}>
+                  <p className="text-[9px] font-semibold mb-1" style={{ color: `rgb(${cat.rgb})`, fontStyle: "normal" }}>{cat.header}</p>
+                  <div className="flex flex-wrap gap-1">
+                    {cat.chips.map((chip) => {
+                      const delay = 0.45 + chipIdx * 0.05;
+                      chipIdx += 1;
+                      return (
+                        <motion.span
+                          key={chip}
+                          className="px-1.5 py-0.5 rounded text-[9.5px] font-medium border"
+                          style={{ color: `rgb(${cat.rgb})`, background: `rgba(${cat.rgb},0.08)`, borderColor: `rgba(${cat.rgb},0.2)`, fontStyle: "normal" }}
+                          initial={prefersReduced ? false : { opacity: 0, scale: 0.9 }}
+                          whileInView={{ opacity: 1, scale: 1 }}
+                          viewport={{ once: true }}
+                          transition={{ duration: 0.3, delay, ease }}
+                        >
+                          {chip}
+                        </motion.span>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Right — extracted rules */}
-      <div className="flex-1 flex flex-col gap-2">
-        <span className="text-[10px] font-medium" style={{ color: violet, fontStyle: "normal" }}>{t("feature_strategy_extracted")}</span>
-        <div className="grid grid-cols-1 gap-1.5">
-          {rules.map((r, i) => (
-            <motion.div
-              key={r.label}
-              className="flex items-center gap-2 rounded-lg px-3 py-2 border"
-              style={{ background: "rgba(167,139,250,0.05)", borderColor: "rgba(167,139,250,0.15)" }}
-              initial={prefersReduced ? false : { opacity: 0, x: 10 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: 0.15 + i * 0.12, ease }}
-            >
-              <svg className="w-3.5 h-3.5 shrink-0" style={{ color: violet }} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={r.icon} />
-              </svg>
-              <span className="text-[11px] font-medium" style={{ color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}>{r.label}</span>
-            </motion.div>
-          ))}
-        </div>
+      {/* Kicker — the "not generic ChatGPT" message */}
+      <div className="mt-5 pt-4 border-t flex items-start gap-2" style={{ borderColor: "rgb(var(--border)/0.6)" }}>
+        <svg className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: violet }} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+        <p className="text-[11px] leading-relaxed" style={{ color: "rgb(var(--foreground)/0.7)", fontStyle: "normal" }}>{t("feature_strategy_kicker")}</p>
       </div>
     </div>
   );
