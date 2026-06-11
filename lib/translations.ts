@@ -1360,6 +1360,13 @@ const translations: Record<Lang, Record<string, string>> = {
     feature_strategy_tag_target_2: "Extension du range",
     feature_strategy_tag_timing_1: "Ouverture US",
     feature_strategy_tag_timing_2: "Confirmation du retest",
+    // Landing — feature chronology steps
+    chrono_step_1: "Connecte tes trades",
+    chrono_step_1_sub: "Import CSV en 2 clics ou synchronisation automatique MT4/MT5",
+    chrono_step_2: "Décris ta stratégie",
+    chrono_step_2_sub: "L'IA en extrait tes règles, tes tags et tes paramètres de risque",
+    chrono_step_3: "Analyse tes trades & ton coach",
+    chrono_step_3_sub: "Score de discipline objectif + Coach IA disponible 24/7",
     feature_strategy_kicker: "ICT, price action, breakout, supply & demand… quelle que soit ta méthode, l'IA la structure et analyse chaque trade avec TON vocabulaire — pas avec des conseils génériques.",
     // Landing mockup strings
     mockup_streak_label: "12 jours de discipline consécutifs",
@@ -2924,6 +2931,13 @@ const translations: Record<Lang, Record<string, string>> = {
     feature_strategy_tag_target_2: "Range extension",
     feature_strategy_tag_timing_1: "US open",
     feature_strategy_tag_timing_2: "Retest confirmation",
+    // Landing — feature chronology steps
+    chrono_step_1: "Connect your trades",
+    chrono_step_1_sub: "CSV import in 2 clicks or automatic MT4/MT5 sync",
+    chrono_step_2: "Describe your strategy",
+    chrono_step_2_sub: "The AI extracts your rules, tags and risk parameters",
+    chrono_step_3: "Analyze your trades & your coach",
+    chrono_step_3_sub: "Objective discipline score + AI coach available 24/7",
     feature_strategy_kicker: "ICT, price action, breakout, supply & demand… whatever your method, the AI structures it and analyzes every trade in YOUR vocabulary — not with generic advice.",
     // Landing mockup strings
     mockup_streak_label: "12 consecutive discipline days",
@@ -4487,6 +4501,13 @@ const translations: Record<Lang, Record<string, string>> = {
     feature_strategy_tag_target_2: "Range-Erweiterung",
     feature_strategy_tag_timing_1: "US-Eröffnung",
     feature_strategy_tag_timing_2: "Retest-Bestätigung",
+    // Landing — feature chronology steps
+    chrono_step_1: "Verbinde deine Trades",
+    chrono_step_1_sub: "CSV-Import in 2 Klicks oder automatische MT4/MT5-Sync",
+    chrono_step_2: "Beschreibe deine Strategie",
+    chrono_step_2_sub: "Die KI extrahiert deine Regeln, Tags und Risikoparameter",
+    chrono_step_3: "Analysiere deine Trades & dein Coach",
+    chrono_step_3_sub: "Objektiver Disziplin-Score + KI-Coach rund um die Uhr",
     feature_strategy_kicker: "ICT, Price Action, Breakout, Supply & Demand… egal welche Methode — die KI strukturiert sie und analysiert jeden Trade in DEINEM Vokabular, nicht mit generischen Ratschlägen.",
     // Landing mockup strings
     mockup_streak_label: "12 aufeinanderfolgende Disziplintage",
@@ -6049,6 +6070,13 @@ const translations: Record<Lang, Record<string, string>> = {
     feature_strategy_tag_target_2: "Extensión del rango",
     feature_strategy_tag_timing_1: "Apertura EE. UU.",
     feature_strategy_tag_timing_2: "Confirmación del retest",
+    // Landing — feature chronology steps
+    chrono_step_1: "Conecta tus operaciones",
+    chrono_step_1_sub: "Importación CSV en 2 clics o sincronización automática MT4/MT5",
+    chrono_step_2: "Describe tu estrategia",
+    chrono_step_2_sub: "La IA extrae tus reglas, tags y parámetros de riesgo",
+    chrono_step_3: "Analiza tus operaciones y tu coach",
+    chrono_step_3_sub: "Score de disciplina objetivo + Coach IA disponible 24/7",
     feature_strategy_kicker: "ICT, price action, ruptura, oferta y demanda… sea cual sea tu método, la IA lo estructura y analiza cada operación con TU vocabulario — no con consejos genéricos.",
     // Landing mockup strings
     mockup_streak_label: "12 días consecutivos de disciplina",

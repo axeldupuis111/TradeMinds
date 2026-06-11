@@ -534,7 +534,7 @@ function StatsStrip() {
               <p className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight" style={{ fontStyle: "normal", color: "rgb(var(--foreground))" }}>
                 <Counter end={s.value} suffix={s.suffix} decimals={s.decimals} />
               </p>
-              <p className="text-xs mt-1.5 font-medium tracking-wide" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{s.label}</p>
+              <p className="text-[13px] mt-1.5 font-medium tracking-wide" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{s.label}</p>
             </Reveal>
           ))}
         </div>
@@ -614,7 +614,7 @@ function Problem() {
                 {p.icon}
               </div>
               <h3 className="text-base font-bold mb-2" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{p.title}</h3>
-              <p className="text-sm leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{p.desc}</p>
+              <p className="text-[15px] leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{p.desc}</p>
             </motion.div>
           ))}
         </StaggerReveal>
@@ -958,10 +958,10 @@ function BentoStrategy({ t }: { t: (k: string) => string }) {
         <div className="lg:w-[36%] flex flex-col gap-2 shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0" style={{ background: "rgb(var(--surface))", border: "1px solid rgb(var(--border))", color: "rgb(var(--muted))" }} aria-hidden>T</div>
-            <span className="text-[10px] font-medium" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("feature_strategy_you")}</span>
+            <span className="text-[11px] font-medium" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("feature_strategy_you")}</span>
           </div>
           <div
-            className="rounded-xl rounded-tl-sm px-3.5 py-3 text-[11px] leading-relaxed border flex-1"
+            className="rounded-xl rounded-tl-sm px-3.5 py-3 text-[12.5px] leading-relaxed border flex-1"
             style={{ background: "rgb(var(--surface))", borderColor: "rgb(var(--border))", color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}
           >
             {t("feature_strategy_prompt")}
@@ -996,12 +996,12 @@ function BentoStrategy({ t }: { t: (k: string) => string }) {
 
           {/* Extracted parameters */}
           <div>
-            <p className="text-[9px] uppercase tracking-widest mb-1.5" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("feature_strategy_params_label")}</p>
+            <p className="text-[10px] uppercase tracking-widest mb-1.5" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("feature_strategy_params_label")}</p>
             <div className="flex flex-wrap gap-1.5">
               {params.map((p, i) => (
                 <motion.span
                   key={p}
-                  className="px-2 py-0.5 rounded-md text-[10px] font-medium border"
+                  className="px-2 py-0.5 rounded-md text-[11px] font-medium border"
                   style={{ color: "rgb(var(--foreground)/0.85)", background: "rgb(var(--accent)/0.06)", borderColor: "rgb(var(--accent)/0.2)", fontStyle: "normal" }}
                   initial={prefersReduced ? false : { opacity: 0, y: 6 }}
                   whileInView={{ opacity: 1, y: 0 }}
@@ -1016,11 +1016,11 @@ function BentoStrategy({ t }: { t: (k: string) => string }) {
 
           {/* Generated tags by category */}
           <div>
-            <p className="text-[9px] uppercase tracking-widest mb-2" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("feature_strategy_tags_label")}</p>
+            <p className="text-[10px] uppercase tracking-widest mb-2" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("feature_strategy_tags_label")}</p>
             <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
               {categories.map((cat) => (
                 <div key={cat.header}>
-                  <p className="text-[9px] font-semibold mb-1" style={{ color: `rgb(${cat.rgb})`, fontStyle: "normal" }}>{cat.header}</p>
+                  <p className="text-[10px] font-semibold mb-1" style={{ color: `rgb(${cat.rgb})`, fontStyle: "normal" }}>{cat.header}</p>
                   <div className="flex flex-wrap gap-1">
                     {cat.chips.map((chip) => {
                       const delay = 0.45 + chipIdx * 0.05;
@@ -1028,7 +1028,7 @@ function BentoStrategy({ t }: { t: (k: string) => string }) {
                       return (
                         <motion.span
                           key={chip}
-                          className="px-1.5 py-0.5 rounded text-[9.5px] font-medium border"
+                          className="px-1.5 py-0.5 rounded text-[10.5px] font-medium border"
                           style={{ color: `rgb(${cat.rgb})`, background: `rgba(${cat.rgb},0.08)`, borderColor: `rgba(${cat.rgb},0.2)`, fontStyle: "normal" }}
                           initial={prefersReduced ? false : { opacity: 0, scale: 0.9 }}
                           whileInView={{ opacity: 1, scale: 1 }}
@@ -1052,56 +1052,85 @@ function BentoStrategy({ t }: { t: (k: string) => string }) {
         <svg className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: violet }} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
         </svg>
-        <p className="text-[11px] leading-relaxed" style={{ color: "rgb(var(--foreground)/0.7)", fontStyle: "normal" }}>{t("feature_strategy_kicker")}</p>
+        <p className="text-[12.5px] leading-relaxed" style={{ color: "rgb(var(--foreground)/0.7)", fontStyle: "normal" }}>{t("feature_strategy_kicker")}</p>
       </div>
     </div>
   );
 }
 
+type FeatureDef = {
+  tagStyle: React.CSSProperties;
+  tag: string;
+  title: string;
+  desc: string;
+  visual: React.ReactNode;
+};
+
+function FeatureCard({ f }: { f: FeatureDef }) {
+  return (
+    <motion.div
+      className="relative rounded-2xl border overflow-hidden h-full group/card"
+      style={{ background: "rgb(var(--card))", borderColor: "rgb(var(--border))" }}
+      whileHover={{ y: -4, borderColor: "rgb(var(--accent)/0.28)", boxShadow: "0 0 0 1px rgb(var(--accent)/0.08), 0 24px 60px -12px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05)" }}
+      transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+    >
+      <div
+        className="absolute inset-x-0 top-0 h-px opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 pointer-events-none"
+        style={{ background: "linear-gradient(90deg, transparent 0%, rgb(var(--accent)/0.6) 50%, transparent 100%)" }}
+        aria-hidden
+      />
+      <div className="p-6 pb-0">
+        <span
+          className="inline-block text-[10px] font-bold tracking-widest px-2.5 py-1 rounded-md border mb-3"
+          style={{ ...f.tagStyle, fontStyle: "normal" }}
+        >
+          {f.tag}
+        </span>
+        <h3 className="text-lg sm:text-xl font-bold mb-1.5" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{f.title}</h3>
+        <p className="text-[15px] leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{f.desc}</p>
+      </div>
+      <div className="mt-4 border-t" style={{ borderColor: "rgb(var(--border)/0.5)", background: "rgb(var(--surface)/0.3)" }}>
+        {f.visual}
+      </div>
+    </motion.div>
+  );
+}
+
 function Features() {
   const { t } = useLanguage();
+  const prefersReduced = useReducedMotion();
 
+  const accentTag = { color: "rgb(var(--accent))", background: "rgb(var(--accent)/0.08)", borderColor: "rgb(var(--accent)/0.15)" };
   const violetTag = { color: "rgb(167,139,250)", background: "rgba(167,139,250,0.08)", borderColor: "rgba(167,139,250,0.15)" };
-  const features = [
+  const profitTag = { color: "rgb(var(--profit))", background: "rgb(var(--profit)/0.08)", borderColor: "rgb(var(--profit)/0.15)" };
+
+  // The feature blocks arranged as the real usage chronology.
+  const steps: { num: string; title: string; sub: string; cards: FeatureDef[] }[] = [
     {
-      tagStyle: { color: "rgb(var(--accent))", background: "rgb(var(--accent)/0.08)", borderColor: "rgb(var(--accent)/0.15)" },
-      tag: t("feature_1_label"),
-      title: t("feature_1_title"),
-      desc: t("feature_1_desc"),
-      visual: <BentoImport t={t} />,
-      span: "",
+      num: "1",
+      title: t("chrono_step_1"),
+      sub: t("chrono_step_1_sub"),
+      cards: [
+        { tagStyle: accentTag, tag: t("feature_1_label"), title: t("feature_1_title"), desc: t("feature_1_desc"), visual: <BentoImport t={t} /> },
+        { tagStyle: accentTag, tag: t("feature_sync_label"), title: t("feature_sync_title"), desc: t("feature_sync_desc"), visual: <BentoSync t={t} /> },
+      ],
     },
     {
-      tagStyle: { color: "rgb(var(--accent))", background: "rgb(var(--accent)/0.08)", borderColor: "rgb(var(--accent)/0.15)" },
-      tag: t("feature_sync_label"),
-      title: t("feature_sync_title"),
-      desc: t("feature_sync_desc"),
-      visual: <BentoSync t={t} />,
-      span: "",
+      num: "2",
+      title: t("chrono_step_2"),
+      sub: t("chrono_step_2_sub"),
+      cards: [
+        { tagStyle: violetTag, tag: t("feature_strategy_label"), title: t("feature_strategy_title"), desc: t("feature_strategy_desc"), visual: <BentoStrategy t={t} /> },
+      ],
     },
     {
-      tagStyle: violetTag,
-      tag: t("feature_strategy_label"),
-      title: t("feature_strategy_title"),
-      desc: t("feature_strategy_desc"),
-      visual: <BentoStrategy t={t} />,
-      span: "md:col-span-2",
-    },
-    {
-      tagStyle: violetTag,
-      tag: t("feature_2_label"),
-      title: t("feature_2_title"),
-      desc: t("feature_2_desc"),
-      visual: <BentoAIChat t={t} />,
-      span: "",
-    },
-    {
-      tagStyle: { color: "rgb(var(--profit))", background: "rgb(var(--profit)/0.08)", borderColor: "rgb(var(--profit)/0.15)" },
-      tag: t("feature_3_label"),
-      title: t("feature_3_title"),
-      desc: t("feature_3_desc"),
-      visual: <BentoDisciplineScore t={t} />,
-      span: "",
+      num: "3",
+      title: t("chrono_step_3"),
+      sub: t("chrono_step_3_sub"),
+      cards: [
+        { tagStyle: violetTag, tag: t("feature_2_label"), title: t("feature_2_title"), desc: t("feature_2_desc"), visual: <BentoAIChat t={t} /> },
+        { tagStyle: profitTag, tag: t("feature_3_label"), title: t("feature_3_title"), desc: t("feature_3_desc"), visual: <BentoDisciplineScore t={t} /> },
+      ],
     },
   ];
 
@@ -1109,40 +1138,59 @@ function Features() {
     <section id="features" className="py-28 px-6 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
       <div className="max-w-5xl mx-auto">
         <Reveal className="text-center mb-16">
-          <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}>{t("eyebrow_features")}</p>
+          <p className="text-[13px] font-bold uppercase tracking-widest mb-4" style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}>{t("eyebrow_features")}</p>
           <h2 className="text-4xl sm:text-5xl font-bold" style={{ color: "rgb(var(--foreground))" }}>{t("features_title")}</h2>
         </Reveal>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {features.map((f, i) => (
-            <Reveal key={f.title} delay={i * 0.07} className={f.span}>
-              <motion.div
-                className="relative rounded-2xl border overflow-hidden h-full group/card"
-                style={{ background: "rgb(var(--card))", borderColor: "rgb(var(--border))" }}
-                whileHover={{ y: -4, borderColor: "rgb(var(--accent)/0.28)", boxShadow: "0 0 0 1px rgb(var(--accent)/0.08), 0 24px 60px -12px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05)" }}
-                transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
-              >
-                {/* Top-edge gradient shimmer on hover */}
-                <div
-                  className="absolute inset-x-0 top-0 h-px opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 pointer-events-none"
-                  style={{ background: "linear-gradient(90deg, transparent 0%, rgb(var(--accent)/0.6) 50%, transparent 100%)" }}
-                  aria-hidden
-                />
-                <div className="p-6 pb-0">
-                  <span
-                    className="inline-block text-[10px] font-bold tracking-widest px-2.5 py-1 rounded-md border mb-3"
-                    style={{ ...f.tagStyle, fontStyle: "normal" }}
+        {/* Chronological flow — the blocks ARE the steps */}
+        <div className="space-y-6">
+          {steps.map((step, si) => (
+            <div key={step.num}>
+              {/* Connector between steps */}
+              {si > 0 && (
+                <div className="flex justify-center py-2" aria-hidden>
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="w-px h-6" style={{ background: "linear-gradient(180deg, rgb(var(--accent)/0.4), rgb(var(--accent)/0.15))" }} />
+                    <svg className="w-4 h-4 -mt-1" style={{ color: "rgb(var(--accent)/0.5)" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                  </div>
+                </div>
+              )}
+
+              <Reveal>
+                {/* Step header */}
+                <div className="flex items-center gap-4 mb-5">
+                  <motion.div
+                    className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl text-base font-bold border"
+                    style={{
+                      background: "linear-gradient(135deg, rgb(var(--accent)/0.16) 0%, rgb(var(--accent)/0.05) 100%)",
+                      borderColor: "rgb(var(--accent)/0.3)",
+                      color: "rgb(var(--accent))",
+                      fontStyle: "normal",
+                    }}
+                    initial={prefersReduced ? false : { scale: 0.8, opacity: 0 }}
+                    whileInView={{ scale: 1, opacity: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4, ease }}
+                    aria-label={`Étape ${step.num}`}
                   >
-                    {f.tag}
-                  </span>
-                  <h3 className="text-lg font-bold mb-1.5" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{f.title}</h3>
-                  <p className="text-sm leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{f.desc}</p>
+                    {step.num}
+                  </motion.div>
+                  <div>
+                    <h3 className="text-xl sm:text-2xl font-bold leading-tight" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{step.title}</h3>
+                    <p className="text-[14px] mt-0.5" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{step.sub}</p>
+                  </div>
                 </div>
-                <div className="mt-4 border-t" style={{ borderColor: "rgb(var(--border)/0.5)", background: "rgb(var(--surface)/0.3)" }}>
-                  {f.visual}
+
+                {/* Step cards */}
+                <div className={`grid gap-4 ${step.cards.length > 1 ? "md:grid-cols-2" : "grid-cols-1"}`}>
+                  {step.cards.map((f) => (
+                    <FeatureCard key={f.title} f={f} />
+                  ))}
                 </div>
-              </motion.div>
-            </Reveal>
+              </Reveal>
+            </div>
           ))}
         </div>
       </div>
@@ -1218,7 +1266,7 @@ function AIDetection() {
                   <path d={d.icon} />
                 </svg>
               </div>
-              <p className="text-sm leading-relaxed" style={{ color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}>{d.text}</p>
+              <p className="text-[15px] leading-relaxed" style={{ color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}>{d.text}</p>
             </motion.div>
           ))}
         </StaggerReveal>
@@ -1262,7 +1310,7 @@ function SocialProof() {
                   </svg>
                 ))}
               </div>
-              <blockquote className="text-sm leading-relaxed flex-1" style={{ color: "rgb(var(--foreground)/0.75)", fontStyle: "normal" }}>
+              <blockquote className="text-[15px] leading-relaxed flex-1" style={{ color: "rgb(var(--foreground)/0.75)", fontStyle: "normal" }}>
                 &ldquo;{tm.text}&rdquo;
               </blockquote>
               <div className="flex items-center gap-3 mt-5 pt-4 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
@@ -1278,71 +1326,6 @@ function SocialProof() {
             </motion.div>
           ))}
         </StaggerReveal>
-      </div>
-    </section>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   HOW IT WORKS
-───────────────────────────────────────────── */
-function HowItWorks() {
-  const { t } = useLanguage();
-  const prefersReduced = useReducedMotion();
-  const lineRef = useRef<HTMLDivElement>(null);
-  const lineInView = useInView(lineRef, { once: true, margin: "-80px" });
-
-  const steps = [
-    { num: "01", title: t("how_1_title"), desc: t("how_1_desc") },
-    { num: "02", title: t("how_2_title"), desc: t("how_2_desc") },
-    { num: "03", title: t("how_3_title"), desc: t("how_3_desc") },
-  ];
-
-  return (
-    <section className="py-28 px-6 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
-      <div className="max-w-5xl mx-auto">
-        <Reveal className="text-center mb-20">
-          <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}>{t("eyebrow_how")}</p>
-          <h2 className="text-4xl sm:text-5xl font-bold" style={{ color: "rgb(var(--foreground))" }}>{t("how_title")}</h2>
-        </Reveal>
-
-        <div className="relative grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Animated connector line — hidden on mobile */}
-          <div
-            ref={lineRef}
-            className="hidden md:block absolute top-7 left-[calc(16.66%+36px)] right-[calc(16.66%+36px)] h-px overflow-hidden"
-            aria-hidden
-          >
-            <motion.div
-              className="h-full"
-              style={{ background: "linear-gradient(90deg, rgb(var(--accent)/0.2) 0%, rgb(var(--accent)/0.5) 50%, rgb(var(--accent)/0.2) 100%)" }}
-              initial={prefersReduced ? { width: "100%" } : { width: "0%" }}
-              animate={lineInView ? { width: "100%" } : {}}
-              transition={{ duration: 1.3, delay: 0.3, ease: [0.4, 0, 0.2, 1] }}
-            />
-          </div>
-
-          {steps.map((s, i) => (
-            <Reveal key={s.num} delay={i * 0.12} className="text-center">
-              <motion.div
-                className="w-14 h-14 mx-auto flex items-center justify-center rounded-2xl text-sm font-bold relative z-10 border cursor-default"
-                style={{
-                  background: "linear-gradient(135deg, rgb(var(--accent)/0.12) 0%, rgb(var(--accent)/0.04) 100%)",
-                  borderColor: "rgb(var(--accent)/0.25)",
-                  color: "rgb(var(--foreground))",
-                  fontStyle: "normal",
-                }}
-                whileHover={{ scale: 1.08, borderColor: "rgb(var(--accent)/0.5)", background: "linear-gradient(135deg, rgb(var(--accent)/0.2) 0%, rgb(var(--accent)/0.08) 100%)", boxShadow: "0 0 0 4px rgb(var(--accent)/0.08), 0 8px 24px -6px rgb(var(--accent)/0.2)" }}
-                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                aria-label={`Step ${s.num}`}
-              >
-                {s.num}
-              </motion.div>
-              <h3 className="text-base font-bold mt-5 mb-2" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{s.title}</h3>
-              <p className="text-sm leading-relaxed max-w-xs mx-auto" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{s.desc}</p>
-            </Reveal>
-          ))}
-        </div>
       </div>
     </section>
   );
@@ -1427,7 +1410,7 @@ function ROIBand({ t }: { t: (k: string) => string }) {
                     <Counter end={s.value!} decimals={s.decimals!} suffix={s.suffix} />
                   </p>
                 )}
-                <p className="mt-2 text-xs leading-snug" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{s.label}</p>
+                <p className="mt-2 text-[13px] leading-snug" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{s.label}</p>
               </motion.div>
 
               {/* connector chevrons between cards (desktop) */}
@@ -1616,7 +1599,7 @@ function Pricing() {
 
                 <ul className="mt-5 space-y-2.5 flex-1">
                   {p.feats.map((feat) => (
-                    <li key={feat} className="flex items-start gap-2.5 text-sm">
+                    <li key={feat} className="flex items-start gap-2.5 text-[15px]">
                       <div
                         className="w-4 h-4 rounded-full flex items-center justify-center shrink-0 mt-0.5"
                         style={{ background: p.gold ? "rgba(245,158,11,0.1)" : "rgb(var(--profit)/0.1)" }}
@@ -1722,7 +1705,7 @@ function FAQ() {
                   aria-controls={`faq-answer-${i}`}
                   id={`faq-question-${i}`}
                 >
-                  <span className="text-sm font-medium pr-6" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{faq.q}</span>
+                  <span className="text-[15px] font-medium pr-6" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{faq.q}</span>
                   <motion.div
                     animate={{ rotate: openIdx === i ? 45 : 0 }}
                     transition={{ duration: 0.18 }}
@@ -1747,7 +1730,7 @@ function FAQ() {
                       transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
                       className="overflow-hidden"
                     >
-                      <p className="px-5 pb-4 text-sm leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{faq.a}</p>
+                      <p className="px-5 pb-4 text-[15px] leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{faq.a}</p>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -1906,7 +1889,6 @@ export default function LandingPage() {
         <StatsStrip />
         <Problem />
         <Features />
-        <HowItWorks />
         <AIDetection />
         <SocialProof />
         <Pricing />
