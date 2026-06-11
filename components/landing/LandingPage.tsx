@@ -534,7 +534,7 @@ function StatsStrip() {
               <p className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight" style={{ fontStyle: "normal", color: "rgb(var(--foreground))" }}>
                 <Counter end={s.value} suffix={s.suffix} decimals={s.decimals} />
               </p>
-              <p className="text-xs mt-1.5 font-medium tracking-wide" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{s.label}</p>
+              <p className="text-[13px] mt-1.5 font-medium tracking-wide" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{s.label}</p>
             </Reveal>
           ))}
         </div>
@@ -614,7 +614,7 @@ function Problem() {
                 {p.icon}
               </div>
               <h3 className="text-base font-bold mb-2" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{p.title}</h3>
-              <p className="text-sm leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{p.desc}</p>
+              <p className="text-[15px] leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{p.desc}</p>
             </motion.div>
           ))}
         </StaggerReveal>
@@ -958,10 +958,10 @@ function BentoStrategy({ t }: { t: (k: string) => string }) {
         <div className="lg:w-[36%] flex flex-col gap-2 shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0" style={{ background: "rgb(var(--surface))", border: "1px solid rgb(var(--border))", color: "rgb(var(--muted))" }} aria-hidden>T</div>
-            <span className="text-[10px] font-medium" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("feature_strategy_you")}</span>
+            <span className="text-[11px] font-medium" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("feature_strategy_you")}</span>
           </div>
           <div
-            className="rounded-xl rounded-tl-sm px-3.5 py-3 text-[11px] leading-relaxed border flex-1"
+            className="rounded-xl rounded-tl-sm px-3.5 py-3 text-[12.5px] leading-relaxed border flex-1"
             style={{ background: "rgb(var(--surface))", borderColor: "rgb(var(--border))", color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}
           >
             {t("feature_strategy_prompt")}
@@ -996,12 +996,12 @@ function BentoStrategy({ t }: { t: (k: string) => string }) {
 
           {/* Extracted parameters */}
           <div>
-            <p className="text-[9px] uppercase tracking-widest mb-1.5" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("feature_strategy_params_label")}</p>
+            <p className="text-[10px] uppercase tracking-widest mb-1.5" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("feature_strategy_params_label")}</p>
             <div className="flex flex-wrap gap-1.5">
               {params.map((p, i) => (
                 <motion.span
                   key={p}
-                  className="px-2 py-0.5 rounded-md text-[10px] font-medium border"
+                  className="px-2 py-0.5 rounded-md text-[11px] font-medium border"
                   style={{ color: "rgb(var(--foreground)/0.85)", background: "rgb(var(--accent)/0.06)", borderColor: "rgb(var(--accent)/0.2)", fontStyle: "normal" }}
                   initial={prefersReduced ? false : { opacity: 0, y: 6 }}
                   whileInView={{ opacity: 1, y: 0 }}
@@ -1016,11 +1016,11 @@ function BentoStrategy({ t }: { t: (k: string) => string }) {
 
           {/* Generated tags by category */}
           <div>
-            <p className="text-[9px] uppercase tracking-widest mb-2" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("feature_strategy_tags_label")}</p>
+            <p className="text-[10px] uppercase tracking-widest mb-2" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("feature_strategy_tags_label")}</p>
             <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
               {categories.map((cat) => (
                 <div key={cat.header}>
-                  <p className="text-[9px] font-semibold mb-1" style={{ color: `rgb(${cat.rgb})`, fontStyle: "normal" }}>{cat.header}</p>
+                  <p className="text-[10px] font-semibold mb-1" style={{ color: `rgb(${cat.rgb})`, fontStyle: "normal" }}>{cat.header}</p>
                   <div className="flex flex-wrap gap-1">
                     {cat.chips.map((chip) => {
                       const delay = 0.45 + chipIdx * 0.05;
@@ -1028,7 +1028,7 @@ function BentoStrategy({ t }: { t: (k: string) => string }) {
                       return (
                         <motion.span
                           key={chip}
-                          className="px-1.5 py-0.5 rounded text-[9.5px] font-medium border"
+                          className="px-1.5 py-0.5 rounded text-[10.5px] font-medium border"
                           style={{ color: `rgb(${cat.rgb})`, background: `rgba(${cat.rgb},0.08)`, borderColor: `rgba(${cat.rgb},0.2)`, fontStyle: "normal" }}
                           initial={prefersReduced ? false : { opacity: 0, scale: 0.9 }}
                           whileInView={{ opacity: 1, scale: 1 }}
@@ -1052,7 +1052,7 @@ function BentoStrategy({ t }: { t: (k: string) => string }) {
         <svg className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: violet }} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
         </svg>
-        <p className="text-[11px] leading-relaxed" style={{ color: "rgb(var(--foreground)/0.7)", fontStyle: "normal" }}>{t("feature_strategy_kicker")}</p>
+        <p className="text-[12.5px] leading-relaxed" style={{ color: "rgb(var(--foreground)/0.7)", fontStyle: "normal" }}>{t("feature_strategy_kicker")}</p>
       </div>
     </div>
   );
@@ -1135,8 +1135,8 @@ function Features() {
                   >
                     {f.tag}
                   </span>
-                  <h3 className="text-lg font-bold mb-1.5" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{f.title}</h3>
-                  <p className="text-sm leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{f.desc}</p>
+                  <h3 className="text-lg sm:text-xl font-bold mb-1.5" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{f.title}</h3>
+                  <p className="text-[15px] leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{f.desc}</p>
                 </div>
                 <div className="mt-4 border-t" style={{ borderColor: "rgb(var(--border)/0.5)", background: "rgb(var(--surface)/0.3)" }}>
                   {f.visual}
@@ -1218,7 +1218,7 @@ function AIDetection() {
                   <path d={d.icon} />
                 </svg>
               </div>
-              <p className="text-sm leading-relaxed" style={{ color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}>{d.text}</p>
+              <p className="text-[15px] leading-relaxed" style={{ color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}>{d.text}</p>
             </motion.div>
           ))}
         </StaggerReveal>
@@ -1262,7 +1262,7 @@ function SocialProof() {
                   </svg>
                 ))}
               </div>
-              <blockquote className="text-sm leading-relaxed flex-1" style={{ color: "rgb(var(--foreground)/0.75)", fontStyle: "normal" }}>
+              <blockquote className="text-[15px] leading-relaxed flex-1" style={{ color: "rgb(var(--foreground)/0.75)", fontStyle: "normal" }}>
                 &ldquo;{tm.text}&rdquo;
               </blockquote>
               <div className="flex items-center gap-3 mt-5 pt-4 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
@@ -1290,58 +1290,95 @@ function HowItWorks() {
   const { t } = useLanguage();
   const prefersReduced = useReducedMotion();
   const lineRef = useRef<HTMLDivElement>(null);
-  const lineInView = useInView(lineRef, { once: true, margin: "-80px" });
+  const lineInView = useInView(lineRef, { once: true, margin: "-120px" });
 
   const steps = [
-    { num: "01", title: t("how_1_title"), desc: t("how_1_desc") },
-    { num: "02", title: t("how_2_title"), desc: t("how_2_desc") },
-    { num: "03", title: t("how_3_title"), desc: t("how_3_desc") },
+    {
+      num: "01",
+      title: t("how_1_title"),
+      desc: t("how_1_desc"),
+      // pencil / describe
+      icon: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z",
+    },
+    {
+      num: "02",
+      title: t("how_2_title"),
+      desc: t("how_2_desc"),
+      // upload / import
+      icon: "M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12",
+    },
+    {
+      num: "03",
+      title: t("how_3_title"),
+      desc: t("how_3_desc"),
+      // sparkle / AI analysis
+      icon: "M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z",
+    },
   ];
 
   return (
     <section className="py-28 px-6 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
-      <div className="max-w-5xl mx-auto">
-        <Reveal className="text-center mb-20">
-          <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}>{t("eyebrow_how")}</p>
+      <div className="max-w-2xl mx-auto">
+        <Reveal className="text-center mb-16">
+          <p className="text-[13px] font-bold uppercase tracking-widest mb-4" style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}>{t("eyebrow_how")}</p>
           <h2 className="text-4xl sm:text-5xl font-bold" style={{ color: "rgb(var(--foreground))" }}>{t("how_title")}</h2>
         </Reveal>
 
-        <div className="relative grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Animated connector line — hidden on mobile */}
-          <div
-            ref={lineRef}
-            className="hidden md:block absolute top-7 left-[calc(16.66%+36px)] right-[calc(16.66%+36px)] h-px overflow-hidden"
+        {/* Vertical timeline */}
+        <div ref={lineRef} className="relative">
+          {/* Track + animated progress line (behind nodes, centered on the 14px-radius node) */}
+          <div className="absolute left-7 top-7 bottom-7 w-px -translate-x-1/2" style={{ background: "rgb(var(--border))" }} aria-hidden />
+          <motion.div
+            className="absolute left-7 top-7 w-px -translate-x-1/2 origin-top"
+            style={{ background: "linear-gradient(180deg, rgb(var(--accent)) 0%, rgb(var(--accent)/0.4) 100%)", bottom: "1.75rem" }}
+            initial={prefersReduced ? { scaleY: 1 } : { scaleY: 0 }}
+            animate={lineInView ? { scaleY: 1 } : {}}
+            transition={{ duration: 1.4, delay: 0.2, ease: [0.4, 0, 0.2, 1] }}
             aria-hidden
-          >
-            <motion.div
-              className="h-full"
-              style={{ background: "linear-gradient(90deg, rgb(var(--accent)/0.2) 0%, rgb(var(--accent)/0.5) 50%, rgb(var(--accent)/0.2) 100%)" }}
-              initial={prefersReduced ? { width: "100%" } : { width: "0%" }}
-              animate={lineInView ? { width: "100%" } : {}}
-              transition={{ duration: 1.3, delay: 0.3, ease: [0.4, 0, 0.2, 1] }}
-            />
-          </div>
+          />
 
-          {steps.map((s, i) => (
-            <Reveal key={s.num} delay={i * 0.12} className="text-center">
+          <div className="space-y-10">
+            {steps.map((s, i) => (
               <motion.div
-                className="w-14 h-14 mx-auto flex items-center justify-center rounded-2xl text-sm font-bold relative z-10 border cursor-default"
-                style={{
-                  background: "linear-gradient(135deg, rgb(var(--accent)/0.12) 0%, rgb(var(--accent)/0.04) 100%)",
-                  borderColor: "rgb(var(--accent)/0.25)",
-                  color: "rgb(var(--foreground))",
-                  fontStyle: "normal",
-                }}
-                whileHover={{ scale: 1.08, borderColor: "rgb(var(--accent)/0.5)", background: "linear-gradient(135deg, rgb(var(--accent)/0.2) 0%, rgb(var(--accent)/0.08) 100%)", boxShadow: "0 0 0 4px rgb(var(--accent)/0.08), 0 8px 24px -6px rgb(var(--accent)/0.2)" }}
-                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                aria-label={`Step ${s.num}`}
+                key={s.num}
+                className="relative flex items-start gap-5"
+                initial={prefersReduced ? false : { opacity: 0, y: 18 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-60px" }}
+                transition={{ duration: 0.55, delay: 0.2 + i * 0.18, ease }}
               >
-                {s.num}
+                {/* Node */}
+                <motion.div
+                  className="relative z-10 w-14 h-14 shrink-0 flex items-center justify-center rounded-2xl border cursor-default"
+                  style={{
+                    background: "linear-gradient(135deg, rgb(var(--accent)/0.14) 0%, rgb(var(--accent)/0.04) 100%)",
+                    borderColor: "rgb(var(--accent)/0.3)",
+                  }}
+                  whileHover={{ scale: 1.06, borderColor: "rgb(var(--accent)/0.55)", boxShadow: "0 0 0 4px rgb(var(--accent)/0.08), 0 8px 24px -6px rgb(var(--accent)/0.22)" }}
+                  transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                  aria-label={`Étape ${s.num}`}
+                >
+                  <svg className="w-6 h-6" style={{ color: "rgb(var(--accent))" }} fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24" aria-hidden>
+                    <path strokeLinecap="round" strokeLinejoin="round" d={s.icon} />
+                  </svg>
+                  {/* Step number badge */}
+                  <span
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
+                    style={{ background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #3b82f6 100%)", fontStyle: "normal" }}
+                    aria-hidden
+                  >
+                    {s.num.replace("0", "")}
+                  </span>
+                </motion.div>
+
+                {/* Content */}
+                <div className="pt-1.5 flex-1">
+                  <h3 className="text-lg sm:text-xl font-bold mb-1.5" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{s.title}</h3>
+                  <p className="text-[15px] leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{s.desc}</p>
+                </div>
               </motion.div>
-              <h3 className="text-base font-bold mt-5 mb-2" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{s.title}</h3>
-              <p className="text-sm leading-relaxed max-w-xs mx-auto" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{s.desc}</p>
-            </Reveal>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </section>
@@ -1427,7 +1464,7 @@ function ROIBand({ t }: { t: (k: string) => string }) {
                     <Counter end={s.value!} decimals={s.decimals!} suffix={s.suffix} />
                   </p>
                 )}
-                <p className="mt-2 text-xs leading-snug" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{s.label}</p>
+                <p className="mt-2 text-[13px] leading-snug" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{s.label}</p>
               </motion.div>
 
               {/* connector chevrons between cards (desktop) */}
@@ -1616,7 +1653,7 @@ function Pricing() {
 
                 <ul className="mt-5 space-y-2.5 flex-1">
                   {p.feats.map((feat) => (
-                    <li key={feat} className="flex items-start gap-2.5 text-sm">
+                    <li key={feat} className="flex items-start gap-2.5 text-[15px]">
                       <div
                         className="w-4 h-4 rounded-full flex items-center justify-center shrink-0 mt-0.5"
                         style={{ background: p.gold ? "rgba(245,158,11,0.1)" : "rgb(var(--profit)/0.1)" }}
@@ -1722,7 +1759,7 @@ function FAQ() {
                   aria-controls={`faq-answer-${i}`}
                   id={`faq-question-${i}`}
                 >
-                  <span className="text-sm font-medium pr-6" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{faq.q}</span>
+                  <span className="text-[15px] font-medium pr-6" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{faq.q}</span>
                   <motion.div
                     animate={{ rotate: openIdx === i ? 45 : 0 }}
                     transition={{ duration: 0.18 }}
@@ -1747,7 +1784,7 @@ function FAQ() {
                       transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
                       className="overflow-hidden"
                     >
-                      <p className="px-5 pb-4 text-sm leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{faq.a}</p>
+                      <p className="px-5 pb-4 text-[15px] leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{faq.a}</p>
                     </motion.div>
                   )}
                 </AnimatePresence>
