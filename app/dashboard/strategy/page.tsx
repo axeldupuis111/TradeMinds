@@ -464,7 +464,7 @@ export default function StrategyPage() {
 
   if (!canUseStrategy) {
     return (
-      <div className="max-w-2xl">
+      <div className="max-w-2xl mx-auto">
         <h1 className="text-2xl font-bold text-foreground">{t("strategy_title")}</h1>
         <p className="text-muted mt-1">{t("strategy_subtitle")}</p>
 
@@ -589,7 +589,7 @@ export default function StrategyPage() {
   ];
 
   return (
-    <div className="max-w-6xl pb-24">
+    <div className="max-w-6xl mx-auto pb-24">
       {toast && (
         <div className={`fixed bottom-6 right-6 z-[100] px-4 py-3 rounded-lg text-white text-sm font-medium shadow-lg ${toast.type === "success" ? "bg-green-800" : "bg-red-700"}`}>
           {toast.text}

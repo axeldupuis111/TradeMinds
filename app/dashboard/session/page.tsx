@@ -369,7 +369,7 @@ export default function SessionPage() {
 
   if (loading) {
     return (
-      <div className="max-w-3xl space-y-4">
+      <div className="max-w-3xl mx-auto space-y-4">
         <div className="skeleton h-8 w-48 rounded-lg" />
         <div className="skeleton h-64 rounded-xl" />
       </div>
@@ -382,7 +382,7 @@ export default function SessionPage() {
     const strategyPairs = strategy?.pairs && strategy.pairs.length > 0 ? strategy.pairs : [];
 
     return (
-      <div className="max-w-4xl space-y-5">
+      <div className="max-w-5xl mx-auto space-y-5">
         {/* Quick logger modal */}
         {showQuickLogger && (
           <QuickTradeLogger

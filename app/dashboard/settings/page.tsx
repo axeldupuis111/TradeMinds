@@ -296,7 +296,7 @@ export default function SettingsPage() {
 
   if (planLoading || loading) {
     return (
-      <div className="max-w-2xl space-y-4">
+      <div className="max-w-2xl mx-auto space-y-4">
         <div className="skeleton h-8 w-48 rounded-lg" />
         <div className="skeleton h-40 rounded-xl" />
       </div>
@@ -308,7 +308,7 @@ export default function SettingsPage() {
   const profileUrl = `${window.location.origin}/profile/${originalUsername}`;
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-2xl mx-auto space-y-6">
       {/* Toast */}
       {toast && (
         <div

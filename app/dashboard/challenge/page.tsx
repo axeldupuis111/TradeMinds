@@ -902,7 +902,7 @@ export default function ChallengePage() {
   const hasAccounts = activeAccounts.length > 0;
 
   return (
-    <div className="max-w-6xl">
+    <div className="max-w-6xl mx-auto">
       <h1 className="text-2xl font-bold text-foreground">{t("challenge_title")}</h1>
       <p className="text-muted mt-1">{t("challenge_subtitle")}</p>
 

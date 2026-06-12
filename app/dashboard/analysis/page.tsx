@@ -695,7 +695,7 @@ export default function AnalysisPage() {
 
   if (planLoading) {
     return (
-      <div className="max-w-3xl">
+      <div className="max-w-3xl mx-auto">
         <h1 className="text-2xl font-bold text-foreground">{t("analysis_title")}</h1>
         <p className="text-muted mt-2 text-sm">{t("analysis_subtitle")}</p>
         <div className="mt-6 skeleton h-10 w-48 rounded-lg" />
