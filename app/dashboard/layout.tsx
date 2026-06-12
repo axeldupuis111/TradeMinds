@@ -1,5 +1,6 @@
 "use client";
 
+import AmbientBackground from "@/components/dashboard/AmbientBackground";
 import CommandPalette from "@/components/CommandPalette";
 import Header from "@/components/Header";
 import OnboardingGuide from "@/components/dashboard/OnboardingGuide";
@@ -191,7 +192,8 @@ export default function DashboardLayout({
     <ActiveAccountProvider>
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden relative">
+        <AmbientBackground />
         <StopTradingGuard />
         <ChallengeGuardian />
         <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />

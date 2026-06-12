@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import StaggerContainer, { StaggerItem } from "@/components/animations/StaggerContainer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -134,6 +135,7 @@ export default function DashboardContent({
   const { t } = useLanguage();
   const { plan, canUseAI, loading: planLoading } = usePlan();
   const { theme } = useTheme();
+  const prefersReduced = useReducedMotion();
   const isDark = theme !== "light";
   const { selectedAccountId, setSelectedAccountId } = useActiveAccount();
   const [upsellDismissed, setUpsellDismissed] = useState(false);
@@ -200,10 +202,16 @@ export default function DashboardContent({
     return items.slice(0, 4);
   }, [lastReview]);
 
-  // ── Date ───────────────────────────────────────────────────────────────────
+  // ── Date & salutation selon l'heure ───────────────────────────────────────
   const dateStr = new Date().toLocaleDateString(undefined, {
     weekday: "long", day: "numeric", month: "long", year: "numeric",
   });
+  const hourNow = new Date().getHours();
+  const greetingKey =
+    hourNow < 6 ? "greeting_evening"
+    : hourNow < 12 ? "greeting_morning"
+    : hourNow < 18 ? "greeting_afternoon"
+    : "greeting_evening";
 
   // ── Sparkline series for P&L card (cumulative today PnL per trade) ────────
   const todayPnlSeries = useMemo(() => {
@@ -252,8 +260,30 @@ export default function DashboardContent({
       {/* ── Header ───────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">
-            {t("dash_greeting")} {displayName}
+          <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2 flex-wrap">
+            <span>
+              {t(greetingKey)},{" "}
+              <span
+                className="text-gradient-animated"
+                style={{
+                  background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #60a5fa 45%, #a78bfa 75%, rgb(var(--accent)) 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                }}
+              >
+                {displayName}
+              </span>
+            </span>
+            <motion.span
+              className="inline-block origin-[70%_70%] text-xl"
+              initial={false}
+              animate={prefersReduced ? undefined : { rotate: [0, 16, -7, 14, 0] }}
+              transition={{ duration: 1.1, delay: 0.4, ease: "easeInOut" }}
+              aria-hidden
+            >
+              👋
+            </motion.span>
           </h1>
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
             <p className="text-foreground-muted text-sm capitalize">{dateStr}</p>

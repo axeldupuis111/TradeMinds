@@ -59,7 +59,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
       )}
 
       <aside
-        className={`fixed top-0 left-0 z-50 h-full w-[240px] bg-card border-r border-border flex flex-col transition-transform duration-200 lg:translate-x-0 lg:static lg:z-auto ${
+        className={`fixed top-0 left-0 z-50 h-full w-[240px] bg-card/80 backdrop-blur-xl border-r border-border/70 flex flex-col transition-transform duration-200 lg:translate-x-0 lg:static lg:z-auto ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
