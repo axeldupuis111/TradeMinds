@@ -5,6 +5,7 @@ import TradingCalendar from "@/components/charts/TradingCalendar";
 import { AiInsights } from "@/components/dashboard/AiInsights";
 import DayState from "@/components/dashboard/DayState";
 import GoalsStreaks from "@/components/dashboard/GoalsStreaks";
+import PatternAlerts from "@/components/dashboard/PatternAlerts";
 import WeeklyRecap from "@/components/dashboard/WeeklyRecap";
 import { KpiCards } from "@/components/dashboard/KpiCards";
 import { Sparkline } from "@/components/dashboard/Sparkline";
@@ -339,6 +340,11 @@ export default function DashboardContent({
       {/* ── État du jour ─────────────────────────────────────────────── */}
       <StaggerItem className="mt-6">
         <DayState />
+      </StaggerItem>
+
+      {/* ── Coach temps réel — patterns du trader en alertes live ────── */}
+      <StaggerItem className="mt-6">
+        <PatternAlerts />
       </StaggerItem>
 
       {/* ── Bilan de la semaine ──────────────────────────────────────── */}

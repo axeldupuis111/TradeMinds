@@ -4,10 +4,12 @@ import CloseTradeModal from "@/components/trades/CloseTradeModal";
 import CsvImport from "@/components/trades/CsvImport";
 import ManualTradeModal from "@/components/trades/ManualTradeModal";
 import OpenTradesSection from "@/components/trades/OpenTradesSection";
+import QuickAnnotateModal from "@/components/trades/QuickAnnotateModal";
 import TradeList from "@/components/trades/TradeList";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/lib/LanguageContext";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Plus, Upload, X } from "lucide-react";
+import { Plus, Sparkles, Upload, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 interface Strategy {
@@ -25,6 +27,7 @@ interface Recap {
 
 export default function TradesPage() {
   const supabase = createClient();
+  const { t } = useLanguage();
   const prefersReducedMotion = useReducedMotion();
   const [refreshKey, setRefreshKey] = useState(0);
   const [showModal, setShowModal] = useState(false);
@@ -33,16 +36,28 @@ export default function TradesPage() {
   const [showMtBanner, setShowMtBanner] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [recap, setRecap] = useState<Recap | null>(null);
+  const [unannotatedCount, setUnannotatedCount] = useState(0);
+  const [showAnnotate, setShowAnnotate] = useState(false);
 
   const loadRecap = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data, count } = await supabase
-      .from("trades")
-      .select("pnl, commission, swap", { count: "exact" })
-      .eq("user_id", user.id)
-      .eq("status", "closed");
+    const [{ data, count }, { count: noEmotion }] = await Promise.all([
+      supabase
+        .from("trades")
+        .select("pnl, commission, swap", { count: "exact" })
+        .eq("user_id", user.id)
+        .eq("status", "closed"),
+      supabase
+        .from("trades")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("status", "closed")
+        .is("emotion", null),
+    ]);
+
+    setUnannotatedCount(noEmotion || 0);
 
     if (!data) return;
 
@@ -118,7 +133,16 @@ export default function TradesPage() {
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {unannotatedCount > 0 && (
+            <button
+              onClick={() => setShowAnnotate(true)}
+              className="px-3 py-2 rounded-md border border-accent/30 bg-accent/5 text-sm text-accent hover:bg-accent/10 hover:border-accent/50 transition-colors flex items-center gap-2"
+            >
+              <Sparkles className="w-4 h-4" />
+              {t("annotate_button").replace("{count}", String(unannotatedCount))}
+            </button>
+          )}
           <button
             onClick={() => setIsImportOpen((o) => !o)}
             className="px-3 py-2 rounded-md border border-border text-sm text-muted hover:text-foreground hover:bg-card transition-colors flex items-center gap-2"
@@ -210,6 +234,13 @@ export default function TradesPage() {
           tradeId={closingTradeId}
           onClose={() => setClosingTradeId(null)}
           onSaved={() => { refresh(); setClosingTradeId(null); loadRecap(); }}
+        />
+      )}
+
+      {showAnnotate && (
+        <QuickAnnotateModal
+          onClose={() => setShowAnnotate(false)}
+          onSaved={() => { refresh(); loadRecap(); }}
         />
       )}
     </div>

@@ -102,14 +102,38 @@ export function ActiveAccountProvider({ children }: { children: React.ReactNode 
 
       setAccounts(list);
 
-      // Restore last selection from localStorage if still valid, else default to first.
+      // Restore last selection from localStorage if still valid.
+      // "" est un choix valide : il signifie « Tous les comptes » et doit
+      // survivre au rechargement (sinon l'utilisateur retombe sur un compte
+      // potentiellement vide et son dashboard paraît sans données).
       let restored: string | null = null;
       if (typeof window !== "undefined") {
         const stored = localStorage.getItem(LS_KEY);
-        if (stored && list.some((a) => a.id === stored)) {
+        if (stored !== null && (stored === "" || list.some((a) => a.id === stored))) {
           restored = stored;
         }
       }
+
+      // Pas de choix mémorisé : défaut intelligent = le compte qui contient
+      // le trade le plus récent (plutôt que le dernier compte créé, qui peut
+      // être vide). Si le dernier trade n'appartient à aucun compte actif,
+      // on affiche « Tous les comptes ».
+      if (restored === null && list.length > 0) {
+        const { data: lastTrade } = await supabase
+          .from("trades")
+          .select("challenge_id")
+          .eq("user_id", user.id)
+          .order("open_time", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (lastTrade) {
+          restored = lastTrade.challenge_id && list.some((a) => a.id === lastTrade.challenge_id)
+            ? lastTrade.challenge_id
+            : "";
+        }
+      }
+
       setSelectedAccountIdState(restored ?? list[0]?.id ?? null);
       setLoading(false);
     }

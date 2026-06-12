@@ -1,6 +1,7 @@
 "use client";
 
 import DayStatus from "@/components/DayStatus";
+import PatternAlerts from "@/components/dashboard/PatternAlerts";
 import EmotionalCheck from "@/components/session/EmotionalCheck";
 import PositionSizer from "@/components/session/PositionSizer";
 import QuickTradeLogger from "@/components/session/QuickTradeLogger";
@@ -801,8 +802,11 @@ export default function SessionPage() {
           </div>
         </div>
 
-        {/* RIGHT column — 40% — DayStatus + History + Quote */}
+        {/* RIGHT column — 40% — Coach + DayStatus + History + Quote */}
         <div className="lg:w-[40%] shrink-0 space-y-5">
+
+          {/* Coach temps réel — patterns du trader avant de démarrer */}
+          <PatternAlerts compact />
 
           {/* Day status */}
           <DayStatus />

@@ -97,6 +97,27 @@ const translations: Record<Lang, Record<string, string>> = {
     // Marquee plateformes (landing)
     marquee_caption: "Compatible avec tes plateformes",
 
+    // Coach temps réel (patterns)
+    rtcoach_title: "Coach temps réel",
+    rtcoach_based_on: "Basé sur tes {count} derniers trades",
+    rtcoach_bad_hour: "Il est {hour}h — historiquement ta tranche perdante ({pnl}€ sur {count} trades). Sois ultra-sélectif.",
+    rtcoach_good_hour: "Il est {hour}h — ta meilleure tranche ({wr}% de winrate). Conditions favorables : respecte ton plan.",
+    rtcoach_risky_pair: "{pair} : {wr}% de winrate sur {count} trades chez toi. Évite cette paire ou réduis la taille.",
+    rtcoach_win_streak: "{n} gains d'affilée — c'est après les séries gagnantes que tu te relâches. Garde la même taille.",
+    rtcoach_loss_streak: "{n} pertes d'affilée — risque de revenge trading. Fais une pause avant le prochain trade.",
+
+    // Annotation express
+    annotate_button: "Annoter les émotions ({count})",
+    annotate_title: "Annotation express",
+    annotate_subtitle: "Quelle émotion dominait pendant ce trade ?",
+    annotate_skip: "Passer ce trade",
+    annotate_done_title: "Terminé !",
+    annotate_done_desc: "{count} trades annotés. Tes analyses IA seront plus précises.",
+    annotate_close: "Fermer",
+
+    // Comparatif de comptes
+    challenge_compare_title: "Classement de tes comptes",
+
     // Nav
     nav_login: "Se connecter",
     nav_start: "Commencer",
@@ -1802,6 +1823,27 @@ const translations: Record<Lang, Record<string, string>> = {
     // Platform marquee (landing)
     marquee_caption: "Works with your platforms",
 
+    // Real-time coach (patterns)
+    rtcoach_title: "Real-time coach",
+    rtcoach_based_on: "Based on your last {count} trades",
+    rtcoach_bad_hour: "It's {hour}:00 — historically your losing window ({pnl}€ over {count} trades). Be ultra-selective.",
+    rtcoach_good_hour: "It's {hour}:00 — your best window ({wr}% winrate). Favorable conditions: stick to your plan.",
+    rtcoach_risky_pair: "{pair}: {wr}% winrate over {count} trades for you. Avoid this pair or cut your size.",
+    rtcoach_win_streak: "{n} wins in a row — winning streaks are when you get sloppy. Keep the same size.",
+    rtcoach_loss_streak: "{n} losses in a row — revenge trading risk. Take a break before the next trade.",
+
+    // Quick annotation
+    annotate_button: "Annotate emotions ({count})",
+    annotate_title: "Quick annotation",
+    annotate_subtitle: "Which emotion dominated during this trade?",
+    annotate_skip: "Skip this trade",
+    annotate_done_title: "Done!",
+    annotate_done_desc: "{count} trades annotated. Your AI analyses will be more accurate.",
+    annotate_close: "Close",
+
+    // Account comparison
+    challenge_compare_title: "Your accounts ranked",
+
     nav_login: "Sign in",
     nav_start: "Get started",
 
@@ -3480,6 +3522,27 @@ const translations: Record<Lang, Record<string, string>> = {
     // Plattform-Marquee (Landing)
     marquee_caption: "Kompatibel mit deinen Plattformen",
 
+    // Echtzeit-Coach (Muster)
+    rtcoach_title: "Echtzeit-Coach",
+    rtcoach_based_on: "Basierend auf deinen letzten {count} Trades",
+    rtcoach_bad_hour: "Es ist {hour} Uhr — historisch dein Verlustfenster ({pnl}€ über {count} Trades). Sei extrem selektiv.",
+    rtcoach_good_hour: "Es ist {hour} Uhr — dein bestes Fenster ({wr}% Winrate). Gute Bedingungen: halte dich an deinen Plan.",
+    rtcoach_risky_pair: "{pair}: {wr}% Winrate über {count} Trades bei dir. Meide dieses Paar oder reduziere die Größe.",
+    rtcoach_win_streak: "{n} Gewinne in Folge — nach Gewinnserien wirst du nachlässig. Behalte die gleiche Größe bei.",
+    rtcoach_loss_streak: "{n} Verluste in Folge — Revenge-Trading-Gefahr. Mach eine Pause vor dem nächsten Trade.",
+
+    // Express-Annotation
+    annotate_button: "Emotionen annotieren ({count})",
+    annotate_title: "Express-Annotation",
+    annotate_subtitle: "Welche Emotion dominierte während dieses Trades?",
+    annotate_skip: "Trade überspringen",
+    annotate_done_title: "Fertig!",
+    annotate_done_desc: "{count} Trades annotiert. Deine KI-Analysen werden präziser.",
+    annotate_close: "Schließen",
+
+    // Konto-Vergleich
+    challenge_compare_title: "Deine Konten im Ranking",
+
     nav_login: "Anmelden",
     nav_start: "Loslegen",
 
@@ -5156,6 +5219,27 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Marquee de plataformas (landing)
     marquee_caption: "Compatible con tus plataformas",
+
+    // Coach en tiempo real (patrones)
+    rtcoach_title: "Coach en tiempo real",
+    rtcoach_based_on: "Basado en tus últimos {count} trades",
+    rtcoach_bad_hour: "Son las {hour}h — históricamente tu franja perdedora ({pnl}€ en {count} trades). Sé ultraselectivo.",
+    rtcoach_good_hour: "Son las {hour}h — tu mejor franja ({wr}% de winrate). Condiciones favorables: respeta tu plan.",
+    rtcoach_risky_pair: "{pair}: {wr}% de winrate en {count} trades. Evita este par o reduce el tamaño.",
+    rtcoach_win_streak: "{n} ganancias seguidas — tras las rachas ganadoras es cuando te relajas. Mantén el mismo tamaño.",
+    rtcoach_loss_streak: "{n} pérdidas seguidas — riesgo de revenge trading. Haz una pausa antes del próximo trade.",
+
+    // Anotación exprés
+    annotate_button: "Anotar emociones ({count})",
+    annotate_title: "Anotación exprés",
+    annotate_subtitle: "¿Qué emoción dominaba durante este trade?",
+    annotate_skip: "Saltar este trade",
+    annotate_done_title: "¡Listo!",
+    annotate_done_desc: "{count} trades anotados. Tus análisis IA serán más precisos.",
+    annotate_close: "Cerrar",
+
+    // Comparativa de cuentas
+    challenge_compare_title: "Ranking de tus cuentas",
 
     nav_login: "Iniciar sesión",
     nav_start: "Empezar",

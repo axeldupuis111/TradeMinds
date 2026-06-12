@@ -1263,6 +1263,52 @@ export default function ChallengePage() {
                 </div>
               </div>
             </div>
+
+            {/* Comparatif par compte — classé par P&L, clic = sélectionner */}
+            {activeAccounts.length > 1 && (
+              <div className="bg-card border border-border rounded-xl p-4 mt-4">
+                <h3 className="text-sm font-semibold text-foreground mb-3">{t("challenge_compare_title")}</h3>
+                <div className="space-y-1.5">
+                  {[...activeAccounts]
+                    .sort((a, b) => (accountStatsMap[b.id]?.currentPnl ?? 0) - (accountStatsMap[a.id]?.currentPnl ?? 0))
+                    .map((ac, rank) => {
+                      const s = accountStatsMap[ac.id];
+                      const pnl = s?.currentPnl ?? 0;
+                      const isSelected = ac.id === selectedAccountId;
+                      const isBest = rank === 0 && pnl > 0;
+                      return (
+                        <button
+                          key={ac.id}
+                          onClick={() => setSelectedAccountId(ac.id)}
+                          className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg border text-left transition-colors ${
+                            isSelected
+                              ? "border-accent/40 bg-accent/5"
+                              : "border-border bg-surface/40 hover:border-accent/25"
+                          }`}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-foreground truncate">
+                              {isBest && <span aria-hidden>🏆 </span>}
+                              {ac.firm}
+                            </p>
+                            <p className="text-[10px] text-muted tabular-nums">
+                              {s?.tradeCount ?? 0} trades
+                              {s && s.tradeCount > 0 ? ` · WR ${s.winrate.toFixed(0)}%` : ""}
+                            </p>
+                          </div>
+                          <span
+                            className={`text-xs font-bold tabular-nums shrink-0 ${
+                              pnl > 0 ? "text-profit" : pnl < 0 ? "text-loss" : "text-muted"
+                            }`}
+                          >
+                            {pnl >= 0 ? "+" : ""}{pnl.toFixed(0)}€
+                          </span>
+                        </button>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
           </aside>
         )}
       </div>{/* end 2-col grid */}
