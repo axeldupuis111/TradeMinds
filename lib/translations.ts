@@ -1253,6 +1253,9 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Dashboard new keys
     dash_greeting: "Bonjour,",
+    greeting_morning: "Bonjour",
+    greeting_afternoon: "Bon après-midi",
+    greeting_evening: "Bonsoir",
     dash_action_import: "Importer",
     dash_action_analyze: "Analyser",
     dash_action_session: "Démarrer la session",
@@ -2952,6 +2955,9 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Dashboard new keys
     dash_greeting: "Hello,",
+    greeting_morning: "Good morning",
+    greeting_afternoon: "Good afternoon",
+    greeting_evening: "Good evening",
     dash_action_import: "Import",
     dash_action_analyze: "Analyse",
     dash_action_session: "Start session",
@@ -4650,6 +4656,9 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Dashboard neue Schlüssel
     dash_greeting: "Hallo,",
+    greeting_morning: "Guten Morgen",
+    greeting_afternoon: "Guten Tag",
+    greeting_evening: "Guten Abend",
     dash_action_import: "Importieren",
     dash_action_analyze: "Analysieren",
     dash_action_session: "Session starten",
@@ -6347,6 +6356,9 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Dashboard nuevas claves
     dash_greeting: "Hola,",
+    greeting_morning: "Buenos días",
+    greeting_afternoon: "Buenas tardes",
+    greeting_evening: "Buenas noches",
     dash_action_import: "Importar",
     dash_action_analyze: "Analizar",
     dash_action_session: "Iniciar sesión",
