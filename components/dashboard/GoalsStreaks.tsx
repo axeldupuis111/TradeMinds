@@ -1,9 +1,11 @@
 "use client";
 
+import ConfettiBurst from "@/components/animations/ConfettiBurst";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
-import { Flame, Trophy, Gem, Target, Star, Lock, type LucideIcon } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Flame, Trophy, Gem, Target, Star, Lock, PartyPopper, type LucideIcon } from "lucide-react";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 
 interface Achievement {
@@ -43,6 +45,9 @@ export default function GoalsStreaks() {
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [weeklyProgress, setWeeklyProgress] = useState({ current: 0, target: 0, met: true });
   const [loading, setLoading] = useState(true);
+  // Badge fraîchement débloqué dans cette session → confettis + bannière
+  const [celebrating, setCelebrating] = useState<string | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
     load();
@@ -110,6 +115,7 @@ export default function GoalsStreaks() {
     };
 
     const existing = new Set((achData || []).map((a) => a.key));
+    const freshlyUnlocked: string[] = [];
     for (const badge of BADGE_DEFS) {
       if (!existing.has(badge.key) && badge.check(ctx)) {
         await supabase.from("achievements").insert({
@@ -118,7 +124,14 @@ export default function GoalsStreaks() {
           unlocked_at: new Date().toISOString(),
         });
         existing.add(badge.key);
+        freshlyUnlocked.push(badge.key);
       }
+    }
+
+    // Célébration : confettis + bannière pour le badge tout juste débloqué
+    if (freshlyUnlocked.length > 0) {
+      setCelebrating(freshlyUnlocked[freshlyUnlocked.length - 1]);
+      setShowConfetti(true);
     }
 
     // Reload achievements if new ones were awarded
@@ -142,20 +155,71 @@ export default function GoalsStreaks() {
     ? achievements.reduce((a, b) => a.unlocked_at > b.unlocked_at ? a : b).key
     : null;
 
+  // Prochain palier de streak (3 → 10 → 30) pour la barre de progression
+  const nextMilestone = streak < 3 ? 3 : streak < 10 ? 10 : streak < 30 ? 30 : null;
+  const prevMilestone = streak < 3 ? 0 : streak < 10 ? 3 : streak < 30 ? 10 : 30;
+  const milestonePct = nextMilestone
+    ? Math.min(100, ((streak - prevMilestone) / (nextMilestone - prevMilestone)) * 100)
+    : 100;
+  const celebratedBadge = celebrating ? BADGE_DEFS.find((b) => b.key === celebrating) : null;
+
   return (
     <KpiCardPremium layout="full" intensity="default" accentColor="amber">
+      {showConfetti && <ConfettiBurst onDone={() => setShowConfetti(false)} />}
+
+      {/* Bannière badge débloqué */}
+      <AnimatePresence>
+        {celebratedBadge && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="flex items-center gap-3 px-4 py-3 mb-4 rounded-xl border border-accent/40 bg-accent/10"
+          >
+            <PartyPopper className="w-5 h-5 text-accent shrink-0" strokeWidth={1.75} />
+            <p className="text-sm text-foreground flex-1">
+              <span className="font-bold text-accent">{t("badge_unlocked")}</span>{" "}
+              {t(celebratedBadge.labelKey)}
+            </p>
+            <button
+              onClick={() => setCelebrating(null)}
+              className="text-foreground-muted hover:text-foreground transition-colors text-xs"
+              aria-label="Fermer"
+            >
+              ✕
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <h2 className="text-sm font-semibold text-foreground mb-4">{t("goals_title")}</h2>
 
-      {/* Streak */}
-      <div className="flex items-center gap-3 mb-4">
+      {/* Streak + progression vers le prochain palier */}
+      <div className="flex items-center gap-3 mb-2">
         {streak > 0 && <Flame className="w-7 h-7 text-warning shrink-0" strokeWidth={1.75} />}
-        <div>
+        <div className="flex-1 min-w-0">
           <p className="text-foreground font-bold text-lg">
             {streak > 0 ? `${streak} ${t("goals_streak_days")}` : `0 ${t("goals_streak_days")}`}
           </p>
           <p className="text-muted text-xs">{t("goals_streak_desc")}</p>
         </div>
       </div>
+      {nextMilestone && (
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[11px] text-foreground-muted">
+              {t("goals_next_badge").replace("{n}", String(nextMilestone - streak))}
+            </span>
+            <span className="text-[11px] text-foreground-muted tabular-nums">{streak}/{nextMilestone}</span>
+          </div>
+          <div className="h-1.5 bg-border rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-accent to-warning transition-all duration-700"
+              style={{ width: `${Math.max(3, milestonePct)}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Weekly goal */}
       <div className="mb-4 p-3 rounded-lg bg-background border border-border">

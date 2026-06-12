@@ -30,6 +30,7 @@ function isPublicPath(pathname: string): boolean {
     p === "/" ||
     p === "/sitemap.xml" ||
     p === "/robots.txt" ||
+    p === "/manifest.webmanifest" ||
     p.startsWith("/opengraph-image") ||
     p.startsWith("/twitter-image") ||
     p === "/login" ||
@@ -58,6 +59,11 @@ export async function middleware(request: NextRequest) {
 
   // MetaTrader sync: called by EA (no user session), authenticated via mt_sync_token in body
   if (pathname === "/api/sync/mt") {
+    return NextResponse.next();
+  }
+
+  // Crons Vercel (no user session) : sécurisés par CRON_SECRET dans la route
+  if (pathname === "/api/send-reminders" || pathname === "/api/weekly-report") {
     return NextResponse.next();
   }
 

@@ -2,6 +2,7 @@
 
 import { AnalyticsInsightCards } from "@/components/analytics/AnalyticsInsightCards";
 import { AnalyticsKpiCards } from "@/components/analytics/AnalyticsKpiCards";
+import PeriodCompareBlock from "@/components/analytics/PeriodCompareBlock";
 import { AutoInsights } from "@/components/analytics/AutoInsights";
 import { DisciplineAnalyticsBlock } from "@/components/analytics/DisciplineAnalyticsBlock";
 import DrawdownBlock from "@/components/analytics/DrawdownBlock";
@@ -920,6 +921,11 @@ export default function AnalyticsPage() {
               riskyPairInfo={riskyPairInfo}
               byEmotion={byEmotion}
             />
+          </StaggerItem>
+
+          {/* ── Comparaison de périodes — est-ce que je progresse ? ───── */}
+          <StaggerItem>
+            <PeriodCompareBlock trades={trades} accountFilter={accountFilter} period={period} />
           </StaggerItem>
 
           {/* ── Equity Curve — full width ─────────────────────────────── */}

@@ -3,6 +3,7 @@
 import AmbientBackground from "@/components/dashboard/AmbientBackground";
 import CommandPalette from "@/components/CommandPalette";
 import Header from "@/components/Header";
+import MobileTabBar from "@/components/MobileTabBar";
 import OnboardingGuide from "@/components/dashboard/OnboardingGuide";
 import QuickTradeFAB from "@/components/dashboard/QuickTradeFAB";
 import Sidebar from "@/components/Sidebar";
@@ -202,11 +203,12 @@ export default function DashboardLayout({
         <SubscriptionBanner />
         <SessionReminderBanner />
         <SessionDurationBanner />
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        <main className="flex-1 overflow-y-auto p-6 pb-24 lg:pb-6">{children}</main>
       </div>
       <QuickTradeFAB />
       <OnboardingGuide />
       <CommandPalette />
+      <MobileTabBar />
     </div>
     </ActiveAccountProvider>
     </AlertsProvider>

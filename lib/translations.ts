@@ -118,6 +118,21 @@ const translations: Record<Lang, Record<string, string>> = {
     // Comparatif de comptes
     challenge_compare_title: "Classement de tes comptes",
 
+    // Comparaison de périodes (Analytics)
+    compare_title: "Est-ce que tu progresses ?",
+    compare_subtitle: "{days} derniers jours vs {days} précédents",
+    compare_current: "Période actuelle",
+    compare_previous: "Précédente",
+    compare_pnl: "P&L net",
+    compare_trades: "Trades",
+    compare_winrate: "Winrate",
+    compare_profit_factor: "Profit factor",
+    compare_avg_trade: "Gain moyen / trade",
+
+    // Gamification
+    badge_unlocked: "Badge débloqué :",
+    goals_next_badge: "Prochain badge dans {n} jour(s)",
+
     // Nav
     nav_login: "Se connecter",
     nav_start: "Commencer",
@@ -1847,6 +1862,21 @@ const translations: Record<Lang, Record<string, string>> = {
     // Account comparison
     challenge_compare_title: "Your accounts ranked",
 
+    // Period comparison (Analytics)
+    compare_title: "Are you improving?",
+    compare_subtitle: "Last {days} days vs previous {days}",
+    compare_current: "Current period",
+    compare_previous: "Previous",
+    compare_pnl: "Net P&L",
+    compare_trades: "Trades",
+    compare_winrate: "Winrate",
+    compare_profit_factor: "Profit factor",
+    compare_avg_trade: "Avg gain / trade",
+
+    // Gamification
+    badge_unlocked: "Badge unlocked:",
+    goals_next_badge: "Next badge in {n} day(s)",
+
     nav_login: "Sign in",
     nav_start: "Get started",
 
@@ -3549,6 +3579,21 @@ const translations: Record<Lang, Record<string, string>> = {
     // Konto-Vergleich
     challenge_compare_title: "Deine Konten im Ranking",
 
+    // Periodenvergleich (Analytics)
+    compare_title: "Wirst du besser?",
+    compare_subtitle: "Letzte {days} Tage vs. vorherige {days}",
+    compare_current: "Aktuelle Periode",
+    compare_previous: "Vorherige",
+    compare_pnl: "Netto-P&L",
+    compare_trades: "Trades",
+    compare_winrate: "Winrate",
+    compare_profit_factor: "Profitfaktor",
+    compare_avg_trade: "Ø Gewinn / Trade",
+
+    // Gamification
+    badge_unlocked: "Abzeichen freigeschaltet:",
+    goals_next_badge: "Nächstes Abzeichen in {n} Tag(en)",
+
     nav_login: "Anmelden",
     nav_start: "Loslegen",
 
@@ -5249,6 +5294,21 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Comparativa de cuentas
     challenge_compare_title: "Ranking de tus cuentas",
+
+    // Comparación de períodos (Analytics)
+    compare_title: "¿Estás mejorando?",
+    compare_subtitle: "Últimos {days} días vs {days} anteriores",
+    compare_current: "Período actual",
+    compare_previous: "Anterior",
+    compare_pnl: "P&L neto",
+    compare_trades: "Trades",
+    compare_winrate: "Winrate",
+    compare_profit_factor: "Profit factor",
+    compare_avg_trade: "Ganancia media / trade",
+
+    // Gamificación
+    badge_unlocked: "Insignia desbloqueada:",
+    goals_next_badge: "Próxima insignia en {n} día(s)",
 
     nav_login: "Iniciar sesión",
     nav_start: "Empezar",
