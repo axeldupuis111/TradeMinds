@@ -650,7 +650,7 @@ function DeleteModal({
 }
 
 export default function ChallengePage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { maxAccounts } = usePlan();
   const supabase = createClient();
   const { selectedAccountId, setSelectedAccountId } = useActiveAccount();
@@ -941,6 +941,7 @@ export default function ChallengePage() {
                       profitTargetPct: ac.profit_target_pct,
                       maxDailyDdPct: ac.max_daily_dd_pct,
                       maxTotalDdPct: ac.max_total_dd_pct,
+                      lang,
                     });
                   });
                 }}
