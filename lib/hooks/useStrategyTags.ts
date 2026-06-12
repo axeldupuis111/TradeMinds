@@ -25,6 +25,12 @@ export interface StrategyTagsResult {
   checklistSetupMapping: Record<string, string[]>;
   isDefault: boolean;
   loading: boolean;
+  /**
+   * Stratégie effectivement résolue (fallback = stratégie la plus récente
+   * quand aucun strategyId n'est passé). Permet aux consommateurs d'assigner
+   * automatiquement la stratégie dont la checklist est affichée.
+   */
+  strategyId: string | null;
 }
 
 const ICT_DEFAULT: StrategyTagsResult = {
@@ -36,6 +42,7 @@ const ICT_DEFAULT: StrategyTagsResult = {
   checklistSetupMapping: {},
   isDefault: true,
   loading: false,
+  strategyId: null,
 };
 
 export function useStrategyTags(strategyId?: string): StrategyTagsResult {
@@ -100,7 +107,7 @@ export function useStrategyTags(strategyId?: string): StrategyTagsResult {
       }));
 
       const hasCustom = setups.length + entry_zones.length + targets.length + timing.length + checklist.length > 0;
-      if (!hasCustom) { setResult({ ...ICT_DEFAULT, loading: false }); return; }
+      if (!hasCustom) { setResult({ ...ICT_DEFAULT, loading: false, strategyId: strategy.id }); return; }
 
       const checklistSetupMapping: Record<string, string[]> =
         strategy.checklist_setup_mapping && typeof strategy.checklist_setup_mapping === "object"
@@ -116,6 +123,7 @@ export function useStrategyTags(strategyId?: string): StrategyTagsResult {
         checklistSetupMapping,
         isDefault: false,
         loading: false,
+        strategyId: strategy.id,
       });
     }
     load();

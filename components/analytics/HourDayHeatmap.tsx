@@ -223,19 +223,24 @@ export function HourDayHeatmap({ trades }: Props) {
                     }
                     onMouseLeave={() => setTooltip(HIDDEN_TOOLTIP)}
                   >
-                    {/* FIX 5 — in-cell text for top 6 cells */}
-                    {isTop && cell.trades > 0 && (
+                    {/* Montant visible dans chaque cellule avec trades.
+                        Couleur foreground (sombre en light, claire en dark)
+                        → lisible sur fonds saturés comme sur fonds pâles,
+                        sans avoir besoin de survoler. Masqué sur mobile où
+                        les cellules sont trop étroites (tooltip au tap). */}
+                    {cell.trades > 0 && (
                       <span
+                        className="hidden sm:block"
                         style={{
-                          fontSize: 10,
-                          fontWeight: 600,
+                          fontSize: 9,
+                          fontWeight: isTop ? 700 : 600,
                           lineHeight: 1,
                           pointerEvents: "none",
                           userSelect: "none",
-                          color: isProfit
-                            ? "rgb(var(--profit))"
-                            : "rgb(var(--loss))",
-                          textShadow: "0 1px 3px rgb(0 0 0 / 0.6)",
+                          whiteSpace: "nowrap",
+                          color: "rgb(var(--foreground) / 0.92)",
+                          textShadow: "0 1px 2px rgb(0 0 0 / 0.45)",
+                          fontVariantNumeric: "tabular-nums",
                         }}
                       >
                         {formatCellPnl(cell.pnl)}

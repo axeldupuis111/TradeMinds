@@ -200,11 +200,18 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
 
   async function handleStrategyChange(newId: string) {
     const stratId = newId || null;
+    // Cas « Sans stratégie » → stratégie dont la checklist est déjà affichée :
+    // les cases cochées appartiennent à cette checklist, on les conserve.
+    const keepChecklist = selectedStrategyId === null && stratId !== null && stratId === stratTags.strategyId;
     setSelectedStrategyId(stratId);
-    setIctChecklist({});
+    if (!keepChecklist) setIctChecklist({});
     await supabase
       .from("trades")
-      .update({ strategy_id: stratId, ict_checklist: null, ict_confluence_score: null })
+      .update(
+        keepChecklist
+          ? { strategy_id: stratId }
+          : { strategy_id: stratId, ict_checklist: null, ict_confluence_score: null }
+      )
       .eq("id", trade.id);
     showSavedIndicator("strategy_id");
   }
@@ -271,6 +278,20 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
   }
 
   function handleIctChecklist(key: string, checked: boolean) {
+    // La checklist affichée appartient toujours à une stratégie (résolue en
+    // fallback par useStrategyTags). Si le trade n'en a pas encore, on
+    // l'assigne automatiquement à la première case cochée — sinon le travail
+    // de l'utilisateur n'était relié à rien.
+    if (!selectedStrategyId && stratTags.strategyId) {
+      const autoId = stratTags.strategyId;
+      setSelectedStrategyId(autoId);
+      void supabase
+        .from("trades")
+        .update({ strategy_id: autoId })
+        .eq("id", trade.id)
+        .then(() => showSavedIndicator("strategy_id"));
+    }
+
     const updated = { ...ictChecklist, [key]: checked };
     setIctChecklist(updated);
     saveIctField("ict_checklist", updated);
@@ -613,7 +634,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
               >
                 <option value="">— Sans stratégie</option>
                 {userStrategies.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
+                  <option key={s.id} value={s.id}>{s.name?.trim() || "Stratégie sans nom"}</option>
                 ))}
               </select>
             </div>
