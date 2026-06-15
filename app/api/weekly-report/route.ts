@@ -24,15 +24,106 @@ function netPnl(t: TradeRow): number {
   return t.pnl + (t.commission || 0) + (t.swap || 0);
 }
 
-function groupNum(n: number, decimals = 0): string {
-  const neg = n < 0;
-  const [int, dec] = Math.abs(n).toFixed(decimals).split(".");
-  const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-  return `${neg ? "-" : ""}${grouped}${dec ? "," + dec : ""}`;
+type Lang = "fr" | "en" | "de" | "es";
+
+// Locale BCP-47 par langue de compte, pour le formatage des dates/nombres/devise.
+const LOCALES: Record<Lang, string> = {
+  fr: "fr-FR",
+  en: "en-US",
+  de: "de-DE",
+  es: "es-ES",
+};
+
+// Contenu du rapport hebdo dans chaque langue du compte. La langue est lue depuis
+// profiles.language (synchronisée côté client). Fallback : en.
+const REPORT_COPY: Record<Lang, {
+  subject: (pnl: string, count: number) => string;
+  heading: string;
+  subheading: string;
+  trades: string;
+  winrate: string;
+  profitFactor: string;
+  best: string;
+  worst: string;
+  cta: string;
+  footer: string;
+}> = {
+  fr: {
+    subject: (pnl, count) => `Ton bilan de la semaine : ${pnl} sur ${count} trade${count > 1 ? "s" : ""}`,
+    heading: "Ton bilan de la semaine",
+    subheading: "Voici ce que tes trades racontent cette semaine.",
+    trades: "Trades",
+    winrate: "Winrate",
+    profitFactor: "Profit factor",
+    best: "Meilleur trade :",
+    worst: "Pire trade :",
+    cta: "Voir mon analyse complète →",
+    footer: "Tu reçois ce bilan chaque dimanche. Désactivable dans Paramètres → Notifications.",
+  },
+  en: {
+    subject: (pnl, count) => `Your week in review: ${pnl} across ${count} trade${count > 1 ? "s" : ""}`,
+    heading: "Your week in review",
+    subheading: "Here's what your trades say about this week.",
+    trades: "Trades",
+    winrate: "Win rate",
+    profitFactor: "Profit factor",
+    best: "Best trade:",
+    worst: "Worst trade:",
+    cta: "View my full analysis →",
+    footer: "You receive this report every Sunday. You can turn it off in Settings → Notifications.",
+  },
+  de: {
+    subject: (pnl, count) => `Deine Wochenbilanz: ${pnl} bei ${count} Trade${count > 1 ? "s" : ""}`,
+    heading: "Deine Wochenbilanz",
+    subheading: "Das erzählen deine Trades über diese Woche.",
+    trades: "Trades",
+    winrate: "Trefferquote",
+    profitFactor: "Profitfaktor",
+    best: "Bester Trade:",
+    worst: "Schlechtester Trade:",
+    cta: "Meine vollständige Analyse ansehen →",
+    footer: "Du erhältst diese Bilanz jeden Sonntag. Abschaltbar in Einstellungen → Benachrichtigungen.",
+  },
+  es: {
+    subject: (pnl, count) => `Tu balance de la semana: ${pnl} en ${count} trade${count > 1 ? "s" : ""}`,
+    heading: "Tu balance de la semana",
+    subheading: "Esto es lo que dicen tus trades de esta semana.",
+    trades: "Trades",
+    winrate: "Tasa de acierto",
+    profitFactor: "Factor de beneficio",
+    best: "Mejor trade:",
+    worst: "Peor trade:",
+    cta: "Ver mi análisis completo →",
+    footer: "Recibes este balance cada domingo. Puedes desactivarlo en Ajustes → Notificaciones.",
+  },
+};
+
+// Formateurs liés à la langue + devise du compte (profiles.currency, défaut EUR).
+function makeFormatters(locale: string, currency: string) {
+  const money = new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  });
+  const percent = new Intl.NumberFormat(locale, {
+    style: "percent",
+    maximumFractionDigits: 0,
+  });
+  const decimal = new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return {
+    money: (n: number) => money.format(n),
+    // Intl ajoute déjà le signe « - » ; on ne préfixe que le « + ».
+    signedMoney: (n: number) => `${n >= 0 ? "+" : ""}${money.format(n)}`,
+    percent: (n: number) => percent.format(n / 100),
+    decimal: (n: number) => decimal.format(n),
+  };
 }
 
-const eur = (n: number) => `${groupNum(n)} €`;
-const signedEur = (n: number) => `${n >= 0 ? "+" : ""}${eur(n)}`;
+type Formatters = ReturnType<typeof makeFormatters>;
+type Copy = typeof REPORT_COPY[Lang];
 
 interface WeekStats {
   count: number;
@@ -64,7 +155,7 @@ function computeStats(trades: TradeRow[]): WeekStats {
   };
 }
 
-function buildEmailHtml(stats: WeekStats, weekLabel: string): string {
+function buildEmailHtml(stats: WeekStats, weekLabel: string, copy: Copy, fmt: Formatters): string {
   const green = "#16a34a";
   const red = "#dc2626";
   const pnlColor = stats.pnl >= 0 ? green : red;
@@ -92,20 +183,20 @@ function buildEmailHtml(stats: WeekStats, weekLabel: string): string {
     <div style="height: 3px; background: #00e5d0;"></div>
 
     <div style="border: 1px solid #e2e7ee; border-top: none; border-radius: 0 0 14px 14px; padding: 26px;">
-      <h1 style="font-size: 19px; color: #171e2a; margin: 0 0 4px;">Ton bilan de la semaine</h1>
-      <p style="font-size: 13px; color: #6e7887; margin: 0 0 18px;">Voici ce que tes trades racontent cette semaine.</p>
+      <h1 style="font-size: 19px; color: #171e2a; margin: 0 0 4px;">${copy.heading}</h1>
+      <p style="font-size: 13px; color: #6e7887; margin: 0 0 18px;">${copy.subheading}</p>
 
       <!-- P&L principal -->
       <div style="font-size: 38px; font-weight: 900; color: ${pnlColor}; margin-bottom: 18px; font-variant-numeric: tabular-nums;">
-        ${signedEur(stats.pnl)}
+        ${fmt.signedMoney(stats.pnl)}
       </div>
 
       <!-- Grille de stats -->
       <table width="100%" cellpadding="0" cellspacing="0" style="margin: 0 -4px 6px;">
         <tr>
-          ${statBox("Trades", String(stats.count))}
-          ${statBox("Winrate", `${Math.round(stats.winrate)} %`)}
-          ${statBox("Profit factor", stats.profitFactor !== null ? stats.profitFactor.toFixed(2) : "—")}
+          ${statBox(copy.trades, String(stats.count))}
+          ${statBox(copy.winrate, fmt.percent(stats.winrate))}
+          ${statBox(copy.profitFactor, stats.profitFactor !== null ? fmt.decimal(stats.profitFactor) : "—")}
         </tr>
       </table>
 
@@ -113,26 +204,26 @@ function buildEmailHtml(stats: WeekStats, weekLabel: string): string {
       <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 10px;">
         <tr>
           <td style="font-size: 13px; color: #6e7887; padding: 6px 0;">
-            Meilleur trade : <strong style="color: #171e2a;">${stats.best.pair}</strong>
-            <strong style="color: ${green};">${signedEur(stats.best.pnl)}</strong>
+            ${copy.best} <strong style="color: #171e2a;">${stats.best.pair}</strong>
+            <strong style="color: ${green};">${fmt.signedMoney(stats.best.pnl)}</strong>
           </td>
         </tr>
         ${stats.worst && stats.worst.pnl < 0 ? `
         <tr>
           <td style="font-size: 13px; color: #6e7887; padding: 6px 0;">
-            Pire trade : <strong style="color: #171e2a;">${stats.worst.pair}</strong>
-            <strong style="color: ${red};">${signedEur(stats.worst.pnl)}</strong>
+            ${copy.worst} <strong style="color: #171e2a;">${stats.worst.pair}</strong>
+            <strong style="color: ${red};">${fmt.signedMoney(stats.worst.pnl)}</strong>
           </td>
         </tr>` : ""}
       </table>` : ""}
 
       <a href="https://tradediscipline.app/dashboard/analytics"
          style="display: inline-block; margin-top: 20px; padding: 12px 26px; background: #0a0e18; color: #00e5d0; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 14px;">
-        Voir mon analyse complète →
+        ${copy.cta}
       </a>
 
       <p style="color: #9aa4b2; font-size: 11px; margin-top: 26px; border-top: 1px solid #eef1f5; padding-top: 14px;">
-        Tu reçois ce bilan chaque dimanche. Désactivable dans Paramètres → Notifications.
+        ${copy.footer}
         <br/>tradediscipline.app
       </p>
     </div>
@@ -158,7 +249,7 @@ async function handle(req: Request) {
 
   const { data: users, error } = await supabase
     .from("profiles")
-    .select("id, email")
+    .select("id, email, language, currency")
     .eq("email_notif_session", true)
     .not("email", "is", null);
 
@@ -169,7 +260,7 @@ async function handle(req: Request) {
   const since = new Date();
   since.setDate(since.getDate() - 7);
   const sinceIso = since.toISOString();
-  const weekLabel = `${since.toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} – ${new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })}`;
+  const now = new Date();
 
   let sent = 0;
   let skipped = 0;
@@ -193,8 +284,14 @@ async function handle(req: Request) {
 
     const stats = computeStats(trades);
 
+    const lang: Lang = (user.language as Lang) in REPORT_COPY ? (user.language as Lang) : "en";
+    const copy = REPORT_COPY[lang];
+    const locale = LOCALES[lang];
+    const fmt = makeFormatters(locale, (user.currency as string) || "EUR");
+    const weekLabel = `${since.toLocaleDateString(locale, { day: "numeric", month: "short" })} – ${now.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" })}`;
+
     if (dryRun) {
-      preview.push({ email: user.email, ...stats });
+      preview.push({ email: user.email, language: lang, ...stats });
       continue;
     }
 
@@ -203,8 +300,8 @@ async function handle(req: Request) {
       await resend.emails.send({
         from: "TradeDiscipline <noreply@tradediscipline.app>",
         to: user.email,
-        subject: `Ton bilan de la semaine : ${signedEur(stats.pnl)} sur ${stats.count} trade${stats.count > 1 ? "s" : ""}`,
-        html: buildEmailHtml(stats, weekLabel),
+        subject: copy.subject(fmt.signedMoney(stats.pnl), stats.count),
+        html: buildEmailHtml(stats, weekLabel, copy, fmt),
       });
       sent++;
     } catch (emailErr) {
