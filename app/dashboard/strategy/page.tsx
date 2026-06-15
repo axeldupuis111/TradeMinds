@@ -907,7 +907,7 @@ export default function StrategyPage() {
       </div>{/* end 2-col grid */}
 
       {parsed && (
-        <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+3.75rem)] lg:bottom-0 left-0 right-0 z-40 flex justify-center gap-3 p-4 bg-background/80 backdrop-blur-sm border-t border-border">
+        <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+3.75rem)] lg:bottom-0 left-0 right-0 z-40 flex justify-center gap-3 p-4 pr-24 lg:pr-4 bg-background/80 backdrop-blur-sm border-t border-border">
           {existingId && (
             <button
               onClick={() => void openDeleteConfirm()}
