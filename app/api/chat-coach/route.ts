@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
-import { requireAuth, checkQuota, incrementQuota } from "@/lib/api-auth";
+import { requireAuth, consumeQuota, refundQuota } from "@/lib/api-auth";
+import type { PlanType } from "@/lib/PlanContext";
 import { sanitizeUserInput } from "@/lib/prompt-sanitizer";
 
 const MAX_MESSAGE_CHARS = 4000;
@@ -26,17 +27,14 @@ const LANG_NAMES: Record<string, string> = {
 };
 
 export async function POST(request: Request) {
+  let reserved: { userId: string; plan: PlanType } | null = null;
   try {
     // ── 1. Auth ──
     const auth = await requireAuth();
     if (auth instanceof NextResponse) return auth;
     const { userId, plan } = auth;
 
-    // ── 2. Plan + quota ──
-    const quota = await checkQuota({ userId, plan, feature: "chat" });
-    if (quota instanceof NextResponse) return quota;
-
-    // ── 3. API key ──
+    // ── 2. API key ──
     const apiKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
@@ -69,6 +67,11 @@ export async function POST(request: Request) {
         { status: 413 }
       );
     }
+
+    // ── 4b. Reserve quota atomically (refunded below if the AI call fails) ──
+    const quota = await consumeQuota({ userId, plan, feature: "chat" });
+    if (quota instanceof NextResponse) return quota;
+    reserved = { userId, plan };
 
     // ── 5. Sanitize user inputs ──
     const langName = LANG_NAMES[language] ?? "français";
@@ -127,16 +130,23 @@ RULES:
 
     const textBlock = message.content.find((b) => b.type === "text");
     if (!textBlock || textBlock.type !== "text") {
+      await refundQuota(userId, plan, "chat");
+      reserved = null;
       return NextResponse.json({ error: "Réponse vide de l'IA." }, { status: 500 });
     }
 
-    // ── 7. Increment quota after successful call ──
-    await incrementQuota(userId, plan, "chat");
+    // Quota was already reserved up front; the slot is now genuinely used.
+    reserved = null;
 
     return NextResponse.json({ reply: textBlock.text });
   } catch (err: unknown) {
+    // Give back the reserved slot on failure so the user isn't charged for a
+    // response they never received.
+    if (reserved) await refundQuota(reserved.userId, reserved.plan, "chat");
     console.error("Chat coach error:", err);
-    const message = err instanceof Error ? err.message : "Erreur inconnue";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: "Le coach IA est momentanément indisponible. Réessaie." },
+      { status: 500 }
+    );
   }
 }
