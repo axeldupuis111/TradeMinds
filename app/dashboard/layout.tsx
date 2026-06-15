@@ -3,9 +3,9 @@
 import AmbientBackground from "@/components/dashboard/AmbientBackground";
 import CommandPalette from "@/components/CommandPalette";
 import Header from "@/components/Header";
+import HelpWidget from "@/components/dashboard/HelpWidget";
 import MobileTabBar from "@/components/MobileTabBar";
 import OnboardingGuide from "@/components/dashboard/OnboardingGuide";
-import QuickTradeFAB from "@/components/dashboard/QuickTradeFAB";
 import Sidebar from "@/components/Sidebar";
 import AlertCenter from "@/components/dashboard/AlertCenter";
 import ChallengeGuardian from "@/components/dashboard/ChallengeGuardian";
@@ -205,7 +205,7 @@ export default function DashboardLayout({
         <SessionDurationBanner />
         <main className="flex-1 overflow-y-auto p-6 pb-24 lg:pb-6">{children}</main>
       </div>
-      <QuickTradeFAB />
+      <HelpWidget />
       <OnboardingGuide />
       <CommandPalette />
       <MobileTabBar />
