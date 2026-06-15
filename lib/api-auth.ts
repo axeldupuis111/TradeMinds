@@ -148,3 +148,86 @@ export async function incrementQuota(userId: string, plan: PlanType, feature: "a
       .eq("id", userId);
   }
 }
+
+function resetKeyFor(config: { resetMode: "day" | "week" }): string {
+  return config.resetMode === "week"
+    ? getWeekStart(new Date())
+    : new Date().toISOString().split("T")[0];
+}
+
+/**
+ * Atomically reserve one quota slot for the user.
+ *
+ * Unlike checkQuota + incrementQuota (a non-atomic read-modify-write split
+ * across two round trips), this consumes the slot up front in a single
+ * locked statement so concurrent requests cannot both slip past the limit.
+ * Call refundQuota if the work that the slot was reserved for then fails.
+ *
+ * Falls back to the legacy non-atomic path when the consume_quota RPC is not
+ * deployed yet (migration 20260615_atomic_ai_quota.sql), so the feature keeps
+ * working before the SQL is applied.
+ */
+export async function consumeQuota({ userId, plan, feature }: QuotaCheckParams): Promise<QuotaResult | NextResponse> {
+  const config = PLAN_LIMITS[feature][plan];
+
+  if (config.limit === 0) {
+    console.error(`[API Quota] Blocked ${feature} for free user ${userId}`);
+    return NextResponse.json({ error: "Feature not available on free plan" }, { status: 403 });
+  }
+
+  const supabase = createSupabaseServer();
+  const resetKey = resetKeyFor(config);
+
+  const { data, error } = await supabase.rpc("consume_quota", {
+    p_user_id: userId,
+    p_feature: feature,
+    p_limit: config.limit,
+    p_reset_key: resetKey,
+  });
+
+  if (error) {
+    // RPC not deployed yet → fall back to the legacy non-atomic path so the
+    // feature keeps working. Apply the migration to activate atomic quotas.
+    console.error(`[API Quota] consume_quota RPC unavailable, falling back to legacy path: ${error.message}`);
+    const legacy = await checkQuota({ userId, plan, feature });
+    if (legacy instanceof NextResponse) return legacy;
+    await incrementQuota(userId, plan, feature);
+    return { allowed: true, remaining: legacy.remaining - 1, limit: config.limit };
+  }
+
+  const row = (Array.isArray(data) ? data[0] : data) as { allowed: boolean; current_count: number } | undefined;
+
+  if (!row || !row.allowed) {
+    console.error(`[API Quota] Rate limited ${feature} for user ${userId}: ${row?.current_count ?? "?"}/${config.limit}`);
+    return NextResponse.json(
+      { error: "Daily limit reached", limit: config.limit, remaining: 0 },
+      { status: 429 }
+    );
+  }
+
+  return { allowed: true, remaining: Math.max(0, config.limit - row.current_count), limit: config.limit };
+}
+
+/**
+ * Give back a slot reserved by consumeQuota when the downstream work failed
+ * (e.g. the Claude call errored), so the user is not charged a quota unit for
+ * a response they never received. Best-effort: never throws.
+ */
+export async function refundQuota(userId: string, plan: PlanType, feature: "analyze" | "chat"): Promise<void> {
+  const config = PLAN_LIMITS[feature][plan];
+  if (!config) return;
+
+  const supabase = createSupabaseServer();
+  const resetKey = resetKeyFor(config);
+
+  try {
+    const { error } = await supabase.rpc("refund_quota", {
+      p_user_id: userId,
+      p_feature: feature,
+      p_reset_key: resetKey,
+    });
+    if (error) console.error(`[API Quota] refund_quota failed for user ${userId}: ${error.message}`);
+  } catch (e) {
+    console.error(`[API Quota] refund_quota threw for user ${userId}:`, e);
+  }
+}
