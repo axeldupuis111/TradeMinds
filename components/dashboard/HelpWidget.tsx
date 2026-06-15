@@ -4,7 +4,6 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { localizedHref } from "@/lib/locale-href";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 type View = "home" | "contact";
@@ -14,7 +13,6 @@ const FAQ_KEYS = [1, 2, 3, 4, 5, 6] as const;
 
 export default function HelpWidget() {
   const { t, lang } = useLanguage();
-  const pathname = usePathname();
   const supabase = createClient();
 
   const [open, setOpen] = useState(false);
