@@ -698,6 +698,7 @@ export default function SettingsPage() {
                 <ul className="space-y-1.5 text-sm text-muted leading-relaxed list-disc list-inside">
                   <li>{t("sync_mt_tip1")}</li>
                   <li>{t("sync_mt_tip2")}</li>
+                  <li>{t("sync_mt_tip_exness")}</li>
                 </ul>
               </div>
             </div>

@@ -8,7 +8,7 @@ import {
 } from "@/lib/strategy/derive";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
-import { AlertCircle, ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, SlidersHorizontal } from "lucide-react";
 import { useMemo, useEffect, useState } from "react";
 import TradeDetailPanel, { type TradeDetail } from "./TradeDetailPanel";
 
@@ -233,6 +233,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     worst: 0,
   });
   const [sort, setSort] = useState<SortState>({ column: null, direction: "desc" });
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
     loadAllPairs();
@@ -493,6 +494,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
   }, [trades]);
 
   const hasActiveFilters = filters.pair || filters.direction || filters.result || filters.dateFrom || filters.dateTo;
+  const activeFilterCount = [filters.pair, filters.direction, filters.result, filters.dateFrom, filters.dateTo].filter(Boolean).length;
   const allSelected = trades.length > 0 && trades.every((tr) => selectedIds.has(tr.id));
   const someSelected = selectedIds.size > 0;
   const { count: statsCount } = globalStats;
@@ -514,12 +516,29 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     <section>
       {/* Filter bar — sticky */}
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border rounded-lg mb-4">
-        <p className="text-[11px] text-muted px-3 pt-3 pb-1">
-          {hasActiveFilters
-            ? t("trades_filtered_by").replace("{count}", String(total))
-            : t("trades_all_accounts").replace("{count}", String(statsCount))}
-        </p>
-        <div className="p-3">
+        <div className="flex items-center justify-between gap-2 px-3 pt-3 pb-1">
+          <p className="text-[11px] text-muted">
+            {hasActiveFilters
+              ? t("trades_filtered_by").replace("{count}", String(total))
+              : t("trades_all_accounts").replace("{count}", String(statsCount))}
+          </p>
+          {/* Mobile-only toggle — keeps the filter bar compact on small screens */}
+          <button
+            onClick={() => setFiltersOpen((o) => !o)}
+            className="sm:hidden inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-border bg-surface text-xs text-foreground"
+            aria-expanded={filtersOpen}
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            {t("trades_filters_toggle")}
+            {activeFilterCount > 0 && (
+              <span className="ml-0.5 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-accent text-white text-[10px] font-semibold">
+                {activeFilterCount}
+              </span>
+            )}
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
+          </button>
+        </div>
+        <div className={`p-3 ${filtersOpen ? "block" : "hidden sm:block"}`}>
           <div className="flex flex-wrap gap-3 items-end">
             <div className="flex flex-col gap-1 min-w-[140px]">
               <label className="text-xs text-muted">{t("trades_filter_label_pair")}</label>

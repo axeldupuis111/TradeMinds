@@ -728,6 +728,7 @@ const translations: Record<Lang, Record<string, string>> = {
     trades_filter_date_to: "Au",
     trades_filter_reset: "Réinitialiser les filtres",
     trades_export_csv: "Exporter CSV",
+    trades_filters_toggle: "Filtres",
     trades_filtered_by: "Filtré · {count} trades affichés",
     trades_all_accounts: "Tous les comptes · {count} trades au total",
     dash_all_accounts: "Tous les comptes",
@@ -1261,6 +1262,7 @@ const translations: Record<Lang, Record<string, string>> = {
     sync_mt_tips_title: "Bon à savoir",
     sync_mt_tip1: "TradeDiscipline affiche le P&L net (commissions et frais inclus) ; ce montant peut donc différer du profit brut affiché par MetaTrader.",
     sync_mt_tip2: "La synchronisation fonctionne lorsque MetaTrader est ouvert sur ton ordinateur.",
+    sync_mt_tip_exness: "Compte Exness ? Exness fonctionne avec le terminal MetaTrader (MT4 ou MT5). Télécharge MetaTrader depuis Exness, connecte-toi à ton compte Exness, puis suis exactement les mêmes étapes ci-dessus : l'Expert Advisor s'installe dans ce terminal.",
     sync_mt_modal_title: "Régénérer le token ?",
     sync_mt_modal_desc: "Le token actuel deviendra immédiatement invalide. Tu devras reconfigurer l'Expert Advisor dans MetaTrader avec le nouveau token.",
 
@@ -2496,6 +2498,7 @@ const translations: Record<Lang, Record<string, string>> = {
     trades_filter_date_to: "To",
     trades_filter_reset: "Reset filters",
     trades_export_csv: "Export CSV",
+    trades_filters_toggle: "Filters",
     trades_filtered_by: "Filtered · {count} trades shown",
     trades_all_accounts: "All accounts · {count} trades total",
     dash_all_accounts: "All accounts",
@@ -3029,6 +3032,7 @@ const translations: Record<Lang, Record<string, string>> = {
     sync_mt_tips_title: "Good to know",
     sync_mt_tip1: "TradeDiscipline shows net P&L (commissions and fees included); this may differ from the gross profit shown in MetaTrader.",
     sync_mt_tip2: "Sync works while MetaTrader is open on your computer.",
+    sync_mt_tip_exness: "Using Exness? Exness runs on the MetaTrader terminal (MT4 or MT5). Download MetaTrader from Exness, log in to your Exness account, then follow the exact same steps above — the Expert Advisor installs into that terminal.",
     sync_mt_modal_title: "Regenerate token?",
     sync_mt_modal_desc: "The current token will immediately become invalid. You will need to reconfigure the Expert Advisor in MetaTrader with the new token.",
 
@@ -4263,6 +4267,7 @@ const translations: Record<Lang, Record<string, string>> = {
     trades_filter_date_to: "Bis",
     trades_filter_reset: "Filter zurücksetzen",
     trades_export_csv: "CSV exportieren",
+    trades_filters_toggle: "Filter",
     trades_filtered_by: "Gefiltert · {count} Trades angezeigt",
     trades_all_accounts: "Alle Konten · {count} Trades gesamt",
     dash_all_accounts: "Alle Konten",
@@ -4796,6 +4801,7 @@ const translations: Record<Lang, Record<string, string>> = {
     sync_mt_tips_title: "Gut zu wissen",
     sync_mt_tip1: "TradeDiscipline zeigt den Netto-P&L (Provisionen und Gebühren eingeschlossen); dieser kann vom Bruttogewinn in MetaTrader abweichen.",
     sync_mt_tip2: "Die Synchronisierung funktioniert, solange MetaTrader auf deinem Computer geöffnet ist.",
+    sync_mt_tip_exness: "Exness-Konto? Exness läuft über das MetaTrader-Terminal (MT4 oder MT5). Lade MetaTrader von Exness herunter, melde dich bei deinem Exness-Konto an und folge dann genau denselben Schritten oben — der Expert Advisor wird in diesem Terminal installiert.",
     sync_mt_modal_title: "Token neu generieren?",
     sync_mt_modal_desc: "Der aktuelle Token wird sofort ungültig. Du musst den Expert Advisor in MetaTrader mit dem neuen Token neu konfigurieren.",
 
@@ -6029,6 +6035,7 @@ const translations: Record<Lang, Record<string, string>> = {
     trades_filter_date_to: "Hasta",
     trades_filter_reset: "Restablecer filtros",
     trades_export_csv: "Exportar CSV",
+    trades_filters_toggle: "Filtros",
     trades_filtered_by: "Filtrado · {count} trades mostrados",
     trades_all_accounts: "Todas las cuentas · {count} trades en total",
     dash_all_accounts: "Todas las cuentas",
@@ -6562,6 +6569,7 @@ const translations: Record<Lang, Record<string, string>> = {
     sync_mt_tips_title: "Bueno saber",
     sync_mt_tip1: "TradeDiscipline muestra el P&L neto (comisiones y gastos incluidos); este importe puede diferir del beneficio bruto mostrado por MetaTrader.",
     sync_mt_tip2: "La sincronización funciona mientras MetaTrader esté abierto en tu ordenador.",
+    sync_mt_tip_exness: "¿Cuenta Exness? Exness funciona con el terminal MetaTrader (MT4 o MT5). Descarga MetaTrader desde Exness, inicia sesión en tu cuenta Exness y sigue exactamente los mismos pasos de arriba: el Expert Advisor se instala en ese terminal.",
     sync_mt_modal_title: "¿Regenerar el token?",
     sync_mt_modal_desc: "El token actual quedará inmediatamente inválido. Deberás reconfigurar el Expert Advisor en MetaTrader con el nuevo token.",
 

@@ -589,7 +589,7 @@ export default function StrategyPage() {
   ];
 
   return (
-    <div className="max-w-6xl mx-auto pb-24">
+    <div className="max-w-6xl mx-auto pb-44 lg:pb-24">
       {toast && (
         <div className={`fixed bottom-6 right-6 z-[100] px-4 py-3 rounded-lg text-white text-sm font-medium shadow-lg ${toast.type === "success" ? "bg-green-800" : "bg-red-700"}`}>
           {toast.text}
@@ -907,7 +907,7 @@ export default function StrategyPage() {
       </div>{/* end 2-col grid */}
 
       {parsed && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center gap-3 p-4 bg-background/80 backdrop-blur-sm border-t border-border">
+        <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+3.75rem)] lg:bottom-0 left-0 right-0 z-40 flex justify-center gap-3 p-4 bg-background/80 backdrop-blur-sm border-t border-border">
           {existingId && (
             <button
               onClick={() => void openDeleteConfirm()}
