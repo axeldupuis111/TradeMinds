@@ -6,10 +6,12 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import translations, { type Lang } from "./translations";
+import { createClient } from "./supabase/client";
 
 const LOCALES: ReadonlyArray<Lang> = ["fr", "en", "de", "es"];
 const DEFAULT_LANG: Lang = "en";
@@ -100,6 +102,26 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   // Keep <html lang> in sync
   useEffect(() => {
     if (mounted) document.documentElement.lang = lang;
+  }, [mounted, lang]);
+
+  // Synchronise la langue vers profiles.language pour les utilisateurs connectés,
+  // afin que les jobs serveur (emails cron : rappel quotidien, rapport hebdo)
+  // puissent envoyer le contenu dans la langue du compte. Fire-and-forget :
+  // un échec n'impacte jamais l'UI. Le ref évite les écritures redondantes.
+  const lastSyncedLang = useRef<Lang | null>(null);
+  useEffect(() => {
+    if (!mounted || lastSyncedLang.current === lang) return;
+    lastSyncedLang.current = lang;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        await supabase.from("profiles").update({ language: lang }).eq("id", user.id);
+      } catch {
+        // Pas de session ou erreur réseau : on ignore silencieusement.
+      }
+    })();
   }, [mounted, lang]);
 
   const setLang = useCallback(
