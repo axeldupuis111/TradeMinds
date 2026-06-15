@@ -3,6 +3,7 @@
 import { AnalyticsInsightCards } from "@/components/analytics/AnalyticsInsightCards";
 import { AnalyticsKpiCards } from "@/components/analytics/AnalyticsKpiCards";
 import PeriodCompareBlock from "@/components/analytics/PeriodCompareBlock";
+import StrategyCompareBlock from "@/components/analytics/StrategyCompareBlock";
 import { AutoInsights } from "@/components/analytics/AutoInsights";
 import { DisciplineAnalyticsBlock } from "@/components/analytics/DisciplineAnalyticsBlock";
 import DrawdownBlock from "@/components/analytics/DrawdownBlock";
@@ -58,6 +59,8 @@ interface TradeRow {
   sl?: number | null;
   tp?: number | null;
   entry_price?: number | null;
+  strategy_id?: string | null;
+  ict_confluence_score?: number | null;
 }
 
 interface ViolationTrade {
@@ -188,7 +191,7 @@ export default function AnalyticsPage() {
       const [{ data: tradeData }, { data: accountData }, { data: reviewData }] = await Promise.all([
         supabase
           .from("trades")
-          .select("open_time, close_time, pnl, commission, swap, pair, direction, emotion, setup_quality, challenge_id, ict_setup, ict_entry_zone, ict_killzone, ict_checklist, sl, tp, entry_price")
+          .select("open_time, close_time, pnl, commission, swap, pair, direction, emotion, setup_quality, challenge_id, ict_setup, ict_entry_zone, ict_killzone, ict_checklist, sl, tp, entry_price, strategy_id, ict_confluence_score")
           .eq("user_id", user.id)
           .order("open_time", { ascending: true }),
         supabase
@@ -926,6 +929,11 @@ export default function AnalyticsPage() {
           {/* ── Comparaison de périodes — est-ce que je progresse ? ───── */}
           <StaggerItem>
             <PeriodCompareBlock trades={trades} accountFilter={accountFilter} period={period} />
+          </StaggerItem>
+
+          {/* ── Performance par stratégie ─────────────────────────────── */}
+          <StaggerItem>
+            <StrategyCompareBlock trades={filtered} />
           </StaggerItem>
 
           {/* ── Equity Curve — full width ─────────────────────────────── */}

@@ -299,6 +299,11 @@ export default function AnalysisPage() {
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodKey>("this_week");
   const [allTrades, setAllTrades] = useState<{ close_time: string }[]>([]);
 
+  // Autorun (?autorun=1) : déclenché après le premier import de trades pour
+  // offrir le moment « aha » sans que l'utilisateur ait à chercher le bouton.
+  const [pendingAutorun, setPendingAutorun] = useState(false);
+  const autoranRef = useRef(false);
+
   // Chat coach state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
@@ -582,6 +587,28 @@ export default function AnalysisPage() {
 
   const filteredTradeCount = getFilteredTrades(allTrades, selectedPeriod).length;
   const periodLabel = t(PERIOD_OPTIONS.find((p) => p.key === selectedPeriod)!.labelKey);
+
+  // Lecture du flag autorun au montage (window.location pour éviter le
+  // wrapping Suspense exigé par useSearchParams sur les pages statiques)
+  useEffect(() => {
+    if (autoranRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("autorun") === "1") {
+      autoranRef.current = true;
+      setSelectedPeriod("all");
+      setPendingAutorun(true);
+    }
+  }, []);
+
+  // Déclenchement une fois le plan chargé et la période appliquée
+  useEffect(() => {
+    if (!pendingAutorun || planLoading || loading) return;
+    if (!canUseAI || !hasStrategy) return; // la page affichera l'état adapté
+    if (selectedPeriod !== "all") return;
+    setPendingAutorun(false);
+    void runAnalysis();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingAutorun, planLoading, loading, canUseAI, hasStrategy, selectedPeriod]);
 
   async function runAnalysis() {
     setError(null);

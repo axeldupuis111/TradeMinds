@@ -7,20 +7,25 @@ const ALGO = "aes-256-gcm";
 const IV_LENGTH = 12;
 const TAG_LENGTH = 16;
 
-const hexKey = process.env.ENCRYPTION_KEY;
-if (!hexKey) {
-  throw new Error(
-    "Missing ENCRYPTION_KEY environment variable. " +
-      "Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
-  );
+// Resolve the key lazily (at call time, not import time) so that simply
+// importing this module never throws during `next build` when ENCRYPTION_KEY
+// is not present in the build environment. The throw still happens at runtime
+// if encrypt/decrypt is actually invoked without a valid key.
+function getKey(): Buffer {
+  const hexKey = process.env.ENCRYPTION_KEY;
+  if (!hexKey) {
+    throw new Error(
+      "Missing ENCRYPTION_KEY environment variable. " +
+        "Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
+    );
+  }
+  if (hexKey.length !== 64) {
+    throw new Error(
+      `ENCRYPTION_KEY must be exactly 64 hex characters (32 bytes). Got ${hexKey.length} characters.`
+    );
+  }
+  return Buffer.from(hexKey, "hex");
 }
-if (hexKey.length !== 64) {
-  throw new Error(
-    `ENCRYPTION_KEY must be exactly 64 hex characters (32 bytes). Got ${hexKey.length} characters.`
-  );
-}
-
-const KEY = Buffer.from(hexKey, "hex");
 
 /**
  * Encrypt a plaintext string with AES-256-GCM.
@@ -28,7 +33,7 @@ const KEY = Buffer.from(hexKey, "hex");
  */
 export function encrypt(plaintext: string): string {
   const iv = randomBytes(IV_LENGTH);
-  const cipher = createCipheriv(ALGO, KEY, iv);
+  const cipher = createCipheriv(ALGO, getKey(), iv);
   const encrypted = Buffer.concat([
     cipher.update(plaintext, "utf8"),
     cipher.final(),
@@ -58,7 +63,7 @@ export function decrypt(ciphertext: string): string {
     throw new Error(`Invalid auth tag length: expected ${TAG_LENGTH}, got ${tag.length}`);
   }
 
-  const decipher = createDecipheriv(ALGO, KEY, iv);
+  const decipher = createDecipheriv(ALGO, getKey(), iv);
   decipher.setAuthTag(tag);
   const decrypted = Buffer.concat([
     decipher.update(encrypted),

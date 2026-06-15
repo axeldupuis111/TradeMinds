@@ -1,6 +1,8 @@
 "use client";
 
 import UpgradeBanner from "@/components/UpgradeBanner";
+import SyncPlatformCard from "@/components/settings/SyncPlatformCard";
+import TradovateConnect from "@/components/settings/TradovateConnect";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { useTheme } from "@/lib/ThemeContext";
@@ -727,6 +729,46 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Additional sync platforms — premium only (reuse the universal token above) */}
+      {plan === "premium" && (
+        <>
+          <SyncPlatformCard
+            title={t("sync_ctrader_title")}
+            desc={t("sync_ctrader_desc")}
+            downloadHref="/TradeDiscipline_cTrader.cs"
+            downloadLabel="cTrader cBot (.cs)"
+            tokenNote={t("sync_uses_token_above")}
+            guideTitle={t("sync_ctrader_guide_title")}
+            steps={[
+              t("sync_ctrader_step1"),
+              t("sync_ctrader_step2"),
+              t("sync_ctrader_step3"),
+              t("sync_ctrader_step4"),
+              t("sync_ctrader_step5"),
+            ]}
+            tip={t("sync_ctrader_tip")}
+          />
+
+          <SyncPlatformCard
+            title={t("sync_ninja_title")}
+            desc={t("sync_ninja_desc")}
+            downloadHref="/TradeDiscipline_NinjaTrader.cs"
+            downloadLabel="NinjaTrader AddOn (.cs)"
+            tokenNote={t("sync_ninja_token_note")}
+            guideTitle={t("sync_ninja_guide_title")}
+            steps={[
+              t("sync_ninja_step1"),
+              t("sync_ninja_step2"),
+              t("sync_ninja_step3"),
+              t("sync_ninja_step4"),
+            ]}
+            tip={t("sync_ninja_tip")}
+          />
+
+          <TradovateConnect />
+        </>
       )}
 
       {/* Notifications */}

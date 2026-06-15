@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/lib/LanguageContext";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Plus, Sparkles, Upload, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 interface Strategy {
@@ -27,6 +28,7 @@ interface Recap {
 
 export default function TradesPage() {
   const supabase = createClient();
+  const router = useRouter();
   const { t } = useLanguage();
   const prefersReducedMotion = useReducedMotion();
   const [refreshKey, setRefreshKey] = useState(0);
@@ -112,6 +114,20 @@ export default function TradesPage() {
 
   function refresh() {
     setRefreshKey((k) => k + 1);
+  }
+
+  // Premier import = moment « aha » : si l'utilisateur n'a encore jamais
+  // lancé d'analyse IA, on l'emmène directement voir son score.
+  async function maybeAutorunFirstAnalysis() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { count } = await supabase
+      .from("session_reviews")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id);
+    if ((count ?? 0) === 0) {
+      router.push("/dashboard/analysis?autorun=1");
+    }
   }
 
   const strategyId = selectedStrategy?.id ?? null;
@@ -203,6 +219,7 @@ export default function TradesPage() {
                 onImported={() => {
                   setIsImportOpen(false);
                   refresh();
+                  void maybeAutorunFirstAnalysis();
                 }}
               />
             </div>

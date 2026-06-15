@@ -2,6 +2,7 @@
 
 import DayStatus from "@/components/DayStatus";
 import PatternAlerts from "@/components/dashboard/PatternAlerts";
+import SessionDebriefModal, { type SessionDebrief } from "@/components/session/SessionDebriefModal";
 import EmotionalCheck from "@/components/session/EmotionalCheck";
 import PositionSizer from "@/components/session/PositionSizer";
 import QuickTradeLogger from "@/components/session/QuickTradeLogger";
@@ -138,7 +139,7 @@ function AccountSelector({
 }
 
 export default function SessionPage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const supabase = createClient();
   // ── Active account (shared context — single source of truth) ──────────────
   const {
@@ -161,6 +162,10 @@ export default function SessionPage() {
   const [sessionHistory, setSessionHistory] = useState<SessionHistory[]>([]);
   const [saving, setSaving] = useState(false);
   const [ending, setEnding] = useState(false);
+  // Débrief IA de fin de session
+  const [debriefOpen, setDebriefOpen] = useState(false);
+  const [debriefLoading, setDebriefLoading] = useState(false);
+  const [debrief, setDebrief] = useState<SessionDebrief | null>(null);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [showEmptyChecklistModal, setShowEmptyChecklistModal] = useState(false);
   const [showQuickLogger, setShowQuickLogger] = useState(false);
@@ -350,18 +355,43 @@ export default function SessionPage() {
 
   async function endSession() {
     if (!activeSession) return;
+    const endedSessionId = activeSession.id;
     setEnding(true);
-    localStorage.removeItem(`session_paused_${activeSession.id}`);
+    localStorage.removeItem(`session_paused_${endedSessionId}`);
     await supabase
       .from("sessions")
       .update({ active: false, ended_at: new Date().toISOString() })
-      .eq("id", activeSession.id);
+      .eq("id", endedSessionId);
     setActiveSession(null);
     setSelectedEmotion(null);
     setCheckedItems(new Set());
     setPaused(false);
     setPausedAt(null);
     setEnding(false);
+
+    // Débrief coach IA — la rétrospective à chaud de la session
+    setDebriefOpen(true);
+    setDebriefLoading(true);
+    setDebrief(null);
+    try {
+      const resp = await fetch("/api/session-debrief", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: endedSessionId, language: lang }),
+      });
+      if (resp.ok) {
+        const { debrief: d } = await resp.json();
+        setDebrief(d);
+        // Cache local : consultable depuis l'historique des sessions
+        try {
+          localStorage.setItem(`session_debrief_${endedSessionId}`, JSON.stringify(d));
+        } catch {}
+      }
+    } catch {
+      // la modale affichera l'état d'erreur
+    } finally {
+      setDebriefLoading(false);
+    }
   }
 
   const riskyEmotion = selectedEmotion && EMOTIONS.find((e) => e.key === selectedEmotion)?.risky;
@@ -601,6 +631,15 @@ export default function SessionPage() {
 
   return (
     <div>
+      {/* Débrief IA — affiché juste après la fin de session */}
+      {debriefOpen && (
+        <SessionDebriefModal
+          debrief={debrief}
+          loading={debriefLoading}
+          onClose={() => setDebriefOpen(false)}
+        />
+      )}
+
       <h1 className="text-2xl font-bold text-foreground">{t("session_title")}</h1>
       <p className="text-muted mt-1 mb-4">{t("session_subtitle")}</p>
 
