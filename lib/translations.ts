@@ -1390,6 +1390,13 @@ const translations: Record<Lang, Record<string, string>> = {
     insights_day_4: "Vendredis",
     insights_day_5: "Samedis",
     insights_day_6: "Dimanches",
+
+    // Comparaison de stratégies (Analytics)
+    stratcmp_title: "Comparaison des stratégies",
+    stratcmp_strategy: "Stratégie",
+    stratcmp_checklist: "Checklist",
+    stratcmp_none: "Sans stratégie",
+    stratcmp_unnamed: "Sans nom",
     band_excellent: "Excellente discipline",
     band_good: "Bonne discipline",
     band_ok: "Discipline correcte, à améliorer",
@@ -3221,6 +3228,13 @@ const translations: Record<Lang, Record<string, string>> = {
     insights_day_4: "Fridays",
     insights_day_5: "Saturdays",
     insights_day_6: "Sundays",
+
+    // Strategy comparison (Analytics)
+    stratcmp_title: "Strategy comparison",
+    stratcmp_strategy: "Strategy",
+    stratcmp_checklist: "Checklist",
+    stratcmp_none: "No strategy",
+    stratcmp_unnamed: "Unnamed",
     band_excellent: "Excellent discipline",
     band_good: "Good discipline",
     band_ok: "Decent discipline, room to improve",
@@ -5051,6 +5065,13 @@ const translations: Record<Lang, Record<string, string>> = {
     insights_day_4: "Freitags",
     insights_day_5: "Samstags",
     insights_day_6: "Sonntags",
+
+    // Strategievergleich (Analytics)
+    stratcmp_title: "Strategievergleich",
+    stratcmp_strategy: "Strategie",
+    stratcmp_checklist: "Checkliste",
+    stratcmp_none: "Ohne Strategie",
+    stratcmp_unnamed: "Ohne Namen",
     band_excellent: "Ausgezeichnete Disziplin",
     band_good: "Gute Disziplin",
     band_ok: "Ordentliche Disziplin, verbesserungsfähig",
@@ -6880,6 +6901,13 @@ const translations: Record<Lang, Record<string, string>> = {
     insights_day_4: "viernes",
     insights_day_5: "sábados",
     insights_day_6: "domingos",
+
+    // Comparación de estrategias (Analytics)
+    stratcmp_title: "Comparación de estrategias",
+    stratcmp_strategy: "Estrategia",
+    stratcmp_checklist: "Checklist",
+    stratcmp_none: "Sin estrategia",
+    stratcmp_unnamed: "Sin nombre",
     band_excellent: "Excelente disciplina",
     band_good: "Buena disciplina",
     band_ok: "Disciplina correcta, mejorable",
