@@ -115,7 +115,7 @@ export function HourDayHeatmap({ trades }: Props) {
   if (bounds.totalTrades < 10) {
     return (
       <div className="text-foreground-muted text-sm py-12 text-center">
-        Pas assez de données pour la heatmap. Reviens après plus de trades.
+        {t("analytics_heatmap_empty")}
       </div>
     );
   }
@@ -272,7 +272,7 @@ export function HourDayHeatmap({ trades }: Props) {
       {/* ── Legend ───────────────────────────────────────────────────────── */}
       <div className="flex flex-col items-end gap-1 mt-3">
         <span className="text-[10px] text-foreground-muted/60 select-none">
-          P&amp;L par cellule
+          {t("analytics_pnl_per_cell")}
         </span>
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-foreground-muted tabular-nums">
