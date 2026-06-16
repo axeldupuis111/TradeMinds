@@ -32,7 +32,7 @@ export default function ExportPdfButton() {
     setGenerating(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non connecté");
+      if (!user) throw new Error(t("analysis_not_connected"));
 
       // Load data for past month
       const now = new Date();
