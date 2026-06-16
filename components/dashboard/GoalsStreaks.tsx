@@ -23,11 +23,11 @@ interface Review {
 }
 
 const BADGE_DEFS: { key: string; labelKey: string; icon: LucideIcon; condition: string; check: (ctx: BadgeContext) => boolean }[] = [
-  { key: "discipline_3",  labelKey: "badge_discipline_3",  icon: Flame,  condition: "3 jours consécutifs sans violation de règles",               check: (c) => c.streak >= 3 },
-  { key: "discipline_10", labelKey: "badge_discipline_10", icon: Trophy, condition: "10 jours consécutifs sans violation de règles",              check: (c) => c.streak >= 10 },
-  { key: "discipline_30", labelKey: "badge_discipline_30", icon: Gem,    condition: "30 jours consécutifs sans violation de règles",              check: (c) => c.streak >= 30 },
-  { key: "winrate_60",    labelKey: "badge_winrate_60",    icon: Target, condition: "Winrate supérieur à 60% sur 50+ trades",                    check: (c) => c.totalTrades >= 50 && c.winrate >= 60 },
-  { key: "score_80_month",labelKey: "badge_score_80",      icon: Star,   condition: "Score de discipline moyen ≥ 80 sur les 4 dernières analyses", check: (c) => c.avgScore >= 80 && c.reviewCount >= 4 },
+  { key: "discipline_3",  labelKey: "badge_discipline_3",  icon: Flame,  condition: "badge_cond_discipline_3",               check: (c) => c.streak >= 3 },
+  { key: "discipline_10", labelKey: "badge_discipline_10", icon: Trophy, condition: "badge_cond_discipline_10",              check: (c) => c.streak >= 10 },
+  { key: "discipline_30", labelKey: "badge_discipline_30", icon: Gem,    condition: "badge_cond_discipline_30",              check: (c) => c.streak >= 30 },
+  { key: "winrate_60",    labelKey: "badge_winrate_60",    icon: Target, condition: "badge_cond_winrate_60",                    check: (c) => c.totalTrades >= 50 && c.winrate >= 60 },
+  { key: "score_80_month",labelKey: "badge_score_80",      icon: Star,   condition: "badge_cond_score_80", check: (c) => c.avgScore >= 80 && c.reviewCount >= 4 },
 ];
 
 interface BadgeContext {
@@ -248,7 +248,7 @@ export default function GoalsStreaks() {
             return (
               <div
                 key={badge.key}
-                title={badge.condition}
+                title={t(badge.condition)}
                 className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all ${
                   unlocked
                     ? isLatest

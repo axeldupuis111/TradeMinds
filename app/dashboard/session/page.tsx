@@ -721,8 +721,8 @@ export default function SessionPage() {
 
             {strategies.length === 0 && (
               <div className="mb-4 p-3 rounded-lg bg-surface border border-border text-sm text-muted flex items-center justify-between">
-                <span>Aucune stratégie définie</span>
-                <Link href="/dashboard/strategy" className="text-accent hover:underline">Définir ma stratégie →</Link>
+                <span>{t("session_active_no_strategy")}</span>
+                <Link href="/dashboard/strategy" className="text-accent hover:underline">{t("analysis_no_strategy_cta")}</Link>
               </div>
             )}
 
@@ -846,7 +846,7 @@ export default function SessionPage() {
           {/* Session history */}
           {sessionHistory.length > 0 && (
             <section className="bg-card border border-border rounded-xl p-5">
-              <h2 className="text-base font-semibold text-foreground mb-3">📅 Historique des sessions</h2>
+              <h2 className="text-base font-semibold text-foreground mb-3">📅 {t("session_history_title")}</h2>
               <div className="space-y-2">
                 {sessionHistory.map((s) => {
                   const emotion = EMOTIONS.find((e) => e.key === s.emotion_before);
@@ -856,7 +856,7 @@ export default function SessionPage() {
                       <span className="text-lg shrink-0">{emotion?.emoji ?? "—"}</span>
                       <span className="text-sm text-foreground font-medium capitalize shrink-0">{date}</span>
                       <span className="text-xs text-muted">
-                        · Checklist : {s.checklist_completed ? <span className="text-profit">complète</span> : <span className="text-orange-400">incomplète</span>}
+                        · {t("session_checklist_label")} {s.checklist_completed ? <span className="text-profit">{t("session_complete")}</span> : <span className="text-orange-400">{t("session_incomplete")}</span>}
                       </span>
                       <span className="ml-auto shrink-0">
                         {s.pnl !== undefined ? (
@@ -878,7 +878,7 @@ export default function SessionPage() {
 
           {/* Daily quote */}
           <div className="bg-surface border border-border rounded-xl p-5">
-            <p className="text-xs text-muted uppercase tracking-wider mb-2">💡 Conseil du jour</p>
+            <p className="text-xs text-muted uppercase tracking-wider mb-2">💡 {t("session_tip_title")}</p>
             <p className="text-sm text-foreground leading-relaxed italic">&ldquo;{dailyQuote}&rdquo;</p>
           </div>
         </div>

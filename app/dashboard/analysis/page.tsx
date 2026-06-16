@@ -411,7 +411,7 @@ export default function AnalysisPage() {
     try {
       // Build trades context
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non connecté");
+      if (!user) throw new Error(t("analysis_not_connected"));
 
       const [{ data: trades }, { data: strategy }] = await Promise.all([
         supabase
@@ -509,7 +509,7 @@ export default function AnalysisPage() {
         .update({ daily_chat_count: newCount, daily_chat_reset: today })
         .eq("id", user.id);
     } catch (err) {
-      setChatMessages([...newMessages, { role: "assistant", content: `Erreur : ${err instanceof Error ? err.message : "Erreur inconnue"}` }]);
+      setChatMessages([...newMessages, { role: "assistant", content: `${t("analysis_error_prefix")} : ${err instanceof Error ? err.message : t("analysis_unknown_error")}` }]);
     } finally {
       setChatLoading(false);
     }
@@ -621,7 +621,7 @@ export default function AnalysisPage() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non connecté.");
+      if (!user) throw new Error(t("analysis_not_connected"));
 
       const [{ data: strategy }, { data: trades }] = await Promise.all([
         supabase
@@ -637,8 +637,8 @@ export default function AnalysisPage() {
           .order("open_time", { ascending: true }),
       ]);
 
-      if (!strategy) throw new Error("Aucune stratégie définie.");
-      if (!trades || trades.length === 0) throw new Error("Aucun trade à analyser.");
+      if (!strategy) throw new Error(t("session_active_no_strategy"));
+      if (!trades || trades.length === 0) throw new Error(t("analysis_no_trades_to_analyze"));
 
       const filteredTrades = getFilteredTrades(trades, selectedPeriod);
       if (filteredTrades.length === 0) throw new Error(t("period_no_trades"));
@@ -688,7 +688,7 @@ export default function AnalysisPage() {
       // Refresh plan state — server already incremented the quota
       await refreshPlan();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Erreur inconnue");
+      setError(err instanceof Error ? err.message : t("analysis_unknown_error"));
     } finally {
       setLoading(false);
     }
@@ -1097,7 +1097,7 @@ export default function AnalysisPage() {
             <span className="text-loss text-xl shrink-0">❌</span>
             <div>
               <p className="text-sm font-semibold text-loss">{error}</p>
-              <button onClick={() => setError(null)} className="text-xs text-muted hover:text-foreground mt-1">{t("analysis_dismiss") || "Fermer"}</button>
+              <button onClick={() => setError(null)} className="text-xs text-muted hover:text-foreground mt-1">{t("detail_close")}</button>
             </div>
           </div>
         )}
