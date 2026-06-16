@@ -19,6 +19,7 @@ import {
   KILLZONE_LABELS,
 } from "@/lib/strategy/derive";
 import { useChartColors } from "@/lib/useChartColors";
+import { useLanguage } from "@/lib/LanguageContext";
 import type { ChecklistItem } from "@/lib/hooks/useStrategyTags";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -45,6 +46,7 @@ function netPnl(tr: TradeRow): number {
 // ── Zone A — Conformité moyenne ───────────────────────────────────────────────
 
 function ZoneA({ trades, checklistTotal }: { trades: TradeRow[]; checklistTotal: number }) {
+  const { t } = useLanguage();
   const { avgScore, distribution } = useMemo(() => {
     const tradesWithChecklist = trades.filter((t) => t.ict_checklist != null);
     if (tradesWithChecklist.length === 0) return { avgScore: null, distribution: [] };
@@ -64,8 +66,8 @@ function ZoneA({ trades, checklistTotal }: { trades: TradeRow[]; checklistTotal:
   if (avgScore === null) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
-        <p className="text-sm text-foreground-muted">Aucune checklist remplie.</p>
-        <p className="text-xs text-foreground-muted/70">Coche tes critères dans Mes Trades pour débloquer cette analyse.</p>
+        <p className="text-sm text-foreground-muted">{t("da_no_checklist")}</p>
+        <p className="text-xs text-foreground-muted/70">{t("da_no_checklist_hint")}</p>
       </div>
     );
   }
@@ -76,9 +78,9 @@ function ZoneA({ trades, checklistTotal }: { trades: TradeRow[]; checklistTotal:
     "text-loss";
 
   const sentiment =
-    avgScore >= 5 ? "Excellente discipline d'entrée 💪" :
-    avgScore >= 3 ? "Discipline correcte, encore progressable" :
-    "⚠️ Tes entrées manquent de critères confirmés";
+    avgScore >= 5 ? t("da_sentiment_good") :
+    avgScore >= 3 ? t("da_sentiment_ok") :
+    t("da_sentiment_bad");
 
   const maxCount = Math.max(...distribution.map((d) => d.count), 1);
 
@@ -86,7 +88,7 @@ function ZoneA({ trades, checklistTotal }: { trades: TradeRow[]; checklistTotal:
     <div className="space-y-4">
       <div>
         <p className="text-[10px] font-semibold uppercase text-foreground-muted tracking-widest mb-2">
-          Score moyen de conformité
+          {t("da_avg_score")}
         </p>
         <p className={`text-3xl font-black tabular-nums leading-none ${scoreColor}`}>
           {avgScore.toFixed(1)}
@@ -97,7 +99,7 @@ function ZoneA({ trades, checklistTotal }: { trades: TradeRow[]; checklistTotal:
 
       {/* Mini histogram */}
       <div>
-        <p className="text-[10px] text-foreground-muted/60 mb-2">Distribution des scores</p>
+        <p className="text-[10px] text-foreground-muted/60 mb-2">{t("da_score_dist")}</p>
         <div className="flex items-end gap-1 h-12">
           {distribution.map((d) => (
             <div key={d.score} className="flex-1 flex flex-col items-center gap-0.5">
@@ -142,8 +144,8 @@ function ZoneB({
 }: {
   trades: TradeRow[];
   checklistItems: ChecklistItem[];
-  lang: string;
 }) {
+  const { t, lang } = useLanguage();
   const stats = useMemo((): CriterionStat[] => {
     const tradesWithChecklist = trades.filter((t) => t.ict_checklist != null);
     if (tradesWithChecklist.length === 0) return [];
@@ -163,7 +165,7 @@ function ZoneB({
 
       results.push({
         key: item.key,
-        label: item.label["fr"] ?? item.key,
+        label: item.label[lang] ?? item.label["fr"] ?? item.key,
         wrWith,
         wrWithout,
         delta,
@@ -174,15 +176,15 @@ function ZoneB({
     }
 
     return results.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta)).slice(0, 3);
-  }, [trades, checklistItems]);
+  }, [trades, checklistItems, lang]);
 
   if (checklistItems.length === 0) return null;
 
   if (stats.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
-        <p className="text-sm text-foreground-muted">Pas encore assez de données par critère.</p>
-        <p className="text-xs text-foreground-muted/70">Continue à logger ta checklist — il faut au moins 5 trades cochés et 5 non cochés par critère.</p>
+        <p className="text-sm text-foreground-muted">{t("da_not_enough_criteria")}</p>
+        <p className="text-xs text-foreground-muted/70">{t("da_not_enough_criteria_hint")}</p>
       </div>
     );
   }
@@ -190,12 +192,12 @@ function ZoneB({
   return (
     <div className="space-y-4">
       <p className="text-[10px] font-semibold uppercase text-foreground-muted tracking-widest">
-        Top critères impactants
+        {t("da_top_criteria")}
       </p>
       {stats.map((s) => (
         <div key={s.key} className="space-y-0.5">
           <p className="text-xs text-foreground-muted">
-            Quand tu coches{" "}
+            {t("da_when_you_check")}{" "}
             <span className="font-semibold text-foreground">{s.label}</span>
           </p>
           <div className="flex items-center gap-2 flex-wrap">
@@ -203,14 +205,14 @@ function ZoneB({
               WR {s.wrWith}%
             </span>
             <span className="text-xs text-foreground-muted">
-              (vs {s.wrWithout}% sinon)
+              {t("da_vs_without").replace("{wr}", String(s.wrWithout))}
             </span>
             <span className={`text-xs ${s.delta > 0 ? "text-profit" : "text-loss"} flex items-center gap-0.5`}>
               {s.delta > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
               {s.delta > 0 ? "+" : ""}{s.delta} pts
             </span>
             <span className="text-xs text-foreground-muted">
-              · P&L moy.{" "}
+              · {t("da_pnl_avg")}{" "}
               <span className={s.pnlAvgWith >= 0 ? "text-profit font-medium" : "text-loss font-medium"}>
                 {s.pnlAvgWith >= 0 ? "+" : ""}{s.pnlAvgWith.toFixed(0)}&nbsp;€
               </span>
@@ -228,6 +230,7 @@ const KZ_ORDER = ["london_open", "ny_am", "ny_pm", "asia", "off_session"];
 
 function ZoneC({ trades }: { trades: TradeRow[] }) {
   const c = useChartColors();
+  const { t } = useLanguage();
 
   const data = useMemo(() => {
     const map: Record<string, { pnl: number; count: number; wins: number }> = {};
@@ -246,12 +249,12 @@ function ZoneC({ trades }: { trades: TradeRow[] }) {
       .filter((kz) => map[kz].count > 0)
       .map((kz) => ({
         kz,
-        label: KILLZONE_LABELS[kz] ?? kz,
+        label: t(`da_kz_${kz}`) || KILLZONE_LABELS[kz] || kz,
         pnl: Number(map[kz].pnl.toFixed(2)),
         count: map[kz].count,
         winrate: Math.round((map[kz].wins / map[kz].count) * 100),
       }));
-  }, [trades]);
+  }, [trades, t]);
 
   const tooltipStyle: React.CSSProperties = {
     backgroundColor: c.tooltipBg || "rgb(var(--card))",
@@ -265,7 +268,7 @@ function ZoneC({ trades }: { trades: TradeRow[] }) {
   if (data.length === 0) {
     return (
       <p className="text-xs text-foreground-muted py-4 text-center">
-        Aucune killzone détectée sur tes trades.
+        {t("da_no_killzone")}
       </p>
     );
   }
@@ -335,6 +338,7 @@ const DURATION_META = {
 type DurationKey = keyof typeof DURATION_META;
 
 function ZoneD({ trades }: { trades: TradeRow[] }) {
+  const { t } = useLanguage();
   const stats = useMemo(() => {
     const map: Record<DurationKey, { count: number; wins: number; pnl: number }> = {
       scalp: { count: 0, wins: 0, pnl: 0 },
@@ -389,7 +393,7 @@ function ZoneD({ trades }: { trades: TradeRow[] }) {
               WR {wr}%
               <br />
               <span className={pnlAvg >= 0 ? "text-profit" : "text-loss"}>
-                {pnlAvg >= 0 ? "+" : ""}{pnlAvg.toFixed(0)}&nbsp;€ moy.
+                {pnlAvg >= 0 ? "+" : ""}{pnlAvg.toFixed(0)}&nbsp;€ {t("da_avg_suffix")}
               </span>
             </p>
           </div>
@@ -405,6 +409,7 @@ export function DisciplineAnalyticsBlock({
   trades,
   checklistItems,
 }: Props) {
+  const { t } = useLanguage();
   // ── Derived conditions ────────────────────────────────────────────────────
   const hasEnoughTrades = trades.length >= 10;
   const tradesWithChecklist = useMemo(
@@ -440,21 +445,19 @@ export function DisciplineAnalyticsBlock({
     return (
       <KpiCardPremium layout="full" accentColor="cyan">
         <CardHeader>
-          <CardTitle>Analytics par discipline</CardTitle>
+          <CardTitle>{t("da_title")}</CardTitle>
           <p className="text-xs text-foreground-muted mt-1">
-            Performance corrélée à ta discipline et tes patterns d&apos;exécution
+            {t("da_subtitle")}
           </p>
         </CardHeader>
         <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
           <p className="text-sm text-foreground-muted">
-            Continue à trader pour débloquer ton analyse par discipline.
+            {t("da_empty")}
           </p>
           <p className="text-xs text-foreground-muted/70">
-            Encore{" "}
-            <span className="text-foreground font-semibold tabular-nums">
-              {10 - trades.length}
-            </span>{" "}
-            trades nécessaires ({trades.length}/10)
+            {t("da_trades_needed")
+              .replace("{n}", String(10 - trades.length))
+              .replace("{have}", String(trades.length))}
           </p>
         </div>
       </KpiCardPremium>
@@ -464,12 +467,12 @@ export function DisciplineAnalyticsBlock({
   return (
     <KpiCardPremium layout="full" accentColor="cyan">
       <CardHeader>
-        <CardTitle>Analytics par discipline</CardTitle>
+        <CardTitle>{t("da_title")}</CardTitle>
         <p className="text-xs text-foreground-muted mt-1">
-          Performance corrélée à ta discipline et tes patterns d&apos;exécution
+          {t("da_subtitle")}
           {durationSublabel && (
             <span className="ml-1 text-foreground-muted/60">
-              · Toute la performance concerne du {durationSublabel}
+              · {t("da_all_duration").replace("{dur}", durationSublabel)}
             </span>
           )}
         </p>
@@ -488,7 +491,6 @@ export function DisciplineAnalyticsBlock({
             <ZoneB
               trades={trades}
               checklistItems={checklistItems}
-              lang="fr"
             />
           </div>
         )}
@@ -498,7 +500,7 @@ export function DisciplineAnalyticsBlock({
           <p
             className="text-[10px] font-semibold uppercase text-foreground-muted tracking-widest mb-3"
           >
-            Performance par killzone
+            {t("da_perf_killzone")}
           </p>
           <ZoneC trades={trades} />
         </div>
@@ -509,7 +511,7 @@ export function DisciplineAnalyticsBlock({
             <p
               className="text-[10px] font-semibold uppercase text-foreground-muted tracking-widest mb-3"
             >
-              Performance par durée
+              {t("da_perf_duration")}
             </p>
             <ZoneD trades={trades} />
           </div>
