@@ -38,7 +38,8 @@ export function AnalyticsKpiCards({
   avgWin,
   avgLoss,
 }: AnalyticsKpiCardsProps) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const dateLocale = ({ fr: "fr-FR", en: "en-US", de: "de-DE", es: "es-ES" } as const)[lang] ?? "en-US";
 
   const pnlDiff    = prevKpis ? totalPnl - prevKpis.totalPnl : null;
   const wrDiff     = prevKpis ? winrate - prevKpis.winrate : null;
@@ -135,7 +136,7 @@ export function AnalyticsKpiCards({
           trend="up"
           sublabel={
             bestTrade?.date
-              ? new Date(bestTrade.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })
+              ? new Date(bestTrade.date).toLocaleDateString(dateLocale, { day: "2-digit", month: "2-digit" })
               : undefined
           }
         />
@@ -149,7 +150,7 @@ export function AnalyticsKpiCards({
           trend="down"
           sublabel={
             worstTrade?.date
-              ? new Date(worstTrade.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })
+              ? new Date(worstTrade.date).toLocaleDateString(dateLocale, { day: "2-digit", month: "2-digit" })
               : undefined
           }
         />
@@ -186,7 +187,7 @@ export function AnalyticsKpiCards({
           {expectancy !== null && (
             <div className="flex flex-col gap-0.5">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-foreground-muted">Espérance</span>
+                <span className="text-foreground-muted">{t("analytics_expectancy")}</span>
                 <span
                   className={
                     expectancy >= 0 ? "text-profit font-semibold tabular-nums" : "text-loss font-semibold tabular-nums"
@@ -198,10 +199,10 @@ export function AnalyticsKpiCards({
               </div>
               {projection !== null && (
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-foreground-muted/70">Proj. 100&nbsp;trades</span>
+                  <span className="text-foreground-muted/70">{t("analytics_proj100")}</span>
                   <span className="text-foreground-muted tabular-nums">
                     {projection >= 0 ? "+" : ""}
-                    {projection.toLocaleString("fr-FR")}&nbsp;€
+                    {projection.toLocaleString(dateLocale)}&nbsp;€
                   </span>
                 </div>
               )}
