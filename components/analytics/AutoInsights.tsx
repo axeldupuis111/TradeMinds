@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { generateInsights, type Insight } from "@/lib/analytics/insights";
 import type { AnalyticsTrade } from "@/lib/analytics/types";
+import { useLanguage } from "@/lib/LanguageContext";
 import { cn } from "@/lib/cn";
 
 type Props = { trades: AnalyticsTrade[] };
@@ -92,15 +93,15 @@ function InsightRow({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function AutoInsights({ trades }: Props) {
+  const { t } = useLanguage();
   const reduced = useReducedMotion();
-  const insights = useMemo(() => generateInsights(trades), [trades]);
+  const insights = useMemo(() => generateInsights(trades, t), [trades, t]);
 
   if (insights.length === 0) {
     return (
       <div className="flex items-center justify-center py-8 px-2">
         <p className="text-foreground-muted text-sm text-center leading-relaxed">
-          Pas assez de données pour générer des insights. Continue à trader pour
-          débloquer ton analyse comportementale.
+          {t("insights_empty")}
         </p>
       </div>
     );
