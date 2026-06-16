@@ -9,6 +9,7 @@ import QuickTradeLogger from "@/components/session/QuickTradeLogger";
 import RealTimeGuards from "@/components/session/RealTimeGuards";
 import { useActiveAccount, type ActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
+import { dailyQuotes } from "@/lib/translations";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -27,15 +28,6 @@ const DEFAULT_CHECKLIST = [
   "pretrade_default_4",
 ];
 
-const DAILY_QUOTES = [
-  "Le meilleur trade est souvent celui que tu ne prends pas.",
-  "La discipline bat le talent quand le talent manque de discipline.",
-  "Un trader rentable ne cherche pas à avoir raison, il cherche à perdre peu.",
-  "La patience est la compétence la plus sous-estimée en trading.",
-  "Protège ton capital d'abord. Les profits viennent d'eux-mêmes.",
-  "Respecter son plan, c'est respecter son futur.",
-  "Le marché est là chaque jour. Ta discipline, elle, se construit maintenant.",
-];
 
 interface Strategy {
   id: string;
@@ -78,7 +70,6 @@ const EMOTIONS = [
   { key: "revenge", emoji: "\u{1F621}", risky: true },
 ];
 
-const dailyQuote = DAILY_QUOTES[new Date().getDay() % DAILY_QUOTES.length];
 
 // ── Account selector (inline pure UI component) ─────────────────────────────
 function accountLabel(a: ActiveAccount): string {
@@ -140,6 +131,8 @@ function AccountSelector({
 
 export default function SessionPage() {
   const { t, lang } = useLanguage();
+  const quotesForLang = dailyQuotes[lang] ?? dailyQuotes.en;
+  const dailyQuote = quotesForLang[new Date().getDay() % quotesForLang.length];
   const supabase = createClient();
   // ── Active account (shared context — single source of truth) ──────────────
   const {
