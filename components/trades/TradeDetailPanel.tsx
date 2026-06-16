@@ -449,7 +449,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
           <h2 className="text-lg font-semibold text-foreground">{t("detail_title")}</h2>
           <button
             onClick={onClose}
-            aria-label="Fermer"
+            aria-label={t("detail_close")}
             className="p-1.5 text-foreground/70 hover:text-foreground transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -467,8 +467,8 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
                 <button
                   onClick={() => void handleNavigate("prev")}
                   disabled={!hasPrev}
-                  aria-label="Trade précédent"
-                  title="Trade précédent (↑)"
+                  aria-label={t("detail_prev_trade")}
+                  title={`${t("detail_prev_trade")} (↑)`}
                   className="p-1.5 bg-surface border border-border rounded-md text-foreground transition-colors hover:border-accent hover:text-accent disabled:opacity-40 disabled:cursor-not-allowed motion-reduce:transition-none"
                 >
                   <ChevronUp className="w-[18px] h-[18px]" />
@@ -481,8 +481,8 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
                 <button
                   onClick={() => void handleNavigate("next")}
                   disabled={!hasNext}
-                  aria-label="Trade suivant"
-                  title="Trade suivant (↓)"
+                  aria-label={t("detail_next_trade")}
+                  title={`${t("detail_next_trade")} (↓)`}
                   className="p-1.5 bg-surface border border-border rounded-md text-foreground transition-colors hover:border-accent hover:text-accent disabled:opacity-40 disabled:cursor-not-allowed motion-reduce:transition-none"
                 >
                   <ChevronDown className="w-[18px] h-[18px]" />
@@ -624,7 +624,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
           {!isFree && userStrategies && userStrategies.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                Stratégie
+                {t("stratcmp_strategy")}
                 <SavedIndicator visible={savedField === "strategy_id"} />
               </label>
               <select
@@ -632,9 +632,9 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
                 onChange={(e) => void handleStrategyChange(e.target.value)}
                 className={selectClass}
               >
-                <option value="">— Sans stratégie</option>
+                <option value="">— {t("stratcmp_none")}</option>
                 {userStrategies.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name?.trim() || "Stratégie sans nom"}</option>
+                  <option key={s.id} value={s.id}>{s.name?.trim() || t("stratcmp_unnamed")}</option>
                 ))}
               </select>
             </div>
@@ -721,7 +721,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
               >
                 <span className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-accent" />
-                  <span>Détails dérivés</span>
+                  <span>{t("detail_derived")}</span>
                 </span>
                 <ChevronDown
                   className={`w-4 h-4 transition-transform duration-200 ${derivedDetailsOpen ? "rotate-180" : ""}`}
@@ -730,9 +730,9 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
               {derivedDetailsOpen && (
                 <div className="px-4 pb-4 space-y-2 text-xs">
                   <div className="flex justify-between items-baseline">
-                    <span className="text-muted">Setup détecté :</span>
+                    <span className="text-muted">{t("detail_setup_detected")}</span>
                     <span className={`font-medium ${derivedSetupLabel ? "text-foreground" : "text-muted italic"}`}>
-                      {derivedSetupLabel ?? "Aucun setup matché"}
+                      {derivedSetupLabel ?? t("detail_no_setup")}
                     </span>
                   </div>
                   <div className="flex justify-between items-baseline">
@@ -740,7 +740,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
                     <span className="text-foreground font-medium">{derivedKillzone}</span>
                   </div>
                   <div className="flex justify-between items-baseline">
-                    <span className="text-muted">Durée :</span>
+                    <span className="text-muted">{t("detail_duration")}</span>
                     <span className="text-foreground font-medium">
                       {durationCategoryLabel[durationCategory]}
                       {durationMinutes > 0 && (
@@ -749,13 +749,13 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
                     </span>
                   </div>
                   <div className="flex justify-between items-baseline">
-                    <span className="text-muted">Score conformité :</span>
+                    <span className="text-muted">{t("detail_compliance")}</span>
                     <span className="text-foreground font-medium tabular-nums">
                       {confluenceScore}/{checklistTotal}
                     </span>
                   </div>
                   <p className="text-[10px] text-muted italic mt-2">
-                    Détecté automatiquement depuis ta checklist et l&apos;heure d&apos;ouverture du trade.
+                    {t("detail_auto_detected")}
                   </p>
                 </div>
               )}
