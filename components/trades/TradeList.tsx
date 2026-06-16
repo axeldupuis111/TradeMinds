@@ -66,7 +66,8 @@ const KILLZONE_STYLES: Record<string, string> = {
 };
 
 function KillzonePill({ kz }: { kz: string }) {
-  const label = KILLZONE_LABELS[kz] ?? kz;
+  const { t } = useLanguage();
+  const label = KILLZONE_LABELS[kz] ? t(`da_kz_${kz}`) : kz;
   const style = KILLZONE_STYLES[kz] ?? "bg-muted/10 text-muted border-border";
   return (
     <span className={`inline-flex px-2 py-0.5 rounded-md text-xs border whitespace-nowrap ${style}`}>
