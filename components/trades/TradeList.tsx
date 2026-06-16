@@ -649,13 +649,13 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
               <tr className="bg-surface text-muted text-left">
                 <th className="px-3 py-2 w-8"><div className="skeleton h-4 w-4 rounded" /></th>
                 <th className="px-3 py-2 font-medium">Date</th>
-                <th className="px-3 py-2 font-medium">Paire</th>
+                <th className="px-3 py-2 font-medium">{t("trades_col_pair")}</th>
                 <th className="px-3 py-2 font-medium">Dir.</th>
                 <th className="px-3 py-2 font-medium">P&amp;L</th>
-                <th className="px-3 py-2 font-medium">Émotion</th>
+                <th className="px-3 py-2 font-medium">{t("ict_emotion")}</th>
                 <th className="px-3 py-2 font-medium">Discipline</th>
                 <th className="px-3 py-2 font-medium">Killzone</th>
-                <th className="px-3 py-2 font-medium text-muted">Durée</th>
+                <th className="px-3 py-2 font-medium text-muted">{t("trades_col_duration")}</th>
                 <th className="px-3 py-2 w-8"></th>
               </tr>
             </thead>
@@ -694,13 +694,13 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
                     />
                   </th>
                   <SortableTh column="date"       label="Date"       sort={sort} onSort={handleSortClick} />
-                  <SortableTh column="pair"       label="Paire"      sort={sort} onSort={handleSortClick} />
+                  <SortableTh column="pair"       label={t("trades_col_pair")} sort={sort} onSort={handleSortClick} />
                   <SortableTh column="direction"  label="Dir."       sort={sort} onSort={handleSortClick} />
                   <SortableTh column="pnl"        label="P&L"        sort={sort} onSort={handleSortClick} />
-                  <SortableTh column="emotion"    label="Émotion"    sort={sort} onSort={handleSortClick} />
+                  <SortableTh column="emotion"    label={t("ict_emotion")} sort={sort} onSort={handleSortClick} />
                   <SortableTh column="discipline" label="Discipline" sort={sort} onSort={handleSortClick} />
                   <SortableTh column="killzone"   label="Killzone"   sort={sort} onSort={handleSortClick} />
-                  <th className="px-3 py-2 font-medium text-muted">Durée</th>
+                  <th className="px-3 py-2 font-medium text-muted">{t("trades_col_duration")}</th>
                   <th className="px-3 py-2 w-8"></th>
                 </tr>
               </thead>
