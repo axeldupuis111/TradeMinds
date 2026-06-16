@@ -142,7 +142,8 @@ function RoundedBar({
 }
 
 export default function AnalyticsPage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const dateLocale = ({ fr: "fr-FR", en: "en-US", de: "de-DE", es: "es-ES" } as const)[lang] ?? "en-US";
   const c = useChartColors();
   const supabase = createClient();
   const stratTags = useStrategyTags();
@@ -657,15 +658,19 @@ export default function AnalyticsPage() {
           const last  = dates[dates.length - 1];
           const diffDays = Math.round((new Date(last).getTime() - new Date(first).getTime()) / 86_400_000);
           const duration = diffDays > 60
-            ? `${Math.round(diffDays / 30)} mois`
+            ? `${Math.round(diffDays / 30)} ${t("analytics_unit_months")}`
             : diffDays > 14
-              ? `${Math.round(diffDays / 7)} semaines`
-              : `${diffDays} jours`;
+              ? `${Math.round(diffDays / 7)} ${t("analytics_unit_weeks")}`
+              : `${diffDays} ${t("analytics_unit_days")}`;
           const fmt = (d: string) =>
-            new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+            new Date(d).toLocaleDateString(dateLocale, { day: "2-digit", month: "2-digit", year: "2-digit" });
           return (
             <p className="text-xs text-foreground-muted mt-1">
-              {filtered.length} trades · du {fmt(first)} au {fmt(last)} · {duration}
+              {t("analytics_daterange")
+                .replace("{count}", String(filtered.length))
+                .replace("{from}", fmt(first))
+                .replace("{to}", fmt(last))
+                .replace("{dur}", duration)}
             </p>
           );
         })()}
@@ -678,7 +683,7 @@ export default function AnalyticsPage() {
         <div className="flex items-center gap-0.5 bg-card/60 rounded-lg p-0.5 border border-border/50">
           {(["7d", "30d", "90d", "all"] as Period[]).map((p) => (
             <button key={p} onClick={() => setPeriod(p)} className={periodPillClass(p)}>
-              {p === "7d" ? "7j" : p === "30d" ? "30j" : p === "90d" ? "90j" : "Tout"}
+              {p === "7d" ? t("analytics_period_7d") : p === "30d" ? t("analytics_period_30d") : p === "90d" ? t("analytics_period_90d") : t("analytics_all")}
             </button>
           ))}
           <button onClick={() => setPeriod("custom")} className={periodPillClass("custom")}>
@@ -747,7 +752,7 @@ export default function AnalyticsPage() {
           )}
         >
           <Filter className="w-3.5 h-3.5" />
-          Filtres avancés
+          {t("analytics_advanced_filters")}
           {hasAdvancedFilters && <span className="w-1.5 h-1.5 rounded-full bg-accent" />}
         </button>
 
@@ -776,10 +781,10 @@ export default function AnalyticsPage() {
             className="fixed top-0 right-0 z-50 h-full w-80 bg-card border-l border-border shadow-2xl flex flex-col"
             role="dialog"
             aria-modal="true"
-            aria-label="Filtres avancés"
+            aria-label={t("analytics_advanced_filters")}
           >
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-              <h3 className="text-sm font-bold text-foreground">Filtres avancés</h3>
+              <h3 className="text-sm font-bold text-foreground">{t("analytics_advanced_filters")}</h3>
               <button
                 onClick={() => setShowAdvancedFilters(false)}
                 className="p-1 rounded hover:bg-border/40 transition-colors"
@@ -792,7 +797,7 @@ export default function AnalyticsPage() {
               {/* Paires */}
               {availablePairs.length > 0 && (
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-foreground-muted mb-2">Paires</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-foreground-muted mb-2">{t("analytics_filter_pairs")}</p>
                   <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
                     {availablePairs.map((pair) => (
                       <label key={pair} className="flex items-center gap-2 cursor-pointer group">
@@ -837,7 +842,7 @@ export default function AnalyticsPage() {
 
               {/* Win/Loss filter */}
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-foreground-muted mb-2">Résultat</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-foreground-muted mb-2">{t("analytics_filter_result")}</p>
                 <div className="flex items-center gap-0.5 bg-surface rounded-lg p-0.5 border border-border/50">
                   {(["all", "win", "loss"] as const).map((wl) => (
                     <button
@@ -850,7 +855,7 @@ export default function AnalyticsPage() {
                           : "text-foreground-muted hover:text-foreground"
                       )}
                     >
-                      {wl === "all" ? "Tout" : wl === "win" ? "Win" : "Loss"}
+                      {wl === "all" ? t("analytics_all") : wl === "win" ? "Win" : "Loss"}
                     </button>
                   ))}
                 </div>
@@ -871,7 +876,7 @@ export default function AnalyticsPage() {
                 }}
                 className="flex-1 py-2 px-4 rounded-lg text-sm text-foreground-muted border border-border hover:bg-border/30 transition-colors"
               >
-                Réinitialiser
+                {t("analytics_reset")}
               </button>
               <button
                 onClick={() => {
@@ -883,7 +888,7 @@ export default function AnalyticsPage() {
                 }}
                 className="flex-1 py-2 px-4 rounded-lg text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
               >
-                Appliquer
+                {t("analytics_apply")}
               </button>
             </div>
           </motion.aside>
@@ -986,7 +991,7 @@ export default function AnalyticsPage() {
               {/* Heatmap — 2/3 width */}
               <KpiCardPremium layout="full" accentColor="violet" className="lg:col-span-2">
                 <CardHeader>
-                  <CardTitle>Tes patterns de trading</CardTitle>
+                  <CardTitle>{t("analytics_patterns")}</CardTitle>
                 </CardHeader>
                 <HourDayHeatmap trades={filtered} />
               </KpiCardPremium>
@@ -994,7 +999,7 @@ export default function AnalyticsPage() {
               {/* Auto-insights — 1/3 width */}
               <KpiCardPremium layout="full" accentColor="cyan">
                 <CardHeader>
-                  <CardTitle>Ce qu&apos;on remarque</CardTitle>
+                  <CardTitle>{t("analytics_what_we_notice")}</CardTitle>
                 </CardHeader>
                 <AutoInsights trades={filtered} />
               </KpiCardPremium>

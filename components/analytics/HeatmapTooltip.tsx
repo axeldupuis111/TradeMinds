@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { useLanguage } from "@/lib/LanguageContext";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 // `visible` est géré côté HourDayHeatmap via rendu conditionnel ; le tooltip
@@ -42,6 +43,7 @@ export function HeatmapTooltip({
   pnl,
   winRate,
 }: HeatmapTooltipProps) {
+  const { t } = useLanguage();
   // Fade-in au montage : opacity 0 → 1 après le premier paint.
   // Le fade-out n'est pas nécessaire car le composant est démonté immédiatement.
   const [opacity, setOpacity] = useState(0);
@@ -91,7 +93,7 @@ export function HeatmapTooltip({
       {/* Body */}
       {trades === 0 ? (
         <p style={{ fontSize: 11, color: "rgb(var(--foreground-muted))" }}>
-          Aucun trade
+          {t("analytics_no_trade")}
         </p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
