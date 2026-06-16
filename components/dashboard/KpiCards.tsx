@@ -153,6 +153,9 @@ export function KpiCards({
         // fallback holds absolute balances (~100k €) → anchor at the series min
         // so it renders as a curve instead of a full-height block.
         baseline={usingTodayPnl ? "zero" : "auto"}
+        // The equity fallback is recent context, not today's result — render it
+        // in a neutral tone so it doesn't read as a P&L gain/loss for the day.
+        color={usingTodayPnl ? undefined : "rgb(var(--foreground-muted))"}
       />
     ) : (
       <p className="text-[10px] text-foreground-subtle italic leading-snug">
