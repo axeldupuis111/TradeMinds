@@ -140,13 +140,13 @@ export default function EmotionalTrendChart() {
         <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
           <Brain className="w-12 h-12 text-foreground-muted opacity-30 mb-4" />
           <p className="text-sm font-medium text-foreground mb-2">
-            Continue à logger tes émotions
+            {t("emotional_empty_title")}
           </p>
           <p className="text-xs text-foreground-muted max-w-md">
-            Encore {remaining} trade{remaining > 1 ? "s" : ""} avec émotion enregistrée pour débloquer ta tendance émotionnelle.
+            {t("emotional_empty_desc").replace("{n}", String(remaining))}
           </p>
           <p className="text-xs text-foreground-muted mt-1">
-            Progression : {tradesWithEmotion}/{EMOTION_THRESHOLD}
+            {t("emotional_progress").replace("{done}", String(tradesWithEmotion)).replace("{total}", String(EMOTION_THRESHOLD))}
           </p>
         </div>
       </Card>

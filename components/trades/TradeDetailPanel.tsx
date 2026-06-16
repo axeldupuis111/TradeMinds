@@ -7,7 +7,7 @@ import {
   deriveSetupFromChecklist,
   deriveTradeDuration,
   formatDuration,
-  killzoneLabel,
+  detectKillzone,
 } from "@/lib/strategy/derive";
 import { useStrategyTags } from "@/lib/hooks/useStrategyTags";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -433,7 +433,8 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
     derivedSetupValue
       ? (stratTags.setups.find((s) => s.value === derivedSetupValue)?.label[lang as Lang] ?? derivedSetupValue)
       : null;
-  const derivedKillzone = trade.open_time ? killzoneLabel(trade.open_time) : "—";
+  const derivedKzKey = trade.open_time ? detectKillzone(trade.open_time) : "";
+  const derivedKillzone = derivedKzKey ? t(`da_kz_${derivedKzKey}`) : "—";
   const { category: durationCategory, minutes: durationMinutes } = trade.open_time && trade.close_time
     ? deriveTradeDuration(trade.open_time, trade.close_time)
     : { category: "scalp" as const, minutes: 0 };
