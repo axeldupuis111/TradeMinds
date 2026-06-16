@@ -138,7 +138,7 @@ export default function TradesPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Mes Trades</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("trades_title")}</h1>
           {recap && (
             <p className="text-sm text-muted mt-1">
               {recap.count} trades · WR {recap.wr.toFixed(1)}% · P&amp;L{" "}
@@ -164,14 +164,14 @@ export default function TradesPage() {
             className="px-3 py-2 rounded-md border border-border text-sm text-muted hover:text-foreground hover:bg-card transition-colors flex items-center gap-2"
           >
             <Upload className="w-4 h-4" />
-            Importer CSV
+            {t("trades_import_csv")}
           </button>
           <button
             onClick={() => setShowModal(true)}
             className="px-3 py-2 rounded-md bg-accent text-white text-sm font-medium hover:opacity-90 transition-opacity flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
-            Ajouter un trade
+            {t("trades_add_trade")}
           </button>
         </div>
       </div>
@@ -180,18 +180,17 @@ export default function TradesPage() {
         <div className="p-4 rounded-xl border border-accent/20 bg-accent/5 flex items-center justify-between gap-4 flex-wrap">
           <div className="space-y-1">
             <p className="text-sm font-medium text-foreground">
-              Synchronise tes trades MetaTrader automatiquement
+              {t("trades_mt_sync_title")}
             </p>
             <p className="text-xs text-muted">
-              Connecte MetaTrader 4 ou 5 pour que tes trades remontent
-              automatiquement dans ton journal, dès qu&apos;ils se ferment.
+              {t("trades_mt_sync_desc")}
             </p>
           </div>
           <a
             href="/dashboard/settings#metatrader"
             className="px-4 py-2 rounded-lg bg-accent text-white text-sm font-medium hover:bg-blue-600 transition-colors whitespace-nowrap flex-shrink-0"
           >
-            Configurer la synchronisation
+            {t("trades_mt_sync_cta")}
           </a>
         </div>
       )}
@@ -210,7 +209,7 @@ export default function TradesPage() {
               <button
                 onClick={() => setIsImportOpen(false)}
                 className="absolute top-3 right-3 z-10 p-1.5 rounded text-muted hover:text-foreground hover:bg-surface transition-colors"
-                aria-label="Fermer l'import"
+                aria-label={t("trades_close_import")}
               >
                 <X className="w-4 h-4" />
               </button>
