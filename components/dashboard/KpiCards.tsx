@@ -149,6 +149,10 @@ export function KpiCards({
         positive={sparkPositive}
         width={80}
         height={36}
+        // Today's cumulative P&L hovers around 0 → anchor at 0. The equity
+        // fallback holds absolute balances (~100k €) → anchor at the series min
+        // so it renders as a curve instead of a full-height block.
+        baseline={usingTodayPnl ? "zero" : "auto"}
       />
     ) : (
       <p className="text-[10px] text-foreground-subtle italic leading-snug">
