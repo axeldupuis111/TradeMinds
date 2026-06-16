@@ -728,7 +728,7 @@ export default function AnalyticsPage() {
 
         {/* Direction pills */}
         <div className="flex items-center gap-0.5 bg-card/60 rounded-lg p-0.5 border border-border/50">
-          <button onClick={() => setDirection("all")}   className={dirPillClass("all")}>Tout</button>
+          <button onClick={() => setDirection("all")}   className={dirPillClass("all")}>{t("analytics_all")}</button>
           <button onClick={() => setDirection("long")}  className={dirPillClass("long")}>Long</button>
           <button onClick={() => setDirection("short")} className={dirPillClass("short")}>Short</button>
         </div>
