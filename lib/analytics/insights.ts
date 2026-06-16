@@ -1,4 +1,4 @@
-import { type AnalyticsTrade, netPnl } from "./types";
+﻿import { type AnalyticsTrade, netPnl } from "./types";
 
 export type Insight = {
   id: string;
@@ -17,37 +17,29 @@ export type Insight = {
   strength: number;
 };
 
+/** Translator injected from the UI so insight text is localized (fr/en/de/es). */
+type Translate = (key: string) => string;
+
 // ─── Formatting helpers ───────────────────────────────────────────────────────
-// Non-breaking space =  , multiplication sign = ×
+// Non-breaking space =  , multiplication sign = ×
 
 function fmtPnl(n: number): string {
   const rounded = Math.round(n);
-  if (rounded === 0) return `0 €`;
-  return `${rounded > 0 ? "+" : ""}${rounded} €`;
+  if (rounded === 0) return `0 €`;
+  return `${rounded > 0 ? "+" : ""}${rounded} €`;
 }
 
 function fmtPct(n: number): string {
-  return `${Math.round(n)} %`;
+  return `${Math.round(n)} %`;
 }
 
 function fmtRatio(n: number): string {
   return `${n.toFixed(1)}×`;
 }
 
-/** Day names (French) indexed Monday=0 */
-const DAY_PLURAL_FR = [
-  "Lundis",
-  "Mardis",
-  "Mercredis",
-  "Jeudis",
-  "Vendredis",
-  "Samedis",
-  "Dimanches",
-];
-
 // ─── Individual detectors ─────────────────────────────────────────────────────
 
-function detectStrongHour(trades: AnalyticsTrade[]): Insight | null {
+function detectStrongHour(trades: AnalyticsTrade[], t: Translate): Insight | null {
   const globalTotal = trades.reduce((s, t) => s + netPnl(t), 0);
   const globalAvg = globalTotal / trades.length;
   // Only meaningful when overall avg is positive
@@ -84,13 +76,17 @@ function detectStrongHour(trades: AnalyticsTrade[]): Insight | null {
     id: "hour-strong",
     severity: "positive",
     icon: "clock",
-    title: "Heure forte",
-    description: `À [[${best.hour}h]], tu es [[${fmtRatio(best.ratio)}]] plus performant qu'en moyenne ([[${fmtPnl(best.avg)}]]/trade vs [[${fmtPnl(globalAvg)}]])`,
+    title: t("insights_hour_strong_title"),
+    description: t("insights_hour_strong_desc")
+      .replace("{hour}", String(best.hour))
+      .replace("{ratio}", fmtRatio(best.ratio))
+      .replace("{avg}", fmtPnl(best.avg))
+      .replace("{global}", fmtPnl(globalAvg)),
     strength: Math.min(1, (best.ratio - 1) / 3),
   };
 }
 
-function detectWeakHour(trades: AnalyticsTrade[]): Insight | null {
+function detectWeakHour(trades: AnalyticsTrade[], t: Translate): Insight | null {
   const byHour = Array.from({ length: 24 }, (_, h) => ({
     hour: h,
     pnl: 0,
@@ -131,13 +127,17 @@ function detectWeakHour(trades: AnalyticsTrade[]): Insight | null {
     id: "hour-weak",
     severity: "negative",
     icon: "alert-triangle",
-    title: "Heure à éviter",
-    description: `[[${worst.hour}h]] est ta zone à éviter ([[${fmtPnl(worst.totalPnl)}]] sur [[${worst.count}]] trades, WR [[${fmtPct(worst.wr)}]])`,
+    title: t("insights_hour_weak_title"),
+    description: t("insights_hour_weak_desc")
+      .replace("{hour}", String(worst.hour))
+      .replace("{pnl}", fmtPnl(worst.totalPnl))
+      .replace("{count}", String(worst.count))
+      .replace("{wr}", fmtPct(worst.wr)),
     strength: Math.min(1, Math.abs(worst.totalPnl) / 500),
   };
 }
 
-function detectStrongDay(trades: AnalyticsTrade[]): Insight | null {
+function detectStrongDay(trades: AnalyticsTrade[], t: Translate): Insight | null {
   const globalAvg = trades.reduce((s, t) => s + netPnl(t), 0) / trades.length;
   if (globalAvg <= 0) return null;
 
@@ -172,13 +172,15 @@ function detectStrongDay(trades: AnalyticsTrade[]): Insight | null {
     id: "day-strong",
     severity: "positive",
     icon: "calendar",
-    title: "Jour fort",
-    description: `Tes [[${DAY_PLURAL_FR[best.day]}]] sont [[${fmtRatio(best.ratio)}]] plus profitables que la moyenne.`,
+    title: t("insights_day_strong_title"),
+    description: t("insights_day_strong_desc")
+      .replace("{day}", t(`insights_day_${best.day}`))
+      .replace("{ratio}", fmtRatio(best.ratio)),
     strength: Math.min(1, (best.ratio - 1) / 3),
   };
 }
 
-function detectOvertrading(trades: AnalyticsTrade[]): Insight | null {
+function detectOvertrading(trades: AnalyticsTrade[], t: Translate): Insight | null {
   // Group by calendar date
   const byDate: Record<string, { count: number; wins: number }> = {};
   for (const tr of trades) {
@@ -215,13 +217,15 @@ function detectOvertrading(trades: AnalyticsTrade[]): Insight | null {
     id: "overtrading",
     severity: "negative",
     icon: "trending-down",
-    title: "Surtrading détecté",
-    description: `Au-delà de [[${median}]] trades/jour, ton winrate chute de [[${diffPts} pts]].`,
+    title: t("insights_overtrading_title"),
+    description: t("insights_overtrading_desc")
+      .replace("{median}", String(median))
+      .replace("{diff}", String(diffPts)),
     strength: Math.min(1, diffPts / 30),
   };
 }
 
-function detectDirectionBias(trades: AnalyticsTrade[]): Insight | null {
+function detectDirectionBias(trades: AnalyticsTrade[], t: Translate): Insight | null {
   const longs = trades.filter(
     (t) => t.direction?.toLowerCase() === "long"
   );
@@ -248,13 +252,18 @@ function detectDirectionBias(trades: AnalyticsTrade[]): Insight | null {
     id: "direction-bias",
     severity: "positive",
     icon: "target",
-    title: "Avantage directionnel",
-    description: `Tu es [[${diffPts} pts]] plus précis en [[${betterDir}]] (WR [[${fmtPct(betterWr)}]] vs [[${fmtPct(worseWr)}]] en ${worseDir}).`,
+    title: t("insights_direction_title"),
+    description: t("insights_direction_desc")
+      .replace("{diff}", String(diffPts))
+      .replace("{better}", betterDir)
+      .replace("{betterWr}", fmtPct(betterWr))
+      .replace("{worseWr}", fmtPct(worseWr))
+      .replace("{worse}", worseDir),
     strength: Math.min(1, diffPts / 30),
   };
 }
 
-function detectPairConcentration(trades: AnalyticsTrade[]): Insight | null {
+function detectPairConcentration(trades: AnalyticsTrade[], t: Translate): Insight | null {
   const totalAbsPnl = trades.reduce((s, t) => s + Math.abs(netPnl(t)), 0);
   if (totalAbsPnl === 0) return null;
 
@@ -277,8 +286,10 @@ function detectPairConcentration(trades: AnalyticsTrade[]): Insight | null {
       id: "pair-concentration",
       severity: "negative",
       icon: "alert-triangle",
-      title: "Surexposition à une paire",
-      description: `[[${topPair}]] représente [[${fmtPct(pct)}]] de ton P&L. Risque de surexposition à cette paire.`,
+      title: t("insights_pair_over_title"),
+      description: t("insights_pair_over_desc")
+        .replace("{pair}", topPair)
+        .replace("{pct}", fmtPct(pct)),
       strength: Math.min(1, (pct - 50) / 50),
     };
   }
@@ -287,8 +298,10 @@ function detectPairConcentration(trades: AnalyticsTrade[]): Insight | null {
     id: "pair-concentration",
     severity: "neutral",
     icon: "trending-up",
-    title: "Concentration sur une paire",
-    description: `[[${topPair}]] représente [[${fmtPct(pct)}]] de ton P&L absolu total.`,
+    title: t("insights_pair_conc_title"),
+    description: t("insights_pair_conc_desc")
+      .replace("{pair}", topPair)
+      .replace("{pct}", fmtPct(pct)),
     strength: Math.min(1, (pct - 50) / 50),
   };
 }
@@ -299,7 +312,7 @@ function detectPairConcentration(trades: AnalyticsTrade[]): Insight | null {
  * Run all 6 detectors and return insights sorted by strength (highest first).
  * Returns [] if fewer than 10 trades.
  */
-export function generateInsights(trades: AnalyticsTrade[]): Insight[] {
+export function generateInsights(trades: AnalyticsTrade[], t: Translate): Insight[] {
   if (trades.length < 10) return [];
 
   const detectors = [
@@ -313,7 +326,7 @@ export function generateInsights(trades: AnalyticsTrade[]): Insight[] {
 
   const results: Insight[] = [];
   for (const detect of detectors) {
-    const ins = detect(trades);
+    const ins = detect(trades, t);
     if (ins) results.push(ins);
   }
 
