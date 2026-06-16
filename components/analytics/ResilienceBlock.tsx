@@ -56,13 +56,11 @@ function DrawdownZone({ trades }: { trades: AnalyticsTrade[] }) {
         <p className="mt-1 text-xs text-foreground-muted tabular-nums">
           {Math.round(maxDD.maxDrawdownPct) === 100 ? (
             <>
-              {t("resilience_of_peak_pre")}
               <span className="text-loss font-medium">-100&nbsp;%</span>
               {t("resilience_of_peak_post")}
             </>
           ) : (
             <>
-              {t("resilience_of_peak_pre")}
               <span className="text-loss font-medium">
                 -{maxDD.maxDrawdownPct.toFixed(1)}&nbsp;%
               </span>
@@ -117,7 +115,7 @@ function DrawdownZone({ trades }: { trades: AnalyticsTrade[] }) {
 
         <p className="text-[10px] text-foreground-muted mt-1.5">
           {currentDrawdown > 0
-            ? `${t("resilience_of_peak_pre")}-${Math.round(currentDDPct) === 100 ? "100" : currentDDPct.toFixed(1)} %${t("resilience_of_peak_post")}`
+            ? `-${Math.round(currentDDPct) === 100 ? "100" : currentDDPct.toFixed(1)} %${t("resilience_of_peak_post")}`
             : t("resilience_no_dd")}
         </p>
         {currentDrawdown > 0 && Math.round(currentDDPct) === 100 && (
