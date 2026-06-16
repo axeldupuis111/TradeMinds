@@ -31,6 +31,12 @@ interface SparklineProps {
    *   remplirait toute la box).
    */
   baseline?: "zero" | "auto";
+  /**
+   * Surcharge de la couleur (CSS color string). Par défaut profit/loss selon
+   * `positive`. À utiliser pour une série de contexte neutre (ex. equity sur un
+   * jour sans trade) qu'on ne veut pas faire lire comme un gain/perte du jour.
+   */
+  color?: string;
 }
 
 export function Sparkline({
@@ -41,6 +47,7 @@ export function Sparkline({
   className,
   glow = false,
   baseline = "zero",
+  color: colorOverride,
 }: SparklineProps) {
   const uid = useId();
   // Strip colons — SVG id must not contain ':'
@@ -72,8 +79,8 @@ export function Sparkline({
     "Z",
   ].join(" ");
 
-  // Tokens — inline rgb() with CSS vars
-  const color = positive ? "rgb(var(--profit))" : "rgb(var(--loss))";
+  // Tokens — inline rgb() with CSS vars. colorOverride wins (neutral context).
+  const color = colorOverride ?? (positive ? "rgb(var(--profit))" : "rgb(var(--loss))");
 
   return (
     <svg
