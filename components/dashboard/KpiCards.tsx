@@ -63,12 +63,12 @@ function scoreSubLabel(score: number, t: (k: string) => string): string {
 }
 
 /** Phrase de contexte en fonction du niveau de discipline */
-function scoreContextPhrase(score: number): string {
-  if (score >= 90) return "Tu respectes tes règles sur la quasi-totalité de tes trades.";
-  if (score >= 75) return "Tu respectes tes règles sur la majorité de tes trades.";
-  if (score >= 60) return "Quelques écarts de discipline — reste vigilant sur tes entrées.";
-  if (score >= 40) return "Plusieurs violations détectées. Revois tes règles d'entrée.";
-  return "La discipline est insuffisante pour protéger ton capital sur la durée.";
+function scoreContextPhrase(score: number, t: (k: string) => string): string {
+  if (score >= 90) return t("dash_score_ctx_excellent");
+  if (score >= 75) return t("dash_score_ctx_good");
+  if (score >= 60) return t("dash_score_ctx_ok");
+  if (score >= 40) return t("dash_score_ctx_weak");
+  return t("dash_score_ctx_bad");
 }
 
 /** Mini-stat verticale : label tracé, valeur colorée */
@@ -253,7 +253,7 @@ export function KpiCards({
 
             {/* Phrase de contexte */}
             <p className="text-sm text-foreground-muted leading-snug max-w-sm">
-              {scoreContextPhrase(score)}
+              {scoreContextPhrase(score, t)}
             </p>
 
             {/* Séparateur horizontal */}
