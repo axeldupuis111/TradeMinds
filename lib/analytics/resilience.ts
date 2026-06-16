@@ -26,6 +26,9 @@ export type ResilienceInsight = {
   strength: number; // 0..1 — used for sorting
 };
 
+/** Translator injected from the UI so insight text is localized (fr/en/de/es). */
+type Translate = (key: string) => string;
+
 // ─── Drawdown series ──────────────────────────────────────────────────────────
 
 /**
@@ -216,6 +219,7 @@ function detectPostLossDecline(
   trades: AnalyticsTrade[],
   streaks: Streak[],
   globalWR: number,
+  t: Translate,
 ): ResilienceInsight | null {
   const sorted = [...trades]
     .filter((t) => t.open_time)
@@ -244,8 +248,11 @@ function detectPostLossDecline(
   return {
     id: "post_loss_decline",
     type: "negative",
-    title: "Baisse après série perdante",
-    description: `Ton win rate chute de ${Math.round(drop)} pts après 3+ pertes consécutives (${Math.round(wr)}% vs ${Math.round(globalWR)}% global). Prends une pause.`,
+    title: t("resilience_ins_post_loss_title"),
+    description: t("resilience_ins_post_loss_desc")
+      .replace("{drop}", String(Math.round(drop)))
+      .replace("{wr}", String(Math.round(wr)))
+      .replace("{global}", String(Math.round(globalWR))),
     strength: Math.min(1, drop / 40),
   };
 }
@@ -255,6 +262,7 @@ function detectComeback(
   trades: AnalyticsTrade[],
   streaks: Streak[],
   globalWR: number,
+  t: Translate,
 ): ResilienceInsight | null {
   const sorted = [...trades]
     .filter((t) => t.open_time)
@@ -281,8 +289,10 @@ function detectComeback(
   return {
     id: "comeback",
     type: "positive",
-    title: "Excellente résilience",
-    description: `Après des pertes, tu rebondis fort : ${Math.round(wr)}% de win rate (vs ${Math.round(globalWR)}% global). Tu sais gérer la pression.`,
+    title: t("resilience_ins_comeback_title"),
+    description: t("resilience_ins_comeback_desc")
+      .replace("{wr}", String(Math.round(wr)))
+      .replace("{global}", String(Math.round(globalWR))),
     strength: Math.min(1, (wr - globalWR) / globalWR),
   };
 }
@@ -292,7 +302,7 @@ function detectComeback(
  * Count trades to recover above previous peak.
  * Exclude unrecovered events. Fire if >= 3 recovered events AND median <= 5 trades.
  */
-function detectAverageRecovery(series: DrawdownPoint[]): ResilienceInsight | null {
+function detectAverageRecovery(series: DrawdownPoint[], t: Translate): ResilienceInsight | null {
   if (series.length === 0) return null;
 
   const recoveryCounts: number[] = [];
@@ -336,8 +346,8 @@ function detectAverageRecovery(series: DrawdownPoint[]): ResilienceInsight | nul
   return {
     id: "avg_recovery",
     type: "positive",
-    title: "Récupération rapide",
-    description: `Tu reviens à ton pic en médiane ${Math.round(med)} trade${med > 1 ? "s" : ""} après un drawdown. Excellent contrôle de risque.`,
+    title: t("resilience_ins_recovery_title"),
+    description: t("resilience_ins_recovery_desc").replace("{med}", String(Math.round(med))),
     strength: Math.min(1, (6 - med) / 5),
   };
 }
@@ -346,7 +356,7 @@ function detectAverageRecovery(series: DrawdownPoint[]): ResilienceInsight | nul
  * Detect revenge trading: trades within 90 min of a big loss (>= 1.5× avg loss).
  * Fire if >= 5 revenge trades AND their avg P&L is significantly worse than global.
  */
-function detectRevengeTrading(trades: AnalyticsTrade[]): ResilienceInsight | null {
+function detectRevengeTrading(trades: AnalyticsTrade[], t: Translate): ResilienceInsight | null {
   const sorted = [...trades]
     .filter((t) => t.open_time)
     .sort((a, b) => new Date(a.open_time).getTime() - new Date(b.open_time).getTime());
@@ -387,8 +397,11 @@ function detectRevengeTrading(trades: AnalyticsTrade[]): ResilienceInsight | nul
   return {
     id: "revenge_trading",
     type: "negative",
-    title: "Trading revenge détecté",
-    description: `${revengeTrades.length} trades passés dans les 90 min après une grosse perte ont un P&L moyen de ${revengeAvgPnl.toFixed(0)}€ vs ${globalAvgPnl.toFixed(0)}€ global. Arrête-toi après une grosse perte.`,
+    title: t("resilience_ins_revenge_title"),
+    description: t("resilience_ins_revenge_desc")
+      .replace("{count}", String(revengeTrades.length))
+      .replace("{avg}", revengeAvgPnl.toFixed(0))
+      .replace("{global}", globalAvgPnl.toFixed(0)),
     strength: Math.min(1, Math.abs(revengeAvgPnl - globalAvgPnl) / (Math.abs(globalAvgPnl) + 1)),
   };
 }
@@ -401,6 +414,7 @@ function detectAfterStreakPattern(
   trades: AnalyticsTrade[],
   streaks: Streak[],
   globalAvgPnl: number,
+  t: Translate,
 ): ResilienceInsight | null {
   const sorted = [...trades]
     .filter((t) => t.open_time)
@@ -426,8 +440,10 @@ function detectAfterStreakPattern(
   return {
     id: "after_streak_pattern",
     type: "negative",
-    title: "Relâchement après série gagnante",
-    description: `Après 3+ wins consécutifs, tes trades suivants baissent à ${afterAvgPnl.toFixed(0)}€ de P&L moyen (vs ${globalAvgPnl.toFixed(0)}€). Reste discipliné.`,
+    title: t("resilience_ins_after_streak_title"),
+    description: t("resilience_ins_after_streak_desc")
+      .replace("{avg}", afterAvgPnl.toFixed(0))
+      .replace("{global}", globalAvgPnl.toFixed(0)),
     strength: Math.min(1, Math.abs(afterAvgPnl - globalAvgPnl) / (Math.abs(globalAvgPnl) + 1)),
   };
 }
@@ -438,7 +454,7 @@ function detectAfterStreakPattern(
  * Generate up to 3 resilience insights, sorted by strength desc.
  * Returns [] if trades.length < 20 or no insights fire.
  */
-export function generateResilienceInsights(trades: AnalyticsTrade[]): ResilienceInsight[] {
+export function generateResilienceInsights(trades: AnalyticsTrade[], t: Translate): ResilienceInsight[] {
   if (trades.length < 20) return [];
 
   const sorted = [...trades]
@@ -454,11 +470,11 @@ export function generateResilienceInsights(trades: AnalyticsTrade[]): Resilience
   const ddSeries  = buildDrawdownSeries(sorted);
 
   const candidates: (ResilienceInsight | null)[] = [
-    detectComeback(sorted, streaks, globalWR),
-    detectAverageRecovery(ddSeries),
-    detectPostLossDecline(sorted, streaks, globalWR),
-    detectRevengeTrading(sorted),
-    detectAfterStreakPattern(sorted, streaks, globalAvgPnl),
+    detectComeback(sorted, streaks, globalWR, t),
+    detectAverageRecovery(ddSeries, t),
+    detectPostLossDecline(sorted, streaks, globalWR, t),
+    detectRevengeTrading(sorted, t),
+    detectAfterStreakPattern(sorted, streaks, globalAvgPnl, t),
   ];
 
   return candidates

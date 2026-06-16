@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { Shield, RotateCcw, AlertTriangle } from "lucide-react";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { CardHeader, CardTitle } from "@/components/ui/Card";
+import { useLanguage } from "@/lib/LanguageContext";
 import {
   buildDrawdownSeries,
   getMaxDrawdown,
@@ -29,6 +30,7 @@ function fmtEur(n: number): string {
 // ─── Zone 1 — Drawdown ────────────────────────────────────────────────────────
 
 function DrawdownZone({ trades }: { trades: AnalyticsTrade[] }) {
+  const { t } = useLanguage();
   const series = useMemo(() => buildDrawdownSeries(trades), [trades]);
   const maxDD  = useMemo(() => getMaxDrawdown(series), [series]);
 
@@ -46,7 +48,7 @@ function DrawdownZone({ trades }: { trades: AnalyticsTrade[] }) {
           className="text-xs font-semibold uppercase text-foreground-muted leading-none"
           style={{ letterSpacing: "0.12em" }}
         >
-          Drawdown max
+          {t("resilience_dd_max")}
         </p>
         <p className="mt-2 text-3xl font-bold tabular-nums text-loss leading-none">
           -{fmtEur(maxDD.maxDrawdown)}
@@ -54,28 +56,28 @@ function DrawdownZone({ trades }: { trades: AnalyticsTrade[] }) {
         <p className="mt-1 text-xs text-foreground-muted tabular-nums">
           {Math.round(maxDD.maxDrawdownPct) === 100 ? (
             <>
-              Soit&nbsp;
+              {t("resilience_of_peak_pre")}
               <span className="text-loss font-medium">-100&nbsp;%</span>
-              &nbsp;du pic
+              {t("resilience_of_peak_post")}
             </>
           ) : (
             <>
-              Soit&nbsp;
+              {t("resilience_of_peak_pre")}
               <span className="text-loss font-medium">
                 -{maxDD.maxDrawdownPct.toFixed(1)}&nbsp;%
               </span>
-              &nbsp;du pic
+              {t("resilience_of_peak_post")}
             </>
           )}
         </p>
         {Math.round(maxDD.maxDrawdownPct) === 100 && (
           <p className="text-xs text-loss/80 mt-0.5">
-            Drawdown supérieur à ton pic maximum
+            {t("resilience_above_peak")}
           </p>
         )}
         {maxDD.recoveryTrades !== null && (
           <p className="mt-1 text-xs text-foreground-muted">
-            Récupéré en&nbsp;
+            {t("resilience_recovered_pre")}
             <span className="text-foreground font-semibold tabular-nums">
               {maxDD.recoveryTrades}
             </span>
@@ -83,7 +85,7 @@ function DrawdownZone({ trades }: { trades: AnalyticsTrade[] }) {
           </p>
         )}
         {maxDD.recoveryTrades === null && maxDD.maxDrawdown > 0 && (
-          <p className="mt-1 text-xs text-loss/70">Pas encore récupéré</p>
+          <p className="mt-1 text-xs text-loss/70">{t("resilience_not_recovered")}</p>
         )}
       </div>
 
@@ -91,10 +93,10 @@ function DrawdownZone({ trades }: { trades: AnalyticsTrade[] }) {
       <div className="mt-4">
         <div className="flex justify-between items-baseline mb-1.5">
           <p className="text-[10px] uppercase tracking-wider text-foreground-muted">
-            Drawdown actuel
+            {t("resilience_dd_current")}
           </p>
           <p className="text-xs font-medium" style={{ color: "rgb(var(--foreground))" }}>
-            {currentDrawdown === 0 ? "Au pic" : `-${fmtEur(currentDrawdown)}`}
+            {currentDrawdown === 0 ? t("resilience_at_peak") : `-${fmtEur(currentDrawdown)}`}
           </p>
         </div>
 
@@ -115,16 +117,14 @@ function DrawdownZone({ trades }: { trades: AnalyticsTrade[] }) {
 
         <p className="text-[10px] text-foreground-muted mt-1.5">
           {currentDrawdown > 0
-            ? Math.round(currentDDPct) === 100
-              ? "Soit -100 % du pic"
-              : `Soit -${currentDDPct.toFixed(1)} % du pic`
-            : "Aucun drawdown en cours"}
+            ? `${t("resilience_of_peak_pre")}-${Math.round(currentDDPct) === 100 ? "100" : currentDDPct.toFixed(1)} %${t("resilience_of_peak_post")}`
+            : t("resilience_no_dd")}
         </p>
         {currentDrawdown > 0 && Math.round(currentDDPct) === 100 && (
           <p className="text-[10px] text-loss mt-0.5">
             {lastPoint && lastPoint.cumulative < 0
-              ? "Tu es passé sous ton point de départ"
-              : "Drawdown supérieur à ton pic maximum"}
+              ? t("resilience_below_start")
+              : t("resilience_above_peak")}
           </p>
         )}
       </div>
@@ -144,6 +144,7 @@ function StreakBand({
   length: number;
   maxLength: number;
 }) {
+  const { t } = useLanguage();
   const [hovered, setHovered] = useState(false);
   const width = maxLength > 0 ? `${Math.round((length / maxLength) * 100)}%` : "0%";
   const color = type === "win" ? "rgb(var(--profit))" : "rgb(var(--loss))";
@@ -184,7 +185,7 @@ function StreakBand({
             pointerEvents: "none",
           }}
         >
-          {length} {type === "win" ? "wins" : "pertes"}
+          {length} {type === "win" ? t("resilience_wins") : t("resilience_losses")}
         </div>
       )}
     </div>
@@ -192,6 +193,7 @@ function StreakBand({
 }
 
 function StreakZone({ trades }: { trades: AnalyticsTrade[] }) {
+  const { t } = useLanguage();
   const streaks = useMemo(() => buildStreaks(trades), [trades]);
   const stats   = useMemo(() => getStreakStats(streaks), [streaks]);
 
@@ -206,7 +208,7 @@ function StreakZone({ trades }: { trades: AnalyticsTrade[] }) {
             className="text-[10px] font-semibold uppercase text-foreground-muted leading-none mb-1.5"
             style={{ letterSpacing: "0.12em" }}
           >
-            Série win max
+            {t("resilience_streak_win_max")}
           </p>
           <div className="text-2xl font-black tabular-nums text-profit leading-none">
             {stats.longestWin}
@@ -217,7 +219,7 @@ function StreakZone({ trades }: { trades: AnalyticsTrade[] }) {
             className="text-[10px] font-semibold uppercase text-foreground-muted leading-none mb-1.5"
             style={{ letterSpacing: "0.12em" }}
           >
-            Série loss max
+            {t("resilience_streak_loss_max")}
           </p>
           <div className="text-2xl font-black tabular-nums text-loss leading-none">
             {stats.longestLoss}
@@ -229,7 +231,7 @@ function StreakZone({ trades }: { trades: AnalyticsTrade[] }) {
       {stats.streaks.length > 0 && (
         <div className="flex flex-col gap-1.5">
           <p className="text-[10px] text-foreground-muted/60 select-none">
-            Timeline des séries
+            {t("resilience_streak_timeline")}
           </p>
           <div className="flex flex-wrap gap-0.5 items-end" style={{ minHeight: 12 }}>
             {stats.streaks.slice(-30).map((s, i) => (
@@ -247,7 +249,7 @@ function StreakZone({ trades }: { trades: AnalyticsTrade[] }) {
       {/* Current streak */}
       {stats.current.type !== "none" && (
         <div className="flex items-center gap-2 text-xs">
-          <span className="text-foreground-muted">Série en cours :</span>
+          <span className="text-foreground-muted">{t("resilience_current_streak")}</span>
           <span
             className={cn(
               "font-semibold tabular-nums",
@@ -320,20 +322,21 @@ function InsightsZone({
   insights: ResilienceInsight[];
   reduced: boolean | null;
 }) {
+  const { t } = useLanguage();
   return (
     <div className="flex flex-col gap-1">
       <p
         className="text-[10px] font-semibold uppercase text-foreground-muted leading-none mb-1"
         style={{ letterSpacing: "0.12em" }}
       >
-        Analyse comportementale
+        {t("resilience_behavioral")}
       </p>
 
       {insights.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-6 gap-3 opacity-60">
           <RotateCcw className="w-8 h-8 text-foreground-muted" strokeWidth={1.5} />
           <p className="text-xs text-foreground-muted text-center leading-relaxed">
-            Continue à trader — des patterns comportementaux apparaîtront ici.
+            {t("resilience_keep_trading")}
           </p>
         </div>
       ) : (
@@ -377,17 +380,18 @@ function Zone({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function ResilienceBlock({ trades }: Props) {
+  const { t } = useLanguage();
   const reduced  = useReducedMotion();
-  const insights = useMemo(() => generateResilienceInsights(trades), [trades]);
+  const insights = useMemo(() => generateResilienceInsights(trades, t), [trades, t]);
 
   /* ── Empty state ──────────────────────────────────────────────────────── */
   if (trades.length < 20) {
     return (
       <KpiCardPremium layout="full" accentColor="loss">
         <CardHeader>
-          <CardTitle>Ta résilience</CardTitle>
+          <CardTitle>{t("resilience_title")}</CardTitle>
           <p className="text-xs text-foreground-muted mt-1">
-            Drawdown, séries gagnantes et comportement post-perte
+            {t("resilience_subtitle")}
           </p>
         </CardHeader>
         <div className="flex flex-col items-center justify-center py-12 gap-4">
@@ -398,7 +402,7 @@ export function ResilienceBlock({ trades }: Props) {
           />
           <div className="text-center space-y-1">
             <p className="text-sm text-foreground-muted">
-              Pas assez de trades pour analyser ta résilience.
+              {t("resilience_not_enough")}
             </p>
             <p className="text-xs text-foreground-muted/60">
               <span className="text-foreground font-semibold tabular-nums">
@@ -416,9 +420,9 @@ export function ResilienceBlock({ trades }: Props) {
   return (
     <KpiCardPremium layout="full" accentColor="loss">
       <CardHeader>
-        <CardTitle>Ta résilience</CardTitle>
+        <CardTitle>{t("resilience_title")}</CardTitle>
         <p className="text-xs text-foreground-muted mt-1">
-          Drawdown, séries gagnantes et comportement post-perte
+          {t("resilience_subtitle")}
         </p>
       </CardHeader>
 
