@@ -22,6 +22,15 @@ interface SparklineProps {
   className?: string;
   /** Ajoute un feGaussianBlur glow sur la ligne (activer en dark mode uniquement) */
   glow?: boolean;
+  /**
+   * Référence du bas de l'aire :
+   * - "zero" → l'aire est ancrée à 0 (montre le passage au-dessus/au-dessous de
+   *   zéro — adapté à une série de P&L cumulés autour de 0).
+   * - "auto" → l'aire est ancrée au minimum de la série (adapté à des valeurs
+   *   absolues éloignées de 0, ex. une courbe d'equity ~100 000 € qui sinon
+   *   remplirait toute la box).
+   */
+  baseline?: "zero" | "auto";
 }
 
 export function Sparkline({
@@ -31,6 +40,7 @@ export function Sparkline({
   height = 36,
   className,
   glow = false,
+  baseline = "zero",
 }: SparklineProps) {
   const uid = useId();
   // Strip colons — SVG id must not contain ':'
@@ -40,8 +50,8 @@ export function Sparkline({
   if (data.length < 2) return null;
 
   const pad = 2;
-  const minVal = Math.min(0, ...data);
-  const maxVal = Math.max(0, ...data);
+  const minVal = baseline === "zero" ? Math.min(0, ...data) : Math.min(...data);
+  const maxVal = baseline === "zero" ? Math.max(0, ...data) : Math.max(...data);
   const range = maxVal - minVal || 1;
 
   const toX = (i: number) =>
