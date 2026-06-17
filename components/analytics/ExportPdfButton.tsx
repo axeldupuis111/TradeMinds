@@ -12,10 +12,9 @@ function netPnl(t: { pnl: number; commission: number | null; swap: number | null
   return t.pnl + (t.commission || 0) + (t.swap || 0);
 }
 
-const MONTHS_FR = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
-
 export default function ExportPdfButton() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const pdfLocale = ({ fr: "fr-FR", en: "en-US", de: "de-DE", es: "es-ES" } as const)[lang] ?? "en-US";
   const { plan, loading: planLoading } = usePlan();
   const supabase = createClient();
   const [generating, setGenerating] = useState(false);
@@ -91,7 +90,10 @@ export default function ExportPdfButton() {
         .slice(0, 10);
 
       // By day of week
-      const DAYS = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
+      // Localized short weekday names, Sunday-first (2024-01-07 is a Sunday).
+      const DAYS = Array.from({ length: 7 }, (_, i) =>
+        new Date(Date.UTC(2024, 0, 7 + i)).toLocaleDateString(pdfLocale, { weekday: "short" })
+      );
       const byDay = Array.from({ length: 7 }, () => ({ total: 0, count: 0 }));
       monthTrades.forEach((tr) => {
         if (tr.open_time) {
@@ -127,15 +129,15 @@ export default function ExportPdfButton() {
       doc.text("TradeDiscipline", margin, 15);
       doc.setFontSize(11);
       doc.setFont("helvetica", "normal");
-      const monthLabel = `${MONTHS_FR[now.getMonth()]} ${now.getFullYear()}`;
-      doc.text(`Rapport mensuel - ${monthLabel}`, margin, 23);
+      const monthLabel = now.toLocaleDateString(pdfLocale, { month: "long", year: "numeric" });
+      doc.text(`${t("pdf_monthly_report")} - ${monthLabel}`, margin, 23);
       y = 40;
 
       // Section 1: Summary
       doc.setTextColor(30, 30, 30);
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
-      doc.text("Resume", margin, y);
+      doc.text(t("pdf_summary"), margin, y);
       y += 7;
       doc.setDrawColor(200, 200, 200);
       doc.line(margin, y, pageWidth - margin, y);
@@ -147,9 +149,9 @@ export default function ExportPdfButton() {
         [`Total trades:`, `${monthTrades.length}`],
         [`Winrate:`, `${winrate.toFixed(1)}%`],
         [`P&L total:`, `${totalPnl >= 0 ? "+" : ""}${totalPnl.toFixed(2)} EUR`],
-        [`Meilleur trade:`, `+${best.toFixed(2)} EUR`],
-        [`Pire trade:`, `${worst.toFixed(2)} EUR`],
-        [`Score discipline moyen:`, disciplineScore !== null ? `${disciplineScore}/100` : "N/A"],
+        [t("pdf_best_trade"), `+${best.toFixed(2)} EUR`],
+        [t("pdf_worst_trade"), `${worst.toFixed(2)} EUR`],
+        [t("pdf_avg_discipline"), disciplineScore !== null ? `${disciplineScore}/100` : "N/A"],
       ];
       summaryRows.forEach(([label, value]) => {
         doc.setFont("helvetica", "normal");
@@ -202,13 +204,13 @@ export default function ExportPdfButton() {
       doc.setTextColor(30, 30, 30);
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
-      doc.text("Performance par paire", margin, y);
+      doc.text(t("analytics_by_pair"), margin, y);
       y += 7;
       doc.line(margin, y, pageWidth - margin, y);
       y += 5;
       doc.setFontSize(10);
       doc.setFont("helvetica", "bold");
-      doc.text("Paire", margin, y);
+      doc.text(t("trades_col_pair"), margin, y);
       doc.text("Trades", margin + 60, y);
       doc.text("P&L", margin + 90, y);
       y += 5;
@@ -228,7 +230,7 @@ export default function ExportPdfButton() {
       if (y > 230) { doc.addPage(); y = margin; }
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
-      doc.text("Performance par jour", margin, y);
+      doc.text(t("pdf_perf_by_day"), margin, y);
       y += 7;
       doc.line(margin, y, pageWidth - margin, y);
       y += 5;
@@ -251,7 +253,7 @@ export default function ExportPdfButton() {
         if (y > 220) { doc.addPage(); y = margin; }
         doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
-        doc.text("Violations et recommandations IA", margin, y);
+        doc.text(t("pdf_violations_reco"), margin, y);
         y += 7;
         doc.line(margin, y, pageWidth - margin, y);
         y += 5;
@@ -259,7 +261,7 @@ export default function ExportPdfButton() {
         if (violations.length > 0) {
           doc.setFontSize(10);
           doc.setFont("helvetica", "bold");
-          doc.text("Violations principales:", margin, y);
+          doc.text(t("pdf_main_violations"), margin, y);
           y += 5;
           doc.setFont("helvetica", "normal");
           violations.slice(0, 5).forEach((v) => {
@@ -275,7 +277,7 @@ export default function ExportPdfButton() {
         if (recommendations.length > 0) {
           if (y > 250) { doc.addPage(); y = margin; }
           doc.setFont("helvetica", "bold");
-          doc.text("Recommandations IA:", margin, y);
+          doc.text(t("pdf_ai_reco"), margin, y);
           y += 5;
           doc.setFont("helvetica", "normal");
           recommendations.slice(0, 3).forEach((r, i) => {
