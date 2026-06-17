@@ -72,18 +72,29 @@ function writeCookie(value: Lang) {
   document.cookie = `${COOKIE_NAME}=${value}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`;
 }
 
-export function LanguageProvider({ children }: { children: React.ReactNode }) {
+export function LanguageProvider({
+  children,
+  ssrLang = DEFAULT_LANG,
+  ssrDict = enDict,
+}: {
+  children: React.ReactNode;
+  /** Language resolved server-side from the NEXT_LOCALE cookie (avoids the
+   *  English-first flash on cookie-based routes like the dashboard). */
+  ssrLang?: Lang;
+  ssrDict?: Dict;
+}) {
   const router = useRouter();
   const pathname = usePathname() || "/";
 
   // Locale issue de l'URL (priorité absolue)
   const urlLocale = getLocaleFromPathname(pathname);
 
-  const [storageLang, setStorageLang] = useState<Lang>(DEFAULT_LANG);
+  // Initialise depuis la langue résolue côté serveur (cookie) → 1er rendu déjà
+  // dans la bonne langue, identique en SSR et à l'hydratation.
+  const [storageLang, setStorageLang] = useState<Lang>(ssrLang);
   const [mounted, setMounted] = useState(false);
-  // Active dictionary. English is bundled synchronously (SSR + first paint +
-  // fallback); the active locale's chunk loads on demand below.
-  const [dict, setDict] = useState<Dict>(enDict);
+  // Active dictionary — starts with the server-provided dict (or English).
+  const [dict, setDict] = useState<Dict>(ssrDict);
 
   // Au mount : localStorage > navigator.language > défaut
   useEffect(() => {
@@ -177,7 +188,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   // Anti hydration mismatch : avant mount on rend avec la lang URL si dispo,
   // sinon le défaut. Ne PAS lire localStorage avant mount (mismatch SSR/client).
-  const initialLang: Lang = urlLocale ?? DEFAULT_LANG;
+  const initialLang: Lang = urlLocale ?? ssrLang;
 
   const contextValue = useMemo(
     () => ({
