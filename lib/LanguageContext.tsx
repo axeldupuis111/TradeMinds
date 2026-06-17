@@ -10,7 +10,7 @@ import {
   useState,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import translations, { type Lang } from "./translations";
+import { type Lang, type Dict, enDict, loadDict } from "./translations";
 import { createClient } from "./supabase/client";
 
 const LOCALES: ReadonlyArray<Lang> = ["fr", "en", "de", "es"];
@@ -81,6 +81,9 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   const [storageLang, setStorageLang] = useState<Lang>(DEFAULT_LANG);
   const [mounted, setMounted] = useState(false);
+  // Active dictionary. English is bundled synchronously (SSR + first paint +
+  // fallback); the active locale's chunk loads on demand below.
+  const [dict, setDict] = useState<Dict>(enDict);
 
   // Au mount : localStorage > navigator.language > défaut
   useEffect(() => {
@@ -103,6 +106,15 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (mounted) document.documentElement.lang = lang;
   }, [mounted, lang]);
+
+  // Load the active locale's dictionary (resolves instantly for English).
+  // Until a non-English chunk arrives, t() falls back to English — the same
+  // English-first paint the app already had, just without bundling all locales.
+  useEffect(() => {
+    let cancelled = false;
+    loadDict(lang).then((d) => { if (!cancelled) setDict(d); });
+    return () => { cancelled = true; };
+  }, [lang]);
 
   // Synchronise la langue vers profiles.language pour les utilisateurs connectés,
   // afin que les jobs serveur (emails cron : rappel quotidien, rapport hebdo)
@@ -163,13 +175,6 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     [pathname, router]
   );
 
-  const t = useCallback(
-    (key: string): string => {
-      return translations[lang]?.[key] || translations.fr[key] || key;
-    },
-    [lang]
-  );
-
   // Anti hydration mismatch : avant mount on rend avec la lang URL si dispo,
   // sinon le défaut. Ne PAS lire localStorage avant mount (mismatch SSR/client).
   const initialLang: Lang = urlLocale ?? DEFAULT_LANG;
@@ -178,12 +183,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     () => ({
       lang: mounted ? lang : initialLang,
       setLang,
-      t: (key: string) =>
-        translations[mounted ? lang : initialLang]?.[key] ||
-        translations.fr[key] ||
-        key,
+      // Active dict first, English fallback (always loaded), then the key.
+      t: (key: string) => dict[key] || enDict[key] || key,
     }),
-    [mounted, lang, initialLang, setLang, t]
+    [mounted, lang, initialLang, setLang, dict]
   );
 
   return (

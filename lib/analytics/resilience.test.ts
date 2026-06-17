@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { generateResilienceInsights } from "./resilience";
 import type { AnalyticsTrade } from "./types";
-import translations from "@/lib/translations";
+import fr from "@/lib/i18n/fr";
 
 const tKey = (k: string) => k;
-const tFr = (k: string) => translations.fr[k] ?? k;
+const tFr = (k: string) => fr[k] ?? k;
 
 function trade(open_time: string, pnl: number): AnalyticsTrade {
   return { open_time, pnl, commission: 0, swap: 0, pair: "XAUUSD", direction: "long" };

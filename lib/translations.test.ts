@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
-import translations, { LANGUAGES, type Lang } from "./translations";
+import { LANGUAGES, type Lang } from "./translations";
+import fr from "./i18n/fr";
+import en from "./i18n/en";
+import de from "./i18n/de";
+import es from "./i18n/es";
 
+const translations: Record<Lang, Record<string, string>> = { fr, en, de, es };
 const LANGS = LANGUAGES.map((l) => l.code);
 const REFERENCE: Lang = "fr"; // fr is the source/most complete locale
 
