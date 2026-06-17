@@ -739,7 +739,7 @@ export default function SessionPage() {
                     {item}
                   </label>
                   <button
-                    onClick={() => removeChecklistItem(idx)}
+                    onClick={() => removeChecklistItem(idx)} aria-label={t("session_remove")}
                     className="text-muted hover:text-loss transition-colors opacity-0 group-hover:opacity-100"
                     title={t("session_remove")}
                   >

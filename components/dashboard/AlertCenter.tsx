@@ -65,6 +65,7 @@ function BannerRow({
   alert: AlertWithDismiss;
   onDismiss: (id: string) => void;
 }) {
+  const { t } = useLanguage();
   const isDismissedCritical = alert.level === "critical" && alert.dismissed;
   const isWarning = alert.level === "warning";
 
@@ -98,7 +99,7 @@ function BannerRow({
       {showDismiss && (
         <button
           onClick={() => onDismiss(alert.id)}
-          aria-label="Fermer"
+          aria-label={t("detail_close")}
           className="shrink-0 text-muted hover:text-foreground transition-colors"
         >
           <CloseIcon className="w-3.5 h-3.5" />
