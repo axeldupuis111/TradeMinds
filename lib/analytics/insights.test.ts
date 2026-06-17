@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { generateInsights } from "./insights";
 import type { AnalyticsTrade } from "./types";
-import translations from "@/lib/translations";
+import fr from "@/lib/i18n/fr";
 
 // Mock translators
 const tKey = (k: string) => k; // returns the key (identity)
-const tFr = (k: string) => translations.fr[k] ?? k; // returns the real FR template
+const tFr = (k: string) => fr[k] ?? k; // returns the real FR template
 
 function trade(open_time: string, pnl: number, over: Partial<AnalyticsTrade> = {}): AnalyticsTrade {
   return { open_time, pnl, commission: 0, swap: 0, pair: "XAUUSD", direction: "long", ...over };
