@@ -76,19 +76,22 @@ export default function GoalsStreaks() {
 
     setAchievements(achData || []);
 
-    // Calculate streak (consecutive reviews with 0 violations)
     const reviewList = (reviews || []) as Review[];
+
+    // Discipline streak — consecutive distinct TRADING DAYS (most recent first)
+    // with no revenge/FOMO trade. Days with no trades are skipped, so weekends
+    // and trading breaks never reset the streak (markets are closed anyway).
+    const dayHasEmotionalTrade = new Map<string, boolean>();
+    for (const tr of trades || []) {
+      if (!tr.open_time) continue;
+      const day = tr.open_time.split("T")[0];
+      const bad = tr.emotion === "revenge" || tr.emotion === "fomo";
+      dayHasEmotionalTrade.set(day, (dayHasEmotionalTrade.get(day) ?? false) || bad);
+    }
     let streakCount = 0;
-    const seenDays = new Set<string>();
-    for (const r of reviewList) {
-      const day = r.created_at.split("T")[0];
-      if (seenDays.has(day)) continue;
-      seenDays.add(day);
-      if (!r.analysis?.violations || r.analysis.violations.length === 0) {
-        streakCount++;
-      } else {
-        break;
-      }
+    for (const day of Array.from(dayHasEmotionalTrade.keys()).sort().reverse()) {
+      if (dayHasEmotionalTrade.get(day)) break;
+      streakCount++;
     }
     setStreak(streakCount);
 

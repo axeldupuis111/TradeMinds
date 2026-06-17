@@ -949,7 +949,7 @@ const dict: Record<string, string> = {
   "discipline_winrate_emotion": "Winrate nach Emotion",
   "goals_title": "Ziele & Disziplin",
   "goals_streak_days": "Tage Disziplin",
-  "goals_streak_desc": "Aufeinanderfolgende Tage ohne Regelverstöße",
+  "goals_streak_desc": "Disziplinierte Handelstage in Folge — Wochenenden zählen nicht",
   "goals_weekly": "Wochenziel: 0 Rache-Trades",
   "goals_weekly_desc": "Keine emotionalen Trades diese Woche",
   "goals_on_track": "Auf Kurs",
