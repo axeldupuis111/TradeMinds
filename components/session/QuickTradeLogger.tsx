@@ -178,7 +178,7 @@ export default function QuickTradeLogger({ strategyId, pairs, onClose, onSaved }
               value={form.notes}
               onChange={(e) => update("notes", e.target.value)}
               rows={2}
-              placeholder="Setup identifié, contexte du marché..."
+              placeholder={t("quicklog_notes_placeholder")}
               className={inputClass}
             />
           </div>
