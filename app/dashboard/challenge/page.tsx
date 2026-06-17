@@ -2,6 +2,8 @@
 
 import EquityCurve from "@/components/charts/EquityCurve";
 import { computeChallengeRules } from "@/lib/challenge-rules";
+import { projectChallenge } from "@/lib/challenge-projection";
+import { ChallengeProjectionBlock } from "@/components/dashboard/ChallengeProjectionBlock";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
@@ -466,6 +468,25 @@ function AccountCard({
     stats.equityCurveData.map((d) => d.balance),
   );
 
+  // Projection (prop challenges only) — derive per-trade P&L from the balance
+  // points and estimate the probability of passing before breaching DD.
+  const projection = isProp
+    ? (() => {
+        let prev = ac.account_size;
+        const tradePnls = stats.equityCurveData.map((d) => {
+          const pnl = d.balance - prev;
+          prev = d.balance;
+          return pnl;
+        });
+        return projectChallenge({
+          profitRemainingEur: rules.profitRemainingEur,
+          ddBufferEur: rules.totalDdRemainingEur,
+          tradePnls,
+          tradeDays: stats.equityCurveData.map((d) => d.date),
+        });
+      })()
+    : null;
+
   const daysElapsed = Math.floor(
     (Date.now() - new Date(ac.start_date).getTime()) / (1000 * 60 * 60 * 24)
   );
@@ -608,6 +629,9 @@ function AccountCard({
           {t("challenge_delete_account_btn")}
         </button>
       </div>
+
+      {/* Projection (prop challenges) */}
+      {projection && !hasNoTrades && <ChallengeProjectionBlock projection={projection} />}
 
       {/* Equity curve */}
       <div className="mt-6">
