@@ -120,25 +120,42 @@ RULES:
 - Analyze data, do not repeat it raw
 - If you cannot answer with the available data, say so`;
 
-    // ── 6. Call Claude ──
-    const message = await client.messages.create({
+    // ── 6. Stream Claude's reply (the coach "types" live) ──
+    const claudeStream = client.messages.stream({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 1024,
       system: systemPrompt,
       messages: sanitizedMessages.map((m) => ({ role: m.role, content: m.content })),
     });
 
-    const textBlock = message.content.find((b) => b.type === "text");
-    if (!textBlock || textBlock.type !== "text") {
-      await refundQuota(userId, plan, "chat");
-      reserved = null;
-      return NextResponse.json({ error: "Réponse vide de l'IA." }, { status: 500 });
-    }
-
-    // Quota was already reserved up front; the slot is now genuinely used.
+    // The call started successfully → the quota slot is genuinely used.
     reserved = null;
 
-    return NextResponse.json({ reply: textBlock.text });
+    const encoder = new TextEncoder();
+    const responseStream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        try {
+          for await (const event of claudeStream) {
+            if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+              controller.enqueue(encoder.encode(event.delta.text));
+            }
+          }
+        } catch (streamErr) {
+          // Mid-stream failure: log and end gracefully (the user keeps what
+          // arrived so far). Quota stays consumed — a partial answer was given.
+          console.error("Chat coach stream error:", streamErr);
+        } finally {
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(responseStream, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+      },
+    });
   } catch (err: unknown) {
     // Give back the reserved slot on failure so the user isn't charged for a
     // response they never received.
