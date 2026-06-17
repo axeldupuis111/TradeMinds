@@ -1288,6 +1288,8 @@ const dict: Record<string, string> = {
   "analytics_heatmap_empty": "No hay suficientes datos para el heatmap. Vuelve después de más trades.",
   "analytics_no_trade": "Sin trade",
   "detail_close": "Cerrar",
+  "upgrade_included": "Incluido",
+  "upgrade_not_included": "No incluido",
   "detail_prev_trade": "Trade anterior",
   "detail_next_trade": "Trade siguiente",
   "detail_derived": "Detalles derivados",

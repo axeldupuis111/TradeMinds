@@ -206,7 +206,7 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
             <h2 className="text-base font-semibold text-foreground">{t("close_trade_title")}</h2>
             <p className="text-xs text-muted mt-0.5">{t("close_trade_subtitle")}</p>
           </div>
-          <button onClick={onClose} className="text-muted hover:text-foreground transition-colors">
+          <button onClick={onClose} aria-label={t("detail_close")} className="text-muted hover:text-foreground transition-colors">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
             </svg>

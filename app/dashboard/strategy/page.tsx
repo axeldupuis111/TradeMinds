@@ -799,7 +799,7 @@ export default function StrategyPage() {
               {parsed.setup_rules.map((rule, i) => (
                 <div key={i} className="flex gap-2 items-start">
                   <textarea value={rule} title={rule} onChange={(e) => updateRule(i, e.target.value)} rows={2} className={`${inputClass} flex-1 resize-y`} />
-                  <button onClick={() => removeRule(i)} className="px-3 py-2 text-muted hover:text-loss transition-colors mt-1 shrink-0">
+                  <button onClick={() => removeRule(i)} aria-label={t("session_remove")} className="px-3 py-2 text-muted hover:text-loss transition-colors mt-1 shrink-0">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
                     </svg>
