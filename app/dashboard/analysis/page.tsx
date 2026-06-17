@@ -475,28 +475,41 @@ export default function AnalysisPage() {
         }),
       });
 
-      const data = await res.json();
       if (!res.ok) {
+        let errBody: { error?: string } = {};
+        try { errBody = await res.json(); } catch {}
         if (res.status === 401) throw new Error(t("api_error_unauthorized"));
         if (res.status === 403) throw new Error(t("api_error_forbidden"));
         if (res.status === 413) throw new Error(t("api_error_payload_too_large"));
         if (res.status === 429) throw new Error(t("api_error_rate_limited"));
-        throw new Error(data.error || "Erreur serveur");
+        throw new Error(errBody.error || "Erreur serveur");
       }
 
-      setChatMessages([...newMessages, { role: "assistant", content: data.reply }]);
+      // Stream the reply in: the coach "types" live, message updates per chunk.
+      let answer = "";
+      setChatMessages([...newMessages, { role: "assistant", content: "" }]);
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      if (reader) {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          answer += decoder.decode(value, { stream: true });
+          setChatMessages([...newMessages, { role: "assistant", content: answer }]);
+        }
+      }
 
       // Persist both messages
       await supabase.from("chat_messages").insert([
         { user_id: user.id, role: "user", content: msg },
-        { user_id: user.id, role: "assistant", content: data.reply },
+        { user_id: user.id, role: "assistant", content: answer },
       ]);
 
       // Save Q&A pair to history
       await supabase.from("ai_analysis_history").insert({
         user_id: user.id,
         question: msg,
-        answer: data.reply,
+        answer,
       });
       loadAIHistory();
 
