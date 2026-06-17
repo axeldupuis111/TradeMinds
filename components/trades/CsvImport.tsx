@@ -124,7 +124,7 @@ function ColumnMappingModal({
         {/* Preview first row */}
         {rawRows.length > 0 && (
           <div className="mt-4 p-3 bg-background rounded-lg border border-border">
-            <p className="text-[10px] text-muted mb-1.5">Aperçu ligne 1 :</p>
+            <p className="text-[10px] text-muted mb-1.5">{t("csv_preview_row")}</p>
             <div className="text-[10px] text-foreground space-y-0.5 overflow-hidden">
               {Object.entries(rawRows[0]).slice(0, 6).map(([k, v]) => (
                 <div key={k} className="flex gap-2">

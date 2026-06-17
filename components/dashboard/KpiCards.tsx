@@ -159,9 +159,7 @@ export function KpiCards({
       />
     ) : (
       <p className="text-[10px] text-foreground-subtle italic leading-snug">
-        Pas encore
-        <br />
-        de données
+        {t("kpi_no_data")}
       </p>
     );
 

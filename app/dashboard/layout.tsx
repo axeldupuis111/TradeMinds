@@ -20,6 +20,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 function SessionReminderBanner() {
+  const { t } = useLanguage();
   const [show, setShow] = useState(false);
   const pathname = usePathname();
   const supabase = createClient();
@@ -66,14 +67,14 @@ function SessionReminderBanner() {
   return (
     <div className="flex items-center gap-3 px-4 py-3 bg-accent/10 border-b border-accent/20 text-sm">
       <span className="shrink-0">🎯</span>
-      <p className="flex-1 text-foreground">N&apos;oublie pas de préparer ta session avant de trader</p>
+      <p className="flex-1 text-foreground">{t("session_banner_text")}</p>
       <Link
         href="/dashboard/session"
         className="shrink-0 text-accent font-semibold hover:underline whitespace-nowrap"
       >
-        Compléter ma session →
+        {t("session_banner_cta")}
       </Link>
-      <button onClick={dismiss} className="shrink-0 text-muted hover:text-foreground transition-colors ml-1" aria-label="Fermer">
+      <button onClick={dismiss} className="shrink-0 text-muted hover:text-foreground transition-colors ml-1" aria-label={t("detail_close")}>
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
         </svg>
