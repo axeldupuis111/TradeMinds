@@ -1,9 +1,22 @@
 import { LanguageProvider } from "@/lib/LanguageContext";
 import { PlanProvider } from "@/lib/PlanContext";
 import { ThemeProvider } from "@/lib/ThemeContext";
+import { loadDict } from "@/lib/translations";
+import type { Lang } from "@/lib/translations";
+import { cookies } from "next/headers";
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+
+const LANGS: Lang[] = ["fr", "en", "de", "es"];
+
+/** Resolve the visitor's language server-side from the NEXT_LOCALE cookie so
+ *  the first paint is already in the right language (no English-first flash on
+ *  cookie-based routes such as the dashboard). Defaults to English. */
+function resolveServerLang(): Lang {
+  const cookieLang = cookies().get("NEXT_LOCALE")?.value;
+  return cookieLang && (LANGS as string[]).includes(cookieLang) ? (cookieLang as Lang) : "en";
+}
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -22,13 +35,15 @@ export const metadata: Metadata = {
   description: "Journal de trading intelligent",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const ssrLang = resolveServerLang();
+  const ssrDict = await loadDict(ssrLang);
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={ssrLang} suppressHydrationWarning>
       <head>
         {/* Prevent flash of wrong theme — must run before paint */}
         <script
@@ -47,7 +62,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider>
-          <LanguageProvider>
+          <LanguageProvider ssrLang={ssrLang} ssrDict={ssrDict}>
             <PlanProvider>{children}</PlanProvider>
           </LanguageProvider>
         </ThemeProvider>
