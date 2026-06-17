@@ -15,7 +15,7 @@ import ShareCardModal from "@/components/dashboard/ShareCardModal";
 import { CardHeader, CardTitle } from "@/components/ui/Card";
 import { useLanguage } from "@/lib/LanguageContext";
 import { cn } from "@/lib/cn";
-import { CalendarRange, Share2, TrendingDown, TrendingUp } from "lucide-react";
+import { CalendarRange, Share2, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import { useMemo, useState } from "react";
 
 interface RecapTrade {
@@ -98,6 +98,16 @@ function DeltaBadge({ delta, suffix = "", invert = false }: { delta: number | nu
   );
 }
 
+/** A short, rule-based "coach's note" on the week — no AI call, instant. */
+function weeklyCoachNote(cur: WeekStats, prev: WeekStats, t: (k: string) => string): string {
+  if (cur.count === 0) return t("recap_note_no_trades");
+  const pnl = fmtEur(cur.pnl);
+  if (cur.pnl > 0 && prev.count > 0 && prev.pnl < 0) return t("recap_note_comeback").replace("{pnl}", pnl);
+  if (cur.pnl > 0) return t("recap_note_positive").replace("{pnl}", pnl);
+  if (cur.pnl < 0) return t("recap_note_negative").replace("{pnl}", pnl);
+  return t("recap_note_flat");
+}
+
 export default function WeeklyRecap({ trades }: { trades: RecapTrade[] }) {
   const { t } = useLanguage();
   const [shareOpen, setShareOpen] = useState(false);
@@ -122,6 +132,7 @@ export default function WeeklyRecap({ trades }: { trades: RecapTrade[] }) {
   if (current.count === 0 && previous.count === 0) return null;
 
   const pnlPositive = current.pnl >= 0;
+  const coachNote = weeklyCoachNote(current, previous, t);
 
   const stats: {
     key: string;
@@ -228,10 +239,16 @@ export default function WeeklyRecap({ trades }: { trades: RecapTrade[] }) {
               </span>
             </div>
           )}
+
+          {/* Coach's note on the week — rule-based, instant, shareable */}
+          <div className="mt-3 flex items-start gap-2 rounded-lg bg-accent/5 border border-accent/15 px-3 py-2">
+            <Sparkles className="w-3.5 h-3.5 text-accent shrink-0 mt-0.5" strokeWidth={1.75} />
+            <p className="text-xs text-foreground leading-snug">{coachNote}</p>
+          </div>
         </>
       )}
 
-      {shareOpen && <ShareCardModal stats={current} onClose={() => setShareOpen(false)} />}
+      {shareOpen && <ShareCardModal stats={{ ...current, note: coachNote }} onClose={() => setShareOpen(false)} />}
     </KpiCardPremium>
   );
 }

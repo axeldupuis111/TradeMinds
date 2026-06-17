@@ -19,6 +19,8 @@ export interface ShareStats {
   winrate: number | null;
   profitFactor: number | null;
   best: { pnl: number; pair: string } | null;
+  /** Optional one-line coach's note rendered at the bottom of the card. */
+  note?: string;
 }
 
 function fmtEur(n: number): string {
@@ -184,6 +186,13 @@ export default function ShareCardModal({ stats, onClose }: { stats: ShareStats; 
                 </div>
               ))}
             </div>
+
+            {/* Coach's note on the week */}
+            {stats.note && (
+              <p style={{ fontSize: 12.5, color: FG, lineHeight: 1.45, margin: "0 0 18px", fontStyle: "italic", opacity: 0.92 }}>
+                &ldquo;{stats.note}&rdquo;
+              </p>
+            )}
 
             {/* Best trade + watermark */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
