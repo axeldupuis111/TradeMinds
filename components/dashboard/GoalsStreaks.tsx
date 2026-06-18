@@ -217,6 +217,11 @@ export default function GoalsStreaks() {
             )}
           </div>
           <p className="text-muted text-xs">{t("goals_streak_desc")}</p>
+          {record > 0 && streak > 0 && streak < record && (
+            <p className="text-warning/90 text-[11px] font-medium mt-0.5">
+              {t("goals_beat_record").replace("{n}", String(record - streak + 1))}
+            </p>
+          )}
         </div>
         {record > 0 && (
           <div className="text-right shrink-0">
