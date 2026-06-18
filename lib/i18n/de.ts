@@ -957,6 +957,7 @@ const dict: Record<string, string> = {
   "goals_streak_days": "Tage Disziplin",
   "goals_record": "Rekord",
   "goals_new_record": "Beste Serie!",
+  "goals_beat_record": "Noch {n} Tag(e) bis zu deinem Rekord",
   "goals_streak_desc": "Disziplinierte Handelstage in Folge — Wochenenden zählen nicht",
   "goals_weekly": "Wochenziel: 0 Rache-Trades",
   "goals_weekly_desc": "Keine emotionalen Trades diese Woche",
