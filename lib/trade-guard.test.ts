@@ -52,4 +52,24 @@ describe("checkTradeGuard", () => {
     const types = w.map((x) => x.type).sort();
     expect(types).toEqual(["consecutive_losses", "max_trades", "wrong_pair"]);
   });
+
+  it("flags reaching the daily loss limit", () => {
+    const w = checkTradeGuard(strat, [], { pair: "XAUUSD" }, { dailyLossLimit: 500, netPnlToday: -520 });
+    expect(w).toEqual([{ type: "daily_loss", values: { lost: 520, limit: 500 } }]);
+  });
+
+  it("does not flag when still within the daily loss limit", () => {
+    const w = checkTradeGuard(strat, [], { pair: "XAUUSD" }, { dailyLossLimit: 500, netPnlToday: -200 });
+    expect(w.some((x) => x.type === "daily_loss")).toBe(false);
+  });
+
+  it("flags the daily loss even without a strategy (account-level rule)", () => {
+    const w = checkTradeGuard(null, [], { pair: "XAUUSD" }, { dailyLossLimit: 300, netPnlToday: -300 });
+    expect(w).toEqual([{ type: "daily_loss", values: { lost: 300, limit: 300 } }]);
+  });
+
+  it("ignores the daily loss check when no limit is set", () => {
+    const w = checkTradeGuard(strat, [], { pair: "XAUUSD" }, { dailyLossLimit: null, netPnlToday: -9999 });
+    expect(w.some((x) => x.type === "daily_loss")).toBe(false);
+  });
 });

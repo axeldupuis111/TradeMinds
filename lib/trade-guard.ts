@@ -28,26 +28,50 @@ export interface GuardIntent {
   pair: string;
 }
 
-export type GuardWarningType = "wrong_pair" | "max_trades" | "consecutive_losses";
+export type GuardWarningType =
+  | "wrong_pair"
+  | "max_trades"
+  | "consecutive_losses"
+  | "daily_loss";
 
 export interface GuardWarning {
   type: GuardWarningType;
-  /** Values for message interpolation ({pair}, {count}, {max}, {run}). */
+  /** Values for message interpolation ({pair}, {count}, {max}, {run}, {lost}, {limit}). */
   values: Record<string, string | number>;
+}
+
+export interface GuardContext {
+  /** Max daily loss in account currency (€). Null/0 = no limit. */
+  dailyLossLimit?: number | null;
+  /** Net P&L so far today (closed trades), in account currency. */
+  netPnlToday?: number;
 }
 
 /**
  * @param strategy   the trader's active strategy rules
  * @param todayTrades today's already-logged trades, chronological (oldest→newest)
  * @param intent     the trade about to be logged
+ * @param context    account-level context (daily loss limit + today's net P&L)
  */
 export function checkTradeGuard(
   strategy: GuardStrategy | null,
   todayTrades: GuardTradeToday[],
   intent: GuardIntent,
+  context: GuardContext = {},
 ): GuardWarning[] {
-  if (!strategy) return [];
   const warnings: GuardWarning[] = [];
+
+  // ── Daily loss limit reached ──────────────────────────────────────────────
+  // Account-level rule, independent of the strategy: if the trader has already
+  // burned through their max daily loss, opening another trade is the textbook
+  // prop-firm blow-up — confront them even with no strategy set.
+  const limit = context.dailyLossLimit ?? null;
+  const net = context.netPnlToday ?? 0;
+  if (limit != null && limit > 0 && net <= -limit) {
+    warnings.push({ type: "daily_loss", values: { lost: Math.round(-net), limit: Math.round(limit) } });
+  }
+
+  if (!strategy) return warnings;
 
   // ── Pair not in the strategy ──────────────────────────────────────────────
   const allowed = (strategy.pairs ?? []).map((p) => p.trim().toUpperCase()).filter(Boolean);
