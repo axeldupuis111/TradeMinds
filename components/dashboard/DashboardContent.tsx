@@ -63,6 +63,8 @@ interface ActiveAccount {
   account_size: number;
   profit_target_pct: number;
   max_total_dd_pct: number;
+  max_daily_dd_pct: number | null;
+  max_daily_loss_pct: number | null;
   balance: number;
   type: string;
 }
@@ -86,6 +88,7 @@ interface Props {
     };
   } | null;
   allTrades: TradeWithTime[];
+  maxTradesPerDay: number | null;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -131,6 +134,7 @@ export default function DashboardContent({
   recentTrades,
   lastReview,
   allTrades,
+  maxTradesPerDay,
 }: Props) {
   const { t } = useLanguage();
   const { plan, canUseAI, loading: planLoading } = usePlan();
@@ -177,6 +181,14 @@ export default function DashboardContent({
   const ddMax  = displayAccount ? displayAccount.account_size * displayAccount.max_total_dd_pct / 100 : 0;
   const ddUsed = displayAccount ? Math.max(0, displayAccount.account_size - displayAccount.balance) : 0;
   const ddPct  = ddMax > 0 ? (ddUsed / ddMax) * 100 : 0;
+
+  // ── Calendar discipline overlay (process, not P&L) ───────────────────────────
+  const calendarRules = useMemo(() => {
+    const lossPct = displayAccount?.max_daily_loss_pct ?? displayAccount?.max_daily_dd_pct ?? null;
+    const size = displayAccount?.account_size ?? 0;
+    const maxDailyLossEur = lossPct != null && lossPct > 0 && size > 0 ? (size * lossPct) / 100 : null;
+    return { maxTradesPerDay, maxDailyLossEur };
+  }, [displayAccount, maxTradesPerDay]);
 
   // ── Equity curve ───────────────────────────────────────────────────────────
   const equityCurveData = useMemo(() => {
@@ -403,7 +415,7 @@ export default function DashboardContent({
 
       {/* ── Trading Calendar ─────────────────────────────────────────── */}
       <StaggerItem className="mt-6">
-        <TradingCalendar trades={allTrades} selectedAccountId={selectedAccountId} />
+        <TradingCalendar trades={allTrades} selectedAccountId={selectedAccountId} rules={calendarRules} />
       </StaggerItem>
 
       {/* ── Position sizer shortcut ──────────────────────────────────── */}
