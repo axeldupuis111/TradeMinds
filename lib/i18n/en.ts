@@ -1309,6 +1309,7 @@ const dict: Record<string, string> = {
   "guard_wrong_pair": "{pair} isn't in your allowed pairs.",
   "guard_max_trades": "You've already taken {count} trades today (your limit: {max}).",
   "guard_consecutive_losses": "{run} losses in a row — your rule says stop at {max}.",
+  "guard_daily_loss": "You've hit your max daily loss: {lost}€ of the {limit}€ allowed. Your rule says stop.",
   "guard_respect": "I'll respect my rule",
   "guard_proceed": "Trade anyway",
   "detail_prev_trade": "Previous trade",

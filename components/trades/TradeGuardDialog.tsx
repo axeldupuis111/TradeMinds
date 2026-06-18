@@ -8,6 +8,7 @@ const MESSAGE_KEY: Record<GuardWarning["type"], string> = {
   wrong_pair: "guard_wrong_pair",
   max_trades: "guard_max_trades",
   consecutive_losses: "guard_consecutive_losses",
+  daily_loss: "guard_daily_loss",
 };
 
 function interpolate(template: string, values: Record<string, string | number>): string {
