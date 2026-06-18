@@ -27,6 +27,30 @@ describe("dayBreaches", () => {
   it("skips checks when rules are not set", () => {
     expect(dayBreaches({ count: 99, netPnl: -99999 }, { maxTradesPerDay: null, maxDailyLossEur: null })).toEqual([]);
   });
+
+  it("flags an off-plan pair (case/space-insensitive)", () => {
+    const r = dayBreaches(
+      { count: 1, netPnl: 50, pairs: [" gbpusd "] },
+      { maxTradesPerDay: 3, maxDailyLossEur: 500, allowedPairs: ["XAUUSD"] },
+    );
+    expect(r).toEqual(["wrong_pair"]);
+  });
+
+  it("does not flag when every traded pair is allowed", () => {
+    const r = dayBreaches(
+      { count: 2, netPnl: 50, pairs: ["XAUUSD", "xauusd"] },
+      { maxTradesPerDay: 3, maxDailyLossEur: 500, allowedPairs: ["XAUUSD", "EURUSD"] },
+    );
+    expect(r.some((b) => b === "wrong_pair")).toBe(false);
+  });
+
+  it("ignores the pair check when the strategy lists no pairs", () => {
+    const r = dayBreaches(
+      { count: 1, netPnl: 50, pairs: ["GBPUSD"] },
+      { maxTradesPerDay: 3, maxDailyLossEur: 500, allowedPairs: null },
+    );
+    expect(r).toEqual([]);
+  });
 });
 
 describe("hasDisciplineRules", () => {

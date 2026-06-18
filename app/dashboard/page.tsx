@@ -49,7 +49,7 @@ export default async function DashboardPage() {
     supabase.from("prop_challenges").select("id, firm, account_number, account_size, profit_target_pct, max_total_dd_pct, max_daily_dd_pct, max_daily_loss_pct, balance, type").eq("user_id", userId!).eq("status", "active").order("created_at", { ascending: false }),
     supabase.from("trades").select("id, open_time, close_time, pair, direction, pnl, commission, swap, challenge_id, lot_size, entry_price, exit_price").eq("user_id", userId!).order("open_time", { ascending: false }).limit(5),
     supabase.from("trades").select("open_time, close_time, pair, direction, pnl, commission, swap, challenge_id, lot_size, entry_price, exit_price").eq("user_id", userId!).order("open_time", { ascending: true }),
-    supabase.from("strategies").select("max_trades_per_day").eq("user_id", userId!).order("created_at", { ascending: true }).limit(1).maybeSingle(),
+    supabase.from("strategies").select("max_trades_per_day, pairs").eq("user_id", userId!).order("created_at", { ascending: true }).limit(1).maybeSingle(),
   ]);
 
   const score = lastReview?.discipline_score ?? null;
@@ -64,6 +64,7 @@ export default async function DashboardPage() {
       monthTrades={(monthTrades ?? []).map(t => ({ pnl: t.pnl, commission: t.commission, swap: t.swap, challenge_id: t.challenge_id }))}
       todayTrades={(todayTrades ?? []).map(t => ({ pnl: t.pnl, commission: t.commission, swap: t.swap, challenge_id: t.challenge_id }))}
       maxTradesPerDay={primaryStrategy?.max_trades_per_day ?? null}
+      allowedPairs={primaryStrategy?.pairs ?? null}
       activeAccounts={(activeAccounts ?? []).map(a => ({
         id: a.id, firm: a.firm, account_number: a.account_number, account_size: a.account_size,
         profit_target_pct: a.profit_target_pct, max_total_dd_pct: a.max_total_dd_pct,

@@ -634,6 +634,7 @@ const dict: Record<string, string> = {
   "cal_disciplined_day": "Disziplinierter Tag — Regeln eingehalten",
   "cal_breach_trades": "Zu viele Trades an diesem Tag",
   "cal_breach_loss": "Maximaler Tagesverlust überschritten",
+  "cal_breach_pair": "Paar außerhalb der Strategie an diesem Tag",
   "cal_mon": "Mo",
   "cal_tue": "Di",
   "cal_wed": "Mi",
