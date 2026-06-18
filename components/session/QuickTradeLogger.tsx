@@ -4,6 +4,9 @@ import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { INSTRUMENTS } from "@/lib/instruments";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
+import { useTradeGuard } from "@/lib/hooks/useTradeGuard";
+import { TradeGuardDialog } from "@/components/trades/TradeGuardDialog";
+import type { GuardWarning } from "@/lib/trade-guard";
 import { useState } from "react";
 
 const inputClass =
@@ -25,6 +28,7 @@ export default function QuickTradeLogger({ strategyId, pairs, onClose, onSaved }
   const { t } = useLanguage();
   const { selectedAccount } = useActiveAccount();
   const supabase = createClient();
+  const { runGuard } = useTradeGuard(strategyId);
 
   const todayStr = new Date().toISOString().split("T")[0];
 
@@ -41,13 +45,14 @@ export default function QuickTradeLogger({ strategyId, pairs, onClose, onSaved }
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [guardWarnings, setGuardWarnings] = useState<GuardWarning[] | null>(null);
 
   function update(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors((prev) => { const n = { ...prev }; delete n[field]; return n; });
   }
 
-  async function handleSave() {
+  function handleSave() {
     const errs: Record<string, string> = {};
     if (!form.pair.trim()) errs.pair = t("manual_err_pair");
     if (!form.entry_price.trim() || isNaN(parseFloat(form.entry_price))) errs.entry_price = t("manual_err_entry");
@@ -56,6 +61,14 @@ export default function QuickTradeLogger({ strategyId, pairs, onClose, onSaved }
     if (!form.lot_size.trim() || parseFloat(form.lot_size) <= 0) errs.lot_size = t("manual_required_lot");
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
 
+    // Commitment-device gate: confront the trader with their own rules first.
+    const warnings = runGuard(form.pair.toUpperCase());
+    if (warnings.length > 0) { setGuardWarnings(warnings); return; }
+
+    void doInsert();
+  }
+
+  async function doInsert() {
     setSaving(true);
     setSaveError(null);
 
@@ -192,7 +205,7 @@ export default function QuickTradeLogger({ strategyId, pairs, onClose, onSaved }
             disabled={saving}
             className="flex-1 py-2.5 bg-accent text-white rounded-lg font-medium text-sm hover:bg-blue-600 transition-colors disabled:opacity-50"
           >
-            {saving ? "..." : "Logger le trade"}
+            {saving ? "..." : t("session_active_log_trade")}
           </button>
           <button
             onClick={onClose}
@@ -202,6 +215,14 @@ export default function QuickTradeLogger({ strategyId, pairs, onClose, onSaved }
           </button>
         </div>
       </div>
+
+      {guardWarnings && (
+        <TradeGuardDialog
+          warnings={guardWarnings}
+          onConfirm={() => { setGuardWarnings(null); void doInsert(); }}
+          onCancel={() => setGuardWarnings(null)}
+        />
+      )}
     </div>
   );
 }
