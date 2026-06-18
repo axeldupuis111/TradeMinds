@@ -3,6 +3,8 @@
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useTheme } from "@/lib/ThemeContext";
+import { dayBreaches, hasDisciplineRules, type DayBreach, type DayDisciplineRules } from "@/lib/calendar-discipline";
+import { ShieldCheck, ShieldAlert } from "lucide-react";
 import { useMemo, useState } from "react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -24,6 +26,8 @@ interface CalendarTrade {
 interface Props {
   trades: CalendarTrade[];
   selectedAccountId: string | null;
+  /** Optional discipline overlay — when set, days are also marked clean/breached. */
+  rules?: DayDisciplineRules | null;
 }
 
 interface DayTrade {
@@ -70,7 +74,7 @@ function fmtTime(iso: string | null | undefined): string | null {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function TradingCalendar({ trades, selectedAccountId }: Props) {
+export default function TradingCalendar({ trades, selectedAccountId, rules }: Props) {
   const { t } = useLanguage();
   const { theme } = useTheme();
   const isDark = theme !== "light";
@@ -125,6 +129,19 @@ export default function TradingCalendar({ trades, selectedAccountId }: Props) {
   // ── Month stats ────────────────────────────────────────────────────────────
   const tradingDays = Object.keys(dayMap).length;
   const monthPnl = Object.values(dayMap).reduce((sum, d) => sum + d.pnl, 0);
+
+  // ── Discipline overlay (process, orthogonal to P&L) ──────────────────────────
+  const disciplineOn = hasDisciplineRules(rules);
+  const breachByDay = useMemo(() => {
+    const map: Record<string, DayBreach[]> = {};
+    if (!disciplineOn || !rules) return map;
+    for (const [key, d] of Object.entries(dayMap)) {
+      const b = dayBreaches({ count: d.count, netPnl: d.pnl }, rules);
+      if (b.length > 0) map[key] = b;
+    }
+    return map;
+  }, [dayMap, rules, disciplineOn]);
+  const cleanDays = disciplineOn ? tradingDays - Object.keys(breachByDay).length : 0;
 
   // ── Calendar grid geometry ─────────────────────────────────────────────────
   const firstDay = new Date(year, month, 1);
@@ -188,9 +205,17 @@ export default function TradingCalendar({ trades, selectedAccountId }: Props) {
 
       {/* ── Month stats ─────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between mb-4">
-        <span className="text-sm text-muted">
-          {tradingDays} {t("cal_trading_days")}
-        </span>
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <span className="text-sm text-muted">
+            {tradingDays} {t("cal_trading_days")}
+          </span>
+          {disciplineOn && tradingDays > 0 && (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-profit" title={t("cal_disciplined_days_hint")}>
+              <ShieldCheck className="w-3.5 h-3.5" strokeWidth={2} />
+              {t("cal_disciplined_days").replace("{clean}", String(cleanDays)).replace("{total}", String(tradingDays))}
+            </span>
+          )}
+        </div>
         <span className={`text-sm font-semibold ${monthPnl >= 0 ? "text-profit" : "text-loss"}`}>
           {monthPnl >= 0 ? "+" : ""}{monthPnl.toFixed(2)} €
         </span>
@@ -218,6 +243,9 @@ export default function TradingCalendar({ trades, selectedAccountId }: Props) {
           const hasTrades = !!data && data.count > 0;
           const isPositive = hasTrades && data.pnl >= 0;
           const dayKey = dayNum.toString();
+          const dayBreach = disciplineOn && hasTrades ? (breachByDay[dayKey] ?? []) : [];
+          const dayBroke = dayBreach.length > 0;
+          const dayClean = disciplineOn && hasTrades && !dayBroke;
           const isPinned = pinnedDay === dayKey && isCurrentMonth;
           const isToday = isCurrentMonth
             && dayNum === todayDay
@@ -306,6 +334,22 @@ export default function TradingCalendar({ trades, selectedAccountId }: Props) {
                   aria-hidden="true"
                 />
               )}
+
+              {/* Discipline marker — process respected (✓) or rule broken (⚠) */}
+              {dayBroke && (
+                <ShieldAlert
+                  className="absolute bottom-1 right-1 w-3 h-3 sm:w-3.5 sm:h-3.5 text-loss"
+                  strokeWidth={2}
+                  aria-hidden="true"
+                />
+              )}
+              {dayClean && (
+                <ShieldCheck
+                  className="absolute bottom-1 right-1 w-3 h-3 sm:w-3.5 sm:h-3.5 text-profit/70"
+                  strokeWidth={2}
+                  aria-hidden="true"
+                />
+              )}
             </button>
           );
         })}
@@ -320,6 +364,9 @@ export default function TradingCalendar({ trades, selectedAccountId }: Props) {
         const topPairs = Array.from(
           new Set(displayDayData.trades.map((tr) => tr.pair))
         ).slice(0, 2);
+        const panelBreaches = disciplineOn ? (breachByDay[displayDay] ?? []) : [];
+        const breachLabel = (b: DayBreach) =>
+          b === "over_trades" ? t("cal_breach_trades") : t("cal_breach_loss");
 
         return (
           <div
@@ -368,6 +415,21 @@ export default function TradingCalendar({ trades, selectedAccountId }: Props) {
                 {displayDayData.pnl >= 0 ? "+" : ""}{displayDayData.pnl.toFixed(2)} €
               </span>
             </div>
+
+            {/* Discipline line — process status for the day */}
+            {disciplineOn && (
+              panelBreaches.length > 0 ? (
+                <div className="flex items-start gap-1.5 px-3 pb-2 text-[11px] text-loss">
+                  <ShieldAlert className="w-3.5 h-3.5 shrink-0 mt-px" strokeWidth={2} aria-hidden="true" />
+                  <span>{panelBreaches.map(breachLabel).join(" · ")}</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 px-3 pb-2 text-[11px] text-profit/80">
+                  <ShieldCheck className="w-3.5 h-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />
+                  <span>{t("cal_disciplined_day")}</span>
+                </div>
+              )
+            )}
 
             {/* Detailed trade rows — only when pinned */}
             {isPinnedPanel && (
