@@ -136,7 +136,7 @@ export default function TradingCalendar({ trades, selectedAccountId, rules }: Pr
     const map: Record<string, DayBreach[]> = {};
     if (!disciplineOn || !rules) return map;
     for (const [key, d] of Object.entries(dayMap)) {
-      const b = dayBreaches({ count: d.count, netPnl: d.pnl }, rules);
+      const b = dayBreaches({ count: d.count, netPnl: d.pnl, pairs: d.trades.map((tr) => tr.pair) }, rules);
       if (b.length > 0) map[key] = b;
     }
     return map;
@@ -366,7 +366,9 @@ export default function TradingCalendar({ trades, selectedAccountId, rules }: Pr
         ).slice(0, 2);
         const panelBreaches = disciplineOn ? (breachByDay[displayDay] ?? []) : [];
         const breachLabel = (b: DayBreach) =>
-          b === "over_trades" ? t("cal_breach_trades") : t("cal_breach_loss");
+          b === "over_trades" ? t("cal_breach_trades")
+          : b === "wrong_pair" ? t("cal_breach_pair")
+          : t("cal_breach_loss");
 
         return (
           <div

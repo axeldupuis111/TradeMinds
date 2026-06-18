@@ -89,6 +89,7 @@ interface Props {
   } | null;
   allTrades: TradeWithTime[];
   maxTradesPerDay: number | null;
+  allowedPairs: string[] | null;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -135,6 +136,7 @@ export default function DashboardContent({
   lastReview,
   allTrades,
   maxTradesPerDay,
+  allowedPairs,
 }: Props) {
   const { t } = useLanguage();
   const { plan, canUseAI, loading: planLoading } = usePlan();
@@ -187,8 +189,8 @@ export default function DashboardContent({
     const lossPct = displayAccount?.max_daily_loss_pct ?? displayAccount?.max_daily_dd_pct ?? null;
     const size = displayAccount?.account_size ?? 0;
     const maxDailyLossEur = lossPct != null && lossPct > 0 && size > 0 ? (size * lossPct) / 100 : null;
-    return { maxTradesPerDay, maxDailyLossEur };
-  }, [displayAccount, maxTradesPerDay]);
+    return { maxTradesPerDay, maxDailyLossEur, allowedPairs };
+  }, [displayAccount, maxTradesPerDay, allowedPairs]);
 
   // ── Equity curve ───────────────────────────────────────────────────────────
   const equityCurveData = useMemo(() => {
