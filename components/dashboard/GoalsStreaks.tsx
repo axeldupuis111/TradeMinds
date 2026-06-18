@@ -5,8 +5,9 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Flame, Trophy, Gem, Target, Star, Lock, PartyPopper, type LucideIcon } from "lucide-react";
+import { Flame, Trophy, Gem, Target, Star, Lock, PartyPopper, Crown, type LucideIcon } from "lucide-react";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
+import { computeDisciplineStreaks } from "@/lib/discipline-streak";
 
 interface Achievement {
   id: string;
@@ -42,6 +43,8 @@ export default function GoalsStreaks() {
   const { t } = useLanguage();
   const supabase = createClient();
   const [streak, setStreak] = useState(0);
+  const [record, setRecord] = useState(0);
+  const [isRecord, setIsRecord] = useState(false);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [weeklyProgress, setWeeklyProgress] = useState({ current: 0, target: 0, met: true });
   const [loading, setLoading] = useState(true);
@@ -88,12 +91,13 @@ export default function GoalsStreaks() {
       const bad = tr.emotion === "revenge" || tr.emotion === "fomo";
       dayHasEmotionalTrade.set(day, (dayHasEmotionalTrade.get(day) ?? false) || bad);
     }
-    let streakCount = 0;
-    for (const day of Array.from(dayHasEmotionalTrade.keys()).sort().reverse()) {
-      if (dayHasEmotionalTrade.get(day)) break;
-      streakCount++;
-    }
-    setStreak(streakCount);
+    const streaks = computeDisciplineStreaks(
+      Array.from(dayHasEmotionalTrade.entries()).map(([day, emotional]) => ({ day, emotional })),
+    );
+    const streakCount = streaks.current;
+    setStreak(streaks.current);
+    setRecord(streaks.record);
+    setIsRecord(streaks.isRecord);
 
     // Weekly goal: count revenge trades this week
     const monday = getMonday(new Date()).toISOString().split("T")[0];
@@ -201,11 +205,25 @@ export default function GoalsStreaks() {
       <div className="flex items-center gap-3 mb-2">
         {streak > 0 && <Flame className="w-7 h-7 text-warning shrink-0" strokeWidth={1.75} />}
         <div className="flex-1 min-w-0">
-          <p className="text-foreground font-bold text-lg">
-            {streak > 0 ? `${streak} ${t("goals_streak_days")}` : `0 ${t("goals_streak_days")}`}
-          </p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-foreground font-bold text-lg">
+              {streak > 0 ? `${streak} ${t("goals_streak_days")}` : `0 ${t("goals_streak_days")}`}
+            </p>
+            {isRecord && streak >= 3 && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-warning/15 text-warning">
+                <Crown className="w-3 h-3" strokeWidth={2} />
+                {t("goals_new_record")}
+              </span>
+            )}
+          </div>
           <p className="text-muted text-xs">{t("goals_streak_desc")}</p>
         </div>
+        {record > 0 && (
+          <div className="text-right shrink-0">
+            <p className="text-foreground font-bold text-lg tabular-nums">{record}</p>
+            <p className="text-muted text-[11px] uppercase tracking-wider">{t("goals_record")}</p>
+          </div>
+        )}
       </div>
       {nextMilestone && (
         <div className="mb-4">
