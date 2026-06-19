@@ -52,6 +52,13 @@ export default async function DashboardPage() {
     supabase.from("strategies").select("max_trades_per_day, pairs").eq("user_id", userId!).order("created_at", { ascending: true }).limit(1).maybeSingle(),
   ]);
 
+  const onboarding = {
+    hasAccount: (activeAccounts?.length ?? 0) > 0,
+    hasTrades: (allTrades?.length ?? 0) > 0,
+    hasStrategy: !!primaryStrategy,
+    hasSession: !!lastReview,
+  };
+
   const score = lastReview?.discipline_score ?? null;
   const scoreColor = score === null ? "text-muted" : score >= 90 ? "text-profit" : score >= 75 ? "text-green-400" : score >= 60 ? "text-yellow-400" : score >= 40 ? "text-orange-400" : "text-loss";
 
@@ -82,6 +89,7 @@ export default async function DashboardPage() {
         pnl: t.pnl, commission: t.commission, swap: t.swap, challenge_id: t.challenge_id,
         lot_size: t.lot_size ?? null, entry_price: t.entry_price ?? null, exit_price: t.exit_price ?? null,
       }))}
+      onboarding={onboarding}
     />
   );
 }

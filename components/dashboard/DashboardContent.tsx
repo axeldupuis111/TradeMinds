@@ -5,6 +5,7 @@ import TradingCalendar from "@/components/charts/TradingCalendar";
 import { AiInsights } from "@/components/dashboard/AiInsights";
 import DayState from "@/components/dashboard/DayState";
 import GoalsStreaks from "@/components/dashboard/GoalsStreaks";
+import OnboardingChecklist, { type OnboardingState } from "@/components/dashboard/OnboardingChecklist";
 import PatternAlerts from "@/components/dashboard/PatternAlerts";
 import WeeklyRecap from "@/components/dashboard/WeeklyRecap";
 import { KpiCards } from "@/components/dashboard/KpiCards";
@@ -90,6 +91,7 @@ interface Props {
   allTrades: TradeWithTime[];
   maxTradesPerDay: number | null;
   allowedPairs: string[] | null;
+  onboarding: OnboardingState;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -137,6 +139,7 @@ export default function DashboardContent({
   allTrades,
   maxTradesPerDay,
   allowedPairs,
+  onboarding,
 }: Props) {
   const { t } = useLanguage();
   const { plan, canUseAI, loading: planLoading } = usePlan();
@@ -253,6 +256,9 @@ export default function DashboardContent({
 
   return (
     <div>
+      {/* ── Onboarding / activation ──────────────────────────────────── */}
+      <OnboardingChecklist state={onboarding} />
+
       {/* ── Upsell banner ────────────────────────────────────────────── */}
       {!planLoading && plan === "free" && !upsellDismissed && (
         <div className="mb-4 flex items-center gap-3 px-4 py-3 bg-accent/5 border border-accent/20 rounded-xl">
