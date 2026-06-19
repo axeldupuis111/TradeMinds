@@ -1,6 +1,5 @@
 "use client";
 
-import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { WelcomePlusModal } from "@/components/upgrade/WelcomePlusModal";
@@ -47,7 +46,6 @@ export default function UpgradePage() {
   const { t } = useLanguage();
   const { plan: currentPlan, refreshPlan, subscriptionStatus } = usePlan();
   const hasStripeSubscription = subscriptionStatus !== null;
-  const supabase = createClient();
   const [annual, setAnnual] = useState(false);
   const [showDowngradeModal, setShowDowngradeModal] = useState(false);
   const [downgrading, setDowngrading] = useState(false);
@@ -119,15 +117,27 @@ export default function UpgradePage() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Ouvre le portail de facturation Stripe (seule source de vérité du plan).
+  // L'annulation se fait dans Stripe ; c'est le webhook customer.subscription.deleted
+  // qui repassera profiles.plan à 'free'. On n'écrit JAMAIS le plan directement côté client.
+  async function openBillingPortal() {
+    const res = await fetch("/api/stripe/portal", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    const data = await res.json();
+    if (!res.ok || !data.url) throw new Error(data.error || "Portal error");
+    window.location.href = data.url;
+  }
+
   async function handleDowngrade() {
     setDowngrading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      await supabase.from("profiles").update({ plan: "free", plan_expires_at: null }).eq("id", user.id);
-      await refreshPlan();
+      await openBillingPortal();
+      // Pas de setDowngrading(false) en cas de succès : redirection en cours vers Stripe.
+    } catch (err) {
+      console.error("[Downgrade] Error:", err);
       setShowDowngradeModal(false);
-    } finally {
       setDowngrading(false);
     }
   }
@@ -529,16 +539,9 @@ export default function UpgradePage() {
             onClick={async () => {
               setIsPortalLoading(true);
               try {
-                const res = await fetch("/api/stripe/portal", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                });
-                const data = await res.json();
-                if (!res.ok || !data.url) throw new Error(data.error || "Portal error");
-                window.location.href = data.url;
+                await openBillingPortal();
               } catch (err) {
                 console.error("[Manage subscription] Error:", err);
-              } finally {
                 setIsPortalLoading(false);
               }
             }}
