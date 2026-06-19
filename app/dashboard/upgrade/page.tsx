@@ -54,6 +54,20 @@ export default function UpgradePage() {
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [isPortalLoading, setIsPortalLoading] = useState(false);
 
+  // Changement de plan in-app (Plus <-> Premium)
+  interface ChangePreview {
+    isUpgrade: boolean;
+    amountDueNow: number | null; // en centimes ; null = montant inconnu
+    currency: string;
+    periodEnd: number | null; // epoch seconds
+  }
+  const [changeTarget, setChangeTarget] = useState<"plus" | "premium" | null>(null);
+  const [changePreview, setChangePreview] = useState<ChangePreview | null>(null);
+  const [changeLoadingPreview, setChangeLoadingPreview] = useState(false);
+  const [changeSubmitting, setChangeSubmitting] = useState(false);
+  const [changeError, setChangeError] = useState<string | null>(null);
+  const [changeSuccessMsg, setChangeSuccessMsg] = useState<string | null>(null);
+
   useEffect(() => {
     // Reset loading state on mount (handles browser back button restoring stale state)
     setCheckoutLoadingPlan(null);
@@ -130,6 +144,58 @@ export default function UpgradePage() {
     window.location.href = data.url;
   }
 
+  const changeInterval: "monthly" | "yearly" = annual ? "yearly" : "monthly";
+
+  // Ouvre la modale de changement de plan et récupère l'aperçu (montant prorata).
+  async function openPlanChange(targetPlan: "plus" | "premium") {
+    setChangeTarget(targetPlan);
+    setChangePreview(null);
+    setChangeError(null);
+    setChangeLoadingPreview(true);
+    try {
+      const res = await fetch("/api/stripe/change-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetPlan, interval: changeInterval, mode: "preview" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || t("planchange_error"));
+      setChangePreview(data as ChangePreview);
+    } catch (err) {
+      console.error("[Plan change] Preview error:", err);
+      setChangeError(err instanceof Error ? err.message : t("planchange_error"));
+    } finally {
+      setChangeLoadingPreview(false);
+    }
+  }
+
+  async function confirmPlanChange() {
+    if (!changeTarget) return;
+    setChangeSubmitting(true);
+    setChangeError(null);
+    try {
+      const res = await fetch("/api/stripe/change-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetPlan: changeTarget, interval: changeInterval, mode: "commit" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || t("planchange_error"));
+
+      const wasUpgrade = changePreview?.isUpgrade ?? false;
+      setChangeTarget(null);
+      setChangePreview(null);
+      setChangeSuccessMsg(wasUpgrade ? t("planchange_success_upgrade") : t("planchange_success_downgrade"));
+      await refreshPlan();
+      setTimeout(() => setChangeSuccessMsg(null), 6000);
+    } catch (err) {
+      console.error("[Plan change] Commit error:", err);
+      setChangeError(err instanceof Error ? err.message : t("planchange_error"));
+    } finally {
+      setChangeSubmitting(false);
+    }
+  }
+
   // Wrapper UI : gère le loading + les erreurs autour de l'ouverture du portail.
   async function handleManagePortal() {
     setIsPortalLoading(true);
@@ -182,6 +248,29 @@ export default function UpgradePage() {
       setCheckoutError(error instanceof Error ? error.message : t("upgrade_checkout_error"));
       setCheckoutLoadingPlan(null);
     }
+  }
+
+  // Libellé du montant récurrent après changement de plan, selon plan + intervalle courant du toggle.
+  function recurringPriceLabel(plan: "plus" | "premium"): string {
+    const amounts = {
+      plus: { monthly: "9,99 €", yearly: "89,99 €" },
+      premium: { monthly: "19,99 €", yearly: "179,88 €" },
+    } as const;
+    const unit = changeInterval === "monthly" ? t("plan_month") : t("plan_year");
+    return `${amounts[plan][changeInterval]}/${unit}`;
+  }
+
+  function formatMoney(cents: number, currency: string): string {
+    try {
+      return new Intl.NumberFormat("fr-FR", { style: "currency", currency: currency.toUpperCase() }).format(cents / 100);
+    } catch {
+      return `${(cents / 100).toFixed(2)} €`;
+    }
+  }
+
+  function formatDate(epochSeconds: number | null): string {
+    if (!epochSeconds) return "—";
+    return new Date(epochSeconds * 1000).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
   }
 
   function renderValue(val: boolean | string): React.ReactNode {
@@ -399,11 +488,11 @@ export default function UpgradePage() {
                 </>
               ) : (
                 <button
-                  onClick={handleManagePortal}
-                  disabled={isPortalLoading}
+                  onClick={() => openPlanChange("plus")}
+                  disabled={changeLoadingPreview && changeTarget === "plus"}
                   className="w-full mt-6 py-2.5 rounded-lg font-medium text-sm bg-surface border border-border text-foreground hover:bg-border transition-colors disabled:opacity-50"
                 >
-                  {t("upgrade_manage_subscription")}
+                  {changeLoadingPreview && changeTarget === "plus" ? t("planchange_loading") : t("planchange_to_plus")}
                 </button>
               )}
             </div>
@@ -492,11 +581,11 @@ export default function UpgradePage() {
             </button>
           ) : (
             <button
-              onClick={handleManagePortal}
-              disabled={isPortalLoading}
-              className="w-full mt-6 py-2.5 rounded-lg font-medium text-sm bg-surface border border-border text-foreground hover:bg-border transition-colors disabled:opacity-50"
+              onClick={() => openPlanChange("premium")}
+              disabled={changeLoadingPreview && changeTarget === "premium"}
+              className="w-full mt-6 py-2.5 rounded-lg font-medium text-sm bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {t("upgrade_manage_subscription")}
+              {changeLoadingPreview && changeTarget === "premium" ? t("planchange_loading") : t("planchange_to_premium")}
             </button>
           )}
         </div>
@@ -584,6 +673,67 @@ export default function UpgradePage() {
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-surface border border-border text-foreground px-6 py-3 rounded-lg shadow-lg flex items-center gap-3">
           <span className="text-muted">ℹ️</span>
           <span className="text-sm">{t("upgrade_canceled_message")}</span>
+        </div>
+      )}
+
+      {/* Modale de changement de plan (Plus <-> Premium) */}
+      {changeTarget && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-xl p-6 max-w-md w-full shadow-xl">
+            <h3 className="text-lg font-bold text-foreground mb-3">
+              {changeTarget === "premium" ? t("planchange_to_premium") : t("planchange_to_plus")}
+            </h3>
+
+            {changeLoadingPreview ? (
+              <p className="text-muted text-sm mb-5">{t("planchange_loading")}</p>
+            ) : changePreview?.isUpgrade ? (
+              <div className="text-sm text-muted space-y-2 mb-5">
+                <p>
+                  {changePreview.amountDueNow != null
+                    ? t("planchange_upgrade_now").replace(
+                        "{amount}",
+                        formatMoney(changePreview.amountDueNow, changePreview.currency)
+                      )
+                    : t("planchange_upgrade_now_generic")}
+                </p>
+                <p>{t("planchange_recurring").replace("{price}", recurringPriceLabel("premium"))}</p>
+              </div>
+            ) : changePreview ? (
+              <div className="text-sm text-muted space-y-2 mb-5">
+                <p>{t("planchange_downgrade_keep").replace("{date}", formatDate(changePreview.periodEnd))}</p>
+                <p>{t("planchange_downgrade_then").replace("{price}", recurringPriceLabel("plus"))}</p>
+              </div>
+            ) : null}
+
+            {changeError && (
+              <p className="text-red-500 text-sm mb-4">{changeError}</p>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setChangeTarget(null); setChangePreview(null); setChangeError(null); }}
+                disabled={changeSubmitting}
+                className="flex-1 py-2.5 rounded-lg border border-border text-foreground text-sm hover:bg-border transition-colors disabled:opacity-50"
+              >
+                {t("planchange_cancel")}
+              </button>
+              <button
+                onClick={confirmPlanChange}
+                disabled={changeSubmitting || changeLoadingPreview || !changePreview}
+                className="flex-1 py-2.5 rounded-lg bg-accent text-white text-sm font-medium hover:bg-blue-600 transition-colors disabled:opacity-50"
+              >
+                {changeSubmitting ? t("planchange_processing") : t("planchange_confirm")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast de succès de changement de plan */}
+      {changeSuccessMsg && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-surface border border-border text-foreground px-6 py-3 rounded-lg shadow-lg flex items-center gap-3">
+          <span className="text-profit">✓</span>
+          <span className="text-sm">{changeSuccessMsg}</span>
         </div>
       )}
     </div>
