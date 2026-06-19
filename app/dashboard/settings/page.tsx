@@ -2,6 +2,8 @@
 
 import UpgradeBanner from "@/components/UpgradeBanner";
 import SyncPlatformCard from "@/components/settings/SyncPlatformCard";
+import PushNotificationsCard from "@/components/settings/PushNotificationsCard";
+import LeaderboardOptInCard from "@/components/settings/LeaderboardOptInCard";
 import TradovateConnect from "@/components/settings/TradovateConnect";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
@@ -812,6 +814,12 @@ export default function SettingsPage() {
           <span className="text-sm text-foreground">{t("settings_notif_email_session")}</span>
         </label>
       </section>
+
+      {/* Push notifications */}
+      <PushNotificationsCard />
+
+      {/* Classement de discipline */}
+      <LeaderboardOptInCard />
 
       {/* Danger zone */}
       <section className="border-2 border-loss/30 rounded-xl p-5">
