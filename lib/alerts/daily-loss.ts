@@ -8,6 +8,39 @@ import { sendPushToUser } from "@/lib/push";
 
 type AlertLang = "fr" | "en" | "de" | "es";
 
+function asLang(language: string): AlertLang {
+  return (language as AlertLang) in DAILY_LOSS_COPY ? (language as AlertLang) : "en";
+}
+
+const DRAWDOWN_COPY: Record<AlertLang, {
+  warnTitle: string; warnBody: string; breachTitle: string; breachBody: string;
+}> = {
+  fr: {
+    warnTitle: "Attention à ton drawdown",
+    warnBody: "Tu approches la limite de drawdown de ton challenge. Prudence.",
+    breachTitle: "Limite de drawdown atteinte",
+    breachBody: "Tu as atteint la limite de drawdown de ton challenge. Stoppe avant de le cramer.",
+  },
+  en: {
+    warnTitle: "Watch your drawdown",
+    warnBody: "You're approaching your challenge's drawdown limit. Be careful.",
+    breachTitle: "Drawdown limit reached",
+    breachBody: "You've hit your challenge's drawdown limit. Stop before blowing it.",
+  },
+  de: {
+    warnTitle: "Achte auf deinen Drawdown",
+    warnBody: "Du näherst dich dem Drawdown-Limit deiner Challenge. Sei vorsichtig.",
+    breachTitle: "Drawdown-Limit erreicht",
+    breachBody: "Du hast das Drawdown-Limit deiner Challenge erreicht. Stopp, bevor du sie sprengst.",
+  },
+  es: {
+    warnTitle: "Cuidado con tu drawdown",
+    warnBody: "Te acercas al límite de drawdown de tu challenge. Prudencia.",
+    breachTitle: "Límite de drawdown alcanzado",
+    breachBody: "Has alcanzado el límite de drawdown de tu challenge. Para antes de reventarlo.",
+  },
+};
+
 const DAILY_LOSS_COPY: Record<AlertLang, {
   warnTitle: string; warnBody: string; breachTitle: string; breachBody: string;
 }> = {
@@ -93,8 +126,7 @@ export async function checkDailyLossAlert(
     const beforeLoss = -(afterPnl - batchNetPnl);
     const warn = limit * 0.8;
 
-    const lang: AlertLang = (language as AlertLang) in DAILY_LOSS_COPY ? (language as AlertLang) : "en";
-    const copy = DAILY_LOSS_COPY[lang];
+    const copy = DAILY_LOSS_COPY[asLang(language)];
 
     if (beforeLoss < limit && afterLoss >= limit) {
       await sendPushToUser(userId, {
@@ -107,5 +139,101 @@ export async function checkDailyLossAlert(
     }
   } catch (err) {
     console.error("[Alert] daily-loss check failed:", err);
+  }
+}
+
+/**
+ * Renvoie l'id du SEUL challenge actif de l'utilisateur, sinon null.
+ * Sert à attribuer automatiquement les trades synchronisés (cas majoritaire :
+ * un seul challenge prop en cours). Avec 0 ou plusieurs challenges actifs, on
+ * n'attribue pas (ambiguïté) → null.
+ */
+export async function resolveActiveChallengeId(
+  admin: SupabaseClient,
+  userId: string,
+): Promise<string | null> {
+  const { data } = await admin
+    .from("prop_challenges")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("status", "active");
+  return data && data.length === 1 ? (data[0].id as string) : null;
+}
+
+/**
+ * Alerte de drawdown (total ou trailing selon la config du challenge), calculée
+ * sur le cumul des trades attribués à ce challenge. Notifie au franchissement de
+ * 80 % / 100 % de la limite. Best-effort, ne throw jamais.
+ *
+ * @param batchNetPnl  P&L net des trades NOUVELLEMENT insérés sur ce challenge.
+ */
+export async function checkDrawdownAlert(
+  admin: SupabaseClient,
+  userId: string,
+  language: string,
+  challengeId: string,
+  batchNetPnl: number,
+): Promise<void> {
+  try {
+    if (batchNetPnl >= 0) return;
+
+    const { data: pref } = await admin
+      .from("profiles")
+      .select("push_notif_alerts")
+      .eq("id", userId)
+      .maybeSingle();
+    if (pref && (pref as { push_notif_alerts?: boolean }).push_notif_alerts === false) return;
+
+    const { data: challenge } = await admin
+      .from("prop_challenges")
+      .select("account_size, max_total_dd_pct, trailing_drawdown")
+      .eq("id", challengeId)
+      .maybeSingle();
+
+    if (!challenge) return;
+    const accountSize = challenge.account_size as number | null;
+    const ddPct = challenge.max_total_dd_pct as number | null;
+    if (!accountSize || !ddPct) return;
+    const limit = accountSize * (ddPct / 100);
+    if (limit <= 0) return;
+
+    // Courbe d'équité du challenge (ordre chronologique de clôture).
+    const { data: trades } = await admin
+      .from("trades")
+      .select("pnl, commission, swap, close_time, open_time")
+      .eq("user_id", userId)
+      .eq("challenge_id", challengeId)
+      .order("close_time", { ascending: true, nullsFirst: true });
+
+    let cumulative = 0;
+    let peakCumulative = 0; // pic du cumul (pour le trailing)
+    for (const t of trades ?? []) {
+      cumulative += t.pnl + (t.commission || 0) + (t.swap || 0);
+      if (cumulative > peakCumulative) peakCumulative = cumulative;
+    }
+
+    const trailing = !!challenge.trailing_drawdown;
+    // DD trailing = recul depuis le pic ; DD statique = perte depuis le solde initial.
+    const afterDD = trailing ? (peakCumulative - cumulative) : Math.max(0, -cumulative);
+    // État avant ce lot : on retire le P&L du lot (le pic n'est pas relevé par une perte).
+    const beforeCumulative = cumulative - batchNetPnl;
+    const beforeDD = trailing
+      ? (peakCumulative - beforeCumulative)
+      : Math.max(0, -beforeCumulative);
+
+    const warn = limit * 0.8;
+    const copy = DRAWDOWN_COPY[asLang(language)];
+
+    if (beforeDD < limit && afterDD >= limit) {
+      await sendPushToUser(userId, {
+        title: copy.breachTitle, body: copy.breachBody, url: "/dashboard/challenge", tag: "drawdown",
+      });
+    } else if (beforeDD < warn && afterDD >= warn) {
+      await sendPushToUser(userId, {
+        title: copy.warnTitle, body: copy.warnBody, url: "/dashboard/challenge", tag: "drawdown",
+      });
+    }
+  } catch (err) {
+    console.error("[Alert] drawdown check failed:", err);
   }
 }

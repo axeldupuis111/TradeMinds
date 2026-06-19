@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { checkDailyLossAlert } from "@/lib/alerts/daily-loss";
+import { checkDailyLossAlert, checkDrawdownAlert, resolveActiveChallengeId } from "@/lib/alerts/daily-loss";
 import {
   mapSource,
   mapDirection,
@@ -192,11 +192,17 @@ export async function handlePushSync(req: NextRequest): Promise<NextResponse> {
 
   let synced = 0;
 
-  // Insert new trades
+  // Attribution auto au challenge actif unique (cas majoritaire en prop).
+  const attributedChallengeId = await resolveActiveChallengeId(admin, userId);
+
+  // Insert new trades (avec challenge_id attribué si applicable)
   if (toInsert.length > 0) {
+    const insertRows = attributedChallengeId
+      ? toInsert.map((r) => ({ ...r, challenge_id: attributedChallengeId }))
+      : toInsert;
     const { data: inserted, error: insertErr } = await admin
       .from("trades")
-      .insert(toInsert)
+      .insert(insertRows)
       .select("id");
 
     if (insertErr) {
@@ -226,12 +232,16 @@ export async function handlePushSync(req: NextRequest): Promise<NextResponse> {
     synced++;
   }
 
-  // ── Alerte temps réel : perte max journalière (module partagé) ───────────
+  // ── Alertes temps réel (module partagé) ──────────────────────────────────
   const batchNetPnl = toInsert.reduce(
     (s, r) => s + r.pnl + (r.commission || 0) + (r.swap || 0),
     0,
   );
-  await checkDailyLossAlert(admin, userId, (profile.language as string) || "en", batchNetPnl);
+  const lang = (profile.language as string) || "en";
+  await checkDailyLossAlert(admin, userId, lang, batchNetPnl);
+  if (attributedChallengeId) {
+    await checkDrawdownAlert(admin, userId, lang, attributedChallengeId, batchNetPnl);
+  }
 
   return NextResponse.json({ received: rawTrades.length, synced, skipped });
 }

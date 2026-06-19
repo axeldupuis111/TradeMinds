@@ -26,6 +26,7 @@ export async function upsertSyncedTrades(
   admin: SupabaseClient,
   userId: string,
   rows: SyncedTradeRow[],
+  challengeId: string | null = null,
 ): Promise<{ synced: number; skipped: number; insertedNetPnl: number }> {
   if (rows.length === 0) return { synced: 0, skipped: 0, insertedNetPnl: 0 };
 
@@ -75,7 +76,10 @@ export async function upsertSyncedTrades(
   let insertedNetPnl = 0;
 
   if (toInsert.length > 0) {
-    const { data: inserted, error } = await admin.from("trades").insert(toInsert).select("id");
+    const insertPayload = challengeId
+      ? toInsert.map((r) => ({ ...r, challenge_id: challengeId }))
+      : toInsert;
+    const { data: inserted, error } = await admin.from("trades").insert(insertPayload).select("id");
     if (error) {
       console.error("[Broker Sync] insert error:", error.message);
     } else {
