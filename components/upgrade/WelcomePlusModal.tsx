@@ -6,20 +6,32 @@ interface WelcomePlusModalProps {
   isOpen: boolean;
   onClose: () => void;
   isPlanReady: boolean;
+  plan?: "plus" | "premium";
 }
 
-export function WelcomePlusModal({ isOpen, onClose, isPlanReady }: WelcomePlusModalProps) {
+export function WelcomePlusModal({ isOpen, onClose, isPlanReady, plan = "plus" }: WelcomePlusModalProps) {
   const { t } = useLanguage();
 
   if (!isOpen) return null;
 
-  const features = [
-    t("upgrade_welcome_feature_1"),
-    t("upgrade_welcome_feature_2"),
-    t("upgrade_welcome_feature_3"),
-    t("upgrade_welcome_feature_4"),
-    t("upgrade_welcome_feature_5"),
-  ];
+  const planLabel = plan === "premium" ? t("plan_premium") : t("plan_plus");
+
+  // Premium met en avant ses bénéfices exclusifs ; Plus garde sa liste de features.
+  const features = plan === "premium"
+    ? [
+        t("plan_benefit_premium_1"),
+        t("plan_benefit_premium_2"),
+        t("plan_benefit_premium_3"),
+        t("upgrade_welcome_feature_1"),
+        t("upgrade_welcome_feature_2"),
+      ]
+    : [
+        t("upgrade_welcome_feature_1"),
+        t("upgrade_welcome_feature_2"),
+        t("upgrade_welcome_feature_3"),
+        t("upgrade_welcome_feature_4"),
+        t("upgrade_welcome_feature_5"),
+      ];
 
   return (
     <div
@@ -46,7 +58,7 @@ export function WelcomePlusModal({ isOpen, onClose, isPlanReady }: WelcomePlusMo
         <div className="text-center mb-4">
           <div className="text-5xl mb-2">🎉</div>
           <h2 className="text-2xl font-bold text-foreground">
-            {t("upgrade_welcome_title")}
+            {t("upgrade_welcome_title_dyn").replace("{plan}", planLabel)}
           </h2>
           <p className="text-muted mt-2 text-sm">
             {isPlanReady
@@ -70,7 +82,7 @@ export function WelcomePlusModal({ isOpen, onClose, isPlanReady }: WelcomePlusMo
           className="w-full bg-accent hover:bg-blue-600 disabled:bg-surface disabled:text-muted disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors"
         >
           {isPlanReady
-            ? t("upgrade_welcome_cta")
+            ? t("upgrade_welcome_cta_dyn").replace("{plan}", planLabel)
             : t("upgrade_welcome_cta_pending")}
         </button>
       </div>
