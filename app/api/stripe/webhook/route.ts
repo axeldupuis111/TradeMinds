@@ -367,7 +367,9 @@ async function handleInvoicePaid(
 
   try {
     const resend = new Resend(process.env.RESEND_API_KEY)
-    await resend.emails.send({
+    // Resend ne throw PAS sur une erreur API : elle renvoie { data, error }.
+    // On loggue explicitement l'erreur pour la voir dans les logs Vercel.
+    const { data, error } = await resend.emails.send({
       from: 'TradeDiscipline <noreply@tradediscipline.app>',
       to,
       subject,
@@ -381,6 +383,11 @@ async function handleInvoicePaid(
         </div>
       `,
     })
+    if (error) {
+      console.error('[Webhook] Resend a refusé l\'envoi:', JSON.stringify(error))
+    } else {
+      console.log('[Webhook] Email félicitations envoyé:', data?.id, 'to', to)
+    }
   } catch (emailErr) {
     // L'email ne doit jamais faire échouer le webhook (sinon Stripe retry).
     console.error('[Webhook] Échec envoi email félicitations:', emailErr)
