@@ -779,6 +779,8 @@ const dict: Record<string, string> = {
   "planchange_success_upgrade": "Du bist jetzt bei Premium 🎉",
   "planchange_success_downgrade": "Wechsel geplant. Du behältst Premium bis zum Ende deiner Periode.",
   "upgrade_welcome_title": "Willkommen bei Plus!",
+  "upgrade_welcome_title_dyn": "Willkommen bei {plan}!",
+  "upgrade_welcome_cta_dyn": "{plan} nutzen",
   "upgrade_welcome_subtitle_ready": "Dein Abo ist aktiv. Du schaltest frei:",
   "upgrade_welcome_subtitle_pending": "Aktivierung läuft…",
   "upgrade_welcome_feature_1": "Unbegrenzter CSV-Import",

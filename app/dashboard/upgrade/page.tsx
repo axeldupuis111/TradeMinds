@@ -75,6 +75,7 @@ export default function UpgradePage() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [welcomePlan, setWelcomePlan] = useState<"plus" | "premium">("plus");
   const [isPlanReady, setIsPlanReady] = useState(false);
   const [showCanceledToast, setShowCanceledToast] = useState(false);
   const premiumRef = useRef<HTMLDivElement>(null);
@@ -99,6 +100,11 @@ export default function UpgradePage() {
     const canceled = searchParams.get("canceled");
 
     if (success === "true") {
+      // Plan acheté, capturé avant la redirection Stripe (titre correct immédiatement).
+      const pending = typeof window !== "undefined" ? sessionStorage.getItem("td_pending_plan") : null;
+      setWelcomePlan(pending === "premium" ? "premium" : "plus");
+      if (typeof window !== "undefined") sessionStorage.removeItem("td_pending_plan");
+
       setShowWelcomeModal(true);
       router.replace(pathname, { scroll: false });
 
@@ -109,10 +115,11 @@ export default function UpgradePage() {
         pollCount++;
         await refreshPlan();
 
-        if (currentPlan === "plus" || pollCount >= 3) {
+        const isPaid = currentPlan === "plus" || currentPlan === "premium";
+        if (isPaid || pollCount >= 3) {
           setIsPlanReady(true);
         }
-        if (currentPlan === "plus" || pollCount >= maxPolls) {
+        if (isPaid || pollCount >= maxPolls) {
           clearInterval(intervalId);
         }
       };
@@ -245,6 +252,8 @@ export default function UpgradePage() {
 
     try {
       const interval = annual ? "yearly" : "monthly";
+      // Mémorise le plan acheté pour afficher le bon message de bienvenue au retour de Stripe.
+      if (typeof window !== "undefined") sessionStorage.setItem("td_pending_plan", plan);
 
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
@@ -686,6 +695,7 @@ export default function UpgradePage() {
         isOpen={showWelcomeModal}
         onClose={handleCloseWelcomeModal}
         isPlanReady={isPlanReady}
+        plan={welcomePlan}
       />
 
       {/* Toast de paiement annulé */}
