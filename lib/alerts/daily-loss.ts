@@ -53,6 +53,15 @@ export async function checkDailyLossAlert(
   try {
     if (batchNetPnl >= 0) return; // ce lot n'aggrave pas la perte → rien à vérifier
 
+    // Préférence utilisateur (défensif : si la colonne n'existe pas encore, on
+    // procède par défaut — opt-in). On ne notifie pas si l'utilisateur l'a coupé.
+    const { data: pref } = await admin
+      .from("profiles")
+      .select("push_notif_alerts")
+      .eq("id", userId)
+      .maybeSingle();
+    if (pref && (pref as { push_notif_alerts?: boolean }).push_notif_alerts === false) return;
+
     const { data: challenges } = await admin
       .from("prop_challenges")
       .select("account_size, max_daily_loss_pct, max_daily_dd_pct")

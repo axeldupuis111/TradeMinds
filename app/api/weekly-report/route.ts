@@ -258,6 +258,18 @@ async function handle(req: Request) {
     return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
   }
 
+  // Préférence push « rapport hebdo » (défensif : colonne absente → opt-in).
+  const weeklyPushOptOut = new Set<string>();
+  const { data: weeklyPrefs, error: weeklyPrefErr } = await supabase
+    .from("profiles")
+    .select("id, push_notif_weekly")
+    .in("id", users.map((u) => u.id));
+  if (!weeklyPrefErr) {
+    for (const r of weeklyPrefs ?? []) {
+      if ((r as { push_notif_weekly?: boolean }).push_notif_weekly === false) weeklyPushOptOut.add(r.id);
+    }
+  }
+
   const since = new Date();
   since.setDate(since.getDate() - 7);
   const sinceIso = since.toISOString();
@@ -310,12 +322,14 @@ async function handle(req: Request) {
     }
 
     // Push (best-effort, no-op si pas d'abonnement) : résumé compact de la semaine.
-    await sendPushToUser(user.id, {
-      title: copy.heading,
-      body: `${fmt.signedMoney(stats.pnl)} · ${stats.count} ${copy.trades} · ${fmt.percent(stats.winrate)}`,
-      url: "/dashboard/analytics",
-      tag: "weekly-report",
-    });
+    if (!weeklyPushOptOut.has(user.id)) {
+      await sendPushToUser(user.id, {
+        title: copy.heading,
+        body: `${fmt.signedMoney(stats.pnl)} · ${stats.count} ${copy.trades} · ${fmt.percent(stats.winrate)}`,
+        url: "/dashboard/analytics",
+        tag: "weekly-report",
+      });
+    }
   }
 
   return NextResponse.json(

@@ -129,8 +129,20 @@ export async function POST(req: Request) {
 
     const langById = new Map((pushProfiles ?? []).map((p) => [p.id, p.language as string]));
 
+    // Préférence push « rappel de session » (défensif : colonne absente → opt-in).
+    const optedOut = new Set<string>();
+    const { data: prefRows, error: prefErr } = await supabase
+      .from("profiles")
+      .select("id, push_notif_session")
+      .in("id", pushUserIds);
+    if (!prefErr) {
+      for (const r of prefRows ?? []) {
+        if ((r as { push_notif_session?: boolean }).push_notif_session === false) optedOut.add(r.id);
+      }
+    }
+
     await Promise.all(
-      pushUserIds.map(async (uid) => {
+      pushUserIds.filter((uid) => !optedOut.has(uid)).map(async (uid) => {
         const l = (langById.get(uid) as Lang) in REMINDER_COPY ? (langById.get(uid) as Lang) : "en";
         const copy = REMINDER_COPY[l];
         const n = await sendPushToUser(uid, {
