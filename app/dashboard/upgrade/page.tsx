@@ -130,6 +130,17 @@ export default function UpgradePage() {
     window.location.href = data.url;
   }
 
+  // Wrapper UI : gère le loading + les erreurs autour de l'ouverture du portail.
+  async function handleManagePortal() {
+    setIsPortalLoading(true);
+    try {
+      await openBillingPortal();
+    } catch (err) {
+      console.error("[Manage subscription] Error:", err);
+      setIsPortalLoading(false);
+    }
+  }
+
   async function handleDowngrade() {
     setDowngrading(true);
     try {
@@ -291,19 +302,19 @@ export default function UpgradePage() {
                   </div>
                 ))}
               </div>
-              {currentPlan === "plus" ? (
-                <button
-                  onClick={() => setShowDowngradeModal(true)}
-                  className="w-full mt-6 py-2.5 rounded-lg font-medium text-sm transition-colors bg-surface border border-border text-foreground hover:bg-border"
-                >
-                  {t("plan_downgrade_free")}
-                </button>
-              ) : (
+              {currentPlan === "free" ? (
                 <button
                   disabled
                   className="w-full mt-6 py-2.5 rounded-lg font-medium text-sm bg-surface text-muted cursor-default"
                 >
                   {t("plan_current_plan")}
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowDowngradeModal(true)}
+                  className="w-full mt-6 py-2.5 rounded-lg font-medium text-sm transition-colors bg-surface border border-border text-foreground hover:bg-border"
+                >
+                  {t("plan_downgrade_free")}
                 </button>
               )}
             </div>
@@ -373,7 +384,7 @@ export default function UpgradePage() {
                 >
                   {t("plan_current_plan")}
                 </button>
-              ) : (
+              ) : currentPlan === "free" ? (
                 <>
                   <button
                     onClick={() => handleCheckout("plus")}
@@ -386,6 +397,14 @@ export default function UpgradePage() {
                     <p className="text-red-500 text-sm mt-2 text-center">{checkoutError}</p>
                   )}
                 </>
+              ) : (
+                <button
+                  onClick={handleManagePortal}
+                  disabled={isPortalLoading}
+                  className="w-full mt-6 py-2.5 rounded-lg font-medium text-sm bg-surface border border-border text-foreground hover:bg-border transition-colors disabled:opacity-50"
+                >
+                  {t("upgrade_manage_subscription")}
+                </button>
               )}
             </div>
           );
@@ -463,13 +482,21 @@ export default function UpgradePage() {
             >
               {t("plan_current_plan")}
             </button>
-          ) : (
+          ) : currentPlan === "free" ? (
             <button
               onClick={() => handleCheckout("premium")}
               disabled={checkoutLoadingPlan !== null}
               className="w-full mt-6 py-2.5 rounded-lg font-medium text-sm bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {checkoutLoadingPlan === "premium" ? t("upgrade_redirecting") : t("pricing_choose_premium")}
+            </button>
+          ) : (
+            <button
+              onClick={handleManagePortal}
+              disabled={isPortalLoading}
+              className="w-full mt-6 py-2.5 rounded-lg font-medium text-sm bg-surface border border-border text-foreground hover:bg-border transition-colors disabled:opacity-50"
+            >
+              {t("upgrade_manage_subscription")}
             </button>
           )}
         </div>
@@ -536,15 +563,7 @@ export default function UpgradePage() {
       {hasStripeSubscription && (
         <div className="mt-6 max-w-2xl mx-auto pb-2 flex justify-center">
           <button
-            onClick={async () => {
-              setIsPortalLoading(true);
-              try {
-                await openBillingPortal();
-              } catch (err) {
-                console.error("[Manage subscription] Error:", err);
-                setIsPortalLoading(false);
-              }
-            }}
+            onClick={handleManagePortal}
             disabled={isPortalLoading}
             className="text-sm text-muted hover:text-accent transition-colors disabled:opacity-50 underline underline-offset-2"
           >
