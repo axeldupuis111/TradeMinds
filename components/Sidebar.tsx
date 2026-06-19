@@ -6,12 +6,15 @@ import { usePlan } from "@/lib/PlanContext";
 import {
   Activity,
   BarChart3,
+  CalendarCheck,
+  Flag,
   LayoutDashboard,
   ListChecks,
   Play,
   Settings,
   Sparkles,
   Target,
+  Trophy,
   Wallet,
   Zap,
 } from "lucide-react";
@@ -29,6 +32,9 @@ const analyseItems = [
   { key: "sidebar_strategy",  href: "/dashboard/strategy",  icon: Target },
   { key: "sidebar_analysis",  href: "/dashboard/analysis",  icon: Sparkles },
   { key: "sidebar_analytics", href: "/dashboard/analytics", icon: BarChart3 },
+  { key: "sidebar_goals",     href: "/dashboard/goals",     icon: Flag },
+  { key: "sidebar_review",    href: "/dashboard/review",    icon: CalendarCheck },
+  { key: "sidebar_leaderboard", href: "/dashboard/leaderboard", icon: Trophy },
 ];
 
 const AI_DEMO_HREFS = new Set(["/dashboard/strategy", "/dashboard/analysis"]);
