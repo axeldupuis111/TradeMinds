@@ -123,12 +123,9 @@ export async function POST(req: NextRequest) {
             proration_behavior: 'create_prorations',
           },
         })
-        // Somme des lignes de prorata (positives = à payer maintenant).
-        // Le flag `proration` n'est pas typé sur InvoiceLineItem dans cette API → cast.
-        type LineWithProration = Stripe.InvoiceLineItem & { proration?: boolean }
-        const prorationLines = preview.lines.data.filter(
-          (l) => (l as LineWithProration).proration === true
-        )
+        // Lignes de prorata = à payer maintenant. Le flag a changé de place selon les
+        // versions d'API (`proration` à plat, ou parent.subscription_item_details.proration).
+        const prorationLines = preview.lines.data.filter(isProrationLine)
         const prorationTotal = prorationLines.reduce((sum, l) => sum + l.amount, 0)
 
         return NextResponse.json({
@@ -155,14 +152,48 @@ export async function POST(req: NextRequest) {
     // COMMIT
     // ────────────────────────────────────────────────────────────
     if (isUpgrade) {
-      // Upgrade immédiat : on facture le prorata tout de suite.
-      // error_if_incomplete : si le paiement échoue, l'update throw et le plan ne change pas.
-      const updated = await stripe.subscriptions.update(subscription.id, {
-        items: [{ id: item.id, price: targetPriceId }],
-        proration_behavior: 'always_invoice',
-        payment_behavior: 'error_if_incomplete',
-      })
-      return NextResponse.json({ ok: true, kind: 'upgrade', status: updated.status })
+      // 1er essai : débit silencieux du prorata sur la carte enregistrée.
+      // error_if_incomplete : si le paiement n'aboutit pas (refus OU 3DS requis),
+      // l'update throw ET le changement de prix est annulé. Aucune redirection si ça marche.
+      try {
+        const updated = await stripe.subscriptions.update(subscription.id, {
+          items: [{ id: item.id, price: targetPriceId }],
+          proration_behavior: 'always_invoice',
+          payment_behavior: 'error_if_incomplete',
+          expand: ['latest_invoice'],
+        })
+        const invoice = updated.latest_invoice as Stripe.Invoice | null
+        return NextResponse.json({
+          ok: true,
+          kind: 'upgrade',
+          paid: true,
+          amountPaid: invoice?.amount_paid ?? null,
+          currency: invoice?.currency ?? 'eur',
+          invoiceUrl: invoice?.hosted_invoice_url ?? null,
+        })
+      } catch (payErr) {
+        // Le débit silencieux a échoué (carte refusée, fonds insuffisants, ou
+        // authentification 3DS requise). On régénère une facture payable et on
+        // renvoie l'utilisateur vers la page Stripe : il peut payer ET changer de carte.
+        if (payErr instanceof Stripe.errors.StripeError) {
+          const retried = await stripe.subscriptions.update(subscription.id, {
+            items: [{ id: item.id, price: targetPriceId }],
+            proration_behavior: 'always_invoice',
+            payment_behavior: 'default_incomplete',
+            expand: ['latest_invoice'],
+          })
+          const inv = retried.latest_invoice as Stripe.Invoice | null
+          if (inv?.hosted_invoice_url) {
+            return NextResponse.json({
+              ok: true,
+              kind: 'upgrade',
+              paid: false,
+              hostedInvoiceUrl: inv.hosted_invoice_url,
+            })
+          }
+        }
+        throw payErr
+      }
     } else {
       // Downgrade : on programme la bascule en fin de période (pas de remboursement).
       const currentPriceId = item.price.id
@@ -193,6 +224,17 @@ export async function POST(req: NextRequest) {
       : 'Internal server error'
     return NextResponse.json({ error: message }, { status: 500 })
   }
+}
+
+// Détecte une ligne de facture de type prorata, quelle que soit la forme de l'API.
+function isProrationLine(line: Stripe.InvoiceLineItem): boolean {
+  type LineShapes = Stripe.InvoiceLineItem & {
+    proration?: boolean
+    parent?: { subscription_item_details?: { proration?: boolean } | null } | null
+  }
+  const l = line as LineShapes
+  if (typeof l.proration === 'boolean') return l.proration
+  return l.parent?.subscription_item_details?.proration === true
 }
 
 // L'API 2026-04-22.dahlia expose current_period_end au niveau de l'item.
