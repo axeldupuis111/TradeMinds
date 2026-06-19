@@ -1,7 +1,11 @@
 "use client";
 
 import { useLanguage } from "@/lib/LanguageContext";
+import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
+
+type PrefKey = "push_notif_session" | "push_notif_weekly" | "push_notif_alerts";
+const PREF_KEYS: PrefKey[] = ["push_notif_session", "push_notif_weekly", "push_notif_alerts"];
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -18,8 +22,42 @@ export default function PushNotificationsCard() {
   const [enabled, setEnabled] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [prefs, setPrefs] = useState<Record<PrefKey, boolean>>({
+    push_notif_session: true,
+    push_notif_weekly: true,
+    push_notif_alerts: true,
+  });
+  const supabase = createClient();
 
   const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      // Lecture défensive : si les colonnes n'existent pas encore, on garde les défauts (opt-in).
+      const { data, error: prefErr } = await supabase
+        .from("profiles")
+        .select("push_notif_session, push_notif_weekly, push_notif_alerts")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (!prefErr && data) {
+        setPrefs({
+          push_notif_session: (data as Record<PrefKey, boolean>).push_notif_session !== false,
+          push_notif_weekly: (data as Record<PrefKey, boolean>).push_notif_weekly !== false,
+          push_notif_alerts: (data as Record<PrefKey, boolean>).push_notif_alerts !== false,
+        });
+      }
+    })();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function setPref(key: PrefKey, value: boolean) {
+    setPrefs((p) => ({ ...p, [key]: value }));
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from("profiles").update({ [key]: value }).eq("id", user.id);
+    }
+  }
 
   useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
@@ -110,6 +148,24 @@ export default function PushNotificationsCard() {
         </div>
       )}
       {error && <p className="text-loss text-sm mt-2">{error}</p>}
+
+      {/* Préférences par type de notification */}
+      {supported && (
+        <div className="mt-4 pt-4 border-t border-border space-y-3">
+          <p className="text-xs font-semibold text-muted uppercase tracking-wider">{t("push_prefs_title")}</p>
+          {PREF_KEYS.map((key) => (
+            <label key={key} className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={prefs[key]}
+                onChange={(e) => setPref(key, e.target.checked)}
+                className="accent-accent w-4 h-4"
+              />
+              <span className="text-sm text-foreground">{t(`push_pref_${key}`)}</span>
+            </label>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
