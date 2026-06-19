@@ -246,21 +246,38 @@ async function handleSubscriptionDeleted(
   }
 }
 
+// Récupère l'ID d'abonnement lié à une facture, quelle que soit la forme de l'API.
+// API 2026-04-22.dahlia : `subscription` a quitté la racine de Invoice pour
+// `parent.subscription_details.subscription` (ou au niveau des line items).
+function getInvoiceSubscriptionId(invoice: Stripe.Invoice): string | undefined {
+  type InvoiceShapes = Stripe.Invoice & {
+    subscription?: string | Stripe.Subscription | null
+    parent?: {
+      subscription_details?: { subscription?: string | Stripe.Subscription | null } | null
+    } | null
+  }
+  const inv = invoice as InvoiceShapes
+
+  const direct = inv.subscription
+  if (direct) return typeof direct === 'string' ? direct : direct.id
+
+  const viaParent = inv.parent?.subscription_details?.subscription
+  if (viaParent) return typeof viaParent === 'string' ? viaParent : viaParent.id
+
+  type LineShape = Stripe.InvoiceLineItem & {
+    parent?: { subscription_item_details?: { subscription?: string | null } | null } | null
+  }
+  const line = invoice.lines?.data?.[0] as LineShape | undefined
+  return line?.parent?.subscription_item_details?.subscription ?? undefined
+}
+
 async function handleInvoicePaymentFailed(
   invoice: Stripe.Invoice,
   supabase: ReturnType<typeof getSupabaseAdmin>
 ) {
   console.log('[Webhook] invoice.payment_failed:', invoice.id)
 
-  // Stripe SDK v22 typing: 'subscription' field exists on Invoice but isn't in the strict type.
-  // We type it explicitly to avoid ESLint no-explicit-any.
-  type InvoiceWithSubscription = Stripe.Invoice & {
-    subscription?: string | Stripe.Subscription | null
-  }
-  const invoiceWithSub = invoice as InvoiceWithSubscription
-  const subscriptionId = typeof invoiceWithSub.subscription === 'string'
-    ? invoiceWithSub.subscription
-    : invoiceWithSub.subscription?.id
+  const subscriptionId = getInvoiceSubscriptionId(invoice)
 
   if (!subscriptionId) {
     console.log('[Webhook] Invoice not tied to a subscription, skipping')
@@ -328,14 +345,11 @@ async function handleInvoicePaid(
     return
   }
 
-  type InvoiceWithSubscription = Stripe.Invoice & {
-    subscription?: string | Stripe.Subscription | null
+  const subscriptionId = getInvoiceSubscriptionId(invoice)
+  if (!subscriptionId) {
+    console.log('[Webhook] invoice.paid sans subscription (reason:', invoice.billing_reason, ') — skip')
+    return
   }
-  const invoiceWithSub = invoice as InvoiceWithSubscription
-  const subscriptionId = typeof invoiceWithSub.subscription === 'string'
-    ? invoiceWithSub.subscription
-    : invoiceWithSub.subscription?.id
-  if (!subscriptionId) return
 
   const subscription = await stripe.subscriptions.retrieve(subscriptionId)
   const priceId = subscription.items.data[0]?.price.id
