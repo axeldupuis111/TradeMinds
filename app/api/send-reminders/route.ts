@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { sendPushToUser } from "@/lib/push";
 
 // Les crons Vercel invoquent les routes en GET — sans ce handler, le rappel
 // quotidien ne partait jamais (405 sur une route POST-only).
@@ -110,5 +111,38 @@ export async function POST(req: Request) {
     }
   }
 
-  return NextResponse.json({ sent, total: users.length });
+  // ── Notifications push ───────────────────────────────────────────────
+  // Indépendant des emails : on notifie tous les utilisateurs ayant un
+  // abonnement push actif (sendPushToUser no-op s'il n'y en a pas).
+  let pushed = 0;
+  const { data: pushSubs } = await supabase
+    .from("push_subscriptions")
+    .select("user_id");
+
+  const pushUserIds = Array.from(new Set((pushSubs ?? []).map((s) => s.user_id)));
+
+  if (pushUserIds.length > 0) {
+    const { data: pushProfiles } = await supabase
+      .from("profiles")
+      .select("id, language")
+      .in("id", pushUserIds);
+
+    const langById = new Map((pushProfiles ?? []).map((p) => [p.id, p.language as string]));
+
+    await Promise.all(
+      pushUserIds.map(async (uid) => {
+        const l = (langById.get(uid) as Lang) in REMINDER_COPY ? (langById.get(uid) as Lang) : "en";
+        const copy = REMINDER_COPY[l];
+        const n = await sendPushToUser(uid, {
+          title: copy.heading,
+          body: copy.body,
+          url: "/dashboard/session",
+          tag: "session-reminder",
+        });
+        if (n > 0) pushed++;
+      })
+    );
+  }
+
+  return NextResponse.json({ sent, pushed, total: users.length });
 }
