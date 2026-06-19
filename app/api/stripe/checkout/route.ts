@@ -1,15 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe'
+import { locales } from '@/i18n/config'
 
 export async function POST(req: NextRequest) {
   try {
     // 1. Parse body
     const body = await req.json()
-    const { plan, interval } = body as {
+    const { plan, interval, locale } = body as {
       plan?: 'plus' | 'premium'
       interval?: 'monthly' | 'yearly'
+      locale?: string
     }
+
+    // Langue de l'UI au moment du checkout : sert au webhook pour l'email de
+    // félicitations dans la bonne langue (profiles.language peut ne pas encore
+    // être synchronisé sur un compte tout neuf).
+    const safeLocale = (locales as readonly string[]).includes(locale ?? '')
+      ? (locale as string)
+      : 'en'
 
     if (plan !== 'plus' && plan !== 'premium') {
       return NextResponse.json(
@@ -102,12 +111,14 @@ export async function POST(req: NextRequest) {
         supabase_user_id: user.id,
         plan,
         interval,
+        locale: safeLocale,
       },
       subscription_data: {
         metadata: {
           supabase_user_id: user.id,
           plan,
           interval,
+          locale: safeLocale,
         },
       },
       success_url: successUrl,

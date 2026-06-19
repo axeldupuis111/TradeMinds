@@ -405,7 +405,16 @@ async function handleInvoicePaid(
     return
   }
 
-  const lang = (profile?.language as string) in CONGRATS_EMAIL ? (profile!.language as string) : 'en'
+  // Langue de l'email : priorité à la langue capturée au checkout (metadata.locale),
+  // puis profiles.language, puis 'en'. profiles.language peut être null sur un compte
+  // tout neuf (synchro fire-and-forget pas encore persistée au moment du paiement).
+  const metaLocale = subscription.metadata?.locale
+  const profileLang = profile?.language as string | undefined
+  const lang = (metaLocale && metaLocale in CONGRATS_EMAIL)
+    ? metaLocale
+    : (profileLang && profileLang in CONGRATS_EMAIL)
+      ? profileLang
+      : 'en'
   const planLabel = PLAN_LABEL[planInfo.plan] ?? planInfo.plan
   const copy = CONGRATS_EMAIL[lang]
   const invoiceUrl = invoice.hosted_invoice_url || invoice.invoice_pdf || 'https://www.tradediscipline.app/dashboard'
