@@ -6,6 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { decrypt } from "@/lib/crypto/encryption";
 import { syncTradovate, type TradovateCredentials, type TradovateEnvironment } from "./tradovate";
 import { upsertSyncedTrades, type SyncedTradeRow } from "./upsert-trades";
+import { resolveActiveChallengeId } from "@/lib/alerts/daily-loss";
 
 export interface BrokerConnectionRow {
   id: string;
@@ -22,7 +23,7 @@ const OVERLAP_MS = 24 * 60 * 60 * 1000; // re-scan the last day to catch late se
 export async function syncBrokerConnection(
   admin: SupabaseClient,
   conn: BrokerConnectionRow,
-): Promise<{ synced: number; skipped: number; insertedNetPnl: number }> {
+): Promise<{ synced: number; skipped: number; insertedNetPnl: number; challengeId: string | null }> {
   try {
     const since = conn.last_synced_at
       ? new Date(new Date(conn.last_synced_at).getTime() - OVERLAP_MS)
@@ -51,14 +52,15 @@ export async function syncBrokerConnection(
       throw new Error(`Broker non supporté: ${conn.broker}`);
     }
 
-    const result = await upsertSyncedTrades(admin, conn.user_id, rows);
+    const challengeId = await resolveActiveChallengeId(admin, conn.user_id);
+    const result = await upsertSyncedTrades(admin, conn.user_id, rows, challengeId);
 
     await admin
       .from("broker_connections")
       .update({ status: "active", last_error: null, last_synced_at: new Date().toISOString() })
       .eq("id", conn.id);
 
-    return result;
+    return { ...result, challengeId };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erreur de synchronisation inconnue";
     await admin
