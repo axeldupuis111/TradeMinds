@@ -52,13 +52,13 @@ export default function UpgradePage() {
   const [showDowngradeModal, setShowDowngradeModal] = useState(false);
   const [downgrading, setDowngrading] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
+  const [checkoutLoadingPlan, setCheckoutLoadingPlan] = useState<"plus" | "premium" | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [isPortalLoading, setIsPortalLoading] = useState(false);
 
   useEffect(() => {
     // Reset loading state on mount (handles browser back button restoring stale state)
-    setIsCheckoutLoading(false);
+    setCheckoutLoadingPlan(null);
     setCheckoutError(null);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -132,8 +132,8 @@ export default function UpgradePage() {
     }
   }
 
-  async function handleCheckout() {
-    setIsCheckoutLoading(true);
+  async function handleCheckout(plan: "plus" | "premium") {
+    setCheckoutLoadingPlan(plan);
     setCheckoutError(null);
 
     try {
@@ -142,7 +142,7 @@ export default function UpgradePage() {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ interval }),
+        body: JSON.stringify({ plan, interval }),
       });
 
       const data = await res.json();
@@ -159,7 +159,7 @@ export default function UpgradePage() {
     } catch (error) {
       console.error("[Checkout] Error:", error);
       setCheckoutError(error instanceof Error ? error.message : t("upgrade_checkout_error"));
-      setIsCheckoutLoading(false);
+      setCheckoutLoadingPlan(null);
     }
   }
 
@@ -366,11 +366,11 @@ export default function UpgradePage() {
               ) : (
                 <>
                   <button
-                    onClick={handleCheckout}
-                    disabled={isCheckoutLoading}
+                    onClick={() => handleCheckout("plus")}
+                    disabled={checkoutLoadingPlan !== null}
                     className="w-full mt-6 py-2.5 rounded-lg font-medium text-sm bg-accent text-white hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isCheckoutLoading ? t("upgrade_redirecting") : t("pricing_choose_plus")}
+                    {checkoutLoadingPlan === "plus" ? t("upgrade_redirecting") : t("pricing_choose_plus")}
                   </button>
                   {checkoutError && (
                     <p className="text-red-500 text-sm mt-2 text-center">{checkoutError}</p>
@@ -446,13 +446,22 @@ export default function UpgradePage() {
             </div>
           </div>
 
-          <button
-            disabled
-            className="w-full mt-6 py-2.5 rounded-lg font-medium text-sm bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 opacity-70 cursor-default"
-          >
-            {t("pricing_choose_premium")}
-          </button>
-          <p className="text-center text-xs text-muted/50 mt-2">{t("pricing_coming_soon_note")}</p>
+          {currentPlan === "premium" ? (
+            <button
+              disabled
+              className="w-full mt-6 py-2.5 rounded-lg font-medium text-sm bg-surface text-muted cursor-default"
+            >
+              {t("plan_current_plan")}
+            </button>
+          ) : (
+            <button
+              onClick={() => handleCheckout("premium")}
+              disabled={checkoutLoadingPlan !== null}
+              className="w-full mt-6 py-2.5 rounded-lg font-medium text-sm bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {checkoutLoadingPlan === "premium" ? t("upgrade_redirecting") : t("pricing_choose_premium")}
+            </button>
+          )}
         </div>
       </div>
 

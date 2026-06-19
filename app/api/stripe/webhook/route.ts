@@ -31,6 +31,12 @@ function getPlanFromPriceId(priceId: string): { plan: string; interval: 'monthly
   if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_PLUS_YEARLY) {
     return { plan: 'plus', interval: 'yearly' }
   }
+  if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_PREMIUM_MONTHLY) {
+    return { plan: 'premium', interval: 'monthly' }
+  }
+  if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_PREMIUM_YEARLY) {
+    return { plan: 'premium', interval: 'yearly' }
+  }
   return null
 }
 
@@ -136,16 +142,20 @@ async function handleCheckoutCompleted(
 
   await upsertSubscription(subscription, userId, supabase)
 
+  // Détermine le plan acheté (plus / premium) depuis le price ID de la subscription
+  const purchasedPriceId = subscription.items.data[0]?.price.id
+  const purchasedPlan = purchasedPriceId ? getPlanFromPriceId(purchasedPriceId)?.plan : null
+
   // Met à jour profiles.plan + stripe_customer_id
   const customerId = typeof session.customer === 'string'
     ? session.customer
     : session.customer?.id
 
-  if (customerId) {
+  if (customerId && purchasedPlan) {
     const { error } = await supabase
       .from('profiles')
       .update({
-        plan: 'plus',
+        plan: purchasedPlan,
         stripe_customer_id: customerId,
       })
       .eq('id', userId)
@@ -172,9 +182,12 @@ async function handleSubscriptionUpdated(
 
   await upsertSubscription(subscription, userId, supabase)
 
-  // Met à jour profiles.plan en fonction du statut
-  const newPlan = subscription.status === 'active' || subscription.status === 'trialing'
-    ? 'plus'
+  // Met à jour profiles.plan en fonction du statut + du price (plus / premium)
+  const updatedPriceId = subscription.items.data[0]?.price.id
+  const updatedPlan = updatedPriceId ? getPlanFromPriceId(updatedPriceId)?.plan : null
+
+  const newPlan = (subscription.status === 'active' || subscription.status === 'trialing')
+    ? (updatedPlan ?? 'plus')
     : 'free'
 
   const { error } = await supabase

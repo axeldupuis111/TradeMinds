@@ -6,7 +6,17 @@ export async function POST(req: NextRequest) {
   try {
     // 1. Parse body
     const body = await req.json()
-    const { interval } = body as { interval?: 'monthly' | 'yearly' }
+    const { plan, interval } = body as {
+      plan?: 'plus' | 'premium'
+      interval?: 'monthly' | 'yearly'
+    }
+
+    if (plan !== 'plus' && plan !== 'premium') {
+      return NextResponse.json(
+        { error: 'Invalid plan. Must be "plus" or "premium".' },
+        { status: 400 }
+      )
+    }
 
     if (interval !== 'monthly' && interval !== 'yearly') {
       return NextResponse.json(
@@ -48,13 +58,22 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // 5. Choix du price ID selon l'intervalle
-    const priceId = interval === 'monthly'
-      ? process.env.NEXT_PUBLIC_STRIPE_PRICE_PLUS_MONTHLY
-      : process.env.NEXT_PUBLIC_STRIPE_PRICE_PLUS_YEARLY
+    // 5. Choix du price ID selon le plan + l'intervalle (4 combinaisons)
+    const priceIdMap = {
+      plus: {
+        monthly: process.env.NEXT_PUBLIC_STRIPE_PRICE_PLUS_MONTHLY,
+        yearly: process.env.NEXT_PUBLIC_STRIPE_PRICE_PLUS_YEARLY,
+      },
+      premium: {
+        monthly: process.env.NEXT_PUBLIC_STRIPE_PRICE_PREMIUM_MONTHLY,
+        yearly: process.env.NEXT_PUBLIC_STRIPE_PRICE_PREMIUM_YEARLY,
+      },
+    } as const
+
+    const priceId = priceIdMap[plan][interval]
 
     if (!priceId) {
-      console.error('[Stripe Checkout] Missing price ID env var for interval:', interval)
+      console.error('[Stripe Checkout] Missing price ID env var for', plan, interval)
       return NextResponse.json(
         { error: 'Server configuration error' },
         { status: 500 }
@@ -81,13 +100,13 @@ export async function POST(req: NextRequest) {
       client_reference_id: user.id,
       metadata: {
         supabase_user_id: user.id,
-        plan: 'plus',
+        plan,
         interval,
       },
       subscription_data: {
         metadata: {
           supabase_user_id: user.id,
-          plan: 'plus',
+          plan,
           interval,
         },
       },
