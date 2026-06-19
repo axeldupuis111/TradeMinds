@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendPushToUser } from "@/lib/push";
+import { checkDailyLossAlert } from "@/lib/alerts/daily-loss";
 import {
   mapSource,
   mapDirection,
@@ -226,107 +226,12 @@ export async function handlePushSync(req: NextRequest): Promise<NextResponse> {
     synced++;
   }
 
-  // ── Alerte temps réel : perte max journalière ───────────────────────────
-  // Au franchissement d'un seuil (alerte à 80 %, dépassement à 100 %) sur le
-  // cumul du jour, on notifie par push. Best-effort, ne bloque jamais le sync.
-  try {
-    const batchNetPnl = toInsert.reduce(
-      (s, r) => s + r.pnl + (r.commission || 0) + (r.swap || 0),
-      0,
-    );
-    if (batchNetPnl < 0) {
-      await checkDailyLossAlert(admin, userId, (profile.language as string) || "en", batchNetPnl);
-    }
-  } catch (alertErr) {
-    console.error("[Push Sync] daily-loss alert error:", alertErr);
-  }
-
-  return NextResponse.json({ received: rawTrades.length, synced, skipped });
-}
-
-// ─── Alerte perte journalière ──────────────────────────────────────────────
-
-type AlertLang = "fr" | "en" | "de" | "es";
-
-const DAILY_LOSS_COPY: Record<AlertLang, {
-  warnTitle: string; warnBody: string; breachTitle: string; breachBody: string;
-}> = {
-  fr: {
-    warnTitle: "Attention à ta limite",
-    warnBody: "Tu approches ta limite de perte journalière. Reste prudent.",
-    breachTitle: "Limite de perte journalière atteinte",
-    breachBody: "Tu as atteint ta limite de perte du jour. Arrête de trader aujourd'hui.",
-  },
-  en: {
-    warnTitle: "Watch your daily limit",
-    warnBody: "You're approaching your daily loss limit. Stay careful.",
-    breachTitle: "Daily loss limit reached",
-    breachBody: "You've hit your daily loss limit. Stop trading for today.",
-  },
-  de: {
-    warnTitle: "Achte auf dein Tageslimit",
-    warnBody: "Du näherst dich deinem täglichen Verlustlimit. Sei vorsichtig.",
-    breachTitle: "Tägliches Verlustlimit erreicht",
-    breachBody: "Du hast dein tägliches Verlustlimit erreicht. Hör für heute auf zu traden.",
-  },
-  es: {
-    warnTitle: "Cuidado con tu límite diario",
-    warnBody: "Te acercas a tu límite de pérdida diaria. Mantente prudente.",
-    breachTitle: "Límite de pérdida diaria alcanzado",
-    breachBody: "Has alcanzado tu límite de pérdida del día. Deja de operar hoy.",
-  },
-};
-
-async function checkDailyLossAlert(
-  admin: ReturnType<typeof createAdminClient>,
-  userId: string,
-  language: string,
-  batchNetPnl: number,
-): Promise<void> {
-  // Limite la plus stricte parmi les challenges actifs (en devise).
-  const { data: challenges } = await admin
-    .from("prop_challenges")
-    .select("account_size, max_daily_loss_pct, max_daily_dd_pct")
-    .eq("user_id", userId)
-    .eq("status", "active");
-
-  if (!challenges || challenges.length === 0) return;
-
-  let limit = Infinity;
-  for (const c of challenges) {
-    const pct = (c.max_daily_loss_pct ?? c.max_daily_dd_pct) as number | null;
-    if (!pct || !c.account_size) continue;
-    limit = Math.min(limit, (c.account_size as number) * (pct / 100));
-  }
-  if (!isFinite(limit) || limit <= 0) return;
-
-  // Perte du jour (UTC) sur tous les trades — cohérent avec l'affichage du dashboard.
-  const todayStart = new Date().toISOString().split("T")[0];
-  const { data: todayTrades } = await admin
-    .from("trades")
-    .select("pnl, commission, swap")
-    .eq("user_id", userId)
-    .gte("open_time", todayStart);
-
-  const afterPnl = (todayTrades ?? []).reduce(
-    (s, t) => s + t.pnl + (t.commission || 0) + (t.swap || 0),
+  // ── Alerte temps réel : perte max journalière (module partagé) ───────────
+  const batchNetPnl = toInsert.reduce(
+    (s, r) => s + r.pnl + (r.commission || 0) + (r.swap || 0),
     0,
   );
-  const afterLoss = -afterPnl;            // positif si l'utilisateur perd
-  const beforeLoss = -(afterPnl - batchNetPnl); // état avant ce lot
-  const warn = limit * 0.8;
+  await checkDailyLossAlert(admin, userId, (profile.language as string) || "en", batchNetPnl);
 
-  const lang: AlertLang = (language as AlertLang) in DAILY_LOSS_COPY ? (language as AlertLang) : "en";
-  const copy = DAILY_LOSS_COPY[lang];
-
-  // On ne notifie qu'au moment du franchissement, pour éviter le spam à chaque sync.
-  if (beforeLoss < limit && afterLoss >= limit) {
-    await sendPushToUser(userId, {
-      title: copy.breachTitle, body: copy.breachBody, url: "/dashboard", tag: "daily-loss",
-    });
-  } else if (beforeLoss < warn && afterLoss >= warn) {
-    await sendPushToUser(userId, {
-      title: copy.warnTitle, body: copy.warnBody, url: "/dashboard", tag: "daily-loss",
-    });
-  }
+  return NextResponse.json({ received: rawTrades.length, synced, skipped });
 }

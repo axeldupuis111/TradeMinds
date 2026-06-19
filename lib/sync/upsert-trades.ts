@@ -26,8 +26,8 @@ export async function upsertSyncedTrades(
   admin: SupabaseClient,
   userId: string,
   rows: SyncedTradeRow[],
-): Promise<{ synced: number; skipped: number }> {
-  if (rows.length === 0) return { synced: 0, skipped: 0 };
+): Promise<{ synced: number; skipped: number; insertedNetPnl: number }> {
+  if (rows.length === 0) return { synced: 0, skipped: 0, insertedNetPnl: 0 };
 
   const externalIds = rows.map((r) => r.external_id);
   const sources = Array.from(new Set(rows.map((r) => r.source)));
@@ -49,7 +49,7 @@ export async function upsertSyncedTrades(
 
   const active = rows.filter((r) => !frozenKeys.has(`${r.source}:${r.external_id}`));
   let skipped = rows.length - active.length;
-  if (active.length === 0) return { synced: 0, skipped };
+  if (active.length === 0) return { synced: 0, skipped, insertedNetPnl: 0 };
 
   // ── Split insert (new) vs update (existing) ───────────────────────────────
   const { data: existingRows } = await admin
@@ -72,6 +72,7 @@ export async function upsertSyncedTrades(
   const toUpdate = active.filter((r) => existingMap.has(`${r.source}:${r.external_id}`));
 
   let synced = 0;
+  let insertedNetPnl = 0;
 
   if (toInsert.length > 0) {
     const { data: inserted, error } = await admin.from("trades").insert(toInsert).select("id");
@@ -79,6 +80,7 @@ export async function upsertSyncedTrades(
       console.error("[Broker Sync] insert error:", error.message);
     } else {
       synced += inserted?.length ?? 0;
+      insertedNetPnl = toInsert.reduce((s, r) => s + r.pnl + (r.commission || 0) + (r.swap || 0), 0);
     }
   }
 
@@ -95,5 +97,5 @@ export async function upsertSyncedTrades(
     synced++;
   }
 
-  return { synced, skipped };
+  return { synced, skipped, insertedNetPnl };
 }

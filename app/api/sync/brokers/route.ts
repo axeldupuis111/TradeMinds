@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { syncBrokerConnection, type BrokerConnectionRow } from "@/lib/sync/broker-sync";
+import { checkDailyLossAlert } from "@/lib/alerts/daily-loss";
 
 // Vercel cron invokes routes with GET — delegate to POST.
 export async function GET(req: Request) {
@@ -33,8 +34,18 @@ export async function POST(req: Request) {
 
   for (const conn of (connections ?? []) as BrokerConnectionRow[]) {
     try {
-      const { synced } = await syncBrokerConnection(admin, conn);
+      const { synced, insertedNetPnl } = await syncBrokerConnection(admin, conn);
       totalSynced += synced;
+
+      // Alerte temps réel de perte journalière sur les nouveaux trades pullés.
+      if (insertedNetPnl < 0) {
+        const { data: prof } = await admin
+          .from("profiles")
+          .select("language")
+          .eq("id", conn.user_id)
+          .single();
+        await checkDailyLossAlert(admin, conn.user_id, (prof?.language as string) || "en", insertedNetPnl);
+      }
     } catch (err) {
       failed++;
       console.error(

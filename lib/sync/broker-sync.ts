@@ -22,7 +22,7 @@ const OVERLAP_MS = 24 * 60 * 60 * 1000; // re-scan the last day to catch late se
 export async function syncBrokerConnection(
   admin: SupabaseClient,
   conn: BrokerConnectionRow,
-): Promise<{ synced: number; skipped: number }> {
+): Promise<{ synced: number; skipped: number; insertedNetPnl: number }> {
   try {
     const since = conn.last_synced_at
       ? new Date(new Date(conn.last_synced_at).getTime() - OVERLAP_MS)
