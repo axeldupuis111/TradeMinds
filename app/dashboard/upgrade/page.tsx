@@ -182,6 +182,13 @@ export default function UpgradePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || t("planchange_error"));
 
+      // Paiement non collecté (carte refusée ou 3DS requis) : Stripe a généré une
+      // facture payable. On y redirige : l'utilisateur paie et/ou change de carte.
+      if (data.paid === false && data.hostedInvoiceUrl) {
+        window.location.href = data.hostedInvoiceUrl;
+        return;
+      }
+
       const wasUpgrade = changePreview?.isUpgrade ?? false;
       setChangeTarget(null);
       setChangePreview(null);

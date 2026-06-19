@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
+import { Resend } from 'resend'
 import { stripe } from '@/lib/stripe'
 
 // IMPORTANT: Next.js doit recevoir le body brut pour la vérification de signature Stripe.
@@ -94,6 +95,12 @@ export async function POST(req: NextRequest) {
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice
         await handleInvoicePaymentFailed(invoice, supabase)
+        break
+      }
+
+      case 'invoice.paid': {
+        const invoice = event.data.object as Stripe.Invoice
+        await handleInvoicePaid(invoice, supabase)
         break
       }
 
@@ -271,6 +278,112 @@ async function handleInvoicePaymentFailed(
   if (error) {
     console.error('[Webhook] Error marking subscription past_due:', error)
     throw error
+  }
+}
+
+// Copy de l'email « félicitations » par langue. {plan} = nom du plan.
+const CONGRATS_EMAIL: Record<string, { subject: string; heading: string; body: string; cta: string }> = {
+  fr: {
+    subject: 'Bienvenue dans TradeDiscipline {plan} 🎉',
+    heading: 'Félicitations, te voilà en {plan} !',
+    body: 'Ton abonnement est actif. Profite de toutes les fonctionnalités dès maintenant. Ta facture est disponible ci-dessous.',
+    cta: 'Voir ma facture',
+  },
+  en: {
+    subject: 'Welcome to TradeDiscipline {plan} 🎉',
+    heading: "Congratulations, you're on {plan}!",
+    body: 'Your subscription is active. Enjoy all the features right away. Your invoice is available below.',
+    cta: 'View my invoice',
+  },
+  es: {
+    subject: 'Bienvenido a TradeDiscipline {plan} 🎉',
+    heading: '¡Enhorabuena, ya tienes {plan}!',
+    body: 'Tu suscripción está activa. Disfruta de todas las funciones desde ahora. Tu factura está disponible abajo.',
+    cta: 'Ver mi factura',
+  },
+  de: {
+    subject: 'Willkommen bei TradeDiscipline {plan} 🎉',
+    heading: 'Glückwunsch, du bist jetzt bei {plan}!',
+    body: 'Dein Abo ist aktiv. Nutze ab sofort alle Funktionen. Deine Rechnung findest du unten.',
+    cta: 'Meine Rechnung ansehen',
+  },
+}
+
+const PLAN_LABEL: Record<string, string> = { plus: 'Plus', premium: 'Premium' }
+
+async function handleInvoicePaid(
+  invoice: Stripe.Invoice,
+  supabase: ReturnType<typeof getSupabaseAdmin>
+) {
+  console.log('[Webhook] invoice.paid:', invoice.id)
+
+  // On ne félicite que sur une nouvelle souscription ou un changement de plan (upgrade),
+  // jamais sur un renouvellement mensuel (subscription_cycle).
+  if (invoice.billing_reason !== 'subscription_create' && invoice.billing_reason !== 'subscription_update') {
+    return
+  }
+
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[Webhook] RESEND_API_KEY absent, email de félicitations non envoyé')
+    return
+  }
+
+  type InvoiceWithSubscription = Stripe.Invoice & {
+    subscription?: string | Stripe.Subscription | null
+  }
+  const invoiceWithSub = invoice as InvoiceWithSubscription
+  const subscriptionId = typeof invoiceWithSub.subscription === 'string'
+    ? invoiceWithSub.subscription
+    : invoiceWithSub.subscription?.id
+  if (!subscriptionId) return
+
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+  const priceId = subscription.items.data[0]?.price.id
+  const planInfo = priceId ? getPlanFromPriceId(priceId) : null
+  if (!planInfo) return
+
+  const userId = subscription.metadata?.supabase_user_id
+  if (!userId) return
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('email, language')
+    .eq('id', userId)
+    .single()
+
+  const to = profile?.email || invoice.customer_email
+  if (!to) {
+    console.warn('[Webhook] Pas d\'email pour féliciter le user', userId)
+    return
+  }
+
+  const lang = (profile?.language as string) in CONGRATS_EMAIL ? (profile!.language as string) : 'en'
+  const planLabel = PLAN_LABEL[planInfo.plan] ?? planInfo.plan
+  const copy = CONGRATS_EMAIL[lang]
+  const invoiceUrl = invoice.hosted_invoice_url || invoice.invoice_pdf || 'https://www.tradediscipline.app/dashboard'
+
+  const subject = copy.subject.replace('{plan}', planLabel)
+  const heading = copy.heading.replace('{plan}', planLabel)
+
+  try {
+    const resend = new Resend(process.env.RESEND_API_KEY)
+    await resend.emails.send({
+      from: 'TradeDiscipline <noreply@tradediscipline.app>',
+      to,
+      subject,
+      html: `
+        <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;">
+          <h1 style="font-size:20px;">${heading}</h1>
+          <p style="color:#444;line-height:1.5;">${copy.body}</p>
+          <p style="margin-top:24px;">
+            <a href="${invoiceUrl}" style="background:#2563eb;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;display:inline-block;">${copy.cta}</a>
+          </p>
+        </div>
+      `,
+    })
+  } catch (emailErr) {
+    // L'email ne doit jamais faire échouer le webhook (sinon Stripe retry).
+    console.error('[Webhook] Échec envoi email félicitations:', emailErr)
   }
 }
 
