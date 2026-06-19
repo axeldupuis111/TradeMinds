@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { sendPushToUser } from "@/lib/push";
 
 /**
  * Rapport hebdomadaire par email — cron Vercel chaque dimanche soir.
@@ -307,6 +308,14 @@ async function handle(req: Request) {
     } catch (emailErr) {
       console.error(`Failed to send weekly report to ${user.email}:`, emailErr);
     }
+
+    // Push (best-effort, no-op si pas d'abonnement) : résumé compact de la semaine.
+    await sendPushToUser(user.id, {
+      title: copy.heading,
+      body: `${fmt.signedMoney(stats.pnl)} · ${stats.count} ${copy.trades} · ${fmt.percent(stats.winrate)}`,
+      url: "/dashboard/analytics",
+      tag: "weekly-report",
+    });
   }
 
   return NextResponse.json(
