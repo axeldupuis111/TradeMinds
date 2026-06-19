@@ -43,7 +43,7 @@ const faqKeys = [
 ];
 
 export default function UpgradePage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { plan: currentPlan, refreshPlan, subscriptionStatus } = usePlan();
   const hasStripeSubscription = subscriptionStatus !== null;
   const [annual, setAnnual] = useState(false);
@@ -249,7 +249,7 @@ export default function UpgradePage() {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan, interval }),
+        body: JSON.stringify({ plan, interval, locale: lang }),
       });
 
       const data = await res.json();
