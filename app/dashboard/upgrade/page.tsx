@@ -186,7 +186,20 @@ export default function UpgradePage() {
       setChangeTarget(null);
       setChangePreview(null);
       setChangeSuccessMsg(wasUpgrade ? t("planchange_success_upgrade") : t("planchange_success_downgrade"));
+
+      // profiles.plan est mis à jour de façon asynchrone par le webhook Stripe
+      // (customer.subscription.updated). Pour un upgrade, on rafraîchit en boucle
+      // jusqu'à ce que le nouveau plan soit visible, sinon l'UI reste sur l'ancien
+      // plan jusqu'à un rechargement manuel.
       await refreshPlan();
+      if (wasUpgrade) {
+        let tries = 0;
+        const poll = setInterval(async () => {
+          tries += 1;
+          await refreshPlan();
+          if (tries >= 6) clearInterval(poll);
+        }, 1500);
+      }
       setTimeout(() => setChangeSuccessMsg(null), 6000);
     } catch (err) {
       console.error("[Plan change] Commit error:", err);
