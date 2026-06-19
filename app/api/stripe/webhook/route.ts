@@ -41,6 +41,13 @@ function getPlanFromPriceId(priceId: string): { plan: string; interval: 'monthly
   return null
 }
 
+// Hiérarchie des plans : sert à empêcher une montée en gamme non payée.
+function planRank(plan: string): number {
+  if (plan === 'premium') return 2
+  if (plan === 'plus') return 1
+  return 0 // free / inconnu
+}
+
 export async function POST(req: NextRequest) {
   // 1. Vérification de la signature Stripe
   const body = await req.text()
@@ -189,17 +196,33 @@ async function handleSubscriptionUpdated(
 
   await upsertSubscription(subscription, userId, supabase)
 
-  // Met à jour profiles.plan en fonction du statut + du price (plus / premium)
+  // Plan visé selon le statut + le price (plus / premium)
   const updatedPriceId = subscription.items.data[0]?.price.id
   const updatedPlan = updatedPriceId ? getPlanFromPriceId(updatedPriceId)?.plan : null
 
-  const newPlan = (subscription.status === 'active' || subscription.status === 'trialing')
+  const computedPlan = (subscription.status === 'active' || subscription.status === 'trialing')
     ? (updatedPlan ?? 'plus')
     : 'free'
 
+  // IMPORTANT : on ne fait JAMAIS MONTER en gamme ici. Un upgrade (ex. plus -> premium)
+  // peut arriver avec une facture pas encore payée (3DS, carte refusée). Le passage à un
+  // palier supérieur est accordé uniquement par invoice.paid (paiement confirmé).
+  // Ici on ne gère que les baisses / annulations / synchronisations à plan égal.
+  const { data: current } = await supabase
+    .from('profiles')
+    .select('plan')
+    .eq('id', userId)
+    .single()
+  const currentPlan = (current?.plan as string) ?? 'free'
+
+  if (planRank(computedPlan) > planRank(currentPlan)) {
+    console.log(`[Webhook] Montée ${currentPlan} -> ${computedPlan} ignorée ici (attend invoice.paid)`)
+    return
+  }
+
   const { error } = await supabase
     .from('profiles')
-    .update({ plan: newPlan })
+    .update({ plan: computedPlan })
     .eq('id', userId)
 
   if (error) {
@@ -332,18 +355,7 @@ async function handleInvoicePaid(
   invoice: Stripe.Invoice,
   supabase: ReturnType<typeof getSupabaseAdmin>
 ) {
-  console.log('[Webhook] invoice.paid:', invoice.id)
-
-  // On ne félicite que sur une nouvelle souscription ou un changement de plan (upgrade),
-  // jamais sur un renouvellement mensuel (subscription_cycle).
-  if (invoice.billing_reason !== 'subscription_create' && invoice.billing_reason !== 'subscription_update') {
-    return
-  }
-
-  if (!process.env.RESEND_API_KEY) {
-    console.warn('[Webhook] RESEND_API_KEY absent, email de félicitations non envoyé')
-    return
-  }
+  console.log('[Webhook] invoice.paid:', invoice.id, 'reason:', invoice.billing_reason)
 
   const subscriptionId = getInvoiceSubscriptionId(invoice)
   if (!subscriptionId) {
@@ -358,6 +370,28 @@ async function handleInvoicePaid(
 
   const userId = subscription.metadata?.supabase_user_id
   if (!userId) return
+
+  // PAIEMENT CONFIRMÉ : c'est ici (et seulement ici) qu'on accorde le palier payé,
+  // y compris une montée en gamme. Sans facture payée, pas d'accès Premium.
+  const { error: planError } = await supabase
+    .from('profiles')
+    .update({ plan: planInfo.plan })
+    .eq('id', userId)
+  if (planError) {
+    console.error('[Webhook] Error granting paid plan:', planError)
+    throw planError
+  }
+
+  // On ne félicite que sur une nouvelle souscription ou un changement de plan (upgrade),
+  // jamais sur un renouvellement (subscription_cycle).
+  if (invoice.billing_reason !== 'subscription_create' && invoice.billing_reason !== 'subscription_update') {
+    return
+  }
+
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[Webhook] RESEND_API_KEY absent, email de félicitations non envoyé')
+    return
+  }
 
   const { data: profile } = await supabase
     .from('profiles')
