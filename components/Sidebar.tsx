@@ -6,6 +6,7 @@ import { usePlan } from "@/lib/PlanContext";
 import {
   Activity,
   BarChart3,
+  Calculator,
   CalendarCheck,
   Flag,
   LayoutDashboard,
@@ -24,6 +25,7 @@ import { useRouter } from "next/navigation";
 const tradingItems = [
   { key: "sidebar_dashboard", href: "/dashboard",          icon: LayoutDashboard },
   { key: "sidebar_session",   href: "/dashboard/session",  icon: Play },
+  { key: "sidebar_sizer",     href: "/dashboard/sizer",    icon: Calculator },
   { key: "sidebar_trades",    href: "/dashboard/trades",   icon: ListChecks },
   { key: "sidebar_challenge", href: "/dashboard/challenge", icon: Wallet },
 ];
