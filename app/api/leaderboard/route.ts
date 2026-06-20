@@ -1,18 +1,21 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdmin } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 
-// Classement basé UNIQUEMENT sur la discipline (jamais le P&L), sur les 30 derniers jours,
-// limité aux utilisateurs ayant explicitement activé l'opt-in (leaderboard_opt_in).
-export async function GET() {
+// Classement basé UNIQUEMENT sur la discipline (jamais le P&L), sur une fenêtre
+// glissante (30 ou 90 jours), limité aux utilisateurs ayant activé l'opt-in.
+export async function GET(req: NextRequest) {
   // 1. Auth : seul un utilisateur connecté voit le classement.
   const supabase = await createClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
+
+  const daysParam = Number(req.nextUrl.searchParams.get("days"));
+  const days = daysParam === 90 ? 90 : 30;
 
   // 2. Lecture cross-users via service role (RLS limite sinon à ses propres lignes).
   const admin = createAdmin(
@@ -28,11 +31,11 @@ export async function GET() {
     .not("username", "is", null);
 
   if (!profiles || profiles.length === 0) {
-    return NextResponse.json({ entries: [], me: null });
+    return NextResponse.json({ entries: [], me: null, total: 0, days });
   }
 
   const ids = profiles.map((p) => p.id);
-  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
   const { data: reviews } = await admin
     .from("session_reviews")
@@ -68,5 +71,5 @@ export async function GET() {
   const ranked = entries.map((e, i) => ({ ...e, rank: i + 1 }));
   const me = ranked.find((e) => e.isMe) ?? null;
 
-  return NextResponse.json({ entries: ranked.slice(0, 50), me });
+  return NextResponse.json({ entries: ranked.slice(0, 50), me, total: ranked.length, days });
 }
