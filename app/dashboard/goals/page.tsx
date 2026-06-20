@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Trash2, Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
-type Metric = "discipline_score" | "sessions" | "win_rate" | "trades_per_day";
+type Metric = "discipline_score" | "sessions" | "win_rate" | "trades_per_day" | "max_consecutive_losses";
 
 interface Goal {
   id: string;
@@ -24,9 +24,10 @@ const METRIC_COMPARATOR: Record<Metric, "gte" | "lte"> = {
   sessions: "gte",
   win_rate: "gte",
   trades_per_day: "lte",
+  max_consecutive_losses: "lte",
 };
 
-const METRICS: Metric[] = ["discipline_score", "sessions", "win_rate", "trades_per_day"];
+const METRICS: Metric[] = ["discipline_score", "sessions", "win_rate", "trades_per_day", "max_consecutive_losses"];
 
 export default function GoalsPage() {
   const { t } = useLanguage();
@@ -121,36 +122,62 @@ export default function GoalsPage() {
         <p className="text-muted text-sm mt-6 text-center">{t("goals_empty")}</p>
       ) : (
         <div className="mt-4 space-y-3">
-          {goals.map((g) => (
-            <div key={g.id} className="rounded-xl border border-border bg-card p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground">
-                    {metricLabel(g.metric)}
-                    <span className="text-muted font-normal">
-                      {" "}· {g.comparator === "gte" ? "≥" : "≤"} {g.target}{unit(g.metric)} · {t(`goals_period_${g.period}`)}
-                    </span>
-                  </p>
+          {goals.map((g) => {
+            // Échec = objectif "ne pas dépasser" (lte) déjà dépassé.
+            const failing = !g.met && g.comparator === "lte" && g.value > g.target;
+            const barColor = g.met ? "bg-profit" : failing ? "bg-loss" : "bg-accent";
+            const status = g.met ? "met" : failing ? "failed" : "progress";
+            const statusStyle =
+              status === "met" ? "bg-profit/10 text-profit"
+              : status === "failed" ? "bg-loss/10 text-loss"
+              : "bg-surface text-muted";
+            // Écart restant.
+            const gap = g.comparator === "gte"
+              ? Math.max(0, Math.round((g.target - g.value) * 10) / 10)
+              : Math.max(0, Math.round((g.value - g.target) * 10) / 10);
+            return (
+              <div key={g.id} className="rounded-xl border border-border bg-card p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {metricLabel(g.metric)}
+                      <span className="text-muted font-normal">
+                        {" "}· {g.comparator === "gte" ? "≥" : "≤"} {g.target}{unit(g.metric)} · {t(`goals_period_${g.period}`)}
+                      </span>
+                    </p>
+                  </div>
+                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${statusStyle}`}>
+                    {t(`goals_status_${status}`)}
+                  </span>
+                  <button
+                    onClick={() => removeGoal(g.id)}
+                    className="text-muted hover:text-loss transition-colors shrink-0"
+                    aria-label={t("goals_delete")}
+                  >
+                    <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+                  </button>
                 </div>
-                <span className={`text-sm font-bold ${g.met ? "text-profit" : "text-foreground"}`}>
-                  {g.value}{unit(g.metric)}
-                </span>
-                <button
-                  onClick={() => removeGoal(g.id)}
-                  className="text-muted hover:text-loss transition-colors"
-                  aria-label={t("goals_delete")}
-                >
-                  <Trash2 className="w-4 h-4" strokeWidth={1.5} />
-                </button>
+                <div className="mt-2 flex items-center gap-3">
+                  <div className="flex-1 h-2 rounded-full bg-surface overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-500 ${barColor}`}
+                      style={{ width: `${g.progress}%` }}
+                    />
+                  </div>
+                  <span className={`text-sm font-bold tabular-nums ${g.met ? "text-profit" : failing ? "text-loss" : "text-foreground"}`}>
+                    {g.value}{unit(g.metric)}
+                  </span>
+                </div>
+                {!g.met && gap > 0 && (
+                  <p className="text-xs text-muted mt-1.5">
+                    {g.comparator === "gte"
+                      ? t("goals_gap_below").replace("{gap}", `${gap}${unit(g.metric)}`)
+                      : t("goals_gap_above").replace("{gap}", `${gap}${unit(g.metric)}`)}
+                  </p>
+                )}
               </div>
-              <div className="mt-2 h-2 rounded-full bg-surface overflow-hidden">
-                <div
-                  className={`h-full transition-all duration-500 ${g.met ? "bg-profit" : "bg-accent"}`}
-                  style={{ width: `${g.progress}%` }}
-                />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

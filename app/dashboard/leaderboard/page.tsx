@@ -2,7 +2,7 @@
 
 import { useLanguage } from "@/lib/LanguageContext";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 interface Entry {
   rank: number;
@@ -12,36 +12,76 @@ interface Entry {
   isMe: boolean;
 }
 
+function scoreColor(s: number): string {
+  if (s >= 85) return "text-profit";
+  if (s >= 70) return "text-green-400";
+  if (s >= 50) return "text-warning";
+  return "text-loss";
+}
+
+function Avatar({ name, isMe }: { name: string; isMe: boolean }) {
+  const initials = name.slice(0, 2).toUpperCase();
+  return (
+    <span
+      className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0 ${
+        isMe ? "bg-accent text-white" : "bg-surface text-muted"
+      }`}
+    >
+      {initials}
+    </span>
+  );
+}
+
 export default function LeaderboardPage() {
   const { t } = useLanguage();
   const [entries, setEntries] = useState<Entry[]>([]);
   const [me, setMe] = useState<Entry | null>(null);
+  const [total, setTotal] = useState(0);
+  const [days, setDays] = useState<30 | 90>(30);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/leaderboard");
-        const data = await res.json();
-        setEntries(data.entries ?? []);
-        setMe(data.me ?? null);
-      } finally {
-        setLoading(false);
-      }
-    })();
+  const load = useCallback(async (d: 30 | 90) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/leaderboard?days=${d}`);
+      const data = await res.json();
+      setEntries(data.entries ?? []);
+      setMe(data.me ?? null);
+      setTotal(data.total ?? 0);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  function medal(rank: number): string {
-    return rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : `${rank}`;
-  }
+  useEffect(() => { load(days); }, [days, load]);
+
+  const top3 = entries.slice(0, 3);
+  const rest = entries.slice(3);
+  const meInTop = me ? entries.some((e) => e.isMe) : false;
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold text-foreground">{t("leaderboard_title")}</h1>
-      <p className="text-muted mt-1">{t("leaderboard_subtitle")}</p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">{t("leaderboard_title")}</h1>
+          <p className="text-muted mt-1">{t("leaderboard_subtitle")}</p>
+        </div>
+        {/* Sélecteur de période */}
+        <div className="flex rounded-lg border border-border overflow-hidden text-sm">
+          {([30, 90] as const).map((d) => (
+            <button
+              key={d}
+              onClick={() => setDays(d)}
+              className={`px-3 py-1.5 transition-colors ${days === d ? "bg-accent text-white" : "bg-surface text-muted hover:text-foreground"}`}
+            >
+              {t("leaderboard_days").replace("{n}", String(d))}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {loading ? (
-        <div className="skeleton h-40 rounded-xl mt-6" />
+        <div className="skeleton h-48 rounded-xl mt-6" />
       ) : entries.length === 0 ? (
         <div className="mt-6 rounded-xl border border-border bg-card p-8 text-center">
           <p className="text-muted text-sm">{t("leaderboard_empty")}</p>
@@ -51,31 +91,72 @@ export default function LeaderboardPage() {
         </div>
       ) : (
         <>
-          {me && (
-            <div className="mt-6 rounded-xl border border-accent/30 bg-accent/5 p-4 flex items-center gap-4">
-              <span className="text-lg font-bold text-accent w-10 text-center">{medal(me.rank)}</span>
-              <span className="flex-1 text-foreground font-medium">{t("leaderboard_you")}</span>
-              <span className="text-sm text-muted">{me.sessions} {t("leaderboard_sessions")}</span>
-              <span className="text-lg font-bold text-profit w-12 text-right">{me.score}</span>
+          <p className="text-xs text-muted mt-4">
+            {t("leaderboard_participants").replace("{n}", String(total))}
+            {me && ` · ${t("leaderboard_your_rank").replace("{rank}", String(me.rank)).replace("{total}", String(total))}`}
+          </p>
+
+          {/* Podium top 3 */}
+          {top3.length >= 1 && (
+            <div className="mt-4 grid grid-cols-3 gap-3 items-end">
+              {/* ordre visuel : 2 - 1 - 3 */}
+              {[top3[1], top3[0], top3[2]].map((e, i) => {
+                if (!e) return <div key={i} />;
+                const heights = ["h-20", "h-28", "h-16"];
+                const medals = ["🥈", "🥇", "🥉"];
+                const order = [1, 0, 2][i]; // position dans top3
+                return (
+                  <div key={e.rank} className="flex flex-col items-center">
+                    <Avatar name={e.username} isMe={e.isMe} />
+                    <span className="text-xs text-foreground mt-1 truncate max-w-full">
+                      {e.isMe ? t("leaderboard_you") : `@${e.username}`}
+                    </span>
+                    <span className={`text-lg font-bold ${scoreColor(e.score)}`}>{e.score}</span>
+                    <div className={`${heights[i]} w-full rounded-t-lg mt-1 flex items-start justify-center pt-2 ${
+                      order === 0 ? "bg-accent/20" : "bg-surface"
+                    }`}>
+                      <span className="text-2xl">{medals[i]}</span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 
-          <div className="mt-4 rounded-xl border border-border overflow-hidden divide-y divide-border">
-            {entries.map((e) => (
-              <div
-                key={e.rank}
-                className={`flex items-center gap-4 px-4 py-3 ${e.isMe ? "bg-accent/5" : "bg-card"}`}
-              >
-                <span className="text-base font-bold text-foreground w-10 text-center">{medal(e.rank)}</span>
-                <span className="flex-1 text-foreground truncate">@{e.username}</span>
-                <span className="text-xs text-muted">{e.sessions} {t("leaderboard_sessions")}</span>
-                <span className="text-base font-bold text-profit w-12 text-right">{e.score}</span>
+          {/* Reste du classement */}
+          {rest.length > 0 && (
+            <div className="mt-4 rounded-xl border border-border overflow-hidden divide-y divide-border">
+              {rest.map((e) => (
+                <Row key={e.rank} e={e} t={t} />
+              ))}
+            </div>
+          )}
+
+          {/* Ta position si hors top 50 */}
+          {me && !meInTop && (
+            <div className="mt-4">
+              <p className="text-xs text-muted mb-1">{t("leaderboard_your_position")}</p>
+              <div className="rounded-xl border border-accent/30 overflow-hidden">
+                <Row e={me} t={t} />
               </div>
-            ))}
-          </div>
-          <p className="text-xs text-muted/60 mt-3 text-center">{t("leaderboard_disclaimer")}</p>
+            </div>
+          )}
+
+          <p className="text-xs text-muted/60 mt-4 text-center">{t("leaderboard_disclaimer")}</p>
         </>
       )}
+    </div>
+  );
+}
+
+function Row({ e, t }: { e: Entry; t: (k: string) => string }) {
+  return (
+    <div className={`flex items-center gap-3 px-4 py-3 ${e.isMe ? "bg-accent/5" : "bg-card"}`}>
+      <span className="text-sm font-bold text-muted w-7 text-center tabular-nums">{e.rank}</span>
+      <Avatar name={e.username} isMe={e.isMe} />
+      <span className="flex-1 text-foreground truncate">{e.isMe ? t("leaderboard_you") : `@${e.username}`}</span>
+      <span className="text-xs text-muted">{e.sessions} {t("leaderboard_sessions")}</span>
+      <span className={`text-base font-bold w-10 text-right ${scoreColor(e.score)}`}>{e.score}</span>
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-type Metric = "discipline_score" | "sessions" | "win_rate" | "trades_per_day";
+type Metric = "discipline_score" | "sessions" | "win_rate" | "trades_per_day" | "max_consecutive_losses";
 
 interface GoalRow {
   id: string;
@@ -54,7 +54,7 @@ export async function GET() {
 
   const [{ data: reviews }, { data: trades }] = await Promise.all([
     supabase.from("session_reviews").select("discipline_score, created_at").eq("user_id", user.id).gte("created_at", since),
-    supabase.from("trades").select("pnl, commission, swap, open_time").eq("user_id", user.id).gte("open_time", since),
+    supabase.from("trades").select("pnl, commission, swap, open_time").eq("user_id", user.id).gte("open_time", since).order("open_time", { ascending: true }),
   ]);
 
   function currentValue(g: GoalRow): number {
@@ -76,6 +76,14 @@ export async function GET() {
         if (!tr.length) return 0;
         const days = new Set(tr.map((t) => t.open_time.slice(0, 10)));
         return Math.round((tr.length / days.size) * 10) / 10;
+      }
+      case "max_consecutive_losses": {
+        let max = 0, run = 0;
+        for (const t of tr) {
+          if (netPnl(t) < 0) { run += 1; if (run > max) max = run; }
+          else run = 0;
+        }
+        return max;
       }
       default:
         return 0;
