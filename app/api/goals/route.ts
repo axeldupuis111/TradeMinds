@@ -11,10 +11,18 @@ interface GoalRow {
   kind?: string | null;       // 'metric' | 'custom' (défaut 'metric')
   title?: string | null;      // objectifs perso (texte libre)
   done?: boolean | null;      // check manuel des objectifs perso
+  recurring?: boolean | null; // objectif perso reconduit chaque période
+  period_key?: string | null; // période en cours pour la reconduction
+  streak?: number | null;     // séries de périodes réussies d'affilée
+  best_streak?: number | null;
   metric: Metric | null;
   target: number | null;
   comparator: "gte" | "lte" | null;
   period: Period;
+}
+
+function periodKey(period: Period): string {
+  return periodStart(period).slice(0, 10);
 }
 
 function periodStart(period: Period): string {
@@ -91,10 +99,33 @@ export async function GET() {
     }
   }
 
+  // Reconduction des objectifs perso récurrents : si la période a changé, on
+  // valide la série (streak) selon l'atteinte de la période précédente, puis on
+  // remet à zéro pour la nouvelle période. Best-effort (ignore si colonnes absentes).
+  for (const g of goals) {
+    if (g.kind !== "custom" || !g.recurring) continue;
+    const curKey = periodKey(g.period);
+    if (g.period_key !== curKey) {
+      const wasDone = !!g.done;
+      const newStreak = wasDone ? (g.streak ?? 0) + 1 : 0;
+      const newBest = Math.max(g.best_streak ?? 0, newStreak);
+      const { error } = await supabase
+        .from("goals")
+        .update({ done: false, period_key: curKey, streak: newStreak, best_streak: newBest })
+        .eq("id", g.id);
+      if (!error) {
+        g.done = false; g.period_key = curKey; g.streak = newStreak; g.best_streak = newBest;
+      }
+    }
+  }
+
   const result = goals.map((g) => {
     const kind = g.kind === "custom" ? "custom" : "metric";
     if (kind === "custom") {
-      return { id: g.id, kind, title: g.title ?? "", period: g.period, done: !!g.done };
+      return {
+        id: g.id, kind, title: g.title ?? "", period: g.period, done: !!g.done,
+        recurring: !!g.recurring, streak: g.streak ?? 0, bestStreak: g.best_streak ?? 0,
+      };
     }
     const value = currentValue(g);
     const target = g.target ?? 0;
