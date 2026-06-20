@@ -113,6 +113,7 @@ void SendClosedTrades(datetime fromTime)
       double commission = openComm + closeComm;
 
       string json = "{";
+      json += "\"account\":\""   + IntegerToString(AccountInfoInteger(ACCOUNT_LOGIN)) + "\",";
       json += "\"ticket\":"      + IntegerToString(positionId)      + ",";
       json += "\"symbol\":\""    + symbol                            + "\",";
       json += "\"direction\":\"" + direction                         + "\",";

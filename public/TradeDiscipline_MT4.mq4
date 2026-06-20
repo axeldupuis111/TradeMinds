@@ -103,6 +103,7 @@ void SendClosedTrades(datetime fromTime)
       string direction = (orderType == OP_BUY) ? "buy" : "sell";
 
       string json = "{";
+      json += "\"account\":\""   + IntegerToString(AccountNumber())  + "\",";
       json += "\"ticket\":"      + IntegerToString(ticket)          + ",";
       json += "\"symbol\":\""    + symbol                            + "\",";
       json += "\"direction\":\"" + direction                         + "\",";

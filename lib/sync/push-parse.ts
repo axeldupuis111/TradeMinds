@@ -22,6 +22,7 @@ export interface PushTrade {
   sl?: number | null;
   tp?: number | null;
   source?: string; // platform identifier (defaults to "mt5")
+  account?: string | number; // n° de compte de trading (pour rattacher au challenge)
 }
 
 const KNOWN_SOURCES: readonly PushSource[] = ["mt4", "mt5", "ctrader", "ninjatrader"];

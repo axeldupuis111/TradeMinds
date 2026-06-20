@@ -161,6 +161,27 @@ export async function resolveActiveChallengeId(
 }
 
 /**
+ * Map `account_number` → `challenge_id` des challenges actifs de l'utilisateur.
+ * Sert à rattacher chaque trade synchronisé au bon challenge via son n° de compte
+ * (cas multi-comptes). Les challenges sans account_number ne sont pas indexés.
+ */
+export async function getChallengeAccountMap(
+  admin: SupabaseClient,
+  userId: string,
+): Promise<Map<string, string>> {
+  const { data } = await admin
+    .from("prop_challenges")
+    .select("id, account_number")
+    .eq("user_id", userId)
+    .eq("status", "active");
+  const map = new Map<string, string>();
+  for (const c of data ?? []) {
+    if (c.account_number) map.set(String(c.account_number).trim(), c.id as string);
+  }
+  return map;
+}
+
+/**
  * Alerte de drawdown (total ou trailing selon la config du challenge), calculée
  * sur le cumul des trades attribués à ce challenge. Notifie au franchissement de
  * 80 % / 100 % de la limite. Best-effort, ne throw jamais.
