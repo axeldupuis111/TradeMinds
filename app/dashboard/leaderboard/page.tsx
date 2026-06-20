@@ -19,6 +19,14 @@ function scoreColor(s: number): string {
   return "text-loss";
 }
 
+// Ligue de discipline selon le score moyen.
+function tierOf(s: number): { key: string; emoji: string; cls: string } {
+  if (s >= 85) return { key: "diamond", emoji: "💎", cls: "bg-cyan-500/10 text-cyan-300 border-cyan-400/30" };
+  if (s >= 70) return { key: "gold", emoji: "🥇", cls: "bg-yellow-500/10 text-yellow-300 border-yellow-400/30" };
+  if (s >= 50) return { key: "silver", emoji: "🥈", cls: "bg-slate-400/10 text-slate-300 border-slate-300/30" };
+  return { key: "bronze", emoji: "🥉", cls: "bg-orange-700/10 text-orange-300 border-orange-500/30" };
+}
+
 function Avatar({ name, isMe }: { name: string; isMe: boolean }) {
   const initials = name.slice(0, 2).toUpperCase();
   return (
@@ -95,6 +103,30 @@ export default function LeaderboardPage() {
             {t("leaderboard_participants").replace("{n}", String(total))}
             {me && ` · ${t("leaderboard_your_rank").replace("{rank}", String(me.rank)).replace("{total}", String(total))}`}
           </p>
+
+          {/* Carte hero : ta ligue + écart pour le rang au-dessus */}
+          {me && (() => {
+            const tier = tierOf(me.score);
+            const above = entries.find((e) => e.rank === me.rank - 1);
+            const gap = above ? above.score - me.score : 0;
+            return (
+              <div className="mt-3 rounded-xl border border-border bg-card p-4 flex items-center gap-4">
+                <span className={`flex flex-col items-center justify-center w-16 h-16 rounded-xl border ${tier.cls} shrink-0`}>
+                  <span className="text-2xl leading-none">{tier.emoji}</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider mt-1">{t(`leaderboard_tier_${tier.key}`)}</span>
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground">{t("leaderboard_tier_label")}</p>
+                  <p className="text-xs text-muted mt-0.5">
+                    {me.rank === 1
+                      ? t("leaderboard_leader")
+                      : t("leaderboard_gap_next").replace("{pts}", String(Math.max(0, gap))).replace("{rank}", String(me.rank - 1))}
+                  </p>
+                </div>
+                <span className={`text-2xl font-bold ${scoreColor(me.score)}`}>{me.score}</span>
+              </div>
+            );
+          })()}
 
           {/* Podium top 3 */}
           {top3.length >= 1 && (
