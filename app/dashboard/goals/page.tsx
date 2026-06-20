@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 
 type Metric = "discipline_score" | "sessions" | "win_rate" | "trades_per_day" | "max_consecutive_losses";
 type Comparator = "gte" | "lte";
-type Period = "week" | "month" | "quarter";
+type Period = "day" | "week" | "month" | "quarter" | "year";
 
 interface MetricGoal {
   id: string; kind: "metric"; metric: Metric; target: number; comparator: Comparator;
@@ -18,6 +18,10 @@ type Goal = MetricGoal | CustomGoal;
 
 function periodKeyClient(p: Period): string {
   const now = new Date();
+  if (p === "day") {
+    const d = new Date(now); d.setHours(0, 0, 0, 0);
+    return d.toISOString().slice(0, 10);
+  }
   if (p === "week") {
     const day = now.getDay();
     const d = new Date(now);
@@ -27,6 +31,9 @@ function periodKeyClient(p: Period): string {
   }
   if (p === "quarter") {
     return new Date(now.getFullYear(), now.getMonth() - (now.getMonth() % 3), 1).toISOString().slice(0, 10);
+  }
+  if (p === "year") {
+    return new Date(now.getFullYear(), 0, 1).toISOString().slice(0, 10);
   }
   return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
 }
@@ -47,7 +54,7 @@ const METRIC_COMPARATOR: Record<Metric, Comparator> = {
   discipline_score: "gte", sessions: "gte", win_rate: "gte", trades_per_day: "lte", max_consecutive_losses: "lte",
 };
 const METRICS: Metric[] = ["discipline_score", "sessions", "win_rate", "trades_per_day", "max_consecutive_losses"];
-const PERIODS: Period[] = ["week", "month", "quarter"];
+const PERIODS: Period[] = ["day", "week", "month", "quarter", "year"];
 
 const PRESETS: { metric: Metric; target: number; period: Period }[] = [
   { metric: "discipline_score", target: 80, period: "month" },
@@ -71,6 +78,7 @@ export default function GoalsPage() {
   const [customText, setCustomText] = useState("");
   const [customPeriod, setCustomPeriod] = useState<Period>("week");
   const [customRecurring, setCustomRecurring] = useState(true);
+  const [interpretMsg, setInterpretMsg] = useState<"auto" | "manual" | null>(null);
 
   // Objectif mesuré custom
   const [metric, setMetric] = useState<Metric>("discipline_score");
@@ -116,10 +124,28 @@ export default function GoalsPage() {
     const title = customText.trim();
     if (!title) return;
     setBusy(true);
-    await createCustom(title, customPeriod, customRecurring);
-    setCustomText("");
-    await load();
-    setBusy(false);
+    setInterpretMsg(null);
+    try {
+      // 1. L'IA tente de transformer l'objectif écrit en objectif mesurable (auto-suivi).
+      const res = await fetch("/api/goals/interpret", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: title, period: customPeriod }),
+      });
+      const data = await res.json().catch(() => ({ trackable: false }));
+      if (res.ok && data.trackable && data.metric) {
+        // 2a. Mesurable → objectif suivi automatiquement.
+        await addMetricGoal(data.metric, Number(data.target), customPeriod);
+        setInterpretMsg("auto");
+      } else {
+        // 2b. Non mesurable → objectif à cocher manuellement.
+        await createCustom(title, customPeriod, customRecurring);
+        await load();
+        setInterpretMsg("manual");
+      }
+      setCustomText("");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function applyPack(pack: Pack) {
@@ -207,6 +233,12 @@ export default function GoalsPage() {
           <input type="checkbox" checked={customRecurring} onChange={(e) => setCustomRecurring(e.target.checked)} className="accent-accent w-4 h-4" />
           <span className="text-xs text-muted">{t("goals_recurring_label")}</span>
         </label>
+        <p className="text-xs text-muted/70 mt-2">{t("goals_ai_hint")}</p>
+        {interpretMsg && (
+          <p className={`text-xs mt-1.5 ${interpretMsg === "auto" ? "text-profit" : "text-accent"}`}>
+            {interpretMsg === "auto" ? t("goals_ai_auto") : t("goals_ai_manual")}
+          </p>
+        )}
       </div>
 
       {/* Packs d'objectifs */}
