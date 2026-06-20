@@ -103,6 +103,7 @@ namespace cAlgo.Robots
             // L'app calcule le P&L net = profit + commission + swap.
             var sb = new StringBuilder();
             sb.Append("{");
+            sb.AppendFormat(CultureInfo.InvariantCulture, "\"account\":\"{0}\",", Account.Number);
             sb.AppendFormat(CultureInfo.InvariantCulture, "\"ticket\":{0},", trade.PositionId);
             sb.AppendFormat("\"symbol\":\"{0}\",", Escape(trade.SymbolName));
             sb.AppendFormat("\"direction\":\"{0}\",", direction);

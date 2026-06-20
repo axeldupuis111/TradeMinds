@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { checkDailyLossAlert, checkDrawdownAlert, resolveActiveChallengeId } from "@/lib/alerts/daily-loss";
+import { checkDailyLossAlert, checkDrawdownAlert, resolveActiveChallengeId, getChallengeAccountMap } from "@/lib/alerts/daily-loss";
 import {
   mapSource,
   mapDirection,
@@ -153,6 +153,7 @@ export async function handlePushSync(req: NextRequest): Promise<NextResponse> {
       status: "closed" as const,
       source: mapSource(t.source),
       external_id: String(t.ticket),
+      _account: t.account != null ? String(t.account).trim() : "",
     }));
 
   if (rows.length === 0) {
@@ -192,14 +193,29 @@ export async function handlePushSync(req: NextRequest): Promise<NextResponse> {
 
   let synced = 0;
 
-  // Attribution auto au challenge actif unique (cas majoritaire en prop).
-  const attributedChallengeId = await resolveActiveChallengeId(admin, userId);
+  // Rattachement au challenge : par n° de compte (account → challenge), avec
+  // repli sur le challenge actif unique si le compte n'est pas fourni/mappé.
+  const accountMap = await getChallengeAccountMap(admin, userId);
+  const fallbackChallengeId = await resolveActiveChallengeId(admin, userId);
+  const resolveChallenge = (account: string): string | null =>
+    (account && accountMap.get(account)) || fallbackChallengeId;
 
-  // Insert new trades (avec challenge_id attribué si applicable)
+  // Cumul du P&L des trades insérés par challenge (pour l'alerte drawdown ciblée).
+  const batchPnlByChallenge = new Map<string, number>();
+  const netOf = (r: { pnl: number; commission: number | null; swap: number | null }) =>
+    r.pnl + (r.commission || 0) + (r.swap || 0);
+
+  // Insert new trades (challenge_id résolu par compte, sans le champ temporaire _account)
   if (toInsert.length > 0) {
-    const insertRows = attributedChallengeId
-      ? toInsert.map((r) => ({ ...r, challenge_id: attributedChallengeId }))
-      : toInsert;
+    const insertRows = toInsert.map((r) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { _account, ...fields } = r;
+      const challengeId = resolveChallenge(_account);
+      if (challengeId) {
+        batchPnlByChallenge.set(challengeId, (batchPnlByChallenge.get(challengeId) ?? 0) + netOf(r));
+      }
+      return challengeId ? { ...fields, challenge_id: challengeId } : fields;
+    });
     const { data: inserted, error: insertErr } = await admin
       .from("trades")
       .insert(insertRows)
@@ -215,11 +231,11 @@ export async function handlePushSync(req: NextRequest): Promise<NextResponse> {
     synced += inserted?.length ?? 0;
   }
 
-  // Update existing trades (sync fields only)
+  // Update existing trades (sync fields only — on ne touche pas challenge_id)
   for (const row of toUpdate) {
     const tradeId = existingMap.get(`${row.source}:${row.external_id}`)!;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { user_id: _uid, source: _src, external_id: _eid, ...updateFields } = row;
+    const { user_id: _uid, source: _src, external_id: _eid, _account, ...updateFields } = row;
     const { error: updateErr } = await admin
       .from("trades")
       .update(updateFields)
@@ -233,14 +249,12 @@ export async function handlePushSync(req: NextRequest): Promise<NextResponse> {
   }
 
   // ── Alertes temps réel (module partagé) ──────────────────────────────────
-  const batchNetPnl = toInsert.reduce(
-    (s, r) => s + r.pnl + (r.commission || 0) + (r.swap || 0),
-    0,
-  );
+  const batchNetPnl = toInsert.reduce((s, r) => s + netOf(r), 0);
   const lang = (profile.language as string) || "en";
   await checkDailyLossAlert(admin, userId, lang, batchNetPnl);
-  if (attributedChallengeId) {
-    await checkDrawdownAlert(admin, userId, lang, attributedChallengeId, batchNetPnl);
+  // Drawdown : une alerte par challenge réellement impacté par ce lot.
+  for (const [challengeId, pnl] of Array.from(batchPnlByChallenge.entries())) {
+    if (pnl < 0) await checkDrawdownAlert(admin, userId, lang, challengeId, pnl);
   }
 
   return NextResponse.json({ received: rawTrades.length, synced, skipped });

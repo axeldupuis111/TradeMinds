@@ -134,6 +134,7 @@ namespace NinjaTrader.NinjaScript.AddOns
             _processed.Add(execId);
 
             string instrument = ex.Instrument.FullName;
+            string account = ex.Account != null ? ex.Account.Name : "";
             double pointValue = ex.Instrument.MasterInstrument != null
                 ? ex.Instrument.MasterInstrument.PointValue
                 : 1.0;
@@ -177,13 +178,13 @@ namespace NinjaTrader.NinjaScript.AddOns
 
             if (state.NetQty == 0)
             {
-                PostTrade(state, instrument, ex.Time);
+                PostTrade(state, instrument, ex.Time, account);
                 _open.Remove(instrument);
             }
             else if ((prevNet > 0 && state.NetQty < 0) || (prevNet < 0 && state.NetQty > 0))
             {
                 // Sur-cloture : ancienne position fermee, le reste ouvre l'opposee.
-                PostTrade(state, instrument, ex.Time);
+                PostTrade(state, instrument, ex.Time, account);
                 int remainder = qty - closeQty;
                 int remSigned = signed > 0 ? remainder : -remainder;
                 _open[instrument] = NewState(ex, instrument, pointValue, remSigned, remainder, 0);
@@ -209,12 +210,13 @@ namespace NinjaTrader.NinjaScript.AddOns
             };
         }
 
-        private void PostTrade(PosState s, string instrument, DateTime closeTime)
+        private void PostTrade(PosState s, string instrument, DateTime closeTime, string account)
         {
             double exitPrice = s.ExitQty > 0 ? s.ExitNotional / s.ExitQty : s.AvgEntry;
 
             var sb = new StringBuilder();
             sb.Append("{");
+            sb.AppendFormat("\"account\":\"{0}\",", Escape(account));
             sb.AppendFormat("\"ticket\":\"{0}\",", Escape(s.FirstExecId));
             sb.AppendFormat("\"symbol\":\"{0}\",", Escape(instrument));
             sb.AppendFormat("\"direction\":\"{0}\",", s.Direction);
