@@ -4,7 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 type Metric = "discipline_score" | "sessions" | "win_rate" | "trades_per_day" | "max_consecutive_losses";
-type Period = "week" | "month" | "quarter";
+type Period = "day" | "week" | "month" | "quarter" | "year";
+
+// Ancienneté (pour choisir la fenêtre de données à charger).
+const PERIOD_RANK: Record<Period, number> = { day: 0, week: 1, month: 2, quarter: 3, year: 4 };
 
 interface GoalRow {
   id: string;
@@ -27,6 +30,10 @@ function periodKey(period: Period): string {
 
 function periodStart(period: Period): string {
   const now = new Date();
+  if (period === "day") {
+    const d = new Date(now); d.setHours(0, 0, 0, 0);
+    return d.toISOString();
+  }
   if (period === "week") {
     const day = now.getDay();
     const diff = now.getDate() - day + (day === 0 ? -6 : 1);
@@ -38,6 +45,9 @@ function periodStart(period: Period): string {
   if (period === "quarter") {
     const qMonth = now.getMonth() - (now.getMonth() % 3);
     return new Date(now.getFullYear(), qMonth, 1).toISOString();
+  }
+  if (period === "year") {
+    return new Date(now.getFullYear(), 0, 1).toISOString();
   }
   return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 }
@@ -64,8 +74,9 @@ export async function GET() {
   const goals = (rawGoals ?? []) as GoalRow[];
   if (goals.length === 0) return NextResponse.json({ goals: [] });
 
-  // Données depuis le début du trimestre (couvre week/month/quarter).
-  const since = periodStart("quarter");
+  // On charge les données depuis le début de la période la plus large utilisée.
+  const broadest = goals.reduce<Period>((acc, g) => (PERIOD_RANK[g.period] > PERIOD_RANK[acc] ? g.period : acc), "day");
+  const since = periodStart(broadest);
   const [{ data: reviews }, { data: trades }] = await Promise.all([
     supabase.from("session_reviews").select("discipline_score, created_at").eq("user_id", user.id).gte("created_at", since),
     supabase.from("trades").select("pnl, commission, swap, open_time").eq("user_id", user.id).gte("open_time", since).order("open_time", { ascending: true }),
