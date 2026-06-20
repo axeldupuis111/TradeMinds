@@ -2,7 +2,7 @@
 
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
-import { Trash2, Plus, Target, ChevronDown, CheckCircle2, PenLine } from "lucide-react";
+import { Trash2, Plus, Target, ChevronDown, CheckCircle2, PenLine, Layers, Flame, Repeat } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 type Metric = "discipline_score" | "sessions" | "win_rate" | "trades_per_day" | "max_consecutive_losses";
@@ -13,8 +13,35 @@ interface MetricGoal {
   id: string; kind: "metric"; metric: Metric; target: number; comparator: Comparator;
   period: Period; value: number; met: boolean; progress: number;
 }
-interface CustomGoal { id: string; kind: "custom"; title: string; period: Period; done: boolean }
+interface CustomGoal { id: string; kind: "custom"; title: string; period: Period; done: boolean; recurring: boolean; streak: number; bestStreak: number }
 type Goal = MetricGoal | CustomGoal;
+
+function periodKeyClient(p: Period): string {
+  const now = new Date();
+  if (p === "week") {
+    const day = now.getDay();
+    const d = new Date(now);
+    d.setDate(now.getDate() - day + (day === 0 ? -6 : 1));
+    d.setHours(0, 0, 0, 0);
+    return d.toISOString().slice(0, 10);
+  }
+  if (p === "quarter") {
+    return new Date(now.getFullYear(), now.getMonth() - (now.getMonth() % 3), 1).toISOString().slice(0, 10);
+  }
+  return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+}
+
+// Packs d'objectifs prêts à l'emploi (i18n via les clés ci-dessous).
+interface Pack {
+  id: string;
+  metrics: { metric: Metric; target: number; period: Period }[];
+  habits: { titleKey: string; period: Period }[];
+}
+const PACKS: Pack[] = [
+  { id: "prep", metrics: [{ metric: "sessions", target: 12, period: "month" }, { metric: "discipline_score", target: 80, period: "month" }], habits: [{ titleKey: "pack_prep_habit", period: "week" }] },
+  { id: "antitilt", metrics: [{ metric: "trades_per_day", target: 3, period: "month" }, { metric: "max_consecutive_losses", target: 3, period: "month" }], habits: [{ titleKey: "pack_antitilt_habit", period: "week" }] },
+  { id: "consistency", metrics: [{ metric: "win_rate", target: 50, period: "month" }, { metric: "discipline_score", target: 85, period: "month" }], habits: [{ titleKey: "pack_consistency_habit", period: "week" }] },
+];
 
 const METRIC_COMPARATOR: Record<Metric, Comparator> = {
   discipline_score: "gte", sessions: "gte", win_rate: "gte", trades_per_day: "lte", max_consecutive_losses: "lte",
@@ -42,7 +69,8 @@ export default function GoalsPage() {
 
   // Objectif perso (texte)
   const [customText, setCustomText] = useState("");
-  const [customPeriod, setCustomPeriod] = useState<Period>("month");
+  const [customPeriod, setCustomPeriod] = useState<Period>("week");
+  const [customRecurring, setCustomRecurring] = useState(true);
 
   // Objectif mesuré custom
   const [metric, setMetric] = useState<Metric>("discipline_score");
@@ -69,14 +97,43 @@ export default function GoalsPage() {
     setBusy(false);
   }
 
+  async function createCustom(title: string, p: Period, recurring: boolean) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    // Insert de base (compatible même sans les colonnes de récurrence).
+    const { data: inserted } = await supabase
+      .from("goals")
+      .insert({ user_id: user.id, kind: "custom", title, period: p, done: false })
+      .select("id")
+      .maybeSingle();
+    // Récurrence en 2e temps (best-effort si colonnes absentes).
+    if (recurring && inserted?.id) {
+      await supabase.from("goals").update({ recurring: true, period_key: periodKeyClient(p) }).eq("id", inserted.id);
+    }
+  }
+
   async function addCustomGoal() {
     const title = customText.trim();
     if (!title) return;
     setBusy(true);
+    await createCustom(title, customPeriod, customRecurring);
+    setCustomText("");
+    await load();
+    setBusy(false);
+  }
+
+  async function applyPack(pack: Pack) {
+    setBusy(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      await supabase.from("goals").insert({ user_id: user.id, kind: "custom", title, period: customPeriod, done: false });
-      setCustomText("");
+      const existingMetrics = new Set(metricGoals.map((g) => `${g.metric}:${g.period}`));
+      for (const m of pack.metrics) {
+        if (existingMetrics.has(`${m.metric}:${m.period}`)) continue;
+        await supabase.from("goals").insert({ user_id: user.id, metric: m.metric, target: m.target, comparator: METRIC_COMPARATOR[m.metric], period: m.period });
+      }
+      for (const h of pack.habits) {
+        await createCustom(t(h.titleKey), h.period, true);
+      }
       await load();
     }
     setBusy(false);
@@ -146,6 +203,29 @@ export default function GoalsPage() {
             <Plus className="w-4 h-4" /> {t("goals_add")}
           </button>
         </div>
+        <label className="flex items-center gap-2 mt-2.5 cursor-pointer">
+          <input type="checkbox" checked={customRecurring} onChange={(e) => setCustomRecurring(e.target.checked)} className="accent-accent w-4 h-4" />
+          <span className="text-xs text-muted">{t("goals_recurring_label")}</span>
+        </label>
+      </div>
+
+      {/* Packs d'objectifs */}
+      <div className="mt-5">
+        <h2 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+          <Layers className="w-4 h-4 text-accent" /> {t("goals_packs_title")}
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {PACKS.map((pack) => (
+            <button key={pack.id} onClick={() => applyPack(pack)} disabled={busy}
+              className="text-left rounded-xl border border-border bg-card p-3 hover:border-accent/40 transition-colors disabled:opacity-50">
+              <p className="text-sm font-semibold text-foreground">{t(`pack_${pack.id}_title`)}</p>
+              <p className="text-xs text-muted mt-0.5">{t(`pack_${pack.id}_desc`)}</p>
+              <span className="inline-flex items-center gap-1 text-xs text-accent font-medium mt-2">
+                <Plus className="w-3 h-3" /> {t("goals_pack_add")}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Objectifs suggérés (mesurés) */}
@@ -213,6 +293,14 @@ export default function GoalsPage() {
                     : <span className="block w-5 h-5 rounded-full border-2 border-border" />}
                 </button>
                 <span className={`flex-1 text-sm ${g.done ? "text-muted line-through" : "text-foreground"}`}>{g.title}</span>
+                {g.recurring && g.streak > 0 && (
+                  <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-orange-400 whitespace-nowrap" title={t("goals_best_streak").replace("{n}", String(g.bestStreak))}>
+                    <Flame className="w-3.5 h-3.5" /> {g.streak}
+                  </span>
+                )}
+                {g.recurring && (
+                  <Repeat className="w-3.5 h-3.5 text-muted/60 shrink-0" aria-label={t("goals_recurring_badge")} />
+                )}
                 <span className="text-[11px] text-muted whitespace-nowrap">{periodLabel(g.period)}</span>
                 <button onClick={() => removeGoal(g.id)} className="text-muted hover:text-loss transition-colors shrink-0" aria-label={t("goals_delete")}>
                   <Trash2 className="w-4 h-4" strokeWidth={1.5} />
