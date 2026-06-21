@@ -1818,6 +1818,7 @@ const dict: Record<string, string> = {
   "review_goals_title": "Your goals this month",
   "review_goals_sub": "{met}/{total} goals reached.",
   "review_goals_link": "View my goals",
+  "review_export_pdf": "Export as PDF",
   "review_wd_0": "M", "review_wd_1": "T", "review_wd_2": "W", "review_wd_3": "T", "review_wd_4": "F", "review_wd_5": "S", "review_wd_6": "S",
   "review_locked": "The AI monthly review is for paid plans only.",
   "review_generate": "Generate my review",

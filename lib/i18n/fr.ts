@@ -1818,6 +1818,7 @@ const dict: Record<string, string> = {
   "review_goals_title": "Tes objectifs ce mois-ci",
   "review_goals_sub": "{met}/{total} objectifs atteints.",
   "review_goals_link": "Voir mes objectifs",
+  "review_export_pdf": "Exporter en PDF",
   "review_wd_0": "L", "review_wd_1": "M", "review_wd_2": "M", "review_wd_3": "J", "review_wd_4": "V", "review_wd_5": "S", "review_wd_6": "D",
   "review_locked": "Le bilan mensuel IA est réservé aux plans payants.",
   "review_generate": "Générer mon bilan",
