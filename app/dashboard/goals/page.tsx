@@ -2,7 +2,7 @@
 
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
-import { Trash2, Plus, Target, ChevronDown, CheckCircle2, PenLine, Layers, Flame, Repeat } from "lucide-react";
+import { Trash2, Plus, Target, ChevronDown, CheckCircle2, PenLine, Layers, Flame, Repeat, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 type Metric = "discipline_score" | "sessions" | "win_rate" | "trades_per_day" | "max_consecutive_losses";
@@ -85,6 +85,10 @@ export default function GoalsPage() {
   const [target, setTarget] = useState("85");
   const [period, setPeriod] = useState<Period>("month");
 
+  // Recommandations IA basées sur les faiblesses détectées
+  interface Reco { metric: Metric; comparator: Comparator; target: number; period: Period; reasonKey: string; reasonValue: number }
+  const [recos, setRecos] = useState<Reco[]>([]);
+
   const load = useCallback(async () => {
     const res = await fetch("/api/goals");
     const data = await res.json();
@@ -92,6 +96,13 @@ export default function GoalsPage() {
     setLoading(false);
   }, []);
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    fetch("/api/goals/recommend")
+      .then((r) => r.json())
+      .then((d) => setRecos(d.recommendations ?? []))
+      .catch(() => setRecos([]));
+  }, []);
 
   async function addMetricGoal(m: Metric, tgt: number, p: Period) {
     if (isNaN(tgt) || tgt <= 0) return;
@@ -184,6 +195,8 @@ export default function GoalsPage() {
 
   const existing = new Set(metricGoals.map((g) => `${g.metric}:${g.period}`));
   const suggestions = PRESETS.filter((p) => !existing.has(`${p.metric}:${p.period}`));
+  // Recommandations non encore ajoutées (par métrique + période).
+  const recoToShow = recos.filter((r) => !existing.has(`${r.metric}:${r.period}`));
 
   return (
     <div className="max-w-2xl mx-auto pb-10">
@@ -240,6 +253,32 @@ export default function GoalsPage() {
           </p>
         )}
       </div>
+
+      {/* Recommandé pour toi (IA, basé sur tes faiblesses détectées) */}
+      {recoToShow.length > 0 && (
+        <div className="mt-5">
+          <h2 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-accent" /> {t("goals_reco_title")}
+          </h2>
+          <div className="space-y-2">
+            {recoToShow.map((r) => (
+              <div key={`${r.metric}:${r.period}`} className="flex items-center gap-3 rounded-xl border border-accent/30 bg-accent/[0.04] p-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground">
+                    {metricLabel(r.metric)}{" "}
+                    <span className="text-muted font-normal">{r.comparator === "gte" ? "≥" : "≤"} {r.target}{unit(r.metric)} · {periodLabel(r.period)}</span>
+                  </p>
+                  <p className="text-xs text-muted mt-0.5">{t(r.reasonKey).replace("{v}", String(r.reasonValue))}</p>
+                </div>
+                <button onClick={() => addMetricGoal(r.metric, r.target, r.period)} disabled={busy}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-accent text-white text-xs font-semibold hover:bg-blue-600 transition-colors disabled:opacity-50 shrink-0">
+                  <Plus className="w-3.5 h-3.5" /> {t("goals_add_quick")}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Packs d'objectifs */}
       <div className="mt-5">
