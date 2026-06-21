@@ -12,6 +12,7 @@ interface Extras { best: { date: string; pnl: number } | null; worst: { date: st
 interface Month { key: string; year: number; month0: number; isCurrentMonth: boolean }
 interface CalDay { day: number; score: number | null; pnl: number }
 interface TrendPt { label: string; score: number | null; pnl: number }
+interface Records { greenDays: number; redDays: number; bestDisciplineDay: { date: string; score: number } | null; disciplinedStreak: number }
 interface Review { headline: string; strength: string; improvement: string; focus: string }
 
 function fmtMoney(n: number) { return `${n >= 0 ? "+" : ""}${n.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} €`; }
@@ -53,6 +54,8 @@ export default function MonthlyReviewPage() {
   const [extras, setExtras] = useState<Extras | null>(null);
   const [calendar, setCalendar] = useState<CalDay[]>([]);
   const [trend, setTrend] = useState<TrendPt[]>([]);
+  const [records, setRecords] = useState<Records | null>(null);
+  const [goalsSummary, setGoalsSummary] = useState<{ met: number; total: number } | null>(null);
   const [review, setReview] = useState<Review | null>(null);
   const [rawSummary, setRawSummary] = useState<string | null>(null);
 
@@ -65,7 +68,20 @@ export default function MonthlyReviewPage() {
       if (res.ok) {
         const d = await res.json();
         setMonth(d.month); setStats(d.stats); setDeltas(d.deltas); setExtras(d.extras);
-        setCalendar(d.calendar ?? []); setTrend(d.trend ?? []);
+        setCalendar(d.calendar ?? []); setTrend(d.trend ?? []); setRecords(d.records ?? null);
+
+        // Pont Objectifs ↔ Bilan : uniquement pour le mois en cours (les objectifs
+        // sont évalués sur la période courante, pas archivés par mois passé).
+        if (d.month?.isCurrentMonth) {
+          fetch("/api/goals").then((r) => r.json()).then((g) => {
+            const list = (g.goals ?? []) as { kind: string; met?: boolean; done?: boolean }[];
+            const monthly = list.filter((x) => x.kind === "metric" || x.kind === "custom");
+            const met = monthly.filter((x) => x.met || x.done).length;
+            setGoalsSummary({ met, total: monthly.length });
+          }).catch(() => setGoalsSummary(null));
+        } else {
+          setGoalsSummary(null);
+        }
       }
     } finally { setLoadingStats(false); }
   }, [isPaid]);
@@ -136,6 +152,46 @@ export default function MonthlyReviewPage() {
                 <Kpi label={t("review_kpi_score")} value={stats.avgDisciplineScore != null ? `${stats.avgDisciplineScore}/100` : "—"} delta={deltas?.avgDisciplineScore ?? undefined} suffix="pts" />
                 {extras?.prepRate != null && <Kpi label={t("review_kpi_prep")} value={`${extras.prepRate}%`} />}
               </div>
+
+              {/* Pont Objectifs (mois en cours) */}
+              {goalsSummary && goalsSummary.total > 0 && (
+                <Link href="/dashboard/goals" className="mt-4 flex items-center gap-3 rounded-xl border border-accent/30 bg-accent/[0.04] p-4 hover:border-accent/50 transition-colors">
+                  <Target className="w-5 h-5 text-accent shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-foreground">{t("review_goals_title")}</p>
+                    <p className="text-xs text-muted">{t("review_goals_sub").replace("{met}", String(goalsSummary.met)).replace("{total}", String(goalsSummary.total))}</p>
+                  </div>
+                  <span className="text-xs text-accent font-medium whitespace-nowrap">{t("review_goals_link")} →</span>
+                </Link>
+              )}
+
+              {/* Records du mois */}
+              {records && (records.greenDays + records.redDays > 0 || records.bestDisciplineDay) && (
+                <div className="mt-4">
+                  <p className="text-xs text-muted mb-2">{t("review_records_title")}</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="rounded-xl border border-border bg-card p-3">
+                      <p className="text-xs text-muted">{t("review_green_days")}</p>
+                      <p className="text-lg font-bold text-profit mt-0.5">{records.greenDays}</p>
+                    </div>
+                    <div className="rounded-xl border border-border bg-card p-3">
+                      <p className="text-xs text-muted">{t("review_red_days")}</p>
+                      <p className="text-lg font-bold text-loss mt-0.5">{records.redDays}</p>
+                    </div>
+                    <div className="rounded-xl border border-border bg-card p-3">
+                      <p className="text-xs text-muted">{t("review_disciplined_streak")}</p>
+                      <p className="text-lg font-bold text-foreground mt-0.5">🔥 {records.disciplinedStreak}</p>
+                    </div>
+                    {records.bestDisciplineDay && (
+                      <div className="rounded-xl border border-border bg-card p-3">
+                        <p className="text-xs text-muted">{t("review_best_discipline")}</p>
+                        <p className="text-lg font-bold text-foreground mt-0.5">{records.bestDisciplineDay.score}/100</p>
+                        <p className="text-[10px] text-muted/70">{fmtDate(records.bestDisciplineDay.date, lang)}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Tendance 6 mois (discipline) */}
               {trend.some((p) => p.score != null) && (
