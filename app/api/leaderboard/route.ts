@@ -4,72 +4,127 @@ import { createClient as createAdmin } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 
-// Classement basé UNIQUEMENT sur la discipline (jamais le P&L), sur une fenêtre
-// glissante (30 ou 90 jours), limité aux utilisateurs ayant activé l'opt-in.
+type Mode = "discipline" | "sessions" | "streak";
+const MIN_SESSIONS = 3; // éligibilité : au moins 3 sessions sur la période
+
+interface ReviewRow { user_id: string; discipline_score: number | null; created_at: string }
+
+interface UserMetrics { avgScore: number; sessions: number; streak: number }
+
+// Calcule les métriques d'un utilisateur sur un sous-ensemble de reviews.
+function computeMetrics(reviews: ReviewRow[]): UserMetrics {
+  const scored = reviews.filter((r) => r.discipline_score != null);
+  const sessions = scored.length;
+  const avgScore = sessions ? Math.round(scored.reduce((s, r) => s + (r.discipline_score as number), 0) / sessions) : 0;
+
+  // Série : plus longue suite de jours calendaires consécutifs avec score moyen >= 70.
+  const byDay = new Map<string, { sum: number; n: number }>();
+  for (const r of scored) {
+    const d = r.created_at.slice(0, 10);
+    const a = byDay.get(d) ?? { sum: 0, n: 0 };
+    a.sum += r.discipline_score as number; a.n += 1; byDay.set(d, a);
+  }
+  const days = Array.from(byDay.entries())
+    .map(([d, a]) => ({ d, ok: a.sum / a.n >= 70 }))
+    .sort((x, y) => x.d.localeCompare(y.d));
+  let streak = 0, run = 0; let prev: string | null = null;
+  for (const { d, ok } of days) {
+    if (!ok) { run = 0; prev = d; continue; }
+    const consecutive = prev && (new Date(d).getTime() - new Date(prev).getTime() === 86400000);
+    run = consecutive ? run + 1 : 1;
+    if (run > streak) streak = run;
+    prev = d;
+  }
+  return { avgScore, sessions, streak };
+}
+
+function valueFor(m: UserMetrics, mode: Mode): number {
+  return mode === "sessions" ? m.sessions : mode === "streak" ? m.streak : m.avgScore;
+}
+
+// Classe une liste {username, metrics} selon le mode ; renvoie un map username->rank.
+function rankMap(rows: { username: string; m: UserMetrics }[], mode: Mode): Map<string, number> {
+  const sorted = [...rows].sort((a, b) =>
+    valueFor(b.m, mode) - valueFor(a.m, mode) || b.m.sessions - a.m.sessions || b.m.avgScore - a.m.avgScore);
+  const map = new Map<string, number>();
+  sorted.forEach((r, i) => map.set(r.username, i + 1));
+  return map;
+}
+
 export async function GET(req: NextRequest) {
-  // 1. Auth : seul un utilisateur connecté voit le classement.
   const supabase = await createClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  }
+  if (authError || !user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   const daysParam = Number(req.nextUrl.searchParams.get("days"));
-  const days = daysParam === 90 ? 90 : 30;
+  const days = daysParam === 7 || daysParam === 90 ? daysParam : 30;
+  const modeParam = req.nextUrl.searchParams.get("mode") as Mode | null;
+  const mode: Mode = modeParam === "sessions" || modeParam === "streak" ? modeParam : "discipline";
 
-  // 2. Lecture cross-users via service role (RLS limite sinon à ses propres lignes).
-  const admin = createAdmin(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } }
-  );
+  const admin = createAdmin(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
 
   const { data: profiles } = await admin
-    .from("profiles")
-    .select("id, username")
-    .eq("leaderboard_opt_in", true)
-    .not("username", "is", null);
+    .from("profiles").select("id, username").eq("leaderboard_opt_in", true).not("username", "is", null);
 
   if (!profiles || profiles.length === 0) {
-    return NextResponse.json({ entries: [], me: null, total: 0, days });
+    return NextResponse.json({ entries: [], me: null, total: 0, days, mode });
   }
 
   const ids = profiles.map((p) => p.id);
-  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+  const usernameById = new Map(profiles.map((p) => [p.id, p.username as string]));
+  const nowMs = Date.now();
+  const sinceCur = new Date(nowMs - days * 86400000).toISOString();
+  const sincePrev = new Date(nowMs - 2 * days * 86400000).toISOString();
 
+  // Reviews des 2 fenêtres (courante + précédente) pour le calcul du mouvement.
   const { data: reviews } = await admin
-    .from("session_reviews")
-    .select("user_id, discipline_score, created_at")
-    .in("user_id", ids)
-    .gte("created_at", since);
+    .from("session_reviews").select("user_id, discipline_score, created_at")
+    .in("user_id", ids).gte("created_at", sincePrev);
 
-  // 3. Moyenne du score de discipline + nombre de sessions sur 30 jours.
-  const agg = new Map<string, { sum: number; count: number }>();
-  for (const r of reviews ?? []) {
-    if (r.discipline_score == null) continue;
-    const a = agg.get(r.user_id) ?? { sum: 0, count: 0 };
-    a.sum += r.discipline_score;
-    a.count += 1;
-    agg.set(r.user_id, a);
+  const curByUser = new Map<string, ReviewRow[]>();
+  const prevByUser = new Map<string, ReviewRow[]>();
+  for (const r of (reviews ?? []) as ReviewRow[]) {
+    const bucket = r.created_at >= sinceCur ? curByUser : prevByUser;
+    const arr = bucket.get(r.user_id) ?? []; arr.push(r); bucket.set(r.user_id, arr);
   }
 
-  const entries = profiles
-    .map((p) => {
-      const a = agg.get(p.id);
-      if (!a || a.count === 0) return null;
-      return {
-        username: p.username as string,
-        score: Math.round(a.sum / a.count),
-        sessions: a.count,
-        isMe: p.id === user.id,
-      };
-    })
-    .filter((e): e is NonNullable<typeof e> => e !== null)
-    // Tri : score décroissant, puis nb de sessions (régularité) en départage.
-    .sort((a, b) => b.score - a.score || b.sessions - a.sessions);
+  // Éligibles = au moins MIN_SESSIONS sessions sur la période courante.
+  const curRows: { id: string; username: string; m: UserMetrics }[] = [];
+  for (const id of ids) {
+    const rv = curByUser.get(id) ?? [];
+    const m = computeMetrics(rv);
+    if (m.sessions >= MIN_SESSIONS) curRows.push({ id, username: usernameById.get(id)!, m });
+  }
 
-  const ranked = entries.map((e, i) => ({ ...e, rank: i + 1 }));
-  const me = ranked.find((e) => e.isMe) ?? null;
+  // Classement période précédente (pour le mouvement de rang).
+  const prevRows = ids
+    .map((id) => ({ username: usernameById.get(id)!, m: computeMetrics(prevByUser.get(id) ?? []) }))
+    .filter((r) => r.m.sessions >= MIN_SESSIONS);
+  const prevRanks = rankMap(prevRows, mode);
 
-  return NextResponse.json({ entries: ranked.slice(0, 50), me, total: ranked.length, days });
+  const sorted = [...curRows].sort((a, b) =>
+    valueFor(b.m, mode) - valueFor(a.m, mode) || b.m.sessions - a.m.sessions || b.m.avgScore - a.m.avgScore);
+
+  const ranked = sorted.map((r, i) => {
+    const rank = i + 1;
+    const prevRank = prevRanks.get(r.username);
+    return {
+      rank,
+      username: r.username,
+      score: r.m.avgScore,
+      sessions: r.m.sessions,
+      streak: r.m.streak,
+      value: valueFor(r.m, mode),
+      isMe: r.id === user.id,
+      delta: prevRank ? prevRank - rank : null, // >0 = monté, null = nouveau
+    };
+  });
+
+  const total = ranked.length;
+  const meEntry = ranked.find((e) => e.isMe) ?? null;
+  const me = meEntry
+    ? { ...meEntry, percentile: total > 0 ? Math.max(1, Math.round((meEntry.rank / total) * 100)) : null }
+    : null;
+
+  return NextResponse.json({ entries: ranked.slice(0, 50), me, total, days, mode });
 }
