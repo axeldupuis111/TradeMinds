@@ -15,8 +15,8 @@ function netPnl(t: { pnl: number; commission: number | null; swap: number | null
 interface TradeRow { pnl: number; commission: number | null; swap: number | null; open_time: string; pair: string }
 interface ReviewRow { discipline_score: number | null; created_at: string }
 
-function statsFor(trades: TradeRow[], reviews: ReviewRow[], fromIso: string, toIso?: string) {
-  const inRange = (d: string) => d >= fromIso && (!toIso || d < toIso);
+function statsFor(trades: TradeRow[], reviews: ReviewRow[], fromIso: string, toIso: string) {
+  const inRange = (d: string) => d >= fromIso && d < toIso;
   const t = trades.filter((x) => inRange(x.open_time));
   const r = reviews.filter((x) => inRange(x.created_at));
   const totalPnl = t.reduce((s, x) => s + netPnl(x), 0);
@@ -31,24 +31,38 @@ function statsFor(trades: TradeRow[], reviews: ReviewRow[], fromIso: string, toI
   };
 }
 
-async function gather(userId: string) {
+// Parse "YYYY-MM" → {year, month0}. Défaut = mois courant. Borne au mois courant max.
+function resolveMonth(param: string | null): { year: number; month0: number } {
+  const now = new Date();
+  const cur = { year: now.getFullYear(), month0: now.getMonth() };
+  if (!param || !/^\d{4}-\d{2}$/.test(param)) return cur;
+  const [y, m] = param.split("-").map(Number);
+  const month0 = m - 1;
+  if (y > cur.year || (y === cur.year && month0 > cur.month0)) return cur; // pas de futur
+  return { year: y, month0 };
+}
+
+async function gather(userId: string, monthParam: string | null) {
   const { createClient } = await import("@/lib/supabase/server");
   const supabase = await createClient();
 
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+  const { year, month0 } = resolveMonth(monthParam);
+  const selStart = new Date(year, month0, 1);
+  const selEnd = new Date(year, month0 + 1, 1);
+  const prevStart = new Date(year, month0 - 1, 1);
+  const trendStart = new Date(year, month0 - 5, 1); // 6 mois incl. sélectionné
+  const isCurrentMonth = year === now.getFullYear() && month0 === now.getMonth();
 
   const [{ data: tradesRaw }, { data: reviewsRaw }] = await Promise.all([
-    supabase.from("trades").select("pnl, commission, swap, open_time, pair").eq("user_id", userId).gte("open_time", prevMonthStart),
-    supabase.from("session_reviews").select("discipline_score, created_at").eq("user_id", userId).gte("created_at", prevMonthStart),
+    supabase.from("trades").select("pnl, commission, swap, open_time, pair").eq("user_id", userId).gte("open_time", trendStart.toISOString()),
+    supabase.from("session_reviews").select("discipline_score, created_at").eq("user_id", userId).gte("created_at", trendStart.toISOString()),
   ]);
-
   const trades = (tradesRaw ?? []) as TradeRow[];
   const reviews = (reviewsRaw ?? []) as ReviewRow[];
 
-  const stats = statsFor(trades, reviews, monthStart);
-  const prev = statsFor(trades, reviews, prevMonthStart, monthStart);
+  const stats = statsFor(trades, reviews, selStart.toISOString(), selEnd.toISOString());
+  const prev = statsFor(trades, reviews, prevStart.toISOString(), selStart.toISOString());
 
   const deltas = {
     trades: stats.trades - prev.trades,
@@ -60,54 +74,78 @@ async function gather(userId: string) {
     tradingDays: stats.tradingDays - prev.tradingDays,
   };
 
-  // ── Extras (mois en cours) ───────────────────────────────────────────────
-  const monthTrades = trades.filter((x) => x.open_time >= monthStart);
+  // ── Extras + calendrier du mois sélectionné ──────────────────────────────
+  const monthTrades = trades.filter((x) => x.open_time >= selStart.toISOString() && x.open_time < selEnd.toISOString());
+  const monthReviews = reviews.filter((x) => x.created_at >= selStart.toISOString() && x.created_at < selEnd.toISOString());
 
-  // P&L net par jour + meilleur/pire jour + courbe d'équité cumulée.
-  const byDay = new Map<string, number>();
+  const pnlByDay = new Map<string, number>();
   for (const t of monthTrades) {
-    const day = t.open_time.slice(0, 10);
-    byDay.set(day, (byDay.get(day) ?? 0) + netPnl(t));
+    const d = t.open_time.slice(0, 10);
+    pnlByDay.set(d, (pnlByDay.get(d) ?? 0) + netPnl(t));
   }
-  const days = Array.from(byDay.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  const scoreByDay = new Map<string, { sum: number; n: number }>();
+  for (const r of monthReviews) {
+    if (r.discipline_score == null) continue;
+    const d = r.created_at.slice(0, 10);
+    const a = scoreByDay.get(d) ?? { sum: 0, n: 0 };
+    a.sum += r.discipline_score; a.n += 1; scoreByDay.set(d, a);
+  }
+
+  // Courbe d'équité + meilleur/pire jour.
+  const sortedDays = Array.from(pnlByDay.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   let best: { date: string; pnl: number } | null = null;
   let worst: { date: string; pnl: number } | null = null;
-  let cumulative = 0;
-  const equity: number[] = [];
-  for (const [date, pnl] of days) {
+  let cumulative = 0; const equity: number[] = [];
+  for (const [date, pnl] of sortedDays) {
     if (!best || pnl > best.pnl) best = { date, pnl: Math.round(pnl * 100) / 100 };
     if (!worst || pnl < worst.pnl) worst = { date, pnl: Math.round(pnl * 100) / 100 };
-    cumulative += pnl;
-    equity.push(Math.round(cumulative * 100) / 100);
+    cumulative += pnl; equity.push(Math.round(cumulative * 100) / 100);
   }
 
-  // Paire la plus tradée.
   const pairCount = new Map<string, number>();
   for (const t of monthTrades) pairCount.set(t.pair, (pairCount.get(t.pair) ?? 0) + 1);
   let topPair: { pair: string; count: number } | null = null;
-  for (const [pair, count] of Array.from(pairCount.entries())) {
-    if (!topPair || count > topPair.count) topPair = { pair, count };
-  }
+  for (const [pair, count] of Array.from(pairCount.entries())) if (!topPair || count > topPair.count) topPair = { pair, count };
 
-  // Taux de préparation : sessions / jours tradés (capé à 100%).
   const prepRate = stats.tradingDays > 0 ? Math.min(100, Math.round((stats.sessions / stats.tradingDays) * 100)) : null;
 
+  // Calendrier : un point par jour avec activité.
+  const dayKeys = new Set([...Array.from(pnlByDay.keys()), ...Array.from(scoreByDay.keys())]);
+  const calendar = Array.from(dayKeys).map((date) => {
+    const sc = scoreByDay.get(date);
+    return {
+      day: Number(date.slice(8, 10)),
+      score: sc ? Math.round(sc.sum / sc.n) : null,
+      pnl: Math.round((pnlByDay.get(date) ?? 0) * 100) / 100,
+    };
+  });
+
   const extras = { best, worst, topPair, equity, prepRate };
-  return { stats, prev, deltas, extras };
+
+  // ── Tendance 6 mois (score de discipline + P&L) ──────────────────────────
+  const trend: { label: string; score: number | null; pnl: number }[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const ms = new Date(year, month0 - i, 1);
+    const me = new Date(year, month0 - i + 1, 1);
+    const s = statsFor(trades, reviews, ms.toISOString(), me.toISOString());
+    trend.push({ label: `${ms.getFullYear()}-${String(ms.getMonth() + 1).padStart(2, "0")}`, score: s.avgDisciplineScore, pnl: s.totalPnl });
+  }
+
+  const month = { key: `${year}-${String(month0 + 1).padStart(2, "0")}`, year, month0, isCurrentMonth };
+  return { month, stats, prev, deltas, extras, calendar, trend };
 }
 
-// Stats du mois (sans IA) — chargé à l'arrivée sur la page.
-export async function GET() {
+export async function GET(req: Request) {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
   if (auth.plan !== "plus" && auth.plan !== "premium") {
     return NextResponse.json({ error: "Feature not available on free plan" }, { status: 403 });
   }
-  const data = await gather(auth.userId);
+  const monthParam = new URL(req.url).searchParams.get("month");
+  const data = await gather(auth.userId, monthParam);
   return NextResponse.json(data);
 }
 
-// Bilan IA structuré (force / axe / focus) — à la demande.
 export async function POST(req: Request) {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
@@ -115,40 +153,29 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Feature not available on free plan" }, { status: 403 });
   }
 
-  const { language } = (await req.json().catch(() => ({}))) as { language?: string };
-  const lang = language && LANG_NAMES[language] ? language : "en";
+  const body = (await req.json().catch(() => ({}))) as { language?: string; month?: string };
+  const lang = body.language && LANG_NAMES[body.language] ? body.language : "en";
 
-  const { stats, prev, deltas, extras } = await gather(auth.userId);
+  const { month, stats, prev, deltas, extras, calendar, trend } = await gather(auth.userId, body.month ?? null);
 
   const apiKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return NextResponse.json({ stats, prev, deltas, extras, review: null });
+  if (!apiKey) return NextResponse.json({ month, stats, prev, deltas, extras, calendar, trend, review: null });
 
-  const prompt = `Tu es le coach de discipline de TradeDiscipline. Analyse le mois en cours d'un trader et réponds STRICTEMENT en JSON (sans texte autour, sans markdown) avec ces clés, en ${LANG_NAMES[lang]} :
-{"headline": "une phrase d'accroche motivante (max 90 caractères)", "strength": "1 force concrète sur le process/la discipline (1-2 phrases)", "improvement": "1 axe d'amélioration concret et actionnable (1-2 phrases)", "focus": "LE focus prioritaire pour le mois prochain (1 phrase, impératif)"}
-Centre tout sur la DISCIPLINE et la régularité, jamais sur des conseils d'investissement ou de marché. N'utilise aucun astérisque ni markdown.
-Données — mois en cours : trades ${stats.trades}, jours tradés ${stats.tradingDays}, taux de réussite ${stats.winRate}%, sessions pré-trade ${stats.sessions}, score de discipline moyen ${stats.avgDisciplineScore ?? "N/A"}/100, taux de préparation ${extras.prepRate ?? "N/A"}%.
-Mois précédent : sessions ${prev.sessions}, score moyen ${prev.avgDisciplineScore ?? "N/A"}/100, taux de réussite ${prev.winRate}%.`;
+  const prompt = `Tu es le coach de discipline de TradeDiscipline. Rédige un bilan RÉTROSPECTIF du mois et réponds STRICTEMENT en JSON (sans texte autour, sans markdown), en ${LANG_NAMES[lang]} :
+{"headline": "une phrase d'accroche motivante (max 90 caractères)", "strength": "1 force concrète sur le process/la discipline (1-2 phrases)", "improvement": "1 axe d'amélioration concret (1-2 phrases)", "focus": "LE focus prioritaire pour le mois prochain (1 phrase, impératif)"}
+Centre tout sur la DISCIPLINE, la régularité et l'évolution dans le temps, jamais sur des conseils d'investissement. N'utilise aucun astérisque ni markdown.
+Mois analysé : trades ${stats.trades}, jours tradés ${stats.tradingDays}, taux de réussite ${stats.winRate}%, sessions ${stats.sessions}, score discipline ${stats.avgDisciplineScore ?? "N/A"}/100, préparation ${extras.prepRate ?? "N/A"}%.
+Mois précédent : score ${prev.avgDisciplineScore ?? "N/A"}/100, sessions ${prev.sessions}, taux de réussite ${prev.winRate}%.`;
 
   try {
     const client = new Anthropic({ apiKey });
-    const msg = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 600,
-      messages: [{ role: "user", content: prompt }],
-    });
-    const raw = msg.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map((b) => b.text).join("\n").trim();
-
+    const msg = await client.messages.create({ model: "claude-haiku-4-5-20251001", max_tokens: 600, messages: [{ role: "user", content: prompt }] });
+    const raw = msg.content.filter((b): b is Anthropic.TextBlock => b.type === "text").map((b) => b.text).join("\n").trim();
     let review: { headline: string; strength: string; improvement: string; focus: string } | null = null;
-    try {
-      const match = raw.match(/\{[\s\S]*\}/);
-      if (match) review = JSON.parse(match[0]);
-    } catch { review = null; }
-
-    return NextResponse.json({ stats, prev, deltas, extras, review, rawSummary: review ? null : raw });
+    try { const m = raw.match(/\{[\s\S]*\}/); if (m) review = JSON.parse(m[0]); } catch { review = null; }
+    return NextResponse.json({ month, stats, prev, deltas, extras, calendar, trend, review, rawSummary: review ? null : raw });
   } catch (err) {
     console.error("[Monthly review] AI error:", err);
-    return NextResponse.json({ stats, prev, deltas, extras, review: null });
+    return NextResponse.json({ month, stats, prev, deltas, extras, calendar, trend, review: null });
   }
 }
