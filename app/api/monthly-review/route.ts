@@ -122,6 +122,20 @@ async function gather(userId: string, monthParam: string | null) {
 
   const extras = { best, worst, topPair, equity, prepRate };
 
+  // ── Records du mois ──────────────────────────────────────────────────────
+  const greenDays = Array.from(pnlByDay.values()).filter((v) => v > 0).length;
+  const redDays = Array.from(pnlByDay.values()).filter((v) => v < 0).length;
+  const scoreList = Array.from(scoreByDay.entries())
+    .map(([date, a]) => ({ date, score: Math.round(a.sum / a.n) }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+  let bestDisciplineDay: { date: string; score: number } | null = null;
+  let disciplinedStreak = 0, run = 0;
+  for (const x of scoreList) {
+    if (!bestDisciplineDay || x.score > bestDisciplineDay.score) bestDisciplineDay = x;
+    if (x.score >= 70) { run += 1; if (run > disciplinedStreak) disciplinedStreak = run; } else run = 0;
+  }
+  const records = { greenDays, redDays, bestDisciplineDay, disciplinedStreak };
+
   // ── Tendance 6 mois (score de discipline + P&L) ──────────────────────────
   const trend: { label: string; score: number | null; pnl: number }[] = [];
   for (let i = 5; i >= 0; i--) {
@@ -132,7 +146,7 @@ async function gather(userId: string, monthParam: string | null) {
   }
 
   const month = { key: `${year}-${String(month0 + 1).padStart(2, "0")}`, year, month0, isCurrentMonth };
-  return { month, stats, prev, deltas, extras, calendar, trend };
+  return { month, stats, prev, deltas, extras, calendar, trend, records };
 }
 
 export async function GET(req: Request) {
