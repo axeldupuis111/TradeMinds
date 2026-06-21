@@ -56,14 +56,6 @@ const METRIC_COMPARATOR: Record<Metric, Comparator> = {
 const METRICS: Metric[] = ["discipline_score", "sessions", "win_rate", "trades_per_day", "max_consecutive_losses"];
 const PERIODS: Period[] = ["day", "week", "month", "quarter", "year"];
 
-const PRESETS: { metric: Metric; target: number; period: Period }[] = [
-  { metric: "discipline_score", target: 80, period: "month" },
-  { metric: "sessions", target: 12, period: "month" },
-  { metric: "trades_per_day", target: 3, period: "month" },
-  { metric: "max_consecutive_losses", target: 3, period: "month" },
-  { metric: "win_rate", target: 50, period: "month" },
-];
-
 function unit(m: Metric) { return m === "win_rate" ? "%" : m === "discipline_score" ? "/100" : ""; }
 
 export default function GoalsPage() {
@@ -194,7 +186,6 @@ export default function GoalsPage() {
   const achieved = metricGoals.filter((g) => g.met).length + customGoals.filter((g) => g.done).length;
 
   const existing = new Set(metricGoals.map((g) => `${g.metric}:${g.period}`));
-  const suggestions = PRESETS.filter((p) => !existing.has(`${p.metric}:${p.period}`));
   // Recommandations non encore ajoutées (par métrique + période).
   const recoToShow = recos.filter((r) => !existing.has(`${r.metric}:${r.period}`));
 
@@ -298,32 +289,6 @@ export default function GoalsPage() {
           ))}
         </div>
       </div>
-
-      {/* Objectifs suggérés (mesurés) */}
-      {!loading && suggestions.length > 0 && (
-        <div className="mt-5">
-          <h2 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
-            <Target className="w-4 h-4 text-accent" /> {t("goals_suggested_title")}
-          </h2>
-          <div className="space-y-2">
-            {suggestions.map((p) => (
-              <div key={`${p.metric}:${p.period}`} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground">
-                    {metricLabel(p.metric)}{" "}
-                    <span className="text-muted font-normal">{METRIC_COMPARATOR[p.metric] === "gte" ? "≥" : "≤"} {p.target}{unit(p.metric)} · {periodLabel(p.period)}</span>
-                  </p>
-                  <p className="text-xs text-muted mt-0.5">{t(`goal_why_${p.metric}`)}</p>
-                </div>
-                <button onClick={() => addMetricGoal(p.metric, p.target, p.period)} disabled={busy}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-accent/10 text-accent text-xs font-semibold hover:bg-accent/20 transition-colors disabled:opacity-50 shrink-0">
-                  <Plus className="w-3.5 h-3.5" /> {t("goals_add_quick")}
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Objectif mesuré personnalisé (replié) */}
       <div className="mt-5">
