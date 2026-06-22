@@ -16,6 +16,10 @@
     {
       "path": "/api/sync/brokers",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/economic-calendar/sync",
+      "schedule": "0 6 * * *"
     }
   ]
 }

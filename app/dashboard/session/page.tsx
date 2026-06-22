@@ -3,6 +3,7 @@
 import DayStatus from "@/components/DayStatus";
 import PatternAlerts from "@/components/dashboard/PatternAlerts";
 import SessionDebriefModal, { type SessionDebrief } from "@/components/session/SessionDebriefModal";
+import EconomicCalendarCard from "@/components/session/EconomicCalendarCard";
 import EmotionalCheck from "@/components/session/EmotionalCheck";
 import PositionSizer from "@/components/session/PositionSizer";
 import QuickTradeLogger from "@/components/session/QuickTradeLogger";
@@ -645,6 +646,11 @@ export default function SessionPage() {
           loading={accountLoading}
           t={t}
         />
+      </div>
+
+      {/* Economic-calendar guardrail — today's macro events to avoid trading around */}
+      <div className="mb-6">
+        <EconomicCalendarCard />
       </div>
 
       {/* Empty checklist confirmation modal */}
