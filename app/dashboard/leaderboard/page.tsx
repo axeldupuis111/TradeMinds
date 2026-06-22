@@ -90,15 +90,18 @@ export default function LeaderboardPage() {
   const meEntry = entries.find((x) => x.isMe) ?? null;
 
   return (
-    <div className="max-w-2xl mx-auto pb-10">
+    <div className="max-w-5xl mx-auto pb-10">
       <h1 className="text-2xl font-bold text-foreground">{t("leaderboard_title")}</h1>
       <p className="text-muted mt-1">{t("leaderboard_subtitle")}</p>
 
+      <div className="mt-5 lg:grid lg:grid-cols-3 lg:gap-6 lg:items-start">
+      {/* Rail : tes stats + badges + invite (droite sur grand écran, haut sur mobile) */}
+      <aside className="space-y-4 lg:col-span-1 lg:order-2">
       {/* Tes stats (toujours visible) */}
       {self && (() => {
         const tier = tierOf(self.score);
         return (
-          <div className="mt-5 rounded-xl border border-border bg-card p-4">
+          <div className="rounded-xl border border-border bg-card p-4">
             <div className="flex items-center gap-4">
               <span className={`flex flex-col items-center justify-center w-16 h-16 rounded-xl border ${tier.cls} shrink-0`}>
                 <span className="text-2xl leading-none">{tier.emoji}</span>
@@ -124,7 +127,7 @@ export default function LeaderboardPage() {
 
       {/* Badges */}
       {self && (
-        <div className="mt-4">
+        <div>
           <p className="text-xs text-muted mb-2">{t("leaderboard_badges_title")}</p>
           <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
             {badgesFor(self).map((b) => (
@@ -140,7 +143,7 @@ export default function LeaderboardPage() {
 
       {/* Invite à rejoindre si pas opt-in / pas de pseudo */}
       {self && (!self.optedIn || !self.hasUsername) && (
-        <Link href="/dashboard/settings" className="mt-4 flex items-center gap-3 rounded-xl border border-accent/30 bg-accent/[0.04] p-4 hover:border-accent/50 transition-colors">
+        <Link href="/dashboard/settings" className="flex items-center gap-3 rounded-xl border border-accent/30 bg-accent/[0.04] p-4 hover:border-accent/50 transition-colors">
           <span className="text-2xl">🏁</span>
           <div className="flex-1">
             <p className="text-sm font-semibold text-foreground">{t("leaderboard_join_title")}</p>
@@ -149,9 +152,12 @@ export default function LeaderboardPage() {
           <span className="text-xs text-accent font-medium whitespace-nowrap">{t("leaderboard_join")} →</span>
         </Link>
       )}
+      </aside>
 
+      {/* Colonne principale : modes + période + classement */}
+      <main className="lg:col-span-2 lg:order-1 mt-4 lg:mt-0">
       {/* Modes + période */}
-      <div className="mt-6 flex rounded-lg border border-border overflow-hidden text-sm">
+      <div className="flex rounded-lg border border-border overflow-hidden text-sm">
         {MODES.map((m) => (
           <button key={m} onClick={() => setMode(m)} className={`flex-1 px-3 py-1.5 transition-colors ${mode === m ? "bg-accent text-white" : "bg-surface text-muted hover:text-foreground"}`}>
             {t(`leaderboard_mode_${m}`)}
@@ -213,6 +219,8 @@ export default function LeaderboardPage() {
           <p className="text-xs text-muted/60 mt-4 text-center">{t("leaderboard_min_note").replace("{n}", "3")}</p>
         </>
       )}
+      </main>
+      </div>
     </div>
   );
 }

@@ -214,7 +214,7 @@ export default function MonthlyReviewPage() {
   const firstWeekday = month ? (new Date(month.year, month.month0, 1).getDay() + 6) % 7 : 0; // lundi=0
 
   return (
-    <div className="max-w-2xl mx-auto pb-10">
+    <div className="max-w-4xl mx-auto pb-10">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t("review_title")}</h1>
@@ -256,7 +256,7 @@ export default function MonthlyReviewPage() {
             </div>
           ) : stats ? (
             <>
-              <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 <Kpi label={t("review_kpi_trades")} value={`${stats.trades}`} delta={deltas?.trades} />
                 <Kpi label={t("review_kpi_days")} value={`${stats.tradingDays}`} delta={deltas?.tradingDays} />
                 <Kpi label={t("review_kpi_winrate")} value={`${stats.winRate}%`} delta={deltas?.winRate} suffix="pts" />
@@ -305,9 +305,10 @@ export default function MonthlyReviewPage() {
                 </div>
               )}
 
+              <div className="mt-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
               {/* Tendance 6 mois (discipline) */}
               {trend.some((p) => p.score != null) && (
-                <div className="mt-4 rounded-xl border border-border bg-card p-4">
+                <div className="rounded-xl border border-border bg-card p-4 mt-4 lg:mt-0">
                   <p className="text-xs text-muted mb-3">{t("review_trend_title")}</p>
                   <div className="flex items-end justify-between gap-2 h-24">
                     {trend.map((p) => (
@@ -325,7 +326,7 @@ export default function MonthlyReviewPage() {
 
               {/* Calendrier de discipline du mois */}
               {month && (
-                <div className="mt-4 rounded-xl border border-border bg-card p-4">
+                <div className="rounded-xl border border-border bg-card p-4 mt-4 lg:mt-0">
                   <p className="text-xs text-muted mb-2">{t("review_calendar_title")}</p>
                   <div className="grid grid-cols-7 gap-1">
                     {[0, 1, 2, 3, 4, 5, 6].map((wd) => (
@@ -354,6 +355,7 @@ export default function MonthlyReviewPage() {
                   </div>
                 </div>
               )}
+              </div>
 
               {/* Équité + faits marquants */}
               {extras && extras.equity.length >= 2 && (

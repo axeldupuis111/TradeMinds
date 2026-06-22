@@ -34,11 +34,25 @@ export default function SizerPage() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="max-w-2xl mx-auto pb-10">
+    <div className="max-w-4xl mx-auto pb-10">
       <h1 className="text-2xl font-bold text-foreground">{t("sizer_page_title")}</h1>
       <p className="text-muted mt-1">{t("sizer_page_subtitle")}</p>
-      <div className="mt-6">
-        {loading ? <div className="skeleton h-64 rounded-xl" /> : <PositionSizer strategy={strategy} />}
+
+      <div className="mt-6 lg:grid lg:grid-cols-3 lg:gap-6 lg:items-start">
+        <div className="lg:col-span-2">
+          {loading ? <div className="skeleton h-64 rounded-xl" /> : <PositionSizer strategy={strategy} />}
+        </div>
+
+        {/* Aide / méthode */}
+        <aside className="mt-4 lg:mt-0 rounded-xl border border-border bg-card p-5">
+          <h2 className="text-sm font-semibold text-foreground mb-3">{t("sizer_help_title")}</h2>
+          <ul className="space-y-3 text-sm text-muted leading-relaxed">
+            <li className="flex gap-2"><span className="text-accent font-bold">1.</span><span>{t("sizer_help_1")}</span></li>
+            <li className="flex gap-2"><span className="text-accent font-bold">2.</span><span>{t("sizer_help_2")}</span></li>
+            <li className="flex gap-2"><span className="text-accent font-bold">3.</span><span>{t("sizer_help_3")}</span></li>
+          </ul>
+          <p className="text-xs text-muted/70 mt-4 border-t border-border pt-3">{t("sizer_help_note")}</p>
+        </aside>
       </div>
     </div>
   );
