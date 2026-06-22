@@ -180,7 +180,7 @@ export default function LeaderboardPage() {
         </div>
       ) : (
         <>
-          <p className="text-xs text-muted mt-4">{t("leaderboard_participants").replace("{n}", String(total))}</p>
+          <p className="text-xs text-muted mt-4">{(total === 1 ? t("leaderboard_participants_one") : t("leaderboard_participants")).replace("{n}", String(total))}</p>
 
           {/* Podium */}
           {top3.length >= 1 && (

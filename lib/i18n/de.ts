@@ -1740,6 +1740,7 @@ const dict: Record<string, string> = {
   "leaderboard_disclaimer": "Die Rangliste basiert nur auf Disziplin und Beständigkeit, nie auf Gewinnen.",
   "leaderboard_days": "{n} T",
   "leaderboard_participants": "{n} Teilnehmer",
+  "leaderboard_participants_one": "{n} Teilnehmer",
   "leaderboard_your_rank": "Dein Rang: #{rank} / {total}",
   "leaderboard_your_position": "Deine Position",
   "leaderboard_tier_label": "Deine Disziplin-Liga",

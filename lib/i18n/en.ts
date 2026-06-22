@@ -1740,6 +1740,7 @@ const dict: Record<string, string> = {
   "leaderboard_disclaimer": "Ranking is based only on discipline and consistency, never on profits.",
   "leaderboard_days": "{n}d",
   "leaderboard_participants": "{n} participants",
+  "leaderboard_participants_one": "{n} participant",
   "leaderboard_your_rank": "Your rank: #{rank} / {total}",
   "leaderboard_your_position": "Your position",
   "leaderboard_tier_label": "Your discipline league",
