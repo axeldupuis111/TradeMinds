@@ -5,7 +5,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Flame, Trophy, Gem, Target, Star, Lock, PartyPopper, Crown, type LucideIcon } from "lucide-react";
+import { Flame, Trophy, Gem, Target, Star, Lock, PartyPopper, Crown, Snowflake, type LucideIcon } from "lucide-react";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { computeDisciplineStreaks } from "@/lib/discipline-streak";
 
@@ -39,6 +39,9 @@ interface BadgeContext {
   reviewCount: number;
 }
 
+/** Streak-freeze grace tokens granted per calendar month. */
+const FREEZE_QUOTA_PER_MONTH = 2;
+
 export default function GoalsStreaks() {
   const { t } = useLanguage();
   const supabase = createClient();
@@ -47,6 +50,10 @@ export default function GoalsStreaks() {
   const [isRecord, setIsRecord] = useState(false);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [weeklyProgress, setWeeklyProgress] = useState({ current: 0, target: 0, met: true });
+  // Streak-freeze state
+  const [freezeRemaining, setFreezeRemaining] = useState(FREEZE_QUOTA_PER_MONTH);
+  const [freezeCandidate, setFreezeCandidate] = useState<string | null>(null);
+  const [freezing, setFreezing] = useState(false);
   const [loading, setLoading] = useState(true);
   // Badge fraîchement débloqué dans cette session → confettis + bannière
   const [celebrating, setCelebrating] = useState<string | null>(null);
@@ -60,7 +67,7 @@ export default function GoalsStreaks() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
 
-    const [{ data: reviews }, { data: achData }, { data: trades }] = await Promise.all([
+    const [{ data: reviews }, { data: achData }, { data: trades }, { data: freezes }] = await Promise.all([
       supabase
         .from("session_reviews")
         .select("created_at, discipline_score, analysis")
@@ -74,6 +81,11 @@ export default function GoalsStreaks() {
       supabase
         .from("trades")
         .select("pnl, commission, swap, emotion, open_time")
+        .eq("user_id", user.id),
+      // Streak freezes — defensive: missing table (migration not applied) → [].
+      supabase
+        .from("streak_freezes")
+        .select("day, created_at")
         .eq("user_id", user.id),
     ]);
 
@@ -91,13 +103,38 @@ export default function GoalsStreaks() {
       const bad = tr.emotion === "revenge" || tr.emotion === "fomo";
       dayHasEmotionalTrade.set(day, (dayHasEmotionalTrade.get(day) ?? false) || bad);
     }
+    // Frozen days count as clean: a grace token lets one slip not reset the run.
+    const frozenDays = new Set<string>((freezes || []).map((f) => (f as { day: string }).day));
     const streaks = computeDisciplineStreaks(
-      Array.from(dayHasEmotionalTrade.entries()).map(([day, emotional]) => ({ day, emotional })),
+      Array.from(dayHasEmotionalTrade.entries()).map(([day, emotional]) => ({
+        day,
+        emotional: frozenDays.has(day) ? false : emotional,
+      })),
     );
     const streakCount = streaks.current;
     setStreak(streaks.current);
     setRecord(streaks.record);
     setIsRecord(streaks.isRecord);
+
+    // ── Streak-freeze quota & candidate ──────────────────────────────────────
+    // Quota is per calendar month, counted by when each freeze was spent.
+    const monthPrefix = new Date().toISOString().slice(0, 7); // YYYY-MM
+    const usedThisMonth = (freezes || []).filter(
+      (f) => ((f as { created_at: string }).created_at || "").slice(0, 7) === monthPrefix,
+    ).length;
+    setFreezeRemaining(Math.max(0, FREEZE_QUOTA_PER_MONTH - usedThisMonth));
+
+    // Candidate = most recent emotional, not-yet-frozen day (the one breaking the
+    // current streak), only if recent enough (≤ 30 days) to be worth protecting.
+    const emotionalDays = Array.from(dayHasEmotionalTrade.entries())
+      .filter(([day, emotional]) => emotional && !frozenDays.has(day))
+      .map(([day]) => day)
+      .sort();
+    const mostRecentEmotional = emotionalDays.length > 0 ? emotionalDays[emotionalDays.length - 1] : null;
+    const recentEnough =
+      mostRecentEmotional != null &&
+      Date.now() - new Date(mostRecentEmotional).getTime() < 30 * 24 * 60 * 60 * 1000;
+    setFreezeCandidate(recentEnough ? mostRecentEmotional : null);
 
     // Weekly goal: count revenge trades this week
     const monday = getMonday(new Date()).toISOString().split("T")[0];
@@ -151,6 +188,17 @@ export default function GoalsStreaks() {
     }
 
     setLoading(false);
+  }
+
+  async function handleFreeze(day: string) {
+    if (freezing) return;
+    setFreezing(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from("streak_freezes").insert({ user_id: user.id, day });
+    }
+    await load();
+    setFreezing(false);
   }
 
   if (loading) {
@@ -243,6 +291,37 @@ export default function GoalsStreaks() {
               className="h-full rounded-full bg-gradient-to-r from-accent to-warning transition-all duration-700"
               style={{ width: `${Math.max(3, milestonePct)}%` }}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Streak freeze — protect a broken run with a grace token */}
+      {freezeCandidate && (
+        <div className={`mb-4 p-3 rounded-lg border ${freezeRemaining > 0 ? "bg-sky-500/5 border-sky-500/30" : "bg-background border-border"}`}>
+          <div className="flex items-start gap-3">
+            <Snowflake className="w-5 h-5 text-sky-400 shrink-0 mt-0.5" strokeWidth={1.75} />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground">{t("freeze_cta_title")}</p>
+              <p className="text-xs text-muted mt-0.5">
+                {t("freeze_cta_body").replace(
+                  "{date}",
+                  new Date(freezeCandidate).toLocaleDateString(undefined, { day: "numeric", month: "long" }),
+                )}
+              </p>
+              {freezeRemaining > 0 ? (
+                <button
+                  onClick={() => handleFreeze(freezeCandidate)}
+                  disabled={freezing}
+                  className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-500/15 text-sky-400 text-xs font-semibold hover:bg-sky-500/25 transition-colors disabled:opacity-50"
+                >
+                  <Snowflake className="w-3.5 h-3.5" strokeWidth={2} />
+                  {t("freeze_cta_button")}
+                  <span className="opacity-70">· {t("freeze_remaining").replace("{n}", String(freezeRemaining))}</span>
+                </button>
+              ) : (
+                <p className="mt-2 text-[11px] text-muted">{t("freeze_none_left")}</p>
+              )}
+            </div>
           </div>
         </div>
       )}

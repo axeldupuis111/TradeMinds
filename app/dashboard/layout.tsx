@@ -9,6 +9,7 @@ import OnboardingGuide from "@/components/dashboard/OnboardingGuide";
 import Sidebar from "@/components/Sidebar";
 import AlertCenter from "@/components/dashboard/AlertCenter";
 import ChallengeGuardian from "@/components/dashboard/ChallengeGuardian";
+import NewsWindowGuard from "@/components/dashboard/NewsWindowGuard";
 import StopTradingGuard from "@/components/dashboard/StopTradingGuard";
 import { SubscriptionBanner } from "@/components/SubscriptionBanner";
 import { ActiveAccountProvider } from "@/lib/ActiveAccountContext";
@@ -198,6 +199,7 @@ export default function DashboardLayout({
         <AmbientBackground />
         <StopTradingGuard />
         <ChallengeGuardian />
+        <NewsWindowGuard />
         <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
         {/* AlertCenter: unified alert bus (inert until sources push in B2+) */}
         <AlertCenter />
