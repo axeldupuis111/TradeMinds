@@ -143,7 +143,7 @@ export default function LeaderboardPage() {
 
       {/* Invite à rejoindre si pas opt-in / pas de pseudo */}
       {self && (!self.optedIn || !self.hasUsername) && (
-        <Link href="/dashboard/settings" className="flex items-center gap-3 rounded-xl border border-accent/30 bg-accent/[0.04] p-4 hover:border-accent/50 transition-colors">
+        <Link href="/dashboard/settings#leaderboard" className="flex items-center gap-3 rounded-xl border border-accent/30 bg-accent/[0.04] p-4 hover:border-accent/50 transition-colors">
           <span className="text-2xl">🏁</span>
           <div className="flex-1">
             <p className="text-sm font-semibold text-foreground">{t("leaderboard_join_title")}</p>
