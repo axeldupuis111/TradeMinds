@@ -190,7 +190,7 @@ export default function GoalsPage() {
   const recoToShow = recos.filter((r) => !existing.has(`${r.metric}:${r.period}`));
 
   return (
-    <div className="max-w-2xl mx-auto pb-10">
+    <div className="max-w-5xl mx-auto pb-10">
       <h1 className="text-2xl font-bold text-foreground">{t("goals_page_title")}</h1>
       <p className="text-muted mt-1">{t("goals_intro")}</p>
 
@@ -212,6 +212,9 @@ export default function GoalsPage() {
         </div>
       )}
 
+      <div className="lg:grid lg:grid-cols-3 lg:gap-6 lg:items-start">
+      {/* Colonne principale : création & découverte */}
+      <main className="lg:col-span-2 lg:order-1">
       {/* Écrire son propre objectif */}
       <div className="mt-5 rounded-xl border border-accent/20 bg-accent/[0.03] p-4">
         <h2 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
@@ -316,10 +319,14 @@ export default function GoalsPage() {
         )}
       </div>
 
+      </main>
+
+      {/* Rail : tes objectifs */}
+      <aside className="lg:col-span-1 lg:order-2 mt-6 lg:mt-5">
       {/* Objectifs perso (à cocher) */}
       {customGoals.length > 0 && (
         <>
-          <h2 className="text-sm font-semibold text-foreground mt-6 mb-2">{t("goals_personal_title")}</h2>
+          <h2 className="text-sm font-semibold text-foreground mt-6 lg:mt-0 mb-2">{t("goals_personal_title")}</h2>
           <div className="space-y-2">
             {customGoals.map((g) => (
               <div key={g.id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
@@ -396,6 +403,8 @@ export default function GoalsPage() {
           })}
         </div>
       )}
+      </aside>
+      </div>
     </div>
   );
 }
