@@ -3,7 +3,7 @@
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function LeaderboardOptInCard() {
   const { t } = useLanguage();
@@ -12,6 +12,15 @@ export default function LeaderboardOptInCard() {
   const [hasUsername, setHasUsername] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
+
+  // Scroll vers cette carte si on arrive avec #leaderboard (depuis l'onglet Classement),
+  // une fois les données chargées (la carte n'existe pas dans le DOM avant).
+  useEffect(() => {
+    if (!loading && typeof window !== "undefined" && window.location.hash === "#leaderboard") {
+      sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [loading]);
 
   useEffect(() => {
     (async () => {
@@ -41,7 +50,7 @@ export default function LeaderboardOptInCard() {
   if (loading) return null;
 
   return (
-    <section className="bg-card border border-border rounded-xl p-5">
+    <section ref={sectionRef} id="leaderboard" className="bg-card border border-border rounded-xl p-5 scroll-mt-6">
       <div className="flex items-center justify-between gap-3 mb-1">
         <h2 className="text-lg font-semibold text-foreground">{t("leaderboard_settings_title")}</h2>
         <Link href="/dashboard/leaderboard" className="text-xs text-accent hover:underline whitespace-nowrap">
