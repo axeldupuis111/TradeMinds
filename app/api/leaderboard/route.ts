@@ -63,18 +63,35 @@ export async function GET(req: NextRequest) {
 
   const admin = createAdmin(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
 
+  const nowMs = Date.now();
+  const sinceCur = new Date(nowMs - days * 86400000).toISOString();
+  const sincePrev = new Date(nowMs - 2 * days * 86400000).toISOString();
+
+  // ── Métriques personnelles (TOUJOURS calculées, même non opt-in / non classé) ──
+  const { data: selfProfile } = await admin
+    .from("profiles").select("leaderboard_opt_in, username").eq("id", user.id).single();
+  const { data: selfReviews } = await admin
+    .from("session_reviews").select("user_id, discipline_score, created_at").eq("user_id", user.id).gte("created_at", sinceCur);
+  const selfM = computeMetrics((selfReviews ?? []) as ReviewRow[]);
+
   const { data: profiles } = await admin
     .from("profiles").select("id, username").eq("leaderboard_opt_in", true).not("username", "is", null);
 
+  // Base "self" renvoyée dans tous les cas (alimente la carte stats + badges).
+  function buildSelf(rank: number | null, percentile: number | null) {
+    return {
+      score: selfM.avgScore, sessions: selfM.sessions, streak: selfM.streak,
+      optedIn: !!selfProfile?.leaderboard_opt_in, hasUsername: !!selfProfile?.username,
+      ranked: rank != null, rank, percentile,
+    };
+  }
+
   if (!profiles || profiles.length === 0) {
-    return NextResponse.json({ entries: [], me: null, total: 0, days, mode });
+    return NextResponse.json({ entries: [], me: null, total: 0, days, mode, self: buildSelf(null, null) });
   }
 
   const ids = profiles.map((p) => p.id);
   const usernameById = new Map(profiles.map((p) => [p.id, p.username as string]));
-  const nowMs = Date.now();
-  const sinceCur = new Date(nowMs - days * 86400000).toISOString();
-  const sincePrev = new Date(nowMs - 2 * days * 86400000).toISOString();
 
   // Reviews des 2 fenêtres (courante + précédente) pour le calcul du mouvement.
   const { data: reviews } = await admin
@@ -126,5 +143,8 @@ export async function GET(req: NextRequest) {
     ? { ...meEntry, percentile: total > 0 ? Math.max(1, Math.round((meEntry.rank / total) * 100)) : null }
     : null;
 
-  return NextResponse.json({ entries: ranked.slice(0, 50), me, total, days, mode });
+  return NextResponse.json({
+    entries: ranked.slice(0, 50), me, total, days, mode,
+    self: buildSelf(me?.rank ?? null, me?.percentile ?? null),
+  });
 }
