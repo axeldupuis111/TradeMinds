@@ -51,6 +51,20 @@ export default function EquityCurve({ data, initialBalance }: Props) {
   const lastBalance = data[data.length - 1]?.balance ?? initialBalance;
   const isAbove = lastBalance >= initialBalance;
 
+  // L'axe X est catégoriel et la série est trade-par-trade : plusieurs trades
+  // le même jour produisent des libellés de date dupliqués. On force des ticks
+  // de dates uniques, amincis à ~6 pour rester lisibles (début + fin inclus).
+  const xTicks = (() => {
+    const uniqueDates = Array.from(new Set(data.map((d) => d.date)));
+    const maxTicks = 6;
+    if (uniqueDates.length <= maxTicks) return uniqueDates;
+    const step = Math.ceil(uniqueDates.length / maxTicks);
+    const ticks = uniqueDates.filter((_, i) => i % step === 0);
+    const last = uniqueDates[uniqueDates.length - 1];
+    if (ticks[ticks.length - 1] !== last) ticks.push(last);
+    return ticks;
+  })();
+
   return (
     <KpiCardPremium layout="full" intensity="default" accentColor="cyan">
       <CardTitle className="mb-4">{t("equity_title")}</CardTitle>
@@ -89,6 +103,8 @@ export default function EquityCurve({ data, initialBalance }: Props) {
             />
             <XAxis
               dataKey="date"
+              ticks={xTicks}
+              interval={0}
               tick={{ fill: c.axis, fontSize: 11 }}
               tickLine={false}
               axisLine={{ stroke: c.axisLine }}
