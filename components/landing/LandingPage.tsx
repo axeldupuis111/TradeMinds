@@ -7,6 +7,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import Link from "next/link";
 import React, { useRef, useState, useEffect } from "react";
 import { motion, useInView, useReducedMotion, AnimatePresence, useMotionValue, useSpring, useTransform, useScroll } from "framer-motion";
+import type { TargetAndTransition, Transition } from "framer-motion";
 
 /* ─────────────────────────────────────────────
    ANIMATION PRIMITIVES
@@ -55,8 +56,8 @@ function StaggerReveal({
       {items.map((child, i) => (
         <motion.div
           key={i}
-          initial={prefersReduced ? false : { opacity: 0, y: 18 }}
-          whileInView={{ opacity: 1, y: 0 }}
+          initial={prefersReduced ? false : { opacity: 0, y: 22, scale: 0.97 }}
+          whileInView={{ opacity: 1, y: 0, scale: 1 }}
           viewport={{ once: true, margin: "-40px" }}
           transition={{ duration: 0.55, delay: i * stagger, ease }}
         >
@@ -166,6 +167,78 @@ function Magnetic({
     >
       {children}
     </motion.div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   SPOTLIGHT CARD — radial glow follows cursor
+   Drop-in replacement for a motion.div card.
+───────────────────────────────────────────── */
+function SpotlightCard({
+  children,
+  className = "",
+  style,
+  whileHover,
+  transition,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+  whileHover?: TargetAndTransition;
+  transition?: Transition;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const prefersReduced = useReducedMotion();
+
+  function move(e: React.MouseEvent<HTMLDivElement>) {
+    if (prefersReduced || !ref.current) return;
+    const r = ref.current.getBoundingClientRect();
+    ref.current.style.setProperty("--mx", `${e.clientX - r.left}px`);
+    ref.current.style.setProperty("--my", `${e.clientY - r.top}px`);
+  }
+
+  return (
+    <motion.div
+      ref={ref}
+      onMouseMove={move}
+      className={`spotlight-card ${className}`}
+      style={style}
+      whileHover={whileHover}
+      transition={transition}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   SECTION EYEBROW — label + animated underline
+───────────────────────────────────────────── */
+function Eyebrow({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <p className={`inline-flex flex-col items-center gap-1.5 text-xs font-bold uppercase tracking-widest mb-4 ${className}`} style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}>
+      <span>{children}</span>
+      <span
+        className="eyebrow-line block h-px w-8 rounded-full"
+        style={{ background: "linear-gradient(90deg, transparent, rgb(var(--accent)), transparent)" }}
+        aria-hidden
+      />
+    </p>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   PAGE AMBIENCE — slow drifting blobs (whole page)
+   Pas de random → SSR-safe ; le mouvement est coupé
+   en CSS sous prefers-reduced-motion.
+───────────────────────────────────────────── */
+function PageAmbience() {
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10" aria-hidden>
+      <div className="blob-drift-slow absolute top-[20%] -left-24 w-[340px] h-[340px] rounded-full blur-[72px]" style={{ background: "rgb(var(--accent)/0.06)" }} />
+      <div className="blob-drift-rev absolute top-[55%] -right-28 w-[380px] h-[380px] rounded-full blur-[80px]" style={{ background: "rgba(59,130,246,0.05)" }} />
+      <div className="blob-drift-slow absolute top-[82%] left-1/3 w-[300px] h-[300px] rounded-full blur-[68px]" style={{ background: "rgba(167,139,250,0.05)" }} />
+    </div>
   );
 }
 
@@ -850,9 +923,7 @@ function Problem() {
     <section className="py-28 px-6">
       <div className="max-w-5xl mx-auto">
         <Reveal className="text-center mb-16">
-          <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}>
-            {t("eyebrow_problem")}
-          </p>
+          <Eyebrow>{t("eyebrow_problem")}</Eyebrow>
           <h2 className="text-4xl sm:text-5xl font-bold leading-tight" style={{ color: "rgb(var(--foreground))" }}>
             {t("problem_title")}
             <br />
@@ -862,7 +933,7 @@ function Problem() {
 
         <StaggerReveal className="grid grid-cols-1 md:grid-cols-3 gap-4" stagger={0.1}>
           {problems.map((p) => (
-            <motion.div
+            <SpotlightCard
               key={p.title}
               className={`border rounded-2xl p-7 ${p.colorClass}`}
               style={p.bgStyle}
@@ -874,7 +945,7 @@ function Problem() {
               </div>
               <h3 className="text-base font-bold mb-2" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{p.title}</h3>
               <p className="text-[15px] leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{p.desc}</p>
-            </motion.div>
+            </SpotlightCard>
           ))}
         </StaggerReveal>
       </div>
@@ -1327,8 +1398,8 @@ type FeatureDef = {
 
 function FeatureCard({ f }: { f: FeatureDef }) {
   return (
-    <motion.div
-      className="relative rounded-2xl border overflow-hidden h-full group/card"
+    <SpotlightCard
+      className="rounded-2xl border overflow-hidden h-full group/card"
       style={{ background: "rgb(var(--card))", borderColor: "rgb(var(--border))" }}
       whileHover={{ y: -4, borderColor: "rgb(var(--accent)/0.28)", boxShadow: "0 0 0 1px rgb(var(--accent)/0.08), 0 24px 60px -12px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05)" }}
       transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
@@ -1351,7 +1422,7 @@ function FeatureCard({ f }: { f: FeatureDef }) {
       <div className="mt-4 border-t" style={{ borderColor: "rgb(var(--border)/0.5)", background: "rgb(var(--surface)/0.3)" }}>
         {f.visual}
       </div>
-    </motion.div>
+    </SpotlightCard>
   );
 }
 
@@ -1397,7 +1468,7 @@ function Features() {
     <section id="features" className="py-28 px-6 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
       <div className="max-w-5xl mx-auto">
         <Reveal className="text-center mb-16">
-          <p className="text-[13px] font-bold uppercase tracking-widest mb-4" style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}>{t("eyebrow_features")}</p>
+          <Eyebrow>{t("eyebrow_features")}</Eyebrow>
           <h2 className="text-4xl sm:text-5xl font-bold" style={{ color: "rgb(var(--foreground))" }}>{t("features_title")}</h2>
         </Reveal>
 
@@ -1497,7 +1568,7 @@ function AIDetection() {
     <section className="py-28 px-6 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
       <div className="max-w-5xl mx-auto">
         <Reveal className="text-center mb-14">
-          <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}>{t("eyebrow_ai_coach")}</p>
+          <Eyebrow>{t("eyebrow_ai_coach")}</Eyebrow>
           <h2 className="text-4xl sm:text-5xl font-bold" style={{ color: "rgb(var(--foreground))" }}>{t("ai_detect_title")}</h2>
           <p className="mt-4 max-w-xl mx-auto text-base leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("ai_detect_subtitle")}</p>
         </Reveal>
@@ -1509,7 +1580,7 @@ function AIDetection() {
 
         <StaggerReveal className="grid grid-cols-1 sm:grid-cols-2 gap-3" stagger={0.09}>
           {detections.map((d, i) => (
-            <motion.div
+            <SpotlightCard
               key={i}
               className="border rounded-2xl p-5 flex items-start gap-4"
               style={{ background: `rgba(${d.rgb},0.05)`, borderColor: `rgba(${d.rgb},0.14)` }}
@@ -1531,7 +1602,7 @@ function AIDetection() {
                 </svg>
               </div>
               <p className="text-[15px] leading-relaxed" style={{ color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}>{d.text}</p>
-            </motion.div>
+            </SpotlightCard>
           ))}
         </StaggerReveal>
       </div>
@@ -1554,13 +1625,13 @@ function SocialProof() {
     <section className="py-28 px-6 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
       <div className="max-w-5xl mx-auto">
         <Reveal className="text-center mb-16">
-          <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}>{t("eyebrow_social")}</p>
+          <Eyebrow>{t("eyebrow_social")}</Eyebrow>
           <h2 className="text-4xl sm:text-5xl font-bold" style={{ color: "rgb(var(--foreground))" }}>{t("social_title")}</h2>
         </Reveal>
 
         <StaggerReveal className="grid grid-cols-1 md:grid-cols-3 gap-4" stagger={0.1}>
           {testimonials.map((tm, i) => (
-            <motion.div
+            <SpotlightCard
               key={i}
               className="border rounded-2xl p-6 flex flex-col"
               style={{ background: "rgb(var(--card))", borderColor: "rgb(var(--border))" }}
@@ -1587,7 +1658,7 @@ function SocialProof() {
                 </div>
                 <p className="text-xs font-medium" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{tm.author}</p>
               </div>
-            </motion.div>
+            </SpotlightCard>
           ))}
         </StaggerReveal>
       </div>
@@ -1759,7 +1830,7 @@ function Pricing() {
     <section id="pricing" className="py-28 px-6 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
       <div className="max-w-5xl mx-auto">
         <Reveal className="text-center mb-12">
-          <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}>{t("eyebrow_pricing")}</p>
+          <Eyebrow>{t("eyebrow_pricing")}</Eyebrow>
           <h2 className="text-4xl sm:text-5xl font-bold" style={{ color: "rgb(var(--foreground))" }}>{t("pricing_title")}</h2>
         </Reveal>
 
@@ -1953,7 +2024,7 @@ function FAQ() {
     <section id="faq" className="py-28 px-6 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
       <div className="max-w-2xl mx-auto">
         <Reveal className="text-center mb-14">
-          <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}>{t("eyebrow_faq")}</p>
+          <Eyebrow>{t("eyebrow_faq")}</Eyebrow>
           <h2 className="text-4xl sm:text-5xl font-bold" style={{ color: "rgb(var(--foreground))" }}>{t("faq_title")}</h2>
         </Reveal>
 
@@ -2044,16 +2115,18 @@ function FinalCTA() {
           </p>
 
           <div className="mt-10">
-            <Link
-              href="/login"
-              className="btn-primary-shimmer group relative inline-block px-8 py-3.5 rounded-xl font-bold text-base text-white transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--accent))]"
-              style={{
-                background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #3b82f6 100%)",
-                boxShadow: "0 0 0 1px rgb(var(--accent)/0.3), 0 8px 32px rgb(var(--accent)/0.25)",
-              }}
-            >
-              <span className="relative z-10">{t("cta_button")}</span>
-            </Link>
+            <Magnetic strength={0.45} className="inline-block">
+              <Link
+                href="/login"
+                className="btn-primary-shimmer group relative inline-block px-8 py-3.5 rounded-xl font-bold text-base text-white transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--accent))]"
+                style={{
+                  background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #3b82f6 100%)",
+                  boxShadow: "0 0 0 1px rgb(var(--accent)/0.3), 0 8px 32px rgb(var(--accent)/0.25)",
+                }}
+              >
+                <span className="relative z-10">{t("cta_button")}</span>
+              </Link>
+            </Magnetic>
           </div>
 
           <p className="text-xs mt-4" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("pricing_no_commitment")}</p>
@@ -2249,6 +2322,7 @@ export default function LandingPage() {
     <div className="min-h-screen force-dark landing-page relative overflow-x-hidden" style={{ background: "rgb(var(--background))" }}>
       <ScrollProgress />
       <GridBackground />
+      <PageAmbience />
       <PublicHeader showAnchors />
       <main>
         <Hero />

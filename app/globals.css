@@ -685,3 +685,26 @@ html.light .card-shadow { box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 0 0 1px rgba
 }
 .idle-bob { animation: idle-bob 6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .idle-bob { animation: none; } }
+
+/* ─── Cursor-following spotlight on cards ────────────────────────────────── */
+.spotlight-card { position: relative; isolation: isolate; }
+.spotlight-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: radial-gradient(
+    240px circle at var(--mx, 50%) var(--my, -200px),
+    rgb(var(--accent) / 0.14),
+    transparent 62%
+  );
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+.spotlight-card:hover::after { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .spotlight-card::after { display: none; }
+}
+
