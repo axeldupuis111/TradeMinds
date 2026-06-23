@@ -114,6 +114,16 @@ export function minutesUntil(event_time: string, now: Date = new Date()): number
   return Math.round((new Date(event_time).getTime() - now.getTime()) / 60_000);
 }
 
+/** Colour-coded importance marker: 🟡 low · 🟠 medium · 🔴 high. */
+export function impactEmoji(impact: Impact): string {
+  switch (impact) {
+    case "high": return "🔴";
+    case "medium": return "🟠";
+    case "low": return "🟡";
+    default: return "⚪";
+  }
+}
+
 // ─── Feed parsing (faireconomy / ForexFactory weekly JSON) ─────────────────────
 
 /** Raw row shape from the public feed (fields are loosely typed on purpose). */
