@@ -127,26 +127,160 @@ function GridBackground() {
 }
 
 /* ─────────────────────────────────────────────
+   MAGNETIC BUTTON — pulls subtly toward cursor
+───────────────────────────────────────────── */
+function Magnetic({
+  children,
+  strength = 0.35,
+  className = "",
+}: {
+  children: React.ReactNode;
+  strength?: number;
+  className?: string;
+}) {
+  const prefersReduced = useReducedMotion();
+  const ref = useRef<HTMLDivElement>(null);
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const sx = useSpring(x, { stiffness: 200, damping: 15, mass: 0.3 });
+  const sy = useSpring(y, { stiffness: 200, damping: 15, mass: 0.3 });
+
+  function move(e: React.MouseEvent<HTMLDivElement>) {
+    if (prefersReduced || !ref.current) return;
+    const r = ref.current.getBoundingClientRect();
+    x.set((e.clientX - (r.left + r.width / 2)) * strength);
+    y.set((e.clientY - (r.top + r.height / 2)) * strength);
+  }
+  function leave() {
+    x.set(0);
+    y.set(0);
+  }
+
+  return (
+    <motion.div
+      ref={ref}
+      onMouseMove={move}
+      onMouseLeave={leave}
+      style={prefersReduced ? undefined : { x: sx, y: sy }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   HERO PARTICLES — floating ambient dots
+───────────────────────────────────────────── */
+const HERO_PARTICLES = Array.from({ length: 22 }, (_, i) => {
+  // deterministic pseudo-random so SSR & client match
+  const r = (n: number) => {
+    const s = Math.sin((i + 1) * n) * 10000;
+    return s - Math.floor(s);
+  };
+  const palette = ["0,212,216", "59,130,246", "167,139,250"];
+  return {
+    left: `${(r(12.9898) * 100).toFixed(2)}%`,
+    top: `${(60 + r(78.233) * 40).toFixed(2)}%`,
+    // rounded so server (Node) and client float results stringify identically (no hydration mismatch)
+    size: Number((2 + r(43.12) * 4).toFixed(2)),
+    drift: `${(r(11.7) * 60 - 30).toFixed(1)}px`,
+    travel: `${(140 + r(91.3) * 220).toFixed(0)}px`,
+    dur: `${(9 + r(3.71) * 10).toFixed(1)}s`,
+    delay: `${(r(27.1) * 9).toFixed(1)}s`,
+    op: (0.25 + r(8.3) * 0.4).toFixed(2),
+    color: palette[Math.floor(r(5.5) * palette.length) % palette.length],
+  };
+});
+
+function HeroParticles() {
+  const prefersReduced = useReducedMotion();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  // Decorative only — render client-side after mount so SSR/client never diverge.
+  if (prefersReduced || !mounted) return null;
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden -z-0" aria-hidden>
+      {HERO_PARTICLES.map((p, i) => (
+        <span
+          key={i}
+          className="hero-particle"
+          style={{
+            left: p.left,
+            top: p.top,
+            width: p.size,
+            height: p.size,
+            background: `rgb(${p.color})`,
+            boxShadow: `0 0 ${p.size * 2}px rgb(${p.color} / 0.6)`,
+            ["--p-drift" as string]: p.drift,
+            ["--p-travel" as string]: p.travel,
+            ["--p-dur" as string]: p.dur,
+            ["--p-delay" as string]: p.delay,
+            ["--p-op" as string]: p.op,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
    HERO
 ───────────────────────────────────────────── */
 function Hero() {
   const { t } = useLanguage();
   const prefersReduced = useReducedMotion();
+  const sectionRef = useRef<HTMLElement>(null);
+
+  // Cursor-following spotlight
+  const spotX = useMotionValue(50);
+  const spotY = useMotionValue(28);
+  const sxSpring = useSpring(spotX, { stiffness: 90, damping: 22, mass: 0.5 });
+  const sySpring = useSpring(spotY, { stiffness: 90, damping: 22, mass: 0.5 });
+  const spotlight = useTransform(
+    [sxSpring, sySpring],
+    ([x, y]: number[]) =>
+      `radial-gradient(620px circle at ${x}% ${y}%, rgb(var(--accent)/0.10), transparent 70%)`
+  );
+
+  function handleSpot(e: React.MouseEvent<HTMLElement>) {
+    if (prefersReduced || !sectionRef.current) return;
+    const r = sectionRef.current.getBoundingClientRect();
+    spotX.set(((e.clientX - r.left) / r.width) * 100);
+    spotY.set(((e.clientY - r.top) / r.height) * 100);
+  }
+
+  // Scroll parallax on aurora layer
+  const { scrollYProgress } = useScroll({ target: sectionRef, offset: ["start start", "end start"] });
+  const auroraY = useTransform(scrollYProgress, [0, 1], [0, 120]);
+  const auroraScale = useTransform(scrollYProgress, [0, 1], [1, 1.25]);
+
+  // Word-by-word title reveal
+  const title2Words = t("hero_title_2").split(" ");
 
   return (
-    <section className="relative pt-32 pb-24 px-6 overflow-hidden">
-      {/* Gradient blobs — floating aurora effect */}
-      <div
+    <section ref={sectionRef} onMouseMove={handleSpot} className="relative pt-32 pb-24 px-6 overflow-hidden">
+      {/* Cursor spotlight */}
+      {!prefersReduced && (
+        <motion.div className="absolute inset-0 pointer-events-none -z-0" aria-hidden style={{ background: spotlight }} />
+      )}
+
+      {/* Floating ambient particles */}
+      <HeroParticles />
+
+      {/* Gradient blobs — floating aurora effect (+ scroll parallax) */}
+      <motion.div
         className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[600px] pointer-events-none -z-0"
         aria-hidden
+        style={prefersReduced ? undefined : { y: auroraY, scale: auroraScale }}
       >
         <div className="aurora-a absolute top-0 left-1/4 w-80 h-80 rounded-full blur-[120px]"
-          style={{ background: "rgb(var(--accent)/0.09)" }} />
+          style={{ background: "rgb(var(--accent)/0.12)" }} />
         <div className="aurora-b absolute top-20 right-1/4 w-64 h-64 rounded-full blur-[100px]"
-          style={{ background: "rgba(59,130,246,0.07)" }} />
+          style={{ background: "rgba(59,130,246,0.09)" }} />
         <div className="aurora-c absolute top-40 left-1/2 w-48 h-48 rounded-full blur-[90px]"
-          style={{ background: "rgba(167,139,250,0.04)" }} />
-      </div>
+          style={{ background: "rgba(167,139,250,0.06)" }} />
+      </motion.div>
 
       <div className="max-w-5xl mx-auto text-center relative z-10">
         {/* Social proof badge */}
@@ -154,10 +288,13 @@ function Hero() {
           initial={prefersReduced ? false : { opacity: 0, y: 10, scale: 0.97 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.5, ease }}
-          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[rgb(var(--accent)/0.2)] bg-[rgb(var(--accent)/0.05)] text-xs font-medium mb-10"
+          className="badge-shine-host inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[rgb(var(--accent)/0.2)] bg-[rgb(var(--accent)/0.05)] text-xs font-medium mb-10"
           style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-[rgb(var(--accent))] animate-pulse shrink-0" />
+          <span className="relative flex w-1.5 h-1.5 shrink-0">
+            <span className="ring-ping absolute inset-0 rounded-full bg-[rgb(var(--accent))]" />
+            <span className="relative w-1.5 h-1.5 rounded-full bg-[rgb(var(--accent))]" />
+          </span>
           {t("hero_social_proof")}
         </motion.div>
 
@@ -184,7 +321,19 @@ function Hero() {
               fontStyle: "normal",
             }}
           >
-            {t("hero_title_2")}
+            {title2Words.map((word, i) => (
+              <motion.span
+                key={i}
+                className="inline-block"
+                initial={prefersReduced ? false : { opacity: 0, y: "0.5em", rotateX: -40 }}
+                animate={{ opacity: 1, y: 0, rotateX: 0 }}
+                transition={{ duration: 0.6, delay: 0.35 + i * 0.1, ease }}
+                style={{ transformOrigin: "bottom" }}
+              >
+                {word}
+                {i < title2Words.length - 1 ? " " : ""}
+              </motion.span>
+            ))}
           </span>
         </motion.h1>
 
@@ -206,28 +355,32 @@ function Hero() {
           transition={{ duration: 0.6, delay: 0.35, ease }}
           className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3"
         >
-          <Link
-            href="/login"
-            className="btn-primary-shimmer group relative px-7 py-3.5 rounded-xl font-semibold text-sm text-white transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--accent))]"
-            style={{
-              background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #3b82f6 100%)",
-              boxShadow: "0 0 0 1px rgb(var(--accent)/0.3), 0 4px 24px rgb(var(--accent)/0.2)",
-            }}
-          >
-            <span className="relative z-10">{t("hero_cta")}</span>
-          </Link>
-          <a
-            href="#features"
-            className="px-7 py-3.5 rounded-xl font-semibold text-sm border transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--accent))]"
-            style={{
-              color: "rgb(var(--foreground))",
-              borderColor: "rgb(var(--border))",
-              background: "rgb(var(--card))",
-              fontStyle: "normal",
-            }}
-          >
-            {t("hero_features")}
-          </a>
+          <Magnetic strength={0.4}>
+            <Link
+              href="/login"
+              className="btn-primary-shimmer group relative inline-block px-7 py-3.5 rounded-xl font-semibold text-sm text-white transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--accent))]"
+              style={{
+                background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #3b82f6 100%)",
+                boxShadow: "0 0 0 1px rgb(var(--accent)/0.3), 0 4px 24px rgb(var(--accent)/0.2)",
+              }}
+            >
+              <span className="relative z-10">{t("hero_cta")}</span>
+            </Link>
+          </Magnetic>
+          <Magnetic strength={0.25}>
+            <a
+              href="#features"
+              className="inline-block px-7 py-3.5 rounded-xl font-semibold text-sm border transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--accent))]"
+              style={{
+                color: "rgb(var(--foreground))",
+                borderColor: "rgb(var(--border))",
+                background: "rgb(var(--card))",
+                fontStyle: "normal",
+              }}
+            >
+              {t("hero_features")}
+            </a>
+          </Magnetic>
         </motion.div>
 
         {/* AI trust badge */}
@@ -513,6 +666,63 @@ function DashboardMockup() {
         ))}
       </div>
     </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   LIVE MARKET TICKER — bandeau prix défilant
+   Données décoratives (pas un vrai flux) — pur effet.
+───────────────────────────────────────────── */
+const TICKER_INSTRUMENTS = [
+  { sym: "EUR/USD", price: "1.0842", chg: "+0.32%", up: true },
+  { sym: "XAU/USD", price: "2 384.10", chg: "+1.14%", up: true },
+  { sym: "GBP/JPY", price: "198.42", chg: "-0.21%", up: false },
+  { sym: "BTC/USD", price: "67 240", chg: "+2.48%", up: true },
+  { sym: "US30", price: "39 118", chg: "+0.54%", up: true },
+  { sym: "NAS100", price: "18 902", chg: "-0.37%", up: false },
+  { sym: "ETH/USD", price: "3 512", chg: "+1.92%", up: true },
+  { sym: "USD/JPY", price: "156.78", chg: "+0.11%", up: true },
+  { sym: "GBP/USD", price: "1.2715", chg: "-0.18%", up: false },
+  { sym: "SOL/USD", price: "172.3", chg: "+4.21%", up: true },
+];
+
+function MarketTicker() {
+  const items = [...TICKER_INSTRUMENTS, ...TICKER_INSTRUMENTS];
+  return (
+    <section
+      className="relative py-3 border-y overflow-hidden"
+      style={{ borderColor: "rgb(var(--border)/0.5)", background: "rgb(var(--card)/0.4)" }}
+      aria-hidden
+    >
+      <div
+        style={{
+          maskImage: "linear-gradient(90deg, transparent 0%, black 8%, black 92%, transparent 100%)",
+          WebkitMaskImage: "linear-gradient(90deg, transparent 0%, black 8%, black 92%, transparent 100%)",
+        }}
+      >
+        <div className="ticker-track flex items-center gap-7 w-max">
+          {items.map((it, i) => {
+            const c = it.up ? "rgb(var(--profit))" : "rgb(var(--loss))";
+            return (
+              <div key={`${it.sym}-${i}`} className="flex items-center gap-2.5 shrink-0 whitespace-nowrap">
+                <span className="relative flex w-1.5 h-1.5">
+                  <span className="ticker-flash absolute inset-0 rounded-full" style={{ background: c, animationDelay: `${(i % 7) * 0.4}s` }} />
+                  <span className="relative w-1.5 h-1.5 rounded-full" style={{ background: c }} />
+                </span>
+                <span className="text-[13px] font-semibold tracking-wide" style={{ color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}>{it.sym}</span>
+                <span className="text-[13px] tabular-nums" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{it.price}</span>
+                <span className="text-[12px] font-bold tabular-nums inline-flex items-center gap-0.5" style={{ color: c, fontStyle: "normal" }}>
+                  <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} aria-hidden style={{ transform: it.up ? "none" : "rotate(180deg)" }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                  </svg>
+                  {it.chg}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -2042,6 +2252,7 @@ export default function LandingPage() {
       <PublicHeader showAnchors />
       <main>
         <Hero />
+        <MarketTicker />
         <PlatformMarquee />
         <StatsStrip />
         <Problem />
