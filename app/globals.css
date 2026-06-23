@@ -591,3 +591,120 @@ html.light .card-shadow { box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 0 0 1px rgba
 @media (prefers-reduced-motion: reduce) {
   .sparkline-line { animation: none; stroke-dashoffset: 0; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LANDING — "MAX MOTION" PACK
+   Particules, spotlight, ticker live, blobs dérivants, halos pulsés.
+   Tout est désactivé proprement sous prefers-reduced-motion.
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Floating particles (hero ambiance) ─────────────────────────────────── */
+@keyframes particle-rise {
+  0%   { transform: translate3d(0, 0, 0) scale(1);        opacity: 0;   }
+  12%  {                                                   opacity: var(--p-op, 0.5); }
+  88%  {                                                   opacity: var(--p-op, 0.5); }
+  100% { transform: translate3d(var(--p-drift, 24px), calc(-1 * var(--p-travel, 160px)), 0) scale(0.4); opacity: 0; }
+}
+.hero-particle {
+  position: absolute;
+  border-radius: 9999px;
+  will-change: transform, opacity;
+  animation: particle-rise var(--p-dur, 11s) ease-in-out infinite;
+  animation-delay: var(--p-delay, 0s);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-particle { animation: none; opacity: 0 !important; }
+}
+
+/* ─── Slow drifting decorative blobs (whole-page ambiance) ───────────────── */
+@keyframes blob-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(40px, -30px) scale(1.12); }
+  66%       { transform: translate(-30px, 24px) scale(0.92); }
+}
+.blob-drift-slow { animation: blob-drift 26s ease-in-out infinite; }
+.blob-drift-rev  { animation: blob-drift 32s ease-in-out infinite reverse; }
+@media (prefers-reduced-motion: reduce) {
+  .blob-drift-slow, .blob-drift-rev { animation: none; }
+}
+
+/* ─── Live market ticker tape ────────────────────────────────────────────── */
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.ticker-track { animation: ticker-scroll 44s linear infinite; }
+.ticker-track:hover { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .ticker-track { animation: none; } }
+
+@keyframes ticker-flash {
+  0%, 100% { opacity: 0; }
+  18%       { opacity: 1; }
+}
+.ticker-flash { animation: ticker-flash 3.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .ticker-flash { animation: none; opacity: 0; } }
+
+/* ─── Pulsing ring halo (badges, dots) ───────────────────────────────────── */
+@keyframes ring-ping {
+  0%   { transform: scale(0.6); opacity: 0.55; }
+  80%, 100% { transform: scale(2.4); opacity: 0; }
+}
+.ring-ping { animation: ring-ping 2.6s cubic-bezier(0,0,0.2,1) infinite; }
+@media (prefers-reduced-motion: reduce) { .ring-ping { animation: none; opacity: 0; } }
+
+/* ─── Conic shimmer sweep across hero badge ──────────────────────────────── */
+@keyframes badge-shine {
+  0%   { transform: translateX(-130%) skewX(-18deg); }
+  100% { transform: translateX(260%)  skewX(-18deg); }
+}
+.badge-shine-host { position: relative; overflow: hidden; }
+.badge-shine-host::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0; left: 0;
+  width: 45%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+  transform: translateX(-130%) skewX(-18deg);
+  animation: badge-shine 4.5s ease-in-out infinite;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) { .badge-shine-host::after { animation: none; opacity: 0; } }
+
+/* ─── Animated underline shimmer for eyebrows ────────────────────────────── */
+@keyframes eyebrow-line {
+  0%, 100% { transform: scaleX(0.4); opacity: 0.5; }
+  50%       { transform: scaleX(1);   opacity: 1;   }
+}
+.eyebrow-line { transform-origin: center; animation: eyebrow-line 3s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .eyebrow-line { animation: none; transform: scaleX(1); } }
+
+/* ─── Soft float for cards / mockup idle bob ─────────────────────────────── */
+@keyframes idle-bob {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}
+.idle-bob { animation: idle-bob 6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .idle-bob { animation: none; } }
+
+/* ─── Cursor-following spotlight on cards ────────────────────────────────── */
+.spotlight-card { position: relative; isolation: isolate; }
+.spotlight-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: radial-gradient(
+    240px circle at var(--mx, 50%) var(--my, -200px),
+    rgb(var(--accent) / 0.14),
+    transparent 62%
+  );
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+.spotlight-card:hover::after { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .spotlight-card::after { display: none; }
+}
+
