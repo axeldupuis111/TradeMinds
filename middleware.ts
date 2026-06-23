@@ -62,8 +62,17 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Crons Vercel (no user session) : sécurisés par CRON_SECRET dans la route
-  if (pathname === "/api/send-reminders" || pathname === "/api/weekly-report") {
+  // Crons Vercel (no user session) : sécurisés par CRON_SECRET dans la route.
+  // Doivent contourner l'auth, sinon le middleware les redirige vers /login
+  // (le cron envoie le Bearer mais aucun cookie de session) et la route n'est
+  // jamais atteinte.
+  if (
+    pathname === "/api/send-reminders" ||
+    pathname === "/api/weekly-report" ||
+    pathname === "/api/reactivation" ||
+    pathname === "/api/sync/brokers" ||
+    pathname === "/api/economic-calendar/sync"
+  ) {
     return NextResponse.next();
   }
 
