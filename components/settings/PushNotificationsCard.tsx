@@ -4,8 +4,8 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
 
-type PrefKey = "push_notif_session" | "push_notif_weekly" | "push_notif_alerts";
-const PREF_KEYS: PrefKey[] = ["push_notif_session", "push_notif_weekly", "push_notif_alerts"];
+type PrefKey = "push_notif_session" | "push_notif_weekly" | "push_notif_alerts" | "push_notif_news";
+const PREF_KEYS: PrefKey[] = ["push_notif_session", "push_notif_weekly", "push_notif_alerts", "push_notif_news"];
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -26,6 +26,7 @@ export default function PushNotificationsCard() {
     push_notif_session: true,
     push_notif_weekly: true,
     push_notif_alerts: true,
+    push_notif_news: true,
   });
   const supabase = createClient();
 
@@ -38,7 +39,7 @@ export default function PushNotificationsCard() {
       // Lecture défensive : si les colonnes n'existent pas encore, on garde les défauts (opt-in).
       const { data, error: prefErr } = await supabase
         .from("profiles")
-        .select("push_notif_session, push_notif_weekly, push_notif_alerts")
+        .select("push_notif_session, push_notif_weekly, push_notif_alerts, push_notif_news")
         .eq("id", user.id)
         .maybeSingle();
       if (!prefErr && data) {
@@ -46,6 +47,7 @@ export default function PushNotificationsCard() {
           push_notif_session: (data as Record<PrefKey, boolean>).push_notif_session !== false,
           push_notif_weekly: (data as Record<PrefKey, boolean>).push_notif_weekly !== false,
           push_notif_alerts: (data as Record<PrefKey, boolean>).push_notif_alerts !== false,
+          push_notif_news: (data as Record<PrefKey, boolean>).push_notif_news !== false,
         });
       }
     })();
