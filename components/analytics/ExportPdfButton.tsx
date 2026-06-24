@@ -1,6 +1,7 @@
 "use client";
 
 import UpgradeBanner from "@/components/UpgradeBanner";
+import { Pdf, C, money, signedMoney } from "@/lib/pdf/kit";
 import { Button } from "@/components/ui/Button";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
@@ -116,194 +117,103 @@ export default function ExportPdfButton() {
       // Generate PDF
       const { jsPDF } = await import("jspdf");
       const doc = new jsPDF({ unit: "mm", format: "a4" });
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const margin = 15;
-      let y = margin;
+      const pdf = new Pdf(doc);
 
-      // Header
-      doc.setFillColor(37, 99, 235);
-      doc.rect(0, 0, pageWidth, 30, "F");
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(20);
-      doc.setFont("helvetica", "bold");
-      doc.text("TradeDiscipline", margin, 15);
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "normal");
       const monthLabel = now.toLocaleDateString(pdfLocale, { month: "long", year: "numeric" });
-      doc.text(`${t("pdf_monthly_report")} - ${monthLabel}`, margin, 23);
-      y = 40;
+      const monthCap = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
+      const contTitle = `${t("pdf_monthly_report")} · ${monthCap}`;
 
-      // Section 1: Summary
-      doc.setTextColor(30, 30, 30);
-      doc.setFontSize(14);
-      doc.setFont("helvetica", "bold");
-      doc.text(t("pdf_summary"), margin, y);
-      y += 7;
-      doc.setDrawColor(200, 200, 200);
-      doc.line(margin, y, pageWidth - margin, y);
-      y += 6;
-
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      const summaryRows = [
-        [`Total trades:`, `${monthTrades.length}`],
-        [`Winrate:`, `${winrate.toFixed(1)}%`],
-        [`P&L total:`, `${totalPnl >= 0 ? "+" : ""}${totalPnl.toFixed(2)} EUR`],
-        [t("pdf_best_trade"), `+${best.toFixed(2)} EUR`],
-        [t("pdf_worst_trade"), `${worst.toFixed(2)} EUR`],
-        [t("pdf_avg_discipline"), disciplineScore !== null ? `${disciplineScore}/100` : "N/A"],
-      ];
-      summaryRows.forEach(([label, value]) => {
-        doc.setFont("helvetica", "normal");
-        doc.text(label, margin, y);
-        doc.setFont("helvetica", "bold");
-        doc.text(value, margin + 60, y);
-        y += 6;
+      pdf.header({
+        kicker: t("pdf_monthly_report"),
+        title: monthCap,
+        subtitle: now.toLocaleDateString(pdfLocale),
       });
-      y += 6;
 
-      // Section 2: Equity curve (simple ASCII-like chart using lines)
-      doc.setFontSize(14);
-      doc.setFont("helvetica", "bold");
-      doc.text("Equity Curve", margin, y);
-      y += 7;
-      doc.line(margin, y, pageWidth - margin, y);
-      y += 5;
+      // ── Résumé ──
+      pdf.section(t("pdf_summary"));
+      pdf.statGrid([
+        { label: "Trades", value: String(monthTrades.length) },
+        { label: "Winrate", value: `${winrate.toFixed(1)}%`, color: winrate >= 50 ? C.green : C.amber },
+        { label: "P&L", value: signedMoney(totalPnl), color: totalPnl >= 0 ? C.green : C.red },
+        { label: t("pdf_best_trade"), value: signedMoney(best), color: C.green },
+        { label: t("pdf_worst_trade"), value: signedMoney(worst), color: C.red },
+        {
+          label: t("pdf_avg_discipline"),
+          value: disciplineScore !== null ? `${disciplineScore}/100` : "N/A",
+          color: C.teal,
+        },
+      ]);
 
-      // Simple line chart
+      // ── Equity curve ──
       if (equityData.length > 1) {
-        const chartHeight = 40;
-        const chartWidth = pageWidth - 2 * margin;
-        const minBal = Math.min(0, ...equityData.map((e) => e.balance));
-        const maxBal = Math.max(0, ...equityData.map((e) => e.balance));
-        const range = maxBal - minBal || 1;
-
-        const xScale = chartWidth / (equityData.length - 1);
-
-        // Zero line
-        const zeroY = y + chartHeight - ((0 - minBal) / range) * chartHeight;
-        doc.setDrawColor(220, 220, 220);
-        doc.line(margin, zeroY, pageWidth - margin, zeroY);
-
-        // Line
-        doc.setDrawColor(totalPnl >= 0 ? 34 : 239, totalPnl >= 0 ? 197 : 68, totalPnl >= 0 ? 94 : 68);
-        doc.setLineWidth(0.5);
-        for (let i = 1; i < equityData.length; i++) {
-          const x1 = margin + (i - 1) * xScale;
-          const x2 = margin + i * xScale;
-          const y1 = y + chartHeight - ((equityData[i - 1].balance - minBal) / range) * chartHeight;
-          const y2 = y + chartHeight - ((equityData[i].balance - minBal) / range) * chartHeight;
-          doc.line(x1, y1, x2, y2);
-        }
-        doc.setLineWidth(0.2);
-        y += chartHeight + 10;
-      }
-
-      // Section 3: Performance by pair
-      if (y > 240) { doc.addPage(); y = margin; }
-      doc.setTextColor(30, 30, 30);
-      doc.setFontSize(14);
-      doc.setFont("helvetica", "bold");
-      doc.text(t("analytics_by_pair"), margin, y);
-      y += 7;
-      doc.line(margin, y, pageWidth - margin, y);
-      y += 5;
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "bold");
-      doc.text(t("trades_col_pair"), margin, y);
-      doc.text("Trades", margin + 60, y);
-      doc.text("P&L", margin + 90, y);
-      y += 5;
-      doc.setFont("helvetica", "normal");
-      pairStats.forEach(([pair, stats]) => {
-        if (y > 270) { doc.addPage(); y = margin; }
-        doc.text(pair, margin, y);
-        doc.text(String(stats.count), margin + 60, y);
-        doc.setTextColor(stats.total >= 0 ? 34 : 239, stats.total >= 0 ? 197 : 68, stats.total >= 0 ? 94 : 68);
-        doc.text(`${stats.total >= 0 ? "+" : ""}${stats.total.toFixed(2)} EUR`, margin + 90, y);
-        doc.setTextColor(30, 30, 30);
-        y += 5;
-      });
-      y += 5;
-
-      // Section 4: Performance by day of week
-      if (y > 230) { doc.addPage(); y = margin; }
-      doc.setFontSize(14);
-      doc.setFont("helvetica", "bold");
-      doc.text(t("pdf_perf_by_day"), margin, y);
-      y += 7;
-      doc.line(margin, y, pageWidth - margin, y);
-      y += 5;
-      doc.setFontSize(10);
-      DAYS.forEach((day, i) => {
-        if (byDay[i].count === 0) return;
-        doc.setFont("helvetica", "normal");
-        doc.text(day, margin, y);
-        doc.text(`${byDay[i].count} trades`, margin + 30, y);
-        doc.setTextColor(byDay[i].total >= 0 ? 34 : 239, byDay[i].total >= 0 ? 197 : 68, byDay[i].total >= 0 ? 94 : 68);
-        doc.setFont("helvetica", "bold");
-        doc.text(`${byDay[i].total >= 0 ? "+" : ""}${byDay[i].total.toFixed(2)} EUR`, margin + 70, y);
-        doc.setTextColor(30, 30, 30);
-        y += 5;
-      });
-      y += 5;
-
-      // Section 5: Violations & Recommendations
-      if (violations.length > 0 || recommendations.length > 0) {
-        if (y > 220) { doc.addPage(); y = margin; }
-        doc.setFontSize(14);
-        doc.setFont("helvetica", "bold");
-        doc.text(t("pdf_violations_reco"), margin, y);
-        y += 7;
-        doc.line(margin, y, pageWidth - margin, y);
-        y += 5;
-
-        if (violations.length > 0) {
-          doc.setFontSize(10);
-          doc.setFont("helvetica", "bold");
-          doc.text(t("pdf_main_violations"), margin, y);
-          y += 5;
-          doc.setFont("helvetica", "normal");
-          violations.slice(0, 5).forEach((v) => {
-            if (y > 270) { doc.addPage(); y = margin; }
-            const label = v.pair && v.trade_date ? `${v.pair} (${v.trade_date}): ${v.rule_violated}` : `${v.rule_violated}: ${v.explanation}`;
-            const lines = doc.splitTextToSize(`- ${label}`, pageWidth - 2 * margin);
-            doc.text(lines, margin, y);
-            y += lines.length * 5;
-          });
-          y += 3;
-        }
-
-        if (recommendations.length > 0) {
-          if (y > 250) { doc.addPage(); y = margin; }
-          doc.setFont("helvetica", "bold");
-          doc.text(t("pdf_ai_reco"), margin, y);
-          y += 5;
-          doc.setFont("helvetica", "normal");
-          recommendations.slice(0, 3).forEach((r, i) => {
-            if (y > 270) { doc.addPage(); y = margin; }
-            const lines = doc.splitTextToSize(`${i + 1}. ${r}`, pageWidth - 2 * margin);
-            doc.text(lines, margin, y);
-            y += lines.length * 5 + 1;
-          });
-        }
-      }
-
-      // Footer on every page
-      const pageCount = doc.getNumberOfPages();
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        doc.setFontSize(8);
-        doc.setTextColor(150, 150, 150);
-        doc.setFont("helvetica", "normal");
-        doc.text(
-          "Genere par TradeDiscipline - TradeDiscipline.vercel.app",
-          pageWidth / 2,
-          doc.internal.pageSize.getHeight() - 8,
-          { align: "center" }
+        pdf.section(t("equity_title"));
+        pdf.areaChart(
+          equityData.map((e) => ({ label: e.date, value: e.balance })),
+          { valueFmt: (n) => money(n, 0) },
         );
       }
 
+      // ── Performance par paire ──
+      if (pairStats.length > 0) {
+        pdf.ensure(50, contTitle);
+        pdf.section(t("analytics_by_pair"));
+        const maxAbs = Math.max(...pairStats.map(([, s]) => Math.abs(s.total)), 1);
+        pdf.bars(
+          pairStats.slice(0, 8).map(([pair, s]) => ({
+            label: `${pair}   ·   ${s.count}`,
+            value: signedMoney(s.total),
+            ratio: Math.abs(s.total) / maxAbs,
+            color: s.total >= 0 ? C.green : C.red,
+            valueColor: s.total >= 0 ? C.green : C.red,
+          })),
+        );
+        pdf.y += 4;
+      }
+
+      // ── Performance par jour ──
+      const dayRows = DAYS.map((d, i) => ({ d, ...byDay[i] })).filter((r) => r.count > 0);
+      if (dayRows.length > 0) {
+        pdf.ensure(50, contTitle);
+        pdf.section(t("pdf_perf_by_day"));
+        const maxDay = Math.max(...dayRows.map((r) => Math.abs(r.total)), 1);
+        pdf.bars(
+          dayRows.map((r) => ({
+            label: `${r.d}   ·   ${r.count}`,
+            value: signedMoney(r.total),
+            ratio: Math.abs(r.total) / maxDay,
+            color: r.total >= 0 ? C.green : C.red,
+            valueColor: r.total >= 0 ? C.green : C.red,
+          })),
+        );
+        pdf.y += 4;
+      }
+
+      // ── Infractions ──
+      if (violations.length > 0) {
+        pdf.ensure(40, contTitle);
+        pdf.section(t("pdf_main_violations"));
+        violations.slice(0, 5).forEach((v) => {
+          pdf.ensure(16, contTitle);
+          const label =
+            v.pair && v.trade_date
+              ? `${v.pair} (${v.trade_date}) — ${v.rule_violated}`
+              : `${v.rule_violated}${v.explanation ? `: ${v.explanation}` : ""}`;
+          pdf.bullet(label, { color: C.red });
+        });
+        pdf.y += 3;
+      }
+
+      // ── Recommandations IA ──
+      if (recommendations.length > 0) {
+        pdf.ensure(40, contTitle);
+        pdf.section(t("pdf_ai_reco"));
+        recommendations.slice(0, 3).forEach((r, i) => {
+          pdf.ensure(18, contTitle);
+          pdf.bullet(r, { index: i + 1, color: C.teal });
+        });
+      }
+
+      pdf.footer(`${t("pdf_monthly_report")} · ${now.toLocaleDateString(pdfLocale)}`);
       doc.save(`TradeDiscipline-rapport-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}.pdf`);
     } catch (err) {
       console.error("PDF generation error:", err);

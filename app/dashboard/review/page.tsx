@@ -2,6 +2,7 @@
 
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
+import { Pdf, C, type RGB } from "@/lib/pdf/kit";
 import { ArrowDownRight, ArrowUpRight, Minus, Sparkles, ThumbsUp, Target, Compass, ChevronLeft, ChevronRight, FileDown } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -116,90 +117,101 @@ export default function MonthlyReviewPage() {
       const locale = ({ fr: "fr-FR", en: "en-US", de: "de-DE", es: "es-ES" } as const)[lang as "fr" | "en" | "de" | "es"] ?? "en-US";
       const { jsPDF } = await import("jspdf");
       const doc = new jsPDF({ unit: "mm", format: "a4" });
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const margin = 15;
-      let y = margin;
+      const pdf = new Pdf(doc);
 
-      const delta = (n?: number | null) => (typeof n === "number" && n !== 0 ? ` (${n > 0 ? "+" : ""}${n})` : "");
+      const titleCap = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
+      const contTitle = `${t("review_title")} · ${titleCap}`;
 
-      // Header
-      doc.setFillColor(37, 99, 235);
-      doc.rect(0, 0, pageWidth, 30, "F");
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(20); doc.setFont("helvetica", "bold");
-      doc.text("TradeDiscipline", margin, 15);
-      doc.setFontSize(11); doc.setFont("helvetica", "normal");
-      doc.text(`${t("review_title")} - ${monthLabel}`, margin, 23);
-      y = 40;
+      // Delta -> sous-texte de carte + couleur
+      const deltaCard = (n?: number | null, suffix = "") => {
+        if (typeof n !== "number" || n === 0) return { sub: undefined, subColor: undefined };
+        return {
+          sub: `${n > 0 ? "+" : ""}${n}${suffix}`,
+          subColor: n > 0 ? C.green : (C.red as RGB),
+        };
+      };
+      const scoreColor = (s: number): RGB => (s >= 70 ? C.green : s >= 50 ? C.amber : C.red);
 
-      // KPIs
-      doc.setTextColor(30, 30, 30);
-      doc.setFontSize(14); doc.setFont("helvetica", "bold");
-      doc.text(t("review_title"), margin, y); y += 7;
-      doc.setDrawColor(200, 200, 200); doc.line(margin, y, pageWidth - margin, y); y += 6;
-      doc.setFontSize(10);
-      const rows: [string, string][] = [
-        [t("review_kpi_trades"), `${stats.trades}${delta(deltas?.trades)}`],
-        [t("review_kpi_days"), `${stats.tradingDays}${delta(deltas?.tradingDays)}`],
-        [t("review_kpi_winrate"), `${stats.winRate}%${delta(deltas?.winRate)}`],
-        [t("review_kpi_sessions"), `${stats.sessions}${delta(deltas?.sessions)}`],
-        [t("review_kpi_score"), stats.avgDisciplineScore != null ? `${stats.avgDisciplineScore}/100${delta(deltas?.avgDisciplineScore)}` : "N/A"],
-        [t("review_kpi_prep"), extras?.prepRate != null ? `${extras.prepRate}%` : "N/A"],
-      ];
-      rows.forEach(([l, v]) => {
-        doc.setFont("helvetica", "normal"); doc.text(l, margin, y);
-        doc.setFont("helvetica", "bold"); doc.text(v, margin + 70, y); y += 6;
+      pdf.header({
+        kicker: t("review_title"),
+        title: titleCap,
+        subtitle: new Date().toLocaleDateString(locale),
       });
-      y += 4;
 
-      // Records
+      // ── KPIs ──
+      pdf.section(t("review_title"));
+      pdf.statGrid([
+        { label: t("review_kpi_trades"), value: `${stats.trades}`, ...deltaCard(deltas?.trades) },
+        { label: t("review_kpi_days"), value: `${stats.tradingDays}`, ...deltaCard(deltas?.tradingDays) },
+        { label: t("review_kpi_winrate"), value: `${stats.winRate}%`, color: stats.winRate >= 50 ? C.green : C.amber, ...deltaCard(deltas?.winRate, " pts") },
+        { label: t("review_kpi_sessions"), value: `${stats.sessions}`, ...deltaCard(deltas?.sessions) },
+        { label: t("review_kpi_score"), value: stats.avgDisciplineScore != null ? `${stats.avgDisciplineScore}/100` : "—", color: stats.avgDisciplineScore != null ? scoreColor(stats.avgDisciplineScore) : C.faint, ...deltaCard(deltas?.avgDisciplineScore, " pts") },
+        { label: t("review_kpi_prep"), value: extras?.prepRate != null ? `${extras.prepRate}%` : "—", color: C.teal },
+      ]);
+
+      // ── Equity du mois ──
+      if (extras?.equity && extras.equity.length > 1) {
+        pdf.section(t("equity_title"));
+        pdf.areaChart(
+          extras.equity.map((v) => ({ label: "", value: v })),
+          { valueFmt: (n) => fmtMoney(n) },
+        );
+      }
+
+      // ── Records ──
       if (records) {
-        doc.setFontSize(14); doc.setFont("helvetica", "bold"); doc.text(t("review_records_title"), margin, y); y += 7;
-        doc.line(margin, y, pageWidth - margin, y); y += 6; doc.setFontSize(10);
-        const recRows: [string, string][] = [
-          [t("review_green_days"), `${records.greenDays}`],
-          [t("review_red_days"), `${records.redDays}`],
-          [t("review_disciplined_streak"), `${records.disciplinedStreak}`],
+        pdf.ensure(40, contTitle);
+        pdf.section(t("review_records_title"));
+        const recCards: { label: string; value: string; color?: RGB; sub?: string }[] = [
+          { label: t("review_green_days"), value: `${records.greenDays}`, color: C.green },
+          { label: t("review_red_days"), value: `${records.redDays}`, color: C.red },
+          { label: t("review_disciplined_streak"), value: `${records.disciplinedStreak}`, color: C.teal },
         ];
-        if (records.bestDisciplineDay) recRows.push([t("review_best_discipline"), `${records.bestDisciplineDay.score}/100 (${fmtDate(records.bestDisciplineDay.date, locale)})`]);
-        recRows.forEach(([l, v]) => { doc.setFont("helvetica", "normal"); doc.text(l, margin, y); doc.setFont("helvetica", "bold"); doc.text(v, margin + 70, y); y += 6; });
-        y += 4;
+        if (records.bestDisciplineDay) {
+          recCards.push({
+            label: t("review_best_discipline"),
+            value: `${records.bestDisciplineDay.score}/100`,
+            color: C.violet,
+            sub: fmtDate(records.bestDisciplineDay.date, locale),
+          });
+        }
+        pdf.statGrid(recCards, { cols: recCards.length >= 4 ? 4 : 3, height: 22 });
       }
 
-      // Tendance 6 mois
+      // ── Tendance 6 mois ──
       if (trend.some((p) => p.score != null)) {
-        doc.setFontSize(14); doc.setFont("helvetica", "bold"); doc.text(t("review_trend_title"), margin, y); y += 7;
-        doc.line(margin, y, pageWidth - margin, y); y += 6; doc.setFontSize(10); doc.setFont("helvetica", "normal");
-        trend.forEach((p) => { doc.text(`${p.label}`, margin, y); doc.setFont("helvetica", "bold"); doc.text(p.score != null ? `${p.score}/100` : "—", margin + 40, y); doc.setFont("helvetica", "normal"); y += 5; });
-        y += 5;
+        pdf.ensure(40, contTitle);
+        pdf.section(t("review_trend_title"));
+        pdf.bars(
+          trend.map((p) => ({
+            label: p.label,
+            value: p.score != null ? `${p.score}/100` : "—",
+            ratio: p.score != null ? p.score / 100 : 0,
+            color: p.score != null ? scoreColor(p.score) : C.faint,
+          })),
+          { rowGap: 10 },
+        );
+        pdf.y += 4;
       }
 
-      // Note du coach
+      // ── Note du coach ──
       if (review) {
-        if (y > 230) { doc.addPage(); y = margin; }
-        doc.setFontSize(14); doc.setFont("helvetica", "bold"); doc.text(t("review_ai_title"), margin, y); y += 7;
-        doc.line(margin, y, pageWidth - margin, y); y += 6; doc.setFontSize(10);
+        pdf.ensure(50, contTitle);
+        pdf.section(t("review_ai_title"));
+        pdf.paragraph(review.headline, { accent: true });
+        pdf.y += 1;
         const blocks: [string, string][] = [
-          ["", review.headline],
           [t("review_strength"), review.strength],
           [t("review_improvement"), review.improvement],
           [t("review_focus"), review.focus],
         ];
         blocks.forEach(([label, body]) => {
-          if (y > 270) { doc.addPage(); y = margin; }
-          if (label) { doc.setFont("helvetica", "bold"); doc.text(label, margin, y); y += 5; }
-          doc.setFont("helvetica", "normal");
-          const lines = doc.splitTextToSize(body, pageWidth - 2 * margin);
-          doc.text(lines, margin, y); y += lines.length * 5 + 3;
+          pdf.ensure(24, contTitle);
+          pdf.paragraph(body, { label });
         });
       }
 
-      // Footer
-      const pageCount = doc.getNumberOfPages();
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i); doc.setFontSize(8); doc.setTextColor(150, 150, 150); doc.setFont("helvetica", "normal");
-        doc.text("TradeDiscipline - tradediscipline.app", pageWidth / 2, doc.internal.pageSize.getHeight() - 8, { align: "center" });
-      }
+      pdf.footer(`${t("review_title")} · ${new Date().toLocaleDateString(locale)}`);
       doc.save(`TradeDiscipline-bilan-${month.key}.pdf`);
     } catch (err) {
       console.error("[Review PDF] error:", err);
