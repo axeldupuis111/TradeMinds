@@ -9,11 +9,29 @@ import { createClient } from "@/lib/supabase/client";
 import { FileDown } from "lucide-react";
 import { useState } from "react";
 
+interface ExportTrade {
+  open_time: string;
+  pair: string;
+  direction?: string;
+  pnl: number;
+  commission: number | null;
+  swap: number | null;
+}
+
+interface ExportPdfButtonProps {
+  /** Trades déjà filtrés par la page (période + compte + filtres avancés). */
+  trades: ExportTrade[];
+  /** Libellé lisible de la période sélectionnée (ex. "30 derniers jours"). */
+  periodLabel: string;
+  /** Libellé lisible du compte sélectionné (ex. "Tous les comptes"). */
+  accountLabel: string;
+}
+
 function netPnl(t: { pnl: number; commission: number | null; swap: number | null }) {
   return t.pnl + (t.commission || 0) + (t.swap || 0);
 }
 
-export default function ExportPdfButton() {
+export default function ExportPdfButton({ trades, periodLabel, accountLabel }: ExportPdfButtonProps) {
   const { t, lang } = useLanguage();
   const pdfLocale = ({ fr: "fr-FR", en: "en-US", de: "de-DE", es: "es-ES" } as const)[lang] ?? "en-US";
   const { plan, loading: planLoading } = usePlan();
@@ -29,38 +47,29 @@ export default function ExportPdfButton() {
       return;
     }
 
+    // Données = exactement la sélection en cours de la page (période + compte).
+    const monthTrades = (trades || []).filter((tr) => tr.open_time).slice().sort((a, b) => a.open_time.localeCompare(b.open_time));
+    if (monthTrades.length === 0) {
+      alert(t("pdf_no_data"));
+      return;
+    }
+
     setGenerating(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error(t("analysis_not_connected"));
-
-      // Load data for past month
       const now = new Date();
-      const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
 
-      const [{ data: trades }, { data: lastReview }] = await Promise.all([
-        supabase
-          .from("trades")
-          .select("open_time, pair, direction, pnl, commission, swap")
-          .eq("user_id", user.id)
-          .gte("open_time", firstOfMonth)
-          .lte("open_time", endOfMonth)
-          .order("open_time", { ascending: true }),
-        supabase
+      // Dernier bilan (infractions / recommandations) — optionnel, non bloquant.
+      const { data: { user } } = await supabase.auth.getUser();
+      let lastReview: { discipline_score: number | null; analysis: unknown } | null = null;
+      if (user) {
+        const { data } = await supabase
           .from("session_reviews")
           .select("discipline_score, analysis")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false })
           .limit(1)
-          .single(),
-      ]);
-
-      const monthTrades = trades || [];
-      if (monthTrades.length === 0) {
-        alert(t("pdf_no_data"));
-        setGenerating(false);
-        return;
+          .single();
+        lastReview = data ?? null;
       }
 
       // Compute stats
@@ -119,14 +128,12 @@ export default function ExportPdfButton() {
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const pdf = new Pdf(doc);
 
-      const monthLabel = now.toLocaleDateString(pdfLocale, { month: "long", year: "numeric" });
-      const monthCap = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
-      const contTitle = `${t("pdf_monthly_report")} · ${monthCap}`;
+      const contTitle = `${t("analytics_title")} · ${periodLabel}`;
 
       pdf.header({
-        kicker: t("pdf_monthly_report"),
-        title: monthCap,
-        subtitle: now.toLocaleDateString(pdfLocale),
+        kicker: t("analytics_title"),
+        title: periodLabel,
+        subtitle: `${accountLabel} · ${now.toLocaleDateString(pdfLocale)}`,
       });
 
       // ── Résumé ──
@@ -213,8 +220,16 @@ export default function ExportPdfButton() {
         });
       }
 
-      pdf.footer(`${t("pdf_monthly_report")} · ${now.toLocaleDateString(pdfLocale)}`);
-      doc.save(`TradeDiscipline-rapport-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}.pdf`);
+      pdf.footer(`${t("analytics_title")} · ${periodLabel} · ${accountLabel}`);
+      // NFD sépare les accents en marques combinantes, retirées ensuite comme
+      // tout caractère non alphanumérique.
+      const slug = (s: string) =>
+        s
+          .normalize("NFD")
+          .replace(/[^a-zA-Z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "")
+          .toLowerCase() || "rapport";
+      doc.save(`TradeDiscipline-analytics-${slug(periodLabel)}-${slug(accountLabel)}-${now.toISOString().split("T")[0]}.pdf`);
     } catch (err) {
       console.error("PDF generation error:", err);
       alert(t("pdf_error"));

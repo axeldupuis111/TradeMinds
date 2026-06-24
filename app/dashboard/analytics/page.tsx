@@ -286,6 +286,27 @@ export default function AnalyticsPage() {
     return result;
   }, [trades, period, accountFilter, direction, customDateFrom, customDateTo, selectedPairs, pnlMin, pnlMax, winLossFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Libellés lisibles pour l'export PDF (période + compte sélectionnés) ───
+  const periodLabel = useMemo(() => {
+    if (period === "7d") return t("analytics_period_7d");
+    if (period === "30d") return t("analytics_period_30d");
+    if (period === "90d") return t("analytics_period_90d");
+    if (period === "custom") {
+      const fmt = (d: string) => new Date(d).toLocaleDateString(dateLocale, { day: "2-digit", month: "2-digit", year: "2-digit" });
+      if (customDateFrom && customDateTo) return `${fmt(customDateFrom)} – ${fmt(customDateTo)}`;
+      if (customDateFrom) return `≥ ${fmt(customDateFrom)}`;
+      if (customDateTo) return `≤ ${fmt(customDateTo)}`;
+    }
+    return t("analytics_all");
+  }, [period, customDateFrom, customDateTo, t, dateLocale]);
+
+  const accountLabel = useMemo(() => {
+    if (accountFilter === "all") return t("analytics_all_accounts");
+    const a = accounts.find((x) => x.id === accountFilter);
+    if (!a) return t("analytics_all_accounts");
+    return `${a.firm} — ${a.account_number || `${a.account_size.toLocaleString()}€`}`;
+  }, [accountFilter, accounts, t]);
+
   // ── Previous period (for KPI deltas) ─────────────────────────────────────
   const prevFiltered = useMemo(() => {
     if (period === "all" || period === "custom") return [];
@@ -756,7 +777,7 @@ export default function AnalyticsPage() {
           {hasAdvancedFilters && <span className="w-1.5 h-1.5 rounded-full bg-accent" />}
         </button>
 
-        <ExportPdfButton />
+        <ExportPdfButton trades={filtered} periodLabel={periodLabel} accountLabel={accountLabel} />
       </div>
 
       {/* ── Advanced Filters Panel ────────────────────────────────────────── */}
