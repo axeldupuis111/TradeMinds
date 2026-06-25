@@ -24,6 +24,7 @@ const PAGE_KEYS: Record<string, string> = {
   "/dashboard/challenge":  "header_page_challenge",
   "/dashboard/analysis":   "header_page_analysis",
   "/dashboard/analytics":  "header_page_analytics",
+  "/dashboard/calendar":   "cal_title",
   "/dashboard/goals":      "sidebar_goals",
   "/dashboard/review":     "sidebar_review",
   "/dashboard/leaderboard": "sidebar_leaderboard",
