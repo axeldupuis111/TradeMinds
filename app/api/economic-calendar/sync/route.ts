@@ -16,6 +16,27 @@ import { parseFeed, type RawFeedRow } from "@/lib/economic-calendar";
  */
 
 const DEFAULT_FEED_URL = "https://nfs.faireconomy.media/ff_calendar_thisweek.json";
+const NEXT_WEEK_FEED_URL = "https://nfs.faireconomy.media/ff_calendar_nextweek.json";
+
+/** Fetch + JSON-parse one feed. Returns null (not throw) so one feed failing
+ *  never sinks the whole sync — we want this-week even if next-week 404s. */
+async function fetchFeed(feedUrl: string): Promise<RawFeedRow[] | null> {
+  try {
+    const res = await fetch(feedUrl, {
+      headers: { "User-Agent": "TradeDiscipline/1.0 (+https://tradediscipline.app)" },
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      console.error(`Economic calendar feed ${feedUrl} responded ${res.status}`);
+      return null;
+    }
+    const json = (await res.json()) as unknown;
+    return Array.isArray(json) ? (json as RawFeedRow[]) : null;
+  } catch (err) {
+    console.error(`Economic calendar fetch failed (${feedUrl}):`, err);
+    return null;
+  }
+}
 
 async function handle(req: Request) {
   const authHeader = req.headers.get("authorization");
@@ -25,26 +46,21 @@ async function handle(req: Request) {
 
   const url = new URL(req.url);
   const dryRun = url.searchParams.get("dryRun") === "1";
-  const feedUrl = process.env.ECONOMIC_CALENDAR_URL || DEFAULT_FEED_URL;
 
-  let rows: RawFeedRow[];
-  try {
-    const res = await fetch(feedUrl, {
-      headers: { "User-Agent": "TradeDiscipline/1.0 (+https://tradediscipline.app)" },
-      cache: "no-store",
-    });
-    if (!res.ok) {
-      return NextResponse.json({ error: `Feed responded ${res.status}` }, { status: 502 });
-    }
-    rows = (await res.json()) as RawFeedRow[];
-    if (!Array.isArray(rows)) {
-      return NextResponse.json({ error: "Unexpected feed shape" }, { status: 502 });
-    }
-  } catch (err) {
-    console.error("Economic calendar fetch failed:", err);
+  // This week is the source of truth; next week extends the forward horizon
+  // for the calendar page. A custom override replaces this-week only.
+  const thisWeekUrl = process.env.ECONOMIC_CALENDAR_URL || DEFAULT_FEED_URL;
+  const [thisWeek, nextWeek] = await Promise.all([
+    fetchFeed(thisWeekUrl),
+    fetchFeed(NEXT_WEEK_FEED_URL),
+  ]);
+
+  // Bail only if we got nothing at all — a missing next-week is tolerated.
+  if (thisWeek === null && nextWeek === null) {
     return NextResponse.json({ error: "Feed fetch failed" }, { status: 502 });
   }
 
+  const rows: RawFeedRow[] = [...(thisWeek ?? []), ...(nextWeek ?? [])];
   const events = parseFeed(rows);
 
   if (dryRun) {
