@@ -15,6 +15,7 @@ import { createClient } from "@/lib/supabase/client";
 import { LANGUAGES, type Lang } from "@/lib/translations";
 import {
   BarChart3,
+  CalendarClock,
   Globe,
   type LucideIcon,
   LayoutDashboard,
@@ -114,6 +115,7 @@ export default function CommandPalette() {
       { id: "nav-strategy",  label: t("sidebar_strategy"),  group: "nav", icon: Target,          keywords: "strategie strategy plan regles rules", action: go("/dashboard/strategy") },
       { id: "nav-analysis",  label: t("sidebar_analysis"),  group: "nav", icon: Sparkles,        keywords: "analyse ia ai coach analysis", action: go("/dashboard/analysis") },
       { id: "nav-analytics", label: t("sidebar_analytics"), group: "nav", icon: BarChart3,       keywords: "analytics stats statistiques graphiques charts", action: go("/dashboard/analytics") },
+      { id: "nav-calendar",  label: t("sidebar_calendar"),  group: "nav", icon: CalendarClock,   keywords: "calendrier calendar economique economic news annonces events", action: go("/dashboard/calendar") },
       { id: "nav-settings",  label: t("sidebar_settings"),  group: "nav", icon: Settings,        keywords: "settings reglages parametres profil", action: go("/dashboard/settings") },
       { id: "nav-upgrade",   label: t("sidebar_upgrade"),   group: "nav", icon: Zap,             keywords: "upgrade premium plus plan abonnement subscription", action: go("/dashboard/upgrade") },
     ];
