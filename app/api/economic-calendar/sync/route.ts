@@ -99,9 +99,10 @@ async function handle(req: Request) {
     return NextResponse.json({ error: "Upsert failed", detail: error.message }, { status: 500 });
   }
 
-  // Housekeeping: drop events older than 30 days to keep the table lean.
+  // Housekeeping: keep ~1 year of history so the calendar's date picker can
+  // surface past announcements (the table stays small — a few thousand rows).
   const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - 30);
+  cutoff.setDate(cutoff.getDate() - 365);
   await supabase.from("economic_events").delete().lt("event_time", cutoff.toISOString());
 
   return NextResponse.json({ upserted: events.length });
