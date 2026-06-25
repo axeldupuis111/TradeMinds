@@ -20,12 +20,27 @@ import {
 } from "@/lib/economic-calendar";
 import { lookupGlossary, type GlossaryEntry, type GlossaryLang } from "@/lib/economic-glossary";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { CalendarClock, ChevronDown, Filter, Sparkles, X } from "lucide-react";
+import { CalendarClock, CalendarDays, ChevronDown, Filter, Sparkles, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 type EventRow = EconomicEvent & { id: string };
 
 const FILTERABLE_IMPACTS: Impact[] = ["high", "medium", "low"];
+
+// ─── Date range (investing.com-style selector) ──────────────────────────────
+type DateMode = "upcoming" | "today" | "yesterday" | "last7" | "custom";
+
+const DATE_PRESETS: { mode: DateMode; key: string }[] = [
+  { mode: "upcoming", key: "cal_date_upcoming" },
+  { mode: "today", key: "cal_date_today" },
+  { mode: "yesterday", key: "cal_date_yesterday" },
+  { mode: "last7", key: "cal_date_last7" },
+];
+
+const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const parseYmd = (s: string) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, (m || 1) - 1, d || 1); };
+const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+const endOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
 
 /** Yellow / orange / red styling by importance (mirrors EconomicCalendarCard). */
 function impactStyle(impact: Impact): { row: string; badge: string } {
@@ -243,50 +258,74 @@ export default function CalendarPage() {
   const [selected, setSelected] = useState<EventRow | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
+  // Date range (investing.com-style) — pick a day/range, including the past.
+  const [dateMode, setDateMode] = useState<DateMode>("upcoming");
+  const [customFrom, setCustomFrom] = useState<string>(ymd(new Date()));
+  const [customTo, setCustomTo] = useState<string>(ymd(new Date()));
+
   // Persisted filters — remembered across reloads so the trader sets them once.
   const [currencyFilter, setCurrencyFilter] = usePersistentState<string[]>("cal_filter_currencies", []);
   const [impactFilter, setImpactFilter] = usePersistentState<Impact[]>("cal_filter_impacts", []);
   const [myCurrenciesOnly, setMyCurrenciesOnly] = usePersistentState<boolean>("cal_filter_mine", false);
 
+  // Resolve the active [from, to] window from the selected mode. Memoized so the
+  // fetch effect below only re-runs when the range actually changes.
+  const { from, to } = useMemo(() => {
+    const today = new Date();
+    if (dateMode === "today") return { from: startOfDay(today), to: endOfDay(today) };
+    if (dateMode === "yesterday") {
+      const y = new Date(today); y.setDate(y.getDate() - 1);
+      return { from: startOfDay(y), to: endOfDay(y) };
+    }
+    if (dateMode === "last7") {
+      const s = new Date(today); s.setDate(s.getDate() - 7);
+      return { from: startOfDay(s), to: endOfDay(today) };
+    }
+    if (dateMode === "custom") {
+      const f = startOfDay(parseYmd(customFrom || ymd(today)));
+      const tt = endOfDay(parseYmd(customTo || customFrom || ymd(today)));
+      return f <= tt ? { from: f, to: tt } : { from: startOfDay(parseYmd(customTo)), to: endOfDay(parseYmd(customFrom)) };
+    }
+    const end = startOfDay(today); end.setDate(end.getDate() + 14); end.setHours(23, 59, 59, 999);
+    return { from: startOfDay(today), to: end };
+  }, [dateMode, customFrom, customTo]);
+
+  // Trader's currencies (once) — powers the "my currencies" toggle.
   useEffect(() => {
     let alive = true;
-    async function load() {
+    (async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { if (alive) setLoading(false); return; }
-
-      // Window: start of today → +14 days, all currencies.
-      const now = new Date();
-      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-      const end = new Date(start);
-      end.setDate(end.getDate() + 14);
-
-      const since = new Date();
-      since.setDate(since.getDate() - 120);
-
-      const [{ data: rows }, { data: trades }] = await Promise.all([
-        supabase
-          .from("economic_events")
-          .select("id, event_time, currency, title, impact, forecast, previous, actual")
-          .gte("event_time", start.toISOString())
-          .lte("event_time", end.toISOString())
-          .order("event_time", { ascending: true }),
-        supabase
-          .from("trades")
-          .select("pair")
-          .eq("user_id", user.id)
-          .gte("open_time", since.toISOString())
-          .limit(500),
-      ]);
-
+      if (!user) return;
+      const since = new Date(); since.setDate(since.getDate() - 120);
+      const { data: trades } = await supabase
+        .from("trades").select("pair").eq("user_id", user.id)
+        .gte("open_time", since.toISOString()).limit(500);
       if (!alive) return;
-      setEvents((rows as EventRow[] | null) ?? []);
       const pairs = Array.from(new Set((trades ?? []).map((r) => (r as { pair: string }).pair).filter(Boolean)));
       setUserCurrencies(currenciesForPairs(pairs));
-      setLoading(false);
-    }
-    load();
+    })();
     return () => { alive = false; };
-  }, [lang]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Events for the active window — refetched whenever the date range changes.
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { if (alive) { setEvents([]); setLoading(false); } return; }
+      const { data: rows } = await supabase
+        .from("economic_events")
+        .select("id, event_time, currency, title, impact, forecast, previous, actual")
+        .gte("event_time", from.toISOString())
+        .lte("event_time", to.toISOString())
+        .order("event_time", { ascending: true });
+      if (!alive) return;
+      setEvents((rows as EventRow[] | null) ?? []);
+      setLoading(false);
+    })();
+    return () => { alive = false; };
+  }, [from, to]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Currencies present in the loaded window, for the filter chips.
   const availableCurrencies = useMemo(
@@ -323,14 +362,10 @@ export default function CalendarPage() {
   const toggleCurrency = (c: string) =>
     setCurrencyFilter((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
 
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <div className="skeleton h-8 w-56 rounded-lg" />
-        {Array.from({ length: 5 }).map((_, i) => <div key={i} className="skeleton h-14 rounded-xl" />)}
-      </div>
-    );
-  }
+  const datePill = (active: boolean) =>
+    `px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${active ? "bg-accent/20 text-accent" : "text-foreground-muted hover:text-foreground"}`;
+  const dateInputCls =
+    "px-2.5 py-1.5 bg-card border border-border rounded-lg text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent";
 
   return (
     <div>
@@ -343,8 +378,33 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* Filter bar — sticky */}
-      <div className="sticky top-0 z-30 -mx-6 px-6 py-3 mb-6 flex flex-wrap gap-2 items-center border-b border-border bg-background/95 backdrop-blur-md">
+      {/* Filter bar — sticky (date navigation + filters) */}
+      <div className="sticky top-0 z-30 -mx-6 px-6 py-3 mb-6 space-y-2.5 border-b border-border bg-background/95 backdrop-blur-md">
+
+      {/* Date navigation — investing.com-style */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <CalendarDays className="w-4 h-4 text-foreground-muted shrink-0" strokeWidth={1.75} />
+        <div className="flex items-center gap-0.5 bg-card/60 rounded-lg p-0.5 border border-border/50">
+          {DATE_PRESETS.map((p) => (
+            <button key={p.mode} onClick={() => setDateMode(p.mode)} className={datePill(dateMode === p.mode)}>
+              {t(p.key)}
+            </button>
+          ))}
+          <button onClick={() => setDateMode("custom")} className={datePill(dateMode === "custom")}>
+            {t("cal_date_custom")}
+          </button>
+        </div>
+        {dateMode === "custom" && (
+          <div className="flex items-center gap-1.5">
+            <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className={dateInputCls} />
+            <span className="text-foreground-muted text-xs">→</span>
+            <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className={dateInputCls} />
+          </div>
+        )}
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-2 items-center">
         {/* Impact chips */}
         <div className="flex items-center gap-0.5 bg-card/60 rounded-lg p-0.5 border border-border/50">
           {FILTERABLE_IMPACTS.map((i) => {
@@ -393,14 +453,20 @@ export default function CalendarPage() {
         )}
       </div>
 
+      </div>
+
       {/* List */}
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="space-y-1.5">
+          {Array.from({ length: 6 }).map((_, i) => <div key={i} className="skeleton h-12 rounded-lg" />)}
+        </div>
+      ) : filtered.length === 0 ? (
         <p className="text-foreground-muted py-10 text-center">{t("cal_empty")}</p>
       ) : (
         <div className="space-y-6">
           {groups.map((g) => (
             <section key={g.key}>
-              <h2 className="sticky top-[57px] z-20 -mx-6 px-6 py-1.5 text-xs font-bold uppercase tracking-wider text-foreground-muted bg-background/95 backdrop-blur-md">
+              <h2 className="-mx-6 px-6 py-1.5 text-xs font-bold uppercase tracking-wider text-foreground-muted">
                 {g.date.toLocaleDateString(dateLocale, { weekday: "long", day: "2-digit", month: "long" })}
               </h2>
               <ul className="space-y-1.5 mt-2">
