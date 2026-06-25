@@ -56,10 +56,11 @@ function StaggerReveal({
       {items.map((child, i) => (
         <motion.div
           key={i}
-          initial={prefersReduced ? false : { opacity: 0, y: 22, scale: 0.97 }}
-          whileInView={{ opacity: 1, y: 0, scale: 1 }}
+          initial={prefersReduced ? false : { opacity: 0, y: 26, scale: 0.97, rotateX: 8 }}
+          whileInView={{ opacity: 1, y: 0, scale: 1, rotateX: 0 }}
           viewport={{ once: true, margin: "-40px" }}
-          transition={{ duration: 0.55, delay: i * stagger, ease }}
+          transition={{ duration: 0.6, delay: i * stagger, ease }}
+          style={{ transformPerspective: 1200 }}
         >
           {child}
         </motion.div>
@@ -88,17 +89,18 @@ function Counter({
   useEffect(() => {
     if (!inView) return;
     if (prefersReduced) { setVal(end); return; }
-    const duration = 1400;
-    const step = 16;
-    const steps = duration / step;
-    const increment = end / steps;
-    let current = 0;
-    const timer = setInterval(() => {
-      current += increment;
-      if (current >= end) { setVal(end); clearInterval(timer); }
-      else setVal(current);
-    }, step);
-    return () => clearInterval(timer);
+    const duration = 1600;
+    const start = performance.now();
+    let raf = 0;
+    const tick = (now: number) => {
+      const p = Math.min((now - start) / duration, 1);
+      // easeOutExpo — montée vive puis décélération soyeuse (feel premium)
+      const eased = p === 1 ? 1 : 1 - Math.pow(2, -10 * p);
+      setVal(end * eased);
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
   }, [inView, end, prefersReduced]);
 
   return (
@@ -106,6 +108,69 @@ function Counter({
       {decimals > 0 ? val.toFixed(decimals) : Math.floor(val).toLocaleString()}
       {suffix}
     </span>
+  );
+}
+
+/* Compteur "brut" (sans wrapper) — utilisable dans un <text> SVG ou inline.
+   Démarre au montage (le mockup hero est visible dès le chargement). */
+function NumberCount({ end, decimals = 0, duration = 1700 }: { end: number; decimals?: number; duration?: number }) {
+  const [val, setVal] = useState(0);
+  const reduced = useReducedMotion();
+  useEffect(() => {
+    if (reduced) { setVal(end); return; }
+    const start = performance.now();
+    let raf = 0;
+    const tick = (now: number) => {
+      const p = Math.min((now - start) / duration, 1);
+      const eased = p === 1 ? 1 : 1 - Math.pow(2, -10 * p);
+      setVal(end * eased);
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [end, reduced, duration]);
+  return <>{decimals > 0 ? val.toFixed(decimals) : Math.round(val)}</>;
+}
+
+/* Indicateur "live" — compteur d'inscrits qui monte (FOMO).
+   Icône + chiffre seulement → aucun texte à traduire (i18n-safe). */
+function LiveActivity() {
+  const reduced = useReducedMotion();
+  const [n, setN] = useState(517);
+  useEffect(() => {
+    if (reduced) return;
+    const id = setInterval(() => setN((v) => v + 1), 4500);
+    return () => clearInterval(id);
+  }, [reduced]);
+  return (
+    <div
+      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border backdrop-blur-md"
+      style={{ borderColor: "rgb(var(--border))", background: "rgb(var(--card)/0.9)", boxShadow: "0 8px 24px -8px rgba(0,0,0,0.6)" }}
+    >
+      <span className="relative flex w-1.5 h-1.5 shrink-0">
+        <span className="ring-ping absolute inset-0 rounded-full" style={{ background: "rgb(var(--profit))" }} />
+        <span className="relative w-1.5 h-1.5 rounded-full" style={{ background: "rgb(var(--profit))" }} />
+      </span>
+      <svg className="w-3.5 h-3.5 shrink-0" style={{ color: "rgb(var(--muted))" }} fill="none" stroke="currentColor" strokeWidth={1.7} viewBox="0 0 24 24" aria-hidden>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+      </svg>
+      <AnimatePresence mode="popLayout">
+        <motion.span
+          key={n}
+          initial={reduced ? false : { opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={reduced ? undefined : { opacity: 0, y: 6 }}
+          transition={{ duration: 0.25, ease }}
+          className="text-xs font-bold tabular-nums"
+          style={{ color: "rgb(var(--foreground))" }}
+        >
+          {n.toLocaleString("fr-FR")}
+        </motion.span>
+      </AnimatePresence>
+      <svg className="w-2.5 h-2.5 shrink-0" style={{ color: "rgb(var(--profit))" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} aria-hidden>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+      </svg>
+    </div>
   );
 }
 
@@ -347,11 +412,11 @@ function Hero() {
         aria-hidden
         style={prefersReduced ? undefined : { y: auroraY, scale: auroraScale }}
       >
-        <div className="aurora-a absolute top-0 left-1/4 w-80 h-80 rounded-full blur-[120px]"
+        <div className="aurora-a absolute top-0 left-1/4 w-80 h-80 rounded-full blur-[80px] will-change-transform"
           style={{ background: "rgb(var(--accent)/0.12)" }} />
-        <div className="aurora-b absolute top-20 right-1/4 w-64 h-64 rounded-full blur-[100px]"
+        <div className="aurora-b absolute top-20 right-1/4 w-64 h-64 rounded-full blur-[72px] will-change-transform"
           style={{ background: "rgba(59,130,246,0.09)" }} />
-        <div className="aurora-c absolute top-40 left-1/2 w-48 h-48 rounded-full blur-[90px]"
+        <div className="aurora-c absolute top-40 left-1/2 w-48 h-48 rounded-full blur-[64px] will-change-transform"
           style={{ background: "rgba(167,139,250,0.06)" }} />
       </motion.div>
 
@@ -383,7 +448,18 @@ function Hero() {
             fontWeight: 700,
           }}
         >
-          {t("hero_title_1")}{" "}
+          {t("hero_title_1").split(" ").map((word, i) => (
+            <motion.span
+              key={`t1-${i}`}
+              className="inline-block"
+              initial={prefersReduced ? false : { opacity: 0, y: "0.45em", rotateX: -35 }}
+              animate={{ opacity: 1, y: 0, rotateX: 0 }}
+              transition={{ duration: 0.55, delay: 0.1 + i * 0.06, ease }}
+              style={{ transformOrigin: "bottom" }}
+            >
+              {word}{" "}
+            </motion.span>
+          ))}
           <span
             className="text-gradient-animated"
             style={{
@@ -502,6 +578,10 @@ function HeroDashboard() {
   const rotateX = useSpring(useTransform(my, [-0.5, 0.5], [2.5, -2.5]), spring);
   const rotateY = useSpring(useTransform(mx, [-0.5, 0.5], [-3.5, 3.5]), spring);
 
+  // Parallax léger au scroll — profondeur quand on descend
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
+  const parallaxY = useSpring(useTransform(scrollYProgress, [0, 1], [48, -48]), { stiffness: 80, damping: 24, mass: 0.4 });
+
   function handleMove(e: React.MouseEvent<HTMLDivElement>) {
     if (prefersReduced || !ref.current) return;
     const r = ref.current.getBoundingClientRect();
@@ -532,7 +612,20 @@ function HeroDashboard() {
           background: "radial-gradient(ellipse 70% 60% at 50% 40%, rgb(var(--accent)/0.1) 0%, transparent 70%)",
         }}
       />
-      <DashboardMockup />
+      {!prefersReduced && (
+        <motion.div
+          className="absolute -top-4 right-2 sm:right-4 z-20 idle-bob"
+          initial={{ opacity: 0, scale: 0.8, y: -6 }}
+          whileInView={{ opacity: 1, scale: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 1.2, ease }}
+        >
+          <LiveActivity />
+        </motion.div>
+      )}
+      <motion.div style={prefersReduced ? undefined : { y: parallaxY }}>
+        <DashboardMockup />
+      </motion.div>
     </motion.div>
   );
 }
@@ -603,8 +696,9 @@ function DashboardMockup() {
               animate={{ strokeDashoffset: 2 * Math.PI * 29 * (1 - 0.85) }}
               transform="rotate(-90 36 36)"
               transition={{ duration: 1.4, delay: 0.6, ease: [0.4, 0, 0.2, 1] }}
+              style={{ filter: "drop-shadow(0 0 3px rgb(var(--accent)/0.55))" }}
             />
-            <text x="36" y="33" textAnchor="middle" fill="rgb(var(--foreground))" fontSize="16" fontWeight="700" fontStyle="normal">85</text>
+            <text x="36" y="33" textAnchor="middle" fill="rgb(var(--foreground))" fontSize="16" fontWeight="700" fontStyle="normal"><NumberCount end={85} /></text>
             <text x="36" y="44" textAnchor="middle" fill="rgb(var(--muted))" fontSize="7" fontStyle="normal">DISCIPLINE</text>
           </svg>
         </motion.div>
@@ -641,6 +735,19 @@ function DashboardMockup() {
               animate={{ pathLength: 1, opacity: 1 }}
               transition={{ duration: 1.6, delay: 0.65, ease: "easeOut" }}
             />
+            {/* Éclat "live" qui parcourt la courbe en boucle */}
+            {!prefersReduced && (
+              <motion.path
+                d="M0,38 L9,35 L20,37 L31,28 L42,24 L53,19 L64,14 L76,10 L87,6 L100,2"
+                fill="none" stroke="rgb(var(--profit))" strokeWidth="2.2" strokeLinecap="round"
+                pathLength={1}
+                strokeDasharray="0.07 1"
+                style={{ filter: "drop-shadow(0 0 1.5px rgb(var(--profit)))" }}
+                initial={{ strokeDashoffset: 1 }}
+                animate={{ strokeDashoffset: [1, -0.07] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 2.4, repeatDelay: 0.6 }}
+              />
+            )}
           </svg>
           <p className="text-sm font-bold mt-1.5" style={{ color: "rgb(var(--profit))", fontStyle: "normal" }}>+3 240€</p>
         </motion.div>
@@ -654,9 +761,9 @@ function DashboardMockup() {
           transition={{ duration: 0.5, delay: 0.72, ease }}
         >
           <p className="text-[9px] uppercase tracking-widest" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("preview_winrate")}</p>
-          <p className="text-2xl font-bold mt-0.5 tracking-tight" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>68%</p>
+          <p className="text-2xl font-bold mt-0.5 tracking-tight tabular-nums" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}><NumberCount end={68} />%</p>
           <p className="text-[9px] uppercase tracking-widest mt-2.5" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("preview_trades")}</p>
-          <p className="text-2xl font-bold mt-0.5 tracking-tight" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>47</p>
+          <p className="text-2xl font-bold mt-0.5 tracking-tight tabular-nums" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}><NumberCount end={47} /></p>
         </motion.div>
 
         {/* Challenge progress */}
