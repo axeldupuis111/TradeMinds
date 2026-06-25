@@ -139,7 +139,7 @@ function EventDetail({ ev, onClose }: { ev: EventRow; onClose: () => void }) {
         key="detail-panel"
         initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
         transition={{ duration: reducedMotion ? 0 : 0.22, ease: "easeOut" }}
-        className="fixed top-0 right-0 z-50 h-full w-full max-w-md bg-card border-l border-border shadow-2xl flex flex-col"
+        className="fixed top-14 right-0 z-50 h-[calc(100%-3.5rem)] w-full max-w-md bg-card border-l border-border shadow-2xl flex flex-col"
         role="dialog" aria-modal="true" aria-label={ev.title}
       >
         {/* Header */}
@@ -451,7 +451,7 @@ export default function CalendarPage() {
               key="cur-panel"
               initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
               transition={{ duration: reducedMotion ? 0 : 0.22, ease: "easeOut" }}
-              className="fixed top-0 right-0 z-50 h-full w-72 bg-card border-l border-border shadow-2xl flex flex-col"
+              className="fixed top-14 right-0 z-50 h-[calc(100%-3.5rem)] w-72 bg-card border-l border-border shadow-2xl flex flex-col"
               role="dialog" aria-modal="true" aria-label={t("cal_currencies")}
             >
               <div className="flex items-center justify-between px-5 py-4 border-b border-border">
