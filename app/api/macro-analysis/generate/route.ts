@@ -62,6 +62,41 @@ interface Analysis {
   takeaway: string;
 }
 
+// JSON schema for the translation step. Structured outputs guarantee valid,
+// parseable JSON (no unescaped quotes / markdown), which the free-form prompt
+// could not — that was causing some translations to fail and fall back to FR.
+// Only used for translations: the brief uses web_search (→ citations), which is
+// incompatible with structured outputs.
+const sectionSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: { title: { type: "string" }, body: { type: "string" } },
+  required: ["title", "body"],
+} as const;
+
+const ANALYSIS_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    headline: { type: "string" },
+    overview: { type: "string" },
+    themes: { type: "array", items: sectionSchema },
+    watchlist: { type: "array", items: sectionSchema },
+    outlook: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        today: { type: "string" },
+        days: { type: "string" },
+        months: { type: "string" },
+      },
+      required: ["today", "days", "months"],
+    },
+    takeaway: { type: "string" },
+  },
+  required: ["headline", "overview", "themes", "watchlist", "outlook", "takeaway"],
+} as const;
+
 function serviceClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -122,7 +157,7 @@ async function createWithWebSearch(
   const tools = [
     { type: "web_search_20260209" as const, name: "web_search" as const, max_uses: 6 },
   ];
-  let msg = await client.messages.create({ model: BRIEF_MODEL, max_tokens: 3000, tools, messages });
+  let msg = await client.messages.create({ model: BRIEF_MODEL, max_tokens: 4000, tools, messages });
   let guard = 0;
   while (msg.stop_reason === "pause_turn" && guard < 4) {
     guard++;
@@ -133,7 +168,7 @@ async function createWithWebSearch(
     const containerId = msg.container?.id;
     msg = await client.messages.create({
       model: BRIEF_MODEL,
-      max_tokens: 3000,
+      max_tokens: 4000,
       tools,
       messages,
       ...(containerId ? { container: containerId } : {}),
@@ -247,11 +282,12 @@ Donne 3 à 5 thèmes et 3 à 5 éléments à surveiller. Pour "outlook", sois CO
     try {
       const tMsg = await client.messages.create({
         model: TRANSLATE_MODEL,
-        max_tokens: 3000,
+        max_tokens: 8192,
+        output_config: { format: { type: "json_schema", schema: ANALYSIS_SCHEMA } },
         messages: [
           {
             role: "user",
-            content: `Traduis fidèlement en ${LANG_NAME[lang]} TOUTES les valeurs textuelles de ce JSON d'analyse macro-économique. Garde EXACTEMENT la même structure et les mêmes clés. Ne traduis pas les clés. Ne change pas les chiffres ni les noms propres. Réponds uniquement avec le JSON traduit, sans markdown :
+            content: `Traduis fidèlement en ${LANG_NAME[lang]} TOUTES les valeurs textuelles de ce JSON d'analyse macro-économique. Garde EXACTEMENT la même structure et les mêmes clés. Ne traduis pas les clés. Ne change pas les chiffres ni les noms propres :
 
 ${JSON.stringify(frBrief)}`,
           },
