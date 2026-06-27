@@ -145,7 +145,8 @@ export default function LoginPage() {
                 />
                 <span className="text-xs text-muted leading-relaxed">
                   {t("terms_agree")}{" "}
-                  <Link href="/legal/terms" className="text-accent hover:underline">{t("terms_link")}</Link>{" "}
+                  <Link href="/legal/terms" className="text-accent hover:underline">{t("terms_link")}</Link>,{" "}
+                  <Link href="/legal/cgv" className="text-accent hover:underline">{t("terms_cgv_link")}</Link>{" "}
                   {t("terms_and")}{" "}
                   <Link href="/legal/privacy" className="text-accent hover:underline">{t("privacy_link")}</Link>
                 </span>
