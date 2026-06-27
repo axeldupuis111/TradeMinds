@@ -2278,6 +2278,7 @@ function Footer() {
               heading: t("footer_legal_col"),
               links: [
                 { href: "/legal/terms", label: t("footer_terms") },
+                { href: "/legal/cgv", label: t("footer_cgv") },
                 { href: "/legal/privacy", label: t("footer_privacy") },
                 { href: "/mentions-legales", label: t("footer_mentions") },
               ],
