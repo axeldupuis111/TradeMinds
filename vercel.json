@@ -24,6 +24,10 @@
     {
       "path": "/api/economic-calendar/notify",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/macro-analysis/generate",
+      "schedule": "0 6 * * *"
     }
   ]
 }
