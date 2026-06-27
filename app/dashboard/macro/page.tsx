@@ -9,7 +9,7 @@
 
 import { useLanguage } from "@/lib/LanguageContext";
 import { motion, useReducedMotion } from "framer-motion";
-import { Globe2, Sparkles, Lock, AlertTriangle, History } from "lucide-react";
+import { Globe2, Sparkles, Lock, AlertTriangle, History, Clock, CalendarRange, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -18,12 +18,19 @@ interface Section {
   body: string;
 }
 
+interface Outlook {
+  today?: string;
+  days?: string;
+  months?: string;
+}
+
 interface Analysis {
   analysis_date: string;
   headline: string;
   overview: string;
   themes: Section[];
   watchlist: Section[];
+  outlook: Outlook | null;
   takeaway: string | null;
 }
 
@@ -145,6 +152,32 @@ export default function MacroPage() {
           <div className="rounded-xl border border-border bg-card p-5">
             <p className="text-sm text-foreground leading-relaxed">{selected.overview}</p>
           </div>
+
+          {/* Expected impacts by horizon — the concrete, forward-looking part */}
+          {selected.outlook && (selected.outlook.today || selected.outlook.days || selected.outlook.months) && (
+            <section>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-foreground-muted mb-3">
+                {t("macro_outlook")}
+              </h3>
+              <div className="space-y-2">
+                {([
+                  { key: "today", label: t("macro_outlook_today"), icon: Clock, body: selected.outlook.today },
+                  { key: "days", label: t("macro_outlook_days"), icon: CalendarRange, body: selected.outlook.days },
+                  { key: "months", label: t("macro_outlook_months"), icon: TrendingUp, body: selected.outlook.months },
+                ] as const)
+                  .filter((h) => h.body)
+                  .map((h) => (
+                    <div key={h.key} className="flex gap-3 rounded-xl border border-accent/25 bg-accent/[0.04] p-4">
+                      <h.icon className="w-4 h-4 text-accent shrink-0 mt-0.5" strokeWidth={1.75} />
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold uppercase tracking-wider text-accent mb-0.5">{h.label}</p>
+                        <p className="text-sm text-foreground-muted leading-relaxed">{h.body}</p>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </section>
+          )}
 
           {/* Themes */}
           {selected.themes.length > 0 && (

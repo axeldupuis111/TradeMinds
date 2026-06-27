@@ -47,11 +47,18 @@ interface Section {
   body: string;
 }
 
+interface Outlook {
+  today: string;
+  days: string;
+  months: string;
+}
+
 interface Analysis {
   headline: string;
   overview: string;
   themes: Section[];
   watchlist: Section[];
+  outlook: Outlook;
   takeaway: string;
 }
 
@@ -83,6 +90,7 @@ function parseAnalysis(raw: string): Analysis | null {
     return null;
   }
   if (!parsed.headline || !parsed.overview) return null;
+  const o = parsed.outlook ?? ({} as Partial<Outlook>);
   return {
     headline: String(parsed.headline),
     overview: String(parsed.overview),
@@ -92,6 +100,11 @@ function parseAnalysis(raw: string): Analysis | null {
     watchlist: Array.isArray(parsed.watchlist)
       ? parsed.watchlist.filter((s): s is Section => !!s?.title && !!s?.body)
       : [],
+    outlook: {
+      today: o.today ? String(o.today) : "",
+      days: o.days ? String(o.days) : "",
+      months: o.months ? String(o.months) : "",
+    },
     takeaway: parsed.takeaway ? String(parsed.takeaway) : "",
   };
 }
@@ -197,9 +210,14 @@ Réponds STRICTEMENT en JSON, sans markdown ni texte autour, avec cette forme ex
   "watchlist": [
     { "title": "événement ou risque à surveiller", "body": "1-2 phrases : pourquoi c'est important et ce que ça pourrait déclencher" }
   ],
+  "outlook": {
+    "today": "impacts CONCRETS attendus pour la séance du jour, classe d'actifs par classe d'actifs (indices actions, EUR/USD et dollar, taux/obligations, or, pétrole/énergie) : décris les dynamiques probables et leur logique",
+    "days": "impacts attendus sur les prochains jours / cette semaine, en lien avec les annonces et événements à venir",
+    "months": "tendances de fond attendues sur les prochaines semaines / mois"
+  },
   "takeaway": "une phrase de synthèse sur le contexte (pas une recommandation)"
 }
-Donne 3 à 5 thèmes et 3 à 5 éléments à surveiller. Reste concis.`;
+Donne 3 à 5 thèmes et 3 à 5 éléments à surveiller. Pour "outlook", sois CONCRET et chiffré quand c'est pertinent, en nommant les classes d'actifs et les dynamiques attendues (hausse/baisse de volatilité, pression sur tel actif, etc.) — mais reste une analyse de CONTEXTE : décris ce à quoi s'attendre, ne dis JAMAIS d'acheter, vendre, ou prendre une position. Reste concis.`;
 
   let frBrief: Analysis | null = null;
   try {
@@ -257,6 +275,7 @@ ${JSON.stringify(frBrief)}`,
       overview: r.analysis.overview,
       themes: r.analysis.themes,
       watchlist: r.analysis.watchlist,
+      outlook: r.analysis.outlook,
       takeaway: r.analysis.takeaway,
       model: r.model,
     })),

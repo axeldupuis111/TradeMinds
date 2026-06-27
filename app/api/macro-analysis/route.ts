@@ -48,18 +48,31 @@ export async function GET(req: Request) {
     return NextResponse.json({ analyses: [] });
   }
 
-  try {
-    const { data, error } = await supabase
+  const fetchWith = (cols: string) =>
+    supabase
       .from("macro_analyses")
-      .select("analysis_date, headline, overview, themes, watchlist, takeaway, created_at")
+      .select(cols)
       .eq("lang", lang)
       .order("analysis_date", { ascending: false })
       .limit(30);
-    if (error) {
-      // Table not migrated yet → empty state rather than a 500.
-      return NextResponse.json({ analyses: [] });
-    }
-    return NextResponse.json({ analyses: data ?? [] });
+
+  try {
+    // Prefer the full row (with outlook). If the `outlook` column isn't migrated
+    // yet, gracefully fall back to the columns that always exist, so the page
+    // still renders the analysis (minus the impacts section) during the window
+    // between deploy and migration.
+    const full = await fetchWith(
+      "analysis_date, headline, overview, themes, watchlist, outlook, takeaway, created_at",
+    );
+    if (!full.error) return NextResponse.json({ analyses: full.data ?? [] });
+
+    const base = await fetchWith(
+      "analysis_date, headline, overview, themes, watchlist, takeaway, created_at",
+    );
+    if (!base.error) return NextResponse.json({ analyses: base.data ?? [] });
+
+    // Table not migrated yet → empty state rather than a 500.
+    return NextResponse.json({ analyses: [] });
   } catch {
     return NextResponse.json({ analyses: [] });
   }
