@@ -72,7 +72,8 @@ export async function middleware(request: NextRequest) {
     pathname === "/api/reactivation" ||
     pathname === "/api/sync/brokers" ||
     pathname === "/api/economic-calendar/sync" ||
-    pathname === "/api/economic-calendar/notify"
+    pathname === "/api/economic-calendar/notify" ||
+    pathname === "/api/macro-analysis/generate"
   ) {
     return NextResponse.next();
   }
