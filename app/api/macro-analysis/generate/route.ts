@@ -119,21 +119,24 @@ async function createWithWebSearch(
   prompt: string,
 ): Promise<Anthropic.Message> {
   const messages: Anthropic.MessageParam[] = [{ role: "user", content: prompt }];
-  let msg = await client.messages.create({
-    model: BRIEF_MODEL,
-    max_tokens: 3000,
-    tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 6 }],
-    messages,
-  });
+  const tools = [
+    { type: "web_search_20260209" as const, name: "web_search" as const, max_uses: 6 },
+  ];
+  let msg = await client.messages.create({ model: BRIEF_MODEL, max_tokens: 3000, tools, messages });
   let guard = 0;
   while (msg.stop_reason === "pause_turn" && guard < 4) {
     guard++;
     messages.push({ role: "assistant", content: msg.content });
+    // web_search_20260209 runs server-side code execution; on pause_turn the
+    // container holds pending tool uses and MUST be passed back to resume, or
+    // the API 400s ("container_id is required …").
+    const containerId = msg.container?.id;
     msg = await client.messages.create({
       model: BRIEF_MODEL,
       max_tokens: 3000,
-      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 6 }],
+      tools,
       messages,
+      ...(containerId ? { container: containerId } : {}),
     });
   }
   return msg;
