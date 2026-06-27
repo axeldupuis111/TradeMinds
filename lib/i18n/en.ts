@@ -1630,6 +1630,7 @@ const dict: Record<string, string> = {
   "footer_faq": "FAQ",
   "footer_privacy": "Privacy",
   "footer_terms": "Terms of Service",
+  "footer_cgv": "Terms of Sale",
   "footer_mentions": "Legal Notice",
   "footer_social": "Join the community",
   "footer_brand_desc": "Built for serious traders. Not a generic tool — an AI trained on trading behavioural patterns, to help you stick to your plan when emotions take over.",
