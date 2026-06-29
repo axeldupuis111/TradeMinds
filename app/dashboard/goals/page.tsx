@@ -2,7 +2,9 @@
 
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
-import { Trash2, Plus, Target, ChevronDown, CheckCircle2, PenLine, Layers, Flame, Repeat, Sparkles, Clock, CalendarDays, Flag } from "lucide-react";
+import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
+import { formatCurrency } from "@/lib/utils";
+import { Trash2, Plus, Target, ChevronDown, CheckCircle2, PenLine, Layers, Flame, Repeat, Sparkles, Clock, CalendarDays, Flag, Crown, Scale, ShieldCheck, Zap, Gauge, TrendingUp, TrendingDown, Minus, Lock } from "lucide-react";
 import { Fragment, useCallback, useEffect, useState } from "react";
 
 type Metric = "discipline_score" | "sessions" | "win_rate" | "trades_per_day" | "max_consecutive_losses";
@@ -16,6 +18,17 @@ interface MetricGoal {
 }
 interface CustomGoal { id: string; kind: "custom"; title: string; period: Period; done: boolean; recurring: boolean; streak: number; bestStreak: number }
 type Goal = MetricGoal | CustomGoal;
+
+// Insights de discipline (route /api/goals/insights).
+interface EdgeSide { count: number; winRate: number; avgNet: number }
+interface ScorecardCell { metric: Metric; value: number | null; prev: number | null; betterWhen: Comparator }
+interface Insights {
+  streak: { current: number; record: number; isRecord: boolean };
+  edge: { composed: EdgeSide; impulsive: EdgeSide } | null;
+  scorecard: ScorecardCell[];
+  hasTrades: boolean;
+  hasReviews: boolean;
+}
 
 function periodKeyClient(p: Period): string {
   const now = new Date();
@@ -83,6 +96,7 @@ export default function GoalsPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [showCustom, setShowCustom] = useState(false);
+  const [insights, setInsights] = useState<Insights | null>(null);
 
   // Objectif perso (texte)
   const [customText, setCustomText] = useState("");
@@ -112,6 +126,10 @@ export default function GoalsPage() {
       .then((r) => r.json())
       .then((d) => setRecos(d.recommendations ?? []))
       .catch(() => setRecos([]));
+    fetch("/api/goals/insights")
+      .then((r) => r.json())
+      .then((d) => setInsights(d?.scorecard ? d : null))
+      .catch(() => setInsights(null));
   }, []);
 
   async function addMetricGoal(m: Metric, tgt: number, p: Period) {
@@ -212,33 +230,177 @@ export default function GoalsPage() {
   for (const g of goals) byHorizon[HORIZON_OF[g.period]].push(g);
   for (const h of HORIZONS) byHorizon[h].sort((a, b) => goalStatus(a).priority - goalStatus(b).priority);
 
+  // ── Dérivés des insights de discipline ───────────────────────────────────
+  const streak = insights?.streak;
+  // Prochain palier de série (3 → 10 → 30).
+  const nextMilestone = !streak ? null : streak.current < 3 ? 3 : streak.current < 10 ? 10 : streak.current < 30 ? 30 : null;
+  const prevMilestone = !streak ? 0 : streak.current < 3 ? 0 : streak.current < 10 ? 3 : streak.current < 30 ? 10 : 30;
+  const milestonePct = nextMilestone && streak ? Math.min(100, ((streak.current - prevMilestone) / (nextMilestone - prevMilestone)) * 100) : 100;
+  // Trajectoire de discipline : score moyen du mois vs mois précédent.
+  const discCell = insights?.scorecard.find((s) => s.metric === "discipline_score");
+  const traj = discCell && discCell.value != null && discCell.prev != null
+    ? { dir: discCell.value - discCell.prev >= 3 ? "up" : discCell.value - discCell.prev <= -3 ? "down" : "flat", delta: discCell.value - discCell.prev }
+    : null;
+  // Edge : écart de réussite posé vs impulsif.
+  const edge = insights?.edge;
+  const winGap = edge ? edge.composed.winRate - edge.impulsive.winRate : 0;
+  const avgGap = edge ? edge.composed.avgNet - edge.impulsive.avgNet : 0;
+
+  const showDiscipline = insights && (insights.hasTrades || insights.hasReviews);
+
   return (
     <div className="max-w-5xl mx-auto pb-10">
       <h1 className="text-2xl font-bold text-foreground">{t("goals_page_title")}</h1>
       <p className="text-muted mt-1">{t("goals_intro")}</p>
 
-      {/* Résumé */}
-      {goals.length > 0 && (
-        <div className="mt-5 rounded-xl border border-border bg-card p-4 flex items-center gap-4">
-          <div className="relative w-12 h-12 shrink-0">
-            <svg viewBox="0 0 36 36" className="w-12 h-12 -rotate-90">
-              <circle cx="18" cy="18" r="16" fill="none" stroke="rgb(var(--surface))" strokeWidth="4" />
-              <circle cx="18" cy="18" r="16" fill="none" stroke="rgb(var(--profit))" strokeWidth="4"
-                strokeDasharray={`${(achieved / goals.length) * 100} 100`} strokeLinecap="round" pathLength={100} />
-            </svg>
-            <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-foreground">{achieved}/{goals.length}</span>
+      {/* ═══ Centre de discipline : preuve & suivi automatique ═══ */}
+
+      {/* Hero — série de discipline + trajectoire */}
+      {insights?.hasTrades && streak && (
+        <KpiCardPremium layout="full" accentColor="amber" intensity="hero" className="mt-5">
+          <div className="flex flex-wrap items-start justify-between gap-5">
+            <div className="flex items-center gap-3">
+              <Flame className={`w-9 h-9 shrink-0 ${streak.current > 0 ? "text-warning" : "text-muted/50"}`} strokeWidth={1.75} />
+              <div>
+                <div className="flex items-baseline gap-1.5 flex-wrap">
+                  <span className="text-3xl font-black tabular-nums text-foreground leading-none">{streak.current}</span>
+                  <span className="text-sm text-muted">{t("goals_streak_days")}</span>
+                  {streak.isRecord && streak.current >= 3 && (
+                    <span className="ml-1 inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-warning/15 text-warning">
+                      <Crown className="w-3 h-3" strokeWidth={2} /> {t("goals_new_record")}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-muted mt-1">{t("goals_streak_desc")}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              {traj && (
+                <div className="text-right">
+                  <div className={`inline-flex items-center gap-1.5 text-sm font-semibold ${traj.dir === "up" ? "text-profit" : traj.dir === "down" ? "text-loss" : "text-warning"}`}>
+                    {traj.dir === "up" ? <TrendingUp className="w-4 h-4" /> : traj.dir === "down" ? <TrendingDown className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
+                    {t(`goals_traj_${traj.dir}`)}
+                  </div>
+                  <p className="text-[11px] text-muted mt-0.5">{t("goals_traj_sub")}</p>
+                </div>
+              )}
+              {streak.record > 0 && (
+                <div className="text-right border-l border-border pl-4">
+                  <p className="text-xl font-black tabular-nums text-foreground leading-none">{streak.record}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted mt-1">{t("goals_record")}</p>
+                </div>
+              )}
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-semibold text-foreground">{t("goals_summary_title")}</p>
-            <p className="text-xs text-muted">{t("goals_summary_sub").replace("{met}", String(achieved)).replace("{total}", String(goals.length))}</p>
-          </div>
-        </div>
+          {nextMilestone && (
+            <div className="mt-4">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[11px] text-foreground-muted">{t("goals_milestone_to_next").replace("{n}", String(nextMilestone - streak.current)).replace("{m}", String(nextMilestone))}</span>
+                <span className="text-[11px] text-foreground-muted tabular-nums">{streak.current}/{nextMilestone}</span>
+              </div>
+              <div className="h-1.5 bg-border rounded-full overflow-hidden">
+                <div className="h-full rounded-full bg-gradient-to-r from-accent to-warning transition-all duration-700" style={{ width: `${Math.max(3, milestonePct)}%` }} />
+              </div>
+            </div>
+          )}
+        </KpiCardPremium>
       )}
 
-      {/* Création & découverte */}
-      <div>
+      {/* Edge — ce que la discipline te rapporte */}
+      {insights?.hasTrades && (
+        <section className="mt-6">
+          <h2 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+            <Scale className="w-4 h-4 text-accent" /> {t("goals_insight_title")}
+          </h2>
+          {edge ? (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="rounded-xl border border-profit/30 bg-profit/[0.04] p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <ShieldCheck className="w-4 h-4 text-profit" /> <span className="text-sm font-semibold text-foreground">{t("goals_edge_composed")}</span>
+                  </div>
+                  <div className="flex items-end gap-1.5">
+                    <span className="text-3xl font-black tabular-nums text-profit leading-none">{edge.composed.winRate}%</span>
+                    <span className="text-xs text-muted mb-0.5">{t("goals_edge_winrate")}</span>
+                  </div>
+                  <p className="text-xs text-muted mt-1.5">
+                    {t("goals_edge_trades").replace("{n}", String(edge.composed.count))} · {t("goals_edge_avg")} <span className={edge.composed.avgNet >= 0 ? "text-profit" : "text-loss"}>{formatCurrency(edge.composed.avgNet)}</span>
+                  </p>
+                </div>
+                <div className="rounded-xl border border-loss/30 bg-loss/[0.04] p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Zap className="w-4 h-4 text-loss" /> <span className="text-sm font-semibold text-foreground">{t("goals_edge_impulsive")}</span>
+                  </div>
+                  <div className="flex items-end gap-1.5">
+                    <span className="text-3xl font-black tabular-nums text-loss leading-none">{edge.impulsive.winRate}%</span>
+                    <span className="text-xs text-muted mb-0.5">{t("goals_edge_winrate")}</span>
+                  </div>
+                  <p className="text-xs text-muted mt-1.5">
+                    {t("goals_edge_trades").replace("{n}", String(edge.impulsive.count))} · {t("goals_edge_avg")} <span className={edge.impulsive.avgNet >= 0 ? "text-profit" : "text-loss"}>{formatCurrency(edge.impulsive.avgNet)}</span>
+                  </p>
+                </div>
+              </div>
+              <div className={`mt-2 flex items-center gap-2 rounded-xl border p-3 text-sm ${winGap > 0 ? "border-profit/30 bg-profit/[0.04] text-foreground" : "border-border bg-card text-muted"}`}>
+                <Sparkles className={`w-4 h-4 shrink-0 ${winGap > 0 ? "text-profit" : "text-muted"}`} />
+                {winGap > 0 ? (
+                  <span>
+                    <span className="font-semibold text-profit">+{winGap} {t("goals_edge_points")}</span> {t("goals_edge_verdict")}
+                    {avgGap > 0 && <> · <span className="font-semibold text-profit">{formatCurrency(avgGap)}</span> {t("goals_edge_verdict_avg")}</>}
+                  </span>
+                ) : (
+                  <span>{t("goals_edge_verdict_flat")}</span>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="flex items-start gap-3 rounded-xl border border-dashed border-border p-4">
+              <Lock className="w-4 h-4 text-muted/60 shrink-0 mt-0.5" />
+              <p className="text-sm text-muted">{t("goals_edge_locked")}</p>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Scorecard — tableau de bord auto-suivi du mois */}
+      {showDiscipline && (
+        <section className="mt-6">
+          <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
+            <Gauge className="w-4 h-4 text-accent" /> {t("goals_scorecard_title")}
+          </h2>
+          <p className="text-xs text-muted mb-3">{t("goals_scorecard_sub")}</p>
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            {insights!.scorecard.map((s) => {
+              const u = unit(s.metric);
+              const hasDelta = s.value != null && s.prev != null;
+              const delta = hasDelta ? (s.value as number) - (s.prev as number) : 0;
+              const improved = s.betterWhen === "gte" ? delta > 0 : delta < 0;
+              const worse = s.betterWhen === "gte" ? delta < 0 : delta > 0;
+              return (
+                <div key={s.metric} className="rounded-xl border border-border bg-card p-3.5">
+                  <p className="text-[11px] uppercase tracking-wide text-muted leading-tight">{metricLabel(s.metric)}</p>
+                  <div className="flex items-end justify-between gap-2 mt-1.5">
+                    <span className="text-2xl font-black tabular-nums text-foreground leading-none">{s.value == null ? "—" : `${s.value}${u}`}</span>
+                    {hasDelta && delta !== 0 && (
+                      <span className={`inline-flex items-center gap-0.5 text-xs font-semibold ${improved ? "text-profit" : worse ? "text-loss" : "text-muted"}`}>
+                        {delta > 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                        {Math.abs(delta)}{u}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-muted mt-1.5">
+                    {s.prev == null ? t("goals_no_prev") : `${t("goals_vs_last")} ${s.prev}${u}`}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* ═══ Couche action : créer & découvrir des objectifs ═══ */}
+      <div className="mt-8">
       {/* Écrire son propre objectif */}
-      <div className="mt-5 rounded-xl border border-accent/20 bg-accent/[0.03] p-4">
+      <div className="rounded-xl border border-accent/20 bg-accent/[0.03] p-4">
         <h2 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
           <PenLine className="w-4 h-4 text-accent" /> {t("goals_custom_text_title")}
         </h2>
@@ -342,11 +504,19 @@ export default function GoalsPage() {
       </div>
       </div>
 
-      {/* Feuille de route : tous les objectifs en tableau, groupés par horizon */}
+      {/* ═══ Feuille de route : objectifs en tableau, groupés par horizon ═══ */}
       <section className="mt-8">
-        <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-          <Target className="w-4 h-4 text-accent" /> {t("goals_roadmap_title")}
-        </h2>
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <Target className="w-4 h-4 text-accent" /> {t("goals_roadmap_title")}
+          </h2>
+          {goals.length > 0 && (
+            <span className="inline-flex items-center gap-1.5 text-xs text-muted">
+              <CheckCircle2 className="w-3.5 h-3.5 text-profit" />
+              {t("goals_summary_sub").replace("{met}", String(achieved)).replace("{total}", String(goals.length))}
+            </span>
+          )}
+        </div>
         {loading ? (
           <div className="skeleton h-40 rounded-xl" />
         ) : goals.length === 0 ? (
