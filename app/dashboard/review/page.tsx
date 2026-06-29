@@ -3,9 +3,13 @@
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { Pdf, C, type RGB } from "@/lib/pdf/kit";
-import { ArrowDownRight, ArrowUpRight, Minus, Sparkles, ThumbsUp, Target, Compass, ChevronLeft, ChevronRight, FileDown } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Minus, Sparkles, ThumbsUp, Target, Compass, ChevronLeft, ChevronRight, FileDown, TrendingUp, TrendingDown, Flame, Award, CalendarX } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import CountUp from "@/components/animations/CountUp";
+import GrowBar from "@/components/animations/GrowBar";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { X } from "lucide-react";
 
 interface Stats { trades: number; winRate: number; totalPnl: number; sessions: number; avgDisciplineScore: number | null; tradingDays: number }
 interface Deltas { trades: number; winRate: number; sessions: number; avgDisciplineScore: number | null; tradingDays: number }
@@ -15,6 +19,15 @@ interface CalDay { day: number; score: number | null; pnl: number }
 interface TrendPt { label: string; score: number | null; pnl: number }
 interface Records { greenDays: number; redDays: number; bestDisciplineDay: { date: string; score: number } | null; disciplinedStreak: number }
 interface Review { headline: string; strength: string; improvement: string; focus: string }
+interface DayDetail {
+  date: string; pnl: number; trades: number; winRate: number; disciplineScore: number | null;
+  tradeList: { pair: string; direction: string | null; pnl: number; time: string }[];
+  sessions: { emotion: string | null; checklistCompleted: boolean | null; time: string }[];
+}
+
+const EMOTION_EMOJI: Record<string, string> = {
+  confident: "\u{1F60E}", neutral: "\u{1F610}", anxious: "\u{1F630}", frustrated: "\u{1F624}", fomo: "\u{1F911}", revenge: "\u{1F621}",
+};
 
 function fmtMoney(n: number) { return `${n >= 0 ? "+" : ""}${n.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} €`; }
 function fmtDate(iso: string, lang: string) { return new Date(iso).toLocaleDateString(lang, { day: "numeric", month: "short" }); }
@@ -25,19 +38,33 @@ function scoreBg(s: number): string {
   if (s >= 50) return "bg-yellow-500/40 text-foreground";
   return "bg-loss/50 text-white";
 }
+function scoreText(s: number): string {
+  if (s >= 85) return "text-profit";
+  if (s >= 70) return "text-green-400";
+  if (s >= 50) return "text-warning";
+  return "text-loss";
+}
 
 function Sparkline({ data }: { data: number[] }) {
   if (data.length < 2) return null;
   const min = Math.min(0, ...data), max = Math.max(0, ...data), range = max - min || 1;
-  const w = 100, h = 32;
-  const pts = data.map((v, i) => `${((i / (data.length - 1)) * w).toFixed(1)},${(h - ((v - min) / range) * h).toFixed(1)}`).join(" ");
-  const last = data[data.length - 1];
-  const color = last >= 0 ? "rgb(var(--profit))" : "rgb(var(--loss))";
+  const w = 100, h = 36;
+  const xy = data.map((v, i) => [(i / (data.length - 1)) * w, h - ((v - min) / range) * h] as const);
+  const line = xy.map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
+  const area = `${line} L${w},${h} L0,${h} Z`;
+  const color = data[data.length - 1] >= 0 ? "rgb(var(--profit))" : "rgb(var(--loss))";
   const zeroY = h - ((0 - min) / range) * h;
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="w-full h-10">
+    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="w-full h-12">
+      <defs>
+        <linearGradient id="rev-equity" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.22" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
       <line x1="0" y1={zeroY} x2={w} y2={zeroY} stroke="rgb(var(--border))" strokeWidth="0.5" strokeDasharray="2 2" />
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+      <path d={area} fill="url(#rev-equity)" />
+      <path d={line} fill="none" stroke={color} strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -59,6 +86,7 @@ export default function MonthlyReviewPage() {
   const [goalsSummary, setGoalsSummary] = useState<{ met: number; total: number } | null>(null);
   const [review, setReview] = useState<Review | null>(null);
   const [rawSummary, setRawSummary] = useState<string | null>(null);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   const loadStats = useCallback(async (mp: string | null) => {
     if (!isPaid) { setLoadingStats(false); return; }
@@ -224,6 +252,7 @@ export default function MonthlyReviewPage() {
   const calByDay = new Map(calendar.map((c) => [c.day, c]));
   const daysInMonth = month ? new Date(month.year, month.month0 + 1, 0).getDate() : 0;
   const firstWeekday = month ? (new Date(month.year, month.month0, 1).getDay() + 6) % 7 : 0; // lundi=0
+  const todayDay = month?.isCurrentMonth ? new Date().getDate() : -1;
 
   return (
     <div className="max-w-4xl mx-auto pb-10">
@@ -259,11 +288,19 @@ export default function MonthlyReviewPage() {
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
+          {month && !month.isCurrentMonth && (
+            <div className="flex justify-center mt-1.5">
+              <button onClick={() => setMonthParam(null)} className="text-[11px] text-accent hover:underline">{t("review_back_current")} →</button>
+            </div>
+          )}
 
           {loadingStats ? (
             <div className="skeleton h-48 rounded-xl mt-4" />
           ) : stats && stats.trades === 0 && stats.sessions === 0 ? (
-            <div className="mt-4 rounded-xl border border-dashed border-border p-8 text-center">
+            <div className="mt-4 rounded-xl border border-dashed border-border p-10 text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-surface mb-3">
+                <CalendarX className="w-6 h-6 text-muted/50" />
+              </div>
               <p className="text-muted text-sm">{t("review_empty")}</p>
             </div>
           ) : stats ? (
@@ -271,10 +308,10 @@ export default function MonthlyReviewPage() {
               <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 <Kpi label={t("review_kpi_trades")} value={`${stats.trades}`} delta={deltas?.trades} />
                 <Kpi label={t("review_kpi_days")} value={`${stats.tradingDays}`} delta={deltas?.tradingDays} />
-                <Kpi label={t("review_kpi_winrate")} value={`${stats.winRate}%`} delta={deltas?.winRate} suffix="pts" />
+                <Kpi label={t("review_kpi_winrate")} value={`${stats.winRate}%`} delta={deltas?.winRate} suffix="pts" valueClass={stats.winRate >= 50 ? "text-profit" : "text-warning"} />
                 <Kpi label={t("review_kpi_sessions")} value={`${stats.sessions}`} delta={deltas?.sessions} />
-                <Kpi label={t("review_kpi_score")} value={stats.avgDisciplineScore != null ? `${stats.avgDisciplineScore}/100` : "—"} delta={deltas?.avgDisciplineScore ?? undefined} suffix="pts" />
-                {extras?.prepRate != null && <Kpi label={t("review_kpi_prep")} value={`${extras.prepRate}%`} />}
+                <Kpi label={t("review_kpi_score")} value={stats.avgDisciplineScore != null ? `${stats.avgDisciplineScore}/100` : "—"} delta={deltas?.avgDisciplineScore ?? undefined} suffix="pts" valueClass={stats.avgDisciplineScore != null ? scoreText(stats.avgDisciplineScore) : "text-foreground"} />
+                {extras?.prepRate != null && <Kpi label={t("review_kpi_prep")} value={`${extras.prepRate}%`} valueClass="text-teal-300" />}
               </div>
 
               {/* Pont Objectifs (mois en cours) */}
@@ -295,20 +332,20 @@ export default function MonthlyReviewPage() {
                   <p className="text-xs text-muted mb-2">{t("review_records_title")}</p>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="rounded-xl border border-border bg-card p-3">
-                      <p className="text-xs text-muted">{t("review_green_days")}</p>
-                      <p className="text-lg font-bold text-profit mt-0.5">{records.greenDays}</p>
+                      <p className="text-xs text-muted flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5 text-profit" />{t("review_green_days")}</p>
+                      <p className="text-lg font-bold text-profit mt-0.5"><CountUp end={records.greenDays} duration={0.9} /></p>
                     </div>
                     <div className="rounded-xl border border-border bg-card p-3">
-                      <p className="text-xs text-muted">{t("review_red_days")}</p>
-                      <p className="text-lg font-bold text-loss mt-0.5">{records.redDays}</p>
+                      <p className="text-xs text-muted flex items-center gap-1.5"><TrendingDown className="w-3.5 h-3.5 text-loss" />{t("review_red_days")}</p>
+                      <p className="text-lg font-bold text-loss mt-0.5"><CountUp end={records.redDays} duration={0.9} /></p>
                     </div>
                     <div className="rounded-xl border border-border bg-card p-3">
-                      <p className="text-xs text-muted">{t("review_disciplined_streak")}</p>
-                      <p className="text-lg font-bold text-foreground mt-0.5">🔥 {records.disciplinedStreak}</p>
+                      <p className="text-xs text-muted flex items-center gap-1.5"><Flame className="w-3.5 h-3.5 text-orange-400" />{t("review_disciplined_streak")}</p>
+                      <p className="text-lg font-bold text-foreground mt-0.5"><CountUp end={records.disciplinedStreak} duration={0.9} /></p>
                     </div>
                     {records.bestDisciplineDay && (
                       <div className="rounded-xl border border-border bg-card p-3">
-                        <p className="text-xs text-muted">{t("review_best_discipline")}</p>
+                        <p className="text-xs text-muted flex items-center gap-1.5"><Award className="w-3.5 h-3.5 text-violet-400" />{t("review_best_discipline")}</p>
                         <p className="text-lg font-bold text-foreground mt-0.5">{records.bestDisciplineDay.score}/100</p>
                         <p className="text-[10px] text-muted/70">{fmtDate(records.bestDisciplineDay.date, lang)}</p>
                       </div>
@@ -323,11 +360,13 @@ export default function MonthlyReviewPage() {
                 <div className="rounded-xl border border-border bg-card p-4 mt-4 lg:mt-0">
                   <p className="text-xs text-muted mb-3">{t("review_trend_title")}</p>
                   <div className="flex items-end justify-between gap-2 h-24">
-                    {trend.map((p) => (
+                    {trend.map((p, i) => (
                       <div key={p.label} className="flex-1 flex flex-col items-center gap-1">
-                        <div className="w-full flex items-end justify-center h-20">
-                          <div className={`w-full max-w-[28px] rounded-t ${p.score != null ? scoreBg(p.score) : "bg-surface"}`}
-                            style={{ height: `${p.score != null ? Math.max(8, p.score) : 4}%` }} title={p.score != null ? `${p.score}/100` : "—"} />
+                        <div className="w-full flex items-end justify-center h-20" title={p.score != null ? `${p.score}/100` : "—"}>
+                          <div className="w-full max-w-[28px] h-full flex items-end">
+                            <GrowBar vertical pct={p.score != null ? Math.max(8, p.score) : 4} durationMs={750} delayMs={i * 60}
+                              className={`rounded-t ${p.score != null ? scoreBg(p.score) : "bg-surface"}`} />
+                          </div>
                         </div>
                         <span className="text-[10px] text-muted">{p.label.slice(5)}</span>
                       </div>
@@ -351,9 +390,20 @@ export default function MonthlyReviewPage() {
                       const cls = !c ? "bg-surface/40 text-muted/40"
                         : c.score != null ? scoreBg(c.score)
                         : c.pnl > 0 ? "bg-profit/20 text-foreground" : c.pnl < 0 ? "bg-loss/20 text-foreground" : "bg-surface text-muted";
+                      const isToday = day === todayDay;
+                      const cellTitle = `${isToday ? `${t("review_today")} · ` : ""}${c ? `${c.score != null ? `${c.score}/100 · ` : ""}${fmtMoney(c.pnl)}` : ""}`.replace(/ · $/, "");
+                      const baseCls = `aspect-square rounded flex items-center justify-center text-[10px] font-medium transition-transform ${cls} ${isToday ? "ring-2 ring-accent ring-offset-1 ring-offset-card font-bold" : ""}`;
+                      if (c && month) {
+                        const dateStr = `${month.year}-${String(month.month0 + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                        return (
+                          <button key={day} onClick={() => setSelectedDay(dateStr)} title={cellTitle}
+                            className={`${baseCls} hover:scale-110 hover:ring-1 hover:ring-accent/60 cursor-pointer`}>
+                            {day}
+                          </button>
+                        );
+                      }
                       return (
-                        <span key={day} className={`aspect-square rounded flex items-center justify-center text-[10px] font-medium ${cls}`}
-                          title={c ? `${c.score != null ? `${c.score}/100 · ` : ""}${fmtMoney(c.pnl)}` : ""}>
+                        <span key={day} className={`${baseCls} hover:scale-110`} title={cellTitle}>
                           {day}
                         </span>
                       );
@@ -372,7 +422,12 @@ export default function MonthlyReviewPage() {
               {/* Équité + faits marquants */}
               {extras && extras.equity.length >= 2 && (
                 <div className="mt-4 rounded-xl border border-border bg-card p-4">
-                  <p className="text-xs text-muted mb-1">{t("review_equity_title")}</p>
+                  <div className="flex items-baseline justify-between mb-1">
+                    <p className="text-xs text-muted">{t("review_equity_title")}</p>
+                    {(() => { const last = extras.equity[extras.equity.length - 1]; return (
+                      <span className={`text-sm font-bold tabular-nums ${last >= 0 ? "text-profit" : "text-loss"}`}>{fmtMoney(last)}</span>
+                    ); })()}
+                  </div>
                   <Sparkline data={extras.equity} />
                 </div>
               )}
@@ -393,6 +448,13 @@ export default function MonthlyReviewPage() {
                   <ReviewCard icon={<Compass className="w-4 h-4 text-accent" />} title={t("review_focus")} body={review.focus} accent />
                   <button onClick={generate} disabled={aiLoading} className="text-sm text-muted hover:text-accent transition-colors disabled:opacity-50 underline underline-offset-2">{aiLoading ? t("review_generating") : t("review_regenerate")}</button>
                 </div>
+              ) : aiLoading ? (
+                <div className="mt-5 space-y-3">
+                  <div className="skeleton h-16 rounded-xl" />
+                  <div className="skeleton h-20 rounded-xl" />
+                  <div className="skeleton h-20 rounded-xl" />
+                  <p className="text-xs text-muted text-center flex items-center justify-center gap-2"><Sparkles className="w-3.5 h-3.5 text-accent animate-pulse" />{t("review_generating")}</p>
+                </div>
               ) : rawSummary ? (
                 <div className="mt-5 rounded-xl border border-border bg-card p-5"><p className="text-sm text-muted leading-relaxed whitespace-pre-line">{rawSummary.replace(/\*\*/g, "")}</p></div>
               ) : (
@@ -404,18 +466,27 @@ export default function MonthlyReviewPage() {
           ) : null}
         </>
       )}
+
+      {/* Tiroir de détail du jour (depuis le calendrier) */}
+      <AnimatePresence>
+        {selectedDay && <DayDetailDrawer date={selectedDay} onClose={() => setSelectedDay(null)} />}
+      </AnimatePresence>
     </div>
   );
 }
 
-function Kpi({ label, value, delta, suffix }: { label: string; value: string; delta?: number; suffix?: string }) {
+function Kpi({ label, value, delta, suffix, valueClass = "text-foreground" }: { label: string; value: string; delta?: number; suffix?: string; valueClass?: string }) {
   const showDelta = typeof delta === "number" && delta !== 0;
   const positive = (delta ?? 0) > 0;
+  // Extrait le nombre de tête pour l'animer, en gardant le reste comme suffixe ("%", "/100").
+  const m = value.match(/^(-?\d+(?:[.,]\d+)?)(.*)$/);
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <p className="text-xs text-muted">{label}</p>
       <div className="flex items-baseline gap-2 mt-1">
-        <p className="text-xl font-bold text-foreground">{value}</p>
+        <p className={`text-xl font-bold ${valueClass}`}>
+          {m ? <CountUp end={Number(m[1].replace(",", "."))} suffix={m[2]} duration={1} /> : value}
+        </p>
         {showDelta ? (
           <span className={`inline-flex items-center text-xs font-medium ${positive ? "text-profit" : "text-loss"}`}>
             {positive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}{Math.abs(delta as number)}{suffix ? ` ${suffix}` : ""}
@@ -442,5 +513,122 @@ function ReviewCard({ icon, title, body, accent }: { icon: React.ReactNode; titl
       <div className="flex items-center gap-2 mb-1.5">{icon}<h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">{title}</h3></div>
       <p className="text-sm text-muted leading-relaxed">{body}</p>
     </div>
+  );
+}
+
+// Tiroir latéral : détail d'une journée cliquée dans le calendrier de discipline.
+function DayDetailDrawer({ date, onClose }: { date: string; onClose: () => void }) {
+  const { t, lang } = useLanguage();
+  const reduced = useReducedMotion();
+  const [data, setData] = useState<DayDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    fetch(`/api/day-detail?date=${date}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (alive) setData(d); })
+      .catch(() => { if (alive) setData(null); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [date]);
+
+  const title = new Date(date + "T00:00:00").toLocaleDateString(lang, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const hasContent = data && (data.trades > 0 || data.sessions.length > 0);
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        transition={{ duration: reduced ? 0 : 0.2 }}
+        className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={onClose}
+      />
+      <motion.aside
+        initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
+        transition={{ duration: reduced ? 0 : 0.22, ease: "easeOut" }}
+        className="fixed top-14 right-0 z-50 h-[calc(100%-3.5rem)] w-full max-w-md bg-card border-l border-border shadow-2xl flex flex-col"
+        role="dialog" aria-modal="true" aria-label={title}
+      >
+        <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-border">
+          <h3 className="text-base font-bold text-foreground leading-snug capitalize">{title}</h3>
+          <button onClick={onClose} className="p-1 rounded hover:bg-border/40 transition-colors shrink-0" aria-label={t("manual_cancel")}>
+            <X className="w-4 h-4 text-muted" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          {loading ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2"><div className="skeleton h-16 rounded-xl" /><div className="skeleton h-16 rounded-xl" /></div>
+              <div className="skeleton h-24 rounded-xl" />
+            </div>
+          ) : !hasContent ? (
+            <p className="text-sm text-muted text-center py-8">{t("review_day_empty")}</p>
+          ) : (
+            <>
+              {/* Synthèse du jour */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-xl border border-border bg-surface/40 p-3">
+                  <p className="text-xs text-muted">{t("review_day_pnl")}</p>
+                  <p className={`text-lg font-bold tabular-nums mt-0.5 ${data!.pnl >= 0 ? "text-profit" : "text-loss"}`}>{fmtMoney(data!.pnl)}</p>
+                </div>
+                <div className="rounded-xl border border-border bg-surface/40 p-3">
+                  <p className="text-xs text-muted">{t("review_kpi_trades")}</p>
+                  <p className="text-lg font-bold text-foreground mt-0.5 tabular-nums">{data!.trades}</p>
+                </div>
+                <div className="rounded-xl border border-border bg-surface/40 p-3">
+                  <p className="text-xs text-muted">{t("review_kpi_winrate")}</p>
+                  <p className={`text-lg font-bold mt-0.5 tabular-nums ${data!.winRate >= 50 ? "text-profit" : "text-warning"}`}>{data!.trades > 0 ? `${data!.winRate}%` : "—"}</p>
+                </div>
+                <div className="rounded-xl border border-border bg-surface/40 p-3">
+                  <p className="text-xs text-muted">{t("review_kpi_score")}</p>
+                  <p className={`text-lg font-bold mt-0.5 tabular-nums ${data!.disciplineScore != null ? scoreText(data!.disciplineScore) : "text-muted"}`}>{data!.disciplineScore != null ? `${data!.disciplineScore}/100` : "—"}</p>
+                </div>
+              </div>
+
+              {/* Sessions du jour */}
+              {data!.sessions.length > 0 && (
+                <div>
+                  <p className="text-xs text-muted mb-2">{t("review_kpi_sessions")}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {data!.sessions.map((s, i) => (
+                      <span key={i} className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface/40 px-2.5 py-1.5 text-xs text-foreground">
+                        <span className="text-base leading-none">{s.emotion ? EMOTION_EMOJI[s.emotion] ?? "\u{1F4DD}" : "\u{1F4DD}"}</span>
+                        {s.emotion ? t(`emotion_${s.emotion}`) : t("review_kpi_sessions")}
+                        {s.checklistCompleted ? <span className="text-profit">✓</span> : null}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Trades du jour */}
+              <div>
+                <p className="text-xs text-muted mb-2">{t("review_kpi_trades")}</p>
+                {data!.tradeList.length === 0 ? (
+                  <p className="text-sm text-muted">{t("review_day_no_trades")}</p>
+                ) : (
+                  <div className="rounded-xl border border-border overflow-hidden divide-y divide-border">
+                    {data!.tradeList.map((tr, i) => (
+                      <div key={i} className="flex items-center gap-3 px-3 py-2.5 bg-card">
+                        <span className="text-xs font-semibold text-foreground w-16 truncate">{tr.pair}</span>
+                        {tr.direction && (
+                          <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${/(buy|long)/i.test(tr.direction) ? "bg-profit/15 text-profit" : "bg-loss/15 text-loss"}`}>
+                            {/(buy|long)/i.test(tr.direction) ? t("review_day_long") : t("review_day_short")}
+                          </span>
+                        )}
+                        <span className="text-[11px] text-muted ml-auto tabular-nums">{new Date(tr.time).toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" })}</span>
+                        <span className={`text-sm font-bold tabular-nums w-20 text-right ${tr.pnl >= 0 ? "text-profit" : "text-loss"}`}>{fmtMoney(tr.pnl)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </motion.aside>
+    </>
   );
 }
