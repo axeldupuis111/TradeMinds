@@ -1954,6 +1954,7 @@ const dict: Record<string, string> = {
   "review_prev_month": "Mois précédent",
   "review_next_month": "Mois suivant",
   "review_trend_title": "Tendance discipline (6 mois)",
+  "review_trend_legend": "Barre = score de discipline · montant = P&L net du mois",
   "review_calendar_title": "Calendrier de discipline du mois",
   "review_records_title": "Records du mois",
   "review_green_days": "Jours verts",

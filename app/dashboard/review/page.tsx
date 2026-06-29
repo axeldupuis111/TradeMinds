@@ -547,15 +547,20 @@ export default function MonthlyReviewPage() {
                         {bestWd && bestWd.pnl > 0 && (
                           <p className="text-[11px] text-profit mb-2">{t("review_weekday_best").replace("{day}", t(`review_wdfull_${bestWd.wd}`)).replace("{money}", fmtMoney(bestWd.pnl))}</p>
                         )}
-                        <div className="flex items-end justify-between gap-1.5 h-24">
+                        {/* Barres divergentes : gain vers le haut, perte vers le bas (signe = direction) */}
+                        <div className="flex items-stretch justify-between gap-1.5">
                           {weekdays.map((w) => {
-                            const pct = w.count ? Math.max(6, Math.round((Math.abs(w.pnl) / maxAbs) * 100)) : 0;
+                            const pct = w.count ? Math.max(10, Math.round((Math.abs(w.pnl) / maxAbs) * 100)) : 0;
                             return (
-                              <div key={w.wd} className="flex-1 flex flex-col items-center gap-1" title={w.count ? `${fmtMoney(w.pnl)} · ${w.winRate}% · ${w.count} ${t("review_kpi_trades").toLowerCase()}` : t("review_day_no_trades")}>
-                                <div className="w-full max-w-[26px] h-16 flex items-end">
-                                  <GrowBar vertical pct={pct} durationMs={700} delayMs={w.wd * 50} className={`rounded-t ${w.pnl >= 0 ? "bg-profit/70" : "bg-loss/70"}`} />
+                              <div key={w.wd} className="flex-1 flex flex-col items-center" title={w.count ? `${fmtMoney(w.pnl)} · ${w.winRate}% · ${w.count} ${t("review_kpi_trades").toLowerCase()}` : t("review_day_no_trades")}>
+                                <div className="w-full h-9 flex items-end justify-center">
+                                  {w.pnl > 0 && <div className="w-full max-w-[24px] h-full flex items-end"><GrowBar vertical pct={pct} durationMs={700} delayMs={w.wd * 50} className="rounded-t bg-profit/70" /></div>}
                                 </div>
-                                <span className="text-[9px] text-muted">{t(`review_wd_${w.wd}`)}</span>
+                                <div className="w-full h-px bg-border/70" />
+                                <div className="w-full h-9 flex items-start justify-center">
+                                  {w.pnl < 0 && <div className="w-full max-w-[24px] h-full flex items-start"><GrowBar vertical pct={pct} durationMs={700} delayMs={w.wd * 50} className="rounded-b bg-loss/70" /></div>}
+                                </div>
+                                <span className="text-[9px] text-muted mt-1">{t(`review_wd_${w.wd}`)}</span>
                               </div>
                             );
                           })}
@@ -611,7 +616,8 @@ export default function MonthlyReviewPage() {
               {/* Tendance 6 mois (discipline) */}
               {trend.some((p) => p.score != null) && (
                 <div className="rounded-xl border border-border bg-card p-4 mt-4 lg:mt-0">
-                  <p className="text-xs text-muted mb-3">{t("review_trend_title")}</p>
+                  <p className="text-xs text-muted">{t("review_trend_title")}</p>
+                  <p className="text-[10px] text-muted/70 mb-3">{t("review_trend_legend")}</p>
                   <div className="flex items-end justify-between gap-2 h-28">
                     {trend.map((p, i) => (
                       <div key={p.label} className="flex-1 flex flex-col items-center gap-1" title={`${p.score != null ? `${p.score}/100` : "—"} · ${fmtMoney(p.pnl)}`}>
