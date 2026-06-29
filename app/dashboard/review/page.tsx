@@ -19,6 +19,9 @@ interface CalDay { day: number; score: number | null; pnl: number }
 interface TrendPt { label: string; score: number | null; pnl: number }
 interface Records { greenDays: number; redDays: number; bestDisciplineDay: { date: string; score: number } | null; disciplinedStreak: number }
 interface EmotionEdge { emotion: string; count: number; pnl: number; winRate: number }
+interface Weekday { wd: number; pnl: number; count: number; winRate: number }
+interface PairPerf { pair: string; pnl: number; count: number; winRate: number }
+interface DirPerf { dir: "long" | "short"; pnl: number; count: number; winRate: number }
 interface Review { headline: string; strength: string; improvement: string; focus: string }
 interface DayDetail {
   date: string; pnl: number; trades: number; winRate: number; disciplineScore: number | null;
@@ -86,6 +89,9 @@ export default function MonthlyReviewPage() {
   const [trend, setTrend] = useState<TrendPt[]>([]);
   const [records, setRecords] = useState<Records | null>(null);
   const [emotions, setEmotions] = useState<EmotionEdge[]>([]);
+  const [weekdays, setWeekdays] = useState<Weekday[]>([]);
+  const [pairs, setPairs] = useState<PairPerf[]>([]);
+  const [directions, setDirections] = useState<DirPerf[]>([]);
   const [goalsSummary, setGoalsSummary] = useState<{ met: number; total: number } | null>(null);
   const [review, setReview] = useState<Review | null>(null);
   const [rawSummary, setRawSummary] = useState<string | null>(null);
@@ -101,6 +107,7 @@ export default function MonthlyReviewPage() {
         const d = await res.json();
         setMonth(d.month); setStats(d.stats); setDeltas(d.deltas); setExtras(d.extras);
         setCalendar(d.calendar ?? []); setTrend(d.trend ?? []); setRecords(d.records ?? null); setEmotions(d.emotions ?? []);
+        setWeekdays(d.weekdays ?? []); setPairs(d.pairs ?? []); setDirections(d.directions ?? []);
 
         // Pont Objectifs ↔ Bilan : uniquement pour le mois en cours (les objectifs
         // sont évalués sur la période courante, pas archivés par mois passé).
@@ -400,6 +407,78 @@ export default function MonthlyReviewPage() {
                   </div>
                 );
               })()}
+
+              {/* Performance par jour de la semaine + par instrument */}
+              {(weekdays.some((w) => w.count > 0) || pairs.length > 0) && (
+                <div className="mt-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
+                  {weekdays.some((w) => w.count > 0) && (() => {
+                    const maxAbs = Math.max(1, ...weekdays.map((w) => Math.abs(w.pnl)));
+                    const bestWd = [...weekdays].filter((w) => w.count > 0).sort((a, b) => b.pnl - a.pnl)[0];
+                    return (
+                      <div className="rounded-xl border border-border bg-card p-4">
+                        <p className="text-xs text-muted mb-1">{t("review_weekday_title")}</p>
+                        {bestWd && bestWd.pnl > 0 && (
+                          <p className="text-[11px] text-profit mb-2">{t("review_weekday_best").replace("{day}", t(`review_wdfull_${bestWd.wd}`)).replace("{money}", fmtMoney(bestWd.pnl))}</p>
+                        )}
+                        <div className="flex items-end justify-between gap-1.5 h-24">
+                          {weekdays.map((w) => {
+                            const pct = w.count ? Math.max(6, Math.round((Math.abs(w.pnl) / maxAbs) * 100)) : 0;
+                            return (
+                              <div key={w.wd} className="flex-1 flex flex-col items-center gap-1" title={w.count ? `${fmtMoney(w.pnl)} · ${w.winRate}% · ${w.count} ${t("review_kpi_trades").toLowerCase()}` : t("review_day_no_trades")}>
+                                <div className="w-full max-w-[26px] h-16 flex items-end">
+                                  <GrowBar vertical pct={pct} durationMs={700} delayMs={w.wd * 50} className={`rounded-t ${w.pnl >= 0 ? "bg-profit/70" : "bg-loss/70"}`} />
+                                </div>
+                                <span className="text-[9px] text-muted">{t(`review_wd_${w.wd}`)}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {pairs.length > 0 && (() => {
+                    const maxAbs = Math.max(1, ...pairs.map((p) => Math.abs(p.pnl)));
+                    const top = pairs.slice(0, 6);
+                    return (
+                      <div className="rounded-xl border border-border bg-card p-4 mt-4 lg:mt-0">
+                        <p className="text-xs text-muted mb-3">{t("review_pair_title")}</p>
+                        <div className="space-y-2">
+                          {top.map((p) => {
+                            const pct = Math.min(100, Math.round((Math.abs(p.pnl) / maxAbs) * 100));
+                            return (
+                              <div key={p.pair} className="flex items-center gap-2 text-xs" title={`${p.count} ${t("review_kpi_trades").toLowerCase()}`}>
+                                <span className="w-16 shrink-0 font-semibold text-foreground truncate">{p.pair}</span>
+                                <span className="w-9 text-muted tabular-nums shrink-0 text-right">{p.winRate}%</span>
+                                <div className="flex-1 h-2 min-w-0">
+                                  <GrowBar pct={pct} className={`rounded-full ${p.pnl >= 0 ? "bg-profit/70" : "bg-loss/70"}`} />
+                                </div>
+                                <span className={`w-20 text-right tabular-nums font-semibold shrink-0 ${p.pnl >= 0 ? "text-profit" : "text-loss"}`}>{fmtMoney(p.pnl)}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* Achat vs Vente */}
+              {directions.length > 0 && (
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  {directions.map((d) => (
+                    <div key={d.dir} className={`rounded-xl border p-3 ${d.pnl >= 0 ? "border-profit/30 bg-profit/[0.04]" : "border-loss/30 bg-loss/[0.04]"}`}>
+                      <p className="text-xs text-muted flex items-center gap-1.5">
+                        {d.dir === "long" ? <ArrowUpRight className="w-3.5 h-3.5 text-profit" /> : <ArrowDownRight className="w-3.5 h-3.5 text-loss" />}
+                        {t(`review_day_${d.dir}`)}
+                      </p>
+                      <p className={`text-lg font-bold mt-0.5 tabular-nums ${d.pnl >= 0 ? "text-profit" : "text-loss"}`}>{fmtMoney(d.pnl)}</p>
+                      <p className="text-[11px] text-muted">{d.winRate}% · {d.count} {t("review_kpi_trades").toLowerCase()}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div className="mt-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
               {/* Tendance 6 mois (discipline) */}
