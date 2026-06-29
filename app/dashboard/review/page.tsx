@@ -480,8 +480,8 @@ export default function MonthlyReviewPage() {
               )}
               {extras && (extras.best || extras.topPair) && (
                 <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {extras.best && <Highlight label={t("review_best_day")} value={fmtMoney(extras.best.pnl)} sub={fmtDate(extras.best.date, lang)} positive />}
-                  {extras.worst && extras.worst.pnl < 0 && <Highlight label={t("review_worst_day")} value={fmtMoney(extras.worst.pnl)} sub={fmtDate(extras.worst.date, lang)} />}
+                  {extras.best && <Highlight label={t("review_best_day")} value={fmtMoney(extras.best.pnl)} sub={fmtDate(extras.best.date, lang)} positive onClick={() => setSelectedDay(extras.best!.date)} />}
+                  {extras.worst && extras.worst.pnl < 0 && <Highlight label={t("review_worst_day")} value={fmtMoney(extras.worst.pnl)} sub={fmtDate(extras.worst.date, lang)} onClick={() => setSelectedDay(extras.worst!.date)} />}
                   {extras.topPair && <Highlight label={t("review_top_pair")} value={extras.topPair.pair} sub={`${extras.topPair.count} ${t("review_kpi_trades").toLowerCase()}`} />}
                 </div>
               )}
@@ -544,14 +544,22 @@ function Kpi({ label, value, delta, suffix, valueClass = "text-foreground" }: { 
   );
 }
 
-function Highlight({ label, value, sub, positive }: { label: string; value: string; sub: string; positive?: boolean }) {
-  return (
-    <div className="rounded-xl border border-border bg-card p-4">
+function Highlight({ label, value, sub, positive, onClick }: { label: string; value: string; sub: string; positive?: boolean; onClick?: () => void }) {
+  const inner = (
+    <>
       <p className="text-xs text-muted">{label}</p>
       <p className={`text-base font-bold mt-1 ${positive ? "text-profit" : "text-foreground"}`}>{value}</p>
       <p className="text-xs text-muted/70">{sub}</p>
-    </div>
+    </>
   );
+  if (onClick) {
+    return (
+      <button onClick={onClick} className="text-left rounded-xl border border-border bg-card p-4 hover:border-accent/40 hover:bg-surface/30 transition-colors">
+        {inner}
+      </button>
+    );
+  }
+  return <div className="rounded-xl border border-border bg-card p-4">{inner}</div>;
 }
 
 function ReviewCard({ icon, title, body, accent }: { icon: React.ReactNode; title: string; body: string; accent?: boolean }) {
