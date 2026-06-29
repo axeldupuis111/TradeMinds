@@ -156,12 +156,23 @@ export default function LeaderboardPage() {
                 </div>
               );
             })()}
-            {self.ranked ? (
-              <p className="text-xs text-muted mt-3 text-center">
-                {t("leaderboard_your_rank").replace("{rank}", String(self.rank)).replace("{total}", String(total))}
-                {self.percentile != null && ` · ${t("leaderboard_percentile").replace("{p}", String(self.percentile))}`}
-              </p>
-            ) : (
+            {self.ranked ? (() => {
+              const above = meEntry && meEntry.rank > 1 ? entries.find((e) => e.rank === meEntry.rank - 1) : null;
+              const gap = above ? above.value - (meEntry?.value ?? 0) : 0;
+              return (
+                <div className="mt-3 text-center space-y-1">
+                  <p className="text-xs text-muted">
+                    {t("leaderboard_your_rank").replace("{rank}", String(self.rank)).replace("{total}", String(total))}
+                    {self.percentile != null && ` · ${t("leaderboard_percentile").replace("{p}", String(self.percentile))}`}
+                  </p>
+                  {above && gap > 0 ? (
+                    <p className="text-xs text-accent font-medium">{t("leaderboard_gap_next").replace("{pts}", String(gap)).replace("{rank}", String(above.rank))}</p>
+                  ) : self.rank === 1 ? (
+                    <p className="text-xs text-warning font-medium">{t("leaderboard_leader")}</p>
+                  ) : null}
+                </div>
+              );
+            })() : (
               <p className="text-xs text-muted mt-3 text-center">{t("leaderboard_not_ranked").replace("{n}", "3")}</p>
             )}
           </div>

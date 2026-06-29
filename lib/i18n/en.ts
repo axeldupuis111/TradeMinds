@@ -1933,6 +1933,7 @@ const dict: Record<string, string> = {
   "goals_heatmap_sub": "Each cell is a day over the last 12 weeks. The greener, the more disciplined you were.",
   "goals_heatmap_less": "less",
   "goals_heatmap_more": "more",
+  "goals_milestone_forecast": "Milestone {m} reachable on {date} if you keep the streak.",
   "goals_heatmap_no_data": "no session",
   "goals_reco_dismiss": "Hide this suggestion",
   "goals_delete_confirm": "Delete?",

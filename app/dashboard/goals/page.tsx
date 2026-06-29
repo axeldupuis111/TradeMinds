@@ -383,6 +383,18 @@ export default function GoalsPage() {
   const nextMilestone = !streak ? null : streak.current < 3 ? 3 : streak.current < 10 ? 10 : streak.current < 30 ? 30 : null;
   const prevMilestone = !streak ? 0 : streak.current < 3 ? 0 : streak.current < 10 ? 3 : streak.current < 30 ? 10 : 30;
   const milestonePct = nextMilestone && streak ? Math.min(100, ((streak.current - prevMilestone) / (nextMilestone - prevMilestone)) * 100) : 100;
+  // Date projetée du prochain palier si la série continue (jours de semaine uniquement).
+  const milestoneDate = nextMilestone && streak ? (() => {
+    const d = new Date();
+    let added = 0;
+    const need = nextMilestone - streak.current;
+    while (added < need) {
+      d.setDate(d.getDate() + 1);
+      const wd = d.getDay();
+      if (wd !== 0 && wd !== 6) added += 1;
+    }
+    return d;
+  })() : null;
   // Trajectoire de discipline : score moyen du mois vs mois précédent.
   const discCell = insights?.scorecard.find((s) => s.metric === "discipline_score");
   const traj = discCell && discCell.value != null && discCell.prev != null
@@ -487,6 +499,11 @@ export default function GoalsPage() {
               <div className="h-1.5 bg-border rounded-full overflow-hidden">
                 <GrowBar pct={Math.max(3, milestonePct)} className="bg-gradient-to-r from-accent to-warning" />
               </div>
+              {milestoneDate && streak.current > 0 && (
+                <p className="text-[11px] text-muted mt-1.5">
+                  {t("goals_milestone_forecast").replace("{m}", String(nextMilestone)).replace("{date}", milestoneDate.toLocaleDateString(undefined, { day: "numeric", month: "long" }))}
+                </p>
+              )}
             </div>
           )}
         </KpiCardPremium>

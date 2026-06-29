@@ -1933,6 +1933,7 @@ const dict: Record<string, string> = {
   "goals_heatmap_sub": "Jedes Kästchen ist ein Tag der letzten 12 Wochen. Je grüner, desto disziplinierter warst du.",
   "goals_heatmap_less": "weniger",
   "goals_heatmap_more": "mehr",
+  "goals_milestone_forecast": "Stufe {m} am {date} erreichbar, wenn du die Serie hältst.",
   "goals_heatmap_no_data": "keine Session",
   "goals_reco_dismiss": "Diesen Vorschlag ausblenden",
   "goals_delete_confirm": "Löschen?",
