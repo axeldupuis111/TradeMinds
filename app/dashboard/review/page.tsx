@@ -3,7 +3,7 @@
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { Pdf, C, type RGB } from "@/lib/pdf/kit";
-import { ArrowDownRight, ArrowUpRight, Minus, Sparkles, ThumbsUp, Target, Compass, ChevronLeft, ChevronRight, FileDown, TrendingUp, TrendingDown, Flame, Award, CalendarX } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Minus, Sparkles, ThumbsUp, Target, Compass, ChevronLeft, ChevronRight, FileDown, TrendingUp, TrendingDown, Flame, Award, CalendarX, Brain } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import CountUp from "@/components/animations/CountUp";
@@ -18,6 +18,7 @@ interface Month { key: string; year: number; month0: number; isCurrentMonth: boo
 interface CalDay { day: number; score: number | null; pnl: number }
 interface TrendPt { label: string; score: number | null; pnl: number }
 interface Records { greenDays: number; redDays: number; bestDisciplineDay: { date: string; score: number } | null; disciplinedStreak: number }
+interface EmotionEdge { emotion: string; count: number; pnl: number; winRate: number }
 interface Review { headline: string; strength: string; improvement: string; focus: string }
 interface DayDetail {
   date: string; pnl: number; trades: number; winRate: number; disciplineScore: number | null;
@@ -27,6 +28,7 @@ interface DayDetail {
 
 const EMOTION_EMOJI: Record<string, string> = {
   confident: "\u{1F60E}", neutral: "\u{1F610}", anxious: "\u{1F630}", frustrated: "\u{1F624}", fomo: "\u{1F911}", revenge: "\u{1F621}",
+  calm: "\u{1F60C}", greedy: "\u{1F4B0}", hesitant: "\u{1F615}", overconfident: "\u{1F913}", excited: "\u{1F929}", fearful: "\u{1F628}",
 };
 
 function fmtMoney(n: number) { return `${n >= 0 ? "+" : ""}${n.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} €`; }
@@ -83,6 +85,7 @@ export default function MonthlyReviewPage() {
   const [calendar, setCalendar] = useState<CalDay[]>([]);
   const [trend, setTrend] = useState<TrendPt[]>([]);
   const [records, setRecords] = useState<Records | null>(null);
+  const [emotions, setEmotions] = useState<EmotionEdge[]>([]);
   const [goalsSummary, setGoalsSummary] = useState<{ met: number; total: number } | null>(null);
   const [review, setReview] = useState<Review | null>(null);
   const [rawSummary, setRawSummary] = useState<string | null>(null);
@@ -97,7 +100,7 @@ export default function MonthlyReviewPage() {
       if (res.ok) {
         const d = await res.json();
         setMonth(d.month); setStats(d.stats); setDeltas(d.deltas); setExtras(d.extras);
-        setCalendar(d.calendar ?? []); setTrend(d.trend ?? []); setRecords(d.records ?? null);
+        setCalendar(d.calendar ?? []); setTrend(d.trend ?? []); setRecords(d.records ?? null); setEmotions(d.emotions ?? []);
 
         // Pont Objectifs ↔ Bilan : uniquement pour le mois en cours (les objectifs
         // sont évalués sur la période courante, pas archivés par mois passé).
@@ -353,6 +356,50 @@ export default function MonthlyReviewPage() {
                   </div>
                 </div>
               )}
+
+              {/* Edge émotionnel — P&L réel selon l'état d'esprit */}
+              {emotions.length > 0 && (() => {
+                const maxAbs = Math.max(1, ...emotions.map((e) => Math.abs(e.pnl)));
+                const worst = emotions[emotions.length - 1];
+                const best = emotions[0];
+                return (
+                  <div className="mt-4 rounded-xl border border-border bg-card p-4">
+                    <h2 className="text-sm font-semibold text-foreground flex items-center gap-2"><Brain className="w-4 h-4 text-accent" />{t("review_emotion_title")}</h2>
+                    <p className="text-xs text-muted mt-0.5 mb-3">{t("review_emotion_sub")}</p>
+                    {worst && worst.pnl < 0 ? (
+                      <div className="mb-3 flex items-start gap-2 rounded-lg border border-loss/30 bg-loss/[0.05] p-2.5 text-xs text-foreground">
+                        <span className="text-base leading-none shrink-0">{EMOTION_EMOJI[worst.emotion] ?? "\u{1F642}"}</span>
+                        <span>{t("review_emotion_warning").replace("{emotion}", t(`emotion_${worst.emotion}`)).replace("{money}", fmtMoney(worst.pnl))}</span>
+                      </div>
+                    ) : best && best.pnl > 0 ? (
+                      <div className="mb-3 flex items-start gap-2 rounded-lg border border-profit/30 bg-profit/[0.05] p-2.5 text-xs text-foreground">
+                        <span className="text-base leading-none shrink-0">{EMOTION_EMOJI[best.emotion] ?? "\u{1F642}"}</span>
+                        <span>{t("review_emotion_best").replace("{emotion}", t(`emotion_${best.emotion}`)).replace("{money}", fmtMoney(best.pnl))}</span>
+                      </div>
+                    ) : null}
+                    <div className="space-y-2">
+                      {emotions.map((e) => {
+                        const pct = Math.min(100, Math.round((Math.abs(e.pnl) / maxAbs) * 100));
+                        return (
+                          <div key={e.emotion} className="flex items-center gap-2 text-xs" title={`${e.count} ${t("review_kpi_trades").toLowerCase()}`}>
+                            <div className="w-24 shrink-0 flex items-center gap-1.5 min-w-0">
+                              <span className="text-base leading-none">{EMOTION_EMOJI[e.emotion] ?? "\u{1F642}"}</span>
+                              <span className="text-foreground truncate">{t(`emotion_${e.emotion}`)}</span>
+                            </div>
+                            <span className="w-9 text-muted tabular-nums shrink-0 text-right">{e.winRate}%</span>
+                            <div className="flex-1 flex items-center min-w-0">
+                              <div className="w-1/2 h-2 flex justify-end">{e.pnl < 0 && <GrowBar pct={pct} className="bg-loss rounded-full" />}</div>
+                              <div className="w-px h-3.5 bg-border shrink-0" />
+                              <div className="w-1/2 h-2">{e.pnl >= 0 && <GrowBar pct={pct} className="bg-profit rounded-full" />}</div>
+                            </div>
+                            <span className={`w-20 text-right tabular-nums font-semibold shrink-0 ${e.pnl >= 0 ? "text-profit" : "text-loss"}`}>{fmtMoney(e.pnl)}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="mt-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
               {/* Tendance 6 mois (discipline) */}

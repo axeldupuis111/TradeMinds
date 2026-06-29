@@ -12,7 +12,7 @@ function netPnl(t: { pnl: number; commission: number | null; swap: number | null
   return t.pnl + (t.commission || 0) + (t.swap || 0);
 }
 
-interface TradeRow { pnl: number; commission: number | null; swap: number | null; open_time: string; pair: string }
+interface TradeRow { pnl: number; commission: number | null; swap: number | null; open_time: string; pair: string; emotion: string | null }
 interface ReviewRow { discipline_score: number | null; created_at: string }
 
 function statsFor(trades: TradeRow[], reviews: ReviewRow[], fromIso: string, toIso: string) {
@@ -55,7 +55,7 @@ async function gather(userId: string, monthParam: string | null) {
   const isCurrentMonth = year === now.getFullYear() && month0 === now.getMonth();
 
   const [{ data: tradesRaw }, { data: reviewsRaw }] = await Promise.all([
-    supabase.from("trades").select("pnl, commission, swap, open_time, pair").eq("user_id", userId).gte("open_time", trendStart.toISOString()),
+    supabase.from("trades").select("pnl, commission, swap, open_time, pair, emotion").eq("user_id", userId).gte("open_time", trendStart.toISOString()),
     supabase.from("session_reviews").select("discipline_score, created_at").eq("user_id", userId).gte("created_at", trendStart.toISOString()),
   ]);
   const trades = (tradesRaw ?? []) as TradeRow[];
@@ -122,6 +122,19 @@ async function gather(userId: string, monthParam: string | null) {
 
   const extras = { best, worst, topPair, equity, prepRate };
 
+  // ── Edge émotionnel : P&L réel par état émotionnel du trade ───────────────
+  const emoMap = new Map<string, { count: number; pnl: number; wins: number }>();
+  for (const t of monthTrades) {
+    if (!t.emotion) continue;
+    const a = emoMap.get(t.emotion) ?? { count: 0, pnl: 0, wins: 0 };
+    const n = netPnl(t);
+    a.count += 1; a.pnl += n; if (n > 0) a.wins += 1;
+    emoMap.set(t.emotion, a);
+  }
+  const emotions = Array.from(emoMap.entries())
+    .map(([emotion, a]) => ({ emotion, count: a.count, pnl: Math.round(a.pnl * 100) / 100, winRate: Math.round((a.wins / a.count) * 100) }))
+    .sort((a, b) => b.pnl - a.pnl);
+
   // ── Records du mois ──────────────────────────────────────────────────────
   const greenDays = Array.from(pnlByDay.values()).filter((v) => v > 0).length;
   const redDays = Array.from(pnlByDay.values()).filter((v) => v < 0).length;
@@ -146,7 +159,7 @@ async function gather(userId: string, monthParam: string | null) {
   }
 
   const month = { key: `${year}-${String(month0 + 1).padStart(2, "0")}`, year, month0, isCurrentMonth };
-  return { month, stats, prev, deltas, extras, calendar, trend, records };
+  return { month, stats, prev, deltas, extras, calendar, trend, records, emotions };
 }
 
 export async function GET(req: Request) {
