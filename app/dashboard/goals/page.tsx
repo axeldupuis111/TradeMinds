@@ -6,6 +6,7 @@ import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { formatCurrency } from "@/lib/utils";
 import CountUp from "@/components/animations/CountUp";
 import ConfettiBurst from "@/components/animations/ConfettiBurst";
+import { useReducedMotion } from "framer-motion";
 import { Trash2, Plus, Target, ChevronDown, CheckCircle2, PenLine, Layers, Flame, Repeat, Sparkles, Clock, CalendarDays, Flag, Crown, Scale, ShieldCheck, Zap, Gauge, TrendingUp, TrendingDown, Minus, Lock, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -95,6 +96,19 @@ function statusVisual(status: "met" | "failed" | "progress") {
   if (status === "met") return { dot: "bg-profit shadow-[0_0_8px_rgb(var(--profit)/0.45)]", bar: "bg-profit", badge: "bg-profit/10 text-profit", text: "text-profit" };
   if (status === "failed") return { dot: "bg-loss shadow-[0_0_8px_rgb(var(--loss)/0.45)]", bar: "bg-loss", badge: "bg-loss/10 text-loss", text: "text-loss" };
   return { dot: "bg-accent shadow-[0_0_8px_rgb(var(--accent)/0.45)]", bar: "bg-gradient-to-r from-accent to-cyan-300", badge: "bg-surface text-muted", text: "text-foreground" };
+}
+
+// Barre de progression qui « pousse » de 0 jusqu'à sa valeur au montage
+// (et se ré-anime si la valeur change). Respecte prefers-reduced-motion.
+function GrowBar({ pct, className = "" }: { pct: number; className?: string }) {
+  const reduced = useReducedMotion();
+  const [w, setW] = useState(reduced ? pct : 0);
+  useEffect(() => {
+    if (reduced) { setW(pct); return; }
+    const id = requestAnimationFrame(() => setW(pct));
+    return () => cancelAnimationFrame(id);
+  }, [pct, reduced]);
+  return <div className={`h-full rounded-full ${reduced ? "" : "transition-all duration-700 ease-out"} ${className}`} style={{ width: `${w}%` }} />;
 }
 
 // Mini-courbe d'évolution du score de discipline (aire + ligne, vert/rouge selon
@@ -407,7 +421,7 @@ export default function GoalsPage() {
                 <span className="text-[11px] text-foreground-muted tabular-nums">{streak.current}/{nextMilestone}</span>
               </div>
               <div className="h-1.5 bg-border rounded-full overflow-hidden">
-                <div className="h-full rounded-full bg-gradient-to-r from-accent to-warning transition-all duration-700" style={{ width: `${Math.max(3, milestonePct)}%` }} />
+                <GrowBar pct={Math.max(3, milestonePct)} className="bg-gradient-to-r from-accent to-warning" />
               </div>
             </div>
           )}
@@ -432,7 +446,7 @@ export default function GoalsPage() {
                     <span className="text-xs text-muted mb-0.5">{t("goals_edge_winrate")}</span>
                   </div>
                   <div className="mt-2 h-1.5 rounded-full bg-surface overflow-hidden">
-                    <div className="h-full rounded-full bg-profit transition-all duration-700" style={{ width: `${edge.composed.winRate}%` }} />
+                    <GrowBar pct={edge.composed.winRate} className="bg-profit" />
                   </div>
                   <p className="text-xs text-muted mt-2">
                     {t("goals_edge_trades").replace("{n}", String(edge.composed.count))} · {t("goals_edge_avg")} <span className={edge.composed.avgNet >= 0 ? "text-profit" : "text-loss"}>{formatCurrency(edge.composed.avgNet)}</span>
@@ -447,7 +461,7 @@ export default function GoalsPage() {
                     <span className="text-xs text-muted mb-0.5">{t("goals_edge_winrate")}</span>
                   </div>
                   <div className="mt-2 h-1.5 rounded-full bg-surface overflow-hidden">
-                    <div className="h-full rounded-full bg-loss transition-all duration-700" style={{ width: `${edge.impulsive.winRate}%` }} />
+                    <GrowBar pct={edge.impulsive.winRate} className="bg-loss" />
                   </div>
                   <p className="text-xs text-muted mt-2">
                     {t("goals_edge_trades").replace("{n}", String(edge.impulsive.count))} · {t("goals_edge_avg")} <span className={edge.impulsive.avgNet >= 0 ? "text-profit" : "text-loss"}>{formatCurrency(edge.impulsive.avgNet)}</span>
@@ -752,7 +766,7 @@ export default function GoalsPage() {
                           {g.kind === "metric" ? (
                             <>
                               <div className="flex-1 h-2 rounded-full bg-surface overflow-hidden">
-                                <div className={`h-full rounded-full transition-all duration-500 ${sv.bar}`} style={{ width: `${Math.max(3, g.progress)}%` }} />
+                                <GrowBar pct={Math.max(3, g.progress)} className={sv.bar} />
                               </div>
                               <span className={`text-xs font-bold tabular-nums whitespace-nowrap ${sv.text}`}>{g.value}{unit(g.metric)}</span>
                             </>
