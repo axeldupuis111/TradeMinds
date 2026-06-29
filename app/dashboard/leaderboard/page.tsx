@@ -42,16 +42,18 @@ function tierProgress(s: number): { floor: number; next: number | null; nextKey:
   return { floor: 0, next: 50, nextKey: "silver", pct: (s / 50) * 100, bar: "from-orange-400 to-slate-300" };
 }
 
-// Catalogue de badges évalués à partir des stats perso.
-function badgesFor(s: Self): { key: string; emoji: string; earned: boolean }[] {
+// Catalogue de badges évalués à partir des stats perso, avec progression
+// (current/target) pour ceux qui se débloquent par paliers chiffrés.
+type Badge = { key: string; emoji: string; earned: boolean; progress: { current: number; target: number } | null };
+function badgesFor(s: Self): Badge[] {
   return [
-    { key: "first_session", emoji: "✅", earned: s.sessions >= 1 },
-    { key: "regular", emoji: "📅", earned: s.sessions >= 20 },
-    { key: "streak_7", emoji: "🔥", earned: s.streak >= 7 },
-    { key: "streak_30", emoji: "⚡", earned: s.streak >= 30 },
-    { key: "discipline_gold", emoji: "🏅", earned: s.score >= 85 && s.sessions >= 3 },
-    { key: "top10", emoji: "🎯", earned: s.ranked && s.percentile != null && s.percentile <= 10 },
-    { key: "podium", emoji: "🏆", earned: s.ranked && s.rank != null && s.rank <= 3 },
+    { key: "first_session", emoji: "✅", earned: s.sessions >= 1, progress: { current: s.sessions, target: 1 } },
+    { key: "regular", emoji: "📅", earned: s.sessions >= 20, progress: { current: s.sessions, target: 20 } },
+    { key: "streak_7", emoji: "🔥", earned: s.streak >= 7, progress: { current: s.streak, target: 7 } },
+    { key: "streak_30", emoji: "⚡", earned: s.streak >= 30, progress: { current: s.streak, target: 30 } },
+    { key: "discipline_gold", emoji: "🏅", earned: s.score >= 85 && s.sessions >= 3, progress: { current: s.score, target: 85 } },
+    { key: "top10", emoji: "🎯", earned: s.ranked && s.percentile != null && s.percentile <= 10, progress: null },
+    { key: "podium", emoji: "🏆", earned: s.ranked && s.rank != null && s.rank <= 3, progress: null },
   ];
 }
 
@@ -78,6 +80,7 @@ export default function LeaderboardPage() {
   const [mode, setMode] = useState<Mode>("discipline");
   const [loading, setLoading] = useState(true);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [selectedBadge, setSelectedBadge] = useState<string | null>(null);
   const celebrated = useRef(false);
 
   const load = useCallback(async (d: number, m: Mode) => {
@@ -177,13 +180,41 @@ export default function LeaderboardPage() {
             </div>
             <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
               {badges.map((b) => (
-                <div key={b.key} title={t(`badge_${b.key}`)}
-                  className={`aspect-square rounded-xl border flex flex-col items-center justify-center gap-1 p-1 transition-transform hover:scale-105 ${b.earned ? "border-accent/30 bg-accent/[0.05] shadow-[0_0_12px_-3px_rgb(var(--accent)/0.5)]" : "border-border bg-surface/40 opacity-50"}`}>
+                <button key={b.key} onClick={() => setSelectedBadge((cur) => (cur === b.key ? null : b.key))}
+                  className={`aspect-square rounded-xl border flex flex-col items-center justify-center gap-1 p-1 transition-transform hover:scale-105 ${selectedBadge === b.key ? "ring-1 ring-accent" : ""} ${b.earned ? "border-accent/30 bg-accent/[0.05] shadow-[0_0_12px_-3px_rgb(var(--accent)/0.5)]" : "border-border bg-surface/40 opacity-50"}`}>
                   <span className="text-lg leading-none">{b.earned ? b.emoji : <Lock className="w-3.5 h-3.5 text-muted" />}</span>
                   <span className="text-[8px] text-muted text-center leading-tight line-clamp-2">{t(`badge_${b.key}`)}</span>
-                </div>
+                </button>
               ))}
             </div>
+            {/* Détail du badge sélectionné : critère + progression */}
+            {selectedBadge && (() => {
+              const b = badges.find((x) => x.key === selectedBadge);
+              if (!b) return null;
+              return (
+                <div className="mt-2 rounded-xl border border-border bg-surface/40 p-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-xl leading-none shrink-0">{b.earned ? b.emoji : "🔒"}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground">{t(`badge_${b.key}`)}</p>
+                      <p className="text-xs text-muted">{t(`badge_${b.key}_hint`)}</p>
+                    </div>
+                    {b.earned && <span className="text-[11px] font-semibold text-profit shrink-0">✓ {t("leaderboard_badge_earned")}</span>}
+                  </div>
+                  {!b.earned && b.progress && (
+                    <div className="mt-2.5">
+                      <div className="flex items-center justify-between text-[11px] text-muted mb-1">
+                        <span>{t("leaderboard_badge_progress")}</span>
+                        <span className="tabular-nums">{Math.min(b.progress.current, b.progress.target)}/{b.progress.target}</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-surface overflow-hidden">
+                        <GrowBar pct={Math.min(100, Math.round((b.progress.current / b.progress.target) * 100))} durationMs={700} className="rounded-full bg-accent" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         );
       })()}

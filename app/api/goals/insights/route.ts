@@ -85,11 +85,26 @@ export async function GET() {
     .map((r) => r.discipline_score as number)
     .reverse();
 
+  // ── Heatmap : score de discipline moyen par jour sur ~12 semaines.
+  const HEATMAP_DAYS = 84;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - (HEATMAP_DAYS - 1));
+  const cutoffIso = cutoff.toISOString().slice(0, 10);
+  const dayAgg = new Map<string, { sum: number; n: number }>();
+  for (const r of reviews) {
+    const d = r.created_at.slice(0, 10);
+    if (d < cutoffIso) continue;
+    const a = dayAgg.get(d) ?? { sum: 0, n: 0 };
+    a.sum += r.discipline_score as number; a.n += 1; dayAgg.set(d, a);
+  }
+  const heatmap = Array.from(dayAgg.entries()).map(([date, a]) => ({ date, score: Math.round(a.sum / a.n) }));
+
   return NextResponse.json({
     streak,
     edge,
     scorecard,
     trend,
+    heatmap,
     hasTrades: trades.length > 0,
     hasReviews: reviews.length > 0,
   });
