@@ -3,9 +3,9 @@
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { Pdf, C, type RGB } from "@/lib/pdf/kit";
-import { ArrowDownRight, ArrowUpRight, Minus, Sparkles, ThumbsUp, Target, Compass, ChevronLeft, ChevronRight, FileDown, TrendingUp, TrendingDown, Flame, Award, CalendarX, Brain } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Minus, Sparkles, ThumbsUp, Target, Compass, ChevronLeft, ChevronRight, FileDown, TrendingUp, TrendingDown, Flame, Award, CalendarX, Brain, GitCompareArrows } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import CountUp from "@/components/animations/CountUp";
 import GrowBar from "@/components/animations/GrowBar";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -103,6 +103,10 @@ export default function MonthlyReviewPage() {
   const [review, setReview] = useState<Review | null>(null);
   const [rawSummary, setRawSummary] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [compareOpen, setCompareOpen] = useState(false);
+  const [compareMonth, setCompareMonth] = useState("");
+  const [compareData, setCompareData] = useState<{ month: Month; stats: Stats } | null>(null);
+  const [compareLoading, setCompareLoading] = useState(false);
 
   const loadStats = useCallback(async (mp: string | null) => {
     if (!isPaid) { setLoadingStats(false); return; }
@@ -133,6 +137,29 @@ export default function MonthlyReviewPage() {
   }, [isPaid]);
 
   useEffect(() => { loadStats(monthParam); }, [monthParam, loadStats]);
+
+  // Comparaison : stats d'un 2e mois choisi.
+  useEffect(() => {
+    if (!compareOpen || !compareMonth) { setCompareData(null); return; }
+    let alive = true; setCompareLoading(true);
+    fetch(`/api/monthly-review?month=${compareMonth}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (alive) setCompareData(d ? { month: d.month, stats: d.stats } : null); })
+      .catch(() => { if (alive) setCompareData(null); })
+      .finally(() => { if (alive) setCompareLoading(false); });
+    return () => { alive = false; };
+  }, [compareOpen, compareMonth]);
+
+  function toggleCompare() {
+    setCompareOpen((open) => {
+      const next = !open;
+      if (next && !compareMonth && month) {
+        const d = new Date(month.year, month.month0 - 1, 1);
+        setCompareMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+      }
+      return next;
+    });
+  }
 
   function shiftMonth(delta: number) {
     if (!month) return;
@@ -329,6 +356,33 @@ export default function MonthlyReviewPage() {
                 <Kpi label={t("review_kpi_sessions")} value={`${stats.sessions}`} delta={deltas?.sessions} />
                 <Kpi label={t("review_kpi_score")} value={stats.avgDisciplineScore != null ? `${stats.avgDisciplineScore}/100` : "—"} delta={deltas?.avgDisciplineScore ?? undefined} suffix="pts" valueClass={stats.avgDisciplineScore != null ? scoreText(stats.avgDisciplineScore) : "text-foreground"} />
                 {extras?.prepRate != null && <Kpi label={t("review_kpi_prep")} value={`${extras.prepRate}%`} valueClass="text-teal-300" />}
+              </div>
+
+              {/* Comparaison mois-sur-mois */}
+              <div className="mt-3">
+                <button onClick={toggleCompare} className="inline-flex items-center gap-1.5 text-xs text-accent hover:underline">
+                  <GitCompareArrows className="w-3.5 h-3.5" /> {compareOpen ? t("review_compare_hide") : t("review_compare_cta")}
+                </button>
+                {compareOpen && (
+                  <div className="mt-2 rounded-xl border border-border bg-card p-4">
+                    <div className="flex items-center gap-2 mb-3 flex-wrap">
+                      <span className="text-xs text-muted">{t("review_compare_with")}</span>
+                      <input type="month" value={compareMonth} max={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`}
+                        onChange={(e) => setCompareMonth(e.target.value)}
+                        className="px-2.5 py-1.5 bg-surface border border-border rounded-lg text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-accent" />
+                    </div>
+                    {compareLoading ? (
+                      <div className="skeleton h-32 rounded-lg" />
+                    ) : compareData && !(compareData.stats.trades === 0 && compareData.stats.sessions === 0) ? (
+                      <CompareTable a={stats} b={compareData.stats}
+                        aLabel={monthLabel}
+                        bLabel={new Date(compareData.month.year, compareData.month.month0, 1).toLocaleDateString(lang, { month: "long", year: "numeric" })}
+                        t={t} />
+                    ) : (
+                      <p className="text-xs text-muted">{t("review_compare_no_data")}</p>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Pont Objectifs (mois en cours) */}
@@ -647,6 +701,39 @@ function Highlight({ label, value, sub, positive, onClick }: { label: string; va
     );
   }
   return <div className="rounded-xl border border-border bg-card p-4">{inner}</div>;
+}
+
+// Tableau comparatif de deux mois (KPIs côte à côte + écart).
+function CompareTable({ a, b, aLabel, bLabel, t }: { a: Stats; b: Stats; aLabel: string; bLabel: string; t: (k: string) => string }) {
+  const rows: { k: string; a: number | null; b: number | null; suffix: string }[] = [
+    { k: "review_kpi_trades", a: a.trades, b: b.trades, suffix: "" },
+    { k: "review_kpi_days", a: a.tradingDays, b: b.tradingDays, suffix: "" },
+    { k: "review_kpi_winrate", a: a.winRate, b: b.winRate, suffix: "%" },
+    { k: "review_kpi_sessions", a: a.sessions, b: b.sessions, suffix: "" },
+    { k: "review_kpi_score", a: a.avgDisciplineScore, b: b.avgDisciplineScore, suffix: "" },
+  ];
+  return (
+    <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 gap-y-2 items-center text-xs">
+      <span />
+      <span className="text-right font-semibold text-foreground capitalize">{aLabel}</span>
+      <span className="text-right text-muted capitalize">{bLabel}</span>
+      <span className="text-right text-muted">Δ</span>
+      {rows.map((r) => {
+        const delta = (r.a ?? 0) - (r.b ?? 0);
+        const both = r.a != null && r.b != null;
+        return (
+          <Fragment key={r.k}>
+            <span className="text-muted truncate">{t(r.k)}</span>
+            <span className="text-right font-semibold text-foreground tabular-nums">{r.a == null ? "—" : `${r.a}${r.suffix}`}</span>
+            <span className="text-right text-muted tabular-nums">{r.b == null ? "—" : `${r.b}${r.suffix}`}</span>
+            <span className={`text-right tabular-nums font-medium ${both && delta > 0 ? "text-profit" : both && delta < 0 ? "text-loss" : "text-muted/40"}`}>
+              {both ? `${delta > 0 ? "+" : ""}${Math.round(delta * 10) / 10}${r.suffix}` : "—"}
+            </span>
+          </Fragment>
+        );
+      })}
+    </div>
+  );
 }
 
 function ReviewCard({ icon, title, body, accent }: { icon: React.ReactNode; title: string; body: string; accent?: boolean }) {
