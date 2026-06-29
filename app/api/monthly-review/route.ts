@@ -135,6 +135,27 @@ async function gather(userId: string, monthParam: string | null) {
     .map(([emotion, a]) => ({ emotion, count: a.count, pnl: Math.round(a.pnl * 100) / 100, winRate: Math.round((a.wins / a.count) * 100) }))
     .sort((a, b) => b.pnl - a.pnl);
 
+  // ── Performance par jour de la semaine (lundi = 0) ────────────────────────
+  const wdAgg = Array.from({ length: 7 }, () => ({ pnl: 0, count: 0, wins: 0 }));
+  for (const t of monthTrades) {
+    const idx = (new Date(t.open_time).getDay() + 6) % 7; // lundi = 0
+    const n = netPnl(t);
+    wdAgg[idx].pnl += n; wdAgg[idx].count += 1; if (n > 0) wdAgg[idx].wins += 1;
+  }
+  const weekdays = wdAgg.map((w, i) => ({ wd: i, pnl: Math.round(w.pnl * 100) / 100, count: w.count, winRate: w.count ? Math.round((w.wins / w.count) * 100) : 0 }));
+
+  // ── Performance par instrument (paire) ────────────────────────────────────
+  const pairAgg = new Map<string, { pnl: number; count: number; wins: number }>();
+  for (const t of monthTrades) {
+    const a = pairAgg.get(t.pair) ?? { pnl: 0, count: 0, wins: 0 };
+    const n = netPnl(t);
+    a.pnl += n; a.count += 1; if (n > 0) a.wins += 1;
+    pairAgg.set(t.pair, a);
+  }
+  const pairs = Array.from(pairAgg.entries())
+    .map(([pair, a]) => ({ pair, pnl: Math.round(a.pnl * 100) / 100, count: a.count, winRate: a.count ? Math.round((a.wins / a.count) * 100) : 0 }))
+    .sort((a, b) => b.pnl - a.pnl);
+
   // ── Records du mois ──────────────────────────────────────────────────────
   const greenDays = Array.from(pnlByDay.values()).filter((v) => v > 0).length;
   const redDays = Array.from(pnlByDay.values()).filter((v) => v < 0).length;
@@ -159,7 +180,7 @@ async function gather(userId: string, monthParam: string | null) {
   }
 
   const month = { key: `${year}-${String(month0 + 1).padStart(2, "0")}`, year, month0, isCurrentMonth };
-  return { month, stats, prev, deltas, extras, calendar, trend, records, emotions };
+  return { month, stats, prev, deltas, extras, calendar, trend, records, emotions, weekdays, pairs };
 }
 
 export async function GET(req: Request) {
