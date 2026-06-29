@@ -145,9 +145,17 @@ function parseAnalysis(raw: string): Analysis | null {
 }
 
 /**
- * Run a request that uses the server-side web_search tool to completion. The
- * server loops up to ~10 searches then may return `pause_turn`; we resume a few
- * times so the model can finish gathering context and write its final answer.
+ * Run a request that uses the server-side web_search tool to completion.
+ *
+ * We use the classic `web_search_20250305` (not the dynamic-filtering
+ * `web_search_20260209`): the newer tool runs server-side CODE EXECUTION per
+ * search, which is far slower and less predictable — it blew past Vercel's hard
+ * 300s function cap (504) and even tripped the SDK request timeout locally. The
+ * classic tool just returns results, so it's fast and steady.
+ *
+ * The server loops a few searches then may return `pause_turn`; we resume a
+ * couple of times. Each call is capped at 120s so a hung search fails fast
+ * (cron retries next day) instead of burning the whole budget.
  */
 async function createWithWebSearch(
   client: Anthropic,
@@ -155,24 +163,20 @@ async function createWithWebSearch(
 ): Promise<Anthropic.Message> {
   const messages: Anthropic.MessageParam[] = [{ role: "user", content: prompt }];
   const tools = [
-    { type: "web_search_20260209" as const, name: "web_search" as const, max_uses: 6 },
+    { type: "web_search_20250305" as const, name: "web_search" as const, max_uses: 5 },
   ];
-  let msg = await client.messages.create({ model: BRIEF_MODEL, max_tokens: 4000, tools, messages });
+  let msg = await client.messages.create(
+    { model: BRIEF_MODEL, max_tokens: 4000, tools, messages },
+    { timeout: 150_000 },
+  );
   let guard = 0;
-  while (msg.stop_reason === "pause_turn" && guard < 4) {
+  while (msg.stop_reason === "pause_turn" && guard < 3) {
     guard++;
     messages.push({ role: "assistant", content: msg.content });
-    // web_search_20260209 runs server-side code execution; on pause_turn the
-    // container holds pending tool uses and MUST be passed back to resume, or
-    // the API 400s ("container_id is required …").
-    const containerId = msg.container?.id;
-    msg = await client.messages.create({
-      model: BRIEF_MODEL,
-      max_tokens: 4000,
-      tools,
-      messages,
-      ...(containerId ? { container: containerId } : {}),
-    });
+    msg = await client.messages.create(
+      { model: BRIEF_MODEL, max_tokens: 4000, tools, messages },
+      { timeout: 150_000 },
+    );
   }
   return msg;
 }
@@ -273,38 +277,39 @@ Donne 3 à 5 thèmes et 3 à 5 éléments à surveiller. Pour "outlook", sois CO
     return NextResponse.json({ dryRun: true, date: analysisDate, fr: frBrief });
   }
 
-  // ── 3. Persist FR, then translate to the other languages ──────────────────
-  const rows: { lang: Lang; analysis: Analysis; model: string }[] = [
-    { lang: "fr", analysis: frBrief, model: BRIEF_MODEL },
-  ];
-
-  for (const lang of TARGET_LANGS) {
+  // ── 3. Persist FR, then translate to the other languages (in parallel) ────
+  const fr = frBrief; // non-null narrowing for the closures below
+  const translate = async (lang: Lang): Promise<{ lang: Lang; analysis: Analysis; model: string }> => {
     try {
-      const tMsg = await client.messages.create({
-        model: TRANSLATE_MODEL,
-        max_tokens: 8192,
-        output_config: { format: { type: "json_schema", schema: ANALYSIS_SCHEMA } },
-        messages: [
-          {
-            role: "user",
-            content: `Traduis fidèlement en ${LANG_NAME[lang]} TOUTES les valeurs textuelles de ce JSON d'analyse macro-économique. Garde EXACTEMENT la même structure et les mêmes clés. Ne traduis pas les clés. Ne change pas les chiffres ni les noms propres :
+      const tMsg = await client.messages.create(
+        {
+          model: TRANSLATE_MODEL,
+          max_tokens: 8192,
+          output_config: { format: { type: "json_schema", schema: ANALYSIS_SCHEMA } },
+          messages: [
+            {
+              role: "user",
+              content: `Traduis fidèlement en ${LANG_NAME[lang]} TOUTES les valeurs textuelles de ce JSON d'analyse macro-économique. Garde EXACTEMENT la même structure et les mêmes clés. Ne traduis pas les clés. Ne change pas les chiffres ni les noms propres :
 
-${JSON.stringify(frBrief)}`,
-          },
-        ],
-      });
+${JSON.stringify(fr)}`,
+            },
+          ],
+        },
+        { timeout: 150_000 },
+      );
       const translated = parseAnalysis(textOf(tMsg));
-      if (translated) {
-        rows.push({ lang, analysis: translated, model: TRANSLATE_MODEL });
-      } else {
-        console.error(`[Macro] ${lang} translation unparseable; falling back to FR`);
-        rows.push({ lang, analysis: frBrief, model: BRIEF_MODEL });
-      }
+      if (translated) return { lang, analysis: translated, model: TRANSLATE_MODEL };
+      console.error(`[Macro] ${lang} translation unparseable; falling back to FR`);
     } catch (err) {
       console.error(`[Macro] ${lang} translation failed; falling back to FR:`, err);
-      rows.push({ lang, analysis: frBrief, model: BRIEF_MODEL });
     }
-  }
+    return { lang, analysis: fr, model: BRIEF_MODEL };
+  };
+
+  const rows: { lang: Lang; analysis: Analysis; model: string }[] = [
+    { lang: "fr", analysis: fr, model: BRIEF_MODEL },
+    ...(await Promise.all(TARGET_LANGS.map(translate))),
+  ];
 
   const { error } = await supabase.from("macro_analyses").upsert(
     rows.map((r) => ({
