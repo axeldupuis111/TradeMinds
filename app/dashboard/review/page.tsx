@@ -21,6 +21,7 @@ interface Records { greenDays: number; redDays: number; bestDisciplineDay: { dat
 interface EmotionEdge { emotion: string; count: number; pnl: number; winRate: number }
 interface Weekday { wd: number; pnl: number; count: number; winRate: number }
 interface PairPerf { pair: string; pnl: number; count: number; winRate: number }
+interface DirPerf { dir: "long" | "short"; pnl: number; count: number; winRate: number }
 interface Review { headline: string; strength: string; improvement: string; focus: string }
 interface DayDetail {
   date: string; pnl: number; trades: number; winRate: number; disciplineScore: number | null;
@@ -90,6 +91,7 @@ export default function MonthlyReviewPage() {
   const [emotions, setEmotions] = useState<EmotionEdge[]>([]);
   const [weekdays, setWeekdays] = useState<Weekday[]>([]);
   const [pairs, setPairs] = useState<PairPerf[]>([]);
+  const [directions, setDirections] = useState<DirPerf[]>([]);
   const [goalsSummary, setGoalsSummary] = useState<{ met: number; total: number } | null>(null);
   const [review, setReview] = useState<Review | null>(null);
   const [rawSummary, setRawSummary] = useState<string | null>(null);
@@ -105,7 +107,7 @@ export default function MonthlyReviewPage() {
         const d = await res.json();
         setMonth(d.month); setStats(d.stats); setDeltas(d.deltas); setExtras(d.extras);
         setCalendar(d.calendar ?? []); setTrend(d.trend ?? []); setRecords(d.records ?? null); setEmotions(d.emotions ?? []);
-        setWeekdays(d.weekdays ?? []); setPairs(d.pairs ?? []);
+        setWeekdays(d.weekdays ?? []); setPairs(d.pairs ?? []); setDirections(d.directions ?? []);
 
         // Pont Objectifs ↔ Bilan : uniquement pour le mois en cours (les objectifs
         // sont évalués sur la période courante, pas archivés par mois passé).
@@ -459,6 +461,22 @@ export default function MonthlyReviewPage() {
                       </div>
                     );
                   })()}
+                </div>
+              )}
+
+              {/* Achat vs Vente */}
+              {directions.length > 0 && (
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  {directions.map((d) => (
+                    <div key={d.dir} className={`rounded-xl border p-3 ${d.pnl >= 0 ? "border-profit/30 bg-profit/[0.04]" : "border-loss/30 bg-loss/[0.04]"}`}>
+                      <p className="text-xs text-muted flex items-center gap-1.5">
+                        {d.dir === "long" ? <ArrowUpRight className="w-3.5 h-3.5 text-profit" /> : <ArrowDownRight className="w-3.5 h-3.5 text-loss" />}
+                        {t(`review_day_${d.dir}`)}
+                      </p>
+                      <p className={`text-lg font-bold mt-0.5 tabular-nums ${d.pnl >= 0 ? "text-profit" : "text-loss"}`}>{fmtMoney(d.pnl)}</p>
+                      <p className="text-[11px] text-muted">{d.winRate}% · {d.count} {t("review_kpi_trades").toLowerCase()}</p>
+                    </div>
+                  ))}
                 </div>
               )}
 

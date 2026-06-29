@@ -12,7 +12,7 @@ function netPnl(t: { pnl: number; commission: number | null; swap: number | null
   return t.pnl + (t.commission || 0) + (t.swap || 0);
 }
 
-interface TradeRow { pnl: number; commission: number | null; swap: number | null; open_time: string; pair: string; emotion: string | null }
+interface TradeRow { pnl: number; commission: number | null; swap: number | null; open_time: string; pair: string; emotion: string | null; direction: string | null }
 interface ReviewRow { discipline_score: number | null; created_at: string }
 
 function statsFor(trades: TradeRow[], reviews: ReviewRow[], fromIso: string, toIso: string) {
@@ -55,7 +55,7 @@ async function gather(userId: string, monthParam: string | null) {
   const isCurrentMonth = year === now.getFullYear() && month0 === now.getMonth();
 
   const [{ data: tradesRaw }, { data: reviewsRaw }] = await Promise.all([
-    supabase.from("trades").select("pnl, commission, swap, open_time, pair, emotion").eq("user_id", userId).gte("open_time", trendStart.toISOString()),
+    supabase.from("trades").select("pnl, commission, swap, open_time, pair, emotion, direction").eq("user_id", userId).gte("open_time", trendStart.toISOString()),
     supabase.from("session_reviews").select("discipline_score, created_at").eq("user_id", userId).gte("created_at", trendStart.toISOString()),
   ]);
   const trades = (tradesRaw ?? []) as TradeRow[];
@@ -156,6 +156,21 @@ async function gather(userId: string, monthParam: string | null) {
     .map(([pair, a]) => ({ pair, pnl: Math.round(a.pnl * 100) / 100, count: a.count, winRate: a.count ? Math.round((a.wins / a.count) * 100) : 0 }))
     .sort((a, b) => b.pnl - a.pnl);
 
+  // ── Performance achat vs vente (sens du trade) ────────────────────────────
+  const dirAgg: Record<"long" | "short", { pnl: number; count: number; wins: number }> = {
+    long: { pnl: 0, count: 0, wins: 0 }, short: { pnl: 0, count: 0, wins: 0 },
+  };
+  for (const t of monthTrades) {
+    const d = (t.direction ?? "").toLowerCase();
+    const key = /buy|long|achat/.test(d) ? "long" : /sell|short|vente/.test(d) ? "short" : null;
+    if (!key) continue;
+    const n = netPnl(t);
+    dirAgg[key].pnl += n; dirAgg[key].count += 1; if (n > 0) dirAgg[key].wins += 1;
+  }
+  const directions = (["long", "short"] as const)
+    .map((dir) => ({ dir, pnl: Math.round(dirAgg[dir].pnl * 100) / 100, count: dirAgg[dir].count, winRate: dirAgg[dir].count ? Math.round((dirAgg[dir].wins / dirAgg[dir].count) * 100) : 0 }))
+    .filter((d) => d.count > 0);
+
   // ── Records du mois ──────────────────────────────────────────────────────
   const greenDays = Array.from(pnlByDay.values()).filter((v) => v > 0).length;
   const redDays = Array.from(pnlByDay.values()).filter((v) => v < 0).length;
@@ -180,7 +195,7 @@ async function gather(userId: string, monthParam: string | null) {
   }
 
   const month = { key: `${year}-${String(month0 + 1).padStart(2, "0")}`, year, month0, isCurrentMonth };
-  return { month, stats, prev, deltas, extras, calendar, trend, records, emotions, weekdays, pairs };
+  return { month, stats, prev, deltas, extras, calendar, trend, records, emotions, weekdays, pairs, directions };
 }
 
 export async function GET(req: Request) {
