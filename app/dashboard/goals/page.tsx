@@ -153,7 +153,8 @@ function heatCls(score: number | null): string {
 }
 
 // Heatmap de régularité façon GitHub : ~13 semaines × 7 jours, colorée par le
-// score de discipline quotidien. Aligne les colonnes sur le lundi.
+// score de discipline quotidien (échelle de qualité, pas d'« intensité »).
+// Repères mois + jours, « aujourd'hui » marqué, et stats de synthèse à droite.
 function DisciplineHeatmap({ data, t }: { data: { date: string; score: number }[]; t: (k: string) => string }) {
   const WEEKS = 13;
   const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -163,9 +164,10 @@ function DisciplineHeatmap({ data, t }: { data: { date: string; score: number }[
   const monOffset = (today.getDay() + 6) % 7; // lundi = 0
   const start = new Date(today); start.setDate(today.getDate() - monOffset - (WEEKS - 1) * 7);
 
-  const cols: ({ iso: string; score: number | null; isToday: boolean; future: boolean } | null)[][] = [];
+  type Cell = { iso: string; score: number | null; isToday: boolean; future: boolean };
+  const cols: Cell[][] = [];
   for (let w = 0; w < WEEKS; w++) {
-    const week: ({ iso: string; score: number | null; isToday: boolean; future: boolean } | null)[] = [];
+    const week: Cell[] = [];
     for (let d = 0; d < 7; d++) {
       const cur = new Date(start); cur.setDate(start.getDate() + w * 7 + d);
       const iso = ymd(cur);
@@ -174,32 +176,88 @@ function DisciplineHeatmap({ data, t }: { data: { date: string; score: number }[
     cols.push(week);
   }
 
+  // Libellé de mois au-dessus de la 1re colonne de chaque mois.
+  const monthLabels = cols.map((week, wi) => {
+    const m = new Date(week[0].iso + "T00:00:00").getMonth();
+    const prev = wi > 0 ? new Date(cols[wi - 1][0].iso + "T00:00:00").getMonth() : -1;
+    return m !== prev ? new Date(week[0].iso + "T00:00:00").toLocaleDateString(undefined, { month: "short" }) : "";
+  });
+
+  // Stats de synthèse.
+  const scores = data.map((d) => d.score);
+  const daysTracked = scores.length;
+  const avg = daysTracked ? Math.round(scores.reduce((a, b) => a + b, 0) / daysTracked) : null;
+  const disciplinedDays = scores.filter((s) => s >= 70).length;
+  const avgCls = avg == null ? "text-muted" : avg >= 85 ? "text-profit" : avg >= 70 ? "text-green-400" : avg >= 50 ? "text-warning" : "text-loss";
+
+  const CELL = "w-3.5 h-3.5";
+  const wdShown = [0, 2, 4]; // Lun, Mer, Ven
+
   return (
-    <div>
-      <div className="flex gap-[3px] overflow-x-auto pb-1">
-        {cols.map((week, wi) => (
-          <div key={wi} className="flex flex-col gap-[3px]">
-            {week.map((cell, di) =>
-              cell == null || cell.future ? (
-                <span key={di} className="w-3 h-3" />
-              ) : (
-                <span key={di}
-                  title={`${new Date(cell.iso + "T00:00:00").toLocaleDateString(undefined, { day: "numeric", month: "short" })} · ${cell.score != null ? `${cell.score}/100` : t("goals_heatmap_no_data")}`}
-                  className={`w-3 h-3 rounded-[3px] transition-transform hover:scale-125 ${heatCls(cell.score)} ${cell.isToday ? "ring-1 ring-accent ring-offset-1 ring-offset-card" : ""}`}
-                />
-              ),
-            )}
+    <div className="flex flex-col lg:flex-row lg:items-start gap-4">
+      <div className="overflow-x-auto pb-1">
+        {/* Libellés de mois */}
+        <div className="flex gap-[3px] mb-1">
+          <span className="w-4 shrink-0" />
+          {monthLabels.map((m, wi) => (
+            <span key={wi} className="w-3.5 shrink-0 text-[9px] text-muted whitespace-nowrap overflow-visible">{m}</span>
+          ))}
+        </div>
+        {/* Colonne jours + grille */}
+        <div className="flex gap-[3px]">
+          <div className="w-4 shrink-0 flex flex-col gap-[3px]">
+            {[0, 1, 2, 3, 4, 5, 6].map((r) => (
+              <span key={r} className="h-3.5 text-[8px] text-muted leading-[14px] text-right pr-0.5">{wdShown.includes(r) ? t(`review_wd_${r}`) : ""}</span>
+            ))}
           </div>
-        ))}
+          {cols.map((week, wi) => (
+            <div key={wi} className="flex flex-col gap-[3px]">
+              {week.map((cell, di) =>
+                cell.future ? (
+                  <span key={di} className={CELL} />
+                ) : (
+                  <span key={di}
+                    title={`${new Date(cell.iso + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })} · ${cell.score != null ? `${cell.score}/100` : t("goals_heatmap_no_data")}`}
+                    className={`${CELL} rounded-[3px] transition-transform hover:scale-125 ${heatCls(cell.score)} ${cell.score == null ? "border border-border/60" : ""} ${cell.isToday ? "ring-2 ring-accent ring-offset-1 ring-offset-card" : ""}`}
+                  />
+                ),
+              )}
+            </div>
+          ))}
+        </div>
+        {/* Légende : échelle de qualité + pas de session (distinct) */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 text-[10px] text-muted">
+          <span className="flex items-center gap-1.5">
+            <span>{t("goals_heatmap_legend_low")}</span>
+            <span className="flex gap-0.5">
+              <span className="w-3 h-3 rounded-[3px] bg-loss/55" />
+              <span className="w-3 h-3 rounded-[3px] bg-yellow-500/45" />
+              <span className="w-3 h-3 rounded-[3px] bg-green-500/55" />
+              <span className="w-3 h-3 rounded-[3px] bg-profit/80" />
+            </span>
+            <span>{t("goals_heatmap_legend_high")}</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-[3px] bg-surface/50 border border-border/60" />
+            <span>{t("goals_heatmap_no_data")}</span>
+          </span>
+        </div>
       </div>
-      <div className="flex items-center gap-1.5 mt-2 text-[10px] text-muted">
-        <span>{t("goals_heatmap_less")}</span>
-        <span className="w-3 h-3 rounded-[3px] bg-surface/50" />
-        <span className="w-3 h-3 rounded-[3px] bg-loss/55" />
-        <span className="w-3 h-3 rounded-[3px] bg-yellow-500/45" />
-        <span className="w-3 h-3 rounded-[3px] bg-green-500/55" />
-        <span className="w-3 h-3 rounded-[3px] bg-profit/80" />
-        <span>{t("goals_heatmap_more")}</span>
+
+      {/* Synthèse */}
+      <div className="grid grid-cols-3 lg:grid-cols-1 gap-2 lg:w-36 shrink-0">
+        <div className="rounded-lg border border-border bg-surface/30 px-3 py-2">
+          <p className="text-xl font-bold text-foreground tabular-nums leading-none">{daysTracked}</p>
+          <p className="text-[10px] text-muted mt-1">{t("goals_heatmap_days_tracked")}</p>
+        </div>
+        <div className="rounded-lg border border-border bg-surface/30 px-3 py-2">
+          <p className={`text-xl font-bold tabular-nums leading-none ${avgCls}`}>{avg == null ? "—" : avg}</p>
+          <p className="text-[10px] text-muted mt-1">{t("goals_heatmap_avg")}</p>
+        </div>
+        <div className="rounded-lg border border-border bg-surface/30 px-3 py-2">
+          <p className="text-xl font-bold text-profit tabular-nums leading-none">{disciplinedDays}</p>
+          <p className="text-[10px] text-muted mt-1">{t("goals_heatmap_disciplined")}</p>
+        </div>
       </div>
     </div>
   );
