@@ -35,6 +35,13 @@ const EMOTION_EMOJI: Record<string, string> = {
 };
 
 function fmtMoney(n: number) { return `${n >= 0 ? "+" : ""}${n.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} €`; }
+// Format compact pour les petits espaces : +1,2k / -340.
+function fmtMoneyShort(n: number) {
+  const a = Math.abs(n);
+  const sign = n > 0 ? "+" : n < 0 ? "-" : "";
+  if (a >= 1000) return `${sign}${(a / 1000).toFixed(1).replace(".", ",")}k`;
+  return `${sign}${Math.round(a)}`;
+}
 function fmtDate(iso: string, lang: string) { return new Date(iso).toLocaleDateString(lang, { day: "numeric", month: "short" }); }
 
 function scoreBg(s: number): string {
@@ -485,16 +492,17 @@ export default function MonthlyReviewPage() {
               {trend.some((p) => p.score != null) && (
                 <div className="rounded-xl border border-border bg-card p-4 mt-4 lg:mt-0">
                   <p className="text-xs text-muted mb-3">{t("review_trend_title")}</p>
-                  <div className="flex items-end justify-between gap-2 h-24">
+                  <div className="flex items-end justify-between gap-2 h-28">
                     {trend.map((p, i) => (
-                      <div key={p.label} className="flex-1 flex flex-col items-center gap-1">
-                        <div className="w-full flex items-end justify-center h-20" title={p.score != null ? `${p.score}/100` : "—"}>
+                      <div key={p.label} className="flex-1 flex flex-col items-center gap-1" title={`${p.score != null ? `${p.score}/100` : "—"} · ${fmtMoney(p.pnl)}`}>
+                        <div className="w-full flex items-end justify-center h-20">
                           <div className="w-full max-w-[28px] h-full flex items-end">
                             <GrowBar vertical pct={p.score != null ? Math.max(8, p.score) : 4} durationMs={750} delayMs={i * 60}
                               className={`rounded-t ${p.score != null ? scoreBg(p.score) : "bg-surface"}`} />
                           </div>
                         </div>
                         <span className="text-[10px] text-muted">{p.label.slice(5)}</span>
+                        <span className={`text-[9px] font-semibold tabular-nums leading-none ${p.pnl > 0 ? "text-profit" : p.pnl < 0 ? "text-loss" : "text-muted/50"}`}>{fmtMoneyShort(p.pnl)}</span>
                       </div>
                     ))}
                   </div>
