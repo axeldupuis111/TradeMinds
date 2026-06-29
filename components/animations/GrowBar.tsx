@@ -17,12 +17,14 @@ export default function GrowBar({
   vertical = false,
   durationMs = 700,
   delayMs = 0,
+  children,
 }: {
   pct: number;
   className?: string;
   vertical?: boolean;
   durationMs?: number;
   delayMs?: number;
+  children?: React.ReactNode;
 }) {
   const reduced = useReducedMotion();
   const [v, setV] = useState(reduced ? pct : 0);
@@ -42,5 +44,5 @@ export default function GrowBar({
     style.transitionDelay = `${delayMs}ms`;
   }
 
-  return <div className={`${dim} ${className}`} style={style} />;
+  return <div className={`${dim} ${className}`} style={style}>{children}</div>;
 }

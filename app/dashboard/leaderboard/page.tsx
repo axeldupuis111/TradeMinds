@@ -3,7 +3,10 @@
 import { useLanguage } from "@/lib/LanguageContext";
 import { ArrowUp, ArrowDown, Minus, Lock } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import CountUp from "@/components/animations/CountUp";
+import GrowBar from "@/components/animations/GrowBar";
+import ConfettiBurst from "@/components/animations/ConfettiBurst";
 
 type Mode = "discipline" | "sessions" | "streak";
 
@@ -30,6 +33,13 @@ function tierOf(s: number): { key: string; emoji: string; cls: string } {
   if (s >= 70) return { key: "gold", emoji: "🥇", cls: "bg-yellow-500/10 text-yellow-300 border-yellow-400/30" };
   if (s >= 50) return { key: "silver", emoji: "🥈", cls: "bg-slate-400/10 text-slate-300 border-slate-300/30" };
   return { key: "bronze", emoji: "🥉", cls: "bg-orange-700/10 text-orange-300 border-orange-500/30" };
+}
+// Progression vers le palier supérieur (bronze<50, argent<70, or<85, diamant 85+).
+function tierProgress(s: number): { floor: number; next: number | null; nextKey: string | null; pct: number; bar: string } {
+  if (s >= 85) return { floor: 85, next: null, nextKey: null, pct: 100, bar: "from-cyan-400 to-cyan-300" };
+  if (s >= 70) return { floor: 70, next: 85, nextKey: "diamond", pct: ((s - 70) / 15) * 100, bar: "from-yellow-400 to-cyan-300" };
+  if (s >= 50) return { floor: 50, next: 70, nextKey: "gold", pct: ((s - 50) / 20) * 100, bar: "from-slate-300 to-yellow-300" };
+  return { floor: 0, next: 50, nextKey: "silver", pct: (s / 50) * 100, bar: "from-orange-400 to-slate-300" };
 }
 
 // Catalogue de badges évalués à partir des stats perso.
@@ -67,6 +77,8 @@ export default function LeaderboardPage() {
   const [days, setDays] = useState<7 | 30 | 90>(30);
   const [mode, setMode] = useState<Mode>("discipline");
   const [loading, setLoading] = useState(true);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const celebrated = useRef(false);
 
   const load = useCallback(async (d: number, m: Mode) => {
     setLoading(true);
@@ -89,8 +101,17 @@ export default function LeaderboardPage() {
   const meInTop = entries.some((x) => x.isMe);
   const meEntry = entries.find((x) => x.isMe) ?? null;
 
+  // Petite célébration la première fois qu'on se voit sur le podium.
+  useEffect(() => {
+    if (!celebrated.current && meEntry && meEntry.rank <= 3) {
+      celebrated.current = true;
+      setShowConfetti(true);
+    }
+  }, [meEntry]);
+
   return (
     <div className="max-w-5xl mx-auto pb-10">
+      {showConfetti && <ConfettiBurst onDone={() => setShowConfetti(false)} />}
       <h1 className="text-2xl font-bold text-foreground">{t("leaderboard_title")}</h1>
       <p className="text-muted mt-1">{t("leaderboard_subtitle")}</p>
 
@@ -108,11 +129,30 @@ export default function LeaderboardPage() {
                 <span className="text-[10px] font-semibold uppercase tracking-wider mt-1">{t(`leaderboard_tier_${tier.key}`)}</span>
               </span>
               <div className="flex-1 grid grid-cols-3 gap-2 text-center">
-                <div><p className={`text-xl font-bold ${scoreColor(self.score)}`}>{self.score}</p><p className="text-[11px] text-muted">{t("leaderboard_stat_score")}</p></div>
-                <div><p className="text-xl font-bold text-foreground">{self.sessions}</p><p className="text-[11px] text-muted">{t("leaderboard_stat_sessions")}</p></div>
-                <div><p className="text-xl font-bold text-orange-400">🔥 {self.streak}</p><p className="text-[11px] text-muted">{t("leaderboard_stat_streak")}</p></div>
+                <div><p className={`text-xl font-bold ${scoreColor(self.score)}`}><CountUp end={self.score} duration={1} /></p><p className="text-[11px] text-muted">{t("leaderboard_stat_score")}</p></div>
+                <div><p className="text-xl font-bold text-foreground"><CountUp end={self.sessions} duration={1} /></p><p className="text-[11px] text-muted">{t("leaderboard_stat_sessions")}</p></div>
+                <div><p className="text-xl font-bold text-orange-400">🔥 <CountUp end={self.streak} duration={1} /></p><p className="text-[11px] text-muted">{t("leaderboard_stat_streak")}</p></div>
               </div>
             </div>
+            {/* Progression vers le palier supérieur */}
+            {(() => {
+              const tp = tierProgress(self.score);
+              return (
+                <div className="mt-3">
+                  <div className="flex items-center justify-between text-[11px] mb-1">
+                    <span className="text-muted">{t(`leaderboard_tier_${tier.key}`)}</span>
+                    {tp.nextKey ? (
+                      <span className="text-muted">{t("leaderboard_to_next").replace("{n}", String(tp.next! - self.score)).replace("{tier}", t(`leaderboard_tier_${tp.nextKey}`))}</span>
+                    ) : (
+                      <span className="text-cyan-300 font-semibold">{t("leaderboard_tier_max")}</span>
+                    )}
+                  </div>
+                  <div className="h-1.5 rounded-full bg-surface overflow-hidden">
+                    <GrowBar pct={Math.max(2, Math.min(100, tp.pct))} durationMs={800} className={`rounded-full bg-gradient-to-r ${tp.bar}`} />
+                  </div>
+                </div>
+              );
+            })()}
             {self.ranked ? (
               <p className="text-xs text-muted mt-3 text-center">
                 {t("leaderboard_your_rank").replace("{rank}", String(self.rank)).replace("{total}", String(total))}
@@ -126,20 +166,27 @@ export default function LeaderboardPage() {
       })()}
 
       {/* Badges */}
-      {self && (
-        <div>
-          <p className="text-xs text-muted mb-2">{t("leaderboard_badges_title")}</p>
-          <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
-            {badgesFor(self).map((b) => (
-              <div key={b.key} title={t(`badge_${b.key}`)}
-                className={`aspect-square rounded-xl border flex flex-col items-center justify-center gap-1 p-1 ${b.earned ? "border-accent/30 bg-accent/[0.05]" : "border-border bg-surface/40 opacity-50"}`}>
-                <span className="text-lg leading-none">{b.earned ? b.emoji : <Lock className="w-3.5 h-3.5 text-muted" />}</span>
-                <span className="text-[8px] text-muted text-center leading-tight line-clamp-2">{t(`badge_${b.key}`)}</span>
-              </div>
-            ))}
+      {self && (() => {
+        const badges = badgesFor(self);
+        const earnedCount = badges.filter((b) => b.earned).length;
+        return (
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs text-muted">{t("leaderboard_badges_title")}</p>
+              <span className="text-[11px] font-semibold text-accent tabular-nums">{earnedCount}/{badges.length}</span>
+            </div>
+            <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+              {badges.map((b) => (
+                <div key={b.key} title={t(`badge_${b.key}`)}
+                  className={`aspect-square rounded-xl border flex flex-col items-center justify-center gap-1 p-1 transition-transform hover:scale-105 ${b.earned ? "border-accent/30 bg-accent/[0.05] shadow-[0_0_12px_-3px_rgb(var(--accent)/0.5)]" : "border-border bg-surface/40 opacity-50"}`}>
+                  <span className="text-lg leading-none">{b.earned ? b.emoji : <Lock className="w-3.5 h-3.5 text-muted" />}</span>
+                  <span className="text-[8px] text-muted text-center leading-tight line-clamp-2">{t(`badge_${b.key}`)}</span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Invite à rejoindre si pas opt-in / pas de pseudo */}
       {self && (!self.optedIn || !self.hasUsername) && (
@@ -187,15 +234,18 @@ export default function LeaderboardPage() {
             <div className="mt-3 grid grid-cols-3 gap-3 items-end">
               {[top3[1], top3[0], top3[2]].map((e, i) => {
                 if (!e) return <div key={i} />;
-                const heights = ["h-20", "h-28", "h-16"];
+                const pcts = [71, 100, 57];
                 const medals = ["🥈", "🥇", "🥉"];
                 return (
                   <div key={e.rank} className="flex flex-col items-center">
                     <Avatar name={e.username} isMe={e.isMe} />
                     <span className="text-xs text-foreground mt-1 truncate max-w-full">{e.isMe ? t("leaderboard_you") : `@${e.username}`}</span>
                     <span className={`text-lg font-bold ${scoreColor(e.score)}`}>{displayValue(e.score, e.sessions, e.streak)}</span>
-                    <div className={`${heights[i]} w-full rounded-t-lg mt-1 flex items-start justify-center pt-2 ${i === 1 ? "bg-accent/20" : "bg-surface"}`}>
-                      <span className="text-2xl">{medals[i]}</span>
+                    <div className="w-full h-28 flex items-end mt-1">
+                      <GrowBar vertical pct={pcts[i]} durationMs={700} delayMs={i * 110}
+                        className={`rounded-t-lg flex items-start justify-center pt-2 ${i === 1 ? "bg-accent/20 shadow-[0_0_22px_-5px_rgb(var(--accent)/0.7)]" : "bg-surface"}`}>
+                        <span className="text-2xl">{medals[i]}</span>
+                      </GrowBar>
                     </div>
                   </div>
                 );

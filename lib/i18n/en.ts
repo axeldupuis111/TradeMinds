@@ -1802,6 +1802,8 @@ const dict: Record<string, string> = {
   "leaderboard_your_position": "Your position",
   "leaderboard_tier_label": "Your discipline league",
   "leaderboard_tier_diamond": "Diamond",
+  "leaderboard_to_next": "+{n} pts → {tier}",
+  "leaderboard_tier_max": "Top tier reached 💎",
   "leaderboard_tier_gold": "Gold",
   "leaderboard_tier_silver": "Silver",
   "leaderboard_tier_bronze": "Bronze",
