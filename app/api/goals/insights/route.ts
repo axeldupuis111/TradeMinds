@@ -79,10 +79,17 @@ export async function GET() {
     { metric: "max_consecutive_losses", value: cur.maxLosses, prev: prev.maxLosses, betterWhen: "lte" },
   ];
 
+  // ── Mini-tendance : scores de discipline des 14 dernières sessions (chrono).
+  const trend = reviews
+    .slice(0, 14)
+    .map((r) => r.discipline_score as number)
+    .reverse();
+
   return NextResponse.json({
     streak,
     edge,
     scorecard,
+    trend,
     hasTrades: trades.length > 0,
     hasReviews: reviews.length > 0,
   });

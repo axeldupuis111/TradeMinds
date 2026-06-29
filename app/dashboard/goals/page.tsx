@@ -4,6 +4,8 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { formatCurrency } from "@/lib/utils";
+import CountUp from "@/components/animations/CountUp";
+import ConfettiBurst from "@/components/animations/ConfettiBurst";
 import { Trash2, Plus, Target, ChevronDown, CheckCircle2, PenLine, Layers, Flame, Repeat, Sparkles, Clock, CalendarDays, Flag, Crown, Scale, ShieldCheck, Zap, Gauge, TrendingUp, TrendingDown, Minus, Lock } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -26,6 +28,7 @@ interface Insights {
   streak: { current: number; record: number; isRecord: boolean };
   edge: { composed: EdgeSide; impulsive: EdgeSide } | null;
   scorecard: ScorecardCell[];
+  trend?: number[];
   hasTrades: boolean;
   hasReviews: boolean;
 }
@@ -94,6 +97,37 @@ function statusVisual(status: "met" | "failed" | "progress") {
   return { dot: "bg-accent shadow-[0_0_8px_rgb(var(--accent)/0.45)]", bar: "bg-gradient-to-r from-accent to-cyan-300", badge: "bg-surface text-muted", text: "text-foreground" };
 }
 
+// Mini-courbe d'évolution du score de discipline (aire + ligne, vert/rouge selon
+// la pente globale). Pure SVG, sans dépendance.
+function Sparkline({ data }: { data: number[] }) {
+  if (!data || data.length < 2) return null;
+  const w = 132, h = 38, pad = 4;
+  const min = Math.min(...data), max = Math.max(...data);
+  const range = max - min || 1;
+  const pts = data.map((v, i) => {
+    const x = pad + (i / (data.length - 1)) * (w - pad * 2);
+    const y = h - pad - ((v - min) / range) * (h - pad * 2);
+    return [x, y] as const;
+  });
+  const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
+  const area = `${line} L${pts[pts.length - 1][0].toFixed(1)},${h} L${pts[0][0].toFixed(1)},${h} Z`;
+  const up = data[data.length - 1] >= data[0];
+  const stroke = up ? "rgb(var(--profit))" : "rgb(var(--loss))";
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="overflow-visible">
+      <defs>
+        <linearGradient id="goals-spark" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={stroke} stopOpacity="0.28" />
+          <stop offset="100%" stopColor={stroke} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill="url(#goals-spark)" />
+      <path d={line} fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={pts[pts.length - 1][0]} cy={pts[pts.length - 1][1]} r="2.5" fill={stroke} />
+    </svg>
+  );
+}
+
 // Statut + priorité unifiés (objectifs mesurés et perso). Plus la priorité est
 // basse, plus l'objectif remonte en haut de son horizon (ce qui demande attention).
 function goalStatus(g: Goal): { status: "met" | "failed" | "progress"; priority: number } {
@@ -114,6 +148,8 @@ export default function GoalsPage() {
   const [busy, setBusy] = useState(false);
   const [showCustom, setShowCustom] = useState(false);
   const [insights, setInsights] = useState<Insights | null>(null);
+  const [insightsLoaded, setInsightsLoaded] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   // Objectif perso (texte)
   const [customText, setCustomText] = useState("");
@@ -146,7 +182,8 @@ export default function GoalsPage() {
     fetch("/api/goals/insights")
       .then((r) => r.json())
       .then((d) => setInsights(d?.scorecard ? d : null))
-      .catch(() => setInsights(null));
+      .catch(() => setInsights(null))
+      .finally(() => setInsightsLoaded(true));
   }, []);
 
   async function addMetricGoal(m: Metric, tgt: number, p: Period) {
@@ -223,6 +260,7 @@ export default function GoalsPage() {
 
   async function toggleDone(id: string, done: boolean) {
     setGoals((gs) => gs.map((g) => (g.id === id && g.kind === "custom" ? { ...g, done } : g)));
+    if (done) setShowConfetti(true); // petite célébration à la complétion
     await supabase.from("goals").update({ done }).eq("id", id);
   }
 
@@ -262,25 +300,57 @@ export default function GoalsPage() {
   const edge = insights?.edge;
   const winGap = edge ? edge.composed.winRate - edge.impulsive.winRate : 0;
   const avgGap = edge ? edge.composed.avgNet - edge.impulsive.avgNet : 0;
+  const trend = insights?.trend ?? [];
 
   const showDiscipline = insights && (insights.hasTrades || insights.hasReviews);
+  const isNewUser = insightsLoaded && insights != null && !insights.hasTrades && !insights.hasReviews;
 
   return (
     <div className="max-w-5xl mx-auto pb-10">
+      {showConfetti && <ConfettiBurst onDone={() => setShowConfetti(false)} />}
       <h1 className="text-2xl font-bold text-foreground">{t("goals_page_title")}</h1>
       <p className="text-muted mt-1">{t("goals_intro")}</p>
 
       {/* ═══ Centre de discipline : preuve & suivi automatique ═══ */}
 
+      {/* Skeletons pendant le chargement des insights */}
+      {!insightsLoaded && (
+        <div className="mt-5 space-y-6" aria-hidden>
+          <div className="skeleton h-28 rounded-xl" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="skeleton h-28 rounded-xl" />
+            <div className="skeleton h-28 rounded-xl" />
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            {Array.from({ length: 5 }).map((_, i) => <div key={i} className="skeleton h-24 rounded-xl" />)}
+          </div>
+        </div>
+      )}
+
+      {/* Onboarding nouvel utilisateur (aucune donnée encore) */}
+      {isNewUser && (
+        <div className="mt-5 rounded-2xl border border-accent/20 bg-gradient-to-br from-accent/[0.06] to-transparent p-5 sm:p-6">
+          <div className="flex items-start gap-3">
+            <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-accent/10 shrink-0">
+              <Sparkles className="w-5 h-5 text-accent" />
+            </span>
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">{t("goals_onboarding_title")}</h2>
+              <p className="text-sm text-muted mt-1 max-w-2xl">{t("goals_onboarding_body")}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Hero — série de discipline + trajectoire */}
-      {insights?.hasTrades && streak && (
+      {insightsLoaded && insights?.hasTrades && streak && (
         <KpiCardPremium layout="full" accentColor="amber" intensity="hero" className="mt-5">
           <div className="flex flex-wrap items-start justify-between gap-5">
             <div className="flex items-center gap-3">
               <Flame className={`w-9 h-9 shrink-0 ${streak.current > 0 ? "text-warning" : "text-muted/50"}`} strokeWidth={1.75} />
               <div>
                 <div className="flex items-baseline gap-1.5 flex-wrap">
-                  <span className="text-3xl font-black tabular-nums text-foreground leading-none">{streak.current}</span>
+                  <CountUp end={streak.current} duration={1.1} className="text-3xl font-black tabular-nums text-foreground leading-none" />
                   <span className="text-sm text-muted">{t("goals_streak_days")}</span>
                   {streak.isRecord && streak.current >= 3 && (
                     <span className="ml-1 inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-warning/15 text-warning">
@@ -291,7 +361,13 @@ export default function GoalsPage() {
                 <p className="text-xs text-muted mt-1">{t("goals_streak_desc")}</p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 sm:gap-5">
+              {trend.length >= 3 && (
+                <div className="hidden sm:block text-right">
+                  <Sparkline data={trend} />
+                  <p className="text-[10px] text-muted mt-0.5">{t("goals_spark_label")}</p>
+                </div>
+              )}
               {traj && (
                 <div className="text-right">
                   <div className={`inline-flex items-center gap-1.5 text-sm font-semibold ${traj.dir === "up" ? "text-profit" : traj.dir === "down" ? "text-loss" : "text-warning"}`}>
@@ -324,7 +400,7 @@ export default function GoalsPage() {
       )}
 
       {/* Edge — ce que la discipline te rapporte */}
-      {insights?.hasTrades && (
+      {insightsLoaded && insights?.hasTrades && (
         <section className="mt-6">
           <h2 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
             <Scale className="w-4 h-4 text-accent" /> {t("goals_insight_title")}
@@ -337,10 +413,13 @@ export default function GoalsPage() {
                     <ShieldCheck className="w-4 h-4 text-profit" /> <span className="text-sm font-semibold text-foreground">{t("goals_edge_composed")}</span>
                   </div>
                   <div className="flex items-end gap-1.5">
-                    <span className="text-3xl font-black tabular-nums text-profit leading-none">{edge.composed.winRate}%</span>
+                    <CountUp end={edge.composed.winRate} suffix="%" duration={1.1} className="text-3xl font-black tabular-nums text-profit leading-none" />
                     <span className="text-xs text-muted mb-0.5">{t("goals_edge_winrate")}</span>
                   </div>
-                  <p className="text-xs text-muted mt-1.5">
+                  <div className="mt-2 h-1.5 rounded-full bg-surface overflow-hidden">
+                    <div className="h-full rounded-full bg-profit transition-all duration-700" style={{ width: `${edge.composed.winRate}%` }} />
+                  </div>
+                  <p className="text-xs text-muted mt-2">
                     {t("goals_edge_trades").replace("{n}", String(edge.composed.count))} · {t("goals_edge_avg")} <span className={edge.composed.avgNet >= 0 ? "text-profit" : "text-loss"}>{formatCurrency(edge.composed.avgNet)}</span>
                   </p>
                 </div>
@@ -349,10 +428,13 @@ export default function GoalsPage() {
                     <Zap className="w-4 h-4 text-loss" /> <span className="text-sm font-semibold text-foreground">{t("goals_edge_impulsive")}</span>
                   </div>
                   <div className="flex items-end gap-1.5">
-                    <span className="text-3xl font-black tabular-nums text-loss leading-none">{edge.impulsive.winRate}%</span>
+                    <CountUp end={edge.impulsive.winRate} suffix="%" duration={1.1} className="text-3xl font-black tabular-nums text-loss leading-none" />
                     <span className="text-xs text-muted mb-0.5">{t("goals_edge_winrate")}</span>
                   </div>
-                  <p className="text-xs text-muted mt-1.5">
+                  <div className="mt-2 h-1.5 rounded-full bg-surface overflow-hidden">
+                    <div className="h-full rounded-full bg-loss transition-all duration-700" style={{ width: `${edge.impulsive.winRate}%` }} />
+                  </div>
+                  <p className="text-xs text-muted mt-2">
                     {t("goals_edge_trades").replace("{n}", String(edge.impulsive.count))} · {t("goals_edge_avg")} <span className={edge.impulsive.avgNet >= 0 ? "text-profit" : "text-loss"}>{formatCurrency(edge.impulsive.avgNet)}</span>
                   </p>
                 </div>
@@ -379,7 +461,7 @@ export default function GoalsPage() {
       )}
 
       {/* Scorecard — tableau de bord auto-suivi du mois */}
-      {showDiscipline && (
+      {insightsLoaded && showDiscipline && (
         <section className="mt-6">
           <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
             <Gauge className="w-4 h-4 text-accent" /> {t("goals_scorecard_title")}
