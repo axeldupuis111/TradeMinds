@@ -6,6 +6,8 @@ import { Pdf, C, type RGB } from "@/lib/pdf/kit";
 import { ArrowDownRight, ArrowUpRight, Minus, Sparkles, ThumbsUp, Target, Compass, ChevronLeft, ChevronRight, FileDown } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import CountUp from "@/components/animations/CountUp";
+import GrowBar from "@/components/animations/GrowBar";
 
 interface Stats { trades: number; winRate: number; totalPnl: number; sessions: number; avgDisciplineScore: number | null; tradingDays: number }
 interface Deltas { trades: number; winRate: number; sessions: number; avgDisciplineScore: number | null; tradingDays: number }
@@ -25,19 +27,33 @@ function scoreBg(s: number): string {
   if (s >= 50) return "bg-yellow-500/40 text-foreground";
   return "bg-loss/50 text-white";
 }
+function scoreText(s: number): string {
+  if (s >= 85) return "text-profit";
+  if (s >= 70) return "text-green-400";
+  if (s >= 50) return "text-warning";
+  return "text-loss";
+}
 
 function Sparkline({ data }: { data: number[] }) {
   if (data.length < 2) return null;
   const min = Math.min(0, ...data), max = Math.max(0, ...data), range = max - min || 1;
-  const w = 100, h = 32;
-  const pts = data.map((v, i) => `${((i / (data.length - 1)) * w).toFixed(1)},${(h - ((v - min) / range) * h).toFixed(1)}`).join(" ");
-  const last = data[data.length - 1];
-  const color = last >= 0 ? "rgb(var(--profit))" : "rgb(var(--loss))";
+  const w = 100, h = 36;
+  const xy = data.map((v, i) => [(i / (data.length - 1)) * w, h - ((v - min) / range) * h] as const);
+  const line = xy.map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
+  const area = `${line} L${w},${h} L0,${h} Z`;
+  const color = data[data.length - 1] >= 0 ? "rgb(var(--profit))" : "rgb(var(--loss))";
   const zeroY = h - ((0 - min) / range) * h;
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="w-full h-10">
+    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="w-full h-12">
+      <defs>
+        <linearGradient id="rev-equity" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.22" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
       <line x1="0" y1={zeroY} x2={w} y2={zeroY} stroke="rgb(var(--border))" strokeWidth="0.5" strokeDasharray="2 2" />
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+      <path d={area} fill="url(#rev-equity)" />
+      <path d={line} fill="none" stroke={color} strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -271,10 +287,10 @@ export default function MonthlyReviewPage() {
               <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 <Kpi label={t("review_kpi_trades")} value={`${stats.trades}`} delta={deltas?.trades} />
                 <Kpi label={t("review_kpi_days")} value={`${stats.tradingDays}`} delta={deltas?.tradingDays} />
-                <Kpi label={t("review_kpi_winrate")} value={`${stats.winRate}%`} delta={deltas?.winRate} suffix="pts" />
+                <Kpi label={t("review_kpi_winrate")} value={`${stats.winRate}%`} delta={deltas?.winRate} suffix="pts" valueClass={stats.winRate >= 50 ? "text-profit" : "text-warning"} />
                 <Kpi label={t("review_kpi_sessions")} value={`${stats.sessions}`} delta={deltas?.sessions} />
-                <Kpi label={t("review_kpi_score")} value={stats.avgDisciplineScore != null ? `${stats.avgDisciplineScore}/100` : "—"} delta={deltas?.avgDisciplineScore ?? undefined} suffix="pts" />
-                {extras?.prepRate != null && <Kpi label={t("review_kpi_prep")} value={`${extras.prepRate}%`} />}
+                <Kpi label={t("review_kpi_score")} value={stats.avgDisciplineScore != null ? `${stats.avgDisciplineScore}/100` : "—"} delta={deltas?.avgDisciplineScore ?? undefined} suffix="pts" valueClass={stats.avgDisciplineScore != null ? scoreText(stats.avgDisciplineScore) : "text-foreground"} />
+                {extras?.prepRate != null && <Kpi label={t("review_kpi_prep")} value={`${extras.prepRate}%`} valueClass="text-teal-300" />}
               </div>
 
               {/* Pont Objectifs (mois en cours) */}
@@ -323,11 +339,13 @@ export default function MonthlyReviewPage() {
                 <div className="rounded-xl border border-border bg-card p-4 mt-4 lg:mt-0">
                   <p className="text-xs text-muted mb-3">{t("review_trend_title")}</p>
                   <div className="flex items-end justify-between gap-2 h-24">
-                    {trend.map((p) => (
+                    {trend.map((p, i) => (
                       <div key={p.label} className="flex-1 flex flex-col items-center gap-1">
-                        <div className="w-full flex items-end justify-center h-20">
-                          <div className={`w-full max-w-[28px] rounded-t ${p.score != null ? scoreBg(p.score) : "bg-surface"}`}
-                            style={{ height: `${p.score != null ? Math.max(8, p.score) : 4}%` }} title={p.score != null ? `${p.score}/100` : "—"} />
+                        <div className="w-full flex items-end justify-center h-20" title={p.score != null ? `${p.score}/100` : "—"}>
+                          <div className="w-full max-w-[28px] h-full flex items-end">
+                            <GrowBar vertical pct={p.score != null ? Math.max(8, p.score) : 4} durationMs={750} delayMs={i * 60}
+                              className={`rounded-t ${p.score != null ? scoreBg(p.score) : "bg-surface"}`} />
+                          </div>
                         </div>
                         <span className="text-[10px] text-muted">{p.label.slice(5)}</span>
                       </div>
@@ -372,7 +390,12 @@ export default function MonthlyReviewPage() {
               {/* Équité + faits marquants */}
               {extras && extras.equity.length >= 2 && (
                 <div className="mt-4 rounded-xl border border-border bg-card p-4">
-                  <p className="text-xs text-muted mb-1">{t("review_equity_title")}</p>
+                  <div className="flex items-baseline justify-between mb-1">
+                    <p className="text-xs text-muted">{t("review_equity_title")}</p>
+                    {(() => { const last = extras.equity[extras.equity.length - 1]; return (
+                      <span className={`text-sm font-bold tabular-nums ${last >= 0 ? "text-profit" : "text-loss"}`}>{fmtMoney(last)}</span>
+                    ); })()}
+                  </div>
                   <Sparkline data={extras.equity} />
                 </div>
               )}
@@ -408,14 +431,18 @@ export default function MonthlyReviewPage() {
   );
 }
 
-function Kpi({ label, value, delta, suffix }: { label: string; value: string; delta?: number; suffix?: string }) {
+function Kpi({ label, value, delta, suffix, valueClass = "text-foreground" }: { label: string; value: string; delta?: number; suffix?: string; valueClass?: string }) {
   const showDelta = typeof delta === "number" && delta !== 0;
   const positive = (delta ?? 0) > 0;
+  // Extrait le nombre de tête pour l'animer, en gardant le reste comme suffixe ("%", "/100").
+  const m = value.match(/^(-?\d+(?:[.,]\d+)?)(.*)$/);
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <p className="text-xs text-muted">{label}</p>
       <div className="flex items-baseline gap-2 mt-1">
-        <p className="text-xl font-bold text-foreground">{value}</p>
+        <p className={`text-xl font-bold ${valueClass}`}>
+          {m ? <CountUp end={Number(m[1].replace(",", "."))} suffix={m[2]} duration={1} /> : value}
+        </p>
         {showDelta ? (
           <span className={`inline-flex items-center text-xs font-medium ${positive ? "text-profit" : "text-loss"}`}>
             {positive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}{Math.abs(delta as number)}{suffix ? ` ${suffix}` : ""}
