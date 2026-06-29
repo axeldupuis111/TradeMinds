@@ -266,6 +266,72 @@ export default function MonthlyReviewPage() {
         pdf.y += 4;
       }
 
+      // ── Edge émotionnel ──
+      if (emotions.length > 0) {
+        pdf.ensure(40, contTitle);
+        pdf.section(t("review_emotion_title"));
+        const maxAbs = Math.max(1, ...emotions.map((e) => Math.abs(e.pnl)));
+        pdf.bars(
+          emotions.map((e) => ({
+            label: `${t(`emotion_${e.emotion}`)} (${e.winRate}%)`,
+            value: fmtMoney(e.pnl),
+            ratio: Math.abs(e.pnl) / maxAbs,
+            color: e.pnl >= 0 ? C.green : C.red,
+          })),
+          { rowGap: 9 },
+        );
+        pdf.y += 4;
+      }
+
+      // ── Performance par jour de la semaine ──
+      if (weekdays.some((w) => w.count > 0)) {
+        pdf.ensure(40, contTitle);
+        pdf.section(t("review_weekday_title"));
+        const maxAbs = Math.max(1, ...weekdays.map((w) => Math.abs(w.pnl)));
+        pdf.bars(
+          weekdays.map((w) => ({
+            label: t(`review_wdfull_${w.wd}`),
+            value: w.count ? fmtMoney(w.pnl) : "—",
+            ratio: w.count ? Math.abs(w.pnl) / maxAbs : 0,
+            color: w.pnl >= 0 ? C.green : C.red,
+          })),
+          { rowGap: 9 },
+        );
+        pdf.y += 4;
+      }
+
+      // ── Performance par instrument ──
+      if (pairs.length > 0) {
+        pdf.ensure(40, contTitle);
+        pdf.section(t("review_pair_title"));
+        const maxAbs = Math.max(1, ...pairs.map((p) => Math.abs(p.pnl)));
+        pdf.bars(
+          pairs.slice(0, 6).map((p) => ({
+            label: `${p.pair} (${p.winRate}%)`,
+            value: fmtMoney(p.pnl),
+            ratio: Math.abs(p.pnl) / maxAbs,
+            color: p.pnl >= 0 ? C.green : C.red,
+          })),
+          { rowGap: 9 },
+        );
+        pdf.y += 4;
+      }
+
+      // ── Achat vs Vente ──
+      if (directions.length > 0) {
+        pdf.ensure(30, contTitle);
+        pdf.section(`${t("review_day_long")} / ${t("review_day_short")}`);
+        pdf.statGrid(
+          directions.map((d) => ({
+            label: t(`review_day_${d.dir}`),
+            value: fmtMoney(d.pnl),
+            color: d.pnl >= 0 ? C.green : C.red,
+            sub: `${d.winRate}% · ${d.count}`,
+          })),
+          { cols: 2, height: 22 },
+        );
+      }
+
       // ── Note du coach ──
       if (review) {
         pdf.ensure(50, contTitle);
