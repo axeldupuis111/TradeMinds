@@ -30,6 +30,7 @@ interface Insights {
   edge: { composed: EdgeSide; impulsive: EdgeSide } | null;
   scorecard: ScorecardCell[];
   trend?: number[];
+  heatmap?: { date: string; score: number }[];
   hasTrades: boolean;
   hasReviews: boolean;
 }
@@ -139,6 +140,68 @@ function Sparkline({ data }: { data: number[] }) {
       <path d={line} fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
       <circle cx={pts[pts.length - 1][0]} cy={pts[pts.length - 1][1]} r="2.5" fill={stroke} />
     </svg>
+  );
+}
+
+// Couleur d'une case de heatmap selon le score de discipline du jour.
+function heatCls(score: number | null): string {
+  if (score == null) return "bg-surface/50";
+  if (score >= 85) return "bg-profit/80";
+  if (score >= 70) return "bg-green-500/55";
+  if (score >= 50) return "bg-yellow-500/45";
+  return "bg-loss/55";
+}
+
+// Heatmap de régularité façon GitHub : ~13 semaines × 7 jours, colorée par le
+// score de discipline quotidien. Aligne les colonnes sur le lundi.
+function DisciplineHeatmap({ data, t }: { data: { date: string; score: number }[]; t: (k: string) => string }) {
+  const WEEKS = 13;
+  const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const scoreByDate = new Map(data.map((h) => [h.date, h.score]));
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const todayIso = ymd(today);
+  const monOffset = (today.getDay() + 6) % 7; // lundi = 0
+  const start = new Date(today); start.setDate(today.getDate() - monOffset - (WEEKS - 1) * 7);
+
+  const cols: ({ iso: string; score: number | null; isToday: boolean; future: boolean } | null)[][] = [];
+  for (let w = 0; w < WEEKS; w++) {
+    const week: ({ iso: string; score: number | null; isToday: boolean; future: boolean } | null)[] = [];
+    for (let d = 0; d < 7; d++) {
+      const cur = new Date(start); cur.setDate(start.getDate() + w * 7 + d);
+      const iso = ymd(cur);
+      week.push({ iso, score: scoreByDate.get(iso) ?? null, isToday: iso === todayIso, future: cur > today });
+    }
+    cols.push(week);
+  }
+
+  return (
+    <div>
+      <div className="flex gap-[3px] overflow-x-auto pb-1">
+        {cols.map((week, wi) => (
+          <div key={wi} className="flex flex-col gap-[3px]">
+            {week.map((cell, di) =>
+              cell == null || cell.future ? (
+                <span key={di} className="w-3 h-3" />
+              ) : (
+                <span key={di}
+                  title={`${new Date(cell.iso + "T00:00:00").toLocaleDateString(undefined, { day: "numeric", month: "short" })} · ${cell.score != null ? `${cell.score}/100` : t("goals_heatmap_no_data")}`}
+                  className={`w-3 h-3 rounded-[3px] transition-transform hover:scale-125 ${heatCls(cell.score)} ${cell.isToday ? "ring-1 ring-accent ring-offset-1 ring-offset-card" : ""}`}
+                />
+              ),
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-1.5 mt-2 text-[10px] text-muted">
+        <span>{t("goals_heatmap_less")}</span>
+        <span className="w-3 h-3 rounded-[3px] bg-surface/50" />
+        <span className="w-3 h-3 rounded-[3px] bg-loss/55" />
+        <span className="w-3 h-3 rounded-[3px] bg-yellow-500/45" />
+        <span className="w-3 h-3 rounded-[3px] bg-green-500/55" />
+        <span className="w-3 h-3 rounded-[3px] bg-profit/80" />
+        <span>{t("goals_heatmap_more")}</span>
+      </div>
+    </div>
   );
 }
 
@@ -330,6 +393,7 @@ export default function GoalsPage() {
   const winGap = edge ? edge.composed.winRate - edge.impulsive.winRate : 0;
   const avgGap = edge ? edge.composed.avgNet - edge.impulsive.avgNet : 0;
   const trend = insights?.trend ?? [];
+  const heatmap = insights?.heatmap ?? [];
 
   const showDiscipline = insights && (insights.hasTrades || insights.hasReviews);
   const isNewUser = insightsLoaded && insights != null && !insights.hasTrades && !insights.hasReviews;
@@ -426,6 +490,15 @@ export default function GoalsPage() {
             </div>
           )}
         </KpiCardPremium>
+      )}
+
+      {/* Heatmap de régularité (12 semaines) */}
+      {insightsLoaded && heatmap.length > 0 && (
+        <section className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-5">
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2"><CalendarDays className="w-4 h-4 text-accent" /> {t("goals_heatmap_title")}</h2>
+          <p className="text-xs text-muted mt-0.5 mb-3">{t("goals_heatmap_sub")}</p>
+          <DisciplineHeatmap data={heatmap} t={t} />
+        </section>
       )}
 
       {/* Edge — ce que la discipline te rapporte */}
