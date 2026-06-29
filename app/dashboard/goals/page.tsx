@@ -6,7 +6,7 @@ import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { formatCurrency } from "@/lib/utils";
 import CountUp from "@/components/animations/CountUp";
 import ConfettiBurst from "@/components/animations/ConfettiBurst";
-import { Trash2, Plus, Target, ChevronDown, CheckCircle2, PenLine, Layers, Flame, Repeat, Sparkles, Clock, CalendarDays, Flag, Crown, Scale, ShieldCheck, Zap, Gauge, TrendingUp, TrendingDown, Minus, Lock } from "lucide-react";
+import { Trash2, Plus, Target, ChevronDown, CheckCircle2, PenLine, Layers, Flame, Repeat, Sparkles, Clock, CalendarDays, Flag, Crown, Scale, ShieldCheck, Zap, Gauge, TrendingUp, TrendingDown, Minus, Lock, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 type Metric = "discipline_score" | "sessions" | "win_rate" | "trades_per_day" | "max_consecutive_losses";
@@ -150,6 +150,8 @@ export default function GoalsPage() {
   const [insights, setInsights] = useState<Insights | null>(null);
   const [insightsLoaded, setInsightsLoaded] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [dismissedRecos, setDismissedRecos] = useState<Set<string>>(new Set());
 
   // Objectif perso (texte)
   const [customText, setCustomText] = useState("");
@@ -277,8 +279,11 @@ export default function GoalsPage() {
   const achieved = metricGoals.filter((g) => g.met).length + customGoals.filter((g) => g.done).length;
 
   const existing = new Set(metricGoals.map((g) => `${g.metric}:${g.period}`));
-  // Recommandations non encore ajoutées (par métrique + période).
-  const recoToShow = recos.filter((r) => !existing.has(`${r.metric}:${r.period}`));
+  // Recommandations non encore ajoutées (par métrique + période) ni rejetées.
+  const recoToShow = recos.filter((r) => {
+    const key = `${r.metric}:${r.period}`;
+    return !existing.has(key) && !dismissedRecos.has(key);
+  });
 
   // Objectifs groupés par horizon temporel, triés par priorité (à surveiller d'abord).
   const byHorizon: Record<Horizon, Goal[]> = { short: [], mid: [], long: [] };
@@ -561,6 +566,10 @@ export default function GoalsPage() {
                   className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-accent text-white text-xs font-semibold hover:bg-blue-600 transition-colors disabled:opacity-50 shrink-0">
                   <Plus className="w-3.5 h-3.5" /> {t("goals_add_quick")}
                 </button>
+                <button onClick={() => setDismissedRecos((s) => new Set(s).add(`${r.metric}:${r.period}`))}
+                  className="shrink-0 text-muted/40 hover:text-muted transition-colors p-1 -mr-1" aria-label={t("goals_reco_dismiss")} title={t("goals_reco_dismiss")}>
+                  <X className="w-3.5 h-3.5" />
+                </button>
               </div>
             ))}
           </div>
@@ -676,7 +685,7 @@ export default function GoalsPage() {
                               : <span className="block w-5 h-5 rounded-full border-2 border-border group-hover:border-accent/60 transition-colors" />}
                           </button>
                         ) : (
-                          <span className={`shrink-0 w-2.5 h-2.5 rounded-full ${sv.dot}`} aria-hidden />
+                          <span className={`shrink-0 w-2.5 h-2.5 rounded-full ${sv.dot}`} title={statusLabel} aria-label={statusLabel} role="img" />
                         )}
 
                         {/* Objectif */}
@@ -727,10 +736,19 @@ export default function GoalsPage() {
                           {status === "met" && <CheckCircle2 className="w-3 h-3" />}{statusLabel}
                         </span>
 
-                        {/* Suppression (révélée au survol sur desktop) */}
-                        <button onClick={() => removeGoal(g.id)} className="shrink-0 text-muted/40 hover:text-loss transition-all sm:opacity-0 sm:group-hover:opacity-100" aria-label={t("goals_delete")}>
-                          <Trash2 className="w-4 h-4" strokeWidth={1.5} />
-                        </button>
+                        {/* Suppression en 2 temps (anti-clic accidentel) */}
+                        {confirmDelete === g.id ? (
+                          <button onClick={() => { removeGoal(g.id); setConfirmDelete(null); }}
+                            className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-loss bg-loss/10 rounded-full px-2.5 py-1 hover:bg-loss/20 transition-colors"
+                            aria-label={t("goals_delete_confirm")}>
+                            <Trash2 className="w-3 h-3" strokeWidth={2} /> {t("goals_delete_confirm")}
+                          </button>
+                        ) : (
+                          <button onClick={() => { setConfirmDelete(g.id); window.setTimeout(() => setConfirmDelete((c) => (c === g.id ? null : c)), 3500); }}
+                            className="shrink-0 text-muted/40 hover:text-loss transition-all sm:opacity-0 sm:group-hover:opacity-100" aria-label={t("goals_delete")}>
+                            <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+                          </button>
+                        )}
                       </div>
                     );
                   })}

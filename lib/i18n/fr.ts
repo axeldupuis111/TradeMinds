@@ -1918,6 +1918,8 @@ const dict: Record<string, string> = {
   "goals_scorecard_track": "Suivre comme objectif",
   "goals_scorecard_tracked": "Suivi comme objectif",
   "goals_spark_label": "14 dernières sessions",
+  "goals_reco_dismiss": "Masquer cette suggestion",
+  "goals_delete_confirm": "Supprimer ?",
   "goals_onboarding_title": "Transforme ta discipline en résultats",
   "goals_onboarding_body": "Dès tes premières sessions et trades analysés, cet onglet révèle ta série de discipline, ce que ton sang-froid te rapporte, et suit tes métriques clés automatiquement. En attendant, fixe-toi un premier objectif ci-dessous.",
   "goals_vs_last": "vs mois dernier",

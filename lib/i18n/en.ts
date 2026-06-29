@@ -1918,6 +1918,8 @@ const dict: Record<string, string> = {
   "goals_scorecard_track": "Track as a goal",
   "goals_scorecard_tracked": "Tracked as a goal",
   "goals_spark_label": "Last 14 sessions",
+  "goals_reco_dismiss": "Hide this suggestion",
+  "goals_delete_confirm": "Delete?",
   "goals_onboarding_title": "Turn your discipline into results",
   "goals_onboarding_body": "As soon as your first sessions and trades are analyzed, this tab reveals your discipline streak, what staying composed earns you, and tracks your key metrics automatically. In the meantime, set yourself a first goal below.",
   "goals_vs_last": "vs last month",
