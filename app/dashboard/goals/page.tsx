@@ -152,6 +152,8 @@ export default function GoalsPage() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [dismissedRecos, setDismissedRecos] = useState<Set<string>>(new Set());
+  const [editingTarget, setEditingTarget] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
 
   // Objectif perso (texte)
   const [customText, setCustomText] = useState("");
@@ -269,6 +271,14 @@ export default function GoalsPage() {
   async function removeGoal(id: string) {
     await supabase.from("goals").delete().eq("id", id);
     setGoals((g) => g.filter((x) => x.id !== id));
+  }
+
+  // Édition inline de la cible d'un objectif mesuré (re-fetch pour recalculer met/progress).
+  async function updateTarget(id: string, newTarget: number, oldTarget: number) {
+    setEditingTarget(null);
+    if (isNaN(newTarget) || newTarget <= 0 || newTarget === oldTarget) return;
+    await supabase.from("goals").update({ target: newTarget }).eq("id", id);
+    await load();
   }
 
   function metricLabel(m: Metric) { return t(`goal_metric_${m}`); }
@@ -693,7 +703,27 @@ export default function GoalsPage() {
                           {g.kind === "metric" ? (
                             <>
                               <p className="font-medium text-foreground text-sm leading-tight truncate">{metricLabel(g.metric)}</p>
-                              <p className="text-[11px] text-muted mt-0.5">{g.comparator === "gte" ? "≥" : "≤"} {g.target}{unit(g.metric)}</p>
+                              {editingTarget === g.id ? (
+                                <div className="flex items-center gap-1 mt-0.5">
+                                  <span className="text-[11px] text-muted">{g.comparator === "gte" ? "≥" : "≤"}</span>
+                                  <input
+                                    type="number" autoFocus value={editValue}
+                                    onChange={(e) => setEditValue(e.target.value)}
+                                    onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                                    onBlur={() => updateTarget(g.id, parseFloat(editValue), g.target)}
+                                    className="w-16 px-1.5 py-0.5 bg-surface border border-accent/50 rounded text-[11px] text-foreground tabular-nums focus:outline-none focus:ring-1 focus:ring-accent"
+                                  />
+                                  <span className="text-[11px] text-muted">{unit(g.metric)}</span>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => { setEditingTarget(g.id); setEditValue(String(g.target)); }}
+                                  title={t("goals_edit_target")} aria-label={t("goals_edit_target")}
+                                  className="group/edit inline-flex items-center gap-1 text-[11px] text-muted mt-0.5 hover:text-accent transition-colors">
+                                  {g.comparator === "gte" ? "≥" : "≤"} {g.target}{unit(g.metric)}
+                                  <PenLine className="w-2.5 h-2.5 opacity-0 group-hover/edit:opacity-60 transition-opacity" />
+                                </button>
+                              )}
                             </>
                           ) : (
                             <>

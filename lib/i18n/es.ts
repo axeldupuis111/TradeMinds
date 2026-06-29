@@ -1920,6 +1920,7 @@ const dict: Record<string, string> = {
   "goals_spark_label": "Últimas 14 sesiones",
   "goals_reco_dismiss": "Ocultar esta sugerencia",
   "goals_delete_confirm": "¿Eliminar?",
+  "goals_edit_target": "Editar objetivo",
   "goals_onboarding_title": "Convierte tu disciplina en resultados",
   "goals_onboarding_body": "En cuanto se analicen tus primeras sesiones y operaciones, esta pestaña revela tu racha de disciplina, lo que te aporta mantener la calma, y sigue tus métricas clave automáticamente. Mientras tanto, fíjate un primer objetivo abajo.",
   "goals_vs_last": "vs. mes pasado",

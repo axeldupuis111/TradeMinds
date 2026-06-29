@@ -1920,6 +1920,7 @@ const dict: Record<string, string> = {
   "goals_spark_label": "Letzte 14 Sessions",
   "goals_reco_dismiss": "Diesen Vorschlag ausblenden",
   "goals_delete_confirm": "Löschen?",
+  "goals_edit_target": "Ziel bearbeiten",
   "goals_onboarding_title": "Mach aus Disziplin Ergebnisse",
   "goals_onboarding_body": "Sobald deine ersten Sessions und Trades analysiert sind, zeigt dieser Tab deine Disziplin-Serie, was dir Besonnenheit bringt, und verfolgt deine Kennzahlen automatisch. Setz dir solange unten ein erstes Ziel.",
   "goals_vs_last": "vs. Vormonat",
