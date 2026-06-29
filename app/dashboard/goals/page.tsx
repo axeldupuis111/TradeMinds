@@ -2,12 +2,13 @@
 
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
-import { Trash2, Plus, Target, ChevronDown, CheckCircle2, PenLine, Layers, Flame, Repeat, Sparkles } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { Trash2, Plus, Target, ChevronDown, CheckCircle2, PenLine, Layers, Flame, Repeat, Sparkles, Clock, CalendarDays, Flag } from "lucide-react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 
 type Metric = "discipline_score" | "sessions" | "win_rate" | "trades_per_day" | "max_consecutive_losses";
 type Comparator = "gte" | "lte";
 type Period = "day" | "week" | "month" | "quarter" | "year";
+type Horizon = "short" | "mid" | "long";
 
 interface MetricGoal {
   id: string; kind: "metric"; metric: Metric; target: number; comparator: Comparator;
@@ -56,7 +57,24 @@ const METRIC_COMPARATOR: Record<Metric, Comparator> = {
 const METRICS: Metric[] = ["discipline_score", "sessions", "win_rate", "trades_per_day", "max_consecutive_losses"];
 const PERIODS: Period[] = ["day", "week", "month", "quarter", "year"];
 
+// Horizon temporel d'un objectif (du plus court au plus long terme).
+const HORIZON_OF: Record<Period, Horizon> = { day: "short", week: "short", month: "mid", quarter: "mid", year: "long" };
+const HORIZONS: Horizon[] = ["short", "mid", "long"];
+const HORIZON_ICON: Record<Horizon, typeof Clock> = { short: Clock, mid: CalendarDays, long: Flag };
+
 function unit(m: Metric) { return m === "win_rate" ? "%" : m === "discipline_score" ? "/100" : ""; }
+
+// Statut + priorité unifiés (objectifs mesurés et perso). Plus la priorité est
+// basse, plus l'objectif remonte en haut de son horizon (ce qui demande attention).
+function goalStatus(g: Goal): { status: "met" | "failed" | "progress"; priority: number } {
+  if (g.kind === "custom") {
+    return g.done ? { status: "met", priority: 3 } : { status: "progress", priority: 1 };
+  }
+  const failing = !g.met && g.comparator === "lte" && g.value > g.target;
+  if (g.met) return { status: "met", priority: 3 };
+  if (failing) return { status: "failed", priority: 0 };
+  return { status: "progress", priority: 1 };
+}
 
 export default function GoalsPage() {
   const { t } = useLanguage();
@@ -189,6 +207,11 @@ export default function GoalsPage() {
   // Recommandations non encore ajoutées (par métrique + période).
   const recoToShow = recos.filter((r) => !existing.has(`${r.metric}:${r.period}`));
 
+  // Objectifs groupés par horizon temporel, triés par priorité (à surveiller d'abord).
+  const byHorizon: Record<Horizon, Goal[]> = { short: [], mid: [], long: [] };
+  for (const g of goals) byHorizon[HORIZON_OF[g.period]].push(g);
+  for (const h of HORIZONS) byHorizon[h].sort((a, b) => goalStatus(a).priority - goalStatus(b).priority);
+
   return (
     <div className="max-w-5xl mx-auto pb-10">
       <h1 className="text-2xl font-bold text-foreground">{t("goals_page_title")}</h1>
@@ -212,9 +235,8 @@ export default function GoalsPage() {
         </div>
       )}
 
-      <div className="lg:grid lg:grid-cols-3 lg:gap-6 lg:items-start">
-      {/* Colonne principale : création & découverte */}
-      <main className="lg:col-span-2 lg:order-1">
+      {/* Création & découverte */}
+      <div>
       {/* Écrire son propre objectif */}
       <div className="mt-5 rounded-xl border border-accent/20 bg-accent/[0.03] p-4">
         <h2 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
@@ -254,7 +276,7 @@ export default function GoalsPage() {
           <h2 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-accent" /> {t("goals_reco_title")}
           </h2>
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {recoToShow.map((r) => (
               <div key={`${r.metric}:${r.period}`} className="flex items-center gap-3 rounded-xl border border-accent/30 bg-accent/[0.04] p-3">
                 <div className="flex-1 min-w-0">
@@ -318,93 +340,136 @@ export default function GoalsPage() {
           </div>
         )}
       </div>
-
-      </main>
-
-      {/* Rail : tes objectifs */}
-      <aside className="lg:col-span-1 lg:order-2 mt-6 lg:mt-5">
-      {/* Objectifs perso (à cocher) */}
-      {customGoals.length > 0 && (
-        <>
-          <h2 className="text-sm font-semibold text-foreground mt-6 lg:mt-0 mb-2">{t("goals_personal_title")}</h2>
-          <div className="space-y-2">
-            {customGoals.map((g) => (
-              <div key={g.id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
-                <button onClick={() => toggleDone(g.id, !g.done)} className="shrink-0" aria-label={t("goals_toggle_done")}>
-                  {g.done
-                    ? <CheckCircle2 className="w-5 h-5 text-profit" />
-                    : <span className="block w-5 h-5 rounded-full border-2 border-border" />}
-                </button>
-                <span className={`flex-1 text-sm ${g.done ? "text-muted line-through" : "text-foreground"}`}>{g.title}</span>
-                {g.recurring && g.streak > 0 && (
-                  <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-orange-400 whitespace-nowrap" title={t("goals_best_streak").replace("{n}", String(g.bestStreak))}>
-                    <Flame className="w-3.5 h-3.5" /> {g.streak}
-                  </span>
-                )}
-                {g.recurring && (
-                  <Repeat className="w-3.5 h-3.5 text-muted/60 shrink-0" aria-label={t("goals_recurring_badge")} />
-                )}
-                <span className="text-[11px] text-muted whitespace-nowrap">{periodLabel(g.period)}</span>
-                <button onClick={() => removeGoal(g.id)} className="text-muted hover:text-loss transition-colors shrink-0" aria-label={t("goals_delete")}>
-                  <Trash2 className="w-4 h-4" strokeWidth={1.5} />
-                </button>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {/* Objectifs mesurés actifs */}
-      <h2 className="text-sm font-semibold text-foreground mt-6 mb-2">{t("goals_active_title")}</h2>
-      {loading ? (
-        <div className="skeleton h-32 rounded-xl" />
-      ) : metricGoals.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border p-6 text-center">
-          <Target className="w-6 h-6 text-muted/50 mx-auto mb-2" />
-          <p className="text-muted text-sm">{t("goals_empty")}</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {metricGoals.map((g) => {
-            const failing = !g.met && g.comparator === "lte" && g.value > g.target;
-            const barColor = g.met ? "bg-profit" : failing ? "bg-loss" : "bg-accent";
-            const status = g.met ? "met" : failing ? "failed" : "progress";
-            const statusStyle = status === "met" ? "bg-profit/10 text-profit" : status === "failed" ? "bg-loss/10 text-loss" : "bg-surface text-muted";
-            const gap = g.comparator === "gte" ? Math.max(0, Math.round((g.target - g.value) * 10) / 10) : Math.max(0, Math.round((g.value - g.target) * 10) / 10);
-            return (
-              <div key={g.id} className="rounded-xl border border-border bg-card p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {metricLabel(g.metric)}
-                      <span className="text-muted font-normal"> · {g.comparator === "gte" ? "≥" : "≤"} {g.target}{unit(g.metric)} · {periodLabel(g.period)}</span>
-                    </p>
-                  </div>
-                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap inline-flex items-center gap-1 ${statusStyle}`}>
-                    {status === "met" && <CheckCircle2 className="w-3 h-3" />}{t(`goals_status_${status}`)}
-                  </span>
-                  <button onClick={() => removeGoal(g.id)} className="text-muted hover:text-loss transition-colors shrink-0" aria-label={t("goals_delete")}>
-                    <Trash2 className="w-4 h-4" strokeWidth={1.5} />
-                  </button>
-                </div>
-                <div className="mt-2 flex items-center gap-3">
-                  <div className="flex-1 h-2 rounded-full bg-surface overflow-hidden">
-                    <div className={`h-full transition-all duration-500 ${barColor}`} style={{ width: `${g.progress}%` }} />
-                  </div>
-                  <span className={`text-sm font-bold tabular-nums ${g.met ? "text-profit" : failing ? "text-loss" : "text-foreground"}`}>{g.value}{unit(g.metric)}</span>
-                </div>
-                {!g.met && gap > 0 && (
-                  <p className="text-xs text-muted mt-1.5">
-                    {g.comparator === "gte" ? t("goals_gap_below").replace("{gap}", `${gap}${unit(g.metric)}`) : t("goals_gap_above").replace("{gap}", `${gap}${unit(g.metric)}`)}
-                  </p>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-      </aside>
       </div>
+
+      {/* Feuille de route : tous les objectifs en tableau, groupés par horizon */}
+      <section className="mt-8">
+        <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+          <Target className="w-4 h-4 text-accent" /> {t("goals_roadmap_title")}
+        </h2>
+        {loading ? (
+          <div className="skeleton h-40 rounded-xl" />
+        ) : goals.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border p-8 text-center">
+            <Target className="w-6 h-6 text-muted/50 mx-auto mb-2" />
+            <p className="text-muted text-sm">{t("goals_empty")}</p>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-border bg-card overflow-x-auto">
+            <table className="w-full text-sm border-collapse min-w-[640px]">
+              <thead>
+                <tr className="text-left text-[11px] uppercase tracking-wide text-muted">
+                  <th className="font-medium py-2.5 pl-4">{t("goals_col_objective")}</th>
+                  <th className="font-medium py-2.5 px-3 whitespace-nowrap">{t("goals_col_period")}</th>
+                  <th className="font-medium py-2.5 px-3 w-[34%]">{t("goals_col_progress")}</th>
+                  <th className="font-medium py-2.5 px-3">{t("goals_col_status")}</th>
+                  <th className="py-2.5 pr-4"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {HORIZONS.map((h) => {
+                  const rows = byHorizon[h];
+                  if (rows.length === 0) return null;
+                  const HIcon = HORIZON_ICON[h];
+                  return (
+                    <Fragment key={h}>
+                      <tr className="bg-surface/40">
+                        <td colSpan={5} className="py-2 pl-4 pr-4 border-t border-border">
+                          <div className="flex items-center gap-2">
+                            <HIcon className="w-3.5 h-3.5 text-accent" />
+                            <span className="text-xs font-semibold text-foreground">{t(`goals_horizon_${h}`)}</span>
+                            <span className="text-[11px] font-semibold text-muted bg-surface rounded-full px-1.5 py-0.5">{rows.length}</span>
+                            <span className="text-[11px] text-muted/70 hidden sm:inline">· {t(`goals_horizon_${h}_sub`)}</span>
+                          </div>
+                        </td>
+                      </tr>
+                      {rows.map((g) => {
+                        const { status } = goalStatus(g);
+                        const dot = status === "met" ? "bg-profit" : status === "failed" ? "bg-loss" : "bg-accent";
+                        const badgeStyle = status === "met" ? "bg-profit/10 text-profit" : status === "failed" ? "bg-loss/10 text-loss" : "bg-surface text-muted";
+                        const statusLabel = g.kind === "custom"
+                          ? (g.done ? t("goals_status_met") : t("goals_status_todo"))
+                          : t(`goals_status_${status}`);
+                        return (
+                          <tr key={g.id} className="border-t border-border align-top hover:bg-surface/30 transition-colors">
+                            {/* Objectif */}
+                            <td className="py-3 pl-4 pr-3">
+                              <div className="flex items-start gap-2.5">
+                                {g.kind === "custom" ? (
+                                  <button onClick={() => toggleDone(g.id, !g.done)} className="shrink-0 mt-0.5" aria-label={t("goals_toggle_done")}>
+                                    {g.done
+                                      ? <CheckCircle2 className="w-4 h-4 text-profit" />
+                                      : <span className="block w-4 h-4 rounded-full border-2 border-border" />}
+                                  </button>
+                                ) : (
+                                  <span className={`shrink-0 mt-1.5 w-2 h-2 rounded-full ${dot}`} aria-hidden />
+                                )}
+                                <div className="min-w-0">
+                                  {g.kind === "metric" ? (
+                                    <>
+                                      <p className="font-medium text-foreground leading-tight">{metricLabel(g.metric)}</p>
+                                      <p className="text-xs text-muted mt-0.5">
+                                        {t("goals_target")} {g.comparator === "gte" ? "≥" : "≤"} {g.target}{unit(g.metric)}
+                                      </p>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <p className={`font-medium leading-tight ${g.done ? "text-muted line-through" : "text-foreground"}`}>{g.title}</p>
+                                      <div className="flex items-center gap-2 mt-0.5">
+                                        {g.recurring && (
+                                          <span className="inline-flex items-center gap-0.5 text-[11px] text-muted/70" title={t("goals_recurring_badge")}>
+                                            <Repeat className="w-3 h-3" /> {t("goals_recurring_badge")}
+                                          </span>
+                                        )}
+                                        {g.recurring && g.streak > 0 && (
+                                          <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-orange-400" title={t("goals_best_streak").replace("{n}", String(g.bestStreak))}>
+                                            <Flame className="w-3 h-3" /> {g.streak}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                            {/* Échéance */}
+                            <td className="py-3 px-3 text-muted whitespace-nowrap">{periodLabel(g.period)}</td>
+                            {/* Progression */}
+                            <td className="py-3 px-3">
+                              {g.kind === "metric" ? (
+                                <div className="flex items-center gap-2.5">
+                                  <div className="flex-1 h-2 rounded-full bg-surface overflow-hidden min-w-[60px]">
+                                    <div className={`h-full transition-all duration-500 ${status === "met" ? "bg-profit" : status === "failed" ? "bg-loss" : "bg-accent"}`} style={{ width: `${g.progress}%` }} />
+                                  </div>
+                                  <span className={`text-xs font-bold tabular-nums whitespace-nowrap ${status === "met" ? "text-profit" : status === "failed" ? "text-loss" : "text-foreground"}`}>{g.value}{unit(g.metric)}</span>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted/60">—</span>
+                              )}
+                            </td>
+                            {/* Statut */}
+                            <td className="py-3 px-3">
+                              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap inline-flex items-center gap-1 ${badgeStyle}`}>
+                                {(status === "met") && <CheckCircle2 className="w-3 h-3" />}{statusLabel}
+                              </span>
+                            </td>
+                            {/* Action */}
+                            <td className="py-3 pr-4 text-right">
+                              <button onClick={() => removeGoal(g.id)} className="text-muted hover:text-loss transition-colors" aria-label={t("goals_delete")}>
+                                <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </div>
   );
 }
