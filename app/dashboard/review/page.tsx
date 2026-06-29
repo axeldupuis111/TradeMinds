@@ -3,7 +3,7 @@
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { Pdf, C, type RGB } from "@/lib/pdf/kit";
-import { ArrowDownRight, ArrowUpRight, Minus, Sparkles, ThumbsUp, Target, Compass, ChevronLeft, ChevronRight, FileDown } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Minus, Sparkles, ThumbsUp, Target, Compass, ChevronLeft, ChevronRight, FileDown, TrendingUp, TrendingDown, Flame, Award, CalendarX } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import CountUp from "@/components/animations/CountUp";
@@ -240,6 +240,7 @@ export default function MonthlyReviewPage() {
   const calByDay = new Map(calendar.map((c) => [c.day, c]));
   const daysInMonth = month ? new Date(month.year, month.month0 + 1, 0).getDate() : 0;
   const firstWeekday = month ? (new Date(month.year, month.month0, 1).getDay() + 6) % 7 : 0; // lundi=0
+  const todayDay = month?.isCurrentMonth ? new Date().getDate() : -1;
 
   return (
     <div className="max-w-4xl mx-auto pb-10">
@@ -279,7 +280,10 @@ export default function MonthlyReviewPage() {
           {loadingStats ? (
             <div className="skeleton h-48 rounded-xl mt-4" />
           ) : stats && stats.trades === 0 && stats.sessions === 0 ? (
-            <div className="mt-4 rounded-xl border border-dashed border-border p-8 text-center">
+            <div className="mt-4 rounded-xl border border-dashed border-border p-10 text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-surface mb-3">
+                <CalendarX className="w-6 h-6 text-muted/50" />
+              </div>
               <p className="text-muted text-sm">{t("review_empty")}</p>
             </div>
           ) : stats ? (
@@ -311,20 +315,20 @@ export default function MonthlyReviewPage() {
                   <p className="text-xs text-muted mb-2">{t("review_records_title")}</p>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="rounded-xl border border-border bg-card p-3">
-                      <p className="text-xs text-muted">{t("review_green_days")}</p>
-                      <p className="text-lg font-bold text-profit mt-0.5">{records.greenDays}</p>
+                      <p className="text-xs text-muted flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5 text-profit" />{t("review_green_days")}</p>
+                      <p className="text-lg font-bold text-profit mt-0.5"><CountUp end={records.greenDays} duration={0.9} /></p>
                     </div>
                     <div className="rounded-xl border border-border bg-card p-3">
-                      <p className="text-xs text-muted">{t("review_red_days")}</p>
-                      <p className="text-lg font-bold text-loss mt-0.5">{records.redDays}</p>
+                      <p className="text-xs text-muted flex items-center gap-1.5"><TrendingDown className="w-3.5 h-3.5 text-loss" />{t("review_red_days")}</p>
+                      <p className="text-lg font-bold text-loss mt-0.5"><CountUp end={records.redDays} duration={0.9} /></p>
                     </div>
                     <div className="rounded-xl border border-border bg-card p-3">
-                      <p className="text-xs text-muted">{t("review_disciplined_streak")}</p>
-                      <p className="text-lg font-bold text-foreground mt-0.5">🔥 {records.disciplinedStreak}</p>
+                      <p className="text-xs text-muted flex items-center gap-1.5"><Flame className="w-3.5 h-3.5 text-orange-400" />{t("review_disciplined_streak")}</p>
+                      <p className="text-lg font-bold text-foreground mt-0.5"><CountUp end={records.disciplinedStreak} duration={0.9} /></p>
                     </div>
                     {records.bestDisciplineDay && (
                       <div className="rounded-xl border border-border bg-card p-3">
-                        <p className="text-xs text-muted">{t("review_best_discipline")}</p>
+                        <p className="text-xs text-muted flex items-center gap-1.5"><Award className="w-3.5 h-3.5 text-violet-400" />{t("review_best_discipline")}</p>
                         <p className="text-lg font-bold text-foreground mt-0.5">{records.bestDisciplineDay.score}/100</p>
                         <p className="text-[10px] text-muted/70">{fmtDate(records.bestDisciplineDay.date, lang)}</p>
                       </div>
@@ -369,9 +373,10 @@ export default function MonthlyReviewPage() {
                       const cls = !c ? "bg-surface/40 text-muted/40"
                         : c.score != null ? scoreBg(c.score)
                         : c.pnl > 0 ? "bg-profit/20 text-foreground" : c.pnl < 0 ? "bg-loss/20 text-foreground" : "bg-surface text-muted";
+                      const isToday = day === todayDay;
                       return (
-                        <span key={day} className={`aspect-square rounded flex items-center justify-center text-[10px] font-medium ${cls}`}
-                          title={c ? `${c.score != null ? `${c.score}/100 · ` : ""}${fmtMoney(c.pnl)}` : ""}>
+                        <span key={day} className={`aspect-square rounded flex items-center justify-center text-[10px] font-medium transition-transform hover:scale-110 ${cls} ${isToday ? "ring-2 ring-accent ring-offset-1 ring-offset-card font-bold" : ""}`}
+                          title={`${isToday ? `${t("review_today")} · ` : ""}${c ? `${c.score != null ? `${c.score}/100 · ` : ""}${fmtMoney(c.pnl)}` : ""}`.replace(/ · $/, "")}>
                           {day}
                         </span>
                       );

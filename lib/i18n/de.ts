@@ -1943,6 +1943,7 @@ const dict: Record<string, string> = {
   "review_goals_link": "Meine Ziele ansehen",
   "review_export_pdf": "Als PDF exportieren",
   "review_wd_0": "M", "review_wd_1": "D", "review_wd_2": "M", "review_wd_3": "D", "review_wd_4": "F", "review_wd_5": "S", "review_wd_6": "S",
+  "review_today": "Heute",
   "review_locked": "Der KI-Monatsbericht ist nur für bezahlte Pläne.",
   "review_generate": "Bericht erstellen",
   "review_generating": "Wird erstellt…",
