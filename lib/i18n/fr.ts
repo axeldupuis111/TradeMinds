@@ -1946,6 +1946,7 @@ const dict: Record<string, string> = {
   "review_export_pdf": "Exporter en PDF",
   "review_wd_0": "L", "review_wd_1": "M", "review_wd_2": "M", "review_wd_3": "J", "review_wd_4": "V", "review_wd_5": "S", "review_wd_6": "D",
   "review_today": "Aujourd'hui",
+  "review_back_current": "Revenir au mois en cours",
   "review_locked": "Le bilan mensuel IA est réservé aux plans payants.",
   "review_generate": "Générer mon bilan",
   "review_generating": "Génération…",

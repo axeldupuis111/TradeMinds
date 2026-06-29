@@ -276,6 +276,11 @@ export default function MonthlyReviewPage() {
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
+          {month && !month.isCurrentMonth && (
+            <div className="flex justify-center mt-1.5">
+              <button onClick={() => setMonthParam(null)} className="text-[11px] text-accent hover:underline">{t("review_back_current")} →</button>
+            </div>
+          )}
 
           {loadingStats ? (
             <div className="skeleton h-48 rounded-xl mt-4" />
@@ -420,6 +425,13 @@ export default function MonthlyReviewPage() {
                   <ReviewCard icon={<Target className="w-4 h-4 text-warning" />} title={t("review_improvement")} body={review.improvement} />
                   <ReviewCard icon={<Compass className="w-4 h-4 text-accent" />} title={t("review_focus")} body={review.focus} accent />
                   <button onClick={generate} disabled={aiLoading} className="text-sm text-muted hover:text-accent transition-colors disabled:opacity-50 underline underline-offset-2">{aiLoading ? t("review_generating") : t("review_regenerate")}</button>
+                </div>
+              ) : aiLoading ? (
+                <div className="mt-5 space-y-3">
+                  <div className="skeleton h-16 rounded-xl" />
+                  <div className="skeleton h-20 rounded-xl" />
+                  <div className="skeleton h-20 rounded-xl" />
+                  <p className="text-xs text-muted text-center flex items-center justify-center gap-2"><Sparkles className="w-3.5 h-3.5 text-accent animate-pulse" />{t("review_generating")}</p>
                 </div>
               ) : rawSummary ? (
                 <div className="mt-5 rounded-xl border border-border bg-card p-5"><p className="text-sm text-muted leading-relaxed whitespace-pre-line">{rawSummary.replace(/\*\*/g, "")}</p></div>
