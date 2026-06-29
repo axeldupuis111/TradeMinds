@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { formatCurrency } from "@/lib/utils";
 import { Trash2, Plus, Target, ChevronDown, CheckCircle2, PenLine, Layers, Flame, Repeat, Sparkles, Clock, CalendarDays, Flag, Crown, Scale, ShieldCheck, Zap, Gauge, TrendingUp, TrendingDown, Minus, Lock } from "lucide-react";
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type Metric = "discipline_score" | "sessions" | "win_rate" | "trades_per_day" | "max_consecutive_losses";
 type Comparator = "gte" | "lte";
@@ -74,8 +74,25 @@ const PERIODS: Period[] = ["day", "week", "month", "quarter", "year"];
 const HORIZON_OF: Record<Period, Horizon> = { day: "short", week: "short", month: "mid", quarter: "mid", year: "long" };
 const HORIZONS: Horizon[] = ["short", "mid", "long"];
 const HORIZON_ICON: Record<Horizon, typeof Clock> = { short: Clock, mid: CalendarDays, long: Flag };
+// Accent visuel par horizon (chip d'icône + teinte de bandeau).
+const HORIZON_STYLE: Record<Horizon, { chip: string; icon: string; tint: string }> = {
+  short: { chip: "bg-accent/10", icon: "text-accent", tint: "from-accent/[0.07]" },
+  mid: { chip: "bg-violet-500/10", icon: "text-violet-400", tint: "from-violet-500/[0.07]" },
+  long: { chip: "bg-warning/10", icon: "text-warning", tint: "from-warning/[0.07]" },
+};
+// Cible par défaut quand on transforme une métrique du scorecard en objectif (1 clic).
+const DEFAULT_TARGET: Record<Metric, number> = {
+  discipline_score: 85, sessions: 12, win_rate: 50, trades_per_day: 3, max_consecutive_losses: 2,
+};
 
 function unit(m: Metric) { return m === "win_rate" ? "%" : m === "discipline_score" ? "/100" : ""; }
+
+// Pastille de statut + remplissage de barre (couleur selon l'état de l'objectif).
+function statusVisual(status: "met" | "failed" | "progress") {
+  if (status === "met") return { dot: "bg-profit shadow-[0_0_8px_rgb(var(--profit)/0.45)]", bar: "bg-profit", badge: "bg-profit/10 text-profit", text: "text-profit" };
+  if (status === "failed") return { dot: "bg-loss shadow-[0_0_8px_rgb(var(--loss)/0.45)]", bar: "bg-loss", badge: "bg-loss/10 text-loss", text: "text-loss" };
+  return { dot: "bg-accent shadow-[0_0_8px_rgb(var(--accent)/0.45)]", bar: "bg-gradient-to-r from-accent to-cyan-300", badge: "bg-surface text-muted", text: "text-foreground" };
+}
 
 // Statut + priorité unifiés (objectifs mesurés et perso). Plus la priorité est
 // basse, plus l'objectif remonte en haut de son horizon (ce qui demande attention).
@@ -383,13 +400,23 @@ export default function GoalsPage() {
                     {hasDelta && delta !== 0 && (
                       <span className={`inline-flex items-center gap-0.5 text-xs font-semibold ${improved ? "text-profit" : worse ? "text-loss" : "text-muted"}`}>
                         {delta > 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-                        {Math.abs(delta)}{u}
+                        {Math.round(Math.abs(delta) * 10) / 10}{u}
                       </span>
                     )}
                   </div>
                   <p className="text-[11px] text-muted mt-1.5">
                     {s.prev == null ? t("goals_no_prev") : `${t("goals_vs_last")} ${s.prev}${u}`}
                   </p>
+                  {existing.has(`${s.metric}:month`) ? (
+                    <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-profit">
+                      <CheckCircle2 className="w-3 h-3" /> {t("goals_scorecard_tracked")}
+                    </span>
+                  ) : (
+                    <button onClick={() => addMetricGoal(s.metric, DEFAULT_TARGET[s.metric], "month")} disabled={busy}
+                      className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-accent hover:text-accent/70 transition-colors disabled:opacity-50">
+                      <Plus className="w-3 h-3" /> {t("goals_scorecard_track")}
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -504,139 +531,130 @@ export default function GoalsPage() {
       </div>
       </div>
 
-      {/* ═══ Feuille de route : objectifs en tableau, groupés par horizon ═══ */}
+      {/* ═══ Feuille de route : objectifs groupés par horizon ═══ */}
       <section className="mt-8">
         <div className="flex items-center justify-between gap-3 mb-3">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Target className="w-4 h-4 text-accent" /> {t("goals_roadmap_title")}
           </h2>
           {goals.length > 0 && (
-            <span className="inline-flex items-center gap-1.5 text-xs text-muted">
-              <CheckCircle2 className="w-3.5 h-3.5 text-profit" />
-              {t("goals_summary_sub").replace("{met}", String(achieved)).replace("{total}", String(goals.length))}
-            </span>
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="relative w-8 h-8">
+                <svg viewBox="0 0 36 36" className="w-8 h-8 -rotate-90">
+                  <circle cx="18" cy="18" r="16" fill="none" stroke="rgb(var(--surface))" strokeWidth="4" />
+                  <circle cx="18" cy="18" r="16" fill="none" stroke="rgb(var(--profit))" strokeWidth="4"
+                    strokeDasharray={`${(achieved / goals.length) * 100} 100`} strokeLinecap="round" pathLength={100} />
+                </svg>
+                <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-foreground">{achieved}/{goals.length}</span>
+              </div>
+              <span className="text-xs text-muted hidden sm:inline">{t("goals_summary_sub").replace("{met}", String(achieved)).replace("{total}", String(goals.length))}</span>
+            </div>
           )}
         </div>
         {loading ? (
-          <div className="skeleton h-40 rounded-xl" />
+          <div className="skeleton h-40 rounded-2xl" />
         ) : goals.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border p-8 text-center">
-            <Target className="w-6 h-6 text-muted/50 mx-auto mb-2" />
+          <div className="rounded-2xl border border-dashed border-border p-10 text-center">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-surface mb-3">
+              <Target className="w-6 h-6 text-muted/50" />
+            </div>
             <p className="text-muted text-sm">{t("goals_empty")}</p>
           </div>
         ) : (
-          <div className="rounded-xl border border-border bg-card overflow-x-auto">
-            <table className="w-full text-sm border-collapse min-w-[640px]">
-              <thead>
-                <tr className="text-left text-[11px] uppercase tracking-wide text-muted">
-                  <th className="font-medium py-2.5 pl-4">{t("goals_col_objective")}</th>
-                  <th className="font-medium py-2.5 px-3 whitespace-nowrap">{t("goals_col_period")}</th>
-                  <th className="font-medium py-2.5 px-3 w-[34%]">{t("goals_col_progress")}</th>
-                  <th className="font-medium py-2.5 px-3">{t("goals_col_status")}</th>
-                  <th className="py-2.5 pr-4"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {HORIZONS.map((h) => {
-                  const rows = byHorizon[h];
-                  if (rows.length === 0) return null;
-                  const HIcon = HORIZON_ICON[h];
-                  return (
-                    <Fragment key={h}>
-                      <tr className="bg-surface/40">
-                        <td colSpan={5} className="py-2 pl-4 pr-4 border-t border-border">
-                          <div className="flex items-center gap-2">
-                            <HIcon className="w-3.5 h-3.5 text-accent" />
-                            <span className="text-xs font-semibold text-foreground">{t(`goals_horizon_${h}`)}</span>
-                            <span className="text-[11px] font-semibold text-muted bg-surface rounded-full px-1.5 py-0.5">{rows.length}</span>
-                            <span className="text-[11px] text-muted/70 hidden sm:inline">· {t(`goals_horizon_${h}_sub`)}</span>
-                          </div>
-                        </td>
-                      </tr>
-                      {rows.map((g) => {
-                        const { status } = goalStatus(g);
-                        const dot = status === "met" ? "bg-profit" : status === "failed" ? "bg-loss" : "bg-accent";
-                        const badgeStyle = status === "met" ? "bg-profit/10 text-profit" : status === "failed" ? "bg-loss/10 text-loss" : "bg-surface text-muted";
-                        const statusLabel = g.kind === "custom"
-                          ? (g.done ? t("goals_status_met") : t("goals_status_todo"))
-                          : t(`goals_status_${status}`);
-                        return (
-                          <tr key={g.id} className="border-t border-border align-top hover:bg-surface/30 transition-colors">
-                            {/* Objectif */}
-                            <td className="py-3 pl-4 pr-3">
-                              <div className="flex items-start gap-2.5">
-                                {g.kind === "custom" ? (
-                                  <button onClick={() => toggleDone(g.id, !g.done)} className="shrink-0 mt-0.5" aria-label={t("goals_toggle_done")}>
-                                    {g.done
-                                      ? <CheckCircle2 className="w-4 h-4 text-profit" />
-                                      : <span className="block w-4 h-4 rounded-full border-2 border-border" />}
-                                  </button>
-                                ) : (
-                                  <span className={`shrink-0 mt-1.5 w-2 h-2 rounded-full ${dot}`} aria-hidden />
-                                )}
-                                <div className="min-w-0">
-                                  {g.kind === "metric" ? (
-                                    <>
-                                      <p className="font-medium text-foreground leading-tight">{metricLabel(g.metric)}</p>
-                                      <p className="text-xs text-muted mt-0.5">
-                                        {t("goals_target")} {g.comparator === "gte" ? "≥" : "≤"} {g.target}{unit(g.metric)}
-                                      </p>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <p className={`font-medium leading-tight ${g.done ? "text-muted line-through" : "text-foreground"}`}>{g.title}</p>
-                                      <div className="flex items-center gap-2 mt-0.5">
-                                        {g.recurring && (
-                                          <span className="inline-flex items-center gap-0.5 text-[11px] text-muted/70" title={t("goals_recurring_badge")}>
-                                            <Repeat className="w-3 h-3" /> {t("goals_recurring_badge")}
-                                          </span>
-                                        )}
-                                        {g.recurring && g.streak > 0 && (
-                                          <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-orange-400" title={t("goals_best_streak").replace("{n}", String(g.bestStreak))}>
-                                            <Flame className="w-3 h-3" /> {g.streak}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </>
+          <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-[0_1px_0_rgb(255_255_255/0.02)_inset]">
+            {HORIZONS.filter((h) => byHorizon[h].length > 0).map((h, gi) => {
+              const rows = byHorizon[h];
+              const HIcon = HORIZON_ICON[h];
+              const hs = HORIZON_STYLE[h];
+              return (
+                <div key={h}>
+                  {/* Bandeau d'horizon */}
+                  <div className={`flex items-center gap-2.5 px-4 sm:px-5 py-3 bg-gradient-to-r ${hs.tint} to-transparent ${gi > 0 ? "border-t border-border" : ""}`}>
+                    <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg ${hs.chip}`}>
+                      <HIcon className={`w-4 h-4 ${hs.icon}`} />
+                    </span>
+                    <span className="text-sm font-semibold text-foreground">{t(`goals_horizon_${h}`)}</span>
+                    <span className="text-[11px] text-muted/70 hidden sm:inline">{t(`goals_horizon_${h}_sub`)}</span>
+                    <span className="ml-auto text-[11px] font-semibold text-muted bg-surface rounded-full px-2 py-0.5">{rows.length}</span>
+                  </div>
+                  {/* Lignes */}
+                  {rows.map((g) => {
+                    const { status } = goalStatus(g);
+                    const sv = statusVisual(status);
+                    const statusLabel = g.kind === "custom"
+                      ? (g.done ? t("goals_status_met") : t("goals_status_todo"))
+                      : t(`goals_status_${status}`);
+                    return (
+                      <div key={g.id} className="group flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 border-t border-border/50 hover:bg-surface/30 transition-colors">
+                        {/* Contrôle de tête : toggle (perso) ou pastille de statut (mesuré) */}
+                        {g.kind === "custom" ? (
+                          <button onClick={() => toggleDone(g.id, !g.done)} className="shrink-0" aria-label={t("goals_toggle_done")}>
+                            {g.done
+                              ? <CheckCircle2 className="w-5 h-5 text-profit" />
+                              : <span className="block w-5 h-5 rounded-full border-2 border-border group-hover:border-accent/60 transition-colors" />}
+                          </button>
+                        ) : (
+                          <span className={`shrink-0 w-2.5 h-2.5 rounded-full ${sv.dot}`} aria-hidden />
+                        )}
+
+                        {/* Objectif */}
+                        <div className="min-w-0 flex-1">
+                          {g.kind === "metric" ? (
+                            <>
+                              <p className="font-medium text-foreground text-sm leading-tight truncate">{metricLabel(g.metric)}</p>
+                              <p className="text-[11px] text-muted mt-0.5">{g.comparator === "gte" ? "≥" : "≤"} {g.target}{unit(g.metric)}</p>
+                            </>
+                          ) : (
+                            <>
+                              <p className={`font-medium text-sm leading-tight ${g.done ? "text-muted line-through" : "text-foreground"}`}>{g.title}</p>
+                              {g.recurring && (
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span className="inline-flex items-center gap-0.5 text-[11px] text-muted/70">
+                                    <Repeat className="w-3 h-3" /> {t("goals_recurring_badge")}
+                                  </span>
+                                  {g.streak > 0 && (
+                                    <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-orange-400" title={t("goals_best_streak").replace("{n}", String(g.bestStreak))}>
+                                      <Flame className="w-3 h-3" /> {g.streak}
+                                    </span>
                                   )}
                                 </div>
-                              </div>
-                            </td>
-                            {/* Échéance */}
-                            <td className="py-3 px-3 text-muted whitespace-nowrap">{periodLabel(g.period)}</td>
-                            {/* Progression */}
-                            <td className="py-3 px-3">
-                              {g.kind === "metric" ? (
-                                <div className="flex items-center gap-2.5">
-                                  <div className="flex-1 h-2 rounded-full bg-surface overflow-hidden min-w-[60px]">
-                                    <div className={`h-full transition-all duration-500 ${status === "met" ? "bg-profit" : status === "failed" ? "bg-loss" : "bg-accent"}`} style={{ width: `${g.progress}%` }} />
-                                  </div>
-                                  <span className={`text-xs font-bold tabular-nums whitespace-nowrap ${status === "met" ? "text-profit" : status === "failed" ? "text-loss" : "text-foreground"}`}>{g.value}{unit(g.metric)}</span>
-                                </div>
-                              ) : (
-                                <span className="text-xs text-muted/60">—</span>
                               )}
-                            </td>
-                            {/* Statut */}
-                            <td className="py-3 px-3">
-                              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap inline-flex items-center gap-1 ${badgeStyle}`}>
-                                {(status === "met") && <CheckCircle2 className="w-3 h-3" />}{statusLabel}
-                              </span>
-                            </td>
-                            {/* Action */}
-                            <td className="py-3 pr-4 text-right">
-                              <button onClick={() => removeGoal(g.id)} className="text-muted hover:text-loss transition-colors" aria-label={t("goals_delete")}>
-                                <Trash2 className="w-4 h-4" strokeWidth={1.5} />
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Échéance */}
+                        <span className="hidden sm:inline text-[11px] text-muted whitespace-nowrap w-16 text-right shrink-0">{periodLabel(g.period)}</span>
+
+                        {/* Progression (mesuré) */}
+                        <div className="shrink-0 w-20 sm:w-36 flex items-center gap-2">
+                          {g.kind === "metric" ? (
+                            <>
+                              <div className="flex-1 h-2 rounded-full bg-surface overflow-hidden">
+                                <div className={`h-full rounded-full transition-all duration-500 ${sv.bar}`} style={{ width: `${Math.max(3, g.progress)}%` }} />
+                              </div>
+                              <span className={`text-xs font-bold tabular-nums whitespace-nowrap ${sv.text}`}>{g.value}{unit(g.metric)}</span>
+                            </>
+                          ) : (
+                            <span className="w-full text-right text-xs text-muted/30">—</span>
+                          )}
+                        </div>
+
+                        {/* Statut */}
+                        <span className={`hidden md:inline-flex shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-full whitespace-nowrap items-center gap-1 ${sv.badge}`}>
+                          {status === "met" && <CheckCircle2 className="w-3 h-3" />}{statusLabel}
+                        </span>
+
+                        {/* Suppression (révélée au survol sur desktop) */}
+                        <button onClick={() => removeGoal(g.id)} className="shrink-0 text-muted/40 hover:text-loss transition-all sm:opacity-0 sm:group-hover:opacity-100" aria-label={t("goals_delete")}>
+                          <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
           </div>
         )}
       </section>

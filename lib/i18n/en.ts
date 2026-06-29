@@ -1915,6 +1915,8 @@ const dict: Record<string, string> = {
   "goals_edge_locked": "Tag the emotion on your trades to reveal how much your discipline earns you (composed vs impulsive).",
   "goals_scorecard_title": "Your month so far",
   "goals_scorecard_sub": "Automatic tracking of your key metrics — no setup needed.",
+  "goals_scorecard_track": "Track as a goal",
+  "goals_scorecard_tracked": "Tracked as a goal",
   "goals_vs_last": "vs last month",
   "goals_no_prev": "No previous month",
   "goals_gap_below": "{gap} to go to reach the goal.",
