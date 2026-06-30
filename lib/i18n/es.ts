@@ -171,6 +171,8 @@ const dict: Record<string, string> = {
   "login_email": "Email",
   "login_password": "Contraseña",
   "login_signin": "Iniciar sesión",
+  "login_google": "Continuar con Google",
+  "login_or": "o",
   "login_signing_in": "Iniciando sesión…",
   "login_signup": "Crear una cuenta",
   "login_no_account": "¿Aún no tienes cuenta?",

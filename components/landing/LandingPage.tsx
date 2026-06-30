@@ -2272,7 +2272,7 @@ function Footer() {
             },
             {
               heading: t("footer_resources"),
-              links: [{ href: "/contact", label: t("footer_contact") }, { href: "/faq", label: t("footer_faq") }],
+              links: [{ href: "/blog", label: "Blog" }, { href: "/contact", label: t("footer_contact") }, { href: "/faq", label: t("footer_faq") }],
             },
             {
               heading: t("footer_legal_col"),

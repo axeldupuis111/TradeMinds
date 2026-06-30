@@ -33,6 +33,12 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://tradediscipline.app"),
   title: "TradeDiscipline",
   description: "Journal de trading intelligent",
+  // Google Search Console ownership verification. Set
+  // NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION on Vercel to the token Search Console
+  // gives you (meta-tag method); omitted when unset.
+  ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+    ? { verification: { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION } }
+    : {}),
 };
 
 export default async function RootLayout({
