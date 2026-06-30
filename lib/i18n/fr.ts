@@ -590,6 +590,8 @@ const dict: Record<string, string> = {
   "challenge_rename_title": "Renommer le compte",
   "challenge_rename_save": "Enregistrer",
   "challenge_edit_title": "Modifier le compte",
+  "challenge_templates": "Modèle prop firm (optionnel)",
+  "challenge_templates_help": "Valeurs de départ pré-remplies — vérifie et ajuste selon les règles exactes de ton programme.",
   "challenge_edit_name": "Nom du compte",
   "challenge_edit_status": "Statut",
   "challenge_edit_save": "Enregistrer",

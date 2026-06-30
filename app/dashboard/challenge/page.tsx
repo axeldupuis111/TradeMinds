@@ -250,6 +250,24 @@ function StatusBadge({ status, t }: { status: string; t: (key: string) => string
   );
 }
 
+// One-click prop-firm presets. Percentages (not € amounts) so they scale with
+// any account size. These are common, well-known defaults — the UI labels them
+// as editable starting values since firm rules change and vary by program.
+const PROP_TEMPLATES: {
+  name: string;
+  profit: number;
+  daily: number;
+  total: number;
+  trailing: boolean;
+  market: "cfd" | "futures";
+}[] = [
+  // Names match the PROP_FIRMS dropdown exactly so the firm select stays in sync.
+  { name: "FTMO", profit: 10, daily: 5, total: 10, trailing: false, market: "cfd" },
+  { name: "Funding Pips", profit: 8, daily: 5, total: 10, trailing: false, market: "cfd" },
+  { name: "The5ers", profit: 8, daily: 5, total: 10, trailing: false, market: "cfd" },
+  { name: "TopStep", profit: 6, daily: 2, total: 4, trailing: true, market: "futures" },
+];
+
 function EditAccountModal({
   account,
   onConfirm,
@@ -335,6 +353,29 @@ function EditAccountModal({
           </div>
           {accountType === "prop" && (
             <>
+              <div>
+                <label className="block text-sm text-muted mb-2">{t("challenge_templates")}</label>
+                <div className="flex flex-wrap gap-2">
+                  {PROP_TEMPLATES.map((tpl) => (
+                    <button
+                      key={tpl.name}
+                      type="button"
+                      onClick={() => {
+                        setFirm(tpl.name);
+                        setProfitTarget(String(tpl.profit));
+                        setMaxDailyDd(String(tpl.daily));
+                        setMaxTotalDd(String(tpl.total));
+                        setTrailingDrawdown(tpl.trailing);
+                        setMarketType(tpl.market);
+                      }}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium border border-border text-muted hover:border-accent/50 hover:text-foreground transition-colors"
+                    >
+                      {tpl.name}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted mt-1">{t("challenge_templates_help")}</p>
+              </div>
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-sm text-muted mb-1">{t("challenge_profit_target_pct")}</label>
@@ -1087,6 +1128,30 @@ export default function ChallengePage() {
           {/* Prop firm specific fields */}
           {accountType === "prop" && (
             <>
+              <div>
+                <label className="block text-sm text-muted mb-2">{t("challenge_templates")}</label>
+                <div className="flex flex-wrap gap-2">
+                  {PROP_TEMPLATES.map((tpl) => (
+                    <button
+                      key={tpl.name}
+                      type="button"
+                      onClick={() => {
+                        setFirm(tpl.name);
+                        setCustomFirm("");
+                        setProfitTarget(String(tpl.profit));
+                        setMaxDailyDd(String(tpl.daily));
+                        setMaxTotalDd(String(tpl.total));
+                        setTrailingDrawdown(tpl.trailing);
+                        setMarketType(tpl.market);
+                      }}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium border border-border text-muted hover:border-accent/50 hover:text-foreground transition-colors"
+                    >
+                      {tpl.name}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted mt-1">{t("challenge_templates_help")}</p>
+              </div>
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-sm text-muted mb-1">{t("challenge_profit_target_pct")}</label>
