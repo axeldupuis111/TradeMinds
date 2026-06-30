@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Flame, Trophy, Gem, Target, Star, Lock, PartyPopper, Crown, Snowflake, type LucideIcon } from "lucide-react";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { computeDisciplineStreaks } from "@/lib/discipline-streak";
+import { weekStartLocalKey, browserTimezone } from "@/lib/timezone";
 
 interface Achievement {
   id: string;
@@ -136,8 +137,8 @@ export default function GoalsStreaks() {
       Date.now() - new Date(mostRecentEmotional).getTime() < 30 * 24 * 60 * 60 * 1000;
     setFreezeCandidate(recentEnough ? mostRecentEmotional : null);
 
-    // Weekly goal: count revenge trades this week
-    const monday = getMonday(new Date()).toISOString().split("T")[0];
+    // Weekly goal: count revenge trades this week (Monday in the trader's local zone)
+    const monday = weekStartLocalKey(browserTimezone());
     const weekTrades = (trades || []).filter((t) => t.open_time && t.open_time >= monday);
     const revengeCount = weekTrades.filter((t) => t.emotion === "revenge").length;
     setWeeklyProgress({ current: revengeCount, target: 0, met: revengeCount === 0 });
@@ -378,11 +379,3 @@ export default function GoalsStreaks() {
   );
 }
 
-function getMonday(d: Date): Date {
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(d);
-  monday.setDate(diff);
-  monday.setHours(0, 0, 0, 0);
-  return monday;
-}
