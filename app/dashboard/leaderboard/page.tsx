@@ -89,6 +89,10 @@ export default function LeaderboardPage() {
       const res = await fetch(`/api/leaderboard?days=${d}&mode=${m}`);
       const data = await res.json();
       setEntries(data.entries ?? []); setSelf(data.self ?? null); setTotal(data.total ?? 0);
+    } catch {
+      // Network/parse failure → degrade to an empty board rather than leaving an
+      // unhandled rejection and stale data.
+      setEntries([]); setSelf(null); setTotal(0);
     } finally { setLoading(false); }
   }, []);
   useEffect(() => { load(days, mode); }, [days, mode, load]);

@@ -37,6 +37,8 @@ export default function ExportGuideModal({ onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
       <div
+        role="dialog"
+        aria-modal="true"
         className="bg-card border border-border rounded-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
