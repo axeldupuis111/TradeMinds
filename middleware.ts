@@ -31,6 +31,7 @@ function isPublicPath(pathname: string): boolean {
     p === "/sitemap.xml" ||
     p === "/robots.txt" ||
     p === "/manifest.webmanifest" ||
+    p === "/sw.js" ||
     p.startsWith("/opengraph-image") ||
     p.startsWith("/twitter-image") ||
     p === "/login" ||

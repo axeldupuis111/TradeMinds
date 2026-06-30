@@ -1,5 +1,14 @@
-// Service worker — notifications push TradeDiscipline
+// Service worker — notifications push + installabilité PWA TradeDiscipline
 /* eslint-disable no-undef */
+
+// Activation rapide quand une nouvelle version du SW est déployée.
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
+
+// Un handler "fetch" (même pass-through réseau) est requis par Chrome pour
+// rendre la PWA installable et déclencher l'événement beforeinstallprompt.
+// On ne met PAS de cache : pas de risque de servir du contenu périmé.
+self.addEventListener("fetch", () => {});
 
 self.addEventListener("push", (event) => {
   let payload = {};

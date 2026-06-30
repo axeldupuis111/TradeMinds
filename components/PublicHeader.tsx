@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useLanguage } from "@/lib/LanguageContext";
 import { localizedHref } from "@/lib/locale-href";
 import LanguageSelector from "@/components/LanguageSelector";
+import InstallAppButton from "@/components/InstallAppButton";
 
 interface PublicHeaderProps {
   showAnchors?: boolean;
@@ -61,6 +62,7 @@ export default function PublicHeader({ showAnchors = false }: PublicHeaderProps)
           >
             Blog
           </Link>
+          <InstallAppButton className="hidden md:inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground transition-colors px-3 py-1.5" />
           <LanguageSelector />
           <Link
             href={localizedHref("/login", lang)}

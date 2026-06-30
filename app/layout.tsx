@@ -1,6 +1,7 @@
 import { LanguageProvider } from "@/lib/LanguageContext";
 import { PlanProvider } from "@/lib/PlanContext";
 import { ThemeProvider } from "@/lib/ThemeContext";
+import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import { loadDict } from "@/lib/translations";
 import type { Lang } from "@/lib/translations";
 import { cookies } from "next/headers";
@@ -72,6 +73,7 @@ export default async function RootLayout({
             <PlanProvider>{children}</PlanProvider>
           </LanguageProvider>
         </ThemeProvider>
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

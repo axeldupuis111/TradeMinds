@@ -1,6 +1,7 @@
 "use client";
 
 import NavItem from "@/components/sidebar/NavItem";
+import InstallAppButton from "@/components/InstallAppButton";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import {
@@ -140,6 +141,9 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
             labelKey="sidebar_settings"
             onNavigate={onClose}
           />
+
+          {/* Install the PWA — renders nothing if already installed / unsupported */}
+          <InstallAppButton className="flex w-full items-center gap-3 px-4 py-3 rounded-lg text-base text-muted hover:text-foreground hover:bg-surface transition-colors" />
 
           {showUpgrade && (
             <Link
