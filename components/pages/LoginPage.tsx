@@ -27,7 +27,10 @@ export default function LoginPage() {
     setLoading(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=/dashboard` },
+      // No query string here: Supabase matches redirectTo against the allow-list,
+      // and a "?next=..." suffix breaks that match → it falls back to the Site URL
+      // (the landing page). The callback defaults its destination to /dashboard.
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
     // On success the browser is redirected to Google; only reached on error.
     if (error) {
