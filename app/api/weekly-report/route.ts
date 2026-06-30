@@ -3,6 +3,16 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { sendPushToUser } from "@/lib/push";
 import { alertCronFailure } from "@/lib/cron-alert";
+import { localHour, localWeekday } from "@/lib/timezone";
+
+// Delivered Sunday evening in each trader's LOCAL timezone (was a fixed 18:00
+// UTC Sunday = 20:00 CEST). The cron now runs hourly; this gate fires it once,
+// during the local Sunday 20 o'clock hour.
+const WEEKLY_DAY = 0; // Sunday
+const WEEKLY_HOUR = 20;
+function isWeeklyDue(timezone: string): boolean {
+  return localWeekday(timezone) === WEEKLY_DAY && localHour(timezone) === WEEKLY_HOUR;
+}
 
 /**
  * Rapport hebdomadaire par email — cron Vercel chaque dimanche soir.
@@ -251,7 +261,7 @@ async function handle(req: Request) {
 
   const { data: users, error } = await supabase
     .from("profiles")
-    .select("id, email, language, currency")
+    .select("id, email, language, currency, timezone")
     .eq("email_notif_session", true)
     .not("email", "is", null);
 
@@ -283,6 +293,8 @@ async function handle(req: Request) {
 
   for (const user of users) {
     if (!user.email) continue;
+    // Only the trader's local Sunday-evening hour (dryRun bypasses the gate).
+    if (!dryRun && !isWeeklyDue((user.timezone as string) || "UTC")) continue;
 
     const { data: trades } = await supabase
       .from("trades")

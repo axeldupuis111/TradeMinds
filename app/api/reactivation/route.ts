@@ -2,6 +2,16 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { alertCronFailure } from "@/lib/cron-alert";
+import { localHour, localWeekday } from "@/lib/timezone";
+
+// Sent Wednesday late-morning in each trader's LOCAL timezone (was a fixed
+// 09:00 UTC Wed = 11:00 CEST). The cron now runs hourly; this gate fires it
+// once, during the local Wednesday 11 o'clock hour.
+const REACTIVATION_DAY = 3; // Wednesday
+const REACTIVATION_HOUR = 11;
+function isReactivationDue(timezone: string): boolean {
+  return localWeekday(timezone) === REACTIVATION_DAY && localHour(timezone) === REACTIVATION_HOUR;
+}
 
 /**
  * Email de réactivation anti-churn — cron Vercel hebdomadaire (mercredi).
@@ -92,7 +102,7 @@ async function handle(req: Request) {
 
   const { data: users, error } = await supabase
     .from("profiles")
-    .select("id, email")
+    .select("id, email, timezone")
     .eq("email_notif_session", true)
     .not("email", "is", null);
 
@@ -108,6 +118,8 @@ async function handle(req: Request) {
 
   for (const user of users) {
     if (!user.email) continue;
+    // Only the trader's local Wednesday-late-morning hour (dryRun bypasses).
+    if (!dryRun && !isReactivationDue((user.timezone as string) || "UTC")) continue;
 
     const [{ data: lastTrade }, { data: lastSession }, { data: allTrades }] = await Promise.all([
       supabase.from("trades").select("open_time").eq("user_id", user.id).order("open_time", { ascending: false }).limit(1).maybeSingle(),

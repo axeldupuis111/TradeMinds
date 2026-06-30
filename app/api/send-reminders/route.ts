@@ -3,6 +3,16 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { sendPushToUser } from "@/lib/push";
 import { alertCronFailure } from "@/lib/cron-alert";
+import { localHour, localWeekday } from "@/lib/timezone";
+
+// Delivered at 9am in each trader's LOCAL timezone (was a fixed 07:00 UTC =
+// 09:00 CEST). The cron now runs hourly; this gate makes each user receive it
+// once, during their local 9 o'clock hour, on local weekdays (Mon–Fri).
+const REMINDER_HOUR = 9;
+function isReminderDue(timezone: string): boolean {
+  const wd = localWeekday(timezone); // 0=Sun … 6=Sat
+  return localHour(timezone) === REMINDER_HOUR && wd >= 1 && wd <= 5;
+}
 
 // Les crons Vercel invoquent les routes en GET — sans ce handler, le rappel
 // quotidien ne partait jamais (405 sur une route POST-only).
@@ -84,7 +94,7 @@ export async function POST(req: Request) {
 
   const { data: users, error } = await supabase
     .from("profiles")
-    .select("id, email, language")
+    .select("id, email, language, timezone")
     .eq("email_notif_session", true)
     .not("email", "is", null);
 
@@ -96,6 +106,7 @@ export async function POST(req: Request) {
   let sent = 0;
   for (const user of users) {
     if (!user.email) continue;
+    if (!isReminderDue((user.timezone as string) || "UTC")) continue;
 
     const lang = (user.language as Lang) in REMINDER_COPY ? (user.language as Lang) : "en";
     const copy = REMINDER_COPY[lang];
@@ -126,10 +137,11 @@ export async function POST(req: Request) {
   if (pushUserIds.length > 0) {
     const { data: pushProfiles } = await supabase
       .from("profiles")
-      .select("id, language")
+      .select("id, language, timezone")
       .in("id", pushUserIds);
 
     const langById = new Map((pushProfiles ?? []).map((p) => [p.id, p.language as string]));
+    const tzById = new Map((pushProfiles ?? []).map((p) => [p.id, (p.timezone as string) || "UTC"]));
 
     // Préférence push « rappel de session » (défensif : colonne absente → opt-in).
     const optedOut = new Set<string>();
@@ -144,7 +156,7 @@ export async function POST(req: Request) {
     }
 
     await Promise.all(
-      pushUserIds.filter((uid) => !optedOut.has(uid)).map(async (uid) => {
+      pushUserIds.filter((uid) => !optedOut.has(uid) && isReminderDue(tzById.get(uid) || "UTC")).map(async (uid) => {
         const l = (langById.get(uid) as Lang) in REMINDER_COPY ? (langById.get(uid) as Lang) : "en";
         const copy = REMINDER_COPY[l];
         const n = await sendPushToUser(uid, {
