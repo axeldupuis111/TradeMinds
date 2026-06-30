@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { checkTradeGuard, type GuardStrategy, type GuardWarning } from "@/lib/trade-guard";
+import { startOfLocalDayUtc, browserTimezone } from "@/lib/timezone";
 
 /**
  * Loads the active strategy's rules + today's trades, and exposes runGuard(pair)
@@ -42,7 +43,8 @@ export function useTradeGuard(strategyId: string | null | undefined) {
         if (data) strat = data as GuardStrategy;
       }
 
-      const today = new Date().toISOString().split("T")[0];
+      // Trader's local-day start (not UTC midnight), from the browser timezone.
+      const today = startOfLocalDayUtc(browserTimezone()).toISOString();
       const { data: trades } = await supabase
         .from("trades")
         .select("pnl, commission, swap, open_time, status, challenge_id")

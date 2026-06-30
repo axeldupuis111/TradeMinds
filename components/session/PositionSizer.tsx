@@ -18,6 +18,7 @@ import {
 } from "@/lib/futures-contracts";
 import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
+import { startOfLocalDayUtc, browserTimezone } from "@/lib/timezone";
 import { Info, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -77,7 +78,7 @@ export default function PositionSizer({ strategy }: Props) {
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    const today = new Date().toISOString().split("T")[0];
+    const today = startOfLocalDayUtc(browserTimezone()).toISOString();
 
     const [{ data: allTrades }, { data: todayTrades }] = await Promise.all([
       supabase

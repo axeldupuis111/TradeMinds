@@ -13,6 +13,7 @@ import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useTheme } from "@/lib/ThemeContext";
 import { createClient } from "@/lib/supabase/client";
+import { startOfLocalDayUtc, browserTimezone } from "@/lib/timezone";
 import { cn } from "@/lib/cn";
 import { Flame, TrendingUp, TrendingDown } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -136,7 +137,7 @@ export default function DayState() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
 
-    const today = new Date().toISOString().split("T")[0];
+    const today = startOfLocalDayUtc(browserTimezone()).toISOString();
 
     const [{ data: strat }, { data: trades }, { data: reviews }, { data: activeSession }] = await Promise.all([
       supabase.from("strategies").select("max_trades_per_day").eq("user_id", user.id).limit(1).maybeSingle(),

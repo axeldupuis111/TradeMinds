@@ -16,6 +16,7 @@ import { useAlerts, type Alert } from "@/lib/AlertsContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
+import { startOfLocalDayUtc, localDateKey, browserTimezone } from "@/lib/timezone";
 import { useEffect } from "react";
 
 const SOURCE_KEY = "challenge-guardian";
@@ -87,7 +88,9 @@ export default function ChallengeGuardian() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const today = new Date().toISOString().split("T")[0];
+    const tz = browserTimezone();
+    const today = localDateKey(tz);                       // local date key (dismiss dedup)
+    const dayStart = startOfLocalDayUtc(tz).toISOString(); // local-midnight instant (query bound)
 
     // Fetch ALL active prop challenges.
     const { data: challenges } = await supabase
@@ -120,7 +123,7 @@ export default function ChallengeGuardian() {
             .select("pnl, commission, swap, status")
             .eq("user_id", user.id)
             .eq("challenge_id", challenge.id)
-            .gte("open_time", today),
+            .gte("open_time", dayStart),
         ]);
 
         let running = challenge.account_size;

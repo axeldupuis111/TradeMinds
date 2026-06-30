@@ -27,12 +27,12 @@ const LANG_NAMES: Record<string, string> = {
 };
 
 export async function POST(request: Request) {
-  let reserved: { userId: string; plan: PlanType } | null = null;
+  let reserved: { userId: string; plan: PlanType; timezone: string } | null = null;
   try {
     // ── 1. Auth ──
     const auth = await requireAuth();
     if (auth instanceof NextResponse) return auth;
-    const { userId, plan } = auth;
+    const { userId, plan, timezone } = auth;
 
     // ── 2. API key ──
     const apiKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY;
@@ -69,9 +69,9 @@ export async function POST(request: Request) {
     }
 
     // ── 4b. Reserve quota atomically (refunded below if the AI call fails) ──
-    const quota = await consumeQuota({ userId, plan, feature: "chat" });
+    const quota = await consumeQuota({ userId, plan, feature: "chat", timezone });
     if (quota instanceof NextResponse) return quota;
-    reserved = { userId, plan };
+    reserved = { userId, plan, timezone };
 
     // ── 5. Sanitize user inputs ──
     const langName = LANG_NAMES[language] ?? "français";
@@ -159,7 +159,7 @@ RULES:
   } catch (err: unknown) {
     // Give back the reserved slot on failure so the user isn't charged for a
     // response they never received.
-    if (reserved) await refundQuota(reserved.userId, reserved.plan, "chat");
+    if (reserved) await refundQuota(reserved.userId, reserved.plan, "chat", reserved.timezone);
     console.error("Chat coach error:", err);
     return NextResponse.json(
       { error: "Le coach IA est momentanément indisponible. Réessaie." },

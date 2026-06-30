@@ -22,6 +22,7 @@ import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useAlerts, type Alert } from "@/lib/AlertsContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
+import { startOfLocalDayUtc, browserTimezone } from "@/lib/timezone";
 import { useEffect, useRef } from "react";
 
 interface Strategy {
@@ -110,7 +111,7 @@ export default function StopTradingGuard() {
       return;
     }
 
-    const today = new Date().toISOString().split("T")[0];
+    const today = startOfLocalDayUtc(browserTimezone()).toISOString();
 
     // Strategy is still the source for max_trades and consecutive_losses.
     const [{ data: strat }, { data: trades }] = await Promise.all([

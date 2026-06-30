@@ -4,6 +4,7 @@ import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { INSTRUMENTS } from "@/lib/instruments";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
+import { localDateKey, browserTimezone } from "@/lib/timezone";
 import { useTradeGuard } from "@/lib/hooks/useTradeGuard";
 import { TradeGuardDialog } from "@/components/trades/TradeGuardDialog";
 import type { GuardWarning } from "@/lib/trade-guard";
@@ -30,7 +31,7 @@ export default function QuickTradeLogger({ strategyId, pairs, onClose, onSaved }
   const supabase = createClient();
   const { runGuard } = useTradeGuard(strategyId);
 
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = localDateKey(browserTimezone());
 
   const [form, setForm] = useState({
     pair: pairs[0] || "XAUUSD",

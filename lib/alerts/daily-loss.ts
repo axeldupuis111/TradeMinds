@@ -5,6 +5,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { sendPushToUser } from "@/lib/push";
+import { startOfLocalDayUtc } from "@/lib/timezone";
 
 type AlertLang = "fr" | "en" | "de" | "es";
 
@@ -90,10 +91,11 @@ export async function checkDailyLossAlert(
     // procède par défaut — opt-in). On ne notifie pas si l'utilisateur l'a coupé.
     const { data: pref } = await admin
       .from("profiles")
-      .select("push_notif_alerts")
+      .select("push_notif_alerts, timezone")
       .eq("id", userId)
       .maybeSingle();
     if (pref && (pref as { push_notif_alerts?: boolean }).push_notif_alerts === false) return;
+    const timezone = (pref as { timezone?: string } | null)?.timezone || "UTC";
 
     const { data: challenges } = await admin
       .from("prop_challenges")
@@ -111,7 +113,9 @@ export async function checkDailyLossAlert(
     }
     if (!isFinite(limit) || limit <= 0) return;
 
-    const todayStart = new Date().toISOString().split("T")[0];
+    // Start of the trader's local day (not UTC midnight) so the daily-loss
+    // window matches the trading day they actually experience.
+    const todayStart = startOfLocalDayUtc(timezone).toISOString();
     const { data: todayTrades } = await admin
       .from("trades")
       .select("pnl, commission, swap")

@@ -3,6 +3,7 @@
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
+import { startOfLocalDayUtc, browserTimezone } from "@/lib/timezone";
 import { useEffect, useState } from "react";
 
 interface Trade {
@@ -60,14 +61,15 @@ export default function RealTimeGuards({ strategy, accountSize, sessionStartedAt
     if (!selectedAccount) { setTrades([]); return; }
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const today = new Date().toISOString().split("T")[0];
+    const dayStart = startOfLocalDayUtc(browserTimezone());
+    const dayEnd = new Date(dayStart.getTime() + 86_400_000);
     const { data } = await supabase
       .from("trades")
       .select("pnl, commission, swap, close_time, open_time, status")
       .eq("user_id", user.id)
       .eq("challenge_id", selectedAccount.id)
-      .gte("open_time", today + "T00:00:00")
-      .lte("open_time", today + "T23:59:59")
+      .gte("open_time", dayStart.toISOString())
+      .lt("open_time", dayEnd.toISOString())
       .order("open_time", { ascending: false });
     setTrades(data || []);
   }

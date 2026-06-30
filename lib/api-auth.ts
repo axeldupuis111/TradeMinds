@@ -3,14 +3,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import type { PlanType } from "@/lib/PlanContext";
 import { PLAN_LIMITS } from "@/lib/plan-limits";
-
-function getWeekStart(date: Date): string {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  d.setDate(diff);
-  return d.toISOString().split("T")[0];
-}
+import { localDateKey, weekStartLocalKey } from "@/lib/timezone";
 
 function createSupabaseServer() {
   const cookieStore = cookies();
@@ -37,6 +30,8 @@ function createSupabaseServer() {
 interface AuthResult {
   userId: string;
   plan: PlanType;
+  /** The trader's IANA timezone (falls back to "UTC"), for day-boundary math. */
+  timezone: string;
 }
 
 export async function requireAuth(): Promise<AuthResult | NextResponse> {
@@ -50,7 +45,7 @@ export async function requireAuth(): Promise<AuthResult | NextResponse> {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("plan, plan_expires_at")
+    .select("plan, plan_expires_at, timezone")
     .eq("id", user.id)
     .single();
 
@@ -58,13 +53,15 @@ export async function requireAuth(): Promise<AuthResult | NextResponse> {
   if (profile?.plan_expires_at && new Date(profile.plan_expires_at) < new Date()) {
     plan = "free";
   }
-  return { userId: user.id, plan };
+  return { userId: user.id, plan, timezone: (profile?.timezone as string) || "UTC" };
 }
 
 interface QuotaCheckParams {
   userId: string;
   plan: PlanType;
   feature: "analyze" | "chat";
+  /** Trader timezone so the daily/weekly quota resets on their local day. */
+  timezone?: string;
 }
 
 interface QuotaResult {
@@ -89,7 +86,7 @@ function getQuotaFromProfile(profile: ProfileQuotaRow | null, feature: "analyze"
   return profile.daily_chat_reset === resetKey ? (profile.daily_chat_count || 0) : 0;
 }
 
-export async function checkQuota({ userId, plan, feature }: QuotaCheckParams): Promise<QuotaResult | NextResponse> {
+export async function checkQuota({ userId, plan, feature, timezone }: QuotaCheckParams): Promise<QuotaResult | NextResponse> {
   const config = PLAN_LIMITS[feature][plan];
 
   if (config.limit === 0) {
@@ -98,8 +95,7 @@ export async function checkQuota({ userId, plan, feature }: QuotaCheckParams): P
   }
 
   const supabase = createSupabaseServer();
-  const today = new Date().toISOString().split("T")[0];
-  const resetKey = config.resetMode === "week" ? getWeekStart(new Date()) : today;
+  const resetKey = config.resetMode === "week" ? weekStartLocalKey(timezone) : localDateKey(timezone);
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -120,13 +116,12 @@ export async function checkQuota({ userId, plan, feature }: QuotaCheckParams): P
   return { allowed: true, remaining: config.limit - currentCount, limit: config.limit };
 }
 
-export async function incrementQuota(userId: string, plan: PlanType, feature: "analyze" | "chat"): Promise<void> {
+export async function incrementQuota(userId: string, plan: PlanType, feature: "analyze" | "chat", timezone?: string): Promise<void> {
   const config = PLAN_LIMITS[feature][plan];
   if (!config) return;
 
   const supabase = createSupabaseServer();
-  const today = new Date().toISOString().split("T")[0];
-  const resetKey = config.resetMode === "week" ? getWeekStart(new Date()) : today;
+  const resetKey = config.resetMode === "week" ? weekStartLocalKey(timezone) : localDateKey(timezone);
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -149,10 +144,10 @@ export async function incrementQuota(userId: string, plan: PlanType, feature: "a
   }
 }
 
-function resetKeyFor(config: { resetMode: "day" | "week" }): string {
+function resetKeyFor(config: { resetMode: "day" | "week" }, timezone?: string): string {
   return config.resetMode === "week"
-    ? getWeekStart(new Date())
-    : new Date().toISOString().split("T")[0];
+    ? weekStartLocalKey(timezone)
+    : localDateKey(timezone);
 }
 
 /**
@@ -167,7 +162,7 @@ function resetKeyFor(config: { resetMode: "day" | "week" }): string {
  * deployed yet (migration 20260615_atomic_ai_quota.sql), so the feature keeps
  * working before the SQL is applied.
  */
-export async function consumeQuota({ userId, plan, feature }: QuotaCheckParams): Promise<QuotaResult | NextResponse> {
+export async function consumeQuota({ userId, plan, feature, timezone }: QuotaCheckParams): Promise<QuotaResult | NextResponse> {
   const config = PLAN_LIMITS[feature][plan];
 
   if (config.limit === 0) {
@@ -176,7 +171,7 @@ export async function consumeQuota({ userId, plan, feature }: QuotaCheckParams):
   }
 
   const supabase = createSupabaseServer();
-  const resetKey = resetKeyFor(config);
+  const resetKey = resetKeyFor(config, timezone);
 
   const { data, error } = await supabase.rpc("consume_quota", {
     p_user_id: userId,
@@ -189,9 +184,9 @@ export async function consumeQuota({ userId, plan, feature }: QuotaCheckParams):
     // RPC not deployed yet → fall back to the legacy non-atomic path so the
     // feature keeps working. Apply the migration to activate atomic quotas.
     console.error(`[API Quota] consume_quota RPC unavailable, falling back to legacy path: ${error.message}`);
-    const legacy = await checkQuota({ userId, plan, feature });
+    const legacy = await checkQuota({ userId, plan, feature, timezone });
     if (legacy instanceof NextResponse) return legacy;
-    await incrementQuota(userId, plan, feature);
+    await incrementQuota(userId, plan, feature, timezone);
     return { allowed: true, remaining: legacy.remaining - 1, limit: config.limit };
   }
 
@@ -213,12 +208,12 @@ export async function consumeQuota({ userId, plan, feature }: QuotaCheckParams):
  * (e.g. the Claude call errored), so the user is not charged a quota unit for
  * a response they never received. Best-effort: never throws.
  */
-export async function refundQuota(userId: string, plan: PlanType, feature: "analyze" | "chat"): Promise<void> {
+export async function refundQuota(userId: string, plan: PlanType, feature: "analyze" | "chat", timezone?: string): Promise<void> {
   const config = PLAN_LIMITS[feature][plan];
   if (!config) return;
 
   const supabase = createSupabaseServer();
-  const resetKey = resetKeyFor(config);
+  const resetKey = resetKeyFor(config, timezone);
 
   try {
     const { error } = await supabase.rpc("refund_quota", {

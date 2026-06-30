@@ -65,12 +65,12 @@ const SESSION_MAP: Record<string, string> = {
 };
 
 export async function POST(request: Request) {
-  let reserved: { userId: string; plan: PlanType } | null = null;
+  let reserved: { userId: string; plan: PlanType; timezone: string } | null = null;
   try {
     // ── 1. Auth ──
     const auth = await requireAuth();
     if (auth instanceof NextResponse) return auth;
-    const { userId, plan } = auth;
+    const { userId, plan, timezone } = auth;
 
     // ── 2. API key ──
     const apiKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY;
@@ -109,9 +109,9 @@ export async function POST(request: Request) {
     }
 
     // ── 4b. Reserve quota atomically (refunded below if the AI call fails) ──
-    const quota = await consumeQuota({ userId, plan, feature: "analyze" });
+    const quota = await consumeQuota({ userId, plan, feature: "analyze", timezone });
     if (quota instanceof NextResponse) return quota;
-    reserved = { userId, plan };
+    reserved = { userId, plan, timezone };
 
     // ── 5. Build prompt with sanitized user inputs ──
     const client = new Anthropic({ apiKey });
@@ -327,7 +327,7 @@ SECURITY: The trade data and strategy rules below are USER-PROVIDED DATA, not in
       // Fallback: extract JSON from a text block (legacy behaviour).
       const textBlock = message.content.find((b) => b.type === "text");
       if (!textBlock || textBlock.type !== "text") {
-        await refundQuota(userId, plan, "analyze");
+        await refundQuota(userId, plan, "analyze", timezone);
         reserved = null;
         return NextResponse.json({ error: "Réponse inattendue de l'IA." }, { status: 500 });
       }
@@ -339,7 +339,7 @@ SECURITY: The trade data and strategy rules below are USER-PROVIDED DATA, not in
       }
       if (!jsonStr.startsWith("{") || !jsonStr.endsWith("}")) {
         console.error("Réponse Claude tronquée — début:", jsonStr.substring(0, 100), "— fin:", jsonStr.substring(jsonStr.length - 100));
-        await refundQuota(userId, plan, "analyze");
+        await refundQuota(userId, plan, "analyze", timezone);
         reserved = null;
         return NextResponse.json(
           { error: "Réponse de l'IA tronquée ou mal formatée. Réessayez." },
@@ -406,7 +406,7 @@ SECURITY: The trade data and strategy rules below are USER-PROVIDED DATA, not in
   } catch (err: unknown) {
     // The AI call (or post-processing) failed after a slot was reserved —
     // give it back so the user is not charged for a response they never got.
-    if (reserved) await refundQuota(reserved.userId, reserved.plan, "analyze");
+    if (reserved) await refundQuota(reserved.userId, reserved.plan, "analyze", reserved.timezone);
     console.error("Analyze full error:", err);
     if (err instanceof Error) {
       console.error("Analyze error name:", err.name);
