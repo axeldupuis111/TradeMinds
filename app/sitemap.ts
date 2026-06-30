@@ -1,5 +1,6 @@
 import { MetadataRoute } from "next";
 import { locales, defaultLocale } from "@/i18n/config";
+import { getAllPosts } from "@/lib/blog/posts";
 
 const SITE_URL = "https://tradediscipline.app";
 
@@ -41,6 +42,23 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: now,
       changeFrequency: "yearly",
       priority: 0.3,
+    });
+  }
+
+  // Blog : la liste + un article par slug (URL unique, le contenu s'adapte à la
+  // langue du visiteur). lastModified = date de publication de l'article.
+  entries.push({
+    url: `${SITE_URL}/blog`,
+    lastModified: now,
+    changeFrequency: "weekly",
+    priority: 0.6,
+  });
+  for (const post of getAllPosts()) {
+    entries.push({
+      url: `${SITE_URL}/blog/${post.slug}`,
+      lastModified: new Date(`${post.date}T00:00:00Z`),
+      changeFrequency: "monthly",
+      priority: 0.5,
     });
   }
 
