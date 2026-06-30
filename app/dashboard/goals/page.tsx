@@ -194,8 +194,8 @@ function DisciplineHeatmap({ data, t }: { data: { date: string; score: number }[
   const wdShown = [0, 2, 4]; // Lun, Mer, Ven
 
   return (
-    <div className="flex flex-col lg:flex-row lg:items-start gap-4">
-      <div className="overflow-x-auto pb-1">
+    <div className="flex flex-col lg:flex-row lg:items-center gap-5 lg:gap-8">
+      <div className="overflow-x-auto pb-1 shrink-0">
         {/* Libellés de mois */}
         <div className="flex gap-[3px] mb-1">
           <span className="w-4 shrink-0" />
@@ -244,19 +244,19 @@ function DisciplineHeatmap({ data, t }: { data: { date: string; score: number }[
         </div>
       </div>
 
-      {/* Synthèse */}
-      <div className="grid grid-cols-3 lg:grid-cols-1 gap-2 lg:w-36 shrink-0">
-        <div className="rounded-lg border border-border bg-surface/30 px-3 py-2">
-          <p className="text-xl font-bold text-foreground tabular-nums leading-none">{daysTracked}</p>
-          <p className="text-[10px] text-muted mt-1">{t("goals_heatmap_days_tracked")}</p>
+      {/* Synthèse — s'étire pour remplir l'espace à droite de la grille */}
+      <div className="flex-1 grid grid-cols-3 gap-3 self-stretch lg:self-auto">
+        <div className="rounded-xl border border-border bg-surface/30 p-4 flex flex-col justify-center">
+          <p className="text-2xl font-black text-foreground tabular-nums leading-none">{daysTracked}</p>
+          <p className="text-xs text-muted mt-1.5">{t("goals_heatmap_days_tracked")}</p>
         </div>
-        <div className="rounded-lg border border-border bg-surface/30 px-3 py-2">
-          <p className={`text-xl font-bold tabular-nums leading-none ${avgCls}`}>{avg == null ? "—" : avg}</p>
-          <p className="text-[10px] text-muted mt-1">{t("goals_heatmap_avg")}</p>
+        <div className="rounded-xl border border-border bg-surface/30 p-4 flex flex-col justify-center">
+          <p className={`text-2xl font-black tabular-nums leading-none ${avgCls}`}>{avg == null ? "—" : avg}<span className="text-sm text-muted font-bold">{avg == null ? "" : "/100"}</span></p>
+          <p className="text-xs text-muted mt-1.5">{t("goals_heatmap_avg")}</p>
         </div>
-        <div className="rounded-lg border border-border bg-surface/30 px-3 py-2">
-          <p className="text-xl font-bold text-profit tabular-nums leading-none">{disciplinedDays}</p>
-          <p className="text-[10px] text-muted mt-1">{t("goals_heatmap_disciplined")}</p>
+        <div className="rounded-xl border border-border bg-surface/30 p-4 flex flex-col justify-center">
+          <p className="text-2xl font-black text-profit tabular-nums leading-none">{disciplinedDays}</p>
+          <p className="text-xs text-muted mt-1.5">{t("goals_heatmap_disciplined")}</p>
         </div>
       </div>
     </div>
