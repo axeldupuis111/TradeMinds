@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { sendPushToUser } from "@/lib/push";
+import { alertCronFailure } from "@/lib/cron-alert";
 
 // Les crons Vercel invoquent les routes en GET — sans ce handler, le rappel
 // quotidien ne partait jamais (405 sur une route POST-only).
@@ -88,6 +89,7 @@ export async function POST(req: Request) {
     .not("email", "is", null);
 
   if (error || !users) {
+    await alertCronFailure("send-reminders", `Failed to fetch users: ${error?.message ?? "no rows"}`);
     return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
   }
 

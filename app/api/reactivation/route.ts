@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { alertCronFailure } from "@/lib/cron-alert";
 
 /**
  * Email de réactivation anti-churn — cron Vercel hebdomadaire (mercredi).
@@ -96,6 +97,7 @@ async function handle(req: Request) {
     .not("email", "is", null);
 
   if (error || !users) {
+    await alertCronFailure("reactivation", `Failed to fetch users: ${error?.message ?? "no rows"}`);
     return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
   }
 

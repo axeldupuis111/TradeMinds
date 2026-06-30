@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { sendPushToUser } from "@/lib/push";
+import { alertCronFailure } from "@/lib/cron-alert";
 
 /**
  * Rapport hebdomadaire par email — cron Vercel chaque dimanche soir.
@@ -255,6 +256,7 @@ async function handle(req: Request) {
     .not("email", "is", null);
 
   if (error || !users) {
+    await alertCronFailure("weekly-report", `Failed to fetch users: ${error?.message ?? "no rows"}`);
     return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
   }
 

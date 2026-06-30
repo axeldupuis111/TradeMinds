@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { syncBrokerConnection, type BrokerConnectionRow } from "@/lib/sync/broker-sync";
 import { checkDailyLossAlert, checkDrawdownAlert } from "@/lib/alerts/daily-loss";
+import { alertCronFailure } from "@/lib/cron-alert";
 
 // Vercel cron invokes routes with GET — delegate to POST.
 export async function GET(req: Request) {
@@ -26,6 +27,7 @@ export async function POST(req: Request) {
 
   if (error) {
     console.error("[Broker Cron] list error:", error.message);
+    await alertCronFailure("sync/brokers", `Could not list broker connections: ${error.message}`);
     return NextResponse.json({ error: "Erreur interne." }, { status: 500 });
   }
 

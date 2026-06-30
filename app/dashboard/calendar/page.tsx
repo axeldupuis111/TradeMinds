@@ -169,7 +169,7 @@ function EventDetail({ ev, onClose }: { ev: EventRow; onClose: () => void }) {
             <h3 className="text-base font-bold text-foreground leading-snug">{ev.title}</h3>
             <p className="text-xs text-foreground-muted mt-0.5">{time} · {relativeLabel(ev, t)}</p>
           </div>
-          <button onClick={onClose} className="p-1 rounded hover:bg-border/40 transition-colors shrink-0">
+          <button onClick={onClose} aria-label={t("annotate_close")} className="p-1 rounded hover:bg-border/40 transition-colors shrink-0">
             <X className="w-4 h-4 text-foreground-muted" />
           </button>
         </div>
@@ -522,7 +522,7 @@ export default function CalendarPage() {
             >
               <div className="flex items-center justify-between px-5 py-4 border-b border-border">
                 <h3 className="text-sm font-bold text-foreground">{t("cal_currencies")}</h3>
-                <button onClick={() => setShowFilters(false)} className="p-1 rounded hover:bg-border/40 transition-colors">
+                <button onClick={() => setShowFilters(false)} aria-label={t("annotate_close")} className="p-1 rounded hover:bg-border/40 transition-colors">
                   <X className="w-4 h-4 text-foreground-muted" />
                 </button>
               </div>

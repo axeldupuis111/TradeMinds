@@ -7,6 +7,7 @@
  * Accessible à : /dashboard/_design-system
  */
 
+import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -79,6 +80,8 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DesignSystemPage() {
+  // Internal dev-only showcase — never reachable in production.
+  if (process.env.NODE_ENV === "production") notFound();
   return (
     <div className="min-h-screen bg-background px-8 py-10 max-w-5xl mx-auto">
 

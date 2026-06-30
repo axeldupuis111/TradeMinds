@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { parseFeed, type RawFeedRow } from "@/lib/economic-calendar";
+import { alertCronFailure } from "@/lib/cron-alert";
 
 /**
  * Economic-calendar sync — daily Vercel cron.
@@ -57,6 +58,7 @@ async function handle(req: Request) {
 
   // Bail only if we got nothing at all — a missing next-week is tolerated.
   if (thisWeek === null && nextWeek === null) {
+    await alertCronFailure("economic-calendar/sync", "Both feeds (this week + next week) failed to fetch — calendar will go stale.");
     return NextResponse.json({ error: "Feed fetch failed" }, { status: 502 });
   }
 
@@ -96,6 +98,7 @@ async function handle(req: Request) {
 
   if (error) {
     console.error("Economic calendar upsert failed:", error);
+    await alertCronFailure("economic-calendar/sync", `Upsert failed: ${error.message}`);
     return NextResponse.json({ error: "Upsert failed", detail: error.message }, { status: 500 });
   }
 
