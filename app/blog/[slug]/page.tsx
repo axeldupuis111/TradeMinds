@@ -44,5 +44,28 @@ export async function generateMetadata({
 export default function BlogPostPage({ params }: { params: { slug: string } }) {
   const post = getPost(params.slug);
   if (!post) notFound();
-  return <BlogPostView post={post} />;
+
+  const c = postContent(post, resolveLang());
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: c.title,
+    description: c.excerpt,
+    datePublished: post.date,
+    dateModified: post.date,
+    author: { "@type": "Organization", name: "TradeDiscipline" },
+    publisher: {
+      "@type": "Organization",
+      name: "TradeDiscipline",
+      logo: { "@type": "ImageObject", url: `${SITE_URL}/icon-512.png` },
+    },
+    mainEntityOfPage: `${SITE_URL}/blog/${post.slug}`,
+  };
+
+  return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <BlogPostView post={post} />
+    </>
+  );
 }
