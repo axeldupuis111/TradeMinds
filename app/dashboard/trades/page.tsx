@@ -5,6 +5,7 @@ import CsvImport from "@/components/trades/CsvImport";
 import ManualTradeModal from "@/components/trades/ManualTradeModal";
 import OpenTradesSection from "@/components/trades/OpenTradesSection";
 import QuickAnnotateModal from "@/components/trades/QuickAnnotateModal";
+import TaxExportButton from "@/components/trades/TaxExportButton";
 import TradeList from "@/components/trades/TradeList";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -159,6 +160,7 @@ export default function TradesPage() {
               {t("annotate_button").replace("{count}", String(unannotatedCount))}
             </button>
           )}
+          <TaxExportButton />
           <button
             onClick={() => setIsImportOpen((o) => !o)}
             className="px-3 py-2 rounded-md border border-border text-sm text-muted hover:text-foreground hover:bg-card transition-colors flex items-center gap-2"

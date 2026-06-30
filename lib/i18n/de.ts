@@ -1377,6 +1377,7 @@ const dict: Record<string, string> = {
   "emotional_progress": "Fortschritt: {done}/{total}",
   "trades_col_duration": "Dauer",
   "trades_import_csv": "CSV importieren",
+  "tax_export": "Buchhaltungs-Export",
   "trades_add_trade": "Trade hinzufügen",
   "trades_close_import": "Import schließen",
   "trades_mt_sync_title": "Synchronisiere deine MetaTrader-Trades automatisch",
