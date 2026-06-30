@@ -7,6 +7,7 @@ import DayState from "@/components/dashboard/DayState";
 import GoalsStreaks from "@/components/dashboard/GoalsStreaks";
 import OnboardingChecklist, { type OnboardingState } from "@/components/dashboard/OnboardingChecklist";
 import PatternAlerts from "@/components/dashboard/PatternAlerts";
+import WeeklyPlanCard from "@/components/dashboard/WeeklyPlanCard";
 import WeeklyRecap from "@/components/dashboard/WeeklyRecap";
 import { KpiCards } from "@/components/dashboard/KpiCards";
 import { Sparkline } from "@/components/dashboard/Sparkline";
@@ -400,6 +401,11 @@ export default function DashboardContent({
       {/* ── Bilan de la semaine ──────────────────────────────────────── */}
       <StaggerItem className="mt-6">
         <WeeklyRecap trades={filteredAll} />
+      </StaggerItem>
+
+      {/* ── Plan de la semaine (IA, prospectif) ──────────────────────── */}
+      <StaggerItem className="mt-6">
+        <WeeklyPlanCard />
       </StaggerItem>
 
       {/* ── AI Insights + Equity Curve ───────────────────────────────── */}
