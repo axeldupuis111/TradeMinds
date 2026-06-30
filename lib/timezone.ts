@@ -87,6 +87,17 @@ export function startOfLocalDayUtc(tz?: string | null, at: Date = new Date()): D
   return new Date(guess - offset);
 }
 
+/** Shift a "YYYY-MM-DD" key by `delta` calendar days (DST-safe pure date math). */
+export function addDaysToDateKey(key: string, delta: number): string {
+  const [y, m, d] = key.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + delta);
+  const yy = dt.getUTCFullYear();
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(dt.getUTCDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
+}
+
 /** "YYYY-MM-DD" of the Monday that starts the current week in `tz`. */
 export function weekStartLocalKey(tz?: string | null, at: Date = new Date()): string {
   const z = safeTz(tz);

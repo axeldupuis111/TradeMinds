@@ -5,6 +5,7 @@ import {
   localWeekday,
   startOfLocalDayUtc,
   weekStartLocalKey,
+  addDaysToDateKey,
 } from "./timezone";
 
 describe("timezone helpers", () => {
@@ -51,6 +52,13 @@ describe("timezone helpers", () => {
     // 2026-07-05 is a Sunday. Week Monday is 2026-06-29.
     const sunday = new Date("2026-07-05T12:00:00Z");
     expect(weekStartLocalKey("UTC", sunday)).toBe("2026-06-29");
+  });
+
+  it("addDaysToDateKey shifts calendar days across month/year boundaries", () => {
+    expect(addDaysToDateKey("2026-06-30", -1)).toBe("2026-06-29");
+    expect(addDaysToDateKey("2026-07-01", -1)).toBe("2026-06-30"); // month boundary
+    expect(addDaysToDateKey("2026-01-01", -1)).toBe("2025-12-31"); // year boundary
+    expect(addDaysToDateKey("2026-02-28", 1)).toBe("2026-03-01"); // non-leap year
   });
 
   it("falls back to UTC for an invalid timezone instead of throwing", () => {
