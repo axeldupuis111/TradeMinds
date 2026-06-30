@@ -2,9 +2,10 @@
 
 import { useLanguage } from "@/lib/LanguageContext";
 import { cn } from "@/lib/cn";
-import { Check, ArrowRight, X } from "lucide-react";
+import { Check, ArrowRight, X, Trophy } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import ConfettiBurst from "@/components/animations/ConfettiBurst";
 
 export interface OnboardingState {
   hasAccount: boolean;
@@ -14,6 +15,11 @@ export interface OnboardingState {
 }
 
 const DISMISS_KEY = "td_onboarding_dismissed";
+const CELEBRATED_KEY = "td_onboarding_celebrated";
+// Set once the user has seen the checklist incomplete, so the completion
+// celebration only fires for genuine progress — never for users who were
+// already fully set up before this existed.
+const SEEN_INCOMPLETE_KEY = "td_onboarding_seen_incomplete";
 
 interface Step {
   key: OnboardingKey;
@@ -33,23 +39,74 @@ const STEPS: Step[] = [
 
 export default function OnboardingChecklist({ state }: { state: OnboardingState }) {
   const { t } = useLanguage();
-  const [dismissed, setDismissed] = useState(true); // évite un flash avant lecture localStorage
-
-  useEffect(() => {
-    setDismissed(localStorage.getItem(DISMISS_KEY) === "1");
-  }, []);
+  // Start "hidden" to avoid a flash before we read localStorage.
+  const [dismissed, setDismissed] = useState(true);
+  const [celebrated, setCelebrated] = useState(true);
+  const [seenIncomplete, setSeenIncomplete] = useState(false);
+  const [celebrationClosed, setCelebrationClosed] = useState(false);
 
   const done = STEPS.filter((s) => state[s.key]).length;
   const total = STEPS.length;
   const allDone = done === total;
 
-  // On masque si tout est fait OU si l'utilisateur a fermé la carte.
-  if (allDone || dismissed) return null;
+  useEffect(() => {
+    setDismissed(localStorage.getItem(DISMISS_KEY) === "1");
+    setCelebrated(localStorage.getItem(CELEBRATED_KEY) === "1");
+    setSeenIncomplete(localStorage.getItem(SEEN_INCOMPLETE_KEY) === "1");
+  }, []);
+
+  // Remember that the user has been in an incomplete state at least once.
+  useEffect(() => {
+    if (!allDone) {
+      localStorage.setItem(SEEN_INCOMPLETE_KEY, "1");
+      setSeenIncomplete(true);
+    }
+  }, [allDone]);
+
+  const celebrate = allDone && seenIncomplete && !celebrated && !dismissed && !celebrationClosed;
+
+  // Persist the celebration so it fires exactly once, even across reloads.
+  useEffect(() => {
+    if (celebrate) localStorage.setItem(CELEBRATED_KEY, "1");
+  }, [celebrate]);
 
   function dismiss() {
     localStorage.setItem(DISMISS_KEY, "1");
     setDismissed(true);
   }
+
+  // ── One-time completion celebration ──────────────────────────────────────
+  if (celebrate) {
+    return (
+      <div className="mb-4 rounded-xl border border-profit/30 bg-profit/5 p-5 text-center relative overflow-hidden">
+        <ConfettiBurst />
+        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-profit/15">
+          <Trophy className="h-6 w-6 text-profit" strokeWidth={1.75} />
+        </div>
+        <h2 className="text-base font-bold text-foreground">{t("onboarding_done_title")}</h2>
+        <p className="mx-auto mt-1 max-w-md text-sm text-muted">{t("onboarding_done_subtitle")}</p>
+        <div className="mt-4 flex items-center justify-center gap-3">
+          <Link
+            href="/dashboard/leaderboard"
+            onClick={() => setCelebrationClosed(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-600"
+          >
+            {t("onboarding_done_cta")}
+            <ArrowRight className="h-4 w-4" strokeWidth={2} />
+          </Link>
+          <button
+            onClick={() => setCelebrationClosed(true)}
+            className="text-sm text-muted transition-colors hover:text-foreground"
+          >
+            {t("onboarding_dismiss")}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // On masque si tout est fait OU si l'utilisateur a fermé la carte.
+  if (allDone || dismissed) return null;
 
   // Prochaine étape non faite : mise en avant.
   const nextStepKey = STEPS.find((s) => !state[s.key])?.key;
