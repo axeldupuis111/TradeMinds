@@ -29,7 +29,13 @@ export default function InstallAppButton({ className }: { className?: string }) 
   const [showIOS, setShowIOS] = useState(false);
 
   useEffect(() => {
-    if (window.matchMedia("(display-mode: standalone)").matches) {
+    // Detect "already installed / running as an app". iOS Safari doesn't support
+    // the display-mode media query on older versions — it exposes the legacy
+    // `navigator.standalone` flag instead, so check both.
+    const standalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as { standalone?: boolean }).standalone === true;
+    if (standalone) {
       setInstalled(true);
       return;
     }
