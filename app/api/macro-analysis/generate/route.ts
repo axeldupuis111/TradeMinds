@@ -35,6 +35,17 @@ const TARGET_LANGS: Lang[] = ["en", "de", "es"]; // FR is the source language
 const BRIEF_MODEL = "claude-sonnet-4-6";
 const TRANSLATE_MODEL = "claude-haiku-4-5";
 
+// The brief is a rich JSON (overview + 3-5 themes + 3-5 watchlist + 3 outlook
+// horizons + takeaway). At 4000 tokens it was hitting `stop_reason=max_tokens`
+// and truncating the JSON mid-string → parse failure → 502 → no briefing saved
+// that day. Give it ample headroom; cost scales with tokens actually generated,
+// not the cap, so a normal day stays cheap.
+const BRIEF_MAX_TOKENS = 8000;
+
+// Hard wall-clock budget for the brief phase. Vercel kills the function at 300s
+// (→504, nothing persisted); we reserve the rest for translations + DB writes.
+const BRIEF_BUDGET_MS = 220_000;
+
 const LANG_NAME: Record<Lang, string> = {
   fr: "français",
   en: "English",
@@ -160,22 +171,29 @@ function parseAnalysis(raw: string): Analysis | null {
 async function createWithWebSearch(
   client: Anthropic,
   prompt: string,
+  deadline: number,
 ): Promise<Anthropic.Message> {
   const messages: Anthropic.MessageParam[] = [{ role: "user", content: prompt }];
   const tools = [
     { type: "web_search_20250305" as const, name: "web_search" as const, max_uses: 5 },
   ];
+  // Each call may only use the time left in the budget, capped at 150s.
+  const callTimeout = () =>
+    Math.max(20_000, Math.min(150_000, deadline - Date.now()));
   let msg = await client.messages.create(
-    { model: BRIEF_MODEL, max_tokens: 4000, tools, messages },
-    { timeout: 150_000 },
+    { model: BRIEF_MODEL, max_tokens: BRIEF_MAX_TOKENS, tools, messages },
+    { timeout: callTimeout() },
   );
   let guard = 0;
-  while (msg.stop_reason === "pause_turn" && guard < 3) {
+  // Resume pause_turns only while a safe budget remains. On a slow morning these
+  // can chain (each search adds another model call), and the classic 1+3 loop
+  // could exceed Vercel's 300s cap → 504 with nothing saved.
+  while (msg.stop_reason === "pause_turn" && guard < 3 && deadline - Date.now() > 40_000) {
     guard++;
     messages.push({ role: "assistant", content: msg.content });
     msg = await client.messages.create(
-      { model: BRIEF_MODEL, max_tokens: 4000, tools, messages },
-      { timeout: 150_000 },
+      { model: BRIEF_MODEL, max_tokens: BRIEF_MAX_TOKENS, tools, messages },
+      { timeout: callTimeout() },
     );
   }
   return msg;
@@ -263,7 +281,7 @@ Donne 3 à 5 thèmes et 3 à 5 éléments à surveiller. Pour "outlook", sois CO
 
   let frBrief: Analysis | null = null;
   try {
-    const msg = await createWithWebSearch(client, briefPrompt);
+    const msg = await createWithWebSearch(client, briefPrompt, Date.now() + BRIEF_BUDGET_MS);
     frBrief = parseAnalysis(textOf(msg));
   } catch (err) {
     console.error("[Macro] FR generation failed:", err);
