@@ -1,9 +1,39 @@
 import { createClient } from "@/lib/supabase/server";
 import PublicProfileView from "@/components/profile/PublicProfileView";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 
 interface Props {
   params: { username: string };
+}
+
+const SITE_URL = "https://tradediscipline.app";
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("username", params.username)
+    .eq("public_profile", true)
+    .maybeSingle();
+
+  if (!data) return { title: "Profile — TradeDiscipline" };
+
+  const handle = data.username as string;
+  const title = `@${handle} — TradeDiscipline`;
+  const description = `See @${handle}'s trading discipline scorecard — discipline score, win rate, streak and equity curve on TradeDiscipline.`;
+  const url = `${SITE_URL}/profile/${handle}`;
+
+  // The OG/Twitter image is wired automatically from opengraph-image.tsx in this
+  // route segment; here we just provide the dynamic title/description + canonical.
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: { title, description, url, siteName: "TradeDiscipline", type: "profile" },
+    twitter: { card: "summary_large_image", title, description },
+  };
 }
 
 export default async function PublicProfilePage({ params }: Props) {
