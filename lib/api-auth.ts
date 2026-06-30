@@ -226,3 +226,45 @@ export async function refundQuota(userId: string, plan: PlanType, feature: "anal
     console.error(`[API Quota] refund_quota threw for user ${userId}:`, e);
   }
 }
+
+/**
+ * Generic per-feature daily rate limit for the secondary AI routes (not the
+ * plan-based analyze/chat quotas). Anti-abuse only — the limits are generous;
+ * the point is to stop one account spamming an endpoint and burning Anthropic
+ * credits. Counts on the trader's local day.
+ *
+ * Returns a 429 NextResponse when the limit is exceeded, or null when allowed.
+ * FAILS OPEN if the consume_ai_usage RPC isn't deployed yet (migration
+ * 20260630_ai_usage_rate_limit.sql), so wiring it up never breaks a feature.
+ */
+export async function rateLimitAi(
+  userId: string,
+  feature: string,
+  limit: number,
+  timezone?: string,
+): Promise<NextResponse | null> {
+  const supabase = createSupabaseServer();
+  const day = localDateKey(timezone);
+  try {
+    const { data, error } = await supabase.rpc("consume_ai_usage", {
+      p_user_id: userId,
+      p_feature: feature,
+      p_limit: limit,
+      p_day: day,
+    });
+    if (error) {
+      // RPC not deployed → fail open (allow), just log.
+      console.error(`[AI rate-limit] consume_ai_usage unavailable for ${feature}: ${error.message}`);
+      return null;
+    }
+    const row = (Array.isArray(data) ? data[0] : data) as { allowed: boolean } | undefined;
+    if (row && !row.allowed) {
+      console.error(`[AI rate-limit] ${feature} daily limit hit for user ${userId}`);
+      return NextResponse.json({ error: "Daily limit reached for this feature" }, { status: 429 });
+    }
+    return null;
+  } catch (e) {
+    console.error(`[AI rate-limit] threw for ${feature}:`, e);
+    return null; // fail open
+  }
+}

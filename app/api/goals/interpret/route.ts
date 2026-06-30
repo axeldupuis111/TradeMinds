@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requireAuth, rateLimitAi } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +18,8 @@ export async function POST(req: Request) {
   if (auth.plan !== "plus" && auth.plan !== "premium") {
     return NextResponse.json({ trackable: false });
   }
+  const limited = await rateLimitAi(auth.userId, "goals-interpret", 30, auth.timezone);
+  if (limited) return limited;
 
   const { text } = (await req.json().catch(() => ({}))) as { text?: string };
   if (!text || !text.trim()) return NextResponse.json({ trackable: false });

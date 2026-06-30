@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requireAuth, rateLimitAi } from "@/lib/api-auth";
 import {
   indicatorId,
   lookupGlossary,
@@ -54,6 +54,8 @@ function serviceClient() {
 export async function POST(req: Request) {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
+  const limited = await rateLimitAi(auth.userId, "calendar-explain", 40, auth.timezone);
+  if (limited) return limited;
 
   const body = (await req.json().catch(() => ({}))) as {
     title?: string;

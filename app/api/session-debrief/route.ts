@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requireAuth, rateLimitAi } from "@/lib/api-auth";
 import { createClient } from "@supabase/supabase-js";
 
 /**
@@ -114,6 +114,8 @@ function staticDebrief(trades: TradeRow[], lang: string): DebriefPayload {
 export async function POST(req: Request) {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
+  const limited = await rateLimitAi(auth.userId, "session-debrief", 30, auth.timezone);
+  if (limited) return limited;
   const { userId, plan } = auth;
 
   let body: { sessionId?: string; language?: string };

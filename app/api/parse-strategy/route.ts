@@ -1,8 +1,19 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
+import { requireAuth, rateLimitAi } from "@/lib/api-auth";
+
+// A strategy description is at most a few paragraphs; cap input to keep token
+// cost bounded and prevent abuse.
+const MAX_STRATEGY_TEXT = 6000;
 
 export async function POST(request: Request) {
   try {
+    // Server-side auth (don't rely on middleware alone) + anti-abuse rate limit.
+    const auth = await requireAuth();
+    if (auth instanceof NextResponse) return auth;
+    const limited = await rateLimitAi(auth.userId, "parse-strategy", 20, auth.timezone);
+    if (limited) return limited;
+
     const apiKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
       console.error("Neither CLAUDE_API_KEY nor ANTHROPIC_API_KEY is defined in environment.");
@@ -19,6 +30,12 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Texte de stratégie vide." },
         { status: 400 }
+      );
+    }
+    if (text.length > MAX_STRATEGY_TEXT) {
+      return NextResponse.json(
+        { error: "Texte de stratégie trop long." },
+        { status: 413 }
       );
     }
 
@@ -155,8 +172,8 @@ Ajoute ce champ à la racine du JSON (pas dans strategy_tags) :
     const parsed = JSON.parse(jsonStr);
     return NextResponse.json(parsed);
   } catch (err: unknown) {
+    // Log the detail server-side, but never leak internal error messages.
     console.error("Parse strategy error:", err);
-    const message = err instanceof Error ? err.message : "Erreur inconnue";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: "Erreur lors de l'analyse de la stratégie." }, { status: 500 });
   }
 }
