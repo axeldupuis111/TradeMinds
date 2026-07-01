@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import CountUp from "@/components/animations/CountUp";
 import GrowBar from "@/components/animations/GrowBar";
 import ConfettiBurst from "@/components/animations/ConfettiBurst";
+import CommunityChallenges from "@/components/dashboard/CommunityChallenges";
 
 type Mode = "discipline" | "sessions" | "streak";
 
@@ -121,6 +122,11 @@ export default function LeaderboardPage() {
       {showConfetti && <ConfettiBurst onDone={() => setShowConfetti(false)} />}
       <h1 className="text-2xl font-bold text-foreground">{t("leaderboard_title")}</h1>
       <p className="text-muted mt-1">{t("leaderboard_subtitle")}</p>
+
+      {/* Défis communautaires */}
+      <div className="mt-6">
+        <CommunityChallenges />
+      </div>
 
       <div className="mt-5 lg:grid lg:grid-cols-3 lg:gap-6 lg:items-start">
       {/* Rail : tes stats + badges + invite (droite sur grand écran, haut sur mobile) */}
