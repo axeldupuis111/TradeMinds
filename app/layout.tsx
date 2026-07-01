@@ -36,11 +36,20 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://tradediscipline.app"),
   title: "TradeDiscipline",
   description: "Journal de trading intelligent",
-  // Google Search Console ownership verification. Set
-  // NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION on Vercel to the token Search Console
-  // gives you (meta-tag method); omitted when unset.
-  ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
-    ? { verification: { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION } }
+  // Search-engine ownership verification (meta-tag method). Set the matching
+  // env var on Vercel to the token each console gives you; omitted when unset.
+  // Google = NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION, Bing = NEXT_PUBLIC_BING_SITE_VERIFICATION.
+  ...((process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION)
+    ? {
+        verification: {
+          ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+            ? { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION }
+            : {}),
+          ...(process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION
+            ? { other: { "msvalidate.01": process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION } }
+            : {}),
+        },
+      }
     : {}),
 };
 
