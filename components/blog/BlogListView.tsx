@@ -3,6 +3,7 @@
 import PublicHeader from "@/components/PublicHeader";
 import { useLanguage } from "@/lib/LanguageContext";
 import { postContent, type BlogPost } from "@/lib/blog/posts";
+import BlogIllustration from "@/components/blog/BlogIllustration";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
@@ -38,6 +39,7 @@ export default function BlogListView({ posts }: { posts: BlogPost[] }) {
                 href={`/blog/${post.slug}`}
                 className="block rounded-xl border border-border bg-card p-6 transition-colors hover:border-accent/40"
               >
+                <BlogIllustration name={post.cover} className="w-full h-28 rounded-lg border border-border mb-4" />
                 <p className="text-xs text-foreground-muted">
                   {new Date(`${post.date}T00:00:00`).toLocaleDateString(dateLocale, {
                     day: "numeric",

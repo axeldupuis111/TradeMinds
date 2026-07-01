@@ -21,6 +21,8 @@ export interface BlogPost {
   /** ISO date "YYYY-MM-DD". */
   date: string;
   readingMinutes: number;
+  /** Illustration key (see components/blog/BlogIllustration). */
+  cover: string;
   content: Record<BlogLang, LocalizedPost>;
 }
 
@@ -29,6 +31,7 @@ export const POSTS: BlogPost[] = [
     slug: "stop-revenge-trading",
     date: "2026-06-30",
     readingMinutes: 4,
+    cover: "psychology",
     content: {
       en: {
         title: "How to stop revenge trading: a 4-step framework",
@@ -164,6 +167,7 @@ La disciplina no es un rasgo de personalidad, es un sistema. Una checklist previ
     slug: "prop-firm-discipline",
     date: "2026-06-29",
     readingMinutes: 5,
+    cover: "prop",
     content: {
       en: {
         title: "Passing a prop firm challenge: it's a discipline test, not a profit test",
@@ -259,6 +263,7 @@ La mayoría de diarios solo muestran beneficio y pérdida. Para pasar un challen
     slug: "trading-journal-guide",
     date: "2026-06-28",
     readingMinutes: 5,
+    cover: "journal",
     content: {
       en: {
         title: "How to keep a trading journal that actually changes your behaviour",

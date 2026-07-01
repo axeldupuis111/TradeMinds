@@ -4,6 +4,7 @@ import PublicHeader from "@/components/PublicHeader";
 import { useLanguage } from "@/lib/LanguageContext";
 import { localizedHref } from "@/lib/locale-href";
 import { postContent, type BlogPost } from "@/lib/blog/posts";
+import BlogIllustration from "@/components/blog/BlogIllustration";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import { ArrowLeft } from "lucide-react";
@@ -33,6 +34,8 @@ export default function BlogPostView({ post }: { post: BlogPost }) {
         >
           <ArrowLeft className="h-4 w-4" strokeWidth={2} /> {ui.back}
         </Link>
+
+        <BlogIllustration name={post.cover} className="mt-6 w-full h-40 sm:h-56 rounded-xl border border-border" />
 
         <header className="mt-6 mb-8">
           <p className="text-xs text-foreground-muted">
