@@ -2,6 +2,7 @@
 
 import { ICT_EMOTIONS } from "@/lib/ict-constants";
 import { EMOTION_EMOJIS } from "@/lib/emotions";
+import ScreenshotAnnotator from "@/components/trades/ScreenshotAnnotator";
 import {
   computeConfluenceScore,
   deriveSetupFromChecklist,
@@ -106,6 +107,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
   const [tags, setTags] = useState<string[]>(trade.tags || []);
   const [notes, setNotes] = useState(trade.notes || "");
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
+  const [showAnnotator, setShowAnnotator] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -324,6 +326,23 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
       if (signedData) { setScreenshotUrl(signedData.signedUrl); setScreenshotModified(true); }
     }
     setUploading(false);
+  }
+
+  // Save the hand-drawn annotations over the SAME screenshot path.
+  async function handleAnnotatedSave(blob: Blob) {
+    const path = screenshotPathRef.current;
+    if (!path) { setShowAnnotator(false); return; }
+    setUploading(true);
+    const { error } = await supabase.storage
+      .from("trade-screenshots")
+      .upload(path, blob, { upsert: true, contentType: "image/png" });
+    if (!error) {
+      // New signed URL (fresh token) so the <Image> reloads the annotated version.
+      const { data: signedData } = await supabase.storage.from("trade-screenshots").createSignedUrl(path, 3600);
+      if (signedData) { setScreenshotUrl(signedData.signedUrl); setScreenshotModified(true); }
+    }
+    setUploading(false);
+    setShowAnnotator(false);
   }
 
   const handleSave = useCallback(async (): Promise<boolean> => {
@@ -694,14 +713,23 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
             {screenshotUrl && (
               <div className="mb-2 relative group">
                 <Image src={screenshotUrl} alt="Trade screenshot" width={800} height={600} className="w-full rounded-lg border border-border" style={{ height: "auto" }} />
-                <button
-                  onClick={() => { setScreenshotUrl(null); setScreenshotModified(true); }}
-                  className="absolute top-2 right-2 p-1 bg-black/70 rounded-full text-muted hover:text-loss opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+                <div className="absolute top-2 right-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => setShowAnnotator(true)}
+                    className="px-2 py-1 bg-black/70 rounded-full text-xs text-white hover:text-accent"
+                  >
+                    ✏️ {t("annotate_draw")}
+                  </button>
+                  <button
+                    onClick={() => { setScreenshotUrl(null); setScreenshotModified(true); }}
+                    aria-label={t("annotate_close")}
+                    className="p-1 bg-black/70 rounded-full text-muted hover:text-loss"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             )}
             <label className={`block border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${uploading ? "opacity-50" : "border-border hover:border-accent/50"}`}>
@@ -711,6 +739,13 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
               <span className="text-muted text-xs">{uploading ? "..." : t("detail_upload")}</span>
               <input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={(e) => { const file = e.target.files?.[0]; if (file) handleScreenshotUpload(file); }} />
             </label>
+            {showAnnotator && screenshotUrl && (
+              <ScreenshotAnnotator
+                src={screenshotUrl}
+                onSave={handleAnnotatedSave}
+                onClose={() => setShowAnnotator(false)}
+              />
+            )}
           </div>
 
           {/* Derived details — read-only, computed automatically */}
