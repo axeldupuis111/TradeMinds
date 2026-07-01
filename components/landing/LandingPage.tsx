@@ -532,6 +532,17 @@ function Hero() {
           </Magnetic>
         </motion.div>
 
+        {/* Risk-reversal reassurance — reduces signup friction right under the CTA */}
+        <motion.p
+          initial={prefersReduced ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.42, ease }}
+          className="mt-3 text-center text-xs"
+          style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}
+        >
+          {t("hero_reassurance")}
+        </motion.p>
+
         {/* AI trust badge */}
         <motion.div
           initial={prefersReduced ? false : { opacity: 0 }}

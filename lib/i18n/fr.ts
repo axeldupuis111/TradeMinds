@@ -113,6 +113,7 @@ const dict: Record<string, string> = {
   "hero_title_2": "Trade avec discipline.",
   "hero_subtitle": "TradeDiscipline analyse tes trades avec l'IA, détecte tes erreurs de discipline et t'aide à respecter ton plan de trading. Que tu sois en compte propre ou en prop firm.",
   "hero_cta": "Commencer gratuitement",
+  "hero_reassurance": "Gratuit · Sans carte bancaire · Prêt en 2 minutes",
   "hero_features": "Voir les fonctionnalités",
   "preview_discipline": "Discipline",
   "preview_equity": "Equity Curve",

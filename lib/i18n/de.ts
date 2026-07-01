@@ -113,6 +113,7 @@ const dict: Record<string, string> = {
   "hero_title_2": "Trade mit Disziplin.",
   "hero_subtitle": "TradeDiscipline analysiert deine Trades mit KI, erkennt Disziplinverstöße und hilft dir, deinen Trading-Plan einzuhalten. Ob eigenes Konto oder Prop-Firm-Challenge.",
   "hero_cta": "Kostenlos starten",
+  "hero_reassurance": "Kostenlos · Keine Kreditkarte · In 2 Minuten startklar",
   "hero_features": "Features ansehen",
   "preview_discipline": "Disziplin",
   "preview_equity": "Equity-Kurve",
