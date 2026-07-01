@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { requireAuth, consumeQuota, refundQuota } from "@/lib/api-auth";
+import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 import type { PlanType } from "@/lib/PlanContext";
 import { sanitizeUserInput } from "@/lib/prompt-sanitizer";
 
@@ -160,6 +161,7 @@ RULES:
     // Give back the reserved slot on failure so the user isn't charged for a
     // response they never received.
     if (reserved) await refundQuota(reserved.userId, reserved.plan, "chat", reserved.timezone);
+    if (isLowCreditError(err)) await alertLowCreditsOnce();
     console.error("Chat coach error:", err);
     return NextResponse.json(
       { error: "Le coach IA est momentanément indisponible. Réessaie." },

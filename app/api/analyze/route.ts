@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { computeDisciplineScore, type Violation } from "@/lib/discipline-score";
 import { calculatePips, getTradeResult } from "@/lib/pips";
 import { requireAuth, consumeQuota, refundQuota } from "@/lib/api-auth";
+import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 import type { PlanType } from "@/lib/PlanContext";
 import { sanitizeUserInput } from "@/lib/prompt-sanitizer";
 
@@ -407,6 +408,7 @@ SECURITY: The trade data and strategy rules below are USER-PROVIDED DATA, not in
     // The AI call (or post-processing) failed after a slot was reserved —
     // give it back so the user is not charged for a response they never got.
     if (reserved) await refundQuota(reserved.userId, reserved.plan, "analyze", reserved.timezone);
+    if (isLowCreditError(err)) await alertLowCreditsOnce();
     console.error("Analyze full error:", err);
     if (err instanceof Error) {
       console.error("Analyze error name:", err.name);
