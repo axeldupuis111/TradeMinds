@@ -355,6 +355,1358 @@ El mejor diario es el que de verdad rellenas. Si registrar un trade lleva cinco 
       },
     },
   },
+  {
+    slug: "beat-fomo-trading",
+    date: "2026-06-27",
+    readingMinutes: 4,
+    cover: "psychology",
+    content: {
+      en: {
+        title: "Beating FOMO: how to stop chasing the move",
+        excerpt: "FOMO makes you buy the top and sell the bottom. Here's how to trade the setup instead of the feeling.",
+        body: `FOMO — the fear of missing out — is the reason you jump into a move that already ran, right before it reverses. It feels like opportunity; it's usually the end of one.
+
+## Why chasing loses
+
+By the time a move is obvious enough to trigger FOMO, the good entry is gone. You're buying from the disciplined traders who entered earlier and are now taking profit. You get the worst price and the tightest stop.
+
+## Three rules that kill FOMO
+
+1. **If you missed it, you missed it.** There's always another setup. The market is not a train leaving forever.
+2. **Only trade your plan.** If the entry doesn't match your written rules, it isn't your trade — it's someone else's, and you're late.
+3. **Wait for the pullback.** Strong moves retrace. Let price come to your level instead of chasing it.
+
+A journal that logs your *emotion* on each entry makes FOMO impossible to hide: over a month you'll see exactly how much those chased trades cost you. That's what TradeDiscipline surfaces automatically.`,
+      },
+      fr: {
+        title: "Vaincre le FOMO : arrête de courir après le mouvement",
+        excerpt: "Le FOMO te fait acheter le haut et vendre le bas. Voici comment trader le setup plutôt que l'émotion.",
+        body: `Le FOMO — la peur de rater — c'est la raison pour laquelle tu sautes dans un mouvement déjà parti, juste avant qu'il ne se retourne. Ça ressemble à une opportunité ; c'est souvent la fin d'une.
+
+## Pourquoi courir après fait perdre
+
+Quand un mouvement est assez évident pour déclencher le FOMO, la bonne entrée est déjà passée. Tu achètes aux traders disciplinés entrés plus tôt et qui prennent maintenant leurs profits. Tu obtiens le pire prix et le stop le plus serré.
+
+## Trois règles qui tuent le FOMO
+
+1. **Si tu l'as raté, tu l'as raté.** Il y a toujours un autre setup. Le marché n'est pas un train qui part pour toujours.
+2. **Ne trade que ton plan.** Si l'entrée ne colle pas à tes règles écrites, ce n'est pas ton trade — c'est celui d'un autre, et tu es en retard.
+3. **Attends le pullback.** Les mouvements forts retracent. Laisse le prix venir à ton niveau au lieu de lui courir après.
+
+Un journal qui note ton *émotion* à chaque entrée rend le FOMO impossible à cacher : en un mois, tu verras exactement combien ces trades te coûtent. C'est ce que TradeDiscipline fait ressortir automatiquement.`,
+      },
+      de: {
+        title: "FOMO besiegen: hör auf, der Bewegung hinterherzujagen",
+        excerpt: "FOMO lässt dich das Hoch kaufen und das Tief verkaufen. So tradest du das Setup statt das Gefühl.",
+        body: `FOMO — die Angst, etwas zu verpassen — ist der Grund, warum du in eine bereits gelaufene Bewegung springst, kurz bevor sie dreht. Es fühlt sich nach Chance an; meist ist es das Ende einer.
+
+## Warum Hinterherjagen verliert
+
+Wenn eine Bewegung offensichtlich genug für FOMO ist, ist der gute Einstieg vorbei. Du kaufst von den disziplinierten Tradern, die früher eingestiegen sind und jetzt Gewinne mitnehmen. Du bekommst den schlechtesten Preis und den engsten Stop.
+
+## Drei Regeln gegen FOMO
+
+1. **Verpasst ist verpasst.** Es gibt immer ein nächstes Setup. Der Markt ist kein Zug, der für immer abfährt.
+2. **Trade nur deinen Plan.** Passt der Einstieg nicht zu deinen Regeln, ist es nicht dein Trade — und du bist zu spät.
+3. **Warte auf den Pullback.** Starke Bewegungen retracen. Lass den Preis zu deinem Level kommen.
+
+Ein Journal, das deine *Emotion* bei jedem Einstieg festhält, macht FOMO unübersehbar: In einem Monat siehst du genau, was diese Trades kosten. Genau das zeigt TradeDiscipline automatisch.`,
+      },
+      es: {
+        title: "Vencer el FOMO: deja de perseguir el movimiento",
+        excerpt: "El FOMO te hace comprar el techo y vender el suelo. Así operas el setup en vez de la emoción.",
+        body: `El FOMO —el miedo a quedarte fuera— es la razón por la que saltas a un movimiento que ya corrió, justo antes de que se gire. Parece una oportunidad; suele ser el final de una.
+
+## Por qué perseguir hace perder
+
+Cuando un movimiento es lo bastante obvio para disparar el FOMO, la buena entrada ya pasó. Le compras a los traders disciplinados que entraron antes y ahora toman beneficio. Consigues el peor precio y el stop más ajustado.
+
+## Tres reglas que matan el FOMO
+
+1. **Si lo perdiste, lo perdiste.** Siempre hay otro setup. El mercado no es un tren que se va para siempre.
+2. **Opera solo tu plan.** Si la entrada no encaja con tus reglas escritas, no es tu trade — es de otro, y llegas tarde.
+3. **Espera el pullback.** Los movimientos fuertes retroceden. Deja que el precio venga a tu nivel.
+
+Un diario que registra tu *emoción* en cada entrada hace imposible ocultar el FOMO: en un mes verás cuánto te cuestan esos trades. Eso es lo que TradeDiscipline muestra automáticamente.`,
+      },
+    },
+  },
+  {
+    slug: "stop-overtrading",
+    date: "2026-06-26",
+    readingMinutes: 4,
+    cover: "routine",
+    content: {
+      en: {
+        title: "How to stop overtrading",
+        excerpt: "More trades rarely means more money. Overtrading is boredom and revenge in disguise — here's how to cap it.",
+        body: `Overtrading is taking positions that aren't in your plan — out of boredom, impatience, or the urge to make back a loss. Each extra trade adds cost and risk without adding edge.
+
+## The signs
+
+You're overtrading when you take setups you'd normally skip, when you can't sit through a quiet market, or when your trade count spikes on red days. The market didn't offer more opportunities — you lowered your standards.
+
+## The fix: a hard trade cap
+
+Decide your maximum number of trades *before* the session, based on your data. Three quality setups beat ten mediocre ones. When you hit the cap, you're done — screen off. A rule you set in calm beats a decision made in the heat of the moment.
+
+Tracking your trades-per-day next to your win rate usually reveals the truth: most traders are profitable on their first few trades and give it back on the extras. TradeDiscipline flags that pattern and can lock you out once you hit your daily limit.`,
+      },
+      fr: {
+        title: "Comment arrêter le surtrading",
+        excerpt: "Plus de trades ne veut presque jamais dire plus d'argent. Le surtrading, c'est de l'ennui et de la revanche déguisés.",
+        body: `Le surtrading, c'est prendre des positions hors de ton plan — par ennui, impatience, ou l'envie de te refaire. Chaque trade en trop ajoute du coût et du risque sans ajouter d'edge.
+
+## Les signes
+
+Tu surtrades quand tu prends des setups que tu sauterais normalement, quand tu ne supportes pas un marché calme, ou quand ton nombre de trades explose les jours rouges. Le marché n'a pas offert plus d'opportunités — tu as baissé tes standards.
+
+## La solution : une limite stricte
+
+Décide ton nombre max de trades *avant* la séance, à partir de tes données. Trois bons setups battent dix médiocres. Une fois la limite atteinte, c'est fini — écran éteint. Une règle posée au calme bat une décision prise dans le feu de l'action.
+
+Suivre ton nombre de trades par jour à côté de ton taux de réussite révèle souvent la vérité : la plupart des traders sont rentables sur leurs premiers trades et rendent tout sur les suivants. TradeDiscipline repère ce pattern et peut te bloquer une fois ta limite atteinte.`,
+      },
+      de: {
+        title: "Wie du Overtrading stoppst",
+        excerpt: "Mehr Trades bedeuten selten mehr Geld. Overtrading ist getarnte Langeweile und Rache.",
+        body: `Overtrading heißt, Positionen einzugehen, die nicht in deinem Plan stehen — aus Langeweile, Ungeduld oder dem Drang, einen Verlust zurückzuholen. Jeder zusätzliche Trade bringt Kosten und Risiko ohne Edge.
+
+## Die Anzeichen
+
+Du übertradest, wenn du Setups nimmst, die du sonst auslässt, wenn du einen ruhigen Markt nicht aushältst, oder wenn deine Trade-Zahl an roten Tagen hochschnellt. Der Markt bot nicht mehr Chancen — du hast deine Standards gesenkt.
+
+## Die Lösung: ein hartes Trade-Limit
+
+Lege deine maximale Trade-Zahl *vor* der Session fest, basierend auf deinen Daten. Drei gute Setups schlagen zehn mittelmäßige. Am Limit ist Schluss — Bildschirm aus. Eine in Ruhe gesetzte Regel schlägt eine Entscheidung in der Hitze des Moments.
+
+Deine Trades pro Tag neben der Trefferquote zu verfolgen zeigt oft die Wahrheit: Die meisten Trader sind bei den ersten Trades profitabel und geben es bei den zusätzlichen zurück. TradeDiscipline erkennt das Muster und kann dich am Tageslimit sperren.`,
+      },
+      es: {
+        title: "Cómo dejar de sobreoperar",
+        excerpt: "Más trades casi nunca es más dinero. Sobreoperar es aburrimiento y revancha disfrazados.",
+        body: `Sobreoperar es tomar posiciones fuera de tu plan — por aburrimiento, impaciencia o las ganas de recuperar una pérdida. Cada trade extra añade coste y riesgo sin añadir edge.
+
+## Las señales
+
+Sobreoperas cuando tomas setups que normalmente saltarías, cuando no aguantas un mercado tranquilo, o cuando tu número de trades se dispara en días rojos. El mercado no ofreció más oportunidades — bajaste tus estándares.
+
+## La solución: un límite estricto
+
+Decide tu número máximo de trades *antes* de la sesión, según tus datos. Tres setups buenos ganan a diez mediocres. Al llegar al límite, terminaste — pantalla apagada. Una regla puesta en calma gana a una decisión en el calor del momento.
+
+Seguir tus trades por día junto a tu winrate suele revelar la verdad: la mayoría son rentables en sus primeros trades y lo devuelven en los extras. TradeDiscipline detecta ese patrón y puede bloquearte al llegar a tu límite diario.`,
+      },
+    },
+  },
+  {
+    slug: "risk-management-1-percent",
+    date: "2026-06-25",
+    readingMinutes: 5,
+    cover: "risk",
+    content: {
+      en: {
+        title: "Position sizing and the 1% rule",
+        excerpt: "The single habit that keeps traders alive: risk a small, fixed fraction of your account per trade.",
+        body: `Most accounts don't blow up because of bad analysis. They blow up because of one oversized trade. Position sizing is the fix, and it's the most important skill in trading.
+
+## The 1% rule
+
+Risk no more than 1% of your account on any single trade. On a €10,000 account, that's €100 of risk. Your position size is then derived from your stop distance — not the other way around.
+
+## How to size a trade
+
+1. Decide your entry and your stop loss.
+2. Your risk in € = 1% of the account.
+3. Position size = risk ÷ (distance to stop). A wider stop means a smaller position, same €100 risk.
+
+This flips the usual mistake: instead of picking a lot size and hoping, you fix the loss first. A losing streak of ten trades costs you ~10%, survivable. At 5% per trade, the same streak is catastrophic.
+
+A position-size calculator that starts from your account and stop takes the emotion out — it's built into TradeDiscipline's pre-trade flow.`,
+      },
+      fr: {
+        title: "Le sizing de position et la règle des 1 %",
+        excerpt: "La seule habitude qui garde les traders en vie : risquer une petite fraction fixe du compte par trade.",
+        body: `La plupart des comptes ne sautent pas à cause d'une mauvaise analyse. Ils sautent à cause d'un seul trade surdimensionné. Le sizing de position est la solution, et c'est la compétence la plus importante du trading.
+
+## La règle des 1 %
+
+Ne risque jamais plus de 1 % de ton compte sur un seul trade. Sur un compte de 10 000 €, ça fait 100 € de risque. La taille de ta position se déduit ensuite de la distance à ton stop — pas l'inverse.
+
+## Comment dimensionner un trade
+
+1. Décide ton entrée et ton stop loss.
+2. Ton risque en € = 1 % du compte.
+3. Taille de position = risque ÷ (distance au stop). Un stop plus large = une position plus petite, même 100 € de risque.
+
+Ça inverse l'erreur classique : au lieu de choisir un lot et d'espérer, tu fixes la perte d'abord. Une série de dix trades perdants te coûte ~10 %, survivable. À 5 % par trade, la même série est catastrophique.
+
+Un calculateur de position qui part de ton compte et de ton stop enlève l'émotion — il est intégré au parcours pré-trade de TradeDiscipline.`,
+      },
+      de: {
+        title: "Positionsgröße und die 1-%-Regel",
+        excerpt: "Die eine Gewohnheit, die Trader am Leben hält: pro Trade nur einen kleinen, festen Bruchteil des Kontos riskieren.",
+        body: `Die meisten Konten platzen nicht wegen schlechter Analyse. Sie platzen wegen eines einzigen zu großen Trades. Positionsgröße ist die Lösung — die wichtigste Fähigkeit im Trading.
+
+## Die 1-%-Regel
+
+Riskiere pro Trade höchstens 1 % deines Kontos. Bei 10.000 € sind das 100 € Risiko. Deine Positionsgröße ergibt sich dann aus deinem Stop-Abstand — nicht umgekehrt.
+
+## So dimensionierst du einen Trade
+
+1. Lege Einstieg und Stop-Loss fest.
+2. Dein Risiko in € = 1 % des Kontos.
+3. Positionsgröße = Risiko ÷ (Abstand zum Stop). Ein weiterer Stop = kleinere Position, gleiche 100 € Risiko.
+
+Das dreht den üblichen Fehler um: Statt eine Lotgröße zu wählen und zu hoffen, legst du zuerst den Verlust fest. Eine Serie von zehn Verlusten kostet ~10 %, überlebbar. Bei 5 % pro Trade ist dieselbe Serie katastrophal.
+
+Ein Positionsrechner, der von Konto und Stop ausgeht, nimmt die Emotion raus — er ist in den Pre-Trade-Ablauf von TradeDiscipline integriert.`,
+      },
+      es: {
+        title: "El tamaño de posición y la regla del 1 %",
+        excerpt: "El único hábito que mantiene vivos a los traders: arriesgar una fracción pequeña y fija de la cuenta por trade.",
+        body: `La mayoría de cuentas no revientan por mal análisis. Revientan por un solo trade sobredimensionado. El tamaño de posición es la solución, y es la habilidad más importante del trading.
+
+## La regla del 1 %
+
+No arriesgues más del 1 % de tu cuenta en un solo trade. En una cuenta de 10.000 €, son 100 € de riesgo. Tu tamaño de posición se deriva luego de la distancia a tu stop — no al revés.
+
+## Cómo dimensionar un trade
+
+1. Decide tu entrada y tu stop loss.
+2. Tu riesgo en € = 1 % de la cuenta.
+3. Tamaño = riesgo ÷ (distancia al stop). Un stop más amplio = una posición más pequeña, mismos 100 € de riesgo.
+
+Esto invierte el error habitual: en vez de elegir un lote y esperar, fijas la pérdida primero. Una racha de diez perdedores te cuesta ~10 %, sobrevivible. Al 5 % por trade, la misma racha es catastrófica.
+
+Una calculadora de posición que parte de tu cuenta y tu stop quita la emoción — está integrada en el flujo previo al trade de TradeDiscipline.`,
+      },
+    },
+  },
+  {
+    slug: "daily-loss-limit",
+    date: "2026-06-24",
+    readingMinutes: 4,
+    cover: "discipline",
+    content: {
+      en: {
+        title: "Why a daily loss limit saves accounts",
+        excerpt: "One bad day can undo a month of good ones. A daily loss limit is the circuit breaker that stops the spiral.",
+        body: `Every blown account has the same story: a normal red day that turned into a disaster because the trader kept going. A daily loss limit is the rule that ends the day before it ends you.
+
+## Set the number before you trade
+
+Decide, in the calm of the morning, the maximum you're willing to lose today — for example 3% of the account, or two losing trades. Write it down. When you hit it, you stop. No "one more trade to get it back."
+
+## Why it works
+
+A loss triggers the urge to trade bigger and faster, exactly when your judgment is worst. The limit removes the decision at the moment you're least able to make it well. You'll have bad days — the limit makes sure they stay small.
+
+TradeDiscipline tracks your live daily loss against your limit and can put you into a "stop trading" state when you cross it, so the rule enforces itself instead of relying on willpower.`,
+      },
+      fr: {
+        title: "Pourquoi une limite de perte journalière sauve les comptes",
+        excerpt: "Une mauvaise journée peut annuler un mois de bonnes. La limite de perte journalière, c'est le coupe-circuit qui stoppe la spirale.",
+        body: `Chaque compte cramé a la même histoire : une journée rouge normale devenue désastre parce que le trader a continué. Une limite de perte journalière, c'est la règle qui met fin à la journée avant qu'elle ne te mette fin.
+
+## Fixe le chiffre avant de trader
+
+Décide, au calme le matin, le maximum que tu es prêt à perdre aujourd'hui — par exemple 3 % du compte, ou deux trades perdants. Note-le. Une fois atteint, tu arrêtes. Pas de « encore un trade pour me refaire ».
+
+## Pourquoi ça marche
+
+Une perte déclenche l'envie de trader plus gros et plus vite, exactement quand ton jugement est au plus bas. La limite retire la décision au moment où tu es le moins capable de bien la prendre. Tu auras de mauvais jours — la limite les garde petits.
+
+TradeDiscipline suit ta perte du jour en direct face à ta limite et peut te passer en mode « stop trading » quand tu la franchis, pour que la règle s'applique d'elle-même au lieu de reposer sur ta volonté.`,
+      },
+      de: {
+        title: "Warum ein tägliches Verlustlimit Konten rettet",
+        excerpt: "Ein schlechter Tag kann einen Monat guter Tage zunichtemachen. Das Tageslimit ist der Schutzschalter gegen die Spirale.",
+        body: `Jedes gesprengte Konto hat dieselbe Geschichte: ein normaler roter Tag, der zur Katastrophe wurde, weil der Trader weitermachte. Ein tägliches Verlustlimit ist die Regel, die den Tag beendet, bevor er dich beendet.
+
+## Lege die Zahl vor dem Traden fest
+
+Entscheide morgens in Ruhe das Maximum, das du heute zu verlieren bereit bist — z. B. 3 % des Kontos oder zwei Verlust-Trades. Schreib es auf. Am Limit hörst du auf. Kein „noch ein Trade, um es zurückzuholen".
+
+## Warum es funktioniert
+
+Ein Verlust weckt den Drang, größer und schneller zu traden — genau dann, wenn dein Urteil am schlechtesten ist. Das Limit nimmt dir die Entscheidung ab, wenn du sie am wenigsten gut treffen kannst. Du wirst schlechte Tage haben — das Limit hält sie klein.
+
+TradeDiscipline verfolgt deinen Tagesverlust live gegen dein Limit und kann dich in einen „Stopp"-Zustand versetzen, wenn du es überschreitest — die Regel setzt sich selbst durch.`,
+      },
+      es: {
+        title: "Por qué un límite de pérdida diaria salva cuentas",
+        excerpt: "Un mal día puede deshacer un mes de buenos. El límite de pérdida diaria es el cortacircuitos que detiene la espiral.",
+        body: `Toda cuenta reventada tiene la misma historia: un día rojo normal que se volvió desastre porque el trader siguió. Un límite de pérdida diaria es la regla que termina el día antes de que el día te termine a ti.
+
+## Fija el número antes de operar
+
+Decide, en la calma de la mañana, el máximo que estás dispuesto a perder hoy — por ejemplo 3 % de la cuenta, o dos trades perdedores. Anótalo. Al alcanzarlo, paras. Nada de "un trade más para recuperar".
+
+## Por qué funciona
+
+Una pérdida dispara las ganas de operar más grande y más rápido, justo cuando tu juicio está peor. El límite quita la decisión en el momento en que menos puedes tomarla bien. Tendrás días malos — el límite los mantiene pequeños.
+
+TradeDiscipline sigue tu pérdida del día en vivo frente a tu límite y puede ponerte en modo "stop trading" al cruzarlo, para que la regla se aplique sola en vez de depender de tu voluntad.`,
+      },
+    },
+  },
+  {
+    slug: "trading-plan-you-follow",
+    date: "2026-06-23",
+    readingMinutes: 4,
+    cover: "journal",
+    content: {
+      en: {
+        title: "Build a trading plan you'll actually follow",
+        excerpt: "A plan you ignore is worse than none. Make it short, specific and impossible to misread in the moment.",
+        body: `Most trading plans fail not because they're wrong, but because they're vague. "Trade with the trend" isn't a plan — it's a wish. A real plan tells you exactly what to do when price is in front of you.
+
+## Make every rule testable
+
+Each rule should be answerable with yes or no in two seconds: "Is price at my level?", "Is the session London or NY?", "Is my risk ≤ 1%?" If a rule needs interpretation, you'll bend it under pressure.
+
+## Keep it to one page
+
+Entry conditions, risk per trade, max trades per day, daily loss limit, and when to stop. That's it. A plan you can't recite isn't a plan you'll follow.
+
+## Confront yourself with it before every trade
+
+The plan only works if you read it at the moment of decision. A pre-trade checklist that forces you to confirm each rule — the way TradeDiscipline does — turns the plan from a document into a habit.`,
+      },
+      fr: {
+        title: "Construis un plan de trading que tu suivras vraiment",
+        excerpt: "Un plan que tu ignores est pire que pas de plan. Fais-le court, précis et impossible à mal lire dans l'instant.",
+        body: `La plupart des plans de trading échouent non parce qu'ils sont faux, mais parce qu'ils sont vagues. « Trader dans le sens de la tendance » n'est pas un plan — c'est un souhait. Un vrai plan te dit exactement quoi faire quand le prix est devant toi.
+
+## Rends chaque règle vérifiable
+
+Chaque règle doit se répondre par oui ou non en deux secondes : « Le prix est-il à mon niveau ? », « La séance est-elle Londres ou NY ? », « Mon risque est-il ≤ 1 % ? » Si une règle demande de l'interprétation, tu la tordras sous pression.
+
+## Tiens sur une page
+
+Conditions d'entrée, risque par trade, nombre max de trades par jour, limite de perte journalière, et quand s'arrêter. C'est tout. Un plan que tu ne peux pas réciter n'est pas un plan que tu suivras.
+
+## Confronte-toi à lui avant chaque trade
+
+Le plan ne marche que si tu le lis au moment de la décision. Une checklist pré-trade qui t'oblige à confirmer chaque règle — comme le fait TradeDiscipline — transforme le plan d'un document en une habitude.`,
+      },
+      de: {
+        title: "Baue einen Trading-Plan, den du wirklich befolgst",
+        excerpt: "Ein Plan, den du ignorierst, ist schlimmer als keiner. Mach ihn kurz, konkret und im Moment unmissverständlich.",
+        body: `Die meisten Trading-Pläne scheitern nicht, weil sie falsch sind, sondern weil sie vage sind. „Mit dem Trend traden" ist kein Plan — es ist ein Wunsch. Ein echter Plan sagt dir genau, was zu tun ist, wenn der Preis vor dir ist.
+
+## Mach jede Regel prüfbar
+
+Jede Regel muss in zwei Sekunden mit Ja oder Nein beantwortbar sein: „Ist der Preis an meinem Level?", „Ist die Session London oder NY?", „Ist mein Risiko ≤ 1 %?" Braucht eine Regel Interpretation, biegst du sie unter Druck.
+
+## Halte es auf einer Seite
+
+Einstiegsbedingungen, Risiko pro Trade, max. Trades pro Tag, Tagesverlustlimit und wann Schluss ist. Das war's. Einen Plan, den du nicht aufsagen kannst, befolgst du nicht.
+
+## Konfrontiere dich vor jedem Trade damit
+
+Der Plan wirkt nur, wenn du ihn im Entscheidungsmoment liest. Eine Pre-Trade-Checkliste, die dich jede Regel bestätigen lässt — wie TradeDiscipline — macht aus dem Plan eine Gewohnheit.`,
+      },
+      es: {
+        title: "Crea un plan de trading que de verdad sigas",
+        excerpt: "Un plan que ignoras es peor que ninguno. Hazlo corto, específico e imposible de malinterpretar en el momento.",
+        body: `La mayoría de planes de trading fallan no por estar equivocados, sino por ser vagos. "Operar con la tendencia" no es un plan — es un deseo. Un plan real te dice exactamente qué hacer cuando el precio está delante de ti.
+
+## Haz cada regla verificable
+
+Cada regla debe responderse con sí o no en dos segundos: "¿Está el precio en mi nivel?", "¿La sesión es Londres o NY?", "¿Mi riesgo es ≤ 1 %?" Si una regla necesita interpretación, la torcerás bajo presión.
+
+## Que quepa en una página
+
+Condiciones de entrada, riesgo por trade, máximo de trades al día, límite de pérdida diaria y cuándo parar. Eso es todo. Un plan que no puedes recitar no es un plan que seguirás.
+
+## Confróntate con él antes de cada trade
+
+El plan solo funciona si lo lees en el momento de decidir. Una checklist previa que te obliga a confirmar cada regla — como hace TradeDiscipline — convierte el plan de documento en hábito.`,
+      },
+    },
+  },
+  {
+    slug: "surviving-losing-streaks",
+    date: "2026-06-22",
+    readingMinutes: 4,
+    cover: "streak",
+    content: {
+      en: {
+        title: "The psychology of surviving a losing streak",
+        excerpt: "Losing streaks are normal and inevitable. Whether they end your account depends entirely on how you behave during them.",
+        body: `Even a solid edge produces losing streaks. With a 50% win rate, a run of five or six losses is statistically routine. The danger isn't the streak — it's what it does to your behaviour.
+
+## What a streak does to you
+
+After several losses you start to doubt your system, size up to "catch up", or abandon your rules entirely. This is exactly backwards: a streak is when discipline matters most, not least.
+
+## How to ride it out
+
+1. **Cut size, not corners.** If anything, trade smaller until confidence returns. Never bigger.
+2. **Judge process, not outcome.** If you followed your plan, it was a good trade even if it lost. Score that separately from P&L.
+3. **Zoom out.** Ten trades is noise. Look at 50–100 to see whether your edge is actually broken or just variance.
+
+Tracking a discipline score independent of profit lets you see that you're still doing the right things during a drawdown — the reassurance that keeps you from blowing up. That separation is core to how TradeDiscipline works.`,
+      },
+      fr: {
+        title: "La psychologie pour survivre à une série de pertes",
+        excerpt: "Les séries de pertes sont normales et inévitables. Qu'elles cramen ton compte dépend uniquement de ton comportement pendant.",
+        body: `Même un bon edge produit des séries de pertes. Avec 50 % de réussite, une série de cinq ou six pertes est statistiquement banale. Le danger n'est pas la série — c'est ce qu'elle fait à ton comportement.
+
+## Ce qu'une série te fait
+
+Après plusieurs pertes, tu doutes de ton système, tu augmentes la taille pour « te rattraper », ou tu abandonnes tes règles. C'est exactement l'inverse à faire : une série, c'est quand la discipline compte le plus.
+
+## Comment la traverser
+
+1. **Réduis la taille, pas la rigueur.** Au besoin, trade plus petit jusqu'au retour de la confiance. Jamais plus gros.
+2. **Juge le process, pas le résultat.** Si tu as suivi ton plan, c'était un bon trade même perdant. Note ça séparément du P&L.
+3. **Prends du recul.** Dix trades, c'est du bruit. Regarde 50–100 pour voir si ton edge est cassé ou si c'est de la variance.
+
+Suivre un score de discipline indépendant du profit te montre que tu fais toujours les bonnes choses pendant un drawdown — le réconfort qui t'évite de sauter. Cette séparation est au cœur de TradeDiscipline.`,
+      },
+      de: {
+        title: "Die Psychologie, eine Verlustserie zu überstehen",
+        excerpt: "Verlustserien sind normal und unvermeidlich. Ob sie dein Konto beenden, hängt allein von deinem Verhalten ab.",
+        body: `Selbst ein solider Edge produziert Verlustserien. Bei 50 % Trefferquote ist eine Serie von fünf oder sechs Verlusten statistisch Routine. Die Gefahr ist nicht die Serie — sondern was sie mit deinem Verhalten macht.
+
+## Was eine Serie mit dir macht
+
+Nach mehreren Verlusten zweifelst du an deinem System, erhöhst die Größe zum „Aufholen" oder wirfst die Regeln über Bord. Genau falsch herum: In einer Serie zählt Disziplin am meisten.
+
+## So stehst du sie durch
+
+1. **Größe kürzen, nicht Standards.** Trade eher kleiner, bis das Vertrauen zurückkehrt. Nie größer.
+2. **Prozess bewerten, nicht Ergebnis.** Wenn du deinem Plan gefolgt bist, war es ein guter Trade — auch als Verlust. Bewerte das getrennt von der G/V.
+3. **Zoom raus.** Zehn Trades sind Rauschen. Schau auf 50–100, ob dein Edge kaputt ist oder nur Varianz.
+
+Ein Disziplin-Score unabhängig vom Gewinn zeigt dir, dass du im Drawdown weiter das Richtige tust — die Beruhigung, die dich vor dem Sprengen bewahrt. Diese Trennung ist der Kern von TradeDiscipline.`,
+      },
+      es: {
+        title: "La psicología para sobrevivir a una racha perdedora",
+        excerpt: "Las rachas perdedoras son normales e inevitables. Que revienten tu cuenta depende solo de cómo te comportes durante ellas.",
+        body: `Hasta un edge sólido produce rachas perdedoras. Con un 50 % de aciertos, una racha de cinco o seis pérdidas es estadísticamente rutina. El peligro no es la racha — es lo que le hace a tu comportamiento.
+
+## Lo que una racha te hace
+
+Tras varias pérdidas dudas de tu sistema, subes el tamaño para "recuperar" o abandonas tus reglas. Es justo al revés: en una racha la disciplina importa más, no menos.
+
+## Cómo aguantarla
+
+1. **Recorta el tamaño, no el rigor.** Si acaso, opera más pequeño hasta que vuelva la confianza. Nunca más grande.
+2. **Juzga el proceso, no el resultado.** Si seguiste tu plan, fue un buen trade aunque perdiera. Puntúalo aparte del P&L.
+3. **Aléjate.** Diez trades son ruido. Mira 50–100 para ver si tu edge está roto o es varianza.
+
+Seguir una puntuación de disciplina independiente del beneficio te muestra que sigues haciendo lo correcto en un drawdown — el alivio que evita que revientes. Esa separación es el núcleo de TradeDiscipline.`,
+      },
+    },
+  },
+  {
+    slug: "pre-trade-checklist",
+    date: "2026-06-21",
+    readingMinutes: 3,
+    cover: "discipline",
+    content: {
+      en: {
+        title: "The pre-trade checklist that stops bad trades",
+        excerpt: "Pilots use checklists because memory fails under pressure. Your trading is no different.",
+        body: `The moment before entry is when discipline breaks. You see the move, adrenaline rises, and rules get "adjusted." A checklist is a mechanical gate that the impulse has to pass through first.
+
+## What belongs on it
+
+Keep it to 5–8 yes/no items specific to your strategy, for example:
+
+- Price is at a planned level (not chased)
+- Session/time window is valid
+- Risk is ≤ 1% of the account
+- Stop and target are set before entry
+- I'm calm, not revenge-trading
+
+## Why it works
+
+A checklist externalises your judgment so it doesn't depend on your emotional state. If any box is unchecked, there's no trade — the decision is made in advance, in calm. Over time the good habits become automatic.
+
+TradeDiscipline builds your checklist from your own strategy and makes you confirm it before each session, so the gate is always there when you need it most.`,
+      },
+      fr: {
+        title: "La checklist pré-trade qui stoppe les mauvais trades",
+        excerpt: "Les pilotes utilisent des checklists parce que la mémoire flanche sous pression. Ton trading, c'est pareil.",
+        body: `L'instant avant l'entrée, c'est quand la discipline casse. Tu vois le mouvement, l'adrénaline monte, et les règles s'« ajustent ». Une checklist est une barrière mécanique que l'impulsion doit franchir d'abord.
+
+## Ce qu'elle contient
+
+Garde 5 à 8 items oui/non propres à ta stratégie, par exemple :
+
+- Le prix est à un niveau planifié (pas couru après)
+- La séance / fenêtre horaire est valide
+- Le risque est ≤ 1 % du compte
+- Stop et objectif posés avant l'entrée
+- Je suis calme, pas en revenge trading
+
+## Pourquoi ça marche
+
+Une checklist externalise ton jugement pour qu'il ne dépende pas de ton état émotionnel. Si une case n'est pas cochée, pas de trade — la décision est prise à l'avance, au calme. Avec le temps, les bonnes habitudes deviennent automatiques.
+
+TradeDiscipline construit ta checklist à partir de ta propre stratégie et te la fait confirmer avant chaque séance, pour que la barrière soit toujours là quand tu en as le plus besoin.`,
+      },
+      de: {
+        title: "Die Pre-Trade-Checkliste, die schlechte Trades stoppt",
+        excerpt: "Piloten nutzen Checklisten, weil das Gedächtnis unter Druck versagt. Beim Traden ist es nicht anders.",
+        body: `Der Moment vor dem Einstieg ist, wenn Disziplin bricht. Du siehst die Bewegung, das Adrenalin steigt, und Regeln werden „angepasst". Eine Checkliste ist ein mechanisches Tor, das der Impuls zuerst passieren muss.
+
+## Was hineingehört
+
+Halte 5–8 Ja/Nein-Punkte, spezifisch für deine Strategie, z. B.:
+
+- Preis an einem geplanten Level (nicht hinterhergejagt)
+- Session/Zeitfenster gültig
+- Risiko ≤ 1 % des Kontos
+- Stop und Ziel vor dem Einstieg gesetzt
+- Ich bin ruhig, kein Revenge-Trading
+
+## Warum es funktioniert
+
+Eine Checkliste externalisiert dein Urteil, sodass es nicht von deinem Gefühlszustand abhängt. Ist ein Kästchen leer, gibt es keinen Trade — die Entscheidung fällt vorab, in Ruhe. Mit der Zeit werden die guten Gewohnheiten automatisch.
+
+TradeDiscipline baut deine Checkliste aus deiner eigenen Strategie und lässt sie dich vor jeder Session bestätigen — das Tor ist immer da, wenn du es am meisten brauchst.`,
+      },
+      es: {
+        title: "La checklist previa que frena los malos trades",
+        excerpt: "Los pilotos usan checklists porque la memoria falla bajo presión. Tu trading no es diferente.",
+        body: `El momento antes de entrar es cuando la disciplina se rompe. Ves el movimiento, sube la adrenalina, y las reglas se "ajustan". Una checklist es una puerta mecánica que el impulso debe pasar primero.
+
+## Qué incluir
+
+Mantén 5–8 ítems de sí/no específicos de tu estrategia, por ejemplo:
+
+- El precio está en un nivel planificado (no perseguido)
+- La sesión / ventana horaria es válida
+- El riesgo es ≤ 1 % de la cuenta
+- Stop y objetivo puestos antes de entrar
+- Estoy en calma, no en revenge trading
+
+## Por qué funciona
+
+Una checklist externaliza tu juicio para que no dependa de tu estado emocional. Si una casilla está sin marcar, no hay trade — la decisión se toma de antemano, en calma. Con el tiempo, los buenos hábitos se vuelven automáticos.
+
+TradeDiscipline construye tu checklist a partir de tu propia estrategia y te la hace confirmar antes de cada sesión, para que la puerta esté siempre cuando más la necesitas.`,
+      },
+    },
+  },
+  {
+    slug: "never-move-your-stop",
+    date: "2026-06-20",
+    readingMinutes: 3,
+    cover: "risk",
+    content: {
+      en: {
+        title: "Never move your stop loss (except one way)",
+        excerpt: "Widening a stop to avoid a loss is how small losses become account-ending ones.",
+        body: `Your stop loss is a contract you sign with yourself at entry, when you're calm. Moving it wider mid-trade breaks that contract at the exact moment you're least objective.
+
+## Why widening is fatal
+
+When price approaches your stop, hope kicks in: "it'll come back." So you drag the stop further and risk more than you planned. Sometimes it works — which is worse, because it trains the habit. Eventually one runaway loss wipes out weeks of gains.
+
+## The only acceptable move
+
+You may move a stop **in your favour** — to breakeven or to lock in profit as the trade works. Never against you. If the trade needs a wider stop than planned, the setup was wrong; take the loss and move on.
+
+## Pre-commit to make it easy
+
+Set your stop before you enter and treat it as untouchable. A journal that records whether you respected your stop turns this into a measurable habit — one of the discipline signals TradeDiscipline tracks.`,
+      },
+      fr: {
+        title: "Ne déplace jamais ton stop loss (sauf dans un sens)",
+        excerpt: "Élargir un stop pour éviter une perte, c'est comme ça que les petites pertes deviennent fatales.",
+        body: `Ton stop loss est un contrat que tu signes avec toi-même à l'entrée, au calme. Le déplacer plus loin en cours de trade brise ce contrat au moment précis où tu es le moins objectif.
+
+## Pourquoi l'élargir est fatal
+
+Quand le prix approche ton stop, l'espoir arrive : « ça va revenir ». Alors tu recules le stop et tu risques plus que prévu. Parfois ça marche — c'est pire, car ça ancre l'habitude. Un jour, une perte incontrôlée efface des semaines de gains.
+
+## Le seul déplacement acceptable
+
+Tu peux déplacer un stop **en ta faveur** — au point mort ou pour verrouiller du profit quand le trade avance. Jamais contre toi. Si le trade a besoin d'un stop plus large que prévu, le setup était mauvais ; prends la perte et passe à autre chose.
+
+## Pré-engage-toi pour que ce soit facile
+
+Fixe ton stop avant d'entrer et considère-le comme intouchable. Un journal qui note si tu as respecté ton stop en fait une habitude mesurable — l'un des signaux de discipline suivis par TradeDiscipline.`,
+      },
+      de: {
+        title: "Verschiebe nie deinen Stop-Loss (außer in eine Richtung)",
+        excerpt: "Einen Stop zu verbreitern, um einen Verlust zu vermeiden, macht aus kleinen Verlusten kontotötende.",
+        body: `Dein Stop-Loss ist ein Vertrag, den du beim Einstieg mit dir selbst schließt — in Ruhe. Ihn mitten im Trade zu verbreitern bricht diesen Vertrag genau dann, wenn du am wenigsten objektiv bist.
+
+## Warum Verbreitern tödlich ist
+
+Nähert sich der Preis deinem Stop, kommt die Hoffnung: „Es kommt zurück." Also ziehst du den Stop weiter und riskierst mehr als geplant. Manchmal klappt es — das ist schlimmer, weil es die Gewohnheit festigt. Irgendwann löscht ein außer Kontrolle geratener Verlust Wochen an Gewinnen aus.
+
+## Die einzige akzeptable Verschiebung
+
+Du darfst einen Stop **zu deinen Gunsten** verschieben — auf Break-even oder um Gewinn zu sichern. Nie gegen dich. Braucht der Trade einen weiteren Stop als geplant, war das Setup falsch; nimm den Verlust und weiter.
+
+## Verpflichte dich vorab
+
+Setze deinen Stop vor dem Einstieg und behandle ihn als unantastbar. Ein Journal, das festhält, ob du deinen Stop respektiert hast, macht daraus eine messbare Gewohnheit — eines der Disziplinsignale, die TradeDiscipline verfolgt.`,
+      },
+      es: {
+        title: "Nunca muevas tu stop loss (salvo en un sentido)",
+        excerpt: "Ampliar un stop para evitar una pérdida es cómo las pérdidas pequeñas se vuelven fatales.",
+        body: `Tu stop loss es un contrato que firmas contigo mismo al entrar, en calma. Moverlo más lejos a mitad del trade rompe ese contrato justo cuando menos objetivo eres.
+
+## Por qué ampliarlo es fatal
+
+Cuando el precio se acerca a tu stop, llega la esperanza: "volverá". Así que alejas el stop y arriesgas más de lo planeado. A veces funciona — lo cual es peor, porque fija el hábito. Al final una pérdida descontrolada borra semanas de ganancias.
+
+## El único movimiento aceptable
+
+Puedes mover un stop **a tu favor** — a break-even o para asegurar beneficio cuando el trade avanza. Nunca en tu contra. Si el trade necesita un stop más amplio del previsto, el setup era malo; asume la pérdida y sigue.
+
+## Comprométete de antemano
+
+Fija tu stop antes de entrar y trátalo como intocable. Un diario que registra si respetaste tu stop lo convierte en un hábito medible — una de las señales de disciplina que sigue TradeDiscipline.`,
+      },
+    },
+  },
+  {
+    slug: "daily-trading-routine",
+    date: "2026-06-19",
+    readingMinutes: 4,
+    cover: "routine",
+    content: {
+      en: {
+        title: "A daily trading routine that protects your edge",
+        excerpt: "Consistency comes from structure, not motivation. A repeatable routine removes the decisions that trip you up.",
+        body: `Professional traders don't rely on feeling ready — they run a routine. Structure is what keeps performance steady when your mood isn't.
+
+## Before the session
+
+Check the economic calendar for high-impact news, review your plan and levels, and log your emotional state. If you're tired, angry or distracted, that's data — trade smaller or not at all.
+
+## During the session
+
+Run your pre-trade checklist on every entry. Track your trade count and your loss against your daily limit. When you hit either cap, you stop — no exceptions.
+
+## After the session
+
+Journal each trade: setup, emotion, and whether you followed your plan. This two-minute habit is where improvement actually happens; without it, you repeat the same mistakes blind.
+
+TradeDiscipline wraps this into one flow — pre-trade checklist, live guards, and a session debrief — so the routine runs itself instead of relying on willpower.`,
+      },
+      fr: {
+        title: "Une routine de trading quotidienne qui protège ton edge",
+        excerpt: "La régularité vient de la structure, pas de la motivation. Une routine répétable enlève les décisions qui te font trébucher.",
+        body: `Les traders pros ne comptent pas sur le fait de se « sentir prêts » — ils suivent une routine. La structure, c'est ce qui garde la performance stable quand ton humeur ne l'est pas.
+
+## Avant la séance
+
+Vérifie le calendrier éco pour les news à fort impact, revois ton plan et tes niveaux, et note ton état émotionnel. Si tu es fatigué, énervé ou distrait, c'est une donnée — trade plus petit ou pas du tout.
+
+## Pendant la séance
+
+Passe ta checklist pré-trade à chaque entrée. Suis ton nombre de trades et ta perte face à ta limite journalière. Une fois une limite atteinte, tu arrêtes — sans exception.
+
+## Après la séance
+
+Journalise chaque trade : setup, émotion, et si tu as suivi ton plan. Cette habitude de deux minutes, c'est là que se fait vraiment le progrès ; sans elle, tu répètes les mêmes erreurs à l'aveugle.
+
+TradeDiscipline réunit tout ça en un flux — checklist pré-trade, gardes en direct et debrief de séance — pour que la routine tourne d'elle-même au lieu de reposer sur ta volonté.`,
+      },
+      de: {
+        title: "Eine tägliche Trading-Routine, die deinen Edge schützt",
+        excerpt: "Beständigkeit kommt aus Struktur, nicht Motivation. Eine wiederholbare Routine entfernt die Entscheidungen, die dich stolpern lassen.",
+        body: `Profi-Trader verlassen sich nicht darauf, sich bereit zu fühlen — sie folgen einer Routine. Struktur hält die Leistung stabil, wenn deine Stimmung es nicht ist.
+
+## Vor der Session
+
+Prüfe den Wirtschaftskalender auf wichtige News, gehe Plan und Levels durch und halte deinen Gefühlszustand fest. Bist du müde, wütend oder abgelenkt, ist das ein Datenpunkt — trade kleiner oder gar nicht.
+
+## Während der Session
+
+Führe bei jedem Einstieg deine Pre-Trade-Checkliste aus. Verfolge Trade-Zahl und Verlust gegen dein Tageslimit. Am Limit hörst du auf — ausnahmslos.
+
+## Nach der Session
+
+Journalisiere jeden Trade: Setup, Emotion und ob du deinem Plan gefolgt bist. Diese Zwei-Minuten-Gewohnheit ist, wo Fortschritt tatsächlich passiert; ohne sie wiederholst du blind dieselben Fehler.
+
+TradeDiscipline bündelt das in einem Ablauf — Pre-Trade-Checkliste, Live-Guards und Session-Debrief — damit die Routine sich selbst trägt.`,
+      },
+      es: {
+        title: "Una rutina de trading diaria que protege tu edge",
+        excerpt: "La consistencia viene de la estructura, no de la motivación. Una rutina repetible quita las decisiones que te hacen tropezar.",
+        body: `Los traders profesionales no dependen de sentirse listos — siguen una rutina. La estructura mantiene el rendimiento estable cuando tu ánimo no lo está.
+
+## Antes de la sesión
+
+Revisa el calendario económico por noticias de alto impacto, repasa tu plan y niveles, y registra tu estado emocional. Si estás cansado, enfadado o distraído, es un dato — opera más pequeño o nada.
+
+## Durante la sesión
+
+Ejecuta tu checklist previa en cada entrada. Sigue tu número de trades y tu pérdida frente a tu límite diario. Al llegar a cualquiera, paras — sin excepciones.
+
+## Después de la sesión
+
+Registra cada trade: setup, emoción y si seguiste tu plan. Ese hábito de dos minutos es donde ocurre la mejora; sin él, repites los mismos errores a ciegas.
+
+TradeDiscipline reúne esto en un flujo — checklist previa, guardas en vivo y debrief de sesión — para que la rutina se sostenga sola.`,
+      },
+    },
+  },
+  {
+    slug: "win-rate-vs-risk-reward",
+    date: "2026-06-18",
+    readingMinutes: 4,
+    cover: "target",
+    content: {
+      en: {
+        title: "Win rate isn't everything: the R:R that beats it",
+        excerpt: "A 40% win rate can crush a 70% one. What matters is win rate and reward-to-risk together.",
+        body: `Traders obsess over win rate, but a high win rate can still lose money — and a low one can print. The truth is in the combination of win rate and reward-to-risk (R:R).
+
+## The math that surprises people
+
+With a 1:2 reward-to-risk, you only need to win ~34% of the time to break even. Win 45% at 1:2 and you're clearly profitable. Meanwhile, a 70% win rate at 1:0.5 (cutting winners early) barely breaks even and dies from costs.
+
+## Why traders sabotage their R:R
+
+The urge to "lock in" a small profit and the pain of giving back gains make you close winners too soon and let losers run — the exact opposite of what math rewards. High win rate feels good; it isn't the goal.
+
+## Track average win vs average loss
+
+If your average win isn't clearly bigger than your average loss, your R:R is broken, whatever your win rate. TradeDiscipline surfaces both so you can see if you're cutting winners short — the most common hidden leak.`,
+      },
+      fr: {
+        title: "Le taux de réussite n'est pas tout : le R:R qui le bat",
+        excerpt: "Un taux de 40 % peut écraser un 70 %. Ce qui compte, c'est le taux de réussite ET le ratio gain/risque ensemble.",
+        body: `Les traders sont obsédés par le taux de réussite, mais un taux élevé peut quand même perdre de l'argent — et un faible peut cartonner. La vérité est dans la combinaison taux de réussite + ratio gain/risque (R:R).
+
+## Le calcul qui surprend
+
+Avec un R:R de 1:2, il suffit de gagner ~34 % du temps pour être à l'équilibre. Gagne 45 % à 1:2 et tu es clairement rentable. À l'inverse, 70 % de réussite à 1:0,5 (couper les gains trop tôt) atteint à peine l'équilibre et meurt des frais.
+
+## Pourquoi les traders sabotent leur R:R
+
+L'envie de « sécuriser » un petit gain et la douleur de rendre des profits te font fermer les gagnants trop tôt et laisser courir les perdants — l'exact inverse de ce que le calcul récompense. Un taux élevé fait du bien ; ce n'est pas l'objectif.
+
+## Suis gain moyen vs perte moyenne
+
+Si ton gain moyen n'est pas nettement plus grand que ta perte moyenne, ton R:R est cassé, quel que soit ton taux de réussite. TradeDiscipline montre les deux pour voir si tu coupes tes gains trop tôt — la fuite cachée la plus fréquente.`,
+      },
+      de: {
+        title: "Trefferquote ist nicht alles: das CRV, das sie schlägt",
+        excerpt: "Eine 40-%-Trefferquote kann eine 70-%-schlagen. Es zählt Trefferquote UND Chance-Risiko-Verhältnis zusammen.",
+        body: `Trader fixieren sich auf die Trefferquote, aber eine hohe Quote kann trotzdem verlieren — und eine niedrige drucken. Die Wahrheit liegt in der Kombination aus Trefferquote und Chance-Risiko-Verhältnis (CRV).
+
+## Die Mathematik, die überrascht
+
+Bei einem CRV von 1:2 musst du nur ~34 % gewinnen, um break-even zu sein. Gewinnst du 45 % bei 1:2, bist du klar profitabel. Dagegen erreicht 70 % Trefferquote bei 1:0,5 (Gewinner zu früh schneiden) kaum break-even und stirbt an Kosten.
+
+## Warum Trader ihr CRV sabotieren
+
+Der Drang, kleinen Gewinn „zu sichern", und der Schmerz, Gewinne zurückzugeben, lassen dich Gewinner zu früh schließen und Verlierer laufen — genau das Gegenteil von dem, was die Mathematik belohnt. Hohe Trefferquote fühlt sich gut an; sie ist nicht das Ziel.
+
+## Verfolge Durchschnittsgewinn vs. -verlust
+
+Ist dein Durchschnittsgewinn nicht klar größer als dein Durchschnittsverlust, ist dein CRV kaputt — egal wie hoch die Quote. TradeDiscipline zeigt beides, damit du siehst, ob du Gewinner zu kurz schneidest.`,
+      },
+      es: {
+        title: "El winrate no lo es todo: el R:R que lo supera",
+        excerpt: "Un winrate del 40 % puede aplastar a uno del 70 %. Lo que importa es winrate y ratio beneficio-riesgo juntos.",
+        body: `Los traders se obsesionan con el winrate, pero un winrate alto puede perder dinero — y uno bajo puede imprimir. La verdad está en la combinación de winrate y ratio beneficio-riesgo (R:R).
+
+## La matemática que sorprende
+
+Con un R:R de 1:2, solo necesitas ganar ~34 % de las veces para estar en equilibrio. Gana 45 % a 1:2 y eres claramente rentable. En cambio, un 70 % a 1:0,5 (cortar ganadores pronto) apenas equilibra y muere por costes.
+
+## Por qué los traders sabotean su R:R
+
+Las ganas de "asegurar" un beneficio pequeño y el dolor de devolver ganancias te hacen cerrar ganadores demasiado pronto y dejar correr perdedores — lo contrario de lo que premia la matemática. Un winrate alto sienta bien; no es el objetivo.
+
+## Sigue ganancia media vs pérdida media
+
+Si tu ganancia media no es claramente mayor que tu pérdida media, tu R:R está roto, sea cual sea tu winrate. TradeDiscipline muestra ambos para ver si cortas ganadores demasiado pronto — la fuga oculta más común.`,
+      },
+    },
+  },
+  {
+    slug: "how-to-choose-prop-firm",
+    date: "2026-06-17",
+    readingMinutes: 5,
+    cover: "prop",
+    content: {
+      en: {
+        title: "How to choose a prop firm (without getting burned)",
+        excerpt: "The cheapest challenge isn't the best. Read the rules that decide whether you can actually get paid.",
+        body: `Prop firms sell the dream of trading big capital, but the fine print decides whether you keep it. Before you pay for a challenge, read past the marketing.
+
+## The rules that actually matter
+
+- **Drawdown type:** static (from starting balance) is far more forgiving than trailing (from your equity peak). Trailing can fail you after you're already in profit.
+- **Daily loss limit:** how it's measured (balance vs equity, intraday) changes everything.
+- **Payout terms:** minimum trading days, profit split, how often you can withdraw, and whether they actually pay on time (check independent reviews).
+- **Consistency rules:** some firms void accounts if one day is "too" profitable.
+
+## Match the firm to your style
+
+A scalper who trades news needs different rules than a swing trader. A tight trailing drawdown will strangle a strategy that needs room to breathe.
+
+Once you pick a firm, model its exact rules so you can see your live distance to each limit. TradeDiscipline lets you set profit target, daily loss and drawdown (static or trailing) per account — and 1-click templates for common firms get you started.`,
+      },
+      fr: {
+        title: "Comment choisir une prop firm (sans te faire avoir)",
+        excerpt: "Le challenge le moins cher n'est pas le meilleur. Lis les règles qui décident si tu pourras vraiment être payé.",
+        body: `Les prop firms vendent le rêve de trader gros, mais les petites lignes décident si tu le gardes. Avant de payer un challenge, lis au-delà du marketing.
+
+## Les règles qui comptent vraiment
+
+- **Type de drawdown :** statique (depuis le solde de départ) est bien plus indulgent que trailing (depuis ton pic d'équité). Le trailing peut te recaler alors que tu es déjà en profit.
+- **Limite de perte journalière :** sa mesure (solde vs équité, intraday) change tout.
+- **Conditions de paiement :** jours de trading minimum, partage des profits, fréquence de retrait, et s'ils paient vraiment à temps (vérifie des avis indépendants).
+- **Règles de consistance :** certaines firmes annulent le compte si une journée est « trop » rentable.
+
+## Adapte la firme à ton style
+
+Un scalpeur sur news a besoin de règles différentes d'un swing trader. Un drawdown trailing serré étouffera une stratégie qui a besoin d'air.
+
+Une fois la firme choisie, modélise ses règles exactes pour voir ta distance en direct à chaque limite. TradeDiscipline permet de régler objectif, perte journalière et drawdown (statique ou trailing) par compte — et des templates 1-clic des firmes courantes te font démarrer.`,
+      },
+      de: {
+        title: "Wie du eine Prop-Firma wählst (ohne dich zu verbrennen)",
+        excerpt: "Die billigste Challenge ist nicht die beste. Lies die Regeln, die entscheiden, ob du tatsächlich bezahlt wirst.",
+        body: `Prop-Firmen verkaufen den Traum, großes Kapital zu traden, aber das Kleingedruckte entscheidet, ob du es behältst. Bevor du für eine Challenge zahlst, lies über das Marketing hinaus.
+
+## Die Regeln, die wirklich zählen
+
+- **Drawdown-Typ:** statisch (vom Startkapital) ist weit gnädiger als trailing (vom Equity-Hoch). Trailing kann dich scheitern lassen, wenn du schon im Gewinn bist.
+- **Tägliches Verlustlimit:** wie es gemessen wird (Balance vs. Equity, intraday) ändert alles.
+- **Auszahlungsbedingungen:** Mindesthandelstage, Profit-Split, Auszahlungsfrequenz und ob sie pünktlich zahlen (prüfe unabhängige Bewertungen).
+- **Konsistenzregeln:** manche Firmen annullieren Konten, wenn ein Tag „zu" profitabel ist.
+
+## Passe die Firma zu deinem Stil
+
+Ein News-Scalper braucht andere Regeln als ein Swing-Trader. Ein enger Trailing-Drawdown erdrosselt eine Strategie, die Luft braucht.
+
+Wenn du eine Firma gewählt hast, modelliere ihre exakten Regeln, um deine Live-Distanz zu jedem Limit zu sehen. TradeDiscipline erlaubt Zielgewinn, Tagesverlust und Drawdown (statisch oder trailing) pro Konto — und 1-Klick-Vorlagen gängiger Firmen bringen dich in Gang.`,
+      },
+      es: {
+        title: "Cómo elegir una prop firm (sin quemarte)",
+        excerpt: "El challenge más barato no es el mejor. Lee las reglas que deciden si de verdad podrás cobrar.",
+        body: `Las prop firms venden el sueño de operar gran capital, pero la letra pequeña decide si lo conservas. Antes de pagar un challenge, lee más allá del marketing.
+
+## Las reglas que de verdad importan
+
+- **Tipo de drawdown:** estático (desde el saldo inicial) es mucho más indulgente que trailing (desde tu pico de equity). El trailing puede suspenderte cuando ya estás en beneficio.
+- **Límite de pérdida diaria:** cómo se mide (saldo vs equity, intradía) lo cambia todo.
+- **Condiciones de pago:** días mínimos, reparto de beneficios, frecuencia de retiro, y si pagan a tiempo (mira reseñas independientes).
+- **Reglas de consistencia:** algunas firmas anulan cuentas si un día es "demasiado" rentable.
+
+## Ajusta la firma a tu estilo
+
+Un scalper de noticias necesita reglas distintas a un swing trader. Un drawdown trailing ajustado ahogará una estrategia que necesita aire.
+
+Una vez elegida la firma, modela sus reglas exactas para ver tu distancia en vivo a cada límite. TradeDiscipline permite fijar objetivo, pérdida diaria y drawdown (estático o trailing) por cuenta — y plantillas de 1 clic de firmas comunes te ponen en marcha.`,
+      },
+    },
+  },
+  {
+    slug: "bounce-back-after-big-loss",
+    date: "2026-06-16",
+    readingMinutes: 4,
+    cover: "discipline",
+    content: {
+      en: {
+        title: "How to bounce back after a big loss",
+        excerpt: "The trade after a big loss is the most dangerous of your career. Here's how to not make it worse.",
+        body: `A big loss hurts twice: the money, and the urge to immediately win it back. That urge is what turns a bad trade into a bad month. The goal after a big loss isn't to recover fast — it's to not dig deeper.
+
+## Step away first
+
+Close the platform for the rest of the session, or at least take a hard break. Stress hormones make you reckless; time is the only thing that lowers them. Nothing good happens in the ten minutes after a big loss.
+
+## Shrink before you scale
+
+When you return, trade the smallest size you allow. Rebuild confidence with clean, by-the-book trades before thinking about size. Trying to "make it back" in one trade is exactly how the loss compounds.
+
+## Review what actually happened
+
+Was the loss bad luck (you followed your plan) or bad discipline (you broke it)? Be honest — the fix is completely different. Journaling the trade with your emotion attached forces that honesty, and over time it's how one big loss becomes your last. That reflection is built into TradeDiscipline's session debrief.`,
+      },
+      fr: {
+        title: "Comment rebondir après une grosse perte",
+        excerpt: "Le trade après une grosse perte est le plus dangereux de ta carrière. Voici comment ne pas empirer les choses.",
+        body: `Une grosse perte fait mal deux fois : l'argent, et l'envie de te refaire immédiatement. Cette envie transforme un mauvais trade en mauvais mois. Le but après une grosse perte n'est pas de récupérer vite — c'est de ne pas creuser plus.
+
+## Éloigne-toi d'abord
+
+Ferme la plateforme pour le reste de la séance, ou au moins fais une vraie pause. Les hormones de stress te rendent imprudent ; seul le temps les fait baisser. Rien de bon n'arrive dans les dix minutes après une grosse perte.
+
+## Réduis avant d'augmenter
+
+À ton retour, trade la plus petite taille autorisée. Reconstruis la confiance avec des trades propres et carrés avant de penser à la taille. Vouloir « te refaire » en un trade, c'est exactement comme ça que la perte s'aggrave.
+
+## Analyse ce qui s'est vraiment passé
+
+La perte était-elle de la malchance (tu as suivi ton plan) ou de l'indiscipline (tu l'as cassé) ? Sois honnête — la correction est totalement différente. Journaliser le trade avec ton émotion force cette honnêteté, et avec le temps, c'est comme ça qu'une grosse perte devient ta dernière. Cette réflexion est intégrée au debrief de séance de TradeDiscipline.`,
+      },
+      de: {
+        title: "Wie du dich nach einem großen Verlust erholst",
+        excerpt: "Der Trade nach einem großen Verlust ist der gefährlichste deiner Karriere. So machst du ihn nicht schlimmer.",
+        body: `Ein großer Verlust schmerzt doppelt: das Geld und der Drang, es sofort zurückzuholen. Dieser Drang macht aus einem schlechten Trade einen schlechten Monat. Das Ziel nach einem großen Verlust ist nicht, schnell zurückzukommen — sondern nicht tiefer zu graben.
+
+## Zuerst weggehen
+
+Schließe die Plattform für den Rest der Session oder mach zumindest eine harte Pause. Stresshormone machen dich leichtsinnig; nur Zeit senkt sie. In den zehn Minuten nach einem großen Verlust passiert nichts Gutes.
+
+## Verkleinern, bevor du vergrößerst
+
+Wenn du zurückkommst, trade die kleinste erlaubte Größe. Bau Vertrauen mit sauberen Trades nach Buch auf, bevor du an Größe denkst. Es „in einem Trade zurückzuholen" ist genau, wie der Verlust sich potenziert.
+
+## Prüfe, was wirklich passierte
+
+War der Verlust Pech (du folgtest deinem Plan) oder Undiszipliniertheit (du brachst ihn)? Sei ehrlich — die Lösung ist völlig anders. Den Trade mit deiner Emotion zu journalisieren erzwingt diese Ehrlichkeit — so wird aus einem großen Verlust dein letzter. Diese Reflexion steckt im Session-Debrief von TradeDiscipline.`,
+      },
+      es: {
+        title: "Cómo recuperarte tras una gran pérdida",
+        excerpt: "El trade tras una gran pérdida es el más peligroso de tu carrera. Así no lo empeoras.",
+        body: `Una gran pérdida duele dos veces: el dinero, y las ganas de recuperarlo de inmediato. Esas ganas convierten un mal trade en un mal mes. El objetivo tras una gran pérdida no es recuperar rápido — es no cavar más hondo.
+
+## Aléjate primero
+
+Cierra la plataforma el resto de la sesión, o al menos toma un descanso real. Las hormonas del estrés te vuelven imprudente; solo el tiempo las baja. Nada bueno ocurre en los diez minutos tras una gran pérdida.
+
+## Reduce antes de escalar
+
+Al volver, opera el tamaño más pequeño que permitas. Reconstruye la confianza con trades limpios y de manual antes de pensar en tamaño. Querer "recuperarlo" en un trade es justo cómo se agrava la pérdida.
+
+## Revisa qué pasó de verdad
+
+¿La pérdida fue mala suerte (seguiste tu plan) o indisciplina (lo rompiste)? Sé honesto — la solución es totalmente distinta. Registrar el trade con tu emoción fuerza esa honestidad, y con el tiempo así una gran pérdida se vuelve la última. Esa reflexión está integrada en el debrief de sesión de TradeDiscipline.`,
+      },
+    },
+  },
+  {
+    slug: "trailing-vs-static-drawdown",
+    date: "2026-06-15",
+    readingMinutes: 4,
+    cover: "risk",
+    content: {
+      en: {
+        title: "Trailing vs static drawdown, explained simply",
+        excerpt: "The same 10% drawdown rule can be easy or brutal depending on one word: trailing.",
+        body: `Drawdown is the maximum your account is allowed to fall before the challenge fails. But *from where* it's measured changes everything — and it's the rule that catches most traders off guard.
+
+## Static drawdown
+
+Measured from your **starting balance**. On a €10,000 account with 10% max, you fail if the balance drops below €9,000 — always. As you profit, your buffer grows and the floor stays put. This is the forgiving version.
+
+## Trailing drawdown
+
+Measured from your **highest balance reached (equity peak)**. The floor follows you up. If you're up to €11,000, a 10% trailing drawdown puts your fail line at €9,900 — you can now fail while still in profit versus your start. Many traders pass the hard part, relax, and get knocked out by a trailing floor they forgot was rising.
+
+## What to do about it
+
+Know which type your firm uses before you trade a single lot, and watch your distance to the floor live. TradeDiscipline models both — set the toggle and the app shows your real drawdown headroom at every moment.`,
+      },
+      fr: {
+        title: "Drawdown trailing vs statique, expliqué simplement",
+        excerpt: "La même règle de drawdown à 10 % peut être facile ou brutale selon un mot : trailing.",
+        body: `Le drawdown, c'est la baisse maximale autorisée avant l'échec du challenge. Mais *depuis où* on le mesure change tout — et c'est la règle qui piège le plus de traders.
+
+## Drawdown statique
+
+Mesuré depuis ton **solde de départ**. Sur un compte de 10 000 € avec 10 % max, tu échoues si le solde passe sous 9 000 € — toujours. Quand tu gagnes, ton matelas grandit et le plancher reste fixe. C'est la version indulgente.
+
+## Drawdown trailing
+
+Mesuré depuis ton **solde le plus haut atteint (pic d'équité)**. Le plancher te suit vers le haut. Si tu es à 11 000 €, un drawdown trailing de 10 % place ta ligne d'échec à 9 900 € — tu peux désormais échouer alors que tu es encore en profit par rapport au départ. Beaucoup passent la partie dure, se détendent, et se font sortir par un plancher trailing qu'ils avaient oublié qu'il montait.
+
+## Quoi faire
+
+Sache quel type ta firme utilise avant de trader le moindre lot, et surveille ta distance au plancher en direct. TradeDiscipline modélise les deux — active l'option et l'app affiche ta marge de drawdown réelle à chaque instant.`,
+      },
+      de: {
+        title: "Trailing- vs. statischer Drawdown, einfach erklärt",
+        excerpt: "Dieselbe 10-%-Drawdown-Regel kann leicht oder brutal sein — je nach einem Wort: trailing.",
+        body: `Drawdown ist der maximale Fall, den dein Konto vor dem Scheitern der Challenge haben darf. Aber *von wo* er gemessen wird, ändert alles — und es ist die Regel, die die meisten Trader kalt erwischt.
+
+## Statischer Drawdown
+
+Gemessen vom **Startkapital**. Bei 10.000 € mit 10 % max scheiterst du, wenn die Balance unter 9.000 € fällt — immer. Mit Gewinn wächst dein Puffer, der Boden bleibt. Die gnädige Version.
+
+## Trailing-Drawdown
+
+Gemessen vom **höchsten erreichten Stand (Equity-Hoch)**. Der Boden folgt dir nach oben. Bist du bei 11.000 €, liegt deine Scheiter-Linie bei 10 % Trailing bei 9.900 € — du kannst nun scheitern, obwohl du gegenüber dem Start im Plus bist. Viele bestehen den harten Teil, entspannen und werden von einem steigenden Trailing-Boden ausgeknockt.
+
+## Was tun
+
+Wisse vor dem ersten Lot, welchen Typ deine Firma nutzt, und beobachte deine Distanz zum Boden live. TradeDiscipline modelliert beide — setze den Schalter, und die App zeigt jederzeit deinen echten Drawdown-Spielraum.`,
+      },
+      es: {
+        title: "Drawdown trailing vs estático, explicado fácil",
+        excerpt: "La misma regla de drawdown del 10 % puede ser fácil o brutal según una palabra: trailing.",
+        body: `El drawdown es la caída máxima permitida antes de que falle el challenge. Pero *desde dónde* se mide lo cambia todo — y es la regla que pilla desprevenidos a más traders.
+
+## Drawdown estático
+
+Medido desde tu **saldo inicial**. En una cuenta de 10.000 € con 10 % máx, fallas si el saldo baja de 9.000 € — siempre. Al ganar, tu colchón crece y el suelo se queda fijo. La versión indulgente.
+
+## Drawdown trailing
+
+Medido desde tu **saldo más alto alcanzado (pico de equity)**. El suelo te sigue hacia arriba. Si estás en 11.000 €, un drawdown trailing del 10 % pone tu línea de fallo en 9.900 € — ahora puedes fallar estando aún en beneficio respecto al inicio. Muchos pasan la parte dura, se relajan y quedan fuera por un suelo trailing que olvidaron que subía.
+
+## Qué hacer
+
+Sabe qué tipo usa tu firma antes de operar un solo lote, y vigila tu distancia al suelo en vivo. TradeDiscipline modela ambos — activa el interruptor y la app muestra tu margen de drawdown real en cada momento.`,
+      },
+    },
+  },
+  {
+    slug: "what-is-a-discipline-score",
+    date: "2026-06-14",
+    readingMinutes: 3,
+    cover: "discipline",
+    content: {
+      en: {
+        title: "What is a discipline score — and why track it?",
+        excerpt: "Profit tells you what happened. A discipline score tells you whether it will keep happening.",
+        body: `P&L is a lagging, noisy signal: you can make money breaking every rule and lose money following them all. A discipline score measures the thing you actually control — your process — so you can improve it directly.
+
+## What it measures
+
+A discipline score rates each session on behaviour, not outcome: did you follow your plan, respect your risk, avoid impulsive trades, complete your checklist? A green day where you broke your rules should score low; a red day where you did everything right should score high.
+
+## Why it beats chasing profit
+
+Process leads results. If your discipline score is consistently high, profit follows over a large enough sample. If it's low, any profit is luck that will reverse. Tracking it turns "trade better" from a vague wish into a number you can move.
+
+TradeDiscipline computes a discipline score from your checklist, your risk behaviour and your emotional tags — separate from P&L — so you always know whether you're building a durable edge or just running hot.`,
+      },
+      fr: {
+        title: "C'est quoi un score de discipline — et pourquoi le suivre ?",
+        excerpt: "Le profit dit ce qui s'est passé. Un score de discipline dit si ça va continuer.",
+        body: `Le P&L est un signal retardé et bruité : tu peux gagner en cassant toutes les règles et perdre en les suivant toutes. Un score de discipline mesure ce que tu contrôles vraiment — ton process — pour l'améliorer directement.
+
+## Ce qu'il mesure
+
+Un score de discipline note chaque séance sur le comportement, pas le résultat : as-tu suivi ton plan, respecté ton risque, évité les trades impulsifs, complété ta checklist ? Une journée verte où tu as cassé tes règles doit scorer bas ; une journée rouge où tu as tout bien fait doit scorer haut.
+
+## Pourquoi c'est mieux que courir après le profit
+
+Le process précède les résultats. Si ton score de discipline est constamment haut, le profit suit sur un échantillon assez grand. S'il est bas, tout profit est de la chance qui se retournera. Le suivre transforme « mieux trader » d'un vœu flou en un chiffre que tu peux faire bouger.
+
+TradeDiscipline calcule un score de discipline à partir de ta checklist, de ton comportement de risque et de tes tags émotionnels — séparé du P&L — pour que tu saches toujours si tu construis un edge durable ou si tu es juste en réussite passagère.`,
+      },
+      de: {
+        title: "Was ist ein Disziplin-Score — und warum ihn verfolgen?",
+        excerpt: "Der Gewinn sagt, was passiert ist. Ein Disziplin-Score sagt, ob es weiter passieren wird.",
+        body: `Die G/V ist ein nachlaufendes, verrauschtes Signal: Du kannst Geld verdienen, indem du jede Regel brichst, und verlieren, indem du alle befolgst. Ein Disziplin-Score misst, was du wirklich kontrollierst — deinen Prozess — damit du ihn direkt verbesserst.
+
+## Was er misst
+
+Ein Disziplin-Score bewertet jede Session nach Verhalten, nicht Ergebnis: Bist du deinem Plan gefolgt, hast du dein Risiko respektiert, impulsive Trades vermieden, deine Checkliste erledigt? Ein grüner Tag mit Regelbruch sollte niedrig scoren; ein roter Tag mit allem richtig hoch.
+
+## Warum das besser ist als Gewinnjagd
+
+Prozess führt zu Ergebnissen. Ist dein Disziplin-Score konstant hoch, folgt der Gewinn über eine ausreichende Stichprobe. Ist er niedrig, ist jeder Gewinn Glück, das dreht. Ihn zu verfolgen macht aus „besser traden" statt eines vagen Wunsches eine Zahl, die du bewegen kannst.
+
+TradeDiscipline berechnet einen Disziplin-Score aus Checkliste, Risikoverhalten und Emotions-Tags — getrennt von der G/V — damit du immer weißt, ob du einen dauerhaften Edge baust oder nur heiß läufst.`,
+      },
+      es: {
+        title: "¿Qué es una puntuación de disciplina — y por qué seguirla?",
+        excerpt: "El beneficio dice qué pasó. Una puntuación de disciplina dice si seguirá pasando.",
+        body: `El P&L es una señal rezagada y ruidosa: puedes ganar rompiendo todas las reglas y perder siguiéndolas todas. Una puntuación de disciplina mide lo que de verdad controlas — tu proceso — para mejorarlo directamente.
+
+## Qué mide
+
+Una puntuación de disciplina califica cada sesión por comportamiento, no resultado: ¿seguiste tu plan, respetaste tu riesgo, evitaste trades impulsivos, completaste tu checklist? Un día verde donde rompiste tus reglas debe puntuar bajo; un día rojo donde hiciste todo bien debe puntuar alto.
+
+## Por qué supera a perseguir el beneficio
+
+El proceso lleva a resultados. Si tu puntuación de disciplina es siempre alta, el beneficio sigue en una muestra suficiente. Si es baja, cualquier beneficio es suerte que se revertirá. Seguirla convierte "operar mejor" de un deseo vago en un número que puedes mover.
+
+TradeDiscipline calcula una puntuación de disciplina a partir de tu checklist, tu comportamiento de riesgo y tus etiquetas emocionales — aparte del P&L — para que siempre sepas si construyes un edge duradero o solo estás en racha.`,
+      },
+    },
+  },
+  {
+    slug: "consistency-over-big-wins",
+    date: "2026-06-13",
+    readingMinutes: 3,
+    cover: "trend",
+    content: {
+      en: {
+        title: "Why consistency beats big wins",
+        excerpt: "One huge trade feels great and teaches you nothing repeatable. Steady, boring gains are the real edge.",
+        body: `The trades you brag about — the huge, lucky wins — are usually the worst thing for your account. They reward the exact behaviour (oversizing, holding through your plan) that eventually blows you up.
+
+## Big wins hide bad habits
+
+A trader who risks 10% and triples the account in a month looks like a genius until the same risk halves it in a week. Outsized results come from outsized risk, and outsized risk is a countdown, not an edge.
+
+## Boring is the goal
+
+Small, repeatable gains from a consistent process compound quietly and survive. Prop firms know this — many now have "consistency rules" that penalise one-day-wonders precisely because they signal gambling, not skill.
+
+## Measure consistency, not highlights
+
+Track your discipline score and your equity curve's smoothness, not your best day. A steady upward line with small drawdowns is worth more than a jagged one with a spike. TradeDiscipline surfaces both so you can chase the right thing.`,
+      },
+      fr: {
+        title: "Pourquoi la régularité bat les gros gains",
+        excerpt: "Un trade énorme fait plaisir et n'apprend rien de reproductible. Les gains réguliers et ennuyeux sont le vrai edge.",
+        body: `Les trades dont tu te vantes — les gros gains chanceux — sont souvent le pire pour ton compte. Ils récompensent le comportement même (surdimensionner, tenir hors plan) qui finit par te cramer.
+
+## Les gros gains cachent de mauvaises habitudes
+
+Un trader qui risque 10 % et triple son compte en un mois passe pour un génie jusqu'à ce que le même risque le divise par deux en une semaine. Les résultats démesurés viennent d'un risque démesuré, et le risque démesuré est un compte à rebours, pas un edge.
+
+## Ennuyeux, c'est l'objectif
+
+De petits gains reproductibles issus d'un process régulier composent tranquillement et survivent. Les prop firms le savent — beaucoup ont désormais des « règles de consistance » qui pénalisent les coups d'un jour, justement parce qu'ils signalent du jeu, pas de la compétence.
+
+## Mesure la régularité, pas les temps forts
+
+Suis ton score de discipline et la régularité de ta courbe d'équité, pas ton meilleur jour. Une ligne montante régulière avec petits drawdowns vaut plus qu'une ligne en dents de scie avec un pic. TradeDiscipline montre les deux pour que tu vises la bonne chose.`,
+      },
+      de: {
+        title: "Warum Beständigkeit große Gewinne schlägt",
+        excerpt: "Ein riesiger Trade fühlt sich toll an und lehrt nichts Wiederholbares. Ruhige, langweilige Gewinne sind der echte Edge.",
+        body: `Die Trades, mit denen du prahlst — die riesigen Glücksgewinne — sind meist das Schlimmste für dein Konto. Sie belohnen genau das Verhalten (zu groß, gegen den Plan halten), das dich am Ende sprengt.
+
+## Große Gewinne verstecken schlechte Gewohnheiten
+
+Ein Trader, der 10 % riskiert und sein Konto in einem Monat verdreifacht, wirkt genial — bis dasselbe Risiko es in einer Woche halbiert. Übergroße Ergebnisse kommen von übergroßem Risiko, und das ist ein Countdown, kein Edge.
+
+## Langweilig ist das Ziel
+
+Kleine, wiederholbare Gewinne aus einem beständigen Prozess wachsen leise und überleben. Prop-Firmen wissen das — viele haben nun „Konsistenzregeln", die Eintagsfliegen bestrafen, gerade weil sie Zocken statt Können signalisieren.
+
+## Miss Beständigkeit, nicht Highlights
+
+Verfolge deinen Disziplin-Score und die Glätte deiner Equity-Kurve, nicht deinen besten Tag. Eine stetig steigende Linie mit kleinen Drawdowns ist mehr wert als eine zackige mit Spitze. TradeDiscipline zeigt beides.`,
+      },
+      es: {
+        title: "Por qué la consistencia supera a los grandes golpes",
+        excerpt: "Un trade enorme sienta genial y no enseña nada repetible. Las ganancias estables y aburridas son el verdadero edge.",
+        body: `Los trades de los que presumes — los grandes golpes de suerte — suelen ser lo peor para tu cuenta. Premian justo el comportamiento (sobredimensionar, aguantar fuera del plan) que al final te revienta.
+
+## Los grandes golpes esconden malos hábitos
+
+Un trader que arriesga 10 % y triplica la cuenta en un mes parece un genio hasta que el mismo riesgo la reduce a la mitad en una semana. Los resultados desmesurados vienen de un riesgo desmesurado, y eso es una cuenta atrás, no un edge.
+
+## Aburrido es el objetivo
+
+Ganancias pequeñas y repetibles de un proceso consistente componen en silencio y sobreviven. Las prop firms lo saben — muchas tienen ya "reglas de consistencia" que penalizan los golpes de un día, precisamente porque señalan juego, no habilidad.
+
+## Mide la consistencia, no los momentos estelares
+
+Sigue tu puntuación de disciplina y la suavidad de tu curva de equity, no tu mejor día. Una línea ascendente estable con pequeños drawdowns vale más que una dentada con un pico. TradeDiscipline muestra ambas.`,
+      },
+    },
+  },
+  {
+    slug: "spot-emotional-trading",
+    date: "2026-06-12",
+    readingMinutes: 3,
+    cover: "psychology",
+    content: {
+      en: {
+        title: "How to spot emotional trading before it costs you",
+        excerpt: "You can't stop what you can't see. Learn the tells that you've switched from trading to reacting.",
+        body: `Emotional trading rarely announces itself. It feels like conviction in the moment and only looks like a mistake afterward. The skill is catching it live — before the click.
+
+## The physical tells
+
+Racing heart, gripping the mouse, leaning toward the screen, holding your breath. Your body reacts before your mind admits it. When you notice these, pause: they mean you're reacting, not deciding.
+
+## The behavioural tells
+
+You're about to take a setup that isn't in your plan. You're sizing up after a loss. You're checking the P&L every few seconds. You're arguing with the chart. Any of these is a stop sign.
+
+## The fix: name it and wait
+
+Say out loud what you're feeling — "this is FOMO," "this is revenge." Naming an emotion reduces its grip. Then enforce a short cooldown before any action.
+
+Logging your emotional state at each session — and tagging trades with the feeling behind them — makes the invisible visible. Over weeks, TradeDiscipline shows you exactly which emotions cost you the most money.`,
+      },
+      fr: {
+        title: "Repérer le trading émotionnel avant qu'il ne te coûte",
+        excerpt: "Tu ne peux pas arrêter ce que tu ne vois pas. Apprends les signes que tu es passé du trading à la réaction.",
+        body: `Le trading émotionnel s'annonce rarement. Sur le moment, ça ressemble à de la conviction, et ça n'a l'air d'une erreur qu'après. Le savoir-faire, c'est de l'attraper en direct — avant le clic.
+
+## Les signes physiques
+
+Cœur qui s'emballe, main crispée sur la souris, buste penché vers l'écran, respiration bloquée. Ton corps réagit avant que ton esprit ne l'admette. Quand tu remarques ça, fais une pause : tu réagis, tu ne décides pas.
+
+## Les signes comportementaux
+
+Tu es sur le point de prendre un setup hors plan. Tu augmentes la taille après une perte. Tu regardes le P&L toutes les deux secondes. Tu discutes avec le graphique. Chacun est un panneau stop.
+
+## La solution : nomme et attends
+
+Dis à voix haute ce que tu ressens — « c'est du FOMO », « c'est de la revanche ». Nommer une émotion réduit son emprise. Puis impose un court temps de pause avant toute action.
+
+Noter ton état émotionnel à chaque séance — et taguer les trades avec le ressenti derrière — rend l'invisible visible. Sur plusieurs semaines, TradeDiscipline te montre exactement quelles émotions te coûtent le plus.`,
+      },
+      de: {
+        title: "Emotionales Traden erkennen, bevor es dich kostet",
+        excerpt: "Du kannst nicht stoppen, was du nicht siehst. Lerne die Zeichen, dass du vom Traden ins Reagieren gewechselt bist.",
+        body: `Emotionales Traden kündigt sich selten an. Im Moment fühlt es sich wie Überzeugung an und sieht erst danach wie ein Fehler aus. Die Kunst ist, es live zu fangen — vor dem Klick.
+
+## Die körperlichen Zeichen
+
+Rasendes Herz, verkrampfte Maushand, zum Bildschirm gelehnt, angehaltener Atem. Dein Körper reagiert, bevor dein Kopf es zugibt. Bemerkst du das, pausiere: Du reagierst, du entscheidest nicht.
+
+## Die verhaltensbezogenen Zeichen
+
+Du willst ein Setup außerhalb deines Plans nehmen. Du erhöhst nach einem Verlust. Du checkst die G/V alle paar Sekunden. Du diskutierst mit dem Chart. Jedes ist ein Stoppschild.
+
+## Die Lösung: benennen und warten
+
+Sprich aus, was du fühlst — „das ist FOMO", „das ist Rache". Eine Emotion zu benennen mindert ihren Griff. Dann erzwinge eine kurze Abkühlung vor jeder Handlung.
+
+Deinen Gefühlszustand pro Session festzuhalten — und Trades mit dem Gefühl dahinter zu taggen — macht das Unsichtbare sichtbar. Über Wochen zeigt dir TradeDiscipline genau, welche Emotionen am meisten kosten.`,
+      },
+      es: {
+        title: "Cómo detectar el trading emocional antes de que te cueste",
+        excerpt: "No puedes frenar lo que no ves. Aprende las señales de que pasaste de operar a reaccionar.",
+        body: `El trading emocional rara vez se anuncia. En el momento parece convicción y solo después parece un error. La habilidad es cazarlo en vivo — antes del clic.
+
+## Las señales físicas
+
+Corazón acelerado, mano tensa en el ratón, cuerpo inclinado a la pantalla, respiración contenida. Tu cuerpo reacciona antes de que tu mente lo admita. Cuando lo notes, pausa: estás reaccionando, no decidiendo.
+
+## Las señales de comportamiento
+
+Estás por tomar un setup fuera del plan. Subes el tamaño tras una pérdida. Miras el P&L cada dos segundos. Discutes con el gráfico. Cualquiera es una señal de stop.
+
+## La solución: nómbralo y espera
+
+Di en voz alta lo que sientes — "esto es FOMO", "esto es revancha". Nombrar una emoción reduce su control. Luego impón un breve enfriamiento antes de cualquier acción.
+
+Registrar tu estado emocional en cada sesión — y etiquetar trades con el sentimiento detrás — hace visible lo invisible. En semanas, TradeDiscipline te muestra qué emociones te cuestan más dinero.`,
+      },
+    },
+  },
+  {
+    slug: "trading-journal-mistakes",
+    date: "2026-06-11",
+    readingMinutes: 3,
+    cover: "journal",
+    content: {
+      en: {
+        title: "5 trading journal mistakes that waste your time",
+        excerpt: "A journal you fill in wrong is busywork. Avoid these five traps and it becomes your best coach.",
+        body: `Keeping a journal is good advice repeated so often that most people do it badly. Here are the five mistakes that turn a journal into wasted effort.
+
+## 1. Logging only numbers
+
+Entry, exit, P&L — and nothing about *why*. Without the setup and your emotional state, you can't find patterns. Log the decision, not just the result.
+
+## 2. Only journaling losses
+
+Your winning trades hide bad habits too (a lucky win on a broken rule). Review greens with the same honesty as reds.
+
+## 3. Never reviewing it
+
+Writing without reading is a diary, not a tool. Weekly review is where the patterns show up.
+
+## 4. Being vague
+
+"Bad discipline today" helps no one. Be specific: "took 3 trades outside plan after the first loss."
+
+## 5. Making it too slow
+
+If logging takes five minutes, you'll quit. Keep it to a few taps.
+
+TradeDiscipline fixes all five by design: quick emotional check-ins, automatic discipline scoring, and weekly patterns surfaced for you — so the journal actually changes your behaviour.`,
+      },
+      fr: {
+        title: "5 erreurs de journal de trading qui te font perdre ton temps",
+        excerpt: "Un journal mal rempli, c'est de l'occupation. Évite ces cinq pièges et il devient ton meilleur coach.",
+        body: `Tenir un journal est un conseil si répété que la plupart le font mal. Voici les cinq erreurs qui transforment un journal en effort gâché.
+
+## 1. Ne noter que des chiffres
+
+Entrée, sortie, P&L — et rien sur le *pourquoi*. Sans le setup et ton état émotionnel, impossible de trouver des patterns. Note la décision, pas juste le résultat.
+
+## 2. Ne journaliser que les pertes
+
+Tes trades gagnants cachent aussi de mauvaises habitudes (un gain chanceux sur une règle cassée). Analyse les verts avec la même honnêteté que les rouges.
+
+## 3. Ne jamais le relire
+
+Écrire sans relire, c'est un journal intime, pas un outil. Le bilan hebdo, c'est là que les patterns apparaissent.
+
+## 4. Rester vague
+
+« Mauvaise discipline aujourd'hui » n'aide personne. Sois précis : « 3 trades hors plan après la première perte ».
+
+## 5. Le rendre trop lent
+
+Si noter prend cinq minutes, tu abandonneras. Réduis à quelques clics.
+
+TradeDiscipline corrige les cinq par conception : check-ins émotionnels rapides, score de discipline automatique, et patterns hebdo remontés — pour que le journal change vraiment ton comportement.`,
+      },
+      de: {
+        title: "5 Trading-Journal-Fehler, die deine Zeit verschwenden",
+        excerpt: "Ein falsch geführtes Journal ist Beschäftigungstherapie. Vermeide diese fünf Fallen, und es wird dein bester Coach.",
+        body: `Ein Journal zu führen ist ein so oft wiederholter Rat, dass die meisten es schlecht tun. Hier die fünf Fehler, die ein Journal zu verschwendeter Mühe machen.
+
+## 1. Nur Zahlen erfassen
+
+Einstieg, Ausstieg, G/V — und nichts zum *Warum*. Ohne Setup und Gefühlszustand findest du keine Muster. Erfasse die Entscheidung, nicht nur das Ergebnis.
+
+## 2. Nur Verluste journalisieren
+
+Deine Gewinner verstecken auch schlechte Gewohnheiten (ein Glücksgewinn auf gebrochener Regel). Prüfe Grüne so ehrlich wie Rote.
+
+## 3. Es nie durchsehen
+
+Schreiben ohne Lesen ist ein Tagebuch, kein Werkzeug. Die Wochenbilanz zeigt die Muster.
+
+## 4. Vage sein
+
+„Heute schlechte Disziplin" hilft niemandem. Sei konkret: „3 Trades außerhalb des Plans nach dem ersten Verlust."
+
+## 5. Zu langsam machen
+
+Dauert das Erfassen fünf Minuten, hörst du auf. Auf ein paar Taps beschränken.
+
+TradeDiscipline behebt alle fünf per Design: schnelle Emotions-Check-ins, automatischer Disziplin-Score und wöchentliche Muster — damit das Journal dein Verhalten wirklich ändert.`,
+      },
+      es: {
+        title: "5 errores de diario de trading que te hacen perder el tiempo",
+        excerpt: "Un diario mal llevado es entretenerse. Evita estas cinco trampas y se vuelve tu mejor coach.",
+        body: `Llevar un diario es un consejo tan repetido que la mayoría lo hace mal. Aquí los cinco errores que convierten un diario en esfuerzo perdido.
+
+## 1. Anotar solo números
+
+Entrada, salida, P&L — y nada del *porqué*. Sin el setup y tu estado emocional, no puedes hallar patrones. Anota la decisión, no solo el resultado.
+
+## 2. Registrar solo las pérdidas
+
+Tus trades ganadores también esconden malos hábitos (un golpe de suerte con una regla rota). Revisa los verdes con la misma honestidad que los rojos.
+
+## 3. No releerlo nunca
+
+Escribir sin leer es un diario íntimo, no una herramienta. La revisión semanal es donde aparecen los patrones.
+
+## 4. Ser vago
+
+"Mala disciplina hoy" no ayuda a nadie. Sé específico: "3 trades fuera del plan tras la primera pérdida".
+
+## 5. Hacerlo demasiado lento
+
+Si registrar lleva cinco minutos, lo dejarás. Redúcelo a unos toques.
+
+TradeDiscipline corrige los cinco por diseño: check-ins emocionales rápidos, puntuación de disciplina automática y patrones semanales — para que el diario cambie de verdad tu comportamiento.`,
+      },
+    },
+  },
 ];
 
 export function getAllPosts(): BlogPost[] {
