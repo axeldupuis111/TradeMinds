@@ -2,123 +2,108 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/lib/LanguageContext";
-import { X, Eraser } from "lucide-react";
+import { X, Pencil, Minus, ArrowUpRight, Square, Circle, Undo2, Trash2 } from "lucide-react";
+import type { Shape, AnnotationTool } from "@/lib/annotations";
+import { shapeToSvg } from "@/components/trades/AnnotationOverlay";
 
 /**
- * Freehand markup over a trade screenshot. Loads the image onto a canvas
- * (crossOrigin so the canvas isn't tainted and can be exported), lets the trader
- * draw arrows/zones by hand, and returns a flattened PNG via onSave.
+ * Vector annotation editor over a trade screenshot. The image is a plain <img>
+ * background; drawing happens on an SVG overlay, so nothing is ever exported
+ * from a (CORS-tainted) canvas — annotations save as JSON shapes and stay
+ * editable. Tools: pen, line, arrow, rectangle, ellipse.
  */
 const COLORS = ["#ef4444", "#22c55e", "#00D4D8", "#facc15", "#ffffff"];
-const MAX_W = 1280;
-const LINE_WIDTH = 4;
+const WIDTHS = [2, 4, 7];
 
 export default function ScreenshotAnnotator({
   src,
+  initial,
   onSave,
   onClose,
 }: {
   src: string;
-  onSave: (blob: Blob) => void;
+  initial?: Shape[];
+  onSave: (shapes: Shape[]) => void;
   onClose: () => void;
 }) {
   const { t } = useLanguage();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const imgRef = useRef<HTMLImageElement | null>(null);
-  const drawing = useRef(false);
-  const last = useRef<{ x: number; y: number } | null>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ w: 0, h: 0 });
+  const [shapes, setShapes] = useState<Shape[]>(initial ?? []);
+  const [draft, setDraft] = useState<Shape | null>(null);
+  const [tool, setTool] = useState<AnnotationTool>("pen");
   const [color, setColor] = useState(COLORS[0]);
-  const [ready, setReady] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(false);
+  const [width, setWidth] = useState(WIDTHS[1]);
+  const drawing = useRef(false);
+  const startPt = useRef<{ x: number; y: number } | null>(null);
 
+  // Track the rendered image box so pointer coords normalise correctly.
   useEffect(() => {
-    const img = new window.Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const scale = Math.min(1, MAX_W / img.naturalWidth);
-      canvas.width = Math.round(img.naturalWidth * scale);
-      canvas.height = Math.round(img.naturalHeight * scale);
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      imgRef.current = img;
-      setReady(true);
-    };
-    img.onerror = () => setError(true);
-    img.src = src;
-  }, [src]);
+    const el = wrapRef.current;
+    if (!el) return;
+    const update = () => setSize({ w: el.clientWidth, h: el.clientHeight });
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
-  function toCanvas(e: React.PointerEvent) {
-    const canvas = canvasRef.current!;
-    const rect = canvas.getBoundingClientRect();
-    return {
-      x: (e.clientX - rect.left) * (canvas.width / rect.width),
-      y: (e.clientY - rect.top) * (canvas.height / rect.height),
-    };
+  function norm(e: React.PointerEvent) {
+    const el = wrapRef.current!;
+    const r = el.getBoundingClientRect();
+    const x = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+    const y = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+    return { x, y };
   }
 
   function onDown(e: React.PointerEvent) {
     drawing.current = true;
-    last.current = toCanvas(e);
     (e.target as Element).setPointerCapture?.(e.pointerId);
+    const p = norm(e);
+    startPt.current = p;
+    if (tool === "pen") setDraft({ type: "pen", color, width, points: [[p.x, p.y]] });
+    else if (tool === "line" || tool === "arrow") setDraft({ type: tool, color, width, x1: p.x, y1: p.y, x2: p.x, y2: p.y });
+    else setDraft({ type: tool, color, width, x: p.x, y: p.y, w: 0, h: 0 });
   }
+
   function onMove(e: React.PointerEvent) {
-    if (!drawing.current || !last.current) return;
-    const ctx = canvasRef.current?.getContext("2d");
-    if (!ctx) return;
-    const p = toCanvas(e);
-    ctx.strokeStyle = color;
-    ctx.lineWidth = LINE_WIDTH;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.beginPath();
-    ctx.moveTo(last.current.x, last.current.y);
-    ctx.lineTo(p.x, p.y);
-    ctx.stroke();
-    last.current = p;
+    if (!drawing.current || !startPt.current) return;
+    const p = norm(e);
+    setDraft((d) => {
+      if (!d) return d;
+      if (d.type === "pen") return { ...d, points: [...(d.points ?? []), [p.x, p.y]] };
+      if (d.type === "line" || d.type === "arrow") return { ...d, x2: p.x, y2: p.y };
+      return { ...d, w: p.x - startPt.current!.x, h: p.y - startPt.current!.y };
+    });
   }
+
   function onUp() {
     drawing.current = false;
-    last.current = null;
+    startPt.current = null;
+    setDraft((d) => {
+      if (d) {
+        // Ignore accidental zero-size shapes.
+        const tiny =
+          (d.type === "pen" && (d.points?.length ?? 0) < 2) ||
+          ((d.type === "line" || d.type === "arrow") && d.x1 === d.x2 && d.y1 === d.y2) ||
+          ((d.type === "rect" || d.type === "ellipse") && Math.abs(d.w!) < 0.005 && Math.abs(d.h!) < 0.005);
+        if (!tiny) setShapes((s) => [...s, d]);
+      }
+      return null;
+    });
   }
 
-  function clearDrawing() {
-    const canvas = canvasRef.current;
-    const img = imgRef.current;
-    if (!canvas || !img) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-  }
-
-  function save() {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    setSaving(true);
-    try {
-      canvas.toBlob(
-        (blob) => {
-          if (blob) onSave(blob);
-          else {
-            setError(true);
-            setSaving(false);
-          }
-        },
-        "image/png",
-      );
-    } catch {
-      setError(true);
-      setSaving(false);
-    }
-  }
+  const tools: { id: AnnotationTool; icon: typeof Pencil; label: string }[] = [
+    { id: "pen", icon: Pencil, label: t("annotate_tool_pen") },
+    { id: "line", icon: Minus, label: t("annotate_tool_line") },
+    { id: "arrow", icon: ArrowUpRight, label: t("annotate_tool_arrow") },
+    { id: "rect", icon: Square, label: t("annotate_tool_rect") },
+    { id: "ellipse", icon: Circle, label: t("annotate_tool_ellipse") },
+  ];
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true">
-      <div className="bg-card border border-border rounded-xl w-full max-w-3xl p-4 max-h-[92vh] overflow-y-auto">
+      <div className="bg-card border border-border rounded-xl w-full max-w-3xl p-4 max-h-[94vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-foreground">{t("annotate_draw_title")}</h3>
           <button onClick={onClose} aria-label={t("csv_cancel")} className="text-muted hover:text-foreground">
@@ -126,58 +111,100 @@ export default function ScreenshotAnnotator({
           </button>
         </div>
 
-        {error ? (
-          <p className="text-loss text-sm py-8 text-center">{t("annotate_draw_error")}</p>
-        ) : (
-          <>
-            <div className="rounded-lg overflow-hidden border border-border bg-black/30">
-              <canvas
-                ref={canvasRef}
-                onPointerDown={onDown}
-                onPointerMove={onMove}
-                onPointerUp={onUp}
-                onPointerLeave={onUp}
-                className="w-full touch-none cursor-crosshair block"
-                style={{ height: "auto" }}
-              />
-            </div>
+        {/* Image + interactive SVG overlay */}
+        <div ref={wrapRef} className="relative rounded-lg overflow-hidden border border-border bg-black/30 select-none">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={src} alt="" className="w-full block" draggable={false} />
+          {size.w > 0 && (
+            <svg
+              width={size.w}
+              height={size.h}
+              className="absolute inset-0 touch-none cursor-crosshair"
+              onPointerDown={onDown}
+              onPointerMove={onMove}
+              onPointerUp={onUp}
+              onPointerLeave={onUp}
+            >
+              {shapes.map((s, i) => shapeToSvg(s, size.w, size.h, i))}
+              {draft && shapeToSvg(draft, size.w, size.h, -1)}
+            </svg>
+          )}
+        </div>
 
-            {/* Toolbar */}
-            <div className="flex items-center gap-3 mt-3 flex-wrap">
-              <div className="flex items-center gap-1.5">
-                {COLORS.map((c) => (
-                  <button
-                    key={c}
-                    onClick={() => setColor(c)}
-                    aria-label={c}
-                    className={`w-6 h-6 rounded-full border-2 transition-transform ${color === c ? "border-foreground scale-110" : "border-transparent"}`}
-                    style={{ backgroundColor: c }}
-                  />
-                ))}
-              </div>
+        {/* Toolbar */}
+        <div className="flex items-center gap-2 mt-3 flex-wrap">
+          {/* Tools */}
+          <div className="flex items-center gap-1 rounded-lg border border-border p-1">
+            {tools.map((tl) => (
               <button
-                onClick={clearDrawing}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs text-muted hover:text-foreground transition-colors"
+                key={tl.id}
+                onClick={() => setTool(tl.id)}
+                aria-label={tl.label}
+                title={tl.label}
+                className={`p-1.5 rounded-md transition-colors ${tool === tl.id ? "bg-accent text-white" : "text-muted hover:text-foreground"}`}
               >
-                <Eraser className="w-3.5 h-3.5" /> {t("annotate_draw_clear")}
+                <tl.icon className="w-4 h-4" />
               </button>
-              <div className="flex-1" />
+            ))}
+          </div>
+
+          {/* Colors */}
+          <div className="flex items-center gap-1.5">
+            {COLORS.map((c) => (
               <button
-                onClick={onClose}
-                className="px-3 py-1.5 rounded-lg border border-border text-sm text-muted hover:text-foreground transition-colors"
-              >
-                {t("csv_cancel")}
-              </button>
+                key={c}
+                onClick={() => setColor(c)}
+                aria-label={c}
+                className={`w-6 h-6 rounded-full border-2 transition-transform ${color === c ? "border-foreground scale-110" : "border-transparent"}`}
+                style={{ backgroundColor: c }}
+              />
+            ))}
+          </div>
+
+          {/* Widths */}
+          <div className="flex items-center gap-1 rounded-lg border border-border p-1">
+            {WIDTHS.map((w) => (
               <button
-                onClick={save}
-                disabled={!ready || saving}
-                className="px-4 py-1.5 rounded-lg bg-accent text-white text-sm font-medium hover:bg-blue-600 transition-colors disabled:opacity-50"
+                key={w}
+                onClick={() => setWidth(w)}
+                aria-label={`${w}px`}
+                className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${width === w ? "bg-accent/20" : "hover:bg-surface"}`}
               >
-                {saving ? "..." : t("annotate_draw_save")}
+                <span className="rounded-full bg-foreground block" style={{ width: w + 2, height: w + 2 }} />
               </button>
-            </div>
-          </>
-        )}
+            ))}
+          </div>
+
+          <button
+            onClick={() => setShapes((s) => s.slice(0, -1))}
+            disabled={shapes.length === 0}
+            aria-label={t("annotate_undo")}
+            title={t("annotate_undo")}
+            className="p-1.5 rounded-md border border-border text-muted hover:text-foreground disabled:opacity-40 transition-colors"
+          >
+            <Undo2 className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setShapes([])}
+            disabled={shapes.length === 0}
+            aria-label={t("annotate_draw_clear")}
+            title={t("annotate_draw_clear")}
+            className="p-1.5 rounded-md border border-border text-muted hover:text-loss disabled:opacity-40 transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+
+          <div className="flex-1" />
+          <button onClick={onClose} className="px-3 py-1.5 rounded-lg border border-border text-sm text-muted hover:text-foreground transition-colors">
+            {t("csv_cancel")}
+          </button>
+          <button
+            onClick={() => onSave(shapes)}
+            className="px-4 py-1.5 rounded-lg bg-accent text-white text-sm font-medium hover:bg-blue-600 transition-colors"
+          >
+            {t("annotate_draw_save")}
+          </button>
+        </div>
       </div>
     </div>
   );

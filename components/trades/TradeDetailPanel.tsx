@@ -3,6 +3,8 @@
 import { ICT_EMOTIONS } from "@/lib/ict-constants";
 import { EMOTION_EMOJIS } from "@/lib/emotions";
 import ScreenshotAnnotator from "@/components/trades/ScreenshotAnnotator";
+import AnnotationOverlay from "@/components/trades/AnnotationOverlay";
+import { asShapes, type Shape } from "@/lib/annotations";
 import {
   computeConfluenceScore,
   deriveSetupFromChecklist,
@@ -40,6 +42,7 @@ export interface TradeDetail {
   setup_quality: number | null;
   notes: string | null;
   screenshot_path: string | null;
+  screenshot_annotations?: unknown;
   challenge_id?: string | null;
   strategy_id?: string | null;
   // ICT fields
@@ -108,6 +111,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
   const [notes, setNotes] = useState(trade.notes || "");
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
   const [showAnnotator, setShowAnnotator] = useState(false);
+  const [annotations, setAnnotations] = useState<Shape[]>(asShapes(trade.screenshot_annotations));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -152,6 +156,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
       screenshotPathRef.current = null;
       setScreenshotUrl(null);
     }
+    setAnnotations(asShapes(trade.screenshot_annotations));
     setIctChecklist(trade.ict_checklist || {});
     setChallengeId(trade.challenge_id || null);
     setSelectedStrategyId(trade.strategy_id ?? null);
@@ -328,21 +333,16 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
     setUploading(false);
   }
 
-  // Save the hand-drawn annotations over the SAME screenshot path.
-  async function handleAnnotatedSave(blob: Blob) {
-    const path = screenshotPathRef.current;
-    if (!path) { setShowAnnotator(false); return; }
-    setUploading(true);
-    const { error } = await supabase.storage
-      .from("trade-screenshots")
-      .upload(path, blob, { upsert: true, contentType: "image/png" });
-    if (!error) {
-      // New signed URL (fresh token) so the <Image> reloads the annotated version.
-      const { data: signedData } = await supabase.storage.from("trade-screenshots").createSignedUrl(path, 3600);
-      if (signedData) { setScreenshotUrl(signedData.signedUrl); setScreenshotModified(true); }
-    }
-    setUploading(false);
+  // Save vector annotations as JSON on the trade (editable, no image export).
+  async function handleAnnotationsSave(shapes: Shape[]) {
+    setAnnotations(shapes);
     setShowAnnotator(false);
+    const { error } = await supabase
+      .from("trades")
+      .update({ screenshot_annotations: shapes })
+      .eq("id", trade.id);
+    if (!error) onSaved();
+    else console.error("Save annotations failed:", error);
   }
 
   const handleSave = useCallback(async (): Promise<boolean> => {
@@ -713,6 +713,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
             {screenshotUrl && (
               <div className="mb-2 relative group">
                 <Image src={screenshotUrl} alt="Trade screenshot" width={800} height={600} className="w-full rounded-lg border border-border" style={{ height: "auto" }} />
+                {annotations.length > 0 && <AnnotationOverlay shapes={annotations} />}
                 <div className="absolute top-2 right-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={() => setShowAnnotator(true)}
@@ -742,7 +743,8 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
             {showAnnotator && screenshotUrl && (
               <ScreenshotAnnotator
                 src={screenshotUrl}
-                onSave={handleAnnotatedSave}
+                initial={annotations}
+                onSave={handleAnnotationsSave}
                 onClose={() => setShowAnnotator(false)}
               />
             )}
