@@ -57,6 +57,41 @@ function periodKeyClient(p: Period): string {
   return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
 }
 
+// Bornes de la période courante (pour jours restants + fraction écoulée).
+function periodBounds(p: Period): { start: Date; end: Date } {
+  const now = new Date();
+  if (p === "day") {
+    const start = new Date(now); start.setHours(0, 0, 0, 0);
+    const end = new Date(start); end.setDate(end.getDate() + 1);
+    return { start, end };
+  }
+  if (p === "week") {
+    const day = now.getDay();
+    const start = new Date(now);
+    start.setDate(now.getDate() - day + (day === 0 ? -6 : 1));
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start); end.setDate(end.getDate() + 7);
+    return { start, end };
+  }
+  if (p === "quarter") {
+    const start = new Date(now.getFullYear(), now.getMonth() - (now.getMonth() % 3), 1);
+    return { start, end: new Date(start.getFullYear(), start.getMonth() + 3, 1) };
+  }
+  if (p === "year") {
+    return { start: new Date(now.getFullYear(), 0, 1), end: new Date(now.getFullYear() + 1, 0, 1) };
+  }
+  const start = new Date(now.getFullYear(), now.getMonth(), 1);
+  return { start, end: new Date(now.getFullYear(), now.getMonth() + 1, 1) };
+}
+function daysLeftIn(p: Period): number {
+  const { end } = periodBounds(p);
+  return Math.max(0, Math.ceil((end.getTime() - Date.now()) / 86400000));
+}
+function elapsedFraction(p: Period): number {
+  const { start, end } = periodBounds(p);
+  return Math.min(1, Math.max(0, (Date.now() - start.getTime()) / (end.getTime() - start.getTime())));
+}
+
 // Packs d'objectifs prêts à l'emploi (i18n via les clés ci-dessous).
 interface Pack {
   id: string;
@@ -886,6 +921,18 @@ export default function GoalsPage() {
                                   <PenLine className="w-2.5 h-2.5 opacity-0 group-hover/edit:opacity-60 transition-opacity" />
                                 </button>
                               )}
+                              {/* Projection de rythme (métriques cumulatives uniquement) */}
+                              {g.metric === "sessions" && !g.met && (() => {
+                                const frac = elapsedFraction(g.period);
+                                if (frac < 0.1) return null;
+                                const proj = Math.round(g.value / frac);
+                                const on = proj >= g.target;
+                                return (
+                                  <p className={`text-[10px] mt-0.5 ${on ? "text-profit" : "text-warning"}`}>
+                                    {t(on ? "goals_pace_on" : "goals_pace_behind").replace("{proj}", String(proj))}
+                                  </p>
+                                );
+                              })()}
                             </>
                           ) : (
                             <>
@@ -906,8 +953,13 @@ export default function GoalsPage() {
                           )}
                         </div>
 
-                        {/* Échéance */}
-                        <span className="hidden sm:inline text-[11px] text-muted whitespace-nowrap w-16 text-right shrink-0">{periodLabel(g.period)}</span>
+                        {/* Échéance + jours restants dans la période */}
+                        <span className="hidden sm:flex flex-col items-end w-16 shrink-0">
+                          <span className="text-[11px] text-muted whitespace-nowrap">{periodLabel(g.period)}</span>
+                          {g.period !== "day" && status !== "met" && (
+                            <span className="text-[10px] text-muted/60 tabular-nums whitespace-nowrap">{t("goals_days_left").replace("{n}", String(daysLeftIn(g.period)))}</span>
+                          )}
+                        </span>
 
                         {/* Progression (mesuré) */}
                         <div className="shrink-0 w-20 sm:w-36 flex items-center gap-2">

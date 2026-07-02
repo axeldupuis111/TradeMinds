@@ -171,6 +171,53 @@ async function gather(userId: string, monthParam: string | null) {
     .map((dir) => ({ dir, pnl: Math.round(dirAgg[dir].pnl * 100) / 100, count: dirAgg[dir].count, winRate: dirAgg[dir].count ? Math.round((dirAgg[dir].wins / dirAgg[dir].count) * 100) : 0 }))
     .filter((d) => d.count > 0);
 
+  // ── Stats de trading (qualité d'exécution) ────────────────────────────────
+  // Trades du mois triés chronologiquement pour les séries consécutives.
+  const chrono = [...monthTrades].sort((a, b) => a.open_time.localeCompare(b.open_time));
+  let grossProfit = 0, grossLoss = 0, winCount = 0, lossCount = 0;
+  let bestWinStreak = 0, worstLossStreak = 0, winRun = 0, lossRun = 0;
+  for (const t of chrono) {
+    const n = netPnl(t);
+    if (n > 0) {
+      grossProfit += n; winCount += 1;
+      winRun += 1; lossRun = 0;
+      if (winRun > bestWinStreak) bestWinStreak = winRun;
+    } else if (n < 0) {
+      grossLoss += n; lossCount += 1;
+      lossRun += 1; winRun = 0;
+      if (lossRun > worstLossStreak) worstLossStreak = lossRun;
+    } else { winRun = 0; lossRun = 0; }
+  }
+  // Drawdown max sur la courbe d'équité quotidienne (pic → creux).
+  let peak = 0, maxDrawdown = 0;
+  for (const v of equity) {
+    if (v > peak) peak = v;
+    if (peak - v > maxDrawdown) maxDrawdown = peak - v;
+  }
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  const risk = monthTrades.length > 0 ? {
+    profitFactor: grossLoss < 0 ? r2(grossProfit / Math.abs(grossLoss)) : null,
+    avgWin: winCount ? r2(grossProfit / winCount) : null,
+    avgLoss: lossCount ? r2(grossLoss / lossCount) : null,
+    payoff: winCount && lossCount ? r2((grossProfit / winCount) / Math.abs(grossLoss / lossCount)) : null,
+    expectancy: r2(stats.totalPnl / monthTrades.length),
+    maxDrawdown: r2(maxDrawdown),
+    bestWinStreak, worstLossStreak,
+  } : null;
+
+  // ── Performance par heure de la journée ──────────────────────────────────
+  const hourAgg = new Map<number, { pnl: number; count: number; wins: number }>();
+  for (const t of monthTrades) {
+    const h = new Date(t.open_time).getHours();
+    const a = hourAgg.get(h) ?? { pnl: 0, count: 0, wins: 0 };
+    const n = netPnl(t);
+    a.pnl += n; a.count += 1; if (n > 0) a.wins += 1;
+    hourAgg.set(h, a);
+  }
+  const hours = Array.from(hourAgg.entries())
+    .map(([hour, a]) => ({ hour, pnl: r2(a.pnl), count: a.count, winRate: Math.round((a.wins / a.count) * 100) }))
+    .sort((a, b) => a.hour - b.hour);
+
   // ── Records du mois ──────────────────────────────────────────────────────
   const greenDays = Array.from(pnlByDay.values()).filter((v) => v > 0).length;
   const redDays = Array.from(pnlByDay.values()).filter((v) => v < 0).length;
@@ -195,7 +242,7 @@ async function gather(userId: string, monthParam: string | null) {
   }
 
   const month = { key: `${year}-${String(month0 + 1).padStart(2, "0")}`, year, month0, isCurrentMonth };
-  return { month, stats, prev, deltas, extras, calendar, trend, records, emotions, weekdays, pairs, directions };
+  return { month, stats, prev, deltas, extras, calendar, trend, records, emotions, weekdays, pairs, directions, risk, hours };
 }
 
 export async function GET(req: Request) {

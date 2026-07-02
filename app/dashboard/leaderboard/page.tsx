@@ -1,13 +1,14 @@
 "use client";
 
 import { useLanguage } from "@/lib/LanguageContext";
-import { ArrowUp, ArrowDown, Minus, Lock } from "lucide-react";
+import { ArrowUp, ArrowDown, Crown, Minus, Lock, Share2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import CountUp from "@/components/animations/CountUp";
 import GrowBar from "@/components/animations/GrowBar";
 import ConfettiBurst from "@/components/animations/ConfettiBurst";
 import CommunityChallenges from "@/components/dashboard/CommunityChallenges";
+import ShareRankModal from "@/components/leaderboard/ShareRankModal";
 
 type Mode = "discipline" | "sessions" | "streak";
 
@@ -82,6 +83,7 @@ export default function LeaderboardPage() {
   const [loading, setLoading] = useState(true);
   const [showConfetti, setShowConfetti] = useState(false);
   const [selectedBadge, setSelectedBadge] = useState<string | null>(null);
+  const [showShare, setShowShare] = useState(false);
   const celebrated = useRef(false);
 
   const load = useCallback(async (d: number, m: Mode) => {
@@ -135,7 +137,14 @@ export default function LeaderboardPage() {
       {self && (() => {
         const tier = tierOf(self.score);
         return (
-          <div className="rounded-xl border border-border bg-card p-4">
+          <div className="relative rounded-xl border border-border bg-card p-4">
+            {self.sessions > 0 && (
+              <button onClick={() => setShowShare(true)}
+                className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 text-[11px] font-medium text-muted hover:text-accent transition-colors p-1"
+                aria-label={t("leaderboard_share_btn")} title={t("leaderboard_share_btn")}>
+                <Share2 className="w-3.5 h-3.5" strokeWidth={1.75} />
+              </button>
+            )}
             <div className="flex items-center gap-4">
               <span className={`flex flex-col items-center justify-center w-16 h-16 rounded-xl border ${tier.cls} shrink-0`}>
                 <span className="text-2xl leading-none">{tier.emoji}</span>
@@ -288,14 +297,24 @@ export default function LeaderboardPage() {
                 if (!e) return <div key={i} />;
                 const pcts = [71, 100, 57];
                 const medals = ["🥈", "🥇", "🥉"];
+                // Marches teintées or / argent / bronze (le vainqueur rayonne).
+                const barCls = [
+                  "bg-slate-400/15 shadow-[0_0_14px_-6px_rgb(148_163_184/0.6)]",
+                  "bg-yellow-500/15 shadow-[0_0_26px_-5px_rgb(234_179_8/0.75)]",
+                  "bg-orange-700/15 shadow-[0_0_14px_-6px_rgb(194_120_60/0.6)]",
+                ][i];
                 return (
                   <div key={e.rank} className="flex flex-col items-center">
-                    <Avatar name={e.username} isMe={e.isMe} />
-                    <span className="text-xs text-foreground mt-1 truncate max-w-full">{e.isMe ? t("leaderboard_you") : `@${e.username}`}</span>
+                    {i === 1 && <Crown className="w-5 h-5 text-yellow-400 mb-1 animate-bounce [animation-iteration-count:3]" strokeWidth={2} />}
+                    <span className={e.isMe ? "rounded-full ring-2 ring-accent ring-offset-2 ring-offset-background" : ""}>
+                      <Avatar name={e.username} isMe={e.isMe} />
+                    </span>
+                    <span className="text-xs text-foreground mt-1 truncate max-w-full font-medium">{e.isMe ? t("leaderboard_you") : `@${e.username}`}</span>
                     <span className={`text-lg font-bold ${scoreColor(e.score)}`}>{displayValue(e.score, e.sessions, e.streak)}</span>
+                    <span className="text-[10px] text-muted tabular-nums">📅 {e.sessions} · 🔥 {e.streak}</span>
                     <div className="w-full h-28 flex items-end mt-1">
                       <GrowBar vertical pct={pcts[i]} durationMs={700} delayMs={i * 110}
-                        className={`rounded-t-lg flex items-start justify-center pt-2 ${i === 1 ? "bg-accent/20 shadow-[0_0_22px_-5px_rgb(var(--accent)/0.7)]" : "bg-surface"}`}>
+                        className={`rounded-t-lg flex items-start justify-center pt-2 ${barCls}`}>
                         <span className="text-2xl">{medals[i]}</span>
                       </GrowBar>
                     </div>
@@ -323,6 +342,18 @@ export default function LeaderboardPage() {
       )}
       </main>
       </div>
+
+      {/* Carte de rang exportable en PNG */}
+      {showShare && self && (
+        <ShareRankModal
+          stats={{
+            score: self.score, sessions: self.sessions, streak: self.streak,
+            rank: self.rank, total, percentile: self.percentile,
+            tierKey: tierOf(self.score).key, tierEmoji: tierOf(self.score).emoji, days,
+          }}
+          onClose={() => setShowShare(false)}
+        />
+      )}
     </div>
   );
 }
@@ -333,8 +364,9 @@ function Row({ e, t, value }: { e: Entry; t: (k: string) => string; value: strin
       <span className="text-sm font-bold text-muted w-7 text-center tabular-nums">{e.rank}</span>
       <span className="w-7 flex justify-center"><Delta d={e.delta} /></span>
       <Avatar name={e.username} isMe={e.isMe} />
-      <span className="flex-1 text-foreground truncate">{e.isMe ? t("leaderboard_you") : `@${e.username}`}</span>
-      <span className="text-base font-bold w-12 text-right text-foreground">{value}</span>
+      <span className="flex-1 min-w-0 text-foreground truncate">{e.isMe ? t("leaderboard_you") : `@${e.username}`}</span>
+      <span className="hidden sm:inline text-[11px] text-muted tabular-nums whitespace-nowrap">📅 {e.sessions} · 🔥 {e.streak}</span>
+      <span className="text-base font-bold w-12 text-right text-foreground shrink-0">{value}</span>
     </div>
   );
 }

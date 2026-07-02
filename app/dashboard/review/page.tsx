@@ -3,11 +3,13 @@
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { Pdf, C, type RGB } from "@/lib/pdf/kit";
-import { ArrowDownRight, ArrowUpRight, Minus, Sparkles, ThumbsUp, Target, Compass, ChevronLeft, ChevronRight, FileDown, TrendingUp, TrendingDown, Flame, Award, CalendarX, Brain, GitCompareArrows } from "lucide-react";
+import { Activity, ArrowDownRight, ArrowUpRight, Clock3, Minus, Sparkles, ThumbsUp, Target, Compass, ChevronLeft, ChevronRight, FileDown, TrendingUp, TrendingDown, Flame, Award, CalendarX, Brain, GitCompareArrows } from "lucide-react";
 import Link from "next/link";
 import { Fragment, useCallback, useEffect, useState } from "react";
 import CountUp from "@/components/animations/CountUp";
 import GrowBar from "@/components/animations/GrowBar";
+import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
+import { ScoreRing } from "@/components/dashboard/ScoreRing";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { X } from "lucide-react";
 
@@ -22,6 +24,11 @@ interface EmotionEdge { emotion: string; count: number; pnl: number; winRate: nu
 interface Weekday { wd: number; pnl: number; count: number; winRate: number }
 interface PairPerf { pair: string; pnl: number; count: number; winRate: number }
 interface DirPerf { dir: "long" | "short"; pnl: number; count: number; winRate: number }
+interface Risk {
+  profitFactor: number | null; avgWin: number | null; avgLoss: number | null; payoff: number | null;
+  expectancy: number; maxDrawdown: number; bestWinStreak: number; worstLossStreak: number;
+}
+interface HourPerf { hour: number; pnl: number; count: number; winRate: number }
 interface Review { headline: string; strength: string; improvement: string; focus: string }
 interface DayDetail {
   date: string; pnl: number; trades: number; winRate: number; disciplineScore: number | null;
@@ -55,6 +62,20 @@ function scoreText(s: number): string {
   if (s >= 70) return "text-green-400";
   if (s >= 50) return "text-warning";
   return "text-loss";
+}
+
+// Note globale du mois : moyenne pondérée des composantes disponibles
+// (discipline ×3, préparation ×1, exécution ×1 — le win rate est ramené sur
+// 100 avec 62,5 % ≈ parfait pour ne pas exiger l'impossible).
+function monthGrade(stats: Stats, prepRate: number | null): { letter: string; score: number } | null {
+  const parts: { v: number; w: number }[] = [];
+  if (stats.avgDisciplineScore != null) parts.push({ v: stats.avgDisciplineScore, w: 3 });
+  if (prepRate != null) parts.push({ v: prepRate, w: 1 });
+  if (stats.trades > 0) parts.push({ v: Math.min(100, stats.winRate * 1.6), w: 1 });
+  if (parts.length === 0) return null;
+  const score = Math.round(parts.reduce((s, p) => s + p.v * p.w, 0) / parts.reduce((s, p) => s + p.w, 0));
+  const letter = score >= 90 ? "A+" : score >= 80 ? "A" : score >= 70 ? "B" : score >= 60 ? "C+" : score >= 45 ? "C" : "D";
+  return { letter, score };
 }
 
 function Sparkline({ data }: { data: number[] }) {
@@ -99,6 +120,9 @@ export default function MonthlyReviewPage() {
   const [weekdays, setWeekdays] = useState<Weekday[]>([]);
   const [pairs, setPairs] = useState<PairPerf[]>([]);
   const [directions, setDirections] = useState<DirPerf[]>([]);
+  const [risk, setRisk] = useState<Risk | null>(null);
+  const [hours, setHours] = useState<HourPerf[]>([]);
+  const [prevPnl, setPrevPnl] = useState<number | null>(null);
   const [goalsSummary, setGoalsSummary] = useState<{ met: number; total: number } | null>(null);
   const [review, setReview] = useState<Review | null>(null);
   const [rawSummary, setRawSummary] = useState<string | null>(null);
@@ -119,6 +143,8 @@ export default function MonthlyReviewPage() {
         setMonth(d.month); setStats(d.stats); setDeltas(d.deltas); setExtras(d.extras);
         setCalendar(d.calendar ?? []); setTrend(d.trend ?? []); setRecords(d.records ?? null); setEmotions(d.emotions ?? []);
         setWeekdays(d.weekdays ?? []); setPairs(d.pairs ?? []); setDirections(d.directions ?? []);
+        setRisk(d.risk ?? null); setHours(d.hours ?? []);
+        setPrevPnl(d.prev && d.prev.trades > 0 ? d.prev.totalPnl : null);
 
         // Pont Objectifs ↔ Bilan : uniquement pour le mois en cours (les objectifs
         // sont évalués sur la période courante, pas archivés par mois passé).
@@ -248,6 +274,20 @@ export default function MonthlyReviewPage() {
           });
         }
         pdf.statGrid(recCards, { cols: recCards.length >= 4 ? 4 : 3, height: 22 });
+      }
+
+      // ── Stats de trading ──
+      if (risk && stats.trades > 0) {
+        pdf.ensure(40, contTitle);
+        pdf.section(t("review_risk_title"));
+        pdf.statGrid([
+          { label: t("review_risk_pf"), value: risk.profitFactor == null ? "∞" : risk.profitFactor.toFixed(2), color: risk.profitFactor == null || risk.profitFactor >= 1.5 ? C.green : risk.profitFactor >= 1 ? C.amber : C.red },
+          { label: t("review_risk_payoff"), value: risk.payoff == null ? "—" : risk.payoff.toFixed(2), color: risk.payoff != null && risk.payoff >= 1 ? C.green : C.amber },
+          { label: t("review_risk_expectancy"), value: fmtMoney(risk.expectancy), color: risk.expectancy >= 0 ? C.green : C.red },
+          { label: t("review_risk_dd"), value: risk.maxDrawdown > 0 ? fmtMoney(-risk.maxDrawdown) : "—", color: C.red },
+          { label: t("review_risk_win_streak"), value: `${risk.bestWinStreak}`, color: C.green },
+          { label: t("review_risk_loss_streak"), value: `${risk.worstLossStreak}`, color: risk.worstLossStreak >= 3 ? C.red : C.faint },
+        ], { cols: 3, height: 22 });
       }
 
       // ── Tendance 6 mois ──
@@ -415,6 +455,42 @@ export default function MonthlyReviewPage() {
             </div>
           ) : stats ? (
             <>
+              {/* Héro — note du mois + P&L net */}
+              {(() => {
+                const grade = monthGrade(stats, extras?.prepRate ?? null);
+                if (!grade) return null;
+                const pnlDelta = prevPnl != null ? stats.totalPnl - prevPnl : null;
+                return (
+                  <KpiCardPremium layout="full" accentColor="cyan" intensity="hero" className="mt-4">
+                    <div className="flex flex-wrap items-center gap-5 sm:gap-7">
+                      <div className="relative shrink-0" title={`${grade.score}/100`}>
+                        <ScoreRing score={grade.score} size="xl" />
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <span className={`text-3xl font-black leading-none ${scoreText(grade.score)}`}>{grade.letter}</span>
+                          <span className="text-[9px] text-muted mt-0.5 tabular-nums">{grade.score}/100</span>
+                        </div>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[11px] uppercase tracking-wider text-muted font-semibold">{t("review_grade_title")}</p>
+                        <p className="text-xs text-muted mt-0.5 max-w-sm">{t("review_grade_sub")}</p>
+                      </div>
+                      <div className="ml-auto text-right">
+                        <p className="text-[11px] uppercase tracking-wider text-muted font-semibold">{t("review_grade_pnl")}</p>
+                        <p className={`text-3xl font-black tabular-nums leading-tight ${stats.totalPnl >= 0 ? "text-profit" : "text-loss"}`}>
+                          <CountUp end={stats.totalPnl} prefix={stats.totalPnl >= 0 ? "+" : ""} suffix=" €" duration={1.2} />
+                        </p>
+                        {pnlDelta != null && pnlDelta !== 0 && (
+                          <p className={`text-xs font-semibold inline-flex items-center gap-1 ${pnlDelta > 0 ? "text-profit" : "text-loss"}`}>
+                            {pnlDelta > 0 ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
+                            {fmtMoney(pnlDelta)} {t("review_grade_vs_prev")}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </KpiCardPremium>
+                );
+              })()}
+
               <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 <Kpi label={t("review_kpi_trades")} value={`${stats.trades}`} delta={deltas?.trades} />
                 <Kpi label={t("review_kpi_days")} value={`${stats.tradingDays}`} delta={deltas?.tradingDays} />
@@ -487,6 +563,32 @@ export default function MonthlyReviewPage() {
                         <p className="text-[10px] text-muted/70">{fmtDate(records.bestDisciplineDay.date, lang)}</p>
                       </div>
                     )}
+                  </div>
+                </div>
+              )}
+
+              {/* Stats de trading — qualité d'exécution du mois */}
+              {risk && stats.trades > 0 && (
+                <div className="mt-4 rounded-xl border border-border bg-card p-4">
+                  <h2 className="text-sm font-semibold text-foreground flex items-center gap-2"><Activity className="w-4 h-4 text-accent" />{t("review_risk_title")}</h2>
+                  <p className="text-xs text-muted mt-0.5 mb-3">{t("review_risk_sub")}</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <RiskStat label={t("review_risk_pf")} hint={t("review_risk_pf_hint")}
+                      value={risk.profitFactor == null ? "∞" : risk.profitFactor.toFixed(2).replace(".", ",")}
+                      cls={risk.profitFactor == null || risk.profitFactor >= 1.5 ? "text-profit" : risk.profitFactor >= 1 ? "text-warning" : "text-loss"} />
+                    <RiskStat label={t("review_risk_payoff")} hint={t("review_risk_payoff_hint")}
+                      value={risk.payoff == null ? "—" : risk.payoff.toFixed(2).replace(".", ",")}
+                      cls={risk.payoff == null ? "text-muted" : risk.payoff >= 1 ? "text-profit" : "text-warning"} />
+                    <RiskStat label={t("review_risk_expectancy")} hint={t("review_risk_expectancy_hint")}
+                      value={fmtMoney(risk.expectancy)}
+                      cls={risk.expectancy >= 0 ? "text-profit" : "text-loss"} />
+                    <RiskStat label={t("review_risk_dd")} hint={t("review_risk_dd_hint")}
+                      value={risk.maxDrawdown > 0 ? fmtMoney(-risk.maxDrawdown) : "—"}
+                      cls={risk.maxDrawdown > 0 ? "text-loss" : "text-muted"} />
+                    <RiskStat label={t("review_risk_avg_win")} value={risk.avgWin != null ? fmtMoney(risk.avgWin) : "—"} cls={risk.avgWin != null ? "text-profit" : "text-muted"} />
+                    <RiskStat label={t("review_risk_avg_loss")} value={risk.avgLoss != null ? fmtMoney(risk.avgLoss) : "—"} cls={risk.avgLoss != null ? "text-loss" : "text-muted"} />
+                    <RiskStat label={t("review_risk_win_streak")} value={risk.bestWinStreak > 0 ? `${risk.bestWinStreak} 🔥` : "—"} cls="text-profit" />
+                    <RiskStat label={t("review_risk_loss_streak")} value={risk.worstLossStreak > 0 ? String(risk.worstLossStreak) : "—"} cls={risk.worstLossStreak >= 3 ? "text-loss" : "text-foreground"} />
                   </div>
                 </div>
               )}
@@ -595,6 +697,44 @@ export default function MonthlyReviewPage() {
                   })()}
                 </div>
               )}
+
+              {/* Performance par heure de la journée */}
+              {hours.length > 1 && (() => {
+                const maxAbs = Math.max(1, ...hours.map((h) => Math.abs(h.pnl)));
+                const best = [...hours].sort((a, b) => b.pnl - a.pnl)[0];
+                // Plage continue d'heures entre la première et la dernière tradée.
+                const first = hours[0].hour, last = hours[hours.length - 1].hour;
+                const byHour = new Map(hours.map((h) => [h.hour, h]));
+                const span = Array.from({ length: last - first + 1 }, (_, i) => first + i);
+                return (
+                  <div className="mt-4 rounded-xl border border-border bg-card p-4">
+                    <h2 className="text-sm font-semibold text-foreground flex items-center gap-2"><Clock3 className="w-4 h-4 text-accent" />{t("review_hours_title")}</h2>
+                    <p className="text-xs text-muted mt-0.5 mb-1">{t("review_hours_sub")}</p>
+                    {best && best.pnl > 0 && (
+                      <p className="text-[11px] text-profit mb-2">{t("review_hours_best").replace("{hour}", String(best.hour)).replace("{money}", fmtMoney(best.pnl))}</p>
+                    )}
+                    <div className="flex items-stretch justify-between gap-1">
+                      {span.map((h, i) => {
+                        const d = byHour.get(h);
+                        const pct = d ? Math.max(10, Math.round((Math.abs(d.pnl) / maxAbs) * 100)) : 0;
+                        return (
+                          <div key={h} className="flex-1 flex flex-col items-center min-w-0"
+                            title={d ? `${h}h · ${fmtMoney(d.pnl)} · ${d.winRate}% · ${d.count} ${t("review_kpi_trades").toLowerCase()}` : `${h}h`}>
+                            <div className="w-full h-9 flex items-end justify-center">
+                              {d && d.pnl > 0 && <div className="w-full max-w-[18px] h-full flex items-end"><GrowBar vertical pct={pct} durationMs={700} delayMs={i * 35} className="rounded-t bg-profit/70" /></div>}
+                            </div>
+                            <div className="w-full h-px bg-border/70" />
+                            <div className="w-full h-9 flex items-start justify-center">
+                              {d && d.pnl < 0 && <div className="w-full max-w-[18px] h-full flex items-start"><GrowBar vertical pct={pct} durationMs={700} delayMs={i * 35} className="rounded-b bg-loss/70" /></div>}
+                            </div>
+                            <span className={`text-[9px] mt-1 tabular-nums ${d ? "text-muted" : "text-muted/30"}`}>{h}h</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Achat vs Vente */}
               {directions.length > 0 && (
@@ -753,6 +893,16 @@ function Kpi({ label, value, delta, suffix, valueClass = "text-foreground" }: { 
           </span>
         ) : (typeof delta === "number" && <Minus className="w-3 h-3 text-muted/40" />)}
       </div>
+    </div>
+  );
+}
+
+// Mini-carte d'une statistique de trading (hint optionnel au survol).
+function RiskStat({ label, value, cls, hint }: { label: string; value: string; cls: string; hint?: string }) {
+  return (
+    <div className="rounded-lg border border-border/70 bg-surface/30 p-3" title={hint}>
+      <p className="text-[11px] text-muted leading-tight">{label}</p>
+      <p className={`text-lg font-bold tabular-nums mt-1 ${cls}`}>{value}</p>
     </div>
   );
 }
