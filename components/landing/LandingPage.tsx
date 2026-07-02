@@ -711,6 +711,11 @@ function StoryChip({ tone, title, body, delay, className }: { tone: "alert" | "a
 function HeroStoryChart() {
   const { t } = useLanguage();
   const prefersReduced = useReducedMotion();
+  // Bougies client-only : Math.sin peut diverger d'un ULP entre moteurs JS
+  // (Node/V8 au SSR vs JavaScriptCore/SpiderMonkey chez le visiteur) →
+  // mismatch d'hydratation. Même principe que HeroParticles.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   return (
     <div
@@ -759,8 +764,8 @@ function HeroStoryChart() {
             <line key={y} x1="0" y1={y} x2="1000" y2={y} stroke="rgb(var(--border))" strokeWidth="1" strokeDasharray="3 7" opacity="0.35" />
           ))}
 
-          {/* Bougies décoratives */}
-          {STORY_CANDLES.map((cd, i) => (
+          {/* Bougies décoratives (client-only, cf. commentaire mounted) */}
+          {mounted && STORY_CANDLES.map((cd, i) => (
             <g key={i} opacity="0.22">
               <line x1={cd.x} y1={356 - cd.h} x2={cd.x} y2={362} stroke={cd.up ? "rgb(var(--profit))" : "rgb(var(--loss))"} strokeWidth="1" />
               <rect x={cd.x - 3} y={358 - cd.h * 0.7} width="6" height={cd.h * 0.55} rx="1" fill={cd.up ? "rgb(var(--profit))" : "rgb(var(--loss))"} />
