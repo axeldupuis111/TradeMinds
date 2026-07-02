@@ -140,6 +140,18 @@ const ALIASES: Record<string, string> = {
   "current account": "current_account",
   "building permits": "building_permits",
   "crude oil inventories": "crude_oil_inventories",
+
+  // Press conferences & misc (libellés d'affichage — pas d'entrée GLOSSARY,
+  // l'explication passe par le fallback IA)
+  "fomc press conference": "press_conference",
+  "ecb press conference": "press_conference",
+  "boe press conference": "press_conference",
+  "boc press conference": "press_conference",
+  "boj press conference": "press_conference",
+  "rba press conference": "press_conference",
+  "snb press conference": "press_conference",
+  "press conference": "press_conference",
+  "bank holiday": "bank_holiday",
 };
 
 export const GLOSSARY: Record<string, GlossaryRecord> = {

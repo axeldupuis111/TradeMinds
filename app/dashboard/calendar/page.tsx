@@ -19,9 +19,10 @@ import {
   type Impact,
 } from "@/lib/economic-calendar";
 import { lookupGlossary, type GlossaryEntry, type GlossaryLang } from "@/lib/economic-glossary";
+import { displayEventTitle } from "@/lib/economic-event-labels";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { CalendarClock, CalendarDays, ChevronDown, Filter, Sparkles, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 
 type EventRow = EconomicEvent & { id: string };
 
@@ -140,6 +141,7 @@ function EventDetail({ ev, onClose }: { ev: EventRow; onClose: () => void }) {
   });
   const style = impactStyle(ev.impact);
   const dir = surprise(ev);
+  const clearTitle = displayEventTitle(ev.title, glossaryLang);
 
   return (
     <>
@@ -155,7 +157,7 @@ function EventDetail({ ev, onClose }: { ev: EventRow; onClose: () => void }) {
         initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
         transition={{ duration: reducedMotion ? 0 : 0.22, ease: "easeOut" }}
         className="fixed top-14 right-0 z-50 h-[calc(100%-3.5rem)] w-full max-w-md bg-card border-l border-border shadow-2xl flex flex-col"
-        role="dialog" aria-modal="true" aria-label={ev.title}
+        role="dialog" aria-modal="true" aria-label={clearTitle}
       >
         {/* Header */}
         <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-border">
@@ -166,7 +168,11 @@ function EventDetail({ ev, onClose }: { ev: EventRow; onClose: () => void }) {
                 {ev.currency}
               </span>
             </div>
-            <h3 className="text-base font-bold text-foreground leading-snug">{ev.title}</h3>
+            <h3 className="text-base font-bold text-foreground leading-snug">{clearTitle}</h3>
+            {/* Nom original du flux — pour recouper avec d'autres calendriers */}
+            {clearTitle !== ev.title && (
+              <p className="text-[11px] text-foreground-muted/70 mt-0.5">{t("cal_feed_name")} : {ev.title}</p>
+            )}
             <p className="text-xs text-foreground-muted mt-0.5">{time} · {relativeLabel(ev, t)}</p>
           </div>
           <button onClick={onClose} aria-label={t("annotate_close")} className="p-1 rounded hover:bg-border/40 transition-colors shrink-0">
@@ -248,9 +254,17 @@ function EventDetail({ ev, onClose }: { ev: EventRow; onClose: () => void }) {
 
 export default function CalendarPage() {
   const { t, lang } = useLanguage();
+  const glossaryLang = lang as GlossaryLang;
   const dateLocale = ({ fr: "fr-FR", en: "en-US", de: "de-DE", es: "es-ES" } as const)[lang] ?? "en-US";
   const supabase = createClient();
   const reducedMotion = useReducedMotion();
+
+  // Re-rend toutes les 30 s pour rafraîchir comptes à rebours et repère « maintenant ».
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((v) => v + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   const [events, setEvents] = useState<EventRow[]>([]);
   const [userCurrencies, setUserCurrencies] = useState<string[]>([]);
@@ -357,6 +371,11 @@ export default function CalendarPage() {
 
   const hasFilters = currencyFilter.length > 0 || impactFilter.length > 0 || myCurrenciesOnly;
 
+  // Prochaine annonce à fort impact encore à venir (héro au-dessus de la liste).
+  const nextHigh = (dateMode === "upcoming" || dateMode === "today")
+    ? filtered.find((e) => e.impact === "high" && minutesUntil(e.event_time) > -5) ?? null
+    : null;
+
   const toggleImpact = (i: Impact) =>
     setImpactFilter((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]));
   const toggleCurrency = (c: string) =>
@@ -455,6 +474,32 @@ export default function CalendarPage() {
 
       </div>
 
+      {/* Héro — prochaine annonce à fort impact (compte à rebours live) */}
+      {!loading && nextHigh && (
+        <button
+          onClick={() => setSelected(nextHigh)}
+          className="w-full mb-5 flex items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/[0.06] px-4 py-3 text-left hover:border-red-500/50 transition-colors"
+        >
+          <span className="relative flex w-2.5 h-2.5 shrink-0" aria-hidden>
+            <span className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-60 motion-reduce:animate-none" />
+            <span className="relative w-2.5 h-2.5 rounded-full bg-red-500" />
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-red-500">{t("cal_next_high")}</p>
+            <p className="text-sm font-semibold text-foreground truncate">
+              {displayEventTitle(nextHigh.title, glossaryLang)}
+              <span className="ml-2 align-middle text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-red-500/15 text-red-500">{nextHigh.currency}</span>
+            </p>
+          </div>
+          <div className="text-right shrink-0">
+            <p className="text-sm font-bold tabular-nums text-foreground">
+              {new Date(nextHigh.event_time).toLocaleString(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit" })}
+            </p>
+            <p className="text-[11px] text-red-400 tabular-nums font-medium">{relativeLabel(nextHigh, t)}</p>
+          </div>
+        </button>
+      )}
+
       {/* List */}
       {loading ? (
         <div className="space-y-1.5">
@@ -464,41 +509,63 @@ export default function CalendarPage() {
         <p className="text-foreground-muted py-10 text-center">{t("cal_empty")}</p>
       ) : (
         <div className="space-y-6">
-          {groups.map((g) => (
+          {groups.map((g) => {
+            const highCount = g.events.filter((e) => e.impact === "high").length;
+            const isTodayGroup = g.date.toDateString() === new Date().toDateString();
+            // Repère « maintenant » : inséré entre le dernier événement passé et
+            // le premier à venir du jour courant.
+            const firstUpcoming = isTodayGroup ? g.events.findIndex((e) => minutesUntil(e.event_time) > 0) : -1;
+            return (
             <section key={g.key}>
-              <h2 className="-mx-6 px-6 py-1.5 text-xs font-bold uppercase tracking-wider text-foreground-muted">
+              <h2 className="-mx-6 px-6 py-1.5 text-xs font-bold uppercase tracking-wider text-foreground-muted flex items-center gap-2">
                 {g.date.toLocaleDateString(dateLocale, { weekday: "long", day: "2-digit", month: "long" })}
+                {highCount > 0 && (
+                  <span className="normal-case tracking-normal text-[10px] font-semibold text-red-500 bg-red-500/10 rounded-full px-2 py-0.5">
+                    🔴 {highCount}
+                  </span>
+                )}
               </h2>
               <ul className="space-y-1.5 mt-2">
-                {g.events.map((ev) => {
+                {g.events.map((ev, idx) => {
                   const time = new Date(ev.event_time).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
                   const style = impactStyle(ev.impact);
                   const dir = surprise(ev);
+                  const passed = minutesUntil(ev.event_time) < -5;
                   return (
-                    <li key={ev.id}>
-                      <button
-                        onClick={() => setSelected(ev)}
-                        className={`w-full flex items-center gap-3 rounded-lg border px-3 py-2 text-left hover:brightness-110 transition ${style.row}`}
-                      >
-                        <span className="text-sm shrink-0" aria-hidden>{impactEmoji(ev.impact)}</span>
-                        <span className="text-sm font-semibold tabular-nums text-foreground shrink-0 w-12">{time}</span>
-                        <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0 ${style.badge}`}>{ev.currency}</span>
-                        <span className="text-sm text-foreground flex-1 min-w-0 truncate">{ev.title}</span>
-                        {ev.actual && dir && (
-                          <span className={`text-xs font-semibold shrink-0 ${dir === "up" ? "text-profit" : "text-loss"}`}>
-                            {dir === "up" ? "▲" : "▼"} {ev.actual}
-                          </span>
-                        )}
-                        {!ev.actual && (
-                          <span className="text-[11px] text-foreground-muted shrink-0 tabular-nums">{relativeLabel(ev, t)}</span>
-                        )}
-                      </button>
-                    </li>
+                    <Fragment key={ev.id}>
+                      {idx === firstUpcoming && firstUpcoming > 0 && (
+                        <li aria-hidden className="flex items-center gap-2 py-0.5">
+                          <span className="flex-1 h-px bg-accent/40" />
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-accent">{t("cal_now_marker")}</span>
+                          <span className="flex-1 h-px bg-accent/40" />
+                        </li>
+                      )}
+                      <li>
+                        <button
+                          onClick={() => setSelected(ev)}
+                          className={`w-full flex items-center gap-3 rounded-lg border px-3 py-2 text-left hover:brightness-110 transition ${style.row} ${passed ? "opacity-55 hover:opacity-100" : ""}`}
+                        >
+                          <span className="text-sm shrink-0" aria-hidden>{impactEmoji(ev.impact)}</span>
+                          <span className="text-sm font-semibold tabular-nums text-foreground shrink-0 w-12">{time}</span>
+                          <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0 ${style.badge}`}>{ev.currency}</span>
+                          <span className="text-sm text-foreground flex-1 min-w-0 truncate">{displayEventTitle(ev.title, glossaryLang)}</span>
+                          {ev.actual && dir && (
+                            <span className={`text-xs font-semibold shrink-0 ${dir === "up" ? "text-profit" : "text-loss"}`}>
+                              {dir === "up" ? "▲" : "▼"} {ev.actual}
+                            </span>
+                          )}
+                          {!ev.actual && (
+                            <span className="text-[11px] text-foreground-muted shrink-0 tabular-nums">{relativeLabel(ev, t)}</span>
+                          )}
+                        </button>
+                      </li>
+                    </Fragment>
                   );
                 })}
               </ul>
             </section>
-          ))}
+            );
+          })}
         </div>
       )}
 

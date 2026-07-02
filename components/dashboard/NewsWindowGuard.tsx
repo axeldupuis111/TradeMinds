@@ -16,6 +16,8 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { loadTodayNews } from "@/lib/economic-calendar-client";
 import { activeNewsWindow, type EconomicEvent } from "@/lib/economic-calendar";
+import { displayEventTitle } from "@/lib/economic-event-labels";
+import type { GlossaryLang } from "@/lib/economic-glossary";
 import { useEffect, useRef, useState } from "react";
 
 const SOURCE_KEY = "news-window";
@@ -54,7 +56,7 @@ export default function NewsWindowGuard() {
         level: "warning",
         category: "session_reminder",
         message: t("news_guard_message")
-          .replace("{title}", active.title)
+          .replace("{title}", displayEventTitle(active.title, lang as GlossaryLang))
           .replace("{currency}", active.currency)
           .replace("{time}", time),
         dismissible: true,

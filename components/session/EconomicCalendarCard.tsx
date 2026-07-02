@@ -14,6 +14,8 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { loadTodayNews } from "@/lib/economic-calendar-client";
 import { impactEmoji, minutesUntil, type EconomicEvent, type Impact } from "@/lib/economic-calendar";
+import { displayEventTitle } from "@/lib/economic-event-labels";
+import type { GlossaryLang } from "@/lib/economic-glossary";
 import { CalendarClock } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -79,7 +81,7 @@ export default function EconomicCalendarCard() {
               <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0 ${style.badge}`}>
                 {ev.currency}
               </span>
-              <span className="text-sm text-foreground flex-1 min-w-0 truncate">{ev.title}</span>
+              <span className="text-sm text-foreground flex-1 min-w-0 truncate">{displayEventTitle(ev.title, lang as GlossaryLang)}</span>
               <span className="text-[11px] text-muted shrink-0 tabular-nums">{relativeLabel(ev, t)}</span>
             </li>
           );
