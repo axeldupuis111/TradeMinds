@@ -4,6 +4,7 @@ import DisciplineQuiz from "@/components/landing/DisciplineQuiz";
 import LiveDemo from "@/components/landing/LiveDemo";
 import PublicHeader from "@/components/PublicHeader";
 import { useLanguage } from "@/lib/LanguageContext";
+import { PLAN_FEATURES, FREE_BENEFITS, PLUS_BENEFITS, PREMIUM_BENEFITS } from "@/lib/plan-features";
 import Link from "next/link";
 import React, { useRef, useState, useEffect } from "react";
 import { motion, useInView, useReducedMotion, AnimatePresence, useMotionValue, useSpring, useTransform, useScroll } from "framer-motion";
@@ -1867,6 +1868,100 @@ function ROIBand({ t }: { t: (k: string) => string }) {
 }
 
 /* ─────────────────────────────────────────────
+   PRICING — comparatif complet repliable
+   Rend la matrice partagée lib/plan-features.ts
+   (la même que la page « gérer mon plan »).
+───────────────────────────────────────────── */
+function CompareCell({ val, t }: { val: boolean | string; t: (k: string) => string }) {
+  if (val === true) {
+    return (
+      <svg role="img" aria-label={t("upgrade_included")} className="w-4 h-4 mx-auto" style={{ color: "rgb(var(--profit))" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+      </svg>
+    );
+  }
+  if (val === false) {
+    return (
+      <svg role="img" aria-label={t("upgrade_not_included")} className="w-4 h-4 mx-auto" style={{ color: "rgb(var(--muted)/0.35)" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    );
+  }
+  if (val.includes("/")) {
+    const [n, periodKey] = val.split("/");
+    return <span className="text-sm" style={{ color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}>{n}/{t(periodKey)}</span>;
+  }
+  if (val === "plan_unlimited") {
+    return <span className="text-sm font-medium" style={{ color: "rgb(var(--profit))", fontStyle: "normal" }}>{t("plan_unlimited")}</span>;
+  }
+  return <span className="text-sm" style={{ color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}>{val}</span>;
+}
+
+function PricingCompareTable({ t }: { t: (k: string) => string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Reveal className="mt-8">
+      <div className="flex justify-center">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border text-sm font-medium transition-colors hover:border-[rgb(var(--accent)/0.4)]"
+          style={{ borderColor: "rgb(var(--border))", background: "rgb(var(--card))", color: "rgb(var(--foreground))", fontStyle: "normal" }}
+        >
+          {t("pricing_compare_toggle")}
+          <svg className={`w-4 h-4 transition-transform duration-200 ${open ? "rotate-180" : ""}`} style={{ color: "rgb(var(--muted))" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      </div>
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease }}
+            className="overflow-hidden"
+          >
+            <div className="mt-5 rounded-2xl border overflow-x-auto" style={{ borderColor: "rgb(var(--border))", background: "rgb(var(--card))" }}>
+              <table className="w-full text-sm min-w-[560px]">
+                <thead>
+                  <tr className="border-b" style={{ borderColor: "rgb(var(--border))", background: "rgb(var(--surface)/0.5)" }}>
+                    <th className="text-left px-4 py-3 font-medium" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("plan_feature")}</th>
+                    <th className="text-center px-4 py-3 font-medium" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("plan_free")}</th>
+                    <th className="text-center px-4 py-3 font-semibold" style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}>{t("plan_plus")}</th>
+                    <th className="text-center px-4 py-3 font-semibold" style={{ color: "rgb(245,158,11)", fontStyle: "normal" }}>{t("plan_premium")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {PLAN_FEATURES.map((f) => (
+                    <React.Fragment key={f.key}>
+                      {f.groupKey && (
+                        <tr style={{ background: "rgb(var(--surface)/0.55)" }}>
+                          <td colSpan={4} className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t(f.groupKey)}</td>
+                        </tr>
+                      )}
+                      <tr className="border-t" style={{ borderColor: "rgb(var(--border)/0.6)" }}>
+                        <td className="px-4 py-2.5" style={{ color: "rgb(var(--foreground)/0.9)", fontStyle: "normal" }}>{t(f.key)}</td>
+                        <td className="px-4 py-2.5 text-center"><CompareCell val={f.free} t={t} /></td>
+                        <td className="px-4 py-2.5 text-center"><CompareCell val={f.plus} t={t} /></td>
+                        <td className="px-4 py-2.5 text-center"><CompareCell val={f.premium} t={t} /></td>
+                      </tr>
+                    </React.Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </Reveal>
+  );
+}
+
+/* ─────────────────────────────────────────────
    PRICING
 ───────────────────────────────────────────── */
 function Pricing() {
@@ -1880,7 +1975,9 @@ function Pricing() {
       monthlyPrice: "0€",
       annualPrice: "0€",
       annualMonthly: "",
-      feats: [t("plan_benefit_free_1"), t("plan_benefit_free_2"), t("plan_benefit_free_3"), t("plan_benefit_free_4"), t("plan_benefit_free_5")],
+      feats: FREE_BENEFITS.map((k) => t(k)),
+      featsLabel: "",
+      includesNote: "",
       btnKey: "pricing_start_free",
       roiKey: "",
       popular: false,
@@ -1892,25 +1989,25 @@ function Pricing() {
       monthlyPrice: "9.99€",
       annualPrice: "89.99€",
       annualMonthly: "7.50€",
-      feats: [
-        t("plan_benefit_plus_1"), t("plan_benefit_plus_2"), t("plan_benefit_plus_3"),
-        t("plan_benefit_plus_4"), t("plan_benefit_plus_5"), t("plan_benefit_plus_6"), t("plan_benefit_plus_7"),
-      ],
+      feats: PLUS_BENEFITS.map((k) => t(k)),
+      featsLabel: "",
+      includesNote: "",
       btnKey: "pricing_choose_plus",
       roiKey: "plan_roi_plus",
       popular: true,
       gold: false,
     },
     {
+      // Premium : uniquement ce qu'il AJOUTE, le contenu du Plus est signalé
+      // à part (includesNote) pour ne jamais mélanger les deux.
       name: t("plan_premium"),
       sub: t("plan_premium_desc"),
       monthlyPrice: "19.99€",
       annualPrice: "179.88€",
       annualMonthly: "14.99€",
-      feats: [
-        t("plan_benefit_premium_1"), t("plan_benefit_premium_2"), t("plan_benefit_premium_3"),
-        t("plan_benefit_premium_4"), t("plan_premium_includes_plus_short"),
-      ],
+      feats: PREMIUM_BENEFITS.map((k) => t(k)),
+      featsLabel: t("plan_premium_exclusives"),
+      includesNote: t("plan_premium_includes_plus_short"),
       btnKey: "pricing_choose_premium",
       roiKey: "plan_roi_premium",
       popular: false,
@@ -2024,22 +2121,34 @@ function Pricing() {
                   </motion.div>
                 </AnimatePresence>
 
-                <ul className="mt-5 space-y-2.5 flex-1">
-                  {p.feats.map((feat) => (
-                    <li key={feat} className="flex items-start gap-2.5 text-[15px]">
-                      <div
-                        className="w-4 h-4 rounded-full flex items-center justify-center shrink-0 mt-0.5"
-                        style={{ background: p.gold ? "rgba(245,158,11,0.1)" : "rgb(var(--profit)/0.1)" }}
-                        aria-hidden
-                      >
-                        <svg className="w-2.5 h-2.5" style={{ color: p.gold ? "rgb(245,158,11)" : "rgb(var(--profit))" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                      <span style={{ color: "rgb(var(--foreground)/0.8)", fontStyle: "normal" }}>{feat}</span>
-                    </li>
-                  ))}
-                </ul>
+                <div className="mt-5 flex-1">
+                  {p.featsLabel && (
+                    <p className="text-[10px] font-bold uppercase tracking-widest mb-2.5" style={{ color: "rgb(245,158,11)", fontStyle: "normal" }}>{p.featsLabel}</p>
+                  )}
+                  <ul className="space-y-2.5">
+                    {p.feats.map((feat) => (
+                      <li key={feat} className="flex items-start gap-2.5 text-[15px]">
+                        <div
+                          className="w-4 h-4 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+                          style={{ background: p.gold ? "rgba(245,158,11,0.1)" : "rgb(var(--profit)/0.1)" }}
+                          aria-hidden
+                        >
+                          <svg className="w-2.5 h-2.5" style={{ color: p.gold ? "rgb(245,158,11)" : "rgb(var(--profit))" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                        <span style={{ color: "rgb(var(--foreground)/0.8)", fontStyle: "normal" }}>{feat}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {/* « Tout le plan Plus inclus » — séparé des exclusivités */}
+                  {p.includesNote && (
+                    <p className="mt-4 pt-3 border-t flex items-center gap-2 text-[13px] font-medium" style={{ borderColor: "rgba(245,158,11,0.2)", color: "rgb(var(--foreground)/0.75)", fontStyle: "normal" }}>
+                      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full shrink-0 text-[11px] font-bold" style={{ background: "rgba(245,158,11,0.12)", color: "rgb(245,158,11)" }} aria-hidden>+</span>
+                      {p.includesNote}
+                    </p>
+                  )}
+                </div>
 
                 <Link
                   href="/login"
@@ -2078,6 +2187,9 @@ function Pricing() {
             );
           })}
         </StaggerReveal>
+
+        {/* Comparatif complet (repliable) — toutes les fonctionnalités, aucun oubli */}
+        <PricingCompareTable t={t} />
 
         <Reveal className="flex flex-wrap items-center justify-center gap-6 mt-8 text-xs text-[rgb(var(--muted))]">
           {[

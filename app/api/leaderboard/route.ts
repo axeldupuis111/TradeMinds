@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
   const selfM = computeMetrics((selfReviews ?? []) as ReviewRow[]);
 
   const { data: profiles } = await admin
-    .from("profiles").select("id, username").eq("leaderboard_opt_in", true).not("username", "is", null);
+    .from("profiles").select("id, username, plan").eq("leaderboard_opt_in", true).not("username", "is", null);
 
   // Base "self" renvoyée dans tous les cas (alimente la carte stats + badges).
   function buildSelf(rank: number | null, percentile: number | null) {
@@ -92,6 +92,8 @@ export async function GET(req: NextRequest) {
 
   const ids = profiles.map((p) => p.id);
   const usernameById = new Map(profiles.map((p) => [p.id, p.username as string]));
+  // Badge Premium affiché sur le classement (avantage de statut du plan).
+  const premiumById = new Map(profiles.map((p) => [p.id, p.plan === "premium"]));
 
   // Reviews des 2 fenêtres (courante + précédente) pour le calcul du mouvement.
   const { data: reviews } = await admin
@@ -133,6 +135,7 @@ export async function GET(req: NextRequest) {
       streak: r.m.streak,
       value: valueFor(r.m, mode),
       isMe: r.id === user.id,
+      premium: premiumById.get(r.id) ?? false,
       delta: prevRank ? prevRank - rank : null, // >0 = monté, null = nouveau
     };
   });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useLanguage } from "@/lib/LanguageContext";
-import { ArrowUp, ArrowDown, Crown, Minus, Lock, Share2 } from "lucide-react";
+import { ArrowUp, ArrowDown, BadgeCheck, Crown, Minus, Lock, Share2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import CountUp from "@/components/animations/CountUp";
@@ -14,7 +14,12 @@ type Mode = "discipline" | "sessions" | "streak";
 
 interface Entry {
   rank: number; username: string; score: number; sessions: number; streak: number;
-  value: number; isMe: boolean; delta: number | null;
+  value: number; isMe: boolean; premium: boolean; delta: number | null;
+}
+
+// Badge de statut des membres Premium (avantage du plan, visible par tous).
+function PremiumBadge({ label }: { label: string }) {
+  return <BadgeCheck className="w-3.5 h-3.5 text-yellow-400 shrink-0" strokeWidth={2} aria-label={label} role="img" />;
 }
 interface Self {
   score: number; sessions: number; streak: number;
@@ -309,7 +314,10 @@ export default function LeaderboardPage() {
                     <span className={e.isMe ? "rounded-full ring-2 ring-accent ring-offset-2 ring-offset-background" : ""}>
                       <Avatar name={e.username} isMe={e.isMe} />
                     </span>
-                    <span className="text-xs text-foreground mt-1 truncate max-w-full font-medium">{e.isMe ? t("leaderboard_you") : `@${e.username}`}</span>
+                    <span className="flex items-center gap-1 max-w-full mt-1">
+                      <span className="text-xs text-foreground truncate font-medium">{e.isMe ? t("leaderboard_you") : `@${e.username}`}</span>
+                      {e.premium && <PremiumBadge label={t("plan_premium")} />}
+                    </span>
                     <span className={`text-lg font-bold ${scoreColor(e.score)}`}>{displayValue(e.score, e.sessions, e.streak)}</span>
                     <span className="text-[10px] text-muted tabular-nums">📅 {e.sessions} · 🔥 {e.streak}</span>
                     <div className="w-full h-28 flex items-end mt-1">
@@ -364,7 +372,10 @@ function Row({ e, t, value }: { e: Entry; t: (k: string) => string; value: strin
       <span className="text-sm font-bold text-muted w-7 text-center tabular-nums">{e.rank}</span>
       <span className="w-7 flex justify-center"><Delta d={e.delta} /></span>
       <Avatar name={e.username} isMe={e.isMe} />
-      <span className="flex-1 min-w-0 text-foreground truncate">{e.isMe ? t("leaderboard_you") : `@${e.username}`}</span>
+      <span className="flex-1 min-w-0 flex items-center gap-1.5">
+        <span className="text-foreground truncate">{e.isMe ? t("leaderboard_you") : `@${e.username}`}</span>
+        {e.premium && <PremiumBadge label={t("plan_premium")} />}
+      </span>
       <span className="hidden sm:inline text-[11px] text-muted tabular-nums whitespace-nowrap">📅 {e.sessions} · 🔥 {e.streak}</span>
       <span className="text-base font-bold w-12 text-right text-foreground shrink-0">{value}</span>
     </div>
