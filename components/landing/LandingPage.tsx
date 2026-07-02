@@ -635,224 +635,193 @@ function HeroDashboard() {
         </motion.div>
       )}
       <motion.div style={prefersReduced ? undefined : { y: parallaxY }}>
-        <DashboardMockup />
+        <HeroStoryChart />
       </motion.div>
     </motion.div>
   );
 }
 
 /* ─────────────────────────────────────────────
-   DASHBOARD MOCKUP
+   HERO STORY CHART — la courbe d'équité racontée
+   Un seul grand chart annoté par l'IA en 3 actes :
+   tilt détecté (rouge) → intervention (cyan) →
+   process retrouvé (vert). Déterministe, SSR-safe.
 ───────────────────────────────────────────── */
-function DashboardMockup() {
+
+// Géométrie de la courbe (viewBox 1000×380). Trois actes.
+const CURVE_CALM = "M0,295 L45,286 L90,291 L135,276 L180,268 L225,274 L270,256 L310,252";
+const CURVE_TILT = "M310,252 L340,268 L365,261 L390,290 L415,283 L440,306 L465,299 L490,318 L505,314";
+const CURVE_DISC = "M505,314 L550,298 L600,288 L650,268 L700,252 L750,228 L800,208 L850,184 L900,158 L950,138 L1000,118";
+// Zones sous la courbe (remplissage dégradé par acte).
+const AREA_TILT = `${CURVE_TILT} L505,380 L310,380 Z`;
+const AREA_DISC = `${CURVE_DISC} L1000,380 L505,380 Z`;
+
+// Bougies décoratives en fond de chart (pseudo-random déterministe → SSR-safe).
+const STORY_CANDLES = Array.from({ length: 30 }, (_, i) => {
+  const r = (n: number) => { const s = Math.sin((i + 1) * n) * 10000; return s - Math.floor(s); };
+  return { x: 12 + i * 33, h: 10 + r(3.7) * 20, up: r(7.1) > 0.45 };
+});
+
+// Pastille pulsante ancrée sur un point de la courbe.
+function StoryDot({ cx, cy, color, delay, reduced }: { cx: number; cy: number; color: string; delay: number; reduced: boolean }) {
+  return (
+    <motion.g
+      initial={reduced ? false : { opacity: 0, scale: 0 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.4, delay, ease }}
+      style={{ transformOrigin: `${cx}px ${cy}px` }}
+    >
+      {!reduced && (
+        <circle cx={cx} cy={cy} r="7" fill="none" stroke={color} strokeWidth="1.5" opacity="0.6">
+          <animate attributeName="r" values="5;13;5" dur="2.4s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0.6;0;0.6" dur="2.4s" repeatCount="indefinite" />
+        </circle>
+      )}
+      <circle cx={cx} cy={cy} r="4.5" fill={color} style={{ filter: `drop-shadow(0 0 5px ${color})` }} />
+    </motion.g>
+  );
+}
+
+// Étiquette d'annotation IA flottant au-dessus du chart.
+function StoryChip({ tone, title, body, delay, className }: { tone: "alert" | "action" | "win"; title: string; body: string; delay: number; className: string }) {
+  const prefersReduced = useReducedMotion();
+  const c = tone === "alert" ? "var(--loss)" : tone === "action" ? "var(--accent)" : "var(--profit)";
+  return (
+    <motion.div
+      className={`absolute z-10 max-w-[46%] sm:max-w-[240px] rounded-lg border px-2.5 py-1.5 sm:px-3 sm:py-2 backdrop-blur-md ${className}`}
+      style={{
+        background: "rgb(var(--card)/0.88)",
+        borderColor: `rgb(${c}/0.35)`,
+        boxShadow: `0 8px 28px -8px rgba(0,0,0,0.65), 0 0 18px -6px rgb(${c}/0.4)`,
+        fontStyle: "normal",
+      }}
+      initial={prefersReduced ? false : { opacity: 0, y: 10, scale: 0.92 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.5, delay, ease }}
+    >
+      <p className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold leading-tight" style={{ color: `rgb(${c})` }}>
+        <span className="inline-block w-1.5 h-1.5 rounded-full shrink-0" style={{ background: `rgb(${c})` }} aria-hidden />
+        {title}
+      </p>
+      <p className="hidden sm:block text-[10px] mt-0.5 leading-snug" style={{ color: "rgb(var(--foreground)/0.75)" }}>{body}</p>
+    </motion.div>
+  );
+}
+
+function HeroStoryChart() {
   const { t } = useLanguage();
   const prefersReduced = useReducedMotion();
 
   return (
     <div
-      className="rounded-2xl border overflow-hidden"
+      className="relative rounded-2xl border overflow-hidden"
       style={{
         borderColor: "rgb(var(--border))",
-        background: "rgb(var(--card))",
+        background: "linear-gradient(180deg, rgb(var(--card)) 0%, rgb(var(--surface)/0.55) 100%)",
         boxShadow: "0 32px 80px -12px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.03)",
-        /* Perspective tilt — subtle, removed via media query if no-motion */
         transform: prefersReduced ? undefined : "perspective(1600px) rotateX(1.5deg)",
         transformOrigin: "center bottom",
       }}
     >
-      {/* Window chrome bar */}
-      <div
-        className="flex items-center gap-2 px-4 py-3 border-b"
-        style={{ borderColor: "rgb(var(--border))", background: "rgb(var(--surface)/0.5)" }}
-      >
-        <span className="w-2.5 h-2.5 rounded-full" style={{ background: "rgb(var(--loss)/0.5)" }} aria-hidden />
-        <span className="w-2.5 h-2.5 rounded-full" style={{ background: "rgb(var(--warning)/0.5)" }} aria-hidden />
-        <span className="w-2.5 h-2.5 rounded-full" style={{ background: "rgb(var(--profit)/0.5)" }} aria-hidden />
-        <div
-          className="ml-3 flex items-center gap-2 px-3 py-1 rounded-md border text-[10px]"
-          style={{ background: "rgb(var(--card))", borderColor: "rgb(var(--border))", color: "rgb(var(--muted))", fontStyle: "normal" }}
-        >
-          <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
-          </svg>
-          app.tradediscipline.com
-        </div>
-      </div>
-
-      {/* KPI grid */}
-      <div className="p-4 sm:p-6 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        {/* Discipline score */}
-        <motion.div
-          className="col-span-1 flex flex-col items-center justify-center rounded-xl p-4 gap-2 border"
-          style={{ background: "rgb(var(--surface)/0.5)", borderColor: "rgb(var(--border))" }}
-          initial={prefersReduced ? false : { opacity: 0, scale: 0.88 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.55, delay: 0.52, ease }}
-        >
-          <svg width="72" height="72" viewBox="0 0 72 72" aria-label="Discipline score 85%" role="img">
-            <defs>
-              <linearGradient id="scoreG" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="rgb(var(--accent))" />
-                <stop offset="100%" stopColor="rgb(var(--profit))" />
-              </linearGradient>
-            </defs>
-            {/* Track */}
-            <circle cx="36" cy="36" r="29" fill="none" stroke="rgb(var(--border))" strokeWidth="5.5" />
-            {/* Animated progress arc */}
-            <motion.circle
-              cx="36" cy="36" r="29" fill="none"
-              stroke="url(#scoreG)" strokeWidth="5.5" strokeLinecap="round"
-              strokeDasharray={`${2 * Math.PI * 29} ${2 * Math.PI * 29}`}
-              initial={prefersReduced ? false : { strokeDashoffset: 2 * Math.PI * 29 }}
-              animate={{ strokeDashoffset: 2 * Math.PI * 29 * (1 - 0.85) }}
-              transform="rotate(-90 36 36)"
-              transition={{ duration: 1.4, delay: 0.6, ease: [0.4, 0, 0.2, 1] }}
-              style={{ filter: "drop-shadow(0 0 3px rgb(var(--accent)/0.55))" }}
-            />
-            <text x="36" y="33" textAnchor="middle" fill="rgb(var(--foreground))" fontSize="16" fontWeight="700" fontStyle="normal"><NumberCount end={85} /></text>
-            <text x="36" y="44" textAnchor="middle" fill="rgb(var(--muted))" fontSize="7" fontStyle="normal">DISCIPLINE</text>
-          </svg>
-        </motion.div>
-
-        {/* Equity chart */}
-        <motion.div
-          className="col-span-1 rounded-xl p-3.5 border"
-          style={{ background: "rgb(var(--surface)/0.5)", borderColor: "rgb(var(--border))" }}
-          initial={prefersReduced ? false : { opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.62, ease }}
-        >
-          <p className="text-[9px] uppercase tracking-widest mb-2" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("preview_equity")}</p>
-          <svg viewBox="0 0 100 40" className="w-full h-9" preserveAspectRatio="none" aria-hidden>
-            <defs>
-              <linearGradient id="eqG" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="rgb(var(--profit))" stopOpacity="0.25" />
-                <stop offset="100%" stopColor="rgb(var(--profit))" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-            {/* Animated fill area */}
-            <motion.path
-              d="M0,38 L9,35 L20,37 L31,28 L42,24 L53,19 L64,14 L76,10 L87,6 L100,2 L100,40 L0,40Z"
-              fill="url(#eqG)"
-              initial={prefersReduced ? false : { opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6, delay: 1.6 }}
-            />
-            {/* Animated line drawing in */}
-            <motion.path
-              d="M0,38 L9,35 L20,37 L31,28 L42,24 L53,19 L64,14 L76,10 L87,6 L100,2"
-              fill="none" stroke="rgb(var(--profit))" strokeWidth="1.5"
-              initial={prefersReduced ? false : { pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: 1, opacity: 1 }}
-              transition={{ duration: 1.6, delay: 0.65, ease: "easeOut" }}
-            />
-            {/* Éclat "live" qui parcourt la courbe en boucle */}
-            {!prefersReduced && (
-              <motion.path
-                d="M0,38 L9,35 L20,37 L31,28 L42,24 L53,19 L64,14 L76,10 L87,6 L100,2"
-                fill="none" stroke="rgb(var(--profit))" strokeWidth="2.2" strokeLinecap="round"
-                pathLength={1}
-                strokeDasharray="0.07 1"
-                style={{ filter: "drop-shadow(0 0 1.5px rgb(var(--profit)))" }}
-                initial={{ strokeDashoffset: 1 }}
-                animate={{ strokeDashoffset: [1, -0.07] }}
-                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 2.4, repeatDelay: 0.6 }}
-              />
-            )}
-          </svg>
-          <p className="text-sm font-bold mt-1.5" style={{ color: "rgb(var(--profit))", fontStyle: "normal" }}>+3 240€</p>
-        </motion.div>
-
-        {/* Win rate */}
-        <motion.div
-          className="rounded-xl p-3.5 border"
-          style={{ background: "rgb(var(--surface)/0.5)", borderColor: "rgb(var(--border))" }}
-          initial={prefersReduced ? false : { opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.72, ease }}
-        >
-          <p className="text-[9px] uppercase tracking-widest" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("preview_winrate")}</p>
-          <p className="text-2xl font-bold mt-0.5 tracking-tight tabular-nums" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}><NumberCount end={68} />%</p>
-          <p className="text-[9px] uppercase tracking-widest mt-2.5" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("preview_trades")}</p>
-          <p className="text-2xl font-bold mt-0.5 tracking-tight tabular-nums" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}><NumberCount end={47} /></p>
-        </motion.div>
-
-        {/* Challenge progress */}
-        <motion.div
-          className="rounded-xl p-3.5 border"
-          style={{ background: "rgb(var(--surface)/0.5)", borderColor: "rgb(var(--border))" }}
-          initial={prefersReduced ? false : { opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.82, ease }}
-        >
-          <p className="text-[9px] uppercase tracking-widest" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("preview_pnl_total")}</p>
-          <p className="text-lg font-bold mt-0.5" style={{ color: "rgb(var(--profit))", fontStyle: "normal" }}>+3 240€</p>
-          <p className="text-[9px] uppercase tracking-widest mt-2.5" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("preview_challenge")}</p>
-          <div className="mt-1.5 h-1 rounded-full overflow-hidden" style={{ background: "rgb(var(--surface))" }}>
-            <motion.div
-              className="h-full rounded-full"
-              style={{ background: "linear-gradient(90deg, rgb(var(--accent)) 0%, rgb(var(--profit)) 100%)" }}
-              initial={{ width: "0%" }}
-              animate={{ width: "89%" }}
-              transition={{ duration: 1.2, delay: 1.0, ease: [0.4, 0, 0.2, 1] }}
-            />
-          </div>
-          <p className="text-[9px] mt-1" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>89%</p>
-        </motion.div>
-      </div>
-
-      {/* AI insight bar */}
-      <motion.div
-        className="mx-4 sm:mx-6 mb-3 flex items-center gap-2.5 rounded-lg px-4 py-2.5 border"
-        style={{
-          background: "rgb(var(--profit)/0.06)",
-          borderColor: "rgb(var(--profit)/0.15)",
-        }}
-        initial={prefersReduced ? false : { opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.45, delay: 1.0, ease }}
-      >
-        <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0" style={{ background: "rgb(var(--profit)/0.15)" }} aria-hidden>
-          <svg className="w-3 h-3" style={{ color: "rgb(var(--profit))" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-          </svg>
-        </div>
-        <p className="text-xs leading-snug" style={{ color: "rgb(var(--foreground)/0.8)", fontStyle: "normal" }}>
-          {t("mockup_streak_label")} — <span className="font-semibold" style={{ color: "rgb(var(--profit))" }}>{t("mockup_streak_record")}</span>
+      {/* Bandeau : lecture IA en direct */}
+      <div className="flex items-center justify-between gap-3 px-4 sm:px-6 pt-4 sm:pt-5">
+        <p className="flex items-center gap-2 text-[10px] sm:text-[11px] font-bold uppercase tracking-widest" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>
+          <span className="relative flex w-1.5 h-1.5 shrink-0">
+            <span className="ring-ping absolute inset-0 rounded-full" style={{ background: "rgb(var(--accent))" }} />
+            <span className="relative w-1.5 h-1.5 rounded-full" style={{ background: "rgb(var(--accent))" }} />
+          </span>
+          {t("hero_chart_kicker")}
         </p>
-      </motion.div>
+        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-semibold" style={{ borderColor: "rgb(var(--accent)/0.3)", color: "rgb(var(--accent))", background: "rgb(var(--accent)/0.06)", fontStyle: "normal" }}>
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+          </svg>
+          {t("hero_chart_badge")}
+        </div>
+      </div>
 
-      {/* Trade rows */}
-      <div className="mx-4 sm:mx-6 mb-5 border rounded-xl overflow-hidden" style={{ borderColor: "rgb(var(--border))" }}>
+      {/* Scène : chart annoté */}
+      <div className="relative h-[290px] sm:h-[340px] lg:h-[380px]" aria-label={t("hero_chart_kicker")} role="img">
+        <svg viewBox="0 0 1000 380" preserveAspectRatio="none" className="absolute inset-0 w-full h-full" aria-hidden>
+          <defs>
+            <linearGradient id="storyTilt" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="rgb(var(--loss))" stopOpacity="0.16" />
+              <stop offset="100%" stopColor="rgb(var(--loss))" stopOpacity="0" />
+            </linearGradient>
+            <linearGradient id="storyDisc" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="rgb(var(--profit))" stopOpacity="0.2" />
+              <stop offset="100%" stopColor="rgb(var(--profit))" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+
+          {/* Grille horizontale */}
+          {[76, 152, 228, 304].map((y) => (
+            <line key={y} x1="0" y1={y} x2="1000" y2={y} stroke="rgb(var(--border))" strokeWidth="1" strokeDasharray="3 7" opacity="0.35" />
+          ))}
+
+          {/* Bougies décoratives */}
+          {STORY_CANDLES.map((cd, i) => (
+            <g key={i} opacity="0.22">
+              <line x1={cd.x} y1={356 - cd.h} x2={cd.x} y2={362} stroke={cd.up ? "rgb(var(--profit))" : "rgb(var(--loss))"} strokeWidth="1" />
+              <rect x={cd.x - 3} y={358 - cd.h * 0.7} width="6" height={cd.h * 0.55} rx="1" fill={cd.up ? "rgb(var(--profit))" : "rgb(var(--loss))"} />
+            </g>
+          ))}
+
+          {/* Zones sous la courbe */}
+          <motion.path d={AREA_TILT} fill="url(#storyTilt)"
+            initial={prefersReduced ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.7, delay: 1.7 }} />
+          <motion.path d={AREA_DISC} fill="url(#storyDisc)"
+            initial={prefersReduced ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.9, delay: 2.9 }} />
+
+          {/* Acte 1 — gains calmes */}
+          <motion.path d={CURVE_CALM} fill="none" stroke="rgb(var(--foreground)/0.65)" strokeWidth="2.5" strokeLinejoin="round"
+            initial={prefersReduced ? false : { pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.9, delay: 0.55, ease: "easeOut" }} />
+          {/* Acte 2 — tilt */}
+          <motion.path d={CURVE_TILT} fill="none" stroke="rgb(var(--loss))" strokeWidth="2.5" strokeLinejoin="round"
+            style={{ filter: "drop-shadow(0 0 4px rgb(var(--loss)/0.5))" }}
+            initial={prefersReduced ? false : { pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.8, delay: 1.45, ease: "easeIn" }} />
+          {/* Intervention — ligne verticale cyan */}
+          <motion.line x1="505" y1="30" x2="505" y2="360" stroke="rgb(var(--accent))" strokeWidth="1.5" strokeDasharray="5 6"
+            style={{ filter: "drop-shadow(0 0 4px rgb(var(--accent)/0.6))" }}
+            initial={prefersReduced ? false : { opacity: 0, pathLength: 0 }} animate={{ opacity: 0.85, pathLength: 1 }} transition={{ duration: 0.6, delay: 2.35, ease: "easeOut" }} />
+          {/* Acte 3 — discipline retrouvée */}
+          <motion.path d={CURVE_DISC} fill="none" stroke="rgb(var(--profit))" strokeWidth="3" strokeLinejoin="round"
+            style={{ filter: "drop-shadow(0 0 5px rgb(var(--profit)/0.45))" }}
+            initial={prefersReduced ? false : { pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.5, delay: 2.85, ease: [0.4, 0, 0.2, 1] }} />
+          {/* Éclat "live" en boucle sur le segment discipliné */}
+          {!prefersReduced && (
+            <motion.path d={CURVE_DISC} fill="none" stroke="rgb(var(--profit))" strokeWidth="4" strokeLinecap="round"
+              pathLength={1} strokeDasharray="0.06 1"
+              style={{ filter: "drop-shadow(0 0 3px rgb(var(--profit)))" }}
+              initial={{ strokeDashoffset: 1 }} animate={{ strokeDashoffset: [1, -0.06] }}
+              transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut", delay: 4.6, repeatDelay: 0.8 }} />
+          )}
+
+          {/* Pastilles ancrées aux moments clés */}
+          <StoryDot cx={440} cy={306} color="rgb(var(--loss))" delay={2.0} reduced={!!prefersReduced} />
+          <StoryDot cx={505} cy={314} color="rgb(var(--accent))" delay={2.6} reduced={!!prefersReduced} />
+          <StoryDot cx={850} cy={184} color="rgb(var(--profit))" delay={4.1} reduced={!!prefersReduced} />
+        </svg>
+
+        {/* Annotations IA (HTML — positions en % du viewBox 1000×380) */}
+        <StoryChip tone="alert" title={t("hero_chart_alert_title")} body={t("hero_chart_alert_body")} delay={2.1} className="left-[24%] top-[38%]" />
+        <StoryChip tone="action" title={t("hero_chart_action_title")} body={t("hero_chart_action_body")} delay={2.7} className="left-[51.5%] top-[4%]" />
+        <StoryChip tone="win" title={t("hero_chart_win_title")} body={t("hero_chart_win_body")} delay={4.2} className="left-[63%] top-[22%]" />
+      </div>
+
+      {/* Pied : les chiffres qui comptent */}
+      <div className="relative flex items-center justify-around border-t px-4 py-3 sm:py-3.5" style={{ borderColor: "rgb(var(--border)/0.7)", background: "rgb(var(--card)/0.6)" }}>
         {[
-          { pair: "EUR/USD", dir: "BUY",  pnl: "+182.50", win: true,  date: "28/04" },
-          { pair: "GBP/JPY", dir: "SELL", pnl: "-47.20",  win: false, date: "27/04" },
-          { pair: "XAU/USD", dir: "BUY",  pnl: "+316.00", win: true,  date: "26/04" },
-        ].map((tr, idx) => (
-          <motion.div
-            key={tr.pair}
-            className="flex items-center gap-3 px-4 py-2.5 text-xs transition-colors"
-            style={{
-              borderBottom: idx < 2 ? `1px solid rgb(var(--border))` : undefined,
-              fontStyle: "normal",
-            }}
-            initial={prefersReduced ? false : { opacity: 0, x: -8 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.35, delay: 1.1 + idx * 0.07, ease }}
-          >
-            <span className="tabular-nums w-9 shrink-0" style={{ color: "rgb(var(--muted)/0.5)" }}>{tr.date}</span>
-            <span className="font-medium w-14" style={{ color: "rgb(var(--foreground))" }}>{tr.pair}</span>
-            <span
-              className="px-2 py-0.5 rounded-md text-[10px] font-semibold"
-              style={{
-                background: tr.dir === "BUY" ? "rgb(var(--profit)/0.1)" : "rgb(var(--loss)/0.1)",
-                color: tr.dir === "BUY" ? "rgb(var(--profit))" : "rgb(var(--loss))",
-              }}
-            >
-              {tr.dir}
-            </span>
-            <div className="flex-1 h-px" style={{ background: "rgb(var(--border))" }} aria-hidden />
-            <span className="font-bold tabular-nums" style={{ color: tr.win ? "rgb(var(--profit))" : "rgb(var(--loss))" }}>{tr.pnl}€</span>
+          { label: "DISCIPLINE", value: <><NumberCount end={85} duration={2200} />/100</>, color: "rgb(var(--accent))" },
+          { label: t("preview_winrate"), value: <><NumberCount end={68} duration={2200} />%</>, color: "rgb(var(--foreground))" },
+          { label: t("preview_trades"), value: <NumberCount end={47} duration={2200} />, color: "rgb(var(--foreground))" },
+          { label: t("preview_pnl_total"), value: <>+<NumberCount end={3240} duration={2400} />€</>, color: "rgb(var(--profit))" },
+        ].map((s, i) => (
+          <motion.div key={i} className="text-center" style={{ fontStyle: "normal" }}
+            initial={prefersReduced ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: 0.7 + i * 0.1, ease }}>
+            <p className="text-sm sm:text-base font-bold tabular-nums leading-none" style={{ color: s.color }}>{s.value}</p>
+            <p className="text-[8px] sm:text-[9px] uppercase tracking-widest mt-1" style={{ color: "rgb(var(--muted))" }}>{s.label}</p>
           </motion.div>
         ))}
       </div>
