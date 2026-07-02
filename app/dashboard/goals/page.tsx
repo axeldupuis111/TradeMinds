@@ -15,9 +15,11 @@ type Comparator = "gte" | "lte";
 type Period = "day" | "week" | "month" | "quarter" | "year";
 type Horizon = "short" | "mid" | "long";
 
+interface PeriodHistory { key: string; value: number; met: boolean; current: boolean; hadData: boolean }
 interface MetricGoal {
   id: string; kind: "metric"; metric: Metric; target: number; comparator: Comparator;
   period: Period; value: number; met: boolean; progress: number;
+  history?: PeriodHistory[]; periodStreak?: number;
 }
 interface CustomGoal { id: string; kind: "custom"; title: string; period: Period; done: boolean; recurring: boolean; streak: number; bestStreak: number }
 type Goal = MetricGoal | CustomGoal;
@@ -298,6 +300,32 @@ function DisciplineHeatmap({ data, t }: { data: { date: string; score: number }[
   );
 }
 
+// Pastilles d'historique : chaque période passée évaluée rétroactivement
+// (✓ vert / ✗ rouge / neutre si aucune activité), la courante cerclée.
+function HistoryDots({ history, unit: u, t }: { history: PeriodHistory[]; unit: string; t: (k: string) => string }) {
+  if (!history || history.length < 2) return null;
+  return (
+    <div className="flex items-center gap-[3px]">
+      {history.map((h) => {
+        const cls = h.current
+          ? h.met ? "bg-profit ring-1 ring-profit/70 ring-offset-1 ring-offset-card" : "bg-accent/70 ring-1 ring-accent/70 ring-offset-1 ring-offset-card"
+          : !h.hadData ? "bg-surface border border-border/70"
+          : h.met ? "bg-profit/80" : "bg-loss/45";
+        const status = h.current ? t("goals_hist_current") : !h.hadData ? t("goals_hist_nodata") : h.met ? t("goals_hist_met") : t("goals_hist_missed");
+        return (
+          <span
+            key={h.key}
+            title={`${h.key} · ${h.value}${u} · ${status}`}
+            role="img"
+            aria-label={`${h.key} : ${status}`}
+            className={`w-2 h-2 rounded-[2px] shrink-0 ${cls}`}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 // Statut + priorité unifiés (objectifs mesurés et perso). Plus la priorité est
 // basse, plus l'objectif remonte en haut de son horizon (ce qui demande attention).
 function goalStatus(g: Goal): { status: "met" | "failed" | "progress"; priority: number } {
@@ -347,6 +375,25 @@ export default function GoalsPage() {
     setLoading(false);
   }, []);
   useEffect(() => { load(); }, [load]);
+
+  // Célébration quand un objectif mesuré vient de passer à « atteint »
+  // (comparaison avec l'état mémorisé de la dernière visite — jamais au 1er chargement).
+  useEffect(() => {
+    if (loading) return;
+    const metric = goals.filter((g): g is MetricGoal => g.kind === "metric");
+    if (metric.length === 0) return;
+    try {
+      const raw = localStorage.getItem("goals_met_snapshot");
+      const prev: Record<string, boolean> = raw ? JSON.parse(raw) : {};
+      const newlyMet = metric.some((g) => g.met && prev[g.id] === false);
+      const snapshot: Record<string, boolean> = {};
+      for (const g of metric) snapshot[g.id] = g.met;
+      localStorage.setItem("goals_met_snapshot", JSON.stringify(snapshot));
+      if (newlyMet) setShowConfetti(true);
+    } catch {
+      // stockage indisponible (navigation privée) — pas de célébration, pas d'erreur
+    }
+  }, [goals, loading]);
 
   useEffect(() => {
     fetch("/api/goals/recommend")
@@ -837,6 +884,11 @@ export default function GoalsPage() {
           </h2>
           {goals.length > 0 && (
             <div className="flex items-center gap-2 shrink-0">
+              {achieved === goals.length && (
+                <span className="text-[11px] font-semibold text-profit bg-profit/10 rounded-full px-2.5 py-1">
+                  {t("goals_all_met")}
+                </span>
+              )}
               <div className="relative w-8 h-8">
                 <svg viewBox="0 0 36 36" className="w-8 h-8 -rotate-90">
                   <circle cx="18" cy="18" r="16" fill="none" stroke="rgb(var(--surface))" strokeWidth="4" />
@@ -899,7 +951,17 @@ export default function GoalsPage() {
                         <div className="min-w-0 flex-1">
                           {g.kind === "metric" ? (
                             <>
-                              <p className="font-medium text-foreground text-sm leading-tight truncate">{metricLabel(g.metric)}</p>
+                              <p className="font-medium text-foreground text-sm leading-tight truncate flex items-center gap-1.5">
+                                {metricLabel(g.metric)}
+                                {(g.periodStreak ?? 0) >= 2 && (
+                                  <span
+                                    className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-orange-400 shrink-0"
+                                    title={t("goals_period_streak").replace("{n}", String(g.periodStreak))}
+                                  >
+                                    <Flame className="w-3 h-3" /> {g.periodStreak}
+                                  </span>
+                                )}
+                              </p>
                               {editingTarget === g.id ? (
                                 <div className="flex items-center gap-1 mt-0.5">
                                   <span className="text-[11px] text-muted">{g.comparator === "gte" ? "≥" : "≤"}</span>
@@ -961,14 +1023,17 @@ export default function GoalsPage() {
                           )}
                         </span>
 
-                        {/* Progression (mesuré) */}
-                        <div className="shrink-0 w-20 sm:w-36 flex items-center gap-2">
+                        {/* Progression (mesuré) : barre + valeur, historique de périodes dessous */}
+                        <div className="shrink-0 w-20 sm:w-36 flex flex-col items-end gap-1">
                           {g.kind === "metric" ? (
                             <>
-                              <div className="flex-1 h-2 rounded-full bg-surface overflow-hidden">
-                                <GrowBar pct={Math.max(3, g.progress)} className={sv.bar} />
+                              <div className="w-full flex items-center gap-2">
+                                <div className="flex-1 h-2 rounded-full bg-surface overflow-hidden">
+                                  <GrowBar pct={Math.max(3, g.progress)} className={sv.bar} />
+                                </div>
+                                <span className={`text-xs font-bold tabular-nums whitespace-nowrap ${sv.text}`}>{g.value}{unit(g.metric)}</span>
                               </div>
-                              <span className={`text-xs font-bold tabular-nums whitespace-nowrap ${sv.text}`}>{g.value}{unit(g.metric)}</span>
+                              {g.history && <HistoryDots history={g.history} unit={unit(g.metric)} t={t} />}
                             </>
                           ) : (
                             <span className="w-full text-right text-xs text-muted/30">—</span>

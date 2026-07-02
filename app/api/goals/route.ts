@@ -28,28 +28,40 @@ function periodKey(period: Period): string {
   return periodStart(period).slice(0, 10);
 }
 
-function periodStart(period: Period): string {
+// Nombre de périodes d'historique évaluées rétroactivement (dont la courante).
+const HISTORY_LEN: Record<Period, number> = { day: 7, week: 8, month: 6, quarter: 4, year: 3 };
+
+/** Bornes [start, end) de la période décalée de `offset` périodes dans le passé (0 = courante). */
+function periodBoundsAt(period: Period, offset: number): { start: Date; end: Date } {
   const now = new Date();
   if (period === "day") {
-    const d = new Date(now); d.setHours(0, 0, 0, 0);
-    return d.toISOString();
+    const start = new Date(now); start.setHours(0, 0, 0, 0); start.setDate(start.getDate() - offset);
+    const end = new Date(start); end.setDate(end.getDate() + 1);
+    return { start, end };
   }
   if (period === "week") {
     const day = now.getDay();
-    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-    const d = new Date(now);
-    d.setDate(diff);
-    d.setHours(0, 0, 0, 0);
-    return d.toISOString();
+    const start = new Date(now);
+    start.setDate(now.getDate() - day + (day === 0 ? -6 : 1) - offset * 7);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start); end.setDate(end.getDate() + 7);
+    return { start, end };
   }
   if (period === "quarter") {
-    const qMonth = now.getMonth() - (now.getMonth() % 3);
-    return new Date(now.getFullYear(), qMonth, 1).toISOString();
+    const qMonth = now.getMonth() - (now.getMonth() % 3) - offset * 3;
+    const start = new Date(now.getFullYear(), qMonth, 1);
+    return { start, end: new Date(start.getFullYear(), start.getMonth() + 3, 1) };
   }
   if (period === "year") {
-    return new Date(now.getFullYear(), 0, 1).toISOString();
+    const start = new Date(now.getFullYear() - offset, 0, 1);
+    return { start, end: new Date(start.getFullYear() + 1, 0, 1) };
   }
-  return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const start = new Date(now.getFullYear(), now.getMonth() - offset, 1);
+  return { start, end: new Date(start.getFullYear(), start.getMonth() + 1, 1) };
+}
+
+function periodStart(period: Period): string {
+  return periodBoundsAt(period, 0).start.toISOString();
 }
 
 function netPnl(t: { pnl: number; commission: number | null; swap: number | null }): number {
@@ -74,18 +86,25 @@ export async function GET() {
   const goals = (rawGoals ?? []) as GoalRow[];
   if (goals.length === 0) return NextResponse.json({ goals: [] });
 
-  // On charge les données depuis le début de la période la plus large utilisée.
+  // On charge les données depuis le début de l'horizon d'historique le plus
+  // ancien parmi les objectifs mesurés (permet d'évaluer les périodes passées
+  // rétroactivement, sans table d'archive).
+  const metricGoals = goals.filter((g) => g.kind !== "custom");
   const broadest = goals.reduce<Period>((acc, g) => (PERIOD_RANK[g.period] > PERIOD_RANK[acc] ? g.period : acc), "day");
-  const since = periodStart(broadest);
+  const since = metricGoals.length
+    ? metricGoals
+        .map((g) => periodBoundsAt(g.period, HISTORY_LEN[g.period] - 1).start.toISOString())
+        .reduce((a, b) => (a < b ? a : b))
+    : periodStart(broadest);
   const [{ data: reviews }, { data: trades }] = await Promise.all([
-    supabase.from("session_reviews").select("discipline_score, created_at").eq("user_id", user.id).gte("created_at", since),
-    supabase.from("trades").select("pnl, commission, swap, open_time").eq("user_id", user.id).gte("open_time", since).order("open_time", { ascending: true }),
+    supabase.from("session_reviews").select("discipline_score, created_at").eq("user_id", user.id).gte("created_at", since).limit(10000),
+    supabase.from("trades").select("pnl, commission, swap, open_time").eq("user_id", user.id).gte("open_time", since).order("open_time", { ascending: true }).limit(10000),
   ]);
 
-  function currentValue(g: GoalRow): number {
-    const start = periodStart(g.period);
-    const rv = (reviews ?? []).filter((r) => r.created_at >= start && r.discipline_score != null);
-    const tr = (trades ?? []).filter((t) => t.open_time >= start);
+  /** Valeur de la métrique sur une plage [start, end). */
+  function rangeValue(g: GoalRow, startIso: string, endIso: string): number {
+    const rv = (reviews ?? []).filter((r) => r.created_at >= startIso && r.created_at < endIso && r.discipline_score != null);
+    const tr = (trades ?? []).filter((t) => t.open_time >= startIso && t.open_time < endIso);
     switch (g.metric) {
       case "discipline_score":
         return rv.length ? Math.round(rv.reduce((s, r) => s + (r.discipline_score as number), 0) / rv.length) : 0;
@@ -108,6 +127,55 @@ export async function GET() {
       default:
         return 0;
     }
+  }
+
+  function currentValue(g: GoalRow): number {
+    const { start, end } = periodBoundsAt(g.period, 0);
+    return rangeValue(g, start.toISOString(), end.toISOString());
+  }
+
+  /** true si la valeur satisfait la cible de l'objectif. */
+  function isMet(g: GoalRow, value: number): boolean {
+    const target = g.target ?? 0;
+    return (g.comparator ?? "gte") === "gte" ? value >= target : value <= target;
+  }
+
+  /**
+   * Historique des HISTORY_LEN dernières périodes (la courante en dernier),
+   * évalué rétroactivement. « hadData » distingue une période ratée d'une
+   * période sans aucune activité (affichée neutre côté UI).
+   */
+  function historyFor(g: GoalRow): { key: string; value: number; met: boolean; current: boolean; hadData: boolean }[] {
+    const len = HISTORY_LEN[g.period];
+    const out: { key: string; value: number; met: boolean; current: boolean; hadData: boolean }[] = [];
+    for (let offset = len - 1; offset >= 0; offset--) {
+      const { start, end } = periodBoundsAt(g.period, offset);
+      const startIso = start.toISOString(), endIso = end.toISOString();
+      const value = rangeValue(g, startIso, endIso);
+      const hadData =
+        (reviews ?? []).some((r) => r.created_at >= startIso && r.created_at < endIso) ||
+        (trades ?? []).some((t) => t.open_time >= startIso && t.open_time < endIso);
+      // Clé lisible = date locale du début de période (pas l'ISO UTC, décalé d'un jour).
+      const key = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
+      out.push({ key, value, met: isMet(g, value), current: offset === 0, hadData });
+    }
+    return out;
+  }
+
+  /**
+   * Périodes consécutives réussies : en partant de la courante si elle est
+   * déjà atteinte, sinon de la précédente (la période en cours n'interrompt
+   * pas une série tant qu'elle n'est pas finie).
+   */
+  function periodStreakFor(history: { met: boolean; current: boolean; hadData: boolean }[]): number {
+    let streak = 0;
+    let i = history.length - 1;
+    if (i >= 0 && history[i].current && !history[i].met) i -= 1;
+    for (; i >= 0; i--) {
+      if (history[i].met) streak += 1;
+      else break;
+    }
+    return streak;
   }
 
   // Reconduction des objectifs perso récurrents : si la période a changé, on
@@ -145,7 +213,11 @@ export async function GET() {
     const progress = comparator === "gte"
       ? Math.min(100, Math.round((value / (target || 1)) * 100) || 0)
       : value <= target ? 100 : Math.max(0, Math.round((target / (value || 1)) * 100));
-    return { id: g.id, kind, metric: g.metric, target, comparator, period: g.period, value, met, progress };
+    const history = historyFor(g);
+    return {
+      id: g.id, kind, metric: g.metric, target, comparator, period: g.period, value, met, progress,
+      history, periodStreak: periodStreakFor(history),
+    };
   });
 
   return NextResponse.json({ goals: result });
