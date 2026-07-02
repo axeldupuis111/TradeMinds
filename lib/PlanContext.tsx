@@ -30,6 +30,7 @@ interface PlanContextValue {
   canImportCSV: boolean;
   aiRemaining: number | null; // null = unlimited
   maxAccounts: number | null; // null = unlimited
+  maxStrategies: number | null; // null = unlimited
   subscriptionStatus: SubscriptionStatus;
   cancelAtPeriodEnd: boolean;
   currentPeriodEnd: Date | null;
@@ -45,6 +46,7 @@ const PlanContext = createContext<PlanContextValue>({
   canImportCSV: false,
   aiRemaining: 0,
   maxAccounts: 1,
+  maxStrategies: 1,
   subscriptionStatus: null,
   cancelAtPeriodEnd: false,
   currentPeriodEnd: null,
@@ -187,9 +189,12 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
     setDailyAiReset(resetKey);
   }, [supabase, dailyAiCount, dailyAiReset, plan]);
 
-  // Derived permissions
-  const canUseStrategy = plan === "plus" || plan === "premium";
-  const canUseAI = plan === "plus" || plan === "premium";
+  // Derived permissions.
+  // Depuis 2026-07 : la boucle cœur (stratégie + analyse IA) est ouverte à tous
+  // les plans — le free est limité par les quotas (1 analyse/semaine via
+  // PLAN_LIMITS) et par maxStrategies (1 stratégie).
+  const canUseStrategy = true;
+  const canUseAI = true;
 
   const today = new Date().toISOString().split("T")[0];
   const weekStart = getWeekStart(new Date());
@@ -202,6 +207,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
   // Free users can import CSV (1/day limit enforced in CsvImport component)
   const canImportCSV = true;
   const maxAccounts = plan === "free" ? 1 : null;
+  const maxStrategies = plan === "free" ? 1 : null;
 
   return (
     <PlanContext.Provider
@@ -213,6 +219,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
         canImportCSV,
         aiRemaining,
         maxAccounts,
+        maxStrategies,
         subscriptionStatus,
         cancelAtPeriodEnd,
         currentPeriodEnd,

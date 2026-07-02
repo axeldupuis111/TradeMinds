@@ -3,37 +3,55 @@
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { WelcomePlusModal } from "@/components/upgrade/WelcomePlusModal";
-import Link from "next/link";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 
 interface PlanFeature {
   key: string;
   free: boolean | string;
   plus: boolean | string;
   premium: boolean | string;
-  demoHref?: string;
+  /** En-tête de groupe affiché au-dessus de cette ligne dans le tableau. */
+  groupKey?: string;
 }
 
+// Source de vérité marketing : reflète le gating réel du code (PlanContext,
+// PLAN_LIMITS et les gardes API). À tenir à jour quand un gate change.
 const features: PlanFeature[] = [
-  { key: "plan_feat_csv_import",        free: "1/plan_day",  plus: "plan_unlimited", premium: "plan_unlimited"                          },
-  { key: "plan_feat_accounts",          free: "1",           plus: "plan_unlimited", premium: "plan_unlimited"                          },
-  { key: "plan_feat_calendar",          free: true,          plus: true,             premium: true                                      },
-  { key: "plan_feat_equity_curve",      free: true,          plus: true,             premium: true                                      },
-  { key: "plan_feat_manual_trades",     free: true,          plus: true,             premium: true                                      },
-  { key: "plan_feat_session_pretrade",  free: true,          plus: true,             premium: true                                      },
-  { key: "plan_feat_strategy_ai",       free: false,         plus: true,             premium: true,  demoHref: "/dashboard/strategy"    },
-  { key: "plan_feat_analysis_ai",       free: false,         plus: "1/plan_day",     premium: "10/plan_day", demoHref: "/dashboard/analysis" },
-  { key: "plan_feat_coach_ai",          free: false,         plus: "5/plan_day",     premium: "30/plan_day", demoHref: "/dashboard/analysis" },
-  { key: "plan_feat_tags_emotions",     free: false,         plus: true,             premium: true                                      },
-  { key: "plan_feat_pdf_export",        free: false,         plus: true,             premium: true                                      },
-  { key: "plan_feat_analytics",         free: false,         plus: true,             premium: true                                      },
-  { key: "plan_feat_public_profile",    free: false,         plus: true,             premium: true                                      },
-  { key: "plan_feat_daily_summary",     free: false,         plus: true,             premium: true                                      },
-  { key: "plan_feat_stop_trading",      free: false,         plus: true,             premium: true                                      },
-  { key: "plan_feat_challenge_guardian", free: false,        plus: false,            premium: true                                      },
-  { key: "plan_feat_mt_sync",           free: false,         plus: false,            premium: true                                      },
+  // ── Journal & suivi ──
+  { key: "plan_feat_csv_import",        free: "1/plan_day",  plus: "plan_unlimited", premium: "plan_unlimited", groupKey: "plan_group_journal" },
+  { key: "plan_feat_manual_trades",     free: true,          plus: true,             premium: true },
+  { key: "plan_feat_accounts",          free: "1",           plus: "plan_unlimited", premium: "plan_unlimited" },
+  { key: "plan_feat_calendar",          free: true,          plus: true,             premium: true },
+  { key: "plan_feat_equity_curve",      free: true,          plus: true,             premium: true },
+  { key: "plan_feat_analytics",         free: true,          plus: true,             premium: true },
+  { key: "plan_feat_eco_calendar",      free: true,          plus: true,             premium: true },
+  { key: "plan_feat_session_pretrade",  free: true,          plus: true,             premium: true },
+  { key: "plan_feat_leaderboard",       free: true,          plus: true,             premium: true },
+  // ── IA ──
+  { key: "plan_feat_strategy_ai",       free: "1",           plus: "plan_unlimited", premium: "plan_unlimited", groupKey: "plan_group_ai" },
+  { key: "plan_feat_analysis_ai",       free: "1/plan_week", plus: "1/plan_day",     premium: "10/plan_day" },
+  { key: "plan_feat_coach_ai",          free: false,         plus: "5/plan_day",     premium: "30/plan_day" },
+  { key: "plan_feat_debrief_ai",        free: false,         plus: true,             premium: true },
+  { key: "plan_feat_weekly_plan",       free: false,         plus: true,             premium: true },
+  { key: "plan_feat_daily_summary",     free: false,         plus: true,             premium: true },
+  { key: "plan_feat_goals_ai",          free: false,         plus: true,             premium: true },
+  // ── Discipline & bilan ──
+  { key: "plan_feat_tags_emotions",     free: false,         plus: true,             premium: true, groupKey: "plan_group_review" },
+  { key: "plan_feat_monthly_review",    free: false,         plus: true,             premium: true },
+  { key: "plan_feat_pdf_export",        free: false,         plus: true,             premium: true },
+  { key: "plan_feat_public_profile",    free: false,         plus: true,             premium: true },
+  // ── Automatisation & protection ──
+  { key: "plan_feat_mt_sync",           free: false,         plus: false,            premium: true, groupKey: "plan_group_automation" },
+  { key: "plan_feat_challenge_guardian", free: false,        plus: false,            premium: true },
+  { key: "plan_feat_macro",             free: false,         plus: false,            premium: true },
+  { key: "plan_feat_position_sizer",    free: false,         plus: false,            premium: true },
 ];
+
+// Listes courtes affichées dans les cartes (le tableau ci-dessous reste exhaustif).
+const FREE_BENEFITS = ["plan_benefit_free_1", "plan_benefit_free_2", "plan_benefit_free_3", "plan_benefit_free_4", "plan_benefit_free_5"] as const;
+const PLUS_BENEFITS = ["plan_benefit_plus_1", "plan_benefit_plus_2", "plan_benefit_plus_3", "plan_benefit_plus_4", "plan_benefit_plus_5", "plan_benefit_plus_6", "plan_benefit_plus_7"] as const;
+const PREMIUM_BENEFITS = ["plan_benefit_premium_1", "plan_benefit_premium_2", "plan_benefit_premium_3", "plan_benefit_premium_4"] as const;
 
 const faqKeys = [
   { q: "faq_upgrade_q1", a: "faq_upgrade_a1" },
@@ -408,15 +426,12 @@ export default function UpgradePage() {
                 <div className="h-8" />
               </div>
               <div className="mt-5 space-y-2.5 flex-1">
-                {features.map((f) => (
-                  <div key={f.key} className="flex items-center gap-3">
-                    <div className="w-6 flex justify-center shrink-0">{renderValue(f.free)}</div>
-                    <span className="text-sm text-foreground">{t(f.key)}</span>
-                    {f.free === false && f.demoHref && (
-                      <Link href={f.demoHref} className="text-xs text-accent hover:underline shrink-0">
-                        {t("demo_see")}
-                      </Link>
-                    )}
+                {FREE_BENEFITS.map((key) => (
+                  <div key={key} className="flex items-start gap-2 text-sm">
+                    <svg className="w-4 h-4 text-profit shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-foreground/85">{t(key)}</span>
                   </div>
                 ))}
               </div>
@@ -487,10 +502,12 @@ export default function UpgradePage() {
               )}
 
               <div className="mt-5 space-y-2.5 flex-1">
-                {features.map((f) => (
-                  <div key={f.key} className="flex items-center gap-3">
-                    <div className="w-6 flex justify-center shrink-0">{renderValue(f.plus)}</div>
-                    <span className="text-sm text-foreground">{t(f.key)}</span>
+                {PLUS_BENEFITS.map((key) => (
+                  <div key={key} className="flex items-start gap-2 text-sm">
+                    <svg className="w-4 h-4 text-accent shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-foreground/85">{t(key)}</span>
                   </div>
                 ))}
               </div>
@@ -567,7 +584,7 @@ export default function UpgradePage() {
           {/* Exclusive features + Plus includes — flex-1 pushes CTA to card bottom */}
           <div className="flex-1">
             <ul className="mt-2 space-y-2">
-              {(["plan_benefit_premium_1","plan_benefit_premium_2","plan_benefit_premium_3"] as const).map((key) => (
+              {PREMIUM_BENEFITS.map((key) => (
                 <li key={key} className="flex items-start gap-2 text-sm">
                   <svg className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -635,12 +652,19 @@ export default function UpgradePage() {
             </thead>
             <tbody className="divide-y divide-border">
               {features.map((f) => (
-                <tr key={f.key} className="bg-card hover:bg-border/20 transition-colors">
-                  <td className="px-4 py-3 text-foreground">{t(f.key)}</td>
-                  <td className="px-4 py-3 text-center">{renderValue(f.free)}</td>
-                  <td className="px-4 py-3 text-center">{renderValue(f.plus)}</td>
-                  <td className="px-4 py-3 text-center">{renderValue(f.premium)}</td>
-                </tr>
+                <Fragment key={f.key}>
+                  {f.groupKey && (
+                    <tr className="bg-surface/60">
+                      <td colSpan={4} className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-muted">{t(f.groupKey)}</td>
+                    </tr>
+                  )}
+                  <tr className="bg-card hover:bg-border/20 transition-colors">
+                    <td className="px-4 py-3 text-foreground">{t(f.key)}</td>
+                    <td className="px-4 py-3 text-center">{renderValue(f.free)}</td>
+                    <td className="px-4 py-3 text-center">{renderValue(f.plus)}</td>
+                    <td className="px-4 py-3 text-center">{renderValue(f.premium)}</td>
+                  </tr>
+                </Fragment>
               ))}
             </tbody>
           </table>

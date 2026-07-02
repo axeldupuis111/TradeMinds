@@ -1880,7 +1880,7 @@ function Pricing() {
       monthlyPrice: "0€",
       annualPrice: "0€",
       annualMonthly: "",
-      feats: [t("plan_benefit_free_1"), t("plan_benefit_free_2"), t("plan_benefit_free_3"), t("plan_benefit_free_4")],
+      feats: [t("plan_benefit_free_1"), t("plan_benefit_free_2"), t("plan_benefit_free_3"), t("plan_benefit_free_4"), t("plan_benefit_free_5")],
       btnKey: "pricing_start_free",
       roiKey: "",
       popular: false,
@@ -1909,7 +1909,7 @@ function Pricing() {
       annualMonthly: "14.99€",
       feats: [
         t("plan_benefit_premium_1"), t("plan_benefit_premium_2"), t("plan_benefit_premium_3"),
-        t("plan_benefit_plus_1"), t("plan_benefit_plus_2"), t("plan_benefit_plus_3"),
+        t("plan_benefit_premium_4"), t("plan_premium_includes_plus_short"),
       ],
       btnKey: "pricing_choose_premium",
       roiKey: "plan_roi_premium",
