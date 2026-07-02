@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/lib/LanguageContext";
-import { X, Pencil, Minus, ArrowUpRight, Square, Circle, Undo2, Trash2 } from "lucide-react";
+import { X, Pencil, Minus, ArrowUpRight, Square, Circle, Undo2, Trash2, AlignJustify, TrendingUp, Eraser } from "lucide-react";
 import type { Shape, AnnotationTool } from "@/lib/annotations";
+import { hitTestShape } from "@/lib/annotations";
 import { shapeToSvg } from "@/components/trades/AnnotationOverlay";
 
 /**
@@ -31,7 +32,7 @@ export default function ScreenshotAnnotator({
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [shapes, setShapes] = useState<Shape[]>(initial ?? []);
   const [draft, setDraft] = useState<Shape | null>(null);
-  const [tool, setTool] = useState<AnnotationTool>("pen");
+  const [tool, setTool] = useState<AnnotationTool | "eraser">("pen");
   const [color, setColor] = useState(COLORS[0]);
   const [width, setWidth] = useState(WIDTHS[1]);
   const drawing = useRef(false);
@@ -57,12 +58,28 @@ export default function ScreenshotAnnotator({
   }
 
   function onDown(e: React.PointerEvent) {
+    const el = wrapRef.current!;
+    const r = el.getBoundingClientRect();
+
+    // Eraser: remove the topmost shape under the cursor, don't start a stroke.
+    if (tool === "eraser") {
+      const mx = e.clientX - r.left, my = e.clientY - r.top;
+      for (let i = shapes.length - 1; i >= 0; i--) {
+        if (hitTestShape(shapes[i], mx, my, r.width, r.height)) {
+          setShapes((s) => s.filter((_, idx) => idx !== i));
+          break;
+        }
+      }
+      return;
+    }
+
     drawing.current = true;
     (e.target as Element).setPointerCapture?.(e.pointerId);
     const p = norm(e);
     startPt.current = p;
     if (tool === "pen") setDraft({ type: "pen", color, width, points: [[p.x, p.y]] });
-    else if (tool === "line" || tool === "arrow") setDraft({ type: tool, color, width, x1: p.x, y1: p.y, x2: p.x, y2: p.y });
+    else if (tool === "line" || tool === "arrow" || tool === "fib" || tool === "position")
+      setDraft({ type: tool, color, width, x1: p.x, y1: p.y, x2: p.x, y2: p.y });
     else setDraft({ type: tool, color, width, x: p.x, y: p.y, w: 0, h: 0 });
   }
 
@@ -72,7 +89,7 @@ export default function ScreenshotAnnotator({
     setDraft((d) => {
       if (!d) return d;
       if (d.type === "pen") return { ...d, points: [...(d.points ?? []), [p.x, p.y]] };
-      if (d.type === "line" || d.type === "arrow") return { ...d, x2: p.x, y2: p.y };
+      if (d.type === "line" || d.type === "arrow" || d.type === "fib" || d.type === "position") return { ...d, x2: p.x, y2: p.y };
       return { ...d, w: p.x - startPt.current!.x, h: p.y - startPt.current!.y };
     });
   }
@@ -85,7 +102,7 @@ export default function ScreenshotAnnotator({
         // Ignore accidental zero-size shapes.
         const tiny =
           (d.type === "pen" && (d.points?.length ?? 0) < 2) ||
-          ((d.type === "line" || d.type === "arrow") && d.x1 === d.x2 && d.y1 === d.y2) ||
+          ((d.type === "line" || d.type === "arrow" || d.type === "fib" || d.type === "position") && d.x1 === d.x2 && d.y1 === d.y2) ||
           ((d.type === "rect" || d.type === "ellipse") && Math.abs(d.w!) < 0.005 && Math.abs(d.h!) < 0.005);
         if (!tiny) setShapes((s) => [...s, d]);
       }
@@ -93,12 +110,15 @@ export default function ScreenshotAnnotator({
     });
   }
 
-  const tools: { id: AnnotationTool; icon: typeof Pencil; label: string }[] = [
+  const tools: { id: AnnotationTool | "eraser"; icon: typeof Pencil; label: string }[] = [
     { id: "pen", icon: Pencil, label: t("annotate_tool_pen") },
     { id: "line", icon: Minus, label: t("annotate_tool_line") },
     { id: "arrow", icon: ArrowUpRight, label: t("annotate_tool_arrow") },
     { id: "rect", icon: Square, label: t("annotate_tool_rect") },
     { id: "ellipse", icon: Circle, label: t("annotate_tool_ellipse") },
+    { id: "fib", icon: AlignJustify, label: t("annotate_tool_fib") },
+    { id: "position", icon: TrendingUp, label: t("annotate_tool_position") },
+    { id: "eraser", icon: Eraser, label: t("annotate_tool_eraser") },
   ];
 
   return (
