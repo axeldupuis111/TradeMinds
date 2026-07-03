@@ -5,6 +5,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { applyManualMapping, parseCSV, parseXlsx, type ParsedTrade } from "@/lib/csv-parser";
 import { purgeDemoTrades } from "@/lib/demo-data";
+import { track } from "@/lib/track";
 import { createClient } from "@/lib/supabase/client";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -186,6 +187,9 @@ export default function CsvImport({ strategyId, onImported }: Props) {
   // Daily summary
   const [dailySummary, setDailySummary] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
+  // IA always-on : résultat de l'analyse automatique post-import.
+  const [autoAnalysis, setAutoAnalysis] = useState<{ score: number; violations: number } | null>(null);
+  const [autoAnalysisLoading, setAutoAnalysisLoading] = useState(false);
 
   // Export guide modal
   const [showGuide, setShowGuide] = useState(false);
@@ -393,6 +397,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
       await supabase.from("profiles").upsert({ id: user.id, last_import_at: nowIso });
       setLastImportAt(nowIso);
 
+      track("csv_imported", { count: rows.length });
       const dupMsg = skippedCount > 0 ? ` (${skippedCount} ${t("csv_duplicates_skipped")})` : "";
       setMessage({ type: "success", text: `${rows.length} ${t("csv_imported")}${dupMsg}` });
       setPreview([]);
@@ -420,7 +425,60 @@ export default function CsvImport({ strategyId, onImported }: Props) {
         } finally {
           setSummaryLoading(false);
         }
+
+        // IA always-on : analyse complète automatique après l'import (plans
+        // payants — le free garde le contrôle manuel de son unique analyse
+        // hebdo). Consomme le quota "analyze" existant → plafond de coût
+        // inchangé ; silencieuse si le quota du jour est déjà épuisé (429).
+        void runAutoAnalysis(user.id);
       }
+    }
+  }
+
+  async function runAutoAnalysis(userId: string) {
+    setAutoAnalysisLoading(true);
+    setAutoAnalysis(null);
+    try {
+      const since = new Date(Date.now() - 30 * 86400000).toISOString();
+      const [{ data: fullStrat }, { data: recentTrades }] = await Promise.all([
+        supabase.from("strategies").select("*").eq("user_id", userId).limit(1).maybeSingle(),
+        supabase
+          .from("trades")
+          .select("open_time, close_time, pair, direction, lot_size, entry_price, exit_price, sl, tp, sl_initial, tp_initial, pnl, commission, swap")
+          .eq("user_id", userId)
+          .gte("open_time", since)
+          .order("open_time", { ascending: true })
+          .limit(500),
+      ]);
+      if (!fullStrat || !recentTrades || recentTrades.length === 0) return;
+
+      const periodLabel = t("period_last_30_days");
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ strategy: fullStrat, trades: recentTrades, language: lang, period: "last_30_days", periodLabel }),
+      });
+      if (!res.ok) return; // 429 quota épuisé / erreur → silencieux, l'import reste réussi
+      const data = await res.json();
+
+      // Même persistance que l'analyse manuelle : alimente l'historique,
+      // le dashboard et la mémoire du coach (déjà mise à jour côté serveur).
+      await supabase.from("session_reviews").insert({
+        user_id: userId,
+        discipline_score: data.discipline_score,
+        total_trades: data.total_trades,
+        conforming_trades: data.total_trades - (data.violations?.length || 0),
+        analysis: data,
+        score_breakdown: data.score_breakdown || null,
+        period: "last_30_days",
+        period_label: periodLabel,
+      });
+      setAutoAnalysis({ score: data.discipline_score, violations: (data.violations || []).length });
+      track("analysis_run", { auto: true });
+    } catch {
+      // Silencieux : l'always-on ne doit jamais dégrader l'expérience d'import.
+    } finally {
+      setAutoAnalysisLoading(false);
     }
   }
 
@@ -649,6 +707,27 @@ export default function CsvImport({ strategyId, onImported }: Props) {
           <button onClick={() => setDailySummary(null)} className="text-xs text-muted hover:text-foreground mt-2 transition-colors">
             {t("summary_dismiss")}
           </button>
+        </div>
+      )}
+
+      {/* IA always-on : analyse automatique post-import */}
+      {autoAnalysisLoading && (
+        <div className="mt-3 p-4 rounded-xl border border-accent/20 bg-accent/5 flex items-center gap-3">
+          <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-muted">{t("auto_analysis_loading")}</p>
+        </div>
+      )}
+      {autoAnalysis && !autoAnalysisLoading && (
+        <div className="mt-3 p-4 rounded-xl border border-accent/20 bg-accent/5 flex flex-wrap items-center gap-3">
+          <span className="text-sm font-medium text-accent shrink-0">{t("auto_analysis_title")}</span>
+          <p className="text-sm text-foreground flex-1 min-w-[200px]">
+            {t("auto_analysis_result")
+              .replace("{score}", String(autoAnalysis.score))
+              .replace("{n}", String(autoAnalysis.violations))}
+          </p>
+          <a href="/dashboard/analysis" className="text-xs font-semibold text-accent hover:underline whitespace-nowrap">
+            {t("auto_analysis_link")}
+          </a>
         </div>
       )}
     </section>

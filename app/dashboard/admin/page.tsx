@@ -29,7 +29,14 @@ export default function AdminPage() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [updating, setUpdating] = useState(false);
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
-  const [tab, setTab] = useState<"plans" | "messages">("plans");
+  const [tab, setTab] = useState<"plans" | "messages" | "funnel">("plans");
+  // Funnel d'activation (page interne : libellés FR en dur, convention admin)
+  const [funnel, setFunnel] = useState<{
+    days: number; eventsTableMissing: boolean; signups: number;
+    activated: number; analyzed: number; checkoutStarted: number; payingNow: number;
+  } | null>(null);
+  const [funnelDays, setFunnelDays] = useState<7 | 30>(30);
+  const [funnelLoading, setFunnelLoading] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -53,6 +60,18 @@ export default function AdminPage() {
       .order("created_at", { ascending: false })
       .limit(50);
     if (data) setContactMessages(data);
+  }
+
+  async function loadFunnel(days: 7 | 30) {
+    setFunnelLoading(true);
+    try {
+      const res = await fetch(`/api/admin/funnel?days=${days}`);
+      if (res.ok) setFunnel(await res.json());
+    } catch {
+      // silencieux — page interne
+    } finally {
+      setFunnelLoading(false);
+    }
   }
 
   async function markHandled(id: string) {
@@ -117,6 +136,9 @@ export default function AdminPage() {
         <button onClick={() => setTab("messages")} className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${tab === "messages" ? "bg-card text-foreground shadow-sm" : "text-muted hover:text-foreground"}`}>
           {t("admin_tab_messages")} {contactMessages.filter((m) => m.status === "new").length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-accent text-white text-xs rounded-full">{contactMessages.filter((m) => m.status === "new").length}</span>}
         </button>
+        <button onClick={() => { setTab("funnel"); if (!funnel) loadFunnel(funnelDays); }} className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${tab === "funnel" ? "bg-card text-foreground shadow-sm" : "text-muted hover:text-foreground"}`}>
+          Funnel
+        </button>
       </div>
 
       {tab === "plans" && (
@@ -157,6 +179,54 @@ export default function AdminPage() {
           >
             {updating ? "..." : t("admin_update")}
           </button>
+        </div>
+      )}
+
+      {tab === "funnel" && (
+        <div className="mt-6 bg-card border border-border rounded-xl p-6">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-sm font-semibold text-foreground">Funnel d&apos;activation</h2>
+            <div className="flex gap-1">
+              {([7, 30] as const).map((d) => (
+                <button
+                  key={d}
+                  onClick={() => { setFunnelDays(d); loadFunnel(d); }}
+                  className={`px-3 py-1 rounded-md text-xs font-medium border transition-colors ${funnelDays === d ? "bg-accent/10 border-accent/30 text-accent" : "border-border text-muted hover:text-foreground"}`}
+                >
+                  {d} j
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {funnelLoading && <p className="text-sm text-muted">Chargement…</p>}
+          {funnel?.eventsTableMissing && (
+            <p className="text-sm text-loss mb-3">⚠️ Table product_events absente — appliquer la migration 20260703_create_product_events.sql.</p>
+          )}
+          {funnel && !funnelLoading && (
+            <div className="space-y-2">
+              {[
+                { label: "Inscrits", value: funnel.signups, base: null as number | null },
+                { label: "Activés (import / démo / trade)", value: funnel.activated, base: funnel.signups },
+                { label: "Analyse IA lancée", value: funnel.analyzed, base: funnel.activated },
+                { label: "Checkout démarré", value: funnel.checkoutStarted, base: funnel.analyzed },
+              ].map((step) => (
+                <div key={step.label} className="flex items-center gap-3">
+                  <span className="text-sm text-muted flex-1">{step.label}</span>
+                  <span className="text-sm font-bold text-foreground tabular-nums">{step.value}</span>
+                  <span className="text-xs text-muted tabular-nums w-14 text-right">
+                    {step.base != null && step.base > 0 ? `${Math.round((step.value / step.base) * 100)} %` : "—"}
+                  </span>
+                </div>
+              ))}
+              <div className="flex items-center gap-3 pt-3 mt-2 border-t border-border">
+                <span className="text-sm text-muted flex-1">Payants actuellement (global)</span>
+                <span className="text-sm font-bold text-profit tabular-nums">{funnel.payingNow}</span>
+                <span className="w-14" />
+              </div>
+              <p className="text-xs text-muted pt-2">Fenêtre : {funnel.days} derniers jours. Les % sont la conversion vers l&apos;étape précédente.</p>
+            </div>
+          )}
         </div>
       )}
 

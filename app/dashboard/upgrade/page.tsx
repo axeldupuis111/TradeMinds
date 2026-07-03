@@ -2,6 +2,7 @@
 
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
+import { track } from "@/lib/track";
 import { WelcomePlusModal } from "@/components/upgrade/WelcomePlusModal";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
@@ -222,6 +223,7 @@ export default function UpgradePage() {
   async function handleCheckout(plan: "plus" | "premium") {
     setCheckoutLoadingPlan(plan);
     setCheckoutError(null);
+    track("checkout_started", { plan, interval: annual ? "yearly" : "monthly" });
 
     try {
       const interval = annual ? "yearly" : "monthly";

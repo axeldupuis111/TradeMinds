@@ -6,6 +6,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { PLAN_LIMITS } from "@/lib/plan-limits";
 import { createClient } from "@/lib/supabase/client";
+import { track } from "@/lib/track";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -678,6 +679,7 @@ export default function AnalysisPage() {
       }
 
       setAnalysis(data);
+      track("analysis_run", { auto: false });
 
       // Auto-save to history
       const { data: { user: authUser } } = await supabase.auth.getUser();

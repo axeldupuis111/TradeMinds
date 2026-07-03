@@ -263,7 +263,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Feature not available on free plan" }, { status: 403 });
   }
 
-  const limited = await rateLimitAi(auth.userId, "monthly-review", 20, auth.timezone);
+  const limited = await rateLimitAi(auth.userId, "monthly-review", 8, auth.timezone);
   if (limited) return limited;
 
   const body = (await req.json().catch(() => ({}))) as { language?: string; month?: string };

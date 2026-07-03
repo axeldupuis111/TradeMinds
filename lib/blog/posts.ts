@@ -28,6 +28,358 @@ export interface BlogPost {
 
 export const POSTS: BlogPost[] = [
   {
+    slug: "tradediscipline-vs-focuspips",
+    date: "2026-07-03",
+    readingMinutes: 5,
+    cover: "target",
+    content: {
+      en: {
+        title: "TradeDiscipline vs FocusPips: two French AI trading journals compared (2026)",
+        excerpt:
+          "Both promise to show you where you lose money. Here's an honest, feature-by-feature look at how they actually differ — pricing, AI, real-time coaching.",
+        body: `FocusPips and TradeDiscipline share the same conviction: most traders don't need more indicators, they need to see where they lose money. So how do the two products actually differ? Honest comparison below.
+
+*Prices and features as observed in July 2026 on each product's public website.*
+
+## The quick comparison
+
+| | TradeDiscipline | FocusPips |
+|---|---|---|
+| Price | Plus €9.99/mo · Premium €19.99/mo (€179.88/yr) | Basic free · Premium €290/yr (~€24.17/mo) |
+| AI coach | ✓ chat with **long-term memory** of your commitments | ✓ Atlas chat (5 questions free, unlimited Premium) |
+| Cost of mistakes in € | ✓ automatic capital-leaks block on the dashboard | via questions to the AI chat |
+| "What if I'd followed my plan?" | ✓ counterfactual discipline curve | — |
+| Candle-by-candle backtesting | — | ✓ (Premium) |
+| Trade replay | — | ✓ |
+| Real-time guards & tilt push alerts | ✓ | — |
+| Broker sync | MT4/MT5, cTrader, NinjaTrader, Tradovate + CSV | MT4/MT5, cTrader + CSV |
+| Community & gamification | ✓ leaderboard, challenges, streaks | — |
+| Daily AI macro briefing | ✓ (Premium) | — (economic calendar, COT, seasonality) |
+| Languages | FR, EN, DE, ES | FR |
+
+## Where FocusPips is genuinely stronger
+
+If **candle-by-candle backtesting and trade replay** are central to your process, FocusPips has both built in. It also offers market-context data (COT positioning, seasonality) that TradeDiscipline doesn't carry.
+
+## Where TradeDiscipline wins
+
+- **The mistake report comes to you.** Capital leaks are computed automatically and displayed on your dashboard in euros — with the counterfactual curve showing where your account would be with your plan followed. No need to ask the right question to a chatbot.
+- **A coach with memory.** Our AI remembers what you committed to last session and tells you when you break it. A conversation, not a Q&A.
+- **Real-time protection.** Stop-trading guards, prop-firm challenge limits, tilt push alerts — during the session, not after.
+- **Price.** Unlimited AI coaching costs €179.88/year here versus €290/year there — 38% less.
+- **Four languages and a community** (leaderboard, community challenges, streaks) if consistency motivates you socially.
+
+## Which one is for you?
+
+Choose **FocusPips** if replay and candle-by-candle backtesting are the core of your routine.
+
+Choose **TradeDiscipline** if you want your discipline priced in euros automatically, a coach that remembers, and guardrails that act in real time — at a lower price. [Try it free](/login).`,
+      },
+      fr: {
+        title: "TradeDiscipline vs FocusPips : deux journaux de trading IA français comparés (2026)",
+        excerpt:
+          "Les deux promettent de te montrer où tu perds de l'argent. Comparatif honnête, fonctionnalité par fonctionnalité : prix, IA, coaching temps réel.",
+        body: `FocusPips et TradeDiscipline partagent la même conviction : la plupart des traders n'ont pas besoin de plus d'indicateurs, mais de voir où ils perdent de l'argent. Alors, en quoi les deux produits diffèrent-ils vraiment ? Comparatif honnête ci-dessous.
+
+*Prix et fonctionnalités constatés en juillet 2026 sur les sites publics des deux produits.*
+
+## Le comparatif express
+
+| | TradeDiscipline | FocusPips |
+|---|---|---|
+| Prix | Plus 9,99 €/mois · Premium 19,99 €/mois (179,88 €/an) | Basic gratuit · Premium 290 €/an (~24,17 €/mois) |
+| Coach IA | ✓ chat avec **mémoire longue durée** de tes engagements | ✓ chat Atlas (5 questions en gratuit, illimité en Premium) |
+| Coût des erreurs en € | ✓ bloc fuites de capital automatique sur le dashboard | via questions au chat IA |
+| « Et si j'avais respecté mon plan ? » | ✓ courbe de discipline contrefactuelle | — |
+| Backtest bougie par bougie | — | ✓ (Premium) |
+| Trade replay | — | ✓ |
+| Garde-fous temps réel & push tilt | ✓ | — |
+| Synchro broker | MT4/MT5, cTrader, NinjaTrader, Tradovate + CSV | MT4/MT5, cTrader + CSV |
+| Communauté & gamification | ✓ classement, défis, séries | — |
+| Brief macro IA quotidien | ✓ (Premium) | — (calendrier éco, COT, saisonnalité) |
+| Langues | FR, EN, DE, ES | FR |
+
+## Là où FocusPips est réellement plus fort
+
+Si le **backtest bougie par bougie et le trade replay** sont au cœur de ton process, FocusPips intègre les deux. Il propose aussi des données de contexte de marché (positionnement COT, saisonnalité) que TradeDiscipline n'embarque pas.
+
+## Là où TradeDiscipline gagne
+
+- **Le rapport d'erreurs vient à toi.** Les fuites de capital sont calculées automatiquement et affichées en euros sur ton dashboard — avec la courbe contrefactuelle qui montre où serait ton compte si tu avais respecté ton plan. Pas besoin de poser la bonne question à un chatbot.
+- **Un coach avec mémoire.** Notre IA se souvient de ce que tu t'étais engagé à corriger la session dernière et te le dit quand tu récidives. Une conversation, pas un Q&R.
+- **De la protection en temps réel.** Garde-fous stop-trading, limites de challenge prop firm, alertes push tilt — pendant la session, pas après.
+- **Le prix.** Le coaching IA illimité coûte 179,88 €/an chez nous contre 290 €/an — 38 % de moins.
+- **Quatre langues et une communauté** (classement, défis communautaires, séries) si la régularité te motive aussi socialement.
+
+## Lequel est fait pour toi ?
+
+Choisis **FocusPips** si le replay et le backtest bougie par bougie sont le cœur de ta routine.
+
+Choisis **TradeDiscipline** si tu veux ta discipline chiffrée en euros automatiquement, un coach qui se souvient, et des garde-fous qui agissent en temps réel — pour moins cher. [Essaie gratuitement](/login).`,
+      },
+      de: {
+        title: "TradeDiscipline vs. FocusPips: zwei französische KI-Trading-Journals im Vergleich (2026)",
+        excerpt:
+          "Beide versprechen zu zeigen, wo du Geld verlierst. Ein ehrlicher Funktionsvergleich: Preise, KI, Echtzeit-Coaching.",
+        body: `FocusPips und TradeDiscipline teilen dieselbe Überzeugung: Die meisten Trader brauchen nicht mehr Indikatoren, sondern müssen sehen, wo sie Geld verlieren. Worin unterscheiden sich die beiden Produkte wirklich? Ehrlicher Vergleich unten.
+
+*Preise und Funktionen: Stand Juli 2026, laut den öffentlichen Websites beider Produkte.*
+
+## Der Schnellvergleich
+
+| | TradeDiscipline | FocusPips |
+|---|---|---|
+| Preis | Plus 9,99 €/Monat · Premium 19,99 €/Monat (179,88 €/Jahr) | Basic gratis · Premium 290 €/Jahr (~24,17 €/Monat) |
+| KI-Coach | ✓ Chat mit **Langzeitgedächtnis** deiner Vorsätze | ✓ Atlas-Chat (5 Fragen gratis, unbegrenzt Premium) |
+| Fehlerkosten in € | ✓ automatischer Kapitalleck-Block im Dashboard | über Fragen an den KI-Chat |
+| „Was wäre bei Planbefolgung?" | ✓ kontrafaktische Disziplin-Kurve | — |
+| Kerze-für-Kerze-Backtesting | — | ✓ (Premium) |
+| Trade Replay | — | ✓ |
+| Echtzeit-Wächter & Tilt-Push | ✓ | — |
+| Broker-Sync | MT4/MT5, cTrader, NinjaTrader, Tradovate + CSV | MT4/MT5, cTrader + CSV |
+| Community & Gamification | ✓ Rangliste, Challenges, Serien | — |
+| Tägliches KI-Makro-Briefing | ✓ (Premium) | — (Wirtschaftskalender, COT, Saisonalität) |
+| Sprachen | DE, EN, FR, ES | FR |
+
+## Wo FocusPips wirklich stärker ist
+
+Wenn **Kerze-für-Kerze-Backtesting und Trade Replay** zentral für deinen Prozess sind, hat FocusPips beides eingebaut — plus Marktkontext-Daten (COT, Saisonalität), die TradeDiscipline nicht mitbringt.
+
+## Wo TradeDiscipline gewinnt
+
+- **Der Fehlerbericht kommt zu dir.** Kapitallecks werden automatisch berechnet und in Euro im Dashboard angezeigt — samt kontrafaktischer Kurve. Du musst keinem Chatbot die richtige Frage stellen.
+- **Ein Coach mit Gedächtnis.** Unsere KI erinnert sich an deine Vorsätze und meldet Rückfälle.
+- **Echtzeit-Schutz.** Stop-Trading-Wächter, Prop-Firm-Limits, Tilt-Push — während der Session, nicht danach.
+- **Der Preis.** Unbegrenztes KI-Coaching kostet hier 179,88 €/Jahr gegenüber 290 €/Jahr — 38 % weniger.
+- **Vier Sprachen und Community** (Rangliste, Challenges, Serien) — FocusPips ist nur auf Französisch verfügbar.
+
+## Was passt zu dir?
+
+Wähle **FocusPips**, wenn Replay und Kerzen-Backtesting das Herz deiner Routine sind (und du Französisch sprichst).
+
+Wähle **TradeDiscipline** für automatisch bezifferte Disziplin, einen Coach mit Gedächtnis und Echtzeit-Leitplanken — zum niedrigeren Preis. [Kostenlos testen](/login).`,
+      },
+      es: {
+        title: "TradeDiscipline vs FocusPips: dos diarios de trading IA franceses comparados (2026)",
+        excerpt:
+          "Ambos prometen mostrarte dónde pierdes dinero. Comparativa honesta, función por función: precios, IA, coaching en tiempo real.",
+        body: `FocusPips y TradeDiscipline comparten la misma convicción: la mayoría de los traders no necesitan más indicadores, sino ver dónde pierden dinero. ¿En qué se diferencian realmente? Comparativa honesta abajo.
+
+*Precios y funciones observados en julio de 2026 en las webs públicas de ambos productos.*
+
+## La comparativa rápida
+
+| | TradeDiscipline | FocusPips |
+|---|---|---|
+| Precio | Plus 9,99 €/mes · Premium 19,99 €/mes (179,88 €/año) | Basic gratis · Premium 290 €/año (~24,17 €/mes) |
+| Coach IA | ✓ chat con **memoria a largo plazo** de tus compromisos | ✓ chat Atlas (5 preguntas gratis, ilimitado Premium) |
+| Coste de errores en € | ✓ bloque de fugas de capital automático en el dashboard | vía preguntas al chat IA |
+| «¿Y si hubiera seguido mi plan?» | ✓ curva de disciplina contrafactual | — |
+| Backtesting vela a vela | — | ✓ (Premium) |
+| Trade replay | — | ✓ |
+| Guardias en tiempo real & push de tilt | ✓ | — |
+| Sincronización broker | MT4/MT5, cTrader, NinjaTrader, Tradovate + CSV | MT4/MT5, cTrader + CSV |
+| Comunidad & gamificación | ✓ ranking, retos, rachas | — |
+| Brief macro IA diario | ✓ (Premium) | — (calendario económico, COT, estacionalidad) |
+| Idiomas | ES, EN, FR, DE | FR |
+
+## Donde FocusPips es realmente más fuerte
+
+Si el **backtesting vela a vela y el trade replay** son el centro de tu proceso, FocusPips integra ambos — además de datos de contexto de mercado (COT, estacionalidad) que TradeDiscipline no incluye.
+
+## Donde gana TradeDiscipline
+
+- **El informe de errores viene a ti.** Las fugas de capital se calculan automáticamente y se muestran en euros en tu dashboard — con la curva contrafactual. Sin necesidad de hacerle la pregunta correcta a un chatbot.
+- **Un coach con memoria.** Nuestra IA recuerda tus compromisos y te señala las recaídas.
+- **Protección en tiempo real.** Guardias stop-trading, límites de prop firm, push de tilt — durante la sesión, no después.
+- **El precio.** El coaching IA ilimitado cuesta aquí 179,88 €/año frente a 290 €/año — un 38 % menos.
+- **Cuatro idiomas y comunidad** (ranking, retos, rachas) — FocusPips solo está en francés.
+
+## ¿Cuál es para ti?
+
+Elige **FocusPips** si el replay y el backtesting vela a vela son el corazón de tu rutina (y hablas francés).
+
+Elige **TradeDiscipline** para una disciplina cuantificada automáticamente, un coach que recuerda y barreras en tiempo real — a menor precio. [Pruébalo gratis](/login).`,
+      },
+    },
+  },
+  {
+    slug: "tradediscipline-vs-edgewonk",
+    date: "2026-07-03",
+    readingMinutes: 5,
+    cover: "discipline",
+    content: {
+      en: {
+        title: "TradeDiscipline vs Edgewonk: psychology journal vs discipline coach (2026)",
+        excerpt:
+          "Both take trading psychology seriously. One analyzes it, the other quantifies it in euros and intervenes in real time. An honest comparison.",
+        body: `Edgewonk is the reference for psychology-focused traders, and at $197/year all-inclusive it's the cheapest premium journal on the market. If you're comparing it with TradeDiscipline, you're already asking the right question: both products believe your P&L problem is a behavior problem. Here's where they differ.
+
+*Prices and features as observed in July 2026 on each product's public website.*
+
+## The quick comparison
+
+| | TradeDiscipline | Edgewonk |
+|---|---|---|
+| Price | €9.99/month (Plus), free tier | $197/year, one plan |
+| Emotional tracking | ✓ per-trade emotions + edge by emotion | ✓ Tiltmeter |
+| Cost of mistakes in € | ✓ capital leaks, quantified per habit | — (patterns shown, not priced) |
+| AI analysis | ✓ daily, against your written strategy | Edge Finder AI: weekly report |
+| AI coach chat | ✓ with long-term memory of your commitments | — |
+| Real-time intervention | ✓ stop-trading guards, tilt push alerts | — (post-session reflection) |
+| Broker auto-sync | ✓ MT4/MT5, cTrader, NinjaTrader, Tradovate | — (file import only) |
+| Custom metrics | Fixed, discipline-focused | ✓ 50+ customizable, 20 custom slots |
+| Mobile | PWA (installable) | — |
+| Languages | FR, EN, DE, ES | EN |
+
+## Where Edgewonk is genuinely stronger
+
+If you love **building your own statistics** — custom metrics, custom classifications, deep manual reflection — Edgewonk gives you 50+ configurable metrics and rewards the effort. Its one-price-for-everything model is also admirably simple.
+
+## Where TradeDiscipline wins
+
+**Edgewonk describes your psychology. TradeDiscipline prices it and interrupts it.**
+
+- **Euros, not adjectives.** Our capital-leaks block tells you "revenge trading cost you €480 this month" and draws the equity curve you'd have if you had followed your plan. Naming a pattern is step one; seeing its price is what changes behavior.
+- **Daily AI, not weekly.** Edge Finder sends a weekly report. TradeDiscipline analyzes on every import, and its coach chat remembers your commitments from last week — and calls out relapses.
+- **Real time.** Tilt push alerts and stop-trading guards act during the session, not in Sunday's report.
+- **No manual homework.** Broker auto-sync means the journal fills itself; Edgewonk requires file imports and manual upkeep.
+
+## Which one is for you?
+
+Choose **Edgewonk** if you enjoy deep manual journaling, want maximum metric customization, and prefer a one-time yearly price.
+
+Choose **TradeDiscipline** if you want the psychology work done *for* you — quantified in euros, surfaced daily, and interrupted live when you tilt. [Try it free](/login), no credit card required.`,
+      },
+      fr: {
+        title: "TradeDiscipline vs Edgewonk : journal psycho vs coach de discipline (2026)",
+        excerpt:
+          "Les deux prennent la psychologie du trading au sérieux. L'un l'analyse, l'autre la chiffre en euros et intervient en temps réel. Comparatif honnête.",
+        body: `Edgewonk est la référence des traders orientés psychologie, et à 197 $/an tout compris, c'est le journal premium le moins cher du marché. Si tu le compares à TradeDiscipline, tu poses déjà la bonne question : les deux produits considèrent que ton problème de P&L est un problème de comportement. Voici où ils divergent.
+
+*Prix et fonctionnalités constatés en juillet 2026 sur les sites publics des deux produits.*
+
+## Le comparatif express
+
+| | TradeDiscipline | Edgewonk |
+|---|---|---|
+| Prix | 9,99 €/mois (Plus), plan gratuit | 197 $/an, plan unique |
+| Suivi émotionnel | ✓ émotion par trade + edge par émotion | ✓ Tiltmeter |
+| Coût des erreurs en € | ✓ fuites de capital chiffrées par habitude | — (patterns décrits, pas chiffrés) |
+| Analyse IA | ✓ quotidienne, face à ta stratégie écrite | Edge Finder AI : rapport hebdo |
+| Chat coach IA | ✓ avec mémoire longue durée de tes engagements | — |
+| Intervention temps réel | ✓ garde-fous stop-trading, push tilt | — (réflexion post-session) |
+| Synchro broker | ✓ MT4/MT5, cTrader, NinjaTrader, Tradovate | — (import fichier uniquement) |
+| Métriques custom | Fixes, orientées discipline | ✓ 50+ configurables, 20 slots custom |
+| Mobile | PWA (installable) | — |
+| Langues | FR, EN, DE, ES | EN |
+
+## Là où Edgewonk est réellement plus fort
+
+Si tu aimes **construire tes propres statistiques** — métriques custom, classifications maison, réflexion manuelle approfondie — Edgewonk t'offre 50+ métriques configurables et récompense l'effort. Son prix unique tout compris est aussi d'une simplicité admirable.
+
+## Là où TradeDiscipline gagne
+
+**Edgewonk décrit ta psychologie. TradeDiscipline la chiffre et l'interrompt.**
+
+- **Des euros, pas des adjectifs.** Notre bloc fuites de capital te dit « le revenge trading t'a coûté 480 € ce mois » et trace la courbe que ton compte aurait suivie si tu avais respecté ton plan. Nommer un pattern, c'est l'étape un ; voir son prix, c'est ce qui change le comportement.
+- **De l'IA quotidienne, pas hebdomadaire.** Edge Finder envoie un rapport le dimanche. TradeDiscipline analyse à chaque import, et son coach se souvient de tes engagements de la semaine dernière — et te signale les récidives.
+- **Du temps réel.** Alertes push tilt et garde-fous stop-trading agissent pendant la session, pas dans le rapport du dimanche.
+- **Zéro devoir à la maison.** La synchro broker remplit le journal toute seule ; Edgewonk exige des imports de fichiers et de l'entretien manuel.
+
+## Lequel est fait pour toi ?
+
+Choisis **Edgewonk** si tu aimes le journaling manuel profond, la personnalisation maximale des métriques et un prix annuel unique.
+
+Choisis **TradeDiscipline** si tu veux que le travail psychologique soit fait *pour* toi — chiffré en euros, remonté chaque jour, et interrompu en direct quand tu tiltes. [Essaie gratuitement](/login), sans carte bancaire.`,
+      },
+      de: {
+        title: "TradeDiscipline vs. Edgewonk: Psycho-Journal vs. Disziplin-Coach (2026)",
+        excerpt:
+          "Beide nehmen Trading-Psychologie ernst. Das eine analysiert sie, das andere beziffert sie in Euro und greift in Echtzeit ein. Ein ehrlicher Vergleich.",
+        body: `Edgewonk ist die Referenz für psychologie-orientierte Trader, und mit 197 $/Jahr all-inclusive das günstigste Premium-Journal am Markt. Wer es mit TradeDiscipline vergleicht, stellt bereits die richtige Frage: Beide Produkte sehen dein P&L-Problem als Verhaltensproblem. Hier die Unterschiede.
+
+*Preise und Funktionen: Stand Juli 2026, laut den öffentlichen Websites beider Produkte.*
+
+## Der Schnellvergleich
+
+| | TradeDiscipline | Edgewonk |
+|---|---|---|
+| Preis | 9,99 €/Monat (Plus), Gratis-Plan | 197 $/Jahr, ein Plan |
+| Emotions-Tracking | ✓ Emotion pro Trade + Edge pro Emotion | ✓ Tiltmeter |
+| Fehlerkosten in € | ✓ Kapitallecks pro Gewohnheit beziffert | — (Muster beschrieben, nicht bepreist) |
+| KI-Analyse | ✓ täglich, gegen deine schriftliche Strategie | Edge Finder AI: Wochenbericht |
+| KI-Coach-Chat | ✓ mit Langzeitgedächtnis deiner Vorsätze | — |
+| Echtzeit-Eingriff | ✓ Stop-Trading-Wächter, Tilt-Push | — (Reflexion nach der Session) |
+| Broker-Auto-Sync | ✓ MT4/MT5, cTrader, NinjaTrader, Tradovate | — (nur Datei-Import) |
+| Custom-Metriken | Fest, disziplin-fokussiert | ✓ 50+ konfigurierbar |
+| Mobile | PWA (installierbar) | — |
+| Sprachen | DE, EN, FR, ES | EN |
+
+## Wo Edgewonk wirklich stärker ist
+
+Wenn du **eigene Statistiken bauen** willst — Custom-Metriken, eigene Klassifikationen, tiefe manuelle Reflexion — belohnt Edgewonk den Aufwand mit 50+ konfigurierbaren Metriken. Der Ein-Preis-für-alles-Ansatz ist zudem bewundernswert einfach.
+
+## Wo TradeDiscipline gewinnt
+
+**Edgewonk beschreibt deine Psychologie. TradeDiscipline beziffert und unterbricht sie.**
+
+- **Euro statt Adjektive.** Unser Kapitalleck-Block sagt dir „Revenge-Trading hat dich diesen Monat 480 € gekostet" und zeichnet die Kurve, die dein Konto bei Planbefolgung hätte.
+- **Tägliche KI statt wöchentlich.** Edge Finder schickt sonntags einen Bericht. TradeDiscipline analysiert bei jedem Import, und der Coach erinnert sich an deine Vorsätze — und meldet Rückfälle.
+- **Echtzeit.** Tilt-Push und Stop-Trading-Wächter greifen während der Session ein, nicht im Sonntagsbericht.
+- **Keine Hausaufgaben.** Broker-Sync füllt das Journal von selbst; Edgewonk verlangt Datei-Importe und manuelle Pflege.
+
+## Was passt zu dir?
+
+Wähle **Edgewonk** für tiefes manuelles Journaling und maximale Metrik-Anpassung zum Jahres-Festpreis.
+
+Wähle **TradeDiscipline**, wenn die Psychologie-Arbeit *für dich* erledigt werden soll — in Euro beziffert, täglich sichtbar, live unterbrochen, wenn du tiltest. [Kostenlos testen](/login), ohne Kreditkarte.`,
+      },
+      es: {
+        title: "TradeDiscipline vs Edgewonk: diario psicológico vs coach de disciplina (2026)",
+        excerpt:
+          "Ambos se toman en serio la psicología del trading. Uno la analiza, el otro la cuantifica en euros e interviene en tiempo real. Comparativa honesta.",
+        body: `Edgewonk es la referencia para traders centrados en la psicología, y a 197 $/año todo incluido es el diario premium más barato del mercado. Si lo comparas con TradeDiscipline, ya te haces la pregunta correcta: ambos productos consideran que tu problema de P&L es un problema de comportamiento. Aquí sus diferencias.
+
+*Precios y funciones observados en julio de 2026 en las webs públicas de ambos productos.*
+
+## La comparativa rápida
+
+| | TradeDiscipline | Edgewonk |
+|---|---|---|
+| Precio | 9,99 €/mes (Plus), plan gratuito | 197 $/año, plan único |
+| Seguimiento emocional | ✓ emoción por trade + edge por emoción | ✓ Tiltmeter |
+| Coste de errores en € | ✓ fugas de capital cuantificadas | — (patrones descritos, sin precio) |
+| Análisis IA | ✓ diario, contra tu estrategia escrita | Edge Finder AI: informe semanal |
+| Chat coach IA | ✓ con memoria de tus compromisos | — |
+| Intervención en tiempo real | ✓ guardias stop-trading, push de tilt | — (reflexión post-sesión) |
+| Sincronización broker | ✓ MT4/MT5, cTrader, NinjaTrader, Tradovate | — (solo importar archivos) |
+| Métricas custom | Fijas, centradas en disciplina | ✓ 50+ configurables |
+| Móvil | PWA (instalable) | — |
+| Idiomas | ES, EN, FR, DE | EN |
+
+## Donde Edgewonk es realmente más fuerte
+
+Si te gusta **construir tus propias estadísticas** — métricas custom, clasificaciones propias, reflexión manual profunda — Edgewonk recompensa el esfuerzo con 50+ métricas configurables. Su precio único todo incluido es además admirablemente simple.
+
+## Donde gana TradeDiscipline
+
+**Edgewonk describe tu psicología. TradeDiscipline le pone precio y la interrumpe.**
+
+- **Euros, no adjetivos.** Nuestro bloque de fugas de capital te dice «el revenge trading te costó 480 € este mes» y traza la curva que tendría tu cuenta si hubieras respetado tu plan.
+- **IA diaria, no semanal.** Edge Finder envía un informe el domingo. TradeDiscipline analiza en cada importación, y su coach recuerda tus compromisos de la semana pasada — y te señala las recaídas.
+- **Tiempo real.** Alertas push de tilt y guardias stop-trading actúan durante la sesión, no en el informe del domingo.
+- **Cero deberes.** La sincronización broker rellena el diario sola; Edgewonk exige importar archivos y mantenimiento manual.
+
+## ¿Cuál es para ti?
+
+Elige **Edgewonk** si disfrutas del journaling manual profundo y la personalización máxima de métricas a precio anual único.
+
+Elige **TradeDiscipline** si quieres que el trabajo psicológico se haga *por* ti — cuantificado en euros, visible a diario e interrumpido en vivo cuando entras en tilt. [Pruébalo gratis](/login), sin tarjeta.`,
+      },
+    },
+  },
+  {
     slug: "tradediscipline-vs-tradezella",
     date: "2026-07-03",
     readingMinutes: 6,

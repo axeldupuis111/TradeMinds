@@ -54,7 +54,9 @@ function serviceClient() {
 export async function POST(req: Request) {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
-  const limited = await rateLimitAi(auth.userId, "calendar-explain", 40, auth.timezone);
+  // 15/j : très au-delà de l'usage réel, mais borne le pire cas de coût IA
+  // (audit rentabilité 2026-07-03 : les caps anti-abus sont aussi des caps de déficit).
+  const limited = await rateLimitAi(auth.userId, "calendar-explain", 15, auth.timezone);
   if (limited) return limited;
 
   const body = (await req.json().catch(() => ({}))) as {

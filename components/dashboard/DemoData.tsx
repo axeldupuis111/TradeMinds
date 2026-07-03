@@ -16,6 +16,7 @@
 import { generateDemoTrades, hasDemoTrades, purgeDemoTrades } from "@/lib/demo-data";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
+import { track } from "@/lib/track";
 import { FlaskConical, Loader2, Sparkles, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -41,6 +42,7 @@ export function DemoDataCta() {
       setError(true);
       return;
     }
+    track("demo_loaded", { count: rows.length });
     router.refresh();
   }
 

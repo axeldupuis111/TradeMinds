@@ -7,6 +7,7 @@ import { useStrategyTags } from "@/lib/hooks/useStrategyTags";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { purgeDemoTrades } from "@/lib/demo-data";
+import { track } from "@/lib/track";
 import { createClient } from "@/lib/supabase/client";
 import type { Lang } from "@/lib/translations";
 import { useEffect, useMemo, useState } from "react";
@@ -235,6 +236,7 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
         console.error("Trade insert failed:", dbError);
         setError(t("manual_err_save"));
       } else {
+        track("manual_trade_added");
         onSaved();
         onClose();
       }

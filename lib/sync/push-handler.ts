@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { purgeDemoTrades } from "@/lib/demo-data";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkDailyLossAlert, checkDrawdownAlert, resolveActiveChallengeId, getChallengeAccountMap } from "@/lib/alerts/daily-loss";
+import { checkTiltInsight } from "@/lib/alerts/tilt-insight";
 import {
   mapSource,
   mapDirection,
@@ -259,6 +260,11 @@ export async function handlePushSync(req: NextRequest): Promise<NextResponse> {
   // Drawdown : une alerte par challenge réellement impacté par ce lot.
   for (const [challengeId, pnl] of Array.from(batchPnlByChallenge.entries())) {
     if (pnl < 0) await checkDrawdownAlert(admin, userId, lang, challengeId, pnl);
+  }
+  // Tilt : fuite comportementale détectée sur les dernières 24 h (déterministe,
+  // 0 coût IA, 1 push max/jour). Seulement quand de nouveaux trades arrivent.
+  if (toInsert.length > 0) {
+    await checkTiltInsight(admin, userId, lang);
   }
 
   return NextResponse.json({ received: rawTrades.length, synced, skipped });
