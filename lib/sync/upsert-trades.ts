@@ -4,6 +4,7 @@
 // annotations (notes, emotion, tags, strategy_id, screenshots…) are preserved.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { purgeDemoTrades } from "@/lib/demo-data";
 
 export interface SyncedTradeRow {
   user_id: string;
@@ -29,6 +30,9 @@ export async function upsertSyncedTrades(
   challengeId: string | null = null,
 ): Promise<{ synced: number; skipped: number; insertedNetPnl: number }> {
   if (rows.length === 0) return { synced: 0, skipped: 0, insertedNetPnl: 0 };
+
+  // Des trades réels arrivent par la sync → la démo n'a plus de raison d'être.
+  await purgeDemoTrades(admin, userId);
 
   const externalIds = rows.map((r) => r.external_id);
   const sources = Array.from(new Set(rows.map((r) => r.source)));

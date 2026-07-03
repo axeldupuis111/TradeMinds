@@ -296,12 +296,23 @@ async function handle(req: Request) {
     // Only the trader's local Sunday-evening hour (dryRun bypasses the gate).
     if (!dryRun && !isWeeklyDue((user.timezone as string) || "UTC")) continue;
 
-    const { data: trades } = await supabase
+    // Les trades démo ne partent jamais dans un email ; fallback sans filtre
+    // tant que la colonne is_demo n'existe pas (migration non appliquée).
+    let { data: trades } = await supabase
       .from("trades")
       .select("pnl, commission, swap, pair")
       .eq("user_id", user.id)
       .eq("status", "closed")
+      .eq("is_demo", false)
       .gte("open_time", sinceIso);
+    if (trades === null) {
+      ({ data: trades } = await supabase
+        .from("trades")
+        .select("pnl, commission, swap, pair")
+        .eq("user_id", user.id)
+        .eq("status", "closed")
+        .gte("open_time", sinceIso));
+    }
 
     // Aucun trade cette semaine → pas d'email (pas de spam)
     if (!trades || trades.length === 0) {

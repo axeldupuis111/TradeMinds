@@ -4,6 +4,7 @@ import ExportGuideModal from "@/components/trades/ExportGuideModal";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { applyManualMapping, parseCSV, parseXlsx, type ParsedTrade } from "@/lib/csv-parser";
+import { purgeDemoTrades } from "@/lib/demo-data";
 import { createClient } from "@/lib/supabase/client";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -318,6 +319,10 @@ export default function CsvImport({ strategyId, onImported }: Props) {
     }
 
     const challengeId = selectedChallengeId || null;
+
+    // Premier import réel → les trades démo s'effacent (et ne polluent pas
+    // la détection de doublons ci-dessous).
+    await purgeDemoTrades(supabase, user.id);
 
     // Duplicate detection: fetch existing trades matching open_time range
     const openTimes = preview.map((tr) => tr.open_time).filter(Boolean) as string[];

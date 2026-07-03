@@ -57,8 +57,19 @@ export default async function Image({ params }: { params: { username: string } }
     if (profile) {
       found = true;
       username = profile.username as string;
+      // Trades démo exclus de l'image publique ; fallback sans filtre tant
+      // que la colonne is_demo n'existe pas en prod.
       const [{ data: trades }, { data: reviews }] = await Promise.all([
-        supabase.from("trades").select("pnl, commission, swap").eq("user_id", profile.id),
+        supabase
+          .from("trades")
+          .select("pnl, commission, swap")
+          .eq("user_id", profile.id)
+          .eq("is_demo", false)
+          .then(async (res) =>
+            res.error
+              ? await supabase.from("trades").select("pnl, commission, swap").eq("user_id", profile.id)
+              : res
+          ),
         supabase
           .from("session_reviews")
           .select("created_at, discipline_score, analysis")

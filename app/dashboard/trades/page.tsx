@@ -1,5 +1,6 @@
 "use client";
 
+import { DemoDataBanner } from "@/components/dashboard/DemoData";
 import CloseTradeModal from "@/components/trades/CloseTradeModal";
 import CsvImport from "@/components/trades/CsvImport";
 import ManualTradeModal from "@/components/trades/ManualTradeModal";
@@ -136,6 +137,9 @@ export default function TradesPage() {
 
   return (
     <div className="space-y-6">
+      {/* Mode démo : rappel visible tant que des trades fictifs existent */}
+      <DemoDataBanner key={`demo-${refreshKey}`} />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>

@@ -53,12 +53,24 @@ export default async function PublicProfilePage({ params }: Props) {
 
   const userId = profile.id;
 
+  // Les trades démo n'apparaissent jamais sur un profil PUBLIC ; fallback
+  // sans filtre tant que la colonne is_demo n'existe pas en prod.
   const [{ data: trades }, { data: reviews }, { data: achievements }] = await Promise.all([
     supabase
       .from("trades")
       .select("open_time, pnl, commission, swap")
       .eq("user_id", userId)
-      .order("open_time", { ascending: true }),
+      .eq("is_demo", false)
+      .order("open_time", { ascending: true })
+      .then(async (res) =>
+        res.error
+          ? await supabase
+              .from("trades")
+              .select("open_time, pnl, commission, swap")
+              .eq("user_id", userId)
+              .order("open_time", { ascending: true })
+          : res
+      ),
     supabase
       .from("session_reviews")
       .select("created_at, discipline_score, analysis")

@@ -1,0 +1,200 @@
+"use client";
+
+/**
+ * CapitalLeaks — « Tes fuites de capital » : la promesse de la landing
+ * matérialisée. Croise les erreurs de discipline détectées (revenge, émotions
+ * à risque, overtrading, sizing tilt, pire heure) avec le P&L réel et affiche
+ * ce que chaque habitude a coûté en euros sur les 30 derniers jours.
+ *
+ * Détection 100 % déterministe (lib/analytics/leaks.ts) : gratuit en coût IA,
+ * disponible sur tous les plans. Si moins de 10 trades sur 30 jours, la
+ * fenêtre s'élargit aux 300 derniers trades pour rester utile aux comptes
+ * moins actifs. Ne rend rien sous le volume minimal.
+ */
+
+import CountUp from "@/components/animations/CountUp";
+import GrowBar from "@/components/animations/GrowBar";
+import { computeCapitalLeaks, type CapitalLeak, type LeakTrade } from "@/lib/analytics/leaks";
+import { useLanguage } from "@/lib/LanguageContext";
+import { cn } from "@/lib/cn";
+import { createClient } from "@/lib/supabase/client";
+import { AlertTriangle, Clock, Flame, Gauge, HeartPulse, PiggyBank, ShieldCheck, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+
+const WINDOW_DAYS = 30;
+const MIN_TRADES = 10;
+
+function fmt(key: string, vars: Record<string, string | number>): string {
+  let out = key;
+  for (const [k, v] of Object.entries(vars)) out = out.replace(`{${k}}`, String(v));
+  return out;
+}
+
+function fmtEur(n: number): string {
+  return `${Math.round(n).toLocaleString("fr-FR")} €`;
+}
+
+const LEAK_ICONS: Record<CapitalLeak["type"], React.ReactNode> = {
+  revenge: <Flame className="w-3.5 h-3.5" strokeWidth={1.75} />,
+  emotional: <HeartPulse className="w-3.5 h-3.5" strokeWidth={1.75} />,
+  overtrading: <Gauge className="w-3.5 h-3.5" strokeWidth={1.75} />,
+  oversizing: <AlertTriangle className="w-3.5 h-3.5" strokeWidth={1.75} />,
+  bad_hour: <Clock className="w-3.5 h-3.5" strokeWidth={1.75} />,
+};
+
+export default function CapitalLeaks() {
+  const { t } = useLanguage();
+  const [trades, setTrades] = useState<LeakTrade[] | null>(null);
+  const [maxTradesPerDay, setMaxTradesPerDay] = useState<number | null>(null);
+  const [wholeHistory, setWholeHistory] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    let cancelled = false;
+
+    async function load() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || cancelled) return;
+      const [{ data: rows }, { data: strat }] = await Promise.all([
+        supabase
+          .from("trades")
+          .select("open_time, close_time, pnl, commission, swap, lot_size, pair, emotion")
+          .eq("user_id", user.id)
+          .eq("status", "closed")
+          .order("open_time", { ascending: false })
+          .limit(300),
+        supabase
+          .from("strategies")
+          .select("max_trades_per_day")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle(),
+      ]);
+      if (cancelled) return;
+
+      const all = (rows ?? []) as LeakTrade[];
+      const since = Date.now() - WINDOW_DAYS * 86400000;
+      const recent = all.filter((tr) => new Date(tr.open_time).getTime() >= since);
+      // Fenêtre 30 j si assez de volume, sinon tout l'historique chargé.
+      const useAll = recent.length < MIN_TRADES;
+      setWholeHistory(useAll);
+      setTrades(useAll ? all : recent);
+      setMaxTradesPerDay(strat?.max_trades_per_day ?? null);
+    }
+    load();
+    return () => { cancelled = true; };
+  }, []);
+
+  const result = useMemo(
+    () => (trades ? computeCapitalLeaks(trades, { maxTradesPerDay, minTrades: MIN_TRADES }) : null),
+    [trades, maxTradesPerDay]
+  );
+
+  // Pas encore chargé ou pas assez de données pour un chiffre honnête.
+  if (!result || result.tradesAnalyzed < MIN_TRADES) return null;
+
+  const basedOn = fmt(t(wholeHistory ? "leaks_based_on_all" : "leaks_based_on"), {
+    n: result.tradesAnalyzed,
+  });
+
+  // ── État sain : aucune fuite chiffrable — on le célèbre au lieu de cacher ──
+  if (result.leaks.length === 0) {
+    return (
+      <div className="bg-card border border-border rounded-xl p-5">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <PiggyBank className="w-4 h-4 text-accent" strokeWidth={1.75} />
+            <h3 className="text-sm font-semibold text-foreground">{t("leaks_title")}</h3>
+          </div>
+          <span className="text-[10px] text-foreground-muted">{basedOn}</span>
+        </div>
+        <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg border bg-profit/5 border-profit/20">
+          <span className="flex items-center justify-center w-6 h-6 rounded-md shrink-0 bg-profit/15 text-profit">
+            <ShieldCheck className="w-3.5 h-3.5" strokeWidth={1.75} />
+          </span>
+          <p className="text-xs text-foreground leading-relaxed flex-1 min-w-0">{t("leaks_none")}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const top = result.leaks.slice(0, 3);
+  const maxCost = top[0].cost || 1;
+
+  function leakLabel(leak: CapitalLeak): string {
+    switch (leak.type) {
+      case "revenge": return t("leaks_type_revenge");
+      case "emotional": return t("leaks_type_emotional");
+      case "overtrading": return fmt(t("leaks_type_overtrading"), { max: leak.meta?.maxPerDay ?? "—" });
+      case "oversizing": return t("leaks_type_oversizing");
+      case "bad_hour": {
+        const h = leak.meta?.hour ?? 0;
+        return fmt(t("leaks_type_bad_hour"), { hour: h, hourEnd: (h + 1) % 24 });
+      }
+    }
+  }
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-5">
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2">
+          <PiggyBank className="w-4 h-4 text-accent" strokeWidth={1.75} />
+          <h3 className="text-sm font-semibold text-foreground">{t("leaks_title")}</h3>
+        </div>
+        <span className="text-[10px] text-foreground-muted">{basedOn}</span>
+      </div>
+      <p className="text-xs text-foreground-muted mb-4">{t("leaks_subtitle")}</p>
+
+      {/* Le chiffre qui fait mal — et qui motive */}
+      <div className="flex items-end gap-2 mb-1">
+        <p className="text-3xl font-bold tracking-tight text-loss tabular-nums leading-none">
+          −<CountUp end={Math.round(result.totalRecoverable)} duration={1.4} suffix=" €" />
+        </p>
+      </div>
+      <p className="text-xs text-foreground-muted mb-4">
+        {fmt(t("leaks_total_label"), { n: result.flaggedCount })}
+      </p>
+
+      {/* Top 3 des habitudes les plus chères */}
+      <div className="space-y-3">
+        {top.map((leak, i) => (
+          <div key={leak.type}>
+            <div className="flex items-center justify-between gap-3 mb-1">
+              <span className="flex items-center gap-2 text-xs text-foreground min-w-0">
+                <span className="flex items-center justify-center w-6 h-6 rounded-md shrink-0 bg-loss/15 text-loss">
+                  {LEAK_ICONS[leak.type]}
+                </span>
+                <span className="truncate">{leakLabel(leak)}</span>
+                <span className="text-[10px] text-foreground-muted shrink-0">
+                  {fmt(t("leaks_trades_count"), { n: leak.count })}
+                </span>
+              </span>
+              <span className="text-xs font-bold text-loss tabular-nums shrink-0">−{fmtEur(leak.cost)}</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-surface overflow-hidden">
+              <GrowBar
+                pct={Math.max(6, (leak.cost / maxCost) * 100)}
+                className="rounded-full bg-loss/70"
+                delayMs={i * 120}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Le message d'espoir + le pont vers l'action */}
+      <div className={cn("mt-4 pt-3 border-t border-border/60 flex flex-wrap items-center gap-2 justify-between")}>
+        <p className="text-xs text-foreground-muted flex-1 min-w-[180px]">{t("leaks_kicker")}</p>
+        <Link
+          href="/dashboard/analysis"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:underline whitespace-nowrap"
+        >
+          <Sparkles className="w-3.5 h-3.5" strokeWidth={1.75} />
+          {t("leaks_cta")}
+        </Link>
+      </div>
+    </div>
+  );
+}

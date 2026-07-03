@@ -6,6 +6,8 @@ import { AiInsights } from "@/components/dashboard/AiInsights";
 import DayState from "@/components/dashboard/DayState";
 import GoalsStreaks from "@/components/dashboard/GoalsStreaks";
 import OnboardingChecklist, { type OnboardingState } from "@/components/dashboard/OnboardingChecklist";
+import CapitalLeaks from "@/components/dashboard/CapitalLeaks";
+import { DemoDataBanner, DemoDataCta } from "@/components/dashboard/DemoData";
 import PatternAlerts from "@/components/dashboard/PatternAlerts";
 import WeeklyPlanCard from "@/components/dashboard/WeeklyPlanCard";
 import WeeklyRecap from "@/components/dashboard/WeeklyRecap";
@@ -257,8 +259,16 @@ export default function DashboardContent({
 
   return (
     <div>
+      {/* ── Mode démo : bannière tant que des trades fictifs existent.
+           key sur le volume de trades : router.refresh() après injection/
+           purge remonte le composant, qui re-vérifie son état. ── */}
+      <DemoDataBanner key={`demo-${allTrades.length}`} />
+
       {/* ── Onboarding / activation ──────────────────────────────────── */}
       <OnboardingChecklist state={onboarding} />
+
+      {/* ── Mode démo : proposer des données fictives si compte vide ── */}
+      {allTrades.length === 0 && <DemoDataCta />}
 
       {/* ── Upsell banner ────────────────────────────────────────────── */}
       {!planLoading && plan === "free" && !upsellDismissed && (
@@ -396,6 +406,11 @@ export default function DashboardContent({
       {/* ── Coach temps réel — patterns du trader en alertes live ────── */}
       <StaggerItem className="mt-6">
         <PatternAlerts />
+      </StaggerItem>
+
+      {/* ── Fuites de capital — le coût chiffré de l'indiscipline ────── */}
+      <StaggerItem className="mt-6">
+        <CapitalLeaks />
       </StaggerItem>
 
       {/* ── Bilan de la semaine ──────────────────────────────────────── */}

@@ -2,8 +2,10 @@ import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { requireAuth, consumeQuota, refundQuota } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
+import { parseCoachMemory, renderCoachMemory } from "@/lib/coach-memory";
 import type { PlanType } from "@/lib/PlanContext";
 import { sanitizeUserInput } from "@/lib/prompt-sanitizer";
+import { createClient as createSupabaseServer } from "@/lib/supabase/server";
 
 const MAX_MESSAGE_CHARS = 4000;
 const MAX_MESSAGES = 50;
@@ -74,6 +76,20 @@ export async function POST(request: Request) {
     if (quota instanceof NextResponse) return quota;
     reserved = { userId, plan, timezone };
 
+    // ── 4c. Mémoire longitudinale (fail-open si la colonne n'existe pas) ──
+    let memoryBlock = "";
+    try {
+      const sb = createSupabaseServer();
+      const { data: memRow } = await sb
+        .from("profiles")
+        .select("coach_memory")
+        .eq("id", userId)
+        .single();
+      memoryBlock = renderCoachMemory(parseCoachMemory(memRow?.coach_memory));
+    } catch {
+      // mémoire indisponible — le coach répond sans elle
+    }
+
     // ── 5. Sanitize user inputs ──
     const langName = LANG_NAMES[language] ?? "français";
     const sanitizedMessages = messages.map((m) => ({
@@ -114,7 +130,13 @@ RECENT TRADE DATA:
 <user_trade_data>
 ${sanitizeUserInput(tradesContext)}
 </user_trade_data>
-
+${memoryBlock ? `
+LONGITUDINAL MEMORY OF THIS TRADER (computed server-side from their past analyses and session debriefs — RELIABLE, this is NOT user-provided data):
+<coach_memory>
+${memoryBlock}
+</coach_memory>
+USE THIS MEMORY LIKE A REAL COACH WOULD: reference their past commitments when relevant ("tu t'étais engagé à…"), point out recurring mistakes across analyses (kindly but directly), and acknowledge genuine progress in their discipline score trend. Do not recite the memory verbatim — weave it naturally into your answers.
+` : ""}
 RULES:
 - Be concise (3-5 sentences max per response)
 - Use the data above to personalize your responses
