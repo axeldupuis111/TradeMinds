@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeCapitalLeaks, type LeakTrade } from "./leaks";
+import { computeCapitalLeaks, computeDisciplineCurves, type LeakTrade } from "./leaks";
 
 function mk(over: Partial<LeakTrade> & { open_time: string; pnl: number }): LeakTrade {
   return { commission: 0, swap: 0, close_time: null, lot_size: 1, emotion: null, ...over };
@@ -165,5 +165,57 @@ describe("computeCapitalLeaks", () => {
       expect(res.leaks[i - 1].cost).toBeGreaterThanOrEqual(res.leaks[i].cost);
     }
     expect(res.leaks[0].type).toBe("revenge");
+  });
+});
+
+describe("computeDisciplineCurves", () => {
+  it("renvoie des courbes vides sous le volume minimal", () => {
+    const res = computeDisciplineCurves(filler(5));
+    expect(res.real).toEqual([]);
+    expect(res.disciplined).toEqual([]);
+    expect(res.finalGap).toBe(0);
+  });
+
+  it("un point par trade, cumul réel exact", () => {
+    const trades = filler(10);
+    const res = computeDisciplineCurves(trades);
+    expect(res.real).toHaveLength(10);
+    expect(res.disciplined).toHaveLength(10);
+    expect(res.real[9]).toBe(100); // 10 × +10
+  });
+
+  it("la courbe disciplinée fait un palier sur les trades flagués et l'écart final = totalRecoverable", () => {
+    const trades = [
+      ...filler(9),
+      mk({ open_time: "2026-06-02T10:00:00", close_time: "2026-06-02T10:20:00", pnl: -100 }),
+      mk({ open_time: "2026-06-02T10:30:00", pnl: -80 }), // revenge → retiré
+    ];
+    const curves = computeDisciplineCurves(trades);
+    const leaks = computeCapitalLeaks(trades);
+    // réel : 90 − 100 − 80 = −90 ; discipliné : 90 − 100 = −10
+    expect(curves.real[curves.real.length - 1]).toBe(-90);
+    expect(curves.disciplined[curves.disciplined.length - 1]).toBe(-10);
+    expect(curves.finalGap).toBe(80);
+    expect(curves.finalGap).toBe(leaks.totalRecoverable);
+    // palier : le dernier point discipliné égale l'avant-dernier
+    expect(curves.disciplined[curves.disciplined.length - 1])
+      .toBe(curves.disciplined[curves.disciplined.length - 2]);
+  });
+
+  it("sans indiscipline, les deux courbes sont identiques", () => {
+    const res = computeDisciplineCurves(filler(12));
+    expect(res.disciplined).toEqual(res.real);
+    expect(res.finalGap).toBe(0);
+  });
+
+  it("un trade flagué GAGNANT réduit l'écart (honnêteté du contrefactuel)", () => {
+    const trades = [
+      ...filler(9),
+      mk({ open_time: "2026-06-02T10:00:00", close_time: "2026-06-02T10:10:00", pnl: -50 }),
+      mk({ open_time: "2026-06-02T10:15:00", pnl: 200 }), // revenge gagnant → retiré aussi
+    ];
+    const res = computeDisciplineCurves(trades);
+    // discipliné (sans le +200) finit SOUS le réel : gap négatif assumé
+    expect(res.finalGap).toBe(-200);
   });
 });

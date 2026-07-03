@@ -7,6 +7,7 @@ import { postContent, type BlogPost } from "@/lib/blog/posts";
 import BlogIllustration from "@/components/blog/BlogIllustration";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { ArrowLeft } from "lucide-react";
 
 const DATE_LOCALE: Record<string, string> = { fr: "fr-FR", en: "en-US", de: "de-DE", es: "es-ES" };
@@ -49,8 +50,9 @@ export default function BlogPostView({ post }: { post: BlogPost }) {
           <h1 className="mt-1 text-3xl font-bold leading-tight text-foreground">{c.title}</h1>
         </header>
 
-        <div className="prose max-w-none prose-headings:text-foreground prose-p:text-foreground-muted prose-li:text-foreground-muted prose-strong:text-foreground prose-a:text-accent prose-em:text-foreground-muted">
-          <ReactMarkdown>{c.body}</ReactMarkdown>
+        <div className="prose max-w-none prose-headings:text-foreground prose-p:text-foreground-muted prose-li:text-foreground-muted prose-strong:text-foreground prose-a:text-accent prose-em:text-foreground-muted prose-table:text-sm prose-th:text-foreground prose-td:text-foreground-muted">
+          {/* remark-gfm : tables (comparatifs), listes de tâches, autolinks */}
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{c.body}</ReactMarkdown>
         </div>
 
         {/* Conversion CTA */}

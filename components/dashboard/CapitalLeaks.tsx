@@ -14,7 +14,7 @@
 
 import CountUp from "@/components/animations/CountUp";
 import GrowBar from "@/components/animations/GrowBar";
-import { computeCapitalLeaks, type CapitalLeak, type LeakTrade } from "@/lib/analytics/leaks";
+import { computeCapitalLeaks, computeDisciplineCurves, type CapitalLeak, type LeakTrade } from "@/lib/analytics/leaks";
 import { useLanguage } from "@/lib/LanguageContext";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
@@ -33,6 +33,30 @@ function fmt(key: string, vars: Record<string, string | number>): string {
 
 function fmtEur(n: number): string {
   return `${Math.round(n).toLocaleString("fr-FR")} €`;
+}
+
+/**
+ * Discipline Backtest — les deux courbes du contrefactuel : le cumul réel et
+ * le cumul « plan respecté » (trades indisciplinés retirés). Même axe X (un
+ * point par trade), la divergence se lit au moment de chaque erreur.
+ */
+function DisciplineCurveChart({ real, disciplined }: { real: number[]; disciplined: number[] }) {
+  if (real.length < 2) return null;
+  const all = [...real, ...disciplined, 0];
+  const min = Math.min(...all), max = Math.max(...all), range = max - min || 1;
+  const w = 100, h = 32;
+  const toPath = (data: number[]) =>
+    data.map((v, i) => `${i ? "L" : "M"}${((i / (data.length - 1)) * w).toFixed(2)},${(h - ((v - min) / range) * h).toFixed(2)}`).join(" ");
+  const zeroY = h - ((0 - min) / range) * h;
+  const lastX = w, lastDiscY = h - ((disciplined[disciplined.length - 1] - min) / range) * h;
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="w-full h-20" aria-hidden>
+      <line x1="0" y1={zeroY} x2={w} y2={zeroY} stroke="rgb(var(--border))" strokeWidth="0.4" strokeDasharray="1.5 2" />
+      <path d={toPath(real)} fill="none" stroke="rgb(var(--loss))" strokeOpacity="0.75" strokeWidth="1.4" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+      <path d={toPath(disciplined)} fill="none" stroke="rgb(var(--profit))" strokeWidth="1.6" strokeDasharray="3 2" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+      <circle cx={lastX} cy={lastDiscY} r="1.6" fill="rgb(var(--profit))" />
+    </svg>
+  );
 }
 
 const LEAK_ICONS: Record<CapitalLeak["type"], React.ReactNode> = {
@@ -89,6 +113,12 @@ export default function CapitalLeaks() {
 
   const result = useMemo(
     () => (trades ? computeCapitalLeaks(trades, { maxTradesPerDay, minTrades: MIN_TRADES }) : null),
+    [trades, maxTradesPerDay]
+  );
+
+  // Discipline Backtest : contrefactuel « plan respecté » sur la même fenêtre.
+  const curves = useMemo(
+    () => (trades ? computeDisciplineCurves(trades, { maxTradesPerDay, minTrades: MIN_TRADES }) : null),
     [trades, maxTradesPerDay]
   );
 
@@ -183,6 +213,35 @@ export default function CapitalLeaks() {
           </div>
         ))}
       </div>
+
+      {/* Discipline Backtest — et si tu avais respecté ton plan ? */}
+      {curves && curves.finalGap > 0 && curves.real.length >= 2 && (
+        <div className="mt-4 pt-3 border-t border-border/60">
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <p className="text-xs font-semibold text-foreground">{t("leaks_curve_title")}</p>
+            <span className="text-[10px] font-bold text-profit tabular-nums whitespace-nowrap">
+              {fmt(t("leaks_curve_gap"), { n: fmtEur(curves.finalGap) })}
+            </span>
+          </div>
+          <DisciplineCurveChart real={curves.real} disciplined={curves.disciplined} />
+          <div className="flex items-center gap-4 mt-1.5">
+            <span className="flex items-center gap-1.5 text-[10px] text-foreground-muted">
+              <span className="inline-block w-3 h-0.5 rounded-full bg-loss/75" aria-hidden />
+              {t("leaks_curve_real")}
+              <span className="font-semibold text-foreground tabular-nums">
+                {curves.real[curves.real.length - 1] >= 0 ? "+" : "−"}{fmtEur(Math.abs(curves.real[curves.real.length - 1]))}
+              </span>
+            </span>
+            <span className="flex items-center gap-1.5 text-[10px] text-foreground-muted">
+              <span className="inline-block w-3 h-0.5 rounded-full bg-profit" style={{ backgroundImage: "repeating-linear-gradient(90deg, rgb(var(--profit)) 0 3px, transparent 3px 5px)" }} aria-hidden />
+              {t("leaks_curve_disciplined")}
+              <span className="font-semibold text-profit tabular-nums">
+                {curves.disciplined[curves.disciplined.length - 1] >= 0 ? "+" : "−"}{fmtEur(Math.abs(curves.disciplined[curves.disciplined.length - 1]))}
+              </span>
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Le message d'espoir + le pont vers l'action */}
       <div className={cn("mt-4 pt-3 border-t border-border/60 flex flex-wrap items-center gap-2 justify-between")}>

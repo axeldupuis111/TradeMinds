@@ -28,6 +28,194 @@ export interface BlogPost {
 
 export const POSTS: BlogPost[] = [
   {
+    slug: "tradediscipline-vs-tradezella",
+    date: "2026-07-03",
+    readingMinutes: 6,
+    cover: "journal",
+    content: {
+      en: {
+        title: "TradeDiscipline vs TradeZella: which trading journal should you choose in 2026?",
+        excerpt:
+          "An honest, feature-by-feature comparison: where TradeZella is genuinely stronger, where TradeDiscipline wins, and how to pick based on what actually makes you profitable.",
+        body: `TradeZella is the best-known trading journal on the market, and it earns that reputation. So why would you pick TradeDiscipline instead? Short answer: it depends on what's actually holding your trading back. Here's an honest comparison — including the areas where TradeZella is stronger.
+
+*Prices and features below are as observed in July 2026 on each product's public website.*
+
+## The quick comparison
+
+| | TradeDiscipline | TradeZella |
+|---|---|---|
+| Price (monthly) | €9.99 (Plus) / €19.99 (Premium) | $29 (Basic) / $49 (Premium) |
+| AI trade analysis | ✓ against **your** written strategy | ✓ per-trade, always-on |
+| AI coach with long-term memory | ✓ remembers your commitments across sessions | — |
+| Cost of your mistakes in € | ✓ capital leaks, quantified per habit | — |
+| "What if I'd followed my plan?" curve | ✓ counterfactual equity curve | — |
+| Real-time guards (stop-trading, prop-firm limits) | ✓ before you click | — |
+| Market backtesting (historical data) | — | ✓ 11+ years of data |
+| Trade replay | — | ✓ tick by tick |
+| Broker auto-sync | MT4/MT5, cTrader, NinjaTrader, Tradovate + CSV | 500+ brokers |
+| Languages | French, English, German, Spanish | English |
+| Daily AI macro briefing | ✓ (Premium) | — |
+
+## Where TradeZella is genuinely stronger
+
+Let's be fair. If you spend your evenings **backtesting strategies against historical market data**, TradeZella is built for that: years of data, plain-English strategy testing, tick-by-tick replay. TradeDiscipline doesn't do market backtesting. TradeZella also syncs with far more brokers — if you trade through a niche US stockbroker, it probably connects natively.
+
+## Where TradeDiscipline wins
+
+**The thesis is different.** Most traders don't fail for lack of backtesting — they fail because they don't follow the plan they already have. TradeDiscipline is built entirely around that problem:
+
+- **Your mistakes, in euros.** The capital-leaks block crosses your behavior (revenge trading, FOMO entries, oversized positions after a loss, your worst hour) with your real P&L and tells you what each habit cost you — plus a counterfactual curve showing where your account would be if you had followed your plan.
+- **A coach that remembers.** Every AI journal answers questions about your data. TradeDiscipline's coach keeps a longitudinal memory: it knows what you committed to last week and tells you when you broke it. That's what a real coach does.
+- **Intervention, not autopsy.** Stop-trading guards, prop-firm challenge limits and tilt alerts act *while you trade* — not in a report you read after the damage.
+- **A third of the price.** €9.99/month versus $29/month for the entry plan, with a genuinely useful free tier.
+
+## Which one is for you?
+
+Choose **TradeZella** if your priority is researching and validating strategies against historical data, or if you need a niche broker integration.
+
+Choose **TradeDiscipline** if your strategy already works *when you follow it* — and your real problem is consistency, discipline and the expensive habits you repeat. That's the gap between backtest results and your live account, and it's exactly what we measure.
+
+You can [try TradeDiscipline for free](/login) — no credit card, with demo data available so you can explore everything in two minutes.`,
+      },
+      fr: {
+        title: "TradeDiscipline vs TradeZella : quel journal de trading choisir en 2026 ?",
+        excerpt:
+          "Comparatif honnête, fonctionnalité par fonctionnalité : où TradeZella est réellement plus fort, où TradeDiscipline gagne, et comment choisir selon ce qui te rend vraiment rentable.",
+        body: `TradeZella est le journal de trading le plus connu du marché, et cette réputation est méritée. Alors pourquoi choisir TradeDiscipline ? Réponse courte : ça dépend de ce qui freine réellement ton trading. Voici un comparatif honnête — y compris les points où TradeZella est plus fort.
+
+*Prix et fonctionnalités constatés en juillet 2026 sur les sites publics des deux produits.*
+
+## Le comparatif express
+
+| | TradeDiscipline | TradeZella |
+|---|---|---|
+| Prix (mensuel) | 9,99 € (Plus) / 19,99 € (Premium) | 29 $ (Basic) / 49 $ (Premium) |
+| Analyse IA des trades | ✓ face à **ta** stratégie écrite | ✓ par trade, en continu |
+| Coach IA avec mémoire longue durée | ✓ se souvient de tes engagements | — |
+| Coût de tes erreurs en € | ✓ fuites de capital chiffrées par habitude | — |
+| Courbe « et si j'avais respecté mon plan ? » | ✓ contrefactuel sur ton historique | — |
+| Garde-fous temps réel (stop-trading, limites prop firm) | ✓ avant que tu cliques | — |
+| Backtesting de marché (données historiques) | — | ✓ 11+ ans de données |
+| Trade replay | — | ✓ tick par tick |
+| Synchro broker | MT4/MT5, cTrader, NinjaTrader, Tradovate + CSV | 500+ brokers |
+| Langues | français, anglais, allemand, espagnol | anglais |
+| Brief macro IA quotidien | ✓ (Premium) | — |
+
+## Là où TradeZella est réellement plus fort
+
+Soyons justes. Si tu passes tes soirées à **backtester des stratégies sur des données historiques**, TradeZella est fait pour ça : des années de données, du backtest en langage naturel, un replay tick par tick. TradeDiscipline ne fait pas de backtesting de marché. TradeZella se synchronise aussi avec beaucoup plus de brokers — si tu trades chez un courtier actions US confidentiel, il y a sûrement une intégration native.
+
+## Là où TradeDiscipline gagne
+
+**La thèse est différente.** La plupart des traders n'échouent pas par manque de backtesting — ils échouent parce qu'ils ne respectent pas le plan qu'ils ont déjà. TradeDiscipline est entièrement construit autour de ce problème :
+
+- **Tes erreurs, en euros.** Le bloc fuites de capital croise ton comportement (revenge trading, entrées FOMO, taille gonflée après une perte, ta pire heure) avec ton P&L réel et te dit ce que chaque habitude t'a coûté — avec une courbe contrefactuelle qui montre où serait ton compte si tu avais respecté ton plan.
+- **Un coach qui se souvient.** Tous les journaux IA répondent à des questions sur tes données. Le coach de TradeDiscipline garde une mémoire longitudinale : il sait ce que tu t'étais engagé à corriger la semaine dernière et te le dit quand tu récidives. C'est ça, un vrai coach.
+- **De l'intervention, pas de l'autopsie.** Garde-fous stop-trading, limites de challenge prop firm et alertes tilt agissent *pendant* que tu trades — pas dans un rapport lu après les dégâts.
+- **Trois fois moins cher.** 9,99 €/mois contre 29 $/mois pour le plan d'entrée, avec un plan gratuit réellement utile.
+
+## Lequel est fait pour toi ?
+
+Choisis **TradeZella** si ta priorité est de rechercher et valider des stratégies sur données historiques, ou s'il te faut une intégration broker exotique.
+
+Choisis **TradeDiscipline** si ta stratégie fonctionne déjà *quand tu la respectes* — et que ton vrai problème, c'est la régularité, la discipline et les habitudes coûteuses que tu répètes. C'est l'écart entre tes résultats de backtest et ton compte réel, et c'est exactement ce qu'on mesure.
+
+Tu peux [essayer TradeDiscipline gratuitement](/login) — sans carte bancaire, avec des données de démo pour tout explorer en deux minutes.`,
+      },
+      de: {
+        title: "TradeDiscipline vs. TradeZella: Welches Trading-Journal 2026 wählen?",
+        excerpt:
+          "Ein ehrlicher Vergleich, Funktion für Funktion: wo TradeZella wirklich stärker ist, wo TradeDiscipline gewinnt — und wie du nach dem auswählst, was dich tatsächlich profitabel macht.",
+        body: `TradeZella ist das bekannteste Trading-Journal am Markt — und dieser Ruf ist verdient. Warum also TradeDiscipline wählen? Kurze Antwort: Es hängt davon ab, was dein Trading wirklich bremst. Hier ein ehrlicher Vergleich — inklusive der Punkte, in denen TradeZella stärker ist.
+
+*Preise und Funktionen: Stand Juli 2026, laut den öffentlichen Websites beider Produkte.*
+
+## Der Schnellvergleich
+
+| | TradeDiscipline | TradeZella |
+|---|---|---|
+| Preis (monatlich) | 9,99 € (Plus) / 19,99 € (Premium) | 29 $ (Basic) / 49 $ (Premium) |
+| KI-Trade-Analyse | ✓ gegen **deine** schriftliche Strategie | ✓ pro Trade, always-on |
+| KI-Coach mit Langzeitgedächtnis | ✓ erinnert sich an deine Vorsätze | — |
+| Kosten deiner Fehler in € | ✓ Kapitallecks pro Gewohnheit beziffert | — |
+| „Was wäre, wenn ich meinem Plan gefolgt wäre?" | ✓ kontrafaktische Equity-Kurve | — |
+| Echtzeit-Schutzmechanismen (Stop-Trading, Prop-Firm-Limits) | ✓ bevor du klickst | — |
+| Markt-Backtesting (historische Daten) | — | ✓ 11+ Jahre Daten |
+| Trade Replay | — | ✓ Tick für Tick |
+| Broker-Auto-Sync | MT4/MT5, cTrader, NinjaTrader, Tradovate + CSV | 500+ Broker |
+| Sprachen | Deutsch, Englisch, Französisch, Spanisch | Englisch |
+| Tägliches KI-Makro-Briefing | ✓ (Premium) | — |
+
+## Wo TradeZella wirklich stärker ist
+
+Fair bleiben: Wenn du deine Abende mit **Backtesting von Strategien auf historischen Marktdaten** verbringst, ist TradeZella dafür gebaut — jahrelange Daten, Backtests in natürlicher Sprache, Tick-für-Tick-Replay. TradeDiscipline macht kein Markt-Backtesting. TradeZella verbindet sich außerdem mit deutlich mehr Brokern.
+
+## Wo TradeDiscipline gewinnt
+
+**Die These ist eine andere.** Die meisten Trader scheitern nicht an fehlendem Backtesting — sie scheitern daran, den Plan nicht zu befolgen, den sie längst haben. TradeDiscipline ist vollständig um dieses Problem herum gebaut:
+
+- **Deine Fehler, in Euro.** Der Kapitalleck-Block kreuzt dein Verhalten (Revenge-Trading, FOMO-Einstiege, zu große Positionen nach einem Verlust, deine schlechteste Stunde) mit deinem echten P&L und beziffert, was dich jede Gewohnheit gekostet hat — samt kontrafaktischer Kurve, die zeigt, wo dein Konto stünde, wenn du deinem Plan gefolgt wärst.
+- **Ein Coach, der sich erinnert.** Jedes KI-Journal beantwortet Fragen zu deinen Daten. Der Coach von TradeDiscipline führt ein Langzeitgedächtnis: Er weiß, was du dir letzte Woche vorgenommen hast, und sagt es dir, wenn du rückfällig wirst.
+- **Intervention statt Autopsie.** Stop-Trading-Wächter, Prop-Firm-Limits und Tilt-Alarme greifen ein, *während* du tradest — nicht in einem Bericht nach dem Schaden.
+- **Ein Drittel des Preises.** 9,99 €/Monat gegenüber 29 $/Monat für den Einstiegsplan, plus ein wirklich brauchbarer Gratis-Plan.
+
+## Welches passt zu dir?
+
+Wähle **TradeZella**, wenn deine Priorität das Erforschen und Validieren von Strategien auf historischen Daten ist oder du eine exotische Broker-Integration brauchst.
+
+Wähle **TradeDiscipline**, wenn deine Strategie bereits funktioniert, *wenn du sie befolgst* — und dein echtes Problem Konstanz, Disziplin und teure Gewohnheiten sind. Genau diese Lücke messen wir.
+
+Du kannst [TradeDiscipline kostenlos testen](/login) — ohne Kreditkarte, mit Demo-Daten, um alles in zwei Minuten zu erkunden.`,
+      },
+      es: {
+        title: "TradeDiscipline vs TradeZella: ¿qué diario de trading elegir en 2026?",
+        excerpt:
+          "Comparativa honesta, función por función: dónde TradeZella es realmente más fuerte, dónde gana TradeDiscipline, y cómo elegir según lo que de verdad te hace rentable.",
+        body: `TradeZella es el diario de trading más conocido del mercado, y esa reputación es merecida. Entonces, ¿por qué elegir TradeDiscipline? Respuesta corta: depende de lo que realmente frena tu trading. Aquí va una comparativa honesta — incluidos los puntos donde TradeZella es más fuerte.
+
+*Precios y funciones observados en julio de 2026 en las webs públicas de ambos productos.*
+
+## La comparativa rápida
+
+| | TradeDiscipline | TradeZella |
+|---|---|---|
+| Precio (mensual) | 9,99 € (Plus) / 19,99 € (Premium) | 29 $ (Basic) / 49 $ (Premium) |
+| Análisis IA de trades | ✓ contra **tu** estrategia escrita | ✓ por trade, siempre activo |
+| Coach IA con memoria a largo plazo | ✓ recuerda tus compromisos | — |
+| Coste de tus errores en € | ✓ fugas de capital cuantificadas por hábito | — |
+| Curva «¿y si hubiera respetado mi plan?» | ✓ contrafactual sobre tu historial | — |
+| Guardias en tiempo real (stop-trading, límites prop firm) | ✓ antes de que hagas clic | — |
+| Backtesting de mercado (datos históricos) | — | ✓ 11+ años de datos |
+| Trade replay | — | ✓ tick a tick |
+| Sincronización broker | MT4/MT5, cTrader, NinjaTrader, Tradovate + CSV | 500+ brokers |
+| Idiomas | español, inglés, francés, alemán | inglés |
+| Brief macro IA diario | ✓ (Premium) | — |
+
+## Donde TradeZella es realmente más fuerte
+
+Seamos justos. Si pasas las tardes **backtesteando estrategias sobre datos históricos**, TradeZella está hecho para eso: años de datos, backtesting en lenguaje natural, replay tick a tick. TradeDiscipline no hace backtesting de mercado. TradeZella también se sincroniza con muchos más brokers.
+
+## Donde gana TradeDiscipline
+
+**La tesis es distinta.** La mayoría de los traders no fracasan por falta de backtesting — fracasan porque no siguen el plan que ya tienen. TradeDiscipline está construido enteramente alrededor de ese problema:
+
+- **Tus errores, en euros.** El bloque de fugas de capital cruza tu comportamiento (revenge trading, entradas FOMO, tamaño inflado tras una pérdida, tu peor hora) con tu P&L real y te dice lo que te costó cada hábito — con una curva contrafactual que muestra dónde estaría tu cuenta si hubieras respetado tu plan.
+- **Un coach que recuerda.** Todos los diarios con IA responden preguntas sobre tus datos. El coach de TradeDiscipline mantiene una memoria longitudinal: sabe lo que te comprometiste a corregir la semana pasada y te lo dice cuando reincides.
+- **Intervención, no autopsia.** Guardias de stop-trading, límites de challenge prop firm y alertas de tilt actúan *mientras* operas — no en un informe leído después del daño.
+- **Un tercio del precio.** 9,99 €/mes frente a 29 $/mes en el plan de entrada, con un plan gratuito realmente útil.
+
+## ¿Cuál es para ti?
+
+Elige **TradeZella** si tu prioridad es investigar y validar estrategias sobre datos históricos, o si necesitas una integración de broker exótica.
+
+Elige **TradeDiscipline** si tu estrategia ya funciona *cuando la sigues* — y tu verdadero problema es la constancia, la disciplina y los hábitos caros que repites. Esa es la brecha entre tu backtest y tu cuenta real, y es exactamente lo que medimos.
+
+Puedes [probar TradeDiscipline gratis](/login) — sin tarjeta, con datos de demostración para explorarlo todo en dos minutos.`,
+      },
+    },
+  },
+  {
     slug: "stop-revenge-trading",
     date: "2026-06-30",
     readingMinutes: 4,

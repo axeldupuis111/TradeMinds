@@ -71,15 +71,21 @@ function median(values: number[]): number {
   return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 }
 
-export function computeCapitalLeaks(
-  trades: LeakTrade[],
-  opts?: { maxTradesPerDay?: number | null; minTrades?: number }
-): LeaksResult {
-  const minTrades = opts?.minTrades ?? DEFAULT_MIN_TRADES;
-  const sorted = [...trades].sort((a, b) => a.open_time.localeCompare(b.open_time));
-  const empty: LeaksResult = { leaks: [], totalRecoverable: 0, tradesAnalyzed: sorted.length, flaggedCount: 0 };
-  if (sorted.length < minTrades) return empty;
+interface LeakOptions {
+  maxTradesPerDay?: number | null;
+  minTrades?: number;
+}
 
+interface FlagResult {
+  /** index (ordre chronologique) → catégories qui le flaguent. */
+  flagged: Map<number, Set<LeakType>>;
+  worstHour: { hour: number; idxs: number[]; total: number } | null;
+  maxPerDay: number | null;
+}
+
+/** Cœur partagé : flague les trades indisciplinés (ordre chronologique). */
+function flagTrades(sorted: LeakTrade[], opts?: LeakOptions): FlagResult {
+  const minTrades = opts?.minTrades ?? DEFAULT_MIN_TRADES;
   // index → catégories qui le flaguent (pour l'union du total)
   const flagged = new Map<number, Set<LeakType>>();
   function flag(idx: number, type: LeakType) {
@@ -147,6 +153,17 @@ export function computeCapitalLeaks(
   }
   if (worstHour) for (const i of worstHour.idxs) flag(i, "bad_hour");
 
+  return { flagged, worstHour, maxPerDay };
+}
+
+export function computeCapitalLeaks(trades: LeakTrade[], opts?: LeakOptions): LeaksResult {
+  const minTrades = opts?.minTrades ?? DEFAULT_MIN_TRADES;
+  const sorted = [...trades].sort((a, b) => a.open_time.localeCompare(b.open_time));
+  const empty: LeaksResult = { leaks: [], totalRecoverable: 0, tradesAnalyzed: sorted.length, flaggedCount: 0 };
+  if (sorted.length < minTrades) return empty;
+
+  const { flagged, worstHour, maxPerDay } = flagTrades(sorted, opts);
+
   // ── Agrégation par catégorie (coût = net cumulé, gardé si négatif) ────
   const leaks: CapitalLeak[] = [];
   const types: LeakType[] = ["revenge", "emotional", "overtrading", "oversizing", "bad_hour"];
@@ -173,4 +190,45 @@ export function computeCapitalLeaks(
     tradesAnalyzed: sorted.length,
     flaggedCount: flagged.size,
   };
+}
+
+export interface DisciplineCurves {
+  /** Cumul du P&L net réel, un point par trade (ordre chronologique). */
+  real: number[];
+  /** Cumul contrefactuel : mêmes points, mais les trades flagués sont
+   *  ignorés (palier plat) — « si tu avais respecté ton plan ». */
+  disciplined: number[];
+  /** Écart final discipliné − réel (≥ 0 quand l'indiscipline a coûté). */
+  finalGap: number;
+}
+
+/**
+ * Discipline Backtest — le contrefactuel qui matérialise les fuites :
+ * rejoue l'historique en retirant les trades indisciplinés (l'union flaguée
+ * par flagTrades, la même que computeCapitalLeaks). Les deux courbes ont la
+ * même longueur (un point par trade réel), la disciplinée fait un palier sur
+ * chaque trade retiré — la divergence se LIT au moment de chaque erreur.
+ * L'écart final vaut exactement le net de l'union flaguée : cohérent avec
+ * totalRecoverable quand celui-ci est non nul.
+ */
+export function computeDisciplineCurves(trades: LeakTrade[], opts?: LeakOptions): DisciplineCurves {
+  const minTrades = opts?.minTrades ?? DEFAULT_MIN_TRADES;
+  const sorted = [...trades].sort((a, b) => a.open_time.localeCompare(b.open_time));
+  if (sorted.length < minTrades) return { real: [], disciplined: [], finalGap: 0 };
+
+  const { flagged } = flagTrades(sorted, opts);
+
+  const real: number[] = [];
+  const disciplined: number[] = [];
+  let cumReal = 0;
+  let cumDisc = 0;
+  for (let i = 0; i < sorted.length; i++) {
+    cumReal += netPnl(sorted[i]);
+    if (!flagged.has(i)) cumDisc += netPnl(sorted[i]);
+    real.push(Math.round(cumReal * 100) / 100);
+    disciplined.push(Math.round(cumDisc * 100) / 100);
+  }
+
+  const finalGap = Math.round((cumDisc - cumReal) * 100) / 100;
+  return { real, disciplined, finalGap };
 }
