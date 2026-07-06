@@ -1762,100 +1762,108 @@ function SocialProof() {
 /* ─────────────────────────────────────────────
    ROI BAND — "TradeDiscipline pays for itself"
 ───────────────────────────────────────────── */
-/* Balance animée (SVG à viewBox → se met à l'échelle proprement à toute largeur,
-   jamais de chevauchement). Le fléau penche du côté « une erreur évitée » (lourd,
-   vert) face au « prix de l'outil » (léger, 0 €). La copie détaillée est dans la
-   légende en dessous, qui s'empile sur mobile. Aucun chiffre inventé. */
-function RoiScale({ t }: { t: (k: string) => string }) {
+/* Démonstration de rentabilité (sans chiffre inventé) : une inégalité animée
+   « 1 erreur évitée ❯❯ des mois remboursés », puis les DEUX forfaits payants à
+   leur vrai prix + coût ramené au jour (dérivé, honnête). But : vendre les plans
+   payants en montrant qu'ils sont remboursés dès la première erreur évitée. */
+const ROI_PAID_PLANS = [
+  { nameKey: "plan_plus", price: "9.99€", perDay: "0.33€", tone: "--accent" },
+  { nameKey: "plan_premium", price: "19.99€", perDay: "0.67€", tone: "--warning" },
+];
+
+function RoiPayback({ t }: { t: (k: string) => string }) {
   const reduced = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
-  const tipped = reduced || inView;
-  const beamSpring = { type: "spring" as const, stiffness: 55, damping: 9, delay: reduced ? 0 : 0.2 };
+  const go = reduced || inView;
 
   return (
     <div ref={ref} className="mt-8">
-      {/* ── Balance SVG (scale-safe) ── */}
-      <div className="relative mx-auto" style={{ maxWidth: 360 }}>
-        <svg viewBox="0 0 360 150" className="relative w-full" style={{ overflow: "visible" }} role="img" aria-label={t("pricing_roi_verdict")}>
-          <defs>
-            <linearGradient id="roiBeam" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="rgb(var(--muted))" stopOpacity="0.55" />
-              <stop offset="55%" stopColor="rgb(var(--accent))" stopOpacity="0.6" />
-              <stop offset="100%" stopColor="rgb(var(--profit))" />
-            </linearGradient>
-          </defs>
-
-          {/* halo pulsé sous le côté lourd */}
-          <motion.ellipse
-            cx="286" cy="118" rx="70" ry="16" fill="rgb(var(--profit))"
-            initial={false}
-            animate={reduced ? { opacity: 0.16 } : { opacity: tipped ? [0.06, 0.2, 0.1] : 0.04 }}
-            transition={{ duration: 1.8, delay: 0.5, repeat: tipped && !reduced ? Infinity : 0, repeatType: "reverse" }}
-            style={{ filter: "blur(6px)" }}
-          />
-
-          {/* socle + colonne */}
-          <ellipse cx="180" cy="132" rx="42" ry="6" fill="rgb(var(--border))" />
-          <rect x="175" y="78" width="10" height="52" rx="4" fill="rgb(var(--border))" />
-          <circle cx="180" cy="78" r="5" fill="rgb(var(--muted))" />
-
-          {/* fléau (pivote autour du pivot 180,78) */}
-          <motion.g
-            style={{ transformBox: "view-box", transformOrigin: "180px 78px" }}
-            initial={false}
-            animate={{ rotate: tipped ? 10 : 0 }}
-            transition={beamSpring}
+      {/* ── Inégalité animée : 1 erreur évitée ❯❯ des mois remboursés ── */}
+      <div
+        className="relative rounded-2xl border p-5 sm:p-7 max-w-2xl mx-auto overflow-hidden"
+        style={{
+          background: "radial-gradient(ellipse 90% 130% at 100% 50%, rgb(var(--profit)/0.08), transparent 60%), rgb(var(--surface)/0.4)",
+          borderColor: "rgb(var(--profit)/0.25)",
+        }}
+      >
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 text-center">
+          {/* gauche — une erreur évitée */}
+          <motion.div
+            initial={reduced ? false : { opacity: 0, x: -18 }}
+            animate={go ? { opacity: 1, x: 0 } : {}}
+            transition={{ duration: 0.55, ease }}
           >
-            <rect x="40" y="74.5" width="280" height="7" rx="3.5" fill="url(#roiBeam)" />
-            {/* suspentes */}
-            <line x1="74" y1="77" x2="74" y2="58" stroke="rgb(var(--border))" strokeWidth="1.5" />
-            <line x1="286" y1="77" x2="286" y2="54" stroke="rgb(var(--profit)/0.6)" strokeWidth="1.5" />
+            <p className="text-xl sm:text-2xl font-extrabold leading-tight" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>
+              <span style={{ color: "rgb(var(--loss))" }}>1</span> {t("pricing_roi_ineq_left")}
+            </p>
+            <p className="text-[11px] mt-1 uppercase tracking-wide" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("pricing_roi_ineq_left_sub")}</p>
+          </motion.div>
 
-            {/* plateau gauche — léger : 0 € (le plan gratuit) */}
-            <rect x="46" y="44" width="56" height="24" rx="8" fill="rgb(var(--surface))" stroke="rgb(var(--muted)/0.4)" strokeWidth="1" />
-            <text x="74" y="60" textAnchor="middle" fontSize="13" fontWeight="700" fill="rgb(var(--muted))">0 €</text>
+          {/* chevrons animés — vers le bas en mobile, vers la droite en desktop */}
+          <div className="flex items-center gap-0.5 rotate-90 sm:rotate-0" aria-hidden>
+            {[0, 1, 2].map((k) => (
+              <motion.svg
+                key={k}
+                className="w-4 h-4"
+                style={{ color: "rgb(var(--profit))" }}
+                initial={false}
+                animate={reduced ? { opacity: 0.7 } : { opacity: go ? [0.2, 1, 0.2] : 0.2 }}
+                transition={{ duration: 1.3, repeat: go && !reduced ? Infinity : 0, delay: k * 0.16, ease: "easeInOut" }}
+                viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </motion.svg>
+            ))}
+          </div>
 
-            {/* plateau droit — lourd : une erreur évitée (plus grand, vert) */}
-            <rect x="252" y="36" width="68" height="30" rx="9" fill="rgb(var(--profit)/0.14)" stroke="rgb(var(--profit)/0.5)" strokeWidth="1" />
-            {/* petit pictogramme "alerte" */}
-            <path d="M286 44 l9 16 h-18 z" fill="none" stroke="rgb(var(--profit))" strokeWidth="1.6" strokeLinejoin="round" />
-            <line x1="286" y1="51" x2="286" y2="55" stroke="rgb(var(--profit))" strokeWidth="1.6" strokeLinecap="round" />
-            <circle cx="286" cy="58" r="0.9" fill="rgb(var(--profit))" />
-          </motion.g>
+          {/* droite — des mois remboursés */}
+          <motion.div
+            initial={reduced ? false : { opacity: 0, x: 18 }}
+            animate={go ? { opacity: 1, x: 0 } : {}}
+            transition={{ duration: 0.55, ease, delay: 0.15 }}
+          >
+            <p className="text-xl sm:text-2xl font-extrabold leading-tight" style={{ color: "rgb(var(--profit))", fontStyle: "normal" }}>{t("pricing_roi_ineq_right")}</p>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* ── Les deux forfaits payants, prix réels + coût/jour ── */}
+      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto">
+        {ROI_PAID_PLANS.map((p, i) => (
+          <motion.div
+            key={p.nameKey}
+            className="rounded-xl border p-4 flex items-center gap-3"
+            style={{ background: `rgb(var(${p.tone})/0.06)`, borderColor: `rgb(var(${p.tone})/0.28)` }}
+            initial={reduced ? false : { opacity: 0, y: 12 }}
+            animate={go ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.5, ease, delay: reduced ? 0 : 0.3 + i * 0.12 }}
+          >
+            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: `rgb(var(${p.tone}))` }} />
+            <div className="min-w-0">
+              <p className="text-sm font-bold" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{t(p.nameKey)}</p>
+              <p className="text-[11px]" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("pricing_roi_perday").replace("{v}", p.perDay)}</p>
+            </div>
+            <p className="ml-auto text-lg sm:text-xl font-extrabold tabular-nums whitespace-nowrap" style={{ color: `rgb(var(${p.tone}))`, fontStyle: "normal" }}>
+              {p.price}
+              <span className="text-[11px] font-medium" style={{ color: "rgb(var(--muted))" }}>{t("pricing_roi_permonth")}</span>
+            </p>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* ── Verdict ── */}
+      <motion.div
+        className="flex items-center justify-center gap-1.5 mt-5"
+        initial={false}
+        animate={{ opacity: go ? 1 : 0, y: go ? 0 : 6 }}
+        transition={{ duration: 0.5, delay: reduced ? 0 : 0.6, ease }}
+      >
+        <svg className="w-4 h-4 shrink-0" style={{ color: "rgb(var(--profit))" }} fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" aria-hidden>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
         </svg>
-
-        {/* verdict */}
-        <motion.div
-          className="flex items-center justify-center gap-1.5 mt-2"
-          initial={false}
-          animate={{ opacity: tipped ? 1 : 0, y: tipped ? 0 : 6 }}
-          transition={{ duration: 0.5, delay: reduced ? 0 : 0.75, ease }}
-        >
-          <svg className="w-3.5 h-3.5 shrink-0" style={{ color: "rgb(var(--profit))" }} fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" aria-hidden>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
-          <span className="text-[13px] font-bold text-center" style={{ color: "rgb(var(--profit))", fontStyle: "normal" }}>{t("pricing_roi_verdict")}</span>
-        </motion.div>
-      </div>
-
-      {/* ── Légende (s'empile sur mobile) ── */}
-      <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto">
-        <div className="rounded-xl border p-4" style={{ background: "rgb(var(--surface)/0.5)", borderColor: "rgb(var(--muted)/0.2)" }}>
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: "rgb(var(--muted))" }} />
-            <p className="text-sm font-bold" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{t("pricing_roi_scale_left")}</p>
-          </div>
-          <p className="mt-1.5 text-[13px] leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("pricing_roi_scale_left_sub")}</p>
-        </div>
-        <div className="rounded-xl border p-4" style={{ background: "rgb(var(--profit)/0.06)", borderColor: "rgb(var(--profit)/0.3)" }}>
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: "rgb(var(--profit))" }} />
-            <p className="text-sm font-bold" style={{ color: "rgb(var(--profit))", fontStyle: "normal" }}>{t("pricing_roi_scale_right")}</p>
-          </div>
-          <p className="mt-1.5 text-[13px] leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("pricing_roi_scale_right_sub")}</p>
-        </div>
-      </div>
+        <span className="text-sm font-bold text-center" style={{ color: "rgb(var(--profit))", fontStyle: "normal" }}>{t("pricing_roi_verdict")}</span>
+      </motion.div>
     </div>
   );
 }
@@ -1866,16 +1874,16 @@ function ROIBand({ t }: { t: (k: string) => string }) {
       tone: "--profit",
       title: t("pricing_roi_point1_t"),
       desc: t("pricing_roi_point1_d"),
-      icon: "M12 8v8m-4-4h8M21 12a9 9 0 11-18 0 9 9 0 0118 0z", // gratuit / plus dans un cercle
-    },
-    {
-      tone: "--warning",
-      title: t("pricing_roi_point2_t"),
-      desc: t("pricing_roi_point2_d"),
-      icon: "M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z", // alerte / tilt
+      icon: "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15", // remboursé / cycle
     },
     {
       tone: "--accent",
+      title: t("pricing_roi_point2_t"),
+      desc: t("pricing_roi_point2_d"),
+      icon: "M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2M21 12h-6a2 2 0 100 4h6a1 1 0 001-1v-2a1 1 0 00-1-1z", // portefeuille / coût/jour
+    },
+    {
+      tone: "--warning",
       title: t("pricing_roi_point3_t"),
       desc: t("pricing_roi_point3_d"),
       icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z", // bouclier / capital protégé
@@ -1907,8 +1915,8 @@ function ROIBand({ t }: { t: (k: string) => string }) {
           {t("pricing_roi_sub")}
         </p>
 
-        {/* Balance animée */}
-        <RoiScale t={t} />
+        {/* Démonstration de rentabilité (inégalité + forfaits payants) */}
+        <RoiPayback t={t} />
 
         {/* 3 points de fond (honnêtes, sans chiffre inventé) */}
         <StaggerReveal className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-3" stagger={0.1}>
