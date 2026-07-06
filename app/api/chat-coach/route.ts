@@ -3,12 +3,17 @@ import { NextResponse } from "next/server";
 import { requireAuth, consumeQuota, refundQuota } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 import { parseCoachMemory, renderCoachMemory } from "@/lib/coach-memory";
+import { COACH_TOOLS, executeCoachTool } from "@/lib/coach-tools";
 import type { PlanType } from "@/lib/PlanContext";
 import { sanitizeUserInput } from "@/lib/prompt-sanitizer";
 import { createClient as createSupabaseServer } from "@/lib/supabase/server";
 
 const MAX_MESSAGE_CHARS = 4000;
 const MAX_MESSAGES = 50;
+// Boucle agentique : nb max d'appels modèle par message utilisateur (1 + tours d'outils).
+const MAX_ROUNDS = 5;
+// Garde-fou global sur le nombre d'outils exécutés pour un même message.
+const MAX_TOOL_CALLS = 12;
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -76,10 +81,13 @@ export async function POST(request: Request) {
     if (quota instanceof NextResponse) return quota;
     reserved = { userId, plan, timezone };
 
+    // Client RLS user-scoped : les outils du coach ne peuvent toucher que les
+    // données de CE trader (et servent aussi à lire la mémoire ci-dessous).
+    const sb = createSupabaseServer();
+
     // ── 4c. Mémoire longitudinale (fail-open si la colonne n'existe pas) ──
     let memoryBlock = "";
     try {
-      const sb = createSupabaseServer();
       const { data: memRow } = await sb
         .from("profiles")
         .select("coach_memory")
@@ -114,6 +122,16 @@ RÈGLE ABSOLUE : Tu tutoies TOUJOURS l'utilisateur. N'utilise jamais "vous" ou "
 
 You are an expert trading coach specializing in trading psychology, strategy analysis, and trade journal review. You have access to the trader's trade data and strategy.
 
+ACTIONS — TU PEUX AGIR SUR LE JOURNAL DU TRADER :
+Tu disposes d'outils pour créer, modifier ou supprimer ses objectifs, l'inscrire à des challenges communautaires, rechercher et annoter ses trades (émotion, qualité du setup, tags, note de journal) et mémoriser ses engagements.
+- Quand le trader demande une action, exécute-la directement avec les outils, puis confirme en une phrase ce que tu as fait. Pas besoin de re-demander la permission pour ce qu'il vient de demander.
+- EXCEPTION : pour toute suppression (delete_goal), demande d'abord une confirmation explicite dans la conversation.
+- Pour annoter des trades, obtiens leurs ids via find_trades. N'invente JAMAIS un id.
+- Si une demande est ambiguë (quel objectif ? quels trades ?), pose UNE question courte plutôt que de deviner.
+- Si un outil renvoie une erreur, explique simplement et propose une alternative — n'insiste pas en boucle.
+- Quand le trader prend un engagement pendant la conversation (« ok, max 3 trades/jour »), propose de le mémoriser avec save_coach_note, et fais-le s'il accepte.
+- Ne modifie rien spontanément : les outils s'utilisent sur demande du trader ou après son accord explicite à ta suggestion.
+
 SCOPE — STRICTLY TRADING ONLY:
 - You ONLY answer questions related to: trading performance, trade psychology, market analysis, trading strategy, risk management, prop firm challenges, trade patterns, and the trader's personal data.
 - If a question is NOT related to trading, markets, or trading psychology, politely decline and redirect: say you are specialized in trading only and cannot help with other topics.
@@ -143,30 +161,94 @@ RULES:
 - Analyze data, do not repeat it raw
 - If you cannot answer with the available data, say so`;
 
-    // ── 6. Stream Claude's reply (the coach "types" live) ──
-    const claudeStream = client.messages.stream({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 1024,
-      system: systemPrompt,
-      messages: sanitizedMessages.map((m) => ({ role: m.role, content: m.content })),
-    });
+    // ── 6. Boucle agentique streamée : texte + actions en NDJSON ──
+    // Chaque ligne est un JSON : {t:"text",d} (delta), {t:"action",a} (chip UI).
+    const conversation: Anthropic.MessageParam[] = sanitizedMessages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
 
-    // The call started successfully → the quota slot is genuinely used.
+    // Le quota reste "réservé" jusqu'à ce que le stream produise quelque chose :
+    // si le tout premier appel modèle échoue (crédits, réseau…) sans rien émettre,
+    // on rembourse depuis le stream. Passé le premier octet, une réponse partielle
+    // a été rendue → le slot est légitimement consommé.
+    const quotaRefund = reserved;
     reserved = null;
 
     const encoder = new TextEncoder();
     const responseStream = new ReadableStream<Uint8Array>({
       async start(controller) {
+        let produced = false;
+        const send = (obj: unknown) => {
+          produced = true;
+          controller.enqueue(encoder.encode(`${JSON.stringify(obj)}\n`));
+        };
         try {
-          for await (const event of claudeStream) {
-            if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-              controller.enqueue(encoder.encode(event.delta.text));
+          let toolCallsUsed = 0;
+          for (let round = 0; round < MAX_ROUNDS; round++) {
+            const claudeStream = client.messages.stream({
+              model: "claude-haiku-4-5-20251001",
+              max_tokens: 1500,
+              system: systemPrompt,
+              messages: conversation,
+              tools: COACH_TOOLS,
+            });
+
+            for await (const event of claudeStream) {
+              if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+                send({ t: "text", d: event.delta.text });
+              }
             }
+
+            const final = await claudeStream.finalMessage();
+            if (final.stop_reason !== "tool_use") break;
+
+            const toolUses = final.content.filter(
+              (b): b is Anthropic.ToolUseBlock => b.type === "tool_use"
+            );
+            if (toolUses.length === 0) break;
+
+            const results: Anthropic.ToolResultBlockParam[] = [];
+            for (const tu of toolUses) {
+              if (toolCallsUsed >= MAX_TOOL_CALLS) {
+                results.push({
+                  type: "tool_result",
+                  tool_use_id: tu.id,
+                  content: JSON.stringify({ error: "Limite d'actions atteinte pour ce message." }),
+                  is_error: true,
+                });
+                continue;
+              }
+              toolCallsUsed += 1;
+              const outcome = await executeCoachTool(
+                sb,
+                userId,
+                tu.name,
+                (tu.input ?? {}) as Record<string, unknown>
+              );
+              if (outcome.action) send({ t: "action", a: outcome.action, u: outcome.undo });
+              results.push({
+                type: "tool_result",
+                tool_use_id: tu.id,
+                content: JSON.stringify(outcome.result),
+                is_error: outcome.isError || undefined,
+              });
+            }
+
+            conversation.push({ role: "assistant", content: final.content });
+            conversation.push({ role: "user", content: results });
+            // Séparateur visuel entre le texte pré-action et la confirmation.
+            send({ t: "text", d: "\n\n" });
           }
         } catch (streamErr) {
-          // Mid-stream failure: log and end gracefully (the user keeps what
-          // arrived so far). Quota stays consumed — a partial answer was given.
+          // Échec en cours de stream : on log et on ferme proprement (le trader
+          // garde ce qui est déjà arrivé).
           console.error("Chat coach stream error:", streamErr);
+          if (isLowCreditError(streamErr)) await alertLowCreditsOnce();
+          // Rien n'a été rendu → rembourse le slot de quota (best-effort).
+          if (!produced && quotaRefund) {
+            await refundQuota(quotaRefund.userId, quotaRefund.plan, "chat", quotaRefund.timezone);
+          }
         } finally {
           controller.close();
         }
@@ -175,7 +257,7 @@ RULES:
 
     return new Response(responseStream, {
       headers: {
-        "Content-Type": "text/plain; charset=utf-8",
+        "Content-Type": "application/x-ndjson; charset=utf-8",
         "Cache-Control": "no-cache, no-transform",
       },
     });
