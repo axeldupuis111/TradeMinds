@@ -1762,34 +1762,126 @@ function SocialProof() {
 /* ─────────────────────────────────────────────
    ROI BAND — "TradeDiscipline pays for itself"
 ───────────────────────────────────────────── */
+/* Balance animée : le plateau « une erreur évitée » (droite, lourd) fait pencher
+   le fléau de ton côté face au « prix de l'outil » (gauche, léger). Aucun chiffre
+   inventé — la métaphore porte le message « ça ne coûte pas, ça rapporte ».
+   Le fléau pivote (ressort), les plateaux restent droits (contre-rotation). */
+function RoiScale({ t }: { t: (k: string) => string }) {
+  const reduced = useReducedMotion();
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-90px" });
+  const tipped = reduced || inView;
+  const angle = 9; // degrés, plateau droit plus bas
+  const beamSpring = { type: "spring" as const, stiffness: 55, damping: 9, delay: reduced ? 0 : 0.15 };
+  const panSpring = { type: "spring" as const, stiffness: 60, damping: 11, delay: reduced ? 0 : 0.15 };
+
+  const Pan = ({ side }: { side: "left" | "right" }) => {
+    const heavy = side === "right";
+    const col = heavy ? "--profit" : "--muted";
+    return (
+      <motion.div
+        className="absolute top-1/2"
+        style={{ [side]: 0, x: side === "left" ? "-6%" : "6%" }}
+        initial={false}
+        animate={{ y: tipped ? (heavy ? 22 : -22) : 0 }}
+        transition={panSpring}
+      >
+        {/* contre-rotation : le plateau reste horizontal */}
+        <motion.div
+          initial={false}
+          animate={{ rotate: tipped ? -angle : 0 }}
+          transition={beamSpring}
+          className="rounded-2xl border px-4 py-3 text-center w-[168px] sm:w-[196px] -translate-y-1/2"
+          style={{
+            background: heavy ? `rgb(var(${col})/0.08)` : "rgb(var(--surface)/0.7)",
+            borderColor: `rgb(var(${col})/${heavy ? 0.35 : 0.25})`,
+            boxShadow: heavy ? `0 20px 50px -18px rgb(var(${col})/0.55)` : "none",
+          }}
+        >
+          <p className="text-sm font-bold" style={{ color: `rgb(var(${heavy ? "--profit" : "--foreground"}))`, fontStyle: "normal" }}>
+            {t(heavy ? "pricing_roi_scale_right" : "pricing_roi_scale_left")}
+          </p>
+          <p className="mt-1 text-[11px] leading-snug" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>
+            {t(heavy ? "pricing_roi_scale_right_sub" : "pricing_roi_scale_left_sub")}
+          </p>
+        </motion.div>
+      </motion.div>
+    );
+  };
+
+  return (
+    <div ref={ref} className="relative mx-auto mt-10" style={{ maxWidth: 560, height: 260 }}>
+      {/* halo sous le côté lourd */}
+      <motion.div
+        aria-hidden
+        className="absolute rounded-full pointer-events-none"
+        style={{ width: 220, height: 120, right: "2%", top: "46%", background: "radial-gradient(ellipse, rgb(var(--profit)/0.16), transparent 70%)" }}
+        initial={false}
+        animate={reduced ? { opacity: 0.5 } : { opacity: tipped ? [0.15, 0.5, 0.3] : 0.1 }}
+        transition={{ duration: 1.6, delay: 0.4, repeat: tipped && !reduced ? Infinity : 0, repeatType: "reverse" }}
+      />
+
+      {/* fléau + plateaux (pivot central) */}
+      <div className="absolute left-0 right-0" style={{ top: "42%" }}>
+        <motion.div
+          className="relative mx-auto"
+          style={{ width: "84%", transformOrigin: "center" }}
+          initial={false}
+          animate={{ rotate: tipped ? angle : 0 }}
+          transition={beamSpring}
+        >
+          {/* barre du fléau */}
+          <div className="h-1.5 w-full rounded-full" style={{ background: "linear-gradient(90deg, rgb(var(--muted)/0.5), rgb(var(--accent)/0.5), rgb(var(--profit)))" }} />
+          {/* pivots des plateaux aux extrémités */}
+          <span className="absolute left-0 top-1/2 w-2 h-2 rounded-full -translate-y-1/2" style={{ background: "rgb(var(--muted))" }} />
+          <span className="absolute right-0 top-1/2 w-2 h-2 rounded-full -translate-y-1/2" style={{ background: "rgb(var(--profit))" }} />
+          <Pan side="left" />
+          <Pan side="right" />
+        </motion.div>
+
+        {/* colonne + socle du pivot */}
+        <div className="relative mx-auto" style={{ width: 0 }}>
+          <div className="absolute left-1/2 -translate-x-1/2 w-1 rounded-b-full" style={{ height: 56, background: "rgb(var(--border))" }} />
+          <div className="absolute left-1/2 -translate-x-1/2 rounded-full" style={{ top: 54, width: 44, height: 6, background: "rgb(var(--border))" }} />
+        </div>
+      </div>
+
+      {/* verdict — apparaît une fois penché */}
+      <motion.div
+        className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5 whitespace-nowrap"
+        style={{ bottom: 2 }}
+        initial={false}
+        animate={{ opacity: tipped ? 1 : 0, y: tipped ? 0 : 6 }}
+        transition={{ duration: 0.5, delay: reduced ? 0 : 0.7, ease }}
+      >
+        <svg className="w-3.5 h-3.5" style={{ color: "rgb(var(--profit))" }} fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" aria-hidden>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+        <span className="text-[13px] font-bold" style={{ color: "rgb(var(--profit))", fontStyle: "normal" }}>{t("pricing_roi_verdict")}</span>
+      </motion.div>
+    </div>
+  );
+}
+
 function ROIBand({ t }: { t: (k: string) => string }) {
-  const stats = [
+  const points = [
     {
-      kind: "loss" as const,
-      prefix: "−",
-      value: 180,
-      decimals: 0,
-      suffix: "€",
-      label: t("pricing_roi_stat1_label"),
-      color: "rgb(var(--loss))",
-      tint: { background: "rgb(var(--loss)/0.06)", borderColor: "rgb(var(--loss)/0.15)" },
+      tone: "--profit",
+      title: t("pricing_roi_point1_t"),
+      desc: t("pricing_roi_point1_d"),
+      icon: "M12 8v8m-4-4h8M21 12a9 9 0 11-18 0 9 9 0 0118 0z", // gratuit / plus dans un cercle
     },
     {
-      kind: "accent" as const,
-      prefix: "",
-      value: 9.99,
-      decimals: 2,
-      suffix: "€",
-      label: t("pricing_roi_stat2_label"),
-      color: "rgb(var(--accent))",
-      tint: { background: "rgb(var(--accent)/0.06)", borderColor: "rgb(var(--accent)/0.2)" },
+      tone: "--warning",
+      title: t("pricing_roi_point2_t"),
+      desc: t("pricing_roi_point2_d"),
+      icon: "M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z", // alerte / tilt
     },
     {
-      kind: "text" as const,
-      textValue: t("pricing_roi_stat3_value"),
-      label: t("pricing_roi_stat3_label"),
-      color: "rgb(var(--profit))",
-      tint: { background: "rgb(var(--profit)/0.06)", borderColor: "rgb(var(--profit)/0.15)" },
+      tone: "--accent",
+      title: t("pricing_roi_point3_t"),
+      desc: t("pricing_roi_point3_d"),
+      icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z", // bouclier / capital protégé
     },
   ];
 
@@ -1818,48 +1910,30 @@ function ROIBand({ t }: { t: (k: string) => string }) {
           {t("pricing_roi_sub")}
         </p>
 
-        {/* Comparison stats */}
-        <div className="mt-7 grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {stats.map((s, i) => (
-            <div key={i} className="relative">
-              <motion.div
-                className="rounded-xl border p-5 text-center h-full flex flex-col justify-center"
-                style={s.tint}
-                whileHover={{ y: -3, scale: 1.01 }}
-                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              >
-                {s.kind === "text" ? (
-                  <p className="text-2xl sm:text-3xl font-bold tracking-tight" style={{ color: s.color, fontStyle: "normal" }}>
-                    {s.textValue}
-                  </p>
-                ) : (
-                  <p className="text-3xl sm:text-4xl font-bold tracking-tight" style={{ color: s.color, fontStyle: "normal" }}>
-                    {s.prefix}
-                    <Counter end={s.value!} decimals={s.decimals!} suffix={s.suffix} />
-                  </p>
-                )}
-                <p className="mt-2 text-[13px] leading-snug" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{s.label}</p>
-              </motion.div>
+        {/* Balance animée */}
+        <RoiScale t={t} />
 
-              {/* connector chevrons between cards (desktop) */}
-              {i < stats.length - 1 && (
-                <div className="hidden sm:flex absolute top-1/2 -right-3 -translate-y-1/2 z-10 items-center justify-center" aria-hidden>
-                  <div
-                    className="w-6 h-6 rounded-full flex items-center justify-center border"
-                    style={{ background: "rgb(var(--card))", borderColor: "rgb(var(--border))" }}
-                  >
-                    <svg className="w-3 h-3" style={{ color: "rgb(var(--muted))" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                </div>
-              )}
+        {/* 3 points de fond (honnêtes, sans chiffre inventé) */}
+        <StaggerReveal className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-3" stagger={0.1}>
+          {points.map((p) => (
+            <div
+              key={p.title}
+              className="rounded-xl border p-5 h-full"
+              style={{ background: `rgb(var(${p.tone})/0.05)`, borderColor: `rgb(var(${p.tone})/0.18)` }}
+            >
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-3" style={{ background: `rgb(var(${p.tone})/0.12)` }}>
+                <svg className="w-4.5 h-4.5" style={{ color: `rgb(var(${p.tone}))`, width: 18, height: 18 }} fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24" aria-hidden>
+                  <path strokeLinecap="round" strokeLinejoin="round" d={p.icon} />
+                </svg>
+              </div>
+              <p className="text-sm font-bold" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{p.title}</p>
+              <p className="mt-1.5 text-[13px] leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{p.desc}</p>
             </div>
           ))}
-        </div>
+        </StaggerReveal>
 
         {/* kicker */}
-        <p className="mt-6 text-center text-sm font-medium max-w-xl mx-auto" style={{ color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}>
+        <p className="mt-8 text-center text-sm font-medium max-w-xl mx-auto" style={{ color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}>
           {t("pricing_roi_kicker")}
         </p>
       </div>
