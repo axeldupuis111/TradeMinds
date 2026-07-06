@@ -392,6 +392,7 @@ export default function AnalysisPage() {
   const [hasOlderChat, setHasOlderChat] = useState(false);
   const [clearingChat, setClearingChat] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
 
   // AI analysis history
   const [aiHistory, setAIHistory] = useState<{ id: string; question: string; answer: string; created_at: string }[]>([]);
@@ -401,8 +402,17 @@ export default function AnalysisPage() {
   const chatRemaining = Math.max(0, chatLimit - chatDailyCount);
   const canChat = plan === "plus" || plan === "premium";
 
+  // Auto-scroll « collant » : on ne suit le bas que si l'utilisateur y est déjà.
+  // Sinon (il a remonté pour relire pendant que le coach écrit), le stream ne
+  // confisque plus son défilement. On scrolle le conteneur lui-même (jamais la
+  // fenêtre), donc la page ne saute pas non plus.
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = chatScrollRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (distanceFromBottom < 120) {
+      el.scrollTop = el.scrollHeight;
+    }
   }, [chatMessages]);
 
   // Load chat daily count + persisted chat history
@@ -1201,7 +1211,7 @@ export default function AnalysisPage() {
           ) : (
             <div className="bg-card border border-border rounded-xl overflow-hidden">
               {/* Messages */}
-              <div className="min-h-[500px] max-h-[600px] overflow-y-auto p-4 space-y-4">
+              <div ref={chatScrollRef} className="min-h-[500px] max-h-[600px] overflow-y-auto p-4 space-y-4">
               {hasOlderChat && !showOlderChat && (
                 <div className="flex justify-center">
                   <button
