@@ -2520,6 +2520,391 @@ function StructuredData() {
 }
 
 /* ─────────────────────────────────────────────
+   COACH ASSISTANT — "chambre de transformation"
+   Signature originale : l'intention en langage naturel est tapée à gauche,
+   part en impulsion lumineuse le long d'un conduit jusqu'au cœur-réacteur
+   (anneaux contra-rotatifs + flare réactif), qui "imprime" à droite le
+   résultat CONCRET — assemblé pièce par pièce (objectif, trade annoté, CSV…).
+   Boucle sur 6 capacités. 100% transform/opacity, SSR-safe, reduced-motion-safe.
+───────────────────────────────────────────── */
+type CoachStepKind = "insight" | "goal" | "annotate" | "strategy" | "export" | "challenge";
+interface CoachStep {
+  kind: CoachStepKind;
+  cmdKey: string;   // commande tapée (réutilise coach_cap_*_ex)
+  labelKey: string; // libellé outil (réutilise coach_cap_*_title)
+  tone: string;     // couleur d'accent de l'étape (var CSS)
+}
+const COACH_STEPS: CoachStep[] = [
+  { kind: "goal",      cmdKey: "coach_cap_goals_ex",     labelKey: "coach_cap_goals_title",     tone: "--accent" },
+  { kind: "annotate",  cmdKey: "coach_cap_annotate_ex",  labelKey: "coach_cap_annotate_title",  tone: "--loss" },
+  { kind: "strategy",  cmdKey: "coach_cap_strategy_ex",  labelKey: "coach_cap_strategy_title",  tone: "--profit" },
+  { kind: "insight",   cmdKey: "coach_cap_analyze_ex",   labelKey: "coach_cap_analyze_title",   tone: "--warning" },
+  { kind: "export",    cmdKey: "coach_cap_export_ex",    labelKey: "coach_cap_export_title",    tone: "--accent" },
+  { kind: "challenge", cmdKey: "coach_cap_challenge_ex", labelKey: "coach_cap_challenge_title", tone: "--profit" },
+];
+
+/* Machine à écrire : révèle le texte caractère par caractère, re-joue à chaque
+   changement de `text` (donc à chaque étape). */
+function CoachTyper({ text, onDone }: { text: string; onDone?: () => void }) {
+  const [n, setN] = useState(0);
+  const reduced = useReducedMotion();
+  const doneRef = useRef(onDone);
+  doneRef.current = onDone;
+  useEffect(() => {
+    if (reduced) { setN(text.length); doneRef.current?.(); return; }
+    setN(0);
+    let idx = 0;
+    const id = setInterval(() => {
+      idx += 1;
+      setN(idx);
+      if (idx >= text.length) { clearInterval(id); doneRef.current?.(); }
+    }, 26);
+    return () => clearInterval(id);
+  }, [text, reduced]);
+  return (
+    <span>
+      {text.slice(0, n)}
+      <span className="coach-caret" style={{ background: "rgb(var(--accent))" }} aria-hidden />
+    </span>
+  );
+}
+
+/* Cœur-réacteur : anneaux contra-rotatifs + polygone + noyau qui "encaisse"
+   l'impulsion (flare) pendant la phase d'exécution. */
+function ReactorCore({ hot, tone }: { hot: boolean; tone: string }) {
+  const reduced = useReducedMotion();
+  const spin = (dur: number, dir = 1): TargetAndTransition =>
+    reduced ? {} : { rotate: dir * 360, transition: { duration: dur, ease: "linear", repeat: Infinity } };
+  const col = `rgb(var(${tone}))`;
+  return (
+    <div className="relative shrink-0" style={{ width: 116, height: 116 }}>
+      {/* halo réactif */}
+      <motion.div
+        className="absolute inset-0 rounded-full"
+        style={{ background: `radial-gradient(circle, ${col} 0%, transparent 68%)` }}
+        animate={reduced ? { opacity: 0.22 } : { opacity: hot ? 0.5 : 0.16, scale: hot ? 1.12 : 0.94 }}
+        transition={{ duration: 0.5, ease }}
+      />
+      <svg viewBox="0 0 120 120" className="absolute inset-0 w-full h-full">
+        <defs>
+          <linearGradient id="reactorStroke" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor={col} stopOpacity="0.9" />
+            <stop offset="100%" stopColor={col} stopOpacity="0.25" />
+          </linearGradient>
+        </defs>
+        {/* anneau externe pointillé */}
+        <motion.circle
+          cx="60" cy="60" r="52" fill="none" stroke="url(#reactorStroke)" strokeWidth="1.5"
+          strokeDasharray="4 10" style={{ transformOrigin: "center", transformBox: "fill-box" }} animate={spin(26)}
+        />
+        {/* hexagone contra-rotatif */}
+        <motion.polygon
+          points="60,16 98,38 98,82 60,104 22,82 22,38"
+          fill="none" stroke={col} strokeOpacity="0.35" strokeWidth="1.2"
+          style={{ transformOrigin: "center", transformBox: "fill-box" }} animate={spin(18, -1)}
+        />
+        {/* arc rapide */}
+        <motion.circle
+          cx="60" cy="60" r="38" fill="none" stroke={col} strokeWidth="2"
+          strokeDasharray="60 179" strokeLinecap="round"
+          style={{ transformOrigin: "center", transformBox: "fill-box" }} animate={spin(9)}
+        />
+        {/* onde de choc à l'exécution */}
+        <motion.circle
+          cx="60" cy="60" fill="none" stroke={col} strokeWidth="1.5"
+          initial={false}
+          animate={hot && !reduced ? { r: [30, 56], opacity: [0.6, 0] } : { r: 30, opacity: 0 }}
+          transition={{ duration: 0.7, ease }}
+        />
+        {/* noyau */}
+        <motion.circle
+          cx="60" cy="60" fill={col}
+          animate={reduced ? { r: 12 } : { r: hot ? 15 : 11, opacity: hot ? 1 : 0.82 }}
+          transition={{ duration: 0.4, ease }}
+        />
+        <motion.circle
+          cx="60" cy="60" r="5" fill="rgb(var(--background))"
+          animate={reduced ? {} : { opacity: hot ? 0.2 : 0.55 }}
+          transition={{ duration: 0.4 }}
+        />
+      </svg>
+    </div>
+  );
+}
+
+/* Impulsion qui file le long d'un conduit horizontal (command → cœur → résultat). */
+function Conduit({ fire, reverse = false, tone }: { fire: boolean; reverse?: boolean; tone: string }) {
+  const reduced = useReducedMotion();
+  const col = `rgb(var(${tone}))`;
+  return (
+    <div className="relative hidden md:block h-px flex-1 mx-1" style={{ background: "rgb(var(--border))" }}>
+      <div className="absolute inset-0 overflow-hidden">
+        {!reduced && (
+          <motion.span
+            key={fire ? "on" : "off"}
+            className="absolute top-1/2 h-1.5 w-6 rounded-full -translate-y-1/2"
+            style={{ background: `linear-gradient(90deg, transparent, ${col})`, boxShadow: `0 0 10px ${col}` }}
+            initial={{ left: reverse ? "100%" : "-24px", opacity: 0 }}
+            animate={fire ? { left: reverse ? "-24px" : "100%", opacity: [0, 1, 1, 0] } : { opacity: 0 }}
+            transition={{ duration: 0.7, ease }}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* Petit rendu de résultat CONCRET, distinct par capacité, assemblé pièce à pièce. */
+function CoachOutcome({ step, show, t }: { step: CoachStep; show: boolean; t: (k: string) => string }) {
+  const reduced = useReducedMotion();
+  const col = `rgb(var(${step.tone}))`;
+  const container = {
+    hidden: {},
+    show: { transition: { staggerChildren: 0.11, delayChildren: 0.04 } },
+  };
+  const piece = {
+    hidden: reduced ? { opacity: 1 } : { opacity: 0, y: 9 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.42, ease } },
+  };
+  const chip = {
+    hidden: reduced ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.4 },
+    show: { opacity: 1, scale: 1, transition: { type: "spring" as const, stiffness: 520, damping: 20 } },
+  };
+
+  const inner = () => {
+    switch (step.kind) {
+      case "goal":
+        return (
+          <>
+            <motion.div variants={piece} className="flex items-center justify-between">
+              <span className="text-sm font-bold" style={{ color: "rgb(var(--foreground))" }}>{t("landing_coach_out_goal")}</span>
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ color: col, background: `rgb(var(${step.tone})/0.12)` }}>{t("landing_coach_target")}</span>
+            </motion.div>
+            <motion.div variants={piece} className="mt-3 h-2 rounded-full overflow-hidden" style={{ background: "rgb(var(--border))" }}>
+              <motion.div className="h-full rounded-full" style={{ background: col }}
+                initial={{ width: 0 }} animate={show ? { width: "66%" } : { width: 0 }} transition={{ duration: 0.9, ease, delay: 0.25 }} />
+            </motion.div>
+            <motion.p variants={piece} className="mt-2 text-[11px]" style={{ color: "rgb(var(--muted))" }}>2 / 3 · {t("landing_coach_period_month")}</motion.p>
+          </>
+        );
+      case "annotate":
+        return (
+          <>
+            <motion.div variants={piece} className="flex items-center gap-2">
+              <span className="text-sm font-bold" style={{ color: "rgb(var(--foreground))" }}>EUR/USD</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ color: "rgb(var(--loss))", background: "rgb(var(--loss)/0.12)" }}>SHORT</span>
+              <span className="ml-auto text-[11px] tabular-nums" style={{ color: "rgb(var(--muted))" }}>−1.8%</span>
+            </motion.div>
+            <div className="mt-3 flex items-center gap-1.5">
+              <motion.span variants={piece} className="text-[11px]" style={{ color: "rgb(var(--muted))" }}>{t("landing_coach_emotion_label")}</motion.span>
+              <motion.span variants={chip} className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ color: col, background: `rgb(var(${step.tone})/0.14)`, border: `1px solid rgb(var(${step.tone})/0.3)` }}>
+                🤑 {t("emotion_fomo")}
+              </motion.span>
+            </div>
+          </>
+        );
+      case "strategy":
+        return (
+          <>
+            {[t("landing_coach_check_1"), t("landing_coach_check_2")].map((c, k) => (
+              <motion.div variants={piece} key={k} className="flex items-center gap-2 mb-1.5">
+                <span className="flex items-center justify-center w-4 h-4 rounded" style={{ background: "rgb(var(--profit)/0.16)" }}>
+                  <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="rgb(var(--profit))" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                </span>
+                <span className="text-[12px]" style={{ color: "rgb(var(--muted))" }}>{c}</span>
+              </motion.div>
+            ))}
+            <motion.div variants={chip} className="flex items-center gap-2 rounded-lg px-2 py-1.5 -mx-1" style={{ background: `rgb(var(${step.tone})/0.1)`, border: `1px solid rgb(var(${step.tone})/0.28)` }}>
+              <motion.span className="flex items-center justify-center w-4 h-4 rounded" style={{ background: col }}
+                initial={{ scale: 0 }} animate={show ? { scale: 1 } : { scale: 0 }} transition={{ type: "spring", stiffness: 500, damping: 18, delay: 0.35 }}>
+                <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="rgb(var(--background))" strokeWidth={3.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+              </motion.span>
+              <span className="text-[12px] font-semibold" style={{ color: "rgb(var(--foreground))" }}>{t("landing_coach_out_strategy")}</span>
+            </motion.div>
+          </>
+        );
+      case "insight":
+        return (
+          <>
+            <motion.p variants={piece} className="text-[10px] uppercase tracking-wide font-bold" style={{ color: col }}>{t("landing_coach_insight_kicker")}</motion.p>
+            <motion.div variants={piece} className="mt-1 text-sm font-bold" style={{ color: "rgb(var(--foreground))" }}>{t("landing_coach_out_analyze")}</motion.div>
+            <div className="mt-3 flex items-end gap-1.5 h-10">
+              {[38, 62, 90, 54, 30].map((h, k) => (
+                <motion.span key={k} className="flex-1 rounded-t" style={{ background: k === 2 ? col : "rgb(var(--border))" }}
+                  initial={{ height: 0 }} animate={show ? { height: `${h}%` } : { height: 0 }} transition={{ duration: 0.5, ease, delay: 0.2 + k * 0.06 }} />
+              ))}
+            </div>
+          </>
+        );
+      case "export":
+        return (
+          <>
+            <motion.div variants={piece} className="flex items-center gap-2.5">
+              <span className="flex items-center justify-center w-8 h-9 rounded-md text-[9px] font-bold" style={{ background: `rgb(var(${step.tone})/0.14)`, color: col, border: `1px solid rgb(var(${step.tone})/0.3)` }}>CSV</span>
+              <div className="min-w-0">
+                <p className="text-[12px] font-semibold truncate" style={{ color: "rgb(var(--foreground))" }}>trades-2026-07.csv</p>
+                <p className="text-[10px]" style={{ color: "rgb(var(--muted))" }}><NumberCount end={1240} duration={1100} /> {t("landing_coach_rows")}</p>
+              </div>
+              <motion.span variants={chip} className="ml-auto flex items-center justify-center w-6 h-6 rounded-full" style={{ background: "rgb(var(--profit)/0.16)" }}>
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="rgb(var(--profit))" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+              </motion.span>
+            </motion.div>
+            <motion.div variants={piece} className="mt-3 h-1.5 rounded-full overflow-hidden" style={{ background: "rgb(var(--border))" }}>
+              <motion.div className="h-full rounded-full" style={{ background: col }} initial={{ width: 0 }} animate={show ? { width: "100%" } : { width: 0 }} transition={{ duration: 0.9, ease }} />
+            </motion.div>
+          </>
+        );
+      case "challenge":
+        return (
+          <>
+            <motion.div variants={piece} className="flex items-center gap-2.5">
+              <motion.span variants={chip} className="flex items-center justify-center w-9 h-9 rounded-xl text-lg" style={{ background: `rgb(var(${step.tone})/0.14)`, border: `1px solid rgb(var(${step.tone})/0.3)` }}>🏆</motion.span>
+              <div>
+                <p className="text-[13px] font-bold" style={{ color: "rgb(var(--foreground))" }}>{t("landing_coach_out_challenge")}</p>
+                <p className="text-[11px]" style={{ color: "rgb(var(--muted))" }}>+<NumberCount end={128} duration={1000} /> {t("landing_coach_participants")}</p>
+              </div>
+            </motion.div>
+            <motion.p variants={piece} className="mt-2.5 text-[11px] font-semibold" style={{ color: col }}>{t("landing_coach_joined")}</motion.p>
+          </>
+        );
+    }
+  };
+
+  return (
+    <motion.div
+      variants={container}
+      initial="hidden"
+      animate={show ? "show" : "hidden"}
+      className="rounded-2xl border p-4 w-full"
+      style={{ background: "rgb(var(--card))", borderColor: `rgb(var(${step.tone})/0.3)`, boxShadow: `0 18px 50px -24px rgb(var(${step.tone})/0.5)` }}
+    >
+      {inner()}
+    </motion.div>
+  );
+}
+
+function CoachAssistant() {
+  const { t } = useLanguage();
+  const reduced = useReducedMotion();
+  const [i, setI] = useState(0);
+  // phase: typing → send (impulsion aller) → exec (cœur chaud) → print (résultat) → return (impulsion retour + fait)
+  const [phase, setPhase] = useState<"typing" | "send" | "exec" | "print">("typing");
+  const step = COACH_STEPS[i];
+
+  // Orchestration : re-programmée à chaque étape (clé = i).
+  useEffect(() => {
+    if (reduced) { setPhase("print"); return; }
+    setPhase("typing");
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    // La frappe finit ~ (longueur × 26ms) ; on lance l'impulsion peu après.
+    const typeMs = Math.min(1700, COACH_STEPS[i] ? t(step.cmdKey).length * 26 + 250 : 900);
+    timers.push(setTimeout(() => setPhase("send"), typeMs));
+    timers.push(setTimeout(() => setPhase("exec"), typeMs + 650));
+    timers.push(setTimeout(() => setPhase("print"), typeMs + 950));
+    timers.push(setTimeout(() => setI((v) => (v + 1) % COACH_STEPS.length), typeMs + 3200));
+    return () => timers.forEach(clearTimeout);
+  }, [i, reduced]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const hot = phase === "exec" || phase === "print";
+  const showOut = phase === "print";
+
+  return (
+    <section className="py-28 px-6 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
+      <div className="max-w-5xl mx-auto">
+        <Reveal className="text-center mb-14">
+          <Eyebrow>{t("landing_coach_eyebrow")}</Eyebrow>
+          <h2 className="text-4xl sm:text-5xl font-bold leading-tight" style={{ color: "rgb(var(--foreground))" }}>
+            {t("landing_coach_title")}
+          </h2>
+          <p className="mt-4 text-lg max-w-2xl mx-auto" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>
+            {t("landing_coach_subtitle")}
+          </p>
+        </Reveal>
+
+        <Reveal delay={0.1}>
+          <div className="relative rounded-3xl border p-6 sm:p-10 overflow-hidden" style={{ background: "rgb(var(--surface)/0.5)", borderColor: "rgb(var(--border))" }}>
+            {/* halo d'ambiance derrière le cœur */}
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 rounded-full pointer-events-none"
+              style={{ background: `radial-gradient(circle, rgb(var(${step.tone})/0.12), transparent 70%)`, filter: "blur(8px)" }} aria-hidden />
+
+            <div className="relative flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-2">
+              {/* ── Intention (commande tapée) ── */}
+              <div className="md:flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: "rgb(var(--profit))" }} />
+                  <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "rgb(var(--muted))" }}>{t("landing_coach_you")}</span>
+                </div>
+                <div className="rounded-2xl rounded-tl-sm border px-4 py-3 min-h-[64px]" style={{ background: "rgb(var(--card))", borderColor: "rgb(var(--border))" }}>
+                  <p className="text-sm leading-relaxed" style={{ color: "rgb(var(--foreground))" }}>
+                    <CoachTyper text={t(step.cmdKey)} />
+                  </p>
+                </div>
+              </div>
+
+              <Conduit fire={phase === "send" || phase === "exec"} tone={step.tone} />
+
+              {/* ── Cœur-réacteur ── */}
+              <div className="flex flex-col items-center shrink-0">
+                <ReactorCore hot={hot} tone={step.tone} />
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={phase === "print" ? "done" : "work"}
+                    initial={reduced ? false : { opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={reduced ? undefined : { opacity: 0, y: -4 }}
+                    transition={{ duration: 0.25 }}
+                    className="mt-2 text-[10px] font-bold uppercase tracking-widest"
+                    style={{ color: phase === "print" ? "rgb(var(--profit))" : "rgb(var(--muted))" }}
+                  >
+                    {phase === "print" ? t("landing_coach_done") : t("landing_coach_working")}
+                  </motion.span>
+                </AnimatePresence>
+              </div>
+
+              <Conduit fire={phase === "print"} reverse tone={step.tone} />
+
+              {/* ── Résultat concret ── */}
+              <div className="md:flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-2 md:justify-end">
+                  <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "rgb(var(--muted))" }}>{t(step.labelKey)}</span>
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: `rgb(var(${step.tone}))` }} />
+                </div>
+                <AnimatePresence mode="wait">
+                  <motion.div key={i} initial={reduced ? false : { opacity: 0 }} animate={{ opacity: 1 }} exit={reduced ? undefined : { opacity: 0 }} transition={{ duration: 0.2 }}>
+                    <CoachOutcome step={step} show={showOut} t={t} />
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            </div>
+
+            {/* ── Rail des capacités (l'active s'allume) ── */}
+            <div className="relative mt-8 flex flex-wrap justify-center gap-2">
+              {COACH_STEPS.map((s, k) => {
+                const active = k === i;
+                return (
+                  <button
+                    key={s.kind}
+                    onClick={() => setI(k)}
+                    className="px-3 py-1.5 rounded-full text-[11px] font-semibold transition-colors duration-300 border"
+                    style={{
+                      color: active ? `rgb(var(${s.tone}))` : "rgb(var(--muted))",
+                      background: active ? `rgb(var(${s.tone})/0.12)` : "rgb(var(--card))",
+                      borderColor: active ? `rgb(var(${s.tone})/0.4)` : "rgb(var(--border))",
+                    }}
+                  >
+                    {t(s.labelKey)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+/* ─────────────────────────────────────────────
    PAGE ROOT
 ───────────────────────────────────────────── */
 export default function LandingPage() {
@@ -2538,6 +2923,7 @@ export default function LandingPage() {
         <DisciplineQuiz />
         <Features />
         <AIDetection />
+        <CoachAssistant />
         <SocialProof />
         <Pricing />
         <FAQ />
