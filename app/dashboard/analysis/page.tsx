@@ -11,11 +11,89 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
+// Action posée par le coach (chip affiché sous le message assistant).
+interface CoachActionEvent {
+  type:
+    | "goal_created"
+    | "goal_updated"
+    | "goal_deleted"
+    | "challenge_joined"
+    | "challenge_left"
+    | "trades_annotated"
+    | "note_saved"
+    | "strategy_created"
+    | "strategy_updated"
+    | "checklist_item_added"
+    | "checklist_item_removed"
+    | "export_ready";
+  kind?: "metric" | "custom";
+  count?: number;
+  // export_ready : contenu du fichier à télécharger.
+  filename?: string;
+  csv?: string;
+}
+
+// Descriptif d'annulation opaque (renvoyé tel quel à /api/coach-undo).
+type CoachUndo = { op: string; [k: string]: unknown };
+
+// Action + son éventuel undo, tel que stocké sur un message assistant.
+interface CoachActionItem {
+  action: CoachActionEvent;
+  undo?: CoachUndo;
+  undone?: boolean;
+}
+
 interface ChatMessage {
   id?: string;
   role: "user" | "assistant";
   content: string;
   created_at?: string;
+  actions?: CoachActionItem[];
+}
+
+// Libellé + lien du chip affiché quand le coach a agi.
+function coachActionMeta(a: CoachActionEvent, t: (k: string) => string): { label: string; href?: string } {
+  switch (a.type) {
+    case "goal_created":
+      return { label: t("coach_action_goal_created"), href: "/dashboard/goals" };
+    case "goal_updated":
+      return { label: t("coach_action_goal_updated"), href: "/dashboard/goals" };
+    case "goal_deleted":
+      return { label: t("coach_action_goal_deleted"), href: "/dashboard/goals" };
+    case "challenge_joined":
+      return { label: t("coach_action_challenge_joined"), href: "/dashboard/leaderboard" };
+    case "challenge_left":
+      return { label: t("coach_action_challenge_left"), href: "/dashboard/leaderboard" };
+    case "trades_annotated":
+      return { label: t("coach_action_trades_annotated").replace("{n}", String(a.count ?? 0)), href: "/dashboard/trades" };
+    case "note_saved":
+      return { label: t("coach_action_note_saved") };
+    case "strategy_created":
+      return { label: t("coach_action_strategy_created"), href: "/dashboard/strategy" };
+    case "strategy_updated":
+      return { label: t("coach_action_strategy_updated"), href: "/dashboard/strategy" };
+    case "checklist_item_added":
+      return { label: t("coach_action_checklist_added"), href: "/dashboard/strategy" };
+    case "checklist_item_removed":
+      return { label: t("coach_action_checklist_removed"), href: "/dashboard/strategy" };
+    case "export_ready":
+      return { label: t("coach_action_export_ready").replace("{n}", String(a.count ?? 0)) };
+    default:
+      return { label: "" };
+  }
+}
+
+// Déclenche le téléchargement d'un CSV généré par le coach.
+function downloadCsv(filename: string, csv: string) {
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 interface Violation {
@@ -486,18 +564,48 @@ export default function AnalysisPage() {
         throw new Error(errBody.error || "Erreur serveur");
       }
 
-      // Stream the reply in: the coach "types" live, message updates per chunk.
+      // Stream NDJSON: {t:"text",d} = delta texte, {t:"action",a,u} = action + undo.
+      // Le coach "tape" en direct et pose des chips quand il agit sur le journal.
       let answer = "";
-      setChatMessages([...newMessages, { role: "assistant", content: "" }]);
+      const actions: CoachActionItem[] = [];
+      setChatMessages([...newMessages, { role: "assistant", content: "", actions: [] }]);
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
+      let buffer = "";
+      const applyEvent = (line: string) => {
+        const trimmed = line.trim();
+        if (!trimmed) return;
+        try {
+          const evt = JSON.parse(trimmed) as
+            | { t: "text"; d: string }
+            | { t: "action"; a: CoachActionEvent; u?: CoachUndo };
+          if (evt.t === "text") answer += evt.d;
+          else if (evt.t === "action") {
+            // Un export déclenche directement le téléchargement du fichier.
+            if (evt.a.type === "export_ready" && evt.a.filename && evt.a.csv) {
+              downloadCsv(evt.a.filename, evt.a.csv);
+            }
+            // On ne conserve pas le CSV en mémoire du message (inutile, volumineux).
+            const { csv, ...actionLite } = evt.a;
+            void csv;
+            actions.push({ action: actionLite, undo: evt.u });
+          }
+        } catch {
+          // Ligne partielle/illisible — ignorée (le flush final rattrape le reste).
+          return;
+        }
+        setChatMessages([...newMessages, { role: "assistant", content: answer, actions: actions.map((a) => ({ ...a })) }]);
+      };
       if (reader) {
         for (;;) {
           const { done, value } = await reader.read();
           if (done) break;
-          answer += decoder.decode(value, { stream: true });
-          setChatMessages([...newMessages, { role: "assistant", content: answer }]);
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? ""; // garde la dernière ligne (potentiellement incomplète)
+          for (const line of lines) applyEvent(line);
         }
+        if (buffer) applyEvent(buffer);
       }
 
       // Persist both messages
@@ -528,6 +636,33 @@ export default function AnalysisPage() {
       setChatLoading(false);
     }
   }, [chatInput, chatMessages, chatLoading, chatDailyCount, chatRemaining, supabase, lang]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Annule une action posée par le coach (rejoue l'opération inverse côté serveur),
+  // puis marque le chip comme annulé.
+  const undoCoachAction = useCallback(async (messageIndex: number, actionIndex: number) => {
+    const target = chatMessages[messageIndex]?.actions?.[actionIndex];
+    if (!target?.undo || target.undone) return;
+    try {
+      const res = await fetch("/api/coach-undo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ undo: target.undo }),
+      });
+      if (!res.ok) return;
+      setChatMessages((prev) =>
+        prev.map((m, mi) =>
+          mi !== messageIndex
+            ? m
+            : {
+                ...m,
+                actions: (m.actions ?? []).map((a, ai) => (ai === actionIndex ? { ...a, undone: true } : a)),
+              }
+        )
+      );
+    } catch {
+      // Réseau indisponible — on laisse le chip inchangé, le trader peut réessayer.
+    }
+  }, [chatMessages]);
 
   useEffect(() => {
     loadPrerequisites();
@@ -1116,6 +1251,46 @@ export default function AnalysisPage() {
                         <p className="whitespace-pre-wrap">{msg.content}</p>
                       )}
                     </div>
+                    {msg.role === "assistant" && msg.actions && msg.actions.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-1">
+                        {msg.actions.map((item, ai) => {
+                          const meta = coachActionMeta(item.action, t);
+                          if (item.undone) {
+                            return (
+                              <span key={ai} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-surface border border-border text-muted text-[11px] font-medium line-through">
+                                {meta.label}
+                              </span>
+                            );
+                          }
+                          const chipInner = (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-profit/10 border border-profit/20 text-profit text-[11px] font-medium">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                              </svg>
+                              {meta.label}
+                            </span>
+                          );
+                          const chip = meta.href ? (
+                            <Link href={meta.href} className="hover:opacity-80 transition-opacity">{chipInner}</Link>
+                          ) : (
+                            chipInner
+                          );
+                          return (
+                            <span key={ai} className="inline-flex items-center gap-1">
+                              {chip}
+                              {item.undo && (
+                                <button
+                                  onClick={() => undoCoachAction(i, ai)}
+                                  className="text-[11px] text-muted hover:text-loss underline decoration-dotted transition-colors"
+                                >
+                                  {t("coach_action_undo")}
+                                </button>
+                              )}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
                     {msg.created_at && (
                       <p className={`text-[10px] text-muted/60 ${msg.role === "user" ? "text-right" : "text-left"}`}>
                         {new Date(msg.created_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}

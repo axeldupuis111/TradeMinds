@@ -31,7 +31,7 @@ export interface MemorySnapshot {
 export interface MemoryCommitment {
   date: string;
   text: string;
-  source: "debrief" | "analysis";
+  source: "debrief" | "analysis" | "chat";
 }
 
 export interface CoachMemory {
