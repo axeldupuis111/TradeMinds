@@ -83,6 +83,18 @@ function coachActionMeta(a: CoachActionEvent, t: (k: string) => string): { label
   }
 }
 
+// Vitrine des capacités du coach, affichée quand le chat est vide : chaque carte
+// pré-remplit une vraie demande (le trader découvre en essayant). Icônes inline
+// (paths façon Feather) pour ne pas alourdir le bundle.
+const COACH_CAPABILITIES: { key: string; icon: string; titleKey: string; exampleKey: string }[] = [
+  { key: "analyze",   icon: "M3 3v18h18M7 14l3-3 3 3 4-5",                                                              titleKey: "coach_cap_analyze_title",   exampleKey: "coach_cap_analyze_ex" },
+  { key: "goals",     icon: "M4 21V4m0 1h11l-2 3 2 3H4",                                                                titleKey: "coach_cap_goals_title",     exampleKey: "coach_cap_goals_ex" },
+  { key: "annotate",  icon: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z", titleKey: "coach_cap_annotate_title",  exampleKey: "coach_cap_annotate_ex" },
+  { key: "strategy",  icon: "M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11",                     titleKey: "coach_cap_strategy_title",  exampleKey: "coach_cap_strategy_ex" },
+  { key: "export",    icon: "M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3",                            titleKey: "coach_cap_export_title",    exampleKey: "coach_cap_export_ex" },
+  { key: "challenge", icon: "M8 21h8M12 17v4M6 4h12v4a6 6 0 01-12 0V4z",                                               titleKey: "coach_cap_challenge_title", exampleKey: "coach_cap_challenge_ex" },
+];
+
 // Déclenche le téléchargement d'un CSV généré par le coach.
 function downloadCsv(filename: string, csv: string) {
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -1223,19 +1235,38 @@ export default function AnalysisPage() {
                 </div>
               )}
               {chatMessages.length === 0 && (
-                <div className="text-center py-8">
-                  <p className="text-muted text-sm">{t("coach_empty")}</p>
-                  <div className="flex flex-wrap justify-center gap-2 mt-3">
-                    {[t("coach_suggestion_1"), t("coach_suggestion_2"), t("coach_suggestion_3")].map((s) => (
+                <div className="py-6">
+                  <div className="text-center">
+                    <span className="inline-flex w-9 h-9 rounded-full bg-accent/15 border border-accent/30 items-center justify-center mb-2">
+                      <svg className="w-4 h-4 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                      </svg>
+                    </span>
+                    <p className="text-sm font-semibold text-foreground">{t("coach_showcase_title")}</p>
+                    <p className="text-xs text-muted mt-1 mb-4 max-w-md mx-auto">{t("coach_showcase_intro")}</p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {COACH_CAPABILITIES.map((c) => (
                       <button
-                        key={s}
-                        onClick={() => { setChatInput(s); }}
-                        className="px-3 py-1.5 text-xs bg-surface border border-border rounded-full text-muted hover:text-foreground hover:border-accent/50 transition-colors"
+                        key={c.key}
+                        onClick={() => { setChatInput(t(c.exampleKey)); }}
+                        className="text-left p-3 rounded-xl border border-border bg-surface/40 hover:border-accent/50 hover:bg-accent/5 transition-colors group"
                       >
-                        {s}
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
+                            <svg className="w-3.5 h-3.5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d={c.icon} />
+                            </svg>
+                          </span>
+                          <span className="text-xs font-semibold text-foreground">{t(c.titleKey)}</span>
+                        </div>
+                        <p className="text-[11px] text-muted mt-1.5 pl-8 italic group-hover:text-foreground/80 transition-colors">
+                          « {t(c.exampleKey)} »
+                        </p>
                       </button>
                     ))}
                   </div>
+                  <p className="text-center text-[11px] text-muted/70 mt-4">{t("coach_showcase_hint")}</p>
                 </div>
               )}
               {chatMessages.map((msg, i) => (
