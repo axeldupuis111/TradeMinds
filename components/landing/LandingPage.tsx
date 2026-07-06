@@ -1762,103 +1762,100 @@ function SocialProof() {
 /* ─────────────────────────────────────────────
    ROI BAND — "TradeDiscipline pays for itself"
 ───────────────────────────────────────────── */
-/* Balance animée : le plateau « une erreur évitée » (droite, lourd) fait pencher
-   le fléau de ton côté face au « prix de l'outil » (gauche, léger). Aucun chiffre
-   inventé — la métaphore porte le message « ça ne coûte pas, ça rapporte ».
-   Le fléau pivote (ressort), les plateaux restent droits (contre-rotation). */
+/* Balance animée (SVG à viewBox → se met à l'échelle proprement à toute largeur,
+   jamais de chevauchement). Le fléau penche du côté « une erreur évitée » (lourd,
+   vert) face au « prix de l'outil » (léger, 0 €). La copie détaillée est dans la
+   légende en dessous, qui s'empile sur mobile. Aucun chiffre inventé. */
 function RoiScale({ t }: { t: (k: string) => string }) {
   const reduced = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-90px" });
+  const inView = useInView(ref, { once: true, margin: "-80px" });
   const tipped = reduced || inView;
-  const angle = 9; // degrés, plateau droit plus bas
-  const beamSpring = { type: "spring" as const, stiffness: 55, damping: 9, delay: reduced ? 0 : 0.15 };
-  const panSpring = { type: "spring" as const, stiffness: 60, damping: 11, delay: reduced ? 0 : 0.15 };
-
-  const Pan = ({ side }: { side: "left" | "right" }) => {
-    const heavy = side === "right";
-    const col = heavy ? "--profit" : "--muted";
-    return (
-      <motion.div
-        className="absolute top-1/2"
-        style={{ [side]: 0, x: side === "left" ? "-6%" : "6%" }}
-        initial={false}
-        animate={{ y: tipped ? (heavy ? 22 : -22) : 0 }}
-        transition={panSpring}
-      >
-        {/* contre-rotation : le plateau reste horizontal */}
-        <motion.div
-          initial={false}
-          animate={{ rotate: tipped ? -angle : 0 }}
-          transition={beamSpring}
-          className="rounded-2xl border px-4 py-3 text-center w-[168px] sm:w-[196px] -translate-y-1/2"
-          style={{
-            background: heavy ? `rgb(var(${col})/0.08)` : "rgb(var(--surface)/0.7)",
-            borderColor: `rgb(var(${col})/${heavy ? 0.35 : 0.25})`,
-            boxShadow: heavy ? `0 20px 50px -18px rgb(var(${col})/0.55)` : "none",
-          }}
-        >
-          <p className="text-sm font-bold" style={{ color: `rgb(var(${heavy ? "--profit" : "--foreground"}))`, fontStyle: "normal" }}>
-            {t(heavy ? "pricing_roi_scale_right" : "pricing_roi_scale_left")}
-          </p>
-          <p className="mt-1 text-[11px] leading-snug" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>
-            {t(heavy ? "pricing_roi_scale_right_sub" : "pricing_roi_scale_left_sub")}
-          </p>
-        </motion.div>
-      </motion.div>
-    );
-  };
+  const beamSpring = { type: "spring" as const, stiffness: 55, damping: 9, delay: reduced ? 0 : 0.2 };
 
   return (
-    <div ref={ref} className="relative mx-auto mt-10" style={{ maxWidth: 560, height: 260 }}>
-      {/* halo sous le côté lourd */}
-      <motion.div
-        aria-hidden
-        className="absolute rounded-full pointer-events-none"
-        style={{ width: 220, height: 120, right: "2%", top: "46%", background: "radial-gradient(ellipse, rgb(var(--profit)/0.16), transparent 70%)" }}
-        initial={false}
-        animate={reduced ? { opacity: 0.5 } : { opacity: tipped ? [0.15, 0.5, 0.3] : 0.1 }}
-        transition={{ duration: 1.6, delay: 0.4, repeat: tipped && !reduced ? Infinity : 0, repeatType: "reverse" }}
-      />
+    <div ref={ref} className="mt-8">
+      {/* ── Balance SVG (scale-safe) ── */}
+      <div className="relative mx-auto" style={{ maxWidth: 360 }}>
+        <svg viewBox="0 0 360 150" className="relative w-full" style={{ overflow: "visible" }} role="img" aria-label={t("pricing_roi_verdict")}>
+          <defs>
+            <linearGradient id="roiBeam" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="rgb(var(--muted))" stopOpacity="0.55" />
+              <stop offset="55%" stopColor="rgb(var(--accent))" stopOpacity="0.6" />
+              <stop offset="100%" stopColor="rgb(var(--profit))" />
+            </linearGradient>
+          </defs>
 
-      {/* fléau + plateaux (pivot central) */}
-      <div className="absolute left-0 right-0" style={{ top: "42%" }}>
+          {/* halo pulsé sous le côté lourd */}
+          <motion.ellipse
+            cx="286" cy="118" rx="70" ry="16" fill="rgb(var(--profit))"
+            initial={false}
+            animate={reduced ? { opacity: 0.16 } : { opacity: tipped ? [0.06, 0.2, 0.1] : 0.04 }}
+            transition={{ duration: 1.8, delay: 0.5, repeat: tipped && !reduced ? Infinity : 0, repeatType: "reverse" }}
+            style={{ filter: "blur(6px)" }}
+          />
+
+          {/* socle + colonne */}
+          <ellipse cx="180" cy="132" rx="42" ry="6" fill="rgb(var(--border))" />
+          <rect x="175" y="78" width="10" height="52" rx="4" fill="rgb(var(--border))" />
+          <circle cx="180" cy="78" r="5" fill="rgb(var(--muted))" />
+
+          {/* fléau (pivote autour du pivot 180,78) */}
+          <motion.g
+            style={{ transformBox: "view-box", transformOrigin: "180px 78px" }}
+            initial={false}
+            animate={{ rotate: tipped ? 10 : 0 }}
+            transition={beamSpring}
+          >
+            <rect x="40" y="74.5" width="280" height="7" rx="3.5" fill="url(#roiBeam)" />
+            {/* suspentes */}
+            <line x1="74" y1="77" x2="74" y2="58" stroke="rgb(var(--border))" strokeWidth="1.5" />
+            <line x1="286" y1="77" x2="286" y2="54" stroke="rgb(var(--profit)/0.6)" strokeWidth="1.5" />
+
+            {/* plateau gauche — léger : 0 € (le plan gratuit) */}
+            <rect x="46" y="44" width="56" height="24" rx="8" fill="rgb(var(--surface))" stroke="rgb(var(--muted)/0.4)" strokeWidth="1" />
+            <text x="74" y="60" textAnchor="middle" fontSize="13" fontWeight="700" fill="rgb(var(--muted))">0 €</text>
+
+            {/* plateau droit — lourd : une erreur évitée (plus grand, vert) */}
+            <rect x="252" y="36" width="68" height="30" rx="9" fill="rgb(var(--profit)/0.14)" stroke="rgb(var(--profit)/0.5)" strokeWidth="1" />
+            {/* petit pictogramme "alerte" */}
+            <path d="M286 44 l9 16 h-18 z" fill="none" stroke="rgb(var(--profit))" strokeWidth="1.6" strokeLinejoin="round" />
+            <line x1="286" y1="51" x2="286" y2="55" stroke="rgb(var(--profit))" strokeWidth="1.6" strokeLinecap="round" />
+            <circle cx="286" cy="58" r="0.9" fill="rgb(var(--profit))" />
+          </motion.g>
+        </svg>
+
+        {/* verdict */}
         <motion.div
-          className="relative mx-auto"
-          style={{ width: "84%", transformOrigin: "center" }}
+          className="flex items-center justify-center gap-1.5 mt-2"
           initial={false}
-          animate={{ rotate: tipped ? angle : 0 }}
-          transition={beamSpring}
+          animate={{ opacity: tipped ? 1 : 0, y: tipped ? 0 : 6 }}
+          transition={{ duration: 0.5, delay: reduced ? 0 : 0.75, ease }}
         >
-          {/* barre du fléau */}
-          <div className="h-1.5 w-full rounded-full" style={{ background: "linear-gradient(90deg, rgb(var(--muted)/0.5), rgb(var(--accent)/0.5), rgb(var(--profit)))" }} />
-          {/* pivots des plateaux aux extrémités */}
-          <span className="absolute left-0 top-1/2 w-2 h-2 rounded-full -translate-y-1/2" style={{ background: "rgb(var(--muted))" }} />
-          <span className="absolute right-0 top-1/2 w-2 h-2 rounded-full -translate-y-1/2" style={{ background: "rgb(var(--profit))" }} />
-          <Pan side="left" />
-          <Pan side="right" />
+          <svg className="w-3.5 h-3.5 shrink-0" style={{ color: "rgb(var(--profit))" }} fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" aria-hidden>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+          <span className="text-[13px] font-bold text-center" style={{ color: "rgb(var(--profit))", fontStyle: "normal" }}>{t("pricing_roi_verdict")}</span>
         </motion.div>
-
-        {/* colonne + socle du pivot */}
-        <div className="relative mx-auto" style={{ width: 0 }}>
-          <div className="absolute left-1/2 -translate-x-1/2 w-1 rounded-b-full" style={{ height: 56, background: "rgb(var(--border))" }} />
-          <div className="absolute left-1/2 -translate-x-1/2 rounded-full" style={{ top: 54, width: 44, height: 6, background: "rgb(var(--border))" }} />
-        </div>
       </div>
 
-      {/* verdict — apparaît une fois penché */}
-      <motion.div
-        className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5 whitespace-nowrap"
-        style={{ bottom: 2 }}
-        initial={false}
-        animate={{ opacity: tipped ? 1 : 0, y: tipped ? 0 : 6 }}
-        transition={{ duration: 0.5, delay: reduced ? 0 : 0.7, ease }}
-      >
-        <svg className="w-3.5 h-3.5" style={{ color: "rgb(var(--profit))" }} fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" aria-hidden>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-        </svg>
-        <span className="text-[13px] font-bold" style={{ color: "rgb(var(--profit))", fontStyle: "normal" }}>{t("pricing_roi_verdict")}</span>
-      </motion.div>
+      {/* ── Légende (s'empile sur mobile) ── */}
+      <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto">
+        <div className="rounded-xl border p-4" style={{ background: "rgb(var(--surface)/0.5)", borderColor: "rgb(var(--muted)/0.2)" }}>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: "rgb(var(--muted))" }} />
+            <p className="text-sm font-bold" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{t("pricing_roi_scale_left")}</p>
+          </div>
+          <p className="mt-1.5 text-[13px] leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("pricing_roi_scale_left_sub")}</p>
+        </div>
+        <div className="rounded-xl border p-4" style={{ background: "rgb(var(--profit)/0.06)", borderColor: "rgb(var(--profit)/0.3)" }}>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: "rgb(var(--profit))" }} />
+            <p className="text-sm font-bold" style={{ color: "rgb(var(--profit))", fontStyle: "normal" }}>{t("pricing_roi_scale_right")}</p>
+          </div>
+          <p className="mt-1.5 text-[13px] leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("pricing_roi_scale_right_sub")}</p>
+        </div>
+      </div>
     </div>
   );
 }
