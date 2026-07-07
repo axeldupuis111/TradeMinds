@@ -29,7 +29,12 @@ export default function AdminPage() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [updating, setUpdating] = useState(false);
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
-  const [tab, setTab] = useState<"plans" | "messages" | "funnel">("plans");
+  const [tab, setTab] = useState<"plans" | "messages" | "funnel" | "usernames">("plans");
+  // Modération des pseudos (libellés FR en dur, convention page interne)
+  const [modUsername, setModUsername] = useState("");
+  const [modNewUsername, setModNewUsername] = useState("");
+  const [modMessage, setModMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [modUpdating, setModUpdating] = useState(false);
   // Funnel d'activation (page interne : libellés FR en dur, convention admin)
   const [funnel, setFunnel] = useState<{
     days: number; eventsTableMissing: boolean; signups: number;
@@ -111,6 +116,44 @@ export default function AdminPage() {
     }
   }
 
+  async function handleModerateUsername(action: "rename" | "clear") {
+    const current = modUsername.trim();
+    if (!current) {
+      setModMessage({ type: "error", text: "Renseigne le pseudo actuel" });
+      return;
+    }
+    if (action === "rename" && !modNewUsername.trim()) {
+      setModMessage({ type: "error", text: "Renseigne le nouveau pseudo" });
+      return;
+    }
+    if (action === "clear" && !window.confirm(`Retirer le pseudo « ${current} » ? L'utilisateur disparaîtra du classement et devra en choisir un nouveau.`)) {
+      return;
+    }
+
+    setModUpdating(true);
+    setModMessage(null);
+
+    try {
+      const res = await fetch("/api/admin/moderate-username", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: current, action, newUsername: modNewUsername.trim() || undefined }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setModMessage({ type: "error", text: data.message || "Erreur" });
+      } else {
+        setModMessage({ type: "success", text: data.message });
+        setModUsername("");
+        setModNewUsername("");
+      }
+    } catch {
+      setModMessage({ type: "error", text: "Erreur réseau" });
+    } finally {
+      setModUpdating(false);
+    }
+  }
+
   if (loading) {
     return <div className="skeleton h-8 w-48 rounded-lg" />;
   }
@@ -138,6 +181,9 @@ export default function AdminPage() {
         </button>
         <button onClick={() => { setTab("funnel"); if (!funnel) loadFunnel(funnelDays); }} className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${tab === "funnel" ? "bg-card text-foreground shadow-sm" : "text-muted hover:text-foreground"}`}>
           Funnel
+        </button>
+        <button onClick={() => setTab("usernames")} className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${tab === "usernames" ? "bg-card text-foreground shadow-sm" : "text-muted hover:text-foreground"}`}>
+          Pseudos
         </button>
       </div>
 
@@ -179,6 +225,63 @@ export default function AdminPage() {
           >
             {updating ? "..." : t("admin_update")}
           </button>
+        </div>
+      )}
+
+      {tab === "usernames" && (
+        <div className="mt-6 bg-card border border-border rounded-xl p-6 space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Modération des pseudos</h2>
+            <p className="text-xs text-muted mt-1">
+              Renomme ou retire un pseudo affiché publiquement (classement, défis, profil public).
+              Un pseudo signalé par la modération est déjà masqué à l&apos;affichage, mais reste en base tant qu&apos;il n&apos;est pas traité ici.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm text-muted mb-1">Pseudo actuel</label>
+            <input
+              type="text"
+              value={modUsername}
+              onChange={(e) => setModUsername(e.target.value)}
+              placeholder="pseudo_a_moderer"
+              className={inputClass}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm text-muted mb-1">Nouveau pseudo (pour renommer)</label>
+            <input
+              type="text"
+              value={modNewUsername}
+              onChange={(e) => setModNewUsername(e.target.value)}
+              placeholder="trader_1234"
+              className={inputClass}
+            />
+          </div>
+
+          {modMessage && (
+            <p className={`text-sm ${modMessage.type === "success" ? "text-profit" : "text-loss"}`}>
+              {modMessage.text}
+            </p>
+          )}
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => handleModerateUsername("rename")}
+              disabled={modUpdating}
+              className="flex-1 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50"
+            >
+              {modUpdating ? "..." : "Renommer"}
+            </button>
+            <button
+              onClick={() => handleModerateUsername("clear")}
+              disabled={modUpdating}
+              className="flex-1 py-2.5 bg-loss/10 border border-loss/30 text-loss rounded-lg font-medium hover:bg-loss/20 transition-colors disabled:opacity-50"
+            >
+              {modUpdating ? "..." : "Retirer le pseudo"}
+            </button>
+          </div>
         </div>
       )}
 

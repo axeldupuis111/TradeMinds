@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdmin } from "@supabase/supabase-js";
+import { isUsernameDisplayable } from "@/lib/username-moderation";
 
 export const dynamic = "force-dynamic";
 
@@ -91,7 +92,12 @@ export async function GET(req: NextRequest) {
   }
 
   const ids = profiles.map((p) => p.id);
-  const usernameById = new Map(profiles.map((p) => [p.id, p.username as string]));
+  // Un pseudo bloqué par la modération n'est jamais exposé : remplacé par un
+  // alias neutre en attendant le traitement admin (onglet Pseudos).
+  const usernameById = new Map(profiles.map((p) => [
+    p.id,
+    isUsernameDisplayable(p.username as string) ? (p.username as string) : `trader_${(p.id as string).slice(0, 4)}`,
+  ]));
   // Badge Premium affiché sur le classement (avantage de statut du plan).
   const premiumById = new Map(profiles.map((p) => [p.id, p.plan === "premium"]));
 
