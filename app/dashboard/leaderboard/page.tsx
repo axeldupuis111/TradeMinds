@@ -1,7 +1,7 @@
 "use client";
 
 import { useLanguage } from "@/lib/LanguageContext";
-import { ArrowUp, ArrowDown, BadgeCheck, Crown, Minus, Lock, Share2 } from "lucide-react";
+import { ArrowUp, ArrowDown, BadgeCheck, Crown, Minus, Lock, Share2, Trophy, Users, Gauge, CalendarDays, Flame, Rocket } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import CountUp from "@/components/animations/CountUp";
@@ -11,6 +11,7 @@ import CommunityChallenges from "@/components/dashboard/CommunityChallenges";
 import ShareRankModal from "@/components/leaderboard/ShareRankModal";
 
 type Mode = "discipline" | "sessions" | "streak";
+type Tab = "board" | "challenges";
 
 interface Entry {
   rank: number; username: string; score: number; sessions: number; streak: number;
@@ -26,7 +27,11 @@ interface Self {
   optedIn: boolean; hasUsername: boolean; ranked: boolean; rank: number | null; percentile: number | null;
 }
 
-const MODES: Mode[] = ["discipline", "sessions", "streak"];
+const MODES: { id: Mode; icon: typeof Gauge }[] = [
+  { id: "discipline", icon: Gauge },
+  { id: "sessions", icon: CalendarDays },
+  { id: "streak", icon: Flame },
+];
 const PERIODS = [7, 30, 90] as const;
 
 function scoreColor(s: number): string {
@@ -81,10 +86,12 @@ function Delta({ d }: { d: number | null }) {
 export default function LeaderboardPage() {
   const { t } = useLanguage();
   const [entries, setEntries] = useState<Entry[]>([]);
+  const [around, setAround] = useState<Entry[]>([]);
   const [self, setSelf] = useState<Self | null>(null);
   const [total, setTotal] = useState(0);
   const [days, setDays] = useState<7 | 30 | 90>(30);
   const [mode, setMode] = useState<Mode>("discipline");
+  const [tab, setTab] = useState<Tab>("board");
   const [loading, setLoading] = useState(true);
   const [showConfetti, setShowConfetti] = useState(false);
   const [selectedBadge, setSelectedBadge] = useState<string | null>(null);
@@ -96,11 +103,11 @@ export default function LeaderboardPage() {
     try {
       const res = await fetch(`/api/leaderboard?days=${d}&mode=${m}`);
       const data = await res.json();
-      setEntries(data.entries ?? []); setSelf(data.self ?? null); setTotal(data.total ?? 0);
+      setEntries(data.entries ?? []); setAround(data.around ?? []); setSelf(data.self ?? null); setTotal(data.total ?? 0);
     } catch {
       // Network/parse failure → degrade to an empty board rather than leaving an
       // unhandled rejection and stale data.
-      setEntries([]); setSelf(null); setTotal(0);
+      setEntries([]); setAround([]); setSelf(null); setTotal(0);
     } finally { setLoading(false); }
   }, []);
   useEffect(() => { load(days, mode); }, [days, mode, load]);
@@ -114,7 +121,12 @@ export default function LeaderboardPage() {
   const top3 = entries.slice(0, 3);
   const rest = entries.slice(3);
   const meInTop = entries.some((x) => x.isMe);
-  const meEntry = entries.find((x) => x.isMe) ?? null;
+  const meEntry = entries.find((x) => x.isMe) ?? around.find((x) => x.isMe) ?? null;
+
+  // Plus forte ascension de la période (chip de mise en avant au-dessus de la liste).
+  const topMover = entries
+    .filter((e) => e.delta != null && e.delta >= 2 && !e.isMe)
+    .sort((a, b) => (b.delta as number) - (a.delta as number))[0] ?? null;
 
   // Petite célébration la première fois qu'on se voit sur le podium.
   useEffect(() => {
@@ -130,12 +142,28 @@ export default function LeaderboardPage() {
       <h1 className="text-2xl font-bold text-foreground">{t("leaderboard_title")}</h1>
       <p className="text-muted mt-1">{t("leaderboard_subtitle")}</p>
 
-      {/* Défis communautaires */}
-      <div className="mt-6">
-        <CommunityChallenges />
+      {/* Onglets : classement / défis communautaires */}
+      <div className="mt-5 inline-flex items-center gap-1 rounded-xl border border-border bg-card p-1">
+        <button onClick={() => setTab("board")}
+          className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors ${tab === "board" ? "bg-accent/10 text-accent" : "text-muted hover:text-foreground"}`}>
+          <Trophy className="w-4 h-4" /> {t("leaderboard_tab_board")}
+        </button>
+        <button onClick={() => setTab("challenges")}
+          className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors ${tab === "challenges" ? "bg-accent/10 text-accent" : "text-muted hover:text-foreground"}`}>
+          <Users className="w-4 h-4" /> {t("leaderboard_tab_challenges")}
+        </button>
       </div>
 
-      <div className="mt-5 lg:grid lg:grid-cols-3 lg:gap-6 lg:items-start">
+      {/* ═══════════ Onglet Défis communautaires ═══════════ */}
+      {tab === "challenges" && (
+        <div className="mt-4">
+          <CommunityChallenges />
+        </div>
+      )}
+
+      {/* ═══════════ Onglet Classement ═══════════ */}
+      {tab === "board" && (
+      <div className="mt-4 lg:grid lg:grid-cols-3 lg:gap-6 lg:items-start">
       {/* Rail : tes stats + badges + invite (droite sur grand écran, haut sur mobile) */}
       <aside className="space-y-4 lg:col-span-1 lg:order-2">
       {/* Tes stats (toujours visible) */}
@@ -181,7 +209,9 @@ export default function LeaderboardPage() {
               );
             })()}
             {self.ranked ? (() => {
-              const above = meEntry && meEntry.rank > 1 ? entries.find((e) => e.rank === meEntry.rank - 1) : null;
+              const above = meEntry && meEntry.rank > 1
+                ? (entries.find((e) => e.rank === meEntry.rank - 1) ?? around.find((e) => e.rank === meEntry.rank - 1) ?? null)
+                : null;
               const gap = above ? above.value - (meEntry?.value ?? 0) : 0;
               return (
                 <div className="mt-3 text-center space-y-1">
@@ -213,7 +243,7 @@ export default function LeaderboardPage() {
               <p className="text-xs text-muted">{t("leaderboard_badges_title")}</p>
               <span className="text-[11px] font-semibold text-accent tabular-nums">{earnedCount}/{badges.length}</span>
             </div>
-            <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+            <div className="grid grid-cols-4 sm:grid-cols-7 lg:grid-cols-4 gap-2">
               {badges.map((b) => (
                 <button key={b.key} onClick={() => setSelectedBadge((cur) => (cur === b.key ? null : b.key))}
                   className={`aspect-square rounded-xl border flex flex-col items-center justify-center gap-1 p-1 transition-transform hover:scale-105 ${selectedBadge === b.key ? "ring-1 ring-accent" : ""} ${b.earned ? "border-accent/30 bg-accent/[0.05] shadow-[0_0_12px_-3px_rgb(var(--accent)/0.5)]" : "border-border bg-surface/40 opacity-50"}`}>
@@ -269,20 +299,23 @@ export default function LeaderboardPage() {
 
       {/* Colonne principale : modes + période + classement */}
       <main className="lg:col-span-2 lg:order-1 mt-4 lg:mt-0">
-      {/* Modes + période */}
-      <div className="flex rounded-lg border border-border overflow-hidden text-sm">
-        {MODES.map((m) => (
-          <button key={m} onClick={() => setMode(m)} className={`flex-1 px-3 py-1.5 transition-colors ${mode === m ? "bg-accent text-white" : "bg-surface text-muted hover:text-foreground"}`}>
-            {t(`leaderboard_mode_${m}`)}
-          </button>
-        ))}
-      </div>
-      <div className="mt-2 flex justify-end gap-2 text-xs">
-        {PERIODS.map((d) => (
-          <button key={d} onClick={() => setDays(d)} className={`px-2.5 py-1 rounded-md transition-colors ${days === d ? "bg-accent/15 text-accent font-semibold" : "text-muted hover:text-foreground"}`}>
-            {t("leaderboard_days").replace("{n}", String(d))}
-          </button>
-        ))}
+      {/* Modes (avec icônes) + période sur la même ligne */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="inline-flex items-center gap-1 rounded-xl border border-border bg-card p-1">
+          {MODES.map((m) => (
+            <button key={m.id} onClick={() => setMode(m.id)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${mode === m.id ? "bg-accent/10 text-accent" : "text-muted hover:text-foreground"}`}>
+              <m.icon className="w-3.5 h-3.5" /> {t(`leaderboard_mode_${m.id}`)}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-1 text-xs">
+          {PERIODS.map((d) => (
+            <button key={d} onClick={() => setDays(d)} className={`px-2.5 py-1.5 rounded-lg transition-colors ${days === d ? "bg-accent/15 text-accent font-semibold" : "text-muted hover:text-foreground"}`}>
+              {t("leaderboard_days").replace("{n}", String(d))}
+            </button>
+          ))}
+        </div>
       </div>
 
       {loading ? (
@@ -293,7 +326,16 @@ export default function LeaderboardPage() {
         </div>
       ) : (
         <>
-          <p className="text-xs text-muted mt-4">{(total === 1 ? t("leaderboard_participants_one") : t("leaderboard_participants")).replace("{n}", String(total))}</p>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-muted">{(total === 1 ? t("leaderboard_participants_one") : t("leaderboard_participants")).replace("{n}", String(total))}</p>
+            {/* Plus forte ascension de la période */}
+            {topMover && (
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-profit bg-profit/10 rounded-full px-2.5 py-1">
+                <Rocket className="w-3 h-3" />
+                {t("leaderboard_top_mover").replace("{user}", topMover.username).replace("{n}", String(topMover.delta))}
+              </span>
+            )}
+          </div>
 
           {/* Podium */}
           {top3.length >= 1 && (
@@ -338,10 +380,14 @@ export default function LeaderboardPage() {
             </div>
           )}
 
-          {meEntry && !meInTop && (
+          {/* Ta position avec contexte (voisin devant + toi + voisin derrière),
+              même quand tu es hors du top affiché. */}
+          {meEntry && !meInTop && around.length > 0 && (
             <div className="mt-4">
               <p className="text-xs text-muted mb-1">{t("leaderboard_your_position")}</p>
-              <div className="rounded-xl border border-accent/30 overflow-hidden"><Row e={meEntry} t={t} value={displayValue(meEntry.score, meEntry.sessions, meEntry.streak)} /></div>
+              <div className="rounded-xl border border-accent/30 overflow-hidden divide-y divide-border">
+                {around.map((e) => <Row key={e.rank} e={e} t={t} value={displayValue(e.score, e.sessions, e.streak)} />)}
+              </div>
             </div>
           )}
 
@@ -350,6 +396,7 @@ export default function LeaderboardPage() {
       )}
       </main>
       </div>
+      )}
 
       {/* Carte de rang exportable en PNG */}
       {showShare && self && (
