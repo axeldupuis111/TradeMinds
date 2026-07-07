@@ -1196,6 +1196,7 @@ const dict: Record<string, string> = {
   "settings_username_hint": "3-20 Zeichen, nur Kleinbuchstaben, Ziffern, Bindestriche und Unterstriche.",
   "settings_username_required": "Benutzername ist für ein öffentliches Profil erforderlich.",
   "settings_username_invalid": "Ungültiges Format. 3-20 Zeichen: a-z, 0-9, -, _.",
+  "settings_username_forbidden": "Dieser Benutzername enthält unzulässige Begriffe. Bitte wähle einen anderen.",
   "settings_username_taken": "Dieser Benutzername ist bereits vergeben.",
   "settings_save": "Speichern",
   "settings_saved": "Einstellungen gespeichert ✓",

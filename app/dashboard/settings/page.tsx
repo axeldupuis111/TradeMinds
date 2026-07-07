@@ -9,6 +9,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { useTheme } from "@/lib/ThemeContext";
 import { createClient } from "@/lib/supabase/client";
+import { normalizeUsername, validateUsername } from "@/lib/username-moderation";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -210,15 +211,19 @@ export default function SettingsPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setSaving(false); return; }
 
-    const trimmed = username.trim().toLowerCase();
-    if (publicProfile) {
-      if (!trimmed) {
-        showToast("error", t("settings_username_required"));
-        setSaving(false);
-        return;
-      }
-      if (!/^[a-z0-9_-]{3,20}$/.test(trimmed)) {
-        showToast("error", t("settings_username_invalid"));
+    const trimmed = normalizeUsername(username);
+    if (publicProfile && !trimmed) {
+      showToast("error", t("settings_username_required"));
+      setSaving(false);
+      return;
+    }
+    // Format + modération appliqués dès qu'un pseudo est saisi, même sans
+    // profil public : le pseudo est aussi affiché sur le classement et les
+    // défis communautaires.
+    if (trimmed) {
+      const check = validateUsername(trimmed);
+      if (!check.ok) {
+        showToast("error", t(check.reason === "forbidden" ? "settings_username_forbidden" : "settings_username_invalid"));
         setSaving(false);
         return;
       }
@@ -250,6 +255,7 @@ export default function SettingsPage() {
     if (error) {
       showToast("error", t("settings_save_error"));
     } else {
+      setUsername(trimmed);
       setOriginalUsername(trimmed);
       setOriginalPublicProfile(publicProfile);
       setOriginalTimezone(timezone);

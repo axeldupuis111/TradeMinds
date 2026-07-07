@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/api-auth";
 import { computeDisciplineStreaks } from "@/lib/discipline-streak";
 import { localDateKey } from "@/lib/timezone";
 import { COMMUNITY_CHALLENGES, getCommunityChallenge, IMPULSIVE_EMOTIONS } from "@/lib/community-challenges";
+import { isUsernameDisplayable } from "@/lib/username-moderation";
 
 /**
  * Community challenges: join/leave + a dedicated ranking per challenge.
@@ -40,7 +41,11 @@ export async function GET() {
   const { data: profs } = idsForProfiles.length
     ? await admin.from("profiles").select("id, username, timezone").in("id", idsForProfiles)
     : { data: [] as { id: string; username: string | null; timezone: string | null }[] };
-  const nameById = new Map((profs ?? []).map((p) => [p.id, (p.username as string) || null]));
+  // Un pseudo bloqué par la modération n'est jamais exposé (fallback "Trader").
+  const nameById = new Map((profs ?? []).map((p) => [
+    p.id,
+    isUsernameDisplayable(p.username as string | null) ? (p.username as string) : null,
+  ]));
   const tzById = new Map((profs ?? []).map((p) => [p.id, (p.timezone as string) || "UTC"]));
 
   // Closed trades (last 120 days) for all participants + the current user.
