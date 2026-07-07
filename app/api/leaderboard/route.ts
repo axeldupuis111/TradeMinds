@@ -141,13 +141,18 @@ export async function GET(req: NextRequest) {
   });
 
   const total = ranked.length;
-  const meEntry = ranked.find((e) => e.isMe) ?? null;
+  const meIdx = ranked.findIndex((e) => e.isMe);
+  const meEntry = meIdx >= 0 ? ranked[meIdx] : null;
   const me = meEntry
     ? { ...meEntry, percentile: total > 0 ? Math.max(1, Math.round((meEntry.rank / total) * 100)) : null }
     : null;
 
+  // Voisins de rang (celui juste devant + moi + celui juste derrière) : permet
+  // d'afficher « ta position » avec du contexte même hors du top 50 affiché.
+  const around = meIdx >= 0 ? ranked.slice(Math.max(0, meIdx - 1), meIdx + 2) : [];
+
   return NextResponse.json({
-    entries: ranked.slice(0, 50), me, total, days, mode,
+    entries: ranked.slice(0, 50), around, me, total, days, mode,
     self: buildSelf(me?.rank ?? null, me?.percentile ?? null),
   });
 }

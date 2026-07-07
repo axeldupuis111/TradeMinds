@@ -3,7 +3,7 @@
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { Pdf, C, type RGB } from "@/lib/pdf/kit";
-import { Activity, ArrowDownRight, ArrowUpRight, Clock3, Minus, Sparkles, ThumbsUp, Target, Compass, ChevronLeft, ChevronRight, FileDown, TrendingUp, TrendingDown, Flame, Award, CalendarX, Brain, GitCompareArrows } from "lucide-react";
+import { Activity, ArrowDownRight, ArrowUpRight, Clock3, Minus, Sparkles, ThumbsUp, Target, Compass, ChevronLeft, ChevronRight, FileDown, TrendingUp, TrendingDown, Flame, Award, CalendarX, Brain, GitCompareArrows, Gauge, Scale } from "lucide-react";
 import Link from "next/link";
 import { Fragment, useCallback, useEffect, useState } from "react";
 import CountUp from "@/components/animations/CountUp";
@@ -35,6 +35,9 @@ interface DayDetail {
   tradeList: { pair: string; direction: string | null; pnl: number; time: string }[];
   sessions: { emotion: string | null; checklistCompleted: boolean | null; time: string }[];
 }
+
+// Onglets de la page : vue d'ensemble → performance → discipline & mental.
+type RevTab = "overview" | "perf" | "mind";
 
 const EMOTION_EMOJI: Record<string, string> = {
   confident: "\u{1F60E}", neutral: "\u{1F610}", anxious: "\u{1F630}", frustrated: "\u{1F624}", fomo: "\u{1F911}", revenge: "\u{1F621}",
@@ -127,6 +130,7 @@ export default function MonthlyReviewPage() {
   const [review, setReview] = useState<Review | null>(null);
   const [rawSummary, setRawSummary] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [tab, setTab] = useState<RevTab>("overview");
   const [compareOpen, setCompareOpen] = useState(false);
   const [compareMonth, setCompareMonth] = useState("");
   const [compareData, setCompareData] = useState<{ month: Month; stats: Stats } | null>(null);
@@ -407,14 +411,33 @@ export default function MonthlyReviewPage() {
   const firstWeekday = month ? (new Date(month.year, month.month0, 1).getDay() + 6) % 7 : 0; // lundi=0
   const todayDay = month?.isCurrentMonth ? new Date().getDate() : -1;
 
+  // « La discipline paie » : P&L moyen des jours disciplinés (score ≥ 70) vs les
+  // autres jours notés. Calculé sur le calendrier du mois (≥ 2 jours de chaque côté).
+  const scoredDays = calendar.filter((c) => c.score != null);
+  const hiDays = scoredDays.filter((c) => (c.score as number) >= 70);
+  const loDays = scoredDays.filter((c) => (c.score as number) < 70);
+  const payoffInsight = hiDays.length >= 2 && loDays.length >= 2 ? (() => {
+    const avg = (xs: CalDay[]) => xs.reduce((s, c) => s + c.pnl, 0) / xs.length;
+    const hiAvg = avg(hiDays), loAvg = avg(loDays);
+    return { hiAvg, loAvg, hiN: hiDays.length, loN: loDays.length, diff: hiAvg - loAvg };
+  })() : null;
+
+  const hasContent = !!stats && !(stats.trades === 0 && stats.sessions === 0);
+
+  const TABS: { id: RevTab; icon: typeof Gauge; label: string }[] = [
+    { id: "overview", icon: Gauge, label: t("review_tab_overview") },
+    { id: "perf", icon: Activity, label: t("review_tab_perf") },
+    { id: "mind", icon: Brain, label: t("review_tab_mind") },
+  ];
+
   return (
-    <div className="max-w-4xl mx-auto pb-10">
+    <div className="max-w-5xl mx-auto pb-10">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t("review_title")}</h1>
           <p className="text-muted mt-1">{t("review_subtitle")}</p>
         </div>
-        {isPaid && stats && !(stats.trades === 0 && stats.sessions === 0) && (
+        {isPaid && hasContent && (
           <button onClick={exportPdf} disabled={exporting}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-foreground text-sm hover:bg-surface transition-colors disabled:opacity-50 shrink-0">
             <FileDown className="w-4 h-4" />
@@ -430,26 +453,30 @@ export default function MonthlyReviewPage() {
         </div>
       ) : (
         <>
-          {/* Navigation par mois */}
-          <div className="mt-5 flex items-center justify-between">
+          {/* Navigation par mois + comparaison */}
+          <div className="mt-5 flex items-center justify-between gap-2">
             <button onClick={() => shiftMonth(-1)} className="p-2 rounded-lg border border-border text-muted hover:text-foreground hover:bg-surface transition-colors" aria-label={t("review_prev_month")}>
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="text-sm font-semibold text-foreground capitalize">{monthLabel}</span>
+            <div className="text-center">
+              <span className="text-sm font-semibold text-foreground capitalize">{monthLabel}</span>
+              {month && !month.isCurrentMonth && (
+                <button onClick={() => setMonthParam(null)} className="block mx-auto text-[11px] text-accent hover:underline">{t("review_back_current")} →</button>
+              )}
+            </div>
             <button onClick={() => shiftMonth(1)} disabled={month?.isCurrentMonth}
               className="p-2 rounded-lg border border-border text-muted hover:text-foreground hover:bg-surface transition-colors disabled:opacity-30 disabled:cursor-not-allowed" aria-label={t("review_next_month")}>
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
-          {month && !month.isCurrentMonth && (
-            <div className="flex justify-center mt-1.5">
-              <button onClick={() => setMonthParam(null)} className="text-[11px] text-accent hover:underline">{t("review_back_current")} →</button>
-            </div>
-          )}
 
           {loadingStats ? (
-            <div className="skeleton h-48 rounded-xl mt-4" />
-          ) : stats && stats.trades === 0 && stats.sessions === 0 ? (
+            <div className="mt-4 space-y-4" aria-hidden>
+              <div className="skeleton h-28 rounded-xl" />
+              <div className="skeleton h-10 w-80 rounded-xl" />
+              <div className="skeleton h-48 rounded-xl" />
+            </div>
+          ) : stats && !hasContent ? (
             <div className="mt-4 rounded-xl border border-dashed border-border p-10 text-center">
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-surface mb-3">
                 <CalendarX className="w-6 h-6 text-muted/50" />
@@ -458,7 +485,7 @@ export default function MonthlyReviewPage() {
             </div>
           ) : stats ? (
             <>
-              {/* Héro — note du mois + P&L net */}
+              {/* Héro — note du mois + P&L net (toujours visible, au-dessus des onglets) */}
               {(() => {
                 const grade = monthGrade(stats, extras?.prepRate ?? null);
                 if (!grade) return null;
@@ -494,203 +521,277 @@ export default function MonthlyReviewPage() {
                 );
               })()}
 
-              <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                <Kpi label={t("review_kpi_trades")} value={`${stats.trades}`} delta={deltas?.trades} />
-                <Kpi label={t("review_kpi_days")} value={`${stats.tradingDays}`} delta={deltas?.tradingDays} />
-                <Kpi label={t("review_kpi_winrate")} value={`${stats.winRate}%`} delta={deltas?.winRate} suffix="pts" valueClass={stats.winRate >= 50 ? "text-profit" : "text-warning"} />
-                <Kpi label={t("review_kpi_sessions")} value={`${stats.sessions}`} delta={deltas?.sessions} />
-                <Kpi label={t("review_kpi_score")} value={stats.avgDisciplineScore != null ? `${stats.avgDisciplineScore}/100` : "—"} delta={deltas?.avgDisciplineScore ?? undefined} suffix="pts" valueClass={stats.avgDisciplineScore != null ? scoreText(stats.avgDisciplineScore) : "text-foreground"} />
-                {extras?.prepRate != null && <Kpi label={t("review_kpi_prep")} value={`${extras.prepRate}%`} valueClass="text-teal-300" />}
+              {/* Onglets : vue d'ensemble / performance / discipline & mental */}
+              <div className="mt-5 inline-flex items-center gap-1 rounded-xl border border-border bg-card p-1 max-w-full overflow-x-auto">
+                {TABS.map((tb) => (
+                  <button key={tb.id} onClick={() => setTab(tb.id)}
+                    className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors ${tab === tb.id ? "bg-accent/10 text-accent" : "text-muted hover:text-foreground"}`}>
+                    <tb.icon className="w-4 h-4" /> {tb.label}
+                  </button>
+                ))}
               </div>
 
-              {/* Comparaison mois-sur-mois */}
-              <div className="mt-3">
-                <button onClick={toggleCompare} className="inline-flex items-center gap-1.5 text-xs text-accent hover:underline">
-                  <GitCompareArrows className="w-3.5 h-3.5" /> {compareOpen ? t("review_compare_hide") : t("review_compare_cta")}
-                </button>
-                {compareOpen && (
-                  <div className="mt-2 rounded-xl border border-border bg-card p-4">
-                    <div className="flex items-center gap-2 mb-3 flex-wrap">
-                      <span className="text-xs text-muted">{t("review_compare_with")}</span>
-                      <input type="month" value={compareMonth} max={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`}
-                        onChange={(e) => setCompareMonth(e.target.value)}
-                        className="px-2.5 py-1.5 bg-surface border border-border rounded-lg text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-accent" />
-                    </div>
-                    {compareLoading ? (
-                      <div className="skeleton h-32 rounded-lg" />
-                    ) : compareData && !(compareData.stats.trades === 0 && compareData.stats.sessions === 0) ? (
-                      <CompareTable a={stats} b={compareData.stats}
-                        aLabel={monthLabel}
-                        bLabel={new Date(compareData.month.year, compareData.month.month0, 1).toLocaleDateString(lang, { month: "long", year: "numeric" })}
-                        t={t} />
-                    ) : (
-                      <p className="text-xs text-muted">{t("review_compare_no_data")}</p>
-                    )}
+              {/* ═══════════ Onglet Vue d'ensemble ═══════════ */}
+              {tab === "overview" && (
+                <div className="mt-4 space-y-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                    <Kpi label={t("review_kpi_trades")} value={`${stats.trades}`} delta={deltas?.trades} />
+                    <Kpi label={t("review_kpi_days")} value={`${stats.tradingDays}`} delta={deltas?.tradingDays} />
+                    <Kpi label={t("review_kpi_winrate")} value={`${stats.winRate}%`} delta={deltas?.winRate} suffix="pts" valueClass={stats.winRate >= 50 ? "text-profit" : "text-warning"} />
+                    <Kpi label={t("review_kpi_sessions")} value={`${stats.sessions}`} delta={deltas?.sessions} />
+                    <Kpi label={t("review_kpi_score")} value={stats.avgDisciplineScore != null ? `${stats.avgDisciplineScore}/100` : "—"} delta={deltas?.avgDisciplineScore ?? undefined} suffix="pts" valueClass={stats.avgDisciplineScore != null ? scoreText(stats.avgDisciplineScore) : "text-foreground"} />
+                    {extras?.prepRate != null && <Kpi label={t("review_kpi_prep")} value={`${extras.prepRate}%`} valueClass="text-teal-300" />}
                   </div>
-                )}
-              </div>
 
-              {/* Pont Objectifs (mois en cours) */}
-              {goalsSummary && goalsSummary.total > 0 && (
-                <Link href="/dashboard/goals" className="mt-4 flex items-center gap-3 rounded-xl border border-accent/30 bg-accent/[0.04] p-4 hover:border-accent/50 transition-colors">
-                  <Target className="w-5 h-5 text-accent shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-foreground">{t("review_goals_title")}</p>
-                    <p className="text-xs text-muted">{t("review_goals_sub").replace("{met}", String(goalsSummary.met)).replace("{total}", String(goalsSummary.total))}</p>
-                  </div>
-                  <span className="text-xs text-accent font-medium whitespace-nowrap">{t("review_goals_link")} →</span>
-                </Link>
-              )}
-
-              {/* Records du mois */}
-              {records && (records.greenDays + records.redDays > 0 || records.bestDisciplineDay) && (
-                <div className="mt-4">
-                  <p className="text-xs text-muted mb-2">{t("review_records_title")}</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="rounded-xl border border-border bg-card p-3">
-                      <p className="text-xs text-muted flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5 text-profit" />{t("review_green_days")}</p>
-                      <p className="text-lg font-bold text-profit mt-0.5"><CountUp end={records.greenDays} duration={0.9} /></p>
-                    </div>
-                    <div className="rounded-xl border border-border bg-card p-3">
-                      <p className="text-xs text-muted flex items-center gap-1.5"><TrendingDown className="w-3.5 h-3.5 text-loss" />{t("review_red_days")}</p>
-                      <p className="text-lg font-bold text-loss mt-0.5"><CountUp end={records.redDays} duration={0.9} /></p>
-                    </div>
-                    <div className="rounded-xl border border-border bg-card p-3">
-                      <p className="text-xs text-muted flex items-center gap-1.5"><Flame className="w-3.5 h-3.5 text-orange-400" />{t("review_disciplined_streak")}</p>
-                      <p className="text-lg font-bold text-foreground mt-0.5"><CountUp end={records.disciplinedStreak} duration={0.9} /></p>
-                    </div>
-                    {records.bestDisciplineDay && (
-                      <div className="rounded-xl border border-border bg-card p-3">
-                        <p className="text-xs text-muted flex items-center gap-1.5"><Award className="w-3.5 h-3.5 text-violet-400" />{t("review_best_discipline")}</p>
-                        <p className="text-lg font-bold text-foreground mt-0.5">{records.bestDisciplineDay.score}/100</p>
-                        <p className="text-[10px] text-muted/70">{fmtDate(records.bestDisciplineDay.date, lang)}</p>
+                  {/* Comparaison mois-sur-mois */}
+                  <div>
+                    <button onClick={toggleCompare} className="inline-flex items-center gap-1.5 text-xs text-accent hover:underline">
+                      <GitCompareArrows className="w-3.5 h-3.5" /> {compareOpen ? t("review_compare_hide") : t("review_compare_cta")}
+                    </button>
+                    {compareOpen && (
+                      <div className="mt-2 rounded-xl border border-border bg-card p-4">
+                        <div className="flex items-center gap-2 mb-3 flex-wrap">
+                          <span className="text-xs text-muted">{t("review_compare_with")}</span>
+                          <input type="month" value={compareMonth} max={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`}
+                            onChange={(e) => setCompareMonth(e.target.value)}
+                            className="px-2.5 py-1.5 bg-surface border border-border rounded-lg text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-accent" />
+                        </div>
+                        {compareLoading ? (
+                          <div className="skeleton h-32 rounded-lg" />
+                        ) : compareData && !(compareData.stats.trades === 0 && compareData.stats.sessions === 0) ? (
+                          <CompareTable a={stats} b={compareData.stats}
+                            aLabel={monthLabel}
+                            bLabel={new Date(compareData.month.year, compareData.month.month0, 1).toLocaleDateString(lang, { month: "long", year: "numeric" })}
+                            t={t} />
+                        ) : (
+                          <p className="text-xs text-muted">{t("review_compare_no_data")}</p>
+                        )}
                       </div>
                     )}
                   </div>
+
+                  {/* Pont Objectifs (mois en cours) */}
+                  {goalsSummary && goalsSummary.total > 0 && (
+                    <Link href="/dashboard/goals" className="flex items-center gap-3 rounded-xl border border-accent/30 bg-accent/[0.04] p-4 hover:border-accent/50 transition-colors">
+                      <Target className="w-5 h-5 text-accent shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-foreground">{t("review_goals_title")}</p>
+                        <p className="text-xs text-muted">{t("review_goals_sub").replace("{met}", String(goalsSummary.met)).replace("{total}", String(goalsSummary.total))}</p>
+                      </div>
+                      <span className="text-xs text-accent font-medium whitespace-nowrap">{t("review_goals_link")} →</span>
+                    </Link>
+                  )}
+
+                  {/* Équité + faits marquants */}
+                  {extras && extras.equity.length >= 2 && (
+                    <div className="rounded-xl border border-border bg-card p-4">
+                      <div className="flex items-baseline justify-between mb-1">
+                        <p className="text-xs text-muted">{t("review_equity_title")}</p>
+                        {(() => { const last = extras.equity[extras.equity.length - 1]; return (
+                          <span className={`text-sm font-bold tabular-nums ${last >= 0 ? "text-profit" : "text-loss"}`}>{fmtMoney(last)}</span>
+                        ); })()}
+                      </div>
+                      <Sparkline data={extras.equity} />
+                    </div>
+                  )}
+                  {extras && (extras.best || extras.topPair) && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {extras.best && <Highlight label={t("review_best_day")} value={fmtMoney(extras.best.pnl)} sub={fmtDate(extras.best.date, lang)} positive onClick={() => setSelectedDay(extras.best!.date)} />}
+                      {extras.worst && extras.worst.pnl < 0 && <Highlight label={t("review_worst_day")} value={fmtMoney(extras.worst.pnl)} sub={fmtDate(extras.worst.date, lang)} onClick={() => setSelectedDay(extras.worst!.date)} />}
+                      {extras.topPair && <Highlight label={t("review_top_pair")} value={extras.topPair.pair} sub={`${extras.topPair.count} ${t("review_kpi_trades").toLowerCase()}`} />}
+                    </div>
+                  )}
+
+                  {/* Records du mois */}
+                  {records && (records.greenDays + records.redDays > 0 || records.bestDisciplineDay) && (
+                    <div>
+                      <p className="text-xs text-muted mb-2">{t("review_records_title")}</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="rounded-xl border border-border bg-card p-3">
+                          <p className="text-xs text-muted flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5 text-profit" />{t("review_green_days")}</p>
+                          <p className="text-lg font-bold text-profit mt-0.5"><CountUp end={records.greenDays} duration={0.9} /></p>
+                        </div>
+                        <div className="rounded-xl border border-border bg-card p-3">
+                          <p className="text-xs text-muted flex items-center gap-1.5"><TrendingDown className="w-3.5 h-3.5 text-loss" />{t("review_red_days")}</p>
+                          <p className="text-lg font-bold text-loss mt-0.5"><CountUp end={records.redDays} duration={0.9} /></p>
+                        </div>
+                        <div className="rounded-xl border border-border bg-card p-3">
+                          <p className="text-xs text-muted flex items-center gap-1.5"><Flame className="w-3.5 h-3.5 text-orange-400" />{t("review_disciplined_streak")}</p>
+                          <p className="text-lg font-bold text-foreground mt-0.5"><CountUp end={records.disciplinedStreak} duration={0.9} /></p>
+                        </div>
+                        {records.bestDisciplineDay && (
+                          <div className="rounded-xl border border-border bg-card p-3">
+                            <p className="text-xs text-muted flex items-center gap-1.5"><Award className="w-3.5 h-3.5 text-violet-400" />{t("review_best_discipline")}</p>
+                            <p className="text-lg font-bold text-foreground mt-0.5">{records.bestDisciplineDay.score}/100</p>
+                            <p className="text-[10px] text-muted/70">{fmtDate(records.bestDisciplineDay.date, lang)}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Note du coach (IA) */}
+                  {review ? (
+                    <div className="space-y-3">
+                      <div className="rounded-xl border border-accent/30 bg-accent/5 p-5"><p className="text-base font-semibold text-foreground">{review.headline}</p></div>
+                      <ReviewCard icon={<ThumbsUp className="w-4 h-4 text-profit" />} title={t("review_strength")} body={review.strength} />
+                      <ReviewCard icon={<Target className="w-4 h-4 text-warning" />} title={t("review_improvement")} body={review.improvement} />
+                      <ReviewCard icon={<Compass className="w-4 h-4 text-accent" />} title={t("review_focus")} body={review.focus} accent />
+                      <button onClick={generate} disabled={aiLoading} className="text-sm text-muted hover:text-accent transition-colors disabled:opacity-50 underline underline-offset-2">{aiLoading ? t("review_generating") : t("review_regenerate")}</button>
+                    </div>
+                  ) : aiLoading ? (
+                    <div className="space-y-3">
+                      <div className="skeleton h-16 rounded-xl" />
+                      <div className="skeleton h-20 rounded-xl" />
+                      <div className="skeleton h-20 rounded-xl" />
+                      <p className="text-xs text-muted text-center flex items-center justify-center gap-2"><Sparkles className="w-3.5 h-3.5 text-accent animate-pulse" />{t("review_generating")}</p>
+                    </div>
+                  ) : rawSummary ? (
+                    <div className="rounded-xl border border-border bg-card p-5"><p className="text-sm text-muted leading-relaxed whitespace-pre-line">{rawSummary.replace(/\*\*/g, "")}</p></div>
+                  ) : (
+                    <button onClick={generate} disabled={aiLoading} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-white text-sm font-medium hover:bg-blue-600 transition-colors disabled:opacity-50">
+                      <Sparkles className="w-4 h-4" />{aiLoading ? t("review_generating") : t("review_generate")}
+                    </button>
+                  )}
                 </div>
               )}
 
-              {/* Stats de trading — qualité d'exécution du mois */}
-              {risk && stats.trades > 0 && (
-                <div className="mt-4 rounded-xl border border-border bg-card p-4">
-                  <h2 className="text-sm font-semibold text-foreground flex items-center gap-2"><Activity className="w-4 h-4 text-accent" />{t("review_risk_title")}</h2>
-                  <p className="text-xs text-muted mt-0.5 mb-3">{t("review_risk_sub")}</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <RiskStat label={t("review_risk_pf")} hint={t("review_risk_pf_hint")}
-                      value={risk.profitFactor == null ? "∞" : risk.profitFactor.toFixed(2).replace(".", ",")}
-                      cls={risk.profitFactor == null || risk.profitFactor >= 1.5 ? "text-profit" : risk.profitFactor >= 1 ? "text-warning" : "text-loss"} />
-                    <RiskStat label={t("review_risk_payoff")} hint={t("review_risk_payoff_hint")}
-                      value={risk.payoff == null ? "—" : risk.payoff.toFixed(2).replace(".", ",")}
-                      cls={risk.payoff == null ? "text-muted" : risk.payoff >= 1 ? "text-profit" : "text-warning"} />
-                    <RiskStat label={t("review_risk_expectancy")} hint={t("review_risk_expectancy_hint")}
-                      value={fmtMoney(risk.expectancy)}
-                      cls={risk.expectancy >= 0 ? "text-profit" : "text-loss"} />
-                    <RiskStat label={t("review_risk_dd")} hint={t("review_risk_dd_hint")}
-                      value={risk.maxDrawdown > 0 ? fmtMoney(-risk.maxDrawdown) : "—"}
-                      cls={risk.maxDrawdown > 0 ? "text-loss" : "text-muted"} />
-                    <RiskStat label={t("review_risk_avg_win")} value={risk.avgWin != null ? fmtMoney(risk.avgWin) : "—"} cls={risk.avgWin != null ? "text-profit" : "text-muted"} />
-                    <RiskStat label={t("review_risk_avg_loss")} value={risk.avgLoss != null ? fmtMoney(risk.avgLoss) : "—"} cls={risk.avgLoss != null ? "text-loss" : "text-muted"} />
-                    <RiskStat label={t("review_risk_win_streak")} value={risk.bestWinStreak > 0 ? `${risk.bestWinStreak} 🔥` : "—"} cls="text-profit" />
-                    <RiskStat label={t("review_risk_loss_streak")} value={risk.worstLossStreak > 0 ? String(risk.worstLossStreak) : "—"} cls={risk.worstLossStreak >= 3 ? "text-loss" : "text-foreground"} />
-                  </div>
-                </div>
-              )}
+              {/* ═══════════ Onglet Performance ═══════════ */}
+              {tab === "perf" && (
+                <div className="mt-4 space-y-4">
+                  {/* Stats de trading — qualité d'exécution du mois */}
+                  {risk && stats.trades > 0 && (
+                    <div className="rounded-xl border border-border bg-card p-4">
+                      <h2 className="text-sm font-semibold text-foreground flex items-center gap-2"><Activity className="w-4 h-4 text-accent" />{t("review_risk_title")}</h2>
+                      <p className="text-xs text-muted mt-0.5 mb-3">{t("review_risk_sub")}</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <RiskStat label={t("review_risk_pf")} hint={t("review_risk_pf_hint")}
+                          value={risk.profitFactor == null ? "∞" : risk.profitFactor.toFixed(2).replace(".", ",")}
+                          cls={risk.profitFactor == null || risk.profitFactor >= 1.5 ? "text-profit" : risk.profitFactor >= 1 ? "text-warning" : "text-loss"} />
+                        <RiskStat label={t("review_risk_payoff")} hint={t("review_risk_payoff_hint")}
+                          value={risk.payoff == null ? "—" : risk.payoff.toFixed(2).replace(".", ",")}
+                          cls={risk.payoff == null ? "text-muted" : risk.payoff >= 1 ? "text-profit" : "text-warning"} />
+                        <RiskStat label={t("review_risk_expectancy")} hint={t("review_risk_expectancy_hint")}
+                          value={fmtMoney(risk.expectancy)}
+                          cls={risk.expectancy >= 0 ? "text-profit" : "text-loss"} />
+                        <RiskStat label={t("review_risk_dd")} hint={t("review_risk_dd_hint")}
+                          value={risk.maxDrawdown > 0 ? fmtMoney(-risk.maxDrawdown) : "—"}
+                          cls={risk.maxDrawdown > 0 ? "text-loss" : "text-muted"} />
+                        <RiskStat label={t("review_risk_avg_win")} value={risk.avgWin != null ? fmtMoney(risk.avgWin) : "—"} cls={risk.avgWin != null ? "text-profit" : "text-muted"} />
+                        <RiskStat label={t("review_risk_avg_loss")} value={risk.avgLoss != null ? fmtMoney(risk.avgLoss) : "—"} cls={risk.avgLoss != null ? "text-loss" : "text-muted"} />
+                        <RiskStat label={t("review_risk_win_streak")} value={risk.bestWinStreak > 0 ? `${risk.bestWinStreak} 🔥` : "—"} cls="text-profit" />
+                        <RiskStat label={t("review_risk_loss_streak")} value={risk.worstLossStreak > 0 ? String(risk.worstLossStreak) : "—"} cls={risk.worstLossStreak >= 3 ? "text-loss" : "text-foreground"} />
+                      </div>
+                    </div>
+                  )}
 
-              {/* Edge émotionnel — P&L réel selon l'état d'esprit */}
-              {emotions.length > 0 && (() => {
-                const maxAbs = Math.max(1, ...emotions.map((e) => Math.abs(e.pnl)));
-                const worst = emotions[emotions.length - 1];
-                const best = emotions[0];
-                return (
-                  <div className="mt-4 rounded-xl border border-border bg-card p-4">
-                    <h2 className="text-sm font-semibold text-foreground flex items-center gap-2"><Brain className="w-4 h-4 text-accent" />{t("review_emotion_title")}</h2>
-                    <p className="text-xs text-muted mt-0.5 mb-3">{t("review_emotion_sub")}</p>
-                    {worst && worst.pnl < 0 ? (
-                      <div className="mb-3 flex items-start gap-2 rounded-lg border border-loss/30 bg-loss/[0.05] p-2.5 text-xs text-foreground">
-                        <span className="text-base leading-none shrink-0">{EMOTION_EMOJI[worst.emotion] ?? "\u{1F642}"}</span>
-                        <span>{t("review_emotion_warning").replace("{emotion}", t(`emotion_${worst.emotion}`)).replace("{money}", fmtMoney(worst.pnl))}</span>
-                      </div>
-                    ) : best && best.pnl > 0 ? (
-                      <div className="mb-3 flex items-start gap-2 rounded-lg border border-profit/30 bg-profit/[0.05] p-2.5 text-xs text-foreground">
-                        <span className="text-base leading-none shrink-0">{EMOTION_EMOJI[best.emotion] ?? "\u{1F642}"}</span>
-                        <span>{t("review_emotion_best").replace("{emotion}", t(`emotion_${best.emotion}`)).replace("{money}", fmtMoney(best.pnl))}</span>
-                      </div>
-                    ) : null}
-                    <div className="space-y-2">
-                      {emotions.map((e) => {
-                        const pct = Math.min(100, Math.round((Math.abs(e.pnl) / maxAbs) * 100));
+                  {/* Achat vs Vente */}
+                  {directions.length > 0 && (
+                    <div className="grid grid-cols-2 gap-3">
+                      {directions.map((d) => (
+                        <div key={d.dir} className={`rounded-xl border p-3 ${d.pnl >= 0 ? "border-profit/30 bg-profit/[0.04]" : "border-loss/30 bg-loss/[0.04]"}`}>
+                          <p className="text-xs text-muted flex items-center gap-1.5">
+                            {d.dir === "long" ? <ArrowUpRight className="w-3.5 h-3.5 text-profit" /> : <ArrowDownRight className="w-3.5 h-3.5 text-loss" />}
+                            {t(`review_day_${d.dir}`)}
+                          </p>
+                          <p className={`text-lg font-bold mt-0.5 tabular-nums ${d.pnl >= 0 ? "text-profit" : "text-loss"}`}>{fmtMoney(d.pnl)}</p>
+                          <p className="text-[11px] text-muted">{d.winRate}% · {d.count} {t("review_kpi_trades").toLowerCase()}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Performance par jour de la semaine + par instrument */}
+                  {(weekdays.some((w) => w.count > 0) || pairs.length > 0) && (
+                    <div className="lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
+                      {weekdays.some((w) => w.count > 0) && (() => {
+                        const maxAbs = Math.max(1, ...weekdays.map((w) => Math.abs(w.pnl)));
+                        const bestWd = [...weekdays].filter((w) => w.count > 0).sort((a, b) => b.pnl - a.pnl)[0];
                         return (
-                          <div key={e.emotion} className="flex items-center gap-2 text-xs" title={`${e.count} ${t("review_kpi_trades").toLowerCase()}`}>
-                            <div className="w-24 shrink-0 flex items-center gap-1.5 min-w-0">
-                              <span className="text-base leading-none">{EMOTION_EMOJI[e.emotion] ?? "\u{1F642}"}</span>
-                              <span className="text-foreground truncate">{t(`emotion_${e.emotion}`)}</span>
+                          <div className="rounded-xl border border-border bg-card p-4">
+                            <p className="text-xs text-muted mb-1">{t("review_weekday_title")}</p>
+                            {bestWd && bestWd.pnl > 0 && (
+                              <p className="text-[11px] text-profit mb-2">{t("review_weekday_best").replace("{day}", t(`review_wdfull_${bestWd.wd}`)).replace("{money}", fmtMoney(bestWd.pnl))}</p>
+                            )}
+                            {/* Barres divergentes : gain vers le haut, perte vers le bas (signe = direction) */}
+                            <div className="flex items-stretch justify-between gap-1.5">
+                              {weekdays.map((w) => {
+                                const pct = w.count ? Math.max(10, Math.round((Math.abs(w.pnl) / maxAbs) * 100)) : 0;
+                                return (
+                                  <div key={w.wd} className="flex-1 flex flex-col items-center" title={w.count ? `${fmtMoney(w.pnl)} · ${w.winRate}% · ${w.count} ${t("review_kpi_trades").toLowerCase()}` : t("review_day_no_trades")}>
+                                    <div className="w-full h-9 flex items-end justify-center">
+                                      {w.pnl > 0 && <div className="w-full max-w-[24px] h-full flex items-end"><GrowBar vertical pct={pct} durationMs={700} delayMs={w.wd * 50} className="rounded-t bg-profit/70" /></div>}
+                                    </div>
+                                    <div className="w-full h-px bg-border/70" />
+                                    <div className="w-full h-9 flex items-start justify-center">
+                                      {w.pnl < 0 && <div className="w-full max-w-[24px] h-full flex items-start"><GrowBar vertical pct={pct} durationMs={700} delayMs={w.wd * 50} className="rounded-b bg-loss/70" /></div>}
+                                    </div>
+                                    <span className="text-[9px] text-muted mt-1">{t(`review_wd_${w.wd}`)}</span>
+                                  </div>
+                                );
+                              })}
                             </div>
-                            <span className="w-9 text-muted tabular-nums shrink-0 text-right">{e.winRate}%</span>
-                            <div className="flex-1 flex items-center min-w-0">
-                              <div className="w-1/2 h-2 flex justify-end">{e.pnl < 0 && <GrowBar pct={pct} className="bg-loss rounded-full" />}</div>
-                              <div className="w-px h-3.5 bg-border shrink-0" />
-                              <div className="w-1/2 h-2">{e.pnl >= 0 && <GrowBar pct={pct} className="bg-profit rounded-full" />}</div>
-                            </div>
-                            <span className={`w-20 text-right tabular-nums font-semibold shrink-0 ${e.pnl >= 0 ? "text-profit" : "text-loss"}`}>{fmtMoney(e.pnl)}</span>
                           </div>
                         );
-                      })}
-                    </div>
-                  </div>
-                );
-              })()}
+                      })()}
 
-              {/* Performance par jour de la semaine + par instrument */}
-              {(weekdays.some((w) => w.count > 0) || pairs.length > 0) && (
-                <div className="mt-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
-                  {weekdays.some((w) => w.count > 0) && (() => {
-                    const maxAbs = Math.max(1, ...weekdays.map((w) => Math.abs(w.pnl)));
-                    const bestWd = [...weekdays].filter((w) => w.count > 0).sort((a, b) => b.pnl - a.pnl)[0];
+                      {pairs.length > 0 && (() => {
+                        const maxAbs = Math.max(1, ...pairs.map((p) => Math.abs(p.pnl)));
+                        const top = pairs.slice(0, 6);
+                        return (
+                          <div className="rounded-xl border border-border bg-card p-4 mt-4 lg:mt-0">
+                            <p className="text-xs text-muted mb-3">{t("review_pair_title")}</p>
+                            <div className="space-y-2">
+                              {top.map((p) => {
+                                const pct = Math.min(100, Math.round((Math.abs(p.pnl) / maxAbs) * 100));
+                                return (
+                                  <div key={p.pair} className="flex items-center gap-2 text-xs" title={`${p.count} ${t("review_kpi_trades").toLowerCase()}`}>
+                                    <span className="w-16 shrink-0 font-semibold text-foreground truncate">{p.pair}</span>
+                                    <span className="w-9 text-muted tabular-nums shrink-0 text-right">{p.winRate}%</span>
+                                    <div className="flex-1 h-2 min-w-0">
+                                      <GrowBar pct={pct} className={`rounded-full ${p.pnl >= 0 ? "bg-profit/70" : "bg-loss/70"}`} />
+                                    </div>
+                                    <span className={`w-20 text-right tabular-nums font-semibold shrink-0 ${p.pnl >= 0 ? "text-profit" : "text-loss"}`}>{fmtMoney(p.pnl)}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+
+                  {/* Performance par heure de la journée */}
+                  {hours.length > 1 && (() => {
+                    const maxAbs = Math.max(1, ...hours.map((h) => Math.abs(h.pnl)));
+                    const best = [...hours].sort((a, b) => b.pnl - a.pnl)[0];
+                    // Plage continue d'heures entre la première et la dernière tradée.
+                    const first = hours[0].hour, last = hours[hours.length - 1].hour;
+                    const byHour = new Map(hours.map((h) => [h.hour, h]));
+                    const span = Array.from({ length: last - first + 1 }, (_, i) => first + i);
                     return (
                       <div className="rounded-xl border border-border bg-card p-4">
-                        <p className="text-xs text-muted mb-1">{t("review_weekday_title")}</p>
-                        {bestWd && bestWd.pnl > 0 && (
-                          <p className="text-[11px] text-profit mb-2">{t("review_weekday_best").replace("{day}", t(`review_wdfull_${bestWd.wd}`)).replace("{money}", fmtMoney(bestWd.pnl))}</p>
+                        <h2 className="text-sm font-semibold text-foreground flex items-center gap-2"><Clock3 className="w-4 h-4 text-accent" />{t("review_hours_title")}</h2>
+                        <p className="text-xs text-muted mt-0.5 mb-1">{t("review_hours_sub")}</p>
+                        {best && best.pnl > 0 && (
+                          <p className="text-[11px] text-profit mb-2">{t("review_hours_best").replace("{hour}", String(best.hour)).replace("{money}", fmtMoney(best.pnl))}</p>
                         )}
-                        {/* Barres divergentes : gain vers le haut, perte vers le bas (signe = direction) */}
-                        <div className="flex items-stretch justify-between gap-1.5">
-                          {weekdays.map((w) => {
-                            const pct = w.count ? Math.max(10, Math.round((Math.abs(w.pnl) / maxAbs) * 100)) : 0;
+                        <div className="flex items-stretch justify-between gap-1">
+                          {span.map((h, i) => {
+                            const d = byHour.get(h);
+                            const pct = d ? Math.max(10, Math.round((Math.abs(d.pnl) / maxAbs) * 100)) : 0;
                             return (
-                              <div key={w.wd} className="flex-1 flex flex-col items-center" title={w.count ? `${fmtMoney(w.pnl)} · ${w.winRate}% · ${w.count} ${t("review_kpi_trades").toLowerCase()}` : t("review_day_no_trades")}>
+                              <div key={h} className="flex-1 flex flex-col items-center min-w-0"
+                                title={d ? `${h}h · ${fmtMoney(d.pnl)} · ${d.winRate}% · ${d.count} ${t("review_kpi_trades").toLowerCase()}` : `${h}h`}>
                                 <div className="w-full h-9 flex items-end justify-center">
-                                  {w.pnl > 0 && <div className="w-full max-w-[24px] h-full flex items-end"><GrowBar vertical pct={pct} durationMs={700} delayMs={w.wd * 50} className="rounded-t bg-profit/70" /></div>}
+                                  {d && d.pnl > 0 && <div className="w-full max-w-[18px] h-full flex items-end"><GrowBar vertical pct={pct} durationMs={700} delayMs={i * 35} className="rounded-t bg-profit/70" /></div>}
                                 </div>
                                 <div className="w-full h-px bg-border/70" />
                                 <div className="w-full h-9 flex items-start justify-center">
-                                  {w.pnl < 0 && <div className="w-full max-w-[24px] h-full flex items-start"><GrowBar vertical pct={pct} durationMs={700} delayMs={w.wd * 50} className="rounded-b bg-loss/70" /></div>}
+                                  {d && d.pnl < 0 && <div className="w-full max-w-[18px] h-full flex items-start"><GrowBar vertical pct={pct} durationMs={700} delayMs={i * 35} className="rounded-b bg-loss/70" /></div>}
                                 </div>
-                                <span className="text-[9px] text-muted mt-1">{t(`review_wd_${w.wd}`)}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {pairs.length > 0 && (() => {
-                    const maxAbs = Math.max(1, ...pairs.map((p) => Math.abs(p.pnl)));
-                    const top = pairs.slice(0, 6);
-                    return (
-                      <div className="rounded-xl border border-border bg-card p-4 mt-4 lg:mt-0">
-                        <p className="text-xs text-muted mb-3">{t("review_pair_title")}</p>
-                        <div className="space-y-2">
-                          {top.map((p) => {
-                            const pct = Math.min(100, Math.round((Math.abs(p.pnl) / maxAbs) * 100));
-                            return (
-                              <div key={p.pair} className="flex items-center gap-2 text-xs" title={`${p.count} ${t("review_kpi_trades").toLowerCase()}`}>
-                                <span className="w-16 shrink-0 font-semibold text-foreground truncate">{p.pair}</span>
-                                <span className="w-9 text-muted tabular-nums shrink-0 text-right">{p.winRate}%</span>
-                                <div className="flex-1 h-2 min-w-0">
-                                  <GrowBar pct={pct} className={`rounded-full ${p.pnl >= 0 ? "bg-profit/70" : "bg-loss/70"}`} />
-                                </div>
-                                <span className={`w-20 text-right tabular-nums font-semibold shrink-0 ${p.pnl >= 0 ? "text-profit" : "text-loss"}`}>{fmtMoney(p.pnl)}</span>
+                                <span className={`text-[9px] mt-1 tabular-nums ${d ? "text-muted" : "text-muted/30"}`}>{h}h</span>
                               </div>
                             );
                           })}
@@ -701,169 +802,154 @@ export default function MonthlyReviewPage() {
                 </div>
               )}
 
-              {/* Performance par heure de la journée */}
-              {hours.length > 1 && (() => {
-                const maxAbs = Math.max(1, ...hours.map((h) => Math.abs(h.pnl)));
-                const best = [...hours].sort((a, b) => b.pnl - a.pnl)[0];
-                // Plage continue d'heures entre la première et la dernière tradée.
-                const first = hours[0].hour, last = hours[hours.length - 1].hour;
-                const byHour = new Map(hours.map((h) => [h.hour, h]));
-                const span = Array.from({ length: last - first + 1 }, (_, i) => first + i);
-                return (
-                  <div className="mt-4 rounded-xl border border-border bg-card p-4">
-                    <h2 className="text-sm font-semibold text-foreground flex items-center gap-2"><Clock3 className="w-4 h-4 text-accent" />{t("review_hours_title")}</h2>
-                    <p className="text-xs text-muted mt-0.5 mb-1">{t("review_hours_sub")}</p>
-                    {best && best.pnl > 0 && (
-                      <p className="text-[11px] text-profit mb-2">{t("review_hours_best").replace("{hour}", String(best.hour)).replace("{money}", fmtMoney(best.pnl))}</p>
+              {/* ═══════════ Onglet Discipline & mental ═══════════ */}
+              {tab === "mind" && (
+                <div className="mt-4 space-y-4">
+                  {/* La discipline paie — P&L moyen jours disciplinés vs autres */}
+                  <div className="rounded-xl border border-border bg-card p-4">
+                    <h2 className="text-sm font-semibold text-foreground flex items-center gap-2"><Scale className="w-4 h-4 text-accent" />{t("review_payoff_title")}</h2>
+                    <p className="text-xs text-muted mt-0.5 mb-3">{t("review_payoff_sub")}</p>
+                    {payoffInsight ? (
+                      <>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="rounded-xl border border-profit/30 bg-profit/[0.04] p-4">
+                            <p className="text-xs text-muted">{t("review_payoff_disciplined")}</p>
+                            <p className={`text-2xl font-black tabular-nums mt-1 ${payoffInsight.hiAvg >= 0 ? "text-profit" : "text-loss"}`}>
+                              <CountUp end={Math.round(payoffInsight.hiAvg)} prefix={payoffInsight.hiAvg >= 0 ? "+" : ""} suffix=" €" duration={1} />
+                            </p>
+                            <p className="text-[11px] text-muted mt-1">{t("review_payoff_days").replace("{n}", String(payoffInsight.hiN))}</p>
+                          </div>
+                          <div className="rounded-xl border border-loss/30 bg-loss/[0.04] p-4">
+                            <p className="text-xs text-muted">{t("review_payoff_other")}</p>
+                            <p className={`text-2xl font-black tabular-nums mt-1 ${payoffInsight.loAvg >= 0 ? "text-profit" : "text-loss"}`}>
+                              <CountUp end={Math.round(payoffInsight.loAvg)} prefix={payoffInsight.loAvg >= 0 ? "+" : ""} suffix=" €" duration={1} />
+                            </p>
+                            <p className="text-[11px] text-muted mt-1">{t("review_payoff_days").replace("{n}", String(payoffInsight.loN))}</p>
+                          </div>
+                        </div>
+                        {payoffInsight.diff > 0 && (
+                          <div className="mt-3 flex items-center gap-2 rounded-xl border border-profit/30 bg-profit/[0.04] p-3 text-sm text-foreground">
+                            <Sparkles className="w-4 h-4 shrink-0 text-profit" />
+                            <span><span className="font-semibold text-profit">{fmtMoney(payoffInsight.diff)}</span> {t("review_payoff_verdict")}</span>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-sm text-muted">{t("review_payoff_flat")}</p>
                     )}
-                    <div className="flex items-stretch justify-between gap-1">
-                      {span.map((h, i) => {
-                        const d = byHour.get(h);
-                        const pct = d ? Math.max(10, Math.round((Math.abs(d.pnl) / maxAbs) * 100)) : 0;
-                        return (
-                          <div key={h} className="flex-1 flex flex-col items-center min-w-0"
-                            title={d ? `${h}h · ${fmtMoney(d.pnl)} · ${d.winRate}% · ${d.count} ${t("review_kpi_trades").toLowerCase()}` : `${h}h`}>
-                            <div className="w-full h-9 flex items-end justify-center">
-                              {d && d.pnl > 0 && <div className="w-full max-w-[18px] h-full flex items-end"><GrowBar vertical pct={pct} durationMs={700} delayMs={i * 35} className="rounded-t bg-profit/70" /></div>}
-                            </div>
-                            <div className="w-full h-px bg-border/70" />
-                            <div className="w-full h-9 flex items-start justify-center">
-                              {d && d.pnl < 0 && <div className="w-full max-w-[18px] h-full flex items-start"><GrowBar vertical pct={pct} durationMs={700} delayMs={i * 35} className="rounded-b bg-loss/70" /></div>}
-                            </div>
-                            <span className={`text-[9px] mt-1 tabular-nums ${d ? "text-muted" : "text-muted/30"}`}>{h}h</span>
-                          </div>
-                        );
-                      })}
-                    </div>
                   </div>
-                );
-              })()}
 
-              {/* Achat vs Vente */}
-              {directions.length > 0 && (
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  {directions.map((d) => (
-                    <div key={d.dir} className={`rounded-xl border p-3 ${d.pnl >= 0 ? "border-profit/30 bg-profit/[0.04]" : "border-loss/30 bg-loss/[0.04]"}`}>
-                      <p className="text-xs text-muted flex items-center gap-1.5">
-                        {d.dir === "long" ? <ArrowUpRight className="w-3.5 h-3.5 text-profit" /> : <ArrowDownRight className="w-3.5 h-3.5 text-loss" />}
-                        {t(`review_day_${d.dir}`)}
-                      </p>
-                      <p className={`text-lg font-bold mt-0.5 tabular-nums ${d.pnl >= 0 ? "text-profit" : "text-loss"}`}>{fmtMoney(d.pnl)}</p>
-                      <p className="text-[11px] text-muted">{d.winRate}% · {d.count} {t("review_kpi_trades").toLowerCase()}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="mt-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
-              {/* Tendance 6 mois (discipline) */}
-              {trend.some((p) => p.score != null) && (
-                <div className="rounded-xl border border-border bg-card p-4 mt-4 lg:mt-0">
-                  <p className="text-xs text-muted">{t("review_trend_title")}</p>
-                  <p className="text-[10px] text-muted/70 mb-3">{t("review_trend_legend")}</p>
-                  <div className="flex items-end justify-between gap-2 h-28">
-                    {trend.map((p, i) => (
-                      <div key={p.label} className="flex-1 flex flex-col items-center gap-1" title={`${p.score != null ? `${p.score}/100` : "—"} · ${fmtMoney(p.pnl)}`}>
-                        <div className="w-full flex items-end justify-center h-20">
-                          <div className="w-full max-w-[28px] h-full flex items-end">
-                            <GrowBar vertical pct={p.score != null ? Math.max(8, p.score) : 4} durationMs={750} delayMs={i * 60}
-                              className={`rounded-t ${p.score != null ? scoreBg(p.score) : "bg-surface"}`} />
+                  {/* Edge émotionnel — P&L réel selon l'état d'esprit */}
+                  {emotions.length > 0 && (() => {
+                    const maxAbs = Math.max(1, ...emotions.map((e) => Math.abs(e.pnl)));
+                    const worst = emotions[emotions.length - 1];
+                    const best = emotions[0];
+                    return (
+                      <div className="rounded-xl border border-border bg-card p-4">
+                        <h2 className="text-sm font-semibold text-foreground flex items-center gap-2"><Brain className="w-4 h-4 text-accent" />{t("review_emotion_title")}</h2>
+                        <p className="text-xs text-muted mt-0.5 mb-3">{t("review_emotion_sub")}</p>
+                        {worst && worst.pnl < 0 ? (
+                          <div className="mb-3 flex items-start gap-2 rounded-lg border border-loss/30 bg-loss/[0.05] p-2.5 text-xs text-foreground">
+                            <span className="text-base leading-none shrink-0">{EMOTION_EMOJI[worst.emotion] ?? "\u{1F642}"}</span>
+                            <span>{t("review_emotion_warning").replace("{emotion}", t(`emotion_${worst.emotion}`)).replace("{money}", fmtMoney(worst.pnl))}</span>
                           </div>
+                        ) : best && best.pnl > 0 ? (
+                          <div className="mb-3 flex items-start gap-2 rounded-lg border border-profit/30 bg-profit/[0.05] p-2.5 text-xs text-foreground">
+                            <span className="text-base leading-none shrink-0">{EMOTION_EMOJI[best.emotion] ?? "\u{1F642}"}</span>
+                            <span>{t("review_emotion_best").replace("{emotion}", t(`emotion_${best.emotion}`)).replace("{money}", fmtMoney(best.pnl))}</span>
+                          </div>
+                        ) : null}
+                        <div className="space-y-2">
+                          {emotions.map((e) => {
+                            const pct = Math.min(100, Math.round((Math.abs(e.pnl) / maxAbs) * 100));
+                            return (
+                              <div key={e.emotion} className="flex items-center gap-2 text-xs" title={`${e.count} ${t("review_kpi_trades").toLowerCase()}`}>
+                                <div className="w-24 shrink-0 flex items-center gap-1.5 min-w-0">
+                                  <span className="text-base leading-none">{EMOTION_EMOJI[e.emotion] ?? "\u{1F642}"}</span>
+                                  <span className="text-foreground truncate">{t(`emotion_${e.emotion}`)}</span>
+                                </div>
+                                <span className="w-9 text-muted tabular-nums shrink-0 text-right">{e.winRate}%</span>
+                                <div className="flex-1 flex items-center min-w-0">
+                                  <div className="w-1/2 h-2 flex justify-end">{e.pnl < 0 && <GrowBar pct={pct} className="bg-loss rounded-full" />}</div>
+                                  <div className="w-px h-3.5 bg-border shrink-0" />
+                                  <div className="w-1/2 h-2">{e.pnl >= 0 && <GrowBar pct={pct} className="bg-profit rounded-full" />}</div>
+                                </div>
+                                <span className={`w-20 text-right tabular-nums font-semibold shrink-0 ${e.pnl >= 0 ? "text-profit" : "text-loss"}`}>{fmtMoney(e.pnl)}</span>
+                              </div>
+                            );
+                          })}
                         </div>
-                        <span className="text-[10px] text-muted">{p.label.slice(5)}</span>
-                        <span className={`text-[9px] font-semibold tabular-nums leading-none ${p.pnl > 0 ? "text-profit" : p.pnl < 0 ? "text-loss" : "text-muted/50"}`}>{fmtMoneyShort(p.pnl)}</span>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                    );
+                  })()}
 
-              {/* Calendrier de discipline du mois */}
-              {month && (
-                <div className="rounded-xl border border-border bg-card p-4 mt-4 lg:mt-0">
-                  <p className="text-xs text-muted mb-2">{t("review_calendar_title")}</p>
-                  <div className="grid grid-cols-7 gap-1">
-                    {[0, 1, 2, 3, 4, 5, 6].map((wd) => (
-                      <span key={wd} className="text-[9px] text-muted/60 text-center">{t(`review_wd_${wd}`)}</span>
-                    ))}
-                    {Array.from({ length: firstWeekday }).map((_, i) => <span key={`e${i}`} />)}
-                    {Array.from({ length: daysInMonth }).map((_, i) => {
-                      const day = i + 1;
-                      const c = calByDay.get(day);
-                      const cls = !c ? "bg-surface/40 text-muted/40"
-                        : c.score != null ? scoreBg(c.score)
-                        : c.pnl > 0 ? "bg-profit/20 text-foreground" : c.pnl < 0 ? "bg-loss/20 text-foreground" : "bg-surface text-muted";
-                      const isToday = day === todayDay;
-                      const cellTitle = `${isToday ? `${t("review_today")} · ` : ""}${c ? `${c.score != null ? `${c.score}/100 · ` : ""}${fmtMoney(c.pnl)}` : ""}`.replace(/ · $/, "");
-                      const baseCls = `aspect-square rounded flex items-center justify-center text-[10px] font-medium transition-transform ${cls} ${isToday ? "ring-2 ring-accent ring-offset-1 ring-offset-card font-bold" : ""}`;
-                      if (c && month) {
-                        const dateStr = `${month.year}-${String(month.month0 + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                        return (
-                          <button key={day} onClick={() => setSelectedDay(dateStr)} title={cellTitle}
-                            className={`${baseCls} hover:scale-110 hover:ring-1 hover:ring-accent/60 cursor-pointer`}>
-                            {day}
-                          </button>
-                        );
-                      }
-                      return (
-                        <span key={day} className={`${baseCls} hover:scale-110`} title={cellTitle}>
-                          {day}
-                        </span>
-                      );
-                    })}
-                  </div>
-                  <div className="flex items-center gap-3 mt-3 text-[10px] text-muted">
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-loss/50" />{"<50"}</span>
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-yellow-500/40" />50-69</span>
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-green-500/50" />70-84</span>
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-profit/80" />85+</span>
-                  </div>
-                </div>
-              )}
-              </div>
+                  <div className="lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
+                    {/* Calendrier de discipline du mois */}
+                    {month && (
+                      <div className="rounded-xl border border-border bg-card p-4">
+                        <p className="text-xs text-muted mb-2">{t("review_calendar_title")}</p>
+                        <div className="grid grid-cols-7 gap-1">
+                          {[0, 1, 2, 3, 4, 5, 6].map((wd) => (
+                            <span key={wd} className="text-[9px] text-muted/60 text-center">{t(`review_wd_${wd}`)}</span>
+                          ))}
+                          {Array.from({ length: firstWeekday }).map((_, i) => <span key={`e${i}`} />)}
+                          {Array.from({ length: daysInMonth }).map((_, i) => {
+                            const day = i + 1;
+                            const c = calByDay.get(day);
+                            const cls = !c ? "bg-surface/40 text-muted/40"
+                              : c.score != null ? scoreBg(c.score)
+                              : c.pnl > 0 ? "bg-profit/20 text-foreground" : c.pnl < 0 ? "bg-loss/20 text-foreground" : "bg-surface text-muted";
+                            const isToday = day === todayDay;
+                            const cellTitle = `${isToday ? `${t("review_today")} · ` : ""}${c ? `${c.score != null ? `${c.score}/100 · ` : ""}${fmtMoney(c.pnl)}` : ""}`.replace(/ · $/, "");
+                            const baseCls = `aspect-square rounded flex items-center justify-center text-[10px] font-medium transition-transform ${cls} ${isToday ? "ring-2 ring-accent ring-offset-1 ring-offset-card font-bold" : ""}`;
+                            if (c && month) {
+                              const dateStr = `${month.year}-${String(month.month0 + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                              return (
+                                <button key={day} onClick={() => setSelectedDay(dateStr)} title={cellTitle}
+                                  className={`${baseCls} hover:scale-110 hover:ring-1 hover:ring-accent/60 cursor-pointer`}>
+                                  {day}
+                                </button>
+                              );
+                            }
+                            return (
+                              <span key={day} className={`${baseCls} hover:scale-110`} title={cellTitle}>
+                                {day}
+                              </span>
+                            );
+                          })}
+                        </div>
+                        <div className="flex items-center gap-3 mt-3 text-[10px] text-muted">
+                          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-loss/50" />{"<50"}</span>
+                          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-yellow-500/40" />50-69</span>
+                          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-green-500/50" />70-84</span>
+                          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-profit/80" />85+</span>
+                        </div>
+                      </div>
+                    )}
 
-              {/* Équité + faits marquants */}
-              {extras && extras.equity.length >= 2 && (
-                <div className="mt-4 rounded-xl border border-border bg-card p-4">
-                  <div className="flex items-baseline justify-between mb-1">
-                    <p className="text-xs text-muted">{t("review_equity_title")}</p>
-                    {(() => { const last = extras.equity[extras.equity.length - 1]; return (
-                      <span className={`text-sm font-bold tabular-nums ${last >= 0 ? "text-profit" : "text-loss"}`}>{fmtMoney(last)}</span>
-                    ); })()}
+                    {/* Tendance 6 mois (discipline) */}
+                    {trend.some((p) => p.score != null) && (
+                      <div className="rounded-xl border border-border bg-card p-4 mt-4 lg:mt-0">
+                        <p className="text-xs text-muted">{t("review_trend_title")}</p>
+                        <p className="text-[10px] text-muted/70 mb-3">{t("review_trend_legend")}</p>
+                        <div className="flex items-end justify-between gap-2 h-28">
+                          {trend.map((p, i) => (
+                            <div key={p.label} className="flex-1 flex flex-col items-center gap-1" title={`${p.score != null ? `${p.score}/100` : "—"} · ${fmtMoney(p.pnl)}`}>
+                              <div className="w-full flex items-end justify-center h-20">
+                                <div className="w-full max-w-[28px] h-full flex items-end">
+                                  <GrowBar vertical pct={p.score != null ? Math.max(8, p.score) : 4} durationMs={750} delayMs={i * 60}
+                                    className={`rounded-t ${p.score != null ? scoreBg(p.score) : "bg-surface"}`} />
+                                </div>
+                              </div>
+                              <span className="text-[10px] text-muted">{p.label.slice(5)}</span>
+                              <span className={`text-[9px] font-semibold tabular-nums leading-none ${p.pnl > 0 ? "text-profit" : p.pnl < 0 ? "text-loss" : "text-muted/50"}`}>{fmtMoneyShort(p.pnl)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <Sparkline data={extras.equity} />
                 </div>
-              )}
-              {extras && (extras.best || extras.topPair) && (
-                <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {extras.best && <Highlight label={t("review_best_day")} value={fmtMoney(extras.best.pnl)} sub={fmtDate(extras.best.date, lang)} positive onClick={() => setSelectedDay(extras.best!.date)} />}
-                  {extras.worst && extras.worst.pnl < 0 && <Highlight label={t("review_worst_day")} value={fmtMoney(extras.worst.pnl)} sub={fmtDate(extras.worst.date, lang)} onClick={() => setSelectedDay(extras.worst!.date)} />}
-                  {extras.topPair && <Highlight label={t("review_top_pair")} value={extras.topPair.pair} sub={`${extras.topPair.count} ${t("review_kpi_trades").toLowerCase()}`} />}
-                </div>
-              )}
-
-              {/* Note du coach (IA) */}
-              {review ? (
-                <div className="mt-5 space-y-3">
-                  <div className="rounded-xl border border-accent/30 bg-accent/5 p-5"><p className="text-base font-semibold text-foreground">{review.headline}</p></div>
-                  <ReviewCard icon={<ThumbsUp className="w-4 h-4 text-profit" />} title={t("review_strength")} body={review.strength} />
-                  <ReviewCard icon={<Target className="w-4 h-4 text-warning" />} title={t("review_improvement")} body={review.improvement} />
-                  <ReviewCard icon={<Compass className="w-4 h-4 text-accent" />} title={t("review_focus")} body={review.focus} accent />
-                  <button onClick={generate} disabled={aiLoading} className="text-sm text-muted hover:text-accent transition-colors disabled:opacity-50 underline underline-offset-2">{aiLoading ? t("review_generating") : t("review_regenerate")}</button>
-                </div>
-              ) : aiLoading ? (
-                <div className="mt-5 space-y-3">
-                  <div className="skeleton h-16 rounded-xl" />
-                  <div className="skeleton h-20 rounded-xl" />
-                  <div className="skeleton h-20 rounded-xl" />
-                  <p className="text-xs text-muted text-center flex items-center justify-center gap-2"><Sparkles className="w-3.5 h-3.5 text-accent animate-pulse" />{t("review_generating")}</p>
-                </div>
-              ) : rawSummary ? (
-                <div className="mt-5 rounded-xl border border-border bg-card p-5"><p className="text-sm text-muted leading-relaxed whitespace-pre-line">{rawSummary.replace(/\*\*/g, "")}</p></div>
-              ) : (
-                <button onClick={generate} disabled={aiLoading} className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-white text-sm font-medium hover:bg-blue-600 transition-colors disabled:opacity-50">
-                  <Sparkles className="w-4 h-4" />{aiLoading ? t("review_generating") : t("review_generate")}
-                </button>
               )}
             </>
           ) : null}
