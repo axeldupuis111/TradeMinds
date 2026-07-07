@@ -30,10 +30,16 @@ export async function GET() {
   const supabase = await createClient();
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [{ data: reviews }, { data: trades }] = await Promise.all([
+  const [reviewsRes, tradesRes] = await Promise.all([
     supabase.from("session_reviews").select("discipline_score, created_at").eq("user_id", auth.userId).gte("created_at", since),
     supabase.from("trades").select("pnl, commission, swap, open_time").eq("user_id", auth.userId).gte("open_time", since).order("open_time", { ascending: true }),
   ]);
+  if (reviewsRes.error || tradesRes.error) {
+    console.error("[Goals recommend] data query error:", reviewsRes.error ?? tradesRes.error);
+    return NextResponse.json({ error: "Failed to load recommendation data" }, { status: 503 });
+  }
+  const { data: reviews } = reviewsRes;
+  const { data: trades } = tradesRes;
 
   const rv = (reviews ?? []).filter((r) => r.discipline_score != null);
   const tr = trades ?? [];

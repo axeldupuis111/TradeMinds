@@ -33,10 +33,16 @@ export async function GET() {
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
-  const [{ data: tradesRaw }, { data: reviewsRaw }] = await Promise.all([
+  const [tradesRes, reviewsRes] = await Promise.all([
     supabase.from("trades").select("pnl, commission, swap, emotion, open_time").eq("user_id", user.id).order("open_time", { ascending: true }),
     supabase.from("session_reviews").select("discipline_score, created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(400),
   ]);
+  if (tradesRes.error || reviewsRes.error) {
+    console.error("[Goals insights] data query error:", tradesRes.error ?? reviewsRes.error);
+    return NextResponse.json({ error: "Failed to load insights data" }, { status: 503 });
+  }
+  const { data: tradesRaw } = tradesRes;
+  const { data: reviewsRaw } = reviewsRes;
   const trades = (tradesRaw ?? []) as TradeRow[];
   const reviews = ((reviewsRaw ?? []) as ReviewRow[]).filter((r) => r.discipline_score != null);
 
