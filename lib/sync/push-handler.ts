@@ -19,7 +19,7 @@ import {
   type PushTrade,
 } from "./push-parse";
 
-interface RequestBody {
+export interface PushSyncBody {
   token: string;
   trade?: PushTrade;
   trades?: PushTrade[];
@@ -32,7 +32,7 @@ export async function handlePushSync(req: NextRequest): Promise<NextResponse> {
   // Read as raw text first, then parse. MetaTrader (MQL5) and some cBot/NinjaScript
   // HTTP clients send null-terminated C strings — a trailing \0 byte causes
   // req.json() to throw even though the payload is valid JSON.
-  let body: RequestBody;
+  let body: PushSyncBody;
   let raw = "";
   try {
     raw = await req.text();
@@ -55,6 +55,13 @@ export async function handlePushSync(req: NextRequest): Promise<NextResponse> {
     );
   }
 
+  return syncPushTrades(body);
+}
+
+// Cœur du rail push, indépendant du transport HTTP : les routes qui reçoivent
+// un payload dans un autre format (webhook TradingView) le normalisent en
+// PushSyncBody puis délèguent ici.
+export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> {
   const { token } = body;
   if (!token || typeof token !== "string") {
     return NextResponse.json({ error: "Token invalide." }, { status: 401 });

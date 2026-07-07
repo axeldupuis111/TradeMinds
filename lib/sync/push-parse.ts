@@ -4,7 +4,7 @@
 // add-on) must satisfy in its JSON payload.
 
 /** All platforms that push trades through this rail. */
-export type PushSource = "mt4" | "mt5" | "ctrader" | "ninjatrader";
+export type PushSource = "mt4" | "mt5" | "ctrader" | "ninjatrader" | "tradingview";
 
 /** Fields sent by the client software for each closed trade. */
 export interface PushTrade {
@@ -25,7 +25,7 @@ export interface PushTrade {
   account?: string | number; // n° de compte de trading (pour rattacher au challenge)
 }
 
-const KNOWN_SOURCES: readonly PushSource[] = ["mt4", "mt5", "ctrader", "ninjatrader"];
+const KNOWN_SOURCES: readonly PushSource[] = ["mt4", "mt5", "ctrader", "ninjatrader", "tradingview"];
 
 /**
  * Validate and normalize the source field. Defaults to "mt5" so legacy EAs that

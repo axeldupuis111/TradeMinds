@@ -59,8 +59,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // MetaTrader sync: called by EA (no user session), authenticated via mt_sync_token in body
-  if (pathname === "/api/sync/mt") {
+  // Rail push (EA MetaTrader, cBot cTrader, AddOn NinjaTrader, webhook
+  // TradingView) : appelé sans session utilisateur, authentifié par le
+  // mt_sync_token porté dans le corps (ou l'URL pour TradingView).
+  if (
+    pathname === "/api/sync/mt" ||
+    pathname === "/api/sync/push" ||
+    pathname === "/api/sync/tradingview"
+  ) {
     return NextResponse.next();
   }
 

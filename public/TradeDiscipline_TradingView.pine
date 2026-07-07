@@ -1,0 +1,35 @@
+// TradeDiscipline — synchronisation TradingView (stratégies Pine v5/v6)
+// ---------------------------------------------------------------------
+// Colle ce bloc À LA FIN de ta stratégie Pine. À chaque trade clôturé, il
+// envoie le trade complet (entrée, sortie, volume, P&L) à TradeDiscipline.
+//
+// Installation :
+//  1. Ajoute ce bloc à la fin du code de ta stratégie, puis sauvegarde.
+//  2. Crée une alerte sur la stratégie : condition = "alert() function calls only".
+//  3. Dans l'onglet Notifications de l'alerte, coche "Webhook URL" et colle
+//     l'URL affichée dans TradeDiscipline → Réglages → TradingView
+//     (elle contient déjà ton token : .../api/sync/tradingview?token=...).
+//  4. C'est tout — le message est construit ici, laisse le champ Message vide.
+//
+// Notes :
+//  - strategy.closedtrades.profit() est dans la devise du compte : le P&L
+//    journalisé est exact, y compris en forex.
+//  - L'alerte part au trade clôturé (alert.freq_all) ; les doublons éventuels
+//    (relance de l'alerte) sont dédupliqués côté serveur.
+
+// ── TradeDiscipline sync — ne pas modifier sous cette ligne ──────────────────
+tdNewClosed = strategy.closedtrades > nz(strategy.closedtrades[1])
+if tdNewClosed
+    tdIdx = strategy.closedtrades - 1
+    tdDir = strategy.closedtrades.size(tdIdx) > 0 ? "long" : "short"
+    tdMsg = '{"symbol":"' + syminfo.ticker + '"' +
+         ',"direction":"' + tdDir + '"' +
+         ',"volume":' + str.tostring(math.abs(strategy.closedtrades.size(tdIdx))) +
+         ',"entry_price":' + str.tostring(strategy.closedtrades.entry_price(tdIdx)) +
+         ',"exit_price":' + str.tostring(strategy.closedtrades.exit_price(tdIdx)) +
+         ',"open_time":' + str.tostring(strategy.closedtrades.entry_time(tdIdx)) +
+         ',"close_time":' + str.tostring(strategy.closedtrades.exit_time(tdIdx)) +
+         ',"profit":' + str.tostring(strategy.closedtrades.profit(tdIdx)) +
+         ',"commission":' + str.tostring(-strategy.closedtrades.commission(tdIdx)) +
+         '}'
+    alert(tdMsg, alert.freq_all)

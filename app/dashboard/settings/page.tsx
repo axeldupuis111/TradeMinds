@@ -4,6 +4,7 @@ import UpgradeBanner from "@/components/UpgradeBanner";
 import SyncPlatformCard from "@/components/settings/SyncPlatformCard";
 import PushNotificationsCard from "@/components/settings/PushNotificationsCard";
 import LeaderboardOptInCard from "@/components/settings/LeaderboardOptInCard";
+import TradingViewCard from "@/components/settings/TradingViewCard";
 import TradovateConnect from "@/components/settings/TradovateConnect";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
@@ -775,6 +776,8 @@ export default function SettingsPage() {
             ]}
             tip={t("sync_ninja_tip")}
           />
+
+          <TradingViewCard token={mtToken} />
 
           <TradovateConnect />
         </>
