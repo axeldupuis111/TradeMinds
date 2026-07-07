@@ -153,7 +153,10 @@ export default function MonthlyReviewPage() {
         // Pont Objectifs ↔ Bilan : uniquement pour le mois en cours (les objectifs
         // sont évalués sur la période courante, pas archivés par mois passé).
         if (d.month?.isCurrentMonth) {
-          fetch("/api/goals").then((r) => r.json()).then((g) => {
+          fetch("/api/goals").then((r) => {
+            if (!r.ok) throw new Error(`goals ${r.status}`);
+            return r.json();
+          }).then((g) => {
             const list = (g.goals ?? []) as { kind: string; met?: boolean; done?: boolean }[];
             const monthly = list.filter((x) => x.kind === "metric" || x.kind === "custom");
             const met = monthly.filter((x) => x.met || x.done).length;

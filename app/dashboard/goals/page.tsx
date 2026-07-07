@@ -369,10 +369,17 @@ export default function GoalsPage() {
   const [recos, setRecos] = useState<Reco[]>([]);
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/goals");
-    const data = await res.json();
-    setGoals(data.goals ?? []);
-    setLoading(false);
+    try {
+      const res = await fetch("/api/goals");
+      // Erreur serveur transitoire : on garde l'état affiché plutôt que des zéros.
+      if (!res.ok) return;
+      const data = await res.json();
+      setGoals(data.goals ?? []);
+    } catch {
+      // réseau indisponible — on garde l'état affiché
+    } finally {
+      setLoading(false);
+    }
   }, []);
   useEffect(() => { load(); }, [load]);
 

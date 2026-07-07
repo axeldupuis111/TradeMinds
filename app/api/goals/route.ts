@@ -77,11 +77,15 @@ export async function GET() {
 
   // select("*") : tolère l'absence des nouvelles colonnes (kind/title/done) tant que
   // la migration n'est pas appliquée → merge sûr.
-  const { data: rawGoals } = await supabase
+  const { data: rawGoals, error: goalsError } = await supabase
     .from("goals")
     .select("*")
     .eq("user_id", user.id)
     .order("created_at", { ascending: true });
+  if (goalsError) {
+    console.error("[Goals] goals query error:", goalsError);
+    return NextResponse.json({ error: "Failed to load goals" }, { status: 503 });
+  }
 
   const goals = (rawGoals ?? []) as GoalRow[];
   if (goals.length === 0) return NextResponse.json({ goals: [] });
@@ -96,10 +100,16 @@ export async function GET() {
         .map((g) => periodBoundsAt(g.period, HISTORY_LEN[g.period] - 1).start.toISOString())
         .reduce((a, b) => (a < b ? a : b))
     : periodStart(broadest);
-  const [{ data: reviews }, { data: trades }] = await Promise.all([
+  const [reviewsRes, tradesRes] = await Promise.all([
     supabase.from("session_reviews").select("discipline_score, created_at").eq("user_id", user.id).gte("created_at", since).limit(10000),
     supabase.from("trades").select("pnl, commission, swap, open_time").eq("user_id", user.id).gte("open_time", since).order("open_time", { ascending: true }).limit(10000),
   ]);
+  if (reviewsRes.error || tradesRes.error) {
+    console.error("[Goals] data query error:", reviewsRes.error ?? tradesRes.error);
+    return NextResponse.json({ error: "Failed to load goal data" }, { status: 503 });
+  }
+  const { data: reviews } = reviewsRes;
+  const { data: trades } = tradesRes;
 
   /** Valeur de la métrique sur une plage [start, end). */
   function rangeValue(g: GoalRow, startIso: string, endIso: string): number {
