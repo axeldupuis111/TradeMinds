@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdmin } from "@supabase/supabase-js";
 import { isUsernameDisplayable } from "@/lib/username-moderation";
+import { computeAllTimeStats } from "@/lib/leaderboard-extras";
+import { getCommunityChallenge } from "@/lib/community-challenges";
 
 export const dynamic = "force-dynamic";
 
@@ -57,7 +59,11 @@ export async function GET(req: NextRequest) {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
-  const daysParam = Number(req.nextUrl.searchParams.get("days"));
+  const daysRaw = req.nextUrl.searchParams.get("days");
+  // "season" = mois calendaire en cours (UTC) — le classement devient une
+  // saison mensuelle qui repart de zéro le 1er.
+  const season = daysRaw === "season";
+  const daysParam = Number(daysRaw);
   const days = daysParam === 7 || daysParam === 90 ? daysParam : 30;
   const modeParam = req.nextUrl.searchParams.get("mode") as Mode | null;
   const mode: Mode = modeParam === "sessions" || modeParam === "streak" ? modeParam : "discipline";
@@ -65,15 +71,29 @@ export async function GET(req: NextRequest) {
   const admin = createAdmin(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
 
   const nowMs = Date.now();
-  const sinceCur = new Date(nowMs - days * 86400000).toISOString();
-  const sincePrev = new Date(nowMs - 2 * days * 86400000).toISOString();
+  const now = new Date(nowMs);
+  // Saison : fenêtre courante = mois en cours, précédente = mois d'avant
+  // (le mouvement de rang compare à la saison passée).
+  const sinceCur = season
+    ? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString()
+    : new Date(nowMs - days * 86400000).toISOString();
+  const sincePrev = season
+    ? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)).toISOString()
+    : new Date(nowMs - 2 * days * 86400000).toISOString();
 
   // ── Métriques personnelles (TOUJOURS calculées, même non opt-in / non classé) ──
   const { data: selfProfile } = await admin
-    .from("profiles").select("leaderboard_opt_in, username").eq("id", user.id).single();
+    .from("profiles").select("leaderboard_opt_in, username, timezone").eq("id", user.id).single();
   const { data: selfReviews } = await admin
     .from("session_reviews").select("user_id, discipline_score, created_at").eq("user_id", user.id).gte("created_at", sinceCur);
   const selfM = computeMetrics((selfReviews ?? []) as ReviewRow[]);
+
+  // Stats tous-temps pour le mur de badges (plafonnées : les badges saturent
+  // bien avant 2000 sessions).
+  const { data: allReviews } = await admin
+    .from("session_reviews").select("discipline_score, created_at")
+    .eq("user_id", user.id).order("created_at", { ascending: false }).limit(2000);
+  const allTime = computeAllTimeStats(allReviews ?? [], selfProfile?.timezone as string | null);
 
   const { data: profiles } = await admin
     .from("profiles").select("id, username, plan").eq("leaderboard_opt_in", true).not("username", "is", null);
@@ -84,11 +104,12 @@ export async function GET(req: NextRequest) {
       score: selfM.avgScore, sessions: selfM.sessions, streak: selfM.streak,
       optedIn: !!selfProfile?.leaderboard_opt_in, hasUsername: !!selfProfile?.username,
       ranked: rank != null, rank, percentile,
+      allTime,
     };
   }
 
   if (!profiles || profiles.length === 0) {
-    return NextResponse.json({ entries: [], me: null, total: 0, days, mode, self: buildSelf(null, null) });
+    return NextResponse.json({ entries: [], me: null, total: 0, days: season ? "season" : days, mode, self: buildSelf(null, null), feed: [] });
   }
 
   const ids = profiles.map((p) => p.id);
@@ -157,8 +178,54 @@ export async function GET(req: NextRequest) {
   // d'afficher « ta position » avec du contexte même hors du top 50 affiché.
   const around = meIdx >= 0 ? ranked.slice(Math.max(0, meIdx - 1), meIdx + 2) : [];
 
+  // ── Fil d'activité : de quoi rendre la page vivante même à peu d'inscrits ──
+  type FeedItem =
+    | { type: "day_record"; user: string; score: number }
+    | { type: "streak"; user: string; days: number }
+    | { type: "join"; user: string; challengeKey: string; at: string };
+  const feed: FeedItem[] = [];
+
+  // Meilleur score d'hier (jour UTC) parmi les inscrits.
+  const yesterdayKey = new Date(nowMs - 86400000).toISOString().slice(0, 10);
+  let best: { user: string; score: number } | null = null;
+  for (const [id, rv] of Array.from(curByUser.entries())) {
+    const dayScores = rv.filter((r) => r.created_at.slice(0, 10) === yesterdayKey && r.discipline_score != null);
+    if (dayScores.length === 0) continue;
+    const avg = Math.round(dayScores.reduce((s, r) => s + (r.discipline_score as number), 0) / dayScores.length);
+    if (!best || avg > best.score) best = { user: usernameById.get(id)!, score: avg };
+  }
+  if (best) feed.push({ type: "day_record", ...best });
+
+  // Série active la plus longue du moment (hors moi : la mienne est déjà affichée).
+  const topStreak = [...curRows].filter((r) => r.id !== user.id && r.m.streak >= 3)
+    .sort((a, b) => b.m.streak - a.m.streak)[0];
+  if (topStreak) feed.push({ type: "streak", user: topStreak.username, days: topStreak.m.streak });
+
+  // Dernières arrivées dans les défis communautaires (14 jours).
+  const { data: joins } = await admin
+    .from("challenge_participations").select("user_id, challenge_key, joined_at")
+    .gte("joined_at", new Date(nowMs - 14 * 86400000).toISOString())
+    .order("joined_at", { ascending: false }).limit(8);
+  const joinerIds = Array.from(new Set((joins ?? []).map((j) => j.user_id as string)))
+    .filter((id) => !usernameById.has(id));
+  const { data: joinerProfs } = joinerIds.length
+    ? await admin.from("profiles").select("id, username").in("id", joinerIds)
+    : { data: [] as { id: string; username: string | null }[] };
+  const joinerNameById = new Map((joinerProfs ?? []).map((p) => [
+    p.id,
+    isUsernameDisplayable(p.username as string | null) ? (p.username as string) : null,
+  ]));
+  for (const j of joins ?? []) {
+    if (feed.length >= 5) break;
+    if (!getCommunityChallenge(j.challenge_key as string)) continue;
+    const name = usernameById.get(j.user_id as string) ?? joinerNameById.get(j.user_id as string);
+    if (!name) continue; // sans pseudo affichable, l'item n'apporte rien
+    feed.push({ type: "join", user: name, challengeKey: j.challenge_key as string, at: j.joined_at as string });
+  }
+
   return NextResponse.json({
-    entries: ranked.slice(0, 50), around, me, total, days, mode,
+    entries: ranked.slice(0, 50), around, me, total, days: season ? "season" : days, mode,
     self: buildSelf(me?.rank ?? null, me?.percentile ?? null),
+    feed,
   });
 }
