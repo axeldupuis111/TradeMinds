@@ -299,6 +299,10 @@ export default function UpgradePage() {
     if (val === "plan_unlimited") {
       return <span className="text-profit text-sm font-medium">{t("plan_unlimited")}</span>;
     }
+    // Autres clés i18n (ex. plan_taster_once) — traduites telles quelles.
+    if (val.startsWith("plan_")) {
+      return <span className="text-foreground text-sm">{t(val)}</span>;
+    }
     return <span className="text-foreground text-sm">{val}</span>;
   }
 

@@ -32,7 +32,8 @@ export const PLAN_FEATURES: PlanFeature[] = [
   // ── IA ──
   { key: "plan_feat_strategy_ai",       free: "1",           plus: "plan_unlimited", premium: "plan_unlimited", groupKey: "plan_group_ai" },
   { key: "plan_feat_analysis_ai",       free: "1/plan_week", plus: "1/plan_day",     premium: "10/plan_day" },
-  { key: "plan_feat_coach_ai",          free: false,         plus: "5/plan_day",     premium: "30/plan_day" },
+  // Free : 1 message « découverte » à vie (gate serveur dans chat-coach).
+  { key: "plan_feat_coach_ai",          free: "plan_taster_once", plus: "5/plan_day", premium: "30/plan_day" },
   { key: "plan_feat_debrief_ai",        free: false,         plus: true,             premium: true },
   { key: "plan_feat_weekly_plan",       free: false,         plus: true,             premium: true },
   { key: "plan_feat_daily_summary",     free: false,         plus: true,             premium: true },

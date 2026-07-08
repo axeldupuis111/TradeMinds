@@ -12,7 +12,9 @@ export async function POST(request: Request) {
     // Server-side auth (don't rely on middleware alone) + anti-abuse rate limit.
     const auth = await requireAuth();
     if (auth instanceof NextResponse) return auth;
-    const limited = await rateLimitAi(auth.userId, "parse-strategy", 10, auth.timezone);
+    // Free n'a qu'une seule stratégie : 3 (ré)analyses/jour suffisent largement
+    // et bornent le pire cas d'abus ; les plans payants gardent le cap large.
+    const limited = await rateLimitAi(auth.userId, "parse-strategy", auth.plan === "free" ? 3 : 10, auth.timezone);
     if (limited) return limited;
 
     const apiKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY;

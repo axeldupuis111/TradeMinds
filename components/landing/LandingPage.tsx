@@ -1973,6 +1973,10 @@ function CompareCell({ val, t }: { val: boolean | string; t: (k: string) => stri
   if (val === "plan_unlimited") {
     return <span className="text-sm font-medium" style={{ color: "rgb(var(--profit))", fontStyle: "normal" }}>{t("plan_unlimited")}</span>;
   }
+  // Autres clés i18n (ex. plan_taster_once) — traduites telles quelles.
+  if (val.startsWith("plan_")) {
+    return <span className="text-sm" style={{ color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}>{t(val)}</span>;
+  }
   return <span className="text-sm" style={{ color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}>{val}</span>;
 }
 

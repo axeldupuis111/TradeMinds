@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/api-auth";
+import { requireAuth, rateLimitAi } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 import { sanitizeUserInput } from "@/lib/prompt-sanitizer";
 
@@ -22,9 +22,11 @@ interface SummaryRequest {
 
 export async function POST(request: Request) {
   try {
-    // ── 1. Auth ──
+    // ── 1. Auth + anti-abus (seule route IA qui n'était pas plafonnée) ──
     const auth = await requireAuth();
     if (auth instanceof NextResponse) return auth;
+    const limited = await rateLimitAi(auth.userId, "daily-summary", 10, auth.timezone);
+    if (limited) return limited;
 
     // ── 2. API key ──
     const apiKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY;
