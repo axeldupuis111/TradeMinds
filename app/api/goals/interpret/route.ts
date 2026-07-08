@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { requireAuth, rateLimitAi } from "@/lib/api-auth";
+import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +64,7 @@ Choisis une cible (target) raisonnable si l'utilisateur n'en donne pas. Utilise 
 
     return NextResponse.json({ trackable: true, metric: parsed.metric, comparator, target });
   } catch (err) {
+    if (isLowCreditError(err)) await alertLowCreditsOnce();
     console.error("[Goals interpret] error:", err);
     return NextResponse.json({ trackable: false });
   }
