@@ -67,6 +67,22 @@ export async function GET() {
     tradesByUser.set(t.user_id, arr);
   }
 
+  // Sessions notées des 30 derniers jours (métriques sessions_window / gold_week).
+  const sinceReviews = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  const { data: reviews } = idsForTrades.length
+    ? await admin
+        .from("session_reviews")
+        .select("user_id, discipline_score, created_at")
+        .in("user_id", idsForTrades)
+        .gte("created_at", sinceReviews)
+    : { data: [] as { user_id: string; discipline_score: number | null; created_at: string }[] };
+  const reviewsByUser = new Map<string, { discipline_score: number | null; created_at: string }[]>();
+  for (const r of reviews ?? []) {
+    const arr = reviewsByUser.get(r.user_id as string) ?? [];
+    arr.push(r);
+    reviewsByUser.set(r.user_id as string, arr);
+  }
+
   const cleanStreak = (userId: string): number => {
     const uTrades = tradesByUser.get(userId) ?? [];
     const tz = tzById.get(userId) || "UTC";
@@ -81,12 +97,36 @@ export async function GET() {
     return computeDisciplineStreaks(days).current;
   };
 
+  const sessionsWindow = (userId: string, windowDays: number): number => {
+    const since = Date.now() - windowDays * 86_400_000;
+    return (reviewsByUser.get(userId) ?? []).filter(
+      (r) => r.discipline_score != null && new Date(r.created_at).getTime() >= since,
+    ).length;
+  };
+
+  // Moyenne glissante 7 j ; 0 sous 3 sessions pour qu'une session chanceuse ne
+  // « complète » pas le défi.
+  const goldWeek = (userId: string): number => {
+    const since = Date.now() - 7 * 86_400_000;
+    const scores = (reviewsByUser.get(userId) ?? [])
+      .filter((r) => r.discipline_score != null && new Date(r.created_at).getTime() >= since)
+      .map((r) => r.discipline_score as number);
+    if (scores.length < 3) return 0;
+    return Math.round(scores.reduce((s, v) => s + v, 0) / scores.length);
+  };
+
+  const progressOf = (userId: string, c: (typeof COMMUNITY_CHALLENGES)[number]): number => {
+    if (c.metric === "sessions_window") return sessionsWindow(userId, c.windowDays ?? 14);
+    if (c.metric === "gold_week") return goldWeek(userId);
+    return cleanStreak(userId);
+  };
+
   const challenges = COMMUNITY_CHALLENGES.map((c) => {
     const ids = participations.filter((p) => p.challenge_key === c.key).map((p) => p.user_id as string);
     const board = ids
       .map((id) => ({
         name: nameById.get(id) || "Trader",
-        progress: cleanStreak(id),
+        progress: progressOf(id, c),
         isMe: id === auth.userId,
       }))
       .sort((a, b) => b.progress - a.progress || (a.isMe ? -1 : 0))
@@ -97,7 +137,7 @@ export async function GET() {
       target: c.target,
       joined: ids.includes(auth.userId),
       participantCount: ids.length,
-      myProgress: cleanStreak(auth.userId),
+      myProgress: progressOf(auth.userId, c),
       leaderboard: board,
     };
   });

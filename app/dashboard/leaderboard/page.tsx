@@ -1,7 +1,7 @@
 "use client";
 
 import { useLanguage } from "@/lib/LanguageContext";
-import { ArrowUp, ArrowDown, BadgeCheck, Crown, Minus, Lock, Share2, Trophy, Users, Gauge, CalendarDays, Flame, Rocket } from "lucide-react";
+import { Activity, ArrowUp, ArrowDown, Award, BadgeCheck, Crown, Minus, Lock, Share2, Trophy, Users, UserPlus, Gauge, CalendarDays, Flame, Rocket } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import CountUp from "@/components/animations/CountUp";
@@ -12,6 +12,12 @@ import ShareRankModal from "@/components/leaderboard/ShareRankModal";
 
 type Mode = "discipline" | "sessions" | "streak";
 type Tab = "board" | "challenges";
+type Period = 7 | 30 | 90 | "season";
+
+type FeedItem =
+  | { type: "day_record"; user: string; score: number }
+  | { type: "streak"; user: string; days: number }
+  | { type: "join"; user: string; challengeKey: string; at: string };
 
 interface Entry {
   rank: number; username: string; score: number; sessions: number; streak: number;
@@ -22,9 +28,14 @@ interface Entry {
 function PremiumBadge({ label }: { label: string }) {
   return <BadgeCheck className="w-3.5 h-3.5 text-yellow-400 shrink-0" strokeWidth={2} aria-label={label} role="img" />;
 }
+interface AllTime {
+  totalSessions: number; goldDays: number; comeback: boolean;
+  earlyBird: number; weekendSessions: number; bestStreak: number;
+}
 interface Self {
   score: number; sessions: number; streak: number;
   optedIn: boolean; hasUsername: boolean; ranked: boolean; rank: number | null; percentile: number | null;
+  allTime?: AllTime;
 }
 
 const MODES: { id: Mode; icon: typeof Gauge }[] = [
@@ -32,7 +43,14 @@ const MODES: { id: Mode; icon: typeof Gauge }[] = [
   { id: "sessions", icon: CalendarDays },
   { id: "streak", icon: Flame },
 ];
-const PERIODS = [7, 30, 90] as const;
+const PERIODS: Period[] = [7, 30, 90, "season"];
+
+// Jours restants avant la fin du mois (fin de la saison en cours).
+function seasonDaysLeft(): number {
+  const now = new Date();
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  return lastDay - now.getDate();
+}
 
 function scoreColor(s: number): string {
   if (s >= 85) return "text-profit";
@@ -56,14 +74,26 @@ function tierProgress(s: number): { floor: number; next: number | null; nextKey:
 
 // Catalogue de badges évalués à partir des stats perso, avec progression
 // (current/target) pour ceux qui se débloquent par paliers chiffrés.
+// Les badges de série/volume utilisent les stats TOUS TEMPS quand l'API les
+// fournit : un badge est un acquis, il ne doit pas disparaître en changeant
+// de période d'affichage.
 type Badge = { key: string; emoji: string; earned: boolean; progress: { current: number; target: number } | null };
 function badgesFor(s: Self): Badge[] {
+  const at = s.allTime;
+  const sessions = Math.max(s.sessions, at?.totalSessions ?? 0);
+  const streak = Math.max(s.streak, at?.bestStreak ?? 0);
   return [
-    { key: "first_session", emoji: "✅", earned: s.sessions >= 1, progress: { current: s.sessions, target: 1 } },
-    { key: "regular", emoji: "📅", earned: s.sessions >= 20, progress: { current: s.sessions, target: 20 } },
-    { key: "streak_7", emoji: "🔥", earned: s.streak >= 7, progress: { current: s.streak, target: 7 } },
-    { key: "streak_30", emoji: "⚡", earned: s.streak >= 30, progress: { current: s.streak, target: 30 } },
+    { key: "first_session", emoji: "✅", earned: sessions >= 1, progress: { current: sessions, target: 1 } },
+    { key: "regular", emoji: "📅", earned: sessions >= 20, progress: { current: sessions, target: 20 } },
+    { key: "streak_7", emoji: "🔥", earned: streak >= 7, progress: { current: streak, target: 7 } },
+    { key: "streak_30", emoji: "⚡", earned: streak >= 30, progress: { current: streak, target: 30 } },
+    { key: "streak_90", emoji: "🌋", earned: streak >= 90, progress: { current: streak, target: 90 } },
     { key: "discipline_gold", emoji: "🏅", earned: s.score >= 85 && s.sessions >= 3, progress: { current: s.score, target: 85 } },
+    { key: "gold_days", emoji: "✨", earned: (at?.goldDays ?? 0) >= 10, progress: { current: at?.goldDays ?? 0, target: 10 } },
+    { key: "marathon", emoji: "🏃", earned: sessions >= 100, progress: { current: sessions, target: 100 } },
+    { key: "comeback", emoji: "💪", earned: at?.comeback ?? false, progress: null },
+    { key: "early_bird", emoji: "🌅", earned: (at?.earlyBird ?? 0) >= 10, progress: { current: at?.earlyBird ?? 0, target: 10 } },
+    { key: "weekend", emoji: "🛡️", earned: (at?.weekendSessions ?? 0) >= 8, progress: { current: at?.weekendSessions ?? 0, target: 8 } },
     { key: "top10", emoji: "🎯", earned: s.ranked && s.percentile != null && s.percentile <= 10, progress: null },
     { key: "podium", emoji: "🏆", earned: s.ranked && s.rank != null && s.rank <= 3, progress: null },
   ];
@@ -84,30 +114,33 @@ function Delta({ d }: { d: number | null }) {
 }
 
 export default function LeaderboardPage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [entries, setEntries] = useState<Entry[]>([]);
   const [around, setAround] = useState<Entry[]>([]);
   const [self, setSelf] = useState<Self | null>(null);
+  const [feed, setFeed] = useState<FeedItem[]>([]);
   const [total, setTotal] = useState(0);
-  const [days, setDays] = useState<7 | 30 | 90>(30);
+  const [days, setDays] = useState<Period>(30);
   const [mode, setMode] = useState<Mode>("discipline");
   const [tab, setTab] = useState<Tab>("board");
   const [loading, setLoading] = useState(true);
   const [showConfetti, setShowConfetti] = useState(false);
   const [selectedBadge, setSelectedBadge] = useState<string | null>(null);
   const [showShare, setShowShare] = useState(false);
+  const [inviteCopied, setInviteCopied] = useState(false);
   const celebrated = useRef(false);
 
-  const load = useCallback(async (d: number, m: Mode) => {
+  const load = useCallback(async (d: Period, m: Mode) => {
     setLoading(true);
     try {
       const res = await fetch(`/api/leaderboard?days=${d}&mode=${m}`);
       const data = await res.json();
       setEntries(data.entries ?? []); setAround(data.around ?? []); setSelf(data.self ?? null); setTotal(data.total ?? 0);
+      setFeed(data.feed ?? []);
     } catch {
       // Network/parse failure → degrade to an empty board rather than leaving an
       // unhandled rejection and stale data.
-      setEntries([]); setAround([]); setSelf(null); setTotal(0);
+      setEntries([]); setAround([]); setSelf(null); setTotal(0); setFeed([]);
     } finally { setLoading(false); }
   }, []);
   useEffect(() => { load(days, mode); }, [days, mode, load]);
@@ -127,6 +160,29 @@ export default function LeaderboardPage() {
   const topMover = entries
     .filter((e) => e.delta != null && e.delta >= 2 && !e.isMe)
     .sort((a, b) => (b.delta as number) - (a.delta as number))[0] ?? null;
+
+  // Records de la communauté sur la période (calculés depuis les entrées déjà
+  // chargées : vivent dès 2-3 participants).
+  const records = entries.length > 0 ? {
+    score: [...entries].sort((a, b) => b.score - a.score || b.sessions - a.sessions)[0],
+    streak: [...entries].sort((a, b) => b.streak - a.streak || b.score - a.score)[0],
+    sessions: [...entries].sort((a, b) => b.sessions - a.sessions || b.score - a.score)[0],
+  } : null;
+
+  // Agrégats communauté pour la carte « Toi vs la communauté ».
+  const community = entries.length > 0 ? (() => {
+    const sessionsSorted = entries.map((e) => e.sessions).sort((a, b) => a - b);
+    return {
+      avgScore: Math.round(entries.reduce((s, e) => s + e.score, 0) / entries.length),
+      bestStreak: Math.max(...entries.map((e) => e.streak)),
+      medianSessions: sessionsSorted[Math.floor(sessionsSorted.length / 2)],
+    };
+  })() : null;
+
+  const seasonMonth = new Date().toLocaleDateString(
+    lang === "fr" ? "fr-FR" : lang === "de" ? "de-DE" : lang === "es" ? "es-ES" : "en-US",
+    { month: "long" },
+  );
 
   // Petite célébration la première fois qu'on se voit sur le podium.
   useEffect(() => {
@@ -233,6 +289,37 @@ export default function LeaderboardPage() {
         );
       })()}
 
+      {/* Toi vs la communauté */}
+      {self && community && (
+        <div className="rounded-xl border border-border bg-card p-4">
+          <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">{t("leaderboard_vs_title")}</p>
+          <div className="space-y-3">
+            {([
+              { label: t("leaderboard_stat_score"), me: self.score, them: community.avgScore, themLabel: t("leaderboard_vs_avg"), max: 100 },
+              { label: t("leaderboard_stat_streak"), me: self.streak, them: community.bestStreak, themLabel: t("leaderboard_vs_best"), max: Math.max(self.streak, community.bestStreak, 1) },
+              { label: t("leaderboard_stat_sessions"), me: self.sessions, them: community.medianSessions, themLabel: t("leaderboard_vs_median"), max: Math.max(self.sessions, community.medianSessions, 1) },
+            ]).map((row, i) => (
+              <div key={i}>
+                <p className="text-[11px] text-muted mb-1">{row.label}</p>
+                {[
+                  { name: t("leaderboard_vs_you"), val: row.me, strong: row.me >= row.them },
+                  { name: row.themLabel, val: row.them, strong: false },
+                ].map((b, j) => (
+                  <div key={j} className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[10px] text-muted w-16 truncate">{b.name}</span>
+                    <div className="flex-1 h-1.5 rounded-full bg-surface overflow-hidden">
+                      <GrowBar pct={Math.max(3, Math.min(100, (b.val / row.max) * 100))} durationMs={700} delayMs={i * 90}
+                        className={`rounded-full ${j === 0 ? "bg-accent" : "bg-muted/40"}`} />
+                    </div>
+                    <span className={`text-[11px] tabular-nums w-8 text-right ${b.strong && j === 0 ? "text-profit font-semibold" : "text-foreground"}`}>{b.val}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Badges */}
       {self && (() => {
         const badges = badgesFor(self);
@@ -284,6 +371,31 @@ export default function LeaderboardPage() {
         );
       })()}
 
+      {/* Fil d'activité : ce qui se passe dans la communauté en ce moment */}
+      {feed.length > 0 && (
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="flex items-center gap-2 mb-2.5">
+            <Activity className="w-3.5 h-3.5 text-accent" strokeWidth={1.75} />
+            <p className="text-xs font-semibold text-muted uppercase tracking-wider">{t("leaderboard_feed_title")}</p>
+          </div>
+          <ul className="space-y-2">
+            {feed.map((f, i) => (
+              <li key={i} className="text-xs text-foreground-muted leading-relaxed">
+                {f.type === "day_record" && (
+                  <>🎯 {t("leaderboard_feed_day_record").replace("{user}", `@${f.user}`).replace("{score}", String(f.score))}</>
+                )}
+                {f.type === "streak" && (
+                  <>🔥 {t("leaderboard_feed_streak").replace("{user}", `@${f.user}`).replace("{n}", String(f.days))}</>
+                )}
+                {f.type === "join" && (
+                  <>🤝 {t("leaderboard_feed_join").replace("{user}", `@${f.user}`).replace("{challenge}", t(`challenge_c_${f.challengeKey.replace(/-/g, "_")}_title`))}</>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Invite à rejoindre si pas opt-in / pas de pseudo */}
       {self && (!self.optedIn || !self.hasUsername) && (
         <Link href="/dashboard/settings#leaderboard" className="flex items-center gap-3 rounded-xl border border-accent/30 bg-accent/[0.04] p-4 hover:border-accent/50 transition-colors">
@@ -295,6 +407,27 @@ export default function LeaderboardPage() {
           <span className="text-xs text-accent font-medium whitespace-nowrap">{t("leaderboard_join")} →</span>
         </Link>
       )}
+
+      {/* Invite un ami : le classement est meilleur à plusieurs */}
+      <div className="rounded-xl border border-border bg-card p-4">
+        <div className="flex items-center gap-2.5">
+          <UserPlus className="w-4 h-4 text-accent shrink-0" strokeWidth={1.75} />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground">{t("leaderboard_invite_title")}</p>
+            <p className="text-xs text-muted">{t("leaderboard_invite_desc")}</p>
+          </div>
+        </div>
+        <button
+          onClick={() => {
+            navigator.clipboard.writeText("https://tradediscipline.app");
+            setInviteCopied(true);
+            setTimeout(() => setInviteCopied(false), 2000);
+          }}
+          className="mt-3 w-full py-2 rounded-lg border border-accent/30 bg-accent/5 text-accent text-xs font-medium hover:bg-accent/10 transition-colors"
+        >
+          {inviteCopied ? `✓ ${t("leaderboard_invite_copied")}` : t("leaderboard_invite_copy")}
+        </button>
+      </div>
       </aside>
 
       {/* Colonne principale : modes + période + classement */}
@@ -312,11 +445,23 @@ export default function LeaderboardPage() {
         <div className="flex gap-1 text-xs">
           {PERIODS.map((d) => (
             <button key={d} onClick={() => setDays(d)} className={`px-2.5 py-1.5 rounded-lg transition-colors ${days === d ? "bg-accent/15 text-accent font-semibold" : "text-muted hover:text-foreground"}`}>
-              {t("leaderboard_days").replace("{n}", String(d))}
+              {d === "season" ? `🏆 ${t("leaderboard_period_season")}` : t("leaderboard_days").replace("{n}", String(d))}
             </button>
           ))}
         </div>
       </div>
+
+      {/* Bandeau saison : le classement du mois repart de zéro le 1er */}
+      {days === "season" && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-warning/30 bg-warning/[0.06] px-4 py-2.5">
+          <p className="text-sm font-semibold text-foreground capitalize">
+            🏆 {t("leaderboard_season_title").replace("{month}", seasonMonth)}
+          </p>
+          <p className="text-xs text-muted">
+            {t("leaderboard_season_left").replace("{n}", String(seasonDaysLeft()))} · {t("leaderboard_season_reset")}
+          </p>
+        </div>
+      )}
 
       {loading ? (
         <div className="skeleton h-40 rounded-xl mt-4" />
@@ -326,6 +471,30 @@ export default function LeaderboardPage() {
         </div>
       ) : (
         <>
+          {/* Records de la communauté (période courante) */}
+          {records && (
+            <div className="mt-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Award className="w-3.5 h-3.5 text-accent" strokeWidth={1.75} />
+                <p className="text-xs font-semibold text-muted uppercase tracking-wider">{t("leaderboard_records_title")}</p>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {([
+                  { emoji: "🎯", label: t("leaderboard_record_score"), user: records.score, val: String(records.score.score) },
+                  { emoji: "🔥", label: t("leaderboard_record_streak"), user: records.streak, val: `${records.streak.streak} j` },
+                  { emoji: "📅", label: t("leaderboard_record_sessions"), user: records.sessions, val: String(records.sessions.sessions) },
+                  ...(topMover ? [{ emoji: "🚀", label: t("leaderboard_record_mover"), user: topMover, val: `+${topMover.delta}` }] : []),
+                ]).map((r, i) => (
+                  <div key={i} className={`rounded-xl border p-3 ${r.user.isMe ? "border-accent/40 bg-accent/[0.06]" : "border-border bg-card"}`}>
+                    <p className="text-[10px] text-muted uppercase tracking-wide">{r.emoji} {r.label}</p>
+                    <p className="text-lg font-bold text-foreground mt-0.5 tabular-nums">{r.val}</p>
+                    <p className="text-[11px] text-muted truncate">{r.user.isMe ? t("leaderboard_you") : `@${r.user.username}`}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-muted">{(total === 1 ? t("leaderboard_participants_one") : t("leaderboard_participants")).replace("{n}", String(total))}</p>
             {/* Plus forte ascension de la période */}
@@ -404,7 +573,10 @@ export default function LeaderboardPage() {
           stats={{
             score: self.score, sessions: self.sessions, streak: self.streak,
             rank: self.rank, total, percentile: self.percentile,
-            tierKey: tierOf(self.score).key, tierEmoji: tierOf(self.score).emoji, days,
+            // La carte de partage affiche une période en jours : pour la saison,
+            // c'est le nombre de jours écoulés depuis le 1ᵉʳ du mois.
+            tierKey: tierOf(self.score).key, tierEmoji: tierOf(self.score).emoji,
+            days: days === "season" ? new Date().getDate() : days,
           }}
           onClose={() => setShowShare(false)}
         />
