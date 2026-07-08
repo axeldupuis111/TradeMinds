@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { requireAuth, rateLimitAi } from "@/lib/api-auth";
+import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 
 // A strategy description is at most a few paragraphs; cap input to keep token
 // cost bounded and prevent abuse.
@@ -172,6 +173,7 @@ Ajoute ce champ à la racine du JSON (pas dans strategy_tags) :
     const parsed = JSON.parse(jsonStr);
     return NextResponse.json(parsed);
   } catch (err: unknown) {
+    if (isLowCreditError(err)) await alertLowCreditsOnce();
     // Log the detail server-side, but never leak internal error messages.
     console.error("Parse strategy error:", err);
     return NextResponse.json({ error: "Erreur lors de l'analyse de la stratégie." }, { status: 500 });

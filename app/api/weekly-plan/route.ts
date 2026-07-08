@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireAuth, rateLimitAi } from "@/lib/api-auth";
+import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 
 /**
  * "Plan for the week" — a forward-looking AI coach card. Complements the
@@ -86,6 +87,7 @@ Base les objectifs sur les données ci-dessus quand c'est pertinent (ex. réduir
     if (!parsed.headline || focuses.length === 0) return NextResponse.json({ plan: null, reason: "parse_failed" });
     return NextResponse.json({ plan: { headline: String(parsed.headline), focuses } });
   } catch (err) {
+    if (isLowCreditError(err)) await alertLowCreditsOnce();
     console.error("[weekly-plan] generation failed:", err);
     return NextResponse.json({ plan: null, reason: "error" });
   }

@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
+import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 import { sanitizeUserInput } from "@/lib/prompt-sanitizer";
 
 const MAX_TRADES = 500;
@@ -85,6 +86,7 @@ Réponds UNIQUEMENT avec le résumé, sans titre ni formatage.`;
 
     return NextResponse.json({ summary: textBlock.text.trim() });
   } catch (err: unknown) {
+    if (isLowCreditError(err)) await alertLowCreditsOnce();
     console.error("Daily summary error:", err);
     const message = err instanceof Error ? err.message : "Erreur inconnue";
     return NextResponse.json({ error: message }, { status: 500 });
