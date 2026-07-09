@@ -44,8 +44,6 @@ const analyseItems = [
   { key: "sidebar_leaderboard", href: "/dashboard/leaderboard", icon: Trophy },
 ];
 
-const AI_DEMO_HREFS = new Set(["/dashboard/strategy", "/dashboard/analysis"]);
-
 const planBadgeClass: Record<string, string> = {
   free:    "bg-surface text-muted",
   plus:    "bg-accent/20 text-accent shadow-[0_0_8px_rgb(var(--accent)/0.3)]",
@@ -58,7 +56,6 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
   const router = useRouter();
 
   const showUpgrade = !loading && plan === "free";
-  const isFree = !loading && plan === "free";
   const badgeClass = planBadgeClass[plan] || planBadgeClass.free;
   const planLabel = plan === "plus" ? t("plan_plus") : plan === "premium" ? t("plan_premium") : t("plan_free");
 
@@ -119,7 +116,6 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
                   href={item.href}
                   icon={item.icon}
                   labelKey={item.key}
-                  badge={isFree && AI_DEMO_HREFS.has(item.href) ? t("sidebar_demo_badge") : undefined}
                   onNavigate={onClose}
                 />
               ))}
