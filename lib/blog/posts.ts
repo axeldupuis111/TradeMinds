@@ -28,6 +28,442 @@ export interface BlogPost {
 
 export const POSTS: BlogPost[] = [
   {
+    slug: "journal-de-trading-gratuit",
+    date: "2026-07-09",
+    readingMinutes: 5,
+    cover: "journal",
+    content: {
+      fr: {
+        title: "Journal de trading gratuit : ce qu'il doit contenir (et où en trouver un en 2026)",
+        excerpt:
+          "Excel, Notion ou un outil dédié ? Ce qu'un journal doit vraiment tracer pour te faire progresser — et ce que tu peux avoir gratuitement, sans carte bancaire.",
+        body: `Tous les traders rentables tiennent un journal. Mais un journal mal conçu, c'est de l'occupation : tu remplis des cases et rien ne change. Voici ce qu'un journal doit contenir pour te faire progresser — et un tour honnête des options gratuites.
+
+*Fonctionnalités et limites constatées en juillet 2026.*
+
+## Ce qu'un bon journal doit tracer
+
+Quatre couches, par ordre d'importance :
+
+1. **Les faits** : instrument, sens, taille, entrée/sortie, SL/TP, P&L net (avec commissions et swap).
+2. **La décision** : quel setup, quelle checklist validée, était-ce dans ton plan ?
+3. **L'état émotionnel** : posé, FOMO, revanche, fatigue. C'est la couche que 90 % des journaux ignorent — et c'est là que se cachent les fuites.
+4. **La relecture** : un journal qu'on ne relit jamais est un journal intime. Il faut un bilan qui remonte les patterns.
+
+## Excel ou Notion : gratuit, mais tout est à ta charge
+
+Un tableur trace la couche 1 correctement. Les couches 2 et 3 exigent une discipline de saisie que presque personne ne tient, et la couche 4 n'existe pas : c'est toi l'analyste, chaque dimanche, s'il te reste l'énergie. C'est gratuit en argent, cher en volonté.
+
+## Ce que TradeDiscipline offre gratuitement
+
+Le plan gratuit couvre les quatre couches, sans carte bancaire :
+
+- **Journal complet** : import CSV (1/jour), trades manuels, calendrier, courbe d'équité, analytics — sur 1 compte.
+- **1 analyse IA par semaine** : ton score de discipline, tes violations de plan, tes patterns — calculés pour toi.
+- **1 stratégie structurée par l'IA** : tu la décris en langage naturel, elle devient des règles vérifiables.
+- **Classement, défis et calendrier économique** inclus.
+
+Les limites sont réelles et assumées : un compte, un import par jour, une analyse par semaine. C'est un diagnostic, pas un coach quotidien.
+
+## Quand un journal payant se justifie
+
+Deux signaux : la **saisie devient le frein** (la synchronisation automatique MT4/MT5, cTrader, NinjaTrader, TradingView ou Tradovate élimine toute saisie), ou tu veux passer du diagnostic hebdo au **coaching quotidien** (analyse chaque matin, coach IA qui connaît tes trades). Tant que tu n'en es pas là, le gratuit suffit — [commence ici](/login).`,
+      },
+      en: {
+        title: "Free trading journal: what it must contain (and where to get one in 2026)",
+        excerpt:
+          "Excel, Notion or a dedicated tool? What a journal really needs to track to make you improve — and what you can get for free, no credit card.",
+        body: `Every profitable trader keeps a journal. But a badly designed journal is busywork: you fill in boxes and nothing changes. Here's what a journal must contain to make you improve — and an honest tour of the free options.
+
+*Features and limits as observed in July 2026.*
+
+## What a good journal must track
+
+Four layers, in order of importance:
+
+1. **The facts**: instrument, direction, size, entry/exit, SL/TP, net P&L (with commissions and swap).
+2. **The decision**: which setup, which checklist items, was it in your plan?
+3. **The emotional state**: calm, FOMO, revenge, tired. The layer 90% of journals ignore — and where the leaks hide.
+4. **The review**: a journal you never re-read is a diary. You need a review that surfaces patterns.
+
+## Excel or Notion: free, but everything is on you
+
+A spreadsheet handles layer 1 fine. Layers 2 and 3 demand a logging discipline almost nobody sustains, and layer 4 doesn't exist: you are the analyst, every Sunday, if you have the energy left. Free in money, expensive in willpower.
+
+## What TradeDiscipline offers for free
+
+The free plan covers all four layers, no credit card:
+
+- **Full journal**: CSV import (1/day), manual trades, calendar, equity curve, analytics — on 1 account.
+- **1 AI analysis per week**: your discipline score, plan violations and patterns — computed for you.
+- **1 AI-structured strategy**: describe it in plain language, it becomes checkable rules.
+- **Leaderboard, challenges and economic calendar** included.
+
+The limits are real and stated: one account, one import a day, one analysis a week. It's a diagnosis, not a daily coach.
+
+## When a paid journal is worth it
+
+Two signals: **logging becomes the bottleneck** (automatic sync for MT4/MT5, cTrader, NinjaTrader, TradingView or Tradovate removes all manual entry), or you want to go from weekly diagnosis to **daily coaching** (analysis every morning, an AI coach that knows your trades). Until then, free is enough — [start here](/login).`,
+      },
+      de: {
+        title: "Kostenloses Trading-Journal: was es enthalten muss (und wo du 2026 eines findest)",
+        excerpt:
+          "Excel, Notion oder ein eigenes Tool? Was ein Journal wirklich erfassen muss, damit du besser wirst — und was es kostenlos gibt, ohne Kreditkarte.",
+        body: `Jeder profitable Trader führt ein Journal. Aber ein schlecht aufgebautes Journal ist Beschäftigungstherapie: Du füllst Felder aus und nichts ändert sich. Hier steht, was ein Journal enthalten muss — und ein ehrlicher Blick auf die kostenlosen Optionen.
+
+*Funktionen und Limits, Stand Juli 2026.*
+
+## Was ein gutes Journal erfassen muss
+
+Vier Ebenen, nach Wichtigkeit:
+
+1. **Die Fakten**: Instrument, Richtung, Größe, Ein-/Ausstieg, SL/TP, Netto-G/V (mit Kommissionen und Swap).
+2. **Die Entscheidung**: welches Setup, welche Checkliste, war es im Plan?
+3. **Der Gefühlszustand**: ruhig, FOMO, Rache, müde. Die Ebene, die 90 % der Journale ignorieren — und wo die Lecks stecken.
+4. **Die Durchsicht**: ein Journal, das du nie liest, ist ein Tagebuch. Du brauchst eine Auswertung, die Muster zeigt.
+
+## Excel oder Notion: kostenlos, aber alles liegt bei dir
+
+Eine Tabelle erledigt Ebene 1 ordentlich. Ebenen 2 und 3 verlangen eine Erfassungsdisziplin, die kaum jemand durchhält, und Ebene 4 existiert nicht: Du bist der Analyst, jeden Sonntag, falls Energie übrig ist. Kostenlos in Geld, teuer in Willenskraft.
+
+## Was TradeDiscipline kostenlos bietet
+
+Der Gratis-Plan deckt alle vier Ebenen ab, ohne Kreditkarte:
+
+- **Komplettes Journal**: CSV-Import (1/Tag), manuelle Trades, Kalender, Equity-Kurve, Analytics — für 1 Konto.
+- **1 KI-Analyse pro Woche**: dein Disziplin-Score, deine Planverstöße, deine Muster — für dich berechnet.
+- **1 von der KI strukturierte Strategie**: beschreibe sie in Alltagssprache, sie wird zu prüfbaren Regeln.
+- **Rangliste, Challenges und Wirtschaftskalender** inklusive.
+
+Die Limits sind real und benannt: ein Konto, ein Import pro Tag, eine Analyse pro Woche. Es ist eine Diagnose, kein täglicher Coach.
+
+## Wann sich ein bezahltes Journal lohnt
+
+Zwei Signale: Das **Erfassen wird zur Bremse** (automatische Synchronisation für MT4/MT5, cTrader, NinjaTrader, TradingView oder Tradovate beseitigt jede Handeingabe), oder du willst von der Wochendiagnose zum **täglichen Coaching** (Analyse jeden Morgen, ein KI-Coach, der deine Trades kennt). Bis dahin reicht kostenlos — [starte hier](/login).`,
+      },
+      es: {
+        title: "Diario de trading gratis: qué debe contener (y dónde encontrar uno en 2026)",
+        excerpt:
+          "¿Excel, Notion o una herramienta dedicada? Lo que un diario debe registrar de verdad para hacerte mejorar — y qué puedes tener gratis, sin tarjeta.",
+        body: `Todos los traders rentables llevan un diario. Pero un diario mal diseñado es entretenerse: rellenas casillas y nada cambia. Esto es lo que un diario debe contener para hacerte mejorar — y un repaso honesto de las opciones gratuitas.
+
+*Funciones y límites observados en julio de 2026.*
+
+## Qué debe registrar un buen diario
+
+Cuatro capas, por orden de importancia:
+
+1. **Los hechos**: instrumento, dirección, tamaño, entrada/salida, SL/TP, P&L neto (con comisiones y swap).
+2. **La decisión**: qué setup, qué checklist, ¿estaba en tu plan?
+3. **El estado emocional**: calmado, FOMO, revancha, cansado. La capa que el 90 % de los diarios ignora — y donde se esconden las fugas.
+4. **La revisión**: un diario que nunca relees es un diario íntimo. Necesitas una revisión que saque los patrones.
+
+## Excel o Notion: gratis, pero todo depende de ti
+
+Una hoja de cálculo cubre bien la capa 1. Las capas 2 y 3 exigen una disciplina de registro que casi nadie mantiene, y la capa 4 no existe: el analista eres tú, cada domingo, si te queda energía. Gratis en dinero, caro en fuerza de voluntad.
+
+## Lo que TradeDiscipline ofrece gratis
+
+El plan gratuito cubre las cuatro capas, sin tarjeta:
+
+- **Diario completo**: importación CSV (1/día), trades manuales, calendario, curva de equity, analytics — en 1 cuenta.
+- **1 análisis IA por semana**: tu puntuación de disciplina, tus violaciones del plan, tus patrones — calculados por ti.
+- **1 estrategia estructurada por la IA**: descríbela en lenguaje natural y se convierte en reglas verificables.
+- **Clasificación, desafíos y calendario económico** incluidos.
+
+Los límites son reales y declarados: una cuenta, una importación al día, un análisis a la semana. Es un diagnóstico, no un coach diario.
+
+## Cuándo se justifica un diario de pago
+
+Dos señales: el **registro se vuelve el freno** (la sincronización automática de MT4/MT5, cTrader, NinjaTrader, TradingView o Tradovate elimina toda entrada manual), o quieres pasar del diagnóstico semanal al **coaching diario** (análisis cada mañana, coach IA que conoce tus trades). Hasta entonces, gratis basta — [empieza aquí](/login).`,
+      },
+    },
+  },
+  {
+    slug: "suivre-son-challenge-ftmo",
+    date: "2026-07-09",
+    readingMinutes: 6,
+    cover: "prop",
+    content: {
+      fr: {
+        title: "Challenge FTMO : le suivi qui t'évite de le cramer",
+        excerpt:
+          "La plupart des challenges échouent sur les règles, pas sur la stratégie. Comment suivre ta distance aux limites en temps réel — avant qu'il ne soit trop tard.",
+        body: `Un challenge de prop firm ne se perd presque jamais sur la stratégie. Il se perd sur les **règles** : une limite journalière touchée sur un coup de tilt, un drawdown oublié. Voici comment le suivre sérieusement. (Nous ne sommes affiliés à aucune prop firm — FTMO sert ici d'exemple, les principes valent pour toutes.)
+
+## Connais tes règles exactement — pas approximativement
+
+Chez FTMO, les valeurs typiques sont ~5 % de perte max journalière et ~10 % de perte max totale (vérifie les règles en vigueur au moment de ton achat, elles évoluent). Deux subtilités qui recalent des traders rentables :
+
+- **Balance ou equity ?** La limite journalière se mesure souvent sur l'equity — un trade ouvert en perte flottante peut te recaler sans avoir fermé.
+- **Statique ou trailing ?** FTMO est en perte max statique, mais d'autres firmes utilisent un drawdown trailing qui monte avec ton pic d'équité. Confondre les deux coûte des comptes.
+
+## Les trois façons classiques de cramer un challenge
+
+1. **La revanche après une perte matinale.** Tu es à −3 % de perte journalière, il t'en reste 2. Un trade impulsif « pour te refaire » et c'est fini. La limite journalière se crame presque toujours en fin de séance.
+2. **L'oversizing pour finir vite.** L'objectif de profit n'a pas de date limite serrée dans la plupart des formules récentes — la précipitation, si.
+3. **Le relâchement une fois en profit.** Tu es à +7 %, tu te détends, tu rends 4 % en deux jours et la spirale commence.
+
+## Suis ta distance aux limites en direct, pas de tête
+
+Le calcul mental en pleine séance ne marche pas — surtout en tilt, précisément quand tu en as besoin. Il te faut un outil qui affiche en permanence : perte journalière restante, distance au drawdown, progression vers l'objectif.
+
+TradeDiscipline modélise ces règles par compte (objectif, perte journalière, drawdown statique ou trailing) avec des templates 1-clic des firmes courantes. En Premium, le **gardien de challenge** te pousse une alerte avant que tu touches une limite, et tes trades arrivent automatiquement par synchronisation MT4/MT5 — le suivi ne dépend plus de ta discipline de saisie au pire moment.
+
+## Le journal, ton assurance pour le compte financé
+
+Passer le challenge n'est que la moitié du travail : la plupart des comptes financés sont perdus dans les mois qui suivent, par les mêmes erreurs. Journaliser pendant le challenge (setups, émotions, score de discipline) te dit *comment* tu l'as passé — et si c'est reproductible. Le journal et 1 analyse IA par semaine sont gratuits, sans carte : [commence avant ton challenge](/login).`,
+      },
+      en: {
+        title: "FTMO challenge: the tracking that keeps you from blowing it",
+        excerpt:
+          "Most challenges fail on the rules, not the strategy. How to track your live distance to every limit — before it's too late.",
+        body: `A prop-firm challenge is almost never lost on strategy. It's lost on the **rules**: a daily limit hit during a tilt episode, a drawdown you forgot was there. Here's how to track it seriously. (We're not affiliated with any prop firm — FTMO is the example here; the principles apply to all of them.)
+
+## Know your rules exactly — not roughly
+
+At FTMO, typical values are ~5% max daily loss and ~10% max total loss (check the current rules when you buy — they evolve). Two subtleties that fail profitable traders:
+
+- **Balance or equity?** The daily limit is often measured on equity — an open trade in floating loss can fail you without ever closing.
+- **Static or trailing?** FTMO uses a static max loss, but other firms use a trailing drawdown that rises with your equity peak. Confusing the two costs accounts.
+
+## The three classic ways to blow a challenge
+
+1. **Revenge after a morning loss.** You're at −3% daily, 2% left. One impulsive "win it back" trade and it's over. The daily limit almost always dies late in the session.
+2. **Oversizing to finish fast.** In most recent formats the profit target has no tight deadline — your impatience does.
+3. **Relaxing once in profit.** You're at +7%, you loosen up, give back 4% in two days and the spiral starts.
+
+## Track your distance to the limits live — not in your head
+
+Mental math mid-session doesn't work, least of all in tilt, which is exactly when you need it. You need a tool that permanently shows: daily loss remaining, distance to drawdown, progress to target.
+
+TradeDiscipline models these rules per account (profit target, daily loss, static or trailing drawdown) with 1-click templates for common firms. On Premium, the **challenge guardian** pushes an alert before you touch a limit, and your trades arrive automatically via MT4/MT5 sync — tracking no longer depends on your logging discipline at the worst moment.
+
+## The journal: your insurance for the funded account
+
+Passing the challenge is half the job: most funded accounts are lost in the following months, to the same mistakes. Journaling during the challenge (setups, emotions, discipline score) tells you *how* you passed — and whether it's repeatable. The journal and 1 AI analysis per week are free, no card: [start before your challenge](/login).`,
+      },
+      de: {
+        title: "FTMO-Challenge: das Tracking, das dich vor dem Platzen bewahrt",
+        excerpt:
+          "Die meisten Challenges scheitern an den Regeln, nicht an der Strategie. Wie du deinen Live-Abstand zu jedem Limit verfolgst — bevor es zu spät ist.",
+        body: `Eine Prop-Firm-Challenge geht fast nie an der Strategie verloren. Sie geht an den **Regeln** verloren: ein Tageslimit im Tilt berührt, ein vergessener Drawdown. So verfolgst du sie ernsthaft. (Wir sind mit keiner Prop-Firma verbunden — FTMO dient als Beispiel, die Prinzipien gelten für alle.)
+
+## Kenne deine Regeln exakt — nicht ungefähr
+
+Bei FTMO sind typische Werte ~5 % maximaler Tagesverlust und ~10 % maximaler Gesamtverlust (prüfe die aktuellen Regeln beim Kauf — sie ändern sich). Zwei Feinheiten, an denen profitable Trader scheitern:
+
+- **Balance oder Equity?** Das Tageslimit wird oft auf die Equity gemessen — ein offener Trade im Minus kann dich scheitern lassen, ohne je geschlossen zu werden.
+- **Statisch oder trailing?** FTMO nutzt einen statischen Maximalverlust, andere Firmen einen Trailing-Drawdown, der mit deinem Equity-Hoch steigt. Die Verwechslung kostet Konten.
+
+## Die drei klassischen Wege, eine Challenge zu sprengen
+
+1. **Rache nach einem Morgenverlust.** Du bist bei −3 % am Tag, 2 % übrig. Ein impulsiver „Zurückholen"-Trade und es ist vorbei. Das Tageslimit stirbt fast immer spät in der Session.
+2. **Oversizing, um schnell fertig zu werden.** In den meisten aktuellen Formaten hat das Gewinnziel keine enge Frist — deine Ungeduld schon.
+3. **Nachlassen im Gewinn.** Du bist bei +7 %, wirst locker, gibst in zwei Tagen 4 % zurück, und die Spirale beginnt.
+
+## Verfolge deinen Abstand zu den Limits live — nicht im Kopf
+
+Kopfrechnen mitten in der Session funktioniert nicht, am wenigsten im Tilt — genau dann, wenn du es brauchst. Du brauchst ein Tool, das permanent zeigt: verbleibender Tagesverlust, Abstand zum Drawdown, Fortschritt zum Ziel.
+
+TradeDiscipline modelliert diese Regeln pro Konto (Ziel, Tagesverlust, statischer oder Trailing-Drawdown) mit 1-Klick-Vorlagen gängiger Firmen. Im Premium schickt der **Challenge-Wächter** eine Push-Warnung, bevor du ein Limit berührst, und deine Trades kommen automatisch per MT4/MT5-Synchronisation — das Tracking hängt nicht mehr von deiner Erfassungsdisziplin im schlechtesten Moment ab.
+
+## Das Journal: deine Versicherung fürs Funded-Konto
+
+Die Challenge zu bestehen ist die halbe Arbeit: Die meisten Funded-Konten gehen in den Folgemonaten verloren — an denselben Fehlern. Während der Challenge zu journalisieren (Setups, Emotionen, Disziplin-Score) sagt dir, *wie* du bestanden hast — und ob es wiederholbar ist. Journal und 1 KI-Analyse pro Woche sind kostenlos, ohne Karte: [starte vor deiner Challenge](/login).`,
+      },
+      es: {
+        title: "Challenge FTMO: el seguimiento que evita que lo revientes",
+        excerpt:
+          "La mayoría de los challenges fallan por las reglas, no por la estrategia. Cómo seguir tu distancia a cada límite en tiempo real — antes de que sea tarde.",
+        body: `Un challenge de prop firm casi nunca se pierde por la estrategia. Se pierde por las **reglas**: un límite diario tocado en pleno tilt, un drawdown olvidado. Así se sigue en serio. (No estamos afiliados a ninguna prop firm — FTMO es el ejemplo; los principios valen para todas.)
+
+## Conoce tus reglas con exactitud — no aproximadamente
+
+En FTMO, los valores típicos son ~5 % de pérdida máxima diaria y ~10 % de pérdida máxima total (verifica las reglas vigentes al comprar — cambian). Dos sutilezas que suspenden a traders rentables:
+
+- **¿Balance o equity?** El límite diario suele medirse sobre la equity — un trade abierto en pérdida flotante puede suspenderte sin llegar a cerrarse.
+- **¿Estático o trailing?** FTMO usa pérdida máxima estática, pero otras firmas usan un drawdown trailing que sube con tu pico de equity. Confundirlos cuesta cuentas.
+
+## Las tres formas clásicas de reventar un challenge
+
+1. **La revancha tras una pérdida matinal.** Estás a −3 % del día, te quedan 2. Un trade impulsivo "para recuperar" y se acabó. El límite diario casi siempre muere al final de la sesión.
+2. **El oversizing para acabar rápido.** En la mayoría de formatos recientes el objetivo no tiene fecha límite ajustada — tu impaciencia sí.
+3. **Relajarse al estar en beneficio.** Estás a +7 %, te sueltas, devuelves 4 % en dos días y empieza la espiral.
+
+## Sigue tu distancia a los límites en vivo — no de cabeza
+
+El cálculo mental en plena sesión no funciona, y menos en tilt, justo cuando lo necesitas. Necesitas una herramienta que muestre en todo momento: pérdida diaria restante, distancia al drawdown, progreso hacia el objetivo.
+
+TradeDiscipline modela esas reglas por cuenta (objetivo, pérdida diaria, drawdown estático o trailing) con plantillas de 1 clic de las firmas comunes. En Premium, el **guardián de challenge** te envía una alerta antes de tocar un límite, y tus trades llegan solos por sincronización MT4/MT5 — el seguimiento ya no depende de tu disciplina de registro en el peor momento.
+
+## El diario: tu seguro para la cuenta financiada
+
+Pasar el challenge es la mitad del trabajo: la mayoría de las cuentas financiadas se pierden en los meses siguientes, por los mismos errores. Registrar durante el challenge (setups, emociones, puntuación de disciplina) te dice *cómo* lo pasaste — y si es repetible. El diario y 1 análisis IA por semana son gratis, sin tarjeta: [empieza antes de tu challenge](/login).`,
+      },
+    },
+  },
+  {
+    slug: "journal-de-trading-mt5-automatique",
+    date: "2026-07-09",
+    readingMinutes: 5,
+    cover: "trend",
+    content: {
+      fr: {
+        title: "Journal de trading automatique pour MT4/MT5 : tes trades se notent tout seuls",
+        excerpt:
+          "La saisie manuelle tue 9 journaux sur 10. Comment brancher MetaTrader (et cTrader, NinjaTrader, TradingView, Tradovate) pour que ton journal se remplisse sans toi.",
+        body: `Le journal de trading échoue rarement par manque de conviction — il échoue à 22 h, quand il faudrait ressaisir huit trades à la main et que la flemme gagne. La solution n'est pas plus de volonté : c'est de supprimer la saisie.
+
+## Les trois niveaux d'automatisation
+
+| Méthode | Effort | Fraîcheur des données |
+|---|---|---|
+| Saisie manuelle | Élevé, à chaque trade | Dépend de toi |
+| Export CSV depuis MetaTrader | Moyen, quelques clics par jour | À jour quand tu y penses |
+| Synchronisation automatique (EA) | Zéro après installation | Continue |
+
+Le CSV est un bon point de départ — l'import est gratuit chez nous (1/jour). Mais le vrai déclic, c'est quand le journal se remplit sans toi.
+
+## Comment marche la synchro MetaTrader
+
+Un Expert Advisor (EA) tourne sur ton terminal MT4 ou MT5 et pousse tes trades vers ton journal via un webhook sécurisé par un token personnel. Installation en trois étapes :
+
+1. Télécharge l'EA TradeDiscipline (MT4 ou MT5) depuis les paramètres.
+2. Colle ton token de synchronisation personnel.
+3. Autorise l'URL dans les options WebRequest de MetaTrader.
+
+Ensuite, plus rien : tes trades apparaissent dans le journal, comptes Exness et autres brokers MT compris. Pas MetaTrader ? Le même rail existe pour **cTrader** (cBot), **NinjaTrader** (AddOn) et **TradingView** (webhook), et **Tradovate** se connecte par API avec une synchro horaire.
+
+## Ce que l'automatisation change vraiment
+
+Un journal complet, c'est plus qu'un confort — c'est la condition pour que le reste fonctionne :
+
+- **L'analyse IA** raisonne sur toutes tes données, pas sur les trades que tu as eu le courage de saisir (on saisit rarement ses pires trades — précisément ceux qui comptent).
+- **Les alertes de tilt et le gardien de challenge** ne peuvent te protéger en séance que si tes positions arrivent en direct.
+- **Ton historique devient fiable** : gain moyen vs perte moyenne, performance par heure, par instrument — des statistiques justes exigent des données complètes.
+
+## Par où commencer
+
+La synchronisation automatique est une fonctionnalité Premium (19,99 €/mois). Mais commence gratuit : journal complet, import CSV quotidien et 1 analyse IA par semaine, sans carte bancaire. Si l'analyse hebdo te fait progresser, l'automatisation sera une évidence — [essaie](/login).`,
+      },
+      en: {
+        title: "An automatic trading journal for MT4/MT5: your trades log themselves",
+        excerpt:
+          "Manual entry kills 9 journals out of 10. How to plug in MetaTrader (and cTrader, NinjaTrader, TradingView, Tradovate) so your journal fills itself.",
+        body: `Trading journals rarely fail for lack of conviction — they fail at 10pm, when eight trades need retyping by hand and laziness wins. The fix isn't more willpower: it's removing the typing.
+
+## The three levels of automation
+
+| Method | Effort | Data freshness |
+|---|---|---|
+| Manual entry | High, every trade | Depends on you |
+| CSV export from MetaTrader | Medium, a few clicks a day | Current when you remember |
+| Automatic sync (EA) | Zero after setup | Continuous |
+
+CSV is a fine starting point — importing is free here (1/day). But the real unlock is when the journal fills itself.
+
+## How MetaTrader sync works
+
+An Expert Advisor (EA) runs on your MT4 or MT5 terminal and pushes your trades to your journal through a webhook secured by a personal token. Three-step setup:
+
+1. Download the TradeDiscipline EA (MT4 or MT5) from settings.
+2. Paste your personal sync token.
+3. Allow the URL in MetaTrader's WebRequest options.
+
+After that, nothing: your trades just appear, Exness and other MT-broker accounts included. Not on MetaTrader? The same rail exists for **cTrader** (cBot), **NinjaTrader** (AddOn) and **TradingView** (webhook), and **Tradovate** connects via API with hourly sync.
+
+## What automation actually changes
+
+A complete journal is more than convenience — it's the precondition for everything else:
+
+- **The AI analysis** reasons over all your data, not just the trades you had the courage to type in (nobody logs their worst trades — precisely the ones that matter).
+- **Tilt alerts and the challenge guardian** can only protect you in-session if your positions arrive live.
+- **Your history becomes trustworthy**: average win vs average loss, performance by hour, by instrument — honest statistics require complete data.
+
+## Where to start
+
+Automatic sync is a Premium feature (€19.99/month). But start free: full journal, daily CSV import and 1 AI analysis per week, no credit card. If the weekly analysis moves you forward, automation will be an obvious next step — [try it](/login).`,
+      },
+      de: {
+        title: "Automatisches Trading-Journal für MT4/MT5: deine Trades erfassen sich selbst",
+        excerpt:
+          "Handeingabe killt 9 von 10 Journalen. Wie du MetaTrader (und cTrader, NinjaTrader, TradingView, Tradovate) anschließt, damit sich dein Journal von allein füllt.",
+        body: `Trading-Journale scheitern selten an mangelnder Überzeugung — sie scheitern um 22 Uhr, wenn acht Trades von Hand nachgetragen werden müssten und die Trägheit gewinnt. Die Lösung ist nicht mehr Willenskraft: Es ist das Ende der Handeingabe.
+
+## Die drei Stufen der Automatisierung
+
+| Methode | Aufwand | Datenaktualität |
+|---|---|---|
+| Handeingabe | Hoch, bei jedem Trade | Hängt von dir ab |
+| CSV-Export aus MetaTrader | Mittel, ein paar Klicks täglich | Aktuell, wenn du dran denkst |
+| Automatische Synchronisation (EA) | Null nach Einrichtung | Kontinuierlich |
+
+CSV ist ein guter Start — der Import ist bei uns kostenlos (1/Tag). Der echte Sprung kommt, wenn das Journal sich selbst füllt.
+
+## So funktioniert die MetaTrader-Synchronisation
+
+Ein Expert Advisor (EA) läuft auf deinem MT4- oder MT5-Terminal und schickt deine Trades über einen per persönlichem Token gesicherten Webhook ans Journal. Einrichtung in drei Schritten:
+
+1. Lade den TradeDiscipline-EA (MT4 oder MT5) in den Einstellungen herunter.
+2. Füge deinen persönlichen Sync-Token ein.
+3. Erlaube die URL in den WebRequest-Optionen von MetaTrader.
+
+Danach: nichts mehr. Deine Trades erscheinen von selbst, auch für Exness- und andere MT-Broker-Konten. Kein MetaTrader? Dieselbe Schiene gibt es für **cTrader** (cBot), **NinjaTrader** (AddOn) und **TradingView** (Webhook); **Tradovate** verbindet sich per API mit stündlicher Synchronisation.
+
+## Was Automatisierung wirklich ändert
+
+Ein vollständiges Journal ist mehr als Komfort — es ist die Voraussetzung für alles andere:
+
+- **Die KI-Analyse** arbeitet auf all deinen Daten, nicht nur auf den Trades, die du einzutragen den Mut hattest (die schlimmsten Trades trägt niemand ein — genau die zählen).
+- **Tilt-Warnungen und der Challenge-Wächter** schützen dich nur in der Session, wenn deine Positionen live ankommen.
+- **Deine Historie wird belastbar**: Durchschnittsgewinn vs. -verlust, Performance nach Stunde, nach Instrument — ehrliche Statistik braucht vollständige Daten.
+
+## Womit anfangen
+
+Die automatische Synchronisation ist ein Premium-Feature (19,99 €/Monat). Aber starte kostenlos: komplettes Journal, täglicher CSV-Import und 1 KI-Analyse pro Woche, ohne Kreditkarte. Wenn dich die Wochenanalyse voranbringt, ist die Automatisierung der logische nächste Schritt — [probiere es](/login).`,
+      },
+      es: {
+        title: "Diario de trading automático para MT4/MT5: tus trades se registran solos",
+        excerpt:
+          "La entrada manual mata 9 de cada 10 diarios. Cómo conectar MetaTrader (y cTrader, NinjaTrader, TradingView, Tradovate) para que tu diario se llene sin ti.",
+        body: `Los diarios de trading rara vez fracasan por falta de convicción — fracasan a las 22 h, cuando hay que reescribir ocho trades a mano y gana la pereza. La solución no es más fuerza de voluntad: es eliminar la escritura.
+
+## Los tres niveles de automatización
+
+| Método | Esfuerzo | Frescura de los datos |
+|---|---|---|
+| Entrada manual | Alto, en cada trade | Depende de ti |
+| Export CSV desde MetaTrader | Medio, unos clics al día | Al día cuando te acuerdas |
+| Sincronización automática (EA) | Cero tras la instalación | Continua |
+
+El CSV es un buen punto de partida — importar es gratis aquí (1/día). Pero el verdadero salto llega cuando el diario se llena solo.
+
+## Cómo funciona la sincronización con MetaTrader
+
+Un Expert Advisor (EA) corre en tu terminal MT4 o MT5 y envía tus trades a tu diario mediante un webhook protegido por un token personal. Instalación en tres pasos:
+
+1. Descarga el EA de TradeDiscipline (MT4 o MT5) desde los ajustes.
+2. Pega tu token de sincronización personal.
+3. Autoriza la URL en las opciones WebRequest de MetaTrader.
+
+Después, nada más: tus trades aparecen solos, cuentas de Exness y otros brokers MT incluidas. ¿No usas MetaTrader? El mismo raíl existe para **cTrader** (cBot), **NinjaTrader** (AddOn) y **TradingView** (webhook), y **Tradovate** se conecta por API con sincronización horaria.
+
+## Lo que la automatización cambia de verdad
+
+Un diario completo es más que comodidad — es la condición para que todo lo demás funcione:
+
+- **El análisis IA** razona sobre todos tus datos, no solo sobre los trades que tuviste el valor de escribir (nadie registra sus peores trades — justo los que importan).
+- **Las alertas de tilt y el guardián de challenge** solo pueden protegerte en sesión si tus posiciones llegan en vivo.
+- **Tu histórico se vuelve fiable**: ganancia media vs pérdida media, rendimiento por hora, por instrumento — una estadística honesta exige datos completos.
+
+## Por dónde empezar
+
+La sincronización automática es una función Premium (19,99 €/mes). Pero empieza gratis: diario completo, importación CSV diaria y 1 análisis IA por semana, sin tarjeta. Si el análisis semanal te hace avanzar, la automatización será el paso evidente — [pruébalo](/login).`,
+      },
+    },
+  },
+  {
     slug: "tradediscipline-vs-focuspips",
     date: "2026-07-03",
     readingMinutes: 5,
