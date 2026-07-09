@@ -79,13 +79,14 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       .eq("id", user.id)
       .single();
 
+    let effectivePlan: PlanType = "free";
     if (data) {
       // Ensure email is synced in profile
       if (user.email) {
         await supabase.from("profiles").update({ email: user.email }).eq("id", user.id);
       }
       // Check expiration
-      let effectivePlan: PlanType = (data.plan as PlanType) || "free";
+      effectivePlan = (data.plan as PlanType) || "free";
       if (data.plan_expires_at && new Date(data.plan_expires_at) < new Date()) {
         effectivePlan = "free";
       }
@@ -124,7 +125,14 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       .limit(1)
       .maybeSingle();
 
-    if (sub) {
+    // Cohérence profil/abonnement : un profil FREE avec une souscription
+    // « active/canceling » est une ligne obsolète (souscriptions de l'ère
+    // Stripe test, ou plan piloté manuellement via Supabase) — on l'ignore
+    // pour ne jamais afficher « ton abonnement se termine le … » à un free.
+    // Exception : past_due reste visible (paiement à régulariser).
+    const subIsStale = !!sub && effectivePlan === "free" && sub.status !== "past_due";
+
+    if (sub && !subIsStale) {
       setCancelAtPeriodEnd(sub.cancel_at_period_end ?? false);
       setCurrentPeriodEnd(
         sub.current_period_end ? new Date(sub.current_period_end) : null
