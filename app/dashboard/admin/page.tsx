@@ -39,6 +39,7 @@ export default function AdminPage() {
   const [funnel, setFunnel] = useState<{
     days: number; eventsTableMissing: boolean; signups: number;
     activated: number; analyzed: number; checkoutStarted: number; payingNow: number;
+    tasterUsed: number; upgradeCtaUsers: number; upgradeCtaBySource: Record<string, number>;
   } | null>(null);
   const [funnelDays, setFunnelDays] = useState<7 | 30>(30);
   const [funnelLoading, setFunnelLoading] = useState(false);
@@ -326,6 +327,38 @@ export default function AdminPage() {
                 <span className="text-sm text-muted flex-1">Payants actuellement (global)</span>
                 <span className="text-sm font-bold text-profit tabular-nums">{funnel.payingNow}</span>
                 <span className="w-14" />
+              </div>
+
+              {/* Échelle d'upgrade free→plus : quel déclencheur convertit ? */}
+              <div className="pt-3 mt-2 border-t border-border space-y-2">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted">Échelle d&apos;upgrade (free)</p>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-muted flex-1">Message coach découverte utilisé</span>
+                  <span className="text-sm font-bold text-foreground tabular-nums">{funnel.tasterUsed ?? 0}</span>
+                  <span className="w-14" />
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-muted flex-1">CTA upgrade cliqué (utilisateurs)</span>
+                  <span className="text-sm font-bold text-foreground tabular-nums">{funnel.upgradeCtaUsers ?? 0}</span>
+                  <span className="w-14" />
+                </div>
+                {Object.entries(funnel.upgradeCtaBySource ?? {})
+                  .sort(([, a], [, b]) => b - a)
+                  .map(([source, count]) => (
+                    <div key={source} className="flex items-center gap-3 pl-4">
+                      <span className="text-xs text-muted/80 flex-1">
+                        {{
+                          countdown: "Compte à rebours (quota hebdo)",
+                          teaser_coach: "Carte teaser — coach",
+                          teaser_debrief: "Carte teaser — débrief",
+                          teaser_weekly: "Carte teaser — plan hebdo",
+                          taster_footer: "Après le message découverte",
+                        }[source] ?? source}
+                      </span>
+                      <span className="text-xs font-semibold text-foreground tabular-nums">{count}</span>
+                      <span className="w-14" />
+                    </div>
+                  ))}
               </div>
               <p className="text-xs text-muted pt-2">Fenêtre : {funnel.days} derniers jours. Les % sont la conversion vers l&apos;étape précédente.</p>
             </div>

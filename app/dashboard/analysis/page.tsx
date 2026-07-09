@@ -514,6 +514,9 @@ export default function AnalysisPage() {
     setChatMessages(newMessages);
     setChatInput("");
     setChatLoading(true);
+    // Le free qui envoie son message découverte : signal clé de l'échelle
+    // d'upgrade (fire-and-forget, jamais bloquant).
+    if (plan === "free") track("taster_used");
 
     try {
       // Build trades context
@@ -963,6 +966,7 @@ export default function AnalysisPage() {
               </div>
               <Link
                 href="/dashboard/upgrade"
+                onClick={() => track("upgrade_cta_clicked", { source: "countdown" })}
                 className="shrink-0 px-4 py-2 rounded-lg bg-accent text-white text-sm font-medium hover:bg-blue-600 transition-colors text-center"
               >
                 {t("plan_ai_upgrade_cta")}
@@ -1231,6 +1235,7 @@ export default function AnalysisPage() {
                 <Link
                   key={c.key}
                   href="/dashboard/upgrade"
+                  onClick={() => track("upgrade_cta_clicked", { source: `teaser_${c.key}` })}
                   className="group bg-card border border-dashed border-border rounded-xl p-4 hover:border-accent/50 transition-colors"
                 >
                   <div className="flex items-center gap-2 mb-1.5">
@@ -1452,7 +1457,11 @@ export default function AnalysisPage() {
                   {freeTasterUsed ? (
                     <>
                       {t("coach_taster_used")}{" "}
-                      <Link href="/dashboard/upgrade" className="text-accent hover:underline">
+                      <Link
+                        href="/dashboard/upgrade"
+                        onClick={() => track("upgrade_cta_clicked", { source: "taster_footer" })}
+                        className="text-accent hover:underline"
+                      >
                         {t("coach_taster_cta")}
                       </Link>
                     </>

@@ -7,8 +7,12 @@
  * jamais d'erreur remontée (si la migration n'est pas appliquée, l'app
  * fonctionne exactement pareil). Un événement = un fait d'activation :
  *   demo_loaded · csv_imported · manual_trade_added · analysis_run ·
- *   checkout_started
+ *   checkout_started · taster_used · upgrade_cta_clicked
  * L'inscription se lit dans profiles.created_at (pas d'événement dédié).
+ *
+ * upgrade_cta_clicked porte meta.source (countdown · teaser_coach ·
+ * teaser_debrief · teaser_weekly · taster_footer) pour savoir QUEL
+ * déclencheur de l'échelle d'upgrade convertit.
  */
 
 import { createClient } from "@/lib/supabase/client";
@@ -18,7 +22,10 @@ export type ProductEvent =
   | "csv_imported"
   | "manual_trade_added"
   | "analysis_run"
-  | "checkout_started";
+  | "checkout_started"
+  // Échelle d'upgrade free→plus (2026-07-09)
+  | "taster_used"
+  | "upgrade_cta_clicked";
 
 export function track(event: ProductEvent, meta?: Record<string, unknown>): void {
   try {
