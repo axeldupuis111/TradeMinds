@@ -42,7 +42,7 @@ export default function DashboardError({
         <div className="flex gap-3 justify-center">
           <button
             onClick={reset}
-            className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors btn-scale"
+            className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors btn-scale"
           >
             {t("error_retry")}
           </button>

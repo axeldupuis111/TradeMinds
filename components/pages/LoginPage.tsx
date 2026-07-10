@@ -5,6 +5,7 @@ import PasswordRequirements, { isPasswordValid } from "@/components/auth/Passwor
 import { useLanguage } from "@/lib/LanguageContext";
 import { localizedHref } from "@/lib/locale-href";
 import { createClient } from "@/lib/supabase/client";
+import { Activity } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -86,20 +87,29 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center hero-gradient px-4 force-dark">
-      <div className="w-full max-w-sm">
+    <div className="relative min-h-screen flex items-center justify-center hero-gradient px-4 force-dark overflow-hidden">
+      {/* Ambiance — blobs dérivants assortis à la landing */}
+      <div aria-hidden className="pointer-events-none absolute inset-0">
+        <div className="blob-drift-slow absolute -top-32 -left-32 w-[420px] h-[420px] rounded-full bg-accent/[0.07] blur-3xl" />
+        <div className="blob-drift-rev absolute -bottom-40 -right-24 w-[380px] h-[380px] rounded-full bg-[#a78bfa]/[0.06] blur-3xl" />
+      </div>
+
+      <div className="relative w-full max-w-sm">
         <div className="flex justify-end mb-4">
           <LanguageSelector />
         </div>
 
         <div className="text-center mb-8">
-          <Link href={localizedHref("/", lang)} className="inline-block">
+          <Link href={localizedHref("/", lang)} className="inline-flex items-center gap-3">
+            <span className="flex w-9 h-9 items-center justify-center rounded-xl bg-accent/15 ring-1 ring-accent/30">
+              <Activity className="w-5 h-5 text-accent" strokeWidth={2} />
+            </span>
             <h1 className="text-3xl font-bold text-foreground tracking-tight">TradeDiscipline</h1>
           </Link>
           <p className="mt-2 text-muted text-sm">{t("login_subtitle")}</p>
         </div>
 
-        <div className="bg-card border border-border rounded-2xl p-8 shadow-2xl shadow-black/10">
+        <div className="bg-card/90 backdrop-blur-sm border border-border rounded-2xl p-8 shadow-2xl shadow-black/30 card-inset">
           <div className="space-y-5">
             {/* Google OAuth */}
             <button
@@ -192,7 +202,7 @@ export default function LoginPage() {
               </label>
             )}
 
-            <button onClick={signupMode ? handleSignUp : handleSignIn} disabled={loading} className="w-full py-2.5 bg-accent text-white rounded-xl font-semibold hover:bg-blue-600 disabled:opacity-50 glow-blue">
+            <button onClick={signupMode ? handleSignUp : handleSignIn} disabled={loading} className="w-full py-2.5 bg-accent text-white rounded-xl font-semibold hover:bg-accent-hover disabled:opacity-50 glow-accent btn-primary-shimmer transition-colors">
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />

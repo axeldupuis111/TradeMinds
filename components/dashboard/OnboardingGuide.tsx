@@ -158,7 +158,7 @@ export default function OnboardingGuide() {
           <Link
             href={step.href}
             onClick={next}
-            className="mt-4 flex items-center justify-center gap-2 w-full py-2.5 bg-accent text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors"
+            className="mt-4 flex items-center justify-center gap-2 w-full py-2.5 bg-accent text-white text-sm font-medium rounded-lg hover:bg-accent-hover transition-colors"
           >
             {t(step.ctaKey)} →
           </Link>

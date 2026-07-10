@@ -220,7 +220,7 @@ export default function ScreenshotAnnotator({
           </button>
           <button
             onClick={() => onSave(shapes)}
-            className="px-4 py-1.5 rounded-lg bg-accent text-white text-sm font-medium hover:bg-blue-600 transition-colors"
+            className="px-4 py-1.5 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-colors"
           >
             {t("annotate_draw_save")}
           </button>

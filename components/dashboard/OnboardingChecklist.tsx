@@ -89,7 +89,7 @@ export default function OnboardingChecklist({ state }: { state: OnboardingState 
           <Link
             href="/dashboard/leaderboard"
             onClick={() => setCelebrationClosed(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-600"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
           >
             {t("onboarding_done_cta")}
             <ArrowRight className="h-4 w-4" strokeWidth={2} />

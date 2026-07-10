@@ -222,7 +222,7 @@ export default function AdminPage() {
           <button
             onClick={handleUpdate}
             disabled={updating}
-            className="w-full py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50"
+            className="w-full py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
           >
             {updating ? "..." : t("admin_update")}
           </button>
@@ -271,7 +271,7 @@ export default function AdminPage() {
             <button
               onClick={() => handleModerateUsername("rename")}
               disabled={modUpdating}
-              className="flex-1 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50"
+              className="flex-1 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
             >
               {modUpdating ? "..." : "Renommer"}
             </button>

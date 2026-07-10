@@ -485,7 +485,7 @@ export default function UpgradePage() {
                   <button
                     onClick={() => handleCheckout("plus")}
                     disabled={checkoutLoadingPlan !== null}
-                    className="w-full mt-6 py-2.5 rounded-lg font-medium text-sm bg-accent text-white hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full mt-6 py-2.5 rounded-lg font-medium text-sm bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {checkoutLoadingPlan === "plus" ? t("upgrade_redirecting") : t("pricing_choose_plus")}
                   </button>
@@ -736,7 +736,7 @@ export default function UpgradePage() {
               <button
                 onClick={confirmPlanChange}
                 disabled={changeSubmitting || changeLoadingPreview || !changePreview}
-                className="flex-1 py-2.5 rounded-lg bg-accent text-white text-sm font-medium hover:bg-blue-600 transition-colors disabled:opacity-50"
+                className="flex-1 py-2.5 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
               >
                 {changeSubmitting ? t("planchange_processing") : t("planchange_confirm")}
               </button>

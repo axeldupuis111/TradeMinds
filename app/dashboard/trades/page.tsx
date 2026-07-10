@@ -194,7 +194,7 @@ export default function TradesPage() {
           </div>
           <a
             href="/dashboard/settings#metatrader"
-            className="px-4 py-2 rounded-lg bg-accent text-white text-sm font-medium hover:bg-blue-600 transition-colors whitespace-nowrap flex-shrink-0"
+            className="px-4 py-2 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-colors whitespace-nowrap flex-shrink-0"
           >
             {t("trades_mt_sync_cta")}
           </a>

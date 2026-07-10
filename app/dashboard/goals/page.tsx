@@ -609,7 +609,7 @@ export default function GoalsPage() {
         </div>
         <button
           onClick={() => { setShowCreate(true); setCreateMode("write"); }}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-blue-600 transition-colors shadow-lg shadow-accent/20"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-colors shadow-lg shadow-accent/20"
         >
           <Plus className="w-4 h-4" strokeWidth={2.5} /> {t("goals_new_btn")}
         </button>
@@ -793,7 +793,7 @@ export default function GoalsPage() {
                       <p className="text-xs text-muted mt-0.5">{t(r.reasonKey).replace("{v}", String(r.reasonValue))}</p>
                     </div>
                     <button onClick={() => addMetricGoal(r.metric, r.target, r.period)} disabled={busy}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-accent text-white text-xs font-semibold hover:bg-blue-600 transition-colors disabled:opacity-50 shrink-0">
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-accent text-white text-xs font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50 shrink-0">
                       <Plus className="w-3.5 h-3.5" /> {t("goals_add_quick")}
                     </button>
                     <button onClick={() => setDismissedRecos((s) => new Set(s).add(`${r.metric}:${r.period}`))}
@@ -845,7 +845,7 @@ export default function GoalsPage() {
                 <p className="text-muted text-sm">{t("goals_empty_new")}</p>
                 <button
                   onClick={() => { setShowCreate(true); setCreateMode("write"); }}
-                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-blue-600 transition-colors"
+                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-colors"
                 >
                   <Plus className="w-4 h-4" /> {t("goals_empty_cta")}
                 </button>
@@ -1258,7 +1258,7 @@ export default function GoalsPage() {
                       <Sparkles className="w-3.5 h-3.5 text-accent shrink-0" /> {t("goals_ai_hint")}
                     </p>
                     <button onClick={addCustomGoal} disabled={busy || !customText.trim()}
-                      className="mt-4 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-blue-600 transition-colors disabled:opacity-50">
+                      className="mt-4 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50">
                       <Plus className="w-4 h-4" /> {t("goals_add")}
                     </button>
                   </div>
@@ -1289,7 +1289,7 @@ export default function GoalsPage() {
                       </select>
                     </div>
                     <button onClick={async () => { await addMetricGoal(metric, parseFloat(target), period); setShowCreate(false); }} disabled={busy}
-                      className="mt-4 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-blue-600 transition-colors disabled:opacity-50">
+                      className="mt-4 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50">
                       <Plus className="w-4 h-4" /> {t("goals_add")}
                     </button>
                   </div>
@@ -1308,7 +1308,7 @@ export default function GoalsPage() {
                           </p>
                         </div>
                         <button onClick={() => applyPack(pack)} disabled={busy}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-accent text-white text-xs font-semibold hover:bg-blue-600 transition-colors disabled:opacity-50 shrink-0">
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-accent text-white text-xs font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50 shrink-0">
                           <Plus className="w-3.5 h-3.5" /> {t("goals_pack_add")}
                         </button>
                       </div>

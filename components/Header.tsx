@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 const planBadgeStyles: Record<string, string> = {
   free: "bg-surface text-muted",
   plus: "bg-accent/20 text-accent",
+  premium: "bg-gold/20 text-gold",
 };
 
 const PAGE_KEYS: Record<string, string> = {

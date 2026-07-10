@@ -804,7 +804,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
           <button
             onClick={handleSave}
             disabled={saving}
-            className="w-full py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50"
+            className="w-full py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
           >
             {saving ? "..." : saved ? t("detail_saved") : t("detail_save")}
           </button>

@@ -54,7 +54,7 @@ export function TradeGuardDialog({
         <div className="flex gap-3">
           <button
             onClick={onCancel}
-            className="flex-1 py-2.5 rounded-lg text-sm font-medium bg-accent text-white hover:bg-blue-600 transition-colors"
+            className="flex-1 py-2.5 rounded-lg text-sm font-medium bg-accent text-white hover:bg-accent-hover transition-colors"
           >
             {t("guard_respect")}
           </button>

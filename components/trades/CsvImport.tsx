@@ -142,7 +142,7 @@ function ColumnMappingModal({
           <button
             onClick={handleApply}
             disabled={!mandatoryMapped}
-            className="flex-1 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors disabled:opacity-40"
+            className="flex-1 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-40"
           >
             {t("csv_mapping_apply")}
           </button>
@@ -668,7 +668,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
             <button
               onClick={handleImport}
               disabled={importing || (activeAccounts.length > 0 && !selectedChallengeId)}
-              className="px-5 py-2 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50"
+              className="px-5 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
             >
               {importing ? t("csv_importing") : `${t("csv_import_btn")} ${preview.length} trades`}
             </button>

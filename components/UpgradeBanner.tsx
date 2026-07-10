@@ -1,22 +1,29 @@
 "use client";
 
 import { useLanguage } from "@/lib/LanguageContext";
+import { Lock, Sparkles } from "lucide-react";
 import Link from "next/link";
 
 export default function UpgradeBanner({ message }: { message: string }) {
   const { t } = useLanguage();
 
   return (
-    <div className="relative rounded-xl border border-accent/30 bg-accent/5 p-6 text-center">
-      <div className="flex flex-col items-center gap-3">
-        <svg className="w-10 h-10 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-        </svg>
-        <p className="text-foreground font-medium">{message}</p>
+    <div className="relative overflow-hidden rounded-xl border border-accent/25 bg-gradient-to-br from-accent/[0.08] via-card to-card p-8 text-center card-inset">
+      {/* Halo décoratif */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-16 left-1/2 -translate-x-1/2 w-72 h-40 rounded-full bg-accent/10 blur-3xl"
+      />
+      <div className="relative flex flex-col items-center gap-3">
+        <span className="flex w-12 h-12 items-center justify-center rounded-2xl bg-accent/10 ring-1 ring-accent/30">
+          <Lock className="w-5 h-5 text-accent" strokeWidth={1.75} />
+        </span>
+        <p className="text-foreground font-semibold">{message}</p>
         <Link
           href="/dashboard/upgrade"
-          className="mt-1 px-5 py-2 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors"
+          className="mt-1 inline-flex items-center gap-2 px-5 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors btn-primary-shimmer glow-accent"
         >
+          <Sparkles className="w-4 h-4" strokeWidth={1.75} />
           {t("plan_upgrade_btn")}
         </Link>
       </div>

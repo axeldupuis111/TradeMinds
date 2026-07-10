@@ -534,7 +534,7 @@ export default function SettingsPage() {
           disabled={!hasChanges || saving}
           className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-colors ${
             hasChanges && !saving
-              ? "bg-accent text-white hover:bg-blue-600"
+              ? "bg-accent text-white hover:bg-accent-hover"
               : "bg-surface border border-border text-muted opacity-50 cursor-not-allowed"
           }`}
         >
@@ -592,7 +592,7 @@ export default function SettingsPage() {
             className={`px-5 py-2.5 rounded-lg font-medium text-sm transition-colors ${
               mtGenerating
                 ? "bg-surface border border-border text-muted opacity-50 cursor-not-allowed"
-                : "bg-accent text-white hover:bg-blue-600"
+                : "bg-accent text-white hover:bg-accent-hover"
             }`}
           >
             {mtGenerating ? "..." : t("sync_mt_generate")}

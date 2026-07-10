@@ -208,7 +208,7 @@ export default function QuickTradeLogger({ strategyId, pairs, onClose, onSaved }
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex-1 py-2.5 bg-accent text-white rounded-lg font-medium text-sm hover:bg-blue-600 transition-colors disabled:opacity-50"
+            className="flex-1 py-2.5 bg-accent text-white rounded-lg font-medium text-sm hover:bg-accent-hover transition-colors disabled:opacity-50"
           >
             {saving ? "..." : t("session_active_log_trade")}
           </button>

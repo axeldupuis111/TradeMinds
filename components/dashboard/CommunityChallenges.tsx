@@ -82,7 +82,7 @@ export default function CommunityChallenges() {
                   className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 ${
                     c.joined
                       ? "border border-border text-muted hover:text-foreground"
-                      : "bg-accent text-white hover:bg-blue-600"
+                      : "bg-accent text-white hover:bg-accent-hover"
                   }`}
                 >
                   {c.joined ? t("cc_leave") : t("cc_join")}
