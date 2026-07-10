@@ -53,6 +53,13 @@ export const PLAN_FEATURES: PlanFeature[] = [
   { key: "plan_feat_priority_support",  free: false,         plus: false,            premium: true },
 ];
 
+/** Nombre de fonctionnalités totalement verrouillées pour un plan donné
+ *  (les lignes en quota ne comptent pas — l'utilisateur y a accès).
+ *  Affiché comme compteur de manque (sidebar, dashboard). */
+export function countLockedFeatures(plan: "free" | "plus" | "premium"): number {
+  return PLAN_FEATURES.filter((f) => f[plan] === false).length;
+}
+
 // Listes courtes affichées dans les cartes de pricing (landing + upgrade).
 export const FREE_BENEFITS = [
   "plan_benefit_free_1", "plan_benefit_free_2", "plan_benefit_free_3",

@@ -23,11 +23,13 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import {
   AlertTriangle,
+  Lock,
   Play,
   Sparkles,
   Upload,
   X,
 } from "lucide-react";
+import { countLockedFeatures } from "@/lib/plan-features";
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
@@ -270,21 +272,38 @@ export default function DashboardContent({
       {/* ── Mode démo : proposer des données fictives si compte vide ── */}
       {allTrades.length === 0 && <DemoDataCta />}
 
-      {/* ── Upsell banner ────────────────────────────────────────────── */}
+      {/* ── « Ce que tu rates » : les fonctionnalités verrouillées, visibles.
+           Remplace l'ancienne bannière upsell générique — un free doit VOIR
+           ce qui lui manque, pas le découvrir en cliquant au hasard. ── */}
       {!planLoading && plan === "free" && !upsellDismissed && (
-        <div className="mb-4 flex items-center gap-3 px-4 py-3 bg-accent/5 border border-accent/20 rounded-xl">
-          <Sparkles className="w-4 h-4 text-accent shrink-0" strokeWidth={1.5} />
-          <p className="text-sm text-foreground flex-1">{t("upsell_banner_text")}</p>
-          <Link href="/dashboard/upgrade" className="text-xs font-semibold text-accent hover:underline whitespace-nowrap">
-            {t("upsell_banner_cta")}
-          </Link>
-          <button
-            onClick={() => setUpsellDismissed(true)}
-            className="text-foreground-muted hover:text-foreground transition-colors"
-            aria-label="Dismiss"
+        <div className="mb-4 rounded-xl border border-gold/25 bg-gold/5 px-4 py-3.5">
+          <div className="flex items-center justify-between gap-3 mb-2.5">
+            <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Lock className="w-4 h-4 text-gold shrink-0" strokeWidth={1.75} />
+              {t("missing_title")}
+            </p>
+            <button
+              onClick={() => setUpsellDismissed(true)}
+              className="text-foreground-muted hover:text-foreground transition-colors"
+              aria-label="Dismiss"
+            >
+              <X className="w-4 h-4" strokeWidth={1.5} />
+            </button>
+          </div>
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 mb-3">
+            {(["missing_1", "missing_2", "missing_3", "missing_4"] as const).map((k) => (
+              <li key={k} className="flex items-start gap-2 text-sm text-foreground-muted">
+                <Lock className="w-3.5 h-3.5 text-gold/70 mt-0.5 shrink-0" strokeWidth={1.75} />
+                <span>{t(k)}</span>
+              </li>
+            ))}
+          </ul>
+          <Link
+            href="/dashboard/upgrade"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-gold hover:underline"
           >
-            <X className="w-4 h-4" strokeWidth={1.5} />
-          </button>
+            {t("missing_cta").replace("{n}", String(countLockedFeatures("free")))} →
+          </Link>
         </div>
       )}
 

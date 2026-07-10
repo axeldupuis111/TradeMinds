@@ -73,7 +73,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const { data } = await supabase
+    const { data, error: profileError } = await supabase
       .from("profiles")
       .select("plan, plan_expires_at, daily_ai_count, daily_ai_reset")
       .eq("id", user.id)
@@ -103,9 +103,12 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
         setDailyAiCount(data.daily_ai_count || 0);
         setDailyAiReset(data.daily_ai_reset);
       }
-    } else {
-      // No profile row yet — create one
-      await supabase.from("profiles").upsert({
+    } else if (profileError?.code === "PGRST116") {
+      // 0 ligne confirmé (PGRST116) — le profil n'existe vraiment pas : on le
+      // crée en free. IMPORTANT : insert, jamais upsert — un échec transitoire
+      // du select (réseau, refresh token) passait ici et l'upsert ÉCRASAIT le
+      // plan réel du profil avec "free" (downgrade silencieux de payants).
+      await supabase.from("profiles").insert({
         id: user.id,
         email: user.email,
         plan: "free",
@@ -113,6 +116,10 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       });
       setPlan("free");
       setDailyAiCount(0);
+    } else {
+      // Échec transitoire du select : ne rien écrire, ne pas downgrader
+      // l'état local — on garde le plan déjà chargé et on retentera au
+      // prochain loadPlan (auth event / refresh).
     }
 
     // Fetch active subscription for billing banners

@@ -4,7 +4,9 @@ import NavItem from "@/components/sidebar/NavItem";
 import InstallAppButton from "@/components/InstallAppButton";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
+import { countLockedFeatures } from "@/lib/plan-features";
 import {
+  Lock,
   Activity,
   BarChart3,
   Calculator,
@@ -70,6 +72,8 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
   // chargement pour éviter un flash « verrouillé » chez les abonnés.
   const lockedFor = (required?: GatePlan): GatePlan | undefined =>
     required && !loading && PLAN_RANK[plan] < PLAN_RANK[required] ? required : undefined;
+
+  const lockedCount = loading ? 0 : countLockedFeatures(plan);
 
   return (
     <>
@@ -189,6 +193,16 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
               >
                 {t("sidebar_plan_manage")}
               </button>
+              {lockedCount > 0 && (
+                <Link
+                  href="/dashboard/upgrade"
+                  onClick={onClose}
+                  className="mt-2 flex items-center gap-1.5 text-xs font-medium text-gold hover:underline"
+                >
+                  <Lock className="w-3 h-3 shrink-0" strokeWidth={2} />
+                  {t("sidebar_locked_count").replace("{n}", String(lockedCount))}
+                </Link>
+              )}
             </div>
           )}
         </div>
