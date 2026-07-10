@@ -204,7 +204,9 @@ export default function DayState() {
         )}
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      {/* 2×2 quand la carte partage la ligne avec les alertes (lg), 4 colonnes
+          quand la place le permet. */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 2xl:grid-cols-4 gap-4">
 
         {/* P&L aujourd'hui — badge directionnel bien visible */}
         <div>
