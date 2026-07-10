@@ -785,10 +785,16 @@ export default function AnalysisPage() {
     if (!pendingAutorun || planLoading || loading) return;
     if (!canUseAI || !hasStrategy) return; // la page affichera l'état adapté
     if (selectedPeriod !== "all") return;
+    // Free : attendre l'historique — si l'analyse découverte est déjà
+    // consommée (ex. auto-analyse post-import), ne pas déclencher un 403.
+    if (plan === "free") {
+      if (historyLoading) return;
+      if (history.length > 0) { setPendingAutorun(false); return; }
+    }
     setPendingAutorun(false);
     void runAnalysis();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingAutorun, planLoading, loading, canUseAI, hasStrategy, selectedPeriod]);
+  }, [pendingAutorun, planLoading, loading, canUseAI, hasStrategy, selectedPeriod, plan, historyLoading, history.length]);
 
   async function runAnalysis() {
     setError(null);
@@ -912,10 +918,12 @@ export default function AnalysisPage() {
   }
 
 
-  const aiLimitReached = aiRemaining === 0;
-  // Jours restants avant le reset hebdo du quota free (lundi, cf. getWeekStart
-  // dans PlanContext) — affiché dans l'encart « prochaine analyse gratuite ».
-  const daysUntilFreeReset = ((1 - new Date().getDay()) + 7) % 7 || 7;
+  // Plan free : 1 analyse « découverte » à vie (même mécanique que le coach).
+  // Le serveur l'accorde tant que session_reviews est vide — l'historique déjà
+  // chargé sert de marqueur côté client. Pendant son chargement on bloque le
+  // bouton sans afficher l'encart upgrade (pas de flash).
+  const freeAnalysisTasterUsed = plan === "free" && !historyLoading && history.length > 0;
+  const aiLimitReached = plan === "free" ? freeAnalysisTasterUsed : aiRemaining === 0;
 
   return (
     <div>
@@ -954,15 +962,13 @@ export default function AnalysisPage() {
           {aiLimitReached && plan !== "free" && (
             <p className="text-orange-400 text-sm mb-3">{t("plan_ai_limit_reached")}</p>
           )}
-          {/* Free : quota hebdo épuisé → rendre le manque visible (compte à
-              rebours) plutôt qu'un simple bouton grisé, avec le pont vers Plus. */}
+          {/* Free : analyse découverte consommée → rendre le manque visible
+              avec le pont vers Plus (1 analyse par jour). */}
           {aiLimitReached && plan === "free" && (
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 mb-4 bg-accent/5 border border-accent/20 rounded-xl animate-in fade-in duration-300">
               <div className="flex-1">
-                <p className="text-sm font-semibold text-foreground">{t("plan_ai_limit_reached_weekly")}</p>
-                <p className="text-xs text-muted mt-1">
-                  {(daysUntilFreeReset === 1 ? t("plan_ai_next_free_one") : t("plan_ai_next_free")).replace("{n}", String(daysUntilFreeReset))}
-                </p>
+                <p className="text-sm font-semibold text-foreground">{t("plan_ai_taster_used_title")}</p>
+                <p className="text-xs text-muted mt-1">{t("plan_ai_taster_used_desc")}</p>
               </div>
               <Link
                 href="/dashboard/upgrade"
@@ -1000,18 +1006,27 @@ export default function AnalysisPage() {
                 }
                 runAnalysis();
               }}
-              disabled={loading || !hasStrategy || tradeCount === 0 || filteredTradeCount === 0 || aiLimitReached}
+              disabled={loading || !hasStrategy || tradeCount === 0 || filteredTradeCount === 0 || aiLimitReached || (plan === "free" && historyLoading)}
               className={`px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50 btn-scale ${aiLimitReached ? "cursor-not-allowed pointer-events-none" : ""}`}
             >
-              {loading ? t("analysis_running") : aiLimitReached ? t("analysis_run_limit") : t("analysis_run")}
+              {loading
+                ? t("analysis_running")
+                : aiLimitReached
+                ? plan === "free"
+                  ? t("plan_ai_taster_used_title")
+                  : t("analysis_run_limit")
+                : t("analysis_run")}
             </button>
-            {aiRemaining !== null && !aiLimitReached && aiRemaining > 0 && (
-              <span className="text-muted text-sm">
-                ({aiRemaining} {plan === "free"
-                  ? (aiRemaining === 1 ? t("plan_ai_remaining_week_one") : t("plan_ai_remaining_week"))
-                  : (aiRemaining === 1 ? t("plan_ai_remaining_one") : t("plan_ai_remaining"))
-                })
-              </span>
+            {plan === "free" ? (
+              !historyLoading && !aiLimitReached && (
+                <span className="text-muted text-sm">({t("plan_ai_taster_available")})</span>
+              )
+            ) : (
+              aiRemaining !== null && !aiLimitReached && aiRemaining > 0 && (
+                <span className="text-muted text-sm">
+                  ({aiRemaining} {aiRemaining === 1 ? t("plan_ai_remaining_one") : t("plan_ai_remaining")})
+                </span>
+              )
             )}
           </div>
         </div>

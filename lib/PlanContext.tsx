@@ -206,8 +206,8 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
 
   // Derived permissions.
   // Depuis 2026-07 : la boucle cœur (stratégie + analyse IA) est ouverte à tous
-  // les plans — le free est limité par les quotas (1 analyse/semaine via
-  // PLAN_LIMITS) et par maxStrategies (1 stratégie).
+  // les plans — le free a 1 analyse « découverte » à vie (gate serveur dans
+  // /api/analyze, marqueur session_reviews) et maxStrategies (1 stratégie).
   const canUseStrategy = true;
   const canUseAI = true;
 

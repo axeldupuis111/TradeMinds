@@ -59,11 +59,11 @@ Un tableur trace la couche 1 correctement. Les couches 2 et 3 exigent une discip
 Le plan gratuit couvre les quatre couches, sans carte bancaire :
 
 - **Journal complet** : import CSV (1/jour), trades manuels, calendrier, courbe d'équité, analytics — sur 1 compte.
-- **1 analyse IA par semaine** : ton score de discipline, tes violations de plan, tes patterns — calculés pour toi.
+- **1 analyse IA découverte offerte** : ton score de discipline, tes violations de plan, tes patterns — calculés pour toi.
 - **1 stratégie structurée par l'IA** : tu la décris en langage naturel, elle devient des règles vérifiables.
 - **Classement, défis et calendrier économique** inclus.
 
-Les limites sont réelles et assumées : un compte, un import par jour, une analyse par semaine. C'est un diagnostic, pas un coach quotidien.
+Les limites sont réelles et assumées : un compte, un import par jour, une analyse IA découverte. C'est un diagnostic, pas un coach quotidien.
 
 ## Quand un journal payant se justifie
 
@@ -95,11 +95,11 @@ A spreadsheet handles layer 1 fine. Layers 2 and 3 demand a logging discipline a
 The free plan covers all four layers, no credit card:
 
 - **Full journal**: CSV import (1/day), manual trades, calendar, equity curve, analytics — on 1 account.
-- **1 AI analysis per week**: your discipline score, plan violations and patterns — computed for you.
+- **1 free discovery AI analysis**: your discipline score, plan violations and patterns — computed for you.
 - **1 AI-structured strategy**: describe it in plain language, it becomes checkable rules.
 - **Leaderboard, challenges and economic calendar** included.
 
-The limits are real and stated: one account, one import a day, one analysis a week. It's a diagnosis, not a daily coach.
+The limits are real and stated: one account, one import a day, one discovery AI analysis. It's a diagnosis, not a daily coach.
 
 ## When a paid journal is worth it
 
@@ -131,11 +131,11 @@ Eine Tabelle erledigt Ebene 1 ordentlich. Ebenen 2 und 3 verlangen eine Erfassun
 Der Gratis-Plan deckt alle vier Ebenen ab, ohne Kreditkarte:
 
 - **Komplettes Journal**: CSV-Import (1/Tag), manuelle Trades, Kalender, Equity-Kurve, Analytics — für 1 Konto.
-- **1 KI-Analyse pro Woche**: dein Disziplin-Score, deine Planverstöße, deine Muster — für dich berechnet.
+- **1 KI-Entdeckungs-Analyse geschenkt**: dein Disziplin-Score, deine Planverstöße, deine Muster — für dich berechnet.
 - **1 von der KI strukturierte Strategie**: beschreibe sie in Alltagssprache, sie wird zu prüfbaren Regeln.
 - **Rangliste, Challenges und Wirtschaftskalender** inklusive.
 
-Die Limits sind real und benannt: ein Konto, ein Import pro Tag, eine Analyse pro Woche. Es ist eine Diagnose, kein täglicher Coach.
+Die Limits sind real und benannt: ein Konto, ein Import pro Tag, eine KI-Entdeckungs-Analyse. Es ist eine Diagnose, kein täglicher Coach.
 
 ## Wann sich ein bezahltes Journal lohnt
 
@@ -167,11 +167,11 @@ Una hoja de cálculo cubre bien la capa 1. Las capas 2 y 3 exigen una disciplina
 El plan gratuito cubre las cuatro capas, sin tarjeta:
 
 - **Diario completo**: importación CSV (1/día), trades manuales, calendario, curva de equity, analytics — en 1 cuenta.
-- **1 análisis IA por semana**: tu puntuación de disciplina, tus violaciones del plan, tus patrones — calculados por ti.
+- **1 análisis IA de descubrimiento gratis**: tu puntuación de disciplina, tus violaciones del plan, tus patrones — calculados por ti.
 - **1 estrategia estructurada por la IA**: descríbela en lenguaje natural y se convierte en reglas verificables.
 - **Clasificación, desafíos y calendario económico** incluidos.
 
-Los límites son reales y declarados: una cuenta, una importación al día, un análisis a la semana. Es un diagnóstico, no un coach diario.
+Los límites son reales y declarados: una cuenta, una importación al día, un análisis IA de descubrimiento. Es un diagnóstico, no un coach diario.
 
 ## Cuándo se justifica un diario de pago
 
@@ -212,7 +212,7 @@ TradeDiscipline modélise ces règles par compte (objectif, perte journalière, 
 
 ## Le journal, ton assurance pour le compte financé
 
-Passer le challenge n'est que la moitié du travail : la plupart des comptes financés sont perdus dans les mois qui suivent, par les mêmes erreurs. Journaliser pendant le challenge (setups, émotions, score de discipline) te dit *comment* tu l'as passé — et si c'est reproductible. Le journal et 1 analyse IA par semaine sont gratuits, sans carte : [commence avant ton challenge](/login).`,
+Passer le challenge n'est que la moitié du travail : la plupart des comptes financés sont perdus dans les mois qui suivent, par les mêmes erreurs. Journaliser pendant le challenge (setups, émotions, score de discipline) te dit *comment* tu l'as passé — et si c'est reproductible. Le journal et 1 analyse IA découverte sont gratuits, sans carte : [commence avant ton challenge](/login).`,
       },
       en: {
         title: "FTMO challenge: the tracking that keeps you from blowing it",
@@ -241,7 +241,7 @@ TradeDiscipline models these rules per account (profit target, daily loss, stati
 
 ## The journal: your insurance for the funded account
 
-Passing the challenge is half the job: most funded accounts are lost in the following months, to the same mistakes. Journaling during the challenge (setups, emotions, discipline score) tells you *how* you passed — and whether it's repeatable. The journal and 1 AI analysis per week are free, no card: [start before your challenge](/login).`,
+Passing the challenge is half the job: most funded accounts are lost in the following months, to the same mistakes. Journaling during the challenge (setups, emotions, discipline score) tells you *how* you passed — and whether it's repeatable. The journal and 1 discovery AI analysis are free, no card: [start before your challenge](/login).`,
       },
       de: {
         title: "FTMO-Challenge: das Tracking, das dich vor dem Platzen bewahrt",
@@ -270,7 +270,7 @@ TradeDiscipline modelliert diese Regeln pro Konto (Ziel, Tagesverlust, statische
 
 ## Das Journal: deine Versicherung fürs Funded-Konto
 
-Die Challenge zu bestehen ist die halbe Arbeit: Die meisten Funded-Konten gehen in den Folgemonaten verloren — an denselben Fehlern. Während der Challenge zu journalisieren (Setups, Emotionen, Disziplin-Score) sagt dir, *wie* du bestanden hast — und ob es wiederholbar ist. Journal und 1 KI-Analyse pro Woche sind kostenlos, ohne Karte: [starte vor deiner Challenge](/login).`,
+Die Challenge zu bestehen ist die halbe Arbeit: Die meisten Funded-Konten gehen in den Folgemonaten verloren — an denselben Fehlern. Während der Challenge zu journalisieren (Setups, Emotionen, Disziplin-Score) sagt dir, *wie* du bestanden hast — und ob es wiederholbar ist. Journal und 1 KI-Entdeckungs-Analyse sind kostenlos, ohne Karte: [starte vor deiner Challenge](/login).`,
       },
       es: {
         title: "Challenge FTMO: el seguimiento que evita que lo revientes",
@@ -299,7 +299,7 @@ TradeDiscipline modela esas reglas por cuenta (objetivo, pérdida diaria, drawdo
 
 ## El diario: tu seguro para la cuenta financiada
 
-Pasar el challenge es la mitad del trabajo: la mayoría de las cuentas financiadas se pierden en los meses siguientes, por los mismos errores. Registrar durante el challenge (setups, emociones, puntuación de disciplina) te dice *cómo* lo pasaste — y si es repetible. El diario y 1 análisis IA por semana son gratis, sin tarjeta: [empieza antes de tu challenge](/login).`,
+Pasar el challenge es la mitad del trabajo: la mayoría de las cuentas financiadas se pierden en los meses siguientes, por los mismos errores. Registrar durante el challenge (setups, emociones, puntuación de disciplina) te dice *cómo* lo pasaste — y si es repetible. El diario y 1 análisis IA de descubrimiento son gratis, sin tarjeta: [empieza antes de tu challenge](/login).`,
       },
     },
   },
@@ -345,7 +345,7 @@ Un journal complet, c'est plus qu'un confort — c'est la condition pour que le 
 
 ## Par où commencer
 
-La synchronisation automatique est une fonctionnalité Premium (19,99 €/mois). Mais commence gratuit : journal complet, import CSV quotidien et 1 analyse IA par semaine, sans carte bancaire. Si l'analyse hebdo te fait progresser, l'automatisation sera une évidence — [essaie](/login).`,
+La synchronisation automatique est une fonctionnalité Premium (19,99 €/mois). Mais commence gratuit : journal complet, import CSV quotidien et 1 analyse IA découverte, sans carte bancaire. Si l'analyse te fait progresser, l'automatisation sera une évidence — [essaie](/login).`,
       },
       en: {
         title: "An automatic trading journal for MT4/MT5: your trades log themselves",
@@ -383,7 +383,7 @@ A complete journal is more than convenience — it's the precondition for everyt
 
 ## Where to start
 
-Automatic sync is a Premium feature (€19.99/month). But start free: full journal, daily CSV import and 1 AI analysis per week, no credit card. If the weekly analysis moves you forward, automation will be an obvious next step — [try it](/login).`,
+Automatic sync is a Premium feature (€19.99/month). But start free: full journal, daily CSV import and 1 discovery AI analysis, no credit card. If the analysis moves you forward, automation will be an obvious next step — [try it](/login).`,
       },
       de: {
         title: "Automatisches Trading-Journal für MT4/MT5: deine Trades erfassen sich selbst",
@@ -421,7 +421,7 @@ Ein vollständiges Journal ist mehr als Komfort — es ist die Voraussetzung fü
 
 ## Womit anfangen
 
-Die automatische Synchronisation ist ein Premium-Feature (19,99 €/Monat). Aber starte kostenlos: komplettes Journal, täglicher CSV-Import und 1 KI-Analyse pro Woche, ohne Kreditkarte. Wenn dich die Wochenanalyse voranbringt, ist die Automatisierung der logische nächste Schritt — [probiere es](/login).`,
+Die automatische Synchronisation ist ein Premium-Feature (19,99 €/Monat). Aber starte kostenlos: komplettes Journal, täglicher CSV-Import und 1 KI-Entdeckungs-Analyse, ohne Kreditkarte. Wenn dich die Analyse voranbringt, ist die Automatisierung der logische nächste Schritt — [probiere es](/login).`,
       },
       es: {
         title: "Diario de trading automático para MT4/MT5: tus trades se registran solos",
@@ -459,7 +459,7 @@ Un diario completo es más que comodidad — es la condición para que todo lo d
 
 ## Por dónde empezar
 
-La sincronización automática es una función Premium (19,99 €/mes). Pero empieza gratis: diario completo, importación CSV diaria y 1 análisis IA por semana, sin tarjeta. Si el análisis semanal te hace avanzar, la automatización será el paso evidente — [pruébalo](/login).`,
+La sincronización automática es una función Premium (19,99 €/mes). Pero empieza gratis: diario completo, importación CSV diaria y 1 análisis IA de descubrimiento, sin tarjeta. Si el análisis te hace avanzar, la automatización será el paso evidente — [pruébalo](/login).`,
       },
     },
   },
