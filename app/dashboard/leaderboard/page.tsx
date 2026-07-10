@@ -330,12 +330,13 @@ export default function LeaderboardPage() {
               <p className="text-xs text-muted">{t("leaderboard_badges_title")}</p>
               <span className="text-[11px] font-semibold text-accent tabular-nums">{earnedCount}/{badges.length}</span>
             </div>
-            <div className="grid grid-cols-4 sm:grid-cols-7 lg:grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-3 gap-2">
               {badges.map((b) => (
                 <button key={b.key} onClick={() => setSelectedBadge((cur) => (cur === b.key ? null : b.key))}
-                  className={`aspect-square rounded-xl border flex flex-col items-center justify-center gap-1 p-1 transition-transform hover:scale-105 ${selectedBadge === b.key ? "ring-1 ring-accent" : ""} ${b.earned ? "border-accent/30 bg-accent/[0.05] shadow-[0_0_12px_-3px_rgb(var(--accent)/0.5)]" : "border-border bg-surface/40 opacity-50"}`}>
-                  <span className="text-lg leading-none">{b.earned ? b.emoji : <Lock className="w-3.5 h-3.5 text-muted" />}</span>
-                  <span className="text-[8px] text-muted text-center leading-tight line-clamp-2">{t(`badge_${b.key}`)}</span>
+                  title={t(`badge_${b.key}`)}
+                  className={`rounded-xl border flex flex-col items-center gap-1.5 px-1.5 py-2.5 transition-transform hover:scale-105 ${selectedBadge === b.key ? "ring-1 ring-accent" : ""} ${b.earned ? "border-accent/30 bg-accent/[0.05] shadow-[0_0_12px_-3px_rgb(var(--accent)/0.5)]" : "border-border bg-surface/40 opacity-60"}`}>
+                  <span className="text-2xl leading-none flex items-center justify-center h-7">{b.earned ? b.emoji : <Lock className="w-4 h-4 text-muted" />}</span>
+                  <span className="text-[10px] text-foreground-muted text-center leading-[13px] h-[26px] overflow-hidden">{t(`badge_${b.key}`)}</span>
                 </button>
               ))}
             </div>
