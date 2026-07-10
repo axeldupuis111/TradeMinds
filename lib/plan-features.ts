@@ -28,6 +28,7 @@ export const PLAN_FEATURES: PlanFeature[] = [
   { key: "plan_feat_analytics",         free: true,          plus: true,             premium: true },
   { key: "plan_feat_eco_calendar",      free: true,          plus: true,             premium: true },
   { key: "plan_feat_session_pretrade",  free: true,          plus: true,             premium: true },
+  { key: "plan_feat_position_sizer",    free: true,          plus: true,             premium: true },
   { key: "plan_feat_leaderboard",       free: true,          plus: true,             premium: true },
   // ── IA ──
   { key: "plan_feat_strategy_ai",       free: "1",           plus: "plan_unlimited", premium: "plan_unlimited", groupKey: "plan_group_ai" },
@@ -47,7 +48,7 @@ export const PLAN_FEATURES: PlanFeature[] = [
   { key: "plan_feat_mt_sync",           free: false,         plus: false,            premium: true, groupKey: "plan_group_automation" },
   { key: "plan_feat_challenge_guardian", free: false,        plus: false,            premium: true },
   { key: "plan_feat_macro",             free: false,         plus: false,            premium: true },
-  { key: "plan_feat_position_sizer",    free: false,         plus: false,            premium: true },
+  { key: "plan_feat_sizer_dd",          free: false,         plus: false,            premium: true },
   { key: "plan_feat_badge_premium",     free: false,         plus: false,            premium: true },
   { key: "plan_feat_priority_support",  free: false,         plus: false,            premium: true },
 ];
