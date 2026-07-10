@@ -5,10 +5,10 @@ import { sendPushToUser } from "@/lib/push";
 import { alertCronFailure } from "@/lib/cron-alert";
 import { localHour, localWeekday } from "@/lib/timezone";
 
-// Delivered at 9am in each trader's LOCAL timezone (was a fixed 07:00 UTC =
-// 09:00 CEST). The cron now runs hourly; this gate makes each user receive it
-// once, during their local 9 o'clock hour, on local weekdays (Mon–Fri).
-const REMINDER_HOUR = 9;
+// Delivered at 8am in each trader's LOCAL timezone, before the European
+// session opens. The cron runs hourly; this gate makes each user receive it
+// once, during their local 8 o'clock hour, on local weekdays (Mon–Fri).
+const REMINDER_HOUR = 8;
 function isReminderDue(timezone: string): boolean {
   const wd = localWeekday(timezone); // 0=Sun … 6=Sat
   return localHour(timezone) === REMINDER_HOUR && wd >= 1 && wd <= 5;

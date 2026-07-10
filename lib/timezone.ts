@@ -14,6 +14,43 @@
 const FALLBACK = "UTC";
 
 /**
+ * L'ancienne page Paramètres stockait des libellés « UTC+1 » / « UTC-5 » dans
+ * profiles.timezone. Ce ne sont PAS des identifiants IANA : Intl les rejette,
+ * donc safeTz retombait sur UTC et tous les gates « heure locale » (rappel
+ * quotidien, rapport hebdo, réactivation, streak-guard, quotas IA) s'évaluaient
+ * en heure UTC. On traduit ces valeurs héritées vers la zone IANA de la ville
+ * qui était affichée dans l'ancien menu (donc avec le bon régime d'heure d'été).
+ */
+const LEGACY_TZ: Record<string, string> = {
+  "UTC+1": "Europe/Paris",
+  "UTC+2": "Europe/Helsinki",
+  "UTC+3": "Europe/Moscow",
+  "UTC+4": "Asia/Dubai",
+  "UTC+5:30": "Asia/Kolkata",
+  "UTC+8": "Asia/Singapore",
+  "UTC+9": "Asia/Tokyo",
+  "UTC-5": "America/New_York",
+  "UTC-6": "America/Chicago",
+  "UTC-7": "America/Denver",
+  "UTC-8": "America/Los_Angeles",
+};
+
+/**
+ * Resolve a stored profile timezone to a valid IANA identifier: translates
+ * legacy "UTC±N" labels, validates against Intl, falls back to UTC.
+ */
+export function normalizeTimezone(tz?: string | null): string {
+  if (!tz) return FALLBACK;
+  const candidate = LEGACY_TZ[tz] ?? tz;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: candidate });
+    return candidate;
+  } catch {
+    return FALLBACK;
+  }
+}
+
+/**
  * The browser's IANA timezone (client-only). Real-time guards use this — it
  * reflects where the trader physically is right now. Server paths (crons,
  * emails, daily-loss push) use the profile timezone instead. Falls back to UTC.
@@ -27,13 +64,7 @@ export function browserTimezone(): string {
 }
 
 function safeTz(tz?: string | null): string {
-  if (!tz) return FALLBACK;
-  try {
-    new Intl.DateTimeFormat("en-US", { timeZone: tz });
-    return tz;
-  } catch {
-    return FALLBACK;
-  }
+  return normalizeTimezone(tz);
 }
 
 /** Wall-clock parts of `at` as seen in `tz`. */
