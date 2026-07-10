@@ -655,7 +655,11 @@ export default function PositionSizer({ strategy }: Props) {
                   })()
                 ) : (
                   <p className="text-sm text-muted">
-                    {!slPips || !pipValue ? t("sizer_fill_sl_pip") : t("sizer_lot_unavailable")}
+                    {!maxRisk
+                      ? t("sizer_fill_balance_risk")
+                      : !slPips || !pipValue
+                      ? t("sizer_fill_sl_pip")
+                      : t("sizer_lot_unavailable")}
                   </p>
                 )}
               </div>

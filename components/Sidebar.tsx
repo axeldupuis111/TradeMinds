@@ -24,8 +24,13 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { LucideIcon } from "lucide-react";
 
-const tradingItems = [
+// requiredPlan = plan minimum pour utiliser la page (mur d'upgrade en dessous).
+// Doit refléter le gating réel des pages : review → isPaid, macro → premium.
+type GatePlan = "plus" | "premium";
+
+const tradingItems: { key: string; href: string; icon: LucideIcon; requiredPlan?: GatePlan }[] = [
   { key: "sidebar_dashboard", href: "/dashboard",          icon: LayoutDashboard },
   { key: "sidebar_session",   href: "/dashboard/session",  icon: Play },
   { key: "sidebar_sizer",     href: "/dashboard/sizer",    icon: Calculator },
@@ -33,16 +38,18 @@ const tradingItems = [
   { key: "sidebar_challenge", href: "/dashboard/challenge", icon: Wallet },
 ];
 
-const analyseItems = [
+const analyseItems: { key: string; href: string; icon: LucideIcon; requiredPlan?: GatePlan }[] = [
   { key: "sidebar_strategy",  href: "/dashboard/strategy",  icon: Target },
   { key: "sidebar_analysis",  href: "/dashboard/analysis",  icon: Sparkles },
   { key: "sidebar_analytics", href: "/dashboard/analytics", icon: BarChart3 },
   { key: "sidebar_calendar",  href: "/dashboard/calendar",  icon: CalendarClock },
-  { key: "sidebar_macro",     href: "/dashboard/macro",     icon: Globe2 },
+  { key: "sidebar_macro",     href: "/dashboard/macro",     icon: Globe2, requiredPlan: "premium" },
   { key: "sidebar_goals",     href: "/dashboard/goals",     icon: Flag },
-  { key: "sidebar_review",    href: "/dashboard/review",    icon: CalendarCheck },
+  { key: "sidebar_review",    href: "/dashboard/review",    icon: CalendarCheck, requiredPlan: "plus" },
   { key: "sidebar_leaderboard", href: "/dashboard/leaderboard", icon: Trophy },
 ];
+
+const PLAN_RANK: Record<string, number> = { free: 0, plus: 1, premium: 2 };
 
 const planBadgeClass: Record<string, string> = {
   free:    "bg-surface text-muted",
@@ -58,6 +65,11 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
   const showUpgrade = !loading && plan === "free";
   const badgeClass = planBadgeClass[plan] || planBadgeClass.free;
   const planLabel = plan === "plus" ? t("plan_plus") : plan === "premium" ? t("plan_premium") : t("plan_free");
+
+  // Verrou visible sur les onglets hors plan — pas de badge pendant le
+  // chargement pour éviter un flash « verrouillé » chez les abonnés.
+  const lockedFor = (required?: GatePlan): GatePlan | undefined =>
+    required && !loading && PLAN_RANK[plan] < PLAN_RANK[required] ? required : undefined;
 
   return (
     <>
@@ -95,6 +107,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
                   href={item.href}
                   icon={item.icon}
                   labelKey={item.key}
+                  lockedPlan={lockedFor(item.requiredPlan)}
                   onNavigate={onClose}
                 />
               ))}
@@ -116,6 +129,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
                   href={item.href}
                   icon={item.icon}
                   labelKey={item.key}
+                  lockedPlan={lockedFor(item.requiredPlan)}
                   onNavigate={onClose}
                 />
               ))}
