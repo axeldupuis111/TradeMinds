@@ -1,6 +1,7 @@
 "use client";
 
 import { useLanguage } from "@/lib/LanguageContext";
+import { usePlan } from "@/lib/PlanContext";
 import { Activity, ArrowUp, ArrowDown, Award, BadgeCheck, Crown, Minus, Lock, Share2, Trophy, Users, UserPlus, Gauge, CalendarDays, Flame, Rocket } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -78,6 +79,9 @@ function tierProgress(s: number): { floor: number; next: number | null; nextKey:
 // fournit : un badge est un acquis, il ne doit pas disparaître en changeant
 // de période d'affichage.
 type Badge = { key: string; emoji: string; earned: boolean; progress: { current: number; target: number } | null };
+// Seul badge déblocable en plan free — les 12 autres se gagnent à partir du
+// Plus (gate UI ci-dessous : ils restent visibles pour donner envie).
+const FREE_BADGE_KEY = "first_session";
 function badgesFor(s: Self): Badge[] {
   const at = s.allTime;
   const sessions = Math.max(s.sessions, at?.totalSessions ?? 0);
@@ -115,6 +119,10 @@ function Delta({ d }: { d: number | null }) {
 
 export default function LeaderboardPage() {
   const { t, lang } = useLanguage();
+  const { plan, loading: planLoading } = usePlan();
+  // Pas de verrou pendant le chargement du plan pour éviter un flash
+  // « verrouillé » chez les abonnés (même précaution que la sidebar).
+  const badgesPlanLocked = !planLoading && plan === "free";
   const [entries, setEntries] = useState<Entry[]>([]);
   const [around, setAround] = useState<Entry[]>([]);
   const [self, setSelf] = useState<Self | null>(null);
@@ -320,10 +328,13 @@ export default function LeaderboardPage() {
         </div>
       )}
 
-      {/* Badges */}
+      {/* Badges — en free, seul le 1er est déblocable ; les autres restent
+          visibles (grisés + verrou Plus) pour rendre le manque concret. */}
       {self && (() => {
         const badges = badgesFor(self);
-        const earnedCount = badges.filter((b) => b.earned).length;
+        const isPlanLocked = (b: Badge) => badgesPlanLocked && b.key !== FREE_BADGE_KEY;
+        const earnedCount = badges.filter((b) => b.earned && !isPlanLocked(b)).length;
+        const planLockedCount = badges.filter(isPlanLocked).length;
         return (
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -331,30 +342,52 @@ export default function LeaderboardPage() {
               <span className="text-[11px] font-semibold text-accent tabular-nums">{earnedCount}/{badges.length}</span>
             </div>
             <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-3 gap-2">
-              {badges.map((b) => (
+              {badges.map((b) => {
+                const locked = isPlanLocked(b);
+                const earned = b.earned && !locked;
+                return (
                 <button key={b.key} onClick={() => setSelectedBadge((cur) => (cur === b.key ? null : b.key))}
                   title={t(`badge_${b.key}`)}
-                  className={`rounded-xl border flex flex-col items-center gap-1.5 px-1.5 py-2.5 transition-transform hover:scale-105 ${selectedBadge === b.key ? "ring-1 ring-accent" : ""} ${b.earned ? "border-accent/30 bg-accent/[0.05] shadow-[0_0_12px_-3px_rgb(var(--accent)/0.5)]" : "border-border bg-surface/40 opacity-60"}`}>
-                  <span className="text-2xl leading-none flex items-center justify-center h-7">{b.earned ? b.emoji : <Lock className="w-4 h-4 text-muted" />}</span>
+                  className={`relative rounded-xl border flex flex-col items-center gap-1.5 px-1.5 py-2.5 transition-transform hover:scale-105 ${selectedBadge === b.key ? "ring-1 ring-accent" : ""} ${earned ? "border-accent/30 bg-accent/[0.05] shadow-[0_0_12px_-3px_rgb(var(--accent)/0.5)]" : "border-border bg-surface/40 opacity-60"}`}>
+                  {locked && (
+                    <span className="absolute top-1 right-1 inline-flex items-center justify-center w-4 h-4 rounded-full bg-accent/15" aria-label={t("leaderboard_badge_plus_locked")}>
+                      <Lock className="w-2.5 h-2.5 text-accent" strokeWidth={2.5} />
+                    </span>
+                  )}
+                  <span className={`text-2xl leading-none flex items-center justify-center h-7 ${locked ? "grayscale opacity-70" : ""}`}>{earned || locked ? b.emoji : <Lock className="w-4 h-4 text-muted" />}</span>
                   <span className="text-[10px] text-foreground-muted text-center leading-[13px] h-[26px] overflow-hidden">{t(`badge_${b.key}`)}</span>
                 </button>
-              ))}
+                );
+              })}
             </div>
-            {/* Détail du badge sélectionné : critère + progression */}
+            {badgesPlanLocked && (
+              <Link href="/dashboard/upgrade" className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-gold hover:underline">
+                <Lock className="w-3 h-3 shrink-0" strokeWidth={2} />
+                {t("leaderboard_badges_plus_note").replace("{n}", String(planLockedCount))}
+              </Link>
+            )}
+            {/* Détail du badge sélectionné : critère + progression (ou upsell si hors plan) */}
             {selectedBadge && (() => {
               const b = badges.find((x) => x.key === selectedBadge);
               if (!b) return null;
+              const locked = isPlanLocked(b);
+              const earned = b.earned && !locked;
               return (
                 <div className="mt-2 rounded-xl border border-border bg-surface/40 p-3">
                   <div className="flex items-center gap-2.5">
-                    <span className="text-xl leading-none shrink-0">{b.earned ? b.emoji : "🔒"}</span>
+                    <span className={`text-xl leading-none shrink-0 ${locked ? "grayscale opacity-70" : ""}`}>{earned || locked ? b.emoji : "🔒"}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-foreground">{t(`badge_${b.key}`)}</p>
                       <p className="text-xs text-muted">{t(`badge_${b.key}_hint`)}</p>
                     </div>
-                    {b.earned && <span className="text-[11px] font-semibold text-profit shrink-0">✓ {t("leaderboard_badge_earned")}</span>}
+                    {earned && <span className="text-[11px] font-semibold text-profit shrink-0">✓ {t("leaderboard_badge_earned")}</span>}
                   </div>
-                  {!b.earned && b.progress && (
+                  {locked ? (
+                    <div className="mt-2.5 flex items-center justify-between gap-2 rounded-lg bg-accent/[0.06] border border-accent/20 px-3 py-2">
+                      <span className="text-[11px] text-foreground-muted">{t("leaderboard_badge_plus_locked")}</span>
+                      <Link href="/dashboard/upgrade" className="text-[11px] font-semibold text-accent hover:underline shrink-0">{t("leaderboard_badge_plus_cta")} →</Link>
+                    </div>
+                  ) : !b.earned && b.progress && (
                     <div className="mt-2.5">
                       <div className="flex items-center justify-between text-[11px] text-muted mb-1">
                         <span>{t("leaderboard_badge_progress")}</span>

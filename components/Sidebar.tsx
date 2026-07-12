@@ -46,7 +46,7 @@ const analyseItems: { key: string; href: string; icon: LucideIcon; requiredPlan?
   { key: "sidebar_analytics", href: "/dashboard/analytics", icon: BarChart3 },
   { key: "sidebar_calendar",  href: "/dashboard/calendar",  icon: CalendarClock },
   { key: "sidebar_macro",     href: "/dashboard/macro",     icon: Globe2, requiredPlan: "premium" },
-  { key: "sidebar_goals",     href: "/dashboard/goals",     icon: Flag },
+  { key: "sidebar_goals",     href: "/dashboard/goals",     icon: Flag, requiredPlan: "plus" },
   { key: "sidebar_review",    href: "/dashboard/review",    icon: CalendarCheck, requiredPlan: "plus" },
   { key: "sidebar_leaderboard", href: "/dashboard/leaderboard", icon: Trophy },
 ];

@@ -30,6 +30,8 @@ export const PLAN_FEATURES: PlanFeature[] = [
   { key: "plan_feat_session_pretrade",  free: true,          plus: true,             premium: true },
   { key: "plan_feat_position_sizer",    free: true,          plus: true,             premium: true },
   { key: "plan_feat_leaderboard",       free: true,          plus: true,             premium: true },
+  // Free : seul le 1er badge est déblocable (gate UI dans la page classement).
+  { key: "plan_feat_badges",            free: "1",           plus: true,             premium: true },
   // ── IA ──
   { key: "plan_feat_strategy_ai",       free: "1",           plus: "plan_unlimited", premium: "plan_unlimited", groupKey: "plan_group_ai" },
   // Free : 1 analyse « découverte » à vie (gate serveur dans /api/analyze).
@@ -41,7 +43,9 @@ export const PLAN_FEATURES: PlanFeature[] = [
   { key: "plan_feat_daily_summary",     free: false,         plus: true,             premium: true },
   { key: "plan_feat_goals_ai",          free: false,         plus: true,             premium: true },
   // ── Discipline & bilan ──
-  { key: "plan_feat_tags_emotions",     free: false,         plus: true,             premium: true, groupKey: "plan_group_review" },
+  // Page Objectifs & centre de discipline (gate UI dans la page + verrou sidebar).
+  { key: "plan_feat_goals_hub",         free: false,         plus: true,             premium: true, groupKey: "plan_group_review" },
+  { key: "plan_feat_tags_emotions",     free: false,         plus: true,             premium: true },
   { key: "plan_feat_monthly_review",    free: false,         plus: true,             premium: true },
   { key: "plan_feat_pdf_export",        free: false,         plus: true,             premium: true },
   { key: "plan_feat_public_profile",    free: false,         plus: true,             premium: true },
