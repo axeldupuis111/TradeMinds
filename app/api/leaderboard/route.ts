@@ -4,6 +4,7 @@ import { createClient as createAdmin } from "@supabase/supabase-js";
 import { isUsernameDisplayable } from "@/lib/username-moderation";
 import { computeAllTimeStats } from "@/lib/leaderboard-extras";
 import { getCommunityChallenge } from "@/lib/community-challenges";
+import { FREE_BADGE_KEY, awardMeta, bestFlair, computeBadges, type BadgeStats } from "@/lib/badges";
 
 export const dynamic = "force-dynamic";
 
@@ -83,7 +84,7 @@ export async function GET(req: NextRequest) {
 
   // ── Métriques personnelles (TOUJOURS calculées, même non opt-in / non classé) ──
   const { data: selfProfile } = await admin
-    .from("profiles").select("leaderboard_opt_in, username, timezone").eq("id", user.id).single();
+    .from("profiles").select("leaderboard_opt_in, username, timezone, plan, plan_expires_at").eq("id", user.id).single();
   const { data: selfReviews } = await admin
     .from("session_reviews").select("user_id, discipline_score, created_at").eq("user_id", user.id).gte("created_at", sinceCur);
   const selfM = computeMetrics((selfReviews ?? []) as ReviewRow[]);
@@ -98,18 +99,78 @@ export async function GET(req: NextRequest) {
   const { data: profiles } = await admin
     .from("profiles").select("id, username, plan").eq("leaderboard_opt_in", true).not("username", "is", null);
 
+  // Plan effectif (expiration comprise) — les badges au-delà du 1ᵉʳ ne
+  // s'octroient qu'aux plans payants (cohérent avec le gate UI).
+  const planExpired = !!selfProfile?.plan_expires_at && new Date(selfProfile.plan_expires_at as string) < new Date();
+  const effectivePlan = planExpired ? "free" : ((selfProfile?.plan as string) || "free");
+  const selfUsername = isUsernameDisplayable(selfProfile?.username as string | null) ? (selfProfile?.username as string) : null;
+
+  // ── Octroi des badges (persistant + idempotent) ─────────────────────────────
+  // Un badge gagné est un ACQUIS : on le fige dans badge_awards avec son
+  // contexte (certificat). Seul le serveur écrit — le client ne peut pas
+  // s'auto-attribuer un badge. Fail-open si la migration n'est pas appliquée.
+  type AwardRow = { badge_key: string; awarded_at: string; meta: Record<string, unknown> | null };
+  async function syncAwards(rank: number | null, percentile: number | null): Promise<{
+    awards: Record<string, { awardedAt: string; meta: Record<string, unknown> | null }>;
+    newlyAwarded: string[];
+  }> {
+    const stats: BadgeStats = {
+      sessions: Math.max(selfM.sessions, allTime.totalSessions),
+      streak: Math.max(selfM.streak, allTime.bestStreak),
+      score: selfM.avgScore,
+      periodSessions: selfM.sessions,
+      goldDays: allTime.goldDays,
+      comeback: allTime.comeback,
+      earlyBird: allTime.earlyBird,
+      weekendSessions: allTime.weekendSessions,
+      ranked: rank != null,
+      rank, percentile,
+    };
+    try {
+      const { data: existing, error } = await admin
+        .from("badge_awards").select("badge_key, awarded_at, meta").eq("user_id", user!.id);
+      if (error) return { awards: {}, newlyAwarded: [] };
+      const have = new Set((existing ?? []).map((r) => r.badge_key as string));
+      const earned = computeBadges(stats).filter((b) => b.earned);
+      const allowed = effectivePlan === "free" ? earned.filter((b) => b.key === FREE_BADGE_KEY) : earned;
+      const season = new Date().toISOString().slice(0, 7);
+      const toInsert = allowed
+        .filter((b) => !have.has(b.key))
+        .map((b) => ({ user_id: user!.id, badge_key: b.key, meta: awardMeta(b.key, stats, season) }));
+      let inserted: AwardRow[] = [];
+      if (toInsert.length > 0) {
+        // ignoreDuplicates : une requête concurrente peut avoir octroyé le même
+        // badge entre le select et l'insert — la contrainte unique tranche.
+        const { data: ins } = await admin
+          .from("badge_awards")
+          .upsert(toInsert, { onConflict: "user_id,badge_key", ignoreDuplicates: true })
+          .select("badge_key, awarded_at, meta");
+        inserted = (ins ?? []) as AwardRow[];
+      }
+      const awards: Record<string, { awardedAt: string; meta: Record<string, unknown> | null }> = {};
+      for (const r of [...((existing ?? []) as AwardRow[]), ...inserted]) {
+        awards[r.badge_key] = { awardedAt: r.awarded_at, meta: r.meta };
+      }
+      return { awards, newlyAwarded: inserted.map((r) => r.badge_key) };
+    } catch {
+      return { awards: {}, newlyAwarded: [] };
+    }
+  }
+
   // Base "self" renvoyée dans tous les cas (alimente la carte stats + badges).
   function buildSelf(rank: number | null, percentile: number | null) {
     return {
       score: selfM.avgScore, sessions: selfM.sessions, streak: selfM.streak,
       optedIn: !!selfProfile?.leaderboard_opt_in, hasUsername: !!selfProfile?.username,
+      username: selfUsername,
       ranked: rank != null, rank, percentile,
       allTime,
     };
   }
 
   if (!profiles || profiles.length === 0) {
-    return NextResponse.json({ entries: [], me: null, total: 0, days: season ? "season" : days, mode, self: buildSelf(null, null), feed: [] });
+    const { awards, newlyAwarded } = await syncAwards(null, null);
+    return NextResponse.json({ entries: [], me: null, total: 0, days: season ? "season" : days, mode, self: { ...buildSelf(null, null), awards, newlyAwarded }, feed: [] });
   }
 
   const ids = profiles.map((p) => p.id);
@@ -151,6 +212,24 @@ export async function GET(req: NextRequest) {
   const sorted = [...curRows].sort((a, b) =>
     valueFor(b.m, mode) - valueFor(a.m, mode) || b.m.sessions - a.m.sessions || b.m.avgScore - a.m.avgScore);
 
+  // Emblème de badge à côté du pseudo (récompense de statut, visible par tous).
+  // Fail-open : sans la table badge_awards, personne n'a de flair.
+  const flairById = new Map<string, string | null>();
+  try {
+    const rankedIds = sorted.map((r) => r.id);
+    if (rankedIds.length > 0) {
+      const { data: awardRows } = await admin
+        .from("badge_awards").select("user_id, badge_key").in("user_id", rankedIds);
+      const keysByUser = new Map<string, string[]>();
+      for (const r of awardRows ?? []) {
+        const arr = keysByUser.get(r.user_id as string) ?? [];
+        arr.push(r.badge_key as string);
+        keysByUser.set(r.user_id as string, arr);
+      }
+      for (const [id, keys] of Array.from(keysByUser.entries())) flairById.set(id, bestFlair(keys));
+    }
+  } catch { /* table absente — pas de flair */ }
+
   const ranked = sorted.map((r, i) => {
     const rank = i + 1;
     const prevRank = prevRanks.get(r.username);
@@ -163,6 +242,7 @@ export async function GET(req: NextRequest) {
       value: valueFor(r.m, mode),
       isMe: r.id === user.id,
       premium: premiumById.get(r.id) ?? false,
+      flair: flairById.get(r.id) ?? null,
       delta: prevRank ? prevRank - rank : null, // >0 = monté, null = nouveau
     };
   });
@@ -223,9 +303,11 @@ export async function GET(req: NextRequest) {
     feed.push({ type: "join", user: name, challengeKey: j.challenge_key as string, at: j.joined_at as string });
   }
 
+  const { awards, newlyAwarded } = await syncAwards(me?.rank ?? null, me?.percentile ?? null);
+
   return NextResponse.json({
     entries: ranked.slice(0, 50), around, me, total, days: season ? "season" : days, mode,
-    self: buildSelf(me?.rank ?? null, me?.percentile ?? null),
+    self: { ...buildSelf(me?.rank ?? null, me?.percentile ?? null), awards, newlyAwarded },
     feed,
   });
 }

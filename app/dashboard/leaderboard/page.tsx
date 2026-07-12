@@ -2,7 +2,9 @@
 
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
-import { Activity, ArrowUp, ArrowDown, Award, BadgeCheck, Crown, Minus, Lock, Share2, Trophy, Users, UserPlus, Gauge, CalendarDays, Flame, Rocket } from "lucide-react";
+import { BADGE_EMOJI, BADGE_REWARDS, FREE_BADGE_KEY, computeBadges, type BadgeKey, type BadgeState } from "@/lib/badges";
+import { generateBadgeCertificate, hasCertificate, type CertLang } from "@/lib/badge-certificate";
+import { Activity, ArrowUp, ArrowDown, Award, BadgeCheck, Crown, Minus, Lock, Share2, Trophy, Users, UserPlus, Gauge, CalendarDays, Flame, Rocket, FileDown, Gift, Snowflake } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import CountUp from "@/components/animations/CountUp";
@@ -22,7 +24,7 @@ type FeedItem =
 
 interface Entry {
   rank: number; username: string; score: number; sessions: number; streak: number;
-  value: number; isMe: boolean; premium: boolean; delta: number | null;
+  value: number; isMe: boolean; premium: boolean; flair: string | null; delta: number | null;
 }
 
 // Badge de statut des membres Premium (avantage du plan, visible par tous).
@@ -35,8 +37,12 @@ interface AllTime {
 }
 interface Self {
   score: number; sessions: number; streak: number;
-  optedIn: boolean; hasUsername: boolean; ranked: boolean; rank: number | null; percentile: number | null;
+  optedIn: boolean; hasUsername: boolean; username?: string | null;
+  ranked: boolean; rank: number | null; percentile: number | null;
   allTime?: AllTime;
+  /** Badges acquis persistés côté serveur (absent si migration non appliquée). */
+  awards?: Record<string, { awardedAt: string; meta: Record<string, unknown> | null }>;
+  newlyAwarded?: string[];
 }
 
 const MODES: { id: Mode; icon: typeof Gauge }[] = [
@@ -73,34 +79,27 @@ function tierProgress(s: number): { floor: number; next: number | null; nextKey:
   return { floor: 0, next: 50, nextKey: "silver", pct: (s / 50) * 100, bar: "from-orange-400 to-slate-300" };
 }
 
-// Catalogue de badges évalués à partir des stats perso, avec progression
-// (current/target) pour ceux qui se débloquent par paliers chiffrés.
-// Les badges de série/volume utilisent les stats TOUS TEMPS quand l'API les
-// fournit : un badge est un acquis, il ne doit pas disparaître en changeant
-// de période d'affichage.
-type Badge = { key: string; emoji: string; earned: boolean; progress: { current: number; target: number } | null };
-// Seul badge déblocable en plan free — les 12 autres se gagnent à partir du
-// Plus (gate UI ci-dessous : ils restent visibles pour donner envie).
-const FREE_BADGE_KEY = "first_session";
-function badgesFor(s: Self): Badge[] {
+// Badges évalués depuis les stats perso via le catalogue partagé lib/badges
+// (même logique que l'octroi serveur). Les badges de série/volume utilisent
+// les stats TOUS TEMPS quand l'API les fournit : un badge est un acquis, il
+// ne doit pas disparaître en changeant de période d'affichage — et une fois
+// persisté dans awards, il reste acquis même si les stats redescendent.
+function badgesFor(s: Self): BadgeState[] {
   const at = s.allTime;
-  const sessions = Math.max(s.sessions, at?.totalSessions ?? 0);
-  const streak = Math.max(s.streak, at?.bestStreak ?? 0);
-  return [
-    { key: "first_session", emoji: "✅", earned: sessions >= 1, progress: { current: sessions, target: 1 } },
-    { key: "regular", emoji: "📅", earned: sessions >= 20, progress: { current: sessions, target: 20 } },
-    { key: "streak_7", emoji: "🔥", earned: streak >= 7, progress: { current: streak, target: 7 } },
-    { key: "streak_30", emoji: "⚡", earned: streak >= 30, progress: { current: streak, target: 30 } },
-    { key: "streak_90", emoji: "🌋", earned: streak >= 90, progress: { current: streak, target: 90 } },
-    { key: "discipline_gold", emoji: "🏅", earned: s.score >= 85 && s.sessions >= 3, progress: { current: s.score, target: 85 } },
-    { key: "gold_days", emoji: "✨", earned: (at?.goldDays ?? 0) >= 10, progress: { current: at?.goldDays ?? 0, target: 10 } },
-    { key: "marathon", emoji: "🏃", earned: sessions >= 100, progress: { current: sessions, target: 100 } },
-    { key: "comeback", emoji: "💪", earned: at?.comeback ?? false, progress: null },
-    { key: "early_bird", emoji: "🌅", earned: (at?.earlyBird ?? 0) >= 10, progress: { current: at?.earlyBird ?? 0, target: 10 } },
-    { key: "weekend", emoji: "🛡️", earned: (at?.weekendSessions ?? 0) >= 8, progress: { current: at?.weekendSessions ?? 0, target: 8 } },
-    { key: "top10", emoji: "🎯", earned: s.ranked && s.percentile != null && s.percentile <= 10, progress: null },
-    { key: "podium", emoji: "🏆", earned: s.ranked && s.rank != null && s.rank <= 3, progress: null },
-  ];
+  const computed = computeBadges({
+    sessions: Math.max(s.sessions, at?.totalSessions ?? 0),
+    streak: Math.max(s.streak, at?.bestStreak ?? 0),
+    score: s.score,
+    periodSessions: s.sessions,
+    goldDays: at?.goldDays ?? 0,
+    comeback: at?.comeback ?? false,
+    earlyBird: at?.earlyBird ?? 0,
+    weekendSessions: at?.weekendSessions ?? 0,
+    ranked: s.ranked,
+    rank: s.rank,
+    percentile: s.percentile,
+  });
+  return computed.map((b) => (s.awards?.[b.key] ? { ...b, earned: true } : b));
 }
 
 function Avatar({ name, isMe }: { name: string; isMe: boolean }) {
@@ -134,6 +133,8 @@ export default function LeaderboardPage() {
   const [loading, setLoading] = useState(true);
   const [showConfetti, setShowConfetti] = useState(false);
   const [selectedBadge, setSelectedBadge] = useState<string | null>(null);
+  // Badges fraîchement octroyés par le serveur (bannière + confettis).
+  const [newBadges, setNewBadges] = useState<string[]>([]);
   const [showShare, setShowShare] = useState(false);
   const [inviteCopied, setInviteCopied] = useState(false);
   const celebrated = useRef(false);
@@ -145,6 +146,11 @@ export default function LeaderboardPage() {
       const data = await res.json();
       setEntries(data.entries ?? []); setAround(data.around ?? []); setSelf(data.self ?? null); setTotal(data.total ?? 0);
       setFeed(data.feed ?? []);
+      // Célébration des badges que le serveur vient tout juste d'octroyer.
+      if (Array.isArray(data.self?.newlyAwarded) && data.self.newlyAwarded.length > 0) {
+        setNewBadges(data.self.newlyAwarded);
+        setShowConfetti(true);
+      }
     } catch {
       // Network/parse failure → degrade to an empty board rather than leaving an
       // unhandled rejection and stale data.
@@ -230,6 +236,20 @@ export default function LeaderboardPage() {
       <div className="mt-4 lg:grid lg:grid-cols-3 lg:gap-6 lg:items-start">
       {/* Rail : tes stats + badges + invite (droite sur grand écran, haut sur mobile) */}
       <aside className="space-y-4 lg:col-span-1 lg:order-2">
+      {/* Bannière : badges fraîchement débloqués (avec leurs récompenses) */}
+      {newBadges.length > 0 && (
+        <div className="rounded-xl border border-warning/40 bg-warning/10 p-3.5 flex items-start gap-2.5">
+          <Gift className="w-4 h-4 text-warning mt-0.5 shrink-0" strokeWidth={2} />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground">{t("leaderboard_new_badge_title")}</p>
+            <p className="text-xs text-foreground-muted mt-0.5">
+              {newBadges.map((k) => `${BADGE_EMOJI[k as BadgeKey] ?? ""} ${t(`badge_${k}`)}`).join(" · ")}
+            </p>
+            <p className="text-[11px] text-muted mt-1">{t("leaderboard_new_badge_body")}</p>
+          </div>
+          <button onClick={() => setNewBadges([])} className="text-muted hover:text-foreground text-sm leading-none p-0.5" aria-label={t("close")}>✕</button>
+        </div>
+      )}
       {/* Tes stats (toujours visible) */}
       {self && (() => {
         const tier = tierOf(self.score);
@@ -332,7 +352,7 @@ export default function LeaderboardPage() {
           visibles (grisés + verrou Plus) pour rendre le manque concret. */}
       {self && (() => {
         const badges = badgesFor(self);
-        const isPlanLocked = (b: Badge) => badgesPlanLocked && b.key !== FREE_BADGE_KEY;
+        const isPlanLocked = (b: BadgeState) => badgesPlanLocked && b.key !== FREE_BADGE_KEY;
         const earnedCount = badges.filter((b) => b.earned && !isPlanLocked(b)).length;
         const planLockedCount = badges.filter(isPlanLocked).length;
         return (
@@ -360,6 +380,12 @@ export default function LeaderboardPage() {
                 );
               })}
             </div>
+            {/* Les badges rapportent des récompenses réelles — dit sous le mur
+                pour que chercher un badge ait un enjeu concret. */}
+            <p className="mt-2 flex items-start gap-1.5 text-[11px] text-muted">
+              <Gift className="w-3 h-3 shrink-0 mt-0.5 text-accent" strokeWidth={2} />
+              {t("leaderboard_badges_rewards_hint")}
+            </p>
             {badgesPlanLocked && (
               <Link href="/dashboard/upgrade" className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-gold hover:underline">
                 <Lock className="w-3 h-3 shrink-0" strokeWidth={2} />
@@ -372,6 +398,12 @@ export default function LeaderboardPage() {
               if (!b) return null;
               const locked = isPlanLocked(b);
               const earned = b.earned && !locked;
+              const reward = BADGE_REWARDS[b.key];
+              const award = self.awards?.[b.key];
+              const rewardLines: { icon: typeof Gift; text: string }[] = [];
+              if (reward.freezeBonus) rewardLines.push({ icon: Snowflake, text: t("badge_reward_freeze") });
+              if (reward.certificate) rewardLines.push({ icon: FileDown, text: t("badge_reward_cert") });
+              if (reward.flair) rewardLines.push({ icon: Trophy, text: t("badge_reward_flair").replace("{emoji}", b.emoji) });
               return (
                 <div className="mt-2 rounded-xl border border-border bg-surface/40 p-3">
                   <div className="flex items-center gap-2.5">
@@ -382,6 +414,34 @@ export default function LeaderboardPage() {
                     </div>
                     {earned && <span className="text-[11px] font-semibold text-profit shrink-0">✓ {t("leaderboard_badge_earned")}</span>}
                   </div>
+                  {/* Ce que le badge rapporte — affiché aussi quand il est
+                      verrouillé : la récompense fait partie de l'envie. */}
+                  {rewardLines.length > 0 && (
+                    <div className="mt-2.5 rounded-lg bg-surface/60 border border-border/60 px-2.5 py-2 space-y-1">
+                      <p className="text-[10px] font-semibold text-accent uppercase tracking-wider flex items-center gap-1">
+                        <Gift className="w-3 h-3" strokeWidth={2} /> {t("leaderboard_badge_reward")}
+                      </p>
+                      {rewardLines.map(({ icon: RIcon, text }, i) => (
+                        <p key={i} className="text-[11px] text-foreground-muted flex items-center gap-1.5">
+                          <RIcon className="w-3 h-3 shrink-0 text-muted" strokeWidth={1.75} /> {text}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                  {earned && reward.certificate && hasCertificate(b.key) && award && (
+                    <button
+                      onClick={() => generateBadgeCertificate({
+                        badgeKey: b.key,
+                        username: self.username || "trader",
+                        awardedAt: award.awardedAt,
+                        meta: award.meta,
+                        lang: lang as CertLang,
+                      })}
+                      className="mt-2.5 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-accent text-white text-xs font-semibold hover:bg-accent-hover transition-colors"
+                    >
+                      <FileDown className="w-3.5 h-3.5" strokeWidth={2} /> {t("badge_cert_download")}
+                    </button>
+                  )}
                   {locked ? (
                     <div className="mt-2.5 flex items-center justify-between gap-2 rounded-lg bg-accent/[0.06] border border-accent/20 px-3 py-2">
                       <span className="text-[11px] text-foreground-muted">{t("leaderboard_badge_plus_locked")}</span>
@@ -561,6 +621,7 @@ export default function LeaderboardPage() {
                     </span>
                     <span className="flex items-center gap-1 max-w-full mt-1">
                       <span className="text-xs text-foreground truncate font-medium">{e.isMe ? t("leaderboard_you") : `@${e.username}`}</span>
+                      {e.flair && <span className="text-xs shrink-0" title={t("leaderboard_flair_hint")} role="img">{e.flair}</span>}
                       {e.premium && <PremiumBadge label={t("plan_premium")} />}
                     </span>
                     <span className={`text-lg font-bold ${scoreColor(e.score)}`}>{displayValue(e.score, e.sessions, e.streak)}</span>
@@ -627,6 +688,7 @@ function Row({ e, t, value }: { e: Entry; t: (k: string) => string; value: strin
       <Avatar name={e.username} isMe={e.isMe} />
       <span className="flex-1 min-w-0 flex items-center gap-1.5">
         <span className="text-foreground truncate">{e.isMe ? t("leaderboard_you") : `@${e.username}`}</span>
+        {e.flair && <span className="text-sm shrink-0" title={t("leaderboard_flair_hint")} role="img">{e.flair}</span>}
         {e.premium && <PremiumBadge label={t("plan_premium")} />}
       </span>
       <span className="hidden sm:inline text-[11px] text-muted tabular-nums whitespace-nowrap">📅 {e.sessions} · 🔥 {e.streak}</span>
