@@ -668,7 +668,7 @@ export default function AnalyticsPage() {
     );
 
   return (
-    <div>
+    <div className="mx-auto max-w-[1440px]">
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <div className="mb-4">
         <h1 className="text-2xl font-bold text-foreground">{t("analytics_title")}</h1>

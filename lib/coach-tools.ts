@@ -16,7 +16,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { appendCommitment, parseCoachMemory } from "@/lib/coach-memory";
-import { COMMUNITY_CHALLENGES, getCommunityChallenge } from "@/lib/community-challenges";
+import { challengesForWeek, getCommunityChallenge, isoWeekKey } from "@/lib/community-challenges";
 import { ICT_CHECKLIST_ITEMS } from "@/lib/ict-constants";
 
 // ── Vocabulaire partagé avec la page Objectifs ───────────────────────────────
@@ -542,14 +542,19 @@ export async function executeCoachTool(
       }
 
       case "list_challenges": {
+        // Les défis tournent chaque semaine ISO : on ne liste que le tirage
+        // en cours, et l'inscription est scoppée à cette semaine.
+        const weekKey = isoWeekKey();
         const { data } = await supabase
           .from("challenge_participations")
           .select("challenge_key")
-          .eq("user_id", userId);
+          .eq("user_id", userId)
+          .eq("week_key", weekKey);
         const joined = new Set((data ?? []).map((p) => p.challenge_key as string));
         return {
           result: {
-            challenges: COMMUNITY_CHALLENGES.map((c) => ({
+            week: weekKey,
+            challenges: challengesForWeek(weekKey).map((c) => ({
               key: c.key,
               metric: c.metric,
               target: c.target,
@@ -561,20 +566,23 @@ export async function executeCoachTool(
 
       case "manage_challenge": {
         const key = input.challenge_key;
-        if (typeof key !== "string" || !getCommunityChallenge(key)) return fail("Challenge inconnu.");
+        const weekKey = isoWeekKey();
+        const inDraw = typeof key === "string" && challengesForWeek(weekKey).some((c) => c.key === key);
+        if (typeof key !== "string" || !inDraw) return fail("Challenge inconnu (ou pas au tirage de cette semaine).");
         if (input.action === "leave") {
           const { error } = await supabase
             .from("challenge_participations")
             .delete()
             .eq("user_id", userId)
-            .eq("challenge_key", key);
+            .eq("challenge_key", key)
+            .eq("week_key", weekKey);
           if (error) return fail("Désinscription impossible.");
           return { result: { ok: true, joined: false }, action: { type: "challenge_left" }, undo: { op: "join_challenge", key } };
         }
         if (input.action === "join") {
           const { error } = await supabase
             .from("challenge_participations")
-            .upsert({ user_id: userId, challenge_key: key }, { onConflict: "user_id,challenge_key" });
+            .upsert({ user_id: userId, challenge_key: key, week_key: weekKey }, { onConflict: "user_id,challenge_key,week_key" });
           if (error) return fail("Inscription impossible.");
           return { result: { ok: true, joined: true }, action: { type: "challenge_joined" }, undo: { op: "leave_challenge", key } };
         }
@@ -969,12 +977,16 @@ export async function executeCoachUndo(
       }
       case "join_challenge": {
         if (!getCommunityChallenge(undo.key)) return { ok: false, error: "inconnu" };
-        await supabase.from("challenge_participations").upsert({ user_id: userId, challenge_key: undo.key }, { onConflict: "user_id,challenge_key" });
+        await supabase.from("challenge_participations").upsert(
+          { user_id: userId, challenge_key: undo.key, week_key: isoWeekKey() },
+          { onConflict: "user_id,challenge_key,week_key" },
+        );
         return { ok: true };
       }
       case "leave_challenge": {
         if (!getCommunityChallenge(undo.key)) return { ok: false, error: "inconnu" };
-        await supabase.from("challenge_participations").delete().eq("user_id", userId).eq("challenge_key", undo.key);
+        await supabase.from("challenge_participations").delete()
+          .eq("user_id", userId).eq("challenge_key", undo.key).eq("week_key", isoWeekKey());
         return { ok: true };
       }
       case "restore_trades": {

@@ -411,8 +411,14 @@ export default function AnalysisPage() {
   const [aiHistoryLoading, setAIHistoryLoading] = useState(true);
 
   const chatLimit = PLAN_LIMITS.chat[plan].limit;
-  const chatRemaining = Math.max(0, chatLimit - chatDailyCount);
-  const canChat = plan === "plus" || plan === "premium";
+  const isPaidPlan = plan === "plus" || plan === "premium";
+  // Plan free : 1 message « découverte » à vie (le serveur l'accorde tant que
+  // chat_messages est vide). Dès qu'un message existe — aujourd'hui ou avant —
+  // le taster est consommé ; le chat reste visible aujourd'hui pour relire la
+  // réponse, puis laisse place à la bannière upgrade.
+  const freeTasterUsed = hasOlderChat || chatMessages.some((m) => m.role === "user");
+  const chatRemaining = isPaidPlan ? Math.max(0, chatLimit - chatDailyCount) : freeTasterUsed ? 0 : 1;
+  const canChat = isPaidPlan || !hasOlderChat;
 
   // Auto-scroll « collant » : on ne suit le bas que si l'utilisateur y est déjà.
   // Sinon (il a remonté pour relire pendant que le coach écrit), le stream ne
@@ -508,6 +514,9 @@ export default function AnalysisPage() {
     setChatMessages(newMessages);
     setChatInput("");
     setChatLoading(true);
+    // Le free qui envoie son message découverte : signal clé de l'échelle
+    // d'upgrade (fire-and-forget, jamais bloquant).
+    if (plan === "free") track("taster_used");
 
     try {
       // Build trades context
@@ -776,10 +785,16 @@ export default function AnalysisPage() {
     if (!pendingAutorun || planLoading || loading) return;
     if (!canUseAI || !hasStrategy) return; // la page affichera l'état adapté
     if (selectedPeriod !== "all") return;
+    // Free : attendre l'historique — si l'analyse découverte est déjà
+    // consommée (ex. auto-analyse post-import), ne pas déclencher un 403.
+    if (plan === "free") {
+      if (historyLoading) return;
+      if (history.length > 0) { setPendingAutorun(false); return; }
+    }
     setPendingAutorun(false);
     void runAnalysis();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingAutorun, planLoading, loading, canUseAI, hasStrategy, selectedPeriod]);
+  }, [pendingAutorun, planLoading, loading, canUseAI, hasStrategy, selectedPeriod, plan, historyLoading, history.length]);
 
   async function runAnalysis() {
     setError(null);
@@ -903,7 +918,12 @@ export default function AnalysisPage() {
   }
 
 
-  const aiLimitReached = aiRemaining === 0;
+  // Plan free : 1 analyse « découverte » à vie (même mécanique que le coach).
+  // Le serveur l'accorde tant que session_reviews est vide — l'historique déjà
+  // chargé sert de marqueur côté client. Pendant son chargement on bloque le
+  // bouton sans afficher l'encart upgrade (pas de flash).
+  const freeAnalysisTasterUsed = plan === "free" && !historyLoading && history.length > 0;
+  const aiLimitReached = plan === "free" ? freeAnalysisTasterUsed : aiRemaining === 0;
 
   return (
     <div>
@@ -939,10 +959,25 @@ export default function AnalysisPage() {
               </div>
             </div>
           )}
-          {aiLimitReached && (
-            <p className="text-orange-400 text-sm mb-3">
-              {plan === "free" ? t("plan_ai_limit_reached_weekly") : t("plan_ai_limit_reached")}
-            </p>
+          {aiLimitReached && plan !== "free" && (
+            <p className="text-orange-400 text-sm mb-3">{t("plan_ai_limit_reached")}</p>
+          )}
+          {/* Free : analyse découverte consommée → rendre le manque visible
+              avec le pont vers Plus (1 analyse par jour). */}
+          {aiLimitReached && plan === "free" && (
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 mb-4 bg-accent/5 border border-accent/20 rounded-xl animate-in fade-in duration-300">
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-foreground">{t("plan_ai_taster_used_title")}</p>
+                <p className="text-xs text-muted mt-1">{t("plan_ai_taster_used_desc")}</p>
+              </div>
+              <Link
+                href="/dashboard/upgrade"
+                onClick={() => track("upgrade_cta_clicked", { source: "countdown" })}
+                className="shrink-0 px-4 py-2 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-colors text-center"
+              >
+                {t("plan_ai_upgrade_cta")}
+              </Link>
+            </div>
           )}
           {/* Period selector */}
           <div className="flex items-center gap-3 flex-wrap mb-3">
@@ -971,18 +1006,27 @@ export default function AnalysisPage() {
                 }
                 runAnalysis();
               }}
-              disabled={loading || !hasStrategy || tradeCount === 0 || filteredTradeCount === 0 || aiLimitReached}
-              className={`px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50 btn-scale ${aiLimitReached ? "cursor-not-allowed pointer-events-none" : ""}`}
+              disabled={loading || !hasStrategy || tradeCount === 0 || filteredTradeCount === 0 || aiLimitReached || (plan === "free" && historyLoading)}
+              className={`px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors disabled:opacity-50 btn-scale ${aiLimitReached ? "cursor-not-allowed pointer-events-none" : ""}`}
             >
-              {loading ? t("analysis_running") : aiLimitReached ? t("analysis_run_limit") : t("analysis_run")}
+              {loading
+                ? t("analysis_running")
+                : aiLimitReached
+                ? plan === "free"
+                  ? t("plan_ai_taster_used_title")
+                  : t("analysis_run_limit")
+                : t("analysis_run")}
             </button>
-            {aiRemaining !== null && !aiLimitReached && aiRemaining > 0 && (
-              <span className="text-muted text-sm">
-                ({aiRemaining} {plan === "free"
-                  ? (aiRemaining === 1 ? t("plan_ai_remaining_week_one") : t("plan_ai_remaining_week"))
-                  : (aiRemaining === 1 ? t("plan_ai_remaining_one") : t("plan_ai_remaining"))
-                })
-              </span>
+            {plan === "free" ? (
+              !historyLoading && !aiLimitReached && (
+                <span className="text-muted text-sm">({t("plan_ai_taster_available")})</span>
+              )
+            ) : (
+              aiRemaining !== null && !aiLimitReached && aiRemaining > 0 && (
+                <span className="text-muted text-sm">
+                  ({aiRemaining} {aiRemaining === 1 ? t("plan_ai_remaining_one") : t("plan_ai_remaining")})
+                </span>
+              )
             )}
           </div>
         </div>
@@ -1191,6 +1235,38 @@ export default function AnalysisPage() {
           </div>
         )}
 
+        {/* Free : sous SA vraie analyse, montrer ce que Plus aurait ajouté.
+            C'est le remplaçant de l'ancien écran démo — la démo, c'est
+            maintenant sa propre analyse, avec la suite verrouillée. */}
+        {displayedAnalysis && !loading && plan === "free" && (
+          <section>
+            <h2 className="text-sm font-semibold text-foreground mb-3">{t("teaser_title")}</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {[
+                { key: "coach", title: t("teaser_coach_title"), desc: t("teaser_coach_desc") },
+                { key: "debrief", title: t("teaser_debrief_title"), desc: t("teaser_debrief_desc") },
+                { key: "weekly", title: t("teaser_weekly_title"), desc: t("teaser_weekly_desc") },
+              ].map((c) => (
+                <Link
+                  key={c.key}
+                  href="/dashboard/upgrade"
+                  onClick={() => track("upgrade_cta_clicked", { source: `teaser_${c.key}` })}
+                  className="group bg-card border border-dashed border-border rounded-xl p-4 hover:border-accent/50 transition-colors"
+                >
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <svg className="w-3.5 h-3.5 text-muted group-hover:text-accent transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                    </svg>
+                    <p className="text-xs font-semibold text-foreground">{c.title}</p>
+                  </div>
+                  <p className="text-[11px] text-muted leading-relaxed">{c.desc}</p>
+                </Link>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted/70 mt-2">{t("teaser_hint")}</p>
+          </section>
+        )}
+
         {/* Coach IA Chat */}
         <section>
           <div className="flex items-start justify-between flex-wrap gap-2">
@@ -1204,7 +1280,7 @@ export default function AnalysisPage() {
                 {t("ai_coach_disclaimer")}
               </p>
             </div>
-            {canChat && chatMessages.length > 0 && (
+            {isPaidPlan && chatMessages.length > 0 && (
               <button
                 onClick={clearChatHistory}
                 disabled={clearingChat}
@@ -1375,7 +1451,7 @@ export default function AnalysisPage() {
               <button
                 onClick={sendChatMessage}
                 disabled={chatLoading || !chatInput.trim() || (chatRemaining !== null && chatRemaining <= 0)}
-                className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors disabled:opacity-50"
+                className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -1384,15 +1460,32 @@ export default function AnalysisPage() {
             </div>
 
             {/* Remaining messages */}
-            {chatRemaining !== null && (
-              <div className="px-3 pb-2">
+            <div className="px-3 pb-2">
+              {isPaidPlan ? (
                 <p className="text-xs text-muted">
                   {chatRemaining > 0
                     ? (chatRemaining === 1 ? t("coach_remaining_one") : t("coach_remaining")).replace("{n}", String(chatRemaining))
                     : t("coach_no_messages")}
                 </p>
-              </div>
-            )}
+              ) : (
+                <p className="text-xs text-muted">
+                  {freeTasterUsed ? (
+                    <>
+                      {t("coach_taster_used")}{" "}
+                      <Link
+                        href="/dashboard/upgrade"
+                        onClick={() => track("upgrade_cta_clicked", { source: "taster_footer" })}
+                        className="text-accent hover:underline"
+                      >
+                        {t("coach_taster_cta")}
+                      </Link>
+                    </>
+                  ) : (
+                    t("coach_taster_offer")
+                  )}
+                </p>
+              )}
+            </div>
           </div>
           )}
         </section>
@@ -1436,7 +1529,7 @@ export default function AnalysisPage() {
           )}
 
           {/* AI Coach Q&A History */}
-          {canChat && (
+          {isPaidPlan && (
             <div className="bg-card border border-border rounded-xl p-4 card-shadow">
               <h2 className="text-sm font-semibold text-foreground mb-3">{t("coach_history_title")}</h2>
               {aiHistoryLoading ? (

@@ -75,7 +75,7 @@ export default function ContactPage() {
 
               {status === "error" && <p className="text-loss text-sm">{t("contact_error")}</p>}
 
-              <button type="submit" disabled={status === "sending"} className="w-full py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50">
+              <button type="submit" disabled={status === "sending"} className="w-full py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors disabled:opacity-50">
                 {status === "sending" ? "..." : t("contact_send")}
               </button>
             </form>

@@ -111,10 +111,28 @@ export async function POST(request: Request) {
       );
     }
 
-    // ── 4b. Reserve quota atomically (refunded below if the AI call fails) ──
-    const quota = await consumeQuota({ userId, plan, feature: "analyze", timezone });
-    if (quota instanceof NextResponse) return quota;
-    reserved = { userId, plan, timezone };
+    // ── 4b. Quota ──
+    // Plan free : 1 analyse « découverte » à vie (même mécanique que le coach).
+    // session_reviews n'est alimentée que par les analyses IA (page Analyse +
+    // auto-analyse post-import) — elle sert donc de marqueur « déjà analysé ».
+    if (plan === "free") {
+      const sb = createSupabaseServer();
+      const { count, error: tasterErr } = await sb
+        .from("session_reviews")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId);
+      if (tasterErr || (count ?? 0) > 0) {
+        return NextResponse.json(
+          { error: "Feature not available on free plan" },
+          { status: 403 }
+        );
+      }
+    } else {
+      // Plans payants : quota journalier atomique (remboursé si l'IA échoue).
+      const quota = await consumeQuota({ userId, plan, feature: "analyze", timezone });
+      if (quota instanceof NextResponse) return quota;
+      reserved = { userId, plan, timezone };
+    }
 
     // ── 4c. Mémoire longitudinale du coach (fail-open : si la colonne
     // coach_memory n'existe pas encore, l'analyse reste complète sans elle) ──

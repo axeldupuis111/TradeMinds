@@ -107,7 +107,7 @@ export default function InstallAppButton({ className }: { className?: string }) 
             <p className="mt-2 text-sm text-muted leading-relaxed">{t("install_ios_step")}</p>
             <button
               onClick={() => setShowIOS(false)}
-              className="mt-5 w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-600"
+              className="mt-5 w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-hover"
             >
               {t("install_close")}
             </button>

@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { requireAuth, rateLimitAi } from "@/lib/api-auth";
+import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 
 export const dynamic = "force-dynamic";
 
@@ -288,6 +289,7 @@ Mois précédent : score ${prev.avgDisciplineScore ?? "N/A"}/100, sessions ${pre
     try { const m = raw.match(/\{[\s\S]*\}/); if (m) review = JSON.parse(m[0]); } catch { review = null; }
     return NextResponse.json({ month, stats, prev, deltas, extras, calendar, trend, review, rawSummary: review ? null : raw });
   } catch (err) {
+    if (isLowCreditError(err)) await alertLowCreditsOnce();
     console.error("[Monthly review] AI error:", err);
     return NextResponse.json({ month, stats, prev, deltas, extras, calendar, trend, review: null });
   }

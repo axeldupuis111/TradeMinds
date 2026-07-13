@@ -9,6 +9,7 @@ import type { Lang } from "@/lib/translations";
 import { cookies } from "next/headers";
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { Instrument_Serif } from "next/font/google";
 import "./globals.css";
 
 const LANGS: Lang[] = ["fr", "en", "de", "es"];
@@ -30,6 +31,14 @@ const geistMono = localFont({
   src: "./fonts/GeistMonoVF.woff",
   variable: "--font-geist-mono",
   weight: "100 900",
+});
+// Display serif for landing-page h1/h2 (see .landing-page rules in globals.css).
+// Self-hosted at build time by next/font — no runtime Google Fonts request.
+const instrumentSerif = Instrument_Serif({
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
+  variable: "--font-instrument-serif",
 });
 
 export const metadata: Metadata = {
@@ -61,7 +70,11 @@ export default async function RootLayout({
   const ssrLang = resolveServerLang();
   const ssrDict = await loadDict(ssrLang);
   return (
-    <html lang={ssrLang} suppressHydrationWarning>
+    <html
+      lang={ssrLang}
+      suppressHydrationWarning
+      className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable}`}
+    >
       <head>
         {/* Prevent flash of wrong theme — must run before paint */}
         <script
@@ -77,7 +90,7 @@ export default async function RootLayout({
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className="font-sans antialiased"
       >
         <ThemeProvider>
           <LanguageProvider ssrLang={ssrLang} ssrDict={ssrDict}>

@@ -12,7 +12,7 @@
 }
 .landing-page h1,
 .landing-page h2 {
-  font-family: "Instrument Serif", Georgia, serif;
+  font-family: var(--font-instrument-serif), "Instrument Serif", Georgia, serif;
   font-style: italic;
   font-weight: 400;
   letter-spacing: -0.02em;
@@ -130,6 +130,34 @@ body {
   color: rgb(var(--foreground));
   background: rgb(var(--background));
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+/* ─── Typography refinements (Geist) ────────────────────────────────────────
+   Tighter tracking on display sizes — Geist is designed for it. Landing-page
+   headings keep their own rules (higher specificity).
+   ──────────────────────────────────────────────────────────────────────── */
+h1, h2, h3 {
+  letter-spacing: -0.02em;
+}
+
+/* Chiffres alignés dans les stats/tableaux — évite le « dансе » des digits */
+table, [data-numeric] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Text selection — brand tint ───────────────────────────────────────── */
+::selection {
+  background: rgb(var(--accent) / 0.25);
+  color: rgb(var(--foreground));
+}
+
+/* ─── Focus ring — visible, on-brand, keyboard only ─────────────────────────
+   Inputs/selects/textareas gardent leur propre style (border-accent) : on ne
+   double pas leur contour.
+   ──────────────────────────────────────────────────────────────────────── */
+:focus-visible:not(input):not(textarea):not(select) {
+  outline: 2px solid rgb(var(--accent) / 0.6);
+  outline-offset: 2px;
 }
 
 /* ─── Native date/time picker colour-scheme ─────────────────────────────────
@@ -281,6 +309,10 @@ tbody tr:hover { background-color: rgb(var(--accent) / 0.04); }
 /* ─── Glow effects ──────────────────────────────────────────────────────── */
 .glow-blue { box-shadow: 0 0 20px rgba(59,130,246,0.15), 0 0 60px rgba(59,130,246,0.05); }
 .glow-blue:hover { box-shadow: 0 0 30px rgba(59,130,246,0.25), 0 0 80px rgba(59,130,246,0.1); }
+
+/* Accent (cyan) glow — for primary CTAs, matches the brand accent */
+.glow-accent { box-shadow: 0 0 20px rgb(var(--accent) / 0.18), 0 0 60px rgb(var(--accent) / 0.06); }
+.glow-accent:hover { box-shadow: 0 0 30px rgb(var(--accent) / 0.3), 0 0 80px rgb(var(--accent) / 0.12); }
 
 /* ─── Scroll reveal ─────────────────────────────────────────────────────── */
 .reveal-on-scroll {

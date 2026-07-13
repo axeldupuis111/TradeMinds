@@ -72,7 +72,7 @@ export default function PublicHeader({ showAnchors = false }: PublicHeaderProps)
           </Link>
           <Link
             href={localizedHref("/login", lang)}
-            className="text-sm px-4 py-1.5 bg-accent text-white rounded-lg font-semibold hover:bg-blue-600 glow-blue btn-scale"
+            className="text-sm px-4 py-1.5 bg-accent text-white rounded-lg font-semibold hover:bg-accent-hover glow-accent btn-scale"
           >
             {t("nav_start")}
           </Link>

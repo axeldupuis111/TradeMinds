@@ -179,7 +179,7 @@ export default function OpenTradesSection({ refreshKey, onCloseTrade }: Props) {
               {/* Close button */}
               <button
                 onClick={() => onCloseTrade(tr.id)}
-                className="shrink-0 px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors"
+                className="shrink-0 px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors"
               >
                 {t("open_trades_close_button")}
               </button>

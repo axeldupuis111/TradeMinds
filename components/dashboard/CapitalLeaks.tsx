@@ -177,15 +177,21 @@ export default function CapitalLeaks() {
       </div>
       <p className="text-xs text-foreground-muted mb-4">{t("leaks_subtitle")}</p>
 
-      {/* Le chiffre qui fait mal — et qui motive */}
-      <div className="flex items-end gap-2 mb-1">
-        <p className="text-3xl font-bold tracking-tight text-loss tabular-nums leading-none">
-          −<CountUp end={Math.round(result.totalRecoverable)} duration={1.4} suffix=" €" />
-        </p>
-      </div>
-      <p className="text-xs text-foreground-muted mb-4">
-        {fmt(t("leaks_total_label"), { n: result.flaggedCount })}
-      </p>
+      {/* Le chiffre qui fait mal — et qui motive. Masqué quand l'union des
+          trades flagués est nette ≈ 0 (les gains compensent) : afficher
+          « −0 € » contredirait les coûts par habitude listés dessous. */}
+      {result.totalRecoverable >= 1 && (
+        <>
+          <div className="flex items-end gap-2 mb-1">
+            <p className="text-3xl font-bold tracking-tight text-loss tabular-nums leading-none">
+              −<CountUp end={Math.round(result.totalRecoverable)} duration={1.4} suffix=" €" />
+            </p>
+          </div>
+          <p className="text-xs text-foreground-muted mb-4">
+            {fmt(t("leaks_total_label"), { n: result.flaggedCount })}
+          </p>
+        </>
+      )}
 
       {/* Top 3 des habitudes les plus chères */}
       <div className="space-y-3">

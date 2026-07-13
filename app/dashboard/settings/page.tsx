@@ -4,11 +4,14 @@ import UpgradeBanner from "@/components/UpgradeBanner";
 import SyncPlatformCard from "@/components/settings/SyncPlatformCard";
 import PushNotificationsCard from "@/components/settings/PushNotificationsCard";
 import LeaderboardOptInCard from "@/components/settings/LeaderboardOptInCard";
+import TradingViewCard from "@/components/settings/TradingViewCard";
 import TradovateConnect from "@/components/settings/TradovateConnect";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { useTheme } from "@/lib/ThemeContext";
 import { createClient } from "@/lib/supabase/client";
+import { normalizeTimezone } from "@/lib/timezone";
+import { normalizeUsername, validateUsername } from "@/lib/username-moderation";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -19,19 +22,23 @@ const LANGUAGES = [
   { code: "es", label: "Español" },
 ];
 
+// Zones IANA (et non des libellés « UTC+1 ») : les crons serveur (rappel
+// quotidien, rapport hebdo…) passent cette valeur à Intl pour calculer l'heure
+// locale du trader — un libellé non-IANA les faisait retomber sur UTC.
 const TIMEZONES = [
   { value: "UTC", label: "UTC" },
-  { value: "UTC+1", label: "UTC+1 (Paris, Berlin)" },
-  { value: "UTC+2", label: "UTC+2 (Helsinki, Cairo)" },
-  { value: "UTC+3", label: "UTC+3 (Moscow)" },
-  { value: "UTC+4", label: "UTC+4 (Dubai)" },
-  { value: "UTC+5:30", label: "UTC+5:30 (Mumbai)" },
-  { value: "UTC+8", label: "UTC+8 (Singapore, Hong Kong)" },
-  { value: "UTC+9", label: "UTC+9 (Tokyo)" },
-  { value: "UTC-5", label: "UTC-5 (New York)" },
-  { value: "UTC-6", label: "UTC-6 (Chicago)" },
-  { value: "UTC-7", label: "UTC-7 (Denver)" },
-  { value: "UTC-8", label: "UTC-8 (Los Angeles)" },
+  { value: "Europe/London", label: "London, Dublin" },
+  { value: "Europe/Paris", label: "Paris, Berlin, Madrid" },
+  { value: "Europe/Helsinki", label: "Helsinki, Athens, Cairo" },
+  { value: "Europe/Moscow", label: "Moscow" },
+  { value: "Asia/Dubai", label: "Dubai" },
+  { value: "Asia/Kolkata", label: "Mumbai" },
+  { value: "Asia/Singapore", label: "Singapore, Hong Kong" },
+  { value: "Asia/Tokyo", label: "Tokyo, Seoul" },
+  { value: "America/New_York", label: "New York, Toronto" },
+  { value: "America/Chicago", label: "Chicago" },
+  { value: "America/Denver", label: "Denver" },
+  { value: "America/Los_Angeles", label: "Los Angeles, Vancouver" },
 ];
 
 const CURRENCIES = [
@@ -41,39 +48,9 @@ const CURRENCIES = [
   { value: "CHF", label: "CHF" },
 ];
 
-const TZ_MAP: Record<string, string> = {
-  "Europe/Paris": "UTC+1",
-  "Europe/Berlin": "UTC+1",
-  "Europe/Amsterdam": "UTC+1",
-  "Europe/Brussels": "UTC+1",
-  "Europe/Madrid": "UTC+1",
-  "Europe/Rome": "UTC+1",
-  "Europe/London": "UTC",
-  "Europe/Dublin": "UTC",
-  "Europe/Helsinki": "UTC+2",
-  "Africa/Cairo": "UTC+2",
-  "Europe/Athens": "UTC+2",
-  "Europe/Bucharest": "UTC+2",
-  "Europe/Moscow": "UTC+3",
-  "Asia/Dubai": "UTC+4",
-  "Asia/Kolkata": "UTC+5:30",
-  "Asia/Singapore": "UTC+8",
-  "Asia/Hong_Kong": "UTC+8",
-  "Asia/Shanghai": "UTC+8",
-  "Asia/Tokyo": "UTC+9",
-  "Asia/Seoul": "UTC+9",
-  "America/New_York": "UTC-5",
-  "America/Toronto": "UTC-5",
-  "America/Chicago": "UTC-6",
-  "America/Denver": "UTC-7",
-  "America/Los_Angeles": "UTC-8",
-  "America/Vancouver": "UTC-8",
-};
-
 function detectBrowserTimezone(): string {
   try {
-    const iana = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    return TZ_MAP[iana] || "UTC";
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   } catch {
     return "UTC";
   }
@@ -188,7 +165,8 @@ export default function SettingsPage() {
       setOriginalUsername(data.username || "");
       setPublicProfile(data.public_profile || false);
       setOriginalPublicProfile(data.public_profile || false);
-      const tz = (data as Record<string, unknown>).timezone as string || detectBrowserTimezone();
+      // normalizeTimezone traduit les anciennes valeurs « UTC+1 » vers l'IANA.
+      const tz = normalizeTimezone((data as Record<string, unknown>).timezone as string || detectBrowserTimezone());
       setTimezone(tz);
       setOriginalTimezone(tz);
       const curr = (data as Record<string, unknown>).currency as string || "EUR";
@@ -210,15 +188,19 @@ export default function SettingsPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setSaving(false); return; }
 
-    const trimmed = username.trim().toLowerCase();
-    if (publicProfile) {
-      if (!trimmed) {
-        showToast("error", t("settings_username_required"));
-        setSaving(false);
-        return;
-      }
-      if (!/^[a-z0-9_-]{3,20}$/.test(trimmed)) {
-        showToast("error", t("settings_username_invalid"));
+    const trimmed = normalizeUsername(username);
+    if (publicProfile && !trimmed) {
+      showToast("error", t("settings_username_required"));
+      setSaving(false);
+      return;
+    }
+    // Format + modération appliqués dès qu'un pseudo est saisi, même sans
+    // profil public : le pseudo est aussi affiché sur le classement et les
+    // défis communautaires.
+    if (trimmed) {
+      const check = validateUsername(trimmed);
+      if (!check.ok) {
+        showToast("error", t(check.reason === "forbidden" ? "settings_username_forbidden" : "settings_username_invalid"));
         setSaving(false);
         return;
       }
@@ -250,6 +232,7 @@ export default function SettingsPage() {
     if (error) {
       showToast("error", t("settings_save_error"));
     } else {
+      setUsername(trimmed);
       setOriginalUsername(trimmed);
       setOriginalPublicProfile(publicProfile);
       setOriginalTimezone(timezone);
@@ -442,6 +425,12 @@ export default function SettingsPage() {
           onChange={(e) => setTimezone(e.target.value)}
           className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
         >
+          {/* Zone détectée depuis le navigateur, absente de la liste courte
+              (ex. Europe/Zurich) : on l'affiche telle quelle plutôt que de
+              forcer l'utilisateur sur une ville voisine. */}
+          {!TIMEZONES.some((tz) => tz.value === timezone) && (
+            <option value={timezone}>{timezone.replace(/_/g, " ")}</option>
+          )}
           {TIMEZONES.map((tz) => (
             <option key={tz.value} value={tz.value}>{tz.label}</option>
           ))}
@@ -545,7 +534,7 @@ export default function SettingsPage() {
           disabled={!hasChanges || saving}
           className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-colors ${
             hasChanges && !saving
-              ? "bg-accent text-white hover:bg-blue-600"
+              ? "bg-accent text-white hover:bg-accent-hover"
               : "bg-surface border border-border text-muted opacity-50 cursor-not-allowed"
           }`}
         >
@@ -603,7 +592,7 @@ export default function SettingsPage() {
             className={`px-5 py-2.5 rounded-lg font-medium text-sm transition-colors ${
               mtGenerating
                 ? "bg-surface border border-border text-muted opacity-50 cursor-not-allowed"
-                : "bg-accent text-white hover:bg-blue-600"
+                : "bg-accent text-white hover:bg-accent-hover"
             }`}
           >
             {mtGenerating ? "..." : t("sync_mt_generate")}
@@ -769,6 +758,8 @@ export default function SettingsPage() {
             ]}
             tip={t("sync_ninja_tip")}
           />
+
+          <TradingViewCard token={mtToken} />
 
           <TradovateConnect />
         </>

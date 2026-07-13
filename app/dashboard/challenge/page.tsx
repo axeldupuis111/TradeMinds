@@ -431,7 +431,7 @@ function EditAccountModal({
           <button onClick={onCancel} className="flex-1 py-2 bg-surface border border-border text-muted rounded-lg text-sm font-medium hover:text-foreground transition-colors">
             {t("csv_cancel")}
           </button>
-          <button onClick={handleSubmit} className="flex-1 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
+          <button onClick={handleSubmit} className="flex-1 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors">
             {t("challenge_edit_save")}
           </button>
         </div>
@@ -1235,7 +1235,7 @@ export default function ChallengePage() {
         <button
           onClick={handleCreate}
           disabled={saving || !isFormValid}
-          className={`mt-4 px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50 ${!isFormValid ? "cursor-not-allowed" : ""}`}
+          className={`mt-4 px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors disabled:opacity-50 ${!isFormValid ? "cursor-not-allowed" : ""}`}
         >
           {saving ? t("challenge_creating") : t("challenge_create_btn")}
         </button>

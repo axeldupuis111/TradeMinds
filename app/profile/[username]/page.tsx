@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import PublicProfileView from "@/components/profile/PublicProfileView";
+import { isUsernameDisplayable } from "@/lib/username-moderation";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
@@ -10,6 +11,9 @@ interface Props {
 const SITE_URL = "https://tradediscipline.app";
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  // Pseudo bloqué par la modération → même comportement qu'un profil inexistant.
+  if (!isUsernameDisplayable(params.username)) return { title: "Profile — TradeDiscipline" };
+
   const supabase = createClient();
   const { data } = await supabase
     .from("profiles")
@@ -37,6 +41,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function PublicProfilePage({ params }: Props) {
+  // Pseudo bloqué par la modération → même comportement qu'un profil inexistant.
+  if (!isUsernameDisplayable(params.username)) {
+    notFound();
+  }
+
   const supabase = createClient();
 
   // Find profile by username (public_profile must be true)

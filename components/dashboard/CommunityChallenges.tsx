@@ -2,8 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/lib/LanguageContext";
-import { COMMUNITY_CHALLENGES } from "@/lib/community-challenges";
-import { Users, Trophy, Flame } from "lucide-react";
+import { getCommunityChallenge } from "@/lib/community-challenges";
+import { generateBadgeCertificate, type CertLang } from "@/lib/badge-certificate";
+import { Users, Trophy, Flame, Timer, Snowflake, FileDown, Crown } from "lucide-react";
+
+/**
+ * Défis communautaires HEBDO : 3 défis tirés au sort chaque lundi (tirage
+ * déterministe côté lib), un compte à rebours, et la rétrospective de la
+ * semaine passée (podium + mon bilan + certificat si je suis champion).
+ */
 
 interface BoardEntry { name: string; progress: number; isMe: boolean }
 interface ChallengeState {
@@ -12,22 +19,42 @@ interface ChallengeState {
   joined: boolean;
   participantCount: number;
   myProgress: number;
+  completed: boolean;
   leaderboard: BoardEntry[];
+}
+interface LastWeekResult {
+  key: string;
+  podium: { name: string; rank: number; isMe: boolean }[];
+  finishers: number;
+  me: { completed: boolean; rank: number | null; progress: number; awardedAt: string } | null;
+}
+interface ApiPayload {
+  weekKey: string;
+  endsAt: string;
+  challenges: ChallengeState[];
+  lastWeek: { weekKey: string; results: LastWeekResult[] } | null;
+}
+
+const RANK_EMOJI: Record<number, string> = { 1: "👑", 2: "🥈", 3: "🥉" };
+
+function countdown(endsAt: string): { d: number; h: number } {
+  const ms = Math.max(0, new Date(endsAt).getTime() - Date.now());
+  const totalH = Math.floor(ms / 3_600_000);
+  return { d: Math.floor(totalH / 24), h: totalH % 24 };
 }
 
 export default function CommunityChallenges() {
-  const { t } = useLanguage();
-  const [challenges, setChallenges] = useState<ChallengeState[]>([]);
+  const { t, lang } = useLanguage();
+  const [data, setData] = useState<ApiPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
 
   async function load() {
     try {
       const r = await fetch("/api/community-challenges");
-      const data = await r.json();
-      setChallenges(data.challenges ?? []);
+      setData(await r.json());
     } catch {
-      setChallenges([]);
+      setData(null);
     } finally {
       setLoading(false);
     }
@@ -49,28 +76,104 @@ export default function CommunityChallenges() {
     }
   }
 
-  // Titles/descriptions come from i18n keys defined on each challenge.
-  const meta = (key: string) => COMMUNITY_CHALLENGES.find((c) => c.key === key);
+  // Titres/descriptions : clés i18n portées par chaque défi du pool.
+  const meta = (key: string) => getCommunityChallenge(key);
 
   if (loading) {
     return <div className="rounded-xl border border-border bg-card p-5"><div className="skeleton h-24 w-full rounded-lg" /></div>;
   }
-  if (challenges.length === 0) return null;
+  if (!data || data.challenges.length === 0) return null;
+
+  const { d, h } = countdown(data.endsAt);
+  const myWins = (data.lastWeek?.results ?? []).filter((r) => r.me?.rank === 1);
+  const myFinished = (data.lastWeek?.results ?? []).filter((r) => r.me?.completed).length;
 
   return (
     <div>
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex flex-wrap items-center gap-2 mb-3">
         <Trophy className="w-4 h-4 text-accent" strokeWidth={1.75} />
         <h2 className="text-base font-bold text-foreground">{t("cc_section_title")}</h2>
+        <span className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2 py-0.5 text-[11px] text-foreground-muted">
+          <Timer className="w-3 h-3" strokeWidth={2} />
+          {t("cc_ends_in").replace("{d}", String(d)).replace("{h}", String(h))}
+        </span>
+        <span className="text-[11px] text-muted">{t("cc_new_every_monday")}</span>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        {challenges.map((c) => {
+      {/* Récompenses en jeu — mêmes mécaniques que les badges. */}
+      <p className="mb-3 text-[11px] text-muted flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="inline-flex items-center gap-1"><Snowflake className="w-3 h-3 text-sky-400" strokeWidth={2} />{t("cc_reward_finisher")}</span>
+        <span className="inline-flex items-center gap-1"><Crown className="w-3 h-3 text-amber-400" strokeWidth={2} />{t("cc_reward_podium")}</span>
+        <span className="inline-flex items-center gap-1"><FileDown className="w-3 h-3 text-accent" strokeWidth={2} />{t("cc_reward_winner")}</span>
+      </p>
+
+      {/* Rétrospective de la semaine passée */}
+      {data.lastWeek && (
+        <div className="mb-4 rounded-xl border border-border bg-card p-4">
+          <h3 className="text-xs font-bold text-foreground-muted uppercase tracking-wide mb-2">
+            {t("cc_last_week_title")}
+          </h3>
+          <div className="space-y-1.5">
+            {data.lastWeek.results.map((r) => {
+              const m = meta(r.key);
+              return (
+                <div key={r.key} className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+                  <span className="font-semibold text-foreground">{m ? t(m.titleKey) : r.key}</span>
+                  {r.podium.length > 0 ? (
+                    <span className="text-foreground-muted">
+                      {r.podium.map((p) => (
+                        <span key={p.rank + p.name} className={`mr-2 ${p.isMe ? "text-accent font-semibold" : ""}`}>
+                          {RANK_EMOJI[p.rank] ?? `#${p.rank}`} {p.isMe ? t("cc_you") : `@${p.name}`}
+                        </span>
+                      ))}
+                    </span>
+                  ) : (
+                    <span className="text-muted">{t("cc_no_podium")}</span>
+                  )}
+                  {r.me?.completed && (
+                    <span className="inline-flex items-center gap-1 text-sky-400">
+                      <Snowflake className="w-3 h-3" strokeWidth={2} />{t("cc_me_finished")}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {(myWins.length > 0 || myFinished > 0) && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {myFinished > 0 && (
+                <span className="text-[11px] text-sky-400">
+                  {t("cc_gels_earned").replace("{n}", String(myFinished))}
+                </span>
+              )}
+              {myWins.map((r) => (
+                <button
+                  key={r.key}
+                  onClick={() => generateBadgeCertificate({
+                    badgeKey: "challenge_week",
+                    username: r.podium.find((p) => p.isMe)?.name || "trader",
+                    awardedAt: r.me?.awardedAt || new Date().toISOString(),
+                    meta: { week: data.lastWeek!.weekKey },
+                    lang: lang as CertLang,
+                  })}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-accent/10 border border-accent/30 px-2.5 py-1 text-[11px] font-semibold text-accent hover:bg-accent/20 transition-colors"
+                >
+                  <FileDown className="w-3.5 h-3.5" strokeWidth={2} />
+                  {t("cc_cert_download")}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {data.challenges.map((c) => {
           const m = meta(c.key);
           const pct = Math.min(100, Math.round((c.myProgress / c.target) * 100));
-          const done = c.myProgress >= c.target;
+          const done = c.completed;
           return (
-            <div key={c.key} className="rounded-xl border border-border bg-card p-5">
+            <div key={c.key} className={`rounded-xl border bg-card p-5 ${done ? "border-profit/40" : "border-border"}`}>
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-bold text-foreground">{m ? t(m.titleKey) : c.key}</h3>
@@ -82,7 +185,7 @@ export default function CommunityChallenges() {
                   className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 ${
                     c.joined
                       ? "border border-border text-muted hover:text-foreground"
-                      : "bg-accent text-white hover:bg-blue-600"
+                      : "bg-accent text-white hover:bg-accent-hover"
                   }`}
                 >
                   {c.joined ? t("cc_leave") : t("cc_join")}
@@ -100,6 +203,11 @@ export default function CommunityChallenges() {
                 <div className="h-2 rounded-full bg-surface overflow-hidden">
                   <div className={`h-full rounded-full transition-all ${done ? "bg-profit" : "bg-accent"}`} style={{ width: `${Math.max(3, pct)}%` }} />
                 </div>
+                {done && (
+                  <p className="mt-1.5 text-[11px] text-profit inline-flex items-center gap-1">
+                    <Snowflake className="w-3 h-3" strokeWidth={2} />{t("cc_completed_note")}
+                  </p>
+                )}
               </div>
 
               {/* Participants + mini leaderboard */}

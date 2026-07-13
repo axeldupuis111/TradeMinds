@@ -649,7 +649,7 @@ export default function MonthlyReviewPage() {
                   ) : rawSummary ? (
                     <div className="rounded-xl border border-border bg-card p-5"><p className="text-sm text-muted leading-relaxed whitespace-pre-line">{rawSummary.replace(/\*\*/g, "")}</p></div>
                   ) : (
-                    <button onClick={generate} disabled={aiLoading} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-white text-sm font-medium hover:bg-blue-600 transition-colors disabled:opacity-50">
+                    <button onClick={generate} disabled={aiLoading} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-50">
                       <Sparkles className="w-4 h-4" />{aiLoading ? t("review_generating") : t("review_generate")}
                     </button>
                   )}

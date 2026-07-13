@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { requireAuth, rateLimitAi } from "@/lib/api-auth";
+import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 
 // A strategy description is at most a few paragraphs; cap input to keep token
 // cost bounded and prevent abuse.
@@ -11,7 +12,9 @@ export async function POST(request: Request) {
     // Server-side auth (don't rely on middleware alone) + anti-abuse rate limit.
     const auth = await requireAuth();
     if (auth instanceof NextResponse) return auth;
-    const limited = await rateLimitAi(auth.userId, "parse-strategy", 10, auth.timezone);
+    // Free n'a qu'une seule stratégie : 3 (ré)analyses/jour suffisent largement
+    // et bornent le pire cas d'abus ; les plans payants gardent le cap large.
+    const limited = await rateLimitAi(auth.userId, "parse-strategy", auth.plan === "free" ? 3 : 10, auth.timezone);
     if (limited) return limited;
 
     const apiKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY;
@@ -172,6 +175,7 @@ Ajoute ce champ à la racine du JSON (pas dans strategy_tags) :
     const parsed = JSON.parse(jsonStr);
     return NextResponse.json(parsed);
   } catch (err: unknown) {
+    if (isLowCreditError(err)) await alertLowCreditsOnce();
     // Log the detail server-side, but never leak internal error messages.
     console.error("Parse strategy error:", err);
     return NextResponse.json({ error: "Erreur lors de l'analyse de la stratégie." }, { status: 500 });

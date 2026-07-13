@@ -1,7 +1,10 @@
 "use client";
 
 import { useLanguage } from "@/lib/LanguageContext";
-import { ArrowUp, ArrowDown, BadgeCheck, Crown, Minus, Lock, Share2, Trophy, Users, Gauge, CalendarDays, Flame, Rocket } from "lucide-react";
+import { usePlan } from "@/lib/PlanContext";
+import { BADGE_EMOJI, BADGE_REWARDS, FREE_BADGE_KEY, computeBadges, type BadgeKey, type BadgeState } from "@/lib/badges";
+import { generateBadgeCertificate, hasCertificate, type CertLang } from "@/lib/badge-certificate";
+import { Activity, ArrowUp, ArrowDown, Award, BadgeCheck, Crown, Minus, Lock, Share2, Trophy, Users, UserPlus, Gauge, CalendarDays, Flame, Rocket, FileDown, Gift, Snowflake } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import CountUp from "@/components/animations/CountUp";
@@ -12,19 +15,34 @@ import ShareRankModal from "@/components/leaderboard/ShareRankModal";
 
 type Mode = "discipline" | "sessions" | "streak";
 type Tab = "board" | "challenges";
+type Period = 7 | 30 | 90 | "season";
+
+type FeedItem =
+  | { type: "day_record"; user: string; score: number }
+  | { type: "streak"; user: string; days: number }
+  | { type: "join"; user: string; challengeKey: string; at: string };
 
 interface Entry {
   rank: number; username: string; score: number; sessions: number; streak: number;
-  value: number; isMe: boolean; premium: boolean; delta: number | null;
+  value: number; isMe: boolean; premium: boolean; flair: string | null; delta: number | null;
 }
 
 // Badge de statut des membres Premium (avantage du plan, visible par tous).
 function PremiumBadge({ label }: { label: string }) {
   return <BadgeCheck className="w-3.5 h-3.5 text-yellow-400 shrink-0" strokeWidth={2} aria-label={label} role="img" />;
 }
+interface AllTime {
+  totalSessions: number; goldDays: number; comeback: boolean;
+  earlyBird: number; weekendSessions: number; bestStreak: number;
+}
 interface Self {
   score: number; sessions: number; streak: number;
-  optedIn: boolean; hasUsername: boolean; ranked: boolean; rank: number | null; percentile: number | null;
+  optedIn: boolean; hasUsername: boolean; username?: string | null;
+  ranked: boolean; rank: number | null; percentile: number | null;
+  allTime?: AllTime;
+  /** Badges acquis persistés côté serveur (absent si migration non appliquée). */
+  awards?: Record<string, { awardedAt: string; meta: Record<string, unknown> | null }>;
+  newlyAwarded?: string[];
 }
 
 const MODES: { id: Mode; icon: typeof Gauge }[] = [
@@ -32,7 +50,14 @@ const MODES: { id: Mode; icon: typeof Gauge }[] = [
   { id: "sessions", icon: CalendarDays },
   { id: "streak", icon: Flame },
 ];
-const PERIODS = [7, 30, 90] as const;
+const PERIODS: Period[] = [7, 30, 90, "season"];
+
+// Jours restants avant la fin du mois (fin de la saison en cours).
+function seasonDaysLeft(): number {
+  const now = new Date();
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  return lastDay - now.getDate();
+}
 
 function scoreColor(s: number): string {
   if (s >= 85) return "text-profit";
@@ -54,19 +79,27 @@ function tierProgress(s: number): { floor: number; next: number | null; nextKey:
   return { floor: 0, next: 50, nextKey: "silver", pct: (s / 50) * 100, bar: "from-orange-400 to-slate-300" };
 }
 
-// Catalogue de badges évalués à partir des stats perso, avec progression
-// (current/target) pour ceux qui se débloquent par paliers chiffrés.
-type Badge = { key: string; emoji: string; earned: boolean; progress: { current: number; target: number } | null };
-function badgesFor(s: Self): Badge[] {
-  return [
-    { key: "first_session", emoji: "✅", earned: s.sessions >= 1, progress: { current: s.sessions, target: 1 } },
-    { key: "regular", emoji: "📅", earned: s.sessions >= 20, progress: { current: s.sessions, target: 20 } },
-    { key: "streak_7", emoji: "🔥", earned: s.streak >= 7, progress: { current: s.streak, target: 7 } },
-    { key: "streak_30", emoji: "⚡", earned: s.streak >= 30, progress: { current: s.streak, target: 30 } },
-    { key: "discipline_gold", emoji: "🏅", earned: s.score >= 85 && s.sessions >= 3, progress: { current: s.score, target: 85 } },
-    { key: "top10", emoji: "🎯", earned: s.ranked && s.percentile != null && s.percentile <= 10, progress: null },
-    { key: "podium", emoji: "🏆", earned: s.ranked && s.rank != null && s.rank <= 3, progress: null },
-  ];
+// Badges évalués depuis les stats perso via le catalogue partagé lib/badges
+// (même logique que l'octroi serveur). Les badges de série/volume utilisent
+// les stats TOUS TEMPS quand l'API les fournit : un badge est un acquis, il
+// ne doit pas disparaître en changeant de période d'affichage — et une fois
+// persisté dans awards, il reste acquis même si les stats redescendent.
+function badgesFor(s: Self): BadgeState[] {
+  const at = s.allTime;
+  const computed = computeBadges({
+    sessions: Math.max(s.sessions, at?.totalSessions ?? 0),
+    streak: Math.max(s.streak, at?.bestStreak ?? 0),
+    score: s.score,
+    periodSessions: s.sessions,
+    goldDays: at?.goldDays ?? 0,
+    comeback: at?.comeback ?? false,
+    earlyBird: at?.earlyBird ?? 0,
+    weekendSessions: at?.weekendSessions ?? 0,
+    ranked: s.ranked,
+    rank: s.rank,
+    percentile: s.percentile,
+  });
+  return computed.map((b) => (s.awards?.[b.key] ? { ...b, earned: true } : b));
 }
 
 function Avatar({ name, isMe }: { name: string; isMe: boolean }) {
@@ -84,30 +117,44 @@ function Delta({ d }: { d: number | null }) {
 }
 
 export default function LeaderboardPage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const { plan, loading: planLoading } = usePlan();
+  // Pas de verrou pendant le chargement du plan pour éviter un flash
+  // « verrouillé » chez les abonnés (même précaution que la sidebar).
+  const badgesPlanLocked = !planLoading && plan === "free";
   const [entries, setEntries] = useState<Entry[]>([]);
   const [around, setAround] = useState<Entry[]>([]);
   const [self, setSelf] = useState<Self | null>(null);
+  const [feed, setFeed] = useState<FeedItem[]>([]);
   const [total, setTotal] = useState(0);
-  const [days, setDays] = useState<7 | 30 | 90>(30);
+  const [days, setDays] = useState<Period>(30);
   const [mode, setMode] = useState<Mode>("discipline");
   const [tab, setTab] = useState<Tab>("board");
   const [loading, setLoading] = useState(true);
   const [showConfetti, setShowConfetti] = useState(false);
   const [selectedBadge, setSelectedBadge] = useState<string | null>(null);
+  // Badges fraîchement octroyés par le serveur (bannière + confettis).
+  const [newBadges, setNewBadges] = useState<string[]>([]);
   const [showShare, setShowShare] = useState(false);
+  const [inviteCopied, setInviteCopied] = useState(false);
   const celebrated = useRef(false);
 
-  const load = useCallback(async (d: number, m: Mode) => {
+  const load = useCallback(async (d: Period, m: Mode) => {
     setLoading(true);
     try {
       const res = await fetch(`/api/leaderboard?days=${d}&mode=${m}`);
       const data = await res.json();
       setEntries(data.entries ?? []); setAround(data.around ?? []); setSelf(data.self ?? null); setTotal(data.total ?? 0);
+      setFeed(data.feed ?? []);
+      // Célébration des badges que le serveur vient tout juste d'octroyer.
+      if (Array.isArray(data.self?.newlyAwarded) && data.self.newlyAwarded.length > 0) {
+        setNewBadges(data.self.newlyAwarded);
+        setShowConfetti(true);
+      }
     } catch {
       // Network/parse failure → degrade to an empty board rather than leaving an
       // unhandled rejection and stale data.
-      setEntries([]); setAround([]); setSelf(null); setTotal(0);
+      setEntries([]); setAround([]); setSelf(null); setTotal(0); setFeed([]);
     } finally { setLoading(false); }
   }, []);
   useEffect(() => { load(days, mode); }, [days, mode, load]);
@@ -127,6 +174,29 @@ export default function LeaderboardPage() {
   const topMover = entries
     .filter((e) => e.delta != null && e.delta >= 2 && !e.isMe)
     .sort((a, b) => (b.delta as number) - (a.delta as number))[0] ?? null;
+
+  // Records de la communauté sur la période (calculés depuis les entrées déjà
+  // chargées : vivent dès 2-3 participants).
+  const records = entries.length > 0 ? {
+    score: [...entries].sort((a, b) => b.score - a.score || b.sessions - a.sessions)[0],
+    streak: [...entries].sort((a, b) => b.streak - a.streak || b.score - a.score)[0],
+    sessions: [...entries].sort((a, b) => b.sessions - a.sessions || b.score - a.score)[0],
+  } : null;
+
+  // Agrégats communauté pour la carte « Toi vs la communauté ».
+  const community = entries.length > 0 ? (() => {
+    const sessionsSorted = entries.map((e) => e.sessions).sort((a, b) => a - b);
+    return {
+      avgScore: Math.round(entries.reduce((s, e) => s + e.score, 0) / entries.length),
+      bestStreak: Math.max(...entries.map((e) => e.streak)),
+      medianSessions: sessionsSorted[Math.floor(sessionsSorted.length / 2)],
+    };
+  })() : null;
+
+  const seasonMonth = new Date().toLocaleDateString(
+    lang === "fr" ? "fr-FR" : lang === "de" ? "de-DE" : lang === "es" ? "es-ES" : "en-US",
+    { month: "long" },
+  );
 
   // Petite célébration la première fois qu'on se voit sur le podium.
   useEffect(() => {
@@ -166,6 +236,20 @@ export default function LeaderboardPage() {
       <div className="mt-4 lg:grid lg:grid-cols-3 lg:gap-6 lg:items-start">
       {/* Rail : tes stats + badges + invite (droite sur grand écran, haut sur mobile) */}
       <aside className="space-y-4 lg:col-span-1 lg:order-2">
+      {/* Bannière : badges fraîchement débloqués (avec leurs récompenses) */}
+      {newBadges.length > 0 && (
+        <div className="rounded-xl border border-warning/40 bg-warning/10 p-3.5 flex items-start gap-2.5">
+          <Gift className="w-4 h-4 text-warning mt-0.5 shrink-0" strokeWidth={2} />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground">{t("leaderboard_new_badge_title")}</p>
+            <p className="text-xs text-foreground-muted mt-0.5">
+              {newBadges.map((k) => `${BADGE_EMOJI[k as BadgeKey] ?? ""} ${t(`badge_${k}`)}`).join(" · ")}
+            </p>
+            <p className="text-[11px] text-muted mt-1">{t("leaderboard_new_badge_body")}</p>
+          </div>
+          <button onClick={() => setNewBadges([])} className="text-muted hover:text-foreground text-sm leading-none p-0.5" aria-label={t("close")}>✕</button>
+        </div>
+      )}
       {/* Tes stats (toujours visible) */}
       {self && (() => {
         const tier = tierOf(self.score);
@@ -233,40 +317,137 @@ export default function LeaderboardPage() {
         );
       })()}
 
-      {/* Badges */}
+      {/* Toi vs la communauté */}
+      {self && community && (
+        <div className="rounded-xl border border-border bg-card p-4">
+          <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">{t("leaderboard_vs_title")}</p>
+          <div className="space-y-3">
+            {([
+              { label: t("leaderboard_stat_score"), me: self.score, them: community.avgScore, themLabel: t("leaderboard_vs_avg"), max: 100 },
+              { label: t("leaderboard_stat_streak"), me: self.streak, them: community.bestStreak, themLabel: t("leaderboard_vs_best"), max: Math.max(self.streak, community.bestStreak, 1) },
+              { label: t("leaderboard_stat_sessions"), me: self.sessions, them: community.medianSessions, themLabel: t("leaderboard_vs_median"), max: Math.max(self.sessions, community.medianSessions, 1) },
+            ]).map((row, i) => (
+              <div key={i}>
+                <p className="text-[11px] text-muted mb-1">{row.label}</p>
+                {[
+                  { name: t("leaderboard_vs_you"), val: row.me, strong: row.me >= row.them },
+                  { name: row.themLabel, val: row.them, strong: false },
+                ].map((b, j) => (
+                  <div key={j} className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[10px] text-muted w-16 truncate">{b.name}</span>
+                    <div className="flex-1 h-1.5 rounded-full bg-surface overflow-hidden">
+                      <GrowBar pct={Math.max(3, Math.min(100, (b.val / row.max) * 100))} durationMs={700} delayMs={i * 90}
+                        className={`rounded-full ${j === 0 ? "bg-accent" : "bg-muted/40"}`} />
+                    </div>
+                    <span className={`text-[11px] tabular-nums w-8 text-right ${b.strong && j === 0 ? "text-profit font-semibold" : "text-foreground"}`}>{b.val}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Badges — en free, seul le 1er est déblocable ; les autres restent
+          visibles (grisés + verrou Plus) pour rendre le manque concret. */}
       {self && (() => {
         const badges = badgesFor(self);
-        const earnedCount = badges.filter((b) => b.earned).length;
+        const isPlanLocked = (b: BadgeState) => badgesPlanLocked && b.key !== FREE_BADGE_KEY;
+        const earnedCount = badges.filter((b) => b.earned && !isPlanLocked(b)).length;
+        const planLockedCount = badges.filter(isPlanLocked).length;
         return (
           <div>
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs text-muted">{t("leaderboard_badges_title")}</p>
               <span className="text-[11px] font-semibold text-accent tabular-nums">{earnedCount}/{badges.length}</span>
             </div>
-            <div className="grid grid-cols-4 sm:grid-cols-7 lg:grid-cols-4 gap-2">
-              {badges.map((b) => (
+            <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-3 gap-2">
+              {badges.map((b) => {
+                const locked = isPlanLocked(b);
+                const earned = b.earned && !locked;
+                return (
                 <button key={b.key} onClick={() => setSelectedBadge((cur) => (cur === b.key ? null : b.key))}
-                  className={`aspect-square rounded-xl border flex flex-col items-center justify-center gap-1 p-1 transition-transform hover:scale-105 ${selectedBadge === b.key ? "ring-1 ring-accent" : ""} ${b.earned ? "border-accent/30 bg-accent/[0.05] shadow-[0_0_12px_-3px_rgb(var(--accent)/0.5)]" : "border-border bg-surface/40 opacity-50"}`}>
-                  <span className="text-lg leading-none">{b.earned ? b.emoji : <Lock className="w-3.5 h-3.5 text-muted" />}</span>
-                  <span className="text-[8px] text-muted text-center leading-tight line-clamp-2">{t(`badge_${b.key}`)}</span>
+                  title={t(`badge_${b.key}`)}
+                  className={`relative rounded-xl border flex flex-col items-center gap-1.5 px-1.5 py-2.5 transition-transform hover:scale-105 ${selectedBadge === b.key ? "ring-1 ring-accent" : ""} ${earned ? "border-accent/30 bg-accent/[0.05] shadow-[0_0_12px_-3px_rgb(var(--accent)/0.5)]" : "border-border bg-surface/40 opacity-60"}`}>
+                  {locked && (
+                    <span className="absolute top-1 right-1 inline-flex items-center justify-center w-4 h-4 rounded-full bg-accent/15" aria-label={t("leaderboard_badge_plus_locked")}>
+                      <Lock className="w-2.5 h-2.5 text-accent" strokeWidth={2.5} />
+                    </span>
+                  )}
+                  <span className={`text-2xl leading-none flex items-center justify-center h-7 ${locked ? "grayscale opacity-70" : ""}`}>{earned || locked ? b.emoji : <Lock className="w-4 h-4 text-muted" />}</span>
+                  <span className="text-[10px] text-foreground-muted text-center leading-[13px] h-[26px] overflow-hidden">{t(`badge_${b.key}`)}</span>
                 </button>
-              ))}
+                );
+              })}
             </div>
-            {/* Détail du badge sélectionné : critère + progression */}
+            {/* Les badges rapportent des récompenses réelles — dit sous le mur
+                pour que chercher un badge ait un enjeu concret. */}
+            <p className="mt-2 flex items-start gap-1.5 text-[11px] text-muted">
+              <Gift className="w-3 h-3 shrink-0 mt-0.5 text-accent" strokeWidth={2} />
+              {t("leaderboard_badges_rewards_hint")}
+            </p>
+            {badgesPlanLocked && (
+              <Link href="/dashboard/upgrade" className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-gold hover:underline">
+                <Lock className="w-3 h-3 shrink-0" strokeWidth={2} />
+                {t("leaderboard_badges_plus_note").replace("{n}", String(planLockedCount))}
+              </Link>
+            )}
+            {/* Détail du badge sélectionné : critère + progression (ou upsell si hors plan) */}
             {selectedBadge && (() => {
               const b = badges.find((x) => x.key === selectedBadge);
               if (!b) return null;
+              const locked = isPlanLocked(b);
+              const earned = b.earned && !locked;
+              const reward = BADGE_REWARDS[b.key];
+              const award = self.awards?.[b.key];
+              const rewardLines: { icon: typeof Gift; text: string }[] = [];
+              if (reward.freezeBonus) rewardLines.push({ icon: Snowflake, text: t("badge_reward_freeze") });
+              if (reward.certificate) rewardLines.push({ icon: FileDown, text: t("badge_reward_cert") });
+              if (reward.flair) rewardLines.push({ icon: Trophy, text: t("badge_reward_flair").replace("{emoji}", b.emoji) });
               return (
                 <div className="mt-2 rounded-xl border border-border bg-surface/40 p-3">
                   <div className="flex items-center gap-2.5">
-                    <span className="text-xl leading-none shrink-0">{b.earned ? b.emoji : "🔒"}</span>
+                    <span className={`text-xl leading-none shrink-0 ${locked ? "grayscale opacity-70" : ""}`}>{earned || locked ? b.emoji : "🔒"}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-foreground">{t(`badge_${b.key}`)}</p>
                       <p className="text-xs text-muted">{t(`badge_${b.key}_hint`)}</p>
                     </div>
-                    {b.earned && <span className="text-[11px] font-semibold text-profit shrink-0">✓ {t("leaderboard_badge_earned")}</span>}
+                    {earned && <span className="text-[11px] font-semibold text-profit shrink-0">✓ {t("leaderboard_badge_earned")}</span>}
                   </div>
-                  {!b.earned && b.progress && (
+                  {/* Ce que le badge rapporte — affiché aussi quand il est
+                      verrouillé : la récompense fait partie de l'envie. */}
+                  {rewardLines.length > 0 && (
+                    <div className="mt-2.5 rounded-lg bg-surface/60 border border-border/60 px-2.5 py-2 space-y-1">
+                      <p className="text-[10px] font-semibold text-accent uppercase tracking-wider flex items-center gap-1">
+                        <Gift className="w-3 h-3" strokeWidth={2} /> {t("leaderboard_badge_reward")}
+                      </p>
+                      {rewardLines.map(({ icon: RIcon, text }, i) => (
+                        <p key={i} className="text-[11px] text-foreground-muted flex items-center gap-1.5">
+                          <RIcon className="w-3 h-3 shrink-0 text-muted" strokeWidth={1.75} /> {text}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                  {earned && reward.certificate && hasCertificate(b.key) && award && (
+                    <button
+                      onClick={() => generateBadgeCertificate({
+                        badgeKey: b.key,
+                        username: self.username || "trader",
+                        awardedAt: award.awardedAt,
+                        meta: award.meta,
+                        lang: lang as CertLang,
+                      })}
+                      className="mt-2.5 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-accent text-white text-xs font-semibold hover:bg-accent-hover transition-colors"
+                    >
+                      <FileDown className="w-3.5 h-3.5" strokeWidth={2} /> {t("badge_cert_download")}
+                    </button>
+                  )}
+                  {locked ? (
+                    <div className="mt-2.5 flex items-center justify-between gap-2 rounded-lg bg-accent/[0.06] border border-accent/20 px-3 py-2">
+                      <span className="text-[11px] text-foreground-muted">{t("leaderboard_badge_plus_locked")}</span>
+                      <Link href="/dashboard/upgrade" className="text-[11px] font-semibold text-accent hover:underline shrink-0">{t("leaderboard_badge_plus_cta")} →</Link>
+                    </div>
+                  ) : !b.earned && b.progress && (
                     <div className="mt-2.5">
                       <div className="flex items-center justify-between text-[11px] text-muted mb-1">
                         <span>{t("leaderboard_badge_progress")}</span>
@@ -284,6 +465,31 @@ export default function LeaderboardPage() {
         );
       })()}
 
+      {/* Fil d'activité : ce qui se passe dans la communauté en ce moment */}
+      {feed.length > 0 && (
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="flex items-center gap-2 mb-2.5">
+            <Activity className="w-3.5 h-3.5 text-accent" strokeWidth={1.75} />
+            <p className="text-xs font-semibold text-muted uppercase tracking-wider">{t("leaderboard_feed_title")}</p>
+          </div>
+          <ul className="space-y-2">
+            {feed.map((f, i) => (
+              <li key={i} className="text-xs text-foreground-muted leading-relaxed">
+                {f.type === "day_record" && (
+                  <>🎯 {t("leaderboard_feed_day_record").replace("{user}", `@${f.user}`).replace("{score}", String(f.score))}</>
+                )}
+                {f.type === "streak" && (
+                  <>🔥 {t("leaderboard_feed_streak").replace("{user}", `@${f.user}`).replace("{n}", String(f.days))}</>
+                )}
+                {f.type === "join" && (
+                  <>🤝 {t("leaderboard_feed_join").replace("{user}", `@${f.user}`).replace("{challenge}", t(`challenge_c_${f.challengeKey.replace(/-/g, "_")}_title`))}</>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Invite à rejoindre si pas opt-in / pas de pseudo */}
       {self && (!self.optedIn || !self.hasUsername) && (
         <Link href="/dashboard/settings#leaderboard" className="flex items-center gap-3 rounded-xl border border-accent/30 bg-accent/[0.04] p-4 hover:border-accent/50 transition-colors">
@@ -295,6 +501,27 @@ export default function LeaderboardPage() {
           <span className="text-xs text-accent font-medium whitespace-nowrap">{t("leaderboard_join")} →</span>
         </Link>
       )}
+
+      {/* Invite un ami : le classement est meilleur à plusieurs */}
+      <div className="rounded-xl border border-border bg-card p-4">
+        <div className="flex items-center gap-2.5">
+          <UserPlus className="w-4 h-4 text-accent shrink-0" strokeWidth={1.75} />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground">{t("leaderboard_invite_title")}</p>
+            <p className="text-xs text-muted">{t("leaderboard_invite_desc")}</p>
+          </div>
+        </div>
+        <button
+          onClick={() => {
+            navigator.clipboard.writeText("https://tradediscipline.app");
+            setInviteCopied(true);
+            setTimeout(() => setInviteCopied(false), 2000);
+          }}
+          className="mt-3 w-full py-2 rounded-lg border border-accent/30 bg-accent/5 text-accent text-xs font-medium hover:bg-accent/10 transition-colors"
+        >
+          {inviteCopied ? `✓ ${t("leaderboard_invite_copied")}` : t("leaderboard_invite_copy")}
+        </button>
+      </div>
       </aside>
 
       {/* Colonne principale : modes + période + classement */}
@@ -312,11 +539,23 @@ export default function LeaderboardPage() {
         <div className="flex gap-1 text-xs">
           {PERIODS.map((d) => (
             <button key={d} onClick={() => setDays(d)} className={`px-2.5 py-1.5 rounded-lg transition-colors ${days === d ? "bg-accent/15 text-accent font-semibold" : "text-muted hover:text-foreground"}`}>
-              {t("leaderboard_days").replace("{n}", String(d))}
+              {d === "season" ? `🏆 ${t("leaderboard_period_season")}` : t("leaderboard_days").replace("{n}", String(d))}
             </button>
           ))}
         </div>
       </div>
+
+      {/* Bandeau saison : le classement du mois repart de zéro le 1er */}
+      {days === "season" && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-warning/30 bg-warning/[0.06] px-4 py-2.5">
+          <p className="text-sm font-semibold text-foreground capitalize">
+            🏆 {t("leaderboard_season_title").replace("{month}", seasonMonth)}
+          </p>
+          <p className="text-xs text-muted">
+            {t("leaderboard_season_left").replace("{n}", String(seasonDaysLeft()))} · {t("leaderboard_season_reset")}
+          </p>
+        </div>
+      )}
 
       {loading ? (
         <div className="skeleton h-40 rounded-xl mt-4" />
@@ -326,6 +565,30 @@ export default function LeaderboardPage() {
         </div>
       ) : (
         <>
+          {/* Records de la communauté (période courante) */}
+          {records && (
+            <div className="mt-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Award className="w-3.5 h-3.5 text-accent" strokeWidth={1.75} />
+                <p className="text-xs font-semibold text-muted uppercase tracking-wider">{t("leaderboard_records_title")}</p>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {([
+                  { emoji: "🎯", label: t("leaderboard_record_score"), user: records.score, val: String(records.score.score) },
+                  { emoji: "🔥", label: t("leaderboard_record_streak"), user: records.streak, val: `${records.streak.streak} j` },
+                  { emoji: "📅", label: t("leaderboard_record_sessions"), user: records.sessions, val: String(records.sessions.sessions) },
+                  ...(topMover ? [{ emoji: "🚀", label: t("leaderboard_record_mover"), user: topMover, val: `+${topMover.delta}` }] : []),
+                ]).map((r, i) => (
+                  <div key={i} className={`rounded-xl border p-3 ${r.user.isMe ? "border-accent/40 bg-accent/[0.06]" : "border-border bg-card"}`}>
+                    <p className="text-[10px] text-muted uppercase tracking-wide">{r.emoji} {r.label}</p>
+                    <p className="text-lg font-bold text-foreground mt-0.5 tabular-nums">{r.val}</p>
+                    <p className="text-[11px] text-muted truncate">{r.user.isMe ? t("leaderboard_you") : `@${r.user.username}`}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-muted">{(total === 1 ? t("leaderboard_participants_one") : t("leaderboard_participants")).replace("{n}", String(total))}</p>
             {/* Plus forte ascension de la période */}
@@ -358,6 +621,7 @@ export default function LeaderboardPage() {
                     </span>
                     <span className="flex items-center gap-1 max-w-full mt-1">
                       <span className="text-xs text-foreground truncate font-medium">{e.isMe ? t("leaderboard_you") : `@${e.username}`}</span>
+                      {e.flair && <span className="text-xs shrink-0" title={t("leaderboard_flair_hint")} role="img">{e.flair}</span>}
                       {e.premium && <PremiumBadge label={t("plan_premium")} />}
                     </span>
                     <span className={`text-lg font-bold ${scoreColor(e.score)}`}>{displayValue(e.score, e.sessions, e.streak)}</span>
@@ -404,7 +668,10 @@ export default function LeaderboardPage() {
           stats={{
             score: self.score, sessions: self.sessions, streak: self.streak,
             rank: self.rank, total, percentile: self.percentile,
-            tierKey: tierOf(self.score).key, tierEmoji: tierOf(self.score).emoji, days,
+            // La carte de partage affiche une période en jours : pour la saison,
+            // c'est le nombre de jours écoulés depuis le 1ᵉʳ du mois.
+            tierKey: tierOf(self.score).key, tierEmoji: tierOf(self.score).emoji,
+            days: days === "season" ? new Date().getDate() : days,
           }}
           onClose={() => setShowShare(false)}
         />
@@ -421,6 +688,7 @@ function Row({ e, t, value }: { e: Entry; t: (k: string) => string; value: strin
       <Avatar name={e.username} isMe={e.isMe} />
       <span className="flex-1 min-w-0 flex items-center gap-1.5">
         <span className="text-foreground truncate">{e.isMe ? t("leaderboard_you") : `@${e.username}`}</span>
+        {e.flair && <span className="text-sm shrink-0" title={t("leaderboard_flair_hint")} role="img">{e.flair}</span>}
         {e.premium && <PremiumBadge label={t("plan_premium")} />}
       </span>
       <span className="hidden sm:inline text-[11px] text-muted tabular-nums whitespace-nowrap">📅 {e.sessions} · 🔥 {e.streak}</span>

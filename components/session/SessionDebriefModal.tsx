@@ -12,7 +12,8 @@
 import { useLanguage } from "@/lib/LanguageContext";
 import { cn } from "@/lib/cn";
 import { motion } from "framer-motion";
-import { CheckCircle2, AlertTriangle, Crosshair, Sparkles, X } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Crosshair, Lock, Sparkles, X } from "lucide-react";
+import Link from "next/link";
 import { createPortal } from "react-dom";
 
 export interface SessionDebrief {
@@ -121,6 +122,24 @@ export default function SessionDebriefModal({
                   </div>
                 ))}
               </div>
+
+              {/* Free : le débrief affiché est statique — montrer ce que
+                  l'IA aurait dit, au moment où ça manque le plus. */}
+              {!debrief.ai && debrief.tradeCount > 0 && (
+                <div className="mt-4 rounded-lg border border-gold/30 bg-gold/5 p-3 flex items-start gap-2.5">
+                  <Lock className="w-4 h-4 text-gold shrink-0 mt-0.5" strokeWidth={1.75} />
+                  <div className="text-xs min-w-0">
+                    <p className="font-semibold text-foreground">{t("debrief_ai_locked_title")}</p>
+                    <p className="text-foreground-muted mt-0.5 leading-relaxed">{t("debrief_ai_locked_desc")}</p>
+                    <Link
+                      href="/dashboard/upgrade"
+                      className="inline-block mt-1.5 font-semibold text-gold hover:underline"
+                    >
+                      {t("debrief_ai_locked_cta")}
+                    </Link>
+                  </div>
+                </div>
+              )}
 
               <button
                 onClick={onClose}

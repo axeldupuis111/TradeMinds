@@ -11,6 +11,7 @@ import AlertCenter from "@/components/dashboard/AlertCenter";
 import ChallengeGuardian from "@/components/dashboard/ChallengeGuardian";
 import NewsWindowGuard from "@/components/dashboard/NewsWindowGuard";
 import StopTradingGuard from "@/components/dashboard/StopTradingGuard";
+import TimezoneSync from "@/components/dashboard/TimezoneSync";
 import { SubscriptionBanner } from "@/components/SubscriptionBanner";
 import { ActiveAccountProvider } from "@/lib/ActiveAccountContext";
 import { AlertsProvider } from "@/lib/AlertsContext";
@@ -197,6 +198,7 @@ export default function DashboardLayout({
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden relative">
         <AmbientBackground />
+        <TimezoneSync />
         <StopTradingGuard />
         <ChallengeGuardian />
         <NewsWindowGuard />

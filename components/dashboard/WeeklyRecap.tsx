@@ -207,7 +207,8 @@ export default function WeeklyRecap({ trades }: { trades: RecapTrade[] }) {
         <p className="text-sm text-foreground-muted">{t("recap_empty")}</p>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {/* 2×2 quand la carte partage la ligne avec le plan de la semaine (lg). */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 2xl:grid-cols-4 gap-3">
             {stats.map((s) => (
               <div key={s.key} className="rounded-lg bg-surface/50 border border-border/60 px-3 py-2.5">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-foreground-muted leading-none mb-1.5">

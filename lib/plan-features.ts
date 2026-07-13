@@ -28,17 +28,24 @@ export const PLAN_FEATURES: PlanFeature[] = [
   { key: "plan_feat_analytics",         free: true,          plus: true,             premium: true },
   { key: "plan_feat_eco_calendar",      free: true,          plus: true,             premium: true },
   { key: "plan_feat_session_pretrade",  free: true,          plus: true,             premium: true },
+  { key: "plan_feat_position_sizer",    free: true,          plus: true,             premium: true },
   { key: "plan_feat_leaderboard",       free: true,          plus: true,             premium: true },
+  // Free : seul le 1er badge est déblocable (gate UI dans la page classement).
+  { key: "plan_feat_badges",            free: "1",           plus: true,             premium: true },
   // ── IA ──
   { key: "plan_feat_strategy_ai",       free: "1",           plus: "plan_unlimited", premium: "plan_unlimited", groupKey: "plan_group_ai" },
-  { key: "plan_feat_analysis_ai",       free: "1/plan_week", plus: "1/plan_day",     premium: "10/plan_day" },
-  { key: "plan_feat_coach_ai",          free: false,         plus: "5/plan_day",     premium: "30/plan_day" },
+  // Free : 1 analyse « découverte » à vie (gate serveur dans /api/analyze).
+  { key: "plan_feat_analysis_ai",       free: "plan_taster_once", plus: "1/plan_day", premium: "10/plan_day" },
+  // Free : 1 message « découverte » à vie (gate serveur dans chat-coach).
+  { key: "plan_feat_coach_ai",          free: "plan_taster_once", plus: "5/plan_day", premium: "30/plan_day" },
   { key: "plan_feat_debrief_ai",        free: false,         plus: true,             premium: true },
   { key: "plan_feat_weekly_plan",       free: false,         plus: true,             premium: true },
   { key: "plan_feat_daily_summary",     free: false,         plus: true,             premium: true },
   { key: "plan_feat_goals_ai",          free: false,         plus: true,             premium: true },
   // ── Discipline & bilan ──
-  { key: "plan_feat_tags_emotions",     free: false,         plus: true,             premium: true, groupKey: "plan_group_review" },
+  // Page Objectifs & centre de discipline (gate UI dans la page + verrou sidebar).
+  { key: "plan_feat_goals_hub",         free: false,         plus: true,             premium: true, groupKey: "plan_group_review" },
+  { key: "plan_feat_tags_emotions",     free: false,         plus: true,             premium: true },
   { key: "plan_feat_monthly_review",    free: false,         plus: true,             premium: true },
   { key: "plan_feat_pdf_export",        free: false,         plus: true,             premium: true },
   { key: "plan_feat_public_profile",    free: false,         plus: true,             premium: true },
@@ -46,10 +53,17 @@ export const PLAN_FEATURES: PlanFeature[] = [
   { key: "plan_feat_mt_sync",           free: false,         plus: false,            premium: true, groupKey: "plan_group_automation" },
   { key: "plan_feat_challenge_guardian", free: false,        plus: false,            premium: true },
   { key: "plan_feat_macro",             free: false,         plus: false,            premium: true },
-  { key: "plan_feat_position_sizer",    free: false,         plus: false,            premium: true },
+  { key: "plan_feat_sizer_dd",          free: false,         plus: false,            premium: true },
   { key: "plan_feat_badge_premium",     free: false,         plus: false,            premium: true },
   { key: "plan_feat_priority_support",  free: false,         plus: false,            premium: true },
 ];
+
+/** Nombre de fonctionnalités totalement verrouillées pour un plan donné
+ *  (les lignes en quota ne comptent pas — l'utilisateur y a accès).
+ *  Affiché comme compteur de manque (sidebar, dashboard). */
+export function countLockedFeatures(plan: "free" | "plus" | "premium"): number {
+  return PLAN_FEATURES.filter((f) => f[plan] === false).length;
+}
 
 // Listes courtes affichées dans les cartes de pricing (landing + upgrade).
 export const FREE_BENEFITS = [

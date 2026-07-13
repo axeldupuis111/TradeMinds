@@ -1,7 +1,9 @@
 "use client";
 
 import { useLanguage } from "@/lib/LanguageContext";
+import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
+import Link from "next/link";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { formatCurrency } from "@/lib/utils";
 import CountUp from "@/components/animations/CountUp";
@@ -335,6 +337,7 @@ const TABLE_GRID = "md:grid-cols-[minmax(0,1.6fr)_92px_minmax(150px,1.2fr)_100px
 
 export default function GoalsPage() {
   const { t } = useLanguage();
+  const { plan, loading: planLoading } = usePlan();
   const supabase = createClient();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -597,6 +600,51 @@ export default function GoalsPage() {
   const showDiscipline = insights && (insights.hasTrades || insights.hasReviews);
   const isNewUser = insightsLoaded && insights != null && !insights.hasTrades && !insights.hasReviews;
 
+  // Page réservée aux plans payants — mur d'upgrade qui montre ce qu'on rate
+  // (même patron que le bilan mensuel : verrou sidebar + mur dans la page).
+  if (!planLoading && plan === "free") {
+    const lockedFeats: { icon: typeof Flame; key: string }[] = [
+      { icon: Flame,  key: "goals_locked_feat_1" },
+      { icon: Scale,  key: "goals_locked_feat_2" },
+      { icon: Gauge,  key: "goals_locked_feat_3" },
+      { icon: Sparkles, key: "goals_locked_feat_4" },
+    ];
+    return (
+      <div className="max-w-6xl mx-auto pb-10">
+        <h1 className="text-2xl font-bold text-foreground">{t("goals_page_title")}</h1>
+        <p className="text-muted mt-1">{t("goals_subtitle")}</p>
+
+        <div className="mt-6 rounded-2xl border border-accent/25 bg-gradient-to-br from-accent/[0.07] to-transparent p-6 sm:p-8">
+          <div className="flex items-start gap-3.5">
+            <span className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-accent/10 shrink-0">
+              <Lock className="w-5 h-5 text-accent" strokeWidth={1.75} />
+            </span>
+            <div>
+              <h2 className="text-lg font-bold text-foreground">{t("goals_locked_title")}</h2>
+              <p className="text-sm text-muted mt-1 max-w-2xl">{t("goals_locked_body")}</p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid sm:grid-cols-2 gap-3">
+            {lockedFeats.map(({ icon: FeatIcon, key }) => (
+              <div key={key} className="flex items-center gap-3 rounded-xl border border-border bg-card/60 px-4 py-3">
+                <FeatIcon className="w-5 h-5 text-accent shrink-0" strokeWidth={1.75} />
+                <p className="text-sm text-foreground-muted">{t(key)}</p>
+              </div>
+            ))}
+          </div>
+
+          <Link
+            href="/dashboard/upgrade"
+            className="mt-6 inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-colors shadow-lg shadow-accent/20"
+          >
+            <Zap className="w-4 h-4" strokeWidth={2} /> {t("goals_locked_cta")}
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-6xl mx-auto pb-10">
       {showConfetti && <ConfettiBurst onDone={() => setShowConfetti(false)} />}
@@ -609,7 +657,7 @@ export default function GoalsPage() {
         </div>
         <button
           onClick={() => { setShowCreate(true); setCreateMode("write"); }}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-blue-600 transition-colors shadow-lg shadow-accent/20"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-colors shadow-lg shadow-accent/20"
         >
           <Plus className="w-4 h-4" strokeWidth={2.5} /> {t("goals_new_btn")}
         </button>
@@ -793,7 +841,7 @@ export default function GoalsPage() {
                       <p className="text-xs text-muted mt-0.5">{t(r.reasonKey).replace("{v}", String(r.reasonValue))}</p>
                     </div>
                     <button onClick={() => addMetricGoal(r.metric, r.target, r.period)} disabled={busy}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-accent text-white text-xs font-semibold hover:bg-blue-600 transition-colors disabled:opacity-50 shrink-0">
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-accent text-white text-xs font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50 shrink-0">
                       <Plus className="w-3.5 h-3.5" /> {t("goals_add_quick")}
                     </button>
                     <button onClick={() => setDismissedRecos((s) => new Set(s).add(`${r.metric}:${r.period}`))}
@@ -845,7 +893,7 @@ export default function GoalsPage() {
                 <p className="text-muted text-sm">{t("goals_empty_new")}</p>
                 <button
                   onClick={() => { setShowCreate(true); setCreateMode("write"); }}
-                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-blue-600 transition-colors"
+                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-colors"
                 >
                   <Plus className="w-4 h-4" /> {t("goals_empty_cta")}
                 </button>
@@ -1258,7 +1306,7 @@ export default function GoalsPage() {
                       <Sparkles className="w-3.5 h-3.5 text-accent shrink-0" /> {t("goals_ai_hint")}
                     </p>
                     <button onClick={addCustomGoal} disabled={busy || !customText.trim()}
-                      className="mt-4 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-blue-600 transition-colors disabled:opacity-50">
+                      className="mt-4 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50">
                       <Plus className="w-4 h-4" /> {t("goals_add")}
                     </button>
                   </div>
@@ -1289,7 +1337,7 @@ export default function GoalsPage() {
                       </select>
                     </div>
                     <button onClick={async () => { await addMetricGoal(metric, parseFloat(target), period); setShowCreate(false); }} disabled={busy}
-                      className="mt-4 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-blue-600 transition-colors disabled:opacity-50">
+                      className="mt-4 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50">
                       <Plus className="w-4 h-4" /> {t("goals_add")}
                     </button>
                   </div>
@@ -1308,7 +1356,7 @@ export default function GoalsPage() {
                           </p>
                         </div>
                         <button onClick={() => applyPack(pack)} disabled={busy}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-accent text-white text-xs font-semibold hover:bg-blue-600 transition-colors disabled:opacity-50 shrink-0">
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-accent text-white text-xs font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50 shrink-0">
                           <Plus className="w-3.5 h-3.5" /> {t("goals_pack_add")}
                         </button>
                       </div>

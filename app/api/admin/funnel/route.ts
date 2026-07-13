@@ -44,6 +44,8 @@ export async function GET(req: NextRequest) {
     { data: analysisEvents },
     { data: checkoutEvents },
     { count: payingNow },
+    { data: tasterEvents },
+    { data: upgradeCtaEvents },
   ] = await Promise.all([
     admin.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", since),
     admin.from("product_events").select("user_id")
@@ -54,7 +56,18 @@ export async function GET(req: NextRequest) {
     admin.from("product_events").select("user_id")
       .eq("event", "checkout_started").gte("created_at", since).limit(10000),
     admin.from("profiles").select("id", { count: "exact", head: true }).neq("plan", "free"),
+    admin.from("product_events").select("user_id")
+      .eq("event", "taster_used").gte("created_at", since).limit(10000),
+    admin.from("product_events").select("user_id, meta")
+      .eq("event", "upgrade_cta_clicked").gte("created_at", since).limit(10000),
   ]);
+
+  // Ventilation des clics upgrade par déclencheur (meta.source).
+  const upgradeCtaBySource: Record<string, number> = {};
+  for (const row of (upgradeCtaEvents ?? []) as { user_id: string; meta: { source?: string } | null }[]) {
+    const source = row.meta?.source || "unknown";
+    upgradeCtaBySource[source] = (upgradeCtaBySource[source] || 0) + 1;
+  }
 
   return NextResponse.json({
     days,
@@ -65,5 +78,9 @@ export async function GET(req: NextRequest) {
     analyzed: distinct(analysisEvents),
     checkoutStarted: distinct(checkoutEvents),
     payingNow: payingNow ?? 0,
+    // Échelle d'upgrade free→plus (2026-07-09)
+    tasterUsed: distinct(tasterEvents),
+    upgradeCtaUsers: distinct((upgradeCtaEvents ?? []) as { user_id: string }[]),
+    upgradeCtaBySource,
   });
 }

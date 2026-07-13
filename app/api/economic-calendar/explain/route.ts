@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { requireAuth, rateLimitAi } from "@/lib/api-auth";
+import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 import {
   indicatorId,
   lookupGlossary,
@@ -185,6 +186,7 @@ N'invente JAMAIS de chiffre, de prévision ou de valeur. Décris seulement le r�
       beginnerNote: parsed.beginnerNote,
     });
   } catch (err) {
+    if (isLowCreditError(err)) await alertLowCreditsOnce();
     console.error("[Economic explain] generation failed:", err);
     return NextResponse.json({ available: false });
   }

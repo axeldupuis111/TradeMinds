@@ -110,7 +110,7 @@ export default function ExportGuideModal({ onClose }: Props) {
 
         <button
           onClick={onClose}
-          className="mt-5 w-full py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors"
+          className="mt-5 w-full py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors"
         >
           {t("guide_got_it")}
         </button>

@@ -23,11 +23,13 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import {
   AlertTriangle,
+  Lock,
   Play,
   Sparkles,
   Upload,
   X,
 } from "lucide-react";
+import { countLockedFeatures } from "@/lib/plan-features";
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
@@ -258,7 +260,7 @@ export default function DashboardContent({
     : null;
 
   return (
-    <div>
+    <div className="mx-auto max-w-[1440px]">
       {/* ── Mode démo : bannière tant que des trades fictifs existent.
            key sur le volume de trades : router.refresh() après injection/
            purge remonte le composant, qui re-vérifie son état. ── */}
@@ -270,21 +272,38 @@ export default function DashboardContent({
       {/* ── Mode démo : proposer des données fictives si compte vide ── */}
       {allTrades.length === 0 && <DemoDataCta />}
 
-      {/* ── Upsell banner ────────────────────────────────────────────── */}
+      {/* ── « Ce que tu rates » : les fonctionnalités verrouillées, visibles.
+           Remplace l'ancienne bannière upsell générique — un free doit VOIR
+           ce qui lui manque, pas le découvrir en cliquant au hasard. ── */}
       {!planLoading && plan === "free" && !upsellDismissed && (
-        <div className="mb-4 flex items-center gap-3 px-4 py-3 bg-accent/5 border border-accent/20 rounded-xl">
-          <Sparkles className="w-4 h-4 text-accent shrink-0" strokeWidth={1.5} />
-          <p className="text-sm text-foreground flex-1">{t("upsell_banner_text")}</p>
-          <Link href="/dashboard/upgrade" className="text-xs font-semibold text-accent hover:underline whitespace-nowrap">
-            {t("upsell_banner_cta")}
-          </Link>
-          <button
-            onClick={() => setUpsellDismissed(true)}
-            className="text-foreground-muted hover:text-foreground transition-colors"
-            aria-label="Dismiss"
+        <div className="mb-4 rounded-xl border border-gold/25 bg-gold/5 px-4 py-3.5">
+          <div className="flex items-center justify-between gap-3 mb-2.5">
+            <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Lock className="w-4 h-4 text-gold shrink-0" strokeWidth={1.75} />
+              {t("missing_title")}
+            </p>
+            <button
+              onClick={() => setUpsellDismissed(true)}
+              className="text-foreground-muted hover:text-foreground transition-colors"
+              aria-label="Dismiss"
+            >
+              <X className="w-4 h-4" strokeWidth={1.5} />
+            </button>
+          </div>
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 mb-3">
+            {(["missing_1", "missing_2", "missing_3", "missing_4"] as const).map((k) => (
+              <li key={k} className="flex items-start gap-2 text-sm text-foreground-muted">
+                <Lock className="w-3.5 h-3.5 text-gold/70 mt-0.5 shrink-0" strokeWidth={1.75} />
+                <span>{t(k)}</span>
+              </li>
+            ))}
+          </ul>
+          <Link
+            href="/dashboard/upgrade"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-gold hover:underline"
           >
-            <X className="w-4 h-4" strokeWidth={1.5} />
-          </button>
+            {t("missing_cta").replace("{n}", String(countLockedFeatures("free")))} →
+          </Link>
         </div>
       )}
 
@@ -398,49 +417,40 @@ export default function DashboardContent({
         />
       </StaggerItem>
 
-      {/* ── État du jour ─────────────────────────────────────────────── */}
+      {/* ── Aujourd'hui : état du jour + alertes patterns côte à côte ──
+           Chaque enfant peut rendre null ; l'items restant reprend toute
+           la largeur via :only-child. ── */}
       <StaggerItem className="mt-6">
-        <DayState />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 [&>*]:min-w-0 lg:[&>*:only-child]:col-span-2">
+          <DayState />
+          <PatternAlerts />
+        </div>
       </StaggerItem>
 
-      {/* ── Coach temps réel — patterns du trader en alertes live ────── */}
+      {/* ── Diagnostic : fuites de capital + insights IA ──────────────── */}
       <StaggerItem className="mt-6">
-        <PatternAlerts />
-      </StaggerItem>
-
-      {/* ── Fuites de capital — le coût chiffré de l'indiscipline ────── */}
-      <StaggerItem className="mt-6">
-        <CapitalLeaks />
-      </StaggerItem>
-
-      {/* ── Bilan de la semaine ──────────────────────────────────────── */}
-      <StaggerItem className="mt-6">
-        <WeeklyRecap trades={filteredAll} />
-      </StaggerItem>
-
-      {/* ── Plan de la semaine (IA, prospectif) ──────────────────────── */}
-      <StaggerItem className="mt-6">
-        <WeeklyPlanCard />
-      </StaggerItem>
-
-      {/* ── AI Insights + Equity Curve ───────────────────────────────── */}
-      <StaggerItem>
-        {canUseAI ? (
-          <div className={cn(
-            "mt-6 grid gap-4",
-            equityCurveData.length > 0 ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"
-          )}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 [&>*]:min-w-0 lg:[&>*:only-child]:col-span-2">
+          <CapitalLeaks />
+          {canUseAI && (
             <AiInsights insights={insights} filteredAllLength={filteredAll.length} />
-            {equityCurveData.length > 0 && (
-              <EquityCurve data={equityCurveData} initialBalance={initialBalance} />
-            )}
-          </div>
-        ) : equityCurveData.length > 0 ? (
-          <div className="mt-6">
-            <EquityCurve data={equityCurveData} initialBalance={initialBalance} />
-          </div>
-        ) : null}
+          )}
+        </div>
       </StaggerItem>
+
+      {/* ── Ta semaine : bilan (rétrospectif) + plan IA (prospectif) ──── */}
+      <StaggerItem className="mt-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 [&>*]:min-w-0 lg:[&>*:only-child]:col-span-2">
+          <WeeklyRecap trades={filteredAll} />
+          <WeeklyPlanCard />
+        </div>
+      </StaggerItem>
+
+      {/* ── Évolution du capital — le grand graphique, pleine largeur ─── */}
+      {equityCurveData.length > 0 && (
+        <StaggerItem className="mt-6">
+          <EquityCurve data={equityCurveData} initialBalance={initialBalance} />
+        </StaggerItem>
+      )}
 
       {/* ── Trading Calendar ─────────────────────────────────────────── */}
       <StaggerItem className="mt-6">
@@ -449,7 +459,7 @@ export default function DashboardContent({
 
       {/* ── Position sizer shortcut ──────────────────────────────────── */}
       <StaggerItem className="mt-6">
-        <Link href="/dashboard/session" className="block group">
+        <Link href="/dashboard/sizer" className="block group">
           <KpiCardPremium layout="full" intensity="default" accentColor="cyan">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -457,11 +467,6 @@ export default function DashboardContent({
                 <div>
                   <div className="flex items-center gap-2">
                     <CardTitle>{t("dash_sizer_card_title")}</CardTitle>
-                    {plan !== "premium" && (
-                      <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-accent/15 text-accent">
-                        Premium
-                      </span>
-                    )}
                   </div>
                   <p className="text-xs text-muted mt-0.5">{t("dash_sizer_card_desc")}</p>
                 </div>

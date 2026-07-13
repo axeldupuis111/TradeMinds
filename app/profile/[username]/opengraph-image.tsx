@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import { createClient } from "@supabase/supabase-js";
+import { isUsernameDisplayable } from "@/lib/username-moderation";
 
 /**
  * Dynamic Open Graph card for a public trader profile.
@@ -42,6 +43,9 @@ export default async function Image({ params }: { params: { username: string } }
   let streak = 0;
 
   try {
+    // Pseudo bloqué par la modération → même rendu qu'un profil inexistant
+    // (la route d'image reste atteignable en direct même quand la page 404).
+    if (!isUsernameDisplayable(username)) throw new Error("blocked");
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,

@@ -9,6 +9,8 @@ import { Flame, Trophy, Gem, Target, Star, Lock, PartyPopper, Crown, Snowflake, 
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { computeDisciplineStreaks } from "@/lib/discipline-streak";
 import { weekStartLocalKey, browserTimezone } from "@/lib/timezone";
+import { BASE_FREEZE_QUOTA, freezeBonusFor } from "@/lib/badges";
+import { challengeFreezeBonus } from "@/lib/community-challenges";
 
 interface Achievement {
   id: string;
@@ -40,8 +42,10 @@ interface BadgeContext {
   reviewCount: number;
 }
 
-/** Streak-freeze grace tokens granted per calendar month. */
-const FREEZE_QUOTA_PER_MONTH = 2;
+/** Streak-freeze grace tokens granted per calendar month (before badge bonus).
+ *  Les badges du classement ajoutent des gels PERMANENTS : quota mensuel =
+ *  BASE_FREEZE_QUOTA + bonus des badges acquis (lib/badges). */
+const FREEZE_QUOTA_PER_MONTH = BASE_FREEZE_QUOTA;
 
 export default function GoalsStreaks() {
   const { t } = useLanguage();
@@ -53,6 +57,8 @@ export default function GoalsStreaks() {
   const [weeklyProgress, setWeeklyProgress] = useState({ current: 0, target: 0, met: true });
   // Streak-freeze state
   const [freezeRemaining, setFreezeRemaining] = useState(FREEZE_QUOTA_PER_MONTH);
+  // Gels bonus mensuels gagnés par les badges du classement (récompense).
+  const [freezeBonus, setFreezeBonus] = useState(0);
   const [freezeCandidate, setFreezeCandidate] = useState<string | null>(null);
   const [freezing, setFreezing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -68,7 +74,7 @@ export default function GoalsStreaks() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
 
-    const [{ data: reviews }, { data: achData }, { data: trades }, { data: freezes }] = await Promise.all([
+    const [{ data: reviews }, { data: achData }, { data: trades }, { data: freezes }, { data: badgeAwards }, { data: challengeAwards }] = await Promise.all([
       supabase
         .from("session_reviews")
         .select("created_at, discipline_score, analysis")
@@ -88,6 +94,17 @@ export default function GoalsStreaks() {
         .from("streak_freezes")
         .select("day, created_at")
         .eq("user_id", user.id),
+      // Badges acquis (récompense : gels bonus) — même défense si migration absente.
+      supabase
+        .from("badge_awards")
+        .select("badge_key")
+        .eq("user_id", user.id),
+      // Défis hebdo réussis (récompense : +1 gel par défi, plafonné/mois).
+      supabase
+        .from("challenge_awards")
+        .select("awarded_at")
+        .eq("user_id", user.id)
+        .eq("completed", true),
     ]);
 
     setAchievements(achData || []);
@@ -119,11 +136,23 @@ export default function GoalsStreaks() {
 
     // ── Streak-freeze quota & candidate ──────────────────────────────────────
     // Quota is per calendar month, counted by when each freeze was spent.
+    // Les badges du classement (streak_7, regular, comeback…) ajoutent des
+    // gels permanents au quota mensuel — récompense réelle des badges.
+    const badgeBonus = freezeBonusFor((badgeAwards || []).map((a) => (a as { badge_key: string }).badge_key));
     const monthPrefix = new Date().toISOString().slice(0, 7); // YYYY-MM
+    // Chaque défi communautaire réussi ce mois-ci offre +1 gel (plafonné pour
+    // qu'une grosse semaine ne rende pas la série incassable).
+    const challengeGels = challengeFreezeBonus(
+      (challengeAwards || []).filter(
+        (a) => ((a as { awarded_at: string }).awarded_at || "").slice(0, 7) === monthPrefix,
+      ).length,
+    );
+    const bonus = badgeBonus + challengeGels;
+    setFreezeBonus(bonus);
     const usedThisMonth = (freezes || []).filter(
       (f) => ((f as { created_at: string }).created_at || "").slice(0, 7) === monthPrefix,
     ).length;
-    setFreezeRemaining(Math.max(0, FREEZE_QUOTA_PER_MONTH - usedThisMonth));
+    setFreezeRemaining(Math.max(0, FREEZE_QUOTA_PER_MONTH + bonus - usedThisMonth));
 
     // Candidate = most recent emotional, not-yet-frozen day (the one breaking the
     // current streak), only if recent enough (≤ 30 days) to be worth protecting.
@@ -321,6 +350,9 @@ export default function GoalsStreaks() {
                 </button>
               ) : (
                 <p className="mt-2 text-[11px] text-muted">{t("freeze_none_left")}</p>
+              )}
+              {freezeBonus > 0 && (
+                <p className="mt-1.5 text-[11px] text-sky-400/80">{t("freeze_bonus_note").replace("{n}", String(freezeBonus))}</p>
               )}
             </div>
           </div>

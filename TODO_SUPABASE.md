@@ -13,3 +13,9 @@
 - [ ] Magic Link : à customiser
 - [ ] Change Email Address : à customiser
 - [ ] Invite User : à customiser
+
+## Migration à appliquer (2026-07-12) — récompenses de badges
+- [ ] SQL Editor : exécuter `migrations/20260712_create_badge_awards.sql`
+  (table badge_awards — badges persistants + récompenses : certificats,
+  gels bonus, emblème classement. Fail-open : sans la table, le site
+  fonctionne, seules les récompenses restent inactives.)

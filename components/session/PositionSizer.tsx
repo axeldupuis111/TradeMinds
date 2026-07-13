@@ -259,41 +259,16 @@ export default function PositionSizer({ strategy }: Props) {
     return t("sizer_capped_risk_pct");
   }
 
-  // ── Gating ────────────────────────────────────────────────────────────────
   if (planLoading) return null;
 
-  if (plan !== "premium") {
-    return (
-      <div className="bg-card border border-border rounded-xl p-4 flex items-center justify-between gap-4">
-        <div>
-          <p className="text-sm font-medium text-foreground">
-            {t("sizer_premium_title")}
-          </p>
-          <p className="text-xs text-muted mt-0.5">{t("sizer_premium_desc")}</p>
-        </div>
-        <Link
-          href="/dashboard/upgrade"
-          className="shrink-0 px-4 py-2 bg-accent text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors"
-        >
-          {t("plan_upgrade_btn")}
-        </Link>
-      </div>
-    );
-  }
-
-  // ── Full calculator ───────────────────────────────────────────────────────
+  // ── Full calculator (free for all — only the DD capping is premium) ───────
   return (
     <div className="bg-card border border-border rounded-xl p-4 space-y-4">
       {/* Header */}
       <div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-foreground">
-            {t("sizer_title")}
-          </span>
-          <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-accent/15 text-accent">
-            Premium
-          </span>
-        </div>
+        <span className="text-sm font-semibold text-foreground">
+          {t("sizer_title")}
+        </span>
         <p className="text-xs text-muted mt-0.5">{t("sizer_subtitle")}</p>
       </div>
 
@@ -369,6 +344,22 @@ export default function PositionSizer({ strategy }: Props) {
           )}
         </div>
       </div>
+
+      {/* DD-capping upsell — the premium layer: only relevant on prop accounts */}
+      {plan !== "premium" && selectedAccount?.type === "prop" && (
+        <div className="rounded-lg border border-accent/30 bg-accent/5 px-4 py-3 flex items-center justify-between gap-3">
+          <p className="text-xs text-muted">
+            <span className="font-medium text-foreground">{t("sizer_dd_teaser_title")}</span>{" "}
+            {t("sizer_dd_teaser_desc")}
+          </p>
+          <Link
+            href="/dashboard/upgrade"
+            className="shrink-0 text-xs font-medium text-accent hover:underline"
+          >
+            {t("plan_upgrade_btn")}
+          </Link>
+        </div>
+      )}
 
       {/* Risk display — common to both modes, currency symbol adapts */}
       {maxRisk && maxRisk.riskEur === 0 ? (
@@ -664,7 +655,11 @@ export default function PositionSizer({ strategy }: Props) {
                   })()
                 ) : (
                   <p className="text-sm text-muted">
-                    {!slPips || !pipValue ? t("sizer_fill_sl_pip") : t("sizer_lot_unavailable")}
+                    {!maxRisk
+                      ? t("sizer_fill_balance_risk")
+                      : !slPips || !pipValue
+                      ? t("sizer_fill_sl_pip")
+                      : t("sizer_lot_unavailable")}
                   </p>
                 )}
               </div>

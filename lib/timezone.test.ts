@@ -6,6 +6,7 @@ import {
   startOfLocalDayUtc,
   weekStartLocalKey,
   addDaysToDateKey,
+  normalizeTimezone,
 } from "./timezone";
 
 describe("timezone helpers", () => {
@@ -65,5 +66,24 @@ describe("timezone helpers", () => {
     expect(localDateKey("Not/AZone", lateUtc)).toBe(localDateKey("UTC", lateUtc));
     expect(localHour(null, lateUtc)).toBe(23);
     expect(localHour(undefined, lateUtc)).toBe(23);
+  });
+
+  // Les anciens réglages stockaient « UTC+1 » (non-IANA) : sans traduction,
+  // Intl rejette la valeur et les crons gataient en heure UTC (emails à 11h
+  // au lieu de 9h à Paris l'été).
+  it("normalizeTimezone translates legacy UTC±N labels to IANA zones", () => {
+    expect(normalizeTimezone("UTC+1")).toBe("Europe/Paris");
+    expect(normalizeTimezone("UTC+5:30")).toBe("Asia/Kolkata");
+    expect(normalizeTimezone("UTC-5")).toBe("America/New_York");
+    expect(normalizeTimezone("Europe/Paris")).toBe("Europe/Paris"); // déjà IANA
+    expect(normalizeTimezone("Not/AZone")).toBe("UTC");
+    expect(normalizeTimezone(null)).toBe("UTC");
+  });
+
+  it("legacy labels resolve to the DST-correct local hour", () => {
+    // En juillet, Paris est à UTC+2 : un profil hérité « UTC+1 » doit quand
+    // même donner l'heure d'été de Paris (01:30 le lendemain).
+    expect(localHour("UTC+1", lateUtc)).toBe(1);
+    expect(localDateKey("UTC+1", lateUtc)).toBe("2026-07-01");
   });
 });

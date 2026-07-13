@@ -76,14 +76,31 @@ export async function POST(request: Request) {
       );
     }
 
-    // ── 4b. Reserve quota atomically (refunded below if the AI call fails) ──
-    const quota = await consumeQuota({ userId, plan, feature: "chat", timezone });
-    if (quota instanceof NextResponse) return quota;
-    reserved = { userId, plan, timezone };
-
     // Client RLS user-scoped : les outils du coach ne peuvent toucher que les
     // données de CE trader (et servent aussi à lire la mémoire ci-dessous).
     const sb = createSupabaseServer();
+
+    // ── 4b. Quota ──
+    // Plan free : 1 message « découverte » à vie (aucun quota journalier). On
+    // l'accorde uniquement si le trader n'a JAMAIS écrit au coach — le client
+    // persiste chaque échange dans chat_messages, qui sert donc de marqueur.
+    if (plan === "free") {
+      const { count, error: tasterErr } = await sb
+        .from("chat_messages")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId);
+      if (tasterErr || (count ?? 0) > 0) {
+        return NextResponse.json(
+          { error: "Feature not available on free plan" },
+          { status: 403 }
+        );
+      }
+    } else {
+      // Plans payants : quota journalier atomique (remboursé si l'IA échoue).
+      const quota = await consumeQuota({ userId, plan, feature: "chat", timezone });
+      if (quota instanceof NextResponse) return quota;
+      reserved = { userId, plan, timezone };
+    }
 
     // ── 4c. Mémoire longitudinale (fail-open si la colonne n'existe pas) ──
     let memoryBlock = "";

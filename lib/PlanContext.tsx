@@ -73,19 +73,20 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const { data } = await supabase
+    const { data, error: profileError } = await supabase
       .from("profiles")
       .select("plan, plan_expires_at, daily_ai_count, daily_ai_reset")
       .eq("id", user.id)
       .single();
 
+    let effectivePlan: PlanType = "free";
     if (data) {
       // Ensure email is synced in profile
       if (user.email) {
         await supabase.from("profiles").update({ email: user.email }).eq("id", user.id);
       }
       // Check expiration
-      let effectivePlan: PlanType = (data.plan as PlanType) || "free";
+      effectivePlan = (data.plan as PlanType) || "free";
       if (data.plan_expires_at && new Date(data.plan_expires_at) < new Date()) {
         effectivePlan = "free";
       }
@@ -102,9 +103,12 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
         setDailyAiCount(data.daily_ai_count || 0);
         setDailyAiReset(data.daily_ai_reset);
       }
-    } else {
-      // No profile row yet — create one
-      await supabase.from("profiles").upsert({
+    } else if (profileError?.code === "PGRST116") {
+      // 0 ligne confirmé (PGRST116) — le profil n'existe vraiment pas : on le
+      // crée en free. IMPORTANT : insert, jamais upsert — un échec transitoire
+      // du select (réseau, refresh token) passait ici et l'upsert ÉCRASAIT le
+      // plan réel du profil avec "free" (downgrade silencieux de payants).
+      await supabase.from("profiles").insert({
         id: user.id,
         email: user.email,
         plan: "free",
@@ -112,6 +116,10 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       });
       setPlan("free");
       setDailyAiCount(0);
+    } else {
+      // Échec transitoire du select : ne rien écrire, ne pas downgrader
+      // l'état local — on garde le plan déjà chargé et on retentera au
+      // prochain loadPlan (auth event / refresh).
     }
 
     // Fetch active subscription for billing banners
@@ -124,7 +132,14 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       .limit(1)
       .maybeSingle();
 
-    if (sub) {
+    // Cohérence profil/abonnement : un profil FREE avec une souscription
+    // « active/canceling » est une ligne obsolète (souscriptions de l'ère
+    // Stripe test, ou plan piloté manuellement via Supabase) — on l'ignore
+    // pour ne jamais afficher « ton abonnement se termine le … » à un free.
+    // Exception : past_due reste visible (paiement à régulariser).
+    const subIsStale = !!sub && effectivePlan === "free" && sub.status !== "past_due";
+
+    if (sub && !subIsStale) {
       setCancelAtPeriodEnd(sub.cancel_at_period_end ?? false);
       setCurrentPeriodEnd(
         sub.current_period_end ? new Date(sub.current_period_end) : null
@@ -191,8 +206,8 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
 
   // Derived permissions.
   // Depuis 2026-07 : la boucle cœur (stratégie + analyse IA) est ouverte à tous
-  // les plans — le free est limité par les quotas (1 analyse/semaine via
-  // PLAN_LIMITS) et par maxStrategies (1 stratégie).
+  // les plans — le free a 1 analyse « découverte » à vie (gate serveur dans
+  // /api/analyze, marqueur session_reviews) et maxStrategies (1 stratégie).
   const canUseStrategy = true;
   const canUseAI = true;
 
