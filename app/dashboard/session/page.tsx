@@ -521,25 +521,25 @@ export default function SessionPage() {
               {strategy.risk_reward !== null && (
                 <li className="text-sm text-foreground flex gap-2">
                   <span className="text-muted shrink-0">⚖️</span>
-                  <span>RR minimum : {strategy.risk_reward}</span>
+                  <span>{t("session_rule_min_rr").replace("{rr}", String(strategy.risk_reward))}</span>
                 </li>
               )}
               {strategy.max_trades_per_day !== null && (
                 <li className="text-sm text-foreground flex gap-2">
                   <span className="text-muted shrink-0">🔢</span>
-                  <span>Max {strategy.max_trades_per_day} trades/jour</span>
+                  <span>{t("session_rule_max_trades").replace("{n}", String(strategy.max_trades_per_day))}</span>
                 </li>
               )}
               {strategy.max_daily_loss !== null && (
                 <li className="text-sm text-foreground flex gap-2">
                   <span className="text-muted shrink-0">🛡️</span>
-                  <span>Perte max journalière : {strategy.max_daily_loss}%</span>
+                  <span>{t("session_rule_max_daily_loss").replace("{p}", String(strategy.max_daily_loss))}</span>
                 </li>
               )}
               {strategy.max_consecutive_losses !== null && (
                 <li className="text-sm text-foreground flex gap-2">
                   <span className="text-muted shrink-0">⛔</span>
-                  <span>Stop après {strategy.max_consecutive_losses} pertes consécutives</span>
+                  <span>{t("session_rule_stop_losses").replace("{n}", String(strategy.max_consecutive_losses))}</span>
                 </li>
               )}
               {strategy.max_session_minutes !== null && (
@@ -551,7 +551,7 @@ export default function SessionPage() {
               {strategy.max_sl_pips !== null && (
                 <li className="text-sm text-foreground flex gap-2">
                   <span className="text-muted shrink-0">📏</span>
-                  <span>SL max : {strategy.max_sl_pips} pips</span>
+                  <span>{t("session_rule_max_sl").replace("{n}", String(strategy.max_sl_pips))}</span>
                 </li>
               )}
             </ul>
