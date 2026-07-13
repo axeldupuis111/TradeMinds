@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdmin } from "@supabase/supabase-js";
 import { isUsernameDisplayable } from "@/lib/username-moderation";
 import { computeAllTimeStats } from "@/lib/leaderboard-extras";
-import { getCommunityChallenge } from "@/lib/community-challenges";
+import { PODIUM_FLAIR, getCommunityChallenge, isoWeekKey, previousWeekKey } from "@/lib/community-challenges";
 import { FREE_BADGE_KEY, awardMeta, bestFlair, computeBadges, type BadgeStats } from "@/lib/badges";
 
 export const dynamic = "force-dynamic";
@@ -227,6 +227,21 @@ export async function GET(req: NextRequest) {
         keysByUser.set(r.user_id as string, arr);
       }
       for (const [id, keys] of Array.from(keysByUser.entries())) flairById.set(id, bestFlair(keys));
+
+      // Récompense éphémère des défis hebdo : un podium la semaine dernière
+      // affiche 👑/🥈/🥉 pendant TOUTE la semaine suivante, par-dessus le flair
+      // de badge (il faut re-gagner pour le garder — c'est le moteur).
+      const prevWeek = previousWeekKey(isoWeekKey());
+      const { data: podiumRows } = await admin
+        .from("challenge_awards").select("user_id, rank")
+        .eq("week_key", prevWeek).not("rank", "is", null).lte("rank", 3)
+        .in("user_id", rankedIds);
+      const bestRank = new Map<string, number>();
+      for (const r of podiumRows ?? []) {
+        const cur = bestRank.get(r.user_id as string);
+        if (cur == null || (r.rank as number) < cur) bestRank.set(r.user_id as string, r.rank as number);
+      }
+      for (const [id, rank] of Array.from(bestRank.entries())) flairById.set(id, PODIUM_FLAIR[rank]);
     }
   } catch { /* table absente — pas de flair */ }
 

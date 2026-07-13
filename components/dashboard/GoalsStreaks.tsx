@@ -10,6 +10,7 @@ import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { computeDisciplineStreaks } from "@/lib/discipline-streak";
 import { weekStartLocalKey, browserTimezone } from "@/lib/timezone";
 import { BASE_FREEZE_QUOTA, freezeBonusFor } from "@/lib/badges";
+import { challengeFreezeBonus } from "@/lib/community-challenges";
 
 interface Achievement {
   id: string;
@@ -73,7 +74,7 @@ export default function GoalsStreaks() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
 
-    const [{ data: reviews }, { data: achData }, { data: trades }, { data: freezes }, { data: badgeAwards }] = await Promise.all([
+    const [{ data: reviews }, { data: achData }, { data: trades }, { data: freezes }, { data: badgeAwards }, { data: challengeAwards }] = await Promise.all([
       supabase
         .from("session_reviews")
         .select("created_at, discipline_score, analysis")
@@ -98,6 +99,12 @@ export default function GoalsStreaks() {
         .from("badge_awards")
         .select("badge_key")
         .eq("user_id", user.id),
+      // Défis hebdo réussis (récompense : +1 gel par défi, plafonné/mois).
+      supabase
+        .from("challenge_awards")
+        .select("awarded_at")
+        .eq("user_id", user.id)
+        .eq("completed", true),
     ]);
 
     setAchievements(achData || []);
@@ -131,9 +138,17 @@ export default function GoalsStreaks() {
     // Quota is per calendar month, counted by when each freeze was spent.
     // Les badges du classement (streak_7, regular, comeback…) ajoutent des
     // gels permanents au quota mensuel — récompense réelle des badges.
-    const bonus = freezeBonusFor((badgeAwards || []).map((a) => (a as { badge_key: string }).badge_key));
-    setFreezeBonus(bonus);
+    const badgeBonus = freezeBonusFor((badgeAwards || []).map((a) => (a as { badge_key: string }).badge_key));
     const monthPrefix = new Date().toISOString().slice(0, 7); // YYYY-MM
+    // Chaque défi communautaire réussi ce mois-ci offre +1 gel (plafonné pour
+    // qu'une grosse semaine ne rende pas la série incassable).
+    const challengeGels = challengeFreezeBonus(
+      (challengeAwards || []).filter(
+        (a) => ((a as { awarded_at: string }).awarded_at || "").slice(0, 7) === monthPrefix,
+      ).length,
+    );
+    const bonus = badgeBonus + challengeGels;
+    setFreezeBonus(bonus);
     const usedThisMonth = (freezes || []).filter(
       (f) => ((f as { created_at: string }).created_at || "").slice(0, 7) === monthPrefix,
     ).length;

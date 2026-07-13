@@ -1,19 +1,40 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
-import { computeDisciplineStreaks } from "@/lib/discipline-streak";
-import { localDateKey } from "@/lib/timezone";
-import { COMMUNITY_CHALLENGES, getCommunityChallenge, IMPULSIVE_EMOTIONS } from "@/lib/community-challenges";
+import { localDateKey, localHour } from "@/lib/timezone";
+import {
+  MIN_PODIUM_PARTICIPANTS,
+  challengeCompleted,
+  challengeProgress,
+  challengeRankScore,
+  challengesForWeek,
+  competitionRanks,
+  computeWeekStats,
+  getCommunityChallenge,
+  isoWeekKey,
+  previousWeekKey,
+  weekDayKeys,
+  weekEndUtc,
+  weekStartUtc,
+  IMPULSIVE_EMOTIONS,
+  type CommunityChallenge,
+  type WeekStats,
+} from "@/lib/community-challenges";
 import { isUsernameDisplayable } from "@/lib/username-moderation";
 
 /**
- * Community challenges: join/leave + a dedicated ranking per challenge.
+ * Défis communautaires hebdomadaires : tirage de la semaine, join/leave,
+ * classement live, et CLÔTURE PARESSEUSE de la semaine précédente.
  *
- * Challenges are code-defined (lib/community-challenges). Progress for the only
- * metric so far ("clean_streak") = current run of consecutive trading days with
- * no impulsive trade, computed in each participant's own timezone. The ranking
- * is an aggregate over participants, so it's read with the service role (only
- * usernames + progress are exposed, and joining is explicit opt-in).
+ * Le tirage est déterministe (lib/community-challenges), donc aucune table de
+ * défis ni cron : la première requête qui arrive après le lundi 00:00 UTC
+ * constate que la semaine passée n'est pas clôturée, fige les résultats dans
+ * challenge_awards (service role, idempotent — contrainte unique + marqueur
+ * challenge_week_closures écrit APRÈS les awards), puis sert la réponse.
+ *
+ * Réussite et classement sont séparés : la réussite est binaire (objectif →
+ * +1 gel), le rang se joue sur un score continu (décimales du score moyen de
+ * la semaine en départage) — voir lib/community-challenges.
  */
 
 export const dynamic = "force-dynamic";
@@ -24,7 +45,41 @@ function serviceClient() {
   });
 }
 
-interface Row { user_id: string; emotion: string | null; open_time: string | null }
+interface TradeRow { user_id: string; emotion: string | null; open_time: string | null }
+interface ReviewRow { user_id: string; discipline_score: number | null; created_at: string }
+interface PartRow { user_id: string; challenge_key: string }
+
+/** Stats hebdo d'un utilisateur, jours bucketés dans SON fuseau. */
+function statsFor(
+  tz: string,
+  days: string[],
+  prevDays: string[],
+  trades: TradeRow[],
+  reviews: ReviewRow[],
+): WeekStats {
+  const tradeByDay = new Map<string, { impulsive: boolean; trades: number }>();
+  for (const t of trades) {
+    if (!t.open_time) continue;
+    const day = localDateKey(tz, new Date(t.open_time));
+    const cur = tradeByDay.get(day) ?? { impulsive: false, trades: 0 };
+    tradeByDay.set(day, {
+      impulsive: cur.impulsive || (!!t.emotion && IMPULSIVE_EMOTIONS.has(t.emotion)),
+      trades: cur.trades + 1,
+    });
+  }
+  const sessions: { day: string; hour: number; score: number }[] = [];
+  const prevScores: number[] = [];
+  const prevSet = new Set(prevDays);
+  for (const r of reviews) {
+    if (r.discipline_score == null) continue;
+    const at = new Date(r.created_at);
+    const day = localDateKey(tz, at);
+    if (prevSet.has(day)) prevScores.push(r.discipline_score);
+    sessions.push({ day, hour: localHour(tz, at), score: r.discipline_score });
+  }
+  const tradeDays = Array.from(tradeByDay.entries()).map(([day, v]) => ({ day, ...v }));
+  return computeWeekStats(days, { tradeDays, sessions, prevScores });
+}
 
 export async function GET() {
   const auth = await requireAuth();
@@ -32,117 +87,190 @@ export async function GET() {
 
   const admin = serviceClient();
 
-  const { data: parts } = await admin.from("challenge_participations").select("user_id, challenge_key");
-  const participations = parts ?? [];
-  const allIds = Array.from(new Set(participations.map((p) => p.user_id as string)));
+  const weekKey = isoWeekKey();
+  const prevKey = previousWeekKey(weekKey);
+  const prevPrevKey = previousWeekKey(prevKey);
+  const days = weekDayKeys(weekKey);
+  const prevDays = weekDayKeys(prevKey);
+  const prevPrevDays = weekDayKeys(prevPrevKey);
+  const challenges = challengesForWeek(weekKey);
+  const prevChallenges = challengesForWeek(prevKey);
 
-  // Names + timezones for everyone involved (plus the current user, for "me").
-  const idsForProfiles = Array.from(new Set([...allIds, auth.userId]));
-  const { data: profs } = idsForProfiles.length
-    ? await admin.from("profiles").select("id, username, timezone").in("id", idsForProfiles)
-    : { data: [] as { id: string; username: string | null; timezone: string | null }[] };
-  // Un pseudo bloqué par la modération n'est jamais exposé (fallback "Trader").
+  const [{ data: partsCur }, { data: partsPrev }] = await Promise.all([
+    admin.from("challenge_participations").select("user_id, challenge_key").eq("week_key", weekKey),
+    admin.from("challenge_participations").select("user_id, challenge_key").eq("week_key", prevKey),
+  ]);
+  const cur = (partsCur ?? []) as PartRow[];
+  const prev = (partsPrev ?? []) as PartRow[];
+
+  const allIds = Array.from(new Set([...cur.map((p) => p.user_id), ...prev.map((p) => p.user_id), auth.userId]));
+
+  // Profils (pseudo modéré + fuseau) et données brutes des 3 dernières semaines
+  // (la semaine d'avant-avant sert de base au défi score-climb de la semaine
+  // passée lors de la clôture). Marge d'1 jour de chaque côté pour les fuseaux.
+  const sinceTrades = new Date(weekStartUtc(prevKey).getTime() - 86_400_000).toISOString();
+  const sinceReviews = new Date(weekStartUtc(prevPrevKey).getTime() - 86_400_000).toISOString();
+  const [{ data: profs }, { data: trades }, { data: reviews }] = await Promise.all([
+    admin.from("profiles").select("id, username, timezone").in("id", allIds),
+    admin.from("trades").select("user_id, emotion, open_time").in("user_id", allIds).eq("status", "closed").gte("open_time", sinceTrades),
+    admin.from("session_reviews").select("user_id, discipline_score, created_at").in("user_id", allIds).gte("created_at", sinceReviews),
+  ]);
+
   const nameById = new Map((profs ?? []).map((p) => [
     p.id,
     isUsernameDisplayable(p.username as string | null) ? (p.username as string) : null,
   ]));
   const tzById = new Map((profs ?? []).map((p) => [p.id, (p.timezone as string) || "UTC"]));
 
-  // Closed trades (last 120 days) for all participants + the current user.
-  const idsForTrades = Array.from(new Set([...allIds, auth.userId]));
-  const since = new Date(Date.now() - 120 * 86_400_000).toISOString();
-  const { data: trades } = idsForTrades.length
-    ? await admin
-        .from("trades")
-        .select("user_id, emotion, open_time")
-        .in("user_id", idsForTrades)
-        .eq("status", "closed")
-        .gte("open_time", since)
-    : { data: [] as Row[] };
-
-  const tradesByUser = new Map<string, Row[]>();
-  for (const t of (trades ?? []) as Row[]) {
+  const tradesByUser = new Map<string, TradeRow[]>();
+  for (const t of (trades ?? []) as TradeRow[]) {
     const arr = tradesByUser.get(t.user_id) ?? [];
     arr.push(t);
     tradesByUser.set(t.user_id, arr);
   }
-
-  // Sessions notées des 30 derniers jours (métriques sessions_window / gold_week).
-  const sinceReviews = new Date(Date.now() - 30 * 86_400_000).toISOString();
-  const { data: reviews } = idsForTrades.length
-    ? await admin
-        .from("session_reviews")
-        .select("user_id, discipline_score, created_at")
-        .in("user_id", idsForTrades)
-        .gte("created_at", sinceReviews)
-    : { data: [] as { user_id: string; discipline_score: number | null; created_at: string }[] };
-  const reviewsByUser = new Map<string, { discipline_score: number | null; created_at: string }[]>();
-  for (const r of reviews ?? []) {
-    const arr = reviewsByUser.get(r.user_id as string) ?? [];
+  const reviewsByUser = new Map<string, ReviewRow[]>();
+  for (const r of (reviews ?? []) as ReviewRow[]) {
+    const arr = reviewsByUser.get(r.user_id) ?? [];
     arr.push(r);
-    reviewsByUser.set(r.user_id as string, arr);
+    reviewsByUser.set(r.user_id, arr);
   }
 
-  const cleanStreak = (userId: string): number => {
-    const uTrades = tradesByUser.get(userId) ?? [];
-    const tz = tzById.get(userId) || "UTC";
-    const byDay = new Map<string, boolean>();
-    for (const t of uTrades) {
-      if (!t.open_time) continue;
-      const day = localDateKey(tz, new Date(t.open_time));
-      const emotional = !!t.emotion && IMPULSIVE_EMOTIONS.has(t.emotion);
-      byDay.set(day, (byDay.get(day) ?? false) || emotional);
+  const statsCache = new Map<string, WeekStats>();
+  const weekStatsOf = (userId: string, d: string[], pd: string[]): WeekStats => {
+    const cacheKey = `${userId}:${d[0]}`;
+    const hit = statsCache.get(cacheKey);
+    if (hit) return hit;
+    const s = statsFor(tzById.get(userId) || "UTC", d, pd, tradesByUser.get(userId) ?? [], reviewsByUser.get(userId) ?? []);
+    statsCache.set(cacheKey, s);
+    return s;
+  };
+
+  // ── Clôture paresseuse de la semaine précédente ────────────────────────────
+  try {
+    const { data: closure } = await admin
+      .from("challenge_week_closures").select("week_key").eq("week_key", prevKey).maybeSingle();
+    if (!closure) {
+      const rows: {
+        user_id: string; week_key: string; challenge_key: string;
+        completed: boolean; rank: number | null; progress: number; score: number;
+      }[] = [];
+      for (const c of prevChallenges) {
+        const ids = prev.filter((p) => p.challenge_key === c.key).map((p) => p.user_id);
+        const entries = ids.map((id) => {
+          const s = weekStatsOf(id, prevDays, prevPrevDays);
+          return { id, progress: challengeProgress(c, s), completed: challengeCompleted(c, s), score: challengeRankScore(c, s) };
+        });
+        const active = entries.filter((e) => e.progress > 0 || e.completed);
+        // Podium seulement s'il y a une vraie compétition ; sinon les rangs
+        // restent nuls (les finishers gardent leur gel).
+        const ranks = active.length >= MIN_PODIUM_PARTICIPANTS
+          ? competitionRanks(active.map((e) => e.score))
+          : active.map(() => null);
+        active.forEach((e, i) => {
+          rows.push({
+            user_id: e.id, week_key: prevKey, challenge_key: c.key,
+            completed: e.completed, rank: ranks[i], progress: e.progress,
+            score: Math.round(e.score * 1000) / 1000,
+          });
+        });
+      }
+      if (rows.length > 0) {
+        await admin.from("challenge_awards").upsert(rows, {
+          onConflict: "user_id,week_key,challenge_key",
+          ignoreDuplicates: true,
+        });
+      }
+      // Marqueur écrit APRÈS les awards : un crash entre les deux rejoue la
+      // clôture (déterministe + contrainte unique → aucune perte, aucun doublon).
+      await admin.from("challenge_week_closures").upsert({ week_key: prevKey }, { onConflict: "week_key", ignoreDuplicates: true });
     }
-    const days = Array.from(byDay.entries()).map(([day, emotional]) => ({ day, emotional }));
-    return computeDisciplineStreaks(days).current;
-  };
+  } catch { /* migration absente — les défis restent servis sans clôture */ }
 
-  const sessionsWindow = (userId: string, windowDays: number): number => {
-    const since = Date.now() - windowDays * 86_400_000;
-    return (reviewsByUser.get(userId) ?? []).filter(
-      (r) => r.discipline_score != null && new Date(r.created_at).getTime() >= since,
-    ).length;
-  };
-
-  // Moyenne glissante 7 j ; 0 sous 3 sessions pour qu'une session chanceuse ne
-  // « complète » pas le défi.
-  const goldWeek = (userId: string): number => {
-    const since = Date.now() - 7 * 86_400_000;
-    const scores = (reviewsByUser.get(userId) ?? [])
-      .filter((r) => r.discipline_score != null && new Date(r.created_at).getTime() >= since)
-      .map((r) => r.discipline_score as number);
-    if (scores.length < 3) return 0;
-    return Math.round(scores.reduce((s, v) => s + v, 0) / scores.length);
-  };
-
-  const progressOf = (userId: string, c: (typeof COMMUNITY_CHALLENGES)[number]): number => {
-    if (c.metric === "sessions_window") return sessionsWindow(userId, c.windowDays ?? 14);
-    if (c.metric === "gold_week") return goldWeek(userId);
-    return cleanStreak(userId);
-  };
-
-  const challenges = COMMUNITY_CHALLENGES.map((c) => {
-    const ids = participations.filter((p) => p.challenge_key === c.key).map((p) => p.user_id as string);
+  // ── Défis de la semaine courante ───────────────────────────────────────────
+  const payload = challenges.map((c: CommunityChallenge) => {
+    const ids = cur.filter((p) => p.challenge_key === c.key).map((p) => p.user_id);
     const board = ids
-      .map((id) => ({
-        name: nameById.get(id) || "Trader",
-        progress: progressOf(id, c),
-        isMe: id === auth.userId,
-      }))
-      .sort((a, b) => b.progress - a.progress || (a.isMe ? -1 : 0))
-      .slice(0, 10);
+      .map((id) => {
+        const s = weekStatsOf(id, days, prevDays);
+        return {
+          name: nameById.get(id) || "Trader",
+          progress: challengeProgress(c, s),
+          rankScore: challengeRankScore(c, s),
+          isMe: id === auth.userId,
+        };
+      })
+      .sort((a, b) => b.rankScore - a.rankScore || (a.isMe ? -1 : 0))
+      .slice(0, 10)
+      .map((e) => ({ name: e.name, progress: e.progress, isMe: e.isMe })); // le score exact reste côté serveur
 
+    const myStats = weekStatsOf(auth.userId, days, prevDays);
     return {
       key: c.key,
       target: c.target,
       joined: ids.includes(auth.userId),
       participantCount: ids.length,
-      myProgress: progressOf(auth.userId, c),
+      myProgress: challengeProgress(c, myStats),
+      completed: challengeCompleted(c, myStats),
       leaderboard: board,
     };
   });
 
-  return NextResponse.json({ challenges });
+  // ── Résultats de la semaine dernière (podium + mon bilan) ──────────────────
+  type AwardRow = { user_id: string; challenge_key: string; completed: boolean; rank: number | null; progress: number; awarded_at: string };
+  let lastWeek: {
+    weekKey: string;
+    results: {
+      key: string;
+      podium: { name: string; rank: number; isMe: boolean }[];
+      finishers: number;
+      me: { completed: boolean; rank: number | null; progress: number; awardedAt: string } | null;
+    }[];
+  } | null = null;
+  try {
+    const { data: awardRows } = await admin
+      .from("challenge_awards")
+      .select("user_id, challenge_key, completed, rank, progress, awarded_at")
+      .eq("week_key", prevKey);
+    const awards = (awardRows ?? []) as AwardRow[];
+    if (awards.length > 0) {
+      // Pseudos des médaillés qui ne sont pas déjà chargés.
+      const podiumIds = awards.filter((a) => a.rank != null && a.rank <= 3).map((a) => a.user_id);
+      const missing = podiumIds.filter((id) => !nameById.has(id));
+      if (missing.length > 0) {
+        const { data: extra } = await admin.from("profiles").select("id, username").in("id", missing);
+        for (const p of extra ?? []) {
+          nameById.set(p.id, isUsernameDisplayable(p.username as string | null) ? (p.username as string) : null);
+        }
+      }
+      lastWeek = {
+        weekKey: prevKey,
+        results: prevChallenges.map((c) => {
+          const forChallenge = awards.filter((a) => a.challenge_key === c.key);
+          const mine = forChallenge.find((a) => a.user_id === auth.userId) ?? null;
+          return {
+            key: c.key,
+            podium: forChallenge
+              .filter((a) => a.rank != null && a.rank <= 3)
+              .sort((a, b) => (a.rank as number) - (b.rank as number))
+              .slice(0, 3)
+              .map((a) => ({ name: nameById.get(a.user_id) || "Trader", rank: a.rank as number, isMe: a.user_id === auth.userId })),
+            finishers: forChallenge.filter((a) => a.completed).length,
+            me: mine
+              ? { completed: mine.completed, rank: mine.rank, progress: mine.progress, awardedAt: mine.awarded_at }
+              : null,
+          };
+        }).filter((r) => r.podium.length > 0 || r.finishers > 0 || r.me),
+      };
+      if (lastWeek.results.length === 0) lastWeek = null;
+    }
+  } catch { /* migration absente — pas de rétrospective */ }
+
+  return NextResponse.json({
+    weekKey,
+    endsAt: weekEndUtc(weekKey).toISOString(),
+    challenges: payload,
+    lastWeek,
+  });
 }
 
 export async function POST(req: Request) {
@@ -150,7 +278,10 @@ export async function POST(req: Request) {
   if (auth instanceof NextResponse) return auth;
 
   const body = (await req.json().catch(() => ({}))) as { challengeKey?: string; action?: "join" | "leave" };
-  if (!body.challengeKey || !getCommunityChallenge(body.challengeKey)) {
+  const weekKey = isoWeekKey();
+  // On ne peut rejoindre que les défis DU TIRAGE de la semaine en cours.
+  const inDraw = challengesForWeek(weekKey).some((c) => c.key === body.challengeKey);
+  if (!body.challengeKey || !getCommunityChallenge(body.challengeKey) || !inDraw) {
     return NextResponse.json({ error: "Unknown challenge" }, { status: 400 });
   }
 
@@ -161,7 +292,8 @@ export async function POST(req: Request) {
       .from("challenge_participations")
       .delete()
       .eq("user_id", auth.userId)
-      .eq("challenge_key", body.challengeKey);
+      .eq("challenge_key", body.challengeKey)
+      .eq("week_key", weekKey);
     if (error) return NextResponse.json({ error: "leave failed" }, { status: 500 });
     return NextResponse.json({ ok: true, joined: false });
   }
@@ -169,7 +301,10 @@ export async function POST(req: Request) {
   // Default: join (idempotent).
   const { error } = await admin
     .from("challenge_participations")
-    .upsert({ user_id: auth.userId, challenge_key: body.challengeKey }, { onConflict: "user_id,challenge_key" });
+    .upsert(
+      { user_id: auth.userId, challenge_key: body.challengeKey, week_key: weekKey },
+      { onConflict: "user_id,challenge_key,week_key" },
+    );
   if (error) return NextResponse.json({ error: "join failed" }, { status: 500 });
   return NextResponse.json({ ok: true, joined: true });
 }

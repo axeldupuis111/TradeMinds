@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { executeCoachTool, executeCoachUndo, COACH_TOOLS, type CoachUndo } from "./coach-tools";
+import { CHALLENGE_POOL, challengesForWeek, isoWeekKey } from "./community-challenges";
 
 const USER = "11111111-1111-1111-1111-111111111111";
 const TRADE = "22222222-2222-2222-2222-222222222222";
@@ -137,9 +138,19 @@ describe("manage_challenge — validation", () => {
     expect(r.isError).toBe(true);
   });
 
-  it("rejoint un challenge connu", async () => {
+  it("rejette un challenge du pool absent du tirage de la semaine", async () => {
+    const week = challengesForWeek(isoWeekKey()).map((c) => c.key);
+    const offDraw = CHALLENGE_POOL.find((c) => !week.includes(c.key));
+    const { client, calls } = mockClient();
+    const r = await executeCoachTool(client, USER, "manage_challenge", { challenge_key: offDraw!.key, action: "join" });
+    expect(r.isError).toBe(true);
+    expect(called(calls, "upsert")).toBe(false);
+  });
+
+  it("rejoint un challenge du tirage en cours", async () => {
+    const key = challengesForWeek(isoWeekKey())[0].key;
     const { client } = mockClient({ data: null, error: null });
-    const r = await executeCoachTool(client, USER, "manage_challenge", { challenge_key: "clean-week", action: "join" });
+    const r = await executeCoachTool(client, USER, "manage_challenge", { challenge_key: key, action: "join" });
     expect(r.isError).toBeFalsy();
     expect(r.action).toEqual({ type: "challenge_joined" });
   });

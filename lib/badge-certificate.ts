@@ -48,6 +48,14 @@ const CERT_CONTENT: Record<string, Record<CertLang, { title: string; feat: (m: R
     de: { title: "SAISON-PODIUM", feat: (m) => `hat Rang #${num(m?.rank, 3)} der Disziplin-Rangliste erreicht${seasonSuffix(m, "de")}` },
     es: { title: "PODIO DE LA TEMPORADA", feat: (m) => `termino en el puesto #${num(m?.rank, 3)} del ranking de disciplina${seasonSuffix(m, "es")}` },
   },
+  // Vainqueur (#1) d'un défi communautaire hebdomadaire — clé virtuelle, pas un
+  // badge : le meta vient de challenge_awards ({ week: "2026-W29" }).
+  challenge_week: {
+    fr: { title: "CHAMPION DE LA SEMAINE", feat: (m) => `a remporte le defi communautaire de discipline de la ${weekLabel(m, "fr")}` },
+    en: { title: "CHAMPION OF THE WEEK", feat: (m) => `won the community discipline challenge of ${weekLabel(m, "en")}` },
+    de: { title: "CHAMPION DER WOCHE", feat: (m) => `hat die Community-Disziplin-Challenge der ${weekLabel(m, "de")} gewonnen` },
+    es: { title: "CAMPEON DE LA SEMANA", feat: (m) => `gano el desafio comunitario de disciplina de la ${weekLabel(m, "es")}` },
+  },
 };
 
 const LABELS: Record<CertLang, { kicker: string; awardedTo: string; date: string; certId: string; verified: string; footer: string }> = {
@@ -59,6 +67,17 @@ const LABELS: Record<CertLang, { kicker: string; awardedTo: string; date: string
 
 function num(v: unknown, fallback: number): number {
   return typeof v === "number" && Number.isFinite(v) ? v : fallback;
+}
+/** "2026-W29" → "semaine 29 de 2026" (sans accents, polices standard jsPDF). */
+function weekLabel(m: Record<string, unknown> | null | undefined, lang: CertLang): string {
+  const raw = typeof m?.week === "string" ? m.week : "";
+  const match = /^(\d{4})-W(\d{2})$/.exec(raw);
+  const [year, week] = match ? [match[1], String(Number(match[2]))] : ["", ""];
+  if (!match) return lang === "en" ? "the week" : lang === "de" ? "Woche" : lang === "es" ? "semana" : "semaine";
+  if (lang === "en") return `week ${week} of ${year}`;
+  if (lang === "de") return `Woche ${week} von ${year}`;
+  if (lang === "es") return `semana ${week} de ${year}`;
+  return `semaine ${week} de ${year}`;
 }
 function seasonSuffix(m: Record<string, unknown> | null | undefined, lang: CertLang): string {
   const season = typeof m?.season === "string" ? m.season : null;
