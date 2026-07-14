@@ -47,8 +47,8 @@ export default function AdminPage() {
   // Affiliation influenceurs (page interne : libellés FR en dur, convention admin)
   const [affMonth, setAffMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [affData, setAffData] = useState<{
-    month: string; commissionRate: number;
-    codes: { code: string; subscriptions: number; activeSubscriptions: number; gross: number; eligible: number; commission: number }[];
+    month: string;
+    codes: { code: string; subscriptions: number; activeSubscriptions: number; gross: number; eligible: number; rate: number; tier: string; commission: number }[];
     totals: { gross: number; eligible: number; commission: number };
   } | null>(null);
   const [affLoading, setAffLoading] = useState(false);
@@ -448,7 +448,8 @@ export default function AdminPage() {
                         <th className="py-2 pr-3 font-semibold text-right">Abonnés (actifs)</th>
                         <th className="py-2 pr-3 font-semibold text-right">Encaissé</th>
                         <th className="py-2 pr-3 font-semibold text-right">Assiette ≤ 12 mois</th>
-                        <th className="py-2 font-semibold text-right">Commission {Math.round(affData.commissionRate * 100)} %</th>
+                        <th className="py-2 pr-3 font-semibold text-right">Palier</th>
+                        <th className="py-2 font-semibold text-right">Commission</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -458,6 +459,7 @@ export default function AdminPage() {
                           <td className="py-2 pr-3 text-right tabular-nums text-foreground">{c.subscriptions} ({c.activeSubscriptions})</td>
                           <td className="py-2 pr-3 text-right tabular-nums text-foreground">{euros(c.gross)}</td>
                           <td className="py-2 pr-3 text-right tabular-nums text-foreground">{euros(c.eligible)}</td>
+                          <td className="py-2 pr-3 text-right text-foreground whitespace-nowrap">{c.tier} · {Math.round(c.rate * 100)} %</td>
                           <td className="py-2 text-right tabular-nums font-bold text-accent">{euros(c.commission)}</td>
                         </tr>
                       ))}
@@ -468,6 +470,7 @@ export default function AdminPage() {
                         <td />
                         <td className="py-2 pr-3 text-right tabular-nums font-semibold text-foreground">{euros(affData.totals.gross)}</td>
                         <td className="py-2 pr-3 text-right tabular-nums font-semibold text-foreground">{euros(affData.totals.eligible)}</td>
+                        <td />
                         <td className="py-2 text-right tabular-nums font-bold text-accent">{euros(affData.totals.commission)}</td>
                       </tr>
                     </tfoot>
@@ -475,8 +478,9 @@ export default function AdminPage() {
                 </div>
                 <p className="text-xs text-muted">
                   Encaissé = factures payées du mois (remboursements exclus). Assiette = part encaissée dans
-                  les 12 premiers mois de chaque abonnement, conformément au contrat. La commission se paie
-                  sur facture de l&apos;influenceur, seuil 50 €.
+                  les 12 premiers mois de chaque abonnement. Barème sur abonnés actifs : Bronze 20 % (1-10) ·
+                  Argent 25 % (11-40) · Or 30 % (41+) — le taux du palier s&apos;applique à toute l&apos;assiette
+                  du mois. La commission se paie sur facture de l&apos;influenceur, seuil 50 €.
                 </p>
               </div>
             )

@@ -15,13 +15,26 @@ import { stripe } from "@/lib/stripe";
  *
  * Pour le mois demandé (?month=YYYY-MM, défaut mois courant, bornes UTC) :
  * factures payées des abonnements attribués → encaissé brut, assiette limitée
- * aux 12 premiers mois de chaque abonnement (contrat influenceur), commission
- * à COMMISSION_RATE. Montants en centimes — le front formate.
+ * aux 12 premiers mois de chaque abonnement (contrat influenceur).
+ *
+ * Barème progressif (contrat, Annexe 1) : le taux dépend du nombre d'abonnés
+ * actifs rapportés — Bronze 20 % (1-10), Argent 25 % (11-40), Or 30 % (41+) —
+ * et le taux du palier atteint s'applique à l'ENSEMBLE de l'assiette du mois.
+ * Montants en centimes — le front formate.
  *
  * Même garde admin que /api/admin/funnel (ADMIN_EMAILS).
  */
 
-const COMMISSION_RATE = 0.3;
+/** Barème : seuils sur les abonnés actifs, taux appliqué à toute l'assiette. */
+const TIERS = [
+  { minActive: 41, rate: 0.3, name: "Or" },
+  { minActive: 11, rate: 0.25, name: "Argent" },
+  { minActive: 0, rate: 0.2, name: "Bronze" },
+] as const;
+
+function tierFor(activeSubscriptions: number) {
+  return TIERS.find((t) => activeSubscriptions >= t.minActive) ?? TIERS[TIERS.length - 1];
+}
 
 interface CodeReport {
   code: string;
@@ -33,6 +46,9 @@ interface CodeReport {
   gross: number;
   /** Part de l'encaissé dans les 12 premiers mois des abonnements (centimes). */
   eligible: number;
+  /** Taux du palier atteint (0.2 / 0.25 / 0.3) et son nom. */
+  rate: number;
+  tier: string;
   /** Commission due (centimes). */
   commission: number;
 }
@@ -126,7 +142,7 @@ export async function GET(req: NextRequest) {
     const ensure = (code: string): CodeReport => {
       let r = reports.get(code);
       if (!r) {
-        r = { code, subscriptions: 0, activeSubscriptions: 0, gross: 0, eligible: 0, commission: 0 };
+        r = { code, subscriptions: 0, activeSubscriptions: 0, gross: 0, eligible: 0, rate: 0, tier: "", commission: 0 };
         reports.set(code, r);
       }
       return r;
@@ -165,12 +181,14 @@ export async function GET(req: NextRequest) {
     }
 
     const codes = Array.from(reports.values())
-      .map((r) => ({ ...r, commission: Math.round(r.eligible * COMMISSION_RATE) }))
+      .map((r) => {
+        const tier = tierFor(r.activeSubscriptions);
+        return { ...r, rate: tier.rate, tier: tier.name, commission: Math.round(r.eligible * tier.rate) };
+      })
       .sort((a, b) => b.commission - a.commission || b.gross - a.gross);
 
     return NextResponse.json({
       month: `${year}-${String(month).padStart(2, "0")}`,
-      commissionRate: COMMISSION_RATE,
       codes,
       totals: {
         gross: codes.reduce((s, c) => s + c.gross, 0),
