@@ -10,6 +10,7 @@ import Sidebar from "@/components/Sidebar";
 import AlertCenter from "@/components/dashboard/AlertCenter";
 import ChallengeGuardian from "@/components/dashboard/ChallengeGuardian";
 import NewsWindowGuard from "@/components/dashboard/NewsWindowGuard";
+import SignupAttribution from "@/components/dashboard/SignupAttribution";
 import StopTradingGuard from "@/components/dashboard/StopTradingGuard";
 import TimezoneSync from "@/components/dashboard/TimezoneSync";
 import { SubscriptionBanner } from "@/components/SubscriptionBanner";
@@ -184,6 +185,20 @@ function SessionDurationBanner() {
   );
 }
 
+// Lien d'évitement clavier : invisible jusqu'au premier Tab, saute la sidebar
+// et les bannières pour aller directement au contenu de la page.
+function SkipToContent() {
+  const { t } = useLanguage();
+  return (
+    <a
+      href="#main-content"
+      className="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-[100] focus:px-4 focus:py-2 focus:bg-card focus:border focus:border-accent focus:rounded-lg focus:text-sm focus:font-medium focus:text-foreground"
+    >
+      {t("a11y_skip_to_content")}
+    </a>
+  );
+}
+
 export default function DashboardLayout({
   children,
 }: {
@@ -195,10 +210,12 @@ export default function DashboardLayout({
     <AlertsProvider>
     <ActiveAccountProvider>
     <div className="flex h-screen overflow-hidden bg-background">
+      <SkipToContent />
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden relative">
         <AmbientBackground />
         <TimezoneSync />
+        <SignupAttribution />
         <StopTradingGuard />
         <ChallengeGuardian />
         <NewsWindowGuard />
@@ -208,7 +225,7 @@ export default function DashboardLayout({
         <SubscriptionBanner />
         <SessionReminderBanner />
         <SessionDurationBanner />
-        <main className="flex-1 overflow-y-auto p-6 pb-24 lg:pb-6">{children}</main>
+        <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto p-6 pb-24 lg:pb-6 focus:outline-none">{children}</main>
       </div>
       <HelpWidget />
       <OnboardingGuide />

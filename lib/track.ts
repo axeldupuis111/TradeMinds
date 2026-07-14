@@ -25,7 +25,10 @@ export type ProductEvent =
   | "checkout_started"
   // Échelle d'upgrade free→plus (2026-07-09)
   | "taster_used"
-  | "upgrade_cta_clicked";
+  | "upgrade_cta_clicked"
+  // Attribution marketing : inscription rattachée à une source (meta.source =
+  // utm_source du premier contact, ex. pseudo d'un influenceur) (2026-07-14)
+  | "signup_attributed";
 
 export function track(event: ProductEvent, meta?: Record<string, unknown>): void {
   try {

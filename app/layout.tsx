@@ -1,6 +1,7 @@
 import { LanguageProvider } from "@/lib/LanguageContext";
 import { PlanProvider } from "@/lib/PlanContext";
 import { ThemeProvider } from "@/lib/ThemeContext";
+import AttributionCapture from "@/components/AttributionCapture";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -98,6 +99,7 @@ export default async function RootLayout({
           </LanguageProvider>
         </ThemeProvider>
         <ServiceWorkerRegister />
+        <AttributionCapture />
         <Analytics />
         <SpeedInsights />
       </body>

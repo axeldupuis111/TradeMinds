@@ -29,7 +29,7 @@ export default function AdminPage() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [updating, setUpdating] = useState(false);
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
-  const [tab, setTab] = useState<"plans" | "messages" | "funnel" | "usernames">("plans");
+  const [tab, setTab] = useState<"plans" | "messages" | "funnel" | "usernames" | "affiliation">("plans");
   // Modération des pseudos (libellés FR en dur, convention page interne)
   const [modUsername, setModUsername] = useState("");
   const [modNewUsername, setModNewUsername] = useState("");
@@ -40,9 +40,19 @@ export default function AdminPage() {
     days: number; eventsTableMissing: boolean; signups: number;
     activated: number; analyzed: number; checkoutStarted: number; payingNow: number;
     tasterUsed: number; upgradeCtaUsers: number; upgradeCtaBySource: Record<string, number>;
+    signupsBySource: Record<string, number>;
   } | null>(null);
   const [funnelDays, setFunnelDays] = useState<7 | 30>(30);
   const [funnelLoading, setFunnelLoading] = useState(false);
+  // Affiliation influenceurs (page interne : libellés FR en dur, convention admin)
+  const [affMonth, setAffMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [affData, setAffData] = useState<{
+    month: string; commissionRate: number;
+    codes: { code: string; subscriptions: number; activeSubscriptions: number; gross: number; eligible: number; commission: number }[];
+    totals: { gross: number; eligible: number; commission: number };
+  } | null>(null);
+  const [affLoading, setAffLoading] = useState(false);
+  const [affError, setAffError] = useState<string | null>(null);
 
   useEffect(() => {
     checkAuth();
@@ -78,6 +88,27 @@ export default function AdminPage() {
     } finally {
       setFunnelLoading(false);
     }
+  }
+
+  async function loadAffiliation(month: string) {
+    setAffLoading(true);
+    setAffError(null);
+    try {
+      const res = await fetch(`/api/admin/affiliation?month=${month}`);
+      if (!res.ok) {
+        setAffError("Erreur lors du chargement des données Stripe.");
+        return;
+      }
+      setAffData(await res.json());
+    } catch {
+      setAffError("Erreur réseau");
+    } finally {
+      setAffLoading(false);
+    }
+  }
+
+  function euros(cents: number): string {
+    return (cents / 100).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
   }
 
   async function markHandled(id: string) {
@@ -185,6 +216,9 @@ export default function AdminPage() {
         </button>
         <button onClick={() => setTab("usernames")} className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${tab === "usernames" ? "bg-card text-foreground shadow-sm" : "text-muted hover:text-foreground"}`}>
           Pseudos
+        </button>
+        <button onClick={() => { setTab("affiliation"); if (!affData) loadAffiliation(affMonth); }} className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${tab === "affiliation" ? "bg-card text-foreground shadow-sm" : "text-muted hover:text-foreground"}`}>
+          Affiliation
         </button>
       </div>
 
@@ -323,6 +357,22 @@ export default function AdminPage() {
                   </span>
                 </div>
               ))}
+
+              {/* Inscriptions attribuées (utm_source / ref — liens influenceurs) */}
+              {Object.keys(funnel.signupsBySource ?? {}).length > 0 && (
+                <div className="pl-4 space-y-1">
+                  {Object.entries(funnel.signupsBySource)
+                    .sort(([, a], [, b]) => b - a)
+                    .map(([source, count]) => (
+                      <div key={source} className="flex items-center gap-3">
+                        <span className="text-xs text-muted/80 flex-1">via {source}</span>
+                        <span className="text-xs font-semibold text-foreground tabular-nums">{count}</span>
+                        <span className="w-14" />
+                      </div>
+                    ))}
+                </div>
+              )}
+
               <div className="flex items-center gap-3 pt-3 mt-2 border-t border-border">
                 <span className="text-sm text-muted flex-1">Payants actuellement (global)</span>
                 <span className="text-sm font-bold text-profit tabular-nums">{funnel.payingNow}</span>
@@ -362,6 +412,74 @@ export default function AdminPage() {
               </div>
               <p className="text-xs text-muted pt-2">Fenêtre : {funnel.days} derniers jours. Les % sont la conversion vers l&apos;étape précédente.</p>
             </div>
+          )}
+        </div>
+      )}
+
+      {tab === "affiliation" && (
+        <div className="mt-6 bg-card border border-border rounded-xl p-6">
+          <div className="flex items-center justify-between mb-5 gap-3">
+            <h2 className="text-sm font-semibold text-foreground">Commissions influenceurs</h2>
+            <input
+              type="month"
+              value={affMonth}
+              onChange={(e) => { setAffMonth(e.target.value); if (e.target.value) loadAffiliation(e.target.value); }}
+              className="px-3 py-1.5 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+              aria-label="Mois des commissions"
+            />
+          </div>
+
+          {affLoading && <p className="text-sm text-muted">Chargement depuis Stripe…</p>}
+          {affError && <p className="text-sm text-loss">{affError}</p>}
+
+          {affData && !affLoading && !affError && (
+            affData.codes.length === 0 ? (
+              <p className="text-sm text-muted">
+                Aucun abonnement attribué à un code promo pour l&apos;instant. Les abonnements
+                souscrits avec un code apparaîtront ici automatiquement.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs uppercase tracking-wider text-muted border-b border-border">
+                        <th className="py-2 pr-3 font-semibold">Code</th>
+                        <th className="py-2 pr-3 font-semibold text-right">Abonnés (actifs)</th>
+                        <th className="py-2 pr-3 font-semibold text-right">Encaissé</th>
+                        <th className="py-2 pr-3 font-semibold text-right">Assiette ≤ 12 mois</th>
+                        <th className="py-2 font-semibold text-right">Commission {Math.round(affData.commissionRate * 100)} %</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {affData.codes.map((c) => (
+                        <tr key={c.code} className="border-b border-border/50">
+                          <td className="py-2 pr-3 font-mono font-semibold text-foreground">{c.code}</td>
+                          <td className="py-2 pr-3 text-right tabular-nums text-foreground">{c.subscriptions} ({c.activeSubscriptions})</td>
+                          <td className="py-2 pr-3 text-right tabular-nums text-foreground">{euros(c.gross)}</td>
+                          <td className="py-2 pr-3 text-right tabular-nums text-foreground">{euros(c.eligible)}</td>
+                          <td className="py-2 text-right tabular-nums font-bold text-accent">{euros(c.commission)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td className="py-2 pr-3 font-semibold text-muted">Total</td>
+                        <td />
+                        <td className="py-2 pr-3 text-right tabular-nums font-semibold text-foreground">{euros(affData.totals.gross)}</td>
+                        <td className="py-2 pr-3 text-right tabular-nums font-semibold text-foreground">{euros(affData.totals.eligible)}</td>
+                        <td className="py-2 text-right tabular-nums font-bold text-accent">{euros(affData.totals.commission)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+                <p className="text-xs text-muted">
+                  Encaissé = factures payées du mois (remboursements exclus). Assiette = part encaissée dans
+                  les 12 premiers mois de chaque abonnement, conformément au contrat. La commission se paie
+                  sur facture de l&apos;influenceur, seuil 50 €.
+                </p>
+              </div>
+            )
           )}
         </div>
       )}

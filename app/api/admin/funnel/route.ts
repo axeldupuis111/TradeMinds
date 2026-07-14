@@ -46,6 +46,7 @@ export async function GET(req: NextRequest) {
     { count: payingNow },
     { data: tasterEvents },
     { data: upgradeCtaEvents },
+    { data: signupSourceEvents },
   ] = await Promise.all([
     admin.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", since),
     admin.from("product_events").select("user_id")
@@ -60,6 +61,8 @@ export async function GET(req: NextRequest) {
       .eq("event", "taster_used").gte("created_at", since).limit(10000),
     admin.from("product_events").select("user_id, meta")
       .eq("event", "upgrade_cta_clicked").gte("created_at", since).limit(10000),
+    admin.from("product_events").select("user_id, meta")
+      .eq("event", "signup_attributed").gte("created_at", since).limit(10000),
   ]);
 
   // Ventilation des clics upgrade par déclencheur (meta.source).
@@ -67,6 +70,19 @@ export async function GET(req: NextRequest) {
   for (const row of (upgradeCtaEvents ?? []) as { user_id: string; meta: { source?: string } | null }[]) {
     const source = row.meta?.source || "unknown";
     upgradeCtaBySource[source] = (upgradeCtaBySource[source] || 0) + 1;
+  }
+
+  // Inscriptions attribuées à une source marketing (utm_source / ref —
+  // typiquement le pseudo d'un influenceur). Distinct par utilisateur.
+  const signupsBySource: Record<string, number> = {};
+  {
+    const seen = new Set<string>();
+    for (const row of (signupSourceEvents ?? []) as { user_id: string; meta: { source?: string } | null }[]) {
+      if (seen.has(row.user_id)) continue;
+      seen.add(row.user_id);
+      const source = row.meta?.source || "unknown";
+      signupsBySource[source] = (signupsBySource[source] || 0) + 1;
+    }
   }
 
   return NextResponse.json({
@@ -82,5 +98,7 @@ export async function GET(req: NextRequest) {
     tasterUsed: distinct(tasterEvents),
     upgradeCtaUsers: distinct((upgradeCtaEvents ?? []) as { user_id: string }[]),
     upgradeCtaBySource,
+    // Attribution marketing (2026-07-14)
+    signupsBySource,
   });
 }

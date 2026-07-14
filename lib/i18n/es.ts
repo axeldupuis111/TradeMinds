@@ -11,6 +11,7 @@ const dict: Record<string, string> = {
   "cmdk_hint_navigate": "navegar",
   "cmdk_hint_select": "abrir",
   "cmdk_hint_close": "cerrar",
+  "a11y_skip_to_content": "Ir al contenido principal",
   "cmdk_open_button": "Buscar",
   "recap_title": "Resumen de la semana",
   "recap_subtitle": "vs semana anterior",

@@ -154,6 +154,28 @@ async function handleCheckoutCompleted(
   // Fetch la subscription complète depuis Stripe (avec line items)
   const subscription = await stripe.subscriptions.retrieve(subscriptionId)
 
+  // Attribution affiliation : si un code promo a été saisi au checkout, on le
+  // grave dans les metadata de la subscription. Les remises « répétitives »
+  // (ex. -10 % × 3 mois) disparaissent des factures une fois la durée écoulée —
+  // les metadata, elles, restent à vie, ce qui permet de calculer les
+  // commissions influenceur sur les 12 premiers mois (onglet admin Affiliation).
+  try {
+    const promoRef = session.discounts?.[0]?.promotion_code
+    if (promoRef && !subscription.metadata?.promo_code) {
+      const promo = typeof promoRef === 'string'
+        ? await stripe.promotionCodes.retrieve(promoRef)
+        : promoRef
+      if (promo?.code) {
+        await stripe.subscriptions.update(subscription.id, {
+          metadata: { ...subscription.metadata, promo_code: promo.code },
+        })
+      }
+    }
+  } catch (err) {
+    // L'attribution ne doit jamais bloquer l'activation du plan.
+    console.error('[Webhook] Attribution promo_code échouée:', err)
+  }
+
   await upsertSubscription(subscription, userId, supabase)
 
   // Détermine le plan acheté (plus / premium) depuis le price ID de la subscription
