@@ -16,7 +16,7 @@ export const COMPANY = {
   contactEmail: "contact@tradediscipline.app",
   privacyEmail: "privacy@tradediscipline.app",
   supportEmail: "support@tradediscipline.app",
-  site: "https://www.tradediscipline.app",
+  site: "https://tradediscipline.app",
 } as const;
 
 // Hosting providers — the LCEN requires name + address of the host.

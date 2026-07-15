@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. URL de retour après le portail
-    const origin = req.headers.get("origin") || "https://www.tradediscipline.app";
+    const origin = req.headers.get("origin") || "https://tradediscipline.app";
     const returnUrl = `${origin}/dashboard`;
 
     // 5. Création de la Billing Portal Session

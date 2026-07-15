@@ -440,7 +440,7 @@ async function handleInvoicePaid(
       : 'en'
   const planLabel = PLAN_LABEL[planInfo.plan] ?? planInfo.plan
   const copy = CONGRATS_EMAIL[lang]
-  const invoiceUrl = invoice.hosted_invoice_url || invoice.invoice_pdf || 'https://www.tradediscipline.app/dashboard'
+  const invoiceUrl = invoice.hosted_invoice_url || invoice.invoice_pdf || 'https://tradediscipline.app/dashboard'
 
   const subject = copy.subject.replace('{plan}', planLabel)
   const heading = copy.heading.replace('{plan}', planLabel)

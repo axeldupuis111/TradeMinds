@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 6. URL de retour (succès/annulation)
-    const origin = req.headers.get('origin') || 'https://www.tradediscipline.app'
+    const origin = req.headers.get('origin') || 'https://tradediscipline.app'
     const successUrl = `${origin}/dashboard/upgrade?success=true&session_id={CHECKOUT_SESSION_ID}`
     const cancelUrl = `${origin}/dashboard/upgrade?canceled=true`
 
