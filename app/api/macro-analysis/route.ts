@@ -57,10 +57,15 @@ export async function GET(req: Request) {
       .limit(30);
 
   try {
-    // Prefer the full row (with outlook). If the `outlook` column isn't migrated
-    // yet, gracefully fall back to the columns that always exist, so the page
-    // still renders the analysis (minus the impacts section) during the window
-    // between deploy and migration.
+    // Prefer the full row. If the newest columns (tldr/sentiment/assets, then
+    // outlook) aren't migrated yet, gracefully fall back to the columns that
+    // always exist, so the page still renders the analysis (minus the newer
+    // sections) during the window between deploy and migration.
+    const essentials = await fetchWith(
+      "analysis_date, headline, overview, tldr, sentiment, assets, themes, watchlist, outlook, takeaway, created_at",
+    );
+    if (!essentials.error) return NextResponse.json({ analyses: essentials.data ?? [] });
+
     const full = await fetchWith(
       "analysis_date, headline, overview, themes, watchlist, outlook, takeaway, created_at",
     );

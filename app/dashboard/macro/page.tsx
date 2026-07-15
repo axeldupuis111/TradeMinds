@@ -5,11 +5,20 @@
  * events (scheduled announcements, central banks, geopolitics) that can move
  * markets. Premium-only; reads the shared `macro_analyses` cache through the
  * premium-gated /api/macro-analysis route. Informational context, never advice.
+ *
+ * Reading model: the page leads with a 20-second scannable synthesis (tldr
+ * bullets + risk sentiment + per-asset dynamics + today's expected impacts);
+ * the full prose analysis is collapsed behind "read the full analysis".
+ * Briefings generated before the synthesis fields existed fall back to the
+ * full layout, always expanded.
  */
 
 import { useLanguage } from "@/lib/LanguageContext";
 import { motion, useReducedMotion } from "framer-motion";
-import { Globe2, Sparkles, Lock, AlertTriangle, History, Clock, CalendarRange, TrendingUp } from "lucide-react";
+import {
+  Globe2, Sparkles, Lock, AlertTriangle, History, Clock, CalendarRange,
+  TrendingUp, TrendingDown, MoveRight, Activity, ChevronDown, Zap,
+} from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -24,15 +33,48 @@ interface Outlook {
   months?: string;
 }
 
+interface AssetImpact {
+  asset: string;
+  direction: string;
+  note: string;
+}
+
 interface Analysis {
   analysis_date: string;
   headline: string;
   overview: string;
+  tldr?: string[];
+  sentiment?: string | null;
+  assets?: AssetImpact[];
   themes: Section[];
   watchlist: Section[];
   outlook: Outlook | null;
   takeaway: string | null;
 }
+
+// Visual mapping for the enum codes stored in DB (labels come from i18n).
+const DIRECTIONS: Record<string, { icon: typeof TrendingUp; cls: string }> = {
+  up:       { icon: TrendingUp,   cls: "text-profit" },
+  down:     { icon: TrendingDown, cls: "text-loss" },
+  flat:     { icon: MoveRight,    cls: "text-foreground-muted" },
+  volatile: { icon: Activity,     cls: "text-warning" },
+};
+
+const SENTIMENTS: Record<string, { key: string; cls: string }> = {
+  risk_on:  { key: "macro_sentiment_risk_on",  cls: "border-profit/30 bg-profit/10 text-profit" },
+  risk_off: { key: "macro_sentiment_risk_off", cls: "border-loss/30 bg-loss/10 text-loss" },
+  neutral:  { key: "macro_sentiment_neutral",  cls: "border-border bg-surface text-foreground-muted" },
+  mixed:    { key: "macro_sentiment_mixed",    cls: "border-warning/30 bg-warning/10 text-warning" },
+};
+
+const ASSET_LABEL_KEYS: Record<string, string> = {
+  equities: "macro_asset_equities",
+  dollar:   "macro_asset_dollar",
+  rates:    "macro_asset_rates",
+  gold:     "macro_asset_gold",
+  oil:      "macro_asset_oil",
+  crypto:   "macro_asset_crypto",
+};
 
 export default function MacroPage() {
   const { t, lang } = useLanguage();
@@ -43,6 +85,7 @@ export default function MacroPage() {
   const [locked, setLocked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -59,6 +102,9 @@ export default function MacroPage() {
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [lang]);
+
+  // Each briefing starts folded on its synthesis.
+  useEffect(() => { setExpanded(false); }, [selectedDate]);
 
   const selected = useMemo(
     () => analyses.find((a) => a.analysis_date === selectedDate) ?? analyses[0] ?? null,
@@ -126,6 +172,13 @@ export default function MacroPage() {
     );
   }
 
+  const tldr = selected.tldr ?? [];
+  const assets = (selected.assets ?? []).filter((a) => ASSET_LABEL_KEYS[a.asset]);
+  const sentiment = selected.sentiment ? SENTIMENTS[selected.sentiment] : undefined;
+  // Older briefings have no synthesis fields → show the full analysis directly.
+  const hasEssentials = tldr.length > 0;
+  const showDetail = expanded || !hasEssentials;
+
   // ── Briefing ────────────────────────────────────────────────────────────────
   return (
     <div>
@@ -140,88 +193,170 @@ export default function MacroPage() {
           transition={{ duration: reducedMotion ? 0 : 0.25, ease: "easeOut" }}
           className="min-w-0 space-y-6"
         >
-          {/* Headline + date */}
+          {/* Date + sentiment + headline */}
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-accent mb-1.5">
-              {formatDate(selected.analysis_date)}
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-accent">
+                {formatDate(selected.analysis_date)}
+              </p>
+              {sentiment && (
+                <span className={`inline-flex items-center px-2.5 py-1 rounded-full border text-[11px] font-bold uppercase tracking-wide ${sentiment.cls}`}>
+                  {t(sentiment.key)}
+                </span>
+              )}
+            </div>
             <h2 className="text-xl font-bold text-foreground leading-snug">{selected.headline}</h2>
           </div>
 
-          {/* Overview */}
-          <div className="rounded-xl border border-border bg-card p-5">
-            <p className="text-sm text-foreground leading-relaxed">{selected.overview}</p>
-          </div>
-
-          {/* Expected impacts by horizon — the concrete, forward-looking part */}
-          {selected.outlook && (selected.outlook.today || selected.outlook.days || selected.outlook.months) && (
-            <section>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-foreground-muted mb-3">
-                {t("macro_outlook")}
-              </h3>
-              <div className="space-y-2">
-                {([
-                  { key: "today", label: t("macro_outlook_today"), icon: Clock, body: selected.outlook.today },
-                  { key: "days", label: t("macro_outlook_days"), icon: CalendarRange, body: selected.outlook.days },
-                  { key: "months", label: t("macro_outlook_months"), icon: TrendingUp, body: selected.outlook.months },
-                ] as const)
-                  .filter((h) => h.body)
-                  .map((h) => (
-                    <div key={h.key} className="flex gap-3 rounded-xl border border-accent/25 bg-accent/[0.04] p-4">
-                      <h.icon className="w-4 h-4 text-accent shrink-0 mt-0.5" strokeWidth={1.75} />
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold uppercase tracking-wider text-accent mb-0.5">{h.label}</p>
-                        <p className="text-sm text-foreground-muted leading-relaxed">{h.body}</p>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </section>
-          )}
-
-          {/* Themes */}
-          {selected.themes.length > 0 && (
-            <section>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-foreground-muted mb-3">
-                {t("macro_themes")}
-              </h3>
-              <div className="space-y-3">
-                {selected.themes.map((s, i) => (
-                  <div key={i} className="rounded-xl border border-border bg-surface p-4">
-                    <p className="text-sm font-semibold text-foreground mb-1">{s.title}</p>
-                    <p className="text-sm text-foreground-muted leading-relaxed">{s.body}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Watchlist */}
-          {selected.watchlist.length > 0 && (
-            <section>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-foreground-muted mb-3">
-                {t("macro_watch")}
-              </h3>
+          {/* The gist in 20 seconds */}
+          {hasEssentials && (
+            <div className="rounded-xl border border-accent/30 bg-accent/5 p-5">
+              <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-accent mb-3">
+                <Zap className="w-3.5 h-3.5" strokeWidth={2} /> {t("macro_tldr")}
+              </p>
               <ul className="space-y-2">
-                {selected.watchlist.map((s, i) => (
-                  <li key={i} className="flex gap-3 rounded-xl border border-warning/25 bg-warning/5 p-4">
-                    <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" strokeWidth={1.75} />
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-foreground mb-0.5">{s.title}</p>
-                      <p className="text-sm text-foreground-muted leading-relaxed">{s.body}</p>
-                    </div>
+                {tldr.map((line, i) => (
+                  <li key={i} className="flex gap-2.5 text-sm text-foreground leading-relaxed">
+                    <span className="mt-[7px] w-1.5 h-1.5 rounded-full bg-accent shrink-0" aria-hidden />
+                    <span className="min-w-0 font-medium">{line}</span>
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {/* Expected dynamics per asset class */}
+          {assets.length > 0 && (
+            <section>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-foreground-muted mb-3">
+                {t("macro_assets")}
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {assets.map((a) => {
+                  const dir = DIRECTIONS[a.direction] ?? DIRECTIONS.flat;
+                  return (
+                    <div key={a.asset} className="rounded-xl border border-border bg-surface p-3">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <p className="text-xs font-semibold text-foreground truncate">
+                          {t(ASSET_LABEL_KEYS[a.asset])}
+                        </p>
+                        <dir.icon className={`w-4 h-4 shrink-0 ${dir.cls}`} strokeWidth={2} />
+                      </div>
+                      <p className="text-xs text-foreground-muted leading-snug">{a.note}</p>
+                    </div>
+                  );
+                })}
+              </div>
             </section>
           )}
 
-          {/* Takeaway */}
-          {selected.takeaway && (
-            <div className="rounded-xl border border-accent/30 bg-accent/5 p-5">
-              <p className="text-xs font-bold uppercase tracking-wider text-accent mb-1.5">{t("macro_takeaway")}</p>
-              <p className="text-sm text-foreground leading-relaxed">{selected.takeaway}</p>
+          {/* Today's expected impacts — the concrete part, always visible */}
+          {selected.outlook?.today && (
+            <div className="flex gap-3 rounded-xl border border-accent/25 bg-accent/[0.04] p-4">
+              <Clock className="w-4 h-4 text-accent shrink-0 mt-0.5" strokeWidth={1.75} />
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-wider text-accent mb-0.5">
+                  {t("macro_outlook_today")}
+                </p>
+                <p className="text-sm text-foreground-muted leading-relaxed">{selected.outlook.today}</p>
+              </div>
             </div>
+          )}
+
+          {/* Fold / unfold the full prose analysis */}
+          {hasEssentials && (
+            <button
+              onClick={() => setExpanded((v) => !v)}
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground-muted hover:text-foreground hover:bg-border/30 transition"
+              aria-expanded={expanded}
+            >
+              {expanded ? t("macro_hide_full") : t("macro_read_full")}
+              <ChevronDown className={`w-4 h-4 transition-transform ${expanded ? "rotate-180" : ""}`} strokeWidth={2} />
+            </button>
+          )}
+
+          {showDetail && (
+            <motion.div
+              initial={reducedMotion || !hasEssentials ? false : { opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: reducedMotion ? 0 : 0.2, ease: "easeOut" }}
+              className="space-y-6"
+            >
+              {/* Overview */}
+              <div className="rounded-xl border border-border bg-card p-5">
+                <p className="text-sm text-foreground leading-relaxed">{selected.overview}</p>
+              </div>
+
+              {/* Expected impacts on the wider horizons */}
+              {selected.outlook && (selected.outlook.days || selected.outlook.months) && (
+                <section>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-foreground-muted mb-3">
+                    {t("macro_outlook")}
+                  </h3>
+                  <div className="space-y-2">
+                    {([
+                      { key: "days", label: t("macro_outlook_days"), icon: CalendarRange, body: selected.outlook.days },
+                      { key: "months", label: t("macro_outlook_months"), icon: TrendingUp, body: selected.outlook.months },
+                    ] as const)
+                      .filter((h) => h.body)
+                      .map((h) => (
+                        <div key={h.key} className="flex gap-3 rounded-xl border border-accent/25 bg-accent/[0.04] p-4">
+                          <h.icon className="w-4 h-4 text-accent shrink-0 mt-0.5" strokeWidth={1.75} />
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold uppercase tracking-wider text-accent mb-0.5">{h.label}</p>
+                            <p className="text-sm text-foreground-muted leading-relaxed">{h.body}</p>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Themes */}
+              {selected.themes.length > 0 && (
+                <section>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-foreground-muted mb-3">
+                    {t("macro_themes")}
+                  </h3>
+                  <div className="space-y-3">
+                    {selected.themes.map((s, i) => (
+                      <div key={i} className="rounded-xl border border-border bg-surface p-4">
+                        <p className="text-sm font-semibold text-foreground mb-1">{s.title}</p>
+                        <p className="text-sm text-foreground-muted leading-relaxed">{s.body}</p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Watchlist */}
+              {selected.watchlist.length > 0 && (
+                <section>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-foreground-muted mb-3">
+                    {t("macro_watch")}
+                  </h3>
+                  <ul className="space-y-2">
+                    {selected.watchlist.map((s, i) => (
+                      <li key={i} className="flex gap-3 rounded-xl border border-warning/25 bg-warning/5 p-4">
+                        <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" strokeWidth={1.75} />
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-foreground mb-0.5">{s.title}</p>
+                          <p className="text-sm text-foreground-muted leading-relaxed">{s.body}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
+              {/* Takeaway */}
+              {selected.takeaway && (
+                <div className="rounded-xl border border-accent/30 bg-accent/5 p-5">
+                  <p className="text-xs font-bold uppercase tracking-wider text-accent mb-1.5">{t("macro_takeaway")}</p>
+                  <p className="text-sm text-foreground leading-relaxed">{selected.takeaway}</p>
+                </div>
+              )}
+            </motion.div>
           )}
 
           {/* AI + disclaimer */}

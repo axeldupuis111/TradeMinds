@@ -65,9 +65,28 @@ interface Outlook {
   months: string;
 }
 
+// Scannable synthesis: the whole briefing in 20 seconds. `asset` and
+// `direction` are enum CODES (rendered as localized labels client-side),
+// `note` is free text.
+const SENTIMENTS = ["risk_on", "risk_off", "neutral", "mixed"] as const;
+const ASSET_KEYS = ["equities", "dollar", "rates", "gold", "oil", "crypto"] as const;
+const DIRECTIONS = ["up", "down", "flat", "volatile"] as const;
+type Sentiment = (typeof SENTIMENTS)[number];
+type AssetKey = (typeof ASSET_KEYS)[number];
+type Direction = (typeof DIRECTIONS)[number];
+
+interface AssetImpact {
+  asset: AssetKey;
+  direction: Direction;
+  note: string;
+}
+
 interface Analysis {
   headline: string;
   overview: string;
+  tldr: string[];
+  sentiment: Sentiment | null;
+  assets: AssetImpact[];
   themes: Section[];
   watchlist: Section[];
   outlook: Outlook;
@@ -92,6 +111,21 @@ const ANALYSIS_SCHEMA = {
   properties: {
     headline: { type: "string" },
     overview: { type: "string" },
+    tldr: { type: "array", items: { type: "string" } },
+    sentiment: { type: "string" },
+    assets: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          asset: { type: "string" },
+          direction: { type: "string" },
+          note: { type: "string" },
+        },
+        required: ["asset", "direction", "note"],
+      },
+    },
     themes: { type: "array", items: sectionSchema },
     watchlist: { type: "array", items: sectionSchema },
     outlook: {
@@ -106,7 +140,7 @@ const ANALYSIS_SCHEMA = {
     },
     takeaway: { type: "string" },
   },
-  required: ["headline", "overview", "themes", "watchlist", "outlook", "takeaway"],
+  required: ["headline", "overview", "tldr", "sentiment", "assets", "themes", "watchlist", "outlook", "takeaway"],
 } as const;
 
 function serviceClient() {
@@ -141,6 +175,19 @@ function parseAnalysis(raw: string): Analysis | null {
   return {
     headline: String(parsed.headline),
     overview: String(parsed.overview),
+    tldr: Array.isArray(parsed.tldr)
+      ? parsed.tldr.filter((s): s is string => typeof s === "string" && s.trim().length > 0).slice(0, 5)
+      : [],
+    sentiment: SENTIMENTS.includes(parsed.sentiment as Sentiment) ? (parsed.sentiment as Sentiment) : null,
+    assets: Array.isArray(parsed.assets)
+      ? parsed.assets.filter(
+          (a): a is AssetImpact =>
+            !!a &&
+            ASSET_KEYS.includes(a.asset as AssetKey) &&
+            DIRECTIONS.includes(a.direction as Direction) &&
+            typeof a.note === "string",
+        )
+      : [],
     themes: Array.isArray(parsed.themes)
       ? parsed.themes.filter((s): s is Section => !!s?.title && !!s?.body)
       : [],
@@ -261,16 +308,23 @@ RÈGLES IMPÉRATIVES :
 - C'est une analyse de CONTEXTE informative, JAMAIS un conseil. N'écris jamais « achète », « vends », « long », « short » ni aucune recommandation de position.
 - Appuie-toi sur des faits réels trouvés par la recherche web. N'invente aucun chiffre.
 - Reste factuel, nuancé et pédagogue. Pas de sensationnalisme.
+- Sois BREF et percutant : un trader pressé doit pouvoir tout lire en 2 minutes. Phrases courtes, zéro remplissage, chaque phrase apporte une information.
+- N'utilise JAMAIS le tiret long « — » : préfère les deux-points, la virgule ou les parenthèses.
 
 Réponds STRICTEMENT en JSON, sans markdown ni texte autour, avec cette forme exacte :
 {
   "headline": "titre d'une ligne qui résume l'ambiance macro du jour",
-  "overview": "un paragraphe (4-6 phrases) sur l'état général de l'économie mondiale et le climat de marché",
+  "tldr": ["3 à 4 puces ULTRA-COURTES (max 15 mots chacune) : l'essentiel du jour, lisible en 20 secondes"],
+  "sentiment": "le climat de risque dominant attendu pour la séance : exactement l'une de ces valeurs : risk_on, risk_off, neutral, mixed",
+  "assets": [
+    { "asset": "exactement l'une de : equities, dollar, rates, gold, oil, crypto", "direction": "exactement l'une de : up, down, flat, volatile", "note": "la dynamique attendue en quelques mots (max 10)" }
+  ],
+  "overview": "un paragraphe COURT (3-4 phrases) sur l'état général de l'économie mondiale et le climat de marché",
   "themes": [
-    { "title": "thème clé", "body": "2-3 phrases expliquant ce thème et son impact potentiel sur les marchés" }
+    { "title": "thème clé", "body": "2 phrases max expliquant ce thème et son impact potentiel sur les marchés" }
   ],
   "watchlist": [
-    { "title": "événement ou risque à surveiller", "body": "1-2 phrases : pourquoi c'est important et ce que ça pourrait déclencher" }
+    { "title": "événement ou risque à surveiller", "body": "1 phrase : pourquoi c'est important et ce que ça pourrait déclencher" }
   ],
   "outlook": {
     "today": "impacts CONCRETS attendus pour la séance du jour, classe d'actifs par classe d'actifs (indices actions, EUR/USD et dollar, taux/obligations, or, pétrole/énergie) : décris les dynamiques probables et leur logique",
@@ -279,7 +333,7 @@ Réponds STRICTEMENT en JSON, sans markdown ni texte autour, avec cette forme ex
   },
   "takeaway": "une phrase de synthèse sur le contexte (pas une recommandation)"
 }
-Donne 3 à 5 thèmes et 3 à 5 éléments à surveiller. Pour "outlook", sois CONCRET et chiffré quand c'est pertinent, en nommant les classes d'actifs et les dynamiques attendues (hausse/baisse de volatilité, pression sur tel actif, etc.) — mais reste une analyse de CONTEXTE : décris ce à quoi s'attendre, ne dis JAMAIS d'acheter, vendre, ou prendre une position. Reste concis.`;
+Donne 4 à 6 entrées dans "assets" (les classes les plus pertinentes du jour ; "direction" décrit la dynamique attendue de la séance, "volatile" si le sens est incertain mais le mouvement probable ; pour "rates", raisonne sur les rendements obligataires). Donne 3 à 5 thèmes et 3 à 5 éléments à surveiller. Pour "outlook", sois CONCRET et chiffré quand c'est pertinent, en nommant les classes d'actifs et les dynamiques attendues (hausse/baisse de volatilité, pression sur tel actif, etc.). Dans "assets" comme dans "outlook", reste une analyse de CONTEXTE : décris ce à quoi s'attendre, ne dis JAMAIS d'acheter, vendre, ou prendre une position. Reste concis.`;
 
   let frBrief: Analysis | null = null;
   let briefErr: unknown = null;
@@ -315,7 +369,7 @@ Donne 3 à 5 thèmes et 3 à 5 éléments à surveiller. Pour "outlook", sois CO
           messages: [
             {
               role: "user",
-              content: `Traduis fidèlement en ${LANG_NAME[lang]} TOUTES les valeurs textuelles de ce JSON d'analyse macro-économique. Garde EXACTEMENT la même structure et les mêmes clés. Ne traduis pas les clés. Ne change pas les chiffres ni les noms propres :
+              content: `Traduis fidèlement en ${LANG_NAME[lang]} TOUTES les valeurs textuelles de ce JSON d'analyse macro-économique. Garde EXACTEMENT la même structure et les mêmes clés. Ne traduis pas les clés. Ne traduis JAMAIS les codes techniques : la valeur de "sentiment" et les valeurs de "asset" et "direction" dans "assets" doivent rester identiques (traduis seulement "note"). Ne change pas les chiffres ni les noms propres :
 
 ${JSON.stringify(fr)}`,
             },
@@ -324,7 +378,17 @@ ${JSON.stringify(fr)}`,
         { timeout: 150_000 },
       );
       const translated = parseAnalysis(textOf(tMsg));
-      if (translated) return { lang, analysis: translated, model: TRANSLATE_MODEL };
+      if (translated) {
+        // The enum codes must never drift through translation: sentiment comes
+        // straight from FR, and asset/direction are re-stamped from the FR rows
+        // (keeping only the translated notes) when the arrays still line up.
+        translated.sentiment = fr.sentiment;
+        translated.assets =
+          translated.assets.length === fr.assets.length
+            ? fr.assets.map((a, i) => ({ ...a, note: translated.assets[i].note }))
+            : fr.assets;
+        return { lang, analysis: translated, model: TRANSLATE_MODEL };
+      }
       console.error(`[Macro] ${lang} translation unparseable; falling back to FR`);
     } catch (err) {
       console.error(`[Macro] ${lang} translation failed; falling back to FR:`, err);
@@ -337,12 +401,15 @@ ${JSON.stringify(fr)}`,
     ...(await Promise.all(TARGET_LANGS.map(translate))),
   ];
 
-  const { error } = await supabase.from("macro_analyses").upsert(
+  let { error } = await supabase.from("macro_analyses").upsert(
     rows.map((r) => ({
       analysis_date: analysisDate,
       lang: r.lang,
       headline: r.analysis.headline,
       overview: r.analysis.overview,
+      tldr: r.analysis.tldr,
+      sentiment: r.analysis.sentiment,
+      assets: r.analysis.assets,
       themes: r.analysis.themes,
       watchlist: r.analysis.watchlist,
       outlook: r.analysis.outlook,
@@ -351,6 +418,26 @@ ${JSON.stringify(fr)}`,
     })),
     { onConflict: "analysis_date,lang" },
   );
+
+  // Window between deploy and migration: the tldr/sentiment/assets columns may
+  // not exist yet. Persist the briefing without them rather than losing the day.
+  if (error) {
+    const legacy = await supabase.from("macro_analyses").upsert(
+      rows.map((r) => ({
+        analysis_date: analysisDate,
+        lang: r.lang,
+        headline: r.analysis.headline,
+        overview: r.analysis.overview,
+        themes: r.analysis.themes,
+        watchlist: r.analysis.watchlist,
+        outlook: r.analysis.outlook,
+        takeaway: r.analysis.takeaway,
+        model: r.model,
+      })),
+      { onConflict: "analysis_date,lang" },
+    );
+    if (!legacy.error) error = null;
+  }
 
   if (error) {
     console.error("[Macro] upsert failed:", error);
