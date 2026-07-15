@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "TradeDiscipline",
     short_name: "TradeDiscipline",
-    description: "Journal de trading intelligent — trade avec discipline.",
+    description: "Journal de trading intelligent : trade avec discipline.",
     id: "/",
     start_url: "/dashboard",
     // Whole-site scope so the installed app never shows the URL chip in its

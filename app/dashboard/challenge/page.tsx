@@ -133,7 +133,7 @@ function ProgressBar({
       <div className="flex justify-between text-sm mb-1">
         <span className="text-muted">{label}</span>
         <span className="text-foreground">
-          {value.toFixed(0)}€ / {max.toFixed(0)}€ — {pct.toFixed(1)}%
+          {value.toFixed(0)}€ / {max.toFixed(0)}€ · {pct.toFixed(1)}%
         </span>
       </div>
       <div className="h-3 bg-border rounded-full overflow-hidden">
@@ -557,7 +557,7 @@ function AccountCard({
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-semibold text-foreground">
-              {ac.firm} — {ac.account_size.toLocaleString()}€
+              {ac.firm} · {ac.account_size.toLocaleString()}€
             </h2>
           </div>
           <p className="text-muted text-sm">
@@ -1258,7 +1258,7 @@ export default function ChallengePage() {
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-foreground font-medium">
-                        {c.firm} — {c.account_size.toLocaleString()}€
+                        {c.firm} · {c.account_size.toLocaleString()}€
                       </span>
                       {c.account_number && (
                         <span className="text-muted text-xs">#{c.account_number}</span>

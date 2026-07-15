@@ -197,7 +197,7 @@ export default function ChallengeGuardian() {
               .replace("{pct}", displayPct.toString())
               .replace("{eur}", displayEur.toString());
 
-        const message = `${label} — ${ddLabel.replace(/^⚠️\s*/, "")}`;
+        const message = `${label} : ${ddLabel.replace(/^⚠️\s*/, "")}`;
 
         const alert: Alert = {
           id: `guardian_${challenge.id}_${winner.ddType}`,

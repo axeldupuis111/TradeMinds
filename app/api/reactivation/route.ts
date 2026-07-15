@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { alertCronFailure } from "@/lib/cron-alert";
 import { localHour, localWeekday } from "@/lib/timezone";
+import { renderBrandEmail, emailParagraph, statCell, statRow, EMAIL_GREEN, EMAIL_RED } from "@/lib/email-template";
 
 // Sent Wednesday late-morning in each trader's LOCAL timezone (was a fixed
 // 09:00 UTC Wed = 11:00 CEST). The cron now runs hourly; this gate fires it
@@ -23,66 +24,103 @@ function isReactivationDue(timezone: string): boolean {
  * `?dryRun=1` : renvoie la liste cible sans envoyer.
  */
 
-function groupNum(n: number): string {
-  const neg = n < 0;
-  const grouped = Math.abs(Math.round(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-  return `${neg ? "-" : ""}${grouped}`;
-}
-const eur = (n: number) => `${groupNum(n)} ${String.fromCharCode(128)}`;
-
 const DAY_MS = 86400000;
 const MIN_IDLE_DAYS = 14;
 const MAX_IDLE_DAYS = 21;
 
-function buildEmailHtml(stats: { count: number; pnl: number; winrate: number }, idleDays: number): string {
-  const pnlColor = stats.pnl >= 0 ? "#16a34a" : "#dc2626";
-  return `
-  <div style="font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; max-width: 560px; margin: 0 auto;">
-    <div style="background: #0a0e18; border-radius: 14px 14px 0 0; padding: 22px 26px;">
-      <span style="display: inline-block; width: 24px; height: 24px; background: #00e5d0; border-radius: 6px; color: #0a0e18; font-size: 11px; font-weight: 800; text-align: center; line-height: 24px; vertical-align: middle;">TD</span>
-      <span style="color: #ffffff; font-size: 16px; font-weight: 700; margin-left: 8px; vertical-align: middle;">TradeDiscipline</span>
-    </div>
-    <div style="height: 3px; background: #00e5d0;"></div>
-    <div style="border: 1px solid #e2e7ee; border-top: none; border-radius: 0 0 14px 14px; padding: 26px;">
-      <h1 style="font-size: 19px; color: #171e2a; margin: 0 0 6px;">Ton journal t'attend</h1>
-      <p style="font-size: 14px; color: #6e7887; line-height: 1.6; margin: 0 0 18px;">
-        Ça fait ${idleDays} jours sans trade ni session. Une pause peut être une décision disciplinée —
-        mais ton historique, lui, reste là pour t'aider à revenir plus fort.
-      </p>
+type Lang = "fr" | "en" | "de" | "es";
 
-      <table width="100%" cellpadding="0" cellspacing="0" style="margin: 0 -4px 6px;">
-        <tr>
-          <td style="padding: 4px;">
-            <div style="background: #f6f8fa; border: 1px solid #e2e7ee; border-radius: 10px; padding: 12px 14px;">
-              <div style="font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: #6e7887; text-transform: uppercase;">P&L cumulé</div>
-              <div style="font-size: 19px; font-weight: 800; color: ${pnlColor}; margin-top: 4px;">${stats.pnl >= 0 ? "+" : ""}${eur(stats.pnl)}</div>
-            </div>
-          </td>
-          <td style="padding: 4px;">
-            <div style="background: #f6f8fa; border: 1px solid #e2e7ee; border-radius: 10px; padding: 12px 14px;">
-              <div style="font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: #6e7887; text-transform: uppercase;">Trades</div>
-              <div style="font-size: 19px; font-weight: 800; color: #171e2a; margin-top: 4px;">${stats.count}</div>
-            </div>
-          </td>
-          <td style="padding: 4px;">
-            <div style="background: #f6f8fa; border: 1px solid #e2e7ee; border-radius: 10px; padding: 12px 14px;">
-              <div style="font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: #6e7887; text-transform: uppercase;">Winrate</div>
-              <div style="font-size: 19px; font-weight: 800; color: #171e2a; margin-top: 4px;">${Math.round(stats.winrate)} %</div>
-            </div>
-          </td>
-        </tr>
-      </table>
+// Locale BCP-47 par langue de compte, pour le formatage des montants.
+const LOCALES: Record<Lang, string> = {
+  fr: "fr-FR",
+  en: "en-US",
+  de: "de-DE",
+  es: "es-ES",
+};
 
-      <a href="https://tradediscipline.app/dashboard"
-         style="display: inline-block; margin-top: 18px; padding: 12px 26px; background: #0a0e18; color: #00e5d0; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 14px;">
-        Reprendre où j'en étais →
-      </a>
+// Contenu de l'email de réactivation dans chaque langue du compte. La langue
+// est lue depuis profiles.language. Fallback : en. {days} = jours d'inactivité.
+const REACTIVATION_COPY: Record<Lang, {
+  subject: string;
+  heading: string;
+  body: (idleDays: number) => string;
+  pnl: string;
+  trades: string;
+  winrate: string;
+  cta: string;
+  footer: string;
+}> = {
+  fr: {
+    subject: "Ton journal de trading t'attend",
+    heading: "Ton journal t'attend",
+    body: (d) => `Ça fait ${d} jours sans trade ni session. Une pause peut être une décision disciplinée, mais ton historique, lui, reste là pour t'aider à revenir plus fort.`,
+    pnl: "P&L cumulé",
+    trades: "Trades",
+    winrate: "Winrate",
+    cta: "Reprendre où j'en étais →",
+    footer: "Désactivable dans Paramètres → Notifications.",
+  },
+  en: {
+    subject: "Your trading journal is waiting",
+    heading: "Your journal is waiting",
+    body: (d) => `It's been ${d} days without a trade or a session. Taking a break can be a disciplined decision, but your history is still here to help you come back stronger.`,
+    pnl: "All-time P&L",
+    trades: "Trades",
+    winrate: "Win rate",
+    cta: "Pick up where I left off →",
+    footer: "You can turn this off in Settings → Notifications.",
+  },
+  de: {
+    subject: "Dein Trading-Journal wartet auf dich",
+    heading: "Dein Journal wartet auf dich",
+    body: (d) => `Seit ${d} Tagen kein Trade und keine Session. Eine Pause kann eine disziplinierte Entscheidung sein, aber deine Historie ist noch da, um dir zu helfen, stärker zurückzukommen.`,
+    pnl: "Gesamt-P&L",
+    trades: "Trades",
+    winrate: "Trefferquote",
+    cta: "Weitermachen, wo ich aufgehört habe →",
+    footer: "Abschaltbar in Einstellungen → Benachrichtigungen.",
+  },
+  es: {
+    subject: "Tu diario de trading te espera",
+    heading: "Tu diario te espera",
+    body: (d) => `Llevas ${d} días sin trades ni sesiones. Una pausa puede ser una decisión disciplinada, pero tu historial sigue aquí para ayudarte a volver más fuerte.`,
+    pnl: "P&L acumulado",
+    trades: "Trades",
+    winrate: "Tasa de acierto",
+    cta: "Seguir donde lo dejé →",
+    footer: "Puedes desactivarlo en Ajustes → Notificaciones.",
+  },
+};
 
-      <p style="color: #9aa4b2; font-size: 11px; margin-top: 26px; border-top: 1px solid #eef1f5; padding-top: 14px;">
-        Désactivable dans Paramètres → Notifications. · tradediscipline.app
-      </p>
-    </div>
-  </div>`;
+function buildEmailHtml(
+  stats: { count: number; pnl: number; winrate: number },
+  idleDays: number,
+  copy: typeof REACTIVATION_COPY[Lang],
+  locale: string,
+  currency: string
+): string {
+  const money = new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  });
+  // Intl ajoute déjà le signe « - » ; on ne préfixe que le « + ».
+  const signedMoney = `${stats.pnl >= 0 ? "+" : ""}${money.format(stats.pnl)}`;
+  const pnlColor = stats.pnl >= 0 ? EMAIL_GREEN : EMAIL_RED;
+
+  return renderBrandEmail({
+    preheader: copy.body(idleDays),
+    heading: copy.heading,
+    bodyHtml: `
+      ${emailParagraph(copy.body(idleDays))}
+      ${statRow([
+        statCell(copy.pnl, signedMoney, pnlColor),
+        statCell(copy.trades, String(stats.count)),
+        statCell(copy.winrate, `${Math.round(stats.winrate)} %`),
+      ])}`,
+    cta: { label: copy.cta, url: "https://tradediscipline.app/dashboard" },
+    footerLines: [copy.footer],
+  });
 }
 
 async function handle(req: Request) {
@@ -102,7 +140,7 @@ async function handle(req: Request) {
 
   const { data: users, error } = await supabase
     .from("profiles")
-    .select("id, email, timezone")
+    .select("id, email, timezone, language, currency")
     .eq("email_notif_session", true)
     .not("email", "is", null);
 
@@ -147,8 +185,11 @@ async function handle(req: Request) {
       winrate: (nets.filter((n) => n > 0).length / trades.length) * 100,
     };
 
+    const lang: Lang = (user.language as Lang) in REACTIVATION_COPY ? (user.language as Lang) : "en";
+    const copy = REACTIVATION_COPY[lang];
+
     if (dryRun) {
-      preview.push({ email: user.email, idleDays, ...stats });
+      preview.push({ email: user.email, language: lang, idleDays, ...stats });
       continue;
     }
 
@@ -157,8 +198,8 @@ async function handle(req: Request) {
       await resend.emails.send({
         from: "TradeDiscipline <noreply@tradediscipline.app>",
         to: user.email,
-        subject: "Ton journal de trading t'attend",
-        html: buildEmailHtml(stats, idleDays),
+        subject: copy.subject,
+        html: buildEmailHtml(stats, idleDays, copy, LOCALES[lang], (user.currency as string) || "EUR"),
       });
       sent++;
     } catch (emailErr) {

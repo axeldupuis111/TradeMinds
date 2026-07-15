@@ -19,7 +19,7 @@ const JSON_LD = {
       url: SITE_URL,
       logo: `${SITE_URL}/icon-512.png`,
       description:
-        "The AI that turns your trading journal into a personal coach — detect destructive patterns, measure discipline.",
+        "The AI that turns your trading journal into a personal coach: detect destructive patterns, measure discipline.",
     },
     {
       "@type": "WebSite",

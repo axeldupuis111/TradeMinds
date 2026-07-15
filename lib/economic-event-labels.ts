@@ -30,7 +30,7 @@ const LABELS: Record<string, Localized> = {
   // Inflation
   cpi:                  { fr: "Inflation CPI",                     en: "CPI inflation",                  de: "Verbraucherpreise (CPI)",             es: "Inflación CPI" },
   ppi:                  { fr: "Prix à la production PPI",          en: "Producer prices (PPI)",          de: "Erzeugerpreise (PPI)",                es: "Precios de producción PPI" },
-  pce:                  { fr: "Inflation PCE — jauge de la Fed",   en: "PCE inflation — Fed's gauge",    de: "PCE-Inflation — Fed-Maßstab",         es: "Inflación PCE — referencia Fed" },
+  pce:                  { fr: "Inflation PCE (jauge de la Fed)",   en: "PCE inflation (Fed's gauge)",    de: "PCE-Inflation (Fed-Maßstab)",         es: "Inflación PCE (referencia Fed)" },
   // Croissance / consommation
   retail_sales:         { fr: "Ventes au détail",                  en: "Retail sales",                   de: "Einzelhandelsumsätze",                es: "Ventas minoristas" },
   gdp:                  { fr: "Croissance du PIB",                 en: "GDP growth",                     de: "BIP-Wachstum",                        es: "Crecimiento del PIB" },

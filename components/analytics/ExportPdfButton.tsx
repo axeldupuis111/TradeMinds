@@ -203,7 +203,7 @@ export default function ExportPdfButton({ trades, periodLabel, accountLabel }: E
           pdf.ensure(16, contTitle);
           const label =
             v.pair && v.trade_date
-              ? `${v.pair} (${v.trade_date}) — ${v.rule_violated}`
+              ? `${v.pair} (${v.trade_date}) : ${v.rule_violated}`
               : `${v.rule_violated}${v.explanation ? `: ${v.explanation}` : ""}`;
           pdf.bullet(label, { color: C.red });
         });

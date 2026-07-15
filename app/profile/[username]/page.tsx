@@ -12,7 +12,7 @@ const SITE_URL = "https://tradediscipline.app";
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // Pseudo bloqué par la modération → même comportement qu'un profil inexistant.
-  if (!isUsernameDisplayable(params.username)) return { title: "Profile — TradeDiscipline" };
+  if (!isUsernameDisplayable(params.username)) return { title: "Profile - TradeDiscipline" };
 
   const supabase = createClient();
   const { data } = await supabase
@@ -22,11 +22,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .eq("public_profile", true)
     .maybeSingle();
 
-  if (!data) return { title: "Profile — TradeDiscipline" };
+  if (!data) return { title: "Profile - TradeDiscipline" };
 
   const handle = data.username as string;
-  const title = `@${handle} — TradeDiscipline`;
-  const description = `See @${handle}'s trading discipline scorecard — discipline score, win rate, streak and equity curve on TradeDiscipline.`;
+  const title = `@${handle} - TradeDiscipline`;
+  const description = `See @${handle}'s trading discipline scorecard: discipline score, win rate, streak and equity curve on TradeDiscipline.`;
   const url = `${SITE_URL}/profile/${handle}`;
 
   // The OG/Twitter image is wired automatically from opengraph-image.tsx in this

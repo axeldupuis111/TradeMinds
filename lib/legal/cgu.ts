@@ -27,7 +27,7 @@ const content: LegalContent = {
         ],
       },
       {
-        heading: "3. Avertissement — Absence de conseil financier",
+        heading: "3. Avertissement : absence de conseil financier",
         blocks: [
           {
             kind: "p",
@@ -153,7 +153,7 @@ const content: LegalContent = {
         ],
       },
       {
-        heading: "3. Disclaimer — No financial advice",
+        heading: "3. Disclaimer: No financial advice",
         blocks: [
           {
             kind: "p",
@@ -277,7 +277,7 @@ const content: LegalContent = {
         ],
       },
       {
-        heading: "3. Advertencia — Ausencia de asesoramiento financiero",
+        heading: "3. Advertencia: ausencia de asesoramiento financiero",
         blocks: [
           {
             kind: "p",
@@ -401,7 +401,7 @@ const content: LegalContent = {
         ],
       },
       {
-        heading: "3. Hinweis — Keine Finanzberatung",
+        heading: "3. Hinweis: Keine Finanzberatung",
         blocks: [
           {
             kind: "p",

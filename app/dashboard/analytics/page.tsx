@@ -304,7 +304,7 @@ export default function AnalyticsPage() {
     if (accountFilter === "all") return t("analytics_all_accounts");
     const a = accounts.find((x) => x.id === accountFilter);
     if (!a) return t("analytics_all_accounts");
-    return `${a.firm} — ${a.account_number || `${a.account_size.toLocaleString()}€`}`;
+    return `${a.firm} · ${a.account_number || `${a.account_size.toLocaleString()}€`}`;
   }, [accountFilter, accounts, t]);
 
   // ── Previous period (for KPI deltas) ─────────────────────────────────────
@@ -741,7 +741,7 @@ export default function AnalyticsPage() {
             <option value="all">{t("analytics_all_accounts")}</option>
             {accounts.map((a) => (
               <option key={a.id} value={a.id}>
-                {a.firm} — {a.account_number || `${a.account_size.toLocaleString()}€`}
+                {a.firm} · {a.account_number || `${a.account_size.toLocaleString()}€`}
               </option>
             ))}
           </select>

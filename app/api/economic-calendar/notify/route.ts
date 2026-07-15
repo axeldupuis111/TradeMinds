@@ -35,19 +35,19 @@ type Lang = "fr" | "en" | "de" | "es";
 const COPY: Record<Lang, { title: string; body: (emoji: string, name: string, cur: string, mins: number) => string }> = {
   fr: {
     title: "Annonce économique",
-    body: (e, name, cur, m) => `${e} ${name} (${cur}) dans ${m} min — reste prudent, volatilité possible.`,
+    body: (e, name, cur, m) => `${e} ${name} (${cur}) dans ${m} min : reste prudent, volatilité possible.`,
   },
   en: {
     title: "Economic announcement",
-    body: (e, name, cur, m) => `${e} ${name} (${cur}) in ${m} min — stay careful, volatility ahead.`,
+    body: (e, name, cur, m) => `${e} ${name} (${cur}) in ${m} min: stay careful, volatility ahead.`,
   },
   de: {
     title: "Wirtschaftstermin",
-    body: (e, name, cur, m) => `${e} ${name} (${cur}) in ${m} Min. — bleib vorsichtig, Volatilität möglich.`,
+    body: (e, name, cur, m) => `${e} ${name} (${cur}) in ${m} Min.: bleib vorsichtig, Volatilität möglich.`,
   },
   es: {
     title: "Anuncio económico",
-    body: (e, name, cur, m) => `${e} ${name} (${cur}) en ${m} min — mantén la prudencia, posible volatilidad.`,
+    body: (e, name, cur, m) => `${e} ${name} (${cur}) en ${m} min: mantén la prudencia, posible volatilidad.`,
   },
 };
 

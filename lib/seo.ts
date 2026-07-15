@@ -15,22 +15,22 @@ export const SITE_URL = "https://tradediscipline.app";
 
 const LANDING_META: Record<Locale, { title: string; description: string }> = {
   en: {
-    title: "TradeDiscipline — Stop repeating the same mistakes",
+    title: "TradeDiscipline - Stop repeating the same mistakes",
     description:
       "The AI that turns your trading journal into a personal coach. It detects your destructive patterns, measures your discipline and tells you exactly what is costing you money.",
   },
   fr: {
-    title: "TradeDiscipline — Arrête de répéter les mêmes erreurs",
+    title: "TradeDiscipline - Arrête de répéter les mêmes erreurs",
     description:
       "L'IA qui transforme ton journal de trading en coach personnel. Elle détecte tes patterns destructeurs, mesure ta discipline et te dit exactement ce qui te coûte de l'argent.",
   },
   de: {
-    title: "TradeDiscipline — Hör auf, dieselben Fehler zu wiederholen",
+    title: "TradeDiscipline - Hör auf, dieselben Fehler zu wiederholen",
     description:
       "Die KI, die dein Trading-Journal in einen persönlichen Coach verwandelt. Sie erkennt deine destruktiven Muster, misst deine Disziplin und sagt dir genau, was dich Geld kostet.",
   },
   es: {
-    title: "TradeDiscipline — Deja de repetir los mismos errores",
+    title: "TradeDiscipline - Deja de repetir los mismos errores",
     description:
       "La IA que convierte tu diario de trading en un coach personal. Detecta tus patrones destructivos, mide tu disciplina y te dice exactamente qué te está costando dinero.",
   },

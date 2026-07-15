@@ -170,7 +170,7 @@ function SessionDurationBanner() {
       <span className="shrink-0">⏱️</span>
       <p className="flex-1 text-foreground">
         <span className="font-semibold">{t("session_duration_banner_title")}</span>
-        {" — "}
+        {" · "}
         {t("session_duration_banner_message")
           .replace("{over}", String(overMinutes))
           .replace("{limit}", String(limitMinutes))}

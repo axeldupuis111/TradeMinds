@@ -4,6 +4,7 @@ import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { stripe } from '@/lib/stripe'
+import { renderBrandEmail, emailParagraph } from '@/lib/email-template'
 
 // IMPORTANT: Next.js doit recevoir le body brut pour la vérification de signature Stripe.
 // Cette config désactive le parsing automatique.
@@ -452,15 +453,13 @@ async function handleInvoicePaid(
       from: 'TradeDiscipline <noreply@tradediscipline.app>',
       to,
       subject,
-      html: `
-        <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;">
-          <h1 style="font-size:20px;">${heading}</h1>
-          <p style="color:#444;line-height:1.5;">${copy.body}</p>
-          <p style="margin-top:24px;">
-            <a href="${invoiceUrl}" style="background:#2563eb;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;display:inline-block;">${copy.cta}</a>
-          </p>
-        </div>
-      `,
+      html: renderBrandEmail({
+        preheader: copy.body,
+        headerNote: planLabel,
+        heading,
+        bodyHtml: emailParagraph(copy.body),
+        cta: { label: copy.cta, url: invoiceUrl },
+      }),
     })
     if (error) {
       console.error('[Webhook] Resend a refusé l\'envoi:', JSON.stringify(error))

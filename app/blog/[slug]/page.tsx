@@ -21,12 +21,12 @@ export async function generateMetadata({
   params: { slug: string };
 }): Promise<Metadata> {
   const post = getPost(params.slug);
-  if (!post) return { title: "Article — TradeDiscipline" };
+  if (!post) return { title: "Article - TradeDiscipline" };
 
   const c = postContent(post, resolveLang());
   const url = `${SITE_URL}/blog/${post.slug}`;
   return {
-    title: `${c.title} — TradeDiscipline`,
+    title: `${c.title} - TradeDiscipline`,
     description: c.excerpt,
     alternates: { canonical: url },
     openGraph: {

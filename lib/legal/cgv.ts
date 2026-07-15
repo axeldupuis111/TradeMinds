@@ -85,7 +85,7 @@ const content: LegalContent = {
         ],
       },
       {
-        heading: "8. Responsabilité — Absence de conseil financier",
+        heading: "8. Responsabilité : absence de conseil financier",
         blocks: [
           {
             kind: "p",
@@ -211,7 +211,7 @@ const content: LegalContent = {
         ],
       },
       {
-        heading: "8. Liability — No financial advice",
+        heading: "8. Liability: No financial advice",
         blocks: [
           {
             kind: "p",
@@ -338,7 +338,7 @@ const content: LegalContent = {
         ],
       },
       {
-        heading: "8. Responsabilidad — Ausencia de asesoramiento financiero",
+        heading: "8. Responsabilidad: ausencia de asesoramiento financiero",
         blocks: [
           {
             kind: "p",
@@ -465,7 +465,7 @@ const content: LegalContent = {
         ],
       },
       {
-        heading: "8. Haftung — Keine Finanzberatung",
+        heading: "8. Haftung: Keine Finanzberatung",
         blocks: [
           {
             kind: "p",

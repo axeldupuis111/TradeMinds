@@ -17,7 +17,7 @@ const content: LegalContent = {
             kind: "ul",
             items: [
               `Dénomination : ${COMPANY.legalName} (nom commercial : ${COMPANY.brand})`,
-              `SIRET : ${COMPANY.siret} — SIREN : ${COMPANY.siren}`,
+              `SIRET : ${COMPANY.siret} · SIREN : ${COMPANY.siren}`,
               `Siège : ${COMPANY.address}`,
               `Contact : ${COMPANY.contactEmail}`,
             ],
@@ -42,8 +42,8 @@ const content: LegalContent = {
           {
             kind: "ul",
             items: [
-              `Application : ${HOSTS.app.name}, ${HOSTS.app.address} — ${HOSTS.app.site}`,
-              `Base de données : ${HOSTS.data.name}, ${HOSTS.data.address} — ${HOSTS.data.site}`,
+              `Application : ${HOSTS.app.name}, ${HOSTS.app.address} · ${HOSTS.app.site}`,
+              `Base de données : ${HOSTS.data.name}, ${HOSTS.data.address} · ${HOSTS.data.site}`,
             ],
           },
         ],
@@ -103,7 +103,7 @@ const content: LegalContent = {
             kind: "ul",
             items: [
               `Name: ${COMPANY.legalName} (trading name: ${COMPANY.brand})`,
-              `SIRET: ${COMPANY.siret} — SIREN: ${COMPANY.siren}`,
+              `SIRET: ${COMPANY.siret} · SIREN: ${COMPANY.siren}`,
               `Registered office: ${COMPANY.address}`,
               `Contact: ${COMPANY.contactEmail}`,
             ],
@@ -119,8 +119,8 @@ const content: LegalContent = {
           {
             kind: "ul",
             items: [
-              `Application: ${HOSTS.app.name}, ${HOSTS.app.address} — ${HOSTS.app.site}`,
-              `Database: ${HOSTS.data.name}, ${HOSTS.data.address} — ${HOSTS.data.site}`,
+              `Application: ${HOSTS.app.name}, ${HOSTS.app.address} · ${HOSTS.app.site}`,
+              `Database: ${HOSTS.data.name}, ${HOSTS.data.address} · ${HOSTS.data.site}`,
             ],
           },
         ],
@@ -181,7 +181,7 @@ const content: LegalContent = {
             kind: "ul",
             items: [
               `Denominación: ${COMPANY.legalName} (nombre comercial: ${COMPANY.brand})`,
-              `SIRET: ${COMPANY.siret} — SIREN: ${COMPANY.siren}`,
+              `SIRET: ${COMPANY.siret} · SIREN: ${COMPANY.siren}`,
               `Domicilio: ${COMPANY.address}`,
               `Contacto: ${COMPANY.contactEmail}`,
             ],
@@ -197,8 +197,8 @@ const content: LegalContent = {
           {
             kind: "ul",
             items: [
-              `Aplicación: ${HOSTS.app.name}, ${HOSTS.app.address} — ${HOSTS.app.site}`,
-              `Base de datos: ${HOSTS.data.name}, ${HOSTS.data.address} — ${HOSTS.data.site}`,
+              `Aplicación: ${HOSTS.app.name}, ${HOSTS.app.address} · ${HOSTS.app.site}`,
+              `Base de datos: ${HOSTS.data.name}, ${HOSTS.data.address} · ${HOSTS.data.site}`,
             ],
           },
         ],
@@ -259,7 +259,7 @@ const content: LegalContent = {
             kind: "ul",
             items: [
               `Name: ${COMPANY.legalName} (Handelsname: ${COMPANY.brand})`,
-              `SIRET: ${COMPANY.siret} — SIREN: ${COMPANY.siren}`,
+              `SIRET: ${COMPANY.siret} · SIREN: ${COMPANY.siren}`,
               `Sitz: ${COMPANY.address}`,
               `Kontakt: ${COMPANY.contactEmail}`,
             ],
@@ -275,8 +275,8 @@ const content: LegalContent = {
           {
             kind: "ul",
             items: [
-              `Anwendung: ${HOSTS.app.name}, ${HOSTS.app.address} — ${HOSTS.app.site}`,
-              `Datenbank: ${HOSTS.data.name}, ${HOSTS.data.address} — ${HOSTS.data.site}`,
+              `Anwendung: ${HOSTS.app.name}, ${HOSTS.app.address} · ${HOSTS.app.site}`,
+              `Datenbank: ${HOSTS.data.name}, ${HOSTS.data.address} · ${HOSTS.data.site}`,
             ],
           },
         ],

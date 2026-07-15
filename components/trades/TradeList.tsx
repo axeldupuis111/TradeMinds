@@ -816,7 +816,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
           {totalPages > 1 && (
             <div className="flex items-center justify-between mt-4">
               <p className="text-sm text-muted">
-                {t("trades_page")} {page + 1} / {totalPages} — {total} trades
+                {t("trades_page")} {page + 1} / {totalPages} · {total} trades
               </p>
               <div className="flex gap-2">
                 <button

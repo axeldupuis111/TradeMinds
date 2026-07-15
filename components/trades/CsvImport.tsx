@@ -248,7 +248,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
       if (matched) {
         setMatchedChallengeId(matched.id);
         setSelectedChallengeId(matched.id);
-        setMatchedLabel(`${matched.firm} — ${matched.account_number}`);
+        setMatchedLabel(`${matched.firm} · ${matched.account_number}`);
       } else {
         setAccountNotFound(true);
       }
@@ -614,7 +614,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
                 <option value="">{t("csv_no_account")}</option>
                 {activeAccounts.map((a) => (
                   <option key={a.id} value={a.id}>
-                    {a.firm} — {a.account_number || a.account_size.toLocaleString() + "€"}
+                    {a.firm} · {a.account_number || a.account_size.toLocaleString() + "€"}
                   </option>
                 ))}
               </select>

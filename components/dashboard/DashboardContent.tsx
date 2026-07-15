@@ -357,7 +357,7 @@ export default function DashboardContent({
               <option value="">{t("dash_all_accounts")}</option>
               {activeAccounts.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {a.firm} — {a.account_number || a.account_size.toLocaleString() + "€"}
+                  {a.firm} · {a.account_number || a.account_size.toLocaleString() + "€"}
                 </option>
               ))}
             </select>
@@ -632,7 +632,7 @@ export default function DashboardContent({
                   </h2>
                 </div>
                 <p className="text-foreground text-sm">
-                  {displayAccount.firm} — Drawdown{" "}
+                  {displayAccount.firm} · Drawdown{" "}
                   <span className="font-bold tabular-nums">{ddPct.toFixed(1)}%</span>
                   {" "}({ddUsed.toFixed(0)}€ / {ddMax.toFixed(0)}€)
                 </p>

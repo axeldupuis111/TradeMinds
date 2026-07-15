@@ -1137,7 +1137,7 @@ export default function AnalysisPage() {
                         ) : (
                           <>
                             <p className="text-foreground text-sm font-medium">
-                              {(v as LegacyViolation).pair} — {(v as LegacyViolation).trade_date}
+                              {(v as LegacyViolation).pair} · {(v as LegacyViolation).trade_date}
                             </p>
                             <p className="text-loss text-sm">{(v as LegacyViolation).rule_violated}</p>
                             <p className="text-muted text-sm mt-1">{v.explanation}</p>
@@ -1236,7 +1236,7 @@ export default function AnalysisPage() {
         )}
 
         {/* Free : sous SA vraie analyse, montrer ce que Plus aurait ajouté.
-            C'est le remplaçant de l'ancien écran démo — la démo, c'est
+            C'est le remplaçant de l'ancien écran démo : la démo, c'est
             maintenant sa propre analyse, avec la suite verrouillée. */}
         {displayedAnalysis && !loading && plan === "free" && (
           <section>
@@ -1606,7 +1606,7 @@ export default function AnalysisPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-foreground text-xs font-medium">
                         {new Date(r.created_at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
-                        {r.period_label && <span className="text-muted font-normal"> — {r.period_label}</span>}
+                        {r.period_label && <span className="text-muted font-normal"> · {r.period_label}</span>}
                       </p>
                       <p className="text-muted text-[11px]">
                         {r.total_trades} trades
@@ -1682,9 +1682,9 @@ export default function AnalysisPage() {
             <p className="text-sm text-foreground">
               <span className="font-medium">{t("analysis_evolution")}:</span>{" "}
               {compareB.discipline_score > compareA.discipline_score ? (
-                <span className="text-profit">+{compareB.discipline_score - compareA.discipline_score} pts — {t("analysis_improved")}</span>
+                <span className="text-profit">+{compareB.discipline_score - compareA.discipline_score} pts · {t("analysis_improved")}</span>
               ) : compareB.discipline_score < compareA.discipline_score ? (
-                <span className="text-loss">{compareB.discipline_score - compareA.discipline_score} pts — {t("analysis_declined")}</span>
+                <span className="text-loss">{compareB.discipline_score - compareA.discipline_score} pts · {t("analysis_declined")}</span>
               ) : (
                 <span className="text-muted">= stable</span>
               )}
@@ -1721,7 +1721,7 @@ export default function AnalysisPage() {
                 <div>
                   <p className="text-foreground text-sm font-medium">
                     {new Date(r.created_at).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}
-                    {r.period_label && <span className="text-muted font-normal"> — {r.period_label}</span>}
+                    {r.period_label && <span className="text-muted font-normal"> · {r.period_label}</span>}
                   </p>
                   <p className="text-muted text-sm">{r.conforming_trades}/{r.total_trades} trades</p>
                 </div>

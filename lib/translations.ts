@@ -42,7 +42,7 @@ export const stopQuotes: Record<Lang, { text: string; author: string }[]> = {
     { text: "Ce qui distingue les traders gagnants, ce n'est pas leur connaissance des marchés, mais le contrôle de leurs émotions.", author: "Mark Douglas" },
     { text: "Ne te concentre pas sur l'argent à gagner ; concentre-toi sur la protection de ce que tu as déjà.", author: "Paul Tudor Jones" },
     { text: "Les ingrédients d'un bon trading sont : (1) couper ses pertes, (2) couper ses pertes, et (3) couper ses pertes.", author: "Ed Seykota" },
-    { text: "Une perte ne me dérange jamais une fois encaissée. Je l'oublie pendant la nuit. Mais avoir tort et ne pas couper sa perte — c'est ça qui fait des dégâts.", author: "Jesse Livermore" },
+    { text: "Une perte ne me dérange jamais une fois encaissée. Je l'oublie pendant la nuit. Mais avoir tort et ne pas couper sa perte, c'est ça qui fait des dégâts.", author: "Jesse Livermore" },
   ],
   en: [
     { text: "The goal of a successful trader is to make the best trades. Money is secondary.", author: "Alexander Elder" },
@@ -53,7 +53,7 @@ export const stopQuotes: Record<Lang, { text: string; author: string }[]> = {
     { text: "Winning traders are not separated by their knowledge of the markets, but by the control of their emotions.", author: "Mark Douglas" },
     { text: "Don't focus on making money; focus on protecting what you have.", author: "Paul Tudor Jones" },
     { text: "The elements of good trading are: (1) cutting losses, (2) cutting losses, and (3) cutting losses.", author: "Ed Seykota" },
-    { text: "A loss never bothers me after I take it. I forget it overnight. But being wrong and not taking the loss — that is what does damage.", author: "Jesse Livermore" },
+    { text: "A loss never bothers me after I take it. I forget it overnight. But being wrong and not taking the loss, that is what does damage.", author: "Jesse Livermore" },
   ],
   de: [
     { text: "Das Ziel eines erfolgreichen Traders ist es, die besten Trades zu machen. Geld ist zweitrangig.", author: "Alexander Elder" },
@@ -62,9 +62,9 @@ export const stopQuotes: Record<Lang, { text: string; author: string }[]> = {
     { text: "Ich habe zwei Grundregeln, um beim Trading wie im Leben zu gewinnen: 1. Wenn du nicht setzt, kannst du nicht gewinnen. 2. Wenn du all deine Chips verlierst, kannst du nicht mehr setzen.", author: "Larry Hite" },
     { text: "Jeder Trader hat Stärken und Schwächen. Manche halten ihre Gewinner gut, behalten ihre Verlierer aber ein wenig zu lange.", author: "Michael Marcus" },
     { text: "Was erfolgreiche Trader unterscheidet, ist nicht ihr Wissen über die Märkte, sondern die Kontrolle ihrer Emotionen.", author: "Mark Douglas" },
-    { text: "Konzentriere dich nicht darauf, Geld zu verdienen — konzentriere dich darauf, das zu schützen, was du hast.", author: "Paul Tudor Jones" },
+    { text: "Konzentriere dich nicht darauf, Geld zu verdienen, konzentriere dich darauf, das zu schützen, was du hast.", author: "Paul Tudor Jones" },
     { text: "Die Elemente guten Tradings sind: (1) Verluste begrenzen, (2) Verluste begrenzen und (3) Verluste begrenzen.", author: "Ed Seykota" },
-    { text: "Ein Verlust stört mich nie, sobald ich ihn akzeptiert habe. Ich vergesse ihn über Nacht. Aber falsch zu liegen und den Verlust nicht zu realisieren — das richtet den Schaden an.", author: "Jesse Livermore" },
+    { text: "Ein Verlust stört mich nie, sobald ich ihn akzeptiert habe. Ich vergesse ihn über Nacht. Aber falsch zu liegen und den Verlust nicht zu realisieren, das richtet den Schaden an.", author: "Jesse Livermore" },
   ],
   es: [
     { text: "El objetivo de un trader exitoso es hacer las mejores operaciones. El dinero es secundario.", author: "Alexander Elder" },
@@ -75,7 +75,7 @@ export const stopQuotes: Record<Lang, { text: string; author: string }[]> = {
     { text: "Lo que distingue a los traders ganadores no es su conocimiento de los mercados, sino el control de sus emociones.", author: "Mark Douglas" },
     { text: "No te enfoques en ganar dinero; enfócate en proteger lo que ya tienes.", author: "Paul Tudor Jones" },
     { text: "Los ingredientes de un buen trading son: (1) cortar las pérdidas, (2) cortar las pérdidas, y (3) cortar las pérdidas.", author: "Ed Seykota" },
-    { text: "Una pérdida nunca me molesta una vez asumida. La olvido durante la noche. Pero equivocarse y no cortar la pérdida — eso es lo que causa el daño.", author: "Jesse Livermore" },
+    { text: "Una pérdida nunca me molesta una vez asumida. La olvido durante la noche. Pero equivocarse y no cortar la pérdida, eso es lo que causa el daño.", author: "Jesse Livermore" },
   ],
 };
 
@@ -93,7 +93,7 @@ export const dailyQuotes: Record<Lang, string[]> = {
   en: [
     "The best trade is often the one you don't take.",
     "Discipline beats talent when talent lacks discipline.",
-    "A profitable trader doesn't try to be right — they try to lose little.",
+    "A profitable trader doesn't try to be right, they try to lose little.",
     "Patience is the most underrated skill in trading.",
     "Protect your capital first. Profits follow on their own.",
     "Respecting your plan is respecting your future.",
@@ -102,7 +102,7 @@ export const dailyQuotes: Record<Lang, string[]> = {
   de: [
     "Der beste Trade ist oft der, den du nicht machst.",
     "Disziplin schlägt Talent, wenn dem Talent die Disziplin fehlt.",
-    "Ein profitabler Trader will nicht recht haben — er will wenig verlieren.",
+    "Ein profitabler Trader will nicht recht haben, er will wenig verlieren.",
     "Geduld ist die am meisten unterschätzte Fähigkeit im Trading.",
     "Schütze zuerst dein Kapital. Die Gewinne kommen von selbst.",
     "Seinen Plan zu respektieren heißt, seine Zukunft zu respektieren.",

@@ -52,7 +52,7 @@ export function SubscriptionBanner() {
             <span className="text-lg shrink-0">⚠️</span>
             <p className="text-sm text-foreground">
               <span className="font-semibold">{t("banner_past_due_title")}</span>
-              {" — "}
+              {" · "}
               {t("banner_past_due_message")}
             </p>
           </div>

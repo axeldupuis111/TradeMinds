@@ -250,7 +250,7 @@ export const GLOSSARY: Record<string, GlossaryRecord> = {
       beginnerNote: "Hausse des salaires = pression inflationniste. Scruté avec le NFP.",
     },
     en: {
-      whatItIs: "Change in the average hourly wage — a gauge of wage pressure.",
+      whatItIs: "Change in the average hourly wage, a gauge of wage pressure.",
       whyItMoves: "Accelerating wages feed inflation, so the market is highly sensitive as it shapes rate policy.",
       beginnerNote: "Rising wages = inflation pressure. Watched alongside the NFP.",
     },
@@ -360,7 +360,7 @@ export const GLOSSARY: Record<string, GlossaryRecord> = {
       beginnerNote: "Le « Core » exclut l'automobile, trop volatile. Reflète la santé du consommateur.",
     },
     en: {
-      whatItIs: "Change in total retail sales — the main gauge of consumer spending.",
+      whatItIs: "Change in total retail sales, the main gauge of consumer spending.",
       whyItMoves: "Spending drives the economy: strong sales signal healthy growth and support the currency.",
       beginnerNote: "\"Core\" excludes autos as too volatile. Reflects the health of the consumer.",
     },
@@ -382,7 +382,7 @@ export const GLOSSARY: Record<string, GlossaryRecord> = {
       beginnerNote: "PIB en hausse = économie qui croît. La première estimation (avance) bouge le plus le marché.",
     },
     en: {
-      whatItIs: "Gross Domestic Product: the total value of goods and services produced — the economy's growth.",
+      whatItIs: "Gross Domestic Product: the total value of goods and services produced: the economy's growth.",
       whyItMoves: "The broadest measure of activity. Released in several estimates (advance, prelim, final) each quarter.",
       beginnerNote: "Rising GDP = a growing economy. The first (advance) estimate moves the market most.",
     },
@@ -559,7 +559,7 @@ export const GLOSSARY: Record<string, GlossaryRecord> = {
     },
     en: {
       whatItIs: "A survey measuring how optimistic households feel about the economy and their finances.",
-      whyItMoves: "A confident consumer spends more, so the index foreshadows future spending — the engine of growth.",
+      whyItMoves: "A confident consumer spends more, so the index foreshadows future spending, the engine of growth.",
       beginnerNote: "Household mood. Rising = a good sign for spending ahead.",
     },
     de: {
@@ -602,7 +602,7 @@ export const GLOSSARY: Record<string, GlossaryRecord> = {
       beginnerNote: "Plus de permis = plus de chantiers à venir. Indicateur avancé de l'immobilier.",
     },
     en: {
-      whatItIs: "Number of building permits issued — a leading indicator for the housing sector.",
+      whatItIs: "Number of building permits issued, a leading indicator for the housing sector.",
       whyItMoves: "Permits come before construction, so they foreshadow housing activity, which is sensitive to interest rates.",
       beginnerNote: "More permits = more building ahead. A leading indicator for housing.",
     },

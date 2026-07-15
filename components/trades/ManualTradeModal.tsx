@@ -342,7 +342,7 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
                 {pairs.length > 0 && pairs.map((p) => <option key={`s-${p}`} value={p} />)}
                 {Object.entries(INSTRUMENTS).map(([cat, items]) => (
                   items.map((item) => (
-                    <option key={item} value={item} label={`${item} — ${INSTRUMENT_CATEGORIES[cat]}`} />
+                    <option key={item} value={item} label={`${item} · ${INSTRUMENT_CATEGORIES[cat]}`} />
                   ))
                 ))}
               </datalist>
@@ -499,7 +499,7 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
               {!stratTags.loading && (
                 <div>
                   <label className="block text-sm text-muted mb-1">
-                    {t("ict_checklist_title")} — {checkedCount}/{checklistTotal}
+                    {t("ict_checklist_title")} · {checkedCount}/{checklistTotal}
                   </label>
                   {(() => {
                     const pct = (checkedCount / checklistTotal) * 100;

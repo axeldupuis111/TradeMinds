@@ -712,7 +712,7 @@ export default function SessionPage() {
                   onClick={() => setRulesOpen((v) => !v)}
                   className="w-full flex items-center justify-between px-3 py-2 text-xs text-muted font-medium hover:text-foreground transition-colors"
                 >
-                  <span>📋 {rulesOpen ? t("session_hide_rules") : t("session_show_rules")}{strategy && ` — ${strategy.name}`}</span>
+                  <span>📋 {rulesOpen ? t("session_hide_rules") : t("session_show_rules")}{strategy && ` · ${strategy.name}`}</span>
                   <span>{rulesOpen ? "▲" : "▼"}</span>
                 </button>
                 {rulesOpen && (
@@ -779,7 +779,7 @@ export default function SessionPage() {
             {/* Strategy checklist link */}
             <div className="mt-4 pt-3 border-t border-border">
               <Link href="/dashboard/trades" className="text-xs text-muted hover:text-accent transition-colors">
-                {strategy ? `Voir checklist technique — ${strategy.name} →` : t("session_ict_link") + " →"}
+                {strategy ? `Voir checklist technique · ${strategy.name} →` : t("session_ict_link") + " →"}
               </Link>
             </div>
           </section>

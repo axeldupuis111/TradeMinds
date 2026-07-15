@@ -339,7 +339,7 @@ export default function AdminPage() {
 
           {funnelLoading && <p className="text-sm text-muted">Chargement…</p>}
           {funnel?.eventsTableMissing && (
-            <p className="text-sm text-loss mb-3">⚠️ Table product_events absente — appliquer la migration 20260703_create_product_events.sql.</p>
+            <p className="text-sm text-loss mb-3">⚠️ Table product_events absente : appliquer la migration 20260703_create_product_events.sql.</p>
           )}
           {funnel && !funnelLoading && (
             <div className="space-y-2">
@@ -399,9 +399,9 @@ export default function AdminPage() {
                       <span className="text-xs text-muted/80 flex-1">
                         {{
                           countdown: "Compte à rebours (quota hebdo)",
-                          teaser_coach: "Carte teaser — coach",
-                          teaser_debrief: "Carte teaser — débrief",
-                          teaser_weekly: "Carte teaser — plan hebdo",
+                          teaser_coach: "Carte teaser · coach",
+                          teaser_debrief: "Carte teaser · débrief",
+                          teaser_weekly: "Carte teaser · plan hebdo",
                           taster_footer: "Après le message découverte",
                         }[source] ?? source}
                       </span>
@@ -479,7 +479,7 @@ export default function AdminPage() {
                 <p className="text-xs text-muted">
                   Encaissé = factures payées du mois (remboursements exclus). Assiette = part encaissée dans
                   les 12 premiers mois de chaque abonnement. Barème sur abonnés actifs : Bronze 20 % (1-10) ·
-                  Argent 25 % (11-40) · Or 30 % (41+) — le taux du palier s&apos;applique à toute l&apos;assiette
+                  Argent 25 % (11-40) · Or 30 % (41+) : le taux du palier s&apos;applique à toute l&apos;assiette
                   du mois. La commission se paie sur facture de l&apos;influenceur, seuil 50 €.
                 </p>
               </div>

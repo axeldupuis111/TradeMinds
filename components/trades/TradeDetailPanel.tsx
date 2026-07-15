@@ -548,7 +548,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
                 <option value="">{t("detail_no_account")}</option>
                 {accounts.map((a) => (
                   <option key={a.id} value={a.id}>
-                    {a.firm}{a.account_number ? ` — #${a.account_number}` : ""}
+                    {a.firm}{a.account_number ? ` · #${a.account_number}` : ""}
                   </option>
                 ))}
               </select>

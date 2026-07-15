@@ -27,22 +27,22 @@ const MIN_TRADES = 3;
 const TEXTS: Record<string, { title: string; body: string; types: Record<LeakType, string> }> = {
   fr: {
     title: "⚠️ Fuite détectée en session",
-    body: "{type} : −{amount} € sur tes dernières 24 h. Fais une pause — ton plan d'abord.",
+    body: "{type} : −{amount} € sur tes dernières 24 h. Fais une pause, ton plan d'abord.",
     types: { revenge: "Revenge trading", emotional: "Trades sous émotion", overtrading: "Overtrading", oversizing: "Taille gonflée après perte", bad_hour: "Mauvaise tranche horaire" },
   },
   en: {
     title: "⚠️ Leak detected this session",
-    body: "{type}: −€{amount} over your last 24h. Take a break — plan first.",
+    body: "{type}: −€{amount} over your last 24h. Take a break, plan first.",
     types: { revenge: "Revenge trading", emotional: "Emotional trades", overtrading: "Overtrading", oversizing: "Oversized after a loss", bad_hour: "Bad trading hour" },
   },
   de: {
     title: "⚠️ Leck in dieser Session erkannt",
-    body: "{type}: −{amount} € in den letzten 24 h. Mach eine Pause — Plan zuerst.",
+    body: "{type}: −{amount} € in den letzten 24 h. Mach eine Pause, Plan zuerst.",
     types: { revenge: "Revenge-Trading", emotional: "Emotionale Trades", overtrading: "Overtrading", oversizing: "Zu groß nach Verlust", bad_hour: "Schlechte Handelsstunde" },
   },
   es: {
     title: "⚠️ Fuga detectada en la sesión",
-    body: "{type}: −{amount} € en tus últimas 24 h. Haz una pausa — el plan primero.",
+    body: "{type}: −{amount} € en tus últimas 24 h. Haz una pausa, el plan primero.",
     types: { revenge: "Revenge trading", emotional: "Trades emocionales", overtrading: "Overtrading", oversizing: "Tamaño inflado tras pérdida", bad_hour: "Mala franja horaria" },
   },
 };

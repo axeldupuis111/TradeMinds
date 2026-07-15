@@ -4,6 +4,7 @@ import { Resend } from "resend";
 import { sendPushToUser } from "@/lib/push";
 import { alertCronFailure } from "@/lib/cron-alert";
 import { localHour, localWeekday } from "@/lib/timezone";
+import { renderBrandEmail, statCell, statRow, EMAIL_GREEN, EMAIL_RED, EMAIL_INK } from "@/lib/email-template";
 
 // Delivered Sunday evening in each trader's LOCAL timezone (was a fixed 18:00
 // UTC Sunday = 20:00 CEST). The cron now runs hourly; this gate fires it once,
@@ -168,78 +169,46 @@ function computeStats(trades: TradeRow[]): WeekStats {
 }
 
 function buildEmailHtml(stats: WeekStats, weekLabel: string, copy: Copy, fmt: Formatters): string {
-  const green = "#16a34a";
-  const red = "#dc2626";
-  const pnlColor = stats.pnl >= 0 ? green : red;
+  const pnlColor = stats.pnl >= 0 ? EMAIL_GREEN : EMAIL_RED;
 
-  const statBox = (label: string, value: string, color = "#171e2a") => `
-    <td style="padding: 4px;">
-      <div style="background: #f6f8fa; border: 1px solid #e2e7ee; border-radius: 10px; padding: 12px 14px;">
-        <div style="font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: #6e7887; text-transform: uppercase;">${label}</div>
-        <div style="font-size: 19px; font-weight: 800; color: ${color}; margin-top: 4px; font-variant-numeric: tabular-nums;">${value}</div>
-      </div>
-    </td>`;
-
-  return `
-  <div style="font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; max-width: 560px; margin: 0 auto; background: #ffffff;">
-    <!-- Bandeau -->
-    <div style="background: #0a0e18; border-radius: 14px 14px 0 0; padding: 22px 26px;">
-      <table width="100%" cellpadding="0" cellspacing="0"><tr>
-        <td>
-          <span style="display: inline-block; width: 24px; height: 24px; background: #00e5d0; border-radius: 6px; color: #0a0e18; font-size: 11px; font-weight: 800; text-align: center; line-height: 24px; vertical-align: middle;">TD</span>
-          <span style="color: #ffffff; font-size: 16px; font-weight: 700; margin-left: 8px; vertical-align: middle;">TradeDiscipline</span>
-        </td>
-        <td align="right" style="color: #94a3b8; font-size: 11px;">${weekLabel}</td>
-      </tr></table>
-    </div>
-    <div style="height: 3px; background: #00e5d0;"></div>
-
-    <div style="border: 1px solid #e2e7ee; border-top: none; border-radius: 0 0 14px 14px; padding: 26px;">
-      <h1 style="font-size: 19px; color: #171e2a; margin: 0 0 4px;">${copy.heading}</h1>
-      <p style="font-size: 13px; color: #6e7887; margin: 0 0 18px;">${copy.subheading}</p>
-
-      <!-- P&L principal -->
-      <div style="font-size: 38px; font-weight: 900; color: ${pnlColor}; margin-bottom: 18px; font-variant-numeric: tabular-nums;">
-        ${fmt.signedMoney(stats.pnl)}
-      </div>
-
-      <!-- Grille de stats -->
-      <table width="100%" cellpadding="0" cellspacing="0" style="margin: 0 -4px 6px;">
-        <tr>
-          ${statBox(copy.trades, String(stats.count))}
-          ${statBox(copy.winrate, fmt.percent(stats.winrate))}
-          ${statBox(copy.profitFactor, stats.profitFactor !== null ? fmt.decimal(stats.profitFactor) : "—")}
-        </tr>
-      </table>
-
-      ${stats.best ? `
+  const bestWorst = stats.best
+    ? `
       <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 10px;">
         <tr>
           <td style="font-size: 13px; color: #6e7887; padding: 6px 0;">
-            ${copy.best} <strong style="color: #171e2a;">${stats.best.pair}</strong>
-            <strong style="color: ${green};">${fmt.signedMoney(stats.best.pnl)}</strong>
+            ${copy.best} <strong style="color: ${EMAIL_INK};">${stats.best.pair}</strong>
+            <strong style="color: ${EMAIL_GREEN};">${fmt.signedMoney(stats.best.pnl)}</strong>
           </td>
         </tr>
         ${stats.worst && stats.worst.pnl < 0 ? `
         <tr>
           <td style="font-size: 13px; color: #6e7887; padding: 6px 0;">
-            ${copy.worst} <strong style="color: #171e2a;">${stats.worst.pair}</strong>
-            <strong style="color: ${red};">${fmt.signedMoney(stats.worst.pnl)}</strong>
+            ${copy.worst} <strong style="color: ${EMAIL_INK};">${stats.worst.pair}</strong>
+            <strong style="color: ${EMAIL_RED};">${fmt.signedMoney(stats.worst.pnl)}</strong>
           </td>
         </tr>` : ""}
-      </table>` : ""}
+      </table>`
+    : "";
 
-      <a href="https://tradediscipline.app/dashboard/analytics"
-         style="display: inline-block; margin-top: 20px; padding: 12px 26px; background: #0a0e18; color: #00e5d0; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 14px;">
-        ${copy.cta}
-      </a>
-
-      <p style="color: #9aa4b2; font-size: 11px; margin-top: 26px; border-top: 1px solid #eef1f5; padding-top: 14px;">
-        ${copy.footer}
-        <br/>tradediscipline.app
-      </p>
-    </div>
-  </div>`;
+  return renderBrandEmail({
+    preheader: `${fmt.signedMoney(stats.pnl)} · ${stats.count} ${copy.trades} · ${fmt.percent(stats.winrate)}`,
+    headerNote: weekLabel,
+    heading: copy.heading,
+    subheading: copy.subheading,
+    bodyHtml: `
+      <!-- P&L principal -->
+      <div style="font-size: 38px; font-weight: 900; color: ${pnlColor}; margin-bottom: 4px; font-variant-numeric: tabular-nums;">
+        ${fmt.signedMoney(stats.pnl)}
+      </div>
+      ${statRow([
+        statCell(copy.trades, String(stats.count)),
+        statCell(copy.winrate, fmt.percent(stats.winrate)),
+        statCell(copy.profitFactor, stats.profitFactor !== null ? fmt.decimal(stats.profitFactor) : "—"),
+      ])}
+      ${bestWorst}`,
+    cta: { label: copy.cta, url: "https://tradediscipline.app/dashboard/analytics" },
+    footerLines: [copy.footer],
+  });
 }
 
 async function handle(req: Request) {

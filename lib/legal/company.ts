@@ -30,7 +30,7 @@ export const HOSTS = {
   },
   data: {
     name: "Supabase, Inc.",
-    address: "970 Toa Payoh North #07-04, Singapour 318992 — données hébergées dans l'UE (Francfort)",
+    address: "970 Toa Payoh North #07-04, Singapour 318992 (données hébergées dans l'UE, Francfort)",
     site: "https://supabase.com",
   },
 } as const;

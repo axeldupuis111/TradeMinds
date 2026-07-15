@@ -4,6 +4,7 @@ import { Resend } from "resend";
 import { sendPushToUser } from "@/lib/push";
 import { alertCronFailure } from "@/lib/cron-alert";
 import { localHour, localWeekday } from "@/lib/timezone";
+import { renderBrandEmail, emailParagraph } from "@/lib/email-template";
 
 // Delivered at 8am in each trader's LOCAL timezone, before the European
 // session opens. The cron runs hourly; this gate makes each user receive it
@@ -62,21 +63,13 @@ const REMINDER_COPY: Record<Lang, {
 };
 
 function buildEmailHtml(copy: typeof REMINDER_COPY[Lang]): string {
-  return `
-    <div style="font-family: system-ui, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 20px;">
-      <h2 style="color: #1a1a2e; margin-bottom: 8px;">${copy.heading}</h2>
-      <p style="color: #666; font-size: 14px; line-height: 1.6;">
-        ${copy.body}
-      </p>
-      <a href="https://tradediscipline.app/dashboard/session"
-         style="display: inline-block; margin-top: 16px; padding: 12px 24px; background: #3b82f6; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">
-        ${copy.cta}
-      </a>
-      <p style="color: #999; font-size: 12px; margin-top: 32px;">
-        ${copy.footer}
-      </p>
-    </div>
-  `;
+  return renderBrandEmail({
+    preheader: copy.body,
+    heading: copy.heading,
+    bodyHtml: emailParagraph(copy.body),
+    cta: { label: copy.cta, url: "https://tradediscipline.app/dashboard/session" },
+    footerLines: [copy.footer],
+  });
 }
 
 export async function POST(req: Request) {
