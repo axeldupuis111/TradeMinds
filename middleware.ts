@@ -54,6 +54,19 @@ function isPublicPath(pathname: string): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Canonicalisation SEO www → apex, en 308 permanent. JAMAIS au niveau domaine
+  // Vercel et JAMAIS sur /api : les EA/cBots installés (MT4/MT5, cTrader,
+  // NinjaTrader) postent sur www.tradediscipline.app en dur et leurs clients
+  // HTTP transforment le POST redirigé en GET → 405 (incident du 2026-07-15).
+  const host = request.headers.get("host") ?? "";
+  if (host === "www.tradediscipline.app" && !pathname.startsWith("/api")) {
+    const url = request.nextUrl.clone();
+    url.protocol = "https:";
+    url.host = "tradediscipline.app";
+    url.port = "";
+    return NextResponse.redirect(url, 308);
+  }
+
   // Stripe webhook: called by Stripe (no user session), secured by signature verification
   if (pathname === "/api/stripe/webhook") {
     return NextResponse.next();
