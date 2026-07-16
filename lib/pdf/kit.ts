@@ -14,9 +14,10 @@ import type jsPDF from "jspdf";
  * - Courbe d'aire (equity) avec dégradé et grille douce
  * - Titres de section avec accent, paragraphes, puces, pied de page paginé
  *
- * Note polices : les polices standard jsPDF ne disposent pas d'espace fine
- * insécable (U+202F) — on groupe les milliers avec des espaces normales.
- * Le symbole € correspond au code 128 en encodage WinAnsi/cp1252.
+ * Note polices : par défaut le kit écrit en Helvetica (police standard jsPDF,
+ * encodage WinAnsi : pas d'espace fine insécable, € = code 128). Passer la
+ * police de marque via `new Pdf(doc, { font })` après `ensureBrandFont(doc)`
+ * (lib/pdf/fonts) pour un rendu Unicode complet (accents, vrai €).
  */
 
 export type RGB = [number, number, number];
@@ -62,13 +63,20 @@ export function groupNum(n: number, decimals = 0): string {
   return `${neg ? "-" : ""}${grouped}${dec ? "," + dec : ""}`;
 }
 
-const EURO = String.fromCharCode(128); // € en WinAnsi
+const EURO_WINANSI = String.fromCharCode(128); // € en WinAnsi (polices standard)
 
-export function money(n: number, decimals = 0, symbol = EURO): string {
-  return `${groupNum(n, decimals)} ${symbol}`;
+// Vaut true dès qu'une police Unicode est enregistrée (lib/pdf/fonts) : le
+// vrai « € » remplace alors le code 128 WinAnsi, qui n'existe pas en Unicode.
+let unicodeMoney = false;
+export function setUnicodeMoney(on: boolean) {
+  unicodeMoney = on;
 }
 
-export function signedMoney(n: number, decimals = 2, symbol = EURO): string {
+export function money(n: number, decimals = 0, symbol?: string): string {
+  return `${groupNum(n, decimals)} ${symbol ?? (unicodeMoney ? "€" : EURO_WINANSI)}`;
+}
+
+export function signedMoney(n: number, decimals = 2, symbol?: string): string {
   return `${n >= 0 ? "+" : ""}${money(n, decimals, symbol)}`;
 }
 
@@ -94,16 +102,19 @@ export class Pdf {
   h: number;
   M = 16; // marge
   y = 0;
+  /** Famille de police ("Geist" via ensureBrandFont, sinon "helvetica"). */
+  font: string;
   private brand: string;
   private url: string;
   private opacitySupported: boolean;
 
-  constructor(doc: jsPDF, opts?: { brand?: string; url?: string }) {
+  constructor(doc: jsPDF, opts?: { brand?: string; url?: string; font?: string }) {
     this.doc = doc;
     this.w = doc.internal.pageSize.getWidth();
     this.h = doc.internal.pageSize.getHeight();
     this.brand = opts?.brand ?? "TradeDiscipline";
     this.url = opts?.url ?? "tradediscipline.app";
+    this.font = opts?.font ?? "helvetica";
     this.opacitySupported = typeof (doc as unknown as { GState?: unknown }).GState === "function";
   }
 
@@ -180,7 +191,7 @@ export class Pdf {
     doc.setFillColor(...C.cyan);
     doc.roundedRect(M, 13, 9, 9, 2.4, 2.4, "F");
     doc.setTextColor(...C.navy);
-    doc.setFont("helvetica", "bold");
+    doc.setFont(this.font,"bold");
     doc.setFontSize(9.5);
     doc.text("TD", M + 4.5, 19.1, { align: "center" });
 
@@ -188,7 +199,7 @@ export class Pdf {
     doc.setTextColor(...C.white);
     doc.setFontSize(16.5);
     doc.text(this.brand, M + 13, 19.5);
-    doc.setFont("helvetica", "normal");
+    doc.setFont(this.font,"normal");
     doc.setFontSize(7.8);
     doc.setTextColor(...C.faint);
     doc.text(this.url, M + 13.2, 25.4);
@@ -196,7 +207,7 @@ export class Pdf {
     // Droite : kicker + titre
     // jsPDF n'inclut pas charSpace dans le calcul d'alignement droit → on
     // compense l'ancrage pour que le bord droit tombe sur la marge.
-    doc.setFont("helvetica", "bold");
+    doc.setFont(this.font,"bold");
     doc.setFontSize(8);
     doc.setTextColor(...C.cyanGlow);
     const kicker = opts.kicker.toUpperCase();
@@ -208,7 +219,7 @@ export class Pdf {
     doc.text(opts.title, w - M, 22, { align: "right" });
 
     if (opts.subtitle) {
-      doc.setFont("helvetica", "normal");
+      doc.setFont(this.font,"normal");
       doc.setFontSize(8);
       doc.setTextColor(...C.faint);
       doc.text(opts.subtitle, w - M, 27.6, { align: "right" });
@@ -226,13 +237,13 @@ export class Pdf {
     doc.setFillColor(...C.cyan);
     doc.roundedRect(M, 5.5, 7, 7, 2, 2, "F");
     doc.setTextColor(...C.navy);
-    doc.setFont("helvetica", "bold");
+    doc.setFont(this.font,"bold");
     doc.setFontSize(7.5);
     doc.text("TD", M + 3.5, 10.4, { align: "center" });
     doc.setTextColor(...C.white);
     doc.setFontSize(10);
     doc.text(this.brand, M + 10, 10.6);
-    doc.setFont("helvetica", "normal");
+    doc.setFont(this.font,"normal");
     doc.setFontSize(8);
     doc.setTextColor(...C.faint);
     doc.text(title, w - M, 10.6, { align: "right" });
@@ -247,7 +258,7 @@ export class Pdf {
     doc.setFillColor(...C.cyan);
     doc.roundedRect(M, this.y - 4, 1.6, 5.4, 0.8, 0.8, "F");
     // Titre
-    doc.setFont("helvetica", "bold");
+    doc.setFont(this.font,"bold");
     doc.setFontSize(12);
     doc.setTextColor(...C.ink);
     doc.text(title, M + 5, this.y);
@@ -286,7 +297,7 @@ export class Pdf {
       doc.roundedRect(bx, by + 5, 1.4, boxH - 10, 0.7, 0.7, "F");
 
       // Label
-      doc.setFont("helvetica", "bold");
+      doc.setFont(this.font,"bold");
       doc.setFontSize(6.6);
       doc.setTextColor(...C.muted);
       doc.text(card.label.toUpperCase(), bx + 5.5, by + 7.5, { charSpace: 0.3 });
@@ -296,7 +307,7 @@ export class Pdf {
       doc.text(card.value, bx + 5.5, by + 15.5);
       // Sous-valeur (delta)
       if (card.sub) {
-        doc.setFont("helvetica", "normal");
+        doc.setFont(this.font,"normal");
         doc.setFontSize(7);
         doc.setTextColor(...(card.subColor ?? C.muted));
         doc.text(card.sub, bx + 5.5, by + 19.5);
@@ -336,13 +347,13 @@ export class Pdf {
 
     // Texte central
     if (opts?.centerTop) {
-      doc.setFont("helvetica", "bold");
+      doc.setFont(this.font,"bold");
       doc.setFontSize(13);
       doc.setTextColor(...color);
       doc.text(opts.centerTop, cx, cy + (opts.centerBottom ? 0 : 1.5), { align: "center" });
     }
     if (opts?.centerBottom) {
-      doc.setFont("helvetica", "normal");
+      doc.setFont(this.font,"normal");
       doc.setFontSize(6.6);
       doc.setTextColor(...C.muted);
       doc.text(opts.centerBottom.toUpperCase(), cx, cy + 5, { align: "center", charSpace: 0.3 });
@@ -369,12 +380,12 @@ export class Pdf {
     const rowGap = opts?.rowGap ?? 12.5;
     for (const row of rows) {
       const ratio = Math.max(0, Math.min(1, row.ratio));
-      doc.setFont("helvetica", "normal");
+      doc.setFont(this.font,"normal");
       doc.setFontSize(9);
       doc.setTextColor(...C.inkSoft);
       doc.text(row.label, M, this.y);
 
-      doc.setFont("helvetica", "bold");
+      doc.setFont(this.font,"bold");
       doc.setTextColor(...(row.valueColor ?? C.ink));
       doc.text(row.value, w - M, this.y, { align: "right" });
 
@@ -415,7 +426,7 @@ export class Pdf {
     const py = (v: number) => chartY + chartH - ((v - minVal) / range) * chartH;
 
     // Grille + labels Y
-    doc.setFont("helvetica", "normal");
+    doc.setFont(this.font,"normal");
     doc.setFontSize(6.4);
     for (let g = 0; g <= 3; g++) {
       const gy = chartY + (g / 3) * chartH;
@@ -462,7 +473,7 @@ export class Pdf {
     doc.setFillColor(...C.white);
     doc.circle(last[0], last[1], 0.6, "F");
 
-    doc.setFont("helvetica", "bold");
+    doc.setFont(this.font,"bold");
     doc.setFontSize(7.5);
     doc.setTextColor(...lineColor);
     const endLabel = fmt(values[values.length - 1]);
@@ -472,7 +483,7 @@ export class Pdf {
     });
 
     // Labels X
-    doc.setFont("helvetica", "normal");
+    doc.setFont(this.font,"normal");
     doc.setFontSize(6.4);
     doc.setTextColor(...C.faint);
     const mid = Math.floor((points.length - 1) / 2);
@@ -488,13 +499,13 @@ export class Pdf {
   paragraph(body: string, opts?: { label?: string; labelColor?: RGB; accent?: boolean }) {
     const { doc, M } = this;
     if (opts?.label) {
-      doc.setFont("helvetica", "bold");
+      doc.setFont(this.font,"bold");
       doc.setFontSize(8.5);
       doc.setTextColor(...(opts.labelColor ?? C.teal));
       doc.text(opts.label.toUpperCase(), M, this.y, { charSpace: 0.4 });
       this.y += 5;
     }
-    doc.setFont("helvetica", "normal");
+    doc.setFont(this.font,"normal");
     doc.setFontSize(9.5);
     doc.setTextColor(...C.inkSoft);
     const indent = opts?.accent ? 5 : 0;
@@ -514,18 +525,68 @@ export class Pdf {
     if (opts?.index != null) {
       doc.circle(M + 1.6, this.y - 1.2, 2.1, "F");
       doc.setTextColor(...C.white);
-      doc.setFont("helvetica", "bold");
+      doc.setFont(this.font,"bold");
       doc.setFontSize(6.5);
       doc.text(String(opts.index), M + 1.6, this.y - 0.1, { align: "center" });
     } else {
       doc.circle(M + 1.4, this.y - 1.4, 0.9, "F");
     }
-    doc.setFont("helvetica", "normal");
+    doc.setFont(this.font,"normal");
     doc.setFontSize(9.5);
     doc.setTextColor(...C.inkSoft);
     const lines = doc.splitTextToSize(body, this.cw - 6) as string[];
     doc.text(lines, M + 6, this.y);
     this.y += lines.length * 5 + 2.5;
+  }
+
+  // ── Tableau zébré (relevé de trades, etc.) ──
+  table(
+    columns: { header: string; w: number; align?: "left" | "right" }[],
+    rows: { text: string; color?: RGB; bold?: boolean }[][],
+    opts?: { contTitle?: string },
+  ) {
+    const { doc, M } = this;
+    const rowH = 6.8;
+    const widths = columns.map((c) => c.w * this.cw);
+    const xs: number[] = [];
+    let acc = M;
+    for (const cw of widths) { xs.push(acc); acc += cw; }
+    const cellX = (i: number) => (columns[i].align === "right" ? xs[i] + widths[i] - 2 : xs[i] + 2);
+
+    const drawHeader = () => {
+      doc.setFont(this.font, "bold");
+      doc.setFontSize(6.6);
+      doc.setTextColor(...C.muted);
+      columns.forEach((c, i) =>
+        doc.text(c.header.toUpperCase(), cellX(i), this.y, { align: c.align ?? "left", charSpace: 0.3 }),
+      );
+      this.y += 2.2;
+      doc.setDrawColor(...C.line);
+      doc.setLineWidth(0.3);
+      doc.line(M, this.y, M + this.cw, this.y);
+      this.y += 5;
+    };
+
+    drawHeader();
+    rows.forEach((row, r) => {
+      if (opts?.contTitle && this.y + rowH > this.h - 18) {
+        doc.addPage();
+        this.continuationHeader(opts.contTitle);
+        drawHeader();
+      }
+      if (r % 2 === 0) {
+        doc.setFillColor(...C.cardBg);
+        doc.rect(M, this.y - 4.4, this.cw, rowH, "F");
+      }
+      row.forEach((cell, i) => {
+        doc.setFont(this.font, cell.bold ? "bold" : "normal");
+        doc.setFontSize(8.3);
+        doc.setTextColor(...(cell.color ?? C.inkSoft));
+        doc.text(cell.text, cellX(i), this.y, { align: columns[i].align ?? "left" });
+      });
+      this.y += rowH;
+    });
+    this.y += 4;
   }
 
   // ── Pagination ──
@@ -543,7 +604,7 @@ export class Pdf {
     for (let i = 1; i <= count; i++) {
       doc.setPage(i);
       this.gradientH(M, h - 14.5, this.cw, 0.4, C.line, C.white);
-      doc.setFont("helvetica", "normal");
+      doc.setFont(this.font,"normal");
       doc.setFontSize(7.5);
       doc.setTextColor(...C.muted);
       doc.text(note, M, h - 10);
@@ -551,7 +612,7 @@ export class Pdf {
         doc.setTextColor(...C.faint);
         doc.text(`${i} / ${count}`, w / 2, h - 10, { align: "center" });
       }
-      doc.setFont("helvetica", "bold");
+      doc.setFont(this.font,"bold");
       doc.setTextColor(...C.teal);
       doc.text(this.url, w - M, h - 10, { align: "right" });
     }

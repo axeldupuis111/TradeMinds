@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import { C, type RGB } from "@/lib/pdf/kit";
+import { ensureBrandFont } from "@/lib/pdf/fonts";
 
 /**
  * Certificat de discipline PDF — récompense des badges majeurs, façon
@@ -10,8 +11,7 @@ import { C, type RGB } from "@/lib/pdf/kit";
  * moment de l'octroi) et ID de certificat. Partageable tel quel sur les
  * réseaux — c'est aussi de la visibilité pour le produit.
  *
- * Note polices : comme les autres exports (lib/export-pdf), on évite les
- * accents dans les libellés (polices standard jsPDF / WinAnsi).
+ * Police Geist embarquée (lib/pdf/fonts) : accents OK dans toutes les langues.
  */
 
 export type CertLang = "fr" | "en" | "de" | "es";
@@ -19,56 +19,56 @@ export type CertLang = "fr" | "en" | "de" | "es";
 // Badges qui donnent droit à un certificat + libellés par langue.
 const CERT_CONTENT: Record<string, Record<CertLang, { title: string; feat: (m: Record<string, unknown> | null) => string }>> = {
   streak_30: {
-    fr: { title: "30 JOURS DE DISCIPLINE", feat: (m) => `a maintenu une serie de ${num(m?.streak, 30)} jours consecutifs de trading discipline` },
+    fr: { title: "30 JOURS DE DISCIPLINE", feat: (m) => `a maintenu une série de ${num(m?.streak, 30)} jours consécutifs de trading discipliné` },
     en: { title: "30 DAYS OF DISCIPLINE", feat: (m) => `maintained a streak of ${num(m?.streak, 30)} consecutive days of disciplined trading` },
     de: { title: "30 TAGE DISZIPLIN", feat: (m) => `hat eine Serie von ${num(m?.streak, 30)} aufeinanderfolgenden Tagen diszipliniertem Trading gehalten` },
-    es: { title: "30 DIAS DE DISCIPLINA", feat: (m) => `mantuvo una racha de ${num(m?.streak, 30)} dias consecutivos de trading disciplinado` },
+    es: { title: "30 DÍAS DE DISCIPLINA", feat: (m) => `mantuvo una racha de ${num(m?.streak, 30)} días consecutivos de trading disciplinado` },
   },
   streak_90: {
-    fr: { title: "90 JOURS DE DISCIPLINE", feat: (m) => `a maintenu une serie de ${num(m?.streak, 90)} jours consecutifs de trading discipline` },
+    fr: { title: "90 JOURS DE DISCIPLINE", feat: (m) => `a maintenu une série de ${num(m?.streak, 90)} jours consécutifs de trading discipliné` },
     en: { title: "90 DAYS OF DISCIPLINE", feat: (m) => `maintained a streak of ${num(m?.streak, 90)} consecutive days of disciplined trading` },
     de: { title: "90 TAGE DISZIPLIN", feat: (m) => `hat eine Serie von ${num(m?.streak, 90)} aufeinanderfolgenden Tagen diszipliniertem Trading gehalten` },
-    es: { title: "90 DIAS DE DISCIPLINA", feat: (m) => `mantuvo una racha de ${num(m?.streak, 90)} dias consecutivos de trading disciplinado` },
+    es: { title: "90 DÍAS DE DISCIPLINA", feat: (m) => `mantuvo una racha de ${num(m?.streak, 90)} días consecutivos de trading disciplinado` },
   },
   discipline_gold: {
-    fr: { title: "DISCIPLINE ELITE", feat: (m) => `a atteint un score de discipline de ${num(m?.score, 85)}/100` },
+    fr: { title: "DISCIPLINE ÉLITE", feat: (m) => `a atteint un score de discipline de ${num(m?.score, 85)}/100` },
     en: { title: "ELITE DISCIPLINE", feat: (m) => `achieved a discipline score of ${num(m?.score, 85)}/100` },
     de: { title: "ELITE-DISZIPLIN", feat: (m) => `hat einen Disziplin-Score von ${num(m?.score, 85)}/100 erreicht` },
-    es: { title: "DISCIPLINA ELITE", feat: (m) => `alcanzo una puntuacion de disciplina de ${num(m?.score, 85)}/100` },
+    es: { title: "DISCIPLINA ÉLITE", feat: (m) => `alcanzó una puntuación de disciplina de ${num(m?.score, 85)}/100` },
   },
   marathon: {
-    fr: { title: "MARATHONIEN DU TRADING", feat: (m) => `a analyse et note ${num(m?.sessions, 100)} sessions de trading` },
+    fr: { title: "MARATHONIEN DU TRADING", feat: (m) => `a analysé et noté ${num(m?.sessions, 100)} sessions de trading` },
     en: { title: "TRADING MARATHONER", feat: (m) => `analyzed and reviewed ${num(m?.sessions, 100)} trading sessions` },
-    de: { title: "TRADING-MARATHONLAEUFER", feat: (m) => `hat ${num(m?.sessions, 100)} Trading-Sessions analysiert und bewertet` },
-    es: { title: "MARATONISTA DEL TRADING", feat: (m) => `analizo y evaluo ${num(m?.sessions, 100)} sesiones de trading` },
+    de: { title: "TRADING-MARATHONLÄUFER", feat: (m) => `hat ${num(m?.sessions, 100)} Trading-Sessions analysiert und bewertet` },
+    es: { title: "MARATONISTA DEL TRADING", feat: (m) => `analizó y evaluó ${num(m?.sessions, 100)} sesiones de trading` },
   },
   podium: {
-    fr: { title: "PODIUM DE LA SAISON", feat: (m) => `a termine au rang #${num(m?.rank, 3)} du classement de discipline${seasonSuffix(m, "fr")}` },
+    fr: { title: "PODIUM DE LA SAISON", feat: (m) => `a terminé au rang #${num(m?.rank, 3)} du classement de discipline${seasonSuffix(m, "fr")}` },
     en: { title: "SEASON PODIUM", feat: (m) => `finished at rank #${num(m?.rank, 3)} of the discipline leaderboard${seasonSuffix(m, "en")}` },
     de: { title: "SAISON-PODIUM", feat: (m) => `hat Rang #${num(m?.rank, 3)} der Disziplin-Rangliste erreicht${seasonSuffix(m, "de")}` },
-    es: { title: "PODIO DE LA TEMPORADA", feat: (m) => `termino en el puesto #${num(m?.rank, 3)} del ranking de disciplina${seasonSuffix(m, "es")}` },
+    es: { title: "PODIO DE LA TEMPORADA", feat: (m) => `terminó en el puesto #${num(m?.rank, 3)} del ranking de disciplina${seasonSuffix(m, "es")}` },
   },
   // Vainqueur (#1) d'un défi communautaire hebdomadaire — clé virtuelle, pas un
   // badge : le meta vient de challenge_awards ({ week: "2026-W29" }).
   challenge_week: {
-    fr: { title: "CHAMPION DE LA SEMAINE", feat: (m) => `a remporte le defi communautaire de discipline de la ${weekLabel(m, "fr")}` },
+    fr: { title: "CHAMPION DE LA SEMAINE", feat: (m) => `a remporté le défi communautaire de discipline de la ${weekLabel(m, "fr")}` },
     en: { title: "CHAMPION OF THE WEEK", feat: (m) => `won the community discipline challenge of ${weekLabel(m, "en")}` },
     de: { title: "CHAMPION DER WOCHE", feat: (m) => `hat die Community-Disziplin-Challenge der ${weekLabel(m, "de")} gewonnen` },
-    es: { title: "CAMPEON DE LA SEMANA", feat: (m) => `gano el desafio comunitario de disciplina de la ${weekLabel(m, "es")}` },
+    es: { title: "CAMPEÓN DE LA SEMANA", feat: (m) => `ganó el desafío comunitario de disciplina de la ${weekLabel(m, "es")}` },
   },
 };
 
 const LABELS: Record<CertLang, { kicker: string; awardedTo: string; date: string; certId: string; verified: string; footer: string }> = {
-  fr: { kicker: "CERTIFICAT OFFICIEL DE DISCIPLINE", awardedTo: "Decerne a", date: "Date d'obtention", certId: "ID du certificat", verified: "Verifie par TradeDiscipline", footer: "La discipline paie. tradediscipline.app" },
+  fr: { kicker: "CERTIFICAT OFFICIEL DE DISCIPLINE", awardedTo: "Décerné à", date: "Date d'obtention", certId: "ID du certificat", verified: "Vérifié par TradeDiscipline", footer: "La discipline paie. tradediscipline.app" },
   en: { kicker: "OFFICIAL DISCIPLINE CERTIFICATE", awardedTo: "Awarded to", date: "Date earned", certId: "Certificate ID", verified: "Verified by TradeDiscipline", footer: "Discipline pays. tradediscipline.app" },
   de: { kicker: "OFFIZIELLES DISZIPLIN-ZERTIFIKAT", awardedTo: "Verliehen an", date: "Erreicht am", certId: "Zertifikat-ID", verified: "Verifiziert von TradeDiscipline", footer: "Disziplin zahlt sich aus. tradediscipline.app" },
-  es: { kicker: "CERTIFICADO OFICIAL DE DISCIPLINA", awardedTo: "Otorgado a", date: "Fecha de obtencion", certId: "ID del certificado", verified: "Verificado por TradeDiscipline", footer: "La disciplina paga. tradediscipline.app" },
+  es: { kicker: "CERTIFICADO OFICIAL DE DISCIPLINA", awardedTo: "Otorgado a", date: "Fecha de obtención", certId: "ID del certificado", verified: "Verificado por TradeDiscipline", footer: "La disciplina paga. tradediscipline.app" },
 };
 
 function num(v: unknown, fallback: number): number {
   return typeof v === "number" && Number.isFinite(v) ? v : fallback;
 }
-/** "2026-W29" → "semaine 29 de 2026" (sans accents, polices standard jsPDF). */
+/** "2026-W29" → "semaine 29 de 2026". */
 function weekLabel(m: Record<string, unknown> | null | undefined, lang: CertLang): string {
   const raw = typeof m?.week === "string" ? m.week : "";
   const match = /^(\d{4})-W(\d{2})$/.exec(raw);
@@ -98,12 +98,13 @@ export interface CertOptions {
 }
 
 /** Construit le document (séparé de la sauvegarde pour rester testable). */
-export function buildBadgeCertificate(opts: CertOptions): jsPDF | null {
+export async function buildBadgeCertificate(opts: CertOptions): Promise<jsPDF | null> {
   const content = CERT_CONTENT[opts.badgeKey]?.[opts.lang];
   if (!content) return null;
   const L = LABELS[opts.lang];
 
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+  const font = await ensureBrandFont(doc);
   const w = doc.internal.pageSize.getWidth(); // 297
   const h = doc.internal.pageSize.getHeight(); // 210
   const cx = w / 2;
@@ -153,7 +154,7 @@ export function buildBadgeCertificate(opts: CertOptions): jsPDF | null {
   doc.setFillColor(...C.cyan);
   doc.roundedRect(cx - 5.5, 24, 11, 11, 3, 3, "F");
   doc.setTextColor(...C.navy);
-  doc.setFont("helvetica", "bold");
+  doc.setFont(font, "bold");
   doc.setFontSize(11);
   doc.text("TD", cx, 31.3, { align: "center" });
   doc.setTextColor(...C.white);
@@ -181,18 +182,18 @@ export function buildBadgeCertificate(opts: CertOptions): jsPDF | null {
   }
 
   // ── Décerné à + nom ──
-  doc.setFont("helvetica", "normal");
+  doc.setFont(font, "normal");
   doc.setFontSize(10.5);
   doc.setTextColor(...C.faint);
   doc.text(L.awardedTo, cx, 94, { align: "center" });
 
-  doc.setFont("helvetica", "bold");
+  doc.setFont(font, "bold");
   doc.setFontSize(34);
   doc.setTextColor(...C.cyanGlow);
   doc.text(`@${opts.username}`, cx, 109, { align: "center" });
 
   // ── Exploit ──
-  doc.setFont("helvetica", "normal");
+  doc.setFont(font, "normal");
   doc.setFontSize(12);
   doc.setTextColor(...C.white);
   const featLines = doc.splitTextToSize(content.feat(opts.meta), w - 90) as string[];
@@ -210,7 +211,7 @@ export function buildBadgeCertificate(opts: CertOptions): jsPDF | null {
     doc.setLineWidth(0.25);
     doc.circle(cx, sy, 8.2, "S");
   });
-  doc.setFont("helvetica", "bold");
+  doc.setFont(font, "bold");
   doc.setFontSize(10);
   doc.setTextColor(...C.cyanGlow);
   doc.text("TD", cx, sy + 0.5, { align: "center" });
@@ -240,18 +241,18 @@ export function buildBadgeCertificate(opts: CertOptions): jsPDF | null {
       doc.setLineWidth(0.3);
       doc.line(col.x - 26, by, col.x + 26, by);
     });
-    doc.setFont("helvetica", "bold");
+    doc.setFont(font, "bold");
     doc.setFontSize(9.5);
     doc.setTextColor(...C.white);
     doc.text(col.value, col.x, by + 6, { align: "center" });
-    doc.setFont("helvetica", "normal");
+    doc.setFont(font, "normal");
     doc.setFontSize(6.8);
     doc.setTextColor(...C.faint);
     doc.text(col.label.toUpperCase(), col.x, by + 11, { align: "center", charSpace: 0.4 });
   }
 
   // ── Pied ──
-  doc.setFont("helvetica", "normal");
+  doc.setFont(font, "normal");
   doc.setFontSize(8);
   doc.setTextColor(...C.faint);
   doc.text(L.footer, cx, h - 16, { align: "center" });
@@ -259,6 +260,6 @@ export function buildBadgeCertificate(opts: CertOptions): jsPDF | null {
   return doc;
 }
 
-export function generateBadgeCertificate(opts: CertOptions): void {
-  buildBadgeCertificate(opts)?.save(`certificat-${opts.badgeKey}-tradediscipline.pdf`);
+export async function generateBadgeCertificate(opts: CertOptions): Promise<void> {
+  (await buildBadgeCertificate(opts))?.save(`certificat-${opts.badgeKey}-tradediscipline.pdf`);
 }

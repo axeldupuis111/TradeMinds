@@ -1,11 +1,13 @@
 import jsPDF from "jspdf";
 import { Pdf, C, money, signedMoney, pct, groupNum, type RGB } from "@/lib/pdf/kit";
+import { ensureBrandFont } from "@/lib/pdf/fonts";
 
 /**
  * Rapport de compte PDF — design brandé TradeDiscipline (kit partagé lib/pdf/kit).
  *
  * En-tête héro dégradé, grille de KPI en cartes, jauge de winrate en anneau,
  * barres d'objectifs (challenge prop) et courbe d'equity en aire dégradée.
+ * Police Geist embarquée (lib/pdf/fonts) : accents et € Unicode OK.
  */
 
 interface PdfAccountData {
@@ -18,6 +20,10 @@ interface PdfAccountData {
   startDate: string;
   tradeCount: number;
   winrate: number;
+  /** P&L net par trade (ordre chronologique) — active la rangée de stats
+   *  avancées (profit factor, gains/pertes moyens, drawdown max). Optionnel :
+   *  sans lui le rapport garde sa mise en page historique. */
+  tradePnls?: number[];
   equityCurve: { date: string; balance: number }[];
   type: "prop" | "personal";
   profitTargetPct: number;
@@ -31,24 +37,28 @@ interface PdfAccountData {
 const LABELS = {
   fr: {
     report: "RAPPORT DE COMPTE",
-    generated: "Genere le",
+    generated: "Généré le",
     propFirm: "PROP FIRM",
     personal: "PERSONNEL",
-    started: "Demarre le",
+    started: "Démarré le",
     size: "Taille",
     balance: "Balance",
     totalPnl: "P&L total",
     todayPnl: "P&L aujourd'hui",
     trades: "Trades",
     winrate: "Winrate",
+    profitFactor: "Profit factor",
+    avgWin: "Gain moyen",
+    avgLoss: "Perte moyenne",
+    maxDd: "Drawdown max",
     days: "Jours actifs",
     performance: "Performance",
     objectives: "Objectifs du challenge",
     profitTarget: "Profit target",
     dailyDd: "Drawdown journalier max",
     totalDd: "Drawdown total max",
-    equity: "Evolution du capital",
-    footer: "Genere avec TradeDiscipline",
+    equity: "Évolution du capital",
+    footer: "Généré avec TradeDiscipline",
   },
   en: {
     report: "ACCOUNT REPORT",
@@ -62,6 +72,10 @@ const LABELS = {
     todayPnl: "Today's P&L",
     trades: "Trades",
     winrate: "Winrate",
+    profitFactor: "Profit factor",
+    avgWin: "Avg win",
+    avgLoss: "Avg loss",
+    maxDd: "Max drawdown",
     days: "Active days",
     performance: "Performance",
     objectives: "Challenge objectives",
@@ -75,19 +89,23 @@ const LABELS = {
     report: "KONTOBERICHT",
     generated: "Erstellt am",
     propFirm: "PROP FIRM",
-    personal: "PERSOENLICH",
+    personal: "PERSÖNLICH",
     started: "Gestartet am",
-    size: "Groesse",
+    size: "Größe",
     balance: "Kontostand",
     totalPnl: "Gesamt-P&L",
     todayPnl: "P&L heute",
     trades: "Trades",
     winrate: "Winrate",
+    profitFactor: "Profitfaktor",
+    avgWin: "Ø Gewinn",
+    avgLoss: "Ø Verlust",
+    maxDd: "Max. Drawdown",
     days: "Aktive Tage",
     performance: "Performance",
     objectives: "Challenge-Ziele",
     profitTarget: "Profit-Target",
-    dailyDd: "Max. taegl. Drawdown",
+    dailyDd: "Max. tägl. Drawdown",
     totalDd: "Max. Gesamt-Drawdown",
     equity: "Kapitalentwicklung",
     footer: "Erstellt mit TradeDiscipline",
@@ -98,28 +116,34 @@ const LABELS = {
     propFirm: "PROP FIRM",
     personal: "PERSONAL",
     started: "Iniciado el",
-    size: "Tamano",
+    size: "Tamaño",
     balance: "Balance",
     totalPnl: "P&L total",
     todayPnl: "P&L de hoy",
     trades: "Trades",
     winrate: "Winrate",
-    days: "Dias activos",
+    profitFactor: "Profit factor",
+    avgWin: "Ganancia media",
+    avgLoss: "Pérdida media",
+    maxDd: "Drawdown máx",
+    days: "Días activos",
     performance: "Rendimiento",
     objectives: "Objetivos del challenge",
     profitTarget: "Profit target",
-    dailyDd: "Drawdown diario max",
-    totalDd: "Drawdown total max",
-    equity: "Evolucion del capital",
+    dailyDd: "Drawdown diario máx",
+    totalDd: "Drawdown total máx",
+    equity: "Evolución del capital",
     footer: "Generado con TradeDiscipline",
   },
 } as const;
 
-export function exportAccountPdf(data: PdfAccountData) {
+/** Construit le document (séparé de la sauvegarde pour rester testable). */
+export async function buildAccountPdf(data: PdfAccountData): Promise<jsPDF> {
   const L = LABELS[data.lang ?? "en"];
   const locale = data.lang ?? "en";
   const doc = new jsPDF();
-  const pdf = new Pdf(doc);
+  const font = await ensureBrandFont(doc);
+  const pdf = new Pdf(doc, { font });
   const { M, w } = pdf;
 
   // ── En-tête ──
@@ -130,14 +154,14 @@ export function exportAccountPdf(data: PdfAccountData) {
   });
 
   // ── Bloc compte : nom + badge + sous-titre ──
-  doc.setFont("helvetica", "bold");
+  doc.setFont(font, "bold");
   doc.setFontSize(18);
   doc.setTextColor(...C.ink);
   doc.text(data.firm, M, pdf.y);
 
   const badgeLabel = data.type === "prop" ? L.propFirm : L.personal;
   const badgeColor: RGB = data.type === "prop" ? C.violet : C.teal;
-  doc.setFont("helvetica", "bold");
+  doc.setFont(font, "bold");
   doc.setFontSize(7.5);
   const badgeW = doc.getTextWidth(badgeLabel) + 8;
   doc.setFillColor(...badgeColor);
@@ -146,7 +170,7 @@ export function exportAccountPdf(data: PdfAccountData) {
   doc.text(badgeLabel, w - M - badgeW / 2, pdf.y - 0.5, { align: "center", charSpace: 0.4 });
 
   pdf.y += 7;
-  doc.setFont("helvetica", "normal");
+  doc.setFont(font, "normal");
   doc.setFontSize(9.5);
   doc.setTextColor(...C.muted);
   const sub = [
@@ -196,7 +220,7 @@ export function exportAccountPdf(data: PdfAccountData) {
     doc.roundedRect(bx, by, boxW, boxH, 2.8, 2.8, "FD");
     doc.setFillColor(...(kpi.color ?? C.teal));
     doc.roundedRect(bx, by + 5, 1.4, boxH - 10, 0.7, 0.7, "F");
-    doc.setFont("helvetica", "bold");
+    doc.setFont(font, "bold");
     doc.setFontSize(6.6);
     doc.setTextColor(...C.muted);
     doc.text(kpi.label.toUpperCase(), bx + 5.5, by + 7.5, { charSpace: 0.3 });
@@ -213,12 +237,44 @@ export function exportAccountPdf(data: PdfAccountData) {
     centerBottom: L.winrate,
     thickness: 3.6,
   });
-  doc.setFont("helvetica", "normal");
+  doc.setFont(font, "normal");
   doc.setFontSize(7);
   doc.setTextColor(...C.muted);
   doc.text(`${days} ${dayUnit} · ${L.days}`, ringCx, ringCy + ringR + 6, { align: "center" });
 
-  pdf.y = startY + 2 * boxH + gap + 16;
+  // Stats avancées (si le P&L par trade est fourni) : une rangée compacte.
+  // La mise en page se resserre un peu pour que le rapport reste sur une page.
+  const pnls = data.tradePnls ?? [];
+  const hasAdvanced = pnls.length > 0;
+  pdf.y = startY + 2 * boxH + gap + (hasAdvanced ? 8 : 16);
+
+  if (hasAdvanced) {
+    const wins = pnls.filter((p) => p > 0);
+    const lossList = pnls.filter((p) => p < 0);
+    const grossWin = wins.reduce((a, b) => a + b, 0);
+    const grossLoss = -lossList.reduce((a, b) => a + b, 0);
+    const profitFactor = grossLoss > 0 ? grossWin / grossLoss : null;
+    let peak = -Infinity;
+    let maxDd = 0;
+    for (const p of data.equityCurve) {
+      peak = Math.max(peak, p.balance);
+      maxDd = Math.max(maxDd, peak - p.balance);
+    }
+    const pfColor: RGB = profitFactor === null ? C.green : profitFactor >= 1.5 ? C.green : profitFactor >= 1 ? C.amber : C.red;
+    pdf.statGrid(
+      [
+        {
+          label: L.profitFactor,
+          value: profitFactor === null ? (grossWin > 0 ? ">99" : "—") : groupNum(Math.min(profitFactor, 99), 2),
+          color: pfColor,
+        },
+        { label: L.avgWin, value: wins.length > 0 ? signedMoney(grossWin / wins.length) : "—", color: C.green },
+        { label: L.avgLoss, value: lossList.length > 0 ? signedMoney(-grossLoss / lossList.length) : "—", color: C.red },
+        { label: L.maxDd, value: money(maxDd), color: maxDd > 0 ? C.red : C.green },
+      ],
+      { cols: 4, height: 19 },
+    );
+  }
 
   // ── Objectifs du challenge (prop uniquement) ──
   if (data.type === "prop") {
@@ -251,17 +307,23 @@ export function exportAccountPdf(data: PdfAccountData) {
     pdf.y += 4;
   }
 
-  // ── Equity curve ──
+  // ── Equity curve (un peu plus basse quand la rangée de stats est là,
+  //     pour que tout tienne sur la page) ──
   if (data.equityCurve.length > 1) {
     pdf.section(L.equity);
     pdf.areaChart(
       data.equityCurve.map((d) => ({ label: d.date, value: d.balance })),
-      { valueFmt: (n) => money(n, 0) },
+      { valueFmt: (n) => money(n, 0), height: hasAdvanced ? 44 : 56 },
     );
   }
 
   // ── Pied de page ──
   pdf.footer(`${L.footer} · ${new Date().toLocaleDateString(locale)}`);
 
+  return doc;
+}
+
+export async function exportAccountPdf(data: PdfAccountData) {
+  const doc = await buildAccountPdf(data);
   doc.save(`${data.firm.replace(/\s+/g, "_")}_report_${new Date().toISOString().split("T")[0]}.pdf`);
 }

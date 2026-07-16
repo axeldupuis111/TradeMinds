@@ -35,6 +35,8 @@ interface AccountStats {
   currentPnl: number;
   todayPnl: number;
   equityCurveData: { date: string; balance: number }[];
+  /** P&L net par trade (chronologique) — pour les stats avancées du PDF. */
+  tradePnls: number[];
   tradeCount: number;
   winrate: number;
 }
@@ -820,12 +822,14 @@ export default function ChallengePage() {
       );
 
       const allTrades = challengeTrades || [];
-      const wins = allTrades.filter((t) => (t.pnl || 0) + (t.commission || 0) + (t.swap || 0) > 0).length;
+      const tradePnls = allTrades.map((t) => (t.pnl || 0) + (t.commission || 0) + (t.swap || 0));
+      const wins = tradePnls.filter((p) => p > 0).length;
       statsMap[ac.id] = {
         balance: newBalance,
         currentPnl: totalPnl,
         todayPnl: todayTotal,
         equityCurveData: eqData,
+        tradePnls,
         tradeCount: allTrades.length,
         winrate: allTrades.length > 0 ? (wins / allTrades.length) * 100 : 0,
       };
@@ -978,7 +982,7 @@ export default function ChallengePage() {
       {activeAccounts.length > 0 && (
         <div className="mt-8 space-y-6">
           {activeAccounts.map((ac) => {
-            const s = accountStatsMap[ac.id] || { balance: ac.balance, currentPnl: 0, todayPnl: 0, equityCurveData: [], tradeCount: 0, winrate: 0 };
+            const s = accountStatsMap[ac.id] || { balance: ac.balance, currentPnl: 0, todayPnl: 0, equityCurveData: [], tradePnls: [], tradeCount: 0, winrate: 0 };
             return (
               <AccountCard
                 key={ac.id}
@@ -1001,6 +1005,7 @@ export default function ChallengePage() {
                       startDate: ac.start_date,
                       tradeCount: s.tradeCount,
                       winrate: s.winrate,
+                      tradePnls: s.tradePnls,
                       equityCurve: s.equityCurveData,
                       type: ac.type ?? "prop",
                       profitTargetPct: ac.profit_target_pct,
