@@ -59,6 +59,14 @@ const planBadgeClass: Record<string, string> = {
   premium: "bg-gold/20 text-gold shadow-[0_0_8px_rgb(var(--gold)/0.3)]",
 };
 
+// La carte de plan prend la teinte du plan : or pour Premium, accent pour
+// Plus — un petit rappel visuel du statut, cohérent avec le badge.
+const planCardClass: Record<string, string> = {
+  free:    "bg-background border-border",
+  plus:    "bg-accent/[0.04] border-accent/25",
+  premium: "bg-gold/[0.05] border-gold/30",
+};
+
 export default function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useLanguage();
   const { plan, loading } = usePlan();
@@ -91,8 +99,8 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
       >
         {/* Logo */}
         <div className="h-14 flex items-center gap-2.5 px-5 border-b border-border">
-          <div className="w-6 h-6 flex items-center justify-center rounded-md bg-accent/15">
-            <Activity className="w-3.5 h-3.5 text-accent" strokeWidth={2} />
+          <div className="w-6 h-6 flex items-center justify-center rounded-md bg-gradient-to-br from-accent to-teal-500 shadow-sm shadow-accent/30">
+            <Activity className="w-3.5 h-3.5 text-white" strokeWidth={2.25} />
           </div>
           <span className="text-[15px] font-bold text-foreground tracking-tight">TradeDiscipline</span>
         </div>
@@ -101,7 +109,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
         <nav className="flex-1 py-4 px-2.5 space-y-4 overflow-y-auto">
           {/* TRADING group */}
           <div>
-            <p className="text-[10px] font-semibold text-muted/40 tracking-[0.1em] uppercase px-3 mb-1.5">
+            <p className="text-[10px] font-semibold text-muted/60 tracking-[0.1em] uppercase px-3 mb-1.5">
               {t("sidebar_group_trading")}
             </p>
             <div className="space-y-0.5">
@@ -123,7 +131,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
 
           {/* ANALYSE group */}
           <div>
-            <p className="text-[10px] font-semibold text-muted/40 tracking-[0.1em] uppercase px-3 mb-1.5">
+            <p className="text-[10px] font-semibold text-muted/60 tracking-[0.1em] uppercase px-3 mb-1.5">
               {t("sidebar_group_analyse")}
             </p>
             <div className="space-y-0.5">
@@ -145,7 +153,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
         <div className="px-2.5 pb-3 space-y-0.5">
           <div className="h-px bg-border mx-1 mb-2" />
 
-          <p className="text-[10px] font-semibold text-muted/40 tracking-[0.1em] uppercase px-3 mb-1.5">
+          <p className="text-[10px] font-semibold text-muted/60 tracking-[0.1em] uppercase px-3 mb-1.5">
             {t("sidebar_group_compte")}
           </p>
 
@@ -157,13 +165,13 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
           />
 
           {/* Install the PWA — renders nothing if already installed / unsupported */}
-          <InstallAppButton className="flex w-full items-center gap-3 px-4 py-3 rounded-lg text-base text-muted hover:text-foreground hover:bg-surface transition-colors" />
+          <InstallAppButton className="flex w-full items-center gap-3 px-3 py-[10px] rounded-lg text-sm font-medium text-muted hover:text-foreground hover:bg-surface transition-colors" />
 
           {showUpgrade && (
             <Link
               href="/dashboard/upgrade"
               onClick={onClose}
-              className="flex items-center gap-3 px-4 py-3 rounded-lg text-base font-semibold bg-gradient-to-r from-accent to-purple-600 text-white hover:from-accent-hover hover:to-purple-700 transition-all shadow-md shadow-accent/20"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold bg-gradient-to-r from-accent to-purple-600 text-white hover:from-accent-hover hover:to-purple-700 transition-all shadow-md shadow-accent/20"
             >
               <Zap className="w-5 h-5 icon-pulse shrink-0" strokeWidth={1.75} />
               {t("sidebar_upgrade")}
@@ -180,7 +188,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
               <div className="h-3 w-28 bg-surface/50 animate-pulse rounded" />
             </div>
           ) : (
-            <div className="mt-3 mx-1 p-3 bg-background border border-border rounded-xl">
+            <div className={`mt-3 mx-1 p-3 border rounded-xl ${planCardClass[plan] || planCardClass.free}`}>
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs text-muted">{t("sidebar_current_plan")}</p>
                 <span className={`text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${badgeClass}`}>

@@ -31,12 +31,12 @@ export default function NavItem({ href, icon: Icon, labelKey, badge, lockedPlan,
       href={href}
       onClick={onNavigate}
       title={lockedPlan ? t("sidebar_locked_hint").replace("{plan}", planLabel) : undefined}
-      className={`group relative flex items-center gap-3 px-3 py-[10px] rounded-lg text-sm font-medium transition-colors duration-150 ${
+      className={`group relative flex items-center gap-3 px-3 py-[10px] rounded-lg text-sm transition-colors duration-150 ${
         active
-          ? "text-accent"
+          ? "text-accent font-semibold"
           : lockedPlan
-          ? "text-muted/50 hover:text-foreground"
-          : "text-muted hover:text-foreground"
+          ? "text-muted/50 hover:text-foreground font-medium"
+          : "text-muted hover:text-foreground font-medium"
       }`}
     >
       {/* Pilule active — glisse entre les items via layoutId partagé */}
