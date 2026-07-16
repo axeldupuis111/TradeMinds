@@ -124,6 +124,65 @@ export function impactEmoji(impact: Impact): string {
   }
 }
 
+// ─── Reconciling re-scheduled events ───────────────────────────────────────────
+
+/** Minimal shape of an `economic_events` row needed to reconcile against the feed. */
+export interface ExistingEventRow {
+  id: string;
+  event_time: string;
+  currency: string;
+  title: string;
+}
+
+/** Grouping key: same announcement = same UTC day + currency + title. */
+function reconcileKey(eventTime: string, currency: string, title: string): string {
+  return `${eventTime.slice(0, 10)}|${currency.toUpperCase()}|${title}`;
+}
+
+/**
+ * DB rows the feed has re-scheduled or dropped. Tentative events (press
+ * conferences, CNY prints…) routinely shift by minutes to hours — sometimes
+ * to another day entirely — and the (event_time, currency, title) upsert
+ * alone would insert the new time while leaving the old row behind.
+ *
+ * `existing` must only contain rows inside the feed's coverage window.
+ * A row is stale when:
+ *  - it is in the future (after `now`) and its exact (time, currency, title)
+ *    is no longer in the feed — for upcoming events the feed is the source
+ *    of truth, and this catches cross-day moves; or
+ *  - it is in the past and the feed lists the same (UTC day, currency,
+ *    title) only at other times — a time correction for a released event.
+ * Past rows whose (day, currency, title) is absent from the feed are never
+ * touched, so released history is safe. An announcement legitimately listed
+ * several times keeps every occurrence the feed still contains.
+ */
+export function findStaleEvents(
+  existing: ExistingEventRow[],
+  feedEvents: EconomicEvent[],
+  now: Date = new Date(),
+): ExistingEventRow[] {
+  // Times are normalised through Date so "…+00:00" (Postgres) and "…Z"
+  // (toISOString) compare equal.
+  const feedInstants = new Set<string>();
+  const feedTimesByDay = new Map<string, Set<string>>();
+  for (const ev of feedEvents) {
+    const iso = new Date(ev.event_time).toISOString();
+    const key = reconcileKey(iso, ev.currency, ev.title);
+    feedInstants.add(`${iso}|${ev.currency.toUpperCase()}|${ev.title}`);
+    let set = feedTimesByDay.get(key);
+    if (!set) feedTimesByDay.set(key, (set = new Set()));
+    set.add(iso);
+  }
+
+  const nowMs = now.getTime();
+  return existing.filter((row) => {
+    const iso = new Date(row.event_time).toISOString();
+    if (feedInstants.has(`${iso}|${row.currency.toUpperCase()}|${row.title}`)) return false;
+    if (new Date(iso).getTime() > nowMs) return true;
+    return feedTimesByDay.has(reconcileKey(iso, row.currency, row.title));
+  });
+}
+
 // ─── Feed parsing (faireconomy / ForexFactory weekly JSON) ─────────────────────
 
 /** Raw row shape from the public feed (fields are loosely typed on purpose). */

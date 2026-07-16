@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-import { parseFeed, type RawFeedRow } from "@/lib/economic-calendar";
+import { findStaleEvents, parseFeed, type ExistingEventRow, type RawFeedRow } from "@/lib/economic-calendar";
 import { alertCronFailure } from "@/lib/cron-alert";
 
 /**
@@ -79,6 +79,27 @@ async function handle(req: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
 
+  // Snapshot the rows already covering the feed's window BEFORE the upsert:
+  // when the feed re-schedules a tentative event, the old time must be
+  // dropped after the new one lands, or the calendar shows both.
+  let existing: ExistingEventRow[] = [];
+  if (events.length > 0) {
+    const days = events.map((e) => e.event_time.slice(0, 10)).sort();
+    const windowStart = `${days[0]}T00:00:00Z`;
+    const windowEnd = `${days[days.length - 1]}T23:59:59.999Z`;
+    const { data, error: selectError } = await supabase
+      .from("economic_events")
+      .select("id, event_time, currency, title")
+      .gte("event_time", windowStart)
+      .lte("event_time", windowEnd);
+    if (selectError) {
+      // Non-fatal: the upsert still refreshes data, we just skip reconciling.
+      console.error("Economic calendar pre-upsert select failed:", selectError);
+    } else {
+      existing = data ?? [];
+    }
+  }
+
   // Upsert on the natural key so re-runs refresh forecast/actual in place.
   const { error } = await supabase
     .from("economic_events")
@@ -102,13 +123,30 @@ async function handle(req: Request) {
     return NextResponse.json({ error: "Upsert failed", detail: error.message }, { status: 500 });
   }
 
+  // Drop the superseded times now that the re-scheduled rows are in place.
+  const stale = findStaleEvents(existing, events);
+  if (stale.length > 0) {
+    const { error: deleteError } = await supabase
+      .from("economic_events")
+      .delete()
+      .in("id", stale.map((s) => s.id));
+    if (deleteError) {
+      console.error("Economic calendar stale-row cleanup failed:", deleteError);
+    } else {
+      console.log(
+        `Economic calendar: removed ${stale.length} re-scheduled row(s):`,
+        stale.map((s) => `${s.event_time} ${s.currency} ${s.title}`).join(" | "),
+      );
+    }
+  }
+
   // Housekeeping: keep ~1 year of history so the calendar's date picker can
   // surface past announcements (the table stays small — a few thousand rows).
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - 365);
   await supabase.from("economic_events").delete().lt("event_time", cutoff.toISOString());
 
-  return NextResponse.json({ upserted: events.length });
+  return NextResponse.json({ upserted: events.length, rescheduledRemoved: stale.length });
 }
 
 // Vercel crons invoke via GET; POST kept for manual testing.
