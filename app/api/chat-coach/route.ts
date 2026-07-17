@@ -192,6 +192,36 @@ RULES:
     const quotaRefund = reserved;
     reserved = null;
 
+    // ── Prompt caching ──
+    // Le gros du coût du chat est l'entrée : outils + system (stratégie,
+    // trades, mémoire) + historique sont renvoyés à CHAQUE message et à
+    // chaque round d'outils. Deux points de cache (5 min) suffisent :
+    //  1. sur le bloc system → met en cache outils + system d'un coup
+    //     (l'ordre de rendu de l'API est tools → system → messages) ;
+    //  2. sur le dernier bloc de la conversation → chaque tour relit tout
+    //     le préfixe déjà caché (~10 % du prix) au lieu de le repayer.
+    // Le contexte est déterministe entre deux messages d'une même session,
+    // donc le cache tient tant que le trader ne modifie pas ses trades.
+    const cachedSystem: Anthropic.TextBlockParam[] = [
+      { type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } },
+    ];
+    const withConversationCache = (conv: Anthropic.MessageParam[]): Anthropic.MessageParam[] => {
+      if (conv.length === 0) return conv;
+      const last = conv[conv.length - 1];
+      const blocks: Anthropic.ContentBlockParam[] =
+        typeof last.content === "string"
+          ? [{ type: "text", text: last.content }]
+          : ([...last.content] as Anthropic.ContentBlockParam[]);
+      if (blocks.length === 0) return conv;
+      blocks[blocks.length - 1] = {
+        ...blocks[blocks.length - 1],
+        cache_control: { type: "ephemeral" },
+      } as Anthropic.ContentBlockParam;
+      // Copie non mutante : `conversation` reste sans marqueurs, on ne
+      // dépasse jamais la limite de 4 breakpoints par requête.
+      return [...conv.slice(0, -1), { role: last.role, content: blocks }];
+    };
+
     const encoder = new TextEncoder();
     const responseStream = new ReadableStream<Uint8Array>({
       async start(controller) {
@@ -206,8 +236,8 @@ RULES:
             const claudeStream = client.messages.stream({
               model: "claude-haiku-4-5-20251001",
               max_tokens: 1500,
-              system: systemPrompt,
-              messages: conversation,
+              system: cachedSystem,
+              messages: withConversationCache(conversation),
               tools: COACH_TOOLS,
             });
 
@@ -218,6 +248,11 @@ RULES:
             }
 
             const final = await claudeStream.finalMessage();
+            // Témoin d'efficacité du cache dans les logs Vercel (cache_read
+            // proche de input = cache chaud, coût d'entrée divisé par ~10).
+            console.log(
+              `[chat-coach] round=${round} in=${final.usage.input_tokens} cache_read=${final.usage.cache_read_input_tokens ?? 0} cache_write=${final.usage.cache_creation_input_tokens ?? 0} out=${final.usage.output_tokens}`,
+            );
             if (final.stop_reason !== "tool_use") break;
 
             const toolUses = final.content.filter(
