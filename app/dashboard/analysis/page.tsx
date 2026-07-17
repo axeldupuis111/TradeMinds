@@ -114,6 +114,8 @@ interface Violation {
   trade_ids: number[];
   occurrences: number;
   explanation: string;
+  /** P&L net cumulé des trades cités (analyses nouvelle génération). */
+  cost?: number | null;
 }
 
 interface LegacyViolation {
@@ -127,6 +129,54 @@ interface Pattern {
   type: string;
   description: string;
   severity: "high" | "medium" | "low";
+  /** Preuve chiffrée (analyses nouvelle génération). */
+  evidence?: string;
+}
+
+interface TradeReview {
+  trade_id: number;
+  grade: "A" | "B" | "C" | "D";
+  comment: string;
+  pair: string;
+  direction: string;
+  open_time: string;
+  net_pnl: number;
+}
+
+interface ActionItem {
+  title: string;
+  target: string;
+}
+
+interface EdgeHighlight {
+  kind: "best" | "worst";
+  dimension: "pair" | "hour" | "weekday" | "setup" | "emotion" | "direction";
+  key: string;
+  netPnl: number;
+  winRate: number;
+  trades: number;
+}
+
+interface CounterfactualPoint {
+  t: string;
+  real: number;
+  clean: number;
+}
+
+interface AnalysisInsights {
+  total_net_pnl: number;
+  win_rate: number;
+  profit_factor: number | null;
+  expectancy: number;
+  violation_trade_count: number;
+  violation_cost: number;
+  counterfactual: {
+    points: CounterfactualPoint[];
+    realFinal: number;
+    cleanFinal: number;
+    gain: number;
+  } | null;
+  edge: EdgeHighlight[];
 }
 
 interface DataFields {
@@ -141,10 +191,15 @@ interface Analysis {
   discipline_score: number;
   total_trades: number;
   conforming_trades?: number;
+  headline?: string | null;
+  summary?: string | null;
   violations: (Violation | LegacyViolation)[];
   patterns: Pattern[];
   strengths: string[];
   recommendations: string[];
+  trade_reviews?: TradeReview[];
+  action_plan?: ActionItem[];
+  insights?: AnalysisInsights | null;
   score_breakdown?: CategoryBreakdown[];
   data_fields?: DataFields;
 }
@@ -291,6 +346,60 @@ function ScoreBreakdownCard({ breakdown, score, t, className }: { breakdown: Cat
         </div>
       )}
     </div>
+  );
+}
+
+function fmtEuro(n: number): string {
+  return `${n > 0 ? "+" : ""}${n.toFixed(2).replace(/\.00$/, "")} €`;
+}
+
+/** Libellé humain du segment d'edge (14h, lundi, EURUSD…). */
+function edgeKeyLabel(h: EdgeHighlight, lang: string): string {
+  if (h.dimension === "hour") return `${h.key}h`;
+  if (h.dimension === "weekday") {
+    // 2024-01-01 est un lundi : jour ISO n → 2024-01-0n.
+    const ref = new Date(Date.UTC(2024, 0, Number(h.key)));
+    const label = new Intl.DateTimeFormat(lang, { weekday: "long", timeZone: "UTC" }).format(ref);
+    return label.charAt(0).toUpperCase() + label.slice(1);
+  }
+  if (h.dimension === "direction") return h.key.toUpperCase();
+  return h.key;
+}
+
+const GRADE_STYLES: Record<string, string> = {
+  A: "bg-profit/15 text-profit",
+  B: "bg-green-500/10 text-green-400",
+  C: "bg-orange-500/10 text-orange-400",
+  D: "bg-loss/15 text-loss",
+};
+
+/**
+ * Courbe d'équité réelle vs « discipline respectée » (trades en violation
+ * retirés). Le graphe qui matérialise ce que l'indiscipline a coûté.
+ */
+function CounterfactualChart({ points }: { points: CounterfactualPoint[] }) {
+  if (points.length < 2) return null;
+  const W = 300;
+  const H = 110;
+  const PAD = 6;
+  const values = points.flatMap((p) => [p.real, p.clean]);
+  const min = Math.min(...values, 0);
+  const max = Math.max(...values, 0);
+  const span = max - min || 1;
+  const x = (i: number) => PAD + (i / (points.length - 1)) * (W - 2 * PAD);
+  const y = (v: number) => H - PAD - ((v - min) / span) * (H - 2 * PAD);
+  const line = (get: (p: CounterfactualPoint) => number) =>
+    points.map((p, i) => `${x(i).toFixed(1)},${y(get(p)).toFixed(1)}`).join(" ");
+  const zeroY = y(0);
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-hidden="true">
+      <line x1={PAD} y1={zeroY} x2={W - PAD} y2={zeroY} stroke="rgb(var(--border))" strokeWidth="1" strokeDasharray="2 3" />
+      <polyline points={line((p) => p.clean)} fill="none" stroke="rgb(var(--profit))" strokeWidth="2" strokeLinejoin="round" />
+      <polyline points={line((p) => p.real)} fill="none" stroke="rgb(var(--muted))" strokeWidth="2" strokeLinejoin="round" strokeOpacity="0.9" />
+      <circle cx={x(points.length - 1)} cy={y(points[points.length - 1].clean)} r="3" fill="rgb(var(--profit))" />
+      <circle cx={x(points.length - 1)} cy={y(points[points.length - 1].real)} r="3" fill="rgb(var(--muted))" />
+    </svg>
   );
 }
 
@@ -818,7 +927,7 @@ export default function AnalysisPage() {
           .maybeSingle(),
         supabase
           .from("trades")
-          .select("open_time, close_time, pair, direction, lot_size, entry_price, exit_price, sl, tp, sl_initial, tp_initial, pnl, commission, swap")
+          .select("open_time, close_time, pair, direction, lot_size, entry_price, exit_price, sl, tp, sl_initial, tp_initial, pnl, commission, swap, emotion, ict_setup, ict_entry_zone, ict_liquidity_target, ict_killzone, ict_timeframe, ict_confluence_score")
           .eq("user_id", user.id)
           .order("open_time", { ascending: true }),
       ]);
@@ -829,12 +938,16 @@ export default function AnalysisPage() {
       const filteredTrades = getFilteredTrades(trades, selectedPeriod);
       if (filteredTrades.length === 0) throw new Error(t("period_no_trades"));
 
+      // Le total de la checklist vient de la stratégie (le score coché est
+      // sur le trade) : il permet à l'IA de lire « 3/5 éléments validés ».
+      const checklistTotal = Array.isArray(strategy.setup_rules) ? strategy.setup_rules.length : null;
+
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           strategy,
-          trades: filteredTrades,
+          trades: filteredTrades.map((tr) => ({ ...tr, checklist_total: checklistTotal })),
           language: lang,
           period: selectedPeriod,
           periodLabel,
@@ -1033,9 +1146,12 @@ export default function AnalysisPage() {
 
         {/* Loading */}
         {loading && (
-          <div className="flex items-center gap-3">
-            <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-            <p className="text-muted">{t("analysis_loading")}</p>
+          <div>
+            <div className="flex items-center gap-3">
+              <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+              <p className="text-muted">{t("analysis_loading")}</p>
+            </div>
+            <p className="text-xs text-muted/60 mt-2 ml-8">{t("analysis_loading_hint")}</p>
           </div>
         )}
 
@@ -1068,6 +1184,18 @@ export default function AnalysisPage() {
             </div>
           )}
 
+          {/* Verdict : LA phrase à retenir + le résumé en 3-4 phrases */}
+          {displayedAnalysis.headline && (
+            <div className="bg-card border border-accent/30 rounded-xl p-6 card-shadow relative overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-500">
+              <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-accent via-accent/40 to-transparent" />
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-accent mb-2">{t("analysis_verdict_title")}</p>
+              <p className="text-lg sm:text-xl font-bold text-foreground leading-snug">{displayedAnalysis.headline}</p>
+              {displayedAnalysis.summary && (
+                <p className="text-sm text-muted mt-3 leading-relaxed">{displayedAnalysis.summary}</p>
+              )}
+            </div>
+          )}
+
           {/* Score (compact, shown in left on mobile) */}
           <div className="lg:hidden bg-card border border-border rounded-xl p-6 flex flex-col sm:flex-row items-center gap-6">
             <div className="flex flex-col items-center">
@@ -1088,6 +1216,48 @@ export default function AnalysisPage() {
           {displayedAnalysis.score_breakdown && displayedAnalysis.score_breakdown.length > 0 && (
             <ScoreBreakdownCard breakdown={displayedAnalysis.score_breakdown} score={displayedAnalysis.discipline_score} t={t} />
           )}
+
+          {/* Le coût de l'indiscipline : montant + courbe contrefactuelle */}
+          {displayedAnalysis.insights?.counterfactual && displayedAnalysis.insights.violation_trade_count > 0 && (() => {
+            const ins = displayedAnalysis.insights!;
+            const cf = ins.counterfactual!;
+            const costly = ins.violation_cost < 0;
+            return (
+              <section className="bg-card border border-border rounded-xl p-6 card-shadow">
+                <h2 className="text-lg font-semibold text-foreground">{t("analysis_cost_title")}</h2>
+                <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <span className={`text-3xl font-bold tabular-nums ${costly ? "text-loss" : "text-profit"}`}>
+                    {fmtEuro(ins.violation_cost)}
+                  </span>
+                  <span className="text-sm text-muted">
+                    {ins.violation_trade_count === 1
+                      ? t("analysis_cost_trades_one")
+                      : t("analysis_cost_trades").replace("{n}", String(ins.violation_trade_count))}
+                  </span>
+                </div>
+                <p className="text-sm text-muted mt-2">
+                  {costly
+                    ? t("analysis_cost_clean_vs")
+                        .replace("{clean}", fmtEuro(cf.cleanFinal))
+                        .replace("{real}", fmtEuro(cf.realFinal))
+                    : t("analysis_cost_lucky").replace("{amount}", fmtEuro(ins.violation_cost))}
+                </p>
+                <div className="mt-4">
+                  <CounterfactualChart points={cf.points} />
+                  <div className="flex items-center gap-4 mt-2 text-xs">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-3 h-0.5 rounded bg-profit inline-block" />
+                      <span className="text-muted">{t("analysis_cost_clean_line")} · <span className="text-profit font-medium tabular-nums">{fmtEuro(cf.cleanFinal)}</span></span>
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-3 h-0.5 rounded bg-muted inline-block" />
+                      <span className="text-muted">{t("analysis_cost_real_line")} · <span className="text-foreground font-medium tabular-nums">{fmtEuro(cf.realFinal)}</span></span>
+                    </span>
+                  </div>
+                </div>
+              </section>
+            );
+          })()}
 
           {/* Violations */}
           {displayedAnalysis.violations.length > 0 && (
@@ -1114,10 +1284,10 @@ export default function AnalysisPage() {
                           d="M12 9v2m0 4h.01M10.29 3.86l-8.6 14.86A1 1 0 002.56 20h18.88a1 1 0 00.87-1.28l-8.6-14.86a1 1 0 00-1.72 0z"
                         />
                       </svg>
-                      <div>
+                      <div className="flex-1 min-w-0">
                         {isNew ? (
                           <>
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                                 (v as Violation).category === "strategy" ? "bg-loss/10 text-loss" :
                                 (v as Violation).category === "behavior" ? "bg-orange-500/10 text-orange-400" :
@@ -1130,6 +1300,13 @@ export default function AnalysisPage() {
                               </span>
                               {(v as Violation).occurrences > 1 && (
                                 <span className="text-muted text-xs">×{(v as Violation).occurrences}</span>
+                              )}
+                              {typeof (v as Violation).cost === "number" && (
+                                <span className={`ml-auto px-2 py-0.5 rounded-md text-xs font-bold tabular-nums shrink-0 ${
+                                  ((v as Violation).cost as number) < 0 ? "bg-loss/10 text-loss" : "bg-profit/10 text-profit"
+                                }`}>
+                                  {fmtEuro((v as Violation).cost as number)}
+                                </span>
                               )}
                             </div>
                             <p className="text-muted text-sm">{v.explanation}</p>
@@ -1174,9 +1351,44 @@ export default function AnalysisPage() {
                         </span>
                       </div>
                       <p className="text-muted text-sm">{p.description}</p>
+                      {p.evidence && (
+                        <p className="text-xs mt-2 px-2.5 py-1.5 rounded-md bg-surface border border-border/60 text-foreground/80 font-medium tabular-nums">
+                          {t("analysis_pattern_evidence")} {p.evidence}
+                        </p>
+                      )}
                     </div>
                   );
                 })}
+              </div>
+            </section>
+          )}
+
+          {/* Ton edge réel : le meilleur et le pire segment statistique */}
+          {displayedAnalysis.insights?.edge && displayedAnalysis.insights.edge.length > 0 && (
+            <section>
+              <h2 className="text-lg font-semibold text-foreground mb-3">{t("analysis_edge_title")}</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {displayedAnalysis.insights.edge.map((h, i) => (
+                  <div
+                    key={i}
+                    className={`rounded-xl p-4 border ${
+                      h.kind === "best" ? "bg-profit/5 border-profit/25" : "bg-loss/5 border-loss/25"
+                    }`}
+                  >
+                    <p className={`text-[11px] font-semibold uppercase tracking-wider ${h.kind === "best" ? "text-profit" : "text-loss"}`}>
+                      {h.kind === "best" ? t("analysis_edge_best") : t("analysis_edge_worst")}
+                    </p>
+                    <p className="text-foreground font-bold mt-1.5">
+                      {t(`edge_dim_${h.dimension}` as Parameters<typeof t>[0])} · {edgeKeyLabel(h, lang)}
+                    </p>
+                    <p className={`text-xl font-bold tabular-nums mt-1 ${h.kind === "best" ? "text-profit" : "text-loss"}`}>
+                      {fmtEuro(h.netPnl)}
+                    </p>
+                    <p className="text-xs text-muted mt-1">
+                      {t("analysis_edge_stats").replace("{n}", String(h.trades)).replace("{p}", String(h.winRate))}
+                    </p>
+                  </div>
+                ))}
               </div>
             </section>
           )}
@@ -1208,6 +1420,35 @@ export default function AnalysisPage() {
             </section>
           )}
 
+          {/* Revue trade par trade : les plus instructifs, notés A → D */}
+          {displayedAnalysis.trade_reviews && displayedAnalysis.trade_reviews.length > 0 && (
+            <section>
+              <h2 className="text-lg font-semibold text-foreground mb-3">{t("analysis_reviews_title")}</h2>
+              <div className="space-y-2">
+                {displayedAnalysis.trade_reviews.map((r, i) => (
+                  <div key={i} className="bg-card border border-border rounded-lg p-3.5 flex gap-3 items-start">
+                    <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 ${GRADE_STYLES[r.grade] || GRADE_STYLES.C}`}>
+                      {r.grade}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-foreground text-sm font-medium">{r.pair}</span>
+                        <span className="text-muted text-xs uppercase">{r.direction}</span>
+                        <span className="text-muted/70 text-xs">
+                          {new Date(r.open_time).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
+                        </span>
+                        <span className={`ml-auto text-xs font-bold tabular-nums ${r.net_pnl >= 0 ? "text-profit" : "text-loss"}`}>
+                          {fmtEuro(r.net_pnl)}
+                        </span>
+                      </div>
+                      <p className="text-muted text-sm mt-1">{r.comment}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* Recommendations */}
           {displayedAnalysis.recommendations.length > 0 && (
             <section>
@@ -1222,6 +1463,29 @@ export default function AnalysisPage() {
                       {i + 1}.
                     </span>
                     <p className="text-foreground text-sm">{r}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Plan d'action : 2-3 engagements mesurables pour la suite */}
+          {displayedAnalysis.action_plan && displayedAnalysis.action_plan.length > 0 && (
+            <section className="bg-card border border-border rounded-xl p-5 card-shadow">
+              <h2 className="text-lg font-semibold text-foreground mb-1">{t("analysis_plan_title")}</h2>
+              <p className="text-xs text-muted mb-4">{t("analysis_plan_subtitle")}</p>
+              <div className="space-y-3">
+                {displayedAnalysis.action_plan.map((a, i) => (
+                  <div key={i} className="flex gap-3 items-start">
+                    <span className="w-6 h-6 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
+                      {i + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-foreground text-sm font-medium">{a.title}</p>
+                      <p className="text-xs text-muted mt-0.5">
+                        <span className="font-semibold text-foreground/70">{t("analysis_plan_target")}</span> {a.target}
+                      </p>
+                    </div>
                   </div>
                 ))}
               </div>
