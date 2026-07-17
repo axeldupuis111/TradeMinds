@@ -16,6 +16,7 @@ import { useStrategyTags } from "@/lib/hooks/useStrategyTags";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
+import { track } from "@/lib/track";
 import type { Lang } from "@/lib/translations";
 import { ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import Image from "next/image";
@@ -53,7 +54,44 @@ export interface TradeDetail {
   ict_timeframe?: string | null;
   ict_checklist?: Record<string, boolean> | null;
   ict_confluence_score?: number | null;
+  /** Verdict persisté de l'analyse visuelle IA du screenshot. */
+  vision_review?: unknown;
 }
+
+/** Verdict de l'analyse visuelle IA (shape de trades.vision_review). */
+interface VisionReview {
+  setup_validity: "confirmed" | "partial" | "not_visible";
+  grade: "A" | "B" | "C" | "D";
+  summary: string;
+  what_works: string[];
+  what_lacks: string[];
+  annotation_feedback: string;
+  advice: string;
+  analyzed_at?: string;
+}
+
+function asVisionReview(raw: unknown): VisionReview | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Partial<VisionReview>;
+  if (typeof r.summary !== "string" || typeof r.grade !== "string") return null;
+  return {
+    setup_validity: (["confirmed", "partial", "not_visible"] as const).includes(r.setup_validity as "confirmed") ? (r.setup_validity as VisionReview["setup_validity"]) : "partial",
+    grade: (["A", "B", "C", "D"] as const).includes(r.grade as "A") ? (r.grade as VisionReview["grade"]) : "C",
+    summary: r.summary,
+    what_works: Array.isArray(r.what_works) ? r.what_works.filter((x): x is string => typeof x === "string") : [],
+    what_lacks: Array.isArray(r.what_lacks) ? r.what_lacks.filter((x): x is string => typeof x === "string") : [],
+    annotation_feedback: typeof r.annotation_feedback === "string" ? r.annotation_feedback : "",
+    advice: typeof r.advice === "string" ? r.advice : "",
+    analyzed_at: typeof r.analyzed_at === "string" ? r.analyzed_at : undefined,
+  };
+}
+
+const VISION_GRADE_STYLES: Record<string, string> = {
+  A: "bg-profit/15 text-profit",
+  B: "bg-green-500/10 text-green-400",
+  C: "bg-orange-500/10 text-orange-400",
+  D: "bg-loss/15 text-loss",
+};
 
 interface AccountOption {
   id: string;
@@ -140,6 +178,42 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
   const [screenshotModified, setScreenshotModified] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
+  // Analyse visuelle IA du screenshot
+  const [visionReview, setVisionReview] = useState<VisionReview | null>(asVisionReview(trade.vision_review));
+  const [visionLoading, setVisionLoading] = useState(false);
+  const [visionError, setVisionError] = useState<string | null>(null);
+
+  const runVisionReview = useCallback(async () => {
+    if (visionLoading) return;
+    setVisionLoading(true);
+    setVisionError(null);
+    try {
+      const res = await fetch("/api/analyze-trade-vision", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trade_id: trade.id, language: lang }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setVisionError(
+          res.status === 429 ? t("vision_error_limit") : data.error || t("vision_error"),
+        );
+        return;
+      }
+      const parsed = asVisionReview(data.review);
+      if (!parsed) {
+        setVisionError(t("vision_error"));
+        return;
+      }
+      setVisionReview(parsed);
+      track("vision_review_run", { grade: parsed.grade, validity: parsed.setup_validity });
+    } catch {
+      setVisionError(t("vision_error"));
+    } finally {
+      setVisionLoading(false);
+    }
+  }, [trade.id, lang, visionLoading, t]);
+
   useEffect(() => {
     setEmotion(trade.emotion);
     setQuality(trade.setup_quality);
@@ -157,6 +231,8 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
       setScreenshotUrl(null);
     }
     setAnnotations(asShapes(trade.screenshot_annotations));
+    setVisionReview(asVisionReview(trade.vision_review));
+    setVisionError(null);
     setIctChecklist(trade.ict_checklist || {});
     setChallengeId(trade.challenge_id || null);
     setSelectedStrategyId(trade.strategy_id ?? null);
@@ -749,6 +825,90 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
               />
             )}
           </div>
+
+          {/* Analyse visuelle IA : Claude regarde le graphique et juge le setup */}
+          {screenshotUrl && !isFree && (
+            <div className="border border-border rounded-lg p-4">
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Sparkles className="w-4 h-4 text-accent" />
+                  {t("vision_title")}
+                </span>
+                {visionReview && !visionLoading && (
+                  <button onClick={runVisionReview} className="text-xs text-accent hover:underline">
+                    {t("vision_redo")}
+                  </button>
+                )}
+              </div>
+
+              {!visionReview && !visionLoading && (
+                <>
+                  <p className="text-xs text-muted mb-3">{t("vision_hint")}</p>
+                  <button
+                    onClick={runVisionReview}
+                    className="px-4 py-2 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-colors btn-scale"
+                  >
+                    {t("vision_cta")}
+                  </button>
+                </>
+              )}
+
+              {visionLoading && (
+                <div className="flex items-center gap-2 py-2">
+                  <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                  <span className="text-sm text-muted">{t("vision_running")}</span>
+                </div>
+              )}
+
+              {visionError && !visionLoading && (
+                <p className="text-xs text-loss mt-2">{visionError}</p>
+              )}
+
+              {visionReview && !visionLoading && (
+                <div className="mt-2 space-y-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${VISION_GRADE_STYLES[visionReview.grade]}`}>
+                      {visionReview.grade}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-md text-xs font-medium ${
+                      visionReview.setup_validity === "confirmed"
+                        ? "bg-profit/10 text-profit"
+                        : visionReview.setup_validity === "partial"
+                          ? "bg-orange-500/10 text-orange-400"
+                          : "bg-loss/10 text-loss"
+                    }`}>
+                      {t(`vision_validity_${visionReview.setup_validity}` as Parameters<typeof t>[0])}
+                    </span>
+                  </div>
+                  <p className="text-sm text-foreground">{visionReview.summary}</p>
+                  {visionReview.what_works.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-profit mb-1">{t("vision_works")}</p>
+                      {visionReview.what_works.map((w, i) => (
+                        <p key={i} className="text-xs text-muted flex gap-1.5"><span className="text-profit">✓</span>{w}</p>
+                      ))}
+                    </div>
+                  )}
+                  {visionReview.what_lacks.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-loss mb-1">{t("vision_lacks")}</p>
+                      {visionReview.what_lacks.map((w, i) => (
+                        <p key={i} className="text-xs text-muted flex gap-1.5"><span className="text-loss">✗</span>{w}</p>
+                      ))}
+                    </div>
+                  )}
+                  {visionReview.annotation_feedback && (
+                    <p className="text-xs text-muted"><span className="font-semibold text-foreground/70">{t("vision_annotations")}</span> {visionReview.annotation_feedback}</p>
+                  )}
+                  {visionReview.advice && (
+                    <p className="text-xs px-3 py-2 rounded-md bg-accent/5 border border-accent/20 text-foreground">
+                      <span className="font-semibold text-accent">{t("vision_advice")}</span> {visionReview.advice}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Derived details — read-only, computed automatically */}
           {showAnalysis && !stratTags.loading && (

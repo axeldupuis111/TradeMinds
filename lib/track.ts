@@ -22,6 +22,10 @@ export type ProductEvent =
   | "csv_imported"
   | "manual_trade_added"
   | "analysis_run"
+  // Suites de l'analyse nouvelle génération (2026-07-17)
+  | "analysis_pdf_export"
+  | "analysis_plan_goals_created"
+  | "vision_review_run"
   | "checkout_started"
   // Échelle d'upgrade free→plus (2026-07-09)
   | "taster_used"

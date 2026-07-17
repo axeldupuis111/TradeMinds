@@ -504,6 +504,10 @@ export default function AnalysisPage() {
   const [pendingAutorun, setPendingAutorun] = useState(false);
   const autoranRef = useRef(false);
 
+  // Plan d'action → objectifs : un clic crée un objectif personnel par
+  // engagement (même mécanique que la page Objectifs / l'outil du coach).
+  const [goalsFromPlan, setGoalsFromPlan] = useState<"idle" | "saving" | "done" | "error">("idle");
+
   // Chat coach state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
@@ -910,6 +914,7 @@ export default function AnalysisPage() {
     setAnalysis(null);
     setSaveMessage(null);
     setViewingHistory(null);
+    setGoalsFromPlan("idle");
     setLoading(true);
 
     try {
@@ -995,6 +1000,98 @@ export default function AnalysisPage() {
   }
 
 
+  const [exportingPdf, setExportingPdf] = useState(false);
+
+  async function exportPdf() {
+    const a = displayedAnalysis;
+    if (!a || exportingPdf) return;
+    setExportingPdf(true);
+    try {
+      const ins = a.insights;
+      // Import dynamique : jsPDF + police embarquée ne chargent qu'au clic.
+      const { exportAnalysisPdf } = await import("@/lib/analysis-pdf");
+      const historyItem = viewingHistory ? history.find((h) => h.id === viewingHistory) : null;
+      await exportAnalysisPdf({
+        lang: (["fr", "en", "de", "es"].includes(lang) ? lang : "fr") as "fr" | "en" | "de" | "es",
+        periodLabel: historyItem?.period_label || periodLabel,
+        score: a.discipline_score,
+        totalTrades: a.total_trades,
+        headline: a.headline,
+        summary: a.summary,
+        stats: ins
+          ? {
+              netPnl: ins.total_net_pnl,
+              winRate: ins.win_rate,
+              profitFactor: ins.profit_factor,
+              violationCost: ins.violation_cost,
+              violationTradeCount: ins.violation_trade_count,
+            }
+          : null,
+        counterfactual: ins?.counterfactual ?? null,
+        violations: a.violations.map((v) =>
+          "category" in v
+            ? {
+                title: t(`violation_${(v as Violation).type}` as Parameters<typeof t>[0]),
+                explanation: v.explanation,
+                cost: (v as Violation).cost,
+              }
+            : { title: (v as LegacyViolation).rule_violated || "", explanation: v.explanation },
+        ),
+        patterns: a.patterns.map((p) => ({
+          title: p.type,
+          description: p.description,
+          evidence: p.evidence,
+          severity: p.severity,
+        })),
+        edge: (ins?.edge ?? []).map((h) => ({
+          label: `${t(`edge_dim_${h.dimension}` as Parameters<typeof t>[0])} · ${edgeKeyLabel(h, lang)}`,
+          value: `${fmtEuro(h.netPnl)} · ${t("analysis_edge_stats").replace("{n}", String(h.trades)).replace("{p}", String(h.winRate))}`,
+          positive: h.kind === "best",
+        })),
+        strengths: a.strengths,
+        recommendations: a.recommendations,
+        tradeReviews: (a.trade_reviews ?? []).map((r) => ({
+          grade: r.grade,
+          pair: r.pair,
+          direction: r.direction,
+          date: new Date(r.open_time).toLocaleDateString(undefined, { day: "numeric", month: "short" }),
+          pnl: r.net_pnl,
+          comment: r.comment,
+        })),
+        actionPlan: a.action_plan ?? [],
+      });
+      track("analysis_pdf_export");
+    } catch (e) {
+      console.error("PDF export failed:", e);
+    } finally {
+      setExportingPdf(false);
+    }
+  }
+
+  async function createGoalsFromPlan(plan_items: ActionItem[]) {
+    if (goalsFromPlan === "saving" || goalsFromPlan === "done") return;
+    setGoalsFromPlan("saving");
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("not connected");
+      // Un objectif personnel hebdomadaire par engagement : le titre porte
+      // l'engagement, le critère de réussite est gardé entre parenthèses.
+      const rows = plan_items.slice(0, 3).map((a) => ({
+        user_id: user.id,
+        kind: "custom",
+        title: `${a.title} (${a.target})`.slice(0, 200),
+        period: "week",
+        done: false,
+      }));
+      const { error: insertErr } = await supabase.from("goals").insert(rows);
+      if (insertErr) throw insertErr;
+      setGoalsFromPlan("done");
+      track("analysis_plan_goals_created", { count: rows.length });
+    } catch {
+      setGoalsFromPlan("error");
+    }
+  }
+
   function viewHistoryItem(review: SavedReview) {
     if (compareMode) {
       setCompareSelection((prev) => {
@@ -1007,6 +1104,7 @@ export default function AnalysisPage() {
     setAnalysis(review.analysis);
     setViewingHistory(review.id);
     setSaveMessage(null);
+    setGoalsFromPlan("idle");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -1183,6 +1281,20 @@ export default function AnalysisPage() {
               </button>
             </div>
           )}
+
+          {/* Export PDF du rapport */}
+          <div className="flex justify-end -mb-4">
+            <button
+              onClick={exportPdf}
+              disabled={exportingPdf}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-sm text-foreground hover:bg-border/40 transition-colors disabled:opacity-50"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+              </svg>
+              {exportingPdf ? t("analysis_export_pdf_running") : t("analysis_export_pdf")}
+            </button>
+          </div>
 
           {/* Verdict : LA phrase à retenir + le résumé en 3-4 phrases */}
           {displayedAnalysis.headline && (
@@ -1488,6 +1600,34 @@ export default function AnalysisPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+              <div className="mt-4 pt-4 border-t border-border flex items-center gap-3 flex-wrap">
+                {goalsFromPlan === "done" ? (
+                  <>
+                    <span className="text-sm text-profit font-medium flex items-center gap-1.5">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      {t("analysis_plan_goals_done")}
+                    </span>
+                    <Link href="/dashboard/goals" className="text-sm text-accent hover:underline">
+                      {t("analysis_plan_goals_view")}
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => createGoalsFromPlan(displayedAnalysis.action_plan!)}
+                      disabled={goalsFromPlan === "saving"}
+                      className="px-4 py-2 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-50 btn-scale"
+                    >
+                      {goalsFromPlan === "saving" ? t("analysis_plan_goals_saving") : t("analysis_plan_goals_cta")}
+                    </button>
+                    {goalsFromPlan === "error" && (
+                      <span className="text-xs text-loss">{t("analysis_plan_goals_error")}</span>
+                    )}
+                  </>
+                )}
               </div>
             </section>
           )}
