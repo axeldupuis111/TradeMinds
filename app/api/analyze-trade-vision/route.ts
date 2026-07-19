@@ -24,7 +24,9 @@ import { describeAnnotations } from "@/lib/vision-review";
 
 export const maxDuration = 120;
 
-const DAILY_LIMITS = { plus: 5, premium: 20 } as const;
+// Analyse visuelle = exclusivité Premium (Sonnet 5 vision). Capée à 2/jour :
+// c'est l'argument d'upgrade du plan, pas une fonctionnalité de masse.
+const PREMIUM_DAILY_LIMIT = 2;
 const MAX_IMAGE_BYTES = 4.5 * 1024 * 1024; // limite API ~5 Mo par image
 
 const LANG_NAMES: Record<string, string> = {
@@ -45,8 +47,8 @@ export async function POST(request: Request) {
     if (auth instanceof NextResponse) return auth;
     const { userId, plan, timezone } = auth;
 
-    if (plan !== "plus" && plan !== "premium") {
-      return NextResponse.json({ error: "Feature not available on free plan" }, { status: 403 });
+    if (plan !== "premium") {
+      return NextResponse.json({ error: "Feature reserved to the Premium plan" }, { status: 403 });
     }
 
     const apiKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY;
@@ -62,7 +64,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "trade_id requis" }, { status: 400 });
     }
 
-    const limited = await rateLimitAi(userId, "vision_review", DAILY_LIMITS[plan], timezone);
+    const limited = await rateLimitAi(userId, "vision_review", PREMIUM_DAILY_LIMIT, timezone);
     if (limited) return limited;
 
     // ── Données du trade (client RLS : ne voit que ses propres trades) ──

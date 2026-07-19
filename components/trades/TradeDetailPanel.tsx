@@ -826,8 +826,28 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
             )}
           </div>
 
+          {/* Analyse visuelle IA — exclusivité Premium : un aperçu verrouillé
+              pour les autres plans sert de levier d'upgrade. */}
+          {screenshotUrl && !planLoading && plan !== "premium" && (
+            <a
+              href="/dashboard/upgrade"
+              className="flex items-center gap-3 border border-dashed border-border rounded-lg p-4 hover:border-accent/50 transition-colors group"
+            >
+              <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-accent/10 text-accent shrink-0">
+                <Sparkles className="w-4 h-4" />
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-sm font-semibold text-foreground">{t("vision_title")}</span>
+                <span className="block text-xs text-muted">{t("vision_locked")}</span>
+              </span>
+              <svg className="w-4 h-4 text-muted group-hover:text-accent transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+              </svg>
+            </a>
+          )}
+
           {/* Analyse visuelle IA : Claude regarde le graphique et juge le setup */}
-          {screenshotUrl && !isFree && (
+          {screenshotUrl && plan === "premium" && (
             <div className="border border-border rounded-lg p-4">
               <div className="flex items-center justify-between gap-2 mb-1">
                 <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
