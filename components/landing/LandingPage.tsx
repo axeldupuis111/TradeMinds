@@ -1764,8 +1764,8 @@ function SocialProof() {
    leur vrai prix + coût ramené au jour (dérivé, honnête). But : vendre les plans
    payants en montrant qu'ils sont remboursés dès la première erreur évitée. */
 const ROI_PAID_PLANS = [
-  { nameKey: "plan_plus", price: "9.99€", perDay: "0.33€", tone: "--accent" },
-  { nameKey: "plan_premium", price: "19.99€", perDay: "0.67€", tone: "--warning" },
+  { nameKey: "plan_plus", price: "14.99€", perDay: "0.49€", tone: "--accent" },
+  { nameKey: "plan_premium", price: "29.99€", perDay: "0.99€", tone: "--warning" },
 ];
 
 function RoiPayback({ t }: { t: (k: string) => string }) {
@@ -2066,9 +2066,9 @@ function Pricing() {
     {
       name: t("plan_plus"),
       sub: t("plan_sub_plus"),
-      monthlyPrice: "9.99€",
-      annualPrice: "89.99€",
-      annualMonthly: "7.50€",
+      monthlyPrice: "14.99€",
+      annualPrice: "134.90€",
+      annualMonthly: "11.24€",
       feats: PLUS_BENEFITS.map((k) => t(k)),
       featsLabel: "",
       includesNote: "",
@@ -2082,9 +2082,9 @@ function Pricing() {
       // à part (includesNote) pour ne jamais mélanger les deux.
       name: t("plan_premium"),
       sub: t("plan_premium_desc"),
-      monthlyPrice: "19.99€",
-      annualPrice: "179.88€",
-      annualMonthly: "14.99€",
+      monthlyPrice: "29.99€",
+      annualPrice: "269.90€",
+      annualMonthly: "22.49€",
       feats: PREMIUM_BENEFITS.map((k) => t(k)),
       featsLabel: t("plan_premium_exclusives"),
       includesNote: t("plan_premium_includes_plus_short"),

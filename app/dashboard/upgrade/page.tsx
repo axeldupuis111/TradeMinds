@@ -257,8 +257,8 @@ export default function UpgradePage() {
   // Libellé du montant récurrent après changement de plan, selon plan + intervalle courant du toggle.
   function recurringPriceLabel(plan: "plus" | "premium"): string {
     const amounts = {
-      plus: { monthly: "9,99 €", yearly: "89,99 €" },
-      premium: { monthly: "19,99 €", yearly: "179,88 €" },
+      plus: { monthly: "14,99 €", yearly: "134,90 €" },
+      premium: { monthly: "29,99 €", yearly: "269,90 €" },
     } as const;
     const unit = changeInterval === "monthly" ? t("plan_month") : t("plan_year");
     return `${amounts[plan][changeInterval]}/${unit}`;
@@ -439,23 +439,23 @@ export default function UpgradePage() {
               {annual ? (
                 <div className="mt-3">
                   <div className="flex items-baseline gap-2">
-                    <span className="text-muted text-sm line-through">9.99€/{t("plan_month")}</span>
+                    <span className="text-muted text-sm line-through">14.99€/{t("plan_month")}</span>
                   </div>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold text-foreground">7.50€</span>
+                    <span className="text-3xl font-bold text-foreground">11.24€</span>
                     <span className="text-muted text-sm">/{t("plan_month")}</span>
                   </div>
                   <span className="inline-block mt-1 px-2 py-0.5 bg-profit/10 text-profit text-xs font-bold rounded-full">
                     {t("plan_two_months_free")}
                   </span>
                   <p className="text-muted text-xs mt-1">
-                    {t("plan_billed_annual").replace("{price}", "89.99€")}
+                    {t("plan_billed_annual").replace("{price}", "134.90€")}
                   </p>
                 </div>
               ) : (
                 <div className="mt-3">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold text-foreground">9.99€</span>
+                    <span className="text-3xl font-bold text-foreground">14.99€</span>
                     <span className="text-muted text-sm">/{t("plan_month")}</span>
                   </div>
                   <div className="h-8" />
@@ -519,23 +519,23 @@ export default function UpgradePage() {
           {annual ? (
             <div className="mt-3">
               <div className="flex items-baseline gap-2">
-                <span className="text-muted text-sm line-through">19,99€/{t("plan_month")}</span>
+                <span className="text-muted text-sm line-through">29,99€/{t("plan_month")}</span>
               </div>
               <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-bold text-foreground">14,99€</span>
+                <span className="text-3xl font-bold text-foreground">22,49€</span>
                 <span className="text-muted text-sm">/{t("plan_month")}</span>
               </div>
               <span className="inline-block mt-1 px-2 py-0.5 bg-profit/10 text-profit text-xs font-bold rounded-full">
                 {t("plan_two_months_free")}
               </span>
               <p className="text-muted text-xs mt-1">
-                {t("plan_billed_annual").replace("{price}", "179.88€")}
+                {t("plan_billed_annual").replace("{price}", "269.90€")}
               </p>
             </div>
           ) : (
             <div className="mt-3">
               <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-bold text-foreground">19,99€</span>
+                <span className="text-3xl font-bold text-foreground">29,99€</span>
                 <span className="text-muted text-sm">/{t("plan_month")}</span>
               </div>
               <div className="h-8" />
