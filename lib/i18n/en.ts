@@ -1788,7 +1788,7 @@ const dict: Record<string, string> = {
   "nav_pricing": "Pricing",
   "nav_faq": "FAQ",
   "hero_subtitle_v2": "The AI that turns your trading journal into a personal coach. It detects your destructive patterns, measures your discipline and tells you exactly what's costing you money, before you lose it.",
-  "hero_social_proof": "✓ Import in 2 clicks · ✓ Your diagnosis in 10 seconds · ✓ Join 500+ traders",
+  "hero_social_proof": "✓ Import in 2 clicks · ✓ Your diagnosis in 10 seconds · ✓ No credit card",
   "hero_ai_badge": "🧠 AI trained specifically on trader behaviours, not a generic chatbot.",
   "hero_chart_kicker": "AI read of your equity curve over the last 20 days",
   "hero_chart_badge": "AI coach active",

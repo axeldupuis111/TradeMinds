@@ -1788,7 +1788,7 @@ const dict: Record<string, string> = {
   "nav_pricing": "Preise",
   "nav_faq": "FAQ",
   "hero_subtitle_v2": "Die KI, die dein Trading-Journal in einen persönlichen Coach verwandelt. Sie erkennt destruktive Muster, misst deine Disziplin und sagt dir genau, was dich Geld kostet, bevor du es verlierst.",
-  "hero_social_proof": "✓ Import in 2 Klicks · ✓ Deine Diagnose in 10 Sekunden · ✓ Tritt 500+ Tradern bei",
+  "hero_social_proof": "✓ Import in 2 Klicks · ✓ Deine Diagnose in 10 Sekunden · ✓ Ohne Kreditkarte",
   "hero_ai_badge": "🧠 KI speziell auf das Verhalten von Tradern trainiert, kein generischer Chatbot.",
   "hero_chart_kicker": "KI-Analyse deiner Equity-Kurve über die letzten 20 Tage",
   "hero_chart_badge": "KI-Coach aktiv",

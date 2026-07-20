@@ -70,48 +70,6 @@ function StaggerReveal({
   );
 }
 
-/* ─────────────────────────────────────────────
-   ANIMATED COUNTER
-───────────────────────────────────────────── */
-function Counter({
-  end,
-  suffix = "",
-  decimals = 0,
-}: {
-  end: number;
-  suffix?: string;
-  decimals?: number;
-}) {
-  const [val, setVal] = useState(0);
-  const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-40px" });
-  const prefersReduced = useReducedMotion();
-
-  useEffect(() => {
-    if (!inView) return;
-    if (prefersReduced) { setVal(end); return; }
-    const duration = 1600;
-    const start = performance.now();
-    let raf = 0;
-    const tick = (now: number) => {
-      const p = Math.min((now - start) / duration, 1);
-      // easeOutExpo — montée vive puis décélération soyeuse (feel premium)
-      const eased = p === 1 ? 1 : 1 - Math.pow(2, -10 * p);
-      setVal(end * eased);
-      if (p < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [inView, end, prefersReduced]);
-
-  return (
-    <span ref={ref} className="tabular-nums">
-      {decimals > 0 ? val.toFixed(decimals) : Math.floor(val).toLocaleString()}
-      {suffix}
-    </span>
-  );
-}
-
 /* Compteur "brut" (sans wrapper) — utilisable dans un <text> SVG ou inline.
    Démarre au montage (le mockup hero est visible dès le chargement). */
 function NumberCount({ end, decimals = 0, duration = 1700 }: { end: number; decimals?: number; duration?: number }) {
@@ -937,35 +895,6 @@ function PlatformMarquee() {
 }
 
 /* ─────────────────────────────────────────────
-   STATS STRIP
-───────────────────────────────────────────── */
-function StatsStrip() {
-  const { t } = useLanguage();
-  const stats = [
-    { value: 500,   suffix: "+",  label: t("social_stat_1_label"),  decimals: 0 },
-    { value: 10000, suffix: "+",  label: t("social_stat_2_label"),  decimals: 0 },
-    { value: 4.8,   suffix: "/5", label: t("social_stat_3_label"),  decimals: 1 },
-  ];
-
-  return (
-    <section className="py-12 px-6 border-y" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
-      <div className="max-w-4xl mx-auto">
-        <div className="grid grid-cols-3 divide-x" style={{ "--tw-divide-opacity": 1 } as React.CSSProperties}>
-          {stats.map((s, i) => (
-            <Reveal key={i} delay={i * 0.07} className="text-center px-4 sm:px-8">
-              <p className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight" style={{ fontStyle: "normal", color: "rgb(var(--foreground))" }}>
-                <Counter end={s.value} suffix={s.suffix} decimals={s.decimals} />
-              </p>
-              <p className="text-[13px] mt-1.5 font-medium tracking-wide" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{s.label}</p>
-            </Reveal>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ─────────────────────────────────────────────
    PROBLEM SECTION
 ───────────────────────────────────────────── */
 function Problem() {
@@ -1692,62 +1621,6 @@ function AIDetection() {
                 </svg>
               </div>
               <p className="text-[15px] leading-relaxed" style={{ color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}>{d.text}</p>
-            </SpotlightCard>
-          ))}
-        </StaggerReveal>
-      </div>
-    </section>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   SOCIAL PROOF / TESTIMONIALS
-───────────────────────────────────────────── */
-function SocialProof() {
-  const { t } = useLanguage();
-  const testimonials = [
-    { text: t("testimonial_1_text"), author: t("testimonial_1_author"), initials: "T" },
-    { text: t("testimonial_2_text"), author: t("testimonial_2_author"), initials: "S" },
-    { text: t("testimonial_3_text"), author: t("testimonial_3_author"), initials: "M" },
-  ];
-
-  return (
-    <section className="py-28 px-6 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
-      <div className="max-w-5xl mx-auto">
-        <Reveal className="text-center mb-16">
-          <Eyebrow>{t("eyebrow_social")}</Eyebrow>
-          <h2 className="text-4xl sm:text-5xl font-bold" style={{ color: "rgb(var(--foreground))" }}>{t("social_title")}</h2>
-        </Reveal>
-
-        <StaggerReveal className="grid grid-cols-1 md:grid-cols-3 gap-4" stagger={0.1}>
-          {testimonials.map((tm, i) => (
-            <SpotlightCard
-              key={i}
-              className="border rounded-2xl p-6 flex flex-col"
-              style={{ background: "rgb(var(--card))", borderColor: "rgb(var(--border))" }}
-              whileHover={{ y: -5, borderColor: "rgb(var(--accent)/0.25)", boxShadow: "0 20px 56px -12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)" }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <div className="flex gap-0.5 mb-4" aria-label="5 stars" role="img">
-                {Array.from({ length: 5 }).map((_, s) => (
-                  <svg key={s} className="w-3.5 h-3.5 text-amber-400" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                  </svg>
-                ))}
-              </div>
-              <blockquote className="text-[15px] leading-relaxed flex-1" style={{ color: "rgb(var(--foreground)/0.75)", fontStyle: "normal" }}>
-                &ldquo;{tm.text}&rdquo;
-              </blockquote>
-              <div className="flex items-center gap-3 mt-5 pt-4 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
-                <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
-                  style={{ background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #3b82f6 100%)" }}
-                  aria-hidden
-                >
-                  {tm.initials}
-                </div>
-                <p className="text-xs font-medium" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{tm.author}</p>
-              </div>
             </SpotlightCard>
           ))}
         </StaggerReveal>
@@ -2998,13 +2871,11 @@ export default function LandingPage() {
         <Hero />
         <MarketTicker />
         <PlatformMarquee />
-        <StatsStrip />
         <Problem />
         <DisciplineQuiz />
         <Features />
         <AIDetection />
         <CoachAssistant />
-        <SocialProof />
         <Pricing />
         <FAQ />
         <FinalCTA />

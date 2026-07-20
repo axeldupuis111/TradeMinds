@@ -1788,7 +1788,7 @@ const dict: Record<string, string> = {
   "nav_pricing": "Precios",
   "nav_faq": "FAQ",
   "hero_subtitle_v2": "La IA que convierte tu diario de trading en un coach personal. Detecta tus patrones destructores, mide tu disciplina y te dice exactamente qué te cuesta dinero, antes de que lo pierdas.",
-  "hero_social_proof": "✓ Importa en 2 clics · ✓ Tu diagnóstico en 10 segundos · ✓ Únete a 500+ traders",
+  "hero_social_proof": "✓ Importa en 2 clics · ✓ Tu diagnóstico en 10 segundos · ✓ Sin tarjeta",
   "hero_ai_badge": "🧠 IA entrenada específicamente en comportamientos de traders, no es un chatbot genérico.",
   "hero_chart_kicker": "Lectura IA de tu curva en los últimos 20 días",
   "hero_chart_badge": "Coach IA activo",
