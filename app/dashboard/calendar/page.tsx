@@ -181,13 +181,15 @@ function EventDetail({ ev, onClose }: { ev: EventRow; onClose: () => void }) {
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
-          {/* Forecast / Previous / Actual */}
+          {/* Forecast / Previous / Actual. The feed never carries the actual
+              print (faireconomy JSON has no such field), so that cell only
+              renders if a future source ever fills it — no permanent "—". */}
           {(ev.forecast || ev.previous || ev.actual) && (
-            <div className="grid grid-cols-3 gap-2">
+            <div className={`grid gap-2 ${ev.actual ? "grid-cols-3" : "grid-cols-2"}`}>
               {[
                 { label: t("cal_previous"), value: ev.previous },
                 { label: t("cal_forecast"), value: ev.forecast },
-                { label: t("cal_actual"), value: ev.actual },
+                ...(ev.actual ? [{ label: t("cal_actual"), value: ev.actual }] : []),
               ].map((cell) => (
                 <div key={cell.label} className="rounded-lg border border-border bg-surface px-2 py-2 text-center">
                   <p className="text-[10px] uppercase tracking-wider text-foreground-muted mb-0.5">{cell.label}</p>
