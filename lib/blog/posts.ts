@@ -28,6 +28,250 @@ export interface BlogPost {
 
 export const POSTS: BlogPost[] = [
   {
+    slug: "why-you-keep-losing",
+    date: "2026-07-17",
+    readingMinutes: 5,
+    cover: "target",
+    content: {
+      fr: {
+        title: "Pourquoi tu perds en trading alors que ta stratégie est bonne",
+        excerpt:
+          "Ton backtest est vert, ton compte réel est rouge. L'écart n'est pas technique, il est comportemental, et il se chiffre en euros. Voici comment le voir.",
+        body: `Tu connais tes setups. Ton backtest est rentable. Et pourtant, mois après mois, ton compte réel perd. Si ça te parle, le problème n'est presque jamais ta technique : c'est l'écart entre le plan que tu as et le plan que tu suis.
+
+## L'écart backtest / compte réel
+
+Un backtest, c'est toi discipliné à 100 %. Ton compte réel, c'est toi avec la peur, l'ennui, la revanche et la fatigue. Cet écart a un coût, et il est presque toujours plus grand que ce que tu imagines. La bonne nouvelle : il se mesure.
+
+## Les quatre fuites qui te coûtent le plus
+
+1. **Le revenge trading.** Tu reprends un trade dans les minutes qui suivent une perte, souvent plus gros. C'est la fuite la plus chère et la plus régulière.
+2. **Les entrées FOMO.** Tu entres hors plan parce que « ça part sans toi ». Pas de setup, pas de checklist, juste la peur de rater.
+3. **La taille gonflée après une perte.** Tu augmentes le lot pour « te refaire ». Une seule fois suffit à effacer dix bons trades.
+4. **Trader ta pire heure.** La plupart des traders ont une plage horaire où ils perdent systématiquement. Ils ne le savent pas, parce que personne ne le leur a montré.
+
+## Pourquoi tu ne le vois pas
+
+Un journal classique (Excel, Notion) enregistre des faits : entrée, sortie, P&L. Il ne te dit pas combien le revenge trading t'a coûté ce mois-ci, ni où serait ton compte si tu avais respecté ton plan. Tu ne peux pas corriger ce que tu ne mesures pas.
+
+## Chiffre l'écart, et il se referme
+
+La seule chose qui change vraiment un comportement, c'est d'en voir le prix. « Le revenge trading t'a coûté 480 € ce mois » frappe plus fort que « sois plus discipliné ». C'est exactement ce que fait le diagnostic de TradeDiscipline : il croise ton comportement avec ton P&L réel, chiffre chaque mauvaise habitude en euros, et trace la courbe que ton compte aurait suivie si tu avais suivi ton plan.
+
+Ta technique est probablement déjà assez bonne. C'est l'exécution qui te coûte. [Vois enfin pourquoi tu perds](/login), gratuitement, sans carte bancaire.`,
+      },
+      en: {
+        title: "Why you keep losing at trading (even with a good strategy)",
+        excerpt:
+          "Your backtest is green, your live account is red. The gap isn't technical, it's behavioral, and it has a price in euros. Here's how to see it.",
+        body: `You know your setups. Your backtest is profitable. And yet, month after month, your live account bleeds. If that sounds familiar, the problem is almost never your technique: it's the gap between the plan you have and the plan you follow.
+
+## The backtest / live-account gap
+
+A backtest is you at 100% discipline. Your live account is you with fear, boredom, revenge and fatigue. That gap has a cost, and it's almost always bigger than you think. The good news: it can be measured.
+
+## The four leaks that cost you the most
+
+1. **Revenge trading.** You re-enter within minutes of a loss, often bigger. It's the most expensive and most repeated leak.
+2. **FOMO entries.** You enter off-plan because "it's leaving without me". No setup, no checklist, just fear of missing out.
+3. **Oversizing after a loss.** You bump the lot to "win it back". One time is enough to erase ten good trades.
+4. **Trading your worst hour.** Most traders have a time window where they lose systematically. They don't know it, because nobody showed them.
+
+## Why you don't see it
+
+A classic journal (Excel, Notion) records facts: entry, exit, P&L. It doesn't tell you how much revenge trading cost you this month, or where your account would be if you had followed your plan. You can't fix what you don't measure.
+
+## Price the gap, and it closes
+
+The only thing that truly changes behavior is seeing its price. "Revenge trading cost you €480 this month" lands harder than "be more disciplined". That's exactly what TradeDiscipline's diagnostic does: it crosses your behavior with your real P&L, prices every bad habit in euros, and draws the curve your account would have followed if you had stuck to your plan.
+
+Your technique is probably already good enough. It's the execution that costs you. [Finally see why you lose](/login), free, no credit card.`,
+      },
+      de: {
+        title: "Warum du beim Trading verlierst, obwohl deine Strategie gut ist",
+        excerpt:
+          "Dein Backtest ist grün, dein Live-Konto rot. Die Lücke ist nicht technisch, sondern verhaltensbedingt, und sie hat einen Preis in Euro. So siehst du ihn.",
+        body: `Du kennst deine Setups. Dein Backtest ist profitabel. Und trotzdem blutet dein Live-Konto Monat für Monat. Wenn dir das bekannt vorkommt, liegt das Problem fast nie an deiner Technik: Es ist die Lücke zwischen dem Plan, den du hast, und dem Plan, den du befolgst.
+
+## Die Lücke zwischen Backtest und Live-Konto
+
+Ein Backtest bist du bei 100 % Disziplin. Dein Live-Konto bist du mit Angst, Langeweile, Rache und Müdigkeit. Diese Lücke kostet, und fast immer mehr, als du denkst. Die gute Nachricht: Sie lässt sich messen.
+
+## Die vier Lecks, die dich am meisten kosten
+
+1. **Revenge-Trading.** Du steigst Minuten nach einem Verlust wieder ein, oft größer. Das teuerste und häufigste Leck.
+2. **FOMO-Einstiege.** Du steigst planlos ein, weil „es ohne dich losläuft". Kein Setup, keine Checkliste, nur die Angst, etwas zu verpassen.
+3. **Größere Position nach einem Verlust.** Du erhöhst das Lot, um es „zurückzuholen". Ein Mal reicht, um zehn gute Trades auszulöschen.
+4. **Deine schlechteste Stunde traden.** Die meisten Trader haben ein Zeitfenster, in dem sie systematisch verlieren. Sie wissen es nicht, weil es ihnen niemand gezeigt hat.
+
+## Warum du es nicht siehst
+
+Ein klassisches Journal (Excel, Notion) erfasst Fakten: Einstieg, Ausstieg, P&L. Es sagt dir nicht, wie viel dich Revenge-Trading diesen Monat gekostet hat oder wo dein Konto bei Planbefolgung stünde. Du kannst nicht korrigieren, was du nicht misst.
+
+## Beziffere die Lücke, und sie schließt sich
+
+Das Einzige, was Verhalten wirklich ändert, ist, seinen Preis zu sehen. „Revenge-Trading hat dich diesen Monat 480 € gekostet" trifft härter als „sei disziplinierter". Genau das macht das Diagnose-Tool von TradeDiscipline: Es verknüpft dein Verhalten mit deinem echten P&L, beziffert jede schlechte Gewohnheit in Euro und zeichnet die Kurve, die dein Konto bei Planbefolgung gehabt hätte.
+
+Deine Technik ist wahrscheinlich schon gut genug. Es ist die Ausführung, die dich kostet. [Sieh endlich, warum du verlierst](/login), kostenlos, ohne Kreditkarte.`,
+      },
+      es: {
+        title: "Por qué sigues perdiendo en trading aunque tu estrategia sea buena",
+        excerpt:
+          "Tu backtest está en verde, tu cuenta real en rojo. La diferencia no es técnica, es de comportamiento, y tiene un precio en euros. Así la ves.",
+        body: `Conoces tus setups. Tu backtest es rentable. Y aun así, mes tras mes, tu cuenta real sangra. Si te suena, el problema casi nunca es tu técnica: es la diferencia entre el plan que tienes y el plan que sigues.
+
+## La diferencia backtest / cuenta real
+
+Un backtest eres tú con un 100 % de disciplina. Tu cuenta real eres tú con miedo, aburrimiento, revancha y cansancio. Esa diferencia cuesta, y casi siempre más de lo que crees. La buena noticia: se puede medir.
+
+## Las cuatro fugas que más te cuestan
+
+1. **Revenge trading.** Vuelves a entrar minutos después de una pérdida, a menudo más grande. La fuga más cara y más repetida.
+2. **Entradas FOMO.** Entras fuera del plan porque "se va sin ti". Sin setup, sin checklist, solo el miedo a perdértelo.
+3. **Aumentar el tamaño tras una pérdida.** Subes el lote para "recuperarte". Una sola vez basta para borrar diez buenos trades.
+4. **Operar tu peor hora.** La mayoría de traders tienen una franja horaria en la que pierden sistemáticamente. No lo saben, porque nadie se lo ha mostrado.
+
+## Por qué no lo ves
+
+Un diario clásico (Excel, Notion) registra hechos: entrada, salida, P&L. No te dice cuánto te costó el revenge trading este mes, ni dónde estaría tu cuenta si hubieras seguido tu plan. No puedes corregir lo que no mides.
+
+## Cuantifica la diferencia, y se cierra
+
+Lo único que cambia de verdad un comportamiento es ver su precio. "El revenge trading te costó 480 € este mes" golpea más fuerte que "sé más disciplinado". Es justo lo que hace el diagnóstico de TradeDiscipline: cruza tu comportamiento con tu P&L real, cuantifica cada mala costumbre en euros, y traza la curva que tu cuenta habría seguido si hubieras respetado tu plan.
+
+Tu técnica probablemente ya es suficientemente buena. Es la ejecución lo que te cuesta. [Ve por fin por qué pierdes](/login), gratis, sin tarjeta.`,
+      },
+    },
+  },
+  {
+    slug: "pass-prop-firm-challenge",
+    date: "2026-07-16",
+    readingMinutes: 5,
+    cover: "prop",
+    content: {
+      fr: {
+        title: "Réussir ton challenge prop firm sans cramer ton compte",
+        excerpt:
+          "La plupart des challenges se perdent en une seule journée, pas à cause de la stratégie. Voici les trois pièges qui te font sauter et comment t'en protéger.",
+        body: `Tu peux avoir un edge parfaitement valable et rater ton challenge prop firm quand même. Parce qu'un challenge ne se gagne pas seulement en étant bon : il se perd en une seule mauvaise journée. Les règles qui te tuent ne sont pas tes setups, ce sont la perte journalière max et le drawdown total.
+
+## Le calcul que la plupart ignorent
+
+Prends un compte de 50 000 € avec 5 % de perte journalière max : ça fait 2 500 € par jour, pas un de plus. Deux trades revanche surdimensionnés après une perte, et tu es éliminé, même si ton edge est bon sur le mois. Le challenge ne teste pas ta capacité à gagner : il teste ta capacité à ne pas exploser un jour.
+
+## Les trois tueurs de challenge
+
+1. **Dépasser la perte journalière.** Le compteur repart à zéro chaque jour. Une seule journée où tu ne t'arrêtes pas, et c'est fini, quel que soit ton mois.
+2. **Grossir après une perte.** Le lot fixe te protège ; le lot « pour me refaire » te fait sauter le seuil de drawdown d'un coup.
+3. **Continuer après ton point d'arrêt.** Tu t'étais dit « stop à -2 %». À -2 %, tu prends « juste un dernier trade ». C'est celui-là qui te sort.
+
+## Comment te protéger
+
+Trois garde-fous, dans cet ordre :
+
+- **Une perte journalière que tu respectes vraiment.** Décidée à froid, avant la session, pas dans le feu de l'action.
+- **Un lot calé sur ton drawdown restant, pas fixe.** Quand tu approches du seuil, la taille doit baisser toute seule, pas monter.
+- **Une alerte avant de cliquer, pas un constat après.** Le mal est fait quand tu lis ton rapport le soir. Il faut être prévenu pendant la session.
+
+## Le gardien qui veille pour toi
+
+C'est exactement le rôle du Gardien de challenge de TradeDiscipline (plan Premium) : il suit ta perte journalière, ton drawdown total et le trailing en temps réel, et t'alerte avant que tu franchisses une limite, pas après. Le calculateur de position plafonne aussi ton lot en fonction du drawdown qu'il te reste. Ton edge fait le reste.
+
+Commence gratuitement pour poser ta stratégie et journaliser, puis passe Premium quand tu attaques un compte financé : [essaie ici](/login).`,
+      },
+      en: {
+        title: "How to pass a prop firm challenge without blowing your account",
+        excerpt:
+          "Most challenges are lost in a single day, not because of strategy. Here are the three traps that blow you up, and how to protect yourself.",
+        body: `You can have a perfectly valid edge and still fail your prop firm challenge. Because a challenge isn't won only by being good: it's lost in a single bad day. The rules that kill you aren't your setups, they're the max daily loss and the total drawdown.
+
+## The math most people ignore
+
+Take a €50,000 account with a 5% max daily loss: that's €2,500 a day, not one more. Two oversized revenge trades after a loss, and you're out, even if your edge is good over the month. The challenge doesn't test your ability to win: it tests your ability not to blow up on any given day.
+
+## The three challenge killers
+
+1. **Breaching the daily loss.** The counter resets every day. One day where you don't stop, and it's over, whatever your month looks like.
+2. **Sizing up after a loss.** A fixed lot protects you; the "win it back" lot blows through your drawdown threshold in one shot.
+3. **Trading past your stop point.** You told yourself "stop at -2%". At -2%, you take "just one last trade". That's the one that ends you.
+
+## How to protect yourself
+
+Three guardrails, in this order:
+
+- **A daily loss you actually respect.** Decided cold, before the session, not in the heat of the moment.
+- **A lot sized to your remaining drawdown, not fixed.** As you approach the threshold, size should drop on its own, not climb.
+- **An alert before you click, not a report after.** The damage is done by the time you read your evening report. You need to be warned during the session.
+
+## The guardian that watches for you
+
+That's exactly the job of TradeDiscipline's Challenge Guardian (Premium plan): it tracks your daily loss, total drawdown and trailing in real time, and alerts you before you cross a limit, not after. The position calculator also caps your lot based on the drawdown you have left. Your edge does the rest.
+
+Start free to lay out your strategy and journal, then go Premium when you take on a funded account: [try it here](/login).`,
+      },
+      de: {
+        title: "Wie du deine Prop-Firm-Challenge bestehst, ohne dein Konto zu sprengen",
+        excerpt:
+          "Die meisten Challenges gehen an einem einzigen Tag verloren, nicht wegen der Strategie. Hier sind die drei Fallen, die dich sprengen, und wie du dich schützt.",
+        body: `Du kannst einen völlig validen Edge haben und deine Prop-Firm-Challenge trotzdem nicht bestehen. Denn eine Challenge gewinnst du nicht nur, indem du gut bist: Du verlierst sie an einem einzigen schlechten Tag. Die Regeln, die dich killen, sind nicht deine Setups, sondern der maximale Tagesverlust und der Gesamt-Drawdown.
+
+## Die Rechnung, die die meisten ignorieren
+
+Nimm ein 50.000-€-Konto mit 5 % maximalem Tagesverlust: Das sind 2.500 € pro Tag, keinen mehr. Zwei überdimensionierte Revenge-Trades nach einem Verlust, und du bist raus, selbst wenn dein Edge über den Monat gut ist. Die Challenge testet nicht, ob du gewinnen kannst: Sie testet, ob du an keinem Tag explodierst.
+
+## Die drei Challenge-Killer
+
+1. **Den Tagesverlust reißen.** Der Zähler startet jeden Tag bei null. Ein Tag, an dem du nicht aufhörst, und es ist vorbei, egal wie dein Monat aussieht.
+2. **Nach einem Verlust größer werden.** Ein festes Lot schützt dich; das „Zurückholen"-Lot durchbricht deine Drawdown-Schwelle auf einen Schlag.
+3. **Über deinen Stop-Punkt hinaus traden.** Du hattest dir „Stopp bei -2 %" gesagt. Bei -2 % nimmst du „nur einen letzten Trade". Genau der beendet dich.
+
+## Wie du dich schützt
+
+Drei Leitplanken, in dieser Reihenfolge:
+
+- **Ein Tagesverlust, den du wirklich einhältst.** Kalt entschieden, vor der Session, nicht im Eifer des Gefechts.
+- **Ein Lot nach deinem verbleibenden Drawdown, nicht fest.** Näherst du dich der Schwelle, soll die Größe von selbst sinken, nicht steigen.
+- **Eine Warnung, bevor du klickst, kein Bericht danach.** Der Schaden ist angerichtet, wenn du abends deinen Bericht liest. Du musst während der Session gewarnt werden.
+
+## Der Wächter, der für dich aufpasst
+
+Genau das ist die Aufgabe des Challenge-Wächters von TradeDiscipline (Premium-Plan): Er verfolgt deinen Tagesverlust, Gesamt-Drawdown und Trailing in Echtzeit und warnt dich, bevor du ein Limit überschreitest, nicht danach. Der Positionsrechner deckelt dein Lot zudem anhand des verbleibenden Drawdowns. Deinen Edge erledigt den Rest.
+
+Starte kostenlos, um deine Strategie festzulegen und zu journalisieren, und wechsle zu Premium, wenn du ein finanziertes Konto angehst: [hier testen](/login).`,
+      },
+      es: {
+        title: "Cómo superar tu challenge de prop firm sin reventar la cuenta",
+        excerpt:
+          "La mayoría de los challenges se pierden en un solo día, no por la estrategia. Aquí tienes las tres trampas que te revientan y cómo protegerte.",
+        body: `Puedes tener un edge perfectamente válido y aun así no pasar tu challenge de prop firm. Porque un challenge no se gana solo siendo bueno: se pierde en un solo mal día. Las reglas que te matan no son tus setups, son la pérdida diaria máxima y el drawdown total.
+
+## La cuenta que la mayoría ignora
+
+Toma una cuenta de 50.000 € con un 5 % de pérdida diaria máxima: son 2.500 € al día, ni uno más. Dos trades de revancha sobredimensionados tras una pérdida, y estás fuera, aunque tu edge sea bueno en el mes. El challenge no prueba tu capacidad de ganar: prueba tu capacidad de no explotar ningún día.
+
+## Los tres asesinos de challenges
+
+1. **Superar la pérdida diaria.** El contador vuelve a cero cada día. Un solo día en el que no paras, y se acabó, sin importar tu mes.
+2. **Aumentar el tamaño tras una pérdida.** El lote fijo te protege; el lote "para recuperarme" revienta tu umbral de drawdown de golpe.
+3. **Seguir tras tu punto de parada.** Te habías dicho "stop en -2 %". En -2 %, tomas "solo un último trade". Ese es el que te saca.
+
+## Cómo protegerte
+
+Tres barreras, en este orden:
+
+- **Una pérdida diaria que respetes de verdad.** Decidida en frío, antes de la sesión, no en el calor del momento.
+- **Un lote ajustado a tu drawdown restante, no fijo.** Al acercarte al umbral, el tamaño debe bajar solo, no subir.
+- **Una alerta antes de hacer clic, no un informe después.** El daño ya está hecho cuando lees tu informe por la noche. Necesitas que te avisen durante la sesión.
+
+## El guardián que vigila por ti
+
+Es justo el papel del Guardián de challenge de TradeDiscipline (plan Premium): sigue tu pérdida diaria, tu drawdown total y el trailing en tiempo real, y te avisa antes de que cruces un límite, no después. La calculadora de posición también limita tu lote según el drawdown que te queda. Tu edge hace el resto.
+
+Empieza gratis para definir tu estrategia y llevar el diario, y pásate a Premium cuando ataques una cuenta financiada: [pruébalo aquí](/login).`,
+      },
+    },
+  },
+  {
     slug: "journal-de-trading-gratuit",
     date: "2026-07-09",
     readingMinutes: 5,
@@ -345,7 +589,7 @@ Un journal complet, c'est plus qu'un confort : c'est la condition pour que le re
 
 ## Par où commencer
 
-La synchronisation automatique est une fonctionnalité Premium (19,99 €/mois). Mais commence gratuit : journal complet, import CSV quotidien et 1 analyse IA découverte, sans carte bancaire. Si l'analyse te fait progresser, l'automatisation sera une évidence : [essaie](/login).`,
+La synchronisation automatique est une fonctionnalité Premium (29,99 €/mois). Mais commence gratuit : journal complet, import CSV quotidien et 1 analyse IA découverte, sans carte bancaire. Si l'analyse te fait progresser, l'automatisation sera une évidence : [essaie](/login).`,
       },
       en: {
         title: "An automatic trading journal for MT4/MT5: your trades log themselves",
@@ -383,7 +627,7 @@ A complete journal is more than convenience: it's the precondition for everythin
 
 ## Where to start
 
-Automatic sync is a Premium feature (€19.99/month). But start free: full journal, daily CSV import and 1 discovery AI analysis, no credit card. If the analysis moves you forward, automation will be an obvious next step: [try it](/login).`,
+Automatic sync is a Premium feature (€29.99/month). But start free: full journal, daily CSV import and 1 discovery AI analysis, no credit card. If the analysis moves you forward, automation will be an obvious next step: [try it](/login).`,
       },
       de: {
         title: "Automatisches Trading-Journal für MT4/MT5: deine Trades erfassen sich selbst",
@@ -421,7 +665,7 @@ Ein vollständiges Journal ist mehr als Komfort: es ist die Voraussetzung für a
 
 ## Womit anfangen
 
-Die automatische Synchronisation ist ein Premium-Feature (19,99 €/Monat). Aber starte kostenlos: komplettes Journal, täglicher CSV-Import und 1 KI-Entdeckungs-Analyse, ohne Kreditkarte. Wenn dich die Analyse voranbringt, ist die Automatisierung der logische nächste Schritt: [probiere es](/login).`,
+Die automatische Synchronisation ist ein Premium-Feature (29,99 €/Monat). Aber starte kostenlos: komplettes Journal, täglicher CSV-Import und 1 KI-Entdeckungs-Analyse, ohne Kreditkarte. Wenn dich die Analyse voranbringt, ist die Automatisierung der logische nächste Schritt: [probiere es](/login).`,
       },
       es: {
         title: "Diario de trading automático para MT4/MT5: tus trades se registran solos",
@@ -459,7 +703,7 @@ Un diario completo es más que comodidad: es la condición para que todo lo dem�
 
 ## Por dónde empezar
 
-La sincronización automática es una función Premium (19,99 €/mes). Pero empieza gratis: diario completo, importación CSV diaria y 1 análisis IA de descubrimiento, sin tarjeta. Si el análisis te hace avanzar, la automatización será el paso evidente: [pruébalo](/login).`,
+La sincronización automática es una función Premium (29,99 €/mes). Pero empieza gratis: diario completo, importación CSV diaria y 1 análisis IA de descubrimiento, sin tarjeta. Si el análisis te hace avanzar, la automatización será el paso evidente: [pruébalo](/login).`,
       },
     },
   },
@@ -481,7 +725,7 @@ La sincronización automática es una función Premium (19,99 €/mes). Pero emp
 
 | | TradeDiscipline | FocusPips |
 |---|---|---|
-| Price | Plus €9.99/mo · Premium €19.99/mo (€179.88/yr) | Basic free · Premium €290/yr (~€24.17/mo) |
+| Price | Plus €14.99/mo · Premium €29.99/mo (€269.90/yr) | Basic free · Premium €290/yr (~€24.17/mo) |
 | AI coach | ✓ chat with **long-term memory** of your commitments | ✓ Atlas chat (5 questions free, unlimited Premium) |
 | Cost of mistakes in € | ✓ automatic capital-leaks block on the dashboard | via questions to the AI chat |
 | "What if I'd followed my plan?" | ✓ counterfactual discipline curve | — |
@@ -502,14 +746,13 @@ If **candle-by-candle backtesting and trade replay** are central to your process
 - **The mistake report comes to you.** Capital leaks are computed automatically and displayed on your dashboard in euros, with the counterfactual curve showing where your account would be with your plan followed. No need to ask the right question to a chatbot.
 - **A coach with memory.** Our AI remembers what you committed to last session and tells you when you break it. A conversation, not a Q&A.
 - **Real-time protection.** Stop-trading guards, prop-firm challenge limits, tilt push alerts: during the session, not after.
-- **Price.** Unlimited AI coaching costs €179.88/year here versus €290/year there: 38% less.
 - **Four languages and a community** (leaderboard, community challenges, streaks) if consistency motivates you socially.
 
 ## Which one is for you?
 
 Choose **FocusPips** if replay and candle-by-candle backtesting are the core of your routine.
 
-Choose **TradeDiscipline** if you want your discipline priced in euros automatically, a coach that remembers, and guardrails that act in real time, at a lower price. [Try it free](/login).`,
+Choose **TradeDiscipline** if you want your discipline priced in euros automatically, a coach that remembers, and guardrails that act in real time, all in four languages. [Try it free](/login).`,
       },
       fr: {
         title: "TradeDiscipline vs FocusPips : deux journaux de trading IA français comparés (2026)",
@@ -523,7 +766,7 @@ Choose **TradeDiscipline** if you want your discipline priced in euros automatic
 
 | | TradeDiscipline | FocusPips |
 |---|---|---|
-| Prix | Plus 9,99 €/mois · Premium 19,99 €/mois (179,88 €/an) | Basic gratuit · Premium 290 €/an (~24,17 €/mois) |
+| Prix | Plus 14,99 €/mois · Premium 29,99 €/mois (269,90 €/an) | Basic gratuit · Premium 290 €/an (~24,17 €/mois) |
 | Coach IA | ✓ chat avec **mémoire longue durée** de tes engagements | ✓ chat Atlas (5 questions en gratuit, illimité en Premium) |
 | Coût des erreurs en € | ✓ bloc fuites de capital automatique sur le dashboard | via questions au chat IA |
 | « Et si j'avais respecté mon plan ? » | ✓ courbe de discipline contrefactuelle | — |
@@ -544,14 +787,13 @@ Si le **backtest bougie par bougie et le trade replay** sont au cœur de ton pro
 - **Le rapport d'erreurs vient à toi.** Les fuites de capital sont calculées automatiquement et affichées en euros sur ton dashboard, avec la courbe contrefactuelle qui montre où serait ton compte si tu avais respecté ton plan. Pas besoin de poser la bonne question à un chatbot.
 - **Un coach avec mémoire.** Notre IA se souvient de ce que tu t'étais engagé à corriger la session dernière et te le dit quand tu récidives. Une conversation, pas un Q&R.
 - **De la protection en temps réel.** Garde-fous stop-trading, limites de challenge prop firm, alertes push tilt : pendant la session, pas après.
-- **Le prix.** Le coaching IA illimité coûte 179,88 €/an chez nous contre 290 €/an : 38 % de moins.
 - **Quatre langues et une communauté** (classement, défis communautaires, séries) si la régularité te motive aussi socialement.
 
 ## Lequel est fait pour toi ?
 
 Choisis **FocusPips** si le replay et le backtest bougie par bougie sont le cœur de ta routine.
 
-Choisis **TradeDiscipline** si tu veux ta discipline chiffrée en euros automatiquement, un coach qui se souvient, et des garde-fous qui agissent en temps réel, pour moins cher. [Essaie gratuitement](/login).`,
+Choisis **TradeDiscipline** si tu veux ta discipline chiffrée en euros automatiquement, un coach qui se souvient, et des garde-fous qui agissent en temps réel, dans quatre langues. [Essaie gratuitement](/login).`,
       },
       de: {
         title: "TradeDiscipline vs. FocusPips: zwei französische KI-Trading-Journals im Vergleich (2026)",
@@ -565,7 +807,7 @@ Choisis **TradeDiscipline** si tu veux ta discipline chiffrée en euros automati
 
 | | TradeDiscipline | FocusPips |
 |---|---|---|
-| Preis | Plus 9,99 €/Monat · Premium 19,99 €/Monat (179,88 €/Jahr) | Basic gratis · Premium 290 €/Jahr (~24,17 €/Monat) |
+| Preis | Plus 14,99 €/Monat · Premium 29,99 €/Monat (269,90 €/Jahr) | Basic gratis · Premium 290 €/Jahr (~24,17 €/Monat) |
 | KI-Coach | ✓ Chat mit **Langzeitgedächtnis** deiner Vorsätze | ✓ Atlas-Chat (5 Fragen gratis, unbegrenzt Premium) |
 | Fehlerkosten in € | ✓ automatischer Kapitalleck-Block im Dashboard | über Fragen an den KI-Chat |
 | „Was wäre bei Planbefolgung?" | ✓ kontrafaktische Disziplin-Kurve | — |
@@ -586,14 +828,13 @@ Wenn **Kerze-für-Kerze-Backtesting und Trade Replay** zentral für deinen Proze
 - **Der Fehlerbericht kommt zu dir.** Kapitallecks werden automatisch berechnet und in Euro im Dashboard angezeigt, samt kontrafaktischer Kurve. Du musst keinem Chatbot die richtige Frage stellen.
 - **Ein Coach mit Gedächtnis.** Unsere KI erinnert sich an deine Vorsätze und meldet Rückfälle.
 - **Echtzeit-Schutz.** Stop-Trading-Wächter, Prop-Firm-Limits, Tilt-Push: während der Session, nicht danach.
-- **Der Preis.** Unbegrenztes KI-Coaching kostet hier 179,88 €/Jahr gegenüber 290 €/Jahr: 38 % weniger.
 - **Vier Sprachen und Community** (Rangliste, Challenges, Serien): FocusPips ist nur auf Französisch verfügbar.
 
 ## Was passt zu dir?
 
 Wähle **FocusPips**, wenn Replay und Kerzen-Backtesting das Herz deiner Routine sind (und du Französisch sprichst).
 
-Wähle **TradeDiscipline** für automatisch bezifferte Disziplin, einen Coach mit Gedächtnis und Echtzeit-Leitplanken, zum niedrigeren Preis. [Kostenlos testen](/login).`,
+Wähle **TradeDiscipline** für automatisch bezifferte Disziplin, einen Coach mit Gedächtnis und Echtzeit-Leitplanken, in vier Sprachen. [Kostenlos testen](/login).`,
       },
       es: {
         title: "TradeDiscipline vs FocusPips: dos diarios de trading IA franceses comparados (2026)",
@@ -607,7 +848,7 @@ Wähle **TradeDiscipline** für automatisch bezifferte Disziplin, einen Coach mi
 
 | | TradeDiscipline | FocusPips |
 |---|---|---|
-| Precio | Plus 9,99 €/mes · Premium 19,99 €/mes (179,88 €/año) | Basic gratis · Premium 290 €/año (~24,17 €/mes) |
+| Precio | Plus 14,99 €/mes · Premium 29,99 €/mes (269,90 €/año) | Basic gratis · Premium 290 €/año (~24,17 €/mes) |
 | Coach IA | ✓ chat con **memoria a largo plazo** de tus compromisos | ✓ chat Atlas (5 preguntas gratis, ilimitado Premium) |
 | Coste de errores en € | ✓ bloque de fugas de capital automático en el dashboard | vía preguntas al chat IA |
 | «¿Y si hubiera seguido mi plan?» | ✓ curva de disciplina contrafactual | — |
@@ -628,14 +869,13 @@ Si el **backtesting vela a vela y el trade replay** son el centro de tu proceso,
 - **El informe de errores viene a ti.** Las fugas de capital se calculan automáticamente y se muestran en euros en tu dashboard, con la curva contrafactual. Sin necesidad de hacerle la pregunta correcta a un chatbot.
 - **Un coach con memoria.** Nuestra IA recuerda tus compromisos y te señala las recaídas.
 - **Protección en tiempo real.** Guardias stop-trading, límites de prop firm, push de tilt: durante la sesión, no después.
-- **El precio.** El coaching IA ilimitado cuesta aquí 179,88 €/año frente a 290 €/año: un 38 % menos.
 - **Cuatro idiomas y comunidad** (ranking, retos, rachas): FocusPips solo está en francés.
 
 ## ¿Cuál es para ti?
 
 Elige **FocusPips** si el replay y el backtesting vela a vela son el corazón de tu rutina (y hablas francés).
 
-Elige **TradeDiscipline** para una disciplina cuantificada automáticamente, un coach que recuerda y barreras en tiempo real, a menor precio. [Pruébalo gratis](/login).`,
+Elige **TradeDiscipline** para una disciplina cuantificada automáticamente, un coach que recuerda y barreras en tiempo real, en cuatro idiomas. [Pruébalo gratis](/login).`,
       },
     },
   },
@@ -649,7 +889,7 @@ Elige **TradeDiscipline** para una disciplina cuantificada automáticamente, un 
         title: "TradeDiscipline vs Edgewonk: psychology journal vs discipline coach (2026)",
         excerpt:
           "Both take trading psychology seriously. One analyzes it, the other quantifies it in euros and intervenes in real time. An honest comparison.",
-        body: `Edgewonk is the reference for psychology-focused traders, and at $197/year all-inclusive it's the cheapest premium journal on the market. If you're comparing it with TradeDiscipline, you're already asking the right question: both products believe your P&L problem is a behavior problem. Here's where they differ.
+        body: `Edgewonk is the reference for psychology-focused traders, and at $197/year all-inclusive it's one of the most affordable premium journals. If you're comparing it with TradeDiscipline, you're already asking the right question: both products believe your P&L problem is a behavior problem. Here's where they differ.
 
 *Prices and features as observed in July 2026 on each product's public website.*
 
@@ -657,7 +897,7 @@ Elige **TradeDiscipline** para una disciplina cuantificada automáticamente, un 
 
 | | TradeDiscipline | Edgewonk |
 |---|---|---|
-| Price | €9.99/month (Plus), free tier | $197/year, one plan |
+| Price | €14.99/month (Plus), free tier | $197/year, one plan |
 | Emotional tracking | ✓ per-trade emotions + edge by emotion | ✓ Tiltmeter |
 | Cost of mistakes in € | ✓ capital leaks, quantified per habit | — (patterns shown, not priced) |
 | AI analysis | ✓ daily, against your written strategy | Edge Finder AI: weekly report |
@@ -691,7 +931,7 @@ Choose **TradeDiscipline** if you want the psychology work done *for* you: quant
         title: "TradeDiscipline vs Edgewonk : journal psycho vs coach de discipline (2026)",
         excerpt:
           "Les deux prennent la psychologie du trading au sérieux. L'un l'analyse, l'autre la chiffre en euros et intervient en temps réel. Comparatif honnête.",
-        body: `Edgewonk est la référence des traders orientés psychologie, et à 197 $/an tout compris, c'est le journal premium le moins cher du marché. Si tu le compares à TradeDiscipline, tu poses déjà la bonne question : les deux produits considèrent que ton problème de P&L est un problème de comportement. Voici où ils divergent.
+        body: `Edgewonk est la référence des traders orientés psychologie, et à 197 $/an tout compris, c'est l'un des journaux premium les plus abordables. Si tu le compares à TradeDiscipline, tu poses déjà la bonne question : les deux produits considèrent que ton problème de P&L est un problème de comportement. Voici où ils divergent.
 
 *Prix et fonctionnalités constatés en juillet 2026 sur les sites publics des deux produits.*
 
@@ -699,7 +939,7 @@ Choose **TradeDiscipline** if you want the psychology work done *for* you: quant
 
 | | TradeDiscipline | Edgewonk |
 |---|---|---|
-| Prix | 9,99 €/mois (Plus), plan gratuit | 197 $/an, plan unique |
+| Prix | 14,99 €/mois (Plus), plan gratuit | 197 $/an, plan unique |
 | Suivi émotionnel | ✓ émotion par trade + edge par émotion | ✓ Tiltmeter |
 | Coût des erreurs en € | ✓ fuites de capital chiffrées par habitude | — (patterns décrits, pas chiffrés) |
 | Analyse IA | ✓ quotidienne, face à ta stratégie écrite | Edge Finder AI : rapport hebdo |
@@ -733,7 +973,7 @@ Choisis **TradeDiscipline** si tu veux que le travail psychologique soit fait *p
         title: "TradeDiscipline vs. Edgewonk: Psycho-Journal vs. Disziplin-Coach (2026)",
         excerpt:
           "Beide nehmen Trading-Psychologie ernst. Das eine analysiert sie, das andere beziffert sie in Euro und greift in Echtzeit ein. Ein ehrlicher Vergleich.",
-        body: `Edgewonk ist die Referenz für psychologie-orientierte Trader, und mit 197 $/Jahr all-inclusive das günstigste Premium-Journal am Markt. Wer es mit TradeDiscipline vergleicht, stellt bereits die richtige Frage: Beide Produkte sehen dein P&L-Problem als Verhaltensproblem. Hier die Unterschiede.
+        body: `Edgewonk ist die Referenz für psychologie-orientierte Trader, und mit 197 $/Jahr all-inclusive eines der günstigsten Premium-Journals am Markt. Wer es mit TradeDiscipline vergleicht, stellt bereits die richtige Frage: Beide Produkte sehen dein P&L-Problem als Verhaltensproblem. Hier die Unterschiede.
 
 *Preise und Funktionen: Stand Juli 2026, laut den öffentlichen Websites beider Produkte.*
 
@@ -741,7 +981,7 @@ Choisis **TradeDiscipline** si tu veux que le travail psychologique soit fait *p
 
 | | TradeDiscipline | Edgewonk |
 |---|---|---|
-| Preis | 9,99 €/Monat (Plus), Gratis-Plan | 197 $/Jahr, ein Plan |
+| Preis | 14,99 €/Monat (Plus), Gratis-Plan | 197 $/Jahr, ein Plan |
 | Emotions-Tracking | ✓ Emotion pro Trade + Edge pro Emotion | ✓ Tiltmeter |
 | Fehlerkosten in € | ✓ Kapitallecks pro Gewohnheit beziffert | — (Muster beschrieben, nicht bepreist) |
 | KI-Analyse | ✓ täglich, gegen deine schriftliche Strategie | Edge Finder AI: Wochenbericht |
@@ -775,7 +1015,7 @@ Wähle **TradeDiscipline**, wenn die Psychologie-Arbeit *für dich* erledigt wer
         title: "TradeDiscipline vs Edgewonk: diario psicológico vs coach de disciplina (2026)",
         excerpt:
           "Ambos se toman en serio la psicología del trading. Uno la analiza, el otro la cuantifica en euros e interviene en tiempo real. Comparativa honesta.",
-        body: `Edgewonk es la referencia para traders centrados en la psicología, y a 197 $/año todo incluido es el diario premium más barato del mercado. Si lo comparas con TradeDiscipline, ya te haces la pregunta correcta: ambos productos consideran que tu problema de P&L es un problema de comportamiento. Aquí sus diferencias.
+        body: `Edgewonk es la referencia para traders centrados en la psicología, y a 197 $/año todo incluido es uno de los diarios premium más asequibles. Si lo comparas con TradeDiscipline, ya te haces la pregunta correcta: ambos productos consideran que tu problema de P&L es un problema de comportamiento. Aquí sus diferencias.
 
 *Precios y funciones observados en julio de 2026 en las webs públicas de ambos productos.*
 
@@ -783,7 +1023,7 @@ Wähle **TradeDiscipline**, wenn die Psychologie-Arbeit *für dich* erledigt wer
 
 | | TradeDiscipline | Edgewonk |
 |---|---|---|
-| Precio | 9,99 €/mes (Plus), plan gratuito | 197 $/año, plan único |
+| Precio | 14,99 €/mes (Plus), plan gratuito | 197 $/año, plan único |
 | Seguimiento emocional | ✓ emoción por trade + edge por emoción | ✓ Tiltmeter |
 | Coste de errores en € | ✓ fugas de capital cuantificadas | — (patrones descritos, sin precio) |
 | Análisis IA | ✓ diario, contra tu estrategia escrita | Edge Finder AI: informe semanal |
@@ -833,7 +1073,7 @@ Elige **TradeDiscipline** si quieres que el trabajo psicológico se haga *por* t
 
 | | TradeDiscipline | TradeZella |
 |---|---|---|
-| Price (monthly) | €9.99 (Plus) / €19.99 (Premium) | $29 (Basic) / $49 (Premium) |
+| Price (monthly) | €14.99 (Plus) / €29.99 (Premium) | $29 (Basic) / $49 (Premium) |
 | AI trade analysis | ✓ against **your** written strategy | ✓ per-trade, always-on |
 | AI coach with long-term memory | ✓ remembers your commitments across sessions | — |
 | Cost of your mistakes in € | ✓ capital leaks, quantified per habit | — |
@@ -856,7 +1096,7 @@ Let's be fair. If you spend your evenings **backtesting strategies against histo
 - **Your mistakes, in euros.** The capital-leaks block crosses your behavior (revenge trading, FOMO entries, oversized positions after a loss, your worst hour) with your real P&L and tells you what each habit cost you, plus a counterfactual curve showing where your account would be if you had followed your plan.
 - **A coach that remembers.** Every AI journal answers questions about your data. TradeDiscipline's coach keeps a longitudinal memory: it knows what you committed to last week and tells you when you broke it. That's what a real coach does.
 - **Intervention, not autopsy.** Stop-trading guards, prop-firm challenge limits and tilt alerts act *while you trade*, not in a report you read after the damage.
-- **A third of the price.** €9.99/month versus $29/month for the entry plan, with a genuinely useful free tier.
+- **Nearly half the price.** €14.99/month versus $29/month for the entry plan, with a genuinely useful free tier.
 
 ## Which one is for you?
 
@@ -878,7 +1118,7 @@ You can [try TradeDiscipline for free](/login), no credit card, with demo data a
 
 | | TradeDiscipline | TradeZella |
 |---|---|---|
-| Prix (mensuel) | 9,99 € (Plus) / 19,99 € (Premium) | 29 $ (Basic) / 49 $ (Premium) |
+| Prix (mensuel) | 14,99 € (Plus) / 29,99 € (Premium) | 29 $ (Basic) / 49 $ (Premium) |
 | Analyse IA des trades | ✓ face à **ta** stratégie écrite | ✓ par trade, en continu |
 | Coach IA avec mémoire longue durée | ✓ se souvient de tes engagements | — |
 | Coût de tes erreurs en € | ✓ fuites de capital chiffrées par habitude | — |
@@ -901,7 +1141,7 @@ Soyons justes. Si tu passes tes soirées à **backtester des stratégies sur des
 - **Tes erreurs, en euros.** Le bloc fuites de capital croise ton comportement (revenge trading, entrées FOMO, taille gonflée après une perte, ta pire heure) avec ton P&L réel et te dit ce que chaque habitude t'a coûté, avec une courbe contrefactuelle qui montre où serait ton compte si tu avais respecté ton plan.
 - **Un coach qui se souvient.** Tous les journaux IA répondent à des questions sur tes données. Le coach de TradeDiscipline garde une mémoire longitudinale : il sait ce que tu t'étais engagé à corriger la semaine dernière et te le dit quand tu récidives. C'est ça, un vrai coach.
 - **De l'intervention, pas de l'autopsie.** Garde-fous stop-trading, limites de challenge prop firm et alertes tilt agissent *pendant* que tu trades, pas dans un rapport lu après les dégâts.
-- **Trois fois moins cher.** 9,99 €/mois contre 29 $/mois pour le plan d'entrée, avec un plan gratuit réellement utile.
+- **Presque deux fois moins cher.** 14,99 €/mois contre 29 $/mois pour le plan d'entrée, avec un plan gratuit réellement utile.
 
 ## Lequel est fait pour toi ?
 
@@ -923,7 +1163,7 @@ Tu peux [essayer TradeDiscipline gratuitement](/login), sans carte bancaire, ave
 
 | | TradeDiscipline | TradeZella |
 |---|---|---|
-| Preis (monatlich) | 9,99 € (Plus) / 19,99 € (Premium) | 29 $ (Basic) / 49 $ (Premium) |
+| Preis (monatlich) | 14,99 € (Plus) / 29,99 € (Premium) | 29 $ (Basic) / 49 $ (Premium) |
 | KI-Trade-Analyse | ✓ gegen **deine** schriftliche Strategie | ✓ pro Trade, always-on |
 | KI-Coach mit Langzeitgedächtnis | ✓ erinnert sich an deine Vorsätze | — |
 | Kosten deiner Fehler in € | ✓ Kapitallecks pro Gewohnheit beziffert | — |
@@ -946,7 +1186,7 @@ Fair bleiben: Wenn du deine Abende mit **Backtesting von Strategien auf historis
 - **Deine Fehler, in Euro.** Der Kapitalleck-Block kreuzt dein Verhalten (Revenge-Trading, FOMO-Einstiege, zu große Positionen nach einem Verlust, deine schlechteste Stunde) mit deinem echten P&L und beziffert, was dich jede Gewohnheit gekostet hat, samt kontrafaktischer Kurve, die zeigt, wo dein Konto stünde, wenn du deinem Plan gefolgt wärst.
 - **Ein Coach, der sich erinnert.** Jedes KI-Journal beantwortet Fragen zu deinen Daten. Der Coach von TradeDiscipline führt ein Langzeitgedächtnis: Er weiß, was du dir letzte Woche vorgenommen hast, und sagt es dir, wenn du rückfällig wirst.
 - **Intervention statt Autopsie.** Stop-Trading-Wächter, Prop-Firm-Limits und Tilt-Alarme greifen ein, *während* du tradest, nicht in einem Bericht nach dem Schaden.
-- **Ein Drittel des Preises.** 9,99 €/Monat gegenüber 29 $/Monat für den Einstiegsplan, plus ein wirklich brauchbarer Gratis-Plan.
+- **Fast halb so teuer.** 14,99 €/Monat gegenüber 29 $/Monat für den Einstiegsplan, plus ein wirklich brauchbarer Gratis-Plan.
 
 ## Welches passt zu dir?
 
@@ -968,7 +1208,7 @@ Du kannst [TradeDiscipline kostenlos testen](/login), ohne Kreditkarte, mit Demo
 
 | | TradeDiscipline | TradeZella |
 |---|---|---|
-| Precio (mensual) | 9,99 € (Plus) / 19,99 € (Premium) | 29 $ (Basic) / 49 $ (Premium) |
+| Precio (mensual) | 14,99 € (Plus) / 29,99 € (Premium) | 29 $ (Basic) / 49 $ (Premium) |
 | Análisis IA de trades | ✓ contra **tu** estrategia escrita | ✓ por trade, siempre activo |
 | Coach IA con memoria a largo plazo | ✓ recuerda tus compromisos | — |
 | Coste de tus errores en € | ✓ fugas de capital cuantificadas por hábito | — |
@@ -991,7 +1231,7 @@ Seamos justos. Si pasas las tardes **backtesteando estrategias sobre datos hist�
 - **Tus errores, en euros.** El bloque de fugas de capital cruza tu comportamiento (revenge trading, entradas FOMO, tamaño inflado tras una pérdida, tu peor hora) con tu P&L real y te dice lo que te costó cada hábito, con una curva contrafactual que muestra dónde estaría tu cuenta si hubieras respetado tu plan.
 - **Un coach que recuerda.** Todos los diarios con IA responden preguntas sobre tus datos. El coach de TradeDiscipline mantiene una memoria longitudinal: sabe lo que te comprometiste a corregir la semana pasada y te lo dice cuando reincides.
 - **Intervención, no autopsia.** Guardias de stop-trading, límites de challenge prop firm y alertas de tilt actúan *mientras* operas, no en un informe leído después del daño.
-- **Un tercio del precio.** 9,99 €/mes frente a 29 $/mes en el plan de entrada, con un plan gratuito realmente útil.
+- **Casi la mitad de precio.** 14,99 €/mes frente a 29 $/mes en el plan de entrada, con un plan gratuito realmente útil.
 
 ## ¿Cuál es para ti?
 
