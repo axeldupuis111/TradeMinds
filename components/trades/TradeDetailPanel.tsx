@@ -206,13 +206,17 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
         return;
       }
       setVisionReview(parsed);
+      // Le verdict est persisté côté serveur (trades.vision_review) : on
+      // rafraîchit la liste parente pour qu'à la réouverture le trade porte
+      // bien son analyse, au lieu de repartir de l'objet en cache (perdu).
+      onSaved();
       track("vision_review_run", { grade: parsed.grade, validity: parsed.setup_validity });
     } catch {
       setVisionError(t("vision_error"));
     } finally {
       setVisionLoading(false);
     }
-  }, [trade.id, lang, visionLoading, t]);
+  }, [trade.id, lang, visionLoading, t, onSaved]);
 
   useEffect(() => {
     setEmotion(trade.emotion);
@@ -403,8 +407,16 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
     const { error } = await supabase.storage.from("trade-screenshots").upload(path, file, { upsert: true });
     if (!error) {
       screenshotPathRef.current = path;
+      // Persister le lien tout de suite : l'analyse visuelle IA lit
+      // screenshot_path en base. Attendre le bouton Enregistrer déclenchait un
+      // faux « ce trade n'a pas de screenshot ».
+      const { error: linkErr } = await supabase.from("trades").update({ screenshot_path: path }).eq("id", trade.id);
+      if (!linkErr) {
+        initialValuesRef.current.hasScreenshot = true;
+        onSaved();
+      }
       const { data: signedData } = await supabase.storage.from("trade-screenshots").createSignedUrl(path, 3600);
-      if (signedData) { setScreenshotUrl(signedData.signedUrl); setScreenshotModified(true); }
+      if (signedData) { setScreenshotUrl(signedData.signedUrl); }
     }
     setUploading(false);
   }

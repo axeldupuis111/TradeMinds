@@ -69,6 +69,7 @@ interface AnalyzeRequest {
     ict_confluence_score?: number | null;
     checklist_total?: number | null;
     emotion?: string | null;
+    vision_review?: { grade?: string; setup_validity?: string; summary?: string; advice?: string } | null;
   }[];
 }
 
@@ -206,13 +207,22 @@ export async function POST(request: Request) {
         if (t.emotion) ictParts.push(`Émotion:${sanitizeUserInput(t.emotion)}`);
         const ictStr = ictParts.length > 0 ? `\n  ${ictParts.join(" | ")}` : "";
 
+        // Verdict de l'analyse visuelle IA (Claude a regardé le screenshot du
+        // graphique). Présent seulement si le trader a lancé la vision sur ce
+        // trade. On le fournit tel quel : l'analyse globale doit s'appuyer
+        // dessus au lieu de re-juger un graphique qu'elle ne voit pas.
+        const vr = t.vision_review;
+        const visionStr = vr && vr.grade
+          ? `\n  Analyse visuelle (Claude a vu le graphique) : grade ${vr.grade}${vr.setup_validity ? `, setup ${sanitizeUserInput(vr.setup_validity)}` : ""}${vr.summary ? ` : ${sanitizeUserInput(vr.summary)}` : ""}`
+          : "";
+
         const slNote = slWasModified ? ` [SL initial: ${t.sl_initial}, SL final CSV: ${t.sl}]` : "";
         const tpNote = tpWasModified ? ` [TP initial: ${t.tp_initial}, TP final CSV: ${t.tp}]` : "";
 
         return `[${idx}] ${t.open_time} | ${t.pair} | ${t.direction} | Lot:${t.lot_size}
   Entry:${t.entry_price} | SL:${effectiveSL ?? "non renseigné"}${slNote} | TP:${effectiveTP ?? "non renseigné"}${tpNote} | Close:${t.exit_price}
   Risque: ${riskPips != null ? `${riskPips} pips` : "non renseigné"} | Reward planifié: ${rewardPips != null ? `${rewardPips} pips` : "non renseigné"} | RR planifié: ${rrPlanned != null ? `1:${rrPlanned}` : "non renseigné"}
-  Pips réalisés: ${realizedPips} (${pipsDirection}) | Résultat: ${result.toUpperCase()} | P&L net: ${pnlNet.toFixed(2)}${ictStr}`;
+  Pips réalisés: ${realizedPips} (${pipsDirection}) | Résultat: ${result.toUpperCase()} | P&L net: ${pnlNet.toFixed(2)}${ictStr}${visionStr}`;
       })
       .join("\n\n");
 
@@ -261,6 +271,7 @@ TRADES À ANALYSER (${recentTrades.length} trades, indexés [0] à [${recentTrad
 <user_trade_data>
 ${tradesText}
 </user_trade_data>
+Certains trades portent une ligne « Analyse visuelle (Claude a vu le graphique) » : c'est le verdict d'une lecture directe du screenshot du trade (grade + validité du setup revendiqué). Toi, ici, tu ne vois PAS les graphiques — traite donc ce verdict comme une observation FIABLE que tu n'as pas pu faire toi-même. Appuie-toi dessus pour juger si le setup était réellement présent, et quand ce verdict existe pour un trade, aligne le grade de son "trade_review" dessus.
 
 STATISTIQUES AGRÉGÉES (calculées par le serveur à partir des trades ci-dessus — source FIABLE, utilise ces chiffres tels quels sans les recalculer) :
 <computed_stats>

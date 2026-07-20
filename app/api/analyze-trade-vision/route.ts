@@ -64,9 +64,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "trade_id requis" }, { status: 400 });
     }
 
-    const limited = await rateLimitAi(userId, "vision_review", PREMIUM_DAILY_LIMIT, timezone);
-    if (limited) return limited;
-
     // ── Données du trade (client RLS : ne voit que ses propres trades) ──
     const sb = createSupabaseServer();
     const { data: trade, error: tradeErr } = await sb
@@ -108,6 +105,13 @@ export async function POST(request: Request) {
       : trade.screenshot_path.endsWith(".png")
         ? "image/png"
         : "image/jpeg") as "image/png" | "image/jpeg" | "image/webp" | "image/gif";
+
+    // ── Quota (consommé seulement maintenant) ──
+    // consume_ai_usage est atomique : on ne débite le crédit du jour qu'une
+    // fois toutes les validations passées (trade, screenshot, poids image),
+    // pour ne jamais brûler une analyse sur une requête qui n'atteint pas l'IA.
+    const limited = await rateLimitAi(userId, "vision_review", PREMIUM_DAILY_LIMIT, timezone);
+    if (limited) return limited;
 
     // ── Prompt ──
     const annotationShapes = asShapes(trade.screenshot_annotations);

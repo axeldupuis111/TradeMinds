@@ -8,7 +8,7 @@ import {
 } from "@/lib/strategy/derive";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
-import { AlertCircle, ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, SlidersHorizontal } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowUp, ArrowUpDown, Camera, ChevronDown, SlidersHorizontal } from "lucide-react";
 import { useMemo, useEffect, useState } from "react";
 import TradeDetailPanel, { type TradeDetail } from "./TradeDetailPanel";
 
@@ -173,6 +173,7 @@ interface Trade {
   setup_quality: number | null;
   notes: string | null;
   screenshot_path: string | null;
+  vision_review?: { grade?: string } | null;
   challenge_id: string | null;
   prop_challenges?: { firm: string; account_number: string | null } | null;
   ict_checklist?: Record<string, boolean> | null;
@@ -751,7 +752,19 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
 
                       {/* Paire */}
                       <td className="px-3 py-2">
-                        <span className="font-mono text-sm font-semibold text-foreground">{tr.pair}</span>
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="font-mono text-sm font-semibold text-foreground">{tr.pair}</span>
+                          {tr.vision_review?.grade ? (
+                            <span
+                              title={t("vision_title")}
+                              className="text-[10px] font-bold leading-none px-1 py-0.5 rounded bg-accent/15 text-accent"
+                            >
+                              {tr.vision_review.grade}
+                            </span>
+                          ) : tr.screenshot_path ? (
+                            <Camera className="w-3.5 h-3.5 text-muted/60 shrink-0" aria-label={t("vision_title")} />
+                          ) : null}
+                        </span>
                       </td>
 
                       {/* Direction */}
