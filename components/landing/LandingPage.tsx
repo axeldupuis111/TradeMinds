@@ -4,6 +4,7 @@ import DisciplineQuiz from "@/components/landing/DisciplineQuiz";
 import LiveDemo from "@/components/landing/LiveDemo";
 import PublicHeader from "@/components/PublicHeader";
 import { useLanguage } from "@/lib/LanguageContext";
+import { localizedHref } from "@/lib/locale-href";
 import { PLAN_FEATURES, FREE_BENEFITS, PLUS_BENEFITS, PREMIUM_BENEFITS } from "@/lib/plan-features";
 import Link from "next/link";
 import React, { useRef, useState, useEffect } from "react";
@@ -2297,7 +2298,7 @@ function FinalCTA() {
    FOOTER
 ───────────────────────────────────────────── */
 function Footer() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
 
   return (
     <footer className="border-t px-6 py-14" style={{ borderColor: "rgb(var(--border)/0.5)", background: "rgb(var(--background))" }}>
@@ -2322,7 +2323,13 @@ function Footer() {
             },
             {
               heading: t("footer_resources"),
-              links: [{ href: "/blog", label: "Blog" }, { href: "/contact", label: t("footer_contact") }, { href: "/faq", label: t("footer_faq") }],
+              // Pages multilingues : on préserve la locale du visiteur dans l'URL
+              links: [
+                { href: localizedHref("/trading-journal", lang), label: t("footer_trading_journal") },
+                { href: localizedHref("/blog", lang), label: "Blog" },
+                { href: localizedHref("/contact", lang), label: t("footer_contact") },
+                { href: localizedHref("/faq", lang), label: t("footer_faq") },
+              ],
             },
             {
               heading: t("footer_legal_col"),

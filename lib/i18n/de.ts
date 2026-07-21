@@ -1876,6 +1876,7 @@ const dict: Record<string, string> = {
   "feature_2_bullet_3": "Stelle Fragen in natürlicher Sprache",
   "footer_product": "Produkt",
   "footer_resources": "Ressourcen",
+  "footer_trading_journal": "KI-Trading-Tagebuch",
   "footer_legal_col": "Rechtliches",
   "footer_blog": "Blog",
   "footer_support": "Support",

@@ -1876,6 +1876,7 @@ const dict: Record<string, string> = {
   "feature_2_bullet_3": "Ask it questions in plain language",
   "footer_product": "Product",
   "footer_resources": "Resources",
+  "footer_trading_journal": "AI trading journal",
   "footer_legal_col": "Legal",
   "footer_blog": "Blog",
   "footer_support": "Support",

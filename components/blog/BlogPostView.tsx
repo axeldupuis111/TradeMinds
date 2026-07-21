@@ -30,7 +30,7 @@ export default function BlogPostView({ post }: { post: BlogPost }) {
       <PublicHeader />
       <article className="max-w-2xl mx-auto px-6 py-14">
         <Link
-          href="/blog"
+          href={localizedHref("/blog", lang)}
           className="inline-flex items-center gap-1 text-sm text-foreground-muted hover:text-foreground transition-colors"
         >
           <ArrowLeft className="h-4 w-4" strokeWidth={2} /> {ui.back}

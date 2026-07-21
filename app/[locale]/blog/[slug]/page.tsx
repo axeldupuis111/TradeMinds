@@ -3,11 +3,11 @@ import { notFound } from "next/navigation";
 import BlogPostView from "@/components/blog/BlogPostView";
 import { getAllPosts, getPost } from "@/lib/blog/posts";
 import { blogPostJsonLd, blogPostMetadata } from "@/lib/blog/seo";
+import type { Locale } from "@/i18n/config";
 
-// Racine = version anglaise canonique (x-default). Les métadonnées et le
-// JSON-LD sont figés en anglais : Googlebot n'a pas de cookie de langue, et
-// chaque autre langue a désormais sa propre URL (/fr/blog/..., etc.). Le corps
-// de page reste adapté à la langue du visiteur côté client (LanguageContext).
+// Article localisé (/fr/blog/slug, ...). Le rendu suit la locale de l'URL via
+// LanguageContext (priorité absolue au préfixe de chemin), donc Googlebot voit
+// le contenu dans la langue de l'URL dès le HTML serveur.
 export function generateStaticParams() {
   return getAllPosts().map((p) => ({ slug: p.slug }));
 }
@@ -15,16 +15,20 @@ export function generateStaticParams() {
 export async function generateMetadata({
   params,
 }: {
-  params: { slug: string };
+  params: { locale: string; slug: string };
 }): Promise<Metadata> {
-  return blogPostMetadata(params.slug, "en");
+  return blogPostMetadata(params.slug, params.locale as Locale);
 }
 
-export default function BlogPostPage({ params }: { params: { slug: string } }) {
+export default function LocalizedBlogPostPage({
+  params,
+}: {
+  params: { locale: string; slug: string };
+}) {
   const post = getPost(params.slug);
   if (!post) notFound();
 
-  const jsonLd = blogPostJsonLd(params.slug, "en");
+  const jsonLd = blogPostJsonLd(params.slug, params.locale as Locale);
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />

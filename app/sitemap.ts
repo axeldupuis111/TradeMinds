@@ -5,7 +5,7 @@ import { getAllPosts } from "@/lib/blog/posts";
 const SITE_URL = "https://tradediscipline.app";
 
 // Pages multilingues (indexées dans les 4 langues avec hreflang)
-const MULTILANG_PAGES = ["", "/login", "/faq", "/contact"];
+const MULTILANG_PAGES = ["", "/trading-journal", "/login", "/faq", "/contact"];
 
 // Pages mono-langue (URL unique, pas de hreflang)
 const MONOLANG_PAGES = ["/legal/terms", "/legal/privacy", "/mentions-legales"];
@@ -45,21 +45,34 @@ export default function sitemap(): MetadataRoute.Sitemap {
     });
   }
 
-  // Blog : la liste + un article par slug (URL unique, le contenu s'adapte à la
-  // langue du visiteur). lastModified = date de publication de l'article.
-  entries.push({
-    url: `${SITE_URL}/blog`,
-    lastModified: now,
-    changeFrequency: "weekly",
-    priority: 0.6,
-  });
-  for (const post of getAllPosts()) {
-    entries.push({
-      url: `${SITE_URL}/blog/${post.slug}`,
+  // Blog : liste + articles, une URL par langue (EN à la racine, les autres
+  // sous /{locale}) avec le groupe hreflang complet — chaque langue est ainsi
+  // indexable sur sa propre URL (le français rankait en anglais avant).
+  const blogPaths: { path: string; lastModified: Date; priority: number }[] = [
+    { path: "/blog", lastModified: now, priority: 0.6 },
+    ...getAllPosts().map((post) => ({
+      path: `/blog/${post.slug}`,
       lastModified: new Date(`${post.date}T00:00:00Z`),
-      changeFrequency: "monthly",
       priority: 0.5,
-    });
+    })),
+  ];
+  for (const { path, lastModified, priority } of blogPaths) {
+    const languages = Object.fromEntries(
+      locales.map((l) => [
+        l,
+        `${SITE_URL}${l === defaultLocale ? "" : `/${l}`}${path}`,
+      ])
+    );
+    for (const locale of locales) {
+      const prefix = locale === defaultLocale ? "" : `/${locale}`;
+      entries.push({
+        url: `${SITE_URL}${prefix}${path}`,
+        lastModified,
+        changeFrequency: path === "/blog" ? "weekly" : "monthly",
+        priority,
+        alternates: { languages },
+      });
+    }
   }
 
   return entries;

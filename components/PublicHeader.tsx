@@ -55,9 +55,8 @@ export default function PublicHeader({ showAnchors = false }: PublicHeaderProps)
 
         {/* Right side */}
         <div className="flex items-center gap-2">
-          {/* Blog — single URL, content adapts to the visitor's language */}
           <Link
-            href="/blog"
+            href={localizedHref("/blog", lang)}
             className="hidden sm:inline text-sm text-muted hover:text-foreground transition-colors px-3 py-1.5"
           >
             Blog

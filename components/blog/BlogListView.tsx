@@ -2,6 +2,7 @@
 
 import PublicHeader from "@/components/PublicHeader";
 import { useLanguage } from "@/lib/LanguageContext";
+import { localizedHref } from "@/lib/locale-href";
 import { postContent, type BlogPost } from "@/lib/blog/posts";
 import BlogIllustration from "@/components/blog/BlogIllustration";
 import Link from "next/link";
@@ -36,7 +37,7 @@ export default function BlogListView({ posts }: { posts: BlogPost[] }) {
             return (
               <Link
                 key={post.slug}
-                href={`/blog/${post.slug}`}
+                href={localizedHref(`/blog/${post.slug}`, lang)}
                 className="block rounded-xl border border-border bg-card p-6 transition-colors hover:border-accent/40"
               >
                 <BlogIllustration name={post.cover} className="w-full h-28 rounded-lg border border-border mb-4" />

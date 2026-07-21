@@ -1,22 +1,11 @@
 import type { Metadata } from "next";
 import BlogListView from "@/components/blog/BlogListView";
 import { getAllPosts } from "@/lib/blog/posts";
+import { blogListMetadata } from "@/lib/blog/seo";
 
-const SITE_URL = "https://tradediscipline.app";
-
-export const metadata: Metadata = {
-  title: "Blog - TradeDiscipline",
-  description:
-    "Discipline, trading psychology and process: practical articles to help you stop repeating the same mistakes and trade with discipline.",
-  alternates: { canonical: `${SITE_URL}/blog` },
-  openGraph: {
-    title: "Blog - TradeDiscipline",
-    description: "Discipline, trading psychology and process for traders.",
-    url: `${SITE_URL}/blog`,
-    siteName: "TradeDiscipline",
-    type: "website",
-  },
-};
+// Racine = version anglaise canonique (x-default). Les autres langues vivent
+// sur /fr/blog, /de/blog, /es/blog — voir lib/blog/seo.ts.
+export const metadata: Metadata = blogListMetadata("en");
 
 export default function BlogPage() {
   return <BlogListView posts={getAllPosts()} />;
