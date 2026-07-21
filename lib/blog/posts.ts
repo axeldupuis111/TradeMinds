@@ -28,6 +28,338 @@ export interface BlogPost {
 
 export const POSTS: BlogPost[] = [
   {
+    slug: "ai-chart-analysis",
+    date: "2026-07-22",
+    readingMinutes: 4,
+    cover: "target",
+    content: {
+      fr: {
+        title: "Fais relire tes graphiques par une IA : ce que la vision ajoute à ton journal",
+        excerpt:
+          "Tes stats disent ce que tu as fait. Ton screenshot montre ce que tu as vu. L'analyse visuelle croise les deux et repère ce qu'aucun tableau ne peut montrer.",
+        body: `Un journal de trading chiffre tes décisions : entrée, sortie, P&L, respect du plan. Mais il y a une chose que les chiffres ne voient pas : le graphique que tu avais sous les yeux au moment de cliquer. C'est exactement là que l'analyse visuelle par IA intervient.
+
+## Ce que tes stats ne voient pas
+
+Deux trades peuvent avoir le même P&L et raconter deux histoires opposées. Sur le papier : entrée EURUSD, stop 15 pips, perte. Sur le graphique : une entrée en pleine extension après trois bougies de rallye, un stop posé au milieu du bruit, une sortie panique juste avant que le prix reparte. Le tableau dit « perte normale ». Le graphique dit « erreur d'exécution évitable ».
+
+## Ce que l'IA regarde sur ton screenshot
+
+Quand tu attaches un screenshot à un trade, l'analyse visuelle examine ce qu'un mentor regarderait : la structure du marché au moment de l'entrée, le timing (entrée en retard sur le mouvement ou sur un vrai niveau), le placement du stop par rapport au bruit ambiant, et la logique de la sortie. Elle formule un verdict concret par trade, pas un commentaire générique.
+
+## Croisée avec tes chiffres, pas à la place
+
+Le vrai intérêt n'est pas de juger un graphique isolé. C'est le croisement : si tes stats montrent que tu fais du revenge trading et que tes screenshots montrent des entrées systématiquement en retard après tes pertes, tu tiens la version complète du problème, comportement et exécution. L'analyse IA de TradeDiscipline s'appuie sur les deux.
+
+## Comment l'utiliser
+
+1. **Attache un screenshot à tes trades importants.** L'upload et l'outil d'annotation (dessiner tes niveaux, tes zones) sont disponibles sur tous les plans.
+2. **Lance l'analyse visuelle** depuis le détail du trade. C'est une exclusivité Premium (29,99 €/mois), limitée à 2 analyses par jour : assez pour tes trades clés, pas pour noyer le signal.
+3. **Compare le verdict à ta lecture.** L'écart entre ce que tu croyais voir et ce que le graphique montrait, c'est ta marge de progression.
+
+Commence par le diagnostic gratuit : journal complet, screenshots, et 1 analyse IA découverte, sans carte bancaire. [Vois ce que tes graphiques disent de toi](/login).`,
+      },
+      en: {
+        title: "Let an AI reread your charts: what vision adds to your trading journal",
+        excerpt:
+          "Your stats say what you did. Your screenshot shows what you saw. Visual analysis crosses the two and spots what no table can show.",
+        body: `A trading journal quantifies your decisions: entry, exit, P&L, plan compliance. But there is one thing numbers can't see: the chart you were looking at when you clicked. That's exactly where AI visual analysis comes in.
+
+## What your stats can't see
+
+Two trades can have the same P&L and tell opposite stories. On paper: EURUSD entry, 15-pip stop, loss. On the chart: an entry in full extension after three rally candles, a stop placed in the middle of the noise, a panic exit right before price resumed. The table says "normal loss". The chart says "avoidable execution error".
+
+## What the AI looks at on your screenshot
+
+When you attach a screenshot to a trade, visual analysis examines what a mentor would: the market structure at entry, the timing (chasing the move or entering at a real level), the stop placement relative to the surrounding noise, and the logic of the exit. It gives a concrete verdict per trade, not a generic comment.
+
+## Crossed with your numbers, not instead of them
+
+The real value isn't judging a chart in isolation. It's the crossing: if your stats show revenge trading and your screenshots show entries that are systematically late after your losses, you have the full picture of the problem, behavior and execution. TradeDiscipline's AI analysis leans on both.
+
+## How to use it
+
+1. **Attach a screenshot to your important trades.** Upload and the annotation tool (draw your levels and zones) are available on every plan.
+2. **Run the visual analysis** from the trade detail. It's a Premium exclusive (€29.99/month), capped at 2 analyses per day: enough for your key trades, not enough to drown the signal.
+3. **Compare the verdict with your own read.** The gap between what you thought you saw and what the chart showed is your room for improvement.
+
+Start with the free diagnosis: full journal, screenshots, and 1 discovery AI analysis, no credit card. [See what your charts say about you](/login).`,
+      },
+      de: {
+        title: "Lass eine KI deine Charts gegenlesen: Was Vision deinem Journal hinzufügt",
+        excerpt:
+          "Deine Statistiken sagen, was du getan hast. Dein Screenshot zeigt, was du gesehen hast. Die visuelle Analyse verbindet beides und findet, was keine Tabelle zeigen kann.",
+        body: `Ein Trading-Journal beziffert deine Entscheidungen: Einstieg, Ausstieg, P&L, Planbefolgung. Aber eines können Zahlen nicht sehen: den Chart, den du vor Augen hattest, als du geklickt hast. Genau da setzt die visuelle KI-Analyse an.
+
+## Was deine Statistiken nicht sehen
+
+Zwei Trades können denselben P&L haben und gegensätzliche Geschichten erzählen. Auf dem Papier: EURUSD-Einstieg, 15-Pip-Stop, Verlust. Auf dem Chart: ein Einstieg in voller Extension nach drei Rally-Kerzen, ein Stop mitten im Rauschen, ein Panik-Ausstieg kurz bevor der Preis weiterlief. Die Tabelle sagt „normaler Verlust". Der Chart sagt „vermeidbarer Ausführungsfehler".
+
+## Was die KI auf deinem Screenshot prüft
+
+Wenn du einem Trade einen Screenshot anhängst, prüft die visuelle Analyse, was ein Mentor prüfen würde: die Marktstruktur beim Einstieg, das Timing (dem Move hinterhergelaufen oder an einem echten Level eingestiegen), die Stop-Platzierung relativ zum Rauschen und die Logik des Ausstiegs. Sie liefert ein konkretes Urteil pro Trade, keinen generischen Kommentar.
+
+## Mit deinen Zahlen verknüpft, nicht statt ihnen
+
+Der echte Wert liegt nicht darin, einen Chart isoliert zu bewerten. Er liegt in der Verknüpfung: Wenn deine Statistiken Revenge-Trading zeigen und deine Screenshots systematisch verspätete Einstiege nach Verlusten, hast du das vollständige Bild des Problems, Verhalten und Ausführung. Die KI-Analyse von TradeDiscipline stützt sich auf beides.
+
+## So nutzt du es
+
+1. **Hänge deinen wichtigen Trades einen Screenshot an.** Upload und Annotations-Werkzeug (Levels und Zonen einzeichnen) gibt es in jedem Plan.
+2. **Starte die visuelle Analyse** aus der Trade-Detailansicht. Sie ist Premium-exklusiv (29,99 €/Monat), begrenzt auf 2 Analysen pro Tag: genug für deine Schlüssel-Trades, nicht genug, um das Signal zu verwässern.
+3. **Vergleiche das Urteil mit deiner eigenen Lesart.** Die Lücke zwischen dem, was du zu sehen glaubtest, und dem, was der Chart zeigte, ist dein Verbesserungspotenzial.
+
+Starte mit der kostenlosen Diagnose: komplettes Journal, Screenshots und 1 KI-Entdeckungs-Analyse, ohne Kreditkarte. [Sieh, was deine Charts über dich sagen](/login).`,
+      },
+      es: {
+        title: "Deja que una IA relea tus gráficos: lo que la visión aporta a tu diario",
+        excerpt:
+          "Tus estadísticas dicen lo que hiciste. Tu captura muestra lo que viste. El análisis visual cruza ambos y detecta lo que ninguna tabla puede mostrar.",
+        body: `Un diario de trading cuantifica tus decisiones: entrada, salida, P&L, cumplimiento del plan. Pero hay algo que los números no pueden ver: el gráfico que tenías delante cuando hiciste clic. Ahí es exactamente donde entra el análisis visual por IA.
+
+## Lo que tus estadísticas no ven
+
+Dos trades pueden tener el mismo P&L y contar historias opuestas. Sobre el papel: entrada en EURUSD, stop de 15 pips, pérdida. En el gráfico: una entrada en plena extensión tras tres velas de rally, un stop colocado en medio del ruido, una salida de pánico justo antes de que el precio retomara. La tabla dice "pérdida normal". El gráfico dice "error de ejecución evitable".
+
+## Lo que la IA mira en tu captura
+
+Cuando adjuntas una captura a un trade, el análisis visual examina lo que miraría un mentor: la estructura del mercado en la entrada, el timing (persiguiendo el movimiento o entrando en un nivel real), la colocación del stop respecto al ruido, y la lógica de la salida. Da un veredicto concreto por trade, no un comentario genérico.
+
+## Cruzado con tus números, no en su lugar
+
+El valor real no está en juzgar un gráfico aislado. Está en el cruce: si tus estadísticas muestran revenge trading y tus capturas muestran entradas sistemáticamente tardías después de tus pérdidas, tienes la imagen completa del problema, comportamiento y ejecución. El análisis IA de TradeDiscipline se apoya en ambos.
+
+## Cómo usarlo
+
+1. **Adjunta una captura a tus trades importantes.** La subida y la herramienta de anotación (dibujar tus niveles y zonas) están en todos los planes.
+2. **Lanza el análisis visual** desde el detalle del trade. Es exclusivo de Premium (29,99 €/mes), limitado a 2 análisis al día: suficiente para tus trades clave, no para ahogar la señal.
+3. **Compara el veredicto con tu propia lectura.** La diferencia entre lo que creías ver y lo que el gráfico mostraba es tu margen de mejora.
+
+Empieza con el diagnóstico gratuito: diario completo, capturas y 1 análisis IA de descubrimiento, sin tarjeta. [Mira lo que tus gráficos dicen de ti](/login).`,
+      },
+    },
+  },
+  {
+    slug: "journal-tradingview-automatique",
+    date: "2026-07-21",
+    readingMinutes: 4,
+    cover: "trend",
+    content: {
+      fr: {
+        title: "Synchronise TradingView avec ton journal de trading en 5 minutes",
+        excerpt:
+          "Un bloc Pine à coller à la fin de ta stratégie, une alerte webhook, et chaque trade clôturé arrive dans ton journal avec son P&L exact. Voici comment.",
+        body: `Si tu trades une stratégie sur TradingView, tu connais le problème : les trades restent dans l'onglet de la stratégie, le journal reste vide, et l'analyse de ton comportement n'arrive jamais. La bonne nouvelle : TradingView sait envoyer un webhook à chaque trade clôturé, et ça suffit pour un journal automatique.
+
+## Comment ça marche
+
+1. **Colle le bloc de synchronisation** à la fin du code de ta stratégie Pine (v5 ou v6). Le bloc est fourni dans TradeDiscipline, Réglages, TradingView.
+2. **Crée une alerte sur la stratégie**, condition « alert() function calls only ».
+3. **Coche « Webhook URL »** dans l'onglet Notifications de l'alerte et colle l'URL affichée dans tes réglages (elle contient déjà ton token personnel). Laisse le champ Message vide : le message est construit par le bloc Pine.
+
+C'est tout. À chaque trade clôturé, TradingView envoie le trade complet et il apparaît dans ton journal.
+
+## Ce qui est synchronisé
+
+Symbole, sens, volume, prix d'entrée et de sortie, horodatages, commission, et le P&L dans la devise de ton compte : le montant journalisé est exact, y compris en forex. Si une alerte se déclenche deux fois, le serveur déduplique : pas de doublons dans ton journal.
+
+## Les limites, honnêtement
+
+- Ça synchronise les trades **d'une stratégie Pine**. Tes trades manuels passés directement sur le graphique ne déclenchent pas d'alerte de stratégie : pour eux, l'import CSV reste la voie.
+- Les webhooks d'alerte nécessitent un **abonnement TradingView payant** (c'est une limite TradingView, pas nous).
+
+## Et ensuite ?
+
+Une fois les trades dans le journal, le vrai travail commence : score de discipline, détection des trades hors plan, coût de tes mauvaises habitudes en euros. La synchronisation automatique (TradingView, MT4/MT5, cTrader, NinjaTrader, Tradovate) est une fonctionnalité Premium (29,99 €/mois). Mais commence gratuit : journal complet, import CSV quotidien et 1 analyse IA découverte, sans carte bancaire. [Essaie](/login).`,
+      },
+      en: {
+        title: "Sync TradingView with your trading journal in 5 minutes",
+        excerpt:
+          "One Pine block pasted at the end of your strategy, one webhook alert, and every closed trade lands in your journal with its exact P&L. Here's how.",
+        body: `If you trade a strategy on TradingView, you know the problem: trades stay in the strategy tab, the journal stays empty, and the behavioral analysis never happens. The good news: TradingView can fire a webhook on every closed trade, and that's all an automatic journal needs.
+
+## How it works
+
+1. **Paste the sync block** at the end of your Pine strategy code (v5 or v6). The block is provided in TradeDiscipline, Settings, TradingView.
+2. **Create an alert on the strategy**, condition "alert() function calls only".
+3. **Tick "Webhook URL"** in the alert's Notifications tab and paste the URL shown in your settings (it already contains your personal token). Leave the Message field empty: the message is built by the Pine block.
+
+That's it. On every closed trade, TradingView sends the full trade and it appears in your journal.
+
+## What gets synced
+
+Symbol, direction, volume, entry and exit price, timestamps, commission, and the P&L in your account currency: the journaled amount is exact, including in forex. If an alert fires twice, the server deduplicates: no double entries in your journal.
+
+## The limits, honestly
+
+- It syncs trades **from a Pine strategy**. Manual trades placed directly on the chart don't trigger strategy alerts: for those, CSV import remains the way.
+- Alert webhooks require a **paid TradingView plan** (that's a TradingView limit, not ours).
+
+## What's next?
+
+Once trades are in the journal, the real work starts: discipline score, off-plan trade detection, the cost of your bad habits in euros. Automatic sync (TradingView, MT4/MT5, cTrader, NinjaTrader, Tradovate) is a Premium feature (€29.99/month). But start free: full journal, daily CSV import and 1 discovery AI analysis, no credit card. [Try it](/login).`,
+      },
+      de: {
+        title: "Synchronisiere TradingView mit deinem Trading-Journal in 5 Minuten",
+        excerpt:
+          "Ein Pine-Block am Ende deiner Strategie, eine Webhook-Alert, und jeder geschlossene Trade landet mit exaktem P&L in deinem Journal. So geht's.",
+        body: `Wenn du eine Strategie auf TradingView tradest, kennst du das Problem: Die Trades bleiben im Strategie-Tab, das Journal bleibt leer, und die Verhaltensanalyse findet nie statt. Die gute Nachricht: TradingView kann bei jedem geschlossenen Trade einen Webhook senden, und mehr braucht ein automatisches Journal nicht.
+
+## So funktioniert es
+
+1. **Füge den Sync-Block** ans Ende deines Pine-Strategie-Codes ein (v5 oder v6). Den Block findest du in TradeDiscipline, Einstellungen, TradingView.
+2. **Erstelle eine Alert auf der Strategie**, Bedingung „alert() function calls only".
+3. **Aktiviere „Webhook URL"** im Benachrichtigungen-Tab der Alert und füge die URL aus deinen Einstellungen ein (sie enthält bereits deinen persönlichen Token). Lass das Nachrichtenfeld leer: Die Nachricht baut der Pine-Block.
+
+Das war's. Bei jedem geschlossenen Trade sendet TradingView den kompletten Trade und er erscheint in deinem Journal.
+
+## Was synchronisiert wird
+
+Symbol, Richtung, Volumen, Ein- und Ausstiegspreis, Zeitstempel, Kommission und der P&L in deiner Kontowährung: Der journalisierte Betrag ist exakt, auch im Forex. Feuert eine Alert doppelt, dedupliziert der Server: keine doppelten Einträge in deinem Journal.
+
+## Die Grenzen, ehrlich
+
+- Synchronisiert werden Trades **einer Pine-Strategie**. Manuelle Trades direkt am Chart lösen keine Strategie-Alerts aus: Für sie bleibt der CSV-Import der Weg.
+- Alert-Webhooks erfordern einen **bezahlten TradingView-Plan** (eine TradingView-Grenze, nicht unsere).
+
+## Und dann?
+
+Sobald die Trades im Journal sind, beginnt die eigentliche Arbeit: Disziplin-Score, Erkennung von Trades außerhalb des Plans, Kosten deiner schlechten Gewohnheiten in Euro. Die automatische Synchronisation (TradingView, MT4/MT5, cTrader, NinjaTrader, Tradovate) ist ein Premium-Feature (29,99 €/Monat). Aber starte kostenlos: komplettes Journal, täglicher CSV-Import und 1 KI-Entdeckungs-Analyse, ohne Kreditkarte. [Probiere es](/login).`,
+      },
+      es: {
+        title: "Sincroniza TradingView con tu diario de trading en 5 minutos",
+        excerpt:
+          "Un bloque Pine pegado al final de tu estrategia, una alerta webhook, y cada trade cerrado llega a tu diario con su P&L exacto. Así se hace.",
+        body: `Si operas una estrategia en TradingView, conoces el problema: los trades se quedan en la pestaña de la estrategia, el diario se queda vacío, y el análisis de tu comportamiento nunca llega. La buena noticia: TradingView puede disparar un webhook con cada trade cerrado, y eso es todo lo que necesita un diario automático.
+
+## Cómo funciona
+
+1. **Pega el bloque de sincronización** al final del código de tu estrategia Pine (v5 o v6). El bloque está en TradeDiscipline, Ajustes, TradingView.
+2. **Crea una alerta sobre la estrategia**, condición "alert() function calls only".
+3. **Marca "Webhook URL"** en la pestaña Notificaciones de la alerta y pega la URL de tus ajustes (ya contiene tu token personal). Deja el campo Mensaje vacío: el mensaje lo construye el bloque Pine.
+
+Eso es todo. Con cada trade cerrado, TradingView envía el trade completo y aparece en tu diario.
+
+## Qué se sincroniza
+
+Símbolo, dirección, volumen, precio de entrada y salida, marcas de tiempo, comisión, y el P&L en la divisa de tu cuenta: el importe registrado es exacto, incluso en forex. Si una alerta se dispara dos veces, el servidor deduplica: sin duplicados en tu diario.
+
+## Los límites, honestamente
+
+- Sincroniza los trades **de una estrategia Pine**. Los trades manuales hechos directamente sobre el gráfico no disparan alertas de estrategia: para ellos, la importación CSV sigue siendo la vía.
+- Los webhooks de alerta requieren un **plan de pago de TradingView** (es un límite de TradingView, no nuestro).
+
+## ¿Y después?
+
+Con los trades en el diario, empieza el trabajo de verdad: score de disciplina, detección de trades fuera de plan, coste de tus malos hábitos en euros. La sincronización automática (TradingView, MT4/MT5, cTrader, NinjaTrader, Tradovate) es una función Premium (29,99 €/mes). Pero empieza gratis: diario completo, importación CSV diaria y 1 análisis IA de descubrimiento, sin tarjeta. [Pruébalo](/login).`,
+      },
+    },
+  },
+  {
+    slug: "best-hours-to-trade",
+    date: "2026-07-20",
+    readingMinutes: 4,
+    cover: "routine",
+    content: {
+      fr: {
+        title: "La meilleure heure pour trader n'existe pas : voici comment trouver la tienne",
+        excerpt:
+          "Les sessions de Londres et New York concentrent le volume, mais ta meilleure heure à toi est dans tes données, pas dans une vidéo YouTube.",
+        body: `Cherche « meilleure heure pour trader » et tu trouveras toujours la même réponse : l'ouverture de Londres, le chevauchement Londres/New York. C'est vrai pour le volume. C'est inutile pour toi. Parce que la question n'est pas quand le marché bouge le plus, mais quand toi tu trades le mieux.
+
+## Pourquoi la réponse générique ne marche pas
+
+La volatilité qui nourrit une stratégie en détruit une autre. Un scalpeur veut du mouvement, un trader de range veut du calme. Et surtout : deux traders avec la même stratégie n'ont pas les mêmes heures fastes, parce que la variable décisive n'est pas le marché, c'est leur état à eux (frais le matin, fatigué le soir, distrait à midi).
+
+## Le motif que presque tout le monde a
+
+En analysant les journaux, un motif revient sans cesse : la plupart des traders sont rentables dans une fenêtre précise et rendent tout dans une autre. Les trois variantes les plus courantes :
+
+1. **Discipliné le matin, tilté le soir.** Les premières heures suivent le plan, les dernières le vengent.
+2. **L'heure des annonces.** Les trades pris dans les minutes autour d'une annonce macro ont souvent une espérance catastrophique, sans que le trader l'ait jamais mesurée.
+3. **La sur-session.** Ta fenêtre marchait, alors tu continues au-delà. Les trades bonus de la prolongation effacent les gains de la session.
+
+## Comment trouver ta fenêtre
+
+Il te faut deux choses : un journal où chaque trade a son heure, et au moins une trentaine de trades. Regarde ensuite ta performance par heure et par jour de la semaine. La décision qui rapporte le plus est presque toujours la même : **couper ta pire heure**. C'est le gain de performance le moins cher qui existe, tu ne changes rien à ta stratégie, tu enlèves juste les trades qui la sabotent.
+
+TradeDiscipline calcule ça automatiquement : performance par heure et par jour, score de discipline par session, et le coût en euros de tes trades hors fenêtre. [Trouve ta fenêtre gratuitement](/login), sans carte bancaire.`,
+      },
+      en: {
+        title: "The best time to trade doesn't exist: here's how to find yours",
+        excerpt:
+          "The London and New York sessions concentrate the volume, but your own best hour is in your data, not in a YouTube video.",
+        body: `Search "best time to trade" and you'll always find the same answer: the London open, the London/New York overlap. It's true for volume. It's useless for you. Because the question isn't when the market moves the most, but when you trade at your best.
+
+## Why the generic answer doesn't work
+
+The volatility that feeds one strategy destroys another. A scalper wants movement, a range trader wants calm. And above all: two traders with the same strategy don't share the same good hours, because the decisive variable isn't the market, it's their own state (fresh in the morning, tired at night, distracted at noon).
+
+## The pattern almost everyone has
+
+Looking at journals, one pattern keeps coming back: most traders are profitable in one specific window and give it all back in another. The three most common variants:
+
+1. **Disciplined in the morning, tilted at night.** The first hours follow the plan, the last ones avenge it.
+2. **News o'clock.** Trades taken in the minutes around a macro release often have a catastrophic expectancy, without the trader ever having measured it.
+3. **The over-session.** Your window was working, so you keep going past it. The bonus trades of the extension erase the session's gains.
+
+## How to find your window
+
+You need two things: a journal where every trade has its time, and at least thirty trades. Then look at your performance by hour and by weekday. The single most profitable decision is almost always the same: **cut your worst hour**. It's the cheapest performance gain there is, you change nothing about your strategy, you just remove the trades that sabotage it.
+
+TradeDiscipline computes this automatically: performance by hour and by day, discipline score per session, and the euro cost of your out-of-window trades. [Find your window for free](/login), no credit card.`,
+      },
+      de: {
+        title: "Die beste Uhrzeit zum Traden gibt es nicht: So findest du deine",
+        excerpt:
+          "Die Sessions von London und New York bündeln das Volumen, aber deine eigene beste Stunde steht in deinen Daten, nicht in einem YouTube-Video.",
+        body: `Such nach „beste Uhrzeit zum Traden" und du findest immer dieselbe Antwort: die London-Eröffnung, die Überlappung London/New York. Das stimmt für das Volumen. Für dich ist es nutzlos. Denn die Frage ist nicht, wann der Markt sich am meisten bewegt, sondern wann du am besten tradest.
+
+## Warum die generische Antwort nicht funktioniert
+
+Die Volatilität, die eine Strategie nährt, zerstört eine andere. Ein Scalper will Bewegung, ein Range-Trader will Ruhe. Und vor allem: Zwei Trader mit derselben Strategie haben nicht dieselben guten Stunden, denn die entscheidende Variable ist nicht der Markt, sondern ihr eigener Zustand (frisch am Morgen, müde am Abend, abgelenkt am Mittag).
+
+## Das Muster, das fast jeder hat
+
+Beim Blick in Journale kehrt ein Muster ständig wieder: Die meisten Trader sind in einem bestimmten Zeitfenster profitabel und geben alles in einem anderen zurück. Die drei häufigsten Varianten:
+
+1. **Diszipliniert am Morgen, im Tilt am Abend.** Die ersten Stunden folgen dem Plan, die letzten rächen ihn.
+2. **Die News-Stunde.** Trades in den Minuten um eine Makro-Veröffentlichung haben oft einen katastrophalen Erwartungswert, ohne dass der Trader es je gemessen hat.
+3. **Die Über-Session.** Dein Fenster lief gut, also machst du weiter. Die Bonus-Trades der Verlängerung löschen die Gewinne der Session aus.
+
+## So findest du dein Fenster
+
+Du brauchst zwei Dinge: ein Journal, in dem jeder Trade seine Uhrzeit hat, und mindestens dreißig Trades. Dann schau dir deine Performance nach Stunde und Wochentag an. Die profitabelste Einzelentscheidung ist fast immer dieselbe: **streiche deine schlechteste Stunde**. Es ist der günstigste Performance-Gewinn überhaupt, du änderst nichts an deiner Strategie, du entfernst nur die Trades, die sie sabotieren.
+
+TradeDiscipline berechnet das automatisch: Performance nach Stunde und Tag, Disziplin-Score pro Session und die Kosten deiner Trades außerhalb des Fensters in Euro. [Finde dein Fenster kostenlos](/login), ohne Kreditkarte.`,
+      },
+      es: {
+        title: "La mejor hora para operar no existe: así encuentras la tuya",
+        excerpt:
+          "Las sesiones de Londres y Nueva York concentran el volumen, pero tu mejor hora está en tus datos, no en un vídeo de YouTube.",
+        body: `Busca "mejor hora para hacer trading" y encontrarás siempre la misma respuesta: la apertura de Londres, el solapamiento Londres/Nueva York. Es cierto para el volumen. Es inútil para ti. Porque la pregunta no es cuándo se mueve más el mercado, sino cuándo operas tú mejor.
+
+## Por qué la respuesta genérica no funciona
+
+La volatilidad que alimenta una estrategia destruye otra. Un scalper quiere movimiento, un trader de rango quiere calma. Y sobre todo: dos traders con la misma estrategia no comparten las mismas horas buenas, porque la variable decisiva no es el mercado, es su propio estado (fresco por la mañana, cansado por la noche, distraído al mediodía).
+
+## El patrón que casi todos tienen
+
+Mirando diarios, un patrón vuelve una y otra vez: la mayoría de traders son rentables en una franja concreta y lo devuelven todo en otra. Las tres variantes más comunes:
+
+1. **Disciplinado por la mañana, en tilt por la noche.** Las primeras horas siguen el plan, las últimas lo vengan.
+2. **La hora de las noticias.** Los trades tomados en los minutos alrededor de un dato macro suelen tener una esperanza catastrófica, sin que el trader lo haya medido nunca.
+3. **La sobre-sesión.** Tu franja funcionaba, así que sigues más allá. Los trades extra de la prórroga borran las ganancias de la sesión.
+
+## Cómo encontrar tu franja
+
+Necesitas dos cosas: un diario donde cada trade tenga su hora, y al menos treinta trades. Después mira tu rendimiento por hora y por día de la semana. La decisión más rentable es casi siempre la misma: **eliminar tu peor hora**. Es la mejora de rendimiento más barata que existe, no cambias nada de tu estrategia, solo quitas los trades que la sabotean.
+
+TradeDiscipline lo calcula automáticamente: rendimiento por hora y por día, score de disciplina por sesión, y el coste en euros de tus trades fuera de franja. [Encuentra tu franja gratis](/login), sin tarjeta.`,
+      },
+    },
+  },
+  {
     slug: "why-you-keep-losing",
     date: "2026-07-17",
     readingMinutes: 5,
