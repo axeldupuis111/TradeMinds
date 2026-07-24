@@ -13,7 +13,7 @@ export const FOUNDING_TOTAL = 100
 
 // Code public affiché sur la landing / la notif. Doit correspondre au code promo
 // créé dans Stripe (en MAJUSCULES) sur le coupon public à -9,99 €.
-export const FOUNDING_PUBLIC_CODE = 'LANCEMENT'
+export const FOUNDING_PUBLIC_CODE = 'DISCIPLINE'
 
 // Prix affichés (chaîne prête pour l'UI). Sync avec les coupons Stripe.
 export const FOUNDING_REGULAR_PRICE = '14,99 €'

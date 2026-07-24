@@ -903,6 +903,7 @@ const dict: Record<string, string> = {
   "founding_legal": "{price} el primer mes, luego {regular} al mes. Sin compromiso, cancela cuando quieras.",
   "founding_copied": "¡Código copiado!",
   "founding_dismiss": "Ocultar oferta",
+  "founding_code_lead": "Tu código de descuento:",
   "upgrade_manage_subscription": "Gestionar mi suscripción",
   "upgrade_manage_subscription_loading": "Abriendo...",
   "planchange_to_premium": "Pasar a Premium",

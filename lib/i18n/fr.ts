@@ -903,6 +903,7 @@ const dict: Record<string, string> = {
   "founding_legal": "{price} le premier mois, puis {regular} par mois. Sans engagement, résiliable à tout moment.",
   "founding_copied": "Code copié !",
   "founding_dismiss": "Masquer l'offre",
+  "founding_code_lead": "Ton code de réduction :",
   "upgrade_manage_subscription": "Gérer mon abonnement",
   "upgrade_manage_subscription_loading": "Ouverture...",
   "planchange_to_premium": "Passer à Premium",

@@ -155,6 +155,7 @@ export function FoundingBanner({
           <p className="mt-2 text-[15px] font-bold leading-snug text-foreground sm:text-base">{body}</p>
 
           <div className="mt-2.5 flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-muted">{t("founding_code_lead")}</span>
             <button
               onClick={copyCode}
               className="inline-flex items-center gap-2 rounded-lg border border-dashed border-accent/60 bg-accent/[0.08] px-3 py-1.5 text-sm font-semibold text-accent transition-colors hover:bg-accent/15"
