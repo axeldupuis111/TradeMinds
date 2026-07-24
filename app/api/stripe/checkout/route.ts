@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
+import type Stripe from 'stripe'
 import { createClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe'
 import { locales } from '@/i18n/config'
+import { FOUNDING_COUPON, getDirectFoundingStatus, resolveReferralPromo } from '@/lib/founding'
 
 export async function POST(req: NextRequest) {
   try {
     // 1. Parse body
     const body = await req.json()
-    const { plan, interval, locale } = body as {
+    const { plan, interval, locale, ref } = body as {
       plan?: 'plus' | 'premium'
       interval?: 'monthly' | 'yearly'
       locale?: string
+      ref?: string
     }
 
     // Langue de l'UI au moment du checkout : sert au webhook pour l'email de
@@ -94,8 +97,37 @@ export async function POST(req: NextRequest) {
     const successUrl = `${origin}/dashboard/upgrade?success=true&session_id={CHECKOUT_SESSION_ID}`
     const cancelUrl = `${origin}/dashboard/upgrade?canceled=true`
 
+    // 6b. Remise appliquée au checkout — deux canaux exclusifs (cf. lib/founding) :
+    //
+    //  a) PARTENAIRE : si l'utilisateur arrive avec un code de parrainage valide
+    //     (?ref= / ?utm_source= capté en localStorage), on pré-applique SON code
+    //     promo. La remise (prix fondateur) ET l'attribution (→ commission) sont
+    //     préservées, sans que l'utilisateur ait à retaper le code. Prioritaire.
+    //
+    //  b) DIRECT : sinon, sur le Plus MENSUEL, on auto-applique le coupon
+    //     fondateur générique tant qu'il reste des places (canal perso d'Axel).
+    //
+    // Stripe interdit `discounts` et `allow_promotion_codes` ensemble : dès qu'on
+    // pose une remise, on retire la saisie manuelle de code.
+    let founding = false // marque le badge « Membre fondateur » (les 2 canaux)
+    const discounts: NonNullable<Stripe.Checkout.SessionCreateParams['discounts']> = []
+
+    const partnerPromoId = await resolveReferralPromo(ref)
+    if (partnerPromoId) {
+      // Canal partenaire : code promo pré-appliqué + attribué (webhook grave promo_code).
+      discounts.push({ promotion_code: partnerPromoId })
+      founding = true
+    } else if (plan === 'plus' && interval === 'monthly' && FOUNDING_COUPON) {
+      // Canal direct : coupon fondateur générique tant qu'il reste des places.
+      const status = await getDirectFoundingStatus()
+      if (status.active) {
+        discounts.push({ coupon: FOUNDING_COUPON })
+        founding = true
+      }
+    }
+
     // 7. Création de la Checkout Session
-    const session = await stripe.checkout.sessions.create({
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: 'subscription',
       payment_method_types: ['card'],
       line_items: [
@@ -112,6 +144,7 @@ export async function POST(req: NextRequest) {
         plan,
         interval,
         locale: safeLocale,
+        founding: founding ? 'true' : 'false',
       },
       subscription_data: {
         metadata: {
@@ -119,14 +152,46 @@ export async function POST(req: NextRequest) {
           plan,
           interval,
           locale: safeLocale,
+          founding: founding ? 'true' : 'false',
         },
       },
       success_url: successUrl,
       cancel_url: cancelUrl,
-      allow_promotion_codes: true,
       billing_address_collection: 'auto',
       locale: 'auto',
-    })
+    }
+
+    if (discounts.length > 0) {
+      sessionParams.discounts = discounts
+    } else {
+      // Aucune remise pré-appliquée : on laisse la saisie manuelle d'un code
+      // (un filleul dont le slug n'a pas résolu peut encore taper son code).
+      sessionParams.allow_promotion_codes = true
+    }
+
+    let session: Stripe.Checkout.Session
+    try {
+      session = await stripe.checkout.sessions.create(sessionParams)
+    } catch (err) {
+      // Remise refusée (coupon épuisé/supprimé, code réservé aux nouveaux clients,
+      // client déjà remisé…) : on retombe sur le plein tarif avec saisie de code
+      // plutôt que de bloquer la souscription.
+      if (discounts.length === 0) throw err
+      console.warn(
+        '[Stripe Checkout] Remise refusée, repli plein tarif:',
+        err instanceof Error ? err.message : err
+      )
+      delete sessionParams.discounts
+      sessionParams.allow_promotion_codes = true
+      sessionParams.metadata = { ...sessionParams.metadata, founding: 'false' }
+      if (sessionParams.subscription_data) {
+        sessionParams.subscription_data.metadata = {
+          ...sessionParams.subscription_data.metadata,
+          founding: 'false',
+        }
+      }
+      session = await stripe.checkout.sessions.create(sessionParams)
+    }
 
     if (!session.url) {
       console.error('[Stripe Checkout] No URL returned from Stripe session')

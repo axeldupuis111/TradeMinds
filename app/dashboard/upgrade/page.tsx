@@ -4,6 +4,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { track } from "@/lib/track";
 import { WelcomePlusModal } from "@/components/upgrade/WelcomePlusModal";
+import { ATTRIBUTION_KEY, ATTRIBUTION_MAX_AGE_MS } from "@/components/AttributionCapture";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 
@@ -220,6 +221,22 @@ export default function UpgradePage() {
     }
   }
 
+  // Slug d'attribution capté à l'arrivée (AttributionCapture, first-touch) —
+  // passé au checkout pour appliquer le code promo partenaire + attribuer la
+  // commission. Ignoré s'il est absent ou hors fenêtre d'attribution.
+  function referralCode(): string | undefined {
+    if (typeof window === "undefined") return undefined;
+    try {
+      const raw = localStorage.getItem(ATTRIBUTION_KEY);
+      if (!raw) return undefined;
+      const { source, at } = JSON.parse(raw) as { source?: string; at?: number };
+      if (!source || !at || Date.now() - at > ATTRIBUTION_MAX_AGE_MS) return undefined;
+      return source;
+    } catch {
+      return undefined;
+    }
+  }
+
   async function handleCheckout(plan: "plus" | "premium") {
     setCheckoutLoadingPlan(plan);
     setCheckoutError(null);
@@ -233,7 +250,7 @@ export default function UpgradePage() {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan, interval, locale: lang }),
+        body: JSON.stringify({ plan, interval, locale: lang, ref: referralCode() }),
       });
 
       const data = await res.json();

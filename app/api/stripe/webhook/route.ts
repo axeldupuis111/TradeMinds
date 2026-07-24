@@ -405,6 +405,21 @@ async function handleInvoicePaid(
     throw planError
   }
 
+  // Membre fondateur : la PREMIÈRE facture payée d'une souscription marquée
+  // « founding » grave le statut à vie (badge + comptage des 100 places).
+  // Idempotent via le filtre founding_member=false : un renouvellement ou un
+  // re-traitement ne réécrit jamais founding_since. Non bloquant.
+  if (invoice.billing_reason === 'subscription_create' && subscription.metadata?.founding === 'true') {
+    const { error: foundingErr } = await supabase
+      .from('profiles')
+      .update({ founding_member: true, founding_since: new Date().toISOString() })
+      .eq('id', userId)
+      .eq('founding_member', false)
+    if (foundingErr) {
+      console.error('[Webhook] Error setting founding_member:', foundingErr)
+    }
+  }
+
   // On ne félicite que sur une nouvelle souscription ou un changement de plan (upgrade),
   // jamais sur un renouvellement (subscription_cycle).
   if (invoice.billing_reason !== 'subscription_create' && invoice.billing_reason !== 'subscription_update') {
