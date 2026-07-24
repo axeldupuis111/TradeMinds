@@ -493,11 +493,6 @@ function Hero() {
           </Magnetic>
         </motion.div>
 
-        {/* Offre fondateur — visible dès l'arrivée (code LANCEMENT public, ou 3 € via un lien partenaire) */}
-        <div className="mt-6 mx-auto max-w-2xl">
-          <FoundingBanner href="/login" />
-        </div>
-
         {/* Risk-reversal reassurance — reduces signup friction right under the CTA */}
         <motion.p
           initial={prefersReduced ? false : { opacity: 0 }}
@@ -508,6 +503,11 @@ function Hero() {
         >
           {t("hero_reassurance")}
         </motion.p>
+
+        {/* Offre fondateur — sous la réassurance pour éviter la juxtaposition avec « gratuit » */}
+        <div className="mt-8 mx-auto max-w-2xl">
+          <FoundingBanner href="/login" />
+        </div>
 
         {/* AI trust badge */}
         <motion.div
