@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import type Stripe from 'stripe'
+import Stripe from 'stripe'
 import { createClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe'
 import { locales } from '@/i18n/config'
@@ -169,18 +169,8 @@ export async function POST(req: NextRequest) {
       sessionParams.allow_promotion_codes = true
     }
 
-    let session: Stripe.Checkout.Session
-    try {
-      session = await stripe.checkout.sessions.create(sessionParams)
-    } catch (err) {
-      // Remise refusée (coupon épuisé/supprimé, code réservé aux nouveaux clients,
-      // client déjà remisé…) : on retombe sur le plein tarif avec saisie de code
-      // plutôt que de bloquer la souscription.
-      if (discounts.length === 0) throw err
-      console.warn(
-        '[Stripe Checkout] Remise refusée, repli plein tarif:',
-        err instanceof Error ? err.message : err
-      )
+    // Retire la remise du session courant et bascule en saisie manuelle de code.
+    const dropDiscount = () => {
       delete sessionParams.discounts
       sessionParams.allow_promotion_codes = true
       sessionParams.metadata = { ...sessionParams.metadata, founding: 'false' }
@@ -190,7 +180,36 @@ export async function POST(req: NextRequest) {
           founding: 'false',
         }
       }
+    }
+
+    let session: Stripe.Checkout.Session
+    try {
       session = await stripe.checkout.sessions.create(sessionParams)
+    } catch (err) {
+      const stripeErr = err instanceof Stripe.errors.StripeError ? err : null
+      const badCustomer =
+        !!stripeErr &&
+        !!sessionParams.customer &&
+        (stripeErr.code === 'resource_missing' ||
+          (stripeErr as { param?: string }).param === 'customer')
+
+      if (badCustomer) {
+        // customer stocké invalide (id créé en mode Test, ou supprimé côté Stripe) :
+        // on laisse Stripe recréer un customer depuis l'email. Le webhook
+        // (checkout.session.completed) réécrira le bon id live dans le profil.
+        console.warn('[Stripe Checkout] customer invalide, recréation via email:', stripeErr?.message)
+        sessionParams.customer = undefined
+        sessionParams.customer_email = profile.email || user.email || undefined
+        session = await stripe.checkout.sessions.create(sessionParams)
+      } else if (discounts.length > 0) {
+        // Remise refusée (coupon épuisé/supprimé, code réservé aux nouveaux
+        // clients…) : repli plein tarif avec saisie de code.
+        console.warn('[Stripe Checkout] Remise refusée, repli plein tarif:', err instanceof Error ? err.message : err)
+        dropDiscount()
+        session = await stripe.checkout.sessions.create(sessionParams)
+      } else {
+        throw err
+      }
     }
 
     if (!session.url) {
@@ -206,11 +225,8 @@ export async function POST(req: NextRequest) {
 
   } catch (error) {
     console.error('[Stripe Checkout] Error:', error)
-    // DIAGNOSTIC TEMPORAIRE : on renvoie le vrai message pour identifier le refus
-    // Stripe côté client. À retirer une fois la cause trouvée.
-    const detail = error instanceof Error ? error.message : String(error)
     return NextResponse.json(
-      { error: `Internal server error: ${detail}` },
+      { error: 'Internal server error' },
       { status: 500 }
     )
   }
