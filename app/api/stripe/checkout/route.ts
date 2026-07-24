@@ -206,8 +206,11 @@ export async function POST(req: NextRequest) {
 
   } catch (error) {
     console.error('[Stripe Checkout] Error:', error)
+    // DIAGNOSTIC TEMPORAIRE : on renvoie le vrai message pour identifier le refus
+    // Stripe côté client. À retirer une fois la cause trouvée.
+    const detail = error instanceof Error ? error.message : String(error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: `Internal server error: ${detail}` },
       { status: 500 }
     )
   }
