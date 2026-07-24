@@ -3,7 +3,7 @@ import Stripe from 'stripe'
 import { createClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe'
 import { locales } from '@/i18n/config'
-import { FOUNDING_COUPON, getDirectFoundingStatus, resolveReferralPromo } from '@/lib/founding'
+import { resolveReferralPromo } from '@/lib/founding'
 
 export async function POST(req: NextRequest) {
   try {
@@ -97,33 +97,22 @@ export async function POST(req: NextRequest) {
     const successUrl = `${origin}/dashboard/upgrade?success=true&session_id={CHECKOUT_SESSION_ID}`
     const cancelUrl = `${origin}/dashboard/upgrade?canceled=true`
 
-    // 6b. Remise appliquée au checkout — deux canaux exclusifs (cf. lib/founding) :
-    //
-    //  a) PARTENAIRE : si l'utilisateur arrive avec un code de parrainage valide
-    //     (?ref= / ?utm_source= capté en localStorage), on pré-applique SON code
-    //     promo. La remise (prix fondateur) ET l'attribution (→ commission) sont
-    //     préservées, sans que l'utilisateur ait à retaper le code. Prioritaire.
-    //
-    //  b) DIRECT : sinon, sur le Plus MENSUEL, on auto-applique le coupon
-    //     fondateur générique tant qu'il reste des places (canal perso d'Axel).
+    // 6b. Remise via CODE uniquement (modèle code-based, aucune auto-application) :
+    // si l'utilisateur arrive avec un code de parrainage valide (?ref= / ?utm_source=
+    // capté en localStorage, ex. « lancement » public ou « xanalyse » partenaire),
+    // on pré-applique SON code promo. La remise ET l'attribution (→ commission)
+    // sont préservées, sans qu'il ait à retaper le code. Sinon, saisie manuelle du
+    // code au checkout via allow_promotion_codes (plus bas).
     //
     // Stripe interdit `discounts` et `allow_promotion_codes` ensemble : dès qu'on
     // pose une remise, on retire la saisie manuelle de code.
-    let founding = false // marque le badge « Membre fondateur » (les 2 canaux)
+    let founding = false // marque le badge « Membre fondateur » (code pré-rempli)
     const discounts: NonNullable<Stripe.Checkout.SessionCreateParams['discounts']> = []
 
-    const partnerPromoId = await resolveReferralPromo(ref)
-    if (partnerPromoId) {
-      // Canal partenaire : code promo pré-appliqué + attribué (webhook grave promo_code).
-      discounts.push({ promotion_code: partnerPromoId })
+    const promoId = await resolveReferralPromo(ref)
+    if (promoId) {
+      discounts.push({ promotion_code: promoId })
       founding = true
-    } else if (plan === 'plus' && interval === 'monthly' && FOUNDING_COUPON) {
-      // Canal direct : coupon fondateur générique tant qu'il reste des places.
-      const status = await getDirectFoundingStatus()
-      if (status.active) {
-        discounts.push({ coupon: FOUNDING_COUPON })
-        founding = true
-      }
     }
 
     // 7. Création de la Checkout Session

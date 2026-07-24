@@ -3,6 +3,7 @@
 import DisciplineQuiz from "@/components/landing/DisciplineQuiz";
 import LiveDemo from "@/components/landing/LiveDemo";
 import PublicHeader from "@/components/PublicHeader";
+import { FoundingBanner } from "@/components/FoundingBanner";
 import { useLanguage } from "@/lib/LanguageContext";
 import { localizedHref } from "@/lib/locale-href";
 import { PLAN_FEATURES, FREE_BENEFITS, PLUS_BENEFITS, PREMIUM_BENEFITS } from "@/lib/plan-features";
@@ -491,6 +492,11 @@ function Hero() {
             </a>
           </Magnetic>
         </motion.div>
+
+        {/* Offre fondateur — visible dès l'arrivée (code LANCEMENT public, ou 3 € via un lien partenaire) */}
+        <div className="mt-6 mx-auto max-w-2xl">
+          <FoundingBanner href="/login" />
+        </div>
 
         {/* Risk-reversal reassurance — reduces signup friction right under the CTA */}
         <motion.p

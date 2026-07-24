@@ -1,32 +1,28 @@
 import { stripe } from '@/lib/stripe'
+import { FOUNDING_TOTAL } from '@/lib/founding-config'
 
 // ============================================================
-// Offre « Membre fondateur » : les 100 premiers abonnés Plus (mensuel) paient
-// leur premier mois à tarif d'appel (3 €), puis le plein tarif (14,99 €).
+// Offre « Membre fondateur » — logique SERVEUR (Stripe). Modèle « code-based » :
+// aucune remise auto-appliquée. Le prix fondateur s'obtient toujours via un CODE.
 //
-// DEUX CANAUX, source de vérité côté Stripe :
+//  1. Public — code LANCEMENT (affiché landing/notif), coupon à -9,99 € (→ 5 €),
+//     max_redemptions=100. Le compteur « X/100 places » lit times_redeemed de CE
+//     coupon (STRIPE_COUPON_FOUNDING pointe dessus).
 //
-//  1. Direct (TikTok/Reddit d'Axel) — coupon générique STRIPE_COUPON_FOUNDING,
-//     appliqué AUTOMATIQUEMENT au checkout du Plus mensuel. Le plafond « 100 »
-//     est le max_redemptions de CE coupon (Stripe l'enforce). Le compteur public
-//     lit times_redeemed de ce coupon : il ne compte donc QUE le canal direct.
+//  2. Partenaire (influenceurs) — chaque influenceur a SON code promo → SON
+//     coupon à -11,99 € (→ 3 €), sa propre allocation. Appliqué via le code
+//     (attribution → commission). Cf. [[influencer-partnership]].
 //
-//  2. Partenaire (influenceurs) — chaque influenceur a SON code promo, pointant
-//     vers SON coupon (même remise -11,99 € once, son propre max_redemptions).
-//     Appliqué via le code (attribution → commission). N'entame pas les 100
-//     places directes puisque c'est un autre coupon.
-//
-// Le badge founding_member est posé pour les DEUX canaux (metadata.founding=true
-// au checkout → webhook sur la 1re facture payée). Cf. app/api/stripe/webhook.
-//
-// ⚠️ Config Stripe (Axel, dashboard Live) : le coupon direct DOIT avoir
-// max_redemptions=100 pour que le plafond et le compteur fonctionnent.
+// Les codes sont pré-remplis quand l'utilisateur arrive via un lien ?ref= (le
+// slug capté en localStorage), sinon saisis à la main. Le badge founding_member
+// est posé au webhook quand un code a été pré-rempli (metadata.founding=true).
 // ============================================================
 
-export const FOUNDING_TOTAL = 100
+export { FOUNDING_TOTAL }
 
-// Coupon générique du canal direct. Server-only : absent → offre directe
-// désactivée (checkout normal, plein tarif).
+// Coupon public (derrière le code LANCEMENT). Server-only : sert au COMPTEUR des
+// places. Absent → compteur inactif (offre masquée). Le checkout, lui, applique
+// les codes via resolveReferralPromo, indépendamment de cette variable.
 export const FOUNDING_COUPON = process.env.STRIPE_COUPON_FOUNDING
 
 export interface FoundingStatus {

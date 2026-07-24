@@ -4,6 +4,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { track } from "@/lib/track";
 import { WelcomePlusModal } from "@/components/upgrade/WelcomePlusModal";
+import { FoundingBanner } from "@/components/FoundingBanner";
 import { ATTRIBUTION_KEY, ATTRIBUTION_MAX_AGE_MS } from "@/components/AttributionCapture";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
@@ -377,6 +378,13 @@ export default function UpgradePage() {
           </span>
         )}
       </div>
+
+      {/* Offre fondateur (utilisateurs free uniquement) — code LANCEMENT / partenaire */}
+      {currentPlan === "free" && (
+        <div className="max-w-4xl mx-auto mt-6">
+          <FoundingBanner onClaim={() => handleCheckout("plus")} />
+        </div>
+      )}
 
       {/* Active plans grid (Free + Plus + Premium) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 max-w-4xl mx-auto">

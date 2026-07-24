@@ -14,6 +14,7 @@ import SignupAttribution from "@/components/dashboard/SignupAttribution";
 import StopTradingGuard from "@/components/dashboard/StopTradingGuard";
 import TimezoneSync from "@/components/dashboard/TimezoneSync";
 import { SubscriptionBanner } from "@/components/SubscriptionBanner";
+import { FoundingNotif } from "@/components/FoundingNotif";
 import { ActiveAccountProvider } from "@/lib/ActiveAccountContext";
 import { AlertsProvider } from "@/lib/AlertsContext";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -225,7 +226,10 @@ export default function DashboardLayout({
         <SubscriptionBanner />
         <SessionReminderBanner />
         <SessionDurationBanner />
-        <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto p-6 pb-24 lg:pb-6 focus:outline-none">{children}</main>
+        <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto p-6 pb-24 lg:pb-6 focus:outline-none">
+          <FoundingNotif />
+          {children}
+        </main>
       </div>
       <HelpWidget />
       <OnboardingGuide />
