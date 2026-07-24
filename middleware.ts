@@ -38,6 +38,7 @@ function isPublicPath(pathname: string): boolean {
     p.startsWith("/auth/") ||
     p.startsWith("/api/waitlist") ||
     p.startsWith("/api/contact") ||
+    p.startsWith("/api/founding") ||
     p.startsWith("/cgu") ||
     p.startsWith("/confidentialite") ||
     p.startsWith("/mentions-legales") ||
