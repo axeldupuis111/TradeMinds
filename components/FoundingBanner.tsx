@@ -44,19 +44,6 @@ function readRef(): string | undefined {
   }
 }
 
-function ensureRef(code: string) {
-  if (typeof window === "undefined") return;
-  try {
-    if (localStorage.getItem(ATTRIBUTION_KEY)) return; // respecte le first-touch partenaire
-    localStorage.setItem(
-      ATTRIBUTION_KEY,
-      JSON.stringify({ source: code.slice(0, 64).toLowerCase(), at: Date.now() })
-    );
-  } catch {
-    /* localStorage indisponible : le code reste saisissable à la main au checkout */
-  }
-}
-
 export function FoundingBanner({
   onClaim,
   onDismiss,
@@ -115,7 +102,10 @@ export function FoundingBanner({
   }
 
   function claim() {
-    if (!isPartner) ensureRef(offer!.code);
+    // Pas de pré-remplissage forcé côté public : le champ code reste OUVERT au
+    // checkout pour que le client puisse saisir son code (public DISCIPLINE ou
+    // code d'un influenceur). Les liens ?ref= restent, eux, pré-remplis via le
+    // checkout (attribution partenaire garantie).
     if (onClaim) onClaim();
     else router.push(href);
   }

@@ -405,11 +405,16 @@ async function handleInvoicePaid(
     throw planError
   }
 
-  // Membre fondateur : la PREMIÈRE facture payée d'une souscription marquée
-  // « founding » grave le statut à vie (badge + comptage des 100 places).
-  // Idempotent via le filtre founding_member=false : un renouvellement ou un
-  // re-traitement ne réécrit jamais founding_since. Non bloquant.
-  if (invoice.billing_reason === 'subscription_create' && subscription.metadata?.founding === 'true') {
+  // Membre fondateur : posé à vie quand la PREMIÈRE facture porte une remise
+  // fondateur (≥ 5 €). On lit le montant réellement remisé sur la facture, ce qui
+  // couvre le code pré-rempli (lien ?ref=) ET le code saisi à la main au checkout.
+  // Le seuil 5 € distingue les coupons fondateurs (public -9,99 € / partenaire
+  // -11,99 €) des futurs codes -10 % (~1,50 €). Idempotent via founding_member=false.
+  const founderDiscountCents = (invoice.total_discount_amounts ?? []).reduce(
+    (sum, d) => sum + (d?.amount ?? 0),
+    0
+  )
+  if (invoice.billing_reason === 'subscription_create' && founderDiscountCents >= 500) {
     const { error: foundingErr } = await supabase
       .from('profiles')
       .update({ founding_member: true, founding_since: new Date().toISOString() })
