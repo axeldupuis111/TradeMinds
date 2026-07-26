@@ -1,6 +1,7 @@
 "use client";
 
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { Gem } from "lucide-react";
 import { useMemo } from "react";
 
 interface Trade {
@@ -35,11 +36,14 @@ function netPnl(t: Trade) {
 
 export default function PublicProfileView({
   username,
+  founding = false,
   trades,
   reviews,
   achievements,
 }: {
   username: string;
+  /** Membre fondateur : l'un des 100 premiers abonnés, statut à vie. */
+  founding?: boolean;
   trades: Trade[];
   reviews: Review[];
   achievements: Achievement[];
@@ -92,7 +96,18 @@ export default function PublicProfileView({
               <span className="text-accent font-bold text-lg">{username.charAt(0).toUpperCase()}</span>
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">@{username}</h1>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-2xl font-bold text-foreground">@{username}</h1>
+                {founding && (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 text-[11px] font-semibold text-accent"
+                    title="One of the first 100 members"
+                  >
+                    <Gem className="w-3 h-3" strokeWidth={2} aria-hidden />
+                    Founding member
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-muted">TradeDiscipline Public Profile</p>
             </div>
           </div>

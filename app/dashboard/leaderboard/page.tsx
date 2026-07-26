@@ -4,7 +4,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { BADGE_EMOJI, BADGE_REWARDS, FREE_BADGE_KEY, computeBadges, type BadgeKey, type BadgeState } from "@/lib/badges";
 import { generateBadgeCertificate, hasCertificate, type CertLang } from "@/lib/badge-certificate";
-import { Activity, ArrowUp, ArrowDown, Award, BadgeCheck, Crown, Minus, Lock, Share2, Trophy, Users, UserPlus, Gauge, CalendarDays, Flame, Rocket, FileDown, Gift, Snowflake } from "lucide-react";
+import { Activity, ArrowUp, ArrowDown, Award, BadgeCheck, Crown, Gem, Minus, Lock, Share2, Trophy, Users, UserPlus, Gauge, CalendarDays, Flame, Rocket, FileDown, Gift, Snowflake } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import CountUp from "@/components/animations/CountUp";
@@ -24,12 +24,18 @@ type FeedItem =
 
 interface Entry {
   rank: number; username: string; score: number; sessions: number; streak: number;
-  value: number; isMe: boolean; premium: boolean; flair: string | null; delta: number | null;
+  value: number; isMe: boolean; premium: boolean; founding: boolean; flair: string | null; delta: number | null;
 }
 
 // Badge de statut des membres Premium (avantage du plan, visible par tous).
 function PremiumBadge({ label }: { label: string }) {
   return <BadgeCheck className="w-3.5 h-3.5 text-yellow-400 shrink-0" strokeWidth={2} aria-label={label} role="img" />;
+}
+
+// Emblème des membres fondateurs (les 100 premiers) : statut à vie, jamais
+// réattribué. Cyan de la marque, pour ne pas se confondre avec le doré Premium.
+function FoundingBadge({ label }: { label: string }) {
+  return <Gem className="w-3.5 h-3.5 text-accent shrink-0" strokeWidth={2} aria-label={label} role="img" />;
 }
 interface AllTime {
   totalSessions: number; goldDays: number; comeback: boolean;
@@ -622,6 +628,7 @@ export default function LeaderboardPage() {
                     <span className="flex items-center gap-1 max-w-full mt-1">
                       <span className="text-xs text-foreground truncate font-medium">{e.isMe ? t("leaderboard_you") : `@${e.username}`}</span>
                       {e.flair && <span className="text-xs shrink-0" title={t("leaderboard_flair_hint")} role="img">{e.flair}</span>}
+                      {e.founding && <FoundingBadge label={t("founding_badge")} />}
                       {e.premium && <PremiumBadge label={t("plan_premium")} />}
                     </span>
                     <span className={`text-lg font-bold ${scoreColor(e.score)}`}>{displayValue(e.score, e.sessions, e.streak)}</span>
@@ -689,6 +696,7 @@ function Row({ e, t, value }: { e: Entry; t: (k: string) => string; value: strin
       <span className="flex-1 min-w-0 flex items-center gap-1.5">
         <span className="text-foreground truncate">{e.isMe ? t("leaderboard_you") : `@${e.username}`}</span>
         {e.flair && <span className="text-sm shrink-0" title={t("leaderboard_flair_hint")} role="img">{e.flair}</span>}
+        {e.founding && <FoundingBadge label={t("founding_badge")} />}
         {e.premium && <PremiumBadge label={t("plan_premium")} />}
       </span>
       <span className="hidden sm:inline text-[11px] text-muted tabular-nums whitespace-nowrap">📅 {e.sessions} · 🔥 {e.streak}</span>

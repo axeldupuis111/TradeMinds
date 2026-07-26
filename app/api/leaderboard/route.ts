@@ -183,6 +183,17 @@ export async function GET(req: NextRequest) {
   // Badge Premium affiché sur le classement (avantage de statut du plan).
   const premiumById = new Map(profiles.map((p) => [p.id, p.plan === "premium"]));
 
+  // Emblème « Membre fondateur » (les 100 premiers abonnés de l'offre de
+  // lancement) : statut à vie, affiché à côté du pseudo. Requête séparée et
+  // fail-open — sans la colonne founding_member, personne n'est fondateur et le
+  // classement continue de fonctionner.
+  const foundingIds = new Set<string>();
+  {
+    const { data: founders, error: foundingErr } = await admin
+      .from("profiles").select("id").eq("founding_member", true).in("id", ids);
+    if (!foundingErr) for (const f of founders ?? []) foundingIds.add(f.id as string);
+  }
+
   // Reviews des 2 fenêtres (courante + précédente) pour le calcul du mouvement.
   const { data: reviews } = await admin
     .from("session_reviews").select("user_id, discipline_score, created_at")
@@ -257,6 +268,7 @@ export async function GET(req: NextRequest) {
       value: valueFor(r.m, mode),
       isMe: r.id === user.id,
       premium: premiumById.get(r.id) ?? false,
+      founding: foundingIds.has(r.id),
       flair: flairById.get(r.id) ?? null,
       delta: prevRank ? prevRank - rank : null, // >0 = monté, null = nouveau
     };

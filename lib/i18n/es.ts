@@ -904,6 +904,7 @@ const dict: Record<string, string> = {
   "founding_copied": "¡Código copiado!",
   "founding_dismiss": "Ocultar oferta",
   "founding_code_lead": "Tu código de descuento:",
+  "founding_badge": "Miembro fundador",
   "upgrade_manage_subscription": "Gestionar mi suscripción",
   "upgrade_manage_subscription_loading": "Abriendo...",
   "planchange_to_premium": "Pasar a Premium",

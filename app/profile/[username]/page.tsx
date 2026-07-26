@@ -62,6 +62,15 @@ export default async function PublicProfilePage({ params }: Props) {
 
   const userId = profile.id;
 
+  // Statut « membre fondateur » (emblème à côté du pseudo). Requête séparée et
+  // fail-open : sans la colonne founding_member, le profil s'affiche normalement.
+  const { data: foundingRow } = await supabase
+    .from("profiles")
+    .select("founding_member")
+    .eq("id", userId)
+    .single();
+  const isFounding = foundingRow?.founding_member === true;
+
   // Les trades démo n'apparaissent jamais sur un profil PUBLIC ; fallback
   // sans filtre tant que la colonne is_demo n'existe pas en prod.
   const [{ data: trades }, { data: reviews }, { data: achievements }] = await Promise.all([
@@ -95,6 +104,7 @@ export default async function PublicProfilePage({ params }: Props) {
   return (
     <PublicProfileView
       username={profile.username}
+      founding={isFounding}
       trades={trades || []}
       reviews={reviews || []}
       achievements={achievements || []}
