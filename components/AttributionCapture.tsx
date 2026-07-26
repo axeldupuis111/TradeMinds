@@ -18,6 +18,35 @@ export const ATTRIBUTION_KEY = "td_attribution";
 /** Fenêtre d'attribution : au-delà, la visite initiale ne compte plus. */
 export const ATTRIBUTION_MAX_AGE_MS = 30 * 24 * 3600 * 1000;
 
+/**
+ * Source d'attribution courante (slug partenaire, ex. « xanalyse »).
+ *
+ * Ordre : localStorage (first-touch, c'est ce que le checkout appliquera), puis
+ * repli sur l'URL. Le repli est indispensable : la capture ci-dessous écrit
+ * depuis un useEffect dont l'ordre d'exécution n'est pas garanti par rapport aux
+ * autres composants. Sans lui, un visiteur arrivant sur un lien partenaire lit
+ * un stockage encore vide et voit l'offre publique jusqu'au rechargement.
+ */
+export function readAttributionRef(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const raw = localStorage.getItem(ATTRIBUTION_KEY);
+    if (raw) {
+      const { source, at } = JSON.parse(raw) as { source?: string; at?: number };
+      if (source && at && Date.now() - at <= ATTRIBUTION_MAX_AGE_MS) return source;
+    }
+  } catch {
+    // localStorage indisponible : on se rabat sur l'URL.
+  }
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const fromUrl = params.get("utm_source") || params.get("ref");
+    return fromUrl ? fromUrl.slice(0, 64).toLowerCase() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export default function AttributionCapture() {
   useEffect(() => {
     try {

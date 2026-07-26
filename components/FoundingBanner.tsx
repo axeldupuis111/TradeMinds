@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/lib/LanguageContext";
-import { ATTRIBUTION_KEY, ATTRIBUTION_MAX_AGE_MS } from "@/components/AttributionCapture";
+import { readAttributionRef } from "@/components/AttributionCapture";
 
 /**
  * Bandeau de l'offre « Membre fondateur » (modèle code-based).
@@ -31,19 +31,6 @@ interface Offer {
   remaining?: number;
 }
 
-function readRef(): string | undefined {
-  if (typeof window === "undefined") return undefined;
-  try {
-    const raw = localStorage.getItem(ATTRIBUTION_KEY);
-    if (!raw) return undefined;
-    const { source, at } = JSON.parse(raw) as { source?: string; at?: number };
-    if (!source || !at || Date.now() - at > ATTRIBUTION_MAX_AGE_MS) return undefined;
-    return source;
-  } catch {
-    return undefined;
-  }
-}
-
 export function FoundingBanner({
   onClaim,
   onDismiss,
@@ -59,7 +46,7 @@ export function FoundingBanner({
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    const ref = readRef();
+    const ref = readAttributionRef();
     const q = ref ? `?ref=${encodeURIComponent(ref)}` : "";
     let cancelled = false;
     fetch(`/api/founding/slots${q}`)
