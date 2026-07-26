@@ -161,14 +161,25 @@ async function handleCheckoutCompleted(
   // les metadata, elles, restent à vie, ce qui permet de calculer les
   // commissions influenceur sur les 12 premiers mois (onglet admin Affiliation).
   try {
-    const promoRef = session.discounts?.[0]?.promotion_code
-    if (promoRef && !subscription.metadata?.promo_code) {
-      const promo = typeof promoRef === 'string'
-        ? await stripe.promotionCodes.retrieve(promoRef)
-        : promoRef
-      if (promo?.code) {
+    if (!subscription.metadata?.promo_code) {
+      const promoRef = session.discounts?.[0]?.promotion_code
+      let code: string | null = null
+
+      if (promoRef) {
+        const promo = typeof promoRef === 'string'
+          ? await stripe.promotionCodes.retrieve(promoRef)
+          : promoRef
+        code = promo?.code ?? null
+      } else {
+        // Aucune remise appliquée alors que le client vient d'un lien partenaire :
+        // son code est épuisé ou expiré. La vente lui revient malgré tout, sinon
+        // sa commission disparaîtrait sans bruit une fois son quota atteint.
+        code = (subscription.metadata?.attribution_code as string | undefined) ?? null
+      }
+
+      if (code) {
         await stripe.subscriptions.update(subscription.id, {
-          metadata: { ...subscription.metadata, promo_code: promo.code },
+          metadata: { ...subscription.metadata, promo_code: code },
         })
       }
     }

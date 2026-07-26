@@ -1,5 +1,5 @@
 import { stripe } from '@/lib/stripe'
-import { FOUNDING_TOTAL } from '@/lib/founding-config'
+import { FOUNDING_TOTAL, pickUsablePromo } from '@/lib/founding-config'
 
 // ============================================================
 // Offre « Membre fondateur » — logique SERVEUR (Stripe). Modèle « code-based » :
@@ -53,20 +53,37 @@ export async function getDirectFoundingStatus(): Promise<FoundingStatus> {
   }
 }
 
+export interface ReferralPromo {
+  id: string
+  code: string
+  /** false = épuisé (max_redemptions atteint), expiré ou archivé. */
+  active: boolean
+}
+
 // Résout un code de parrainage (slug capté en localStorage, ex. « xanalyse »)
-// vers l'ID d'un code promo Stripe ACTIF. Les codes promo sont créés en
-// majuscules ; le slug d'attribution est stocké en minuscules → on normalise.
-// Renvoie null si aucun code actif ne correspond (visiteur organique, source
-// non-partenaire comme « twitter », etc.).
-export async function resolveReferralPromo(ref: string | undefined | null): Promise<string | null> {
+// vers le code promo Stripe correspondant. Les codes sont créés en majuscules ;
+// le slug d'attribution est stocké en minuscules → on normalise.
+//
+// Renvoie AUSSI les codes désactivés : la remise ne s'applique plus, mais on a
+// besoin de savoir que le visiteur vient bien d'un partenaire pour lui attribuer
+// la vente (sinon sa commission disparaîtrait sans bruit une fois son quota
+// atteint). Renvoie null pour une source non-partenaire (« twitter »…).
+export async function resolveReferralCode(ref: string | undefined | null): Promise<ReferralPromo | null> {
   if (!ref) return null
   const code = ref.trim().toUpperCase().slice(0, 64)
   if (!code) return null
   try {
-    const list = await stripe.promotionCodes.list({ code, active: true, limit: 1 })
-    return list.data[0]?.id ?? null
+    const list = await stripe.promotionCodes.list({ code, limit: 10 })
+    const found = pickUsablePromo(list.data)
+    return found ? { id: found.id, code: found.code, active: found.active } : null
   } catch (err) {
-    console.error('[Founding] resolveReferralPromo error:', err)
+    console.error('[Founding] resolveReferralCode error:', err)
     return null
   }
+}
+
+// Id du code à pré-appliquer au checkout : uniquement s'il est encore utilisable.
+export async function resolveReferralPromo(ref: string | undefined | null): Promise<string | null> {
+  const promo = await resolveReferralCode(ref)
+  return promo?.active ? promo.id : null
 }

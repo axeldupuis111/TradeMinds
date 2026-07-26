@@ -3,7 +3,7 @@ import Stripe from 'stripe'
 import { createClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe'
 import { locales } from '@/i18n/config'
-import { resolveReferralPromo } from '@/lib/founding'
+import { resolveReferralCode } from '@/lib/founding'
 
 export async function POST(req: NextRequest) {
   try {
@@ -109,11 +109,15 @@ export async function POST(req: NextRequest) {
     let founding = false // marque le badge « Membre fondateur » (code pré-rempli)
     const discounts: NonNullable<Stripe.Checkout.SessionCreateParams['discounts']> = []
 
-    const promoId = await resolveReferralPromo(ref)
-    if (promoId) {
-      discounts.push({ promotion_code: promoId })
+    // Le code d'un partenaire dont le quota est épuisé n'est plus applicable,
+    // mais la vente lui revient quand même : on grave l'attribution dans les
+    // metadata pour que sa commission ne saute pas silencieusement.
+    const partner = await resolveReferralCode(ref)
+    if (partner?.active) {
+      discounts.push({ promotion_code: partner.id })
       founding = true
     }
+    const attribution: Record<string, string> = partner ? { attribution_code: partner.code } : {}
 
     // 7. Création de la Checkout Session
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
@@ -134,6 +138,7 @@ export async function POST(req: NextRequest) {
         interval,
         locale: safeLocale,
         founding: founding ? 'true' : 'false',
+        ...attribution,
       },
       subscription_data: {
         metadata: {
@@ -142,6 +147,7 @@ export async function POST(req: NextRequest) {
           interval,
           locale: safeLocale,
           founding: founding ? 'true' : 'false',
+          ...attribution,
         },
       },
       success_url: successUrl,
