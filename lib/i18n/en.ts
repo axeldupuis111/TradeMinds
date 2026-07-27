@@ -1598,7 +1598,6 @@ const dict: Record<string, string> = {
   "badge_cond_score_80": "Average discipline score ≥ 80 over the last 4 analyses",
   "session_banner_text": "Don't forget to prepare your session before trading",
   "session_banner_cta": "Complete my session →",
-  "accounts_coming_soon": "Feature coming soon.",
   "kpi_no_data": "No data yet",
   "quicklog_notes_placeholder": "Setup identified, market context...",
   "csv_preview_row": "Row 1 preview:",

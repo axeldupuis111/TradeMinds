@@ -31,7 +31,7 @@ interface Step {
 type OnboardingKey = keyof OnboardingState;
 
 const STEPS: Step[] = [
-  { key: "hasAccount",  labelKey: "onboarding_step_account",  href: "/dashboard/accounts", cta: "onboarding_cta_account" },
+  { key: "hasAccount",  labelKey: "onboarding_step_account",  href: "/dashboard/challenge", cta: "onboarding_cta_account" },
   { key: "hasTrades",   labelKey: "onboarding_step_trades",   href: "/dashboard/trades",   cta: "onboarding_cta_trades" },
   { key: "hasStrategy", labelKey: "onboarding_step_strategy", href: "/dashboard/strategy", cta: "onboarding_cta_strategy" },
   { key: "hasSession",  labelKey: "onboarding_step_session",  href: "/dashboard/session",  cta: "onboarding_cta_session" },
