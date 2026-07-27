@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/lib/LanguageContext";
+import SyncGuide from "./SyncGuide";
 
 interface Connection {
   id: string;
@@ -260,6 +261,8 @@ export default function TradovateConnect() {
               {t("sync_tradovate_add")}
             </button>
           )}
+
+          <SyncGuide platform="tradovate" title={t("sync_tradovate_guide_title")} />
         </>
       )}
     </section>

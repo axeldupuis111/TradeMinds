@@ -1,35 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import SyncGuide from "./SyncGuide";
+import type { SyncPlatform } from "@/lib/sync-guides";
 
 interface Props {
+  platform: SyncPlatform;
   title: string;
   desc: string;
   downloadHref: string;
   downloadLabel: string;
   tokenNote: string;
   guideTitle: string;
-  steps: string[];
-  tip?: string;
 }
 
 /**
- * Collapsible card for a token-based push-sync platform (cTrader cBot,
- * NinjaTrader add-on). The platform reuses the universal sync token shown in
- * the MetaTrader section, so this card only offers the download + a guide.
+ * Card for a token-based push-sync platform (cTrader cBot, NinjaTrader add-on).
+ * The platform reuses the universal sync token shown in the MetaTrader section,
+ * so this card only offers the download + the step-by-step guide.
  */
 export default function SyncPlatformCard({
+  platform,
   title,
   desc,
   downloadHref,
   downloadLabel,
   tokenNote,
   guideTitle,
-  steps,
-  tip,
 }: Props) {
-  const [open, setOpen] = useState(false);
-
   return (
     <section className="bg-card border border-border rounded-xl p-5">
       <h2 className="text-lg font-semibold text-foreground mb-1">{title}</h2>
@@ -53,36 +50,7 @@ export default function SyncPlatformCard({
 
       <p className="text-xs text-muted mt-3">{tokenNote}</p>
 
-      <div className="mt-4 bg-surface border border-border rounded-lg overflow-hidden">
-        <button
-          onClick={() => setOpen(!open)}
-          className="w-full text-left px-4 py-3 flex items-center justify-between gap-3"
-        >
-          <span className="text-foreground font-medium text-sm">{guideTitle}</span>
-          <svg
-            className={`w-4 h-4 text-muted shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-        {open && (
-          <div className="px-4 pb-4">
-            <ol className="space-y-2.5 text-sm text-muted leading-relaxed list-decimal list-inside">
-              {steps.map((step, i) => (
-                <li key={i}>{step}</li>
-              ))}
-            </ol>
-            {tip && (
-              <div className="mt-4 p-3 rounded-lg bg-accent/5 border border-accent/20">
-                <p className="text-sm text-muted leading-relaxed">{tip}</p>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      <SyncGuide platform={platform} title={guideTitle} />
     </section>
   );
 }

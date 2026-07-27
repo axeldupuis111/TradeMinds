@@ -2,6 +2,7 @@
 
 import UpgradeBanner from "@/components/UpgradeBanner";
 import SyncPlatformCard from "@/components/settings/SyncPlatformCard";
+import SyncGuide from "@/components/settings/SyncGuide";
 import PushNotificationsCard from "@/components/settings/PushNotificationsCard";
 import LeaderboardOptInCard from "@/components/settings/LeaderboardOptInCard";
 import TradingViewCard from "@/components/settings/TradingViewCard";
@@ -91,7 +92,6 @@ export default function SettingsPage() {
   const [mtLoading, setMtLoading] = useState(true);
   const [mtGenerating, setMtGenerating] = useState(false);
   const [showMtRegenModal, setShowMtRegenModal] = useState(false);
-  const [showMtGuide, setShowMtGuide] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const hasChanges =
@@ -600,101 +600,37 @@ export default function SettingsPage() {
         )}
 
         {/* Installation guide — collapsible (premium only) */}
-        {plan !== "premium" ? null : (
-        <div className="mt-4 bg-surface border border-border rounded-lg overflow-hidden">
-          <button
-            onClick={() => setShowMtGuide(!showMtGuide)}
-            className="w-full text-left px-4 py-3 flex items-center justify-between gap-3"
-          >
-            <span className="text-foreground font-medium text-sm">
-              {t("sync_mt_guide_title")}
-            </span>
-            <svg
-              className={`w-4 h-4 text-muted shrink-0 transition-transform ${showMtGuide ? "rotate-180" : ""}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-          {showMtGuide && (
-            <div className="px-4 pb-4">
-              <ol className="space-y-2.5 text-sm text-muted leading-relaxed list-decimal list-inside">
-                <li>
-                  <strong className="text-foreground">{t("sync_mt_step1_bold")}</strong>{" "}
-                  {t("sync_mt_step1_rest")}
-                </li>
-                <li>
-                  <strong className="text-foreground">{t("sync_mt_step2_bold")}</strong>{" "}
-                  {t("sync_mt_step2_rest")}
-                  <span className="flex gap-2 mt-1.5">
-                    <a
-                      href="/TradeDiscipline_MT5.mq5"
-                      download
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-accent/30 bg-accent/5 text-accent text-xs font-medium hover:bg-accent/10 transition-colors"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                      </svg>
-                      MetaTrader 5 (.mq5)
-                    </a>
-                    <a
-                      href="/TradeDiscipline_MT4.mq4"
-                      download
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-accent/30 bg-accent/5 text-accent text-xs font-medium hover:bg-accent/10 transition-colors"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                      </svg>
-                      MetaTrader 4 (.mq4)
-                    </a>
-                  </span>
-                </li>
-                <li>
-                  <strong className="text-foreground">{t("sync_mt_step3_bold")}</strong>{" "}
-                  {t("sync_mt_step3_rest")}
-                </li>
-                <li>
-                  {t("sync_mt_step4_pre")}{" "}
-                  <strong className="text-foreground">{t("sync_mt_step4_menu")}</strong>,
-                  {" "}<strong className="text-foreground">{t("sync_mt_step4_tab4")}</strong>{" "}
-                  (MT4) {" "}<strong className="text-foreground">{t("sync_mt_step4_tab5")}</strong>{" "}
-                  (MT5). {t("sync_mt_step4_rest")}{" "}
-                  <code className="text-xs bg-background px-1 py-0.5 rounded break-all">
-                    https://www.tradediscipline.app
-                  </code>.
-                </li>
-                <li>
-                  <strong className="text-foreground">{t("sync_mt_step5_bold")}</strong>{" "}
-                  {t("sync_mt_step5_window")}{" "}
-                  <strong className="text-foreground">{t("sync_mt_step5_general")}</strong>{" "}
-                  {t("sync_mt_step5_check")}{" "}
-                  <strong className="text-foreground">{t("sync_mt_step5_params5")}</strong>{" "}
-                  (MT5) /{" "}
-                  <strong className="text-foreground">{t("sync_mt_step5_params4")}</strong>{" "}
-                  {t("sync_mt_step5_rest")}
-                </li>
-                <li>
-                  <strong className="text-foreground">{t("sync_mt_step6_bold")}</strong>{" "}
-                  {t("sync_mt_step6_rest")}
-                </li>
-              </ol>
-
-              {/* Tips */}
-              <div className="mt-4 p-3 rounded-lg bg-accent/5 border border-accent/20">
-                <p className="text-sm font-medium text-foreground mb-2">
-                  {t("sync_mt_tips_title")}
-                </p>
-                <ul className="space-y-1.5 text-sm text-muted leading-relaxed list-disc list-inside">
-                  <li>{t("sync_mt_tip1")}</li>
-                  <li>{t("sync_mt_tip2")}</li>
-                  <li>{t("sync_mt_tip_exness")}</li>
-                </ul>
+        {plan === "premium" && (
+          <SyncGuide platform="metatrader" title={t("sync_mt_guide_title")}>
+            {/* Les deux téléchargements de l'étape 2, à portée de main. */}
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted mb-2">
+                {t("sync_mt_downloads")}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <a
+                  href="/TradeDiscipline_MT5.mq5"
+                  download
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-accent/30 bg-accent/5 text-accent text-xs font-medium hover:bg-accent/10 transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                  </svg>
+                  MetaTrader 5 (.mq5)
+                </a>
+                <a
+                  href="/TradeDiscipline_MT4.mq4"
+                  download
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-accent/30 bg-accent/5 text-accent text-xs font-medium hover:bg-accent/10 transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                  </svg>
+                  MetaTrader 4 (.mq4)
+                </a>
               </div>
             </div>
-          )}
-        </div>
+          </SyncGuide>
         )}
       </section>
 
@@ -727,36 +663,23 @@ export default function SettingsPage() {
       {plan === "premium" && (
         <>
           <SyncPlatformCard
+            platform="ctrader"
             title={t("sync_ctrader_title")}
             desc={t("sync_ctrader_desc")}
             downloadHref="/TradeDiscipline_cTrader.cs"
             downloadLabel="cTrader cBot (.cs)"
             tokenNote={t("sync_uses_token_above")}
             guideTitle={t("sync_ctrader_guide_title")}
-            steps={[
-              t("sync_ctrader_step1"),
-              t("sync_ctrader_step2"),
-              t("sync_ctrader_step3"),
-              t("sync_ctrader_step4"),
-              t("sync_ctrader_step5"),
-            ]}
-            tip={t("sync_ctrader_tip")}
           />
 
           <SyncPlatformCard
+            platform="ninjatrader"
             title={t("sync_ninja_title")}
             desc={t("sync_ninja_desc")}
             downloadHref="/TradeDiscipline_NinjaTrader.cs"
             downloadLabel="NinjaTrader AddOn (.cs)"
             tokenNote={t("sync_ninja_token_note")}
             guideTitle={t("sync_ninja_guide_title")}
-            steps={[
-              t("sync_ninja_step1"),
-              t("sync_ninja_step2"),
-              t("sync_ninja_step3"),
-              t("sync_ninja_step4"),
-            ]}
-            tip={t("sync_ninja_tip")}
           />
 
           <TradingViewCard token={mtToken} />

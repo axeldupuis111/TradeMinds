@@ -2,6 +2,7 @@
 
 import { useLanguage } from "@/lib/LanguageContext";
 import { useState } from "react";
+import SyncGuide from "./SyncGuide";
 
 interface Props {
   /** Token push universel (mt_sync_token) — null tant que non généré. */
@@ -16,11 +17,12 @@ interface Props {
  */
 export default function TradingViewCard({ token }: Props) {
   const { t } = useLanguage();
-  const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // Toujours www : les EA/cBots postent sur ce même hôte en dur, et une
+  // éventuelle redirection de domaine casserait le POST (voir incident 405).
   const webhookUrl = token
-    ? `https://tradediscipline.app/api/sync/tradingview?token=${token}`
+    ? `https://www.tradediscipline.app/api/sync/tradingview?token=${token}`
     : null;
 
   return (
@@ -71,35 +73,7 @@ export default function TradingViewCard({ token }: Props) {
         {t("sync_tv_download")}
       </a>
 
-      <div className="mt-4 bg-surface border border-border rounded-lg overflow-hidden">
-        <button
-          onClick={() => setOpen(!open)}
-          className="w-full text-left px-4 py-3 flex items-center justify-between gap-3"
-        >
-          <span className="text-foreground font-medium text-sm">{t("sync_tv_guide_title")}</span>
-          <svg
-            className={`w-4 h-4 text-muted shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-        {open && (
-          <div className="px-4 pb-4">
-            <ol className="space-y-2.5 text-sm text-muted leading-relaxed list-decimal list-inside">
-              <li>{t("sync_tv_step1")}</li>
-              <li>{t("sync_tv_step2")}</li>
-              <li>{t("sync_tv_step3")}</li>
-              <li>{t("sync_tv_step4")}</li>
-            </ol>
-            <div className="mt-4 p-3 rounded-lg bg-accent/5 border border-accent/20">
-              <p className="text-sm text-muted leading-relaxed">{t("sync_tv_tip")}</p>
-            </div>
-          </div>
-        )}
-      </div>
+      <SyncGuide platform="tradingview" title={t("sync_tv_guide_title")} />
     </section>
   );
 }
