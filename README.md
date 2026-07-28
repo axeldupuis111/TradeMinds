@@ -20,6 +20,35 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Build local
+
+Deux prérequis que `next build` ne devine pas.
+
+**1. Une clé Stripe, même factice.** `lib/stripe.ts` lève une erreur à l'import si
+`STRIPE_SECRET_KEY` est absente. Le build n'appelle jamais Stripe, n'importe quelle
+valeur suffit.
+
+**2. Un plafond de workers de prérendu.** Next en lance un par cœur. Sur une machine
+à beaucoup de cœurs mais peu de RAM libre, les 214 pages statiques font tomber le
+build en `Zone Allocation failed`. `NEXT_BUILD_CPUS` plafonne le nombre de workers.
+Non défini, le comportement natif s'applique : les builds Vercel ne sont pas ralentis.
+
+PowerShell :
+
+```powershell
+$env:STRIPE_SECRET_KEY="sk_test_fake"; $env:NEXT_BUILD_CPUS="2"; npx next build
+```
+
+bash :
+
+```bash
+STRIPE_SECRET_KEY=sk_test_fake NEXT_BUILD_CPUS=2 npx next build
+```
+
+Piège à connaître : `Zone Allocation failed` n'est **pas** une saturation du tas V8,
+c'est le système qui refuse la mémoire. Augmenter `--max-old-space-size` n'y change
+rien, il faut réduire le nombre de processus.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
