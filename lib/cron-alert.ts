@@ -23,21 +23,19 @@ export async function alertCronFailure(job: string, detail: string): Promise<voi
 }
 
 /**
- * Same best-effort alert, for a webhook that can no longer be processed.
+ * Same best-effort alert, for a webhook event that could not be processed.
  *
- * A rotated STRIPE_WEBHOOK_SECRET rejects every incoming event with a 400: the
- * app keeps answering, Stripe keeps billing, and the database silently stops
- * reflecting reality (subscription frozen for a month, incident du 2026-07-27).
- * A failing signature is a configuration outage and must be shouted about.
+ * Un webhook qui échoue ne se voit pas : la route répond 200 pour éviter que
+ * Stripe rejoue en boucle, donc côté Stripe tout paraît vert pendant que la base
+ * ne reflète plus la facturation. C'est ce qui a laissé un abonnement gelé un
+ * mois entier (incident du 2026-07-27). Tout abandon de traitement doit crier.
  */
 export async function alertWebhookFailure(source: string, detail: string): Promise<void> {
   return sendAdminAlert(
     source,
-    `🚨 Webhook ${source} rejeté : configuration à vérifier`,
-    `Le webhook « ${source} » a rejeté un événement le ${new Date().toISOString()}.\n\n` +
-      `Tant que ça dure, la base ne reflète plus les paiements réels.\n` +
-      `À vérifier : le signing secret de l'endpoint dans Stripe (Developers → Webhooks) ` +
-      `contre la variable d'environnement sur Vercel.\n\nDétail :\n${detail}`,
+    `🚨 Webhook ${source} : événement non traité`,
+    `Le webhook « ${source} » n'a pas pu traiter un événement le ${new Date().toISOString()}.\n\n` +
+      `Tant que ça dure, la base ne reflète plus la facturation réelle.\n\nDétail :\n${detail}`,
     detail,
   );
 }

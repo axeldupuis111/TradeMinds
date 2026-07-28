@@ -6,6 +6,7 @@ import { Resend } from 'resend'
 import { stripe } from '@/lib/stripe'
 import { renderBrandEmail, emailParagraph } from '@/lib/email-template'
 import { hasPendingCancellation, isCancellationRequested } from '@/lib/stripe-subscription'
+import { resolvePlanInfo } from '@/lib/stripe-plan'
 import { alertWebhookFailure } from '@/lib/cron-alert'
 
 // IMPORTANT: Next.js doit recevoir le body brut pour la vérification de signature Stripe.
@@ -27,23 +28,6 @@ function getSupabaseAdmin() {
   })
 }
 
-// Mappe un price_id Stripe vers { plan, interval }
-function getPlanFromPriceId(priceId: string): { plan: string; interval: 'monthly' | 'yearly' } | null {
-  if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_PLUS_MONTHLY) {
-    return { plan: 'plus', interval: 'monthly' }
-  }
-  if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_PLUS_YEARLY) {
-    return { plan: 'plus', interval: 'yearly' }
-  }
-  if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_PREMIUM_MONTHLY) {
-    return { plan: 'premium', interval: 'monthly' }
-  }
-  if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_PREMIUM_YEARLY) {
-    return { plan: 'premium', interval: 'yearly' }
-  }
-  return null
-}
-
 // Hiérarchie des plans : sert à empêcher une montée en gamme non payée.
 function planRank(plan: string): number {
   if (plan === 'premium') return 2
@@ -62,7 +46,12 @@ async function alertSignatureFailure(detail: string): Promise<void> {
   const now = Date.now()
   if (now - lastSignatureAlertAt < SIGNATURE_ALERT_COOLDOWN_MS) return
   lastSignatureAlertAt = now
-  await alertWebhookFailure('Stripe', detail)
+  await alertWebhookFailure(
+    'Stripe',
+    `Signature invalide : ${detail}\n\n` +
+      `À vérifier en priorité : le signing secret de l'endpoint ` +
+      `(Stripe → Developers → Webhooks) contre STRIPE_WEBHOOK_SECRET sur Vercel.`
+  )
 }
 
 export async function POST(req: NextRequest) {
@@ -213,9 +202,8 @@ async function handleCheckoutCompleted(
 
   await upsertSubscription(subscription, userId, supabase)
 
-  // Détermine le plan acheté (plus / premium) depuis le price ID de la subscription
-  const purchasedPriceId = subscription.items.data[0]?.price.id
-  const purchasedPlan = purchasedPriceId ? getPlanFromPriceId(purchasedPriceId)?.plan : null
+  // Détermine le plan acheté (plus / premium) depuis la subscription
+  const purchasedPlan = resolvePlanInfo(subscription)?.plan ?? null
 
   // Met à jour profiles.plan + stripe_customer_id
   const customerId = typeof session.customer === 'string'
@@ -254,12 +242,25 @@ async function handleSubscriptionUpdated(
   await upsertSubscription(subscription, userId, supabase)
 
   // Plan visé selon le statut + le price (plus / premium)
-  const updatedPriceId = subscription.items.data[0]?.price.id
-  const updatedPlan = updatedPriceId ? getPlanFromPriceId(updatedPriceId)?.plan : null
+  const isActive = subscription.status === 'active' || subscription.status === 'trialing'
+  let computedPlan: string
 
-  const computedPlan = (subscription.status === 'active' || subscription.status === 'trialing')
-    ? (updatedPlan ?? 'plus')
-    : 'free'
+  if (isActive) {
+    const resolved = resolvePlanInfo(subscription)
+    // On ne devine plus de palier par défaut. L'ancien repli « ?? plus » écrivait
+    // « plus » sur un abonnement qu'on n'avait pas su lire, ce qui rétrograde un
+    // Premium en silence. Ne rien écrire vaut mieux qu'écrire faux.
+    if (!resolved) {
+      await alertWebhookFailure(
+        'Stripe',
+        `subscription.updated ${subscription.id} : plan irrésoluble, profil ${userId} laissé intact.`
+      )
+      return
+    }
+    computedPlan = resolved.plan
+  } else {
+    computedPlan = 'free'
+  }
 
   // IMPORTANT : on ne fait JAMAIS MONTER en gamme ici. Un upgrade (ex. plus -> premium)
   // peut arriver avec une facture pas encore payée (3DS, carte refusée). Le passage à un
@@ -421,12 +422,23 @@ async function handleInvoicePaid(
   }
 
   const subscription = await stripe.subscriptions.retrieve(subscriptionId)
-  const priceId = subscription.items.data[0]?.price.id
-  const planInfo = priceId ? getPlanFromPriceId(priceId) : null
-  if (!planInfo) return
+  const planInfo = resolvePlanInfo(subscription)
+  if (!planInfo) {
+    await alertWebhookFailure(
+      'Stripe',
+      `invoice.paid ${invoice.id} : plan irrésoluble sur ${subscription.id}, accès NON accordé alors que la facture est payée.`
+    )
+    return
+  }
 
   const userId = subscription.metadata?.supabase_user_id
-  if (!userId) return
+  if (!userId) {
+    await alertWebhookFailure(
+      'Stripe',
+      `invoice.paid ${invoice.id} : pas de supabase_user_id sur ${subscription.id}, accès NON accordé alors que la facture est payée.`
+    )
+    return
+  }
 
   // PAIEMENT CONFIRMÉ : c'est ici (et seulement ici) qu'on accorde le palier payé,
   // y compris une montée en gamme. Sans facture payée, pas d'accès Premium.
@@ -624,10 +636,17 @@ async function upsertSubscription(
   }
 
   const priceId = item.price.id
-  const planInfo = getPlanFromPriceId(priceId)
+  const planInfo = resolvePlanInfo(subscription)
 
   if (!planInfo) {
-    console.error('[Webhook] Unknown price ID:', priceId)
+    // Sortir ici laisse la ligne subscriptions gelée pendant que Stripe facture.
+    // C'est précisément ce qui a masqué le renouvellement du 2026-07-27 : période,
+    // statut et annulation figés au mois précédent, sans le moindre signal.
+    await alertWebhookFailure(
+      'Stripe',
+      `upsert impossible pour ${subscription.id} : price ${priceId} inconnu et metadata inexploitables. ` +
+        `La ligne subscriptions ne reflète plus Stripe.`
+    )
     return
   }
 
