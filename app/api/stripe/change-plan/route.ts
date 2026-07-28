@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe'
+import { hasPendingCancellation } from '@/lib/stripe-subscription'
 
 // Rang des plans payants : sert à déterminer si un changement est un upgrade ou un downgrade.
 const PLAN_RANK: Record<'plus' | 'premium', number> = { plus: 1, premium: 2 }
@@ -86,6 +87,22 @@ export async function POST(req: NextRequest) {
     const item = subscription.items.data[0]
     if (!item) {
       return NextResponse.json({ error: 'Subscription has no item' }, { status: 500 })
+    }
+
+    // Un abonnement programmé pour s'arrêter ne peut PAS servir de base à un
+    // changement de plan. Le downgrade plus bas crée un subscriptionSchedule dont
+    // la dernière phase n'a pas de date de fin : Stripe écrase alors l'annulation
+    // en cours et le client est reprélevé indéfiniment après avoir annulé. Un
+    // upgrade, lui, facturerait un prorata sur un abonnement qui meurt dans
+    // quelques jours. Dans les deux cas il faut d'abord réactiver (portail Stripe).
+    if (hasPendingCancellation(subscription)) {
+      return NextResponse.json(
+        {
+          error: 'Subscription is scheduled for cancellation. Reactivate it before changing plan.',
+          code: 'subscription_canceling',
+        },
+        { status: 409 }
+      )
     }
 
     const customerId = typeof subscription.customer === 'string'

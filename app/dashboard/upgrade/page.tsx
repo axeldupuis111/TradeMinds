@@ -129,6 +129,13 @@ export default function UpgradePage() {
 
   const changeInterval: "monthly" | "yearly" = annual ? "yearly" : "monthly";
 
+  // Les erreurs de /api/stripe/change-plan s'affichent telles quelles : on traduit
+  // les cas métier identifiés par un `code`, le reste garde le message générique.
+  function planChangeErrorMessage(data: { error?: string; code?: string }): string {
+    if (data.code === "subscription_canceling") return t("planchange_error_canceling");
+    return data.error || t("planchange_error");
+  }
+
   // Ouvre la modale de changement de plan et récupère l'aperçu (montant prorata).
   async function openPlanChange(targetPlan: "plus" | "premium") {
     setChangeTarget(targetPlan);
@@ -142,7 +149,7 @@ export default function UpgradePage() {
         body: JSON.stringify({ targetPlan, interval: changeInterval, mode: "preview" }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || t("planchange_error"));
+      if (!res.ok) throw new Error(planChangeErrorMessage(data));
       setChangePreview(data as ChangePreview);
     } catch (err) {
       console.error("[Plan change] Preview error:", err);
@@ -163,7 +170,7 @@ export default function UpgradePage() {
         body: JSON.stringify({ targetPlan: changeTarget, interval: changeInterval, mode: "commit" }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || t("planchange_error"));
+      if (!res.ok) throw new Error(planChangeErrorMessage(data));
 
       // Paiement non collecté (carte refusée ou 3DS requis) : Stripe a généré une
       // facture payable. On y redirige : l'utilisateur paie et/ou change de carte.

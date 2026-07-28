@@ -5,6 +5,8 @@ import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { stripe } from '@/lib/stripe'
 import { renderBrandEmail, emailParagraph } from '@/lib/email-template'
+import { hasPendingCancellation, isCancellationRequested } from '@/lib/stripe-subscription'
+import { alertWebhookFailure } from '@/lib/cron-alert'
 
 // IMPORTANT: Next.js doit recevoir le body brut pour la vérification de signature Stripe.
 // Cette config désactive le parsing automatique.
@@ -49,6 +51,20 @@ function planRank(plan: string): number {
   return 0 // free / inconnu
 }
 
+// Une signature invalide n'est jamais un incident isolé : c'est le secret qui ne
+// correspond plus, donc TOUS les événements échouent et Stripe les rejoue en
+// boucle. On alerte une fois par heure et par instance pour signaler la panne
+// sans noyer la boîte de l'admin.
+const SIGNATURE_ALERT_COOLDOWN_MS = 60 * 60 * 1000
+let lastSignatureAlertAt = 0
+
+async function alertSignatureFailure(detail: string): Promise<void> {
+  const now = Date.now()
+  if (now - lastSignatureAlertAt < SIGNATURE_ALERT_COOLDOWN_MS) return
+  lastSignatureAlertAt = now
+  await alertWebhookFailure('Stripe', detail)
+}
+
 export async function POST(req: NextRequest) {
   // 1. Vérification de la signature Stripe
   const body = await req.text()
@@ -72,6 +88,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error'
     console.error('[Stripe Webhook] Signature verification failed:', errorMessage)
+    await alertSignatureFailure(errorMessage)
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
@@ -109,6 +126,12 @@ export async function POST(req: NextRequest) {
       case 'invoice.paid': {
         const invoice = event.data.object as Stripe.Invoice
         await handleInvoicePaid(invoice, supabase)
+        break
+      }
+
+      case 'charge.refunded': {
+        const charge = event.data.object as Stripe.Charge
+        await handleChargeRefunded(charge, supabase)
         break
       }
 
@@ -407,13 +430,31 @@ async function handleInvoicePaid(
 
   // PAIEMENT CONFIRMÉ : c'est ici (et seulement ici) qu'on accorde le palier payé,
   // y compris une montée en gamme. Sans facture payée, pas d'accès Premium.
-  const { error: planError } = await supabase
+  //
+  // Ce handler ACCORDE, il ne retire jamais : une facture payée ne peut pas être
+  // la cause d'une perte d'accès. Sans ce garde-fou, le renouvellement d'un
+  // abonnement Plus rétrograde un profil Premium en silence. Les baisses passent
+  // exclusivement par customer.subscription.updated (qui, lui, ne monte jamais).
+  const { data: currentProfile } = await supabase
     .from('profiles')
-    .update({ plan: planInfo.plan })
+    .select('plan')
     .eq('id', userId)
-  if (planError) {
-    console.error('[Webhook] Error granting paid plan:', planError)
-    throw planError
+    .single()
+  const currentPlan = (currentProfile?.plan as string) ?? 'free'
+
+  if (planRank(planInfo.plan) < planRank(currentPlan)) {
+    console.log(
+      `[Webhook] invoice.paid ${planInfo.plan} < profil ${currentPlan} : accès conservé (baisse gérée par subscription.updated)`
+    )
+  } else {
+    const { error: planError } = await supabase
+      .from('profiles')
+      .update({ plan: planInfo.plan })
+      .eq('id', userId)
+    if (planError) {
+      console.error('[Webhook] Error granting paid plan:', planError)
+      throw planError
+    }
   }
 
   // Membre fondateur : posé à vie quand la PREMIÈRE facture porte une remise
@@ -503,6 +544,69 @@ async function handleInvoicePaid(
   }
 }
 
+async function handleChargeRefunded(
+  charge: Stripe.Charge,
+  supabase: ReturnType<typeof getSupabaseAdmin>
+) {
+  console.log('[Webhook] charge.refunded:', charge.id)
+
+  // Remboursement partiel (geste commercial, prorata) : l'accès reste dû.
+  const fullyRefunded = charge.refunded || charge.amount_refunded >= charge.amount
+  if (!fullyRefunded) {
+    console.log('[Webhook] Remboursement partiel, accès conservé')
+    return
+  }
+
+  // La facture porte le lien vers l'abonnement (forme variable selon l'API).
+  type ChargeWithInvoice = Stripe.Charge & { invoice?: string | Stripe.Invoice | null }
+  const invoiceRef = (charge as ChargeWithInvoice).invoice
+  if (!invoiceRef) {
+    console.log('[Webhook] Charge sans facture (paiement hors abonnement), skip')
+    return
+  }
+
+  const invoice = typeof invoiceRef === 'string'
+    ? await stripe.invoices.retrieve(invoiceRef)
+    : invoiceRef
+
+  const subscriptionId = getInvoiceSubscriptionId(invoice)
+  if (!subscriptionId) {
+    console.log('[Webhook] Facture remboursée hors abonnement, skip')
+    return
+  }
+
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+  const userId = subscription.metadata?.supabase_user_id
+  if (!userId) {
+    console.error('[Webhook] No supabase_user_id in subscription metadata')
+    return
+  }
+
+  // Remboursement intégral : le client ne paie plus, il ne garde pas l'accès.
+  const { error } = await supabase
+    .from('profiles')
+    .update({ plan: 'free' })
+    .eq('id', userId)
+  if (error) {
+    console.error('[Webhook] Error revoking plan after refund:', error)
+    throw error
+  }
+
+  // On ne coupe PAS l'abonnement Stripe : arrêter une facturation est une décision
+  // commerciale, jamais un effet de bord de webhook. Mais « remboursé et toujours
+  // prélevé » est exactement le scénario qui a coûté un mois de confusion, donc on
+  // le signale fort dans les logs.
+  if (
+    (subscription.status === 'active' || subscription.status === 'trialing') &&
+    !hasPendingCancellation(subscription)
+  ) {
+    console.warn(
+      `[Webhook] ATTENTION : facture remboursée mais l'abonnement ${subscription.id} ` +
+        `est toujours actif et sera reprélevé. À annuler à la main dans Stripe si c'est voulu.`
+    )
+  }
+}
+
 // ============================================================
 // HELPERS
 // ============================================================
@@ -536,25 +640,10 @@ async function upsertSubscription(
   }
   const sub = subscription as SubscriptionWithPeriod
 
-  // Detect cancellation: old convention (cancel_at_period_end) or new (cancel_at + reason)
-  // Stripe API 2026-04-22.dahlia no longer sets cancel_at_period_end=true on portal cancellations.
-  type SubscriptionWithCancellation = Stripe.Subscription & {
-    cancel_at?: number | null
-    cancellation_details?: {
-      reason?: string | null
-      feedback?: string | null
-      comment?: string | null
-    } | null
-  }
-  const subWithCancel = subscription as SubscriptionWithCancellation
-
-  const hasUserRequestedCancellation =
-    subWithCancel.cancel_at !== null &&
-    subWithCancel.cancel_at !== undefined &&
-    subWithCancel.cancellation_details?.reason === "cancellation_requested"
-
-  const isCancelingAtPeriodEnd =
-    subscription.cancel_at_period_end || hasUserRequestedCancellation
+  // Detect cancellation: old convention (cancel_at_period_end) or new (cancel_at + reason).
+  // Voir lib/stripe-subscription.ts — même détection utilisée par /api/stripe/change-plan.
+  const hasUserRequestedCancellation = isCancellationRequested(subscription)
+  const isCancelingAtPeriodEnd = hasPendingCancellation(subscription)
 
   const canceledAtTimestamp = subscription.canceled_at
     ? new Date(subscription.canceled_at * 1000).toISOString()
