@@ -5,6 +5,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { applyManualMapping, parseCSV, parseXlsx, type ParsedTrade } from "@/lib/csv-parser";
 import { purgeDemoTrades } from "@/lib/demo-data";
+import { splitAlreadyImported, type DedupeTrade } from "@/lib/trades/dedupe-import";
 import { track } from "@/lib/track";
 import { createClient } from "@/lib/supabase/client";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -328,9 +329,11 @@ export default function CsvImport({ strategyId, onImported }: Props) {
     // la détection de doublons ci-dessous).
     await purgeDemoTrades(supabase, user.id);
 
-    // Duplicate detection: fetch existing trades matching open_time range
+    // Détection de doublons par COMPTAGE (voir lib/trades/dedupe-import) :
+    // trois positions identiques ouvertes à la même seconde sont trois trades
+    // réels, pas un trade et deux doublons.
     const openTimes = preview.map((tr) => tr.open_time).filter(Boolean) as string[];
-    let existingKeys = new Set<string>();
+    let existingTrades: DedupeTrade[] = [];
     if (openTimes.length > 0) {
       const minTime = openTimes.reduce((a, b) => (a < b ? a : b));
       const maxTime = openTimes.reduce((a, b) => (a > b ? a : b));
@@ -340,19 +343,13 @@ export default function CsvImport({ strategyId, onImported }: Props) {
         .eq("user_id", user.id)
         .gte("open_time", minTime)
         .lte("open_time", maxTime);
-      if (existing) {
-        existingKeys = new Set(
-          existing.map((t) => `${t.open_time}|${t.pair}|${t.direction}|${t.lot_size}`)
-        );
-      }
+      existingTrades = (existing || []) as DedupeTrade[];
     }
 
-    const uniqueTrades = preview.filter((tr) => {
-      const key = `${tr.open_time || ""}|${tr.pair}|${tr.direction}|${tr.lot_size}`;
-      return !existingKeys.has(key);
-    });
-
-    const skippedCount = preview.length - uniqueTrades.length;
+    const { toImport: uniqueTrades, skipped: skippedCount } = splitAlreadyImported(
+      preview,
+      existingTrades,
+    );
 
     if (uniqueTrades.length === 0) {
       setImporting(false);

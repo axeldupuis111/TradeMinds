@@ -81,6 +81,10 @@ const guide: GuideContent = {
         fix: "C'est normal : l'Expert Advisor tourne dans MetaTrader, donc le terminal doit rester ouvert. À la réouverture, les trades manqués sont rattrapés automatiquement.",
       },
       {
+        problem: "Il manque des trades, surtout ceux gardés plusieurs heures",
+        fix: "Tu utilises une version de l'Expert Advisor antérieure à la 1.10 : elle ne retrouvait pas le prix d'ouverture d'un trade ouvert avant la dernière vérification, et le trade partait dans le vide. Retélécharge le fichier .mq5 en haut de cette page, écrase l'ancien dans le dossier Experts, recompile (F7) et relance l'EA : les 90 derniers jours sont renvoyés et les trades manquants réapparaissent.",
+      },
+      {
         problem: "J'ai changé de token",
         fix: "Régénérer le token invalide l'ancien immédiatement. Rouvre les propriétés de l'Expert Advisor sur ton graphique et colle le nouveau token dans SyncToken.",
       },
@@ -164,6 +168,10 @@ const guide: GuideContent = {
       {
         problem: "Sync stops when I shut down my computer",
         fix: "That is expected: the Expert Advisor runs inside MetaTrader, so the terminal has to stay open. Missed trades are caught up automatically next time you open it.",
+      },
+      {
+        problem: "Some trades are missing, mostly the ones held for hours",
+        fix: "You are running an Expert Advisor older than 1.10: it could not find the opening price of a trade opened before the last check, so the trade was dropped. Download the .mq5 file again at the top of this page, overwrite the old one in the Experts folder, recompile (F7) and restart the EA: the last 90 days are resent and the missing trades come back.",
       },
       {
         problem: "I regenerated my token",
@@ -251,6 +259,10 @@ const guide: GuideContent = {
         fix: "Es normal: el Expert Advisor corre dentro de MetaTrader, así que el terminal debe seguir abierto. Al reabrirlo se recuperan automáticamente las operaciones perdidas.",
       },
       {
+        problem: "Faltan operaciones, sobre todo las que duran varias horas",
+        fix: "Estás usando un Expert Advisor anterior a la 1.10: no encontraba el precio de apertura de una operación abierta antes de la última comprobación y la operación se perdía. Vuelve a descargar el archivo .mq5 arriba en esta página, sustituye el antiguo en la carpeta Experts, recompila (F7) y reinicia el EA: se reenvían los últimos 90 días y las operaciones que faltaban reaparecen.",
+      },
+      {
         problem: "He regenerado mi token",
         fix: "Regenerar invalida el token anterior de inmediato. Vuelve a abrir las propiedades del Expert Advisor en tu gráfico y pega el nuevo token en SyncToken.",
       },
@@ -334,6 +346,10 @@ const guide: GuideContent = {
       {
         problem: "Die Synchronisation stoppt, wenn ich den Rechner ausschalte",
         fix: "Das ist normal: Der Expert Advisor läuft in MetaTrader, das Terminal muss also offen bleiben. Verpasste Trades werden beim nächsten Öffnen automatisch nachgeholt.",
+      },
+      {
+        problem: "Es fehlen Trades, vor allem die über mehrere Stunden gehaltenen",
+        fix: "Du nutzt einen Expert Advisor älter als 1.10: Er fand den Eröffnungskurs eines vor der letzten Prüfung eröffneten Trades nicht, der Trade ging verloren. Lade die .mq5-Datei oben auf dieser Seite erneut herunter, überschreibe die alte im Ordner Experts, kompiliere neu (F7) und starte den EA neu: Die letzten 90 Tage werden erneut gesendet und die fehlenden Trades tauchen wieder auf.",
       },
       {
         problem: "Ich habe meinen Token neu erzeugt",

@@ -297,15 +297,12 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
 
     const { data, count } = await query.range(from, to);
 
+    // Aucun dédoublonnage d'affichage ici : ouvrir trois positions identiques
+    // à la même seconde (même paire, même prix) est un scénario de trading
+    // courant, et masquer les copies faisait disparaître des trades réels tout
+    // en les gardant dans les stats. Les vrais doublons de synchro sont déjà
+    // impossibles : index unique (user_id, source, external_id) en base.
     let rows = (data || []) as Trade[];
-
-    const seen = new Set<string>();
-    rows = rows.filter((tr) => {
-      const key = `${tr.open_time}|${tr.pair}|${tr.entry_price}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
 
     if (filters.result === "win") {
       rows = rows.filter((tr) => tr.pnl + (tr.commission || 0) + (tr.swap || 0) > 0);

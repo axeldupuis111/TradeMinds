@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { mapSource, mapDirection, toIso, isValidTrade } from "./push-parse";
+import { mapSource, mapDirection, toIso, isValidTrade, tradeRejectReason, readTicket } from "./push-parse";
 
 describe("mapSource", () => {
   it("accepts every known platform (case/space-insensitive)", () => {
@@ -86,5 +86,20 @@ describe("isValidTrade", () => {
     expect(isValidTrade({ ...base, open_time: "nope" })).toBe(false);
     expect(isValidTrade(null)).toBe(false);
     expect(isValidTrade("x")).toBe(false);
+  });
+
+  // Un trade refusé doit dire pourquoi : sans motif, l'EA voyait un 200 et
+  // le trade disparaissait sans laisser de trace (cas MT5 open_price = 0).
+  it("explique le refus au lieu de l'avaler en silence", () => {
+    expect(tradeRejectReason(base)).toBeNull();
+    expect(tradeRejectReason({ ...base, open_price: 0 })).toContain("ouverture");
+    expect(tradeRejectReason({ ...base, open_time: 0 })).toContain("ouverture");
+    expect(tradeRejectReason({ ...base, ticket: "" })).toContain("ticket");
+    expect(tradeRejectReason({ ...base, volume: 0 })).toContain("volume");
+  });
+
+  it("lit le ticket même sur un payload non conforme (messages d'erreur)", () => {
+    expect(readTicket({ ...base, open_price: 0 })).toBe("12345");
+    expect(readTicket(null)).toBe("?");
   });
 });

@@ -15,7 +15,8 @@ import {
   mapSource,
   mapDirection,
   toIso,
-  isValidTrade,
+  tradeRejectReason,
+  readTicket,
   type PushTrade,
 } from "./push-parse";
 
@@ -99,19 +100,31 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
   }
 
   // ── Validate & map trades ────────────────────────────────────────────────
+  // Un trade refusé n'est jamais silencieux : le motif part dans la réponse
+  // (l'EA l'imprime dans son journal) et dans les logs serveur.
   const validTrades: PushTrade[] = [];
+  const errors: { ticket: string; reason: string }[] = [];
   let skipped = 0;
 
   for (const raw of rawTrades) {
-    if (isValidTrade(raw)) {
-      validTrades.push(raw);
+    const reason = tradeRejectReason(raw);
+    if (reason === null) {
+      validTrades.push(raw as PushTrade);
     } else {
       skipped++;
+      if (errors.length < 20) errors.push({ ticket: readTicket(raw), reason });
     }
   }
 
+  if (errors.length > 0) {
+    console.warn(
+      `[Push Sync] ${skipped} trade(s) refusé(s) pour ${userId} :`,
+      errors.map((e) => `#${e.ticket} → ${e.reason}`).join(" | "),
+    );
+  }
+
   if (validTrades.length === 0) {
-    return NextResponse.json({ received: rawTrades.length, synced: 0, skipped });
+    return NextResponse.json({ received: rawTrades.length, synced: 0, skipped, errors });
   }
 
   // Des trades réels arrivent par le rail push → la démo n'a plus de raison d'être.
@@ -173,6 +186,7 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
       received: rawTrades.length,
       synced: 0,
       skipped: skipped + validTrades.length, // all valid ones were frozen
+      errors,
     });
   }
 
@@ -274,5 +288,5 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
     await checkTiltInsight(admin, userId, lang);
   }
 
-  return NextResponse.json({ received: rawTrades.length, synced, skipped });
+  return NextResponse.json({ received: rawTrades.length, synced, skipped, errors });
 }
