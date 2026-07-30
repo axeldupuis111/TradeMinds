@@ -62,11 +62,50 @@ export function mapDirection(val: string): "long" | "short" | null {
   return null;
 }
 
+/** Offset maximal plausible entre une heure serveur et l'UTC (UTC+14 / UTC-12). */
+const MAX_BROKER_OFFSET_SEC = 14 * 3600;
+
+/**
+ * Décalage, en secondes, entre l'heure serveur du broker et l'UTC réel.
+ *
+ * MetaTrader exprime TOUS ses horodatages (DEAL_TIME, OrderCloseTime,
+ * TimeCurrent) en heure SERVEUR du broker, sérialisée en secondes depuis epoch.
+ * Lus tels quels, les trades d'un broker à GMT+3 sont datés 3 h dans le futur,
+ * ce qui décale les fenêtres « aujourd'hui » : un trade de fin de séance peut
+ * basculer sur le lendemain, et l'alerte de perte journalière se tromper de jour.
+ *
+ * L'EA envoie son `TimeCurrent()` dans le champ `server_time`. On le compare à
+ * NOTRE horloge : pas besoin que la machine du trader soit à l'heure, ni de lui
+ * demander sa timezone. L'écart est arrondi à l'heure pleine, ce qui absorbe la
+ * latence réseau tout en collant aux offsets réellement pratiqués par les
+ * serveurs MetaTrader.
+ *
+ * Renvoie 0 quand `server_time` est absent (anciens EA, autres rails) ou
+ * aberrant : ne rien corriger vaut mieux que corriger de travers.
+ */
+export function brokerOffsetSeconds(serverTime: unknown, receivedAtMs: number): number {
+  const raw = typeof serverTime === "number" ? serverTime : Number(serverTime);
+  if (!serverTime || !isFinite(raw) || raw <= 1_000_000_000) return 0;
+
+  const deltaSec = raw - Math.floor(receivedAtMs / 1000);
+  if (Math.abs(deltaSec) > MAX_BROKER_OFFSET_SEC + 3600) return 0;
+
+  const rounded = Math.round(deltaSec / 3600) * 3600;
+  return Math.abs(rounded) > MAX_BROKER_OFFSET_SEC ? 0 : rounded;
+}
+
 /**
  * Convert a time value to ISO 8601 string.
  * Accepts: ISO string, Unix seconds (number), or Unix seconds as string.
+ *
+ * `offsetSeconds` corrige l'heure serveur du broker (voir brokerOffsetSeconds).
+ * Il ne s'applique qu'aux horodatages numériques : une chaîne ISO porte déjà son
+ * fuseau, la retoucher la casserait.
  */
-export function toIso(value: string | number | null | undefined): string | null {
+export function toIso(
+  value: string | number | null | undefined,
+  offsetSeconds = 0,
+): string | null {
   if (value == null || value === "") return null;
 
   // If it's a number or a numeric string → treat as Unix seconds
@@ -78,7 +117,7 @@ export function toIso(value: string | number | null | undefined): string | null 
     if (asNum <= 1_000_000_000) return null;
     // Distinguish seconds from milliseconds (threshold: year ~2001 in seconds)
     const ms = asNum < 1e12 ? asNum * 1000 : asNum;
-    return new Date(ms).toISOString();
+    return new Date(ms - offsetSeconds * 1000).toISOString();
   }
 
   // Otherwise try parsing as date string

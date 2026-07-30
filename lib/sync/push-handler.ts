@@ -19,6 +19,7 @@ import {
   tradeRejectReason,
   readTicket,
   readAccountSnapshot,
+  brokerOffsetSeconds,
   type PushTrade,
 } from "./push-parse";
 
@@ -31,6 +32,11 @@ export interface PushSyncBody {
    * avec chaque lot de trades et seul lors d'un battement de cœur.
    */
   account?: unknown;
+  /**
+   * `TimeCurrent()` du terminal au moment de l'envoi : sert à déduire le
+   * décalage entre l'heure serveur du broker et l'UTC (voir brokerOffsetSeconds).
+   */
+  server_time?: number | string;
 }
 
 // ─── Handler ─────────────────────────────────────────────────────────────────
@@ -184,6 +190,13 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
     ),
   );
 
+  // Décalage heure serveur du broker → UTC. 0 pour les clients qui n'envoient
+  // pas server_time : leur comportement est strictement inchangé.
+  const tzOffset = brokerOffsetSeconds(body.server_time, Date.now());
+  if (tzOffset !== 0) {
+    console.info(`[Push Sync] heure serveur broker corrigée de ${tzOffset / 3600} h pour ${userId}`);
+  }
+
   // ── Build rows for upsert ────────────────────────────────────────────────
   // IMPORTANT: only include sync-sourced fields. Omitting manual fields (notes,
   // emotion, tags, strategy_id, sl_initial, tp_initial, screenshot_path, etc.)
@@ -197,8 +210,8 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
       lot_size: t.volume,
       entry_price: t.open_price,
       exit_price: t.close_price,
-      open_time: toIso(t.open_time),
-      close_time: toIso(t.close_time),
+      open_time: toIso(t.open_time, tzOffset),
+      close_time: toIso(t.close_time, tzOffset),
       pnl: t.profit,
       commission: t.commission ?? 0,
       swap: t.swap ?? 0,

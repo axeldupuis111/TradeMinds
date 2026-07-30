@@ -1,12 +1,5 @@
-export const formatCurrency = (value: number, currency = "EUR"): string => {
-  return new Intl.NumberFormat("fr-FR", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(value);
-};
-
-export const formatCurrencyAxis = (value: unknown): string => {
-  if (typeof value !== "number") return String(value);
-  return formatCurrency(value);
-};
+// Les anciens helpers `formatCurrency` / `formatCurrencyAxis` vivaient ici et
+// codaient l'euro en dur. Ils ont été retirés le 2026-07-31 : la devise
+// appartient au compte, pas à l'application. Utiliser `money()` de
+// `lib/account-currency.ts`, qui prend la devise en argument.
+export {};

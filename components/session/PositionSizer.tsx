@@ -144,9 +144,11 @@ export default function PositionSizer({ strategy }: Props) {
   const isFutures = mode === "futures";
   // Devise réelle du compte. L'ancien raccourci « futures = $, CFD = € » tombait
   // à côté dès qu'un compte prop en dollars traitait des CFD, ou l'inverse.
+  // `.trim()` : le symbole d'une devise inconnue est rendu par son code précédé
+  // d'une espace (« PLN »), et il est ici toujours affiché après une espace.
   const cur = currencySymbol(
     selectedAccount ? accountCurrency(selectedAccount) : DEFAULT_CURRENCY,
-  );
+  ).trim();
 
   // ── Common inputs: account balance + risk per trade (editable) ────────────
   // Prefilled from the active account / strategy, but the user can override —

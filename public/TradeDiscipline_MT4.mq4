@@ -3,6 +3,11 @@
 //|        Synchronise les trades fermes vers TradeDiscipline        |
 //+------------------------------------------------------------------+
 //
+//  v1.11 - l'EA envoie aussi son heure serveur (server_time). MetaTrader date
+//  ses trades en heure SERVEUR du broker : sans cette reference, un compte a
+//  GMT+3 voyait ses trades dates 3 h dans le futur, ce qui faisait basculer les
+//  trades de fin de seance sur le lendemain (P&L du jour, alerte de perte).
+//
 //  v1.10 - l'EA envoie desormais l'etat du compte (solde reel, equity, nombre
 //  de positions ouvertes) a chaque envoi de trades ET a chaque battement de
 //  coeur, meme sans trade ferme. TradeDiscipline affiche donc le vrai solde du
@@ -10,7 +15,7 @@
 //  l'equity en direct position ouverte, et voit les depots/retraits.
 //
 #property copyright "TradeDiscipline"
-#property version   "1.10"
+#property version   "1.11"
 #property strict
 
 // --- Parametres configurables par l'utilisateur ---
@@ -35,7 +40,7 @@ int OnInit()
       return(INIT_FAILED);
    }
 
-   Print("TradeDiscipline : demarrage (v1.10). Envoi de l'historique des ",
+   Print("TradeDiscipline : demarrage (v1.11). Envoi de l'historique des ",
          HistoryDays, " derniers jours...");
 
    datetime from = TimeCurrent() - (datetime)HistoryDays * 24 * 60 * 60;
@@ -125,7 +130,9 @@ void SendHeartbeat()
    string account = BuildAccountJson();
    if(account == "") return;
 
-   string body = "{\"token\":\"" + SyncToken + "\",\"account\":" + account + "}";
+   string body = "{\"token\":\"" + SyncToken + "\",\"server_time\":"
+                 + IntegerToString((long)TimeCurrent())
+                 + ",\"account\":" + account + "}";
 
    char   post[];
    char   result[];
@@ -238,7 +245,9 @@ bool PostTrade(string tradeJson, int ticket)
    // L'etat du compte voyage avec le trade : le solde renvoye par le broker
    // l'inclut deja (il est lu apres sa cloture), donc rien a recalculer.
    string account = BuildAccountJson();
-   string body = "{\"token\":\"" + SyncToken + "\",\"trade\":" + tradeJson;
+   string body = "{\"token\":\"" + SyncToken + "\",\"server_time\":"
+                 + IntegerToString((long)TimeCurrent())
+                 + ",\"trade\":" + tradeJson;
    if(account != "") body += ",\"account\":" + account;
    body += "}";
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { mapSource, mapDirection, toIso, isValidTrade, tradeRejectReason, readTicket, readAccountSnapshot } from "./push-parse";
+import { mapSource, mapDirection, toIso, isValidTrade, tradeRejectReason, readTicket, readAccountSnapshot, brokerOffsetSeconds } from "./push-parse";
 
 describe("mapSource", () => {
   it("accepts every known platform (case/space-insensitive)", () => {
@@ -46,6 +46,64 @@ describe("toIso", () => {
     expect(toIso(null)).toBeNull();
     expect(toIso("")).toBeNull();
     expect(toIso("not-a-date")).toBeNull();
+  });
+});
+
+describe("brokerOffsetSeconds", () => {
+  // MetaTrader date ses trades en heure SERVEUR du broker. On déduit le décalage
+  // en comparant le TimeCurrent() de l'EA à NOTRE horloge, sans jamais dépendre
+  // de l'horloge ni du fuseau de la machine du trader.
+  const nowMs = Date.parse("2026-07-31T10:00:00.000Z");
+  const nowSec = nowMs / 1000;
+
+  it("déduit un broker à GMT+3", () => {
+    expect(brokerOffsetSeconds(nowSec + 3 * 3600, nowMs)).toBe(3 * 3600);
+  });
+
+  it("déduit un broker à GMT-5", () => {
+    expect(brokerOffsetSeconds(nowSec - 5 * 3600, nowMs)).toBe(-5 * 3600);
+  });
+
+  it("absorbe la latence réseau en arrondissant à l'heure pleine", () => {
+    // 2 h et 40 s d'écart : la latence ne doit pas inventer un décalage bâtard.
+    expect(brokerOffsetSeconds(nowSec + 2 * 3600 + 40, nowMs)).toBe(2 * 3600);
+    expect(brokerOffsetSeconds(nowSec + 2 * 3600 - 40, nowMs)).toBe(2 * 3600);
+  });
+
+  it("renvoie 0 pour un broker déjà à l'heure UTC", () => {
+    expect(brokerOffsetSeconds(nowSec, nowMs)).toBe(0);
+    expect(brokerOffsetSeconds(nowSec + 90, nowMs)).toBe(0);
+  });
+
+  it("ne corrige rien sans server_time : les anciens EA gardent leur comportement", () => {
+    expect(brokerOffsetSeconds(undefined, nowMs)).toBe(0);
+    expect(brokerOffsetSeconds(null, nowMs)).toBe(0);
+    expect(brokerOffsetSeconds(0, nowMs)).toBe(0);
+  });
+
+  it("ne corrige rien sur une valeur aberrante plutôt que de décaler de travers", () => {
+    expect(brokerOffsetSeconds("pas une heure", nowMs)).toBe(0);
+    // Horloge de terminal complètement fausse (un an d'écart) : on s'abstient.
+    expect(brokerOffsetSeconds(nowSec + 365 * 86_400, nowMs)).toBe(0);
+    expect(brokerOffsetSeconds(nowSec - 365 * 86_400, nowMs)).toBe(0);
+  });
+});
+
+describe("toIso avec décalage broker", () => {
+  it("ramène un horodatage serveur GMT+3 à l'UTC réel", () => {
+    // 23h30 heure serveur GMT+3 = 20h30 UTC : sans correction, ce trade était
+    // daté du lendemain et faussait le P&L du jour.
+    const serverEpoch = Date.parse("2026-07-31T23:30:00.000Z") / 1000;
+    expect(toIso(serverEpoch, 3 * 3600)).toBe("2026-07-31T20:30:00.000Z");
+  });
+
+  it("laisse les horodatages inchangés quand le décalage est nul", () => {
+    const epoch = 1_700_000_000;
+    expect(toIso(epoch, 0)).toBe(toIso(epoch));
+  });
+
+  it("ne touche pas une chaîne ISO, qui porte déjà son fuseau", () => {
+    expect(toIso("2026-06-15T10:00:00.000Z", 3 * 3600)).toBe("2026-06-15T10:00:00.000Z");
   });
 });
 

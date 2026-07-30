@@ -5,7 +5,8 @@ import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
-import { formatCurrency } from "@/lib/utils";
+import { money } from "@/lib/account-currency";
+import { useDisplayCurrency } from "@/lib/hooks/useDisplayCurrency";
 import CountUp from "@/components/animations/CountUp";
 import ConfettiBurst from "@/components/animations/ConfettiBurst";
 import GrowBar from "@/components/animations/GrowBar";
@@ -337,6 +338,8 @@ const TABLE_GRID = "md:grid-cols-[minmax(0,1.6fr)_92px_minmax(150px,1.2fr)_100px
 
 export default function GoalsPage() {
   const { t } = useLanguage();
+  // Vue multi-comptes : devise commune aux comptes actifs, euro s'ils la mélangent.
+  const displayCurrency = useDisplayCurrency();
   const { plan, loading: planLoading } = usePlan();
   const supabase = createClient();
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -1147,7 +1150,7 @@ export default function GoalsPage() {
                             <GrowBar pct={edge.composed.winRate} className="rounded-full bg-profit" />
                           </div>
                           <p className="text-xs text-muted mt-2">
-                            {t("goals_edge_trades").replace("{n}", String(edge.composed.count))} · {t("goals_edge_avg")} <span className={edge.composed.avgNet >= 0 ? "text-profit" : "text-loss"}>{formatCurrency(edge.composed.avgNet)}</span>
+                            {t("goals_edge_trades").replace("{n}", String(edge.composed.count))} · {t("goals_edge_avg")} <span className={edge.composed.avgNet >= 0 ? "text-profit" : "text-loss"}>{money(edge.composed.avgNet, displayCurrency)}</span>
                           </p>
                         </div>
                         <div className="rounded-xl border border-loss/30 bg-loss/[0.04] p-4">
@@ -1162,7 +1165,7 @@ export default function GoalsPage() {
                             <GrowBar pct={edge.impulsive.winRate} className="rounded-full bg-loss" />
                           </div>
                           <p className="text-xs text-muted mt-2">
-                            {t("goals_edge_trades").replace("{n}", String(edge.impulsive.count))} · {t("goals_edge_avg")} <span className={edge.impulsive.avgNet >= 0 ? "text-profit" : "text-loss"}>{formatCurrency(edge.impulsive.avgNet)}</span>
+                            {t("goals_edge_trades").replace("{n}", String(edge.impulsive.count))} · {t("goals_edge_avg")} <span className={edge.impulsive.avgNet >= 0 ? "text-profit" : "text-loss"}>{money(edge.impulsive.avgNet, displayCurrency)}</span>
                           </p>
                         </div>
                       </div>
@@ -1171,7 +1174,7 @@ export default function GoalsPage() {
                         {winGap > 0 ? (
                           <span>
                             <span className="font-semibold text-profit">+{winGap} {t("goals_edge_points")}</span> {t("goals_edge_verdict")}
-                            {avgGap > 0 && <> · <span className="font-semibold text-profit">{formatCurrency(avgGap)}</span> {t("goals_edge_verdict_avg")}</>}
+                            {avgGap > 0 && <> · <span className="font-semibold text-profit">{money(avgGap, displayCurrency)}</span> {t("goals_edge_verdict_avg")}</>}
                           </span>
                         ) : (
                           <span>{t("goals_edge_verdict_flat")}</span>
