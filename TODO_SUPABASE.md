@@ -26,12 +26,19 @@ prêt à copier tel quel dans le champ Body.
 | Change email address | `email-templates/change-email.html` | Confirme ta nouvelle adresse email |
 | Invite user | `email-templates/invite-user.html` | Tu es invité sur TradeDiscipline |
 
-- [x] Confirm sign up (fait le 2026-07-30, testé bout en bout)
-- [ ] Reset password (retester le parcours complet après collage : le lien passe
-      désormais par /auth/confirm avec `type=recovery`)
-- [ ] Magic link or OTP
-- [ ] Change email address
-- [ ] Invite user
+- [x] Confirm sign up (2026-07-30, testé bout en bout)
+- [x] Reset password (2026-07-30, testé bout en bout)
+- [x] Magic link or OTP
+- [x] Change email address
+- [x] Invite user
+
+Note sur le format `token_hash`, au-delà de la délivrabilité : `{{ .ConfirmationURL }}`
+déclenche le flux PKCE, qui exige un secret (le code verifier) stocké par le
+navigateur **au moment de la demande**. Demander la réinitialisation depuis
+l'appli installée puis ouvrir le lien dans le navigateur du téléphone = deux
+stockages distincts, secret introuvable, aucune session ouverte. `token_hash` est
+vérifié côté serveur et ne dépend d'aucun état local : c'est le seul des deux
+formats qui fonctionne d'un appareil ou d'un contexte à l'autre.
 
 ## Migration à appliquer (2026-07-12) — récompenses de badges
 - [ ] SQL Editor : exécuter `migrations/20260712_create_badge_awards.sql`
