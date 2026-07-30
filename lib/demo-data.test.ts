@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { computeCapitalLeaks } from "./analytics/leaks";
-import { generateDemoTrades } from "./demo-data";
+import { demoAccountRow, demoStrategyRow, generateDemoTrades } from "./demo-data";
 
 const NOW = new Date("2026-07-03T12:00:00Z");
 
@@ -59,5 +59,42 @@ describe("generateDemoTrades", () => {
     const wr = wins / rows.length;
     expect(wr).toBeGreaterThan(0.4);
     expect(wr).toBeLessThan(0.7);
+  });
+});
+
+/**
+ * Ces valeurs sont contraintes par des CHECK en base que le code TypeScript ne
+ * peut pas voir. Deux échecs d'affilée le 2026-07-30 (trades_direction_check
+ * puis prop_challenges_market_type_check) : on les verrouille ici plutôt que de
+ * les redécouvrir en production.
+ */
+describe("lignes démo et contraintes de la base", () => {
+  it("le compte démo respecte les énumérations de prop_challenges", () => {
+    const a = demoAccountRow("00000000-0000-0000-0000-000000000000");
+    expect(["cfd", "futures"]).toContain(a.market_type);
+    expect(["prop", "personal"]).toContain(a.type);
+    expect(["active", "passed", "failed"]).toContain(a.status);
+    expect(a.is_demo).toBe(true);
+    // start_date doit être une date seule (colonne date, pas timestamp).
+    expect(a.start_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("la stratégie démo fournit les champs obligatoires et est marquée", () => {
+    const st = demoStrategyRow("00000000-0000-0000-0000-000000000000");
+    expect(st.is_demo).toBe(true);
+    expect(st.user_id).toBeTruthy();
+    expect(st.name).toBeTruthy();
+    expect(st.pairs.length).toBeGreaterThan(0);
+    expect(st.pretrade_checklist.length).toBeGreaterThan(0);
+  });
+
+  it("les paires de la démo sont couvertes par la stratégie démo", () => {
+    // Sinon l'analyse démo signalerait « paire non autorisée » sur des trades
+    // que la démo a elle-même générés.
+    const st = demoStrategyRow("u");
+    const pairs = Array.from(
+      new Set(generateDemoTrades(new Date("2026-07-30T12:00:00Z")).map((t) => t.pair))
+    );
+    for (const p of pairs) expect(st.pairs).toContain(p);
   });
 });

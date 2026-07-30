@@ -13,7 +13,7 @@
  *   quelque chose à montrer dès la première minute.
  *
  * Générateur SEEDÉ (mulberry32) : déterministe, donc testable.
- * Purge : purgeDemoTrades() est appelée dès qu'un trade RÉEL arrive
+ * Purge : purgeDemoData() est appelée dès qu'un trade RÉEL arrive
  * (import CSV, saisie manuelle, sync MT/broker) — la démo s'efface seule.
  */
 
@@ -211,15 +211,26 @@ export function demoStrategyRow(userId: string) {
   };
 }
 
-/** Compte de trading fictif, dimensionné pour que les garde-fous parlent. */
+/**
+ * Compte de trading fictif, dimensionné pour que les garde-fous parlent.
+ *
+ * ⚠️ Valeurs contraintes par la base, à ne pas improviser :
+ *   - `market_type` ∈ {'cfd', 'futures'} (prop_challenges_market_type_check).
+ *     « forex » a fait échouer l'entrée en mode démo le 2026-07-30.
+ *   - `type` ∈ {'prop', 'personal'}, `status` ∈ {'active', 'passed', 'failed'}.
+ * Le test de ce module les verrouille.
+ *
+ * Type « prop » plutôt que « personal » : c'est le seul qui donne du sens aux
+ * objectifs et aux limites de drawdown, donc à la page Compte en démo.
+ */
 export function demoAccountRow(userId: string, now: Date = new Date()) {
   const start = new Date(now.getTime() - 40 * 86400000);
   return {
     user_id: userId,
     is_demo: true,
     firm: "Compte de démonstration",
-    type: "personal",
-    market_type: "forex",
+    type: "prop",
+    market_type: "cfd",
     account_number: "DEMO-0001",
     account_size: 10000,
     balance: 10000,
