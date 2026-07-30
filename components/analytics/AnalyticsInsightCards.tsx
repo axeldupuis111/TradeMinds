@@ -1,6 +1,7 @@
 "use client";
 
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
+import { DEFAULT_CURRENCY, money } from "@/lib/account-currency";
 import { useLanguage } from "@/lib/LanguageContext";
 import { AlertTriangle, Brain, Clock, TrendingDown } from "lucide-react";
 
@@ -18,9 +19,11 @@ interface Props {
   bestHour:      HourEntry | null;
   riskyPairInfo: RiskyPairInfo;
   byEmotion:     EmotionEntry[];
+  /** Devise du compte filtré ; euro sur une vue multi-comptes. */
+  currency?: string;
 }
 
-export function AnalyticsInsightCards({ worstDay, bestHour, riskyPairInfo, byEmotion }: Props) {
+export function AnalyticsInsightCards({ worstDay, bestHour, riskyPairInfo, byEmotion, currency = DEFAULT_CURRENCY }: Props) {
   const { t } = useLanguage();
 
   const hasAny =
@@ -47,7 +50,7 @@ export function AnalyticsInsightCards({ worstDay, bestHour, riskyPairInfo, byEmo
                 {worstDay.name} ({worstDay.count} trades)
               </p>
               <p className="text-xs text-loss tabular-nums mt-0.5">
-                {worstDay.pnl.toFixed(2)}€ · WR {worstDay.winrate}%
+                {money(worstDay.pnl, currency, { digits: 2 })} · WR {worstDay.winrate}%
               </p>
             </div>
           </div>
@@ -67,7 +70,7 @@ export function AnalyticsInsightCards({ worstDay, bestHour, riskyPairInfo, byEmo
                 {bestHour.name} ({bestHour.count} trades)
               </p>
               <p className="text-xs text-profit tabular-nums mt-0.5">
-                +{bestHour.pnl.toFixed(2)}€ · WR {bestHour.winrate}%
+                {money(bestHour.pnl, currency, { digits: 2, signed: true })} · WR {bestHour.winrate}%
               </p>
             </div>
           </div>
@@ -95,7 +98,7 @@ export function AnalyticsInsightCards({ worstDay, bestHour, riskyPairInfo, byEmo
                     {riskyPairInfo.pair} · WR {riskyPairInfo.winrate}%
                   </p>
                   <p className="text-xs text-loss tabular-nums mt-0.5">
-                    {riskyPairInfo.pnl.toFixed(2)}€
+                    {money(riskyPairInfo.pnl, currency, { digits: 2 })}
                   </p>
                 </>
               )}
@@ -116,7 +119,7 @@ export function AnalyticsInsightCards({ worstDay, bestHour, riskyPairInfo, byEmo
                   {t("analytics_insight_emotion")}
                 </p>
                 <p className="text-sm font-semibold text-foreground">{riskyEmotion.name}</p>
-                <p className="text-xs text-loss tabular-nums mt-0.5">{riskyEmotion.pnl.toFixed(2)}€</p>
+                <p className="text-xs text-loss tabular-nums mt-0.5">{money(riskyEmotion.pnl, currency, { digits: 2 })}</p>
               </div>
             </div>
           </KpiCardPremium>

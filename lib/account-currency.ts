@@ -82,6 +82,51 @@ export function currencyMismatch(
   return { saved, broker };
 }
 
+/**
+ * Table compte → devise, pour les listes qui mélangent plusieurs comptes.
+ *
+ * Une liste de trades affiche une ligne par trade, et chaque trade appartient à
+ * un compte précis : chaque ligne peut donc porter sa vraie devise, là où un
+ * TOTAL sur plusieurs comptes n'en a aucune (voir l'en-tête du fichier).
+ */
+export function buildCurrencyMap(
+  accounts: (AccountCurrencyState & { id: string })[],
+): Map<string, string> {
+  return new Map(accounts.map((a) => [a.id, accountCurrency(a)]));
+}
+
+/**
+ * Devise d'un trade, d'après le compte auquel il est rattaché. Un trade sans
+ * compte (import CSV non affecté, saisie manuelle) retombe sur `fallback`.
+ */
+export function tradeCurrency(
+  challengeId: string | null | undefined,
+  map: Map<string, string>,
+  fallback: string = DEFAULT_CURRENCY,
+): string {
+  if (!challengeId) return fallback;
+  return map.get(challengeId) ?? fallback;
+}
+
+/**
+ * Devise commune à un ensemble de trades, ou null s'ils en mélangent plusieurs.
+ * Null est le signal qu'aucun total unique n'est affichable : à l'appelant de
+ * ventiler, ou de retomber sur l'euro.
+ */
+export function commonCurrency(
+  challengeIds: (string | null | undefined)[],
+  map: Map<string, string>,
+): string | null {
+  const found = new Set<string>();
+  for (const id of challengeIds) {
+    if (!id) continue;
+    const cur = map.get(id);
+    if (cur) found.add(cur);
+    if (found.size > 1) return null;
+  }
+  return found.size === 1 ? Array.from(found)[0] : null;
+}
+
 export interface MoneyOptions {
   /** Nombre de décimales. Par défaut 0, forcé à 0 pour les devises sans décimale. */
   digits?: number;

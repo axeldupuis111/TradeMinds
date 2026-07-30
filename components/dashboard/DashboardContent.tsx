@@ -15,7 +15,7 @@ import { KpiCards } from "@/components/dashboard/KpiCards";
 import { Sparkline } from "@/components/dashboard/Sparkline";
 import { CardHeader, CardTitle } from "@/components/ui/Card";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
-import { DEFAULT_CURRENCY, accountCurrency, money } from "@/lib/account-currency";
+import { DEFAULT_CURRENCY, accountCurrency, buildCurrencyMap, money, tradeCurrency } from "@/lib/account-currency";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useTheme } from "@/lib/ThemeContext";
 import { Badge } from "@/components/ui/Badge";
@@ -187,6 +187,9 @@ export default function DashboardContent({
   // identifié : on retombe sur l'euro plutôt que d'emprunter le symbole de l'un
   // d'eux.
   const displayCurrency = displayAccount ? accountCurrency(displayAccount) : DEFAULT_CURRENCY;
+  // Le calendrier et les listes de trades peuvent mélanger les comptes : chaque
+  // ligne porte alors la devise du sien.
+  const currencyMap = useMemo(() => buildCurrencyMap(activeAccounts), [activeAccounts]);
 
   const profitTargetAmount = displayAccount && displayAccount.profit_target_pct > 0
     ? (displayAccount.account_size * displayAccount.profit_target_pct) / 100
@@ -421,6 +424,7 @@ export default function DashboardContent({
           challengePct={challengePct}
           activeAccountsCount={activeAccounts.length}
           totalPnl={totalPnl}
+          currency={displayCurrency}
         />
       </StaggerItem>
 
@@ -437,7 +441,7 @@ export default function DashboardContent({
       {/* ── Diagnostic : fuites de capital + insights IA ──────────────── */}
       <StaggerItem className="mt-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 [&>*]:min-w-0 lg:[&>*:only-child]:col-span-2">
-          <CapitalLeaks />
+          <CapitalLeaks currency={displayCurrency} />
           {canUseAI && (
             <AiInsights insights={insights} filteredAllLength={filteredAll.length} />
           )}
@@ -447,7 +451,7 @@ export default function DashboardContent({
       {/* ── Ta semaine : bilan (rétrospectif) + plan IA (prospectif) ──── */}
       <StaggerItem className="mt-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 [&>*]:min-w-0 lg:[&>*:only-child]:col-span-2">
-          <WeeklyRecap trades={filteredAll} />
+          <WeeklyRecap trades={filteredAll} currency={displayCurrency} />
           <WeeklyPlanCard />
         </div>
       </StaggerItem>
@@ -455,13 +459,13 @@ export default function DashboardContent({
       {/* ── Évolution du capital — le grand graphique, pleine largeur ─── */}
       {equityCurveData.length > 0 && (
         <StaggerItem className="mt-6">
-          <EquityCurve data={equityCurveData} initialBalance={initialBalance} />
+          <EquityCurve data={equityCurveData} initialBalance={initialBalance} currency={displayCurrency} />
         </StaggerItem>
       )}
 
       {/* ── Trading Calendar ─────────────────────────────────────────── */}
       <StaggerItem className="mt-6">
-        <TradingCalendar trades={allTrades} selectedAccountId={selectedAccountId} rules={calendarRules} />
+        <TradingCalendar trades={allTrades} selectedAccountId={selectedAccountId} rules={calendarRules} currencyMap={currencyMap} fallbackCurrency={displayCurrency} />
       </StaggerItem>
 
       {/* ── Position sizer shortcut ──────────────────────────────────── */}
@@ -519,6 +523,9 @@ export default function DashboardContent({
               {filteredRecent.map((tr) => {
                 const net = netPnl(tr);
                 const isBuy = tr.direction === "long" || tr.direction === "buy";
+                // La liste peut mélanger les comptes : chaque ligne porte la
+                // devise du sien.
+                const trCur = tradeCurrency(tr.challenge_id, currencyMap, displayCurrency);
                 return (
                   <div
                     key={tr.id}
@@ -564,15 +571,14 @@ export default function DashboardContent({
                         {/* Ligne 3 — frais (si non nuls) */}
                         {((tr.commission ?? 0) + (tr.swap ?? 0)) !== 0 && (
                           <p className="text-[9px] text-foreground-subtle tabular-nums leading-none">
-                            {((tr.commission ?? 0) + (tr.swap ?? 0)) > 0 ? "+" : ""}
-                            {((tr.commission ?? 0) + (tr.swap ?? 0)).toFixed(2)}€
+                            {money((tr.commission ?? 0) + (tr.swap ?? 0), trCur, { digits: 2, signed: true })}
                           </p>
                         )}
                       </div>
                     </div>
                     {/* P&L */}
                     <span className={cn("text-sm font-medium tabular-nums shrink-0", net >= 0 ? "text-profit" : "text-loss")}>
-                      {net >= 0 ? "+" : ""}{net.toFixed(2)}
+                      {money(net, trCur, { digits: 2, signed: true })}
                     </span>
                   </div>
                 );

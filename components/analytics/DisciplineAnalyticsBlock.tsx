@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { DEFAULT_CURRENCY, money } from "@/lib/account-currency";
 import { Calendar, Clock, Zap, TrendingUp, TrendingDown } from "lucide-react";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { CardHeader, CardTitle } from "@/components/ui/Card";
@@ -35,6 +36,8 @@ interface TradeRow {
 }
 
 interface Props {
+  /** Devise du compte filtré ; euro sur une vue multi-comptes. */
+  currency?: string;
   trades: TradeRow[];
   checklistItems: ChecklistItem[];
 }
@@ -141,9 +144,11 @@ interface CriterionStat {
 function ZoneB({
   trades,
   checklistItems,
+  currency,
 }: {
   trades: TradeRow[];
   checklistItems: ChecklistItem[];
+  currency: string;
 }) {
   const { t, lang } = useLanguage();
   const stats = useMemo((): CriterionStat[] => {
@@ -214,7 +219,7 @@ function ZoneB({
             <span className="text-xs text-foreground-muted">
               · {t("da_pnl_avg")}{" "}
               <span className={s.pnlAvgWith >= 0 ? "text-profit font-medium" : "text-loss font-medium"}>
-                {s.pnlAvgWith >= 0 ? "+" : ""}{s.pnlAvgWith.toFixed(0)}&nbsp;€
+                {money(s.pnlAvgWith, currency, { signed: true })}
               </span>
             </span>
           </div>
@@ -228,7 +233,7 @@ function ZoneB({
 
 const KZ_ORDER = ["london_open", "ny_am", "ny_pm", "asia", "off_session"];
 
-function ZoneC({ trades }: { trades: TradeRow[] }) {
+function ZoneC({ trades, currency }: { trades: TradeRow[]; currency: string }) {
   const c = useChartColors();
   const { t } = useLanguage();
 
@@ -285,7 +290,7 @@ function ZoneC({ trades }: { trades: TradeRow[] }) {
           tick={{ fontSize: 10, fill: c.axis }}
           tickLine={false}
           axisLine={{ stroke: c.axisLine }}
-          tickFormatter={(v) => `${v >= 0 ? "+" : ""}${v.toFixed(0)}€`}
+          tickFormatter={(v) => money(v, currency, { signed: true })}
         />
         <YAxis
           type="category"
@@ -303,7 +308,7 @@ function ZoneC({ trades }: { trades: TradeRow[] }) {
               <div style={tooltipStyle}>
                 <p style={{ fontWeight: 600, marginBottom: 4 }}>{entry.label}</p>
                 <p style={{ color: entry.pnl >= 0 ? c.profit : c.loss }}>
-                  {entry.pnl >= 0 ? "+" : ""}{entry.pnl.toFixed(2)} €
+                  {money(entry.pnl, currency, { digits: 2, signed: true })}
                 </p>
                 <p style={{ color: c.axis }}>
                   {entry.count} trade{entry.count > 1 ? "s" : ""} · WR {entry.winrate}%
@@ -337,7 +342,7 @@ const DURATION_META = {
 
 type DurationKey = keyof typeof DURATION_META;
 
-function ZoneD({ trades }: { trades: TradeRow[] }) {
+function ZoneD({ trades, currency }: { trades: TradeRow[]; currency: string }) {
   const { t } = useLanguage();
   const stats = useMemo(() => {
     const map: Record<DurationKey, { count: number; wins: number; pnl: number }> = {
@@ -393,7 +398,7 @@ function ZoneD({ trades }: { trades: TradeRow[] }) {
               WR {wr}%
               <br />
               <span className={pnlAvg >= 0 ? "text-profit" : "text-loss"}>
-                {pnlAvg >= 0 ? "+" : ""}{pnlAvg.toFixed(0)}&nbsp;€ {t("da_avg_suffix")}
+                {money(pnlAvg, currency, { signed: true })} {t("da_avg_suffix")}
               </span>
             </p>
           </div>
@@ -408,6 +413,7 @@ function ZoneD({ trades }: { trades: TradeRow[] }) {
 export function DisciplineAnalyticsBlock({
   trades,
   checklistItems,
+  currency = DEFAULT_CURRENCY,
 }: Props) {
   const { t } = useLanguage();
   // ── Derived conditions ────────────────────────────────────────────────────
@@ -491,6 +497,7 @@ export function DisciplineAnalyticsBlock({
             <ZoneB
               trades={trades}
               checklistItems={checklistItems}
+              currency={currency}
             />
           </div>
         )}
@@ -502,7 +509,7 @@ export function DisciplineAnalyticsBlock({
           >
             {t("da_perf_killzone")}
           </p>
-          <ZoneC trades={trades} />
+          <ZoneC trades={trades} currency={currency} />
         </div>
 
         {/* Zone D — Performance par durée */}
@@ -513,7 +520,7 @@ export function DisciplineAnalyticsBlock({
             >
               {t("da_perf_duration")}
             </p>
-            <ZoneD trades={trades} />
+            <ZoneD trades={trades} currency={currency} />
           </div>
         )}
 

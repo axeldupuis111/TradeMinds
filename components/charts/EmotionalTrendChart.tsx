@@ -1,6 +1,7 @@
 "use client";
 
 import { Card, CardTitle } from "@/components/ui/Card";
+import { DEFAULT_CURRENCY, money } from "@/lib/account-currency";
 import { useChartColors } from "@/lib/useChartColors";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
@@ -41,7 +42,12 @@ interface DataPoint {
   pnl: number | null;
 }
 
-export default function EmotionalTrendChart() {
+export default function EmotionalTrendChart({
+  currency = DEFAULT_CURRENCY,
+}: {
+  /** Devise du compte filtré ; euro sur une vue multi-comptes. */
+  currency?: string;
+} = {}) {
   const { t } = useLanguage();
   const c = useChartColors();
   const supabase = createClient();
@@ -210,7 +216,7 @@ export default function EmotionalTrendChart() {
                   )}
                   {pnlEntry?.value != null && (
                     <p style={{ color: Number(pnlEntry.value) >= 0 ? c.profit : c.loss }}>
-                      P&L: {Number(pnlEntry.value) >= 0 ? "+" : ""}{Number(pnlEntry.value).toFixed(2)}€
+                      P&L: {money(Number(pnlEntry.value), currency, { digits: 2, signed: true })}
                     </p>
                   )}
                 </div>

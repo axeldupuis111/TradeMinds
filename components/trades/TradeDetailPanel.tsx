@@ -12,6 +12,7 @@ import {
   formatDuration,
   detectKillzone,
 } from "@/lib/strategy/derive";
+import { accountCurrency, money } from "@/lib/account-currency";
 import { useStrategyTags } from "@/lib/hooks/useStrategyTags";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
@@ -98,6 +99,8 @@ interface AccountOption {
   id: string;
   firm: string;
   account_number: string | null;
+  currency: string | null;
+  synced_currency: string | null;
 }
 
 
@@ -159,6 +162,9 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
   const [uploading, setUploading] = useState(false);
   const [accounts, setAccounts] = useState<AccountOption[]>([]);
   const [challengeId, setChallengeId] = useState<string | null>(trade.challenge_id || null);
+  // Devise du compte auquel ce trade est rattaché — suit le sélecteur de compte
+  // du panneau, pour que le montant change en même temps que l'affectation.
+  const tradeCur = accountCurrency(accounts.find((a) => a.id === challengeId) ?? {});
 
   // Initial SL/TP state
   const [slInitial, setSlInitial] = useState<string>(trade.sl_initial != null ? String(trade.sl_initial) : "");
@@ -261,7 +267,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
       if (!user) return;
       const { data } = await supabase
         .from("prop_challenges")
-        .select("id, firm, account_number")
+        .select("id, firm, account_number, currency, synced_currency")
         .eq("user_id", user.id)
         .eq("status", "active");
       setAccounts(data || []);
@@ -620,7 +626,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
             <div className="pt-2 border-t border-border">
               <span className="text-muted text-sm">{t("trades_col_pnl")}:</span>
               <span className={`ml-2 text-lg font-bold ${net >= 0 ? "text-profit" : "text-loss"}`}>
-                {net >= 0 ? "+" : ""}{net.toFixed(2)} €
+                {money(net, tradeCur, { digits: 2, signed: true })}
               </span>
             </div>
           </div>

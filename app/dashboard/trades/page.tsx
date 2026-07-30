@@ -7,12 +7,14 @@ import OpenTradesSection from "@/components/trades/OpenTradesSection";
 import QuickAnnotateModal from "@/components/trades/QuickAnnotateModal";
 import TaxExportButton from "@/components/trades/TaxExportButton";
 import TradeList from "@/components/trades/TradeList";
+import { DEFAULT_CURRENCY, buildCurrencyMap, commonCurrency, money } from "@/lib/account-currency";
+import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/lib/LanguageContext";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Plus, Sparkles, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface Strategy {
   id: string;
@@ -25,6 +27,8 @@ interface Recap {
   count: number;
   wr: number;
   pnl: number;
+  /** Comptes des trades agrégés — le total n'a de devise que s'ils la partagent. */
+  challengeIds: (string | null)[];
 }
 
 export default function TradesPage() {
@@ -41,6 +45,14 @@ export default function TradesPage() {
   const [recap, setRecap] = useState<Recap | null>(null);
   const [unannotatedCount, setUnannotatedCount] = useState(0);
   const [showAnnotate, setShowAnnotate] = useState(false);
+  const { accounts } = useActiveAccount();
+
+  // Le récap porte sur tous les comptes : il n'a de devise que s'ils la
+  // partagent tous. Sinon l'euro, faute d'un total qui veuille dire quelque chose.
+  const currencyMap = useMemo(() => buildCurrencyMap(accounts), [accounts]);
+  const recapCurrency = recap
+    ? commonCurrency(recap.challengeIds, currencyMap) ?? DEFAULT_CURRENCY
+    : DEFAULT_CURRENCY;
 
   const loadRecap = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -49,7 +61,7 @@ export default function TradesPage() {
     const [{ data, count }, { count: noEmotion }] = await Promise.all([
       supabase
         .from("trades")
-        .select("pnl, commission, swap", { count: "exact" })
+        .select("pnl, commission, swap, challenge_id", { count: "exact" })
         .eq("user_id", user.id)
         .eq("status", "closed"),
       supabase
@@ -72,6 +84,7 @@ export default function TradesPage() {
       count: count || 0,
       wr: count ? (wins / count) * 100 : 0,
       pnl: totalPnl,
+      challengeIds: data.map((t) => (t.challenge_id as string | null) ?? null),
     });
   }, [supabase]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -146,7 +159,7 @@ export default function TradesPage() {
             <p className="text-sm text-muted mt-1">
               {recap.count} trades · WR {recap.wr.toFixed(1)}% · P&amp;L{" "}
               <span className={recap.pnl >= 0 ? "text-profit" : "text-loss"}>
-                {recap.pnl >= 0 ? "+" : ""}{recap.pnl.toFixed(2)}€
+                {money(recap.pnl, recapCurrency, { digits: 2, signed: true })}
               </span>
             </p>
           )}

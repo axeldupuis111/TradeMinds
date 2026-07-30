@@ -1,6 +1,7 @@
 "use client";
 
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
+import { DEFAULT_CURRENCY, commonCurrency, money, tradeCurrency } from "@/lib/account-currency";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useTheme } from "@/lib/ThemeContext";
 import { dayBreaches, hasDisciplineRules, type DayBreach, type DayDisciplineRules } from "@/lib/calendar-discipline";
@@ -28,6 +29,10 @@ interface Props {
   selectedAccountId: string | null;
   /** Optional discipline overlay — when set, days are also marked clean/breached. */
   rules?: DayDisciplineRules | null;
+  /** Compte → devise, pour les vues qui mélangent plusieurs comptes. */
+  currencyMap?: Map<string, string>;
+  /** Devise de repli : celle du compte sélectionné, sinon l'euro. */
+  fallbackCurrency?: string;
 }
 
 interface DayTrade {
@@ -35,6 +40,8 @@ interface DayTrade {
   direction: string;
   pnl: number;       // net (commission + swap already included)
   fees: number;      // commission + swap combined (for display)
+  /** Compte du trade — porte sa devise dans le détail du jour. */
+  challenge_id: string | null;
   open_time: string;
   close_time: string | null;
   lot_size: number | null;
@@ -74,7 +81,13 @@ function fmtTime(iso: string | null | undefined): string | null {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function TradingCalendar({ trades, selectedAccountId, rules }: Props) {
+export default function TradingCalendar({
+  trades,
+  selectedAccountId,
+  rules,
+  currencyMap,
+  fallbackCurrency = DEFAULT_CURRENCY,
+}: Props) {
   const { t } = useLanguage();
   const { theme } = useTheme();
   const isDark = theme !== "light";
@@ -98,6 +111,17 @@ export default function TradingCalendar({ trades, selectedAccountId, rules }: Pr
     return trades.filter((tr) => tr.challenge_id === selectedAccountId);
   }, [trades, selectedAccountId]);
 
+  // Devise des totaux (mois, jour) : celle des trades affichés s'ils la
+  // partagent, sinon l'euro. Un total qui mélange EUR et USD n'a pas de devise,
+  // et lui en coller une afficherait un chiffre faux.
+  const totalsCurrency = useMemo(() => {
+    if (!currencyMap) return fallbackCurrency;
+    return commonCurrency(filtered.map((tr) => tr.challenge_id), currencyMap) ?? fallbackCurrency;
+  }, [filtered, currencyMap, fallbackCurrency]);
+
+  const curOf = (challengeId: string | null) =>
+    currencyMap ? tradeCurrency(challengeId, currencyMap, fallbackCurrency) : fallbackCurrency;
+
   // ── Group trades by day ────────────────────────────────────────────────────
   const dayMap = useMemo(() => {
     const map: Record<string, DayData> = {};
@@ -116,6 +140,7 @@ export default function TradingCalendar({ trades, selectedAccountId, rules }: Pr
         direction: tr.direction,
         pnl: net,
         fees,
+        challenge_id: tr.challenge_id,
         open_time: tr.open_time,
         close_time: tr.close_time ?? null,
         lot_size: tr.lot_size ?? null,
@@ -217,7 +242,7 @@ export default function TradingCalendar({ trades, selectedAccountId, rules }: Pr
           )}
         </div>
         <span className={`text-sm font-semibold ${monthPnl >= 0 ? "text-profit" : "text-loss"}`}>
-          {monthPnl >= 0 ? "+" : ""}{monthPnl.toFixed(2)} €
+          {money(monthPnl, totalsCurrency, { digits: 2, signed: true })}
         </span>
       </div>
 
@@ -315,7 +340,7 @@ export default function TradingCalendar({ trades, selectedAccountId, rules }: Pr
               {hasTrades && (
                 <div className="mt-0.5">
                   <p className={`text-[10px] sm:text-xs font-semibold ${isPositive ? "text-profit" : "text-loss"}`}>
-                    {data.pnl >= 0 ? "+" : ""}{data.pnl.toFixed(0)}€
+                    {money(data.pnl, totalsCurrency, { signed: true })}
                   </p>
                   <p className="text-[9px] sm:text-[10px] text-muted mt-0.5 flex items-center gap-0.5">
                     <svg className="w-2.5 h-2.5 inline-block flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -414,7 +439,7 @@ export default function TradingCalendar({ trades, selectedAccountId, rules }: Pr
                 )}
               </div>
               <span className={`text-sm font-bold tabular-nums shrink-0 ${displayDayData.pnl >= 0 ? "text-profit" : "text-loss"}`}>
-                {displayDayData.pnl >= 0 ? "+" : ""}{displayDayData.pnl.toFixed(2)} €
+                {money(displayDayData.pnl, totalsCurrency, { digits: 2, signed: true })}
               </span>
             </div>
 
@@ -486,11 +511,11 @@ export default function TradingCalendar({ trades, selectedAccountId, rules }: Pr
                       <div className="flex items-center gap-2">
                         {hasFees && (
                           <span className="text-[10px] text-foreground-subtle tabular-nums">
-                            Frais {tr.fees >= 0 ? "+" : ""}{tr.fees.toFixed(2)}€
+                            Frais {money(tr.fees, curOf(tr.challenge_id), { digits: 2, signed: true })}
                           </span>
                         )}
                         <span className={`text-xs font-semibold tabular-nums ml-auto ${tr.pnl >= 0 ? "text-profit" : "text-loss"}`}>
-                          {tr.pnl >= 0 ? "+" : ""}{tr.pnl.toFixed(2)} €
+                          {money(tr.pnl, curOf(tr.challenge_id), { digits: 2, signed: true })}
                         </span>
                       </div>
 

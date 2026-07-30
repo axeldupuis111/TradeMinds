@@ -5,7 +5,7 @@ import { CardTitle } from "@/components/ui/Card";
 import { useChartColors } from "@/lib/useChartColors";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useTheme } from "@/lib/ThemeContext";
-import { formatCurrencyAxis } from "@/lib/utils";
+import { DEFAULT_CURRENCY, money } from "@/lib/account-currency";
 import {
   AreaChart,
   Area,
@@ -25,9 +25,11 @@ interface DataPoint {
 interface Props {
   data: DataPoint[];
   initialBalance: number;
+  /** Devise du compte tracé ; euro en vue « tous les comptes ». */
+  currency?: string;
 }
 
-export default function EquityCurve({ data, initialBalance }: Props) {
+export default function EquityCurve({ data, initialBalance, currency = DEFAULT_CURRENCY }: Props) {
   const { t } = useLanguage();
   const c = useChartColors();
   const { theme } = useTheme();
@@ -114,7 +116,9 @@ export default function EquityCurve({ data, initialBalance }: Props) {
               tick={{ fill: c.axis, fontSize: 11 }}
               tickLine={false}
               axisLine={{ stroke: c.axisLine }}
-              tickFormatter={formatCurrencyAxis}
+              tickFormatter={(v: unknown) =>
+                typeof v === "number" ? money(v, currency) : String(v)
+              }
               width={80}
             />
             <Tooltip
@@ -126,7 +130,7 @@ export default function EquityCurve({ data, initialBalance }: Props) {
               }}
               labelStyle={{ color: c.tooltipText }}
               formatter={(value: unknown) => [
-                `${Number(value).toLocaleString("fr-FR", { maximumFractionDigits: 2 })}€`,
+                money(Number(value), currency, { digits: 2 }),
                 t("equity_balance"),
               ]}
               labelFormatter={(label: unknown) => String(label)}

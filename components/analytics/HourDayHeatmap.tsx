@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useMemo, useState, useEffect, useRef } from "react";
+import { DEFAULT_CURRENCY, money } from "@/lib/account-currency";
 import {
   buildHeatmap,
   getHeatmapBounds,
@@ -12,7 +13,11 @@ import { HeatmapTooltip } from "@/components/analytics/HeatmapTooltip";
 import type { AnalyticsTrade } from "@/lib/analytics/types";
 import { useLanguage } from "@/lib/LanguageContext";
 
-type Props = { trades: AnalyticsTrade[] };
+type Props = {
+  trades: AnalyticsTrade[];
+  /** Devise du compte filtré ; euro sur une vue multi-comptes. */
+  currency?: string;
+};
 
 // Monday-first ordering matches buildHeatmap (day 0 = Lundi)
 const DAY_KEYS_MON_FIRST = [
@@ -62,10 +67,9 @@ function cellBg(cell: HeatmapCell, bounds: HeatmapBounds): string {
 
 // ─── Formatting ───────────────────────────────────────────────────────────────
 
-function fmtPnl(n: number): string {
+function fmtPnl(n: number, currency: string): string {
   const r = Math.round(n);
-  if (r === 0) return "0 €";
-  return `${r > 0 ? "+" : ""}${r} €`;
+  return money(r, currency, { signed: r !== 0 });
 }
 
 // FIX 5 — compact in-cell label with k suffix above 1 000
@@ -95,7 +99,7 @@ const HIDDEN_TOOLTIP: TooltipState = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function HourDayHeatmap({ trades }: Props) {
+export function HourDayHeatmap({ trades, currency = DEFAULT_CURRENCY }: Props) {
   const { t } = useLanguage();
 
   const [tooltip, setTooltip] = useState<TooltipState>(HIDDEN_TOOLTIP);
@@ -276,7 +280,7 @@ export function HourDayHeatmap({ trades }: Props) {
         </span>
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-foreground-muted tabular-nums">
-            {fmtPnl(bounds.minPnl)}
+            {fmtPnl(bounds.minPnl, currency)}
           </span>
           <div
             style={{
@@ -288,7 +292,7 @@ export function HourDayHeatmap({ trades }: Props) {
             }}
           />
           <span className="text-[11px] text-foreground-muted tabular-nums">
-            {fmtPnl(bounds.maxPnl)}
+            {fmtPnl(bounds.maxPnl, currency)}
           </span>
         </div>
       </div>
@@ -303,6 +307,7 @@ export function HourDayHeatmap({ trades }: Props) {
           trades={tooltip.trades}
           pnl={tooltip.pnl}
           winRate={tooltip.winRate}
+          currency={currency}
         />
       )}
     </div>

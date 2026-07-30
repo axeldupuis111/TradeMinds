@@ -1,6 +1,8 @@
 "use client";
 
 import { useLanguage } from "@/lib/LanguageContext";
+import { money } from "@/lib/account-currency";
+import { useDisplayCurrency } from "@/lib/hooks/useDisplayCurrency";
 import Link from "next/link";
 import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
@@ -61,6 +63,8 @@ const TAG_CATEGORY_COLORS: Record<string, string> = {
 
 export default function StrategyPage() {
   const { t, lang } = useLanguage();
+  // Vue multi-comptes : devise commune aux comptes actifs, euro s'ils la mélangent.
+  const displayCurrency = useDisplayCurrency();
   const { maxStrategies, loading: planLoading } = usePlan();
   const supabase = createClient();
 
@@ -799,17 +803,17 @@ export default function StrategyPage() {
                 <div className="rounded-lg bg-surface border border-border p-3">
                   <p className="text-[11px] text-muted uppercase tracking-wider">{t("trades_pnl_total")}</p>
                   <p className={`text-xl font-bold tabular-nums mt-0.5 ${perf.pnl >= 0 ? "text-profit" : "text-loss"}`}>
-                    {perf.pnl >= 0 ? "+" : ""}{perf.pnl.toFixed(2)} €
+                    {money(perf.pnl, displayCurrency, { digits: 2, signed: true })}
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-lg bg-profit/5 border border-profit/15 p-3">
                     <p className="text-[11px] text-muted uppercase tracking-wider">{t("strategy_perf_avg_win")}</p>
-                    <p className="text-sm font-semibold text-profit tabular-nums mt-0.5">+{perf.avgWin.toFixed(2)} €</p>
+                    <p className="text-sm font-semibold text-profit tabular-nums mt-0.5">{money(perf.avgWin, displayCurrency, { digits: 2, signed: true })}</p>
                   </div>
                   <div className="rounded-lg bg-loss/5 border border-loss/15 p-3">
                     <p className="text-[11px] text-muted uppercase tracking-wider">{t("strategy_perf_avg_loss")}</p>
-                    <p className="text-sm font-semibold text-loss tabular-nums mt-0.5">{perf.avgLoss.toFixed(2)} €</p>
+                    <p className="text-sm font-semibold text-loss tabular-nums mt-0.5">{money(perf.avgLoss, displayCurrency, { digits: 2 })}</p>
                   </div>
                 </div>
               </div>

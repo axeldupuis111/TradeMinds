@@ -8,13 +8,13 @@ import EmotionalCheck from "@/components/session/EmotionalCheck";
 import PositionSizer from "@/components/session/PositionSizer";
 import QuickTradeLogger from "@/components/session/QuickTradeLogger";
 import RealTimeGuards from "@/components/session/RealTimeGuards";
-import { accountCurrency, money } from "@/lib/account-currency";
+import { DEFAULT_CURRENCY, accountCurrency, buildCurrencyMap, commonCurrency, money } from "@/lib/account-currency";
 import { useActiveAccount, type ActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { dailyQuotes } from "@/lib/translations";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const SESSION_LABELS: Record<string, string> = {
   london: "London (08:00–12:00 UTC)",
@@ -168,6 +168,14 @@ export default function SessionPage() {
   const [showStopConfirm, setShowStopConfirm] = useState(false);
   const [paused, setPaused] = useState(false);
   const [pausedAt, setPausedAt] = useState<string | null>(null);
+  const [historyCurrency, setHistoryCurrency] = useState<string>(DEFAULT_CURRENCY);
+
+  // Ref plutôt que valeur : le chargement de l'historique ne doit pas se
+  // relancer quand la liste des comptes se rafraîchit.
+  const currencyMapRef = useRef(buildCurrencyMap(activeAccounts));
+  useEffect(() => {
+    currencyMapRef.current = buildCurrencyMap(activeAccounts);
+  }, [activeAccounts]);
 
   useEffect(() => {
     load();
@@ -210,7 +218,7 @@ export default function SessionPage() {
         .limit(5),
       supabase
         .from("trades")
-        .select("pnl, commission, swap, open_time")
+        .select("pnl, commission, swap, open_time, challenge_id")
         .eq("user_id", user.id)
         .gte("open_time", sevenDaysAgoStr),
     ]);
@@ -228,6 +236,13 @@ export default function SessionPage() {
     } else {
       setChecklist(DEFAULT_CHECKLIST.map((k) => t(k)));
     }
+
+    // Devise de l'historique : celle des trades récents s'ils la partagent,
+    // sinon l'euro — un cumul mélangeant EUR et USD n'a pas de devise.
+    setHistoryCurrency(
+      commonCurrency((recentTrades || []).map((tr) => tr.challenge_id), currencyMapRef.current) ??
+        DEFAULT_CURRENCY,
+    );
 
     // Compute P&L per day from recent trades
     const pnlByDay: Record<string, number> = {};
@@ -631,6 +646,7 @@ export default function SessionPage() {
         <SessionDebriefModal
           debrief={debrief}
           loading={debriefLoading}
+          currency={selectedAccount ? accountCurrency(selectedAccount) : historyCurrency}
           onClose={() => setDebriefOpen(false)}
         />
       )}
@@ -868,7 +884,7 @@ export default function SessionPage() {
                       <span className="ml-auto shrink-0">
                         {s.pnl !== undefined ? (
                           <span className={`text-xs font-medium tabular-nums ${s.pnl >= 0 ? "text-profit" : "text-loss"}`}>
-                            {s.pnl >= 0 ? "+" : ""}{s.pnl.toFixed(2)}€
+                            {money(s.pnl, historyCurrency, { digits: 2, signed: true })}
                           </span>
                         ) : s.ended_at ? (
                           <span className="text-xs text-muted">{new Date(s.ended_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</span>

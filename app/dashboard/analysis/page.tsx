@@ -1,6 +1,8 @@
 "use client";
 
 import UpgradeBanner from "@/components/UpgradeBanner";
+import { money } from "@/lib/account-currency";
+import { useDisplayCurrency } from "@/lib/hooks/useDisplayCurrency";
 import type { CategoryBreakdown } from "@/lib/discipline-score";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
@@ -350,8 +352,8 @@ function ScoreBreakdownCard({ breakdown, score, t, className }: { breakdown: Cat
   );
 }
 
-function fmtEuro(n: number): string {
-  return `${n > 0 ? "+" : ""}${n.toFixed(2).replace(/\.00$/, "")} €`;
+function fmtEuro(n: number, currency: string): string {
+  return money(n, currency, { digits: 2, signed: n > 0 }).replace(/,00(?=\D*$)/, "");
 }
 
 /** Libellé humain du segment d'edge (14h, lundi, EURUSD…). */
@@ -484,6 +486,8 @@ function getFilteredTrades(trades: { close_time: string }[], period: PeriodKey) 
 
 export default function AnalysisPage() {
   const { t, lang } = useLanguage();
+  // Vue multi-comptes : devise commune aux comptes actifs, euro s'ils la mélangent.
+  const displayCurrency = useDisplayCurrency();
   const { canUseAI, aiRemaining, plan, refreshPlan, demoMode, loading: planLoading } = usePlan();
   const supabase = createClient();
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
@@ -1089,7 +1093,7 @@ ${turn.answer}` },
         })),
         edge: (ins?.edge ?? []).map((h) => ({
           label: `${t(`edge_dim_${h.dimension}` as Parameters<typeof t>[0])} · ${edgeKeyLabel(h, lang)}`,
-          value: `${fmtEuro(h.netPnl)} · ${t("analysis_edge_stats").replace("{n}", String(h.trades)).replace("{p}", String(h.winRate))}`,
+          value: `${fmtEuro(h.netPnl, displayCurrency)} · ${t("analysis_edge_stats").replace("{n}", String(h.trades)).replace("{p}", String(h.winRate))}`,
           positive: h.kind === "best",
         })),
         strengths: a.strengths,
@@ -1391,7 +1395,7 @@ ${turn.answer}` },
                 <h2 className="text-lg font-semibold text-foreground">{t("analysis_cost_title")}</h2>
                 <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
                   <span className={`text-3xl font-bold tabular-nums ${costly ? "text-loss" : "text-profit"}`}>
-                    {fmtEuro(ins.violation_cost)}
+                    {fmtEuro(ins.violation_cost, displayCurrency)}
                   </span>
                   <span className="text-sm text-muted">
                     {ins.violation_trade_count === 1
@@ -1402,20 +1406,20 @@ ${turn.answer}` },
                 <p className="text-sm text-muted mt-2">
                   {costly
                     ? t("analysis_cost_clean_vs")
-                        .replace("{clean}", fmtEuro(cf.cleanFinal))
-                        .replace("{real}", fmtEuro(cf.realFinal))
-                    : t("analysis_cost_lucky").replace("{amount}", fmtEuro(ins.violation_cost))}
+                        .replace("{clean}", fmtEuro(cf.cleanFinal, displayCurrency))
+                        .replace("{real}", fmtEuro(cf.realFinal, displayCurrency))
+                    : t("analysis_cost_lucky").replace("{amount}", fmtEuro(ins.violation_cost, displayCurrency))}
                 </p>
                 <div className="mt-4">
                   <CounterfactualChart points={cf.points} />
                   <div className="flex items-center gap-4 mt-2 text-xs">
                     <span className="flex items-center gap-1.5">
                       <span className="w-3 h-0.5 rounded bg-profit inline-block" />
-                      <span className="text-muted">{t("analysis_cost_clean_line")} · <span className="text-profit font-medium tabular-nums">{fmtEuro(cf.cleanFinal)}</span></span>
+                      <span className="text-muted">{t("analysis_cost_clean_line")} · <span className="text-profit font-medium tabular-nums">{fmtEuro(cf.cleanFinal, displayCurrency)}</span></span>
                     </span>
                     <span className="flex items-center gap-1.5">
                       <span className="w-3 h-0.5 rounded bg-muted inline-block" />
-                      <span className="text-muted">{t("analysis_cost_real_line")} · <span className="text-foreground font-medium tabular-nums">{fmtEuro(cf.realFinal)}</span></span>
+                      <span className="text-muted">{t("analysis_cost_real_line")} · <span className="text-foreground font-medium tabular-nums">{fmtEuro(cf.realFinal, displayCurrency)}</span></span>
                     </span>
                   </div>
                 </div>
@@ -1469,7 +1473,7 @@ ${turn.answer}` },
                                 <span className={`ml-auto px-2 py-0.5 rounded-md text-xs font-bold tabular-nums shrink-0 ${
                                   ((v as Violation).cost as number) < 0 ? "bg-loss/10 text-loss" : "bg-profit/10 text-profit"
                                 }`}>
-                                  {fmtEuro((v as Violation).cost as number)}
+                                  {fmtEuro((v as Violation).cost as number, displayCurrency)}
                                 </span>
                               )}
                             </div>
@@ -1546,7 +1550,7 @@ ${turn.answer}` },
                       {t(`edge_dim_${h.dimension}` as Parameters<typeof t>[0])} · {edgeKeyLabel(h, lang)}
                     </p>
                     <p className={`text-xl font-bold tabular-nums mt-1 ${h.kind === "best" ? "text-profit" : "text-loss"}`}>
-                      {fmtEuro(h.netPnl)}
+                      {fmtEuro(h.netPnl, displayCurrency)}
                     </p>
                     <p className="text-xs text-muted mt-1">
                       {t("analysis_edge_stats").replace("{n}", String(h.trades)).replace("{p}", String(h.winRate))}
@@ -1602,7 +1606,7 @@ ${turn.answer}` },
                           {new Date(r.open_time).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
                         </span>
                         <span className={`ml-auto text-xs font-bold tabular-nums ${r.net_pnl >= 0 ? "text-profit" : "text-loss"}`}>
-                          {fmtEuro(r.net_pnl)}
+                          {fmtEuro(r.net_pnl, displayCurrency)}
                         </span>
                       </div>
                       <p className="text-muted text-sm mt-1">{r.comment}</p>

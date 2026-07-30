@@ -14,6 +14,7 @@ import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import ShareCardModal from "@/components/dashboard/ShareCardModal";
 import { CardHeader, CardTitle } from "@/components/ui/Card";
 import { useLanguage } from "@/lib/LanguageContext";
+import { DEFAULT_CURRENCY, currencySymbol, money } from "@/lib/account-currency";
 import { cn } from "@/lib/cn";
 import { CalendarRange, Share2, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -74,10 +75,9 @@ function computeStats(trades: RecapTrade[]): WeekStats {
   };
 }
 
-function fmtEur(n: number): string {
+function fmtEur(n: number, currency: string): string {
   const rounded = Math.round(n);
-  if (rounded === 0) return "0€";
-  return `${rounded > 0 ? "+" : ""}${rounded.toLocaleString()}€`;
+  return money(rounded, currency, { signed: rounded !== 0 });
 }
 
 /** Petit badge de delta vs semaine précédente. */
@@ -99,16 +99,23 @@ function DeltaBadge({ delta, suffix = "", invert = false }: { delta: number | nu
 }
 
 /** A short, rule-based "coach's note" on the week — no AI call, instant. */
-function weeklyCoachNote(cur: WeekStats, prev: WeekStats, t: (k: string) => string): string {
+function weeklyCoachNote(cur: WeekStats, prev: WeekStats, t: (k: string) => string, currency: string): string {
   if (cur.count === 0) return t("recap_note_no_trades");
-  const pnl = fmtEur(cur.pnl);
+  const pnl = fmtEur(cur.pnl, currency);
   if (cur.pnl > 0 && prev.count > 0 && prev.pnl < 0) return t("recap_note_comeback").replace("{pnl}", pnl);
   if (cur.pnl > 0) return t("recap_note_positive").replace("{pnl}", pnl);
   if (cur.pnl < 0) return t("recap_note_negative").replace("{pnl}", pnl);
   return t("recap_note_flat");
 }
 
-export default function WeeklyRecap({ trades }: { trades: RecapTrade[] }) {
+export default function WeeklyRecap({
+  trades,
+  currency = DEFAULT_CURRENCY,
+}: {
+  trades: RecapTrade[];
+  /** Devise du compte affiché ; euro en vue « tous les comptes ». */
+  currency?: string;
+}) {
   const { t } = useLanguage();
   const [shareOpen, setShareOpen] = useState(false);
 
@@ -132,7 +139,7 @@ export default function WeeklyRecap({ trades }: { trades: RecapTrade[] }) {
   if (current.count === 0 && previous.count === 0) return null;
 
   const pnlPositive = current.pnl >= 0;
-  const coachNote = weeklyCoachNote(current, previous, t);
+  const coachNote = weeklyCoachNote(current, previous, t, currency);
 
   const stats: {
     key: string;
@@ -144,9 +151,9 @@ export default function WeeklyRecap({ trades }: { trades: RecapTrade[] }) {
     {
       key: "pnl",
       label: t("recap_pnl"),
-      value: fmtEur(current.pnl),
+      value: fmtEur(current.pnl, currency),
       valueClass: current.pnl > 0 ? "text-profit" : current.pnl < 0 ? "text-loss" : undefined,
-      delta: <DeltaBadge delta={previous.count > 0 ? current.pnl - previous.pnl : null} suffix="€" />,
+      delta: <DeltaBadge delta={previous.count > 0 ? current.pnl - previous.pnl : null} suffix={currencySymbol(currency).trim()} />,
     },
     {
       key: "trades",
@@ -235,7 +242,7 @@ export default function WeeklyRecap({ trades }: { trades: RecapTrade[] }) {
                 {t("recap_best_trade")}{" "}
                 <span className="font-medium text-foreground">{current.best.pair}</span>{" "}
                 <span className={cn("font-semibold tabular-nums", current.best.pnl >= 0 ? "text-profit" : "text-loss")}>
-                  {fmtEur(current.best.pnl)}
+                  {fmtEur(current.best.pnl, currency)}
                 </span>
               </span>
             </div>
@@ -249,7 +256,7 @@ export default function WeeklyRecap({ trades }: { trades: RecapTrade[] }) {
         </>
       )}
 
-      {shareOpen && <ShareCardModal stats={{ ...current, note: coachNote }} onClose={() => setShareOpen(false)} />}
+      {shareOpen && <ShareCardModal stats={{ ...current, note: coachNote }} currency={currency} onClose={() => setShareOpen(false)} />}
     </KpiCardPremium>
   );
 }

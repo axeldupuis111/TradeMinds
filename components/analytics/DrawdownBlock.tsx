@@ -10,10 +10,11 @@
  */
 
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
+import { DEFAULT_CURRENCY, money } from "@/lib/account-currency";
 import { CardTitle } from "@/components/ui/Card";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useChartColors } from "@/lib/useChartColors";
-import { formatCurrencyAxis } from "@/lib/utils";
+
 import { cn } from "@/lib/cn";
 import { useMemo } from "react";
 import {
@@ -41,7 +42,7 @@ interface TooltipPayloadItem {
   payload?: DdPoint;
 }
 
-export default function DrawdownBlock({ data }: { data: EquityPoint[] }) {
+export default function DrawdownBlock({ data, currency = DEFAULT_CURRENCY }: { data: EquityPoint[]; currency?: string }) {
   const { t, lang } = useLanguage();
   const c = useChartColors();
 
@@ -102,7 +103,7 @@ export default function DrawdownBlock({ data }: { data: EquityPoint[] }) {
       <div className="bg-card border border-border rounded-lg px-3 py-2 text-xs shadow-lg">
         <p className="text-foreground-muted mb-0.5">{label}</p>
         <p className={cn("font-semibold tabular-nums", dd < 0 ? "text-loss" : "text-profit")}>
-          {dd < 0 ? dd.toFixed(2) + "€" : t("dd_at_high")}
+          {dd < 0 ? money(dd, currency, { digits: 2 }) : t("dd_at_high")}
         </p>
       </div>
     );
@@ -112,7 +113,7 @@ export default function DrawdownBlock({ data }: { data: EquityPoint[] }) {
     {
       key: "max",
       label: t("dd_max"),
-      value: `${maxDd.toFixed(0)}€`,
+      value: money(maxDd, currency),
       sub: maxDdDate
         ? new Date(maxDdDate).toLocaleDateString(lang, { day: "numeric", month: "short", year: "numeric" })
         : null,
@@ -121,7 +122,7 @@ export default function DrawdownBlock({ data }: { data: EquityPoint[] }) {
     {
       key: "current",
       label: t("dd_current"),
-      value: atHigh ? t("dd_at_high") : `${currentDd.toFixed(0)}€`,
+      value: atHigh ? t("dd_at_high") : money(currentDd, currency),
       sub: null,
       valueClass: atHigh ? "text-profit" : "text-warning",
     },
@@ -169,7 +170,7 @@ export default function DrawdownBlock({ data }: { data: EquityPoint[] }) {
             tick={{ fill: c.axis, fontSize: 12 }}
             tickLine={false}
             axisLine={{ stroke: c.axisLine }}
-            tickFormatter={formatCurrencyAxis}
+            tickFormatter={(v: unknown) => (typeof v === "number" ? money(v, currency) : String(v))}
             width={80}
           />
           <ReferenceLine y={0} stroke={c.referenceLine} strokeDasharray="4 4" />

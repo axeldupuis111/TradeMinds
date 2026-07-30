@@ -1,6 +1,7 @@
 "use client";
 
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
+import { DEFAULT_CURRENCY, money } from "@/lib/account-currency";
 import type { AccentColor } from "@/components/dashboard/KpiCardPremium";
 import { Badge } from "@/components/ui/Badge";
 import { ScoreRing } from "@/components/dashboard/ScoreRing";
@@ -21,6 +22,8 @@ export interface AnalyticsKpiCardsProps {
   prevKpis: { totalPnl: number; winrate: number; trades: number } | null;
   avgWin: number;
   avgLoss: number;
+  /** Devise du compte filtré ; euro sur une vue multi-comptes. */
+  currency?: string;
 }
 
 export function AnalyticsKpiCards({
@@ -37,6 +40,7 @@ export function AnalyticsKpiCards({
   prevKpis,
   avgWin,
   avgLoss,
+  currency = DEFAULT_CURRENCY,
 }: AnalyticsKpiCardsProps) {
   const { t, lang } = useLanguage();
   const dateLocale = ({ fr: "fr-FR", en: "en-US", de: "de-DE", es: "es-ES" } as const)[lang] ?? "en-US";
@@ -66,7 +70,7 @@ export function AnalyticsKpiCards({
           layout="kpi"
           accentColor={pnlAccent}
           label={t("analytics_kpi_pnl")}
-          value={`${totalPnl >= 0 ? "+" : ""}${totalPnl.toFixed(2)}€`}
+          value={money(totalPnl, currency, { digits: 2, signed: true })}
           trend={totalPnl >= 0 ? "up" : "down"}
           sublabel={
             pnlDiff !== null && pnlDiff !== 0
@@ -132,7 +136,7 @@ export function AnalyticsKpiCards({
           layout="kpi"
           accentColor="green"
           label={t("analytics_kpi_best")}
-          value={`+${best.toFixed(2)}€`}
+          value={money(best, currency, { digits: 2, signed: true })}
           trend="up"
           sublabel={
             bestTrade?.date
@@ -146,7 +150,7 @@ export function AnalyticsKpiCards({
           layout="kpi"
           accentColor="loss"
           label={t("analytics_kpi_worst")}
-          value={`${worst.toFixed(2)}€`}
+          value={money(worst, currency, { digits: 2 })}
           trend="down"
           sublabel={
             worstTrade?.date
@@ -194,7 +198,7 @@ export function AnalyticsKpiCards({
                   }
                 >
                   {expectancy >= 0 ? "+" : ""}
-                  {Math.round(expectancy)}&nbsp;€/trade
+                  {money(Math.round(expectancy), currency)}/trade
                 </span>
               </div>
               {projection !== null && (
@@ -202,7 +206,7 @@ export function AnalyticsKpiCards({
                   <span className="text-foreground-muted/70">{t("analytics_proj100")}</span>
                   <span className="text-foreground-muted tabular-nums">
                     {projection >= 0 ? "+" : ""}
-                    {projection.toLocaleString(dateLocale)}&nbsp;€
+                    {money(projection, currency)}
                   </span>
                 </div>
               )}

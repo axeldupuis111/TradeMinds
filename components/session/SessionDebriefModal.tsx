@@ -9,6 +9,7 @@
  * pour rester consultable dans l'historique.
  */
 
+import { DEFAULT_CURRENCY, money } from "@/lib/account-currency";
 import { useLanguage } from "@/lib/LanguageContext";
 import { cn } from "@/lib/cn";
 import { motion } from "framer-motion";
@@ -35,10 +36,13 @@ function scoreColor(score: number): string {
 export default function SessionDebriefModal({
   debrief,
   loading,
+  currency = DEFAULT_CURRENCY,
   onClose,
 }: {
   debrief: SessionDebrief | null;
   loading: boolean;
+  /** Devise du compte de la séance. */
+  currency?: string;
   onClose: () => void;
 }) {
   const { t } = useLanguage();
@@ -102,7 +106,7 @@ export default function SessionDebriefModal({
                   <div className="rounded-lg bg-surface/50 border border-border/60 px-3 py-2">
                     <p className="text-[10px] text-foreground-muted uppercase tracking-wider">P&L</p>
                     <p className={cn("text-base font-bold tabular-nums", debrief.pnl > 0 ? "text-profit" : debrief.pnl < 0 ? "text-loss" : "text-foreground")}>
-                      {debrief.pnl >= 0 ? "+" : ""}{Math.round(debrief.pnl)}€
+                      {money(debrief.pnl, currency, { signed: true })}
                     </p>
                   </div>
                 </div>

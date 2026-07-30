@@ -1,10 +1,13 @@
 import { describe, it, expect } from "vitest";
 import {
   accountCurrency,
+  buildCurrencyMap,
+  commonCurrency,
   currencyMismatch,
   currencySymbol,
   isSupportedCurrency,
   money,
+  tradeCurrency,
 } from "./account-currency";
 
 describe("accountCurrency", () => {
@@ -77,6 +80,57 @@ describe("money", () => {
     expect(money(320, "USD", { digits: 2, signed: true })).toBe("+320,00$");
     expect(money(-320, "USD", { digits: 2, signed: true })).toBe("-320,00$");
     expect(money(0, "EUR", { signed: true })).toBe("+0€");
+  });
+});
+
+describe("buildCurrencyMap / tradeCurrency", () => {
+  const map = buildCurrencyMap([
+    { id: "eur-account", currency: "EUR" },
+    { id: "usd-account", currency: "EUR", synced_currency: "USD" },
+  ]);
+
+  it("donne à chaque trade la devise de SON compte", () => {
+    expect(tradeCurrency("eur-account", map)).toBe("EUR");
+    // Le broker prime, comme pour un compte affiché seul.
+    expect(tradeCurrency("usd-account", map)).toBe("USD");
+  });
+
+  it("retombe sur l'euro pour un trade sans compte ou sur un compte inconnu", () => {
+    expect(tradeCurrency(null, map)).toBe("EUR");
+    expect(tradeCurrency("compte-supprimé", map)).toBe("EUR");
+  });
+
+  it("accepte un repli explicite (vue filtrée sur un compte précis)", () => {
+    expect(tradeCurrency(null, map, "USD")).toBe("USD");
+  });
+});
+
+describe("commonCurrency", () => {
+  const map = buildCurrencyMap([
+    { id: "a", currency: "EUR" },
+    { id: "b", currency: "USD" },
+    { id: "c", currency: "EUR" },
+  ]);
+
+  it("renvoie la devise quand tous les trades partagent le même compte", () => {
+    expect(commonCurrency(["a", "a", "a"], map)).toBe("EUR");
+  });
+
+  it("renvoie la devise quand des comptes différents partagent la devise", () => {
+    expect(commonCurrency(["a", "c"], map)).toBe("EUR");
+  });
+
+  it("renvoie null sur un mélange : aucun total unique n'est juste", () => {
+    expect(commonCurrency(["a", "b"], map)).toBeNull();
+  });
+
+  it("renvoie null quand rien n'est rattaché", () => {
+    expect(commonCurrency([null, undefined], map)).toBeNull();
+    expect(commonCurrency([], map)).toBeNull();
+  });
+
+  it("ignore les trades sans compte plutôt que de conclure au mélange", () => {
+    expect(commonCurrency(["a", null, "c"], map)).toBe("EUR");
   });
 });
 

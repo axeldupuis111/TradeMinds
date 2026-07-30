@@ -1,6 +1,8 @@
 "use client";
 
 import { useLanguage } from "@/lib/LanguageContext";
+import { currencySymbol, money } from "@/lib/account-currency";
+import { useDisplayCurrency } from "@/lib/hooks/useDisplayCurrency";
 import { usePlan } from "@/lib/PlanContext";
 import { setDemoWatermark } from "@/lib/pdf/kit";
 import { Pdf, C, type RGB } from "@/lib/pdf/kit";
@@ -45,7 +47,7 @@ const EMOTION_EMOJI: Record<string, string> = {
   calm: "\u{1F60C}", greedy: "\u{1F4B0}", hesitant: "\u{1F615}", overconfident: "\u{1F913}", excited: "\u{1F929}", fearful: "\u{1F628}",
 };
 
-function fmtMoney(n: number) { return `${n >= 0 ? "+" : ""}${n.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} €`; }
+function fmtMoney(n: number, currency: string) { return money(n, currency, { signed: true }); }
 // Format compact pour les petits espaces : +1,2k / -340.
 function fmtMoneyShort(n: number) {
   const a = Math.abs(n);
@@ -108,6 +110,8 @@ function Sparkline({ data }: { data: number[] }) {
 
 export default function MonthlyReviewPage() {
   const { t, lang } = useLanguage();
+  // Vue multi-comptes : devise commune aux comptes actifs, euro s'ils la mélangent.
+  const displayCurrency = useDisplayCurrency();
   const { plan, demoMode } = usePlan();
   const isPaid = plan === "plus" || plan === "premium";
   const [monthParam, setMonthParam] = useState<string | null>(null);
@@ -261,7 +265,7 @@ export default function MonthlyReviewPage() {
         pdf.section(t("equity_title"));
         pdf.areaChart(
           extras.equity.map((v) => ({ label: "", value: v })),
-          { valueFmt: (n) => fmtMoney(n) },
+          { valueFmt: (n) => fmtMoney(n, displayCurrency) },
         );
       }
 
@@ -292,8 +296,8 @@ export default function MonthlyReviewPage() {
         pdf.statGrid([
           { label: t("review_risk_pf"), value: risk.profitFactor == null ? "∞" : risk.profitFactor.toFixed(2), color: risk.profitFactor == null || risk.profitFactor >= 1.5 ? C.green : risk.profitFactor >= 1 ? C.amber : C.red },
           { label: t("review_risk_payoff"), value: risk.payoff == null ? "—" : risk.payoff.toFixed(2), color: risk.payoff != null && risk.payoff >= 1 ? C.green : C.amber },
-          { label: t("review_risk_expectancy"), value: fmtMoney(risk.expectancy), color: risk.expectancy >= 0 ? C.green : C.red },
-          { label: t("review_risk_dd"), value: risk.maxDrawdown > 0 ? fmtMoney(-risk.maxDrawdown) : "—", color: C.red },
+          { label: t("review_risk_expectancy"), value: fmtMoney(risk.expectancy, displayCurrency), color: risk.expectancy >= 0 ? C.green : C.red },
+          { label: t("review_risk_dd"), value: risk.maxDrawdown > 0 ? fmtMoney(-risk.maxDrawdown, displayCurrency) : "—", color: C.red },
           { label: t("review_risk_win_streak"), value: `${risk.bestWinStreak}`, color: C.green },
           { label: t("review_risk_loss_streak"), value: `${risk.worstLossStreak}`, color: risk.worstLossStreak >= 3 ? C.red : C.faint },
         ], { cols: 3, height: 22 });
@@ -323,7 +327,7 @@ export default function MonthlyReviewPage() {
         pdf.bars(
           emotions.map((e) => ({
             label: `${t(`emotion_${e.emotion}`)} (${e.winRate}%)`,
-            value: fmtMoney(e.pnl),
+            value: fmtMoney(e.pnl, displayCurrency),
             ratio: Math.abs(e.pnl) / maxAbs,
             color: e.pnl >= 0 ? C.green : C.red,
           })),
@@ -340,7 +344,7 @@ export default function MonthlyReviewPage() {
         pdf.bars(
           weekdays.map((w) => ({
             label: t(`review_wdfull_${w.wd}`),
-            value: w.count ? fmtMoney(w.pnl) : "—",
+            value: w.count ? fmtMoney(w.pnl, displayCurrency) : "—",
             ratio: w.count ? Math.abs(w.pnl) / maxAbs : 0,
             color: w.pnl >= 0 ? C.green : C.red,
           })),
@@ -357,7 +361,7 @@ export default function MonthlyReviewPage() {
         pdf.bars(
           pairs.slice(0, 6).map((p) => ({
             label: `${p.pair} (${p.winRate}%)`,
-            value: fmtMoney(p.pnl),
+            value: fmtMoney(p.pnl, displayCurrency),
             ratio: Math.abs(p.pnl) / maxAbs,
             color: p.pnl >= 0 ? C.green : C.red,
           })),
@@ -373,7 +377,7 @@ export default function MonthlyReviewPage() {
         pdf.statGrid(
           directions.map((d) => ({
             label: t(`review_day_${d.dir}`),
-            value: fmtMoney(d.pnl),
+            value: fmtMoney(d.pnl, displayCurrency),
             color: d.pnl >= 0 ? C.green : C.red,
             sub: `${d.winRate}% · ${d.count}`,
           })),
@@ -509,12 +513,12 @@ export default function MonthlyReviewPage() {
                       <div className="ml-auto text-right">
                         <p className="text-[11px] uppercase tracking-wider text-muted font-semibold">{t("review_grade_pnl")}</p>
                         <p className={`text-3xl font-black tabular-nums leading-tight ${stats.totalPnl >= 0 ? "text-profit" : "text-loss"}`}>
-                          <CountUp end={stats.totalPnl} prefix={stats.totalPnl >= 0 ? "+" : ""} suffix=" €" duration={1.2} />
+                          <CountUp end={stats.totalPnl} prefix={stats.totalPnl >= 0 ? "+" : ""} suffix={` ${currencySymbol(displayCurrency).trim()}`} duration={1.2} />
                         </p>
                         {pnlDelta != null && pnlDelta !== 0 && (
                           <p className={`text-xs font-semibold inline-flex items-center gap-1 ${pnlDelta > 0 ? "text-profit" : "text-loss"}`}>
                             {pnlDelta > 0 ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
-                            {fmtMoney(pnlDelta)} {t("review_grade_vs_prev")}
+                            {fmtMoney(pnlDelta, displayCurrency)} {t("review_grade_vs_prev")}
                           </p>
                         )}
                       </div>
@@ -590,7 +594,7 @@ export default function MonthlyReviewPage() {
                       <div className="flex items-baseline justify-between mb-1">
                         <p className="text-xs text-muted">{t("review_equity_title")}</p>
                         {(() => { const last = extras.equity[extras.equity.length - 1]; return (
-                          <span className={`text-sm font-bold tabular-nums ${last >= 0 ? "text-profit" : "text-loss"}`}>{fmtMoney(last)}</span>
+                          <span className={`text-sm font-bold tabular-nums ${last >= 0 ? "text-profit" : "text-loss"}`}>{fmtMoney(last, displayCurrency)}</span>
                         ); })()}
                       </div>
                       <Sparkline data={extras.equity} />
@@ -598,8 +602,8 @@ export default function MonthlyReviewPage() {
                   )}
                   {extras && (extras.best || extras.topPair) && (
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      {extras.best && <Highlight label={t("review_best_day")} value={fmtMoney(extras.best.pnl)} sub={fmtDate(extras.best.date, lang)} positive onClick={() => setSelectedDay(extras.best!.date)} />}
-                      {extras.worst && extras.worst.pnl < 0 && <Highlight label={t("review_worst_day")} value={fmtMoney(extras.worst.pnl)} sub={fmtDate(extras.worst.date, lang)} onClick={() => setSelectedDay(extras.worst!.date)} />}
+                      {extras.best && <Highlight label={t("review_best_day")} value={fmtMoney(extras.best.pnl, displayCurrency)} sub={fmtDate(extras.best.date, lang)} positive onClick={() => setSelectedDay(extras.best!.date)} />}
+                      {extras.worst && extras.worst.pnl < 0 && <Highlight label={t("review_worst_day")} value={fmtMoney(extras.worst.pnl, displayCurrency)} sub={fmtDate(extras.worst.date, lang)} onClick={() => setSelectedDay(extras.worst!.date)} />}
                       {extras.topPair && <Highlight label={t("review_top_pair")} value={extras.topPair.pair} sub={`${extras.topPair.count} ${t("review_kpi_trades").toLowerCase()}`} />}
                     </div>
                   )}
@@ -674,13 +678,13 @@ export default function MonthlyReviewPage() {
                           value={risk.payoff == null ? "—" : risk.payoff.toFixed(2).replace(".", ",")}
                           cls={risk.payoff == null ? "text-muted" : risk.payoff >= 1 ? "text-profit" : "text-warning"} />
                         <RiskStat label={t("review_risk_expectancy")} hint={t("review_risk_expectancy_hint")}
-                          value={fmtMoney(risk.expectancy)}
+                          value={fmtMoney(risk.expectancy, displayCurrency)}
                           cls={risk.expectancy >= 0 ? "text-profit" : "text-loss"} />
                         <RiskStat label={t("review_risk_dd")} hint={t("review_risk_dd_hint")}
-                          value={risk.maxDrawdown > 0 ? fmtMoney(-risk.maxDrawdown) : "—"}
+                          value={risk.maxDrawdown > 0 ? fmtMoney(-risk.maxDrawdown, displayCurrency) : "—"}
                           cls={risk.maxDrawdown > 0 ? "text-loss" : "text-muted"} />
-                        <RiskStat label={t("review_risk_avg_win")} value={risk.avgWin != null ? fmtMoney(risk.avgWin) : "—"} cls={risk.avgWin != null ? "text-profit" : "text-muted"} />
-                        <RiskStat label={t("review_risk_avg_loss")} value={risk.avgLoss != null ? fmtMoney(risk.avgLoss) : "—"} cls={risk.avgLoss != null ? "text-loss" : "text-muted"} />
+                        <RiskStat label={t("review_risk_avg_win")} value={risk.avgWin != null ? fmtMoney(risk.avgWin, displayCurrency) : "—"} cls={risk.avgWin != null ? "text-profit" : "text-muted"} />
+                        <RiskStat label={t("review_risk_avg_loss")} value={risk.avgLoss != null ? fmtMoney(risk.avgLoss, displayCurrency) : "—"} cls={risk.avgLoss != null ? "text-loss" : "text-muted"} />
                         <RiskStat label={t("review_risk_win_streak")} value={risk.bestWinStreak > 0 ? `${risk.bestWinStreak} 🔥` : "—"} cls="text-profit" />
                         <RiskStat label={t("review_risk_loss_streak")} value={risk.worstLossStreak > 0 ? String(risk.worstLossStreak) : "—"} cls={risk.worstLossStreak >= 3 ? "text-loss" : "text-foreground"} />
                       </div>
@@ -696,7 +700,7 @@ export default function MonthlyReviewPage() {
                             {d.dir === "long" ? <ArrowUpRight className="w-3.5 h-3.5 text-profit" /> : <ArrowDownRight className="w-3.5 h-3.5 text-loss" />}
                             {t(`review_day_${d.dir}`)}
                           </p>
-                          <p className={`text-lg font-bold mt-0.5 tabular-nums ${d.pnl >= 0 ? "text-profit" : "text-loss"}`}>{fmtMoney(d.pnl)}</p>
+                          <p className={`text-lg font-bold mt-0.5 tabular-nums ${d.pnl >= 0 ? "text-profit" : "text-loss"}`}>{fmtMoney(d.pnl, displayCurrency)}</p>
                           <p className="text-[11px] text-muted">{d.winRate}% · {d.count} {t("review_kpi_trades").toLowerCase()}</p>
                         </div>
                       ))}
@@ -713,14 +717,14 @@ export default function MonthlyReviewPage() {
                           <div className="rounded-xl border border-border bg-card p-4">
                             <p className="text-xs text-muted mb-1">{t("review_weekday_title")}</p>
                             {bestWd && bestWd.pnl > 0 && (
-                              <p className="text-[11px] text-profit mb-2">{t("review_weekday_best").replace("{day}", t(`review_wdfull_${bestWd.wd}`)).replace("{money}", fmtMoney(bestWd.pnl))}</p>
+                              <p className="text-[11px] text-profit mb-2">{t("review_weekday_best").replace("{day}", t(`review_wdfull_${bestWd.wd}`)).replace("{money}", fmtMoney(bestWd.pnl, displayCurrency))}</p>
                             )}
                             {/* Barres divergentes : gain vers le haut, perte vers le bas (signe = direction) */}
                             <div className="flex items-stretch justify-between gap-1.5">
                               {weekdays.map((w) => {
                                 const pct = w.count ? Math.max(10, Math.round((Math.abs(w.pnl) / maxAbs) * 100)) : 0;
                                 return (
-                                  <div key={w.wd} className="flex-1 flex flex-col items-center" title={w.count ? `${fmtMoney(w.pnl)} · ${w.winRate}% · ${w.count} ${t("review_kpi_trades").toLowerCase()}` : t("review_day_no_trades")}>
+                                  <div key={w.wd} className="flex-1 flex flex-col items-center" title={w.count ? `${fmtMoney(w.pnl, displayCurrency)} · ${w.winRate}% · ${w.count} ${t("review_kpi_trades").toLowerCase()}` : t("review_day_no_trades")}>
                                     <div className="w-full h-9 flex items-end justify-center">
                                       {w.pnl > 0 && <div className="w-full max-w-[24px] h-full flex items-end"><GrowBar vertical pct={pct} durationMs={700} delayMs={w.wd * 50} className="rounded-t bg-profit/70" /></div>}
                                     </div>
@@ -753,7 +757,7 @@ export default function MonthlyReviewPage() {
                                     <div className="flex-1 h-2 min-w-0">
                                       <GrowBar pct={pct} className={`rounded-full ${p.pnl >= 0 ? "bg-profit/70" : "bg-loss/70"}`} />
                                     </div>
-                                    <span className={`w-20 text-right tabular-nums font-semibold shrink-0 ${p.pnl >= 0 ? "text-profit" : "text-loss"}`}>{fmtMoney(p.pnl)}</span>
+                                    <span className={`w-20 text-right tabular-nums font-semibold shrink-0 ${p.pnl >= 0 ? "text-profit" : "text-loss"}`}>{fmtMoney(p.pnl, displayCurrency)}</span>
                                   </div>
                                 );
                               })}
@@ -777,7 +781,7 @@ export default function MonthlyReviewPage() {
                         <h2 className="text-sm font-semibold text-foreground flex items-center gap-2"><Clock3 className="w-4 h-4 text-accent" />{t("review_hours_title")}</h2>
                         <p className="text-xs text-muted mt-0.5 mb-1">{t("review_hours_sub")}</p>
                         {best && best.pnl > 0 && (
-                          <p className="text-[11px] text-profit mb-2">{t("review_hours_best").replace("{hour}", String(best.hour)).replace("{money}", fmtMoney(best.pnl))}</p>
+                          <p className="text-[11px] text-profit mb-2">{t("review_hours_best").replace("{hour}", String(best.hour)).replace("{money}", fmtMoney(best.pnl, displayCurrency))}</p>
                         )}
                         <div className="flex items-stretch justify-between gap-1">
                           {span.map((h, i) => {
@@ -785,7 +789,7 @@ export default function MonthlyReviewPage() {
                             const pct = d ? Math.max(10, Math.round((Math.abs(d.pnl) / maxAbs) * 100)) : 0;
                             return (
                               <div key={h} className="flex-1 flex flex-col items-center min-w-0"
-                                title={d ? `${h}h · ${fmtMoney(d.pnl)} · ${d.winRate}% · ${d.count} ${t("review_kpi_trades").toLowerCase()}` : `${h}h`}>
+                                title={d ? `${h}h · ${fmtMoney(d.pnl, displayCurrency)} · ${d.winRate}% · ${d.count} ${t("review_kpi_trades").toLowerCase()}` : `${h}h`}>
                                 <div className="w-full h-9 flex items-end justify-center">
                                   {d && d.pnl > 0 && <div className="w-full max-w-[18px] h-full flex items-end"><GrowBar vertical pct={pct} durationMs={700} delayMs={i * 35} className="rounded-t bg-profit/70" /></div>}
                                 </div>
@@ -817,14 +821,14 @@ export default function MonthlyReviewPage() {
                           <div className="rounded-xl border border-profit/30 bg-profit/[0.04] p-4">
                             <p className="text-xs text-muted">{t("review_payoff_disciplined")}</p>
                             <p className={`text-2xl font-black tabular-nums mt-1 ${payoffInsight.hiAvg >= 0 ? "text-profit" : "text-loss"}`}>
-                              <CountUp end={Math.round(payoffInsight.hiAvg)} prefix={payoffInsight.hiAvg >= 0 ? "+" : ""} suffix=" €" duration={1} />
+                              <CountUp end={Math.round(payoffInsight.hiAvg)} prefix={payoffInsight.hiAvg >= 0 ? "+" : ""} suffix={` ${currencySymbol(displayCurrency).trim()}`} duration={1} />
                             </p>
                             <p className="text-[11px] text-muted mt-1">{t("review_payoff_days").replace("{n}", String(payoffInsight.hiN))}</p>
                           </div>
                           <div className="rounded-xl border border-loss/30 bg-loss/[0.04] p-4">
                             <p className="text-xs text-muted">{t("review_payoff_other")}</p>
                             <p className={`text-2xl font-black tabular-nums mt-1 ${payoffInsight.loAvg >= 0 ? "text-profit" : "text-loss"}`}>
-                              <CountUp end={Math.round(payoffInsight.loAvg)} prefix={payoffInsight.loAvg >= 0 ? "+" : ""} suffix=" €" duration={1} />
+                              <CountUp end={Math.round(payoffInsight.loAvg)} prefix={payoffInsight.loAvg >= 0 ? "+" : ""} suffix={` ${currencySymbol(displayCurrency).trim()}`} duration={1} />
                             </p>
                             <p className="text-[11px] text-muted mt-1">{t("review_payoff_days").replace("{n}", String(payoffInsight.loN))}</p>
                           </div>
@@ -832,7 +836,7 @@ export default function MonthlyReviewPage() {
                         {payoffInsight.diff > 0 && (
                           <div className="mt-3 flex items-center gap-2 rounded-xl border border-profit/30 bg-profit/[0.04] p-3 text-sm text-foreground">
                             <Sparkles className="w-4 h-4 shrink-0 text-profit" />
-                            <span><span className="font-semibold text-profit">{fmtMoney(payoffInsight.diff)}</span> {t("review_payoff_verdict")}</span>
+                            <span><span className="font-semibold text-profit">{fmtMoney(payoffInsight.diff, displayCurrency)}</span> {t("review_payoff_verdict")}</span>
                           </div>
                         )}
                       </>
@@ -853,12 +857,12 @@ export default function MonthlyReviewPage() {
                         {worst && worst.pnl < 0 ? (
                           <div className="mb-3 flex items-start gap-2 rounded-lg border border-loss/30 bg-loss/[0.05] p-2.5 text-xs text-foreground">
                             <span className="text-base leading-none shrink-0">{EMOTION_EMOJI[worst.emotion] ?? "\u{1F642}"}</span>
-                            <span>{t("review_emotion_warning").replace("{emotion}", t(`emotion_${worst.emotion}`)).replace("{money}", fmtMoney(worst.pnl))}</span>
+                            <span>{t("review_emotion_warning").replace("{emotion}", t(`emotion_${worst.emotion}`)).replace("{money}", fmtMoney(worst.pnl, displayCurrency))}</span>
                           </div>
                         ) : best && best.pnl > 0 ? (
                           <div className="mb-3 flex items-start gap-2 rounded-lg border border-profit/30 bg-profit/[0.05] p-2.5 text-xs text-foreground">
                             <span className="text-base leading-none shrink-0">{EMOTION_EMOJI[best.emotion] ?? "\u{1F642}"}</span>
-                            <span>{t("review_emotion_best").replace("{emotion}", t(`emotion_${best.emotion}`)).replace("{money}", fmtMoney(best.pnl))}</span>
+                            <span>{t("review_emotion_best").replace("{emotion}", t(`emotion_${best.emotion}`)).replace("{money}", fmtMoney(best.pnl, displayCurrency))}</span>
                           </div>
                         ) : null}
                         <div className="space-y-2">
@@ -876,7 +880,7 @@ export default function MonthlyReviewPage() {
                                   <div className="w-px h-3.5 bg-border shrink-0" />
                                   <div className="w-1/2 h-2">{e.pnl >= 0 && <GrowBar pct={pct} className="bg-profit rounded-full" />}</div>
                                 </div>
-                                <span className={`w-20 text-right tabular-nums font-semibold shrink-0 ${e.pnl >= 0 ? "text-profit" : "text-loss"}`}>{fmtMoney(e.pnl)}</span>
+                                <span className={`w-20 text-right tabular-nums font-semibold shrink-0 ${e.pnl >= 0 ? "text-profit" : "text-loss"}`}>{fmtMoney(e.pnl, displayCurrency)}</span>
                               </div>
                             );
                           })}
@@ -902,7 +906,7 @@ export default function MonthlyReviewPage() {
                               : c.score != null ? scoreBg(c.score)
                               : c.pnl > 0 ? "bg-profit/20 text-foreground" : c.pnl < 0 ? "bg-loss/20 text-foreground" : "bg-surface text-muted";
                             const isToday = day === todayDay;
-                            const cellTitle = `${isToday ? `${t("review_today")} · ` : ""}${c ? `${c.score != null ? `${c.score}/100 · ` : ""}${fmtMoney(c.pnl)}` : ""}`.replace(/ · $/, "");
+                            const cellTitle = `${isToday ? `${t("review_today")} · ` : ""}${c ? `${c.score != null ? `${c.score}/100 · ` : ""}${fmtMoney(c.pnl, displayCurrency)}` : ""}`.replace(/ · $/, "");
                             const baseCls = `aspect-square rounded flex items-center justify-center text-[10px] font-medium transition-transform ${cls} ${isToday ? "ring-2 ring-accent ring-offset-1 ring-offset-card font-bold" : ""}`;
                             if (c && month) {
                               const dateStr = `${month.year}-${String(month.month0 + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -936,7 +940,7 @@ export default function MonthlyReviewPage() {
                         <p className="text-[10px] text-muted/70 mb-3">{t("review_trend_legend")}</p>
                         <div className="flex items-end justify-between gap-2 h-28">
                           {trend.map((p, i) => (
-                            <div key={p.label} className="flex-1 flex flex-col items-center gap-1" title={`${p.score != null ? `${p.score}/100` : "—"} · ${fmtMoney(p.pnl)}`}>
+                            <div key={p.label} className="flex-1 flex flex-col items-center gap-1" title={`${p.score != null ? `${p.score}/100` : "—"} · ${fmtMoney(p.pnl, displayCurrency)}`}>
                               <div className="w-full flex items-end justify-center h-20">
                                 <div className="w-full max-w-[28px] h-full flex items-end">
                                   <GrowBar vertical pct={p.score != null ? Math.max(8, p.score) : 4} durationMs={750} delayMs={i * 60}
@@ -1060,6 +1064,7 @@ function ReviewCard({ icon, title, body, accent }: { icon: React.ReactNode; titl
 
 // Tiroir latéral : détail d'une journée cliquée dans le calendrier de discipline.
 function DayDetailDrawer({ date, onClose }: { date: string; onClose: () => void }) {
+  const displayCurrency = useDisplayCurrency();
   const { t, lang } = useLanguage();
   const reduced = useReducedMotion();
   const [data, setData] = useState<DayDetail | null>(null);
@@ -1113,7 +1118,7 @@ function DayDetailDrawer({ date, onClose }: { date: string; onClose: () => void 
               <div className="grid grid-cols-2 gap-2">
                 <div className="rounded-xl border border-border bg-surface/40 p-3">
                   <p className="text-xs text-muted">{t("review_day_pnl")}</p>
-                  <p className={`text-lg font-bold tabular-nums mt-0.5 ${data!.pnl >= 0 ? "text-profit" : "text-loss"}`}>{fmtMoney(data!.pnl)}</p>
+                  <p className={`text-lg font-bold tabular-nums mt-0.5 ${data!.pnl >= 0 ? "text-profit" : "text-loss"}`}>{fmtMoney(data!.pnl, displayCurrency)}</p>
                 </div>
                 <div className="rounded-xl border border-border bg-surface/40 p-3">
                   <p className="text-xs text-muted">{t("review_kpi_trades")}</p>
@@ -1161,7 +1166,7 @@ function DayDetailDrawer({ date, onClose }: { date: string; onClose: () => void 
                           </span>
                         )}
                         <span className="text-[11px] text-muted ml-auto tabular-nums">{new Date(tr.time).toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" })}</span>
-                        <span className={`text-sm font-bold tabular-nums w-20 text-right ${tr.pnl >= 0 ? "text-profit" : "text-loss"}`}>{fmtMoney(tr.pnl)}</span>
+                        <span className={`text-sm font-bold tabular-nums w-20 text-right ${tr.pnl >= 0 ? "text-profit" : "text-loss"}`}>{fmtMoney(tr.pnl, displayCurrency)}</span>
                       </div>
                     ))}
                   </div>

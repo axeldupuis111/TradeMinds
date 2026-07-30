@@ -10,6 +10,7 @@
  */
 
 import { useLanguage } from "@/lib/LanguageContext";
+import { DEFAULT_CURRENCY, currencySymbol, money } from "@/lib/account-currency";
 import { cn } from "@/lib/cn";
 import { Scale } from "lucide-react";
 import { useMemo } from "react";
@@ -50,19 +51,22 @@ function computeStats(trades: CompareTrade[]): PeriodStats {
   };
 }
 
-function fmtEur(n: number): string {
+function fmtEur(n: number, currency: string): string {
   const r = Math.round(n);
-  return `${r > 0 ? "+" : ""}${r.toLocaleString("fr-FR").replace(/ | /g, " ")}€`;
+  return money(r, currency, { signed: r !== 0 });
 }
 
 export default function PeriodCompareBlock({
   trades,
   accountFilter,
   period,
+  currency = DEFAULT_CURRENCY,
 }: {
   trades: CompareTrade[];
   accountFilter: string;
   period: string;
+  /** Devise du compte filtré ; euro sur une vue multi-comptes. */
+  currency?: string;
 }) {
   const { t } = useLanguage();
 
@@ -101,10 +105,10 @@ export default function PeriodCompareBlock({
   }[] = [
     {
       label: t("compare_pnl"),
-      cur: fmtEur(current.pnl),
-      prev: fmtEur(previous.pnl),
+      cur: fmtEur(current.pnl, currency),
+      prev: fmtEur(previous.pnl, currency),
       delta: current.pnl - previous.pnl,
-      suffix: "€",
+      suffix: currencySymbol(currency).trim(),
       curClass: current.pnl > 0 ? "text-profit" : current.pnl < 0 ? "text-loss" : undefined,
     },
     {
@@ -132,12 +136,12 @@ export default function PeriodCompareBlock({
     },
     {
       label: t("compare_avg_trade"),
-      cur: current.avgPerTrade !== null ? fmtEur(current.avgPerTrade) : "—",
-      prev: previous.avgPerTrade !== null ? fmtEur(previous.avgPerTrade) : "—",
+      cur: current.avgPerTrade !== null ? fmtEur(current.avgPerTrade, currency) : "—",
+      prev: previous.avgPerTrade !== null ? fmtEur(previous.avgPerTrade, currency) : "—",
       delta: current.avgPerTrade !== null && previous.avgPerTrade !== null
         ? current.avgPerTrade - previous.avgPerTrade
         : null,
-      suffix: "€",
+      suffix: currencySymbol(currency).trim(),
     },
   ];
 

@@ -15,6 +15,7 @@
 import CountUp from "@/components/animations/CountUp";
 import GrowBar from "@/components/animations/GrowBar";
 import { computeCapitalLeaks, computeDisciplineCurves, type CapitalLeak, type LeakTrade } from "@/lib/analytics/leaks";
+import { DEFAULT_CURRENCY, currencySymbol, money } from "@/lib/account-currency";
 import { useLanguage } from "@/lib/LanguageContext";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
@@ -31,9 +32,7 @@ function fmt(key: string, vars: Record<string, string | number>): string {
   return out;
 }
 
-function fmtEur(n: number): string {
-  return `${Math.round(n).toLocaleString("fr-FR")} €`;
-}
+
 
 /**
  * Discipline Backtest — les deux courbes du contrefactuel : le cumul réel et
@@ -67,7 +66,9 @@ const LEAK_ICONS: Record<CapitalLeak["type"], React.ReactNode> = {
   bad_hour: <Clock className="w-3.5 h-3.5" strokeWidth={1.75} />,
 };
 
-export default function CapitalLeaks() {
+export default function CapitalLeaks({ currency = DEFAULT_CURRENCY }: { currency?: string } = {}) {
+  // Devise du compte affiché ; euro en vue « tous les comptes ».
+  const fmtEur = (n: number) => money(n, currency);
   const { t } = useLanguage();
   const [trades, setTrades] = useState<LeakTrade[] | null>(null);
   const [maxTradesPerDay, setMaxTradesPerDay] = useState<number | null>(null);
@@ -184,7 +185,7 @@ export default function CapitalLeaks() {
         <>
           <div className="flex items-end gap-2 mb-1">
             <p className="text-3xl font-bold tracking-tight text-loss tabular-nums leading-none">
-              −<CountUp end={Math.round(result.totalRecoverable)} duration={1.4} suffix=" €" />
+              −<CountUp end={Math.round(result.totalRecoverable)} duration={1.4} suffix={` ${currencySymbol(currency).trim()}`} />
             </p>
           </div>
           <p className="text-xs text-foreground-muted mb-4">

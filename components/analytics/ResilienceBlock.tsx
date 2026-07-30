@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { DEFAULT_CURRENCY, currencySymbol } from "@/lib/account-currency";
 import { motion, useReducedMotion } from "framer-motion";
 import { Shield, RotateCcw, AlertTriangle } from "lucide-react";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
@@ -17,19 +18,24 @@ import {
 import type { AnalyticsTrade } from "@/lib/analytics/types";
 import { cn } from "@/lib/cn";
 
-type Props = { trades: AnalyticsTrade[] };
+type Props = {
+  trades: AnalyticsTrade[];
+  /** Devise du compte filtré ; euro sur une vue multi-comptes. */
+  currency?: string;
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function fmtEur(n: number): string {
+function fmtEur(n: number, currency: string): string {
   const r = Math.round(Math.abs(n));
-  if (r >= 1000) return `${(Math.abs(n) / 1000).toFixed(1)}k€`;
-  return `${r}€`;
+  const sym = currencySymbol(currency).trim();
+  if (r >= 1000) return `${(Math.abs(n) / 1000).toFixed(1)}k${sym}`;
+  return `${r}${sym}`;
 }
 
 // ─── Zone 1 — Drawdown ────────────────────────────────────────────────────────
 
-function DrawdownZone({ trades }: { trades: AnalyticsTrade[] }) {
+function DrawdownZone({ trades, currency }: { trades: AnalyticsTrade[]; currency: string }) {
   const { t } = useLanguage();
   const series = useMemo(() => buildDrawdownSeries(trades), [trades]);
   const maxDD  = useMemo(() => getMaxDrawdown(series), [series]);
@@ -51,7 +57,7 @@ function DrawdownZone({ trades }: { trades: AnalyticsTrade[] }) {
           {t("resilience_dd_max")}
         </p>
         <p className="mt-2 text-3xl font-bold tabular-nums text-loss leading-none">
-          -{fmtEur(maxDD.maxDrawdown)}
+          -{fmtEur(maxDD.maxDrawdown, currency)}
         </p>
         <p className="mt-1 text-xs text-foreground-muted tabular-nums">
           {Math.round(maxDD.maxDrawdownPct) === 100 ? (
@@ -94,7 +100,7 @@ function DrawdownZone({ trades }: { trades: AnalyticsTrade[] }) {
             {t("resilience_dd_current")}
           </p>
           <p className="text-xs font-medium" style={{ color: "rgb(var(--foreground))" }}>
-            {currentDrawdown === 0 ? t("resilience_at_peak") : `-${fmtEur(currentDrawdown)}`}
+            {currentDrawdown === 0 ? t("resilience_at_peak") : `-${fmtEur(currentDrawdown, currency)}`}
           </p>
         </div>
 
@@ -377,7 +383,7 @@ function Zone({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function ResilienceBlock({ trades }: Props) {
+export function ResilienceBlock({ trades, currency = DEFAULT_CURRENCY }: Props) {
   const { t } = useLanguage();
   const reduced  = useReducedMotion();
   const insights = useMemo(() => generateResilienceInsights(trades, t), [trades, t]);
@@ -429,7 +435,7 @@ export function ResilienceBlock({ trades }: Props) {
         {/* Zone 1 — Drawdown */}
         <div className="lg:pr-6">
           <Zone index={0} reduced={reduced}>
-            <DrawdownZone trades={trades} />
+            <DrawdownZone trades={trades} currency={currency} />
           </Zone>
         </div>
 

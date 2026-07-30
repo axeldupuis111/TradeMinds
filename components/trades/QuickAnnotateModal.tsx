@@ -10,12 +10,14 @@
  * Rendu via portal (cohérent avec les autres modales du projet).
  */
 
+import { buildCurrencyMap, money, tradeCurrency } from "@/lib/account-currency";
+import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/cn";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Check, SkipForward, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
 interface AnnotateTrade {
@@ -27,6 +29,8 @@ interface AnnotateTrade {
   pnl: number;
   commission: number | null;
   swap: number | null;
+  /** Compte du trade — porte sa devise. */
+  challenge_id: string | null;
 }
 
 // Même set que la checklist émotionnelle de session et les analytics
@@ -60,6 +64,10 @@ export default function QuickAnnotateModal({
   const [annotated, setAnnotated] = useState(0);
   const [saving, setSaving] = useState(false);
 
+  // La file peut mélanger les comptes : chaque trade s'affiche dans la sienne.
+  const { accounts } = useActiveAccount();
+  const currencyMap = useMemo(() => buildCurrencyMap(accounts), [accounts]);
+
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -67,7 +75,7 @@ export default function QuickAnnotateModal({
       if (!user || cancelled) return;
       const { data } = await supabase
         .from("trades")
-        .select("id, open_time, close_time, pair, direction, pnl, commission, swap")
+        .select("id, open_time, close_time, pair, direction, pnl, commission, swap, challenge_id")
         .eq("user_id", user.id)
         .eq("status", "closed")
         .is("emotion", null)
@@ -204,7 +212,7 @@ export default function QuickAnnotateModal({
                         netPnl(current) >= 0 ? "text-profit" : "text-loss"
                       )}
                     >
-                      {netPnl(current) >= 0 ? "+" : ""}{netPnl(current).toFixed(2)}€
+                      {money(netPnl(current), tradeCurrency(current.challenge_id, currencyMap), { digits: 2, signed: true })}
                     </span>
                   </div>
                 </div>

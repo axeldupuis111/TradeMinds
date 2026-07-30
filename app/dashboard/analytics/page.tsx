@@ -18,7 +18,14 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import { useStrategyTags } from "@/lib/hooks/useStrategyTags";
 import { useChartColors } from "@/lib/useChartColors";
-import { formatCurrencyAxis } from "@/lib/utils";
+import {
+  DEFAULT_CURRENCY,
+  accountCurrency,
+  buildCurrencyMap,
+  commonCurrency,
+  currencySymbol,
+  money,
+} from "@/lib/account-currency";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/cn";
@@ -84,6 +91,8 @@ interface Account {
   firm: string;
   account_number: string | null;
   account_size: number;
+  currency: string | null;
+  synced_currency: string | null;
 }
 
 const DAY_KEYS = ["analytics_sun", "analytics_mon", "analytics_tue", "analytics_wed", "analytics_thu", "analytics_fri", "analytics_sat"];
@@ -111,10 +120,9 @@ type Period = "7d" | "30d" | "90d" | "all" | "custom";
  * Formatter P&L sécurisé : évite "-0€" pour les valeurs proches de zéro.
  * Utilise Math.round pour traiter -0 comme 0.
  */
-function formatPnl(n: number): string {
+function formatPnl(n: number, currency: string = DEFAULT_CURRENCY): string {
   const rounded = Math.round(n);
-  if (rounded === 0) return "0€";
-  return `${rounded > 0 ? "+" : ""}${rounded}€`;
+  return money(rounded, currency, { signed: rounded !== 0 });
 }
 
 interface BarShapeProps {
@@ -197,7 +205,7 @@ export default function AnalyticsPage() {
           .order("open_time", { ascending: true }),
         supabase
           .from("prop_challenges")
-          .select("id, firm, account_number, account_size")
+          .select("id, firm, account_number, account_size, currency, synced_currency")
           .eq("user_id", user.id)
           .eq("status", "active"),
         supabase
@@ -300,11 +308,23 @@ export default function AnalyticsPage() {
     return t("analytics_all");
   }, [period, customDateFrom, customDateTo, t, dateLocale]);
 
+  // Devise de la page : celle du compte filtré, sinon celle que partagent tous
+  // les comptes. À défaut l'euro — un total mélangeant EUR et USD n'a pas de
+  // devise, et lui en coller une afficherait un chiffre faux.
+  const pageCurrency = useMemo(() => {
+    if (accountFilter !== "all") {
+      const a = accounts.find((x) => x.id === accountFilter);
+      if (a) return accountCurrency(a);
+    }
+    const map = buildCurrencyMap(accounts);
+    return commonCurrency(accounts.map((a) => a.id), map) ?? DEFAULT_CURRENCY;
+  }, [accountFilter, accounts]);
+
   const accountLabel = useMemo(() => {
     if (accountFilter === "all") return t("analytics_all_accounts");
     const a = accounts.find((x) => x.id === accountFilter);
     if (!a) return t("analytics_all_accounts");
-    return `${a.firm} · ${a.account_number || `${a.account_size.toLocaleString()}€`}`;
+    return `${a.firm} · ${a.account_number || money(a.account_size, accountCurrency(a))}`;
   }, [accountFilter, accounts, t]);
 
   // ── Previous period (for KPI deltas) ─────────────────────────────────────
@@ -588,7 +608,7 @@ export default function AnalyticsPage() {
       <div style={tooltipStyle}>
         <p style={{ fontWeight: 600, marginBottom: 4 }}>{entry.name}</p>
         <p style={{ color: entry.pnl >= 0 ? c.profit : c.loss }}>
-          {formatPnl(entry.pnl)}
+          {formatPnl(entry.pnl, pageCurrency)}
         </p>
         <p style={{ color: c.axis }}>{entry.count} trades · WR {entry.winrate}%</p>
       </div>
@@ -603,10 +623,10 @@ export default function AnalyticsPage() {
       <div style={tooltipStyle}>
         <p style={{ fontWeight: 600, marginBottom: 4 }}>{label}</p>
         <p style={{ color: point.tradePnl >= 0 ? c.profit : c.loss }}>
-          {point.tradePnl >= 0 ? "+" : ""}{point.tradePnl.toFixed(2)}€ ({point.count} trades)
+          {money(point.tradePnl, pageCurrency, { digits: 2, signed: true })} ({point.count} trades)
         </p>
         <p style={{ color: point.cumulative >= 0 ? c.profit : c.loss }}>
-          Cumulé : {point.cumulative >= 0 ? "+" : ""}{point.cumulative.toFixed(2)}€
+          Cumulé : {money(point.cumulative, pageCurrency, { digits: 2, signed: true })}
         </p>
       </div>
     );
@@ -616,7 +636,7 @@ export default function AnalyticsPage() {
     if (!active || !payload?.length) return null;
     return (
       <div style={tooltipStyle}>
-        <p style={{ fontWeight: 600, marginBottom: 4 }}>{label}€</p>
+        <p style={{ fontWeight: 600, marginBottom: 4 }}>{money(Number(label), pageCurrency)}</p>
         <p style={{ color: c.axis }}>{payload[0].value} trades</p>
       </div>
     );
@@ -628,7 +648,7 @@ export default function AnalyticsPage() {
       <div style={tooltipStyle}>
         <p style={{ fontWeight: 600, marginBottom: 4 }}>{label}</p>
         <p style={{ color: payload[0].value >= 0 ? c.profit : c.loss }}>
-          {payload[0].value >= 0 ? "+" : ""}{payload[0].value.toFixed(2)}€
+          {money(Number(payload[0].value), pageCurrency, { digits: 2, signed: true })}
         </p>
       </div>
     );
@@ -741,7 +761,7 @@ export default function AnalyticsPage() {
             <option value="all">{t("analytics_all_accounts")}</option>
             {accounts.map((a) => (
               <option key={a.id} value={a.id}>
-                {a.firm} · {a.account_number || `${a.account_size.toLocaleString()}€`}
+                {a.firm} · {a.account_number || money(a.account_size, accountCurrency(a))}
               </option>
             ))}
           </select>
@@ -841,7 +861,7 @@ export default function AnalyticsPage() {
 
               {/* Min/Max P&L */}
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-foreground-muted mb-2">P&L (€)</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-foreground-muted mb-2">P&L ({currencySymbol(pageCurrency).trim()})</p>
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
@@ -939,6 +959,7 @@ export default function AnalyticsPage() {
               prevKpis={prevKpis}
               avgWin={avgWin}
               avgLoss={avgLoss}
+              currency={pageCurrency}
             />
           </StaggerItem>
 
@@ -949,17 +970,18 @@ export default function AnalyticsPage() {
               bestHour={bestHour}
               riskyPairInfo={riskyPairInfo}
               byEmotion={byEmotion}
+              currency={pageCurrency}
             />
           </StaggerItem>
 
           {/* ── Comparaison de périodes — est-ce que je progresse ? ───── */}
           <StaggerItem>
-            <PeriodCompareBlock trades={trades} accountFilter={accountFilter} period={period} />
+            <PeriodCompareBlock trades={trades} accountFilter={accountFilter} period={period} currency={pageCurrency} />
           </StaggerItem>
 
           {/* ── Performance par stratégie ─────────────────────────────── */}
           <StaggerItem>
-            <StrategyCompareBlock trades={filtered} />
+            <StrategyCompareBlock trades={filtered} currency={pageCurrency} />
           </StaggerItem>
 
           {/* ── Equity Curve — full width ─────────────────────────────── */}
@@ -984,7 +1006,7 @@ export default function AnalyticsPage() {
                       tick={{ fill: c.axis, fontSize: 12 }}
                       tickLine={false}
                       axisLine={{ stroke: c.axisLine }}
-                      tickFormatter={formatCurrencyAxis}
+                      tickFormatter={(v: unknown) => (typeof v === "number" ? money(v, pageCurrency) : String(v))}
                       width={80}
                     />
                     <ReferenceLine y={0} stroke={c.grid} strokeDasharray="4 4" />
@@ -1001,7 +1023,7 @@ export default function AnalyticsPage() {
           {/* ── Drawdown / underwater ─────────────────────────────────── */}
           {equityCurve.length > 1 && (
             <StaggerItem>
-              <DrawdownBlock data={equityCurve} />
+              <DrawdownBlock data={equityCurve} currency={pageCurrency} />
             </StaggerItem>
           )}
 
@@ -1014,7 +1036,7 @@ export default function AnalyticsPage() {
                 <CardHeader>
                   <CardTitle>{t("analytics_patterns")}</CardTitle>
                 </CardHeader>
-                <HourDayHeatmap trades={filtered} />
+                <HourDayHeatmap trades={filtered} currency={pageCurrency} />
               </KpiCardPremium>
 
               {/* Auto-insights — 1/3 width */}
@@ -1030,7 +1052,7 @@ export default function AnalyticsPage() {
 
           {/* ── Résilience ────────────────────────────────────────────── */}
           <StaggerItem>
-            <ResilienceBlock trades={filtered} />
+            <ResilienceBlock trades={filtered} currency={pageCurrency} />
           </StaggerItem>
 
           {/* ── Performance par paire — pleine largeur ─────────────────── */}
@@ -1064,7 +1086,7 @@ export default function AnalyticsPage() {
                       tick={{ fill: c.axis, fontSize: 12 }}
                       tickLine={false}
                       axisLine={{ stroke: c.axisLine }}
-                      tickFormatter={formatCurrencyAxis}
+                      tickFormatter={(v: unknown) => (typeof v === "number" ? money(v, pageCurrency) : String(v))}
                     />
                     <YAxis
                       type="category"
@@ -1086,7 +1108,7 @@ export default function AnalyticsPage() {
                       <LabelList
                         dataKey="pnlReal"
                         position="right"
-                        formatter={(v: unknown) => formatPnl(Number(v))}
+                        formatter={(v: unknown) => formatPnl(Number(v), pageCurrency)}
                         style={{ fill: c.axis || "rgb(var(--foreground-muted))", fontSize: 11 }}
                       />
                     </Bar>
@@ -1138,7 +1160,7 @@ export default function AnalyticsPage() {
                     <BarChart data={byQuality} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} strokeOpacity={0.4} />
                       <XAxis dataKey="name" tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} />
-                      <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={formatCurrencyAxis} width={80} />
+                      <YAxis tick={{ fill: c.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: c.axisLine }} tickFormatter={(v: unknown) => (typeof v === "number" ? money(v, pageCurrency) : String(v))} width={80} />
                       <Tooltip content={<GenericTooltip />} cursor={{ fill: "rgb(var(--foreground) / 0.04)" }} />
                       <Bar
                         dataKey="pnl"
@@ -1162,6 +1184,7 @@ export default function AnalyticsPage() {
               <DisciplineAnalyticsBlock
                 trades={filtered}
                 checklistItems={stratTags.checklist}
+                currency={pageCurrency}
               />
             </div>
           </StaggerItem>
@@ -1199,7 +1222,7 @@ export default function AnalyticsPage() {
                         <div>
                           <p className="text-sm text-foreground-muted mb-1">{t("discipline_followed")}</p>
                           <p className={cn("text-2xl font-bold", disciplineStats.rulesFollowed.pnl >= 0 ? "text-profit" : "text-loss")}>
-                            {disciplineStats.rulesFollowed.pnl >= 0 ? "+" : ""}{disciplineStats.rulesFollowed.pnl.toFixed(2)} €
+                            {money(disciplineStats.rulesFollowed.pnl, pageCurrency, { digits: 2, signed: true })}
                           </p>
                           <p className="text-xs text-foreground-muted mt-1">
                             {disciplineStats.rulesFollowed.count} trades &mdash;{" "}
@@ -1217,7 +1240,7 @@ export default function AnalyticsPage() {
                         <div>
                           <p className="text-sm text-foreground-muted mb-1">{t("discipline_broken")}</p>
                           <p className={cn("text-2xl font-bold", disciplineStats.rulesBroken.pnl >= 0 ? "text-profit" : "text-loss")}>
-                            {disciplineStats.rulesBroken.pnl >= 0 ? "+" : ""}{disciplineStats.rulesBroken.pnl.toFixed(2)} €
+                            {money(disciplineStats.rulesBroken.pnl, pageCurrency, { digits: 2, signed: true })}
                           </p>
                           <p className="text-xs text-foreground-muted mt-1">
                             {disciplineStats.rulesBroken.count} trades &mdash;{" "}
@@ -1236,7 +1259,7 @@ export default function AnalyticsPage() {
                           <div>
                             <p className="text-sm text-loss/80 mb-1">{t("discipline_cost")}</p>
                             <p className="text-3xl font-bold text-loss">
-                              {Math.abs(disciplineStats.rulesBroken.pnl).toFixed(2)} €
+                              {money(Math.abs(disciplineStats.rulesBroken.pnl), pageCurrency, { digits: 2 })}
                             </p>
                             <p className="text-xs text-loss/70 mt-1">{t("discipline_cost_desc")}</p>
                           </div>
@@ -1254,7 +1277,7 @@ export default function AnalyticsPage() {
           {/* ── Emotional Trend Chart ──────────────────────────────────── */}
           <StaggerItem>
             <KpiCardPremium layout="full" accentColor="cyan">
-              <EmotionalTrendChart />
+              <EmotionalTrendChart currency={pageCurrency} />
             </KpiCardPremium>
           </StaggerItem>
 

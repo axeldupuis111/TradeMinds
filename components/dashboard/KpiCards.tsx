@@ -16,6 +16,7 @@ import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { ScoreRing } from "@/components/dashboard/ScoreRing";
 import { Sparkline } from "@/components/dashboard/Sparkline";
 import { WinRateGauge } from "@/components/dashboard/WinRateGauge";
+import { DEFAULT_CURRENCY, currencySymbol, money } from "@/lib/account-currency";
 import { cn } from "@/lib/cn";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useTheme } from "@/lib/ThemeContext";
@@ -50,6 +51,11 @@ export interface KpiCardsProps {
   challengePct: number | null;
   activeAccountsCount: number;
   totalPnl: number;
+  /**
+   * Devise du compte affiché. En vue « tous les comptes » l'appelant passe
+   * l'euro : aucun symbole unique ne serait juste sur un total mélangé.
+   */
+  currency?: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -120,6 +126,7 @@ export function KpiCards({
   challengePct,
   activeAccountsCount,
   totalPnl,
+  currency = DEFAULT_CURRENCY,
 }: KpiCardsProps) {
   const { t } = useLanguage();
   const { theme } = useTheme();
@@ -287,7 +294,7 @@ export function KpiCards({
                 label={t("dash_today_pnl")}
                 value={
                   filteredTodayCount > 0
-                    ? `${todayPnl >= 0 ? "+" : ""}${todayPnl.toFixed(0)} €`
+                    ? money(todayPnl, currency, { signed: true })
                     : "—"
                 }
                 positive={
@@ -328,7 +335,7 @@ export function KpiCards({
         <CountUp
           end={Math.abs(todayPnl)}
           prefix={pnlPositive ? "+" : "-"}
-          suffix=" €"
+          suffix={` ${currencySymbol(currency).trim()}`}
           decimals={2}
           duration={1.5}
         />
@@ -362,7 +369,7 @@ export function KpiCards({
     const challengeSubLabel =
       challengePct !== null
         ? `${challengePct.toFixed(0)}% ${t("dash_challenge_target") || "objectif"}`
-        : `${displayAccount.balanceChange >= 0 ? "+" : ""}${displayAccount.balanceChange.toFixed(2)} €`;
+        : money(displayAccount.balanceChange, currency, { digits: 2, signed: true });
 
     card4 = (
       <KpiCardPremium
@@ -412,9 +419,7 @@ export function KpiCards({
             suffix={` ${t("dash_accounts_count")}`}
           />
         }
-        sublabel={`${totalPnl >= 0 ? "+" : ""}${totalPnl.toLocaleString("fr-FR", {
-          maximumFractionDigits: 2,
-        })} €`}
+        sublabel={money(totalPnl, currency, { digits: 2, signed: true })}
         trend={totalPnl >= 0 ? "up" : "down"}
         accentColor="cyan"
         visual={walletVisual}

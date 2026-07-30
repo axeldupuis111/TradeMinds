@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { DEFAULT_CURRENCY, money } from "@/lib/account-currency";
 import { createPortal } from "react-dom";
 import { useLanguage } from "@/lib/LanguageContext";
 
@@ -16,14 +17,15 @@ export type HeatmapTooltipProps = {
   trades: number;
   pnl: number;
   winRate: number;
+  /** Devise du compte filtré ; euro sur une vue multi-comptes. */
+  currency?: string;
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function fmtPnl(n: number): string {
+function fmtPnl(n: number, currency: string): string {
   const r = Math.round(n);
-  if (r === 0) return "0 €";
-  return `${r > 0 ? "+" : ""}${r} €`;
+  return money(r, currency, { signed: r !== 0 });
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -42,6 +44,7 @@ export function HeatmapTooltip({
   trades,
   pnl,
   winRate,
+  currency = DEFAULT_CURRENCY,
 }: HeatmapTooltipProps) {
   const { t } = useLanguage();
   // Fade-in au montage : opacity 0 → 1 après le premier paint.
@@ -127,7 +130,7 @@ export function HeatmapTooltip({
                 color: pnl >= 0 ? "rgb(var(--profit))" : "rgb(var(--loss))",
               }}
             >
-              {fmtPnl(pnl)}
+              {fmtPnl(pnl, currency)}
             </span>
           </div>
 

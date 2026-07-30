@@ -8,6 +8,7 @@
  * Toggle confidentialité pour masquer les montants en euros.
  */
 
+import { DEFAULT_CURRENCY, money } from "@/lib/account-currency";
 import { useLanguage } from "@/lib/LanguageContext";
 import { Activity, Check, Copy, Download, Eye, EyeOff, X } from "lucide-react";
 import { useRef, useState } from "react";
@@ -23,10 +24,9 @@ export interface ShareStats {
   note?: string;
 }
 
-function fmtEur(n: number): string {
+function fmtEur(n: number, currency: string): string {
   const rounded = Math.round(n);
-  if (rounded === 0) return "0€";
-  return `${rounded > 0 ? "+" : ""}${rounded.toLocaleString()}€`;
+  return money(rounded, currency, { signed: rounded !== 0 });
 }
 
 /** Lundi de la semaine courante (heure locale). */
@@ -41,7 +41,16 @@ const RED = "#f87171";
 const MUTED = "#8b98ad";
 const FG = "#eef2f8";
 
-export default function ShareCardModal({ stats, onClose }: { stats: ShareStats; onClose: () => void }) {
+export default function ShareCardModal({
+  stats,
+  currency = DEFAULT_CURRENCY,
+  onClose,
+}: {
+  stats: ShareStats;
+  /** Devise du compte affiché ; euro en vue « tous les comptes ». */
+  currency?: string;
+  onClose: () => void;
+}) {
   const { t, lang } = useLanguage();
   const cardRef = useRef<HTMLDivElement>(null);
   const [hideAmounts, setHideAmounts] = useState(false);
@@ -54,7 +63,7 @@ export default function ShareCardModal({ stats, onClose }: { stats: ShareStats; 
   const dateRange = `${monday.toLocaleDateString(lang, { day: "numeric", month: "short" })} – ${sunday.toLocaleDateString(lang, { day: "numeric", month: "short", year: "numeric" })}`;
 
   const pnlPositive = stats.pnl >= 0;
-  const pnlDisplay = hideAmounts ? "•••" : fmtEur(stats.pnl);
+  const pnlDisplay = hideAmounts ? "•••" : fmtEur(stats.pnl, currency);
 
   async function renderCanvas(): Promise<HTMLCanvasElement | null> {
     if (!cardRef.current) return null;
@@ -202,7 +211,7 @@ export default function ShareCardModal({ stats, onClose }: { stats: ShareStats; 
                     {t("recap_best_trade")}{" "}
                     <span style={{ color: FG, fontWeight: 600 }}>{stats.best.pair}</span>{" "}
                     <span style={{ color: stats.best.pnl >= 0 ? GREEN : RED, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
-                      {hideAmounts ? "•••" : fmtEur(stats.best.pnl)}
+                      {hideAmounts ? "•••" : fmtEur(stats.best.pnl, currency)}
                     </span>
                   </>
                 )}

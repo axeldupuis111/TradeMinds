@@ -10,6 +10,7 @@
  */
 
 import { useLanguage } from "@/lib/LanguageContext";
+import { DEFAULT_CURRENCY, money } from "@/lib/account-currency";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/cn";
 import { Target } from "lucide-react";
@@ -37,7 +38,7 @@ function netPnl(t: StrategyTrade): number {
   return t.pnl + (t.commission || 0) + (t.swap || 0);
 }
 
-export default function StrategyCompareBlock({ trades }: { trades: StrategyTrade[] }) {
+export default function StrategyCompareBlock({ trades, currency = DEFAULT_CURRENCY }: { trades: StrategyTrade[]; currency?: string }) {
   const { t } = useLanguage();
   const [names, setNames] = useState<Record<string, string>>({});
 
@@ -119,7 +120,7 @@ export default function StrategyCompareBlock({ trades }: { trades: StrategyTrade
                 </td>
                 <td className="py-2.5 px-3 text-right tabular-nums text-foreground-muted">{b.count}</td>
                 <td className={cn("py-2.5 px-3 text-right tabular-nums font-semibold", b.pnl > 0 ? "text-profit" : b.pnl < 0 ? "text-loss" : "text-foreground-muted")}>
-                  {b.pnl >= 0 ? "+" : ""}{Math.round(b.pnl)}€
+                  {money(b.pnl, currency, { signed: true })}
                 </td>
                 <td className="py-2.5 px-3 text-right tabular-nums text-foreground">{Math.round(b.winrate)}%</td>
                 <td className="py-2.5 px-3 text-right tabular-nums text-foreground">
