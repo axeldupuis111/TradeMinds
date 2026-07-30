@@ -102,6 +102,7 @@ const dict: Record<string, string> = {
   "demo_banner_delete": "Salir del modo demo",
   "demo_pdf_watermark": "DATOS DE DEMOSTRACIÓN",
   "analysis_demo_free": "análisis de demostración, gratuito e ilimitado",
+  "demo_trade_verdict_note": "Veredicto de demostración, escrito de antemano. En tus operaciones reales, la IA redacta este comentario a partir de tu estrategia y tu checklist.",
   "leaderboard_demo_notice": "Modo demo: tus datos ficticios no entran en la clasificación. Se llena con tus sesiones de preparación reales, una vez salgas del modo demo.",
   "demo_coach_note": "_Respuesta de demostración, escrita de antemano. El coach real responde a tus propias preguntas a partir de tus operaciones._",
   "macro_demo_warning": "Ejemplo ficticio: este briefing es contenido de demostración, no refleja la actualidad de los mercados y no debe servir para ninguna decisión de trading.",

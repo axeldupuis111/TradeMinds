@@ -15,6 +15,7 @@ import {
 import { useStrategyTags } from "@/lib/hooks/useStrategyTags";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
+import { demoTradeVerdict } from "@/lib/demo-fixtures";
 import { createClient } from "@/lib/supabase/client";
 import { track } from "@/lib/track";
 import type { Lang } from "@/lib/translations";
@@ -136,8 +137,11 @@ function SavedIndicator({ visible }: { visible: boolean }) {
 export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNext, hasPrev = false, hasNext = false, navIndex, navTotal }: Props) {
   const { t, lang } = useLanguage();
   const l = lang as Lang;
-  const { plan, loading: planLoading } = usePlan();
-  const isFree = !planLoading && plan === "free";
+  const { plan, demoMode, loading: planLoading } = usePlan();
+  // En démo on ne montre pas le cadenas : le trade porte sa checklist remplie,
+  // un verrou juste en dessous serait incohérent. On affiche un verdict figé
+  // plutôt que de déclencher un vrai appel IA par trade consulté.
+  const isFree = !planLoading && plan === "free" && !demoMode;
   const supabase = createClient();
   const [selectedStrategyId, setSelectedStrategyId] = useState<string | null>(trade.strategy_id ?? null);
   const stratTags = useStrategyTags(selectedStrategyId ?? undefined);
@@ -678,6 +682,24 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
               </div>
             </div>
           </div>
+
+          {/* Verdict de démonstration — remplace le cadenas « plan Plus » */}
+          {demoMode && (
+            <div className="border border-accent/25 bg-accent/[0.04] rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-accent/15 text-accent text-sm font-bold shrink-0">
+                  {demoTradeVerdict(trade, lang).grade}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-semibold text-foreground mb-1">{t("analysis_locked_title")}</h4>
+                  <p className="text-sm text-foreground-muted leading-relaxed">
+                    {demoTradeVerdict(trade, lang).comment}
+                  </p>
+                  <p className="text-xs text-muted mt-2">{t("demo_trade_verdict_note")}</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Emotion */}
           {isFree ? (

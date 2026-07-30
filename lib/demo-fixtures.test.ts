@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { generateDemoTrades } from "./demo-data";
-import { DEMO_COACH, DEMO_MACRO, buildDemoAnalysis, type DemoTradeForAnalysis } from "./demo-fixtures";
+import { DEMO_COACH, DEMO_MACRO, buildDemoAnalysis, demoTradeVerdict, type DemoTradeForAnalysis } from "./demo-fixtures";
 import { locales } from "@/i18n/config";
 
 const NOW = new Date("2026-07-30T12:00:00Z");
@@ -79,6 +79,39 @@ describe("fixtures de démonstration", () => {
     for (const loc of locales) {
       const m = DEMO_MACRO[loc];
       expect(`${m.headline} ${m.overview}`).toMatch(marker[loc]);
+    }
+  });
+});
+
+describe("demoTradeVerdict", () => {
+  it("donne le verdict qui correspond au trade, pas un texte générique", () => {
+    const base = { open_time: "2026-07-20T14:00:00Z" };
+    const clean = demoTradeVerdict({ ...base, emotion: "calm" }, "fr");
+    const tilt = demoTradeVerdict({ ...base, emotion: "revenge" }, "fr");
+    const fomo = demoTradeVerdict({ ...base, emotion: "fomo" }, "fr");
+    const morning = demoTradeVerdict({ open_time: "2026-07-20T09:00:00", emotion: null }, "fr");
+    expect(clean.grade).toBe("A");
+    expect(tilt.grade).toBe("D");
+    expect(fomo.grade).toBe("D");
+    expect(morning.grade).toBe("C");
+    // Quatre verdicts distincts : sinon autant ne rien afficher.
+    expect(new Set([clean.comment, tilt.comment, fomo.comment, morning.comment]).size).toBe(4);
+  });
+
+  it("couvre les 4 langues", () => {
+    for (const loc of locales) {
+      const v = demoTradeVerdict({ open_time: "2026-07-20T14:00:00Z", emotion: "calm" }, loc);
+      expect(v.comment.length).toBeGreaterThan(30);
+    }
+  });
+
+  it("est cohérent avec les trades réellement générés", () => {
+    // Chaque trade démo doit tomber dans une catégorie, et les trades de tilt
+    // doivent recevoir la pire note.
+    for (const t of trades) {
+      const v = demoTradeVerdict(t, "fr");
+      expect(["A", "B", "C", "D"]).toContain(v.grade);
+      if (t.emotion === "revenge" || t.emotion === "frustrated") expect(v.grade).toBe("D");
     }
   });
 });

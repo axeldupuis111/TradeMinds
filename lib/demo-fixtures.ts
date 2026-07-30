@@ -604,3 +604,52 @@ export const DEMO_COACH: Record<Locale, DemoCoachTurn[]> = {
     },
   ],
 };
+
+// ── Verdict par trade ───────────────────────────────────────────────────────
+// Le panneau « Analyse de trade » est réservé au plan Plus, et le déverrouiller
+// en démo déclencherait un vrai appel IA par trade consulté. On y affiche donc
+// un verdict figé, annoncé comme une démonstration. Il est classé depuis les
+// données du trade lui-même, donc chaque trade reçoit le commentaire qui lui
+// correspond, pas un texte générique.
+
+type DemoVerdictKind = "clean" | "morning" | "tilt" | "fomo";
+
+const VERDICTS: Record<Locale, Record<DemoVerdictKind, { grade: string; comment: string }>> = {
+  fr: {
+    clean: { grade: "A", comment: "Setup dans le plan, liquidité prise avant l'entrée, stop sur invalidation structurelle et sortie sur objectif. Les 7 points de ta checklist sont cochés : c'est le trade à répliquer." },
+    morning: { grade: "C", comment: "L'exécution est correcte mais la killzone n'est pas active : ton plan démarre à 13 h. Le ratio n'est pas respecté non plus. Bon geste, mauvais moment." },
+    tilt: { grade: "D", comment: "Aucun point de checklist coché, aucun setup identifié, timeframe M1 et lot augmenté après une perte. Ce trade n'est pas une décision de trading, c'est une réaction émotionnelle." },
+    fomo: { grade: "D", comment: "Tu as identifié le biais mais tu es entré sans attendre la prise de liquidité, en fin de séance. Entrée précipitée hors plan : le résultat n'est pas de la malchance." },
+  },
+  en: {
+    clean: { grade: "A", comment: "Setup inside the plan, liquidity taken before entry, stop on a structural invalidation and exit on target. All 7 checklist points ticked: this is the trade to replicate." },
+    morning: { grade: "C", comment: "Execution is fine but the killzone is not active: your plan starts at 1 pm. The ratio is not respected either. Right move, wrong time." },
+    tilt: { grade: "D", comment: "No checklist point ticked, no setup identified, M1 timeframe and size increased after a loss. This trade is not a trading decision, it is an emotional reaction." },
+    fomo: { grade: "D", comment: "You identified the bias but entered without waiting for liquidity to be taken, at the end of the session. A rushed entry outside the plan: the result is not bad luck." },
+  },
+  es: {
+    clean: { grade: "A", comment: "Setup dentro del plan, liquidez tomada antes de la entrada, stop en una invalidación estructural y salida en objetivo. Los 7 puntos de la checklist marcados: esta es la operación a replicar." },
+    morning: { grade: "C", comment: "La ejecución es correcta pero la killzone no está activa: tu plan empieza a las 13 h. Tampoco se respeta el ratio. Buen gesto, mal momento." },
+    tilt: { grade: "D", comment: "Ningún punto de la checklist marcado, ningún setup identificado, timeframe M1 y lote aumentado tras una pérdida. Esta operación no es una decisión de trading, es una reacción emocional." },
+    fomo: { grade: "D", comment: "Identificaste el sesgo pero entraste sin esperar la toma de liquidez, al final de la sesión. Entrada precipitada fuera del plan: el resultado no es mala suerte." },
+  },
+  de: {
+    clean: { grade: "A", comment: "Setup im Plan, Liquidität vor dem Einstieg genommen, Stop auf einer strukturellen Invalidierung und Ausstieg am Ziel. Alle 7 Checklistenpunkte gesetzt: genau dieser Trade ist zu wiederholen." },
+    morning: { grade: "C", comment: "Die Ausführung ist in Ordnung, aber die Killzone ist nicht aktiv: Dein Plan beginnt um 13 Uhr. Auch das Verhältnis wird nicht eingehalten. Richtige Bewegung, falscher Zeitpunkt." },
+    tilt: { grade: "D", comment: "Kein Checklistenpunkt gesetzt, kein Setup erkannt, M1-Timeframe und Größe nach einem Verlust erhöht. Dieser Trade ist keine Handelsentscheidung, sondern eine emotionale Reaktion." },
+    fomo: { grade: "D", comment: "Du hast den Bias erkannt, bist aber ohne abgewartete Liquiditätsentnahme am Sessionende eingestiegen. Übereilter Einstieg außerhalb des Plans: Das Ergebnis ist kein Pech." },
+  },
+};
+
+/** Classe le trade depuis ses propres données, sans dépendre du générateur. */
+export function demoTradeVerdict(
+  trade: { emotion?: string | null; open_time: string; ict_confluence_score?: number | null },
+  locale: Locale
+): { grade: string; comment: string } {
+  const table = VERDICTS[locale] ?? VERDICTS.en;
+  const e = trade.emotion ?? "";
+  if (e === "revenge" || e === "frustrated") return table.tilt;
+  if (e === "fomo") return table.fomo;
+  if (new Date(trade.open_time).getHours() < 12) return table.morning;
+  return table.clean;
+}
