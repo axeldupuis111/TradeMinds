@@ -27,7 +27,10 @@ export default function ExportPdfButton({ trades, periodLabel, accountLabel }: E
   const [generating, setGenerating] = useState(false);
   const [showLocked, setShowLocked] = useState(false);
 
-  const canExport = !planLoading && (plan === "plus" || plan === "premium");
+  // Le mode démo ouvre l'export : c'est tout l'intérêt de la visite guidée, et
+  // le PDF produit ne contient que des données fictives, filigranées. Aucune
+  // valeur payante ne fuit.
+  const canExport = !planLoading && (plan === "plus" || plan === "premium" || demoMode);
 
   async function generatePdf() {
     if (!canExport) {

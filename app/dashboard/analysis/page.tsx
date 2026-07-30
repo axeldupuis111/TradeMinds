@@ -914,6 +914,16 @@ ${turn.answer}` },
     }
   }, []);
 
+  // Mode démo : l'analyse doit être là d'emblée, sur toute la période. Le
+  // visiteur ne doit pas avoir à deviner qu'il faut cliquer, et « cette semaine »
+  // ne contient que 4 trades, donc rien de ce que l'analyse raconte.
+  useEffect(() => {
+    if (autoranRef.current || planLoading || !demoMode) return;
+    autoranRef.current = true;
+    setSelectedPeriod("all");
+    setPendingAutorun(true);
+  }, [demoMode, planLoading]);
+
   // Déclenchement une fois le plan chargé et la période appliquée
   useEffect(() => {
     if (!pendingAutorun || planLoading || loading) return;
@@ -921,14 +931,14 @@ ${turn.answer}` },
     if (selectedPeriod !== "all") return;
     // Free : attendre l'historique — si l'analyse découverte est déjà
     // consommée (ex. auto-analyse post-import), ne pas déclencher un 403.
-    if (plan === "free") {
+    if (plan === "free" && !demoMode) {
       if (historyLoading) return;
       if (history.length > 0) { setPendingAutorun(false); return; }
     }
     setPendingAutorun(false);
     void runAnalysis();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingAutorun, planLoading, loading, canUseAI, hasStrategy, selectedPeriod, plan, historyLoading, history.length]);
+  }, [pendingAutorun, planLoading, loading, canUseAI, hasStrategy, selectedPeriod, plan, historyLoading, history.length, demoMode]);
 
   async function runAnalysis() {
     setError(null);
@@ -1168,7 +1178,13 @@ ${turn.answer}` },
   // chargé sert de marqueur côté client. Pendant son chargement on bloque le
   // bouton sans afficher l'encart upgrade (pas de flash).
   const freeAnalysisTasterUsed = plan === "free" && !historyLoading && history.length > 0;
-  const aiLimitReached = plan === "free" ? freeAnalysisTasterUsed : aiRemaining === 0;
+  // En démo, l'analyse est une fixture : elle ne consomme aucun quota, donc
+  // aucune limite ne doit bloquer le bouton ni changer son libellé.
+  const aiLimitReached = demoMode
+    ? false
+    : plan === "free"
+      ? freeAnalysisTasterUsed
+      : aiRemaining === 0;
 
   return (
     <div>
@@ -1251,7 +1267,7 @@ ${turn.answer}` },
                 }
                 runAnalysis();
               }}
-              disabled={loading || !hasStrategy || tradeCount === 0 || filteredTradeCount === 0 || aiLimitReached || (plan === "free" && historyLoading)}
+              disabled={loading || !hasStrategy || tradeCount === 0 || filteredTradeCount === 0 || aiLimitReached || (plan === "free" && !demoMode && historyLoading)}
               className={`px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors disabled:opacity-50 btn-scale ${aiLimitReached ? "cursor-not-allowed pointer-events-none" : ""}`}
             >
               {loading
@@ -1262,7 +1278,9 @@ ${turn.answer}` },
                   : t("analysis_run_limit")
                 : t("analysis_run")}
             </button>
-            {plan === "free" ? (
+            {demoMode ? (
+              <span className="text-muted text-sm">({t("analysis_demo_free")})</span>
+            ) : plan === "free" ? (
               !historyLoading && !aiLimitReached && (
                 <span className="text-muted text-sm">({t("plan_ai_taster_available")})</span>
               )

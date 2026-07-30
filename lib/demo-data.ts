@@ -18,6 +18,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { detectKillzone } from "./ict-constants";
 
 /**
  * ⚠️ `direction` doit valoir "long" ou "short" : la contrainte
@@ -44,7 +45,69 @@ export interface DemoTradeRow {
   emotion: string | null;
   status: "closed";
   is_demo: true;
+  /**
+   * Données qualitatives par trade. Sans elles, aucune analyse IA ne peut être
+   * cohérente : c'est la checklist et le setup qui expliquent POURQUOI un trade
+   * était bon ou mauvais, le P&L seul ne le dit pas. Les clés de `ict_checklist`
+   * sont celles de ICT_CHECKLIST_ITEMS (le repli quand la stratégie n'a pas de
+   * tags personnalisés, ce qui est le cas de la stratégie démo).
+   */
+  ict_setup: string;
+  ict_entry_zone: string;
+  ict_liquidity_target: string;
+  ict_killzone: string;
+  ict_timeframe: string;
+  ict_confluence_score: number;
+  ict_checklist: Record<string, boolean>;
+  setup_quality: number;
 }
+
+/** Les 4 profils de trade du jeu de démo, du plus propre au plus impulsif. */
+type TradeKind = "clean" | "morning" | "tilt" | "fomo";
+
+/**
+ * Profil qualitatif par type de trade. La checklist décroît avec l'indiscipline,
+ * ce qui rend l'histoire lisible : les trades de l'après-midi cochent presque
+ * tout, ceux de 9 h ratent la killzone (le plan démarre à 13 h), ceux du jour de
+ * tilt ne cochent quasiment rien.
+ */
+const QUALITY: Record<TradeKind, {
+  setup: string;
+  zone: string;
+  target: string;
+  timeframe: string;
+  quality: number;
+  checklist: Record<string, boolean>;
+}> = {
+  clean: {
+    setup: "fvg_entry", zone: "fvg", target: "old_high", timeframe: "M15", quality: 5,
+    checklist: {
+      bias_identified: true, liquidity_taken: true, poi_identified: true,
+      killzone_active: true, structure_confirmed: true, rr_minimum: true, risk_managed: true,
+    },
+  },
+  morning: {
+    setup: "ob_rejection", zone: "order_block", target: "equal_lows", timeframe: "M5", quality: 3,
+    checklist: {
+      bias_identified: true, liquidity_taken: true, poi_identified: true,
+      killzone_active: false, structure_confirmed: false, rr_minimum: false, risk_managed: true,
+    },
+  },
+  tilt: {
+    setup: "other", zone: "none", target: "none", timeframe: "M1", quality: 1,
+    checklist: {
+      bias_identified: false, liquidity_taken: false, poi_identified: false,
+      killzone_active: false, structure_confirmed: false, rr_minimum: false, risk_managed: false,
+    },
+  },
+  fomo: {
+    setup: "other", zone: "none", target: "none", timeframe: "M5", quality: 2,
+    checklist: {
+      bias_identified: true, liquidity_taken: false, poi_identified: false,
+      killzone_active: false, structure_confirmed: false, rr_minimum: false, risk_managed: true,
+    },
+  },
+};
 
 /** PRNG déterministe (mulberry32) — même seed, même démo. */
 function mulberry32(seed: number): () => number {
@@ -78,6 +141,7 @@ function toWeekday(d: Date): Date {
 }
 
 interface TradeSpec {
+  kind: TradeKind;
   dayOffset: number;      // jours avant "now"
   hour: number;
   minute?: number;
@@ -99,6 +163,7 @@ export function generateDemoTrades(now: Date = new Date()): DemoTradeRow[] {
     for (let k = 0; k < n; k++) {
       const win = rng() < 0.56;
       specs.push({
+        kind: "clean",
         dayOffset: day,
         hour: 13 + Math.floor(rng() * 4), // après-midi = zone saine
         minute: Math.floor(rng() * 50),
@@ -112,6 +177,7 @@ export function generateDemoTrades(now: Date = new Date()): DemoTradeRow[] {
   // ── La pire heure : 9 h, récurrente et perdante ──────────────────────────
   for (const day of [30, 24, 17, 12, 8, 4]) {
     specs.push({
+      kind: "morning",
       dayOffset: day, hour: 9, minute: 10 + Math.floor(rng() * 30),
       win: day === 17, // une seule fois gagnante — le total reste bien rouge
       magnitude: day === 17 ? 30 : 38 + rng() * 30,
@@ -120,17 +186,18 @@ export function generateDemoTrades(now: Date = new Date()): DemoTradeRow[] {
   }
 
   // ── Le jour de tilt (J-15) : perte → revenge ×2 avec lot gonflé ─────────
-  specs.push({ dayOffset: 15, hour: 10, minute: 5, win: false, magnitude: 95, lot: 1, emotion: "neutral", durationMin: 25 });
-  specs.push({ dayOffset: 15, hour: 10, minute: 42, win: false, magnitude: 150, lot: 2.5, emotion: "revenge", durationMin: 18 });
-  specs.push({ dayOffset: 15, hour: 11, minute: 8, win: false, magnitude: 185, lot: 3, emotion: "frustrated", durationMin: 22 });
+  specs.push({ kind: "tilt", dayOffset: 15, hour: 10, minute: 5, win: false, magnitude: 95, lot: 1, emotion: "neutral", durationMin: 25 });
+  specs.push({ kind: "tilt", dayOffset: 15, hour: 10, minute: 42, win: false, magnitude: 150, lot: 2.5, emotion: "revenge", durationMin: 18 });
+  specs.push({ kind: "tilt", dayOffset: 15, hour: 11, minute: 8, win: false, magnitude: 185, lot: 3, emotion: "frustrated", durationMin: 22 });
 
   // ── FOMO isolés ──────────────────────────────────────────────────────────
-  specs.push({ dayOffset: 21, hour: 16, minute: 48, win: false, magnitude: 70, emotion: "fomo" });
-  specs.push({ dayOffset: 6, hour: 15, minute: 33, win: false, magnitude: 88, emotion: "fomo" });
+  specs.push({ kind: "fomo", dayOffset: 21, hour: 16, minute: 48, win: false, magnitude: 70, emotion: "fomo" });
+  specs.push({ kind: "fomo", dayOffset: 6, hour: 15, minute: 33, win: false, magnitude: 88, emotion: "fomo" });
 
   // ── La fin remonte : 4 gains propres sur les 2 derniers jours ouvrés ────
   for (const [day, hour] of [[2, 14], [2, 16], [1, 13], [1, 15]] as const) {
     specs.push({
+      kind: "clean",
       dayOffset: day, hour, minute: Math.floor(rng() * 45),
       win: true, magnitude: 75 + rng() * 60,
       emotion: CALM_EMOTIONS[Math.floor(rng() * CALM_EMOTIONS.length)],
@@ -156,6 +223,7 @@ export function generateDemoTrades(now: Date = new Date()): DemoTradeRow[] {
     const digits = p.pipScale < 0.01 ? 5 : 2;
 
     const pnl = Math.round((s.win ? s.magnitude : -s.magnitude) * 100) / 100;
+    const q = QUALITY[s.kind];
 
     return {
       open_time: iso(open),
@@ -173,6 +241,14 @@ export function generateDemoTrades(now: Date = new Date()): DemoTradeRow[] {
       emotion: s.emotion ?? null,
       status: "closed",
       is_demo: true,
+      ict_setup: q.setup,
+      ict_entry_zone: q.zone,
+      ict_liquidity_target: q.target,
+      ict_killzone: detectKillzone(iso(open)),
+      ict_timeframe: q.timeframe,
+      ict_confluence_score: Object.values(q.checklist).filter(Boolean).length,
+      ict_checklist: { ...q.checklist },
+      setup_quality: q.quality,
     };
   });
 

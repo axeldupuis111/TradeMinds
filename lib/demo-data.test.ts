@@ -21,6 +21,26 @@ describe("generateDemoTrades", () => {
     }
   });
 
+  it("porte les données qualitatives, sans lesquelles aucune analyse n'est crédible", () => {
+    const rows = generateDemoTrades(NOW);
+    for (const r of rows) {
+      expect(r.ict_setup).toBeTruthy();
+      expect(r.ict_killzone).toBeTruthy();
+      expect(Object.keys(r.ict_checklist).length).toBe(7);
+      // Le score de confluence doit être le décompte réel des cases cochées.
+      expect(r.ict_confluence_score).toBe(Object.values(r.ict_checklist).filter(Boolean).length);
+      expect(r.setup_quality).toBeGreaterThanOrEqual(1);
+      expect(r.setup_quality).toBeLessThanOrEqual(5);
+    }
+    // L'histoire doit rester lisible : les trades de tilt cochent moins que les
+    // trades propres, sinon l'analyse démo raconte n'importe quoi.
+    const tilt = rows.filter((r) => r.emotion === "revenge" || r.emotion === "frustrated");
+    const clean = rows.filter((r) => new Date(r.open_time).getHours() >= 13);
+    const avg = (xs: typeof rows) => xs.reduce((s2, r) => s2 + r.ict_confluence_score, 0) / xs.length;
+    expect(tilt.length).toBeGreaterThan(0);
+    expect(avg(tilt)).toBeLessThan(avg(clean));
+  });
+
   it("est déterministe (même seed → même démo)", () => {
     expect(generateDemoTrades(NOW)).toEqual(generateDemoTrades(NOW));
   });

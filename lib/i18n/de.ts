@@ -101,6 +101,7 @@ const dict: Record<string, string> = {
   "demo_banner_text": "Demo-Modus: Trades, Strategie und Analysen sind fiktiv. Nichts zählt für die Rangliste oder deine echten Statistiken.",
   "demo_banner_delete": "Demo-Modus verlassen",
   "demo_pdf_watermark": "DEMONSTRATIONSDATEN",
+  "analysis_demo_free": "Demonstrationsanalyse, kostenlos und unbegrenzt",
   "leaderboard_demo_notice": "Demo-Modus: Deine fiktiven Daten gehen nicht in die Rangliste ein. Sie füllt sich mit deinen echten Vorbereitungs-Sessions, sobald du den Demo-Modus verlässt.",
   "demo_coach_note": "_Demonstrationsantwort, im Voraus geschrieben. Der echte Coach beantwortet deine eigenen Fragen anhand deiner Trades._",
   "macro_demo_warning": "Fiktives Beispiel: Dieses Briefing ist Demonstrationsinhalt, es spiegelt nicht das aktuelle Marktgeschehen wider und darf keiner Handelsentscheidung dienen.",
