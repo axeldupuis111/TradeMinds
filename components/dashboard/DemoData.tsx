@@ -16,7 +16,7 @@
  */
 
 import { usePlan } from "@/lib/PlanContext";
-import { enterDemoMode, hasDemoTrades, purgeDemoData } from "@/lib/demo-data";
+import { enterDemoMode, exitDemoModeFromClient, hasDemoTrades } from "@/lib/demo-data";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { track } from "@/lib/track";
@@ -26,7 +26,7 @@ import { useEffect, useState } from "react";
 
 export function DemoDataCta() {
   const { t } = useLanguage();
-  const { refreshPlan } = usePlan();
+  const { demoMode, refreshPlan } = usePlan();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   // Le message brut de Supabase, pas un booléen : « impossible de charger »
@@ -34,6 +34,10 @@ export function DemoDataCta() {
   const [error, setError] = useState<string | null>(null);
 
   async function inject() {
+    // Garde-fou : une deuxième activation empilerait un second compte et une
+    // seconde stratégie, ce qui permettait de dépasser les limites du plan
+    // gratuit. enterDemoMode purge aussi de son côté.
+    if (demoMode || loading) return;
     setLoading(true);
     setError(null);
     const supabase = createClient();
@@ -89,6 +93,7 @@ export function DemoDataBanner() {
   const router = useRouter();
   const [legacyDemo, setLegacyDemo] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [exitError, setExitError] = useState<string | null>(null);
 
   // Comptes qui ont chargé la démo avant l'arrivée du drapeau : on se rabat sur
   // la présence de trades démo pour ne pas les laisser sans moyen de purger.
@@ -111,10 +116,16 @@ export function DemoDataBanner() {
 
   async function remove() {
     setDeleting(true);
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) await purgeDemoData(supabase, user.id);
+    setExitError(null);
+    // Purge côté serveur : un delete depuis le navigateur laissait les comptes
+    // de démonstration en place, sans le moindre message.
+    const { error } = await exitDemoModeFromClient();
     setDeleting(false);
+    if (error) {
+      console.error("[demo] exit failed:", error);
+      setExitError(error);
+      return;
+    }
     setLegacyDemo(false);
     await refreshPlan();
     router.refresh();
@@ -135,6 +146,11 @@ export function DemoDataBanner() {
           : <X className="w-3.5 h-3.5" strokeWidth={1.75} />}
         {t("demo_banner_delete")}
       </button>
+      {exitError && (
+        <p className="w-full text-xs text-loss">
+          {t("demo_exit_error")} <span className="opacity-70">({exitError})</span>
+        </p>
+      )}
     </div>
   );
 }

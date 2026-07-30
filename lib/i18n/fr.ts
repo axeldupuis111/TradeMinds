@@ -100,6 +100,7 @@ const dict: Record<string, string> = {
   "demo_insert_error": "Impossible d'activer le mode démo. Réessaie dans un instant.",
   "demo_banner_text": "Mode démo : trades, stratégie et analyses sont fictifs. Rien n'est compté dans le classement ni dans tes statistiques réelles.",
   "demo_banner_delete": "Quitter le mode démo",
+  "demo_exit_error": "La sortie du mode démo a échoué. Réessaie, et signale-le si ça persiste.",
   "demo_pdf_watermark": "DONNÉES DE DÉMONSTRATION",
   "analysis_demo_free": "analyse de démonstration, gratuite et illimitée",
   "demo_trade_verdict_note": "Verdict de démonstration, écrit à l'avance. Sur tes vrais trades, l'IA rédige ce commentaire à partir de ta stratégie et de ta checklist.",

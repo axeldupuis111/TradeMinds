@@ -345,6 +345,12 @@ export async function enterDemoMode(
   supabase: SupabaseClient,
   userId: string
 ): Promise<{ error: string | null }> {
+  // Idempotence : on purge d'abord. Sans ça, deux activations créaient deux
+  // comptes et deux stratégies, ce qui permettait de dépasser les limites du
+  // plan gratuit. Ceinture et bretelles avec le garde-fou d'affichage du CTA.
+  const purge = await exitDemoModeFromClient();
+  if (purge.error) return { error: purge.error };
+
   const { data: account, error: accErr } = await supabase
     .from("prop_challenges")
     .insert(demoAccountRow(userId))
@@ -378,11 +384,33 @@ export async function enterDemoMode(
 }
 
 /**
- * Supprime TOUTES les données démo et sort du mode démo. Best-effort : ne jette
- * jamais (si les colonnes is_demo n'existent pas encore, il n'y a rien à
- * purger). Appelée à la sortie explicite du mode démo, et dès qu'un trade RÉEL
- * est créé (import, saisie, sync) — un vrai trade signifie que la visite guidée
- * est terminée.
+ * Sortie du mode démo depuis le NAVIGATEUR — passe par /api/demo/exit.
+ *
+ * Un delete direct depuis le client ne supprime pas les `prop_challenges` :
+ * l'application n'en supprime jamais côté client, donc RLS filtre la ligne et le
+ * delete repart avec zéro ligne affectée, en silence. Les comptes de démo
+ * s'accumulaient à chaque activation, au point de dépasser la limite d'un compte
+ * du plan gratuit. La route fait la purge avec la clé de service, restreinte aux
+ * lignes `is_demo` de l'utilisateur authentifié.
+ *
+ * Contrairement à purgeDemoData, cette fonction REMONTE l'erreur : une purge qui
+ * échoue en silence est précisément ce qui a produit le bug.
+ */
+export async function exitDemoModeFromClient(): Promise<{ error: string | null }> {
+  try {
+    const res = await fetch("/api/demo/exit", { method: "POST" });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) return { error: body?.error || `HTTP ${res.status}` };
+    return { error: null };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "réseau" };
+  }
+}
+
+/**
+ * Purge directe, pour les contextes SERVEUR qui disposent d'un client admin
+ * (synchro broker, rail push). Best-effort : ne jette jamais. Depuis le
+ * navigateur, utiliser exitDemoModeFromClient() à la place.
  */
 export async function purgeDemoData(supabase: SupabaseClient, userId: string): Promise<void> {
   for (const table of ["trades", "strategies", "prop_challenges"] as const) {
