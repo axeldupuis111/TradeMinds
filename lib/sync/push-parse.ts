@@ -172,23 +172,42 @@ export function isValidTrade(t: unknown): t is PushTrade {
  * TradeDiscipline rattacher le solde, et écrire un solde sur le mauvais compte
  * est pire que ne rien écrire.
  */
-export function readAccountSnapshot(val: unknown): AccountSnapshot | null {
-  if (!val || typeof val !== "object") return null;
+/**
+ * Explique pourquoi un état de compte est refusé, ou renvoie null s'il est
+ * valide. Même principe que `tradeRejectReason` : un refus silencieux est
+ * indébogable depuis un terminal MetaTrader, où l'utilisateur ne voit que le
+ * journal de l'EA.
+ *
+ * Un solde à 0 est une donnée valide, pas une erreur : c'est précisément l'état
+ * d'un compte grillé, le moment où le trader a le plus besoin de le voir.
+ */
+export function accountSnapshotRejectReason(val: unknown): string | null {
+  if (!val || typeof val !== "object") return "bloc compte absent ou illisible";
   const o = val as Record<string, unknown>;
 
   const account = o.account == null ? "" : String(o.account).trim();
-  if (account === "") return null;
+  if (account === "") return "numero de compte manquant";
 
-  const balance = readFiniteNumber(o.balance);
-  if (balance === null) return null;
+  if (o.balance == null) return "solde absent (champ balance manquant)";
+  if (readFiniteNumber(o.balance) === null)
+    return `solde illisible : ${String(o.balance)}`;
+
+  if (o.equity != null && readFiniteNumber(o.equity) === null)
+    return `equity illisible : ${String(o.equity)}`;
+
+  return null;
+}
+
+export function readAccountSnapshot(val: unknown): AccountSnapshot | null {
+  if (accountSnapshotRejectReason(val) !== null) return null;
+  const o = val as Record<string, unknown>;
+
+  const account = String(o.account).trim();
+  const balance = readFiniteNumber(o.balance) as number;
 
   // L'equity peut manquer sur un client minimaliste : on retombe sur le solde,
   // ce qui revient à dire « aucune position ouverte ».
   const equity = readFiniteNumber(o.equity) ?? balance;
-
-  // Un compte réel n'est jamais à 0,00 de solde ET 0,00 d'equity : c'est la
-  // signature d'un client qui n'a pas réussi à lire l'état du compte.
-  if (balance === 0 && equity === 0) return null;
 
   const openRaw = readFiniteNumber(o.open_positions);
   const open_positions = openRaw !== null && openRaw > 0 ? Math.round(openRaw) : 0;

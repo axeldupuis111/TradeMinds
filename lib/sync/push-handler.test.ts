@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { mapSource, mapDirection, toIso, isValidTrade, tradeRejectReason, readTicket, readAccountSnapshot, brokerOffsetSeconds } from "./push-parse";
+import { mapSource, mapDirection, toIso, isValidTrade, tradeRejectReason, readTicket, readAccountSnapshot, accountSnapshotRejectReason, brokerOffsetSeconds } from "./push-parse";
 
 describe("mapSource", () => {
   it("accepts every known platform (case/space-insensitive)", () => {
@@ -203,10 +203,29 @@ describe("readAccountSnapshot", () => {
     expect(readAccountSnapshot({ balance: 1000, equity: 1000 })).toBeNull();
   });
 
-  it("refuse un solde illisible ou une lecture de compte ratée (0/0)", () => {
+  it("refuse un solde illisible ou absent", () => {
     expect(readAccountSnapshot({ ...base, balance: "abc" })).toBeNull();
     expect(readAccountSnapshot({ ...base, balance: undefined })).toBeNull();
-    expect(readAccountSnapshot({ account: "1", balance: 0, equity: 0 })).toBeNull();
+  });
+
+  it("accepte un compte à zéro : un compte grillé est une donnée, pas une erreur", () => {
+    // Régression du 2026-07-31 : un garde « solde 0 ET equity 0 = lecture ratée »
+    // rejetait en silence l'état d'un compte réellement à zéro.
+    const snap = readAccountSnapshot({ account: "531066904", balance: 0, equity: 0 });
+    expect(snap).not.toBeNull();
+    expect(snap?.balance).toBe(0);
+  });
+
+  it("dit toujours POURQUOI il refuse : un terminal MetaTrader n'a que ce canal", () => {
+    expect(accountSnapshotRejectReason(base)).toBeNull();
+    expect(accountSnapshotRejectReason({ account: "1", balance: 0 })).toBeNull();
+    expect(accountSnapshotRejectReason(undefined)).toContain("absent");
+    expect(accountSnapshotRejectReason({ ...base, account: "  " })).toContain("numero de compte");
+    expect(accountSnapshotRejectReason({ account: "1" })).toContain("solde absent");
+    expect(accountSnapshotRejectReason({ account: "1", balance: "abc" })).toContain("solde illisible");
+    expect(accountSnapshotRejectReason({ account: "1", balance: 10, equity: "x" })).toContain(
+      "equity illisible",
+    );
   });
 
   it("refuse les non-objets sans jeter", () => {

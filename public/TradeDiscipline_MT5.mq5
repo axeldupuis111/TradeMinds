@@ -22,7 +22,7 @@
 //  et tous ses deals sont agreges : clotures partielles comprises.
 //
 #property copyright "TradeDiscipline"
-#property version   "1.21"
+#property version   "1.22"
 #property strict
 
 // --- Parametres configurables par l'utilisateur ---
@@ -48,7 +48,7 @@ int OnInit()
       return(INIT_FAILED);
    }
 
-   Print("TradeDiscipline : demarrage (v1.21). Envoi de l'historique des ",
+   Print("TradeDiscipline : demarrage (v1.22). Envoi de l'historique des ",
          HistoryDays, " derniers jours...");
 
    datetime from = TimeCurrent() - (datetime)HistoryDays * 24 * 60 * 60;
@@ -156,9 +156,8 @@ void SendHeartbeat()
 
    string response = CharArrayToString(result);
    if(StringFind(response, "\"account\":\"ok\"") < 0)
-      Print("TradeDiscipline ATTENTION : solde non pris en compte - ", response,
-            " (verifie que le n° de compte ", AccountInfoInteger(ACCOUNT_LOGIN),
-            " est bien celui saisi dans l'onglet Comptes).");
+      Print("TradeDiscipline ATTENTION : solde non pris en compte (compte ", AccountInfoInteger(ACCOUNT_LOGIN),
+            "). Motif renvoye par le serveur : ", response);
 }
 
 //+------------------------------------------------------------------+

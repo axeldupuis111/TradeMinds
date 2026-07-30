@@ -15,7 +15,7 @@
 //  l'equity en direct position ouverte, et voit les depots/retraits.
 //
 #property copyright "TradeDiscipline"
-#property version   "1.11"
+#property version   "1.12"
 #property strict
 
 // --- Parametres configurables par l'utilisateur ---
@@ -40,7 +40,7 @@ int OnInit()
       return(INIT_FAILED);
    }
 
-   Print("TradeDiscipline : demarrage (v1.11). Envoi de l'historique des ",
+   Print("TradeDiscipline : demarrage (v1.12). Envoi de l'historique des ",
          HistoryDays, " derniers jours...");
 
    datetime from = TimeCurrent() - (datetime)HistoryDays * 24 * 60 * 60;
@@ -162,9 +162,8 @@ void SendHeartbeat()
 
    string response = CharArrayToString(result);
    if(StringFind(response, "\"account\":\"ok\"") < 0)
-      Print("TradeDiscipline ATTENTION : solde non pris en compte - ", response,
-            " (verifie que le n° de compte ", AccountNumber(),
-            " est bien celui saisi dans l'onglet Comptes).");
+      Print("TradeDiscipline ATTENTION : solde non pris en compte (compte ", AccountNumber(),
+            "). Motif renvoye par le serveur : ", response);
 }
 
 //+------------------------------------------------------------------+

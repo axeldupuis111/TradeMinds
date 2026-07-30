@@ -19,6 +19,7 @@ import {
   tradeRejectReason,
   readTicket,
   readAccountSnapshot,
+  accountSnapshotRejectReason,
   brokerOffsetSeconds,
   type PushTrade,
 } from "./push-parse";
@@ -104,17 +105,38 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
   // Traité avant les trades : un battement de cœur arrive sans aucun trade et
   // doit quand même rafraîchir le solde. Le solde annoncé par le broker inclut
   // déjà les trades du même envoi (l'EA le lit après leur clôture).
-  const snapshot = readAccountSnapshot(body.account);
-  let accountSynced: "ok" | "unknown_account" | "write_failed" | "none" = "none";
-  if (snapshot) {
-    const res = await applyAccountSnapshot(admin, userId, snapshot);
-    accountSynced = res.applied ? "ok" : res.reason;
-    if (!res.applied) {
-      console.warn(
-        `[Push Sync] état de compte non appliqué pour ${userId} (compte ${snapshot.account}) : ${res.reason}`,
-      );
+  //
+  // Un refus n'est jamais silencieux : le motif part dans la réponse, que l'EA
+  // imprime dans son journal. C'est le seul canal de diagnostic dont dispose un
+  // utilisateur depuis son terminal MetaTrader.
+  let accountSynced: "ok" | "unknown_account" | "write_failed" | "invalid" | "none" = "none";
+  let accountError: string | undefined;
+
+  if (body.account != null) {
+    const reason = accountSnapshotRejectReason(body.account);
+    if (reason !== null) {
+      accountSynced = "invalid";
+      accountError = reason;
+      console.warn(`[Push Sync] état de compte refusé pour ${userId} : ${reason}`);
+    } else {
+      const snapshot = readAccountSnapshot(body.account)!;
+      const res = await applyAccountSnapshot(admin, userId, snapshot);
+      accountSynced = res.applied ? "ok" : res.reason;
+      if (!res.applied) {
+        accountError =
+          res.reason === "unknown_account"
+            ? `aucun compte actif ne porte le numero ${snapshot.account} (verifie l'onglet Comptes)`
+            : "erreur d'enregistrement cote serveur";
+        console.warn(
+          `[Push Sync] état de compte non appliqué pour ${userId} (compte ${snapshot.account}) : ${res.reason}`,
+        );
+      }
     }
   }
+
+  const accountFields = accountError
+    ? { account: accountSynced, account_error: accountError }
+    : { account: accountSynced };
 
   // ── Normalize trades input (single or array) ─────────────────────────────
   const rawTrades: unknown[] = [];
@@ -125,7 +147,7 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
   }
 
   if (rawTrades.length === 0) {
-    return NextResponse.json({ received: 0, synced: 0, skipped: 0, account: accountSynced });
+    return NextResponse.json({ received: 0, synced: 0, skipped: 0, ...accountFields });
   }
 
   // ── Validate & map trades ────────────────────────────────────────────────
@@ -158,7 +180,7 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
       synced: 0,
       skipped,
       errors,
-      account: accountSynced,
+      ...accountFields,
     });
   }
 
@@ -229,7 +251,7 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
       synced: 0,
       skipped: skipped + validTrades.length, // all valid ones were frozen
       errors,
-      account: accountSynced,
+      ...accountFields,
     });
   }
 
@@ -331,5 +353,5 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
     await checkTiltInsight(admin, userId, lang);
   }
 
-  return NextResponse.json({ received: rawTrades.length, synced, skipped, errors, account: accountSynced });
+  return NextResponse.json({ received: rawTrades.length, synced, skipped, errors, ...accountFields });
 }
