@@ -4,8 +4,14 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { decrypt } from "@/lib/crypto/encryption";
-import { syncTradovate, type TradovateCredentials, type TradovateEnvironment } from "./tradovate";
+import {
+  syncTradovate,
+  type TradovateAccountSnapshot,
+  type TradovateCredentials,
+  type TradovateEnvironment,
+} from "./tradovate";
 import { upsertSyncedTrades, type SyncedTradeRow } from "./upsert-trades";
+import { applyAccountSnapshot } from "./account-snapshot";
 import { resolveActiveChallengeId } from "@/lib/alerts/daily-loss";
 
 export interface BrokerConnectionRow {
@@ -31,9 +37,12 @@ export async function syncBrokerConnection(
 
     let rows: SyncedTradeRow[] = [];
 
+    let snapshot: TradovateAccountSnapshot | null = null;
+
     if (conn.broker === "tradovate") {
       const creds = JSON.parse(decrypt(conn.credentials_encrypted)) as TradovateCredentials;
-      const positions = await syncTradovate(creds, conn.environment, since);
+      const { positions, snapshot: accountState } = await syncTradovate(creds, conn.environment, since);
+      snapshot = accountState;
       rows = positions.map((p) => ({
         user_id: conn.user_id,
         pair: p.pair.toUpperCase(),
@@ -54,6 +63,19 @@ export async function syncBrokerConnection(
 
     const challengeId = await resolveActiveChallengeId(admin, conn.user_id);
     const result = await upsertSyncedTrades(admin, conn.user_id, rows, challengeId);
+
+    // Solde réel du broker, même chemin que le rail push : rattachement par
+    // numéro de compte, repli sur l'unique compte actif. Best-effort — une
+    // écriture ratée ne doit pas marquer la connexion en erreur alors que les
+    // trades, eux, sont bien passés.
+    if (snapshot) {
+      const applied = await applyAccountSnapshot(admin, conn.user_id, snapshot);
+      if (!applied.applied) {
+        console.warn(
+          `[Tradovate] état de compte non appliqué pour ${conn.user_id} (compte ${snapshot.account}) : ${applied.reason}`,
+        );
+      }
+    }
 
     await admin
       .from("broker_connections")

@@ -29,6 +29,36 @@ interface ContractInfo {
   pointValue: number;
 }
 
+/** Compte tel que Tradovate le décrit (`/account/list`). */
+interface RawAccount {
+  id: number;
+  name?: string;
+}
+
+/**
+ * Instantané de trésorerie (`/cashBalance/getcashbalancesnapshot`).
+ * Sur un compte à terme, le solde est la valeur en espèces et l'equity y ajoute
+ * le latent des positions ouvertes.
+ */
+interface RawCashSnapshot {
+  totalCashValue?: number;
+  openPnL?: number;
+}
+
+interface RawPosition {
+  accountId?: number;
+  netPos?: number;
+}
+
+/** État de compte prêt pour le rail push (mêmes champs que les clients installés). */
+export interface TradovateAccountSnapshot {
+  account: string;
+  balance: number;
+  equity: number;
+  open_positions: number;
+  currency: string | null;
+}
+
 // ─── Config ──────────────────────────────────────────────────────────────────
 
 function apiBase(env: TradovateEnvironment): string {
@@ -132,6 +162,104 @@ async function resolveContracts(
   return map;
 }
 
+// ─── État du compte ────────────────────────────────────────────────────────────
+
+/**
+ * Assemble l'état de compte à partir des réponses brutes de Tradovate.
+ *
+ * Séparée de tout appel réseau pour être testable : c'est le seul endroit où la
+ * forme supposée de l'API est interprétée. Renvoie null dès qu'un champ
+ * indispensable manque ou n'est pas un nombre — ne rien écrire vaut infiniment
+ * mieux qu'écrire un faux solde sur le compte d'un trader.
+ */
+export function buildTradovateSnapshot(
+  account: RawAccount | null | undefined,
+  cash: RawCashSnapshot | null | undefined,
+  positions: RawPosition[] | null | undefined,
+  currency: string | null,
+): TradovateAccountSnapshot | null {
+  if (!account || typeof account.id !== "number") return null;
+  if (!cash || typeof cash.totalCashValue !== "number" || !isFinite(cash.totalCashValue)) {
+    return null;
+  }
+
+  const balance = cash.totalCashValue;
+  // Le latent est facultatif : absent, l'equity vaut le solde, ce qui revient à
+  // dire « aucune position ouverte ».
+  const openPnl =
+    typeof cash.openPnL === "number" && isFinite(cash.openPnL) ? cash.openPnL : 0;
+
+  const open = Array.isArray(positions)
+    ? positions.filter(
+        (p) =>
+          (p.accountId === undefined || p.accountId === account.id) &&
+          typeof p.netPos === "number" &&
+          p.netPos !== 0,
+      ).length
+    : 0;
+
+  return {
+    // Tradovate NOMME ses comptes ; c'est ce numéro que l'utilisateur voit et
+    // saisit dans l'onglet Comptes.
+    account: (account.name || "").trim() || String(account.id),
+    balance,
+    equity: balance + openPnl,
+    open_positions: open,
+    currency,
+  };
+}
+
+/**
+ * Récupère l'état du compte connecté. Best-effort : toute anomalie (endpoint
+ * absent, forme inattendue, réseau) renvoie null sans jamais faire échouer la
+ * synchronisation des trades, qui est la fonction principale du rail.
+ *
+ * ⚠️ Non vérifié contre un compte Tradovate réel : faute d'accès, le code est
+ * écrit pour dégrader vers « aucun état de compte » plutôt que pour deviner.
+ */
+export async function fetchTradovateAccountSnapshot(
+  env: TradovateEnvironment,
+  token: string,
+): Promise<TradovateAccountSnapshot | null> {
+  try {
+    const accounts = await apiGet<RawAccount[]>(env, token, "/account/list");
+    const account = Array.isArray(accounts) ? accounts[0] : null;
+    if (!account || typeof account.id !== "number") return null;
+
+    const res = await fetch(`${apiBase(env)}/cashBalance/getcashbalancesnapshot`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ accountId: account.id }),
+    });
+    if (!res.ok) return null;
+    const cash = (await res.json()) as RawCashSnapshot;
+
+    // Positions ouvertes et devise sont accessoires : leur absence ne doit pas
+    // priver l'utilisateur de son solde réel.
+    let positions: RawPosition[] = [];
+    try {
+      positions = await apiGet<RawPosition[]>(env, token, "/position/list");
+    } catch {
+      positions = [];
+    }
+
+    // Devise volontairement non déduite : `/currency/list` énumère toutes les
+    // devises de la plateforme, pas celle du compte. La déduire au jugé
+    // écraserait le choix explicite de l'utilisateur par une supposition.
+    // `null` laisse la devise saisie dans l'onglet Comptes faire autorité.
+    return buildTradovateSnapshot(account, cash, positions, null);
+  } catch (err) {
+    console.warn(
+      "[Tradovate] état de compte indisponible :",
+      err instanceof Error ? err.message : err,
+    );
+    return null;
+  }
+}
+
 // ─── Public entry point ────────────────────────────────────────────────────────
 
 /**
@@ -143,15 +271,21 @@ export async function syncTradovate(
   creds: TradovateCredentials,
   env: TradovateEnvironment,
   since: Date,
-): Promise<AggregatedFuturesPosition[]> {
+): Promise<{ positions: AggregatedFuturesPosition[]; snapshot: TradovateAccountSnapshot | null }> {
+  // Une seule authentification pour les deux lectures : Tradovate limite
+  // sévèrement les demandes de token et répond par un p-ticket au-delà.
   const token = await authenticate(creds, env);
 
+  // L'état du compte est récupéré en premier mais ne peut jamais faire échouer
+  // la synchronisation des trades, qui reste la fonction principale du rail.
+  const snapshot = await fetchTradovateAccountSnapshot(env, token);
+
   const rawFills = await apiGet<RawFill[]>(env, token, "/fill/list");
-  if (!Array.isArray(rawFills) || rawFills.length === 0) return [];
+  if (!Array.isArray(rawFills) || rawFills.length === 0) return { positions: [], snapshot };
 
   const sinceMs = since.getTime();
   const recent = rawFills.filter((f) => new Date(f.timestamp).getTime() >= sinceMs);
-  if (recent.length === 0) return [];
+  if (recent.length === 0) return { positions: [], snapshot };
 
   const contractIds = Array.from(new Set(recent.map((f) => f.contractId)));
   const contracts = await resolveContracts(env, token, contractIds);
@@ -169,5 +303,5 @@ export async function syncTradovate(
     };
   });
 
-  return aggregateFuturesFills(fills);
+  return { positions: aggregateFuturesFills(fills), snapshot };
 }
