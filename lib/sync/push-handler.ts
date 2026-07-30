@@ -11,12 +11,14 @@ import { purgeDemoData } from "@/lib/demo-data";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkDailyLossAlert, checkDrawdownAlert, resolveActiveChallengeId, getChallengeAccountMap } from "@/lib/alerts/daily-loss";
 import { checkTiltInsight } from "@/lib/alerts/tilt-insight";
+import { applyAccountSnapshot } from "./account-snapshot";
 import {
   mapSource,
   mapDirection,
   toIso,
   tradeRejectReason,
   readTicket,
+  readAccountSnapshot,
   type PushTrade,
 } from "./push-parse";
 
@@ -24,6 +26,11 @@ export interface PushSyncBody {
   token: string;
   trade?: PushTrade;
   trades?: PushTrade[];
+  /**
+   * État du compte chez le broker (solde, equity, positions ouvertes). Envoyé
+   * avec chaque lot de trades et seul lors d'un battement de cœur.
+   */
+  account?: unknown;
 }
 
 // ─── Handler ─────────────────────────────────────────────────────────────────
@@ -87,6 +94,22 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
 
   const userId: string = profile.id;
 
+  // ── État du compte (solde réel + equity) ─────────────────────────────────
+  // Traité avant les trades : un battement de cœur arrive sans aucun trade et
+  // doit quand même rafraîchir le solde. Le solde annoncé par le broker inclut
+  // déjà les trades du même envoi (l'EA le lit après leur clôture).
+  const snapshot = readAccountSnapshot(body.account);
+  let accountSynced: "ok" | "unknown_account" | "write_failed" | "none" = "none";
+  if (snapshot) {
+    const res = await applyAccountSnapshot(admin, userId, snapshot);
+    accountSynced = res.applied ? "ok" : res.reason;
+    if (!res.applied) {
+      console.warn(
+        `[Push Sync] état de compte non appliqué pour ${userId} (compte ${snapshot.account}) : ${res.reason}`,
+      );
+    }
+  }
+
   // ── Normalize trades input (single or array) ─────────────────────────────
   const rawTrades: unknown[] = [];
   if (Array.isArray(body.trades)) {
@@ -96,7 +119,7 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
   }
 
   if (rawTrades.length === 0) {
-    return NextResponse.json({ received: 0, synced: 0, skipped: 0 });
+    return NextResponse.json({ received: 0, synced: 0, skipped: 0, account: accountSynced });
   }
 
   // ── Validate & map trades ────────────────────────────────────────────────
@@ -124,7 +147,13 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
   }
 
   if (validTrades.length === 0) {
-    return NextResponse.json({ received: rawTrades.length, synced: 0, skipped, errors });
+    return NextResponse.json({
+      received: rawTrades.length,
+      synced: 0,
+      skipped,
+      errors,
+      account: accountSynced,
+    });
   }
 
   // Des trades réels arrivent par le rail push → la démo n'a plus de raison d'être.
@@ -187,6 +216,7 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
       synced: 0,
       skipped: skipped + validTrades.length, // all valid ones were frozen
       errors,
+      account: accountSynced,
     });
   }
 
@@ -288,5 +318,5 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
     await checkTiltInsight(admin, userId, lang);
   }
 
-  return NextResponse.json({ received: rawTrades.length, synced, skipped, errors });
+  return NextResponse.json({ received: rawTrades.length, synced, skipped, errors, account: accountSynced });
 }

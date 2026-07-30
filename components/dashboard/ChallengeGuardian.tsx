@@ -11,6 +11,7 @@
  * Premium-gated: non-premium users get no challenge DD alerts.
  */
 
+import { resolveAccountBalance } from "@/lib/challenge-balance";
 import { computeChallengeRules } from "@/lib/challenge-rules";
 import { useAlerts, type Alert } from "@/lib/AlertsContext";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -96,7 +97,7 @@ export default function ChallengeGuardian() {
     const { data: challenges } = await supabase
       .from("prop_challenges")
       .select(
-        "id, firm, account_number, account_size, profit_target_pct, max_daily_dd_pct, max_total_dd_pct, trailing_drawdown, balance",
+        "id, firm, account_number, account_size, profit_target_pct, max_daily_dd_pct, max_total_dd_pct, trailing_drawdown, balance, synced_balance, synced_equity, synced_open_positions, synced_at",
       )
       .eq("user_id", user.id)
       .eq("status", "active")
@@ -126,7 +127,18 @@ export default function ChallengeGuardian() {
             .gte("open_time", dayStart),
         ]);
 
-        let running = challenge.account_size;
+        // Même résolveur que l'onglet Comptes : sans ça, le solde réel du broker
+        // s'y afficherait pendant que le drawdown serait jugé, ici, sur la
+        // reconstitution — deux chiffres différents, dont celui qui déclenche
+        // l'alerte d'arrêt.
+        const totalPnl = (allTrades || []).reduce(
+          (s, tr) => s + (tr.pnl || 0) + (tr.commission || 0) + (tr.swap || 0),
+          0,
+        );
+        const resolved = resolveAccountBalance(challenge, totalPnl);
+        const balance = resolved.balance;
+
+        let running = challenge.account_size + resolved.curveOffset;
         const equityCurveBalances = (allTrades || []).map((tr) => {
           running += (tr.pnl || 0) + (tr.commission || 0) + (tr.swap || 0);
           return running;
@@ -135,11 +147,6 @@ export default function ChallengeGuardian() {
         const todayPnl = (todayTrades || [])
           .filter((tr) => tr.status === "closed")
           .reduce((s, tr) => s + (tr.pnl || 0) + (tr.commission || 0) + (tr.swap || 0), 0);
-
-        const balance =
-          equityCurveBalances.length > 0
-            ? equityCurveBalances[equityCurveBalances.length - 1]
-            : challenge.balance;
 
         const rules = computeChallengeRules(
           {

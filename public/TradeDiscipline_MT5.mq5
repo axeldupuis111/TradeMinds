@@ -3,6 +3,12 @@
 //|        Synchronise les trades fermes vers TradeDiscipline        |
 //+------------------------------------------------------------------+
 //
+//  v1.20 - l'EA envoie desormais l'etat du compte (solde reel, equity, nombre
+//  de positions ouvertes) a chaque envoi de trades ET a chaque battement de
+//  coeur, meme sans trade ferme. TradeDiscipline affiche donc le vrai solde du
+//  broker au lieu de le reconstituer a partir du capital saisi a la main, suit
+//  l'equity en direct position ouverte, et voit les depots/retraits.
+//
 //  v1.10 - correctif majeur : un trade ouvert il y a plusieurs heures et
 //  ferme a l'instant n'etait plus envoye correctement. L'EA ne chargeait que
 //  la fenetre recente de l'historique, donc le deal d'OUVERTURE (prix, heure)
@@ -11,7 +17,7 @@
 //  et tous ses deals sont agreges : clotures partielles comprises.
 //
 #property copyright "TradeDiscipline"
-#property version   "1.10"
+#property version   "1.20"
 #property strict
 
 // --- Parametres configurables par l'utilisateur ---
@@ -20,6 +26,7 @@ input string ApiUrl        = "https://www.tradediscipline.app/api/sync/mt";  // 
 input int    HistoryDays   = 90;                                             // Jours d'historique a envoyer au demarrage
 input int    CheckSeconds  = 60;                                             // Frequence de verification (secondes)
 input int    BatchSize     = 50;                                             // Trades envoyes par requete
+input bool   SendBalance   = true;                                           // Envoyer le solde reel et l'equity du compte
 
 // --- Etat interne ---
 datetime lastCheck = 0;
@@ -36,11 +43,15 @@ int OnInit()
       return(INIT_FAILED);
    }
 
-   Print("TradeDiscipline : demarrage (v1.10). Envoi de l'historique des ",
+   Print("TradeDiscipline : demarrage (v1.20). Envoi de l'historique des ",
          HistoryDays, " derniers jours...");
 
    datetime from = TimeCurrent() - (datetime)HistoryDays * 24 * 60 * 60;
    SendClosedTrades(from);
+
+   // Etat du compte des le demarrage : le solde reel s'affiche tout de suite,
+   // sans attendre la premiere cloture.
+   SendHeartbeat();
 
    lastCheck = TimeCurrent();
    EventSetTimer(CheckSeconds);
@@ -71,8 +82,76 @@ void OnTimer()
    // Fenetre de detection des CLOTURES uniquement : les deals d'ouverture,
    // eux, sont recharges position par position (voir BuildTradeJson).
    datetime from = lastCheck - (datetime)5 * 60;
-   SendClosedTrades(from);
+   bool sent = SendClosedTrades(from);
    lastCheck = TimeCurrent();
+
+   // Battement de coeur : si aucun trade n'est parti, l'etat du compte part
+   // quand meme. C'est ce qui fait vivre le solde et l'equity en direct
+   // pendant qu'une position est ouverte.
+   if(!sent)
+      SendHeartbeat();
+}
+
+//+------------------------------------------------------------------+
+//| Etat du compte : solde reel, equity, positions ouvertes          |
+//| Renvoie le fragment JSON, ou "" si l'envoi du solde est desactive |
+//+------------------------------------------------------------------+
+string BuildAccountJson()
+{
+   if(!SendBalance) return("");
+
+   string json  = "{";
+   json += "\"account\":\""  + IntegerToString(AccountInfoInteger(ACCOUNT_LOGIN))       + "\",";
+   json += "\"balance\":"    + DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE), 2)    + ",";
+   json += "\"equity\":"     + DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY), 2)     + ",";
+   json += "\"open_positions\":" + IntegerToString(PositionsTotal())                    + ",";
+   json += "\"currency\":\"" + AccountInfoString(ACCOUNT_CURRENCY)                      + "\",";
+   json += "\"source\":\"mt5\"";
+   json += "}";
+   return(json);
+}
+
+//+------------------------------------------------------------------+
+//| Envoie l'etat du compte seul (aucun trade)                        |
+//+------------------------------------------------------------------+
+void SendHeartbeat()
+{
+   string account = BuildAccountJson();
+   if(account == "") return;
+
+   string body = "{\"token\":\"" + SyncToken + "\",\"account\":" + account + "}";
+
+   char   post[];
+   char   result[];
+   string headers = "Content-Type: application/json\r\n";
+   string resultHeaders;
+
+   int len = StringToCharArray(body, post, 0, WHOLE_ARRAY, CP_UTF8);
+   if(len > 0 && post[len - 1] == 0)
+      ArrayResize(post, len - 1);
+
+   ResetLastError();
+   int status = WebRequest("POST", ApiUrl, headers, 10000, post, result, resultHeaders);
+
+   // Le battement de coeur est volontairement silencieux quand tout va bien :
+   // une ligne de journal par minute rendrait l'onglet Experts illisible.
+   if(status == -1)
+   {
+      Print("TradeDiscipline ERREUR : etat du compte non envoye, code ", GetLastError());
+      return;
+   }
+   if(status != 200)
+   {
+      Print("TradeDiscipline ERREUR : etat du compte - HTTP ", status,
+            " - reponse : ", CharArrayToString(result));
+      return;
+   }
+
+   string response = CharArrayToString(result);
+   if(StringFind(response, "\"account\":\"ok\"") < 0)
+      Print("TradeDiscipline ATTENTION : solde non pris en compte - ", response,
+            " (verifie que le n° de compte ", AccountInfoInteger(ACCOUNT_LOGIN),
+            " est bien celui saisi dans l'onglet Comptes).");
 }
 
 //+------------------------------------------------------------------+
@@ -91,14 +170,16 @@ void AddUniquePosition(long &list[], long positionId)
 
 //+------------------------------------------------------------------+
 //| Parcourt l'historique et envoie les positions fermees            |
+//| Renvoie true si au moins une requete est partie (elle porte alors |
+//| l'etat du compte, ce qui rend le battement de coeur inutile).     |
 //+------------------------------------------------------------------+
-void SendClosedTrades(datetime fromTime)
+bool SendClosedTrades(datetime fromTime)
 {
    // +1 h de marge : l'heure serveur du broker peut devancer TimeCurrent().
    if(!HistorySelect(fromTime, TimeCurrent() + 3600))
    {
       Print("TradeDiscipline ERREUR : impossible de charger l'historique.");
-      return;
+      return(false);
    }
 
    // --- Passe 1 : reperer les positions ayant un deal de cloture ---
@@ -122,7 +203,7 @@ void SendClosedTrades(datetime fromTime)
    }
 
    int count = ArraySize(positions);
-   if(count == 0) return;
+   if(count == 0) return(false);
 
    // --- Passe 2 : reconstruire chaque trade complet et l'envoyer par lots ---
    // ATTENTION : BuildTradeJson appelle HistorySelectByPosition, ce qui remplace
@@ -163,6 +244,8 @@ void SendClosedTrades(datetime fromTime)
 
    Print("TradeDiscipline : envoi termine - ", okCount, " envoye(s), ",
          errCount, " echec(s), ", ignored, " position(s) encore ouverte(s) ou incomplete(s).");
+
+   return(okCount + errCount > 0);
 }
 
 //+------------------------------------------------------------------+
@@ -269,7 +352,12 @@ bool BuildTradeJson(long positionId, string &json)
 //+------------------------------------------------------------------+
 bool PostTrades(string tradesJson, int tradeCount)
 {
-   string body = "{\"token\":\"" + SyncToken + "\",\"trades\":[" + tradesJson + "]}";
+   // L'etat du compte voyage avec les trades : le solde renvoye par le broker
+   // les inclut deja (il est lu apres leur cloture), donc rien a recalculer.
+   string account = BuildAccountJson();
+   string body = "{\"token\":\"" + SyncToken + "\",\"trades\":[" + tradesJson + "]";
+   if(account != "") body += ",\"account\":" + account;
+   body += "}";
 
    char   post[];
    char   result[];

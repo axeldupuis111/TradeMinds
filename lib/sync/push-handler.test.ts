@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { mapSource, mapDirection, toIso, isValidTrade, tradeRejectReason, readTicket } from "./push-parse";
+import { mapSource, mapDirection, toIso, isValidTrade, tradeRejectReason, readTicket, readAccountSnapshot } from "./push-parse";
 
 describe("mapSource", () => {
   it("accepts every known platform (case/space-insensitive)", () => {
@@ -101,5 +101,63 @@ describe("isValidTrade", () => {
   it("lit le ticket même sur un payload non conforme (messages d'erreur)", () => {
     expect(readTicket({ ...base, open_price: 0 })).toBe("12345");
     expect(readTicket(null)).toBe("?");
+  });
+});
+
+describe("readAccountSnapshot", () => {
+  const base = {
+    account: "51234567",
+    balance: 10_432.5,
+    equity: 10_510.25,
+    open_positions: 2,
+    currency: "eur",
+  };
+
+  it("accepte un état de compte complet", () => {
+    expect(readAccountSnapshot(base)).toEqual({
+      account: "51234567",
+      balance: 10_432.5,
+      equity: 10_510.25,
+      open_positions: 2,
+      currency: "EUR",
+    });
+  });
+
+  it("accepte les nombres sérialisés en texte (clients MQL)", () => {
+    const snap = readAccountSnapshot({ ...base, balance: "10432.50", open_positions: "2" });
+    expect(snap?.balance).toBe(10_432.5);
+    expect(snap?.open_positions).toBe(2);
+  });
+
+  it("retombe sur le solde quand l'equity manque", () => {
+    const snap = readAccountSnapshot({ account: "1", balance: 500 });
+    expect(snap?.equity).toBe(500);
+    expect(snap?.open_positions).toBe(0);
+    expect(snap?.currency).toBeNull();
+  });
+
+  it("accepte un solde négatif (compte grillé en levier)", () => {
+    expect(readAccountSnapshot({ ...base, balance: -120, equity: -120 })?.balance).toBe(-120);
+  });
+
+  it("refuse un état sans n° de compte : écrire sur le mauvais compte est pire que rien", () => {
+    expect(readAccountSnapshot({ ...base, account: "  " })).toBeNull();
+    expect(readAccountSnapshot({ balance: 1000, equity: 1000 })).toBeNull();
+  });
+
+  it("refuse un solde illisible ou une lecture de compte ratée (0/0)", () => {
+    expect(readAccountSnapshot({ ...base, balance: "abc" })).toBeNull();
+    expect(readAccountSnapshot({ ...base, balance: undefined })).toBeNull();
+    expect(readAccountSnapshot({ account: "1", balance: 0, equity: 0 })).toBeNull();
+  });
+
+  it("refuse les non-objets sans jeter", () => {
+    expect(readAccountSnapshot(undefined)).toBeNull();
+    expect(readAccountSnapshot("10432")).toBeNull();
+  });
+
+  it("normalise un nombre de positions aberrant plutôt que de le propager", () => {
+    expect(readAccountSnapshot({ ...base, open_positions: -3 })?.open_positions).toBe(0);
+    expect(readAccountSnapshot({ ...base, open_positions: 2.7 })?.open_positions).toBe(3);
   });
 });

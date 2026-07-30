@@ -2,8 +2,15 @@
 //|                                      TradeDiscipline_MT4.mq4     |
 //|        Synchronise les trades fermes vers TradeDiscipline        |
 //+------------------------------------------------------------------+
+//
+//  v1.10 - l'EA envoie desormais l'etat du compte (solde reel, equity, nombre
+//  de positions ouvertes) a chaque envoi de trades ET a chaque battement de
+//  coeur, meme sans trade ferme. TradeDiscipline affiche donc le vrai solde du
+//  broker au lieu de le reconstituer a partir du capital saisi a la main, suit
+//  l'equity en direct position ouverte, et voit les depots/retraits.
+//
 #property copyright "TradeDiscipline"
-#property version   "1.02"
+#property version   "1.10"
 #property strict
 
 // --- Parametres configurables par l'utilisateur ---
@@ -11,6 +18,7 @@ extern string SyncToken     = "";                                            // 
 extern string ApiUrl        = "https://www.tradediscipline.app/api/sync/mt";  // URL de l'API - ne pas modifier
 extern int    HistoryDays   = 90;                                             // Jours d'historique a envoyer au demarrage
 extern int    CheckSeconds  = 60;                                             // Frequence de verification (secondes)
+extern bool   SendBalance   = true;                                           // Envoyer le solde reel et l'equity du compte
 
 // --- Etat interne ---
 datetime lastCheck = 0;
@@ -27,11 +35,15 @@ int OnInit()
       return(INIT_FAILED);
    }
 
-   Print("TradeDiscipline : demarrage. Envoi de l'historique des ",
+   Print("TradeDiscipline : demarrage (v1.10). Envoi de l'historique des ",
          HistoryDays, " derniers jours...");
 
    datetime from = TimeCurrent() - (datetime)HistoryDays * 24 * 60 * 60;
    SendClosedTrades(from);
+
+   // Etat du compte des le demarrage : le solde reel s'affiche tout de suite,
+   // sans attendre la premiere cloture.
+   SendHeartbeat();
 
    lastCheck = TimeCurrent();
    EventSetTimer(CheckSeconds);
@@ -60,14 +72,100 @@ void OnTick()
 void OnTimer()
 {
    datetime from = lastCheck - (datetime)5 * 60;
-   SendClosedTrades(from);
+   bool sent = SendClosedTrades(from);
    lastCheck = TimeCurrent();
+
+   // Battement de coeur : si aucun trade n'est parti, l'etat du compte part
+   // quand meme. C'est ce qui fait vivre le solde et l'equity en direct
+   // pendant qu'une position est ouverte.
+   if(!sent)
+      SendHeartbeat();
+}
+
+//+------------------------------------------------------------------+
+//| Nombre de positions reellement ouvertes (hors ordres en attente) |
+//+------------------------------------------------------------------+
+int CountOpenPositions()
+{
+   int open = 0;
+   int total = OrdersTotal();
+   for(int i = 0; i < total; i++)
+   {
+      if(!OrderSelect(i, SELECT_BY_POS, MODE_TRADES)) continue;
+      int type = OrderType();
+      if(type == OP_BUY || type == OP_SELL) open++;
+   }
+   return(open);
+}
+
+//+------------------------------------------------------------------+
+//| Etat du compte : solde reel, equity, positions ouvertes          |
+//| Renvoie le fragment JSON, ou "" si l'envoi du solde est desactive |
+//+------------------------------------------------------------------+
+string BuildAccountJson()
+{
+   if(!SendBalance) return("");
+
+   string json  = "{";
+   json += "\"account\":\""      + IntegerToString(AccountNumber())      + "\",";
+   json += "\"balance\":"        + DoubleToString(AccountBalance(), 2)   + ",";
+   json += "\"equity\":"         + DoubleToString(AccountEquity(), 2)    + ",";
+   json += "\"open_positions\":" + IntegerToString(CountOpenPositions()) + ",";
+   json += "\"currency\":\""     + AccountCurrency()                     + "\",";
+   json += "\"source\":\"mt4\"";
+   json += "}";
+   return(json);
+}
+
+//+------------------------------------------------------------------+
+//| Envoie l'etat du compte seul (aucun trade)                        |
+//+------------------------------------------------------------------+
+void SendHeartbeat()
+{
+   string account = BuildAccountJson();
+   if(account == "") return;
+
+   string body = "{\"token\":\"" + SyncToken + "\",\"account\":" + account + "}";
+
+   char   post[];
+   char   result[];
+   string headers = "Content-Type: application/json\r\n";
+   string resultHeaders;
+
+   int len = StringToCharArray(body, post, 0, WHOLE_ARRAY, CP_UTF8);
+   if(len > 0 && post[len - 1] == 0)
+      ArrayResize(post, len - 1);
+
+   ResetLastError();
+   int status = WebRequest("POST", ApiUrl, headers, 5000, post, result, resultHeaders);
+
+   // Le battement de coeur est volontairement silencieux quand tout va bien :
+   // une ligne de journal par minute rendrait l'onglet Experts illisible.
+   if(status == -1)
+   {
+      Print("TradeDiscipline ERREUR : etat du compte non envoye, code ", GetLastError());
+      return;
+   }
+   if(status != 200)
+   {
+      Print("TradeDiscipline ERREUR : etat du compte - HTTP ", status,
+            " - reponse : ", CharArrayToString(result));
+      return;
+   }
+
+   string response = CharArrayToString(result);
+   if(StringFind(response, "\"account\":\"ok\"") < 0)
+      Print("TradeDiscipline ATTENTION : solde non pris en compte - ", response,
+            " (verifie que le n° de compte ", AccountNumber(),
+            " est bien celui saisi dans l'onglet Comptes).");
 }
 
 //+------------------------------------------------------------------+
 //| Parcourt l'historique et envoie les ordres fermes                |
+//| Renvoie true si au moins une requete est partie (elle porte alors |
+//| l'etat du compte, ce qui rend le battement de coeur inutile).     |
 //+------------------------------------------------------------------+
-void SendClosedTrades(datetime fromTime)
+bool SendClosedTrades(datetime fromTime)
 {
    int total    = OrdersHistoryTotal();
    int okCount  = 0;
@@ -128,6 +226,8 @@ void SendClosedTrades(datetime fromTime)
 
    Print("TradeDiscipline : envoi termine - ", okCount,
          " reussi(s), ", errCount, " echec(s).");
+
+   return(okCount + errCount > 0);
 }
 
 //+------------------------------------------------------------------+
@@ -135,7 +235,12 @@ void SendClosedTrades(datetime fromTime)
 //+------------------------------------------------------------------+
 bool PostTrade(string tradeJson, int ticket)
 {
-   string body = "{\"token\":\"" + SyncToken + "\",\"trade\":" + tradeJson + "}";
+   // L'etat du compte voyage avec le trade : le solde renvoye par le broker
+   // l'inclut deja (il est lu apres sa cloture), donc rien a recalculer.
+   string account = BuildAccountJson();
+   string body = "{\"token\":\"" + SyncToken + "\",\"trade\":" + tradeJson;
+   if(account != "") body += ",\"account\":" + account;
+   body += "}";
 
    char   post[];
    char   result[];

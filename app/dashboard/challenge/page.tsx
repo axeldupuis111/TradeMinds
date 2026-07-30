@@ -1,6 +1,7 @@
 "use client";
 
 import EquityCurve from "@/components/charts/EquityCurve";
+import { resolveAccountBalance } from "@/lib/challenge-balance";
 import { computeChallengeRules } from "@/lib/challenge-rules";
 import { projectChallenge } from "@/lib/challenge-projection";
 import { ChallengeProjectionBlock } from "@/components/dashboard/ChallengeProjectionBlock";
@@ -29,6 +30,11 @@ interface Challenge {
   balance: number;
   status: "active" | "passed" | "failed";
   created_at: string;
+  /** Solde réel poussé par l'EA. Null tant qu'aucune synchro n'a eu lieu. */
+  synced_balance: number | null;
+  synced_equity: number | null;
+  synced_open_positions: number | null;
+  synced_at: string | null;
 }
 
 interface AccountStats {
@@ -40,6 +46,19 @@ interface AccountStats {
   tradePnls: number[];
   tradeCount: number;
   winrate: number;
+  /** Le solde vient du broker plutôt que d'une reconstitution. */
+  fromBroker: boolean;
+  /** Un EA a donné signe de vie il y a moins de 15 min. */
+  live: boolean;
+  /** Equity temps réel, uniquement si une position est ouverte. */
+  equity: number | null;
+  openPositions: number;
+  /**
+   * Point de départ de la courbe d'equity. Vaut account_size tant que rien n'est
+   * synchronisé ; une fois le solde réel connu, la courbe est décalée pour finir
+   * dessus et sa ligne de référence doit suivre le même décalage.
+   */
+  curveBaseline: number;
 }
 
 const PROP_FIRMS = [
@@ -512,23 +531,16 @@ function AccountCard({
     stats.equityCurveData.map((d) => d.balance),
   );
 
-  // Projection (prop challenges only) — derive per-trade P&L from the balance
-  // points and estimate the probability of passing before breaching DD.
+  // Projection (prop challenges only) — probabilité de passer avant de percer le
+  // DD. On lit les P&L par trade tels quels : les redériver depuis la courbe
+  // ferait absorber au premier trade le décalage de calage sur le solde réel.
   const projection = isProp
-    ? (() => {
-        let prev = ac.account_size;
-        const tradePnls = stats.equityCurveData.map((d) => {
-          const pnl = d.balance - prev;
-          prev = d.balance;
-          return pnl;
-        });
-        return projectChallenge({
-          profitRemainingEur: rules.profitRemainingEur,
-          ddBufferEur: rules.totalDdRemainingEur,
-          tradePnls,
-          tradeDays: stats.equityCurveData.map((d) => d.date),
-        });
-      })()
+    ? projectChallenge({
+        profitRemainingEur: rules.profitRemainingEur,
+        ddBufferEur: rules.totalDdRemainingEur,
+        tradePnls: stats.tradePnls,
+        tradeDays: stats.equityCurveData.map((d) => d.date),
+      })
     : null;
 
   const daysElapsed = Math.floor(
@@ -605,11 +617,35 @@ function AccountCard({
       {/* Stats grid */}
       <div className={`grid grid-cols-2 ${isProp ? "sm:grid-cols-4" : "sm:grid-cols-3"} gap-3 mt-6`}>
         <div className="bg-background rounded-lg p-3">
-          <p className="text-xs text-muted">{t("challenge_balance")}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-xs text-muted">{t("challenge_balance")}</p>
+            {stats.live && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-profit">
+                <span className="w-1.5 h-1.5 rounded-full bg-profit animate-pulse" />
+                {t("challenge_balance_live")}
+              </span>
+            )}
+          </div>
           <p className="text-lg font-bold text-foreground">
             {balance.toLocaleString("fr-FR", { maximumFractionDigits: 0 })}€
           </p>
-          <p className="text-xs text-muted mt-0.5">{t("challenge_from_trades")}</p>
+          {/* Equity : seulement position ouverte, sinon elle vaut le solde et
+              afficher deux fois le même chiffre n'apprend rien. */}
+          {stats.equity !== null ? (
+            <p className="text-xs mt-0.5">
+              <span className={stats.equity >= balance ? "text-profit" : "text-loss"}>
+                {t("challenge_equity")} {stats.equity.toLocaleString("fr-FR", { maximumFractionDigits: 0 })}€
+              </span>
+              <span className="text-muted">
+                {" · "}
+                {stats.openPositions} {stats.openPositions > 1 ? t("challenge_open_positions") : t("challenge_open_position")}
+              </span>
+            </p>
+          ) : (
+            <p className="text-xs text-muted mt-0.5">
+              {stats.fromBroker ? t("challenge_from_broker") : t("challenge_from_trades")}
+            </p>
+          )}
         </div>
         <div className="bg-background rounded-lg p-3">
           <p className="text-xs text-muted">{t("challenge_total_pnl")}</p>
@@ -679,7 +715,7 @@ function AccountCard({
 
       {/* Equity curve */}
       <div className="mt-6">
-        <EquityCurve data={stats.equityCurveData} initialBalance={ac.account_size} />
+        <EquityCurve data={stats.equityCurveData} initialBalance={stats.curveBaseline} />
       </div>
     </div>
   );
@@ -753,8 +789,10 @@ export default function ChallengePage() {
 
   const isFormValid = accountNumber.trim() !== "" && accountSize !== "" && parseFloat(accountSize) > 0 && startDate !== "" && effectiveFirm !== "";
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  // `silent` : rafraîchissement de fond (suivi en direct), sans squelette de
+  // chargement qui ferait clignoter la page toutes les minutes.
+  const loadData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
 
@@ -798,20 +836,26 @@ export default function ChallengePage() {
           .gte("open_time", today),
       ]);
 
-      const totalPnl = (challengeTrades || []).reduce(
-        (sum, t) => sum + (t.pnl || 0) + (t.commission || 0) + (t.swap || 0), 0
-      );
-      const newBalance = ac.account_size + totalPnl;
+      const netOf = (t: { pnl: number | null; commission: number | null; swap: number | null }) =>
+        (t.pnl || 0) + (t.commission || 0) + (t.swap || 0);
+
+      const totalPnl = (challengeTrades || []).reduce((sum, t) => sum + netOf(t), 0);
+
+      // Solde réel du broker quand l'EA l'a poussé, reconstitution sinon.
+      // Voir lib/challenge-balance.ts pour la règle exacte.
+      const resolved = resolveAccountBalance(ac, totalPnl);
+      const newBalance = resolved.balance;
 
       // Update balance in Supabase if changed
       if (Math.abs(newBalance - ac.balance) > 0.01) {
         await supabase.from("prop_challenges").update({ balance: newBalance }).eq("id", ac.id);
       }
 
-      let running = ac.account_size;
+      // Courbe décalée pour finir exactement sur le solde affiché : les écarts
+      // (donc le drawdown) sont préservés, seul le niveau est recalé.
+      let running = ac.account_size + resolved.curveOffset;
       const eqData = (challengeTrades || []).map((t) => {
-        const net = (t.pnl || 0) + (t.commission || 0) + (t.swap || 0);
-        running += net;
+        running += netOf(t);
         return {
           date: t.open_time ? new Date(t.open_time).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }) : "—",
           balance: Math.round(running * 100) / 100,
@@ -823,7 +867,7 @@ export default function ChallengePage() {
       );
 
       const allTrades = challengeTrades || [];
-      const tradePnls = allTrades.map((t) => (t.pnl || 0) + (t.commission || 0) + (t.swap || 0));
+      const tradePnls = allTrades.map(netOf);
       const wins = tradePnls.filter((p) => p > 0).length;
       statsMap[ac.id] = {
         balance: newBalance,
@@ -833,6 +877,11 @@ export default function ChallengePage() {
         tradePnls,
         tradeCount: allTrades.length,
         winrate: allTrades.length > 0 ? (wins / allTrades.length) * 100 : 0,
+        fromBroker: resolved.fromBroker,
+        live: resolved.live,
+        equity: resolved.equity,
+        openPositions: resolved.openPositions,
+        curveBaseline: ac.account_size + resolved.curveOffset,
       };
     }
 
@@ -843,6 +892,24 @@ export default function ChallengePage() {
   useEffect(() => {
     loadData();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Suivi en direct : dès qu'un compte reçoit l'état poussé par un EA, on se
+  // cale sur son rythme (60 s) pour voir l'equity bouger position ouverte.
+  // Onglet en arrière-plan = aucune requête, et retour au premier plan =
+  // rafraîchissement immédiat plutôt qu'un chiffre périmé.
+  const hasSyncedAccount = Object.values(accountStatsMap).some((s) => s.fromBroker);
+  useEffect(() => {
+    if (!hasSyncedAccount) return;
+    const tick = () => {
+      if (document.visibilityState === "visible") loadData(true);
+    };
+    const id = setInterval(tick, 60_000);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, [hasSyncedAccount, loadData]);
 
   async function handleCreate() {
     setMessage(null);
@@ -994,7 +1061,7 @@ export default function ChallengePage() {
       {activeAccounts.length > 0 && (
         <div className="mt-8 space-y-6">
           {activeAccounts.map((ac) => {
-            const s = accountStatsMap[ac.id] || { balance: ac.balance, currentPnl: 0, todayPnl: 0, equityCurveData: [], tradePnls: [], tradeCount: 0, winrate: 0 };
+            const s = accountStatsMap[ac.id] || { balance: ac.balance, currentPnl: 0, todayPnl: 0, equityCurveData: [], tradePnls: [], tradeCount: 0, winrate: 0, fromBroker: false, live: false, equity: null, openPositions: 0, curveBaseline: ac.account_size };
             return (
               <AccountCard
                 key={ac.id}
@@ -1116,6 +1183,7 @@ export default function ChallengePage() {
                 placeholder="50000"
                 className={formErrors.accountSize ? inputErrorClass : inputClass}
               />
+              <p className="text-xs text-muted mt-1">{t("challenge_account_size_hint")}</p>
               {formErrors.accountSize && (
                 <p className="text-red-500 text-xs mt-1">{t("challenge_field_required")}</p>
               )}

@@ -25,6 +25,22 @@ export interface PushTrade {
   account?: string | number; // n° de compte de trading (pour rattacher au challenge)
 }
 
+/**
+ * État du compte au moment de l'envoi, tel que le broker le connaît.
+ *
+ * Envoyé par le client à chaque lot de trades ET à chaque battement de cœur
+ * (toutes les 60 s, même sans trade fermé). C'est ce qui permet d'afficher le
+ * vrai solde au lieu d'une reconstitution, et de suivre l'equity en direct
+ * pendant qu'une position est ouverte.
+ */
+export interface AccountSnapshot {
+  account: string;
+  balance: number;
+  equity: number;
+  open_positions: number;
+  currency: string | null;
+}
+
 const KNOWN_SOURCES: readonly PushSource[] = ["mt4", "mt5", "ctrader", "ninjatrader", "tradingview"];
 
 /**
@@ -106,6 +122,54 @@ export function tradeRejectReason(t: unknown): string | null {
 
 export function isValidTrade(t: unknown): t is PushTrade {
   return tradeRejectReason(t) === null;
+}
+
+/**
+ * Valide l'état de compte envoyé par le client, ou renvoie null s'il est
+ * inexploitable. Un état invalide n'est jamais fatal : les trades du même
+ * payload doivent continuer d'être enregistrés.
+ *
+ * Le n° de compte est obligatoire : sans lui on ne saurait pas à quel compte
+ * TradeDiscipline rattacher le solde, et écrire un solde sur le mauvais compte
+ * est pire que ne rien écrire.
+ */
+export function readAccountSnapshot(val: unknown): AccountSnapshot | null {
+  if (!val || typeof val !== "object") return null;
+  const o = val as Record<string, unknown>;
+
+  const account = o.account == null ? "" : String(o.account).trim();
+  if (account === "") return null;
+
+  const balance = readFiniteNumber(o.balance);
+  if (balance === null) return null;
+
+  // L'equity peut manquer sur un client minimaliste : on retombe sur le solde,
+  // ce qui revient à dire « aucune position ouverte ».
+  const equity = readFiniteNumber(o.equity) ?? balance;
+
+  // Un compte réel n'est jamais à 0,00 de solde ET 0,00 d'equity : c'est la
+  // signature d'un client qui n'a pas réussi à lire l'état du compte.
+  if (balance === 0 && equity === 0) return null;
+
+  const openRaw = readFiniteNumber(o.open_positions);
+  const open_positions = openRaw !== null && openRaw > 0 ? Math.round(openRaw) : 0;
+
+  const currency =
+    typeof o.currency === "string" && o.currency.trim() !== ""
+      ? o.currency.trim().toUpperCase().slice(0, 8)
+      : null;
+
+  return { account, balance, equity, open_positions, currency };
+}
+
+/** Nombre exploitable (les clients MQL sérialisent parfois les nombres en texte). */
+function readFiniteNumber(val: unknown): number | null {
+  if (typeof val === "number") return isFinite(val) ? val : null;
+  if (typeof val === "string" && val.trim() !== "") {
+    const n = Number(val);
+    return isFinite(n) ? n : null;
+  }
+  return null;
 }
 
 /** Ticket lisible pour les messages d'erreur, même sur un payload non conforme. */
