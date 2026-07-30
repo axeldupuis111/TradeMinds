@@ -8,7 +8,10 @@ import { createClient } from "@/lib/supabase/client";
 import { Activity } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+/** Délai avant de pouvoir redemander un email de confirmation. */
+const RESEND_COOLDOWN_S = 60;
 
 export default function LoginPage() {
   const { lang, t } = useLanguage();
@@ -20,8 +23,49 @@ export default function LoginPage() {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [signupMode, setSignupMode] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  // Message porté par l'URL (/auth/confirm y redirige). On stocke la clé et non
+  // le texte traduit, pour que le sélecteur de langue de la page le suive.
+  const [notice, setNotice] = useState<"expired_link" | "email_confirmed" | null>(null);
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
   const router = useRouter();
   const supabase = createClient();
+
+  // Lu depuis window plutôt que via useSearchParams : ça évite d'avoir à
+  // encapsuler la page dans un <Suspense> aux deux endroits qui la montent.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("error") === "expired_link") {
+      setNotice("expired_link");
+      setNeedsConfirmation(true);
+    } else if (params.get("notice") === "email_confirmed") {
+      setNotice("email_confirmed");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const id = setTimeout(() => setCooldown((s) => s - 1), 1000);
+    return () => clearTimeout(id);
+  }, [cooldown]);
+
+  async function handleResendConfirmation() {
+    if (!email) {
+      setError(t("login_fill_fields"));
+      return;
+    }
+    setError(null);
+    setNotice(null);
+    setLoading(true);
+    const { error } = await supabase.auth.resend({ type: "signup", email });
+    setLoading(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setSuccess(t("login_confirmation_resent"));
+    setCooldown(RESEND_COOLDOWN_S);
+  }
 
   async function handleGoogle() {
     setError(null);
@@ -43,11 +87,19 @@ export default function LoginPage() {
   async function handleSignIn() {
     setError(null);
     setSuccess(null);
+    setNotice(null);
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
-      setError(error.message);
+      // Compte créé mais email jamais confirmé : le message brut de Supabase est
+      // en anglais et sans issue. On traduit et on propose de renvoyer le mail.
+      if (error.code === "email_not_confirmed" || /email not confirmed/i.test(error.message)) {
+        setNeedsConfirmation(true);
+        setError(t("login_email_not_confirmed"));
+      } else {
+        setError(error.message);
+      }
     } else {
       router.push("/dashboard");
       router.refresh();
@@ -57,6 +109,7 @@ export default function LoginPage() {
   async function handleSignUp() {
     setError(null);
     setSuccess(null);
+    setNotice(null);
     if (!email || !password) {
       setError(t("login_fill_fields"));
       return;
@@ -76,6 +129,9 @@ export default function LoginPage() {
       setError(error.message);
     } else {
       setSuccess(t("login_check_email"));
+      // Si le mail n'arrive pas (filtrage iCloud/Outlook), il faut un recours.
+      setNeedsConfirmation(true);
+      setCooldown(RESEND_COOLDOWN_S);
     }
   }
 
@@ -85,6 +141,10 @@ export default function LoginPage() {
       else handleSignIn();
     }
   }
+
+  const errorMessage = error ?? (notice === "expired_link" ? t("login_link_expired") : null);
+  const successMessage =
+    success ?? (notice === "email_confirmed" ? t("login_email_confirmed") : null);
 
   return (
     <div className="relative min-h-screen flex items-center justify-center hero-gradient px-4 force-dark overflow-hidden">
@@ -153,16 +213,29 @@ export default function LoginPage() {
               {signupMode && <PasswordRequirements password={password} />}
             </div>
 
-            {error && (
+            {errorMessage && (
               <div className="bg-loss/10 border border-loss/20 rounded-lg px-3 py-2">
-                <p className="text-loss text-sm">{error}</p>
+                <p className="text-loss text-sm">{errorMessage}</p>
               </div>
             )}
 
-            {success && (
+            {successMessage && (
               <div className="bg-profit/10 border border-profit/20 rounded-lg px-3 py-2">
-                <p className="text-profit text-sm">{success}</p>
+                <p className="text-profit text-sm">{successMessage}</p>
               </div>
+            )}
+
+            {needsConfirmation && (
+              <button
+                type="button"
+                onClick={handleResendConfirmation}
+                disabled={loading || cooldown > 0}
+                className="w-full py-2 text-sm text-accent hover:underline disabled:text-muted disabled:no-underline disabled:cursor-not-allowed transition-colors"
+              >
+                {cooldown > 0
+                  ? `${t("login_resend_confirmation")} (${cooldown}s)`
+                  : t("login_resend_confirmation")}
+              </button>
             )}
 
             {!signupMode && (
@@ -216,7 +289,7 @@ export default function LoginPage() {
             <div className="text-center mt-4">
               <button
                 type="button"
-                onClick={() => { setSignupMode(!signupMode); setError(null); setSuccess(null); }}
+                onClick={() => { setSignupMode(!signupMode); setError(null); setSuccess(null); setNotice(null); setNeedsConfirmation(false); }}
                 className="text-sm text-muted"
               >
                 {signupMode ? t("login_have_account") : t("login_no_account")}{" "}
