@@ -101,6 +101,7 @@ const dict: Record<string, string> = {
   "demo_banner_text": "Demo mode: trades, strategy and analyses are fictional. Nothing counts towards the leaderboard or your real statistics.",
   "demo_banner_delete": "Leave demo mode",
   "demo_exit_error": "Leaving demo mode failed. Try again, and report it if it persists.",
+  "challenge_delete_has_trades": "This account still holds trades: delete them first from \"My Trades\", or move them to another account.",
   "demo_pdf_watermark": "DEMONSTRATION DATA",
   "analysis_demo_free": "demonstration analysis, free and unlimited",
   "demo_trade_verdict_note": "Demonstration verdict, written in advance. On your real trades, the AI writes this comment from your own strategy and checklist.",

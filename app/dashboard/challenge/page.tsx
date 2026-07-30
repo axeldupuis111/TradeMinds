@@ -916,10 +916,21 @@ export default function ChallengePage() {
     }
   }
 
+  /**
+   * La cle etrangere trades.challenge_id est en RESTRICT : un compte qui porte
+   * des trades ne peut pas etre supprime. Sans traduction, l'utilisateur recoit
+   * le message brut de Postgres, en anglais et incomprehensible.
+   */
+  function deleteErrorMessage(message: string): string {
+    return /trades_challenge_id_fkey|foreign key constraint/i.test(message)
+      ? t("challenge_delete_has_trades")
+      : message;
+  }
+
   async function handleDeleteAccount(challengeId: string) {
     const { error } = await supabase.from("prop_challenges").delete().eq("id", challengeId);
     if (error) {
-      setMessage({ type: "error", text: error.message });
+      setMessage({ type: "error", text: deleteErrorMessage(error.message) });
     } else {
       setMessage({ type: "success", text: t("challenge_delete_success") });
       loadData();
@@ -930,7 +941,7 @@ export default function ChallengePage() {
     const { error } = await supabase.from("prop_challenges").delete().eq("id", id);
     setDeleteModal({ open: false, id: null });
     if (error) {
-      setMessage({ type: "error", text: error.message });
+      setMessage({ type: "error", text: deleteErrorMessage(error.message) });
     } else {
       setHistory((prev) => prev.filter((c) => c.id !== id));
       setMessage({ type: "success", text: t("challenge_delete_success") });
