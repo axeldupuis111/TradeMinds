@@ -3,6 +3,7 @@
 import LanguageSelector from "@/components/LanguageSelector";
 import PasswordRequirements, { isPasswordValid } from "@/components/auth/PasswordRequirements";
 import { useLanguage } from "@/lib/LanguageContext";
+import { authErrorKey } from "@/lib/auth-errors";
 import { localizedHref } from "@/lib/locale-href";
 import { createClient } from "@/lib/supabase/client";
 import { Activity } from "lucide-react";
@@ -49,6 +50,13 @@ export default function LoginPage() {
     return () => clearTimeout(id);
   }, [cooldown]);
 
+  /** Affiche une erreur Supabase traduite, et arme le renvoi si c'est le sujet. */
+  function showAuthError(err: { code?: string; message: string }) {
+    const key = authErrorKey(err);
+    if (key === "login_email_not_confirmed") setNeedsConfirmation(true);
+    setError(key ? t(key) : err.message);
+  }
+
   async function handleResendConfirmation() {
     if (!email) {
       setError(t("login_fill_fields"));
@@ -60,7 +68,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.resend({ type: "signup", email });
     setLoading(false);
     if (error) {
-      setError(error.message);
+      showAuthError(error);
       return;
     }
     setSuccess(t("login_confirmation_resent"));
@@ -79,7 +87,7 @@ export default function LoginPage() {
     });
     // On success the browser is redirected to Google; only reached on error.
     if (error) {
-      setError(error.message);
+      showAuthError(error);
       setLoading(false);
     }
   }
@@ -92,14 +100,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
-      // Compte créé mais email jamais confirmé : le message brut de Supabase est
-      // en anglais et sans issue. On traduit et on propose de renvoyer le mail.
-      if (error.code === "email_not_confirmed" || /email not confirmed/i.test(error.message)) {
-        setNeedsConfirmation(true);
-        setError(t("login_email_not_confirmed"));
-      } else {
-        setError(error.message);
-      }
+      showAuthError(error);
     } else {
       router.push("/dashboard");
       router.refresh();
@@ -126,7 +127,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signUp({ email, password });
     setLoading(false);
     if (error) {
-      setError(error.message);
+      showAuthError(error);
     } else {
       setSuccess(t("login_check_email"));
       // Si le mail n'arrive pas (filtrage iCloud/Outlook), il faut un recours.
