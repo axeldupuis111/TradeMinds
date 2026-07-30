@@ -12,6 +12,16 @@
 //      chaque nouvelle position fermee est synchronisee automatiquement.
 //
 //  Le cBot n'ouvre et ne ferme AUCUNE position : il lit seulement l'historique.
+//
+//  v2 - le cBot envoie aussi l'etat du compte (solde reel, equity, positions
+//  ouvertes, devise), avec chaque trade et par battement de coeur toutes les
+//  60 s. TradeDiscipline affiche donc le vrai solde du broker au lieu de le
+//  reconstituer, suit l'equity en direct position ouverte, et connait la devise
+//  du compte.
+//
+//  Note : contrairement a MetaTrader, cTrader tourne ici en UTC (attribut
+//  TimeZone ci-dessous) et Unix() convertit explicitement. Les horodatages sont
+//  donc deja justes : ce client n'a pas besoin d'envoyer server_time.
 // ============================================================================
 
 using System;
@@ -36,6 +46,9 @@ namespace cAlgo.Robots
         [Parameter("Jours d'historique au demarrage", DefaultValue = 90, MinValue = 1, MaxValue = 365)]
         public int HistoryDays { get; set; }
 
+        [Parameter("Envoyer le solde reel et l'equity", DefaultValue = true)]
+        public bool SendBalance { get; set; }
+
         // Positions deja envoyees pendant cette session (evite les doublons).
         private readonly HashSet<long> _sent = new HashSet<long>();
         private static readonly HttpClient Http = new HttpClient();
@@ -55,13 +68,73 @@ namespace cAlgo.Robots
             var from = Server.Time.AddDays(-HistoryDays);
             SendClosedTrades(from);
 
+            // Etat du compte des le demarrage : le solde reel s'affiche tout de
+            // suite, sans attendre la premiere cloture.
+            SendHeartbeat();
+
             // Synchronise en temps reel chaque nouvelle position fermee.
             Positions.Closed += OnPositionClosed;
+
+            // Battement de coeur : fait vivre le solde et l'equity en direct
+            // pendant qu'une position est ouverte.
+            Timer.Start(TimeSpan.FromSeconds(60));
+        }
+
+        protected override void OnTimer()
+        {
+            SendHeartbeat();
         }
 
         protected override void OnStop()
         {
+            Timer.Stop();
             Positions.Closed -= OnPositionClosed;
+        }
+
+        // Etat du compte : solde reel, equity, positions ouvertes, devise.
+        // Renvoie "" si l'envoi du solde est desactive.
+        private string BuildAccountJson()
+        {
+            if (!SendBalance) return "";
+
+            var sb = new StringBuilder();
+            sb.Append("{");
+            sb.AppendFormat(CultureInfo.InvariantCulture, "\"account\":\"{0}\",", Account.Number);
+            sb.AppendFormat(CultureInfo.InvariantCulture, "\"balance\":{0},", Num(Account.Balance, 2));
+            sb.AppendFormat(CultureInfo.InvariantCulture, "\"equity\":{0},", Num(Account.Equity, 2));
+            sb.AppendFormat(CultureInfo.InvariantCulture, "\"open_positions\":{0},", Positions.Count);
+            sb.AppendFormat("\"currency\":\"{0}\",", Escape(Account.Currency));
+            sb.Append("\"source\":\"ctrader\"");
+            sb.Append("}");
+            return sb.ToString();
+        }
+
+        // Envoie l'etat du compte seul (aucun trade).
+        private void SendHeartbeat()
+        {
+            string account = BuildAccountJson();
+            if (account == "") return;
+
+            string body = "{\"token\":\"" + Escape(SyncToken) + "\",\"account\":" + account + "}";
+
+            try
+            {
+                var content = new StringContent(body, Encoding.UTF8, "application/json");
+                var res = Http.PostAsync(ApiUrl, content).Result;
+                string payload = res.Content.ReadAsStringAsync().Result;
+
+                // Volontairement silencieux quand tout va bien : une ligne par
+                // minute rendrait le journal illisible.
+                if (!res.IsSuccessStatusCode)
+                    Print("TradeDiscipline ERREUR : etat du compte - HTTP {0}", (int)res.StatusCode);
+                else if (payload.IndexOf("\"account\":\"ok\"", StringComparison.Ordinal) < 0)
+                    Print("TradeDiscipline ATTENTION : solde non pris en compte (compte {0}). " +
+                          "Motif renvoye par le serveur : {1}", Account.Number, payload);
+            }
+            catch (Exception ex)
+            {
+                Print("TradeDiscipline ERREUR : etat du compte - {0}", ex.Message);
+            }
         }
 
         private void OnPositionClosed(PositionClosedEventArgs args)
@@ -119,7 +192,11 @@ namespace cAlgo.Robots
             sb.Append("\"source\":\"ctrader\"");
             sb.Append("}");
 
-            string body = "{\"token\":\"" + Escape(SyncToken) + "\",\"trade\":" + sb + "}";
+            // L'etat du compte voyage avec le trade : le solde renvoye par le
+            // broker l'inclut deja (il est lu apres sa cloture).
+            string account = BuildAccountJson();
+            string body = "{\"token\":\"" + Escape(SyncToken) + "\",\"trade\":" + sb
+                          + (account == "" ? "" : ",\"account\":" + account) + "}";
 
             try
             {

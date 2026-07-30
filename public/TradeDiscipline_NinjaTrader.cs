@@ -13,6 +13,16 @@
 //
 //  L'AddOn lit uniquement les executions du compte et reconstitue les trades
 //  (entree + sortie) lui-meme. Il n'envoie et ne modifie AUCUN ordre.
+//
+//  v2 - l'AddOn envoie aussi l'etat du compte (solde reel, equity, positions
+//  ouvertes, devise), avec chaque trade et par battement de coeur toutes les
+//  60 s. TradeDiscipline affiche donc le vrai solde du broker au lieu de le
+//  reconstituer, suit l'equity en direct position ouverte, et connait la devise
+//  du compte.
+//
+//  Note : Unix() convertit explicitement en UTC, les horodatages sont donc deja
+//  justes. Ce client n'a pas besoin d'envoyer server_time, contrairement aux EA
+//  MetaTrader qui datent leurs trades en heure serveur du broker.
 // ============================================================================
 
 #region Using declarations
@@ -55,6 +65,7 @@ namespace NinjaTrader.NinjaScript.AddOns
         private readonly HashSet<string> _processed = new HashSet<string>(); // executions deja traitees
         private readonly List<Account> _hooked = new List<Account>();
         private readonly object _lock = new object();
+        private System.Threading.Timer _heartbeat;
 
         protected override void OnStateChange()
         {
@@ -70,10 +81,87 @@ namespace NinjaTrader.NinjaScript.AddOns
                     return;
                 }
                 HookAccounts();
+
+                // Battement de coeur : fait vivre le solde et l'equity en direct
+                // pendant qu'une position est ouverte. AddOnBase n'expose aucun
+                // timer, d'ou le timer .NET.
+                _heartbeat = new System.Threading.Timer(
+                    delegate { SendHeartbeat(); }, null, 5000, 60000);
             }
             else if (State == State.Terminated)
             {
+                if (_heartbeat != null)
+                {
+                    _heartbeat.Dispose();
+                    _heartbeat = null;
+                }
                 UnhookAccounts();
+            }
+        }
+
+        // ── Etat du compte ──────────────────────────────────────────────────
+        // NinjaTrader denomme les devises par une enumeration (UsDollar, Euro...),
+        // pas par leur code ISO : sans cette correspondance, TradeDiscipline
+        // afficherait « UsDollar » a la place de « $ ».
+        private static string IsoCurrency(Currency c)
+        {
+            switch (c)
+            {
+                case Currency.UsDollar:         return "USD";
+                case Currency.Euro:             return "EUR";
+                case Currency.BritishPound:     return "GBP";
+                case Currency.SwissFranc:       return "CHF";
+                case Currency.AustralianDollar: return "AUD";
+                case Currency.CanadianDollar:   return "CAD";
+                case Currency.JapaneseYen:      return "JPY";
+                default:                        return c.ToString();
+            }
+        }
+
+        private string BuildAccountJson(Account account)
+        {
+            if (account == null) return "";
+
+            double balance, equity;
+            int openPositions;
+            string currency;
+            try
+            {
+                balance = account.Get(AccountItem.CashValue, account.Denomination);
+                equity = account.Get(AccountItem.NetLiquidation, account.Denomination);
+                openPositions = account.Positions != null ? account.Positions.Count : 0;
+                currency = IsoCurrency(account.Denomination);
+            }
+            catch (Exception ex)
+            {
+                Print("TradeDiscipline : etat du compte illisible - " + ex.Message);
+                return "";
+            }
+
+            var sb = new StringBuilder();
+            sb.Append("{");
+            sb.AppendFormat("\"account\":\"{0}\",", Escape(account.Name));
+            sb.AppendFormat(CultureInfo.InvariantCulture, "\"balance\":{0},", Num(balance, 2));
+            sb.AppendFormat(CultureInfo.InvariantCulture, "\"equity\":{0},", Num(equity, 2));
+            sb.AppendFormat(CultureInfo.InvariantCulture, "\"open_positions\":{0},", openPositions);
+            sb.AppendFormat("\"currency\":\"{0}\",", Escape(currency));
+            sb.Append("\"source\":\"ninjatrader\"");
+            sb.Append("}");
+            return sb.ToString();
+        }
+
+        // Envoie l'etat de chaque compte suivi, sans aucun trade.
+        private void SendHeartbeat()
+        {
+            List<Account> accounts;
+            lock (_lock) { accounts = new List<Account>(_hooked); }
+
+            foreach (var account in accounts)
+            {
+                string json = BuildAccountJson(account);
+                if (json == "") continue;
+                Post("{\"token\":\"" + Escape(SyncToken) + "\",\"account\":" + json + "}",
+                     "etat du compte " + account.Name, true);
             }
         }
 
@@ -178,13 +266,13 @@ namespace NinjaTrader.NinjaScript.AddOns
 
             if (state.NetQty == 0)
             {
-                PostTrade(state, instrument, ex.Time, account);
+                PostTrade(state, instrument, ex.Time, account, ex.Account);
                 _open.Remove(instrument);
             }
             else if ((prevNet > 0 && state.NetQty < 0) || (prevNet < 0 && state.NetQty > 0))
             {
                 // Sur-cloture : ancienne position fermee, le reste ouvre l'opposee.
-                PostTrade(state, instrument, ex.Time, account);
+                PostTrade(state, instrument, ex.Time, account, ex.Account);
                 int remainder = qty - closeQty;
                 int remSigned = signed > 0 ? remainder : -remainder;
                 _open[instrument] = NewState(ex, instrument, pointValue, remSigned, remainder, 0);
@@ -210,7 +298,7 @@ namespace NinjaTrader.NinjaScript.AddOns
             };
         }
 
-        private void PostTrade(PosState s, string instrument, DateTime closeTime, string account)
+        private void PostTrade(PosState s, string instrument, DateTime closeTime, string account, Account accountObj)
         {
             double exitPrice = s.ExitQty > 0 ? s.ExitNotional / s.ExitQty : s.AvgEntry;
 
@@ -231,11 +319,17 @@ namespace NinjaTrader.NinjaScript.AddOns
             sb.Append("\"source\":\"ninjatrader\"");
             sb.Append("}");
 
-            string body = "{\"token\":\"" + Escape(SyncToken) + "\",\"trade\":" + sb + "}";
-            Post(body, s.FirstExecId);
+            // L'etat du compte voyage avec le trade : le solde renvoye par le
+            // broker l'inclut deja (il est lu apres sa cloture).
+            string accountJson = BuildAccountJson(accountObj);
+            string body = "{\"token\":\"" + Escape(SyncToken) + "\",\"trade\":" + sb
+                          + (accountJson == "" ? "" : ",\"account\":" + accountJson) + "}";
+            Post(body, "trade " + s.FirstExecId, false);
         }
 
-        private void Post(string body, string id)
+        // `isAccountState` : seul un envoi d'etat de compte verifie que le serveur
+        // l'a bien applique, et reste silencieux sinon (un envoi par minute).
+        private void Post(string body, string label, bool isAccountState)
         {
             try
             {
@@ -251,8 +345,15 @@ namespace NinjaTrader.NinjaScript.AddOns
 
                 using (var response = (HttpWebResponse)request.GetResponse())
                 {
+                    string payload;
+                    using (var reader = new StreamReader(response.GetResponseStream()))
+                        payload = reader.ReadToEnd();
+
                     if (response.StatusCode != HttpStatusCode.OK)
-                        Print("TradeDiscipline ERREUR : trade " + id + " - HTTP " + (int)response.StatusCode);
+                        Print("TradeDiscipline ERREUR : " + label + " - HTTP " + (int)response.StatusCode);
+                    else if (isAccountState && payload.IndexOf("\"account\":\"ok\"", StringComparison.Ordinal) < 0)
+                        Print("TradeDiscipline ATTENTION : solde non pris en compte (" + label +
+                              "). Motif renvoye par le serveur : " + payload);
                 }
             }
             catch (WebException wex)
@@ -263,11 +364,11 @@ namespace NinjaTrader.NinjaScript.AddOns
                     using (var reader = new StreamReader(hr.GetResponseStream()))
                         detail = "HTTP " + (int)hr.StatusCode + " - " + reader.ReadToEnd();
                 }
-                Print("TradeDiscipline ERREUR : trade " + id + " - " + detail);
+                Print("TradeDiscipline ERREUR : " + label + " - " + detail);
             }
             catch (Exception ex)
             {
-                Print("TradeDiscipline ERREUR : trade " + id + " - " + ex.Message);
+                Print("TradeDiscipline ERREUR : " + label + " - " + ex.Message);
             }
         }
 
