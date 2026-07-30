@@ -1,6 +1,7 @@
 "use client";
 
 import ExportGuideModal from "@/components/trades/ExportGuideModal";
+import { accountCurrency, money } from "@/lib/account-currency";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { applyManualMapping, parseCSV, parseXlsx, type ParsedTrade } from "@/lib/csv-parser";
@@ -15,6 +16,8 @@ interface ActiveAccount {
   firm: string;
   account_number: string | null;
   account_size: number;
+  currency: string | null;
+  synced_currency: string | null;
 }
 
 interface Props {
@@ -205,7 +208,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
       if (!user) { setImportCooldownLoading(false); return; }
 
       const [{ data: accounts }, { data: profile }] = await Promise.all([
-        supabase.from("prop_challenges").select("id, firm, account_number, account_size").eq("user_id", user.id).eq("status", "active"),
+        supabase.from("prop_challenges").select("id, firm, account_number, account_size, currency, synced_currency").eq("user_id", user.id).eq("status", "active"),
         supabase.from("profiles").select("last_import_at").eq("id", user.id).single(),
       ]);
 
@@ -611,7 +614,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
                 <option value="">{t("csv_no_account")}</option>
                 {activeAccounts.map((a) => (
                   <option key={a.id} value={a.id}>
-                    {a.firm} · {a.account_number || a.account_size.toLocaleString() + "€"}
+                    {a.firm} · {a.account_number || money(a.account_size, accountCurrency(a))}
                   </option>
                 ))}
               </select>

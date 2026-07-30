@@ -1,6 +1,13 @@
 "use client";
 
 import EquityCurve from "@/components/charts/EquityCurve";
+import {
+  DEFAULT_CURRENCY,
+  SUPPORTED_CURRENCIES,
+  accountCurrency,
+  currencyMismatch,
+  money,
+} from "@/lib/account-currency";
 import { resolveAccountBalance } from "@/lib/challenge-balance";
 import { computeChallengeRules } from "@/lib/challenge-rules";
 import { projectChallenge } from "@/lib/challenge-projection";
@@ -30,10 +37,13 @@ interface Challenge {
   balance: number;
   status: "active" | "passed" | "failed";
   created_at: string;
+  /** Devise choisie à la création. Le broker fait autorité s'il en annonce une. */
+  currency: string | null;
   /** Solde réel poussé par l'EA. Null tant qu'aucune synchro n'a eu lieu. */
   synced_balance: number | null;
   synced_equity: number | null;
   synced_open_positions: number | null;
+  synced_currency: string | null;
   synced_at: string | null;
 }
 
@@ -138,12 +148,14 @@ function ProgressBar({
   max,
   color,
   label,
+  currency,
   alert,
 }: {
   value: number;
   max: number;
   color: string;
   label: string;
+  currency: string;
   alert?: boolean;
 }) {
   const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
@@ -155,7 +167,7 @@ function ProgressBar({
       <div className="flex justify-between text-sm mb-1">
         <span className="text-muted">{label}</span>
         <span className="text-foreground">
-          {value.toFixed(0)}€ / {max.toFixed(0)}€ · {pct.toFixed(1)}%
+          {money(value, currency)} / {money(max, currency)} · {pct.toFixed(1)}%
         </span>
       </div>
       <div className="h-3 bg-border rounded-full overflow-hidden">
@@ -178,11 +190,13 @@ function DailyLossGauge({
   lossEur,
   stopEur,
   challengeEur,
+  currency,
   t,
 }: {
   lossEur: number;
   stopEur: number | null;
   challengeEur: number;
+  currency: string;
   t: (k: string) => string;
 }) {
   const fillPct = challengeEur > 0 ? Math.min((lossEur / challengeEur) * 100, 100) : 0;
@@ -206,11 +220,11 @@ function DailyLossGauge({
 
   let status: string;
   if (stopEur == null) {
-    status = `${Math.round(lossEur)}€ / ${Math.round(challengeEur)}€`;
+    status = `${money(lossEur, currency)} / ${money(challengeEur, currency)}`;
   } else if (lossEur >= stopEur) {
-    status = t("gauge_stop_exceeded").replace("{eur}", String(Math.round(lossEur - stopEur)));
+    status = t("gauge_stop_exceeded").replace("{amount}", money(lossEur - stopEur, currency));
   } else {
-    status = t("gauge_remaining").replace("{eur}", String(Math.round(stopEur - lossEur)));
+    status = t("gauge_remaining").replace("{amount}", money(stopEur - lossEur, currency));
   }
 
   return (
@@ -222,7 +236,7 @@ function DailyLossGauge({
       <div className="relative h-4 text-xs text-muted">
         {stopPct != null && (
           <span className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: `${stopPct}%` }}>
-            {t("gauge_stop_marker")} · {Math.round(stopEur as number)}€
+            {t("gauge_stop_marker")} · {money(stopEur as number, currency)}
           </span>
         )}
       </div>
@@ -233,7 +247,7 @@ function DailyLossGauge({
         )}
       </div>
       <div className="text-right text-xs text-muted mt-1">
-        {t("gauge_challenge_marker")} · {Math.round(challengeEur)}€
+        {t("gauge_challenge_marker")} · {money(challengeEur, currency)}
       </div>
     </div>
   );
@@ -305,6 +319,7 @@ function EditAccountModal({
   const [accountNumber, setAccountNumber] = useState(account.account_number || "");
   const [accountType, setAccountType] = useState<"prop" | "personal">(account.type);
   const [accountSize, setAccountSize] = useState(String(account.account_size));
+  const [currency, setCurrency] = useState(account.currency || DEFAULT_CURRENCY);
   const [profitTarget, setProfitTarget] = useState(String(account.profit_target_pct));
   const [maxDailyDd, setMaxDailyDd] = useState(String(account.max_daily_dd_pct));
   const [maxTotalDd, setMaxTotalDd] = useState(String(account.max_total_dd_pct));
@@ -324,6 +339,7 @@ function EditAccountModal({
       account_number: accountNumber.trim() || null,
       type: accountType,
       account_size: parseFloat(accountSize),
+      currency,
       profit_target_pct: accountType === "prop" ? (parseFloat(profitTarget) || 0) : 0,
       max_daily_dd_pct: accountType === "prop" ? (parseFloat(maxDailyDd) || 0) : 0,
       max_total_dd_pct: accountType === "prop" ? (parseFloat(maxTotalDd) || 0) : 0,
@@ -369,9 +385,19 @@ function EditAccountModal({
               </button>
             </div>
           </div>
-          <div>
-            <label className="block text-sm text-muted mb-1">{t("challenge_account_size")}</label>
-            <input type="number" value={accountSize} onChange={(e) => setAccountSize(e.target.value)} className={inputClass} />
+          <div className="grid grid-cols-[1fr_auto] gap-3">
+            <div>
+              <label className="block text-sm text-muted mb-1">{t("challenge_account_size")}</label>
+              <input type="number" value={accountSize} onChange={(e) => setAccountSize(e.target.value)} className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-sm text-muted mb-1">{t("challenge_currency")}</label>
+              <select value={currency} onChange={(e) => setCurrency(e.target.value)} className={inputClass}>
+                {SUPPORTED_CURRENCIES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
           </div>
           {accountType === "prop" && (
             <>
@@ -521,6 +547,9 @@ function AccountCard({
   const todayPnl = stats.todayPnl;
   const hasNoTrades = stats.equityCurveData.length === 0;
   const isProp = (ac.type ?? "prop") === "prop";
+  // Devise du compte : le broker fait autorité, la saisie sert de repli.
+  const cur = accountCurrency(ac);
+  const mismatch = currencyMismatch(ac);
 
   // Shared DD / progress calculations via single-source-of-truth util.
   // trailing_drawdown=false path is ISO vs. the previous inline code.
@@ -572,7 +601,7 @@ function AccountCard({
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-semibold text-foreground">
-              {ac.firm} · {ac.account_size.toLocaleString()}€
+              {ac.firm} · {money(ac.account_size, cur)}
             </h2>
           </div>
           <p className="text-muted text-sm">
@@ -600,15 +629,34 @@ function AccountCard({
         </div>
       </div>
 
+      {/* Devise : le broker annonce autre chose que ce qui a été saisi. On
+          affiche déjà la sienne, l'avis sert à corriger la fiche du compte. */}
+      {mismatch && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-xs">
+          <span className="text-muted">
+            {t("challenge_currency_mismatch")
+              .replace("{broker}", mismatch.broker)
+              .replace("{saved}", mismatch.saved)}
+          </span>
+          <button
+            onClick={() => onEdit(ac.id, { currency: mismatch.broker })}
+            className="font-medium text-accent hover:underline"
+          >
+            {t("challenge_currency_align").replace("{broker}", mismatch.broker)}
+          </button>
+        </div>
+      )}
+
       {/* Progress bars — only for prop firm */}
       {isProp && (
         <div className="space-y-4">
-          <ProgressBar value={rules.profitUsed} max={rules.profitMax} color="bg-profit" label={t("challenge_profit_target")} />
-          <ProgressBar value={rules.totalDdUsed} max={rules.totalDdMax} color="bg-loss" label={t("challenge_total_dd")} alert />
+          <ProgressBar value={rules.profitUsed} max={rules.profitMax} color="bg-profit" label={t("challenge_profit_target")} currency={cur} />
+          <ProgressBar value={rules.totalDdUsed} max={rules.totalDdMax} color="bg-loss" label={t("challenge_total_dd")} currency={cur} alert />
           <DailyLossGauge
             lossEur={rules.dailyDdUsed}
             stopEur={ac.max_daily_loss_pct != null ? ac.account_size * (ac.max_daily_loss_pct / 100) : null}
             challengeEur={rules.dailyDdMax}
+            currency={cur}
             t={t}
           />
         </div>
@@ -626,15 +674,13 @@ function AccountCard({
               </span>
             )}
           </div>
-          <p className="text-lg font-bold text-foreground">
-            {balance.toLocaleString("fr-FR", { maximumFractionDigits: 0 })}€
-          </p>
+          <p className="text-lg font-bold text-foreground">{money(balance, cur)}</p>
           {/* Equity : seulement position ouverte, sinon elle vaut le solde et
               afficher deux fois le même chiffre n'apprend rien. */}
           {stats.equity !== null ? (
             <p className="text-xs mt-0.5">
               <span className={stats.equity >= balance ? "text-profit" : "text-loss"}>
-                {t("challenge_equity")} {stats.equity.toLocaleString("fr-FR", { maximumFractionDigits: 0 })}€
+                {t("challenge_equity")} {money(stats.equity, cur)}
               </span>
               <span className="text-muted">
                 {" · "}
@@ -653,14 +699,14 @@ function AccountCard({
             <p className="text-sm text-muted italic mt-1">{t("challenge_no_trades")}</p>
           ) : (
             <p className={`text-lg font-bold ${currentPnl >= 0 ? "text-profit" : "text-loss"}`}>
-              {currentPnl >= 0 ? "+" : ""}{currentPnl.toFixed(2)}€
+              {money(currentPnl, cur, { digits: 2, signed: true })}
             </p>
           )}
         </div>
         <div className="bg-background rounded-lg p-3">
           <p className="text-xs text-muted">{t("challenge_today_pnl")}</p>
           <p className={`text-lg font-bold ${todayPnl >= 0 ? "text-profit" : "text-loss"}`}>
-            {todayPnl >= 0 ? "+" : ""}{todayPnl.toFixed(2)}€
+            {money(todayPnl, cur, { digits: 2, signed: true })}
           </p>
         </div>
         {isProp && (
@@ -711,7 +757,7 @@ function AccountCard({
       </div>
 
       {/* Projection (prop challenges) */}
-      {projection && !hasNoTrades && <ChallengeProjectionBlock projection={projection} />}
+      {projection && !hasNoTrades && <ChallengeProjectionBlock projection={projection} currency={cur} />}
 
       {/* Equity curve */}
       <div className="mt-6">
@@ -767,6 +813,7 @@ export default function ChallengePage() {
   const effectiveFirm = firm === CUSTOM_VALUE ? customFirm.trim() : firm;
   const [accountNumber, setAccountNumber] = useState("");
   const [accountSize, setAccountSize] = useState("50000");
+  const [currency, setCurrency] = useState<string>(DEFAULT_CURRENCY);
   const [profitTarget, setProfitTarget] = useState("8");
   const [maxDailyDd, setMaxDailyDd] = useState("5");
   const [maxTotalDd, setMaxTotalDd] = useState("10");
@@ -936,6 +983,7 @@ export default function ChallengePage() {
       firm: effectiveFirm,
       account_number: accountNumber.trim(),
       account_size: size,
+      currency,
       profit_target_pct: accountType === "prop" ? (parseFloat(profitTarget) || 8) : 0,
       max_daily_dd_pct: accountType === "prop" ? (parseFloat(maxDailyDd) || 5) : 0,
       max_total_dd_pct: accountType === "prop" ? (parseFloat(maxTotalDd) || 10) : 0,
@@ -1033,18 +1081,29 @@ export default function ChallengePage() {
   }
 
   // Portfolio aggregate across all active accounts (for the overview panel).
+  //
+  // Les montants sont ventilés par devise : un compte en euros et un compte en
+  // dollars ne s'additionnent pas, et afficher un total unique donnerait un
+  // chiffre faux quel que soit le symbole choisi. Le nombre de trades et le
+  // winrate, eux, restent agrégeables.
   const portfolio = activeAccounts.reduce(
     (acc, ac) => {
       const s = accountStatsMap[ac.id];
       if (s) {
-        acc.capital += s.balance || 0;
-        acc.pnl += s.currentPnl || 0;
+        const cur = accountCurrency(ac);
+        const bucket = acc.byCurrency.get(cur) ?? { capital: 0, pnl: 0 };
+        bucket.capital += s.balance || 0;
+        bucket.pnl += s.currentPnl || 0;
+        acc.byCurrency.set(cur, bucket);
         acc.trades += s.tradeCount || 0;
         acc.weightedWr += (s.winrate || 0) * (s.tradeCount || 0);
       }
       return acc;
     },
-    { capital: 0, pnl: 0, trades: 0, weightedWr: 0 }
+    { byCurrency: new Map<string, { capital: number; pnl: number }>(), trades: 0, weightedWr: 0 }
+  );
+  const portfolioByCurrency = Array.from(portfolio.byCurrency.entries()).sort(
+    ([a], [b]) => a.localeCompare(b),
   );
   const portfolioWinrate = portfolio.trades > 0 ? portfolio.weightedWr / portfolio.trades : 0;
   const hasAccounts = activeAccounts.length > 0;
@@ -1091,6 +1150,7 @@ export default function ChallengePage() {
                       profitTargetPct: ac.profit_target_pct,
                       maxDailyDdPct: ac.max_daily_dd_pct,
                       maxTotalDdPct: ac.max_total_dd_pct,
+                      currency: accountCurrency(ac),
                       lang,
                     });
                   });
@@ -1173,16 +1233,32 @@ export default function ChallengePage() {
               )}
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">
-                {t("challenge_account_size")} <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                value={accountSize}
-                onChange={(e) => { setAccountSize(e.target.value); if (formErrors.accountSize) setFormErrors((p) => ({ ...p, accountSize: false })); }}
-                placeholder="50000"
-                className={formErrors.accountSize ? inputErrorClass : inputClass}
-              />
+              <div className="grid grid-cols-[1fr_auto] gap-3">
+                <div>
+                  <label className="block text-sm text-muted mb-1">
+                    {t("challenge_account_size")} <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={accountSize}
+                    onChange={(e) => { setAccountSize(e.target.value); if (formErrors.accountSize) setFormErrors((p) => ({ ...p, accountSize: false })); }}
+                    placeholder="50000"
+                    className={formErrors.accountSize ? inputErrorClass : inputClass}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-muted mb-1">{t("challenge_currency")}</label>
+                  <select
+                    value={currency}
+                    onChange={(e) => setCurrency(e.target.value)}
+                    className={inputClass}
+                  >
+                    {SUPPORTED_CURRENCIES.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
               <p className="text-xs text-muted mt-1">{t("challenge_account_size_hint")}</p>
               {formErrors.accountSize && (
                 <p className="text-red-500 text-xs mt-1">{t("challenge_field_required")}</p>
@@ -1344,7 +1420,7 @@ export default function ChallengePage() {
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-foreground font-medium">
-                        {c.firm} · {c.account_size.toLocaleString()}€
+                        {c.firm} · {money(c.account_size, accountCurrency(c))}
                       </span>
                       {c.account_number && (
                         <span className="text-muted text-xs">#{c.account_number}</span>
@@ -1378,10 +1454,10 @@ export default function ChallengePage() {
                   <div className="flex items-center gap-4">
                     <div className="text-right">
                       <p className={`text-lg font-bold ${pnl >= 0 ? "text-profit" : "text-loss"}`}>
-                        {pnl >= 0 ? "+" : ""}{pnl.toFixed(0)}€
+                        {money(pnl, accountCurrency(c), { signed: true })}
                       </p>
                       <p className="text-muted text-sm">
-                        {t("challenge_final_balance")} {c.balance.toLocaleString()}€
+                        {t("challenge_final_balance")} {money(c.balance, accountCurrency(c))}
                       </p>
                     </div>
                     <button
@@ -1411,15 +1487,22 @@ export default function ChallengePage() {
               <div className="space-y-3">
                 <div className="rounded-lg bg-surface border border-border p-3">
                   <p className="text-[11px] text-muted uppercase tracking-wider">{t("challenge_portfolio_capital")}</p>
-                  <p className="text-xl font-bold text-foreground tabular-nums mt-0.5">
-                    {portfolio.capital.toLocaleString(undefined, { maximumFractionDigits: 0 })} €
-                  </p>
+                  {portfolioByCurrency.map(([curCode, sums]) => (
+                    <p key={curCode} className="text-xl font-bold text-foreground tabular-nums mt-0.5">
+                      {money(sums.capital, curCode)}
+                    </p>
+                  ))}
                 </div>
                 <div className="rounded-lg bg-surface border border-border p-3">
                   <p className="text-[11px] text-muted uppercase tracking-wider">{t("challenge_portfolio_pnl")}</p>
-                  <p className={`text-xl font-bold tabular-nums mt-0.5 ${portfolio.pnl >= 0 ? "text-profit" : "text-loss"}`}>
-                    {portfolio.pnl >= 0 ? "+" : ""}{portfolio.pnl.toLocaleString(undefined, { maximumFractionDigits: 0 })} €
-                  </p>
+                  {portfolioByCurrency.map(([curCode, sums]) => (
+                    <p
+                      key={curCode}
+                      className={`text-xl font-bold tabular-nums mt-0.5 ${sums.pnl >= 0 ? "text-profit" : "text-loss"}`}
+                    >
+                      {money(sums.pnl, curCode, { signed: true })}
+                    </p>
+                  ))}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-lg bg-surface border border-border p-3">
@@ -1477,7 +1560,7 @@ export default function ChallengePage() {
                               pnl > 0 ? "text-profit" : pnl < 0 ? "text-loss" : "text-muted"
                             }`}
                           >
-                            {pnl >= 0 ? "+" : ""}{pnl.toFixed(0)}€
+                            {money(pnl, accountCurrency(ac), { signed: true })}
                           </span>
                         </button>
                       );

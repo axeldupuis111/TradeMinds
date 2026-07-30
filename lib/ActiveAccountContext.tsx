@@ -33,6 +33,9 @@ export interface ActiveAccount {
   trailing_drawdown: boolean;
   /** Trader's personal discipline limit (% of account). Null = not set. Inert until Phase 2. */
   max_daily_loss_pct: number | null;
+  /** Devise saisie à la création, et celle annoncée par le broker (qui prime). */
+  currency: string | null;
+  synced_currency: string | null;
 }
 
 interface ActiveAccountContextValue {
@@ -79,7 +82,7 @@ export function ActiveAccountProvider({ children }: { children: React.ReactNode 
       const { data } = await supabase
         .from("prop_challenges")
         .select(
-          "id, firm, account_number, type, market_type, account_size, balance, profit_target_pct, max_daily_dd_pct, max_total_dd_pct, trailing_drawdown, max_daily_loss_pct"
+          "id, firm, account_number, type, market_type, account_size, balance, profit_target_pct, max_daily_dd_pct, max_total_dd_pct, trailing_drawdown, max_daily_loss_pct, currency, synced_currency"
         )
         .eq("user_id", user.id)
         .eq("status", "active")
@@ -98,6 +101,8 @@ export function ActiveAccountProvider({ children }: { children: React.ReactNode 
         max_total_dd_pct: row.max_total_dd_pct ?? 0,
         trailing_drawdown: row.trailing_drawdown ?? false,
         max_daily_loss_pct: row.max_daily_loss_pct ?? null,
+        currency: row.currency ?? null,
+        synced_currency: row.synced_currency ?? null,
       }));
 
       setAccounts(list);

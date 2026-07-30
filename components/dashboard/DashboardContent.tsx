@@ -15,6 +15,7 @@ import { KpiCards } from "@/components/dashboard/KpiCards";
 import { Sparkline } from "@/components/dashboard/Sparkline";
 import { CardHeader, CardTitle } from "@/components/ui/Card";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
+import { DEFAULT_CURRENCY, accountCurrency, money } from "@/lib/account-currency";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useTheme } from "@/lib/ThemeContext";
 import { Badge } from "@/components/ui/Badge";
@@ -73,6 +74,9 @@ interface ActiveAccount {
   max_daily_loss_pct: number | null;
   balance: number;
   type: string;
+  /** Devise saisie à la création, et celle annoncée par le broker (qui prime). */
+  currency: string | null;
+  synced_currency: string | null;
 }
 
 interface Props {
@@ -179,6 +183,10 @@ export default function DashboardContent({
     ? activeAccounts.find((a) => a.id === selectedAccountId) ?? null
     : null;
   const displayAccount = selectedAccount || (activeAccounts.length === 1 ? activeAccounts[0] : null);
+  // Devise du compte affiché. En vue « tous les comptes », aucun compte n'est
+  // identifié : on retombe sur l'euro plutôt que d'emprunter le symbole de l'un
+  // d'eux.
+  const displayCurrency = displayAccount ? accountCurrency(displayAccount) : DEFAULT_CURRENCY;
 
   const profitTargetAmount = displayAccount && displayAccount.profit_target_pct > 0
     ? (displayAccount.account_size * displayAccount.profit_target_pct) / 100
@@ -356,7 +364,7 @@ export default function DashboardContent({
               <option value="">{t("dash_all_accounts")}</option>
               {activeAccounts.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {a.firm} · {a.account_number || a.account_size.toLocaleString() + "€"}
+                  {a.firm} · {a.account_number || money(a.account_size, accountCurrency(a))}
                 </option>
               ))}
             </select>
@@ -633,7 +641,7 @@ export default function DashboardContent({
                 <p className="text-foreground text-sm">
                   {displayAccount.firm} · Drawdown{" "}
                   <span className="font-bold tabular-nums">{ddPct.toFixed(1)}%</span>
-                  {" "}({ddUsed.toFixed(0)}€ / {ddMax.toFixed(0)}€)
+                  {" "}({money(ddUsed, displayCurrency)} / {money(ddMax, displayCurrency)})
                 </p>
               </div>
             )}

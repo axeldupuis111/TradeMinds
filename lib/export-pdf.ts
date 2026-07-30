@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
-import { Pdf, C, money, signedMoney, pct, groupNum, type RGB } from "@/lib/pdf/kit";
+import { currencySymbol } from "@/lib/account-currency";
+import { Pdf, C, money, signedMoney, pct, groupNum, setMoneySymbol, type RGB } from "@/lib/pdf/kit";
 import { ensureBrandFont } from "@/lib/pdf/fonts";
 
 /**
@@ -29,6 +30,8 @@ interface PdfAccountData {
   profitTargetPct: number;
   maxDailyDdPct: number;
   maxTotalDdPct: number;
+  /** Devise du compte (code ISO). Absente = euro. */
+  currency?: string | null;
   lang?: "fr" | "en" | "de" | "es";
 }
 
@@ -324,6 +327,14 @@ export async function buildAccountPdf(data: PdfAccountData): Promise<jsPDF> {
 }
 
 export async function exportAccountPdf(data: PdfAccountData) {
-  const doc = await buildAccountPdf(data);
-  doc.save(`${data.firm.replace(/\s+/g, "_")}_report_${new Date().toISOString().split("T")[0]}.pdf`);
+  // Le rapport porte sur UN compte : tous ses montants sortent dans sa devise.
+  // Remis à null après coup pour ne pas contaminer les autres générateurs, qui
+  // partagent le même module.
+  setMoneySymbol(data.currency ? currencySymbol(data.currency) : null);
+  try {
+    const doc = await buildAccountPdf(data);
+    doc.save(`${data.firm.replace(/\s+/g, "_")}_report_${new Date().toISOString().split("T")[0]}.pdf`);
+  } finally {
+    setMoneySymbol(null);
+  }
 }

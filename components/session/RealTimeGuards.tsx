@@ -1,5 +1,6 @@
 "use client";
 
+import { DEFAULT_CURRENCY, accountCurrency, money } from "@/lib/account-currency";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
@@ -91,6 +92,7 @@ export default function RealTimeGuards({ strategy, accountSize, sessionStartedAt
   const maxTrades = strategy?.max_trades_per_day ?? null;
   const tradePct = maxTrades ? tradeCount / maxTrades : 0;
 
+  const cur = selectedAccount ? accountCurrency(selectedAccount) : DEFAULT_CURRENCY;
   const lossPct = selectedAccount?.max_daily_loss_pct ?? selectedAccount?.max_daily_dd_pct ?? null;
   const maxLossEuro =
     lossPct != null && lossPct > 0 && accountSize > 0
@@ -147,7 +149,7 @@ export default function RealTimeGuards({ strategy, accountSize, sessionStartedAt
       pnlColor = "text-orange-400";
       pnlBg = "bg-orange-500/10 border-orange-500/30";
       const remaining = maxLossEuro + todayPnl;
-      pnlMsg = t("session_active_margin_remaining").replace("{amount}", remaining.toFixed(0) + "€");
+      pnlMsg = t("session_active_margin_remaining").replace("{amount}", money(remaining, cur));
     }
   }
 
@@ -175,14 +177,13 @@ export default function RealTimeGuards({ strategy, accountSize, sessionStartedAt
           {t("session_active_drawdown_title")}
         </p>
         <p className={`text-5xl md:text-6xl font-bold tabular-nums leading-none ${pnlColor}`}>
-          {todayPnl >= 0 ? "+" : ""}
-          {todayPnl.toFixed(2)}€
+          {money(todayPnl, cur, { digits: 2, signed: true })}
         </p>
         {maxLossEuro !== null && !pnlMsg && (
           <p className="text-xs text-muted">
             {t("session_active_margin_remaining").replace(
               "{amount}",
-              Math.max(0, maxLossEuro + todayPnl).toFixed(0) + "€"
+              money(Math.max(0, maxLossEuro + todayPnl), cur)
             )}
           </p>
         )}

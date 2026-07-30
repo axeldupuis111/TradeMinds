@@ -18,6 +18,7 @@
  * Other guards (max_trades, consecutive_losses) remain strategy-based.
  */
 
+import { DEFAULT_CURRENCY, accountCurrency, money } from "@/lib/account-currency";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useAlerts, type Alert } from "@/lib/AlertsContext";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -151,6 +152,7 @@ export default function StopTradingGuard() {
 
       if (usedPct >= 0.5) {
         const firmLabel = selectedAccount?.firm ?? "";
+        const cur = selectedAccount ? accountCurrency(selectedAccount) : DEFAULT_CURRENCY;
         let level: "critical" | "warning" | "info";
         let message: string;
         let dismissible: boolean;
@@ -166,19 +168,19 @@ export default function StopTradingGuard() {
           dismissible = false;
           message = t("stop_daily_loss_95")
             .replace("{pct}", String(pctRounded))
-            .replace("{eur}", remainingEur.toLocaleString("fr-FR"));
+            .replace("{amount}", money(remainingEur, cur));
         } else if (usedPct >= 0.75) {
           level = "warning";
           dismissible = false;
           message = t("stop_daily_loss_75")
             .replace("{pct}", String(pctRounded))
-            .replace("{eur}", remainingEur.toLocaleString("fr-FR"));
+            .replace("{amount}", money(remainingEur, cur));
         } else {
           level = "info";
           dismissible = false;
           message = t("stop_daily_loss_50")
             .replace("{pct}", String(pctRounded))
-            .replace("{eur}", remainingEur.toLocaleString("fr-FR"));
+            .replace("{amount}", money(remainingEur, cur));
         }
 
         alerts.push({

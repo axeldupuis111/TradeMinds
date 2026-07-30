@@ -1,5 +1,6 @@
 "use client";
 
+import { DEFAULT_CURRENCY, money } from "@/lib/account-currency";
 import { useLanguage } from "@/lib/LanguageContext";
 import type { ChallengeProjection } from "@/lib/challenge-projection";
 import { TrendingUp, Gauge } from "lucide-react";
@@ -11,12 +12,16 @@ const STATUS_META: Record<string, { color: string; bar: string; labelKey: string
   insufficient: { color: "text-foreground-muted", bar: "bg-foreground-muted", labelKey: "challenge_proj_insufficient" },
 };
 
-function fmtEur(n: number): string {
-  return `${n >= 0 ? "+" : ""}${Math.round(n)}€`;
-}
-
-export function ChallengeProjectionBlock({ projection }: { projection: ChallengeProjection }) {
+export function ChallengeProjectionBlock({
+  projection,
+  currency = DEFAULT_CURRENCY,
+}: {
+  projection: ChallengeProjection;
+  /** Devise du compte projeté. */
+  currency?: string;
+}) {
   const { t } = useLanguage();
+  const fmtEur = (n: number) => money(n, currency, { signed: true });
   if (projection.status === "passed" || projection.status === "failed") return null;
 
   const meta = STATUS_META[projection.status];

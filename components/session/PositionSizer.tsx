@@ -1,5 +1,6 @@
 "use client";
 
+import { DEFAULT_CURRENCY, accountCurrency, currencySymbol } from "@/lib/account-currency";
 import { computeChallengeRules } from "@/lib/challenge-rules";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -141,7 +142,11 @@ export default function PositionSizer({ strategy }: Props) {
   }, [selectedAccount?.id, selectedAccount?.market_type]);
 
   const isFutures = mode === "futures";
-  const cur = isFutures ? "$" : "€";
+  // Devise réelle du compte. L'ancien raccourci « futures = $, CFD = € » tombait
+  // à côté dès qu'un compte prop en dollars traitait des CFD, ou l'inverse.
+  const cur = currencySymbol(
+    selectedAccount ? accountCurrency(selectedAccount) : DEFAULT_CURRENCY,
+  );
 
   // ── Common inputs: account balance + risk per trade (editable) ────────────
   // Prefilled from the active account / strategy, but the user can override —

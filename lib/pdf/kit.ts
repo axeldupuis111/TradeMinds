@@ -88,8 +88,20 @@ export function setUnicodeMoney(on: boolean) {
   unicodeMoney = on;
 }
 
+/**
+ * Symbole de devise du document en cours. Même raisonnement que le filigrane :
+ * c'est une propriété du compte exporté, pas de chaque appel. Les générateurs
+ * qui ne portent pas sur un compte identifié le remettent à null (euro).
+ */
+let moneySymbol: string | null = null;
+
+export function setMoneySymbol(symbol: string | null) {
+  moneySymbol = symbol;
+}
+
 export function money(n: number, decimals = 0, symbol?: string): string {
-  return `${groupNum(n, decimals)} ${symbol ?? (unicodeMoney ? "€" : EURO_WINANSI)}`;
+  const sym = symbol ?? moneySymbol ?? (unicodeMoney ? "€" : EURO_WINANSI);
+  return `${groupNum(n, decimals)} ${sym}`;
 }
 
 export function signedMoney(n: number, decimals = 2, symbol?: string): string {

@@ -8,6 +8,7 @@ import EmotionalCheck from "@/components/session/EmotionalCheck";
 import PositionSizer from "@/components/session/PositionSizer";
 import QuickTradeLogger from "@/components/session/QuickTradeLogger";
 import RealTimeGuards from "@/components/session/RealTimeGuards";
+import { accountCurrency, money } from "@/lib/account-currency";
 import { useActiveAccount, type ActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { dailyQuotes } from "@/lib/translations";
@@ -76,7 +77,7 @@ const EMOTIONS = [
 function accountLabel(a: ActiveAccount): string {
   const parts = [a.firm];
   if (a.account_number) parts.push(a.account_number);
-  parts.push(a.account_size.toLocaleString() + "€");
+  parts.push(money(a.account_size, accountCurrency(a)));
   return parts.join(" · ");
 }
 

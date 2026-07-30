@@ -11,6 +11,7 @@
  * Premium-gated: non-premium users get no challenge DD alerts.
  */
 
+import { accountCurrency, money } from "@/lib/account-currency";
 import { resolveAccountBalance } from "@/lib/challenge-balance";
 import { computeChallengeRules } from "@/lib/challenge-rules";
 import { useAlerts, type Alert } from "@/lib/AlertsContext";
@@ -26,10 +27,12 @@ function makeAccountLabel(row: {
   firm: string;
   account_number: string | null;
   account_size: number;
+  currency?: string | null;
+  synced_currency?: string | null;
 }): string {
   const parts: string[] = [row.firm || "Compte"];
   if (row.account_number) parts.push(row.account_number);
-  parts.push(row.account_size.toLocaleString() + "€");
+  parts.push(money(row.account_size, accountCurrency(row)));
   return parts.join(" · ");
 }
 
@@ -97,7 +100,7 @@ export default function ChallengeGuardian() {
     const { data: challenges } = await supabase
       .from("prop_challenges")
       .select(
-        "id, firm, account_number, account_size, profit_target_pct, max_daily_dd_pct, max_total_dd_pct, trailing_drawdown, balance, synced_balance, synced_equity, synced_open_positions, synced_at",
+        "id, firm, account_number, account_size, profit_target_pct, max_daily_dd_pct, max_total_dd_pct, trailing_drawdown, balance, currency, synced_balance, synced_equity, synced_open_positions, synced_currency, synced_at",
       )
       .eq("user_id", user.id)
       .eq("status", "active")
@@ -192,17 +195,17 @@ export default function ChallengeGuardian() {
         );
 
         // Cap displayed values: % never exceeds 100 (trailing DD can push usedPct > 1),
-        // remaining € never goes below 0 — display only, thresholds unchanged.
+        // remaining amount never goes below 0 — display only, thresholds unchanged.
         const displayPct = Math.min(100, Math.round(winner.usedPct * 100));
-        const displayEur = Math.max(0, Math.round(winner.remainingEur));
+        const displayAmount = money(Math.max(0, winner.remainingEur), accountCurrency(challenge));
 
         const ddLabel = winner.ddType === "daily"
           ? t("guardian_banner_daily")
               .replace("{pct}", displayPct.toString())
-              .replace("{eur}", displayEur.toString())
+              .replace("{amount}", displayAmount)
           : t("guardian_banner_total")
               .replace("{pct}", displayPct.toString())
-              .replace("{eur}", displayEur.toString());
+              .replace("{amount}", displayAmount);
 
         const message = `${label} : ${ddLabel.replace(/^⚠️\s*/, "")}`;
 
