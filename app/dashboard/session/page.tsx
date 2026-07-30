@@ -14,7 +14,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { dailyQuotes } from "@/lib/translations";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const SESSION_LABELS: Record<string, string> = {
   london: "London (08:00–12:00 UTC)",
@@ -61,6 +61,15 @@ interface SessionHistory {
   checklist_completed: boolean | null;
   ended_at: string | null;
   pnl?: number;
+}
+
+/** Trade des 7 derniers jours, gardé brut pour dériver le P&L par séance. */
+interface RecentTrade {
+  pnl: number | null;
+  commission: number | null;
+  swap: number | null;
+  open_time: string | null;
+  challenge_id: string | null;
 }
 
 const EMOTIONS = [
@@ -168,14 +177,39 @@ export default function SessionPage() {
   const [showStopConfirm, setShowStopConfirm] = useState(false);
   const [paused, setPaused] = useState(false);
   const [pausedAt, setPausedAt] = useState<string | null>(null);
-  const [historyCurrency, setHistoryCurrency] = useState<string>(DEFAULT_CURRENCY);
+  const [recentTrades, setRecentTrades] = useState<RecentTrade[]>([]);
 
-  // Ref plutôt que valeur : le chargement de l'historique ne doit pas se
-  // relancer quand la liste des comptes se rafraîchit.
-  const currencyMapRef = useRef(buildCurrencyMap(activeAccounts));
-  useEffect(() => {
-    currencyMapRef.current = buildCurrencyMap(activeAccounts);
-  }, [activeAccounts]);
+  /**
+   * P&L de chaque séance passée, et devise dans laquelle l'afficher.
+   *
+   * Le cumul est restreint au compte sélectionné. Sans ce filtre, une séance
+   * affichait le P&L de TOUS les comptes ayant tradé ce jour-là : invisible tant
+   * qu'on n'en suit qu'un, faux dès le second.
+   */
+  const { historyWithPnl, historyCurrency } = useMemo(() => {
+    const scoped = selectedAccountId
+      ? recentTrades.filter((tr) => tr.challenge_id === selectedAccountId)
+      : recentTrades;
+
+    const pnlByDay: Record<string, number> = {};
+    for (const tr of scoped) {
+      const day = (tr.open_time || "").split("T")[0];
+      if (!day) continue;
+      pnlByDay[day] = (pnlByDay[day] || 0) + (tr.pnl || 0) + (tr.commission || 0) + (tr.swap || 0);
+    }
+
+    const map = buildCurrencyMap(activeAccounts);
+    return {
+      historyWithPnl: sessionHistory.map((s) => ({
+        ...s,
+        pnl: pnlByDay[s.created_at.split("T")[0]] ?? undefined,
+      })),
+      // En vue « tous les comptes », un cumul mélangeant EUR et USD n'a pas de
+      // devise : on retombe sur l'euro faute de mieux.
+      historyCurrency:
+        commonCurrency(scoped.map((tr) => tr.challenge_id), map) ?? DEFAULT_CURRENCY,
+    };
+  }, [recentTrades, sessionHistory, selectedAccountId, activeAccounts]);
 
   useEffect(() => {
     load();
@@ -237,26 +271,9 @@ export default function SessionPage() {
       setChecklist(DEFAULT_CHECKLIST.map((k) => t(k)));
     }
 
-    // Devise de l'historique : celle des trades récents s'ils la partagent,
-    // sinon l'euro — un cumul mélangeant EUR et USD n'a pas de devise.
-    setHistoryCurrency(
-      commonCurrency((recentTrades || []).map((tr) => tr.challenge_id), currencyMapRef.current) ??
-        DEFAULT_CURRENCY,
-    );
-
-    // Compute P&L per day from recent trades
-    const pnlByDay: Record<string, number> = {};
-    for (const tr of recentTrades || []) {
-      const day = (tr.open_time || "").split("T")[0];
-      if (!day) continue;
-      pnlByDay[day] = (pnlByDay[day] || 0) + (tr.pnl || 0) + (tr.commission || 0) + (tr.swap || 0);
-    }
-
-    // Attach P&L to each session history entry by date
-    const historyWithPnl = (history || []).map((s) => ({
-      ...s,
-      pnl: pnlByDay[s.created_at.split("T")[0]] ?? undefined,
-    }));
+    // Les trades bruts sont conservés tels quels : le P&L par séance est dérivé
+    // plus bas, en fonction du compte sélectionné (voir historyWithPnl).
+    setRecentTrades((recentTrades || []) as RecentTrade[]);
 
     if (session) {
       setActiveSession(session);
@@ -266,7 +283,7 @@ export default function SessionPage() {
         setPausedAt(stored);
       }
     }
-    setSessionHistory(historyWithPnl);
+    setSessionHistory(history || []);
 
     setLoading(false);
   }
@@ -867,11 +884,11 @@ export default function SessionPage() {
           <DayStatus />
 
           {/* Session history */}
-          {sessionHistory.length > 0 && (
+          {historyWithPnl.length > 0 && (
             <section className="bg-card border border-border rounded-xl p-5">
               <h2 className="text-base font-semibold text-foreground mb-3">📅 {t("session_history_title")}</h2>
               <div className="space-y-2">
-                {sessionHistory.map((s) => {
+                {historyWithPnl.map((s) => {
                   const emotion = EMOTIONS.find((e) => e.key === s.emotion_before);
                   const date = new Date(s.created_at).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
                   return (

@@ -212,17 +212,24 @@ export default function DashboardContent({
   }, [displayAccount, maxTradesPerDay, allowedPairs]);
 
   // ── Equity curve ───────────────────────────────────────────────────────────
+  //
+  // La courbe se termine sur le SOLDE RÉEL du compte, pas sur une
+  // reconstitution partant du capital saisi. Sans ce calage, elle finissait à
+  // côté du solde affiché juste au-dessus dès qu'un dépôt, un retrait ou un
+  // historique tronqué séparait les deux. Le décalage est uniforme, donc les
+  // écarts — et le drawdown qui s'y lit — restent intacts.
+  const curveOffset =
+    displayAccount ? displayAccount.balance - (displayAccount.account_size + totalPnl) : 0;
+  const initialBalance = (displayAccount?.account_size ?? 0) + curveOffset;
+
   const equityCurveData = useMemo(() => {
     if (filteredAll.length === 0) return [];
-    const initial = displayAccount?.account_size ?? 0;
-    let running = initial;
+    let running = initialBalance;
     return filteredAll.map((tr) => {
       running += netPnl(tr);
       return { date: tr.open_time.split("T")[0] || tr.open_time, balance: running };
     });
-  }, [filteredAll, displayAccount]);
-
-  const initialBalance = displayAccount?.account_size ?? 0;
+  }, [filteredAll, initialBalance]);
 
   // ── AI Insights ────────────────────────────────────────────────────────────
   const insights = useMemo(() => {
