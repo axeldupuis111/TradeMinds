@@ -7,7 +7,7 @@ import DayState from "@/components/dashboard/DayState";
 import GoalsStreaks from "@/components/dashboard/GoalsStreaks";
 import OnboardingChecklist, { type OnboardingState } from "@/components/dashboard/OnboardingChecklist";
 import CapitalLeaks from "@/components/dashboard/CapitalLeaks";
-import { DemoDataBanner, DemoDataCta } from "@/components/dashboard/DemoData";
+import { DemoDataCta } from "@/components/dashboard/DemoData";
 import PatternAlerts from "@/components/dashboard/PatternAlerts";
 import WeeklyPlanCard from "@/components/dashboard/WeeklyPlanCard";
 import WeeklyRecap from "@/components/dashboard/WeeklyRecap";
@@ -264,7 +264,6 @@ export default function DashboardContent({
       {/* ── Mode démo : bannière tant que des trades fictifs existent.
            key sur le volume de trades : router.refresh() après injection/
            purge remonte le composant, qui re-vérifie son état. ── */}
-      <DemoDataBanner key={`demo-${allTrades.length}`} />
 
       {/* ── Onboarding / activation ──────────────────────────────────── */}
       <OnboardingChecklist state={onboarding} />

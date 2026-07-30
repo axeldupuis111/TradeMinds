@@ -8,6 +8,7 @@ import MobileTabBar from "@/components/MobileTabBar";
 import OnboardingGuide from "@/components/dashboard/OnboardingGuide";
 import Sidebar from "@/components/Sidebar";
 import AlertCenter from "@/components/dashboard/AlertCenter";
+import { DemoDataBanner } from "@/components/dashboard/DemoData";
 import ChallengeGuardian from "@/components/dashboard/ChallengeGuardian";
 import NewsWindowGuard from "@/components/dashboard/NewsWindowGuard";
 import SignupAttribution from "@/components/dashboard/SignupAttribution";
@@ -228,6 +229,7 @@ export default function DashboardLayout({
         <SessionDurationBanner />
         <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto p-6 pb-24 lg:pb-6 focus:outline-none">
           <FoundingNotif />
+          <DemoDataBanner />
           {children}
         </main>
       </div>

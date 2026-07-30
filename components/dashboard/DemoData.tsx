@@ -4,16 +4,19 @@
  * Mode démo — deux pièces complémentaires :
  *
  *  - <DemoDataCta />    : proposé quand le compte n'a AUCUN trade. Un clic
- *    injecte ~50 trades fictifs (lib/demo-data.ts) pour que le dashboard,
- *    l'analytics et les fuites de capital aient quelque chose à raconter
- *    dès la première minute.
+ *    entre en mode démo : compte de trading fictif, stratégie fictive, ~50
+ *    trades rattachés aux deux (lib/demo-data.ts), et `profiles.demo_mode` à
+ *    true. Ce drapeau fait ensuite servir les fixtures d'analyse IA, de macro
+ *    et de coach (lib/demo-fixtures.ts) sans aucun appel au modèle.
  *
- *  - <DemoDataBanner /> : bannière visible tant que des trades démo existent.
- *    Rappelle que ce sont des données fictives (purgées au premier trade
- *    réel) et permet de les supprimer en un clic. Auto-masquée sinon.
+ *  - <DemoDataBanner /> : bandeau visible tant que le mode démo est actif.
+ *    Rappelle que tout est fictif et permet de tout purger en un clic. La
+ *    purge retire aussi les trades, la stratégie et le compte, et remet le
+ *    drapeau à false : le compte redevient vierge.
  */
 
-import { generateDemoTrades, hasDemoTrades, purgeDemoTrades } from "@/lib/demo-data";
+import { usePlan } from "@/lib/PlanContext";
+import { enterDemoMode, hasDemoTrades, purgeDemoData } from "@/lib/demo-data";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { track } from "@/lib/track";
@@ -23,6 +26,7 @@ import { useEffect, useState } from "react";
 
 export function DemoDataCta() {
   const { t } = useLanguage();
+  const { refreshPlan } = usePlan();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   // Le message brut de Supabase, pas un booléen : « impossible de charger »
@@ -36,15 +40,15 @@ export function DemoDataCta() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
 
-    const rows = generateDemoTrades().map((r) => ({ ...r, user_id: user.id }));
-    const { error: insertErr } = await supabase.from("trades").insert(rows);
+    const { error: demoErr } = await enterDemoMode(supabase, user.id);
     setLoading(false);
-    if (insertErr) {
-      console.error("[demo] insert failed:", insertErr.message);
-      setError(insertErr.message);
+    if (demoErr) {
+      console.error("[demo] enter failed:", demoErr);
+      setError(demoErr);
       return;
     }
-    track("demo_loaded", { count: rows.length });
+    track("demo_loaded", {});
+    await refreshPlan();
     router.refresh();
   }
 
@@ -81,32 +85,38 @@ export function DemoDataCta() {
 
 export function DemoDataBanner() {
   const { t } = useLanguage();
+  const { demoMode, refreshPlan } = usePlan();
   const router = useRouter();
-  const [visible, setVisible] = useState(false);
+  const [legacyDemo, setLegacyDemo] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Comptes qui ont chargé la démo avant l'arrivée du drapeau : on se rabat sur
+  // la présence de trades démo pour ne pas les laisser sans moyen de purger.
   useEffect(() => {
+    if (demoMode) return;
     let cancelled = false;
     const supabase = createClient();
     async function check() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || cancelled) return;
       const has = await hasDemoTrades(supabase, user.id);
-      if (!cancelled) setVisible(has);
+      if (!cancelled) setLegacyDemo(has);
     }
     check();
     return () => { cancelled = true; };
-  }, []);
+  }, [demoMode]);
 
+  const visible = demoMode || legacyDemo;
   if (!visible) return null;
 
   async function remove() {
     setDeleting(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) await purgeDemoTrades(supabase, user.id);
+    if (user) await purgeDemoData(supabase, user.id);
     setDeleting(false);
-    setVisible(false);
+    setLegacyDemo(false);
+    await refreshPlan();
     router.refresh();
   }
 

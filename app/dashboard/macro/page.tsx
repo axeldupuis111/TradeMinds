@@ -14,6 +14,8 @@
  */
 
 import { useLanguage } from "@/lib/LanguageContext";
+import { usePlan } from "@/lib/PlanContext";
+import { DEMO_MACRO } from "@/lib/demo-fixtures";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   Globe2, Sparkles, Lock, AlertTriangle, History, Clock, CalendarRange,
@@ -78,6 +80,7 @@ const ASSET_LABEL_KEYS: Record<string, string> = {
 
 export default function MacroPage() {
   const { t, lang } = useLanguage();
+  const { demoMode } = usePlan();
   const dateLocale = ({ fr: "fr-FR", en: "en-US", de: "de-DE", es: "es-ES" } as const)[lang] ?? "en-US";
   const reducedMotion = useReducedMotion();
 
@@ -88,6 +91,19 @@ export default function MacroPage() {
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
+    // Mode démo : briefing fictif servi depuis le code. Aucun appel réseau,
+    // aucun contenu réel, et la rubrique reste visible malgré le gate premium
+    // puisque tout l'intérêt de la démo est de montrer ce que le plan apporte.
+    if (demoMode) {
+      const fx = DEMO_MACRO[lang] ?? DEMO_MACRO.en;
+      const today = new Date().toISOString().slice(0, 10);
+      setLocked(false);
+      setAnalyses([{ analysis_date: today, ...fx }]);
+      setSelectedDate(today);
+      setLoading(false);
+      return;
+    }
+
     let alive = true;
     setLoading(true);
     fetch(`/api/macro-analysis?lang=${lang}`)
@@ -101,7 +117,7 @@ export default function MacroPage() {
       .catch(() => { if (alive) { setAnalyses([]); } })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [lang]);
+  }, [lang, demoMode]);
 
   // Each briefing starts folded on its synthesis.
   useEffect(() => { setExpanded(false); }, [selectedDate]);
@@ -123,6 +139,13 @@ export default function MacroPage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">{t("macro_title")}</h1>
         <p className="text-foreground-muted text-sm mt-1">{t("macro_subtitle")}</p>
+        {/* Non masquable, et volontairement au-dessus du contenu : quelqu'un qui
+            prendrait ce briefing pour une vraie analyse pourrait trader dessus. */}
+        {demoMode && (
+          <p className="mt-3 text-xs font-semibold text-warning border border-warning/30 bg-warning/10 rounded-lg px-3 py-2">
+            {t("macro_demo_warning")}
+          </p>
+        )}
       </div>
     </div>
   );

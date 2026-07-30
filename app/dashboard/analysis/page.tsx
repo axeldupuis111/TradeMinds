@@ -4,6 +4,7 @@ import UpgradeBanner from "@/components/UpgradeBanner";
 import type { CategoryBreakdown } from "@/lib/discipline-score";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
+import { DEMO_COACH, buildDemoAnalysis, type DemoTradeForAnalysis } from "@/lib/demo-fixtures";
 import { PLAN_LIMITS } from "@/lib/plan-limits";
 import { createClient } from "@/lib/supabase/client";
 import { track } from "@/lib/track";
@@ -483,7 +484,7 @@ function getFilteredTrades(trades: { close_time: string }[], period: PeriodKey) 
 
 export default function AnalysisPage() {
   const { t, lang } = useLanguage();
-  const { canUseAI, aiRemaining, plan, refreshPlan, loading: planLoading } = usePlan();
+  const { canUseAI, aiRemaining, plan, refreshPlan, demoMode, loading: planLoading } = usePlan();
   const supabase = createClient();
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loading, setLoading] = useState(false);
@@ -630,6 +631,26 @@ export default function AnalysisPage() {
     // Le free qui envoie son message découverte : signal clé de l'échelle
     // d'upgrade (fire-and-forget, jamais bloquant).
     if (plan === "free") track("taster_used");
+
+    // Mode démo : réponses pré-écrites (lib/demo-fixtures.ts). Le vrai coach
+    // coûte des tokens à chaque message, un visiteur curieux ne doit rien
+    // coûter. Rien n'est écrit dans chat_messages ni ai_analysis_history, et
+    // aucun quota n'est décompté. La réponse est explicitement annoncée comme
+    // une démonstration, pour ne pas laisser croire à une vraie réponse
+    // personnalisée à la question posée.
+    if (demoMode) {
+      const turns = DEMO_COACH[lang] ?? DEMO_COACH.en;
+      const userCount = newMessages.filter((m) => m.role === "user").length;
+      const turn = turns[Math.min(userCount - 1, turns.length - 1)];
+      setChatMessages([
+        ...newMessages,
+        { role: "assistant", content: `${t("demo_coach_note")}
+
+${turn.answer}` },
+      ]);
+      setChatLoading(false);
+      return;
+    }
 
     try {
       // Build trades context
@@ -779,7 +800,7 @@ export default function AnalysisPage() {
     } finally {
       setChatLoading(false);
     }
-  }, [chatInput, chatMessages, chatLoading, chatDailyCount, chatRemaining, supabase, lang]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [chatInput, chatMessages, chatLoading, chatDailyCount, chatRemaining, supabase, lang, demoMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Annule une action posée par le coach (rejoue l'opération inverse côté serveur),
   // puis marque le chip comme annulé.
@@ -942,6 +963,17 @@ export default function AnalysisPage() {
 
       const filteredTrades = getFilteredTrades(trades, selectedPeriod);
       if (filteredTrades.length === 0) throw new Error(t("period_no_trades"));
+
+      // Mode démo : analyse figée, assemblée depuis les trades démo eux-mêmes
+      // (textes dans lib/demo-fixtures.ts, chiffres recalculés). On sort AVANT
+      // l'appel au modèle, donc sans coût ni quota, et surtout avant l'insertion
+      // dans session_reviews : cette table alimente le classement public, une
+      // ligne démo y ferait entrer un compte fictif dans le vrai classement.
+      if (demoMode) {
+        setAnalysis(buildDemoAnalysis(filteredTrades as DemoTradeForAnalysis[], lang));
+        track("analysis_run", { demo: true });
+        return;
+      }
 
       // Le total de la checklist vient de la stratégie (le score coché est
       // sur le trade) : il permet à l'IA de lire « 3/5 éléments validés ».

@@ -4,7 +4,7 @@ import ExportGuideModal from "@/components/trades/ExportGuideModal";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { applyManualMapping, parseCSV, parseXlsx, type ParsedTrade } from "@/lib/csv-parser";
-import { purgeDemoTrades } from "@/lib/demo-data";
+import { purgeDemoData } from "@/lib/demo-data";
 import { splitAlreadyImported, type DedupeTrade } from "@/lib/trades/dedupe-import";
 import { track } from "@/lib/track";
 import { createClient } from "@/lib/supabase/client";
@@ -327,7 +327,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
 
     // Premier import réel → les trades démo s'effacent (et ne polluent pas
     // la détection de doublons ci-dessous).
-    await purgeDemoTrades(supabase, user.id);
+    await purgeDemoData(supabase, user.id);
 
     // Détection de doublons par COMPTAGE (voir lib/trades/dedupe-import) :
     // trois positions identiques ouvertes à la même seconde sont trois trades

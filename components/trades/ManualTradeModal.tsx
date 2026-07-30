@@ -6,7 +6,7 @@ import { INSTRUMENTS, INSTRUMENT_CATEGORIES } from "@/lib/instruments";
 import { useStrategyTags } from "@/lib/hooks/useStrategyTags";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
-import { purgeDemoTrades } from "@/lib/demo-data";
+import { purgeDemoData } from "@/lib/demo-data";
 import { track } from "@/lib/track";
 import { createClient } from "@/lib/supabase/client";
 import type { Lang } from "@/lib/translations";
@@ -203,7 +203,7 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
 
     try {
       // Un trade réel saisi à la main → la démo n'a plus de raison d'être.
-      await purgeDemoTrades(supabase, user.id);
+      await purgeDemoData(supabase, user.id);
 
       const { error: dbError } = await supabase.from("trades").insert({
         user_id: user.id,

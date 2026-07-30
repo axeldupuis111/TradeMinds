@@ -7,7 +7,7 @@
 // delegate here so installed EAs keep working while new bots use the new URL.
 
 import { NextRequest, NextResponse } from "next/server";
-import { purgeDemoTrades } from "@/lib/demo-data";
+import { purgeDemoData } from "@/lib/demo-data";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkDailyLossAlert, checkDrawdownAlert, resolveActiveChallengeId, getChallengeAccountMap } from "@/lib/alerts/daily-loss";
 import { checkTiltInsight } from "@/lib/alerts/tilt-insight";
@@ -128,7 +128,7 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
   }
 
   // Des trades réels arrivent par le rail push → la démo n'a plus de raison d'être.
-  await purgeDemoTrades(admin, userId);
+  await purgeDemoData(admin, userId);
 
   // ── Exclude trades manually closed by the user ───────────────────────────
   const externalIds = validTrades.map((t) => String(t.ticket));

@@ -34,6 +34,13 @@ interface PlanContextValue {
   subscriptionStatus: SubscriptionStatus;
   cancelAtPeriodEnd: boolean;
   currentPeriodEnd: Date | null;
+  /**
+   * Le compte visite l'app en mode démonstration. Sert à servir les fixtures
+   * (analyse IA, macro, coach) sans appel au modèle ni quota consommé, et à
+   * afficher les bandeaux « données fictives ». Lu ici parce que le profil est
+   * déjà chargé : pas de requête supplémentaire.
+   */
+  demoMode: boolean;
   incrementAIUsage: () => Promise<void>;
   refreshPlan: () => Promise<void>;
 }
@@ -50,6 +57,7 @@ const PlanContext = createContext<PlanContextValue>({
   subscriptionStatus: null,
   cancelAtPeriodEnd: false,
   currentPeriodEnd: null,
+  demoMode: false,
   incrementAIUsage: async () => {},
   refreshPlan: async () => {},
 });
@@ -63,6 +71,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus>(null);
   const [cancelAtPeriodEnd, setCancelAtPeriodEnd] = useState(false);
   const [currentPeriodEnd, setCurrentPeriodEnd] = useState<Date | null>(null);
+  const [demoMode, setDemoMode] = useState(false);
 
   const loadPlan = useCallback(async () => {
     const {
@@ -73,11 +82,24 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const { data, error: profileError } = await supabase
+    // Ordre de deploiement indifferent : on tente la colonne demo_mode, et on
+    // se rabat sur le select historique si la migration 20260730_demo_mode.sql
+    // n'est pas encore passee. Sans ce repli, un select en echec ferait lire
+    // « free » a un abonne payant (la colonne inconnue renvoie une erreur, pas
+    // une valeur nulle) — regression bien plus grave que l'absence du mode demo.
+    const BASE_COLS = "plan, plan_expires_at, daily_ai_count, daily_ai_reset";
+    let { data, error: profileError } = await supabase
       .from("profiles")
-      .select("plan, plan_expires_at, daily_ai_count, daily_ai_reset")
+      .select(`${BASE_COLS}, demo_mode`)
       .eq("id", user.id)
       .single();
+    if (profileError && /demo_mode/.test(profileError.message)) {
+      ({ data, error: profileError } = await supabase
+        .from("profiles")
+        .select(BASE_COLS)
+        .eq("id", user.id)
+        .single());
+    }
 
     let effectivePlan: PlanType = "free";
     if (data) {
@@ -91,6 +113,9 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
         effectivePlan = "free";
       }
       setPlan(effectivePlan);
+      // Fail-open : si la migration 20260730_demo_mode.sql n'est pas appliquee,
+      // la colonne est absente du retour et le mode demo reste simplement off.
+      setDemoMode(!!(data as Record<string, unknown>).demo_mode);
 
       const today = new Date().toISOString().split("T")[0];
       const weekStart = getWeekStart(new Date());
@@ -177,6 +202,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
         setSubscriptionStatus(null);
         setCancelAtPeriodEnd(false);
         setCurrentPeriodEnd(null);
+        setDemoMode(false);
         setLoading(false);
       }
     });
@@ -238,6 +264,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
         subscriptionStatus,
         cancelAtPeriodEnd,
         currentPeriodEnd,
+        demoMode,
         incrementAIUsage,
         refreshPlan: loadPlan,
       }}

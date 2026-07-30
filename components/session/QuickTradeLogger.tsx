@@ -1,7 +1,7 @@
 "use client";
 
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
-import { purgeDemoTrades } from "@/lib/demo-data";
+import { purgeDemoData } from "@/lib/demo-data";
 import { INSTRUMENTS } from "@/lib/instruments";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
@@ -78,7 +78,7 @@ export default function QuickTradeLogger({ strategyId, pairs, onClose, onSaved }
     if (!user) { setSaveError(t("not_connected")); setSaving(false); return; }
 
     // Un trade réel loggé en session → la démo n'a plus de raison d'être.
-    await purgeDemoTrades(supabase, user.id);
+    await purgeDemoData(supabase, user.id);
 
     const openTime = `${todayStr}T${form.open_hour}:00`;
 

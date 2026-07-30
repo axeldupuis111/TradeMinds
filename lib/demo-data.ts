@@ -31,6 +31,8 @@ export interface DemoTradeRow {
   close_time: string;
   pair: string;
   direction: "long" | "short";
+  strategy_id?: string;
+  challenge_id?: string;
   lot_size: number;
   entry_price: number;
   exit_price: number;
@@ -179,22 +181,137 @@ export function generateDemoTrades(now: Date = new Date()): DemoTradeRow[] {
 }
 
 /**
- * Supprime les trades démo de l'utilisateur. Best-effort : ne jette jamais
- * (si la colonne is_demo n'existe pas encore, il n'y a rien à purger).
- * À appeler dès qu'un trade RÉEL est créé (import, saisie, sync).
+ * Stratégie fictive : les trades démo la référencent, et la page Stratégie a
+ * ainsi quelque chose à montrer (checklist pré-trade, règles, garde-fous).
+ * Le nom reste explicite pour qu'on ne la confonde jamais avec une vraie.
  */
-export async function purgeDemoTrades(supabase: SupabaseClient, userId: string): Promise<void> {
+export function demoStrategyRow(userId: string) {
+  return {
+    user_id: userId,
+    is_demo: true,
+    name: "Stratégie de démonstration",
+    pairs: ["EURUSD", "GBPUSD", "XAUUSD", "NAS100"],
+    sessions: ["london", "newyork"],
+    risk_reward: 2,
+    max_sl_pips: 25,
+    max_daily_loss: 150,
+    max_trades_per_day: 3,
+    max_consecutive_losses: 2,
+    risk_per_trade_pct: 1,
+    max_session_minutes: 180,
+    setup_rules:
+      "Attendre le retour sur zone après la prise de liquidité. Pas d'entrée avant 13 h, pas d'entrée à contre-tendance H4, et on arrête la journée après deux pertes consécutives.",
+    pretrade_checklist: [
+      "La tendance H4 est claire",
+      "Le prix a pris une liquidité avant mon entrée",
+      "Mon stop est placé sur une invalidation structurelle",
+      "Aucune annonce économique majeure dans l'heure",
+      "Je ne cherche pas à récupérer une perte",
+    ],
+  };
+}
+
+/** Compte de trading fictif, dimensionné pour que les garde-fous parlent. */
+export function demoAccountRow(userId: string, now: Date = new Date()) {
+  const start = new Date(now.getTime() - 40 * 86400000);
+  return {
+    user_id: userId,
+    is_demo: true,
+    firm: "Compte de démonstration",
+    type: "personal",
+    market_type: "forex",
+    account_number: "DEMO-0001",
+    account_size: 10000,
+    balance: 10000,
+    profit_target_pct: 8,
+    max_daily_dd_pct: 5,
+    max_total_dd_pct: 10,
+    max_daily_loss_pct: 5,
+    trailing_drawdown: false,
+    start_date: start.toISOString().slice(0, 10),
+    status: "active",
+  };
+}
+
+/**
+ * Entre en mode démo : compte fictif, stratégie fictive, trades rattachés aux
+ * deux, puis `profiles.demo_mode = true`.
+ *
+ * Ordre volontaire : le drapeau est posé EN DERNIER. Si une insertion échoue,
+ * le compte n'est pas laissé « en démo » avec des données incomplètes, et
+ * l'appelant reçoit le message Postgres réel.
+ *
+ * Rien n'est écrit dans session_reviews, badge_awards ni
+ * challenge_participations : ces tables alimentent le classement public.
+ */
+export async function enterDemoMode(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<{ error: string | null }> {
+  const { data: account, error: accErr } = await supabase
+    .from("prop_challenges")
+    .insert(demoAccountRow(userId))
+    .select("id")
+    .single();
+  if (accErr) return { error: accErr.message };
+
+  const { data: strategy, error: stratErr } = await supabase
+    .from("strategies")
+    .insert(demoStrategyRow(userId))
+    .select("id")
+    .single();
+  if (stratErr) return { error: stratErr.message };
+
+  const rows = generateDemoTrades().map((r) => ({
+    ...r,
+    user_id: userId,
+    strategy_id: strategy.id as string,
+    challenge_id: account.id as string,
+  }));
+  const { error: tradesErr } = await supabase.from("trades").insert(rows);
+  if (tradesErr) return { error: tradesErr.message };
+
+  const { error: flagErr } = await supabase
+    .from("profiles")
+    .update({ demo_mode: true })
+    .eq("id", userId);
+  if (flagErr) return { error: flagErr.message };
+
+  return { error: null };
+}
+
+/**
+ * Supprime TOUTES les données démo et sort du mode démo. Best-effort : ne jette
+ * jamais (si les colonnes is_demo n'existent pas encore, il n'y a rien à
+ * purger). Appelée à la sortie explicite du mode démo, et dès qu'un trade RÉEL
+ * est créé (import, saisie, sync) — un vrai trade signifie que la visite guidée
+ * est terminée.
+ */
+export async function purgeDemoData(supabase: SupabaseClient, userId: string): Promise<void> {
+  for (const table of ["trades", "strategies", "prop_challenges"] as const) {
+    try {
+      const { error } = await supabase
+        .from(table)
+        .delete()
+        .eq("user_id", userId)
+        .eq("is_demo", true);
+      if (error && !/is_demo/.test(error.message)) {
+        console.error(`[demo] purge ${table} failed:`, error.message);
+      }
+    } catch (e) {
+      console.error(`[demo] purge ${table} threw:`, e);
+    }
+  }
   try {
     const { error } = await supabase
-      .from("trades")
-      .delete()
-      .eq("user_id", userId)
-      .eq("is_demo", true);
-    if (error && !/is_demo/.test(error.message)) {
-      console.error("[demo] purge failed:", error.message);
+      .from("profiles")
+      .update({ demo_mode: false })
+      .eq("id", userId);
+    if (error && !/demo_mode/.test(error.message)) {
+      console.error("[demo] reset demo_mode failed:", error.message);
     }
   } catch (e) {
-    console.error("[demo] purge threw:", e);
+    console.error("[demo] reset demo_mode threw:", e);
   }
 }
 
