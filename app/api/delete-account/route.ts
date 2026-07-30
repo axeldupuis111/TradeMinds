@@ -28,7 +28,18 @@ export async function DELETE() {
 
   const userId = user.id;
 
-  // Delete user data from all tables
+  // Suppression explicite table par table, avec la session de l'utilisateur.
+  //
+  // ⚠️ Ce n'est PAS ce qui garantit l'effacement. Certaines tables n'ont pas de
+  // politique RLS de suppression (prop_challenges n'a qu'INSERT/SELECT/UPDATE) :
+  // le delete y repart avec zéro ligne affectée, sans erreur. Ce qui efface
+  // réellement tout, c'est le ON DELETE CASCADE depuis auth.users, déclenché par
+  // le deleteUser admin en fin de route — vérifié le 2026-07-30 sur un
+  // utilisateur jetable (prop_challenges, profiles, trades et strategies tombent
+  // bien à zéro).
+  //
+  // Donc : si quelqu'un retire un jour cette cascade, ces appels ne rattraperont
+  // rien et la suppression de compte deviendra silencieusement incomplète.
   await Promise.all([
     supabase.from("trades").delete().eq("user_id", userId),
     supabase.from("strategy_tags").delete().eq("user_id", userId),
