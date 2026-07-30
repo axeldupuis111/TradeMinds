@@ -12,6 +12,9 @@ describe("generateDemoTrades", () => {
     for (const r of rows) {
       expect(r.is_demo).toBe(true);
       expect(r.status).toBe("closed");
+      // Garde-fou : la contrainte trades_direction_check n'accepte que ces deux
+      // valeurs. La démo écrivait "buy"/"sell" et échouait donc systématiquement.
+      expect(["long", "short"]).toContain(r.direction);
       expect(Number.isFinite(r.pnl)).toBe(true);
       expect(Number.isFinite(r.entry_price)).toBe(true);
       expect(new Date(r.close_time).getTime()).toBeGreaterThan(new Date(r.open_time).getTime());

@@ -19,11 +19,18 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+/**
+ * ⚠️ `direction` doit valoir "long" ou "short" : la contrainte
+ * trades_direction_check rejette "buy"/"sell", qui n'existent que dans les
+ * formats bruts des brokers (l'EA MT5, les CSV) et sont normalisés à l'entrée
+ * par mapDirection()/csv-parser. Le mode démo a été inutilisable jusqu'au
+ * 2026-07-30 pour cette seule raison.
+ */
 export interface DemoTradeRow {
   open_time: string;
   close_time: string;
   pair: string;
-  direction: "buy" | "sell";
+  direction: "long" | "short";
   lot_size: number;
   entry_price: number;
   exit_price: number;
@@ -136,12 +143,12 @@ export function generateDemoTrades(now: Date = new Date()): DemoTradeRow[] {
     const durationMin = s.durationMin ?? 20 + Math.floor(rng() * 90);
     const close = new Date(open.getTime() + durationMin * 60000);
 
-    const direction: "buy" | "sell" = rng() < 0.5 ? "buy" : "sell";
+    const direction: "long" | "short" = rng() < 0.5 ? "long" : "short";
     const lot = s.lot ?? Math.round((0.5 + rng() * 0.5) * 100) / 100;
     const movePips = (20 + rng() * 60) * p.pipScale;
     const gain = s.win ? movePips : -movePips;
     const entry = p.price * (1 + (rng() - 0.5) * 0.01);
-    const exit = direction === "buy" ? entry + gain : entry - gain;
+    const exit = direction === "long" ? entry + gain : entry - gain;
     const slDist = movePips * (0.8 + rng() * 0.6);
     const tpDist = movePips * (1.6 + rng() * 0.8);
     const digits = p.pipScale < 0.01 ? 5 : 2;
@@ -156,8 +163,8 @@ export function generateDemoTrades(now: Date = new Date()): DemoTradeRow[] {
       lot_size: lot,
       entry_price: Number(entry.toFixed(digits)),
       exit_price: Number(exit.toFixed(digits)),
-      sl: Number((direction === "buy" ? entry - slDist : entry + slDist).toFixed(digits)),
-      tp: Number((direction === "buy" ? entry + tpDist : entry - tpDist).toFixed(digits)),
+      sl: Number((direction === "long" ? entry - slDist : entry + slDist).toFixed(digits)),
+      tp: Number((direction === "long" ? entry + tpDist : entry - tpDist).toFixed(digits)),
       pnl,
       commission: -Math.round((2 + rng() * 3) * 100) / 100,
       swap: 0,
