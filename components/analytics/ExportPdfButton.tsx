@@ -5,6 +5,7 @@ import { buildAnalyticsPdf, type AnalyticsTrade } from "@/lib/analytics-pdf";
 import { Button } from "@/components/ui/Button";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
+import { setDemoWatermark } from "@/lib/pdf/kit";
 import { createClient } from "@/lib/supabase/client";
 import { FileDown } from "lucide-react";
 import { useState } from "react";
@@ -21,7 +22,7 @@ interface ExportPdfButtonProps {
 export default function ExportPdfButton({ trades, periodLabel, accountLabel }: ExportPdfButtonProps) {
   const { t, lang } = useLanguage();
   const pdfLocale = ({ fr: "fr-FR", en: "en-US", de: "de-DE", es: "es-ES" } as const)[lang] ?? "en-US";
-  const { plan, loading: planLoading } = usePlan();
+  const { plan, demoMode, loading: planLoading } = usePlan();
   const supabase = createClient();
   const [generating, setGenerating] = useState(false);
   const [showLocked, setShowLocked] = useState(false);
@@ -57,6 +58,8 @@ export default function ExportPdfButton({ trades, periodLabel, accountLabel }: E
         lastReview = data ?? null;
       }
 
+    // Un PDF quitte l'app : s'il contient des donnees de demo, il doit le dire.
+    setDemoWatermark(demoMode ? t("demo_pdf_watermark") : null);
       const doc = await buildAnalyticsPdf({
         trades: selection,
         periodLabel,

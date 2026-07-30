@@ -1041,6 +1041,8 @@ ${turn.answer}` },
     try {
       const ins = a.insights;
       // Import dynamique : jsPDF + police embarquée ne chargent qu'au clic.
+      const { setDemoWatermark } = await import("@/lib/pdf/kit");
+      setDemoWatermark(demoMode ? t("demo_pdf_watermark") : null);
       const { exportAnalysisPdf } = await import("@/lib/analysis-pdf");
       const historyItem = viewingHistory ? history.find((h) => h.id === viewingHistory) : null;
       await exportAnalysisPdf({

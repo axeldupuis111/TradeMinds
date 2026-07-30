@@ -7,6 +7,7 @@ import { ChallengeProjectionBlock } from "@/components/dashboard/ChallengeProjec
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
+import { setDemoWatermark } from "@/lib/pdf/kit";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState, useCallback } from "react";
 
@@ -718,7 +719,7 @@ function DeleteModal({
 
 export default function ChallengePage() {
   const { t, lang } = useLanguage();
-  const { maxAccounts } = usePlan();
+  const { maxAccounts, demoMode } = usePlan();
   const supabase = createClient();
   const { selectedAccountId, setSelectedAccountId } = useActiveAccount();
 
@@ -994,6 +995,7 @@ export default function ChallengePage() {
                 onEdit={handleEdit}
                 onDelete={handleDeleteAccount}
                 onExportPdf={() => {
+                  setDemoWatermark(demoMode ? t("demo_pdf_watermark") : null);
                   import("@/lib/export-pdf").then(({ exportAccountPdf }) => {
                     exportAccountPdf({
                       firm: ac.firm,

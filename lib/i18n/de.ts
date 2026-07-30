@@ -100,6 +100,8 @@ const dict: Record<string, string> = {
   "demo_insert_error": "Der Demo-Modus konnte nicht aktiviert werden. Versuche es in einem Moment erneut.",
   "demo_banner_text": "Demo-Modus: Trades, Strategie und Analysen sind fiktiv. Nichts zählt für die Rangliste oder deine echten Statistiken.",
   "demo_banner_delete": "Demo-Modus verlassen",
+  "demo_pdf_watermark": "DEMONSTRATIONSDATEN",
+  "leaderboard_demo_notice": "Demo-Modus: Deine fiktiven Daten gehen nicht in die Rangliste ein. Sie füllt sich mit deinen echten Vorbereitungs-Sessions, sobald du den Demo-Modus verlässt.",
   "demo_coach_note": "_Demonstrationsantwort, im Voraus geschrieben. Der echte Coach beantwortet deine eigenen Fragen anhand deiner Trades._",
   "macro_demo_warning": "Fiktives Beispiel: Dieses Briefing ist Demonstrationsinhalt, es spiegelt nicht das aktuelle Marktgeschehen wider und darf keiner Handelsentscheidung dienen.",
   "auto_analysis_loading": "Automatische Analyse deiner letzten 30 Tage läuft…",

@@ -124,7 +124,7 @@ function Delta({ d }: { d: number | null }) {
 
 export default function LeaderboardPage() {
   const { t, lang } = useLanguage();
-  const { plan, loading: planLoading } = usePlan();
+  const { plan, demoMode, loading: planLoading } = usePlan();
   // Pas de verrou pendant le chargement du plan pour éviter un flash
   // « verrouillé » chez les abonnés (même précaution que la sidebar).
   const badgesPlanLocked = !planLoading && plan === "free";
@@ -217,6 +217,15 @@ export default function LeaderboardPage() {
       {showConfetti && <ConfettiBurst onDone={() => setShowConfetti(false)} />}
       <h1 className="text-2xl font-bold text-foreground">{t("leaderboard_title")}</h1>
       <p className="text-muted mt-1">{t("leaderboard_subtitle")}</p>
+
+      {/* Le mode démo n'écrit AUCUNE session : sans cette explication, le
+          visiteur croirait que le classement est cassé. Il vaut mieux dire
+          pourquoi il n'y figure pas que d'y faire entrer un score inventé. */}
+      {demoMode && (
+        <p className="mt-4 text-sm text-warning border border-warning/30 bg-warning/10 rounded-lg px-3 py-2">
+          {t("leaderboard_demo_notice")}
+        </p>
+      )}
 
       {/* Onglets : classement / défis communautaires */}
       <div className="mt-5 inline-flex items-center gap-1 rounded-xl border border-border bg-card p-1">

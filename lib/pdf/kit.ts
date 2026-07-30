@@ -68,6 +68,22 @@ const EURO_WINANSI = String.fromCharCode(128); // € en WinAnsi (polices standa
 // Vaut true dès qu'une police Unicode est enregistrée (lib/pdf/fonts) : le
 // vrai « € » remplace alors le code 128 WinAnsi, qui n'existe pas en Unicode.
 let unicodeMoney = false;
+/**
+ * Filigrane de démonstration, appliqué automatiquement par footer() sur toutes
+ * les pages quand il est défini. Un PDF quitte l'application : s'il contient
+ * des données fictives, il doit se dénoncer lui-même, sans quoi il peut
+ * circuler comme un vrai relevé de performance.
+ *
+ * État module plutôt que paramètre : les quatre générateurs (analyse, analytics,
+ * export de trades, bilan) ont des signatures différentes et le filigrane est
+ * une propriété du compte, pas du document.
+ */
+let demoWatermark: string | null = null;
+
+export function setDemoWatermark(label: string | null) {
+  demoWatermark = label;
+}
+
 export function setUnicodeMoney(on: boolean) {
   unicodeMoney = on;
 }
@@ -615,6 +631,23 @@ export class Pdf {
       doc.setFont(this.font,"bold");
       doc.setTextColor(...C.teal);
       doc.text(this.url, w - M, h - 10, { align: "right" });
+
+      if (demoWatermark) {
+        this.withAlpha(0.12, () => {
+          doc.setFont(this.font, "bold");
+          doc.setFontSize(58);
+          doc.setTextColor(...C.navy);
+          doc.text(demoWatermark as string, w / 2, h / 2, { align: "center", angle: 32 });
+        });
+        // Mention lisible en pied de page : le filigrane diagonal peut passer
+        // inaperçu à l'impression ou sur un écran de téléphone.
+        this.withAlpha(0.9, () => {
+          doc.setFont(this.font, "bold");
+          doc.setFontSize(7.5);
+          doc.setTextColor(...C.muted);
+          doc.text(demoWatermark as string, w / 2, h - 6, { align: "center" });
+        });
+      }
     }
   }
 }

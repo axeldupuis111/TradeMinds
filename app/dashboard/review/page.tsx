@@ -2,6 +2,7 @@
 
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
+import { setDemoWatermark } from "@/lib/pdf/kit";
 import { Pdf, C, type RGB } from "@/lib/pdf/kit";
 import { Activity, ArrowDownRight, ArrowUpRight, Clock3, Minus, Sparkles, ThumbsUp, Target, Compass, ChevronLeft, ChevronRight, FileDown, TrendingUp, TrendingDown, Flame, Award, CalendarX, Brain, GitCompareArrows, Gauge, Scale } from "lucide-react";
 import Link from "next/link";
@@ -107,7 +108,7 @@ function Sparkline({ data }: { data: number[] }) {
 
 export default function MonthlyReviewPage() {
   const { t, lang } = useLanguage();
-  const { plan } = usePlan();
+  const { plan, demoMode } = usePlan();
   const isPaid = plan === "plus" || plan === "premium";
   const [monthParam, setMonthParam] = useState<string | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
@@ -222,6 +223,7 @@ export default function MonthlyReviewPage() {
       const locale = ({ fr: "fr-FR", en: "en-US", de: "de-DE", es: "es-ES" } as const)[lang as "fr" | "en" | "de" | "es"] ?? "en-US";
       const { jsPDF } = await import("jspdf");
       const doc = new jsPDF({ unit: "mm", format: "a4" });
+      setDemoWatermark(demoMode ? t("demo_pdf_watermark") : null);
       const pdf = new Pdf(doc);
 
       const titleCap = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
