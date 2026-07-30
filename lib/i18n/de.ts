@@ -2395,8 +2395,6 @@ const dict: Record<string, string> = {
   "settings_oauth_message": "Du hast dich über {provider} angemeldet. Das Passwort wird von diesem Dienst verwaltet.",
   "settings_timezone_title": "Zeitzone",
   "settings_timezone_desc": "Deine Trade-Zeiten werden nach dieser Zeitzone umgerechnet.",
-  "settings_currency_title": "Währung",
-  "settings_currency_desc": "Die Währung, in der dein P&L angezeigt wird.",
   "settings_notif_title": "Benachrichtigungen",
   "settings_notif_subtitle": "Verwalte deine Benachrichtigungseinstellungen.",
   "settings_notif_session": "Tägliche Sitzungserinnerung",

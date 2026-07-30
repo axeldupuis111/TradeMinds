@@ -42,13 +42,6 @@ const TIMEZONES = [
   { value: "America/Los_Angeles", label: "Los Angeles, Vancouver" },
 ];
 
-const CURRENCIES = [
-  { value: "EUR", label: "EUR (€)" },
-  { value: "USD", label: "USD ($)" },
-  { value: "GBP", label: "GBP (£)" },
-  { value: "CHF", label: "CHF" },
-];
-
 function detectBrowserTimezone(): string {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -70,8 +63,6 @@ export default function SettingsPage() {
   const [originalPublicProfile, setOriginalPublicProfile] = useState(false);
   const [timezone, setTimezone] = useState("UTC");
   const [originalTimezone, setOriginalTimezone] = useState("UTC");
-  const [currency, setCurrency] = useState("EUR");
-  const [originalCurrency, setOriginalCurrency] = useState("EUR");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -97,8 +88,7 @@ export default function SettingsPage() {
   const hasChanges =
     username !== originalUsername ||
     publicProfile !== originalPublicProfile ||
-    timezone !== originalTimezone ||
-    currency !== originalCurrency;
+    timezone !== originalTimezone;
 
   async function fetchMtToken() {
     setMtLoading(true);
@@ -156,7 +146,7 @@ export default function SettingsPage() {
 
     const { data } = await supabase
       .from("profiles")
-      .select("username, public_profile, timezone, currency, email_notif_session")
+      .select("username, public_profile, timezone, email_notif_session")
       .eq("id", user.id)
       .single();
 
@@ -169,9 +159,6 @@ export default function SettingsPage() {
       const tz = normalizeTimezone((data as Record<string, unknown>).timezone as string || detectBrowserTimezone());
       setTimezone(tz);
       setOriginalTimezone(tz);
-      const curr = (data as Record<string, unknown>).currency as string || "EUR";
-      setCurrency(curr);
-      setOriginalCurrency(curr);
       setEmailNotifSession(!!(data as Record<string, unknown>).email_notif_session);
     } else {
       const tz = detectBrowserTimezone();
@@ -225,7 +212,6 @@ export default function SettingsPage() {
         username: trimmed || null,
         public_profile: publicProfile,
         timezone,
-        currency,
       })
       .eq("id", user.id);
 
@@ -236,7 +222,6 @@ export default function SettingsPage() {
       setOriginalUsername(trimmed);
       setOriginalPublicProfile(publicProfile);
       setOriginalTimezone(timezone);
-      setOriginalCurrency(currency);
       showToast("success", t("settings_saved"));
     }
     setSaving(false);
@@ -435,27 +420,6 @@ export default function SettingsPage() {
             <option key={tz.value} value={tz.value}>{tz.label}</option>
           ))}
         </select>
-      </section>
-
-      {/* Currency */}
-      <section className="bg-card border border-border rounded-xl p-5">
-        <h2 className="text-lg font-semibold text-foreground mb-1">{t("settings_currency_title")}</h2>
-        <p className="text-muted text-sm mb-4">{t("settings_currency_desc")}</p>
-        <div className="flex flex-wrap gap-2">
-          {CURRENCIES.map((c) => (
-            <button
-              key={c.value}
-              onClick={() => setCurrency(c.value)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                currency === c.value
-                  ? "bg-accent/10 border-accent text-accent"
-                  : "bg-surface border-border text-muted hover:text-foreground"
-              }`}
-            >
-              {c.label}
-            </button>
-          ))}
-        </div>
       </section>
 
       {/* Public profile */}

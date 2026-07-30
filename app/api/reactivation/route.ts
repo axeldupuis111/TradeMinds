@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { resolveUserCurrency } from "@/lib/account-currency-server";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { alertCronFailure } from "@/lib/cron-alert";
@@ -140,7 +141,7 @@ async function handle(req: Request) {
 
   const { data: users, error } = await supabase
     .from("profiles")
-    .select("id, email, timezone, language, currency")
+    .select("id, email, timezone, language")
     .eq("email_notif_session", true)
     .not("email", "is", null);
 
@@ -199,7 +200,8 @@ async function handle(req: Request) {
         from: "TradeDiscipline <noreply@tradediscipline.app>",
         to: user.email,
         subject: copy.subject,
-        html: buildEmailHtml(stats, idleDays, copy, LOCALES[lang], (user.currency as string) || "EUR"),
+        html: buildEmailHtml(stats, idleDays, copy, LOCALES[lang],
+          await resolveUserCurrency(supabase, user.id as string)),
       });
       sent++;
     } catch (emailErr) {

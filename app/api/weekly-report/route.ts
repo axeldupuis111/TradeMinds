@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { resolveUserCurrency } from "@/lib/account-currency-server";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { sendPushToUser } from "@/lib/push";
@@ -111,7 +112,7 @@ const REPORT_COPY: Record<Lang, {
   },
 };
 
-// Formateurs liés à la langue + devise du compte (profiles.currency, défaut EUR).
+// Formateurs liés à la langue + devise déduite des comptes de trading.
 function makeFormatters(locale: string, currency: string) {
   const money = new Intl.NumberFormat(locale, {
     style: "currency",
@@ -230,7 +231,7 @@ async function handle(req: Request) {
 
   const { data: users, error } = await supabase
     .from("profiles")
-    .select("id, email, language, currency, timezone")
+    .select("id, email, language, timezone")
     .eq("email_notif_session", true)
     .not("email", "is", null);
 
@@ -294,7 +295,9 @@ async function handle(req: Request) {
     const lang: Lang = (user.language as Lang) in REPORT_COPY ? (user.language as Lang) : "en";
     const copy = REPORT_COPY[lang];
     const locale = LOCALES[lang];
-    const fmt = makeFormatters(locale, (user.currency as string) || "EUR");
+    // Devise deduite des comptes du trader (voir resolveUserCurrency) : un
+    // trader qui n'a que des comptes en dollars ne doit pas lire des euros.
+    const fmt = makeFormatters(locale, await resolveUserCurrency(supabase, user.id as string));
     const weekLabel = `${since.toLocaleDateString(locale, { day: "numeric", month: "short" })} – ${now.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" })}`;
 
     if (dryRun) {
