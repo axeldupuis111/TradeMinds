@@ -46,14 +46,34 @@ export default function ResetPasswordPage() {
     }
 
     setLoading(true);
+
+    // `sessionReady` ne prouve rien : INITIAL_SESSION se déclenche même sans
+    // session. On vérifie donc réellement avant d'appeler updateUser, sinon
+    // l'échec remonte sous forme d'erreur incompréhensible.
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setLoading(false);
+      setError(t("reset_password_expired"));
+      return;
+    }
+
     const { error: updateError } = await supabase.auth.updateUser({ password });
     setLoading(false);
 
     if (updateError) {
-      if (updateError.message.toLowerCase().includes("expired") || updateError.message.toLowerCase().includes("invalid")) {
+      const msg = updateError.message.toLowerCase();
+      // Supabase refuse de réenregistrer le mot de passe courant. Sans ce cas
+      // explicite, l'utilisateur tombait sur « une erreur est survenue » et
+      // n'avait aucun moyen de deviner qu'il devait en choisir un autre.
+      if (updateError.code === "same_password" || msg.includes("different from the old password")) {
+        setError(t("reset_password_same"));
+      } else if (msg.includes("expired") || msg.includes("invalid") || msg.includes("session")) {
         setError(t("reset_password_expired"));
       } else {
-        setError(t("reset_password_error"));
+        // Erreur non reconnue : on montre le message brut de Supabase plutôt
+        // qu'un texte fourre-tout. Moche, mais sans ça ni l'utilisateur ni le
+        // support ne peuvent rien faire (on a perdu une matinée dessus).
+        setError(`${t("reset_password_error")} (${updateError.message})`);
       }
       return;
     }

@@ -250,6 +250,7 @@ const dict: Record<string, string> = {
   "reset_password_mismatch": "Las contraseñas no coinciden.",
   "reset_password_expired": "El enlace ha caducado. Solicita un nuevo reset desde la página de inicio de sesión.",
   "reset_password_error": "Algo salió mal. Inténtalo de nuevo.",
+  "reset_password_same": "Esa ya es tu contraseña actual. Elige una diferente.",
   "sidebar_dashboard": "Dashboard",
   "sidebar_trades": "Mis Trades",
   "sidebar_strategy": "Estrategia",

@@ -250,6 +250,7 @@ const dict: Record<string, string> = {
   "reset_password_mismatch": "Passwords do not match.",
   "reset_password_expired": "This link has expired. Request a new reset from the login page.",
   "reset_password_error": "Something went wrong. Please try again.",
+  "reset_password_same": "That is already your current password. Please choose a different one.",
   "sidebar_dashboard": "Dashboard",
   "sidebar_trades": "My Trades",
   "sidebar_strategy": "Strategy",
