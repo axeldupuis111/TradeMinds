@@ -94,7 +94,7 @@ const dict: Record<string, string> = {
   "leaks_curve_disciplined": "Plan followed",
   "leaks_curve_gap": "+{n} gap",
   "demo_cta_title": "No trades yet? Tour TradeDiscipline in demo mode",
-  "demo_cta_desc": "One click fills your account: 50 fictional trades with real discipline mistakes, a strategy, an AI analysis and a sample macro briefing. All free, no AI credit used, and everything disappears when you leave demo mode.",
+  "demo_cta_desc": "One click fills your account: around 50 fictional trades with real discipline mistakes, a strategy, an AI analysis and a sample macro briefing. All free, no AI credit used, and everything disappears when you leave demo mode.",
   "demo_cta_button": "Turn on demo mode",
   "demo_cta_loading": "Loading…",
   "demo_insert_error": "Could not turn on demo mode. Please try again in a moment.",

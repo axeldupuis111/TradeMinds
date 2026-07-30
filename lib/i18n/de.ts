@@ -94,7 +94,7 @@ const dict: Record<string, string> = {
   "leaks_curve_disciplined": "Plan befolgt",
   "leaks_curve_gap": "+{n} Unterschied",
   "demo_cta_title": "Noch keine Trades? Erkunde TradeDiscipline im Demo-Modus",
-  "demo_cta_desc": "Ein Klick füllt dein Konto: 50 fiktive Trades mit echten Disziplinfehlern, eine Strategie, eine KI-Analyse und ein Beispiel-Makrobriefing. Alles kostenlos, kein KI-Guthaben verbraucht, und alles verschwindet beim Verlassen des Demo-Modus.",
+  "demo_cta_desc": "Ein Klick füllt dein Konto: rund 50 fiktive Trades mit echten Disziplinfehlern, eine Strategie, eine KI-Analyse und ein Beispiel-Makrobriefing. Alles kostenlos, kein KI-Guthaben verbraucht, und alles verschwindet beim Verlassen des Demo-Modus.",
   "demo_cta_button": "Demo-Modus aktivieren",
   "demo_cta_loading": "Wird geladen…",
   "demo_insert_error": "Der Demo-Modus konnte nicht aktiviert werden. Versuche es in einem Moment erneut.",

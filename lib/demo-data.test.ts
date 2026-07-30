@@ -88,6 +88,18 @@ describe("lignes démo et contraintes de la base", () => {
     expect(st.pretrade_checklist.length).toBeGreaterThan(0);
   });
 
+  it("remplit les colonnes text[] avec des tableaux, jamais des phrases", () => {
+    // Postgres rejette une chaîne dans une colonne text[] (« malformed array
+    // literal ») : troisième echec du 2026-07-30, sur setup_rules.
+    const st = demoStrategyRow("u") as unknown as Record<string, unknown>;
+    for (const col of ["pairs", "sessions", "setup_rules", "pretrade_checklist"]) {
+      expect(Array.isArray(st[col])).toBe(true);
+      expect((st[col] as unknown[]).every((v) => typeof v === "string")).toBe(true);
+    }
+    // raw_text, elle, est bien une colonne texte.
+    expect(typeof st.raw_text).toBe("string");
+  });
+
   it("les paires de la démo sont couvertes par la stratégie démo", () => {
     // Sinon l'analyse démo signalerait « paire non autorisée » sur des trades
     // que la démo a elle-même générés.

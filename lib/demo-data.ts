@@ -199,8 +199,18 @@ export function demoStrategyRow(userId: string) {
     max_consecutive_losses: 2,
     risk_per_trade_pct: 1,
     max_session_minutes: 180,
-    setup_rules:
-      "Attendre le retour sur zone après la prise de liquidité. Pas d'entrée avant 13 h, pas d'entrée à contre-tendance H4, et on arrête la journée après deux pertes consécutives.",
+    // text[] et non text : setup_rules est la LISTE des règles, une par entrée.
+    // Y mettre une phrase produit « malformed array literal ».
+    setup_rules: [
+      "Attendre le retour sur zone après la prise de liquidité",
+      "Aucune entrée avant 13 h",
+      "Pas d'entrée à contre-tendance H4",
+      "Stop placé sur une invalidation structurelle",
+      "Arrêt de la journée après deux pertes consécutives",
+    ],
+    // raw_text est la colonne texte libre : le plan tel qu'il serait rédigé.
+    raw_text:
+      "J'attends le retour sur zone après la prise de liquidité, jamais avant 13 h et jamais à contre-tendance H4. Le stop va sur une invalidation structurelle, et j'arrête la journée après deux pertes consécutives.",
     pretrade_checklist: [
       "La tendance H4 est claire",
       "Le prix a pris une liquidité avant mon entrée",
