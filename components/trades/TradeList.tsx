@@ -1,5 +1,6 @@
 "use client";
 
+import { buildCurrencyMap, money, tradeCurrency } from "@/lib/account-currency";
 import { getEmotionDisplay } from "@/lib/emotions";
 import type { ChecklistItem } from "@/lib/hooks/useStrategyTags";
 import { detectKillzone } from "@/lib/ict-constants";
@@ -189,6 +190,20 @@ interface Filters {
   result: string;
   dateFrom: string;
   dateTo: string;
+  /** id du compte, "" = tous, NO_ACCOUNT = trades rattachés à aucun compte. */
+  account: string;
+}
+
+/** Sentinelle : les trades sans compte (import CSV non affecté, saisie manuelle). */
+const NO_ACCOUNT = "__none__";
+
+interface AccountOption {
+  id: string;
+  firm: string;
+  account_number: string | null;
+  status: "active" | "passed" | "failed";
+  currency: string | null;
+  synced_currency: string | null;
 }
 
 interface Props {
@@ -226,6 +241,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     result: "",
     dateFrom: "",
     dateTo: "",
+    account: "",
   });
   const [globalStats, setGlobalStats] = useState({
     count: 0,
@@ -236,6 +252,28 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
   });
   const [sort, setSort] = useState<SortState>({ column: null, direction: "desc" });
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  // TOUS les comptes, y compris réussis et ratés : l'historique des trades ne
+  // s'arrête pas quand un challenge se termine. Le contexte de compte actif ne
+  // convient pas ici, il filtre sur status = 'active', ce qui ferait disparaître
+  // du filtre les challenges clos et rendrait leurs trades en euros par défaut.
+  const [accounts, setAccounts] = useState<AccountOption[]>([]);
+  const currencyMap = useMemo(() => buildCurrencyMap(accounts), [accounts]);
+
+  useEffect(() => {
+    async function loadAccounts() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("prop_challenges")
+        .select("id, firm, account_number, status, currency, synced_currency")
+        .eq("user_id", user.id)
+        .order("status", { ascending: true })
+        .order("created_at", { ascending: false });
+      setAccounts((data || []) as AccountOption[]);
+    }
+    loadAccounts();
+  }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     loadAllPairs();
@@ -286,6 +324,8 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     if (filters.direction) query = query.eq("direction", filters.direction);
     if (filters.dateFrom) query = query.gte("open_time", filters.dateFrom);
     if (filters.dateTo) query = query.lte("open_time", filters.dateTo + "T23:59:59");
+    if (filters.account === NO_ACCOUNT) query = query.is("challenge_id", null);
+    else if (filters.account) query = query.eq("challenge_id", filters.account);
 
     if (sort.column === null) {
       query = query.order("open_time", { ascending: false }).order("id", { ascending: false });
@@ -340,11 +380,16 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data } = await supabase
+    // Les stats du bandeau suivent le filtre de compte : sinon le total annoncé
+    // contredirait la liste affichée juste en dessous.
+    let statsQuery = supabase
       .from("trades")
-      .select("pnl, commission, swap")
+      .select("pnl, commission, swap, challenge_id")
       .eq("user_id", user.id)
       .eq("status", "closed");
+    if (filters.account === NO_ACCOUNT) statsQuery = statsQuery.is("challenge_id", null);
+    else if (filters.account) statsQuery = statsQuery.eq("challenge_id", filters.account);
+    const { data } = await statsQuery;
 
     if (!data || data.length === 0) {
       setGlobalStats({ count: 0, wins: 0, totalPnl: 0, best: 0, worst: 0 });
@@ -419,7 +464,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
   }
 
   function resetFilters() {
-    setFilters({ pair: "", direction: "", result: "", dateFrom: "", dateTo: "" });
+    setFilters({ pair: "", direction: "", result: "", dateFrom: "", dateTo: "", account: "" });
   }
 
   const [exporting, setExporting] = useState(false);
@@ -450,6 +495,8 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     if (filters.direction) query = query.eq("direction", filters.direction);
     if (filters.dateFrom) query = query.gte("open_time", filters.dateFrom);
     if (filters.dateTo) query = query.lte("open_time", filters.dateTo + "T23:59:59");
+    if (filters.account === NO_ACCOUNT) query = query.is("challenge_id", null);
+    else if (filters.account) query = query.eq("challenge_id", filters.account);
 
     const { data } = await query;
     if (!data || data.length === 0) { setExporting(false); return; }
@@ -492,8 +539,8 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     return { top3GainIds, top3LossIds };
   }, [trades]);
 
-  const hasActiveFilters = filters.pair || filters.direction || filters.result || filters.dateFrom || filters.dateTo;
-  const activeFilterCount = [filters.pair, filters.direction, filters.result, filters.dateFrom, filters.dateTo].filter(Boolean).length;
+  const hasActiveFilters = filters.pair || filters.direction || filters.result || filters.dateFrom || filters.dateTo || filters.account;
+  const activeFilterCount = [filters.pair, filters.direction, filters.result, filters.dateFrom, filters.dateTo, filters.account].filter(Boolean).length;
   const allSelected = trades.length > 0 && trades.every((tr) => selectedIds.has(tr.id));
   const someSelected = selectedIds.size > 0;
   const { count: statsCount } = globalStats;
@@ -539,6 +586,31 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
         </div>
         <div className={`p-3 ${filtersOpen ? "block" : "hidden sm:block"}`}>
           <div className="flex flex-wrap gap-3 items-end">
+            {/* Compte : premier filtre, parce qu'un trade appartient d'abord à
+                un compte, et que chaque compte peut avoir sa propre devise. */}
+            {accounts.length > 0 && (
+              <div className="flex flex-col gap-1 min-w-[170px]">
+                <label className="text-xs text-muted">{t("trades_filter_label_account")}</label>
+                <select
+                  value={filters.account}
+                  onChange={(e) => setFilters((f) => ({ ...f, account: e.target.value }))}
+                  className="bg-surface border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-accent"
+                >
+                  <option value="">{t("trades_filter_all_accounts")}</option>
+                  {accounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.firm}
+                      {a.account_number ? ` · ${a.account_number}` : ""}
+                      {a.status !== "active"
+                        ? ` (${a.status === "passed" ? t("challenge_status_passed") : t("challenge_status_failed")})`
+                        : ""}
+                    </option>
+                  ))}
+                  <option value={NO_ACCOUNT}>{t("trades_filter_no_account")}</option>
+                </select>
+              </div>
+            )}
+
             <div className="flex flex-col gap-1 min-w-[140px]">
               <label className="text-xs text-muted">{t("trades_filter_label_pair")}</label>
               <select
@@ -774,7 +846,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
                       {/* P&L avec glow top 3 */}
                       <td className={`px-3 py-2 ${isTopGain ? "bg-gradient-to-r from-profit/10 to-transparent" : isTopLoss ? "bg-gradient-to-r from-loss/10 to-transparent" : ""}`}>
                         <span className={`font-mono font-semibold text-sm ${net >= 0 ? "text-profit" : "text-loss"}`}>
-                          {net >= 0 ? "+" : ""}{net.toFixed(2)}
+                          {money(net, tradeCurrency(tr.challenge_id, currencyMap), { digits: 2, signed: true })}
                         </span>
                       </td>
 
