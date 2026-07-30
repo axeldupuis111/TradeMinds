@@ -25,11 +25,13 @@ export function DemoDataCta() {
   const { t } = useLanguage();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
+  // Le message brut de Supabase, pas un booléen : « impossible de charger »
+  // seul ne dit ni à l'utilisateur ni au support ce qui a réellement bloqué.
+  const [error, setError] = useState<string | null>(null);
 
   async function inject() {
     setLoading(true);
-    setError(false);
+    setError(null);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
@@ -39,7 +41,7 @@ export function DemoDataCta() {
     setLoading(false);
     if (insertErr) {
       console.error("[demo] insert failed:", insertErr.message);
-      setError(true);
+      setError(insertErr.message);
       return;
     }
     track("demo_loaded", { count: rows.length });
@@ -55,7 +57,11 @@ export function DemoDataCta() {
         <div className="flex-1 min-w-0">
           <h3 className="text-sm font-semibold text-foreground">{t("demo_cta_title")}</h3>
           <p className="text-xs text-foreground-muted mt-0.5 leading-relaxed">{t("demo_cta_desc")}</p>
-          {error && <p className="text-xs text-loss mt-1">{t("demo_insert_error")}</p>}
+          {error && (
+            <p className="text-xs text-loss mt-1">
+              {t("demo_insert_error")} <span className="opacity-70">({error})</span>
+            </p>
+          )}
         </div>
         <button
           type="button"
