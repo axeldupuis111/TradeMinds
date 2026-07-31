@@ -15,7 +15,12 @@ export default function PublicHeader({ showAnchors = false }: PublicHeaderProps)
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-[12px]">
-      <div className="max-w-6xl mx-auto px-6 h-14 relative flex items-center justify-between">
+      {/* Grille 3 pistes plutôt qu'un groupe central en `absolute left-1/2` :
+          l'ancien centrage absolu n'avait aucune relation de flux avec le
+          groupe de droite, si bien que « Blog » et « FAQ » se chevauchaient
+          (on lisait « BFAQ »). En grille, la piste centrale prend l'espace
+          restant et le recouvrement devient impossible. */}
+      <div className="max-w-6xl mx-auto px-6 h-14 grid grid-cols-[auto_1fr_auto] items-center gap-4">
         {/* Logo */}
         <Link href={localizedHref("/", lang)} className="flex items-center gap-2 shrink-0">
           <div className="w-6 h-6 flex items-center justify-center rounded-md bg-accent/20">
@@ -39,8 +44,8 @@ export default function PublicHeader({ showAnchors = false }: PublicHeaderProps)
         </Link>
 
         {/* Centre links — only on landing (when showAnchors is true) */}
-        {showAnchors && (
-          <div className="hidden md:flex items-center gap-6 absolute left-1/2 -translate-x-1/2">
+        {showAnchors ? (
+          <div className="hidden md:flex items-center justify-center gap-6">
             <a href="#features" className="text-sm text-foreground-muted hover:text-foreground transition-colors">
               {t("nav_features")}
             </a>
@@ -51,10 +56,15 @@ export default function PublicHeader({ showAnchors = false }: PublicHeaderProps)
               {t("nav_faq")}
             </a>
           </div>
+        ) : (
+          /* Piste centrale vide : garde la grille à 3 colonnes sur les pages
+             sans ancres (login, légales), sinon le groupe de droite remonterait
+             au centre. */
+          <div aria-hidden />
         )}
 
         {/* Right side */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 justify-end">
           <Link
             href={localizedHref("/blog", lang)}
             className="hidden sm:inline text-sm text-foreground-muted hover:text-foreground transition-colors px-3 py-1.5"

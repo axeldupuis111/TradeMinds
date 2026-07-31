@@ -477,7 +477,10 @@ function Hero() {
           <Magnetic strength={0.4}>
             <Link
               href="/login"
-              className="btn-primary-shimmer group relative inline-block px-7 py-3.5 rounded-xl font-semibold text-sm text-white transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--accent))]"
+              /* `border border-transparent` + inline-flex : le bouton secondaire
+                 porte une bordure et pas celui-ci, d'où 1,3px d'écart de hauteur
+                 et 3px de décalage vertical entre les deux. */
+              className="btn-primary-shimmer group relative inline-flex items-center justify-center border border-transparent px-7 py-3.5 rounded-xl font-semibold text-sm text-white transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--accent))]"
               style={{
                 background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #3b82f6 100%)",
                 boxShadow: "0 0 0 1px rgb(var(--accent)/0.3), 0 4px 24px rgb(var(--accent)/0.2)",
@@ -489,7 +492,7 @@ function Hero() {
           <Magnetic strength={0.25}>
             <a
               href="#features"
-              className="inline-block px-7 py-3.5 rounded-xl font-semibold text-sm border transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--accent))]"
+              className="inline-flex items-center justify-center px-7 py-3.5 rounded-xl font-semibold text-sm border transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--accent))]"
               style={{
                 color: "rgb(var(--foreground))",
                 borderColor: "rgb(var(--border))",
