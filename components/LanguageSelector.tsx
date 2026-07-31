@@ -25,7 +25,7 @@ export default function LanguageSelector() {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-muted hover:text-foreground rounded-lg hover:bg-white/5 transition-colors"
+        className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-foreground-muted hover:text-foreground rounded-lg hover:bg-white/5 transition-colors"
       >
         <span className="text-xs font-medium">{current.label}</span>
         <svg

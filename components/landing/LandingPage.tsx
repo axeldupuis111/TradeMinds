@@ -20,6 +20,15 @@ import type { TargetAndTransition, Transition } from "framer-motion";
 ───────────────────────────────────────────── */
 const ease = [0.16, 1, 0.3, 1] as const;
 
+/* ─────────────────────────────────────────────
+   TEXT TONES
+   `--muted` (#71717a) ne passe pas AA sur le fond sombre (4.12:1). Il reste
+   volontairement utilisé pour le "chrome" des maquettes produit (micro-labels
+   8-11px, axes, légendes) où le gris sourd fait partie du rendu réaliste.
+   Toute vraie phrase de copy passe par COPY (#a1a1aa, ~7:1).
+───────────────────────────────────────────── */
+const COPY = "rgb(var(--foreground-muted))";
+
 function Reveal({
   children,
   className = "",
@@ -358,7 +367,7 @@ function Hero() {
   const title2Words = t("hero_title_2").split(" ");
 
   return (
-    <section ref={sectionRef} onMouseMove={handleSpot} className="relative pt-32 pb-24 px-6 overflow-hidden">
+    <section ref={sectionRef} onMouseMove={handleSpot} className="landing-hero relative px-6 overflow-hidden">
       {/* Cursor spotlight */}
       {!prefersReduced && (
         <motion.div className="absolute inset-0 pointer-events-none -z-0" aria-hidden style={{ background: spotlight }} />
@@ -453,7 +462,7 @@ function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.65, delay: 0.22, ease }}
           className="mt-6 text-base sm:text-lg md:text-xl max-w-2xl mx-auto leading-relaxed"
-          style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}
+          style={{ color: COPY, fontStyle: "normal" }}
         >
           {t("hero_subtitle_v2")}
         </motion.p>
@@ -468,7 +477,10 @@ function Hero() {
           <Magnetic strength={0.4}>
             <Link
               href="/login"
-              className="btn-primary-shimmer group relative inline-block px-7 py-3.5 rounded-xl font-semibold text-sm text-white transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--accent))]"
+              /* `border border-transparent` + inline-flex : le bouton secondaire
+                 porte une bordure et pas celui-ci, d'où 1,3px d'écart de hauteur
+                 et 3px de décalage vertical entre les deux. */
+              className="btn-primary-shimmer group relative inline-flex items-center justify-center border border-transparent px-7 py-3.5 rounded-xl font-semibold text-sm text-white transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--accent))]"
               style={{
                 background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #3b82f6 100%)",
                 boxShadow: "0 0 0 1px rgb(var(--accent)/0.3), 0 4px 24px rgb(var(--accent)/0.2)",
@@ -480,7 +492,7 @@ function Hero() {
           <Magnetic strength={0.25}>
             <a
               href="#features"
-              className="inline-block px-7 py-3.5 rounded-xl font-semibold text-sm border transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--accent))]"
+              className="inline-flex items-center justify-center px-7 py-3.5 rounded-xl font-semibold text-sm border transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--accent))]"
               style={{
                 color: "rgb(var(--foreground))",
                 borderColor: "rgb(var(--border))",
@@ -499,7 +511,7 @@ function Hero() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.42, ease }}
           className="mt-3 text-center text-xs"
-          style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}
+          style={{ color: COPY, fontStyle: "normal" }}
         >
           {t("hero_reassurance")}
         </motion.p>
@@ -521,7 +533,7 @@ function Hero() {
             style={{
               borderColor: "rgb(var(--border))",
               background: "rgb(var(--card))",
-              color: "rgb(var(--muted))",
+              color: COPY,
               fontStyle: "normal",
             }}
           >
@@ -838,7 +850,7 @@ function MarketTicker() {
                   <span className="relative w-1.5 h-1.5 rounded-full" style={{ background: c }} />
                 </span>
                 <span className="text-[13px] font-semibold tracking-wide" style={{ color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}>{it.sym}</span>
-                <span className="text-[13px] tabular-nums" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{it.price}</span>
+                <span className="text-[13px] tabular-nums" style={{ color: COPY, fontStyle: "normal" }}>{it.price}</span>
                 <span className="text-[12px] font-bold tabular-nums inline-flex items-center gap-0.5" style={{ color: c, fontStyle: "normal" }}>
                   <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} aria-hidden style={{ transform: it.up ? "none" : "rotate(180deg)" }}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
@@ -946,14 +958,14 @@ function Problem() {
   ];
 
   return (
-    <section className="py-28 px-6">
+    <section className="landing-section px-6">
       <div className="max-w-5xl mx-auto">
         <Reveal className="text-center mb-16">
           <Eyebrow>{t("eyebrow_problem")}</Eyebrow>
           <h2 className="text-4xl sm:text-5xl font-bold leading-tight" style={{ color: "rgb(var(--foreground))" }}>
             {t("problem_title")}
             <br />
-            <span style={{ color: "rgb(var(--muted))" }}>{t("problem_subtitle")}</span>
+            <span style={{ color: COPY }}>{t("problem_subtitle")}</span>
           </h2>
         </Reveal>
 
@@ -970,7 +982,7 @@ function Problem() {
                 {p.icon}
               </div>
               <h3 className="text-base font-bold mb-2" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{p.title}</h3>
-              <p className="text-[15px] leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{p.desc}</p>
+              <p className="text-[15px] leading-relaxed" style={{ color: COPY, fontStyle: "normal" }}>{p.desc}</p>
             </SpotlightCard>
           ))}
         </StaggerReveal>
@@ -1443,7 +1455,7 @@ function FeatureCard({ f }: { f: FeatureDef }) {
           {f.tag}
         </span>
         <h3 className="text-lg sm:text-xl font-bold mb-1.5" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{f.title}</h3>
-        <p className="text-[15px] leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{f.desc}</p>
+        <p className="text-[15px] leading-relaxed" style={{ color: COPY, fontStyle: "normal" }}>{f.desc}</p>
       </div>
       <div className="mt-4 border-t" style={{ borderColor: "rgb(var(--border)/0.5)", background: "rgb(var(--surface)/0.3)" }}>
         {f.visual}
@@ -1491,7 +1503,7 @@ function Features() {
   ];
 
   return (
-    <section id="features" className="py-28 px-6 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
+    <section id="features" className="landing-section px-6 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
       <div className="max-w-5xl mx-auto">
         <Reveal className="text-center mb-16">
           <Eyebrow>{t("eyebrow_features")}</Eyebrow>
@@ -1535,7 +1547,7 @@ function Features() {
                   </motion.div>
                   <div>
                     <h3 className="text-xl sm:text-2xl font-bold leading-tight" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{step.title}</h3>
-                    <p className="text-[14px] mt-0.5" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{step.sub}</p>
+                    <p className="text-[14px] mt-0.5" style={{ color: COPY, fontStyle: "normal" }}>{step.sub}</p>
                   </div>
                 </div>
 
@@ -1591,12 +1603,12 @@ function AIDetection() {
   ];
 
   return (
-    <section className="py-28 px-6 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
+    <section className="landing-section px-6 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
       <div className="max-w-5xl mx-auto">
         <Reveal className="text-center mb-14">
           <Eyebrow>{t("eyebrow_ai_coach")}</Eyebrow>
           <h2 className="text-4xl sm:text-5xl font-bold" style={{ color: "rgb(var(--foreground))" }}>{t("ai_detect_title")}</h2>
-          <p className="mt-4 max-w-xl mx-auto text-base leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("ai_detect_subtitle")}</p>
+          <p className="mt-4 max-w-xl mx-auto text-base leading-relaxed" style={{ color: COPY, fontStyle: "normal" }}>{t("ai_detect_subtitle")}</p>
         </Reveal>
 
         {/* Démo produit en boucle — le coach IA en action */}
@@ -1674,7 +1686,7 @@ function RoiPayback({ t }: { t: (k: string) => string }) {
             <p className="text-xl sm:text-2xl font-extrabold leading-tight" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>
               <span style={{ color: "rgb(var(--loss))" }}>1</span> {t("pricing_roi_ineq_left")}
             </p>
-            <p className="text-[11px] mt-1 uppercase tracking-wide" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("pricing_roi_ineq_left_sub")}</p>
+            <p className="text-[11px] mt-1 uppercase tracking-wide" style={{ color: COPY, fontStyle: "normal" }}>{t("pricing_roi_ineq_left_sub")}</p>
           </motion.div>
 
           {/* chevrons animés — vers le bas en mobile, vers la droite en desktop */}
@@ -1719,11 +1731,11 @@ function RoiPayback({ t }: { t: (k: string) => string }) {
             <span className="w-2 h-2 rounded-full shrink-0" style={{ background: `rgb(var(${p.tone}))` }} />
             <div className="min-w-0">
               <p className="text-sm font-bold" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{t(p.nameKey)}</p>
-              <p className="text-[11px]" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("pricing_roi_perday").replace("{v}", p.perDay)}</p>
+              <p className="text-[11px]" style={{ color: COPY, fontStyle: "normal" }}>{t("pricing_roi_perday").replace("{v}", p.perDay)}</p>
             </div>
             <p className="ml-auto text-lg sm:text-xl font-extrabold tabular-nums whitespace-nowrap" style={{ color: `rgb(var(${p.tone}))`, fontStyle: "normal" }}>
               {p.price}
-              <span className="text-[11px] font-medium" style={{ color: "rgb(var(--muted))" }}>{t("pricing_roi_permonth")}</span>
+              <span className="text-[11px] font-medium" style={{ color: COPY }}>{t("pricing_roi_permonth")}</span>
             </p>
           </motion.div>
         ))}
@@ -1788,7 +1800,7 @@ function ROIBand({ t }: { t: (k: string) => string }) {
         <h3 className="text-2xl sm:text-3xl font-bold text-center" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>
           {t("pricing_roi_title")}
         </h3>
-        <p className="mt-3 text-sm sm:text-base text-center max-w-2xl mx-auto leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>
+        <p className="mt-3 text-sm sm:text-base text-center max-w-2xl mx-auto leading-relaxed" style={{ color: COPY, fontStyle: "normal" }}>
           {t("pricing_roi_sub")}
         </p>
 
@@ -1809,7 +1821,7 @@ function ROIBand({ t }: { t: (k: string) => string }) {
                 </svg>
               </div>
               <p className="text-sm font-bold" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{p.title}</p>
-              <p className="mt-1.5 text-[13px] leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{p.desc}</p>
+              <p className="mt-1.5 text-[13px] leading-relaxed" style={{ color: COPY, fontStyle: "normal" }}>{p.desc}</p>
             </div>
           ))}
         </StaggerReveal>
@@ -1889,8 +1901,8 @@ function PricingCompareTable({ t }: { t: (k: string) => string }) {
               <table className="w-full text-sm min-w-[560px]">
                 <thead>
                   <tr className="border-b" style={{ borderColor: "rgb(var(--border))", background: "rgb(var(--surface)/0.5)" }}>
-                    <th className="text-left px-4 py-3 font-medium" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("plan_feature")}</th>
-                    <th className="text-center px-4 py-3 font-medium" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("plan_free")}</th>
+                    <th className="text-left px-4 py-3 font-medium" style={{ color: COPY, fontStyle: "normal" }}>{t("plan_feature")}</th>
+                    <th className="text-center px-4 py-3 font-medium" style={{ color: COPY, fontStyle: "normal" }}>{t("plan_free")}</th>
                     <th className="text-center px-4 py-3 font-semibold" style={{ color: "rgb(var(--accent))", fontStyle: "normal" }}>{t("plan_plus")}</th>
                     <th className="text-center px-4 py-3 font-semibold" style={{ color: "rgb(245,158,11)", fontStyle: "normal" }}>{t("plan_premium")}</th>
                   </tr>
@@ -1900,7 +1912,7 @@ function PricingCompareTable({ t }: { t: (k: string) => string }) {
                     <React.Fragment key={f.key}>
                       {f.groupKey && (
                         <tr style={{ background: "rgb(var(--surface)/0.55)" }}>
-                          <td colSpan={4} className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t(f.groupKey)}</td>
+                          <td colSpan={4} className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider" style={{ color: COPY, fontStyle: "normal" }}>{t(f.groupKey)}</td>
                         </tr>
                       )}
                       <tr className="border-t" style={{ borderColor: "rgb(var(--border)/0.6)" }}>
@@ -1976,7 +1988,7 @@ function Pricing() {
   ];
 
   return (
-    <section id="pricing" className="py-28 px-6 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
+    <section id="pricing" className="landing-section px-6 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
       <div className="max-w-5xl mx-auto">
         <Reveal className="text-center mb-12">
           <Eyebrow>{t("eyebrow_pricing")}</Eyebrow>
@@ -1995,7 +2007,7 @@ function Pricing() {
               className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-[rgb(var(--accent))]"
               style={{
                 background: !annual ? "rgb(var(--surface))" : "transparent",
-                color: !annual ? "rgb(var(--foreground))" : "rgb(var(--muted))",
+                color: !annual ? "rgb(var(--foreground))" : COPY,
                 fontStyle: "normal",
               }}
               aria-pressed={!annual}
@@ -2008,7 +2020,7 @@ function Pricing() {
               className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[rgb(var(--accent))]"
               style={{
                 background: annual ? "rgb(var(--surface))" : "transparent",
-                color: annual ? "rgb(var(--foreground))" : "rgb(var(--muted))",
+                color: annual ? "rgb(var(--foreground))" : COPY,
                 fontStyle: "normal",
               }}
               aria-pressed={annual}
@@ -2060,7 +2072,7 @@ function Pricing() {
                 >
                   {p.name}
                 </p>
-                <p className="text-xs mb-5" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{p.sub}</p>
+                <p className="text-xs mb-5" style={{ color: COPY, fontStyle: "normal" }}>{p.sub}</p>
 
                 <AnimatePresence mode="wait">
                   <motion.div
@@ -2072,7 +2084,7 @@ function Pricing() {
                   >
                     <div className="flex items-end gap-1">
                       <span className="text-3xl font-bold tracking-tight" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>{price}</span>
-                      <span className="text-sm mb-0.5" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{period}</span>
+                      <span className="text-sm mb-0.5" style={{ color: COPY, fontStyle: "normal" }}>{period}</span>
                     </div>
                     {savings
                       ? <p className="text-xs mt-1 font-medium" style={{ color: "rgb(var(--profit))", fontStyle: "normal" }}>{t("plan_equiv")} {p.annualMonthly}/{t("plan_month")}</p>
@@ -2151,7 +2163,7 @@ function Pricing() {
         {/* Comparatif complet (repliable) — toutes les fonctionnalités, aucun oubli */}
         <PricingCompareTable t={t} />
 
-        <Reveal className="flex flex-wrap items-center justify-center gap-6 mt-8 text-xs text-[rgb(var(--muted))]">
+        <Reveal className="flex flex-wrap items-center justify-center gap-6 mt-8 text-xs text-[rgb(var(--foreground-muted))]">
           {[
             { icon: "M5 13l4 4L19 7", label: t("pricing_no_commitment") },
             { icon: "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z", label: t("plan_stripe_secure") },
@@ -2185,7 +2197,7 @@ function FAQ() {
   ];
 
   return (
-    <section id="faq" className="py-28 px-6 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
+    <section id="faq" className="landing-section px-6 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
       <div className="max-w-2xl mx-auto">
         <Reveal className="text-center mb-14">
           <Eyebrow>{t("eyebrow_faq")}</Eyebrow>
@@ -2229,7 +2241,7 @@ function FAQ() {
                       transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
                       className="overflow-hidden"
                     >
-                      <p className="px-5 pb-4 text-[15px] leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{faq.a}</p>
+                      <p className="px-5 pb-4 text-[15px] leading-relaxed" style={{ color: COPY, fontStyle: "normal" }}>{faq.a}</p>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -2249,7 +2261,7 @@ function FinalCTA() {
   const { t } = useLanguage();
 
   return (
-    <section className="py-28 px-6 border-t relative overflow-hidden" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
+    <section className="landing-section px-6 border-t relative overflow-hidden" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
       <div className="absolute inset-0 pointer-events-none" aria-hidden>
         <div
           className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full blur-[80px]"
@@ -2274,7 +2286,7 @@ function FinalCTA() {
             {t("cta_title")}
           </h2>
 
-          <p className="mt-5 text-lg leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>
+          <p className="mt-5 text-lg leading-relaxed" style={{ color: COPY, fontStyle: "normal" }}>
             {t("cta_subtitle")}
           </p>
 
@@ -2293,7 +2305,7 @@ function FinalCTA() {
             </Magnetic>
           </div>
 
-          <p className="text-xs mt-4" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("pricing_no_commitment")}</p>
+          <p className="text-xs mt-4" style={{ color: COPY, fontStyle: "normal" }}>{t("pricing_no_commitment")}</p>
         </Reveal>
       </div>
     </section>
@@ -2319,7 +2331,7 @@ function Footer() {
               </div>
               <span className="font-bold text-sm" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>TradeDiscipline</span>
             </div>
-            <p className="text-xs leading-relaxed" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("footer_brand_desc")}</p>
+            <p className="text-xs leading-relaxed" style={{ color: COPY, fontStyle: "normal" }}>{t("footer_brand_desc")}</p>
           </div>
 
           {[
@@ -2352,7 +2364,7 @@ function Footer() {
               <ul className="space-y-2.5">
                 {col.links.map((l) => (
                   <li key={l.href}>
-                    <a href={l.href} className="text-sm transition-colors hover:text-[rgb(var(--foreground))]" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{l.label}</a>
+                    <a href={l.href} className="text-sm transition-colors hover:text-[rgb(var(--foreground))]" style={{ color: COPY, fontStyle: "normal" }}>{l.label}</a>
                   </li>
                 ))}
               </ul>
@@ -2361,7 +2373,7 @@ function Footer() {
         </div>
 
         <div className="border-t pt-6" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
-          <p className="text-xs" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>© 2026 TradeDiscipline. {t("footer_legal")}.</p>
+          <p className="text-xs" style={{ color: COPY, fontStyle: "normal" }}>© 2026 TradeDiscipline. {t("footer_legal")}.</p>
         </div>
       </div>
     </footer>
@@ -2775,14 +2787,14 @@ function CoachAssistant() {
   const showOut = phase === "print";
 
   return (
-    <section className="py-28 px-6 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
+    <section className="landing-section px-6 border-t" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
       <div className="max-w-5xl mx-auto">
         <Reveal className="text-center mb-14">
           <Eyebrow>{t("landing_coach_eyebrow")}</Eyebrow>
           <h2 className="text-4xl sm:text-5xl font-bold leading-tight" style={{ color: "rgb(var(--foreground))" }}>
             {t("landing_coach_title")}
           </h2>
-          <p className="mt-4 text-lg max-w-2xl mx-auto" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>
+          <p className="mt-4 text-lg max-w-2xl mx-auto" style={{ color: COPY, fontStyle: "normal" }}>
             {t("landing_coach_subtitle")}
           </p>
         </Reveal>

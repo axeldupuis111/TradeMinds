@@ -17,6 +17,34 @@
   font-weight: 400;
   letter-spacing: -0.02em;
 }
+
+/* Interlignage des titres — corrige un piège Tailwind.
+   `sm:text-5xl` / `lg:text-7xl` réinjectent `line-height: 1`, ce qui écrasait
+   silencieusement les `leading-tight` / `leading-[1.05]` posés à côté (les
+   variantes responsive sortent plus tard dans la feuille). Résultat : tous les
+   titres retombaient à 1.0 dès 640px, trop serré pour un serif italique avec
+   des accents français (É, à) et des jambages. Ce sélecteur (0,1,1) passe
+   devant les utilitaires (0,1,0) et rétablit l'intention d'origine. */
+.landing-page h1 {
+  line-height: 1.05;
+}
+.landing-page h2 {
+  line-height: 1.15;
+}
+
+/* Rythme vertical fluide.
+   Les 9 sections étaient toutes en `py-28` fixe : 112px haut ET bas, même sur
+   un écran de 375px de large, ce qui allongeait inutilement le scroll mobile.
+   La borne basse rend la page nettement plus dense sur téléphone, la borne
+   haute reste généreuse sur grand écran. */
+.landing-section {
+  padding-top: clamp(4.5rem, 8vw, 7.5rem);
+  padding-bottom: clamp(4.5rem, 8vw, 7.5rem);
+}
+.landing-hero {
+  padding-top: clamp(6rem, 10vw, 8rem);
+  padding-bottom: clamp(4rem, 6vw, 6rem);
+}
 /* Keep badges, labels, nav, buttons at normal tracking */
 .landing-page nav,
 .landing-page button,

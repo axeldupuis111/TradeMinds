@@ -121,7 +121,7 @@ export default function DisciplineQuiz() {
   }
 
   return (
-    <section className="py-28 px-6 border-t relative overflow-hidden" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
+    <section className="landing-section px-6 border-t relative overflow-hidden" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
       {/* Halo de fond */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden>
         <div
@@ -144,7 +144,7 @@ export default function DisciplineQuiz() {
           <h2 className="text-4xl sm:text-5xl font-bold" style={{ color: "rgb(var(--foreground))" }}>
             {t("quiz_title")}
           </h2>
-          <p className="mt-4 text-base" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>
+          <p className="mt-4 text-base" style={{ color: "rgb(var(--foreground-muted))", fontStyle: "normal" }}>
             {t("quiz_subtitle")}
           </p>
         </motion.div>
@@ -181,7 +181,7 @@ export default function DisciplineQuiz() {
                   exit={prefersReduced ? undefined : { opacity: 0, x: -28 }}
                   transition={{ duration: 0.3, ease }}
                 >
-                  <p className="text-xs font-semibold uppercase tracking-widest mb-3 tabular-nums" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>
+                  <p className="text-xs font-semibold uppercase tracking-widest mb-3 tabular-nums" style={{ color: "rgb(var(--foreground-muted))", fontStyle: "normal" }}>
                     {step + 1} / {QUESTIONS.length}
                   </p>
                   <h3 className="text-xl sm:text-2xl font-bold mb-7" style={{ color: "rgb(var(--foreground))", fontFamily: "var(--font-geist-sans), system-ui, sans-serif", fontStyle: "normal" }}>
@@ -214,7 +214,7 @@ export default function DisciplineQuiz() {
                   transition={{ duration: 0.4, ease }}
                   className="text-center"
                 >
-                  <p className="text-xs font-semibold uppercase tracking-widest mb-5" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>
+                  <p className="text-xs font-semibold uppercase tracking-widest mb-5" style={{ color: "rgb(var(--foreground-muted))", fontStyle: "normal" }}>
                     {t("quiz_result_label")}
                   </p>
 
@@ -241,7 +241,7 @@ export default function DisciplineQuiz() {
                   <p className="text-lg font-semibold mb-2 text-balance" style={{ color: "rgb(var(--foreground))", fontStyle: "normal" }}>
                     {t(verdictKey(score))}
                   </p>
-                  <p className="text-sm mb-8" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>
+                  <p className="text-sm mb-8" style={{ color: "rgb(var(--foreground-muted))", fontStyle: "normal" }}>
                     {t("quiz_disclaimer")}
                   </p>
 
@@ -260,7 +260,7 @@ export default function DisciplineQuiz() {
                       type="button"
                       onClick={restart}
                       className="px-5 py-3 rounded-xl text-sm font-medium transition-colors hover:text-[rgb(var(--foreground))]"
-                      style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}
+                      style={{ color: "rgb(var(--foreground-muted))", fontStyle: "normal" }}
                     >
                       {t("quiz_restart")}
                     </button>
