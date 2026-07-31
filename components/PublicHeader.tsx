@@ -41,13 +41,13 @@ export default function PublicHeader({ showAnchors = false }: PublicHeaderProps)
         {/* Centre links — only on landing (when showAnchors is true) */}
         {showAnchors && (
           <div className="hidden md:flex items-center gap-6 absolute left-1/2 -translate-x-1/2">
-            <a href="#features" className="text-sm text-muted hover:text-foreground transition-colors">
+            <a href="#features" className="text-sm text-foreground-muted hover:text-foreground transition-colors">
               {t("nav_features")}
             </a>
-            <a href="#pricing" className="text-sm text-muted hover:text-foreground transition-colors">
+            <a href="#pricing" className="text-sm text-foreground-muted hover:text-foreground transition-colors">
               {t("nav_pricing")}
             </a>
-            <a href="#faq" className="text-sm text-muted hover:text-foreground transition-colors">
+            <a href="#faq" className="text-sm text-foreground-muted hover:text-foreground transition-colors">
               {t("nav_faq")}
             </a>
           </div>
@@ -57,15 +57,15 @@ export default function PublicHeader({ showAnchors = false }: PublicHeaderProps)
         <div className="flex items-center gap-2">
           <Link
             href={localizedHref("/blog", lang)}
-            className="hidden sm:inline text-sm text-muted hover:text-foreground transition-colors px-3 py-1.5"
+            className="hidden sm:inline text-sm text-foreground-muted hover:text-foreground transition-colors px-3 py-1.5"
           >
             Blog
           </Link>
-          <InstallAppButton className="hidden md:inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground transition-colors px-3 py-1.5" />
+          <InstallAppButton className="hidden md:inline-flex items-center gap-1.5 text-sm text-foreground-muted hover:text-foreground transition-colors px-3 py-1.5" />
           <LanguageSelector />
           <Link
             href={localizedHref("/login", lang)}
-            className="hidden sm:inline text-sm text-muted hover:text-foreground transition-colors px-3 py-1.5"
+            className="hidden sm:inline text-sm text-foreground-muted hover:text-foreground transition-colors px-3 py-1.5"
           >
             {t("nav_login")}
           </Link>

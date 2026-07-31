@@ -234,7 +234,7 @@ export default function LiveDemo() {
               <span
                 className="px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors duration-300"
                 style={{
-                  color: s.active ? "rgb(var(--accent))" : "rgb(var(--muted))",
+                  color: s.active ? "rgb(var(--accent))" : "rgb(var(--foreground-muted))",
                   background: s.active ? "rgb(var(--accent)/0.1)" : "transparent",
                   fontStyle: "normal",
                 }}
@@ -246,7 +246,7 @@ export default function LiveDemo() {
         </div>
       </div>
 
-      <p className="text-center text-xs mt-4" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>
+      <p className="text-center text-xs mt-4" style={{ color: "rgb(var(--foreground-muted))", fontStyle: "normal" }}>
         {t("demo_caption")}
       </p>
     </div>
