@@ -97,7 +97,31 @@ const GAIN_SUBSTRINGS = [
 // « roi » vit dans « trois » et « endroit », « earn » dans « learn ».
 const GAIN_TOKENS = new Set(["roi", "x2", "x3", "capital", "earn", "earnings", "money", "cash", "pl"]);
 
-const MONEY_RE = /(\d\s*(%|€|\$|£|usd|eur)|(€|\$|£)\s*\d)/i;
+const MONEY_RE = /(\d\s*(€|\$|£|usd|eur)|(€|\$|£)\s*\d)/i;
+
+/**
+ * « Gagner en discipline » n'est pas une promesse de gain, et un coach l'écrira
+ * spontanément. On neutralise ces tournures avant le test plutôt que de retirer
+ * « gagn » de la liste : « gagner de l'argent » doit rester bloqué.
+ */
+const DISCIPLINE_NOUNS =
+  "discipline|regularite|rigueur|confiance|serenite|constance|patience|clarte|maitrise|calme|sang-froid|recul|lucidite|temps";
+const SAFE_GAIN_RE = new RegExp(`(gagn\\w*|gain\\w*)\\s+(en|de la|du|plus de)\\s+(${DISCIPLINE_NOUNS})`, "g");
+
+/**
+ * Un pourcentage signé est toujours une promesse (« +10 % cette semaine ») ;
+ * « 100 % » est l'idiome français de « totalement » (« 100 % respect du plan »)
+ * et reste autorisé tant qu'il n'est pas signé.
+ */
+function hasPerformancePercent(folded: string): boolean {
+  const re = /([+-])?\s*(\d+(?:[.,]\d+)?)\s*%/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(folded)) !== null) {
+    const value = parseFloat(m[2].replace(",", "."));
+    if (m[1] || value !== 100) return true;
+  }
+  return false;
+}
 
 function foldForGainCheck(s: string): string {
   return s
@@ -110,9 +134,12 @@ function foldForGainCheck(s: string): string {
 export function containsGainPromise(text: string): boolean {
   const folded = foldForGainCheck(text);
   if (MONEY_RE.test(folded)) return true;
+  if (hasPerformancePercent(folded)) return true;
   if (folded.includes("p&l")) return true;
-  if (GAIN_SUBSTRINGS.some((term) => folded.includes(term))) return true;
-  const tokens = folded.split(/[^a-z0-9]+/).filter(Boolean);
+
+  const withoutSafe = folded.replace(SAFE_GAIN_RE, " ");
+  if (GAIN_SUBSTRINGS.some((term) => withoutSafe.includes(term))) return true;
+  const tokens = withoutSafe.split(/[^a-z0-9]+/).filter(Boolean);
   return tokens.some((tk) => GAIN_TOKENS.has(tk));
 }
 

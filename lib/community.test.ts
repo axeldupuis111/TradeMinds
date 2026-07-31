@@ -71,9 +71,27 @@ describe("containsGainPromise", () => {
       "Lève-toi avant 9 h",
       "Reste à droite du plan",
       "Journal tenu tous les jours",
+      // Tournures qu'un coach écrit spontanément : elles ne promettent rien.
+      "On gagne en discipline",
+      "Gagner en régularité",
+      "Semaine 100 % respect du plan",
+      "100% des séances préparées",
     ]) {
       expect(containsGainPromise(text), text).toBe(false);
     }
+  });
+
+  it("ne se laisse pas contourner par la tournure « gagner en »", () => {
+    expect(containsGainPromise("Gagner de l'argent")).toBe(true);
+    expect(containsGainPromise("Gagner en discipline et +10 % sur le mois")).toBe(true);
+    expect(containsGainPromise("Gagner 100 € en discipline")).toBe(true);
+  });
+
+  it("bloque les pourcentages de performance mais pas le « 100 % » idiomatique", () => {
+    expect(containsGainPromise("+5 % cette semaine")).toBe(true);
+    expect(containsGainPromise("-2% de drawdown maximum")).toBe(true);
+    expect(containsGainPromise("Objectif 7,5 % sur le mois")).toBe(true);
+    expect(containsGainPromise("100 % de séances journalisées")).toBe(false);
   });
 });
 
