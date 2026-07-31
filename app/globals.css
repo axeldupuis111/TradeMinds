@@ -141,12 +141,26 @@ html.light {
    ──────────────────────────────────────────────────────────────────────── */
 .force-dark,
 html.light .force-dark {
-  --background: 9 9 11;
+  /* Neutres légèrement bleutés : sans ça l'accent violet a l'air posé
+     par-dessus un gris neutre au lieu d'appartenir à la page. */
+  --background:  8  8 14;
   --foreground: 250 250 250;
-  --card:       17 17 19;
-  --surface:    26 26 26;
-  --border:     28 28 30;
+  --card:       16 16 24;
+  --surface:    24 24 34;
+  --border:     34 34 48;
   --muted:      113 113 122;
+
+  /* Accent indigo-violet des pages publiques. Porté ici et non sur
+     .landing-page pour que le tunnel reste d'un bloc : le CTA de la landing
+     mène à /login, qui est en force-dark sans être en landing-page et serait
+     donc resté cyan. Le dashboard n'est pas en force-dark : il garde le cyan
+     tant que la direction n'est pas validée. Pour propager à toute l'app,
+     déplacer ces quatre lignes dans :root. */
+  --accent:        139 124 255;   /* #8B7CFF — 6.1:1 sur le fond, AA */
+  --accent-hover:  109  92 235;   /* #6D5CEB */
+  --accent-muted:  139 124 255;
+  --accent-glow:   167 139 250;   /* #A78BFA */
+
   color-scheme: dark;
   /* Ensure body-level bg/text picks up local variables */
   background-color: rgb(var(--background));
@@ -781,3 +795,141 @@ html.light .card-shadow { box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 0 0 1px rgba
   .spotlight-card::after { display: none; }
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   REFONTE LANDING — « Modern Dark » cinématique
+   Direction issue de la skill ui-ux-pro-max (style Modern Dark : lumière
+   ambiante, glassmorphism, easing expo) mais palette retenue à part : la skill
+   proposait or + violet, or l'ambre avait déjà été écarté et il entre en
+   collision avec le token --warning. On pousse donc au premier plan le violet
+   qui était déjà présent comme accent secondaire (--accent-violet-glow).
+
+   Tout est scopé à .landing-page : le dashboard, les PDF et les emails gardent
+   le cyan tant que la direction n'est pas validée. Pour propager ensuite,
+   déplacer le bloc de tokens ci-dessous dans :root.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.landing-page {
+  /* La palette elle-même est portée par .force-dark plus haut, pour couvrir
+     aussi /login et les pages légales. Ici, seulement ce qui est propre à la
+     landing. */
+  --glow-shadow: 0 30px 70px -20px rgba(0,0,0,.95),
+                 inset 0 0 0 1px rgba(255,255,255,.03),
+                 0 0 80px -20px rgba(139,124,255,.30);
+
+  /* Dégradé de marque. Il était recopié en dur à 8 endroits (`--accent` vers
+     #3b82f6) : une seule source de vérité, sinon le prochain changement de
+     palette en oublie forcément un. */
+  --brand-gradient:   linear-gradient(135deg, #8B7CFF 0%, #6366F1 48%, #C084FC 100%);
+  --brand-gradient-h: linear-gradient(90deg,  #8B7CFF 0%, #6366F1 48%, #C084FC 100%);
+}
+
+/* ─── Nappe d'aurore du héro ──────────────────────────────────────────────
+   Trois nappes colorées qui dérivent lentement, plus un balayage conique.
+   Fait en CSS pur : pas de WebGL, donc aucune dépendance ajoutée, pas de
+   contexte perdu au changement d'onglet et pas de GPU mobile qui chauffe. */
+.aurora-mesh {
+  position: absolute;
+  inset: -25% -10% auto -10%;
+  height: 130%;
+  pointer-events: none;
+  overflow: hidden;
+  mask-image: radial-gradient(70% 60% at 50% 30%, #000 35%, transparent 100%);
+  -webkit-mask-image: radial-gradient(70% 60% at 50% 30%, #000 35%, transparent 100%);
+}
+.aurora-mesh span {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.55;
+  will-change: transform;
+}
+.aurora-mesh span:nth-child(1) {
+  width: 46vw; height: 46vw; left: 8%; top: 2%;
+  background: radial-gradient(circle, rgba(139,124,255,.55), transparent 68%);
+  animation: mesh-a 22s ease-in-out infinite;
+}
+.aurora-mesh span:nth-child(2) {
+  width: 38vw; height: 38vw; right: 6%; top: 12%;
+  background: radial-gradient(circle, rgba(96,165,250,.42), transparent 68%);
+  animation: mesh-b 27s ease-in-out infinite;
+}
+.aurora-mesh span:nth-child(3) {
+  width: 34vw; height: 34vw; left: 38%; top: 30%;
+  background: radial-gradient(circle, rgba(217,130,255,.34), transparent 68%);
+  animation: mesh-a 19s ease-in-out infinite reverse;
+}
+@keyframes mesh-a {
+  0%,100% { transform: translate3d(0,0,0) scale(1); }
+  50%     { transform: translate3d(6%, -8%, 0) scale(1.18); }
+}
+@keyframes mesh-b {
+  0%,100% { transform: translate3d(0,0,0) scale(1.1); }
+  50%     { transform: translate3d(-7%, 6%, 0) scale(0.92); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aurora-mesh span { animation: none; }
+}
+
+/* ─── Grain ────────────────────────────────────────────────────────────────
+   Turbulence SVG en data-URI : casse le banding des dégradés larges et donne
+   la texture « cinéma » du style retenu. Statique, donc coût nul à l'exécution. */
+.grain-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.16;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+}
+
+/* ─── Surfaces en verre ────────────────────────────────────────────────────
+   Appliqué aux cartes de la landing. Le liseré dégradé se fait en masque
+   composite plutôt qu'en bordure, pour rester net sur les coins arrondis. */
+.landing-page .glass-surface {
+  position: relative;
+  background: linear-gradient(160deg, rgb(var(--card) / 0.86), rgb(var(--background) / 0.72));
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  box-shadow: 0 20px 50px -24px rgba(0,0,0,.9), 0 0 0 1px rgb(var(--border) / .7);
+}
+.landing-page .glass-surface::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(150deg, rgb(var(--accent) / .45), transparent 42%, transparent 62%, rgb(var(--accent-glow) / .22));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: .8;
+}
+
+/* ─── Séparateurs de section ───────────────────────────────────────────────
+   Remplace la bordure plate `border-t` par un filet qui s'éteint sur les bords. */
+.landing-page .landing-section {
+  position: relative;
+}
+.landing-page .landing-section[class*="border-t"] {
+  border-top-color: transparent !important;
+}
+.landing-page .landing-section[class*="border-t"]::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgb(var(--accent) / .28) 22%, rgb(var(--accent-glow) / .34) 50%, rgb(var(--accent) / .28) 78%, transparent);
+  pointer-events: none;
+}
+
+/* ─── Halo du CTA principal ────────────────────────────────────────────────
+   Le bouton devient la source lumineuse la plus chaude de la page. */
+.landing-page .btn-primary-shimmer {
+  box-shadow: 0 0 0 1px rgb(var(--accent) / .45),
+              0 8px 30px -6px rgb(var(--accent) / .55),
+              0 0 60px -12px rgb(var(--accent-glow) / .5);
+}

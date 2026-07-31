@@ -165,7 +165,7 @@ export default function DisciplineQuiz() {
           <div className="h-1 w-full" style={{ background: "rgb(var(--border)/0.4)" }} aria-hidden>
             <motion.div
               className="h-full"
-              style={{ background: "linear-gradient(90deg, rgb(var(--accent)), #3b82f6)" }}
+              style={{ background: "var(--brand-gradient-h)" }}
               animate={{ width: `${(Math.min(step, QUESTIONS.length) / QUESTIONS.length) * 100}%` }}
               transition={{ duration: 0.35, ease }}
             />
@@ -250,8 +250,7 @@ export default function DisciplineQuiz() {
                       href="/login"
                       className="btn-primary-shimmer relative px-7 py-3.5 rounded-xl font-semibold text-sm text-white transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--accent))]"
                       style={{
-                        background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #3b82f6 100%)",
-                        boxShadow: "0 0 0 1px rgb(var(--accent)/0.3), 0 4px 24px rgb(var(--accent)/0.2)",
+                        background: "var(--brand-gradient)",
                       }}
                     >
                       <span className="relative z-10">{t("quiz_cta")}</span>

@@ -376,19 +376,22 @@ function Hero() {
       {/* Floating ambient particles */}
       <HeroParticles />
 
-      {/* Gradient blobs — floating aurora effect (+ scroll parallax) */}
+      {/* Nappe d'aurore — remplace les 3 blobs d'origine. Le parallaxe au scroll
+          est conservé, le rendu est fait en CSS (.aurora-mesh) sans WebGL. */}
       <motion.div
-        className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[600px] pointer-events-none -z-0"
+        className="absolute inset-0 pointer-events-none -z-0"
         aria-hidden
         style={prefersReduced ? undefined : { y: auroraY, scale: auroraScale }}
       >
-        <div className="aurora-a absolute top-0 left-1/4 w-80 h-80 rounded-full blur-[80px] will-change-transform"
-          style={{ background: "rgb(var(--accent)/0.12)" }} />
-        <div className="aurora-b absolute top-20 right-1/4 w-64 h-64 rounded-full blur-[72px] will-change-transform"
-          style={{ background: "rgba(59,130,246,0.09)" }} />
-        <div className="aurora-c absolute top-40 left-1/2 w-48 h-48 rounded-full blur-[64px] will-change-transform"
-          style={{ background: "rgba(167,139,250,0.06)" }} />
+        <div className="aurora-mesh">
+          <span />
+          <span />
+          <span />
+        </div>
       </motion.div>
+
+      {/* Grain cinéma par-dessus l'aurore */}
+      <div className="grain-overlay -z-0" aria-hidden />
 
       <div className="max-w-5xl mx-auto text-center relative z-10">
         {/* Social proof badge */}
@@ -433,7 +436,7 @@ function Hero() {
           <span
             className="text-gradient-animated"
             style={{
-              background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #60a5fa 40%, #a78bfa 70%, rgb(var(--accent)) 100%)",
+              background: "linear-gradient(135deg, #A78BFA 0%, #60A5FA 32%, #E879F9 62%, #8B7CFF 100%)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
               backgroundClip: "text",
@@ -479,8 +482,7 @@ function Hero() {
               href="/login"
               className="btn-primary-shimmer group relative inline-block px-7 py-3.5 rounded-xl font-semibold text-sm text-white transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--accent))]"
               style={{
-                background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #3b82f6 100%)",
-                boxShadow: "0 0 0 1px rgb(var(--accent)/0.3), 0 4px 24px rgb(var(--accent)/0.2)",
+                background: "var(--brand-gradient)",
               }}
             >
               <span className="relative z-10">{t("hero_cta")}</span>
@@ -1099,7 +1101,7 @@ function BentoAIChat({ t }: { t: (k: string) => string }) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: i * 0.12, ease }}
             >
-              <div className="px-3 py-2 text-[11px] max-w-[72%] rounded-xl rounded-br-sm leading-relaxed text-white" style={{ background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #3b82f6 100%)", fontStyle: "normal" }}>
+              <div className="px-3 py-2 text-[11px] max-w-[72%] rounded-xl rounded-br-sm leading-relaxed text-white" style={{ background: "var(--brand-gradient)", fontStyle: "normal" }}>
                 {m.text}
               </div>
             </motion.div>
@@ -1434,8 +1436,8 @@ type FeatureDef = {
 function FeatureCard({ f }: { f: FeatureDef }) {
   return (
     <SpotlightCard
-      className="rounded-2xl border overflow-hidden h-full group/card"
-      style={{ background: "rgb(var(--card))", borderColor: "rgb(var(--border))" }}
+      className="glass-surface rounded-2xl overflow-hidden h-full group/card"
+      style={{ borderColor: "transparent" }}
       whileHover={{ y: -4, borderColor: "rgb(var(--accent)/0.28)", boxShadow: "0 0 0 1px rgb(var(--accent)/0.08), 0 24px 60px -12px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05)" }}
       transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
     >
@@ -2039,9 +2041,8 @@ function Pricing() {
             return (
               <motion.div
                 key={p.name}
-                className={`relative rounded-2xl border flex flex-col p-6 ${p.popular ? "card-breathe comet-border" : ""}`}
+                className={`glass-surface relative rounded-2xl border flex flex-col p-6 ${p.popular ? "card-breathe comet-border" : ""}`}
                 style={{
-                  background: "rgb(var(--card))",
                   borderColor: p.popular
                     ? "rgb(var(--accent)/0.35)"
                     : p.gold
@@ -2057,7 +2058,7 @@ function Pricing() {
                 {p.popular && (
                   <div
                     className="absolute -top-3 left-1/2 -translate-x-1/2 text-white text-[10px] font-bold px-3 py-1 rounded-full"
-                    style={{ background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #3b82f6 100%)", fontStyle: "normal" }}
+                    style={{ background: "var(--brand-gradient)", fontStyle: "normal" }}
                   >
                     {t("plan_popular")}
                   </div>
@@ -2123,7 +2124,7 @@ function Pricing() {
                   href="/login"
                   className="mt-7 block w-full py-2.5 rounded-xl font-semibold text-sm text-center transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--accent))]"
                   style={p.popular ? {
-                    background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #3b82f6 100%)",
+                    background: "var(--brand-gradient)",
                     boxShadow: "0 0 0 1px rgb(var(--accent)/0.3), 0 4px 16px rgb(var(--accent)/0.2)",
                     color: "white",
                     fontStyle: "normal",
@@ -2293,7 +2294,7 @@ function FinalCTA() {
                 href="/login"
                 className="btn-primary-shimmer group relative inline-block px-8 py-3.5 rounded-xl font-bold text-base text-white transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--accent))]"
                 style={{
-                  background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #3b82f6 100%)",
+                  background: "var(--brand-gradient)",
                   boxShadow: "0 0 0 1px rgb(var(--accent)/0.3), 0 8px 32px rgb(var(--accent)/0.25)",
                 }}
               >
@@ -2434,7 +2435,7 @@ function StickyMobileCTA() {
               href="/login"
               className="flex-1 text-center px-5 py-3 rounded-xl font-semibold text-sm text-white"
               style={{
-                background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #3b82f6 100%)",
+                background: "var(--brand-gradient)",
                 boxShadow: "0 4px 16px rgb(var(--accent)/0.25)",
                 fontStyle: "normal",
               }}
