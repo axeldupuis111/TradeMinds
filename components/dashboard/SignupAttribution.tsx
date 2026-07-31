@@ -14,6 +14,12 @@ import { useEffect } from "react";
  *
  * Le garde-fou « compte récent » évite d'attribuer un simple re-login d'un
  * utilisateur existant qui aurait cliqué un lien utm entre-temps.
+ *
+ * La même source sert à rattacher le nouvel inscrit à la COMMUNAUTÉ du
+ * partenaire quand une communauté porte ce slug (migration
+ * 20260731_partner_communities) : arriver par `?ref=infx` place le trader dans
+ * le classement privé d'INFX sans qu'il ait rien à saisir. L'appel est
+ * silencieux et sans effet si aucune communauté ne correspond.
  */
 
 const SENT_KEY = "td_attribution_sent";
@@ -39,6 +45,13 @@ export default function SignupAttribution() {
         localStorage.setItem(SENT_KEY, "1");
         if (Date.now() - new Date(user.created_at).getTime() > FRESH_ACCOUNT_MS) return;
         track("signup_attributed", { source });
+        void fetch("/api/community", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "join", slug: source, source: "referral" }),
+        }).catch(() => {
+          // Aucune communauté sur ce slug (cas courant) : rien à faire.
+        });
       });
     } catch {
       // L'attribution ne casse jamais le dashboard.

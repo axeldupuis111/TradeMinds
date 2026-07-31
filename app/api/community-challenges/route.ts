@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
-import { localDateKey, localHour } from "@/lib/timezone";
+import { groupByUser, statsForPeriod, type ReviewRow, type TradeRow } from "@/lib/challenge-stats";
 import {
   MIN_PODIUM_PARTICIPANTS,
   challengeCompleted,
@@ -9,14 +9,12 @@ import {
   challengeRankScore,
   challengesForWeek,
   competitionRanks,
-  computeWeekStats,
   getCommunityChallenge,
   isoWeekKey,
   previousWeekKey,
   weekDayKeys,
   weekEndUtc,
   weekStartUtc,
-  IMPULSIVE_EMOTIONS,
   type CommunityChallenge,
   type WeekStats,
 } from "@/lib/community-challenges";
@@ -45,41 +43,7 @@ function serviceClient() {
   });
 }
 
-interface TradeRow { user_id: string; emotion: string | null; open_time: string | null }
-interface ReviewRow { user_id: string; discipline_score: number | null; created_at: string }
 interface PartRow { user_id: string; challenge_key: string }
-
-/** Stats hebdo d'un utilisateur, jours bucketés dans SON fuseau. */
-function statsFor(
-  tz: string,
-  days: string[],
-  prevDays: string[],
-  trades: TradeRow[],
-  reviews: ReviewRow[],
-): WeekStats {
-  const tradeByDay = new Map<string, { impulsive: boolean; trades: number }>();
-  for (const t of trades) {
-    if (!t.open_time) continue;
-    const day = localDateKey(tz, new Date(t.open_time));
-    const cur = tradeByDay.get(day) ?? { impulsive: false, trades: 0 };
-    tradeByDay.set(day, {
-      impulsive: cur.impulsive || (!!t.emotion && IMPULSIVE_EMOTIONS.has(t.emotion)),
-      trades: cur.trades + 1,
-    });
-  }
-  const sessions: { day: string; hour: number; score: number }[] = [];
-  const prevScores: number[] = [];
-  const prevSet = new Set(prevDays);
-  for (const r of reviews) {
-    if (r.discipline_score == null) continue;
-    const at = new Date(r.created_at);
-    const day = localDateKey(tz, at);
-    if (prevSet.has(day)) prevScores.push(r.discipline_score);
-    sessions.push({ day, hour: localHour(tz, at), score: r.discipline_score });
-  }
-  const tradeDays = Array.from(tradeByDay.entries()).map(([day, v]) => ({ day, ...v }));
-  return computeWeekStats(days, { tradeDays, sessions, prevScores });
-}
 
 export async function GET() {
   const auth = await requireAuth();
@@ -122,25 +86,15 @@ export async function GET() {
   ]));
   const tzById = new Map((profs ?? []).map((p) => [p.id, (p.timezone as string) || "UTC"]));
 
-  const tradesByUser = new Map<string, TradeRow[]>();
-  for (const t of (trades ?? []) as TradeRow[]) {
-    const arr = tradesByUser.get(t.user_id) ?? [];
-    arr.push(t);
-    tradesByUser.set(t.user_id, arr);
-  }
-  const reviewsByUser = new Map<string, ReviewRow[]>();
-  for (const r of (reviews ?? []) as ReviewRow[]) {
-    const arr = reviewsByUser.get(r.user_id) ?? [];
-    arr.push(r);
-    reviewsByUser.set(r.user_id, arr);
-  }
+  const tradesByUser = groupByUser((trades ?? []) as TradeRow[]);
+  const reviewsByUser = groupByUser((reviews ?? []) as ReviewRow[]);
 
   const statsCache = new Map<string, WeekStats>();
   const weekStatsOf = (userId: string, d: string[], pd: string[]): WeekStats => {
     const cacheKey = `${userId}:${d[0]}`;
     const hit = statsCache.get(cacheKey);
     if (hit) return hit;
-    const s = statsFor(tzById.get(userId) || "UTC", d, pd, tradesByUser.get(userId) ?? [], reviewsByUser.get(userId) ?? []);
+    const s = statsForPeriod(tzById.get(userId) || "UTC", d, pd, tradesByUser.get(userId) ?? [], reviewsByUser.get(userId) ?? []);
     statsCache.set(cacheKey, s);
     return s;
   };

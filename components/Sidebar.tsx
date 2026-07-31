@@ -21,6 +21,7 @@ import {
   Sparkles,
   Target,
   Trophy,
+  Users,
   Wallet,
   Zap,
 } from "lucide-react";
@@ -49,6 +50,7 @@ const analyseItems: { key: string; href: string; icon: LucideIcon; requiredPlan?
   { key: "sidebar_goals",     href: "/dashboard/goals",     icon: Flag, requiredPlan: "plus" },
   { key: "sidebar_review",    href: "/dashboard/review",    icon: CalendarCheck, requiredPlan: "plus" },
   { key: "sidebar_leaderboard", href: "/dashboard/leaderboard", icon: Trophy },
+  { key: "sidebar_community", href: "/dashboard/community", icon: Users },
 ];
 
 const PLAN_RANK: Record<string, number> = { free: 0, plus: 1, premium: 2 };

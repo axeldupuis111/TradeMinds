@@ -29,7 +29,7 @@ export default function AdminPage() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [updating, setUpdating] = useState(false);
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
-  const [tab, setTab] = useState<"plans" | "messages" | "funnel" | "usernames" | "affiliation">("plans");
+  const [tab, setTab] = useState<"plans" | "messages" | "funnel" | "usernames" | "affiliation" | "communities">("plans");
   // Modération des pseudos (libellés FR en dur, convention page interne)
   const [modUsername, setModUsername] = useState("");
   const [modNewUsername, setModNewUsername] = useState("");
@@ -53,6 +53,14 @@ export default function AdminPage() {
   } | null>(null);
   const [affLoading, setAffLoading] = useState(false);
   const [affError, setAffError] = useState<string | null>(null);
+  // Communautés partenaires (page interne : libellés FR en dur, convention admin)
+  interface CommunityRow { id: string; slug: string; name: string; active: boolean; ownerEmail: string | null; members: number }
+  const [communities, setCommunities] = useState<CommunityRow[]>([]);
+  const [comLoading, setComLoading] = useState(false);
+  const [comMessage, setComMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [comSlug, setComSlug] = useState("");
+  const [comName, setComName] = useState("");
+  const [comOwner, setComOwner] = useState<Record<string, string>>({});
 
   useEffect(() => {
     checkAuth();
@@ -104,6 +112,36 @@ export default function AdminPage() {
       setAffError("Erreur réseau");
     } finally {
       setAffLoading(false);
+    }
+  }
+
+  async function loadCommunities() {
+    setComLoading(true);
+    try {
+      const res = await fetch("/api/admin/communities");
+      const data = await res.json();
+      if (!res.ok) { setComMessage({ type: "error", text: data.error || "Erreur" }); return; }
+      setCommunities(data.communities ?? []);
+    } catch {
+      setComMessage({ type: "error", text: "Erreur réseau" });
+    } finally {
+      setComLoading(false);
+    }
+  }
+
+  async function postCommunity(body: Record<string, unknown>) {
+    setComMessage(null);
+    try {
+      const res = await fetch("/api/admin/communities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      setComMessage({ type: res.ok ? "success" : "error", text: data.message || data.error || "Erreur" });
+      if (res.ok) await loadCommunities();
+    } catch {
+      setComMessage({ type: "error", text: "Erreur réseau" });
     }
   }
 
@@ -220,7 +258,91 @@ export default function AdminPage() {
         <button onClick={() => { setTab("affiliation"); if (!affData) loadAffiliation(affMonth); }} className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${tab === "affiliation" ? "bg-card text-foreground shadow-sm" : "text-muted hover:text-foreground"}`}>
           Affiliation
         </button>
+        <button onClick={() => { setTab("communities"); if (communities.length === 0) loadCommunities(); }} className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${tab === "communities" ? "bg-card text-foreground shadow-sm" : "text-muted hover:text-foreground"}`}>
+          Communautés
+        </button>
       </div>
+
+      {tab === "communities" && (
+        <div className="mt-6 space-y-4">
+          <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">Nouvelle communauté partenaire</h2>
+              <p className="text-xs text-muted mt-1">
+                Le slug doit être IDENTIQUE à celui du lien d&apos;affiliation (<code>?ref=infx</code> → slug <code>infx</code>) :
+                c&apos;est lui qui rattache automatiquement les nouveaux inscrits. Crée la communauté même si le partenaire
+                n&apos;a pas encore de compte, elle collecte déjà ses filleuls.
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="block text-sm text-muted mb-1">Slug (lien ?ref=)</label>
+                <input value={comSlug} onChange={(e) => setComSlug(e.target.value)} placeholder="infx" className={inputClass} />
+              </div>
+              <div>
+                <label className="block text-sm text-muted mb-1">Nom affiché</label>
+                <input value={comName} onChange={(e) => setComName(e.target.value)} placeholder="INFX" className={inputClass} />
+              </div>
+            </div>
+            <button
+              onClick={() => postCommunity({ action: "create", slug: comSlug, name: comName })}
+              className="w-full py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors"
+            >
+              Créer la communauté
+            </button>
+            {comMessage && (
+              <p className={`text-sm ${comMessage.type === "success" ? "text-profit" : "text-loss"}`}>{comMessage.text}</p>
+            )}
+          </div>
+
+          <div className="bg-card border border-border rounded-xl p-6">
+            <h2 className="text-sm font-semibold text-foreground mb-3">Communautés existantes</h2>
+            {comLoading ? (
+              <div className="skeleton h-16 w-full rounded-lg" />
+            ) : communities.length === 0 ? (
+              <p className="text-sm text-muted">Aucune communauté pour l&apos;instant.</p>
+            ) : (
+              <div className="space-y-3">
+                {communities.map((c) => (
+                  <div key={c.id} className="border border-border rounded-lg p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">
+                          {c.name} <span className="text-muted font-normal">?ref={c.slug}</span>
+                        </p>
+                        <p className="text-xs text-muted">
+                          {c.members} membre(s) · animateur : {c.ownerEmail ?? "aucun (le partenaire ne peut pas encore créer de défis)"}
+                          {!c.active && " · désactivée"}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => postCommunity({ action: "toggle", id: c.id, active: !c.active })}
+                        className="text-xs text-muted hover:text-foreground underline"
+                      >
+                        {c.active ? "Désactiver" : "Réactiver"}
+                      </button>
+                    </div>
+                    <div className="mt-2 flex flex-col sm:flex-row gap-2">
+                      <input
+                        value={comOwner[c.id] ?? ""}
+                        onChange={(e) => setComOwner((p) => ({ ...p, [c.id]: e.target.value }))}
+                        placeholder="e-mail du compte partenaire"
+                        className={inputClass}
+                      />
+                      <button
+                        onClick={() => postCommunity({ action: "set_owner", id: c.id, ownerEmail: comOwner[c.id] })}
+                        className="shrink-0 px-3 py-2 rounded-lg border border-border text-sm text-foreground hover:bg-surface transition-colors"
+                      >
+                        Définir l&apos;animateur
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {tab === "plans" && (
         <div className="mt-6 bg-card border border-border rounded-xl p-6 space-y-4">
