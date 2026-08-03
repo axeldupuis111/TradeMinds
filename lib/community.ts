@@ -64,6 +64,13 @@ export function getMetricSpec(metric: string): CommunityMetricSpec | undefined {
 
 /** Plafond de défis en cours (à venir ou actifs) par communauté — anti-spam. */
 export const MAX_OPEN_CHALLENGES = 5;
+/**
+ * Membres classés sur un défi. Au-delà, ce sont les premiers arrivés qui sont
+ * classés : le coût du calcul croît avec le nombre de membres, et il vaut mieux
+ * un plafond annoncé à l'animateur (voir `rankedCap` dans /api/community) qu'un
+ * classement qui s'allonge jusqu'à faire expirer la page.
+ */
+export const MEMBERS_RANKED_CAP = 500;
 /** Durée maximale d'un défi, en jours (bornes incluses). */
 export const MAX_CHALLENGE_DAYS = 90;
 /** Un défi peut démarrer un peu dans le passé (rattrapage) mais pas rétroactivement. */

@@ -61,6 +61,13 @@ export default function AdminPage() {
   const [comSlug, setComSlug] = useState("");
   const [comName, setComName] = useState("");
   const [comOwner, setComOwner] = useState<Record<string, string>>({});
+  interface CommunityPerson { id: string; email: string | null; username: string | null; source?: string; joinedAt?: string; isOwner?: boolean; blockedAt?: string }
+  // Une seule communauté dépliée à la fois : la liste nominative n'est chargée
+  // qu'à la demande, elle peut être longue.
+  const [comOpen, setComOpen] = useState<string | null>(null);
+  const [comRoster, setComRoster] = useState<{ members: CommunityPerson[]; blocked: CommunityPerson[] } | null>(null);
+  const [comRosterLoading, setComRosterLoading] = useState(false);
+  const [comEmails, setComEmails] = useState<Record<string, string>>({});
 
   useEffect(() => {
     checkAuth();
@@ -129,6 +136,26 @@ export default function AdminPage() {
     }
   }
 
+  async function loadRoster(communityId: string) {
+    setComRosterLoading(true);
+    setComRoster(null);
+    try {
+      const res = await fetch(`/api/admin/communities?id=${communityId}`);
+      const data = await res.json();
+      if (res.ok) setComRoster({ members: data.members ?? [], blocked: data.blocked ?? [] });
+    } catch {
+      setComMessage({ type: "error", text: "Erreur réseau" });
+    } finally {
+      setComRosterLoading(false);
+    }
+  }
+
+  function toggleRoster(communityId: string) {
+    if (comOpen === communityId) { setComOpen(null); setComRoster(null); return; }
+    setComOpen(communityId);
+    void loadRoster(communityId);
+  }
+
   async function postCommunity(body: Record<string, unknown>) {
     setComMessage(null);
     try {
@@ -139,7 +166,10 @@ export default function AdminPage() {
       });
       const data = await res.json();
       setComMessage({ type: res.ok ? "success" : "error", text: data.message || data.error || "Erreur" });
-      if (res.ok) await loadCommunities();
+      if (res.ok) {
+        await loadCommunities();
+        if (comOpen) await loadRoster(comOpen);
+      }
     } catch {
       setComMessage({ type: "error", text: "Erreur réseau" });
     }
@@ -336,6 +366,96 @@ export default function AdminPage() {
                         Définir l&apos;animateur
                       </button>
                     </div>
+
+                    {/* Rattachement en masse : le lien ?ref= ne joue qu'à
+                        l'inscription, les abonnés qui avaient déjà un compte ne
+                        rejoindraient jamais sans passer par ici. */}
+                    <div className="mt-2 flex flex-col sm:flex-row gap-2">
+                      <textarea
+                        value={comEmails[c.id] ?? ""}
+                        rows={2}
+                        onChange={(e) => setComEmails((p) => ({ ...p, [c.id]: e.target.value }))}
+                        placeholder="Rattacher en masse : colle des e-mails séparés par des virgules, espaces ou retours à la ligne"
+                        className={inputClass}
+                      />
+                      <button
+                        onClick={() => postCommunity({ action: "bulk_attach", id: c.id, emails: comEmails[c.id] })}
+                        disabled={!(comEmails[c.id] ?? "").trim()}
+                        className="shrink-0 self-start px-3 py-2 rounded-lg border border-border text-sm text-foreground hover:bg-surface transition-colors disabled:opacity-40"
+                      >
+                        Rattacher
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={() => toggleRoster(c.id)}
+                      className="mt-2 text-xs text-accent hover:underline"
+                    >
+                      {comOpen === c.id ? "Masquer les membres" : `Voir les ${c.members} membre(s)`}
+                    </button>
+
+                    {comOpen === c.id && (
+                      <div className="mt-2 border-t border-border pt-2">
+                        {comRosterLoading ? (
+                          <div className="skeleton h-12 w-full rounded-lg" />
+                        ) : !comRoster || (comRoster.members.length === 0 && comRoster.blocked.length === 0) ? (
+                          <p className="text-xs text-muted">Aucun membre.</p>
+                        ) : (
+                          <>
+                            <ul className="divide-y divide-border">
+                              {comRoster.members.map((m) => (
+                                <li key={m.id} className="flex items-center gap-2 py-1.5">
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-xs text-foreground truncate">
+                                      {m.email ?? "(sans e-mail)"}
+                                      {m.username && <span className="text-muted"> · @{m.username}</span>}
+                                      {m.isOwner && <span className="text-gold"> · animateur</span>}
+                                    </p>
+                                    <p className="text-[10px] text-muted">
+                                      {m.source} · {m.joinedAt ? new Date(m.joinedAt).toLocaleDateString("fr-FR") : ""}
+                                    </p>
+                                  </div>
+                                  {!m.isOwner && (
+                                    <button
+                                      onClick={() => {
+                                        if (window.confirm(`Retirer ${m.email ?? m.id} de cette communauté ?`)) {
+                                          void postCommunity({ action: "remove_member", id: c.id, userId: m.id });
+                                        }
+                                      }}
+                                      className="shrink-0 text-[11px] text-muted hover:text-loss underline"
+                                    >
+                                      Retirer
+                                    </button>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                            {comRoster.blocked.length > 0 && (
+                              <div className="mt-2 pt-2 border-t border-border">
+                                <p className="text-[11px] text-muted mb-1">
+                                  Retirés (ne peuvent plus saisir le code) :
+                                </p>
+                                <ul className="space-y-1">
+                                  {comRoster.blocked.map((b) => (
+                                    <li key={b.id} className="flex items-center gap-2">
+                                      <span className="min-w-0 flex-1 truncate text-xs text-foreground-muted">
+                                        {b.email ?? b.id}
+                                      </span>
+                                      <button
+                                        onClick={() => postCommunity({ action: "unblock_member", id: c.id, userId: b.id })}
+                                        className="shrink-0 text-[11px] text-muted hover:text-foreground underline"
+                                      >
+                                        Lever le blocage
+                                      </button>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
