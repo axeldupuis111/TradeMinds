@@ -47,10 +47,13 @@ export async function GET(req: Request) {
 
   const { data, error } = await admin
     .from("communities")
-    .select("id, slug, name, owner_id, active, created_at")
+    .select("id, slug, name, owner_id, active, created_at, join_code")
     .order("created_at", { ascending: false });
   if (error) {
-    return NextResponse.json({ error: "Table absente : applique la migration 20260731_partner_communities.sql" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Colonne ou table absente : applique les migrations 20260731_partner_communities.sql, 20260803_community_management.sql et 20260803_community_join_code.sql" },
+      { status: 500 },
+    );
   }
 
   const rows = data ?? [];
@@ -80,6 +83,9 @@ export async function GET(req: Request) {
       ownerEmail: c.owner_id ? emailById.get(c.owner_id as string) ?? null : null,
       members: counts[i],
       createdAt: c.created_at,
+      // Utile tant qu'aucun animateur n'est rattaché : c'est toi qui transmets
+      // le code au partenaire, il ne peut pas encore le lire lui-même.
+      joinCode: (c.join_code as string | null) ?? null,
     })),
   });
 }

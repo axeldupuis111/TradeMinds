@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useLanguage } from "@/lib/LanguageContext";
-import { COMMUNITY_METRICS, MAX_CHALLENGE_DAYS, getMetricSpec } from "@/lib/community";
-import { Crown, Flame, Pencil, Plus, Trash2, Trophy, Users } from "lucide-react";
+import { COMMUNITY_METRICS, MAX_CHALLENGE_DAYS, formatJoinCode, getMetricSpec } from "@/lib/community";
+import { Check, Copy, Crown, Flame, Pencil, Plus, RefreshCw, Trash2, Trophy, Users } from "lucide-react";
 import CreateChallengeModal, { type EditableChallenge } from "@/components/community/CreateChallengeModal";
 import MembersPanel from "@/components/community/MembersPanel";
 
@@ -39,6 +39,8 @@ interface Payload {
     name: string;
     memberCount: number;
     isOwner: boolean;
+    /** Code d'invitation secret : renvoyé au seul animateur. */
+    joinCode: string | null;
     /** Non nul quand la communauté dépasse le plafond de membres classés. */
     rankedCap: number | null;
   } | null;
@@ -68,6 +70,8 @@ export default function CommunityPage() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<EditableChallenge | null>(null);
   const [showMembers, setShowMembers] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [rotating, setRotating] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -89,7 +93,7 @@ export default function CommunityPage() {
       const res = await fetch("/api/community", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "join", slug: code }),
+        body: JSON.stringify({ action: "join", code }),
       });
       const body = await res.json();
       if (!res.ok) { setError(t(body.error || "cc_err_unknown_code")); return; }
@@ -110,6 +114,31 @@ export default function CommunityPage() {
       body: JSON.stringify({ action: "leave" }),
     });
     await load();
+  }
+
+  async function copyCode(code: string) {
+    try {
+      await navigator.clipboard.writeText(formatJoinCode(code));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Presse-papiers refusé (contexte non sécurisé) : le code reste lisible à l'écran.
+    }
+  }
+
+  async function rotateCode() {
+    if (!window.confirm(t("com_code_rotate_confirm"))) return;
+    setRotating(true);
+    try {
+      await fetch("/api/community", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "rotate_code" }),
+      });
+      await load();
+    } finally {
+      setRotating(false);
+    }
   }
 
   async function removeChallenge(id: string) {
@@ -205,6 +234,36 @@ export default function CommunityPage() {
             </div>
           )}
         </div>
+        {/* Le code d'invitation, visible du seul animateur. Distinct du lien
+            d'affiliation : celui-ci est public, celui-là ne doit sortir que
+            vers les gens qu'il veut réellement dans sa communauté. */}
+        {community.isOwner && community.joinCode && (
+          <div className="mt-4 rounded-lg border border-border bg-surface p-3">
+            <p className="text-[11px] text-muted mb-2">{t("com_code_title")}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <code className="px-3 py-1.5 rounded-md bg-card border border-border font-mono text-base font-bold tracking-[0.2em] text-foreground">
+                {formatJoinCode(community.joinCode)}
+              </code>
+              <button
+                onClick={() => copyCode(community.joinCode!)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border text-xs text-foreground-muted hover:text-foreground hover:bg-card transition-colors"
+              >
+                {copied
+                  ? <><Check className="w-3.5 h-3.5 text-profit" strokeWidth={2} />{t("com_code_copied")}</>
+                  : <><Copy className="w-3.5 h-3.5" strokeWidth={1.75} />{t("com_code_copy")}</>}
+              </button>
+              <button
+                onClick={rotateCode}
+                disabled={rotating}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border text-xs text-muted hover:text-loss transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${rotating ? "animate-spin" : ""}`} strokeWidth={1.75} />
+                {t("com_code_rotate")}
+              </button>
+            </div>
+            <p className="mt-2 text-[11px] text-muted">{t("com_code_note")}</p>
+          </div>
+        )}
         <p className="mt-3 text-[11px] text-muted">{t("com_rules_note")}</p>
         {community.isOwner && community.rankedCap !== null && (
           <p className="mt-1 text-[11px] text-muted">

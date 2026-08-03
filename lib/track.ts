@@ -35,20 +35,30 @@ export type ProductEvent =
   | "signup_attributed";
 
 export function track(event: ProductEvent, meta?: Record<string, unknown>): void {
+  void trackAsync(event, meta);
+}
+
+/**
+ * Même chose, mais attendable, pour le seul cas où la SUITE dépend de
+ * l'événement : `signup_attributed` atteste côté serveur qu'un inscrit vient
+ * bien d'un partenaire donné, et /api/community le relit juste après pour
+ * décider du rattachement à sa communauté. En fire-and-forget, l'insertion et
+ * la lecture courent l'une contre l'autre et le rattachement se perd.
+ *
+ * Ne rejette jamais : le tracking ne casse aucun parcours.
+ */
+export async function trackAsync(event: ProductEvent, meta?: Record<string, unknown>): Promise<void> {
   try {
     const supabase = createClient();
-    void supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return;
-      return supabase
-        .from("product_events")
-        .insert({ user_id: user.id, event, meta: meta ?? null })
-        .then(({ error }) => {
-          // Colonne/table absente (migration non appliquée) → silencieux.
-          if (error && !/product_events/.test(error.message)) {
-            console.warn("[track] insert failed:", error.message);
-          }
-        });
-    });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { error } = await supabase
+      .from("product_events")
+      .insert({ user_id: user.id, event, meta: meta ?? null });
+    // Colonne/table absente (migration non appliquée) → silencieux.
+    if (error && !/product_events/.test(error.message)) {
+      console.warn("[track] insert failed:", error.message);
+    }
   } catch {
     // Le tracking ne casse JAMAIS un parcours utilisateur.
   }

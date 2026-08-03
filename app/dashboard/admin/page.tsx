@@ -54,7 +54,7 @@ export default function AdminPage() {
   const [affLoading, setAffLoading] = useState(false);
   const [affError, setAffError] = useState<string | null>(null);
   // Communautés partenaires (page interne : libellés FR en dur, convention admin)
-  interface CommunityRow { id: string; slug: string; name: string; active: boolean; ownerEmail: string | null; members: number }
+  interface CommunityRow { id: string; slug: string; name: string; active: boolean; ownerEmail: string | null; members: number; joinCode: string | null }
   const [communities, setCommunities] = useState<CommunityRow[]>([]);
   const [comLoading, setComLoading] = useState(false);
   const [comMessage, setComMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -343,6 +343,11 @@ export default function AdminPage() {
                         <p className="text-xs text-muted">
                           {c.members} membre(s) · animateur : {c.ownerEmail ?? "aucun (le partenaire ne peut pas encore créer de défis)"}
                           {!c.active && " · désactivée"}
+                        </p>
+                        {/* Le slug reste public (lien ?ref=) ; le code d'invitation
+                            est le secret qui autorise une entrée manuelle. */}
+                        <p className="text-xs text-muted">
+                          code d&apos;invitation : <code className="font-mono text-foreground">{c.joinCode ?? "(généré à la première visite de l'animateur)"}</code>
                         </p>
                       </div>
                       <button

@@ -14,7 +14,9 @@ import {
   MAX_OPEN_CHALLENGES,
   MEMBERS_RANKED_CAP,
   dayKeysBetween,
+  generateJoinCode,
   getMetricSpec,
+  normalizeJoinCode,
   normalizeSlug,
   phaseOf,
   previousDayKeys,
@@ -62,7 +64,10 @@ interface CommunityRow {
   name: string;
   owner_id: string | null;
   active: boolean;
+  join_code?: string | null;
 }
+
+const COMMUNITY_COLS = "id, slug, name, owner_id, active, join_code";
 
 interface ChallengeRow {
   id: string;
@@ -103,6 +108,34 @@ async function fetchAllRows<T>(
   }
 }
 
+/**
+ * Une communauté par n'importe laquelle de ses clés. Tolérante à l'absence de
+ * `join_code` (migration 20260803_community_join_code) : sans ce repli, une
+ * migration en retard ferait échouer la requête entière et la page afficherait
+ * « pas de communauté » à des membres qui en ont bien une.
+ */
+async function findCommunity(
+  admin: Admin,
+  column: "id" | "slug" | "owner_id" | "join_code",
+  value: string,
+  activeOnly = false,
+): Promise<CommunityRow | null> {
+  const build = (cols: string) => {
+    const base = admin.from("communities").select(cols).eq(column, value);
+    return (activeOnly ? base.eq("active", true) : base).maybeSingle();
+  };
+
+  const { data, error } = await build(COMMUNITY_COLS);
+  if (!error) return (data as unknown as CommunityRow | null) ?? null;
+
+  // Chercher PAR le code sans la colonne n'a pas de sens : mieux vaut ne
+  // rattacher personne que de retomber sur une autre communauté.
+  if (column === "join_code") return null;
+  console.error("[community] join_code unavailable, falling back:", error.message);
+  const { data: legacy } = await build("id, slug, name, owner_id, active");
+  return (legacy as unknown as CommunityRow | null) ?? null;
+}
+
 /** La communauté de l'utilisateur (celle qu'il a rejointe), ou null. */
 async function myCommunity(admin: Admin, userId: string): Promise<CommunityRow | null> {
   const { data: member } = await admin
@@ -111,12 +144,7 @@ async function myCommunity(admin: Admin, userId: string): Promise<CommunityRow |
     .eq("user_id", userId)
     .maybeSingle();
   if (!member) return null;
-  const { data } = await admin
-    .from("communities")
-    .select("id, slug, name, owner_id, active")
-    .eq("id", member.community_id as string)
-    .maybeSingle();
-  return (data as CommunityRow | null) ?? null;
+  return findCommunity(admin, "id", member.community_id as string);
 }
 
 // ── Cache du classement ──────────────────────────────────────────────────────
@@ -332,6 +360,9 @@ async function challengesView(admin: Admin, community: CommunityRow, userId: str
     name: community.name,
     memberCount: memberCount ?? 0,
     isOwner,
+    // Le code est un secret : il ne part QUE vers l'animateur, jamais vers les
+    // membres, sinon n'importe lequel d'entre eux pourrait le rediffuser.
+    joinCode: isOwner ? await ensureJoinCode(admin, community) : null,
     // Au-delà du plafond, le classement porte sur les premiers arrivés : mieux
     // vaut le dire à l'animateur que de le lui laisser découvrir.
     rankedCap: (memberCount ?? 0) > MEMBERS_RANKED_CAP ? MEMBERS_RANKED_CAP : null,
@@ -532,8 +563,18 @@ async function rankOne(
 // ── Actions ──────────────────────────────────────────────────────────────────
 
 interface PostBody {
-  action?: "join" | "leave" | "create_challenge" | "update_challenge" | "delete_challenge" | "remove_member" | "unblock_member";
+  action?:
+    | "join"
+    | "leave"
+    | "create_challenge"
+    | "update_challenge"
+    | "delete_challenge"
+    | "remove_member"
+    | "unblock_member"
+    | "rotate_code";
   slug?: string;
+  /** Code d'invitation secret saisi par l'abonné (saisie manuelle). */
+  code?: string;
   source?: string;
   id?: string;
   userId?: string;
@@ -569,6 +610,8 @@ export async function POST(req: Request) {
         return await removeMember(admin, auth.userId, body.userId);
       case "unblock_member":
         return await unblockMember(admin, auth.userId, body.userId);
+      case "rotate_code":
+        return await rotateCode(admin, auth.userId);
       default:
         return NextResponse.json({ error: "Unknown action" }, { status: 400 });
     }
@@ -578,23 +621,57 @@ export async function POST(req: Request) {
   }
 }
 
-async function join(admin: Admin, userId: string, body: PostBody) {
-  const slug = normalizeSlug(body.slug || "");
-  if (!slug) return NextResponse.json({ error: "cc_err_unknown_code" }, { status: 400 });
+/** Au-delà, un compte n'est plus « en cours d'inscription » (voir SignupAttribution). */
+const FRESH_ACCOUNT_MS = 7 * 24 * 3600 * 1000;
 
-  const { data: found } = await admin
-    .from("communities")
-    .select("id, slug, name, owner_id, active")
-    .eq("slug", slug)
-    .maybeSingle();
-  const community = found as CommunityRow | null;
+/**
+ * Rattachement automatique par le lien d'affiliation, à l'inscription.
+ *
+ * C'est le SEUL chemin qui accepte encore le slug public, et il est réservé à
+ * ce qu'il décrit : un compte tout juste créé, dont l'arrivée par ce partenaire
+ * est attestée côté serveur par l'événement `signup_attributed`. Sans ces deux
+ * conditions, il aurait suffi de poster `{source: "referral", slug: "infx"}`
+ * pour contourner le code secret et entrer chez n'importe quel partenaire.
+ */
+async function resolveReferral(admin: Admin, userId: string, slug: string): Promise<CommunityRow | null> {
+  const community = await findCommunity(admin, "slug", slug);
+  if (!community) return null;
+
+  const { data: profile } = await admin.from("profiles").select("created_at").eq("id", userId).maybeSingle();
+  const createdAt = profile?.created_at ? Date.parse(profile.created_at as string) : 0;
+  if (!createdAt || Date.now() - createdAt > FRESH_ACCOUNT_MS) return null;
+
+  const { data: attributed } = await admin
+    .from("product_events")
+    .select("meta")
+    .eq("user_id", userId)
+    .eq("event", "signup_attributed")
+    .limit(20);
+  const claimed = (attributed ?? []).some((row) => (row.meta as { source?: string } | null)?.source === slug);
+  return claimed ? community : null;
+}
+
+async function join(admin: Admin, userId: string, body: PostBody) {
+  let community: CommunityRow | null;
+
+  if (body.source === "referral") {
+    community = await resolveReferral(admin, userId, normalizeSlug(body.slug || ""));
+    // Appel silencieux depuis le dashboard : aucune erreur à afficher, la
+    // très grande majorité des inscrits n'a aucune communauté à rejoindre.
+    if (!community) return NextResponse.json({ ok: false });
+  } else {
+    // Saisie manuelle : le code d'invitation SECRET, jamais le slug public.
+    const code = normalizeJoinCode(body.code || body.slug || "");
+    if (!code) return NextResponse.json({ error: "cc_err_unknown_code" }, { status: 400 });
+    community = await findCommunity(admin, "join_code", code);
+  }
+
   if (!community || !community.active) {
     return NextResponse.json({ error: "cc_err_unknown_code" }, { status: 404 });
   }
 
-  // Un membre retiré connaît le code (c'est le slug public du lien
-  // d'affiliation) : sans ce test, le retrait ne durerait que jusqu'à sa
-  // prochaine tentative.
+  // Un membre retiré peut avoir gardé le code : sans ce test, le retrait ne
+  // durerait que jusqu'à sa prochaine tentative.
   const { data: blocked } = await admin
     .from("community_blocks")
     .select("user_id")
@@ -637,13 +714,29 @@ async function leave(admin: Admin, userId: string) {
 }
 
 async function ownedCommunity(admin: Admin, userId: string): Promise<CommunityRow | null> {
-  const { data } = await admin
-    .from("communities")
-    .select("id, slug, name, owner_id, active")
-    .eq("owner_id", userId)
-    .eq("active", true)
-    .maybeSingle();
-  return (data as CommunityRow | null) ?? null;
+  return findCommunity(admin, "owner_id", userId, true);
+}
+
+/**
+ * Le code d'invitation de l'animateur, créé à la volée s'il manque : une
+ * communauté née avant la migration, ou juste créée par l'admin, doit pouvoir
+ * accueillir du monde sans intervention.
+ */
+async function ensureJoinCode(admin: Admin, community: CommunityRow): Promise<string | null> {
+  if (community.join_code) return community.join_code;
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = generateJoinCode();
+    const { error } = await admin.from("communities").update({ join_code: code }).eq("id", community.id);
+    if (!error) return code;
+    // 23505 = collision sur l'index unique : on retire au sort. Toute autre
+    // erreur (colonne absente) ne se rattrape pas en réessayant.
+    if (error.code !== "23505") {
+      console.error("[community] cannot set join_code:", error.message);
+      return null;
+    }
+  }
+  return null;
 }
 
 function draftFrom(body: PostBody): ChallengeDraft {
@@ -799,6 +892,21 @@ async function removeMember(admin: Admin, userId: string, targetId?: string) {
   }
   await admin.from("community_members").delete().eq("user_id", targetId).eq("community_id", community.id);
   return NextResponse.json({ ok: true });
+}
+
+/**
+ * Régénération du code d'invitation. C'est la réponse à une fuite : le code
+ * circule forcément dans un Discord ou une story, et l'animateur doit pouvoir
+ * le rendre caduc sans attendre. Les membres déjà rattachés ne bougent pas,
+ * seules les entrées futures utilisent le nouveau code.
+ */
+async function rotateCode(admin: Admin, userId: string) {
+  const community = await ownedCommunity(admin, userId);
+  if (!community) return NextResponse.json({ error: "cc_err_not_owner" }, { status: 403 });
+
+  const code = await ensureJoinCode(admin, { ...community, join_code: null });
+  if (!code) return NextResponse.json({ error: "server_error" }, { status: 500 });
+  return NextResponse.json({ ok: true, joinCode: code });
 }
 
 async function unblockMember(admin: Admin, userId: string, targetId?: string) {

@@ -249,3 +249,49 @@ export const COMMUNITY_SLUG_FORMAT = /^[a-z0-9][a-z0-9_-]{1,31}$/;
 export function normalizeSlug(raw: string): string {
   return raw.trim().toLowerCase().slice(0, 32);
 }
+
+// ── Code d'invitation ────────────────────────────────────────────────────────
+//
+// Le slug est PUBLIC : il s'affiche dans l'URL de chaque publication du
+// partenaire (`?ref=infx`). S'en servir comme code d'entrée revenait à laisser
+// n'importe qui entrer dans le classement privé d'un partenaire. Le code
+// d'invitation est donc un secret distinct, que l'animateur donne à sa
+// communauté et peut régénérer s'il fuite.
+
+/**
+ * Ni I, ni L, ni O, ni 0, ni 1 : le code se lit à voix haute en live et se
+ * recopie à la main. Une ambiguïté coûte un abonné qui n'arrive pas à entrer.
+ */
+const JOIN_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+/** 31^8, soit ~8.10^11 combinaisons : hors de portée d'une énumération. */
+export const JOIN_CODE_LENGTH = 8;
+
+export function generateJoinCode(): string {
+  const bytes = new Uint32Array(JOIN_CODE_LENGTH);
+  crypto.getRandomValues(bytes);
+  let out = "";
+  for (let i = 0; i < JOIN_CODE_LENGTH; i++) {
+    out += JOIN_CODE_ALPHABET[bytes[i] % JOIN_CODE_ALPHABET.length];
+  }
+  return out;
+}
+
+/**
+ * Ce que tape l'abonné n'est jamais exactement ce qu'on a stocké : il colle le
+ * code avec le tiret d'affichage, une espace de trop, ou en minuscules. On ne
+ * retient que les caractères de l'alphabet.
+ */
+export function normalizeJoinCode(raw: string): string {
+  return raw
+    .toUpperCase()
+    .split("")
+    .filter((ch) => JOIN_CODE_ALPHABET.includes(ch))
+    .join("")
+    .slice(0, JOIN_CODE_LENGTH);
+}
+
+/** Affichage en deux blocs : « AB3K-M9PQ » se recopie mieux que « AB3KM9PQ ». */
+export function formatJoinCode(code: string): string {
+  if (code.length !== JOIN_CODE_LENGTH) return code;
+  return `${code.slice(0, 4)}-${code.slice(4)}`;
+}

@@ -2,7 +2,7 @@
 
 import { ATTRIBUTION_KEY, ATTRIBUTION_MAX_AGE_MS } from "@/components/AttributionCapture";
 import { createClient } from "@/lib/supabase/client";
-import { track } from "@/lib/track";
+import { trackAsync } from "@/lib/track";
 import { useEffect } from "react";
 
 /**
@@ -39,12 +39,16 @@ export default function SignupAttribution() {
       }
 
       const supabase = createClient();
-      void supabase.auth.getUser().then(({ data: { user } }) => {
+      void supabase.auth.getUser().then(async ({ data: { user } }) => {
         if (!user?.created_at) return;
         // Marqué consommé quoi qu'il arrive : compte ancien = pas une inscription.
         localStorage.setItem(SENT_KEY, "1");
         if (Date.now() - new Date(user.created_at).getTime() > FRESH_ACCOUNT_MS) return;
-        track("signup_attributed", { source });
+
+        // L'ATTENTE est nécessaire : c'est cet événement que /api/community
+        // relit pour vérifier que l'inscrit vient bien de ce partenaire avant
+        // de le rattacher. Émis en parallèle, il arriverait souvent trop tard.
+        await trackAsync("signup_attributed", { source });
         void fetch("/api/community", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
