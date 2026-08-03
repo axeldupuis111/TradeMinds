@@ -38,7 +38,16 @@
       "Bash(git show *)",
       "Bash(git checkout *)",
       "Bash(npx tsc *)",
-      "Bash(xargs grep *)"
+      "Bash(xargs grep *)",
+      "PowerShell(npx vitest run lib/account-currency.test.ts 2>&1)",
+      "PowerShell(npx tsc --noEmit 2>&1)",
+      "PowerShell(npx vitest run 2>&1)",
+      "PowerShell(npx next lint --dir app --dir lib --dir components 2>&1)",
+      "PowerShell($env:STRIPE_SECRET_KEY = \"sk_test_dummy\"; npm run build 2>&1 | Select-Object -Last 8)",
+      "PowerShell(git add app lib components migrations)",
+      "Bash(git commit *)",
+      "PowerShell(git push origin main 2>&1)",
+      "Bash(python -)"
     ]
   }
 }

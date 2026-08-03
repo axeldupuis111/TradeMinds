@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLanguage } from "@/lib/LanguageContext";
 import { COMMUNITY_METRICS, MAX_CHALLENGE_DAYS, getMetricSpec } from "@/lib/community";
-import { Crown, Flame, Plus, Trash2, Trophy, Users } from "lucide-react";
-import CreateChallengeModal from "@/components/community/CreateChallengeModal";
+import { Crown, Flame, Pencil, Plus, Trash2, Trophy, Users } from "lucide-react";
+import CreateChallengeModal, { type EditableChallenge } from "@/components/community/CreateChallengeModal";
+import MembersPanel from "@/components/community/MembersPanel";
 
 /**
  * Ma communauté : le classement privé d'un partenaire (influenceur, coach) et
@@ -24,6 +25,7 @@ export interface CommunityChallengeView {
   target: number;
   startsOn: string;
   endsOn: string;
+  updatedAt: string | null;
   phase: "upcoming" | "live" | "ended";
   participants: number;
   finishers: number;
@@ -32,7 +34,14 @@ export interface CommunityChallengeView {
   leaderboard: BoardEntry[];
 }
 interface Payload {
-  community: { slug: string; name: string; memberCount: number; isOwner: boolean } | null;
+  community: {
+    slug: string;
+    name: string;
+    memberCount: number;
+    isOwner: boolean;
+    /** Non nul quand la communauté dépasse le plafond de membres classés. */
+    rankedCap: number | null;
+  } | null;
   today: string;
   challenges: CommunityChallengeView[];
 }
@@ -57,6 +66,8 @@ export default function CommunityPage() {
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<EditableChallenge | null>(null);
+  const [showMembers, setShowMembers] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -178,15 +189,28 @@ export default function CommunityPage() {
             </p>
           </div>
           {community.isOwner && (
-            <button
-              onClick={() => setShowForm(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-colors"
-            >
-              <Plus className="w-4 h-4" strokeWidth={2.25} />{t("com_create")}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowMembers(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-sm font-semibold text-foreground hover:bg-surface transition-colors"
+              >
+                <Users className="w-4 h-4" strokeWidth={2} />{t("com_manage_members")}
+              </button>
+              <button
+                onClick={() => { setEditing(null); setShowForm(true); }}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-colors"
+              >
+                <Plus className="w-4 h-4" strokeWidth={2.25} />{t("com_create")}
+              </button>
+            </div>
           )}
         </div>
         <p className="mt-3 text-[11px] text-muted">{t("com_rules_note")}</p>
+        {community.isOwner && community.rankedCap !== null && (
+          <p className="mt-1 text-[11px] text-muted">
+            {t("com_ranked_cap").replace("{n}", String(community.rankedCap))}
+          </p>
+        )}
       </div>
 
       {/* Défis */}
@@ -218,16 +242,32 @@ export default function CommunityPage() {
                       {spec ? t(spec.hintKey) : c.metric}
                       {c.phase === "live" && ` · ${t("com_days_left").replace("{n}", String(Math.max(0, remaining)))}`}
                       {c.phase === "upcoming" && ` · ${t("com_starts_on").replace("{d}", c.startsOn)}`}
+                      {/* Une cible corrigée en cours de route ne doit pas passer
+                          inaperçue auprès de ceux qui courent déjà. */}
+                      {c.updatedAt && ` · ${t("com_edited")}`}
                     </p>
                   </div>
                   {community.isOwner && (
-                    <button
-                      onClick={() => removeChallenge(c.id)}
-                      aria-label={t("com_delete")}
-                      className="shrink-0 p-1.5 rounded-lg text-muted hover:text-loss hover:bg-loss/10 transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" strokeWidth={1.75} />
-                    </button>
+                    <div className="shrink-0 flex items-center gap-1">
+                      {c.phase !== "ended" && (
+                        <button
+                          onClick={() => { setEditing({ ...c, phase: c.phase }); setShowForm(true); }}
+                          aria-label={t("com_edit")}
+                          title={t("com_edit")}
+                          className="p-1.5 rounded-lg text-muted hover:text-accent hover:bg-accent/10 transition-colors"
+                        >
+                          <Pencil className="w-4 h-4" strokeWidth={1.75} />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => removeChallenge(c.id)}
+                        aria-label={t("com_delete")}
+                        title={t("com_delete")}
+                        className="p-1.5 rounded-lg text-muted hover:text-loss hover:bg-loss/10 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" strokeWidth={1.75} />
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -295,9 +335,14 @@ export default function CommunityPage() {
           today={today}
           maxDays={MAX_CHALLENGE_DAYS}
           metrics={COMMUNITY_METRICS}
-          onClose={() => setShowForm(false)}
-          onCreated={async () => { setShowForm(false); await load(); }}
+          challenge={editing ?? undefined}
+          onClose={() => { setShowForm(false); setEditing(null); }}
+          onCreated={async () => { setShowForm(false); setEditing(null); await load(); }}
         />
+      )}
+
+      {showMembers && (
+        <MembersPanel onClose={() => setShowMembers(false)} onChanged={load} />
       )}
     </div>
   );
