@@ -197,6 +197,32 @@ interface Filters {
 /** Sentinelle : les trades sans compte (import CSV non affecté, saisie manuelle). */
 const NO_ACCOUNT = "__none__";
 
+/**
+ * Largeur à partir de laquelle les six filtres tiennent sur UNE ligne, à côté
+ * de la barre latérale de 240 px : 6 champs (170 + 140 + 120 + 120 + 130 + 130),
+ * leurs 5 espaces, les boutons Réinitialiser et Exporter, plus les marges, soit
+ * ~1 100 px de contenu. En dessous, la rangée passe sur deux lignes et la barre
+ * collante mange 150 px de hauteur en permanence : sur un 14 pouces (1 280 px de
+ * large, ~700 px de haut) c'est un cinquième de l'écran, occupé en permanence
+ * par des filtres dont on ne se sert pas à chaque instant.
+ *
+ * D'où le repli par défaut en dessous du seuil, et le déploiement au-dessus. Le
+ * seuil n'est pas un point de rupture Tailwind : `xl` (1 280 px) tomberait pile
+ * sur la largeur des portables 14 pouces, ceux-la memes qu'on veut replier.
+ */
+const FILTERS_WIDE_PX = 1340;
+/**
+ * Écrit en toutes lettres, et pas construit depuis FILTERS_WIDE_PX : Tailwind
+ * cherche des chaînes littérales dans les sources, une classe assemblée à
+ * l'exécution ne serait jamais générée. Les deux doivent rester d'accord.
+ */
+const FILTERS_DEFAULT_CLASS = "hidden min-[1340px]:block";
+const FILTERS_OPEN_KEY = "td.trades.filtersOpen";
+
+function isWideViewport(): boolean {
+  return window.matchMedia(`(min-width: ${FILTERS_WIDE_PX}px)`).matches;
+}
+
 interface AccountOption {
   id: string;
   firm: string;
@@ -251,7 +277,44 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     worst: 0,
   });
   const [sort, setSort] = useState<SortState>({ column: null, direction: "desc" });
-  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  /**
+   * Barre de filtres : ouverte, fermée, ou `null` = « aucun choix explicite »,
+   * et c'est alors le CSS qui tranche (voir FILTERS_DEFAULT_CLASS).
+   *
+   * Ce `null` n'est pas de la coquetterie. Décider en JS au premier rendu
+   * imposerait de lire la largeur de la fenêtre, donc un écart entre le rendu
+   * serveur et le rendu client. Tant que l'utilisateur n'a rien décidé, la
+   * valeur est identique des deux côtés et le point de bascule vit dans une
+   * media query.
+   */
+  const [filtersOpen, setFiltersOpen] = useState<boolean | null>(null);
+
+  /**
+   * Ce que le CSS affiche quand l'utilisateur n'a rien décidé. Ne pilote AUCUN
+   * affichage (la media query s'en charge) : sert uniquement à annoncer un
+   * `aria-expanded` juste, qu'un lecteur d'écran ne peut pas déduire du CSS.
+   */
+  const [wideDefault, setWideDefault] = useState(false);
+
+  // Un choix explicite se garde d'une visite à l'autre : sinon, sur un écran où
+  // le repli est le défaut, il faudrait rouvrir les filtres à chaque passage.
+  useEffect(() => {
+    setWideDefault(isWideViewport());
+    const stored = window.localStorage.getItem(FILTERS_OPEN_KEY);
+    if (stored === "1") setFiltersOpen(true);
+    else if (stored === "0") setFiltersOpen(false);
+  }, []);
+
+  function toggleFilters() {
+    setFiltersOpen((current) => {
+      // Premier clic sans choix stocké : on part de ce que le CSS affiche, donc
+      // le clic referme sur grand écran et ouvre sur petit.
+      const next = current === null ? !isWideViewport() : !current;
+      window.localStorage.setItem(FILTERS_OPEN_KEY, next ? "1" : "0");
+      return next;
+    });
+  }
 
   // TOUS les comptes, y compris réussis et ratés : l'historique des trades ne
   // s'arrête pas quand un challenge se termine. Le contexte de compte actif ne
@@ -628,17 +691,22 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     <section>
       {/* Filter bar — sticky */}
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border rounded-lg mb-4">
-        <div className="flex items-center justify-between gap-2 px-3 pt-3 pb-1">
+        {/* p-3 des quatre côtés : replié, la barre se réduit à cette ligne, et
+            un pb-1 la collerait à sa bordure. Le panneau reprend en pt-0. */}
+        <div className="flex items-center justify-between gap-2 p-3">
           <p className="text-[11px] text-muted">
             {hasActiveFilters
               ? t("trades_filtered_by").replace("{count}", String(total))
               : t("trades_all_accounts").replace("{count}", String(statsCount))}
           </p>
-          {/* Mobile-only toggle — keeps the filter bar compact on small screens */}
+          {/* Repli disponible à TOUTE largeur : un 14 pouces a autant besoin de
+              récupérer ces 150 px qu'un téléphone, et un grand écran peut
+              vouloir replier une barre dont il ne se sert pas. */}
           <button
-            onClick={() => setFiltersOpen((o) => !o)}
-            className="sm:hidden inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-border bg-surface text-xs text-foreground"
-            aria-expanded={filtersOpen}
+            onClick={toggleFilters}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-border bg-surface text-xs text-foreground"
+            aria-expanded={filtersOpen ?? wideDefault}
+            aria-controls="trades-filters"
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
             {t("trades_filters_toggle")}
@@ -647,10 +715,19 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
                 {activeFilterCount}
               </span>
             )}
-            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
+            <ChevronDown
+              className={`w-3.5 h-3.5 transition-transform ${filtersOpen ? "rotate-180" : ""} ${
+                filtersOpen === null ? "min-[1340px]:rotate-180" : ""
+              }`}
+            />
           </button>
         </div>
-        <div className={`p-3 ${filtersOpen ? "block" : "hidden sm:block"}`}>
+        <div
+          id="trades-filters"
+          className={`px-3 pb-3 ${
+            filtersOpen === null ? FILTERS_DEFAULT_CLASS : filtersOpen ? "block" : "hidden"
+          }`}
+        >
           <div className="flex flex-wrap gap-3 items-end">
             {/* Compte : premier filtre, parce qu'un trade appartient d'abord à
                 un compte, et que chaque compte peut avoir sa propre devise. */}
