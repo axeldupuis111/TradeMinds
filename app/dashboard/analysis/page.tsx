@@ -1005,7 +1005,16 @@ ${turn.answer}` },
         }),
       });
 
-      const data = await res.json();
+      // Un timeout de plateforme renvoie du HTML, pas du JSON : parser avant de
+      // tester res.ok faisait remonter au trader un « Unexpected token < » au
+      // lieu du vrai motif d'échec.
+      let data: Analysis & { error?: string };
+      try {
+        data = await res.json();
+      } catch {
+        if (res.ok) throw new Error(t("analysis_unknown_error"));
+        data = {} as Analysis & { error?: string };
+      }
       if (!res.ok) {
         if (res.status === 401) throw new Error(t("api_error_unauthorized"));
         if (res.status === 403) throw new Error(t("api_error_forbidden"));
