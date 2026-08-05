@@ -42,3 +42,8 @@ audit-*.md
 next-env.d.ts
 
 .vercel
+
+# Binaires compiles par MetaEditor a cote des sources .mq4/.mq5 lors des
+# verifications de compilation. Ne doivent jamais etre versionnes ni servis.
+*.ex4
+*.ex5
