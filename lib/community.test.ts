@@ -1,13 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   COMMUNITY_METRICS,
-  JOIN_CODE_LENGTH,
   containsGainPromise,
   dayKeysBetween,
-  formatJoinCode,
-  generateJoinCode,
   getMetricSpec,
-  normalizeJoinCode,
   phaseOf,
   previousDayKeys,
   validateChallengeDraft,
@@ -165,45 +161,5 @@ describe("getMetricSpec", () => {
   it("retourne undefined hors catalogue", () => {
     expect(getMetricSpec("clean_days")).toBeDefined();
     expect(getMetricSpec("nope")).toBeUndefined();
-  });
-});
-
-describe("code d'invitation", () => {
-  it("tire un code de la bonne longueur, sans caractère ambigu", () => {
-    for (let i = 0; i < 200; i++) {
-      const code = generateJoinCode();
-      expect(code).toHaveLength(JOIN_CODE_LENGTH);
-      // I, L, O, 0 et 1 se confondent quand le code est lu à voix haute.
-      expect(code).toMatch(/^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]+$/);
-    }
-  });
-
-  it("ne retire pas deux fois le même code de suite", () => {
-    const codes = new Set(Array.from({ length: 200 }, () => generateJoinCode()));
-    expect(codes.size).toBe(200);
-  });
-
-  it("accepte ce que l'abonné tape vraiment", () => {
-    // Collé avec le tiret d'affichage, en minuscules, avec des espaces parasites.
-    expect(normalizeJoinCode("ab3k-m9pq")).toBe("AB3KM9PQ");
-    expect(normalizeJoinCode("  AB3K M9PQ  ")).toBe("AB3KM9PQ");
-    expect(normalizeJoinCode("AB3KM9PQ")).toBe("AB3KM9PQ");
-  });
-
-  it("ne fabrique pas un code valide à partir de n'importe quoi", () => {
-    // Les caractères hors alphabet sont retirés, pas remplacés : un slug public
-    // comme « infx » perd son i et ne fait plus la longueur d'un code, donc il
-    // ne peut plus désigner aucune communauté.
-    expect(normalizeJoinCode("infx")).toBe("NFX");
-    expect(normalizeJoinCode("infx").length).toBeLessThan(JOIN_CODE_LENGTH);
-    expect(normalizeJoinCode("")).toBe("");
-    expect(normalizeJoinCode("0011")).toBe("");
-    // Et une saisie trop longue est tronquée, jamais rallongée.
-    expect(normalizeJoinCode("ABCDEFGHJKMN")).toHaveLength(JOIN_CODE_LENGTH);
-  });
-
-  it("affiche le code en deux blocs, et laisse le reste intact", () => {
-    expect(formatJoinCode("AB3KM9PQ")).toBe("AB3K-M9PQ");
-    expect(formatJoinCode("TROPCOURT")).toBe("TROPCOURT");
   });
 });

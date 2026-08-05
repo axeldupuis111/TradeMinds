@@ -141,6 +141,62 @@ export async function POST(req: NextRequest) {
 // HANDLERS
 // ============================================================
 
+/**
+ * Rattachement à la communauté du partenaire dont le code promo vient d'être
+ * utilisé (le code est le majuscule du slug, voir lib/founding.ts).
+ *
+ * C'est LA porte d'entrée d'une communauté partenaire, et la seule : payer avec
+ * le code de quelqu'un est la seule preuve non falsifiable qu'on vient bien de
+ * chez lui. L'animateur n'a donc qu'une phrase à dire à son audience, et sa
+ * communauté ne contient que les gens qu'il a réellement amenés.
+ *
+ * Silencieux de bout en bout : la très grande majorité des abonnements n'a
+ * aucun code, et aucun cas d'échec ici ne justifie de faire rater un webhook
+ * qui vient d'activer un plan payant.
+ */
+async function attachToPartnerCommunity(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  userId: string,
+  promoCode: string
+) {
+  try {
+    const slug = promoCode.trim().toLowerCase()
+    const { data: community } = await supabase
+      .from('communities')
+      .select('id')
+      .eq('slug', slug)
+      .eq('active', true)
+      .maybeSingle()
+    if (!community) return // code public (LANCEMENT) ou partenaire sans communauté
+
+    // Un membre retiré par l'animateur reste dehors : sans ce test, son
+    // prochain paiement le ferait rentrer par la fenêtre.
+    const { data: blocked } = await supabase
+      .from('community_blocks')
+      .select('user_id')
+      .eq('community_id', community.id)
+      .eq('user_id', userId)
+      .maybeSingle()
+    if (blocked) return
+
+    // First-touch, comme l'attribution marketing : on ne déplace pas quelqu'un
+    // d'une communauté à une autre parce qu'il s'est réabonné avec un autre code.
+    const { data: existing } = await supabase
+      .from('community_members')
+      .select('user_id')
+      .eq('user_id', userId)
+      .maybeSingle()
+    if (existing) return
+
+    const { error } = await supabase
+      .from('community_members')
+      .insert({ user_id: userId, community_id: community.id, source: 'promo' })
+    if (error) console.error('[Webhook] Rattachement communauté échoué:', error.message)
+  } catch (err) {
+    console.error('[Webhook] Rattachement communauté échoué:', err)
+  }
+}
+
 async function handleCheckoutCompleted(
   session: Stripe.Checkout.Session,
   supabase: ReturnType<typeof getSupabaseAdmin>
@@ -172,26 +228,26 @@ async function handleCheckoutCompleted(
   // (ex. -10 % × 3 mois) disparaissent des factures une fois la durée écoulée —
   // les metadata, elles, restent à vie, ce qui permet de calculer les
   // commissions influenceur sur les 12 premiers mois (onglet admin Affiliation).
+  let promoCode: string | null = (subscription.metadata?.promo_code as string | undefined) ?? null
   try {
-    if (!subscription.metadata?.promo_code) {
+    if (!promoCode) {
       const promoRef = session.discounts?.[0]?.promotion_code
-      let code: string | null = null
 
       if (promoRef) {
         const promo = typeof promoRef === 'string'
           ? await stripe.promotionCodes.retrieve(promoRef)
           : promoRef
-        code = promo?.code ?? null
+        promoCode = promo?.code ?? null
       } else {
         // Aucune remise appliquée alors que le client vient d'un lien partenaire :
         // son code est épuisé ou expiré. La vente lui revient malgré tout, sinon
         // sa commission disparaîtrait sans bruit une fois son quota atteint.
-        code = (subscription.metadata?.attribution_code as string | undefined) ?? null
+        promoCode = (subscription.metadata?.attribution_code as string | undefined) ?? null
       }
 
-      if (code) {
+      if (promoCode) {
         await stripe.subscriptions.update(subscription.id, {
-          metadata: { ...subscription.metadata, promo_code: code },
+          metadata: { ...subscription.metadata, promo_code: promoCode },
         })
       }
     }
@@ -199,6 +255,11 @@ async function handleCheckoutCompleted(
     // L'attribution ne doit jamais bloquer l'activation du plan.
     console.error('[Webhook] Attribution promo_code échouée:', err)
   }
+
+  // Le code du partenaire ouvre AUSSI sa communauté : c'est la seule porte
+  // d'entrée (voir app/api/community). Après l'attribution, jamais avant : sans
+  // le code résolu il n'y a rien à rattacher.
+  if (promoCode) await attachToPartnerCommunity(supabase, userId, promoCode)
 
   await upsertSubscription(subscription, userId, supabase)
 

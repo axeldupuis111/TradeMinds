@@ -15,7 +15,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { ShieldOff, UserMinus, Users, X } from "lucide-react";
+import { ShieldOff, UserMinus, UserPlus, Users, X } from "lucide-react";
 import { useLanguage } from "@/lib/LanguageContext";
 
 interface Member {
@@ -41,6 +41,9 @@ export default function MembersPanel({ onClose, onChanged }: { onClose: () => vo
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => {
@@ -78,6 +81,29 @@ export default function MembersPanel({ onClose, onChanged }: { onClose: () => vo
     }
   }
 
+  async function addMember() {
+    const username = newName.trim();
+    if (!username) return;
+    setAdding(true);
+    setAddError(null);
+    try {
+      const res = await fetch("/api/community", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "add_member", username }),
+      });
+      const body = await res.json();
+      if (!res.ok) { setAddError(t(body.error || "cc_err_member_not_found")); return; }
+      setNewName("");
+      await load();
+      onChanged();
+    } catch {
+      setAddError(t("cc_err_network"));
+    } finally {
+      setAdding(false);
+    }
+  }
+
   function remove(m: Member) {
     const who = m.name ? `@${m.name}` : t("com_member_anon");
     if (!window.confirm(t("com_member_remove_confirm").replace("{who}", who))) return;
@@ -105,6 +131,30 @@ export default function MembersPanel({ onClose, onChanged }: { onClose: () => vo
         </div>
 
         <div className="px-5 py-4 space-y-4">
+          {/* Rattraper les abonnés d'avant : le code promo n'ouvre la
+              communauté qu'au moment du paiement, eux étaient déjà clients. */}
+          <div className="rounded-lg border border-border bg-surface p-3">
+            <p className="text-[11px] text-muted mb-2">{t("com_member_add_title")}</p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") void addMember(); }}
+                placeholder={t("com_member_add_placeholder")}
+                className="flex-1 px-3 py-2 bg-card border border-border rounded-lg text-sm text-foreground placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
+              />
+              <button
+                onClick={() => void addMember()}
+                disabled={adding || !newName.trim()}
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50"
+              >
+                <UserPlus className="w-4 h-4" strokeWidth={2} />{t("com_member_add")}
+              </button>
+            </div>
+            {addError && <p className="mt-2 text-xs text-loss">{addError}</p>}
+            <p className="mt-2 text-[11px] text-muted">{t("com_member_add_note")}</p>
+          </div>
+
           {loading ? (
             <div className="skeleton h-32 w-full rounded-lg" />
           ) : members.length === 0 ? (

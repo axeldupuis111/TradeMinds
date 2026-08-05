@@ -54,7 +54,7 @@ export default function AdminPage() {
   const [affLoading, setAffLoading] = useState(false);
   const [affError, setAffError] = useState<string | null>(null);
   // Communautés partenaires (page interne : libellés FR en dur, convention admin)
-  interface CommunityRow { id: string; slug: string; name: string; active: boolean; ownerEmail: string | null; members: number; joinCode: string | null }
+  interface CommunityRow { id: string; slug: string; name: string; active: boolean; ownerEmail: string | null; members: number }
   const [communities, setCommunities] = useState<CommunityRow[]>([]);
   const [comLoading, setComLoading] = useState(false);
   const [comMessage, setComMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -344,10 +344,11 @@ export default function AdminPage() {
                           {c.members} membre(s) · animateur : {c.ownerEmail ?? "aucun (le partenaire ne peut pas encore créer de défis)"}
                           {!c.active && " · désactivée"}
                         </p>
-                        {/* Le slug reste public (lien ?ref=) ; le code d'invitation
-                            est le secret qui autorise une entrée manuelle. */}
+                        {/* Seule porte d'entrée : le code promo Stripe, qui doit
+                            porter le slug en majuscules pour que le rattachement
+                            se fasse au paiement (voir le webhook Stripe). */}
                         <p className="text-xs text-muted">
-                          code d&apos;invitation : <code className="font-mono text-foreground">{c.joinCode ?? "(généré à la première visite de l'animateur)"}</code>
+                          code promo attendu : <code className="font-mono text-foreground">{c.slug.toUpperCase()}</code>
                         </p>
                       </div>
                       <button
