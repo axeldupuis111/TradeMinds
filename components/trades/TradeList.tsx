@@ -10,7 +10,7 @@ import {
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { AlertCircle, ArrowDown, ArrowUp, ArrowUpDown, Camera, ChevronDown, SlidersHorizontal } from "lucide-react";
-import { useMemo, useEffect, useState } from "react";
+import { useMemo, useEffect, useRef, useState } from "react";
 import TradeDetailPanel, { type TradeDetail } from "./TradeDetailPanel";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -291,6 +291,72 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
   useEffect(() => {
     setSelectedIds(new Set());
   }, [page, refreshKey]);
+
+  // Les trades arrivent en tache de fond (EA MetaTrader, cron broker) : sans
+  // abonnement, la liste restait le cliche pris au montage et il fallait
+  // changer d'onglet pour la voir bouger.
+  //
+  // La ref garde un rechargement toujours a jour, pour que l'abonnement (monte
+  // une seule fois) ne rappelle jamais une version perimee des filtres, du tri
+  // ou de la page courante.
+  const reloadRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    reloadRef.current = () => {
+      loadTrades();
+      loadGlobalStats();
+      loadAllPairs();
+    };
+  });
+
+  useEffect(() => {
+    let active = true;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    // Une synchro insere 90 jours d'historique d'un coup, donc une salve
+    // d'evenements : sans ce delai, chaque ligne declencherait sa propre
+    // requete. On attend que la salve retombe avant de recharger une fois.
+    let burst: ReturnType<typeof setTimeout> | null = null;
+
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !active) return;
+
+      channel = supabase
+        .channel(`trade_list_${user.id}`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "trades", filter: `user_id=eq.${user.id}` },
+          () => {
+            if (burst) clearTimeout(burst);
+            burst = setTimeout(() => {
+              if (active) reloadRef.current();
+            }, 500);
+          },
+        )
+        .subscribe();
+    })();
+
+    return () => {
+      active = false;
+      if (burst) clearTimeout(burst);
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Filet de securite independant du temps reel : le parcours typique est
+  // d'aller cloturer un trade dans MetaTrader puis de revenir sur l'onglet.
+  // Ce rechargement au retour marche meme si la replication temps reel n'est
+  // pas activee sur la table.
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState === "visible") reloadRef.current();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
+  }, []);
 
   async function loadAllPairs() {
     const { data: { user } } = await supabase.auth.getUser();
