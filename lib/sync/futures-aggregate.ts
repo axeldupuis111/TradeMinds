@@ -25,6 +25,13 @@ export interface AggregatedFuturesPosition {
   open_time: string; // ISO 8601
   close_time: string | null;
   pnl: number; // realized P&L in account currency (gross of commission)
+  /**
+   * Frais estimés, en NÉGATIF comme partout ailleurs dans l'app (net = pnl +
+   * commission + swap). Tradovate ne renvoie aucun frais dans ses fills : la
+   * valeur vient du coût aller-retour par contrat saisi sur la connexion, et
+   * vaut 0 quand l'utilisateur ne l'a pas renseigné.
+   */
+  commission: number;
   status: "open" | "closed";
   source: "tradovate";
   external_id: string; // String(first fill id) — stable across syncs
@@ -74,9 +81,24 @@ function fresh(): Accumulator {
  *   pnl += (closePrice − avgEntry) × directionSign × closedQty × pointValue
  * An over-closing fill (qty greater than the open net) closes the current
  * position and opens a new one in the opposite direction with the remainder.
+ *
+ * `commissionPerContract` est le coût ALLER-RETOUR d'un contrat (valeur
+ * positive). Il n'est facturé que sur la quantité réellement clôturée : une
+ * position encore ouverte n'a pas fait d'aller-retour, donc pas de frais, et
+ * une clôture partielle n'est facturée que pour la part sortie.
  */
-export function aggregateFuturesFills(fills: FuturesFill[]): AggregatedFuturesPosition[] {
+export function aggregateFuturesFills(
+  fills: FuturesFill[],
+  commissionPerContract = 0,
+): AggregatedFuturesPosition[] {
   if (fills.length === 0) return [];
+
+  // Une valeur absurde (négative, NaN, Infinity) ne doit jamais transformer des
+  // frais en gain : on retombe silencieusement sur « pas de frais ».
+  const rate =
+    Number.isFinite(commissionPerContract) && commissionPerContract > 0
+      ? commissionPerContract
+      : 0;
 
   const sorted = [...fills].sort((a, b) => a.time - b.time || a.id - b.id);
 
@@ -109,6 +131,8 @@ export function aggregateFuturesFills(fills: FuturesFill[]): AggregatedFuturesPo
         open_time: new Date(acc.openTime).toISOString(),
         close_time: status === "closed" && acc.closeTime ? new Date(acc.closeTime).toISOString() : null,
         pnl: round2(acc.realizedPnl),
+        // `|| 0` neutralise le -0 d'une position sans contrat sorti.
+        commission: rate > 0 ? -round2(rate * exitPriceAccum.qty) || 0 : 0,
         status,
         source: "tradovate",
         external_id: String(acc.firstFillId),

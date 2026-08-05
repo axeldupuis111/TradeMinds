@@ -21,7 +21,13 @@ export interface BrokerConnectionRow {
   environment: TradovateEnvironment;
   credentials_encrypted: string;
   last_synced_at: string | null;
+  /** Coût aller-retour par contrat (positif). Absent sur les lignes d'avant la migration. */
+  commission_per_contract?: number | null;
 }
+
+/** Colonnes à lire pour alimenter `syncBrokerConnection` (une seule définition, trois appelants). */
+export const BROKER_CONNECTION_COLUMNS =
+  "id, user_id, broker, environment, credentials_encrypted, last_synced_at, commission_per_contract";
 
 const DEFAULT_LOOKBACK_DAYS = 90;
 const OVERLAP_MS = 24 * 60 * 60 * 1000; // re-scan the last day to catch late settlement
@@ -41,7 +47,12 @@ export async function syncBrokerConnection(
 
     if (conn.broker === "tradovate") {
       const creds = JSON.parse(decrypt(conn.credentials_encrypted)) as TradovateCredentials;
-      const { positions, snapshot: accountState } = await syncTradovate(creds, conn.environment, since);
+      const { positions, snapshot: accountState } = await syncTradovate(
+        creds,
+        conn.environment,
+        since,
+        Number(conn.commission_per_contract) || 0,
+      );
       snapshot = accountState;
       rows = positions.map((p) => ({
         user_id: conn.user_id,
@@ -53,6 +64,7 @@ export async function syncBrokerConnection(
         open_time: p.open_time,
         close_time: p.close_time,
         pnl: p.pnl,
+        commission: p.commission,
         status: p.status,
         source: p.source,
         external_id: p.external_id,

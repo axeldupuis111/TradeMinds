@@ -8,8 +8,9 @@ const guide: GuideContent = {
   fr: {
     before: [
       "Un compte Tradovate, ou un compte de prop firm qui passe par Tradovate (Apex, Topstep et autres).",
-      "L'accès API doit être activé sur ce compte : c'est ce qui fournit la clé (cid) et le secret (sec). Toutes les prop firms ne l'autorisent pas.",
-      "Avantage de ce rail : rien à installer et rien à laisser ouvert, la synchro tourne sur nos serveurs toutes les heures.",
+      "À savoir avant de commencer : Tradovate facture aujourd'hui l'accès API (environ 25 $ par mois) et le réserve aux comptes réels approvisionnés. Beaucoup de prop firms ne l'activent pas sur les comptes d'évaluation. Si tu n'as pas déjà cet accès, passe plutôt par NinjaTrader ou par l'import CSV : le résultat est le même dans l'app.",
+      "L'accès API est ce qui fournit la clé (cid) et le secret (sec), les deux valeurs demandées par le formulaire.",
+      "Avantage de ce rail une fois branché : rien à installer et rien à laisser ouvert, la synchro tourne sur nos serveurs toutes les heures.",
     ],
     steps: [
       {
@@ -40,6 +41,13 @@ const guide: GuideContent = {
         check:
           "La connexion apparaît dans la liste avec le statut « Active » et une date de dernière synchro. Tes trades futures remontent dans « Mes Trades ».",
       },
+      {
+        title: "Renseigne ta commission par contrat",
+        detail:
+          "Tradovate ne transmet pas les frais dans ses données : sans cette valeur, ton P&L reste brut et ne collera pas à ton relevé. Indique le coût aller-retour d'un contrat chez ton broker, souvent entre 4 et 5 $ chez les prop firms. Le champ se modifie à tout moment sur la ligne de connexion.",
+        check:
+          "Sur un trade importé, le net affiché correspond à ton relevé Tradovate, aux arrondis près.",
+      },
     ],
     fixes: [
       {
@@ -68,8 +76,9 @@ const guide: GuideContent = {
   en: {
     before: [
       "A Tradovate account, or a prop firm account running on Tradovate (Apex, Topstep and others).",
-      "API access must be enabled on that account: that is what gives you the key (cid) and secret (sec). Not every prop firm allows it.",
-      "The upside of this rail: nothing to install and nothing to keep open, the sync runs on our servers every hour.",
+      "Worth knowing before you start: Tradovate now charges for API access (around $25 a month) and restricts it to funded live accounts. Many prop firms do not enable it on evaluation accounts. If you do not already have that access, use NinjaTrader or CSV import instead: the result inside the app is the same.",
+      "API access is what gives you the key (cid) and the secret (sec), the two values the form asks for.",
+      "The upside of this rail once it is wired: nothing to install and nothing to keep open, the sync runs on our servers every hour.",
     ],
     steps: [
       {
@@ -100,6 +109,13 @@ const guide: GuideContent = {
         check:
           "The connection appears in the list with status « Active » and a last-sync date. Your futures trades land in « My Trades ».",
       },
+      {
+        title: "Set your commission per contract",
+        detail:
+          "Tradovate does not send fees with its data: without this value your P&L stays gross and will not match your statement. Enter your broker's round-turn cost for one contract, often $4 to $5 at prop firms. The field can be changed at any time on the connection row.",
+        check:
+          "On an imported trade, the net figure matches your Tradovate statement, give or take rounding.",
+      },
     ],
     fixes: [
       {
@@ -128,8 +144,9 @@ const guide: GuideContent = {
   es: {
     before: [
       "Una cuenta Tradovate, o una cuenta de prop firm que funcione con Tradovate (Apex, Topstep y otras).",
-      "El acceso API debe estar activado en esa cuenta: es lo que te da la clave (cid) y el secreto (sec). No todas las prop firms lo permiten.",
-      "La ventaja de esta vía: nada que instalar ni que dejar abierto, la sincronización corre en nuestros servidores cada hora.",
+      "Conviene saberlo antes de empezar: hoy Tradovate cobra el acceso API (unos 25 $ al mes) y lo reserva a cuentas reales con fondos. Muchas prop firms no lo activan en las cuentas de evaluación. Si aún no tienes ese acceso, usa mejor NinjaTrader o la importación CSV: el resultado dentro de la app es el mismo.",
+      "El acceso API es lo que te da la clave (cid) y el secreto (sec), los dos valores que pide el formulario.",
+      "La ventaja de esta vía una vez conectada: nada que instalar ni que dejar abierto, la sincronización corre en nuestros servidores cada hora.",
     ],
     steps: [
       {
@@ -160,6 +177,13 @@ const guide: GuideContent = {
         check:
           "La conexión aparece en la lista con estado « Activa » y una fecha de última sincronización. Tus operaciones de futuros llegan a « Mis Trades ».",
       },
+      {
+        title: "Indica tu comisión por contrato",
+        detail:
+          "Tradovate no transmite las comisiones con sus datos: sin este valor tu P&L queda bruto y no cuadrará con tu extracto. Indica el coste de ida y vuelta de un contrato en tu bróker, a menudo entre 4 y 5 $ en las prop firms. El campo se puede cambiar en cualquier momento en la línea de la conexión.",
+        check:
+          "En una operación importada, el neto mostrado coincide con tu extracto de Tradovate, salvo redondeos.",
+      },
     ],
     fixes: [
       {
@@ -188,8 +212,9 @@ const guide: GuideContent = {
   de: {
     before: [
       "Ein Tradovate-Konto oder ein Prop-Firm-Konto, das über Tradovate läuft (Apex, Topstep und andere).",
-      "Der API-Zugang muss für dieses Konto freigeschaltet sein: Daraus stammen Key (cid) und Secret (sec). Nicht jede Prop Firm erlaubt das.",
-      "Vorteil dieses Wegs: nichts zu installieren und nichts offen zu halten, die Synchronisation läuft stündlich auf unseren Servern.",
+      "Vorab wichtig: Tradovate berechnet den API-Zugang inzwischen (rund 25 $ pro Monat) und gibt ihn nur für finanzierte Live-Konten frei. Viele Prop Firms schalten ihn auf Evaluierungskonten nicht frei. Ohne diesen Zugang nimmst du besser NinjaTrader oder den CSV-Import: In der App ist das Ergebnis dasselbe.",
+      "Aus dem API-Zugang stammen Key (cid) und Secret (sec), die beiden Werte, die das Formular verlangt.",
+      "Vorteil dieses Wegs, sobald er steht: nichts zu installieren und nichts offen zu halten, die Synchronisation läuft stündlich auf unseren Servern.",
     ],
     steps: [
       {
@@ -219,6 +244,13 @@ const guide: GuideContent = {
           "Benutzername und Passwort sind deine üblichen Tradovate-Zugangsdaten. Füge dann den Key in « API-Schlüssel (cid) » und das Secret in « API-Secret (sec) » ein. Klicke auf « Verbinden ».",
         check:
           "Die Verbindung erscheint in der Liste mit Status « Aktiv » und einem Zeitpunkt der letzten Synchronisation. Deine Futures-Trades erscheinen unter « Meine Trades ».",
+      },
+      {
+        title: "Kommission pro Kontrakt eintragen",
+        detail:
+          "Tradovate liefert keine Gebühren mit: Ohne diesen Wert bleibt dein P&L brutto und passt nicht zu deiner Abrechnung. Trage die Round-Turn-Kosten eines Kontrakts bei deinem Broker ein, bei Prop Firms oft 4 bis 5 $. Das Feld lässt sich jederzeit in der Verbindungszeile ändern.",
+        check:
+          "Bei einem importierten Trade stimmt der angezeigte Nettobetrag mit deiner Tradovate-Abrechnung überein, bis auf Rundungen.",
       },
     ],
     fixes: [

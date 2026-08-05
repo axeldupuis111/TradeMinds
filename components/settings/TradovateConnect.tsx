@@ -13,6 +13,7 @@ interface Connection {
   last_synced_at: string | null;
   last_error: string | null;
   created_at: string;
+  commission_per_contract: number | null;
 }
 
 /**
@@ -29,15 +30,21 @@ export default function TradovateConnect() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  // Erreur de synchro, par connexion : elle doit s'afficher là où l'utilisateur
+  // a cliqué, pas disparaître dans le vide.
+  const [syncError, setSyncError] = useState<Record<string, string>>({});
 
-  const [form, setForm] = useState({
+  const emptyForm = {
     label: "",
     environment: "live" as "demo" | "live",
     username: "",
     password: "",
     cid: "",
     sec: "",
-  });
+    commission: "",
+  };
+
+  const [form, setForm] = useState(emptyForm);
 
   async function load() {
     setLoading(true);
@@ -63,10 +70,15 @@ export default function TradovateConnect() {
     setSubmitting(true);
     setError(null);
     try {
+      const { commission, ...creds } = form;
       const res = await fetch("/api/broker/connections", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ broker: "tradovate", ...form }),
+        body: JSON.stringify({
+          broker: "tradovate",
+          ...creds,
+          commission_per_contract: Number(commission.replace(",", ".")) || 0,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -74,16 +86,49 @@ export default function TradovateConnect() {
         return;
       }
       setShowForm(false);
-      setForm({ label: "", environment: "live", username: "", password: "", cid: "", sec: "" });
+      setForm(emptyForm);
       await load();
+      // La création ne valide que les identifiants ; la première synchro, elle,
+      // peut être longue. On l'enchaîne ici pour que l'utilisateur voie ses
+      // trades tout de suite, et son échec éventuel s'affiche sur la ligne sans
+      // remettre en cause la connexion, que le cron reprendra.
+      if (data.id) await runSync(data.id);
     } catch {
       setError(t("settings_save_error"));
+      // La connexion a pu être créée avant que la réponse ne se perde : on
+      // recharge pour ne jamais laisser croire à un échec total.
+      await load();
     } finally {
       setSubmitting(false);
     }
   }
 
-  async function action(id: string, body: { action: "pause" | "resume" | "sync" }) {
+  async function runSync(id: string) {
+    setBusyId(id);
+    setSyncError((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    try {
+      const res = await fetch(`/api/broker/connections/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "sync" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSyncError((prev) => ({ ...prev, [id]: data.error || t("settings_save_error") }));
+      }
+      await load();
+    } catch {
+      setSyncError((prev) => ({ ...prev, [id]: t("settings_save_error") }));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function action(id: string, body: { action: "pause" | "resume" }) {
     setBusyId(id);
     try {
       await fetch(`/api/broker/connections/${id}`, {
@@ -94,6 +139,27 @@ export default function TradovateConnect() {
       await load();
     } finally {
       setBusyId(null);
+    }
+  }
+
+  async function saveCommission(id: string, value: string) {
+    const rate = Number(value.replace(",", ".")) || 0;
+    try {
+      const res = await fetch(`/api/broker/connections/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "commission", commission_per_contract: rate }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        // Un taux qu'on croit enregistré alors qu'il ne l'est pas fausserait
+        // durablement le P&L sans que rien ne le signale.
+        setSyncError((prev) => ({ ...prev, [id]: data.error || t("settings_save_error") }));
+        return;
+      }
+      await load();
+    } catch {
+      setSyncError((prev) => ({ ...prev, [id]: t("settings_save_error") }));
     }
   }
 
@@ -127,7 +193,7 @@ export default function TradovateConnect() {
               {connections.map((c) => (
                 <li
                   key={c.id}
-                  className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg bg-surface border border-border"
+                  className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5 rounded-lg bg-surface border border-border"
                 >
                   <div className="min-w-0">
                     <p className="text-sm text-foreground font-medium truncate">
@@ -146,10 +212,30 @@ export default function TradovateConnect() {
                         <span className="text-muted"> · {c.last_error}</span>
                       )}
                     </p>
+                    {syncError[c.id] && (
+                      <p className="text-xs text-loss mt-0.5">{syncError[c.id]}</p>
+                    )}
+                    <label className="flex items-center gap-1.5 mt-1.5 text-xs text-foreground-muted">
+                      {t("sync_tradovate_commission_short")}
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        defaultValue={c.commission_per_contract ?? 0}
+                        onBlur={(e) => {
+                          const next = Number(e.target.value) || 0;
+                          if (next !== (c.commission_per_contract ?? 0)) {
+                            saveCommission(c.id, e.target.value);
+                          }
+                        }}
+                        className="w-20 px-2 py-1 bg-card border border-border rounded-md text-foreground text-xs focus:outline-none focus:border-accent"
+                      />
+                    </label>
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     <button
-                      onClick={() => action(c.id, { action: "sync" })}
+                      onClick={() => runSync(c.id)}
                       disabled={busyId === c.id}
                       className="px-2.5 py-1.5 rounded-lg border border-border bg-card text-foreground text-xs hover:bg-border transition-colors disabled:opacity-50"
                     >
@@ -229,7 +315,19 @@ export default function TradovateConnect() {
                   autoComplete="new-password"
                   className="px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-accent"
                 />
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  placeholder={t("sync_tradovate_commission")}
+                  value={form.commission}
+                  onChange={(e) => setForm({ ...form, commission: e.target.value })}
+                  className="px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-accent"
+                />
               </div>
+
+              <p className="text-xs text-foreground-muted">{t("sync_tradovate_commission_hint")}</p>
 
               {error && <p className="text-sm text-loss">{error}</p>}
 

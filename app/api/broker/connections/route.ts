@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuth } from "@/lib/api-auth";
 import { encrypt } from "@/lib/crypto/encryption";
-import { syncBrokerConnection, type BrokerConnectionRow } from "@/lib/sync/broker-sync";
+import { verifyTradovateCredentials } from "@/lib/sync/tradovate";
 
 const SUPPORTED_BROKERS = ["tradovate"] as const;
 type Broker = (typeof SUPPORTED_BROKERS)[number];
+
+// La création ne fait plus qu'un aller-retour d'authentification, mais il passe
+// par le serveur d'un broker : on laisse de la marge plutôt que de dépendre du
+// délai par défaut de la plateforme.
+export const maxDuration = 60;
 
 // GET — list the user's broker connections (never returns secrets).
 export async function GET() {
@@ -16,7 +20,9 @@ export async function GET() {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("broker_connections")
-    .select("id, broker, label, environment, status, last_synced_at, last_error, created_at")
+    .select(
+      "id, broker, label, environment, status, last_synced_at, last_error, created_at, commission_per_contract",
+    )
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -64,6 +70,21 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const commissionRaw = Number(body.commission_per_contract ?? 0);
+  const commission_per_contract =
+    Number.isFinite(commissionRaw) && commissionRaw > 0 ? Math.min(commissionRaw, 100) : 0;
+
+  // Les identifiants sont validés AVANT toute écriture : un seul appel réseau,
+  // rapide, et surtout aucune ligne créée si le broker les refuse. C'est ce qui
+  // évite qu'un échec laisse une connexion fantôme qui fait ensuite échouer
+  // toutes les tentatives suivantes sur la contrainte d'unicité du nom.
+  try {
+    await verifyTradovateCredentials({ username, password, cid, sec }, environment);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Connexion impossible";
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
+
   const credentials_encrypted = encrypt(JSON.stringify({ username, password, cid, sec }));
 
   // Insert with RLS (user_id enforced via auth.uid() default? — set explicitly).
@@ -76,9 +97,10 @@ export async function POST(req: NextRequest) {
       label,
       environment,
       credentials_encrypted,
+      commission_per_contract,
       status: "active",
     })
-    .select("id, user_id, broker, environment, credentials_encrypted, last_synced_at")
+    .select("id")
     .single();
 
   if (insertErr || !inserted) {
@@ -90,15 +112,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
 
-  // Verify credentials by running an initial sync. On failure, remove the row
-  // so the user can retry cleanly instead of being left with an error state.
-  const admin = createAdminClient();
-  try {
-    const result = await syncBrokerConnection(admin, inserted as BrokerConnectionRow);
-    return NextResponse.json({ id: inserted.id, synced: result.synced });
-  } catch (err) {
-    await admin.from("broker_connections").delete().eq("id", inserted.id);
-    const message = err instanceof Error ? err.message : "Connexion impossible";
-    return NextResponse.json({ error: message }, { status: 400 });
-  }
+  // La première synchro (90 jours, un appel par contrat) est volontairement
+  // laissée à une requête séparée : elle peut être longue, et son échec ne doit
+  // plus pouvoir compromettre la création elle-même. Le client l'enchaîne, et
+  // le cron horaire rattrape de toute façon si elle n'aboutit pas.
+  return NextResponse.json({ id: inserted.id });
 }
