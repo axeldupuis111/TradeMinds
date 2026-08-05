@@ -92,6 +92,38 @@ describe("resolveAccountBalance", () => {
     expect(r.fromBroker).toBe(false);
   });
 
+  it("ignore un instantané à double zéro : c'était un terminal déconnecté", () => {
+    // Cas réel du 2026-07-30 sur le compte FTMO 80 k : un envoi 0/0 parti d'un
+    // MetaTrader non connecté avait figé le solde à 0 €, donc un drawdown total
+    // de 80 000 € (100 %) sur un compte à +5 090,96 € de trades. Ces envois sont
+    // refusés à l'entrée depuis, mais la ligne fautive dort encore en base.
+    const r = resolveAccountBalance(
+      {
+        account_size: 80_000,
+        synced_balance: 0,
+        synced_equity: 0,
+        synced_open_positions: 0,
+        synced_at: iso(60_000),
+      },
+      5_090.96,
+      NOW,
+    );
+    expect(r.balance).toBe(85_090.96);
+    expect(r.fromBroker).toBe(false);
+    expect(r.live).toBe(false);
+    expect(r.curveOffset).toBe(0);
+  });
+
+  it("garde un solde à zéro quand l'equity le confirme (compte réellement vidé)", () => {
+    const r = resolveAccountBalance(
+      { account_size: 10_000, synced_balance: 0, synced_equity: -85, synced_at: iso(60_000) },
+      -10_085,
+      NOW,
+    );
+    expect(r.balance).toBe(0);
+    expect(r.fromBroker).toBe(true);
+  });
+
   it("laisse le drawdown intact : le décalage est uniforme sur toute la courbe", () => {
     // Deux trades : +1 000 puis -400, soit 600 € de P&L cumulé.
     const r = resolveAccountBalance(

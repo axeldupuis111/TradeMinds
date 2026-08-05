@@ -179,7 +179,11 @@ export function isValidTrade(t: unknown): t is PushTrade {
  * journal de l'EA.
  *
  * Un solde à 0 est une donnée valide, pas une erreur : c'est précisément l'état
- * d'un compte grillé, le moment où le trader a le plus besoin de le voir.
+ * d'un compte grillé, le moment où le trader a le plus besoin de le voir. En
+ * revanche solde ET equity à 0 en même temps, ce n'est pas un compte grillé :
+ * c'est ce que MetaTrader renvoie quand le terminal n'est connecté à aucun
+ * compte (AccountInfoDouble sur un terminal déconnecté vaut 0). Un compte
+ * grillé garde une equity égale à son solde, jamais deux zéros pile.
  */
 export function accountSnapshotRejectReason(val: unknown): string | null {
   if (!val || typeof val !== "object") return "bloc compte absent ou illisible";
@@ -189,11 +193,17 @@ export function accountSnapshotRejectReason(val: unknown): string | null {
   if (account === "") return "numero de compte manquant";
 
   if (o.balance == null) return "solde absent (champ balance manquant)";
-  if (readFiniteNumber(o.balance) === null)
-    return `solde illisible : ${String(o.balance)}`;
+  const balance = readFiniteNumber(o.balance);
+  if (balance === null) return `solde illisible : ${String(o.balance)}`;
 
   if (o.equity != null && readFiniteNumber(o.equity) === null)
     return `equity illisible : ${String(o.equity)}`;
+
+  // Enregistrer ces deux zéros ferait afficher un solde de 0 et un drawdown de
+  // 100 % sur un compte parfaitement sain : mieux vaut ne rien écrire.
+  const equity = o.equity == null ? balance : (readFiniteNumber(o.equity) as number);
+  if (balance === 0 && equity === 0)
+    return "solde et equity a 0 : le terminal n'est connecte a aucun compte, reconnecte-toi dans MetaTrader (Fichier > Connexion) puis relance l'EA";
 
   return null;
 }

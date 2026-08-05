@@ -66,7 +66,15 @@ export function resolveAccountBalance(
   const syncedAt = account.synced_at ? Date.parse(account.synced_at) : NaN;
   const syncedBalance = account.synced_balance;
 
-  if (syncedBalance == null || !isFinite(syncedAt)) {
+  // Solde ET equity à 0 : ce n'est pas un compte grillé (celui-là garde une
+  // equity égale à son solde), c'est un terminal MetaTrader qui n'était
+  // connecté à aucun compte au moment de l'envoi. Le retenir ferait afficher
+  // 0 € de solde et 100 % de drawdown sur un compte en profit. Les envois de ce
+  // type sont refusés à l'entrée depuis, mais des instantanés à deux zéros
+  // dorment déjà en base : on les ignore ici plutôt que d'aller les effacer.
+  const disconnectedTerminal = syncedBalance === 0 && (account.synced_equity ?? 0) === 0;
+
+  if (syncedBalance == null || disconnectedTerminal || !isFinite(syncedAt)) {
     return {
       balance: computed,
       tradesPnl,

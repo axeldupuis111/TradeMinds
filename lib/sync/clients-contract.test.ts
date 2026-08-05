@@ -24,6 +24,13 @@ describe("charges utiles des clients de synchronisation", () => {
 
   // MetaTrader : ACCOUNT_LOGIN, DoubleToString(x, 2), PositionsTotal()
   const metatrader = JSON.parse(
+    '{"account":"531066904","balance":85090.96,"equity":85090.96,' +
+      '"open_positions":0,"currency":"EUR","source":"mt5"}',
+  );
+
+  // Le même EA, terminal déconnecté : AccountInfoDouble ne renvoie plus rien
+  // d'utile et l'envoi part quand même. Capturé en vrai le 2026-07-30.
+  const metatraderDeconnecte = JSON.parse(
     '{"account":"531066904","balance":0.00,"equity":0.00,' +
       '"open_positions":0,"currency":"EUR","source":"mt5"}',
   );
@@ -37,6 +44,12 @@ describe("charges utiles des clients de synchronisation", () => {
       expect(accountSnapshotRejectReason(payload), name).toBeNull();
       expect(readAccountSnapshot(payload), name).not.toBeNull();
     }
+  });
+
+  it("refuse l'envoi d'un terminal déconnecté, en disant quoi faire", () => {
+    const reason = accountSnapshotRejectReason(metatraderDeconnecte);
+    expect(reason).toContain("connecte");
+    expect(readAccountSnapshot(metatraderDeconnecte)).toBeNull();
   });
 
   it("accepte un identifiant de compte non numérique (NinjaTrader nomme ses comptes)", () => {

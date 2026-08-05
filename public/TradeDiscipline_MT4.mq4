@@ -3,6 +3,12 @@
 //|        Synchronise les trades fermes vers TradeDiscipline        |
 //+------------------------------------------------------------------+
 //
+//  v1.14 - l'EA n'envoie plus l'etat du compte quand le terminal n'est
+//  connecte a aucun compte. AccountBalance() et AccountEquity() renvoient alors
+//  0, et ce faux zero ecrasait le vrai solde cote TradeDiscipline : un compte
+//  de 80 000 EUR en profit s'affichait a 0 EUR avec 100 % de drawdown. Les
+//  trades, eux, continuent de partir normalement.
+//
 //  v1.13 - chaque erreur dit desormais QUOI FAIRE, pas seulement un code. Une
 //  partenaire a vu "code 4014" repete chaque minute sans pouvoir deviner qu'il
 //  s'agissait de l'URL a autoriser dans Outils > Options. L'adresse a coller
@@ -20,7 +26,7 @@
 //  l'equity en direct position ouverte, et voit les depots/retraits.
 //
 #property copyright "TradeDiscipline"
-#property version   "1.13"
+#property version   "1.14"
 #property strict
 
 // --- Parametres configurables par l'utilisateur ---
@@ -188,10 +194,27 @@ string BuildAccountJson()
 {
    if(!SendBalance) return("");
 
+   double balance = AccountBalance();
+   double equity  = AccountEquity();
+
+   // Terminal connecte a aucun compte : ces deux lectures valent 0 et ne
+   // decrivent aucun compte reel (un compte vide garde une equity egale a son
+   // solde). Envoyer ce faux zero ecraserait le vrai solde cote
+   // TradeDiscipline, et afficherait 100 % de drawdown sur un compte sain. Les
+   // trades du meme envoi partent quand meme : seul l'etat du compte est omis.
+   if(balance == 0.0 && equity == 0.0)
+   {
+      Print("TradeDiscipline : solde et equity a 0, le terminal n'est connecte ",
+            "a aucun compte. Etat du compte NON envoye (les trades partent ",
+            "quand meme). Reconnecte-toi via Fichier > Connexion a un compte, ",
+            "puis attends le prochain envoi.");
+      return("");
+   }
+
    string json  = "{";
    json += "\"account\":\""      + IntegerToString(AccountNumber())      + "\",";
-   json += "\"balance\":"        + DoubleToString(AccountBalance(), 2)   + ",";
-   json += "\"equity\":"         + DoubleToString(AccountEquity(), 2)    + ",";
+   json += "\"balance\":"        + DoubleToString(balance, 2)            + ",";
+   json += "\"equity\":"         + DoubleToString(equity, 2)             + ",";
    json += "\"open_positions\":" + IntegerToString(CountOpenPositions()) + ",";
    json += "\"currency\":\""     + AccountCurrency()                     + "\",";
    json += "\"source\":\"mt4\"";

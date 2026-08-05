@@ -208,17 +208,37 @@ describe("readAccountSnapshot", () => {
     expect(readAccountSnapshot({ ...base, balance: undefined })).toBeNull();
   });
 
-  it("accepte un compte à zéro : un compte grillé est une donnée, pas une erreur", () => {
-    // Régression du 2026-07-31 : un garde « solde 0 ET equity 0 = lecture ratée »
-    // rejetait en silence l'état d'un compte réellement à zéro.
-    const snap = readAccountSnapshot({ account: "531066904", balance: 0, equity: 0 });
+  it("accepte un solde à zéro tant que l'equity, elle, dit quelque chose", () => {
+    // Un compte grillé est une donnée, pas une erreur : le solde nul passe.
+    const snap = readAccountSnapshot({ account: "531066904", balance: 0, equity: -120.4 });
     expect(snap).not.toBeNull();
     expect(snap?.balance).toBe(0);
   });
 
+  it("refuse le double zéro : c'est un terminal déconnecté, pas un compte grillé", () => {
+    // Aller-retour assumé, et voici les deux moitiés de l'histoire.
+    //
+    // 2026-07-31 (a0a6eba) : le garde « 0 et 0 = lecture ratée » sautait, sur
+    // l'idée qu'un compte grillé tombe pile à zéro. Le vrai grief de ce jour-là
+    // était ailleurs : le refus était SILENCIEUX, indébogable depuis un
+    // terminal. Ce grief-là reste réparé, accountSnapshotRejectReason parle.
+    //
+    // 2026-08-06 : la réalité a tranché. Le compte FTMO 80 k de l'utilisateur
+    // affichait 0 € de solde et 100 % de drawdown avec +5 090,96 € de trades au
+    // compteur, à cause d'un envoi 0/0 parti d'un terminal non connecté. Un
+    // compte grillé garde une equity égale à son solde ; deux zéros pile ne
+    // décrivent aucun compte réel, seulement AccountInfoDouble hors connexion.
+    expect(readAccountSnapshot({ account: "531066904", balance: 0, equity: 0 })).toBeNull();
+    expect(accountSnapshotRejectReason({ account: "531066904", balance: 0, equity: 0 })).toContain(
+      "connecte",
+    );
+    // Equity absente = repli sur le solde, donc double zéro lui aussi.
+    expect(readAccountSnapshot({ account: "531066904", balance: 0 })).toBeNull();
+  });
+
   it("dit toujours POURQUOI il refuse : un terminal MetaTrader n'a que ce canal", () => {
     expect(accountSnapshotRejectReason(base)).toBeNull();
-    expect(accountSnapshotRejectReason({ account: "1", balance: 0 })).toBeNull();
+    expect(accountSnapshotRejectReason({ account: "1", balance: 0, equity: 12 })).toBeNull();
     expect(accountSnapshotRejectReason(undefined)).toContain("absent");
     expect(accountSnapshotRejectReason({ ...base, account: "  " })).toContain("numero de compte");
     expect(accountSnapshotRejectReason({ account: "1" })).toContain("solde absent");
