@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { readAccountSnapshot, accountSnapshotRejectReason, isValidTrade } from "./push-parse";
 
 /**
@@ -59,6 +61,33 @@ describe("charges utiles des clients de synchronisation", () => {
   it("normalise la devise, quelle que soit la plateforme", () => {
     expect(readAccountSnapshot(ctrader)?.currency).toBe("EUR");
     expect(readAccountSnapshot(ninja)?.currency).toBe("USD");
+  });
+
+  /**
+   * Le numéro de version vit à deux endroits dans chaque EA : `#property
+   * version`, que MetaEditor affiche, et `EA_VERSION`, que l'EA imprime au
+   * démarrage. MQL ne développe pas les macros dans un `#property`, donc les
+   * deux existent forcément en double.
+   *
+   * Le 2026-08-06, la v1.24 du MT5 s'est annoncée « v1.23 » dans le journal :
+   * seul le `#property` avait été mis à jour. Un utilisateur qui vérifie sa
+   * version se fie à cette ligne, et elle mentait.
+   */
+  it.each([
+    ["MT4", "TradeDiscipline_MT4.mq4"],
+    ["MT5", "TradeDiscipline_MT5.mq5"],
+  ])("%s : la version imprimée est celle du fichier", (_name, file) => {
+    const source = readFileSync(join(process.cwd(), "public", file), "utf8");
+
+    const property = source.match(/#property\s+version\s+"([^"]+)"/);
+    const define = source.match(/#define\s+EA_VERSION\s+"([^"]+)"/);
+
+    expect(property?.[1], "#property version introuvable").toBeDefined();
+    expect(define?.[1], "#define EA_VERSION introuvable").toBeDefined();
+    expect(define![1]).toBe(property![1]);
+
+    // Et le journal doit passer par la macro, jamais par un numéro écrit à la main.
+    expect(source).toContain('Print("TradeDiscipline : demarrage (v", EA_VERSION,');
   });
 
   it("accepte le trade type de chaque client", () => {

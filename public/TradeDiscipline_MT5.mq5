@@ -36,6 +36,13 @@
 #property version   "1.24"
 #property strict
 
+// Version affichee dans le journal. `#property version` n'attend qu'une chaine
+// litterale, il ne developpe pas les macros : les deux lignes doivent donc etre
+// changees ENSEMBLE. Elles sont collees l'une a l'autre pour ca. Le 2026-08-06
+// la v1.24 s'est annoncee "v1.23" au demarrage, parce que le numero etait ecrit
+// en dur une deuxieme fois, cent lignes plus bas.
+#define EA_VERSION "1.24"
+
 // --- Parametres configurables par l'utilisateur ---
 input string SyncToken     = "";                                            // Token (Reglages > Synchronisation MetaTrader)
 input string ApiUrl        = "https://www.tradediscipline.app/api/sync/mt";  // URL de l'API - ne pas modifier
@@ -131,7 +138,7 @@ int OnInit()
       return(INIT_FAILED);
    }
 
-   Print("TradeDiscipline : demarrage (v1.23). Envoi de l'historique des ",
+   Print("TradeDiscipline : demarrage (v", EA_VERSION, "). Envoi de l'historique des ",
          HistoryDays, " derniers jours...");
 
    datetime from = TimeCurrent() - (datetime)HistoryDays * 24 * 60 * 60;
