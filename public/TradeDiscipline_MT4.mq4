@@ -3,6 +3,11 @@
 //|        Synchronise les trades fermes vers TradeDiscipline        |
 //+------------------------------------------------------------------+
 //
+//  v1.13 - chaque erreur dit desormais QUOI FAIRE, pas seulement un code. Une
+//  partenaire a vu "code 4014" repete chaque minute sans pouvoir deviner qu'il
+//  s'agissait de l'URL a autoriser dans Outils > Options. L'adresse a coller
+//  est deduite de ApiUrl, donc le message ne peut pas se desynchroniser du code.
+//
 //  v1.11 - l'EA envoie aussi son heure serveur (server_time). MetaTrader date
 //  ses trades en heure SERVEUR du broker : sans cette reference, un compte a
 //  GMT+3 voyait ses trades dates 3 h dans le futur, ce qui faisait basculer les
@@ -15,7 +20,7 @@
 //  l'equity en direct position ouverte, et voit les depots/retraits.
 //
 #property copyright "TradeDiscipline"
-#property version   "1.12"
+#property version   "1.13"
 #property strict
 
 // --- Parametres configurables par l'utilisateur ---
@@ -29,18 +34,90 @@ extern bool   SendBalance   = true;                                           //
 datetime lastCheck = 0;
 
 //+------------------------------------------------------------------+
+//| Adresse a coller dans la liste des URL autorisees.                |
+//| Deduite de ApiUrl : le message dit donc EXACTEMENT quoi copier,   |
+//| meme si l'adresse de l'API change un jour.                        |
+//| "https://hote/chemin" -> "https://hote"                           |
+//+------------------------------------------------------------------+
+string AllowedUrlToPaste()
+{
+   int scheme = StringFind(ApiUrl, "://");
+   if(scheme < 0) return(ApiUrl);
+   int slash = StringFind(ApiUrl, "/", scheme + 3);
+   if(slash < 0) return(ApiUrl);
+   return(StringSubstr(ApiUrl, 0, slash));
+}
+
+//+------------------------------------------------------------------+
+//| Traduit un echec reseau en consigne actionnable.                  |
+//| Un code brut comme "4014" n'aide personne : ce qui manque au      |
+//| trader, c'est la manipulation a faire, pas le numero.             |
+//+------------------------------------------------------------------+
+string NetworkErrorHint(int err)
+{
+   if(err == 4060 || err == 4014)
+      return("CAUSE : MetaTrader bloque la connexion car l'adresse n'est pas autorisee. " +
+             "A FAIRE : menu Outils > Options > onglet Expert Advisors. " +
+             "Coche \"Autoriser les WebRequest pour les URL listees\", puis double-clique " +
+             "sur la ligne vide de la liste et colle EXACTEMENT : " + AllowedUrlToPaste() + " " +
+             "(avec le www, sans barre oblique a la fin, sans /api). " +
+             "Verifie aussi que le bouton \"Trading auto\" de la barre d'outils est actif. " +
+             "Ensuite retire l'EA du graphique et remets-le.");
+   if(err == 5200)
+      return("CAUSE : l'adresse de l'API est mal formee. " +
+             "A FAIRE : dans les Donnees d'entree de l'EA, remets ApiUrl a sa valeur d'origine.");
+   if(err == 5201)
+      return("CAUSE : impossible de joindre le serveur. " +
+             "A FAIRE : verifie ta connexion Internet, puis un pare-feu ou un antivirus " +
+             "qui bloquerait MetaTrader. Les trades seront renvoyes au prochain passage.");
+   if(err == 5202)
+      return("CAUSE : le serveur a mis trop de temps a repondre. " +
+             "A FAIRE : rien, c'est temporaire. Les trades repartiront au prochain passage.");
+   if(err == 5203)
+      return("CAUSE : la requete a echoue. " +
+             "A FAIRE : si cela se repete, verifie l'URL autorisee dans Outils > Options > " +
+             "Expert Advisors : elle doit etre exactement " + AllowedUrlToPaste());
+   return("A FAIRE : note ce code et contacte le support depuis l'application.");
+}
+
+//+------------------------------------------------------------------+
+//| Traduit un code HTTP en consigne actionnable.                     |
+//+------------------------------------------------------------------+
+string HttpErrorHint(int status)
+{
+   if(status == 401 || status == 403)
+      return("CAUSE : ton token est invalide ou n'est plus valable. " +
+             "A FAIRE : recopie-le depuis Reglages dans l'application, puis colle-le dans " +
+             "les Donnees d'entree de l'EA, sans espace avant ni apres.");
+   if(status == 404 || status == 405)
+      return("CAUSE : l'adresse utilisee n'est pas la bonne, en general parce qu'elle a ete " +
+             "saisie sans le www et que le site redirige. " +
+             "A FAIRE : dans Outils > Options > Expert Advisors, l'adresse autorisee doit " +
+             "etre exactement " + AllowedUrlToPaste());
+   if(status == 429)
+      return("CAUSE : trop d'envois en peu de temps. " +
+             "A FAIRE : rien, l'envoi reprendra tout seul.");
+   if(status >= 500)
+      return("CAUSE : panne momentanee de notre cote, ce n'est pas ton installation. " +
+             "A FAIRE : rien, les trades seront renvoyes automatiquement.");
+   return("A FAIRE : note ce code et contacte le support depuis l'application.");
+}
+
+//+------------------------------------------------------------------+
 //| Initialisation                                                   |
 //+------------------------------------------------------------------+
 int OnInit()
 {
    if(StringLen(SyncToken) < 10)
    {
-      Print("TradeDiscipline ERREUR : token manquant ou invalide. ",
-            "Renseigne ton token dans l'onglet Donnees d'entree de l'EA.");
+      Print("TradeDiscipline ERREUR : aucun token valide. ",
+            "A FAIRE : ouvre Reglages dans l'application, clique sur Copier a cote du token, ",
+            "puis fais un clic droit sur le graphique > Liste des Expert Advisors > Proprietes > ",
+            "onglet Donnees d'entree, et colle-le sur la ligne SyncToken (sans espace avant ni apres).");
       return(INIT_FAILED);
    }
 
-   Print("TradeDiscipline : demarrage (v1.12). Envoi de l'historique des ",
+   Print("TradeDiscipline : demarrage (v1.13). Envoi de l'historique des ",
          HistoryDays, " derniers jours...");
 
    datetime from = TimeCurrent() - (datetime)HistoryDays * 24 * 60 * 60;
@@ -150,20 +227,24 @@ void SendHeartbeat()
    // une ligne de journal par minute rendrait l'onglet Experts illisible.
    if(status == -1)
    {
-      Print("TradeDiscipline ERREUR : etat du compte non envoye, code ", GetLastError());
+      int err = GetLastError();
+      Print("TradeDiscipline ERREUR : le solde du compte n'a pas pu etre envoye (code ", err, "). ",
+            NetworkErrorHint(err));
       return;
    }
    if(status != 200)
    {
-      Print("TradeDiscipline ERREUR : etat du compte - HTTP ", status,
-            " - reponse : ", CharArrayToString(result));
+      Print("TradeDiscipline ERREUR : le solde du compte a ete refuse (HTTP ", status, "). ",
+            HttpErrorHint(status), " Reponse du serveur : ", CharArrayToString(result));
       return;
    }
 
    string response = CharArrayToString(result);
    if(StringFind(response, "\"account\":\"ok\"") < 0)
-      Print("TradeDiscipline ATTENTION : solde non pris en compte (compte ", AccountNumber(),
-            "). Motif renvoye par le serveur : ", response);
+      Print("TradeDiscipline ATTENTION : tes trades passent bien, mais le solde du compte ",
+            AccountNumber(), " n'a pas ete pris en compte. ",
+            "A FAIRE : dans l'application, onglet Comptes, verifie qu'un compte porte ce numero ",
+            "exact. Motif renvoye par le serveur : ", response);
 }
 
 //+------------------------------------------------------------------+
@@ -230,8 +311,12 @@ bool SendClosedTrades(datetime fromTime)
          errCount++;
    }
 
-   Print("TradeDiscipline : envoi termine - ", okCount,
-         " reussi(s), ", errCount, " echec(s).");
+   if(errCount > 0)
+      Print("TradeDiscipline : envoi termine - ", okCount, " reussi(s), ", errCount, " echec(s). ",
+            "La cause et la marche a suivre sont dans la ligne ERREUR juste au-dessus.");
+   else
+      Print("TradeDiscipline : envoi termine - ", okCount,
+            " reussi(s), ", errCount, " echec(s).");
 
    return(okCount + errCount > 0);
 }
@@ -265,17 +350,15 @@ bool PostTrade(string tradeJson, int ticket)
    if(status == -1)
    {
       int err = GetLastError();
-      Print("TradeDiscipline ERREUR : trade ", ticket,
-            " - WebRequest a echoue, code ", err,
-            ". Si code 4060 : l'URL n'est pas autorisee (Outils > Options > Expert Advisors).");
+      Print("TradeDiscipline ERREUR : le trade ", ticket, " n'a pas pu etre envoye (code ",
+            err, "). ", NetworkErrorHint(err));
       return(false);
    }
 
    if(status != 200)
    {
-      Print("TradeDiscipline ERREUR : trade ", ticket,
-            " - le serveur a repondu HTTP ", status,
-            " - reponse : ", CharArrayToString(result));
+      Print("TradeDiscipline ERREUR : le trade ", ticket, " a ete refuse (HTTP ", status, "). ",
+            HttpErrorHint(status), " Reponse du serveur : ", CharArrayToString(result));
       return(false);
    }
 
