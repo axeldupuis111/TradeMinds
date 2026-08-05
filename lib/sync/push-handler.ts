@@ -125,7 +125,7 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
       if (!res.applied) {
         accountError =
           res.reason === "unknown_account"
-            ? `aucun compte actif ne porte le numero ${snapshot.account} (verifie l'onglet Comptes)`
+            ? `aucun compte ne porte le numero ${snapshot.account} (verifie l'onglet Comptes, le statut du compte n'a pas d'importance)`
             : "erreur d'enregistrement cote serveur";
         console.warn(
           `[Push Sync] état de compte non appliqué pour ${userId} (compte ${snapshot.account}) : ${res.reason}`,
@@ -265,18 +265,19 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
 
   const { data: existingRows } = await admin
     .from("trades")
-    .select("id, external_id, source")
+    .select("id, external_id, source, challenge_id")
     .eq("user_id", userId)
     .in("source", rowSources)
     .in("external_id", rowExternalIds);
 
+  type ExistingTrade = { id: string; external_id: string; source: string; challenge_id: string | null };
   const existingMap = new Map(
-    (existingRows ?? []).map(
-      (r: { id: string; external_id: string; source: string }) => [
-        `${r.source}:${r.external_id}`,
-        r.id,
-      ],
-    ),
+    (existingRows ?? []).map((r: ExistingTrade) => [`${r.source}:${r.external_id}`, r.id]),
+  );
+  // Trades déjà en base mais rattachés à aucun compte. Voir la boucle de mise à
+  // jour plus bas : c'est ce qui permet de réparer un rattachement rétroactif.
+  const orphanIds = new Set(
+    (existingRows ?? []).filter((r: ExistingTrade) => r.challenge_id == null).map((r) => r.id),
   );
 
   const toInsert = rows.filter((r) => !existingMap.has(`${r.source}:${r.external_id}`));
@@ -322,14 +323,27 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
     synced += inserted?.length ?? 0;
   }
 
-  // Update existing trades (sync fields only — on ne touche pas challenge_id)
+  // Update existing trades (champs de synchro seulement).
+  //
+  // `challenge_id` n'est JAMAIS écrasé quand il en porte déjà un : l'utilisateur
+  // a pu rattacher ce trade à la main, et une resynchro ne doit pas défaire son
+  // choix. Un trade ORPHELIN, lui, est réparé : il est arrivé à un moment où le
+  // n° de compte ne correspondait à rien (compte pas encore créé, ou recherche
+  // limitée aux comptes actifs avant le 2026-08-06), et il resterait orphelin à
+  // vie sans ça. L'EA renvoyant son historique au démarrage, il suffit de le
+  // relancer pour que les trades retrouvent leur compte.
   for (const row of toUpdate) {
     const tradeId = existingMap.get(`${row.source}:${row.external_id}`)!;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { user_id: _uid, source: _src, external_id: _eid, _account, ...updateFields } = row;
+    const repairedChallengeId = orphanIds.has(tradeId) ? resolveChallenge(_account) : null;
     const { error: updateErr } = await admin
       .from("trades")
-      .update(updateFields)
+      .update(
+        repairedChallengeId
+          ? { ...updateFields, challenge_id: repairedChallengeId }
+          : updateFields,
+      )
       .eq("id", tradeId);
 
     if (updateErr) {

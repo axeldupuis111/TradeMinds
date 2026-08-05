@@ -165,9 +165,22 @@ export async function resolveActiveChallengeId(
 }
 
 /**
- * Map `account_number` → `challenge_id` des challenges actifs de l'utilisateur.
- * Sert à rattacher chaque trade synchronisé au bon challenge via son n° de compte
- * (cas multi-comptes). Les challenges sans account_number ne sont pas indexés.
+ * Map `account_number` → `challenge_id` de TOUS les comptes de l'utilisateur,
+ * quel que soit leur statut. Sert à rattacher chaque trade synchronisé au bon
+ * challenge via son n° de compte (cas multi-comptes). Les challenges sans
+ * account_number ne sont pas indexés.
+ *
+ * Le statut n'entre pas dans la recherche, et c'est voulu. Un numéro de compte
+ * est une correspondance EXACTE saisie par l'utilisateur, pas une devinette :
+ * quand il rebranche son EA sur un compte marqué réussi ou échoué, il sait ce
+ * qu'il fait. Filtrer sur `status = 'active'` faisait echouer la recherche en
+ * silence, et le rail répondait « aucun compte actif ne porte ce numéro » à
+ * quelqu'un qui avait pourtant bien saisi le bon numéro. Les trades arrivaient
+ * alors orphelins et le solde n'était jamais écrit (constaté le 2026-08-06 sur
+ * le compte 511351527, passé en `failed`).
+ *
+ * Le repli `resolveActiveChallengeId`, lui, reste limité aux comptes actifs :
+ * sans numéro à comparer, il devine, et on ne devine que sur un compte en cours.
  */
 export async function getChallengeAccountMap(
   admin: SupabaseClient,
@@ -175,13 +188,26 @@ export async function getChallengeAccountMap(
 ): Promise<Map<string, string>> {
   const { data } = await admin
     .from("prop_challenges")
-    .select("id, account_number")
+    .select("id, account_number, status, created_at")
     .eq("user_id", userId)
-    .eq("status", "active");
-  const map = new Map<string, string>();
+    .order("created_at", { ascending: false });
+
+  // Deux comptes peuvent porter le même numéro : un challenge échoué puis un
+  // nouveau lancé sur le même login. L'actif l'emporte, sinon le plus récent.
+  const chosen = new Map<string, { id: string; active: boolean }>();
   for (const c of data ?? []) {
-    if (c.account_number) map.set(String(c.account_number).trim(), c.id as string);
+    if (!c.account_number) continue;
+    const key = String(c.account_number).trim();
+    if (key === "") continue;
+    const active = c.status === "active";
+    const current = chosen.get(key);
+    if (!current || (active && !current.active)) {
+      chosen.set(key, { id: c.id as string, active });
+    }
   }
+
+  const map = new Map<string, string>();
+  for (const [key, value] of Array.from(chosen.entries())) map.set(key, value.id);
   return map;
 }
 
