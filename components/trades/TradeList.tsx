@@ -237,7 +237,23 @@ interface Props {
   onTradeUpdated?: () => void;
 }
 
-const PAGE_SIZE = 20;
+/**
+ * Choix de taille de page. 50 par défaut : 20 tenait de l'époque où un compte
+ * synchronisé n'existait pas et où on saisissait ses trades à la main. Un EA
+ * branché produit des centaines de lignes, et 20 par page transforme le moindre
+ * parcours en clics de pagination.
+ */
+const PAGE_SIZES = [20, 50, 100, 200] as const;
+const DEFAULT_PAGE_SIZE = 50;
+const PAGE_SIZE_KEY = "td.trades.pageSize";
+
+/**
+ * Suppression par tranches. Les identifiants voyagent dans l'URL (`?id=in.(…)`)
+ * et un UUID pèse 37 caractères : au-delà de ~200 la requête dépasse la taille
+ * d'URL acceptée et échoue d'un coup, au pire moment.
+ */
+const DELETE_CHUNK = 100;
+
 
 function normalizeDirection(dir: string): "long" | "short" {
   const d = dir.toLowerCase();
@@ -258,7 +274,16 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  /**
+   * true = « tous les trades correspondant aux filtres », pas seulement ceux de
+   * la page affichée. Les identifiants ne sont PAS chargés d'avance : garder
+   * 300 ids en mémoire pour, peut-être, ne rien en faire est inutile. Ils sont
+   * relus au moment de la suppression, donc toujours à jour.
+   */
+  const [selectAllMatching, setSelectAllMatching] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const [selectedTrade, setSelectedTrade] = useState<TradeDetail | null>(null);
   const [allPairs, setAllPairs] = useState<string[]>([]);
   const [filters, setFilters] = useState<Filters>({
@@ -304,7 +329,17 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     const stored = window.localStorage.getItem(FILTERS_OPEN_KEY);
     if (stored === "1") setFiltersOpen(true);
     else if (stored === "0") setFiltersOpen(false);
+
+    // Lu ici et pas dans le useState : `window` n'existe pas au rendu serveur.
+    const storedSize = Number(window.localStorage.getItem(PAGE_SIZE_KEY));
+    if ((PAGE_SIZES as readonly number[]).includes(storedSize)) setPageSize(storedSize);
   }, []);
+
+  function changePageSize(size: number) {
+    window.localStorage.setItem(PAGE_SIZE_KEY, String(size));
+    setPageSize(size);
+    setPage(0); // la page 7 d'un découpage par 20 n'existe pas dans un par 200
+  }
 
   function toggleFilters() {
     setFiltersOpen((current) => {
@@ -346,10 +381,18 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     setPage(0);
   }, [filters, sort]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Changer de filtre change l'ensemble visé : une sélection « tous les trades
+  // correspondant aux filtres » survivant à ce changement porterait sur autre
+  // chose que ce que l'utilisateur a sous les yeux, et supprimerait à l'aveugle.
+  useEffect(() => {
+    setSelectAllMatching(false);
+    setSelectedIds(new Set());
+  }, [filters]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     loadTrades();
     loadGlobalStats();
-  }, [page, refreshKey, filters, sort]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [page, pageSize, refreshKey, filters, sort]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setSelectedIds(new Set());
@@ -435,26 +478,47 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     }
   }
 
+  /**
+   * Les cinq filtres exprimables en SQL, posés au même endroit pour les trois
+   * requêtes qui doivent voir le même ensemble : la liste, l'export CSV et la
+   * suppression en masse. Une copie de plus, et le jour où l'une dérive, c'est
+   * la suppression qui emporte des trades que l'utilisateur ne voyait pas.
+   *
+   * `filters.result` n'en fait pas partie : gagnant/perdant se calcule sur
+   * pnl + commission + swap, donc il s'applique en JS, après la requête.
+   */
+  function applySqlFilters<Q>(query: Q): Q {
+    // Le type de retour reste celui du constructeur reçu, donc les appelants ne
+    // perdent rien. Le `any` interne est le prix d'un helper qui accepte trois
+    // `select()` de formes différentes : décrire la contrainte proprement
+    // (`Q extends Filterable<Q>`) fait exploser l'inférence de PostgREST
+    // (TS2589, « type instantiation is excessively deep »).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let q = query as any;
+    if (filters.pair) q = q.eq("pair", filters.pair);
+    if (filters.direction) q = q.eq("direction", filters.direction);
+    if (filters.dateFrom) q = q.gte("open_time", filters.dateFrom);
+    if (filters.dateTo) q = q.lte("open_time", filters.dateTo + "T23:59:59");
+    if (filters.account === NO_ACCOUNT) q = q.is("challenge_id", null);
+    else if (filters.account) q = q.eq("challenge_id", filters.account);
+    return q as Q;
+  }
+
   async function loadTrades() {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const from = page * PAGE_SIZE;
-    const to = from + PAGE_SIZE - 1;
+    const from = page * pageSize;
+    const to = from + pageSize - 1;
 
-    let query = supabase
-      .from("trades")
-      .select("*, tags, emotion, setup_quality, notes, screenshot_path, prop_challenges(firm, account_number)", { count: "exact" })
-      .eq("user_id", user.id)
-      .eq("status", "closed");
-
-    if (filters.pair) query = query.eq("pair", filters.pair);
-    if (filters.direction) query = query.eq("direction", filters.direction);
-    if (filters.dateFrom) query = query.gte("open_time", filters.dateFrom);
-    if (filters.dateTo) query = query.lte("open_time", filters.dateTo + "T23:59:59");
-    if (filters.account === NO_ACCOUNT) query = query.is("challenge_id", null);
-    else if (filters.account) query = query.eq("challenge_id", filters.account);
+    let query = applySqlFilters(
+      supabase
+        .from("trades")
+        .select("*, tags, emotion, setup_quality, notes, screenshot_path, prop_challenges(firm, account_number)", { count: "exact" })
+        .eq("user_id", user.id)
+        .eq("status", "closed"),
+    );
 
     if (sort.column === null) {
       query = query.order("open_time", { ascending: false }).order("id", { ascending: false });
@@ -553,29 +617,152 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     loadGlobalStats();
   }
 
-  async function handleBulkDelete() {
-    const ids = Array.from(selectedIds);
-    if (ids.length === 0) return;
-    const msg = t("trades_confirm_delete_mass").replace("{count}", String(ids.length));
-    if (!confirm(msg)) return;
+  /** Découpe une liste en tranches d'au plus `size`. */
+  function chunk<T>(items: T[], size: number): T[][] {
+    const out: T[][] = [];
+    for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+    return out;
+  }
 
-    setBulkDeleting(true);
+  /**
+   * Tous les trades correspondant aux filtres, id et capture d'écran.
+   * Renvoie null si une requête échoue : mieux vaut ne rien supprimer que d'en
+   * supprimer une partie en annonçant que tout est fait.
+   *
+   * La boucle n'est pas de la prudence gratuite. PostgREST plafonne une réponse
+   * à 1 000 lignes : sans elle, « supprimer les 3 000 trades » en laisserait
+   * 2 000 derrière lui, sans le dire.
+   */
+  async function fetchMatchingRows(
+    userId: string,
+  ): Promise<{ id: string; screenshot_path: string | null }[] | null> {
+    const STEP = 1000;
+    const rows: { id: string; screenshot_path: string | null; net: number }[] = [];
 
-    const pathsToDelete = trades
-      .filter((tr) => ids.includes(tr.id) && tr.screenshot_path)
-      .map((tr) => tr.screenshot_path as string);
-    if (pathsToDelete.length > 0) {
-      await supabase.storage.from("trade-screenshots").remove(pathsToDelete);
+    for (let offset = 0; ; offset += STEP) {
+      // Tri sur `id`, unique et stable : sans ordre déterministe, deux pages
+      // consécutives peuvent se recouvrir ou sauter des lignes, et une
+      // suppression laisserait des trades derrière elle sans le dire.
+      const query = applySqlFilters(
+        supabase
+          .from("trades")
+          .select("id, screenshot_path, pnl, commission, swap")
+          .eq("user_id", userId)
+          .eq("status", "closed")
+          .order("id", { ascending: true }),
+      ).range(offset, offset + STEP - 1);
+
+      const { data, error } = await query;
+      if (error) return null;
+      if (!data) break;
+
+      for (const tr of data) {
+        rows.push({
+          id: tr.id as string,
+          screenshot_path: (tr.screenshot_path as string | null) ?? null,
+          net: (tr.pnl as number) + ((tr.commission as number) || 0) + ((tr.swap as number) || 0),
+        });
+      }
+      if (data.length < STEP) break;
     }
 
-    await supabase.from("trades").delete().in("id", ids);
+    // `result` ne s'exprime pas en SQL (il se calcule sur pnl + commission +
+    // swap) : il s'applique ici, exactement comme dans la liste affichée.
+    const kept =
+      filters.result === "win"
+        ? rows.filter((r) => r.net > 0)
+        : filters.result === "loss"
+          ? rows.filter((r) => r.net <= 0)
+          : rows;
+
+    return kept.map(({ id, screenshot_path }) => ({ id, screenshot_path }));
+  }
+
+  /** Chemins des captures d'un lot d'ids, pour ne pas laisser de fichiers orphelins. */
+  async function fetchScreenshotPaths(ids: string[]): Promise<string[]> {
+    const paths: string[] = [];
+    for (const part of chunk(ids, DELETE_CHUNK)) {
+      const { data } = await supabase
+        .from("trades")
+        .select("screenshot_path")
+        .in("id", part)
+        .not("screenshot_path", "is", null);
+      for (const row of data ?? []) paths.push(row.screenshot_path as string);
+    }
+    return paths;
+  }
+
+  async function handleBulkDelete() {
+    const count = selectAllMatching ? total : selectedIds.size;
+    if (count === 0) return;
+    if (!confirm(t("trades_confirm_delete_mass").replace("{count}", String(count)))) return;
+
+    setBulkDeleting(true);
+    setBulkError(null);
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setBulkDeleting(false); return; }
+
+    // Les ids sont relus MAINTENANT, pas au moment du clic sur « tout
+    // sélectionner » : ils reflètent donc l'état réel au moment où on supprime.
+    let ids: string[];
+    let paths: string[];
+    if (selectAllMatching) {
+      const rows = await fetchMatchingRows(user.id);
+      if (rows === null) {
+        setBulkError(t("trades_delete_failed"));
+        setBulkDeleting(false);
+        return;
+      }
+      ids = rows.map((r) => r.id);
+      paths = rows.filter((r) => r.screenshot_path).map((r) => r.screenshot_path as string);
+    } else {
+      ids = Array.from(selectedIds);
+      // Relu en base plutôt que pris dans `trades` : une sélection peut s'être
+      // faite sur plusieurs pages, et `trades` ne contient que la page en cours.
+      paths = await fetchScreenshotPaths(ids);
+    }
+
+    if (paths.length > 0) {
+      for (const part of chunk(paths, DELETE_CHUNK)) {
+        await supabase.storage.from("trade-screenshots").remove(part);
+      }
+    }
+
+    let deleted = 0;
+    for (const part of chunk(ids, DELETE_CHUNK)) {
+      const { data, error } = await supabase.from("trades").delete().in("id", part).select("id");
+      if (error) {
+        // Les tranches déjà passées sont bel et bien supprimées : on le dit
+        // plutôt que de laisser croire à un échec total ou à une réussite.
+        setBulkError(
+          t("trades_delete_partial")
+            .replace("{done}", String(deleted))
+            .replace("{total}", String(ids.length)),
+        );
+        break;
+      }
+      deleted += data?.length ?? 0;
+    }
+
     setBulkDeleting(false);
     setSelectedIds(new Set());
+    setSelectAllMatching(false);
+    setPage(0); // la page courante n'existe peut-être plus après coup
     loadTrades();
     loadGlobalStats();
   }
 
   function toggleSelect(id: string) {
+    // Décocher une ligne alors que « tous les trades des filtres » est actif
+    // fait sortir du mode : la sélection redevient explicite, celle de la page
+    // affichée moins cette ligne. Sans ça, la case décochée resterait cochée à
+    // l'écran, et la suppression emporterait quand même la ligne.
+    if (selectAllMatching) {
+      setSelectAllMatching(false);
+      setSelectedIds(new Set(trades.filter((tr) => tr.id !== id).map((tr) => tr.id)));
+      return;
+    }
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -585,8 +772,9 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
   }
 
   function toggleSelectAll() {
-    if (trades.every((tr) => selectedIds.has(tr.id))) {
+    if (selectAllMatching || trades.every((tr) => selectedIds.has(tr.id))) {
       setSelectedIds(new Set());
+      setSelectAllMatching(false);
     } else {
       setSelectedIds(new Set(trades.map((tr) => tr.id)));
     }
@@ -613,19 +801,14 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setExporting(false); return; }
 
-    let query = supabase
-      .from("trades")
-      .select("open_time, close_time, pair, direction, lot_size, entry_price, exit_price, sl, tp, pnl, commission, swap, emotion, tags, notes")
-      .eq("user_id", user.id)
-      .eq("status", "closed")
-      .order("open_time", { ascending: false });
-
-    if (filters.pair) query = query.eq("pair", filters.pair);
-    if (filters.direction) query = query.eq("direction", filters.direction);
-    if (filters.dateFrom) query = query.gte("open_time", filters.dateFrom);
-    if (filters.dateTo) query = query.lte("open_time", filters.dateTo + "T23:59:59");
-    if (filters.account === NO_ACCOUNT) query = query.is("challenge_id", null);
-    else if (filters.account) query = query.eq("challenge_id", filters.account);
+    const query = applySqlFilters(
+      supabase
+        .from("trades")
+        .select("open_time, close_time, pair, direction, lot_size, entry_price, exit_price, sl, tp, pnl, commission, swap, emotion, tags, notes")
+        .eq("user_id", user.id)
+        .eq("status", "closed")
+        .order("open_time", { ascending: false }),
+    );
 
     const { data } = await query;
     if (!data || data.length === 0) { setExporting(false); return; }
@@ -670,10 +853,16 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
 
   const hasActiveFilters = filters.pair || filters.direction || filters.result || filters.dateFrom || filters.dateTo || filters.account;
   const activeFilterCount = [filters.pair, filters.direction, filters.result, filters.dateFrom, filters.dateTo, filters.account].filter(Boolean).length;
-  const allSelected = trades.length > 0 && trades.every((tr) => selectedIds.has(tr.id));
-  const someSelected = selectedIds.size > 0;
+  // En mode « tous les trades des filtres », les lignes de TOUTE page affichée
+  // sont concernées, y compris celles qu'on n'a jamais cochées à la main : les
+  // cases doivent le montrer, sinon la page 2 s'afficherait vierge alors que la
+  // suppression emporterait ses lignes.
+  const isChecked = (id: string) => selectAllMatching || selectedIds.has(id);
+  const allSelected =
+    trades.length > 0 && (selectAllMatching || trades.every((tr) => selectedIds.has(tr.id)));
+  const someSelected = selectAllMatching || selectedIds.size > 0;
   const { count: statsCount } = globalStats;
-  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const totalPages = Math.ceil(total / pageSize);
 
   // ── Panel navigation ──────────────────────────────────────────────────────────
   const selectedIndex = selectedTrade ? trades.findIndex((tr) => tr.id === selectedTrade.id) : -1;
@@ -834,23 +1023,55 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
 
       {/* Bulk action bar */}
       {someSelected && (
-        <div className="flex items-center gap-3 mb-3 p-3 bg-surface border border-border rounded-lg">
-          <span className="text-sm text-foreground font-medium">
-            {selectedIds.size} {t("trades_selected")}
-          </span>
-          <button
-            onClick={handleBulkDelete}
-            disabled={bulkDeleting}
-            className="px-3 py-1.5 text-sm bg-loss/10 text-loss border border-loss/30 rounded-lg font-medium hover:bg-loss/20 transition-colors disabled:opacity-50"
-          >
-            {bulkDeleting ? "..." : t("trades_delete_selection")}
-          </button>
-          <button
-            onClick={() => setSelectedIds(new Set())}
-            className="px-3 py-1.5 text-sm text-muted hover:text-foreground transition-colors"
-          >
-            {t("trades_deselect_all")}
-          </button>
+        <div className="mb-3 p-3 bg-surface border border-border rounded-lg">
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-sm text-foreground font-medium">
+              {selectAllMatching ? total : selectedIds.size} {t("trades_selected")}
+            </span>
+            <button
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+              className="px-3 py-1.5 text-sm bg-loss/10 text-loss border border-loss/30 rounded-lg font-medium hover:bg-loss/20 transition-colors disabled:opacity-50"
+            >
+              {bulkDeleting ? "..." : t("trades_delete_selection")}
+            </button>
+            <button
+              onClick={() => { setSelectedIds(new Set()); setSelectAllMatching(false); }}
+              className="px-3 py-1.5 text-sm text-muted hover:text-foreground transition-colors"
+            >
+              {t("trades_deselect_all")}
+            </button>
+          </div>
+
+          {/* Sortie de la page courante : sans ça, vider 300 trades demande de
+              cocher, supprimer, changer de page, recommencer quinze fois. */}
+          {allSelected && total > trades.length && (
+            <p className="text-sm text-muted mt-2 pt-2 border-t border-border">
+              {selectAllMatching ? (
+                <>
+                  {t("trades_select_all_matching_done").replace("{count}", String(total))}{" "}
+                  <button
+                    onClick={() => setSelectAllMatching(false)}
+                    className="text-accent hover:underline font-medium"
+                  >
+                    {t("trades_select_page_only").replace("{count}", String(trades.length))}
+                  </button>
+                </>
+              ) : (
+                <>
+                  {t("trades_select_page_done").replace("{count}", String(trades.length))}{" "}
+                  <button
+                    onClick={() => setSelectAllMatching(true)}
+                    className="text-accent hover:underline font-medium"
+                  >
+                    {t("trades_select_all_matching").replace("{count}", String(total))}
+                  </button>
+                </>
+              )}
+            </p>
+          )}
+
+          {bulkError && <p className="text-sm text-loss mt-2">{bulkError}</p>}
         </div>
       )}
 
@@ -945,13 +1166,13 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
                     <tr
                       key={tr.id}
                       onClick={() => setSelectedTrade(tr as TradeDetail)}
-                      className={`group cursor-pointer hover:bg-accent/5 transition-colors ${i % 2 === 0 ? "bg-card" : "bg-surface"} ${selectedIds.has(tr.id) ? "!bg-accent/5" : ""}`}
+                      className={`group cursor-pointer hover:bg-accent/5 transition-colors ${i % 2 === 0 ? "bg-card" : "bg-surface"} ${isChecked(tr.id) ? "!bg-accent/5" : ""}`}
                     >
                       {/* Checkbox */}
                       <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
-                          checked={selectedIds.has(tr.id)}
+                          checked={isChecked(tr.id)}
                           onChange={() => toggleSelect(tr.id)}
                           className="accent-accent w-4 h-4 cursor-pointer"
                         />
@@ -1037,27 +1258,47 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
             </table>
           </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4">
+          {/* Pagination. Affichée dès qu'il y a un trade, et pas seulement à
+              partir de deux pages : le choix du nombre de lignes vit ici, et il
+              doit rester atteignable pour revenir en arrière. */}
+          {total > 0 && (
+            <div className="flex items-center justify-between gap-3 flex-wrap mt-4">
               <p className="text-sm text-muted">
-                {t("trades_page")} {page + 1} / {totalPages} · {total} trades
+                {totalPages > 1 && `${t("trades_page")} ${page + 1} / ${totalPages} · `}
+                {total} trades
               </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  disabled={page === 0}
-                  className="px-3 py-1 text-sm bg-surface border border-border rounded-lg text-foreground disabled:opacity-30 hover:bg-border transition-colors"
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-muted" htmlFor="trades-page-size">
+                  {t("trades_per_page")}
+                </label>
+                <select
+                  id="trades-page-size"
+                  value={pageSize}
+                  onChange={(e) => changePageSize(Number(e.target.value))}
+                  className="bg-surface border border-border rounded-lg px-2 py-1 text-sm text-foreground focus:outline-none focus:border-accent"
                 >
-                  {t("trades_prev")}
-                </button>
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                  disabled={page >= totalPages - 1}
-                  className="px-3 py-1 text-sm bg-surface border border-border rounded-lg text-foreground disabled:opacity-30 hover:bg-border transition-colors"
-                >
-                  {t("trades_next")}
-                </button>
+                  {PAGE_SIZES.map((size) => (
+                    <option key={size} value={size}>{size}</option>
+                  ))}
+                </select>
+                {totalPages > 1 && (
+                  <>
+                    <button
+                      onClick={() => setPage((p) => Math.max(0, p - 1))}
+                      disabled={page === 0}
+                      className="px-3 py-1 text-sm bg-surface border border-border rounded-lg text-foreground disabled:opacity-30 hover:bg-border transition-colors"
+                    >
+                      {t("trades_prev")}
+                    </button>
+                    <button
+                      onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                      disabled={page >= totalPages - 1}
+                      className="px-3 py-1 text-sm bg-surface border border-border rounded-lg text-foreground disabled:opacity-30 hover:bg-border transition-colors"
+                    >
+                      {t("trades_next")}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           )}
