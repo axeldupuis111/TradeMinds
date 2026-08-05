@@ -61,6 +61,10 @@ const guide: GuideContent = {
     ],
     fixes: [
       {
+        problem: "L'onglet Experts affiche « code 4014 » (ou 4060 sur MT4)",
+        fix: "C'est la panne la plus fréquente, et elle a une seule cause : l'URL n'est pas autorisée. Va dans « Outils » puis « Options », onglet « Conseillers Experts » (« Expert Advisors » sur MT4). Coche « Autoriser les WebRequest pour les URL listées », puis double-clique sur la ligne vide de la liste et colle exactement https://www.tradediscipline.app. Avec le www, sans barre oblique à la fin, sans /api : MetaTrader exige une correspondance au caractère près. Retire ensuite l'Expert Advisor du graphique et remets-le, les trades en échec repartent tout seuls.",
+      },
+      {
         problem: "Rien n'arrive dans Mes Trades",
         fix: "Dans l'ordre de fréquence : le bouton « AutoTrading » de la barre d'outils n'est pas vert ; l'URL de l'étape 5 a été saisie sans le www ou avec une faute ; le token a été collé avec un espace au début ou à la fin. Vérifie les trois, dans cet ordre.",
       },
@@ -149,6 +153,10 @@ const guide: GuideContent = {
       },
     ],
     fixes: [
+      {
+        problem: "The Experts tab shows « code 4014 » (or 4060 on MT4)",
+        fix: "This is the most common failure, and it has a single cause: the URL is not allowed. Go to « Tools » then « Options », « Expert Advisors » tab. Tick « Allow WebRequest for listed URL », then double-click the empty line in the list and paste exactly https://www.tradediscipline.app. With the www, no trailing slash, no /api: MetaTrader requires a character-for-character match. Then remove the Expert Advisor from the chart and attach it again, the failed trades go out on their own.",
+      },
       {
         problem: "Nothing shows up in My Trades",
         fix: "In order of likelihood: the « AutoTrading » toolbar button is not green; the step 5 URL was typed without the www or with a typo; the token was pasted with a leading or trailing space. Check all three, in that order.",
@@ -239,6 +247,10 @@ const guide: GuideContent = {
     ],
     fixes: [
       {
+        problem: "La pestaña Expertos muestra « código 4014 » (o 4060 en MT4)",
+        fix: "Es el fallo más frecuente y tiene una sola causa: la URL no está autorizada. Ve a « Herramientas » y luego « Opciones », pestaña « Asesores Expertos ». Marca « Permitir WebRequest para las URL listadas », después haz doble clic en la línea vacía de la lista y pega exactamente https://www.tradediscipline.app. Con el www, sin barra al final y sin /api: MetaTrader exige una coincidencia carácter por carácter. Luego quita el Asesor Experto del gráfico y vuelve a ponerlo, las operaciones fallidas salen solas.",
+      },
+      {
         problem: "No llega nada a Mis Trades",
         fix: "Por orden de frecuencia: el botón « AutoTrading » de la barra de herramientas no está verde; la URL del paso 5 se escribió sin el www o con una errata; el token se pegó con un espacio delante o detrás. Revisa los tres, en ese orden.",
       },
@@ -327,6 +339,10 @@ const guide: GuideContent = {
       },
     ],
     fixes: [
+      {
+        problem: "Der Reiter Experten zeigt « Code 4014 » (oder 4060 bei MT4)",
+        fix: "Das ist der häufigste Fehler, und er hat genau eine Ursache: Die URL ist nicht freigegeben. Gehe zu « Extras » und dann « Optionen », Reiter « Expert Advisors ». Setze den Haken bei « WebRequest für folgende URLs erlauben », doppelklicke dann auf die leere Zeile in der Liste und füge exakt https://www.tradediscipline.app ein. Mit www, ohne Schrägstrich am Ende, ohne /api: MetaTrader verlangt eine zeichengenaue Übereinstimmung. Nimm anschließend den Expert Advisor vom Chart und ziehe ihn erneut darauf, die fehlgeschlagenen Trades gehen von selbst raus.",
+      },
       {
         problem: "Unter Meine Trades kommt nichts an",
         fix: "Nach Häufigkeit: Der Button « AutoTrading » in der Symbolleiste ist nicht grün; die URL aus Schritt 5 wurde ohne www oder mit Tippfehler eingetragen; der Token wurde mit einem Leerzeichen davor oder dahinter eingefügt. Prüfe alle drei in dieser Reihenfolge.",
