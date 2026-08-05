@@ -207,6 +207,12 @@ export async function consumeQuota({ userId, plan, feature, timezone }: QuotaChe
  * Give back a slot reserved by consumeQuota when the downstream work failed
  * (e.g. the Claude call errored), so the user is not charged a quota unit for
  * a response they never received. Best-effort: never throws.
+ *
+ * If the refund_quota RPC is unavailable, falls back to a direct decrement on
+ * the profile columns. A refund that silently does nothing bills the trader for
+ * an analysis they never got (incident 2026-08-03: the RPC was rejected on a
+ * date/text type mismatch and every failed analysis stayed billed), so this
+ * path must never be a no-op.
  */
 export async function refundQuota(userId: string, plan: PlanType, feature: "analyze" | "chat", timezone?: string): Promise<void> {
   const config = PLAN_LIMITS[feature][plan];
@@ -221,10 +227,36 @@ export async function refundQuota(userId: string, plan: PlanType, feature: "anal
       p_feature: feature,
       p_reset_key: resetKey,
     });
-    if (error) console.error(`[API Quota] refund_quota failed for user ${userId}: ${error.message}`);
+    if (!error) return;
+    console.error(`[API Quota] refund_quota RPC unavailable, falling back to direct decrement: ${error.message}`);
+    await refundQuotaDirect(supabase, userId, feature, resetKey);
   } catch (e) {
     console.error(`[API Quota] refund_quota threw for user ${userId}:`, e);
   }
+}
+
+/** Legacy read-modify-write refund, used when the RPC is unavailable. */
+async function refundQuotaDirect(
+  supabase: ReturnType<typeof createSupabaseServer>,
+  userId: string,
+  feature: "analyze" | "chat",
+  resetKey: string,
+): Promise<void> {
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("daily_ai_count, daily_ai_reset, daily_chat_count, daily_chat_reset")
+    .eq("id", userId)
+    .single();
+
+  const currentCount = getQuotaFromProfile(profile as ProfileQuotaRow | null, feature, resetKey);
+  if (currentCount <= 0) return; // period already rolled over — nothing to give back
+
+  const column = feature === "analyze" ? "daily_ai_count" : "daily_chat_count";
+  const { error } = await supabase
+    .from("profiles")
+    .update({ [column]: currentCount - 1 })
+    .eq("id", userId);
+  if (error) console.error(`[API Quota] direct refund failed for user ${userId}: ${error.message}`);
 }
 
 /**
