@@ -488,30 +488,64 @@ function EditAccountModal({
   );
 }
 
+/**
+ * Modale de suppression d'un compte.
+ *
+ * L'echec s'affiche ICI, dans la modale. La banniere de la page vit tout en bas,
+ * dans le formulaire de creation : un utilisateur qui vient de cliquer sur
+ * « Supprimer » depuis la carte de son compte ne la voit jamais, et l'echec
+ * ressemble alors a un bouton mort.
+ */
 function DeleteAccountModal({
   accountName,
+  tradeCount,
   onConfirm,
   onCancel,
   t,
 }: {
   accountName: string;
-  onConfirm: () => void;
+  tradeCount: number;
+  /** Renvoie null si la suppression a eu lieu, sinon le message a afficher. */
+  onConfirm: () => Promise<string | null>;
   onCancel: () => void;
   t: (key: string) => string;
 }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function confirm() {
+    setBusy(true);
+    setError(null);
+    const failure = await onConfirm();
+    // Succes : le parent demonte la modale. Echec : elle reste ouverte avec la
+    // raison sous les yeux.
+    if (failure) {
+      setError(failure);
+      setBusy(false);
+    }
+  }
+
+  const question =
+    tradeCount > 0
+      ? t("challenge_delete_account_confirm_trades")
+          .replace("{name}", accountName)
+          .replace("{count}", String(tradeCount))
+      : t("challenge_delete_account_confirm").replace("{name}", accountName);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
       <div className="bg-card border border-border rounded-xl p-6 max-w-sm w-full shadow-xl">
         <h3 className="text-loss font-semibold mb-3">{t("challenge_delete_account_title")}</h3>
-        <p className="text-foreground text-sm leading-relaxed">
-          {t("challenge_delete_account_confirm").replace("{name}", accountName)}
-        </p>
+        <p className="text-foreground text-sm leading-relaxed">{question}</p>
+        {error && (
+          <p className="text-loss text-sm leading-relaxed mt-3 border-t border-border pt-3">{error}</p>
+        )}
         <div className="flex gap-3 mt-5">
-          <button onClick={onCancel} className="flex-1 py-2 bg-surface border border-border text-muted rounded-lg text-sm font-medium hover:text-foreground transition-colors">
+          <button onClick={onCancel} disabled={busy} className="flex-1 py-2 bg-surface border border-border text-muted rounded-lg text-sm font-medium hover:text-foreground transition-colors disabled:opacity-50">
             {t("csv_cancel")}
           </button>
-          <button onClick={onConfirm} className="flex-1 py-2 bg-loss text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors">
-            {t("challenge_delete_btn")}
+          <button onClick={confirm} disabled={busy} className="flex-1 py-2 bg-loss text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-50">
+            {busy ? t("challenge_deleting") : t("challenge_delete_btn")}
           </button>
         </div>
       </div>
@@ -536,7 +570,8 @@ function AccountCard({
   onSelect: () => void;
   onStatusChange: (id: string, status: "passed" | "failed") => void;
   onEdit: (id: string, data: Partial<Challenge>) => void;
-  onDelete: (id: string) => void;
+  /** Renvoie null si le compte est parti, sinon le message a afficher. */
+  onDelete: (id: string) => Promise<string | null>;
   onExportPdf: () => void;
   t: (key: string) => string;
 }) {
@@ -592,7 +627,12 @@ function AccountCard({
       {showDeleteConfirm && (
         <DeleteAccountModal
           accountName={ac.firm}
-          onConfirm={() => { onDelete(ac.id); setShowDeleteConfirm(false); }}
+          tradeCount={stats.tradeCount}
+          onConfirm={async () => {
+            const failure = await onDelete(ac.id);
+            if (!failure) setShowDeleteConfirm(false);
+            return failure;
+          }}
           onCancel={() => setShowDeleteConfirm(false)}
           t={t}
         />
@@ -767,31 +807,51 @@ function AccountCard({
   );
 }
 
+/** Même principe que DeleteAccountModal : l'échec s'affiche dans la modale. */
 function DeleteModal({
   onConfirm,
   onCancel,
   t,
 }: {
-  onConfirm: () => void;
+  /** Renvoie null si la suppression a eu lieu, sinon le message à afficher. */
+  onConfirm: () => Promise<string | null>;
   onCancel: () => void;
   t: (key: string) => string;
 }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function confirm() {
+    setBusy(true);
+    setError(null);
+    const failure = await onConfirm();
+    if (failure) {
+      setError(failure);
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
       <div className="bg-card border border-border rounded-xl p-6 max-w-sm w-full mx-4 shadow-xl">
         <p className="text-foreground text-sm leading-relaxed">{t("challenge_delete_history_confirm")}</p>
+        {error && (
+          <p className="text-loss text-sm leading-relaxed mt-3 border-t border-border pt-3">{error}</p>
+        )}
         <div className="flex gap-3 mt-5">
           <button
             onClick={onCancel}
-            className="flex-1 py-2 bg-surface border border-border text-muted rounded-lg text-sm font-medium hover:text-foreground transition-colors"
+            disabled={busy}
+            className="flex-1 py-2 bg-surface border border-border text-muted rounded-lg text-sm font-medium hover:text-foreground transition-colors disabled:opacity-50"
           >
             {t("csv_cancel")}
           </button>
           <button
-            onClick={onConfirm}
-            className="flex-1 py-2 bg-loss/10 border border-loss/20 text-loss rounded-lg text-sm font-medium hover:bg-loss/20 transition-colors"
+            onClick={confirm}
+            disabled={busy}
+            className="flex-1 py-2 bg-loss/10 border border-loss/20 text-loss rounded-lg text-sm font-medium hover:bg-loss/20 transition-colors disabled:opacity-50"
           >
-            {t("challenge_delete_btn")}
+            {busy ? t("challenge_deleting") : t("challenge_delete_btn")}
           </button>
         </div>
       </div>
@@ -1042,25 +1102,76 @@ export default function ChallengePage() {
       : message;
   }
 
-  async function handleDeleteAccount(challengeId: string) {
-    const { error } = await supabase.from("prop_challenges").delete().eq("id", challengeId);
-    if (error) {
-      setMessage({ type: "error", text: deleteErrorMessage(error.message) });
-    } else {
-      setMessage({ type: "success", text: t("challenge_delete_success") });
-      loadData();
+  /**
+   * Supprime un compte ET ses trades, comme la modale le promet. Renvoie null
+   * si tout est parti, sinon le message a montrer a l'utilisateur.
+   *
+   * Le detour par le detachement n'est pas decoratif. La FK trades.challenge_id
+   * est en RESTRICT (verifie en base le 2026-08-06 : code 23503), donc
+   * supprimer le compte en premier echoue toujours des qu'il porte un trade.
+   * Supprimer les trades en premier marcherait, mais si le compte resistait
+   * ensuite, l'utilisateur aurait perdu son historique pour rien, sans recours.
+   *
+   * D'ou l'ordre : on detache, on supprime le compte, et ce n'est qu'une fois
+   * le compte reellement parti qu'on supprime les trades. Si le compte resiste,
+   * on rerattache et rien n'est perdu.
+   *
+   * Le `.select()` sur chaque suppression n'est pas non plus decoratif : sans
+   * policy RLS DELETE, PostgREST ne renvoie aucune erreur, il supprime zero
+   * ligne. Compter les lignes rendues est le seul moyen de distinguer « c'est
+   * fait » de « le serveur a refuse en silence » (cf. la migration
+   * 20260730_prop_challenges_delete_policy.sql, ecrite pour ce meme piege).
+   */
+  async function deleteAccountCascade(challengeId: string): Promise<string | null> {
+    const { data: detached, error: detachError } = await supabase
+      .from("trades")
+      .update({ challenge_id: null })
+      .eq("challenge_id", challengeId)
+      .select("id");
+
+    if (detachError) return deleteErrorMessage(detachError.message);
+    const tradeIds = (detached ?? []).map((row) => row.id);
+
+    const { data: deleted, error } = await supabase
+      .from("prop_challenges")
+      .delete()
+      .eq("id", challengeId)
+      .select("id");
+
+    const accountGone = !error && (deleted?.length ?? 0) > 0;
+
+    if (!accountGone) {
+      // Marche arriere : les trades retrouvent leur compte, l'utilisateur n'a
+      // rien perdu et peut reessayer.
+      if (tradeIds.length > 0) {
+        await supabase.from("trades").update({ challenge_id: challengeId }).in("id", tradeIds);
+      }
+      return error ? deleteErrorMessage(error.message) : t("challenge_delete_refused");
     }
+
+    if (tradeIds.length > 0) {
+      await supabase.from("trades").delete().in("id", tradeIds);
+    }
+    return null;
   }
 
-  async function handleDeleteHistory(id: string) {
-    const { error } = await supabase.from("prop_challenges").delete().eq("id", id);
+  async function handleDeleteAccount(challengeId: string): Promise<string | null> {
+    const error = await deleteAccountCascade(challengeId);
+    if (error) return error;
+
+    setMessage({ type: "success", text: t("challenge_delete_success") });
+    loadData();
+    return null;
+  }
+
+  async function handleDeleteHistory(id: string): Promise<string | null> {
+    const error = await deleteAccountCascade(id);
+    if (error) return error;
+
     setDeleteModal({ open: false, id: null });
-    if (error) {
-      setMessage({ type: "error", text: deleteErrorMessage(error.message) });
-    } else {
-      setHistory((prev) => prev.filter((c) => c.id !== id));
-      setMessage({ type: "success", text: t("challenge_delete_success") });
-    }
+    setHistory((prev) => prev.filter((c) => c.id !== id));
+    setMessage({ type: "success", text: t("challenge_delete_success") });
+    return null;
   }
 
   if (loading) {
