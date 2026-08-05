@@ -134,3 +134,80 @@ describe("aggregateFuturesFills", () => {
     expect(nq.pnl).toBe(200); // 10 * 1 * 20
   });
 });
+
+// Tradovate ne renvoie aucun frais : ils viennent du taux saisi sur la
+// connexion. Ils sont écrits en NÉGATIF (convention de l'app : net = pnl +
+// commission + swap) et ne portent que sur les contrats réellement sortis.
+describe("aggregateFuturesFills — commissions", () => {
+  it("laisse commission à 0 quand aucun taux n'est renseigné", () => {
+    reset();
+    const res = aggregateFuturesFills([
+      fill({ symbol: "ESM6", side: "Buy", price: 4500, qty: 2, time: 1000 }),
+      fill({ symbol: "ESM6", side: "Sell", price: 4510, qty: 2, time: 2000 }),
+    ]);
+    expect(res[0].commission).toBe(0);
+  });
+
+  it("facture le taux aller-retour sur chaque contrat clôturé", () => {
+    reset();
+    const res = aggregateFuturesFills(
+      [
+        fill({ symbol: "ESM6", side: "Buy", price: 4500, qty: 3, time: 1000 }),
+        fill({ symbol: "ESM6", side: "Sell", price: 4510, qty: 3, time: 2000 }),
+      ],
+      4.5,
+    );
+    expect(res[0].pnl).toBe(1500); // brut, inchangé
+    expect(res[0].commission).toBe(-13.5); // 3 contrats × 4,50
+    expect(res[0].pnl + res[0].commission).toBe(1486.5); // le net affiché par l'app
+  });
+
+  it("ne facture rien sur une position encore ouverte", () => {
+    reset();
+    const res = aggregateFuturesFills(
+      [fill({ symbol: "ESM6", side: "Buy", price: 4500, qty: 2, time: 1000 })],
+      4.5,
+    );
+    expect(res[0].status).toBe("open");
+    expect(res[0].commission).toBe(0);
+  });
+
+  it("ne facture que la part sortie d'une clôture partielle", () => {
+    reset();
+    const res = aggregateFuturesFills(
+      [
+        fill({ symbol: "ESM6", side: "Buy", price: 4500, qty: 3, time: 1000 }),
+        fill({ symbol: "ESM6", side: "Sell", price: 4510, qty: 1, time: 2000 }),
+      ],
+      4.5,
+    );
+    expect(res[0].status).toBe("open");
+    expect(res[0].commission).toBe(-4.5); // 1 seul contrat sorti sur 3
+  });
+
+  it("facture chaque position séparément après une inversion", () => {
+    reset();
+    const res = aggregateFuturesFills(
+      [
+        fill({ symbol: "ESM6", side: "Buy", price: 4500, qty: 1, time: 1000 }),
+        fill({ symbol: "ESM6", side: "Sell", price: 4510, qty: 2, time: 2000 }),
+        fill({ symbol: "ESM6", side: "Buy", price: 4505, qty: 1, time: 3000 }),
+      ],
+      4.5,
+    );
+    expect(res).toHaveLength(2);
+    expect(res[0].commission).toBe(-4.5);
+    expect(res[1].commission).toBe(-4.5);
+  });
+
+  it("ignore un taux absurde plutôt que de transformer des frais en gain", () => {
+    reset();
+    const fills = [
+      fill({ symbol: "ESM6", side: "Buy", price: 4500, qty: 1, time: 1000 }),
+      fill({ symbol: "ESM6", side: "Sell", price: 4510, qty: 1, time: 2000 }),
+    ];
+    expect(aggregateFuturesFills(fills, -5)[0].commission).toBe(0);
+    expect(aggregateFuturesFills(fills, NaN)[0].commission).toBe(0);
+    expect(aggregateFuturesFills(fills, Infinity)[0].commission).toBe(0);
+  });
+});

@@ -111,6 +111,22 @@ async function authenticate(
   return data.accessToken as string;
 }
 
+/**
+ * Vérifie des identifiants sans rien synchroniser : un seul aller-retour HTTP,
+ * donc quelques centaines de millisecondes au lieu des dizaines de secondes
+ * d'une première synchro sur 90 jours.
+ *
+ * C'est ce qui permet à la création d'une connexion de répondre vite et de ne
+ * JAMAIS laisser de ligne orpheline en base : on valide d'abord, on écrit
+ * ensuite, et la synchro lourde part dans une requête séparée.
+ */
+export async function verifyTradovateCredentials(
+  creds: TradovateCredentials,
+  env: TradovateEnvironment,
+): Promise<void> {
+  await authenticate(creds, env);
+}
+
 // ─── API helpers ───────────────────────────────────────────────────────────────
 
 async function apiGet<T>(env: TradovateEnvironment, token: string, path: string): Promise<T> {
@@ -271,6 +287,7 @@ export async function syncTradovate(
   creds: TradovateCredentials,
   env: TradovateEnvironment,
   since: Date,
+  commissionPerContract = 0,
 ): Promise<{ positions: AggregatedFuturesPosition[]; snapshot: TradovateAccountSnapshot | null }> {
   // Une seule authentification pour les deux lectures : Tradovate limite
   // sévèrement les demandes de token et répond par un p-ticket au-delà.
@@ -303,5 +320,5 @@ export async function syncTradovate(
     };
   });
 
-  return { positions: aggregateFuturesFills(fills), snapshot };
+  return { positions: aggregateFuturesFills(fills, commissionPerContract), snapshot };
 }

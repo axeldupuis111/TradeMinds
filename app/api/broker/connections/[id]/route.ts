@@ -2,7 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuth } from "@/lib/api-auth";
-import { syncBrokerConnection, type BrokerConnectionRow } from "@/lib/sync/broker-sync";
+import {
+  syncBrokerConnection,
+  BROKER_CONNECTION_COLUMNS,
+  type BrokerConnectionRow,
+} from "@/lib/sync/broker-sync";
+
+// Une synchro manuelle rejoue jusqu'à 90 jours de fills avec un appel par
+// contrat : c'est la route lente du rail, elle a besoin de marge.
+export const maxDuration = 60;
 
 // DELETE — remove a broker connection (synced trades are kept).
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
@@ -20,13 +28,14 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   return NextResponse.json({ ok: true });
 }
 
-// PATCH — pause/resume a connection, or trigger a manual sync.
-//   { action: "pause" | "resume" | "sync" }
+// PATCH — pause/resume a connection, trigger a manual sync, or set the
+// commission rate.
+//   { action: "pause" | "resume" | "sync" | "commission" }
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
 
-  let body: { action?: string };
+  let body: { action?: string; commission_per_contract?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -48,11 +57,29 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ ok: true, status });
   }
 
+  if (body.action === "commission") {
+    const raw = Number(body.commission_per_contract);
+    if (!Number.isFinite(raw) || raw < 0 || raw > 100) {
+      return NextResponse.json({ error: "Commission invalide." }, { status: 400 });
+    }
+    const { error } = await supabase
+      .from("broker_connections")
+      .update({ commission_per_contract: raw })
+      .eq("id", params.id);
+    if (error) {
+      console.error("[Broker connection PATCH commission]", error.message);
+      return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    }
+    // Le taux ne vaut que pour les synchros à venir : les trades déjà importés
+    // gardent les frais calculés au moment où ils sont arrivés.
+    return NextResponse.json({ ok: true, commission_per_contract: raw });
+  }
+
   if (body.action === "sync") {
     // RLS-scoped read confirms ownership, then sync with the admin client.
     const { data: conn, error } = await supabase
       .from("broker_connections")
-      .select("id, user_id, broker, environment, credentials_encrypted, last_synced_at")
+      .select(BROKER_CONNECTION_COLUMNS)
       .eq("id", params.id)
       .single();
 
@@ -62,7 +89,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     const admin = createAdminClient();
     try {
-      const result = await syncBrokerConnection(admin, conn as BrokerConnectionRow);
+      const result = await syncBrokerConnection(admin, conn as unknown as BrokerConnectionRow);
       return NextResponse.json({ ok: true, synced: result.synced });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Synchronisation impossible";

@@ -1,8 +1,21 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { syncBrokerConnection, type BrokerConnectionRow } from "@/lib/sync/broker-sync";
+import {
+  syncBrokerConnection,
+  BROKER_CONNECTION_COLUMNS,
+  type BrokerConnectionRow,
+} from "@/lib/sync/broker-sync";
 import { checkDailyLossAlert, checkDrawdownAlert } from "@/lib/alerts/daily-loss";
 import { alertCronFailure } from "@/lib/cron-alert";
+
+export const maxDuration = 300;
+
+/**
+ * On s'arrête avant la limite de la plateforme plutôt que de se faire couper au
+ * milieu d'une connexion. Les connexions non traitées ne sont pas perdues : le
+ * tri par ancienneté de synchro les remet en tête au passage suivant.
+ */
+const TIME_BUDGET_MS = 240_000;
 
 // Vercel cron invokes routes with GET — delegate to POST.
 export async function GET(req: Request) {
@@ -20,10 +33,14 @@ export async function POST(req: Request) {
 
   const admin = createAdminClient();
 
+  // Les connexions les plus anciennement synchronisées d'abord (jamais
+  // synchronisées en tête) : si le budget de temps s'épuise, ce sont toujours
+  // les plus en retard qui sont servies, et aucune ne peut être affamée.
   const { data: connections, error } = await admin
     .from("broker_connections")
-    .select("id, user_id, broker, environment, credentials_encrypted, last_synced_at")
-    .eq("status", "active");
+    .select(BROKER_CONNECTION_COLUMNS)
+    .eq("status", "active")
+    .order("last_synced_at", { ascending: true, nullsFirst: true });
 
   if (error) {
     console.error("[Broker Cron] list error:", error.message);
@@ -33,8 +50,19 @@ export async function POST(req: Request) {
 
   let totalSynced = 0;
   let failed = 0;
+  let processed = 0;
 
-  for (const conn of (connections ?? []) as BrokerConnectionRow[]) {
+  const startedAt = Date.now();
+  const all = (connections ?? []) as unknown as BrokerConnectionRow[];
+
+  for (const conn of all) {
+    if (Date.now() - startedAt > TIME_BUDGET_MS) {
+      console.warn(
+        `[Broker Cron] budget de temps atteint, ${all.length - processed} connexion(s) reportée(s) au passage suivant.`,
+      );
+      break;
+    }
+    processed++;
     try {
       const { synced, insertedNetPnl, challengeId } = await syncBrokerConnection(admin, conn);
       totalSynced += synced;
@@ -62,7 +90,9 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({
-    connections: connections?.length ?? 0,
+    connections: all.length,
+    processed,
+    deferred: all.length - processed,
     synced: totalSynced,
     failed,
   });
