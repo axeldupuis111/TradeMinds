@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
+import { logAiCost } from "@/lib/ai-cost-log";
 import { asShapes } from "@/lib/annotations";
 import { requireAuth, rateLimitAi } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
@@ -193,6 +194,15 @@ Réponds via l'outil report_visual_review.`;
           ],
         },
       ],
+    });
+
+    // Coût réel de l'appel (l'image pèse le plus lourd), pour le suivi admin.
+    logAiCost(sb, userId, {
+      route: "analyze-trade-vision",
+      model: "claude-sonnet-5",
+      plan,
+      usage: message.usage,
+      extra: { image_bytes: buffer.length, media_type: mediaType },
     });
 
     const toolBlock = message.content.find((b) => b.type === "tool_use");

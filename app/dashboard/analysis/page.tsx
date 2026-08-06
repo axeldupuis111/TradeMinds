@@ -671,52 +671,15 @@ ${turn.answer}` },
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error(t("analysis_not_connected"));
 
-      const [{ data: trades }, { data: strategy }] = await Promise.all([
-        supabase
-          .from("trades")
-          .select("open_time, close_time, pair, direction, lot_size, entry_price, exit_price, sl, tp, pnl, commission, swap, emotion, setup_quality, tags, ict_setup, ict_entry_zone, ict_liquidity_target, ict_killzone, ict_timeframe, ict_confluence_score, ict_checklist, strategy_id")
-          .eq("user_id", user.id)
-          .order("open_time", { ascending: false })
-          .limit(60),
-        supabase
-          .from("strategies")
-          .select("*")
-          .eq("user_id", user.id)
-          .limit(1)
-          .maybeSingle(),
-      ]);
-
-      // Build per-strategy checklist map: strategy_id → array of checklist item keys
-      const chatChecklistMap: Record<string, string[]> = {};
-      const uniqueChatStratIds = Array.from(new Set((trades || []).map((t) => (t as { strategy_id?: string | null }).strategy_id).filter((id): id is string => !!id)));
-      if (uniqueChatStratIds.length > 0) {
-        const { data: chatTagData } = await supabase
-          .from("strategy_tags")
-          .select("strategy_id, value")
-          .in("strategy_id", uniqueChatStratIds)
-          .eq("tag_type", "checklist")
-          .order("sort_order");
-        for (const tag of chatTagData || []) {
-          (chatChecklistMap[tag.strategy_id] ??= []).push(tag.value);
-        }
-      }
-
-      const tradesContext = (trades || []).map((t) => {
-        const net = t.pnl + (t.commission || 0) + (t.swap || 0);
-        const ictParts = [];
-        if (t.ict_setup) ictParts.push(`Setup:${t.ict_setup}`);
-        if (t.ict_entry_zone) ictParts.push(`Zone:${t.ict_entry_zone}`);
-        if (t.ict_killzone) ictParts.push(`Killzone:${t.ict_killzone}`);
-        if (t.ict_timeframe) ictParts.push(`TF:${t.ict_timeframe}`);
-        const chatStratId = (t as { strategy_id?: string | null }).strategy_id;
-        const chatItems = chatStratId ? (chatChecklistMap[chatStratId] ?? null) : null;
-        if (chatItems && chatItems.length > 0) {
-          const score = chatItems.filter((k) => (t.ict_checklist as Record<string, boolean> | null)?.[k]).length;
-          ictParts.push(`Checklist:${score}/${chatItems.length}`);
-        }
-        const ictStr = ictParts.length > 0 ? ` | ${ictParts.join(" | ")}` : "";
-        return `${t.open_time} | ${t.pair} | ${t.direction} | lot=${t.lot_size} | P&L=${net.toFixed(2)} | emotion=${t.emotion || "N/A"} | quality=${t.setup_quality || "N/A"} | tags=${(t.tags || []).join(",")}${ictStr}`;
-      }).join("\n");
+      // Le détail des trades n'est plus envoyé : /api/chat-coach calcule les
+      // statistiques côté serveur et le coach récupère les trades individuels
+      // avec son outil find_trades. On ne charge donc plus que la stratégie.
+      const { data: strategy } = await supabase
+        .from("strategies")
+        .select("*")
+        .eq("user_id", user.id)
+        .limit(1)
+        .maybeSingle();
 
       const strategyContext = strategy
         ? `Nom: ${strategy.name || "N/A"}, Paires: ${(strategy.pairs || []).join(",")}, Sessions: ${(strategy.sessions || []).join(",")}, RR min: ${strategy.risk_reward ?? "N/A"}, Règles: ${(strategy.setup_rules || []).join("; ")}`
@@ -727,7 +690,6 @@ ${turn.answer}` },
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: newMessages.slice(-10), // keep last 10 messages for context
-          tradesContext,
           strategyContext,
           language: lang,
         }),

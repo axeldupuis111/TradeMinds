@@ -145,6 +145,10 @@ Ajoute ce champ à la racine du JSON (pas dans strategy_tags) :
 
     const message = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
+      // Laissé à 5000 volontairement : le prompt demande 5 à 12 setups, une
+      // checklist et le mapping entre les deux. Abaisser ce plafond ferait
+      // tronquer les stratégies riches pour quelques centimes d'économie. Le
+      // pire cas est borné par le disjoncteur mensuel, pas ici.
       max_tokens: 5000,
       messages: [{ role: "user", content: prompt }],
     });

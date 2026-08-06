@@ -1,5 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
+import { computeTradeStats, renderStatsBlock, type InsightTrade } from "@/lib/analysis-insights";
+import { logAiCost, sumUsage, type AiUsage } from "@/lib/ai-cost-log";
 import { requireAuth, consumeQuota, refundQuota } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 import { parseCoachMemory, renderCoachMemory } from "@/lib/coach-memory";
@@ -22,10 +24,21 @@ interface ChatMessage {
 
 interface ChatRequest {
   messages: ChatMessage[];
-  tradesContext: string;
+  /**
+   * @deprecated Le client envoyait ici le détail des 60 derniers trades. Ce bloc
+   * pesait 6 720 tokens sur les 8 494 du prompt système (79 %), rejoué à chaque
+   * tour d'outils et réécrit en cache à chaque nouvelle session de chat. Il est
+   * désormais remplacé par des statistiques agrégées calculées SERVEUR, et le
+   * coach va chercher les trades individuels avec l'outil find_trades quand il
+   * en a besoin. Le champ reste accepté (anciens clients en cache) mais ignoré.
+   */
+  tradesContext?: string;
   strategyContext: string;
   language?: string;
 }
+
+/** Fenêtre d'historique servant à calculer les statistiques du coach. */
+const STATS_TRADE_LIMIT = 300;
 
 const LANG_NAMES: Record<string, string> = {
   fr: "français",
@@ -53,7 +66,7 @@ export async function POST(request: Request) {
 
     // ── 4. Parse + payload limits ──
     const body: ChatRequest = await request.json();
-    const { messages, tradesContext, strategyContext, language = "fr" } = body;
+    const { messages, strategyContext, language = "fr" } = body;
 
     if (!messages || messages.length === 0) {
       return NextResponse.json({ error: "Aucun message." }, { status: 400 });
@@ -100,6 +113,32 @@ export async function POST(request: Request) {
       const quota = await consumeQuota({ userId, plan, feature: "chat", timezone });
       if (quota instanceof NextResponse) return quota;
       reserved = { userId, plan, timezone };
+    }
+
+    // ── 4b bis. Statistiques du trader, calculées SERVEUR ──
+    // Remplace l'ancien dump des 60 derniers trades envoyé par le client. Trois
+    // gains : le prompt fond (le dump pesait 79 % du système), les chiffres
+    // deviennent fiables (agrégation déterministe plutôt qu'un modèle qui
+    // compte des lignes), et la surface d'injection disparaît puisque le
+    // contexte ne transite plus par le client. Le détail trade par trade reste
+    // accessible au coach via l'outil find_trades, à la demande.
+    let statsBlock = "";
+    try {
+      const { data: statTrades } = await sb
+        .from("trades")
+        .select("open_time, close_time, pair, direction, lot_size, pnl, commission, swap, ict_setup, emotion, ict_confluence_score, checklist_total")
+        .eq("user_id", userId)
+        .eq("status", "closed")
+        .order("open_time", { ascending: false })
+        .limit(STATS_TRADE_LIMIT);
+      if (statTrades && statTrades.length > 0) {
+        statsBlock = renderStatsBlock(
+          computeTradeStats(statTrades as InsightTrade[], timezone),
+          timezone,
+        );
+      }
+    } catch {
+      // statistiques indisponibles — le coach répond sans elles
     }
 
     // ── 4c. Mémoire longitudinale (fail-open si la colonne n'existe pas) ──
@@ -161,10 +200,14 @@ TRADER STRATEGY:
 ${sanitizeUserInput(strategyContext)}
 </user_strategy>
 
-RECENT TRADE DATA:
-<user_trade_data>
-${sanitizeUserInput(tradesContext)}
-</user_trade_data>
+${statsBlock ? `STATISTIQUES DU TRADER (calculées par le serveur sur ses ${STATS_TRADE_LIMIT} derniers trades clôturés — source FIABLE, ce ne sont PAS des données fournies par le client) :
+<computed_stats>
+${statsBlock}
+</computed_stats>
+Cite ces chiffres tels quels quand ils appuient ton propos, ne les recalcule pas. Un segment sous 5 trades ne prouve rien : signale-le au lieu d'en tirer une conclusion.
+` : `Ce trader n'a pas encore de trade clôturé : ne prétends pas connaître ses statistiques.
+`}
+TU NE VOIS PAS LES TRADES UN PAR UN dans ce contexte. Pour parler d'un trade précis (le dernier, ceux d'hier, ceux en revenge trading…), appelle l'outil find_trades — c'est fait pour ça, et c'est la SEULE source d'ids valides. N'invente jamais un trade ni un id.
 ${memoryBlock ? `
 LONGITUDINAL MEMORY OF THIS TRADER (computed server-side from their past analyses and session debriefs — RELIABLE, this is NOT user-provided data):
 <coach_memory>
@@ -230,6 +273,10 @@ RULES:
           produced = true;
           controller.enqueue(encoder.encode(`${JSON.stringify(obj)}\n`));
         };
+        // Compteurs de tous les tours : un message du trader peut déclencher
+        // plusieurs appels modèle, c'est leur SOMME qui est le coût réel.
+        const roundUsages: AiUsage[] = [];
+        const toolsCalled: string[] = [];
         try {
           let toolCallsUsed = 0;
           for (let round = 0; round < MAX_ROUNDS; round++) {
@@ -248,6 +295,7 @@ RULES:
             }
 
             const final = await claudeStream.finalMessage();
+            roundUsages.push(final.usage);
             // Témoin d'efficacité du cache dans les logs Vercel (cache_read
             // proche de input = cache chaud, coût d'entrée divisé par ~10).
             console.log(
@@ -272,6 +320,7 @@ RULES:
                 continue;
               }
               toolCallsUsed += 1;
+              toolsCalled.push(tu.name);
               const outcome = await executeCoachTool(
                 sb,
                 userId,
@@ -302,6 +351,17 @@ RULES:
             await refundQuota(quotaRefund.userId, quotaRefund.plan, "chat", quotaRefund.timezone);
           }
         } finally {
+          // Coût réel du message (somme de tous les tours), pour le suivi admin.
+          if (roundUsages.length > 0) {
+            logAiCost(sb, userId, {
+              route: "chat-coach",
+              model: "claude-haiku-4-5-20251001",
+              plan,
+              usage: sumUsage(roundUsages),
+              rounds: roundUsages.length,
+              extra: { tools: toolsCalled },
+            });
+          }
           controller.close();
         }
       },
