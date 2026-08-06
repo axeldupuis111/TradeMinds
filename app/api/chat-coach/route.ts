@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { computeTradeStats, renderStatsBlock, type InsightTrade } from "@/lib/analysis-insights";
 import { logAiCost, sumUsage, type AiUsage } from "@/lib/ai-cost-log";
 import { requireAuth, consumeQuota, refundQuota } from "@/lib/api-auth";
+import { addDaysToDateKey, localDateKey } from "@/lib/timezone";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 import { parseCoachMemory, renderCoachMemory } from "@/lib/coach-memory";
 import { COACH_TOOLS, executeCoachTool } from "@/lib/coach-tools";
@@ -162,6 +163,22 @@ export async function POST(request: Request) {
       // mémoire indisponible — le coach répond sans elle
     }
 
+    // ── 4d. Repère temporel ──
+    // Le modèle n'a pas d'horloge : sans cette date il résout « hier » depuis
+    // sa notion de « maintenant » héritée de l'entraînement, et find_trades
+    // interroge des jours à des mois de la réalité (donc ne renvoie rien).
+    // Placé dans le bloc système : il ne change qu'une fois par jour, le cache
+    // (TTL 5 min) n'en souffre pas.
+    const todayKey = localDateKey(timezone);
+    const yesterdayKey = addDaysToDateKey(todayKey, -1);
+    const todayLabel = new Intl.DateTimeFormat(language === "en" ? "en-US" : language, {
+      timeZone: timezone || "UTC",
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(new Date());
+
     // ── 5. Sanitize user inputs ──
     const langName = LANG_NAMES[language] ?? "français";
     const sanitizedMessages = messages.map((m) => ({
@@ -215,6 +232,10 @@ ${statsBlock}
 Cite ces chiffres tels quels quand ils appuient ton propos, ne les recalcule pas. Un segment sous 5 trades ne prouve rien : signale-le au lieu d'en tirer une conclusion.
 ` : `Ce trader n'a pas encore de trade clôturé : ne prétends pas connaître ses statistiques.
 `}
+REPÈRE TEMPOREL (indispensable) : nous sommes le ${todayKey} (${todayLabel}), dans le fuseau ${timezone || "UTC"}.
+Tu n'as AUCUNE autre source pour savoir quel jour on est : sans cette ligne tu daterais tout depuis ton entraînement, à des mois de la réalité. Calcule donc toujours « hier », « cette semaine », « le mois dernier » À PARTIR DE CETTE DATE, et passe les bornes résultantes à find_trades en AAAA-MM-JJ (date_from incluse, date_to exclue — pour « hier » seul : date_from=${yesterdayKey} et date_to=${todayKey}). Ces dates sont interprétées dans le fuseau du trader, pas en UTC.
+Si find_trades ne renvoie rien, ne conclus pas trop vite que le trader se trompe de date : redis-lui la période exacte que tu as interrogée, pour qu'il puisse te corriger.
+
 TU NE VOIS PAS LES TRADES UN PAR UN dans ce contexte. Pour parler d'un trade précis (le dernier, ceux d'hier, ceux en revenge trading…), appelle l'outil find_trades — c'est fait pour ça, et c'est la SEULE source d'ids valides. N'invente jamais un trade ni un id.
 ${memoryBlock ? `
 LONGITUDINAL MEMORY OF THIS TRADER (computed server-side from their past analyses and session debriefs — RELIABLE, this is NOT user-provided data):
@@ -344,7 +365,8 @@ RULES:
                 sb,
                 userId,
                 tu.name,
-                (tu.input ?? {}) as Record<string, unknown>
+                (tu.input ?? {}) as Record<string, unknown>,
+                timezone,
               );
               if (outcome.action) send({ t: "action", a: outcome.action, u: outcome.undo });
               results.push({

@@ -18,6 +18,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { appendCommitment, parseCoachMemory } from "@/lib/coach-memory";
 import { challengesForWeek, getCommunityChallenge, isoWeekKey } from "@/lib/community-challenges";
 import { ICT_CHECKLIST_ITEMS } from "@/lib/ict-constants";
+import { startOfDateKeyUtc } from "@/lib/timezone";
 
 // ── Vocabulaire partagé avec la page Objectifs ───────────────────────────────
 
@@ -410,6 +411,8 @@ export async function executeCoachTool(
   userId: string,
   name: string,
   input: Record<string, unknown>,
+  /** Fuseau du trader : « hier » est un jour local, pas un jour UTC. */
+  timezone?: string,
 ): Promise<CoachToolResult> {
   try {
     switch (name) {
@@ -591,7 +594,7 @@ export async function executeCoachTool(
 
       case "find_trades": {
         const q = buildTradeQuery(supabase, userId, input,
-          "id, open_time, pair, direction, pnl, commission, swap, emotion, setup_quality, tags, notes");
+          "id, open_time, pair, direction, pnl, commission, swap, emotion, setup_quality, tags, notes", timezone);
         const limit = typeof input.limit === "number" && input.limit >= 1 ? Math.min(Math.floor(input.limit), MAX_FIND_LIMIT) : 20;
         const { data, error } = await q.limit(input.result ? MAX_FIND_LIMIT * 3 : limit);
         if (error) return fail("Recherche impossible.");
@@ -868,7 +871,7 @@ export async function executeCoachTool(
 
       case "export_trades": {
         const q = buildTradeQuery(supabase, userId, input,
-          "open_time, close_time, pair, direction, lot_size, entry_price, exit_price, sl, tp, pnl, commission, swap, emotion, setup_quality, tags, notes");
+          "open_time, close_time, pair, direction, lot_size, entry_price, exit_price, sl, tp, pnl, commission, swap, emotion, setup_quality, tags, notes", timezone);
         const { data, error } = await q.limit(MAX_EXPORT_ROWS);
         if (error) return fail("Export impossible.");
         let rows = (data ?? []) as unknown as TradeRow[];
@@ -917,6 +920,7 @@ function buildTradeQuery(
   userId: string,
   input: Record<string, unknown>,
   columns: string,
+  timezone?: string,
 ) {
   let q = supabase
     .from("trades")
@@ -931,8 +935,17 @@ function buildTradeQuery(
   }
   if (typeof input.emotion === "string" && (EMOTIONS as readonly string[]).includes(input.emotion)) q = q.eq("emotion", input.emotion);
   if (input.missing_emotion === true) q = q.is("emotion", null);
-  if (typeof input.date_from === "string" && /^\d{4}-\d{2}-\d{2}/.test(input.date_from)) q = q.gte("open_time", input.date_from);
-  if (typeof input.date_to === "string" && /^\d{4}-\d{2}-\d{2}/.test(input.date_to)) q = q.lt("open_time", input.date_to);
+  // Les dates parlees (« hier ») sont des jours LOCAUX. `open_time` est un
+  // timestamptz : comparer a la chaine brute reviendrait a couper a minuit UTC,
+  // donc a rater le debut de journee d'un trader a l'est de Greenwich.
+  if (typeof input.date_from === "string") {
+    const from = startOfDateKeyUtc(input.date_from, timezone);
+    if (from) q = q.gte("open_time", from.toISOString());
+  }
+  if (typeof input.date_to === "string") {
+    const to = startOfDateKeyUtc(input.date_to, timezone);
+    if (to) q = q.lt("open_time", to.toISOString());
+  }
   return q;
 }
 

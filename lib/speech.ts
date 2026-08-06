@@ -137,31 +137,143 @@ export function isSpeechOutputSupported(): boolean {
 }
 
 /**
- * Nettoie le texte avant lecture : le coach écrit en markdown léger, et faire
- * prononcer « astérisque astérisque » ruine l'intérêt de l'écoute.
+ * Nettoie le texte avant lecture.
+ *
+ * Le coach écrit en markdown léger et ponctue d'émojis : lus tels quels, la
+ * synthèse annonce « astérisque astérisque » puis décrit chaque pictogramme
+ * (« graphique en hausse »), ce qui casse net l'illusion d'un interlocuteur.
  */
 export function stripForSpeech(text: string): string {
   return text
-    .replace(/```[\s\S]*?```/g, " ")   // blocs de code
+    // Blocs de code : on absorbe aussi les sauts de ligne qui les entourent,
+    // sinon leur suppression laisse une pause béante au milieu de la phrase.
+    .replace(/\n?```[\s\S]*?```\n?/g, " ")
     .replace(/`([^`]+)`/g, "$1")
     .replace(/\*\*([^*]+)\*\*/g, "$1")
     .replace(/\*([^*]+)\*/g, "$1")
     .replace(/^#{1,6}\s+/gm, "")
     .replace(/^\s*[-•]\s+/gm, "")
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // liens markdown
-    .replace(/\s{2,}/g, " ")
+    // Émojis et pictogrammes : la synthèse les VERBALISE (« graphique en
+    // hausse »), ce qui casse net l'illusion d'un interlocuteur.
+    // Écrit en paires de substitution plutôt qu'avec le drapeau `u` : la cible
+    // TypeScript du projet ne l'accepte pas.
+    //   [\uD800-\uDBFF][\uDC00-\uDFFF] → tout le plan astral (émojis modernes)
+    //   les plages BMP ci-après        → flèches, symboles, dingbats
+    //   ️ / ‍                → sélecteur de variante et liant ZWJ
+    .replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, "")
+    .replace(/[←-⇿⌀-⏿☀-➿⬀-⯿️‍]/g, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/ +\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 
-export function speak(text: string, lang: string): void {
+/**
+ * Découpe en phrases pour la lecture.
+ *
+ * Deux raisons. D'abord Chrome coupe silencieusement une énonciation de plus
+ * d'une quinzaine de secondes : une réponse d'un bloc s'arrête au milieu. Ensuite
+ * une file de phrases courtes respire mieux qu'un pavé lu d'une traite, ce qui
+ * est l'essentiel de l'effet « robot qui bégaye ».
+ */
+export function splitIntoUtterances(text: string, maxChars = 180): string[] {
+  const sentences = text
+    .split(/(?<=[.!?…])\s+|\n+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const out: string[] = [];
+  let current = "";
+  for (const sentence of sentences) {
+    if (sentence.length > maxChars) {
+      if (current) { out.push(current); current = ""; }
+      // Phrase trop longue : on coupe sur la ponctuation faible, jamais en
+      // plein mot (une coupure au milieu d'un mot s'entend immédiatement).
+      const parts = sentence.split(/(?<=[,;:])\s+/);
+      let chunk = "";
+      for (const part of parts) {
+        if ((chunk + " " + part).trim().length > maxChars && chunk) { out.push(chunk.trim()); chunk = part; }
+        else chunk = (chunk ? `${chunk} ${part}` : part);
+      }
+      if (chunk.trim()) out.push(chunk.trim());
+      continue;
+    }
+    if ((current + " " + sentence).trim().length > maxChars && current) {
+      out.push(current.trim());
+      current = sentence;
+    } else {
+      current = current ? `${current} ${sentence}` : sentence;
+    }
+  }
+  if (current.trim()) out.push(current.trim());
+  return out;
+}
+
+/**
+ * Choisit la voix la plus naturelle disponible pour la langue.
+ *
+ * Les navigateurs embarquent deux familles : des voix « compactes » anciennes,
+ * métalliques, et des voix neuronales nettement meilleures (Google, Microsoft
+ * Natural, Apple Premium/Enhanced). Sans sélection explicite, le moteur retient
+ * souvent la première de la liste, c'est-à-dire la mauvaise.
+ */
+export function pickVoice(voices: SpeechSynthesisVoice[], lang: string): SpeechSynthesisVoice | null {
+  const target = toBcp47(lang);
+  const base = target.split("-")[0];
+  const candidates = voices.filter((v) => v.lang === target || v.lang.startsWith(`${base}-`) || v.lang === base);
+  if (candidates.length === 0) return null;
+
+  const score = (v: SpeechSynthesisVoice): number => {
+    const n = v.name.toLowerCase();
+    let s = 0;
+    if (/natural|neural|premium|enhanced|siri/.test(n)) s += 100; // familles neuronales
+    if (n.includes("google")) s += 60;                            // bonne qualité, très répandue
+    if (/compact|espeak|pico/.test(n)) s -= 100;                  // voix historiques métalliques
+    if (v.lang === target) s += 10;                               // variante régionale exacte
+    if (!v.localService) s += 5;                                  // les voix serveur sont les meilleures
+    return s;
+  };
+  return candidates.slice().sort((a, b) => score(b) - score(a))[0] ?? null;
+}
+
+/**
+ * La liste des voix arrive de façon asynchrone sur Chrome : au premier appel
+ * elle est vide, et l'événement `voiceschanged` la remplit ensuite. Sans cette
+ * attente, la toute première lecture se fait toujours avec la voix par défaut.
+ */
+function loadVoices(): Promise<SpeechSynthesisVoice[]> {
+  return new Promise((resolve) => {
+    const existing = window.speechSynthesis.getVoices();
+    if (existing.length > 0) { resolve(existing); return; }
+    const timer = setTimeout(() => resolve(window.speechSynthesis.getVoices()), 1000);
+    window.speechSynthesis.addEventListener(
+      "voiceschanged",
+      () => { clearTimeout(timer); resolve(window.speechSynthesis.getVoices()); },
+      { once: true },
+    );
+  });
+}
+
+export async function speak(text: string, lang: string): Promise<void> {
   if (!isSpeechOutputSupported()) return;
   const clean = stripForSpeech(text);
   if (!clean) return;
+
   window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(clean);
-  utterance.lang = toBcp47(lang);
-  utterance.rate = 1.05; // légèrement soutenu : le coach informe, il ne récite pas
-  window.speechSynthesis.speak(utterance);
+  const voices = await loadVoices();
+  const voice = pickVoice(voices, lang);
+
+  for (const chunk of splitIntoUtterances(clean)) {
+    const u = new SpeechSynthesisUtterance(chunk);
+    u.lang = toBcp47(lang);
+    if (voice) u.voice = voice;
+    // Débit parlé naturel : au-delà de 1,05 la prosodie des voix neuronales
+    // se dégrade et on retombe sur l'effet récitation.
+    u.rate = 1;
+    u.pitch = 1;
+    window.speechSynthesis.speak(u);
+  }
 }
 
 export function stopSpeaking(): void {

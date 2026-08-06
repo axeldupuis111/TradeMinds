@@ -118,6 +118,25 @@ export function startOfLocalDayUtc(tz?: string | null, at: Date = new Date()): D
   return new Date(guess - offset);
 }
 
+/**
+ * The UTC instant at which the local day `key` ("YYYY-MM-DD") starts in `tz`.
+ *
+ * Sert à traduire une date parlée (« hier ») en borne de requête sur une
+ * colonne timestamptz : sans ça, `gte("open_time", "2026-08-05")` compare à
+ * minuit UTC, donc pour un trader à Paris les deux premières heures de sa
+ * journée tombent du mauvais côté de la borne.
+ *
+ * On ancre à midi UTC pour être insensible aux décalages et aux changements
+ * d'heure, puis on redescend au début du jour local correspondant.
+ */
+export function startOfDateKeyUtc(key: string, tz?: string | null): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(key);
+  if (!m) return null;
+  const noonUtc = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], 12, 0, 0));
+  if (Number.isNaN(noonUtc.getTime())) return null;
+  return startOfLocalDayUtc(tz, noonUtc);
+}
+
 /** Shift a "YYYY-MM-DD" key by `delta` calendar days (DST-safe pure date math). */
 export function addDaysToDateKey(key: string, delta: number): string {
   const [y, m, d] = key.split("-").map(Number);

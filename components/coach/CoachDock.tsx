@@ -110,7 +110,7 @@ export default function CoachDock() {
   async function handleSend() {
     if (listening) stopDictation();
     const answer = await chat.send();
-    if (voiceReplies && answer) speak(answer, lang);
+    if (voiceReplies && answer) void speak(answer, lang);
   }
 
   if (HIDDEN_ON.some((p) => pathname.startsWith(p))) return null;
@@ -119,13 +119,13 @@ export default function CoachDock() {
 
   return (
     <>
-      {/* Bouton flottant. Décalé du HelpWidget (bottom-20/6, right-6) pour ne
-          pas se superposer, et remonté au-dessus de la barre d'onglets mobile. */}
+      {/* Bouton flottant, seul dans son coin : l'aide est passée dans la barre
+          du haut, deux ronds côte à côte encombraient l'écran pour rien. */}
       {!open && (
         <button
           onClick={() => setOpen(true)}
           aria-label={t("coach_dock_open")}
-          className="fixed bottom-20 lg:bottom-6 right-24 z-40 w-14 h-14 rounded-full bg-accent text-black shadow-lg hover:brightness-110 transition-all hover:scale-105 flex items-center justify-center"
+          className="fixed bottom-20 lg:bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-accent text-black shadow-lg hover:brightness-110 transition-all hover:scale-105 flex items-center justify-center"
         >
           <MessageCircle className="w-6 h-6" strokeWidth={2} />
         </button>
