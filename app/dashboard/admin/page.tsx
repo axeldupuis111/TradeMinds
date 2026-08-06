@@ -41,6 +41,11 @@ export default function AdminPage() {
     activated: number; analyzed: number; checkoutStarted: number; payingNow: number;
     tasterUsed: number; upgradeCtaUsers: number; upgradeCtaBySource: Record<string, number>;
     signupsBySource: Record<string, number>;
+    aiCost?: {
+      total: number; calls: number;
+      byRoute: Record<string, { calls: number; eur: number }>;
+      byPlan: Record<string, { calls: number; eur: number; users: number; eurPerUser: number }>;
+    };
   } | null>(null);
   const [funnelDays, setFunnelDays] = useState<7 | 30>(30);
   const [funnelLoading, setFunnelLoading] = useState(false);
@@ -659,6 +664,69 @@ export default function AdminPage() {
                   ))}
               </div>
               <p className="text-xs text-muted pt-2">Fenêtre : {funnel.days} derniers jours. Les % sont la conversion vers l&apos;étape précédente.</p>
+
+              {/* Coût IA réel — le chiffre à surveiller quand les utilisateurs arrivent */}
+              <div className="mt-6 pt-4 border-t border-border">
+                <h4 className="text-sm font-bold text-foreground mb-1">Coût IA réel</h4>
+                {!funnel.aiCost || funnel.aiCost.calls === 0 ? (
+                  <p className="text-xs text-muted">
+                    Aucun appel IA journalisé sur la période. Les appels antérieurs au déploiement
+                    de l&apos;instrumentation n&apos;y figurent pas.
+                  </p>
+                ) : (
+                  <>
+                    <div className="flex items-baseline gap-2 mb-3">
+                      <span className="text-2xl font-bold text-foreground tabular-nums">
+                        {funnel.aiCost.total.toFixed(2)} €
+                      </span>
+                      <span className="text-xs text-muted">sur {funnel.aiCost.calls} appels</span>
+                    </div>
+
+                    <p className="text-xs font-semibold text-muted mb-1">Par plan (coût moyen par abonné actif)</p>
+                    <div className="space-y-1.5 mb-3">
+                      {Object.entries(funnel.aiCost.byPlan)
+                        .sort(([, a], [, b]) => b.eur - a.eur)
+                        .map(([plan, v]) => {
+                          const prix = plan === "premium" ? 29.99 : plan === "plus" ? 14.99 : 0;
+                          const part = prix > 0 ? (v.eurPerUser / prix) * 100 : null;
+                          return (
+                            <div key={plan} className="flex items-center gap-3">
+                              <span className="text-xs text-muted flex-1 capitalize">{plan}</span>
+                              <span className="text-xs text-muted tabular-nums">{v.users} abonné(s)</span>
+                              <span className="text-xs font-semibold text-foreground tabular-nums w-20 text-right">
+                                {v.eurPerUser.toFixed(2)} €/ab.
+                              </span>
+                              <span
+                                className={`text-xs font-semibold tabular-nums w-14 text-right ${
+                                  part !== null && part > 25 ? "text-red-500" : "text-muted"
+                                }`}
+                              >
+                                {part !== null ? `${part.toFixed(0)} %` : "—"}
+                              </span>
+                            </div>
+                          );
+                        })}
+                    </div>
+
+                    <p className="text-xs font-semibold text-muted mb-1">Par route</p>
+                    <div className="space-y-1">
+                      {Object.entries(funnel.aiCost.byRoute).map(([route, v]) => (
+                        <div key={route} className="flex items-center gap-3">
+                          <span className="text-xs text-muted/80 flex-1">{route}</span>
+                          <span className="text-xs text-muted tabular-nums">{v.calls} appels</span>
+                          <span className="text-xs font-semibold text-foreground tabular-nums w-20 text-right">
+                            {v.eur.toFixed(2)} €
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted pt-2">
+                      La dernière colonne est la part du prix de l&apos;abonnement absorbée par l&apos;IA.
+                      Au-delà de 25 % (en rouge), resserrer un plafond ou alléger un prompt.
+                    </p>
+                  </>
+                )}
+              </div>
             </div>
           )}
         </div>

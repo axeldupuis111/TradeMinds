@@ -1,6 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import {
+  FEATURE_MONTHLY_CEILING,
+  PLAN_MONTHLY_CEILING,
+  monthKey,
+} from "@/lib/ai-ceilings";
+import { alertAiCeiling } from "@/lib/cron-alert";
 import type { PlanType } from "@/lib/PlanContext";
 import { PLAN_LIMITS } from "@/lib/plan-limits";
 import { localDateKey, weekStartLocalKey } from "@/lib/timezone";
@@ -200,6 +206,20 @@ export async function consumeQuota({ userId, plan, feature, timezone }: QuotaChe
     );
   }
 
+  // Disjoncteur mensuel, posé par-dessus le quota journalier du plan. Le
+  // journalier a déjà été consommé : si le mensuel refuse, on le rend.
+  const ceiling = PLAN_MONTHLY_CEILING[feature]?.[plan];
+  if (!(await consumeMonthlyCeiling(supabase, userId, feature, ceiling, timezone))) {
+    // Uniquement le journalier : consume_ai_month a DÉJÀ annulé son propre
+    // incrément en refusant. Passer par refundQuota décrémenterait le compteur
+    // mensuel une seconde fois et le ferait dériver sous l'usage réel.
+    await refundDailyQuota(userId, plan, feature, timezone);
+    return NextResponse.json(
+      { error: "Monthly limit reached", limit: config.limit, remaining: 0 },
+      { status: 429 }
+    );
+  }
+
   return { allowed: true, remaining: Math.max(0, config.limit - row.current_count), limit: config.limit };
 }
 
@@ -215,6 +235,23 @@ export async function consumeQuota({ userId, plan, feature, timezone }: QuotaChe
  * path must never be a no-op.
  */
 export async function refundQuota(userId: string, plan: PlanType, feature: "analyze" | "chat", timezone?: string): Promise<void> {
+  const config = PLAN_LIMITS[feature][plan];
+  if (!config) return;
+
+  // Rendre aussi l'unité mensuelle : sans ça, une analyse qui échoue rapproche
+  // quand même le trader de son disjoncteur.
+  await refundMonthlyCeiling(createSupabaseServer(), userId, feature, timezone);
+  await refundDailyQuota(userId, plan, feature, timezone);
+}
+
+/**
+ * Remboursement du seul quota JOURNALIER.
+ *
+ * Séparé de refundQuota parce que le chemin « disjoncteur mensuel atteint » ne
+ * doit rembourser que le journalier : la RPC mensuelle annule elle-même son
+ * incrément quand elle refuse.
+ */
+async function refundDailyQuota(userId: string, plan: PlanType, feature: "analyze" | "chat", timezone?: string): Promise<void> {
   const config = PLAN_LIMITS[feature][plan];
   if (!config) return;
 
@@ -260,10 +297,78 @@ async function refundQuotaDirect(
 }
 
 /**
+ * Disjoncteur mensuel — réserve une unité sur le mois en cours.
+ *
+ * Deuxième borne, invisible, POSÉE PAR-DESSUS les quotas journaliers (qui ne
+ * changent pas). Un plafond journalier ne borne pas l'exposition d'un mois :
+ * « 2 par jour » autorise 60 analyses là où un professionnel en fait 12. Ces
+ * plafonds valent ~3× l'usage d'un utilisateur intensif, donc personne
+ * d'honnête ne les rencontre. Voir lib/ai-ceilings.
+ *
+ * Fail-open : si la migration n'est pas appliquée, l'appel passe.
+ * Renvoie true si l'appel est autorisé.
+ */
+async function consumeMonthlyCeiling(
+  supabase: ReturnType<typeof createSupabaseServer>,
+  userId: string,
+  feature: string,
+  limit: number | undefined,
+  timezone?: string,
+): Promise<boolean> {
+  if (!limit || limit <= 0) return true;
+  try {
+    const { data, error } = await supabase.rpc("consume_ai_month", {
+      p_user_id: userId,
+      p_feature: feature,
+      p_limit: limit,
+      p_month: monthKey(timezone),
+    });
+    if (error) {
+      console.error(`[AI ceiling] consume_ai_month unavailable for ${feature}: ${error.message}`);
+      return true; // fail open
+    }
+    const row = (Array.isArray(data) ? data[0] : data) as
+      | { allowed: boolean; current_count: number; already_alerted: boolean }
+      | undefined;
+    if (row && !row.allowed) {
+      console.error(`[AI ceiling] ${feature} MONTHLY ceiling hit for user ${userId} (limit ${row.current_count})`);
+      // Une seule alerte par (compte, feature, mois) : la RPC porte le témoin.
+      if (!row.already_alerted) await alertAiCeiling(userId, feature, row.current_count);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error(`[AI ceiling] threw for ${feature}:`, e);
+    return true; // fail open
+  }
+}
+
+/** Rend une unité mensuelle quand le travail en aval a échoué. Best-effort. */
+async function refundMonthlyCeiling(
+  supabase: ReturnType<typeof createSupabaseServer>,
+  userId: string,
+  feature: string,
+  timezone?: string,
+): Promise<void> {
+  try {
+    await supabase.rpc("refund_ai_month", {
+      p_user_id: userId,
+      p_feature: feature,
+      p_month: monthKey(timezone),
+    });
+  } catch {
+    // best-effort : ne jamais masquer l'erreur d'origine de l'appelant
+  }
+}
+
+/**
  * Generic per-feature daily rate limit for the secondary AI routes (not the
  * plan-based analyze/chat quotas). Anti-abuse only — the limits are generous;
  * the point is to stop one account spamming an endpoint and burning Anthropic
  * credits. Counts on the trader's local day.
+ *
+ * Applique EN PLUS le disjoncteur mensuel (lib/ai-ceilings) quand la feature en
+ * déclare un : le quota journalier seul ne borne pas l'exposition d'un mois.
  *
  * Returns a 429 NextResponse when the limit is exceeded, or null when allowed.
  * FAILS OPEN if the consume_ai_usage RPC isn't deployed yet (migration
@@ -293,6 +398,12 @@ export async function rateLimitAi(
     if (row && !row.allowed) {
       console.error(`[AI rate-limit] ${feature} daily limit hit for user ${userId}`);
       return NextResponse.json({ error: "Daily limit reached for this feature" }, { status: 429 });
+    }
+
+    // Disjoncteur mensuel, par-dessus le quota journalier.
+    const ceiling = FEATURE_MONTHLY_CEILING[feature];
+    if (!(await consumeMonthlyCeiling(supabase, userId, feature, ceiling, timezone))) {
+      return NextResponse.json({ error: "Monthly limit reached for this feature" }, { status: 429 });
     }
     return null;
   } catch (e) {

@@ -47,6 +47,7 @@ export async function GET(req: NextRequest) {
     { data: tasterEvents },
     { data: upgradeCtaEvents },
     { data: signupSourceEvents },
+    { data: aiCallEvents },
   ] = await Promise.all([
     admin.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", since),
     admin.from("product_events").select("user_id")
@@ -63,7 +64,49 @@ export async function GET(req: NextRequest) {
       .eq("event", "upgrade_cta_clicked").gte("created_at", since).limit(10000),
     admin.from("product_events").select("user_id, meta")
       .eq("event", "signup_attributed").gte("created_at", since).limit(10000),
+    // Coût IA réel (lib/ai-cost-log) : ce qu'on paie vraiment, par route et
+    // par plan. Sans ça le coût ne se lit nulle part (les logs Vercel ne
+    // retiennent que 14 jours et ne sont pas requêtables).
+    admin.from("product_events").select("user_id, meta")
+      .eq("event", "ai_call").gte("created_at", since).limit(10000),
   ]);
+
+  // ── Coût IA sur la période ────────────────────────────────────────────────
+  type AiMeta = { route?: string; plan?: string; cost_eur?: number };
+  const aiRows = (aiCallEvents ?? []) as { user_id: string; meta: AiMeta | null }[];
+  const aiCostByRoute: Record<string, { calls: number; eur: number }> = {};
+  const aiCostByPlan: Record<string, { calls: number; eur: number; users: Set<string> }> = {};
+  let aiCostTotal = 0;
+  for (const row of aiRows) {
+    const eur = typeof row.meta?.cost_eur === "number" ? row.meta.cost_eur : 0;
+    const route = row.meta?.route || "inconnu";
+    const plan = row.meta?.plan || "inconnu";
+    aiCostTotal += eur;
+    (aiCostByRoute[route] ??= { calls: 0, eur: 0 }).calls++;
+    aiCostByRoute[route].eur += eur;
+    const byPlan = (aiCostByPlan[plan] ??= { calls: 0, eur: 0, users: new Set() });
+    byPlan.calls++;
+    byPlan.eur += eur;
+    byPlan.users.add(row.user_id);
+  }
+  const round = (n: number) => Math.round(n * 100) / 100;
+  const aiCost = {
+    total: round(aiCostTotal),
+    calls: aiRows.length,
+    byRoute: Object.fromEntries(
+      Object.entries(aiCostByRoute)
+        .sort((a, b) => b[1].eur - a[1].eur)
+        .map(([k, v]) => [k, { calls: v.calls, eur: round(v.eur) }]),
+    ),
+    // Le chiffre qui compte : coût moyen par abonné actif, à comparer au prix
+    // du plan. Au-delà de ~25 % du prix, il faut resserrer.
+    byPlan: Object.fromEntries(
+      Object.entries(aiCostByPlan).map(([k, v]) => [
+        k,
+        { calls: v.calls, eur: round(v.eur), users: v.users.size, eurPerUser: round(v.eur / Math.max(1, v.users.size)) },
+      ]),
+    ),
+  };
 
   // Ventilation des clics upgrade par déclencheur (meta.source).
   const upgradeCtaBySource: Record<string, number> = {};
@@ -98,6 +141,8 @@ export async function GET(req: NextRequest) {
     tasterUsed: distinct(tasterEvents),
     upgradeCtaUsers: distinct((upgradeCtaEvents ?? []) as { user_id: string }[]),
     upgradeCtaBySource,
+    // Coût IA réel sur la période (2026-08-06)
+    aiCost,
     // Attribution marketing (2026-07-14)
     signupsBySource,
   });

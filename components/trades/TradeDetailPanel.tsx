@@ -17,6 +17,7 @@ import { useStrategyTags } from "@/lib/hooks/useStrategyTags";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { demoTradeVerdict } from "@/lib/demo-fixtures";
+import { downscaleImageFile } from "@/lib/image-downscale";
 import { createClient } from "@/lib/supabase/client";
 import { track } from "@/lib/track";
 import type { Lang } from "@/lib/translations";
@@ -406,12 +407,20 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
   }
 
 
-  async function handleScreenshotUpload(file: File) {
+  async function handleScreenshotUpload(original: File) {
     setUploading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setUploading(false); return; }
 
-    const ext = file.name.split(".").pop() || "png";
+    // Réduit à 1568 px sur le grand côté : au-delà, l'analyse visuelle IA paie
+    // le palier haute résolution (jusqu'à 3× plus de tokens) sans rien y gagner
+    // sur un graphique. Retombe sur le fichier d'origine en cas d'échec.
+    const file = await downscaleImageFile(original);
+
+    // L'extension suit le type RÉEL du fichier après réduction (un .webp
+    // ré-encodé en PNG doit s'appeler .png) : l'analyse visuelle déduit le
+    // media type du chemin quand le blob ne le porte pas.
+    const ext = file.type === "image/jpeg" ? "jpg" : file.type === "image/png" ? "png" : (file.name.split(".").pop() || "png");
     const path = `${user.id}/${trade.id}.${ext}`;
 
     const { error } = await supabase.storage.from("trade-screenshots").upload(path, file, { upsert: true });

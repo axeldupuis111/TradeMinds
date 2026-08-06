@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireAuth, rateLimitAi } from "@/lib/api-auth";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
+import { isoWeekKey } from "@/lib/community-challenges";
 
 /**
  * "Plan for the week" — a forward-looking AI coach card. Complements the
@@ -12,6 +13,13 @@ import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
  * Premium/Plus only (returns { locked: true } for free, so the UI upsells).
  * Rate-limited (10/day) like the other secondary AI routes. Discipline only —
  * never investment advice.
+ *
+ * CACHE — un plan par (trader, semaine ISO, langue). WeeklyPlanCard poste à
+ * chaque montage : sans cache, chaque visite du dashboard regénérait le plan
+ * (89 générations en un mois relevées en prod pour un seul trader). Au-delà du
+ * coût, un « plan de la semaine » qui change à chaque chargement de page est
+ * intenable — on ne peut pas s'y tenir. Il est donc figé pour la semaine.
+ * Fail-open : si la table n'est pas encore migrée, on regénère comme avant.
  */
 
 export const dynamic = "force-dynamic";
@@ -29,12 +37,35 @@ export async function POST(req: Request) {
   if (auth.plan !== "plus" && auth.plan !== "premium") {
     return NextResponse.json({ locked: true });
   }
-  const limited = await rateLimitAi(auth.userId, "weekly-plan", 10, auth.timezone);
-  if (limited) return limited;
-
   const lang = await req.json().then((b) => (b?.language && LANG_NAMES[b.language] ? b.language : "en")).catch(() => "en");
 
   const supabase = createClient();
+  const weekKey = isoWeekKey();
+
+  // ── Cache : le plan de la semaine est figé une fois généré ────────────────
+  // Lu AVANT le rate limit : resservir un plan déjà payé ne doit pas consommer
+  // de quota, sinon un trader qui ouvre son dashboard 10 fois se retrouve muré.
+  try {
+    const { data: cached } = await supabase
+      .from("weekly_plans")
+      .select("headline, focuses")
+      .eq("user_id", auth.userId)
+      .eq("week_key", weekKey)
+      .eq("lang", lang)
+      .maybeSingle();
+    if (cached?.headline && Array.isArray(cached.focuses) && cached.focuses.length > 0) {
+      return NextResponse.json({
+        plan: { headline: cached.headline, focuses: cached.focuses as string[] },
+        cached: true,
+      });
+    }
+  } catch {
+    // table absente (migration pas encore appliquée) → on regénère
+  }
+
+  const limited = await rateLimitAi(auth.userId, "weekly-plan", 10, auth.timezone);
+  if (limited) return limited;
+
   const since = new Date(Date.now() - 14 * 86_400_000).toISOString();
   const [{ data: trades }, { data: reviews }] = await Promise.all([
     supabase.from("trades").select("pnl, commission, swap, emotion, open_time, pair").eq("user_id", auth.userId).eq("status", "closed").gte("open_time", since),
@@ -85,7 +116,21 @@ Base les objectifs sur les données ci-dessus quand c'est pertinent (ex. réduir
     const parsed = JSON.parse(match[0]) as { headline?: string; focuses?: unknown };
     const focuses = Array.isArray(parsed.focuses) ? parsed.focuses.filter((f): f is string => typeof f === "string").slice(0, 3) : [];
     if (!parsed.headline || focuses.length === 0) return NextResponse.json({ plan: null, reason: "parse_failed" });
-    return NextResponse.json({ plan: { headline: String(parsed.headline), focuses } });
+
+    const plan = { headline: String(parsed.headline), focuses };
+    // Fige le plan pour la semaine. Best-effort : un échec d'écriture ne doit
+    // pas priver le trader du plan qu'on vient de générer.
+    try {
+      await supabase
+        .from("weekly_plans")
+        .upsert(
+          { user_id: auth.userId, week_key: weekKey, lang, ...plan },
+          { onConflict: "user_id,week_key,lang", ignoreDuplicates: true },
+        );
+    } catch (e) {
+      console.error("[weekly-plan] cache write failed:", e);
+    }
+    return NextResponse.json({ plan });
   } catch (err) {
     if (isLowCreditError(err)) await alertLowCreditsOnce();
     console.error("[weekly-plan] generation failed:", err);

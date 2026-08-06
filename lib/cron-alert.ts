@@ -40,6 +40,32 @@ export async function alertWebhookFailure(source: string, detail: string): Promi
   );
 }
 
+/**
+ * Alerte quand un compte fait sauter le disjoncteur mensuel d'une route IA.
+ *
+ * Le plafond est calé à ~3× l'usage d'un utilisateur intensif : le franchir
+ * n'arrive pas par hasard. Deux explications seulement, un abus ou un bug, et
+ * dans les deux cas il faut le savoir le jour même. Si c'est un passionné
+ * légitime, on lui relève sa limite (profiles.ai_ceiling_multiplier) plutôt que
+ * de le laisser muré.
+ */
+export async function alertAiCeiling(
+  userId: string,
+  feature: string,
+  limit: number,
+): Promise<void> {
+  return sendAdminAlert(
+    `ai-ceiling:${feature}`,
+    `🔌 Disjoncteur IA : ${feature}`,
+    `Le compte ${userId} a atteint le plafond MENSUEL de « ${feature} » (${limit} appels).\n\n` +
+      `Ce plafond vaut environ 3× l'usage d'un abonné intensif : c'est soit un abus, soit un bug.\n\n` +
+      `Si l'usage est légitime, relève sa limite :\n` +
+      `  update profiles set ai_ceiling_multiplier = 2 where id = '${userId}';\n\n` +
+      `Ses appels journaliers continuent de fonctionner pour les autres fonctionnalités.`,
+    `${feature} ceiling ${limit} reached by ${userId}`,
+  );
+}
+
 async function sendAdminAlert(
   label: string,
   subject: string,
