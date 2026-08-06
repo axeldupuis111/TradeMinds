@@ -1,5 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllRows } from "@/lib/supabase-paginate";
 import PublicProfileView from "@/components/profile/PublicProfileView";
+
+/** Colonnes du profil public (voir la lecture paginée plus bas). */
+interface ProfileTradeRow {
+  open_time: string;
+  pnl: number;
+  commission: number | null;
+  swap: number | null;
+}
 import { isUsernameDisplayable } from "@/lib/username-moderation";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -73,22 +82,31 @@ export default async function PublicProfilePage({ params }: Props) {
 
   // Les trades démo n'apparaissent jamais sur un profil PUBLIC ; fallback
   // sans filtre tant que la colonne is_demo n'existe pas en prod.
-  const [{ data: trades }, { data: reviews }, { data: achievements }] = await Promise.all([
-    supabase
-      .from("trades")
-      .select("open_time, pnl, commission, swap")
-      .eq("user_id", userId)
-      .eq("is_demo", false)
-      .order("open_time", { ascending: true })
-      .then(async (res) =>
-        res.error
-          ? await supabase
-              .from("trades")
-              .select("open_time, pnl, commission, swap")
-              .eq("user_id", userId)
-              .order("open_time", { ascending: true })
-          : res
-      ),
+  const [tradeRows, { data: reviews }, { data: achievements }] = await Promise.all([
+    // Lecture paginée : ce profil est PUBLIC et affiche un P&L cumulé, un
+    // winrate et une courbe. Non bornée, la lecture s'arrête à 1 000 trades en
+    // silence (voir lib/supabase-paginate.ts), et le profil publierait des
+    // chiffres faux. Le tri de lecture est `id` ; l'ordre chronologique de la
+    // courbe se refait après.
+    fetchAllRows<ProfileTradeRow>((from, to) =>
+      supabase
+        .from("trades")
+        .select("open_time, pnl, commission, swap")
+        .eq("user_id", userId)
+        .eq("is_demo", false)
+        .order("id", { ascending: true })
+        .range(from, to)
+        .then(async (res) =>
+          res.error
+            ? await supabase
+                .from("trades")
+                .select("open_time, pnl, commission, swap")
+                .eq("user_id", userId)
+                .order("id", { ascending: true })
+                .range(from, to)
+            : res
+        ),
+    ),
     supabase
       .from("session_reviews")
       .select("created_at, discipline_score, analysis")
@@ -101,11 +119,16 @@ export default async function PublicProfilePage({ params }: Props) {
       .eq("user_id", userId),
   ]);
 
+  // Ordre chronologique refait ici : les pages sont lues dans l'ordre de `id`.
+  const trades = (tradeRows ?? [])
+    .slice()
+    .sort((a, b) => new Date(a.open_time).getTime() - new Date(b.open_time).getTime());
+
   return (
     <PublicProfileView
       username={profile.username}
       founding={isFounding}
-      trades={trades || []}
+      trades={trades}
       reviews={reviews || []}
       achievements={achievements || []}
     />

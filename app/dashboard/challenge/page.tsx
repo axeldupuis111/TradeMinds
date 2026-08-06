@@ -17,6 +17,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { setDemoWatermark } from "@/lib/pdf/kit";
 import { createClient } from "@/lib/supabase/client";
+import { fetchAllRows, chunk, ID_CHUNK } from "@/lib/supabase-paginate";
 import { useEffect, useState, useCallback } from "react";
 
 interface Challenge {
@@ -1123,14 +1124,32 @@ export default function ChallengePage() {
    * 20260730_prop_challenges_delete_policy.sql, ecrite pour ce meme piege).
    */
   async function deleteAccountCascade(challengeId: string): Promise<string | null> {
-    const { data: detached, error: detachError } = await supabase
-      .from("trades")
-      .update({ challenge_id: null })
-      .eq("challenge_id", challengeId)
-      .select("id");
+    // Les identifiants sont lus AVANT d'y toucher, et par pages.
+    //
+    // La version precedente detachait d'abord et se servait des lignes rendues
+    // par le `.update()` comme liste de travail. Piege : l'UPDATE modifie bien
+    // toutes les lignes cote serveur, mais PostgREST n'en RETOURNE que 1 000
+    // (voir lib/supabase-paginate.ts). Sur un compte de 1 500 trades, 500
+    // seraient partis en orphelins, ni rattaches ni supprimes, sans un mot. Et
+    // une fois detaches, plus rien ne permettait de les retrouver.
+    const attached = await fetchAllRows<{ id: string }>((from, to) =>
+      supabase
+        .from("trades")
+        .select("id")
+        .eq("challenge_id", challengeId)
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
+    if (attached === null) return t("challenge_delete_refused");
+    const tradeIds = attached.map((row) => row.id);
 
-    if (detachError) return deleteErrorMessage(detachError.message);
-    const tradeIds = (detached ?? []).map((row) => row.id);
+    for (const part of chunk(tradeIds, ID_CHUNK)) {
+      const { error: detachError } = await supabase
+        .from("trades")
+        .update({ challenge_id: null })
+        .in("id", part);
+      if (detachError) return deleteErrorMessage(detachError.message);
+    }
 
     const { data: deleted, error } = await supabase
       .from("prop_challenges")
@@ -1143,14 +1162,14 @@ export default function ChallengePage() {
     if (!accountGone) {
       // Marche arriere : les trades retrouvent leur compte, l'utilisateur n'a
       // rien perdu et peut reessayer.
-      if (tradeIds.length > 0) {
-        await supabase.from("trades").update({ challenge_id: challengeId }).in("id", tradeIds);
+      for (const part of chunk(tradeIds, ID_CHUNK)) {
+        await supabase.from("trades").update({ challenge_id: challengeId }).in("id", part);
       }
       return error ? deleteErrorMessage(error.message) : t("challenge_delete_refused");
     }
 
-    if (tradeIds.length > 0) {
-      await supabase.from("trades").delete().in("id", tradeIds);
+    for (const part of chunk(tradeIds, ID_CHUNK)) {
+      await supabase.from("trades").delete().in("id", part);
     }
     return null;
   }

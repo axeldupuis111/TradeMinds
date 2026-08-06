@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdmin } from "@supabase/supabase-js";
 import { isUsernameDisplayable } from "@/lib/username-moderation";
+import { fetchAllRows } from "@/lib/supabase-paginate";
 import { computeAllTimeStats } from "@/lib/leaderboard-extras";
 import { PODIUM_FLAIR, getCommunityChallenge, isoWeekKey, previousWeekKey } from "@/lib/community-challenges";
 import { FREE_BADGE_KEY, awardMeta, bestFlair, computeBadges, type BadgeStats } from "@/lib/badges";
@@ -96,8 +97,18 @@ export async function GET(req: NextRequest) {
     .eq("user_id", user.id).order("created_at", { ascending: false }).limit(2000);
   const allTime = computeAllTimeStats(allReviews ?? [], selfProfile?.timezone as string | null);
 
-  const { data: profiles } = await admin
-    .from("profiles").select("id, username, plan").eq("leaderboard_opt_in", true).not("username", "is", null);
+  // Lecture paginée : au-delà de 1 000 inscrits au classement, une lecture non
+  // bornée en ignorerait le reste sans un mot (voir lib/supabase-paginate.ts).
+  // Un classement public amputé n'est pas « incomplet », il est faux.
+  const profiles = await fetchAllRows<{ id: string; username: string; plan: string }>((from, to) =>
+    admin
+      .from("profiles")
+      .select("id, username, plan")
+      .eq("leaderboard_opt_in", true)
+      .not("username", "is", null)
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
 
   // Plan effectif (expiration comprise) — les badges au-delà du 1ᵉʳ ne
   // s'octroient qu'aux plans payants (cohérent avec le gate UI).
@@ -195,9 +206,22 @@ export async function GET(req: NextRequest) {
   }
 
   // Reviews des 2 fenêtres (courante + précédente) pour le calcul du mouvement.
-  const { data: reviews } = await admin
-    .from("session_reviews").select("user_id, discipline_score, created_at")
-    .in("user_id", ids).gte("created_at", sincePrev);
+  //
+  // Lecture paginée, et c'est ici que le plafond mordait en premier. Cette
+  // requête ramène DEUX mois de bilans pour TOUS les inscrits : une vingtaine
+  // de traders assidus suffit à dépasser 1 000 lignes, et PostgREST s'arrête
+  // alors sans erreur (voir lib/supabase-paginate.ts). Les bilans manquants
+  // n'auraient pas fait disparaître des gens du classement : ils les auraient
+  // fait descendre, avec un score calculé sur une partie de leurs sessions.
+  const reviews = await fetchAllRows<ReviewRow>((from, to) =>
+    admin
+      .from("session_reviews")
+      .select("user_id, discipline_score, created_at")
+      .in("user_id", ids)
+      .gte("created_at", sincePrev)
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
 
   const curByUser = new Map<string, ReviewRow[]>();
   const prevByUser = new Map<string, ReviewRow[]>();
@@ -229,8 +253,16 @@ export async function GET(req: NextRequest) {
   try {
     const rankedIds = sorted.map((r) => r.id);
     if (rankedIds.length > 0) {
-      const { data: awardRows } = await admin
-        .from("badge_awards").select("user_id, badge_key").in("user_id", rankedIds);
+      // Paginé : plusieurs badges par personne, donc cette table dépasse le
+      // plafond avant même que le classement n'ait 1 000 inscrits.
+      const awardRows = await fetchAllRows<{ user_id: string; badge_key: string }>((from, to) =>
+        admin
+          .from("badge_awards")
+          .select("user_id, badge_key")
+          .in("user_id", rankedIds)
+          .order("id", { ascending: true })
+          .range(from, to),
+      );
       const keysByUser = new Map<string, string[]>();
       for (const r of awardRows ?? []) {
         const arr = keysByUser.get(r.user_id as string) ?? [];

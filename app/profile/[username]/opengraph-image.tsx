@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 import { createClient } from "@supabase/supabase-js";
 import { isUsernameDisplayable } from "@/lib/username-moderation";
+import { fetchAllRows } from "@/lib/supabase-paginate";
 
 /**
  * Dynamic Open Graph card for a public trader profile.
@@ -63,17 +64,30 @@ export default async function Image({ params }: { params: { username: string } }
       username = profile.username as string;
       // Trades démo exclus de l'image publique ; fallback sans filtre tant
       // que la colonne is_demo n'existe pas en prod.
-      const [{ data: trades }, { data: reviews }] = await Promise.all([
-        supabase
-          .from("trades")
-          .select("pnl, commission, swap")
-          .eq("user_id", profile.id)
-          .eq("is_demo", false)
-          .then(async (res) =>
-            res.error
-              ? await supabase.from("trades").select("pnl, commission, swap").eq("user_id", profile.id)
-              : res
-          ),
+      const [trades, { data: reviews }] = await Promise.all([
+        // Lecture paginée : cette image porte un P&L cumulé et un winrate, et
+        // c'est ce que les réseaux sociaux affichent en aperçu. Non bornée, la
+        // lecture s'arrête à 1 000 trades en silence (voir
+        // lib/supabase-paginate.ts) et l'image publierait des chiffres faux.
+        fetchAllRows<{ pnl: number; commission: number | null; swap: number | null }>((from, to) =>
+          supabase
+            .from("trades")
+            .select("pnl, commission, swap")
+            .eq("user_id", profile.id)
+            .eq("is_demo", false)
+            .order("id", { ascending: true })
+            .range(from, to)
+            .then(async (res) =>
+              res.error
+                ? await supabase
+                    .from("trades")
+                    .select("pnl, commission, swap")
+                    .eq("user_id", profile.id)
+                    .order("id", { ascending: true })
+                    .range(from, to)
+                : res
+            ),
+        ),
         supabase
           .from("session_reviews")
           .select("created_at, discipline_score, analysis")

@@ -9,12 +9,22 @@ import { usePlan } from "@/lib/PlanContext";
 import { DEMO_COACH, buildDemoAnalysis, type DemoTradeForAnalysis } from "@/lib/demo-fixtures";
 import { PLAN_LIMITS } from "@/lib/plan-limits";
 import { createClient } from "@/lib/supabase/client";
+import { fetchAllRows } from "@/lib/supabase-paginate";
 import { track } from "@/lib/track";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
 // Action posée par le coach (chip affiché sous le message assistant).
+/**
+ * Trades envoyés au modèle. `close_time` porte le filtre de période, d'où sa
+ * présence explicite ; le reste voyage tel quel jusqu'à l'API d'analyse.
+ */
+interface AnalysisTradeRow extends Record<string, unknown> {
+  open_time: string;
+  close_time: string;
+}
+
 interface CoachActionEvent {
   type:
     | "goal_created"
@@ -859,7 +869,7 @@ ${turn.answer}` },
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    const [{ count }, { data: strat }, { data: trades }] = await Promise.all([
+    const [{ count }, { data: strat }, trades] = await Promise.all([
       supabase
         .from("trades")
         .select("*", { count: "exact", head: true })
@@ -870,16 +880,27 @@ ${turn.answer}` },
         .eq("user_id", user.id)
         .limit(1)
         .maybeSingle(),
-      supabase
-        .from("trades")
-        .select("close_time")
-        .eq("user_id", user.id)
-        .order("close_time", { ascending: true }),
+      // Lecture paginée : ces dates servent à proposer les périodes analysables.
+      // Non bornée, la lecture s'arrête à 1 000 lignes en silence (voir
+      // lib/supabase-paginate.ts) et des périodes entières disparaîtraient.
+      fetchAllRows<{ close_time: string }>((from, to) =>
+        supabase
+          .from("trades")
+          .select("close_time")
+          .eq("user_id", user.id)
+          .not("close_time", "is", null)
+          .order("id", { ascending: true })
+          .range(from, to),
+      ),
     ]);
 
     setTradeCount(count || 0);
     setHasStrategy(!!strat);
-    setAllTrades(trades || []);
+    setAllTrades(
+      (trades ?? [])
+        .slice()
+        .sort((a, b) => new Date(a.close_time).getTime() - new Date(b.close_time).getTime()),
+    );
   }
 
   async function loadHistory() {
@@ -958,18 +979,32 @@ ${turn.answer}` },
       } = await supabase.auth.getUser();
       if (!user) throw new Error(t("analysis_not_connected"));
 
-      const [{ data: strategy }, { data: trades }] = await Promise.all([
+      const [{ data: strategy }, trades] = await Promise.all([
         supabase
           .from("strategies")
           .select("*")
           .eq("user_id", user.id)
           .limit(1)
           .maybeSingle(),
-        supabase
-          .from("trades")
-          .select("open_time, close_time, pair, direction, lot_size, entry_price, exit_price, sl, tp, sl_initial, tp_initial, pnl, commission, swap, emotion, ict_setup, ict_entry_zone, ict_liquidity_target, ict_killzone, ict_timeframe, ict_confluence_score, vision_review")
-          .eq("user_id", user.id)
-          .order("open_time", { ascending: true }),
+        // Lecture paginée : ce sont les trades envoyés au modèle. Non bornée,
+        // la lecture s'arrête à 1 000 lignes en silence (voir
+        // lib/supabase-paginate.ts) et l'analyse porterait sur une partie de
+        // l'historique tout en se présentant comme complète — sur une analyse
+        // payée en crédit, c'est le pire moment pour mentir.
+        fetchAllRows<AnalysisTradeRow>((from, to) =>
+          supabase
+            .from("trades")
+            .select("open_time, close_time, pair, direction, lot_size, entry_price, exit_price, sl, tp, sl_initial, tp_initial, pnl, commission, swap, emotion, ict_setup, ict_entry_zone, ict_liquidity_target, ict_killzone, ict_timeframe, ict_confluence_score, vision_review")
+            .eq("user_id", user.id)
+            .order("id", { ascending: true })
+            .range(from, to),
+        ).then((rows) =>
+          rows === null
+            ? null
+            : rows
+                .slice()
+                .sort((a, b) => new Date(a.open_time).getTime() - new Date(b.open_time).getTime()),
+        ),
       ]);
 
       if (!strategy) throw new Error(t("session_active_no_strategy"));

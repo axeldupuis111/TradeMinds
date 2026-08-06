@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { alertCronFailure } from "@/lib/cron-alert";
 import { localHour, localWeekday } from "@/lib/timezone";
+import { fetchAllRows } from "@/lib/supabase-paginate";
 import { renderBrandEmail, emailParagraph, statCell, statRow, EMAIL_GREEN, EMAIL_RED } from "@/lib/email-template";
 
 // Sent Wednesday late-morning in each trader's LOCAL timezone (was a fixed
@@ -160,10 +161,21 @@ async function handle(req: Request) {
     // Only the trader's local Wednesday-late-morning hour (dryRun bypasses).
     if (!dryRun && !isReactivationDue((user.timezone as string) || "UTC")) continue;
 
-    const [{ data: lastTrade }, { data: lastSession }, { data: allTrades }] = await Promise.all([
+    const [{ data: lastTrade }, { data: lastSession }, allTrades] = await Promise.all([
       supabase.from("trades").select("open_time").eq("user_id", user.id).order("open_time", { ascending: false }).limit(1).maybeSingle(),
       supabase.from("sessions").select("created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
-      supabase.from("trades").select("pnl, commission, swap").eq("user_id", user.id).eq("status", "closed"),
+      // Lecture paginée : ces chiffres partent dans un e-mail nominatif. Non
+      // bornée, la lecture s'arrête à 1 000 trades en silence (voir
+      // lib/supabase-paginate.ts) et on écrirait un bilan faux à l'utilisateur.
+      fetchAllRows<{ pnl: number; commission: number | null; swap: number | null }>((from, to) =>
+        supabase
+          .from("trades")
+          .select("pnl, commission, swap")
+          .eq("user_id", user.id)
+          .eq("status", "closed")
+          .order("id", { ascending: true })
+          .range(from, to),
+      ),
     ]);
 
     const lastActivityTs = Math.max(

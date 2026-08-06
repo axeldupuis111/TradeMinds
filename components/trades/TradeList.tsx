@@ -9,6 +9,7 @@ import {
 } from "@/lib/strategy/derive";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
+import { fetchAllRows, chunk, ID_CHUNK } from "@/lib/supabase-paginate";
 import { AlertCircle, ArrowDown, ArrowUp, ArrowUpDown, Camera, ChevronDown, SlidersHorizontal } from "lucide-react";
 import { useMemo, useEffect, useRef, useState } from "react";
 import TradeDetailPanel, { type TradeDetail } from "./TradeDetailPanel";
@@ -247,45 +248,6 @@ const PAGE_SIZES = [20, 50, 100, 200] as const;
 const DEFAULT_PAGE_SIZE = 50;
 const PAGE_SIZE_KEY = "td.trades.pageSize";
 
-/**
- * Suppression par tranches. Les identifiants voyagent dans l'URL (`?id=in.(…)`)
- * et un UUID pèse 37 caractères : au-delà de ~200 la requête dépasse la taille
- * d'URL acceptée et échoue d'un coup, au pire moment.
- */
-const DELETE_CHUNK = 100;
-
-/**
- * Plafond de lignes d'une reponse PostgREST, mesure sur ce projet le
- * 2026-08-06 : avec 1 100 lignes en base, une requete sans borne en rend
- * exactement 1 000, statut 200, `content-range: 0-999/*`. Aucune erreur, aucun
- * signal. Une lecture non bornee est donc juste tant qu'on a peu de trades, et
- * devient fausse en silence ensuite.
- */
-const ROWS_PER_REQUEST = 1000;
-
-/**
- * Lit TOUTES les lignes d'une requete, page par page. Renvoie null si une page
- * echoue : un appelant qui supprime ou exporte doit pouvoir distinguer « voici
- * tout » de « voici ce que j'ai pu avoir ».
- *
- * @param build construit la requete pour une plage donnee. Doit poser un tri
- *              DETERMINISTE (une colonne unique) : sans ordre stable, deux
- *              pages consecutives peuvent se recouvrir ou sauter des lignes.
- */
-async function fetchAllRows<T>(
-  build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
-): Promise<T[] | null> {
-  const all: T[] = [];
-  for (let from = 0; ; from += ROWS_PER_REQUEST) {
-    const { data, error } = await build(from, from + ROWS_PER_REQUEST - 1);
-    if (error) return null;
-    if (!data) break;
-    all.push(...data);
-    if (data.length < ROWS_PER_REQUEST) break;
-  }
-  return all;
-}
-
 /** Colonnes lues pour l'export CSV, dans l'ordre où elles y apparaissent. */
 interface CsvRow {
   id: string;
@@ -518,14 +480,20 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
   async function loadAllPairs() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { data } = await supabase
-      .from("trades")
-      .select("pair")
-      .eq("user_id", user.id)
-      .eq("status", "closed");
+    // Lecture paginée : au-delà de 1 000 trades, une lecture non bornée ne
+    // verrait que les 1 000 premiers, et une paire tradée seulement plus tard
+    // manquerait à la liste déroulante — un filtre qu'on ne peut pas choisir.
+    const data = await fetchAllRows<{ pair: string }>((from, to) =>
+      supabase
+        .from("trades")
+        .select("pair")
+        .eq("user_id", user.id)
+        .eq("status", "closed")
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
     if (data) {
-      const unique = Array.from(new Set(data.map((r) => r.pair as string))).sort();
-      setAllPairs(unique);
+      setAllPairs(Array.from(new Set(data.map((r) => r.pair))).sort());
     }
   }
 
@@ -680,13 +648,6 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     loadGlobalStats();
   }
 
-  /** Découpe une liste en tranches d'au plus `size`. */
-  function chunk<T>(items: T[], size: number): T[][] {
-    const out: T[][] = [];
-    for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
-    return out;
-  }
-
   /** Le filtre gagnant/perdant, qui ne s'exprime pas en SQL (voir applySqlFilters). */
   function keepByResult<T extends { pnl: number | null; commission: number | null; swap: number | null }>(
     rows: T[],
@@ -726,7 +687,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
   /** Chemins des captures d'un lot d'ids, pour ne pas laisser de fichiers orphelins. */
   async function fetchScreenshotPaths(ids: string[]): Promise<string[]> {
     const paths: string[] = [];
-    for (const part of chunk(ids, DELETE_CHUNK)) {
+    for (const part of chunk(ids, ID_CHUNK)) {
       const { data } = await supabase
         .from("trades")
         .select("screenshot_path")
@@ -769,13 +730,13 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     }
 
     if (paths.length > 0) {
-      for (const part of chunk(paths, DELETE_CHUNK)) {
+      for (const part of chunk(paths, ID_CHUNK)) {
         await supabase.storage.from("trade-screenshots").remove(part);
       }
     }
 
     let deleted = 0;
-    for (const part of chunk(ids, DELETE_CHUNK)) {
+    for (const part of chunk(ids, ID_CHUNK)) {
       const { data, error } = await supabase.from("trades").delete().in("id", part).select("id");
       if (error) {
         // Les tranches déjà passées sont bel et bien supprimées : on le dit

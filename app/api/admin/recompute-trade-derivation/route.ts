@@ -16,6 +16,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import { fetchAllRows } from "@/lib/supabase-paginate";
 import { NextResponse } from "next/server";
 import {
   computeConfluenceScore,
@@ -38,12 +39,23 @@ export async function POST(request: Request) {
   const supabase = createClient(supabaseUrl, serviceKey);
 
   // ── Fetch all trades ──────────────────────────────────────────────────────
-  const { data: trades, error: tradesError } = await supabase
-    .from("trades")
-    .select("id, user_id, open_time, ict_checklist, ict_setup");
+  // Lecture paginée : cette route recalcule des colonnes dérivées sur TOUTE la
+  // base, tous utilisateurs confondus. Non bornée, elle en aurait traité 1 000
+  // et répondu « terminé » (voir lib/supabase-paginate.ts) : le pire cas pour
+  // un correctif de données, puisqu'on croit le chantier fait.
+  const trades = await fetchAllRows<{
+    id: string; user_id: string; open_time: string;
+    ict_checklist: Record<string, boolean> | null; ict_setup: string | null;
+  }>((from, to) =>
+    supabase
+      .from("trades")
+      .select("id, user_id, open_time, ict_checklist, ict_setup")
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
 
-  if (tradesError) {
-    return NextResponse.json({ error: tradesError.message }, { status: 500 });
+  if (trades === null) {
+    return NextResponse.json({ error: "lecture des trades incomplète" }, { status: 500 });
   }
 
   // ── Fetch all strategies (mapping + setup tags) ───────────────────────────

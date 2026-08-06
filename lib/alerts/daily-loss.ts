@@ -6,6 +6,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { sendPushToUser } from "@/lib/push";
 import { startOfLocalDayUtc } from "@/lib/timezone";
+import { fetchAllRows } from "@/lib/supabase-paginate";
 
 type AlertLang = "fr" | "en" | "de" | "es";
 
@@ -248,17 +249,37 @@ export async function checkDrawdownAlert(
     const limit = accountSize * (ddPct / 100);
     if (limit <= 0) return;
 
-    // Courbe d'équité du challenge (ordre chronologique de clôture).
-    const { data: trades } = await admin
-      .from("trades")
-      .select("pnl, commission, swap, close_time, open_time")
-      .eq("user_id", userId)
-      .eq("challenge_id", challengeId)
-      .order("close_time", { ascending: true, nullsFirst: true });
+    // Courbe d'équité du challenge, lue par pages.
+    //
+    // Sans pagination, cette lecture s'arrête à 1 000 lignes en silence (voir
+    // lib/supabase-paginate.ts). L'alerte de drawdown se serait alors calculée
+    // sur une partie de l'historique : sur un compte de plus de 1 000 trades,
+    // elle se serait tue au moment précis où elle sert, ou aurait crié pour
+    // rien. Le tri de lecture est `id`, unique ; l'ordre de clôture, seul qui
+    // compte pour un cumul, se refait juste après.
+    const rows = await fetchAllRows<{
+      pnl: number; commission: number | null; swap: number | null; close_time: string | null;
+    }>((from, to) =>
+      admin
+        .from("trades")
+        .select("pnl, commission, swap, close_time, open_time")
+        .eq("user_id", userId)
+        .eq("challenge_id", challengeId)
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
+    // Lecture incomplète : mieux vaut ne pas alerter que d'alerter faux.
+    if (rows === null) return;
+
+    const trades = rows.slice().sort((a, b) => {
+      const ta = a.close_time ? new Date(a.close_time).getTime() : 0;
+      const tb = b.close_time ? new Date(b.close_time).getTime() : 0;
+      return ta - tb;
+    });
 
     let cumulative = 0;
     let peakCumulative = 0; // pic du cumul (pour le trailing)
-    for (const t of trades ?? []) {
+    for (const t of trades) {
       cumulative += t.pnl + (t.commission || 0) + (t.swap || 0);
       if (cumulative > peakCumulative) peakCumulative = cumulative;
     }

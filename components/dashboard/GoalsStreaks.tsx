@@ -3,6 +3,7 @@
 import ConfettiBurst from "@/components/animations/ConfettiBurst";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
+import { fetchAllRows } from "@/lib/supabase-paginate";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Flame, Trophy, Gem, Target, Star, Lock, PartyPopper, Crown, Snowflake, type LucideIcon } from "lucide-react";
@@ -85,10 +86,20 @@ export default function GoalsStreaks() {
         .from("achievements")
         .select("id, key, unlocked_at")
         .eq("user_id", user.id),
-      supabase
-        .from("trades")
-        .select("pnl, commission, swap, emotion, open_time")
-        .eq("user_id", user.id),
+      // Lecture paginée : les séries et les objectifs se calculent sur tout
+      // l'historique. Non bornée, elle s'arrête à 1 000 trades en silence (voir
+      // lib/supabase-paginate.ts) et la série affichée deviendrait fausse.
+      fetchAllRows<{
+        pnl: number; commission: number | null; swap: number | null;
+        emotion: string | null; open_time: string;
+      }>((from, to) =>
+        supabase
+          .from("trades")
+          .select("pnl, commission, swap, emotion, open_time")
+          .eq("user_id", user.id)
+          .order("id", { ascending: true })
+          .range(from, to),
+      ).then((data) => ({ data })),
       // Streak freezes — defensive: missing table (migration not applied) → [].
       supabase
         .from("streak_freezes")

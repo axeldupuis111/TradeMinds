@@ -28,6 +28,7 @@ import {
 } from "@/lib/account-currency";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
+import { fetchAllRows } from "@/lib/supabase-paginate";
 import { cn } from "@/lib/cn";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -197,12 +198,21 @@ export default function AnalyticsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const [{ data: tradeData }, { data: accountData }, { data: reviewData }] = await Promise.all([
-        supabase
-          .from("trades")
-          .select("open_time, close_time, pnl, commission, swap, pair, direction, emotion, setup_quality, challenge_id, ict_setup, ict_entry_zone, ict_killzone, ict_checklist, sl, tp, entry_price, strategy_id, ict_confluence_score")
-          .eq("user_id", user.id)
-          .order("open_time", { ascending: true }),
+      const [tradeData, { data: accountData }, { data: reviewData }] = await Promise.all([
+        // Lecture paginée : cette page calcule 9 KPI, une heatmap horaire, un
+        // drawdown et des comparaisons de période. Une lecture non bornée
+        // s'arrête à 1 000 lignes sans le dire (voir lib/supabase-paginate.ts),
+        // et comme le tri était `open_time` croissant, ce sont les 1 000 trades
+        // les PLUS ANCIENS qui auraient servi de base : tout ce qui vient
+        // ensuite disparaissait des statistiques.
+        fetchAllRows<TradeRow>((from, to) =>
+          supabase
+            .from("trades")
+            .select("open_time, close_time, pnl, commission, swap, pair, direction, emotion, setup_quality, challenge_id, ict_setup, ict_entry_zone, ict_killzone, ict_checklist, sl, tp, entry_price, strategy_id, ict_confluence_score, id")
+            .eq("user_id", user.id)
+            .order("id", { ascending: true })
+            .range(from, to),
+        ),
         supabase
           .from("prop_challenges")
           .select("id, firm, account_number, account_size, currency, synced_currency")
@@ -216,7 +226,13 @@ export default function AnalyticsPage() {
           .limit(20),
       ]);
 
-      setTrades(tradeData || []);
+      // Les pages sont lues dans l'ordre stable de `id`, l'ordre chronologique
+      // attendu par les blocs (drawdown, courbe, comparaisons) se refait ici.
+      setTrades(
+        (tradeData ?? [])
+          .slice()
+          .sort((a, b) => new Date(a.open_time).getTime() - new Date(b.open_time).getTime()),
+      );
       setAccounts(accountData || []);
       setReviews(reviewData || []);
       setLoading(false);

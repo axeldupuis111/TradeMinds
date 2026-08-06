@@ -6,6 +6,7 @@ import { useDisplayCurrency } from "@/lib/hooks/useDisplayCurrency";
 import Link from "next/link";
 import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
+import { fetchAllRows } from "@/lib/supabase-paginate";
 import { useEffect, useRef, useState } from "react";
 
 const SESSION_LABELS: Record<string, string> = {
@@ -102,14 +103,22 @@ export default function StrategyPage() {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase
-        .from("trades")
-        .select("pnl, commission, swap")
-        .eq("user_id", user.id)
-        .eq("strategy_id", existingId)
-        .not("pnl", "is", null);
-      if (cancelled) return;
-      const nets = (data || []).map((tr) => (tr.pnl || 0) + (tr.commission || 0) + (tr.swap || 0));
+      // Lecture paginée : ce bloc annonce le winrate et le P&L de la stratégie,
+      // et une lecture non bornée s'arrête à 1 000 trades sans le dire (voir
+      // lib/supabase-paginate.ts).
+      const data = await fetchAllRows<{ pnl: number | null; commission: number | null; swap: number | null }>(
+        (from, to) =>
+          supabase
+            .from("trades")
+            .select("pnl, commission, swap")
+            .eq("user_id", user.id)
+            .eq("strategy_id", existingId)
+            .not("pnl", "is", null)
+            .order("id", { ascending: true })
+            .range(from, to),
+      );
+      if (cancelled || data === null) return;
+      const nets = data.map((tr) => (tr.pnl || 0) + (tr.commission || 0) + (tr.swap || 0));
       if (nets.length === 0) { setPerf({ count: 0, winrate: 0, pnl: 0, avgWin: 0, avgLoss: 0 }); return; }
       const wins = nets.filter((n) => n > 0);
       const losses = nets.filter((n) => n < 0);
