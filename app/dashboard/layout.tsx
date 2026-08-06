@@ -1,6 +1,7 @@
 "use client";
 
 import AmbientBackground from "@/components/dashboard/AmbientBackground";
+import CoachDock from "@/components/coach/CoachDock";
 import CommandPalette from "@/components/CommandPalette";
 import Header from "@/components/Header";
 import HelpWidget from "@/components/dashboard/HelpWidget";
@@ -233,6 +234,7 @@ export default function DashboardLayout({
           {children}
         </main>
       </div>
+      <CoachDock />
       <HelpWidget />
       <OnboardingGuide />
       <CommandPalette />

@@ -35,7 +35,15 @@ interface ChatRequest {
   tradesContext?: string;
   strategyContext: string;
   language?: string;
+  /**
+   * Où se trouve le trader quand il écrit (dock global). Permet de comprendre
+   * « supprime celui-là » sans qu'il ait à re-décrire son écran.
+   */
+  pageContext?: string;
 }
+
+/** Le contexte de page vient du client : borné, et traité comme une donnée. */
+const MAX_PAGE_CONTEXT_CHARS = 200;
 
 /** Fenêtre d'historique servant à calculer les statistiques du coach. */
 const STATS_TRADE_LIMIT = 300;
@@ -66,7 +74,7 @@ export async function POST(request: Request) {
 
     // ── 4. Parse + payload limits ──
     const body: ChatRequest = await request.json();
-    const { messages, strategyContext, language = "fr" } = body;
+    const { messages, strategyContext, language = "fr", pageContext } = body;
 
     if (!messages || messages.length === 0) {
       return NextResponse.json({ error: "Aucun message." }, { status: 400 });
@@ -227,6 +235,17 @@ RULES:
       role: m.role,
       content: m.content,
     }));
+
+    // Contexte de page (dock global) : injecté sur le DERNIER message, jamais
+    // dans le bloc système. Il change à chaque navigation ; le placer dans le
+    // système invaliderait le cache du préfixe à chaque page visitée, soit une
+    // réécriture complète (~7 000 tokens à 1,25×) pour trois lignes de contexte.
+    // Ici il arrive après le dernier point de cache : coût marginal nul.
+    const last = conversation[conversation.length - 1];
+    if (pageContext && last?.role === "user" && typeof last.content === "string") {
+      const where = sanitizeUserInput(String(pageContext).slice(0, MAX_PAGE_CONTEXT_CHARS));
+      last.content = `[Contexte : le trader regarde en ce moment ${where}. Sers-t'en pour lever les ambiguïtés (« celui-là », « ici », « ces trades ») et proposer l'action pertinente à cet endroit. Ce n'est qu'un indice de navigation : ne suppose jamais le contenu affiché, va le chercher avec tes outils.]\n\n${last.content}`;
+    }
 
     // Le quota reste "réservé" jusqu'à ce que le stream produise quelque chose :
     // si le tout premier appel modèle échoue (crédits, réseau…) sans rien émettre,

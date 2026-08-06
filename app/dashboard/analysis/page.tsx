@@ -3,11 +3,15 @@
 import UpgradeBanner from "@/components/UpgradeBanner";
 import { money } from "@/lib/account-currency";
 import { useDisplayCurrency } from "@/lib/hooks/useDisplayCurrency";
+import {
+  coachActionMeta,
+  useCoachChat,
+  type ChatMessage,
+} from "@/lib/hooks/useCoachChat";
 import type { CategoryBreakdown } from "@/lib/discipline-score";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
-import { DEMO_COACH, buildDemoAnalysis, type DemoTradeForAnalysis } from "@/lib/demo-fixtures";
-import { PLAN_LIMITS } from "@/lib/plan-limits";
+import { buildDemoAnalysis, type DemoTradeForAnalysis } from "@/lib/demo-fixtures";
 import { createClient } from "@/lib/supabase/client";
 import { fetchAllRows } from "@/lib/supabase-paginate";
 import { track } from "@/lib/track";
@@ -25,77 +29,6 @@ interface AnalysisTradeRow extends Record<string, unknown> {
   close_time: string;
 }
 
-interface CoachActionEvent {
-  type:
-    | "goal_created"
-    | "goal_updated"
-    | "goal_deleted"
-    | "challenge_joined"
-    | "challenge_left"
-    | "trades_annotated"
-    | "note_saved"
-    | "strategy_created"
-    | "strategy_updated"
-    | "checklist_item_added"
-    | "checklist_item_removed"
-    | "export_ready";
-  kind?: "metric" | "custom";
-  count?: number;
-  // export_ready : contenu du fichier à télécharger.
-  filename?: string;
-  csv?: string;
-}
-
-// Descriptif d'annulation opaque (renvoyé tel quel à /api/coach-undo).
-type CoachUndo = { op: string; [k: string]: unknown };
-
-// Action + son éventuel undo, tel que stocké sur un message assistant.
-interface CoachActionItem {
-  action: CoachActionEvent;
-  undo?: CoachUndo;
-  undone?: boolean;
-}
-
-interface ChatMessage {
-  id?: string;
-  role: "user" | "assistant";
-  content: string;
-  created_at?: string;
-  actions?: CoachActionItem[];
-}
-
-// Libellé + lien du chip affiché quand le coach a agi.
-function coachActionMeta(a: CoachActionEvent, t: (k: string) => string): { label: string; href?: string } {
-  switch (a.type) {
-    case "goal_created":
-      return { label: t("coach_action_goal_created"), href: "/dashboard/goals" };
-    case "goal_updated":
-      return { label: t("coach_action_goal_updated"), href: "/dashboard/goals" };
-    case "goal_deleted":
-      return { label: t("coach_action_goal_deleted"), href: "/dashboard/goals" };
-    case "challenge_joined":
-      return { label: t("coach_action_challenge_joined"), href: "/dashboard/leaderboard" };
-    case "challenge_left":
-      return { label: t("coach_action_challenge_left"), href: "/dashboard/leaderboard" };
-    case "trades_annotated":
-      return { label: t("coach_action_trades_annotated").replace("{n}", String(a.count ?? 0)), href: "/dashboard/trades" };
-    case "note_saved":
-      return { label: t("coach_action_note_saved") };
-    case "strategy_created":
-      return { label: t("coach_action_strategy_created"), href: "/dashboard/strategy" };
-    case "strategy_updated":
-      return { label: t("coach_action_strategy_updated"), href: "/dashboard/strategy" };
-    case "checklist_item_added":
-      return { label: t("coach_action_checklist_added"), href: "/dashboard/strategy" };
-    case "checklist_item_removed":
-      return { label: t("coach_action_checklist_removed"), href: "/dashboard/strategy" };
-    case "export_ready":
-      return { label: t("coach_action_export_ready").replace("{n}", String(a.count ?? 0)) };
-    default:
-      return { label: "" };
-  }
-}
-
 // Vitrine des capacités du coach, affichée quand le chat est vide : chaque carte
 // pré-remplit une vraie demande (le trader découvre en essayant). Icônes inline
 // (paths façon Feather) pour ne pas alourdir le bundle.
@@ -109,17 +42,6 @@ const COACH_CAPABILITIES: { key: string; icon: string; titleKey: string; example
 ];
 
 // Déclenche le téléchargement d'un CSV généré par le coach.
-function downloadCsv(filename: string, csv: string) {
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-}
 
 interface Violation {
   category: "strategy" | "behavior" | "execution";
@@ -523,13 +445,20 @@ export default function AnalysisPage() {
   // engagement (même mécanique que la page Objectifs / l'outil du coach).
   const [goalsFromPlan, setGoalsFromPlan] = useState<"idle" | "saving" | "done" | "error">("idle");
 
-  // Chat coach state
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [chatInput, setChatInput] = useState("");
-  const [chatLoading, setChatLoading] = useState(false);
-  const [chatDailyCount, setChatDailyCount] = useState(0);
+  // Chat coach — logique partagée avec le dock global (lib/hooks/useCoachChat).
+  // La page garde seulement ce qui lui est propre : afficher l'historique
+  // ancien et l'effacer.
+  const chat = useCoachChat({ plan, lang, t, demoMode, onAnswered: () => loadAIHistory() });
+  const chatMessages = chat.messages;
+  const setChatMessages = chat.setMessages;
+  const chatInput = chat.input;
+  const setChatInput = chat.setInput;
+  const chatLoading = chat.loading;
+  const setHasOlderChat = chat.setHasOlderChat;
+  // onClick passe un MouseEvent : on ne le laisse pas devenir le texte à envoyer.
+  const sendChatMessage = useCallback(() => { void chat.send(); }, [chat]);
+  const undoCoachAction = chat.undo;
   const [showOlderChat, setShowOlderChat] = useState(false);
-  const [hasOlderChat, setHasOlderChat] = useState(false);
   const [clearingChat, setClearingChat] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -538,15 +467,11 @@ export default function AnalysisPage() {
   const [aiHistory, setAIHistory] = useState<{ id: string; question: string; answer: string; created_at: string }[]>([]);
   const [aiHistoryLoading, setAIHistoryLoading] = useState(true);
 
-  const chatLimit = PLAN_LIMITS.chat[plan].limit;
-  const isPaidPlan = plan === "plus" || plan === "premium";
-  // Plan free : 1 message « découverte » à vie (le serveur l'accorde tant que
-  // chat_messages est vide). Dès qu'un message existe — aujourd'hui ou avant —
-  // le taster est consommé ; le chat reste visible aujourd'hui pour relire la
-  // réponse, puis laisse place à la bannière upgrade.
-  const freeTasterUsed = hasOlderChat || chatMessages.some((m) => m.role === "user");
-  const chatRemaining = isPaidPlan ? Math.max(0, chatLimit - chatDailyCount) : freeTasterUsed ? 0 : 1;
-  const canChat = isPaidPlan || !hasOlderChat;
+  const isPaidPlan = chat.isPaidPlan;
+  const freeTasterUsed = chat.freeTasterUsed;
+  const chatRemaining = chat.remaining;
+  const canChat = chat.canChat;
+  const hasOlderChat = chat.hasOlderChat;
 
   // Auto-scroll « collant » : on ne suit le bas que si l'utilisateur y est déjà.
   // Sinon (il a remonté pour relire pendant que le coach écrit), le stream ne
@@ -560,50 +485,6 @@ export default function AnalysisPage() {
       el.scrollTop = el.scrollHeight;
     }
   }, [chatMessages]);
-
-  // Load chat daily count + persisted chat history
-  useEffect(() => {
-    async function loadChatCount() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data } = await supabase
-        .from("profiles")
-        .select("daily_chat_count, daily_chat_reset")
-        .eq("id", user.id)
-        .single();
-      if (data) {
-        const today = new Date().toISOString().split("T")[0];
-        if (data.daily_chat_reset === today) {
-          setChatDailyCount(data.daily_chat_count || 0);
-        }
-      }
-    }
-    async function loadChatHistory() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const today = new Date().toISOString().split("T")[0];
-      // Load today's messages (chronological) — up to 50
-      const { data: todayRows } = await supabase
-        .from("chat_messages")
-        .select("id, role, content, created_at")
-        .eq("user_id", user.id)
-        .gte("created_at", today)
-        .order("created_at", { ascending: true })
-        .limit(50);
-      if (todayRows) {
-        setChatMessages(todayRows as ChatMessage[]);
-      }
-      // Check if older messages exist
-      const { count } = await supabase
-        .from("chat_messages")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .lt("created_at", today);
-      setHasOlderChat((count || 0) > 0);
-    }
-    loadChatCount();
-    loadChatHistory();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadOlderChat = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -619,7 +500,7 @@ export default function AnalysisPage() {
       setChatMessages((data as ChatMessage[]).slice().reverse());
       setShowOlderChat(true);
     }
-  }, [supabase]);
+  }, [supabase, setChatMessages]);
 
   const clearChatHistory = useCallback(async () => {
     if (!confirm(t("coach_clear_confirm"))) return;
@@ -631,179 +512,10 @@ export default function AnalysisPage() {
     setHasOlderChat(false);
     setShowOlderChat(false);
     setClearingChat(false);
-  }, [supabase, t]);
+  }, [supabase, t, setChatMessages, setHasOlderChat]);
 
-  const sendChatMessage = useCallback(async () => {
-    const msg = chatInput.trim();
-    if (!msg || chatLoading) return;
-    if (chatRemaining !== null && chatRemaining <= 0) return;
-
-    const newMessages: ChatMessage[] = [...chatMessages, { role: "user", content: msg }];
-    setChatMessages(newMessages);
-    setChatInput("");
-    setChatLoading(true);
-    // Le free qui envoie son message découverte : signal clé de l'échelle
-    // d'upgrade (fire-and-forget, jamais bloquant).
-    if (plan === "free") track("taster_used");
-
-    // Mode démo : réponses pré-écrites (lib/demo-fixtures.ts). Le vrai coach
-    // coûte des tokens à chaque message, un visiteur curieux ne doit rien
-    // coûter. Rien n'est écrit dans chat_messages ni ai_analysis_history, et
-    // aucun quota n'est décompté. La réponse est explicitement annoncée comme
-    // une démonstration, pour ne pas laisser croire à une vraie réponse
-    // personnalisée à la question posée.
-    if (demoMode) {
-      const turns = DEMO_COACH[lang] ?? DEMO_COACH.en;
-      const userCount = newMessages.filter((m) => m.role === "user").length;
-      const turn = turns[Math.min(userCount - 1, turns.length - 1)];
-      setChatMessages([
-        ...newMessages,
-        { role: "assistant", content: `${t("demo_coach_note")}
-
-${turn.answer}` },
-      ]);
-      setChatLoading(false);
-      return;
-    }
-
-    try {
-      // Build trades context
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error(t("analysis_not_connected"));
-
-      // Le détail des trades n'est plus envoyé : /api/chat-coach calcule les
-      // statistiques côté serveur et le coach récupère les trades individuels
-      // avec son outil find_trades. On ne charge donc plus que la stratégie.
-      const { data: strategy } = await supabase
-        .from("strategies")
-        .select("*")
-        .eq("user_id", user.id)
-        .limit(1)
-        .maybeSingle();
-
-      const strategyContext = strategy
-        ? `Nom: ${strategy.name || "N/A"}, Paires: ${(strategy.pairs || []).join(",")}, Sessions: ${(strategy.sessions || []).join(",")}, RR min: ${strategy.risk_reward ?? "N/A"}, Règles: ${(strategy.setup_rules || []).join("; ")}`
-        : "Aucune stratégie définie";
-
-      const res = await fetch("/api/chat-coach", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: newMessages.slice(-10), // keep last 10 messages for context
-          strategyContext,
-          language: lang,
-        }),
-      });
-
-      if (!res.ok) {
-        let errBody: { error?: string } = {};
-        try { errBody = await res.json(); } catch {}
-        if (res.status === 401) throw new Error(t("api_error_unauthorized"));
-        if (res.status === 403) throw new Error(t("api_error_forbidden"));
-        if (res.status === 413) throw new Error(t("api_error_payload_too_large"));
-        if (res.status === 429) throw new Error(t("api_error_rate_limited"));
-        throw new Error(errBody.error || "Erreur serveur");
-      }
-
-      // Stream NDJSON: {t:"text",d} = delta texte, {t:"action",a,u} = action + undo.
-      // Le coach "tape" en direct et pose des chips quand il agit sur le journal.
-      let answer = "";
-      const actions: CoachActionItem[] = [];
-      setChatMessages([...newMessages, { role: "assistant", content: "", actions: [] }]);
-      const reader = res.body?.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      const applyEvent = (line: string) => {
-        const trimmed = line.trim();
-        if (!trimmed) return;
-        try {
-          const evt = JSON.parse(trimmed) as
-            | { t: "text"; d: string }
-            | { t: "action"; a: CoachActionEvent; u?: CoachUndo };
-          if (evt.t === "text") answer += evt.d;
-          else if (evt.t === "action") {
-            // Un export déclenche directement le téléchargement du fichier.
-            if (evt.a.type === "export_ready" && evt.a.filename && evt.a.csv) {
-              downloadCsv(evt.a.filename, evt.a.csv);
-            }
-            // On ne conserve pas le CSV en mémoire du message (inutile, volumineux).
-            const { csv, ...actionLite } = evt.a;
-            void csv;
-            actions.push({ action: actionLite, undo: evt.u });
-          }
-        } catch {
-          // Ligne partielle/illisible — ignorée (le flush final rattrape le reste).
-          return;
-        }
-        setChatMessages([...newMessages, { role: "assistant", content: answer, actions: actions.map((a) => ({ ...a })) }]);
-      };
-      if (reader) {
-        for (;;) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() ?? ""; // garde la dernière ligne (potentiellement incomplète)
-          for (const line of lines) applyEvent(line);
-        }
-        if (buffer) applyEvent(buffer);
-      }
-
-      // Persist both messages
-      await supabase.from("chat_messages").insert([
-        { user_id: user.id, role: "user", content: msg },
-        { user_id: user.id, role: "assistant", content: answer },
-      ]);
-
-      // Save Q&A pair to history
-      await supabase.from("ai_analysis_history").insert({
-        user_id: user.id,
-        question: msg,
-        answer,
-      });
-      loadAIHistory();
-
-      // Increment daily chat count
-      const newCount = chatDailyCount + 1;
-      setChatDailyCount(newCount);
-      const today = new Date().toISOString().split("T")[0];
-      await supabase
-        .from("profiles")
-        .update({ daily_chat_count: newCount, daily_chat_reset: today })
-        .eq("id", user.id);
-    } catch (err) {
-      setChatMessages([...newMessages, { role: "assistant", content: `${t("analysis_error_prefix")} : ${err instanceof Error ? err.message : t("analysis_unknown_error")}` }]);
-    } finally {
-      setChatLoading(false);
-    }
-  }, [chatInput, chatMessages, chatLoading, chatDailyCount, chatRemaining, supabase, lang, demoMode]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Annule une action posée par le coach (rejoue l'opération inverse côté serveur),
-  // puis marque le chip comme annulé.
-  const undoCoachAction = useCallback(async (messageIndex: number, actionIndex: number) => {
-    const target = chatMessages[messageIndex]?.actions?.[actionIndex];
-    if (!target?.undo || target.undone) return;
-    try {
-      const res = await fetch("/api/coach-undo", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ undo: target.undo }),
-      });
-      if (!res.ok) return;
-      setChatMessages((prev) =>
-        prev.map((m, mi) =>
-          mi !== messageIndex
-            ? m
-            : {
-                ...m,
-                actions: (m.actions ?? []).map((a, ai) => (ai === actionIndex ? { ...a, undone: true } : a)),
-              }
-        )
-      );
-    } catch {
-      // Réseau indisponible — on laisse le chip inchangé, le trader peut réessayer.
-    }
-  }, [chatMessages]);
+  // sendChatMessage et undoCoachAction vivent désormais dans
+  // lib/hooks/useCoachChat, partagés avec le dock global (composants/coach).
 
   useEffect(() => {
     loadPrerequisites();
