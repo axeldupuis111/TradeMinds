@@ -657,6 +657,7 @@ const dict: Record<string, string> = {
   "trades_deselect_all": "Deselect all",
   "trades_confirm_delete_mass": "Are you sure you want to delete {count} trades? This action is irreversible.",
   "trades_per_page": "Per page",
+  "trades_export_failed": "Reading your trades failed: no file was created, rather than an incomplete export. Please try again.",
   "trades_select_page_done": "The {count} trades on this page are selected.",
   "trades_select_all_matching": "Select all {count} trades matching the filters",
   "trades_select_all_matching_done": "All {count} trades matching the filters are selected.",

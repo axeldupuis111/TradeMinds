@@ -657,6 +657,7 @@ const dict: Record<string, string> = {
   "trades_deselect_all": "Alle abwählen",
   "trades_confirm_delete_mass": "Bist du sicher, dass du {count} Trades löschen möchtest? Diese Aktion ist unwiderruflich.",
   "trades_per_page": "Pro Seite",
+  "trades_export_failed": "Das Lesen deiner Trades ist fehlgeschlagen: Es wurde keine Datei erstellt, statt eines unvollständigen Exports. Bitte versuche es erneut.",
   "trades_select_page_done": "Die {count} Trades dieser Seite sind ausgewählt.",
   "trades_select_all_matching": "Alle {count} Trades auswählen, die den Filtern entsprechen",
   "trades_select_all_matching_done": "Alle {count} Trades, die den Filtern entsprechen, sind ausgewählt.",

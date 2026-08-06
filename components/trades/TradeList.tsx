@@ -254,6 +254,57 @@ const PAGE_SIZE_KEY = "td.trades.pageSize";
  */
 const DELETE_CHUNK = 100;
 
+/**
+ * Plafond de lignes d'une reponse PostgREST, mesure sur ce projet le
+ * 2026-08-06 : avec 1 100 lignes en base, une requete sans borne en rend
+ * exactement 1 000, statut 200, `content-range: 0-999/*`. Aucune erreur, aucun
+ * signal. Une lecture non bornee est donc juste tant qu'on a peu de trades, et
+ * devient fausse en silence ensuite.
+ */
+const ROWS_PER_REQUEST = 1000;
+
+/**
+ * Lit TOUTES les lignes d'une requete, page par page. Renvoie null si une page
+ * echoue : un appelant qui supprime ou exporte doit pouvoir distinguer « voici
+ * tout » de « voici ce que j'ai pu avoir ».
+ *
+ * @param build construit la requete pour une plage donnee. Doit poser un tri
+ *              DETERMINISTE (une colonne unique) : sans ordre stable, deux
+ *              pages consecutives peuvent se recouvrir ou sauter des lignes.
+ */
+async function fetchAllRows<T>(
+  build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
+): Promise<T[] | null> {
+  const all: T[] = [];
+  for (let from = 0; ; from += ROWS_PER_REQUEST) {
+    const { data, error } = await build(from, from + ROWS_PER_REQUEST - 1);
+    if (error) return null;
+    if (!data) break;
+    all.push(...data);
+    if (data.length < ROWS_PER_REQUEST) break;
+  }
+  return all;
+}
+
+/** Colonnes lues pour l'export CSV, dans l'ordre où elles y apparaissent. */
+interface CsvRow {
+  id: string;
+  open_time: string | null;
+  close_time: string | null;
+  pair: string;
+  direction: string;
+  lot_size: number | null;
+  entry_price: number | null;
+  exit_price: number | null;
+  sl: number | null;
+  tp: number | null;
+  pnl: number | null;
+  commission: number | null;
+  swap: number | null;
+  emotion: string | null;
+  tags: string[] | null;
+  notes: string | null;
+}
 
 function normalizeDirection(dir: string): "long" | "short" {
   const d = dir.toLowerCase();
@@ -575,23 +626,35 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
 
     // Les stats du bandeau suivent le filtre de compte : sinon le total annoncé
     // contredirait la liste affichée juste en dessous.
-    let statsQuery = supabase
-      .from("trades")
-      .select("pnl, commission, swap, challenge_id")
-      .eq("user_id", user.id)
-      .eq("status", "closed");
-    if (filters.account === NO_ACCOUNT) statsQuery = statsQuery.is("challenge_id", null);
-    else if (filters.account) statsQuery = statsQuery.eq("challenge_id", filters.account);
-    const { data } = await statsQuery;
+    //
+    // Lecture paginée : ce bandeau annonce « 336 trades · WR 46.9 % · P&L
+    // -6 619,77 € », des chiffres sur lesquels l'utilisateur juge son trading.
+    // Au-delà de 1 000 trades, une lecture non bornée les aurait calculés sur
+    // les 1 000 premiers en les présentant comme le total (voir fetchAllRows).
+    const data = await fetchAllRows<{
+      pnl: number | null; commission: number | null; swap: number | null;
+    }>((from, to) => {
+      let q = supabase
+        .from("trades")
+        .select("pnl, commission, swap, challenge_id")
+        .eq("user_id", user.id)
+        .eq("status", "closed")
+        .order("id", { ascending: true });
+      if (filters.account === NO_ACCOUNT) q = q.is("challenge_id", null);
+      else if (filters.account) q = q.eq("challenge_id", filters.account);
+      return q.range(from, to);
+    });
 
-    if (!data || data.length === 0) {
+    // Échec de lecture : on garde les chiffres précédents plutôt que d'en
+    // afficher de faux. La liste, elle, signalera son propre échec.
+    if (data === null) return;
+
+    if (data.length === 0) {
       setGlobalStats({ count: 0, wins: 0, totalPnl: 0, best: 0, worst: 0 });
       return;
     }
 
-    const netPnls = data.map(
-      (tr) => (tr.pnl as number) + ((tr.commission as number) || 0) + ((tr.swap as number) || 0)
-    );
+    const netPnls = data.map((tr) => (tr.pnl ?? 0) + (tr.commission ?? 0) + (tr.swap ?? 0));
     setGlobalStats({
       count: netPnls.length,
       wins: netPnls.filter((p) => p > 0).length,
@@ -624,58 +687,40 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     return out;
   }
 
+  /** Le filtre gagnant/perdant, qui ne s'exprime pas en SQL (voir applySqlFilters). */
+  function keepByResult<T extends { pnl: number | null; commission: number | null; swap: number | null }>(
+    rows: T[],
+  ): T[] {
+    if (filters.result !== "win" && filters.result !== "loss") return rows;
+    const net = (r: T) => (r.pnl ?? 0) + (r.commission ?? 0) + (r.swap ?? 0);
+    return filters.result === "win" ? rows.filter((r) => net(r) > 0) : rows.filter((r) => net(r) <= 0);
+  }
+
   /**
    * Tous les trades correspondant aux filtres, id et capture d'écran.
    * Renvoie null si une requête échoue : mieux vaut ne rien supprimer que d'en
    * supprimer une partie en annonçant que tout est fait.
-   *
-   * La boucle n'est pas de la prudence gratuite. PostgREST plafonne une réponse
-   * à 1 000 lignes : sans elle, « supprimer les 3 000 trades » en laisserait
-   * 2 000 derrière lui, sans le dire.
    */
   async function fetchMatchingRows(
     userId: string,
   ): Promise<{ id: string; screenshot_path: string | null }[] | null> {
-    const STEP = 1000;
-    const rows: { id: string; screenshot_path: string | null; net: number }[] = [];
-
-    for (let offset = 0; ; offset += STEP) {
-      // Tri sur `id`, unique et stable : sans ordre déterministe, deux pages
-      // consécutives peuvent se recouvrir ou sauter des lignes, et une
-      // suppression laisserait des trades derrière elle sans le dire.
-      const query = applySqlFilters(
+    const rows = await fetchAllRows<{
+      id: string; screenshot_path: string | null;
+      pnl: number | null; commission: number | null; swap: number | null;
+    }>((from, to) =>
+      applySqlFilters(
         supabase
           .from("trades")
           .select("id, screenshot_path, pnl, commission, swap")
           .eq("user_id", userId)
           .eq("status", "closed")
+          // Tri sur `id`, unique et stable : voir fetchAllRows.
           .order("id", { ascending: true }),
-      ).range(offset, offset + STEP - 1);
+      ).range(from, to),
+    );
 
-      const { data, error } = await query;
-      if (error) return null;
-      if (!data) break;
-
-      for (const tr of data) {
-        rows.push({
-          id: tr.id as string,
-          screenshot_path: (tr.screenshot_path as string | null) ?? null,
-          net: (tr.pnl as number) + ((tr.commission as number) || 0) + ((tr.swap as number) || 0),
-        });
-      }
-      if (data.length < STEP) break;
-    }
-
-    // `result` ne s'exprime pas en SQL (il se calcule sur pnl + commission +
-    // swap) : il s'applique ici, exactement comme dans la liste affichée.
-    const kept =
-      filters.result === "win"
-        ? rows.filter((r) => r.net > 0)
-        : filters.result === "loss"
-          ? rows.filter((r) => r.net <= 0)
-          : rows;
-
-    return kept.map(({ id, screenshot_path }) => ({ id, screenshot_path }));
+    if (rows === null) return null;
+    return keepByResult(rows).map(({ id, screenshot_path }) => ({ id, screenshot_path }));
   }
 
   /** Chemins des captures d'un lot d'ids, pour ne pas laisser de fichiers orphelins. */
@@ -785,6 +830,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
   }
 
   const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   function handleSortClick(column: SortColumn) {
     if (sort.column !== column) {
@@ -801,32 +847,43 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setExporting(false); return; }
 
-    const query = applySqlFilters(
-      supabase
-        .from("trades")
-        .select("open_time, close_time, pair, direction, lot_size, entry_price, exit_price, sl, tp, pnl, commission, swap, emotion, tags, notes")
-        .eq("user_id", user.id)
-        .eq("status", "closed")
-        .order("open_time", { ascending: false }),
+    // Lecture paginée. Un export tronqué est le pire des cas : le fichier a
+    // l'air complet, il porte le bon nom, et il manque des trades. Le tri
+    // d'affichage (open_time) n'est pas unique, donc les pages sont lues dans
+    // l'ordre stable de `id` puis remises en ordre chronologique ici.
+    const data = await fetchAllRows<CsvRow>((from, to) =>
+      applySqlFilters(
+        supabase
+          .from("trades")
+          .select("id, open_time, close_time, pair, direction, lot_size, entry_price, exit_price, sl, tp, pnl, commission, swap, emotion, tags, notes")
+          .eq("user_id", user.id)
+          .eq("status", "closed")
+          .order("id", { ascending: true }),
+      ).range(from, to),
     );
 
-    const { data } = await query;
-    if (!data || data.length === 0) { setExporting(false); return; }
+    if (data === null) {
+      setExportError(t("trades_export_failed"));
+      setExporting(false);
+      return;
+    }
+    if (data.length === 0) { setExporting(false); return; }
 
-    let rows = data;
-    if (filters.result === "win") rows = rows.filter((tr) => (tr.pnl as number) + ((tr.commission as number) || 0) + ((tr.swap as number) || 0) > 0);
-    else if (filters.result === "loss") rows = rows.filter((tr) => (tr.pnl as number) + ((tr.commission as number) || 0) + ((tr.swap as number) || 0) <= 0);
+    setExportError(null);
+    const rows = keepByResult(data).sort(
+      (a, b) => new Date(b.open_time ?? 0).getTime() - new Date(a.open_time ?? 0).getTime(),
+    );
 
     const headers = ["Date", "Pair", "Direction", "Lot", "Entry", "Exit", "SL", "TP", "PnL", "Commission", "Swap", "Net PnL", "Emotion", "Tags", "Notes"];
     const csvRows = rows.map((tr) => {
-      const net = (tr.pnl as number) + ((tr.commission as number) || 0) + ((tr.swap as number) || 0);
+      const net = (tr.pnl ?? 0) + (tr.commission ?? 0) + (tr.swap ?? 0);
       return [
-        tr.open_time ? new Date(tr.open_time as string).toISOString().split("T")[0] : "",
+        tr.open_time ? new Date(tr.open_time).toISOString().split("T")[0] : "",
         tr.pair, tr.direction, tr.lot_size, tr.entry_price, tr.exit_price,
         tr.sl ?? "", tr.tp ?? "", tr.pnl, tr.commission ?? 0, tr.swap ?? 0,
         net.toFixed(2), tr.emotion ?? "",
-        Array.isArray(tr.tags) ? (tr.tags as string[]).join("; ") : "",
-        (tr.notes as string || "").replace(/"/g, '""'),
+        Array.isArray(tr.tags) ? tr.tags.join("; ") : "",
+        (tr.notes ?? "").replace(/"/g, '""'),
       ].map((v) => `"${v}"`).join(",");
     });
 
@@ -1018,6 +1075,9 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
               {exporting ? "..." : t("trades_export_csv")}
             </button>
           </div>
+          {/* L'échec s'affiche sous le bouton : un fichier qui ne se télécharge
+              pas et ne dit rien ressemble à un bouton mort. */}
+          {exportError && <p className="text-sm text-loss mt-2">{exportError}</p>}
         </div>
       </div>
 
