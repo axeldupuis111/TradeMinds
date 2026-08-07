@@ -17,7 +17,15 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { appendCommitment, parseCoachMemory } from "@/lib/coach-memory";
 import { challengesForWeek, getCommunityChallenge, isoWeekKey } from "@/lib/community-challenges";
+import { getFuturesContract } from "@/lib/futures-contracts";
 import { ICT_CHECKLIST_ITEMS } from "@/lib/ict-constants";
+import { calculatePips } from "@/lib/pips";
+import {
+  actualRiskForContracts,
+  computeContracts,
+  computeLotSize,
+  getDefaultPipValuePerLot,
+} from "@/lib/position-sizing";
 import type { PlanType } from "@/lib/PlanContext";
 import { startOfDateKeyUtc } from "@/lib/timezone";
 
@@ -59,6 +67,34 @@ const MAX_TAGS = 5;
 const MAX_TEXT = 300;
 const MAX_EXPORT_ROWS = 2000;
 const MAX_RULE_ITEMS = 20;
+const MAX_EVENTS = 40;
+/** Suppression : volontairement plus bas que l'annotation, le geste est définitif. */
+const MAX_DELETE_IDS = 25;
+
+/** Devises acceptées à la création d'un compte (mêmes valeurs que l'interface). */
+const ACCOUNT_CURRENCIES = ["EUR", "USD", "GBP", "CHF", "CAD", "AUD", "JPY"] as const;
+
+/** Sens normalisé : le modèle dit « buy » ou « long », la base stocke l'un des deux. */
+function normDirection(v: unknown): "long" | "short" | null {
+  if (typeof v !== "string") return null;
+  const s = v.toLowerCase();
+  if (s === "long" || s === "buy") return "long";
+  if (s === "short" || s === "sell") return "short";
+  return null;
+}
+
+/** Nombre fini dans des bornes, sinon null (le modèle peut envoyer n'importe quoi). */
+function asNumber(v: unknown, min: number, max: number): number | null {
+  if (typeof v !== "number" || !Number.isFinite(v)) return null;
+  return v >= min && v <= max ? v : null;
+}
+
+/** Horodatage ISO valide, sinon null. */
+function asIso(v: unknown): string | null {
+  if (typeof v !== "string" || !v.trim()) return null;
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
 
 // ── Événements d'action streamés au client (chips dans le chat) ─────────────
 
@@ -74,7 +110,14 @@ export type CoachAction =
   | { type: "strategy_updated" }
   | { type: "checklist_item_added" }
   | { type: "checklist_item_removed" }
-  | { type: "export_ready"; filename: string; csv: string; count: number };
+  | { type: "export_ready"; filename: string; csv: string; count: number }
+  | { type: "trade_created" }
+  | { type: "trade_updated" }
+  | { type: "trade_closed" }
+  | { type: "trades_deleted"; count: number }
+  | { type: "trades_reassigned"; count: number }
+  | { type: "account_created" }
+  | { type: "account_updated" };
 
 // ── Opérations d'annulation (rejouées par executeCoachUndo) ─────────────────
 
@@ -86,7 +129,12 @@ export type CoachUndo =
   | { op: "join_challenge"; key: string }
   | { op: "restore_trades"; trades: { id: string; fields: Record<string, unknown> }[] }
   | { op: "delete_checklist_item"; strategy_id: string; value: string }
-  | { op: "insert_checklist_item"; row: Record<string, unknown> };
+  | { op: "insert_checklist_item"; row: Record<string, unknown> }
+  | { op: "delete_trade"; trade_id: string }
+  | { op: "restore_trade_fields"; trade_id: string; fields: Record<string, unknown> }
+  | { op: "restore_trade_links"; trades: { id: string; challenge_id: unknown; strategy_id: unknown }[] }
+  | { op: "delete_account"; account_id: string }
+  | { op: "restore_account"; account_id: string; fields: Record<string, unknown> };
 
 // ── Demandes de confirmation ────────────────────────────────────────────────
 
@@ -105,7 +153,8 @@ export type CoachUndo =
  * user-scoped : un descriptif forgé ne peut toucher que ses propres données.
  */
 export type CoachConfirm =
-  | { op: "delete_goal"; goal_id: string; label: string };
+  | { op: "delete_goal"; goal_id: string; label: string }
+  | { op: "delete_trades"; trade_ids: string[]; label: string };
 
 export interface CoachToolResult {
   /** Payload renvoyé au modèle (sérialisé en JSON dans le tool_result). */
@@ -323,6 +372,189 @@ export const COACH_TOOLS = [
       required: ["text"],
     },
   },
+
+  // ── Positions et comptes (lecture) ────────────────────────────────────────
+  {
+    name: "list_open_trades",
+    description:
+      "Liste les positions ENCORE OUVERTES du trader (non clôturées), avec leur id, paire, sens, taille, prix d'entrée, SL/TP et durée depuis l'ouverture. À utiliser dès qu'il parle d'un trade « en cours », « en ce moment » ou « ma position ».",
+    input_schema: { type: "object" as const, properties: {}, required: [] },
+  },
+  {
+    name: "list_accounts",
+    description:
+      "Liste les comptes de trading du trader (comptes personnels et challenges de prop firm) : id, type, firme, taille, devise, solde, statut. Nécessaire avant de rattacher un trade à un compte.",
+    input_schema: { type: "object" as const, properties: {}, required: [] },
+  },
+  {
+    name: "list_economic_events",
+    description:
+      "Annonces économiques à venir (ou passées) du calendrier : date, devise, intitulé, impact, prévision et valeur précédente. Sert à répondre sur ce qui arrive aujourd'hui ou cette semaine et à prévenir avant une annonce à fort impact.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        from: { type: "string", description: "Date ISO de début (incluse), ex. 2026-08-07. Défaut : aujourd'hui." },
+        to: { type: "string", description: "Date ISO de fin (exclue). Défaut : dans 7 jours." },
+        currency: { type: "string", description: "Filtre devise, ex. USD, EUR." },
+        min_impact: { type: "string", enum: ["low", "medium", "high"], description: "Impact minimum retenu." },
+        limit: { type: "number", description: `Max ${MAX_EVENTS}, défaut 15.` },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "calculate_position_size",
+    description:
+      "Calcule la taille de position à prendre pour un risque donné. CFD/forex : renvoie un nombre de lots. Futures : renvoie un nombre de contrats (arrondi au plancher, le risque réel ne dépasse jamais le budget). Fournis SOIT sl_pips, SOIT entry_price et sl_price (les pips seront déduits de l'instrument).",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        pair: { type: "string", description: "Instrument, ex. XAUUSD, EURUSD, NQ." },
+        risk_amount: { type: "number", description: "Montant risqué, dans la devise du compte." },
+        risk_pct: { type: "number", description: "Alternative : % du capital à risquer (nécessite account_balance)." },
+        account_balance: { type: "number", description: "Capital de référence, requis avec risk_pct." },
+        sl_pips: { type: "number", description: "Distance du stop en pips (ou en points pour un future)." },
+        entry_price: { type: "number", description: "Prix d'entrée, si sl_pips n'est pas fourni." },
+        sl_price: { type: "number", description: "Prix du stop, si sl_pips n'est pas fourni." },
+      },
+      required: ["pair"],
+    },
+  },
+
+  // ── Trades (écriture) ─────────────────────────────────────────────────────
+  {
+    name: "create_trade",
+    description:
+      "Enregistre un trade dans le journal. Pour une position DÉJÀ CLÔTURÉE, fournis exit_price et pnl. Pour une position EN COURS, mets status=open et omets exit_price et pnl.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        pair: { type: "string", description: "Instrument, ex. XAUUSD." },
+        direction: { type: "string", enum: ["long", "short", "buy", "sell"] },
+        lot_size: { type: "number", description: "Taille de position." },
+        entry_price: { type: "number" },
+        exit_price: { type: "number", description: "Requis si le trade est clôturé." },
+        pnl: { type: "number", description: "P&L brut. Requis si le trade est clôturé." },
+        sl: { type: "number" },
+        tp: { type: "number" },
+        open_time: { type: "string", description: "Date/heure d'ouverture ISO. Défaut : maintenant." },
+        close_time: { type: "string", description: "Date/heure de clôture ISO." },
+        status: { type: "string", enum: ["open", "closed"], description: "Défaut : closed." },
+        account_id: { type: "string", description: "Compte de rattachement (voir list_accounts)." },
+        strategy_id: { type: "string", description: "Stratégie de rattachement (voir list_strategies)." },
+        emotion: { type: "string", enum: [...EMOTIONS] },
+        notes: { type: "string", description: `Note de journal (max ${MAX_TEXT} caractères).` },
+      },
+      required: ["pair", "direction", "lot_size", "entry_price"],
+    },
+  },
+  {
+    name: "update_trade",
+    description:
+      "Modifie un trade existant (id obtenu via find_trades ou list_open_trades). Ne renseigne QUE les champs à changer. Pour clôturer une position ouverte, utilise close_trade.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        trade_id: { type: "string" },
+        pair: { type: "string" },
+        direction: { type: "string", enum: ["long", "short", "buy", "sell"] },
+        lot_size: { type: "number" },
+        entry_price: { type: "number" },
+        exit_price: { type: "number" },
+        pnl: { type: "number" },
+        sl: { type: "number" },
+        tp: { type: "number" },
+        open_time: { type: "string", description: "Date/heure ISO." },
+        close_time: { type: "string", description: "Date/heure ISO." },
+        notes: { type: "string" },
+      },
+      required: ["trade_id"],
+    },
+  },
+  {
+    name: "close_trade",
+    description:
+      "Clôture une position ouverte : renseigne le prix de sortie et le P&L, et passe le trade en clôturé.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        trade_id: { type: "string", description: "Id d'une position ouverte (voir list_open_trades)." },
+        exit_price: { type: "number" },
+        pnl: { type: "number", description: "P&L réalisé." },
+        close_time: { type: "string", description: "Date/heure ISO de clôture. Défaut : maintenant." },
+        notes: { type: "string" },
+      },
+      required: ["trade_id", "exit_price", "pnl"],
+    },
+  },
+  {
+    name: "delete_trades",
+    description:
+      "Supprime définitivement un ou plusieurs trades. NE SUPPRIME RIEN de lui-même : renvoie une demande de confirmation que le trader devra valider d'un clic. Obtiens les ids via find_trades et vérifie qu'ils correspondent bien à ce qu'il a demandé.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        trade_ids: { type: "array", items: { type: "string" }, description: `1 à ${MAX_DELETE_IDS} ids.` },
+      },
+      required: ["trade_ids"],
+    },
+  },
+  {
+    name: "reassign_trades",
+    description:
+      "Rattache un ou plusieurs trades à un compte et/ou à une stratégie. Sert quand des trades importés ne sont rattachés à rien. Passe null pour détacher.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        trade_ids: { type: "array", items: { type: "string" }, description: `1 à ${MAX_ANNOTATE_IDS} ids.` },
+        account_id: { type: "string", description: "Id de compte, ou \"none\" pour détacher." },
+        strategy_id: { type: "string", description: "Id de stratégie, ou \"none\" pour détacher." },
+      },
+      required: ["trade_ids"],
+    },
+  },
+
+  // ── Comptes (écriture) ────────────────────────────────────────────────────
+  {
+    name: "create_account",
+    description:
+      "Crée un compte de trading. type=personal pour un compte personnel, type=prop pour un challenge de prop firm (renseigne alors firm, profit_target_pct et les drawdowns).",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        type: { type: "string", enum: ["personal", "prop"] },
+        account_size: { type: "number", description: "Capital de départ." },
+        currency: { type: "string", enum: [...ACCOUNT_CURRENCIES] },
+        firm: { type: "string", description: "Nom de la prop firm (type=prop)." },
+        account_number: { type: "string", description: "Numéro ou libellé du compte." },
+        profit_target_pct: { type: "number", description: "Objectif en % (type=prop)." },
+        max_daily_dd_pct: { type: "number", description: "Drawdown journalier max en % (type=prop)." },
+        max_total_dd_pct: { type: "number", description: "Drawdown total max en % (type=prop)." },
+        market_type: { type: "string", enum: ["cfd", "futures"] },
+      },
+      required: ["type", "account_size"],
+    },
+  },
+  {
+    name: "update_account",
+    description:
+      "Modifie un compte existant (id via list_accounts). Ne renseigne que les champs à changer.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        account_id: { type: "string" },
+        account_size: { type: "number" },
+        currency: { type: "string", enum: [...ACCOUNT_CURRENCIES] },
+        firm: { type: "string" },
+        account_number: { type: "string" },
+        profit_target_pct: { type: "number" },
+        max_daily_dd_pct: { type: "number" },
+        max_total_dd_pct: { type: "number" },
+        status: { type: "string", enum: ["active", "passed", "failed", "archived"] },
+      },
+      required: ["account_id"],
+    },
+  },
 ];
 
 // ── Tiérage par plan ─────────────────────────────────────────────────────────
@@ -350,6 +582,23 @@ export const TOOL_MIN_PLAN: Record<string, PlanType> = {
   list_challenges: "free",
   find_trades: "free",
   list_strategies: "free",
+
+  list_open_trades: "free",
+  list_accounts: "free",
+  list_economic_events: "free",
+  // Le calculateur de lot est gratuit partout sur le web : le gater ne
+  // convertirait pas, il ferait seulement passer le coach pour avare.
+  calculate_position_size: "free",
+
+  // Écriture sur le journal et les comptes — exclusivité Premium. C'est la
+  // frontière entre « le coach me conseille » et « l'assistant fait le travail ».
+  create_trade: "premium",
+  update_trade: "premium",
+  close_trade: "premium",
+  delete_trades: "premium",
+  reassign_trades: "premium",
+  create_account: "premium",
+  update_account: "premium",
 
   // Coaching — plans payants
   create_goal: "plus",
@@ -992,6 +1241,376 @@ export async function executeCoachTool(
         return { result: { ok: true }, action: { type: "note_saved" } };
       }
 
+      // ── Positions et comptes (lecture) ──────────────────────────────────
+      case "list_open_trades": {
+        const { data, error } = await supabase
+          .from("trades")
+          .select("id, open_time, pair, direction, lot_size, entry_price, sl, tp, challenge_id, strategy_id")
+          .eq("user_id", userId)
+          .eq("status", "open")
+          .order("open_time", { ascending: false })
+          .limit(MAX_FIND_LIMIT);
+        if (error) return fail("Lecture des positions impossible.");
+        const now = Date.now();
+        const rows = (data ?? []) as unknown as Record<string, unknown>[];
+        return {
+          result: {
+            count: rows.length,
+            trades: rows.map((t) => ({
+              id: t.id,
+              open_time: t.open_time,
+              pair: t.pair,
+              direction: t.direction,
+              lot_size: t.lot_size,
+              entry_price: t.entry_price,
+              sl: t.sl,
+              tp: t.tp,
+              minutes_open: Math.max(0, Math.round((now - new Date(String(t.open_time)).getTime()) / 60000)),
+              account_id: t.challenge_id,
+              strategy_id: t.strategy_id,
+            })),
+          },
+        };
+      }
+
+      case "list_accounts": {
+        const { data, error } = await supabase
+          .from("prop_challenges")
+          .select("id, type, firm, account_number, account_size, currency, synced_currency, balance, status, market_type, profit_target_pct, max_daily_dd_pct, max_total_dd_pct")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(50);
+        if (error) return fail("Lecture des comptes impossible.");
+        return { result: { count: (data ?? []).length, accounts: data ?? [] } };
+      }
+
+      case "list_economic_events": {
+        const from = asIso(input.from) ?? new Date().toISOString();
+        const to = asIso(input.to) ?? new Date(Date.now() + 7 * 86_400_000).toISOString();
+        const limit = asNumber(input.limit, 1, MAX_EVENTS) ?? 15;
+        let q = supabase
+          .from("economic_events")
+          .select("event_time, currency, title, impact, forecast, previous")
+          .gte("event_time", from)
+          .lt("event_time", to)
+          .order("event_time", { ascending: true });
+        if (typeof input.currency === "string" && /^[A-Za-z]{3}$/.test(input.currency)) {
+          q = q.eq("currency", input.currency.toUpperCase());
+        }
+        // « impact minimum » : on filtre côté serveur sur les niveaux retenus,
+        // l'échelle n'étant pas ordonnable directement en SQL.
+        const levels = ["low", "medium", "high"];
+        if (typeof input.min_impact === "string" && levels.includes(input.min_impact)) {
+          q = q.in("impact", levels.slice(levels.indexOf(input.min_impact)));
+        }
+        const { data, error } = await q.limit(Math.floor(limit));
+        if (error) return fail("Calendrier économique indisponible.");
+        return { result: { count: (data ?? []).length, events: data ?? [] } };
+      }
+
+      case "calculate_position_size": {
+        const pair = typeof input.pair === "string" ? input.pair.trim().slice(0, 20) : "";
+        if (!pair) return fail("pair requis.");
+
+        // Budget de risque : soit un montant, soit un pourcentage d'un capital.
+        let risk = asNumber(input.risk_amount, 0.01, 1_000_000);
+        if (risk == null) {
+          const pct = asNumber(input.risk_pct, 0.01, 100);
+          const balance = asNumber(input.account_balance, 1, 100_000_000);
+          if (pct != null && balance != null) risk = (balance * pct) / 100;
+        }
+        if (risk == null) return fail("Indique risk_amount, ou risk_pct avec account_balance.");
+
+        // Distance du stop : fournie en pips, ou déduite des deux prix.
+        let slPips = asNumber(input.sl_pips, 0.01, 100_000);
+        if (slPips == null) {
+          const entry = asNumber(input.entry_price, 0, 10_000_000);
+          const sl = asNumber(input.sl_price, 0, 10_000_000);
+          if (entry != null && sl != null) slPips = calculatePips(pair, entry, sl);
+        }
+        if (slPips == null || slPips <= 0) return fail("Indique sl_pips, ou entry_price et sl_price.");
+
+        const contract = getFuturesContract(pair);
+        if (contract) {
+          const contracts = computeContracts({ riskAmount: risk, slPoints: slPips, pointValue: contract.pointValue });
+          return {
+            result: {
+              instrument_type: "futures",
+              symbol: contract.symbol,
+              point_value: contract.pointValue,
+              sl_points: slPips,
+              risk_budget: Math.round(risk * 100) / 100,
+              contracts,
+              actual_risk: Math.round(actualRiskForContracts({ contracts, slPoints: slPips, pointValue: contract.pointValue }) * 100) / 100,
+              note: contracts === 0
+                ? "Le budget de risque ne permet pas même 1 contrat : réduis le stop ou augmente le risque."
+                : "Arrondi au plancher : le risque réel ne dépasse jamais le budget.",
+            },
+          };
+        }
+
+        const pipValue = getDefaultPipValuePerLot(pair);
+        if (pipValue == null) {
+          return fail(`Valeur du pip inconnue pour ${pair} : demande au trader la valeur du pip par lot sur son courtier.`);
+        }
+        const lots = computeLotSize({ riskEur: risk, slPips, pipValuePerLot: pipValue });
+        if (!lots) return fail("Calcul impossible avec ces valeurs.");
+        return {
+          result: {
+            instrument_type: "cfd",
+            pair,
+            pip_value_per_lot: pipValue,
+            sl_pips: slPips,
+            risk_budget: Math.round(risk * 100) / 100,
+            lots: lots.lots,
+            note: "Valeur du pip par défaut : à confirmer sur le courtier du trader si l'instrument est exotique.",
+          },
+        };
+      }
+
+      // ── Trades (écriture) ───────────────────────────────────────────────
+      case "create_trade": {
+        const pair = typeof input.pair === "string" ? input.pair.trim().slice(0, 20).toUpperCase() : "";
+        const direction = normDirection(input.direction);
+        const lot = asNumber(input.lot_size, 0.0001, 100_000);
+        const entry = asNumber(input.entry_price, 0, 10_000_000);
+        if (!pair) return fail("pair requis.");
+        if (!direction) return fail("direction invalide (long ou short).");
+        if (lot == null) return fail("lot_size invalide.");
+        if (entry == null) return fail("entry_price invalide.");
+
+        const status = input.status === "open" ? "open" : "closed";
+        const exit = asNumber(input.exit_price, 0, 10_000_000);
+        const pnl = asNumber(input.pnl, -100_000_000, 100_000_000);
+        if (status === "closed" && (exit == null || pnl == null)) {
+          return fail("Un trade clôturé exige exit_price et pnl. Pour une position en cours, mets status=open.");
+        }
+
+        const openTime = asIso(input.open_time) ?? new Date().toISOString();
+        const row: Record<string, unknown> = {
+          user_id: userId,
+          pair,
+          direction,
+          lot_size: lot,
+          entry_price: entry,
+          status,
+          open_time: openTime,
+          exit_price: status === "closed" ? exit : null,
+          pnl: status === "closed" ? pnl : 0,
+          close_time: status === "closed" ? (asIso(input.close_time) ?? openTime) : null,
+          sl: asNumber(input.sl, 0, 10_000_000),
+          tp: asNumber(input.tp, 0, 10_000_000),
+          closed_manually: status === "closed",
+        };
+        if (isUuid(input.account_id)) row.challenge_id = input.account_id;
+        if (isUuid(input.strategy_id)) row.strategy_id = input.strategy_id;
+        if (typeof input.emotion === "string" && (EMOTIONS as readonly string[]).includes(input.emotion)) {
+          row.emotion = input.emotion;
+        }
+        if (typeof input.notes === "string" && input.notes.trim()) row.notes = input.notes.trim().slice(0, MAX_TEXT);
+
+        const { data, error } = await supabase.from("trades").insert(row).select("id").single();
+        if (error || !data) return fail("Création du trade impossible.");
+        return {
+          result: { ok: true, trade_id: data.id, status },
+          action: { type: "trade_created" },
+          undo: { op: "delete_trade", trade_id: data.id as string },
+        };
+      }
+
+      case "update_trade": {
+        if (!isUuid(input.trade_id)) return fail("trade_id invalide.");
+        const patch: Record<string, unknown> = {};
+        if (typeof input.pair === "string" && input.pair.trim()) patch.pair = input.pair.trim().slice(0, 20).toUpperCase();
+        const dir = normDirection(input.direction);
+        if (dir) patch.direction = dir;
+        for (const [key, min, max] of [
+          ["lot_size", 0.0001, 100_000], ["entry_price", 0, 10_000_000], ["exit_price", 0, 10_000_000],
+          ["pnl", -100_000_000, 100_000_000], ["sl", 0, 10_000_000], ["tp", 0, 10_000_000],
+        ] as const) {
+          const v = asNumber(input[key], min, max);
+          if (v != null) patch[key] = v;
+        }
+        for (const key of ["open_time", "close_time"] as const) {
+          const v = asIso(input[key]);
+          if (v) patch[key] = v;
+        }
+        if (typeof input.notes === "string") patch.notes = input.notes.trim().slice(0, MAX_TEXT);
+        if (Object.keys(patch).length === 0) return fail("Aucun champ à modifier.");
+
+        // Capture des valeurs actuelles pour permettre l'annulation.
+        const { data: before } = await supabase
+          .from("trades").select(Object.keys(patch).join(", "))
+          .eq("id", input.trade_id).eq("user_id", userId).maybeSingle();
+        if (!before) return fail("Trade introuvable.");
+
+        const { data, error } = await supabase
+          .from("trades").update(patch).eq("id", input.trade_id).eq("user_id", userId).select("id");
+        if (error) return fail("Modification impossible.");
+        if (!data || data.length === 0) return fail("Trade introuvable.");
+        return {
+          result: { ok: true, updated: Object.keys(patch) },
+          action: { type: "trade_updated" },
+          undo: { op: "restore_trade_fields", trade_id: input.trade_id, fields: before as unknown as Record<string, unknown> },
+        };
+      }
+
+      case "close_trade": {
+        if (!isUuid(input.trade_id)) return fail("trade_id invalide.");
+        const exit = asNumber(input.exit_price, 0, 10_000_000);
+        const pnl = asNumber(input.pnl, -100_000_000, 100_000_000);
+        if (exit == null) return fail("exit_price invalide.");
+        if (pnl == null) return fail("pnl invalide.");
+        const closeIso = asIso(input.close_time) ?? new Date().toISOString();
+
+        // Ne clôture qu'une position RÉELLEMENT ouverte : re-clôturer un trade
+        // déjà fermé écraserait son résultat sans que personne s'en aperçoive.
+        const { data: before } = await supabase
+          .from("trades").select("id, status")
+          .eq("id", input.trade_id).eq("user_id", userId).maybeSingle();
+        if (!before) return fail("Trade introuvable.");
+        if (before.status !== "open") return fail("Ce trade est déjà clôturé. Utilise update_trade pour corriger ses valeurs.");
+
+        const patch = {
+          status: "closed", exit_price: exit, pnl, close_time: closeIso,
+          closed_at: closeIso, closed_manually: true,
+          ...(typeof input.notes === "string" && input.notes.trim() ? { notes: input.notes.trim().slice(0, MAX_TEXT) } : {}),
+        };
+        const { error } = await supabase
+          .from("trades").update(patch).eq("id", input.trade_id).eq("user_id", userId);
+        if (error) return fail("Clôture impossible.");
+        return {
+          result: { ok: true, pnl },
+          action: { type: "trade_closed" },
+          undo: {
+            op: "restore_trade_fields",
+            trade_id: input.trade_id,
+            fields: { status: "open", exit_price: null, pnl: 0, close_time: null, closed_at: null, closed_manually: false },
+          },
+        };
+      }
+
+      case "delete_trades": {
+        const ids = Array.isArray(input.trade_ids) ? input.trade_ids.filter(isUuid) : [];
+        if (ids.length === 0) return fail("trade_ids invalides (utilise find_trades pour les obtenir).");
+        if (ids.length > MAX_DELETE_IDS) return fail(`Trop de trades d'un coup (max ${MAX_DELETE_IDS}).`);
+
+        // On ne supprime pas : on décrit ce qui disparaîtrait, et on attend le clic.
+        const { data } = await supabase
+          .from("trades").select("id, pair, open_time, pnl")
+          .eq("user_id", userId).in("id", ids);
+        const found = (data ?? []) as unknown as { id: string; pair: string; open_time: string }[];
+        if (found.length === 0) return fail("Aucun de ces trades n'existe.");
+        const label = found.length === 1
+          ? `le trade ${found[0].pair} du ${String(found[0].open_time).slice(0, 10)}`
+          : `${found.length} trades`;
+        return {
+          result: {
+            requires_confirmation: true,
+            what: `Suppression définitive de ${label}`,
+            trades: found.slice(0, 10),
+            instruction:
+              "Ne dis PAS que c'est fait. Annonce en une phrase ce qui va être supprimé (nombre, instruments, période) et invite le trader à cliquer Valider.",
+          },
+          confirm: { op: "delete_trades", trade_ids: found.map((t) => t.id), label },
+        };
+      }
+
+      case "reassign_trades": {
+        const ids = Array.isArray(input.trade_ids) ? input.trade_ids.filter(isUuid) : [];
+        if (ids.length === 0) return fail("trade_ids invalides.");
+        if (ids.length > MAX_ANNOTATE_IDS) return fail(`Trop de trades (max ${MAX_ANNOTATE_IDS}).`);
+
+        const patch: Record<string, unknown> = {};
+        if (input.account_id === "none") patch.challenge_id = null;
+        else if (isUuid(input.account_id)) patch.challenge_id = input.account_id;
+        if (input.strategy_id === "none") patch.strategy_id = null;
+        else if (isUuid(input.strategy_id)) patch.strategy_id = input.strategy_id;
+        if (Object.keys(patch).length === 0) return fail("Indique account_id et/ou strategy_id (ou \"none\" pour détacher).");
+
+        const { data: before } = await supabase
+          .from("trades").select("id, challenge_id, strategy_id").eq("user_id", userId).in("id", ids);
+        const rows = (before ?? []) as unknown as { id: string; challenge_id: unknown; strategy_id: unknown }[];
+        if (rows.length === 0) return fail("Aucun de ces trades n'existe.");
+
+        const { error } = await supabase
+          .from("trades").update(patch).eq("user_id", userId).in("id", rows.map((r) => r.id));
+        if (error) return fail("Rattachement impossible.");
+        return {
+          result: { ok: true, count: rows.length },
+          action: { type: "trades_reassigned", count: rows.length },
+          undo: { op: "restore_trade_links", trades: rows },
+        };
+      }
+
+      // ── Comptes (écriture) ──────────────────────────────────────────────
+      case "create_account": {
+        const type = input.type === "prop" ? "prop" : input.type === "personal" ? "personal" : null;
+        if (!type) return fail("type invalide (personal ou prop).");
+        const size = asNumber(input.account_size, 1, 100_000_000);
+        if (size == null) return fail("account_size invalide.");
+        const currency = typeof input.currency === "string" && (ACCOUNT_CURRENCIES as readonly string[]).includes(input.currency)
+          ? input.currency : "EUR";
+
+        const row: Record<string, unknown> = {
+          user_id: userId,
+          type,
+          firm: type === "prop" ? (typeof input.firm === "string" ? input.firm.trim().slice(0, 60) : "") : "",
+          account_number: typeof input.account_number === "string" ? input.account_number.trim().slice(0, 60) : "",
+          account_size: size,
+          balance: size,
+          currency,
+          market_type: input.market_type === "futures" ? "futures" : "cfd",
+          status: "active",
+          start_date: new Date().toISOString().split("T")[0],
+          profit_target_pct: type === "prop" ? (asNumber(input.profit_target_pct, 0, 100) ?? 8) : 0,
+          max_daily_dd_pct: type === "prop" ? (asNumber(input.max_daily_dd_pct, 0, 100) ?? 5) : 0,
+          max_total_dd_pct: type === "prop" ? (asNumber(input.max_total_dd_pct, 0, 100) ?? 10) : 0,
+          trailing_drawdown: false,
+        };
+        const { data, error } = await supabase.from("prop_challenges").insert(row).select("id").single();
+        if (error || !data) return fail("Création du compte impossible.");
+        return {
+          result: { ok: true, account_id: data.id },
+          action: { type: "account_created" },
+          undo: { op: "delete_account", account_id: data.id as string },
+        };
+      }
+
+      case "update_account": {
+        if (!isUuid(input.account_id)) return fail("account_id invalide.");
+        const patch: Record<string, unknown> = {};
+        const size = asNumber(input.account_size, 1, 100_000_000);
+        if (size != null) patch.account_size = size;
+        for (const key of ["profit_target_pct", "max_daily_dd_pct", "max_total_dd_pct"] as const) {
+          const v = asNumber(input[key], 0, 100);
+          if (v != null) patch[key] = v;
+        }
+        if (typeof input.currency === "string" && (ACCOUNT_CURRENCIES as readonly string[]).includes(input.currency)) {
+          patch.currency = input.currency;
+        }
+        if (typeof input.firm === "string") patch.firm = input.firm.trim().slice(0, 60);
+        if (typeof input.account_number === "string") patch.account_number = input.account_number.trim().slice(0, 60);
+        if (typeof input.status === "string" && ["active", "passed", "failed", "archived"].includes(input.status)) {
+          patch.status = input.status;
+        }
+        if (Object.keys(patch).length === 0) return fail("Aucun champ à modifier.");
+
+        const { data: before } = await supabase
+          .from("prop_challenges").select(Object.keys(patch).join(", "))
+          .eq("id", input.account_id).eq("user_id", userId).maybeSingle();
+        if (!before) return fail("Compte introuvable.");
+
+        const { error } = await supabase
+          .from("prop_challenges").update(patch).eq("id", input.account_id).eq("user_id", userId);
+        if (error) return fail("Modification impossible.");
+        return {
+          result: { ok: true, updated: Object.keys(patch) },
+          action: { type: "account_updated" },
+          undo: { op: "restore_account", account_id: input.account_id, fields: before as unknown as Record<string, unknown> },
+        };
+      }
+
       default:
         return fail(`Outil inconnu : ${name}`);
     }
@@ -1042,6 +1661,17 @@ function buildTradeQuery(
 const GOAL_COLS = new Set(["id", "user_id", "kind", "title", "metric", "target", "comparator", "period", "done", "recurring", "period_key", "streak", "best_streak", "created_at"]);
 const TAG_COLS = new Set(["id", "user_id", "strategy_id", "tag_type", "value", "label_fr", "label_en", "label_de", "label_es", "sort_order", "created_at"]);
 const TRADE_RESTORE_COLS = new Set(["emotion", "setup_quality", "tags", "notes"]);
+// Colonnes qu'une annulation d'édition peut réécrire. Volontairement limitée
+// aux champs que les outils savent modifier : une annulation ne doit jamais
+// devenir un vecteur d'écriture arbitraire sur la table des trades.
+const TRADE_EDIT_COLS = new Set([
+  "pair", "direction", "lot_size", "entry_price", "exit_price", "pnl", "sl", "tp",
+  "open_time", "close_time", "closed_at", "closed_manually", "status", "notes",
+]);
+const ACCOUNT_EDIT_COLS = new Set([
+  "account_size", "currency", "firm", "account_number", "status",
+  "profit_target_pct", "max_daily_dd_pct", "max_total_dd_pct",
+]);
 
 function pick(row: Record<string, unknown>, allowed: Set<string>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
@@ -1082,6 +1712,22 @@ export async function executeCoachConfirm(
           undo: row ? { op: "insert_goal", row: row as Record<string, unknown> } : undefined,
         };
       }
+      case "delete_trades": {
+        if (!planAllowsTool(plan, "delete_trades")) return { ok: false, error: "Action indisponible sur ce plan." };
+        const ids = Array.isArray(confirm.trade_ids) ? confirm.trade_ids.filter(isUuid) : [];
+        if (ids.length === 0) return { ok: false, error: "Identifiants invalides." };
+        if (ids.length > MAX_DELETE_IDS) return { ok: false, error: "Trop de trades." };
+        const { data, error } = await supabase
+          .from("trades").delete().eq("user_id", userId).in("id", ids).select("id");
+        if (error) return { ok: false, error: "Suppression impossible." };
+        const count = (data ?? []).length;
+        if (count === 0) return { ok: false, error: "Ces trades n'existent plus." };
+        // Pas d'annulation ici : restaurer un trade supprimé demanderait d'en
+        // recréer toutes les colonnes, y compris les dérivées. C'est justement
+        // pourquoi cette opération passe par une confirmation préalable.
+        return { ok: true, action: { type: "trades_deleted", count } };
+      }
+
       default:
         return { ok: false, error: "Opération inconnue." };
     }
@@ -1150,6 +1796,41 @@ export async function executeCoachUndo(
         const row = pick(undo.row ?? {}, TAG_COLS);
         row.user_id = userId;
         await supabase.from("strategy_tags").insert(row);
+        return { ok: true };
+      }
+      case "delete_trade": {
+        if (!isUuid(undo.trade_id)) return { ok: false, error: "invalide" };
+        await supabase.from("trades").delete().eq("id", undo.trade_id).eq("user_id", userId);
+        return { ok: true };
+      }
+      case "restore_trade_fields": {
+        if (!isUuid(undo.trade_id)) return { ok: false, error: "invalide" };
+        const fields = pick(undo.fields ?? {}, TRADE_EDIT_COLS);
+        if (Object.keys(fields).length === 0) return { ok: false, error: "rien à restaurer" };
+        await supabase.from("trades").update(fields).eq("id", undo.trade_id).eq("user_id", userId);
+        return { ok: true };
+      }
+      case "restore_trade_links": {
+        const rows = Array.isArray(undo.trades) ? undo.trades : [];
+        for (const r of rows) {
+          if (!isUuid(r?.id)) continue;
+          await supabase
+            .from("trades")
+            .update({ challenge_id: r.challenge_id ?? null, strategy_id: r.strategy_id ?? null })
+            .eq("id", r.id).eq("user_id", userId);
+        }
+        return { ok: true };
+      }
+      case "delete_account": {
+        if (!isUuid(undo.account_id)) return { ok: false, error: "invalide" };
+        await supabase.from("prop_challenges").delete().eq("id", undo.account_id).eq("user_id", userId);
+        return { ok: true };
+      }
+      case "restore_account": {
+        if (!isUuid(undo.account_id)) return { ok: false, error: "invalide" };
+        const fields = pick(undo.fields ?? {}, ACCOUNT_EDIT_COLS);
+        if (Object.keys(fields).length === 0) return { ok: false, error: "rien à restaurer" };
+        await supabase.from("prop_challenges").update(fields).eq("id", undo.account_id).eq("user_id", userId);
         return { ok: true };
       }
       default:

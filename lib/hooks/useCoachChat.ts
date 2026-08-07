@@ -27,7 +27,10 @@ export interface CoachActionEvent {
     | "trades_annotated" | "note_saved"
     | "strategy_created" | "strategy_updated"
     | "checklist_item_added" | "checklist_item_removed"
-    | "export_ready";
+    | "export_ready"
+    | "trade_created" | "trade_updated" | "trade_closed"
+    | "trades_deleted" | "trades_reassigned"
+    | "account_created" | "account_updated";
   kind?: "metric" | "custom";
   count?: number;
   filename?: string;
@@ -87,6 +90,13 @@ export function coachActionMeta(
     case "checklist_item_added": return { label: t("coach_action_checklist_added"), href: "/dashboard/strategy" };
     case "checklist_item_removed": return { label: t("coach_action_checklist_removed"), href: "/dashboard/strategy" };
     case "export_ready": return { label: t("coach_action_export_ready").replace("{n}", String(a.count ?? 0)) };
+    case "trade_created": return { label: t("coach_action_trade_created"), href: "/dashboard/trades" };
+    case "trade_updated": return { label: t("coach_action_trade_updated"), href: "/dashboard/trades" };
+    case "trade_closed": return { label: t("coach_action_trade_closed"), href: "/dashboard/trades" };
+    case "trades_deleted": return { label: t("coach_action_trades_deleted").replace("{n}", String(a.count ?? 0)), href: "/dashboard/trades" };
+    case "trades_reassigned": return { label: t("coach_action_trades_reassigned").replace("{n}", String(a.count ?? 0)), href: "/dashboard/trades" };
+    case "account_created": return { label: t("coach_action_account_created"), href: "/dashboard/accounts" };
+    case "account_updated": return { label: t("coach_action_account_updated"), href: "/dashboard/accounts" };
     default: return { label: "" };
   }
 }
