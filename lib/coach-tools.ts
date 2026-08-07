@@ -18,6 +18,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { appendCommitment, parseCoachMemory } from "@/lib/coach-memory";
 import { challengesForWeek, getCommunityChallenge, isoWeekKey } from "@/lib/community-challenges";
 import { ICT_CHECKLIST_ITEMS } from "@/lib/ict-constants";
+import type { PlanType } from "@/lib/PlanContext";
 import { startOfDateKeyUtc } from "@/lib/timezone";
 
 // ── Vocabulaire partagé avec la page Objectifs ───────────────────────────────
@@ -87,6 +88,25 @@ export type CoachUndo =
   | { op: "delete_checklist_item"; strategy_id: string; value: string }
   | { op: "insert_checklist_item"; row: Record<string, unknown> };
 
+// ── Demandes de confirmation ────────────────────────────────────────────────
+
+/**
+ * Opération irréversible mise EN ATTENTE du clic du trader.
+ *
+ * L'annulation (CoachUndo) suffit pour une annotation : on agit, on peut
+ * revenir. Elle ne suffit pas pour une suppression. « Supprime ces 12 trades »
+ * mal compris, et la donnée est partie avant que le trader ait pu réagir ;
+ * lui laisser un bouton « Annuler » revient à le faire courir après sa propre
+ * base. Ces opérations-là ne s'exécutent donc jamais depuis l'outil : elles
+ * remontent un descriptif, l'interface affiche ce qui va disparaître, et rien
+ * ne part avant que le trader ait cliqué Valider.
+ *
+ * Comme pour l'annulation, l'exécution passe par le client Supabase
+ * user-scoped : un descriptif forgé ne peut toucher que ses propres données.
+ */
+export type CoachConfirm =
+  | { op: "delete_goal"; goal_id: string; label: string };
+
 export interface CoachToolResult {
   /** Payload renvoyé au modèle (sérialisé en JSON dans le tool_result). */
   result: unknown;
@@ -94,6 +114,8 @@ export interface CoachToolResult {
   action?: CoachAction;
   /** Opération inverse (proposée comme « Annuler » sur le chip). */
   undo?: CoachUndo;
+  /** Opération irréversible en attente du clic « Valider » du trader. */
+  confirm?: CoachConfirm;
   isError?: boolean;
 }
 
@@ -303,6 +325,63 @@ export const COACH_TOOLS = [
   },
 ];
 
+// ── Tiérage par plan ─────────────────────────────────────────────────────────
+
+/**
+ * Plan minimum requis par outil.
+ *
+ * La doctrine produit est constante : le gratuit vend le DIAGNOSTIC (mesurer),
+ * les plans payants vendent le TRAITEMENT (changer). On la transpose ici :
+ *
+ *  - free    : lecture seule. Le coach explique, montre, calcule, mais n'écrit
+ *              rien. C'est cohérent avec son message unique « découverte ».
+ *  - plus    : les actions de coaching (objectifs, annotations, stratégie).
+ *              C'est le coach qui corrige tes erreurs.
+ *  - premium : l'écriture sur les trades et les comptes. C'est l'assistant qui
+ *              fait le travail à ta place, et c'est ce qui justifie l'écart de
+ *              prix : le calculateur de lot reste gratuit partout sur le web,
+ *              l'automatisation non.
+ *
+ * Un outil absent de cette table est traité comme `free` (lecture).
+ */
+export const TOOL_MIN_PLAN: Record<string, PlanType> = {
+  // Lecture — accessible à tous
+  list_goals: "free",
+  list_challenges: "free",
+  find_trades: "free",
+  list_strategies: "free",
+
+  // Coaching — plans payants
+  create_goal: "plus",
+  update_goal: "plus",
+  delete_goal: "plus",
+  manage_challenge: "plus",
+  annotate_trades: "plus",
+  create_strategy: "plus",
+  update_strategy: "plus",
+  add_checklist_item: "plus",
+  remove_checklist_item: "plus",
+  export_trades: "plus",
+  save_coach_note: "plus",
+};
+
+const PLAN_RANK: Record<PlanType, number> = { free: 0, plus: 1, premium: 2 };
+
+/** Le plan couvre-t-il cet outil ? */
+export function planAllowsTool(plan: PlanType, toolName: string): boolean {
+  return PLAN_RANK[plan] >= PLAN_RANK[TOOL_MIN_PLAN[toolName] ?? "free"];
+}
+
+/**
+ * Catalogue filtré pour un plan. On n'envoie au modèle QUE les outils dont le
+ * trader dispose : lui montrer une capacité qu'il ne peut pas utiliser produit
+ * des promesses non tenues (« je vais supprimer ce trade… ») bien pires qu'une
+ * absence. L'upsell se fait dans l'interface, pas dans la bouche du coach.
+ */
+export function coachToolsForPlan(plan: PlanType): typeof COACH_TOOLS {
+  return COACH_TOOLS.filter((t) => planAllowsTool(plan, t.name));
+}
+
 // ── Helpers de validation ────────────────────────────────────────────────────
 
 function fail(message: string): CoachToolResult {
@@ -413,7 +492,15 @@ export async function executeCoachTool(
   input: Record<string, unknown>,
   /** Fuseau du trader : « hier » est un jour local, pas un jour UTC. */
   timezone?: string,
+  /** Plan du trader. Recontrôlé ici même si le catalogue est déjà filtré. */
+  plan: PlanType = "premium",
 ): Promise<CoachToolResult> {
+  // Défense en profondeur : le catalogue envoyé au modèle est déjà filtré par
+  // coachToolsForPlan, donc ce cas ne devrait pas se produire. Il couvre le
+  // jour où un outil est ajouté sans être classé, ou un bug de filtrage.
+  if (!planAllowsTool(plan, name)) {
+    return fail("Cette action n'est pas disponible sur le plan du trader.");
+  }
   try {
     switch (name) {
       case "list_goals": {
@@ -522,25 +609,25 @@ export async function executeCoachTool(
 
       case "delete_goal": {
         if (!isUuid(input.goal_id)) return fail("goal_id invalide.");
-        // Capture de la ligne complète avant suppression (pour la restaurer).
+        // On NE SUPPRIME PAS ici. On vérifie que l'objectif existe, et on
+        // remonte une demande de confirmation : l'interface affichera ce qui
+        // va disparaître, et la suppression n'aura lieu qu'au clic du trader.
         const { data: row } = await supabase
           .from("goals")
-          .select("*")
+          .select("id, title")
           .eq("id", input.goal_id)
           .eq("user_id", userId)
           .maybeSingle();
-        const { data, error } = await supabase
-          .from("goals")
-          .delete()
-          .eq("id", input.goal_id)
-          .eq("user_id", userId)
-          .select("id");
-        if (error) return fail("Suppression impossible.");
-        if (!data || data.length === 0) return fail("Objectif introuvable.");
+        if (!row) return fail("Objectif introuvable.");
+        const label = typeof row.title === "string" && row.title.trim() ? row.title.trim().slice(0, 80) : "cet objectif";
         return {
-          result: { ok: true },
-          action: { type: "goal_deleted" },
-          undo: row ? { op: "insert_goal", row: row as Record<string, unknown> } : undefined,
+          result: {
+            requires_confirmation: true,
+            what: `Suppression de l'objectif « ${label} »`,
+            instruction:
+              "Ne dis PAS que c'est fait. Annonce en une phrase ce qui va être supprimé et invite le trader à cliquer Valider. N'appelle pas d'autre outil pour cette suppression.",
+          },
+          confirm: { op: "delete_goal", goal_id: row.id as string, label },
         };
       }
 
@@ -960,6 +1047,47 @@ function pick(row: Record<string, unknown>, allowed: Set<string>): Record<string
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(row)) if (allowed.has(k)) out[k] = v;
   return out;
+}
+
+/**
+ * Exécute une opération irréversible APRÈS le clic « Valider » du trader.
+ *
+ * Miroir d'executeCoachUndo, mêmes garanties : client user-scoped (RLS),
+ * identifiants validés, écritures bornées à `user_id`. Renvoie l'opération
+ * inverse quand elle existe, pour que le chip devienne annulable une fois
+ * l'action faite — la confirmation protège du geste involontaire, l'annulation
+ * reste utile en cas de regret.
+ */
+export async function executeCoachConfirm(
+  supabase: SupabaseClient,
+  userId: string,
+  confirm: CoachConfirm,
+  plan: PlanType = "premium",
+): Promise<{ ok: boolean; error?: string; action?: CoachAction; undo?: CoachUndo }> {
+  try {
+    switch (confirm.op) {
+      case "delete_goal": {
+        if (!planAllowsTool(plan, "delete_goal")) return { ok: false, error: "Action indisponible sur ce plan." };
+        if (!isUuid(confirm.goal_id)) return { ok: false, error: "Identifiant invalide." };
+        // Capture avant suppression, pour rendre l'annulation possible ensuite.
+        const { data: row } = await supabase
+          .from("goals").select("*").eq("id", confirm.goal_id).eq("user_id", userId).maybeSingle();
+        const { data, error } = await supabase
+          .from("goals").delete().eq("id", confirm.goal_id).eq("user_id", userId).select("id");
+        if (error) return { ok: false, error: "Suppression impossible." };
+        if (!data || data.length === 0) return { ok: false, error: "Objectif introuvable." };
+        return {
+          ok: true,
+          action: { type: "goal_deleted" },
+          undo: row ? { op: "insert_goal", row: row as Record<string, unknown> } : undefined,
+        };
+      }
+      default:
+        return { ok: false, error: "Opération inconnue." };
+    }
+  } catch {
+    return { ok: false, error: "Opération impossible." };
+  }
 }
 
 export async function executeCoachUndo(

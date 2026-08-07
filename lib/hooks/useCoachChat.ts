@@ -43,12 +43,30 @@ export interface CoachActionItem {
   undone?: boolean;
 }
 
+/**
+ * Opération irréversible proposée par le coach, en attente du clic du trader.
+ *
+ * Elle n'a PAS été exécutée : le serveur remonte le descriptif, l'interface
+ * affiche ce qui va disparaître, et rien ne part avant « Valider ». Une fois
+ * validée, elle devient une action ordinaire (donc annulable).
+ */
+export type CoachConfirm = { op: string; label?: string; [k: string]: unknown };
+
+export interface CoachConfirmItem {
+  confirm: CoachConfirm;
+  /** idle : en attente · done : validée · cancelled : refusée · error : échec */
+  state: "idle" | "pending" | "done" | "cancelled" | "error";
+  /** Action résultante, une fois validée (porte l'annulation). */
+  result?: CoachActionItem;
+}
+
 export interface ChatMessage {
   id?: string;
   role: "user" | "assistant";
   content: string;
   created_at?: string;
   actions?: CoachActionItem[];
+  confirms?: CoachConfirmItem[];
 }
 
 /** Libellé + lien du chip affiché quand le coach a agi. */
@@ -194,7 +212,8 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
       // NDJSON : {t:"text",d} = delta, {t:"action",a,u} = chip + annulation.
       let answer = "";
       const actions: CoachActionItem[] = [];
-      setMessages([...next, { role: "assistant", content: "", actions: [] }]);
+      const confirms: CoachConfirmItem[] = [];
+      setMessages([...next, { role: "assistant", content: "", actions: [], confirms: [] }]);
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
@@ -204,7 +223,8 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
         try {
           const evt = JSON.parse(trimmed) as
             | { t: "text"; d: string }
-            | { t: "action"; a: CoachActionEvent; u?: CoachUndo };
+            | { t: "action"; a: CoachActionEvent; u?: CoachUndo }
+            | { t: "confirm"; c: CoachConfirm };
           if (evt.t === "text") answer += evt.d;
           else if (evt.t === "action") {
             if (evt.a.type === "export_ready" && evt.a.filename && evt.a.csv) {
@@ -213,11 +233,19 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
             const { csv, ...actionLite } = evt.a;
             void csv;
             actions.push({ action: actionLite, undo: evt.u });
+          } else if (evt.t === "confirm") {
+            // Rien n'a été exécuté : on pose la demande, le trader tranche.
+            confirms.push({ confirm: evt.c, state: "idle" });
           }
         } catch {
           return; // ligne partielle, le flush final rattrape
         }
-        setMessages([...next, { role: "assistant", content: answer, actions: actions.map((a) => ({ ...a })) }]);
+        setMessages([...next, {
+          role: "assistant",
+          content: answer,
+          actions: actions.map((a) => ({ ...a })),
+          confirms: confirms.map((c) => ({ ...c })),
+        }]);
       };
       if (reader) {
         for (;;) {
@@ -256,6 +284,42 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
     }
   }, [input, messages, loading, remaining, dailyCount, supabase, lang, demoMode, plan, pageContext, t, onAnswered]);
 
+  /**
+   * Tranche une opération irréversible proposée par le coach.
+   *
+   * `accept = false` se contente de refermer la proposition : rien n'a été
+   * exécuté côté serveur, il n'y a donc rien à défaire. `accept = true`
+   * déclenche l'opération, qui devient ensuite une action annulable ordinaire.
+   */
+  const resolveConfirm = useCallback(async (messageIndex: number, confirmIndex: number, accept: boolean) => {
+    const target = messages[messageIndex]?.confirms?.[confirmIndex];
+    if (!target || target.state !== "idle") return;
+
+    const patch = (fields: Partial<CoachConfirmItem>) =>
+      setMessages((prev) => prev.map((m, mi) => mi !== messageIndex ? m : {
+        ...m,
+        confirms: (m.confirms ?? []).map((c, ci) => (ci === confirmIndex ? { ...c, ...fields } : c)),
+      }));
+
+    if (!accept) { patch({ state: "cancelled" }); return; }
+    patch({ state: "pending" });
+    try {
+      const res = await fetch("/api/coach-confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: target.confirm }),
+      });
+      if (!res.ok) { patch({ state: "error" }); return; }
+      const body = (await res.json()) as { action?: CoachActionEvent; undo?: CoachUndo };
+      patch({
+        state: "done",
+        result: body.action ? { action: body.action, undo: body.undo } : undefined,
+      });
+    } catch {
+      patch({ state: "error" });
+    }
+  }, [messages]);
+
   /** Rejoue l'opération inverse côté serveur puis marque le chip comme annulé. */
   const undo = useCallback(async (messageIndex: number, actionIndex: number) => {
     const target = messages[messageIndex]?.actions?.[actionIndex];
@@ -279,7 +343,7 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
   return {
     messages, setMessages,
     input, setInput,
-    loading, send, undo,
+    loading, send, undo, resolveConfirm,
     dailyCount, setDailyCount,
     remaining, limit, canChat, isPaidPlan, freeTasterUsed,
     hasOlderChat, setHasOlderChat,

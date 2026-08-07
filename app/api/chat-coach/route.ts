@@ -6,7 +6,7 @@ import { requireAuth, consumeQuota, refundQuota } from "@/lib/api-auth";
 import { addDaysToDateKey, localDateKey } from "@/lib/timezone";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 import { parseCoachMemory, renderCoachMemory } from "@/lib/coach-memory";
-import { COACH_TOOLS, executeCoachTool } from "@/lib/coach-tools";
+import { coachToolsForPlan, executeCoachTool } from "@/lib/coach-tools";
 import type { PlanType } from "@/lib/PlanContext";
 import { sanitizeUserInput } from "@/lib/prompt-sanitizer";
 import { createClient as createSupabaseServer } from "@/lib/supabase/server";
@@ -206,7 +206,7 @@ You are an expert trading coach specializing in trading psychology, strategy ana
 ACTIONS — TU PEUX AGIR SUR LE JOURNAL DU TRADER :
 Tu disposes d'outils pour créer, modifier ou supprimer ses objectifs, l'inscrire à des challenges communautaires, rechercher et annoter ses trades (émotion, qualité du setup, tags, note de journal) et mémoriser ses engagements.
 - Quand le trader demande une action, exécute-la directement avec les outils, puis confirme en une phrase ce que tu as fait. Pas besoin de re-demander la permission pour ce qu'il vient de demander.
-- EXCEPTION : pour toute suppression (delete_goal), demande d'abord une confirmation explicite dans la conversation.
+- SUPPRESSIONS : elles ne s'exécutent JAMAIS depuis l'outil. L'outil te renvoie un champ requires_confirmation : cela signifie que RIEN n'a été supprimé et qu'un bouton « Valider » vient d'apparaître pour le trader. Annonce alors en une phrase ce qui va disparaître et invite-le à cliquer. Ne dis jamais que c'est fait, ne rappelle pas l'outil, n'essaie pas de contourner : c'est le clic du trader qui déclenche l'opération.
 - Pour annoter des trades, obtiens leurs ids via find_trades. N'invente JAMAIS un id.
 - Si une demande est ambiguë (quel objectif ? quels trades ?), pose UNE question courte plutôt que de deviner.
 - Si un outil renvoie une erreur, explique simplement et propose une alternative — n'insiste pas en boucle.
@@ -250,8 +250,16 @@ RULES:
 - Analyze data, do not repeat it raw
 - If you cannot answer with the available data, say so`;
 
+    // Catalogue filtré par plan : on n'expose au modèle que ce que ce trader
+    // peut réellement faire. Lui montrer une capacité hors de son plan produit
+    // des promesses non tenues, plus frustrantes qu'une absence — l'upsell se
+    // fait dans l'interface, pas dans la bouche du coach. Le filtre change le
+    // préfixe caché, mais il est stable pour un trader donné : pas d'impact.
+    const availableTools = coachToolsForPlan(plan);
+
     // ── 6. Boucle agentique streamée : texte + actions en NDJSON ──
-    // Chaque ligne est un JSON : {t:"text",d} (delta), {t:"action",a} (chip UI).
+    // Chaque ligne est un JSON : {t:"text",d} (delta), {t:"action",a} (chip UI),
+    // {t:"confirm",c} (opération irréversible en attente du clic du trader).
     const conversation: Anthropic.MessageParam[] = sanitizedMessages.map((m) => ({
       role: m.role,
       content: m.content,
@@ -325,7 +333,7 @@ RULES:
               max_tokens: 1500,
               system: cachedSystem,
               messages: withConversationCache(conversation),
-              tools: COACH_TOOLS,
+              tools: availableTools,
             });
 
             for await (const event of claudeStream) {
@@ -367,8 +375,12 @@ RULES:
                 tu.name,
                 (tu.input ?? {}) as Record<string, unknown>,
                 timezone,
+                plan,
               );
               if (outcome.action) send({ t: "action", a: outcome.action, u: outcome.undo });
+              // Opération irréversible : rien n'a été fait, on remonte la
+              // demande au client qui affichera Valider / Annuler.
+              if (outcome.confirm) send({ t: "confirm", c: outcome.confirm });
               results.push({
                 type: "tool_result",
                 tool_use_id: tu.id,

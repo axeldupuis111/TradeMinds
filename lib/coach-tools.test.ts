@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { executeCoachTool, executeCoachUndo, COACH_TOOLS, type CoachUndo } from "./coach-tools";
+import { executeCoachConfirm, executeCoachTool, executeCoachUndo, COACH_TOOLS, type CoachUndo } from "./coach-tools";
 import { CHALLENGE_POOL, challengesForWeek, isoWeekKey } from "./community-challenges";
 
 const USER = "11111111-1111-1111-1111-111111111111";
@@ -97,9 +97,58 @@ describe("update_goal / delete_goal — validation", () => {
   });
 
   it("signale un objectif introuvable (0 ligne)", async () => {
-    const { client } = mockClient({ data: [], error: null });
+    // maybeSingle renvoie null quand l'objectif n'existe pas : rien à confirmer.
+    const { client } = mockClient({ data: null, error: null });
     const r = await executeCoachTool(client, USER, "delete_goal", { goal_id: TRADE });
     expect(r.isError).toBe(true);
+  });
+
+  it("NE SUPPRIME PAS : delete_goal demande une confirmation", async () => {
+    const { client, calls } = mockClient({ data: { id: TRADE, title: "Zéro trade avant 9h" }, error: null });
+    const r = await executeCoachTool(client, USER, "delete_goal", { goal_id: TRADE });
+    expect(r.isError).toBeFalsy();
+    // Aucune suppression déclenchée par l'outil : c'est le clic qui l'exécute.
+    expect(called(calls, "delete")).toBe(false);
+    expect(r.confirm).toMatchObject({ op: "delete_goal", goal_id: TRADE });
+    expect(r.confirm?.label).toBe("Zéro trade avant 9h");
+    expect((r.result as { requires_confirmation?: boolean }).requires_confirmation).toBe(true);
+  });
+
+  it("rejette un goal_id non-UUID sans rien lire", async () => {
+    const { client, calls } = mockClient();
+    const r = await executeCoachTool(client, USER, "delete_goal", { goal_id: "nope" });
+    expect(r.isError).toBe(true);
+    expect(called(calls, "from")).toBe(false);
+  });
+});
+
+describe("executeCoachConfirm", () => {
+  it("supprime réellement l'objectif une fois validé, et rend l'annulation", async () => {
+    const { client, calls } = mockClient({ data: [{ id: TRADE }], error: null });
+    const r = await executeCoachConfirm(client, USER, { op: "delete_goal", goal_id: TRADE, label: "x" });
+    expect(r.ok).toBe(true);
+    expect(called(calls, "delete")).toBe(true);
+    expect(r.action).toEqual({ type: "goal_deleted" });
+  });
+
+  it("refuse un identifiant invalide", async () => {
+    const { client, calls } = mockClient();
+    const r = await executeCoachConfirm(client, USER, { op: "delete_goal", goal_id: "nope", label: "x" });
+    expect(r.ok).toBe(false);
+    expect(called(calls, "delete")).toBe(false);
+  });
+
+  it("refuse quand le plan ne couvre pas l'action", async () => {
+    const { client, calls } = mockClient();
+    const r = await executeCoachConfirm(client, USER, { op: "delete_goal", goal_id: TRADE, label: "x" }, "free");
+    expect(r.ok).toBe(false);
+    expect(called(calls, "delete")).toBe(false);
+  });
+
+  it("signale un objectif déjà disparu au lieu de prétendre l'avoir supprimé", async () => {
+    const { client } = mockClient({ data: [], error: null });
+    const r = await executeCoachConfirm(client, USER, { op: "delete_goal", goal_id: TRADE, label: "x" });
+    expect(r.ok).toBe(false);
   });
 });
 
