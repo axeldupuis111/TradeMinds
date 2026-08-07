@@ -508,7 +508,7 @@ export const COACH_TOOLS = [
   {
     name: "delete_trades",
     description:
-      "Supprime définitivement un ou plusieurs trades. NE SUPPRIME RIEN de lui-même : renvoie une demande de confirmation que le trader devra valider d'un clic. Obtiens les ids via find_trades et vérifie qu'ils correspondent bien à ce qu'il a demandé.",
+      "Supprime définitivement un ou plusieurs trades. DEUX ÉTAPES OBLIGATOIRES : appelle d'abord find_trades pour obtenir les vrais ids (n'en devine jamais un), puis appelle cet outil. Il NE SUPPRIME RIEN lui-même : il renvoie une demande de confirmation que le trader valide d'un clic. En cas d'erreur, aucun bouton n'apparaît : corrige et rappelle-le.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -887,7 +887,11 @@ export async function executeCoachTool(
           .eq("id", input.goal_id)
           .eq("user_id", userId)
           .maybeSingle();
-        if (!row) return fail("Objectif introuvable.");
+        if (!row) {
+          return fail(
+            "Objectif introuvable. AUCUN bouton de validation n'est apparu. Appelle list_goals pour retrouver le bon id.",
+          );
+        }
         const label = typeof row.title === "string" && row.title.trim() ? row.title.trim().slice(0, 80) : "cet objectif";
         return {
           result: {
@@ -1512,15 +1516,29 @@ export async function executeCoachTool(
 
       case "delete_trades": {
         const ids = Array.isArray(input.trade_ids) ? input.trade_ids.filter(isUuid) : [];
-        if (ids.length === 0) return fail("trade_ids invalides (utilise find_trades pour les obtenir).");
-        if (ids.length > MAX_DELETE_IDS) return fail(`Trop de trades d'un coup (max ${MAX_DELETE_IDS}).`);
+        // Messages d'erreur ACTIONNABLES : c'est un modèle qui les lit, et sans
+        // consigne explicite il improvise. Un échec ici signifie qu'aucun bouton
+        // n'est apparu côté trader ; s'il l'ignore, il annonce une validation
+        // qui n'existe pas.
+        if (ids.length === 0) {
+          return fail(
+            "Aucun identifiant valide. AUCUN bouton de validation n'est apparu. Appelle find_trades pour obtenir les vrais ids, puis rappelle delete_trades avec eux.",
+          );
+        }
+        if (ids.length > MAX_DELETE_IDS) {
+          return fail(`Trop de trades d'un coup (max ${MAX_DELETE_IDS}). Aucun bouton n'est apparu : refais la demande par lots plus petits.`);
+        }
 
         // On ne supprime pas : on décrit ce qui disparaîtrait, et on attend le clic.
         const { data } = await supabase
           .from("trades").select("id, pair, open_time, pnl")
           .eq("user_id", userId).in("id", ids);
         const found = (data ?? []) as unknown as { id: string; pair: string; open_time: string }[];
-        if (found.length === 0) return fail("Aucun de ces trades n'existe.");
+        if (found.length === 0) {
+          return fail(
+            "Aucun de ces trades n'existe. AUCUN bouton de validation n'est apparu. Vérifie les ids avec find_trades avant de réessayer.",
+          );
+        }
         const dates = found.map((t) => new Date(t.open_time).getTime()).filter((n) => !Number.isNaN(n)).sort();
         const label = found.length === 1
           ? `le trade ${found[0].pair} du ${humanDate(found[0].open_time, language, timezone)}`

@@ -264,3 +264,38 @@ describe("libellé de confirmation", () => {
     expect(label).toContain("7 août 2026");
   });
 });
+
+describe("échec d'une suppression : le modèle doit savoir qu'aucun bouton n'est apparu", () => {
+  it("dit explicitement qu'il n'y a pas de bouton et quoi faire, sur ids invalides", async () => {
+    const { client } = mockClient();
+    const r = await executeCoachTool(client, USER, "delete_trades", { trade_ids: ["pas-un-uuid"] });
+    expect(r.isError).toBe(true);
+    const msg = (r.result as { error: string }).error;
+    // Sans cette mention, le coach annonce « clique sur Valider » alors que
+    // rien n'est apparu à l'écran (incident constaté le 2026-08-07).
+    expect(msg).toContain("AUCUN bouton");
+    expect(msg).toContain("find_trades");
+  });
+
+  it("dit la même chose quand les trades n'existent plus", async () => {
+    const { client } = mockClient({ data: [], error: null });
+    const r = await executeCoachTool(client, USER, "delete_trades", { trade_ids: [ID] });
+    expect(r.isError).toBe(true);
+    expect((r.result as { error: string }).error).toContain("AUCUN bouton");
+  });
+
+  it("fait de même pour un objectif introuvable", async () => {
+    const { client } = mockClient({ data: null, error: null });
+    const r = await executeCoachTool(client, USER, "delete_goal", { goal_id: ID });
+    expect(r.isError).toBe(true);
+    const msg = (r.result as { error: string }).error;
+    expect(msg).toContain("AUCUN bouton");
+    expect(msg).toContain("list_goals");
+  });
+
+  it("un échec ne remonte jamais de demande de confirmation", async () => {
+    const { client } = mockClient({ data: [], error: null });
+    const r = await executeCoachTool(client, USER, "delete_trades", { trade_ids: [ID] });
+    expect(r.confirm).toBeUndefined();
+  });
+});
