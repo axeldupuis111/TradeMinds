@@ -101,6 +101,22 @@ export function coachActionMeta(
   }
 }
 
+/**
+ * Horodatages de la paire question/réponse, garantis distincts et ordonnés.
+ *
+ * Les deux messages étaient insérés dans le MÊME appel, donc Postgres leur
+ * donnait le même `created_at` par défaut. Au rechargement, `order(created_at)`
+ * n'avait plus de quoi les départager et rendait la réponse AVANT sa question
+ * une fois sur deux. Relevé en base : 19 horodatages sur 19 étaient partagés.
+ *
+ * On écrit donc les deux dates explicitement, et on force au moins une
+ * milliseconde d'écart pour que l'ordre ne dépende jamais du hasard.
+ */
+export function pairTimestamps(sentAt: number, answeredAt: number): { user: string; assistant: string } {
+  const assistant = Math.max(answeredAt, sentAt + 1);
+  return { user: new Date(sentAt).toISOString(), assistant: new Date(assistant).toISOString() };
+}
+
 function downloadCsv(filename: string, csv: string) {
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
@@ -171,6 +187,9 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
     const msg = (raw ?? input).trim();
     if (!msg || loading) return;
     if (remaining <= 0) return;
+    // Instant de l'envoi : sert d'horodatage à la question, pour que la
+    // réponse porte une date strictement postérieure (cf. pairTimestamps).
+    const sentAt = Date.now();
 
     const next: ChatMessage[] = [...messages, { role: "user", content: msg }];
     setMessages(next);
@@ -269,9 +288,13 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
         if (buffer) applyEvent(buffer);
       }
 
+      // Dates écrites explicitement : sans cela les deux lignes du même INSERT
+      // partagent le created_at par défaut, et l'ordre au rechargement devient
+      // arbitraire (la réponse s'affichait alors au-dessus de sa question).
+      const ts = pairTimestamps(sentAt, Date.now());
       await supabase.from("chat_messages").insert([
-        { user_id: user.id, role: "user", content: msg },
-        { user_id: user.id, role: "assistant", content: answer },
+        { user_id: user.id, role: "user", content: msg, created_at: ts.user },
+        { user_id: user.id, role: "assistant", content: answer, created_at: ts.assistant },
       ]);
       await supabase.from("ai_analysis_history").insert({ user_id: user.id, question: msg, answer });
 
