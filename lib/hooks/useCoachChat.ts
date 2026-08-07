@@ -30,7 +30,12 @@ export interface CoachActionEvent {
     | "export_ready"
     | "trade_created" | "trade_updated" | "trade_closed"
     | "trades_deleted" | "trades_reassigned"
-    | "account_created" | "account_updated";
+    | "account_created" | "account_updated"
+    | "session_started" | "session_ended"
+    | "navigate";
+  /** navigate : destination proposée au trader (c'est lui qui clique). */
+  href?: string;
+  page?: string;
   kind?: "metric" | "custom";
   count?: number;
   filename?: string;
@@ -97,6 +102,12 @@ export function coachActionMeta(
     case "trades_reassigned": return { label: t("coach_action_trades_reassigned").replace("{n}", String(a.count ?? 0)), href: "/dashboard/trades" };
     case "account_created": return { label: t("coach_action_account_created"), href: "/dashboard/accounts" };
     case "account_updated": return { label: t("coach_action_account_updated"), href: "/dashboard/accounts" };
+    case "session_started": return { label: t("coach_action_session_started"), href: "/dashboard/session" };
+    case "session_ended": return { label: t("coach_action_session_ended"), href: "/dashboard/session" };
+    // Navigation : le coach ne déplace jamais le trader de force, il pose un
+    // lien. Un changement de page decidé par un modèle serait intrusif, et
+    // ferait perdre au trader ce qu'il était en train de regarder.
+    case "navigate": return { label: t("coach_action_navigate"), href: a.href };
     default: return { label: "" };
   }
 }

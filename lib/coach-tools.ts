@@ -17,6 +17,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { appendCommitment, parseCoachMemory } from "@/lib/coach-memory";
 import { challengesForWeek, getCommunityChallenge, isoWeekKey } from "@/lib/community-challenges";
+import { computeTradeStats, type InsightTrade } from "@/lib/analysis-insights";
+import { resolveAccountBalance, type SyncedAccountState } from "@/lib/challenge-balance";
 import { getFuturesContract } from "@/lib/futures-contracts";
 import { ICT_CHECKLIST_ITEMS } from "@/lib/ict-constants";
 import { calculatePips } from "@/lib/pips";
@@ -27,7 +29,7 @@ import {
   getDefaultPipValuePerLot,
 } from "@/lib/position-sizing";
 import type { PlanType } from "@/lib/PlanContext";
-import { startOfDateKeyUtc } from "@/lib/timezone";
+import { localDateKey as localDateKeyFor, startOfDateKeyUtc } from "@/lib/timezone";
 
 // ── Vocabulaire partagé avec la page Objectifs ───────────────────────────────
 
@@ -73,6 +75,19 @@ const MAX_DELETE_IDS = 25;
 
 /** Devises acceptées à la création d'un compte (mêmes valeurs que l'interface). */
 const ACCOUNT_CURRENCIES = ["EUR", "USD", "GBP", "CHF", "CAD", "AUD", "JPY"] as const;
+
+/**
+ * Pages vers lesquelles le coach peut orienter le trader.
+ *
+ * La navigation ne fait que PROPOSER un lien : c'est le trader qui clique.
+ * Elle couvre donc aussi les pages dont les actions lui sont réservées
+ * (réglages, abonnement), puisque l'y emmener ne décide rien à sa place.
+ */
+const COACH_PAGES = [
+  "dashboard", "trades", "analysis", "analytics", "calendar", "goals", "session",
+  "strategy", "sizer", "accounts", "challenge", "leaderboard", "macro", "review",
+  "community", "settings", "upgrade",
+] as const;
 
 /** Sens normalisé : le modèle dit « buy » ou « long », la base stocke l'un des deux. */
 function normDirection(v: unknown): "long" | "short" | null {
@@ -135,7 +150,10 @@ export type CoachAction =
   | { type: "trades_deleted"; count: number }
   | { type: "trades_reassigned"; count: number }
   | { type: "account_created" }
-  | { type: "account_updated" };
+  | { type: "account_updated" }
+  | { type: "session_started" }
+  | { type: "session_ended" }
+  | { type: "navigate"; href: string; page: string };
 
 // ── Opérations d'annulation (rejouées par executeCoachUndo) ─────────────────
 
@@ -152,7 +170,9 @@ export type CoachUndo =
   | { op: "restore_trade_fields"; trade_id: string; fields: Record<string, unknown> }
   | { op: "restore_trade_links"; trades: { id: string; challenge_id: unknown; strategy_id: unknown }[] }
   | { op: "delete_account"; account_id: string }
-  | { op: "restore_account"; account_id: string; fields: Record<string, unknown> };
+  | { op: "restore_account"; account_id: string; fields: Record<string, unknown> }
+  | { op: "delete_session"; session_id: string }
+  | { op: "reopen_session"; session_id: string };
 
 // ── Demandes de confirmation ────────────────────────────────────────────────
 
@@ -532,6 +552,90 @@ export const COACH_TOOLS = [
     },
   },
 
+  // ── État du challenge, performance, macro, session ────────────────────────
+  {
+    name: "get_challenge_status",
+    description:
+      "État d'avancement d'un challenge de prop firm : solde, progression vers l'objectif, drawdown journalier et total encore disponibles, jours écoulés. Utilise-le dès que le trader demande « il me reste combien », « où j'en suis » ou parle de son challenge.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        account_id: { type: "string", description: "Compte visé. Par défaut : le challenge prop actif le plus récent." },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "get_performance",
+    description:
+      "Performance détaillée sur une dimension précise : par instrument, heure de la journée, jour de la semaine, sens, émotion ou setup. Répond à « ma perf du mardi », « je gagne à quelle heure », « mes shorts valent quoi ». Chiffres calculés par le serveur, donc fiables.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        dimension: { type: "string", enum: ["pair", "hour", "weekday", "direction", "emotion", "setup"] },
+        date_from: { type: "string", description: "Date ISO de début (incluse)." },
+        date_to: { type: "string", description: "Date ISO de fin (exclue)." },
+      },
+      required: ["dimension"],
+    },
+  },
+  {
+    name: "get_macro_briefing",
+    description:
+      "Analyse macro du jour (contexte de marché, thèmes, actifs à surveiller). Déjà rédigée par le serveur chaque matin : la lire ne coûte aucun quota au trader.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        date: { type: "string", description: "Date ISO. Défaut : le briefing le plus récent." },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "start_session",
+    description:
+      "Démarre la session de trading du jour avec l'état émotionnel du trader. À proposer quand il annonce qu'il va trader et qu'aucune session n'est ouverte.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        emotion: { type: "string", enum: [...EMOTIONS], description: "Son état avant de trader." },
+      },
+      required: ["emotion"],
+    },
+  },
+  {
+    name: "end_session",
+    description:
+      "Clôture la session de trading en cours, avec une note de débrief facultative.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        debrief: { type: "string", description: `Bilan de la session (max ${MAX_TEXT} caractères).` },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "open_page",
+    description:
+      "Emmène le trader sur une page du site, filtres déjà appliqués. Sert quand il veut VOIR quelque chose plutôt que se le faire raconter, ou pour une action que tu ne peux pas faire toi-même (lancer une analyse IA, importer un CSV, gérer son abonnement). Annonce-lui où tu l'emmènes.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        page: {
+          type: "string",
+          enum: [...COACH_PAGES],
+          description: "Destination.",
+        },
+        pair: { type: "string", description: "Filtre instrument (page trades)." },
+        result: { type: "string", enum: ["win", "loss"], description: "Filtre résultat (page trades)." },
+        date_from: { type: "string", description: "Filtre date de début (page trades)." },
+        date_to: { type: "string", description: "Filtre date de fin (page trades)." },
+      },
+      required: ["page"],
+    },
+  },
+
   // ── Comptes (écriture) ────────────────────────────────────────────────────
   {
     name: "create_account",
@@ -604,6 +708,15 @@ export const TOOL_MIN_PLAN: Record<string, PlanType> = {
   list_open_trades: "free",
   list_accounts: "free",
   list_economic_events: "free",
+  get_challenge_status: "free",
+  get_performance: "free",
+  open_page: "free",
+  // La macro est une exclusivite Premium : la lire par le coach ne doit pas
+  // devenir une porte derobee vers un contenu que les autres plans paient.
+  get_macro_briefing: "premium",
+  // La session est le rituel quotidien des plans payants.
+  start_session: "plus",
+  end_session: "plus",
   // Le calculateur de lot est gratuit partout sur le web : le gater ne
   // convertirait pas, il ferait seulement passer le coach pour avare.
   calculate_position_size: "free",
@@ -1590,6 +1703,200 @@ export async function executeCoachTool(
         };
       }
 
+      // ── Challenge, performance, macro, session, navigation ──────────────
+      case "get_challenge_status": {
+        let q = supabase
+          .from("prop_challenges")
+          .select("id, type, firm, account_size, currency, synced_balance, synced_equity, synced_open_positions, synced_at, profit_target_pct, max_daily_dd_pct, max_total_dd_pct, start_date, status")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false });
+        if (isUuid(input.account_id)) q = q.eq("id", input.account_id);
+        else q = q.eq("type", "prop").eq("status", "active");
+        const { data: accounts, error } = await q.limit(1);
+        if (error) return fail("Lecture du challenge impossible.");
+        const acc = (accounts ?? [])[0] as unknown as Record<string, unknown> | undefined;
+        if (!acc) return fail("Aucun challenge de prop firm actif. Utilise list_accounts pour voir les comptes existants.");
+
+        const { data: trades } = await supabase
+          .from("trades")
+          .select("pnl, commission, swap, open_time")
+          .eq("user_id", userId)
+          .eq("challenge_id", acc.id)
+          .eq("status", "closed");
+        const rows = (trades ?? []) as unknown as TradeRow[];
+        const tradesPnl = rows.reduce((s, t) => s + netPnl(t), 0);
+
+        // Passe par resolveAccountBalance : quand l'EA du courtier pousse un
+        // solde réel, c'est LUI qui fait autorité. Recalculer « taille + P&L »
+        // afficherait un solde faux sur un compte synchronisé.
+        const resolved = resolveAccountBalance(acc as unknown as SyncedAccountState, tradesPnl);
+        const size = Number(acc.account_size) || 0;
+        const targetPct = Number(acc.profit_target_pct) || 0;
+        const dailyDdPct = Number(acc.max_daily_dd_pct) || 0;
+        const totalDdPct = Number(acc.max_total_dd_pct) || 0;
+
+        // Perte du jour : uniquement les trades ouverts aujourd'hui (jour local).
+        const todayStart = startOfDateKeyUtc(localDateKeyFor(timezone), timezone);
+        const todayPnl = todayStart
+          ? rows.filter((t) => new Date(String(t.open_time)).getTime() >= todayStart.getTime())
+                .reduce((s, t) => s + netPnl(t), 0)
+          : 0;
+
+        const round = (n: number) => Math.round(n * 100) / 100;
+        return {
+          result: {
+            account_id: acc.id,
+            firm: acc.firm,
+            currency: acc.synced_currency ?? acc.currency,
+            account_size: size,
+            balance: round(resolved.balance),
+            balance_from_broker: resolved.fromBroker,
+            live: resolved.live,
+            open_positions: resolved.openPositions,
+            performance: round(resolved.tradesPnl),
+            profit_target: targetPct > 0 ? round((size * targetPct) / 100) : null,
+            profit_remaining: targetPct > 0 ? round((size * targetPct) / 100 - resolved.tradesPnl) : null,
+            daily_loss_today: round(todayPnl),
+            daily_dd_remaining: dailyDdPct > 0 ? round((size * dailyDdPct) / 100 + Math.min(0, todayPnl)) : null,
+            total_dd_remaining: totalDdPct > 0 ? round((size * totalDdPct) / 100 + Math.min(0, resolved.tradesPnl)) : null,
+            trades_count: rows.length,
+            start_date: acc.start_date,
+            note: resolved.fromBroker
+              ? "Solde annoncé par le courtier, il fait autorité."
+              : "Solde reconstitué depuis les trades enregistrés.",
+          },
+        };
+      }
+
+      case "get_performance": {
+        const dimension = typeof input.dimension === "string" ? input.dimension : "";
+        const dims = ["pair", "hour", "weekday", "direction", "emotion", "setup"];
+        if (!dims.includes(dimension)) return fail(`dimension invalide (${dims.join(", ")}).`);
+
+        let q = supabase
+          .from("trades")
+          .select("open_time, close_time, pair, direction, lot_size, pnl, commission, swap, ict_setup, emotion, ict_confluence_score, checklist_total")
+          .eq("user_id", userId)
+          .eq("status", "closed")
+          .order("open_time", { ascending: false })
+          .limit(1000);
+        const from = typeof input.date_from === "string" ? startOfDateKeyUtc(input.date_from, timezone) : null;
+        const to = typeof input.date_to === "string" ? startOfDateKeyUtc(input.date_to, timezone) : null;
+        if (from) q = q.gte("open_time", from.toISOString());
+        if (to) q = q.lt("open_time", to.toISOString());
+
+        const { data, error } = await q;
+        if (error) return fail("Lecture des trades impossible.");
+        const rows = (data ?? []) as unknown as InsightTrade[];
+        if (rows.length === 0) return { result: { count: 0, note: "Aucun trade sur cette période." } };
+
+        const stats = computeTradeStats(rows, timezone || "UTC");
+        const bucketMap = {
+          pair: stats.byPair, hour: stats.byHour, weekday: stats.byWeekday,
+          direction: stats.byDirection, emotion: stats.byEmotion, setup: stats.bySetup,
+        }[dimension as "pair"];
+        const segments = Object.entries(bucketMap)
+          .map(([key, b]) => ({
+            key,
+            trades: b.trades,
+            wins: b.wins,
+            losses: b.losses,
+            win_rate: b.trades > 0 ? Math.round((b.wins / b.trades) * 100) : 0,
+            net_pnl: Math.round(b.netPnl * 100) / 100,
+          }))
+          .sort((a, b) => a.net_pnl - b.net_pnl);
+        return {
+          result: {
+            dimension,
+            total_trades: rows.length,
+            segments,
+            note: "Un segment sous 5 trades ne prouve rien : signale-le au trader au lieu d'en tirer une conclusion.",
+          },
+        };
+      }
+
+      case "get_macro_briefing": {
+        let q = supabase
+          .from("macro_analyses")
+          .select("analysis_date, headline, tldr, sentiment, overview, themes, watchlist, assets, takeaway")
+          .eq("lang", language)
+          .order("analysis_date", { ascending: false });
+        if (typeof input.date === "string" && /^\d{4}-\d{2}-\d{2}/.test(input.date)) {
+          q = q.eq("analysis_date", input.date.slice(0, 10));
+        }
+        const { data, error } = await q.limit(1);
+        if (error) return fail("Analyse macro indisponible.");
+        const row = (data ?? [])[0];
+        if (!row) return fail("Aucune analyse macro disponible pour cette date.");
+        return { result: row };
+      }
+
+      case "start_session": {
+        const emotion = typeof input.emotion === "string" && (EMOTIONS as readonly string[]).includes(input.emotion)
+          ? input.emotion : null;
+        if (!emotion) return fail(`emotion invalide (${EMOTIONS.join(", ")}).`);
+
+        const { data: existing } = await supabase
+          .from("sessions").select("id").eq("user_id", userId).eq("active", true).limit(1).maybeSingle();
+        if (existing) return fail("Une session est déjà ouverte. Utilise end_session pour la clôturer d'abord.");
+
+        const { data, error } = await supabase
+          .from("sessions")
+          .insert({ user_id: userId, emotion_before: emotion, active: true })
+          .select("id")
+          .single();
+        if (error || !data) return fail("Ouverture de session impossible.");
+        return {
+          result: { ok: true, session_id: data.id, emotion },
+          action: { type: "session_started" },
+          undo: { op: "delete_session", session_id: data.id as string },
+        };
+      }
+
+      case "end_session": {
+        const { data: active } = await supabase
+          .from("sessions").select("id").eq("user_id", userId).eq("active", true)
+          .order("created_at", { ascending: false }).limit(1).maybeSingle();
+        if (!active) return fail("Aucune session ouverte à clôturer.");
+        const patch: Record<string, unknown> = { active: false, ended_at: new Date().toISOString() };
+        if (typeof input.debrief === "string" && input.debrief.trim()) {
+          patch.debrief = input.debrief.trim().slice(0, MAX_TEXT);
+        }
+        const { error } = await supabase
+          .from("sessions").update(patch).eq("id", active.id).eq("user_id", userId);
+        if (error) return fail("Clôture de session impossible.");
+        return {
+          result: { ok: true },
+          action: { type: "session_ended" },
+          undo: { op: "reopen_session", session_id: active.id as string },
+        };
+      }
+
+      case "open_page": {
+        const page = typeof input.page === "string" && (COACH_PAGES as readonly string[]).includes(input.page)
+          ? input.page : null;
+        if (!page) return fail(`page invalide (${COACH_PAGES.join(", ")}).`);
+
+        // Filtres uniquement là où la page sait les lire.
+        const params = new URLSearchParams();
+        if (page === "trades") {
+          if (typeof input.pair === "string" && input.pair.trim()) params.set("pair", input.pair.trim().slice(0, 20).toUpperCase());
+          if (input.result === "win" || input.result === "loss") params.set("result", input.result);
+          if (typeof input.date_from === "string" && /^\d{4}-\d{2}-\d{2}/.test(input.date_from)) params.set("from", input.date_from.slice(0, 10));
+          if (typeof input.date_to === "string" && /^\d{4}-\d{2}-\d{2}/.test(input.date_to)) params.set("to", input.date_to.slice(0, 10));
+        }
+        const qs = params.toString();
+        const href = `/dashboard${page === "dashboard" ? "" : `/${page}`}${qs ? `?${qs}` : ""}`;
+        return {
+          result: {
+            ok: true,
+            href,
+            instruction: "Un lien vient d'apparaître sous ta réponse. Dis en une phrase où tu l'emmènes et pourquoi ; c'est lui qui clique.",
+          },
+          action: { type: "navigate", href, page },
+        };
+      }
+
       // ── Comptes (écriture) ──────────────────────────────────────────────
       case "create_account": {
         const type = input.type === "prop" ? "prop" : input.type === "personal" ? "personal" : null;
@@ -1866,6 +2173,17 @@ export async function executeCoachUndo(
             .update({ challenge_id: r.challenge_id ?? null, strategy_id: r.strategy_id ?? null })
             .eq("id", r.id).eq("user_id", userId);
         }
+        return { ok: true };
+      }
+      case "delete_session": {
+        if (!isUuid(undo.session_id)) return { ok: false, error: "invalide" };
+        await supabase.from("sessions").delete().eq("id", undo.session_id).eq("user_id", userId);
+        return { ok: true };
+      }
+      case "reopen_session": {
+        if (!isUuid(undo.session_id)) return { ok: false, error: "invalide" };
+        await supabase.from("sessions").update({ active: true, ended_at: null })
+          .eq("id", undo.session_id).eq("user_id", userId);
         return { ok: true };
       }
       case "delete_account": {
