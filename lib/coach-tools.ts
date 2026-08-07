@@ -89,6 +89,24 @@ function asNumber(v: unknown, min: number, max: number): number | null {
   return v >= min && v <= max ? v : null;
 }
 
+/**
+ * Date lisible par un humain (« 7 août 2026 »).
+ *
+ * Le libellé d'une confirmation est la DERNIÈRE chose que le trader lit avant
+ * une suppression définitive : « 2026-08-07 » y est un mauvais service.
+ */
+function humanDate(iso: unknown, language: string, timezone?: string): string {
+  const d = new Date(String(iso));
+  if (Number.isNaN(d.getTime())) return "";
+  try {
+    return new Intl.DateTimeFormat(language === "en" ? "en-US" : language, {
+      timeZone: timezone || "UTC", day: "numeric", month: "long", year: "numeric",
+    }).format(d);
+  } catch {
+    return String(iso).slice(0, 10);
+  }
+}
+
 /** Horodatage ISO valide, sinon null. */
 function asIso(v: unknown): string | null {
   if (typeof v !== "string" || !v.trim()) return null;
@@ -743,6 +761,8 @@ export async function executeCoachTool(
   timezone?: string,
   /** Plan du trader. Recontrôlé ici même si le catalogue est déjà filtré. */
   plan: PlanType = "premium",
+  /** Langue d'affichage : sert aux libellés que le trader lit avant de valider. */
+  language = "fr",
 ): Promise<CoachToolResult> {
   // Défense en profondeur : le catalogue envoyé au modèle est déjà filtré par
   // coachToolsForPlan, donc ce cas ne devrait pas se produire. Il couvre le
@@ -1501,9 +1521,12 @@ export async function executeCoachTool(
           .eq("user_id", userId).in("id", ids);
         const found = (data ?? []) as unknown as { id: string; pair: string; open_time: string }[];
         if (found.length === 0) return fail("Aucun de ces trades n'existe.");
+        const dates = found.map((t) => new Date(t.open_time).getTime()).filter((n) => !Number.isNaN(n)).sort();
         const label = found.length === 1
-          ? `le trade ${found[0].pair} du ${String(found[0].open_time).slice(0, 10)}`
-          : `${found.length} trades`;
+          ? `le trade ${found[0].pair} du ${humanDate(found[0].open_time, language, timezone)}`
+          : dates.length > 0
+            ? `${found.length} trades, du ${humanDate(new Date(dates[0]).toISOString(), language, timezone)} au ${humanDate(new Date(dates[dates.length - 1]).toISOString(), language, timezone)}`
+            : `${found.length} trades`;
         return {
           result: {
             requires_confirmation: true,

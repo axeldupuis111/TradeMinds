@@ -231,3 +231,36 @@ describe("gating par plan sur les outils d'écriture", () => {
     expect(r.isError).toBeFalsy();
   });
 });
+
+describe("libellé de confirmation", () => {
+  it("écrit une date lisible, pas un format machine", async () => {
+    const { client } = mockClient({
+      data: [{ id: ID, pair: "XAUUSD", open_time: "2026-08-07T13:01:00Z", pnl: 180 }],
+      error: null,
+    });
+    const r = await executeCoachTool(
+      client, USER, "delete_trades", { trade_ids: [ID] }, "Europe/Paris", "premium", "fr",
+    );
+    const label = (r.confirm as { label: string }).label;
+    expect(label).toContain("XAUUSD");
+    expect(label).toContain("7 août 2026");
+    expect(label).not.toContain("2026-08-07");
+  });
+
+  it("donne la période couverte quand plusieurs trades sont visés", async () => {
+    const { client } = mockClient({
+      data: [
+        { id: ID, pair: "XAUUSD", open_time: "2026-08-01T09:00:00Z", pnl: -50 },
+        { id: ID2, pair: "EURUSD", open_time: "2026-08-07T09:00:00Z", pnl: 20 },
+      ],
+      error: null,
+    });
+    const r = await executeCoachTool(
+      client, USER, "delete_trades", { trade_ids: [ID, ID2] }, "Europe/Paris", "premium", "fr",
+    );
+    const label = (r.confirm as { label: string }).label;
+    expect(label).toContain("2 trades");
+    expect(label).toContain("1 août 2026");
+    expect(label).toContain("7 août 2026");
+  });
+});
