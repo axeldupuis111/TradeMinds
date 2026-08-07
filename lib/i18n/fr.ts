@@ -1096,7 +1096,7 @@ const dict: Record<string, string> = {
   "coach_voice_replies": "Lire les réponses à voix haute",
   "coach_voice_denied": "Micro refusé. Autorise-le dans les réglages de ton navigateur.",
   "coach_voice_error": "La dictée s'est interrompue. Réessaie.",
-  "coach_voice_unsupported": "Ton navigateur ne gère pas la dictée. Utilise Chrome ou Edge.",
+  "coach_voice_unsupported": "Ton navigateur ne gère pas la dictée. Elle fonctionne sur Chrome et Safari, y compris sur iPhone.",
   "coach_showcase_title": "Voici tout ce que je peux faire pour toi",
   "coach_showcase_intro": "Parle-moi en langage naturel : j'analyse tes trades, et surtout j'agis directement sur ton journal.",
   "coach_showcase_hint": "Clique un exemple pour l'essayer, tu pourras l'ajuster avant d'envoyer.",
