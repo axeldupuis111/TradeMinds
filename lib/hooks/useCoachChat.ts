@@ -117,6 +117,31 @@ export function pairTimestamps(sentAt: number, answeredAt: number): { user: stri
   return { user: new Date(sentAt).toISOString(), assistant: new Date(assistant).toISOString() };
 }
 
+/**
+ * Retire les tirets longs de la réponse du coach.
+ *
+ * Ils sont proscrits dans la copy du produit : c'est un marqueur de texte
+ * généré, et ça sonne faux dans la voix de TradeDiscipline. La consigne est
+ * déjà dans le prompt, mais une consigne reste probabiliste et le modèle en
+ * replace régulièrement, d'autant qu'il imite son propre style dans les tours
+ * précédents de la conversation. On applique donc la règle ici, où elle est
+ * garantie.
+ *
+ * Sur le texte ACCUMULÉ et non sur chaque fragment du flux : un tiret entouré
+ * d'espaces peut être coupé entre deux fragments, et on ne le verrait pas.
+ */
+export function stripEmDashes(text: string): string {
+  return text
+    // En tête de ligne, c'est une puce : on la remplace par un tiret court.
+    .replace(/^([ \t]*)[—–](\s+)/gm, "$1-$2")
+    // Entouré d'espaces, il sépare deux propositions : une virgule suffit.
+    .replace(/\s+[—–]\s+/g, ", ")
+    // Collé au texte (« mot—mot »), même traitement sans doubler l'espace.
+    .replace(/[—–]/g, ", ")
+    .replace(/,\s*,/g, ",")
+    .replace(/\s+,/g, ",");
+}
+
 function downloadCsv(filename: string, csv: string) {
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
@@ -271,7 +296,7 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
         }
         setMessages([...next, {
           role: "assistant",
-          content: answer,
+          content: stripEmDashes(answer),
           actions: actions.map((a) => ({ ...a })),
           confirms: confirms.map((c) => ({ ...c })),
         }]);
@@ -294,9 +319,9 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
       const ts = pairTimestamps(sentAt, Date.now());
       await supabase.from("chat_messages").insert([
         { user_id: user.id, role: "user", content: msg, created_at: ts.user },
-        { user_id: user.id, role: "assistant", content: answer, created_at: ts.assistant },
+        { user_id: user.id, role: "assistant", content: stripEmDashes(answer), created_at: ts.assistant },
       ]);
-      await supabase.from("ai_analysis_history").insert({ user_id: user.id, question: msg, answer });
+      await supabase.from("ai_analysis_history").insert({ user_id: user.id, question: msg, answer: stripEmDashes(answer) });
 
       const newCount = dailyCount + 1;
       setDailyCount(newCount);

@@ -39,3 +39,45 @@ describe("pairTimestamps", () => {
     }
   });
 });
+
+import { stripEmDashes } from "./hooks/useCoachChat";
+
+/**
+ * Le tiret long est proscrit dans la copy du produit. La consigne est dans le
+ * prompt, mais une consigne reste probabiliste : le modèle en replaçait à
+ * chaque réponse. On l'applique donc de façon déterministe.
+ */
+describe("stripEmDashes", () => {
+  it("remplace un tiret long entre deux propositions par une virgule", () => {
+    expect(stripEmDashes("Les 2 trades vont disparaître — clique sur Valider")).toBe(
+      "Les 2 trades vont disparaître, clique sur Valider",
+    );
+  });
+
+  it("traite aussi le tiret demi-cadratin", () => {
+    expect(stripEmDashes("un point – puis un autre")).toBe("un point, puis un autre");
+  });
+
+  it("garde une puce lisible en tête de ligne", () => {
+    expect(stripEmDashes("Bilan :\n— premier point\n— second point")).toBe(
+      "Bilan :\n- premier point\n- second point",
+    );
+  });
+
+  it("gère un tiret collé au texte", () => {
+    expect(stripEmDashes("gain—perte")).toBe("gain, perte");
+  });
+
+  it("ne double jamais la ponctuation", () => {
+    expect(stripEmDashes("attention, — surtout le matin")).toBe("attention, surtout le matin");
+  });
+
+  it("laisse intact un texte qui n'en contient pas", () => {
+    const propre = "Tes 3 trades du matin t'ont coûté 340 € : arrête avant 9h.";
+    expect(stripEmDashes(propre)).toBe(propre);
+  });
+
+  it("préserve le trait d'union des mots composés", () => {
+    expect(stripEmDashes("un stop-loss bien placé")).toBe("un stop-loss bien placé");
+  });
+});

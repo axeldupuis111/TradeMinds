@@ -299,3 +299,21 @@ describe("échec d'une suppression : le modèle doit savoir qu'aucun bouton n'es
     expect(r.confirm).toBeUndefined();
   });
 });
+
+describe("libellé d'une suppression multiple le même jour", () => {
+  it("n'annonce pas un intervalle quand tous les trades sont du même jour", async () => {
+    const { client } = mockClient({
+      data: [
+        { id: ID, pair: "XAUUSD", open_time: "2026-08-07T15:17:00Z", pnl: 180 },
+        { id: ID2, pair: "XAUUSD", open_time: "2026-08-07T15:33:00Z", pnl: 180 },
+      ],
+      error: null,
+    });
+    const r = await executeCoachTool(
+      client, USER, "delete_trades", { trade_ids: [ID, ID2] }, "Europe/Paris", "premium", "fr",
+    );
+    const label = (r.confirm as { label: string }).label;
+    expect(label).toBe("2 trades du 7 août 2026");
+    expect(label).not.toContain("au 7 août");
+  });
+});

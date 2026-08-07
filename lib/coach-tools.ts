@@ -1540,11 +1540,17 @@ export async function executeCoachTool(
           );
         }
         const dates = found.map((t) => new Date(t.open_time).getTime()).filter((n) => !Number.isNaN(n)).sort();
+        const first = dates.length > 0 ? humanDate(new Date(dates[0]).toISOString(), language, timezone) : "";
+        const last = dates.length > 0 ? humanDate(new Date(dates[dates.length - 1]).toISOString(), language, timezone) : "";
         const label = found.length === 1
           ? `le trade ${found[0].pair} du ${humanDate(found[0].open_time, language, timezone)}`
-          : dates.length > 0
-            ? `${found.length} trades, du ${humanDate(new Date(dates[0]).toISOString(), language, timezone)} au ${humanDate(new Date(dates[dates.length - 1]).toISOString(), language, timezone)}`
-            : `${found.length} trades`;
+          : !first
+            ? `${found.length} trades`
+            // Tous le même jour : annoncer « du 7 août au 7 août » donne
+            // l'impression d'un intervalle là où il n'y en a pas.
+            : first === last
+              ? `${found.length} trades du ${first}`
+              : `${found.length} trades, du ${first} au ${last}`;
         return {
           result: {
             requires_confirmation: true,
