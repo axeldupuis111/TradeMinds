@@ -4,7 +4,7 @@ import { COMPANY } from "./company";
 const content: LegalContent = {
   fr: {
     title: "Politique de confidentialité",
-    updated: "Dernière mise à jour : 27 juin 2026",
+    updated: "Dernière mise à jour : 7 août 2026",
     sections: [
       {
         heading: "1. Responsable du traitement",
@@ -26,6 +26,7 @@ const content: LegalContent = {
               "Données de trading : historique des trades, P&L, émotions, qualité des setups, saisis ou importés par vous ;",
               "Données d'usage : pages visitées, fonctionnalités utilisées (anonymisées) ;",
               "Données de paiement : traitées par Stripe ; nous ne stockons aucune donnée bancaire.",
+              "Données vocales : uniquement si vous activez la dictée, votre voix est transcrite en texte par votre navigateur (voir la section 7) ; aucun enregistrement sonore n'est conservé.",
             ],
           },
         ],
@@ -64,6 +65,7 @@ const content: LegalContent = {
               "Stripe : traitement des paiements ;",
               "Vercel : hébergement de l'application ;",
               "Resend : envoi des emails transactionnels.",
+              "Google : transcription de la dictée vocale, uniquement si vous activez cette fonction et selon le navigateur utilisé (voir la section 7).",
             ],
           },
         ],
@@ -73,12 +75,33 @@ const content: LegalContent = {
         blocks: [
           {
             kind: "p",
-            text: "Certains de nos sous-traitants (notamment Anthropic, Stripe et Vercel) sont établis aux États-Unis. Les transferts de données vers ces prestataires sont encadrés par des garanties appropriées au sens du RGPD, notamment les clauses contractuelles types de la Commission européenne. En utilisant les fonctionnalités d'IA, vous êtes informé que les données de trading concernées sont transmises à Anthropic pour traitement.",
+            text: "Certains de nos sous-traitants (notamment Anthropic, Stripe, Vercel et, si vous utilisez la dictée vocale, Google) sont établis aux États-Unis. Les transferts de données vers ces prestataires sont encadrés par des garanties appropriées au sens du RGPD, notamment les clauses contractuelles types de la Commission européenne. En utilisant les fonctionnalités d'IA, vous êtes informé que les données de trading concernées sont transmises à Anthropic pour traitement.",
           },
         ],
       },
       {
-        heading: "7. Durée de conservation",
+        heading: "7. Dictée vocale (fonction optionnelle)",
+        blocks: [
+          {
+            kind: "p",
+            text: "Le coach IA propose une dictée vocale, que vous activez vous-même en appuyant sur le bouton micro. Elle n'est jamais active par défaut : aucun son n'est capté tant que vous ne l'avez pas déclenchée, et la captation s'arrête dès que vous fermez le coach.",
+          },
+          {
+            kind: "p",
+            text: "Cette fonction repose sur la reconnaissance vocale intégrée à votre navigateur. Sur Google Chrome et Microsoft Edge, votre voix est transmise aux serveurs de Google pour y être transcrite en texte. Ce traitement est réalisé par Google, selon ses propres conditions, et échappe à notre contrôle. Nous ne recevons que le texte transcrit, jamais l'audio, et nous ne conservons aucun enregistrement sonore.",
+          },
+          {
+            kind: "p",
+            text: "Si vous ne souhaitez pas que votre voix transite par un tiers, n'utilisez pas le bouton micro : toutes les fonctions du coach restent accessibles au clavier.",
+          },
+          {
+            kind: "p",
+            text: "La lecture à voix haute des réponses est en revanche entièrement réalisée par votre appareil. Aucune donnée n'est transmise à un tiers pour cette fonction.",
+          },
+        ],
+      },
+      {
+        heading: "8. Durée de conservation",
         blocks: [
           {
             kind: "p",
@@ -87,7 +110,7 @@ const content: LegalContent = {
         ],
       },
       {
-        heading: "8. Vos droits (RGPD)",
+        heading: "9. Vos droits (RGPD)",
         blocks: [
           {
             kind: "p",
@@ -111,7 +134,7 @@ const content: LegalContent = {
         ],
       },
       {
-        heading: "9. Cookies",
+        heading: "10. Cookies",
         blocks: [
           {
             kind: "p",
@@ -120,7 +143,7 @@ const content: LegalContent = {
         ],
       },
       {
-        heading: "10. Sécurité",
+        heading: "11. Sécurité",
         blocks: [
           {
             kind: "p",
@@ -129,7 +152,7 @@ const content: LegalContent = {
         ],
       },
       {
-        heading: "11. Réclamations",
+        heading: "12. Réclamations",
         blocks: [
           {
             kind: "p",
@@ -147,7 +170,7 @@ const content: LegalContent = {
   },
   en: {
     title: "Privacy Policy",
-    updated: "Last updated: June 27, 2026",
+    updated: "Last updated: August 7, 2026",
     sections: [
       {
         heading: "1. Data controller",
@@ -169,6 +192,7 @@ const content: LegalContent = {
               "Trading data: trade history, P&L, emotions, setup quality, entered or imported by you;",
               "Usage data: pages visited, features used (anonymized);",
               "Payment data: processed by Stripe; we do not store any banking data.",
+              "Voice data: only if you enable dictation, your voice is transcribed into text by your browser (see section 7); no sound recording is kept.",
             ],
           },
         ],
@@ -207,6 +231,7 @@ const content: LegalContent = {
               "Stripe: payment processing;",
               "Vercel: application hosting;",
               "Resend: transactional email delivery.",
+              "Google: transcription of voice dictation, only if you enable that feature and depending on the browser used (see section 7).",
             ],
           },
         ],
@@ -216,12 +241,33 @@ const content: LegalContent = {
         blocks: [
           {
             kind: "p",
-            text: "Some of our sub-processors (notably Anthropic, Stripe and Vercel) are established in the United States. Transfers of data to these providers are framed by appropriate safeguards within the meaning of the GDPR, in particular the European Commission's standard contractual clauses. By using the AI features, you are informed that the relevant trading data is sent to Anthropic for processing.",
+            text: "Some of our sub-processors (notably Anthropic, Stripe, Vercel and, if you use voice dictation, Google) are established in the United States. Transfers of data to these providers are framed by appropriate safeguards within the meaning of the GDPR, in particular the European Commission's standard contractual clauses. By using the AI features, you are informed that the relevant trading data is sent to Anthropic for processing.",
           },
         ],
       },
       {
-        heading: "7. Data retention",
+        heading: "7. Voice dictation (optional feature)",
+        blocks: [
+          {
+            kind: "p",
+            text: "The AI coach offers voice dictation, which you enable yourself by pressing the microphone button. It is never on by default: no sound is captured until you trigger it, and capture stops as soon as you close the coach.",
+          },
+          {
+            kind: "p",
+            text: "This feature relies on the speech recognition built into your browser. On Google Chrome and Microsoft Edge, your voice is sent to Google's servers to be transcribed into text. That processing is carried out by Google, under its own terms, and is outside our control. We only receive the transcribed text, never the audio, and we keep no sound recording.",
+          },
+          {
+            kind: "p",
+            text: "If you do not want your voice to pass through a third party, do not use the microphone button: every coach feature remains available from the keyboard.",
+          },
+          {
+            kind: "p",
+            text: "Reading the answers aloud, by contrast, is performed entirely by your device. No data is sent to a third party for that feature.",
+          },
+        ],
+      },
+      {
+        heading: "8. Data retention",
         blocks: [
           {
             kind: "p",
@@ -230,7 +276,7 @@ const content: LegalContent = {
         ],
       },
       {
-        heading: "8. Your rights (GDPR)",
+        heading: "9. Your rights (GDPR)",
         blocks: [
           { kind: "p", text: "You have the following rights:" },
           {
@@ -251,7 +297,7 @@ const content: LegalContent = {
         ],
       },
       {
-        heading: "9. Cookies",
+        heading: "10. Cookies",
         blocks: [
           {
             kind: "p",
@@ -260,7 +306,7 @@ const content: LegalContent = {
         ],
       },
       {
-        heading: "10. Security",
+        heading: "11. Security",
         blocks: [
           {
             kind: "p",
@@ -269,7 +315,7 @@ const content: LegalContent = {
         ],
       },
       {
-        heading: "11. Complaints",
+        heading: "12. Complaints",
         blocks: [
           {
             kind: "p",
@@ -288,7 +334,7 @@ const content: LegalContent = {
   },
   es: {
     title: "Política de privacidad",
-    updated: "Última actualización: 27 de junio de 2026",
+    updated: "Última actualización: 7 de agosto de 2026",
     sections: [
       {
         heading: "1. Responsable del tratamiento",
@@ -310,6 +356,7 @@ const content: LegalContent = {
               "Datos de trading: historial de operaciones, P&L, emociones, calidad de los setups, introducidos o importados por usted;",
               "Datos de uso: páginas visitadas, funciones utilizadas (anonimizados);",
               "Datos de pago: tratados por Stripe; no almacenamos ningún dato bancario.",
+              "Datos de voz: únicamente si activa el dictado, su voz es transcrita a texto por su navegador (véase la sección 7); no se conserva ninguna grabación sonora.",
             ],
           },
         ],
@@ -348,6 +395,7 @@ const content: LegalContent = {
               "Stripe: tratamiento de los pagos;",
               "Vercel: alojamiento de la aplicación;",
               "Resend: envío de correos transaccionales.",
+              "Google: transcripción del dictado por voz, únicamente si activa esta función y según el navegador utilizado (véase la sección 7).",
             ],
           },
         ],
@@ -357,12 +405,33 @@ const content: LegalContent = {
         blocks: [
           {
             kind: "p",
-            text: "Algunos de nuestros encargados (en particular Anthropic, Stripe y Vercel) están establecidos en Estados Unidos. Las transferencias de datos a estos proveedores están enmarcadas por garantías adecuadas en el sentido del RGPD, en particular las cláusulas contractuales tipo de la Comisión Europea. Al utilizar las funciones de IA, se le informa de que los datos de trading correspondientes se transmiten a Anthropic para su tratamiento.",
+            text: "Algunos de nuestros encargados (en particular Anthropic, Stripe, Vercel y, si utiliza el dictado por voz, Google) están establecidos en Estados Unidos. Las transferencias de datos a estos proveedores están enmarcadas por garantías adecuadas en el sentido del RGPD, en particular las cláusulas contractuales tipo de la Comisión Europea. Al utilizar las funciones de IA, se le informa de que los datos de trading correspondientes se transmiten a Anthropic para su tratamiento.",
           },
         ],
       },
       {
-        heading: "7. Conservación de los datos",
+        heading: "7. Dictado por voz (función opcional)",
+        blocks: [
+          {
+            kind: "p",
+            text: "El coach IA ofrece un dictado por voz que usted activa pulsando el botón del micrófono. Nunca está activo por defecto: no se capta ningún sonido mientras no lo haya activado, y la captación se detiene en cuanto cierra el coach.",
+          },
+          {
+            kind: "p",
+            text: "Esta función se basa en el reconocimiento de voz integrado en su navegador. En Google Chrome y Microsoft Edge, su voz se transmite a los servidores de Google para ser transcrita a texto. Este tratamiento lo realiza Google, según sus propias condiciones, y escapa a nuestro control. Solo recibimos el texto transcrito, nunca el audio, y no conservamos ninguna grabación sonora.",
+          },
+          {
+            kind: "p",
+            text: "Si no desea que su voz transite por un tercero, no utilice el botón del micrófono: todas las funciones del coach siguen accesibles desde el teclado.",
+          },
+          {
+            kind: "p",
+            text: "La lectura en voz alta de las respuestas, en cambio, la realiza íntegramente su dispositivo. No se transmite ningún dato a terceros para esta función.",
+          },
+        ],
+      },
+      {
+        heading: "8. Conservación de los datos",
         blocks: [
           {
             kind: "p",
@@ -371,7 +440,7 @@ const content: LegalContent = {
         ],
       },
       {
-        heading: "8. Sus derechos (RGPD)",
+        heading: "9. Sus derechos (RGPD)",
         blocks: [
           { kind: "p", text: "Usted dispone de los siguientes derechos:" },
           {
@@ -392,7 +461,7 @@ const content: LegalContent = {
         ],
       },
       {
-        heading: "9. Cookies",
+        heading: "10. Cookies",
         blocks: [
           {
             kind: "p",
@@ -401,7 +470,7 @@ const content: LegalContent = {
         ],
       },
       {
-        heading: "10. Seguridad",
+        heading: "11. Seguridad",
         blocks: [
           {
             kind: "p",
@@ -410,7 +479,7 @@ const content: LegalContent = {
         ],
       },
       {
-        heading: "11. Reclamaciones",
+        heading: "12. Reclamaciones",
         blocks: [
           {
             kind: "p",
@@ -429,7 +498,7 @@ const content: LegalContent = {
   },
   de: {
     title: "Datenschutzerklärung",
-    updated: "Letzte Aktualisierung: 27. Juni 2026",
+    updated: "Letzte Aktualisierung: 7. August 2026",
     sections: [
       {
         heading: "1. Verantwortlicher",
@@ -451,6 +520,7 @@ const content: LegalContent = {
               "Trading-Daten: Trade-Historie, P&L, Emotionen, Setup-Qualität, von Ihnen eingegeben oder importiert;",
               "Nutzungsdaten: besuchte Seiten, genutzte Funktionen (anonymisiert);",
               "Zahlungsdaten: von Stripe verarbeitet; wir speichern keine Bankdaten.",
+              "Sprachdaten: nur wenn Sie die Spracheingabe aktivieren, wird Ihre Stimme von Ihrem Browser in Text umgewandelt (siehe Abschnitt 7); es werden keine Tonaufnahmen gespeichert.",
             ],
           },
         ],
@@ -489,6 +559,7 @@ const content: LegalContent = {
               "Stripe: Zahlungsabwicklung;",
               "Vercel: Hosting der Anwendung;",
               "Resend: Versand transaktionaler E-Mails.",
+              "Google: Transkription der Spracheingabe, nur wenn Sie diese Funktion aktivieren und je nach verwendetem Browser (siehe Abschnitt 7).",
             ],
           },
         ],
@@ -498,12 +569,33 @@ const content: LegalContent = {
         blocks: [
           {
             kind: "p",
-            text: "Einige unserer Auftragsverarbeiter (insbesondere Anthropic, Stripe und Vercel) haben ihren Sitz in den Vereinigten Staaten. Übermittlungen von Daten an diese Anbieter sind durch geeignete Garantien im Sinne der DSGVO abgesichert, insbesondere die Standardvertragsklauseln der Europäischen Kommission. Bei Nutzung der KI-Funktionen werden Sie darüber informiert, dass die betreffenden Trading-Daten zur Verarbeitung an Anthropic übermittelt werden.",
+            text: "Einige unserer Auftragsverarbeiter (insbesondere Anthropic, Stripe, Vercel und, wenn Sie die Spracheingabe nutzen, Google) haben ihren Sitz in den Vereinigten Staaten. Übermittlungen von Daten an diese Anbieter sind durch geeignete Garantien im Sinne der DSGVO abgesichert, insbesondere die Standardvertragsklauseln der Europäischen Kommission. Bei Nutzung der KI-Funktionen werden Sie darüber informiert, dass die betreffenden Trading-Daten zur Verarbeitung an Anthropic übermittelt werden.",
           },
         ],
       },
       {
-        heading: "7. Speicherdauer",
+        heading: "7. Spracheingabe (optionale Funktion)",
+        blocks: [
+          {
+            kind: "p",
+            text: "Der KI-Coach bietet eine Spracheingabe, die Sie selbst über die Mikrofontaste aktivieren. Sie ist nie standardmäßig aktiv: Es wird kein Ton erfasst, solange Sie sie nicht ausgelöst haben, und die Erfassung endet, sobald Sie den Coach schließen.",
+          },
+          {
+            kind: "p",
+            text: "Diese Funktion nutzt die in Ihren Browser integrierte Spracherkennung. In Google Chrome und Microsoft Edge wird Ihre Stimme zur Umwandlung in Text an die Server von Google übertragen. Diese Verarbeitung erfolgt durch Google nach dessen eigenen Bedingungen und entzieht sich unserer Kontrolle. Wir erhalten ausschließlich den transkribierten Text, niemals die Audiodaten, und wir speichern keine Tonaufnahmen.",
+          },
+          {
+            kind: "p",
+            text: "Wenn Sie nicht möchten, dass Ihre Stimme über einen Dritten läuft, verwenden Sie die Mikrofontaste nicht: Alle Funktionen des Coachs bleiben über die Tastatur verfügbar.",
+          },
+          {
+            kind: "p",
+            text: "Das Vorlesen der Antworten erfolgt dagegen vollständig auf Ihrem Gerät. Für diese Funktion werden keine Daten an Dritte übermittelt.",
+          },
+        ],
+      },
+      {
+        heading: "8. Speicherdauer",
         blocks: [
           {
             kind: "p",
@@ -512,7 +604,7 @@ const content: LegalContent = {
         ],
       },
       {
-        heading: "8. Ihre Rechte (DSGVO)",
+        heading: "9. Ihre Rechte (DSGVO)",
         blocks: [
           { kind: "p", text: "Ihnen stehen folgende Rechte zu:" },
           {
@@ -533,7 +625,7 @@ const content: LegalContent = {
         ],
       },
       {
-        heading: "9. Cookies",
+        heading: "10. Cookies",
         blocks: [
           {
             kind: "p",
@@ -542,7 +634,7 @@ const content: LegalContent = {
         ],
       },
       {
-        heading: "10. Sicherheit",
+        heading: "11. Sicherheit",
         blocks: [
           {
             kind: "p",
@@ -551,7 +643,7 @@ const content: LegalContent = {
         ],
       },
       {
-        heading: "11. Beschwerden",
+        heading: "12. Beschwerden",
         blocks: [
           {
             kind: "p",
