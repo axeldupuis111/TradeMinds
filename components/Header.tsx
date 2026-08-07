@@ -1,6 +1,7 @@
 "use client";
 
 import { OPEN_CMDK_EVENT } from "@/components/CommandPalette";
+import HelpWidget from "@/components/dashboard/HelpWidget";
 import LanguageSelector from "@/components/LanguageSelector";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -100,6 +101,7 @@ export default function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
         >
           <Search className="w-4 h-4" strokeWidth={1.75} />
         </button>
+        <HelpWidget />
         <LanguageSelector />
         <ThemeToggle />
 

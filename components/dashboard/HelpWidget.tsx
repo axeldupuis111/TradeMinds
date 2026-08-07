@@ -79,28 +79,28 @@ export default function HelpWidget() {
 
   return (
     <>
-      {/* ── Launcher (sits to the left of the QuickTrade FAB) ── */}
+      {/* ── Déclencheur : icône discrète dans la barre du haut ──
+          C'était un gros bouton flottant en bas à droite. Depuis que le coach a
+          le sien, deux ronds côte à côte encombraient le coin de l'écran pour
+          une fonction consultée rarement. L'aide rejoint donc les icônes de la
+          barre (recherche, langue, thème) : toujours à un clic, sans peser sur
+          le visuel ni concurrencer le coach. ── */}
       <button
         onClick={() => setOpen((o) => !o)}
         title={t("help_label")}
         aria-label={t("help_label")}
-        className="fixed bottom-20 lg:bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-card border border-border text-foreground shadow-lg hover:border-accent hover:text-accent transition-all hover:scale-105 flex items-center justify-center"
+        aria-expanded={open}
+        className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-white/5 ${open ? "text-accent" : "text-muted hover:text-foreground"}`}
       >
-        {open ? (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        ) : (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
-          </svg>
-        )}
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+        </svg>
       </button>
 
       {/* ── Panel ── */}
       {open && (
         <div
-          className="fixed z-50 inset-x-4 bottom-36 sm:inset-x-auto sm:right-6 sm:bottom-24 sm:w-[380px] max-h-[min(560px,calc(100vh-9rem))] flex flex-col bg-card border border-border rounded-2xl shadow-2xl overflow-hidden motion-safe:animate-[cmdk-pop_160ms_ease-out]"
+          className="fixed z-50 inset-x-4 top-16 sm:inset-x-auto sm:right-6 sm:top-16 sm:w-[380px] max-h-[min(560px,calc(100vh-6rem))] flex flex-col bg-card border border-border rounded-2xl shadow-2xl overflow-hidden motion-safe:animate-[cmdk-pop_160ms_ease-out]"
           role="dialog"
           aria-label={t("help_label")}
         >

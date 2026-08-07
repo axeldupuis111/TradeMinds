@@ -1,0 +1,287 @@
+"use client";
+
+/**
+ * Logique du chat coach, partagée entre la page Analyse et le dock global.
+ *
+ * Elle vivait entièrement dans app/dashboard/analysis/page.tsx, ce qui
+ * enfermait le coach dans un onglet. Le sortir ici permet de l'ouvrir depuis
+ * n'importe quelle page sans dupliquer le protocole de streaming, la gestion
+ * des chips d'action, l'annulation et les quotas : une seule implémentation,
+ * deux habillages.
+ */
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { DEMO_COACH } from "@/lib/demo-fixtures";
+import type { Lang } from "@/lib/translations";
+import { PLAN_LIMITS } from "@/lib/plan-limits";
+import type { PlanType } from "@/lib/PlanContext";
+import { createClient } from "@/lib/supabase/client";
+import { track } from "@/lib/track";
+
+// ── Types du protocole coach ────────────────────────────────────────────────
+
+export interface CoachActionEvent {
+  type:
+    | "goal_created" | "goal_updated" | "goal_deleted"
+    | "challenge_joined" | "challenge_left"
+    | "trades_annotated" | "note_saved"
+    | "strategy_created" | "strategy_updated"
+    | "checklist_item_added" | "checklist_item_removed"
+    | "export_ready";
+  kind?: "metric" | "custom";
+  count?: number;
+  filename?: string;
+  csv?: string;
+}
+
+/** Descriptif d'annulation opaque (renvoyé tel quel à /api/coach-undo). */
+export type CoachUndo = { op: string; [k: string]: unknown };
+
+export interface CoachActionItem {
+  action: CoachActionEvent;
+  undo?: CoachUndo;
+  undone?: boolean;
+}
+
+export interface ChatMessage {
+  id?: string;
+  role: "user" | "assistant";
+  content: string;
+  created_at?: string;
+  actions?: CoachActionItem[];
+}
+
+/** Libellé + lien du chip affiché quand le coach a agi. */
+export function coachActionMeta(
+  a: CoachActionEvent,
+  t: (k: string) => string,
+): { label: string; href?: string } {
+  switch (a.type) {
+    case "goal_created": return { label: t("coach_action_goal_created"), href: "/dashboard/goals" };
+    case "goal_updated": return { label: t("coach_action_goal_updated"), href: "/dashboard/goals" };
+    case "goal_deleted": return { label: t("coach_action_goal_deleted"), href: "/dashboard/goals" };
+    case "challenge_joined": return { label: t("coach_action_challenge_joined"), href: "/dashboard/leaderboard" };
+    case "challenge_left": return { label: t("coach_action_challenge_left"), href: "/dashboard/leaderboard" };
+    case "trades_annotated": return { label: t("coach_action_trades_annotated").replace("{n}", String(a.count ?? 0)), href: "/dashboard/trades" };
+    case "note_saved": return { label: t("coach_action_note_saved") };
+    case "strategy_created": return { label: t("coach_action_strategy_created"), href: "/dashboard/strategy" };
+    case "strategy_updated": return { label: t("coach_action_strategy_updated"), href: "/dashboard/strategy" };
+    case "checklist_item_added": return { label: t("coach_action_checklist_added"), href: "/dashboard/strategy" };
+    case "checklist_item_removed": return { label: t("coach_action_checklist_removed"), href: "/dashboard/strategy" };
+    case "export_ready": return { label: t("coach_action_export_ready").replace("{n}", String(a.count ?? 0)) };
+    default: return { label: "" };
+  }
+}
+
+function downloadCsv(filename: string, csv: string) {
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+// ── Hook ────────────────────────────────────────────────────────────────────
+
+interface UseCoachChatOptions {
+  plan: PlanType;
+  lang: Lang;
+  t: (k: string) => string;
+  demoMode: boolean;
+  /** Description de la page courante, transmise au coach (dock global). */
+  pageContext?: string;
+  /** Appelé après une réponse complète (la page Analyse recharge son historique). */
+  onAnswered?: () => void;
+}
+
+export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered }: UseCoachChatOptions) {
+  const supabase = createClient();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [dailyCount, setDailyCount] = useState(0);
+  const [hasOlderChat, setHasOlderChat] = useState(false);
+  const loadedRef = useRef(false);
+
+  const limit = PLAN_LIMITS.chat[plan].limit;
+  const isPaidPlan = plan === "plus" || plan === "premium";
+  // Plan free : 1 message « découverte » à vie (le serveur l'accorde tant que
+  // chat_messages est vide).
+  const freeTasterUsed = hasOlderChat || messages.some((m) => m.role === "user");
+  const remaining = isPaidPlan ? Math.max(0, limit - dailyCount) : freeTasterUsed ? 0 : 1;
+  const canChat = isPaidPlan || !hasOlderChat;
+
+  /** Charge le compteur du jour et les messages du jour. */
+  const loadHistory = useCallback(async () => {
+    if (loadedRef.current) return;
+    loadedRef.current = true;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const today = new Date().toISOString().split("T")[0];
+    const [{ data: profile }, { data: todayRows }, { count: olderCount }] = await Promise.all([
+      supabase.from("profiles").select("daily_chat_count, daily_chat_reset").eq("id", user.id).maybeSingle(),
+      supabase.from("chat_messages").select("id, role, content, created_at")
+        .eq("user_id", user.id).gte("created_at", today).order("created_at", { ascending: true }).limit(50),
+      // Strictement AVANT aujourd'hui : un free qui vient de consommer son
+      // message découverte garde le chat visible pour relire la réponse, et ne
+      // voit la bannière d'upgrade qu'à partir du lendemain.
+      supabase.from("chat_messages").select("id", { count: "exact", head: true })
+        .eq("user_id", user.id).lt("created_at", today),
+    ]);
+    if (profile?.daily_chat_reset === today) setDailyCount(profile.daily_chat_count ?? 0);
+    if (todayRows?.length) setMessages(todayRows as ChatMessage[]);
+    setHasOlderChat((olderCount ?? 0) > 0);
+  }, [supabase]);
+
+  useEffect(() => { void loadHistory(); }, [loadHistory]);
+
+  const send = useCallback(async (raw?: string) => {
+    const msg = (raw ?? input).trim();
+    if (!msg || loading) return;
+    if (remaining <= 0) return;
+
+    const next: ChatMessage[] = [...messages, { role: "user", content: msg }];
+    setMessages(next);
+    setInput("");
+    setLoading(true);
+    if (plan === "free") track("taster_used");
+
+    // Mode démo : réponses pré-écrites, aucun token dépensé, rien de persisté.
+    if (demoMode) {
+      const turns = DEMO_COACH[lang] ?? DEMO_COACH.en;
+      const userCount = next.filter((m) => m.role === "user").length;
+      const turn = turns[Math.min(userCount - 1, turns.length - 1)];
+      setMessages([...next, { role: "assistant", content: `${t("demo_coach_note")}\n\n${turn.answer}` }]);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error(t("analysis_not_connected"));
+
+      const { data: strategy } = await supabase
+        .from("strategies").select("*").eq("user_id", user.id).limit(1).maybeSingle();
+      const strategyContext = strategy
+        ? `Nom: ${strategy.name || "N/A"}, Paires: ${(strategy.pairs || []).join(",")}, Sessions: ${(strategy.sessions || []).join(",")}, RR min: ${strategy.risk_reward ?? "N/A"}, Règles: ${(strategy.setup_rules || []).join("; ")}`
+        : "Aucune stratégie définie";
+
+      const res = await fetch("/api/chat-coach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: next.slice(-10),
+          strategyContext,
+          language: lang,
+          pageContext,
+        }),
+      });
+
+      if (!res.ok) {
+        let errBody: { error?: string } = {};
+        try { errBody = await res.json(); } catch {}
+        if (res.status === 401) throw new Error(t("api_error_unauthorized"));
+        if (res.status === 403) throw new Error(t("api_error_forbidden"));
+        if (res.status === 413) throw new Error(t("api_error_payload_too_large"));
+        if (res.status === 429) throw new Error(t("api_error_rate_limited"));
+        throw new Error(errBody.error || "Erreur serveur");
+      }
+
+      // NDJSON : {t:"text",d} = delta, {t:"action",a,u} = chip + annulation.
+      let answer = "";
+      const actions: CoachActionItem[] = [];
+      setMessages([...next, { role: "assistant", content: "", actions: [] }]);
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      const applyEvent = (line: string) => {
+        const trimmed = line.trim();
+        if (!trimmed) return;
+        try {
+          const evt = JSON.parse(trimmed) as
+            | { t: "text"; d: string }
+            | { t: "action"; a: CoachActionEvent; u?: CoachUndo };
+          if (evt.t === "text") answer += evt.d;
+          else if (evt.t === "action") {
+            if (evt.a.type === "export_ready" && evt.a.filename && evt.a.csv) {
+              downloadCsv(evt.a.filename, evt.a.csv);
+            }
+            const { csv, ...actionLite } = evt.a;
+            void csv;
+            actions.push({ action: actionLite, undo: evt.u });
+          }
+        } catch {
+          return; // ligne partielle, le flush final rattrape
+        }
+        setMessages([...next, { role: "assistant", content: answer, actions: actions.map((a) => ({ ...a })) }]);
+      };
+      if (reader) {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+          for (const line of lines) applyEvent(line);
+        }
+        if (buffer) applyEvent(buffer);
+      }
+
+      await supabase.from("chat_messages").insert([
+        { user_id: user.id, role: "user", content: msg },
+        { user_id: user.id, role: "assistant", content: answer },
+      ]);
+      await supabase.from("ai_analysis_history").insert({ user_id: user.id, question: msg, answer });
+
+      const newCount = dailyCount + 1;
+      setDailyCount(newCount);
+      const today = new Date().toISOString().split("T")[0];
+      await supabase.from("profiles")
+        .update({ daily_chat_count: newCount, daily_chat_reset: today })
+        .eq("id", user.id);
+
+      onAnswered?.();
+      return answer;
+    } catch (err) {
+      setMessages([...next, {
+        role: "assistant",
+        content: `${t("analysis_error_prefix")} : ${err instanceof Error ? err.message : t("analysis_unknown_error")}`,
+      }]);
+    } finally {
+      setLoading(false);
+    }
+  }, [input, messages, loading, remaining, dailyCount, supabase, lang, demoMode, plan, pageContext, t, onAnswered]);
+
+  /** Rejoue l'opération inverse côté serveur puis marque le chip comme annulé. */
+  const undo = useCallback(async (messageIndex: number, actionIndex: number) => {
+    const target = messages[messageIndex]?.actions?.[actionIndex];
+    if (!target?.undo || target.undone) return;
+    try {
+      const res = await fetch("/api/coach-undo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ undo: target.undo }),
+      });
+      if (!res.ok) return;
+      setMessages((prev) => prev.map((m, mi) => mi !== messageIndex ? m : {
+        ...m,
+        actions: (m.actions ?? []).map((a, ai) => (ai === actionIndex ? { ...a, undone: true } : a)),
+      }));
+    } catch {
+      // réseau indisponible — le chip reste inchangé, le trader peut réessayer
+    }
+  }, [messages]);
+
+  return {
+    messages, setMessages,
+    input, setInput,
+    loading, send, undo,
+    dailyCount, setDailyCount,
+    remaining, limit, canChat, isPaidPlan, freeTasterUsed,
+    hasOlderChat, setHasOlderChat,
+  };
+}

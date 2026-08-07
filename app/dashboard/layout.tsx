@@ -1,9 +1,9 @@
 "use client";
 
 import AmbientBackground from "@/components/dashboard/AmbientBackground";
+import CoachDock from "@/components/coach/CoachDock";
 import CommandPalette from "@/components/CommandPalette";
 import Header from "@/components/Header";
-import HelpWidget from "@/components/dashboard/HelpWidget";
 import MobileTabBar from "@/components/MobileTabBar";
 import OnboardingGuide from "@/components/dashboard/OnboardingGuide";
 import Sidebar from "@/components/Sidebar";
@@ -233,7 +233,7 @@ export default function DashboardLayout({
           {children}
         </main>
       </div>
-      <HelpWidget />
+      <CoachDock />
       <OnboardingGuide />
       <CommandPalette />
       <MobileTabBar />
