@@ -198,7 +198,13 @@ export type CoachConfirm =
   | { op: "delete_goal"; goal_id: string; label: string }
   | { op: "delete_trades"; trade_ids: string[]; label: string }
   | { op: "delete_strategy"; strategy_id: string; label: string }
-  | { op: "delete_account"; account_id: string; label: string };
+  | { op: "delete_account"; account_id: string; label: string }
+  // Ces deux-là ne sont PAS exécutées par /api/coach-confirm : le client les
+  // prend en charge. Le rapport IA doit passer par la route réelle pour que le
+  // quota et le disjoncteur s'appliquent normalement, et le PDF se fabrique
+  // dans le navigateur (jsPDF), là où le téléchargement peut se déclencher.
+  | { op: "run_ai_report"; kind: string; month: string; session_id: string | null; label: string }
+  | { op: "export_pdf"; from: string; to: string; label: string; count: number };
 
 export interface CoachToolResult {
   /** Payload renvoyé au modèle (sérialisé en JSON dans le tool_result). */
@@ -643,6 +649,32 @@ export const COACH_TOOLS = [
   },
 
   {
+    name: "run_ai_report",
+    description:
+      "Lance un rapport IA : plan de la semaine, bilan mensuel ou débrief de la session en cours. NE LANCE RIEN de lui-même : renvoie une demande de confirmation, parce que ces rapports consomment un crédit du quota quotidien du trader. Annonce le coût, c'est son clic qui déclenche.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        kind: { type: "string", enum: ["weekly_plan", "monthly_review", "session_debrief"] },
+        month: { type: "string", description: "Mois AAAA-MM pour monthly_review. Défaut : le mois en cours." },
+      },
+      required: ["kind"],
+    },
+  },
+  {
+    name: "export_pdf",
+    description:
+      "Génère un rapport PDF de performance sur une période. NE GÉNÈRE RIEN de lui-même : renvoie une demande de confirmation, le fichier se télécharge au clic du trader. Gratuit, aucun crédit consommé.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        date_from: { type: "string", description: "Date ISO de début (incluse). Défaut : 30 jours en arrière." },
+        date_to: { type: "string", description: "Date ISO de fin (exclue). Défaut : aujourd'hui." },
+      },
+      required: [],
+    },
+  },
+  {
     name: "log_emotional_check",
     description:
       "Enregistre l'état émotionnel du trader PENDANT sa session en cours. À proposer dès qu'il exprime une émotion en cours de journée (« je suis énervé », « je me sens en confiance ») : c'est la matière première de son analyse comportementale.",
@@ -760,6 +792,10 @@ export const TOOL_MIN_PLAN: Record<string, PlanType> = {
   get_challenge_status: "free",
   get_performance: "free",
   get_leaderboard_standing: "free",
+  // Le PDF est gratuit dans le produit : le gater ici serait incoherent.
+  export_pdf: "plus",
+  // Les rapports IA consomment un credit : reserves aux plans qui en ont.
+  run_ai_report: "plus",
   list_communities: "free",
   // Le check emotionnel appartient au rituel de session, donc au meme plan.
   log_emotional_check: "plus",
@@ -1953,6 +1989,69 @@ export async function executeCoachTool(
         };
       }
 
+      case "run_ai_report": {
+        const kinds = ["weekly_plan", "monthly_review", "session_debrief"] as const;
+        const kind = typeof input.kind === "string" && (kinds as readonly string[]).includes(input.kind)
+          ? (input.kind as (typeof kinds)[number]) : null;
+        if (!kind) return fail(`kind invalide (${kinds.join(", ")}).`);
+
+        // Le débrief porte sur UNE session : sans session ouverte il n'y a rien
+        // à débriefer, et consommer un crédit pour ça serait du gâchis.
+        let sessionId: string | null = null;
+        if (kind === "session_debrief") {
+          const { data: active } = await supabase
+            .from("sessions").select("id").eq("user_id", userId).eq("active", true)
+            .order("created_at", { ascending: false }).limit(1).maybeSingle();
+          if (!active) {
+            return fail("Aucune session ouverte à débriefer. AUCUN bouton n'est apparu. Propose start_session, ou un autre rapport.");
+          }
+          sessionId = active.id as string;
+        }
+
+        const month = typeof input.month === "string" && /^\d{4}-\d{2}$/.test(input.month)
+          ? input.month : localDateKeyFor(timezone).slice(0, 7);
+
+        return {
+          result: {
+            requires_confirmation: true,
+            what: { weekly_plan: "Plan de la semaine", monthly_review: "Bilan mensuel", session_debrief: "Débrief de session" }[kind],
+            costs_credit: true,
+            instruction:
+              "Ne dis PAS que c'est lancé. Explique en une phrase ce que le rapport va lui apporter, précise qu'il consomme un crédit de son quota du jour, et invite-le à cliquer Valider.",
+          },
+          confirm: { op: "run_ai_report", kind, month, session_id: sessionId, label: kind },
+        };
+      }
+
+      case "export_pdf": {
+        const to = typeof input.date_to === "string" ? startOfDateKeyUtc(input.date_to, timezone) : null;
+        const from = typeof input.date_from === "string" ? startOfDateKeyUtc(input.date_from, timezone) : null;
+        const toIso = (to ?? new Date(Date.now() + 86_400_000)).toISOString();
+        const fromIso = (from ?? new Date(Date.now() - 30 * 86_400_000)).toISOString();
+
+        // On compte AVANT de proposer : générer un PDF vide serait une promesse
+        // tenue à vide, plus agaçante qu'un refus honnête.
+        const { count } = await supabase
+          .from("trades").select("id", { count: "exact", head: true })
+          .eq("user_id", userId).eq("status", "closed")
+          .gte("open_time", fromIso).lt("open_time", toIso);
+        if (!count || count === 0) {
+          return fail("Aucun trade clôturé sur cette période, il n'y a rien à mettre dans le PDF. AUCUN bouton n'est apparu : propose une autre période.");
+        }
+
+        const label = `${humanDate(fromIso, language, timezone)} au ${humanDate(toIso, language, timezone)}`;
+        return {
+          result: {
+            requires_confirmation: true,
+            what: `Rapport PDF sur ${count} trades (${label})`,
+            costs_credit: false,
+            instruction:
+              "Ne dis PAS que c'est fait. Annonce ce que contiendra le rapport et invite le trader à cliquer Valider ; le fichier se téléchargera sur son appareil.",
+          },
+          confirm: { op: "export_pdf", from: fromIso, to: toIso, label, count },
+        };
+      }
+
       case "log_emotional_check": {
         const emotion = typeof input.emotion === "string" && (EMOTIONS as readonly string[]).includes(input.emotion)
           ? input.emotion : null;
@@ -2291,6 +2390,13 @@ export async function executeCoachConfirm(
         if (!data || data.length === 0) return { ok: false, error: "Compte introuvable." };
         return { ok: true, action: { type: "account_deleted" } };
       }
+
+      case "run_ai_report":
+      case "export_pdf":
+        // Volontairement non exécutées ici : le client s'en charge (route
+        // réelle pour le quota, navigateur pour le PDF). Si un descriptif
+        // arrive quand même sur cette route, c'est un bug d'aiguillage.
+        return { ok: false, error: "Cette opération est exécutée par l'application, pas par cette route." };
 
       default:
         return { ok: false, error: "Opération inconnue." };

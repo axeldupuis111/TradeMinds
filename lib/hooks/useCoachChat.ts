@@ -157,6 +157,72 @@ export function stripEmDashes(text: string): string {
     .replace(/\s+,/g, ",");
 }
 
+/**
+ * Lance un rapport IA via SA route réelle.
+ *
+ * On ne réimplémente rien : passer par la route existante fait appliquer le
+ * quota, le gating de plan et le disjoncteur mensuel exactement comme si le
+ * trader avait cliqué le bouton de la page. Un chemin parallèle serait un
+ * chemin où ces protections finiraient par diverger.
+ */
+async function runAiReport(kind: string, month: string, sessionId: string | null, lang: string): Promise<boolean> {
+  const target = {
+    weekly_plan: { url: "/api/weekly-plan", body: { language: lang } },
+    monthly_review: { url: "/api/monthly-review", body: { language: lang, month } },
+    session_debrief: { url: "/api/session-debrief", body: { language: lang, sessionId } },
+  }[kind];
+  if (!target) return false;
+  const res = await fetch(target.url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(target.body),
+  });
+  return res.ok;
+}
+
+/**
+ * Génère le rapport PDF de performance sur une période et le télécharge.
+ *
+ * Le module jsPDF est chargé à la demande : il pèse lourd, et l'immense
+ * majorité des conversations n'en demande jamais.
+ */
+async function exportTradesPdf(
+  supabase: ReturnType<typeof createClient>,
+  from: string,
+  to: string,
+  periodLabel: string,
+  lang: string,
+  t: (k: string) => string,
+): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const [{ data: trades }, { data: review }] = await Promise.all([
+    supabase
+      .from("trades")
+      .select("open_time, close_time, pair, direction, lot_size, entry_price, exit_price, pnl, commission, swap, emotion, ict_setup")
+      .eq("user_id", user.id).eq("status", "closed")
+      .gte("open_time", from).lt("open_time", to)
+      .order("open_time", { ascending: true }),
+    supabase
+      .from("session_reviews").select("discipline_score, analysis")
+      .eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+  ]);
+  if (!trades || trades.length === 0) return false;
+
+  const { buildAnalyticsPdf } = await import("@/lib/analytics-pdf");
+  const doc = await buildAnalyticsPdf({
+    trades: trades as Parameters<typeof buildAnalyticsPdf>[0]["trades"],
+    periodLabel,
+    accountLabel: t("analytics_all_accounts"),
+    locale: lang,
+    t,
+    review: review ?? null,
+  });
+  doc.save(`TradeDiscipline-${from.slice(0, 10)}-${to.slice(0, 10)}.pdf`);
+  return true;
+}
+
 function downloadCsv(filename: string, csv: string) {
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
@@ -376,6 +442,26 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
 
     if (!accept) { patch({ state: "cancelled" }); return; }
     patch({ state: "pending" });
+
+    // Deux opérations s'exécutent ICI et non sur /api/coach-confirm.
+    // Le rapport IA passe par sa route réelle, pour que le quota, le gating de
+    // plan et le disjoncteur mensuel s'appliquent exactement comme si le trader
+    // avait cliqué le bouton de la page. Le PDF, lui, se fabrique dans le
+    // navigateur : jsPDF y vit, et c'est le seul endroit d'où un téléchargement
+    // peut partir.
+    const c = target.confirm as Record<string, unknown>;
+    if (c.op === "run_ai_report" || c.op === "export_pdf") {
+      try {
+        const ok = c.op === "run_ai_report"
+          ? await runAiReport(String(c.kind), String(c.month ?? ""), c.session_id as string | null, lang)
+          : await exportTradesPdf(supabase, String(c.from), String(c.to), String(c.label ?? ""), lang, t);
+        patch({ state: ok ? "done" : "error" });
+      } catch {
+        patch({ state: "error" });
+      }
+      return;
+    }
+
     try {
       const res = await fetch("/api/coach-confirm", {
         method: "POST",
@@ -391,7 +477,7 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
     } catch {
       patch({ state: "error" });
     }
-  }, [messages]);
+  }, [messages, lang, supabase, t]);
 
   /** Rejoue l'opération inverse côté serveur puis marque le chip comme annulé. */
   const undo = useCallback(async (messageIndex: number, actionIndex: number) => {
