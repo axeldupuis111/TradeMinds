@@ -32,7 +32,8 @@ export interface CoachActionEvent {
     | "trades_deleted" | "trades_reassigned"
     | "account_created" | "account_updated"
     | "session_started" | "session_ended"
-    | "navigate";
+    | "navigate"
+    | "emotion_logged" | "strategy_deleted" | "account_deleted";
   /** navigate : destination proposée au trader (c'est lui qui clique). */
   href?: string;
   page?: string;
@@ -108,6 +109,9 @@ export function coachActionMeta(
     // lien. Un changement de page decidé par un modèle serait intrusif, et
     // ferait perdre au trader ce qu'il était en train de regarder.
     case "navigate": return { label: t("coach_action_navigate"), href: a.href };
+    case "emotion_logged": return { label: t("coach_action_emotion_logged"), href: "/dashboard/session" };
+    case "strategy_deleted": return { label: t("coach_action_strategy_deleted"), href: "/dashboard/strategy" };
+    case "account_deleted": return { label: t("coach_action_account_deleted"), href: "/dashboard/accounts" };
     default: return { label: "" };
   }
 }

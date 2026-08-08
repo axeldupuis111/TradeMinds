@@ -153,7 +153,10 @@ export type CoachAction =
   | { type: "account_updated" }
   | { type: "session_started" }
   | { type: "session_ended" }
-  | { type: "navigate"; href: string; page: string };
+  | { type: "navigate"; href: string; page: string }
+  | { type: "emotion_logged" }
+  | { type: "strategy_deleted" }
+  | { type: "account_deleted" };
 
 // ── Opérations d'annulation (rejouées par executeCoachUndo) ─────────────────
 
@@ -172,7 +175,8 @@ export type CoachUndo =
   | { op: "delete_account"; account_id: string }
   | { op: "restore_account"; account_id: string; fields: Record<string, unknown> }
   | { op: "delete_session"; session_id: string }
-  | { op: "reopen_session"; session_id: string };
+  | { op: "reopen_session"; session_id: string }
+  | { op: "delete_emotional_check"; check_id: string };
 
 // ── Demandes de confirmation ────────────────────────────────────────────────
 
@@ -192,7 +196,9 @@ export type CoachUndo =
  */
 export type CoachConfirm =
   | { op: "delete_goal"; goal_id: string; label: string }
-  | { op: "delete_trades"; trade_ids: string[]; label: string };
+  | { op: "delete_trades"; trade_ids: string[]; label: string }
+  | { op: "delete_strategy"; strategy_id: string; label: string }
+  | { op: "delete_account"; account_id: string; label: string };
 
 export interface CoachToolResult {
   /** Payload renvoyé au modèle (sérialisé en JSON dans le tool_result). */
@@ -636,6 +642,49 @@ export const COACH_TOOLS = [
     },
   },
 
+  {
+    name: "log_emotional_check",
+    description:
+      "Enregistre l'état émotionnel du trader PENDANT sa session en cours. À proposer dès qu'il exprime une émotion en cours de journée (« je suis énervé », « je me sens en confiance ») : c'est la matière première de son analyse comportementale.",
+    input_schema: {
+      type: "object" as const,
+      properties: { emotion: { type: "string", enum: [...EMOTIONS] } },
+      required: ["emotion"],
+    },
+  },
+  {
+    name: "get_leaderboard_standing",
+    description:
+      "Position du trader dans le classement, badges obtenus et gels de série disponibles. Répond à « où j'en suis au classement », « quels badges il me manque », « il me reste des gels ».",
+    input_schema: { type: "object" as const, properties: {}, required: [] },
+  },
+  {
+    name: "list_communities",
+    description:
+      "Communautés partenaires dont le trader est membre, et défis privés en cours. Utile pour répondre sur son appartenance et les classements réservés aux membres.",
+    input_schema: { type: "object" as const, properties: {}, required: [] },
+  },
+  {
+    name: "delete_strategy",
+    description:
+      "Supprime une stratégie. NE SUPPRIME RIEN de lui-même : renvoie une demande de confirmation à valider d'un clic. Obtiens l'id via list_strategies. Prévient que les trades rattachés perdront ce rattachement.",
+    input_schema: {
+      type: "object" as const,
+      properties: { strategy_id: { type: "string" } },
+      required: ["strategy_id"],
+    },
+  },
+  {
+    name: "delete_account",
+    description:
+      "Supprime un compte de trading (compte personnel ou challenge de prop firm). NE SUPPRIME RIEN de lui-même : renvoie une demande de confirmation. Obtiens l'id via list_accounts. Prévient que les trades rattachés perdront ce rattachement.",
+    input_schema: {
+      type: "object" as const,
+      properties: { account_id: { type: "string" } },
+      required: ["account_id"],
+    },
+  },
+
   // ── Comptes (écriture) ────────────────────────────────────────────────────
   {
     name: "create_account",
@@ -710,6 +759,13 @@ export const TOOL_MIN_PLAN: Record<string, PlanType> = {
   list_economic_events: "free",
   get_challenge_status: "free",
   get_performance: "free",
+  get_leaderboard_standing: "free",
+  list_communities: "free",
+  // Le check emotionnel appartient au rituel de session, donc au meme plan.
+  log_emotional_check: "plus",
+  // Suppressions de structures : meme niveau que l ecriture sur les trades.
+  delete_strategy: "premium",
+  delete_account: "premium",
   open_page: "free",
   // La macro est une exclusivite Premium : la lire par le coach ne doit pas
   // devenir une porte derobee vers un contenu que les autres plans paient.
@@ -1897,6 +1953,133 @@ export async function executeCoachTool(
         };
       }
 
+      case "log_emotional_check": {
+        const emotion = typeof input.emotion === "string" && (EMOTIONS as readonly string[]).includes(input.emotion)
+          ? input.emotion : null;
+        if (!emotion) return fail(`emotion invalide (${EMOTIONS.join(", ")}).`);
+
+        const { data: active } = await supabase
+          .from("sessions").select("id").eq("user_id", userId).eq("active", true)
+          .order("created_at", { ascending: false }).limit(1).maybeSingle();
+        if (!active) return fail("Aucune session ouverte. Propose start_session avant d'enregistrer un ressenti.");
+
+        const { data, error } = await supabase
+          .from("session_emotional_checks")
+          .insert({ user_id: userId, session_id: active.id, emotion })
+          .select("id")
+          .single();
+        if (error || !data) return fail("Enregistrement du ressenti impossible.");
+        // Les émotions à risque déclenchent une mise en garde côté produit :
+        // le coach doit dire la même chose, sinon les deux voix se contredisent.
+        const risky = ["frustrated", "fomo", "revenge"].includes(emotion);
+        return {
+          result: {
+            ok: true,
+            emotion,
+            risky,
+            instruction: risky
+              ? "Émotion à risque : conseille une pause avant le prochain trade, sans moraliser."
+              : "Ressenti enregistré, poursuis la conversation normalement.",
+          },
+          action: { type: "emotion_logged" },
+          undo: { op: "delete_emotional_check", check_id: data.id as string },
+        };
+      }
+
+      case "get_leaderboard_standing": {
+        const [{ data: profile }, { data: badges }] = await Promise.all([
+          supabase.from("profiles")
+            .select("username, current_streak, best_streak, streak_freezes_used, plan")
+            .eq("id", userId).maybeSingle(),
+          supabase.from("badge_awards")
+            .select("badge_key, awarded_at").eq("user_id", userId)
+            .order("awarded_at", { ascending: false }).limit(30),
+        ]);
+        const earned = (badges ?? []) as unknown as { badge_key: string; awarded_at: string }[];
+        return {
+          result: {
+            username: profile?.username ?? null,
+            // Sans pseudo public, le trader n'apparaît pas au classement : le
+            // dire évite de lui chercher un rang qui n'existe pas.
+            listed: !!profile?.username,
+            current_streak: profile?.current_streak ?? 0,
+            best_streak: profile?.best_streak ?? 0,
+            badges_earned: earned.map((b) => b.badge_key),
+            badges_count: earned.length,
+            note: profile?.username
+              ? "Pour le rang exact et la progression des badges restants, propose open_page vers leaderboard."
+              : "Ce trader n'a pas de pseudo public : il n'apparaît pas au classement. Propose-lui d'en choisir un dans ses réglages.",
+          },
+        };
+      }
+
+      case "list_communities": {
+        const { data, error } = await supabase
+          .from("community_members")
+          .select("joined_at, source, communities(id, slug, name, active)")
+          .eq("user_id", userId)
+          .limit(20);
+        if (error) return fail("Lecture des communautés impossible.");
+        const rows = (data ?? []) as unknown as Record<string, unknown>[];
+        return {
+          result: {
+            count: rows.length,
+            communities: rows.map((r) => ({ ...(r.communities as object ?? {}), joined_at: r.joined_at, source: r.source })),
+            note: rows.length === 0 ? "Ce trader n'appartient à aucune communauté partenaire." : undefined,
+          },
+        };
+      }
+
+      case "delete_strategy": {
+        if (!isUuid(input.strategy_id)) return fail("strategy_id invalide.");
+        const { data: row } = await supabase
+          .from("strategies").select("id, name")
+          .eq("id", input.strategy_id).eq("user_id", userId).maybeSingle();
+        if (!row) {
+          return fail("Stratégie introuvable. AUCUN bouton de validation n'est apparu. Appelle list_strategies pour retrouver le bon id.");
+        }
+        // Compté ici pour que le trader sache CE QU'IL PERD avant de valider.
+        const { count } = await supabase
+          .from("trades").select("id", { count: "exact", head: true })
+          .eq("user_id", userId).eq("strategy_id", row.id);
+        const label = typeof row.name === "string" && row.name.trim() ? row.name.trim().slice(0, 60) : "cette stratégie";
+        return {
+          result: {
+            requires_confirmation: true,
+            what: `Suppression de la stratégie « ${label} »`,
+            linked_trades: count ?? 0,
+            instruction:
+              "Ne dis PAS que c'est fait. Annonce ce qui va être supprimé, précise combien de trades perdront leur rattachement, et invite le trader à cliquer Valider.",
+          },
+          confirm: { op: "delete_strategy", strategy_id: row.id as string, label },
+        };
+      }
+
+      case "delete_account": {
+        if (!isUuid(input.account_id)) return fail("account_id invalide.");
+        const { data: row } = await supabase
+          .from("prop_challenges").select("id, firm, type, account_number")
+          .eq("id", input.account_id).eq("user_id", userId).maybeSingle();
+        if (!row) {
+          return fail("Compte introuvable. AUCUN bouton de validation n'est apparu. Appelle list_accounts pour retrouver le bon id.");
+        }
+        const { count } = await supabase
+          .from("trades").select("id", { count: "exact", head: true })
+          .eq("user_id", userId).eq("challenge_id", row.id);
+        const parts = [row.firm, row.account_number].filter((v) => typeof v === "string" && v.trim());
+        const label = parts.length > 0 ? parts.join(" ") : row.type === "prop" ? "ce challenge" : "ce compte";
+        return {
+          result: {
+            requires_confirmation: true,
+            what: `Suppression du compte « ${label} »`,
+            linked_trades: count ?? 0,
+            instruction:
+              "Ne dis PAS que c'est fait. Annonce ce qui va être supprimé, précise combien de trades perdront leur rattachement, et invite le trader à cliquer Valider.",
+          },
+          confirm: { op: "delete_account", account_id: row.id as string, label },
+        };
+      }
+
       // ── Comptes (écriture) ──────────────────────────────────────────────
       case "create_account": {
         const type = input.type === "prop" ? "prop" : input.type === "personal" ? "personal" : null;
@@ -2082,6 +2265,33 @@ export async function executeCoachConfirm(
         return { ok: true, action: { type: "trades_deleted", count } };
       }
 
+      case "delete_strategy": {
+        if (!planAllowsTool(plan, "delete_strategy")) return { ok: false, error: "Action indisponible sur ce plan." };
+        if (!isUuid(confirm.strategy_id)) return { ok: false, error: "Identifiant invalide." };
+        // Les trades rattachés sont détachés, jamais supprimés : ils sont la
+        // mémoire du trader, une stratégie n'est qu'une étiquette dessus.
+        await supabase.from("trades").update({ strategy_id: null })
+          .eq("user_id", userId).eq("strategy_id", confirm.strategy_id);
+        await supabase.from("strategy_tags").delete().eq("strategy_id", confirm.strategy_id);
+        const { data, error } = await supabase
+          .from("strategies").delete().eq("id", confirm.strategy_id).eq("user_id", userId).select("id");
+        if (error) return { ok: false, error: "Suppression impossible." };
+        if (!data || data.length === 0) return { ok: false, error: "Stratégie introuvable." };
+        return { ok: true, action: { type: "strategy_deleted" } };
+      }
+
+      case "delete_account": {
+        if (!planAllowsTool(plan, "delete_account")) return { ok: false, error: "Action indisponible sur ce plan." };
+        if (!isUuid(confirm.account_id)) return { ok: false, error: "Identifiant invalide." };
+        await supabase.from("trades").update({ challenge_id: null })
+          .eq("user_id", userId).eq("challenge_id", confirm.account_id);
+        const { data, error } = await supabase
+          .from("prop_challenges").delete().eq("id", confirm.account_id).eq("user_id", userId).select("id");
+        if (error) return { ok: false, error: "Suppression impossible." };
+        if (!data || data.length === 0) return { ok: false, error: "Compte introuvable." };
+        return { ok: true, action: { type: "account_deleted" } };
+      }
+
       default:
         return { ok: false, error: "Opération inconnue." };
     }
@@ -2173,6 +2383,12 @@ export async function executeCoachUndo(
             .update({ challenge_id: r.challenge_id ?? null, strategy_id: r.strategy_id ?? null })
             .eq("id", r.id).eq("user_id", userId);
         }
+        return { ok: true };
+      }
+      case "delete_emotional_check": {
+        if (!isUuid(undo.check_id)) return { ok: false, error: "invalide" };
+        await supabase.from("session_emotional_checks").delete()
+          .eq("id", undo.check_id).eq("user_id", userId);
         return { ok: true };
       }
       case "delete_session": {
