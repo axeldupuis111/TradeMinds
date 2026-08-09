@@ -69,6 +69,16 @@ export default function CoachDock() {
     if (el.scrollHeight - el.scrollTop - el.clientHeight < 120) el.scrollTop = el.scrollHeight;
   }, [chat.messages]);
 
+  // Échap ferme le dock. Une seule façon de sortir d'un dialogue, c'est une
+  // façon de trop peu : si la croix devient inatteignable (mise en page
+  // étroite, clavier virtuel qui remonte), il reste cette issue.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   const stopDictation = useCallback(() => {
     dictationRef.current?.stop();
     dictationRef.current = null;
@@ -132,11 +142,17 @@ export default function CoachDock() {
         </button>
       )}
 
+      {/* Sur mobile le panneau est borné EN HAUT (top-16). Sans cette borne il
+          grandit jusqu'à glisser sous le header du dashboard, qui est en
+          z-[60] : sa barre de titre passe derrière, la croix de fermeture
+          devient impossible à cliquer, et le trader est enfermé dans le coach.
+          z-[70] garantit en plus que le dialogue reste au-dessus. */}
       {open && (
         <div
           role="dialog"
+          aria-modal="true"
           aria-label={t("coach_dock_title")}
-          className="fixed z-50 inset-x-4 bottom-36 sm:inset-x-auto sm:right-6 sm:bottom-24 sm:w-[400px] max-h-[min(620px,calc(100vh-9rem))] flex flex-col bg-card border border-border rounded-2xl shadow-2xl overflow-hidden"
+          className="fixed z-[70] inset-x-4 top-16 bottom-36 sm:inset-x-auto sm:top-auto sm:right-6 sm:bottom-24 sm:w-[400px] sm:max-h-[min(620px,calc(100vh-9rem))] flex flex-col bg-card border border-border rounded-2xl shadow-2xl overflow-hidden"
         >
           <header className="flex items-center gap-2 px-4 py-3 border-b border-border bg-accent/[0.06]">
             <MessageCircle className="w-4 h-4 text-accent shrink-0" strokeWidth={2} />
