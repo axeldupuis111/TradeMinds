@@ -9,6 +9,8 @@ import {
   CAPABILITY_TIERS,
   COACH_CAPABILITIES,
   capabilityPlan,
+  coachDailyMessages,
+  coachQuotaKey,
   toolCountForPlan,
   totalToolCount,
   type CapabilityPlan,
@@ -225,6 +227,7 @@ function Stage({ scenario, t }: { scenario: Scenario; t: (k: string) => string }
 function TierColumn({ tier, t }: { tier: (typeof CAPABILITY_TIERS)[number]; t: (k: string) => string }) {
   const gained = COACH_CAPABILITIES.filter((c) => capabilityPlan(c) === tier.plan);
   const highlight = tier.plan === "premium";
+  const quota = t(coachQuotaKey(tier.plan)).replace("{count}", String(coachDailyMessages(tier.plan)));
 
   return (
     <div
@@ -234,8 +237,15 @@ function TierColumn({ tier, t }: { tier: (typeof CAPABILITY_TIERS)[number]; t: (
         background: highlight ? "rgb(var(--accent)/0.04)" : "rgb(var(--card))",
       }}
     >
-      <div className="flex items-baseline justify-between gap-2 mb-1">
-        <h3 className="text-lg font-bold" style={{ color: "rgb(var(--foreground))" }}>{t(tier.titleKey)}</h3>
+      {/* Le nom du plan d'abord : sans lui, le lecteur lit une promesse sans
+          savoir ce qu'elle coûte ni ce qu'il faut prendre pour l'avoir. */}
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <span
+          className="text-[10px] font-bold uppercase tracking-[0.14em]"
+          style={{ color: highlight ? "rgb(var(--accent))" : COPY }}
+        >
+          {t(tier.planKey)}
+        </span>
         <span
           className="text-[11px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap"
           style={{
@@ -246,6 +256,15 @@ function TierColumn({ tier, t }: { tier: (typeof CAPABILITY_TIERS)[number]; t: (
           {t("op_tier_tools").replace("{count}", String(toolCountForPlan(tier.plan)))}
         </span>
       </div>
+
+      <h3 className="text-lg font-bold" style={{ color: "rgb(var(--foreground))" }}>{t(tier.titleKey)}</h3>
+
+      {/* La fréquence, tout de suite : une capacité sans occasion de s'en
+          servir n'est pas une capacité. */}
+      <p className="text-[12px] font-medium mt-1 mb-3" style={{ color: highlight ? "rgb(var(--accent))" : "rgb(var(--profit))" }}>
+        {quota}
+      </p>
+
       <p className="text-[13px] mb-4" style={{ color: COPY }}>
         {t(tier.promiseKey).replace("{count}", String(toolCountForPlan(tier.plan)))}
       </p>
@@ -369,6 +388,10 @@ export default function CoachOperator() {
             <TierColumn key={tier.plan} tier={tier} t={t} />
           ))}
         </motion.div>
+
+        <p className="text-center text-[12px] mt-6 max-w-2xl mx-auto" style={{ color: COPY }}>
+          {t("op_not_a_broker")}
+        </p>
 
         <div className="text-center mt-10">
           <Link

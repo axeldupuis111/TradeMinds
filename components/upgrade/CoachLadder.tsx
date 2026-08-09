@@ -5,6 +5,8 @@ import {
   CAPABILITY_TIERS,
   COACH_CAPABILITIES,
   capabilityPlan,
+  coachDailyMessages,
+  coachQuotaKey,
   toolCountForPlan,
   type CapabilityPlan,
 } from "@/lib/coach-capabilities";
@@ -45,8 +47,10 @@ export default function CoachLadder({ plan }: { plan: CapabilityPlan }) {
                 owned ? "border-accent/35 bg-accent/[0.05]" : "border-border bg-surface/40"
               }`}
             >
-              <div className="flex items-center justify-between gap-2 mb-3">
-                <h3 className="text-sm font-bold text-foreground">{t(tier.titleKey)}</h3>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-foreground-muted">
+                  {t(tier.planKey)}
+                </span>
                 <span
                   className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
                     owned ? "bg-accent/15 text-accent" : "bg-surface text-foreground-muted"
@@ -55,6 +59,10 @@ export default function CoachLadder({ plan }: { plan: CapabilityPlan }) {
                   {owned ? t("ladder_active") : t("ladder_locked")}
                 </span>
               </div>
+              <h3 className="text-sm font-bold text-foreground">{t(tier.titleKey)}</h3>
+              <p className={`text-[11px] mb-3 ${owned ? "text-accent" : "text-foreground-muted"}`}>
+                {t(coachQuotaKey(tier.plan)).replace("{count}", String(coachDailyMessages(tier.plan)))}
+              </p>
               <ul className="space-y-1.5">
                 {gained.map((cap) => (
                   <li
@@ -76,6 +84,7 @@ export default function CoachLadder({ plan }: { plan: CapabilityPlan }) {
       </div>
 
       <p className="text-[12px] text-foreground-muted mt-4">{t("ladder_hint")}</p>
+      <p className="text-[12px] text-foreground-muted mt-1">{t("op_not_a_broker")}</p>
     </div>
   );
 }

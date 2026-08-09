@@ -73,6 +73,30 @@ describe("chaque promesse est traduite dans les 4 langues", () => {
     });
   }
 
+  it("ne laisse jamais croire que le coach agit chez le broker", () => {
+    // TradeDiscipline est un journal : le coach ecrit une ligne, il ne passe
+    // aucun ordre. « Cloture tes trades » a deja fait croire l'inverse une
+    // fois. Sur un produit de trading, ce malentendu est le plus couteux.
+    const ORDER_WORDS = /(cloture|clôture|ferme ta position|passe un ordre|envoie un ordre|closes your position|places? an order|cierra tu posici|schlie(ss|ß)t deine Position)/i;
+    const offenders: string[] = [];
+    for (const [lang, dict] of Object.entries(DICTS)) {
+      for (const cap of COACH_CAPABILITIES) {
+        const phrase = dict[cap.key] ?? "";
+        if (ORDER_WORDS.test(phrase)) offenders.push(`${lang}/${cap.key}: ${phrase}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it("annonce la fréquence en même temps que la capacité", () => {
+    // 13 outils en gratuit sans dire « 1 message a vie » promet un coach
+    // utilisable que le plan ne donne pas.
+    for (const dict of Object.values(DICTS)) {
+      expect(dict["cap_quota_taster"]).toBeTruthy();
+      expect(dict["cap_quota_daily"]).toContain("{count}");
+    }
+  });
+
   it("aucun tiret long dans les promesses françaises", () => {
     // Marqueur de texte généré : proscrit dans la voix de TradeDiscipline.
     const offenders = COACH_CAPABILITIES

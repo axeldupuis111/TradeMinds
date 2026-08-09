@@ -12,6 +12,7 @@
  */
 
 import { TOOL_MIN_PLAN } from "./coach-tool-plans";
+import { PLAN_LIMITS } from "./plan-limits";
 
 export type CapabilityPlan = "free" | "plus" | "premium";
 
@@ -84,9 +85,32 @@ export function totalToolCount(): number {
   return Object.keys(TOOL_MIN_PLAN).length;
 }
 
+/**
+ * Combien de fois par jour le trader peut solliciter le coach.
+ *
+ * Sans ce chiffre, « 13 outils » en gratuit laisse croire a un coach utilisable
+ * alors que le plan gratuit n'offre qu'UN message a vie : les outils existent,
+ * l'occasion de s'en servir non. Annoncer la capacite sans la frequence est la
+ * meilleure facon de decevoir a la premiere utilisation.
+ */
+export function coachQuotaKey(plan: CapabilityPlan): string {
+  return PLAN_LIMITS.chat[plan].limit === 0 ? "cap_quota_taster" : "cap_quota_daily";
+}
+
+/** Nombre d'echanges par jour, 0 pour le message decouverte unique. */
+export function coachDailyMessages(plan: CapabilityPlan): number {
+  return PLAN_LIMITS.chat[plan].limit;
+}
+
 /** Les trois paliers, dans l'ordre du récit : il lit, il corrige, il fait. */
-export const CAPABILITY_TIERS: { plan: CapabilityPlan; titleKey: string; promiseKey: string }[] = [
-  { plan: "free", titleKey: "cap_tier_free", promiseKey: "cap_tier_free_promise" },
-  { plan: "plus", titleKey: "cap_tier_plus", promiseKey: "cap_tier_plus_promise" },
-  { plan: "premium", titleKey: "cap_tier_premium", promiseKey: "cap_tier_premium_promise" },
+export const CAPABILITY_TIERS: {
+  plan: CapabilityPlan;
+  /** Nom commercial du plan. Sans lui, le lecteur ne sait pas ce qu'il achète. */
+  planKey: string;
+  titleKey: string;
+  promiseKey: string;
+}[] = [
+  { plan: "free", planKey: "plan_free", titleKey: "cap_tier_free", promiseKey: "cap_tier_free_promise" },
+  { plan: "plus", planKey: "plan_plus", titleKey: "cap_tier_plus", promiseKey: "cap_tier_plus_promise" },
+  { plan: "premium", planKey: "plan_premium", titleKey: "cap_tier_premium", promiseKey: "cap_tier_premium_promise" },
 ];
