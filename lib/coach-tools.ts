@@ -74,6 +74,23 @@ const MAX_EVENTS = 40;
 const MAX_DELETE_IDS = 25;
 
 /** Devises acceptées à la création d'un compte (mêmes valeurs que l'interface). */
+/**
+ * Mot exact porté par le bouton de validation, par ton et par langue.
+ *
+ * Doit rester aligné sur les clés `coach_confirm_accept*` de lib/i18n : le
+ * coach cite ce mot dans sa phrase, et un écart ferait annoncer un bouton
+ * introuvable à l'écran.
+ */
+const CONFIRM_CTA: Record<CoachConfirmTone, Record<string, string>> = {
+  destructive: { fr: "Valider", en: "Confirm", es: "Confirmar", de: "Bestätigen" },
+  credit: { fr: "Lancer", en: "Run", es: "Lanzar", de: "Starten" },
+  download: { fr: "Télécharger", en: "Download", es: "Descargar", de: "Herunterladen" },
+};
+
+export function confirmCta(tone: CoachConfirmTone, language: string): string {
+  return CONFIRM_CTA[tone][language] ?? CONFIRM_CTA[tone].fr;
+}
+
 /** Libellés lisibles des rapports IA, pour ne jamais afficher la clé brute. */
 const REPORT_LABELS: Record<string, Record<string, string>> = {
   fr: { weekly_plan: "Plan de la semaine", monthly_review: "Bilan mensuel", session_debrief: "Débrief de session" },
@@ -1121,7 +1138,7 @@ export async function executeCoachTool(
             requires_confirmation: true,
             what: `Suppression de l'objectif « ${label} »`,
             instruction:
-              "Ne dis PAS que c'est fait. Annonce en une phrase ce qui va être supprimé et invite le trader à cliquer Valider. N'appelle pas d'autre outil pour cette suppression.",
+              `Ne dis PAS que c'est fait. Annonce en une phrase ce qui va être supprimé et invite le trader à cliquer « ${confirmCta("destructive", language)} ». N'appelle pas d'autre outil pour cette suppression.`,
           },
           confirm: { op: "delete_goal", goal_id: row.id as string, label, tone: "destructive" },
         };
@@ -1780,7 +1797,7 @@ export async function executeCoachTool(
             what: `Suppression définitive de ${label}`,
             trades: found.slice(0, 10),
             instruction:
-              "Ne dis PAS que c'est fait. Annonce en une phrase ce qui va être supprimé (nombre, instruments, période) et invite le trader à cliquer Valider.",
+              `Ne dis PAS que c'est fait. Annonce en une phrase ce qui va être supprimé (nombre, instruments, période) et invite le trader à cliquer « ${confirmCta("destructive", language)} ».`,
           },
           confirm: { op: "delete_trades", trade_ids: found.map((t) => t.id), label, tone: "destructive" },
         };
@@ -2035,7 +2052,7 @@ export async function executeCoachTool(
             what: REPORT_LABELS[language]?.[kind] ?? REPORT_LABELS.fr[kind],
             costs_credit: true,
             instruction:
-              "Ne dis PAS que c'est lancé. Explique en une phrase ce que le rapport va lui apporter, précise qu'il consomme un crédit de son quota du jour, et invite-le à cliquer Valider.",
+              `Ne dis PAS que c'est lancé. Explique en une phrase ce que le rapport va lui apporter, précise qu'il consomme un crédit de son quota du jour, et invite-le à cliquer « ${confirmCta("credit", language)} ».`,
           },
           confirm: { op: "run_ai_report", kind, month, session_id: sessionId, label: REPORT_LABELS[language]?.[kind] ?? REPORT_LABELS.fr[kind], tone: "credit" },
         };
@@ -2064,7 +2081,7 @@ export async function executeCoachTool(
             what: `Rapport PDF sur ${count} trades (${label})`,
             costs_credit: false,
             instruction:
-              "Ne dis PAS que c'est fait. Annonce ce que contiendra le rapport et invite le trader à cliquer Valider ; le fichier se téléchargera sur son appareil.",
+              `Ne dis PAS que c'est fait. Annonce ce que contiendra le rapport et invite le trader à cliquer « ${confirmCta("download", language)} » ; le fichier se téléchargera sur son appareil.`,
           },
           confirm: { op: "export_pdf", from: fromIso, to: toIso, label, count, tone: "download" },
         };
@@ -2166,7 +2183,7 @@ export async function executeCoachTool(
             what: `Suppression de la stratégie « ${label} »`,
             linked_trades: count ?? 0,
             instruction:
-              "Ne dis PAS que c'est fait. Annonce ce qui va être supprimé, précise combien de trades perdront leur rattachement, et invite le trader à cliquer Valider.",
+              `Ne dis PAS que c'est fait. Annonce ce qui va être supprimé, précise combien de trades perdront leur rattachement, et invite le trader à cliquer « ${confirmCta("destructive", language)} ».`,
           },
           confirm: { op: "delete_strategy", strategy_id: row.id as string, label, tone: "destructive" },
         };
@@ -2191,7 +2208,7 @@ export async function executeCoachTool(
             what: `Suppression du compte « ${label} »`,
             linked_trades: count ?? 0,
             instruction:
-              "Ne dis PAS que c'est fait. Annonce ce qui va être supprimé, précise combien de trades perdront leur rattachement, et invite le trader à cliquer Valider.",
+              `Ne dis PAS que c'est fait. Annonce ce qui va être supprimé, précise combien de trades perdront leur rattachement, et invite le trader à cliquer « ${confirmCta("destructive", language)} ».`,
           },
           confirm: { op: "delete_account", account_id: row.id as string, label, tone: "destructive" },
         };
