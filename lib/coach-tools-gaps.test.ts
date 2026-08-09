@@ -107,7 +107,7 @@ describe("delete_strategy", () => {
 
   it("détache les trades au lieu de les supprimer, une fois validé", async () => {
     const { client, calls } = mockClient([{ data: [{ id: ID }], error: null }]);
-    const r = await executeCoachConfirm(client, USER, { op: "delete_strategy", strategy_id: ID, label: "x" });
+    const r = await executeCoachConfirm(client, USER, { op: "delete_strategy", strategy_id: ID, label: "x", tone: "destructive" });
     expect(r.ok).toBe(true);
     // Les trades sont la mémoire du trader : on les détache, on ne les efface pas.
     expect(called(calls, "update")).toBe(true);
@@ -117,7 +117,7 @@ describe("delete_strategy", () => {
 
   it("reste fermée au plan Plus", async () => {
     const { client, calls } = mockClient([{ data: [{ id: ID }], error: null }]);
-    const r = await executeCoachConfirm(client, USER, { op: "delete_strategy", strategy_id: ID, label: "x" }, "plus");
+    const r = await executeCoachConfirm(client, USER, { op: "delete_strategy", strategy_id: ID, label: "x", tone: "destructive" }, "plus");
     expect(r.ok).toBe(false);
     expect(called(calls, "delete")).toBe(false);
   });
@@ -137,7 +137,7 @@ describe("delete_account", () => {
 
   it("détache les trades une fois validé", async () => {
     const { client, calls } = mockClient([{ data: [{ id: ID }], error: null }]);
-    const r = await executeCoachConfirm(client, USER, { op: "delete_account", account_id: ID, label: "x" });
+    const r = await executeCoachConfirm(client, USER, { op: "delete_account", account_id: ID, label: "x", tone: "destructive" });
     expect(r.ok).toBe(true);
     expect(tables(calls)).toContain("trades");
     expect(r.action).toEqual({ type: "account_deleted" });

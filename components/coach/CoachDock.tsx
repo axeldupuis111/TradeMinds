@@ -21,6 +21,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { coachActionMeta, useCoachChat } from "@/lib/hooks/useCoachChat";
+import CoachConfirmBox from "@/components/coach/CoachConfirmBox";
 import { describePage } from "@/lib/coach-page-context";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
@@ -184,40 +185,14 @@ export default function CoachDock() {
                 >
                   {msg.content || (chat.loading ? "…" : "")}
                 </div>
-                {/* Opérations irréversibles : rien n'est fait tant que le
-                    trader n'a pas tranché. Le libellé dit ce qui disparaîtra. */}
+                {/* Rien n'est fait tant que le trader n'a pas tranché. */}
                 {(msg.confirms ?? []).map((item, ci) => (
-                  <div key={`c${ci}`} className="mt-1.5 rounded-lg border border-red-500/30 bg-red-500/[0.07] px-3 py-2">
-                    <p className="text-[12px] text-foreground mb-1.5">
-                      {t("coach_confirm_prompt").replace("{what}", String(item.confirm.label ?? ""))}
-                    </p>
-                    {item.state === "idle" && (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => void chat.resolveConfirm(i, ci, true)}
-                          className="px-2.5 py-1 rounded-md bg-red-500 text-white text-[11px] font-semibold hover:brightness-110 transition"
-                        >
-                          {t("coach_confirm_accept")}
-                        </button>
-                        <button
-                          onClick={() => void chat.resolveConfirm(i, ci, false)}
-                          className="px-2.5 py-1 rounded-md border border-border text-foreground-muted text-[11px] hover:text-foreground transition"
-                        >
-                          {t("coach_confirm_reject")}
-                        </button>
-                      </div>
-                    )}
-                    {item.state === "pending" && <p className="text-[11px] text-foreground-muted">…</p>}
-                    {item.state === "done" && (
-                      <p className="text-[11px] text-accent">{t("coach_confirm_done")}</p>
-                    )}
-                    {item.state === "cancelled" && (
-                      <p className="text-[11px] text-foreground-muted">{t("coach_confirm_cancelled")}</p>
-                    )}
-                    {item.state === "error" && (
-                      <p className="text-[11px] text-red-500">{t("coach_confirm_error")}</p>
-                    )}
-                  </div>
+                  <CoachConfirmBox
+                    key={`c${ci}`}
+                    item={item}
+                    t={t}
+                    onResolve={(accept) => void chat.resolveConfirm(i, ci, accept)}
+                  />
                 ))}
                 {(msg.actions ?? []).length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-1.5">

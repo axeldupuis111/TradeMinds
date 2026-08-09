@@ -163,7 +163,7 @@ describe("delete_trades", () => {
     });
     const r = await executeCoachTool(client, USER, "delete_trades", { trade_ids: [ID] });
     expect(called(calls, "delete")).toBe(false);
-    expect(r.confirm).toMatchObject({ op: "delete_trades", trade_ids: [ID] });
+    expect(r.confirm).toMatchObject({ tone: "destructive" as const, op: "delete_trades", trade_ids: [ID] });
     expect((r.result as { requires_confirmation: boolean }).requires_confirmation).toBe(true);
     expect((r.confirm as { label: string }).label).toContain("XAUUSD");
   });
@@ -177,7 +177,7 @@ describe("delete_trades", () => {
 
   it("supprime réellement après validation du trader", async () => {
     const { client, calls } = mockClient({ data: [{ id: ID }, { id: ID2 }], error: null });
-    const r = await executeCoachConfirm(client, USER, { op: "delete_trades", trade_ids: [ID, ID2], label: "2 trades" });
+    const r = await executeCoachConfirm(client, USER, { tone: "destructive" as const, op: "delete_trades", trade_ids: [ID, ID2], label: "2 trades" });
     expect(r.ok).toBe(true);
     expect(called(calls, "delete")).toBe(true);
     expect(r.action).toEqual({ type: "trades_deleted", count: 2 });
@@ -185,7 +185,7 @@ describe("delete_trades", () => {
 
   it("refuse la suppression si le plan ne la couvre pas", async () => {
     const { client, calls } = mockClient();
-    const r = await executeCoachConfirm(client, USER, { op: "delete_trades", trade_ids: [ID], label: "x" }, "plus");
+    const r = await executeCoachConfirm(client, USER, { tone: "destructive" as const, op: "delete_trades", trade_ids: [ID], label: "x" }, "plus");
     expect(r.ok).toBe(false);
     expect(called(calls, "delete")).toBe(false);
   });

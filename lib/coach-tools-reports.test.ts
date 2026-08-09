@@ -87,11 +87,54 @@ describe("export_pdf", () => {
   });
 });
 
+describe("libellé et ton de la confirmation", () => {
+  it("nomme le rapport en clair, jamais la clé brute weekly_plan", async () => {
+    const { client } = mockClient([{ data: null, error: null }]);
+    const r = await executeCoachTool(client, USER, "run_ai_report", { kind: "weekly_plan" }, "Europe/Paris", "premium", "fr");
+    const label = (r.confirm as { label: string }).label;
+    expect(label).toBe("Plan de la semaine");
+    expect(label).not.toContain("_");
+  });
+
+  it("traduit ce libellé dans la langue du trader", async () => {
+    const { client } = mockClient([{ data: null, error: null }]);
+    const r = await executeCoachTool(client, USER, "run_ai_report", { kind: "monthly_review" }, undefined, "premium", "de");
+    expect((r.confirm as { label: string }).label).toBe("Monatsbilanz");
+  });
+
+  it("retombe sur le français pour une langue inconnue", async () => {
+    const { client } = mockClient([{ data: null, error: null }]);
+    const r = await executeCoachTool(client, USER, "run_ai_report", { kind: "monthly_review" }, undefined, "premium", "it");
+    expect((r.confirm as { label: string }).label).toBe("Bilan mensuel");
+  });
+
+  it("annonce un crédit, pas une suppression", async () => {
+    const { client } = mockClient([{ data: null, error: null }]);
+    const r = await executeCoachTool(client, USER, "run_ai_report", { kind: "weekly_plan" }, undefined, "premium");
+    expect((r.confirm as { tone: string }).tone).toBe("credit");
+  });
+
+  it("un export PDF s'annonce comme un téléchargement", async () => {
+    const { client } = mockClient([{ data: null, error: null, count: 9 }]);
+    const r = await executeCoachTool(client, USER, "export_pdf", {}, "Europe/Paris", "premium", "fr");
+    // Ni rouge ni « irréversible » : rien n'est détruit par un PDF.
+    expect((r.confirm as { tone: string }).tone).toBe("download");
+    expect((r.confirm as { label: string }).label).toContain("9 trades");
+  });
+
+  it("une suppression, elle, reste marquée comme irréversible", async () => {
+    const GOAL = "33333333-3333-4333-8333-333333333333";
+    const { client } = mockClient([{ data: { id: GOAL, title: "Objectif" }, error: null }]);
+    const r = await executeCoachTool(client, USER, "delete_goal", { goal_id: GOAL }, undefined, "premium");
+    expect((r.confirm as { tone: string }).tone).toBe("destructive");
+  });
+});
+
 describe("aiguillage des opérations exécutées par le client", () => {
   it("la route de confirmation refuse un rapport IA au lieu de l'exécuter", async () => {
     const { client, calls } = mockClient([{ data: null, error: null }]);
     const r = await executeCoachConfirm(client, USER, {
-      op: "run_ai_report", kind: "weekly_plan", month: "2026-08", session_id: null, label: "x",
+      op: "run_ai_report", kind: "weekly_plan", month: "2026-08", session_id: null, label: "x", tone: "credit",
     });
     expect(r.ok).toBe(false);
     // Aucune écriture : cette route n'est pas censée traiter cette opération.
@@ -101,7 +144,7 @@ describe("aiguillage des opérations exécutées par le client", () => {
   it("elle refuse aussi la génération de PDF", async () => {
     const { client } = mockClient([{ data: null, error: null }]);
     const r = await executeCoachConfirm(client, USER, {
-      op: "export_pdf", from: "2026-07-01T00:00:00Z", to: "2026-08-01T00:00:00Z", label: "x", count: 3,
+      op: "export_pdf", from: "2026-07-01T00:00:00Z", to: "2026-08-01T00:00:00Z", label: "x", count: 3, tone: "download",
     });
     expect(r.ok).toBe(false);
   });

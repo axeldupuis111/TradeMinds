@@ -8,6 +8,7 @@ import {
   useCoachChat,
   type ChatMessage,
 } from "@/lib/hooks/useCoachChat";
+import CoachConfirmBox from "@/components/coach/CoachConfirmBox";
 import type { CategoryBreakdown } from "@/lib/discipline-score";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
@@ -1546,6 +1547,16 @@ export default function AnalysisPage() {
                         <p className="whitespace-pre-wrap">{msg.content}</p>
                       )}
                     </div>
+                    {/* Le dock global est masqué sur cette page : sans ce bloc,
+                        le coach annonçait un bouton de validation invisible. */}
+                    {(msg.confirms ?? []).map((item, ci) => (
+                      <CoachConfirmBox
+                        key={`c${ci}`}
+                        item={item}
+                        t={t}
+                        onResolve={(accept) => void chat.resolveConfirm(i, ci, accept)}
+                      />
+                    ))}
                     {msg.role === "assistant" && msg.actions && msg.actions.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mt-1">
                         {msg.actions.map((item, ai) => {

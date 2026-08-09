@@ -74,6 +74,14 @@ const MAX_EVENTS = 40;
 const MAX_DELETE_IDS = 25;
 
 /** Devises acceptées à la création d'un compte (mêmes valeurs que l'interface). */
+/** Libellés lisibles des rapports IA, pour ne jamais afficher la clé brute. */
+const REPORT_LABELS: Record<string, Record<string, string>> = {
+  fr: { weekly_plan: "Plan de la semaine", monthly_review: "Bilan mensuel", session_debrief: "Débrief de session" },
+  en: { weekly_plan: "Plan for the week", monthly_review: "Monthly review", session_debrief: "Session debrief" },
+  es: { weekly_plan: "Plan de la semana", monthly_review: "Balance mensual", session_debrief: "Resumen de sesión" },
+  de: { weekly_plan: "Wochenplan", monthly_review: "Monatsbilanz", session_debrief: "Session-Debriefing" },
+};
+
 const ACCOUNT_CURRENCIES = ["EUR", "USD", "GBP", "CHF", "CAD", "AUD", "JPY"] as const;
 
 /**
@@ -194,17 +202,27 @@ export type CoachUndo =
  * Comme pour l'annulation, l'exécution passe par le client Supabase
  * user-scoped : un descriptif forgé ne peut toucher que ses propres données.
  */
+/**
+ * Nature de l'opération, qui décide du texte et de la couleur du bouton.
+ *
+ * Le message était écrit pour les suppressions (« cette action est
+ * irréversible ») et resservi tel quel : générer un PDF s'annonçait donc comme
+ * un geste définitif, en rouge. Un avertissement qu'on lit partout ne veut plus
+ * rien dire là où il compte vraiment.
+ */
+export type CoachConfirmTone = "destructive" | "credit" | "download";
+
 export type CoachConfirm =
-  | { op: "delete_goal"; goal_id: string; label: string }
-  | { op: "delete_trades"; trade_ids: string[]; label: string }
-  | { op: "delete_strategy"; strategy_id: string; label: string }
-  | { op: "delete_account"; account_id: string; label: string }
+  | { op: "delete_goal"; goal_id: string; label: string; tone: "destructive" }
+  | { op: "delete_trades"; trade_ids: string[]; label: string; tone: "destructive" }
+  | { op: "delete_strategy"; strategy_id: string; label: string; tone: "destructive" }
+  | { op: "delete_account"; account_id: string; label: string; tone: "destructive" }
   // Ces deux-là ne sont PAS exécutées par /api/coach-confirm : le client les
   // prend en charge. Le rapport IA doit passer par la route réelle pour que le
   // quota et le disjoncteur s'appliquent normalement, et le PDF se fabrique
   // dans le navigateur (jsPDF), là où le téléchargement peut se déclencher.
-  | { op: "run_ai_report"; kind: string; month: string; session_id: string | null; label: string }
-  | { op: "export_pdf"; from: string; to: string; label: string; count: number };
+  | { op: "run_ai_report"; kind: string; month: string; session_id: string | null; label: string; tone: "credit" }
+  | { op: "export_pdf"; from: string; to: string; label: string; count: number; tone: "download" };
 
 export interface CoachToolResult {
   /** Payload renvoyé au modèle (sérialisé en JSON dans le tool_result). */
@@ -1105,7 +1123,7 @@ export async function executeCoachTool(
             instruction:
               "Ne dis PAS que c'est fait. Annonce en une phrase ce qui va être supprimé et invite le trader à cliquer Valider. N'appelle pas d'autre outil pour cette suppression.",
           },
-          confirm: { op: "delete_goal", goal_id: row.id as string, label },
+          confirm: { op: "delete_goal", goal_id: row.id as string, label, tone: "destructive" },
         };
       }
 
@@ -1764,7 +1782,7 @@ export async function executeCoachTool(
             instruction:
               "Ne dis PAS que c'est fait. Annonce en une phrase ce qui va être supprimé (nombre, instruments, période) et invite le trader à cliquer Valider.",
           },
-          confirm: { op: "delete_trades", trade_ids: found.map((t) => t.id), label },
+          confirm: { op: "delete_trades", trade_ids: found.map((t) => t.id), label, tone: "destructive" },
         };
       }
 
@@ -2014,12 +2032,12 @@ export async function executeCoachTool(
         return {
           result: {
             requires_confirmation: true,
-            what: { weekly_plan: "Plan de la semaine", monthly_review: "Bilan mensuel", session_debrief: "Débrief de session" }[kind],
+            what: REPORT_LABELS[language]?.[kind] ?? REPORT_LABELS.fr[kind],
             costs_credit: true,
             instruction:
               "Ne dis PAS que c'est lancé. Explique en une phrase ce que le rapport va lui apporter, précise qu'il consomme un crédit de son quota du jour, et invite-le à cliquer Valider.",
           },
-          confirm: { op: "run_ai_report", kind, month, session_id: sessionId, label: kind },
+          confirm: { op: "run_ai_report", kind, month, session_id: sessionId, label: REPORT_LABELS[language]?.[kind] ?? REPORT_LABELS.fr[kind], tone: "credit" },
         };
       }
 
@@ -2039,7 +2057,7 @@ export async function executeCoachTool(
           return fail("Aucun trade clôturé sur cette période, il n'y a rien à mettre dans le PDF. AUCUN bouton n'est apparu : propose une autre période.");
         }
 
-        const label = `${humanDate(fromIso, language, timezone)} au ${humanDate(toIso, language, timezone)}`;
+        const label = `${count} trades, du ${humanDate(fromIso, language, timezone)} au ${humanDate(toIso, language, timezone)}`;
         return {
           result: {
             requires_confirmation: true,
@@ -2048,7 +2066,7 @@ export async function executeCoachTool(
             instruction:
               "Ne dis PAS que c'est fait. Annonce ce que contiendra le rapport et invite le trader à cliquer Valider ; le fichier se téléchargera sur son appareil.",
           },
-          confirm: { op: "export_pdf", from: fromIso, to: toIso, label, count },
+          confirm: { op: "export_pdf", from: fromIso, to: toIso, label, count, tone: "download" },
         };
       }
 
@@ -2150,7 +2168,7 @@ export async function executeCoachTool(
             instruction:
               "Ne dis PAS que c'est fait. Annonce ce qui va être supprimé, précise combien de trades perdront leur rattachement, et invite le trader à cliquer Valider.",
           },
-          confirm: { op: "delete_strategy", strategy_id: row.id as string, label },
+          confirm: { op: "delete_strategy", strategy_id: row.id as string, label, tone: "destructive" },
         };
       }
 
@@ -2175,7 +2193,7 @@ export async function executeCoachTool(
             instruction:
               "Ne dis PAS que c'est fait. Annonce ce qui va être supprimé, précise combien de trades perdront leur rattachement, et invite le trader à cliquer Valider.",
           },
-          confirm: { op: "delete_account", account_id: row.id as string, label },
+          confirm: { op: "delete_account", account_id: row.id as string, label, tone: "destructive" },
         };
       }
 

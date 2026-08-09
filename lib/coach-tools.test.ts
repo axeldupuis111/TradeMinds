@@ -109,7 +109,7 @@ describe("update_goal / delete_goal — validation", () => {
     expect(r.isError).toBeFalsy();
     // Aucune suppression déclenchée par l'outil : c'est le clic qui l'exécute.
     expect(called(calls, "delete")).toBe(false);
-    expect(r.confirm).toMatchObject({ op: "delete_goal", goal_id: TRADE });
+    expect(r.confirm).toMatchObject({ tone: "destructive" as const, op: "delete_goal", goal_id: TRADE });
     expect(r.confirm?.label).toBe("Zéro trade avant 9h");
     expect((r.result as { requires_confirmation?: boolean }).requires_confirmation).toBe(true);
   });
@@ -125,7 +125,7 @@ describe("update_goal / delete_goal — validation", () => {
 describe("executeCoachConfirm", () => {
   it("supprime réellement l'objectif une fois validé, et rend l'annulation", async () => {
     const { client, calls } = mockClient({ data: [{ id: TRADE }], error: null });
-    const r = await executeCoachConfirm(client, USER, { op: "delete_goal", goal_id: TRADE, label: "x" });
+    const r = await executeCoachConfirm(client, USER, { tone: "destructive" as const, op: "delete_goal", goal_id: TRADE, label: "x" });
     expect(r.ok).toBe(true);
     expect(called(calls, "delete")).toBe(true);
     expect(r.action).toEqual({ type: "goal_deleted" });
@@ -133,21 +133,21 @@ describe("executeCoachConfirm", () => {
 
   it("refuse un identifiant invalide", async () => {
     const { client, calls } = mockClient();
-    const r = await executeCoachConfirm(client, USER, { op: "delete_goal", goal_id: "nope", label: "x" });
+    const r = await executeCoachConfirm(client, USER, { tone: "destructive" as const, op: "delete_goal", goal_id: "nope", label: "x" });
     expect(r.ok).toBe(false);
     expect(called(calls, "delete")).toBe(false);
   });
 
   it("refuse quand le plan ne couvre pas l'action", async () => {
     const { client, calls } = mockClient();
-    const r = await executeCoachConfirm(client, USER, { op: "delete_goal", goal_id: TRADE, label: "x" }, "free");
+    const r = await executeCoachConfirm(client, USER, { tone: "destructive" as const, op: "delete_goal", goal_id: TRADE, label: "x" }, "free");
     expect(r.ok).toBe(false);
     expect(called(calls, "delete")).toBe(false);
   });
 
   it("signale un objectif déjà disparu au lieu de prétendre l'avoir supprimé", async () => {
     const { client } = mockClient({ data: [], error: null });
-    const r = await executeCoachConfirm(client, USER, { op: "delete_goal", goal_id: TRADE, label: "x" });
+    const r = await executeCoachConfirm(client, USER, { tone: "destructive" as const, op: "delete_goal", goal_id: TRADE, label: "x" });
     expect(r.ok).toBe(false);
   });
 });
