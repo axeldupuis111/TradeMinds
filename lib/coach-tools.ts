@@ -559,7 +559,7 @@ export const COACH_TOOLS = [
   {
     name: "close_trade",
     description:
-      "Clôture une position ouverte : renseigne le prix de sortie et le P&L, et passe le trade en clôturé.",
+      "Renseigne la sortie d'un trade encore ouvert DANS LE JOURNAL : prix de sortie, P&L, statut clôturé. N'agit pas chez le broker et ne ferme aucune position réelle.",
     input_schema: {
       type: "object" as const,
       properties: {
