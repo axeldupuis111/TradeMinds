@@ -4,6 +4,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { track } from "@/lib/track";
 import { WelcomePlusModal } from "@/components/upgrade/WelcomePlusModal";
+import CoachLadder from "@/components/upgrade/CoachLadder";
 import { FoundingBanner } from "@/components/FoundingBanner";
 import { readAttributionRef } from "@/components/AttributionCapture";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
@@ -344,6 +345,8 @@ export default function UpgradePage() {
 
       <h1 className="text-2xl font-bold text-foreground">{t("plan_upgrade_title")}</h1>
       <p className="text-muted mt-1">{t("plan_upgrade_subtitle")}</p>
+
+      <CoachLadder plan={currentPlan} />
 
       {/* Toggle monthly/annual */}
       <div className="flex items-center justify-center gap-3 mt-8">

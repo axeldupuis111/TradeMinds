@@ -9,6 +9,8 @@
  * "1/plan_day" = quantité + clé i18n de période, "plan_unlimited" = illimité.
  */
 
+import { toolCountForPlan } from "@/lib/coach-capabilities";
+
 export interface PlanFeature {
   key: string;
   free: boolean | string;
@@ -44,6 +46,18 @@ export const PLAN_FEATURES: PlanFeature[] = [
   { key: "plan_feat_weekly_plan",       free: false,         plus: true,             premium: true },
   { key: "plan_feat_daily_summary",     free: false,         plus: true,             premium: true },
   { key: "plan_feat_goals_ai",          free: false,         plus: true,             premium: true },
+  // ── Ce que le coach fait pour toi ──
+  // Le nombre d'outils est calculé depuis TOOL_MIN_PLAN : il ne peut pas
+  // sur-promettre, et il suit tout seul quand le catalogue grandit.
+  { key: "plan_feat_coach_tools",    free: String(toolCountForPlan("free")), plus: String(toolCountForPlan("plus")), premium: String(toolCountForPlan("premium")), groupKey: "plan_group_coach" },
+  { key: "plan_feat_coach_reads",    free: true,  plus: true,  premium: true },
+  { key: "plan_feat_coach_sizes",    free: true,  plus: true,  premium: true },
+  { key: "plan_feat_coach_coaches",  free: false, plus: true,  premium: true },
+  { key: "plan_feat_coach_reports",  free: false, plus: true,  premium: true },
+  { key: "plan_feat_coach_operates", free: false, plus: false, premium: true },
+  { key: "plan_feat_coach_accounts", free: false, plus: false, premium: true },
+  { key: "plan_feat_coach_voice",    free: false, plus: true,  premium: true },
+
   // ── Discipline & bilan ──
   // Page Objectifs & centre de discipline (gate UI dans la page + verrou sidebar).
   { key: "plan_feat_goals_hub",         free: false,         plus: true,             premium: true, groupKey: "plan_group_review" },
@@ -74,13 +88,13 @@ export const FREE_BENEFITS = [
 ] as const;
 
 export const PLUS_BENEFITS = [
-  "plan_benefit_plus_1", "plan_benefit_plus_2", "plan_benefit_plus_3", "plan_benefit_plus_4",
+  "plan_benefit_plus_coach", "plan_benefit_plus_2", "plan_benefit_plus_3", "plan_benefit_plus_4",
   "plan_benefit_plus_5", "plan_benefit_plus_6", "plan_benefit_plus_7",
 ] as const;
 
 // Uniquement ce que le Premium AJOUTE par rapport au Plus — jamais mélangé
 // avec le contenu du Plus (affiché à part sous « Tout le plan Plus inclus »).
 export const PREMIUM_BENEFITS = [
-  "plan_benefit_premium_1", "plan_benefit_premium_2", "plan_benefit_premium_3",
+  "plan_benefit_premium_coach", "plan_benefit_premium_1", "plan_benefit_premium_2", "plan_benefit_premium_3",
   "plan_benefit_premium_4", "plan_benefit_premium_5", "plan_benefit_premium_6",
 ] as const;

@@ -2,6 +2,7 @@
 
 import DisciplineQuiz from "@/components/landing/DisciplineQuiz";
 import LiveDemo from "@/components/landing/LiveDemo";
+import CoachOperator from "@/components/landing/CoachOperator";
 import PublicHeader from "@/components/PublicHeader";
 import { FoundingBanner } from "@/components/FoundingBanner";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -2901,6 +2902,7 @@ export default function LandingPage() {
         <Features />
         <AIDetection />
         <CoachAssistant />
+        <CoachOperator />
         <Pricing />
         <FAQ />
         <FinalCTA />
