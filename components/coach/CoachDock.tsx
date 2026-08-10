@@ -53,6 +53,20 @@ export default function CoachDock() {
   const pageContext = useMemo(() => describePage(pathname), [pathname]);
   const chat = useCoachChat({ plan, lang, t, demoMode, pageContext });
 
+  // Le dock vit dans le layout : il reste monté d'une page à l'autre et gardait
+  // donc la conversation telle qu'elle était à son premier rendu. Or la page
+  // Analyse écrit dans le MÊME fil. On parlait au coach en grand écran, on
+  // revenait, et le raccourci affichait encore l'état d'avant.
+  //
+  // On relit donc à chaque fois que le dock (re)devient consultable : à
+  // l'ouverture, et au retour d'une page où il était masqué pendant que la
+  // conversation continuait ailleurs. Passer par une ref garde l'effet
+  // insensible à l'identité de `refresh`, qui changerait à chaque rendu.
+  const visible = open && !HIDDEN_ON.some((p) => pathname.startsWith(p));
+  const refreshRef = useRef(chat.refresh);
+  refreshRef.current = chat.refresh;
+  useEffect(() => { if (visible) void refreshRef.current(); }, [visible]);
+
   // Le support de la dictée se teste côté client uniquement (pas au rendu SSR,
   // sinon l'hydratation diverge entre serveur et navigateur).
   const [canDictate, setCanDictate] = useState(false);

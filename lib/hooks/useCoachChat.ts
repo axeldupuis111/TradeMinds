@@ -133,6 +133,38 @@ export function pairTimestamps(sentAt: number, answeredAt: number): { user: stri
 }
 
 /**
+ * Réconcilie la conversation en mémoire avec celle relue en base.
+ *
+ * Les deux surfaces du coach (dock global et page Analyse) écrivent dans la
+ * MÊME table. Celle qui n'a pas parlé garde donc un fil incomplet, et doit
+ * pouvoir adopter ce qui s'est dit ailleurs.
+ *
+ * La base fait autorité sur le fil lui-même, mais elle ne stocke que le rôle et
+ * le texte : les chips d'action et les demandes de confirmation ne vivent qu'en
+ * mémoire. On les réattache donc aux messages déjà connus, sinon relire la
+ * conversation ferait disparaître les « Voir ma stratégie » et les boutons
+ * d'annulation de la session en cours.
+ *
+ * Les messages locaux au-delà de ce que porte la base sont conservés : ce sont
+ * ceux qui n'ont jamais été persistés (erreur réseau, mode démo), et les
+ * effacer reviendrait à masquer l'erreur que le trader est en train de lire.
+ */
+export function mergeCoachHistory(local: ChatMessage[], remote: ChatMessage[]): ChatMessage[] {
+  if (remote.length === 0) return local;
+
+  const merged: ChatMessage[] = remote.map((row, i) => {
+    const mine = local[i];
+    const same = mine && mine.role === row.role && mine.content === row.content;
+    if (!same) return row;
+    if (!mine.actions?.length && !mine.confirms?.length) return row;
+    return { ...row, actions: mine.actions, confirms: mine.confirms };
+  });
+
+  if (local.length > remote.length) merged.push(...local.slice(remote.length));
+  return merged;
+}
+
+/**
  * Retire les tirets longs de la réponse du coach.
  *
  * Ils sont proscrits dans la copy du produit : c'est un marqueur de texte
@@ -256,6 +288,10 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
   const [dailyCount, setDailyCount] = useState(0);
   const [hasOlderChat, setHasOlderChat] = useState(false);
   const loadedRef = useRef(false);
+  // Miroir de `loading` : `refresh` doit pouvoir se refuser pendant un flux en
+  // cours sans dépendre de l'état, ce qui changerait son identité à chaque
+  // rendu et déclencherait des relectures en boucle chez l'appelant.
+  const loadingRef = useRef(false);
 
   const limit = PLAN_LIMITS.chat[plan].limit;
   const isPaidPlan = plan === "plus" || plan === "premium";
@@ -265,12 +301,10 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
   const remaining = isPaidPlan ? Math.max(0, limit - dailyCount) : freeTasterUsed ? 0 : 1;
   const canChat = isPaidPlan || !hasOlderChat;
 
-  /** Charge le compteur du jour et les messages du jour. */
-  const loadHistory = useCallback(async () => {
-    if (loadedRef.current) return;
-    loadedRef.current = true;
+  /** Lit en base le compteur du jour, la conversation du jour et l'antériorité. */
+  const fetchToday = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) return null;
     const today = new Date().toISOString().split("T")[0];
     const [{ data: profile }, { data: todayRows }, { count: olderCount }] = await Promise.all([
       supabase.from("profiles").select("daily_chat_count, daily_chat_reset").eq("id", user.id).maybeSingle(),
@@ -282,12 +316,50 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
       supabase.from("chat_messages").select("id", { count: "exact", head: true })
         .eq("user_id", user.id).lt("created_at", today),
     ]);
-    if (profile?.daily_chat_reset === today) setDailyCount(profile.daily_chat_count ?? 0);
-    if (todayRows?.length) setMessages(todayRows as ChatMessage[]);
-    setHasOlderChat((olderCount ?? 0) > 0);
+    return {
+      today,
+      dailyCount: profile?.daily_chat_reset === today ? profile.daily_chat_count ?? 0 : null,
+      rows: (todayRows ?? []) as ChatMessage[],
+      hasOlder: (olderCount ?? 0) > 0,
+    };
   }, [supabase]);
 
+  /** Charge le compteur du jour et les messages du jour. Une seule fois. */
+  const loadHistory = useCallback(async () => {
+    if (loadedRef.current) return;
+    loadedRef.current = true;
+    const state = await fetchToday();
+    if (!state) return;
+    if (state.dailyCount !== null) setDailyCount(state.dailyCount);
+    if (state.rows.length) setMessages(state.rows);
+    setHasOlderChat(state.hasOlder);
+  }, [fetchToday]);
+
   useEffect(() => { void loadHistory(); }, [loadHistory]);
+
+  /**
+   * Relit la conversation du jour, pour rattraper ce qui s'est dit ailleurs.
+   *
+   * Le dock vit dans le layout du dashboard : il reste monté d'une page à
+   * l'autre et gardait donc le fil figé à son premier rendu, pendant que la
+   * page Analyse, elle, écrivait dans la même conversation. Résultat : on
+   * parlait au coach en grand écran, et le raccourci continuait d'afficher
+   * l'état d'avant.
+   *
+   * Le compteur de quota est relu au passage, pour la même raison.
+   */
+  const refresh = useCallback(async () => {
+    // Un flux en cours écrit dans `messages` à chaque fragment : le relire
+    // depuis la base l'écraserait en pleine réponse.
+    if (loadingRef.current) return;
+    // Mode démo : rien n'est persisté, la base effacerait la conversation.
+    if (demoMode) return;
+    const state = await fetchToday();
+    if (!state) return;
+    setDailyCount(state.dailyCount ?? 0);
+    setHasOlderChat(state.hasOlder);
+    setMessages((prev) => mergeCoachHistory(prev, state.rows));
+  }, [fetchToday, demoMode]);
 
   const send = useCallback(async (raw?: string) => {
     const msg = (raw ?? input).trim();
@@ -301,6 +373,7 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
     setMessages(next);
     setInput("");
     setLoading(true);
+    loadingRef.current = true;
     if (plan === "free") track("taster_used");
 
     // Mode démo : réponses pré-écrites, aucun token dépensé, rien de persisté.
@@ -310,6 +383,7 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
       const turn = turns[Math.min(userCount - 1, turns.length - 1)];
       setMessages([...next, { role: "assistant", content: `${t("demo_coach_note")}\n\n${turn.answer}` }]);
       setLoading(false);
+      loadingRef.current = false;
       return;
     }
 
@@ -420,6 +494,7 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
       }]);
     } finally {
       setLoading(false);
+      loadingRef.current = false;
     }
   }, [input, messages, loading, remaining, dailyCount, supabase, lang, demoMode, plan, pageContext, t, onAnswered]);
 
@@ -502,7 +577,7 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
   return {
     messages, setMessages,
     input, setInput,
-    loading, send, undo, resolveConfirm,
+    loading, send, undo, resolveConfirm, refresh,
     dailyCount, setDailyCount,
     remaining, limit, canChat, isPaidPlan, freeTasterUsed,
     hasOlderChat, setHasOlderChat,
