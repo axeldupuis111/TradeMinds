@@ -16,7 +16,7 @@ const read = (p: string) => readFileSync(join(process.cwd(), p), "utf8");
 
 /** Extrait la plus grande valeur de z-index d'une classe Tailwind. */
 function maxZ(source: string): number {
-  const hits = [...source.matchAll(/\bz-\[?(\d+)\]?/g)].map((m) => Number(m[1]));
+  const hits = Array.from(source.matchAll(/\bz-\[?(\d+)\]?/g), (m) => Number(m[1]));
   return hits.length ? Math.max(...hits) : 0;
 }
 
