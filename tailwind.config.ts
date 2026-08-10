@@ -22,6 +22,9 @@ const config: Config = {
         // Accent — now CSS-variable driven for theme adaptability
         accent:              "rgb(var(--accent) / <alpha-value>)",
         "accent-hover":      "rgb(var(--accent-hover) / <alpha-value>)",
+        // Encre posée SUR un aplat d'accent. Ne pas remplacer par `background`
+        // ou `white` : voir la note dans globals.css.
+        "on-accent":         "rgb(var(--on-accent) / <alpha-value>)",
         // Semantic trading colors — CSS-variable driven
         profit:              "rgb(var(--profit) / <alpha-value>)",
         loss:                "rgb(var(--loss) / <alpha-value>)",

@@ -550,7 +550,7 @@ export default function StrategyPage() {
               onClick={() => handleSwitchStrategy(s.id)}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                 s.id === existingId
-                  ? "bg-accent text-white"
+                  ? "bg-accent text-on-accent"
                   : "bg-surface border border-border text-foreground hover:bg-card"
               }`}
             >
@@ -623,7 +623,7 @@ export default function StrategyPage() {
       <button
         onClick={handleAnalyze}
         disabled={analyzing || !rawText.trim()}
-        className="mt-4 px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors disabled:opacity-50 flex items-center gap-2"
+        className="mt-4 px-6 py-2.5 bg-accent text-on-accent rounded-lg font-medium hover:bg-accent-hover transition-colors disabled:opacity-50 flex items-center gap-2"
       >
         {analyzing && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
         {analyzing ? t("strategy_analyzing") : t("strategy_analyze")}

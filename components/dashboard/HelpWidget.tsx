@@ -105,7 +105,7 @@ export default function HelpWidget() {
           aria-label={t("help_label")}
         >
           {/* Header */}
-          <div className="relative shrink-0 px-5 pt-5 pb-4 overflow-hidden bg-gradient-to-br from-accent to-accent-hover text-white">
+          <div className="relative shrink-0 px-5 pt-5 pb-4 overflow-hidden bg-gradient-to-br from-accent to-accent-hover text-on-accent">
             <div
               className="absolute -top-10 -right-8 w-32 h-32 rounded-full bg-white/10 blur-2xl pointer-events-none"
               aria-hidden
@@ -113,7 +113,7 @@ export default function HelpWidget() {
             {view === "contact" ? (
               <button
                 onClick={() => { setView("home"); setStatus("idle"); }}
-                className="inline-flex items-center gap-1.5 text-sm text-white/90 hover:text-white transition-colors mb-2"
+                className="inline-flex items-center gap-1.5 text-sm text-on-accent/80 hover:text-on-accent transition-colors mb-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -126,13 +126,13 @@ export default function HelpWidget() {
                   <span className="absolute inline-flex h-full w-full rounded-full bg-white/70 opacity-75 motion-safe:animate-ping" />
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white" />
                 </span>
-                <span className="text-xs font-medium text-white/90">{t("help_status_online")}</span>
+                <span className="text-xs font-medium text-on-accent/80">{t("help_status_online")}</span>
               </div>
             )}
             <h2 className="text-lg font-bold leading-tight">
               {view === "contact" ? t("help_contact_cta") : t("help_greeting")}
             </h2>
-            <p className="text-sm text-white/85 mt-0.5">
+            <p className="text-sm text-on-accent/80 mt-0.5">
               {view === "contact" ? t("help_contact_intro") : t("help_subtitle")}
             </p>
           </div>
@@ -243,7 +243,7 @@ export default function HelpWidget() {
                 <button
                   type="submit"
                   disabled={status === "sending"}
-                  className="w-full py-2.5 bg-accent text-white rounded-lg font-medium text-sm hover:bg-accent-hover transition-colors disabled:opacity-50"
+                  className="w-full py-2.5 bg-accent text-on-accent rounded-lg font-medium text-sm hover:bg-accent-hover transition-colors disabled:opacity-50"
                 >
                   {status === "sending" ? "..." : t("contact_send")}
                 </button>
@@ -256,7 +256,7 @@ export default function HelpWidget() {
             <div className="shrink-0 p-3 border-t border-border bg-card">
               <button
                 onClick={() => { setView("contact"); setStatus("idle"); }}
-                className="w-full flex items-center justify-center gap-2 py-2.5 bg-accent text-white rounded-lg font-medium text-sm hover:bg-accent-hover transition-colors"
+                className="w-full flex items-center justify-center gap-2 py-2.5 bg-accent text-on-accent rounded-lg font-medium text-sm hover:bg-accent-hover transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 011.037-.443 48.282 48.282 0 005.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />

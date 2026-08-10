@@ -185,7 +185,7 @@ export default function TradesPage() {
           </button>
           <button
             onClick={() => setShowModal(true)}
-            className="px-3 py-2 rounded-md bg-accent text-white text-sm font-medium hover:opacity-90 transition-opacity flex items-center gap-2"
+            className="px-3 py-2 rounded-md bg-accent text-on-accent text-sm font-medium hover:opacity-90 transition-opacity flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
             {t("trades_add_trade")}
@@ -205,7 +205,7 @@ export default function TradesPage() {
           </div>
           <a
             href="/dashboard/settings#metatrader"
-            className="px-4 py-2 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-colors whitespace-nowrap flex-shrink-0"
+            className="px-4 py-2 rounded-lg bg-accent text-on-accent text-sm font-medium hover:bg-accent-hover transition-colors whitespace-nowrap flex-shrink-0"
           >
             {t("trades_mt_sync_cta")}
           </a>

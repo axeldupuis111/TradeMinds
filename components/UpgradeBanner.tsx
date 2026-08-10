@@ -21,7 +21,7 @@ export default function UpgradeBanner({ message }: { message: string }) {
         <p className="text-foreground font-semibold">{message}</p>
         <Link
           href="/dashboard/upgrade"
-          className="mt-1 inline-flex items-center gap-2 px-5 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors btn-primary-shimmer glow-accent"
+          className="mt-1 inline-flex items-center gap-2 px-5 py-2.5 bg-accent text-on-accent rounded-lg font-medium hover:bg-accent-hover transition-colors btn-primary-shimmer glow-accent"
         >
           <Sparkles className="w-4 h-4" strokeWidth={1.75} />
           {t("plan_upgrade_btn")}

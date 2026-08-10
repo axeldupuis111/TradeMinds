@@ -377,11 +377,11 @@ function EditAccountModal({
             <label className="block text-sm text-muted mb-2">{t("challenge_market_type")}</label>
             <div className="flex gap-2">
               <button type="button" onClick={() => setMarketType("cfd")}
-                className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${marketType === "cfd" ? "bg-accent text-white border-accent" : "border-border text-muted hover:border-accent/50"}`}>
+                className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${marketType === "cfd" ? "bg-accent text-on-accent border-accent" : "border-border text-muted hover:border-accent/50"}`}>
                 {t("challenge_market_cfd")}
               </button>
               <button type="button" onClick={() => setMarketType("futures")}
-                className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${marketType === "futures" ? "bg-accent text-white border-accent" : "border-border text-muted hover:border-accent/50"}`}>
+                className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${marketType === "futures" ? "bg-accent text-on-accent border-accent" : "border-border text-muted hover:border-accent/50"}`}>
                 {t("challenge_market_futures")}
               </button>
             </div>
@@ -480,7 +480,7 @@ function EditAccountModal({
           <button onClick={onCancel} className="flex-1 py-2 bg-surface border border-border text-muted rounded-lg text-sm font-medium hover:text-foreground transition-colors">
             {t("csv_cancel")}
           </button>
-          <button onClick={handleSubmit} className="flex-1 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors">
+          <button onClick={handleSubmit} className="flex-1 py-2 bg-accent text-on-accent rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors">
             {t("challenge_edit_save")}
           </button>
         </div>
@@ -652,7 +652,7 @@ function AccountCard({
         </div>
         <div className="flex flex-col items-end gap-2">
           {isSelected ? (
-            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-accent text-background">
+            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-accent text-on-accent">
               {t("account_selected")}
             </span>
           ) : (
@@ -1403,14 +1403,14 @@ export default function ChallengePage() {
               <button
                 type="button"
                 onClick={() => setMarketType("cfd")}
-                className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${marketType === "cfd" ? "bg-accent text-white border-accent" : "border-border text-muted hover:border-accent/50"}`}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${marketType === "cfd" ? "bg-accent text-on-accent border-accent" : "border-border text-muted hover:border-accent/50"}`}
               >
                 {t("challenge_market_cfd")}
               </button>
               <button
                 type="button"
                 onClick={() => setMarketType("futures")}
-                className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${marketType === "futures" ? "bg-accent text-white border-accent" : "border-border text-muted hover:border-accent/50"}`}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${marketType === "futures" ? "bg-accent text-on-accent border-accent" : "border-border text-muted hover:border-accent/50"}`}
               >
                 {t("challenge_market_futures")}
               </button>
@@ -1527,7 +1527,7 @@ export default function ChallengePage() {
         <button
           onClick={handleCreate}
           disabled={saving || !isFormValid}
-          className={`mt-4 px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors disabled:opacity-50 ${!isFormValid ? "cursor-not-allowed" : ""}`}
+          className={`mt-4 px-6 py-2.5 bg-accent text-on-accent rounded-lg font-medium hover:bg-accent-hover transition-colors disabled:opacity-50 ${!isFormValid ? "cursor-not-allowed" : ""}`}
         >
           {saving ? t("challenge_creating") : t("challenge_create_btn")}
         </button>

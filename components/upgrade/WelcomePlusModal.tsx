@@ -79,7 +79,7 @@ export function WelcomePlusModal({ isOpen, onClose, isPlanReady, plan = "plus" }
         <button
           onClick={onClose}
           disabled={!isPlanReady}
-          className="w-full bg-accent hover:bg-accent-hover disabled:bg-surface disabled:text-muted disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+          className="w-full bg-accent hover:bg-accent-hover disabled:bg-surface disabled:text-muted disabled:cursor-not-allowed text-on-accent font-semibold py-3 px-6 rounded-lg transition-colors"
         >
           {isPlanReady
             ? t("upgrade_welcome_cta_dyn").replace("{plan}", planLabel)

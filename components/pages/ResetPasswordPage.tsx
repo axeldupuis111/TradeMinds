@@ -156,7 +156,7 @@ export default function ResetPasswordPage() {
               <button
                 type="submit"
                 disabled={loading || !sessionReady}
-                className="w-full py-2.5 bg-accent text-white rounded-xl font-semibold hover:bg-accent-hover disabled:opacity-50 glow-accent"
+                className="w-full py-2.5 bg-accent text-on-accent rounded-xl font-semibold hover:bg-accent-hover disabled:opacity-50 glow-accent"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">

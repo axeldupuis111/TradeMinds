@@ -165,7 +165,7 @@ export default function QuickAnnotateModal({
               </p>
               <button
                 onClick={handleClose}
-                className="mt-6 px-5 py-2.5 rounded-lg bg-accent text-background text-sm font-semibold hover:bg-accent-hover transition-colors"
+                className="mt-6 px-5 py-2.5 rounded-lg bg-accent text-on-accent text-sm font-semibold hover:bg-accent-hover transition-colors"
               >
                 {t("annotate_close")}
               </button>

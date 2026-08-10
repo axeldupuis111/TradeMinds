@@ -80,6 +80,13 @@
   --accent-hover:     0 168 172;        /* #00A8AC — variant hover/active */
   --accent-muted:     0 212 216;        /* même valeur, on joue sur l'alpha via Tailwind */
 
+  /* Encre posée SUR un aplat d'accent (boutons pleins). Volontairement la même
+     valeur dans les deux thèmes : le cyan reste clair partout, seule une encre
+     sombre y tient le AA. `text-background` faisait 10,8:1 en sombre mais
+     retombait à 2,77:1 en clair (le token vire au quasi-blanc), et `text-white`
+     plafonnait à 1,7:1 en sombre. Ici : 10,8:1 en sombre, 6,8:1 en clair. */
+  --on-accent:        9 9 11;           /* #09090b */
+
   /* Sémantiques */
   --profit:           34 197 94;        /* #22c55e */
   --loss:             239 68 68;        /* #ef4444 */

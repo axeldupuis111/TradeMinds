@@ -120,7 +120,7 @@ export function FoundingBanner({
       <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-accent px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-accent px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-on-accent">
               <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-white/90" />
               {tag}
             </span>
@@ -156,7 +156,7 @@ export function FoundingBanner({
 
         <button
           onClick={claim}
-          className="shrink-0 rounded-xl bg-accent px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-accent/25 transition-colors hover:bg-accent-hover"
+          className="shrink-0 rounded-xl bg-accent px-5 py-2.5 text-sm font-bold text-on-accent shadow-lg shadow-accent/25 transition-colors hover:bg-accent-hover"
         >
           {t("founding_cta")}
         </button>

@@ -146,7 +146,7 @@ export default function MembersPanel({ onClose, onChanged }: { onClose: () => vo
               <button
                 onClick={() => void addMember()}
                 disabled={adding || !newName.trim()}
-                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-accent text-on-accent text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50"
               >
                 <UserPlus className="w-4 h-4" strokeWidth={2} />{t("com_member_add")}
               </button>

@@ -172,7 +172,7 @@ export default function CommunityPage() {
               </button>
               <button
                 onClick={() => { setEditing(null); setShowForm(true); }}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-accent text-on-accent text-sm font-semibold hover:bg-accent-hover transition-colors"
               >
                 <Plus className="w-4 h-4" strokeWidth={2.25} />{t("com_create")}
               </button>

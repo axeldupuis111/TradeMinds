@@ -51,11 +51,6 @@ interface Step {
   minutes: number;
 }
 
-// Texte des boutons pleins : encre fixe, pas `text-background`. Le token bascule
-// en quasi-blanc sur le thème clair et le bouton retombe à 2,77:1 (sous AA) ;
-// le cyan reste clair dans les deux thèmes, l'encre sombre y passe toujours.
-const ON_ACCENT = "text-[#09090b]";
-
 const STEPS: Step[] = [
   { key: "hasAccount",  icon: Wallet,        labelKey: "onboarding_step_account",  whyKey: "onboarding_why_account",  href: "/dashboard/challenge", cta: "onboarding_cta_account",  minutes: 1 },
   { key: "hasTrades",   icon: Upload,        labelKey: "onboarding_step_trades",   whyKey: "onboarding_why_trades",   href: "/dashboard/trades",    cta: "onboarding_cta_trades",   minutes: 3 },
@@ -125,10 +120,7 @@ export default function OnboardingChecklist({ state }: { state: OnboardingState 
           <Link
             href="/dashboard/leaderboard"
             onClick={() => setCelebrationClosed(true)}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-medium transition-colors hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
-              ON_ACCENT
-            )}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
             {t("onboarding_done_cta")}
             <ArrowRight className="h-4 w-4" strokeWidth={2} />
@@ -254,10 +246,7 @@ export default function OnboardingChecklist({ state }: { state: OnboardingState 
                     <p className="mt-1 text-sm leading-relaxed text-foreground-muted">{t(step.whyKey)}</p>
                     <Link
                       href={step.href}
-                      className={cn(
-                        "mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold transition-colors hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 sm:w-auto",
-                        ON_ACCENT
-                      )}
+                      className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 sm:w-auto"
                     >
                       {t(step.cta)}
                       <ArrowRight className="h-4 w-4" strokeWidth={2} />

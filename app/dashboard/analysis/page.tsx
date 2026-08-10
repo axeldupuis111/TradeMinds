@@ -957,7 +957,7 @@ export default function AnalysisPage() {
               <Link
                 href="/dashboard/upgrade"
                 onClick={() => track("upgrade_cta_clicked", { source: "countdown" })}
-                className="shrink-0 px-4 py-2 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-colors text-center"
+                className="shrink-0 px-4 py-2 rounded-lg bg-accent text-on-accent text-sm font-medium hover:bg-accent-hover transition-colors text-center"
               >
                 {t("plan_ai_upgrade_cta")}
               </Link>
@@ -991,7 +991,7 @@ export default function AnalysisPage() {
                 runAnalysis();
               }}
               disabled={loading || !hasStrategy || tradeCount === 0 || filteredTradeCount === 0 || aiLimitReached || (plan === "free" && !demoMode && historyLoading)}
-              className={`px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors disabled:opacity-50 btn-scale ${aiLimitReached ? "cursor-not-allowed pointer-events-none" : ""}`}
+              className={`px-6 py-2.5 bg-accent text-on-accent rounded-lg font-medium hover:bg-accent-hover transition-colors disabled:opacity-50 btn-scale ${aiLimitReached ? "cursor-not-allowed pointer-events-none" : ""}`}
             >
               {loading
                 ? t("analysis_running")
@@ -1394,7 +1394,7 @@ export default function AnalysisPage() {
                     <button
                       onClick={() => createGoalsFromPlan(displayedAnalysis.action_plan!)}
                       disabled={goalsFromPlan === "saving"}
-                      className="px-4 py-2 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-50 btn-scale"
+                      className="px-4 py-2 rounded-lg bg-accent text-on-accent text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-50 btn-scale"
                     >
                       {goalsFromPlan === "saving" ? t("analysis_plan_goals_saving") : t("analysis_plan_goals_cta")}
                     </button>
@@ -1536,7 +1536,7 @@ export default function AnalysisPage() {
                   <div className="flex flex-col gap-1 max-w-[80%]">
                     <div className={`rounded-xl px-4 py-2.5 text-sm ${
                       msg.role === "user"
-                        ? "bg-accent text-white rounded-br-sm"
+                        ? "bg-accent text-on-accent rounded-br-sm"
                         : "bg-surface border border-border text-foreground rounded-bl-sm"
                     }`}>
                       {msg.role === "assistant" ? (
@@ -1640,7 +1640,7 @@ export default function AnalysisPage() {
               <button
                 onClick={sendChatMessage}
                 disabled={chatLoading || !chatInput.trim() || (chatRemaining !== null && chatRemaining <= 0)}
-                className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
+                className="px-4 py-2 bg-accent text-on-accent rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -1749,7 +1749,7 @@ export default function AnalysisPage() {
                 <button
                   onClick={toggleCompareMode}
                   className={`text-xs px-2 py-1 rounded-md transition-colors ${
-                    compareMode ? "bg-accent text-white" : "text-accent hover:bg-accent/10"
+                    compareMode ? "bg-accent text-on-accent" : "text-accent hover:bg-accent/10"
                   }`}
                 >
                   {t("analysis_compare")}
@@ -1787,7 +1787,7 @@ export default function AnalysisPage() {
                   >
                     {compareMode && (
                       <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-xs mr-2 shrink-0 ${
-                        compareSelection.includes(r.id) ? "border-accent bg-accent text-white" : "border-border"
+                        compareSelection.includes(r.id) ? "border-accent bg-accent text-on-accent" : "border-border"
                       }`}>
                         {compareSelection.includes(r.id) ? (compareSelection.indexOf(r.id) + 1) : ""}
                       </span>

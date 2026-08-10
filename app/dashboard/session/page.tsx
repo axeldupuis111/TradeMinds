@@ -613,7 +613,7 @@ export default function SessionPage() {
         <div>
           <button
             onClick={() => setShowQuickLogger(true)}
-            className="w-full sm:w-auto px-6 py-3 bg-accent text-white rounded-xl font-medium text-sm hover:bg-accent-hover transition-colors"
+            className="w-full sm:w-auto px-6 py-3 bg-accent text-on-accent rounded-xl font-medium text-sm hover:bg-accent-hover transition-colors"
           >
             {t("session_active_log_trade")}
           </button>
@@ -863,7 +863,7 @@ export default function SessionPage() {
               <button
                 onClick={handleStartClick}
                 disabled={!selectedEmotion || saving}
-                className={`w-full sm:w-auto px-8 py-3 text-white rounded-lg font-medium transition-colors disabled:opacity-50 ${allChecked ? "bg-accent hover:bg-accent-hover" : "bg-accent/80 hover:bg-accent"}`}
+                className={`w-full sm:w-auto px-8 py-3 text-on-accent rounded-lg font-medium transition-colors disabled:opacity-50 ${allChecked ? "bg-accent hover:bg-accent-hover" : "bg-accent/80 hover:bg-accent"}`}
               >
                 {saving ? "..." : t("session_start_button")}
               </button>

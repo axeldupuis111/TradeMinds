@@ -123,7 +123,7 @@ const linkBtnBase =
 const linkBtnSecondary =
   "bg-surface text-foreground border border-border hover:bg-border/60";
 const linkBtnPrimary =
-  "bg-accent text-background hover:bg-accent-hover";
+  "bg-accent text-on-accent hover:bg-accent-hover";
 
 // ─── Last-review score class (tokens only) ───────────────────────────────────
 

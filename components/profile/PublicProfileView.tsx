@@ -199,7 +199,7 @@ export default function PublicProfileView({
 
         {/* Footer */}
         <div className="text-center mt-12 pb-8">
-          <a href="/" className="inline-block px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors text-sm">
+          <a href="/" className="inline-block px-6 py-2.5 bg-accent text-on-accent rounded-lg font-medium hover:bg-accent-hover transition-colors text-sm">
             Create your TradeDiscipline profile
           </a>
           <p className="text-xs text-muted mt-3">Track your trades. Master your discipline.</p>

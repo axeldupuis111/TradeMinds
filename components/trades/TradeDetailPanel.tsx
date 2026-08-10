@@ -915,7 +915,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
                   <p className="text-xs text-muted mb-3">{t("vision_hint")}</p>
                   <button
                     onClick={runVisionReview}
-                    className="px-4 py-2 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-colors btn-scale"
+                    className="px-4 py-2 rounded-lg bg-accent text-on-accent text-sm font-medium hover:bg-accent-hover transition-colors btn-scale"
                   >
                     {t("vision_cta")}
                   </button>
@@ -1033,7 +1033,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
           <button
             onClick={handleSave}
             disabled={saving}
-            className="w-full py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
+            className="w-full py-2.5 bg-accent text-on-accent rounded-lg font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
           >
             {saving ? "..." : saved ? t("detail_saved") : t("detail_save")}
           </button>

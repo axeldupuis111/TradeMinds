@@ -276,7 +276,7 @@ export default function LoginPage() {
               </label>
             )}
 
-            <button onClick={signupMode ? handleSignUp : handleSignIn} disabled={loading} className="w-full py-2.5 bg-accent text-white rounded-xl font-semibold hover:bg-accent-hover disabled:opacity-50 glow-accent btn-primary-shimmer transition-colors">
+            <button onClick={signupMode ? handleSignUp : handleSignIn} disabled={loading} className="w-full py-2.5 bg-accent text-on-accent rounded-xl font-semibold hover:bg-accent-hover disabled:opacity-50 glow-accent btn-primary-shimmer transition-colors">
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />

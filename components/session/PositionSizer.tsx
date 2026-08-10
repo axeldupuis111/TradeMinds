@@ -288,7 +288,7 @@ export default function PositionSizer({ strategy }: Props) {
             onClick={() => setMode(m)}
             aria-pressed={mode === m}
             className={`px-4 py-1.5 font-medium transition-colors ${
-              mode === m ? "bg-accent text-white" : "bg-surface text-muted hover:text-foreground"
+              mode === m ? "bg-accent text-on-accent" : "bg-surface text-muted hover:text-foreground"
             }`}
           >
             {m === "cfd" ? t("challenge_market_cfd") : t("challenge_market_futures")}
@@ -336,7 +336,7 @@ export default function PositionSizer({ strategy }: Props) {
                   onClick={() => setRiskMode(m)}
                   className={`px-3 text-sm font-medium transition-colors ${
                     riskMode === m
-                      ? "bg-accent text-white"
+                      ? "bg-accent text-on-accent"
                       : "bg-surface text-muted hover:text-foreground"
                   }`}
                   aria-pressed={riskMode === m}

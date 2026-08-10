@@ -16,7 +16,7 @@ function NotFoundContent() {
         <p className="text-muted mb-8">{t("notfound_subtitle")}</p>
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-accent text-on-accent rounded-lg font-medium hover:bg-accent-hover transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" />

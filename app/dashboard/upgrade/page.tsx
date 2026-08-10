@@ -392,7 +392,7 @@ export default function UpgradePage() {
               }`}
             >
               {isCurrent && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-white text-xs font-bold px-3 py-0.5 rounded-full">
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-on-accent text-xs font-bold px-3 py-0.5 rounded-full">
                   {t("plan_current")}
                 </span>
               )}
@@ -444,11 +444,11 @@ export default function UpgradePage() {
               } ${isCurrent ? "ring-2 ring-accent/50" : ""}`}
             >
               {isCurrent ? (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-white text-xs font-bold px-3 py-0.5 rounded-full">
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-on-accent text-xs font-bold px-3 py-0.5 rounded-full">
                   {t("plan_current")}
                 </span>
               ) : (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-white text-xs font-bold px-3 py-0.5 rounded-full">
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-on-accent text-xs font-bold px-3 py-0.5 rounded-full">
                   {t("plan_popular")}
                 </span>
               )}
@@ -504,7 +504,7 @@ export default function UpgradePage() {
                   <button
                     onClick={() => handleCheckout("plus")}
                     disabled={checkoutLoadingPlan !== null}
-                    className="w-full mt-6 py-2.5 rounded-lg font-medium text-sm bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full mt-6 py-2.5 rounded-lg font-medium text-sm bg-accent text-on-accent hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {checkoutLoadingPlan === "plus" ? t("upgrade_redirecting") : t("pricing_choose_plus")}
                   </button>
@@ -755,7 +755,7 @@ export default function UpgradePage() {
               <button
                 onClick={confirmPlanChange}
                 disabled={changeSubmitting || changeLoadingPreview || !changePreview}
-                className="flex-1 py-2.5 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
+                className="flex-1 py-2.5 rounded-lg bg-accent text-on-accent text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
               >
                 {changeSubmitting ? t("planchange_processing") : t("planchange_confirm")}
               </button>

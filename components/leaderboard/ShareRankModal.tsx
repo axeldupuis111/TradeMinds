@@ -163,7 +163,7 @@ export default function ShareRankModal({ stats, onClose }: { stats: ShareRankSta
         {/* Actions */}
         <div className="flex flex-wrap items-center gap-2 mt-4">
           <button onClick={handleDownload} disabled={busy}
-            className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-accent text-background text-xs font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50">
+            className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-accent text-on-accent text-xs font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50">
             <Download className="w-3.5 h-3.5" strokeWidth={1.75} />
             {t("share_download")}
           </button>

@@ -335,7 +335,7 @@ export default function TradovateConnect() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
+                  className="px-5 py-2 rounded-lg bg-accent text-on-accent text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
                 >
                   {submitting ? "..." : t("sync_tradovate_connect")}
                 </button>
@@ -354,7 +354,7 @@ export default function TradovateConnect() {
           ) : (
             <button
               onClick={() => setShowForm(true)}
-              className="px-5 py-2.5 rounded-lg bg-accent text-white font-medium text-sm hover:bg-accent-hover transition-colors"
+              className="px-5 py-2.5 rounded-lg bg-accent text-on-accent font-medium text-sm hover:bg-accent-hover transition-colors"
             >
               {t("sync_tradovate_add")}
             </button>

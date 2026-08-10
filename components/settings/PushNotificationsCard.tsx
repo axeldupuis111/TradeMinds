@@ -142,7 +142,7 @@ export default function PushNotificationsCard() {
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
               enabled
                 ? "bg-surface border border-border text-foreground hover:bg-border"
-                : "bg-accent text-white hover:bg-accent-hover"
+                : "bg-accent text-on-accent hover:bg-accent-hover"
             }`}
           >
             {busy ? "..." : enabled ? t("push_turn_off") : t("push_turn_on")}

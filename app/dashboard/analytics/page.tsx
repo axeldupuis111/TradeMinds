@@ -943,7 +943,7 @@ export default function AnalyticsPage() {
                   setWinLossFilter(stagingWinLoss);
                   setShowAdvancedFilters(false);
                 }}
-                className="flex-1 py-2 px-4 rounded-lg text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
+                className="flex-1 py-2 px-4 rounded-lg text-sm font-semibold bg-accent text-on-accent hover:bg-accent-hover transition-colors"
               >
                 {t("analytics_apply")}
               </button>
@@ -1221,7 +1221,7 @@ export default function AnalyticsPage() {
                       </div>
                       <Link
                         href="/dashboard/analysis"
-                        className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
+                        className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent text-on-accent hover:bg-accent-hover transition-colors"
                       >
                         {t("discipline_run_analysis")} →
                       </Link>

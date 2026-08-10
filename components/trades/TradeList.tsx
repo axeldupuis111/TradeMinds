@@ -918,7 +918,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
             <SlidersHorizontal className="w-3.5 h-3.5" />
             {t("trades_filters_toggle")}
             {activeFilterCount > 0 && (
-              <span className="ml-0.5 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-accent text-white text-[10px] font-semibold">
+              <span className="ml-0.5 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-accent text-on-accent text-[10px] font-semibold">
                 {activeFilterCount}
               </span>
             )}

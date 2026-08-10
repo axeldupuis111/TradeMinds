@@ -110,7 +110,7 @@ function badgesFor(s: Self): BadgeState[] {
 
 function Avatar({ name, isMe }: { name: string; isMe: boolean }) {
   return (
-    <span className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0 ${isMe ? "bg-accent text-white" : "bg-surface text-muted"}`}>
+    <span className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0 ${isMe ? "bg-accent text-on-accent" : "bg-surface text-muted"}`}>
       {name.slice(0, 2).toUpperCase()}
     </span>
   );
@@ -452,7 +452,7 @@ export default function LeaderboardPage() {
                         meta: award.meta,
                         lang: lang as CertLang,
                       })}
-                      className="mt-2.5 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-accent text-white text-xs font-semibold hover:bg-accent-hover transition-colors"
+                      className="mt-2.5 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-accent text-on-accent text-xs font-semibold hover:bg-accent-hover transition-colors"
                     >
                       <FileDown className="w-3.5 h-3.5" strokeWidth={2} /> {t("badge_cert_download")}
                     </button>

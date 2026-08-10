@@ -161,7 +161,7 @@ export default function ScreenshotAnnotator({
                 onClick={() => setTool(tl.id)}
                 aria-label={tl.label}
                 title={tl.label}
-                className={`p-1.5 rounded-md transition-colors ${tool === tl.id ? "bg-accent text-white" : "text-muted hover:text-foreground"}`}
+                className={`p-1.5 rounded-md transition-colors ${tool === tl.id ? "bg-accent text-on-accent" : "text-muted hover:text-foreground"}`}
               >
                 <tl.icon className="w-4 h-4" />
               </button>
@@ -220,7 +220,7 @@ export default function ScreenshotAnnotator({
           </button>
           <button
             onClick={() => onSave(shapes)}
-            className="px-4 py-1.5 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-colors"
+            className="px-4 py-1.5 rounded-lg bg-accent text-on-accent text-sm font-medium hover:bg-accent-hover transition-colors"
           >
             {t("annotate_draw_save")}
           </button>

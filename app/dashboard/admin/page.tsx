@@ -282,7 +282,7 @@ export default function AdminPage() {
           {t("admin_tab_plans")}
         </button>
         <button onClick={() => setTab("messages")} className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${tab === "messages" ? "bg-card text-foreground shadow-sm" : "text-muted hover:text-foreground"}`}>
-          {t("admin_tab_messages")} {contactMessages.filter((m) => m.status === "new").length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-accent text-white text-xs rounded-full">{contactMessages.filter((m) => m.status === "new").length}</span>}
+          {t("admin_tab_messages")} {contactMessages.filter((m) => m.status === "new").length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-accent text-on-accent text-xs rounded-full">{contactMessages.filter((m) => m.status === "new").length}</span>}
         </button>
         <button onClick={() => { setTab("funnel"); if (!funnel) loadFunnel(funnelDays); }} className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${tab === "funnel" ? "bg-card text-foreground shadow-sm" : "text-muted hover:text-foreground"}`}>
           Funnel
@@ -321,7 +321,7 @@ export default function AdminPage() {
             </div>
             <button
               onClick={() => postCommunity({ action: "create", slug: comSlug, name: comName })}
-              className="w-full py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors"
+              className="w-full py-2.5 bg-accent text-on-accent rounded-lg font-medium hover:bg-accent-hover transition-colors"
             >
               Créer la communauté
             </button>
@@ -509,7 +509,7 @@ export default function AdminPage() {
           <button
             onClick={handleUpdate}
             disabled={updating}
-            className="w-full py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
+            className="w-full py-2.5 bg-accent text-on-accent rounded-lg font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
           >
             {updating ? "..." : t("admin_update")}
           </button>
@@ -558,7 +558,7 @@ export default function AdminPage() {
             <button
               onClick={() => handleModerateUsername("rename")}
               disabled={modUpdating}
-              className="flex-1 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
+              className="flex-1 py-2.5 bg-accent text-on-accent rounded-lg font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
             >
               {modUpdating ? "..." : "Renommer"}
             </button>

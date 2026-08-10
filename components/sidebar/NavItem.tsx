@@ -62,7 +62,7 @@ export default function NavItem({ href, icon: Icon, labelKey, badge, lockedPlan,
       />
       <span className="relative z-10 flex-1">{t(labelKey)}</span>
       {badge && (
-        <span className="relative z-10 text-[10px] font-bold bg-accent text-white px-1.5 py-0.5 rounded-full leading-none">
+        <span className="relative z-10 text-[10px] font-bold bg-accent text-on-accent px-1.5 py-0.5 rounded-full leading-none">
           {badge}
         </span>
       )}

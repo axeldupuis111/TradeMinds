@@ -208,7 +208,7 @@ export default function CreateChallengeModal({
                 <button
                   onClick={askAi}
                   disabled={thinking || !idea.trim()}
-                  className="shrink-0 px-3 py-1.5 rounded-lg bg-accent text-white text-xs font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50"
+                  className="shrink-0 px-3 py-1.5 rounded-lg bg-accent text-on-accent text-xs font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50"
                 >
                   {thinking ? t("com_ai_thinking") : t("com_ai_generate")}
                 </button>
@@ -312,7 +312,7 @@ export default function CreateChallengeModal({
             <button
               onClick={submit}
               disabled={saving}
-              className="px-4 py-2 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50"
+              className="px-4 py-2 rounded-lg bg-accent text-on-accent text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50"
             >
               {saving ? t("com_form_saving") : editing ? t("com_form_save") : t("com_form_submit")}
             </button>

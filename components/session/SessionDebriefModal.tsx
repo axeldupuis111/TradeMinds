@@ -147,7 +147,7 @@ export default function SessionDebriefModal({
 
               <button
                 onClick={onClose}
-                className="w-full mt-5 px-4 py-2.5 rounded-lg bg-accent text-background text-sm font-semibold hover:bg-accent-hover transition-colors"
+                className="w-full mt-5 px-4 py-2.5 rounded-lg bg-accent text-on-accent text-sm font-semibold hover:bg-accent-hover transition-colors"
               >
                 {t("debrief_close")}
               </button>

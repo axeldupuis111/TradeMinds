@@ -226,7 +226,7 @@ export default function ShareCardModal({
           <button
             onClick={handleDownload}
             disabled={busy}
-            className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-accent text-background text-xs font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-accent text-on-accent text-xs font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50"
           >
             <Download className="w-3.5 h-3.5" strokeWidth={1.75} />
             {t("share_download")}
