@@ -5,7 +5,6 @@ import CoachDock from "@/components/coach/CoachDock";
 import CommandPalette from "@/components/CommandPalette";
 import Header from "@/components/Header";
 import MobileTabBar from "@/components/MobileTabBar";
-import OnboardingGuide from "@/components/dashboard/OnboardingGuide";
 import Sidebar from "@/components/Sidebar";
 import AlertCenter from "@/components/dashboard/AlertCenter";
 import { DemoDataBanner } from "@/components/dashboard/DemoData";
@@ -234,7 +233,6 @@ export default function DashboardLayout({
         </main>
       </div>
       <CoachDock />
-      <OnboardingGuide />
       <CommandPalette />
       <MobileTabBar />
     </div>
