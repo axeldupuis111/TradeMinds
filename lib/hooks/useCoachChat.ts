@@ -391,18 +391,15 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error(t("analysis_not_connected"));
 
-      const { data: strategy } = await supabase
-        .from("strategies").select("*").eq("user_id", user.id).limit(1).maybeSingle();
-      const strategyContext = strategy
-        ? `Nom: ${strategy.name || "N/A"}, Paires: ${(strategy.pairs || []).join(",")}, Sessions: ${(strategy.sessions || []).join(",")}, RR min: ${strategy.risk_reward ?? "N/A"}, Règles: ${(strategy.setup_rules || []).join("; ")}`
-        : "Aucune stratégie définie";
-
+      // La stratégie n'est plus envoyée d'ici : le serveur lit la fiche
+      // complète, `raw_text` compris, que ce résumé de cinq champs laissait de
+      // côté. Une requête de moins avant chaque message, et un contexte de
+      // valeur qui ne transite plus par le client.
       const res = await fetch("/api/chat-coach", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: next.slice(-10),
-          strategyContext,
           language: lang,
           pageContext,
         }),
