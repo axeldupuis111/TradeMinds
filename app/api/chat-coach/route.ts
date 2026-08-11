@@ -12,6 +12,7 @@ import {
   type StrategyRow,
   type StrategyTagRow,
 } from "@/lib/coach-strategy-context";
+import { glossariesForStrategy } from "@/lib/coach-method-glossaries";
 import { coachToolsForPlan, executeCoachTool } from "@/lib/coach-tools";
 import type { PlanType } from "@/lib/PlanContext";
 import { sanitizeUserInput } from "@/lib/prompt-sanitizer";
@@ -214,6 +215,12 @@ export async function POST(request: Request) {
       // stratégie illisible — le coach le dira plutôt que d'en inventer une
     }
 
+    // Glossaires des écoles employées par CE trader, détectées dans sa fiche.
+    // Charger toutes les écoles aurait coûté ~1 € par abonné au plafond mensuel
+    // pour une marge de 0,93 € ; n'en charger aucune laissait le modèle
+    // improviser. On ne charge donc que les siennes (deux au maximum).
+    const methodGlossaries = glossariesForStrategy(strategyBlock);
+
     // ── 4c. Mémoire longitudinale (fail-open si la colonne n'existe pas) ──
     let memoryBlock = "";
     try {
@@ -267,23 +274,11 @@ Si un trade n'a pas de setup, c'est que sa checklist n'est pas remplie : le setu
 
 D'OÙ VIENT LE SENS DES MOTS. Tes traders emploient toutes les méthodes qui existent, et chaque école emploie les mêmes termes différemment. Trois niveaux, dans cet ordre :
 1. LA FICHE STRATÉGIE DU TRADER, ci-dessous. Elle est écrite avec SES mots : quand un terme y figure, emploie-le comme LUI l'emploie, même si tu l'as rencontré ailleurs avec un autre sens. C'est la référence la plus forte, avant le glossaire et avant ta mémoire.
-2. LE GLOSSAIRE DE RÉFÉRENCE ci-dessous, pour la famille ICT / SMC.
+2. LE OU LES GLOSSAIRES DE RÉFÉRENCE ci-dessous, s'il y en a. Ils correspondent aux écoles repérées dans SA fiche, et à elles seules : leur présence ne veut pas dire que cette école est la bonne, ni qu'il faut y ramener toutes tes réponses.
 3. Ta connaissance générale, pour tout le reste. C'est le niveau le moins fiable : tu y appliques les deux interdits (aucun sigle inventé, aucune étape de méthode bâtie sur une définition douteuse).
 Si l'usage du trader contredit une définition dont tu es certain, dis-le UNE fois, en une phrase, puis continue avec la sienne. Sa méthode lui appartient, tu ne le fais pas changer de vocabulaire pour te faire plaisir.
 
-VOCABULAIRE ICT / SMC, DÉFINITIONS DE RÉFÉRENCE. Ce sont les bonnes : emploie-les telles quelles, sans les improviser. Une inversion rend ton conseil dangereux.
-- Liquidité : ordres en attente regroupés là où tout le monde place ses stops, au-dessus des sommets et sous les creux.
-- BSL (Buy Side Liquidity) : liquidité côté ACHAT, située AU-DESSUS du prix (sommets, sommets égaux). Ce sont des ordres d'achat en attente : stops de protection des vendeurs, et achats de cassure.
-- SSL (Sell Side Liquidity) : liquidité côté VENTE, située SOUS le prix (creux, creux égaux). Ordres de vente en attente : stops de protection des acheteurs, et ventes de cassure.
-- Balayage (sweep, raid) : le prix traverse le niveau, déclenche ces ordres, puis fait demi-tour.
-- SENS DE L'ENTRÉE, LE POINT LE PLUS FAUSSÉ : on entre CONTRE le sens du balayage, jamais dans son sens. BSL balayée puis rejetée, avec un mouvement franc vers le bas, la lecture est VENDEUSE. SSL balayée puis rejetée vers le haut, la lecture est ACHETEUSE. Dire l'inverse est une faute grave.
-- Cela n'oblige pas à trader à contre-tendance. C'est le côté de liquidité chassé qui décide : dans une tendance haussière, on guette le balayage d'une SSL sous un creux précédent, puis on cherche l'achat DANS le sens de la tendance. Chasser une BSL en tendance haussière est ce qui donne une entrée à contre-tendance.
-- Déplacement : mouvement rapide et franc qui s'éloigne du niveau balayé. C'est lui qui valide le rejet, et il laisse souvent le FVG.
-- FVG (Fair Value Gap) : déséquilibre sur trois bougies, la mèche de la première et celle de la troisième ne se recouvrent pas. Sert de zone d'entrée quand le prix y revient.
-- OB (Order Block) : dernière bougie de sens opposé avant le déplacement.
-- BB = Breaker Block : un order block cassé, sur lequel le prix revient par l'autre côté et qui joue alors le rôle inverse. "BB" ne signifie PAS "Break of Break" : cette expression n'existe pas, ne l'emploie jamais.
-- BOS (Break of Structure) : cassure d'un point de structure DANS le sens de la tendance, donc continuation.
-- MSS ou CHoCH (Market Structure Shift, Change of Character) : cassure d'un point de structure CONTRE la tendance précédente. C'est ce qui confirme un retournement après un balayage.
+${methodGlossaries}
 
 QUAND LE TRADER TE CONTREDIT SUR UN FAIT :
 - Reprends la question au fond avant de répondre. Si tu t'es trompé, dis-le UNE fois, en une phrase, et corrige. Pas de chapelet d'excuses, pas de "tu as 100 % raison" réflexe.
