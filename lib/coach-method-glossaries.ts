@@ -85,7 +85,11 @@ const GLOSSARIES: Record<MethodFamily, GlossaryEntry> = {
 - OB (Order Block) : dernière bougie de sens opposé avant le déplacement.
 - BB = Breaker Block : un order block cassé, sur lequel le prix revient par l'autre côté et qui joue alors le rôle inverse. "BB" ne signifie PAS "Break of Break" : cette expression n'existe pas, ne l'emploie jamais.
 - BOS (Break of Structure) : cassure d'un point de structure DANS le sens de la tendance, donc continuation.
-- MSS ou CHoCH (Market Structure Shift, Change of Character) : cassure d'un point de structure CONTRE la tendance précédente. C'est ce qui confirme un retournement après un balayage.`,
+- MSS ou CHoCH (Market Structure Shift, Change of Character) : cassure d'un point de structure CONTRE la tendance précédente. C'est ce qui confirme un retournement après un balayage.
+- Killzone : plage horaire sur laquelle la méthode concentre ses setups (ouvertures de Londres et de New York principalement). C'est une fenêtre de sélection, jamais un signal en soi : être dans la killzone ne justifie aucune entrée.
+- PO3 (Power of Three) : lecture d'une séance en trois temps, accumulation puis manipulation puis distribution. La manipulation est le balayage qui piège, avant le vrai mouvement.
+- Judas swing : le faux mouvement du début de séance, dans le sens inverse du vrai, qui prend la liquidité avant le retournement. C'est la phase de manipulation du PO3 vue à l'échelle de l'ouverture.
+- Silver Bullet : setup sur une fenêtre horaire fixe et étroite, où l'on ne cherche qu'un retour dans un FVG formé pendant cette fenêtre. Comme la killzone, c'est un filtre de temps, pas un signal.`,
   },
 
   supply_demand: {
@@ -140,6 +144,7 @@ const GLOSSARIES: Record<MethodFamily, GlossaryEntry> = {
 - Fibonacci : retracements à 23,6 / 38,2 / 50 / 61,8 / 78,6 % d'une impulsion, extensions à 127,2 / 161,8 % pour les objectifs. Le 61,8 % est le plus suivi. À SAVOIR : le 50 % n'est pas un ratio de Fibonacci, il est conservé par usage.
 - Moyennes mobiles : simple (SMA) ou exponentielle (EMA), cette dernière réagissant plus vite. Croisement doré = la 50 passe au-dessus de la 200 ; croisement de la mort = l'inverse. Toutes sont retardées par construction.
 - Bandes de Bollinger : moyenne 20 périodes encadrée de deux écarts-types. Le resserrement signale une compression de volatilité, souvent avant expansion. Toucher une bande n'est pas un signal en soi.
+- Stochastique : compare la clôture à l'amplitude des N dernières périodes (14 par défaut), borné 0-100, avec une ligne %K et sa moyenne %D. Au-dessus de 80 on parle de surachat, sous 20 de survente. Il souffre du MÊME piège que le RSI en tendance forte.
 - ATR : amplitude moyenne sur N périodes. Sert à dimensionner un stop ou un objectif selon la volatilité, pas à donner une direction.`,
   },
 
@@ -156,7 +161,7 @@ const GLOSSARIES: Record<MethodFamily, GlossaryEntry> = {
 - Accumulation : phase de range qui suit une baisse, pendant laquelle l'offre est absorbée par des acheteurs patients. Distribution : la symétrique après une hausse.
 - Spring : brève cassure SOUS le bas d'un range d'accumulation, immédiatement suivie d'un retour dans le range. C'est un piège à vendeurs, la lecture est HAUSSIÈRE.
 - Upthrust (et UTAD) : brève cassure AU-DESSUS du haut d'un range de distribution, suivie d'un retour dedans. Piège à acheteurs, lecture BAISSIÈRE. Ne confonds jamais les deux : spring en bas et haussier, upthrust en haut et baissier.
-- Repères de phase : SC (selling climax), AR (automatic rally), ST (secondary test), LPS (last point of support) en accumulation ; BC, AD, UT en distribution.
+- Repères de phase, en accumulation : PS (preliminary support), SC (selling climax), AR (automatic rally), ST (secondary test), LPS (last point of support), SOS (sign of strength). En distribution, les symétriques : PSY (preliminary supply), BC (buying climax), AR (automatic reaction), ST, UT puis UTAD, LPSY (last point of supply), SOW (sign of weakness).
 - POC (point of control) : le prix auquel le plus de volume s'est échangé sur la période observée. Il agit souvent comme aimant.
 - VAH et VAL : bornes haute et basse de la zone contenant environ 70 % du volume de la période. En dehors, le marché est en déséquilibre.
 - VWAP : prix moyen pondéré par les volumes depuis un point d'ancrage. Sert de référence de valeur, surtout en intraday.
@@ -169,8 +174,8 @@ const GLOSSARIES: Record<MethodFamily, GlossaryEntry> = {
       "vague 4", "vague 5", "vague a", "vague b", "vague c",
     ],
     weak: [
-      "vague", "impulsion", "corrective", "abc", "wave", "aplat",
-      "diagonale",
+      "vague", "impulsion", "corrective", "abc", "wave", "flat",
+      "correction plate", "diagonale",
     ],
     text: `VOCABULAIRE ELLIOTT, DÉFINITIONS DE RÉFÉRENCE. Emploie-les telles quelles.
 - Structure : une impulsion se compte en 5 vagues (1-2-3-4-5) dans le sens de la tendance de degré supérieur, une correction en 3 (A-B-C).
@@ -194,8 +199,10 @@ const GLOSSARIES: Record<MethodFamily, GlossaryEntry> = {
 - Gartley : B à 61,8 % de XA, D à 78,6 % de XA.
 - Bat : B entre 38,2 et 50 % de XA, D à 88,6 % de XA.
 - Butterfly : B à 78,6 % de XA, D en EXTENSION à 127,2-161,8 % de XA.
-- Crab : D en extension à 161,8 % de XA, la plus profonde des quatre.
+- Crab : B entre 38,2 et 61,8 % de XA, D en extension à 161,8 % de XA. C'est la plus profonde des quatre.
 - CE QUI LES SÉPARE : chez Gartley et Bat, D reste À L'INTÉRIEUR de l'amplitude XA. Chez Butterfly et Crab, D DÉPASSE X. Confondre les deux familles inverse la zone d'entrée.
+- Cypher : sa signature est le point D à 78,6 % du segment XC, et non de XA comme les quatre précédentes. C se situe au-delà de A.
+- Shark : elle se compte sur les points 0-X-A-B-C et non X-A-B-C-D, et l'entrée se fait en C, au-delà de X. Ses bandes de ratios varient selon les auteurs : si le trader l'emploie, demande-lui les siennes plutôt que d'en avancer.
 - ABCD simple : le segment CD reproduit AB en amplitude, souvent en durée.
 - Une figure dont les ratios ne tombent pas n'est pas « approximativement » valide : c'est une autre figure, ou aucune.`,
   },
@@ -274,6 +281,7 @@ const GLOSSARIES: Record<MethodFamily, GlossaryEntry> = {
     text: `VOCABULAIRE DU RETOUR À LA MOYENNE, DÉFINITIONS DE RÉFÉRENCE. Emploie-les telles quelles.
 - Range : zone bornée par un plafond et un plancher tenus plusieurs fois. On vend le haut et on achète le bas TANT QUE les bornes tiennent.
 - Déviation : sortie brève d'une borne suivie d'un retour à l'intérieur. C'est ce retour qui constitue le signal, pas la sortie elle-même.
+- Fader : prendre position contre le mouvement en cours, en pariant sur son épuisement. « Fader la borne haute » = vendre le haut du range.
 - Retour à la moyenne : hypothèse qu'un écart excessif à une moyenne se referme. L'écart se mesure (écart-type, ATR), il ne s'estime pas à l'œil.
 - PROFIL INVERSE DU SUIVI DE TENDANCE : taux de réussite élevé, gains petits, pertes rares mais grosses quand le range casse. D'où la règle : l'invalidation doit être définie AVANT l'entrée, sinon un seul range cassé efface des semaines.
 - Les deux styles ne se combinent pas sur le même horizon : sur un même graphique, il faut choisir.`,
@@ -289,7 +297,8 @@ const GLOSSARIES: Record<MethodFamily, GlossaryEntry> = {
     ],
     text: `VOCABULAIRE DU TRADING D'ANNONCES, DÉFINITIONS DE RÉFÉRENCE. Emploie-les telles quelles.
 - Les publications qui bougent le marché : NFP (emploi américain), CPI (inflation), FOMC (banque centrale américaine), PMI, PIB, décisions de taux.
-- CE QUI FAIT LE MOUVEMENT : l'ÉCART entre le chiffre publié et le consensus attendu, pas la valeur absolue. Une bonne donnée sous le consensus fait baisser l'actif.
+- CE QUI FAIT LE MOUVEMENT : l'ÉCART entre le chiffre publié et le consensus attendu, pas la qualité absolue du chiffre. Un chiffre objectivement bon mais INFÉRIEUR aux attentes déçoit le marché, et inversement.
+- Le SENS de la réaction dépend de l'actif et de la donnée, il n'y a pas de règle universelle. Une inflation plus forte que prévu soutient généralement la devise (resserrement anticipé) tout en pesant sur les indices actions. Ne donne jamais une direction sans dire de quel actif tu parles.
 - Straddle : se positionner des deux côtés avant l'annonce pour capter la direction quelle qu'elle soit.
 - LE RISQUE PRINCIPAL N'EST PAS LA DIRECTION, C'EST L'EXÉCUTION : élargissement des spreads, glissement, et stops qui ne sont pas garantis dans ces secondes-là. Un plan correct sur le papier peut coûter plusieurs fois le risque prévu.
 - Le calendrier économique de TradeDiscipline sert précisément à repérer ces fenêtres à l'avance.`,
@@ -319,7 +328,7 @@ const GLOSSARIES: Record<MethodFamily, GlossaryEntry> = {
       "brique", "briques", "ligne de rupture",
     ],
     text: `VOCABULAIRE DES TYPES DE GRAPHIQUES ALTERNATIFS, DÉFINITIONS DE RÉFÉRENCE. Emploie-les telles quelles.
-- Heikin Ashi : bougies calculées par moyennage des ouvertures et clôtures. AVERTISSEMENT À DONNER : les prix affichés NE SONT PAS les prix réels du marché. On ne place jamais un stop ni un objectif sur une valeur lue en Heikin Ashi ; on les lit sur le graphique en chandeliers classiques.
+- Heikin Ashi : bougies recalculées. La clôture HA est la moyenne des quatre prix de la période (ouverture, plus haut, plus bas, clôture) ; l'ouverture HA est la moyenne de l'ouverture et de la clôture de la bougie HA PRÉCÉDENTE, ce qui fait qu'elle dépend de tout l'historique. AVERTISSEMENT À DONNER : les prix affichés NE SONT PAS les prix réels du marché. On ne place jamais un stop ni un objectif sur une valeur lue en Heikin Ashi ; on les lit sur le graphique en chandeliers classiques.
 - Renko : briques d'amplitude fixe, sans axe de temps. Une nouvelle brique n'apparaît qu'au franchissement du seuil, donc une brique peut représenter une seconde ou une journée.
 - Kagi, point & figure : même logique de filtrage du bruit, l'information temporelle est volontairement supprimée.
 - CE QUE TOUS PARTAGENT : ils lissent le bruit au prix de la temporalité, ce qui rend les figures plus lisibles mais retarde les signaux. Le journal, lui, enregistre des heures réelles : ne confonds pas ce que le trader voit et ce que ses trades enregistrent.`,

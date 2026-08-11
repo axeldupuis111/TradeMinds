@@ -195,3 +195,55 @@ describe("faux positifs sur du français ordinaire", () => {
     expect(detectMethodFamilies("J'utilise Ichimoku")).toEqual(["ichimoku"]);
   });
 });
+
+/**
+ * Relecture des définitions. Ces assertions figent les points sur lesquels une
+ * inversion coûte cher au trader : ce sont ceux qui ont été trouvés faux ou
+ * absents à la relecture du 2026-08-11.
+ */
+describe("exactitude des définitions", () => {
+  it("Wyckoff : la phase de distribution emploie AR, pas un sigle inventé", () => {
+    // « AD » avait été écrit à la place de AR (automatic reaction).
+    const out = renderMethodGlossaries(["wyckoff"]);
+    expect(out).toContain("AR (automatic reaction)");
+    expect(out).not.toMatch(/\bAD\b/);
+  });
+
+  it("annonces : ne pose aucune direction universelle", () => {
+    // « Une bonne donnée sous le consensus fait baisser l'actif » était faux
+    // comme règle générale : le sens dépend de l'actif et de la donnée.
+    const out = renderMethodGlossaries(["news_macro"]);
+    expect(out).toContain("dépend de l'actif et de la donnée");
+    expect(out).toContain("pas de règle universelle");
+  });
+
+  it("Heikin Ashi : la formule est donnée, et l'avertissement avec", () => {
+    const out = renderMethodGlossaries(["chart_types"]);
+    expect(out).toContain("moyenne des quatre prix");
+    expect(out).toContain("NE SONT PAS les prix réels");
+  });
+
+  it("harmoniques : chaque figure nommée porte son ratio distinctif", () => {
+    const out = renderMethodGlossaries(["harmonics"]);
+    for (const attendu of ["61,8 % de XA", "88,6 % de XA", "127,2-161,8 %", "78,6 % du segment XC"]) {
+      expect(out).toContain(attendu);
+    }
+  });
+
+  it("harmoniques : sur la figure aux ratios incertains, on ne les invente pas", () => {
+    // Le Shark varie selon les auteurs. La consigne du prompt est de ne jamais
+    // ancrer une définition douteuse : elle doit s'appliquer à moi aussi.
+    expect(renderMethodGlossaries(["harmonics"])).toContain("varient selon les auteurs");
+  });
+
+  it("risque : l'exemple chiffré de l'espérance est juste", () => {
+    // 0,3 × 5 − 0,7 × 1 = +0,8R contre 0,7 × 0,5 − 0,3 × 1 = +0,05R.
+    expect(renderMethodGlossaries(["risk"])).toContain("30 % de réussite à 5R bat 70 % à 0,5R");
+    expect(0.3 * 5 - 0.7 * 1).toBeGreaterThan(0.7 * 0.5 - 0.3 * 1);
+  });
+
+  it("Ichimoku : le sens de projection des deux lignes est explicite", () => {
+    const out = renderMethodGlossaries(["ichimoku"]);
+    expect(out).toContain("Senkou se projette en avant, Chikou en arrière");
+  });
+});
