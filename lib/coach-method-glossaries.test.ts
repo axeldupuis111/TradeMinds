@@ -162,3 +162,36 @@ describe("glossariesForStrategy", () => {
     expect(out).toContain("OFFRE / DEMANDE");
   });
 });
+
+/**
+ * Le pendant du test de collision : une fiche écrite en français ordinaire ne
+ * doit déclencher AUCUNE école. Les cinq cas ci-dessous étaient de vrais faux
+ * positifs, dus à des mots courants placés parmi les marqueurs.
+ */
+describe("faux positifs sur du français ordinaire", () => {
+  const banales = [
+    "Je me base sur la tendance journalière avant d'entrer",
+    "J'attends une vague de volatilité pour entrer",
+    "J'analyse la distribution de mes pertes chaque semaine",
+    "Je cherche une impulsion nette avant d'entrer",
+    "Je prends du momentum sur les actions américaines",
+    "Je trade l'or en session de Londres, 2 trades par jour maximum",
+    "Je note mes émotions et je fais un débrief le soir",
+    "J'évite les annonces et je reste sur mon plan",
+  ];
+
+  it.each(banales)("ne déclenche aucune école sur : %s", (fiche) => {
+    expect(detectMethodFamilies(fiche)).toEqual([]);
+  });
+
+  it("garde la détection quand un mot courant est confirmé par un second", () => {
+    // « base » seul ne suffit pas, « base » + « déséquilibre » oui : c'est
+    // bien une fiche offre/demande.
+    expect(detectMethodFamilies("Je trace ma base puis j'attends le déséquilibre")).toEqual(["supply_demand"]);
+  });
+
+  it("garde la détection sur un seul terme propre à l'école", () => {
+    // « ichimoku » n'a aucun autre sens : un seul suffit.
+    expect(detectMethodFamilies("J'utilise Ichimoku")).toEqual(["ichimoku"]);
+  });
+});

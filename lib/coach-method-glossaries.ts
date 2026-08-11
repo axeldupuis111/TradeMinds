@@ -39,8 +39,22 @@ export type MethodFamily =
   | "risk";
 
 interface Glossary {
-  /** Termes déclencheurs, en minuscules et sans accent. */
+  /**
+   * Termes qui n'appartiennent qu'à cette école : un seul suffit à la retenir.
+   * « gartley », « ichimoku », « fvg » ne veulent rien dire ailleurs.
+   */
   markers: string[];
+  /**
+   * Termes du vocabulaire de l'école, mais qui sont aussi des mots courants.
+   * « base », « vague », « impulsion », « distribution », « momentum » : seuls,
+   * ils déclenchaient l'école sur des phrases banales (« je me base sur la
+   * tendance » chargeait le glossaire offre/demande). Il en faut DEUX, ou un
+   * marqueur sûr, pour retenir l'école.
+   */
+  weak?: string[];
+}
+
+interface GlossaryEntry extends Glossary {
   text: string;
 }
 
@@ -49,13 +63,15 @@ interface Glossary {
  * vocabulaire est le plus spécifique, donc la moins susceptible d'être
  * détectée par erreur.
  */
-const GLOSSARIES: Record<MethodFamily, Glossary> = {
+const GLOSSARIES: Record<MethodFamily, GlossaryEntry> = {
   ict: {
     markers: [
       "ict", "smc", "smart money", "fvg", "fair value gap", "order block",
-      "killzone", "kill zone", "bsl", "ssl", "liquidity", "liquidite",
-      "breaker", "bos", "choch", "mss", "displacement", "deplacement",
-      "imbalance", "judas", "silver bullet", "po3",
+      "killzone", "kill zone", "bsl", "ssl", "breaker", "choch", "mss",
+      "bos", "judas", "silver bullet", "po3",
+    ],
+    weak: [
+      "liquidite", "liquidity", "displacement", "deplacement", "imbalance",
     ],
     text: `VOCABULAIRE ICT / SMC, DÉFINITIONS DE RÉFÉRENCE. Ce sont les bonnes : emploie-les telles quelles, sans les improviser. Une inversion rend ton conseil dangereux.
 - Liquidité : ordres en attente regroupés là où tout le monde place ses stops, au-dessus des sommets et sous les creux.
@@ -74,9 +90,12 @@ const GLOSSARIES: Record<MethodFamily, Glossary> = {
 
   supply_demand: {
     markers: [
-      "supply", "demand", "offre et demande", "zone d'offre", "zone de demande",
-      "drop base rally", "rally base drop", "dbr", "rbd", "zone fraiche",
-      "base", "desequilibre",
+      "supply", "demand", "zone d'offre", "zone de demande",
+      "zones de demande", "zones d'offre", "drop base rally",
+      "rally base drop", "dbr", "rbd", "zone fraiche",
+    ],
+    weak: [
+      "base", "desequilibre", "offre et demande",
     ],
     text: `VOCABULAIRE OFFRE / DEMANDE (SUPPLY & DEMAND), DÉFINITIONS DE RÉFÉRENCE. Emploie-les telles quelles.
 - Zone de demande : zone d'où le prix est reparti à la hausse de façon franche, en laissant derrière lui des ordres d'achat non exécutés. Zone d'offre : la symétrique, d'où le prix est reparti à la baisse.
@@ -89,9 +108,12 @@ const GLOSSARIES: Record<MethodFamily, Glossary> = {
 
   price_action: {
     markers: [
-      "price action", "support", "resistance", "pin bar", "engulfing", "avalement",
-      "chandelier", "bougie", "pullback", "breakout", "cassure", "retest",
-      "double top", "double bottom", "epaule tete epaule", "triangle", "biseau",
+      "price action", "pin bar", "engulfing", "avalement", "double top",
+      "double bottom", "epaule tete epaule", "biseau",
+    ],
+    weak: [
+      "support", "resistance", "chandelier", "bougie", "pullback",
+      "breakout", "cassure", "retest", "triangle",
     ],
     text: `VOCABULAIRE PRICE ACTION CLASSIQUE, DÉFINITIONS DE RÉFÉRENCE. Emploie-les telles quelles.
 - Support et résistance : niveaux où le prix a déjà réagi plusieurs fois. Après cassure, le rôle s'inverse (polarité) : une résistance cassée devient support.
@@ -105,9 +127,11 @@ const GLOSSARIES: Record<MethodFamily, Glossary> = {
 
   indicators: {
     markers: [
-      "rsi", "macd", "fibonacci", "fibo", "retracement", "stochastique",
-      "bollinger", "moyenne mobile", "ema", "sma", "mm50", "mm200", "atr",
-      "divergence", "surachat", "survente", "ichimoku",
+      "rsi", "macd", "fibonacci", "fibo", "stochastique", "bollinger", "ema",
+      "sma", "mm50", "mm200", "atr",
+    ],
+    weak: [
+      "retracement", "moyenne mobile", "divergence", "surachat", "survente",
     ],
     text: `VOCABULAIRE DES INDICATEURS, DÉFINITIONS DE RÉFÉRENCE. Emploie-les telles quelles, et rappelle les pièges quand ils s'appliquent.
 - RSI : oscillateur borné 0-100, 14 périodes par défaut. Au-dessus de 70 on parle de surachat, sous 30 de survente. PIÈGE MAJEUR : en tendance forte le RSI reste en zone extrême très longtemps ; ce n'est PAS un signal de retournement à lui seul.
@@ -121,9 +145,12 @@ const GLOSSARIES: Record<MethodFamily, Glossary> = {
 
   wyckoff: {
     markers: [
-      "wyckoff", "accumulation", "distribution", "spring", "upthrust", "utad",
-      "volume profile", "profil de volume", "poc", "vah", "val", "order flow",
-      "delta", "absorption", "footprint", "vwap",
+      "wyckoff", "spring", "upthrust", "utad", "volume profile",
+      "profil de volume", "poc", "vah", "order flow", "footprint", "vwap",
+      "absorption",
+    ],
+    weak: [
+      "accumulation", "distribution", "delta", "val",
     ],
     text: `VOCABULAIRE WYCKOFF ET VOLUME, DÉFINITIONS DE RÉFÉRENCE. Emploie-les telles quelles.
 - Accumulation : phase de range qui suit une baisse, pendant laquelle l'offre est absorbée par des acheteurs patients. Distribution : la symétrique après une hausse.
@@ -138,8 +165,12 @@ const GLOSSARIES: Record<MethodFamily, Glossary> = {
 
   elliott: {
     markers: [
-      "elliott", "vague", "impulsion", "corrective", "zigzag", "abc",
-      "wave", "diagonale", "aplat", "sous-vague",
+      "elliott", "zigzag", "sous-vague", "vague 1", "vague 2", "vague 3",
+      "vague 4", "vague 5", "vague a", "vague b", "vague c",
+    ],
+    weak: [
+      "vague", "impulsion", "corrective", "abc", "wave", "aplat",
+      "diagonale",
     ],
     text: `VOCABULAIRE ELLIOTT, DÉFINITIONS DE RÉFÉRENCE. Emploie-les telles quelles.
 - Structure : une impulsion se compte en 5 vagues (1-2-3-4-5) dans le sens de la tendance de degré supérieur, une correction en 3 (A-B-C).
@@ -152,8 +183,11 @@ const GLOSSARIES: Record<MethodFamily, Glossary> = {
 
   harmonics: {
     markers: [
-      "harmonique", "harmonic", "gartley", "bat", "butterfly", "papillon",
-      "crab", "crabe", "shark", "cypher", "prz", "xabcd",
+      "harmonique", "harmonic", "gartley", "butterfly", "papillon", "crab",
+      "crabe", "shark", "cypher", "prz", "xabcd",
+    ],
+    weak: [
+      "bat",
     ],
     text: `VOCABULAIRE DES FIGURES HARMONIQUES, DÉFINITIONS DE RÉFÉRENCE. Emploie-les telles quelles ; ce sont les ratios qui définissent la figure, pas sa silhouette.
 - Structure commune : cinq points X-A-B-C-D. L'entrée se cherche au point D, dans la PRZ (potential reversal zone).
@@ -168,8 +202,10 @@ const GLOSSARIES: Record<MethodFamily, Glossary> = {
 
   ichimoku: {
     markers: [
-      "ichimoku", "kumo", "tenkan", "kijun", "senkou", "chikou", "nuage",
-      "kinko hyo",
+      "ichimoku", "kumo", "tenkan", "kijun", "senkou", "chikou", "kinko hyo",
+    ],
+    weak: [
+      "nuage",
     ],
     text: `VOCABULAIRE ICHIMOKU, DÉFINITIONS DE RÉFÉRENCE. Emploie-les telles quelles.
 - Tenkan-sen (conversion, 9 périodes) et Kijun-sen (base, 26) : moyenne du plus haut et du plus bas sur la période. Ce ne sont PAS des moyennes mobiles de clôture.
@@ -183,8 +219,10 @@ const GLOSSARIES: Record<MethodFamily, Glossary> = {
 
   pivots: {
     markers: [
-      "pivot", "camarilla", "woodie", "point pivot", "r1", "r2", "r3",
-      "s1", "s2", "s3", "fibonacci pivot",
+      "pivot", "camarilla", "woodie", "point pivot",
+    ],
+    weak: [
+      "r1", "r2", "r3", "s1", "s2", "s3", "fibonacci pivot",
     ],
     text: `VOCABULAIRE DES POINTS PIVOTS, DÉFINITIONS DE RÉFÉRENCE. Emploie-les telles quelles.
 - Pivot classique : P = (plus haut + plus bas + clôture) / 3 de la séance PRÉCÉDENTE. Puis R1 = 2P − plus bas, S1 = 2P − plus haut, et les niveaux suivants par report de l'amplitude.
@@ -197,7 +235,10 @@ const GLOSSARIES: Record<MethodFamily, Glossary> = {
   market_profile: {
     markers: [
       "market profile", "profil de marche", "tpo", "initial balance",
-      "single print", "zone de valeur", "value area", "double distribution",
+      "single print", "double distribution",
+    ],
+    weak: [
+      "zone de valeur", "value area",
     ],
     text: `VOCABULAIRE MARKET PROFILE (TPO), DÉFINITIONS DE RÉFÉRENCE. Emploie-les telles quelles.
 - TPO (time price opportunity) : chaque lettre marque une unité de TEMPS passée à un prix. C'est la différence avec le profil de volume, qui compte les contrats échangés : le premier mesure la durée, le second la quantité.
@@ -210,7 +251,10 @@ const GLOSSARIES: Record<MethodFamily, Glossary> = {
   trend_following: {
     markers: [
       "suivi de tendance", "trend following", "donchian", "tortue", "turtle",
-      "canal de donchian", "pyramidage", "breakout system", "momentum",
+      "canal de donchian", "pyramidage", "breakout system",
+    ],
+    weak: [
+      "momentum",
     ],
     text: `VOCABULAIRE DU SUIVI DE TENDANCE, DÉFINITIONS DE RÉFÉRENCE. Emploie-les telles quelles.
 - Canal de Donchian : plus haut et plus bas des N dernières périodes. L'entrée se fait à la cassure du canal, dans le sens de la cassure.
@@ -221,8 +265,11 @@ const GLOSSARIES: Record<MethodFamily, Glossary> = {
 
   mean_reversion: {
     markers: [
-      "retour a la moyenne", "mean reversion", "range trading", "deviation",
-      "contre tendance", "fade", "scalp range", "bornes",
+      "retour a la moyenne", "mean reversion", "range trading", "fade",
+      "scalp range",
+    ],
+    weak: [
+      "deviation", "contre tendance", "bornes", "range",
     ],
     text: `VOCABULAIRE DU RETOUR À LA MOYENNE, DÉFINITIONS DE RÉFÉRENCE. Emploie-les telles quelles.
 - Range : zone bornée par un plafond et un plancher tenus plusieurs fois. On vend le haut et on achète le bas TANT QUE les bornes tiennent.
@@ -234,8 +281,11 @@ const GLOSSARIES: Record<MethodFamily, Glossary> = {
 
   news_macro: {
     markers: [
-      "nfp", "cpi", "fomc", "pmi", "news trading", "annonce", "calendrier economique",
-      "straddle", "consensus", "banque centrale", "taux directeur", "macro",
+      "nfp", "cpi", "fomc", "pmi", "news trading", "calendrier economique",
+      "straddle", "banque centrale", "taux directeur",
+    ],
+    weak: [
+      "annonce", "annonces", "consensus", "macro",
     ],
     text: `VOCABULAIRE DU TRADING D'ANNONCES, DÉFINITIONS DE RÉFÉRENCE. Emploie-les telles quelles.
 - Les publications qui bougent le marché : NFP (emploi américain), CPI (inflation), FOMC (banque centrale américaine), PMI, PIB, décisions de taux.
@@ -247,8 +297,11 @@ const GLOSSARIES: Record<MethodFamily, Glossary> = {
 
   crypto: {
     markers: [
-      "funding", "open interest", "liquidation", "perpetuel", "perp",
-      "dominance", "altseason", "onchain", "halving", "defi", "altcoin",
+      "funding", "open interest", "perpetuel", "perp", "altseason",
+      "onchain", "halving", "defi", "altcoin", "dominance",
+    ],
+    weak: [
+      "liquidation", "liquidations",
     ],
     text: `VOCABULAIRE CRYPTO, DÉFINITIONS DE RÉFÉRENCE. Emploie-les telles quelles.
 - Funding rate : paiement périodique entre positions longues et courtes sur les contrats perpétuels, qui maintient le prix collé au spot. Positif, les longs paient les shorts, signe d'un positionnement acheteur excessif ; négatif, l'inverse.
@@ -260,8 +313,10 @@ const GLOSSARIES: Record<MethodFamily, Glossary> = {
 
   chart_types: {
     markers: [
-      "heikin", "heiken", "renko", "kagi", "point and figure", "brique",
-      "ligne de rupture",
+      "heikin", "heiken", "renko", "kagi", "point and figure",
+    ],
+    weak: [
+      "brique", "briques", "ligne de rupture",
     ],
     text: `VOCABULAIRE DES TYPES DE GRAPHIQUES ALTERNATIFS, DÉFINITIONS DE RÉFÉRENCE. Emploie-les telles quelles.
 - Heikin Ashi : bougies calculées par moyennage des ouvertures et clôtures. AVERTISSEMENT À DONNER : les prix affichés NE SONT PAS les prix réels du marché. On ne place jamais un stop ni un objectif sur une valeur lue en Heikin Ashi ; on les lit sur le graphique en chandeliers classiques.
@@ -273,8 +328,11 @@ const GLOSSARIES: Record<MethodFamily, Glossary> = {
   risk: {
     markers: [
       "r multiple", "multiple de r", "esperance", "expectancy", "drawdown",
-      "martingale", "kelly", "risque par trade", "money management",
-      "gestion du risque", "risk reward", "position sizing",
+      "martingale", "kelly", "money management", "gestion du risque",
+      "position sizing", "risque par trade",
+    ],
+    weak: [
+      "risk reward",
     ],
     text: `VOCABULAIRE DE GESTION DU RISQUE, DÉFINITIONS DE RÉFÉRENCE. Emploie-les telles quelles ; ce vocabulaire vaut pour toutes les méthodes.
 - R : le risque engagé sur un trade, pris comme unité. Un gain de 2R rapporte deux fois ce qui était risqué. Raisonner en R rend les trades comparables entre eux quelle que soit la taille.
@@ -328,10 +386,17 @@ export function detectMethodFamilies(strategyText: string): MethodFamily[] {
   if (!strategyText.trim()) return [];
   const haystack = normalize(strategyText);
 
-  const scored = (Object.entries(GLOSSARIES) as [MethodFamily, Glossary][])
+  const scored = (Object.entries(GLOSSARIES) as [MethodFamily, GlossaryEntry][])
     .map(([family, g]) => {
-      const hits = g.markers.filter((m) => matchesWord(haystack, normalize(m))).length;
-      return { family, hits };
+      const strong = g.markers.filter((m) => matchesWord(haystack, normalize(m))).length;
+      const weak = (g.weak ?? []).filter((m) => matchesWord(haystack, normalize(m))).length;
+      // Un terme propre à l'école suffit. Un mot courant, non : « je me base
+      // sur la tendance » chargeait le glossaire offre/demande, « une vague de
+      // volatilité » celui d'Elliott. Il en faut deux, ou un terme propre.
+      const retenue = strong > 0 || weak >= 2;
+      // Le classement pondère : deux écoles à égalité de termes, celle qui a
+      // les plus spécifiques passe devant.
+      return { family, hits: retenue ? strong * 2 + weak : 0 };
     })
     .filter((s) => s.hits > 0)
     // Le plus de termes reconnus d'abord ; à égalité, l'ordre de déclaration
