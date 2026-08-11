@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ALL_METHOD_FAMILIES,
   MAX_GLOSSARIES,
   detectMethodFamilies,
   glossariesForStrategy,
@@ -76,6 +77,43 @@ describe("detectMethodFamilies", () => {
     // l'autre relancerait une écriture complète du préfixe à chaque message.
     const fiche = "Spring Wyckoff, POC, et un peu de FVG ICT";
     expect(detectMethodFamilies(fiche)).toEqual(detectMethodFamilies(fiche));
+  });
+});
+
+/**
+ * Le vrai risque d'une bibliothèque qui s'étend : la collision. Plus il y a de
+ * marqueurs, plus une fiche risque d'activer l'école du voisin. Chaque école
+ * doit donc se reconnaître EN PREMIER sur sa propre phrase de référence.
+ */
+describe("détection croisée entre écoles", () => {
+  const fiches: [string, string][] = [
+    ["ict", "Sweep de la BSL, déplacement, puis entrée sur le FVG"],
+    ["supply_demand", "Zone de demande en drop base rally, sortie en déséquilibre"],
+    ["price_action", "Pin bar sur résistance, puis retest après cassure"],
+    ["indicators", "Divergence RSI et croisement MACD, retracement 61,8"],
+    ["wyckoff", "Spring sous le range d'accumulation, POC comme objectif"],
+    ["elliott", "Fin de la vague 4, je vise la vague 5 après la corrective"],
+    ["harmonics", "Gartley en cours, j'attends le point D dans la PRZ"],
+    ["ichimoku", "Prix au-dessus du Kumo, croisement Tenkan Kijun"],
+    ["pivots", "J'achète le rebond sur S1, objectif le pivot puis R1"],
+    ["market_profile", "Cassure de l'initial balance, single print à combler"],
+    ["trend_following", "Cassure du canal de Donchian, pyramidage à l'ATR"],
+    ["mean_reversion", "Range tenu, je fade les bornes sur déviation"],
+    ["news_macro", "Je ne trade pas pendant le NFP ni le FOMC"],
+    ["crypto", "Funding positif et open interest en hausse, prudence"],
+    ["chart_types", "Je lis en Renko, briques de 10 points"],
+    ["risk", "1 % de risque par trade, je raisonne en multiple de R"],
+  ];
+
+  it.each(fiches)("reconnaît %s en premier sur sa phrase de référence", (famille, fiche) => {
+    expect(detectMethodFamilies(fiche)[0]).toBe(famille);
+  });
+
+  it("couvre toutes les écoles déclarées", () => {
+    // Garde-fou : ajouter une école sans phrase de référence la laisserait
+    // sans test de collision, et c'est exactement là que les bugs vivent.
+    const testees = new Set(fiches.map(([f]) => f));
+    expect(ALL_METHOD_FAMILIES.filter((f) => !testees.has(f))).toEqual([]);
   });
 });
 

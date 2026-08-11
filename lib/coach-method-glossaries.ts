@@ -20,7 +20,23 @@
  * toute modification doit être relue par quelqu'un qui trade la méthode.
  */
 
-export type MethodFamily = "ict" | "supply_demand" | "price_action" | "indicators" | "wyckoff";
+export type MethodFamily =
+  | "ict"
+  | "supply_demand"
+  | "price_action"
+  | "indicators"
+  | "wyckoff"
+  | "elliott"
+  | "harmonics"
+  | "ichimoku"
+  | "pivots"
+  | "market_profile"
+  | "trend_following"
+  | "mean_reversion"
+  | "news_macro"
+  | "crypto"
+  | "chart_types"
+  | "risk";
 
 interface Glossary {
   /** Termes déclencheurs, en minuscules et sans accent. */
@@ -119,10 +135,163 @@ const GLOSSARIES: Record<MethodFamily, Glossary> = {
 - VWAP : prix moyen pondéré par les volumes depuis un point d'ancrage. Sert de référence de valeur, surtout en intraday.
 - Delta : différence entre volume exécuté à l'achat et à la vente. Absorption : un volume important qui ne fait PAS bouger le prix, signe qu'un participant absorbe les ordres en face.`,
   },
+
+  elliott: {
+    markers: [
+      "elliott", "vague", "impulsion", "corrective", "zigzag", "abc",
+      "wave", "diagonale", "aplat", "sous-vague",
+    ],
+    text: `VOCABULAIRE ELLIOTT, DÉFINITIONS DE RÉFÉRENCE. Emploie-les telles quelles.
+- Structure : une impulsion se compte en 5 vagues (1-2-3-4-5) dans le sens de la tendance de degré supérieur, une correction en 3 (A-B-C).
+- TROIS RÈGLES ABSOLUES, qui invalident un décompte si elles sont violées : la vague 2 ne retrace jamais 100 % de la vague 1 ; la vague 3 n'est jamais la plus courte des trois vagues motrices (1, 3, 5) ; la vague 4 n'entre jamais dans la zone de prix de la vague 1 (seule exception : les diagonales).
+- Proportions usuelles : la vague 3 est le plus souvent la plus longue, fréquemment à 161,8 % de la vague 1. Ce sont des tendances, pas des règles.
+- Corrections : zigzag (5-3-5), plat (3-3-5), triangle (3-3-3-3-3).
+- Degrés : les vagues s'emboîtent, chaque vague contient des sous-vagues d'un degré inférieur. Toujours préciser le degré dont on parle.
+- À DIRE AU TRADER : un décompte est une lecture, pas une prédiction. Il se révise quand le prix invalide une règle, et deux analystes compétents peuvent compter différemment.`,
+  },
+
+  harmonics: {
+    markers: [
+      "harmonique", "harmonic", "gartley", "bat", "butterfly", "papillon",
+      "crab", "crabe", "shark", "cypher", "prz", "xabcd",
+    ],
+    text: `VOCABULAIRE DES FIGURES HARMONIQUES, DÉFINITIONS DE RÉFÉRENCE. Emploie-les telles quelles ; ce sont les ratios qui définissent la figure, pas sa silhouette.
+- Structure commune : cinq points X-A-B-C-D. L'entrée se cherche au point D, dans la PRZ (potential reversal zone).
+- Gartley : B à 61,8 % de XA, D à 78,6 % de XA.
+- Bat : B entre 38,2 et 50 % de XA, D à 88,6 % de XA.
+- Butterfly : B à 78,6 % de XA, D en EXTENSION à 127,2-161,8 % de XA.
+- Crab : D en extension à 161,8 % de XA, la plus profonde des quatre.
+- CE QUI LES SÉPARE : chez Gartley et Bat, D reste À L'INTÉRIEUR de l'amplitude XA. Chez Butterfly et Crab, D DÉPASSE X. Confondre les deux familles inverse la zone d'entrée.
+- ABCD simple : le segment CD reproduit AB en amplitude, souvent en durée.
+- Une figure dont les ratios ne tombent pas n'est pas « approximativement » valide : c'est une autre figure, ou aucune.`,
+  },
+
+  ichimoku: {
+    markers: [
+      "ichimoku", "kumo", "tenkan", "kijun", "senkou", "chikou", "nuage",
+      "kinko hyo",
+    ],
+    text: `VOCABULAIRE ICHIMOKU, DÉFINITIONS DE RÉFÉRENCE. Emploie-les telles quelles.
+- Tenkan-sen (conversion, 9 périodes) et Kijun-sen (base, 26) : moyenne du plus haut et du plus bas sur la période. Ce ne sont PAS des moyennes mobiles de clôture.
+- Senkou Span A : moyenne de Tenkan et Kijun, projetée 26 périodes VERS L'AVANT.
+- Senkou Span B : moyenne des extrêmes sur 52 périodes, projetée 26 périodes VERS L'AVANT.
+- Kumo (nuage) : la zone entre Senkou A et B. Support ou résistance visible à l'avance, puisque projeté dans le futur.
+- Chikou Span : la clôture actuelle reportée 26 périodes VERS L'ARRIÈRE.
+- PIÈGE LE PLUS FRÉQUENT : Senkou se projette en avant, Chikou en arrière. Les intervertir inverse toute la lecture du graphique.
+- Lecture classique : position du prix par rapport au Kumo, croisement Tenkan/Kijun, et Chikou dégagé du prix passé. Les trois se lisent ensemble, jamais isolément.`,
+  },
+
+  pivots: {
+    markers: [
+      "pivot", "camarilla", "woodie", "point pivot", "r1", "r2", "r3",
+      "s1", "s2", "s3", "fibonacci pivot",
+    ],
+    text: `VOCABULAIRE DES POINTS PIVOTS, DÉFINITIONS DE RÉFÉRENCE. Emploie-les telles quelles.
+- Pivot classique : P = (plus haut + plus bas + clôture) / 3 de la séance PRÉCÉDENTE. Puis R1 = 2P − plus bas, S1 = 2P − plus haut, et les niveaux suivants par report de l'amplitude.
+- Woodie : donne plus de poids à la clôture, P = (plus haut + plus bas + 2 × clôture) / 4.
+- Camarilla : niveaux resserrés autour de la clôture, obtenus en appliquant des coefficients à l'amplitude de la veille. H3 et L3 servent souvent de bornes de retournement, H4 et L4 de seuils de cassure.
+- RÈGLE DE CALCUL : les pivots se calculent sur la séance précédente et valent pour toute la séance en cours. Les recalculer en intraday n'a pas de sens et fabrique des niveaux qui n'existent pour personne.
+- Leur intérêt vient de ce que beaucoup d'intervenants regardent les mêmes niveaux, pas d'une propriété du marché.`,
+  },
+
+  market_profile: {
+    markers: [
+      "market profile", "profil de marche", "tpo", "initial balance",
+      "single print", "zone de valeur", "value area", "double distribution",
+    ],
+    text: `VOCABULAIRE MARKET PROFILE (TPO), DÉFINITIONS DE RÉFÉRENCE. Emploie-les telles quelles.
+- TPO (time price opportunity) : chaque lettre marque une unité de TEMPS passée à un prix. C'est la différence avec le profil de volume, qui compte les contrats échangés : le premier mesure la durée, le second la quantité.
+- Initial balance (IB) : l'amplitude de la première heure de séance. Sa cassure d'un côté oriente souvent la journée.
+- Zone de valeur : la plage contenant environ 70 % des TPO. POC : la ligne la plus longue du profil.
+- Single prints : prix traversés une seule fois, laissés par un mouvement rapide. Ils sont souvent revisités plus tard.
+- Journées types : normale, en tendance, neutre, double distribution. Nommer le type de journée aide à choisir entre suivre et faire du retour à la moyenne.`,
+  },
+
+  trend_following: {
+    markers: [
+      "suivi de tendance", "trend following", "donchian", "tortue", "turtle",
+      "canal de donchian", "pyramidage", "breakout system", "momentum",
+    ],
+    text: `VOCABULAIRE DU SUIVI DE TENDANCE, DÉFINITIONS DE RÉFÉRENCE. Emploie-les telles quelles.
+- Canal de Donchian : plus haut et plus bas des N dernières périodes. L'entrée se fait à la cassure du canal, dans le sens de la cassure.
+- Système des Tortues : entrée à la cassure de 20 périodes, sortie à 10, taille de position calculée à partir de l'ATR, et pyramidage par paliers d'une fraction d'ATR.
+- Anti-martingale : on augmente la taille quand le système gagne, jamais quand il perd. C'est l'inverse exact de la martingale, et le seul des deux qui soit défendable.
+- CE QU'IL FAUT DIRE AU TRADER : le suivi de tendance a par construction un TAUX DE RÉUSSITE FAIBLE, souvent sous 40 %, compensé par de rares gains très supérieurs aux pertes. Juger ce style sur son winrate est un contresens : c'est l'espérance et la taille des gagnants qui comptent.`,
+  },
+
+  mean_reversion: {
+    markers: [
+      "retour a la moyenne", "mean reversion", "range trading", "deviation",
+      "contre tendance", "fade", "scalp range", "bornes",
+    ],
+    text: `VOCABULAIRE DU RETOUR À LA MOYENNE, DÉFINITIONS DE RÉFÉRENCE. Emploie-les telles quelles.
+- Range : zone bornée par un plafond et un plancher tenus plusieurs fois. On vend le haut et on achète le bas TANT QUE les bornes tiennent.
+- Déviation : sortie brève d'une borne suivie d'un retour à l'intérieur. C'est ce retour qui constitue le signal, pas la sortie elle-même.
+- Retour à la moyenne : hypothèse qu'un écart excessif à une moyenne se referme. L'écart se mesure (écart-type, ATR), il ne s'estime pas à l'œil.
+- PROFIL INVERSE DU SUIVI DE TENDANCE : taux de réussite élevé, gains petits, pertes rares mais grosses quand le range casse. D'où la règle : l'invalidation doit être définie AVANT l'entrée, sinon un seul range cassé efface des semaines.
+- Les deux styles ne se combinent pas sur le même horizon : sur un même graphique, il faut choisir.`,
+  },
+
+  news_macro: {
+    markers: [
+      "nfp", "cpi", "fomc", "pmi", "news trading", "annonce", "calendrier economique",
+      "straddle", "consensus", "banque centrale", "taux directeur", "macro",
+    ],
+    text: `VOCABULAIRE DU TRADING D'ANNONCES, DÉFINITIONS DE RÉFÉRENCE. Emploie-les telles quelles.
+- Les publications qui bougent le marché : NFP (emploi américain), CPI (inflation), FOMC (banque centrale américaine), PMI, PIB, décisions de taux.
+- CE QUI FAIT LE MOUVEMENT : l'ÉCART entre le chiffre publié et le consensus attendu, pas la valeur absolue. Une bonne donnée sous le consensus fait baisser l'actif.
+- Straddle : se positionner des deux côtés avant l'annonce pour capter la direction quelle qu'elle soit.
+- LE RISQUE PRINCIPAL N'EST PAS LA DIRECTION, C'EST L'EXÉCUTION : élargissement des spreads, glissement, et stops qui ne sont pas garantis dans ces secondes-là. Un plan correct sur le papier peut coûter plusieurs fois le risque prévu.
+- Le calendrier économique de TradeDiscipline sert précisément à repérer ces fenêtres à l'avance.`,
+  },
+
+  crypto: {
+    markers: [
+      "funding", "open interest", "liquidation", "perpetuel", "perp",
+      "dominance", "altseason", "onchain", "halving", "defi", "altcoin",
+    ],
+    text: `VOCABULAIRE CRYPTO, DÉFINITIONS DE RÉFÉRENCE. Emploie-les telles quelles.
+- Funding rate : paiement périodique entre positions longues et courtes sur les contrats perpétuels, qui maintient le prix collé au spot. Positif, les longs paient les shorts, signe d'un positionnement acheteur excessif ; négatif, l'inverse.
+- Open interest : nombre de contrats ouverts. Prix qui monte avec OI en hausse = argent frais qui entre ; prix qui monte avec OI en baisse = rachat de vendeurs, mouvement moins solide.
+- Liquidation : fermeture forcée d'une position à effet de levier. Une cascade se produit quand des liquidations en déclenchent d'autres, d'où les mèches violentes.
+- Dominance BTC : part de la capitalisation totale détenue par le bitcoin.
+- SPÉCIFICITÉ À RAPPELER : le marché est ouvert 24/7, il n'y a ni séance ni clôture officielle. Les repères construits sur des séances (pivots, initial balance) doivent être ancrés explicitement, sinon ils ne veulent rien dire.`,
+  },
+
+  chart_types: {
+    markers: [
+      "heikin", "heiken", "renko", "kagi", "point and figure", "brique",
+      "ligne de rupture",
+    ],
+    text: `VOCABULAIRE DES TYPES DE GRAPHIQUES ALTERNATIFS, DÉFINITIONS DE RÉFÉRENCE. Emploie-les telles quelles.
+- Heikin Ashi : bougies calculées par moyennage des ouvertures et clôtures. AVERTISSEMENT À DONNER : les prix affichés NE SONT PAS les prix réels du marché. On ne place jamais un stop ni un objectif sur une valeur lue en Heikin Ashi ; on les lit sur le graphique en chandeliers classiques.
+- Renko : briques d'amplitude fixe, sans axe de temps. Une nouvelle brique n'apparaît qu'au franchissement du seuil, donc une brique peut représenter une seconde ou une journée.
+- Kagi, point & figure : même logique de filtrage du bruit, l'information temporelle est volontairement supprimée.
+- CE QUE TOUS PARTAGENT : ils lissent le bruit au prix de la temporalité, ce qui rend les figures plus lisibles mais retarde les signaux. Le journal, lui, enregistre des heures réelles : ne confonds pas ce que le trader voit et ce que ses trades enregistrent.`,
+  },
+
+  risk: {
+    markers: [
+      "r multiple", "multiple de r", "esperance", "expectancy", "drawdown",
+      "martingale", "kelly", "risque par trade", "money management",
+      "gestion du risque", "risk reward", "position sizing",
+    ],
+    text: `VOCABULAIRE DE GESTION DU RISQUE, DÉFINITIONS DE RÉFÉRENCE. Emploie-les telles quelles ; ce vocabulaire vaut pour toutes les méthodes.
+- R : le risque engagé sur un trade, pris comme unité. Un gain de 2R rapporte deux fois ce qui était risqué. Raisonner en R rend les trades comparables entre eux quelle que soit la taille.
+- Espérance = (taux de réussite × gain moyen) − (taux d'échec × perte moyenne). C'EST ELLE QUI DÉCIDE SI UNE MÉTHODE EST VIABLE, jamais le taux de réussite seul : 30 % de réussite à 5R bat 70 % à 0,5R.
+- Drawdown : baisse depuis le plus haut du capital. Asymétrie à rappeler : une perte de 50 % exige un gain de 100 % pour revenir à l'équilibre.
+- Martingale : doubler la taille après une perte. Sur un capital fini, la ruine est mathématiquement certaine. NE LA RECOMMANDE JAMAIS, même si le trader la demande : explique pourquoi et propose autre chose.
+- Kelly : fraction théoriquement optimale du capital à engager. En pratique on emploie une fraction de Kelly, la formule pleine étant trop volatile.
+- Risque fixe en pourcentage plutôt que lot fixe : la taille suit le capital, à la hausse comme à la baisse.`,
+  },
 };
 
 /** Deux glossaires au maximum : au-delà, le préfixe coûte plus qu'il ne rapporte. */
 export const MAX_GLOSSARIES = 2;
+
+/** Toutes les écoles déclarées. Sert au test qui vérifie qu'aucune n'échappe
+ *  au contrôle de collision quand on en ajoute une. */
+export const ALL_METHOD_FAMILIES = Object.keys(GLOSSARIES) as MethodFamily[];
 
 /** Minuscules, sans accent : la détection ne doit pas dépendre de la saisie. */
 function normalize(text: string): string {
