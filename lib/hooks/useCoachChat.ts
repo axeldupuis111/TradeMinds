@@ -413,7 +413,10 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
         try { errBody = await res.json(); } catch {}
         if (res.status === 401) throw new Error(t("api_error_unauthorized"));
         if (res.status === 403) throw new Error(t("api_error_forbidden"));
-        if (res.status === 413) throw new Error(t("api_error_payload_too_large"));
+        // 413 ne peut plus venir que du message qu'on vient d'écrire : le
+        // serveur tronque l'historique au lieu de le refuser. Le texte
+        // générique (« réduisez la sélection ») n'avait aucun sens ici.
+        if (res.status === 413) throw new Error(t("coach_error_message_too_long"));
         if (res.status === 429) throw new Error(t("api_error_rate_limited"));
         throw new Error(errBody.error || "Erreur serveur");
       }

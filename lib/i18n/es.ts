@@ -637,6 +637,7 @@ const dict: Record<string, string> = {
   "api_error_unauthorized": "Debe iniciar sesión.",
   "api_error_forbidden": "Esta función no está disponible en su plan.",
   "api_error_payload_too_large": "Demasiados datos: reduzca la selección.",
+  "coach_error_message_too_long": "Tu mensaje es demasiado largo: acórtalo (4.000 caracteres máximo).",
   "api_error_rate_limited": "Límite diario alcanzado, inténtelo de nuevo mañana.",
   "csv_import_btn": "Importar",
   "trades_list_title": "Mis Trades",

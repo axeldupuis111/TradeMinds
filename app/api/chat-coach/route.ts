@@ -6,12 +6,12 @@ import { requireAuth, consumeQuota, refundQuota } from "@/lib/api-auth";
 import { addDaysToDateKey, localDateKey } from "@/lib/timezone";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 import { parseCoachMemory, renderCoachMemory } from "@/lib/coach-memory";
+import { MAX_MESSAGE_CHARS, trimConversation } from "@/lib/coach-conversation";
 import { coachToolsForPlan, executeCoachTool } from "@/lib/coach-tools";
 import type { PlanType } from "@/lib/PlanContext";
 import { sanitizeUserInput } from "@/lib/prompt-sanitizer";
 import { createClient as createSupabaseServer } from "@/lib/supabase/server";
 
-const MAX_MESSAGE_CHARS = 4000;
 const MAX_MESSAGES = 50;
 // Boucle agentique : nb max d'appels modèle par message utilisateur (1 + tours d'outils).
 const MAX_ROUNDS = 5;
@@ -89,14 +89,22 @@ export async function POST(request: Request) {
       );
     }
 
-    const oversizedMessage = messages.find((m) => m.content.length > MAX_MESSAGE_CHARS);
-    if (oversizedMessage) {
-      console.error(`[API Chat] Message too long: ${oversizedMessage.content.length} chars from user ${userId}`);
+    // Seul le message que le trader VIENT d'écrire peut faire refuser la
+    // requête. Ce contrôle portait sur tout l'historique, réponses du coach
+    // comprises : dès qu'il rédigeait une stratégie complète (plus de 4 000
+    // caractères), sa propre réponse condamnait la conversation, chaque message
+    // suivant repartant en 413. L'historique est désormais tronqué, jamais
+    // rejeté (voir lib/coach-conversation).
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage.content.length > MAX_MESSAGE_CHARS) {
+      console.error(`[API Chat] Message too long: ${lastMessage.content.length} chars from user ${userId}`);
       return NextResponse.json(
         { error: `Message too long (max ${MAX_MESSAGE_CHARS} characters)` },
         { status: 413 }
       );
     }
+
+    const boundedMessages = trimConversation(messages);
 
     // Client RLS user-scoped : les outils du coach ne peuvent toucher que les
     // données de CE trader (et servent aussi à lire la mémoire ci-dessous).
@@ -181,7 +189,7 @@ export async function POST(request: Request) {
 
     // ── 5. Sanitize user inputs ──
     const langName = LANG_NAMES[language] ?? "français";
-    const sanitizedMessages = messages.map((m) => ({
+    const sanitizedMessages = boundedMessages.map((m) => ({
       role: m.role,
       content: m.role === "user" ? sanitizeUserInput(m.content) : m.content,
     }));

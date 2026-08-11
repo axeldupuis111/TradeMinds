@@ -637,6 +637,7 @@ const dict: Record<string, string> = {
   "api_error_unauthorized": "You must be logged in.",
   "api_error_forbidden": "This feature is not available on your plan.",
   "api_error_payload_too_large": "Too much data: reduce your selection.",
+  "coach_error_message_too_long": "Your message is too long: shorten it (4,000 characters max).",
   "api_error_rate_limited": "Daily limit reached, try again tomorrow.",
   "csv_import_btn": "Import",
   "trades_list_title": "My Trades",
