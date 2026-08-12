@@ -410,8 +410,16 @@ RULES:
     //     le préfixe déjà caché (~10 % du prix) au lieu de le repayer.
     // Le contexte est déterministe entre deux messages d'une même session,
     // donc le cache tient tant que le trader ne modifie pas ses trades.
+    // TTL d'une heure plutôt que les 5 minutes par défaut. Mesure du
+    // 2026-08-10 : avec 1,67 message par session, 60 % des messages arrivent
+    // sur un cache FROID et repaient l'écriture complète du préfixe. Une
+    // fenêtre de 5 minutes ne couvre même pas deux questions séparées par une
+    // réflexion. L'écriture passe de 1,25× à 2×, mais elle convertit des
+    // écritures pleines en lectures à 0,1× : sur un usage groupé le solde est
+    // largement positif, et il l'est d'autant plus que le préfixe est lourd.
+    const CACHE_TTL = { type: "ephemeral", ttl: "1h" } as const;
     const cachedSystem: Anthropic.TextBlockParam[] = [
-      { type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } },
+      { type: "text", text: systemPrompt, cache_control: CACHE_TTL },
     ];
     const withConversationCache = (conv: Anthropic.MessageParam[]): Anthropic.MessageParam[] => {
       if (conv.length === 0) return conv;
@@ -423,7 +431,7 @@ RULES:
       if (blocks.length === 0) return conv;
       blocks[blocks.length - 1] = {
         ...blocks[blocks.length - 1],
-        cache_control: { type: "ephemeral" },
+        cache_control: CACHE_TTL,
       } as Anthropic.ContentBlockParam;
       // Copie non mutante : `conversation` reste sans marqueurs, on ne
       // dépasse jamais la limite de 4 breakpoints par requête.
