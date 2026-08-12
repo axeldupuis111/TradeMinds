@@ -1751,7 +1751,7 @@ const dict: Record<string, string> = {
   "plan_benefit_premium_1": "Automatische Synchronisation: deine Trades kommen von alleine",
   "plan_benefit_premium_2": "Challenge-Wächter: gewarnt, bevor dein Konto platzt (tägl. DD, gesamt DD, Trailing)",
   "plan_benefit_premium_3": "Tägliche KI-Makroanalyse",
-  "plan_benefit_premium_4": "KI-Chartanalyse deiner Screenshots + 30 Coach-Nachrichten/Tag",
+  "plan_benefit_premium_4": "KI-Chartanalyse deiner Screenshots",
   "plan_premium_includes_plus_short": "Alles aus Plus inklusive",
   "plan_benefit_premium_5": "Max. Lot gedeckelt durch dein verbleibendes Drawdown (Prop-Konten)",
   "plan_benefit_premium_6": "Premium-Badge in der Rangliste + Priority-Support",

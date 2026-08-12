@@ -1751,7 +1751,7 @@ const dict: Record<string, string> = {
   "plan_benefit_premium_1": "Automatic sync: your trades arrive on their own",
   "plan_benefit_premium_2": "Challenge guardian: warned before blowing your account (daily DD, total DD, trailing)",
   "plan_benefit_premium_3": "Daily AI macro analysis",
-  "plan_benefit_premium_4": "AI visual review of your charts + 30 coach messages/day",
+  "plan_benefit_premium_4": "AI visual review of your chart screenshots",
   "plan_premium_includes_plus_short": "Everything in Plus included",
   "plan_benefit_premium_5": "Max lot pegged to your remaining drawdown (prop accounts)",
   "plan_benefit_premium_6": "Premium badge on the leaderboard + priority support",

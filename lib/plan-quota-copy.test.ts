@@ -3,6 +3,9 @@ import { PLAN_FEATURES, planQuotaSegments } from "./plan-features";
 import { FREE_LIFETIME_CHAT_MESSAGES, PLAN_LIMITS } from "./plan-limits";
 import { PLAN_MONTHLY_CEILING } from "./ai-ceilings";
 import fr from "./i18n/fr";
+import en from "./i18n/en";
+import de from "./i18n/de";
+import es from "./i18n/es";
 
 /**
  * La matrice marketing promettait « 10 analyses par jour » en Premium quand le
@@ -141,5 +144,39 @@ describe("le forfait découverte du plan gratuit dit son vrai nombre", () => {
     // deux mécaniques se marcheraient dessus.
     expect(PLAN_LIMITS.chat.free.limit).toBe(0);
     expect(FREE_LIFETIME_CHAT_MESSAGES).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * Le défaut trouvé à l'audit du 2026-08-12 : `plan_benefit_premium_4` avait été
+ * recentré sur la vision en français, mais l'anglais, l'allemand et l'espagnol
+ * gardaient un « + 30 coach messages/day » périmé. Une correction appliquée à
+ * une seule langue ne se voit nulle part.
+ *
+ * On vérifie donc que les chiffres de quota cités dans une clé sont les MÊMES
+ * dans les quatre langues.
+ */
+describe("les quotas cités sont identiques dans les 4 langues", () => {
+  const DICOS: Record<string, Record<string, string>> = { fr, en, de, es };
+  // Clés dont le texte cite un ou plusieurs quotas.
+  const CLES = [
+    "faq_a5",
+    "faq_a7",
+    "plan_benefit_premium_coach",
+    "plan_benefit_plus_coach",
+    "plan_benefit_premium_4",
+    "plan_benefit_free_4",
+    "coach_taster_used",
+    "plan_taster_coach",
+  ];
+
+  /** Nombres cités, triés : la langue change les mots, jamais les chiffres. */
+  const chiffres = (s: string) => (s.match(/\d+/g) ?? []).map(Number).sort((a, b) => a - b);
+
+  it.each(CLES)("%s cite les mêmes nombres partout", (cle) => {
+    const ref = chiffres(DICOS.fr[cle] ?? "");
+    for (const lang of ["en", "de", "es"]) {
+      expect(chiffres(DICOS[lang][cle] ?? ""), `${cle} diverge en ${lang}`).toEqual(ref);
+    }
   });
 });

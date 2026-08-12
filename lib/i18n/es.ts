@@ -1751,7 +1751,7 @@ const dict: Record<string, string> = {
   "plan_benefit_premium_1": "Sincronización automática: tus trades llegan solos",
   "plan_benefit_premium_2": "Guardián de challenge: avisado antes de reventar tu cuenta (DD diario, total, trailing)",
   "plan_benefit_premium_3": "Análisis macro diario por IA",
-  "plan_benefit_premium_4": "Análisis visual IA de tus gráficos + 30 mensajes coach/día",
+  "plan_benefit_premium_4": "Análisis visual IA de tus capturas de gráficos",
   "plan_premium_includes_plus_short": "Todo el plan Plus incluido",
   "plan_benefit_premium_5": "Lote máximo ajustado a tu drawdown restante (cuentas prop)",
   "plan_benefit_premium_6": "Insignia Premium en la clasificación + soporte prioritario",
