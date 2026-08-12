@@ -22,9 +22,20 @@ interface SummaryRequest {
 
 export async function POST(request: Request) {
   try {
-    // ── 1. Auth + anti-abus (seule route IA qui n'était pas plafonnée) ──
+    // ── 1. Auth + plan + anti-abus ──
     const auth = await requireAuth();
     if (auth instanceof NextResponse) return auth;
+    // Le résumé du jour est annoncé « Plus et Premium » dans la matrice des
+    // plans, mais le verrou ne vivait QUE côté client (CsvImport n'appelle la
+    // route que pour un plan payant). Un compte gratuit qui appelait la route
+    // directement obtenait une fonctionnalité payante : c'était la seule route
+    // IA sans contrôle de plan, toutes les autres le font côté serveur.
+    if (auth.plan === "free") {
+      return NextResponse.json(
+        { error: "Feature not available on free plan" },
+        { status: 403 }
+      );
+    }
     const limited = await rateLimitAi(auth.userId, "daily-summary", 10, auth.timezone);
     if (limited) return limited;
 
