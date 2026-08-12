@@ -11,8 +11,9 @@
  * la suite tant que personne n'a décidé comment le vendre.
  */
 
+import { PLAN_MONTHLY_CEILING } from "./ai-ceilings";
 import { TOOL_MIN_PLAN } from "./coach-tool-plans";
-import { PLAN_LIMITS } from "./plan-limits";
+import { FREE_LIFETIME_CHAT_MESSAGES, PLAN_LIMITS } from "./plan-limits";
 
 export type CapabilityPlan = "free" | "plus" | "premium";
 
@@ -94,12 +95,38 @@ export function totalToolCount(): number {
  * meilleure facon de decevoir a la premiere utilisation.
  */
 export function coachQuotaKey(plan: CapabilityPlan): string {
-  return PLAN_LIMITS.chat[plan].limit === 0 ? "cap_quota_taster" : "cap_quota_daily";
+  if (PLAN_LIMITS.chat[plan].limit === 0) return "cap_quota_taster";
+  // Le plafond mensuel mord avant la fin du mois (Premium : 30/jour × 30 = 900
+  // contre 450) : l'annoncer, sinon on promet un rythme intenable.
+  const quotidien = PLAN_LIMITS.chat[plan].limit;
+  const plafond = PLAN_MONTHLY_CEILING.chat[plan];
+  return quotidien * JOURS_PAR_MOIS > plafond ? "cap_quota_daily_capped" : "cap_quota_daily";
 }
 
-/** Nombre d'echanges par jour, 0 pour le message decouverte unique. */
+/** Nombre d'echanges par jour, 0 pour le forfait decouverte. */
 export function coachDailyMessages(plan: CapabilityPlan): number {
   return PLAN_LIMITS.chat[plan].limit;
+}
+
+/** Base de conversion journalier → mensuel, pour décider si le plafond mord. */
+const JOURS_PAR_MOIS = 30;
+
+/**
+ * Ligne de quota d'un palier, entièrement résolue.
+ *
+ * La landing et la page d'upgrade faisaient chacune leur propre substitution
+ * de `{count}`. Elles ne pouvaient pas suivre l'ajout du plafond mensuel sans
+ * être modifiées toutes les deux, et l'une des deux finit toujours par être
+ * oubliée. Une seule fonction, deux appelants.
+ */
+export function coachQuotaText(plan: CapabilityPlan, t: (k: string) => string): string {
+  const key = coachQuotaKey(plan);
+  if (key === "cap_quota_taster") {
+    return t(key).replace("{count}", String(FREE_LIFETIME_CHAT_MESSAGES));
+  }
+  return t(key)
+    .replace("{count}", String(PLAN_LIMITS.chat[plan].limit))
+    .replace("{cap}", String(PLAN_MONTHLY_CEILING.chat[plan]));
 }
 
 /** Les trois paliers, dans l'ordre du récit : il lit, il corrige, il fait. */

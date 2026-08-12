@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { PLAN_FEATURES, planQuotaSegments } from "./plan-features";
 import { FREE_LIFETIME_CHAT_MESSAGES, PLAN_LIMITS } from "./plan-limits";
 import { PLAN_MONTHLY_CEILING } from "./ai-ceilings";
+import { coachQuotaText } from "./coach-capabilities";
 import fr from "./i18n/fr";
 import en from "./i18n/en";
 import de from "./i18n/de";
@@ -177,6 +178,52 @@ describe("les quotas cités sont identiques dans les 4 langues", () => {
     const ref = chiffres(DICOS.fr[cle] ?? "");
     for (const lang of ["en", "de", "es"]) {
       expect(chiffres(DICOS[lang][cle] ?? ""), `${cle} diverge en ${lang}`).toEqual(ref);
+    }
+  });
+});
+
+/**
+ * Les cartes de paliers du coach (landing + page d'upgrade) annonçaient
+ * « 1 message pour essayer, à vie » — resté faux après le passage à 5 — et
+ * « 30 échanges par jour » sans le plafond mensuel. Mon audit par motif les
+ * avait ratées : la virgule cassait le motif, et le mot « échanges » n'y
+ * figurait pas. D'où ces tests, qui ne dépendent d'aucun motif.
+ */
+describe("les cartes de paliers du coach disent les vrais chiffres", () => {
+  const t = (k: string) => (fr as Record<string, string>)[k] ?? k;
+
+  it("gratuit : annonce le forfait découverte, pas un nombre figé", () => {
+    const texte = coachQuotaText("free", t);
+    expect(texte).toContain(String(FREE_LIFETIME_CHAT_MESSAGES));
+    expect(texte).not.toContain("{count}");
+  });
+
+  it("plus : le journalier seul, car 5 × 30 = 150 = son plafond exact", () => {
+    const texte = coachQuotaText("plus", t);
+    expect(texte).toContain(String(PLAN_LIMITS.chat.plus.limit));
+    expect(texte).not.toContain(String(PLAN_MONTHLY_CEILING.chat.plus));
+  });
+
+  it("premium : le journalier ET le plafond mensuel, qui mord avant", () => {
+    const texte = coachQuotaText("premium", t);
+    expect(texte).toContain(String(PLAN_LIMITS.chat.premium.limit));
+    expect(texte).toContain(String(PLAN_MONTHLY_CEILING.chat.premium));
+    expect(texte).not.toContain("{cap}");
+  });
+
+  it("aucun palier ne laisse un gabarit non substitué", () => {
+    for (const plan of ["free", "plus", "premium"] as const) {
+      expect(coachQuotaText(plan, t)).not.toMatch(/\{\w+\}/);
+    }
+  });
+
+  it("les gabarits existent dans les 4 langues", () => {
+    const DICOS: Record<string, Record<string, string>> = { fr, en, de, es };
+    for (const lang of Object.keys(DICOS)) {
+      expect(DICOS[lang].cap_quota_taster, `cap_quota_taster en ${lang}`).toContain("{count}");
+      expect(DICOS[lang].cap_quota_daily, `cap_quota_daily en ${lang}`).toContain("{count}");
+      expect(DICOS[lang].cap_quota_daily_capped, `capped en ${lang}`).toContain("{count}");
+      expect(DICOS[lang].cap_quota_daily_capped, `capped en ${lang}`).toContain("{cap}");
     }
   });
 });

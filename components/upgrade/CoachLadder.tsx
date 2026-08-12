@@ -5,8 +5,7 @@ import {
   CAPABILITY_TIERS,
   COACH_CAPABILITIES,
   capabilityPlan,
-  coachDailyMessages,
-  coachQuotaKey,
+  coachQuotaText,
   toolCountForPlan,
   type CapabilityPlan,
 } from "@/lib/coach-capabilities";
@@ -61,7 +60,7 @@ export default function CoachLadder({ plan }: { plan: CapabilityPlan }) {
               </div>
               <h3 className="text-sm font-bold text-foreground">{t(tier.titleKey)}</h3>
               <p className={`text-[11px] mb-3 ${owned ? "text-accent" : "text-foreground-muted"}`}>
-                {t(coachQuotaKey(tier.plan)).replace("{count}", String(coachDailyMessages(tier.plan)))}
+                {coachQuotaText(tier.plan, t)}
               </p>
               <ul className="space-y-1.5">
                 {gained.map((cap) => (

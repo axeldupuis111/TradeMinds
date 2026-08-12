@@ -9,8 +9,7 @@ import {
   CAPABILITY_TIERS,
   COACH_CAPABILITIES,
   capabilityPlan,
-  coachDailyMessages,
-  coachQuotaKey,
+  coachQuotaText,
   toolCountForPlan,
   totalToolCount,
   type CapabilityPlan,
@@ -227,7 +226,7 @@ function Stage({ scenario, t }: { scenario: Scenario; t: (k: string) => string }
 function TierColumn({ tier, t }: { tier: (typeof CAPABILITY_TIERS)[number]; t: (k: string) => string }) {
   const gained = COACH_CAPABILITIES.filter((c) => capabilityPlan(c) === tier.plan);
   const highlight = tier.plan === "premium";
-  const quota = t(coachQuotaKey(tier.plan)).replace("{count}", String(coachDailyMessages(tier.plan)));
+  const quota = coachQuotaText(tier.plan, t);
 
   return (
     <div
