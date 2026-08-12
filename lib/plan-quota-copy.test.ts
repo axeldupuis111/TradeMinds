@@ -36,7 +36,7 @@ describe("la matrice des plans dit la vérité sur les quotas", () => {
         const val = PLAN_FEATURES.find((f) => f.key === key)?.[plan] as string;
         const quotidien = PLAN_LIMITS[feature][plan].limit;
         const plafond = PLAN_MONTHLY_CEILING[feature][plan];
-        const mois = planQuotaSegments(val).find((s) => s.periodKey === "plan_month");
+        const mois = planQuotaSegments(val).find((s) => s.periodKey === "plan_month_max");
 
         if (quotidien * JOURS > plafond) {
           // Le mensuel arrive avant : le taire, c'est promettre un quota que le
@@ -51,6 +51,34 @@ describe("la matrice des plans dit la vérité sur les quotas", () => {
       });
     }
   }
+});
+
+describe("la double borne est présentée comme telle, pas comme deux promesses", () => {
+  it("le plafond mensuel du tableau porte la mention « max »", () => {
+    // « 30/jour · 450/mois » se lit comme une contradiction (30 × 30 = 900).
+    // « 30/jour · 450/mois max » se lit comme un débit et une enveloppe.
+    expect(fr.plan_month_max).toContain("max");
+    for (const key of ["plan_feat_analysis_ai", "plan_feat_coach_ai"]) {
+      const val = PLAN_FEATURES.find((f) => f.key === key)?.premium as string;
+      expect(val).toContain("plan_month_max");
+      expect(val).not.toMatch(/\|\d+\/plan_month$/);
+    }
+  });
+
+  it("la FAQ explique que les deux limites s'appliquent en même temps", () => {
+    const a7 = fr.faq_a7 as string;
+    expect(a7).toContain("deux limites");
+    expect(a7).toContain("en même temps");
+    // Elle doit aussi dire ce qui se passe quand l'enveloppe est atteinte,
+    // sinon le mur reste une surprise.
+    expect(a7).toMatch(/élargir|ajust/i);
+  });
+
+  it("faq_a5 borne le journalier au lieu de le promettre sec", () => {
+    const a5 = fr.faq_a5 as string;
+    expect(a5).toContain("jusqu'à");
+    expect(a5).toContain("dans la limite de");
+  });
 });
 
 describe("la FAQ ne contredit pas les quotas du code", () => {

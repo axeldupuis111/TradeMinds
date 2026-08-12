@@ -2199,6 +2199,9 @@ function FAQ() {
     { q: t("faq_q4"), a: t("faq_a4") },
     { q: t("faq_q5"), a: t("faq_a5") },
     { q: t("faq_q6"), a: t("faq_a6") },
+    // Les quotas ont deux bornes simultanees (jour et mois) : sans explication,
+    // « 30/jour » et « 450/mois » se lisent comme une contradiction.
+    { q: t("faq_q7"), a: t("faq_a7") },
   ];
 
   return (
@@ -2593,15 +2596,19 @@ function ReactorCore({ hot, tone }: { hot: boolean; tone: string }) {
           style={{ transformOrigin: "center", transformBox: "fill-box" }} animate={spin(9)}
         />
         {/* onde de choc à l'exécution */}
+        {/* r statique obligatoire : sans lui, le premier rendu écrit
+            r="undefined" (framer-motion ne prend la main qu'après) et le
+            navigateur rejette l'attribut en boucle dans la console. */}
         <motion.circle
-          cx="60" cy="60" fill="none" stroke={col} strokeWidth="1.5"
+          cx="60" cy="60" r="30" fill="none" stroke={col} strokeWidth="1.5"
           initial={false}
           animate={hot && !reduced ? { r: [30, 56], opacity: [0.6, 0] } : { r: 30, opacity: 0 }}
           transition={{ duration: 0.7, ease }}
         />
         {/* noyau */}
         <motion.circle
-          cx="60" cy="60" fill={col}
+          cx="60" cy="60" r="11" fill={col}
+          initial={false}
           animate={reduced ? { r: 12 } : { r: hot ? 15 : 11, opacity: hot ? 1 : 0.82 }}
           transition={{ duration: 0.4, ease }}
         />
