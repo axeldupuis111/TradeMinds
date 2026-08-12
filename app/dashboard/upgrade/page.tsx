@@ -10,7 +10,7 @@ import { readAttributionRef } from "@/components/AttributionCapture";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 
-import { PLAN_FEATURES as features, FREE_BENEFITS, PLUS_BENEFITS, PREMIUM_BENEFITS } from "@/lib/plan-features";
+import { PLAN_FEATURES as features, FREE_BENEFITS, PLUS_BENEFITS, PREMIUM_BENEFITS, planQuotaSegments } from "@/lib/plan-features";
 
 const faqKeys = [
   { q: "faq_upgrade_q1", a: "faq_upgrade_a1" },
@@ -303,8 +303,12 @@ export default function UpgradePage() {
       );
     }
     if (val.includes("/")) {
-      const parts = val.split("/");
-      return <span className="text-foreground text-sm">{parts[0]}/{t(parts[1])}</span>;
+      // Deux bornes possibles (journalière et mensuelle) : voir planQuotaSegments.
+      return (
+        <span className="text-foreground text-sm">
+          {planQuotaSegments(val).map((s) => `${s.count}/${t(s.periodKey)}`).join(" · ")}
+        </span>
+      );
     }
     if (val === "plan_unlimited") {
       return <span className="text-profit text-sm font-medium">{t("plan_unlimited")}</span>;

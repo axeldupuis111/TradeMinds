@@ -7,6 +7,8 @@
  *
  * Valeurs : true = inclus, false = non inclus, "1" = quantité,
  * "1/plan_day" = quantité + clé i18n de période, "plan_unlimited" = illimité.
+ * Un quota peut porter DEUX bornes séparées par « | » (« 30/plan_day|450/plan_month ») :
+ * voir planQuotaSegments ci-dessous pour la raison.
  */
 
 import { toolCountForPlan } from "@/lib/coach-capabilities";
@@ -18,6 +20,26 @@ export interface PlanFeature {
   premium: boolean | string;
   /** En-tête de groupe affiché au-dessus de cette ligne dans le tableau. */
   groupKey?: string;
+}
+
+/**
+ * Découpe une valeur de quota en segments affichables.
+ *
+ * Un quota journalier ne dit pas toute la vérité quand un plafond mensuel
+ * mord avant la fin du mois : Premium annonçait « 30 messages/jour » alors
+ * que le disjoncteur s'arrête à 450 par mois, soit 15/jour en moyenne. Le
+ * trader qui consommait vraiment ses 30 quotidiens heurtait un mur vers le 15.
+ * On affiche donc les deux bornes quand elles diffèrent, comme un forfait
+ * mobile annonce son débit ET son enveloppe.
+ *
+ * Rendu ici plutôt que dans les pages : la landing et la page d'upgrade
+ * dupliquaient la même logique et pouvaient diverger.
+ */
+export function planQuotaSegments(val: string): { count: string; periodKey: string }[] {
+  return val.split("|").map((part) => {
+    const [count, periodKey] = part.split("/");
+    return { count, periodKey };
+  });
 }
 
 export const PLAN_FEATURES: PlanFeature[] = [
@@ -37,11 +59,15 @@ export const PLAN_FEATURES: PlanFeature[] = [
   // ── IA ──
   { key: "plan_feat_strategy_ai",       free: "1",           plus: "plan_unlimited", premium: "plan_unlimited", groupKey: "plan_group_ai" },
   // Free : 1 analyse « découverte » à vie (gate serveur dans /api/analyze).
-  { key: "plan_feat_analysis_ai",       free: "plan_taster_once", plus: "1/plan_day", premium: "2/plan_day" },
+  // Plus : 1/jour × 30 = 30 = son plafond mensuel, les deux coïncident.
+  // Premium : 2/jour mais 40/mois, le mensuel mord avant — on affiche les deux.
+  { key: "plan_feat_analysis_ai",       free: "plan_taster_once", plus: "1/plan_day", premium: "2/plan_day|40/plan_month" },
   // Analyse visuelle des graphiques (vision Sonnet 5) — exclusivité Premium.
   { key: "plan_feat_vision_ai",         free: false,         plus: false,            premium: "2/plan_day" },
   // Free : 1 message « découverte » à vie (gate serveur dans chat-coach).
-  { key: "plan_feat_coach_ai",          free: "plan_taster_once", plus: "5/plan_day", premium: "30/plan_day" },
+  // Plus : 5/jour × 30 = 150 = son plafond mensuel, cohérent.
+  // Premium : 30/jour mais 450/mois, soit 15/jour en moyenne — les deux bornes.
+  { key: "plan_feat_coach_ai",          free: "plan_taster_once", plus: "5/plan_day", premium: "30/plan_day|450/plan_month" },
   { key: "plan_feat_debrief_ai",        free: false,         plus: true,             premium: true },
   { key: "plan_feat_weekly_plan",       free: false,         plus: true,             premium: true },
   { key: "plan_feat_daily_summary",     free: false,         plus: true,             premium: true },

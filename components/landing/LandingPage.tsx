@@ -7,7 +7,7 @@ import PublicHeader from "@/components/PublicHeader";
 import { FoundingBanner } from "@/components/FoundingBanner";
 import { useLanguage } from "@/lib/LanguageContext";
 import { localizedHref } from "@/lib/locale-href";
-import { PLAN_FEATURES, FREE_BENEFITS, PLUS_BENEFITS, PREMIUM_BENEFITS } from "@/lib/plan-features";
+import { PLAN_FEATURES, FREE_BENEFITS, PLUS_BENEFITS, PREMIUM_BENEFITS, planQuotaSegments } from "@/lib/plan-features";
 import Link from "next/link";
 import React, { useRef, useState, useEffect } from "react";
 import { motion, useInView, useReducedMotion, AnimatePresence, useMotionValue, useSpring, useTransform, useScroll } from "framer-motion";
@@ -1857,8 +1857,12 @@ function CompareCell({ val, t }: { val: boolean | string; t: (k: string) => stri
     );
   }
   if (val.includes("/")) {
-    const [n, periodKey] = val.split("/");
-    return <span className="text-sm" style={{ color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}>{n}/{t(periodKey)}</span>;
+    // Deux bornes possibles (journalière et mensuelle) : voir planQuotaSegments.
+    return (
+      <span className="text-sm" style={{ color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}>
+        {planQuotaSegments(val).map((s) => `${s.count}/${t(s.periodKey)}`).join(" · ")}
+      </span>
+    );
   }
   if (val === "plan_unlimited") {
     return <span className="text-sm font-medium" style={{ color: "rgb(var(--profit))", fontStyle: "normal" }}>{t("plan_unlimited")}</span>;

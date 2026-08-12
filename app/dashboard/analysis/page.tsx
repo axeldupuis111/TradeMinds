@@ -12,6 +12,7 @@ import CoachConfirmBox from "@/components/coach/CoachConfirmBox";
 import type { CategoryBreakdown } from "@/lib/discipline-score";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
+import { PLAN_LIMITS } from "@/lib/plan-limits";
 import { buildDemoAnalysis, type DemoTradeForAnalysis } from "@/lib/demo-fixtures";
 import { createClient } from "@/lib/supabase/client";
 import { fetchAllRows } from "@/lib/supabase-paginate";
@@ -949,7 +950,11 @@ export default function AnalysisPage() {
             </div>
           )}
           {aiLimitReached && plan !== "free" && (
-            <p className="text-orange-400 text-sm mb-3">{t("plan_ai_limit_reached")}</p>
+            // Le quota vient du plan, il n'est plus écrit en dur : le texte
+            // annonçait « 1/jour » à un Premium qui en a 2.
+            <p className="text-orange-400 text-sm mb-3">
+              {t("plan_ai_limit_reached").replace("{n}", String(PLAN_LIMITS.analyze[plan].limit))}
+            </p>
           )}
           {/* Free : analyse découverte consommée → rendre le manque visible
               avec le pont vers Plus (1 analyse par jour). */}

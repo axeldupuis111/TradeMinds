@@ -18,8 +18,9 @@ import { describeAnnotations } from "@/lib/vision-review";
  * stockées en JSON) + les données du trade et la stratégie, et rend un
  * verdict : le setup revendiqué est-il réellement visible sur le graphique ?
  *
- * Réservé aux plans payants ; limité par jour via consume_ai_usage
- * (5/jour Plus, 20/jour Premium). Le verdict est persisté sur
+ * Exclusivité Premium, limitée par jour via consume_ai_usage (voir
+ * PREMIUM_DAILY_LIMIT ci-dessous) et bornée au mois par
+ * FEATURE_MONTHLY_CEILING.vision_review. Le verdict est persisté sur
  * trades.vision_review pour ne pas refacturer une simple relecture.
  */
 
