@@ -639,6 +639,7 @@ const dict: Record<string, string> = {
   "api_error_payload_too_large": "Too much data: reduce your selection.",
   "coach_error_message_too_long": "Your message is too long: shorten it (4,000 characters max).",
   "api_error_rate_limited": "Daily limit reached, try again tomorrow.",
+  "api_error_monthly_limit": "You've reached your message limit for this month. It resets on the 1st. Write to us if you need more, we can adjust it on your account.",
   "csv_import_btn": "Import",
   "trades_list_title": "My Trades",
   "trades_loading": "Loading…",

@@ -114,7 +114,7 @@ export async function checkQuota({ userId, plan, feature, timezone }: QuotaCheck
   if (currentCount >= config.limit) {
     console.error(`[API Quota] Rate limited ${feature} for user ${userId}: ${currentCount}/${config.limit}`);
     return NextResponse.json(
-      { error: "Daily limit reached", limit: config.limit, remaining: 0 },
+      { error: "Daily limit reached", scope: "day", limit: config.limit, remaining: 0 },
       { status: 429 }
     );
   }
@@ -201,7 +201,7 @@ export async function consumeQuota({ userId, plan, feature, timezone }: QuotaChe
   if (!row || !row.allowed) {
     console.error(`[API Quota] Rate limited ${feature} for user ${userId}: ${row?.current_count ?? "?"}/${config.limit}`);
     return NextResponse.json(
-      { error: "Daily limit reached", limit: config.limit, remaining: 0 },
+      { error: "Daily limit reached", scope: "day", limit: config.limit, remaining: 0 },
       { status: 429 }
     );
   }
@@ -214,8 +214,12 @@ export async function consumeQuota({ userId, plan, feature, timezone }: QuotaChe
     // incrément en refusant. Passer par refundQuota décrémenterait le compteur
     // mensuel une seconde fois et le ferait dériver sous l'usage réel.
     await refundDailyQuota(userId, plan, feature, timezone);
+    // `scope` distingue les deux plafonds pour le client. Sans lui, tout 429
+    // était rendu par « limite quotidienne atteinte, reviens demain » : le
+    // trader revenait le lendemain, lisait le même message, et ainsi de suite
+    // jusqu'à la fin du mois. Un mur qui ment tous les jours.
     return NextResponse.json(
-      { error: "Monthly limit reached", limit: config.limit, remaining: 0 },
+      { error: "Monthly limit reached", scope: "month", limit: config.limit, remaining: 0 },
       { status: 429 }
     );
   }
@@ -397,13 +401,13 @@ export async function rateLimitAi(
     const row = (Array.isArray(data) ? data[0] : data) as { allowed: boolean } | undefined;
     if (row && !row.allowed) {
       console.error(`[AI rate-limit] ${feature} daily limit hit for user ${userId}`);
-      return NextResponse.json({ error: "Daily limit reached for this feature" }, { status: 429 });
+      return NextResponse.json({ error: "Daily limit reached for this feature", scope: "day" }, { status: 429 });
     }
 
     // Disjoncteur mensuel, par-dessus le quota journalier.
     const ceiling = FEATURE_MONTHLY_CEILING[feature];
     if (!(await consumeMonthlyCeiling(supabase, userId, feature, ceiling, timezone))) {
-      return NextResponse.json({ error: "Monthly limit reached for this feature" }, { status: 429 });
+      return NextResponse.json({ error: "Monthly limit reached for this feature", scope: "month" }, { status: 429 });
     }
     return null;
   } catch (e) {

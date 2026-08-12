@@ -729,7 +729,12 @@ export default function AnalysisPage() {
         if (res.status === 401) throw new Error(t("api_error_unauthorized"));
         if (res.status === 403) throw new Error(t("api_error_forbidden"));
         if (res.status === 413) throw new Error(t("api_error_payload_too_large"));
-        if (res.status === 429) throw new Error(t("api_error_rate_limited"));
+        // Même piège que sur le coach : le plafond MENSUEL s'annonçait
+        // « reviens demain », ce qui est faux jusqu'à la fin du mois.
+        if (res.status === 429) {
+          const scope = (data as { scope?: string }).scope;
+          throw new Error(t(scope === "month" ? "api_error_monthly_limit" : "api_error_rate_limited"));
+        }
         throw new Error(data.error || "Erreur serveur.");
       }
 

@@ -406,7 +406,7 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
       });
 
       if (!res.ok) {
-        let errBody: { error?: string } = {};
+        let errBody: { error?: string; scope?: string } = {};
         try { errBody = await res.json(); } catch {}
         if (res.status === 401) throw new Error(t("api_error_unauthorized"));
         if (res.status === 403) throw new Error(t("api_error_forbidden"));
@@ -414,7 +414,12 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
         // serveur tronque l'historique au lieu de le refuser. Le texte
         // générique (« réduisez la sélection ») n'avait aucun sens ici.
         if (res.status === 413) throw new Error(t("coach_error_message_too_long"));
-        if (res.status === 429) throw new Error(t("api_error_rate_limited"));
+        // Deux plafonds derrière un même 429. Sans distinguer, celui du mois
+        // s'annonçait « reviens demain » : le trader revenait, relisait le
+        // même texte, et ainsi de suite pendant des jours.
+        if (res.status === 429) {
+          throw new Error(t(errBody.scope === "month" ? "api_error_monthly_limit" : "api_error_rate_limited"));
+        }
         throw new Error(errBody.error || "Erreur serveur");
       }
 
