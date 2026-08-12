@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DEMO_COACH } from "@/lib/demo-fixtures";
 import type { Lang } from "@/lib/translations";
-import { PLAN_LIMITS } from "@/lib/plan-limits";
+import { FREE_LIFETIME_CHAT_MESSAGES, PLAN_LIMITS } from "@/lib/plan-limits";
 import type { PlanType } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
 import { track } from "@/lib/track";
@@ -130,6 +130,21 @@ export function coachActionMeta(
 export function pairTimestamps(sentAt: number, answeredAt: number): { user: string; assistant: string } {
   const assistant = Math.max(answeredAt, sentAt + 1);
   return { user: new Date(sentAt).toISOString(), assistant: new Date(assistant).toISOString() };
+}
+
+/**
+ * Messages découverte restants sur le plan gratuit.
+ *
+ * Le piège : chaque échange écrit DEUX lignes dans `chat_messages`, la question
+ * et la réponse. Compter les lignes brutes n'accorderait que la moitié du
+ * forfait annoncé. On ne compte donc que les messages du TRADER, des deux
+ * côtés : ceux déjà en base avant aujourd'hui, et ceux du fil courant (chargés
+ * du jour, plus ceux envoyés à l'instant, qui ne sont persistés qu'après la
+ * réponse — sans eux, le compteur ne bougerait qu'au rechargement).
+ */
+export function freeMessagesRemaining(olderUserCount: number, messages: ChatMessage[]): number {
+  const used = olderUserCount + messages.filter((m) => m.role === "user").length;
+  return Math.max(0, FREE_LIFETIME_CHAT_MESSAGES - used);
 }
 
 /**
@@ -287,6 +302,8 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
   const [loading, setLoading] = useState(false);
   const [dailyCount, setDailyCount] = useState(0);
   const [hasOlderChat, setHasOlderChat] = useState(false);
+  /** Messages du trader déjà en base avant aujourd'hui (forfait découverte). */
+  const [freeOlderUserCount, setFreeOlderUserCount] = useState(0);
   const loadedRef = useRef(false);
   // Miroir de `loading` : `refresh` doit pouvoir se refuser pendant un flux en
   // cours sans dépendre de l'état, ce qui changerait son identité à chaque
@@ -295,10 +312,10 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
 
   const limit = PLAN_LIMITS.chat[plan].limit;
   const isPaidPlan = plan === "plus" || plan === "premium";
-  // Plan free : 1 message « découverte » à vie (le serveur l'accorde tant que
-  // chat_messages est vide).
-  const freeTasterUsed = hasOlderChat || messages.some((m) => m.role === "user");
-  const remaining = isPaidPlan ? Math.max(0, limit - dailyCount) : freeTasterUsed ? 0 : 1;
+  // Plan free : forfait découverte à vie (voir freeMessagesRemaining).
+  const freeRemaining = freeMessagesRemaining(freeOlderUserCount, messages);
+  const freeTasterUsed = freeRemaining <= 0;
+  const remaining = isPaidPlan ? Math.max(0, limit - dailyCount) : freeRemaining;
   const canChat = isPaidPlan || !hasOlderChat;
 
   /** Lit en base le compteur du jour, la conversation du jour et l'antériorité. */
@@ -306,21 +323,27 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
     const today = new Date().toISOString().split("T")[0];
-    const [{ data: profile }, { data: todayRows }, { count: olderCount }] = await Promise.all([
+    const [{ data: profile }, { data: todayRows }, { count: olderCount }, { count: olderUserCount }] = await Promise.all([
       supabase.from("profiles").select("daily_chat_count, daily_chat_reset").eq("id", user.id).maybeSingle(),
       supabase.from("chat_messages").select("id, role, content, created_at")
         .eq("user_id", user.id).gte("created_at", today).order("created_at", { ascending: true }).limit(50),
-      // Strictement AVANT aujourd'hui : un free qui vient de consommer son
-      // message découverte garde le chat visible pour relire la réponse, et ne
-      // voit la bannière d'upgrade qu'à partir du lendemain.
+      // Strictement AVANT aujourd'hui : un free qui vient de consommer ses
+      // messages découverte garde le chat visible pour relire les réponses, et
+      // ne voit la bannière d'upgrade qu'à partir du lendemain.
       supabase.from("chat_messages").select("id", { count: "exact", head: true })
         .eq("user_id", user.id).lt("created_at", today),
+      // Compteur du forfait découverte. `role = "user"` est ESSENTIEL : chaque
+      // échange écrit DEUX lignes, la question et la réponse. C'est le même
+      // filtre que la porte serveur, sinon les deux comptent différemment.
+      supabase.from("chat_messages").select("id", { count: "exact", head: true })
+        .eq("user_id", user.id).eq("role", "user").lt("created_at", today),
     ]);
     return {
       today,
       dailyCount: profile?.daily_chat_reset === today ? profile.daily_chat_count ?? 0 : null,
       rows: (todayRows ?? []) as ChatMessage[],
       hasOlder: (olderCount ?? 0) > 0,
+      olderUserCount: olderUserCount ?? 0,
     };
   }, [supabase]);
 
@@ -333,6 +356,7 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
     if (state.dailyCount !== null) setDailyCount(state.dailyCount);
     if (state.rows.length) setMessages(state.rows);
     setHasOlderChat(state.hasOlder);
+    setFreeOlderUserCount(state.olderUserCount);
   }, [fetchToday]);
 
   useEffect(() => { void loadHistory(); }, [loadHistory]);
@@ -358,6 +382,7 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
     if (!state) return;
     setDailyCount(state.dailyCount ?? 0);
     setHasOlderChat(state.hasOlder);
+    setFreeOlderUserCount(state.olderUserCount);
     setMessages((prev) => mergeCoachHistory(prev, state.rows));
   }, [fetchToday, demoMode]);
 

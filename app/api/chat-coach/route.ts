@@ -6,6 +6,7 @@ import { requireAuth, consumeQuota, refundQuota } from "@/lib/api-auth";
 import { addDaysToDateKey, localDateKey } from "@/lib/timezone";
 import { isLowCreditError, alertLowCreditsOnce } from "@/lib/ai-credit-alert";
 import { parseCoachMemory, renderCoachMemory } from "@/lib/coach-memory";
+import { FREE_LIFETIME_CHAT_MESSAGES } from "@/lib/plan-limits";
 import { MAX_MESSAGE_CHARS, trimConversation } from "@/lib/coach-conversation";
 import {
   renderStrategyContext,
@@ -135,15 +136,19 @@ export async function POST(request: Request) {
     const sb = createSupabaseServer();
 
     // ── 4b. Quota ──
-    // Plan free : 1 message « découverte » à vie (aucun quota journalier). On
-    // l'accorde uniquement si le trader n'a JAMAIS écrit au coach — le client
-    // persiste chaque échange dans chat_messages, qui sert donc de marqueur.
+    // Plan free : FREE_LIFETIME_CHAT_MESSAGES messages « découverte » à vie
+    // (aucun quota journalier). Le client persiste chaque échange dans
+    // chat_messages, qui sert donc de compteur.
     if (plan === "free") {
+      // `role = "user"` est ESSENTIEL : chaque échange écrit DEUX lignes dans
+      // chat_messages (la question et la réponse). Compter les lignes brutes
+      // n'accorderait que la moitié des messages annoncés.
       const { count, error: tasterErr } = await sb
         .from("chat_messages")
         .select("id", { count: "exact", head: true })
-        .eq("user_id", userId);
-      if (tasterErr || (count ?? 0) > 0) {
+        .eq("user_id", userId)
+        .eq("role", "user");
+      if (tasterErr || (count ?? 0) >= FREE_LIFETIME_CHAT_MESSAGES) {
         return NextResponse.json(
           { error: "Feature not available on free plan" },
           { status: 403 }

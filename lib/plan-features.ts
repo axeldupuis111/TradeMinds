@@ -67,10 +67,12 @@ export const PLAN_FEATURES: PlanFeature[] = [
   { key: "plan_feat_analysis_ai",       free: "plan_taster_once", plus: "1/plan_day", premium: "2/plan_day|40/plan_month_max" },
   // Analyse visuelle des graphiques (vision Sonnet 5) — exclusivité Premium.
   { key: "plan_feat_vision_ai",         free: false,         plus: false,            premium: "2/plan_day" },
-  // Free : 1 message « découverte » à vie (gate serveur dans chat-coach).
+  // Free : forfait découverte à vie (FREE_LIFETIME_CHAT_MESSAGES, gate serveur
+  // dans chat-coach). Un seul message ne démontrait plus rien depuis que le
+  // coach construit une méthode avec le débutant, ce qui demande un échange.
   // Plus : 5/jour × 30 = 150 = son plafond mensuel, cohérent.
   // Premium : 30/jour mais 450/mois, soit 15/jour en moyenne — les deux bornes.
-  { key: "plan_feat_coach_ai",          free: "plan_taster_once", plus: "5/plan_day", premium: "30/plan_day|450/plan_month_max" },
+  { key: "plan_feat_coach_ai",          free: "plan_taster_coach", plus: "5/plan_day", premium: "30/plan_day|450/plan_month_max" },
   { key: "plan_feat_debrief_ai",        free: false,         plus: true,             premium: true },
   { key: "plan_feat_weekly_plan",       free: false,         plus: true,             premium: true },
   { key: "plan_feat_daily_summary",     free: false,         plus: true,             premium: true },

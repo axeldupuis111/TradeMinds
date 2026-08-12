@@ -3,6 +3,25 @@ interface PlanLimit {
   resetMode: "day" | "week";
 }
 
+/**
+ * Messages coach offerts à vie sur le plan gratuit.
+ *
+ * Il y en avait UN. Or le coach construit désormais une méthode avec le
+ * débutant puis l'écrit dans sa fiche : ça demande un échange, pas une
+ * réplique. Un seul message ne démontrait donc plus rien de ce qui a de la
+ * valeur, au moment précis où l'inscrit décide s'il paie.
+ *
+ * Le coût n'est pas le sujet : un compte gratuit voit 13 outils sur 39 et n'a
+ * ni fiche ni historique, son préfixe pèse ~6 350 tokens. Le premier message
+ * coûte ~0,017 € (cache froid), les suivants ~0,008 € (cache chaud, TTL 1 h),
+ * soit ~0,05 € pour les cinq. À 1 000 inscrits gratuits, il suffit de QUATRE
+ * conversions vers Plus pour rembourser la démonstration entière.
+ *
+ * Déclaré ici et importé des deux côtés : le serveur en fait une porte, le
+ * client un compteur. Deux nombres écrits séparément finiraient par diverger.
+ */
+export const FREE_LIFETIME_CHAT_MESSAGES = 5;
+
 export const PLAN_LIMITS: Record<"analyze" | "chat", Record<"free" | "plus" | "premium", PlanLimit>> = {
   analyze: {
     // Free : 1 analyse « découverte » à vie, gérée hors quota dans

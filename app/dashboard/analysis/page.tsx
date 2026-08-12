@@ -1680,7 +1680,10 @@ export default function AnalysisPage() {
                       </Link>
                     </>
                   ) : (
-                    t("coach_taster_offer")
+                    // Compteur vivant : le forfait fait 5 messages, annoncer
+                    // « 1 offert » en dur redeviendrait faux au 2e envoi.
+                    (chatRemaining === 1 ? t("coach_taster_offer_one") : t("coach_taster_offer"))
+                      .replace("{n}", String(chatRemaining))
                   )}
                 </p>
               )}

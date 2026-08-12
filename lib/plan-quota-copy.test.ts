@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PLAN_FEATURES, planQuotaSegments } from "./plan-features";
-import { PLAN_LIMITS } from "./plan-limits";
+import { FREE_LIFETIME_CHAT_MESSAGES, PLAN_LIMITS } from "./plan-limits";
 import { PLAN_MONTHLY_CEILING } from "./ai-ceilings";
 import fr from "./i18n/fr";
 
@@ -112,5 +112,34 @@ describe("l'argument Premium du coach porte les deux bornes", () => {
     const arg = fr.plan_benefit_premium_coach as string;
     expect(arg).toContain(String(PLAN_LIMITS.chat.premium.limit));
     expect(arg).toContain(String(PLAN_MONTHLY_CEILING.chat.premium));
+  });
+});
+
+/**
+ * Le forfait découverte est passé de 1 à 5 messages. Trois textes le citent,
+ * et rien ne les reliait au code : c'est exactement ainsi que la FAQ a promis
+ * « 10 analyses » pendant que le produit en servait 2.
+ */
+describe("le forfait découverte du plan gratuit dit son vrai nombre", () => {
+  it("la matrice affiche le nombre offert", () => {
+    const val = PLAN_FEATURES.find((f) => f.key === "plan_feat_coach_ai")?.free as string;
+    expect(val).toBe("plan_taster_coach");
+    expect(fr.plan_taster_coach).toContain(String(FREE_LIFETIME_CHAT_MESSAGES));
+  });
+
+  it("l'argument du plan gratuit cite le même nombre", () => {
+    expect(fr.plan_benefit_free_4).toContain(String(FREE_LIFETIME_CHAT_MESSAGES));
+  });
+
+  it("le message de fin de forfait cite le même nombre", () => {
+    expect(fr.coach_taster_used).toContain(String(FREE_LIFETIME_CHAT_MESSAGES));
+  });
+
+  it("reste un forfait à vie, pas un quota journalier", () => {
+    // PLAN_LIMITS.chat.free vaut 0 : le forfait découverte vit hors du quota
+    // journalier, compté sur chat_messages. Si quelqu'un y met une valeur, les
+    // deux mécaniques se marcheraient dessus.
+    expect(PLAN_LIMITS.chat.free.limit).toBe(0);
+    expect(FREE_LIFETIME_CHAT_MESSAGES).toBeGreaterThan(0);
   });
 });
