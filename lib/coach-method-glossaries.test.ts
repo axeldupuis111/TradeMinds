@@ -128,8 +128,11 @@ describe("renderMethodGlossaries", () => {
     expect(out).toContain("la lecture est VENDEUSE");
   });
 
-  it("interdit explicitement le concept inventé par le modèle", () => {
-    expect(renderMethodGlossaries(["ict"])).toContain('ne signifie PAS "Break of Break"');
+  it("donne le vrai sens du sigle que le modèle développait de travers", () => {
+    // Cette assertion exigeait l'interdiction nommée. Le test réel du
+    // 2026-08-13 a montré qu'elle produisait l'effet inverse : voir plus bas
+    // « un terme inventé ne s'interdit pas en l'écrivant ».
+    expect(renderMethodGlossaries(["ict"])).toContain("BB : le sigle se développe en Breaker Block");
   });
 
   it("distingue spring et upthrust, l'inversion la plus coûteuse en Wyckoff", () => {
@@ -245,5 +248,33 @@ describe("exactitude des définitions", () => {
   it("Ichimoku : le sens de projection des deux lignes est explicite", () => {
     const out = renderMethodGlossaries(["ichimoku"]);
     expect(out).toContain("Senkou se projette en avant, Chikou en arrière");
+  });
+});
+
+/**
+ * Test réel du 2026-08-13 : le coach a répondu « Un BB (Break of Break) en ICT
+ * est… » alors que le glossaire portait la phrase « "BB" ne signifie PAS
+ * "Break of Break" : cette expression n'existe pas, ne l'emploie jamais ».
+ *
+ * La fiche du trader ne contient nulle part cette expression (vérifié en base :
+ * elle écrit « BB » trois fois, jamais l'expansion). Le modèle ne la reprenait
+ * donc pas du trader : il la reprenait DE MON INTERDICTION. Écrire une chaîne
+ * pour la bannir la met sous les yeux du modèle et la rend disponible ; sur une
+ * négation, Haiku ne tient pas.
+ *
+ * D'où la règle : on définit par l'affirmative, et le terme fautif ne figure
+ * nulle part dans le prompt.
+ */
+describe("un terme inventé ne s'interdit pas en l'écrivant", () => {
+  const TOUT = ALL_METHOD_FAMILIES.map((f) => renderMethodGlossaries([f])).join("\n");
+
+  it("l'expansion fautive de BB n'apparaît nulle part", () => {
+    expect(TOUT.toLowerCase()).not.toContain("break of break");
+  });
+
+  it("BB est défini par l'affirmative, comme Breaker Block", () => {
+    const out = renderMethodGlossaries(["ict"]);
+    expect(out).toContain("Breaker Block");
+    expect(out).toContain("seule signification");
   });
 });

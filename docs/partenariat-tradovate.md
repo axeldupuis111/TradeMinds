@@ -237,10 +237,35 @@ Tradovate onboarding friction is the specific blocker they raise.
 
 | Étape | État |
 |---|---|
-| Envoi à info@ninjatraderecosystem.com | à faire |
-| Dépôt via partner.ninjatrader.com « Talk to Sales » | à faire |
-| Relance à J+10 ouvrés | à faire |
-| Réponse sur la question 3 (add-on individuel encore requis ou non) | en attente |
+| Envoi à info@ninjatraderecosystem.com | FAIT le 2026-08-05 |
+| Message posté sur community.tradovate.com (Intégration OAuth tierce) | FAIT le 2026-08-05 |
+| **Réponse reçue le 2026-08-06** | voir ci-dessous |
+| Réponse sur la question 3 (add-on individuel encore requis ou non) | à reconfirmer |
+
+### Réponse de NinjaTrader (2026-08-06)
+
+Michaelanne Chapel, Business Development Manager North America
+(michaelanne.chapel@ninjatrader.com). Contenu :
+
+- La même API dessert NinjaTrader et Tradovate : **un seul chemin d'intégration**,
+  rien à adapter par plateforme.
+- L'accès est réservé aux membres du **NinjaTrader Vendor Program**.
+- **Le programme est gratuit.**
+- **Pour un membre, ils lèvent les frais d'API et les conditions financières.**
+  C'est-à-dire les 25 $ par mois et le compte réel approvisionné à 1 000 $.
+- C'est un programme de **co-marketing** : ils demandent un site public, et
+  d'être listés comme **Connection ou Integration, pas comme Brokerage**.
+- **Aucun support technique dédié** : on travaille seuls à partir de la
+  documentation publique.
+
+Autrement dit le mur décrit en section 2 tombe, et le coût est nul. Le seul
+point à reconfirmer noir sur blanc : la levée des frais vaut-elle aussi pour
+**nos utilisateurs finaux**, ou seulement pour notre accès à nous ? C'est la
+question posée en retour.
+
+À noter : être listé dans l'annuaire NinjaTrader est une vraie distribution
+pour un produit à 28 comptes. Le co-marketing est un bénéfice, pas une
+contrainte.
 
 Une seule chose reste à ta main avant l'envoi : vérifier que tu veux bien
 publier l'adresse d'Angres dans ce dossier. Elle figure déjà dans les mentions

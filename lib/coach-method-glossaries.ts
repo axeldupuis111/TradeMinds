@@ -83,7 +83,7 @@ const GLOSSARIES: Record<MethodFamily, GlossaryEntry> = {
 - Déplacement : mouvement rapide et franc qui s'éloigne du niveau balayé. C'est lui qui valide le rejet, et il laisse souvent le FVG.
 - FVG (Fair Value Gap) : déséquilibre sur trois bougies, la mèche de la première et celle de la troisième ne se recouvrent pas. Sert de zone d'entrée quand le prix y revient.
 - OB (Order Block) : dernière bougie de sens opposé avant le déplacement.
-- BB = Breaker Block : un order block cassé, sur lequel le prix revient par l'autre côté et qui joue alors le rôle inverse. "BB" ne signifie PAS "Break of Break" : cette expression n'existe pas, ne l'emploie jamais.
+- BB : le sigle se développe en Breaker Block, et c'est sa seule signification en ICT. Un Breaker Block est un order block cassé, sur lequel le prix revient par l'autre côté et qui joue alors le rôle inverse. Quand le trader écrit "BB", lis Breaker Block et écris Breaker Block.
 - BOS (Break of Structure) : cassure d'un point de structure DANS le sens de la tendance, donc continuation.
 - MSS ou CHoCH (Market Structure Shift, Change of Character) : cassure d'un point de structure CONTRE la tendance précédente. C'est ce qui confirme un retournement après un balayage.
 - Killzone : plage horaire sur laquelle la méthode concentre ses setups (ouvertures de Londres et de New York principalement). C'est une fenêtre de sélection, jamais un signal en soi : être dans la killzone ne justifie aucune entrée.
