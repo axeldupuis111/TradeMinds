@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { buildCoachSystemPrompt } from "./coach-system-prompt";
+import { renderMethodGlossaries } from "./coach-method-glossaries";
 
 /**
  * Test réel du 2026-08-13. Le trader a contredit le coach avec une affirmation
@@ -20,19 +20,25 @@ import { join } from "node:path";
  * d'appeler le modèle : ils vérifient ce qu'on lui envoie, pas ce qu'il répond.
  */
 
-const SOURCE = readFileSync(
-  join(process.cwd(), "app", "api", "chat-coach", "route.ts"),
-  "utf8",
-);
-
-/** Le gabarit du prompt système, du backtick ouvrant au backtick fermant. */
+/**
+ * Le prompt réellement envoyé au modèle, pour un trader représentatif : une
+ * fiche ICT, des statistiques, une mémoire. On l'assemble par la vraie
+ * fonction plutôt qu'en découpant le fichier source, qui cassait au moindre
+ * renommage et pouvait passer à vide sans le dire.
+ */
 function promptSysteme(): string {
-  const debut = SOURCE.indexOf("const systemPrompt = `");
-  expect(debut, "le prompt système a été renommé").toBeGreaterThan(-1);
-  const corps = SOURCE.slice(debut + "const systemPrompt = `".length);
-  const fin = corps.indexOf("`;");
-  expect(fin, "fin du gabarit introuvable").toBeGreaterThan(0);
-  return corps.slice(0, fin);
+  return buildCoachSystemPrompt({
+    langName: "français",
+    methodGlossaries: renderMethodGlossaries(["ict"]),
+    strategyBlock: "STRATÉGIE : liquidité XAUUSD. RR 2, SL 100 pips, 5 trades/jour.",
+    statsBlock: "42 trades clôturés, 48 % de réussite.",
+    memoryBlock: "Engagement du 1er août : pas plus de 3 trades par jour.",
+    statsTradeLimit: 300,
+    todayKey: "2026-08-13",
+    yesterdayKey: "2026-08-12",
+    todayLabel: "jeudi 13 août 2026",
+    timezone: "Europe/Paris",
+  });
 }
 
 /**
