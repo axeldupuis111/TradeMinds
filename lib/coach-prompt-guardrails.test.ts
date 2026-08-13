@@ -70,9 +70,9 @@ describe("la règle qui doit vaincre un réflexe est en fin de prompt", () => {
 
   it("il donne un arbitre, pas seulement une exhortation", () => {
     const rappel = depuis(prompt, "DERNIER RAPPEL");
-    // « relis le glossaire » est la partie opérante : elle transforme
-    // « tiens bon » en une vérification que le modèle peut exécuter.
-    expect(rappel).toMatch(/relis le glossaire/i);
+    // La confrontation aux définitions est la partie opérante : elle
+    // transforme « tiens bon » en une vérification exécutable.
+    expect(rappel).toMatch(/définitions de référence/i);
     expect(rappel).toMatch(/tu maintiens/i);
   });
 
@@ -131,6 +131,54 @@ describe("un fait posé au passage est vérifié comme une contradiction frontal
     // fautive de BB pendant deux jours.
     expect(prompt).not.toMatch(/BSL[^.]{0,40}signal d'achat/i);
     expect(prompt).not.toMatch(/SSL[^.]{0,40}signal de vente/i);
+  });
+});
+
+/**
+ * Troisième passage, 2026-08-13. Le coach TIENT enfin sa position et corrige
+ * l'affirmation fausse. Trois défauts nouveaux sont apparus avec, et les trois
+ * venaient de la formulation de mes propres consignes :
+ *
+ * 1. « Attendez. » La règle interdisait "vous" et "votre", donc pas un verbe
+ *    conjugué à la deuxième personne du pluriel employé seul.
+ * 2. « Relis le glossaire ICT avec moi » : il a récité mon instruction à
+ *    l'écran. Une consigne à l'impératif se fait echo dans la réponse, et elle
+ *    expose au trader une mécanique interne qu'il ne devrait pas voir.
+ * 3. Il a fini par « quelle situation décris-tu exactement ? » alors qu'il
+ *    venait de donner la bonne réponse. C'est un message de quota facturé au
+ *    trader pour une information que le coach avait déjà.
+ */
+describe("le coach ne montre pas sa tuyauterie et ne renvoie pas la question", () => {
+  const prompt = promptSysteme();
+
+  it("le glossaire reste interne, jamais nommé au trader", () => {
+    const rappel = depuis(prompt, "DERNIER RAPPEL");
+    expect(rappel).toMatch(/TON RAISONNEMENT, PAS TON TEXTE/);
+    expect(rappel).toMatch(/ne parle jamais d'un "glossaire"/i);
+  });
+
+  it("après avoir corrigé, il traite les cas au lieu de les demander", () => {
+    const rappel = depuis(prompt, "DERNIER RAPPEL");
+    expect(rappel).toMatch(/CORRIGE, PUIS TERMINE LE TRAVAIL/);
+    expect(rappel).toMatch(/traite-les TOUTES toi-même/);
+  });
+
+  it("le vouvoiement est interdit jusque dans les verbes seuls", () => {
+    const regle = depuis(prompt, "RÈGLE ABSOLUE : Tu tutoies");
+    // « Attendez » n'est ni "vous" ni "votre" : la règle passait à côté.
+    expect(regle).toMatch(/deuxième personne du pluriel/i);
+    expect(regle).toContain("attendez");
+  });
+
+  it("le prompt n'emploie pas le tiret long qu'il interdit", () => {
+    // Il en portait huit tout en l'interdisant. Le modèle apprend autant de
+    // ce que ses consignes MONTRENT que de ce qu'elles disent, et Axel a une
+    // règle dure là-dessus : c'est un marqueur de texte généré.
+    const lignes = prompt.split("\n").filter((l) => l.includes("—"));
+    // Seule exception légitime : la règle elle-même doit citer le caractère.
+    expect(lignes.map((l) => l.slice(0, 40))).toEqual([
+      "PONCTUATION : n'utilise JAMAIS le tiret ",
+    ]);
   });
 });
 
