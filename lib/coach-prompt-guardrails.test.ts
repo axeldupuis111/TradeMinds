@@ -246,6 +246,47 @@ describe("ce que le coach a proposé n'est pas la stratégie du trader", () => {
   });
 });
 
+/**
+ * Cinquième passage, 2026-08-13. Les deux correctifs précédents ont pris : le
+ * coach corrige le sens AVANT de parler de timing, et n'invente plus de
+ * pourcentages attribués à la fiche du trader.
+ *
+ * Reste un défaut, dans les deux réponses, et un morceau est sérieux : il a
+ * proposé « je peux regarder le graphique avec toi ». La route chat-coach ne
+ * reçoit QUE du texte (`content: string`), aucun outil ne rend d'image, et la
+ * vision vit dans une autre route (analyze-trade-vision, qui lit la capture
+ * attachée au trade). Le trader aurait envoyé une image dans le vide, et perdu
+ * un message de quota pour l'apprendre.
+ *
+ * Même famille que la règle « tu n'agis jamais chez le broker » : promettre
+ * une capacité qu'on n'a pas coûte au trader, pas au coach.
+ *
+ * Second morceau : les deux réponses finissent en demandant des informations
+ * que find_trades contient (quels trades, quel jour, quel instrument).
+ */
+describe("le coach ne promet pas une capacité qu'il n'a pas", () => {
+  const prompt = promptSysteme();
+
+  it("il annonce qu'il ne voit aucune image dans le chat", () => {
+    expect(prompt).toMatch(/TU N'AS PAS D'YEUX DANS CETTE CONVERSATION/);
+    expect(prompt).toMatch(/regarder le graphique avec lui/i);
+  });
+
+  it("il oriente vers le chemin qui, lui, sait lire une capture", () => {
+    // Une interdiction sans alternative laisse le trader sans solution alors
+    // que le produit en a une.
+    const bloc = depuis(prompt, "TU N'AS PAS D'YEUX");
+    expect(bloc).toMatch(/attacher sa capture au trade/i);
+    expect(bloc).toMatch(/analyse IA de ce trade/i);
+  });
+
+  it("il ne demande pas ce que find_trades sait déjà", () => {
+    const rappel = depuis(prompt, "DERNIER RAPPEL");
+    expect(rappel).toMatch(/TA DERNIÈRE LIGNE N'EST PAS UNE QUESTION SUR SES TRADES/);
+    expect(rappel).toContain("find_trades");
+  });
+});
+
 describe("le bloc de contradiction distingue la fiche du chat", () => {
   const prompt = promptSysteme();
 
