@@ -255,18 +255,38 @@ export interface CoachToolResult {
 
 // ── Définitions des outils (schémas envoyés au modèle) ──────────────────────
 // Typé structurellement compatible avec Anthropic.Tool (le SDK l'accepte tel quel).
+//
+// ⚠️ CE BLOC EST LE PREMIER POSTE DU PRÉFIXE SYSTÈME, devant les règles et
+// devant la fiche du trader. Il est envoyé en entier à chaque message, mis en
+// cache mais jamais gratuit. Trois règles d'écriture, qui ont fait tomber le
+// catalogue de 9 226 à ~7 700 tokens sans dégrader la sélection :
+//
+//  1. UNE DESCRIPTION SERT À CHOISIR, PAS À DOCUMENTER. Elle dit QUAND appeler
+//     l'outil, et ce qu'il ne faut pas croire de lui. Rien d'autre.
+//  2. NE JAMAIS RÉCITER LE SCHÉMA. Les noms de paramètres et les valeurs d'enum
+//     sont déjà envoyés juste en dessous : les réénumérer dans la description
+//     les fait payer deux fois.
+//  3. NE JAMAIS DÉCRIRE CE QUE L'OUTIL RENVOIE. Le modèle reçoit le résultat
+//     complet quand il appelle : lui lister les champs à l'avance ne change
+//     aucune décision.
+//
+// Ce qui reste, et qui doit rester : les phrases de déclenchement (« dès qu'il
+// parle de sa position en cours »), les avertissements de comportement (« ne
+// supprime rien lui-même »), et la levée d'ambiguïté avec l'outil voisin.
+// `lib/coach-live.eval.ts` tient le filet : 8 scénarios y vérifient que le bon
+// outil part encore. Raccourcir sans les lancer, c'est parier.
 
 export const COACH_TOOLS = [
   {
     name: "list_goals",
     description:
-      "Liste les objectifs actuels du trader (mesurés et personnels) avec leur id, cible, période et statut. À appeler avant de modifier ou supprimer un objectif.",
+      "Liste les objectifs du trader, mesurés et personnels. À appeler avant d'en modifier ou d'en supprimer un.",
     input_schema: { type: "object" as const, properties: {}, required: [] },
   },
   {
     name: "create_goal",
     description:
-      "Crée un objectif pour le trader. Deux formes : 'metric' (mesuré automatiquement : discipline_score, sessions, win_rate, trades_per_day, max_consecutive_losses — target requis) ou 'custom' (habitude en texte libre à cocher manuellement — title requis, recurring pour la reconduire chaque période).",
+      "Crée un objectif. kind=metric : mesuré automatiquement par le serveur, target requis. kind=custom : habitude en texte libre que le trader coche lui-même, title requis.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -283,7 +303,7 @@ export const COACH_TOOLS = [
   {
     name: "update_goal",
     description:
-      "Met à jour un objectif existant : nouvelle cible (metric), marquer fait/non fait ou activer la récurrence (custom). Utilise list_goals d'abord pour obtenir goal_id.",
+      "Met à jour un objectif : cible, coché ou non, récurrence. Passe par list_goals pour l'id.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -298,7 +318,7 @@ export const COACH_TOOLS = [
   {
     name: "delete_goal",
     description:
-      "Supprime définitivement un objectif. IMPORTANT : demande toujours confirmation explicite au trader dans la conversation AVANT d'appeler cet outil.",
+      "Supprime définitivement un objectif. Demande toujours son accord explicite dans la conversation AVANT d'appeler.",
     input_schema: {
       type: "object" as const,
       properties: { goal_id: { type: "string" } },
@@ -325,17 +345,17 @@ export const COACH_TOOLS = [
   {
     name: "find_trades",
     description:
-      "Recherche les trades du trader avec filtres (paire, direction, résultat, émotion, dates). Renvoie les ids nécessaires à annotate_trades. missing_emotion=true trouve les trades sans émotion renseignée.",
+      "Recherche les trades clôturés du trader. SEULE source d'ids valides : passe par lui avant d'annoter, de rattacher ou de supprimer.",
     input_schema: {
       type: "object" as const,
       properties: {
-        pair: { type: "string", description: "Filtre par instrument, ex. EURUSD." },
+        pair: { type: "string", description: "ex. EURUSD." },
         direction: { type: "string", enum: ["long", "short", "buy", "sell"] },
-        result: { type: "string", enum: ["win", "loss"], description: "P&L net positif ou négatif." },
+        result: { type: "string", enum: ["win", "loss"] },
         emotion: { type: "string", enum: [...EMOTIONS] },
-        missing_emotion: { type: "boolean", description: "Uniquement les trades sans émotion." },
-        date_from: { type: "string", description: "ISO date (incluse), ex. 2026-07-01." },
-        date_to: { type: "string", description: "ISO date (exclue)." },
+        missing_emotion: { type: "boolean", description: "Uniquement ceux sans émotion." },
+        date_from: { type: "string", description: "ISO, incluse." },
+        date_to: { type: "string", description: "ISO, exclue." },
         limit: { type: "number", description: `Max ${MAX_FIND_LIMIT}, défaut 20.` },
       },
       required: [],
@@ -344,14 +364,17 @@ export const COACH_TOOLS = [
   {
     name: "annotate_trades",
     description:
-      "Annote un ou plusieurs trades (ids venant de find_trades) : émotion dominante, qualité du setup (1-5), tags à ajouter, note de journal. Ne renseigne que les champs demandés par le trader.",
+      // Le mot « tag » est banni de la voix du coach, et il le recopiait depuis
+      // ici : les descriptions d'outils sont lues comme le reste du prompt.
+      // Le NOM du paramètre reste add_tags, il désigne la colonne en base.
+      "Annote des trades déjà journalisés (ids via find_trades). Ne renseigne que les champs demandés par le trader.",
     input_schema: {
       type: "object" as const,
       properties: {
         trade_ids: { type: "array", items: { type: "string" }, description: `1 à ${MAX_ANNOTATE_IDS} ids.` },
         emotion: { type: "string", enum: [...EMOTIONS] },
         setup_quality: { type: "number", description: "Qualité du setup, entier de 1 à 5." },
-        add_tags: { type: "array", items: { type: "string" }, description: `Tags ajoutés (max ${MAX_TAGS}).` },
+        add_tags: { type: "array", items: { type: "string" }, description: `Étiquettes ajoutées (max ${MAX_TAGS}).` },
         notes: { type: "string", description: "Note de journal (remplace la note existante)." },
       },
       required: ["trade_ids"],
@@ -360,13 +383,13 @@ export const COACH_TOOLS = [
   {
     name: "list_strategies",
     description:
-      "Liste les stratégies du trader avec leur id, nom, règles textuelles (setup_rules), checklist pré-trade (pretrade_checklist), règles numériques et items de la checklist de confluences. À appeler avant de modifier une stratégie.",
+      "Liste les stratégies du trader, leurs règles et leur checklist de confluences. À appeler avant toute modification.",
     input_schema: { type: "object" as const, properties: {}, required: [] },
   },
   {
     name: "create_strategy",
     description:
-      "Crée une stratégie légère pour le trader : un nom, éventuellement des règles textuelles (setup_rules), une checklist pré-trade et des règles numériques (risk_reward, max_trades_per_day, max_consecutive_losses, risk_per_trade_pct, max_sl_pips, max_session_minutes).",
+      "Écrit une nouvelle stratégie dans la fiche du trader. C'est ce qui transforme une méthode discutée en conversation en règle qui fera référence aux prochains messages.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -386,7 +409,7 @@ export const COACH_TOOLS = [
   {
     name: "update_strategy",
     description:
-      "Met à jour une stratégie existante : nom, règles textuelles (setup_rules), checklist pré-trade (pretrade_checklist) ou règles numériques. Remplace la valeur des champs fournis. Utilise list_strategies pour obtenir strategy_id.",
+      "Modifie la fiche stratégie du trader. Remplace les champs fournis. Id via list_strategies. À appeler dès qu'il accepte une évolution que tu proposes : sans ça, elle reste une idée de conversation.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -407,7 +430,7 @@ export const COACH_TOOLS = [
   {
     name: "add_checklist_item",
     description:
-      "Ajoute un item à la checklist de confluences d'une stratégie (les cases cochées sur chaque trade, d'où le setup est dérivé). label = texte affiché, ex. « FVG comblé sur M5 ». Si la stratégie utilisait la checklist ICT par défaut, elle est d'abord matérialisée puis l'item ajouté.",
+      "Ajoute une confluence à la checklist d'une stratégie : les cases que le trader coche sur chaque trade, et d'où son setup est dérivé.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -420,7 +443,7 @@ export const COACH_TOOLS = [
   {
     name: "remove_checklist_item",
     description:
-      "Retire un item de la checklist de confluences d'une stratégie, par sa value (obtenue via list_strategies).",
+      "Retire une confluence de la checklist d'une stratégie, par sa value (via list_strategies).",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -433,7 +456,7 @@ export const COACH_TOOLS = [
   {
     name: "export_trades",
     description:
-      "Génère un export CSV téléchargeable des trades du trader (mêmes filtres que find_trades). Le fichier est proposé au téléchargement côté client. Utilise-le quand le trader demande d'exporter/télécharger ses trades.",
+      "Export CSV des trades, à ouvrir dans un tableur. Pour un rapport de performance mis en forme, c'est export_pdf.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -462,26 +485,26 @@ export const COACH_TOOLS = [
   {
     name: "list_open_trades",
     description:
-      "Liste les positions ENCORE OUVERTES du trader (non clôturées), avec leur id, paire, sens, taille, prix d'entrée, SL/TP et durée depuis l'ouverture. À utiliser dès qu'il parle d'un trade « en cours », « en ce moment » ou « ma position ».",
+      "Positions ENCORE OUVERTES. Dès qu'il parle d'un trade « en cours », « en ce moment » ou de « ma position », c'est ici, pas find_trades.",
     input_schema: { type: "object" as const, properties: {}, required: [] },
   },
   {
     name: "list_accounts",
     description:
-      "Liste les comptes de trading du trader (comptes personnels et challenges de prop firm) : id, type, firme, taille, devise, solde, statut. Nécessaire avant de rattacher un trade à un compte.",
+      "Comptes de trading du trader, personnels et challenges de prop firm. Nécessaire avant d'y rattacher un trade.",
     input_schema: { type: "object" as const, properties: {}, required: [] },
   },
   {
     name: "list_economic_events",
     description:
-      "Annonces économiques à venir (ou passées) du calendrier : date, devise, intitulé, impact, prévision et valeur précédente. Sert à répondre sur ce qui arrive aujourd'hui ou cette semaine et à prévenir avant une annonce à fort impact.",
+      "Calendrier des annonces économiques. Sert à répondre sur ce qui arrive aujourd'hui ou cette semaine, et à le prévenir avant une annonce à fort impact.",
     input_schema: {
       type: "object" as const,
       properties: {
-        from: { type: "string", description: "Date ISO de début (incluse), ex. 2026-08-07. Défaut : aujourd'hui." },
-        to: { type: "string", description: "Date ISO de fin (exclue). Défaut : dans 7 jours." },
-        currency: { type: "string", description: "Filtre devise, ex. USD, EUR." },
-        min_impact: { type: "string", enum: ["low", "medium", "high"], description: "Impact minimum retenu." },
+        from: { type: "string", description: "ISO, incluse. Défaut : aujourd'hui." },
+        to: { type: "string", description: "ISO, exclue. Défaut : dans 7 jours." },
+        currency: { type: "string", description: "ex. USD." },
+        min_impact: { type: "string", enum: ["low", "medium", "high"] },
         limit: { type: "number", description: `Max ${MAX_EVENTS}, défaut 15.` },
       },
       required: [],
@@ -490,17 +513,23 @@ export const COACH_TOOLS = [
   {
     name: "calculate_position_size",
     description:
-      "Calcule la taille de position à prendre pour un risque donné. CFD/forex : renvoie un nombre de lots. Futures : renvoie un nombre de contrats (arrondi au plancher, le risque réel ne dépasse jamais le budget). Fournis SOIT sl_pips, SOIT entry_price et sl_price (les pips seront déduits de l'instrument).",
+      "Calcule la taille de position pour un risque donné, en lots (CFD, forex) ou en contrats (futures). Fournis SOIT sl_pips, SOIT entry_price et sl_price. À utiliser systématiquement : un chiffre de lot posé de tête coûte de l'argent réel au trader.",
     input_schema: {
       type: "object" as const,
       properties: {
-        pair: { type: "string", description: "Instrument, ex. XAUUSD, EURUSD, NQ." },
-        risk_amount: { type: "number", description: "Montant risqué, dans la devise du compte." },
-        risk_pct: { type: "number", description: "Alternative : % du capital à risquer (nécessite account_balance)." },
-        account_balance: { type: "number", description: "Capital de référence, requis avec risk_pct." },
-        sl_pips: { type: "number", description: "Distance du stop en pips (ou en points pour un future)." },
-        entry_price: { type: "number", description: "Prix d'entrée, si sl_pips n'est pas fourni." },
-        sl_price: { type: "number", description: "Prix du stop, si sl_pips n'est pas fourni." },
+        pair: { type: "string", description: "ex. XAUUSD, EURUSD, NQ." },
+        risk_amount: { type: "number", description: "Dans la devise du compte." },
+        risk_pct: { type: "number", description: "Alternative à risk_amount." },
+        // Sans « uniquement », le modèle a cru ce champ toujours nécessaire et
+        // est parti chercher le solde avec list_accounts au lieu de calculer.
+        // Une conditionnelle de schéma est porteuse : elle ne se coupe pas.
+        account_balance: { type: "number", description: "Requis avec risk_pct uniquement." },
+        // « Suffit seul » est porteur : sans ça le modèle réclamait au trader
+        // un prix d'entrée qu'il n'a pas besoin de connaître, ou repartait
+        // chercher son solde, au lieu d'appeler l'outil.
+        sl_pips: { type: "number", description: "Distance du stop, en points pour un future. Suffit seule : aucun prix n'est requis avec." },
+        entry_price: { type: "number" },
+        sl_price: { type: "number" },
       },
       required: ["pair"],
     },
@@ -514,19 +543,19 @@ export const COACH_TOOLS = [
     input_schema: {
       type: "object" as const,
       properties: {
-        pair: { type: "string", description: "Instrument, ex. XAUUSD." },
+        pair: { type: "string", description: "ex. XAUUSD." },
         direction: { type: "string", enum: ["long", "short", "buy", "sell"] },
-        lot_size: { type: "number", description: "Taille de position." },
+        lot_size: { type: "number" },
         entry_price: { type: "number" },
-        exit_price: { type: "number", description: "Requis si le trade est clôturé." },
-        pnl: { type: "number", description: "P&L brut. Requis si le trade est clôturé." },
+        exit_price: { type: "number" },
+        pnl: { type: "number", description: "P&L brut." },
         sl: { type: "number" },
         tp: { type: "number" },
-        open_time: { type: "string", description: "Date/heure d'ouverture ISO. Défaut : maintenant." },
-        close_time: { type: "string", description: "Date/heure de clôture ISO." },
+        open_time: { type: "string", description: "ISO. Défaut : maintenant." },
+        close_time: { type: "string", description: "ISO." },
         status: { type: "string", enum: ["open", "closed"], description: "Défaut : closed." },
-        account_id: { type: "string", description: "Compte de rattachement (voir list_accounts)." },
-        strategy_id: { type: "string", description: "Stratégie de rattachement (voir list_strategies)." },
+        account_id: { type: "string", description: "via list_accounts." },
+        strategy_id: { type: "string", description: "via list_strategies." },
         emotion: { type: "string", enum: [...EMOTIONS] },
         notes: { type: "string", description: `Note de journal (max ${MAX_TEXT} caractères).` },
       },
@@ -563,10 +592,10 @@ export const COACH_TOOLS = [
     input_schema: {
       type: "object" as const,
       properties: {
-        trade_id: { type: "string", description: "Id d'une position ouverte (voir list_open_trades)." },
+        trade_id: { type: "string", description: "via list_open_trades." },
         exit_price: { type: "number" },
         pnl: { type: "number", description: "P&L réalisé." },
-        close_time: { type: "string", description: "Date/heure ISO de clôture. Défaut : maintenant." },
+        close_time: { type: "string", description: "ISO. Défaut : maintenant." },
         notes: { type: "string" },
       },
       required: ["trade_id", "exit_price", "pnl"],
@@ -575,7 +604,9 @@ export const COACH_TOOLS = [
   {
     name: "delete_trades",
     description:
-      "Supprime définitivement un ou plusieurs trades. DEUX ÉTAPES OBLIGATOIRES : appelle d'abord find_trades pour obtenir les vrais ids (n'en devine jamais un), puis appelle cet outil. Il NE SUPPRIME RIEN lui-même : il renvoie une demande de confirmation que le trader valide d'un clic. En cas d'erreur, aucun bouton n'apparaît : corrige et rappelle-le.",
+      // La procédure en deux étapes est déjà détaillée dans le prompt système
+      // (bloc SUPPRESSIONS) : la répéter ici la faisait payer deux fois.
+      "Supprime définitivement des trades. NE SUPPRIME RIEN lui-même : renvoie une demande de confirmation que le trader valide d'un clic. Ids réels via find_trades, jamais devinés.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -603,7 +634,7 @@ export const COACH_TOOLS = [
   {
     name: "get_challenge_status",
     description:
-      "État d'avancement d'un challenge de prop firm : solde, progression vers l'objectif, drawdown journalier et total encore disponibles, jours écoulés. Utilise-le dès que le trader demande « il me reste combien », « où j'en suis » ou parle de son challenge.",
+      "Avancement d'un challenge de prop firm : progression et drawdown restant. Dès qu'il demande « il me reste combien », « où j'en suis », ou qu'il parle de son challenge.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -615,7 +646,7 @@ export const COACH_TOOLS = [
   {
     name: "get_performance",
     description:
-      "Performance détaillée sur une dimension précise : par instrument, heure de la journée, jour de la semaine, sens, émotion ou setup. Répond à « ma perf du mardi », « je gagne à quelle heure », « mes shorts valent quoi ». Chiffres calculés par le serveur, donc fiables.",
+      "Performance découpée sur une dimension. Répond à « ma perf du mardi », « je gagne à quelle heure », « mes shorts valent quoi ».",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -629,7 +660,7 @@ export const COACH_TOOLS = [
   {
     name: "get_macro_briefing",
     description:
-      "Analyse macro du jour (contexte de marché, thèmes, actifs à surveiller). Déjà rédigée par le serveur chaque matin : la lire ne coûte aucun quota au trader.",
+      "Analyse macro du jour, déjà rédigée chaque matin par le serveur : la lire ne coûte aucun quota au trader.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -665,7 +696,7 @@ export const COACH_TOOLS = [
   {
     name: "open_page",
     description:
-      "Emmène le trader sur une page du site, filtres déjà appliqués. Sert quand il veut VOIR quelque chose plutôt que se le faire raconter, ou pour une action que tu ne peux pas faire toi-même (lancer une analyse IA, importer un CSV, gérer son abonnement). Annonce-lui où tu l'emmènes.",
+      "Emmène le trader sur une page du site, filtres appliqués. Quand il veut VOIR plutôt que se faire raconter, ou pour ce que tu ne peux pas faire toi-même (analyse IA d'un trade, import CSV, abonnement). Annonce où tu l'emmènes.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -686,7 +717,7 @@ export const COACH_TOOLS = [
   {
     name: "run_ai_report",
     description:
-      "Lance un rapport IA : plan de la semaine, bilan mensuel ou débrief de la session en cours. NE LANCE RIEN de lui-même : renvoie une demande de confirmation, parce que ces rapports consomment un crédit du quota quotidien du trader. Annonce le coût, c'est son clic qui déclenche.",
+      "Lance un rapport IA : plan de semaine, bilan mensuel, débrief de session. NE LANCE RIEN lui-même : renvoie une confirmation, car ces rapports consomment un crédit du quota quotidien. Annonce le coût, c'est son clic qui déclenche.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -699,7 +730,7 @@ export const COACH_TOOLS = [
   {
     name: "export_pdf",
     description:
-      "Génère un rapport PDF de performance sur une période. NE GÉNÈRE RIEN de lui-même : renvoie une demande de confirmation, le fichier se télécharge au clic du trader. Gratuit, aucun crédit consommé.",
+      "Rapport PDF de performance sur une période, mis en forme. NE GÉNÈRE RIEN lui-même : renvoie une confirmation, le fichier se télécharge au clic. Gratuit, aucun crédit.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -712,7 +743,7 @@ export const COACH_TOOLS = [
   {
     name: "log_emotional_check",
     description:
-      "Enregistre l'état émotionnel du trader PENDANT sa session en cours. À proposer dès qu'il exprime une émotion en cours de journée (« je suis énervé », « je me sens en confiance ») : c'est la matière première de son analyse comportementale.",
+      "Enregistre son état émotionnel PENDANT la session en cours. À proposer dès qu'il exprime une émotion en cours de journée : c'est la matière première de son analyse comportementale.",
     input_schema: {
       type: "object" as const,
       properties: { emotion: { type: "string", enum: [...EMOTIONS] } },
@@ -722,19 +753,19 @@ export const COACH_TOOLS = [
   {
     name: "get_leaderboard_standing",
     description:
-      "Position du trader dans le classement, badges obtenus et gels de série disponibles. Répond à « où j'en suis au classement », « quels badges il me manque », « il me reste des gels ».",
+      "Classement, badges et gels de série du trader. Répond à « où j'en suis au classement », « quels badges il me manque », « il me reste des gels ».",
     input_schema: { type: "object" as const, properties: {}, required: [] },
   },
   {
     name: "list_communities",
     description:
-      "Communautés partenaires dont le trader est membre, et défis privés en cours. Utile pour répondre sur son appartenance et les classements réservés aux membres.",
+      "Communautés partenaires du trader et défis privés en cours.",
     input_schema: { type: "object" as const, properties: {}, required: [] },
   },
   {
     name: "delete_strategy",
     description:
-      "Supprime une stratégie. NE SUPPRIME RIEN de lui-même : renvoie une demande de confirmation à valider d'un clic. Obtiens l'id via list_strategies. Prévient que les trades rattachés perdront ce rattachement.",
+      "Supprime une stratégie (id via list_strategies). NE SUPPRIME RIEN lui-même : renvoie une confirmation à valider d'un clic. Préviens que les trades rattachés perdront ce lien.",
     input_schema: {
       type: "object" as const,
       properties: { strategy_id: { type: "string" } },
@@ -744,7 +775,7 @@ export const COACH_TOOLS = [
   {
     name: "delete_account",
     description:
-      "Supprime un compte de trading (compte personnel ou challenge de prop firm). NE SUPPRIME RIEN de lui-même : renvoie une demande de confirmation. Obtiens l'id via list_accounts. Prévient que les trades rattachés perdront ce rattachement.",
+      "Supprime un compte de trading (id via list_accounts). NE SUPPRIME RIEN lui-même : renvoie une confirmation. Préviens que les trades rattachés perdront ce lien.",
     input_schema: {
       type: "object" as const,
       properties: { account_id: { type: "string" } },
@@ -763,11 +794,11 @@ export const COACH_TOOLS = [
         type: { type: "string", enum: ["personal", "prop"] },
         account_size: { type: "number", description: "Capital de départ." },
         currency: { type: "string", enum: [...ACCOUNT_CURRENCIES] },
-        firm: { type: "string", description: "Nom de la prop firm (type=prop)." },
-        account_number: { type: "string", description: "Numéro ou libellé du compte." },
-        profit_target_pct: { type: "number", description: "Objectif en % (type=prop)." },
-        max_daily_dd_pct: { type: "number", description: "Drawdown journalier max en % (type=prop)." },
-        max_total_dd_pct: { type: "number", description: "Drawdown total max en % (type=prop)." },
+        firm: { type: "string" },
+        account_number: { type: "string" },
+        profit_target_pct: { type: "number" },
+        max_daily_dd_pct: { type: "number", description: "Drawdown journalier max, en %." },
+        max_total_dd_pct: { type: "number", description: "Drawdown total max, en %." },
         market_type: { type: "string", enum: ["cfd", "futures"] },
       },
       required: ["type", "account_size"],

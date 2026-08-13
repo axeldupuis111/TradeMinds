@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildCoachSystemPrompt } from "./coach-system-prompt";
 import { renderMethodGlossaries } from "./coach-method-glossaries";
+import { COACH_TOOLS } from "./coach-tools";
 
 /**
  * Test réel du 2026-08-13. Le trader a contredit le coach avec une affirmation
@@ -157,10 +158,19 @@ describe("un fait posé au passage est vérifié comme une contradiction frontal
 describe("le coach ne montre pas sa tuyauterie et ne renvoie pas la question", () => {
   const prompt = promptSysteme();
 
-  it("le glossaire reste interne, jamais nommé au trader", () => {
+  it("les définitions de référence restent internes, jamais nommées au trader", () => {
     const rappel = depuis(prompt, "DERNIER RAPPEL");
     expect(rappel).toMatch(/TON RAISONNEMENT, PAS TON TEXTE/);
-    expect(rappel).toMatch(/ne parle jamais d'un "glossaire"/i);
+    expect(rappel).toMatch(/tu ne les nommes pas/i);
+  });
+
+  it("le prompt n'emploie NULLE PART le mot qu'il interdit au coach", () => {
+    // ⚠️ Il l'écrivait cinq fois, dont une dans l'interdiction elle-même, et
+    // le coach le ressortait à l'écran. Troisième occurrence de la famille
+    // « on n'interdit pas un mot en l'écrivant » après l'expansion de BB et
+    // « tags ». Le bloc rendu par renderMethodGlossaries, lui, ne l'a jamais
+    // contenu : la fuite venait entièrement de mes propres consignes.
+    expect(prompt.toLowerCase()).not.toContain("glossaire");
   });
 
   it("après avoir corrigé, il traite les cas au lieu de les demander", () => {
@@ -288,8 +298,18 @@ describe("le coach ne promet pas une capacité qu'il n'a pas", () => {
 
   it("il ne demande pas ce que find_trades sait déjà", () => {
     const rappel = depuis(prompt, "DERNIER RAPPEL");
-    expect(rappel).toMatch(/TA DERNIÈRE LIGNE N'EST PAS UNE QUESTION SUR SES TRADES/);
-    expect(rappel).toContain("find_trades");
+    // ⚠️ Ces deux règles étaient formulées à la négative et CITAIENT les
+    // mauvaises fins qu'elles interdisaient (« dis-moi ce que tu fais
+    // exactement », « peux-tu me montrer un trade précis »). Taux mesuré au
+    // banc : 6/8. C'est le défaut de l'expansion fautive de BB, appliqué à une
+    // tournure : écrire une formule pour la bannir la rend disponible.
+    // Reformulées à l'affirmative, elles prescrivent la FORME de la sortie, et
+    // le prompt ne contient plus aucune fin de message fautive.
+    expect(rappel).toMatch(/TA DERNIÈRE LIGNE EST UNE ACTION QUE TU PROPOSES/);
+    expect(rappel).toMatch(/CE QUI TE MANQUE, TU VAS LE CHERCHER/);
+    for (const fautif of ["dis-moi ce que tu fais", "quelle situation décris-tu", "peux-tu me montrer un trade"]) {
+      expect(prompt, `le prompt écrit la fin de message qu'il combat : "${fautif}"`).not.toContain(fautif);
+    }
   });
 });
 
@@ -309,6 +329,189 @@ describe("le bloc de contradiction distingue la fiche du chat", () => {
     // symétrique. Céder sur un point ne doit pas réécrire toute la famille.
     const bloc = depuis(prompt, BLOC_FAITS);
     expect(bloc).toMatch(/propages jamais l'inversion/i);
+  });
+});
+
+/**
+ * Sixième passage, 2026-08-13, et c'est le défaut le plus coûteux
+ * commercialement : le REFUS. Le trader a demandé quatre fois de suite quel
+ * instrument offrait les structures les plus lisibles. Le coach a refusé
+ * quatre fois, sans jamais nommer un seul instrument. Quatre messages de son
+ * quota facturés pour zéro contenu, et un trader qui conclut que le coach ne
+ * sait pas répondre.
+ *
+ * Aucune de ces trois règles n'était fautive isolément, c'est leur somme :
+ *
+ * 1. « tu n'annonces jamais de rendement attendu » a été étendu à toute
+ *    comparaison d'instruments. Or décrire l'amplitude, le spread ou les
+ *    heures de liquidité d'un marché n'est pas une prédiction : c'est du
+ *    savoir de coach, et c'est ce pour quoi le trader paie.
+ * 2. le bloc fiche stratégie est devenu un péage : « déclare-le d'abord dans
+ *    ta stratégie, ensuite tu pourras l'essayer ». La fiche sert à ancrer ce
+ *    qui est écrit, pas à interdire ce qui ne l'est pas encore.
+ * 3. le rappel anti-complaisance, qui prime en fin de prompt, a fait lire
+ *    « non, je veux changer d'actif » comme une pression à laquelle résister.
+ *    C'était une DEMANDE, et une demande répétée est une décision.
+ *
+ * Défaut annexe du même échange : le coach a cité sa consigne à l'écran (« je
+ * ne dois jamais en faire »). Même famille que le glossaire nommé au trader.
+ */
+describe("le coach répond aux questions d'instrument au lieu de les refuser", () => {
+  const prompt = promptSysteme();
+
+  it("une propriété d'instrument est distinguée d'une prédiction", () => {
+    // C'est l'arbitre de la règle : sans lui, « jamais de performance
+    // promise » avale toute question comparative.
+    const bloc = depuis(prompt, "NE CONFONDS PAS UNE PRÉDICTION");
+    expect(bloc).toMatch(/amplitude moyenne/i);
+    expect(bloc).toMatch(/n'est pas une promesse de performance/i);
+  });
+
+  it("il doit nommer des instruments, pas parler d'instruments en général", () => {
+    const bloc = depuis(prompt, "QUEL INSTRUMENT TRADER");
+    expect(bloc).toMatch(/instruments NOMMÉS/);
+  });
+
+  it("changer d'instrument n'est pas conditionné à une écriture préalable", () => {
+    // La formule exacte du refus : « tu dois d'abord le déclarer dans ta
+    // stratégie ». L'ordre correct est l'inverse : proposer, puis écrire.
+    const bloc = depuis(prompt, "QUEL INSTRUMENT TRADER");
+    expect(bloc).toMatch(/ne se mérite pas/i);
+    expect(bloc).toContain("update_strategy");
+  });
+
+  it("le refus ne se transforme pas en demande de clarification", () => {
+    // Trouvé par le banc d'essai après le premier correctif : le coach ne
+    // refusait plus, il différait. Il a écrit que la réponse dépendait de ce
+    // que le trader cherchait, évoqué des actifs plus lisibles sans en nommer
+    // un seul, et fini en demandant son critère. Même coût pour le trader.
+    const bloc = depuis(prompt, "QUEL INSTRUMENT TRADER");
+    expect(bloc).toMatch(/N'ATTENDS PAS DE SAVOIR CE QU'IL CHERCHE POUR NOMMER/);
+    expect(bloc).toMatch(/SANS LES NOMMER DANS LA MÊME PHRASE/);
+  });
+
+  it("la réserve est autorisée une fois, pas à chaque message", () => {
+    expect(prompt).toMatch(/UNE DEMANDE RÉPÉTÉE EST UNE DÉCISION/);
+  });
+
+  it("le refus est borné à ce qui est réellement inconnaissable", () => {
+    const bloc = depuis(prompt, '"Je ne peux pas répondre"');
+    expect(bloc).toMatch(/ce que fera le marché/i);
+    expect(bloc).toMatch(/connaissance générale du trading/i);
+  });
+
+  it("le coach ne récite pas ses consignes au trader", () => {
+    expect(prompt).toMatch(/NE CITE JAMAIS TES PROPRES CONSIGNES/);
+  });
+
+  it("le rappel final distingue tenir un fait et refuser une demande", () => {
+    // Le point d'over-généralisation est là, en fin de prompt, là où le modèle
+    // prime le plus fort : la distinction doit vivre au même endroit.
+    // ⚠️ Ce bullet a d'abord été placé en TÊTE du bloc, et le banc a montré la
+    // capitulation revenir : ouvrir un bloc « ne cède pas » par une consigne
+    // d'obéissance au trader le dilue. Il vit maintenant en fin de bloc, où il
+    // borne ce qui précède sans l'amortir. La position d'une règle compte
+    // autant que son texte, à l'intérieur d'un bloc comme dans le prompt.
+    const rappel = depuis(prompt, "DERNIER RAPPEL");
+    expect(rappel).toMatch(/VISE CE QU'IL AFFIRME, JAMAIS CE QU'IL DEMANDE/);
+    expect(rappel).toMatch(/c'est sa décision/i);
+    const bloc = rappel.indexOf("VISE CE QU'IL AFFIRME");
+    const procedure = rappel.indexOf("confronte en silence");
+    expect(procedure, "la procédure de vérification doit ouvrir le bloc").toBeLessThan(bloc);
+  });
+});
+
+/**
+ * Le catalogue d'outils est le premier poste du préfixe système, devant les
+ * règles et devant la fiche du trader. Il a été ramené de 9 226 à 7 865 tokens
+ * en appliquant une doctrine simple : une description sert à faire CHOISIR,
+ * pas à documenter. Ces tests tiennent la doctrine, gratuitement (ils lisent
+ * les définitions, ils n'appellent pas le modèle). Le filet de comportement,
+ * lui, vit dans `coach-live.eval.ts` : 8 scénarios de sélection d'outils.
+ */
+interface OutilLu {
+  name: string;
+  description: string;
+  input_schema: { properties?: Record<string, unknown> };
+}
+
+/**
+ * Rend le passage fautif si la description enchaîne 3 champs ou plus du schéma
+ * séparés par des virgules, sinon null. Isolé pour être vérifié lui-même sur un
+ * cas connu : un détecteur non testé rend le test vert par accident.
+ */
+function enumerationDetectee(o: OutilLu): string | null {
+  const props = (o.input_schema.properties ?? {}) as Record<string, { enum?: string[] }>;
+  const jetons = new Set<string>();
+  for (const [nom, def] of Object.entries(props)) {
+    jetons.add(nom);
+    for (const v of def.enum ?? []) jetons.add(v);
+  }
+  const liste = Array.from(jetons).filter((n) => n.length > 3).sort((a, b) => b.length - a.length);
+  if (!liste.length) return null;
+  const T = `(?:${liste.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`;
+  const suite = new RegExp(`${T}(?:\\s*,\\s*${T}){2,}`).exec(o.description);
+  return suite ? `${o.name} énumère « ${suite[0]} »` : null;
+}
+
+describe("le catalogue d'outils reste économe", () => {
+  const outils = COACH_TOOLS as OutilLu[];
+
+  it("aucune description ne réénumère les paramètres ni les enums du schéma", () => {
+    // Le défaut trouvé le 2026-08-13 : create_strategy listait ses six règles
+    // numériques dans sa description alors qu'elles étaient juste en dessous
+    // dans properties, et create_goal réénumérait les cinq valeurs de METRICS.
+    // Payé deux fois, à chaque message de chaque trader.
+    //
+    // ⚠️ Compter les champs cités ne marche PAS, et c'est instructif : citer
+    // deux ou trois champs est souvent la seule façon d'exprimer une logique
+    // que JSON Schema ne porte pas, un XOR (« fournis SOIT sl_pips, SOIT
+    // entry_price et sl_price ») ou une exigence conditionnelle (« kind=metric :
+    // target requis »). Ce n'est pas théorique : avoir coupé cette logique sur
+    // calculate_position_size a fait partir le modèle sur list_accounts au lieu
+    // de calculer.
+    //
+    // On vise donc le motif exact du gaspillage : une SUITE de champs séparés
+    // par des virgules. Une contrainte conditionnelle n'en produit jamais.
+    const fautifs = outils.map(enumerationDetectee).filter((x): x is string => x !== null);
+    expect(fautifs, "descriptions qui récitent leur propre schéma").toEqual([]);
+  });
+
+  it("le détecteur attrape bien la description qui a motivé la règle", () => {
+    // Sans ce cas, le test précédent passerait aussi avec un détecteur cassé,
+    // et on croirait tenir une propriété qu'on ne tient plus. C'est le vrai
+    // texte de create_strategy avant la passe du 2026-08-13.
+    const avant = {
+      name: "create_strategy",
+      description:
+        "Crée une stratégie légère pour le trader : un nom, éventuellement des règles textuelles (setup_rules), une checklist pré-trade et des règles numériques (risk_reward, max_trades_per_day, max_consecutive_losses, risk_per_trade_pct, max_sl_pips, max_session_minutes).",
+      input_schema: {
+        properties: {
+          setup_rules: {}, risk_reward: {}, max_trades_per_day: {},
+          max_consecutive_losses: {}, risk_per_trade_pct: {}, max_sl_pips: {}, max_session_minutes: {},
+        },
+      },
+    };
+    expect(enumerationDetectee(avant)).toMatch(/énumère/);
+  });
+
+  it("aucune description ne porte le tiret long", () => {
+    // Les descriptions d'outils sont lues comme le reste du prompt : create_goal
+    // en portait deux, tout en étant servie à côté d'une règle qui les bannit.
+    expect(outils.filter((o) => o.description.includes("—")).map((o) => o.name)).toEqual([]);
+  });
+
+  it("aucune description n'emploie le vocabulaire banni", () => {
+    // Le coach écrivait « tags » parce que annotate_trades le lui montrait.
+    expect(outils.filter((o) => /\btag(s|ger|ging)?\b/i.test(o.description)).map((o) => o.name)).toEqual([]);
+  });
+
+  it("le volume total des descriptions reste sous son plafond", () => {
+    // Garde-fou de dérive : sans plafond, chaque correctif ajoute deux phrases
+    // à un outil et personne ne voit le cumul. Mesuré à 5 100 caractères après
+    // la passe ; le seuil laisse de la place sans laisser revenir le double.
+    const total = outils.reduce((n, o) => n + o.description.length, 0);
+    expect(total, `descriptions : ${total} caractères`).toBeLessThan(6_000);
   });
 });
 

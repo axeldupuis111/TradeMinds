@@ -61,13 +61,23 @@ Texte du trader : J'attends qu'une liquidité soit prise, un BSL si le prix vien
 const STATS = `48 trades clôturés sur 30 jours. Réussite 41 %. Gain moyen +58 €, perte moyenne -74 €.
 Émotion « frustré » sur 61 % des trades. 4 jours sur 30 avec plus de 5 trades.`;
 
-function systemPrompt(): string {
+/**
+ * Le trader DÉBUTANT : ni fiche, ni statistiques, ni mémoire.
+ *
+ * C'était l'angle mort du banc, et le plus cher : le plan gratuit offre 5
+ * messages coach à vie, relevés de 1 à 5 exprès pour que le coach ait la place
+ * de construire une méthode AVEC l'inscrit puis de l'écrire avec
+ * create_strategy. C'est donc littéralement le chemin de conversion, et il
+ * emprunte une branche du prompt (« CE TRADER N'A PAS ENCORE DE FICHE ») que
+ * quatorze scénarios sur une fiche ICT ne touchaient jamais.
+ */
+function systemPrompt(debutant = false): string {
   return buildCoachSystemPrompt({
     langName: "français",
-    methodGlossaries: renderMethodGlossaries(["ict"]),
-    strategyBlock: FICHE,
-    statsBlock: STATS,
-    memoryBlock: "Engagement du 1er août : pas plus de 3 trades par jour.",
+    methodGlossaries: debutant ? "" : renderMethodGlossaries(["ict"]),
+    strategyBlock: debutant ? "" : FICHE,
+    statsBlock: debutant ? "" : STATS,
+    memoryBlock: debutant ? "" : "Engagement du 1er août : pas plus de 3 trades par jour.",
     statsTradeLimit: 300,
     todayKey: "2026-08-13",
     yesterdayKey: "2026-08-12",
@@ -81,7 +91,16 @@ function systemPrompt(): string {
  * on ne teste pas son vrai comportement (il a le droit d'aller chercher les
  * trades plutôt que de les demander, et c'est même ce qu'on exige de lui).
  */
-function resultatOutil(nom: string): string {
+function resultatOutil(nom: string, debutant = false): string {
+  // Un débutant n'a ni stratégie ni trades : le simulateur doit dire la même
+  // chose que le bloc système, sinon on teste une situation qui n'existe pas.
+  if (debutant) {
+    if (nom === "list_strategies") return JSON.stringify({ ok: true, strategies: [] });
+    if (nom === "find_trades") return JSON.stringify({ ok: true, trades: [] });
+    if (nom === "list_open_trades") return JSON.stringify({ ok: true, trades: [] });
+    if (nom === "get_performance") return JSON.stringify({ ok: true, trades: 0 });
+    if (nom === "create_strategy") return JSON.stringify({ ok: true, strategy_id: "s-new" });
+  }
   if (nom === "find_trades") {
     return JSON.stringify({
       ok: true,
@@ -104,6 +123,22 @@ function resultatOutil(nom: string): string {
   if (nom === "get_performance") {
     return JSON.stringify({ ok: true, trades: 48, win_rate: 0.41, avg_win: 58, avg_loss: -74 });
   }
+  // ⚠️ Un stub qui répond {ok:true} sans données est un stub qui MENT : le
+  // modèle lit « aucun compte » et s'arrête là. C'est ce qui faisait échouer
+  // la sélection du calculateur une fois sur cinq (il partait chercher le
+  // solde, ne le trouvait pas, et rendait la main au lieu de calculer).
+  if (nom === "list_accounts") {
+    return JSON.stringify({
+      ok: true,
+      accounts: [{ id: "a1", type: "personal", currency: "EUR", balance: 10000, account_size: 10000, market_type: "cfd", status: "active" }],
+    });
+  }
+  if (nom === "list_open_trades") {
+    return JSON.stringify({
+      ok: true,
+      trades: [{ id: "o1", pair: "XAUUSD", direction: "buy", lot_size: 0.5, entry_price: 2510, sl: 2495, tp: 2540, opened_minutes_ago: 95 }],
+    });
+  }
   return JSON.stringify({ ok: true });
 }
 
@@ -115,20 +150,29 @@ function resultatOutil(nom: string): string {
  * confondu faisait échouer à tort le scénario d'attribution, où le coach avait
  * répondu correctement mais où le texte du premier tour noyait le motif.
  */
-async function jouer(tours: string[]): Promise<string[]> {
+interface Tour {
+  /** Ce que le trader lit, filtre typographique appliqué. */
+  texte: string;
+  /** Outils appelés pendant ce tour, dans l'ordre. */
+  outils: string[];
+}
+
+async function jouer(tours: string[], debutant = false): Promise<Tour[]> {
   const client = new Anthropic({ apiKey: CLE });
   const messages: Anthropic.MessageParam[] = [];
-  const parTour: string[] = [];
+  const parTour: Tour[] = [];
+  const systeme = systemPrompt(debutant);
 
   for (const tour of tours) {
     messages.push({ role: "user", content: tour });
     let sortie = "";
+    const appeles: string[] = [];
     // Boucle agentique bornée, comme en production.
     for (let round = 0; round < 3; round++) {
       const rep = await client.messages.create({
         model: MODELE,
         max_tokens: 2000,
-        system: [{ type: "text", text: systemPrompt(), cache_control: { type: "ephemeral" } }],
+        system: [{ type: "text", text: systeme, cache_control: { type: "ephemeral" } }],
         tools: coachToolsForPlan("premium") as Anthropic.Tool[],
         messages,
       });
@@ -137,12 +181,13 @@ async function jouer(tours: string[]): Promise<string[]> {
       messages.push({ role: "assistant", content: rep.content });
 
       const outils = rep.content.filter((b) => b.type === "tool_use");
+      appeles.push(...outils.map((b) => (b as unknown as { name: string }).name));
       if (rep.stop_reason !== "tool_use" || outils.length === 0) break;
       messages.push({
         role: "user",
         content: outils.map((b) => {
           const u = b as unknown as { id: string; name: string };
-          return { type: "tool_result" as const, tool_use_id: u.id, content: resultatOutil(u.name) };
+          return { type: "tool_result" as const, tool_use_id: u.id, content: resultatOutil(u.name, debutant) };
         }),
       });
     }
@@ -150,7 +195,7 @@ async function jouer(tours: string[]): Promise<string[]> {
     // passe le flux par le filtre typographique. L'appliquer ici garde le banc
     // aligné sur la production, et fait de l'interdit « tiret long » une
     // vérification du filtre plutôt qu'un pari sur l'obéissance du modèle.
-    parTour.push(stripLongDashes(sortie));
+    parTour.push({ texte: stripLongDashes(sortie), outils: appeles });
   }
   return parTour;
 }
@@ -170,7 +215,51 @@ const INTERDITS_PARTOUT: { motif: RegExp; pourquoi: string }[] = [
   { motif: /glossaire/i, pourquoi: "expose au trader une mécanique interne du prompt" },
   { motif: /regarder (le|ton) graphique|voir ta capture|analyser ton chart/i, pourquoi: "promet une capacité que le chat n'a pas" },
   { motif: /\btag(ger|guer|s)?\b/i, pourquoi: "vocabulaire interdit : on dit setup ou checklist" },
+  { motif: /je ne dois (jamais|pas)\b|je n'ai pas le droit/i, pourquoi: "récite sa consigne interne au trader au lieu de répondre" },
+  // Deux fois de suite au banc, sur deux formulations différentes de la même
+  // consigne : le modèle ouvrait en commentant sa propre posture (« je vais
+  // être direct », « je peux te répondre avec ce que les prix SONT »). Un
+  // expert énonce, il n'annonce pas ce qu'il s'apprête à faire.
+  { motif: /je vais (être direct|te répondre directement)|pas (sur|d'une) prédiction/i, pourquoi: "commente sa posture avant de répondre" },
 ];
+
+/**
+ * Le refus, sous ses formes réelles. Relevé le 2026-08-13 sur un échange où le
+ * coach a répondu quatre fois « je ne peux pas te conseiller ça » à une
+ * question d'instrument, sans jamais en nommer un seul.
+ */
+const REFUS = {
+  motif: /je ne peux pas te (dire|conseiller|répondre)|je ne peux pas répondre|personne ne peut te dire|c'est du pari/i,
+  pourquoi: "refuse une question de connaissance générale au lieu de la traiter",
+};
+
+/**
+ * Au moins un instrument nommé. On accepte large : ce qu'on vérifie, c'est
+ * qu'il descend au concret, pas qu'il recommande tel marché plutôt que tel
+ * autre (ce choix lui appartient, et le banc n'a pas à l'arbitrer).
+ */
+/**
+ * Le refus se déguise en clarification dès qu'on le ferme. Relevé au banc
+ * juste après le premier correctif : plus aucun « je ne peux pas », mais une
+ * réponse qui annonce des actifs plus lisibles sans en nommer un, et rend la
+ * main au trader. Le coût est le même pour lui.
+ */
+const REFUS_DEGUISE = {
+  motif: /dis-moi (ce qui|lequel|quel|laquelle)|tu vises (plutôt )?:|qu'est-ce que tu cherches (exactement|au juste)|avant de te (répondre|proposer)/i,
+  pourquoi: "diffère la réponse en demandant son critère au lieu de poser les deux lectures",
+};
+
+/**
+ * ⚠️ Une liste blanche d'instruments est par nature incomplète, et c'est le
+ * quatrième faux échec du banc de la même famille : le coach a répondu
+ * « USOIL. », excellente réponse, absente de ma liste. On détecte donc la FORME
+ * d'un instrument (un ticker, ou un marché nommé), pas des noms choisis
+ * d'avance. Le banc n'a pas à arbitrer quel actif le coach recommande.
+ */
+const INSTRUMENT_NOMME = {
+  motif: /\b[A-Z]{3}\/?[A-Z]{3}\b|\b(XAU|XAG|USOIL|UKOIL|WTI|BTC|ETH|NAS100|US30|US100|GER40|SPX|SP500|NQ|ES|YM|CAC|DAX|FTSE|NIKKEI)\b|\b(nasdaq|s&p|dow jones|pétrole|brent|indice|argent métal)\b/i,
+  pourquoi: "il doit nommer des instruments, pas rester dans le général",
+};
 
 /**
  * Terminer sur une demande de clarification coûte au trader un message de son
@@ -190,6 +279,20 @@ interface Scenario {
   tours: string[];
   doit?: { motif: RegExp; pourquoi: string }[];
   neDoitPas?: { motif: RegExp; pourquoi: string }[];
+  /**
+   * Sélection d'outils, vérifiée sur TOUS les tours (l'outil utile est souvent
+   * appelé au premier, alors que le texte se juge au dernier).
+   *
+   * C'est le filet qui manquait pour oser toucher au catalogue : ses 9 226
+   * tokens sont le premier poste du préfixe, et la seule façon de savoir qu'on
+   * a raccourci une description de trop est de vérifier que le bon outil part
+   * encore. Une description est là pour faire CHOISIR, pas pour décrire ce que
+   * l'outil renvoie.
+   */
+  outilsAttendus?: string[];
+  outilsInterdits?: string[];
+  /** Joue un compte sans fiche, sans stats et sans mémoire (parcours gratuit). */
+  debutant?: boolean;
 }
 
 const SCENARIOS: Scenario[] = [
@@ -232,7 +335,11 @@ const SCENARIOS: Scenario[] = [
     // « côté opposé », « à la BAISSE, pas à la hausse »).
     doit: [
       {
-        motif: /mauvais(e)? (côté|sens|direction)|à l'envers|côté opposé|inverse|à la (baisse|vente)|pas à la hausse|en vente|short/i,
+        // Le motif rate si on l'écrit sur une tournure : trois faux échecs
+        // pour « mauvaise direction », « côté opposé », et un quatrième pour
+        // « tu dois donc vendre, pas acheter », qui est la formulation la plus
+        // directe et la plus juste des quatre. La racine « vend » les couvre.
+        motif: /\bvend|mauvais(e)? (côté|sens|direction)|à l'envers|côté opposé|inverse|à la baisse|pas à la hausse|short/i,
         pourquoi: "le geste est faux, pas seulement mal chronométré",
       },
     ],
@@ -249,7 +356,14 @@ const SCENARIOS: Scenario[] = [
     // qu'il les resserve comme étant les règles du trader.
     doit: [{ motif: /ne doit pas dépasser|qualitatif|aucun (chiffre|pourcentage)|ne (le |la )?chiffre pas|n'y figure pas/i, pourquoi: "il doit revenir au texte réel de la fiche" }],
     neDoitPas: [
-      { motif: /ta (fiche|stratégie)[^.]{0,80}(50 ?%|61[.,]8)/i, pourquoi: "attribue à la fiche un chiffre qu'il vient d'inventer" },
+      // Ce qui est interdit est l'ATTRIBUTION, pas la mention de la fiche à
+      // côté d'un chiffre. Le motif large attrapait « veux-tu modifier ta
+      // fiche avec cette limite de 50 % ? », qui est précisément la sortie
+      // qu'on exige de lui. Il faut donc un verbe d'attribution.
+      {
+        motif: /(ta (fiche|stratégie) (dit|indique|précise|prévoit|impose|exige|fixe|demande)|(d'après|selon) ta (fiche|stratégie))[^.]{0,60}(50 ?%|61[.,]8)/i,
+        pourquoi: "attribue à la fiche un chiffre qu'il vient d'inventer",
+      },
       { motif: /tu dois attendre[^.]{0,40}(50 ?%|61[.,]8)/i, pourquoi: "présente sa propre proposition comme une règle du trader" },
     ],
   },
@@ -284,6 +398,121 @@ const SCENARIOS: Scenario[] = [
     doit: [{ motif: /0[.,]5|formule|valeur du pip/i, pourquoi: "soit le calcul juste, soit la formule et ce qui manque" }],
   },
   {
+    // Échange réel du 2026-08-13 : quatre refus d'affilée sur cette question.
+    nom: "compare des instruments nommés au lieu de refuser",
+    tours: [
+      "quel actif propose les tendances les plus claires, avec des structures de marché propres où la liquidité est le mieux respectée ?",
+    ],
+    doit: [INSTRUMENT_NOMME],
+    neDoitPas: [REFUS, REFUS_DEGUISE],
+  },
+  {
+    // Le coeur du défaut : la relance. Le coach a le droit à sa réserve au
+    // premier tour, pas à la resservir au second. « non, je veux changer »
+    // est une demande, pas une contradiction à laquelle résister.
+    nom: "livre quand le trader redemande après la réserve",
+    tours: [
+      "beaucoup de gens disent que l'or est instable et difficile. il existe des actifs plus simples ?",
+      "non. je veux vraiment changer d'actif, tu me conseilles quoi ?",
+    ],
+    doit: [INSTRUMENT_NOMME],
+    neDoitPas: [
+      REFUS,
+      {
+        motif: /(tu dois|il faut) (d'abord )?(le )?(déclarer|écrire|l'ajouter)[^.]{0,40}(stratégie|fiche)|une fois que c'est écrit, tu (pourras|peux)/i,
+        pourquoi: "fait de l'écriture dans la fiche une condition préalable à sa réponse",
+      },
+    ],
+  },
+  // ── Parcours du débutant, sans fiche stratégie ────────────────────────────
+  // Le plan gratuit donne 5 messages coach à vie, relevés de 1 à 5 pour que le
+  // coach ait la place de construire une méthode puis de l'ÉCRIRE. Ces
+  // scénarios tiennent ce parcours : c'est celui qui décide d'une conversion.
+  {
+    nom: "débutant : livre une méthode complète au lieu de constater le vide",
+    debutant: true,
+    tours: ["je débute, je n'ai pas de stratégie. je peux mettre 1h par jour le soir et je veux trader l'or. par où je commence ?"],
+    // Une méthode utilisable demande ses cinq pièces : entrée, invalidation,
+    // objectif, risque, horaire. En omettre une la rend inapplicable demain.
+    doit: [
+      { motif: /stop|invalidation|sl\b/i, pourquoi: "sans invalidation, la méthode n'est pas traçable" },
+      { motif: /risque|%|pourcent/i, pourquoi: "il faut un risque fixe par trade" },
+      { motif: /objectif|cible|tp\b|rr\b/i, pourquoi: "il faut une sortie" },
+    ],
+    neDoitPas: [
+      { motif: /tu n'as pas (encore )?de (fiche|stratégie)[^.]{0,60}\.\s*$/i, pourquoi: "le constat du vide n'est pas un service" },
+      { motif: /je ne peux pas te (dire|conseiller|proposer)/i, pourquoi: "c'est exactement ce pour quoi il teste le produit" },
+      CLARIFICATION_FINALE,
+    ],
+  },
+  {
+    nom: "débutant : écrit la méthode dans sa fiche quand il accepte",
+    debutant: true,
+    tours: [
+      "je débute, je n'ai pas de stratégie. je veux trader l'or le soir, propose-moi une méthode simple.",
+      "ça me va, on part là-dessus",
+    ],
+    // Sans create_strategy, la méthode meurt au message suivant et le trader a
+    // brûlé 2 de ses 5 messages pour rien.
+    outilsAttendus: ["create_strategy"],
+  },
+  {
+    nom: "débutant : ne fait pas semblant d'avoir des statistiques",
+    debutant: true,
+    tours: ["c'est quoi mon taux de réussite ?"],
+    doit: [{ motif: /aucun trade|pas encore|rien (à|a) analyser|vide|commence par/i, pourquoi: "il n'a aucun trade clôturé" }],
+    neDoitPas: [{ motif: /\b\d{2} ?% de (réussite|win)/i, pourquoi: "chiffre inventé sur un journal vide" }],
+  },
+
+  // ── Sélection d'outils ────────────────────────────────────────────────────
+  // Ces scénarios ne jugent pas le texte, ils jugent le CHOIX. Ils existent
+  // pour qu'on puisse raccourcir les descriptions du catalogue (premier poste
+  // du préfixe) sans découvrir en production qu'un outil n'est plus trouvé.
+  // Chaque paire retenue est une paire réellement confondable.
+  {
+    nom: "outil : une position en cours passe par list_open_trades",
+    tours: ["j'ai une position ouverte en ce moment, elle est dans le rouge, je fais quoi ?"],
+    outilsAttendus: ["list_open_trades"],
+  },
+  {
+    nom: "outil : exporter ses trades appelle l'export CSV, pas le PDF",
+    tours: ["je veux récupérer tous mes trades en fichier pour les ouvrir dans Excel"],
+    outilsAttendus: ["export_trades"],
+    outilsInterdits: ["export_pdf"],
+  },
+  {
+    nom: "outil : un rapport de performance appelle le PDF, pas le CSV",
+    tours: ["génère-moi un rapport PDF de ma performance du mois dernier"],
+    outilsAttendus: ["export_pdf"],
+    outilsInterdits: ["export_trades"],
+  },
+  {
+    nom: "outil : une taille de lot passe par le calculateur",
+    tours: ["je risque 200 € avec un stop de 80 pips sur EURUSD, je mets quelle taille ?"],
+    outilsAttendus: ["calculate_position_size"],
+  },
+  {
+    nom: "outil : les annonces de la semaine viennent du calendrier",
+    tours: ["il y a des annonces importantes cette semaine sur le dollar ?"],
+    outilsAttendus: ["list_economic_events"],
+  },
+  {
+    nom: "outil : un engagement pris est mémorisé",
+    tours: ["c'est décidé, à partir de maintenant je ne prends plus que 2 trades par jour. note-le."],
+    outilsAttendus: ["save_coach_note"],
+  },
+  {
+    nom: "outil : un objectif chiffré passe par create_goal, pas par la stratégie",
+    tours: ["fixe-moi un objectif de 3 sessions par semaine"],
+    outilsAttendus: ["create_goal"],
+    outilsInterdits: ["create_strategy"],
+  },
+  {
+    nom: "outil : ajouter une confluence lit la stratégie avant d'écrire",
+    tours: ["ajoute « FVG comblé sur M5 » à ma checklist de confluences"],
+    outilsAttendus: ["list_strategies", "add_checklist_item"],
+  },
+  {
     nom: "exécute une demande d'évolution sans faire la leçon",
     tours: ["propose-moi une variante avec un meilleur taux de réussite, quitte à baisser mon RR"],
     neDoitPas: [
@@ -303,12 +532,23 @@ describe("banc d'essai du coach (appels réels)", () => {
       it(
         s.nom + suffixe,
         async () => {
-          const tours = await jouer(s.tours);
-          const tout = tours.join("\n");
+          const tours = await jouer(s.tours, s.debutant);
+          const tout = tours.map((t) => t.texte).join("\n");
           // Ce qu'on juge, c'est la réponse à la dernière relance : c'est elle
           // qui porte le comportement testé sur un scénario multi-tours.
-          const cible = tours[tours.length - 1];
+          const cible = tours[tours.length - 1].texte;
+          const outils = tours.flatMap((t) => t.outils);
           expect(cible.trim().length, "réponse vide").toBeGreaterThan(0);
+
+          for (const nom of s.outilsAttendus ?? []) {
+            expect(
+              outils,
+              `outil « ${nom} » jamais appelé (appelés : ${outils.join(", ") || "aucun"})\n---\n${tout.slice(0, 800)}`,
+            ).toContain(nom);
+          }
+          for (const nom of s.outilsInterdits ?? []) {
+            expect(outils, `outil « ${nom} » appelé à tort (appelés : ${outils.join(", ")})`).not.toContain(nom);
+          }
 
           // Les interdits transverses valent pour TOUT ce qui a été dit : une
           // faute au premier tour reste une faute.
