@@ -182,6 +182,70 @@ describe("le coach ne montre pas sa tuyauterie et ne renvoie pas la question", (
   });
 });
 
+/**
+ * Quatrième passage, 2026-08-13. Deux défauts, dont un grave.
+ *
+ * 1. Le fait posé au passage passe TOUJOURS. Le trader a écrit « en ce moment
+ *    j'achète après le balayage d'une BSL » ; le coach a diagnostiqué une
+ *    entrée trop précoce (un problème de TIMING) sans jamais relever que le
+ *    geste est du mauvais côté. Il n'a produit la correction directionnelle
+ *    que deux messages plus tard, quand le trader en a fait un désaccord
+ *    explicite. La règle ne couvrait pas le cas où la fausseté est portée par
+ *    une PRATIQUE décrite plutôt que par une assertion.
+ *
+ * 2. Le coach a écrit « Regarde ta propre stratégie : tu dois attendre les 7
+ *    étapes, dont le retracement profond (50-61.8%) ». Vérification de la
+ *    fiche en base : elle ne contient ni pourcentage, ni « 7 étapes », ni
+ *    « retracement profond ». Ces règles venaient d'une VARIANTE que le coach
+ *    avait lui-même proposée plus tôt dans la conversation, et qu'il servait
+ *    maintenant au trader comme étant sa méthode. Un trader qui applique ça
+ *    trade des règles qu'il n'a jamais écrites.
+ */
+describe("une pratique décrite est vérifiée comme une affirmation", () => {
+  const prompt = promptSysteme();
+
+  it("« en ce moment je fais X » est traité comme une affirmation sur X", () => {
+    const bloc = depuis(prompt, BLOC_FAITS);
+    expect(bloc).toMatch(/CE QU'IL DÉCRIT DE SA PROPRE PRATIQUE/);
+  });
+
+  it("on ne règle pas le timing d'un geste faux", () => {
+    // Le défaut exact : le coach a optimisé le moment d'une entrée prise du
+    // mauvais côté, ce qui rend la perte plus régulière, pas moins probable.
+    const rappel = depuis(prompt, "DERNIER RAPPEL");
+    expect(rappel).toMatch(/ne règle pas le timing d'une erreur/i);
+  });
+
+  it("la demande d'origine est quand même traitée après la correction", () => {
+    const bloc = depuis(prompt, BLOC_FAITS);
+    expect(bloc).toMatch(/traite quand même sa demande d'origine/i);
+  });
+});
+
+describe("ce que le coach a proposé n'est pas la stratégie du trader", () => {
+  const prompt = promptSysteme();
+
+  it("seul le bloc fiche porte le nom de stratégie", () => {
+    const bloc = depuis(prompt, "CE BLOC EST LA SEULE CHOSE");
+    expect(bloc).toMatch(/même si c'est toi qui l'as proposé/i);
+  });
+
+  it("les formules d'attribution fautives sont nommées", () => {
+    // Interdire « en général » ne suffit pas : le modèle a écrit très
+    // exactement « regarde ta propre stratégie » et « tu dois attendre ».
+    const bloc = depuis(prompt, "CE BLOC EST LA SEULE CHOSE");
+    expect(bloc).toContain('"ta stratégie dit"');
+    expect(bloc).toContain('"tu dois attendre"');
+  });
+
+  it("la sortie proposée est d'écrire la fiche, pas seulement de se taire", () => {
+    // Sans issue, la règle pousse le coach à ne plus rien proposer. Ce qu'on
+    // veut, c'est qu'il propose ET qu'il écrive quand le trader accepte.
+    const bloc = depuis(prompt, "CE BLOC EST LA SEULE CHOSE");
+    expect(bloc).toContain("update_strategy");
+  });
+});
+
 describe("le bloc de contradiction distingue la fiche du chat", () => {
   const prompt = promptSysteme();
 
