@@ -11,7 +11,7 @@ import es from "./i18n/es";
 /**
  * La matrice marketing promettait « 10 analyses par jour » en Premium quand le
  * produit en délivrait 2, et « 30 messages/jour » quand le plafond mensuel
- * s'arrête à 450, soit 15/jour en moyenne. Ces écarts ne se voient pas : rien
+ * s'arrête à 260, soit 12/jour en moyenne. Ces écarts ne se voient pas : rien
  * ne relie la copy au code des quotas.
  *
  * Ces tests posent le lien. Ils échouent si quelqu'un change un quota sans
@@ -225,5 +225,38 @@ describe("les cartes de paliers du coach disent les vrais chiffres", () => {
       expect(DICOS[lang].cap_quota_daily_capped, `capped en ${lang}`).toContain("{count}");
       expect(DICOS[lang].cap_quota_daily_capped, `capped en ${lang}`).toContain("{cap}");
     }
+  });
+});
+
+/**
+ * LES DEUX BORNES DOIVENT ÊTRE AFFICHÉES, PAS SEULEMENT LA JOURNALIÈRE.
+ *
+ * Le dock du coach ne montrait que « n messages restants aujourd'hui ». Le
+ * plafond MENSUEL existait côté serveur depuis le 2026-08-06, mais il était
+ * délibérément invisible : à 2,6× l'usage d'un professionnel à plein temps,
+ * personne n'était censé le rencontrer.
+ *
+ * Ce raisonnement est mort le 2026-08-14, quand le coach Premium est passé sur
+ * Sonnet 5 et que le plafond est descendu à 1,5× cet usage. Une limite qu'on
+ * peut atteindre doit se voir AVANT : la découvrir en la heurtant, après avoir
+ * payé 29,99 €, est la pire façon de l'apprendre.
+ */
+describe("le dock du coach affiche ses deux limites", () => {
+  it("la copy porte les deux compteurs, dans les quatre langues", () => {
+    const DICOS: Record<string, Record<string, string>> = { fr, en, de, es };
+    for (const [lang, dict] of Object.entries(DICOS)) {
+      const s = dict["coach_dock_remaining_both"] as string | undefined;
+      expect(s, `${lang} : clé coach_dock_remaining_both manquante`).toBeTruthy();
+      expect(s, `${lang} : le compteur du jour manque`).toContain("{d}");
+      expect(s, `${lang} : le compteur du mois manque`).toContain("{m}");
+    }
+  });
+
+  it("le mensuel Premium reste au-dessus du journalier, sinon l'affichage se contredit", () => {
+    // Afficher « 30 aujourd'hui, 12 ce mois » serait absurde : la borne du mois
+    // doit toujours laisser au moins une journée pleine, sinon le quota
+    // journalier annoncé au trader est une fiction dès le premier jour.
+    expect(PLAN_MONTHLY_CEILING.chat.premium).toBeGreaterThan(PLAN_LIMITS.chat.premium.limit);
+    expect(PLAN_MONTHLY_CEILING.chat.plus).toBeGreaterThan(PLAN_LIMITS.chat.plus.limit);
   });
 });

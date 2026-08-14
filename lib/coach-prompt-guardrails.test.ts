@@ -613,3 +613,34 @@ describe("les chiffres sortis par le coach sont bornés", () => {
     expect(prompt).toMatch(/pip d'or n'est pas un pip/i);
   });
 });
+
+/**
+ * ⚠️ LE PROMPT NE PROMET QUE DES CAPACITÉS RÉELLEMENT SERVIES.
+ *
+ * Défaut réel du 2026-08-14, attrapé à la relecture et PAS par le banc : la
+ * recherche web a été retirée de la route (mesurée inerte sur Haiku), mais sa
+ * consigne est restée dans le prompt. Le coach lisait donc « tu disposes d'une
+ * recherche web » sans que l'outil lui soit envoyé.
+ *
+ * C'est la famille de défauts la plus coûteuse du produit, celle qui a déjà
+ * donné « je vais regarder ton graphique » et « je clôture ta position » : une
+ * capacité annoncée et absente fait perdre au trader un message de son quota
+ * pour découvrir qu'elle n'existe pas. Le banc ne l'a pas vue parce qu'aucun
+ * scénario ne posait de question qui l'aurait déclenchée — un test gratuit sur
+ * le texte l'attrape, lui, à chaque fois.
+ */
+describe("le prompt ne promet aucune capacité absente", () => {
+  const prompt = promptSysteme();
+
+  it("ne parle pas d'une recherche web, puisque l'outil n'est plus servi", () => {
+    expect(prompt.toLowerCase()).not.toContain("recherche web");
+    expect(prompt).not.toMatch(/tu disposes d'une recherche|cherche sur (le web|internet)/i);
+  });
+
+  it("garde en revanche les capacités qui, elles, existent", () => {
+    // Garde-fou du garde-fou : une interdiction trop large viderait le prompt
+    // de ce qui fait travailler le coach.
+    expect(prompt).toContain("find_trades");
+    expect(prompt).toContain("update_strategy");
+  });
+});

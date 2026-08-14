@@ -15,8 +15,6 @@
  * gratuite : préférer une règle précise à trois règles qui se recouvrent.
  */
 
-import { WEB_SEARCH_RULE } from "@/lib/coach-web-search";
-
 export interface CoachPromptParams {
   /** Langue de réponse, en toutes lettres ("français", "English"…). */
   langName: string;
@@ -114,8 +112,6 @@ Tu disposes d'outils pour créer, modifier ou supprimer ses objectifs, l'inscrir
 - Si un outil renvoie une erreur, explique simplement et propose une alternative, et n'insiste pas en boucle.
 - Quand le trader prend un engagement pendant la conversation (« ok, max 3 trades/jour »), propose de le mémoriser avec save_coach_note, et fais-le s'il accepte.
 - Ne modifie rien spontanément : les outils s'utilisent sur demande du trader ou après son accord explicite à ta suggestion.
-
-${WEB_SEARCH_RULE}
 
 PÉRIMÈTRE : tu ne traites que le trading (performance, marchés, stratégie, risque, psychologie du trader, challenges de prop firm, ses données). Hors de là, décline en une phrase en disant que tu es spécialisé sur le trading, et n'enchaîne pas.
 

@@ -4,9 +4,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { buildCoachSystemPrompt } from "./coach-system-prompt";
 import { renderMethodGlossaries, ALL_METHOD_FAMILIES, MAX_GLOSSARIES } from "./coach-method-glossaries";
 import { coachToolsForPlan } from "./coach-tools";
-import { webSearchTool } from "./coach-web-search";
-import { costEur } from "./ai-cost-log";
-import { PLAN_MONTHLY_CEILING } from "./ai-ceilings";
+import { differerCatalogue } from "./coach-tool-search";
+import { COACH_DEFAULT } from "./product-margin";
 
 /**
  * GARDE-FOU DE MARGE.
@@ -35,43 +34,21 @@ const CLE = (() => {
   return process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY || "";
 })();
 
-const MODELE = "claude-haiku-4-5-20251001";
+const MODELES = { premium: "claude-sonnet-5", plus: "claude-haiku-4-5-20251001" } as const;
 
 /**
- * Le catalogue TEL QU'IL PART EN PRODUCTION, recherche web comprise. Compter
- * le préfixe sans elle sous-estimerait ce qu'on paie à chaque message, et
- * c'est précisément ce chiffre qui pilote les arbitrages de modèle.
+ * Le catalogue TEL QU'IL PART EN PRODUCTION : 39 outils en `defer_loading`
+ * derrière l'outil de recherche, et plus de recherche web depuis le
+ * 2026-08-14. Mesurer autre chose ici, c'est piloter les arbitrages de modèle
+ * sur un préfixe qui n'existe pas.
  */
-function outilsProduction(): unknown[] {
-  return [...coachToolsForPlan("premium"), webSearchTool(MODELE)];
+function outilsProduction(plan: "premium" | "plus"): unknown[] {
+  // Premium seul a le catalogue différé : sur Haiku le report ne finance rien
+  // et fait perdre `create_strategy` au débutant (mesuré au banc le 2026-08-14).
+  return plan === "premium"
+    ? differerCatalogue(coachToolsForPlan("premium"))
+    : coachToolsForPlan("plus");
 }
-
-/**
- * Enveloppe du coach pour un abonné Premium, en euros par mois.
- *
- * Origine : c'est la part du prix d'abonnement qu'on accepte de dépenser en
- * coach pour un abonné qui va jusqu'à son plafond mensuel, une fois déduits
- * Stripe, l'infrastructure et les autres routes IA. Elle a été posée lors de
- * l'analyse de coût du 2026-08-10, celle qui a écarté Sonnet 5 sur le coach.
- *
- * Ce n'est PAS le coût attendu : c'est le pire cas admissible. Le coût réel
- * observé est très inférieur, parce que personne n'épuise son plafond.
- */
-const ENVELOPPE_PREMIUM_EUR = 8.36;
-
-/** Hypothèses du pire cas, explicites pour être discutables. */
-const PIRE_CAS = {
-  /** Messages par mois : le plafond du disjoncteur, pas une moyenne. */
-  messages: PLAN_MONTHLY_CEILING.chat.premium,
-  /** Appels modèle par message : 1 + les tours d'outils. */
-  roundsParMessage: 1.4,
-  /** Conversations distinctes par mois : autant d'écritures de cache. */
-  conversations: 40,
-  /** Historique moyen envoyé avec chaque appel, en tokens. */
-  historique: 3000,
-  /** Sortie moyenne par appel modèle, en tokens. */
-  sortie: 800,
-} as const;
 
 /**
  * Compte les tokens du préfixe réel.
@@ -83,10 +60,10 @@ const PIRE_CAS = {
  * /v1/messages avec `max_tokens: 1`, qui accepte les outils serveur et rend le
  * vrai `input_tokens` de production. Coût : une sortie d'un token par appel.
  */
-async function compterTokens(systeme: string, outils: unknown[]): Promise<number> {
+async function compterTokens(systeme: string, outils: unknown[], modele: string): Promise<number> {
   const client = new Anthropic({ apiKey: CLE });
   const r = await client.messages.create({
-    model: MODELE,
+    model: modele,
     max_tokens: 1,
     system: systeme,
     tools: outils as Anthropic.Tool[],
@@ -117,83 +94,33 @@ function promptMaximal(): string {
   });
 }
 
-describe("marge du coach au pire cas", () => {
-  it("le préfixe système reste sous son plafond de taille", async () => {
+describe("le préfixe réel et le modèle économique disent la même chose", () => {
+  it("mesure le préfixe de production et le confronte au modèle", async () => {
     if (!CLE) throw new Error("Aucune clé API : renseigne CLAUDE_API_KEY dans .env.local.");
-    const prefixe = await compterTokens(promptMaximal(), outilsProduction());
-    console.log(`\n  Préfixe système + outils (pire cas) : ${prefixe} tokens`);
-    // Mesuré 19 820 le 2026-08-13, puis 22 731 le 2026-08-14 après l'ajout de
-    // la recherche web. Le seuil est passé de 22 000 à 24 000, ET C'EST UN
-    // ARBITRAGE ASSUMÉ, pas un plafond qu'on repousse quand il gêne :
-    //  - l'outil serveur pèse ~1 600 tokens à lui seul, parce que l'API
-    //    injecte ses propres instructions d'usage avec lui. Ce n'est pas de la
-    //    dérive de prose, c'est le prix d'une capacité ;
-    //  - surtout, ce test n'est plus le vrai garde-fou. Il mesurait la taille
-    //    comme PROXY du coût, faute de mieux. Depuis le 2026-08-14 la marge du
-    //    produit entier est tenue par `product-margin.test.ts`, qui échoue si
-    //    un abonné au plafond coûte plus qu'il ne rapporte. Ce seuil-ci ne sert
-    //    plus qu'à rendre une dérive VISIBLE, pas à décider.
-    // Le franchir reste un arbitrage à faire les yeux ouverts, chiffre en main.
-    expect(prefixe, "le préfixe a dépassé son plafond : arbitrer avant d'ajouter").toBeLessThan(24_000);
+    // ⚠️ C'EST LE SEUL TEST QUI RELIE LE MODÈLE ÉCONOMIQUE À LA RÉALITÉ, et il
+    // mesure LES DEUX MODÈLES : le même prompt ne compte pas le même nombre de
+    // tokens sur Haiku et sur Sonnet (+45 %). Avoir mesuré un seul des deux a
+    // failli faire livrer une configuration déficitaire le 2026-08-14.
+    for (const plan of ["premium", "plus"] as const) {
+      const prefixe = await compterTokens(promptMaximal(), outilsProduction(plan), MODELES[plan]);
+      const attendu = COACH_DEFAULT.prefixeParModele[plan];
+      console.log(`
+  Préfixe ${plan} (${MODELES[plan]}) : ${prefixe} tokens, modèle ${attendu}`);
+      expect(
+        Math.abs(prefixe - attendu) / attendu,
+        `préfixe ${plan} mesuré ${prefixe} contre ${attendu} dans product-margin.ts. ` +
+          `Mettre COACH_DEFAULT.prefixeParModele.${plan} à jour ET revérifier la marge.`,
+      ).toBeLessThan(0.08);
+    }
   });
 
-  it("un abonné Premium au plafond reste dans l'enveloppe", async () => {
+  it("le préfixe reste sous le plafond qui rend une dérive visible", async () => {
     if (!CLE) throw new Error("Aucune clé API : renseigne CLAUDE_API_KEY dans .env.local.");
-    const prefixe = await compterTokens(promptMaximal(), outilsProduction());
-    const appels = PIRE_CAS.messages * PIRE_CAS.roundsParMessage;
-
-    // Écritures de cache : une par conversation. TTL 1 h => 2x le tarif d'entrée.
-    // costEur applique 1,25x (TTL 5 min), on corrige donc le facteur.
-    const ecritures = PIRE_CAS.conversations * prefixe;
-    const coutEcritures = costEur(MODELE, { cache_creation_input_tokens: ecritures }) * (2 / 1.25);
-    // Lectures de cache : tous les autres appels.
-    const coutLectures = costEur(MODELE, {
-      cache_read_input_tokens: Math.max(0, appels - PIRE_CAS.conversations) * prefixe,
-    });
-    // Historique et sorties : jamais mis en cache au-delà du dernier point.
-    const coutHistorique = costEur(MODELE, { input_tokens: appels * PIRE_CAS.historique });
-    const coutSorties = costEur(MODELE, { output_tokens: appels * PIRE_CAS.sortie });
-
-    const total = coutEcritures + coutLectures + coutHistorique + coutSorties;
-    console.log(
-      `\n  Pire cas Premium (${PIRE_CAS.messages} messages, ${Math.round(appels)} appels) :\n` +
-        `    écritures de cache : ${coutEcritures.toFixed(2)} EUR\n` +
-        `    lectures de cache  : ${coutLectures.toFixed(2)} EUR\n` +
-        `    historique         : ${coutHistorique.toFixed(2)} EUR\n` +
-        `    sorties            : ${coutSorties.toFixed(2)} EUR\n` +
-        `    TOTAL              : ${total.toFixed(2)} EUR sur ${ENVELOPPE_PREMIUM_EUR} EUR d'enveloppe\n` +
-        `    marge restante     : ${(ENVELOPPE_PREMIUM_EUR - total).toFixed(2)} EUR\n`,
-    );
-
-    expect(
-      total,
-      `pire cas ${total.toFixed(2)} EUR contre ${ENVELOPPE_PREMIUM_EUR} EUR d'enveloppe. ` +
-        `Le prompt a grossi, ou une hypothèse a changé : trancher avant de livrer.`,
-    ).toBeLessThan(ENVELOPPE_PREMIUM_EUR);
-  });
-
-  it("dit lequel de l'entrée ou de la sortie domine, pour savoir où couper", async () => {
-    if (!CLE) throw new Error("Aucune clé API : renseigne CLAUDE_API_KEY dans .env.local.");
-    const prefixe = await compterTokens(promptMaximal(), outilsProduction());
-    const appels = PIRE_CAS.messages * PIRE_CAS.roundsParMessage;
-    const sorties = costEur(MODELE, { output_tokens: appels * PIRE_CAS.sortie });
-    const entrees = costEur(MODELE, {
-      cache_read_input_tokens: appels * prefixe,
-      input_tokens: appels * PIRE_CAS.historique,
-    });
-    console.log(`\n  entrée ${entrees.toFixed(2)} EUR contre sortie ${sorties.toFixed(2)} EUR\n`);
-
-    // ⚠️ CE TEST A CHANGÉ DE SENS LE 2026-08-13, ET C'EST LE POINT INTÉRESSANT.
-    // L'analyse qui avait écarté Sonnet 5 concluait que la SORTIE faisait le
-    // coût, donc que tailler dans le prompt ne rapportait rien. Avec un préfixe
-    // passé à ~20 000 tokens (dont environ la moitié en catalogue d'outils),
-    // ce n'est plus vrai : l'entrée est devenue le poste dominant.
-    //
-    // Conséquence pratique : raccourcir le prompt ET le catalogue d'outils
-    // rapporte désormais plus que raccourcir les réponses. Si un jour ce test
-    // se remet à échouer, c'est que la sortie est repassée devant, et le levier
-    // aura changé de côté : relire ce commentaire avant de conclure.
-    expect(entrees).toBeGreaterThan(sorties);
+    const prefixe = await compterTokens(promptMaximal(), outilsProduction("premium"), MODELES.premium);
+    // Mesuré sur le modèle le plus cher, seul pire cas qui compte. Le plafond
+    // n'est plus le garde-fou de coût (`product-margin.test.ts` l'est, en
+    // euros) : il rend une dérive VISIBLE avant qu'elle ne coûte.
+    expect(prefixe, "le préfixe a dépassé son plafond : arbitrer avant d'ajouter").toBeLessThan(23_000);
   });
 });
 
@@ -206,9 +133,9 @@ describe("marge du coach au pire cas", () => {
 describe("ventilation du préfixe", () => {
   it("dit ce que pèsent les règles, les glossaires et les outils", async () => {
     if (!CLE) throw new Error("Aucune clé API : renseigne CLAUDE_API_KEY dans .env.local.");
-    const outils = coachToolsForPlan("premium");
-    const sansOutils = await compterTokens(promptMaximal(), []);
-    const avecOutils = await compterTokens(promptMaximal(), outils);
+    const outils = outilsProduction("premium");
+    const sansOutils = await compterTokens(promptMaximal(), [], MODELES.premium);
+    const avecOutils = await compterTokens(promptMaximal(), outils as unknown[], MODELES.premium);
     const nu = await compterTokens(
       buildCoachSystemPrompt({
         langName: "français",
@@ -223,6 +150,7 @@ describe("ventilation du préfixe", () => {
         timezone: "Europe/Paris",
       }),
       [],
+      MODELES.premium,
     );
     console.log(
       `\n  Ventilation du préfixe (pire cas) :\n` +

@@ -161,7 +161,18 @@ Réponds via l'outil report_visual_review.`;
     const client = new Anthropic({ apiKey });
     const message = await client.messages.create({
       model: "claude-sonnet-5",
-      max_tokens: 4000,
+      // ⚠️ RAMENÉ DE 4 000 À 2 000 LE 2026-08-14. Ce n'est pas une restriction
+      // de qualité : la sortie est un appel d'outil STRUCTURÉ (sept champs,
+      // dont deux enums, un résumé de 2-3 phrases et deux listes de 1 à 3
+      // entrées). Le schéma lui-même borne le contenu bien avant 2 000 tokens.
+      //
+      // Pourquoi ça compte : cette route est la PLUS CHÈRE du produit, devant
+      // le coach, et elle tourne sur Sonnet 5 sans aucun cache. Le plafond de
+      // sortie y était le premier poste (2,24 € contre 1,81 € d'entrée), et
+      // c'est un plafond qu'on paie en risque même sans l'atteindre : il fixe
+      // le pire cas que `product-margin.ts` doit couvrir. Le diviser par deux
+      // rend 0,75 € par abonné Premium, sans retirer une ligne au trader.
+      max_tokens: 2000,
       system: `Tu es un coach de trading expert et honnête. Tu tutoies toujours le trader. Tu réponds uniquement en ${langName}.`,
       tools: [
         {

@@ -14,6 +14,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { DEMO_COACH } from "@/lib/demo-fixtures";
 import type { Lang } from "@/lib/translations";
 import { FREE_LIFETIME_CHAT_MESSAGES, PLAN_LIMITS } from "@/lib/plan-limits";
+import { PLAN_MONTHLY_CEILING } from "@/lib/ai-ceilings";
 import type { PlanType } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
 import { track } from "@/lib/track";
@@ -301,6 +302,8 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [dailyCount, setDailyCount] = useState(0);
+  /** Messages déjà consommés sur le mois en cours (disjoncteur mensuel). */
+  const [monthlyCount, setMonthlyCount] = useState(0);
   const [hasOlderChat, setHasOlderChat] = useState(false);
   /** Messages du trader déjà en base avant aujourd'hui (forfait découverte). */
   const [freeOlderUserCount, setFreeOlderUserCount] = useState(0);
@@ -316,6 +319,14 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
   const freeRemaining = freeMessagesRemaining(freeOlderUserCount, messages);
   const freeTasterUsed = freeRemaining <= 0;
   const remaining = isPaidPlan ? Math.max(0, limit - dailyCount) : freeRemaining;
+  /**
+   * Plafond MENSUEL, la seconde borne. Elle existait déjà côté serveur mais
+   * restait invisible : le trader la découvrait en la heurtant. Tant qu'elle
+   * valait 2,6× l'usage d'un professionnel c'était tenable ; depuis qu'elle est
+   * à 1,5× (le prix de Sonnet 5 sur le coach), il faut qu'elle se voie.
+   */
+  const monthlyLimit = isPaidPlan ? PLAN_MONTHLY_CEILING.chat[plan] : 0;
+  const monthlyRemaining = isPaidPlan ? Math.max(0, monthlyLimit - monthlyCount) : 0;
   const canChat = isPaidPlan || !hasOlderChat;
 
   /** Lit en base le compteur du jour, la conversation du jour et l'antériorité. */
@@ -323,7 +334,13 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
     const today = new Date().toISOString().split("T")[0];
-    const [{ data: profile }, { data: todayRows }, { count: olderCount }, { count: olderUserCount }] = await Promise.all([
+    // Le mois se calcule dans le fuseau du trader, exactement comme côté
+    // serveur (lib/ai-ceilings → monthKey) : à cheval sur un changement de
+    // mois, deux conventions donneraient deux compteurs différents et le
+    // trader verrait son quota « repartir » ou « disparaître » sans raison.
+    const month = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit" })
+      .format(new Date()).slice(0, 7);
+    const [{ data: profile }, { data: todayRows }, { count: olderCount }, { count: olderUserCount }, { data: monthRow }] = await Promise.all([
       supabase.from("profiles").select("daily_chat_count, daily_chat_reset").eq("id", user.id).maybeSingle(),
       supabase.from("chat_messages").select("id, role, content, created_at")
         .eq("user_id", user.id).gte("created_at", today).order("created_at", { ascending: true }).limit(50),
@@ -337,6 +354,11 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
       // filtre que la porte serveur, sinon les deux comptent différemment.
       supabase.from("chat_messages").select("id", { count: "exact", head: true })
         .eq("user_id", user.id).eq("role", "user").lt("created_at", today),
+      // Compteur mensuel. La table n'a qu'une policy de LECTURE sur ses propres
+      // lignes (migration 20260814) : les écritures restent le monopole des
+      // fonctions SECURITY DEFINER du disjoncteur.
+      supabase.from("ai_monthly_usage").select("count")
+        .eq("user_id", user.id).eq("feature", "chat").eq("month", month).maybeSingle(),
     ]);
     return {
       today,
@@ -344,6 +366,8 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
       rows: (todayRows ?? []) as ChatMessage[],
       hasOlder: (olderCount ?? 0) > 0,
       olderUserCount: olderUserCount ?? 0,
+      // Absent = aucun message ce mois-ci, pas une erreur.
+      monthlyCount: (monthRow as { count?: number } | null)?.count ?? 0,
     };
   }, [supabase]);
 
@@ -354,6 +378,7 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
     const state = await fetchToday();
     if (!state) return;
     if (state.dailyCount !== null) setDailyCount(state.dailyCount);
+    setMonthlyCount(state.monthlyCount);
     if (state.rows.length) setMessages(state.rows);
     setHasOlderChat(state.hasOlder);
     setFreeOlderUserCount(state.olderUserCount);
@@ -381,6 +406,7 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
     const state = await fetchToday();
     if (!state) return;
     setDailyCount(state.dailyCount ?? 0);
+    setMonthlyCount(state.monthlyCount);
     setHasOlderChat(state.hasOlder);
     setFreeOlderUserCount(state.olderUserCount);
     setMessages((prev) => mergeCoachHistory(prev, state.rows));
@@ -510,6 +536,10 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
 
       const newCount = dailyCount + 1;
       setDailyCount(newCount);
+      // Le compteur mensuel est incrémenté SERVEUR par le disjoncteur ; on le
+      // suit ici en local pour que l'affichage ne mente pas jusqu'au prochain
+      // rechargement. `refresh` le resynchronisera sur la vraie valeur.
+      setMonthlyCount((c) => c + 1);
       const today = new Date().toISOString().split("T")[0];
       await supabase.from("profiles")
         .update({ daily_chat_count: newCount, daily_chat_reset: today })
@@ -610,6 +640,7 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
     loading, send, undo, resolveConfirm, refresh,
     dailyCount, setDailyCount,
     remaining, limit, canChat, isPaidPlan, freeTasterUsed,
+    monthlyRemaining, monthlyLimit,
     hasOlderChat, setHasOlderChat,
   };
 }

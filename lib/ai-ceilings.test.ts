@@ -30,11 +30,35 @@ describe("plafonds mensuels", () => {
     }
   });
 
-  it("laisse au moins le double de l'usage intensif au Premium", () => {
-    for (const feature of ["analyze", "chat"] as const) {
-      const ceiling = PLAN_MONTHLY_CEILING[feature].premium;
-      expect(ceiling / USAGE_INTENSIF[feature], `${feature}/premium trop bas`).toBeGreaterThanOrEqual(2);
-    }
+  it("laisse au moins le double de l'usage intensif au Premium, là où c'est gratuit", () => {
+    // `analyze` seulement. Le ×2 est une marge de confort, et elle ne se
+    // défend que tant que le plafond ne coûte rien à relever.
+    const ceiling = PLAN_MONTHLY_CEILING.analyze.premium;
+    expect(ceiling / USAGE_INTENSIF.analyze, "analyze/premium trop bas").toBeGreaterThanOrEqual(2);
+  });
+
+  it("le plafond du chat est borné par l'argent, pas par un multiple de confort", () => {
+    // ⚠️ POURQUOI `chat` SORT DE LA RÈGLE PRÉCÉDENTE, le 2026-08-14.
+    //
+    // Le ×2 a été écrit quand un plafond ne coûtait rien : on prenait de la
+    // marge parce qu'il n'y avait aucune raison de ne pas en prendre. Ce n'est
+    // plus vrai depuis que le coach tourne sur Sonnet 5. À 320 messages il
+    // coûte 12,36 € pour 13,21 € d'enveloppe ; à 352 (le ×2 exact) il passe à
+    // 13,65 € et le produit perd de l'argent. Le multiple de confort et la
+    // rentabilité se contredisent, et c'est la rentabilité qui gagne.
+    //
+    // Le vrai garde-fou est donc `product-margin.test.ts`, qui raisonne en
+    // euros et non en ratio. Il reste un plancher ici, mais il protège autre
+    // chose : que le fusible ne morde pas un usage légitime.
+    //
+    // D'où vient 1,35 : « Julie » est elle-même un modèle, pas une mesure.
+    // Exiger 35 % au-dessus, c'est couvrir le cas où ce modèle sous-estimerait
+    // d'un tiers l'usage d'une professionnelle à plein temps. En dessous, on
+    // murerait un abonné qui fait son métier. Les cas au-delà se traitent
+    // compte par compte (`profiles.ai_ceiling_multiplier`), ce que la FAQ
+    // annonce déjà au trader.
+    const ratio = PLAN_MONTHLY_CEILING.chat.premium / USAGE_INTENSIF.chat;
+    expect(ratio, "chat/premium : le fusible mordrait un usage légitime").toBeGreaterThan(1.35);
   });
 
   it("ne mord jamais sur le Plus : son quota journalier borne déjà le mois", () => {

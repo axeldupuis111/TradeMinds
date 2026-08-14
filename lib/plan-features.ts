@@ -8,7 +8,7 @@
  * Valeurs : true = inclus, false = non inclus, "1" = quantité,
  * "1/plan_day" = quantité + clé i18n de période, "plan_unlimited" = illimité.
  * Un quota peut porter DEUX bornes séparées par « | »
- * (« 30/plan_day|450/plan_month_max ») : voir planQuotaSegments ci-dessous.
+ * (« 30/plan_day|260/plan_month_max ») : voir planQuotaSegments ci-dessous.
  */
 
 import { toolCountForPlan } from "@/lib/coach-capabilities";
@@ -27,12 +27,12 @@ export interface PlanFeature {
  *
  * Un quota journalier ne dit pas toute la vérité quand un plafond mensuel
  * mord avant la fin du mois : Premium annonçait « 30 messages/jour » alors
- * que le disjoncteur s'arrête à 450 par mois, soit 15/jour en moyenne. Le
+ * que le disjoncteur s'arrête à 260 par mois, soit 12/jour en moyenne. Le
  * trader qui consommait vraiment ses 30 quotidiens heurtait un mur vers le 15.
  *
  * Les deux bornes s'affichent donc ensemble, et la mensuelle porte la clé
- * `plan_month_max` (« /mois max ») et non `plan_month` : « 30/jour · 450/mois »
- * se lit comme deux promesses qui se contredisent, « 30/jour · 450/mois max »
+ * `plan_month_max` (« /mois max ») et non `plan_month` : « 30/jour · 260/mois »
+ * se lit comme deux promesses qui se contredisent, « 30/jour · 260/mois max »
  * se lit comme un débit et une enveloppe.
  *
  * Rendu ici plutôt que dans les pages : la landing et la page d'upgrade
@@ -71,8 +71,8 @@ export const PLAN_FEATURES: PlanFeature[] = [
   // dans chat-coach). Un seul message ne démontrait plus rien depuis que le
   // coach construit une méthode avec le débutant, ce qui demande un échange.
   // Plus : 5/jour × 30 = 150 = son plafond mensuel, cohérent.
-  // Premium : 30/jour mais 450/mois, soit 15/jour en moyenne — les deux bornes.
-  { key: "plan_feat_coach_ai",          free: "plan_taster_coach", plus: "5/plan_day", premium: "30/plan_day|450/plan_month_max" },
+  // Premium : 30/jour mais 260/mois, soit 12/jour en moyenne — les deux bornes.
+  { key: "plan_feat_coach_ai",          free: "plan_taster_coach", plus: "5/plan_day", premium: "30/plan_day|260/plan_month_max" },
   { key: "plan_feat_debrief_ai",        free: false,         plus: true,             premium: true },
   { key: "plan_feat_weekly_plan",       free: false,         plus: true,             premium: true },
   { key: "plan_feat_daily_summary",     free: false,         plus: true,             premium: true },

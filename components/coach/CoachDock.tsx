@@ -173,8 +173,18 @@ export default function CoachDock() {
             <div className="flex-1 min-w-0">
               <h2 className="text-sm font-bold text-foreground leading-tight">{t("coach_dock_title")}</h2>
               {chat.isPaidPlan && (
+                /*
+                 * LES DEUX BORNES, TOUJOURS. Le dock n'affichait que le
+                 * quotidien : le plafond mensuel existait côté serveur mais le
+                 * trader le découvrait en le heurtant, après avoir payé. C'était
+                 * défendable tant qu'il valait 2,6× l'usage d'un professionnel ;
+                 * depuis qu'il est à 1,5× (le prix de Sonnet 5 sur le coach),
+                 * une limite qu'on peut atteindre doit se voir avant.
+                 */
                 <p className="text-[11px] text-foreground-muted">
-                  {t("coach_dock_remaining").replace("{n}", String(chat.remaining))}
+                  {t("coach_dock_remaining_both")
+                    .replace("{d}", String(chat.remaining))
+                    .replace("{m}", String(chat.monthlyRemaining))}
                 </p>
               )}
             </div>

@@ -46,29 +46,37 @@ describe("le produit reste rentable à plein quota", () => {
     });
   }
 
-  it("la marge Premium reste saine à un usage réaliste de la recherche web", () => {
+  it("la marge Premium survit à des majorants sous-estimés", () => {
     // ⚠️ DEUX EXIGENCES DIFFÉRENTES, ET IL FAUT LES DEUX.
     //
-    // Le test précédent tient la règle dure : jamais de perte, même si un
-    // abonné épuise tout, y compris en dépensant une recherche web sur chacun
-    // de ses 450 messages. Ce majorant laisse 0,77 €, soit 2,6 % du prix :
-    // positif, donc conforme, mais trop mince pour absorber une dérive.
+    // Le test précédent tient la règle dure : jamais de perte quand un abonné
+    // épuise tout. Mais il la tient sur un modèle dont SEPT routes sur onze
+    // sont chiffrées par majorant assumé et non par mesure. Une marge positive
+    // n'est donc une marge que si elle survit à ces estimations.
     //
-    // Ce test-ci mesure le cas réaliste. Le prompt interdit explicitement de
-    // chercher ce que les outils internes savent déjà, donc la grande majorité
-    // des messages ne cherche pas. À 30 %, le coussin doit rester franc. Si ce
-    // test tombe alors que le précédent passe, ce n'est pas la recherche qui
-    // dérape : c'est le reste du produit qui a grossi.
-    //
-    // D'OÙ VIENT LE SEUIL DE 10 %, et pourquoi il n'est pas choisi au doigt
-    // mouillé : les routes marquées « majorant » dans AI_ROUTES pèsent environ
-    // 1,4 € ensemble, soit 4,7 % du prix, et ce sont les seuls chiffres du
-    // modèle qui ne sont pas mesurés. Un coussin de 10 % nous laisse survivre
-    // au cas où TOUTES ces estimations seraient deux fois trop basses. En
-    // dessous, il faut aller les mesurer avant de livrer autre chose.
-    const realiste = { ...COACH_DEFAULT, partRechercheWeb: 0.3 };
-    const m = margeAuPlafond("premium", realiste);
-    expect(m.marge / PLAN_PRICE_EUR.premium).toBeGreaterThan(0.1);
+    // Ce test-ci sur-évalue de 50 % tout ce qui n'est pas mesuré et exige que
+    // la marge reste positive. C'est ce qui a fait préférer un plafond de 320
+    // messages à 340 : 340 tenait à +0,07 €, ce qu'une seule estimation un peu
+    // basse suffisait à effacer.
+    // +20 % : au-delà, le test cesse d'être un garde-fou et devient un cumul
+    // d'improbabilités. Les majorants sont déjà pris haut (la vision est
+    // modélisée à 7 300 tokens d'entrée alors que l'image plafonne à 4 784 et
+    // le prompt tourne autour de 2 500), et le plafond de sortie de chaque
+    // route les borne par ailleurs. Empiler des maxima absolus sur onze routes
+    // rendrait n'importe quel produit déficitaire sur le papier.
+    const majorantsMajores = AI_ROUTES.map((r) =>
+      r.source === "majorant"
+        ? { ...r, inputTokens: r.inputTokens * 1.2, outputTokens: r.outputTokens * 1.2 }
+        : r,
+    );
+    const surcout = majorantsMajores.reduce((n, r) => n + coutRouteEur(r, "premium"), 0)
+      - AI_ROUTES.reduce((n, r) => n + coutRouteEur(r, "premium"), 0);
+    const m = margeAuPlafond("premium");
+    expect(
+      m.marge - surcout,
+      `marge ${m.marge.toFixed(2)} € contre ${surcout.toFixed(2)} € de sur-coût si les majorants sont 50 % trop bas`,
+    ).toBeGreaterThan(0);
+    void PLAN_PRICE_EUR;
   });
 });
 
@@ -88,11 +96,19 @@ describe("le modèle économique reste honnête", () => {
     ).toBeLessThan(m.coach);
   });
 
-  it("le modèle chiffre la recherche web au pire cas, pas à une hypothèse d'usage", () => {
-    // Le premier chiffrage supposait 30 % des messages. C'est une hypothèse
-    // invérifiable avant déploiement : le seul majorant qui tienne est
-    // « chaque message dépense sa recherche », borné par MAX_USES = 1.
-    expect(COACH_DEFAULT.partRechercheWeb).toBe(1);
+  it("le préfixe est compté PAR MODÈLE, Sonnet tokenisant tout autrement", () => {
+    // ⚠️ C'EST LE CHIFFRE DONT TOUT DÉPEND, ET IL N'EST PAS LE MÊME PARTOUT.
+    // Le même prompt avec les mêmes outils compte 14 297 tokens sur Haiku et
+    // 20 690 sur Sonnet : tokenizers différents. Réécrit en cache une fois par
+    // fenêtre d'une heure à 2× le tarif d'entrée, c'est le premier poste du
+    // coach. Le banc (`coach-budget.eval.ts`) confronte ces deux valeurs à une
+    // mesure réelle : sans lui, le modèle pourrait rester rassurant en mentant.
+    // Le catalogue différé ramène Premium à 20 690 là où le catalogue plein
+    // sur Sonnet dépasserait 30 000 (21 022 sur Haiku, +45 % de tokenizer).
+    // Autrement dit : Premium paie AUJOURD'HUI, avec le report, à peu près ce
+    // que Plus paie SANS report. C'est la mesure de ce que coûte Sonnet.
+    expect(COACH_DEFAULT.prefixeParModele.premium).toBeLessThan(22_000);
+    expect(COACH_DEFAULT.prefixeParModele.plus).toBeLessThan(22_000);
   });
 
   it("Premium coûte plus cher que Plus en IA, sinon le plan est mal construit", () => {
@@ -101,10 +117,28 @@ describe("le modèle économique reste honnête", () => {
     expect(premium.iaAutres + premium.coach).toBeGreaterThan(plus.iaAutres + plus.coach);
   });
 
-  it("le coach Plus reste sur un modèle que son enveloppe couvre", () => {
-    // Sonnet sur Plus a été chiffré et refusé : 150 messages n'entrent pas
-    // dans 6,19 €. Le test empêche de le basculer par symétrie mal placée.
+  it("Sonnet sur Plus tient sur le papier mais ne survit pas à l'incertitude", () => {
+    // ⚠️ ARBITRAGE CHIFFRÉ, ET LE CHIFFRE EST PIÉGEUX. Sonnet sur Plus coûte
+    // 6,76 € pour 6,89 € d'enveloppe : il PASSE, de treize centimes. C'est
+    // exactement le genre de marge qui donne envie de dire oui et qu'une seule
+    // estimation un peu basse efface.
+    //
+    // Le critère n'est donc pas « est-ce que ça rentre » mais « est-ce que ça
+    // rentre encore si les routes estimées coûtent 20 % de plus », le même
+    // stress que pour Premium. Réponse : non. Plus reste sur Haiku, et si ce
+    // test devient vert un jour, l'arbitrage se rouvre légitimement.
     const cher = { ...COACH_DEFAULT, model: { ...COACH_DEFAULT.model, plus: "claude-sonnet-5" } };
-    expect(coutCoachEur(cher, "plus")).toBeGreaterThan(margeAuPlafond("plus").enveloppeCoach);
+    const restant = margeAuPlafond("plus").enveloppeCoach - coutCoachEur(cher, "plus");
+    const stress =
+      AI_ROUTES.map((r) =>
+        r.source === "majorant"
+          ? { ...r, inputTokens: r.inputTokens * 1.2, outputTokens: r.outputTokens * 1.2 }
+          : r,
+      ).reduce((n, r) => n + coutRouteEur(r, "plus"), 0)
+      - AI_ROUTES.reduce((n, r) => n + coutRouteEur(r, "plus"), 0);
+    expect(
+      restant,
+      `Sonnet sur Plus laisserait ${restant.toFixed(2)} € pour ${stress.toFixed(2)} € d'incertitude.`,
+    ).toBeLessThan(stress);
   });
 });

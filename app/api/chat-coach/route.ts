@@ -17,7 +17,7 @@ import { glossariesForStrategy } from "@/lib/coach-method-glossaries";
 import { buildCoachSystemPrompt } from "@/lib/coach-system-prompt";
 import { createDashStripper } from "@/lib/coach-typography";
 import { coachToolsForPlan, executeCoachTool } from "@/lib/coach-tools";
-import { webSearchTool } from "@/lib/coach-web-search";
+import { differerCatalogue } from "@/lib/coach-tool-search";
 import type { PlanType } from "@/lib/PlanContext";
 import { sanitizeUserInput } from "@/lib/prompt-sanitizer";
 import { createClient as createSupabaseServer } from "@/lib/supabase/server";
@@ -27,23 +27,28 @@ const MAX_MESSAGES = 50;
  * Modèle du coach, PAR PLAN. Déclaré ici : la route l'utilise pour l'appel ET
  * pour le journal de coût, et les deux ne doivent jamais diverger.
  *
- * ⚠️ POURQUOI PAS SONNET 5, ALORS QU'IL EST MESURÉMENT MEILLEUR. Le
- * 2026-08-14, même question posée cinq fois : Haiku donne le bon signe de
- * corrélation mais se contredit d'un tour à l'autre et ne cite jamais l'actif
- * le plus corrélé au Nasdaq ; Sonnet 5 répond juste, nuance (« généralement
- * négative ») et nomme le S&P 500. Ce n'est pas un défaut de consigne, c'est
- * de la culture générale de marché, et aucune règle de prompt ne la fabrique.
+ * PREMIUM EST SUR SONNET 5 DEPUIS LE 2026-08-14, ET C'EST MESURÉ, PAS SUPPOSÉ.
+ * Même question posée trois fois à chacun, sur une réponse vérifiable (valeur
+ * du tick MNQ, qui vaut 0,50 $) : Sonnet répond juste 3 fois sur 3, Haiku donne
+ * trois réponses différentes et toutes fausses (1,25 $, 1,25 $, 0,25 $). Sur
+ * les corrélations, Haiku produit encore « corrélé POSITIVEMENT au dollar :
+ * quand le dollar monte, le Nasdaq BAISSE », contradiction dans une seule
+ * phrase, là où Sonnet est cohérent et sait nuancer. Ce n'est pas un défaut de
+ * consigne, c'est de la culture générale de marché : aucune règle ne la
+ * fabrique, et une recherche web ne la remplace pas (voir plus bas).
  *
- * Il ne passe pas au PLAFOND ACTUEL : 21,53 € par abonné Premium au plafond de
- * 450 messages, contre ~13,3 € d'enveloppe réelle (`product-margin.ts`). À un
- * plafond de 200 il tiendrait. Mais 450 est écrit dans la matrice des plans et
- * la FAQ en quatre langues : le baisser retire une promesse vendue, et c'est
- * une décision commerciale, pas technique. La fonction reste paramétrée par
- * plan pour que ce basculement soit d'une ligne le jour où il est tranché.
+ * ⚠️ CE QUI REND SONNET PAYABLE, C'EST LE CATALOGUE DIFFÉRÉ, PAS UN
+ * RENONCEMENT. Sonnet coûte 3× l'entrée de Haiku, et le premier poste du coach
+ * est la réécriture du préfixe en cache. En passant les 39 outils en
+ * `defer_loading`, le préfixe tombe de 21 022 à 14 297 tokens : c'est ce
+ * tiers-là qui paie le modèle supérieur. Les deux changements sont solidaires,
+ * `product-margin.test.ts` échoue si on annule l'un sans l'autre.
+ *
+ * Plus et gratuit restent sur Haiku : leur enveloppe (6,89 €) ne couvre pas
+ * Sonnet, et c'est une différence de plan réelle plutôt qu'une privation.
  */
 function coachModelForPlan(plan: PlanType): string {
-  void plan;
-  return "claude-haiku-4-5-20251001";
+  return plan === "premium" ? "claude-sonnet-5" : "claude-haiku-4-5-20251001";
 }
 /**
  * Plafond de sortie. Il était à 1 500 tokens, soit environ 1 100 mots : une
@@ -308,8 +313,31 @@ export async function POST(request: Request) {
     // La recherche web s'ajoute au catalogue interne : elle s'exécute côté
     // Anthropic, la boucle ci-dessous n'a donc rien à exécuter pour elle, mais
     // elle doit savoir que « pause_turn » n'est pas une fin de réponse.
-    const toolsSansRecherche = coachToolsForPlan(plan) as unknown as Anthropic.Tool[];
-    const availableTools = [...toolsSansRecherche, webSearchTool(coachModel)];
+    // ⚠️ LA RECHERCHE WEB A ÉTÉ RETIRÉE LE 2026-08-14, SUR MESURE ET NON SUR
+    // AVIS. Livrée le matin même, elle ne s'est déclenchée ZÉRO fois sur six
+    // appels Haiku, y compris sur la question faite pour elle (une valeur de
+    // tick) que le modèle rate trois fois de suite. La cause était dans la
+    // consigne : « cherche quand tu n'en es pas certain » suppose une
+    // calibration que Haiku n'a pas, son défaut étant précisément d'être faux
+    // avec assurance. Un déclencheur inconditionnel a bien réglé le cas des
+    // spécifications de contrat (3/3 cherchées, 3/3 justes) mais PAS celui des
+    // corrélations (0/3), qui est le sujet d'origine.
+    // Sur Sonnet la question ne se pose plus de la même façon : il répond juste
+    // sans chercher. L'outil coûtait 1 600 tokens de préfixe à chaque message
+    // et jusqu'à 7,25 € au pire cas : retiré, ces tokens financent le modèle.
+    // `lib/coach-web-search.ts` est conservé, prêt à revenir avec un plafond
+    // MENSUEL de recherches, seule forme qui borne vraiment son coût.
+    // ⚠️ CATALOGUE DIFFÉRÉ SUR PREMIUM SEULEMENT. Le report fait tomber le
+    // préfixe de 21 022 à 14 297 tokens, ce qui paie Sonnet. Mais il fait
+    // dépendre chaque outil d'une recherche réussie, et le banc a montré le 
+    // 2026-08-14 qu'un compte GRATUIT sur Haiku ne retrouvait plus
+    // `create_strategy` : c'est-à-dire exactement l'outil qui transforme un
+    // inscrit en abonné. Sur Haiku le préfixe est bon marché et le risque ne
+    // s'achète rien ; on ne le prend donc que là où il finance quelque chose.
+    const availableTools =
+      plan === "premium"
+        ? differerCatalogue(coachToolsForPlan(plan))
+        : (coachToolsForPlan(plan) as unknown as Anthropic.Tool[]);
 
     // ── 6. Boucle agentique streamée : texte + actions en NDJSON ──
     // Chaque ligne est un JSON : {t:"text",d} (delta), {t:"action",a} (chip UI),
@@ -389,20 +417,13 @@ export async function POST(request: Request) {
         const toolsCalled: string[] = [];
         try {
           let toolCallsUsed = 0;
-          // ⚠️ `max_uses` de la recherche web borne les requêtes d'UN appel
-          // API, pas d'un message : la boucle en fait jusqu'à MAX_ROUNDS, donc
-          // un message pourrait déclencher cinq recherches et faire exploser
-          // le coût. On retire l'outil dès qu'une recherche a eu lieu : c'est
-          // ce qui rend le majorant « une recherche par message » vrai, et
-          // c'est lui que chiffre `product-margin.ts`.
-          let rechercheFaite = false;
           for (let round = 0; round < MAX_ROUNDS; round++) {
             const claudeStream = client.messages.stream({
               model: coachModel,
               max_tokens: MAX_OUTPUT_TOKENS,
               system: cachedSystem,
               messages: withConversationCache(conversation),
-              tools: rechercheFaite ? toolsSansRecherche : availableTools,
+              tools: availableTools,
             });
 
             // Le tiret long est banni de la voix du produit. Le prompt
@@ -422,7 +443,6 @@ export async function POST(request: Request) {
 
             const final = await claudeStream.finalMessage();
             roundUsages.push(final.usage);
-            if (final.content.some((b) => b.type === "server_tool_use")) rechercheFaite = true;
             // Témoin d'efficacité du cache dans les logs Vercel (cache_read
             // proche de input = cache chaud, coût d'entrée divisé par ~10).
             console.log(

@@ -4,7 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { buildCoachSystemPrompt } from "./coach-system-prompt";
 import { renderMethodGlossaries } from "./coach-method-glossaries";
 import { coachToolsForPlan } from "./coach-tools";
-import { webSearchTool } from "./coach-web-search";
+import { differerCatalogue } from "./coach-tool-search";
 import { stripLongDashes } from "./coach-typography";
 
 /**
@@ -46,7 +46,13 @@ const CLE = (() => {
   return process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY || "";
 })();
 
-const MODELE = "claude-haiku-4-5-20251001";
+/**
+ * Le banc joue le persona PREMIUM (fiche, stats, mémoire) : il doit donc
+ * tourner sur le modèle de Premium. Le débutant, lui, est un compte gratuit et
+ * reste sur Haiku, comme en production.
+ */
+const MODELE = "claude-sonnet-5";
+const MODELE_GRATUIT = "claude-haiku-4-5-20251001";
 const REPEAT = Number(process.env.REPEAT || 1);
 
 /**
@@ -168,16 +174,25 @@ async function jouer(tours: string[], debutant = false): Promise<Tour[]> {
     messages.push({ role: "user", content: tour });
     let sortie = "";
     const appeles: string[] = [];
-    // Boucle agentique bornée, comme en production.
-    for (let round = 0; round < 3; round++) {
+    // ⚠️ BORNES ALIGNÉES SUR LA PRODUCTION (MAX_ROUNDS = 5, MAX_OUTPUT_TOKENS
+    // = 4000 dans app/api/chat-coach/route.ts). Elles étaient à 3 et 2 000 :
+    // avec le catalogue différé, un tour part dans la recherche d'outil et il
+    // n'en restait plus assez pour répondre. Le banc rendait alors « réponse
+    // vide » et accusait le coach d'un défaut que seul le banc avait. Un
+    // harnais plus contraint que la production ne teste pas la production.
+    for (let round = 0; round < 5; round++) {
       const rep = await client.messages.create({
-        model: MODELE,
-        max_tokens: 2000,
+        model: debutant ? MODELE_GRATUIT : MODELE,
+        max_tokens: 4000,
         system: [{ type: "text", text: systeme, cache_control: { type: "ephemeral" } }],
-        // Le prompt annonce la recherche web : ne pas la fournir ici ferait
-        // tester un coach qui promet une capacité absente, soit exactement le
-        // défaut que ce banc surveille par ailleurs.
-        tools: [...(coachToolsForPlan("premium") as Anthropic.Tool[]), webSearchTool(MODELE)],
+        // Comme en production : catalogue DIFFÉRÉ sur Premium (c'est lui qui
+        // décide si le coach retrouve ses 39 outils), catalogue PLEIN pour le
+        // débutant, qui est un compte gratuit sur Haiku. Jouer le débutant sur
+        // un catalogue différé testerait une configuration qu'on ne sert pas,
+        // et c'est ainsi qu'on a failli croire `create_strategy` cassé.
+        tools: debutant
+          ? (coachToolsForPlan("premium") as Anthropic.Tool[])
+          : differerCatalogue(coachToolsForPlan("premium")),
         messages,
       });
       const textes = rep.content.filter((b) => b.type === "text").map((b) => (b as { text: string }).text);

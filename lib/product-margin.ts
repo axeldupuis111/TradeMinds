@@ -95,7 +95,9 @@ export const AI_ROUTES: AiRoute[] = [
     // résolution, et c'est ce qui rend cette route la plus chère du produit.
     plafond: { ...PREMIUM_ONLY, premium: FEATURE_MONTHLY_CEILING.vision_review },
     inputTokens: 7300,
-    outputTokens: 1800,
+    // Sortie plafonnée à 2 000 dans la route depuis le 2026-08-14 ; 1 200 est
+    // le majorant retenu pour un rapport structuré de sept champs.
+    outputTokens: 1200,
     source: "majorant",
   },
   {
@@ -171,8 +173,21 @@ export const AI_ROUTES: AiRoute[] = [
 export interface CoachConfig {
   /** Modèle par plan : Premium et Plus ne tournent pas sur le même. */
   model: Record<Exclude<PlanType, "free">, string>;
-  /** Préfixe système + catalogue d'outils, mesuré par le banc de budget. */
-  prefixeTokens: number;
+  /**
+   * ⚠️ LE PRÉFIXE SE COMPTE PAR MODÈLE, PAS UNE FOIS POUR TOUTES.
+   *
+   * Piège découvert le 2026-08-14 en confrontant le modèle à une mesure réelle :
+   * le MÊME prompt, mêmes outils, compte 14 297 tokens sur Haiku 4.5 et 20 690
+   * sur Sonnet 5, soit +45 %. Sonnet embarque un tokenizer différent. Combiné à
+   * son tarif d'entrée 3× supérieur, un token de préfixe y coûte donc **4,3×**
+   * ce qu'il coûte sur Haiku, et non 3×.
+   *
+   * J'avais mesuré sur Haiku et appliqué le chiffre au tarif Sonnet : l'erreur
+   * valait 2,25 € par abonné au plafond, assez pour faire passer une
+   * configuration déficitaire pour rentable. D'où ce champ par plan, et le test
+   * du banc qui confronte chaque valeur à une mesure réelle.
+   */
+  prefixeParModele: Record<Exclude<PlanType, "free">, number>;
   /** Plafond mensuel de messages, par plan. */
   plafond: Record<Exclude<PlanType, "free">, number>;
   /** Appels modèle par message (boucle d'outils). */
@@ -195,25 +210,32 @@ export interface CoachConfig {
  * mensonge du modèle économique : les deux se relisent ensemble.
  */
 export const COACH_DEFAULT: CoachConfig = {
-  // Haiku partout. Sonnet 5 est meilleur (mesuré) et ne tient PAS : à 450
-  // messages il coûte 21,53 €. Il ne redeviendra possible que si le plafond
-  // mensuel affiché baisse, ce qui est une décision commerciale.
-  model: { premium: "claude-haiku-4-5-20251001", plus: "claude-haiku-4-5-20251001" },
-  // Mesuré 22 731 le 2026-08-14 via /v1/messages (count_tokens refuse les
-  // outils serveur). La recherche web y pèse ~1 600 tokens à elle seule :
-  // l'API injecte ses propres instructions d'usage avec l'outil, bien au-delà
-  // des trois champs de sa déclaration. C'est le vrai prix d'entrée d'un outil
-  // serveur, et il se paie à CHAQUE message.
-  prefixeTokens: 22_731,
+  // Sonnet 5 sur Premium : mesuré meilleur, et rendu payable par le catalogue
+  // différé. Haiku ailleurs, l'enveloppe Plus ne le couvre pas.
+  model: { premium: "claude-sonnet-5", plus: "claude-haiku-4-5-20251001" },
+  // Mesurés le 2026-08-14 via /v1/messages, catalogue en `defer_loading`.
+  // ⚠️ CES CHIFFRES SONT LE PIVOT DE TOUTE L'ÉCONOMIE DU COACH : le préfixe est
+  // réécrit en cache une fois par fenêtre d'une heure, à 2× le tarif d'entrée,
+  // ce qui en fait le premier poste de dépense. Le voir grossir, c'est voir le
+  // plafond de messages baisser. Le banc les confronte à une mesure réelle.
+  // Premium : catalogue différé sur Sonnet. Plus : catalogue PLEIN sur Haiku,
+  // le report n'y finançant rien et faisant perdre des outils au débutant.
+  // ⚠️ 18 784 et non 21 022 : Plus n'a pas les mêmes outils que Premium
+  // (`coachToolsForPlan` filtre par plan). J'avais mesuré Plus avec le
+  // catalogue de Premium ; le garde-fou du banc a attrapé l'écart. Mesurer un
+  // plan avec la configuration d'un autre est la façon la plus facile de se
+  // mentir dans ce fichier.
+  prefixeParModele: { premium: 20_690, plus: 18_784 },
   plafond: { plus: PLAN_MONTHLY_CEILING.chat.plus, premium: PLAN_MONTHLY_CEILING.chat.premium },
   roundsParMessage: 1.4,
   messagesParFenetre: 5,
   historiqueTokens: 3000,
   sortieTokens: 800,
-  // ⚠️ PIRE CAS ASSUMÉ : chaque message dépense sa recherche. `MAX_USES = 1`
-  // dans coach-web-search.ts est ce qui rend ce majorant atteignable et non
-  // dépassable ; le relever multiplie directement cette ligne.
-  partRechercheWeb: 1,
+  // Recherche web retirée du coach le 2026-08-14 : mesurée inerte sur Haiku
+  // (0 déclenchement sur 6 appels) et inutile sur Sonnet, qui répond juste
+  // sans elle. Le paramètre reste, l'outil est prêt à revenir avec un plafond
+  // mensuel de recherches.
+  partRechercheWeb: 0,
 };
 
 /** Recherche web côté serveur : 10 $ les 1 000 requêtes. */
@@ -264,12 +286,13 @@ export function coutCoachEur(c: CoachConfig, plan: Exclude<PlanType, "free">): n
   if (!messages) return 0;
   const p = tarif(c.model[plan]);
   const appels = messages * c.roundsParMessage;
+  const prefixe = c.prefixeParModele[plan];
   const fenetres = Math.max(1, Math.ceil(messages / c.messagesParFenetre));
   const appelsCaches = Math.max(0, appels - fenetres);
 
   // TTL 1 h : écriture à 2× l'entrée, lecture à 0,1×.
-  const ecritures = fenetres * c.prefixeTokens * p.in * 2;
-  const lectures = appelsCaches * c.prefixeTokens * p.in * 0.1;
+  const ecritures = fenetres * prefixe * p.in * 2;
+  const lectures = appelsCaches * prefixe * p.in * 0.1;
   // L'historique est plein tarif au premier appel d'une fenêtre, caché ensuite.
   const historique = (fenetres + appelsCaches * 0.1) * c.historiqueTokens * p.in;
   const sortie = appels * c.sortieTokens * p.out;

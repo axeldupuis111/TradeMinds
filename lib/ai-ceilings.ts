@@ -35,17 +35,31 @@ import type { PlanType } from "@/lib/PlanContext";
 export const PLAN_MONTHLY_CEILING: Record<"analyze" | "chat", Record<PlanType, number>> = {
   // Julie, intensive : 12 analyses/mois. Premium = ×3,3.
   analyze: { free: 3, plus: 30, premium: 40 },
-  // Julie : 176 messages/mois. Premium = ×2,6.
+  // Julie : 176 messages/mois. Premium = ×1,48, soit 12 messages par jour ouvré
+  // en moyenne, le quota JOURNALIER de 30 restant inchangé.
   //
-  // ⚠️ NE PAS BAISSER SANS DÉCISION COMMERCIALE. Ce chiffre n'est pas qu'un
-  // fusible interne : il est ÉCRIT dans la matrice des plans et dans la FAQ,
-  // en quatre langues, et `plan-quota-copy.test.ts` vérifie que la copy le
-  // cite. Le réduire retire une promesse déjà vendue aux abonnés en cours.
-  // C'est aussi lui qui rend Sonnet 5 inabordable sur le coach : à 450
-  // messages Sonnet coûte 21,53 € contre ~13,3 € d'enveloppe réelle, à 200 il
-  // tiendrait. L'arbitrage « meilleur modèle contre plafond affiché » est
-  // ouvert, il appartient à Axel, et il se chiffre dans `product-margin.ts`.
-  chat: { free: 3, plus: 150, premium: 450 },
+  // ⚠️ RAMENÉ DE 450 À 260 LE 2026-08-14, EN ÉCHANGE DE SONNET 5. Ce n'est pas
+  // un resserrement : c'est le prix d'un coach qui répond juste. Mesuré, sur
+  // une question à réponse vérifiable, Haiku donnait trois réponses fausses et
+  // toutes différentes là où Sonnet répond juste trois fois sur trois.
+  // À 260 messages, Sonnet coûte 12,43 € pour 13,95 € d'enveloppe, soit 1,52 €
+  // de marge au pire cas, et encore +0,59 € si les routes estimées se révélaient
+  // 20 % plus chères. À 280 le coussin disparaît.
+  //
+  // ⚠️ CE CHIFFRE A ÉTÉ POSÉ TROIS FOIS AVANT D'ÊTRE JUSTE (200, puis 340, puis
+  // 320), parce que le préfixe avait été mesuré sur Haiku et appliqué au tarif
+  // Sonnet. Le même prompt compte 14 297 tokens sur l'un et 20 690 sur l'autre :
+  // un token de préfixe coûte 4,3× plus cher sur Sonnet, pas 3×. Ne jamais
+  // reporter un comptage d'un modèle à un autre.
+  //
+  // ⚠️ CE CHIFFRE EST AFFICHÉ dans la matrice des plans et la FAQ en quatre
+  // langues, et `plan-quota-copy.test.ts` échoue si la copy diverge : le
+  // changer ici OBLIGE à changer les quatre traductions. C'est voulu.
+  //
+  // Ce qui l'a rendu possible : le catalogue d'outils est passé en
+  // `defer_loading` (préfixe 21 022 → 14 297). Sans ce report, 260 messages sur
+  // Sonnet coûteraient bien au-delà de l'enveloppe. Les deux vont ensemble.
+  chat: { free: 3, plus: 150, premium: 260 },
 };
 
 /**
