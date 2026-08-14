@@ -9,7 +9,7 @@
  *
  * Ces valeurs valent environ 3× l'usage d'un utilisateur INTENSIF, modélisé
  * ainsi sur un mois de 22 jours de trading :
- *   analyse 12 · vision 44 · coach 176 · débrief 22 · résumé 22 · plan hebdo 4
+ *   analyse 12 · coach 176 · débrief 22 · résumé 22 · plan hebdo 4
  *   bilan mensuel 1 · parsing 1 · objectifs 4 · calendrier 12 · communauté 5
  *
  * Autrement dit : pour rencontrer un de ces plafonds, il faut faire trois fois
@@ -38,7 +38,7 @@ export const PLAN_MONTHLY_CEILING: Record<"analyze" | "chat", Record<PlanType, n
   // Julie : 176 messages/mois. Premium = ×1,48, soit 12 messages par jour ouvré
   // en moyenne, le quota JOURNALIER de 30 restant inchangé.
   //
-  // ⚠️ RAMENÉ DE 450 À 260 LE 2026-08-14, EN ÉCHANGE DE SONNET 5. Ce n'est pas
+  // ⚠️ RAMENÉ DE 450 À 260 PUIS REMONTÉ À 350 LE 2026-08-14, EN ÉCHANGE DE SONNET 5. Ce n'est pas
   // un resserrement : c'est le prix d'un coach qui répond juste. Mesuré, sur
   // une question à réponse vérifiable, Haiku donnait trois réponses fausses et
   // toutes différentes là où Sonnet répond juste trois fois sur trois.
@@ -57,9 +57,9 @@ export const PLAN_MONTHLY_CEILING: Record<"analyze" | "chat", Record<PlanType, n
   // changer ici OBLIGE à changer les quatre traductions. C'est voulu.
   //
   // Ce qui l'a rendu possible : le catalogue d'outils est passé en
-  // `defer_loading` (préfixe 21 022 → 14 297). Sans ce report, 260 messages sur
+  // `defer_loading` (préfixe 21 022 → 14 297). Sans ce report, 350 messages sur
   // Sonnet coûteraient bien au-delà de l'enveloppe. Les deux vont ensemble.
-  chat: { free: 3, plus: 150, premium: 260 },
+  chat: { free: 3, plus: 150, premium: 350 },
 };
 
 /**
@@ -68,15 +68,6 @@ export const PLAN_MONTHLY_CEILING: Record<"analyze" | "chat", Record<PlanType, n
  * unitaire est faible (Haiku). La clé est le `feature` passé à rateLimitAi.
  */
 export const FEATURE_MONTHLY_CEILING: Record<string, number> = {
-  // Julie : 44. Laissé à 90, soit le plancher ×2 exact de la doctrine.
-  // ⚠️ C'EST LA ROUTE LA PLUS CHÈRE DU PRODUIT, devant le coach, et personne
-  // ne le savait : Sonnet 5 plein tarif (aucun cache, contrairement au coach)
-  // sur un prompt qui porte une image haute résolution, jusqu'à 4 784 tokens
-  // à elle seule. Elle coûte 4,05 € par abonné Premium au plafond, soit un
-  // tiers de l'enveloppe IA. Il n'y a rien à y gagner sans sortir de la
-  // doctrine ; le levier serait de réduire la résolution envoyée, pas le
-  // plafond. À creuser avant de toucher au coach une nouvelle fois.
-  vision_review: 90,
   "session-debrief": 70, // Julie : 22 (×3,2, conforme)
   "daily-summary": 70, // Julie : 22 (×3,2, conforme)
   "monthly-review": 10, // Julie : 1

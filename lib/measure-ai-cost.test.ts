@@ -89,11 +89,10 @@ run("taille réelle des prompts", () => {
     expect(true).toBe(true);
   }, 120_000);
 
-  it("mesure les instructions fixes de l'analyse et de la vision", async () => {
+  it("mesure les instructions fixes de l'analyse", async () => {
     const base = await count({ text: "x", model: "claude-sonnet-5" });
     for (const [label, file] of [
       ["analyse", "app/api/analyze/route.ts"],
-      ["vision ", "app/api/analyze-trade-vision/route.ts"],
     ] as const) {
       const src = readFileSync(file, "utf8");
       // Les gabarits de prompt sont les litteraux template du fichier.

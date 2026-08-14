@@ -10,7 +10,6 @@ import { FEATURE_MONTHLY_CEILING, PLAN_MONTHLY_CEILING, monthKey } from "./ai-ce
 const USAGE_INTENSIF: Record<string, number> = {
   analyze: 12,
   chat: 176,
-  vision_review: 44,
   "session-debrief": 22,
   "daily-summary": 22,
   "weekly-plan": 8,
@@ -42,9 +41,9 @@ describe("plafonds mensuels", () => {
     //
     // Le ×2 a été écrit quand un plafond ne coûtait rien : on prenait de la
     // marge parce qu'il n'y avait aucune raison de ne pas en prendre. Ce n'est
-    // plus vrai depuis que le coach tourne sur Sonnet 5. À 320 messages il
-    // coûte 12,36 € pour 13,21 € d'enveloppe ; à 352 (le ×2 exact) il passe à
-    // 13,65 € et le produit perd de l'argent. Le multiple de confort et la
+    // plus vrai depuis que le coach tourne sur Sonnet 5. À 350 messages il
+    // coûte 16,73 € pour 17,26 € d'enveloppe ; au-dela le produit perd de
+    // l'argent. Le multiple de confort et la
     // rentabilité se contredisent, et c'est la rentabilité qui gagne.
     //
     // Le vrai garde-fou est donc `product-margin.test.ts`, qui raisonne en
@@ -84,7 +83,6 @@ describe("plafonds mensuels", () => {
     // reste bornée au journalier seul — ce qui est précisément le trou qu'on
     // vient de boucher. Cette liste doit suivre les appels à rateLimitAi.
     for (const feature of [
-      "vision_review",
       "session-debrief",
       "daily-summary",
       "weekly-plan",

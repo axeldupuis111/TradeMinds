@@ -25,7 +25,6 @@ export type ProductEvent =
   // Suites de l'analyse nouvelle génération (2026-07-17)
   | "analysis_pdf_export"
   | "analysis_plan_goals_created"
-  | "vision_review_run"
   | "checkout_started"
   // Échelle d'upgrade free→plus (2026-07-09)
   | "taster_used"

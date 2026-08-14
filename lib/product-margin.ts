@@ -77,8 +77,6 @@ export interface AiRoute {
   source: "mesurée" | "majorant";
 }
 
-const PREMIUM_ONLY = { plus: 0, premium: 0 } as const;
-
 export const AI_ROUTES: AiRoute[] = [
   {
     nom: "analyse de trades",
@@ -87,18 +85,6 @@ export const AI_ROUTES: AiRoute[] = [
     inputTokens: 7426,
     outputTokens: 3702,
     source: "mesurée",
-  },
-  {
-    nom: "analyse visuelle (vision)",
-    model: "claude-sonnet-5",
-    // Premium uniquement. L'image seule pèse jusqu'à 4 784 tokens en haute
-    // résolution, et c'est ce qui rend cette route la plus chère du produit.
-    plafond: { ...PREMIUM_ONLY, premium: FEATURE_MONTHLY_CEILING.vision_review },
-    inputTokens: 7300,
-    // Sortie plafonnée à 2 000 dans la route depuis le 2026-08-14 ; 1 200 est
-    // le majorant retenu pour un rapport structuré de sept champs.
-    outputTokens: 1200,
-    source: "majorant",
   },
   {
     nom: "lecture de communauté",

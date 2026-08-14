@@ -51,9 +51,7 @@ function modeleParAppel(route: string): { eur: number; source: string } | null {
     const appels = messages * COACH_DEFAULT.roundsParMessage;
     return { eur: coutCoachEur(COACH_DEFAULT, "premium") / appels, source: "modèle coach" };
   }
-  const nom = route === "analyze" ? "analyse de trades"
-    : route === "analyze-trade-vision" ? "analyse visuelle (vision)"
-    : null;
+  const nom = route === "analyze" ? "analyse de trades" : null;
   if (!nom) return null;
   const r = AI_ROUTES.find((x) => x.nom === nom);
   if (!r || !r.plafond.premium) return null;
