@@ -34,108 +34,108 @@ export const POSTS: BlogPost[] = [
     cover: "target",
     content: {
       fr: {
-        title: "Fais relire tes graphiques par une IA : ce que la vision ajoute à ton journal",
+        title: "Tes graphiques racontent ce que tes statistiques cachent",
         excerpt:
-          "Tes stats disent ce que tu as fait. Ton screenshot montre ce que tu as vu. L'analyse visuelle croise les deux et repère ce qu'aucun tableau ne peut montrer.",
-        body: `Un journal de trading chiffre tes décisions : entrée, sortie, P&L, respect du plan. Mais il y a une chose que les chiffres ne voient pas : le graphique que tu avais sous les yeux au moment de cliquer. C'est exactement là que l'analyse visuelle par IA intervient.
+          "Deux trades au même P&L peuvent raconter deux histoires opposées. Le tableau dit « perte normale », le graphique dit « erreur évitable ».",
+        body: `Un journal de trading chiffre tes décisions : entrée, sortie, P&L, respect du plan. Mais il y a une chose que les chiffres ne voient pas : le graphique que tu avais sous les yeux au moment de cliquer.
 
 ## Ce que tes stats ne voient pas
 
 Deux trades peuvent avoir le même P&L et raconter deux histoires opposées. Sur le papier : entrée EURUSD, stop 15 pips, perte. Sur le graphique : une entrée en pleine extension après trois bougies de rallye, un stop posé au milieu du bruit, une sortie panique juste avant que le prix reparte. Le tableau dit « perte normale ». Le graphique dit « erreur d'exécution évitable ».
 
-## Ce que l'IA regarde sur ton screenshot
+## Annoter, ce n'est pas décorer
 
-Quand tu attaches un screenshot à un trade, l'analyse visuelle examine ce qu'un mentor regarderait : la structure du marché au moment de l'entrée, le timing (entrée en retard sur le mouvement ou sur un vrai niveau), le placement du stop par rapport au bruit ambiant, et la logique de la sortie. Elle formule un verdict concret par trade, pas un commentaire générique.
+Attache ta capture au trade, puis dessine dessus ce que tu croyais voir : ton niveau, ta zone, ta ligne de tendance. L'exercice paraît anodin, il ne l'est pas. Reposer ces traits à froid, quelques heures après, te force à relire ton entrée sans l'émotion qui l'a déclenchée. Beaucoup de traders découvrent là que leur niveau n'était pas où ils le pensaient. L'upload et les annotations sont disponibles sur tous les plans, gratuit compris.
 
-## Croisée avec tes chiffres, pas à la place
+## Le coach, lui, croise tes chiffres avec TES règles
 
-Le vrai intérêt n'est pas de juger un graphique isolé. C'est le croisement : si tes stats montrent que tu fais du revenge trading et que tes screenshots montrent des entrées systématiquement en retard après tes pertes, tu tiens la version complète du problème, comportement et exécution. L'analyse IA de TradeDiscipline s'appuie sur les deux.
+C'est le second regard, et il porte sur ce que tu as écrit toi-même. Ta fiche stratégie dit « risque fixe de 2 % par trade, stop max 120 points ». Tes trois dernières pertes font -190, -210 puis -240 euros. Un tableau se contente d'afficher la somme. Le coach, lui, relève que des pertes qui grossissent sont incompatibles avec un risque fixe, et en déduit que soit ton stop a dépassé ton maximum, soit ta taille a grossi après chaque échec. Ce n'est plus un constat, c'est un diagnostic.
 
-## Comment l'utiliser
+## Comment t'en servir
 
-1. **Attache un screenshot à tes trades importants.** L'upload et l'outil d'annotation (dessiner tes niveaux, tes zones) sont disponibles sur tous les plans.
-2. **Lance l'analyse visuelle** depuis le détail du trade. C'est une exclusivité Premium (29,99 €/mois), limitée à 2 analyses par jour : assez pour tes trades clés, pas pour noyer le signal.
-3. **Compare le verdict à ta lecture.** L'écart entre ce que tu croyais voir et ce que le graphique montrait, c'est ta marge de progression.
+1. **Attache une capture à tes trades importants** et annote-la pendant que le trade est frais.
+2. **Demande au coach pourquoi tu as perdu.** Il lit tes trades chiffrés et les confronte à ta fiche stratégie, pas à une méthode générique.
+3. **Compare son verdict à ta lecture.** L'écart entre ce que tu croyais faire et ce que tes chiffres montrent, c'est ta marge de progression.
 
-Commence par le diagnostic gratuit : journal complet, screenshots, et 1 analyse IA découverte, sans carte bancaire. [Vois ce que tes graphiques disent de toi](/login).`,
+Commence par le diagnostic gratuit : journal complet, captures annotées et 5 messages avec le coach, sans carte bancaire. [Vois ce que tes trades disent de toi](/login).`,
       },
       en: {
-        title: "Let an AI reread your charts: what vision adds to your trading journal",
+        title: "Your charts tell you what your stats hide",
         excerpt:
-          "Your stats say what you did. Your screenshot shows what you saw. Visual analysis crosses the two and spots what no table can show.",
-        body: `A trading journal quantifies your decisions: entry, exit, P&L, plan compliance. But there is one thing numbers can't see: the chart you were looking at when you clicked. That's exactly where AI visual analysis comes in.
+          "Two trades with the same P&L can tell opposite stories. The table says the loss was normal, the chart says it was avoidable.",
+        body: `A trading journal quantifies your decisions: entry, exit, P&L, plan compliance. But there is one thing numbers can't see: the chart you were looking at when you clicked.
 
 ## What your stats can't see
 
-Two trades can have the same P&L and tell opposite stories. On paper: EURUSD entry, 15-pip stop, loss. On the chart: an entry in full extension after three rally candles, a stop placed in the middle of the noise, a panic exit right before price resumed. The table says "normal loss". The chart says "avoidable execution error".
+Two trades can share the same P&L and tell opposite stories. On paper: EURUSD entry, 15 pip stop, loss. On the chart: an entry deep into an extension after three rally candles, a stop parked in the middle of the noise, a panic exit right before price turned back. The table calls it a normal loss. The chart calls it an avoidable execution error.
 
-## What the AI looks at on your screenshot
+## Annotating isn't decorating
 
-When you attach a screenshot to a trade, visual analysis examines what a mentor would: the market structure at entry, the timing (chasing the move or entering at a real level), the stop placement relative to the surrounding noise, and the logic of the exit. It gives a concrete verdict per trade, not a generic comment.
+Attach your screenshot to the trade, then draw what you thought you saw: your level, your zone, your trendline. It sounds trivial. It isn't. Placing those lines again in cold blood, hours later, forces you to reread your entry without the emotion that triggered it. Plenty of traders discover right there that their level was never where they believed it was. Upload and annotation are available on every plan, free included.
 
-## Crossed with your numbers, not instead of them
+## The coach cross-references your numbers with YOUR rules
 
-The real value isn't judging a chart in isolation. It's the crossing: if your stats show revenge trading and your screenshots show entries that are systematically late after your losses, you have the full picture of the problem, behavior and execution. TradeDiscipline's AI analysis leans on both.
+That's the second look, and it works on what you wrote yourself. Your strategy sheet says fixed 2% risk per trade, 120 point maximum stop. Your last three losses are -190, -210 and -240 euros. A table just shows the total. The coach points out that growing losses are incompatible with a fixed risk, and concludes that either your stop went past your maximum, or your size grew after each failure. That's no longer an observation, it's a diagnosis.
 
 ## How to use it
 
-1. **Attach a screenshot to your important trades.** Upload and the annotation tool (draw your levels and zones) are available on every plan.
-2. **Run the visual analysis** from the trade detail. It's a Premium exclusive (€29.99/month), capped at 2 analyses per day: enough for your key trades, not enough to drown the signal.
-3. **Compare the verdict with your own read.** The gap between what you thought you saw and what the chart showed is your room for improvement.
+1. **Attach a screenshot to your important trades** and annotate it while the trade is fresh.
+2. **Ask the coach why you lost.** It reads your actual trades and holds them against your strategy sheet, not against a generic method.
+3. **Compare its verdict with your own reading.** The gap between what you thought you were doing and what your numbers show is your room to improve.
 
-Start with the free diagnosis: full journal, screenshots, and 1 discovery AI analysis, no credit card. [See what your charts say about you](/login).`,
+Start with the free diagnosis: full journal, annotated screenshots and 5 coach messages, no credit card. [See what your trades say about you](/login).`,
       },
       de: {
-        title: "Lass eine KI deine Charts gegenlesen: Was Vision deinem Journal hinzufügt",
+        title: "Deine Charts erzählen, was deine Statistiken verbergen",
         excerpt:
-          "Deine Statistiken sagen, was du getan hast. Dein Screenshot zeigt, was du gesehen hast. Die visuelle Analyse verbindet beides und findet, was keine Tabelle zeigen kann.",
-        body: `Ein Trading-Journal beziffert deine Entscheidungen: Einstieg, Ausstieg, P&L, Planbefolgung. Aber eines können Zahlen nicht sehen: den Chart, den du vor Augen hattest, als du geklickt hast. Genau da setzt die visuelle KI-Analyse an.
+          "Zwei Trades mit demselben P&L können Gegensätzliches erzählen. Die Tabelle nennt es einen normalen Verlust, der Chart einen vermeidbaren Fehler.",
+        body: `Ein Trading-Journal beziffert deine Entscheidungen: Einstieg, Ausstieg, P&L, Planeinhaltung. Aber eines sehen Zahlen nicht: den Chart, den du beim Klicken vor Augen hattest.
 
 ## Was deine Statistiken nicht sehen
 
-Zwei Trades können denselben P&L haben und gegensätzliche Geschichten erzählen. Auf dem Papier: EURUSD-Einstieg, 15-Pip-Stop, Verlust. Auf dem Chart: ein Einstieg in voller Extension nach drei Rally-Kerzen, ein Stop mitten im Rauschen, ein Panik-Ausstieg kurz bevor der Preis weiterlief. Die Tabelle sagt „normaler Verlust". Der Chart sagt „vermeidbarer Ausführungsfehler".
+Zwei Trades können denselben P&L haben und Gegensätzliches erzählen. Auf dem Papier: EURUSD-Einstieg, 15 Pips Stop, Verlust. Im Chart: ein Einstieg mitten in der Extension nach drei Rally-Kerzen, ein Stop im Rauschen, ein Panikausstieg kurz bevor der Preis drehte. Die Tabelle nennt das einen normalen Verlust. Der Chart nennt es einen vermeidbaren Ausführungsfehler.
 
-## Was die KI auf deinem Screenshot prüft
+## Annotieren ist kein Dekorieren
 
-Wenn du einem Trade einen Screenshot anhängst, prüft die visuelle Analyse, was ein Mentor prüfen würde: die Marktstruktur beim Einstieg, das Timing (dem Move hinterhergelaufen oder an einem echten Level eingestiegen), die Stop-Platzierung relativ zum Rauschen und die Logik des Ausstiegs. Sie liefert ein konkretes Urteil pro Trade, keinen generischen Kommentar.
+Hänge deinen Screenshot an den Trade und zeichne ein, was du zu sehen glaubtest: dein Level, deine Zone, deine Trendlinie. Klingt banal, ist es nicht. Diese Linien Stunden später in Ruhe erneut zu setzen zwingt dich, deinen Einstieg ohne die auslösende Emotion zu lesen. Viele Trader entdecken genau dort, dass ihr Level nie dort lag, wo sie es vermuteten. Upload und Annotation gibt es in jedem Plan, auch im kostenlosen.
 
-## Mit deinen Zahlen verknüpft, nicht statt ihnen
+## Der Coach verknüpft deine Zahlen mit DEINEN Regeln
 
-Der echte Wert liegt nicht darin, einen Chart isoliert zu bewerten. Er liegt in der Verknüpfung: Wenn deine Statistiken Revenge-Trading zeigen und deine Screenshots systematisch verspätete Einstiege nach Verlusten, hast du das vollständige Bild des Problems, Verhalten und Ausführung. Die KI-Analyse von TradeDiscipline stützt sich auf beides.
+Das ist der zweite Blick, und er arbeitet mit dem, was du selbst geschrieben hast. Deine Strategie sagt: festes Risiko von 2 % pro Trade, maximaler Stop 120 Punkte. Deine letzten drei Verluste: -190, -210, dann -240 Euro. Eine Tabelle zeigt nur die Summe. Der Coach merkt an, dass wachsende Verluste mit einem festen Risiko unvereinbar sind, und folgert: entweder ging dein Stop über dein Maximum, oder deine Größe wuchs nach jedem Fehlschlag. Das ist keine Feststellung mehr, das ist eine Diagnose.
 
-## So nutzt du es
+## So nutzt du das
 
-1. **Hänge deinen wichtigen Trades einen Screenshot an.** Upload und Annotations-Werkzeug (Levels und Zonen einzeichnen) gibt es in jedem Plan.
-2. **Starte die visuelle Analyse** aus der Trade-Detailansicht. Sie ist Premium-exklusiv (29,99 €/Monat), begrenzt auf 2 Analysen pro Tag: genug für deine Schlüssel-Trades, nicht genug, um das Signal zu verwässern.
-3. **Vergleiche das Urteil mit deiner eigenen Lesart.** Die Lücke zwischen dem, was du zu sehen glaubtest, und dem, was der Chart zeigte, ist dein Verbesserungspotenzial.
+1. **Hänge einen Screenshot an deine wichtigen Trades** und annotiere ihn, solange der Trade frisch ist.
+2. **Frag den Coach, warum du verloren hast.** Er liest deine echten Trades und hält sie gegen deine Strategie, nicht gegen eine generische Methode.
+3. **Vergleiche sein Urteil mit deiner Lesart.** Die Lücke zwischen dem, was du zu tun glaubtest, und dem, was deine Zahlen zeigen, ist dein Fortschritt.
 
-Starte mit der kostenlosen Diagnose: komplettes Journal, Screenshots und 1 KI-Entdeckungs-Analyse, ohne Kreditkarte. [Sieh, was deine Charts über dich sagen](/login).`,
+Starte mit der kostenlosen Diagnose: vollständiges Journal, annotierte Screenshots und 5 Coach-Nachrichten, ohne Kreditkarte. [Sieh, was deine Trades über dich sagen](/login).`,
       },
       es: {
-        title: "Deja que una IA relea tus gráficos: lo que la visión aporta a tu diario",
+        title: "Tus gráficos cuentan lo que tus estadísticas esconden",
         excerpt:
-          "Tus estadísticas dicen lo que hiciste. Tu captura muestra lo que viste. El análisis visual cruza ambos y detecta lo que ninguna tabla puede mostrar.",
-        body: `Un diario de trading cuantifica tus decisiones: entrada, salida, P&L, cumplimiento del plan. Pero hay algo que los números no pueden ver: el gráfico que tenías delante cuando hiciste clic. Ahí es exactamente donde entra el análisis visual por IA.
+          "Dos trades con el mismo P&L pueden contar historias opuestas. La tabla dice que la pérdida fue normal, el gráfico dice que era evitable.",
+        body: `Un diario de trading cuantifica tus decisiones: entrada, salida, P&L, respeto del plan. Pero hay algo que los números no ven: el gráfico que tenías delante al hacer clic.
 
 ## Lo que tus estadísticas no ven
 
-Dos trades pueden tener el mismo P&L y contar historias opuestas. Sobre el papel: entrada en EURUSD, stop de 15 pips, pérdida. En el gráfico: una entrada en plena extensión tras tres velas de rally, un stop colocado en medio del ruido, una salida de pánico justo antes de que el precio retomara. La tabla dice "pérdida normal". El gráfico dice "error de ejecución evitable".
+Dos trades pueden tener el mismo P&L y contar historias opuestas. Sobre el papel: entrada EURUSD, stop de 15 pips, pérdida. En el gráfico: una entrada en plena extensión tras tres velas de rally, un stop puesto en medio del ruido, una salida de pánico justo antes de que el precio girara. La tabla la llama pérdida normal. El gráfico la llama error de ejecución evitable.
 
-## Lo que la IA mira en tu captura
+## Anotar no es decorar
 
-Cuando adjuntas una captura a un trade, el análisis visual examina lo que miraría un mentor: la estructura del mercado en la entrada, el timing (persiguiendo el movimiento o entrando en un nivel real), la colocación del stop respecto al ruido, y la lógica de la salida. Da un veredicto concreto por trade, no un comentario genérico.
+Adjunta tu captura al trade y dibuja encima lo que creías ver: tu nivel, tu zona, tu línea de tendencia. Parece trivial y no lo es. Volver a trazar esas líneas en frío, horas después, te obliga a releer tu entrada sin la emoción que la disparó. Muchos traders descubren ahí que su nivel nunca estuvo donde pensaban. La subida y las anotaciones están en todos los planes, gratuito incluido.
 
-## Cruzado con tus números, no en su lugar
+## El coach cruza tus números con TUS reglas
 
-El valor real no está en juzgar un gráfico aislado. Está en el cruce: si tus estadísticas muestran revenge trading y tus capturas muestran entradas sistemáticamente tardías después de tus pérdidas, tienes la imagen completa del problema, comportamiento y ejecución. El análisis IA de TradeDiscipline se apoya en ambos.
+Es la segunda mirada, y trabaja sobre lo que tú mismo escribiste. Tu ficha de estrategia dice: riesgo fijo del 2 % por trade, stop máximo de 120 puntos. Tus tres últimas pérdidas son -190, -210 y luego -240 euros. Una tabla solo muestra la suma. El coach señala que unas pérdidas que crecen son incompatibles con un riesgo fijo, y deduce que o tu stop superó tu máximo, o tu tamaño creció tras cada fallo. Ya no es una constatación, es un diagnóstico.
 
 ## Cómo usarlo
 
-1. **Adjunta una captura a tus trades importantes.** La subida y la herramienta de anotación (dibujar tus niveles y zonas) están en todos los planes.
-2. **Lanza el análisis visual** desde el detalle del trade. Es exclusivo de Premium (29,99 €/mes), limitado a 2 análisis al día: suficiente para tus trades clave, no para ahogar la señal.
-3. **Compara el veredicto con tu propia lectura.** La diferencia entre lo que creías ver y lo que el gráfico mostraba es tu margen de mejora.
+1. **Adjunta una captura a tus trades importantes** y anótala mientras el trade está fresco.
+2. **Pregunta al coach por qué perdiste.** Lee tus trades reales y los confronta con tu ficha de estrategia, no con un método genérico.
+3. **Compara su veredicto con tu lectura.** La distancia entre lo que creías hacer y lo que muestran tus números es tu margen de progreso.
 
-Empieza con el diagnóstico gratuito: diario completo, capturas y 1 análisis IA de descubrimiento, sin tarjeta. [Mira lo que tus gráficos dicen de ti](/login).`,
+Empieza con el diagnóstico gratuito: diario completo, capturas anotadas y 5 mensajes con el coach, sin tarjeta. [Mira lo que tus trades dicen de ti](/login).`,
       },
     },
   },
