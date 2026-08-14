@@ -422,6 +422,95 @@ describe("le coach répond aux questions d'instrument au lieu de les refuser", (
 });
 
 /**
+ * Septième passage, 2026-08-14. Conversation réelle : « quels sont les
+ * corrélations avec le nas100 ». Cinq défauts en deux réponses, aucun couvert.
+ *
+ * 1. Le coach a ouvert find_trades, n'a trouvé aucun trade sur le Nas100, et a
+ *    répondu qu'il lui fallait des données historiques avant de pouvoir dire
+ *    quoi que ce soit. Une corrélation est une PROPRIÉTÉ DU MARCHÉ : elle ne
+ *    dépend pas de ce que le trader a tradé. Le bloc « QUEL INSTRUMENT TRADER »
+ *    couvrait le CHOIX d'un instrument, jamais une question sur son
+ *    comportement, et la branche « je n'ai pas ses données » a repris la main.
+ * 2. Il a écrit « c'est pour ça que je t'ai réduit le SL à 80 points au lieu de
+ *    120 ». Il n'avait jamais rien réduit : ni dans le fil, ni ailleurs. Même
+ *    famille que l'attribution à la fiche, dans l'autre sens : là il s'invente
+ *    un passé de coaching, et le trader appliquera 80 en croyant reprendre
+ *    leur travail commun.
+ * 3. Il a daté d'« cette semaine » des trades des 3 au 5 août alors qu'on était
+ *    le 14, et a bâti dessus un diagnostic de revenge trading. Le REPÈRE
+ *    TEMPOREL n'encadrait que le calcul des bornes AVANT l'appel d'outil, pas
+ *    l'étiquetage des dates rendues.
+ * 4. Il a ouvert sa réponse sur un sermon de discipline non demandé avant de
+ *    traiter la question. La règle anti-repli psycho visait la psychologie
+ *    servie À LA PLACE de la réponse, pas AVANT elle.
+ * 5. Il a fini en réclamant prix d'entrée, taille et stop de la position
+ *    ouverte, qu'il avait lue au tour précédent.
+ *
+ * Défaut de fond du même échange : deux phrases voisines donnaient des sens
+ * opposés au même couple (corrélation « INVERSE » avec l'or, puis les deux qui
+ * montent ensemble quand le dollar faiblit).
+ */
+describe("une question sur un marché se traite sans le journal du trader", () => {
+  const prompt = promptSysteme();
+
+  it("une propriété de marché est distinguée d'une question sur ses données", () => {
+    const bloc = depuis(prompt, "QUEL INSTRUMENT TRADER");
+    expect(bloc).toMatch(/NE S'APPREND PAS DANS SON JOURNAL/);
+    expect(bloc).toMatch(/corrélations/i);
+  });
+
+  it("un journal vide sur l'instrument n'est pas un motif de ne pas répondre", () => {
+    // C'est la formule exacte du refus : « tu n'as aucun trade clôturé sur le
+    // Nas100 », suivie d'une demande de données historiques.
+    const bloc = depuis(prompt, "QUEL INSTRUMENT TRADER");
+    expect(bloc).toMatch(/ne lui oppose JAMAIS qu'il n'a rien tradé dessus/);
+  });
+
+  it("une corrélation doit être posée dans un sens unique", () => {
+    const bloc = depuis(prompt, "QUEL INSTRUMENT TRADER");
+    expect(bloc).toMatch(/UNE CORRÉLATION SE POSE DANS UN SENS/);
+    expect(bloc).toMatch(/sens opposés pour le même couple/i);
+  });
+});
+
+describe("le coach ne s'invente ni passé ni calendrier", () => {
+  const prompt = promptSysteme();
+
+  it("il n'a pas d'historique de coaching en dehors de ce qui lui est fourni", () => {
+    expect(prompt).toMatch(/TU N'AS AUCUN PASSÉ AVEC LUI/);
+    expect(prompt).toMatch(/ni réglage que tu lui aurais donné un autre jour/i);
+  });
+
+  it("la sortie proposée est de remonter le fil, pas seulement de se taire", () => {
+    // Sans issue, la règle le pousserait à ne plus jamais s'appuyer sur ce qui
+    // a réellement été dit plus haut dans la conversation, ce qui est un
+    // défaut symétrique : la continuité est ce qu'on attend d'un coach.
+    const bloc = depuis(prompt, "TU N'AS AUCUN PASSÉ AVEC LUI");
+    expect(bloc).toMatch(/remonte le fil et cite le passage/i);
+  });
+
+  it("le repère temporel encadre aussi la rédaction, pas seulement l'appel d'outil", () => {
+    const bloc = depuis(prompt, "REPÈRE TEMPOREL");
+    expect(bloc).toMatch(/LE REPÈRE VAUT AUSSI QUAND TU RÉDIGES/);
+    expect(bloc).toMatch(/compare-la à la date du jour/i);
+  });
+});
+
+describe("la psychologie ne passe jamais devant la réponse", () => {
+  const prompt = promptSysteme();
+
+  it("elle est interdite en entrée en matière, pas seulement en repli", () => {
+    expect(prompt).toMatch(/NI COMME ENTRÉE EN MATIÈRE/);
+    expect(prompt).toMatch(/ta PREMIÈRE ligne est technique/);
+  });
+
+  it("ce qu'un outil a rendu n'est pas redemandé au trader", () => {
+    const rappel = depuis(prompt, "DERNIER RAPPEL");
+    expect(rappel).toMatch(/CE QU'UN OUTIL T'A DÉJÀ RENDU, TU NE LE REDEMANDES PAS/);
+  });
+});
+
+/**
  * Le catalogue d'outils est le premier poste du préfixe système, devant les
  * règles et devant la fiche du trader. Il a été ramené de 9 226 à 7 865 tokens
  * en appliquant une doctrine simple : une description sert à faire CHOISIR,

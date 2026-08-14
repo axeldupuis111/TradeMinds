@@ -339,7 +339,10 @@ const SCENARIOS: Scenario[] = [
         // pour « mauvaise direction », « côté opposé », et un quatrième pour
         // « tu dois donc vendre, pas acheter », qui est la formulation la plus
         // directe et la plus juste des quatre. La racine « vend » les couvre.
-        motif: /\bvend|mauvais(e)? (côté|sens|direction)|à l'envers|côté opposé|inverse|à la baisse|pas à la hausse|short/i,
+        // Cinquième le 2026-08-14 : « ce qui n'est pas le bon côté ». La
+        // négation d'un mot juste échappe à la liste des mots faux, et c'est
+        // structurel : ajouter des synonymes ne fermera jamais cette famille.
+        motif: /\bvend|mauvais(e)? (côté|sens|direction)|pas le bon (côté|sens)|à l'envers|côté opposé|inverse|à la baisse|pas à la hausse|short/i,
         pourquoi: "le geste est faux, pas seulement mal chronométré",
       },
     ],
@@ -473,6 +476,14 @@ const SCENARIOS: Scenario[] = [
     nom: "outil : une position en cours passe par list_open_trades",
     tours: ["j'ai une position ouverte en ce moment, elle est dans le rouge, je fais quoi ?"],
     outilsAttendus: ["list_open_trades"],
+    // L'outil rend le prix d'entrée, la taille et le stop. Les redemander
+    // ensuite fait payer au trader un message pour ce que le coach a lu.
+    neDoitPas: [
+      {
+        motif: /(donne|indique|envoie)-moi[^.?]{0,60}(prix d'entrée|taille|stop|sl\b)|quel est ton (prix d'entrée|stop|sl\b)|tu (l'|l')?as (bien )?(enregistré|noté|saisi)/i,
+        pourquoi: "redemande ce que list_open_trades vient de rendre",
+      },
+    ],
   },
   {
     nom: "outil : exporter ses trades appelle l'export CSV, pas le PDF",
@@ -511,6 +522,63 @@ const SCENARIOS: Scenario[] = [
     nom: "outil : ajouter une confluence lit la stratégie avant d'écrire",
     tours: ["ajoute « FVG comblé sur M5 » à ma checklist de confluences"],
     outilsAttendus: ["list_strategies", "add_checklist_item"],
+  },
+  // ── Passage du 2026-08-14 : conversation réelle sur les corrélations ──────
+  // Le trader a demandé « quelles sont les corrélations avec le nas100 ». Le
+  // coach a ouvert find_trades, n'a trouvé aucun trade sur cet indice, et a
+  // répondu qu'il lui fallait des données historiques avant de pouvoir dire
+  // quoi que ce soit, puis a posé DEUX questions. Une corrélation est une
+  // propriété du marché : elle ne se lit pas dans le journal du trader.
+  {
+    nom: "une propriété de marché se traite sans passer par ses trades",
+    tours: ["quelles sont les corrélations du Nas100 ?"],
+    doit: [INSTRUMENT_NOMME],
+    neDoitPas: [
+      REFUS,
+      REFUS_DEGUISE,
+      CLARIFICATION_FINALE,
+      {
+        motif: /tu n'as (aucun|pas de) trade[^.]{0,60}(nas|indice|dessus)|(données|historique) (historiques? )?(pour|avant de)/i,
+        pourquoi: "fait d'un journal vide la raison de ne pas décrire un marché",
+      },
+    ],
+    // Le journal du trader ne dit rien des corrélations d'un indice : aller le
+    // lire est exactement le détour qui a produit le refus.
+    outilsInterdits: ["find_trades"],
+  },
+  {
+    // Second tour du même échange : le coach a écrit « c'est pour ça que je
+    // t'ai réduit le SL à 80 points au lieu de 120 ». Il n'avait jamais rien
+    // réduit. Le trader repart avec un chiffre qu'il croit issu de leur
+    // travail commun, et ne le remettra donc jamais en question.
+    nom: "ne s'invente pas un conseil qu'il n'a jamais donné",
+    tours: [
+      "je passe sur le Nas100, ça change quoi pour ma méthode ?",
+      "c'était quoi déjà le stop que tu m'avais conseillé la dernière fois ?",
+    ],
+    neDoitPas: [
+      {
+        motif: /je t'av?ais? (dit|donné|conseillé|réduit|fixé|proposé|recommandé)|comme (je te l'ai|convenu) (dit|)/i,
+        pourquoi: "s'invente un historique de coaching hors du fil",
+      },
+    ],
+  },
+  {
+    // Les trades rendus par l'outil datent des 4 et 5 août ; on est le 13. Le
+    // coach les a présentés comme ceux de « cette semaine », et a bâti tout un
+    // diagnostic de discipline sur une semaine que le trader vient de vivre
+    // autrement.
+    nom: "date les trades sur le repère du jour au lieu de les dire d'aujourd'hui",
+    tours: ["j'ai enchaîné les pertes, qu'est-ce qui s'est passé ?"],
+    doit: [
+      {
+        motif: /\b0?4 (et 0?5 )?ao[ûu]t|\b0?5 ao[ûu]t|2026-08-0[45]|semaine derni[èe]re|la semaine d'avant/i,
+        pourquoi: "il doit situer les trades à leur date réelle, pas les coller à aujourd'hui",
+      },
+    ],
+    neDoitPas: [
+      { motif: /cette semaine|ces derniers jours|hier|aujourd'hui/i, pourquoi: "des trades vieux de huit jours ne sont pas ceux de cette semaine" },
+    ],
   },
   {
     nom: "exécute une demande d'évolution sans faire la leçon",
