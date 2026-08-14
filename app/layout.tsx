@@ -77,6 +77,13 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable}`}
     >
       <head>
+        {/* Impact.com site-ownership proof. Written by hand rather than through the
+            metadata API: their tag carries the token in `value`, and Metadata.other
+            always renders it as `content`. */}
+        <meta
+          name="impact-site-verification"
+          {...({ value: "7e6f0b8c-3035-448d-a9c5-1a607c94b38a" } as { content?: string })}
+        />
         {/* Prevent flash of wrong theme — must run before paint */}
         <script
           dangerouslySetInnerHTML={{
