@@ -29,7 +29,7 @@ export default function AdminPage() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [updating, setUpdating] = useState(false);
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
-  const [tab, setTab] = useState<"plans" | "messages" | "funnel" | "usernames" | "affiliation" | "communities">("plans");
+  const [tab, setTab] = useState<"plans" | "messages" | "funnel" | "cout" | "usernames" | "affiliation" | "communities">("plans");
   // Modération des pseudos (libellés FR en dur, convention page interne)
   const [modUsername, setModUsername] = useState("");
   const [modNewUsername, setModNewUsername] = useState("");
@@ -48,6 +48,21 @@ export default function AdminPage() {
     };
   } | null>(null);
   const [funnelDays, setFunnelDays] = useState<7 | 30>(30);
+  /**
+   * Coût IA réel. Ces événements s'écrivaient depuis le 2026-08-06 sans que
+   * rien ne les lise : tous les arbitrages de modèle ont été tranchés sur des
+   * estimations pendant que les mesures s'accumulaient à côté.
+   */
+  const [cout, setCout] = useState<{
+    days: number; total: number; abonnes: number; eventsTableMissing: boolean;
+    lignes: {
+      route: string; model: string; appels: number; coutTotalEur: number;
+      coutParAppelEur: number; modeleParAppelEur: number | null; source: string | null;
+      tokensEntree: number; tokensSortie: number; tauxCache: number | null;
+    }[];
+  } | null>(null);
+  const [coutDays, setCoutDays] = useState<7 | 30 | 90>(30);
+  const [coutLoading, setCoutLoading] = useState(false);
   const [funnelLoading, setFunnelLoading] = useState(false);
   // Affiliation influenceurs (page interne : libellés FR en dur, convention admin)
   const [affMonth, setAffMonth] = useState(() => new Date().toISOString().slice(0, 7));
@@ -107,6 +122,18 @@ export default function AdminPage() {
       // silencieux — page interne
     } finally {
       setFunnelLoading(false);
+    }
+  }
+
+  async function loadCout(days: 7 | 30 | 90) {
+    setCoutLoading(true);
+    try {
+      const res = await fetch(`/api/admin/ai-cost?days=${days}`);
+      if (res.ok) setCout(await res.json());
+    } catch {
+      // silencieux — page interne
+    } finally {
+      setCoutLoading(false);
     }
   }
 
@@ -286,6 +313,9 @@ export default function AdminPage() {
         </button>
         <button onClick={() => { setTab("funnel"); if (!funnel) loadFunnel(funnelDays); }} className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${tab === "funnel" ? "bg-card text-foreground shadow-sm" : "text-muted hover:text-foreground"}`}>
           Funnel
+        </button>
+        <button onClick={() => { setTab("cout"); if (!cout) loadCout(coutDays); }} className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${tab === "cout" ? "bg-card text-foreground shadow-sm" : "text-muted hover:text-foreground"}`}>
+          Coût IA
         </button>
         <button onClick={() => setTab("usernames")} className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${tab === "usernames" ? "bg-card text-foreground shadow-sm" : "text-muted hover:text-foreground"}`}>
           Pseudos
@@ -513,6 +543,107 @@ export default function AdminPage() {
           >
             {updating ? "..." : t("admin_update")}
           </button>
+        </div>
+      )}
+
+      {tab === "cout" && (
+        <div className="mt-6 bg-card border border-border rounded-xl p-6">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">Coût IA réel</h2>
+              <p className="text-xs text-muted mt-0.5">
+                Ce qui est réellement facturé, à confronter au modèle de marge.
+              </p>
+            </div>
+            <div className="flex gap-1">
+              {([7, 30, 90] as const).map((d) => (
+                <button
+                  key={d}
+                  onClick={() => { setCoutDays(d); loadCout(d); }}
+                  className={`px-3 py-1 rounded-md text-xs font-medium border transition-colors ${coutDays === d ? "bg-accent/10 border-accent/30 text-accent" : "border-border text-muted hover:text-foreground"}`}
+                >
+                  {d} j
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {coutLoading && <p className="text-sm text-muted">Chargement…</p>}
+          {cout?.eventsTableMissing && (
+            <p className="text-sm text-loss mb-3">⚠️ Table product_events absente : appliquer la migration 20260703_create_product_events.sql.</p>
+          )}
+          {cout && !coutLoading && cout.lignes.length === 0 && (
+            <p className="text-sm text-muted">Aucun appel IA sur la fenêtre. Les mesures apparaîtront dès les premiers usages.</p>
+          )}
+          {cout && !coutLoading && cout.lignes.length > 0 && (
+            <>
+              <div className="grid grid-cols-3 gap-3 mb-5">
+                <div className="bg-surface border border-border rounded-lg px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-wide text-muted">Total</p>
+                  <p className="text-lg font-bold text-foreground tabular-nums">{cout.total.toFixed(2)} €</p>
+                </div>
+                <div className="bg-surface border border-border rounded-lg px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-wide text-muted">Traders actifs</p>
+                  <p className="text-lg font-bold text-foreground tabular-nums">{cout.abonnes}</p>
+                </div>
+                <div className="bg-surface border border-border rounded-lg px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-wide text-muted">Par trader</p>
+                  <p className="text-lg font-bold text-foreground tabular-nums">
+                    {cout.abonnes ? (cout.total / cout.abonnes).toFixed(2) : "0.00"} €
+                  </p>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-[11px] uppercase tracking-wide text-muted border-b border-border">
+                      <th className="text-left py-2 pr-3 font-medium">Route</th>
+                      <th className="text-right py-2 px-3 font-medium">Appels</th>
+                      <th className="text-right py-2 px-3 font-medium">Total</th>
+                      <th className="text-right py-2 px-3 font-medium">Par appel</th>
+                      <th className="text-right py-2 px-3 font-medium">Modèle</th>
+                      <th className="text-right py-2 pl-3 font-medium">Cache</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cout.lignes.map((l) => {
+                      // Un réel NETTEMENT au-dessus du modèle est le signal qui
+                      // compte : c'est là que la facture dérape sans prévenir.
+                      const derive = l.modeleParAppelEur !== null && l.coutParAppelEur > l.modeleParAppelEur * 1.2;
+                      return (
+                        <tr key={`${l.route}-${l.model}`} className="border-b border-border/50">
+                          <td className="py-2 pr-3">
+                            <span className="font-medium text-foreground">{l.route}</span>
+                            <span className="block text-[11px] text-muted">{l.model}</span>
+                          </td>
+                          <td className="py-2 px-3 text-right tabular-nums text-foreground">{l.appels}</td>
+                          <td className="py-2 px-3 text-right tabular-nums text-foreground">{l.coutTotalEur.toFixed(3)} €</td>
+                          <td className={`py-2 px-3 text-right tabular-nums font-semibold ${derive ? "text-loss" : "text-foreground"}`}>
+                            {l.coutParAppelEur.toFixed(4)} €
+                          </td>
+                          <td className="py-2 px-3 text-right tabular-nums text-muted">
+                            {l.modeleParAppelEur !== null ? `${l.modeleParAppelEur.toFixed(4)} €` : "—"}
+                            {l.source && <span className="block text-[10px]">{l.source}</span>}
+                          </td>
+                          <td className="py-2 pl-3 text-right tabular-nums text-muted">
+                            {l.tauxCache !== null ? `${Math.round(l.tauxCache * 100)} %` : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <p className="text-[11px] text-muted mt-4 leading-relaxed">
+                La colonne « Modèle » vient de <code>lib/product-margin.ts</code> et vaut pour un abonné AU PLAFOND :
+                elle n&apos;est pas censée égaler le réel, qui est une moyenne d&apos;usage. Ce qui se surveille, c&apos;est
+                le coût PAR APPEL. Une route marquée « majorant » est une estimation : quand son réel se confirme
+                plus bas, le plafond mensuel du coach peut remonter d&apos;autant.
+              </p>
+            </>
+          )}
         </div>
       )}
 
