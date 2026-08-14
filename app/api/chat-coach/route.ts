@@ -17,14 +17,34 @@ import { glossariesForStrategy } from "@/lib/coach-method-glossaries";
 import { buildCoachSystemPrompt } from "@/lib/coach-system-prompt";
 import { createDashStripper } from "@/lib/coach-typography";
 import { coachToolsForPlan, executeCoachTool } from "@/lib/coach-tools";
+import { webSearchTool } from "@/lib/coach-web-search";
 import type { PlanType } from "@/lib/PlanContext";
 import { sanitizeUserInput } from "@/lib/prompt-sanitizer";
 import { createClient as createSupabaseServer } from "@/lib/supabase/server";
 
 const MAX_MESSAGES = 50;
-/** Modèle du coach. Déclaré ici : la route l'utilise pour l'appel ET pour le
- *  journal de coût, et les deux ne doivent jamais diverger. */
-const COACH_MODEL = "claude-haiku-4-5-20251001";
+/**
+ * Modèle du coach, PAR PLAN. Déclaré ici : la route l'utilise pour l'appel ET
+ * pour le journal de coût, et les deux ne doivent jamais diverger.
+ *
+ * ⚠️ POURQUOI PAS SONNET 5, ALORS QU'IL EST MESURÉMENT MEILLEUR. Le
+ * 2026-08-14, même question posée cinq fois : Haiku donne le bon signe de
+ * corrélation mais se contredit d'un tour à l'autre et ne cite jamais l'actif
+ * le plus corrélé au Nasdaq ; Sonnet 5 répond juste, nuance (« généralement
+ * négative ») et nomme le S&P 500. Ce n'est pas un défaut de consigne, c'est
+ * de la culture générale de marché, et aucune règle de prompt ne la fabrique.
+ *
+ * Il ne passe pas au PLAFOND ACTUEL : 21,53 € par abonné Premium au plafond de
+ * 450 messages, contre ~13,3 € d'enveloppe réelle (`product-margin.ts`). À un
+ * plafond de 200 il tiendrait. Mais 450 est écrit dans la matrice des plans et
+ * la FAQ en quatre langues : le baisser retire une promesse vendue, et c'est
+ * une décision commerciale, pas technique. La fonction reste paramétrée par
+ * plan pour que ce basculement soit d'une ligne le jour où il est tranché.
+ */
+function coachModelForPlan(plan: PlanType): string {
+  void plan;
+  return "claude-haiku-4-5-20251001";
+}
 /**
  * Plafond de sortie. Il était à 1 500 tokens, soit environ 1 100 mots : une
  * stratégie complète était coupée en pleine phrase, sans erreur ni signal, et
@@ -284,7 +304,12 @@ export async function POST(request: Request) {
     // des promesses non tenues, plus frustrantes qu'une absence — l'upsell se
     // fait dans l'interface, pas dans la bouche du coach. Le filtre change le
     // préfixe caché, mais il est stable pour un trader donné : pas d'impact.
-    const availableTools = coachToolsForPlan(plan);
+    const coachModel = coachModelForPlan(plan);
+    // La recherche web s'ajoute au catalogue interne : elle s'exécute côté
+    // Anthropic, la boucle ci-dessous n'a donc rien à exécuter pour elle, mais
+    // elle doit savoir que « pause_turn » n'est pas une fin de réponse.
+    const toolsSansRecherche = coachToolsForPlan(plan) as unknown as Anthropic.Tool[];
+    const availableTools = [...toolsSansRecherche, webSearchTool(coachModel)];
 
     // ── 6. Boucle agentique streamée : texte + actions en NDJSON ──
     // Chaque ligne est un JSON : {t:"text",d} (delta), {t:"action",a} (chip UI),
@@ -364,13 +389,20 @@ export async function POST(request: Request) {
         const toolsCalled: string[] = [];
         try {
           let toolCallsUsed = 0;
+          // ⚠️ `max_uses` de la recherche web borne les requêtes d'UN appel
+          // API, pas d'un message : la boucle en fait jusqu'à MAX_ROUNDS, donc
+          // un message pourrait déclencher cinq recherches et faire exploser
+          // le coût. On retire l'outil dès qu'une recherche a eu lieu : c'est
+          // ce qui rend le majorant « une recherche par message » vrai, et
+          // c'est lui que chiffre `product-margin.ts`.
+          let rechercheFaite = false;
           for (let round = 0; round < MAX_ROUNDS; round++) {
             const claudeStream = client.messages.stream({
-              model: COACH_MODEL,
+              model: coachModel,
               max_tokens: MAX_OUTPUT_TOKENS,
               system: cachedSystem,
               messages: withConversationCache(conversation),
-              tools: availableTools,
+              tools: rechercheFaite ? toolsSansRecherche : availableTools,
             });
 
             // Le tiret long est banni de la voix du produit. Le prompt
@@ -390,11 +422,23 @@ export async function POST(request: Request) {
 
             const final = await claudeStream.finalMessage();
             roundUsages.push(final.usage);
+            if (final.content.some((b) => b.type === "server_tool_use")) rechercheFaite = true;
             // Témoin d'efficacité du cache dans les logs Vercel (cache_read
             // proche de input = cache chaud, coût d'entrée divisé par ~10).
             console.log(
               `[chat-coach] round=${round} in=${final.usage.input_tokens} cache_read=${final.usage.cache_read_input_tokens ?? 0} cache_write=${final.usage.cache_creation_input_tokens ?? 0} out=${final.usage.output_tokens}`,
             );
+            // La recherche web s'exécute chez Anthropic. Quand sa boucle
+            // serveur atteint sa limite d'itérations, la réponse s'arrête sur
+            // « pause_turn » : ce n'est PAS une fin de tour. Il faut renvoyer
+            // le tour tel quel pour que le serveur reprenne où il en était.
+            // Le traiter comme une fin coupe la réponse en plein milieu, sans
+            // erreur ni signal, exactement le défaut qu'on vient de corriger
+            // ailleurs.
+            if (final.stop_reason === "pause_turn") {
+              conversation.push({ role: "assistant", content: final.content });
+              continue;
+            }
             if (final.stop_reason !== "tool_use") break;
 
             const toolUses = final.content.filter(
@@ -455,7 +499,7 @@ export async function POST(request: Request) {
           if (roundUsages.length > 0) {
             logAiCost(sb, userId, {
               route: "chat-coach",
-              model: COACH_MODEL,
+              model: coachModel,
               plan,
               usage: sumUsage(roundUsages),
               rounds: roundUsages.length,

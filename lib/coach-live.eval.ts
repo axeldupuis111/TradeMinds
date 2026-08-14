@@ -4,6 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { buildCoachSystemPrompt } from "./coach-system-prompt";
 import { renderMethodGlossaries } from "./coach-method-glossaries";
 import { coachToolsForPlan } from "./coach-tools";
+import { webSearchTool } from "./coach-web-search";
 import { stripLongDashes } from "./coach-typography";
 
 /**
@@ -173,7 +174,10 @@ async function jouer(tours: string[], debutant = false): Promise<Tour[]> {
         model: MODELE,
         max_tokens: 2000,
         system: [{ type: "text", text: systeme, cache_control: { type: "ephemeral" } }],
-        tools: coachToolsForPlan("premium") as Anthropic.Tool[],
+        // Le prompt annonce la recherche web : ne pas la fournir ici ferait
+        // tester un coach qui promet une capacité absente, soit exactement le
+        // défaut que ce banc surveille par ailleurs.
+        tools: [...(coachToolsForPlan("premium") as Anthropic.Tool[]), webSearchTool(MODELE)],
         messages,
       });
       const textes = rep.content.filter((b) => b.type === "text").map((b) => (b as { text: string }).text);
@@ -182,6 +186,9 @@ async function jouer(tours: string[], debutant = false): Promise<Tour[]> {
 
       const outils = rep.content.filter((b) => b.type === "tool_use");
       appeles.push(...outils.map((b) => (b as unknown as { name: string }).name));
+      // Comme en production : une recherche web qui atteint sa limite serveur
+      // rend « pause_turn », qui n'est pas une fin de tour.
+      if (rep.stop_reason === "pause_turn") continue;
       if (rep.stop_reason !== "tool_use" || outils.length === 0) break;
       messages.push({
         role: "user",

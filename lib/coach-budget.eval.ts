@@ -4,6 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { buildCoachSystemPrompt } from "./coach-system-prompt";
 import { renderMethodGlossaries, ALL_METHOD_FAMILIES, MAX_GLOSSARIES } from "./coach-method-glossaries";
 import { coachToolsForPlan } from "./coach-tools";
+import { webSearchTool } from "./coach-web-search";
 import { costEur } from "./ai-cost-log";
 import { PLAN_MONTHLY_CEILING } from "./ai-ceilings";
 
@@ -37,6 +38,15 @@ const CLE = (() => {
 const MODELE = "claude-haiku-4-5-20251001";
 
 /**
+ * Le catalogue TEL QU'IL PART EN PRODUCTION, recherche web comprise. Compter
+ * le préfixe sans elle sous-estimerait ce qu'on paie à chaque message, et
+ * c'est précisément ce chiffre qui pilote les arbitrages de modèle.
+ */
+function outilsProduction(): unknown[] {
+  return [...coachToolsForPlan("premium"), webSearchTool(MODELE)];
+}
+
+/**
  * Enveloppe du coach pour un abonné Premium, en euros par mois.
  *
  * Origine : c'est la part du prix d'abonnement qu'on accepte de dépenser en
@@ -63,15 +73,26 @@ const PIRE_CAS = {
   sortie: 800,
 } as const;
 
+/**
+ * Compte les tokens du préfixe réel.
+ *
+ * ⚠️ `count_tokens` REFUSE les outils serveur (400 : « Server tools are not
+ * supported in the count_tokens endpoint »). Or la recherche web en est un, et
+ * elle fait partie du préfixe payé à chaque message : la compter à part
+ * reviendrait à mesurer un prompt qui n'existe pas. On passe donc par
+ * /v1/messages avec `max_tokens: 1`, qui accepte les outils serveur et rend le
+ * vrai `input_tokens` de production. Coût : une sortie d'un token par appel.
+ */
 async function compterTokens(systeme: string, outils: unknown[]): Promise<number> {
   const client = new Anthropic({ apiKey: CLE });
-  const r = await client.messages.countTokens({
+  const r = await client.messages.create({
     model: MODELE,
+    max_tokens: 1,
     system: systeme,
     tools: outils as Anthropic.Tool[],
     messages: [{ role: "user", content: "." }],
   });
-  return r.input_tokens;
+  return r.usage.input_tokens + (r.usage.cache_read_input_tokens ?? 0);
 }
 
 /** Prompt du pire cas : deux glossaires, fiche, statistiques, mémoire. */
@@ -99,19 +120,26 @@ function promptMaximal(): string {
 describe("marge du coach au pire cas", () => {
   it("le préfixe système reste sous son plafond de taille", async () => {
     if (!CLE) throw new Error("Aucune clé API : renseigne CLAUDE_API_KEY dans .env.local.");
-    const prefixe = await compterTokens(promptMaximal(), coachToolsForPlan("premium"));
+    const prefixe = await compterTokens(promptMaximal(), outilsProduction());
     console.log(`\n  Préfixe système + outils (pire cas) : ${prefixe} tokens`);
-    // Mesuré à 19 820 tokens le 2026-08-13. Le seuil laisse de la place pour
-    // quelques règles, pas pour une dérive : il est mis en cache (lu à 0,1x)
-    // mais réécrit à chaque nouvelle conversation, et il pèse maintenant plus
-    // que les sorties. Le franchir n'est pas interdit, c'est un arbitrage à
-    // faire les yeux ouverts, chiffre en main.
-    expect(prefixe, "le préfixe a dépassé son plafond : arbitrer avant d'ajouter").toBeLessThan(22_000);
+    // Mesuré 19 820 le 2026-08-13, puis 22 731 le 2026-08-14 après l'ajout de
+    // la recherche web. Le seuil est passé de 22 000 à 24 000, ET C'EST UN
+    // ARBITRAGE ASSUMÉ, pas un plafond qu'on repousse quand il gêne :
+    //  - l'outil serveur pèse ~1 600 tokens à lui seul, parce que l'API
+    //    injecte ses propres instructions d'usage avec lui. Ce n'est pas de la
+    //    dérive de prose, c'est le prix d'une capacité ;
+    //  - surtout, ce test n'est plus le vrai garde-fou. Il mesurait la taille
+    //    comme PROXY du coût, faute de mieux. Depuis le 2026-08-14 la marge du
+    //    produit entier est tenue par `product-margin.test.ts`, qui échoue si
+    //    un abonné au plafond coûte plus qu'il ne rapporte. Ce seuil-ci ne sert
+    //    plus qu'à rendre une dérive VISIBLE, pas à décider.
+    // Le franchir reste un arbitrage à faire les yeux ouverts, chiffre en main.
+    expect(prefixe, "le préfixe a dépassé son plafond : arbitrer avant d'ajouter").toBeLessThan(24_000);
   });
 
   it("un abonné Premium au plafond reste dans l'enveloppe", async () => {
     if (!CLE) throw new Error("Aucune clé API : renseigne CLAUDE_API_KEY dans .env.local.");
-    const prefixe = await compterTokens(promptMaximal(), coachToolsForPlan("premium"));
+    const prefixe = await compterTokens(promptMaximal(), outilsProduction());
     const appels = PIRE_CAS.messages * PIRE_CAS.roundsParMessage;
 
     // Écritures de cache : une par conversation. TTL 1 h => 2x le tarif d'entrée.
@@ -146,7 +174,7 @@ describe("marge du coach au pire cas", () => {
 
   it("dit lequel de l'entrée ou de la sortie domine, pour savoir où couper", async () => {
     if (!CLE) throw new Error("Aucune clé API : renseigne CLAUDE_API_KEY dans .env.local.");
-    const prefixe = await compterTokens(promptMaximal(), coachToolsForPlan("premium"));
+    const prefixe = await compterTokens(promptMaximal(), outilsProduction());
     const appels = PIRE_CAS.messages * PIRE_CAS.roundsParMessage;
     const sorties = costEur(MODELE, { output_tokens: appels * PIRE_CAS.sortie });
     const entrees = costEur(MODELE, {

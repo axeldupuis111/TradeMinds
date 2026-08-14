@@ -36,6 +36,15 @@ export const PLAN_MONTHLY_CEILING: Record<"analyze" | "chat", Record<PlanType, n
   // Julie, intensive : 12 analyses/mois. Premium = ×3,3.
   analyze: { free: 3, plus: 30, premium: 40 },
   // Julie : 176 messages/mois. Premium = ×2,6.
+  //
+  // ⚠️ NE PAS BAISSER SANS DÉCISION COMMERCIALE. Ce chiffre n'est pas qu'un
+  // fusible interne : il est ÉCRIT dans la matrice des plans et dans la FAQ,
+  // en quatre langues, et `plan-quota-copy.test.ts` vérifie que la copy le
+  // cite. Le réduire retire une promesse déjà vendue aux abonnés en cours.
+  // C'est aussi lui qui rend Sonnet 5 inabordable sur le coach : à 450
+  // messages Sonnet coûte 21,53 € contre ~13,3 € d'enveloppe réelle, à 200 il
+  // tiendrait. L'arbitrage « meilleur modèle contre plafond affiché » est
+  // ouvert, il appartient à Axel, et il se chiffre dans `product-margin.ts`.
   chat: { free: 3, plus: 150, premium: 450 },
 };
 
@@ -45,15 +54,28 @@ export const PLAN_MONTHLY_CEILING: Record<"analyze" | "chat", Record<PlanType, n
  * unitaire est faible (Haiku). La clé est le `feature` passé à rateLimitAi.
  */
 export const FEATURE_MONTHLY_CEILING: Record<string, number> = {
-  vision_review: 90, // Julie : 44 (Sonnet 5 + image : la plus chère des secondaires)
-  "session-debrief": 70, // Julie : 22
-  "daily-summary": 70, // Julie : 22
-  "weekly-plan": 40, // désormais mis en cache par semaine et par langue : 4 à 8 suffisent
+  // Julie : 44. Laissé à 90, soit le plancher ×2 exact de la doctrine.
+  // ⚠️ C'EST LA ROUTE LA PLUS CHÈRE DU PRODUIT, devant le coach, et personne
+  // ne le savait : Sonnet 5 plein tarif (aucun cache, contrairement au coach)
+  // sur un prompt qui porte une image haute résolution, jusqu'à 4 784 tokens
+  // à elle seule. Elle coûte 4,05 € par abonné Premium au plafond, soit un
+  // tiers de l'enveloppe IA. Il n'y a rien à y gagner sans sortir de la
+  // doctrine ; le levier serait de réduire la résolution envoyée, pas le
+  // plafond. À creuser avant de toucher au coach une nouvelle fois.
+  vision_review: 90,
+  "session-debrief": 70, // Julie : 22 (×3,2, conforme)
+  "daily-summary": 70, // Julie : 22 (×3,2, conforme)
   "monthly-review": 10, // Julie : 1
-  "parse-strategy": 20, // Julie : 1
-  "goals-interpret": 40, // Julie : 4
-  "calendar-explain": 60, // Julie : 12
-  "community-interpret": 60, // Julie : 5
+  // ── Passe du 2026-08-14 : cinq plafonds avaient dérivé loin au-dessus du
+  // ×3 que ce fichier énonce, sans que personne ne les additionne. Ramenés à
+  // la doctrine, ils rendent 0,77 € par abonné Premium au plafond, soit
+  // exactement le coussin qui manquait pour financer Sonnet 5 + recherche web
+  // sur le coach. Aucun n'est descendu sous ×3 de l'usage de Julie.
+  "weekly-plan": 20, // Julie : 4 à 8, et le plan est mis en cache par semaine
+  "parse-strategy": 15, // Julie : 1 (une fiche ne se réécrit pas tous les jours)
+  "goals-interpret": 15, // Julie : 4
+  "calendar-explain": 36, // Julie : 12
+  "community-interpret": 20, // Julie : 5 (était à ×12, le plus dérivé du lot)
 };
 
 /** Clé de mois "2026-08" dans le fuseau du trader (défaut UTC). */
