@@ -211,7 +211,7 @@ export const COACH_DEFAULT: CoachConfig = {
   // catalogue de Premium ; le garde-fou du banc a attrapé l'écart. Mesurer un
   // plan avec la configuration d'un autre est la façon la plus facile de se
   // mentir dans ce fichier.
-  prefixeParModele: { premium: 20_690, plus: 18_784 },
+  prefixeParModele: { premium: 20_844, plus: 18_882 },
   plafond: { plus: PLAN_MONTHLY_CEILING.chat.plus, premium: PLAN_MONTHLY_CEILING.chat.premium },
   roundsParMessage: 1.4,
   messagesParFenetre: 5,
