@@ -243,13 +243,14 @@ Tradovate onboarding friction is the specific blocker they raise.
 | Profil éditeur Impact + preuve de propriété du domaine | FAIT le 2026-08-14 (candidature NinjaTrader US en cours d'examen) |
 | Inscription au programme d'affiliation (20 $ par nouvel inscrit NinjaTrader) | FAIT le 2026-08-14 |
 | API License Agreement (4 p., version 30/09/2024) | **SIGNÉ le 2026-08-14** |
-| Ecosystem Vendor Listing Agreement (10 p.) | reçu, relu, **NON SIGNÉ** : c'est notre seul levier |
+| Ecosystem Vendor Listing Agreement (10 p.) | **À SIGNER le 2026-08-15** : un partenaire attend la connexion, la vitesse prime sur le levier |
 | **Question 3 (add-on individuel encore requis ou non)** | TOUJOURS SANS RÉPONSE, et absente des deux contrats |
 | Avenant art. 15 actant l'exemption de frais pour les utilisateurs finaux | À OBTENIR avant de signer le contrat fournisseur |
 | Message à Michaelanne (question a/b + demande d'avenant) | ENVOYÉ le 2026-08-14 |
 | **Réponse du 2026-08-14 16h46** | **hors sujet : répond sur la clé API, pas sur l'add-on** |
 | ~~Relance séparant clé / add-on / compte minimum~~ | abandonnée : sa réponse est probablement un OUI |
-| **Avenant art. 15 rédigé, à faire signer avec le Listing Agreement** | brouillon prêt, à envoyer |
+| ~~Avenant art. 15 comme préalable~~ | **déclassé** : devient une phrase du mail, ne bloque plus rien |
+| **Identifiants OAuth partenaires + doc du flux** | LE VRAI BLOCAGE, à demander avec les contrats signés |
 | Repli si pas de réponse sous 48 h | Calendly : https://calendly.com/michaelanne-chapel |
 
 ### Réponse de NinjaTrader (2026-08-06)
@@ -525,6 +526,90 @@ incident : cela veut dire que l'exemption n'est pas dans son pouvoir, ou qu'elle
 ne couvre pas le compte minimum. Dans ce cas, ne pas signer le Listing Agreement
 et appliquer la conclusion écrite plus haut (pousser NinjaTrader et l'import
 CSV).
+
+### Décision d'Axel (2026-08-15) : signer les deux, viser la vitesse
+
+Élément nouveau et décisif : **un partenaire ne signera que si la connexion
+Tradovate et NinjaTrader fonctionne.** Attendre a donc un coût réel, ce que
+j'avais nié. Décision : signer les deux contrats sans attendre l'avenant.
+
+**L'avenant n'est pas abandonné, il est déclassé** : il passe de condition
+préalable à une phrase dans le mail, qui ne bloque rien. Si l'exemption est
+fausse, on veut l'apprendre maintenant, pas après le travail d'intégration.
+
+### Ce qui bloque réellement n'est pas contractuel
+
+État du code au 2026-08-15 : `lib/sync/tradovate.ts` s'authentifie via
+`auth/accessTokenRequest` avec **username + password + cid + sec**. C'est le
+chemin par CLÉ API INDIVIDUELLE, donc précisément celui qui exige l'add-on à
+25 $ et le compte à 1 000 $. C'est le mur que l'OAuth partenaire doit faire
+tomber : **l'OAuth n'est pas un confort d'ergonomie, c'est tout l'intérêt du
+partenariat.**
+
+Ce qui manque pour construire, et rien d'autre :
+
+1. Les **identifiants OAuth partenaires** (client id et secret), sandbox d'abord.
+2. La **documentation du flux** : endpoint d'autorisation, échange de jeton,
+   scopes, rafraîchissement.
+
+Sa phrase « During development, you can build in an OAuth connection » se lit
+comme une autorisation à construire dès maintenant. Le mail doit donc demander
+ces deux choses, pas rouvrir un débat.
+
+### Message à envoyer avec les deux contrats signés (non envoyé)
+
+> Hello Michaelanne,
+>
+> Both agreements are signed and attached: the API License Agreement and the
+> Ecosystem Vendor Listing Agreement.
+>
+> To start building the OAuth connection you described, I need two things from
+> your side:
+>
+> 1. The partner OAuth client credentials (client id and secret), for sandbox
+>    first if that is how you prefer to start.
+> 2. The developer documentation for the OAuth flow: authorization endpoint,
+>    token exchange, scopes, and token refresh.
+>
+> On our side the integration already runs against the Tradovate REST API in
+> read only mode, so once we can authenticate users through your OAuth window
+> rather than through individual API keys, we are close to done.
+>
+> One line for the record, and nothing needs to wait for it: I understood from
+> your message that end users connecting through our vendor OAuth will not need
+> to purchase the individual API Access add-on, nor meet the minimum funded
+> account balance. If that is not the case in production, please tell me now,
+> because most of our futures users trade prop firm evaluation accounts where
+> that add-on cannot be purchased.
+>
+> Happy to take fifteen minutes on your Calendly if that moves the credentials
+> faster.
+>
+> Best regards,
+> Axel
+
+Pourquoi cette forme : les contrats partent signés, donc plus rien n'est retenu.
+La demande porte sur les deux seules choses qui débloquent l'ingénierie. Et la
+question des frais est là, datée, écrite, sans conditionner quoi que ce soit :
+si la réponse est mauvaise, on l'apprend avant d'avoir construit.
+
+### Ce qui reste exposé, assumé en connaissance de cause
+
+- **Art. 18** : l'exemption reste dans un mail, pas dans le contrat. Si elle se
+  révèle fausse, aucun recours écrit.
+- **API License Agreement art. 1 et 2 (i)** : licence accordée *solely* pour le
+  passage d'ordres, et interdiction d'accéder au compte d'un client « for any
+  purpose ». Notre usage lecture seule n'y est couvert par rien. À faire
+  confirmer par écrit quand la relation sera établie, sans bloquer maintenant.
+- **Art. 3** : purge du cache sous 24 h, incompatible avec un journal si
+  l'historique d'exécutions n'est pas qualifié de Customer Data (art. 5).
+- **Art. 4** : aucune dépendance GPL/LGPL/AGPL. Vérifié le 2026-08-14, à
+  revérifier avant chaque ajout de dépendance : une AGPL résilie la licence
+  automatiquement.
+- **Art. 4.1 et 4.2 du Listing** : obligation de présenter NinjaTrader
+  positivement en public. Vérifié le 2026-08-15 : le blog ne les compare
+  défavorablement nulle part, ils n'y figurent que comme plateforme supportée.
+  Contrainte théorique aujourd'hui, à garder en tête avant tout comparatif.
 
 ### Si la réponse est « oui, l'add-on reste dû »
 
