@@ -252,7 +252,7 @@ Tradovate onboarding friction is the specific blocker they raise.
 | ~~Avenant art. 15 comme préalable~~ | **déclassé** : devient une phrase du mail, ne bloque plus rien |
 | **Identifiants OAuth partenaires + doc du flux** | LE SEUL BLOCAGE RESTANT. DocuSign ne les apporte pas : mail à envoyer |
 | Plomberie OAuth côté TradeDiscipline | **FAITE le 2026-08-15** (`60a1924`), n'attend que les deux secrets |
-| Repli si pas de réponse sous 48 h | Calendly : https://calendly.com/michaelanne-chapel |
+| Repli si pas de réponse sous 48 h | relancer PAR ÉCRIT ; ne pas passer par le Calendly (voir note ci-dessous) |
 
 ### Réponse de NinjaTrader (2026-08-06)
 
@@ -583,6 +583,9 @@ de toute façon : la donner d'emblée économise un aller-retour.
 > Our callback URL, to whitelist on your side:
 > https://tradediscipline.app/api/broker/tradovate/oauth/callback
 >
+> Email works best for this: credentials and technical documentation are easier
+> to hand over in writing, and it gives us both a clear record to refer back to.
+>
 > Our integration already reads the Tradovate REST API in read only mode, so
 > once users authenticate through your OAuth window instead of individual API
 > keys, we are close to done.
@@ -594,11 +597,23 @@ de toute façon : la donner d'emblée économise un aller-retour.
 > because most of our futures users trade prop firm evaluation accounts where
 > that add-on cannot be purchased.
 >
-> Happy to take fifteen minutes on your Calendly if that moves the credentials
-> faster.
->
 > Best regards,
 > Axel
+
+⚠️ **NE PAS PROPOSER LE CALENDLY.** Axel ne parle pas anglais à l'oral. Ce n'est
+pas un handicap dans ce dossier : ce qu'on demande (un `client_secret`, une
+documentation d'API) **ne peut pas être transmis en visio de toute façon**.
+L'écrit est la bonne forme, et le mail le dit avec une raison professionnelle
+qui n'évoque jamais la langue : « credentials and technical documentation are
+easier to hand over in writing, and it gives us both a clear record ».
+
+Si l'interlocuteur insiste sur un appel, une phrase suffit :
+« Thank you, I would rather keep this in writing so I can implement directly
+from your documentation. If anything is unclear I will follow up by email. »
+Un développeur qui veut la spec par écrit est la norme, personne ne s'en étonne.
+
+Ses mails en anglais sont bien écrits : le dossier se traite intégralement à
+l'écrit, du premier contact à la livraison des identifiants.
 
 Pourquoi cette forme : les contrats partent signés, donc plus rien n'est retenu.
 La demande porte sur les deux seules choses qui débloquent l'ingénierie. Et la
