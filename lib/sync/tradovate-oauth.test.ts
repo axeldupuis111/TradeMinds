@@ -1,6 +1,8 @@
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import { SITE_URL } from "@/lib/seo";
 import {
   accessTokenExpired,
+  callbackUrl,
   buildAuthorizeUrl,
   isOAuthCredentials,
   oauthConfigured,
@@ -104,6 +106,27 @@ describe("écran de consentement", () => {
     expect(() => buildAuthorizeUrl({ redirectUri: "https://x.app/cb", state: "s" })).toThrow(
       /TRADOVATE_CLIENT_ID/,
     );
+  });
+});
+
+describe("URL de callback", () => {
+  it("est constante, jamais dérivée de la requête", () => {
+    // ⚠️ CE TEST EXISTE PARCE QUE LE DÉFAUT A ÉTÉ LIVRÉ. La première version
+    // lisait `process.env.NEXT_PUBLIC_SITE_URL || origin`, une variable qui
+    // n'existe nulle part dans le projet : seule la branche de repli était
+    // active, et sur Vercel l'origine d'une requête est celle du déploiement
+    // (`xxx-abc123.vercel.app`), pas le domaine. Tradovate compare le
+    // `redirect_uri` à l'octet près : l'échange aurait échoué à chaque
+    // déploiement, au tout dernier moment, avec un message peu parlant.
+    expect(callbackUrl()).toBe(`${SITE_URL}/api/broker/tradovate/oauth/callback`);
+  });
+
+  it("correspond à ce qu'on fait déclarer chez NinjaTrader", () => {
+    // Cette chaîne est communiquée à NinjaTrader pour leur liste blanche. Si
+    // quelqu'un change le chemin des routes sans prévenir, cette valeur cesse
+    // de correspondre à celle qu'ils ont enregistrée, et la connexion casse
+    // pour TOUS les traders d'un coup, sans qu'aucun autre test ne bouge.
+    expect(callbackUrl()).toBe("https://tradediscipline.app/api/broker/tradovate/oauth/callback");
   });
 });
 

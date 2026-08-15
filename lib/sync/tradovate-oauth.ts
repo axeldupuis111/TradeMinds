@@ -24,6 +24,7 @@
  *  - https://github.com/tradovate/example-api-oauth
  */
 
+import { SITE_URL } from "@/lib/seo";
 import type { TradovateEnvironment } from "./tradovate";
 
 /**
@@ -59,17 +60,22 @@ function tokenUrl(env: TradovateEnvironment): string {
 export const OAUTH_STATE_COOKIE = "tradovate_oauth_state";
 
 /**
- * URL de callback, identique au départ et au retour.
+ * URL de callback, identique au départ, au retour, et chez Tradovate.
  *
- * ⚠️ Tradovate exige que le `redirect_uri` de l'échange corresponde EXACTEMENT
- * à celui de l'autorisation. On préfère donc l'URL publique configurée : sur
- * Vercel, l'origine de la requête peut être celle du déploiement plutôt que le
- * domaine, ce qui produirait deux valeurs différentes et un échec au dernier
- * moment, avec un message peu parlant.
+ * ⚠️ CONSTANTE, JAMAIS DÉRIVÉE DE LA REQUÊTE. Tradovate exige que le
+ * `redirect_uri` de l'échange corresponde EXACTEMENT à celui de l'autorisation
+ * ET à celui déclaré côté partenaire. Or sur Vercel l'origine d'une requête est
+ * souvent celle du déploiement (`xxx-abc123.vercel.app`) et non le domaine :
+ * la dériver produirait une valeur différente à chaque déploiement, et un
+ * échec au tout dernier moment avec un message peu parlant.
+ *
+ * Première version de ce fichier : `process.env.NEXT_PUBLIC_SITE_URL || origin`.
+ * Cette variable n'existe nulle part dans le projet, la branche de repli était
+ * donc la seule active. `SITE_URL` (lib/seo.ts) est la convention réelle du
+ * dépôt, et c'est aussi ce qu'on donne à NinjaTrader pour la liste blanche.
  */
-export function callbackUrl(origin: string): string {
-  const base = process.env.NEXT_PUBLIC_SITE_URL || origin;
-  return `${base.replace(/\/$/, "")}/api/broker/tradovate/oauth/callback`;
+export function callbackUrl(): string {
+  return `${SITE_URL.replace(/\/$/, "")}/api/broker/tradovate/oauth/callback`;
 }
 
 export function oauthConfigured(): boolean {

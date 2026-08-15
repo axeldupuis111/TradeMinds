@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
 import { createClient } from "@/lib/supabase/server";
 import { encrypt } from "@/lib/crypto/encryption";
+import { SITE_URL } from "@/lib/seo";
 import { OAUTH_STATE_COOKIE, callbackUrl, exchangeCode } from "@/lib/sync/tradovate-oauth";
 
 /**
@@ -13,8 +14,7 @@ export const dynamic = "force-dynamic";
 
 /** Where to send the trader back, with a readable outcome. */
 function back(req: NextRequest, params: Record<string, string>): NextResponse {
-  const base = process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin;
-  const url = new URL("/dashboard/settings", base.replace(/\/$/, ""));
+  const url = new URL("/dashboard/settings", SITE_URL);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   const res = NextResponse.redirect(url);
   // Le state a servi, il ne doit pas pouvoir resservir.
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
   const env = state.endsWith(".demo") ? "demo" : "live";
 
   try {
-    const tokens = await exchangeCode({ code, redirectUri: callbackUrl(new URL(req.url).origin), env });
+    const tokens = await exchangeCode({ code, redirectUri: callbackUrl(), env });
 
     const supabase = createClient();
     // Une seule connexion OAuth par environnement : reconnecter remplace les

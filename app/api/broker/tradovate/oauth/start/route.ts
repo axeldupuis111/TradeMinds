@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
   const state = `${randomBytes(24).toString("hex")}.${env}`;
 
   const res = NextResponse.redirect(
-    buildAuthorizeUrl({ redirectUri: callbackUrl(new URL(req.url).origin), state }),
+    buildAuthorizeUrl({ redirectUri: callbackUrl(), state }),
   );
   res.cookies.set(OAUTH_STATE_COOKIE, state, {
     httpOnly: true,
