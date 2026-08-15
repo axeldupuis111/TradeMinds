@@ -248,7 +248,8 @@ Tradovate onboarding friction is the specific blocker they raise.
 | Avenant art. 15 actant l'exemption de frais pour les utilisateurs finaux | À OBTENIR avant de signer le contrat fournisseur |
 | Message à Michaelanne (question a/b + demande d'avenant) | ENVOYÉ le 2026-08-14 |
 | **Réponse du 2026-08-14 16h46** | **hors sujet : répond sur la clé API, pas sur l'add-on** |
-| Relance séparant clé / add-on / compte minimum | brouillon prêt, à envoyer |
+| ~~Relance séparant clé / add-on / compte minimum~~ | abandonnée : sa réponse est probablement un OUI |
+| **Avenant art. 15 rédigé, à faire signer avec le Listing Agreement** | brouillon prêt, à envoyer |
 | Repli si pas de réponse sous 48 h | Calendly : https://calendly.com/michaelanne-chapel |
 
 ### Réponse de NinjaTrader (2026-08-06)
@@ -438,6 +439,92 @@ partielle sans que le trou soit visible.
 >
 > Best regards,
 > Axel
+
+### Correction de ma lecture (2026-08-15)
+
+Axel objecte, et il a raison sur un point que j'avais sous-estimé : **sur
+Tradovate, la clé API est précisément ce que délivre l'add-on à 25 $/mois.** Elle
+n'est pas obtenable autrement. Donc « l'utilisateur final n'a pas besoin de
+sécuriser sa propre clé API » pointe bien vers « il n'a pas à acheter l'add-on
+qui la délivre ». Sa lecture est probablement la bonne.
+
+Deux choses restent vraies malgré ça :
+
+1. **Le compte approvisionné à 1 000 $ n'est pas lié à la clé.** C'est une
+   condition d'éligibilité au niveau du compte, distincte de l'entitlement API.
+   Sa phrase n'en dit rien, et c'est le second mur pour les traders de prop firm.
+2. **L'art. 18 (« Entire Agreement ») efface les mails.** Une fois le Listing
+   Agreement signé, cette phrase n'a plus aucune valeur opposable.
+
+### Changement de méthode : ne plus redemander, faire écrire
+
+Ma première recommandation était de reposer la question en séparant les trois
+objets. C'est moins bon que ceci : **prendre sa réponse pour argent comptant et
+lui demander de l'inscrire dans l'avenant.**
+
+Pourquoi c'est plus fort :
+
+- Si elle pense déjà ce qu'Axel comprend, l'écrire ne lui coûte rien : elle
+  signe sans discuter, et la question est réglée de façon opposable.
+- Si elle refuse de l'écrire, **c'est la réponse**, obtenue sans débat et sans
+  coût.
+- Ça sort du registre « répondez à ma question » (où elle a déjà répondu à côté
+  une fois) pour entrer dans « acter ce que vous venez de me dire », beaucoup
+  plus facile à accepter.
+- Le compte à 1 000 $ se règle au passage, sans en faire un sujet séparé : il
+  est simplement dans le texte proposé.
+
+**On n'a pas besoin de gagner le débat d'interprétation. On a besoin de la
+phrase dans le contrat.**
+
+### Avenant proposé (à joindre au Listing Agreement)
+
+> **Addendum 1 to the Ecosystem Vendor Listing Agreement**
+> between NinjaTrader, LLC and [entité], dated [date].
+>
+> End users who connect their Tradovate or NinjaTrader account to
+> TradeDiscipline through Vendor's partner OAuth credential are not required to
+> purchase the individual API Access add-on, and are not subject to the minimum
+> funded account balance otherwise applicable to individual API access. This
+> applies in production for the term of the Agreement.
+
+Un paragraphe, les deux conditions couvertes, et « in production » qui neutralise
+le « during development » de son mail.
+
+### Message d'accompagnement (non envoyé, à relire par Axel)
+
+> Hello Michaelanne,
+>
+> That is exactly what I hoped, thank you.
+>
+> Since neither agreement mentions API fees or end user requirements, and
+> section 18 makes the signed text override anything agreed by email, let us put
+> your sentence where it will still be true in a year. Section 15 contemplates
+> exactly this, and one paragraph is enough:
+>
+> "End users who connect their Tradovate or NinjaTrader account to
+> TradeDiscipline through Vendor's partner OAuth credential are not required to
+> purchase the individual API Access add-on, and are not subject to the minimum
+> funded account balance otherwise applicable to individual API access. This
+> applies in production for the term of the Agreement."
+>
+> I added the funded account balance because it is a separate account level
+> requirement from the API key, and it is the other reason our prop firm users
+> cannot use the individual route today.
+>
+> Send it back signed alongside the Listing Agreement and I will return both the
+> same day. Happy to take fifteen minutes on your Calendly if that is quicker.
+>
+> Best regards,
+> Axel
+
+### Si elle refuse ou temporise sur l'avenant
+
+Un refus d'écrire ce qu'elle vient d'affirmer est une information, pas un
+incident : cela veut dire que l'exemption n'est pas dans son pouvoir, ou qu'elle
+ne couvre pas le compte minimum. Dans ce cas, ne pas signer le Listing Agreement
+et appliquer la conclusion écrite plus haut (pousser NinjaTrader et l'import
+CSV).
 
 ### Si la réponse est « oui, l'add-on reste dû »
 
