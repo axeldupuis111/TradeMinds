@@ -1,15 +1,15 @@
 /**
  * Réduction des screenshots de trades avant upload.
  *
- * POURQUOI — l'analyse visuelle (analyze-trade-vision) envoie l'image telle
- * quelle à Sonnet 5. Le coût en tokens d'une image dépend de ses dimensions :
- * au-delà de 1568 px sur le grand côté on bascule dans le palier haute
- * résolution, jusqu'à ~4 784 tokens par image contre ~1 600 en dessous. Un
- * screenshot de graphique reste parfaitement lisible à 1568 px, donc au-delà on
- * paie une définition dont le modèle ne tire rien.
+ * POURQUOI — écrit pour l'analyse visuelle IA, qui envoyait l'image à Sonnet 5
+ * et payait la haute résolution au-delà de 1568 px sur le grand côté (~4 784
+ * tokens contre ~1 600 en dessous). Cette fonctionnalité a été RETIRÉE le
+ * 2026-08-14, faute d'usage : zéro appel en 90 jours.
  *
- * Bénéfice secondaire, non négligeable : upload plus rapide pour le trader et
- * stockage Supabase allégé.
+ * Ce fichier reste, et pas par oubli : ce qui était le bénéfice secondaire est
+ * devenu la seule raison d'être, et elle suffit. Upload plus rapide pour le
+ * trader, stockage Supabase allégé, et un screenshot de graphique reste
+ * parfaitement lisible à 1568 px.
  *
  * Le redimensionnement se fait dans le navigateur (canvas), sans dépendance :
  * `sharp` aurait imposé un binaire natif côté serverless pour un gain moindre.

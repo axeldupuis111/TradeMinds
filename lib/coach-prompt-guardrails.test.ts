@@ -270,9 +270,9 @@ describe("ce que le coach a proposé n'est pas la stratégie du trader", () => {
  * Reste un défaut, dans les deux réponses, et un morceau est sérieux : il a
  * proposé « je peux regarder le graphique avec toi ». La route chat-coach ne
  * reçoit QUE du texte (`content: string`), aucun outil ne rend d'image, et la
- * vision vit dans une autre route (analyze-trade-vision, qui lit la capture
- * attachée au trade). Le trader aurait envoyé une image dans le vide, et perdu
- * un message de quota pour l'apprendre.
+ * vision vivait dans une autre route, retirée depuis le 2026-08-14 faute
+ * d'usage. Le coach n'a donc AUCUN moyen de voir une image, et le trader qui en
+ * enverrait une perdrait un message de quota pour l'apprendre.
  *
  * Même famille que la règle « tu n'agis jamais chez le broker » : promettre
  * une capacité qu'on n'a pas coûte au trader, pas au coach.
@@ -288,12 +288,18 @@ describe("le coach ne promet pas une capacité qu'il n'a pas", () => {
     expect(prompt).toMatch(/regarder le graphique avec lui/i);
   });
 
-  it("il oriente vers le chemin qui, lui, sait lire une capture", () => {
-    // Une interdiction sans alternative laisse le trader sans solution alors
-    // que le produit en a une.
+  it("il propose quand même quelque chose, sans inventer de capacité", () => {
+    // ⚠️ CE TEST EXIGEAIT L'INVERSE JUSQU'AU 2026-08-14. Il vérifiait que le
+    // prompt renvoyait vers l'analyse visuelle IA, parce qu'une interdiction
+    // sans alternative laisse le trader sans solution. Le raisonnement était
+    // bon ; l'alternative, elle, a été supprimée faute d'usage. Un test qui
+    // encode une capacité disparue la maintient en vie dans le prompt.
+    //
+    // L'alternative qui reste est vraie et utile : annoter soi-même sa capture
+    // oblige à relire son entrée à froid, sans l'émotion qui l'a déclenchée.
     const bloc = depuis(prompt, "TU N'AS PAS D'YEUX");
     expect(bloc).toMatch(/attacher sa capture au trade/i);
-    expect(bloc).toMatch(/analyse IA de ce trade/i);
+    expect(bloc).toMatch(/annoter/i);
   });
 
   it("il ne demande pas ce que find_trades sait déjà", () => {
@@ -635,6 +641,18 @@ describe("le prompt ne promet aucune capacité absente", () => {
   it("ne parle pas d'une recherche web, puisque l'outil n'est plus servi", () => {
     expect(prompt.toLowerCase()).not.toContain("recherche web");
     expect(prompt).not.toMatch(/tu disposes d'une recherche|cherche sur (le web|internet)/i);
+  });
+
+  it("ne renvoie vers aucune analyse d'image, retirée le 2026-08-14", () => {
+    // Défaut réel, trouvé au balayage : le prompt continuait de dire « lance
+    // l'analyse IA de ce trade, qui elle sait lire les images » alors que la
+    // route venait d'être supprimée. Le coach aurait envoyé le trader vers un
+    // bouton inexistant, ce qui est PIRE que de ne rien proposer : il l'aurait
+    // cherché avant de conclure que le produit ment.
+    //
+    // Leçon générale : retirer une fonctionnalité oblige à balayer le PROMPT,
+    // pas seulement le code et la copy. Le prompt est une promesse de plus.
+    expect(prompt).not.toMatch(/analyse IA de ce trade|sait lire les images|analyse visuelle/i);
   });
 
   it("garde en revanche les capacités qui, elles, existent", () => {

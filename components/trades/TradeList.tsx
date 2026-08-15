@@ -175,7 +175,6 @@ interface Trade {
   setup_quality: number | null;
   notes: string | null;
   screenshot_path: string | null;
-  vision_review?: { grade?: string } | null;
   challenge_id: string | null;
   prop_challenges?: { firm: string; account_number: string | null } | null;
   ict_checklist?: Record<string, boolean> | null;
@@ -1208,15 +1207,13 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
                       <td className="px-3 py-2">
                         <span className="inline-flex items-center gap-1.5">
                           <span className="font-mono text-sm font-semibold text-foreground">{tr.pair}</span>
-                          {tr.vision_review?.grade ? (
-                            <span
-                              title={t("vision_title")}
-                              className="text-[10px] font-bold leading-none px-1 py-0.5 rounded bg-accent/15 text-accent"
-                            >
-                              {tr.vision_review.grade}
-                            </span>
-                          ) : tr.screenshot_path ? (
-                            <Camera className="w-3.5 h-3.5 text-muted/60 shrink-0" aria-label={t("vision_title")} />
+                          {/* Indicateur de capture jointe. Il portait aussi
+                              une note A-D venue de l'analyse visuelle IA,
+                              retirée le 2026-08-14 : le libellé annonçait donc
+                              « Analyse visuelle IA » aux lecteurs d'écran pour
+                              ce qui n'est plus qu'un trombone. */}
+                          {tr.screenshot_path ? (
+                            <Camera className="w-3.5 h-3.5 text-muted/60 shrink-0" aria-label={t("trade_screenshot")} />
                           ) : null}
                         </span>
                       </td>

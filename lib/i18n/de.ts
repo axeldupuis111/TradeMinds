@@ -459,6 +459,7 @@ const dict: Record<string, string> = {
   "analysis_export_pdf": "Als PDF exportieren",
   "analysis_export_pdf_running": "Wird erstellt…",
   "vision_title": "KI-Chartanalyse",
+  "trade_screenshot": "Screenshot angehängt",
   "vision_hint": "Die KI prüft auf deinem Chart, ob das angegebene Setup wirklich da ist.",
   "vision_cta": "Diesen Chart analysieren",
   "vision_running": "Die KI untersucht deinen Chart…",
