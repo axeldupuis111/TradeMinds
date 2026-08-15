@@ -41,8 +41,8 @@ describe("plafonds mensuels", () => {
     //
     // Le ×2 a été écrit quand un plafond ne coûtait rien : on prenait de la
     // marge parce qu'il n'y avait aucune raison de ne pas en prendre. Ce n'est
-    // plus vrai depuis que le coach tourne sur Sonnet 5. À 350 messages il
-    // coûte 16,73 € pour 17,26 € d'enveloppe ; au-dela le produit perd de
+    // plus vrai depuis que le coach tourne sur Sonnet 5. À 340 messages il
+    // coûte 16,25 € pour 17,26 € d'enveloppe ; au-dela le produit perd de
     // l'argent. Le multiple de confort et la
     // rentabilité se contredisent, et c'est la rentabilité qui gagne.
     //

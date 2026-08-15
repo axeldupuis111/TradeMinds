@@ -38,7 +38,7 @@ export const PLAN_MONTHLY_CEILING: Record<"analyze" | "chat", Record<PlanType, n
   // Julie : 176 messages/mois. Premium = ×1,48, soit 12 messages par jour ouvré
   // en moyenne, le quota JOURNALIER de 30 restant inchangé.
   //
-  // ⚠️ RAMENÉ DE 450 À 260 PUIS REMONTÉ À 350 LE 2026-08-14, EN ÉCHANGE DE SONNET 5. Ce n'est pas
+  // ⚠️ RAMENÉ DE 450 À 260 PUIS REMONTÉ À 340 LE 2026-08-14, EN ÉCHANGE DE SONNET 5. Ce n'est pas
   // un resserrement : c'est le prix d'un coach qui répond juste. Mesuré, sur
   // une question à réponse vérifiable, Haiku donnait trois réponses fausses et
   // toutes différentes là où Sonnet répond juste trois fois sur trois.
@@ -57,9 +57,9 @@ export const PLAN_MONTHLY_CEILING: Record<"analyze" | "chat", Record<PlanType, n
   // changer ici OBLIGE à changer les quatre traductions. C'est voulu.
   //
   // Ce qui l'a rendu possible : le catalogue d'outils est passé en
-  // `defer_loading` (préfixe 21 022 → 14 297). Sans ce report, 350 messages sur
+  // `defer_loading` (préfixe 21 022 → 14 297). Sans ce report, 340 messages sur
   // Sonnet coûteraient bien au-delà de l'enveloppe. Les deux vont ensemble.
-  chat: { free: 3, plus: 150, premium: 350 },
+  chat: { free: 3, plus: 150, premium: 340 },
 };
 
 /**
@@ -77,7 +77,11 @@ export const FEATURE_MONTHLY_CEILING: Record<string, number> = {
   // exactement le coussin qui manquait pour financer Sonnet 5 + recherche web
   // sur le coach. Aucun n'est descendu sous ×3 de l'usage de Julie.
   "weekly-plan": 20, // Julie : 4 à 8, et le plan est mis en cache par semaine
-  "parse-strategy": 15, // Julie : 1 (une fiche ne se réécrit pas tous les jours)
+  // Julie : 1. Volontairement généreux (×30) : ce quota touche le PARCOURS
+  // D'ENTRÉE, un débutant peut itérer dix fois sur sa fiche la première
+  // semaine. Le client dégrade désormais au lieu de bloquer, mais un plafond
+  // qui mord sur la création de stratégie reste une mauvaise idée.
+  "parse-strategy": 30,
   "goals-interpret": 15, // Julie : 4
   "calendar-explain": 36, // Julie : 12
   "community-interpret": 20, // Julie : 5 (était à ×12, le plus dérivé du lot)

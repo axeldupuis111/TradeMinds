@@ -303,7 +303,30 @@ export default function StrategyPage() {
         body: JSON.stringify({ text: rawText, language: lang }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Erreur serveur.");
+      // ⚠️ UNE FICHE DOIT TOUJOURS POUVOIR ÊTRE ENREGISTRÉE, MÊME SANS L'IA.
+      //
+      // Ce chemin levait une exception et affichait le message brut de l'API,
+      // en anglais, quel que soit la langue du trader. Pire : pour une
+      // PREMIÈRE fiche, l'analyse est le seul chemin qui remplit le
+      // formulaire, donc `handleSave` sortait aussitôt sur `if (!parsed)`.
+      // Un quota atteint murait donc la création de stratégie, c'est-à-dire le
+      // parcours d'entrée du produit.
+      //
+      // La structuration automatique est un CONFORT : elle range le texte en
+      // champs. Le texte lui-même, `raw_text`, est enregistré indépendamment et
+      // c'est LUI que le coach lit comme source de vérité. On dégrade donc vers
+      // une fiche vide-mais-valide : le trader garde sa stratégie, le coach la
+      // lit, et seuls les champs chiffrés restent à compléter à la main.
+      if (!res.ok) {
+        setParsed({
+          pairs: [], sessions: [], risk_reward: null, max_sl_pips: null,
+          max_trades_per_day: null, max_consecutive_losses: null,
+          max_session_minutes: null, risk_per_trade_pct: null, setup_rules: [],
+        });
+        setIsDirty(true);
+        showToast("error", res.status === 429 ? t("strategy_parse_quota") : t("strategy_parse_unavailable"));
+        return;
+      }
       setParsed({
         ...data,
         pairs: Array.isArray(data.pairs) ? data.pairs : [],
