@@ -3,15 +3,41 @@
 // each contract's point value, and aggregates them into round-turn positions.
 
 import { aggregateFuturesFills, type FuturesFill, type AggregatedFuturesPosition } from "./futures-aggregate";
+// `tradovate-oauth` n'importe de ce fichier qu'un TYPE (effacé à la
+// compilation) : le cycle apparent n'existe pas à l'exécution.
+import {
+  accessTokenExpired,
+  isOAuthCredentials,
+  refreshTokenExpired,
+  refreshTokens,
+  type TradovateOAuthTokens,
+} from "./tradovate-oauth";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-export interface TradovateCredentials {
+/**
+ * Identifiants par CLÉ API individuelle : le trader fournit les siens.
+ *
+ * ⚠️ Ce chemin exige que le trader possède l'add-on API Access (~25 $/mois) et
+ * un compte approvisionné à 1 000 $. Les traders de prop firm ne peuvent pas
+ * l'acheter : c'est précisément le mur que l'OAuth partenaire fait tomber
+ * (voir `tradovate-oauth.ts`). Conservé en repli tant que tous les comptes
+ * existants n'ont pas basculé, et pour les traders qui ont déjà leur clé.
+ */
+export interface TradovateApiKeyCredentials {
   username: string;
   password: string;
   cid: string; // API Key client id
   sec: string; // API Key secret
 }
+
+/**
+ * Ce qui est stocké chiffré dans `broker_connections.credentials_encrypted`,
+ * sous l'une ou l'autre forme. Le discriminant est `kind: "oauth"` : son
+ * absence signifie l'ancienne forme, ce qui rend la migration des connexions
+ * existantes inutile.
+ */
+export type TradovateCredentials = TradovateApiKeyCredentials | TradovateOAuthTokens;
 
 export type TradovateEnvironment = "demo" | "live";
 
@@ -72,10 +98,32 @@ const APP_VERSION = process.env.TRADOVATE_APP_VERSION || "1.0";
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
+/**
+ * Rend un access token valide, quelle que soit la forme des identifiants.
+ *
+ * Sur le chemin OAuth, `onRenewed` est appelé quand les jetons ont été
+ * renouvelés : l'appelant DOIT les réécrire chiffrés en base. Sans ça on
+ * repaie un renouvellement à chaque synchro, et surtout on perd la rotation
+ * éventuelle du refresh token, ce qui déconnecte le trader au bout de 14 jours
+ * sans aucune erreur visible entre-temps.
+ */
 async function authenticate(
   creds: TradovateCredentials,
   env: TradovateEnvironment,
+  onRenewed?: (t: TradovateOAuthTokens) => Promise<void> | void,
 ): Promise<string> {
+  if (isOAuthCredentials(creds)) {
+    if (refreshTokenExpired(creds)) {
+      throw new Error(
+        "La connexion Tradovate a expiré : le trader doit se reconnecter depuis ses paramètres.",
+      );
+    }
+    if (!accessTokenExpired(creds)) return creds.access_token;
+    const renewed = await refreshTokens({ refreshToken: creds.refresh_token, env });
+    await onRenewed?.(renewed);
+    return renewed.access_token;
+  }
+
   const res = await fetch(`${apiBase(env)}/auth/accessTokenRequest`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -288,10 +336,11 @@ export async function syncTradovate(
   env: TradovateEnvironment,
   since: Date,
   commissionPerContract = 0,
+  onRenewed?: (t: TradovateOAuthTokens) => Promise<void> | void,
 ): Promise<{ positions: AggregatedFuturesPosition[]; snapshot: TradovateAccountSnapshot | null }> {
   // Une seule authentification pour les deux lectures : Tradovate limite
   // sévèrement les demandes de token et répond par un p-ticket au-delà.
-  const token = await authenticate(creds, env);
+  const token = await authenticate(creds, env, onRenewed);
 
   // L'état du compte est récupéré en premier mais ne peut jamais faire échouer
   // la synchronisation des trades, qui reste la fonction principale du rail.

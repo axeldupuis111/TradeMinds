@@ -3,7 +3,7 @@
 // the hourly cron and the initial sync right after a user connects.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { decrypt } from "@/lib/crypto/encryption";
+import { decrypt, encrypt } from "@/lib/crypto/encryption";
 import {
   syncTradovate,
   type TradovateAccountSnapshot,
@@ -52,6 +52,17 @@ export async function syncBrokerConnection(
         conn.environment,
         since,
         Number(conn.commission_per_contract) || 0,
+        // ⚠️ Les jetons OAuth renouvelés DOIVENT être réécrits ici. Sans ça on
+        // repaie un renouvellement à chaque synchro, et surtout on garde
+        // l'ancien refresh token : si Tradovate le fait tourner, la connexion
+        // meurt au bout de 14 jours sans qu'aucune erreur ne l'annonce.
+        async (renewed) => {
+          const { error } = await admin
+            .from("broker_connections")
+            .update({ credentials_encrypted: encrypt(JSON.stringify(renewed)) })
+            .eq("id", conn.id);
+          if (error) console.error(`[Tradovate] jetons renouvelés non persistés (${conn.id}): ${error.message}`);
+        },
       );
       snapshot = accountState;
       rows = positions.map((p) => ({
