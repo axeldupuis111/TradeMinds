@@ -243,14 +243,15 @@ Tradovate onboarding friction is the specific blocker they raise.
 | Profil éditeur Impact + preuve de propriété du domaine | FAIT le 2026-08-14 (candidature NinjaTrader US en cours d'examen) |
 | Inscription au programme d'affiliation (20 $ par nouvel inscrit NinjaTrader) | FAIT le 2026-08-14 |
 | API License Agreement (4 p., version 30/09/2024) | **SIGNÉ le 2026-08-14** |
-| Ecosystem Vendor Listing Agreement (10 p.) | **À SIGNER le 2026-08-15** : un partenaire attend la connexion, la vitesse prime sur le levier |
+| Ecosystem Vendor Listing Agreement (10 p.) | **SIGNÉ le 2026-08-15** via DocuSign |
 | **Question 3 (add-on individuel encore requis ou non)** | TOUJOURS SANS RÉPONSE, et absente des deux contrats |
 | Avenant art. 15 actant l'exemption de frais pour les utilisateurs finaux | À OBTENIR avant de signer le contrat fournisseur |
 | Message à Michaelanne (question a/b + demande d'avenant) | ENVOYÉ le 2026-08-14 |
 | **Réponse du 2026-08-14 16h46** | **hors sujet : répond sur la clé API, pas sur l'add-on** |
 | ~~Relance séparant clé / add-on / compte minimum~~ | abandonnée : sa réponse est probablement un OUI |
 | ~~Avenant art. 15 comme préalable~~ | **déclassé** : devient une phrase du mail, ne bloque plus rien |
-| **Identifiants OAuth partenaires + doc du flux** | LE VRAI BLOCAGE, à demander avec les contrats signés |
+| **Identifiants OAuth partenaires + doc du flux** | LE SEUL BLOCAGE RESTANT. DocuSign ne les apporte pas : mail à envoyer |
+| Plomberie OAuth côté TradeDiscipline | **FAITE le 2026-08-15** (`60a1924`), n'attend que les deux secrets |
 | Repli si pas de réponse sous 48 h | Calendly : https://calendly.com/michaelanne-chapel |
 
 ### Réponse de NinjaTrader (2026-08-06)
@@ -556,24 +557,35 @@ Sa phrase « During development, you can build in an OAuth connection » se lit
 comme une autorisation à construire dès maintenant. Le mail doit donc demander
 ces deux choses, pas rouvrir un débat.
 
-### Message à envoyer avec les deux contrats signés (non envoyé)
+### Message à envoyer (non envoyé)
+
+⚠️ **Correction du 2026-08-15 : les contrats sont signés VIA DOCUSIGN**, qui les
+renvoie automatiquement. Rien à joindre, rien à transmettre. Le mail ci-dessous
+ne sert donc plus à livrer les documents mais à demander la seule chose que
+DocuSign n'apporte pas : **les identifiants OAuth et la doc du flux**. Sans lui,
+le dossier peut dormir côté NinjaTrader alors que tout est signé de notre côté.
+
+Il y ajoute l'**URL de callback à déclarer chez eux**, qui leur serait demandée
+de toute façon : la donner d'emblée économise un aller-retour.
 
 > Hello Michaelanne,
 >
-> Both agreements are signed and attached: the API License Agreement and the
-> Ecosystem Vendor Listing Agreement.
+> Both agreements are signed and returned through DocuSign: the API License
+> Agreement and the Ecosystem Vendor Listing Agreement.
 >
-> To start building the OAuth connection you described, I need two things from
-> your side:
+> To start building the OAuth connection you described, I need two things:
 >
-> 1. The partner OAuth client credentials (client id and secret), for sandbox
->    first if that is how you prefer to start.
-> 2. The developer documentation for the OAuth flow: authorization endpoint,
->    token exchange, scopes, and token refresh.
+> 1. The partner OAuth client id and secret, sandbox first if you prefer to
+>    start there.
+> 2. The developer documentation for the flow, so I match your expectations on
+>    scopes and token refresh.
 >
-> On our side the integration already runs against the Tradovate REST API in
-> read only mode, so once we can authenticate users through your OAuth window
-> rather than through individual API keys, we are close to done.
+> Our callback URL, to whitelist on your side:
+> https://tradediscipline.app/api/broker/tradovate/oauth/callback
+>
+> Our integration already reads the Tradovate REST API in read only mode, so
+> once users authenticate through your OAuth window instead of individual API
+> keys, we are close to done.
 >
 > One line for the record, and nothing needs to wait for it: I understood from
 > your message that end users connecting through our vendor OAuth will not need
