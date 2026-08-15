@@ -242,13 +242,25 @@ describe("les cartes de paliers du coach disent les vrais chiffres", () => {
  * payé 29,99 €, est la pire façon de l'apprendre.
  */
 describe("le dock du coach affiche ses deux limites", () => {
-  it("la copy porte les deux compteurs, dans les quatre langues", () => {
+  it("TOUS les compteurs du coach portent les deux bornes, dans les quatre langues", () => {
+    // ⚠️ DEUX COMPOSANTS AFFICHENT CE COMPTEUR, et rien ne garantissait qu'ils
+    // disent la même chose. Le dock a reçu les deux bornes le 2026-08-14 ; la
+    // page pleine du coach, elle, a continué d'afficher le seul quota du jour
+    // jusqu'à ce qu'Axel le voie à l'écran. Ce test couvre les trois clés
+    // ensemble : en ajouter une quatrième sans ses deux bornes le fera échouer.
     const DICOS: Record<string, Record<string, string>> = { fr, en, de, es };
+    const CLES: [string, string][] = [
+      ["coach_dock_remaining_both", "{d}"],
+      ["coach_remaining", "{n}"],
+      ["coach_remaining_one", "{n}"],
+    ];
     for (const [lang, dict] of Object.entries(DICOS)) {
-      const s = dict["coach_dock_remaining_both"] as string | undefined;
-      expect(s, `${lang} : clé coach_dock_remaining_both manquante`).toBeTruthy();
-      expect(s, `${lang} : le compteur du jour manque`).toContain("{d}");
-      expect(s, `${lang} : le compteur du mois manque`).toContain("{m}");
+      for (const [cle, jeton] of CLES) {
+        const s = dict[cle] as string | undefined;
+        expect(s, `${lang} : clé ${cle} manquante`).toBeTruthy();
+        expect(s, `${lang}/${cle} : le compteur du jour manque`).toContain(jeton);
+        expect(s, `${lang}/${cle} : le compteur du MOIS manque`).toContain("{m}");
+      }
     }
   });
 

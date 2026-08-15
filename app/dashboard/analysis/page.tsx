@@ -1662,8 +1662,15 @@ export default function AnalysisPage() {
             <div className="px-3 pb-2">
               {isPaidPlan ? (
                 <p className="text-xs text-muted">
+                  {/* LES DEUX BORNES, comme dans le dock. Cette page affichait
+                      le seul quota du jour : le plafond mensuel restait
+                      invisible jusqu'à ce qu'il morde, alors qu'il est
+                      désormais atteignable. Deux composants montrent ce
+                      compteur, les deux doivent le montrer entier. */}
                   {chatRemaining > 0
-                    ? (chatRemaining === 1 ? t("coach_remaining_one") : t("coach_remaining")).replace("{n}", String(chatRemaining))
+                    ? (chatRemaining === 1 ? t("coach_remaining_one") : t("coach_remaining"))
+                        .replace("{n}", String(chatRemaining))
+                        .replace("{m}", String(chat.monthlyRemaining))
                     : t("coach_no_messages")}
                 </p>
               ) : (
