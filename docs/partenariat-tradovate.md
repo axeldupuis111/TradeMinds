@@ -240,7 +240,16 @@ Tradovate onboarding friction is the specific blocker they raise.
 | Envoi à info@ninjatraderecosystem.com | FAIT le 2026-08-05 |
 | Message posté sur community.tradovate.com (Intégration OAuth tierce) | FAIT le 2026-08-05 |
 | **Réponse reçue le 2026-08-06** | voir ci-dessous |
-| Réponse sur la question 3 (add-on individuel encore requis ou non) | à reconfirmer |
+| Profil éditeur Impact + preuve de propriété du domaine | FAIT le 2026-08-14 (candidature NinjaTrader US en cours d'examen) |
+| Inscription au programme d'affiliation (20 $ par nouvel inscrit NinjaTrader) | FAIT le 2026-08-14 |
+| API License Agreement (4 p., version 30/09/2024) | **SIGNÉ le 2026-08-14** |
+| Ecosystem Vendor Listing Agreement (10 p.) | reçu, relu, **NON SIGNÉ** : c'est notre seul levier |
+| **Question 3 (add-on individuel encore requis ou non)** | TOUJOURS SANS RÉPONSE, et absente des deux contrats |
+| Avenant art. 15 actant l'exemption de frais pour les utilisateurs finaux | À OBTENIR avant de signer le contrat fournisseur |
+| Message à Michaelanne (question a/b + demande d'avenant) | ENVOYÉ le 2026-08-14 |
+| **Réponse du 2026-08-14 16h46** | **hors sujet : répond sur la clé API, pas sur l'add-on** |
+| Relance séparant clé / add-on / compte minimum | brouillon prêt, à envoyer |
+| Repli si pas de réponse sous 48 h | Calendly : https://calendly.com/michaelanne-chapel |
 
 ### Réponse de NinjaTrader (2026-08-06)
 
@@ -271,6 +280,174 @@ Une seule chose reste à ta main avant l'envoi : vérifier que tu veux bien
 publier l'adresse d'Angres dans ce dossier. Elle figure déjà dans les mentions
 légales du site, donc elle est publique, mais si la domiciliation aboutit d'ici
 là, autant y mettre la nouvelle.
+
+### Deuxième réponse (2026-08-14)
+
+Après une erreur administrative de leur côté, le dossier est traité. Michaelanne
+envoie les **contrats fournisseur et API à signer**, propose son aide pour
+obtenir l'accès API puis un relais vers son équipe d'intégration, et signale un
+programme d'affiliation distinct (20 $ par nouvel inscrit NinjaTrader via lien
+de suivi, plateforme Impact).
+
+Avantages fournisseur confirmés : référencement gratuit sur ninjatraderecosystem.com,
+version Entreprise de NinjaTrader offerte (1 499 $) avec flux Kinetick, outils de
+licence, webinaires, support en 7 langues, et **examen de conformité gratuit des
+supports marketing** (utile vu les règles NFA/CFTC sur la promotion de futures).
+
+La question 3 reste sans réponse écrite : à poser dans le message qui accompagne
+le retour des contrats, avant signature.
+
+### Relecture des deux contrats (2026-08-14)
+
+**Constat central : ni l'un ni l'autre ne mentionne les frais d'API, l'add-on à
+25 $ ou le compte à 1 000 $.** Les deux sont muets. L'exemption annoncée par
+Michaelanne n'existe que dans un mail, que les clauses « Entire Agreement »
+(art. 18 des deux contrats) rendent sans effet une fois la signature apposée.
+D'où l'avenant à demander.
+
+**API License Agreement** (signé le 2026-08-14) :
+
+- Art. 1 : la licence est accordée *solely* pour connecter un logiciel de
+  passage d'ordres. Notre usage lecture seule post-trade n'y figure pas, et
+  l'art. 2 (i) interdit littéralement d'accéder au compte d'un client « for any
+  purpose ». À faire couvrir par écrit : notre périmètre réel.
+- Art. 3 : tout « NinjaTrader Content » mis en cache doit être supprimé ou
+  rafraîchi sous 24 h. Incompatible avec un journal si l'historique d'exécutions
+  n'est pas qualifié de Customer Data (art. 5). À faire trancher par écrit.
+- Art. 4 : interdiction d'utiliser l'API avec du copyleft (GPL/LGPL/AGPL).
+  Vérifié le 2026-08-14 sur les 600 paquets de node_modules : aucune dépendance
+  GPL/LGPL/AGPL, seulement du MPL-2.0 (axe-core, dompurify, lightningcss,
+  web-push), hors définition du contrat. **Ajouter une dépendance AGPL
+  résilierait la licence automatiquement.**
+- Art. 12 : indemnisation non plafonnée, frais d'avocat inclus, avec renonciation
+  à se défendre soi-même. Survit à la résiliation.
+- Préambule : modification unilatérale du contrat par simple mise à jour de la
+  doc en ligne. Art. 9 et 10 : aucun support garanti, résiliation immédiate.
+  **Le rail peut être coupé sans préavis : ne rien construire de plus dessus.**
+- Art. 15 : droit de l'Illinois, tribunaux de Cook County (Chicago).
+- Art. 17 : aucun droit d'utiliser le nom ni les logos NinjaTrader sans accord
+  exprès préalable. À obtenir, sinon nos guides et écrans de connexion sont
+  formellement en infraction.
+
+**Ecosystem Vendor Listing Agreement** (non signé) :
+
+- Ce n'est **pas** un contrat d'accès API : c'est un référencement dans
+  l'annuaire (art. 1.2 et 1.3), résiliable par eux à tout moment sans préavis
+  ni motif (art. 2.3).
+- Art. 8 : les avantages annoncés y sont bien écrits (Media Kit, licence
+  Enterprise multi-brokers, gestion de licences, données Kinetick). Ce point
+  était la première inquiétude, il est levé.
+- Art. 6.1.7 : indemnisation étendue à « votre activité en général », amendes
+  de régulateurs et honoraires d'experts inclus, même sans procédure engagée.
+  Clause la plus large des deux documents.
+- Art. 4.1 et 4.2 : obligation de toujours présenter NinjaTrader positivement
+  en public et de ne leur adresser toute critique qu'en privé. **Contrainte
+  directe sur la ligne éditoriale du blog et sur les comparatifs de
+  plateformes.**
+- Art. 15 : tout avenant doit être écrit, signé des deux parties et annexé.
+  C'est le mécanisme à utiliser pour l'exemption de frais.
+
+### Troisième réponse (2026-08-14, 16h46) : elle ne répond pas à la question
+
+Réponse intégrale de Michaelanne :
+
+> During development, you can build in an OAuth connection, which allows your
+> end user to log in with their credentials without needing to secure their own
+> API key.
+
+**Ce n'est ni (a) ni (b).** La question portait sur l'add-on payant et le compte
+approvisionné ; la réponse porte sur la clé API. Ce sont trois objets distincts,
+et les confondre est exactement ce qui nous ferait signer à l'aveugle :
+
+| Objet | Nature | Statut après sa réponse |
+|---|---|---|
+| Clé API | identifiant technique | **réglé** : l'utilisateur n'a pas à en générer une |
+| Add-on API Access (~25 $/mois) | droit payant sur le compte | **sans réponse** |
+| Compte approvisionné ≥ 1 000 $ | condition d'éligibilité | **sans réponse** |
+
+Ne pas avoir à générer une clé ne dit rien sur le fait de devoir détenir le droit
+qui va avec. Dans un modèle OAuth partenaire, il est courant que le vendeur porte
+les identifiants client pendant que l'utilisateur doit malgré tout détenir
+l'entitlement sur son propre compte. C'est précisément le cas qui nous tuerait.
+
+Deux réserves supplémentaires sur cette phrase :
+
+1. **« During development »** borne l'affirmation à la phase de développement.
+   C'est la seule phase qui ne nous intéresse pas.
+2. Elle laisse sans réponse **l'avenant art. 15** et la **confirmation du
+   périmètre lecture seule**, tous deux demandés explicitement.
+
+**Décision : ne pas signer l'Ecosystem Vendor Listing Agreement.** C'est le seul
+levier restant, l'API License Agreement étant déjà signé.
+
+### Ce qu'il faut obtenir par écrit, dans l'ordre
+
+1. **Add-on et compte minimum** : réponse binaire, en production, pas en
+   développement. C'est la seule question qui décide de la suite.
+2. **Avenant art. 15** actant l'exemption, signé des deux parties et annexé.
+   Sans lui, la clause « Entire Agreement » (art. 18) efface tout ce qui a été
+   dit par mail.
+3. **Périmètre lecture seule**, à traiter SÉPARÉMENT et après. L'API License
+   Agreement déjà signé accorde la licence *solely* pour le passage d'ordres
+   (art. 1) et interdit d'accéder au compte d'un client « for any purpose »
+   (art. 2 (i)). Notre usage réel n'y est couvert par rien. C'est une exposition
+   ouverte, mais la mettre dans le même message diluerait la question 1 : elle a
+   déjà répondu à un fragment d'un message qui en contenait trois.
+
+### Pourquoi un message plus COURT que le précédent
+
+Le mail du 2026-08-14 posait trois demandes et exposait le contexte. Elle a
+répondu à la plus facile. Un message qui contient une seule question fermée, avec
+les trois objets explicitement séparés, ne peut pas recevoir une réponse
+partielle sans que le trou soit visible.
+
+### Brouillon à envoyer (non envoyé, à relire par Axel)
+
+> Hello Michaelanne,
+>
+> Thank you. I think we may be answering two different questions, so let me
+> separate them.
+>
+> You confirmed the end user will not need to secure their own API key. That
+> settles the credential.
+>
+> What I still need is the entitlement behind it. On a Tradovate or NinjaTrader
+> account today, API access is a paid add-on of about $25 per month and it
+> requires a funded account of $1,000 or more. Three separate things:
+>
+> 1. API key: confirmed, the user does not need one.
+> 2. API Access add-on, about $25 per month: does the end user still have to
+>    purchase it? Yes or no.
+> 3. Funded account of $1,000 or more: does the end user still have to meet it?
+>    Yes or no.
+>
+> You also wrote "during development". Does the same apply in production, with
+> real end users connecting through our vendor OAuth?
+>
+> This decides whether we ship the integration at all. Most of our futures users
+> trade prop firm evaluation accounts, where the add-on cannot be purchased even
+> if they wanted to.
+>
+> If 2 and 3 are waived for users connecting through our vendor credential, I
+> will sign and return the Listing Agreement the same day, with a one paragraph
+> addendum under section 15 recording the waiver. Neither agreement mentions
+> fees or end user requirements, and section 18 would otherwise override
+> anything agreed by email.
+>
+> Fifteen minutes on your Calendly works too if that is faster.
+>
+> Best regards,
+> Axel
+
+### Si la réponse est « oui, l'add-on reste dû »
+
+Alors le partenariat ne règle pas le problème de GD Invest, et la conclusion
+écrite plus haut s'applique : arrêter d'investir sur le rail Tradovate, pousser
+NinjaTrader et l'import CSV. Dans ce cas, ne pas signer le Listing Agreement du
+tout : il n'apporterait qu'un référencement, en échange d'une indemnisation
+étendue à « votre activité en général » (art. 6.1.7) et d'une obligation de
+présenter NinjaTrader positivement en public (art. 4.1 et 4.2), qui contraindrait
+la ligne éditoriale du blog et les comparatifs de plateformes.
 
 La question 3 est celle qui décide de tout. Si les utilisateurs finaux doivent
 malgré tout payer l'add-on à 25 $ par mois même via OAuth partenaire, alors le
