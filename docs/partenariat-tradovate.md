@@ -784,12 +784,33 @@ d'ouvrir un débat de qualification que rien n'oblige à ouvrir aujourd'hui.
 Réversible en une heure si Axel décide l'inverse : le lien est dans le mail du
 2026-08-17 et le media kit reste accessible.
 
-### Ce qui reste, et qui n'est pas du code
+### Les réseaux sociaux : sans objet
 
-- **Les réseaux sociaux.** Un lien vers l'avertissement doit figurer dans la
-  description de chaque profil (X, Facebook, LinkedIn, Instagram, TikTok...).
-  Seul point de la mise en conformité qui dépend encore d'une action manuelle
-  hors dépôt, avec le collage des cinq templates Supabase.
+L'annexe A demande un lien vers l'avertissement dans la description de chaque
+profil social (X, Facebook, LinkedIn, Instagram, TikTok, StockTwits, Pinterest,
+Vimeo). Vérifié avec Axel le 2026-08-17 : **TradeDiscipline n'a aucun compte sur
+ces plateformes.** L'exigence porte sur les profils existants, il n'y a donc
+rien à faire.
+
+À reprendre le jour où un compte est ouvert. Texte à mettre dans la bio :
+
+> Le trading comporte un risque substantiel de perte en capital. Avertissement
+> complet : tradediscipline.app/mentions-legales
+
+Version anglaise, pour un compte anglophone :
+
+> Trading involves substantial risk of loss. Full risk disclosure:
+> tradediscipline.app/mentions-legales
+
+Les deux tiennent dans les 160 caractères de X et les 150 d'Instagram. C'est le
+seul endroit où les guidelines acceptent un lien à la place du texte.
+
+### État de la mise en conformité au 2026-08-17 : complète
+
+Plus rien en attente côté TradeDiscipline. Les templates Supabase ont été
+recollés et le parcours « mot de passe oublié » rejoué en réel le même jour.
+La suite dépend de NinjaTrader : identifiants OAuth, puis leur revue de
+conformité.
 
 ### Deux points d'exposition repérés en lisant les guidelines
 
