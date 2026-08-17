@@ -51,12 +51,26 @@ il est posé dans `lib/email-template.ts`, dans le gabarit partagé, pour qu'auc
 email de marque ne puisse partir sans. Rien à faire côté dashboard pour ceux-là.
 
 Note sur le format `token_hash`, au-delà de la délivrabilité : `{{ .ConfirmationURL }}`
-déclenche le flux PKCE, qui exige un secret (le code verifier) stocké par le
-navigateur **au moment de la demande**. Demander la réinitialisation depuis
-l'appli installée puis ouvrir le lien dans le navigateur du téléphone = deux
-stockages distincts, secret introuvable, aucune session ouverte. `token_hash` est
-vérifié côté serveur et ne dépend d'aucun état local : c'est le seul des deux
-formats qui fonctionne d'un appareil ou d'un contexte à l'autre.
+fait transiter le visiteur par `<projet>.supabase.co`, alors que `token_hash`
+laisse le lien sur notre domaine et se vérifie par un appel serveur, dans
+`app/auth/confirm/route.ts`.
+
+**Correction du 2026-08-17.** Ce paragraphe affirmait que `token_hash` « sort du
+flux PKCE ». C'est faux, et il vaut mieux le savoir avant de bâtir un
+raisonnement dessus. Le jeton émis est bien préfixé `pkce_`, parce que
+`lib/supabase/client.ts` utilise `createBrowserClient` de `@supabase/ssr`, dont
+le flux PKCE est le défaut. Ce n'est pas le format du lien qui décide, c'est le
+client qui a fait la demande.
+
+Ce qui a été vérifié le 2026-08-17, en cliquant réellement le lien d'un email de
+réinitialisation : `verifyOtp({ type, token_hash })` renvoie une session côté
+serveur **malgré** le préfixe `pkce_`, et la page de choix du mot de passe
+s'ouvre normalement. Le flux fonctionne.
+
+Ce qui n'a PAS été vérifié : le cas d'un appareil à l'autre (demander depuis
+l'appli installée, ouvrir le lien dans le navigateur du téléphone). C'est le
+scénario que l'ancienne note prétendait couvrir. Ne pas le tenir pour acquis
+sans l'avoir essayé.
 
 ## Migration à appliquer (2026-07-12) — récompenses de badges
 - [ ] SQL Editor : exécuter `migrations/20260712_create_badge_awards.sql`
