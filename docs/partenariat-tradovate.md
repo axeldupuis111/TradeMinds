@@ -655,6 +655,128 @@ sur ce rail pour pousser NinjaTrader et l'import CSV à la place.
 
 ---
 
+## 6. Réponse du 2026-08-17 : la question des frais est tranchée
+
+Deux mails le même jour, à 07h49 et 07h51 heure Pacifique.
+
+### Ce qui est acquis
+
+La question posée trois fois (6, 14 et 15 août) a bien sa réponse, mais elle est
+répartie sur deux mails antérieurs, ce qui explique qu'on ait pu la croire sans
+réponse :
+
+- **5 août** : « As a member of the Vendor Program, we can waive the API fee and
+  financial requirements to gain access. » Cela couvre les deux volets : l'add-on
+  à 25 $ par mois **et** le compte approvisionné à 1 000 $.
+- **14 août** : « your end user to log in with their credentials *without*
+  needing to secure their own API key. »
+- **15 août** : le mail d'Axel énonce la conséquence en clair (« end users will
+  not need the individual API Access add-on, nor meet the minimum funded account
+  balance. If that is not the case in production, please tell me now »). La
+  réponse du 17 ne la contredit pas.
+
+C'est donc la réponse (b). Le mur qui bloquait la communauté GD Invest tombe.
+
+### Ce qui n'est toujours pas livré
+
+- Pas de `client_id` / `client_secret`, même en bac à sable.
+- Pas de documentation du flux (scopes, rafraîchissement des jetons).
+- Aucune réaction à l'avenant proposé le 15 août. Ni refus, ni acceptation.
+
+À la place, elle demande **un username Tradovate à activer pour l'accès API**.
+Un compte NinjaTrader ne convient pas. À défaut, un essai suffit
+(https://www.tradovate.com/trial/), sans ouverture de compte ni dossier, mais
+l'adresse email liée doit être une vraie adresse, pas un alias de masquage.
+
+Le compte existait déjà : **username `TradeDisciplineApp`**, rattaché à
+`contact@tradediscipline.app`, l'adresse utilisée dans tout le fil. Rien à créer.
+
+Note pour retrouver l'entrée d'inscription si besoin un jour : le titre
+« Inscrivez-vous dès maintenant pour votre essai gratuit » de la page /trial est
+du texte mort, sans lien. La seule porte est le bouton « Ouvrir un compte », qui
+pointe vers https://trader.tradovate.com/register et n'est, malgré son libellé,
+qu'un formulaire email sans dossier ni dépôt.
+
+### Deux réserves à garder à l'esprit
+
+1. **La formulation.** « The Tradovate username you would like enabled for API
+   access » est le vocabulaire du modèle par utilisateur, pas celui d'un client
+   OAuth partenaire. C'est probablement le compte développeur, mais tant que les
+   identifiants ne sont pas là, on ne peut pas l'affirmer.
+2. **Les comptes de prop firm.** La levée des frais ne dit rien du point
+   technique : un compte d'évaluation vit sous l'entité Tradovate de la prop
+   firm, pas sous celle du trader. Que notre credential vendeur puisse lire ces
+   sous-comptes se vérifiera au premier test réel, pas par mail. C'est la
+   dernière inconnue qui peut encore faire échouer le rail.
+
+L'exemption reste dans des mails et non dans les contrats signés, qui portent une
+clause d'intégralité (voir « Ce qui reste exposé »). Ce n'est pas bloquant :
+conserver le fil archivé, et glisser l'avenant dans un prochain échange sans en
+faire un préalable.
+
+## 7. Mise en conformité du site (exigée par le Vendor Program)
+
+Le second mail du 17 août livre le media kit et demande **une date cible de fin**
+avant de débloquer la licence Enterprise, le compte Kinetick et le référencement
+sur l'Ecosystem.
+
+Référence : *NinjaTrader Vendor Professional and Compliance Guidelines*, rev
+2.11.2025, https://ninjatraderecosystem.com/downloads/VendorGuidelines.pdf
+
+### Ce qui a été fait le 2026-08-17
+
+- `lib/legal/disclosures.ts` : les textes de l'annexe A, anglais **mot pour mot**
+  (coquilles d'origine comprises, c'est volontaire : c'est ce texte que la revue
+  de conformité compare), plus des traductions fr / de / es.
+- `components/legal/RiskDisclosure.tsx` : le bloc rendu, avec les options
+  `hypothetical`, `testimonials` et `trademark`, plus un export `TrademarkNotice`
+  pour la mention de marque seule.
+- Montage sur toutes les pages : landing, pages légales, FAQ, contact,
+  connexion, réinitialisation de mot de passe, blog (liste et article), page SEO
+  journal de trading, profils publics, pages partenaires, et l'application
+  connectée (dans le conteneur scrollable du tableau de bord, sinon le shell
+  `h-screen` la pousserait hors écran).
+- Mention de marque là où la plateforme est nommée : page SEO, articles de blog
+  qui la citent (détection sur le contenu rendu), section synchro des réglages.
+- `hypothetical` activé sur la landing (maquettes produit chiffrées) et sur le
+  tableau de bord (projections, et trades fabriqués en mode démo).
+
+Point de forme : les guidelines exigent un texte **visible**, dans un style
+proche du contenu principal. Un lien peut s'ajouter au texte, jamais le
+remplacer. D'où un vrai bloc rendu et non un renvoi vers les mentions légales.
+
+### Ce qui reste, et qui n'est pas du code
+
+- **Les réseaux sociaux.** Un lien vers l'avertissement doit figurer dans la
+  description de chaque profil (X, Facebook, LinkedIn, Instagram, TikTok...).
+- **Les emails.** L'annexe A vise « all emails sent and received ». Les gabarits
+  transactionnels Supabase et les emails produit n'ont pas été touchés.
+- **Le lien d'affiliation.** Ils fournissent un lien tracké
+  (`ninjatraderdomesticvendor.sjv.io`) et souhaitent que les logos pointent
+  dessus. Ce n'est plus du logo, c'est de la publicité pour un produit financier
+  auprès d'un public européen. Décision d'Axel, non prise à ce jour.
+- **La section de menu** « NinjaTrader » / « Recommended » / « Trading Platform »
+  est suggérée, pas obligatoire. Non faite.
+
+### Deux points d'exposition repérés en lisant les guidelines
+
+1. **Les profils publics affichent un taux de rendement.**
+   `components/profile/PublicProfileView.tsx` publie `pnlPct`, la performance en
+   pourcentage d'un compte réel, sur une page publique. Les guidelines
+   l'interdisent : « Include any specific numerical or statistical information
+   about the past performance of any actual accounts (including rate of return) »
+   sauf à pouvoir démontrer à la NFA que le chiffre est représentatif de tous les
+   comptes comparables sur la même période. C'est une fonctionnalité, pas une
+   coquille : la décision revient à Axel. Options : masquer le pourcentage sur la
+   page publique et ne garder que le score de discipline, ou assumer et le
+   défendre en revue de conformité.
+2. **Les clés `testimonial_*` de `lib/i18n` sont mortes.** Vérifié le
+   2026-08-17 : aucun composant ne les rend. Aucun témoignage n'est donc affiché,
+   et la mention correspondante n'est pas due. Si les témoignages reviennent un
+   jour sur la landing, `RiskDisclosure` porte déjà l'option `testimonials`.
+
+---
+
 ## Sources
 
 - Accès API Tradovate, conditions et coût : https://danetrades.com/help-center/accounts-connections/tradovate-api-requirements-and-subscription/
