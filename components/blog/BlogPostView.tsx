@@ -6,6 +6,7 @@ import { localizedHref } from "@/lib/locale-href";
 import { postContent, type BlogPost } from "@/lib/blog/posts";
 import BlogIllustration from "@/components/blog/BlogIllustration";
 import Link from "next/link";
+import RiskDisclosure from "@/components/legal/RiskDisclosure";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ArrowLeft } from "lucide-react";
@@ -24,6 +25,9 @@ export default function BlogPostView({ post }: { post: BlogPost }) {
   const c = postContent(post, lang);
   const ui = UI[lang] ?? UI.en;
   const dateLocale = DATE_LOCALE[lang] ?? "en-US";
+  // La mention de marque n'est due que sur les pages qui citent la plateforme.
+  // On la calcule sur l'article rendu plutôt que de l'imposer partout.
+  const mentionsNinjaTrader = `${c.title} ${c.body}`.includes("NinjaTrader");
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -66,6 +70,7 @@ export default function BlogPostView({ post }: { post: BlogPost }) {
           </Link>
         </div>
       </article>
+      <RiskDisclosure trademark={mentionsNinjaTrader} />
     </div>
   );
 }

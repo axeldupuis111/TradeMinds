@@ -4,6 +4,7 @@ import DisciplineQuiz from "@/components/landing/DisciplineQuiz";
 import LiveDemo from "@/components/landing/LiveDemo";
 import CoachOperator from "@/components/landing/CoachOperator";
 import PublicHeader from "@/components/PublicHeader";
+import RiskDisclosure from "@/components/legal/RiskDisclosure";
 import { FoundingBanner } from "@/components/FoundingBanner";
 import { useLanguage } from "@/lib/LanguageContext";
 import { localizedHref } from "@/lib/locale-href";
@@ -2380,7 +2381,14 @@ function Footer() {
           ))}
         </div>
 
+        {/* Avertissements NinjaTrader Vendor Program : exigés sur toutes les
+            pages. `hypothetical` parce que la landing montre des maquettes
+            produit chiffrées (LiveDemo, captures du tableau de bord). */}
         <div className="border-t pt-6" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
+          <RiskDisclosure hypothetical variant="bare" />
+        </div>
+
+        <div className="border-t mt-6 pt-6" style={{ borderColor: "rgb(var(--border)/0.5)" }}>
           <p className="text-xs" style={{ color: COPY, fontStyle: "normal" }}>© 2026 TradeDiscipline. {t("footer_legal")}.</p>
         </div>
       </div>

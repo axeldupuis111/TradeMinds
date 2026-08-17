@@ -7,6 +7,7 @@ import { authErrorKey } from "@/lib/auth-errors";
 import { localizedHref } from "@/lib/locale-href";
 import { createClient } from "@/lib/supabase/client";
 import { Activity } from "lucide-react";
+import RiskDisclosure from "@/components/legal/RiskDisclosure";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -148,6 +149,7 @@ export default function LoginPage() {
     success ?? (notice === "email_confirmed" ? t("login_email_confirmed") : null);
 
   return (
+    <>
     <div className="relative min-h-screen flex items-center justify-center hero-gradient px-4 force-dark overflow-hidden">
       {/* Ambiance — blobs dérivants assortis à la landing */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
@@ -307,5 +309,7 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+    <RiskDisclosure />
+    </>
   );
 }

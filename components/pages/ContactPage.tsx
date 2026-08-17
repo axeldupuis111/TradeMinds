@@ -3,6 +3,7 @@
 import PublicHeader from "@/components/PublicHeader";
 import { useLanguage } from "@/lib/LanguageContext";
 import { localizedHref } from "@/lib/locale-href";
+import RiskDisclosure from "@/components/legal/RiskDisclosure";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -86,6 +87,7 @@ export default function ContactPage() {
           </div>
         </div>
       </div>
+      <RiskDisclosure />
     </>
   );
 }

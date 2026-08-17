@@ -5,6 +5,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { localizedHref } from "@/lib/locale-href";
 import { postContent, type BlogPost } from "@/lib/blog/posts";
 import BlogIllustration from "@/components/blog/BlogIllustration";
+import RiskDisclosure from "@/components/legal/RiskDisclosure";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
@@ -60,6 +61,7 @@ export default function BlogListView({ posts }: { posts: BlogPost[] }) {
           })}
         </div>
       </div>
+      <RiskDisclosure />
     </div>
   );
 }

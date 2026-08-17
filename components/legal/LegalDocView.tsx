@@ -6,6 +6,7 @@ import { localizedHref } from "@/lib/locale-href";
 import Link from "next/link";
 import type { LegalBlock, LegalContent, LegalLink } from "@/lib/legal/types";
 import { COMPANY } from "@/lib/legal/company";
+import RiskDisclosure from "@/components/legal/RiskDisclosure";
 
 /** Split a paragraph on its {tokens} and render each as a Link / mailto anchor. */
 function renderText(text: string, links?: LegalLink[]) {
@@ -96,6 +97,7 @@ export default function LegalDocView({ content, related }: Props) {
           </div>
         </div>
       </div>
+      <RiskDisclosure />
     </>
   );
 }

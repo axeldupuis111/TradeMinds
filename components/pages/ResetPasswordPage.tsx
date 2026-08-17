@@ -4,6 +4,7 @@ import PasswordRequirements, { isPasswordValid } from "@/components/auth/Passwor
 import { useLanguage } from "@/lib/LanguageContext";
 import { localizedHref } from "@/lib/locale-href";
 import { createClient } from "@/lib/supabase/client";
+import RiskDisclosure from "@/components/legal/RiskDisclosure";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -83,6 +84,7 @@ export default function ResetPasswordPage() {
   }
 
   return (
+    <>
     <div className="min-h-screen flex items-center justify-center hero-gradient px-4 force-dark">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
@@ -178,5 +180,7 @@ export default function ResetPasswordPage() {
         </p>
       </div>
     </div>
+    <RiskDisclosure />
+    </>
   );
 }

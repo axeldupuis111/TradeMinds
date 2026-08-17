@@ -1,6 +1,7 @@
 "use client";
 
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import RiskDisclosure from "@/components/legal/RiskDisclosure";
 import { Gem } from "lucide-react";
 import { useMemo } from "react";
 
@@ -205,6 +206,7 @@ export default function PublicProfileView({
           <p className="text-xs text-muted mt-3">Track your trades. Master your discipline.</p>
         </div>
       </div>
+      <RiskDisclosure />
     </div>
   );
 }

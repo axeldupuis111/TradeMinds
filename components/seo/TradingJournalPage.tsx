@@ -3,6 +3,7 @@ import Link from "next/link";
 import PublicHeader from "@/components/PublicHeader";
 import { type Locale, ogLocaleMap, defaultLocale, locales } from "@/i18n/config";
 import { SITE_URL } from "@/lib/seo";
+import RiskDisclosure from "@/components/legal/RiskDisclosure";
 import { Check, X, ArrowRight, Zap, Brain, Target, ShieldCheck } from "lucide-react";
 
 /**
@@ -496,6 +497,9 @@ export default function TradingJournalPage({ locale }: { locale: Locale }) {
           </Link>
         </section>
       </main>
+      {/* `trademark` : cette page cite nommément la plateforme NinjaTrader,
+          la mention de marque doit donc figurer sur la page elle-même. */}
+      <RiskDisclosure trademark />
     </div>
   );
 }

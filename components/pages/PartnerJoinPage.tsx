@@ -1,6 +1,7 @@
 "use client";
 
 import PublicHeader from "@/components/PublicHeader";
+import RiskDisclosure from "@/components/legal/RiskDisclosure";
 import { useEffect, useState } from "react";
 
 /**
@@ -202,6 +203,7 @@ export default function PartnerJoinPage() {
           )}
         </div>
       </div>
+      <RiskDisclosure />
     </>
   );
 }

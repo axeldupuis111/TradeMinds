@@ -7,6 +7,7 @@ import PushNotificationsCard from "@/components/settings/PushNotificationsCard";
 import LeaderboardOptInCard from "@/components/settings/LeaderboardOptInCard";
 import TradingViewCard from "@/components/settings/TradingViewCard";
 import TradovateConnect from "@/components/settings/TradovateConnect";
+import { TrademarkNotice } from "@/components/legal/RiskDisclosure";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { useTheme } from "@/lib/ThemeContext";
@@ -649,6 +650,10 @@ export default function SettingsPage() {
           <TradingViewCard token={mtToken} />
 
           <TradovateConnect />
+
+          {/* Mention de marque exigée par le NinjaTrader Vendor Program : cette
+              section nomme la plateforme NinjaTrader (add-on) et Tradovate. */}
+          <TrademarkNotice className="px-1" />
         </>
       )}
 
