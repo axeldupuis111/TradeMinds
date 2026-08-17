@@ -35,7 +35,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const handle = data.username as string;
   const title = `@${handle} - TradeDiscipline`;
-  const description = `See @${handle}'s trading discipline scorecard: discipline score, win rate, streak and equity curve on TradeDiscipline.`;
+  const description = `See @${handle}'s trading discipline scorecard: discipline score, win rate, streak and sessions reviewed on TradeDiscipline.`;
   const url = `${SITE_URL}/profile/${handle}`;
 
   // The OG/Twitter image is wired automatically from opengraph-image.tsx in this
@@ -82,12 +82,11 @@ export default async function PublicProfilePage({ params }: Props) {
 
   // Les trades démo n'apparaissent jamais sur un profil PUBLIC ; fallback
   // sans filtre tant que la colonne is_demo n'existe pas en prod.
-  const [tradeRows, { data: reviews }, { data: achievements }] = await Promise.all([
-    // Lecture paginée : ce profil est PUBLIC et affiche un P&L cumulé, un
-    // winrate et une courbe. Non bornée, la lecture s'arrête à 1 000 trades en
-    // silence (voir lib/supabase-paginate.ts), et le profil publierait des
-    // chiffres faux. Le tri de lecture est `id` ; l'ordre chronologique de la
-    // courbe se refait après.
+  const [tradeRows, { data: reviews }, { count: sessionCount }, { data: achievements }] = await Promise.all([
+    // Lecture paginée : ce profil est PUBLIC et affiche un nombre de trades et
+    // un winrate. Non bornée, la lecture s'arrête à 1 000 trades en silence
+    // (voir lib/supabase-paginate.ts), et le profil publierait des chiffres
+    // faux. Le tri de lecture est `id` ; l'ordre chronologique se refait après.
     fetchAllRows<ProfileTradeRow>((from, to) =>
       supabase
         .from("trades")
@@ -113,6 +112,12 @@ export default async function PublicProfilePage({ params }: Props) {
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(60),
+    // Total réel des bilans : la lecture ci-dessus est bornée à 60 pour la
+    // courbe, le compteur affiché ne doit pas plafonner avec elle.
+    supabase
+      .from("session_reviews")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId),
     supabase
       .from("achievements")
       .select("key, unlocked_at")
@@ -130,6 +135,7 @@ export default async function PublicProfilePage({ params }: Props) {
       founding={isFounding}
       trades={trades}
       reviews={reviews || []}
+      sessionCount={sessionCount ?? 0}
       achievements={achievements || []}
     />
   );

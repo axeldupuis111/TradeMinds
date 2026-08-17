@@ -40,13 +40,17 @@ export default function PublicProfileView({
   founding = false,
   trades,
   reviews,
+  sessionCount,
   achievements,
 }: {
   username: string;
   /** Membre fondateur : l'un des 100 premiers abonnés, statut à vie. */
   founding?: boolean;
   trades: Trade[];
+  /** Derniers bilans, du plus récent au plus ancien. Bornés pour la courbe. */
   reviews: Review[];
+  /** Total réel des bilans, compté en base : `reviews` est tronqué. */
+  sessionCount: number;
   achievements: Achievement[];
 }) {
   const stats = useMemo(() => {
@@ -54,20 +58,27 @@ export default function PublicProfileView({
     const netPnls = trades.map(netPnl);
     const wins = netPnls.filter((p) => p > 0).length;
     const winrate = count > 0 ? (wins / count) * 100 : 0;
-    const totalPnl = netPnls.reduce((a, b) => a + b, 0);
 
-    // Equity curve normalized (starting at 100)
-    const startBalance = 10000; // nominal starting point for % calculation
-    let running = startBalance;
-    const equity = trades.map((tr) => {
-      running += netPnl(tr);
-      return {
-        date: tr.open_time?.split("T")[0] || "",
-        value: ((running - startBalance) / startBalance) * 100,
-      };
-    });
+    // Pas de P&L ni de courbe d'equity sur un profil PUBLIC. Deux raisons qui
+    // vont dans le même sens :
+    //  - les guidelines du NinjaTrader Vendor Program interdisent de publier
+    //    une statistique de performance d'un compte réel, taux de rendement en
+    //    tête, sans pouvoir la démontrer représentative auprès de la NFA ;
+    //  - le pourcentage affiché ici était de toute façon faux : il divisait le
+    //    P&L par un solde de départ fictif de 10 000, identique pour tout le
+    //    monde, et n'a donc jamais été le rendement du compte de personne.
+    // Ce que le profil public montre désormais est ce qu'il prétend mesurer :
+    // la discipline. Le P&L reste entier côté tableau de bord privé.
 
-    const pnlPct = count > 0 ? ((running - startBalance) / startBalance) * 100 : 0;
+    // Score de discipline dans le temps. Les avis arrivent du plus récent au
+    // plus ancien (voir la requête de la page) : on les remet à l'endroit.
+    const disciplineSeries = reviews
+      .slice()
+      .reverse()
+      .map((r) => ({
+        date: r.created_at?.split("T")[0] || "",
+        value: r.discipline_score,
+      }));
 
     // Avg discipline score
     const scores = reviews.map((r) => r.discipline_score);
@@ -84,7 +95,7 @@ export default function PublicProfileView({
       else break;
     }
 
-    return { count, winrate, totalPnl, pnlPct, avgScore, streak, equity };
+    return { count, winrate, avgScore, streak, disciplineSeries };
   }, [trades, reviews]);
 
   return (
@@ -131,10 +142,8 @@ export default function PublicProfileView({
             <p className="text-2xl font-bold mt-1 text-foreground">{stats.winrate.toFixed(1)}%</p>
           </div>
           <div className="bg-card border border-border rounded-xl p-5">
-            <p className="text-xs text-muted">P&L</p>
-            <p className={`text-2xl font-bold mt-1 ${stats.pnlPct >= 0 ? "text-profit" : "text-loss"}`}>
-              {stats.pnlPct >= 0 ? "+" : ""}{stats.pnlPct.toFixed(2)}%
-            </p>
+            <p className="text-xs text-muted">Sessions reviewed</p>
+            <p className="text-2xl font-bold mt-1 text-foreground">{sessionCount}</p>
           </div>
           <div className="bg-card border border-border rounded-xl p-5">
             <p className="text-xs text-muted">Discipline</p>
@@ -153,27 +162,29 @@ export default function PublicProfileView({
           </div>
         </div>
 
-        {/* Equity curve */}
-        {stats.equity.length > 0 && (
+        {/* Discipline dans le temps. Remplace l'ancienne courbe d'equity :
+            même poids visuel, mais la métrique est celle que le produit
+            revendique, et elle ne publie aucune performance de compte. */}
+        {stats.disciplineSeries.length > 0 && (
           <div className="bg-card border border-border rounded-xl p-5 mb-8">
-            <h2 className="text-foreground font-semibold mb-4">Equity Curve (%)</h2>
+            <h2 className="text-foreground font-semibold mb-4">Discipline score over time</h2>
             <ResponsiveContainer width="100%" height={280}>
-              <AreaChart data={stats.equity}>
+              <AreaChart data={stats.disciplineSeries}>
                 <defs>
                   <linearGradient id="gradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="rgb(var(--profit))" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="rgb(var(--profit))" stopOpacity={0} />
+                    <stop offset="5%" stopColor="rgb(var(--accent))" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="rgb(var(--accent))" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" />
                 <XAxis dataKey="date" tick={{ fill: "rgb(var(--muted))", fontSize: 11 }} axisLine={{ stroke: "rgb(var(--border))" }} />
-                <YAxis tick={{ fill: "rgb(var(--muted))", fontSize: 11 }} axisLine={{ stroke: "rgb(var(--border))" }} tickFormatter={(v) => `${v.toFixed(0)}%`} />
+                <YAxis domain={[0, 100]} tick={{ fill: "rgb(var(--muted))", fontSize: 11 }} axisLine={{ stroke: "rgb(var(--border))" }} tickFormatter={(v) => `${v}`} />
                 <Tooltip
                   contentStyle={{ background: "rgb(var(--surface))", border: "1px solid rgb(var(--border))", borderRadius: 8 }}
                   labelStyle={{ color: "rgb(var(--muted))" }}
-                  formatter={(v) => [`${Number(v).toFixed(2)}%`, "P&L"]}
+                  formatter={(v) => [`${Number(v).toFixed(0)}/100`, "Discipline"]}
                 />
-                <Area type="monotone" dataKey="value" stroke="rgb(var(--profit))" fill="url(#gradient)" strokeWidth={2} />
+                <Area type="monotone" dataKey="value" stroke="rgb(var(--accent))" fill="url(#gradient)" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
           </div>

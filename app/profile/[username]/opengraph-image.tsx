@@ -9,7 +9,12 @@ import { fetchAllRows } from "@/lib/supabase-paginate";
  * When a profile link is shared (Twitter/X, Discord, WhatsApp…), this renders a
  * branded image with the trader's headline stats instead of the generic site
  * card — turning every shared profile into an acquisition surface. Stats mirror
- * PublicProfileView exactly (trades, winrate, P&L %, discipline, streak).
+ * PublicProfileView exactly (trades, winrate, sessions, discipline, streak).
+ *
+ * Aucune performance de compte ici, et surtout aucun taux de rendement : c'est
+ * la surface la plus publique du produit, et les guidelines du NinjaTrader
+ * Vendor Program interdisent d'y publier la performance d'un compte réel.
+ * Voir le commentaire de PublicProfileView pour le raisonnement complet.
  *
  * Runs on the Edge runtime (like the site-wide OG image) — supabase-js reads the
  * shared data over fetch with the service role; the image only ever exposes
@@ -24,7 +29,6 @@ export const contentType = "image/png";
 const ACCENT = "#00D4D8";
 const PROFIT = "#22c55e";
 const LOSS = "#ef4444";
-const START_BALANCE = 10000;
 
 function disciplineColor(s: number): string {
   if (s >= 90) return PROFIT;
@@ -39,7 +43,7 @@ export default async function Image({ params }: { params: { username: string } }
   let found = false;
   let count = 0;
   let winrate = 0;
-  let pnlPct = 0;
+  let sessions = 0;
   let avgScore = 0;
   let streak = 0;
 
@@ -64,10 +68,10 @@ export default async function Image({ params }: { params: { username: string } }
       username = profile.username as string;
       // Trades démo exclus de l'image publique ; fallback sans filtre tant
       // que la colonne is_demo n'existe pas en prod.
-      const [trades, { data: reviews }] = await Promise.all([
-        // Lecture paginée : cette image porte un P&L cumulé et un winrate, et
-        // c'est ce que les réseaux sociaux affichent en aperçu. Non bornée, la
-        // lecture s'arrête à 1 000 trades en silence (voir
+      const [trades, { data: reviews }, { count: sessionCount }] = await Promise.all([
+        // Lecture paginée : cette image porte un nombre de trades et un
+        // winrate, et c'est ce que les réseaux sociaux affichent en aperçu. Non
+        // bornée, la lecture s'arrête à 1 000 trades en silence (voir
         // lib/supabase-paginate.ts) et l'image publierait des chiffres faux.
         fetchAllRows<{ pnl: number; commission: number | null; swap: number | null }>((from, to) =>
           supabase
@@ -94,13 +98,18 @@ export default async function Image({ params }: { params: { username: string } }
           .eq("user_id", profile.id)
           .order("created_at", { ascending: false })
           .limit(120),
+        // Total réel des bilans : la lecture ci-dessus est bornée à 120 pour la
+        // série et la streak, le compteur affiché ne doit pas plafonner avec.
+        supabase
+          .from("session_reviews")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", profile.id),
       ]);
 
       const nets = (trades ?? []).map((t) => t.pnl + (t.commission || 0) + (t.swap || 0));
       count = nets.length;
       winrate = count > 0 ? (nets.filter((p) => p > 0).length / count) * 100 : 0;
-      const total = nets.reduce((a, b) => a + b, 0);
-      pnlPct = count > 0 ? (total / START_BALANCE) * 100 : 0;
+      sessions = sessionCount ?? 0;
 
       const scores = (reviews ?? []).map((r) => r.discipline_score as number);
       avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
@@ -122,7 +131,7 @@ export default async function Image({ params }: { params: { username: string } }
   const tiles: { label: string; value: string; color: string }[] = [
     { label: "Trades", value: String(count), color: "white" },
     { label: "Winrate", value: `${winrate.toFixed(0)}%`, color: "white" },
-    { label: "P&L", value: `${pnlPct >= 0 ? "+" : ""}${pnlPct.toFixed(1)}%`, color: pnlPct >= 0 ? PROFIT : LOSS },
+    { label: "Sessions", value: String(sessions), color: "white" },
     { label: "Discipline", value: `${avgScore.toFixed(0)}/100`, color: disciplineColor(avgScore) },
   ];
 
