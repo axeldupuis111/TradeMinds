@@ -841,6 +841,68 @@ conformité.
 
 ---
 
+## 8. Réponses du 2026-08-17 au soir : accès API ouvert, identifiants toujours pas là
+
+Deux mails, à trois minutes d'intervalle.
+
+### Ce qui est gagné
+
+- **La question des comptes de prop firm est répondue, et bien.** « While prop
+  users are not able to generate their own API key, by utilizing an OAuth
+  connection, your end users can connect to your product without needing to pay
+  for/generate their own API key. » C'est exactement le cas que nous avions
+  isolé comme dernière inconnue, et la réponse porte nommément sur les prop
+  users.
+- **La revue de conformité est lancée** : « I've asked our Compliance team to
+  review your materials. » Elle est partie le jour même où le travail a été
+  terminé.
+- **L'accès API est activé** sur `TradeDisciplineApp`.
+- **Pas de bac à sable.** Développement et tests contre l'environnement de démo,
+  `demo.tradovateapi.com`, en trading simulé sur données de marché réelles.
+  `lib/sync/tradovate-oauth.ts` gère déjà les deux environnements.
+- **Le Market Data WebSocket est fermé aux vendeurs** non enregistrés comme sous
+  vendeur CME. Sans effet sur nous : notre usage est post-trade et ne demande
+  aucune donnée de marché. C'est la position tenue depuis le premier message, et
+  elle se révèle payante.
+
+### Ce qui manque encore, et le point à ne pas manquer
+
+Toujours **pas de `client_id` ni de `client_secret`**. Elle écrit que
+l'information est couverte par les documents. Elle ne l'est pas, et leur propre
+guide dit le contraire :
+
+> « client id and client secret, which will be supplied by Tradovate »
+> (https://github.com/tradovate/example-api-oauth)
+
+Autrement dit ces identifiants ne se génèrent pas depuis notre compte : ils sont
+émis par eux. « Activer l'accès API sur le username » et « délivrer des
+identifiants OAuth partenaires » sont deux choses différentes, et seule la
+première a eu lieu. C'est le seul point qui bloque encore, et il faut le
+reformuler en citant leur propre phrase.
+
+L'avenant est resté sans réponse pour la troisième fois. Ne pas insister
+maintenant : la revue de conformité est en cours, c'est elle qui compte.
+
+### Ce que la documentation a permis de trancher dans le code
+
+Le fichier documentait deux divergences entre la référence d'API et l'exemple
+officiel : le chemin (`/v1/auth/oauthtoken` contre `/auth/oauthtoken`) et
+l'encodage (JSON contre formulaire). La version précédente pariait sur la
+référence, avec une variable d'environnement pour rattraper un 404.
+
+Le pari couvrait le chemin mais pas l'encodage : une erreur de ce côté aurait
+exigé un déploiement pendant le tout premier échange réel. Les deux dialectes
+sont désormais essayés dans l'ordre, l'exemple officiel en premier, puisque
+c'est vers lui que NinjaTrader nous renvoie et que le formulaire est ce
+qu'impose la RFC 6749 pour un point de terminaison de jetons.
+
+Frontière tenue par des tests : on réessaie sur ce qui signale une mauvaise
+porte (404, 405, 415, ou un 400 sans champ `error`), jamais sur un refus OAuth
+argumenté. Un code d'autorisation est à usage unique, le rejouer serait pire que
+l'échec d'origine.
+
+---
+
 ## Sources
 
 - Accès API Tradovate, conditions et coût : https://danetrades.com/help-center/accounts-connections/tradovate-api-requirements-and-subscription/

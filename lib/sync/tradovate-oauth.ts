@@ -14,10 +14,22 @@
  * le modèle de TradeZella, et c'est l'unique raison d'être du partenariat
  * NinjaTrader signé le 2026-08-15.
  *
- * ⚠️ IL MANQUE ENCORE LE `client_id` ET LE `client_secret`, demandés à
- * NinjaTrader le 2026-08-15. Tout ce fichier est écrit contre la documentation
- * publique (voir liens ci-dessous) : le jour où les identifiants arrivent, il
- * n'y a que deux variables d'environnement à remplir.
+ * ⚠️ IL MANQUE ENCORE LE `client_id` ET LE `client_secret`. Demandés les 15 et
+ * 17 août 2026. Le 17, NinjaTrader a activé l'accès API sur le compte
+ * `TradeDisciplineApp` et envoyé la documentation, mais pas les identifiants :
+ * or leur propre guide OAuth dit qu'ils sont « supplied by Tradovate », donc
+ * rien ne peut être généré de notre côté.
+ *
+ * Tout ce fichier est écrit contre la documentation publique (voir liens
+ * ci-dessous) : le jour où les identifiants arrivent, il n'y a que deux
+ * variables d'environnement à remplir.
+ *
+ * Confirmé par écrit le 2026-08-17, et c'est la raison d'être du fichier : les
+ * traders de prop firm ne peuvent pas générer de clé API, mais peuvent se
+ * connecter via OAuth sans en payer ni en générer une.
+ *
+ * Pas de bac à sable : le développement et les tests se font contre
+ * l'environnement de démo (`demo.tradovateapi.com`), déjà géré ici.
  *
  * Sources :
  *  - https://partner.tradovate.com/api/rest-api-endpoints/authentication/o-auth-token
@@ -34,19 +46,47 @@ import type { TradovateEnvironment } from "./tradovate";
 const AUTH_URL = "https://trader.tradovate.com/oauth";
 
 /**
- * ⚠️ DEUX DIVERGENCES ENTRE LA DOC ET L'EXEMPLE OFFICIEL, à trancher au premier
- * appel réel plutôt qu'à deviner maintenant :
- *  1. la référence d'API documente `/v1/auth/oauthtoken`, le dépôt d'exemple
- *     appelle `/auth/oauthtoken` sans le préfixe de version ;
+ * DEUX DIVERGENCES ENTRE LA RÉFÉRENCE D'API ET L'EXEMPLE OFFICIEL :
+ *  1. la référence documente `/v1/auth/oauthtoken`, le dépôt d'exemple appelle
+ *     `/auth/oauthtoken`, sans préfixe de version ;
  *  2. la référence annonce `application/json`, l'exemple poste un formulaire.
- * On suit la RÉFÉRENCE (JSON, préfixe /v1), qui fait foi, et `TRADOVATE_OAUTH_TOKEN_PATH`
- * permet de basculer sans redéployer si le premier échange répond 404.
+ *
+ * La version précédente pariait sur la référence, avec `TRADOVATE_OAUTH_TOKEN_PATH`
+ * pour rattraper un 404 sans redéployer. Le pari couvrait la divergence 1 mais
+ * pas la 2 : une erreur d'encodage aurait exigé un déploiement, au pire moment,
+ * c'est-à-dire pendant le tout premier échange réel.
+ *
+ * On ne parie plus : les deux dialectes sont essayés dans l'ordre, et on
+ * s'arrête au premier qui obtient une vraie réponse OAuth. Le coût est un
+ * aller-retour perdu une fois sur deux au premier appel, ce qui est sans
+ * commune mesure avec le coût d'une intégration bloquée sur un 404.
+ *
+ * L'ordre place l'exemple officiel en premier depuis le 2026-08-17 : c'est vers
+ * lui que NinjaTrader nous a renvoyés, et le formulaire est ce qu'impose la
+ * RFC 6749 §4.1.3 pour un point de terminaison de jetons. La référence JSON est
+ * l'exception, pas la règle.
  */
-const TOKEN_PATH = process.env.TRADOVATE_OAUTH_TOKEN_PATH || "/v1/auth/oauthtoken";
+type TokenDialect = { path: string; encoding: "form" | "json" };
 
-function tokenUrl(env: TradovateEnvironment): string {
-  const host = env === "demo" ? "https://demo.tradovateapi.com" : "https://live.tradovateapi.com";
-  return `${host}${TOKEN_PATH}`;
+const TOKEN_DIALECTS: TokenDialect[] = [
+  { path: "/auth/oauthtoken", encoding: "form" },
+  { path: "/v1/auth/oauthtoken", encoding: "json" },
+];
+
+/**
+ * Épingle le chemin quand on sait lequel est le bon, par exemple après un
+ * premier échange réussi : plus aucun aller-retour perdu, et pas de déploiement
+ * pour le régler.
+ */
+function tokenDialects(): TokenDialect[] {
+  const pinned = process.env.TRADOVATE_OAUTH_TOKEN_PATH;
+  if (!pinned) return TOKEN_DIALECTS;
+  const match = TOKEN_DIALECTS.filter((d) => d.path === pinned);
+  return match.length > 0 ? match : [{ path: pinned, encoding: "form" }];
+}
+
+function tokenHost(env: TradovateEnvironment): string {
+  return env === "demo" ? "https://demo.tradovateapi.com" : "https://live.tradovateapi.com";
 }
 
 /**
@@ -170,17 +210,56 @@ function toTokens(raw: RawTokenResponse, now = Date.now()): TradovateOAuthTokens
   };
 }
 
-async function postToken(env: TradovateEnvironment, body: Record<string, string>): Promise<TradovateOAuthTokens> {
-  const res = await fetch(tokenUrl(env), {
+/**
+ * Un statut qui dit « tu n'as pas frappé à la bonne porte, ou pas dans la bonne
+ * langue », par opposition à « la porte est la bonne et ta demande est
+ * refusée ».
+ *
+ * ⚠️ 400 et 401 n'en font PAS partie, volontairement. Ils signifient que la
+ * requête a atteint le bon gestionnaire et a été rejetée sur le fond : réessayer
+ * risquerait de rejouer un code d'autorisation à usage unique. Un 400 sans
+ * champ `error` exploitable est traité à part, plus bas.
+ */
+const WRONG_DOOR = new Set([404, 405, 415]);
+
+async function tryDialect(
+  env: TradovateEnvironment,
+  dialect: TokenDialect,
+  body: Record<string, string>,
+): Promise<{ raw: RawTokenResponse; status: number }> {
+  const isForm = dialect.encoding === "form";
+  const res = await fetch(`${tokenHost(env)}${dialect.path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    headers: {
+      "Content-Type": isForm ? "application/x-www-form-urlencoded" : "application/json",
+    },
+    body: isForm ? new URLSearchParams(body).toString() : JSON.stringify(body),
   });
   const raw = (await res.json().catch(() => ({}))) as RawTokenResponse;
-  if (!res.ok && !raw.error) {
-    throw new Error(`Tradovate OAuth HTTP ${res.status}`);
+  return { raw, status: res.status };
+}
+
+async function postToken(env: TradovateEnvironment, body: Record<string, string>): Promise<TradovateOAuthTokens> {
+  const dialects = tokenDialects();
+  let lastStatus = 0;
+
+  for (let i = 0; i < dialects.length; i++) {
+    const last = i === dialects.length - 1;
+    const { raw, status } = await tryDialect(env, dialects[i], body);
+    lastStatus = status;
+
+    // Réponse OAuth exploitable, dans un sens comme dans l'autre : c'est le bon
+    // dialecte, on ne réessaie pas, même si la réponse est un refus.
+    if (raw.access_token || raw.error) return toTokens(raw);
+
+    // Rien d'exploitable. On ne passe au dialecte suivant que si le serveur
+    // n'a manifestement pas compris la requête : mauvais chemin, mauvaise
+    // méthode, mauvais type de contenu, ou un corps qui n'est pas de l'OAuth.
+    const misunderstood = WRONG_DOOR.has(status) || (status === 400 && !raw.error);
+    if (last || !misunderstood) break;
   }
-  return toTokens(raw);
+
+  throw new Error(`Tradovate OAuth HTTP ${lastStatus} : aucune réponse exploitable du serveur de jetons.`);
 }
 
 /** Échange le code d'autorisation contre un couple de jetons. */

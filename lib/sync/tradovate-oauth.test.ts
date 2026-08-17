@@ -4,6 +4,7 @@ import {
   accessTokenExpired,
   callbackUrl,
   buildAuthorizeUrl,
+  exchangeCode,
   isOAuthCredentials,
   oauthConfigured,
   refreshTokenExpired,
@@ -15,8 +16,8 @@ import {
  * jours plus tard, quand un refresh token qu'on croyait valide ne l'est plus.
  * Ces tests visent exactement les endroits où l'erreur ne se verrait pas.
  *
- * Ils sont gratuits : aucun appel réseau, seulement la logique qu'on peut
- * vérifier sans les identifiants partenaires, toujours en attente au 2026-08-15.
+ * Ils sont gratuits : aucun appel réseau réel, seulement la logique qu'on peut
+ * vérifier sans les identifiants partenaires, toujours en attente au 2026-08-17.
  */
 
 const H = 3600_000;
@@ -145,5 +146,97 @@ describe("disponibilité de la fonctionnalité", () => {
     expect(oauthConfigured()).toBe(true);
     if (id === undefined) delete process.env.TRADOVATE_CLIENT_ID; else process.env.TRADOVATE_CLIENT_ID = id;
     if (sec === undefined) delete process.env.TRADOVATE_CLIENT_SECRET; else process.env.TRADOVATE_CLIENT_SECRET = sec;
+  });
+});
+
+/**
+ * Échange de jetons : la référence d'API et l'exemple officiel de Tradovate ne
+ * décrivent ni le même chemin ni le même encodage. On essaie les deux plutôt
+ * que de parier, et ces tests tiennent la frontière entre « mauvaise porte,
+ * réessaie » et « bonne porte, refus, n'insiste pas » : un code d'autorisation
+ * est à usage unique, le rejouer serait pire que l'échec d'origine.
+ */
+describe("échange du code contre des jetons", () => {
+  const REAL_FETCH = globalThis.fetch;
+  const ENV = { id: process.env.TRADOVATE_CLIENT_ID, sec: process.env.TRADOVATE_CLIENT_SECRET };
+
+  interface Call { url: string; contentType: string; body: string }
+  let calls: Call[];
+
+  function mockFetch(responses: { status: number; body: unknown }[]) {
+    let i = 0;
+    globalThis.fetch = (async (url: string, init: RequestInit) => {
+      calls.push({
+        url: String(url),
+        contentType: (init.headers as Record<string, string>)["Content-Type"],
+        body: String(init.body),
+      });
+      const r = responses[Math.min(i++, responses.length - 1)];
+      return { status: r.status, json: async () => r.body } as unknown as Response;
+    }) as typeof globalThis.fetch;
+  }
+
+  beforeEach(() => {
+    calls = [];
+    process.env.TRADOVATE_CLIENT_ID = "cid";
+    process.env.TRADOVATE_CLIENT_SECRET = "sec";
+    delete process.env.TRADOVATE_OAUTH_TOKEN_PATH;
+  });
+
+  afterEach(() => {
+    globalThis.fetch = REAL_FETCH;
+    if (ENV.id === undefined) delete process.env.TRADOVATE_CLIENT_ID; else process.env.TRADOVATE_CLIENT_ID = ENV.id;
+    if (ENV.sec === undefined) delete process.env.TRADOVATE_CLIENT_SECRET; else process.env.TRADOVATE_CLIENT_SECRET = ENV.sec;
+  });
+
+  const OK = { access_token: "at", refresh_token: "rt", expires_in: 3600 };
+
+  it("commence par l'exemple officiel : formulaire, sans préfixe de version", async () => {
+    mockFetch([{ status: 200, body: OK }]);
+    await exchangeCode({ code: "c", redirectUri: "https://x.app/cb", env: "demo" });
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toBe("https://demo.tradovateapi.com/auth/oauthtoken");
+    expect(calls[0].contentType).toBe("application/x-www-form-urlencoded");
+    expect(calls[0].body).toContain("grant_type=authorization_code");
+  });
+
+  it("bascule sur le dialecte JSON quand le premier chemin répond 404", async () => {
+    mockFetch([{ status: 404, body: {} }, { status: 200, body: OK }]);
+    const t = await exchangeCode({ code: "c", redirectUri: "https://x.app/cb", env: "live" });
+    expect(calls.map((c) => c.url)).toEqual([
+      "https://live.tradovateapi.com/auth/oauthtoken",
+      "https://live.tradovateapi.com/v1/auth/oauthtoken",
+    ]);
+    expect(calls[1].contentType).toBe("application/json");
+    expect(t.access_token).toBe("at");
+  });
+
+  it("n'insiste PAS quand le serveur refuse explicitement", async () => {
+    // Le code d'autorisation est à usage unique : un refus argumenté veut dire
+    // qu'on a atteint le bon gestionnaire. Réessayer le brûlerait pour rien.
+    mockFetch([{ status: 400, body: { error: "invalid_grant" } }]);
+    await expect(
+      exchangeCode({ code: "c", redirectUri: "https://x.app/cb", env: "live" }),
+    ).rejects.toThrow(/invalid_grant/);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("réessaie sur un 400 que rien ne rend exploitable", async () => {
+    // Un 400 sans champ `error` n'est pas un refus OAuth : c'est un serveur qui
+    // n'a pas reconnu la requête. Typiquement le mauvais encodage.
+    mockFetch([{ status: 400, body: { message: "Bad Request" } }, { status: 200, body: OK }]);
+    const t = await exchangeCode({ code: "c", redirectUri: "https://x.app/cb", env: "live" });
+    expect(calls).toHaveLength(2);
+    expect(t.refresh_token).toBe("rt");
+  });
+
+  it("n'essaie qu'un seul dialecte quand le chemin est épinglé", async () => {
+    process.env.TRADOVATE_OAUTH_TOKEN_PATH = "/v1/auth/oauthtoken";
+    mockFetch([{ status: 404, body: {} }]);
+    await expect(
+      exchangeCode({ code: "c", redirectUri: "https://x.app/cb", env: "live" }),
+    ).rejects.toThrow(/HTTP 404/);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toBe("https://live.tradovateapi.com/v1/auth/oauthtoken");
   });
 });
