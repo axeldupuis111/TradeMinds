@@ -46,30 +46,35 @@ import type { TradovateEnvironment } from "./tradovate";
 const AUTH_URL = "https://trader.tradovate.com/oauth";
 
 /**
- * DEUX DIVERGENCES ENTRE LA RÉFÉRENCE D'API ET L'EXEMPLE OFFICIEL :
- *  1. la référence documente `/v1/auth/oauthtoken`, le dépôt d'exemple appelle
- *     `/auth/oauthtoken`, sans préfixe de version ;
- *  2. la référence annonce `application/json`, l'exemple poste un formulaire.
+ * LE CHEMIN ET L'ENCODAGE DU POINT DE TERMINAISON DE JETONS.
  *
- * La version précédente pariait sur la référence, avec `TRADOVATE_OAUTH_TOKEN_PATH`
- * pour rattraper un 404 sans redéployer. Le pari couvrait la divergence 1 mais
- * pas la 2 : une erreur d'encodage aurait exigé un déploiement, au pire moment,
- * c'est-à-dire pendant le tout premier échange réel.
+ * ⚠️ Le `/v1` d'une version antérieure de ce fichier était une erreur. Vérifié
+ * sur api.tradovate.com le 2026-08-17 : la chaîne `/v1/auth/oauthtoken`
+ * n'apparaît NULLE PART dans la référence, qui documente `POST
+ * /auth/oauthtoken` avec un exemple de requête en `application/json`. Le
+ * préfixe venait d'une source périmée. Il est conservé en dernier recours, pas
+ * en premier choix.
  *
- * On ne parie plus : les deux dialectes sont essayés dans l'ordre, et on
+ * Reste une divergence réelle sur l'encodage : la référence montre du JSON,
+ * l'exemple officiel poste un formulaire. Le point de terminaison accepte un
+ * champ `httpAuth` étranger à la RFC 6749, donc rien ne garantit qu'il se
+ * comporte comme un serveur OAuth standard, et l'argument « la RFC impose le
+ * formulaire » ne tranche pas.
+ *
+ * On ne parie donc pas : les dialectes sont essayés dans l'ordre, et on
  * s'arrête au premier qui obtient une vraie réponse OAuth. Le coût est un
- * aller-retour perdu une fois sur deux au premier appel, ce qui est sans
- * commune mesure avec le coût d'une intégration bloquée sur un 404.
- *
- * L'ordre place l'exemple officiel en premier depuis le 2026-08-17 : c'est vers
- * lui que NinjaTrader nous a renvoyés, et le formulaire est ce qu'impose la
- * RFC 6749 §4.1.3 pour un point de terminaison de jetons. La référence JSON est
- * l'exception, pas la règle.
+ * aller-retour perdu au premier appel, sans commune mesure avec celui d'une
+ * intégration bloquée sur un 404 le jour de la mise en service.
  */
 type TokenDialect = { path: string; encoding: "form" | "json" };
 
 const TOKEN_DIALECTS: TokenDialect[] = [
+  // La référence en vigueur : bon chemin, exemple de requête en JSON.
+  { path: "/auth/oauthtoken", encoding: "json" },
+  // Même chemin, encodage de l'exemple officiel et de la RFC 6749 §4.1.3.
   { path: "/auth/oauthtoken", encoding: "form" },
+  // Dernier recours, hérité d'une doc périmée. Gardé parce qu'il ne coûte rien
+  // et qu'un 404 sur les deux premiers ne laisserait aucune autre piste.
   { path: "/v1/auth/oauthtoken", encoding: "json" },
 ];
 

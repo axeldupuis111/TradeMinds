@@ -191,23 +191,37 @@ describe("échange du code contre des jetons", () => {
 
   const OK = { access_token: "at", refresh_token: "rt", expires_in: 3600 };
 
-  it("commence par l'exemple officiel : formulaire, sans préfixe de version", async () => {
+  it("commence par la référence en vigueur : /auth/oauthtoken en JSON", async () => {
+    // ⚠️ SANS préfixe /v1. Vérifié sur api.tradovate.com le 2026-08-17 : cette
+    // chaîne n'existe nulle part dans la référence. Une version antérieure du
+    // fichier l'appelait en premier, sur la foi d'une source périmée.
     mockFetch([{ status: 200, body: OK }]);
     await exchangeCode({ code: "c", redirectUri: "https://x.app/cb", env: "demo" });
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toBe("https://demo.tradovateapi.com/auth/oauthtoken");
-    expect(calls[0].contentType).toBe("application/x-www-form-urlencoded");
-    expect(calls[0].body).toContain("grant_type=authorization_code");
+    expect(calls[0].contentType).toBe("application/json");
+    expect(JSON.parse(calls[0].body).grant_type).toBe("authorization_code");
   });
 
-  it("bascule sur le dialecte JSON quand le premier chemin répond 404", async () => {
-    mockFetch([{ status: 404, body: {} }, { status: 200, body: OK }]);
+  it("réessaie le MÊME chemin en formulaire avant de changer de chemin", async () => {
+    // L'encodage est la divergence réelle entre la référence et l'exemple
+    // officiel. Changer de chemin avant d'avoir essayé les deux encodages
+    // ferait conclure « mauvais chemin » sur une simple erreur de content-type.
+    mockFetch([{ status: 415, body: {} }, { status: 200, body: OK }]);
     const t = await exchangeCode({ code: "c", redirectUri: "https://x.app/cb", env: "live" });
     expect(calls.map((c) => c.url)).toEqual([
       "https://live.tradovateapi.com/auth/oauthtoken",
-      "https://live.tradovateapi.com/v1/auth/oauthtoken",
+      "https://live.tradovateapi.com/auth/oauthtoken",
     ]);
-    expect(calls[1].contentType).toBe("application/json");
+    expect(calls[1].contentType).toBe("application/x-www-form-urlencoded");
+    expect(t.access_token).toBe("at");
+  });
+
+  it("ne tente le chemin /v1 hérité qu'en tout dernier recours", async () => {
+    mockFetch([{ status: 404, body: {} }, { status: 404, body: {} }, { status: 200, body: OK }]);
+    const t = await exchangeCode({ code: "c", redirectUri: "https://x.app/cb", env: "live" });
+    expect(calls).toHaveLength(3);
+    expect(calls[2].url).toBe("https://live.tradovateapi.com/v1/auth/oauthtoken");
     expect(t.access_token).toBe("at");
   });
 

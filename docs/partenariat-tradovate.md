@@ -883,18 +883,61 @@ reformuler en citant leur propre phrase.
 L'avenant est resté sans réponse pour la troisième fois. Ne pas insister
 maintenant : la revue de conformité est en cours, c'est elle qui compte.
 
+### Y a-t-il une action de notre côté pour obtenir les identifiants ? Non
+
+Question posée par Axel, et elle méritait d'être posée avant d'écrire : inutile
+de relancer si c'est à nous de cliquer quelque part. Sources lues le 2026-08-17.
+
+Le guide OAuth le dit deux fois, et n'évoque ni page, ni formulaire, ni réglage
+d'application :
+
+> « We navigate to a special OAuth URL using our client id and client secret,
+> **which will be supplied by Tradovate**. »
+> « Replace the values with your special client variables, **provided to you by
+> Tradovate**. »
+
+La référence d'API dit la même chose des identifiants de compte :
+
+> « `cid` is a client app id **provided by Tradovate**. `sec` is a secret (or
+> API key) **provided by Tradovate**. »
+
+Et elle décrit le chemin individuel, celui que le partenariat sert précisément à
+contourner, à ne surtout pas emprunter :
+
+> « You need a LIVE account with more than $1000 in equity. You need a
+> subscription to API Access. You'll need to generate an API Key. »
+
+**Une piste reste à écarter avant d'écrire.** Le mail annonce « your API key
+should be enabled now ». Si une paire `cid` / `sec` est apparue dans le compte
+`TradeDisciplineApp`, il n'est pas exclu qu'elle serve de `client_id` /
+`client_secret` : leur exemple OAuth utilise `CLIENT_ID=1`, un petit entier, et
+la référence montre `cid: 8`, du même genre. Le vocabulaire concorde aussi,
+« client app id » contre `client_id`.
+
+À vérifier en deux minutes dans l'application Tradovate avant toute relance. Si
+la paire existe, on l'essaie contre l'environnement de démo : le parcours dira
+oui ou non sans qu'aucun mail soit nécessaire. Si elle n'existe pas, ou si
+l'écran de consentement répond « client_id inconnu », alors la relance est
+fondée et se cite d'elle-même.
+
 ### Ce que la documentation a permis de trancher dans le code
 
 Le fichier documentait deux divergences entre la référence d'API et l'exemple
-officiel : le chemin (`/v1/auth/oauthtoken` contre `/auth/oauthtoken`) et
-l'encodage (JSON contre formulaire). La version précédente pariait sur la
+officiel : le chemin et l'encodage. La version précédente pariait sur la
 référence, avec une variable d'environnement pour rattraper un 404.
 
-Le pari couvrait le chemin mais pas l'encodage : une erreur de ce côté aurait
-exigé un déploiement pendant le tout premier échange réel. Les deux dialectes
-sont désormais essayés dans l'ordre, l'exemple officiel en premier, puisque
-c'est vers lui que NinjaTrader nous renvoie et que le formulaire est ce
-qu'impose la RFC 6749 pour un point de terminaison de jetons.
+**Le chemin `/v1/auth/oauthtoken` était une erreur.** Vérifié en ouvrant
+api.tradovate.com : cette chaîne n'apparaît nulle part dans la référence, qui
+documente `POST /auth/oauthtoken` avec un exemple de requête en
+`application/json`. Le préfixe venait d'une source périmée, et le code
+l'appelait en premier. Il est relégué en dernier recours.
+
+Reste la divergence sur l'encodage, réelle : la référence montre du JSON,
+l'exemple officiel poste un formulaire. Le point de terminaison accepte un champ
+`httpAuth` étranger à la RFC 6749, donc « la RFC impose le formulaire » ne
+tranche pas. Les trois combinaisons sont essayées dans l'ordre, référence
+d'abord, et surtout les deux encodages du BON chemin avant d'en changer : sinon
+une simple erreur de type de contenu ferait conclure à un mauvais chemin.
 
 Frontière tenue par des tests : on réessaie sur ce qui signale une mauvaise
 porte (404, 405, 415, ou un 400 sans champ `error`), jamais sur un refus OAuth
