@@ -169,7 +169,7 @@ function computeStats(trades: TradeRow[]): WeekStats {
   };
 }
 
-function buildEmailHtml(stats: WeekStats, weekLabel: string, copy: Copy, fmt: Formatters): string {
+function buildEmailHtml(stats: WeekStats, weekLabel: string, copy: Copy, fmt: Formatters, lang: Lang): string {
   const pnlColor = stats.pnl >= 0 ? EMAIL_GREEN : EMAIL_RED;
 
   const bestWorst = stats.best
@@ -209,6 +209,7 @@ function buildEmailHtml(stats: WeekStats, weekLabel: string, copy: Copy, fmt: Fo
       ${bestWorst}`,
     cta: { label: copy.cta, url: "https://tradediscipline.app/dashboard/analytics" },
     footerLines: [copy.footer],
+    lang,
   });
 }
 
@@ -311,7 +312,7 @@ async function handle(req: Request) {
         from: "TradeDiscipline <noreply@tradediscipline.app>",
         to: user.email,
         subject: copy.subject(fmt.signedMoney(stats.pnl), stats.count),
-        html: buildEmailHtml(stats, weekLabel, copy, fmt),
+        html: buildEmailHtml(stats, weekLabel, copy, fmt, lang),
       });
       sent++;
     } catch (emailErr) {

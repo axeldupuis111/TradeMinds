@@ -99,7 +99,8 @@ function buildEmailHtml(
   idleDays: number,
   copy: typeof REACTIVATION_COPY[Lang],
   locale: string,
-  currency: string
+  currency: string,
+  lang: Lang
 ): string {
   const money = new Intl.NumberFormat(locale, {
     style: "currency",
@@ -122,6 +123,7 @@ function buildEmailHtml(
       ])}`,
     cta: { label: copy.cta, url: "https://tradediscipline.app/dashboard" },
     footerLines: [copy.footer],
+    lang,
   });
 }
 
@@ -213,7 +215,7 @@ async function handle(req: Request) {
         to: user.email,
         subject: copy.subject,
         html: buildEmailHtml(stats, idleDays, copy, LOCALES[lang],
-          await resolveUserCurrency(supabase, user.id as string)),
+          await resolveUserCurrency(supabase, user.id as string), lang),
       });
       sent++;
     } catch (emailErr) {

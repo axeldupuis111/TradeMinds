@@ -1,3 +1,6 @@
+import { getDisclosures } from "@/lib/legal/disclosures";
+import type { Lang } from "@/lib/translations";
+
 /**
  * Layout email commun TradeDiscipline.
  *
@@ -36,6 +39,11 @@ export interface BrandEmailOptions {
   cta?: { label: string; url: string };
   /** Lignes du pied de page (ex. mention de désinscription), une par ligne. */
   footerLines?: string[];
+  /**
+   * Langue de l'avertissement sur les risques du pied de page. Repli sur
+   * l'anglais : mieux vaut la mauvaise langue que pas d'avertissement du tout.
+   */
+  lang?: Lang;
 }
 
 /** Paragraphe standard pour le corps d'un email. */
@@ -89,6 +97,16 @@ export function renderBrandEmail(o: BrandEmailOptions): string {
     .map((line) => `${line}<br/>`)
     .join("");
 
+  // Avertissement sur les risques : l'annexe A des guidelines du NinjaTrader
+  // Vendor Program vise « all emails sent and received ». Posé ici plutôt que
+  // dans chaque route, pour qu'aucun email de marque ne puisse partir sans.
+  // MUTED et non FAINT : sur le fond ${CANVAS}, FAINT tombe sous le seuil de
+  // lisibilité, et un avertissement illisible ne vaut pas un avertissement.
+  const riskDisclosure = `
+    <p style="color: ${MUTED}; font-size: 11px; line-height: 1.7; margin: 12px 0 0; text-align: left;">
+      ${getDisclosures(o.lang ?? "en").risk}
+    </p>`;
+
   return `
   <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${CANVAS}" style="background: ${CANVAS};">
     <tr>
@@ -129,6 +147,7 @@ export function renderBrandEmail(o: BrandEmailOptions): string {
                 ${footerLines}
                 TradeDiscipline · <a href="${SITE_URL}" style="color: ${FAINT}; text-decoration: underline;">tradediscipline.app</a>
               </p>
+              ${riskDisclosure}
             </td>
           </tr>
         </table>

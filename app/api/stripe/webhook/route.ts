@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { stripe } from '@/lib/stripe'
 import { renderBrandEmail, emailParagraph } from '@/lib/email-template'
+import type { Lang } from '@/lib/translations'
 import { hasPendingCancellation, isCancellationRequested } from '@/lib/stripe-subscription'
 import { resolvePlanInfo } from '@/lib/stripe-plan'
 import { alertWebhookFailure } from '@/lib/cron-alert'
@@ -691,6 +692,7 @@ async function handleInvoicePaid(
         heading,
         bodyHtml: emailParagraph(copy.body),
         cta: { label: copy.cta, url: invoiceUrl },
+        lang: lang as Lang,
       }),
     })
     if (error) {

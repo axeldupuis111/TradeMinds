@@ -62,13 +62,14 @@ const REMINDER_COPY: Record<Lang, {
   },
 };
 
-function buildEmailHtml(copy: typeof REMINDER_COPY[Lang]): string {
+function buildEmailHtml(copy: typeof REMINDER_COPY[Lang], lang: Lang): string {
   return renderBrandEmail({
     preheader: copy.body,
     heading: copy.heading,
     bodyHtml: emailParagraph(copy.body),
     cta: { label: copy.cta, url: "https://tradediscipline.app/dashboard/session" },
     footerLines: [copy.footer],
+    lang,
   });
 }
 
@@ -109,7 +110,7 @@ export async function POST(req: Request) {
         from: "TradeDiscipline <noreply@tradediscipline.app>",
         to: user.email,
         subject: copy.subject,
-        html: buildEmailHtml(copy),
+        html: buildEmailHtml(copy, lang),
       });
       sent++;
     } catch (emailErr) {

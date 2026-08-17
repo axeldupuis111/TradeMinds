@@ -32,6 +32,24 @@ prêt à copier tel quel dans le champ Body.
 - [x] Change email address
 - [x] Invite user
 
+### À recoller (2026-08-17) — avertissement sur les risques
+
+Les cinq fichiers ont été modifiés : ils portent désormais l'avertissement sur
+les risques exigé par le NinjaTrader Vendor Program, dont l'annexe A vise
+« all emails sent and received ». La version en ligne dans Supabase est donc
+périmée tant que les fichiers n'ont pas été recollés.
+
+- [ ] Confirm sign up
+- [ ] Reset password
+- [ ] Magic link or OTP
+- [ ] Change email address
+- [ ] Invite user
+
+Le reste des emails (rappel quotidien, rapport hebdo, réactivation,
+félicitations d'abonnement) part de notre code et porte déjà l'avertissement :
+il est posé dans `lib/email-template.ts`, dans le gabarit partagé, pour qu'aucun
+email de marque ne puisse partir sans. Rien à faire côté dashboard pour ceux-là.
+
 Note sur le format `token_hash`, au-delà de la délivrabilité : `{{ .ConfirmationURL }}`
 déclenche le flux PKCE, qui exige un secret (le code verifier) stocké par le
 navigateur **au moment de la demande**. Demander la réinitialisation depuis
