@@ -48,6 +48,13 @@ function isPublicPath(pathname: string): boolean {
     p.startsWith("/blog") ||
     p.startsWith("/trading-journal") ||
     p.startsWith("/profile/") ||
+    // Enrôlement des collaborateurs d'un réseau partenaire : par construction,
+    // ces gens n'ont PAS de compte TradeDiscipline et n'en créeront pas. Une
+    // redirection vers /login ici ferme tout le programme d'un coup. L'accès
+    // est gardé par le code d'inscription du partenaire (page) et par le jeton
+    // dans l'URL (suivi).
+    p.startsWith("/partner/") ||
+    p.startsWith("/api/partner/") ||
     p === "/TradeDiscipline_MT5.mq5" ||
     p === "/TradeDiscipline_MT4.mq4"
   );
@@ -197,6 +204,10 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/auth/confirm") ||
     pathname.startsWith("/profile") ||
+    // Pages partenaires : mono-langue et hors arbre [locale]. Sans ce garde-fou,
+    // un navigateur en français se ferait rediriger vers /fr/partner/join, qui
+    // n'existe pas.
+    pathname.startsWith("/partner") ||
     pathname.match(/\.(ico|png|jpg|jpeg|svg|webp|css|js|txt|xml|json|woff|woff2)$/)
   ) {
     return supabaseResponse;

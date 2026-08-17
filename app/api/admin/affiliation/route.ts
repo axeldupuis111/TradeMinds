@@ -3,6 +3,8 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { tierFor } from "@/lib/partners";
 
 /**
  * Affiliation (admin) — commissions influenceur calculées depuis Stripe.
@@ -25,16 +27,9 @@ import { stripe } from "@/lib/stripe";
  * Même garde admin que /api/admin/funnel (ADMIN_EMAILS).
  */
 
-/** Barème : seuils sur les abonnés actifs, taux appliqué à toute l'assiette. */
-const TIERS = [
-  { minActive: 41, rate: 0.3, name: "Or" },
-  { minActive: 11, rate: 0.25, name: "Argent" },
-  { minActive: 0, rate: 0.2, name: "Bronze" },
-] as const;
-
-function tierFor(activeSubscriptions: number) {
-  return TIERS.find((t) => activeSubscriptions >= t.minActive) ?? TIERS[TIERS.length - 1];
-}
+// Barème importé de lib/partners : une seule définition pour les deux relevés
+// (celui-ci, historique et lu chez Stripe, et /api/admin/partners, lu en base).
+// Deux copies du barème, c'est deux montants différents pour le même mois.
 
 interface CodeReport {
   code: string;
@@ -99,6 +94,28 @@ export async function GET(req: NextRequest) {
   const windowEnd = Date.UTC(year, month, 1) / 1000;
 
   try {
+    // ── 0. Codes appartenant à un RÉSEAU : à exclure d'ici ────────────────
+    // Un collaborateur de réseau grave lui aussi son code dans
+    // `subscription.metadata.promo_code`. Sans ce filtre, ses ventes
+    // apparaîtraient DEUX fois : ici, code par code et au palier Bronze (un
+    // collaborateur dépasse rarement 10 abonnés à lui seul), et dans l'onglet
+    // Réseaux, agrégées au palier du réseau. Deux écrans, deux montants, pour
+    // le même argent : c'est exactement le genre d'écart qui fait perdre un
+    // mois à comprendre qui a raison.
+    const excluded = new Set<string>();
+    try {
+      const admin = createAdminClient();
+      const { data: networkReps } = await admin
+        .from("partner_reps")
+        .select("code, partners!inner(kind)")
+        .eq("partners.kind", "network");
+      for (const r of networkReps ?? []) excluded.add(String(r.code).toUpperCase());
+    } catch (err) {
+      // Base injoignable : on préfère un relevé complet (avec les réseaux
+      // dedans) à pas de relevé du tout, mais on le dit fort.
+      console.error("[Admin Affiliation] exclusion des réseaux impossible:", err);
+    }
+
     // ── 1. Abonnements attribués à un code promo ──────────────────────────
     // Volume faible (petit SaaS) : on liste tout et on filtre en mémoire.
     const attributed = new Map<string, { code: string; startDate: number; status: string }>();
@@ -128,7 +145,7 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      if (code) {
+      if (code && !excluded.has(code.toUpperCase())) {
         attributed.set(sub.id, {
           code: code.toUpperCase(),
           startDate: sub.start_date,

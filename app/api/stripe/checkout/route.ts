@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe'
 import { locales } from '@/i18n/config'
 import { resolveReferralCode } from '@/lib/founding'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { recordAttribution, resolveRefCode } from '@/lib/partners'
 
 export async function POST(req: NextRequest) {
   try {
@@ -109,15 +111,47 @@ export async function POST(req: NextRequest) {
     let founding = false // marque le badge « Membre fondateur » (code pré-rempli)
     const discounts: NonNullable<Stripe.Checkout.SessionCreateParams['discounts']> = []
 
-    // Le code d'un partenaire dont le quota est épuisé n'est plus applicable,
-    // mais la vente lui revient quand même : on grave l'attribution dans les
-    // metadata pour que sa commission ne saute pas silencieusement.
-    const partner = await resolveReferralCode(ref)
-    if (partner?.active) {
-      discounts.push({ promotion_code: partner.id })
-      founding = true
+    // Résolution en DEUX temps, dans cet ordre :
+    //
+    //  1. RÉSEAU (base) : le code appartient à un collaborateur. Sa remise, si
+    //     elle existe, est celle de SON PARTENAIRE (un coupon partagé par tout
+    //     le réseau), jamais un objet Stripe par collaborateur : c'est ce qui
+    //     rend un réseau de plusieurs milliers de personnes gérable.
+    //  2. STRIPE (historique) : code promo classique. Couvre les influenceurs
+    //     d'avant le réseau, dont le coupon vit toujours chez Stripe, et le
+    //     code public « LANCEMENT ».
+    //
+    // Un code désactivé (quota épuisé, collaborateur retiré) ne donne plus de
+    // remise mais garde son attribution : sinon la commission d'un partenaire
+    // disparaîtrait sans bruit le jour où son quota tombe.
+    const admin = createAdminClient()
+    const network = await resolveRefCode(admin, ref)
+    let attributionCode: string | null = network?.rep.code ?? null
+
+    if (network?.partner.stripe_coupon_id && network.rep.active && network.partner.active) {
+      discounts.push({ coupon: network.partner.stripe_coupon_id })
     }
-    const attribution: Record<string, string> = partner ? { attribution_code: partner.code } : {}
+
+    if (discounts.length === 0) {
+      const partner = await resolveReferralCode(ref)
+      if (partner?.active) {
+        discounts.push({ promotion_code: partner.id })
+        founding = true
+      }
+      attributionCode = attributionCode ?? partner?.code ?? null
+    }
+
+    // Attribution posée dès l'inscription (/api/referral/claim). On la repose
+    // ici pour le cas qu'elle ne couvre pas : un compte ANCIEN qui saisit le
+    // code d'un collaborateur au moment de payer. L'insertion ne peut pas
+    // écraser une attribution existante (first-touch verrouillé en base).
+    if (network) {
+      await recordAttribution(admin, user.id, network, network.rep.code, 'checkout')
+    }
+
+    const attribution: Record<string, string> = attributionCode
+      ? { attribution_code: attributionCode }
+      : {}
 
     // 7. Création de la Checkout Session
     const sessionParams: Stripe.Checkout.SessionCreateParams = {

@@ -8,6 +8,13 @@ import { renderBrandEmail, emailParagraph } from '@/lib/email-template'
 import { hasPendingCancellation, isCancellationRequested } from '@/lib/stripe-subscription'
 import { resolvePlanInfo } from '@/lib/stripe-plan'
 import { alertWebhookFailure } from '@/lib/cron-alert'
+import {
+  getAttribution,
+  isEligible,
+  paymentEligibility,
+  recordCommissionEvent,
+  resolveRefCode,
+} from '@/lib/partners'
 
 // IMPORTANT: Next.js doit recevoir le body brut pour la vérification de signature Stripe.
 // Cette config désactive le parsing automatique.
@@ -470,6 +477,81 @@ const CONGRATS_EMAIL: Record<string, { subject: string; heading: string; body: s
 
 const PLAN_LABEL: Record<string, string> = { plus: 'Plus', premium: 'Premium' }
 
+/**
+ * À qui revient une facture ? Deux sources, dans cet ordre :
+ *
+ *  1. `referral_attributions` : le rattachement posé dès l'INSCRIPTION. C'est
+ *     la seule source qui couvre un compte gratuit devenu payant des mois plus
+ *     tard, sans que le trader ait retapé le moindre code.
+ *  2. `subscription.metadata.promo_code` : le rail historique, gravé au
+ *     checkout. Il fait vivre les abonnements souscrits avant les réseaux.
+ *
+ * Renvoie null quand la vente n'appartient à personne (canal direct), et c'est
+ * un cas normal : la majorité des ventes ne sont attribuées à personne.
+ */
+async function resolveCommissionTarget(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  userId: string,
+  subscription: Stripe.Subscription
+): Promise<{ partnerId: string | null; repId: string | null; code: string } | null> {
+  const attribution = await getAttribution(supabase, userId)
+  if (attribution && (attribution.rep_id || attribution.partner_id)) {
+    return {
+      partnerId: attribution.partner_id,
+      repId: attribution.rep_id,
+      code: attribution.code,
+    }
+  }
+
+  const legacyCode = subscription.metadata?.promo_code
+  if (!legacyCode) return null
+
+  const resolved = await resolveRefCode(supabase, legacyCode)
+  if (!resolved) return null
+  return { partnerId: resolved.partner.id, repId: resolved.rep.id, code: resolved.rep.code }
+}
+
+/**
+ * Écrit l'encaissement attribué. Appelée à CHAQUE facture payée, y compris les
+ * renouvellements : c'est le renouvellement qui fait vivre une commission
+ * récurrente, et c'est exactement ce que l'ancien rail (qui ne regardait que la
+ * souscription initiale) ne voyait pas.
+ *
+ * Ne lève jamais : une commission non enregistrée est un manque à gagner qu'on
+ * répare à la main, tandis qu'une exception ici ferait rejouer tout le webhook
+ * et repasserait sur l'octroi d'accès.
+ */
+async function recordPaidCommission(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  invoice: Stripe.Invoice,
+  subscription: Stripe.Subscription,
+  userId: string
+): Promise<void> {
+  try {
+    if (invoice.amount_paid <= 0 || !invoice.id) return
+    const target = await resolveCommissionTarget(supabase, userId, subscription)
+    if (!target) return
+
+    const paidAt = new Date((invoice.created ?? Math.floor(Date.now() / 1000)) * 1000)
+    await recordCommissionEvent(supabase, {
+      kind: 'payment',
+      invoiceId: invoice.id,
+      subscriptionId: subscription.id,
+      userId,
+      partnerId: target.partnerId,
+      repId: target.repId,
+      code: target.code,
+      amountCents: invoice.amount_paid,
+      // Assiette contractuelle des 12 premiers mois, figée à l'écriture : la
+      // recalculer plus tard ferait bouger un relevé déjà envoyé au partenaire.
+      eligible: isEligible(new Date(subscription.start_date * 1000), paidAt),
+      occurredAt: paidAt,
+    })
+  } catch (err) {
+    console.error('[Webhook] Commission non enregistrée pour', invoice.id, err)
+  }
+}
+
 async function handleInvoicePaid(
   invoice: Stripe.Invoice,
   supabase: ReturnType<typeof getSupabaseAdmin>
@@ -550,6 +632,11 @@ async function handleInvoicePaid(
     }
   }
 
+  // Commission de l'apporteur. AVANT le filtre ci-dessous, qui ne laisse passer
+  // que les nouvelles souscriptions : une commission se gagne aussi (et surtout)
+  // sur les renouvellements.
+  await recordPaidCommission(supabase, invoice, subscription, userId)
+
   // On ne félicite que sur une nouvelle souscription ou un changement de plan (upgrade),
   // jamais sur un renouvellement (subscription_cycle).
   if (invoice.billing_reason !== 'subscription_create' && invoice.billing_reason !== 'subscription_update') {
@@ -623,13 +710,6 @@ async function handleChargeRefunded(
 ) {
   console.log('[Webhook] charge.refunded:', charge.id)
 
-  // Remboursement partiel (geste commercial, prorata) : l'accès reste dû.
-  const fullyRefunded = charge.refunded || charge.amount_refunded >= charge.amount
-  if (!fullyRefunded) {
-    console.log('[Webhook] Remboursement partiel, accès conservé')
-    return
-  }
-
   // La facture porte le lien vers l'abonnement (forme variable selon l'API).
   type ChargeWithInvoice = Stripe.Charge & { invoice?: string | Stripe.Invoice | null }
   const invoiceRef = (charge as ChargeWithInvoice).invoice
@@ -652,6 +732,41 @@ async function handleChargeRefunded(
   const userId = subscription.metadata?.supabase_user_id
   if (!userId) {
     console.error('[Webhook] No supabase_user_id in subscription metadata')
+    return
+  }
+
+  // REPRISE DE COMMISSION. Avant le tri partiel/intégral ci-dessous : l'accès
+  // survit à un remboursement partiel, mais l'argent rendu n'a jamais été gagné,
+  // donc il sort de l'assiette dans les deux cas. On écrit une ligne négative
+  // plutôt que d'effacer la ligne d'origine, pour qu'un partenaire qui conteste
+  // un montant six mois plus tard puisse lire ce qui s'est passé.
+  try {
+    const target = await resolveCommissionTarget(supabase, userId, subscription)
+    if (target && invoice.id && charge.amount_refunded > 0) {
+      await recordCommissionEvent(supabase, {
+        kind: 'refund',
+        invoiceId: invoice.id,
+        subscriptionId: subscription.id,
+        userId,
+        partnerId: target.partnerId,
+        repId: target.repId,
+        code: target.code,
+        amountCents: charge.amount_refunded,
+        // La reprise sort de la même assiette que l'encaissement qu'elle
+        // annule : rembourser une facture hors assiette ne doit pas amputer
+        // les commissions du mois en cours.
+        eligible: (await paymentEligibility(supabase, invoice.id)) ?? true,
+        occurredAt: new Date(),
+      })
+    }
+  } catch (err) {
+    console.error('[Webhook] Reprise de commission non enregistrée pour', charge.id, err)
+  }
+
+  // Remboursement partiel (geste commercial, prorata) : l'accès reste dû.
+  const fullyRefunded = charge.refunded || charge.amount_refunded >= charge.amount
+  if (!fullyRefunded) {
+    console.log('[Webhook] Remboursement partiel, accès conservé')
     return
   }
 

@@ -2,7 +2,7 @@
 
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 
 const ADMIN_EMAIL = "axel.dupuis111@gmail.com";
 
@@ -29,7 +29,7 @@ export default function AdminPage() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [updating, setUpdating] = useState(false);
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
-  const [tab, setTab] = useState<"plans" | "messages" | "funnel" | "cout" | "usernames" | "affiliation" | "communities">("plans");
+  const [tab, setTab] = useState<"plans" | "messages" | "funnel" | "cout" | "usernames" | "affiliation" | "reseaux" | "communities">("plans");
   // Modération des pseudos (libellés FR en dur, convention page interne)
   const [modUsername, setModUsername] = useState("");
   const [modNewUsername, setModNewUsername] = useState("");
@@ -73,6 +73,27 @@ export default function AdminPage() {
   } | null>(null);
   const [affLoading, setAffLoading] = useState(false);
   const [affError, setAffError] = useState<string | null>(null);
+  /**
+   * Réseaux partenaires (page interne : libellés FR en dur, convention admin).
+   * Lu en base (commission_events), là où l'onglet Affiliation ci-dessus
+   * interroge Stripe : c'est ce relevé-là qui tient à plusieurs milliers de
+   * codes. Voir app/api/admin/partners.
+   */
+  interface NetworkRep { code: string; name: string; signups: number; subscribers: number; gross: number; eligible: number }
+  interface NetworkPartner {
+    id: string; name: string; kind: string;
+    signups: number; subscribers: number; gross: number; eligible: number;
+    rate: number; tier: string; commission: number; reps: NetworkRep[];
+  }
+  const [netMonth, setNetMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [netData, setNetData] = useState<{
+    month: string;
+    partners: NetworkPartner[];
+    totals: { gross: number; eligible: number; commission: number };
+  } | null>(null);
+  const [netLoading, setNetLoading] = useState(false);
+  const [netError, setNetError] = useState<string | null>(null);
+  const [netOpen, setNetOpen] = useState<string | null>(null);
   // Communautés partenaires (page interne : libellés FR en dur, convention admin)
   interface CommunityRow { id: string; slug: string; name: string; active: boolean; ownerEmail: string | null; members: number }
   const [communities, setCommunities] = useState<CommunityRow[]>([]);
@@ -151,6 +172,23 @@ export default function AdminPage() {
       setAffError("Erreur réseau");
     } finally {
       setAffLoading(false);
+    }
+  }
+
+  async function loadNetworks(month: string) {
+    setNetLoading(true);
+    setNetError(null);
+    try {
+      const res = await fetch(`/api/admin/partners?month=${month}`);
+      if (!res.ok) {
+        setNetError("Erreur lors du chargement du relevé.");
+        return;
+      }
+      setNetData(await res.json());
+    } catch {
+      setNetError("Erreur réseau");
+    } finally {
+      setNetLoading(false);
     }
   }
 
@@ -322,6 +360,9 @@ export default function AdminPage() {
         </button>
         <button onClick={() => { setTab("affiliation"); if (!affData) loadAffiliation(affMonth); }} className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${tab === "affiliation" ? "bg-card text-foreground shadow-sm" : "text-muted hover:text-foreground"}`}>
           Affiliation
+        </button>
+        <button onClick={() => { setTab("reseaux"); if (!netData) loadNetworks(netMonth); }} className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${tab === "reseaux" ? "bg-card text-foreground shadow-sm" : "text-muted hover:text-foreground"}`}>
+          Réseaux
         </button>
         <button onClick={() => { setTab("communities"); if (communities.length === 0) loadCommunities(); }} className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${tab === "communities" ? "bg-card text-foreground shadow-sm" : "text-muted hover:text-foreground"}`}>
           Communautés
@@ -928,6 +969,118 @@ export default function AdminPage() {
                   les 12 premiers mois de chaque abonnement. Barème sur abonnés actifs : Bronze 20 % (1-10) ·
                   Argent 25 % (11-40) · Or 30 % (41+) : le taux du palier s&apos;applique à toute l&apos;assiette
                   du mois. La commission se paie sur facture de l&apos;influenceur, seuil 50 €.
+                </p>
+                <p className="text-xs text-muted">
+                  Relevé historique, lu chez Stripe. Les réseaux à codes multiples se lisent dans
+                  l&apos;onglet Réseaux, alimenté par la base.
+                </p>
+              </div>
+            )
+          )}
+        </div>
+      )}
+
+      {tab === "reseaux" && (
+        <div className="mt-6 bg-card border border-border rounded-xl p-6">
+          <div className="flex items-center justify-between mb-5 gap-3">
+            <h2 className="text-sm font-semibold text-foreground">Relevé par réseau</h2>
+            <input
+              type="month"
+              value={netMonth}
+              onChange={(e) => { setNetMonth(e.target.value); if (e.target.value) loadNetworks(e.target.value); }}
+              className="px-3 py-1.5 bg-surface border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+              aria-label="Mois du relevé"
+            />
+          </div>
+
+          {netLoading && <p className="text-sm text-muted">Chargement…</p>}
+          {netError && <p className="text-sm text-loss">{netError}</p>}
+
+          {netData && !netLoading && !netError && (
+            netData.partners.length === 0 ? (
+              <p className="text-sm text-muted">
+                Aucun partenaire n&apos;a encore d&apos;inscription attribuée. Les comptes créés depuis
+                le lien d&apos;un collaborateur apparaissent ici dès l&apos;inscription, avant même le
+                premier paiement.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs uppercase tracking-wider text-muted border-b border-border">
+                        <th className="py-2 pr-3 font-semibold">Partenaire</th>
+                        <th className="py-2 pr-3 font-semibold text-right">Inscrits (abonnés)</th>
+                        <th className="py-2 pr-3 font-semibold text-right">Collaborateurs</th>
+                        <th className="py-2 pr-3 font-semibold text-right">Encaissé</th>
+                        <th className="py-2 pr-3 font-semibold text-right">Assiette ≤ 12 mois</th>
+                        <th className="py-2 pr-3 font-semibold text-right">Taux</th>
+                        <th className="py-2 font-semibold text-right">À verser</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {netData.partners.map((p) => (
+                        <Fragment key={p.id}>
+                          <tr
+                            className="border-b border-border/50 cursor-pointer hover:bg-surface/50"
+                            onClick={() => setNetOpen(netOpen === p.id ? null : p.id)}
+                          >
+                            <td className="py-2 pr-3 font-semibold text-foreground">
+                              {netOpen === p.id ? "▾" : "▸"} {p.name}
+                              <span className="text-muted font-normal text-xs ml-2">
+                                {p.kind === "network" ? "réseau" : "influenceur"}
+                              </span>
+                            </td>
+                            <td className="py-2 pr-3 text-right tabular-nums text-foreground">{p.signups} ({p.subscribers})</td>
+                            <td className="py-2 pr-3 text-right tabular-nums text-foreground">{p.reps.length}</td>
+                            <td className="py-2 pr-3 text-right tabular-nums text-foreground">{euros(p.gross)}</td>
+                            <td className="py-2 pr-3 text-right tabular-nums text-foreground">{euros(p.eligible)}</td>
+                            <td className="py-2 pr-3 text-right text-foreground whitespace-nowrap">{p.tier} · {Math.round(p.rate * 100)} %</td>
+                            <td className="py-2 text-right tabular-nums font-bold text-accent">{euros(p.commission)}</td>
+                          </tr>
+                          {netOpen === p.id && p.reps.map((r) => (
+                            <tr key={`${p.id}-${r.code}`} className="border-b border-border/30 bg-surface/30">
+                              <td className="py-1.5 pr-3 pl-6 text-muted">
+                                {r.name} <span className="font-mono text-xs">{r.code}</span>
+                              </td>
+                              <td className="py-1.5 pr-3 text-right tabular-nums text-muted">{r.signups} ({r.subscribers})</td>
+                              <td />
+                              <td className="py-1.5 pr-3 text-right tabular-nums text-muted">{euros(r.gross)}</td>
+                              <td className="py-1.5 pr-3 text-right tabular-nums text-muted">{euros(r.eligible)}</td>
+                              <td colSpan={2} />
+                            </tr>
+                          ))}
+                          {netOpen === p.id && p.reps.length === 0 && (
+                            <tr className="border-b border-border/30 bg-surface/30">
+                              <td colSpan={7} className="py-1.5 pl-6 text-xs text-muted">
+                                Aucun collaborateur inscrit pour l&apos;instant.
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td className="py-2 pr-3 font-semibold text-muted">Total</td>
+                        <td /><td />
+                        <td className="py-2 pr-3 text-right tabular-nums font-semibold text-foreground">{euros(netData.totals.gross)}</td>
+                        <td className="py-2 pr-3 text-right tabular-nums font-semibold text-foreground">{euros(netData.totals.eligible)}</td>
+                        <td />
+                        <td className="py-2 text-right tabular-nums font-bold text-accent">{euros(netData.totals.commission)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+                <p className="text-xs text-muted">
+                  Une ligne par partenaire : c&apos;est ce montant-là qui se facture et se vire, une
+                  fois par mois. Le détail par collaborateur (cliquer sur une ligne) sert au réseau
+                  pour faire SON découpage : nous ne calculons aucune part individuelle, et nous ne
+                  payons jamais un collaborateur en direct.
+                </p>
+                <p className="text-xs text-muted">
+                  Encaissé = paiements du mois moins les remboursements (les reprises sont des lignes
+                  négatives). Assiette = part encaissée dans les 12 premiers mois de chaque abonnement.
                 </p>
               </div>
             )
