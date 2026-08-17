@@ -1082,6 +1082,12 @@ export default function AdminPage() {
                   Encaissé = paiements du mois moins les remboursements (les reprises sont des lignes
                   négatives). Assiette = part encaissée dans les 12 premiers mois de chaque abonnement.
                 </p>
+                <p className="text-xs text-muted">
+                  Deux barèmes selon le type de partenaire, sur les abonnés actifs : réseau 20 %
+                  (0-49) · 25 % (50-199) · 30 % (200+) ; influenceur 20 % (0-10) · 25 % (11-40) ·
+                  30 % (41+), les seuils de leur contrat signé. Le taux du palier s&apos;applique à
+                  toute l&apos;assiette du mois.
+                </p>
               </div>
             )
           )}

@@ -36,11 +36,15 @@ Trois façons de refermer l'écart, par ordre de préférence :
    que fait le contrat influenceur actuel et ce que calcule
    `app/api/admin/affiliation/route.ts`. Après 12 mois l'abonné redevient
    pleinement rentable, ce qui absorbe les mois déficitaires.
-2. **Barème progressif existant** (20 % de 1 à 10 abonnés actifs, 25 % de 11 à
-   40, 30 % au delà) appliqué au réseau pris comme un tout. Leur demande de 30 %
-   correspond exactement au palier Or déjà prévu au contrat : il n'y a rien de
-   nouveau à inventer, juste à confirmer que le réseau compte comme un seul
-   partenaire.
+2. **Barème progressif**, appliqué au réseau pris comme un tout (et non
+   collaborateur par collaborateur). Les seuils du contrat influenceur (25 % à
+   11 abonnés, 30 % à 41) n'ont aucun sens ici : une société qui met des
+   centaines de personnes sur le terrain les franchit en trois semaines, et
+   l'échelle devient un taux fixe de 30 % déguisé. Le barème réseau est donc
+   posé à sa mesure : **20 % jusqu'à 49 abonnés actifs, 25 % de 50 à 199, 30 %
+   au delà**. Le partenaire arrive bien aux 30 % qu'il demande, mais après avoir
+   prouvé le volume. Les influenceurs déjà sous contrat gardent leurs seuils :
+   changer leur barème rétroactivement ferait baisser une rémunération signée.
 3. **Plafonner le coût IA** des comptes apportés par le réseau si le déficit se
    matérialise. À garder en réserve, c'est une dégradation du produit.
 

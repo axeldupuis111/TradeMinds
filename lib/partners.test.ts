@@ -60,7 +60,7 @@ describe("normalisation", () => {
 });
 
 describe("barème", () => {
-  it("applique les paliers du contrat sur les abonnés actifs", () => {
+  it("applique les paliers du contrat influenceur signé", () => {
     expect(tierFor(0).rate).toBe(0.2);
     expect(tierFor(10).rate).toBe(0.2);
     expect(tierFor(11).rate).toBe(0.25);
@@ -69,13 +69,36 @@ describe("barème", () => {
     expect(tierFor(5000).rate).toBe(0.3);
   });
 
+  it("applique les seuils de réseau, taillés pour des centaines de collaborateurs", () => {
+    expect(tierFor(0, "network").rate).toBe(0.2);
+    expect(tierFor(49, "network").rate).toBe(0.2);
+    expect(tierFor(50, "network").rate).toBe(0.25);
+    expect(tierFor(199, "network").rate).toBe(0.25);
+    expect(tierFor(200, "network").rate).toBe(0.3);
+  });
+
+  /**
+   * Le garde-fou qui compte : les influenceurs ont SIGNÉ 25 % à 11 abonnés.
+   * Aligner les deux échelles ferait retomber un influenceur à 15 abonnés de
+   * 25 % à 20 % sans qu'il ait rien demandé, et c'est exactement le genre de
+   * changement rétroactif qu'on ne voit qu'à la réclamation.
+   */
+  it("ne fait jamais baisser un influenceur quand les seuils réseau bougent", () => {
+    expect(tierFor(15, "influencer").rate).toBe(0.25);
+    expect(tierFor(15, "network").rate).toBe(0.2);
+    expect(tierFor(45, "influencer").rate).toBe(0.3);
+  });
+
   it("laisse un taux négocié court-circuiter les paliers", () => {
     expect(rateFor(2, 0.3)).toEqual({ rate: 0.3, tier: "Négocié" });
+    expect(rateFor(2, 0.3, "network")).toEqual({ rate: 0.3, tier: "Négocié" });
   });
 
   it("retombe sur le barème quand aucun taux n'est négocié", () => {
     expect(rateFor(2, null).rate).toBe(0.2);
     expect(rateFor(50, null).rate).toBe(0.3);
+    expect(rateFor(50, null, "network").rate).toBe(0.25);
+    expect(rateFor(200, null, "network").rate).toBe(0.3);
   });
 });
 

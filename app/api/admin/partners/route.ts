@@ -169,7 +169,13 @@ export async function GET(req: NextRequest) {
     const flatById = new Map(partners.map((p) => [p.id as string, p.flat_rate as number | null]));
     const result = Array.from(reports.values())
       .map((r) => {
-        const { rate, tier } = rateFor(r.subscribers, flatById.get(r.id));
+        // Chaque partenaire est jugé sur SON échelle : celle de son contrat pour
+        // un influenceur, celle des réseaux pour une société à collaborateurs.
+        const { rate, tier } = rateFor(
+          r.subscribers,
+          flatById.get(r.id),
+          r.kind === "network" ? "network" : "influencer"
+        );
         return {
           ...r,
           rate,

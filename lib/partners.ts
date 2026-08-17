@@ -13,28 +13,60 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * reprise des trois influenceurs historiques.
  */
 
-// ── Barème contractuel ───────────────────────────────────────────────────────
+// ── Barèmes contractuels ─────────────────────────────────────────────────────
 // Seuils sur les abonnés actifs apportés, taux appliqué à TOUTE l'assiette du
-// mois (contrat influenceur, Annexe 1). Un réseau atteint le palier haut dès
-// ses premières dizaines d'abonnés : sa demande de 30 % est ce palier, pas un
-// régime spécial.
-export const TIERS = [
-  { minActive: 41, rate: 0.3, name: "Or" },
-  { minActive: 11, rate: 0.25, name: "Argent" },
-  { minActive: 0, rate: 0.2, name: "Bronze" },
-] as const;
+// mois. Le taux monte avec le portefeuille : c'est le levier qui récompense la
+// croissance.
+//
+// DEUX ÉCHELLES, ET C'EST VOLONTAIRE.
+//
+// L'échelle « influencer » est celle du contrat signé par XAnalyse,
+// Trader1Compris et GD Invest (Annexe 1). Elle ne bouge pas : la modifier
+// changerait rétroactivement la rémunération de gens qui ont signé autre chose,
+// et un influenceur à 15 abonnés retomberait de 25 % à 20 % sans rien avoir
+// demandé.
+//
+// L'échelle « network » vaut pour une société qui met des centaines de
+// collaborateurs sur le terrain. Aux seuils influenceurs, un réseau franchit
+// 41 abonnés actifs en trois semaines et reste à 30 % pour toujours : l'échelle
+// n'est plus une échelle, c'est un taux fixe déguisé. Les seuils sont donc
+// posés à la mesure d'un réseau (50 et 200), ce qui laisse la progression
+// courir sur plusieurs mois tout en amenant le partenaire aux 30 % demandés.
+export const TIER_SCALES = {
+  influencer: [
+    { minActive: 41, rate: 0.3, name: "Or" },
+    { minActive: 11, rate: 0.25, name: "Argent" },
+    { minActive: 0, rate: 0.2, name: "Bronze" },
+  ],
+  network: [
+    { minActive: 200, rate: 0.3, name: "Or" },
+    { minActive: 50, rate: 0.25, name: "Argent" },
+    { minActive: 0, rate: 0.2, name: "Bronze" },
+  ],
+} as const;
 
-export function tierFor(activeSubscriptions: number) {
-  return TIERS.find((t) => activeSubscriptions >= t.minActive) ?? TIERS[TIERS.length - 1];
+export type PartnerKind = keyof typeof TIER_SCALES;
+
+/** Barème historique, conservé pour le relevé influenceurs. */
+export const TIERS = TIER_SCALES.influencer;
+
+export function tierFor(activeSubscriptions: number, kind: PartnerKind = "influencer") {
+  const scale = TIER_SCALES[kind] ?? TIER_SCALES.influencer;
+  return scale.find((t) => activeSubscriptions >= t.minActive) ?? scale[scale.length - 1];
 }
 
 /**
  * Taux applicable à un partenaire. `flatRate` renseigné = taux négocié fixe,
- * qui court-circuite le barème ; sinon on retombe sur les paliers.
+ * qui court-circuite le barème ; sinon on retombe sur les paliers de SON
+ * échelle.
  */
-export function rateFor(activeSubscriptions: number, flatRate?: number | null) {
+export function rateFor(
+  activeSubscriptions: number,
+  flatRate?: number | null,
+  kind: PartnerKind = "influencer"
+) {
   if (flatRate && flatRate > 0) return { rate: flatRate, tier: "Négocié" };
-  const tier = tierFor(activeSubscriptions);
+  const tier = tierFor(activeSubscriptions, kind);
   return { rate: tier.rate, tier: tier.name };
 }
 
