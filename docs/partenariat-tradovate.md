@@ -745,31 +745,74 @@ Point de forme : les guidelines exigent un texte **visible**, dans un style
 proche du contenu principal. Un lien peut s'ajouter au texte, jamais le
 remplacer. D'où un vrai bloc rendu et non un renvoi vers les mentions légales.
 
+### Les emails, couverts le 2026-08-17
+
+L'annexe A vise « all emails sent and received ». Deux familles, deux endroits :
+
+- **Emails produit** (rappel quotidien, rapport hebdo, réactivation,
+  félicitations d'abonnement) : l'avertissement est posé dans le gabarit partagé
+  `lib/email-template.ts`, dans la langue du destinataire. Il est au niveau du
+  layout et non de chaque route, pour qu'un futur email ne puisse pas partir
+  sans. Repli sur l'anglais si la langue est inconnue : mieux vaut la mauvaise
+  langue que rien.
+- **Emails d'authentification Supabase** : les cinq fichiers de
+  `email-templates/` portent l'avertissement en français. Ils vivent dans le
+  dashboard Supabase, donc **à recoller à la main**, voir `TODO_SUPABASE.md`.
+
+Les alertes internes (`cron-alert`, `ai-credit-alert`) restent en texte brut et
+hors périmètre : elles ne partent qu'à nous.
+
+### Décision sur le lien d'affiliation : non, et pourquoi
+
+Ils fournissent un lien tracké (`ninjatraderdomesticvendor.sjv.io`) et demandent
+que les logos NinjaTrader et Kinetick pointent dessus. **Non posé, décision du
+2026-08-17.**
+
+La relecture du mail lève l'ambiguïté : la phrase est « *when adding logos to
+your site*, please use the following links ». C'est une condition, pas une
+obligation. Le bloc entier est d'ailleurs intitulé « Website Integration
+*Suggestions* », au même titre que la section de menu « NinjaTrader » /
+« Recommended » / « Trading Platform ». Seuls les avertissements sont exigés, et
+ils sont en place. Ne pas afficher les logos est donc conforme.
+
+Ce qui fait pencher la balance : poser un lien d'affiliation rémunéré vers un
+courtier en futures, sur un site qui s'adresse à des particuliers européens,
+sort du régime du logo partenaire pour entrer dans celui de la publicité pour un
+produit financier. Le gain est de 20 $ par inscription, à comparer au risque
+d'ouvrir un débat de qualification que rien n'oblige à ouvrir aujourd'hui.
+
+Réversible en une heure si Axel décide l'inverse : le lien est dans le mail du
+2026-08-17 et le media kit reste accessible.
+
 ### Ce qui reste, et qui n'est pas du code
 
 - **Les réseaux sociaux.** Un lien vers l'avertissement doit figurer dans la
   description de chaque profil (X, Facebook, LinkedIn, Instagram, TikTok...).
-- **Les emails.** L'annexe A vise « all emails sent and received ». Les gabarits
-  transactionnels Supabase et les emails produit n'ont pas été touchés.
-- **Le lien d'affiliation.** Ils fournissent un lien tracké
-  (`ninjatraderdomesticvendor.sjv.io`) et souhaitent que les logos pointent
-  dessus. Ce n'est plus du logo, c'est de la publicité pour un produit financier
-  auprès d'un public européen. Décision d'Axel, non prise à ce jour.
-- **La section de menu** « NinjaTrader » / « Recommended » / « Trading Platform »
-  est suggérée, pas obligatoire. Non faite.
+  Seul point de la mise en conformité qui dépend encore d'une action manuelle
+  hors dépôt, avec le collage des cinq templates Supabase.
 
 ### Deux points d'exposition repérés en lisant les guidelines
 
-1. **Les profils publics affichent un taux de rendement.**
-   `components/profile/PublicProfileView.tsx` publie `pnlPct`, la performance en
-   pourcentage d'un compte réel, sur une page publique. Les guidelines
-   l'interdisent : « Include any specific numerical or statistical information
-   about the past performance of any actual accounts (including rate of return) »
-   sauf à pouvoir démontrer à la NFA que le chiffre est représentatif de tous les
-   comptes comparables sur la même période. C'est une fonctionnalité, pas une
-   coquille : la décision revient à Axel. Options : masquer le pourcentage sur la
-   page publique et ne garder que le score de discipline, ou assumer et le
-   défendre en revue de conformité.
+1. **Les profils publics affichaient un taux de rendement. Retiré le
+   2026-08-17.** `PublicProfileView` publiait `pnlPct` et une courbe d'equity,
+   et la carte Open Graph du profil portait la même tuile « P&L » : c'est ce que
+   les réseaux sociaux affichent en aperçu quand un profil est partagé, donc la
+   surface la plus publique du produit. Les guidelines l'interdisent : « Include
+   any specific numerical or statistical information about the past performance
+   of any actual accounts (including rate of return) », sauf à démontrer à la
+   NFA que le chiffre représente tous les comptes comparables sur la période.
+
+   Un second argument a emporté la décision, indépendant de NinjaTrader : le
+   pourcentage était **faux**. Il divisait le P&L par un solde de départ fictif
+   de 10 000, identique pour tout le monde, et n'a donc jamais été le rendement
+   du compte de personne.
+
+   Ce qui remplace : la tuile devient « Sessions reviewed » (comptée en base, et
+   non sur la lecture bornée à 60), et la courbe d'equity devient la courbe du
+   score de discipline. Même poids visuel, métrique que le produit revendique
+   vraiment, et plus rien à défendre en revue. Le P&L reste entier dans le
+   tableau de bord privé, qui n'est pas une surface publique.
+
 2. **Les clés `testimonial_*` de `lib/i18n` sont mortes.** Vérifié le
    2026-08-17 : aucun composant ne les rend. Aucun témoignage n'est donc affiché,
    et la mention correspondante n'est pas due. Si les témoignages reviennent un
