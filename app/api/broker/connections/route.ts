@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/api-auth";
 import { encrypt } from "@/lib/crypto/encryption";
 import { verifyTradovateCredentials } from "@/lib/sync/tradovate";
+import { oauthConfigured } from "@/lib/sync/tradovate-oauth";
 
 const SUPPORTED_BROKERS = ["tradovate"] as const;
 type Broker = (typeof SUPPORTED_BROKERS)[number];
@@ -30,7 +31,11 @@ export async function GET() {
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
 
-  return NextResponse.json({ connections: data ?? [] });
+  // `tradovateOAuth` dit à l'interface s'il faut proposer la connexion par
+  // simple login. Le client ne peut pas lire TRADOVATE_CLIENT_ID lui-même, et
+  // afficher un bouton qui mènerait à un écran Tradovate répondant « client_id
+  // inconnu » serait pire que de ne rien afficher.
+  return NextResponse.json({ connections: data ?? [], tradovateOAuth: oauthConfigured() });
 }
 
 // POST — create a connection, verify credentials with an initial sync.

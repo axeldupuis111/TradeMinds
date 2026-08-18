@@ -33,6 +33,10 @@ export default function TradovateConnect() {
   // Erreur de synchro, par connexion : elle doit s'afficher là où l'utilisateur
   // a cliqué, pas disparaître dans le vide.
   const [syncError, setSyncError] = useState<Record<string, string>>({});
+  // Renvoyé par l'API : les identifiants partenaires sont-ils posés côté
+  // serveur. Le client ne peut pas lire TRADOVATE_CLIENT_ID lui-même.
+  const [oauthAvailable, setOauthAvailable] = useState(false);
+  const [oauthEnv, setOauthEnv] = useState<"demo" | "live">("live");
 
   const emptyForm = {
     label: "",
@@ -53,6 +57,7 @@ export default function TradovateConnect() {
       if (res.ok) {
         const data = await res.json();
         setConnections(data.connections ?? []);
+        setOauthAvailable(Boolean(data.tradovateOAuth));
       }
     } catch {
       // silent
@@ -351,6 +356,42 @@ export default function TradovateConnect() {
                 </button>
               </div>
             </form>
+          ) : oauthAvailable ? (
+            /* Parcours par login, mis en avant : c'est la raison d'être du
+               partenariat NinjaTrader. Le trader n'achète plus l'add-on API à
+               25 $/mois et n'a plus besoin d'un compte approvisionné à 1 000 $,
+               ce que la plupart de nos utilisateurs de prop firm ne peuvent
+               de toute façon pas faire. */
+            <div className="space-y-3">
+              <div className="rounded-xl border border-accent/30 bg-accent/5 p-4">
+                <p className="text-sm font-semibold text-foreground">{t("sync_tradovate_oauth_title")}</p>
+                <p className="mt-1 text-xs text-foreground-muted leading-relaxed">
+                  {t("sync_tradovate_oauth_desc")}
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <select
+                    value={oauthEnv}
+                    onChange={(e) => setOauthEnv(e.target.value as "demo" | "live")}
+                    className="px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-accent"
+                  >
+                    <option value="live">{t("sync_tradovate_env_live")}</option>
+                    <option value="demo">{t("sync_tradovate_env_demo")}</option>
+                  </select>
+                  <a
+                    href={`/api/broker/tradovate/oauth/start?environment=${oauthEnv}`}
+                    className="px-5 py-2.5 rounded-lg bg-accent text-on-accent font-medium text-sm hover:bg-accent-hover transition-colors"
+                  >
+                    {t("sync_tradovate_oauth_cta")}
+                  </a>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowForm(true)}
+                className="text-xs text-foreground-muted underline hover:text-foreground transition-colors"
+              >
+                {t("sync_tradovate_oauth_fallback")}
+              </button>
+            </div>
           ) : (
             <button
               onClick={() => setShowForm(true)}
