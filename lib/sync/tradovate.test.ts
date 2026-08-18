@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildTradovateSnapshot } from "./tradovate";
+import { buildTradovateSnapshot, contractRoot } from "./tradovate";
 
 /**
  * Tradovate est un rail *pull* : aucun fichier client à installer, mais aussi
@@ -68,5 +68,44 @@ describe("buildTradovateSnapshot", () => {
     expect(
       buildTradovateSnapshot(account, cash, [{ accountId: 12345 }], null)?.open_positions,
     ).toBe(0);
+  });
+});
+
+/**
+ * Racine produit d'un nom de contrat.
+ *
+ * ⚠️ CE BLOC EXISTE PARCE QUE LE DÉFAUT A ÉTÉ LIVRÉ. La résolution passait par
+ * un champ `contract.productId` qui n'existe pas dans l'API : l'appel suivant
+ * partait sur `/product/item?id=undefined`, répondait 400, et le trade était
+ * importé avec une valeur du point à 0, donc un P&L nul, sans un mot.
+ *
+ * Vu en production le 2026-08-19 sur un NQU6 affiché « CONTRACT_4327115 ».
+ * La racine est désormais le seul chemin vers la valeur du point, d'où ces cas.
+ */
+describe("contractRoot", () => {
+  it("retire le code de mois et l'année", () => {
+    expect(contractRoot("NQU6")).toBe("NQ");
+    expect(contractRoot("ESU6")).toBe("ES");
+    expect(contractRoot("CLV6")).toBe("CL");
+    expect(contractRoot("ZNU6")).toBe("ZN");
+  });
+
+  it("ne tronque pas les produits qui contiennent un chiffre", () => {
+    // La capture est paresseuse : sans cela « M2K » deviendrait « M2 », et la
+    // valeur du point du Micro Russell serait introuvable.
+    expect(contractRoot("M2KU6")).toBe("M2K");
+    expect(contractRoot("MNQU6")).toBe("MNQ");
+  });
+
+  it("accepte une année sur deux chiffres", () => {
+    expect(contractRoot("NQZ25")).toBe("NQ");
+  });
+
+  it("renvoie null sur ce qui n'est pas un contrat à terme", () => {
+    // Mieux vaut null qu'une racine inventée : l'appelant journalise et
+    // n'écrit pas de valeur du point fantaisiste.
+    expect(contractRoot("XAUUSD")).toBeNull();
+    expect(contractRoot("")).toBeNull();
+    expect(contractRoot("U6")).toBeNull();
   });
 });

@@ -3,6 +3,8 @@
 // each contract's point value, and aggregates them into round-turn positions.
 
 import { aggregateFuturesFills, type FuturesFill, type AggregatedFuturesPosition } from "./futures-aggregate";
+// Repli hors ligne quand /product/find ne répond pas : specs CME vérifiées.
+import { getFuturesContract } from "@/lib/futures-contracts";
 // `tradovate-oauth` n'importe de ce fichier qu'un TYPE (effacé à la
 // compilation) : le cycle apparent n'existe pas à l'exécution.
 import {
@@ -188,51 +190,92 @@ async function apiGet<T>(env: TradovateEnvironment, token: string, path: string)
 }
 
 /** Resolve contractId → { name, pointValue } for every distinct contract. */
+/**
+ * Racine produit d'un nom de contrat : NQU6 → NQ, ESU6 → ES, M2KU6 → M2K.
+ *
+ * Le suffixe est le code de mois (F G H J K M N Q U V X Z) suivi de l'année.
+ * La partie capturée est paresseuse pour que les produits contenant un chiffre,
+ * comme M2K, ne soient pas tronqués.
+ */
+export function contractRoot(name: string): string | null {
+  const m = name.trim().toUpperCase().match(/^([A-Z0-9]*?)([FGHJKMNQUVXZ])(\d{1,2})$/);
+  return m && m[1] ? m[1] : null;
+}
+
+/**
+ * Resolve contractId → { name, pointValue } for every distinct contract.
+ *
+ * ⚠️ LA VERSION PRÉCÉDENTE LISAIT `contract.productId`. CE CHAMP N'EXISTE PAS.
+ * Constaté en production le 2026-08-19 sur un vrai trade : un Contract vaut
+ * `{ id, name, contractMaturityId }`, et l'appel suivant partait donc sur
+ * `/product/item?id=undefined`, HTTP 400. Le contrat retombait sur le nom
+ * générique et un `pointValue` de 0, ce qui donne un P&L nul en silence.
+ *
+ * On passe désormais par le NOM : `/product/find?name=NQ` renvoie le
+ * `valuePerPoint` en un seul appel, et le cache est tenu par racine produit, ce
+ * qui coûte strictement moins d'appels que l'ancienne version.
+ *
+ * Repli sur `lib/futures-contracts.ts` si l'API ne répond pas : les valeurs des
+ * douze contrats CME courants y sont déjà vérifiées. Un P&L juste vaut mieux
+ * qu'un P&L nul, et le nom du contrat reste correct dans tous les cas.
+ */
 async function resolveContracts(
   env: TradovateEnvironment,
   token: string,
   contractIds: number[],
 ): Promise<Map<number, ContractInfo>> {
   const map = new Map<number, ContractInfo>();
-  const productCache = new Map<number, number>(); // productId → valuePerPoint
+  const rootCache = new Map<string, number>(); // racine produit → valuePerPoint
 
   for (const id of contractIds) {
+    let name = `CONTRACT_${id}`;
     try {
-      const contract = await apiGet<{ id: number; name: string; productId: number }>(
+      const contract = await apiGet<{ id: number; name: string }>(
         env,
         token,
         `/contract/item?id=${id}`,
       );
+      if (contract && typeof contract.name === "string" && contract.name.trim() !== "") {
+        name = contract.name.trim();
+      }
+    } catch (e) {
+      // Sans le nom, on ne peut rien déduire : ni la racine, ni la valeur.
+      console.error(
+        `[Tradovate] contrat ${id} illisible, P&L de ce trade sera nul : ${e instanceof Error ? e.message : e}`,
+      );
+      map.set(id, { name, pointValue: 0 });
+      continue;
+    }
 
-      let pointValue = productCache.get(contract.productId);
-      if (pointValue == null) {
-        const product = await apiGet<{ id: number; valuePerPoint: number }>(
+    const root = contractRoot(name);
+    let pointValue = root ? rootCache.get(root) : undefined;
+
+    if (pointValue == null && root) {
+      try {
+        const product = await apiGet<{ valuePerPoint?: number }>(
           env,
           token,
-          `/product/item?id=${contract.productId}`,
+          `/product/find?name=${encodeURIComponent(root)}`,
         );
-        pointValue = product.valuePerPoint ?? 0;
-        productCache.set(contract.productId, pointValue);
+        if (typeof product?.valuePerPoint === "number" && product.valuePerPoint > 0) {
+          pointValue = product.valuePerPoint;
+        }
+      } catch {
+        // Silencieux ici : le repli local a de bonnes chances de suffire, et
+        // c'est l'échec des DEUX qui mérite qu'on alerte.
       }
-
-      map.set(id, { name: contract.name, pointValue });
-    } catch (e) {
-      // Contrat non resolu. Le repli garde la position dans le journal, mais
-      // avec un pointValue de 0 : le P&L de ce trade sera donc FAUX, a zero.
-      //
-      // ⚠️ Ce catch etait muet. Vu en production le 2026-08-19 : un trade NQU6
-      // remonte sous le nom « CONTRACT_4327115 », donc avec un P&L de zero, et
-      // rien nulle part n'en donnait la raison. Un journal de trading qui
-      // affiche un gain nul sans le dire est pire qu'un journal vide.
-      //
-      // La cause probable est une permission absente sur l'inscription OAuth
-      // (« Bibliotheque de contrats » doit etre en lecture), mais tant que
-      // l'erreur n'est pas ecrite on ne peut que deviner.
-      console.error(
-        `[Tradovate] contrat ${id} non resolu, P&L de ce trade sera nul : ${e instanceof Error ? e.message : e}`,
-      );
-      map.set(id, { name: `CONTRACT_${id}`, pointValue: 0 });
+      if (pointValue == null) pointValue = getFuturesContract(root)?.pointValue;
+      if (pointValue != null) rootCache.set(root, pointValue);
     }
+
+    if (pointValue == null || pointValue <= 0) {
+      console.error(
+        `[Tradovate] valeur du point introuvable pour ${name} (racine ${root ?? "?"}) : P&L de ce trade sera nul.`,
+      );
+      pointValue = 0;
+    }
+
+    map.set(id, { name, pointValue });
   }
 
   return map;
