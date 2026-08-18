@@ -1022,6 +1022,93 @@ trouvé un bug de conversion que personne n'avait vu.
 
 ---
 
+## 10. Relecture du texte réel de l'API License Agreement (2026-08-18)
+
+Le contrat que la plateforme fait signer dans l'onglet « Accès à l'API » est **le
+même** que celui signé par DocuSign le 14 août. La signature en ligne est la
+façon dont Tradovate débloque l'accès, pas un nouvel engagement.
+
+⚠️ La numérotation utilisée dans la section « Ce qui reste exposé » est décalée
+d'un article par rapport au texte réel. Numérotation correcte, vérifiée sur le
+document affiché :
+
+| Article | Objet |
+|---|---|
+| 1 | Licence, accordée « solely » pour le passage d'ordres |
+| 2 | Restrictions, dont la purge du cache sous 24 h |
+| 3 | Copyleft interdit (GPL / LGPL / AGPL) |
+| 4 | Customer Data |
+| 10 | Indemnisation |
+| 13 | Droit de l'Illinois, tribunaux de Cook County |
+| 16 | Clause d'intégralité |
+
+### La purge sous 24 h ne nous concerne pas, et voici pourquoi
+
+C'était l'inquiétude la plus sérieuse : un journal de trading qui doit effacer
+l'historique toutes les 24 h n'est pas un journal. Le texte la lève.
+
+L'article 2 vise le **NinjaTrader Content**, défini à l'article 1 (ii) comme
+« certain content and market data made available by NinjaTrader ». C'est la
+donnée de marché, que nous n'utilisons pas.
+
+Les exécutions et le solde d'un utilisateur relèvent de l'article 4, **Customer
+Data**, dont le régime est tout autre : « each party may use such Customer Data
+for any purpose authorized by such Customer under its Customer Agreement,
+provided that such Customer has provided its consent ». C'est exactement notre
+modèle : l'utilisateur connecte son compte, donc il consent, et nos CGU sont le
+Customer Agreement qui porte ce consentement.
+
+Conclusion : rien à purger, à condition de ne jamais stocker de données de
+marché. C'est déjà la ligne tenue depuis le premier message.
+
+### Ce qui reste réellement exposé
+
+**Article 1.** La licence est accordée « solely for the purpose of connecting
+Your order entry and/or trading program(s) software to NinjaTrader's electronic
+order entry system to facilitate the entry of futures and options on futures
+trading by Your customers ». Notre usage, lecture seule et post-trade, n'entre
+pas dans cette phrase. Le texte ne l'autorise pas plus qu'il ne l'interdit : il
+ne l'envisage pas.
+
+La défense pratique n'est pas contractuelle, elle est documentaire : NinjaTrader
+a explicitement validé notre usage OAuth en lecture seule par écrit, les 5, 14 et
+17 août. Garder ce fil.
+
+**Article 13.** Droit de l'Illinois, litiges à Cook County uniquement. Pour une
+entreprise individuelle française, plaider à Chicago n'est pas une option
+économique. Asymétrie réelle, standard, et non négociable à notre taille.
+
+**Article 16, et c'est le point neuf.** La clause d'intégralité dit que le
+contrat « supersedes all previous agreements » et constitue « the full and entire
+understanding ». Le signer aujourd'hui redate donc cette clause **après** les
+mails des 5, 14 et 17 août qui confirment la levée des frais. Cela ne change rien
+à la situation pratique, et il faut signer pour obtenir l'OAuth, mais c'est un
+argument de plus pour obtenir l'avenant : la levée reste hors contrat, et le
+contrat se réaffirme comme intégral à chaque signature.
+
+### Article 3 : copyleft revérifié le 2026-08-18
+
+Une dépendance sous GPL, LGPL ou AGPL résilie **immédiatement** toutes nos
+licences. Contrôle refait ce jour sur les dépendances de production :
+
+    npx license-checker --production --summary
+
+Aucune GPL, LGPL ni AGPL. Deux points méritent une note pour éviter une panique
+au prochain audit :
+
+- `web-push` est en **MPL-2.0**, et `dompurify` en MPL-2.0 ou Apache-2.0. La
+  MPL est un copyleft **de fichier** : elle n'exige la divulgation que des
+  fichiers MPL modifiés, jamais d'un autre logiciel. Or l'article 3 ne vise que
+  les licences qui pourraient exiger la divulgation « of any other software ».
+  La MPL n'entre donc pas dans sa définition, tant que nous ne modifions pas ces
+  paquets, ce que nous ne faisons pas.
+- `UNLICENSED` est notre propre paquet, sans objet.
+
+À refaire avant chaque ajout de dépendance. C'est la seule clause du contrat qui
+se déclenche toute seule, sans mise en demeure.
+
+---
+
 ## Sources
 
 - Accès API Tradovate, conditions et coût : https://danetrades.com/help-center/accounts-connections/tradovate-api-requirements-and-subscription/
