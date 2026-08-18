@@ -1,14 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  accountCurrency,
-  buildCurrencyMap,
-  commonCurrency,
-  currencyMismatch,
-  currencySymbol,
-  isSupportedCurrency,
-  money,
-  tradeCurrency,
-} from "./account-currency";
+import { accountCurrency, buildCurrencyMap, commonCurrency, currencyMismatch, currencySymbol, isSupportedCurrency, money, sumByCurrency, tradeCurrency } from "./account-currency";
 
 describe("accountCurrency", () => {
   it("suit le broker, qui fait autorité sur la saisie", () => {
@@ -143,5 +134,75 @@ describe("isSupportedCurrency", () => {
     expect(isSupportedCurrency("PLN")).toBe(false);
     expect(isSupportedCurrency(null)).toBe(false);
     expect(isSupportedCurrency(42)).toBe(false);
+  });
+});
+
+/**
+ * Ventilation par devise.
+ *
+ * ⚠️ CE BLOC EXISTE PARCE QUE LE DÉFAUT A ÉTÉ LIVRÉ. L'en-tête de « Mes
+ * Trades » additionnait tout puis étiquetait le résultat avec la seule devise
+ * identifiée. Le 2026-08-19, un unique trade Tradovate en dollars a fait passer
+ * un total de 81 trades de « -6 619,77 € » à « -6 494,77 $ » : même nombre,
+ * même somme, devise changée. On ne somme plus ce qui ne s'additionne pas.
+ */
+describe("sumByCurrency", () => {
+  const map = new Map([
+    ["a", "EUR"],
+    ["b", "USD"],
+    ["c", "EUR"],
+  ]);
+
+  it("sépare les devises au lieu d'en élire une", () => {
+    const out = sumByCurrency(
+      [
+        { pnl: -6619.77, challengeId: null },
+        { pnl: 125, challengeId: "b" },
+      ],
+      map,
+    );
+    // Deux totaux, chacun dans sa devise. Aucun -6494,77 nulle part.
+    expect(out).toEqual([
+      ["EUR", -6619.77],
+      ["USD", 125],
+    ]);
+  });
+
+  it("regroupe les comptes qui partagent une devise", () => {
+    const out = sumByCurrency(
+      [
+        { pnl: 100, challengeId: "a" },
+        { pnl: 50, challengeId: "c" },
+        { pnl: 10, challengeId: "b" },
+      ],
+      map,
+    );
+    expect(out).toEqual([
+      ["EUR", 150],
+      ["USD", 10],
+    ]);
+  });
+
+  it("range les trades sans compte dans la devise par défaut", () => {
+    // Même règle que chaque ligne de la liste, via tradeCurrency : l'en-tête et
+    // le tableau doivent raconter la même chose.
+    expect(sumByCurrency([{ pnl: 42, challengeId: null }], map)).toEqual([["EUR", 42]]);
+    expect(sumByCurrency([{ pnl: 42, challengeId: null }], map, "GBP")).toEqual([["GBP", 42]]);
+  });
+
+  it("garde un ordre stable : montant absolu décroissant, puis alphabétique", () => {
+    // Sans tri stable, les totaux changeraient de place à chaque rendu.
+    const out = sumByCurrency(
+      [
+        { pnl: 5, challengeId: "a" },
+        { pnl: -900, challengeId: "b" },
+      ],
+      map,
+    );
+    expect(out.map(([c]) => c)).toEqual(["USD", "EUR"]);
+  });
+
+  it("ne renvoie rien sur une liste vide", () => {
+    expect(sumByCurrency([], map)).toEqual([]);
   });
 });

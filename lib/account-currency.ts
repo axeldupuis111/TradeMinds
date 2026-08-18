@@ -109,6 +109,38 @@ export function tradeCurrency(
 }
 
 /**
+ * Total du P&L VENTILÉ PAR DEVISE, du plus gros montant au plus petit.
+ *
+ * ⚠️ EXISTE PARCE QU'UN TOTAL UNIQUE MENTAIT. La page « Mes Trades »
+ * additionnait tous les trades puis cherchait une devise commune, avec repli
+ * sur l'euro. Constaté en production le 2026-08-19 : 81 trades sans compte
+ * rattaché s'affichaient « -6 619,77 € », puis le premier trade Tradovate,
+ * rattaché à un compte en dollars, a fait basculer l'ensemble à « -6 494,77 $ ».
+ * Le libellé était faux, et la somme n'avait aucun sens.
+ *
+ * Ventiler ne perd rien et n'invente rien. Les trades sans compte tombent dans
+ * `fallback` via `tradeCurrency`, exactement comme chaque ligne de liste.
+ *
+ * L'ordre est stable d'un rendu à l'autre : montant absolu décroissant, puis
+ * alphabétique. Sans cela les totaux changeraient de place à chaque
+ * rafraîchissement.
+ */
+export function sumByCurrency(
+  trades: { pnl: number; challengeId: string | null | undefined }[],
+  map: Map<string, string>,
+  fallback: string = DEFAULT_CURRENCY,
+): [string, number][] {
+  const totals = new Map<string, number>();
+  for (const t of trades) {
+    const cur = tradeCurrency(t.challengeId, map, fallback);
+    totals.set(cur, (totals.get(cur) ?? 0) + t.pnl);
+  }
+  return Array.from(totals.entries()).sort(
+    (a, b) => Math.abs(b[1]) - Math.abs(a[1]) || a[0].localeCompare(b[0]),
+  );
+}
+
+/**
  * Devise commune à un ensemble de trades, ou null s'ils en mélangent plusieurs.
  * Null est le signal qu'aucun total unique n'est affichable : à l'appelant de
  * ventiler, ou de retomber sur l'euro.

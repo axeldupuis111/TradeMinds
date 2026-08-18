@@ -7,7 +7,7 @@ import OpenTradesSection from "@/components/trades/OpenTradesSection";
 import QuickAnnotateModal from "@/components/trades/QuickAnnotateModal";
 import TaxExportButton from "@/components/trades/TaxExportButton";
 import TradeList from "@/components/trades/TradeList";
-import { DEFAULT_CURRENCY, buildCurrencyMap, commonCurrency, money } from "@/lib/account-currency";
+import { buildCurrencyMap, money, sumByCurrency } from "@/lib/account-currency";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -26,9 +26,11 @@ interface Strategy {
 interface Recap {
   count: number;
   wr: number;
-  pnl: number;
-  /** Comptes des trades agrégés — le total n'a de devise que s'ils la partagent. */
-  challengeIds: (string | null)[];
+  /**
+   * P&L net et compte de chaque trade. La ventilation par devise se fait au
+   * rendu, là où la table des comptes est disponible.
+   */
+  trades: { pnl: number; challengeId: string | null }[];
 }
 
 export default function TradesPage() {
@@ -47,12 +49,27 @@ export default function TradesPage() {
   const [showAnnotate, setShowAnnotate] = useState(false);
   const { accounts } = useActiveAccount();
 
-  // Le récap porte sur tous les comptes : il n'a de devise que s'ils la
-  // partagent tous. Sinon l'euro, faute d'un total qui veuille dire quelque chose.
   const currencyMap = useMemo(() => buildCurrencyMap(accounts), [accounts]);
-  const recapCurrency = recap
-    ? commonCurrency(recap.challengeIds, currencyMap) ?? DEFAULT_CURRENCY
-    : DEFAULT_CURRENCY;
+
+  /**
+   * Un total PAR DEVISE, jamais un total unique.
+   *
+   * ⚠️ La version précédente additionnait tout puis cherchait une devise
+   * commune, avec repli sur l'euro. Vu en production le 2026-08-19 : 81 trades
+   * sans compte rattaché s'affichaient « -6 619,77 € », et le premier trade
+   * Tradovate, rattaché à un compte en dollars, a fait basculer l'ensemble à
+   * « -6 494,77 $ ». Le libellé était faux, et la somme elle-même n'avait pas
+   * de sens : on n'additionne pas des euros et des dollars.
+   *
+   * Ventiler ne perd aucune information et n'invente aucune devise. Les trades
+   * sans compte tombent dans la devise par défaut via `tradeCurrency`, comme
+   * chaque ligne de la liste en dessous : l'en-tête et le tableau racontent
+   * enfin la même chose.
+   */
+  const pnlByCurrency = useMemo(
+    () => (recap ? sumByCurrency(recap.trades, currencyMap) : []),
+    [recap, currencyMap],
+  );
 
   const loadRecap = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -78,13 +95,14 @@ export default function TradesPage() {
 
     const netPnls = data.map((t) => (t.pnl as number) + ((t.commission as number) || 0) + ((t.swap as number) || 0));
     const wins = netPnls.filter((p) => p > 0).length;
-    const totalPnl = netPnls.reduce((a, b) => a + b, 0);
 
     setRecap({
       count: count || 0,
       wr: count ? (wins / count) * 100 : 0,
-      pnl: totalPnl,
-      challengeIds: data.map((t) => (t.challenge_id as string | null) ?? null),
+      trades: data.map((t, i) => ({
+        pnl: netPnls[i],
+        challengeId: (t.challenge_id as string | null) ?? null,
+      })),
     });
   }, [supabase]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -158,9 +176,14 @@ export default function TradesPage() {
           {recap && (
             <p className="text-sm text-muted mt-1">
               {recap.count} trades · WR {recap.wr.toFixed(1)}% · P&amp;L{" "}
-              <span className={recap.pnl >= 0 ? "text-profit" : "text-loss"}>
-                {money(recap.pnl, recapCurrency, { digits: 2, signed: true })}
-              </span>
+              {pnlByCurrency.map(([cur, value], i) => (
+                <span key={cur}>
+                  {i > 0 && " · "}
+                  <span className={value >= 0 ? "text-profit" : "text-loss"}>
+                    {money(value, cur, { digits: 2, signed: true })}
+                  </span>
+                </span>
+              ))}
             </p>
           )}
         </div>
