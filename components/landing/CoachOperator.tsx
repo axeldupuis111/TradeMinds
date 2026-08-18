@@ -9,7 +9,7 @@ import {
   CAPABILITY_TIERS,
   COACH_CAPABILITIES,
   capabilityPlan,
-  coachQuotaText,
+  coachQuotaText,
   toolCountForPlan,
   totalToolCount,
   type CapabilityPlan,
@@ -394,7 +394,7 @@ export default function CoachOperator() {
 
         <div className="text-center mt-10">
           <Link
-            href={localizedHref("/auth/signup", lang)}
+            href={localizedHref("/login", lang)}
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white transition-all hover:brightness-110"
             style={{ background: "linear-gradient(135deg, rgb(var(--accent)) 0%, #3b82f6 100%)" }}
           >
