@@ -946,6 +946,82 @@ l'échec d'origine.
 
 ---
 
+## 9. Réponse du 2026-08-18 : l'OAuth se déclare soi-même, et la conformité répond
+
+### Correction : les identifiants ne sont PAS à demander
+
+Conclusion inverse de celle du 2026-08-17, et c'est la documentation publique qui
+était périmée, pas la lecture. Michaelanne décrit un parcours en libre-service
+dans Web Trader :
+
+1. Application Settings
+2. onglet API Access
+3. **OAuth Registration**
+4. formulaire : App Title, Redirect URI, liens de politique optionnels, permissions
+5. Generate
+
+> « The Client ID and Client Secret will be displayed once at creation, so be
+> sure to store them securely. »
+
+⚠️ **Affichés UNE SEULE FOIS.** Les copier immédiatement, les poser dans Vercel,
+ne pas fermer l'onglet avant de les avoir enregistrés ailleurs.
+
+Le guide OAuth de GitHub dit toujours « supplied by Tradovate » : il décrit un
+état antérieur au libre-service. Ne plus s'y fier sur ce point.
+
+Elle ajoute une précision, et se contredit dans le même mail : « You will be
+prompted to sign an API agreement within the dashboard, but you should **not**
+have to complete a self-attestation », puis « After completing the API
+self-attestation and signing the digital agreement... ». À trancher par
+l'observation : se déconnecter, se reconnecter, et regarder ce que l'écran
+propose réellement.
+
+Redirect URI à saisir dans le formulaire, à l'octet près :
+
+    https://tradediscipline.app/api/broker/tradovate/oauth/callback
+
+### Revue de conformité : rendue, avec une liste de corrections
+
+L'équipe Compliance a rendu son avis. **Aucune remarque sur les avertissements**,
+qui étaient l'essentiel du travail de la veille : ils passent. Les remarques
+portent toutes sur des promesses de résultat trop affirmatives, plus un lien
+mort.
+
+Traité le 2026-08-18 :
+
+| Demande | Traitement |
+|---|---|
+| « The AI sees what you don't » | « what you may not » |
+| « Try it free » mène à un 404 | vrai bug, voir ci-dessous |
+| « Our plans pay for themselves » | « can pay for themselves » |
+| « it's already paid off » | « it could be paid off » |
+| « Paid off by the first mistake » | « Potentially paid off... » |
+| « Paid back in one trade » | « Potentially paid back... » |
+| « covers your month » | « could cover your month » |
+| titre de l'article prop firm | « How to potentially pass... » |
+
+**Les quatre langues ont été traitées, pas seulement l'anglais.** La revue ne
+portait que sur la version anglaise, mais `fr`, `de` et `es` affichent exactement
+les mêmes promesses. Les corriger en anglais seulement aurait produit un site
+conforme dans une langue sur quatre, ce qui n'a de sens ni vis-à-vis de la NFA
+ni vis-à-vis du lecteur.
+
+Pour l'anglais, l'instruction est suivie au mot près : c'est cette version que
+leur équipe relit. Pour les trois autres, une tournure équivalente et naturelle,
+en conservant les mots-clés de référencement.
+
+### Le 404 : un vrai bug, trouvé grâce à eux
+
+`components/landing/CoachOperator.tsx` pointait vers `/auth/signup`, une route
+qui n'a jamais existé. Tous les autres appels à l'action de la landing vont sur
+`/login`, qui porte le mode inscription. Le bouton « Try it free » de la section
+Operator envoyait donc sur une page 404 chaque visiteur qui cliquait.
+
+Impossible de dater le début. À retenir : une revue de conformité externe a
+trouvé un bug de conversion que personne n'avait vu.
+
+---
+
 ## Sources
 
 - Accès API Tradovate, conditions et coût : https://danetrades.com/help-center/accounts-connections/tradovate-api-requirements-and-subscription/
