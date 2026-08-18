@@ -216,9 +216,21 @@ async function resolveContracts(
       }
 
       map.set(id, { name: contract.name, pointValue });
-    } catch {
-      // Unknown contract — fall back to a neutral entry so the position is still
-      // recorded (P&L for that symbol will be 0 until the contract resolves).
+    } catch (e) {
+      // Contrat non resolu. Le repli garde la position dans le journal, mais
+      // avec un pointValue de 0 : le P&L de ce trade sera donc FAUX, a zero.
+      //
+      // ⚠️ Ce catch etait muet. Vu en production le 2026-08-19 : un trade NQU6
+      // remonte sous le nom « CONTRACT_4327115 », donc avec un P&L de zero, et
+      // rien nulle part n'en donnait la raison. Un journal de trading qui
+      // affiche un gain nul sans le dire est pire qu'un journal vide.
+      //
+      // La cause probable est une permission absente sur l'inscription OAuth
+      // (« Bibliotheque de contrats » doit etre en lecture), mais tant que
+      // l'erreur n'est pas ecrite on ne peut que deviner.
+      console.error(
+        `[Tradovate] contrat ${id} non resolu, P&L de ce trade sera nul : ${e instanceof Error ? e.message : e}`,
+      );
       map.set(id, { name: `CONTRACT_${id}`, pointValue: 0 });
     }
   }
