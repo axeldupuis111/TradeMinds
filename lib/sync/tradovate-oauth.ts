@@ -14,22 +14,25 @@
  * le modèle de TradeZella, et c'est l'unique raison d'être du partenariat
  * NinjaTrader signé le 2026-08-15.
  *
- * ⚠️ IL MANQUE ENCORE LE `client_id` ET LE `client_secret`. Demandés les 15 et
- * 17 août 2026. Le 17, NinjaTrader a activé l'accès API sur le compte
- * `TradeDisciplineApp` et envoyé la documentation, mais pas les identifiants :
- * or leur propre guide OAuth dit qu'ils sont « supplied by Tradovate », donc
- * rien ne peut être généré de notre côté.
+ * ✅ EN SERVICE DEPUIS LE 2026-08-19. Premier parcours réel joué de bout en
+ * bout : écran de consentement Tradovate, saisie du seul login, retour sur
+ * TradeDiscipline, connexion créée et active. Aucune clé API achetée, aucun
+ * solde minimum.
  *
- * Tout ce fichier est écrit contre la documentation publique (voir liens
- * ci-dessous) : le jour où les identifiants arrivent, il n'y a que deux
- * variables d'environnement à remplir.
- *
- * Confirmé par écrit le 2026-08-17, et c'est la raison d'être du fichier : les
- * traders de prop firm ne peuvent pas générer de clé API, mais peuvent se
- * connecter via OAuth sans en payer ni en générer une.
+ * Les identifiants ne sont PAS délivrés par mail, contrairement à ce que dit
+ * encore leur guide GitHub (« supplied by Tradovate »). Ils se génèrent en
+ * libre-service : Web Trader → Application Settings → API Access → OAuth
+ * Registration → Generate. Ils ne s'affichent qu'une fois.
  *
  * Pas de bac à sable : le développement et les tests se font contre
- * l'environnement de démo (`demo.tradovateapi.com`), déjà géré ici.
+ * l'environnement de démo (`demo.tradovateapi.com`), géré ici par `tokenHost`.
+ *
+ * ⚠️ CE QUI N'EST TOUJOURS PAS PROUVÉ : la lecture d'un compte d'évaluation de
+ * prop firm. Le compte testé le 2026-08-19 était notre propre compte de démo.
+ * Un compte d'évaluation vit sous l'entité Tradovate de la prop firm, pas sous
+ * celle du trader, et rien ne dit encore que notre credential vendeur y donne
+ * accès. C'est la dernière inconnue du rail, et elle ne se lèvera qu'avec un
+ * vrai utilisateur de prop firm.
  *
  * Sources :
  *  - https://partner.tradovate.com/api/rest-api-endpoints/authentication/o-auth-token
@@ -47,6 +50,18 @@ const AUTH_URL = "https://trader.tradovate.com/oauth";
 
 /**
  * LE CHEMIN ET L'ENCODAGE DU POINT DE TERMINAISON DE JETONS.
+ *
+ * ✅ VÉRIFIÉ PAR SONDAGE DIRECT LE 2026-08-19, sur demo et live :
+ *  - les DEUX chemins répondent, avec et sans le préfixe /v1 ;
+ *  - `application/json` est accepté ;
+ *  - ⚠️ le serveur répond **HTTP 200 même sur une erreur**, avec un corps
+ *    `{"error":"invalid_client", ...}`. C'est pour cela que `postToken` teste
+ *    `raw.error` AVANT le statut : se fier au code HTTP ferait prendre un refus
+ *    d'identifiants pour un succès.
+ *
+ * Le premier dialecte suffit donc, et le repli ci-dessous ne se déclenche
+ * jamais en pratique. Il reste par sécurité, il ne coûte rien tant qu'il ne
+ * sert pas.
  *
  * ⚠️ Le `/v1` d'une version antérieure de ce fichier était une erreur. Vérifié
  * sur api.tradovate.com le 2026-08-17 : la chaîne `/v1/auth/oauthtoken`
