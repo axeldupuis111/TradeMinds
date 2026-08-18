@@ -1,45 +1,53 @@
 import type { GuideContent } from "./types";
 
-// Rail pull Tradovate (API). Seul rail sans logiciel à laisser ouvert, mais le
-// seul aussi à demander une clé API : c'est le point qui bloque, d'autant que
-// certaines prop firms ne l'activent pas sur leurs comptes.
+// Rail pull Tradovate (API). Seul rail sans logiciel à laisser ouvert.
+//
+// Réécrit le 2026-08-19. Depuis le partenariat NinjaTrader, le trader se
+// connecte avec son seul login dans une fenêtre Tradovate : il n'achète plus
+// l'add-on API à environ 25 $/mois et n'a plus besoin d'un compte approvisionné
+// à 1 000 $, ce que la plupart des comptes de prop firm ne permettaient pas.
+//
+// L'ancien guide décrivait ce mur et conseillait même d'aller voir ailleurs
+// (« passe plutôt par NinjaTrader ou par l'import CSV »). Il aurait détourné
+// exactement les utilisateurs que le partenariat débloque.
+//
+// Le chemin par clé API reste accessible en lien discret sous le bouton, pour
+// les comptes qui ont déjà leur propre clé. Il n'est plus le chemin principal
+// et n'est plus décrit en premier.
 
 const guide: GuideContent = {
   fr: {
     before: [
       "Un compte Tradovate, ou un compte de prop firm qui passe par Tradovate (Apex, Topstep et autres).",
-      "À savoir avant de commencer : Tradovate facture aujourd'hui l'accès API (environ 25 $ par mois) et le réserve aux comptes réels approvisionnés. Beaucoup de prop firms ne l'activent pas sur les comptes d'évaluation. Si tu n'as pas déjà cet accès, passe plutôt par NinjaTrader ou par l'import CSV : le résultat est le même dans l'app.",
-      "L'accès API est ce qui fournit la clé (cid) et le secret (sec), les deux valeurs demandées par le formulaire.",
-      "Avantage de ce rail une fois branché : rien à installer et rien à laisser ouvert, la synchro tourne sur nos serveurs toutes les heures.",
+      "Rien à acheter : depuis notre partenariat avec NinjaTrader, tu n'as plus besoin de l'add-on API ni d'un compte approvisionné à 1 000 $. Ton login Tradovate suffit.",
+      "Rien à installer non plus, et rien à laisser ouvert : la synchro tourne sur nos serveurs toutes les heures.",
+      "Nous lisons uniquement tes ordres exécutés et ton solde. Nous ne passons jamais d'ordre, et nous ne voyons jamais ton mot de passe : tu le saisis chez Tradovate, pas chez nous.",
     ],
     steps: [
       {
-        title: "Récupère ta clé API chez Tradovate",
-        detail:
-          "Connecte-toi sur trader.tradovate.com, ouvre les paramètres de l'application et cherche la section « API Access ». Génère une clé : Tradovate affiche une clé (« key », que nous appelons cid) et un secret (« secret », que nous appelons sec). Copie les deux.",
-        check:
-          "Tu as bien deux valeurs distinctes sous les yeux. Le secret n'est en général affiché qu'une fois : garde-le de côté avant de fermer la page.",
-      },
-      {
-        title: "Ouvre le formulaire de connexion",
-        detail: "Clique sur « Connecter Tradovate » au-dessus de ce guide.",
-      },
-      {
-        title: "Donne un nom à la connexion",
-        detail:
-          "Le champ « Nom de la connexion » sert uniquement à t'y retrouver si tu connectes plusieurs comptes. Par exemple : Apex 50k, ou Compte perso.",
-      },
-      {
         title: "Choisis le bon environnement",
         detail:
-          "Choisis « Live » si tu te connectes normalement sur trader.tradovate.com avec un compte réel. Choisis « Démo » si ton compte est un compte de simulation ou d'évaluation. En cas de doute, essaie l'un puis l'autre : une erreur d'environnement se voit tout de suite au statut de la connexion.",
+          "Dans l'encadré « Se connecter avec son login Tradovate », choisis « Live » si tu te connectes d'habitude sur trader.tradovate.com avec un compte réel. Choisis « Démo » si ton compte est un compte de simulation ou d'évaluation. En cas de doute, essaie l'un puis l'autre : une erreur se voit tout de suite.",
       },
       {
-        title: "Renseigne tes identifiants et connecte",
+        title: "Clique sur « Continuer vers Tradovate »",
         detail:
-          "Identifiant et mot de passe sont ceux de ta connexion Tradovate habituelle. Colle ensuite la clé dans « Clé API (cid) » et le secret dans « Clé API secret (sec) ». Clique sur « Connecter ».",
+          "Tu quittes TradeDiscipline et tu arrives sur une page du domaine tradovate.com. C'est normal, et c'est tout l'intérêt : tes identifiants ne transitent jamais par nous.",
         check:
-          "La connexion apparaît dans la liste avec le statut « Active » et une date de dernière synchro. Tes trades futures remontent dans « Mes Trades ».",
+          "L'adresse de la page commence bien par trader.tradovate.com. Si ce n'est pas le cas, ferme l'onglet et recommence depuis les réglages.",
+      },
+      {
+        title: "Identifie-toi et autorise l'accès",
+        detail:
+          "Saisis ton identifiant et ton mot de passe Tradovate habituels, puis accepte la demande d'autorisation. Elle porte uniquement sur la lecture : compte, positions, exécutions et bibliothèque de contrats.",
+        check: "Tradovate te renvoie automatiquement sur TradeDiscipline après l'autorisation.",
+      },
+      {
+        title: "Vérifie que la connexion est active",
+        detail:
+          "De retour dans les réglages, la nouvelle connexion apparaît dans la liste avec son environnement.",
+        check:
+          "Le statut affiche « Active » et une date de dernière synchro. Tes trades futures remontent dans « Mes Trades ».",
       },
       {
         title: "Renseigne ta commission par contrat",
@@ -51,229 +59,254 @@ const guide: GuideContent = {
     ],
     fixes: [
       {
-        problem: "Je ne trouve pas « API Access » chez Tradovate",
-        fix: "Ton broker ou ta prop firm n'a pas activé l'accès API sur ce compte, ce qui arrive souvent sur les comptes d'évaluation. Contacte leur support pour le demander. En attendant, tu peux passer par NinjaTrader ou par l'import CSV.",
+        problem: "Je ne vois pas l'encadré « Se connecter avec son login Tradovate »",
+        fix: "Ce rail demande le plan Premium. Si tu l'as déjà, recharge la page : l'encadré n'apparaît que lorsque nos identifiants partenaires sont actifs côté serveur.",
+      },
+      {
+        problem: "L'écran Tradovate affiche une erreur d'application ou refuse de s'ouvrir",
+        fix: "Ne recommence pas en boucle, écris-nous. C'est un problème de configuration de notre côté ou du leur, pas de ton compte, et rien dans l'application ne peut le corriger.",
       },
       {
         problem: "La connexion affiche le statut « Erreur »",
-        fix: "Le message d'erreur s'affiche à côté du statut. Dans l'ordre : mauvais environnement (Live au lieu de Démo ou l'inverse), puis identifiants ou clés recopiés avec un espace en trop. Supprime la connexion et recrée-la.",
+        fix: "Le message s'affiche à côté du statut. La cause la plus fréquente est le mauvais environnement : Live au lieu de Démo, ou l'inverse. Supprime la connexion et refais le parcours avec l'autre environnement.",
       },
       {
         problem: "Le statut est « Active » mais aucun trade n'arrive",
         fix: "Le compte connecté n'a pas de trade clôturé sur la période, ou tu as connecté l'environnement qui ne contient pas ton activité. Clique sur « Synchroniser » pour forcer un passage, puis vérifie l'environnement.",
       },
       {
+        problem: "La connexion s'est mise en erreur après une longue pause",
+        fix: "L'autorisation Tradovate se renouvelle toute seule tant que la synchro tourne. Si la connexion est restée suspendue plus de deux semaines, l'autorisation expire. Supprime-la et refais le parcours : trente secondes.",
+      },
+      {
         problem: "J'ai changé mon mot de passe Tradovate",
-        fix: "La connexion passera en erreur au prochain passage. Supprime-la et recrée-la avec les nouveaux identifiants.",
+        fix: "Rien à faire. C'est justement l'avantage de ce rail : nous ne stockons pas ton mot de passe, la connexion continue de fonctionner.",
       },
     ],
     notes: [
-      "Tes identifiants et tes clés sont chiffrés (AES-256) et ne sont jamais réaffichés une fois enregistrés.",
+      "Les autorisations sont chiffrées (AES-256) et ne sont jamais réaffichées.",
       "Tu peux suspendre une connexion à tout moment sans la supprimer : elle cesse de se synchroniser et tes trades déjà importés restent en place.",
+      "Si tu possèdes déjà ta propre clé API Tradovate, le lien « Utiliser plutôt une clé API » sous le bouton ouvre l'ancien formulaire.",
     ],
   },
 
   en: {
     before: [
       "A Tradovate account, or a prop firm account running on Tradovate (Apex, Topstep and others).",
-      "Worth knowing before you start: Tradovate now charges for API access (around $25 a month) and restricts it to funded live accounts. Many prop firms do not enable it on evaluation accounts. If you do not already have that access, use NinjaTrader or CSV import instead: the result inside the app is the same.",
-      "API access is what gives you the key (cid) and the secret (sec), the two values the form asks for.",
-      "The upside of this rail once it is wired: nothing to install and nothing to keep open, the sync runs on our servers every hour.",
+      "Nothing to buy: through our NinjaTrader partnership you no longer need the API add-on or a funded account above $1,000. Your Tradovate login is enough.",
+      "Nothing to install either, and nothing to leave running: the sync happens on our servers every hour.",
+      "We only read your filled orders and your balance. We never place orders, and we never see your password: you type it on Tradovate, not here.",
     ],
     steps: [
       {
-        title: "Get your API key from Tradovate",
-        detail:
-          "Log in to trader.tradovate.com, open the application settings and look for the « API Access » section. Generate a key: Tradovate shows a key (which we call cid) and a secret (which we call sec). Copy both.",
-        check:
-          "You have two distinct values in front of you. The secret is usually shown only once: save it before closing the page.",
-      },
-      {
-        title: "Open the connection form",
-        detail: "Click « Connect Tradovate » above this guide.",
-      },
-      {
-        title: "Name the connection",
-        detail:
-          "The « connection name » field is only there to help you tell accounts apart if you connect several. For example: Apex 50k, or Personal account.",
-      },
-      {
         title: "Pick the right environment",
         detail:
-          "Choose « Live » if you normally log in to trader.tradovate.com with a real account. Choose « Demo » if your account is a simulation or evaluation account. When in doubt, try one then the other: a wrong environment shows up immediately in the connection status.",
+          "In the “Connect with your Tradovate login” box, choose “Live” if you normally sign in at trader.tradovate.com with a real account. Choose “Demo” if yours is a simulation or evaluation account. If unsure, try one then the other: a mistake shows immediately.",
       },
       {
-        title: "Fill in your credentials and connect",
+        title: "Click “Continue to Tradovate”",
         detail:
-          "Username and password are your usual Tradovate login. Then paste the key into « API key (cid) » and the secret into « API secret (sec) ». Click « Connect ».",
+          "You leave TradeDiscipline and land on a page hosted by tradovate.com. That is expected, and it is the whole point: your credentials never pass through us.",
         check:
-          "The connection appears in the list with status « Active » and a last-sync date. Your futures trades land in « My Trades ».",
+          "The page address starts with trader.tradovate.com. If it does not, close the tab and start again from settings.",
+      },
+      {
+        title: "Sign in and authorise access",
+        detail:
+          "Enter your usual Tradovate username and password, then approve the authorisation request. It covers reading only: account, positions, fills and contract library.",
+        check: "Tradovate sends you back to TradeDiscipline automatically once you approve.",
+      },
+      {
+        title: "Check the connection is active",
+        detail: "Back in settings, the new connection appears in the list with its environment.",
+        check:
+          "The status reads “Active” with a last sync time. Your futures trades appear under “My Trades”.",
       },
       {
         title: "Set your commission per contract",
         detail:
-          "Tradovate does not send fees with its data: without this value your P&L stays gross and will not match your statement. Enter your broker's round-turn cost for one contract, often $4 to $5 at prop firms. The field can be changed at any time on the connection row.",
+          "Tradovate does not send fees in its data: without this value your P&L stays gross and will not match your statement. Enter the round-turn cost of one contract at your broker, often between $4 and $5 at prop firms. You can change it any time on the connection row.",
         check:
-          "On an imported trade, the net figure matches your Tradovate statement, give or take rounding.",
+          "On an imported trade, the net shown matches your Tradovate statement, give or take rounding.",
       },
     ],
     fixes: [
       {
-        problem: "I cannot find « API Access » in Tradovate",
-        fix: "Your broker or prop firm has not enabled API access on that account, which is common on evaluation accounts. Contact their support to request it. In the meantime you can use NinjaTrader or CSV import.",
+        problem: "I cannot see the “Connect with your Tradovate login” box",
+        fix: "This rail requires the Premium plan. If you already have it, reload the page: the box only appears once our partner credentials are active on the server.",
       },
       {
-        problem: "The connection shows status « Error »",
-        fix: "The error message is displayed next to the status. In order: wrong environment (Live instead of Demo or the other way round), then credentials or keys copied with a stray space. Delete the connection and create it again.",
+        problem: "The Tradovate screen shows an application error or will not open",
+        fix: "Do not retry in a loop, write to us instead. That is a configuration problem on our side or theirs, not on your account, and nothing in the app can fix it.",
       },
       {
-        problem: "Status is « Active » but no trade arrives",
-        fix: "The connected account has no closed trade in the window, or you connected the environment that does not hold your activity. Click « Sync » to force a pass, then check the environment.",
+        problem: "The connection shows an “Error” status",
+        fix: "The message appears next to the status. The most common cause is the wrong environment: Live instead of Demo, or the other way round. Delete the connection and run through it again with the other environment.",
+      },
+      {
+        problem: "Status is “Active” but no trades arrive",
+        fix: "The connected account has no closed trade in the period, or you connected the environment that does not hold your activity. Click “Sync” to force a pass, then check the environment.",
+      },
+      {
+        problem: "The connection failed after a long pause",
+        fix: "The Tradovate authorisation renews itself as long as the sync runs. If the connection stayed paused for more than two weeks, the authorisation expires. Delete it and run through the flow again: thirty seconds.",
       },
       {
         problem: "I changed my Tradovate password",
-        fix: "The connection will error out on the next pass. Delete it and create it again with the new credentials.",
+        fix: "Nothing to do. That is precisely the advantage of this rail: we do not store your password, and the connection keeps working.",
       },
     ],
     notes: [
-      "Your credentials and keys are encrypted (AES-256) and never displayed again once saved.",
+      "Authorisations are encrypted (AES-256) and never displayed again.",
       "You can pause a connection at any time without deleting it: it stops syncing and the trades already imported stay in place.",
+      "If you already hold your own Tradovate API key, the “Use an API key instead” link under the button opens the previous form.",
     ],
   },
 
   es: {
     before: [
-      "Una cuenta Tradovate, o una cuenta de prop firm que funcione con Tradovate (Apex, Topstep y otras).",
-      "Conviene saberlo antes de empezar: hoy Tradovate cobra el acceso API (unos 25 $ al mes) y lo reserva a cuentas reales con fondos. Muchas prop firms no lo activan en las cuentas de evaluación. Si aún no tienes ese acceso, usa mejor NinjaTrader o la importación CSV: el resultado dentro de la app es el mismo.",
-      "El acceso API es lo que te da la clave (cid) y el secreto (sec), los dos valores que pide el formulario.",
-      "La ventaja de esta vía una vez conectada: nada que instalar ni que dejar abierto, la sincronización corre en nuestros servidores cada hora.",
+      "Una cuenta de Tradovate, o una cuenta de prop firm que funcione sobre Tradovate (Apex, Topstep y otras).",
+      "Nada que comprar: gracias a nuestro acuerdo con NinjaTrader ya no necesitas el add-on de API ni una cuenta financiada por encima de 1.000 $. Basta con tu login de Tradovate.",
+      "Tampoco hay nada que instalar ni que dejar abierto: la sincronización se ejecuta en nuestros servidores cada hora.",
+      "Solo leemos tus órdenes ejecutadas y tu saldo. Nunca enviamos órdenes y nunca vemos tu contraseña: la escribes en Tradovate, no aquí.",
     ],
     steps: [
       {
-        title: "Consigue tu clave API en Tradovate",
-        detail:
-          "Entra en trader.tradovate.com, abre los ajustes de la aplicación y busca la sección « API Access ». Genera una clave: Tradovate muestra una clave (que llamamos cid) y un secreto (que llamamos sec). Copia las dos.",
-        check:
-          "Tienes delante dos valores distintos. El secreto suele mostrarse una sola vez: guárdalo antes de cerrar la página.",
-      },
-      {
-        title: "Abre el formulario de conexión",
-        detail: "Pulsa « Conectar Tradovate » encima de esta guía.",
-      },
-      {
-        title: "Pon nombre a la conexión",
-        detail:
-          "El campo « nombre de la conexión » solo sirve para distinguir cuentas si conectas varias. Por ejemplo: Apex 50k, o Cuenta personal.",
-      },
-      {
         title: "Elige el entorno correcto",
         detail:
-          "Elige « Live » si normalmente entras en trader.tradovate.com con una cuenta real. Elige « Demo » si tu cuenta es de simulación o de evaluación. Ante la duda, prueba uno y luego el otro: un entorno equivocado se nota enseguida en el estado de la conexión.",
+          "En el recuadro « Conectar con tu login de Tradovate », elige « Live » si entras normalmente en trader.tradovate.com con una cuenta real. Elige « Demo » si la tuya es una cuenta de simulación o de evaluación. Si dudas, prueba una y luego la otra: el error se ve al instante.",
       },
       {
-        title: "Introduce tus credenciales y conecta",
+        title: "Pulsa « Continuar a Tradovate »",
         detail:
-          "Usuario y contraseña son los de tu acceso habitual a Tradovate. Después pega la clave en « Clave API (cid) » y el secreto en « Clave API secreta (sec) ». Pulsa « Conectar ».",
+          "Sales de TradeDiscipline y llegas a una página del dominio tradovate.com. Es lo esperado, y es justamente el objetivo: tus credenciales nunca pasan por nosotros.",
         check:
-          "La conexión aparece en la lista con estado « Activa » y una fecha de última sincronización. Tus operaciones de futuros llegan a « Mis Trades ».",
+          "La dirección de la página empieza por trader.tradovate.com. Si no es así, cierra la pestaña y vuelve a empezar desde los ajustes.",
+      },
+      {
+        title: "Identifícate y autoriza el acceso",
+        detail:
+          "Introduce tu usuario y contraseña habituales de Tradovate y acepta la solicitud de autorización. Cubre únicamente la lectura: cuenta, posiciones, ejecuciones y biblioteca de contratos.",
+        check: "Tradovate te devuelve automáticamente a TradeDiscipline tras la autorización.",
+      },
+      {
+        title: "Comprueba que la conexión está activa",
+        detail: "De vuelta en los ajustes, la nueva conexión aparece en la lista con su entorno.",
+        check:
+          "El estado indica « Activa » y una hora de última sincronización. Tus operaciones de futuros aparecen en « Mis Trades ».",
       },
       {
         title: "Indica tu comisión por contrato",
         detail:
-          "Tradovate no transmite las comisiones con sus datos: sin este valor tu P&L queda bruto y no cuadrará con tu extracto. Indica el coste de ida y vuelta de un contrato en tu bróker, a menudo entre 4 y 5 $ en las prop firms. El campo se puede cambiar en cualquier momento en la línea de la conexión.",
+          "Tradovate no transmite las comisiones en sus datos: sin este valor tu P&L queda en bruto y no cuadrará con tu extracto. Indica el coste de ida y vuelta de un contrato en tu broker, a menudo entre 4 y 5 $ en las prop firms. Puedes cambiarlo en cualquier momento en la línea de la conexión.",
         check:
           "En una operación importada, el neto mostrado coincide con tu extracto de Tradovate, salvo redondeos.",
       },
     ],
     fixes: [
       {
-        problem: "No encuentro « API Access » en Tradovate",
-        fix: "Tu bróker o prop firm no ha activado el acceso API en esa cuenta, algo habitual en cuentas de evaluación. Contacta con su soporte para pedirlo. Mientras tanto puedes usar NinjaTrader o la importación CSV.",
+        problem: "No veo el recuadro « Conectar con tu login de Tradovate »",
+        fix: "Este canal requiere el plan Premium. Si ya lo tienes, recarga la página: el recuadro solo aparece cuando nuestras credenciales de socio están activas en el servidor.",
+      },
+      {
+        problem: "La pantalla de Tradovate muestra un error de aplicación o no abre",
+        fix: "No lo reintentes en bucle, escríbenos. Es un problema de configuración por nuestra parte o por la suya, no de tu cuenta, y no puedes resolverlo desde la aplicación.",
       },
       {
         problem: "La conexión muestra el estado « Error »",
-        fix: "El mensaje de error aparece junto al estado. Por orden: entorno equivocado (Live en vez de Demo o al revés), y después credenciales o claves copiadas con un espacio de más. Borra la conexión y créala de nuevo.",
+        fix: "El mensaje aparece junto al estado. La causa más frecuente es el entorno equivocado: Live en lugar de Demo, o al revés. Borra la conexión y repite el proceso con el otro entorno.",
       },
       {
         problem: "El estado es « Activa » pero no llega ninguna operación",
-        fix: "La cuenta conectada no tiene operaciones cerradas en el periodo, o has conectado el entorno que no contiene tu actividad. Pulsa « Sincronizar » para forzar una pasada y comprueba el entorno.",
+        fix: "La cuenta conectada no tiene operaciones cerradas en el periodo, o conectaste el entorno que no contiene tu actividad. Pulsa « Sincronizar » para forzar una pasada y revisa el entorno.",
+      },
+      {
+        problem: "La conexión falló tras una pausa larga",
+        fix: "La autorización de Tradovate se renueva sola mientras la sincronización funcione. Si la conexión estuvo pausada más de dos semanas, la autorización caduca. Bórrala y repite el proceso: treinta segundos.",
       },
       {
         problem: "He cambiado mi contraseña de Tradovate",
-        fix: "La conexión dará error en la siguiente pasada. Bórrala y créala de nuevo con las credenciales nuevas.",
+        fix: "Nada que hacer. Es precisamente la ventaja de este canal: no guardamos tu contraseña y la conexión sigue funcionando.",
       },
     ],
     notes: [
-      "Tus credenciales y claves se cifran (AES-256) y no se vuelven a mostrar una vez guardadas.",
-      "Puedes suspender una conexión en cualquier momento sin borrarla: deja de sincronizar y las operaciones ya importadas se mantienen.",
+      "Las autorizaciones están cifradas (AES-256) y nunca se vuelven a mostrar.",
+      "Puedes pausar una conexión en cualquier momento sin borrarla: deja de sincronizar y las operaciones ya importadas se mantienen.",
+      "Si ya tienes tu propia clave API de Tradovate, el enlace « Usar una clave API en su lugar » bajo el botón abre el formulario anterior.",
     ],
   },
 
   de: {
     before: [
       "Ein Tradovate-Konto oder ein Prop-Firm-Konto, das über Tradovate läuft (Apex, Topstep und andere).",
-      "Vorab wichtig: Tradovate berechnet den API-Zugang inzwischen (rund 25 $ pro Monat) und gibt ihn nur für finanzierte Live-Konten frei. Viele Prop Firms schalten ihn auf Evaluierungskonten nicht frei. Ohne diesen Zugang nimmst du besser NinjaTrader oder den CSV-Import: In der App ist das Ergebnis dasselbe.",
-      "Aus dem API-Zugang stammen Key (cid) und Secret (sec), die beiden Werte, die das Formular verlangt.",
-      "Vorteil dieses Wegs, sobald er steht: nichts zu installieren und nichts offen zu halten, die Synchronisation läuft stündlich auf unseren Servern.",
+      "Nichts zu kaufen: dank unserer NinjaTrader-Partnerschaft brauchst du weder das API-Add-on noch ein Konto mit mehr als 1.000 $. Dein Tradovate-Login genügt.",
+      "Auch nichts zu installieren und nichts offen zu lassen: die Synchronisierung läuft stündlich auf unseren Servern.",
+      "Wir lesen ausschließlich deine ausgeführten Orders und deinen Kontostand. Wir platzieren nie Orders und sehen nie dein Passwort: du gibst es bei Tradovate ein, nicht bei uns.",
     ],
     steps: [
       {
-        title: "API-Schlüssel bei Tradovate holen",
+        title: "Wähle die richtige Umgebung",
         detail:
-          "Melde dich auf trader.tradovate.com an, öffne die Anwendungseinstellungen und suche den Bereich « API Access ». Erzeuge einen Schlüssel: Tradovate zeigt einen Key (bei uns cid) und ein Secret (bei uns sec). Kopiere beides.",
+          "Wähle im Feld « Mit deinem Tradovate-Login verbinden » die Option « Live », wenn du dich normalerweise mit einem echten Konto bei trader.tradovate.com anmeldest. Wähle « Demo », wenn es ein Simulations- oder Evaluierungskonto ist. Im Zweifel probiere erst das eine, dann das andere: ein Fehler zeigt sich sofort.",
+      },
+      {
+        title: "Klicke auf « Weiter zu Tradovate »",
+        detail:
+          "Du verlässt TradeDiscipline und landest auf einer Seite der Domain tradovate.com. Das ist so gewollt und genau der Punkt: deine Zugangsdaten laufen nie über uns.",
         check:
-          "Du hast zwei verschiedene Werte vor dir. Das Secret wird meist nur einmal angezeigt: Sichere es, bevor du die Seite schließt.",
+          "Die Adresse der Seite beginnt mit trader.tradovate.com. Falls nicht, schließe den Tab und beginne erneut in den Einstellungen.",
       },
       {
-        title: "Verbindungsformular öffnen",
-        detail: "Klicke oberhalb dieser Anleitung auf « Tradovate verbinden ».",
-      },
-      {
-        title: "Verbindung benennen",
+        title: "Melde dich an und erteile die Freigabe",
         detail:
-          "Das Feld für den Verbindungsnamen dient nur dazu, mehrere Konten auseinanderzuhalten. Zum Beispiel: Apex 50k oder Privatkonto.",
+          "Gib deinen gewohnten Tradovate-Benutzernamen und dein Passwort ein und bestätige die Freigabe. Sie umfasst ausschließlich Lesezugriff: Konto, Positionen, Ausführungen und Kontraktbibliothek.",
+        check: "Tradovate leitet dich nach der Freigabe automatisch zu TradeDiscipline zurück.",
       },
       {
-        title: "Die richtige Umgebung wählen",
+        title: "Prüfe, ob die Verbindung aktiv ist",
         detail:
-          "Wähle « Live », wenn du dich normalerweise mit einem echten Konto auf trader.tradovate.com anmeldest. Wähle « Demo », wenn dein Konto ein Simulations- oder Evaluierungskonto ist. Im Zweifel probierst du erst die eine, dann die andere: Eine falsche Umgebung zeigt sich sofort am Verbindungsstatus.",
-      },
-      {
-        title: "Zugangsdaten eintragen und verbinden",
-        detail:
-          "Benutzername und Passwort sind deine üblichen Tradovate-Zugangsdaten. Füge dann den Key in « API-Schlüssel (cid) » und das Secret in « API-Secret (sec) » ein. Klicke auf « Verbinden ».",
+          "Zurück in den Einstellungen erscheint die neue Verbindung mit ihrer Umgebung in der Liste.",
         check:
-          "Die Verbindung erscheint in der Liste mit Status « Aktiv » und einem Zeitpunkt der letzten Synchronisation. Deine Futures-Trades erscheinen unter « Meine Trades ».",
+          "Der Status lautet « Aktiv » und zeigt eine letzte Synchronisierung. Deine Futures-Trades erscheinen unter « Meine Trades ».",
       },
       {
-        title: "Kommission pro Kontrakt eintragen",
+        title: "Trage deine Kommission pro Kontrakt ein",
         detail:
-          "Tradovate liefert keine Gebühren mit: Ohne diesen Wert bleibt dein P&L brutto und passt nicht zu deiner Abrechnung. Trage die Round-Turn-Kosten eines Kontrakts bei deinem Broker ein, bei Prop Firms oft 4 bis 5 $. Das Feld lässt sich jederzeit in der Verbindungszeile ändern.",
+          "Tradovate übermittelt keine Gebühren: ohne diesen Wert bleibt dein P&L brutto und passt nicht zu deiner Abrechnung. Trage die Round-Turn-Kosten eines Kontrakts bei deinem Broker ein, bei Prop Firms oft zwischen 4 und 5 $. Der Wert lässt sich jederzeit in der Verbindungszeile ändern.",
         check:
-          "Bei einem importierten Trade stimmt der angezeigte Nettobetrag mit deiner Tradovate-Abrechnung überein, bis auf Rundungen.",
+          "Bei einem importierten Trade entspricht der angezeigte Nettowert deiner Tradovate-Abrechnung, bis auf Rundungen.",
       },
     ],
     fixes: [
       {
-        problem: "Ich finde « API Access » bei Tradovate nicht",
-        fix: "Dein Broker oder deine Prop Firm hat den API-Zugang für dieses Konto nicht freigeschaltet, was bei Evaluierungskonten häufig vorkommt. Frag deren Support danach. Bis dahin kannst du NinjaTrader oder den CSV-Import nutzen.",
+        problem: "Ich sehe das Feld « Mit deinem Tradovate-Login verbinden » nicht",
+        fix: "Dieser Weg erfordert den Premium-Plan. Wenn du ihn bereits hast, lade die Seite neu: das Feld erscheint erst, wenn unsere Partner-Zugangsdaten serverseitig aktiv sind.",
+      },
+      {
+        problem: "Der Tradovate-Bildschirm zeigt einen Anwendungsfehler oder öffnet nicht",
+        fix: "Versuche es nicht in Schleife, schreib uns. Das ist ein Konfigurationsproblem auf unserer oder ihrer Seite, nicht bei deinem Konto, und in der App lässt sich nichts daran ändern.",
       },
       {
         problem: "Die Verbindung zeigt den Status « Fehler »",
-        fix: "Die Fehlermeldung steht neben dem Status. Der Reihe nach: falsche Umgebung (Live statt Demo oder umgekehrt), dann Zugangsdaten oder Schlüssel mit einem überzähligen Leerzeichen kopiert. Lösche die Verbindung und lege sie neu an.",
+        fix: "Die Meldung steht neben dem Status. Häufigste Ursache ist die falsche Umgebung: Live statt Demo oder umgekehrt. Lösche die Verbindung und durchlaufe den Vorgang mit der anderen Umgebung erneut.",
       },
       {
-        problem: "Status ist « Aktiv », aber es kommt kein Trade an",
-        fix: "Das verbundene Konto hat im Zeitraum keinen geschlossenen Trade, oder du hast die Umgebung verbunden, in der deine Aktivität nicht liegt. Klicke auf « Synchronisieren », um einen Durchlauf zu erzwingen, und prüfe die Umgebung.",
+        problem: "Der Status ist « Aktiv », aber es kommen keine Trades an",
+        fix: "Das verbundene Konto hat im Zeitraum keinen geschlossenen Trade, oder du hast die Umgebung verbunden, die deine Aktivität nicht enthält. Klicke auf « Synchronisieren », um einen Durchlauf zu erzwingen, und prüfe die Umgebung.",
+      },
+      {
+        problem: "Die Verbindung ist nach einer langen Pause fehlgeschlagen",
+        fix: "Die Tradovate-Freigabe erneuert sich selbst, solange die Synchronisierung läuft. War die Verbindung länger als zwei Wochen pausiert, läuft die Freigabe ab. Lösche sie und durchlaufe den Vorgang erneut: dreißig Sekunden.",
       },
       {
         problem: "Ich habe mein Tradovate-Passwort geändert",
-        fix: "Die Verbindung läuft beim nächsten Durchlauf auf einen Fehler. Lösche sie und lege sie mit den neuen Zugangsdaten neu an.",
+        fix: "Nichts zu tun. Genau das ist der Vorteil dieses Wegs: wir speichern dein Passwort nicht, und die Verbindung funktioniert weiter.",
       },
     ],
     notes: [
-      "Deine Zugangsdaten und Schlüssel werden verschlüsselt gespeichert (AES-256) und nach dem Speichern nie wieder angezeigt.",
-      "Du kannst eine Verbindung jederzeit pausieren, ohne sie zu löschen: Sie synchronisiert nicht mehr, bereits importierte Trades bleiben erhalten.",
+      "Die Freigaben sind verschlüsselt (AES-256) und werden nie erneut angezeigt.",
+      "Du kannst eine Verbindung jederzeit pausieren, ohne sie zu löschen: sie synchronisiert nicht mehr, und bereits importierte Trades bleiben erhalten.",
+      "Wenn du bereits einen eigenen Tradovate-API-Schlüssel besitzt, öffnet der Link « Stattdessen einen API-Schlüssel verwenden » unter der Schaltfläche das bisherige Formular.",
     ],
   },
 };
