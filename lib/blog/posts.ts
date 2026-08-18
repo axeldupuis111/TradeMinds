@@ -482,7 +482,7 @@ Tu técnica probablemente ya es suficientemente buena. Es la ejecución lo que t
     cover: "prop",
     content: {
       fr: {
-        title: "Réussir ton challenge prop firm sans cramer ton compte",
+        title: "Comment mettre les chances de ton côté pour réussir ton challenge prop firm sans cramer ton compte",
         excerpt:
           "La plupart des challenges se perdent en une seule journée, pas à cause de la stratégie. Voici les trois pièges qui te font sauter et comment t'en protéger.",
         body: `Tu peux avoir un edge parfaitement valable et rater ton challenge prop firm quand même. Parce qu'un challenge ne se gagne pas seulement en étant bon : il se perd en une seule mauvaise journée. Les règles qui te tuent ne sont pas tes setups, ce sont la perte journalière max et le drawdown total.
@@ -512,7 +512,7 @@ C'est exactement le rôle du Gardien de challenge de TradeDiscipline (plan Premi
 Commence gratuitement pour poser ta stratégie et journaliser, puis passe Premium quand tu attaques un compte financé : [essaie ici](/login).`,
       },
       en: {
-        title: "How to pass a prop firm challenge without blowing your account",
+        title: "How to potentially pass a prop firm challenge without blowing your account",
         excerpt:
           "Most challenges are lost in a single day, not because of strategy. Here are the three traps that blow you up, and how to protect yourself.",
         body: `You can have a perfectly valid edge and still fail your prop firm challenge. Because a challenge isn't won only by being good: it's lost in a single bad day. The rules that kill you aren't your setups, they're the max daily loss and the total drawdown.
@@ -542,7 +542,7 @@ That's exactly the job of TradeDiscipline's Challenge Guardian (Premium plan): i
 Start free to lay out your strategy and journal, then go Premium when you take on a funded account: [try it here](/login).`,
       },
       de: {
-        title: "Wie du deine Prop-Firm-Challenge bestehst, ohne dein Konto zu sprengen",
+        title: "Wie du deine Chancen erhöhst, deine Prop-Firm-Challenge zu bestehen, ohne dein Konto zu sprengen",
         excerpt:
           "Die meisten Challenges gehen an einem einzigen Tag verloren, nicht wegen der Strategie. Hier sind die drei Fallen, die dich sprengen, und wie du dich schützt.",
         body: `Du kannst einen völlig validen Edge haben und deine Prop-Firm-Challenge trotzdem nicht bestehen. Denn eine Challenge gewinnst du nicht nur, indem du gut bist: Du verlierst sie an einem einzigen schlechten Tag. Die Regeln, die dich killen, sind nicht deine Setups, sondern der maximale Tagesverlust und der Gesamt-Drawdown.
@@ -572,7 +572,7 @@ Genau das ist die Aufgabe des Challenge-Wächters von TradeDiscipline (Premium-P
 Starte kostenlos, um deine Strategie festzulegen und zu journalisieren, und wechsle zu Premium, wenn du ein finanziertes Konto angehst: [hier testen](/login).`,
       },
       es: {
-        title: "Cómo superar tu challenge de prop firm sin reventar la cuenta",
+        title: "Cómo aumentar tus opciones de superar tu challenge de prop firm sin reventar la cuenta",
         excerpt:
           "La mayoría de los challenges se pierden en un solo día, no por la estrategia. Aquí tienes las tres trampas que te revientan y cómo protegerte.",
         body: `Puedes tener un edge perfectamente válido y aun así no pasar tu challenge de prop firm. Porque un challenge no se gana solo siendo bueno: se pierde en un solo mal día. Las reglas que te matan no son tus setups, son la pérdida diaria máxima y el drawdown total.
