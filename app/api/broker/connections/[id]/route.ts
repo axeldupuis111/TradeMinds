@@ -7,6 +7,7 @@ import {
   BROKER_CONNECTION_COLUMNS,
   type BrokerConnectionRow,
 } from "@/lib/sync/broker-sync";
+import { manualSyncWaitMs, waitSeconds } from "@/lib/sync/sync-cooldown";
 
 // Une synchro manuelle rejoue jusqu'à 90 jours de fills avec un appel par
 // contrat : c'est la route lente du rail, elle a besoin de marge.
@@ -85,6 +86,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     if (error || !conn) {
       return NextResponse.json({ error: "Connexion introuvable." }, { status: 404 });
+    }
+
+    // Même délai d'attente que la synchro depuis « Mes Trades ». Sans lui, le
+    // garde-fou serait contournable en revenant simplement dans les réglages.
+    const wait = manualSyncWaitMs((conn as { last_synced_at: string | null }).last_synced_at);
+    if (wait > 0) {
+      return NextResponse.json(
+        { error: "sync_cooldown", retryInSeconds: waitSeconds(wait) },
+        { status: 429 },
+      );
     }
 
     const admin = createAdminClient();

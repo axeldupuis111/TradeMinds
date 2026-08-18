@@ -66,6 +66,44 @@ export default function TradesPage() {
    * chaque ligne de la liste en dessous : l'en-tête et le tableau racontent
    * enfin la même chose.
    */
+  /**
+   * Rafraîchissement à la demande depuis « Mes Trades ».
+   *
+   * Le cron horaire reste la voie normale. Ce bouton existe parce qu'un trader
+   * qui vient de clôturer ouvre cette page, pas les réglages, et n'avait aucun
+   * moyen visible de forcer un passage : il pouvait attendre jusqu'à une heure
+   * sans comprendre pourquoi son trade manquait.
+   *
+   * Le délai d'attente est tenu côté serveur, pas ici : une garde côté client
+   * ne protégerait ni le débit Tradovate ni nos serveurs.
+   */
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState<string | null>(null);
+
+  const syncNow = useCallback(async () => {
+    setSyncing(true);
+    setSyncMsg(null);
+    try {
+      const res = await fetch("/api/broker/sync-now", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSyncMsg(t("trades_sync_error"));
+      } else if (data.retryInSeconds > 0) {
+        setSyncMsg(t("trades_sync_wait").replace("{n}", String(data.retryInSeconds)));
+      } else if (data.synced > 0) {
+        setSyncMsg(t("trades_sync_imported").replace("{n}", String(data.synced)));
+        setRefreshKey((k) => k + 1);
+        await loadRecap();
+      } else {
+        setSyncMsg(t("trades_sync_done"));
+      }
+    } catch {
+      setSyncMsg(t("trades_sync_error"));
+    } finally {
+      setSyncing(false);
+    }
+  }, [t]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const pnlByCurrency = useMemo(
     () => (recap ? sumByCurrency(recap.trades, currencyMap) : []),
     [recap, currencyMap],
@@ -186,9 +224,17 @@ export default function TradesPage() {
               ))}
             </p>
           )}
+          {syncMsg && <p className="text-xs text-foreground-muted mt-1">{syncMsg}</p>}
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={syncNow}
+            disabled={syncing}
+            className="px-3 py-2 rounded-md border border-border bg-surface text-sm text-foreground hover:bg-border transition-colors disabled:opacity-50"
+          >
+            {syncing ? t("trades_sync_running") : t("trades_sync_now")}
+          </button>
           {unannotatedCount > 0 && (
             <button
               onClick={() => setShowAnnotate(true)}
