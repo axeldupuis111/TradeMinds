@@ -79,6 +79,10 @@ export default function BrokerOAuthBox({ brand, brandLabel, children }: Props) {
           </a>
         </div>
       </div>
+      {/* Dit où la connexion va apparaître. Les deux boutons alimentent le même
+          rail : sans cette phrase, un utilisateur NinjaTrader cherche sa
+          connexion sous son bouton et ne l'y trouve pas. */}
+      <p className="text-xs text-foreground-muted">{t("sync_oauth_where")}</p>
       {children}
     </div>
   );
