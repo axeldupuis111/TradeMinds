@@ -524,6 +524,7 @@ export default function SettingsPage() {
             downloadHref="/TradeDiscipline_NinjaTrader.cs"
             downloadLabel="NinjaTrader AddOn (.cs)"
             tokenNote={t("sync_ninja_token_note")}
+            token={mtToken}
             guideTitle={t("sync_ninja_guide_title")}
           />
 
@@ -649,8 +650,9 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Rails push restants. Ils viennent après MetaTrader parce qu'ils
-          réutilisent le même token de synchronisation, généré dans sa section. */}
+      {/* Rails push restants. Ils partagent le token de synchronisation, mais
+          chacun l'affiche désormais chez lui : leur position n'est plus
+          contrainte, elle suit simplement l'usage réel de nos utilisateurs. */}
       {plan === "premium" && (
         <>
           <SyncPlatformCard
@@ -660,6 +662,7 @@ export default function SettingsPage() {
             downloadHref="/TradeDiscipline_cTrader.cs"
             downloadLabel="cTrader cBot (.cs)"
             tokenNote={t("sync_uses_token_above")}
+            token={mtToken}
             guideTitle={t("sync_ctrader_guide_title")}
           />
 

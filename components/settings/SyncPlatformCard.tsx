@@ -1,6 +1,7 @@
 "use client";
 
 import SyncGuide from "./SyncGuide";
+import SyncTokenField from "./SyncTokenField";
 import type { SyncPlatform } from "@/lib/sync-guides";
 
 interface Props {
@@ -9,7 +10,10 @@ interface Props {
   desc: string;
   downloadHref: string;
   downloadLabel: string;
+  /** Note propre au rail, affichée sous le token (ex. où le coller). */
   tokenNote: string;
+  /** Token push universel, affiché ici plutôt que renvoyé vers une autre section. */
+  token: string | null;
   guideTitle: string;
 }
 
@@ -25,6 +29,7 @@ export default function SyncPlatformCard({
   downloadHref,
   downloadLabel,
   tokenNote,
+  token,
   guideTitle,
 }: Props) {
   return (
@@ -48,7 +53,9 @@ export default function SyncPlatformCard({
         {downloadLabel}
       </a>
 
-      <p className="text-xs text-muted mt-3">{tokenNote}</p>
+      <SyncTokenField token={token} />
+
+      <p className="text-xs text-muted mt-2">{tokenNote}</p>
 
       <SyncGuide platform={platform} title={guideTitle} />
     </section>
