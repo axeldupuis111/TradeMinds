@@ -363,7 +363,7 @@ export default function TradovateConnect() {
 
             <button
               onClick={() => setShowForm(true)}
-              className="px-5 py-2.5 rounded-lg bg-accent text-on-accent font-medium text-sm hover:bg-accent-hover transition-colors"
+              className="text-xs text-foreground-muted underline hover:text-foreground transition-colors"
             >
               {t("sync_tradovate_add")}
             </button>

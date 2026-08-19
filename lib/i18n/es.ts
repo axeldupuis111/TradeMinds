@@ -1440,7 +1440,7 @@ const dict: Record<string, string> = {
   "sync_tv_guide_title": "Cómo conectar TradingView",
   "sync_tradovate_title": "Sincronización Tradovate y NinjaTrader (futuros)",
   "sync_tradovate_desc": "Conecta tu cuenta de Tradovate o de NinjaTrader Brokerage y tus operaciones de futuros se sincronizan solas, sin instalar nada. Ambas son la misma cuenta por detrás: las conexiones abiertas desde cualquiera de los dos botones aparecen aquí. Tus credenciales están cifradas (AES-256) y la sincronización se ejecuta en nuestros servidores cada hora.",
-  "sync_tradovate_add": "Conectar Tradovate",
+  "sync_tradovate_add": "Usar una clave API en su lugar",
   "sync_oauth_title": "Conectar con tu login",
   "sync_oauth_desc": "Te identificas en la ventana de la plataforma que ya usas. Sin add-on de API que comprar, sin clave que generar y sin saldo mínimo. Tradovate y NinjaTrader Brokerage son la misma cuenta: cualquiera de los dos botones funciona. Solo leemos tus órdenes ejecutadas y tu saldo, y nunca enviamos órdenes.",
   "sync_oauth_cta": "Continuar a {brand}",
