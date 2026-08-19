@@ -508,6 +508,31 @@ export default function SettingsPage() {
       </div>
 
       {/* MetaTrader sync token */}
+      {/* Rail futures par simple login, en tête : c'est le seul qui ne demande
+          rien à installer, et celui qui sert les traders de prop firm (Apex,
+          Topstep), notre public futures principal.
+          L'AddOn le suit immédiatement, parce qu'il traite le cas voisin :
+          la plateforme NinjaTrader avec un compte tenu chez un autre courtier. */}
+      {plan === "premium" && (
+        <>
+          <TradovateConnect />
+
+          <SyncPlatformCard
+            platform="ninjatrader"
+            title={t("sync_ninja_title")}
+            desc={t("sync_ninja_desc")}
+            downloadHref="/TradeDiscipline_NinjaTrader.cs"
+            downloadLabel="NinjaTrader AddOn (.cs)"
+            tokenNote={t("sync_ninja_token_note")}
+            guideTitle={t("sync_ninja_guide_title")}
+          />
+
+          {/* Mention de marque exigée par le NinjaTrader Vendor Program : ces
+              deux sections nomment la plateforme NinjaTrader et Tradovate. */}
+          <TrademarkNotice className="px-1" />
+        </>
+      )}
+
       <section id="metatrader" className="bg-card border border-border rounded-xl p-5 scroll-mt-6">
         <h2 className="text-lg font-semibold text-foreground mb-1">{t("sync_mt_title")}</h2>
         <p className="text-muted text-sm mb-4">{t("sync_mt_desc")}</p>
@@ -624,7 +649,8 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Additional sync platforms — premium only (reuse the universal token above) */}
+      {/* Rails push restants. Ils viennent après MetaTrader parce qu'ils
+          réutilisent le même token de synchronisation, généré dans sa section. */}
       {plan === "premium" && (
         <>
           <SyncPlatformCard
@@ -637,23 +663,7 @@ export default function SettingsPage() {
             guideTitle={t("sync_ctrader_guide_title")}
           />
 
-          <SyncPlatformCard
-            platform="ninjatrader"
-            title={t("sync_ninja_title")}
-            desc={t("sync_ninja_desc")}
-            downloadHref="/TradeDiscipline_NinjaTrader.cs"
-            downloadLabel="NinjaTrader AddOn (.cs)"
-            tokenNote={t("sync_ninja_token_note")}
-            guideTitle={t("sync_ninja_guide_title")}
-          />
-
           <TradingViewCard token={mtToken} />
-
-          <TradovateConnect />
-
-          {/* Mention de marque exigée par le NinjaTrader Vendor Program : cette
-              section nomme la plateforme NinjaTrader (add-on) et Tradovate. */}
-          <TrademarkNotice className="px-1" />
         </>
       )}
 
