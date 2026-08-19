@@ -57,6 +57,9 @@ import type { TradovateEnvironment } from "./tradovate";
  */
 export type BrokerBrand = "tradovate" | "ninjatrader";
 
+/** Les deux portes d'entrée, source unique pour les URL et les libellés. */
+export const BRANDS: readonly BrokerBrand[] = ["tradovate", "ninjatrader"];
+
 /**
  * Écran de consentement. L'hôte ne dépend QUE de la marque, jamais de
  * l'environnement : c'est le `client_id` qui détermine si la session ouverte
@@ -156,6 +159,34 @@ export const OAUTH_STATE_COOKIE = "tradovate_oauth_state";
  */
 export function callbackUrl(): string {
   return `${SITE_URL.replace(/\/$/, "")}/api/broker/tradovate/oauth/callback`;
+}
+
+/**
+ * Libellé d'une connexion ouverte par OAuth.
+ *
+ * Il suit la marque sur laquelle le trader a cliqué : quelqu'un qui vient de
+ * s'identifier sur un écran NinjaTrader ne doit pas voir une ligne
+ * « Tradovate » apparaître, il croirait avoir connecté autre chose.
+ */
+export function oauthConnectionLabel(env: TradovateEnvironment, brand: BrokerBrand): string {
+  const name = brand === "ninjatrader" ? "NinjaTrader" : "Tradovate";
+  return env === "demo" ? `${name} (démo)` : name;
+}
+
+/**
+ * Tous les libellés qu'une connexion OAuth peut porter sur un environnement.
+ *
+ * ⚠️ SERT À NE PAS DUPLIQUER UN COMPTE. Tradovate et NinjaTrader sont le même
+ * compte, mais la contrainte d'unicité de `broker_connections` porte sur le
+ * libellé : sans cette liste, essayer le second bouton créait une seconde ligne
+ * pour le même compte. Le callback s'en sert pour retrouver la connexion
+ * existante, quelle que soit la porte utilisée la fois précédente.
+ *
+ * Une connexion par clé API, dont le trader choisit le nom, ne figure jamais
+ * ici : elle ne doit pas être écrasée.
+ */
+export function oauthConnectionLabels(env: TradovateEnvironment): string[] {
+  return BRANDS.map((brand) => oauthConnectionLabel(env, brand));
 }
 
 export function oauthConfigured(): boolean {

@@ -7,7 +7,10 @@ import {
   exchangeCode,
   isOAuthCredentials,
   oauthConfigured,
+  oauthConnectionLabel,
+  oauthConnectionLabels,
   refreshTokenExpired,
+  BRANDS,
   type TradovateOAuthTokens,
 } from "./tradovate-oauth";
 
@@ -296,5 +299,47 @@ describe("marque de l'écran de consentement", () => {
     for (const key of ["response_type", "client_id", "redirect_uri", "state"]) {
       expect(b.get(key)).toBe(a.get(key));
     }
+  });
+});
+
+/**
+ * Libellés de connexion.
+ *
+ * ⚠️ CE BLOC EXISTE PARCE QUE LE DÉFAUT A ÉTÉ LIVRÉ. Tradovate et NinjaTrader
+ * sont le même compte, mais la contrainte d'unicité de `broker_connections`
+ * porte sur le libellé. Essayer le second bouton créait donc une SECONDE ligne
+ * pour le même compte, qui se synchronisait en double. Constaté le 2026-08-19 :
+ * trois connexions pour un seul compte de démo.
+ *
+ * L'invariant qui empêche le retour du défaut n'est pas la valeur des libellés,
+ * c'est leur cohérence : tout libellé que le callback ÉCRIT doit être un
+ * libellé qu'il sait RETROUVER.
+ */
+describe("libellés de connexion OAuth", () => {
+  it("suit la marque sur laquelle le trader a cliqué", () => {
+    expect(oauthConnectionLabel("live", "tradovate")).toBe("Tradovate");
+    expect(oauthConnectionLabel("demo", "tradovate")).toBe("Tradovate (démo)");
+    expect(oauthConnectionLabel("live", "ninjatrader")).toBe("NinjaTrader");
+    expect(oauthConnectionLabel("demo", "ninjatrader")).toBe("NinjaTrader (démo)");
+  });
+
+  it("reconnaît TOUT libellé qu'il produit, sur les deux environnements", () => {
+    // C'est l'invariant qui compte. Ajouter une marque sans l'ajouter à la
+    // liste ferait revenir les doublons, en silence, chez tous ceux qui
+    // essaient les deux boutons.
+    for (const env of ["demo", "live"] as const) {
+      const known = oauthConnectionLabels(env);
+      for (const brand of BRANDS) {
+        expect(known).toContain(oauthConnectionLabel(env, brand));
+      }
+      expect(known).toHaveLength(BRANDS.length);
+    }
+  });
+
+  it("ne confond pas les environnements", () => {
+    // Retrouver une connexion démo à partir des libellés live effacerait la
+    // mauvaise ligne, et le trader perdrait sa connexion réelle.
+    expect(oauthConnectionLabels("live")).not.toContain("Tradovate (démo)");
+    expect(oauthConnectionLabels("demo")).not.toContain("Tradovate");
   });
 });

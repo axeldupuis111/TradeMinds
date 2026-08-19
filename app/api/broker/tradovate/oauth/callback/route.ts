@@ -3,7 +3,13 @@ import { requireAuth } from "@/lib/api-auth";
 import { createClient } from "@/lib/supabase/server";
 import { encrypt } from "@/lib/crypto/encryption";
 import { SITE_URL } from "@/lib/seo";
-import { OAUTH_STATE_COOKIE, callbackUrl, exchangeCode } from "@/lib/sync/tradovate-oauth";
+import {
+  OAUTH_STATE_COOKIE,
+  callbackUrl,
+  exchangeCode,
+  oauthConnectionLabel,
+  oauthConnectionLabels,
+} from "@/lib/sync/tradovate-oauth";
 
 /**
  * Retour de l'écran de consentement Tradovate : on échange le code contre des
@@ -57,37 +63,56 @@ export async function GET(req: NextRequest) {
   //
   // Le repli couvre les parcours ouverts avant l'ajout de la marque, dont le
   // state ne portait que l'environnement.
-  const brandLabel = parts.includes("ninjatrader") ? "NinjaTrader" : "Tradovate";
+  const brand = parts.includes("ninjatrader") ? "ninjatrader" : "tradovate";
 
   try {
     const tokens = await exchangeCode({ code, redirectUri: callbackUrl(), env });
 
     const supabase = createClient();
-    // Une seule connexion OAuth par environnement ET par marque : reconnecter
-    // remplace les jetons au lieu d'empiler des lignes que le trader ne
-    // distingue pas.
+
+    // ⚠️ UNE SEULE CONNEXION PAR ENVIRONNEMENT, QUELLE QUE SOIT LA PORTE.
     //
-    // Conséquence assumée : quelqu'un qui clique successivement sur les deux
-    // boutons obtient deux lignes pour un seul compte, la clé d'unicité portant
-    // sur le libellé. Les trades ne se dupliquent pas pour autant, la déduplication
-    // se faisant sur `source` + `external_id` ; c'est seulement une synchro
-    // redondante. Rendre cela impossible demanderait une migration de la
-    // contrainte, ce qui ne se justifie pas pour un cas de figure aussi rare.
-    const label = env === "demo" ? `${brandLabel} (démo)` : brandLabel;
-    const { error } = await supabase
+    // Tradovate et NinjaTrader sont le même compte. La contrainte d'unicité
+    // porte sur le libellé, or « Tradovate (démo) » et « NinjaTrader (démo) »
+    // en sont deux : un `upsert` créait donc une seconde ligne pour le même
+    // compte dès qu'on essayait l'autre bouton. Ce n'est pas un cas rare, c'est
+    // ce que fait le premier utilisateur qui découvre les deux.
+    //
+    // On cherche donc d'abord une connexion OAuth existante sur cet
+    // environnement, sans regarder la marque, et on la remplace. Les libellés
+    // testés sont exactement ceux que cette route écrit : une connexion par clé
+    // API, nommée librement par le trader, n'est jamais touchée.
+    const label = oauthConnectionLabel(env, brand);
+
+    const { data: existing } = await supabase
       .from("broker_connections")
-      .upsert(
-        {
-          user_id: auth.userId,
-          broker: "tradovate",
-          label,
-          environment: env,
-          credentials_encrypted: encrypt(JSON.stringify(tokens)),
-          status: "active",
-          last_error: null,
-        },
-        { onConflict: "user_id,broker,label" },
-      );
+      .select("id")
+      .eq("user_id", auth.userId)
+      .eq("broker", "tradovate")
+      .eq("environment", env)
+      .in("label", oauthConnectionLabels(env))
+      .limit(1)
+      .maybeSingle();
+
+    const row = {
+      user_id: auth.userId,
+      broker: "tradovate",
+      label,
+      environment: env,
+      credentials_encrypted: encrypt(JSON.stringify(tokens)),
+      status: "active",
+      last_error: null,
+    };
+
+    // Le libellé suit la marque du dernier parcours : reconnecter depuis
+    // NinjaTrader renomme la ligne, plutôt que d'en ajouter une.
+    const { error } = existing
+      ? await supabase
+          .from("broker_connections")
+          .update(row)
+          .eq("id", existing.id)
+          .eq("user_id", auth.userId)
+      : await supabase.from("broker_connections").insert(row);
 
     if (error) {
       console.error("[Tradovate OAuth] upsert:", error.message);
