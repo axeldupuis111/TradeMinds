@@ -3,10 +3,29 @@ import type { GuideContent } from "./types";
 // Rail push NinjaTrader 8 (AddOn). Deux pièges : le token se colle dans le
 // fichier AVANT compilation (pas dans une fenêtre de paramètres), et l'éditeur
 // NinjaScript pré-remplit un squelette qu'il faut effacer.
+//
+// ⚠️ CE N'EST PLUS LE CHEMIN PRINCIPAL POUR LA PLUPART DES UTILISATEURS.
+//
+// Vérifié le 2026-08-19 : web.ninjatrader.com sert le MÊME build que
+// trader.tradovate.com, six fichiers d'actifs partageant des empreintes de
+// contenu identiques. Et le même compte s'y connecte : nos identifiants
+// Tradovate ouvrent la session NinjaTrader, sur le même numéro de compte, le
+// même solde et le même P&L. NinjaTrader Brokerage et Tradovate sont un seul
+// compte avec deux portes d'entrée.
+//
+// Conséquence : ces utilisateurs, prop firms sur Tradovate comprises (Apex,
+// Topstep), passent par le bouton OAuth de la carte Tradovate. Un clic, rien à
+// installer, rien à compiler, et surtout pas de vérification d'identité, mur
+// sur lequel bute quiconque tente d'installer la plateforme de bureau.
+//
+// L'AddOn reste nécessaire pour les comptes qui NE sont PAS sur ce socle : la
+// plateforme NinjaTrader connectée à un autre courtier. D'où le premier
+// prérequis ci-dessous, qui doit rester en tête de liste.
 
 const guide: GuideContent = {
   fr: {
     before: [
+      "AVANT DE COMMENCER, VÉRIFIE SI TU EN AS BESOIN : si ton compte est un compte NinjaTrader Brokerage, ou une prop firm qui passe par Tradovate (Apex, Topstep et la plupart des autres), n'installe rien. Utilise « Se connecter avec son login Tradovate » dans la section Tradovate ci-dessous : c'est le même compte, et il n'y a qu'un bouton à cliquer. Ce guide ne concerne que les comptes NinjaTrader tenus par un AUTRE courtier.",
       "NinjaTrader 8 installé et connecté à ton compte (NinjaTrader 7 n'est pas compatible).",
       "Adapté aux comptes futures et aux prop firms qui passent par NinjaTrader (Apex, Topstep et autres).",
       "Particularité : ici le token se colle dans le fichier avant de compiler, il n'y a pas de fenêtre de paramètres.",
@@ -77,6 +96,7 @@ const guide: GuideContent = {
 
   en: {
     before: [
+      "BEFORE YOU START, CHECK WHETHER YOU NEED THIS: if your account is a NinjaTrader Brokerage account, or a prop firm running on Tradovate (Apex, Topstep and most others), install nothing. Use “Connect with your Tradovate login” in the Tradovate section below: it is the same account, and it takes one click. This guide only covers NinjaTrader accounts held with a DIFFERENT broker.",
       "NinjaTrader 8 installed and connected to your account (NinjaTrader 7 is not supported).",
       "Suited to futures accounts and prop firms running on NinjaTrader (Apex, Topstep and others).",
       "One specificity: here the token goes inside the file before compiling, there is no parameters window.",
@@ -147,6 +167,7 @@ const guide: GuideContent = {
 
   es: {
     before: [
+      "ANTES DE EMPEZAR, COMPRUEBA SI LO NECESITAS: si tu cuenta es de NinjaTrader Brokerage, o de una prop firm que funciona sobre Tradovate (Apex, Topstep y la mayoría), no instales nada. Usa « Conectar con tu login de Tradovate » en la sección Tradovate: es la misma cuenta y basta un clic. Esta guía solo cubre cuentas de NinjaTrader con OTRO bróker.",
       "NinjaTrader 8 instalado y conectado a tu cuenta (NinjaTrader 7 no es compatible).",
       "Pensado para cuentas de futuros y prop firms que funcionan con NinjaTrader (Apex, Topstep y otras).",
       "Particularidad: aquí el token se pega dentro del archivo antes de compilar, no hay ventana de parámetros.",
@@ -217,6 +238,7 @@ const guide: GuideContent = {
 
   de: {
     before: [
+      "PRÜFE ZUERST, OB DU DAS ÜBERHAUPT BRAUCHST: Wenn dein Konto ein NinjaTrader-Brokerage-Konto ist oder zu einer Prop Firm auf Tradovate gehört (Apex, Topstep und die meisten anderen), installiere nichts. Nutze « Mit deinem Tradovate-Login verbinden » im Tradovate-Abschnitt: es ist dasselbe Konto und kostet einen Klick. Diese Anleitung gilt nur für NinjaTrader-Konten bei einem ANDEREN Broker.",
       "NinjaTrader 8 installiert und mit deinem Konto verbunden (NinjaTrader 7 wird nicht unterstützt).",
       "Gedacht für Futures-Konten und Prop Firms, die über NinjaTrader laufen (Apex, Topstep und andere).",
       "Besonderheit: Der Token wird hier vor dem Kompilieren in die Datei eingefügt, es gibt kein Parameterfenster.",
