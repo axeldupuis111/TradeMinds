@@ -43,10 +43,30 @@ import { SITE_URL } from "@/lib/seo";
 import type { TradovateEnvironment } from "./tradovate";
 
 /**
- * Écran de consentement. Hôte unique, quel que soit l'environnement : c'est le
- * `client_id` qui détermine si la session ouverte est démo ou réelle.
+ * Marque de l'écran de consentement.
+ *
+ * NinjaTrader Brokerage et Tradovate sont UN SEUL COMPTE avec deux portes
+ * d'entrée : vérifié le 2026-08-19, les mêmes identifiants ouvrent les deux
+ * sites, sur le même numéro de compte et le même solde, et les deux servent le
+ * même build (empreintes d'actifs identiques).
+ *
+ * Le backend étant commun, seul l'habillage change. On envoie donc chacun chez
+ * lui : un utilisateur NinjaTrader qui atterrirait sur une page Tradovate
+ * croirait s'être trompé de bouton, et abandonnerait au moment précis où on lui
+ * demande son mot de passe.
  */
-const AUTH_URL = "https://trader.tradovate.com/oauth";
+export type BrokerBrand = "tradovate" | "ninjatrader";
+
+/**
+ * Écran de consentement. L'hôte ne dépend QUE de la marque, jamais de
+ * l'environnement : c'est le `client_id` qui détermine si la session ouverte
+ * est démo ou réelle. L'échange de jetons, lui, reste sur *.tradovateapi.com
+ * dans les deux cas, puisque c'est le même backend.
+ */
+const AUTH_URLS: Record<BrokerBrand, string> = {
+  tradovate: "https://trader.tradovate.com/oauth",
+  ninjatrader: "https://web.ninjatrader.com/oauth",
+};
 
 /**
  * LE CHEMIN ET L'ENCODAGE DU POINT DE TERMINAISON DE JETONS.
@@ -183,6 +203,8 @@ export function refreshTokenExpired(t: TradovateOAuthTokens, now = Date.now()): 
 export function buildAuthorizeUrl(params: {
   redirectUri: string;
   state: string;
+  /** Habillage de l'écran de consentement. Défaut : Tradovate. */
+  brand?: BrokerBrand;
 }): string {
   const clientId = process.env.TRADOVATE_CLIENT_ID;
   if (!clientId) throw new Error("TRADOVATE_CLIENT_ID absent : identifiants partenaires non reçus.");
@@ -192,7 +214,7 @@ export function buildAuthorizeUrl(params: {
     redirect_uri: params.redirectUri,
     state: params.state,
   });
-  return `${AUTH_URL}?${q.toString()}`;
+  return `${AUTH_URLS[params.brand ?? "tradovate"]}?${q.toString()}`;
 }
 
 interface RawTokenResponse {

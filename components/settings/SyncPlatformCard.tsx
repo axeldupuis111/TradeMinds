@@ -1,6 +1,7 @@
 "use client";
 
 import SyncGuide from "./SyncGuide";
+import BrokerOAuthBox from "./BrokerOAuthBox";
 import type { SyncPlatform } from "@/lib/sync-guides";
 
 interface Props {
@@ -49,6 +50,14 @@ export default function SyncPlatformCard({
       </a>
 
       <p className="text-xs text-muted mt-3">{tokenNote}</p>
+
+      {/* NinjaTrader Brokerage et Tradovate sont un seul compte : la plupart de
+          ces utilisateurs n'ont donc rien à installer. Le bouton passe devant
+          l'add-on, qui ne sert plus qu'aux comptes tenus par un autre courtier
+          et dont l'installation exige une vérification d'identité complète. */}
+      {platform === "ninjatrader" && (
+        <BrokerOAuthBox brand="ninjatrader" brandLabel="NinjaTrader" />
+      )}
 
       <SyncGuide platform={platform} title={guideTitle} />
     </section>

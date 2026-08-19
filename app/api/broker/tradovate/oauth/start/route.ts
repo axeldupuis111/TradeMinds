@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
 import { requireAuth } from "@/lib/api-auth";
-import { OAUTH_STATE_COOKIE, buildAuthorizeUrl, callbackUrl, oauthConfigured } from "@/lib/sync/tradovate-oauth";
+import {
+  OAUTH_STATE_COOKIE,
+  buildAuthorizeUrl,
+  callbackUrl,
+  oauthConfigured,
+  type BrokerBrand,
+} from "@/lib/sync/tradovate-oauth";
 
 /**
  * Départ du parcours OAuth : redirige le trader vers l'écran de consentement
@@ -35,8 +41,14 @@ export async function GET(req: NextRequest) {
   // Il porte aussi l'environnement, que le callback ne peut pas deviner.
   const state = `${randomBytes(24).toString("hex")}.${env}`;
 
+  // La marque ne change QUE l'habillage de l'écran de consentement : même
+  // compte, même backend. Un utilisateur NinjaTrader envoyé sur une page
+  // Tradovate croirait s'être trompé de bouton.
+  const brand: BrokerBrand =
+    req.nextUrl.searchParams.get("brand") === "ninjatrader" ? "ninjatrader" : "tradovate";
+
   const res = NextResponse.redirect(
-    buildAuthorizeUrl({ redirectUri: callbackUrl(), state }),
+    buildAuthorizeUrl({ redirectUri: callbackUrl(), state, brand }),
   );
   res.cookies.set(OAUTH_STATE_COOKIE, state, {
     httpOnly: true,

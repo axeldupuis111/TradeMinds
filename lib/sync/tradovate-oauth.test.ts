@@ -254,3 +254,47 @@ describe("échange du code contre des jetons", () => {
     expect(calls[0].url).toBe("https://live.tradovateapi.com/v1/auth/oauthtoken");
   });
 });
+
+/**
+ * Marque de l'écran de consentement.
+ *
+ * NinjaTrader Brokerage et Tradovate sont un seul compte avec deux portes
+ * d'entrée, vérifié le 2026-08-19. Seul l'habillage change, jamais le compte ni
+ * le backend. Un utilisateur NinjaTrader envoyé sur une page Tradovate croirait
+ * s'être trompé de bouton, et abandonnerait au moment précis où on lui demande
+ * son mot de passe.
+ */
+describe("marque de l'écran de consentement", () => {
+  const OLD = process.env.TRADOVATE_CLIENT_ID;
+  beforeEach(() => { process.env.TRADOVATE_CLIENT_ID = "42"; });
+  afterEach(() => {
+    if (OLD === undefined) delete process.env.TRADOVATE_CLIENT_ID;
+    else process.env.TRADOVATE_CLIENT_ID = OLD;
+  });
+
+  it("envoie chacun chez lui", () => {
+    const nt = new URL(buildAuthorizeUrl({ redirectUri: "https://x.app/cb", state: "s", brand: "ninjatrader" }));
+    expect(nt.origin + nt.pathname).toBe("https://web.ninjatrader.com/oauth");
+
+    const tv = new URL(buildAuthorizeUrl({ redirectUri: "https://x.app/cb", state: "s", brand: "tradovate" }));
+    expect(tv.origin + tv.pathname).toBe("https://trader.tradovate.com/oauth");
+  });
+
+  it("retombe sur Tradovate quand la marque n'est pas précisée", () => {
+    const u = new URL(buildAuthorizeUrl({ redirectUri: "https://x.app/cb", state: "s" }));
+    expect(u.origin + u.pathname).toBe("https://trader.tradovate.com/oauth");
+  });
+
+  it("ne change RIEN d'autre que l'hôte", () => {
+    // Même client_id, même redirect_uri, même state : c'est le même compte et
+    // le même échange de jetons derrière. Si un jour ces valeurs divergeaient
+    // par marque, le callback ne saurait plus quoi vérifier.
+    const q = (brand: "tradovate" | "ninjatrader") =>
+      new URL(buildAuthorizeUrl({ redirectUri: "https://x.app/cb", state: "abc.demo", brand })).searchParams;
+    const a = q("tradovate");
+    const b = q("ninjatrader");
+    for (const key of ["response_type", "client_id", "redirect_uri", "state"]) {
+      expect(b.get(key)).toBe(a.get(key));
+    }
+  });
+});
