@@ -185,6 +185,13 @@ export default function TradovateConnect() {
       <h2 className="text-lg font-semibold text-foreground mb-1">{t("sync_tradovate_title")}</h2>
       <p className="text-muted text-sm mb-4">{t("sync_tradovate_desc")}</p>
 
+      {/* En tête de section : c'est l'action, la liste en dessous n'est que
+          l'état. Les deux boutons mènent au même rail, seul l'écran de
+          consentement change de marque. */}
+      <div className="mb-4">
+        <BrokerOAuthBox />
+      </div>
+
       {loading ? (
         <div className="skeleton h-10 w-full rounded-lg" />
       ) : (
@@ -361,8 +368,6 @@ export default function TradovateConnect() {
               {t("sync_tradovate_add")}
             </button>
           )}
-
-          <BrokerOAuthBox brand="tradovate" brandLabel="Tradovate" />
 
           <SyncGuide platform="tradovate" title={t("sync_tradovate_guide_title")} />
         </>

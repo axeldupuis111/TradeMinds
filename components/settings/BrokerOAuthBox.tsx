@@ -1,34 +1,33 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { useLanguage } from "@/lib/LanguageContext";
 
-interface Props {
-  /**
-   * Habillage de l'écran de consentement. Ne change ni le compte, ni le
-   * backend, ni les jetons : uniquement la marque que voit le trader.
-   */
-  brand: "tradovate" | "ninjatrader";
-  /** Nom affiché de la marque, tel qu'elle l'écrit elle-même. */
-  brandLabel: string;
-  /** Lien de repli sous le bouton, propre à chaque rail. */
-  children?: ReactNode;
-}
+/** Portes d'entrée du rail. Même compte, même backend, même liste. */
+const BRANDS = [
+  { brand: "tradovate", label: "Tradovate" },
+  { brand: "ninjatrader", label: "NinjaTrader" },
+] as const;
 
 /**
- * Connexion d'un compte par simple login, sans clé API.
+ * Connexion d'un compte futures par simple login, sans clé API.
  *
- * ⚠️ POURQUOI CE COMPOSANT EST PARTAGÉ. NinjaTrader Brokerage et Tradovate sont
- * UN SEUL COMPTE avec deux portes d'entrée : vérifié le 2026-08-19, les mêmes
+ * ⚠️ UN SEUL ENCADRÉ, DEUX BOUTONS. NinjaTrader Brokerage et Tradovate sont un
+ * seul compte avec deux portes d'entrée : vérifié le 2026-08-19, les mêmes
  * identifiants ouvrent les deux sites, sur le même numéro de compte et le même
  * solde, et les deux servent le même build.
  *
- * Un utilisateur NinjaTrader n'a donc rien à installer, alors que notre guide
- * lui demandait de compiler du C# et que la plateforme de bureau exige une
- * vérification d'identité complète. Il lui fallait juste un bouton portant le
- * nom qu'il reconnaît, envoyant vers l'écran de consentement à ses couleurs.
+ * La première version posait cet encadré dans chaque carte, avec une marque par
+ * carte. Les connexions atterrissaient malgré tout dans une liste unique, celle
+ * du rail, et l'utilisateur les cherchait sous le bouton qu'il venait de
+ * cliquer. On a d'abord ajouté une phrase pour dire où regarder ; c'était
+ * traiter le symptôme. Un seul endroit pour se connecter et pour gérer ses
+ * connexions supprime la question.
+ *
+ * Les deux boutons restent distincts parce que l'écran de consentement, lui,
+ * porte bien deux marques : chacun s'identifie sur le site qu'il connaît.
  */
-export default function BrokerOAuthBox({ brand, brandLabel, children }: Props) {
+export default function BrokerOAuthBox() {
   const { t } = useLanguage();
   // Les identifiants partenaires vivent côté serveur : le client ne peut pas
   // les lire, et proposer un bouton sans eux mènerait à « client_id inconnu ».
@@ -43,8 +42,8 @@ export default function BrokerOAuthBox({ brand, brandLabel, children }: Props) {
         if (!cancelled && d) setAvailable(Boolean(d.tradovateOAuth));
       })
       .catch(() => {
-        // Silencieux : l'encadré reste masqué, l'utilisateur garde le chemin
-        // classique décrit juste en dessous.
+        // Silencieux : l'encadré reste masqué et l'utilisateur garde le chemin
+        // par clé API décrit en dessous.
       });
     return () => {
       cancelled = true;
@@ -53,37 +52,29 @@ export default function BrokerOAuthBox({ brand, brandLabel, children }: Props) {
 
   if (!available) return null;
 
-  const label = (key: string) => t(key).replace("{brand}", brandLabel);
-
   return (
-    <div className="mt-4 space-y-3">
-      <div className="rounded-xl border border-accent/30 bg-accent/5 p-4">
-        <p className="text-sm font-semibold text-foreground">{label("sync_oauth_title")}</p>
-        <p className="mt-1 text-xs text-foreground-muted leading-relaxed">
-          {label("sync_oauth_desc")}
-        </p>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <select
-            value={environment}
-            onChange={(e) => setEnvironment(e.target.value as "demo" | "live")}
-            className="px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-accent"
-          >
-            <option value="live">{t("sync_tradovate_env_live")}</option>
-            <option value="demo">{t("sync_tradovate_env_demo")}</option>
-          </select>
+    <div className="rounded-xl border border-accent/30 bg-accent/5 p-4">
+      <p className="text-sm font-semibold text-foreground">{t("sync_oauth_title")}</p>
+      <p className="mt-1 text-xs text-foreground-muted leading-relaxed">{t("sync_oauth_desc")}</p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <select
+          value={environment}
+          onChange={(e) => setEnvironment(e.target.value as "demo" | "live")}
+          className="px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-accent"
+        >
+          <option value="live">{t("sync_tradovate_env_live")}</option>
+          <option value="demo">{t("sync_tradovate_env_demo")}</option>
+        </select>
+        {BRANDS.map(({ brand, label }) => (
           <a
+            key={brand}
             href={`/api/broker/tradovate/oauth/start?environment=${environment}&brand=${brand}`}
             className="px-5 py-2.5 rounded-lg bg-accent text-on-accent font-medium text-sm hover:bg-accent-hover transition-colors"
           >
-            {label("sync_oauth_cta")}
+            {t("sync_oauth_cta").replace("{brand}", label)}
           </a>
-        </div>
+        ))}
       </div>
-      {/* Dit où la connexion va apparaître. Les deux boutons alimentent le même
-          rail : sans cette phrase, un utilisateur NinjaTrader cherche sa
-          connexion sous son bouton et ne l'y trouve pas. */}
-      <p className="text-xs text-foreground-muted">{t("sync_oauth_where")}</p>
-      {children}
     </div>
   );
 }
