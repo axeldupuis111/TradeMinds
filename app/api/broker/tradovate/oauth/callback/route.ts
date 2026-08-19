@@ -44,17 +44,36 @@ export async function GET(req: NextRequest) {
     return back(req, { tradovate: "state_mismatch" });
   }
 
-  // L'environnement voyage dans le state : le callback ne peut pas le deviner,
-  // et le lire depuis l'URL le rendrait falsifiable.
-  const env = state.endsWith(".demo") ? "demo" : "live";
+  // L'environnement et la marque voyagent dans le state : le callback ne peut
+  // pas les deviner, et les lire depuis l'URL les rendrait falsifiables.
+  const parts = state.split(".");
+  const env = parts.includes("demo") ? "demo" : "live";
+
+  // ⚠️ Le libellé suit la marque sur laquelle le trader a cliqué, pas le nom du
+  // backend. NinjaTrader Brokerage et Tradovate sont un seul compte, mais
+  // quelqu'un qui vient de s'identifier sur un écran NinjaTrader ne doit pas
+  // voir apparaître une ligne « Tradovate » dans sa liste : il croirait avoir
+  // connecté autre chose que ce qu'il visait.
+  //
+  // Le repli couvre les parcours ouverts avant l'ajout de la marque, dont le
+  // state ne portait que l'environnement.
+  const brandLabel = parts.includes("ninjatrader") ? "NinjaTrader" : "Tradovate";
 
   try {
     const tokens = await exchangeCode({ code, redirectUri: callbackUrl(), env });
 
     const supabase = createClient();
-    // Une seule connexion OAuth par environnement : reconnecter remplace les
-    // jetons au lieu d'empiler des lignes que le trader ne distingue pas.
-    const label = env === "demo" ? "Tradovate (démo)" : "Tradovate";
+    // Une seule connexion OAuth par environnement ET par marque : reconnecter
+    // remplace les jetons au lieu d'empiler des lignes que le trader ne
+    // distingue pas.
+    //
+    // Conséquence assumée : quelqu'un qui clique successivement sur les deux
+    // boutons obtient deux lignes pour un seul compte, la clé d'unicité portant
+    // sur le libellé. Les trades ne se dupliquent pas pour autant, la déduplication
+    // se faisant sur `source` + `external_id` ; c'est seulement une synchro
+    // redondante. Rendre cela impossible demanderait une migration de la
+    // contrainte, ce qui ne se justifie pas pour un cas de figure aussi rare.
+    const label = env === "demo" ? `${brandLabel} (démo)` : brandLabel;
     const { error } = await supabase
       .from("broker_connections")
       .upsert(

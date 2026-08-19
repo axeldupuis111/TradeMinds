@@ -36,16 +36,18 @@ export async function GET(req: NextRequest) {
 
   const env = req.nextUrl.searchParams.get("environment") === "demo" ? "demo" : "live";
 
-  // ⚠️ `state` protège du CSRF : sans lui, un tiers peut faire aboutir un
-  // callback et rattacher SON compte Tradovate au journal d'un trader connecté.
-  // Il porte aussi l'environnement, que le callback ne peut pas deviner.
-  const state = `${randomBytes(24).toString("hex")}.${env}`;
-
-  // La marque ne change QUE l'habillage de l'écran de consentement : même
-  // compte, même backend. Un utilisateur NinjaTrader envoyé sur une page
-  // Tradovate croirait s'être trompé de bouton.
+  // La marque ne change QUE l'habillage de l'écran de consentement et le
+  // libellé de la connexion : même compte, même backend, mêmes jetons.
   const brand: BrokerBrand =
     req.nextUrl.searchParams.get("brand") === "ninjatrader" ? "ninjatrader" : "tradovate";
+
+  // ⚠️ `state` protège du CSRF : sans lui, un tiers peut faire aboutir un
+  // callback et rattacher SON compte au journal d'un trader connecté.
+  //
+  // Il transporte aussi l'environnement et la marque, que le callback ne peut
+  // pas deviner. Les lire depuis l'URL du retour les rendrait falsifiables ;
+  // ici ils sont comparés au cookie httpOnly posé juste en dessous.
+  const state = `${randomBytes(24).toString("hex")}.${env}.${brand}`;
 
   const res = NextResponse.redirect(
     buildAuthorizeUrl({ redirectUri: callbackUrl(), state, brand }),
