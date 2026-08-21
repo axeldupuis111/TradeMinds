@@ -22,6 +22,7 @@ describe("textes d'avertissement", () => {
     for (const lang of LANGS) {
       const d = getDisclosures(lang);
       expect(d.heading.length, lang).toBeGreaterThan(0);
+      expect(d.scope.length, lang).toBeGreaterThan(100);
       expect(d.risk.length, lang).toBeGreaterThan(200);
       expect(d.hypothetical.length, lang).toBeGreaterThan(500);
       expect(d.testimonials.length, lang).toBeGreaterThan(50);
@@ -38,6 +39,21 @@ describe("textes d'avertissement", () => {
     expect(disclosures.en.risk).toContain(
       "Past performance is not necessarily indicative of future results.",
     );
+  });
+
+  it("nomme d'autres instruments que les futures et le forex", () => {
+    // Le texte de l'annexe A ne parle que de deux marches parce qu'il est ecrit
+    // par un courtier en futures. Le produit s'adresse a tous les traders : si
+    // cette phrase disparait, le pied de page se remet a decrire de travers a
+    // qui on s'adresse.
+    expect(disclosures.fr.scope).toContain("actions");
+    expect(disclosures.fr.scope).toContain("crypto-actifs");
+    expect(disclosures.en.scope).toContain("stocks");
+    expect(disclosures.en.scope).toContain("crypto-assets");
+    for (const lang of LANGS) {
+      // Et elle ne remplace jamais le texte impose : les deux coexistent.
+      expect(getDisclosures(lang).risk, lang).not.toBe(getDisclosures(lang).scope);
+    }
   });
 
   it("laisse la mention de marque identique dans toutes les langues", () => {
@@ -62,11 +78,13 @@ describe("emails de marque", () => {
     // email ne doit pas pouvoir partir sans, y compris si son auteur l'oublie.
     const html = renderBrandEmail({ heading: "Test" });
     expect(html).toContain(disclosures.en.risk);
+    expect(html).toContain(disclosures.en.scope);
   });
 
   it("suit la langue du destinataire", () => {
     const html = renderBrandEmail({ heading: "Test", lang: "fr" });
     expect(html).toContain(disclosures.fr.risk);
+    expect(html).toContain(disclosures.fr.scope);
     expect(html).not.toContain(disclosures.en.risk);
   });
 });

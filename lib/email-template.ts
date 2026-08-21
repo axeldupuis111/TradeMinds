@@ -102,9 +102,13 @@ export function renderBrandEmail(o: BrandEmailOptions): string {
   // dans chaque route, pour qu'aucun email de marque ne puisse partir sans.
   // MUTED et non FAINT : sur le fond ${CANVAS}, FAINT tombe sous le seuil de
   // lisibilité, et un avertissement illisible ne vaut pas un avertissement.
+  const d = getDisclosures(o.lang ?? "en");
   const riskDisclosure = `
     <p style="color: ${MUTED}; font-size: 11px; line-height: 1.7; margin: 12px 0 0; text-align: left;">
-      ${getDisclosures(o.lang ?? "en").risk}
+      ${d.scope}
+    </p>
+    <p style="color: ${MUTED}; font-size: 11px; line-height: 1.7; margin: 8px 0 0; text-align: left;">
+      ${d.risk}
     </p>`;
 
   return `

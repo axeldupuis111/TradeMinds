@@ -53,10 +53,19 @@ export default function RiskDisclosure({
 
   const body = (
     <div className="space-y-3 text-sm leading-relaxed text-foreground-muted">
+      {/* Notre phrase d'abord (elle couvre tous les instruments), le texte de
+          l'annexe A ensuite et intact. L'ordre compte : le texte imposé ne
+          parle que de futures et de forex, il ne peut pas ouvrir le bloc. */}
       <p>
-        <span className="font-semibold text-foreground">{d.heading} : </span>
-        {d.risk}
+        <span className="font-semibold text-foreground">
+          {d.heading}
+          {/* L'espace avant les deux-points est une convention française : en
+              anglais, allemand et espagnol elle se lit comme une coquille. */}
+          {lang === "fr" ? " : " : ": "}
+        </span>
+        {d.scope}
       </p>
+      <p>{d.risk}</p>
       {hypothetical && <p>{d.hypothetical}</p>}
       {testimonials && <p>{d.testimonials}</p>}
       {trademark && <p>{d.trademark}</p>}

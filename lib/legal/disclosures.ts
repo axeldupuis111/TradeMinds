@@ -29,6 +29,16 @@ import type { Lang } from "@/lib/translations";
 export interface DisclosureSet {
   /** Titre court du bloc de pied de page. */
   heading: string;
+  /**
+   * Phrase à NOUS, posée avant le texte imposé.
+   *
+   * L'annexe A ne parle que de futures et de forex, parce qu'elle est écrite
+   * par un courtier en futures. Nos utilisateurs journalisent aussi des
+   * actions, des indices et des crypto-actifs : le texte imposé, seul, décrit
+   * mal à qui s'adresse le produit. On ne peut pas le modifier, on peut le
+   * précéder.
+   */
+  scope: string;
   /** Avertissement général sur le risque. Obligatoire sur TOUTES les pages. */
   risk: string;
   /**
@@ -52,6 +62,8 @@ const TRADEMARK =
 const disclosures: Record<Lang, DisclosureSet> = {
   en: {
     heading: "Risk disclosure",
+    scope:
+      "TradeDiscipline is a trading journal, a tracking and discipline tool: not a broker, and not an investment adviser. Trading carries a risk of losing your capital whatever the instrument (stocks, indices, commodities, futures, forex, crypto-assets).",
     // Annexe A, « Risk Disclosure Example » — verbatim.
     risk:
       "Futures and forex trading contains substantial risk and is not for every investor. An investor could potentially lose all or more than the initial investment. Risk capital is money that can be lost without jeopardizing ones' financial security or life style. Only risk capital should be used for trading and only those with sufficient risk capital should consider trading. Past performance is not necessarily indicative of future results.",
@@ -66,6 +78,8 @@ const disclosures: Record<Lang, DisclosureSet> = {
 
   fr: {
     heading: "Avertissement sur les risques",
+    scope:
+      "TradeDiscipline est un journal de trading, un outil de suivi et de discipline : ni courtier, ni conseiller en investissement. Le trading comporte un risque de perte en capital quel que soit l'instrument (actions, indices, matières premières, futures, forex, crypto-actifs).",
     risk:
       "Le trading de futures et de forex comporte un risque substantiel et ne convient pas à tous les investisseurs. Un investisseur peut perdre la totalité, voire plus, de son investissement initial. Le capital à risque est de l'argent qui peut être perdu sans compromettre sa sécurité financière ni son niveau de vie. Seul du capital à risque devrait être engagé dans le trading, et seules les personnes disposant d'un capital à risque suffisant devraient envisager de trader. Les performances passées ne préjugent pas nécessairement des résultats futurs.",
     hypothetical:
@@ -77,6 +91,8 @@ const disclosures: Record<Lang, DisclosureSet> = {
 
   es: {
     heading: "Advertencia de riesgo",
+    scope:
+      "TradeDiscipline es un diario de trading, una herramienta de seguimiento y disciplina: ni bróker ni asesor de inversiones. Operar conlleva riesgo de pérdida de capital sea cual sea el instrumento (acciones, índices, materias primas, futuros, forex, criptoactivos).",
     risk:
       "La negociación de futuros y forex conlleva un riesgo sustancial y no es adecuada para todos los inversores. Un inversor podría perder la totalidad de su inversión inicial, o incluso más. El capital de riesgo es dinero que puede perderse sin poner en peligro la seguridad financiera ni el nivel de vida de quien lo arriesga. Solo debería emplearse capital de riesgo para operar, y solo quienes dispongan de capital de riesgo suficiente deberían plantearse operar. Los resultados pasados no son necesariamente indicativos de resultados futuros.",
     hypothetical:
@@ -88,6 +104,8 @@ const disclosures: Record<Lang, DisclosureSet> = {
 
   de: {
     heading: "Risikohinweis",
+    scope:
+      "TradeDiscipline ist ein Handelstagebuch, ein Werkzeug für Nachverfolgung und Disziplin: weder Broker noch Anlageberater. Der Handel birgt das Risiko eines Kapitalverlusts, unabhängig vom Instrument (Aktien, Indizes, Rohstoffe, Futures, Forex, Kryptowerte).",
     risk:
       "Der Handel mit Futures und Forex ist mit erheblichen Risiken verbunden und eignet sich nicht für jeden Anleger. Ein Anleger kann seinen gesamten Einsatz oder mehr als seine ursprüngliche Anlage verlieren. Risikokapital ist Geld, dessen Verlust die finanzielle Sicherheit oder den Lebensstandard nicht gefährdet. Für den Handel sollte ausschließlich Risikokapital eingesetzt werden, und nur wer über ausreichendes Risikokapital verfügt, sollte den Handel in Betracht ziehen. Vergangene Ergebnisse sind nicht zwangsläufig ein Hinweis auf künftige Ergebnisse.",
     hypothetical:
