@@ -3,7 +3,7 @@
 import LanguageSelector from "@/components/LanguageSelector";
 import PasswordRequirements, { isPasswordValid } from "@/components/auth/PasswordRequirements";
 import { useLanguage } from "@/lib/LanguageContext";
-import { authErrorKey } from "@/lib/auth-errors";
+import { authErrorKey, isExistingAccountSignup } from "@/lib/auth-errors";
 import { localizedHref } from "@/lib/locale-href";
 import { createClient } from "@/lib/supabase/client";
 import { Activity } from "lucide-react";
@@ -125,16 +125,24 @@ export default function LoginPage() {
       return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({ email, password });
     setLoading(false);
     if (error) {
       showAuthError(error);
-    } else {
-      setSuccess(t("login_check_email"));
-      // Si le mail n'arrive pas (filtrage iCloud/Outlook), il faut un recours.
-      setNeedsConfirmation(true);
-      setCooldown(RESEND_COOLDOWN_S);
+      return;
     }
+    // Adresse deja inscrite : Supabase repond 200 sans erreur et n'envoie rien
+    // (voir isExistingAccountSignup). Le dire, sinon la personne attend un
+    // email qui ne partira jamais. Cas typique : le compte avait ete cree avec
+    // Google, donc sans mot de passe.
+    if (isExistingAccountSignup(data)) {
+      setError(t("auth_error_email_exists"));
+      return;
+    }
+    setSuccess(t("login_check_email"));
+    // Si le mail n'arrive pas (filtrage iCloud/Outlook), il faut un recours.
+    setNeedsConfirmation(true);
+    setCooldown(RESEND_COOLDOWN_S);
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {

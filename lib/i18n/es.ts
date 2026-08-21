@@ -244,7 +244,7 @@ const dict: Record<string, string> = {
   "login_resend_confirmation": "Reenviar el email de confirmación",
   "login_confirmation_resent": "Correo reenviado. Revisa tu bandeja de entrada, y el spam si no ves nada.",
   "auth_error_invalid_credentials": "Email o contraseña incorrectos.",
-  "auth_error_email_exists": "Ya existe una cuenta con este email. Inicia sesión.",
+  "auth_error_email_exists": "Ya existe una cuenta con este email. Inicia sesión (con Google si así la creaste) o usa «¿Olvidaste tu contraseña?».",
   "auth_error_rate_limited": "Demasiados intentos. Espera unos minutos antes de volver a probar.",
   "auth_error_email_invalid": "Esta dirección de email no es válida.",
   "password_req_length": "Al menos 8 caracteres",

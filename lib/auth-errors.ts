@@ -40,3 +40,20 @@ export function authErrorKey(error: { code?: string; message: string }): string 
   }
   return null;
 }
+
+/**
+ * `signUp` ne renvoie PAS d'erreur quand l'adresse a déjà un compte confirmé :
+ * la protection contre l'énumération des emails fait répondre 200 à Supabase,
+ * avec un utilisateur factice dont la liste d'identités est vide, et aucun
+ * email ne part. Sans ce test, la page annonce « vérifie ton email » pour un
+ * message qui n'arrivera jamais.
+ *
+ * Une adresse existante mais non confirmée est un cas différent : Supabase
+ * renvoie son identité réelle et réexpédie l'email de confirmation. Elle ne
+ * doit donc pas être bloquée.
+ */
+export function isExistingAccountSignup(data: {
+  user?: { identities?: unknown[] | null } | null;
+}): boolean {
+  return Boolean(data.user) && (data.user?.identities?.length ?? 0) === 0;
+}
