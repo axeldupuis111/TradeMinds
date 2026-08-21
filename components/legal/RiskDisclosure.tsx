@@ -1,7 +1,12 @@
 "use client";
 
-import { getDisclosures } from "@/lib/legal/disclosures";
+import {
+  getDisclosures,
+  needsHypotheticalDisclosure,
+} from "@/lib/legal/disclosures";
 import { useLanguage } from "@/lib/LanguageContext";
+import { usePlan } from "@/lib/PlanContext";
+import { usePathname } from "next/navigation";
 
 interface Props {
   /**
@@ -47,7 +52,7 @@ export default function RiskDisclosure({
   const d = getDisclosures(lang);
 
   const body = (
-    <div className="space-y-3 text-xs leading-relaxed text-foreground-muted">
+    <div className="space-y-3 text-sm leading-relaxed text-foreground-muted">
       <p>
         <span className="font-semibold text-foreground">{d.heading} : </span>
         {d.risk}
@@ -83,8 +88,33 @@ export default function RiskDisclosure({
 export function TrademarkNotice({ className = "" }: { className?: string }) {
   const { lang } = useLanguage();
   return (
-    <p className={`text-xs leading-relaxed text-foreground-muted ${className}`}>
+    <p className={`text-sm leading-relaxed text-foreground-muted ${className}`}>
       {getDisclosures(lang).trademark}
     </p>
+  );
+}
+
+/**
+ * Pied de page réglementaire de l'application connectée.
+ *
+ * L'avertissement sur les risques est rendu sur toutes les pages ; celui sur les
+ * performances hypothétiques seulement là où il est dû, c'est-à-dire en mode
+ * démo (tous les chiffres sont fabriqués) ou sur les pages qui affichent une
+ * projection. La règle vit dans `needsHypotheticalDisclosure`, qui est testée.
+ *
+ * Le distinguo n'est pas cosmétique : sous les trades importés d'un
+ * utilisateur, un texte qui commence par « les résultats de performance
+ * hypothétiques » laisse entendre que ses propres chiffres sont simulés.
+ */
+export function DashboardRiskDisclosure({ className = "" }: { className?: string }) {
+  const pathname = usePathname();
+  const { demoMode } = usePlan();
+
+  return (
+    <RiskDisclosure
+      hypothetical={needsHypotheticalDisclosure({ pathname, demoMode })}
+      variant="bare"
+      className={className}
+    />
   );
 }

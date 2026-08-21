@@ -13,7 +13,7 @@ import NewsWindowGuard from "@/components/dashboard/NewsWindowGuard";
 import SignupAttribution from "@/components/dashboard/SignupAttribution";
 import StopTradingGuard from "@/components/dashboard/StopTradingGuard";
 import TimezoneSync from "@/components/dashboard/TimezoneSync";
-import RiskDisclosure from "@/components/legal/RiskDisclosure";
+import { DashboardRiskDisclosure } from "@/components/legal/RiskDisclosure";
 import { SubscriptionBanner } from "@/components/SubscriptionBanner";
 import { FoundingNotif } from "@/components/FoundingNotif";
 import { ActiveAccountProvider } from "@/lib/ActiveAccountContext";
@@ -234,13 +234,10 @@ export default function DashboardLayout({
           {/* Avertissements NinjaTrader Vendor Program. Placés DANS le conteneur
               scrollable : le shell du tableau de bord est en h-screen/overflow-hidden,
               un pied de page posé à côté de <main> sortirait de l'écran.
-              `hypothetical` parce que l'app affiche des projections et, en mode
-              démo, des trades fabriqués. */}
-          <RiskDisclosure
-            hypothetical
-            variant="bare"
-            className="mt-12 border-t border-border/50 pt-6"
-          />
+              Le composant décide seul s'il ajoute l'avertissement sur les
+              performances hypothétiques : il n'est dû qu'en mode démo et sur les
+              pages qui projettent un résultat, pas sous les trades réels. */}
+          <DashboardRiskDisclosure className="mt-12 border-t border-border/50 pt-6" />
         </main>
       </div>
       <CoachDock />

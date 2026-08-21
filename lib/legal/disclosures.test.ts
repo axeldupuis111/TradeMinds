@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import disclosures, { getDisclosures } from "./disclosures";
+import disclosures, {
+  getDisclosures,
+  needsHypotheticalDisclosure,
+} from "./disclosures";
 import { renderBrandEmail } from "@/lib/email-template";
 
 /**
@@ -65,5 +68,60 @@ describe("emails de marque", () => {
     const html = renderBrandEmail({ heading: "Test", lang: "fr" });
     expect(html).toContain(disclosures.fr.risk);
     expect(html).not.toContain(disclosures.en.risk);
+  });
+});
+
+describe("avertissement sur les performances hypothétiques", () => {
+  it("se tait sous les résultats réels du trader", () => {
+    // Le point de la règle : ces pages montrent les trades importés de
+    // l'utilisateur. Les coiffer de ce texte laisse entendre que ses propres
+    // chiffres sont simulés, ce qui est faux.
+    for (const pathname of [
+      "/dashboard",
+      "/dashboard/trades",
+      "/dashboard/review",
+      "/dashboard/analytics",
+      "/dashboard/leaderboard",
+    ]) {
+      expect(
+        needsHypotheticalDisclosure({ pathname, demoMode: false }),
+        pathname,
+      ).toBe(false);
+    }
+  });
+
+  it("apparaît sur les pages qui projettent un résultat", () => {
+    for (const pathname of [
+      "/dashboard/goals",
+      "/dashboard/challenge",
+      "/dashboard/sizer",
+    ]) {
+      expect(
+        needsHypotheticalDisclosure({ pathname, demoMode: false }),
+        pathname,
+      ).toBe(true);
+    }
+  });
+
+  it("couvre les sous-routes d'une page à projection", () => {
+    expect(
+      needsHypotheticalDisclosure({
+        pathname: "/dashboard/challenge/abc-123",
+        demoMode: false,
+      }),
+    ).toBe(true);
+  });
+
+  it("s'impose partout en mode démo, où tous les chiffres sont fabriqués", () => {
+    expect(
+      needsHypotheticalDisclosure({ pathname: "/dashboard/trades", demoMode: true }),
+    ).toBe(true);
+  });
+
+  it("ne casse pas quand le chemin n'est pas encore connu", () => {
+    // usePathname() peut rendre null ; on ne veut ni exception ni avertissement
+    // affiché au hasard.
+    expect(needsHypotheticalDisclosure({ pathname: null, demoMode: false })).toBe(false);
+    expect(needsHypotheticalDisclosure({ pathname: null, demoMode: true })).toBe(true);
   });
 });

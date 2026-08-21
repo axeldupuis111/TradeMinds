@@ -104,3 +104,46 @@ export function getDisclosures(lang: Lang): DisclosureSet {
 }
 
 export default disclosures;
+
+/**
+ * Routes du tableau de bord qui affichent un résultat projeté.
+ *
+ * - `goals` : projection de palier à partir du rythme actuel.
+ * - `challenge` : probabilité de réussite et projection de fin de challenge.
+ * - `sizer` : gain et perte potentiels d'une position qui n'existe pas encore.
+ *
+ * Toute page ajoutée ici doit réellement montrer un chiffre qui n'a pas été
+ * réalisé. À l'inverse, ne PAS y mettre les pages qui affichent les trades
+ * importés de l'utilisateur : ce sont des résultats réels, et les coiffer de
+ * l'avertissement sur les performances hypothétiques laisse entendre le
+ * contraire.
+ */
+const PROJECTION_ROUTES = [
+  "/dashboard/goals",
+  "/dashboard/challenge",
+  "/dashboard/sizer",
+] as const;
+
+/**
+ * L'avertissement sur les performances hypothétiques est-il exigé ici ?
+ *
+ * Les guidelines ne l'imposent que là où un résultat simulé, projeté ou de
+ * démonstration est affiché, pas sur toutes les pages (contrairement à
+ * l'avertissement général sur les risques, lui obligatoire partout).
+ *
+ * En mode démo, tous les chiffres de l'application sont fabriqués : il est dû
+ * sur chaque page, quelle que soit la route.
+ */
+export function needsHypotheticalDisclosure({
+  pathname,
+  demoMode,
+}: {
+  pathname: string | null;
+  demoMode: boolean;
+}): boolean {
+  if (demoMode) return true;
+  if (!pathname) return false;
+  return PROJECTION_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  );
+}
