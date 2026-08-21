@@ -29,6 +29,7 @@ import {
   getDefaultPipValuePerLot,
 } from "@/lib/position-sizing";
 import type { PlanType } from "@/lib/PlanContext";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { localDateKey as localDateKeyFor, startOfDateKeyUtc } from "@/lib/timezone";
 
 // ── Vocabulaire partagé avec la page Objectifs ───────────────────────────────
@@ -1899,19 +1900,53 @@ export async function executeCoachTool(
       }
 
       case "get_macro_briefing": {
-        let q = supabase
-          .from("macro_analyses")
-          .select("analysis_date, headline, tldr, sentiment, overview, themes, watchlist, assets, takeaway")
-          .eq("lang", language)
-          .order("analysis_date", { ascending: false });
-        if (typeof input.date === "string" && /^\d{4}-\d{2}-\d{2}/.test(input.date)) {
-          q = q.eq("analysis_date", input.date.slice(0, 10));
+        // macro_analyses n'a AUCUNE policy de lecture (contenu premium partagé,
+        // servi par /api/macro-analysis avec le service role) : interrogée avec
+        // le client user-scoped, elle renvoie zéro ligne SANS erreur. Le coach
+        // lisait donc ce vide comme « le briefing n'existe pas » et contredisait
+        // un trader qui l'avait sous les yeux. On lit ici avec le service role,
+        // comme la page ; le contrôle d'accès est le même : l'outil est réservé
+        // au premium, déjà vérifié en haut de cette fonction.
+        let admin: SupabaseClient;
+        try {
+          admin = createAdminClient();
+        } catch {
+          return fail("Lecture de l'analyse macro impossible côté serveur. Ne conclus pas qu'elle n'existe pas : renvoie le trader vers la page macro.");
         }
-        const { data, error } = await q.limit(1);
-        if (error) return fail("Analyse macro indisponible.");
-        const row = (data ?? [])[0];
-        if (!row) return fail("Aucune analyse macro disponible pour cette date.");
-        return { result: row };
+        const wanted = typeof input.date === "string" && /^\d{4}-\d{2}-\d{2}/.test(input.date)
+          ? input.date.slice(0, 10)
+          : null;
+        const fetchWith = (cols: string) => {
+          const q = admin
+            .from("macro_analyses")
+            .select(cols)
+            .eq("lang", language)
+            .order("analysis_date", { ascending: false });
+          return (wanted ? q.eq("analysis_date", wanted) : q).limit(1);
+        };
+        // Même repli de colonnes que la route : entre un déploiement et sa
+        // migration, mieux vaut un briefing amputé qu'un « rien » trompeur.
+        let res = await fetchWith("analysis_date, headline, tldr, sentiment, overview, themes, watchlist, assets, takeaway");
+        if (res.error) res = await fetchWith("analysis_date, headline, overview, themes, watchlist, takeaway");
+        if (res.error) return fail("Analyse macro indisponible.");
+        const row = (res.data ?? [])[0];
+        if (row) return { result: row };
+        if (!wanted) return fail("Aucun briefing macro n'a encore été rédigé dans cette langue.");
+        // Date précise sans briefing : dire lequel existe vaut mieux qu'un
+        // « rien » sec, le coach peut proposer le plus proche au lieu de nier.
+        const { data: near } = await admin
+          .from("macro_analyses")
+          .select("analysis_date")
+          .eq("lang", language)
+          .lte("analysis_date", wanted)
+          .order("analysis_date", { ascending: false })
+          .limit(1);
+        const nearest = (near as { analysis_date: string }[] | null)?.[0]?.analysis_date;
+        return fail(
+          nearest
+            ? `Aucun briefing macro pour le ${wanted}. Le plus récent avant cette date est celui du ${nearest} : propose-le au trader.`
+            : `Aucun briefing macro pour le ${wanted}.`,
+        );
       }
 
       case "start_session": {
