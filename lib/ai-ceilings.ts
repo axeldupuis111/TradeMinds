@@ -99,6 +99,9 @@ export const PLAN_MONTHLY_CEILING: Record<"analyze" | "chat", Record<PlanType, n
 export const FEATURE_MONTHLY_CEILING: Record<string, number> = {
   "session-debrief": 70, // Julie : 22 (×3,2, conforme)
   "daily-summary": 70, // Julie : 22 (×3,2, conforme)
+  // Julie : 4. Une projection ne bouge qu'avec les trades ; la relancer plus
+  // souvent ne peut rien apprendre de plus. ×3, conforme à la doctrine.
+  "projection-verdict": 12,
   "monthly-review": 10, // Julie : 1
   // ── Passe du 2026-08-14 : cinq plafonds avaient dérivé loin au-dessus du
   // ×3 que ce fichier énonce, sans que personne ne les additionne. Ramenés à

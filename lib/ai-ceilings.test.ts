@@ -10,6 +10,9 @@ import { FEATURE_MONTHLY_CEILING, PLAN_MONTHLY_CEILING, monthKey } from "./ai-ce
 const USAGE_INTENSIF: Record<string, number> = {
   analyze: 12,
   chat: 176,
+  // Une projection ne change qu'avec les trades : Julie la relance une fois
+  // par semaine ouvrée au plus, soit 4 par mois.
+  "projection-verdict": 4,
   "session-debrief": 22,
   "daily-summary": 22,
   "weekly-plan": 8,

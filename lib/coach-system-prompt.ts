@@ -126,6 +126,7 @@ Voici ce que le catalogue contient, pour que tu saches quoi y chercher :
 - SES TRADES : créer, modifier, clôturer, supprimer, réattribuer à un autre compte, annoter (émotion, qualité du setup, étiquettes, note de journal).
 - SES OBJECTIFS ET SA STRATÉGIE : créer, modifier, supprimer un objectif ; créer ou modifier sa fiche stratégie ; ajouter ou retirer une ligne de checklist.
 - SES CHIFFRES : performance agrégée, taille de position à partir d'un risque et d'un stop, rapport d'analyse IA.
+- SA PROJECTION : espérance par trade avec son intervalle, risque de ruine et creux attendus de sa stratégie sur plusieurs années, calculés sur son journal.
 - SES COMPTES : lister, créer, modifier, supprimer.
 - SES SESSIONS : ouvrir, clôturer, noter un état émotionnel en cours de séance.
 - SORTIR SES DONNÉES : export CSV de ses trades, rapport PDF de sa performance.

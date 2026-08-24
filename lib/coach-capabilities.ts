@@ -27,7 +27,7 @@ export interface CoachCapability {
 }
 
 /**
- * Les 39 outils regroupés en promesses lisibles par un trader.
+ * Les 40 outils regroupés en promesses lisibles par un trader.
  *
  * L'ordre compte : il suit la montée en puissance (il lit, il corrige, il
  * fait), c'est aussi l'ordre d'affichage sur la landing.
@@ -55,6 +55,7 @@ export const COACH_CAPABILITIES: CoachCapability[] = [
   { key: "cap_write_trades", tools: ["create_trade", "update_trade", "close_trade"] },
   { key: "cap_tidy_journal", tools: ["delete_trades", "reassign_trades", "delete_strategy"] },
   { key: "cap_accounts", tools: ["create_account", "update_account", "delete_account"] },
+  { key: "cap_projection", tools: ["read_projection"] },
   { key: "cap_macro", tools: ["get_macro_briefing"] },
 ];
 

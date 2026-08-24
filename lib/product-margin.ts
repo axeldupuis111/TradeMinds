@@ -143,6 +143,18 @@ export const AI_ROUTES: AiRoute[] = [
     source: "majorant",
   },
   {
+    // Verdict rédigé de la projection de stratégie. Haiku assumé : les chiffres
+    // arrivent tout calculés dans le prompt, le modèle ne fait que les mettre
+    // en phrases. Une route Sonnet dédiée cassait le stress à 20 % pour un gain
+    // de qualité nul sur ce type de sortie.
+    nom: "verdict de projection",
+    model: "claude-haiku-4-5-20251001",
+    plafond: { plus: 0, premium: FEATURE_MONTHLY_CEILING["projection-verdict"] },
+    inputTokens: 1200,
+    outputTokens: 800,
+    source: "majorant",
+  },
+  {
     nom: "bilan mensuel",
     model: "claude-haiku-4-5-20251001",
     plafond: { plus: FEATURE_MONTHLY_CEILING["monthly-review"], premium: FEATURE_MONTHLY_CEILING["monthly-review"] },
