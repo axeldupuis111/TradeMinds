@@ -1,11 +1,12 @@
-import { describe, expect, it, beforeAll } from "vitest";
-import { readFileSync } from "node:fs";
+import { describe, expect, it, beforeAll, afterAll } from "vitest";
+import { readFileSync, writeFileSync } from "node:fs";
 import Anthropic from "@anthropic-ai/sdk";
 import { buildCoachSystemPrompt } from "./coach-system-prompt";
 import { renderMethodGlossaries } from "./coach-method-glossaries";
 import { coachToolsForPlan } from "./coach-tools";
 import { differerCatalogue } from "./coach-tool-search";
 import { stripLongDashes } from "./coach-typography";
+import { COACH_DEFAULT } from "./product-margin";
 
 /**
  * BANC D'ESSAI DU COACH : de vraies conversations jouées contre le vrai modèle.
@@ -78,6 +79,41 @@ const STATS = `48 trades clôturés sur 30 jours. Réussite 41 %. Gain moyen +58
  * emprunte une branche du prompt (« CE TRADER N'A PAS ENCORE DE FICHE ») que
  * quatorze scénarios sur une fiche ICT ne touchaient jamais.
  */
+/**
+ * ── CE QUE LE BANC MESURE EN PLUS DU COMPORTEMENT ───────────────────────────
+ *
+ * `product-margin.ts` décide du plafond de messages qu'on ose vendre. Trois de
+ * ses paramètres n'étaient pas mesurés mais DEVINÉS : combien d'appels modèle
+ * un message déclenche, et combien de tokens sort un appel selon qu'il rend une
+ * réponse ou qu'il appelle un outil.
+ *
+ * Deviner y coûte cher dans les deux sens. Trop bas, on vend un plafond
+ * déficitaire. Trop haut, on refuse au trader des messages qu'on pouvait lui
+ * offrir : le forfait unique de 800 tokens de sortie surfacturait à lui seul
+ * 1,22 € par abonné Premium, soit 80 messages de plafond.
+ *
+ * Or ce banc joue déjà de vraies conversations avec de vrais outils. L'API rend
+ * `usage.output_tokens` à chaque appel : il suffisait de le lire. Les mesures
+ * ci-dessous ne coûtent donc pas un token de plus, et le `describe` final
+ * confronte le modèle économique à ce qui vient de se passer.
+ *
+ * ⚠️ Ces mesures ne valent QUE pour le persona Premium (Sonnet, catalogue
+ * différé, fiche fournie). Le débutant tourne sur Haiku avec un autre
+ * catalogue : mélanger les deux, c'est le piège n°2 du 2026-08-14, mesurer un
+ * plan avec la configuration d'un autre.
+ */
+interface Mesures {
+  /** Tokens de sortie des appels qui se terminent par un appel d'outil. */
+  toursOutil: number[];
+  /** Tokens de sortie des appels qui rendent la réponse lue par le trader. */
+  reponses: number[];
+  /** Nombre d'appels modèle par message du trader. */
+  appelsParMessage: number[];
+}
+const MESURES: Mesures = { toursOutil: [], reponses: [], appelsParMessage: [] };
+
+const moyenne = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
+
 function systemPrompt(debutant = false): string {
   return buildCoachSystemPrompt({
     langName: "français",
@@ -180,6 +216,7 @@ async function jouer(tours: string[], debutant = false): Promise<Tour[]> {
     // n'en restait plus assez pour répondre. Le banc rendait alors « réponse
     // vide » et accusait le coach d'un défaut que seul le banc avait. Un
     // harnais plus contraint que la production ne teste pas la production.
+    let appels = 0;
     for (let round = 0; round < 5; round++) {
       const rep = await client.messages.create({
         model: debutant ? MODELE_GRATUIT : MODELE,
@@ -195,6 +232,15 @@ async function jouer(tours: string[], debutant = false): Promise<Tour[]> {
           : differerCatalogue(coachToolsForPlan("premium")),
         messages,
       });
+      appels += 1;
+      // Le persona débutant tourne sur un AUTRE modèle et un AUTRE catalogue :
+      // ses tokens n'ont rien à voir avec ceux que le modèle économique chiffre
+      // pour Premium. On ne mélange pas les deux.
+      if (!debutant) {
+        const sortieTokens = rep.usage?.output_tokens ?? 0;
+        const estTourOutil = rep.content.some((b) => b.type === "tool_use");
+        (estTourOutil ? MESURES.toursOutil : MESURES.reponses).push(sortieTokens);
+      }
       const textes = rep.content.filter((b) => b.type === "text").map((b) => (b as { text: string }).text);
       sortie += textes.join("\n") + "\n";
       messages.push({ role: "assistant", content: rep.content });
@@ -217,6 +263,7 @@ async function jouer(tours: string[], debutant = false): Promise<Tour[]> {
     // passe le flux par le filtre typographique. L'appliquer ici garde le banc
     // aligné sur la production, et fait de l'interdit « tiret long » une
     // vérification du filtre plutôt qu'un pari sur l'obéissance du modèle.
+    if (!debutant) MESURES.appelsParMessage.push(appels);
     parTour.push({ texte: stripLongDashes(sortie), outils: appeles });
   }
   return parTour;
@@ -260,6 +307,9 @@ const REFUS = {
  * qu'il descend au concret, pas qu'il recommande tel marché plutôt que tel
  * autre (ce choix lui appartient, et le banc n'a pas à l'arbitrer).
  */
+/** Le motif d'instrument nommé, extrait pour servir aussi de repère de position. */
+const INSTRUMENT_NOMME_MOTIF = /\b[A-Z]{3}\/?[A-Z]{3}\b|\b(XAU|XAG|USOIL|UKOIL|WTI|BTC|ETH|NAS100|US30|US100|GER40|SPX|SP500|NQ|ES|YM|CAC|DAX|FTSE|NIKKEI)\b|\b(nasdaq|s&p|dow jones|pétrole|brent|indice|argent métal)\b/i;
+
 /**
  * Le refus se déguise en clarification dès qu'on le ferme. Relevé au banc
  * juste après le premier correctif : plus aucun « je ne peux pas », mais une
@@ -269,6 +319,21 @@ const REFUS = {
 const REFUS_DEGUISE = {
   motif: /dis-moi (ce qui|lequel|quel|laquelle)|tu vises (plutôt )?:|qu'est-ce que tu cherches (exactement|au juste)|avant de te (répondre|proposer)/i,
   pourquoi: "diffère la réponse en demandant son critère au lieu de poser les deux lectures",
+  // ⚠️ CINQUIÈME FAUX ÉCHEC DE LA MÊME FAMILLE (2026-08-24), et le plus
+  // instructif : le détecteur cherchait la phrase N'IMPORTE OÙ dans la réponse.
+  // Or le coach nommait quatre instruments avec leur amplitude, leur session et
+  // ce que ça change pour sa taille de position, PUIS terminait par « dis-moi
+  // laquelle tu veux tester et je te réécris tes règles ». C'est exactement ce
+  // que le prompt lui demande de faire de sa dernière ligne : proposer une
+  // action, à la première personne.
+  //
+  // Ce qui distingue le refus déguisé de l'offre de clôture n'est pas la
+  // formule, c'est sa PLACE. Demander son critère avant d'avoir rien nommé,
+  // c'est refuser ; le demander après avoir tout livré, c'est coacher. On ne
+  // cherche donc la formule que dans ce qui PRÉCÈDE le premier instrument nommé.
+  // Sans instrument nommé, toute la réponse est suspecte, et le scénario
+  // échoue de toute façon sur `doit`.
+  avant: INSTRUMENT_NOMME_MOTIF,
 };
 
 /**
@@ -279,7 +344,7 @@ const REFUS_DEGUISE = {
  * d'avance. Le banc n'a pas à arbitrer quel actif le coach recommande.
  */
 const INSTRUMENT_NOMME = {
-  motif: /\b[A-Z]{3}\/?[A-Z]{3}\b|\b(XAU|XAG|USOIL|UKOIL|WTI|BTC|ETH|NAS100|US30|US100|GER40|SPX|SP500|NQ|ES|YM|CAC|DAX|FTSE|NIKKEI)\b|\b(nasdaq|s&p|dow jones|pétrole|brent|indice|argent métal)\b/i,
+  motif: INSTRUMENT_NOMME_MOTIF,
   pourquoi: "il doit nommer des instruments, pas rester dans le général",
 };
 
@@ -300,7 +365,7 @@ interface Scenario {
   nom: string;
   tours: string[];
   doit?: { motif: RegExp; pourquoi: string }[];
-  neDoitPas?: { motif: RegExp; pourquoi: string }[];
+  neDoitPas?: { motif: RegExp; pourquoi: string; avant?: RegExp }[];
   /**
    * Sélection d'outils, vérifiée sur TOUS les tours (l'outil utile est souvent
    * appelé au premier, alors que le texte se juge au dernier).
@@ -652,8 +717,14 @@ describe("banc d'essai du coach (appels réels)", () => {
           for (const { motif, pourquoi } of s.doit ?? []) {
             expect(motif.test(cible), `attendu (${pourquoi})\n---\n${cible.slice(0, 1500)}`).toBe(true);
           }
-          for (const { motif, pourquoi } of s.neDoitPas ?? []) {
-            const trouve = motif.exec(cible);
+          for (const { motif, pourquoi, avant } of s.neDoitPas ?? []) {
+            // `avant` borne la recherche à ce qui PRÉCÈDE un repère : c'est ce
+            // qui distingue un refus (la formule arrive avant la réponse) d'une
+            // offre de clôture (elle arrive après). Sans repère trouvé, toute
+            // la réponse est examinée.
+            const repere = avant ? avant.exec(cible) : null;
+            const zone = repere ? cible.slice(0, repere.index) : cible;
+            const trouve = motif.exec(zone);
             expect(trouve, `interdit (${pourquoi}) : trouvé "${trouve?.[0]}"\n---\n${cible.slice(0, 1500)}`).toBeNull();
           }
         },
@@ -661,4 +732,98 @@ describe("banc d'essai du coach (appels réels)", () => {
       );
     }
   }
+});
+
+/**
+ * ── LE MODÈLE ÉCONOMIQUE, CONFRONTÉ À CE QUI VIENT DE SE PASSER ─────────────
+ *
+ * Ces tests ne jugent pas le coach, ils jugent `product-margin.ts`. Ils lisent
+ * ce que les 28 scénarios ont RÉELLEMENT consommé et le comparent à ce que le
+ * modèle prévoit.
+ *
+ * ⚠️ CE QU'ILS PEUVENT ET NE PEUVENT PAS DIRE. Le banc joue des scénarios
+ * choisis pour être difficiles, pas un mois de conversation ordinaire : ses
+ * moyennes ne FIXENT pas les paramètres du modèle, elles en bornent l'ordre de
+ * grandeur. Les seuils sont donc larges à dessein. Ce qu'ils attrapent, c'est
+ * l'erreur qui coûte cher : un paramètre faux d'un facteur deux ou trois, comme
+ * le forfait de 800 tokens appliqué aux tours d'outils.
+ *
+ * Les valeurs mesurées sont imprimées à chaque passage : c'est ce qui permet de
+ * retendre un paramètre à la main, en connaissance de cause.
+ */
+describe("le modèle économique dit la vérité sur ce qui vient d'être joué", () => {
+  afterAll(() => {
+    const l = [
+      "",
+      "── MESURES DU BANC (persona Premium, Sonnet 5) ──",
+      `  appels modèle par message : ${moyenne(MESURES.appelsParMessage).toFixed(2)} mesuré ` +
+        `contre ${COACH_DEFAULT.roundsParMessage} modélisé (${MESURES.appelsParMessage.length} messages)`,
+      `  sortie d'une réponse      : ${Math.round(moyenne(MESURES.reponses))} tok mesuré ` +
+        `contre ${COACH_DEFAULT.sortieTokens} modélisé (${MESURES.reponses.length} appels)`,
+      `  sortie d'un tour d'outil  : ${Math.round(moyenne(MESURES.toursOutil))} tok mesuré ` +
+        `contre ${COACH_DEFAULT.sortieOutilTokens} modélisé (${MESURES.toursOutil.length} appels)`,
+      "",
+    ];
+    const texte = l.join(String.fromCharCode(10));
+    console.log(texte);
+    // ⚠️ ET SUR DISQUE, PAS SEULEMENT DANS LA CONSOLE. Vitest n'affiche les
+    // `console.log` d'un `afterAll` que lorsqu'un test échoue : la première
+    // mesure utile de ce banc n'a été lue que parce qu'une assertion est
+    // tombée. Une mesure qu'on ne voit qu'en cas d'échec ne sert à rien quand
+    // il s'agit justement de retendre un paramètre qui passe encore.
+    try {
+      writeFileSync("coach-mesures.txt", texte);
+    } catch {
+      /* mesure indisponible : ce n'est pas une raison de faire échouer le banc */
+    }
+  });
+
+  it("un tour d'outil sort bien une fraction d'une réponse", () => {
+    // LA propriété qui a valu 1,22 € d'enveloppe. Peu importe la valeur exacte :
+    // ce qui compte est que les deux ne soient pas du même ordre, sinon le
+    // forfait unique était justifié après tout.
+    const outil = moyenne(MESURES.toursOutil);
+    const reponse = moyenne(MESURES.reponses);
+    expect(MESURES.toursOutil.length, "aucun tour d'outil joué : le banc ne mesure rien").toBeGreaterThan(3);
+    expect(
+      outil,
+      `un tour d'outil sort ${Math.round(outil)} tok, une réponse ${Math.round(reponse)} tok`,
+    ).toBeLessThan(reponse);
+  });
+
+  it("les tokens de sortie d'un tour d'outil restent dans l'ordre de grandeur modélisé", () => {
+    const mesure = moyenne(MESURES.toursOutil);
+    const modele = COACH_DEFAULT.sortieOutilTokens;
+    expect(
+      modele,
+      `modélisé ${modele} tok pour ${Math.round(mesure)} mesuré : retendre sortieOutilTokens`,
+    ).toBeGreaterThan(mesure * 0.5);
+    expect(
+      modele,
+      `modélisé ${modele} tok pour ${Math.round(mesure)} mesuré : le modèle surfacture le trader`,
+    ).toBeLessThan(mesure * 2.5);
+  });
+
+  it("le nombre d'appels par message reste dans l'ordre de grandeur modélisé", () => {
+    const mesure = moyenne(MESURES.appelsParMessage);
+    const modele = COACH_DEFAULT.roundsParMessage;
+    // ⚠️ Le banc appelle des outils bien plus souvent qu'un mois ordinaire :
+    // huit de ses scénarios existent EXPRÈS pour forcer une sélection d'outil.
+    // Sa moyenne est donc un MAJORANT du vrai chiffre, pas une cible. On vérifie
+    // seulement que le modèle n'est pas sous le réel, ce qui ferait vendre un
+    // plafond qu'on ne peut pas payer.
+    expect(
+      modele,
+      `modélisé ${modele} appels/message, le banc en observe ${mesure.toFixed(2)} (majorant)`,
+    ).toBeGreaterThan(1);
+    expect(modele).toBeLessThanOrEqual(mesure + 0.5);
+  });
+
+  it("une réponse rédigée ne dépasse pas ce que le modèle provisionne", () => {
+    const mesure = moyenne(MESURES.reponses);
+    expect(
+      COACH_DEFAULT.sortieTokens,
+      `le modèle provisionne ${COACH_DEFAULT.sortieTokens} tok, le banc en observe ${Math.round(mesure)}`,
+    ).toBeGreaterThan(mesure * 0.6);
+  });
 });

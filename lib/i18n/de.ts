@@ -1744,7 +1744,7 @@ const dict: Record<string, string> = {
   "faq_q4": "Sind meine Daten sicher?",
   "faq_a4": "Ja. Deine Daten werden sicher auf Supabase (verschlüsselte PostgreSQL-Infrastruktur) gespeichert. Nur du kannst darauf zugreifen. Wir verkaufen keine Daten.",
   "faq_q5": "Was ist der Unterschied zwischen Plus und Premium?",
-  "faq_a5": "Der Plus-Plan ist der tägliche Coach: 1 KI-Analyse pro Tag und der KI-Coach, 5 Nachrichten pro Tag. Der Premium-Plan fügt Automatisierung und Schutz hinzu: automatische Kontosynchronisation, Challenge-Wächter, tägliche Makroanalyse, visuelle Chartanalyse und erweiterte Kontingente: bis zu 2 Analysen pro Tag im Rahmen von 40 pro Monat, und bis zu 30 Coach-Nachrichten pro Tag im Rahmen von 340 pro Monat.",
+  "faq_a5": "Der Plus-Plan ist der tägliche Coach: 1 KI-Analyse pro Tag und der KI-Coach, 5 Nachrichten pro Tag. Der Premium-Plan fügt Automatisierung und Schutz hinzu: automatische Kontosynchronisation, Challenge-Wächter, tägliche Makroanalyse und erweiterte Kontingente: bis zu 2 Analysen pro Tag im Rahmen von 40 pro Monat, und bis zu 30 Coach-Nachrichten pro Tag im Rahmen von 340 pro Monat.",
   "faq_q6": "Kann ich jederzeit kündigen?",
   "faq_a6": "Ja, ohne Verpflichtung oder Kündigungsgebühren. Du kannst jederzeit über deine Kontoeinstellungen kündigen.",
   "faq_q7": "Wie funktionieren die KI-Kontingente?",

@@ -41,10 +41,15 @@ describe("plafonds mensuels", () => {
     //
     // Le ×2 a été écrit quand un plafond ne coûtait rien : on prenait de la
     // marge parce qu'il n'y avait aucune raison de ne pas en prendre. Ce n'est
-    // plus vrai depuis que le coach tourne sur Sonnet 5. À 340 messages il
-    // coûte 16,25 € pour 17,26 € d'enveloppe ; au-dela le produit perd de
-    // l'argent. Le multiple de confort et la
-    // rentabilité se contredisent, et c'est la rentabilité qui gagne.
+    // plus vrai depuis que le coach tourne sur Sonnet 5 : le multiple de confort
+    // et la rentabilité se contredisent, et c'est la rentabilité qui gagne.
+    //
+    // 2026-08-24 : le coach est devenu moins cher (préfixe invariant partagé
+    // entre tous les abonnés), le plafond a été remonté à 400 puis 380, puis
+    // RAMENÉ À 340 quand le banc a mesuré que trois paramètres de sortie
+    // étaient sous-estimés. La doctrine n'a pas bougé d'un pouce dans
+    // l'opération, et c'est le point : ce plafond se décide en euros, pas en
+    // multiple de confort, et un euro qu'on n'a pas mesuré n'est pas un euro.
     //
     // Le vrai garde-fou est donc `product-margin.test.ts`, qui raisonne en
     // euros et non en ratio. Il reste un plancher ici, mais il protège autre

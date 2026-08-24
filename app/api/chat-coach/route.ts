@@ -14,7 +14,7 @@ import {
   type StrategyTagRow,
 } from "@/lib/coach-strategy-context";
 import { glossariesForStrategy } from "@/lib/coach-method-glossaries";
-import { buildCoachSystemPrompt } from "@/lib/coach-system-prompt";
+import { buildCoachSystemBlocks } from "@/lib/coach-system-prompt";
 import { createDashStripper } from "@/lib/coach-typography";
 import { coachToolsForPlan, executeCoachTool } from "@/lib/coach-tools";
 import { differerCatalogue } from "@/lib/coach-tool-search";
@@ -291,7 +291,7 @@ export async function POST(request: Request) {
 
     const client = new Anthropic({ apiKey });
 
-    const systemPrompt = buildCoachSystemPrompt({
+    const systemBlocks = buildCoachSystemBlocks({
       langName,
       methodGlossaries,
       strategyBlock,
@@ -383,8 +383,31 @@ export async function POST(request: Request) {
     // écritures pleines en lectures à 0,1× : sur un usage groupé le solde est
     // largement positif, et il l'est d'autant plus que le préfixe est lourd.
     const CACHE_TTL = { type: "ephemeral", ttl: "1h" } as const;
+    // ── DEUX POINTS DE CACHE DANS LE SYSTÈME, PAS UN ──
+    //
+    // Un seul point mettait en cache le prompt d'un tenant. Or les statistiques
+    // du trader y vivent, et elles changent dès qu'il clôture un trade : le
+    // cache sautait ALORS QUE 90 % DU TEXTE N'AVAIT PAS BOUGÉ. Un trader qui
+    // journalise puis interroge son coach repayait les 20 844 tokens du
+    // préfixe au tarif plein, à chaque fois. C'est le cas d'usage le plus
+    // naturel du produit, et c'était le plus cher.
+    //
+    // Découpé, le préfixe suit ce qui change :
+    //  · bloc 1, les consignes : identique pour TOUS les traders et toutes les
+    //    langues, donc son entrée de cache est partagée par tout le monde et
+    //    n'est invalidée que par un déploiement ;
+    //  · bloc 2, ses données ;
+    //  · bloc 3, le rappel qui doit rester le dernier mot du prompt.
+    //
+    // Le second marqueur est posé APRÈS le bloc 3 : un trade de plus ne réécrit
+    // donc que les blocs 2 et 3, pendant que le bloc 1 reste chaud.
+    //
+    // ⚠️ Trois marqueurs au total avec celui de la conversation, pour un
+    // maximum de quatre par requête. Il reste un seul emplacement libre.
     const cachedSystem: Anthropic.TextBlockParam[] = [
-      { type: "text", text: systemPrompt, cache_control: CACHE_TTL },
+      { type: "text", text: systemBlocks.statique, cache_control: CACHE_TTL },
+      { type: "text", text: systemBlocks.contextuel },
+      { type: "text", text: systemBlocks.rappelFinal, cache_control: CACHE_TTL },
     ];
     const withConversationCache = (conv: Anthropic.MessageParam[]): Anthropic.MessageParam[] => {
       if (conv.length === 0) return conv;

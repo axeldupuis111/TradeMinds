@@ -186,9 +186,38 @@ export interface CoachConfig {
    */
   messagesParFenetre: number;
   historiqueTokens: number;
+  /**
+   * Tokens de sortie d'une RÉPONSE RÉDIGÉE, celle que le trader lit.
+   *
+   * ⚠️ Mesuré à 1 079 tokens au banc, contre 800 supposés jusque-là. Le 800
+   * n'avait jamais été compté : c'était un chiffre d'ambiance, et il était trop
+   * bas de 35 %.
+   */
   sortieTokens: number;
+  /**
+   * Tokens de sortie d'un TOUR D'OUTIL intermédiaire.
+   *
+   * ⚠️ CE CHAMP EXISTE PARCE QUE SON ABSENCE COÛTAIT 1,22 € PAR ABONNÉ.
+   * Le modèle appliquait `sortieTokens` aux 476 appels, alors que 136 d'entre
+   * eux ne sont pas des réponses : ce sont des tours où le modèle émet une
+   * ligne de narration et un bloc `tool_use`, soit une fraction d'une réponse
+   * rédigée. Surévaluer la sortie n'est pas prudent, c'est de l'enveloppe
+   * retirée au trader pour une dépense qui n'a jamais lieu.
+   */
+  sortieOutilTokens: number;
   /** Part des messages déclenchant une recherche web (0 = outil absent). */
   partRechercheWeb: number;
+  /**
+   * Part du préfixe qui ne dépend d'AUCUN trader, et dont l'entrée de cache est
+   * donc partagée par tout le produit.
+   *
+   * ⚠️ Ce chiffre n'est pas une hypothèse : il se lit sur les blocs réellement
+   * construits par `buildCoachSystemBlocks`, et `product-margin-prompt.test.ts`
+   * échoue si le prompt s'en écarte. Déplacer trois paragraphes du bloc
+   * invariant vers le bloc contextuel change la facture sans changer une ligne
+   * de ce fichier : il faut donc que quelque chose le remarque.
+   */
+  partStatique: number;
 }
 
 /**
@@ -213,16 +242,78 @@ export const COACH_DEFAULT: CoachConfig = {
   // mentir dans ce fichier.
   prefixeParModele: { premium: 20_844, plus: 18_882 },
   plafond: { plus: PLAN_MONTHLY_CEILING.chat.plus, premium: PLAN_MONTHLY_CEILING.chat.premium },
-  roundsParMessage: 1.4,
+  // ⚠️ MAJORANT MESURÉ AU BANC LE 2026-08-24 (1,54 appel par message sur 46
+  // messages). Ce n'est PAS la moyenne d'un mois ordinaire : huit des 28
+  // scénarios existent exprès pour forcer une sélection d'outil, le banc
+  // sur-représente donc les tours d'outils. On garde la valeur haute quand
+  // même, parce que se tromper vers le bas ici fait vendre un plafond qu'on ne
+  // peut pas payer. La vraie moyenne se lit dans l'onglet « Coût IA » de
+  // l'admin, sur des conversations réelles.
+  roundsParMessage: 1.54,
   messagesParFenetre: 5,
   historiqueTokens: 3000,
-  sortieTokens: 800,
+  // ⚠️ MESURÉ À 1 079 AU BANC, ARRONDI EN MAJORANT. Le 800 précédent n'avait
+  // jamais été compté. Même réserve que `roundsParMessage` : le banc pose des
+  // questions dures (construis-moi une méthode, compare trois instruments), ses
+  // réponses sont donc plus longues qu'un échange ordinaire. C'est un majorant
+  // assumé, pas une moyenne de production.
+  sortieTokens: 1100,
+  // ⚠️ MESURÉ LE 2026-08-24 À 348 PUIS 393 TOKENS SUR DEUX PASSAGES, ARRONDI À 400. `coach-live.eval.ts`
+  // compte les tokens de sortie de chaque appel des 28 scénarios et sépare les
+  // tours d'outils des réponses rédigées ; le banc échoue si cette valeur
+  // s'écarte de la mesure.
+  //
+  // ⚠️ J'AVAIS ÉCRIT 150 « PAR BON SENS », ET C'ÉTAIT FAUX DE 2,3×. Un tour
+  // d'outil n'est pas qu'un bloc `tool_use` : le prompt demande explicitement au
+  // coach de NARRER ce qu'il fait pendant qu'il enchaîne les outils, et le
+  // catalogue différé lui fait dépenser un tour en recherche d'outil. Ces deux
+  // choix produisent du texte, et ce texte se paie au tarif de sortie.
+  //
+  // C'est la deuxième fois qu'un chiffre « évident » de ce fichier se révèle
+  // faux à la mesure (après le préfixe reporté d'un modèle à l'autre). La règle
+  // qui s'en dégage : dans ce fichier, un nombre non mesuré est un nombre faux
+  // tant qu'on ne l'a pas confronté.
+  sortieOutilTokens: 400,
   // Recherche web retirée du coach le 2026-08-14 : mesurée inerte sur Haiku
   // (0 déclenchement sur 6 appels) et inutile sur Sonnet, qui répond juste
   // sans elle. Le paramètre reste, l'outil est prêt à revenir avec un plafond
   // mensuel de recherches.
   partRechercheWeb: 0,
+  // Mesuré sur les blocs réels le 2026-08-24 : 20 624 caractères invariants sur
+  // 28 953. Tenu par `product-margin-prompt.test.ts`.
+  partStatique: 0.71,
 };
+
+/**
+ * ── LE PRÉFIXE INVARIANT EST PARTAGÉ PAR TOUS LES ABONNÉS ───────────────────
+ *
+ * Le cache de prompt est attaché à la CLÉ D'API, pas au trader. Depuis que le
+ * prompt système est coupé en trois (voir `coach-system-prompt.ts`), 71 % de
+ * ses caractères ne dépendent plus de personne : le même bloc, au caractère
+ * près, pour tous les traders et dans les quatre langues. La première requête
+ * de l'heure l'écrit, TOUTES les autres le lisent à 0,1×, quel que soit le
+ * trader qui les envoie.
+ *
+ * Le modèle facturait ce bloc à chacun, 68 fois par mois. C'est vrai pour un
+ * produit à un seul abonné actif ; c'est faux dès qu'il y en a plusieurs, et
+ * l'écart vaut plusieurs euros par tête.
+ *
+ * ⚠️ CE GAIN NE SE DÉCRÈTE PAS, IL VIENT AVEC L'ÉCHELLE. Les écritures
+ * partagées sont bornées par le nombre d'heures du mois, pas par le nombre
+ * d'abonnés : à 12 abonnés il n'y a rien à partager (chacun paie ses propres
+ * écritures) et le modèle le dit. C'est la même mécanique que l'infrastructure
+ * fixe, et il faut la lire pareil : ce n'est pas le coach qui décide de la
+ * marge à cette taille, c'est le nombre d'abonnés.
+ */
+export const HEURES_PAR_MOIS = 720;
+
+/**
+ * Variantes du bloc invariant réellement servies. Le cache exige un préfixe
+ * identique OUTILS COMPRIS : Premium (catalogue différé), Plus et gratuit
+ * (catalogue plein) n'en partagent donc pas l'entrée. Trois familles, donc
+ * trois écritures par heure au pire.
+ */
+export const VARIANTES_PREFIXE = 3;
 
 /** Recherche web côté serveur : 10 $ les 1 000 requêtes. */
 export const RECHERCHE_WEB_USD = 0.01;
@@ -267,7 +358,11 @@ export function coutRouteEur(route: AiRoute, plan: Exclude<PlanType, "free">): n
  * fausse l'arbitrage entre modèles, parce que le préfixe pèse 3× plus cher sur
  * Sonnet que sur Haiku.
  */
-export function coutCoachEur(c: CoachConfig, plan: Exclude<PlanType, "free">): number {
+export function coutCoachEur(
+  c: CoachConfig,
+  plan: Exclude<PlanType, "free">,
+  abonnes = 1,
+): number {
   const messages = c.plafond[plan];
   if (!messages) return 0;
   const p = tarif(c.model[plan]);
@@ -276,12 +371,39 @@ export function coutCoachEur(c: CoachConfig, plan: Exclude<PlanType, "free">): n
   const fenetres = Math.max(1, Math.ceil(messages / c.messagesParFenetre));
   const appelsCaches = Math.max(0, appels - fenetres);
 
-  // TTL 1 h : écriture à 2× l'entrée, lecture à 0,1×.
-  const ecritures = fenetres * prefixe * p.in * 2;
-  const lectures = appelsCaches * prefixe * p.in * 0.1;
+  // ── Le préfixe se paie en DEUX morceaux, parce qu'ils ne s'invalident pas
+  //    au même rythme (voir la coupe en trois de `coach-system-prompt.ts`).
+  //
+  //  · le bloc INVARIANT : identique pour tous les traders, son entrée de cache
+  //    est partagée par tout le produit. Le nombre d'écritures n'est donc PAS
+  //    proportionnel aux abonnés, il est borné par les heures du mois ;
+  //  · le bloc VOLATILE (langue, fiche, statistiques, date, rappel final) :
+  //    propre au trader, réécrit une fois par fenêtre, comme avant.
+  //
+  // ⚠️ `Math.min` fait tout le travail, et il faut le lire dans les deux sens :
+  // à 12 abonnés c'est `fenetres * abonnes` qui gagne, autrement dit AUCUN
+  // partage, chacun paie ses écritures. Le gain arrive avec l'échelle, il ne se
+  // décrète pas. Un modèle qui accorderait le partage dès le premier abonné
+  // annoncerait une marge que le produit n'a pas encore.
+  const prefixeStatique = prefixe * c.partStatique;
+  const prefixeVolatile = prefixe - prefixeStatique;
+  const ecrituresStatiques =
+    Math.min(fenetres * abonnes, HEURES_PAR_MOIS * VARIANTES_PREFIXE) / abonnes;
+
+  // TTL 1 h : écriture à 2× l'entrée, lecture à 0,1×. Ce qui n'est pas écrit est
+  // lu : un appel qui trouve le bloc invariant chaud le relit à 0,1×.
+  const ecritures =
+    (ecrituresStatiques * prefixeStatique + fenetres * prefixeVolatile) * p.in * 2;
+  const lectures =
+    ((appels - ecrituresStatiques) * prefixeStatique + appelsCaches * prefixeVolatile) *
+    p.in *
+    0.1;
   // L'historique est plein tarif au premier appel d'une fenêtre, caché ensuite.
   const historique = (fenetres + appelsCaches * 0.1) * c.historiqueTokens * p.in;
-  const sortie = appels * c.sortieTokens * p.out;
+  // La sortie se compte par NATURE d'appel, pas au forfait : un message rend
+  // une réponse rédigée, les tours d'outils qui la précèdent rendent un appel.
+  const toursOutils = Math.max(0, appels - messages);
+  const sortie = (messages * c.sortieTokens + toursOutils * c.sortieOutilTokens) * p.out;
 
   let usd = (ecritures + lectures + historique + sortie) / 1e6;
 
@@ -322,7 +444,7 @@ export function margeAuPlafond(
   const cotisations = revenu * SOCIAL_CHARGE_RATE;
   const infra = INFRA_FIXED_EUR_PER_MONTH / Math.max(1, abonnes);
   const iaAutres = AI_ROUTES.reduce((n, r) => n + coutRouteEur(r, plan), 0);
-  const coachCout = coutCoachEur(coach, plan);
+  const coachCout = coutCoachEur(coach, plan, Math.max(1, abonnes));
 
   const disponible = revenu - stripe - cotisations - infra - iaAutres;
   return {

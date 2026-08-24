@@ -47,3 +47,5 @@ next-env.d.ts
 # verifications de compilation. Ne doivent jamais etre versionnes ni servis.
 *.ex4
 *.ex5
+coach-mesures.txt
+coach-cache-mesures.txt

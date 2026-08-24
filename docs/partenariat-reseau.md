@@ -17,18 +17,25 @@ tous ses quotas, infrastructure amortie sur 1 000 abonnés) :
 
 | Plan | Prix | Marge à plein quota | Commission à 30 % | Reste |
 |---|---|---|---|---|
-| Plus | 14,99 € | 4,80 € | 4,50 € | **+0,30 €** |
-| Premium | 29,99 € | 1,10 € | 9,00 € | **-7,90 €** |
+| Plus | 14,99 € | 5,27 € | 4,50 € | **+0,77 €** |
+| Premium | 29,99 € | 4,98 € | 9,00 € | **-4,02 €** |
 
-Lecture : à plein quota, un abonné Premium apporté par le réseau coûte près de
-8 € par mois. Le Plus tient de justesse.
+Lecture : à plein quota, un abonné Premium apporté par le réseau coûte environ
+4 € par mois. Le Plus tient, avec un coussin réel cette fois.
 
-Nuance importante : le plein quota n'est pas la consommation réelle. L'usage IA
-mesuré aujourd'hui est très en dessous des plafonds, donc en moyenne 30 % se
-paie sans difficulté. Le problème est la queue de distribution : avec des
-milliers de collaborateurs, les gros consommateurs arrivent mécaniquement, et la
-règle dure du produit (le pire cas doit rester à l'équilibre, tenue par
-`lib/product-margin.test.ts`) devient fausse dès qu'on sort 30 %.
+> **Chiffres révisés le 2026-08-24, et la conclusion ne change pas.** La marge
+> Premium à plein quota passe de 1,10 € à 4,98 € : le prompt système du coach a
+> été coupé en trois et 71 % de ses caractères ne dépendent plus d'aucun trader,
+> si bien que l'entrée de cache de ce bloc est partagée par tout le produit au
+> lieu d'être repayée par chacun. Le déficit Premium à 30 % est donc deux fois
+> moins profond qu'annoncé, mais il reste un déficit : tout ce qui suit tient,
+> et les trois façons de refermer l'écart restent les bonnes.
+>
+> ⚠️ Ces chiffres intègrent aussi une CORRECTION EN SENS INVERSE. Le même jour,
+> le banc a mesuré que trois paramètres de sortie du coach étaient sous-estimés
+> (une réponse fait 1 079 tokens et non 800). Sans cette mesure, ce tableau
+> aurait annoncé 5,85 € de marge Premium au lieu de 4,98 €, soit près d'un euro
+> de trop sur une décision commerciale. Voir `lib/product-margin.ts`.
 
 Trois façons de refermer l'écart, par ordre de préférence :
 

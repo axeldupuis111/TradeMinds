@@ -38,6 +38,35 @@ export const PLAN_MONTHLY_CEILING: Record<"analyze" | "chat", Record<PlanType, n
   // Julie : 176 messages/mois. Premium = ×1,48, soit 12 messages par jour ouvré
   // en moyenne, le quota JOURNALIER de 30 restant inchangé.
   //
+  // ── 2026-08-24 : LE PLAFOND RESTE À 340, ET C'EST UNE DÉCISION, PAS UN OUBLI ──
+  //
+  // Le coach a été rendu nettement moins cher ce jour-là (préfixe coupé en
+  // trois, 71 % devenu invariant et partagé par tous les abonnés ; tours
+  // d'outils cessant d'être facturés comme des réponses rédigées). J'ai remonté
+  // le plafond à 400, puis à 380, sur la foi du modèle.
+  //
+  // ⚠️ PUIS LE BANC A MESURÉ, ET LES TROIS PARAMÈTRES DE SORTIE ÉTAIENT
+  // SOUS-ESTIMÉS, TOUS DANS LE MAUVAIS SENS :
+  //     appels par message   1,40 modélisé →  1,54 mesuré
+  //     sortie d'une réponse  800 modélisé → 1 079 mesuré
+  //     sortie d'un tour       150 supposé →   348 puis 393 mesuré
+  // Le 800 n'avait jamais été compté : c'était un chiffre d'ambiance, trop bas
+  // de 35 %. Une fois les vraies valeurs posées, 380 messages passent à
+  // -0,94 € sur une base de 50 abonnés. La hausse a donc été retirée.
+  //
+  // CE QUI RESTE VRAI : à 340 messages, le coach coûte 13,96 € au lieu de
+  // 16,33 €, et la marge Premium passe de +0,69 € à +3,06 € (base 100). Le
+  // gain est réel, il est simplement plus petit qu'annoncé, et il sert de
+  // coussin au lieu de servir de plafond.
+  //
+  // ⚠️ CE QU'IL FAUT POUR MONTER UN JOUR. Pas un nouveau calcul : une MESURE DE
+  // PRODUCTION. Le banc pose des questions dures (construis-moi une méthode,
+  // compare trois instruments) et ses réponses sont plus longues qu'un échange
+  // ordinaire : ses chiffres sont des majorants, pas des moyennes. L'onglet
+  // « Coût IA » de l'admin lit les vraies conversations, route par route. Le
+  // jour où il montre une sortie moyenne franchement sous 1 079 tokens, le
+  // plafond remonte, sur des données et non sur une intuition.
+  //
   // ⚠️ RAMENÉ DE 450 À 260 PUIS REMONTÉ À 340 LE 2026-08-14, EN ÉCHANGE DE SONNET 5. Ce n'est pas
   // un resserrement : c'est le prix d'un coach qui répond juste. Mesuré, sur
   // une question à réponse vérifiable, Haiku donnait trois réponses fausses et

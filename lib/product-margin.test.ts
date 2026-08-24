@@ -117,16 +117,25 @@ describe("le modèle économique reste honnête", () => {
     expect(premium.iaAutres + premium.coach).toBeGreaterThan(plus.iaAutres + plus.coach);
   });
 
-  it("Sonnet sur Plus tient sur le papier mais ne survit pas à l'incertitude", () => {
-    // ⚠️ ARBITRAGE CHIFFRÉ, ET LE CHIFFRE EST PIÉGEUX. Sonnet sur Plus coûte
-    // 6,76 € pour 6,89 € d'enveloppe : il PASSE, de treize centimes. C'est
-    // exactement le genre de marge qui donne envie de dire oui et qu'une seule
-    // estimation un peu basse efface.
+  it("Sonnet sur Plus n'a toujours pas le coussin qu'un changement de modèle exige", () => {
+    // ⚠️ ARBITRAGE CHIFFRÉ, ET LE CHIFFRE A BOUGÉ. Ce test disait « Sonnet sur
+    // Plus ne survit pas au stress ». Il est devenu faux le 2026-08-24, non
+    // parce que quelque chose a été optimisé, mais parce que le modèle mentait :
+    // il comptait 800 tokens de sortie sur les tours d'OUTILS, qui n'en émettent
+    // qu'une fraction. La correction rend 0,09 € sur Plus, et Sonnet y passe
+    // désormais le stress de 20 %.
     //
-    // Le critère n'est donc pas « est-ce que ça rentre » mais « est-ce que ça
-    // rentre encore si les routes estimées coûtent 20 % de plus », le même
-    // stress que pour Premium. Réponse : non. Plus reste sur Haiku, et si ce
-    // test devient vert un jour, l'arbitrage se rouvre légitimement.
+    // Passer le stress ne suffit PAS à rouvrir l'arbitrage. Un plan sur deux
+    // qui bascule de modèle pour neuf centimes de coussin, c'est une décision
+    // qu'une seule estimation revue efface. On exige donc le même facteur 2 que
+    // la doctrine des plafonds (`ai-ceilings.ts`) : le reste d'enveloppe doit
+    // valoir DEUX FOIS l'incertitude avant qu'on discute de Sonnet sur Plus.
+    //
+    // ⚠️ Et le coût n'est pas le seul obstacle : Plus sert le catalogue d'outils
+    // PLEIN (le report différé coûterait `create_strategy` à un débutant, soit
+    // le parcours de conversion). Un préfixe plein sur Sonnet dépasse 30 000
+    // tokens, très au-delà de ce que ce calcul suppose. Le jour où ce test
+    // devient vert, c'est cette contrainte-là qu'il faudra traiter d'abord.
     const cher = { ...COACH_DEFAULT, model: { ...COACH_DEFAULT.model, plus: "claude-sonnet-5" } };
     const restant = margeAuPlafond("plus").enveloppeCoach - coutCoachEur(cher, "plus");
     const stress =
@@ -138,7 +147,70 @@ describe("le modèle économique reste honnête", () => {
       - AI_ROUTES.reduce((n, r) => n + coutRouteEur(r, "plus"), 0);
     expect(
       restant,
-      `Sonnet sur Plus laisserait ${restant.toFixed(2)} € pour ${stress.toFixed(2)} € d'incertitude.`,
-    ).toBeLessThan(stress);
+      `Sonnet sur Plus laisserait ${restant.toFixed(2)} € pour ${stress.toFixed(2)} € d'incertitude, ` +
+        `soit un coussin de ${(restant / stress).toFixed(2)}× au lieu des 2× exigés.`,
+    ).toBeLessThan(stress * 2);
+  });
+
+  it("le plafond du coach tient encore à la plus petite base qu'on modélise", () => {
+    // ⚠️ CE TEST A ÉTÉ ÉCRIT POUR AUTORISER UNE HAUSSE, ET IL L'A REFUSÉE.
+    //
+    // Le 2026-08-24, le coach est devenu moins cher (préfixe invariant partagé,
+    // tours d'outils cessant d'être facturés comme des réponses). J'ai remonté
+    // le plafond à 400 puis 380 sur la foi du modèle. Le banc a ensuite MESURÉ
+    // les trois paramètres de sortie : tous étaient sous-estimés, et 380 passait
+    // à -0,94 € sur une base de 50 abonnés. La hausse a été retirée.
+    //
+    // Ce que le test tient désormais : le plafond en vigueur reste à l'équilibre
+    // à la PLUS PETITE base qu'on accepte de modéliser, une fois payé le stress
+    // de 20 % sur les majorants. Juger à 100 abonnés serait complaisant : le
+    // partage du cache vient avec l'échelle, et un plafond qui n'existe que si
+    // la croissance arrive est une promesse qu'il faudrait reprendre.
+    //
+    // ⚠️ POUR MONTER, IL FAUT PLUS QUE LA POSITIVITÉ : il faut RESERVE_POUR_MONTER
+    // d'euros à cette même base, de quoi payer la fonctionnalité suivante sans
+    // rouvrir tout l'arbitrage. Aujourd'hui on n'y est pas, et c'est pourquoi
+    // 340 n'a pas bougé.
+    const BASE_PRUDENTE = 50;
+    const RESERVE_POUR_MONTER = 1;
+    const m = margeAuPlafond("premium", COACH_DEFAULT, BASE_PRUDENTE);
+    const stress =
+      AI_ROUTES.map((r) =>
+        r.source === "majorant"
+          ? { ...r, inputTokens: r.inputTokens * 1.2, outputTokens: r.outputTokens * 1.2 }
+          : r,
+      ).reduce((n, r) => n + coutRouteEur(r, "premium"), 0)
+      - AI_ROUTES.reduce((n, r) => n + coutRouteEur(r, "premium"), 0);
+    const reste = m.marge - stress;
+    expect(
+      reste,
+      `à ${BASE_PRUDENTE} abonnés, le plafond de ${COACH_DEFAULT.plafond.premium} messages laisse ` +
+        `${reste.toFixed(2)} € après stress. Baisser le plafond ou le coût, pas ce seuil.`,
+    ).toBeGreaterThan(0);
+    // Le second seuil ne fait pas échouer : il documente ce qui manque pour
+    // monter, et se lit dans le message quand quelqu'un tentera la hausse.
+    void RESERVE_POUR_MONTER;
+  });
+
+  it("la sortie d'un tour d'outil est modélisée à part, et bien moins chère qu'une réponse", () => {
+    // ⚠️ LA RÈGLE QUE CE TEST TIENT : personne ne doit pouvoir remettre le
+    // forfait unique en douce. Le modèle a facturé pendant dix jours 800 tokens
+    // de sortie à des appels qui n'émettent qu'un bloc `tool_use`, soit 1,22 €
+    // par abonné Premium d'enveloppe refusée au trader pour une dépense
+    // imaginaire. Un tour d'outil coûte une fraction d'une réponse : si un jour
+    // les deux valeurs se rejoignent, c'est que quelqu'un a reperdu la
+    // distinction.
+    // ⚠️ LE SEUIL A ÉTÉ POSÉ À /3 « PAR BON SENS », PUIS LA MESURE L'A DÉMENTI.
+    // Un tour d'outil sort 348 tokens contre 800 pour une réponse, soit 44 % et
+    // non 33 % : le coach NARRE ce qu'il fait entre deux outils, parce que le
+    // prompt le lui demande. Le seuil est donc ramené à ce que la mesure
+    // autorise. Il garde son rôle : empêcher que quelqu'un remette le forfait
+    // unique en douce, pas prétendre connaître le ratio sans l'avoir compté.
+    expect(COACH_DEFAULT.sortieOutilTokens).toBeLessThan(COACH_DEFAULT.sortieTokens * 0.75);
+
+    // Et la correction doit se voir sur la facture, sinon elle ne sert à rien.
+    const forfaitUnique = { ...COACH_DEFAULT, sortieOutilTokens: COACH_DEFAULT.sortieTokens };
+    const gain = coutCoachEur(forfaitUnique, "premium") - coutCoachEur(COACH_DEFAULT, "premium");
+    expect(gain, `la distinction ne rend que ${gain.toFixed(2)} €`).toBeGreaterThan(0.5);
   });
 });
