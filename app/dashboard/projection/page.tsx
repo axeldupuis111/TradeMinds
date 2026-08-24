@@ -261,7 +261,7 @@ export default function ProjectionPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+    <div className="mx-auto max-w-[1440px] space-y-6 pb-10">
       <header>
         <h1 className="text-2xl font-semibold">{t("proj_title")}</h1>
         <p className="text-sm text-foreground-muted mt-1">{t("proj_subtitle")}</p>
@@ -300,7 +300,7 @@ export default function ProjectionPage() {
                     : "bg-surface border-border text-foreground-muted hover:text-foreground",
                 )}
               >
-                {t("proj_years").replace("{n}", String(h))}
+                {h === 1 ? t("proj_year_one") : t("proj_years").replace("{n}", String(h))}
               </button>
             ))}
           </div>

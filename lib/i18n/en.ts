@@ -2764,6 +2764,7 @@ const dict: Record<string, string> = {
   "proj_scope_all": "Whole journal",
   "proj_horizon_label": "Horizon",
   "proj_years": "{n} years",
+  "proj_year_one": "1 year",
   "proj_insufficient_title": "Not enough to conclude yet",
   "proj_insufficient_body": "You are {n} closed trades short. Below that, the numbers would move so much from one trade to the next that they would mean nothing.",
   "proj_insufficient_eta": "At your current pace, roughly {n} months.",
