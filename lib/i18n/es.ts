@@ -2847,7 +2847,7 @@ const dict: Record<string, string> = {
   "seg_warning": "Cuidado con lo que significa. Este segmento se eligió DESPUÉS de mirar tus resultados: es una observación sobre tu pasado, no una regla demostrada. Buscar el peor segmento siempre acaba encontrando uno, incluso en datos al azar. Para que sea una regla de verdad, escríbela en tu ficha y deja que la medida de cumplimiento te diga si la mantienes en los trades SIGUIENTES.",
   "seg_none": "Tu pérdida no se concentra en ningún segmento identificable. Es más bien una buena noticia sobre la regularidad de tu ejecución, y significa que la palanca está en otra parte: en el método mismo o en tu tamaño de posición.",
   "seg_hour": "{n}:00",
-  "seg_overlap": "Estos segmentos se solapan: un mismo trade puede estar a la vez en ese instrumento, en ese sentido y en ese estado. Sus costes no se suman."
+  "seg_overlap": "Estos segmentos se solapan: un mismo trade puede pertenecer a varios a la vez. Sus costes no se suman."
 };
 
 export default dict;
