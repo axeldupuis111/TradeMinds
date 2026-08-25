@@ -45,9 +45,11 @@ import {
   type Projection,
   type ProjectionTrade,
 } from "@/lib/projection";
+import { mesurerAdherence, type Adherence } from "@/lib/strategy-adherence";
+import { verifierCoherence, type Coherence, type RegleStrategie } from "@/lib/strategy-coherence";
 import { createClient } from "@/lib/supabase/client";
 import { fetchAllRows } from "@/lib/supabase-paginate";
-import { AlertTriangle, CheckCircle2, HelpCircle, Lock, Sparkles, TrendingDown } from "lucide-react";
+import { AlertTriangle, CheckCircle2, HelpCircle, Lock, Sparkles, Target, TrendingDown } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -77,10 +79,14 @@ interface TradeRow {
   strategy_id: string | null;
 }
 
-interface StrategieRow {
+interface StrategieRow extends RegleStrategie {
   id: string;
   name: string | null;
 }
+
+/** Colonnes de règles lues pour le vérificateur de cohérence. */
+const COLONNES_STRATEGIE =
+  "id, name, pairs, sessions, risk_reward, max_sl_pips, max_trades_per_day, max_consecutive_losses, max_session_minutes, risk_per_trade_pct";
 
 export default function ProjectionPage() {
   const { t, lang } = useLanguage();
@@ -134,7 +140,7 @@ export default function ProjectionPage() {
             .order("id", { ascending: true })
             .range(from, to),
         ),
-        supabase.from("strategies").select("id, name").eq("user_id", user.id),
+        supabase.from("strategies").select(COLONNES_STRATEGIE).eq("user_id", user.id),
       ]);
       if (annule) return;
       const chronologiques = (lignes ?? []).slice().sort(
@@ -152,6 +158,59 @@ export default function ProjectionPage() {
 
   const devise = selectedAccount?.synced_currency || selectedAccount?.currency || DEFAULT_CURRENCY;
   const capital = Number(selectedAccount?.account_size) > 0 ? Number(selectedAccount?.account_size) : CAPITAL_DEFAUT;
+
+  /**
+   * Trades par stratégie, pour que le sélecteur soit lisible.
+   *
+   * ⚠️ Sans ce compte, le menu n'affichait que des noms, et le trader ne pouvait
+   * pas savoir laquelle de ses fiches a de quoi être projetée. Il en choisissait
+   * une au hasard, tombait sur « il te manque 80 trades », et concluait que
+   * l'onglet ne marche pas.
+   */
+  const tradesParStrategie = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const t of trades) {
+      if (t.strategy_id) m.set(t.strategy_id, (m.get(t.strategy_id) ?? 0) + 1);
+    }
+    return m;
+  }, [trades]);
+
+  const strategieCourante = strategieId === "all" ? null : strategies.find((x) => x.id === strategieId) ?? null;
+
+  /** Nom lisible d'une fiche, jamais un identifiant technique. */
+  const nomStrategie = (x: StrategieRow) => x.name?.trim() || t("proj_scope_unnamed");
+
+  /**
+   * Cohérence de la fiche sélectionnée, confrontée aux limites du compte actif.
+   *
+   * ⚠️ Ne s'affiche QUE pour une stratégie précise. Sur « tout le journal » il
+   * n'y a pas de fiche à vérifier, et mélanger les règles de plusieurs
+   * stratégies produirait des contradictions qui n'existent chez personne.
+   */
+  const coherence: Coherence | null = useMemo(() => {
+    if (!strategieCourante) return null;
+    return verifierCoherence(strategieCourante, {
+      max_daily_dd_pct: selectedAccount?.max_daily_dd_pct ?? null,
+      max_total_dd_pct: selectedAccount?.max_total_dd_pct ?? null,
+    });
+  }, [strategieCourante, selectedAccount]);
+
+  /**
+   * Écart entre les règles écrites et ce qui a été fait.
+   *
+   * ⚠️ Comme la cohérence, uniquement pour une stratégie précise : sur « tout le
+   * journal » il n'y a pas UNE fiche dont on pourrait mesurer le respect.
+   */
+  const adherence: Adherence | null = useMemo(() => {
+    if (!strategieCourante) return null;
+    const siens = trades.filter((x) => x.strategy_id === strategieCourante.id);
+    return mesurerAdherence(
+      siens.map((x) => ({ open_time: x.open_time, netPnl: x.pnl + (x.commission ?? 0) + (x.swap ?? 0) })),
+      strategieCourante,
+      capital,
+      Intl.DateTimeFormat().resolvedOptions().timeZone,
+    );
+  }, [strategieCourante, trades, capital]);
 
   /** Trades du périmètre choisi, réduits à ce dont le moteur a besoin. */
   const perimetre: ProjectionTrade[] = useMemo(() => {
@@ -274,6 +333,20 @@ export default function ProjectionPage() {
       <header>
         <h1 className="text-2xl font-semibold">{t("proj_title")}</h1>
         <p className="text-sm text-foreground-muted mt-1">{t("proj_subtitle")}</p>
+        {/* ⚠️ LE PÉRIMÈTRE EST RAPPELÉ ICI, PAS SEULEMENT DANS LE MENU. Le menu
+            se trouve en haut, les chiffres beaucoup plus bas : en défilant, on
+            ne sait plus de quelle stratégie on lit le verdict. Un onglet qui
+            affiche un risque de ruine sans dire à quoi il se rapporte est
+            ambigu au pire endroit possible. */}
+        <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface border border-border text-xs">
+          <Target className="w-3.5 h-3.5 text-accent" strokeWidth={1.75} />
+          <span className="font-medium">
+            {strategieCourante ? nomStrategie(strategieCourante) : t("proj_scope_all")}
+          </span>
+          <span className="text-foreground-muted">
+            {t("proj_scope_trades").replace("{n}", String(perimetre.length))}
+          </span>
+        </div>
       </header>
 
       {/* ── Périmètre et horizon ─────────────────────────────────────────── */}
@@ -286,9 +359,9 @@ export default function ProjectionPage() {
             className="px-3 py-2 rounded-lg bg-surface border border-border text-sm"
           >
             <option value="all">{t("proj_scope_all")}</option>
-            {strategies.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name || s.id.slice(0, 8)}
+            {strategies.map((x) => (
+              <option key={x.id} value={x.id}>
+                {`${nomStrategie(x)} (${tradesParStrategie.get(x.id) ?? 0})`}
               </option>
             ))}
           </select>
@@ -315,6 +388,14 @@ export default function ProjectionPage() {
           </div>
         </div>
       </div>
+
+      {/* ⚠️ LA COHÉRENCE PASSE AVANT LA PROJECTION, ET CE N'EST PAS UN CHOIX
+          ESTHÉTIQUE. Projeter une stratégie qui se contredit avec le compte
+          reviendrait à chiffrer un avenir que le trader ne peut pas vivre : il
+          sera disqualifié avant. Ce qui empêche d'appliquer la méthode se lit
+          donc d'abord, ce qu'elle donnerait ensuite. */}
+      {coherence && <EncartCoherence coherence={coherence} t={t} />}
+      {adherence && <EncartAdherence adherence={adherence} eur={eur} t={t} />}
 
       {chargement ? (
         <Card className="p-8 text-center text-sm text-foreground-muted">…</Card>
@@ -582,6 +663,148 @@ function Kpi({
         {valeur}
       </div>
       <div className="text-xs text-foreground-muted mt-2 leading-snug">{aide}</div>
+    </Card>
+  );
+}
+
+/**
+ * Ce que la fiche du trader dit d'elle-même, confrontée à son compte.
+ *
+ * ⚠️ AUCUN CONSTAT N'EST UN AVIS. Chacun est une multiplication que le trader
+ * peut refaire sur un coin de table, à partir de règles qu'il a lui-même
+ * écrites. C'est la frontière que `strategy-coherence.ts` tient, et l'interface
+ * n'a pas le droit de la franchir en ajoutant « bonne » ou « mauvaise » autour.
+ */
+function EncartCoherence({ coherence, t }: { coherence: Coherence; t: Traduire }) {
+  const STYLES = {
+    bloquant: { icone: AlertTriangle, couleur: "text-loss", fond: "bg-loss/10" },
+    serieux: { icone: HelpCircle, couleur: "text-gold", fond: "bg-gold/10" },
+    incomplet: { icone: Target, couleur: "text-foreground-muted", fond: "bg-surface" },
+  } as const;
+
+  return (
+    <Card className="p-6">
+      <div className="flex items-start justify-between gap-4 mb-4">
+        <div className="min-w-0">
+          <CardTitle>{t("coh_title")}</CardTitle>
+          <p className="text-xs text-foreground-muted mt-1 max-w-3xl">{t("coh_subtitle")}</p>
+        </div>
+        <div className="text-xs text-foreground-muted shrink-0 whitespace-nowrap">
+          {t("coh_completude")
+            .replace("{n}", String(coherence.completude))
+            .replace("{total}", String(coherence.completudeTotal))}
+        </div>
+      </div>
+
+      {coherence.constats.length === 0 ? (
+        <p className="text-sm text-profit">{t("coh_none")}</p>
+      ) : (
+        <ul className="space-y-3">
+          {coherence.constats.map((c) => {
+            const st = STYLES[c.gravite];
+            const Icone = st.icone;
+            // La copie vit dans i18n et porte des {jetons} ; le module de
+            // cohérence ne rend que des nombres. On les substitue ici.
+            let texte = t(c.code);
+            for (const [cle, valeur] of Object.entries(c.valeurs)) {
+              texte = texte.replaceAll(`{${cle}}`, String(valeur));
+            }
+            return (
+              <li key={c.code} className="flex items-start gap-3">
+                <div className={cn("w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5", st.fond)}>
+                  <Icone className={cn("w-3.5 h-3.5", st.couleur)} strokeWidth={2} />
+                </div>
+                <div className="min-w-0">
+                  <div className={cn("text-xs font-medium mb-0.5", st.couleur)}>
+                    {t(`coh_grav_${c.gravite}`)}
+                  </div>
+                  <p className="text-sm text-foreground-muted leading-relaxed">{texte}</p>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </Card>
+  );
+}
+
+/**
+ * L'écart entre ce que le trader a écrit et ce qu'il a fait.
+ *
+ * ⚠️ ON COMPTE, ON NE SERMONNE PAS. « 4 jours sur 30 » se vérifie et se retient ;
+ * « tu manques de discipline » se discute et s'oublie. C'est aussi pour ça que
+ * les règles TENUES s'affichent, et pas seulement les écarts : un trader qui ne
+ * voit que ses fautes cesse de regarder.
+ */
+function EncartAdherence({
+  adherence,
+  eur,
+  t,
+}: {
+  adherence: Adherence;
+  eur: (v: number, signed?: boolean) => string;
+  t: Traduire;
+}) {
+  /** Les règles dont les valeurs sont des MONTANTS et non des comptes. */
+  const EN_ARGENT = new Set(["adh_risque"]);
+
+  return (
+    <Card className="p-6">
+      <div className="flex items-start justify-between gap-4 mb-4">
+        <div className="min-w-0">
+          <CardTitle>{t("adh_title")}</CardTitle>
+          <p className="text-xs text-foreground-muted mt-1 max-w-3xl">{t("adh_subtitle")}</p>
+        </div>
+        {adherence.taux !== null && (
+          <div className="text-right shrink-0">
+            <div className="text-xs text-foreground-muted">{t("adh_taux")}</div>
+            <div
+              className={cn(
+                "text-2xl font-semibold",
+                adherence.taux >= 0.9 ? "text-profit" : adherence.taux >= 0.7 ? "text-gold" : "text-loss",
+              )}
+            >
+              {Math.round(adherence.taux * 100)} %
+            </div>
+          </div>
+        )}
+      </div>
+
+      {adherence.regles.length === 0 ? (
+        <p className="text-sm text-foreground-muted">{t("adh_none")}</p>
+      ) : (
+        <ul className="space-y-3">
+          {adherence.regles.map((r) => {
+            const tenu = r.ecarts === 0;
+            const argent = EN_ARGENT.has(r.code);
+            const fmt = (v: number) => (argent ? eur(v) : String(v));
+            let texte = t(tenu ? `${r.code}_ok` : r.code);
+            texte = texte
+              .replaceAll("{declare}", fmt(r.declare))
+              .replaceAll("{ecarts}", String(r.ecarts))
+              .replaceAll("{occasions}", String(r.occasions))
+              .replaceAll("{pire}", fmt(r.pire));
+            return (
+              <li key={r.code} className="flex items-start gap-3">
+                <div
+                  className={cn(
+                    "w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5",
+                    tenu ? "bg-profit/10" : "bg-loss/10",
+                  )}
+                >
+                  {tenu ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-profit" strokeWidth={2} />
+                  ) : (
+                    <AlertTriangle className="w-3.5 h-3.5 text-loss" strokeWidth={2} />
+                  )}
+                </div>
+                <p className="text-sm text-foreground-muted leading-relaxed">{texte}</p>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </Card>
   );
 }
