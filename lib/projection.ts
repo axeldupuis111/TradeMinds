@@ -136,17 +136,7 @@ export interface PointProjection {
  * Le baisser pour que plus d'utilisateurs voient l'onglet rempli serait la
  * décision la plus rentable à court terme et la plus destructrice ensuite.
  */
-// ⚠️⚠️⚠️ VALEUR TEMPORAIRE : 50 AU LIEU DE 100, POUR REGARDER LA PAGE ⚠️⚠️⚠️
-//
-// Abaissé le 2026-08-25 le temps d'un déploiement de prévisualisation, parce
-// que le journal d'Axel est sous le seuil et que les trois quarts de la page
-// (verdict, indicateurs, graphique, bouton coach) ne s'affichent jamais tant
-// qu'on n'a pas assez de trades.
-//
-// À REMETTRE À 100 AVANT TOUT MERGE. `projection.test.ts` est ROUGE tant que
-// cette ligne est là : c'est voulu, c'est le seul garde-fou qui empêche cette
-// valeur de partir en production par distraction.
-export const MIN_TRADES = 50;
+export const MIN_TRADES = 100;
 
 /** Nombre de chemins simulés par défaut. Assez pour un centile stable. */
 const CHEMINS_DEFAUT = 5000;
