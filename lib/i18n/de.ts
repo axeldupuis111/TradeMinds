@@ -2830,7 +2830,22 @@ const dict: Record<string, string> = {
   "adh_risque": "Du hast ein Risiko von {declare} pro Trade geschrieben. {ecarts} von {occasions} Trades lagen darüber, bis zu {pire}. Entweder war die Position größer als geplant, oder der Stopp wurde nicht gehalten.",
   "adh_risque_ok": "Du hast ein Risiko von {declare} pro Trade geschrieben, und keiner deiner {occasions} Verluste lag darüber.",
   "adh_serie": "Du stoppst nach {declare} Verlusten in Folge. An {ecarts} von {occasions} Tagen war die Serie länger, bis zu {pire} Verluste hintereinander.",
-  "adh_serie_ok": "Du stoppst nach {declare} Verlusten in Folge und hast das an den {occasions} gemessenen Tagen nie überschritten."
+  "adh_serie_ok": "Du stoppst nach {declare} Verlusten in Folge und hast das an den {occasions} gemessenen Tagen nie überschritten.",
+  "proj_ruin_help_account": "Anteil der Szenarien, in denen du die {pct} % verlierst, die dein Konto zulässt, vor Ende des Horizonts.",
+  "seg_title": "Wohin das Geld geht",
+  "seg_subtitle": "In fast jedem Journal sind die Verluste nicht verteilt: sie ballen sich auf wenige Segmente. Hier sind deine, sortiert danach, was sie dich gekostet haben.",
+  "seg_dim_pair": "Instrument",
+  "seg_dim_direction": "Richtung",
+  "seg_dim_emotion": "Zustand",
+  "seg_dim_setup": "Setup",
+  "seg_dim_weekday": "Tag",
+  "seg_dim_hour": "Stunde",
+  "seg_cost": "{n} Trades, {cout} insgesamt, also {esperance} pro Trade",
+  "seg_counterfactual_title": "Dasselbe Journal, ohne {segment}",
+  "seg_counterfactual_expectancy": "Deine Erwartung ginge von {avant} auf {apres} pro Trade.",
+  "seg_counterfactual_ruin": "Dein Ruinrisiko ginge von {avant} % auf {apres} %.",
+  "seg_warning": "Achtung, was das bedeutet. Dieses Segment wurde NACH dem Blick auf deine Ergebnisse ausgewählt: es ist eine Beobachtung über deine Vergangenheit, keine belegte Regel. Wer das schlechteste Segment sucht, findet immer eines, auch in Zufallsdaten. Damit daraus eine echte Regel wird, schreibe sie in dein Regelwerk und lass die Einhaltungsmessung sagen, ob du sie bei den FOLGENDEN Trades hältst.",
+  "seg_none": "Deine Verluste ballen sich auf kein erkennbares Segment. Das ist eher eine gute Nachricht über die Gleichmäßigkeit deiner Ausführung, und es heißt, der Hebel liegt woanders: in der Methode selbst oder in deiner Positionsgröße."
 };
 
 export default dict;

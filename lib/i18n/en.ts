@@ -2830,7 +2830,22 @@ const dict: Record<string, string> = {
   "adh_risque": "You wrote a risk of {declare} per trade. {ecarts} trades out of {occasions} went past it, up to {pire}. Either the position was bigger than planned, or the stop was not held.",
   "adh_risque_ok": "You wrote a risk of {declare} per trade, and none of your {occasions} losses went past it.",
   "adh_serie": "You stop after {declare} consecutive losses. {ecarts} days out of {occasions} had a longer streak, up to {pire} losses in a row.",
-  "adh_serie_ok": "You stop after {declare} consecutive losses, and you never went past it across the {occasions} measured days."
+  "adh_serie_ok": "You stop after {declare} consecutive losses, and you never went past it across the {occasions} measured days.",
+  "proj_ruin_help_account": "Share of scenarios where you lose the {pct}% your account tolerates, before the horizon.",
+  "seg_title": "Where the money goes",
+  "seg_subtitle": "In almost every journal, losses are not spread out: they concentrate on a few segments. Here are yours, ranked by what they cost you.",
+  "seg_dim_pair": "Instrument",
+  "seg_dim_direction": "Direction",
+  "seg_dim_emotion": "State",
+  "seg_dim_setup": "Setup",
+  "seg_dim_weekday": "Day",
+  "seg_dim_hour": "Hour",
+  "seg_cost": "{n} trades, {cout} in total, that is {esperance} per trade",
+  "seg_counterfactual_title": "The same journal, without {segment}",
+  "seg_counterfactual_expectancy": "Your expectancy would go from {avant} to {apres} per trade.",
+  "seg_counterfactual_ruin": "Your risk of ruin would go from {avant}% to {apres}%.",
+  "seg_warning": "Careful with what this means. This segment was picked AFTER looking at your results: it is an observation about your past, not a proven rule. Hunting for the worst segment always finds one, even in random data. For it to become a real rule, write it into your plan and let the adherence measure tell you whether you keep it on the trades that FOLLOW.",
+  "seg_none": "Your losses are not concentrated on any identifiable segment. That is rather good news about how consistently you execute, and it means the lever is elsewhere: in the method itself or in your position size."
 };
 
 export default dict;

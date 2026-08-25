@@ -2830,7 +2830,22 @@ const dict: Record<string, string> = {
   "adh_risque": "Escribiste un riesgo de {declare} por trade. {ecarts} trades de {occasions} lo superaron, hasta {pire}. O la posición era mayor de lo previsto, o el stop no se respetó.",
   "adh_risque_ok": "Escribiste un riesgo de {declare} por trade, y ninguna de tus {occasions} pérdidas lo superó.",
   "adh_serie": "Paras tras {declare} pérdidas consecutivas. {ecarts} días de {occasions} tuvieron una racha más larga, hasta {pire} pérdidas seguidas.",
-  "adh_serie_ok": "Paras tras {declare} pérdidas consecutivas, y nunca lo superaste en los {occasions} días medidos."
+  "adh_serie_ok": "Paras tras {declare} pérdidas consecutivas, y nunca lo superaste en los {occasions} días medidos.",
+  "proj_ruin_help_account": "Proporción de escenarios en los que pierdes el {pct} % que tu cuenta tolera, antes del final del horizonte.",
+  "seg_title": "Adónde se va el dinero",
+  "seg_subtitle": "En casi todos los diarios, la pérdida no está repartida: se concentra en unos pocos segmentos. Aquí están los tuyos, ordenados por lo que te han costado.",
+  "seg_dim_pair": "Instrumento",
+  "seg_dim_direction": "Sentido",
+  "seg_dim_emotion": "Estado",
+  "seg_dim_setup": "Setup",
+  "seg_dim_weekday": "Día",
+  "seg_dim_hour": "Hora",
+  "seg_cost": "{n} trades, {cout} en total, es decir {esperance} por trade",
+  "seg_counterfactual_title": "El mismo diario, sin {segment}",
+  "seg_counterfactual_expectancy": "Tu esperanza pasaría de {avant} a {apres} por trade.",
+  "seg_counterfactual_ruin": "Tu riesgo de ruina pasaría del {avant} % al {apres} %.",
+  "seg_warning": "Cuidado con lo que significa. Este segmento se eligió DESPUÉS de mirar tus resultados: es una observación sobre tu pasado, no una regla demostrada. Buscar el peor segmento siempre acaba encontrando uno, incluso en datos al azar. Para que sea una regla de verdad, escríbela en tu ficha y deja que la medida de cumplimiento te diga si la mantienes en los trades SIGUIENTES.",
+  "seg_none": "Tu pérdida no se concentra en ningún segmento identificable. Es más bien una buena noticia sobre la regularidad de tu ejecución, y significa que la palanca está en otra parte: en el método mismo o en tu tamaño de posición."
 };
 
 export default dict;

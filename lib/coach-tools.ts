@@ -18,6 +18,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { appendCommitment, parseCoachMemory } from "@/lib/coach-memory";
 import { challengesForWeek, getCommunityChallenge, isoWeekKey } from "@/lib/community-challenges";
 import { projeter } from "./projection";
+import { analyserSegments } from "./projection-segments";
 import { mesurerAdherence } from "./strategy-adherence";
 import { verifierCoherence } from "./strategy-coherence";
 import { computeTradeStats, type InsightTrade } from "@/lib/analysis-insights";
@@ -1879,7 +1880,10 @@ export async function executeCoachTool(
           : 2;
         let q = supabase
           .from("trades")
-          .select("open_time, pnl, commission, swap")
+          // Les dimensions servent à dire OÙ l'argent part, pas seulement
+          // combien. Un coach qui annonce un mur sans nommer le mur laisse le
+          // trader exactement où il était.
+          .select("open_time, pnl, commission, swap, pair, direction, emotion, ict_setup")
           .eq("user_id", userId)
           .eq("status", "closed")
           .order("open_time", { ascending: true })
@@ -1888,11 +1892,15 @@ export async function executeCoachTool(
         const { data, error } = await q;
         if (error) return fail("Lecture des trades impossible.");
 
-        const lignes = (data ?? []) as { open_time: string; pnl: number; commission: number | null; swap: number | null }[];
+        const lignes = (data ?? []) as {
+          open_time: string; pnl: number; commission: number | null; swap: number | null;
+          pair: string | null; direction: string | null; emotion: string | null; ict_setup: string | null;
+        }[];
         const pourProjection = lignes.map((x) => ({
           open_time: x.open_time,
           netPnl: x.pnl + (x.commission ?? 0) + (x.swap ?? 0),
         }));
+        const pourSegments = lignes.map((x, i) => ({ ...pourProjection[i], pair: x.pair, direction: x.direction, emotion: x.emotion, ict_setup: x.ict_setup }));
 
         // Le solde du compte sert de base au risque de ruine. Sans compte
         // lisible, on retombe sur une base conventionnelle et on le DIT, pour
@@ -1982,8 +1990,27 @@ export async function executeCoachTool(
             capital_reel: taille > 0,
             coherence,
             adherence,
+            segments_couteux: (() => {
+              const a = analyserSegments(pourSegments, { annees, capitalDepart: capital }, timezone || "UTC");
+              return {
+                segments: a.couteux.map((x) => ({
+                  dimension: x.dimension,
+                  valeur: x.cle,
+                  trades: x.trades,
+                  cout_total: Math.round(x.netPnl),
+                  cout_par_trade: Math.round(x.esperance),
+                })),
+                sans_le_pire: a.contrefactuel
+                  ? {
+                      segment: `${a.contrefactuel.segment.dimension} ${a.contrefactuel.segment.cle}`,
+                      esperance: Math.round(a.contrefactuel.projection.esperance * 100) / 100,
+                      risque_de_ruine: Math.round(a.contrefactuel.projection.risqueDeRuine * 100) / 100,
+                    }
+                  : null,
+              };
+            })(),
             note:
-              "Ne cite JAMAIS l'espérance sans son intervalle : si l'intervalle contient zéro, rien n'est démontré et tu dois le dire. Ce sont des scénarios rééchantillonnés sur son passé, jamais une prévision. Une espérance positive avec un risque de ruine élevé veut dire que sa taille de position est trop grosse pour la volatilité de sa méthode : c'est le diagnostic le plus utile que tu puisses poser ici. Si `coherence.contradictions` n'est pas vide, TRAITE-LA D'ABORD : projeter une stratégie qui disqualifie son porteur revient à chiffrer un avenir qu'il ne vivra pas. Et `adherence` compare ses règles ÉCRITES à ce qu'il a fait : ne lui reproche jamais une règle absente de sa fiche, et donne le compte (« 4 jours sur 30 ») plutôt qu'un jugement.",
+              "Ne cite JAMAIS l'espérance sans son intervalle : si l'intervalle contient zéro, rien n'est démontré et tu dois le dire. Ce sont des scénarios rééchantillonnés sur son passé, jamais une prévision. Une espérance positive avec un risque de ruine élevé veut dire que sa taille de position est trop grosse pour la volatilité de sa méthode : c'est le diagnostic le plus utile que tu puisses poser ici. Si `coherence.contradictions` n'est pas vide, TRAITE-LA D'ABORD : projeter une stratégie qui disqualifie son porteur revient à chiffrer un avenir qu'il ne vivra pas. ⚠️ `segments_couteux` est une OBSERVATION, PAS UNE RÈGLE : le segment a été choisi APRÈS avoir vu ses résultats, et chercher le pire parmi des dizaines en trouve toujours un, même dans du bruit. Tu peux lui dire ce que ce segment lui a coûté ; tu ne lui promets JAMAIS qu'en le retirant il gagnera. Propose-lui plutôt d'en faire une règle écrite dans sa fiche, pour qu'on mesure sur les trades SUIVANTS. Et `adherence` compare ses règles ÉCRITES à ce qu'il a fait : ne lui reproche jamais une règle absente de sa fiche, et donne le compte (« 4 jours sur 30 ») plutôt qu'un jugement.",
           },
         };
       }
