@@ -121,6 +121,45 @@ describe("les refus, qui sont la vraie valeur du module", () => {
     expect(a.couteux[0].cle).toBe("XAUUSD");
   });
 
+  it("un segment qui couvre presque tout le journal n'est pas un levier", () => {
+    // ⚠️ DÉFAUT VU EN PRÉVISUALISATION. Un trader qui ne fait que de l'or voyait
+    // « Instrument XAUUSD, 53 trades sur 60 » remonter comme segment coûteux.
+    // C'est vrai et inutile : lui dire que son instrument unique lui coûte de
+    // l'argent revient à lui dire d'arrêter de trader. Un segment n'est
+    // actionnable que s'il existe un « reste » qui, lui, va mieux.
+    const j = journal([
+      { n: 30, pnl: 10, pair: "EURUSD" },
+      { n: 130, pnl: -100, pair: "XAUUSD" },
+    ]);
+    const a = analyserSegments(j, OPTIONS);
+    expect(a.couteux.some((s) => s.cle === "XAUUSD")).toBe(false);
+  });
+
+  it("mais un segment majoritaire de peu reste un levier", () => {
+    // La frontière ne doit pas être si basse qu'elle avale les vrais leviers.
+    const j = journal([
+      { n: 100, pnl: 10, pair: "EURUSD" },
+      { n: 80, pnl: -100, pair: "XAUUSD" },
+    ]);
+    const a = analyserSegments(j, OPTIONS);
+    expect(a.couteux.some((s) => s.cle === "XAUUSD")).toBe(true);
+  });
+
+  it("le jour de la semaine sort en numéro ISO, jamais en nom anglais", () => {
+    // ⚠️ « Mon » remontait tel quel jusqu'à l'écran d'un trader allemand. Ce
+    // module ne produit que des clés localisables ; la mise en mots appartient
+    // à l'interface, comme pour les constats de cohérence.
+    const trades: TradeSegmente[] = Array.from({ length: 160 }, (_, i) => ({
+      open_time: new Date(Date.UTC(2025, 0, 6) + i * 86_400_000).toISOString(),
+      netPnl: i % 7 === 0 ? -900 : 10,
+      pair: `P${i % 9}`,
+    }));
+    const jours = analyserSegments(trades, OPTIONS, "UTC")
+      .couteux.filter((s) => s.dimension === "weekday")
+      .map((s) => s.cle);
+    for (const j of jours) expect(["1", "2", "3", "4", "5", "6", "7"]).toContain(j);
+  });
+
   it("un journal trop court ne produit aucune analyse", () => {
     expect(analyserSegments(journal([{ n: 40, pnl: -50 }]), OPTIONS).couteux).toHaveLength(0);
   });

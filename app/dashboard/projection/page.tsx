@@ -578,6 +578,7 @@ export default function ProjectionPage() {
               projection={projection}
               eur={eur}
               t={t}
+              lang={lang}
             />
           </StaggerItem>
 
@@ -899,13 +900,38 @@ function EncartSegments({
   projection,
   eur,
   t,
+  lang,
 }: {
   segments: AnalyseSegments;
   projection: Projection;
   eur: (v: number, signed?: boolean) => string;
   t: Traduire;
+  lang: string;
 }) {
-  const nommer = (s: Segment) => `${t(`seg_dim_${s.dimension}`)} ${s.cle}`;
+  /**
+   * Le nom lisible d'un segment.
+   *
+   * ⚠️ LE MODULE NE REND QUE DES CLÉS, LA MISE EN MOTS EST ICI. Sans cette
+   * traduction, la carte affichait « État frustrated » et « Sens short » à un
+   * trader français : des valeurs de base de données remontées telles quelles
+   * jusqu'à l'écran. Les instruments et les setups, eux, restent bruts : ce sont
+   * les noms que le trader emploie lui-même.
+   */
+  const nommer = (s: Segment) => {
+    const prefixe = t(`seg_dim_${s.dimension}`);
+    if (s.dimension === "emotion") return `${prefixe} ${t(`emotion_${s.cle}`)}`;
+    if (s.dimension === "direction") {
+      return `${prefixe} ${t(s.cle === "short" ? "review_day_short" : "review_day_long")}`;
+    }
+    if (s.dimension === "hour") return `${prefixe} ${t("seg_hour").replace("{n}", s.cle)}`;
+    if (s.dimension === "weekday") {
+      // Numéro ISO rendu dans la langue du trader, sans table de traduction :
+      // le 5 janvier 2026 est un lundi, on décale d'autant de jours.
+      const d = new Date(Date.UTC(2026, 0, 4 + Number(s.cle)));
+      return `${prefixe} ${new Intl.DateTimeFormat(lang, { weekday: "long", timeZone: "UTC" }).format(d)}`;
+    }
+    return `${prefixe} ${s.cle}`;
+  };
 
   return (
     <Card className="p-6">
@@ -936,6 +962,10 @@ function EncartSegments({
               </li>
             ))}
           </ul>
+
+          {segments.couteux.length > 1 && (
+            <p className="text-xs text-foreground-muted mt-3">{t("seg_overlap")}</p>
+          )}
 
           {segments.contrefactuel && (
             <div className="mt-5 pt-5 border-t border-border">

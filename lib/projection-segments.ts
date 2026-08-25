@@ -90,6 +90,20 @@ const SEGMENTS_REMONTES = 3;
 /** Un segment doit coûter au moins ça pour valoir d'être nommé, en part du total. */
 const PART_MIN_DU_DEFICIT = 0.15;
 
+/**
+ * Au-delà de cette part du journal, un segment n'est plus un levier.
+ *
+ * ⚠️ DÉFAUT VU EN PRÉVISUALISATION LE 2026-08-25. Un trader qui ne fait que de
+ * l'or voyait « Instrument XAUUSD, 53 trades sur 60, -5 865 $ » remonter comme
+ * segment coûteux. C'est arithmétiquement vrai et parfaitement inutile : lui
+ * dire que son instrument unique lui coûte de l'argent revient à lui dire
+ * d'arrêter de trader, pas à lui montrer une fuite à colmater.
+ *
+ * Un segment n'est actionnable que s'il existe un « reste » qui, lui, va mieux.
+ * Au-delà de 60 % du journal, ce reste n'existe plus.
+ */
+const PART_MAX_DU_JOURNAL = 0.6;
+
 interface Cle {
   dimension: Dimension;
   cle: string;
@@ -107,6 +121,12 @@ function clesDe(t: TradeSegmente, timezone: string): Cle[] {
   // devient un trade du lendemain, et le « mardi qui te coûte cher » désigne un
   // autre jour que celui qu'il a vécu.
   try {
+    // ⚠️ LE JOUR SORT EN NUMÉRO ISO (« 1 » = lundi), PAS EN NOM.
+    //
+    // Un nom court anglais (« Mon ») remontait tel quel jusqu'à l'écran d'un
+    // trader allemand. Ce module ne doit produire que des clés localisables :
+    // la mise en mots appartient à l'interface, comme pour les constats de
+    // cohérence. Même convention que `analysis-insights.byWeekday`.
     const f = new Intl.DateTimeFormat("en-GB", {
       timeZone: timezone || "UTC",
       weekday: "short",
@@ -116,7 +136,8 @@ function clesDe(t: TradeSegmente, timezone: string): Cle[] {
     const parties = f.formatToParts(new Date(t.open_time));
     const jour = parties.find((p) => p.type === "weekday")?.value;
     const heure = parties.find((p) => p.type === "hour")?.value;
-    if (jour) cles.push({ dimension: "weekday", cle: jour });
+    const ISO: Record<string, string> = { Mon: "1", Tue: "2", Wed: "3", Thu: "4", Fri: "5", Sat: "6", Sun: "7" };
+    if (jour && ISO[jour]) cles.push({ dimension: "weekday", cle: ISO[jour] });
     if (heure) cles.push({ dimension: "hour", cle: heure });
   } catch {
     /* fuseau invalide : on se passe des dimensions temporelles */
@@ -167,6 +188,7 @@ export function analyserSegments(
     // ⚠️ Un segment qui ne pèse presque rien dans le déficit n'est pas un
     // levier, c'est une anecdote. Le nommer détournerait l'attention du vrai.
     .filter((s) => deficitTotal < 0 && s.netPnl / deficitTotal >= PART_MIN_DU_DEFICIT)
+    .filter((s) => s.part <= PART_MAX_DU_JOURNAL)
     .sort((a, b) => a.netPnl - b.netPnl);
 
   if (candidats.length === 0) return vide;

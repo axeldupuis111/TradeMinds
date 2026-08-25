@@ -2845,7 +2845,9 @@ const dict: Record<string, string> = {
   "seg_counterfactual_expectancy": "Deine Erwartung ginge von {avant} auf {apres} pro Trade.",
   "seg_counterfactual_ruin": "Dein Ruinrisiko ginge von {avant} % auf {apres} %.",
   "seg_warning": "Achtung, was das bedeutet. Dieses Segment wurde NACH dem Blick auf deine Ergebnisse ausgewählt: es ist eine Beobachtung über deine Vergangenheit, keine belegte Regel. Wer das schlechteste Segment sucht, findet immer eines, auch in Zufallsdaten. Damit daraus eine echte Regel wird, schreibe sie in dein Regelwerk und lass die Einhaltungsmessung sagen, ob du sie bei den FOLGENDEN Trades hältst.",
-  "seg_none": "Deine Verluste ballen sich auf kein erkennbares Segment. Das ist eher eine gute Nachricht über die Gleichmäßigkeit deiner Ausführung, und es heißt, der Hebel liegt woanders: in der Methode selbst oder in deiner Positionsgröße."
+  "seg_none": "Deine Verluste ballen sich auf kein erkennbares Segment. Das ist eher eine gute Nachricht über die Gleichmäßigkeit deiner Ausführung, und es heißt, der Hebel liegt woanders: in der Methode selbst oder in deiner Positionsgröße.",
+  "seg_hour": "{n}:00",
+  "seg_overlap": "Diese Segmente überschneiden sich: ein Trade kann zugleich auf diesem Instrument, in dieser Richtung und in diesem Zustand sein. Ihre Kosten addieren sich nicht."
 };
 
 export default dict;
