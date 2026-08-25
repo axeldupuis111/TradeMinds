@@ -204,9 +204,16 @@ export function verifierCoherence(
   if (risque >= RISQUE_PAR_TRADE_ALERTE) {
     const moitie = pertesPourMoitie(risque);
     if (moitie !== null) {
+      // ⚠️ JAMAIS « bloquant », ET C'EST UNE CORRECTION. J'avais rendu ce constat
+      // bloquant au-delà de 4 % : c'était un JUGEMENT déguisé en gravité. Rien
+      // ne se contredit ici, aucune limite n'est franchie ; on énonce combien de
+      // pertes d'affilée il faudrait, et c'est au trader de dire si cette série
+      // lui paraît hors de portée. Le mot « Contradiction » est réservé aux cas
+      // où la fiche et le compte s'excluent réellement, sinon il ne veut plus
+      // rien dire quand il compte vraiment.
       constats.push({
         code: "coh_risque_par_trade",
-        gravite: risque >= 2 * RISQUE_PAR_TRADE_ALERTE ? "bloquant" : "serieux",
+        gravite: "serieux",
         valeurs: { risque, pertes: moitie },
       });
     }

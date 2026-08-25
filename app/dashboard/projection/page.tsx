@@ -45,6 +45,7 @@ import {
   type Projection,
   type ProjectionTrade,
 } from "@/lib/projection";
+import { analyserSegments, type AnalyseSegments, type Segment, type TradeSegmente } from "@/lib/projection-segments";
 import { mesurerAdherence, type Adherence } from "@/lib/strategy-adherence";
 import { verifierCoherence, type Coherence, type RegleStrategie } from "@/lib/strategy-coherence";
 import { createClient } from "@/lib/supabase/client";
@@ -71,12 +72,27 @@ const HORIZONS = [1, 2, 5, 10, 15] as const;
 /** Capital de repli quand aucun solde n'est connu, pour que la ruine ait un sens. */
 const CAPITAL_DEFAUT = 10_000;
 
+/**
+ * Perte, en % du capital, considérée comme une ruine à défaut de mieux.
+ *
+ * Convention assumée, employée UNIQUEMENT quand le compte ne porte pas de limite
+ * propre. Dès qu'il en a une, c'est la sienne qui s'applique : elle, au moins,
+ * décrit quelque chose de réel pour lui.
+ */
+const SEUIL_RUINE_DEFAUT = 30;
+
 interface TradeRow {
   open_time: string;
   pnl: number;
   commission: number | null;
   swap: number | null;
   strategy_id: string | null;
+  // Dimensions de regroupement : elles servent à dire OÙ l'argent part, pas
+  // seulement combien. Sans elles, l'onglet annonce un mur sans indiquer le mur.
+  pair: string | null;
+  direction: string | null;
+  emotion: string | null;
+  ict_setup: string | null;
 }
 
 interface StrategieRow extends RegleStrategie {
@@ -134,7 +150,7 @@ export default function ProjectionPage() {
         fetchAllRows<TradeRow>((from, to) =>
           supabase
             .from("trades")
-            .select("open_time, pnl, commission, swap, strategy_id")
+            .select("open_time, pnl, commission, swap, strategy_id, pair, direction, emotion, ict_setup")
             .eq("user_id", user.id)
             .eq("status", "closed")
             .order("id", { ascending: true })
@@ -158,6 +174,20 @@ export default function ProjectionPage() {
 
   const devise = selectedAccount?.synced_currency || selectedAccount?.currency || DEFAULT_CURRENCY;
   const capital = Number(selectedAccount?.account_size) > 0 ? Number(selectedAccount?.account_size) : CAPITAL_DEFAUT;
+
+  /**
+   * Le seuil de ruine vient du COMPTE quand il en a un.
+   *
+   * ⚠️ C'ÉTAIT UN DÉFAUT, PAS UN RÉGLAGE. Le risque de ruine était calculé
+   * contre une perte de 30 % du capital, un chiffre posé arbitrairement. Pour un
+   * trader en challenge disqualifié à -10 %, ce pourcentage ne décrit rien : il
+   * est éliminé bien avant, et l'onglet lui annonçait un risque rassurant sur un
+   * seuil qu'il n'atteindra jamais. On prend donc la limite RÉELLE de son
+   * compte, et on lui dit laquelle des deux on a utilisée.
+   */
+  const ddCompte = Number(selectedAccount?.max_total_dd_pct);
+  const seuilRuinePct = ddCompte > 0 ? ddCompte : SEUIL_RUINE_DEFAUT;
+  const seuilVientDuCompte = ddCompte > 0;
 
   /**
    * Trades par stratégie, pour que le sélecteur soit lisible.
@@ -221,9 +251,39 @@ export default function ProjectionPage() {
     }));
   }, [trades, strategieId]);
 
+  /** Le périmètre, mais en gardant les dimensions de regroupement. */
+  const segmentables: TradeSegmente[] = useMemo(() => {
+    const retenus = strategieId === "all" ? trades : trades.filter((x) => x.strategy_id === strategieId);
+    return retenus.map((x) => ({
+      open_time: x.open_time,
+      netPnl: x.pnl + (x.commission ?? 0) + (x.swap ?? 0),
+      pair: x.pair,
+      direction: x.direction,
+      emotion: x.emotion,
+      ict_setup: x.ict_setup,
+    }));
+  }, [trades, strategieId]);
+
+  const optionsProjection = useMemo(
+    () => ({ annees, capitalDepart: capital, seuilRuine: seuilRuinePct / 100 }),
+    [annees, capital, seuilRuinePct],
+  );
+
   const projection: Projection = useMemo(
-    () => projeter(perimetre, { annees, capitalDepart: capital }),
-    [perimetre, annees, capital],
+    () => projeter(perimetre, optionsProjection),
+    [perimetre, optionsProjection],
+  );
+
+  /**
+   * Où l'argent part, et ce que ça donnerait sans.
+   *
+   * ⚠️ Deux projections tournent donc au lieu d'une. C'est assumé : le calcul
+   * complet prend quelques dizaines de millisecondes dans le navigateur, et
+   * c'est la seule partie de la page qui répond à « je fais quoi lundi ».
+   */
+  const segments = useMemo(
+    () => analyserSegments(segmentables, optionsProjection, Intl.DateTimeFormat().resolvedOptions().timeZone),
+    [segmentables, optionsProjection],
   );
 
   // ⚠️ L'AVIS TOMBE DÈS QUE LES CHIFFRES CHANGENT. Changer de stratégie ou
@@ -416,7 +476,10 @@ export default function ProjectionPage() {
               <Kpi
                 titre={t("proj_ruin")}
                 valeur={`${Math.round(projection.risqueDeRuine * 100)} %`}
-                aide={t("proj_ruin_help").replace("{pct}", "30")}
+                aide={t(seuilVientDuCompte ? "proj_ruin_help_account" : "proj_ruin_help").replace(
+                  "{pct}",
+                  String(seuilRuinePct),
+                )}
                 ton={projection.risqueDeRuine > 0.2 ? "loss" : "neutre"}
               />
               <Kpi
@@ -507,6 +570,16 @@ export default function ProjectionPage() {
                 </ComposedChart>
               </ResponsiveContainer>
             </KpiCardPremium>
+          </StaggerItem>
+
+          <StaggerItem>
+            <EncartSegments
+              segments={segments}
+              projection={projection}
+              eur={eur}
+              t={t}
+              lang={lang}
+            />
           </StaggerItem>
 
           <StaggerItem>
@@ -782,6 +855,9 @@ function EncartAdherence({
             let texte = t(tenu ? `${r.code}_ok` : r.code);
             texte = texte
               .replaceAll("{declare}", fmt(r.declare))
+              // Le pourcentage tel qu'il l'a écrit, quand la règle en est un :
+              // « 5 % » est sa règle, « 2 500 $ » n'en est que la conversion.
+              .replaceAll("{pct}", String(r.declarePct ?? ""))
               .replaceAll("{ecarts}", String(r.ecarts))
               .replaceAll("{occasions}", String(r.occasions))
               .replaceAll("{pire}", fmt(r.pire));
@@ -804,6 +880,116 @@ function EncartAdherence({
             );
           })}
         </ul>
+      )}
+    </Card>
+  );
+}
+
+/**
+ * Où l'argent part, et ce que ça donnerait sans.
+ *
+ * ⚠️ L'AVERTISSEMENT N'EST PAS UNE FORMALITÉ, C'EST LA MOITIÉ DE LA CARTE. Le
+ * segment a été choisi APRÈS avoir vu les résultats : chercher le pire parmi
+ * des dizaines en trouve toujours un, y compris dans du bruit. Sans cette
+ * phrase, la carte fabrique des règles qui ne survivront pas au mois suivant,
+ * et le trader nous croira parce que le chiffre est juste. Il l'est : c'est son
+ * INTERPRÉTATION qui est piégeuse.
+ */
+function EncartSegments({
+  segments,
+  projection,
+  eur,
+  t,
+  lang,
+}: {
+  segments: AnalyseSegments;
+  projection: Projection;
+  eur: (v: number, signed?: boolean) => string;
+  t: Traduire;
+  lang: string;
+}) {
+  /**
+   * Le nom lisible d'un segment.
+   *
+   * ⚠️ LE MODULE NE REND QUE DES CLÉS, LA MISE EN MOTS EST ICI. Sans cette
+   * traduction, la carte affichait « État frustrated » et « Sens short » à un
+   * trader français : des valeurs de base de données remontées telles quelles
+   * jusqu'à l'écran. Les instruments et les setups, eux, restent bruts : ce sont
+   * les noms que le trader emploie lui-même.
+   */
+  const nommer = (s: Segment) => {
+    const prefixe = t(`seg_dim_${s.dimension}`);
+    if (s.dimension === "emotion") return `${prefixe} ${t(`emotion_${s.cle}`)}`;
+    if (s.dimension === "direction") {
+      return `${prefixe} ${t(s.cle === "short" ? "review_day_short" : "review_day_long")}`;
+    }
+    if (s.dimension === "hour") return `${prefixe} ${t("seg_hour").replace("{n}", s.cle)}`;
+    if (s.dimension === "weekday") {
+      // Numéro ISO rendu dans la langue du trader, sans table de traduction :
+      // le 5 janvier 2026 est un lundi, on décale d'autant de jours.
+      const d = new Date(Date.UTC(2026, 0, 4 + Number(s.cle)));
+      return `${prefixe} ${new Intl.DateTimeFormat(lang, { weekday: "long", timeZone: "UTC" }).format(d)}`;
+    }
+    return `${prefixe} ${s.cle}`;
+  };
+
+  return (
+    <Card className="p-6">
+      <div className="mb-4">
+        <CardTitle>{t("seg_title")}</CardTitle>
+        <p className="text-xs text-foreground-muted mt-1 max-w-3xl">{t("seg_subtitle")}</p>
+      </div>
+
+      {segments.couteux.length === 0 ? (
+        <p className="text-sm text-foreground-muted">{t("seg_none")}</p>
+      ) : (
+        <>
+          <ul className="space-y-3">
+            {segments.couteux.map((s) => (
+              <li key={`${s.dimension}:${s.cle}`} className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-loss/10 flex items-center justify-center shrink-0 mt-0.5">
+                  <TrendingDown className="w-3.5 h-3.5 text-loss" strokeWidth={2} />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-sm font-medium">{nommer(s)}</div>
+                  <p className="text-xs text-foreground-muted mt-0.5">
+                    {t("seg_cost")
+                      .replace("{n}", String(s.trades))
+                      .replace("{cout}", eur(s.netPnl, true))
+                      .replace("{esperance}", eur(s.esperance, true))}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          {segments.couteux.length > 1 && (
+            <p className="text-xs text-foreground-muted mt-3">{t("seg_overlap")}</p>
+          )}
+
+          {segments.contrefactuel && (
+            <div className="mt-5 pt-5 border-t border-border">
+              <div className="text-sm font-medium mb-2">
+                {t("seg_counterfactual_title").replace("{segment}", nommer(segments.contrefactuel.segment))}
+              </div>
+              <p className="text-sm text-foreground-muted">
+                {t("seg_counterfactual_expectancy")
+                  .replace("{avant}", eur(projection.esperance, true))
+                  .replace("{apres}", eur(segments.contrefactuel.projection.esperance, true))}
+              </p>
+              <p className="text-sm text-foreground-muted mt-1">
+                {t("seg_counterfactual_ruin")
+                  .replace("{avant}", String(Math.round(projection.risqueDeRuine * 100)))
+                  .replace("{apres}", String(Math.round(segments.contrefactuel.projection.risqueDeRuine * 100)))}
+              </p>
+            </div>
+          )}
+
+          <div className="mt-5 flex items-start gap-3 p-3 rounded-lg bg-gold/5 border border-gold/20">
+            <AlertTriangle className="w-4 h-4 text-gold shrink-0 mt-0.5" strokeWidth={1.75} />
+            <p className="text-xs text-foreground-muted leading-relaxed">{t("seg_warning")}</p>
+          </div>
+        </>
       )}
     </Card>
   );

@@ -50,6 +50,14 @@ export interface EcartRegle {
   declare: number;
   /** Le pire dépassement observé, pour donner l'échelle. */
   pire: number;
+  /**
+   * Le pourcentage tel que le trader l'a écrit, quand la règle en est un.
+   *
+   * ⚠️ Sans lui, la carte affichait « tu as écrit un risque de 2 500 $ par
+   * trade » alors qu'il avait écrit « 5 % ». Le chiffre était juste et la
+   * phrase fausse : on lui attribue une règle qu'il n'a jamais formulée ainsi.
+   */
+  declarePct?: number;
 }
 
 export interface Adherence {
@@ -152,6 +160,7 @@ export function mesurerAdherence(
       occasions: chronologiques.length,
       declare: Math.round(plafond),
       pire: Math.round(pire),
+      declarePct: risquePct,
     });
   }
 
@@ -192,14 +201,31 @@ export function mesurerAdherence(
   // ⚠️ AUCUNE RÈGLE POSÉE, DONC AUCUN TAUX. Rendre 100 % dirait « tu respectes
   // tout » à quelqu'un qui n'a rien à respecter : c'est le genre de flatterie
   // qui décrédibilise l'outil entier auprès de celui qui comprend.
-  const occasions = sortie.reduce((n, r) => n + r.occasions, 0);
-  const ecarts = sortie.reduce((n, r) => n + r.ecarts, 0);
+  //
+  // ⚠️ ET LA MOYENNE SE FAIT PAR RÈGLE, PAS SUR LE TOTAL DES OCCASIONS.
+  //
+  // Défaut vu en prévisualisation le 2026-08-25 : en additionnant toutes les
+  // occasions, un trader qui avait dépassé sa cadence 3 jours sur 21 ET sa règle
+  // d'arrêt 4 jours sur 21 affichait 93 % de respect, parce que ses 60 trades
+  // au bon risque noyaient le dénominateur. Les règles ne se comptent pas dans
+  // la même unité (des journées pour la cadence, des trades pour le risque) :
+  // les mettre dans le même sac fait gagner celle qui a le plus d'occasions.
+  //
+  // Chaque règle pèse donc pareil, quel que soit le nombre de fois où elle
+  // pouvait être tenue. Sur le même exemple : 86 %, 100 % et 81 %, soit 89 %.
+  // L'écart avec 93 % paraît petit ; il va dans le sens de la flatterie, et
+  // c'est exactement le sens qu'on refuse.
+  const mesurables = sortie.filter((r) => r.occasions > 0);
+  const taux =
+    mesurables.length === 0
+      ? null
+      : mesurables.reduce((n, r) => n + (r.occasions - r.ecarts) / r.occasions, 0) / mesurables.length;
 
   return {
     regles: sortie,
     trades: chronologiques.length,
     jours: parJour.size,
-    taux: sortie.length === 0 || occasions === 0 ? null : (occasions - ecarts) / occasions,
+    taux,
   };
 }
 

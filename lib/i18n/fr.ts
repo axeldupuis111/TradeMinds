@@ -2827,10 +2827,27 @@ const dict: Record<string, string> = {
   "adh_none": "Ta fiche ne pose aucune règle chiffrée. Il n'y a donc rien à respecter, et rien à mesurer. Ajoute au moins un risque par trade et une limite de trades par jour : ce sont les deux qui se dépassent le plus souvent.",
   "adh_cadence": "Tu as écrit {declare} trades par jour au maximum. Tu l'as dépassé {ecarts} jours sur {occasions}, en montant jusqu'à {pire} trades.",
   "adh_cadence_ok": "Tu as écrit {declare} trades par jour au maximum, et tu l'as tenu sur les {occasions} journées mesurées.",
-  "adh_risque": "Tu as écrit un risque de {declare} par trade. {ecarts} trades sur {occasions} l'ont dépassé, jusqu'à {pire}. Soit la position était plus grosse que prévu, soit le stop n'a pas été tenu.",
-  "adh_risque_ok": "Tu as écrit un risque de {declare} par trade, et aucune de tes {occasions} pertes ne l'a dépassé.",
+  "adh_risque": "Tu as écrit un risque de {pct} % par trade, soit {declare}. {ecarts} trades sur {occasions} l'ont dépassé, jusqu'à {pire}. Soit la position était plus grosse que prévu, soit le stop n'a pas été tenu.",
+  "adh_risque_ok": "Tu as écrit un risque de {pct} % par trade, soit {declare}, et aucune de tes {occasions} pertes ne l'a dépassé.",
   "adh_serie": "Tu t'arrêtes après {declare} pertes consécutives. {ecarts} journées sur {occasions} ont connu une série plus longue, jusqu'à {pire} pertes d'affilée.",
-  "adh_serie_ok": "Tu t'arrêtes après {declare} pertes consécutives, et tu ne l'as jamais dépassé sur les {occasions} journées mesurées."
+  "adh_serie_ok": "Tu t'arrêtes après {declare} pertes consécutives, et tu ne l'as jamais dépassé sur les {occasions} journées mesurées.",
+  "proj_ruin_help_account": "Part des scénarios où tu perds les {pct} % que ton compte tolère, avant la fin de l'horizon.",
+  "seg_title": "Où l'argent part",
+  "seg_subtitle": "Dans presque tous les journaux, la perte n'est pas répartie : elle se concentre sur quelques segments. Voici les tiens, classés par ce qu'ils t'ont coûté.",
+  "seg_dim_pair": "Instrument",
+  "seg_dim_direction": "Sens",
+  "seg_dim_emotion": "État",
+  "seg_dim_setup": "Setup",
+  "seg_dim_weekday": "Jour",
+  "seg_dim_hour": "Heure",
+  "seg_cost": "{n} trades, {cout} au total, soit {esperance} par trade",
+  "seg_counterfactual_title": "Le même journal, sans {segment}",
+  "seg_counterfactual_expectancy": "Ton espérance passerait de {avant} à {apres} par trade.",
+  "seg_counterfactual_ruin": "Ton risque de ruine passerait de {avant} % à {apres} %.",
+  "seg_warning": "Attention à ce que ça veut dire. Ce segment a été choisi APRÈS avoir regardé tes résultats : c'est une observation sur ton passé, pas une règle démontrée. Chercher le pire segment finit toujours par en trouver un, même dans des données au hasard. Pour que ça devienne une vraie règle, écris-la dans ta fiche et laisse la mesure de respect te dire si tu la tiens sur les trades SUIVANTS.",
+  "seg_none": "Ta perte n'est concentrée sur aucun segment identifiable. C'est plutôt une bonne nouvelle sur la régularité de ton exécution, et ça veut dire que le levier est ailleurs : dans ta méthode elle-même ou dans ta taille de position.",
+  "seg_hour": "{n}h",
+  "seg_overlap": "Ces segments se recouvrent : un même trade peut appartenir à plusieurs d'entre eux à la fois. Leurs coûts ne s'additionnent pas."
 };
 
 export default dict;

@@ -141,6 +141,31 @@ describe("le taux agrège toutes les règles posées", () => {
     expect(a.taux!).toBeLessThan(0.5);
   });
 
+  it("chaque règle pèse pareil, celle qui a le plus d'occasions ne noie pas les autres", () => {
+    // ⚠️ LE DÉFAUT VU EN PRÉVISUALISATION LE 2026-08-25. En additionnant toutes
+    // les occasions, un trader qui débordait sur DEUX règles comptées en
+    // journées affichait quand même un taux flatteur, parce que ses dizaines de
+    // trades au bon risque écrasaient le dénominateur. Les unités ne sont pas
+    // les mêmes : des journées d'un côté, des trades de l'autre.
+    //
+    // Ici : cadence tenue 1 jour sur 2 (50 %), risque tenu sur 40 trades sur 40
+    // (100 %). La moyenne par règle donne 75 %. La mise en commun aurait donné
+    // 41/42, soit 98 %, et aurait félicité quelqu'un qui a débordé une fois sur
+    // deux. L'écart va toujours dans le sens de la flatterie.
+    const trades = [...jour("2026-01-05", Array(39).fill(10)), ...jour("2026-01-06", [10])];
+    const a = mesurerAdherence(trades, { max_trades_per_day: 20, risk_per_trade_pct: 50 }, CAPITAL);
+    expect(a.regles).toHaveLength(2);
+    expect(a.taux).toBeCloseTo(0.75, 5);
+  });
+
+  it("le pourcentage écrit par le trader est conservé, pas seulement sa conversion", () => {
+    // Il a écrit « 2 % », pas « 200 EUR ». Lui rendre uniquement les euros
+    // reviendrait à lui attribuer une règle qu'il n'a jamais formulée ainsi.
+    const r = mesurerAdherence(jour("2026-01-05", [-50]), { risk_per_trade_pct: 2 }, CAPITAL).regles[0];
+    expect(r.declarePct).toBe(2);
+    expect(r.declare).toBe(200);
+  });
+
   it("les journées et les trades comptés sont ceux qu'on a reçus", () => {
     const trades = [...jour("2026-01-05", [10, 10]), ...jour("2026-01-06", [10])];
     const a = mesurerAdherence(trades, { max_trades_per_day: 5 }, CAPITAL);
