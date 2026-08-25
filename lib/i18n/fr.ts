@@ -2861,7 +2861,8 @@ const dict: Record<string, string> = {
   "lev_col_median": "Résultat médian",
   "lev_current": "Ta taille actuelle",
   "lev_divided": "Divisée par {n}",
-  "lev_caveat": "Ça coupe dans les deux sens : diviser ta taille par deux divise aussi tes gains par deux. Ce n'est pas un réglage gratuit, c'est un arbitrage entre moins de ruine et moins de gain. Le calcul suppose aussi que tu aurais pris les mêmes trades avec une taille plus petite, ce qui n'est pas toujours vrai : une position plus petite change souvent le comportement."
+  "lev_caveat": "Ça coupe dans les deux sens : diviser ta taille par deux divise aussi tes gains par deux. Ce n'est pas un réglage gratuit, c'est un arbitrage entre moins de ruine et moins de gain. Le calcul suppose aussi que tu aurais pris les mêmes trades avec une taille plus petite, ce qui n'est pas toujours vrai : une position plus petite change souvent le comportement.",
+  "lev_negative_edge": "⚠️ Ton espérance est négative. Réduire ta taille ne la rendra pas positive : elle baisse dans la même proportion, ligne après ligne. Ce tableau te montre comment cesser d'exploser vite, pas comment devenir rentable. La taille de position protège du risque de ruine, elle ne crée pas d'edge. Tant que ton espérance reste négative, le levier est ta méthode, pas ton nombre de lots."
 };
 
 export default dict;

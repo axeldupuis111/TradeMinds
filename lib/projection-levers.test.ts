@@ -66,6 +66,36 @@ describe("réduire la taille coupe dans les deux sens", () => {
   });
 });
 
+describe("réduire la taille ne crée jamais d'edge", () => {
+  it("une espérance négative le reste à toutes les tailles", () => {
+    // ⚠️ LE DÉFAUT VU EN PRÉVISUALISATION, ET C'EST MOI QUI L'AVAIS INTRODUIT.
+    // Sur un trader a espérance négative, la ligne « divisée par 5 » affichait
+    // un risque de ruine de 0 % EN VERT à côté d'une espérance de -19 $. Le vert
+    // disait « tu es sauvé » quand la lecture juste était « tu vas saigner
+    // lentement au lieu d'exploser vite ».
+    //
+    // Le module ne peut pas empêcher une interface de mal colorer, mais il peut
+    // rendre le fait indiscutable : le signe de l'espérance ne change JAMAIS.
+    const perdant = journal(200, (i) => (i % 10 < 3 ? 500 : -250));
+    const paliers = paliersDeTaille(perdant, OPTIONS);
+    expect(paliers[0].esperance).toBeLessThan(0);
+    for (const p of paliers) {
+      expect(p.esperance, `facteur ${p.facteur}`).toBeLessThan(0);
+      expect(p.median, `facteur ${p.facteur}`).toBeLessThan(0);
+    }
+  });
+
+  it("le risque de ruine peut tomber à zéro alors que le trader perd encore", () => {
+    // C'est précisément ce qui rendait le tableau trompeur : les deux chiffres
+    // sont justes et racontent des histoires opposées. L'interface DOIT dire
+    // laquelle prime.
+    const perdant = journal(200, (i) => (i % 10 < 3 ? 500 : -250));
+    const petit = paliersDeTaille(perdant, { annees: 2, capitalDepart: 500_000 }).at(-1)!;
+    expect(petit.risqueDeRuine).toBe(0);
+    expect(petit.esperance).toBeLessThan(0);
+  });
+});
+
 describe("« jusqu'où descendre » est une question, pas une recommandation", () => {
   it("rend le plus GRAND palier qui passe sous le seuil", () => {
     const paliers = [

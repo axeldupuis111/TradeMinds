@@ -2861,7 +2861,8 @@ const dict: Record<string, string> = {
   "lev_col_median": "Medianergebnis",
   "lev_current": "Deine aktuelle Größe",
   "lev_divided": "Geteilt durch {n}",
-  "lev_caveat": "Das schneidet in beide Richtungen: die Größe zu halbieren halbiert auch deine Gewinne. Das ist keine kostenlose Einstellung, sondern ein Abwägen zwischen weniger Ruin und weniger Gewinn. Die Rechnung unterstellt außerdem, dass du dieselben Trades mit kleinerer Größe genommen hättest, was nicht immer stimmt: eine kleinere Position ändert oft das Verhalten."
+  "lev_caveat": "Das schneidet in beide Richtungen: die Größe zu halbieren halbiert auch deine Gewinne. Das ist keine kostenlose Einstellung, sondern ein Abwägen zwischen weniger Ruin und weniger Gewinn. Die Rechnung unterstellt außerdem, dass du dieselben Trades mit kleinerer Größe genommen hättest, was nicht immer stimmt: eine kleinere Position ändert oft das Verhalten.",
+  "lev_negative_edge": "⚠️ Deine Erwartung ist negativ. Die Größe zu reduzieren macht sie nicht positiv: sie sinkt in derselben Proportion, Zeile für Zeile. Diese Tabelle zeigt dir, wie du aufhörst schnell zu sprengen, nicht wie du profitabel wirst. Die Positionsgröße schützt vor dem Ruin, sie erzeugt keinen Edge. Solange deine Erwartung negativ bleibt, ist der Hebel deine Methode, nicht deine Lotzahl."
 };
 
 export default dict;

@@ -2861,7 +2861,8 @@ const dict: Record<string, string> = {
   "lev_col_median": "Median outcome",
   "lev_current": "Your current size",
   "lev_divided": "Divided by {n}",
-  "lev_caveat": "It cuts both ways: halving your size also halves your gains. This is not a free setting, it is a trade-off between less ruin and less gain. The calculation also assumes you would have taken the same trades at a smaller size, which is not always true: a smaller position often changes behaviour."
+  "lev_caveat": "It cuts both ways: halving your size also halves your gains. This is not a free setting, it is a trade-off between less ruin and less gain. The calculation also assumes you would have taken the same trades at a smaller size, which is not always true: a smaller position often changes behaviour.",
+  "lev_negative_edge": "⚠️ Your expectancy is negative. Cutting your size will not make it positive: it drops in the same proportion, row after row. This table shows you how to stop blowing up fast, not how to become profitable. Position size protects against ruin, it does not create an edge. While your expectancy stays negative, the lever is your method, not your lot count."
 };
 
 export default dict;

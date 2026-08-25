@@ -974,12 +974,34 @@ function EncartPaliers({
   eur: (v: number, signed?: boolean) => string;
   t: Traduire;
 }) {
+  /**
+   * ⚠️ RÉDUIRE LA TAILLE NE CRÉE PAS D'EDGE, ET LE TABLEAU LE LAISSAIT CROIRE.
+   *
+   * Défaut vu en prévisualisation le 2026-08-25, et c'est moi qui l'avais
+   * introduit. Sur un trader à espérance négative, la ligne « divisée par 5 »
+   * affichait un risque de ruine de 0 % EN VERT à côté d'une espérance de
+   * -19 $. Le vert disait « tu es sauvé » quand la lecture juste était « tu vas
+   * saigner lentement au lieu d'exploser vite ».
+   *
+   * C'est exactement la machine à rassurer les perdants que tout cet onglet
+   * s'interdit d'être. Deux corrections : la phrase ci-dessous, et le vert qui
+   * disparaît tant que l'espérance est négative. Un pourcentage rassurant sur un
+   * scénario perdant n'a pas le droit d'être vert.
+   */
+  const edgeNegatif = (paliers[0]?.esperance ?? 0) <= 0;
+
   return (
     <Card className="p-6">
       <div className="mb-4">
         <CardTitle>{t("lev_title")}</CardTitle>
         <p className="text-xs text-foreground-muted mt-1 max-w-3xl">{t("lev_subtitle")}</p>
       </div>
+
+      {edgeNegatif && (
+        <div className="mb-4 p-3 rounded-lg bg-loss/5 border border-loss/25">
+          <p className="text-sm text-foreground-muted leading-relaxed">{t("lev_negative_edge")}</p>
+        </div>
+      )}
 
       {/* Un tableau large doit défiler dans son propre conteneur, jamais
           faire déborder la page. */}
@@ -1004,7 +1026,10 @@ function EncartPaliers({
                 <td
                   className={cn(
                     "py-2.5 text-right font-medium",
-                    p.risqueDeRuine > 0.2 ? "text-loss" : "text-profit",
+                    // Pas de vert tant que l'espérance est négative : un risque
+                    // de ruine faible n'est pas une bonne nouvelle quand le
+                    // trader perd de toute façon, il est seulement moins brutal.
+                    p.risqueDeRuine > 0.2 ? "text-loss" : edgeNegatif ? "" : "text-profit",
                   )}
                 >
                   {Math.round(p.risqueDeRuine * 100)} %

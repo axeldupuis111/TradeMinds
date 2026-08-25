@@ -2861,7 +2861,8 @@ const dict: Record<string, string> = {
   "lev_col_median": "Resultado mediano",
   "lev_current": "Tu tamaño actual",
   "lev_divided": "Dividido por {n}",
-  "lev_caveat": "Corta en los dos sentidos: dividir tu tamaño por dos divide también tus ganancias por dos. No es un ajuste gratuito, es un equilibrio entre menos ruina y menos ganancia. El cálculo también supone que habrías tomado los mismos trades con un tamaño menor, lo que no siempre es cierto: una posición más pequeña cambia a menudo el comportamiento."
+  "lev_caveat": "Corta en los dos sentidos: dividir tu tamaño por dos divide también tus ganancias por dos. No es un ajuste gratuito, es un equilibrio entre menos ruina y menos ganancia. El cálculo también supone que habrías tomado los mismos trades con un tamaño menor, lo que no siempre es cierto: una posición más pequeña cambia a menudo el comportamiento.",
+  "lev_negative_edge": "⚠️ Tu esperanza es negativa. Reducir tu tamaño no la volverá positiva: baja en la misma proporción, fila tras fila. Esta tabla te enseña a dejar de reventar rápido, no a ser rentable. El tamaño de posición protege del riesgo de ruina, no crea un edge. Mientras tu esperanza siga siendo negativa, la palanca es tu método, no tu número de lotes."
 };
 
 export default dict;
