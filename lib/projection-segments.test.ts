@@ -37,6 +37,16 @@ function journal(
   return out;
 }
 
+describe("les seuils sont des décisions de produit, pas des réglages", () => {
+  it("MIN_TRADES_SEGMENT vaut 20", () => {
+    // ⚠️ Même rôle que le pin de MIN_TRADES dans `projection.test.ts` : baisser
+    // ce seuil ferait remonter des segments spectaculaires et faux, ce qui est
+    // le pire des deux mondes. Si ce test devient rouge, c'est soit une décision
+    // assumée, soit un abaissement temporaire pour regarder la page.
+    expect(MIN_TRADES_SEGMENT).toBe(20);
+  });
+});
+
 describe("le segment qui coûte est nommé", () => {
   it("un instrument nettement déficitaire ressort en tête", () => {
     const j = journal([

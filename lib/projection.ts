@@ -136,7 +136,17 @@ export interface PointProjection {
  * Le baisser pour que plus d'utilisateurs voient l'onglet rempli serait la
  * décision la plus rentable à court terme et la plus destructrice ensuite.
  */
-export const MIN_TRADES = 100;
+// ⚠️⚠️⚠️ VALEUR TEMPORAIRE : 40 AU LIEU DE 100, POUR REGARDER LA PAGE ⚠️⚠️⚠️
+//
+// Abaissé le 2026-08-25, deuxième fois. 40 et non 50 cette fois, parce que la
+// carte « Où l'argent part » rejoue la projection SANS le segment le plus
+// coûteux : sur un journal de 60 trades, en retirer un segment de 20 en laisse
+// 40, et le contrefactuel ne s'affiche que si ce qui reste suffit encore.
+//
+// À REMETTRE À 100 AVANT TOUT MERGE. `projection.test.ts` est ROUGE tant que
+// cette ligne est là : c'est voulu, et c'est le seul garde-fou qui empêche
+// cette valeur de partir en production par distraction.
+export const MIN_TRADES = 40;
 
 /** Nombre de chemins simulés par défaut. Assez pour un centile stable. */
 const CHEMINS_DEFAUT = 5000;
