@@ -136,7 +136,17 @@ export interface PointProjection {
  * Le baisser pour que plus d'utilisateurs voient l'onglet rempli serait la
  * décision la plus rentable à court terme et la plus destructrice ensuite.
  */
-export const MIN_TRADES = 100;
+// ⚠️⚠️⚠️ VALEUR TEMPORAIRE : 40 AU LIEU DE 100, POUR REGARDER LA PAGE ⚠️⚠️⚠️
+//
+// Troisième abaissement, même raison : le journal de test porte 82 trades, donc
+// le verdict sort « insuffisant » et TOUT ce qui suit reste masqué. 40 et non 50
+// pour que le contrefactuel des segments s'affiche aussi (retirer un segment de
+// 28 trades d'un journal de 82 en laisse 54).
+//
+// À REMETTRE À 100 AVANT TOUT MERGE. `projection.test.ts` est ROUGE tant que
+// cette ligne est là : c'est voulu, c'est le seul garde-fou qui empêche cette
+// valeur de partir en production par distraction.
+export const MIN_TRADES = 40;
 
 /** Nombre de chemins simulés par défaut. Assez pour un centile stable. */
 const CHEMINS_DEFAUT = 5000;
