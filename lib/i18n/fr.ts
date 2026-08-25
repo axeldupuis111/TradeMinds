@@ -2784,6 +2784,7 @@ const dict: Record<string, string> = {
   "proj_dd_median": "Creux typique",
   "proj_dd_worst": "Creux des pires scénarios",
   "proj_winning_share": "Scénarios gagnants",
+  "proj_winning_share_help": "Part des avenirs simulés qui finissent au-dessus de zéro.",
   "proj_pace": "{n} trades par an, mesurés sur ton historique",
   "proj_chart_title": "Mille avenirs possibles",
   "proj_chart_help": "La bande large couvre 90 % des scénarios, la bande foncée la moitié centrale, le trait la médiane.",

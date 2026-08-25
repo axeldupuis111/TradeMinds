@@ -2784,6 +2784,7 @@ const dict: Record<string, string> = {
   "proj_dd_median": "Typical drawdown",
   "proj_dd_worst": "Worst-case drawdown",
   "proj_winning_share": "Winning scenarios",
+  "proj_winning_share_help": "Share of simulated futures that end above zero.",
   "proj_pace": "{n} trades per year, measured on your history",
   "proj_chart_title": "A thousand possible futures",
   "proj_chart_help": "The wide band covers 90% of scenarios, the dark band the middle half, the line the median.",

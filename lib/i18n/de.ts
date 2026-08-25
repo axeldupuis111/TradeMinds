@@ -2784,6 +2784,7 @@ const dict: Record<string, string> = {
   "proj_dd_median": "Typischer Drawdown",
   "proj_dd_worst": "Drawdown der schlimmsten Szenarien",
   "proj_winning_share": "Gewinnende Szenarien",
+  "proj_winning_share_help": "Anteil der simulierten Zukünfte, die über null enden.",
   "proj_pace": "{n} Trades pro Jahr, gemessen an deiner Historie",
   "proj_chart_title": "Tausend mögliche Zukünfte",
   "proj_chart_help": "Das breite Band deckt 90 % der Szenarien ab, das dunkle die mittlere Hälfte, die Linie den Median.",

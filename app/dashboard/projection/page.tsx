@@ -187,17 +187,26 @@ export default function ProjectionPage() {
           language: lang,
           verdict: projection.verdict,
           trades: projection.trades,
-          esperance: projection.esperance,
-          esperanceBasse: projection.esperanceBasse,
-          esperanceHaute: projection.esperanceHaute,
-          risqueDeRuine: projection.risqueDeRuine,
-          median: projection.median,
-          drawdownMedian: projection.drawdownMedian,
-          drawdownPire: projection.drawdownPire,
-          partGagnante: projection.partGagnante,
-          tradesParAn: projection.tradesParAn,
+          // ⚠️ LES MONTANTS PARTENT DÉJÀ FORMATÉS, EXACTEMENT COMME AFFICHÉS.
+          //
+          // La première version envoyait les nombres bruts. Le coach a alors
+          // écrit « -79.26 USD » et « -13785.08 USD » pendant que la page
+          // affichait « -79$ » et « -13 785$ » : des chiffres qui ne se
+          // ressemblent pas, à trois centimètres l'un de l'autre. Le modèle
+          // était pourtant fidèle à ce qu'on lui avait donné, c'est nous qui lui
+          // donnions autre chose que ce que le trader lit.
+          //
+          // En envoyant les chaînes d'affichage, la divergence devient
+          // impossible : il ne peut citer que ce qui est à l'écran.
+          esperance: eur(projection.esperance, true),
+          intervalle: `${eur(projection.esperanceBasse, true)} … ${eur(projection.esperanceHaute, true)}`,
+          median: eur(projection.median, true),
+          drawdownMedian: eur(projection.drawdownMedian),
+          drawdownPire: eur(projection.drawdownPire),
+          risqueDeRuine: Math.round(projection.risqueDeRuine * 100),
+          partGagnante: Math.round(projection.partGagnante * 100),
+          tradesParAn: Math.round(projection.tradesParAn),
           annees,
-          devise,
           strategie: strategieId === "all" ? null : (strategies.find((x) => x.id === strategieId)?.name ?? null),
         }),
       });
@@ -344,7 +353,7 @@ export default function ProjectionPage() {
               <Kpi
                 titre={t("proj_winning_share")}
                 valeur={`${Math.round(projection.partGagnante * 100)} %`}
-                aide={t("proj_pace").replace("{n}", String(Math.round(projection.tradesParAn)))}
+                aide={t("proj_winning_share_help")}
                 ton={projection.partGagnante >= 0.5 ? "profit" : "loss"}
               />
             </div>
@@ -368,6 +377,10 @@ export default function ProjectionPage() {
                     tickLine={false}
                     axisLine={{ stroke: c.axisLine }}
                     tickFormatter={(v: unknown) => t("proj_months").replace("{n}", String(v))}
+                    // ⚠️ Sans intervalle, un horizon de 15 ans rend 180
+                    // étiquettes de mois superposées. On en garde une douzaine
+                    // quelle que soit la durée.
+                    interval={Math.max(0, Math.ceil(projection.courbe.length / 12) - 1)}
                   />
                   <YAxis
                     tick={{ fill: c.axis, fontSize: 12 }}

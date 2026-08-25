@@ -2784,6 +2784,7 @@ const dict: Record<string, string> = {
   "proj_dd_median": "Caída típica",
   "proj_dd_worst": "Caída de los peores escenarios",
   "proj_winning_share": "Escenarios ganadores",
+  "proj_winning_share_help": "Proporción de futuros simulados que terminan por encima de cero.",
   "proj_pace": "{n} trades al año, medidos sobre tu historial",
   "proj_chart_title": "Mil futuros posibles",
   "proj_chart_help": "La banda ancha cubre el 90 % de los escenarios, la oscura la mitad central, la línea la mediana.",

@@ -43,24 +43,43 @@ const LANG_NAMES: Record<string, string> = {
   es: "español",
 };
 
-/** Ce que la page envoie : le résultat DÉJÀ calculé, jamais les trades bruts. */
+/**
+ * Ce que la page envoie : le résultat DÉJÀ calculé, jamais les trades bruts.
+ *
+ * ⚠️ LES MONTANTS ARRIVENT EN CHAÎNES DÉJÀ FORMATÉES, PAS EN NOMBRES.
+ *
+ * La première version recevait des nombres bruts et les passait tels quels. Le
+ * coach a alors écrit « -79.26 USD » et « -13785.08 USD » pendant que la page
+ * affichait « -79$ » et « -13 785$ », à trois centimètres l'un de l'autre. Le
+ * modèle était fidèle à ce qu'on lui donnait : c'est nous qui lui donnions autre
+ * chose que ce que le trader lit.
+ *
+ * En recevant les chaînes d'affichage, la divergence devient structurellement
+ * impossible. Le modèle ne peut citer que ce qui est à l'écran, ce qui était la
+ * règle depuis le début mais n'était pas outillée.
+ */
 interface CorpsRequete {
   language?: string;
   verdict?: string;
   trades?: number;
-  esperance?: number;
-  esperanceBasse?: number;
-  esperanceHaute?: number;
+  /** Montants formatés, tels qu'affichés au trader. */
+  esperance?: string;
+  intervalle?: string;
+  median?: string;
+  drawdownMedian?: string;
+  drawdownPire?: string;
+  /** Pourcentages entiers, arrondis comme la page les arrondit. */
   risqueDeRuine?: number;
-  median?: number;
-  drawdownMedian?: number;
-  drawdownPire?: number;
   partGagnante?: number;
   tradesParAn?: number;
   annees?: number;
-  devise?: string;
   /** Nom de la stratégie projetée, ou null pour tout le journal. */
   strategie?: string | null;
+}
+
+/** Reprend une chaîne d'affichage sans lui faire confiance sur la longueur. */
+function texte(v: unknown, defaut = "n/a"): string {
+  return typeof v === "string" && v.trim() ? v.trim().slice(0, 40) : defaut;
 }
 
 const VERDICTS = new Set(["rentable", "perdante", "indetermine"]);
@@ -103,19 +122,25 @@ export async function POST(req: Request) {
   const apiKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return NextResponse.json({ verdict: null, reason: "no_api_key" });
 
-  const devise = typeof corps.devise === "string" ? corps.devise.slice(0, 4) : "EUR";
-  const pct = (v: unknown) => `${Math.round(nombre(v) * 100)} %`;
+  const pct = (v: unknown) => `${Math.round(nombre(v))} %`;
 
+  // Chaque ligne porte UN intitulé et UNE valeur, telle qu'affichée. Le format
+  // « intitulé exact affiché à l'écran = valeur » n'est pas décoratif : sans
+  // lui, le modèle a rattaché le résultat médian au libellé « creux médian »,
+  // c'est-à-dire le bon nombre sous le mauvais nom.
   const donnees = [
-    `Périmètre : ${corps.strategie ? `stratégie « ${String(corps.strategie).slice(0, 80)} »` : "tout le journal"}.`,
-    `Horizon projeté : ${nombre(corps.annees, 2)} ans.`,
-    `Trades utilisés : ${Math.round(nombre(corps.trades))}, rythme ${Math.round(nombre(corps.tradesParAn))} par an.`,
-    `Espérance par trade : ${nombre(corps.esperance)} ${devise}, intervalle à 95 % de ${nombre(corps.esperanceBasse)} à ${nombre(corps.esperanceHaute)} ${devise}.`,
-    `Verdict calculé : ${corps.verdict}.`,
-    `Risque de ruine sur l'horizon : ${pct(corps.risqueDeRuine)}.`,
-    `Résultat médian à l'horizon : ${nombre(corps.median)} ${devise}.`,
-    `Creux typique : ${nombre(corps.drawdownMedian)} ${devise}. Creux des pires scénarios : ${nombre(corps.drawdownPire)} ${devise}.`,
-    `Part des scénarios gagnants : ${pct(corps.partGagnante)}.`,
+    `Périmètre : ${corps.strategie ? `stratégie « ${String(corps.strategie).slice(0, 80)} »` : "tout le journal"}`,
+    `Horizon projeté : ${nombre(corps.annees, 2)} ans`,
+    `Trades utilisés : ${Math.round(nombre(corps.trades))}`,
+    `Rythme : ${Math.round(nombre(corps.tradesParAn))} trades par an`,
+    `Verdict calculé : ${corps.verdict}`,
+    `« Espérance par trade » = ${texte(corps.esperance)}`,
+    `Intervalle à 95 % de cette espérance = ${texte(corps.intervalle)}`,
+    `« Risque de ruine » = ${pct(corps.risqueDeRuine)}`,
+    `« Résultat médian » à l'horizon = ${texte(corps.median)}`,
+    `« Creux typique » = ${texte(corps.drawdownMedian)}`,
+    `« Creux des pires scénarios » = ${texte(corps.drawdownPire)}`,
+    `« Scénarios gagnants » = ${pct(corps.partGagnante)}`,
   ].join("\n");
 
   const prompt = `Tu es le coach de TradeDiscipline. Un trader vient de faire tourner une PROJECTION de sa stratégie : on rééchantillonne ses trades réels pour simuler des milliers d'avenirs. Les chiffres ci-dessous sont DÉJÀ CALCULÉS et affichés à l'écran, juste au-dessus de ton texte.
@@ -125,7 +150,8 @@ ${donnees}
 Rédige son verdict en ${LANG_NAMES[lang]}, en tutoyant.
 
 RÈGLES ABSOLUES :
-- NE RECALCULE RIEN et n'invente aucun nombre. Tu ne peux citer que les valeurs ci-dessus, telles quelles. Un chiffre de toi qui diffère de celui affiché juste au-dessus détruit la confiance dans les deux.
+- NE RECALCULE RIEN et n'invente aucun nombre. Recopie les valeurs ci-dessus EXACTEMENT comme elles sont écrites, symbole de devise et séparateurs compris. N'ajoute aucune décimale, n'en retire aucune, ne convertis rien. Elles sont affichées à l'écran juste au-dessus de ton texte : un chiffre de toi qui en diffère détruit la confiance dans les deux.
+- CHAQUE NOMBRE RESTE ATTACHÉ À SON INTITULÉ. Le « résultat médian » n'est pas le « creux typique », et le « creux des pires scénarios » n'est pas un « scénario extrême » du résultat. Reprends les intitulés entre guillemets tels quels : donner le bon nombre sous le mauvais nom est aussi faux que donner le mauvais nombre.
 - N'ANNONCE AUCUNE PERFORMANCE FUTURE. Ce sont des scénarios, pas des prévisions. Jamais « tu gagneras », jamais « cette stratégie rapporte ».
 - NE SOIS PAS PLUS AFFIRMATIF QUE LE VERDICT. Si le verdict est "indetermine", dis clairement qu'on ne peut pas encore trancher et pourquoi (l'intervalle contient zéro). Ne le présente pas comme encourageant.
 - Si le verdict est "perdante", dis-le franchement : ce n'est pas de la malchance, et le volume de trades supplémentaires n'y changera rien. C'est le service qu'il paie.
