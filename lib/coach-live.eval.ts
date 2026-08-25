@@ -154,6 +154,22 @@ function resultatOutil(nom: string, debutant = false): string {
       ],
     });
   }
+  if (nom === "read_projection") {
+    // ⚠️ Un stub qui répond {ok:true} sans données MENT au modèle (piège relevé
+    // le 2026-08-14 sur list_accounts). On rend une projection plausible, avec
+    // l'intervalle qui contient zéro : c'est le cas le plus fréquent en vrai, et
+    // celui où le coach doit refuser de conclure au lieu d'encourager.
+    return JSON.stringify({
+      ok: true,
+      verdict: "indetermine",
+      trades: 148,
+      esperance_par_trade: 7.4,
+      esperance_intervalle_95: [-9.1, 23.9],
+      risque_de_ruine: 0.31,
+      resultat_median: 2180,
+      creux_pire: -3400,
+    });
+  }
   if (nom === "calculate_position_size") {
     return JSON.stringify({ ok: true, lots: 0.5, pip_value_per_lot: 10, risk: 500 });
   }
@@ -588,6 +604,15 @@ const SCENARIOS: Scenario[] = [
     nom: "outil : une taille de lot passe par le calculateur",
     tours: ["je risque 200 € avec un stop de 80 pips sur EURUSD, je mets quelle taille ?"],
     outilsAttendus: ["calculate_position_size"],
+  },
+  {
+    // Ajouté avec l'onglet Projection. Avec le catalogue DIFFÉRÉ, un outil que
+    // le coach ne pense pas à chercher est une capacité perdue en silence :
+    // c'est le risque principal du report, et le seul moyen de le voir est de
+    // poser la question comme un trader la pose.
+    nom: "outil : « est-ce que je vais dans le mur » passe par la projection",
+    tours: ["est-ce que ma stratégie tient sur 5 ans ou je vais droit dans le mur ?"],
+    outilsAttendus: ["read_projection"],
   },
   {
     nom: "outil : les annonces de la semaine viennent du calendrier",

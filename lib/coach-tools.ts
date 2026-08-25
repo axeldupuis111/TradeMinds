@@ -17,6 +17,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { appendCommitment, parseCoachMemory } from "@/lib/coach-memory";
 import { challengesForWeek, getCommunityChallenge, isoWeekKey } from "@/lib/community-challenges";
+import { projeter } from "./projection";
+import { mesurerAdherence } from "./strategy-adherence";
+import { verifierCoherence } from "./strategy-coherence";
 import { computeTradeStats, type InsightTrade } from "@/lib/analysis-insights";
 import { resolveAccountBalance, type SyncedAccountState } from "@/lib/challenge-balance";
 import { getFuturesContract } from "@/lib/futures-contracts";
@@ -656,6 +659,19 @@ export const COACH_TOOLS = [
         date_to: { type: "string", description: "Date ISO de fin (exclue)." },
       },
       required: ["dimension"],
+    },
+  },
+  {
+    name: "read_projection",
+    description:
+      "Projection de la stratégie du trader : espérance par trade avec son intervalle, risque de ruine, résultat médian et creux attendus sur un horizon. Répond à « est-ce que je vais dans le mur », « ma stratégie tient-elle sur 5 ans », « mon edge est-il réel ».",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        annees: { type: "number", description: "Horizon en années. Défaut 2." },
+        strategy_id: { type: "string", description: "Limiter à une stratégie. Défaut : tout le journal." },
+      },
+      required: [],
     },
   },
   {
@@ -1848,6 +1864,126 @@ export async function executeCoachTool(
             note: resolved.fromBroker
               ? "Solde annoncé par le courtier, il fait autorité."
               : "Solde reconstitué depuis les trades enregistrés.",
+          },
+        };
+      }
+
+      case "read_projection": {
+        // ⚠️ LE COACH NE REFAIT PAS LE CALCUL, IL APPELLE LE MÊME MOTEUR QUE LA
+        // PAGE. Un coach qui estimerait de tête une espérance ou un risque de
+        // ruine donnerait des chiffres différents de ceux affichés dans
+        // l'onglet Projection, et le trader n'aurait aucun moyen de savoir
+        // lequel croire. Une seule source, `lib/projection.ts`.
+        const annees = typeof input.annees === "number" && input.annees > 0
+          ? Math.min(input.annees, 15)
+          : 2;
+        let q = supabase
+          .from("trades")
+          .select("open_time, pnl, commission, swap")
+          .eq("user_id", userId)
+          .eq("status", "closed")
+          .order("open_time", { ascending: true })
+          .limit(5000);
+        if (typeof input.strategy_id === "string") q = q.eq("strategy_id", input.strategy_id);
+        const { data, error } = await q;
+        if (error) return fail("Lecture des trades impossible.");
+
+        const lignes = (data ?? []) as { open_time: string; pnl: number; commission: number | null; swap: number | null }[];
+        const pourProjection = lignes.map((x) => ({
+          open_time: x.open_time,
+          netPnl: x.pnl + (x.commission ?? 0) + (x.swap ?? 0),
+        }));
+
+        // Le solde du compte sert de base au risque de ruine. Sans compte
+        // lisible, on retombe sur une base conventionnelle et on le DIT, pour
+        // que le coach ne présente pas un pourcentage comme s'il portait sur
+        // l'argent réel du trader.
+        const { data: comptes } = await supabase
+          .from("accounts")
+          .select("account_size")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: true })
+          .limit(1);
+        const taille = Number(comptes?.[0]?.account_size);
+        const capital = taille > 0 ? taille : 10_000;
+
+        const p = projeter(pourProjection, { annees, capitalDepart: capital });
+
+        // ⚠️ COHÉRENCE ET RESPECT NE SE CALCULENT QUE POUR UNE FICHE PRÉCISE.
+        // Sur tout le journal il n'y a pas UNE stratégie dont on pourrait
+        // vérifier les règles, et mélanger celles de plusieurs fiches
+        // produirait des contradictions qui n'existent chez personne.
+        let coherence = null;
+        let adherence = null;
+        if (typeof input.strategy_id === "string") {
+          const { data: fiche } = await supabase
+            .from("strategies")
+            .select("pairs, sessions, risk_reward, max_sl_pips, max_trades_per_day, max_consecutive_losses, max_session_minutes, risk_per_trade_pct")
+            .eq("id", input.strategy_id)
+            .eq("user_id", userId)
+            .maybeSingle();
+          if (fiche) {
+            const { data: cpt } = await supabase
+              .from("accounts")
+              .select("max_daily_dd_pct, max_total_dd_pct")
+              .eq("user_id", userId)
+              .order("created_at", { ascending: true })
+              .limit(1);
+            const c = verifierCoherence(fiche, cpt?.[0] ?? {});
+            coherence = {
+              contradictions: c.constats.filter((x) => x.gravite === "bloquant").map((x) => x.code),
+              a_regarder: c.constats.filter((x) => x.gravite === "serieux").map((x) => x.code),
+              regles_manquantes: c.constats.filter((x) => x.gravite === "incomplet").map((x) => x.code),
+              regles_posees: `${c.completude}/${c.completudeTotal}`,
+            };
+            const a = mesurerAdherence(pourProjection, fiche, capital, timezone || "UTC");
+            adherence = {
+              taux_respect: a.taux === null ? null : Math.round(a.taux * 100),
+              regles: a.regles.map((r) => ({
+                regle: r.code,
+                declare: r.declare,
+                ecarts: r.ecarts,
+                occasions: r.occasions,
+                pire: r.pire,
+              })),
+            };
+          }
+        }
+
+        if (p.verdict === "insuffisant") {
+          return {
+            result: {
+              verdict: "insuffisant",
+              trades: p.trades,
+              trades_manquants: p.tradesManquants,
+              note:
+                "Pas assez de trades pour conclure quoi que ce soit. Dis-lui combien il en manque et ne donne AUCUN chiffre de projection : sous ce seuil ils ne veulent rien dire.",
+            },
+          };
+        }
+
+        return {
+          result: {
+            verdict: p.verdict,
+            trades: p.trades,
+            trades_par_an: Math.round(p.tradesParAn),
+            horizon_annees: annees,
+            esperance_par_trade: Math.round(p.esperance * 100) / 100,
+            esperance_intervalle_95: [
+              Math.round(p.esperanceBasse * 100) / 100,
+              Math.round(p.esperanceHaute * 100) / 100,
+            ],
+            risque_de_ruine: Math.round(p.risqueDeRuine * 100) / 100,
+            resultat_median: Math.round(p.median * 100) / 100,
+            creux_median: Math.round(p.drawdownMedian * 100) / 100,
+            creux_pire: Math.round(p.drawdownPire * 100) / 100,
+            part_scenarios_gagnants: Math.round(p.partGagnante * 100) / 100,
+            capital_de_base: capital,
+            capital_reel: taille > 0,
+            coherence,
+            adherence,
+            note:
+              "Ne cite JAMAIS l'espérance sans son intervalle : si l'intervalle contient zéro, rien n'est démontré et tu dois le dire. Ce sont des scénarios rééchantillonnés sur son passé, jamais une prévision. Une espérance positive avec un risque de ruine élevé veut dire que sa taille de position est trop grosse pour la volatilité de sa méthode : c'est le diagnostic le plus utile que tu puisses poser ici. Si `coherence.contradictions` n'est pas vide, TRAITE-LA D'ABORD : projeter une stratégie qui disqualifie son porteur revient à chiffrer un avenir qu'il ne vivra pas. Et `adherence` compare ses règles ÉCRITES à ce qu'il a fait : ne lui reproche jamais une règle absente de sa fiche, et donne le compte (« 4 jours sur 30 ») plutôt qu'un jugement.",
           },
         };
       }

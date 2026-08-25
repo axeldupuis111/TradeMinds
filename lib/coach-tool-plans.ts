@@ -51,6 +51,7 @@ export const TOOL_MIN_PLAN: Record<string, PlanType> = {
   open_page: "free",
   // La macro est une exclusivite Premium : la lire par le coach ne doit pas
   // devenir une porte derobee vers un contenu que les autres plans paient.
+  read_projection: "premium",
   get_macro_briefing: "premium",
   // La session est le rituel quotidien des plans payants.
   start_session: "plus",
