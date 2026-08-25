@@ -2847,7 +2847,21 @@ const dict: Record<string, string> = {
   "seg_warning": "Careful with what this means. This segment was picked AFTER looking at your results: it is an observation about your past, not a proven rule. Hunting for the worst segment always finds one, even in random data. For it to become a real rule, write it into your plan and let the adherence measure tell you whether you keep it on the trades that FOLLOW.",
   "seg_none": "Your losses are not concentrated on any identifiable segment. That is rather good news about how consistently you execute, and it means the lever is elsewhere: in the method itself or in your position size.",
   "seg_hour": "{n}:00",
-  "seg_overlap": "These segments overlap: one trade can belong to several of them at once. Their costs do not add up."
+  "seg_overlap": "These segments overlap: one trade can belong to several of them at once. Their costs do not add up.",
+  "stab_title_amelioration": "Your recent trades no longer look like your old ones",
+  "stab_title_degradation": "Your recent trades no longer look like your old ones",
+  "stab_body": "Over the first half of your journal, your expectancy was {avant} per trade. Over the second, {apres}. The two ranges do not even overlap.",
+  "stab_consequence_amelioration": "So take the projection above with caution: it blends both periods and assumes what follows will look like them. If the change comes from you, it underestimates you.",
+  "stab_consequence_degradation": "So take the projection above with caution: it blends both periods and assumes what follows will look like them. If the decline continues, it flatters you.",
+  "lev_title": "What if you cut your position size?",
+  "lev_subtitle": "It is the one parameter you can change tomorrow morning without touching your method, your hours or your psychology. Here is what it would give on the same trades.",
+  "lev_col_size": "Size",
+  "lev_col_ruin": "Risk of ruin",
+  "lev_col_expectancy": "Expectancy / trade",
+  "lev_col_median": "Median outcome",
+  "lev_current": "Your current size",
+  "lev_divided": "Divided by {n}",
+  "lev_caveat": "It cuts both ways: halving your size also halves your gains. This is not a free setting, it is a trade-off between less ruin and less gain. The calculation also assumes you would have taken the same trades at a smaller size, which is not always true: a smaller position often changes behaviour."
 };
 
 export default dict;

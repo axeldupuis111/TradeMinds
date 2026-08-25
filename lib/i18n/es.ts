@@ -2847,7 +2847,21 @@ const dict: Record<string, string> = {
   "seg_warning": "Cuidado con lo que significa. Este segmento se eligió DESPUÉS de mirar tus resultados: es una observación sobre tu pasado, no una regla demostrada. Buscar el peor segmento siempre acaba encontrando uno, incluso en datos al azar. Para que sea una regla de verdad, escríbela en tu ficha y deja que la medida de cumplimiento te diga si la mantienes en los trades SIGUIENTES.",
   "seg_none": "Tu pérdida no se concentra en ningún segmento identificable. Es más bien una buena noticia sobre la regularidad de tu ejecución, y significa que la palanca está en otra parte: en el método mismo o en tu tamaño de posición.",
   "seg_hour": "{n}:00",
-  "seg_overlap": "Estos segmentos se solapan: un mismo trade puede pertenecer a varios a la vez. Sus costes no se suman."
+  "seg_overlap": "Estos segmentos se solapan: un mismo trade puede pertenecer a varios a la vez. Sus costes no se suman.",
+  "stab_title_amelioration": "Tus trades recientes ya no se parecen a los antiguos",
+  "stab_title_degradation": "Tus trades recientes ya no se parecen a los antiguos",
+  "stab_body": "En la primera mitad de tu diario, tu esperanza era de {avant} por trade. En la segunda, {apres}. Las dos horquillas ni siquiera se solapan.",
+  "stab_consequence_amelioration": "Así que toma la proyección de arriba con prudencia: mezcla ambos periodos y supone que lo que sigue se les parecerá. Si el cambio viene de ti, te subestima.",
+  "stab_consequence_degradation": "Así que toma la proyección de arriba con prudencia: mezcla ambos periodos y supone que lo que sigue se les parecerá. Si el deterioro continúa, te halaga.",
+  "lev_title": "¿Y si redujeras tu tamaño de posición?",
+  "lev_subtitle": "Es el único parámetro que puedes cambiar mañana por la mañana sin tocar tu método, tus horarios ni tu psicología. Esto es lo que daría sobre los mismos trades.",
+  "lev_col_size": "Tamaño",
+  "lev_col_ruin": "Riesgo de ruina",
+  "lev_col_expectancy": "Esperanza / trade",
+  "lev_col_median": "Resultado mediano",
+  "lev_current": "Tu tamaño actual",
+  "lev_divided": "Dividido por {n}",
+  "lev_caveat": "Corta en los dos sentidos: dividir tu tamaño por dos divide también tus ganancias por dos. No es un ajuste gratuito, es un equilibrio entre menos ruina y menos ganancia. El cálculo también supone que habrías tomado los mismos trades con un tamaño menor, lo que no siempre es cierto: una posición más pequeña cambia a menudo el comportamiento."
 };
 
 export default dict;

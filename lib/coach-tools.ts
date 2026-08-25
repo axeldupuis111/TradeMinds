@@ -18,7 +18,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { appendCommitment, parseCoachMemory } from "@/lib/coach-memory";
 import { challengesForWeek, getCommunityChallenge, isoWeekKey } from "@/lib/community-challenges";
 import { projeter } from "./projection";
+import { palierSousLeSeuil, paliersDeTaille } from "./projection-levers";
 import { analyserSegments } from "./projection-segments";
+import { mesurerStabilite } from "./projection-stability";
 import { mesurerAdherence } from "./strategy-adherence";
 import { verifierCoherence } from "./strategy-coherence";
 import { computeTradeStats, type InsightTrade } from "@/lib/analysis-insights";
@@ -1990,6 +1992,35 @@ export async function executeCoachTool(
             capital_reel: taille > 0,
             coherence,
             adherence,
+            // ⚠️ L'HYPOTHÈSE DE LA PROJECTION, TESTÉE. Quand les deux moitiés
+            // du journal ne se ressemblent pas, tout ce qui précède repose sur
+            // un socle fragile, et le coach doit le dire AVANT de commenter un
+            // risque de ruine.
+            stabilite: (() => {
+              const st = mesurerStabilite(pourProjection);
+              if (!st.aChange || !st.ancienne || !st.recente) return null;
+              return {
+                sens: st.sens,
+                esperance_premiere_moitie: Math.round(st.ancienne.esperance * 100) / 100,
+                esperance_seconde_moitie: Math.round(st.recente.esperance * 100) / 100,
+                note: "Les deux moitiés de son journal ne se ressemblent pas : la projection les mélange et suppose que la suite leur ressemblera. Signale-le AVANT de commenter les chiffres.",
+              };
+            })(),
+            // Le seul paramètre qu'il peut changer demain matin sans toucher à
+            // sa méthode.
+            taille_de_position: (() => {
+              const pal = paliersDeTaille(pourProjection, { annees, capitalDepart: capital });
+              if (pal.length === 0) return null;
+              return {
+                paliers: pal.map((x) => ({
+                  facteur: x.facteur,
+                  risque_de_ruine: Math.round(x.risqueDeRuine * 100) / 100,
+                  esperance: Math.round(x.esperance * 100) / 100,
+                })),
+                premier_sous_20_pct: palierSousLeSeuil(pal, 0.2)?.facteur ?? null,
+                note: "⚠️ Réduire la taille divise les pertes ET les gains, dans la même proportion. Présente-le comme un ARBITRAGE, jamais comme une solution : moins de ruine contre moins de gain. Ne suggère jamais d'AUGMENTER la taille.",
+              };
+            })(),
             segments_couteux: (() => {
               const a = analyserSegments(pourSegments, { annees, capitalDepart: capital }, timezone || "UTC");
               return {
