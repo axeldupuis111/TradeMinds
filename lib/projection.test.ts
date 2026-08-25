@@ -50,6 +50,23 @@ const NEUTRE = (alea: () => number) => (alea() < 0.5 ? 100 : -100);
 
 const OPTIONS = { annees: 2, capitalDepart: 10_000 };
 
+describe("le seuil de conclusion est une décision de produit, pas un réglage", () => {
+  it("MIN_TRADES vaut 100", () => {
+    // ⚠️ CE TEST EXISTE POUR RENDRE UNE BAISSE IMPOSSIBLE À FAIRE EN SILENCE.
+    //
+    // Baisser ce seuil est la modification la plus tentante du fichier : elle
+    // remplit l'onglet pour beaucoup plus de traders, immédiatement. C'est
+    // aussi la plus destructrice, parce qu'elle transforme l'outil en machine à
+    // rassurer des gens dont les chiffres ne prouvent rien.
+    //
+    // Il y a UNE raison légitime de le baisser : regarder la page en
+    // prévisualisation quand on n'a pas assez de trades pour la remplir. Dans
+    // ce cas ce test passe au rouge, et c'est exactement ce qu'on veut : la
+    // suite entière annonce que la branche n'est pas mergeable telle quelle.
+    expect(MIN_TRADES).toBe(100);
+  });
+});
+
 describe("l'outil refuse de conclure quand il le doit", () => {
   it("sous le seuil, il dit combien il manque au lieu de sortir un chiffre", () => {
     const p = projeter(journal(40, GAGNANTE), OPTIONS);
