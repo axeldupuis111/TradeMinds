@@ -854,6 +854,9 @@ function EncartAdherence({
             let texte = t(tenu ? `${r.code}_ok` : r.code);
             texte = texte
               .replaceAll("{declare}", fmt(r.declare))
+              // Le pourcentage tel qu'il l'a écrit, quand la règle en est un :
+              // « 5 % » est sa règle, « 2 500 $ » n'en est que la conversion.
+              .replaceAll("{pct}", String(r.declarePct ?? ""))
               .replaceAll("{ecarts}", String(r.ecarts))
               .replaceAll("{occasions}", String(r.occasions))
               .replaceAll("{pire}", fmt(r.pire));

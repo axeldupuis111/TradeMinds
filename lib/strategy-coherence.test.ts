@@ -122,11 +122,31 @@ describe("le risque par trade se dit en pertes, jamais en jugement", () => {
     expect(c.valeurs.risque).toBe(5);
   });
 
-  it("au-delà du double du seuil, c'est bloquant", () => {
-    const c = verifierCoherence({ risk_per_trade_pct: 4 }).constats.find(
-      (x) => x.code === "coh_risque_par_trade",
-    )!;
-    expect(c.gravite).toBe("bloquant");
+  it("un risque élevé n'est JAMAIS une contradiction, quelle que soit sa hauteur", () => {
+    // ⚠️ CORRECTION DU 2026-08-25, VUE EN PRÉVISUALISATION. Ce constat était
+    // rendu « bloquant » au-delà de 4 %, et la carte affichait donc
+    // « Contradiction » sur une phrase qui ne contredit rien. C'était un
+    // jugement déguisé en gravité, exactement ce que ce fichier s'interdit.
+    //
+    // « Contradiction » est réservé aux cas où la fiche et le compte s'excluent
+    // réellement. L'employer ailleurs le vide de son sens au moment où il
+    // compte le plus.
+    for (const risque of [2, 4, 5, 10, 25]) {
+      const c = verifierCoherence({ risk_per_trade_pct: risque }).constats.find(
+        (x) => x.code === "coh_risque_par_trade",
+      )!;
+      expect(c.gravite, `risque ${risque} %`).toBe("serieux");
+    }
+  });
+
+  it("seule une limite de compte réellement franchie est bloquante", () => {
+    const sansCompte = verifierCoherence({ risk_per_trade_pct: 10, max_consecutive_losses: 3 });
+    expect(sansCompte.bloquant).toBe(false);
+    const avecCompte = verifierCoherence(
+      { risk_per_trade_pct: 10, max_consecutive_losses: 3 },
+      { max_daily_dd_pct: 5 },
+    );
+    expect(avecCompte.bloquant).toBe(true);
   });
 });
 
