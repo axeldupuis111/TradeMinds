@@ -97,7 +97,7 @@ describe("une perte plus lourde que la règle est signalée avec son ampleur", (
     const a = alertesDeSeance(p(-500, -100), { risk_per_trade_pct: 2 }, COMPTE);
     const alerte = a.find((x) => x.code === "alerte_risque")!;
     expect(alerte.valeurs.depassements).toBe(1);
-    expect(alerte.valeurs.limite).toBe(200);
+    expect(alerte.valeurs.plafond).toBe(200);
     expect(alerte.valeurs.pire).toBe(500);
     expect(alerte.valeurs.pct).toBe(2);
   });
@@ -110,6 +110,30 @@ describe("une perte plus lourde que la règle est signalée avec son ampleur", (
     // « 2 % » ne se convertit pas en euros sans capital. On préfère se taire
     // plutôt que d'évaluer sur une base inventée.
     expect(codes(alertesDeSeance(p(-5000), { risk_per_trade_pct: 2 }, {}))).not.toContain("alerte_risque");
+  });
+});
+
+describe("un montant ne porte jamais le même nom qu'un compte", () => {
+  it("« limite » compte des trades, jamais de l'argent", () => {
+    // ⚠️ BUG VU À L'ÉCRAN LE 2026-08-26 : « Ta fiche dit de t'arrêter à 3$ ».
+    // Les trois alertes portaient une clé `limite`, qui vaut des TRADES pour la
+    // cadence et la série et de l'ARGENT pour le risque. L'interface, qui ne
+    // peut pas deviner, formatait tout en monnaie.
+    //
+    // Ce test tient la règle : seul un montant peut s'appeler `plafond` ou
+    // `pire`, et `limite` reste un compte. Sans ça, la confusion revient au
+    // premier ajout de règle.
+    const serie = alertesDeSeance(p(-1, -1, -1), { max_consecutive_losses: 3 })[0];
+    expect(serie.valeurs.limite).toBe(3);
+    expect(serie.valeurs.plafond).toBeUndefined();
+
+    const cadence = alertesDeSeance(p(1, 1), { max_trades_per_day: 2 })[0];
+    expect(cadence.valeurs.limite).toBe(2);
+    expect(cadence.valeurs.plafond).toBeUndefined();
+
+    const risque = alertesDeSeance(p(-500), { risk_per_trade_pct: 2 }, COMPTE)[0];
+    expect(risque.valeurs.plafond).toBe(200);
+    expect(risque.valeurs.limite).toBeUndefined();
   });
 });
 

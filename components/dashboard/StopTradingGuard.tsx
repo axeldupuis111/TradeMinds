@@ -215,8 +215,12 @@ export default function StopTradingGuard() {
     )) {
       let message = t(a.code);
       for (const [cle, valeur] of Object.entries(a.valeurs)) {
+        // ⚠️ SEULES CES DEUX CLÉS SONT DE L'ARGENT. « limite » compte des trades
+        // ou des pertes ; la formater en monnaie donnait « ta fiche s'arrête à
+        // 5$ » au lieu de « à 5 trades ». Le module nomme désormais « plafond »
+        // ce qui est un montant, précisément pour que ce test soit sûr.
         const rendu =
-          cle === "limite" || cle === "pire"
+          cle === "plafond" || cle === "pire"
             ? money(valeur, selectedAccount ? accountCurrency(selectedAccount) : DEFAULT_CURRENCY)
             : String(valeur);
         message = message.replaceAll(`{${cle}}`, rendu);

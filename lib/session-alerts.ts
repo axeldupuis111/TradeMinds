@@ -169,9 +169,16 @@ export function alertesDeSeance(
       alertes.push({
         code: "alerte_risque",
         gravite: "regle",
+        // ⚠️ « plafond » ET PAS « limite », ET CE N'EST PAS COSMÉTIQUE.
+        //
+        // Les trois alertes portaient toutes une clé `limite`, mais elle
+        // compte des TRADES pour la cadence et la série, et vaut de l'ARGENT
+        // ici. L'interface, qui ne peut pas deviner, formatait tout en monnaie :
+        // le trader lisait « ta fiche dit de t'arrêter à 3$ » au lieu de
+        // « à 3 pertes ». Un nom distinct rend la confusion impossible.
         valeurs: {
           depassements,
-          limite: arrondi(plafond),
+          plafond: arrondi(plafond),
           pire: arrondi(pire),
           pct: arrondi(risquePct, 1),
         },

@@ -2870,7 +2870,7 @@ const dict: Record<string, string> = {
   "alerte_serie_question": "Je viens d'enchaîner plusieurs pertes d'affilée et j'ai dépassé la limite que je m'étais fixée. Aide-moi à décider si je continue ou si j'arrête ma séance.",
   "alerte_cadence": "Tu as pris {trades} trades aujourd'hui. Ta fiche s'arrête à {limite}.",
   "alerte_cadence_question": "J'ai atteint mon nombre maximum de trades pour la journée. Pourquoi est-ce que je continue à dépasser cette limite, et comment je m'y tiens ?",
-  "alerte_risque": "{depassements} trade(s) aujourd'hui ont dépassé le risque que tu t'es fixé ({pct} %, soit {limite}). Le pire a coûté {pire}. Soit la position était trop grosse, soit le stop n'a pas été tenu.",
+  "alerte_risque": "{depassements} trade(s) aujourd'hui ont dépassé le risque que tu t'es fixé ({pct} %, soit {plafond}). Le pire a coûté {pire}. Soit la position était trop grosse, soit le stop n'a pas été tenu.",
   "alerte_risque_question": "Une de mes pertes d'aujourd'hui a dépassé le risque que je m'étais fixé par trade. Aide-moi à comprendre si c'est ma taille de position ou mon stop qui a dérivé.",
   "leaks_cta_projection": "Sur la durée →"
 };
