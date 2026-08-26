@@ -21,6 +21,8 @@
  */
 
 import { demanderAuCoach } from "@/lib/coach-bus";
+import { track } from "@/lib/track";
+import { useEffect } from "react";
 import { money } from "@/lib/account-currency";
 import type { Alerte } from "@/lib/session-alerts";
 
@@ -36,6 +38,30 @@ export function AlerteSeanceBanner({
   devise: string | null | undefined;
   t: (k: string) => string;
 }) {
+  /**
+   * On compte les affichages, et c'est la raison d'être de la fonctionnalité.
+   *
+   * ⚠️ Elle a été construite pour répondre à un chiffre mesuré (4 messages coach
+   * en 30 jours pour 12 abonnés payants). La livrer sans mesurer si elle change
+   * quelque chose reproduirait exactement l'erreur qu'elle prétend corriger.
+   *
+   * ⚠️ UNE FOIS PAR ALERTE ET PAR JOUR, pas à chaque rendu. Le bandeau vit sur
+   * deux pages : sans garde, un aller-retour entre le tableau de bord et la
+   * session compterait trois affichages pour un seul fait, et le taux de clic
+   * s'effondrerait pour une raison purement technique.
+   */
+  useEffect(() => {
+    if (!alerte) return;
+    const cle = `td:alerte:${alerte.code}:${new Date().toDateString()}`;
+    try {
+      if (sessionStorage.getItem(cle)) return;
+      sessionStorage.setItem(cle, "1");
+    } catch {
+      /* stockage indisponible : on compte quand même plutôt que de rien voir */
+    }
+    track("coach_alert_shown", { code: alerte.code, gravite: alerte.gravite });
+  }, [alerte]);
+
   if (!alerte) return null;
 
   const menaceLeCompte = alerte.gravite === "compte";
@@ -60,7 +86,10 @@ export function AlerteSeanceBanner({
         <p className={`text-sm font-medium ${menaceLeCompte ? "text-loss" : "text-gold"}`}>{texte}</p>
         <button
           type="button"
-          onClick={() => demanderAuCoach(t(alerte.question))}
+          onClick={() => {
+            track("coach_alert_clicked", { code: alerte.code, gravite: alerte.gravite });
+            demanderAuCoach(t(alerte.question));
+          }}
           className="text-xs font-medium text-accent hover:underline"
         >
           {t("alerte_en_parler")}
