@@ -152,15 +152,15 @@ describe("règle 3 : le coût ne peut pas disparaître", () => {
     expect(r.audit.coutTotalR).toBe(0);
   });
 
-  it("un gagnant à 2R devient perdant quand le spread pèse deux fois le stop", () => {
-    // 1R vaut 10 ticks. Spread 20 + glissement 2 à l'entrée, commission 6 :
-    // brut +2R, net (220 - 222 - 6) / 10 = -0,8R. Ce test existe pour qu'on ne
+  it("ampute un gagnant à 2R de 40 % quand l'aller-retour vaut presque le stop", () => {
+    // 1R vaut 10 ticks. Spread 6 + glissement 1 à l'entrée, commission 1 :
+    // brut +2R, net (220 - 207 - 1) / 10 = +1,2R. Ce test existe pour qu'on ne
     // puisse plus jamais dire que les coûts sont un détail de présentation.
     const s = serie([...AMORCE, [200, 205, 195, 200], [200, 225, 199, 220]]);
-    const r = lancerBacktest(s, plan({ couts: { spreadTicks: 20, glissementTicks: 2, commissionTicks: 6 } }));
+    const r = lancerBacktest(s, plan({ couts: { spreadTicks: 6, glissementTicks: 1, commissionTicks: 1 } }));
 
     expect(r.trades[0].rBrut).toBe(2);
-    expect(r.trades[0].r).toBeCloseTo(-0.8, 10);
+    expect(r.trades[0].r).toBeCloseTo(1.2, 10);
   });
 
   it("les coûts par défaut ne sont JAMAIS nuls", () => {
@@ -416,6 +416,52 @@ describe("déclencheur balayage puis FVG", () => {
     const r = lancerBacktest(s, plan({ stop: { type: "extreme_balayage", bufferTicks: 1 } }));
     expect(r.audit.signaux).toBeGreaterThan(0);
     expect(r.trades).toHaveLength(0);
+  });
+});
+
+describe("un stop plus proche que le coût n'est pas un trade", () => {
+  it("refuse d'ouvrir, et le compte", () => {
+    // Entrée à 200, stop fixe à 3 ticks, mais l'aller-retour coûte 4+2x1+2 = 8
+    // ticks. La position serait perdante avant que le marché bouge, et son R
+    // (dénominateur 3) pèserait plusieurs fois celui d'un trade normal.
+    const s = serie([...AMORCE, [200, 205, 195, 200], [200, 225, 199, 220]]);
+    const r = lancerBacktest(
+      s,
+      plan({
+        stop: { type: "fixe", ticks: 3 },
+        couts: { spreadTicks: 4, glissementTicks: 1, commissionTicks: 2 },
+      }),
+    );
+
+    expect(r.trades).toHaveLength(0);
+    // Deux refus et non un seul : aucune position n'ayant été ouverte, le
+    // marché continue de signaler et le plan se represente. C'est cette
+    // répétition qui rend le compteur utile à l'écran.
+    expect(r.audit.refusesRisqueTropPetit).toBe(2);
+  });
+
+  it("accepte dès que le risque couvre l'aller-retour", () => {
+    const s = serie([...AMORCE, [200, 205, 195, 200], [200, 225, 199, 220]]);
+    const r = lancerBacktest(
+      s,
+      plan({
+        stop: { type: "fixe", ticks: 8 },
+        couts: { spreadTicks: 4, glissementTicks: 1, commissionTicks: 2 },
+      }),
+    );
+
+    expect(r.trades).toHaveLength(1);
+    expect(r.audit.refusesRisqueTropPetit).toBe(0);
+  });
+
+  it("laisse passer un stop d'un tick quand le trader a mis les coûts à zéro", () => {
+    // ⚠️ Défaut résiduel assumé : sans coût, le seuil tombe à un tick et le R
+    // redevient instable. C'est le prix de n'avoir aucun nombre magique ici, et
+    // les coûts à zéro sont déjà signalés comme la pire idée de la page.
+    const s = serie([...AMORCE, [200, 205, 195, 200], [200, 225, 199, 220]]);
+    const r = lancerBacktest(s, plan({ stop: { type: "fixe", ticks: 1 } }));
+    expect(r.trades).toHaveLength(1);
+    expect(r.audit.refusesRisqueTropPetit).toBe(0);
   });
 });
 

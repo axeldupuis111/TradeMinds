@@ -288,6 +288,19 @@ export interface AuditExecution {
   refusesParGestion: number;
   /** Ordres limites expirés sans être touchés. */
   limitesExpirees: number;
+  /**
+   * Signaux refusés parce que le stop tombait plus près que ce que coûte un
+   * aller-retour.
+   *
+   * ⚠️ CE COMPTEUR EXISTE PARCE QUE SON ABSENCE FAUSSAIT TOUT. Le résultat d'un
+   * trade est mesuré en multiples de son risque : un stop à un tick met un
+   * denominateur minuscule sous une division, et ce seul trade pèse alors des
+   * centaines de R. Mesuré sur l'or réel, l'espérance nette sortait à -1,18 R
+   * quand la brute valait -0,01 R, et l'écart entier venait de poignées de
+   * trades au stop collé à l'entrée. Ce ne sont pas des trades : personne ne
+   * risque un dixième de centime pour en payer quarante-deux.
+   */
+  refusesRisqueTropPetit: number;
   /** Trades dont le stop et l'objectif tombaient dans la même bougie. */
   collisions: number;
   /**

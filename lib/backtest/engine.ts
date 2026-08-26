@@ -167,6 +167,7 @@ export function lancerBacktest(serie: SerieM1, plan: PlanExecution): ResultatBac
     signaux: 0,
     refusesParGestion: 0,
     limitesExpirees: 0,
+    refusesRisqueTropPetit: 0,
     collisions: 0,
     coutTotalR: 0,
   };
@@ -375,6 +376,24 @@ export function lancerBacktest(serie: SerieM1, plan: PlanExecution): ResultatBac
     // Un stop du mauvais côté de l'entrée, ou collé dessus, n'est pas un trade :
     // il rendrait un R infini et empoisonnerait toutes les moyennes.
     if (risqueTicks <= 0) return false;
+
+    // ⚠️ ET UN STOP PLUS PROCHE QUE CE QUE COÛTE L'ALLER-RETOUR N'EN EST PAS UN
+    // NON PLUS. Le résultat se mesure en multiples du risque : un stop à un
+    // tick met un dénominateur minuscule sous une division, et ce seul trade
+    // pèse alors des centaines de R. Mesuré sur l'or réel, l'espérance nette
+    // sortait à -1,18 R quand la brute valait -0,01 R, et l'écart entier venait
+    // d'une poignée de trades au stop collé à l'entrée.
+    //
+    // Le seuil n'est pas arbitraire : sous le coût d'un aller-retour, la
+    // position est perdante par construction, avant même que le marché bouge.
+    // Le refus est COMPTÉ, jamais silencieux : c'est souvent le signe que le
+    // plan applique une structure trop fine pour l'instrument choisi.
+    const coutAllerRetour =
+      couts.spreadTicks + 2 * couts.glissementTicks + couts.commissionTicks;
+    if (risqueTicks < Math.max(1, coutAllerRetour)) {
+      audit.refusesRisqueTropPetit++;
+      return false;
+    }
 
     let objectif: number;
     if (plan.objectif.type === "multiple_r") {

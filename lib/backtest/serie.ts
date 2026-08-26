@@ -41,34 +41,54 @@ export interface LigneOHLC {
 /**
  * Convertit des prix flottants en série de ticks entiers.
  *
- * ⚠️ Les bougies incohérentes sont ÉCARTÉES, pas corrigées : un haut sous un
- * bas, ou un prix nul, vient d'un défaut de la source. Les réparer en silence
- * fabriquerait des trades qui n'ont jamais existé. Leur nombre est rendu pour
- * que l'appelant puisse refuser un mois trop abîmé.
+ * ── DEUX TRAITEMENTS, ET LA FRONTIÈRE ENTRE EUX EST LE SUJET ────────────────
+ *
+ * **Réparé** : le plus haut publié est inférieur à l'ouverture ou à la clôture
+ * (ou le plus bas leur est supérieur), d'un ou deux ticks. C'est un artefact
+ * d'agrégation de la source, mesuré sur les vraies données : Dukascopy sort par
+ * exemple, le 10 octobre 2024, des bougies EUR/USD dont la clôture dépasse le
+ * haut de deux dixièmes de pip. Or ce prix de clôture A TRAITÉ : le plus haut de
+ * la minute valait donc au moins ça. Élargir le haut jusqu'à la clôture
+ * n'invente aucun prix, ça rétablit une définition avec des prix déjà observés.
+ * Jeter la bougie, en revanche, troue la série et fait disparaître une minute
+ * pendant laquelle un stop a pu être touché.
+ *
+ * **Écarté** : tout le reste. Un prix nul ou négatif, un haut sous le bas, un
+ * horodatage qui recule ou se répète. Là, il n'y a rien à rétablir sans
+ * fabriquer, et une bougie inventée fabrique des trades qui n'ont jamais eu lieu.
+ *
+ * Les deux compteurs sont rendus SÉPARÉMENT. Confondre « j'ai élargi un haut de
+ * deux ticks » et « j'ai supprimé une minute » ferait passer une source saine
+ * pour douteuse, ou l'inverse.
  */
 export function serieDepuisLignes(
   lignes: LigneOHLC[],
   instrument: string,
   tailleTick: number,
-): { serie: SerieM1; ecartees: number } {
+): { serie: SerieM1; ecartees: number; reparees: number } {
   const gardees: LigneOHLC[] = [];
   let precedent = -Infinity;
   let ecartees = 0;
+  let reparees = 0;
 
   for (const l of lignes) {
-    const valide =
+    const utilisable =
       Number.isFinite(l.ms) &&
       l.ms > precedent &&
       l.ouverture > 0 &&
       l.cloture > 0 &&
-      l.haut >= Math.max(l.ouverture, l.cloture) &&
-      l.bas <= Math.min(l.ouverture, l.cloture) &&
-      l.bas > 0;
-    if (!valide) {
+      l.bas > 0 &&
+      l.haut >= l.bas;
+    if (!utilisable) {
       ecartees++;
       continue;
     }
-    gardees.push(l);
+
+    const haut = Math.max(l.haut, l.ouverture, l.cloture);
+    const bas = Math.min(l.bas, l.ouverture, l.cloture);
+    if (haut !== l.haut || bas !== l.bas) reparees++;
+
+    gardees.push({ ...l, haut, bas });
     precedent = l.ms;
   }
 
@@ -90,7 +110,7 @@ export function serieDepuisLignes(
     serie.l[i] = Math.round(g.bas / tailleTick);
     serie.c[i] = Math.round(g.cloture / tailleTick);
   }
-  return { serie, ecartees };
+  return { serie, ecartees, reparees };
 }
 
 export function encoderSerie(serie: SerieM1): ArrayBuffer {

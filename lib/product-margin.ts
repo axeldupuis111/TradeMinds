@@ -103,6 +103,17 @@ export const AI_ROUTES: AiRoute[] = [
     source: "majorant",
   },
   {
+    nom: "compilation de fiche en plan de backtest",
+    model: "claude-haiku-4-5-20251001",
+    plafond: {
+      plus: FEATURE_MONTHLY_CEILING["compiler-strategie"],
+      premium: FEATURE_MONTHLY_CEILING["compiler-strategie"],
+    },
+    inputTokens: 3000,
+    outputTokens: 1500,
+    source: "majorant",
+  },
+  {
     nom: "fiche stratégie (parsing)",
     model: "claude-haiku-4-5-20251001",
     plafond: { plus: FEATURE_MONTHLY_CEILING["parse-strategy"], premium: FEATURE_MONTHLY_CEILING["parse-strategy"] },

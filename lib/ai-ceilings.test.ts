@@ -18,6 +18,10 @@ const USAGE_INTENSIF: Record<string, number> = {
   "weekly-plan": 8,
   "monthly-review": 1,
   "parse-strategy": 1,
+  // Compiler sa fiche en plan de backtest se refait a chaque reecriture, et le
+  // parcours consiste a la reecrire jusqu'a ce qu'elle soit complete (stop,
+  // objectif, seance). Cinq passes le premier mois est une borne haute.
+  "compiler-strategie": 5,
   "goals-interpret": 4,
   "calendar-explain": 12,
   "community-interpret": 5,

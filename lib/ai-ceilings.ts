@@ -114,6 +114,10 @@ export const FEATURE_MONTHLY_CEILING: Record<string, number> = {
   // semaine. Le client dégrade désormais au lieu de bloquer, mais un plafond
   // qui mord sur la création de stratégie reste une mauvaise idée.
   "parse-strategy": 30,
+  // Julie : 2 a 5. Compiler sa fiche en plan mecanique se refait a chaque fois
+  // qu'elle la reecrit, et le parcours consiste justement a la reecrire jusqu'a
+  // ce qu'elle soit complete. ×3 de la borne haute.
+  "compiler-strategie": 15,
   "goals-interpret": 15, // Julie : 4
   "calendar-explain": 36, // Julie : 12
   "community-interpret": 20, // Julie : 5 (était à ×12, le plus dérivé du lot)

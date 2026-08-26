@@ -42,6 +42,7 @@ function resultat(gagnants: number, perdants: number, gainR = 2, over: Partial<T
       signaux: trades.length,
       refusesParGestion: 0,
       limitesExpirees: 0,
+      refusesRisqueTropPetit: 0,
       collisions: 0,
       coutTotalR: 0,
     },

@@ -24,9 +24,13 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { inflateRawSync, constants as zlibConstants } from "node:zlib";
 import { encoderSerie, serieDepuisLignes } from "../lib/backtest/serie.ts";
 import type { LigneOHLC } from "../lib/backtest/serie.ts";
+import { INSTRUMENTS, instrumentParCode } from "../lib/backtest/instruments.ts";
 
 interface Options {
   source: "binance" | "dukascopy";
+  /** Code interne, ex. XAUUSD. */
+  code: string;
+  /** Identifiant chez la source. */
   symbole: string;
   tick: number;
   de: string;
@@ -48,6 +52,34 @@ function lireOptions(): Options {
     }
     return v;
   };
+  const commun = {
+    de: requis("de"),
+    a: requis("a"),
+    sortie: args.get("sortie") ?? "donnees-backtest",
+  };
+
+  // Voie normale : l'instrument vient du registre, qui porte la taille de tick
+  // mesurée. Aucune raison de la retaper a la main, et toute raison de ne pas
+  // pouvoir se tromper.
+  const code = args.get("instrument");
+  if (code) {
+    const inst = instrumentParCode(code);
+    if (!inst) {
+      console.error(
+        `Instrument inconnu : ${code}. Connus : ${INSTRUMENTS.map((i) => i.code).join(", ")}`,
+      );
+      process.exit(1);
+    }
+    return {
+      source: inst.categorie === "crypto" && args.get("source") === "binance" ? "binance" : "dukascopy",
+      code: inst.code,
+      symbole: inst.source,
+      tick: inst.tailleTick,
+      ...commun,
+    };
+  }
+
+  // Voie manuelle, pour sonder une source hors registre.
   const source = requis("source");
   if (source !== "binance" && source !== "dukascopy") {
     console.error(`Source inconnue : ${source}. Attendu : binance ou dukascopy.`);
@@ -55,17 +87,11 @@ function lireOptions(): Options {
   }
   const tick = Number(requis("tick"));
   if (!Number.isFinite(tick) || tick <= 0) {
-    console.error("--tick doit être un nombre positif (0.01 sur l'or, 0.00001 sur l'euro).");
+    console.error("--tick doit être un nombre positif.");
     process.exit(1);
   }
-  return {
-    source,
-    symbole: requis("symbole"),
-    tick,
-    de: requis("de"),
-    a: requis("a"),
-    sortie: args.get("sortie") ?? "donnees-backtest",
-  };
+  const symbole = requis("symbole");
+  return { source, code: symbole.toUpperCase(), symbole, tick, ...commun };
 }
 
 /** Liste les mois "YYYY-MM" de `de` à `a` inclus. */
@@ -165,12 +191,13 @@ async function lireDukascopy(symbole: string, aaaaMm: string): Promise<LigneOHLC
 
 async function principal() {
   const opts = lireOptions();
-  const dossier = `${opts.sortie}/${opts.symbole.toUpperCase()}`;
+  const dossier = `${opts.sortie}/${opts.code}`;
   mkdirSync(dossier, { recursive: true });
 
   const disponibles: string[] = [];
   let totalBougies = 0;
   let totalEcartees = 0;
+  let totalReparees = 0;
   let totalOctets = 0;
 
   for (const aaaaMm of mois(opts.de, opts.a)) {
@@ -200,18 +227,22 @@ async function principal() {
       continue;
     }
 
-    const { serie, ecartees } = serieDepuisLignes(lignes, opts.symbole.toUpperCase(), opts.tick);
+    const { serie, ecartees, reparees } = serieDepuisLignes(lignes, opts.code, opts.tick);
     const buf = Buffer.from(encoderSerie(serie));
     writeFileSync(chemin, buf);
 
     disponibles.push(aaaaMm);
     totalBougies += serie.t.length;
     totalEcartees += ecartees;
+    totalReparees += reparees;
     totalOctets += buf.length;
 
+    // ⚠️ Seules les bougies ÉCARTÉES déclenchent l'alerte. Une réparation d'un
+    // tick sur un haut n'abîme rien, et la confondre avec une suppression
+    // ferait passer une source saine pour douteuse.
     const alerte = ecartees > lignes.length * 0.01 ? "  ⚠️ SOURCE ABÎMÉE" : "";
     console.log(
-      `  ${aaaaMm}  ${String(serie.t.length).padStart(7)} bougies  ${(buf.length / 1024).toFixed(0).padStart(5)} Ko  ${ecartees} écartées${alerte}`,
+      `  ${aaaaMm}  ${String(serie.t.length).padStart(7)} bougies  ${(buf.length / 1024).toFixed(0).padStart(5)} Ko  ${ecartees} écartées  ${reparees} réparées${alerte}`,
     );
   }
 
@@ -219,7 +250,7 @@ async function principal() {
     `${dossier}/manifeste.json`,
     JSON.stringify(
       {
-        instrument: opts.symbole.toUpperCase(),
+        instrument: opts.code,
         tailleTick: opts.tick,
         source: opts.source,
         mois: disponibles.sort(),

@@ -31,23 +31,38 @@ describe("conversion en ticks entiers", () => {
     expect(serie.c[0]).toBe(108247);
   });
 
-  it("écarte les bougies incohérentes au lieu de les réparer", () => {
-    // Un haut sous la clôture, un prix nul, un horodatage qui recule : trois
-    // défauts de source. Les corriger en douce fabriquerait des trades qui
-    // n'ont jamais existé.
-    const { serie, ecartees } = serieDepuisLignes(
+  it("élargit un haut que la source a publié sous la clôture", () => {
+    // Défaut mesuré chez Dukascopy : la clôture dépasse le haut de un ou deux
+    // ticks. Ce prix de clôture A TRAITÉ, donc le haut de la minute valait au
+    // moins ça. On rétablit avec des prix déjà observés, on n'en invente aucun.
+    const { serie, ecartees, reparees } = serieDepuisLignes(
+      [ligne(BASE, 109413, 109417, 109412, 109419)],
+      "EURUSD",
+      1,
+    );
+    expect(serie.h[0]).toBe(109419);
+    expect(serie.l[0]).toBe(109412);
+    expect(reparees).toBe(1);
+    expect(ecartees).toBe(0);
+  });
+
+  it("écarte ce qui ne peut pas être rétabli sans inventer", () => {
+    // Un prix nul et un horodatage qui recule : là, il n'y a rien à rétablir,
+    // et une bougie fabriquée fabrique des trades qui n'ont jamais eu lieu.
+    const { serie, ecartees, reparees } = serieDepuisLignes(
       [
         ligne(BASE, 100, 101, 99, 100),
-        ligne(BASE + 60_000, 100, 99, 99, 100), // haut sous la clôture
-        ligne(BASE + 120_000, 100, 101, 0, 100), // bas nul
+        ligne(BASE + 60_000, 100, 99, 99, 100), // haut sous la clôture : réparable
+        ligne(BASE + 120_000, 100, 101, 0, 100), // bas nul : écarté
         ligne(BASE + 180_000, 100, 101, 99, 100),
-        ligne(BASE + 120_000, 100, 101, 99, 100), // horodatage qui recule
+        ligne(BASE + 120_000, 100, 101, 99, 100), // horodatage qui recule : écarté
       ],
       "TEST",
       1,
     );
-    expect(serie.t.length).toBe(2);
-    expect(ecartees).toBe(3);
+    expect(serie.t.length).toBe(3);
+    expect(ecartees).toBe(2);
+    expect(reparees).toBe(1);
   });
 });
 
