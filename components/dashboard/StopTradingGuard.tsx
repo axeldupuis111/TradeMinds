@@ -225,12 +225,37 @@ export default function StopTradingGuard() {
             : String(valeur);
         message = message.replaceAll(`{${cle}}`, rendu);
       }
+      /**
+       * ⚠️ LA SÉRIE DE PERTES PASSE EN CRITIQUE, ET ELLE SEULE.
+       *
+       * Décision du 2026-08-26. Jusque-là, l'écran STOP était réservé à ce qui
+       * menace le COMPTE (100 % de la perte journalière tolérée), et franchir
+       * sa propre règle d'arrêt n'était qu'un bandeau. La frontière était nette
+       * mais elle prenait le problème à l'envers : le trader a écrit « j'arrête
+       * après 3 pertes » DANS UN MOMENT CALME, précisément pour se lier les
+       * mains dans un moment chaud. Un bandeau qu'il peut faire défiler donne
+       * raison à son moi de l'instant contre son moi de la veille, ce qui est
+       * l'inverse de ce que ce produit vend.
+       *
+       * ⚠️ MAIS PAS LA CADENCE. Prendre un sixième trade n'est pas la même
+       * chose qu'enchaîner une cinquième perte : c'est là que le revenge
+       * trading arrive, pas à la sortie du compteur. Bloquer sur la cadence
+       * ferait d'un écran d'urgence un péage quotidien, et il serait ignoré
+       * quand il compterait vraiment.
+       *
+       * ⚠️ ET LA FERMETURE EST PERSISTANTE, contrairement au critique de
+       * compte qui revient à chaque rechargement. Ici la règle est la sienne :
+       * il a le droit de passer outre en connaissance de cause, une fois, pour
+       * la journée. C'est une interruption, pas une prison.
+       */
+      const serieDePertes = a.code === "alerte_serie";
       alerts.push({
         id: `stop_${a.code}`,
-        level: "warning" as const,
+        level: serieDePertes ? ("critical" as const) : ("warning" as const),
         category: "daily_loss",
         message,
-        dismissible: false,
+        dismissible: serieDePertes,
+        ...(serieDePertes ? { dismissKey: "stop_alerte_serie" } : {}),
         // ⚠️ CE QUI TRANSFORME UN AVERTISSEMENT EN CONVERSATION. Le bandeau
         // existant était un cul-de-sac : il constatait, et le trader restait
         // seul avec le constat. La question part dans le champ de saisie du
