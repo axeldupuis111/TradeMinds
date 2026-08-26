@@ -51,6 +51,12 @@ interface EntreeEnAttente {
   prixLimite?: number;
   /** Pour un ordre limite : dernière bougie où il reste valable. */
   valableJusqua?: number;
+  /**
+   * Extrême du balayage de liquidité qui a ouvert le scénario. Voyage avec
+   * l'ordre parce que le stop `extreme_balayage` en a besoin à l'ouverture,
+   * c'est-à-dire une bougie APRÈS que la machine à états l'ait oublié.
+   */
+  extremeBalayage?: number;
 }
 
 interface Position {
@@ -188,6 +194,13 @@ export function lancerBacktest(serie: SerieM1, plan: PlanExecution): ResultatBac
   let cassureBarre = -1;
   let fvgBord = 0; // bord du déséquilibre à retester, en ticks
 
+  // État du déclencheur à trois temps (balayage, impulsion, retour).
+  let balayageSens: "long" | "short" | null = null;
+  let balayageExtreme = 0;
+  let balayageBarre = -1;
+  let fvgRetour = 0;
+  let barreImpulsion = -1;
+
   let attente: EntreeEnAttente | null = null;
   let position: Position | null = null;
 
@@ -200,8 +213,13 @@ export function lancerBacktest(serie: SerieM1, plan: PlanExecution): ResultatBac
     basVeille = basJour < Infinity ? basJour : null;
     hautJour = -Infinity;
     basJour = Infinity;
-    hautNiveau = null;
-    basNiveau = null;
+    // Seule une plage horaire est propre a la journee. Les anciens sommets et
+    // creux, eux, ne cessent pas d'exister a minuit : les effacer priverait de
+    // niveau le debut de chaque seance.
+    if (plan.niveau.type === "range_horaire") {
+      hautNiveau = null;
+      basNiveau = null;
+    }
     hautEnCours = -Infinity;
     basEnCours = Infinity;
     tradesJour = 0;
@@ -210,6 +228,8 @@ export function lancerBacktest(serie: SerieM1, plan: PlanExecution): ResultatBac
     journeeArretee = false;
     cassureSens = null;
     cassureBarre = -1;
+    balayageSens = null;
+    barreImpulsion = -1;
     attente = null;
   }
 
@@ -317,7 +337,13 @@ export function lancerBacktest(serie: SerieM1, plan: PlanExecution): ResultatBac
   }
 
   /** Ouvre une position à un prix brut donné. Rend faux si le trade est impossible. */
-  function ouvrir(i: number, sens: "long" | "short", prixBrut: number, barreSignal: number): boolean {
+  function ouvrir(
+    i: number,
+    sens: "long" | "short",
+    prixBrut: number,
+    barreSignal: number,
+    extremeBalayage?: number,
+  ): boolean {
     const signe = sens === "long" ? 1 : -1;
     const couts = plan.couts;
     const entreeEffective = prixBrut + signe * (couts.spreadTicks + couts.glissementTicks);
@@ -330,6 +356,15 @@ export function lancerBacktest(serie: SerieM1, plan: PlanExecution): ResultatBac
         sens === "long"
           ? l[barreSignal] - plan.stop.bufferTicks
           : h[barreSignal] + plan.stop.bufferTicks;
+    } else if (plan.stop.type === "extreme_balayage") {
+      // Sans balayage identifié, ce stop n'a pas de sens et on ne prend pas le
+      // trade. Retomber en silence sur un autre stop changerait la stratégie
+      // testée sans que personne ne le voie.
+      if (extremeBalayage == null) return false;
+      stop =
+        sens === "long"
+          ? extremeBalayage - plan.stop.bufferTicks
+          : extremeBalayage + plan.stop.bufferTicks;
     } else {
       const oppose = sens === "long" ? basNiveau : hautNiveau;
       if (oppose == null) return false;
@@ -436,6 +471,67 @@ export function lancerBacktest(serie: SerieM1, plan: PlanExecution): ResultatBac
       return null;
     }
 
+    if (d.type === "balayage_puis_fvg") {
+      // ── Temps 1 : la liquidité est-elle prise ?
+      if (balayageSens == null) {
+        if (h[i] > hautNiveau) {
+          balayageSens = "short";
+          balayageExtreme = h[i];
+        } else if (l[i] < basNiveau) {
+          balayageSens = "long";
+          balayageExtreme = l[i];
+        } else return null;
+        balayageBarre = i;
+        barreImpulsion = -1;
+        return null;
+      }
+
+      // ── Temps 2 : l'impulsion en sens inverse, reconnue à son déséquilibre.
+      if (barreImpulsion === -1) {
+        if (i - balayageBarre > d.delaiReaction) {
+          balayageSens = null;
+          return null;
+        }
+        // Tant qu'aucune réaction n'a eu lieu, un nouvel extrême n'invalide
+        // rien : le balayage se prolonge, simplement. C'est APRÈS l'impulsion
+        // que le même mouvement devient une invalidation.
+        if (balayageSens === "short" && h[i] > balayageExtreme) {
+          balayageExtreme = h[i];
+          balayageBarre = i;
+          return null;
+        }
+        if (balayageSens === "long" && l[i] < balayageExtreme) {
+          balayageExtreme = l[i];
+          balayageBarre = i;
+          return null;
+        }
+        if (i < 2) return null;
+        if (balayageSens === "short" && h[i] < l[i - 2]) {
+          barreImpulsion = i;
+          fvgRetour = l[i - 2];
+        } else if (balayageSens === "long" && l[i] > h[i - 2]) {
+          barreImpulsion = i;
+          fvgRetour = h[i - 2];
+        }
+        return null;
+      }
+
+      // ── Temps 3 : le retour dans le déséquilibre, sous invalidation permanente.
+      const invalide =
+        balayageSens === "short" ? h[i] > balayageExtreme : l[i] < balayageExtreme;
+      if (invalide || i - barreImpulsion > d.delaiRetest) {
+        balayageSens = null;
+        return null;
+      }
+      const retour = balayageSens === "short" ? h[i] >= fvgRetour : l[i] <= fvgRetour;
+      if (retour) {
+        const sens = balayageSens;
+        balayageSens = null;
+        return sens;
+      }
+      return null;
+    }
+
     // fvg_puis_retest : la bougie de cassure doit AUSSI laisser un déséquilibre
     // à trois bougies. C'est cette combinaison, et pas la cassure seule, qui
     // définit une entrée ICT.
@@ -496,6 +592,24 @@ export function lancerBacktest(serie: SerieM1, plan: PlanExecution): ResultatBac
     } else if (plan.niveau.type === "extremes_veille") {
       hautNiveau = hautVeille;
       basNiveau = basVeille;
+    } else if (plan.niveau.type === "liquidite_swing") {
+      // Un pivot regarde des DEUX cotes : celui de la bougie i-k n'est
+      // confirmable qu'a la bougie i. On ne publie donc le niveau qu'avec ce
+      // retard assume. Le publier des sa formation serait du lookahead, et
+      // c'est l'erreur la plus repandue dans les backtests de liquidite.
+      const k = plan.niveau.pivots;
+      const p = i - k;
+      if (p >= k) {
+        let estSommet = true;
+        let estCreux = true;
+        for (let j = p - k; j <= p + k; j++) {
+          if (j === p) continue;
+          if (h[j] > h[p]) estSommet = false;
+          if (l[j] < l[p]) estCreux = false;
+        }
+        if (estSommet) hautNiveau = h[p];
+        if (estCreux) basNiveau = l[p];
+      }
     } else if (plan.niveau.type === "extremes_n_bougies") {
       const k = plan.niveau.n;
       if (i >= k) {
@@ -520,7 +634,7 @@ export function lancerBacktest(serie: SerieM1, plan: PlanExecution): ResultatBac
     if (attente) {
       if (attente.prixLimite == null) {
         // Entrée à l'ouverture de cette bougie, décidée sur la précédente.
-        const ouverte = ouvrir(i, attente.sens, o[i], attente.barreSignal);
+        const ouverte = ouvrir(i, attente.sens, o[i], attente.barreSignal, attente.extremeBalayage);
         attente = null;
         if (ouverte) {
           gererPosition(i, minutes);
@@ -533,7 +647,7 @@ export function lancerBacktest(serie: SerieM1, plan: PlanExecution): ResultatBac
         const touche =
           attente.sens === "long" ? l[i] <= attente.prixLimite : h[i] >= attente.prixLimite;
         if (touche) {
-          const ouverte = ouvrir(i, attente.sens, attente.prixLimite, attente.barreSignal);
+          const ouverte = ouvrir(i, attente.sens, attente.prixLimite, attente.barreSignal, attente.extremeBalayage);
           attente = null;
           if (ouverte) {
             gererPosition(i, minutes);
@@ -560,8 +674,13 @@ export function lancerBacktest(serie: SerieM1, plan: PlanExecution): ResultatBac
       continue;
     }
 
+    // La machine a etats vient d'oublier le balayage : on le capture ici, sinon
+    // le stop d'invalidation n'aurait plus rien a quoi se raccrocher.
+    const extremeBalayage =
+      plan.declencheur.type === "balayage_puis_fvg" ? balayageExtreme : undefined;
+
     if (plan.entree.type === "open_bougie_suivante") {
-      if (i + 1 < n) attente = { sens, barreSignal: i };
+      if (i + 1 < n) attente = { sens, barreSignal: i, extremeBalayage };
     } else {
       const niveau = sens === "long" ? basNiveau : hautNiveau;
       if (niveau == null) continue;
@@ -570,6 +689,7 @@ export function lancerBacktest(serie: SerieM1, plan: PlanExecution): ResultatBac
         barreSignal: i,
         prixLimite: niveau,
         valableJusqua: i + plan.entree.valableNBarres,
+        extremeBalayage,
       };
     }
   }

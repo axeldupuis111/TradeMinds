@@ -87,7 +87,17 @@ export type BlocNiveau =
   /** Plus haut et plus bas des N bougies précédant celle qu'on examine. */
   | { type: "extremes_n_bougies"; n: number }
   /** Plus haut et plus bas de la veille, dans le fuseau du contexte. */
-  | { type: "extremes_veille" };
+  | { type: "extremes_veille" }
+  /**
+   * Les « anciens sommets et creux » où dorment les stops : BSL au-dessus du
+   * dernier sommet pivot, SSL sous le dernier creux pivot.
+   *
+   * ⚠️ Un pivot n'est confirmé que `pivots` bougies APRÈS s'être formé, puisque
+   * sa définition regarde des deux côtés. Le moteur ne l'expose donc qu'à ce
+   * moment-là. Le lire dès sa formation serait du lookahead pur, et c'est
+   * l'erreur la plus répandue dans les backtests de liquidité.
+   */
+  | { type: "liquidite_swing"; pivots: number };
 
 // ─── DÉCLENCHEUR : le signal, évalué sur bougies CLÔTURÉES uniquement ──────
 
@@ -109,7 +119,23 @@ export type BlocDeclencheur =
    * déséquilibre dans les N bougies. C'est la forme la plus courante des
    * méthodes ICT, et celle qu'on doit savoir rejouer telle quelle.
    */
-  | { type: "fvg_puis_retest"; delaiMaxBarres: number };
+  | { type: "fvg_puis_retest"; delaiMaxBarres: number }
+  /**
+   * BALAYAGE DE LIQUIDITÉ PUIS RETOUR DANS LE FVG. C'est un RETOURNEMENT, à ne
+   * pas confondre avec `fvg_puis_retest` qui est une continuation après cassure.
+   *
+   * Trois temps, et le scénario meurt si l'un manque :
+   * 1. le prix va chercher la liquidité au-delà d'un pivot (BSL ou SSL) ;
+   * 2. dans les `delaiReaction` bougies, une impulsion en sens inverse laisse un
+   *    déséquilibre à trois bougies ;
+   * 3. dans les `delaiRetest` bougies, le prix revient dans ce déséquilibre.
+   *
+   * ⚠️ INVALIDATION PERMANENTE : si le prix dépasse à nouveau l'extrême du
+   * balayage avant l'entrée, le scénario est annulé. C'est la règle « le
+   * retracement ne doit pas dépasser la prise de liquidité », et sans elle on
+   * entre à contresens d'un marché qui continue.
+   */
+  | { type: "balayage_puis_fvg"; delaiReaction: number; delaiRetest: number };
 
 // ─── CONFIRMATIONS : filtres facultatifs, TOUS doivent passer ──────────────
 
@@ -141,7 +167,14 @@ export type BlocStop =
   /** Distance fixe depuis l'entrée. */
   | { type: "fixe"; ticks: number }
   /** Côté opposé du niveau, plus un buffer. */
-  | { type: "niveau_oppose"; bufferTicks: number };
+  | { type: "niveau_oppose"; bufferTicks: number }
+  /**
+   * Au-delà de l'extrême du balayage de liquidité, plus un buffer. C'est le
+   * seul stop qui traduise « le scénario est invalidé » : au-dessus de ce prix,
+   * la prise de liquidité n'était pas un piège.
+   * Ne vaut qu'avec le déclencheur `balayage_puis_fvg`.
+   */
+  | { type: "extreme_balayage"; bufferTicks: number };
 
 export type BlocObjectif =
   /** Multiple du risque initial. 2 = on vise deux fois la distance du stop. */

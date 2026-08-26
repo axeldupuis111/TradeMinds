@@ -304,6 +304,121 @@ describe("déclencheur FVG puis retest", () => {
   });
 });
 
+describe("liquidité : les anciens sommets et creux", () => {
+  it("n'expose un pivot qu'une fois qu'il est confirmable des deux côtés", () => {
+    // Deux creux pivots successifs, avec `pivots: 3`.
+    //   b3  creux large à 90, confirmé en b6 : le niveau vaut 90.
+    //   b9  creux plus serré à 95, qui ne sera confirmable qu'en b12.
+    //   b11 clôture à 93. C'est sous 95 mais au-dessus de 90 : avec le bon
+    //       niveau (encore 90), rien ne se passe. Un moteur qui publierait le
+    //       creux de b9 dès sa formation signalerait ICI et entrerait en b12.
+    //   b12 le creux de b9 devient lisible, la clôture à 93 passe sous 95.
+    // On entre donc en b13, pas en b12.
+    const s = serie([
+      [100, 105, 99, 100],
+      [100, 102, 98, 100],
+      [100, 103, 97, 100],
+      [100, 110, 90, 100],
+      [100, 104, 96, 100],
+      [100, 101, 95, 100],
+      [100, 101, 96, 100],
+      [100, 102, 97, 100],
+      [100, 103, 96, 100],
+      [100, 104, 95, 100],
+      [100, 101, 96, 100],
+      [100, 101, 96, 93],
+      [93, 101, 96, 93],
+      [93, 94, 80, 85],
+      [85, 86, 70, 73],
+    ]);
+    const r = lancerBacktest(s, plan({ niveau: { type: "liquidite_swing", pivots: 3 } }));
+
+    expect(r.trades).toHaveLength(1);
+    expect(r.trades[0].entreeMs).toBe(s.t[13]);
+    expect(r.trades[0].sens).toBe("short");
+    expect(r.trades[0].r).toBe(2);
+  });
+});
+
+describe("déclencheur balayage puis FVG", () => {
+  /**
+   * Le scénario complet, en vente.
+   * b4  : le prix va chercher la liquidité à 110, au-dessus du niveau (101).
+   * b7  : impulsion baissière qui laisse un trou entre le bas de b5 (100) et
+   *       le haut de b7 (97).
+   * b9  : le prix remonte à 101, il rentre dans le trou. Signal.
+   * b10 : entrée à 99, stop au-dessus de l'extrême du balayage (110 + 1 = 111),
+   *       donc 1R = 12 ticks et l'objectif est à 99 - 24 = 75.
+   * b11 : le bas touche 70, l'objectif est atteint. +2R.
+   */
+  const SCENARIO: Bougie[] = [
+    [100, 101, 99, 100],
+    [100, 101, 99, 100],
+    [100, 101, 99, 100],
+    [100, 101, 99, 100],
+    [100, 110, 99, 105],
+    [105, 106, 100, 102],
+    [102, 103, 95, 96],
+    [96, 97, 90, 91],
+    [91, 93, 89, 92],
+    [92, 101, 91, 99],
+    [99, 100, 90, 92],
+    [92, 93, 70, 75],
+  ];
+
+  function planBalayage(over: Partial<PlanExecution> = {}) {
+    return plan({
+      niveau: { type: "extremes_n_bougies", n: 3 },
+      declencheur: { type: "balayage_puis_fvg", delaiReaction: 5, delaiRetest: 5 },
+      stop: { type: "extreme_balayage", bufferTicks: 1 },
+      ...over,
+    });
+  }
+
+  it("enchaîne balayage, impulsion et retour avant d'entrer", () => {
+    const r = lancerBacktest(serie(SCENARIO), planBalayage());
+    expect(r.trades).toHaveLength(1);
+    expect(r.trades[0].sens).toBe("short");
+    // Le risque se mesure depuis l'extrême du balayage, pas depuis la bougie
+    // de signal : c'est ça, « le scénario est invalidé ».
+    expect(r.trades[0].risqueTicks).toBe(12);
+    expect(r.trades[0].r).toBe(2);
+  });
+
+  it("annule tout si le prix redépasse l'extrême du balayage", () => {
+    // La règle « le retracement ne doit pas dépasser la prise de liquidité ».
+    // La bougie 8 remonte à 115, au-dessus des 110 du balayage : le scénario
+    // est mort, et le retour dans le FVG en bougie 9 ne vaut plus rien.
+    const abime = [...SCENARIO];
+    abime[8] = [91, 115, 89, 92];
+    expect(lancerBacktest(serie(abime), planBalayage()).trades).toHaveLength(0);
+  });
+
+  it("abandonne si la réaction n'arrive pas dans le délai", () => {
+    const r = lancerBacktest(serie(SCENARIO), planBalayage({
+      declencheur: { type: "balayage_puis_fvg", delaiReaction: 1, delaiRetest: 5 },
+    }));
+    expect(r.trades).toHaveLength(0);
+  });
+
+  it("abandonne si le prix ne revient pas dans le FVG dans le délai", () => {
+    const r = lancerBacktest(serie(SCENARIO), planBalayage({
+      declencheur: { type: "balayage_puis_fvg", delaiReaction: 5, delaiRetest: 1 },
+    }));
+    expect(r.trades).toHaveLength(0);
+  });
+
+  it("refuse d'ouvrir plutôt que de retomber sur un autre stop", () => {
+    // Un stop « extrême du balayage » sans balayage n'a pas de sens. Choisir
+    // silencieusement un autre stop testerait une stratégie que personne n'a
+    // écrite, et le chiffre sortirait quand même.
+    const s = serie([...AMORCE, [200, 205, 195, 200], [200, 225, 199, 220]]);
+    const r = lancerBacktest(s, plan({ stop: { type: "extreme_balayage", bufferTicks: 1 } }));
+    expect(r.audit.signaux).toBeGreaterThan(0);
+    expect(r.trades).toHaveLength(0);
+  });
+});
+
 describe("bornes du moteur", () => {
   it("solde une position encore ouverte à la fin de la série, et le dit", () => {
     const s = serie([...AMORCE, [200, 205, 195, 200]]);
