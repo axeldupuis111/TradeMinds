@@ -76,8 +76,22 @@ export interface AuditCouts {
   /**
    * Coût aller-retour SUPPLÉMENTAIRE, en ticks, qui suffirait à annuler
    * l'avantage restant. Petit devant le spread réel, l'avantage n'existe pas.
+   *
+   * ⚠️ `null` DÈS QUE L'ESPÉRANCE NETTE EST NÉGATIVE, et ce n'est pas de la
+   * pudeur. La formule rend alors un nombre NÉGATIF, affiché tel quel sous
+   * l'intitulé « coût qui annulerait l'avantage » : le trader lit « -3,34 » là
+   * où la phrase juste est qu'il n'y a plus d'avantage à annuler. Un chiffre
+   * exact sous un intitulé qui ne lui correspond pas est aussi faux qu'un
+   * mauvais chiffre.
    */
-  coutBreakEvenTicks: number;
+  coutBreakEvenTicks: number | null;
+  /**
+   * Vrai quand la méthode perd DÉJÀ avant le moindre coût. C'est le diagnostic
+   * le plus utile de toute la carte, et il se noyait jusqu'ici dans une ligne
+   * de tableau : inutile de discuter du spread quand l'entrée elle-même n'a
+   * aucun avantage.
+   */
+  aucunAvantageAvantCouts: boolean;
   /** Coût aller-retour déjà appliqué, en ticks. */
   coutApplique: number;
   /** Vrai si la méthode gagne en brut et perd une fois les coûts payés. */
@@ -106,6 +120,16 @@ export interface LectureBacktest {
   horsEchantillon?: ControleHorsEchantillon;
   /** Part des trades tranchés par la convention de collision. */
   partCollisions: number;
+  /**
+   * Part des signaux écartés parce que le stop tombait sous le coût d'un
+   * aller-retour.
+   *
+   * ⚠️ Au-delà de quelques pour cent, le résultat ne porte plus sur la
+   * stratégie mais sur la MOITIÉ de ses signaux qui restait exécutable, et
+   * cette moitié est celle des stops larges. Ce n'est pas un détail d'audit,
+   * c'est une réserve sur le verdict lui-même.
+   */
+  partRefusesRisque: number;
   /** Vrai au-delà de `MAX_TENTATIVES_AVANT_ALERTE` rejeux. */
   risqueDeSurApprentissage: boolean;
 }
@@ -163,7 +187,8 @@ function auditCouts(trades: TradeSimule[], couts: Couts): AuditCouts {
     esperanceNetteR,
     coutParTradeR: esperanceBruteR - esperanceNetteR,
     risqueMoyenTicks,
-    coutBreakEvenTicks: esperanceNetteR * risqueMoyenTicks,
+    coutBreakEvenTicks: esperanceNetteR > 0 ? esperanceNetteR * risqueMoyenTicks : null,
+    aucunAvantageAvantCouts: esperanceBruteR <= 0,
     coutApplique: couts.spreadTicks + 2 * couts.glissementTicks + couts.commissionTicks,
     edgeDetruitParLesCouts: esperanceBruteR > 0 && esperanceNetteR <= 0,
   };
@@ -195,6 +220,8 @@ export function lireBacktest(
 ): LectureBacktest {
   const trades = resultat.trades;
   const partCollisions = trades.length === 0 ? 0 : resultat.audit.collisions / trades.length;
+  const vus = resultat.audit.signaux + resultat.audit.refusesRisqueTropPetit;
+  const partRefusesRisque = vus === 0 ? 0 : resultat.audit.refusesRisqueTropPetit / vus;
   const risqueDeSurApprentissage = tentatives > MAX_TENTATIVES_AVANT_ALERTE;
 
   // Règle 1 : on sort AVANT de calculer quoi que ce soit. Rien à masquer plus
@@ -204,6 +231,7 @@ export function lireBacktest(
       verdict: "insuffisant",
       tradesManquants: MIN_TRADES_CONCLUSION - trades.length,
       partCollisions,
+      partRefusesRisque,
       risqueDeSurApprentissage,
     };
   }
@@ -222,6 +250,7 @@ export function lireBacktest(
     couts: auditCouts(trades, couts),
     horsEchantillon: controleHorsEchantillon(trades),
     partCollisions,
+    partRefusesRisque,
     risqueDeSurApprentissage,
   };
 }

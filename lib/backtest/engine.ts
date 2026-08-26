@@ -168,6 +168,7 @@ export function lancerBacktest(serie: SerieM1, plan: PlanExecution): ResultatBac
     refusesParGestion: 0,
     limitesExpirees: 0,
     refusesRisqueTropPetit: 0,
+    journeesArretees: 0,
     collisions: 0,
     coutTotalR: 0,
   };
@@ -270,8 +271,10 @@ export function lancerBacktest(serie: SerieM1, plan: PlanExecution): ResultatBac
     else pertesAffilee = 0;
 
     const g = plan.gestion;
+    const avant = journeeArretee;
     if (g.maxPertesConsecutives != null && pertesAffilee >= g.maxPertesConsecutives) journeeArretee = true;
     if (g.maxPerteJournaliereR != null && cumulRJour <= -g.maxPerteJournaliereR) journeeArretee = true;
+    if (!avant && journeeArretee) audit.journeesArretees++;
 
     position = null;
   }

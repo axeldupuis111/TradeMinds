@@ -3039,6 +3039,10 @@ const dict: Record<string, string> = {
   "bt_tentatives": "Intento n.º {n}. Más allá de {max} ajustes distintos, el mejor resultado encontrado es probablemente azar bien elegido.",
   "bt_sur_apprentissage_alerte": "Vas por {n} ajustes distintos. A estas alturas, buscar entre tantas combinaciones siempre encuentra una que brilla, incluso en puro ruido. Este resultado ya no cuenta como hallazgo: pruébalo en un periodo que aún no hayas mirado.",
   "bt_refuses_risque": "{n} señales descartadas porque el stop caía más cerca de lo que cuesta una ida y vuelta. Este plan aplica una estructura demasiado fina para este instrumento.",
+  "bt_unite_prix": "pts",
+  "bt_aucun_avantage": "Antes de cualquier coste, este método ya no gana nada: su esperanza bruta es nula o negativa. El spread no es el problema. Es la entrada misma la que no tiene ventaja medible en este periodo.",
+  "bt_journees_arretees": "{n} jornadas cortadas por tus salvaguardas. Una jornada detenida ya no produce señales, por eso no cuenta entre los rechazos de arriba.",
+  "bt_verdict_partiel": "Atención: se descartó el {pct} % de las señales por falta de un stop lo bastante amplio. Esta cifra no cubre toda tu estrategia, solo la parte de sus señales que seguía siendo ejecutable, la de los stops más amplios.",
   "bt_duree_calcul": "Calculado en {ms} ms, en tu navegador."
 };
 

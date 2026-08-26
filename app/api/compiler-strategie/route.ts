@@ -158,9 +158,13 @@ REGLES ABSOLUES
 1. N'INVENTE AUCUN BLOC. Si une phrase ne correspond a rien du catalogue, mets-la dans "nonTraduites". Ne la rapproche pas du bloc le plus proche.
 2. NE COMBLE AUCUN TROU. Si la fiche ne dit pas ou se place le stop, OMETS "stop" et mets "stop" dans "absents". Idem pour l'objectif, la seance, le risque. Un objectif de 2R que le trader n'a jamais ecrit produirait un resultat chiffre portant sur une strategie qui n'est pas la sienne.
 3. UNE DEDUCTION SE DECLARE. Si la fiche parle d'invalidation sans placer le stop et que tu proposes quand meme extreme_balayage, mets-le dans "deduites" avec le motif. Une deduction n'est pas une regle du trader.
-4. LES SEUILS FLOUS NE SONT PAS DES BLOCS. "une reaction claire", "un retracement propre", "un contexte favorable" vont dans "nonTraduites". Ne les convertis pas en amplitude_min ou en periode de moyenne.
-5. "pivots", "delaiReaction", "delaiRetest", "n" se comptent en BOUGIES M1. Si le trader lit sa structure en H1, une heure vaut 60.
-6. Ne mets dans "traduites" que des noms de bloc de cette liste : contexte, niveau, declencheur, confirmations, entree, stop, objectif, sortiesAuxiliaires, gestion, sens.
+4. DISTINGUE UN ADJECTIF FLOU D'UN FILTRE EXPLICITE. C'est la regle la plus delicate, lis-la en entier.
+   - Un JUGEMENT DE QUALITE sans seuil ("une reaction claire", "un retracement propre", "un contexte favorable", "une bougie forte") va dans "nonTraduites". Ne l'approche jamais par amplitude_min ou par une periode de moyenne : tu inventerais le seuil que le trader n'a pas ecrit.
+   - Un FILTRE EXPLICITE, meme exprime en mots, SE MECANISE et se DECLARE dans "deduites". "Je ne prends que dans le sens de la tendance H1" est une regle nette : c'est biais_moyenne avec periode 60 (H1) ou 240 (H4), et tu ecris dans "deduites" que la moyenne mobile approche la lecture de tendance du trader. Le mettre dans "nonTraduites" ferait tester une strategie SANS son filtre directionnel, c'est-a-dire des entrees dans les deux sens que le trader ne prend jamais. C'est la faute la plus couteuse possible ici : elle double le nombre de trades et change le resultat du tout au tout.
+   - Quand un filtre explicite ne peut PAS etre mecanise faute de bloc adapte, alors seulement il va dans "nonTraduites".
+5. "pivots", "delaiReaction", "delaiRetest", "n", "periode" se comptent en BOUGIES M1. Si le trader lit sa structure en H1, une heure vaut 60 ; en H4, 240 ; en M15, 15.
+6. SI LE TRADER NE PREND QU'UN SEUL SENS, mets "sens" a "long" ou "short". S'il suit la tendance dans les deux sens, laisse "les_deux" ET pose le filtre de tendance.
+7. Ne mets dans "traduites" que des noms de bloc de cette liste : contexte, niveau, declencheur, confirmations, entree, stop, objectif, sortiesAuxiliaires, gestion, sens.
 
 Reponds STRICTEMENT en JSON, sans texte autour :
 {"sens":"long"|"short"|"les_deux","contexte":{...},"niveau":{...},"declencheur":{...},"confirmations":[...],"entree":{...},"stop":{...} ou omis,"objectif":{...} ou omis,"sortiesAuxiliaires":{...},"gestion":{...},"traduites":[{"phrase":"citation courte de la fiche","bloc":"declencheur"}],"nonTraduites":["phrase non mecanisable"],"deduites":[{"champ":"stop","pourquoi":"..."}],"absents":["stop","objectif","risque","seance","unite_de_temps"]}`;

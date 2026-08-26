@@ -3039,6 +3039,10 @@ const dict: Record<string, string> = {
   "bt_tentatives": "Attempt #{n}. Beyond {max} different settings, the best result found is probably well-chosen luck.",
   "bt_sur_apprentissage_alerte": "You are at {n} different settings. At this point, searching across that many combinations always finds one that shines, even in pure noise. This result no longer counts as a discovery: test it on a period you have not looked at yet.",
   "bt_refuses_risque": "{n} signals discarded because the stop fell closer than a round trip costs. This plan applies a structure too fine for this instrument.",
+  "bt_unite_prix": "pts",
+  "bt_aucun_avantage": "Before any cost, this method already gains nothing: its gross expectancy is zero or negative. So the spread is not the issue. It is the entry itself that has no measurable edge over this period.",
+  "bt_journees_arretees": "{n} days cut short by your guardrails. A halted day produces no further signals, which is why it does not count among the refusals above.",
+  "bt_verdict_partiel": "Careful: {pct}% of signals were discarded for want of a wide enough stop. This figure therefore does not cover your whole strategy, only the share of its signals that remained executable, the ones with the widest stops.",
   "bt_duree_calcul": "Computed in {ms} ms, in your browser."
 };
 

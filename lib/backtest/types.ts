@@ -301,6 +301,16 @@ export interface AuditExecution {
    * risque un dixième de centime pour en payer quarante-deux.
    */
   refusesRisqueTropPetit: number;
+  /**
+   * Journées où un garde-fou a coupé court (pertes d'affilée, perte du jour).
+   *
+   * ⚠️ SANS CE COMPTEUR, L'ÉCRAN MENT PAR OMISSION. Une journée arrêtée ne
+   * produit plus AUCUN signal : `refusesParGestion` reste donc à zéro et le
+   * trader lit « 0 refusés par tes garde-fous » alors que sa règle a coupé
+   * quarante journées. Le plafond de trades, lui, refuse des signaux qu'on a
+   * bien vus : les deux mécanismes ne se comptent pas au même endroit.
+   */
+  journeesArretees: number;
   /** Trades dont le stop et l'objectif tombaient dans la même bougie. */
   collisions: number;
   /**

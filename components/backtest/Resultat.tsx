@@ -148,6 +148,14 @@ export function Resultat({
             {lecture.verdict === "non_concluant" ? (
               <p className="mt-2 text-xs text-foreground-muted">{t("bt_zero_dans_intervalle")}</p>
             ) : null}
+            {/* ⚠️ Au-delà d'un signal écarté sur dix, le chiffre ne porte plus
+                sur la stratégie mais sur la part de ses signaux qui restait
+                exécutable, et cette part est celle des stops larges. */}
+            {lecture.partRefusesRisque > 0.1 ? (
+              <p className="mt-2 text-xs font-medium text-warning">
+                {t("bt_verdict_partiel", { pct: (lecture.partRefusesRisque * 100).toFixed(0) })}
+              </p>
+            ) : null}
           </div>
         </div>
       </Card>
@@ -210,7 +218,7 @@ export function Resultat({
           />
           <Ligne
             label={t("bt_risque_moyen")}
-            valeur={`${(couts.risqueMoyenTicks * instrument.tailleTick).toFixed(instrument.decimales)}`}
+            valeur={`${(couts.risqueMoyenTicks * instrument.tailleTick).toFixed(instrument.decimales)} ${t("bt_unite_prix")}`}
           />
           <Ligne
             label={t("bt_cout_aller_retour")}
@@ -219,11 +227,21 @@ export function Resultat({
               100
             ).toFixed(1)} % ${t("bt_du_risque")})`}
           />
-          <Ligne
-            label={t("bt_cout_break_even")}
-            valeur={`${(couts.coutBreakEvenTicks * instrument.tailleTick).toFixed(instrument.decimales)}`}
-          />
+          {/* ⚠️ Masquée dès qu'il n'y a plus d'avantage à annuler : la formule
+              rendrait un nombre négatif sous un intitulé qui ne lui correspond
+              pas, ce qui est aussi faux qu'un mauvais chiffre. */}
+          {couts.coutBreakEvenTicks !== null ? (
+            <Ligne
+              label={t("bt_cout_break_even")}
+              valeur={`${(couts.coutBreakEvenTicks * instrument.tailleTick).toFixed(instrument.decimales)} ${t("bt_unite_prix")}`}
+            />
+          ) : null}
         </dl>
+        {couts.aucunAvantageAvantCouts ? (
+          <p className="mt-3 rounded-lg border border-warning/40 bg-warning/[0.06] p-3 text-xs text-warning">
+            {t("bt_aucun_avantage")}
+          </p>
+        ) : null}
         {couts.edgeDetruitParLesCouts ? (
           <p className="mt-3 rounded-lg border border-loss/40 bg-loss/[0.06] p-3 text-xs text-loss">
             {t("bt_edge_detruit")}
@@ -251,6 +269,9 @@ export function Resultat({
             })}
           </li>
           <li>{t("bt_signaux", { signaux: audit.signaux, refuses: audit.refusesParGestion })}</li>
+          {audit.journeesArretees > 0 ? (
+            <li>{t("bt_journees_arretees", { n: audit.journeesArretees })}</li>
+          ) : null}
           {audit.refusesRisqueTropPetit > 0 ? (
             <li className="text-warning">
               {t("bt_refuses_risque", { n: audit.refusesRisqueTropPetit })}
