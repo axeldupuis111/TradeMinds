@@ -20,6 +20,7 @@ import { Mic, MicOff, MessageCircle, Send, Volume2, VolumeX, X } from "lucide-re
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ecouterDemandesCoach } from "@/lib/coach-bus";
 import { coachActionMeta, useCoachChat } from "@/lib/hooks/useCoachChat";
 import CoachConfirmBox from "@/components/coach/CoachConfirmBox";
 import { describePage } from "@/lib/coach-page-context";
@@ -86,6 +87,23 @@ export default function CoachDock() {
   // Échap ferme le dock. Une seule façon de sortir d'un dialogue, c'est une
   // façon de trop peu : si la croix devient inatteignable (mise en page
   // étroite, clavier virtuel qui remonte), il reste cette issue.
+  /**
+   * Une page demande à parler au coach.
+   *
+   * ⚠️ ON PRÉ-REMPLIT, ON N'ENVOIE PAS. Le trader lit la question, la modifie
+   * s'il veut, et décide d'appuyer. Envoyer automatiquement consommerait son
+   * quota pour une question qu'il n'a pas posée, et transformerait une aide en
+   * prélèvement.
+   */
+  useEffect(
+    () =>
+      ecouterDemandesCoach(({ question }) => {
+        chat.setInput(question);
+        setOpen(true);
+      }),
+    [chat],
+  );
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };

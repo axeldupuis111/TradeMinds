@@ -253,13 +253,28 @@ export default function CapitalLeaks({ currency = DEFAULT_CURRENCY }: { currency
       {/* Le message d'espoir + le pont vers l'action */}
       <div className={cn("mt-4 pt-3 border-t border-border/60 flex flex-wrap items-center gap-2 justify-between")}>
         <p className="text-xs text-foreground-muted flex-1 min-w-[180px]">{t("leaks_kicker")}</p>
-        <Link
-          href="/dashboard/analysis"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:underline whitespace-nowrap"
-        >
-          <Sparkles className="w-3.5 h-3.5" strokeWidth={1.75} />
-          {t("leaks_cta")}
-        </Link>
+        <div className="flex items-center gap-4 whitespace-nowrap">
+          {/* ⚠️ LE PONT QUI MANQUAIT. Cette carte dit ce qu'une habitude a coûté
+              sur 30 jours ; l'onglet Projection dit où le même journal mène sur
+              des années, avec des garde-fous statistiques bien plus stricts.
+              Les deux répondent à des questions différentes et rien ne les
+              reliait : un trader qui lit sa fuite ici n'avait aucun chemin vers
+              la suite. Le vrai risque de ce produit n'est plus de manquer une
+              fonctionnalité, c'est que personne ne trouve les dix qui existent. */}
+          <Link
+            href="/dashboard/projection"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-foreground-muted hover:text-foreground hover:underline"
+          >
+            {t("leaks_cta_projection")}
+          </Link>
+          <Link
+            href="/dashboard/analysis"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:underline"
+          >
+            <Sparkles className="w-3.5 h-3.5" strokeWidth={1.75} />
+            {t("leaks_cta")}
+          </Link>
+        </div>
       </div>
     </div>
   );

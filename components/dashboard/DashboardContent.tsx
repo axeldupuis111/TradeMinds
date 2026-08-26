@@ -1,5 +1,7 @@
 "use client";
 
+import { AlerteSeanceBanner } from "@/components/coach/AlerteSeanceBanner";
+import { alerteLaPlusUrgente, alertesDeSeance } from "@/lib/session-alerts";
 import EquityCurve from "@/components/charts/EquityCurve";
 import TradingCalendar from "@/components/charts/TradingCalendar";
 import { AiInsights } from "@/components/dashboard/AiInsights";
@@ -98,6 +100,16 @@ interface Props {
     };
   } | null;
   allTrades: TradeWithTime[];
+  /**
+   * Les trades du jour DANS L'ORDRE, pour l'alerte de séance.
+   *
+   * ⚠️ Distinct de `todayTrades`, qui ne porte pas l'heure : l'alerte de série
+   * regarde les pertes QUI S'ENCHAÎNENT MAINTENANT, ce qui n'a aucun sens sans
+   * ordre chronologique.
+   */
+  todayTradesOrdonnes?: { open_time: string | null; pnl: number | null; commission: number | null; swap: number | null; challenge_id: string | null }[];
+  /** Les règles chiffrées de sa fiche, pour n'alerter que sur ce qu'il a écrit. */
+  reglesSurveillees?: { max_trades_per_day: number | null; max_consecutive_losses: number | null; risk_per_trade_pct: number | null } | null;
   maxTradesPerDay: number | null;
   allowedPairs: string[] | null;
   onboarding: OnboardingState;
@@ -146,6 +158,8 @@ export default function DashboardContent({
   recentTrades,
   lastReview,
   allTrades,
+  todayTradesOrdonnes = [],
+  reglesSurveillees = null,
   maxTradesPerDay,
   allowedPairs,
   onboarding,
@@ -187,6 +201,28 @@ export default function DashboardContent({
   // identifié : on retombe sur l'euro plutôt que d'emprunter le symbole de l'un
   // d'eux.
   const displayCurrency = displayAccount ? accountCurrency(displayAccount) : DEFAULT_CURRENCY;
+
+  /**
+   * Ce qui, à cet instant, mérite d'interrompre le trader.
+   *
+   * ⚠️ MÊME MOTEUR QUE LA PAGE SESSION, MÊME COÛT : ZÉRO. Le tableau de bord est
+   * l'endroit où le trader ATTERRIT ; la page Session est celle où il est
+   * PENDANT qu'il trade. Un franchissement de règle doit se voir aux deux, sinon
+   * il ne le lit que s'il pense à ouvrir la bonne page, ce qu'il ne fait
+   * précisément pas dans les moments qui comptent.
+   */
+  const alerteSeance = useMemo(() => {
+    if (!reglesSurveillees) return null;
+    const duJour = todayTradesOrdonnes
+      .filter((t) => !displayAccount || t.challenge_id === displayAccount.id)
+      .map((t) => ({ netPnl: (t.pnl ?? 0) + (t.commission ?? 0) + (t.swap ?? 0) }));
+    return alerteLaPlusUrgente(
+      alertesDeSeance(duJour, reglesSurveillees, {
+        capital: displayAccount?.account_size ?? null,
+        max_daily_dd_pct: displayAccount?.max_daily_dd_pct ?? null,
+      }),
+    );
+  }, [todayTradesOrdonnes, reglesSurveillees, displayAccount]);
   // Le calendrier et les listes de trades peuvent mélanger les comptes : chaque
   // ligne porte alors la devise du sien.
   const currencyMap = useMemo(() => buildCurrencyMap(activeAccounts), [activeAccounts]);
@@ -282,6 +318,16 @@ export default function DashboardContent({
       {/* ── Mode démo : bannière tant que des trades fictifs existent.
            key sur le volume de trades : router.refresh() après injection/
            purge remonte le composant, qui re-vérifie son état. ── */}
+
+      {/* ⚠️ AVANT TOUT LE RESTE. Une règle franchie aujourd'hui prime sur
+           l'onboarding, sur les chiffres du mois et sur les graphiques : c'est
+           la seule chose de cette page qui porte sur une décision que le trader
+           est en train de prendre. */}
+      {alerteSeance && (
+        <div className="mb-4">
+          <AlerteSeanceBanner alerte={alerteSeance} devise={displayCurrency} t={t} />
+        </div>
+      )}
 
       {/* ── Onboarding / activation ──────────────────────────────────── */}
       <OnboardingChecklist state={onboarding} />

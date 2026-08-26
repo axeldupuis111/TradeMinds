@@ -7,7 +7,10 @@ import Link from "next/link";
 import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
 import { fetchAllRows } from "@/lib/supabase-paginate";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useActiveAccount } from "@/lib/ActiveAccountContext";
+import { verifierCoherence } from "@/lib/strategy-coherence";
+import { cn } from "@/lib/cn";
 
 const SESSION_LABELS: Record<string, string> = {
   london: "London (08:00–12:00 UTC)",
@@ -67,11 +70,32 @@ export default function StrategyPage() {
   // Vue multi-comptes : devise commune aux comptes actifs, euro s'ils la mélangent.
   const displayCurrency = useDisplayCurrency();
   const { maxStrategies, loading: planLoading } = usePlan();
+  const { selectedAccount } = useActiveAccount();
   const supabase = createClient();
 
   const [rawText, setRawText] = useState("");
   const [name, setName] = useState("");
   const [parsed, setParsed] = useState<ParsedRules | null>(null);
+
+  /**
+   * La cohérence de la fiche, recalculée À CHAQUE FRAPPE.
+   *
+   * ⚠️ POURQUOI ICI ET PAS SEULEMENT DANS L'ONGLET PROJECTION. Le vérificateur y
+   * est né, mais c'est le mauvais moment : un trader y découvre cent trades plus
+   * tard que sa fiche le disqualifie de son challenge dès la troisième perte du
+   * premier jour. Le bon moment pour l'apprendre, c'est PENDANT qu'il l'écrit.
+   *
+   * Le calcul est une poignée de multiplications, il tourne dans le navigateur,
+   * et il ne coûte donc rien à faire à chaque frappe. Aucune raison de le
+   * différer derrière un bouton ou un enregistrement.
+   */
+  const coherence = useMemo(() => {
+    if (!parsed) return null;
+    return verifierCoherence(parsed, {
+      max_daily_dd_pct: selectedAccount?.max_daily_dd_pct ?? null,
+      max_total_dd_pct: selectedAccount?.max_total_dd_pct ?? null,
+    });
+  }, [parsed, selectedAccount]);
   const [existingId, setExistingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
@@ -740,6 +764,37 @@ export default function StrategyPage() {
                 />
               </div>
             </div>
+
+            {coherence && coherence.constats.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-border space-y-2.5">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs text-muted">{t("coh_title")}</span>
+                  <span className="text-xs text-muted shrink-0">
+                    {t("coh_completude")
+                      .replace("{n}", String(coherence.completude))
+                      .replace("{total}", String(coherence.completudeTotal))}
+                  </span>
+                </div>
+                {coherence.constats.map((c) => {
+                  // La copie vit dans i18n et porte des {jetons} ; le module de
+                  // cohérence ne rend que des nombres.
+                  let texte = t(c.code);
+                  for (const [cle, valeur] of Object.entries(c.valeurs)) {
+                    texte = texte.replaceAll(`{${cle}}`, String(valeur));
+                  }
+                  const couleur =
+                    c.gravite === "bloquant" ? "text-loss" : c.gravite === "serieux" ? "text-gold" : "text-muted";
+                  return (
+                    <div key={c.code} className="flex items-start gap-2">
+                      <span className={cn("text-xs font-medium shrink-0 mt-0.5", couleur)}>
+                        {t(`coh_grav_${c.gravite}`)}
+                      </span>
+                      <p className="text-xs text-muted leading-relaxed">{texte}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Setup rules */}

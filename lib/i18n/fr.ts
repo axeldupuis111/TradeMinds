@@ -2862,7 +2862,19 @@ const dict: Record<string, string> = {
   "lev_current": "Ta taille actuelle",
   "lev_divided": "Divisée par {n}",
   "lev_caveat": "Ça coupe dans les deux sens : diviser ta taille par deux divise aussi tes gains par deux. Ce n'est pas un réglage gratuit, c'est un arbitrage entre moins de ruine et moins de gain. Le calcul suppose aussi que tu aurais pris les mêmes trades avec une taille plus petite, ce qui n'est pas toujours vrai : une position plus petite change souvent le comportement.",
-  "lev_negative_edge": "⚠️ Ton espérance est négative. Réduire ta taille ne la rendra pas positive : elle baisse dans la même proportion, ligne après ligne. Ce tableau te montre comment cesser d'exploser vite, pas comment devenir rentable. La taille de position protège du risque de ruine, elle ne crée pas d'edge. Tant que ton espérance reste négative, le levier est ta méthode, pas ton nombre de lots."
+  "lev_negative_edge": "⚠️ Ton espérance est négative. Réduire ta taille ne la rendra pas positive : elle baisse dans la même proportion, ligne après ligne. Ce tableau te montre comment cesser d'exploser vite, pas comment devenir rentable. La taille de position protège du risque de ruine, elle ne crée pas d'edge. Tant que ton espérance reste négative, le levier est ta méthode, pas ton nombre de lots.",
+  "session_emotion_measured": "Sur tes {n} trades passés dans cet état, tu as fait {total}, soit {parTrade} par trade. C'est {ecart} de moins par trade que dans tes autres états. Ce n'est pas une règle générale, c'est ton chiffre.",
+  "session_emotion_measured_ok": "Sur tes {n} trades passés dans cet état, tu fais {parTrade} par trade, mieux que dans tes autres états. Chez toi, cet état n'est pas un problème.",
+  "alerte_en_parler": "En parler au coach",
+  "alerte_dd_jour": "Tu as perdu {perte} aujourd'hui. Ton compte est disqualifié à {limite} sur la journée, soit {pct} % du capital. Tu y es.",
+  "alerte_dd_jour_question": "Je viens d'atteindre ma perte journalière maximale. Qu'est-ce que je fais maintenant, et comment j'évite que ça se reproduise demain ?",
+  "alerte_serie": "Tu enchaînes {serie} pertes d'affilée. Ta fiche dit de t'arrêter à {limite}.",
+  "alerte_serie_question": "Je viens d'enchaîner plusieurs pertes d'affilée et j'ai dépassé la limite que je m'étais fixée. Aide-moi à décider si je continue ou si j'arrête ma séance.",
+  "alerte_cadence": "Tu as pris {trades} trades aujourd'hui. Ta fiche s'arrête à {limite}.",
+  "alerte_cadence_question": "J'ai atteint mon nombre maximum de trades pour la journée. Pourquoi est-ce que je continue à dépasser cette limite, et comment je m'y tiens ?",
+  "alerte_risque": "{depassements} trade(s) aujourd'hui ont dépassé le risque que tu t'es fixé ({pct} %, soit {limite}). Le pire a coûté {pire}. Soit la position était trop grosse, soit le stop n'a pas été tenu.",
+  "alerte_risque_question": "Une de mes pertes d'aujourd'hui a dépassé le risque que je m'étais fixé par trade. Aide-moi à comprendre si c'est ma taille de position ou mon stop qui a dérivé.",
+  "leaks_cta_projection": "Sur la durée →"
 };
 
 export default dict;
