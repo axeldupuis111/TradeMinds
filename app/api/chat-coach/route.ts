@@ -230,13 +230,25 @@ export async function POST(request: Request) {
         .maybeSingle();
       if (strategyRow) {
         // Table optionnelle : son absence ne doit pas priver le coach du reste.
+        //
+        // ⚠️ MAIS ON LE DIT. Le `catch` ci-dessous ne pouvait pas se déclencher :
+        // le client Supabase ne jette pas sur une erreur de requête, il rend
+        // `{ data: null, error }`. Une panne de lecture privait donc le coach du
+        // vocabulaire de la fiche EN SILENCE, et il repartait sur des termes
+        // génériques sans que personne ne sache pourquoi.
         let tagRows: StrategyTagRow[] = [];
         try {
-          const { data } = await sb
+          const { data, error: tagsError } = await sb
             .from("strategy_tags")
             .select("tag_type, label_fr, label_en, value, sort_order")
             .eq("strategy_id", strategyRow.id)
             .order("sort_order", { ascending: true });
+          if (tagsError) {
+            console.error(
+              "[chat-coach] tags de stratégie illisibles, le coach perd le vocabulaire du trader :",
+              tagsError.message,
+            );
+          }
           tagRows = (data ?? []) as StrategyTagRow[];
         } catch {
           // pas de vocabulaire personnalisé — les champs suffisent

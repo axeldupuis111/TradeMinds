@@ -394,7 +394,8 @@ export default function CsvImport({ strategyId, onImported }: Props) {
       }));
 
       const nowIso = new Date().toISOString();
-      await supabase.from("profiles").upsert({ id: user.id, last_import_at: nowIso });
+      const { error: importError } = await supabase.from("profiles").upsert({ id: user.id, last_import_at: nowIso });
+      if (importError) console.error("[import] date du dernier import non écrite :", importError.message);
       setLastImportAt(nowIso);
 
       track("csv_imported", { count: rows.length });
@@ -463,7 +464,11 @@ export default function CsvImport({ strategyId, onImported }: Props) {
 
       // Même persistance que l'analyse manuelle : alimente l'historique,
       // le dashboard et la mémoire du coach (déjà mise à jour côté serveur).
-      await supabase.from("session_reviews").insert({
+      // ⚠️ CETTE ANALYSE EST DÉJÀ FACTURÉE. L'appel /api/analyze est parti, le
+      // quota est consommé ; si l'insertion échoue en silence, le trader a payé
+      // une analyse qui n'existe nulle part. Le `catch` autour ne pouvait pas la
+      // rattraper : le client Supabase ne jette pas sur une erreur de requête.
+      const { error: reviewError } = await supabase.from("session_reviews").insert({
         user_id: userId,
         discipline_score: data.discipline_score,
         total_trades: data.total_trades,
@@ -473,6 +478,9 @@ export default function CsvImport({ strategyId, onImported }: Props) {
         period: "last_30_days",
         period_label: periodLabel,
       });
+      if (reviewError) {
+        console.error("[import] analyse automatique facturée mais non enregistrée :", reviewError.message);
+      }
       setAutoAnalysis({ score: data.discipline_score, violations: (data.violations || []).length });
       track("analysis_run", { auto: true });
     } catch {

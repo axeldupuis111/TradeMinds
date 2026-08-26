@@ -359,7 +359,11 @@ export default function SessionPage() {
 
   async function saveChecklist(list: string[]) {
     if (!strategy) return;
-    await supabase.from("strategies").update({ pretrade_checklist: list }).eq("id", strategy.id);
+    // La checklist d'avant-seance est saisie a la main et sert de reference a
+    // la mesure de respect des regles. Perdue en silence, elle se reecrit au
+    // rechargement suivant sans que personne ne comprenne pourquoi.
+    const { error } = await supabase.from("strategies").update({ pretrade_checklist: list }).eq("id", strategy.id);
+    if (error) console.error("[seance] checklist non enregistree :", error.message);
   }
 
   async function handleStartClick() {
@@ -411,10 +415,14 @@ export default function SessionPage() {
     const endedSessionId = activeSession.id;
     setEnding(true);
     localStorage.removeItem(`session_paused_${endedSessionId}`);
-    await supabase
+    // ⚠️ L'ecran se vide juste apres. Si la cloture n'est pas ecrite, la seance
+    // reste ouverte en base et reapparait au rechargement, alors que le debrief
+    // vient d'etre lance dessus.
+    const { error: clotureError } = await supabase
       .from("sessions")
       .update({ active: false, ended_at: new Date().toISOString() })
       .eq("id", endedSessionId);
+    if (clotureError) console.error("[seance] cloture non enregistree :", clotureError.message);
     setActiveSession(null);
     setSelectedEmotion(null);
     setCheckedItems(new Set());

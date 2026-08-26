@@ -203,11 +203,20 @@ export default function GoalsStreaks() {
     const freshlyUnlocked: string[] = [];
     for (const badge of BADGE_DEFS) {
       if (!existing.has(badge.key) && badge.check(ctx)) {
-        await supabase.from("achievements").insert({
+        // ⚠️ On ne célèbre QUE ce qui est écrit. Le client Supabase ne jette pas
+        // sur une erreur : sans lire `error`, un badge refusé en base déclenchait
+        // quand même confettis et bannière, puis se « débloquait » de nouveau à
+        // chaque chargement de la page. Un badge qu'on gagne deux fois n'est
+        // plus un badge.
+        const { error } = await supabase.from("achievements").insert({
           user_id: user.id,
           key: badge.key,
           unlocked_at: new Date().toISOString(),
         });
+        if (error) {
+          console.error(`[badges] « ${badge.key} » non enregistré :`, error.message);
+          continue;
+        }
         existing.add(badge.key);
         freshlyUnlocked.push(badge.key);
       }
@@ -236,7 +245,10 @@ export default function GoalsStreaks() {
     setFreezing(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      await supabase.from("streak_freezes").insert({ user_id: user.id, day });
+      // Un gel est une ressource rare et consommable. S'il n'est pas écrit, le
+      // trader croit sa série protégée et la perd pour de bon.
+      const { error } = await supabase.from("streak_freezes").insert({ user_id: user.id, day });
+      if (error) console.error("[serie] gel non enregistré :", error.message);
     }
     await load();
     setFreezing(false);

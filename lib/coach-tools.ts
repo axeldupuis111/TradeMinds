@@ -2626,6 +2626,32 @@ export async function executeCoachConfirm(
   }
 }
 
+/**
+ * ⚠️ UNE ÉCRITURE D'ANNULATION QUI ÉCHOUE DOIT ÊTRE DITE.
+ *
+ * Le client Supabase NE JETTE PAS sur une erreur de requête : il rend
+ * `{ data: null, error }`. Toutes les écritures d'annulation ci-dessous
+ * s'écrivaient donc `await supabase.from(...).delete()...` sans jamais lire
+ * `error`, et chaque `case` finissait par `return { ok: true }`.
+ *
+ * Conséquence exacte, en production : le trader clique « Annuler », le coach
+ * répond que c'est annulé, et RIEN n'a été restauré. Une table absente, une
+ * politique RLS, une panne réseau : les trois produisaient le même succès
+ * imaginaire. Et le `catch` en bas de la fonction ne pouvait pas rattraper ça,
+ * puisque rien n'était jeté.
+ *
+ * Ce helper rend l'échec bruyant : il jette, le `catch` le journalise, et
+ * l'annulation se déclare ratée. Mieux vaut « je n'ai pas réussi à annuler »
+ * qu'un « c'est annulé » faux.
+ */
+async function ecrire(
+  requete: PromiseLike<{ error: { message: string } | null }>,
+  quoi: string,
+): Promise<void> {
+  const { error } = await requete;
+  if (error) throw new Error(`${quoi} : ${error.message}`);
+}
+
 export async function executeCoachUndo(
   supabase: SupabaseClient,
   userId: string,
@@ -2635,13 +2661,13 @@ export async function executeCoachUndo(
     switch (undo.op) {
       case "delete_goal": {
         if (!isUuid(undo.goal_id)) return { ok: false, error: "invalide" };
-        await supabase.from("goals").delete().eq("id", undo.goal_id).eq("user_id", userId);
+        await ecrire(supabase.from("goals").delete().eq("id", undo.goal_id).eq("user_id", userId), "suppression de l'objectif");
         return { ok: true };
       }
       case "insert_goal": {
         const row = pick(undo.row ?? {}, GOAL_COLS);
         row.user_id = userId; // jamais un autre utilisateur
-        await supabase.from("goals").insert(row);
+        await ecrire(supabase.from("goals").insert(row), "restauration de l'objectif");
         return { ok: true };
       }
       case "update_goal": {
@@ -2649,21 +2675,27 @@ export async function executeCoachUndo(
         const patch: Record<string, unknown> = {};
         for (const k of ["target", "done", "recurring"]) if (k in (undo.patch ?? {})) patch[k] = undo.patch[k];
         if (Object.keys(patch).length === 0) return { ok: false, error: "rien à restaurer" };
-        await supabase.from("goals").update(patch).eq("id", undo.goal_id).eq("user_id", userId);
+        await ecrire(supabase.from("goals").update(patch).eq("id", undo.goal_id).eq("user_id", userId), "restauration de l'objectif");
         return { ok: true };
       }
       case "join_challenge": {
         if (!getCommunityChallenge(undo.key)) return { ok: false, error: "inconnu" };
-        await supabase.from("challenge_participations").upsert(
-          { user_id: userId, challenge_key: undo.key, week_key: isoWeekKey() },
-          { onConflict: "user_id,challenge_key,week_key" },
+        await ecrire(
+          supabase.from("challenge_participations").upsert(
+            { user_id: userId, challenge_key: undo.key, week_key: isoWeekKey() },
+            { onConflict: "user_id,challenge_key,week_key" },
+          ),
+          "réinscription au défi",
         );
         return { ok: true };
       }
       case "leave_challenge": {
         if (!getCommunityChallenge(undo.key)) return { ok: false, error: "inconnu" };
-        await supabase.from("challenge_participations").delete()
-          .eq("user_id", userId).eq("challenge_key", undo.key).eq("week_key", isoWeekKey());
+        await ecrire(
+          supabase.from("challenge_participations").delete()
+            .eq("user_id", userId).eq("challenge_key", undo.key).eq("week_key", isoWeekKey()),
+          "désinscription du défi",
+        );
         return { ok: true };
       }
       case "restore_trades": {
@@ -2672,79 +2704,92 @@ export async function executeCoachUndo(
           if (!isUuid(tr.id)) continue;
           const fields = pick(tr.fields ?? {}, TRADE_RESTORE_COLS);
           if (Object.keys(fields).length === 0) continue;
-          await supabase.from("trades").update(fields).eq("id", tr.id).eq("user_id", userId);
+          await ecrire(supabase.from("trades").update(fields).eq("id", tr.id).eq("user_id", userId), "restauration d'un trade");
         }
         return { ok: true };
       }
       case "delete_checklist_item": {
         if (!isUuid(undo.strategy_id) || typeof undo.value !== "string") return { ok: false, error: "invalide" };
-        await supabase.from("strategy_tags").delete()
-          .eq("strategy_id", undo.strategy_id).eq("user_id", userId).eq("tag_type", "checklist").eq("value", undo.value);
+        await ecrire(
+          supabase.from("strategy_tags").delete()
+            .eq("strategy_id", undo.strategy_id).eq("user_id", userId).eq("tag_type", "checklist").eq("value", undo.value),
+          "retrait de la ligne de checklist",
+        );
         return { ok: true };
       }
       case "insert_checklist_item": {
         const row = pick(undo.row ?? {}, TAG_COLS);
         row.user_id = userId;
-        await supabase.from("strategy_tags").insert(row);
+        await ecrire(supabase.from("strategy_tags").insert(row), "restauration de la ligne de checklist");
         return { ok: true };
       }
       case "delete_trade": {
         if (!isUuid(undo.trade_id)) return { ok: false, error: "invalide" };
-        await supabase.from("trades").delete().eq("id", undo.trade_id).eq("user_id", userId);
+        await ecrire(supabase.from("trades").delete().eq("id", undo.trade_id).eq("user_id", userId), "suppression du trade");
         return { ok: true };
       }
       case "restore_trade_fields": {
         if (!isUuid(undo.trade_id)) return { ok: false, error: "invalide" };
         const fields = pick(undo.fields ?? {}, TRADE_EDIT_COLS);
         if (Object.keys(fields).length === 0) return { ok: false, error: "rien à restaurer" };
-        await supabase.from("trades").update(fields).eq("id", undo.trade_id).eq("user_id", userId);
+        await ecrire(supabase.from("trades").update(fields).eq("id", undo.trade_id).eq("user_id", userId), "restauration du trade");
         return { ok: true };
       }
       case "restore_trade_links": {
         const rows = Array.isArray(undo.trades) ? undo.trades : [];
         for (const r of rows) {
           if (!isUuid(r?.id)) continue;
-          await supabase
-            .from("trades")
-            .update({ challenge_id: r.challenge_id ?? null, strategy_id: r.strategy_id ?? null })
-            .eq("id", r.id).eq("user_id", userId);
+          await ecrire(
+            supabase
+              .from("trades")
+              .update({ challenge_id: r.challenge_id ?? null, strategy_id: r.strategy_id ?? null })
+              .eq("id", r.id).eq("user_id", userId),
+            "restauration du rattachement du trade",
+          );
         }
         return { ok: true };
       }
       case "delete_emotional_check": {
         if (!isUuid(undo.check_id)) return { ok: false, error: "invalide" };
-        await supabase.from("session_emotional_checks").delete()
-          .eq("id", undo.check_id).eq("user_id", userId);
+        await ecrire(
+          supabase.from("session_emotional_checks").delete().eq("id", undo.check_id).eq("user_id", userId),
+          "retrait du point émotionnel",
+        );
         return { ok: true };
       }
       case "delete_session": {
         if (!isUuid(undo.session_id)) return { ok: false, error: "invalide" };
-        await supabase.from("sessions").delete().eq("id", undo.session_id).eq("user_id", userId);
+        await ecrire(supabase.from("sessions").delete().eq("id", undo.session_id).eq("user_id", userId), "suppression de la séance");
         return { ok: true };
       }
       case "reopen_session": {
         if (!isUuid(undo.session_id)) return { ok: false, error: "invalide" };
-        await supabase.from("sessions").update({ active: true, ended_at: null })
-          .eq("id", undo.session_id).eq("user_id", userId);
+        await ecrire(
+          supabase.from("sessions").update({ active: true, ended_at: null }).eq("id", undo.session_id).eq("user_id", userId),
+          "réouverture de la séance",
+        );
         return { ok: true };
       }
       case "delete_account": {
         if (!isUuid(undo.account_id)) return { ok: false, error: "invalide" };
-        await supabase.from("prop_challenges").delete().eq("id", undo.account_id).eq("user_id", userId);
+        await ecrire(supabase.from("prop_challenges").delete().eq("id", undo.account_id).eq("user_id", userId), "suppression du compte");
         return { ok: true };
       }
       case "restore_account": {
         if (!isUuid(undo.account_id)) return { ok: false, error: "invalide" };
         const fields = pick(undo.fields ?? {}, ACCOUNT_EDIT_COLS);
         if (Object.keys(fields).length === 0) return { ok: false, error: "rien à restaurer" };
-        await supabase.from("prop_challenges").update(fields).eq("id", undo.account_id).eq("user_id", userId);
+        await ecrire(supabase.from("prop_challenges").update(fields).eq("id", undo.account_id).eq("user_id", userId), "restauration du compte");
         return { ok: true };
       }
       default:
         return { ok: false, error: "opération inconnue" };
     }
   } catch (e) {
-    console.error(`[coach-undo] ${(undo as { op?: string }).op} threw:`, e);
-    return { ok: false, error: "erreur interne" };
+    console.error(`[coach-undo] ${(undo as { op?: string }).op} a echoue :`, e);
+    // ⚠️ Ce message REMONTE au trader via /api/coach-undo. Il dit que ça n'a
+    // pas abouti sans prétendre que rien n'a bougé : les annulations qui
+    // bouclent (restore_trades) peuvent s'arrêter en cours de route.
+    return { ok: false, error: "L'annulation n'a pas abouti." };
   }
 }

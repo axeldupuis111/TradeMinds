@@ -101,8 +101,18 @@ export async function GET() {
 
   // ── Clôture paresseuse de la semaine précédente ────────────────────────────
   try {
-    const { data: closure } = await admin
+    // ⚠️ On lit `error` : sans lui, une table absente ou une policy refusée
+    // faisait croire que la semaine n'était PAS clôturée, et la clôture se
+    // rejouait indéfiniment sans jamais aboutir. Le `catch` ne pouvait pas
+    // l'attraper, le client Supabase ne jette pas.
+    const { data: closure, error: closureError } = await admin
       .from("challenge_week_closures").select("week_key").eq("week_key", prevKey).maybeSingle();
+    if (closureError) {
+      console.error(
+        "[community-challenges] clôture hebdo illisible, les défis ne se clôtureront pas :",
+        closureError.message,
+      );
+    }
     if (!closure) {
       const rows: {
         user_id: string; week_key: string; challenge_key: string;
@@ -129,14 +139,36 @@ export async function GET() {
         });
       }
       if (rows.length > 0) {
-        await admin.from("challenge_awards").upsert(rows, {
+        const { error: awardsError } = await admin.from("challenge_awards").upsert(rows, {
           onConflict: "user_id,week_key,challenge_key",
           ignoreDuplicates: true,
         });
+        // ⚠️ ON NE MARQUE PAS LA SEMAINE CLÔTURÉE SI LES RÉCOMPENSES N'ONT PAS
+        // ÉTÉ ÉCRITES. L'ordre « awards puis marqueur » ci-dessous protège d'un
+        // crash, mais pas d'une écriture refusée : le client Supabase ne jette
+        // pas, l'erreur revenait dans `error` que personne ne lisait. Le
+        // marqueur passait donc quand même, et la semaine restait close à
+        // jamais avec zéro récompense distribuée. Personne ne l'aurait su :
+        // aucune trace, et la clôture ne se rejoue plus.
+        if (awardsError) {
+          console.error(
+            `[community-challenges] récompenses de la semaine ${prevKey} non écrites, clôture reportée :`,
+            awardsError.message,
+          );
+          throw awardsError;
+        }
       }
       // Marqueur écrit APRÈS les awards : un crash entre les deux rejoue la
       // clôture (déterministe + contrainte unique → aucune perte, aucun doublon).
-      await admin.from("challenge_week_closures").upsert({ week_key: prevKey }, { onConflict: "week_key", ignoreDuplicates: true });
+      const { error: marqueurError } = await admin.from("challenge_week_closures").upsert({ week_key: prevKey }, { onConflict: "week_key", ignoreDuplicates: true });
+      if (marqueurError) {
+        // Sans trace, la clôture se rejouerait à chaque requête sans jamais
+        // aboutir : exactement le symptôme qu'on a mis des semaines à voir.
+        console.error(
+          `[community-challenges] marqueur de clôture ${prevKey} non écrit, la clôture se rejouera :`,
+          marqueurError.message,
+        );
+      }
     }
   } catch { /* migration absente — les défis restent servis sans clôture */ }
 
@@ -181,10 +213,18 @@ export async function GET() {
     }[];
   } | null = null;
   try {
-    const { data: awardRows } = await admin
+    // ⚠️ Idem : sans lecture de `error`, l'absence de rétrospective ne se
+    // distingue pas d'une panne de lecture.
+    const { data: awardRows, error: awardsError } = await admin
       .from("challenge_awards")
       .select("user_id, challenge_key, completed, rank, progress, awarded_at")
       .eq("week_key", prevKey);
+    if (awardsError) {
+      console.error(
+        "[community-challenges] palmarès de la semaine illisible, pas de rétrospective :",
+        awardsError.message,
+      );
+    }
     const awards = (awardRows ?? []) as AwardRow[];
     if (awards.length > 0) {
       // Pseudos des médaillés qui ne sont pas déjà chargés.

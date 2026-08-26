@@ -358,7 +358,7 @@ export default function GoalsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [createMode, setCreateMode] = useState<CreateMode>("write");
   // Bannière de feedback après interprétation IA (auto-suivi vs à cocher).
-  const [notice, setNotice] = useState<"auto" | "manual" | null>(null);
+  const [notice, setNotice] = useState<"auto" | "manual" | "echec" | null>(null);
 
   // Objectif perso (texte)
   const [customText, setCustomText] = useState("");
@@ -448,7 +448,15 @@ export default function GoalsPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       // On omet 'kind' (défaut SQL 'metric') pour rester compatible avant la migration.
-      await supabase.from("goals").insert({ user_id: user.id, metric: m, target: tgt, comparator: METRIC_COMPARATOR[m], period: p });
+      //
+      // ⚠️ `error` se lit. Sans ça, un refus d'écriture donnait exactement le
+      // même écran qu'un succès : `load()` ne ramenait rien de neuf, l'objectif
+      // n'apparaissait pas, et le trader croyait avoir mal cliqué.
+      const { error } = await supabase.from("goals").insert({ user_id: user.id, metric: m, target: tgt, comparator: METRIC_COMPARATOR[m], period: p });
+      if (error) {
+        console.error("[goals] création d'objectif refusée :", error.message);
+        setNotice("echec");
+      }
       await load();
     }
     setBusy(false);
@@ -458,11 +466,16 @@ export default function GoalsPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     // Insert de base (compatible même sans les colonnes de récurrence).
-    const { data: inserted } = await supabase
+    const { data: inserted, error } = await supabase
       .from("goals")
       .insert({ user_id: user.id, kind: "custom", title, period: p, done: false })
       .select("id")
       .maybeSingle();
+    if (error) {
+      console.error("[goals] création d'objectif libre refusée :", error.message);
+      setNotice("echec");
+      return;
+    }
     // Récurrence en 2e temps (best-effort si colonnes absentes).
     if (recurring && inserted?.id) {
       await supabase.from("goals").update({ recurring: true, period_key: periodKeyClient(p) }).eq("id", inserted.id);
@@ -504,7 +517,11 @@ export default function GoalsPage() {
       const existingMetrics = new Set(metricGoals.map((g) => `${g.metric}:${g.period}`));
       for (const m of pack.metrics) {
         if (existingMetrics.has(`${m.metric}:${m.period}`)) continue;
-        await supabase.from("goals").insert({ user_id: user.id, metric: m.metric, target: m.target, comparator: METRIC_COMPARATOR[m.metric], period: m.period });
+        const { error } = await supabase.from("goals").insert({ user_id: user.id, metric: m.metric, target: m.target, comparator: METRIC_COMPARATOR[m.metric], period: m.period });
+        if (error) {
+          console.error("[goals] objectif du pack refusé :", error.message);
+          setNotice("echec");
+        }
       }
       for (const h of pack.habits) {
         await createCustom(t(h.titleKey), h.period, true);
@@ -518,11 +535,24 @@ export default function GoalsPage() {
   async function toggleDone(id: string, done: boolean) {
     setGoals((gs) => gs.map((g) => (g.id === id && g.kind === "custom" ? { ...g, done } : g)));
     if (done) setShowConfetti(true); // petite célébration à la complétion
-    await supabase.from("goals").update({ done }).eq("id", id);
+    // ⚠️ L'affichage a déjà bougé. Si l'écriture est refusée, il faut le REMETTRE
+    // comme il était : sinon la case reste cochée à l'écran, se décoche toute
+    // seule au prochain chargement, et le trader ne sait pas laquelle croire.
+    const { error } = await supabase.from("goals").update({ done }).eq("id", id);
+    if (error) {
+      console.error("[goals] changement d'état refusé :", error.message);
+      setGoals((gs) => gs.map((g) => (g.id === id && g.kind === "custom" ? { ...g, done: !done } : g)));
+      setNotice("echec");
+    }
   }
 
   async function removeGoal(id: string) {
-    await supabase.from("goals").delete().eq("id", id);
+    const { error } = await supabase.from("goals").delete().eq("id", id);
+    if (error) {
+      console.error("[goals] suppression refusée :", error.message);
+      setNotice("echec");
+      return; // l'objectif reste à l'écran, parce qu'il reste en base
+    }
     setGoals((g) => g.filter((x) => x.id !== id));
   }
 
@@ -530,7 +560,11 @@ export default function GoalsPage() {
   async function updateTarget(id: string, newTarget: number, oldTarget: number) {
     setEditingTarget(null);
     if (isNaN(newTarget) || newTarget <= 0 || newTarget === oldTarget) return;
-    await supabase.from("goals").update({ target: newTarget }).eq("id", id);
+    const { error } = await supabase.from("goals").update({ target: newTarget }).eq("id", id);
+    if (error) {
+      console.error("[goals] nouvelle cible refusée :", error.message);
+      setNotice("echec");
+    }
     await load();
   }
 
@@ -788,9 +822,9 @@ export default function GoalsPage() {
 
       {/* Bannière de feedback après création via IA */}
       {notice && (
-        <div className={`mt-4 flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-sm ${notice === "auto" ? "border-profit/30 bg-profit/[0.05] text-foreground" : "border-accent/30 bg-accent/[0.05] text-foreground"}`}>
-          <Sparkles className={`w-4 h-4 shrink-0 ${notice === "auto" ? "text-profit" : "text-accent"}`} />
-          <span>{notice === "auto" ? t("goals_ai_auto") : t("goals_ai_manual")}</span>
+        <div className={`mt-4 flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-sm ${notice === "echec" ? "border-loss/40 bg-loss/[0.06] text-foreground" : notice === "auto" ? "border-profit/30 bg-profit/[0.05] text-foreground" : "border-accent/30 bg-accent/[0.05] text-foreground"}`}>
+          <Sparkles className={`w-4 h-4 shrink-0 ${notice === "echec" ? "text-loss" : notice === "auto" ? "text-profit" : "text-accent"}`} />
+          <span>{notice === "echec" ? t("save_failed") : notice === "auto" ? t("goals_ai_auto") : t("goals_ai_manual")}</span>
           <button onClick={() => setNotice(null)} className="ml-auto text-muted/50 hover:text-muted transition-colors" aria-label={t("close")}>
             <X className="w-3.5 h-3.5" />
           </button>

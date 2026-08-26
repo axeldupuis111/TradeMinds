@@ -96,9 +96,26 @@ interface Props {
   navTotal?: number;   // total trades in current page
 }
 
-function SavedIndicator({ visible }: { visible: boolean }) {
+/**
+ * ⚠️ CE ✓ A MENTI PENDANT DES MOIS.
+ *
+ * Il s'affichait après chaque écriture, réussie OU NON : le client Supabase ne
+ * jette pas sur une erreur de requête, il rend `{ error }`, et aucun de ces
+ * `await supabase.from("trades").update(...)` ne le lisait. Une politique RLS
+ * ou une coupure réseau donnaient donc exactement le même « ✓ enregistré » que
+ * le succès, sur des champs saisis à la main que personne ne ressaisit deux
+ * fois. Le trader rouvrait le trade plus tard et son travail avait disparu.
+ *
+ * `etat` vaut maintenant true (enregistré), false (refusé) ou null (rien à
+ * dire). L'échec reste affiché plus longtemps que le succès : un ✓ qu'on rate
+ * ne coûte rien, un échec qu'on rate coûte la saisie.
+ */
+function SavedIndicator({ etat, echec }: { etat: boolean | null; echec: string }) {
+  if (etat === false) {
+    return <span className="text-loss text-xs ml-1" title={echec}>✕</span>;
+  }
   return (
-    <span className={`text-profit text-xs ml-1 transition-opacity duration-300 ${visible ? "opacity-100" : "opacity-0"}`}>✓</span>
+    <span className={`text-profit text-xs ml-1 transition-opacity duration-300 ${etat ? "opacity-100" : "opacity-0"}`}>✓</span>
   );
 }
 
@@ -137,7 +154,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
 
   // ICT state
   const [ictChecklist, setIctChecklist] = useState<Record<string, boolean>>(trade.ict_checklist || {});
-  const [savedField, setSavedField] = useState<string | null>(null);
+  const [savedField, setSavedField] = useState<{ field: string; ok: boolean } | null>(null);
   const [derivedDetailsOpen, setDerivedDetailsOpen] = useState(false);
   const debounceRefs = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const screenshotPathRef = useRef<string | null>(null);
@@ -228,7 +245,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
     const keepChecklist = selectedStrategyId === null && stratId !== null && stratId === stratTags.strategyId;
     setSelectedStrategyId(stratId);
     if (!keepChecklist) setIctChecklist({});
-    await supabase
+    const { error } = await supabase
       .from("trades")
       .update(
         keepChecklist
@@ -236,12 +253,14 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
           : { strategy_id: stratId, ict_checklist: null, ict_confluence_score: null }
       )
       .eq("id", trade.id);
-    showSavedIndicator("strategy_id");
+    showSavedIndicator("strategy_id", !error);
   }
 
-  function showSavedIndicator(field: string) {
-    setSavedField(field);
-    setTimeout(() => setSavedField(null), 1500);
+  function showSavedIndicator(field: string, ok = true) {
+    setSavedField({ field, ok });
+    // Un échec reste six fois plus longtemps qu'un succès : c'est le seul
+    // signal que le trader a pour savoir qu'il doit ressaisir.
+    setTimeout(() => setSavedField(null), ok ? 1500 : 9000);
   }
 
   function saveIctField(field: string, value: string | number | Record<string, boolean>) {
@@ -250,12 +269,13 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
     const tradeId = trade.id;
     // Register pending op so flushPendingDebounces can execute it immediately
     pendingSavesRef.current[field] = async () => {
-      await supabase.from("trades").update({ [field]: dbValue }).eq("id", tradeId);
+      const { error } = await supabase.from("trades").update({ [field]: dbValue }).eq("id", tradeId);
+      if (error) showSavedIndicator(field, false);
     };
     debounceRefs.current[field] = setTimeout(async () => {
       delete pendingSavesRef.current[field];
-      await supabase.from("trades").update({ [field]: dbValue }).eq("id", tradeId);
-      showSavedIndicator(field);
+      const { error } = await supabase.from("trades").update({ [field]: dbValue }).eq("id", tradeId);
+      showSavedIndicator(field, !error);
       onSaved();
     }, 500);
   }
@@ -263,8 +283,8 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
   async function handleAccountChange(value: string) {
     const newId = value === "" ? null : value;
     setChallengeId(newId);
-    await supabase.from("trades").update({ challenge_id: newId }).eq("id", trade.id);
-    showSavedIndicator("challenge_id");
+    const { error } = await supabase.from("trades").update({ challenge_id: newId }).eq("id", trade.id);
+    showSavedIndicator("challenge_id", !error);
     onSaved();
   }
 
@@ -274,12 +294,13 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
     const dbValue = value.trim() === "" ? null : parseFloat(value);
     const tradeId = trade.id;
     pendingSavesRef.current["sl_initial"] = async () => {
-      await supabase.from("trades").update({ sl_initial: dbValue }).eq("id", tradeId);
+      const { error } = await supabase.from("trades").update({ sl_initial: dbValue }).eq("id", tradeId);
+      if (error) showSavedIndicator("sl_initial", false);
     };
     debounceRefs.current["sl_initial"] = setTimeout(async () => {
       delete pendingSavesRef.current["sl_initial"];
-      await supabase.from("trades").update({ sl_initial: dbValue }).eq("id", tradeId);
-      showSavedIndicator("sl_initial");
+      const { error } = await supabase.from("trades").update({ sl_initial: dbValue }).eq("id", tradeId);
+      showSavedIndicator("sl_initial", !error);
       onSaved();
     }, 500);
   }
@@ -290,12 +311,13 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
     const dbValue = value.trim() === "" ? null : parseFloat(value);
     const tradeId = trade.id;
     pendingSavesRef.current["tp_initial"] = async () => {
-      await supabase.from("trades").update({ tp_initial: dbValue }).eq("id", tradeId);
+      const { error } = await supabase.from("trades").update({ tp_initial: dbValue }).eq("id", tradeId);
+      if (error) showSavedIndicator("tp_initial", false);
     };
     debounceRefs.current["tp_initial"] = setTimeout(async () => {
       delete pendingSavesRef.current["tp_initial"];
-      await supabase.from("trades").update({ tp_initial: dbValue }).eq("id", tradeId);
-      showSavedIndicator("tp_initial");
+      const { error } = await supabase.from("trades").update({ tp_initial: dbValue }).eq("id", tradeId);
+      showSavedIndicator("tp_initial", !error);
       onSaved();
     }, 500);
   }
@@ -312,7 +334,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
         .from("trades")
         .update({ strategy_id: autoId })
         .eq("id", trade.id)
-        .then(() => showSavedIndicator("strategy_id"));
+        .then(({ error }) => showSavedIndicator("strategy_id", !error));
     }
 
     const updated = { ...ictChecklist, [key]: checked };
@@ -570,7 +592,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
                 {t("detail_account")}
-                <SavedIndicator visible={savedField === "challenge_id"} />
+                <SavedIndicator etat={savedField?.field === "challenge_id" ? savedField.ok : null} echec={t("save_failed")} />
               </label>
               <select
                 value={challengeId || ""}
@@ -595,7 +617,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
               <div>
                 <label className="block text-xs text-muted mb-1">
                   {t("sl_initial_label")}
-                  <SavedIndicator visible={savedField === "sl_initial"} />
+                  <SavedIndicator etat={savedField?.field === "sl_initial" ? savedField.ok : null} echec={t("save_failed")} />
                 </label>
                 <input
                   type="number"
@@ -609,7 +631,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
               <div>
                 <label className="block text-xs text-muted mb-1">
                   {t("tp_initial_label")}
-                  <SavedIndicator visible={savedField === "tp_initial"} />
+                  <SavedIndicator etat={savedField?.field === "tp_initial" ? savedField.ok : null} echec={t("save_failed")} />
                 </label>
                 <input
                   type="number"
@@ -695,7 +717,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
                 {t("stratcmp_strategy")}
-                <SavedIndicator visible={savedField === "strategy_id"} />
+                <SavedIndicator etat={savedField?.field === "strategy_id" ? savedField.ok : null} echec={t("save_failed")} />
               </label>
               <select
                 value={selectedStrategyId || ""}
@@ -716,7 +738,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm text-muted">
                   {t("ict_checklist_title")} {checkedCount}/{checklistTotal}
-                  <SavedIndicator visible={savedField === "ict_checklist"} />
+                  <SavedIndicator etat={savedField?.field === "ict_checklist" ? savedField.ok : null} echec={t("save_failed")} />
                 </span>
                 <span className="text-xs text-muted">{Math.round((checkedCount / checklistTotal) * 100)}%</span>
               </div>

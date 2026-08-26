@@ -263,6 +263,13 @@ export async function GET(req: NextRequest) {
           .order("id", { ascending: true })
           .range(from, to),
       );
+      // ⚠️ `fetchAllRows` rend `null` quand une page échoue, et jamais une liste
+      // partielle. Sans ce test, une panne de lecture se confondait avec « aucun
+      // badge décerné » : le classement s'affichait sans emblèmes et personne
+      // n'aurait su que c'était une panne.
+      if (awardRows === null) {
+        console.error("[leaderboard] badges illisibles, le classement s'affichera sans emblèmes.");
+      }
       const keysByUser = new Map<string, string[]>();
       for (const r of awardRows ?? []) {
         const arr = keysByUser.get(r.user_id as string) ?? [];

@@ -303,7 +303,11 @@ export default function StrategyPage() {
     if (unlinkError) { showToast("error", t("strategy_delete_error")); return; }
 
     await supabase.from("strategy_tags").delete().eq("strategy_id", existingId);
-    await supabase.from("strategies").delete().eq("id", existingId);
+    // ⚠️ C'est CETTE ligne qui décide si la stratégie a disparu. Sans lire son
+    // `error`, un refus RLS affichait « supprimée » puis la fiche revenait au
+    // rechargement suivant.
+    const { error: deleteError } = await supabase.from("strategies").delete().eq("id", existingId);
+    if (deleteError) { showToast("error", t("strategy_delete_error")); return; }
     showToast("success", t("strategy_deleted"));
     setShowDeleteConfirm(false);
     await loadStrategies();
@@ -420,9 +424,18 @@ export default function StrategyPage() {
     }
 
     // Save strategy_tags if present and we have a strategy ID
+    //
+    // ⚠️ CE try/catch NE POUVAIT RIEN ATTRAPER. Le client Supabase ne jette pas
+    // sur une erreur de requête, il rend `{ error }`. Les trois écritures
+    // ci-dessous l'ignoraient : la fiche s'enregistrait, ses repères non, et le
+    // toast disait « enregistré ». C'est exactement le bug de compétence du
+    // coach déjà vu une fois (il inventait des méthodes faute de vocabulaire),
+    // mais par un autre chemin, et cette fois-là muet.
+    let reperesEchoues = false;
     if (!error && strategyId && parsed.strategy_tags) {
       try {
-        await supabase.from("strategy_tags").delete().eq("strategy_id", strategyId).eq("user_id", user.id);
+        const { error: purgeError } = await supabase.from("strategy_tags").delete().eq("strategy_id", strategyId).eq("user_id", user.id);
+        if (purgeError) throw purgeError;
 
         const tagRows: Record<string, unknown>[] = [];
         const mapping: [keyof StrategyTagsFromAI, string][] = [
@@ -449,16 +462,24 @@ export default function StrategyPage() {
         });
 
         if (tagRows.length > 0) {
-          await supabase.from("strategy_tags").insert(tagRows);
+          const { error: tagsError } = await supabase.from("strategy_tags").insert(tagRows);
+          if (tagsError) throw tagsError;
         }
       } catch (tagsErr) {
         console.error("strategy_tags save failed (table may not exist yet):", tagsErr);
+        reperesEchoues = true;
       }
     }
 
     setSaving(false);
     if (error) {
       showToast("error", t("strategy_toast_error"));
+    } else if (reperesEchoues) {
+      // La fiche est bien là ; ce qui manque, ce sont ses repères. On le dit,
+      // parce que c'est le coach qui en paiera le prix, pas l'écran.
+      showToast("error", t("strategy_tags_save_failed"));
+      setIsDirty(false);
+      await loadStrategies(strategyId || undefined);
     } else {
       showToast("success", t("strategy_toast_success"));
       setIsDirty(false);

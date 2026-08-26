@@ -528,11 +528,21 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
       // partagent le created_at par défaut, et l'ordre au rechargement devient
       // arbitraire (la réponse s'affichait alors au-dessus de sa question).
       const ts = pairTimestamps(sentAt, Date.now());
-      await supabase.from("chat_messages").insert([
+      // ⚠️ CE QUI SE PERD ICI EST DÉJÀ PAYÉ. L'appel au modèle est facturé, la
+      // réponse est à l'écran ; si l'insertion échoue, elle disparaît au
+      // rechargement et le trader a payé pour rien. Le client Supabase ne jette
+      // pas : sans lire `error`, la perte était totalement muette.
+      const { error: histoError } = await supabase.from("chat_messages").insert([
         { user_id: user.id, role: "user", content: msg, created_at: ts.user },
         { user_id: user.id, role: "assistant", content: stripEmDashes(answer), created_at: ts.assistant },
       ]);
-      await supabase.from("ai_analysis_history").insert({ user_id: user.id, question: msg, answer: stripEmDashes(answer) });
+      if (histoError) {
+        console.error("[coach] échange non enregistré, il sera perdu au rechargement :", histoError.message);
+      }
+      const { error: analyseError } = await supabase.from("ai_analysis_history").insert({ user_id: user.id, question: msg, answer: stripEmDashes(answer) });
+      if (analyseError) {
+        console.error("[coach] historique d'analyse non enregistré :", analyseError.message);
+      }
 
       const newCount = dailyCount + 1;
       setDailyCount(newCount);
@@ -541,9 +551,16 @@ export function useCoachChat({ plan, lang, t, demoMode, pageContext, onAnswered 
       // rechargement. `refresh` le resynchronisera sur la vraie valeur.
       setMonthlyCount((c) => c + 1);
       const today = new Date().toISOString().split("T")[0];
-      await supabase.from("profiles")
+      // Le vrai décompte est tenu SERVEUR par le disjoncteur ; celui-ci n'est
+      // qu'un miroir d'affichage. Un échec ne coûte donc rien au trader, mais il
+      // laisse une trace : c'est le même symptôme qu'une panne d'écriture plus
+      // grave ailleurs.
+      const { error: compteurError } = await supabase.from("profiles")
         .update({ daily_chat_count: newCount, daily_chat_reset: today })
         .eq("id", user.id);
+      if (compteurError) {
+        console.error("[coach] compteur quotidien non écrit :", compteurError.message);
+      }
 
       onAnswered?.();
       return answer;

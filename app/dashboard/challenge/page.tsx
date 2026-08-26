@@ -1163,13 +1163,28 @@ export default function ChallengePage() {
       // Marche arriere : les trades retrouvent leur compte, l'utilisateur n'a
       // rien perdu et peut reessayer.
       for (const part of chunk(tradeIds, ID_CHUNK)) {
-        await supabase.from("trades").update({ challenge_id: challengeId }).in("id", part);
+        const { error: retourError } = await supabase.from("trades").update({ challenge_id: challengeId }).in("id", part);
+        // Si la marche arriere elle-meme echoue, les trades restent detaches.
+        // On ne peut plus rien faire ici, mais ca doit laisser une trace.
+        if (retourError) console.error("[compte] rattachement de secours refuse :", retourError.message);
       }
       return error ? deleteErrorMessage(error.message) : t("challenge_delete_refused");
     }
 
+    // Le compte est parti. Ses trades doivent partir avec.
+    //
+    // Sans lire `error`, cette boucle pouvait echouer en entier et la fonction
+    // rendait quand meme `null`, c'est-a-dire « tout s'est bien passe » : les
+    // trades restaient en base, detaches de tout compte, invisibles a l'ecran
+    // et comptes dans les statistiques globales. Des orphelins que personne
+    // n'aurait pu retrouver, puisque le lien vers le compte venait d'etre
+    // efface.
     for (const part of chunk(tradeIds, ID_CHUNK)) {
-      await supabase.from("trades").delete().in("id", part);
+      const { error: purgeError } = await supabase.from("trades").delete().in("id", part);
+      if (purgeError) {
+        console.error("[compte] trades du compte supprime non purges :", purgeError.message);
+        return deleteErrorMessage(purgeError.message);
+      }
     }
     return null;
   }

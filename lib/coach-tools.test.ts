@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { executeCoachConfirm, executeCoachTool, executeCoachUndo, COACH_TOOLS, type CoachUndo } from "./coach-tools";
@@ -324,4 +325,69 @@ describe("executeCoachUndo", () => {
     const r = await executeCoachUndo(client, USER, { op: "rm_rf" } as unknown as CoachUndo);
     expect(r.ok).toBe(false);
   });
+});
+
+/**
+ * ⚠️ LE BUG QUE CE BLOC EMPÊCHE DE REVENIR.
+ *
+ * Jusqu'au 2026-08-26, CHACUNE des seize annulations s'écrivait
+ * `await supabase.from(...).delete()...` sans lire `error`, puis retournait
+ * `{ ok: true }`. Le client Supabase ne jette pas : une table absente, une
+ * politique RLS ou une panne réseau produisaient exactement le même succès.
+ *
+ * Ce que ça donnait à l'écran : le trader clique « Annuler », le chip passe à
+ * « annulé », le coach confirme, et la donnée n'a pas bougé d'un octet. Le pire
+ * cas est `delete_trade` (undo de création) : un trade fantôme reste dans le
+ * journal, et fausse toutes les statistiques calculées dessus.
+ *
+ * Chaque op est donc jouée deux fois : contre une base saine, et contre une
+ * base qui refuse d'écrire.
+ */
+describe("une annulation qui échoue ne doit JAMAIS se déclarer réussie", () => {
+  const STRAT = "33333333-3333-3333-3333-333333333333";
+  const DEFI = CHALLENGE_POOL[0].key;
+
+  const TOUTES: CoachUndo[] = [
+    { op: "delete_goal", goal_id: TRADE },
+    { op: "insert_goal", row: { metric: "win_rate", target: 50, comparator: "gte", period: "month" } },
+    { op: "update_goal", goal_id: TRADE, patch: { target: 60 } },
+    { op: "join_challenge", key: DEFI },
+    { op: "leave_challenge", key: DEFI },
+    { op: "restore_trades", trades: [{ id: TRADE, fields: { emotion: "calm" } }] },
+    { op: "delete_checklist_item", strategy_id: STRAT, value: "fvg" },
+    { op: "insert_checklist_item", row: { strategy_id: STRAT, tag_type: "checklist", value: "fvg" } },
+    { op: "delete_trade", trade_id: TRADE },
+    { op: "restore_trade_fields", trade_id: TRADE, fields: { pnl: 12 } },
+    { op: "restore_trade_links", trades: [{ id: TRADE, challenge_id: null, strategy_id: STRAT }] },
+    { op: "delete_account", account_id: TRADE },
+    { op: "restore_account", account_id: TRADE, fields: { account_size: 10000 } },
+    { op: "delete_session", session_id: TRADE },
+    { op: "reopen_session", session_id: TRADE },
+    { op: "delete_emotional_check", check_id: TRADE },
+  ];
+
+  it("le tableau ci-dessus couvre TOUTES les opérations du type CoachUndo", () => {
+    // ⚠️ Sans ça, une dix-septième opération ajoutée demain retomberait dans le
+    // silence sans qu'aucun test ne bronche. On lit le type à la source.
+    const src = readFileSync(new URL("./coach-tools.ts", import.meta.url), "utf-8");
+    const debut = src.indexOf("export type CoachUndo =");
+    // ⚠️ On coupe à la ligne vide, pas au premier « ; » : le type en contient
+    // un dans chaque membre de l'union (`{ op: "delete_goal"; goal_id: string }`).
+    const union = src.slice(debut, src.indexOf("\n\n", debut));
+    const declarees = (union.match(/op: "[a-z_]+"/g) ?? []).map((m) => m.slice(5, -1)).sort();
+    const couvertes = TOUTES.map((u) => u.op).sort();
+    expect(couvertes).toEqual(declarees);
+  });
+
+  for (const undo of TOUTES) {
+    it(`${undo.op} : réussit sur une base saine, échoue quand l'écriture est refusée`, async () => {
+      const sain = mockClient({ data: [{ id: TRADE }], error: null });
+      expect((await executeCoachUndo(sain.client, USER, undo)).ok).toBe(true);
+
+      const casse = mockClient({ data: null, error: { message: "permission denied for table" } });
+      const r = await executeCoachUndo(casse.client, USER, undo);
+      expect(r.ok).toBe(false);
+      expect(r.error).toBeTruthy();
+    });
+  }
 });
