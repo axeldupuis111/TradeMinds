@@ -61,6 +61,48 @@ function CloseIcon({ className }: { className?: string }) {
 
 // ── Banner row ────────────────────────────────────────────────────────────────
 
+/**
+ * Le bouton « en parler au coach ».
+ *
+ * ⚠️ IL EXISTE PARCE QUE TROIS CHEMINS DE RENDU L'ONT OUBLIÉ UNE FOIS. Ce
+ * centre d'alertes affiche la même alerte à trois endroits : la ligne de
+ * bandeau ordinaire, l'écran STOP, et la ligne de rappel quand un critique a
+ * été fermé. J'avais ajouté le bouton au premier seulement, et à l'écran le
+ * bandeau rouge se retrouvait muet quand l'orange juste en dessous proposait
+ * d'en parler. Un composant partagé rend l'oubli impossible au prochain
+ * chemin de rendu.
+ *
+ * Le fait affiché est calculé, pas généré : aucun appel modèle tant que le
+ * trader ne clique pas. Et même alors, la question arrive dans son champ de
+ * saisie SANS être envoyée.
+ */
+function BoutonCoach({
+  alerte,
+  couleur,
+  avant,
+}: {
+  alerte: { id: string; coachQuestion?: string };
+  couleur: string;
+  /** Action à jouer avant d'ouvrir le coach (fermer l'écran STOP). */
+  avant?: () => void;
+}) {
+  const { t } = useLanguage();
+  if (!alerte.coachQuestion) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        track("coach_alert_clicked", { code: alerte.id });
+        avant?.();
+        demanderAuCoach(alerte.coachQuestion!);
+      }}
+      className={`shrink-0 font-semibold hover:underline whitespace-nowrap text-xs ${couleur}`}
+    >
+      {t("alerte_en_parler")}
+    </button>
+  );
+}
+
 function BannerRow({
   alert,
   onDismiss,
@@ -115,22 +157,7 @@ function BannerRow({
     <div className={`border-b px-4 py-2 flex items-center gap-2 text-sm ${colorClass}`}>
       <WarningIcon className={`w-4 h-4 shrink-0 ${iconColorClass}`} />
       <span className="flex-1 font-medium truncate">{alert.message}</span>
-      {/* ⚠️ CE BOUTON TRANSFORME UN CONSTAT EN CONVERSATION, ET NE COÛTE RIEN.
-          Le fait affiché est calculé, pas généré : aucun appel modèle tant que
-          le trader ne clique pas. Et même alors, la question arrive dans son
-          champ de saisie SANS être envoyée. */}
-      {alert.coachQuestion && (
-        <button
-          type="button"
-          onClick={() => {
-            track("coach_alert_clicked", { code: alert.id });
-            demanderAuCoach(alert.coachQuestion!);
-          }}
-          className={`shrink-0 font-semibold hover:underline whitespace-nowrap text-xs ${iconColorClass}`}
-        >
-          {t("alerte_en_parler")}
-        </button>
-      )}
+      <BoutonCoach alerte={alert} couleur={iconColorClass} />
       {alert.action && (
         <Link
           href={alert.action.href}
@@ -195,6 +222,17 @@ export default function AlertCenter() {
                   {categoryIcon(a.category)}
                 </span>
                 <p className="flex-1 text-sm text-foreground">{a.message}</p>
+                {/* ⚠️ FERMER L'ÉCRAN AVANT D'OUVRIR LE COACH. Le dock vit sous
+                    cet overlay : sans ça, le trader cliquerait, rien ne
+                    semblerait se passer, et il conclurait que le bouton est
+                    cassé. Et sur le fond, « j'en parle au coach » vaut arrêt. */}
+                <BoutonCoach
+                  alerte={a}
+                  couleur="text-accent"
+                  avant={() => {
+                    for (const c of undismissedCriticals) dismissAlert(c.id);
+                  }}
+                />
                 {a.action && (
                   <Link
                     href={a.action.href}
@@ -251,6 +289,7 @@ export default function AlertCenter() {
               d="M12 9v2m0 4h.01M10.29 3.86l-8.6 14.86A1 1 0 002.56 20h18.88a1 1 0 00.87-1.28l-8.6-14.86a1 1 0 00-1.72 0z" />
           </svg>
           <span className="flex-1 font-medium truncate">{dismissedCriticals[0].message}</span>
+          <BoutonCoach alerte={dismissedCriticals[0]} couleur="text-loss" />
         </div>
       )}
       {dismissedCriticals.length > 1 && (
