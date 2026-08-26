@@ -1,0 +1,274 @@
+/**
+ * VOCABULAIRE DU BACKTEST : les blocs dont une stratégie peut être faite.
+ *
+ * ── POURQUOI UN CATALOGUE FERMÉ, ET PAS DU TEXTE LIBRE ──────────────────────
+ *
+ * Une fiche de stratégie est écrite en français (« j'attends un retest du FVG
+ * après le balayage »). On a longtemps refusé de la backtester pour une bonne
+ * raison : mécaniser cette phrase oblige à inventer la moitié des seuils, et le
+ * chiffre qui sort serait de la fiction avec deux décimales.
+ *
+ * Ce fichier résout le problème autrement. Le compilateur n'a PAS le droit
+ * d'inventer un bloc : il choisit dans ce catalogue et remplit des paramètres.
+ * Ce qu'il ne sait pas traduire, il le déclare non couvert au lieu de le
+ * deviner. Le trader voit donc exactement quelle part de sa méthode a été
+ * testée, et peut corriger chaque paramètre à la main.
+ *
+ * ⚠️ TOUS LES PRIX SONT DES ENTIERS EN TICKS, JAMAIS DES FLOTTANTS ────────────
+ *
+ * Un backtest passe son temps à demander « le prix a-t-il touché ce niveau ».
+ * En virgule flottante, 2130.45 n'est pas exactement 2130.45, et la réponse à
+ * cette question devient instable au dernier chiffre : deux exécutions du même
+ * test peuvent classer le même trade en gagnant puis en perdant. On convertit
+ * donc tout à l'entrée et le moteur ne compare que des entiers. Un buffer de
+ * stop « 1 tick » vaut alors littéralement +1.
+ *
+ * ⚠️ LE MOTEUR RAISONNE EN R, PAS EN EUROS. Le risque est l'unité : un trade
+ * vaut +2R ou -1R. La conversion en devise se fait dans une seconde couche, à
+ * partir du risque par trade et du capital de départ. Mélanger les deux ici
+ * rendrait les résultats dépendants d'une taille de position, donc
+ * incomparables d'un instrument à l'autre.
+ */
+
+/**
+ * Une série de bougies M1, en colonnes.
+ *
+ * Format colonnaire et pas un tableau d'objets : trois ans de M1 font environ
+ * un million de bougies, et un million d'objets JavaScript sature la mémoire du
+ * navigateur là où quatre tableaux typés tiennent dans quelques mégaoctets.
+ * C'est aussi le format exact des blocs binaires qu'on télécharge.
+ */
+export interface SerieM1 {
+  /** Nom brut de l'instrument, tel qu'affiché au trader. */
+  instrument: string;
+  /** Taille d'un tick, en unité de prix (0.01 sur l'or). Sert à réafficher. */
+  tailleTick: number;
+  /** Horodatage d'OUVERTURE de chaque bougie, en ms epoch. Strictement croissant. */
+  t: Float64Array;
+  /** Ouverture, en ticks entiers. */
+  o: Int32Array;
+  /** Plus haut, en ticks entiers. */
+  h: Int32Array;
+  /** Plus bas, en ticks entiers. */
+  l: Int32Array;
+  /** Clôture, en ticks entiers. */
+  c: Int32Array;
+}
+
+// ─── CONTEXTE : quand on a le droit de regarder ────────────────────────────
+
+/** Jours de la semaine, convention JS : 0 = dimanche. */
+export type JourSemaine = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
+export interface Contexte {
+  /**
+   * Fuseau IANA dans lequel toutes les heures du plan sont exprimées.
+   * ⚠️ Jamais UTC par défaut : « 15h30 » n'a de sens que dans une ville, et une
+   * stratégie d'ouverture de New York décale de 60 minutes deux fois par an.
+   */
+  fuseau: string;
+  /** Début de la fenêtre où les entrées sont autorisées, "HH:MM" local. */
+  debut: string;
+  /** Fin de la fenêtre où les entrées sont autorisées, "HH:MM" local. */
+  fin: string;
+  /** Jours autorisés. Vide = tous les jours présents dans la série. */
+  jours: JourSemaine[];
+}
+
+// ─── NIVEAU : ce qu'on trace avant d'attendre quoi que ce soit ─────────────
+
+export type BlocNiveau =
+  /**
+   * Plus haut et plus bas d'une plage horaire de la journée, la « bougie de
+   * référence » des stratégies d'ouverture de session.
+   * ⚠️ Le niveau n'existe qu'une fois la plage TERMINÉE.
+   */
+  | { type: "range_horaire"; debut: string; fin: string }
+  /** Plus haut et plus bas des N bougies précédant celle qu'on examine. */
+  | { type: "extremes_n_bougies"; n: number }
+  /** Plus haut et plus bas de la veille, dans le fuseau du contexte. */
+  | { type: "extremes_veille" };
+
+// ─── DÉCLENCHEUR : le signal, évalué sur bougies CLÔTURÉES uniquement ──────
+
+export type BlocDeclencheur =
+  /** Le prix franchit le niveau. `cloture` est le mode honnête, `meche` compte le simple contact. */
+  | { type: "cassure"; mode: "cloture" | "meche" }
+  /**
+   * Balayage puis retour : la bougie dépasse le niveau puis reclôture du côté
+   * d'où elle venait. Le signal est à contre-sens de la cassure.
+   */
+  | { type: "balayage_retour" }
+  /**
+   * Cassure, puis retour toucher le niveau dans les N bougies suivantes.
+   * `toleranceTicks` élargit la zone de contact.
+   */
+  | { type: "retest_apres_cassure"; delaiMaxBarres: number; toleranceTicks: number }
+  /**
+   * Cassure laissant un déséquilibre à trois bougies (FVG), puis retest de ce
+   * déséquilibre dans les N bougies. C'est la forme la plus courante des
+   * méthodes ICT, et celle qu'on doit savoir rejouer telle quelle.
+   */
+  | { type: "fvg_puis_retest"; delaiMaxBarres: number };
+
+// ─── CONFIRMATIONS : filtres facultatifs, TOUS doivent passer ──────────────
+
+export type BlocConfirmation =
+  /** La bougie de signal doit clôturer dans le sens du trade. */
+  | { type: "bougie_reaction" }
+  /** On n'entre que dans le sens de la moyenne mobile simple à N périodes. */
+  | { type: "biais_moyenne"; periode: number }
+  /** La bougie de signal doit avoir une amplitude minimale. */
+  | { type: "amplitude_min"; ticks: number };
+
+// ─── ENTRÉE ────────────────────────────────────────────────────────────────
+
+export type BlocEntree =
+  /**
+   * Entrée à l'ouverture de la bougie SUIVANT le signal.
+   * ⚠️ C'est la seule entrée honnête en M1 : au moment où on décide, la bougie
+   * de signal vient de clôturer et le prix d'ouverture suivant est inconnu.
+   */
+  | { type: "open_bougie_suivante" }
+  /** Ordre limite posé au niveau, valable N bougies puis annulé. */
+  | { type: "limite_au_niveau"; valableNBarres: number };
+
+// ─── SORTIES ───────────────────────────────────────────────────────────────
+
+export type BlocStop =
+  /** Extrême de la bougie de signal, plus un buffer. */
+  | { type: "structurel"; bufferTicks: number }
+  /** Distance fixe depuis l'entrée. */
+  | { type: "fixe"; ticks: number }
+  /** Côté opposé du niveau, plus un buffer. */
+  | { type: "niveau_oppose"; bufferTicks: number };
+
+export type BlocObjectif =
+  /** Multiple du risque initial. 2 = on vise deux fois la distance du stop. */
+  | { type: "multiple_r"; r: number }
+  /** Côté opposé du niveau. */
+  | { type: "niveau_oppose" };
+
+export interface SortiesAuxiliaires {
+  /** Stop ramené à l'entrée dès que le trade atteint ce multiple de R. */
+  breakEvenApresR?: number;
+  /** Tout est liquidé à cette heure locale, "HH:MM". */
+  finDeSession?: string;
+  /** Tout est liquidé après N bougies en position. */
+  apresNBarres?: number;
+}
+
+// ─── GESTION : les garde-fous, déjà présents dans la fiche du trader ───────
+
+export interface Gestion {
+  /** Plafond de trades ouverts dans la journée. */
+  maxTradesParJour?: number;
+  /** Arrêt de la journée après N pertes d'affilée. */
+  maxPertesConsecutives?: number;
+  /** Arrêt de la journée quand le cumul du jour descend sous -X R. */
+  maxPerteJournaliereR?: number;
+}
+
+// ─── COÛTS ─────────────────────────────────────────────────────────────────
+
+/**
+ * ⚠️ AUCUNE VALEUR PAR DÉFAUT N'EST NULLE, ET C'EST LE POINT LE PLUS IMPORTANT
+ * DU FICHIER. Un backtest à coûts zéro rend positives des stratégies qui
+ * perdent de l'argent : l'espérance d'une méthode M1 se compte en centièmes de
+ * R, et un aller-retour réel coûte souvent davantage. Un outil qui laisse le
+ * spread à 0 par défaut ne mesure pas une stratégie, il en fabrique une.
+ */
+export interface Couts {
+  /** Écart achat-vente, en ticks. Payé à l'entrée et à la sortie. */
+  spreadTicks: number;
+  /** Glissement, en ticks. Payé à l'entrée et sur les sorties au marché (stop). */
+  glissementTicks: number;
+  /**
+   * Commission de l'aller-retour, exprimée en ticks pour rester dans l'unité du
+   * moteur. L'interface la calcule depuis les frais réels du courtier.
+   */
+  commissionTicks: number;
+}
+
+// ─── LE PLAN COMPLET ───────────────────────────────────────────────────────
+
+export interface PlanExecution {
+  instrument: string;
+  /** Sens autorisés. */
+  sens: "long" | "short" | "les_deux";
+  contexte: Contexte;
+  niveau: BlocNiveau;
+  declencheur: BlocDeclencheur;
+  /** Facultatifs. Tous doivent passer pour que l'entrée soit prise. */
+  confirmations: BlocConfirmation[];
+  entree: BlocEntree;
+  stop: BlocStop;
+  objectif: BlocObjectif;
+  sortiesAuxiliaires: SortiesAuxiliaires;
+  gestion: Gestion;
+  couts: Couts;
+}
+
+// ─── RÉSULTATS ─────────────────────────────────────────────────────────────
+
+/** Pourquoi un trade s'est terminé. Sert aussi à l'audit. */
+export type MotifSortie =
+  | "stop"
+  | "objectif"
+  | "break_even"
+  | "fin_de_session"
+  | "duree_max"
+  | "fin_de_serie";
+
+export interface TradeSimule {
+  /** Ouverture de la bougie d'ENTRÉE, ms epoch. */
+  entreeMs: number;
+  /** Ouverture de la bougie de SORTIE, ms epoch. */
+  sortieMs: number;
+  sens: "long" | "short";
+  /** Prix d'entrée effectif, coûts d'entrée inclus, en ticks. */
+  entreeTicks: number;
+  /** Prix de sortie effectif, coûts de sortie inclus, en ticks. */
+  sortieTicks: number;
+  /** Distance entrée-stop initiale, en ticks. C'est le 1R du trade. */
+  risqueTicks: number;
+  /** Résultat en multiples de R, coûts déduits. */
+  r: number;
+  /** Le même résultat SANS aucun coût. Sert à l'audit de coûts. */
+  rBrut: number;
+  motif: MotifSortie;
+  /**
+   * Vrai si le stop et l'objectif étaient tous deux atteignables dans la même
+   * bougie. On tranche alors au stop, faute de savoir lequel est venu en
+   * premier. Le compte de ces cas est publié : c'est de l'incertitude assumée,
+   * pas un détail d'implémentation.
+   */
+  collisionMemeBarre: boolean;
+}
+
+export interface AuditExecution {
+  /** Bougies parcourues. */
+  bougies: number;
+  /** Signaux détectés, avant filtres de gestion. */
+  signaux: number;
+  /** Signaux refusés par un plafond de gestion (trades/jour, pertes d'affilée). */
+  refusesParGestion: number;
+  /** Ordres limites expirés sans être touchés. */
+  limitesExpirees: number;
+  /** Trades dont le stop et l'objectif tombaient dans la même bougie. */
+  collisions: number;
+  /**
+   * Coût total payé, en R cumulés. Il doit égaler l'écart entre la somme des
+   * `rBrut` et celle des `r` : un test le vérifie, parce qu'un audit de coûts
+   * calculé à part de l'exécution finit toujours par mentir.
+   */
+  coutTotalR: number;
+}
+
+export interface ResultatBacktest {
+  trades: TradeSimule[];
+  audit: AuditExecution;
+  /** Première et dernière bougie effectivement parcourues, ms epoch. */
+  debutMs: number;
+  finMs: number;
+}
