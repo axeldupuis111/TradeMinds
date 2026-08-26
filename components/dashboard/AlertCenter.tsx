@@ -96,7 +96,10 @@ function BoutonCoach({
         avant?.();
         demanderAuCoach(alerte.coachQuestion!);
       }}
-      className={`shrink-0 font-semibold hover:underline whitespace-nowrap text-xs ${couleur}`}
+      // ⚠️ UNE PASTILLE, PAS UN LIEN. En texte nu au bout d'un bandeau pleine
+      // largeur, la proposition se confondait avec le message et passait
+      // inaperçue. Un fond et une bordure la font lire comme une ACTION.
+      className={`shrink-0 whitespace-nowrap text-xs font-semibold px-2.5 py-1 rounded-full border border-current/30 bg-current/10 hover:bg-current/20 transition-colors ${couleur}`}
     >
       {t("alerte_en_parler")}
     </button>
@@ -222,17 +225,6 @@ export default function AlertCenter() {
                   {categoryIcon(a.category)}
                 </span>
                 <p className="flex-1 text-sm text-foreground">{a.message}</p>
-                {/* ⚠️ FERMER L'ÉCRAN AVANT D'OUVRIR LE COACH. Le dock vit sous
-                    cet overlay : sans ça, le trader cliquerait, rien ne
-                    semblerait se passer, et il conclurait que le bouton est
-                    cassé. Et sur le fond, « j'en parle au coach » vaut arrêt. */}
-                <BoutonCoach
-                  alerte={a}
-                  couleur="text-accent"
-                  avant={() => {
-                    for (const c of undismissedCriticals) dismissAlert(c.id);
-                  }}
-                />
                 {a.action && (
                   <Link
                     href={a.action.href}
@@ -255,8 +247,36 @@ export default function AlertCenter() {
             </div>
           )}
 
-          {/* Dismiss all — overlay closes, criticals become reminder banners */}
-          <div className="mt-8 flex justify-center">
+          {/* ⚠️ DEUX SORTIES, PAS UNE, ET AU MÊME NIVEAU.
+              Le lien « en parler au coach » vivait au bout de la ligne d'alerte,
+              en petit texte, à côté d'un gros bouton rouge. Axel l'a dit en le
+              découvrant : « clairement pas visible, personne ne verra la
+              proposition ». Il avait raison, et ce n'était pas un détail : c'est
+              la seule sortie utile de cet écran. « Compris, je stoppe » ferme la
+              fenêtre et laisse le trader seul avec sa série de pertes.
+              Les deux options sont donc côte à côte, à taille égale, là où l'œil
+              se pose. Celle qui aide est même à gauche.
+
+              ⚠️ Et elle ferme l'écran avant d'ouvrir le coach : le dock vit sous
+              cet overlay, sans ça le trader cliquerait et rien ne semblerait se
+              passer. Sur le fond, « j'en parle au coach » vaut arrêt. */}
+          <div className="mt-8 flex flex-wrap gap-3 justify-center">
+            {(() => {
+              const avecQuestion = undismissedCriticals.find((a) => a.coachQuestion);
+              if (!avecQuestion) return null;
+              return (
+                <button
+                  onClick={() => {
+                    track("coach_alert_clicked", { code: avecQuestion.id });
+                    for (const c of undismissedCriticals) dismissAlert(c.id);
+                    demanderAuCoach(avecQuestion.coachQuestion!);
+                  }}
+                  className="px-6 py-3 bg-accent text-on-accent rounded-lg font-medium hover:opacity-90 transition-opacity"
+                >
+                  {t("alerte_en_parler")}
+                </button>
+              );
+            })()}
             <button
               onClick={() => {
                 for (const a of undismissedCriticals) dismissAlert(a.id);
