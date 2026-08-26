@@ -2847,7 +2847,22 @@ const dict: Record<string, string> = {
   "seg_warning": "Attention à ce que ça veut dire. Ce segment a été choisi APRÈS avoir regardé tes résultats : c'est une observation sur ton passé, pas une règle démontrée. Chercher le pire segment finit toujours par en trouver un, même dans des données au hasard. Pour que ça devienne une vraie règle, écris-la dans ta fiche et laisse la mesure de respect te dire si tu la tiens sur les trades SUIVANTS.",
   "seg_none": "Ta perte n'est concentrée sur aucun segment identifiable. C'est plutôt une bonne nouvelle sur la régularité de ton exécution, et ça veut dire que le levier est ailleurs : dans ta méthode elle-même ou dans ta taille de position.",
   "seg_hour": "{n}h",
-  "seg_overlap": "Ces segments se recouvrent : un même trade peut appartenir à plusieurs d'entre eux à la fois. Leurs coûts ne s'additionnent pas."
+  "seg_overlap": "Ces segments se recouvrent : un même trade peut appartenir à plusieurs d'entre eux à la fois. Leurs coûts ne s'additionnent pas.",
+  "stab_title_amelioration": "Tes trades récents ne ressemblent plus aux anciens",
+  "stab_title_degradation": "Tes trades récents ne ressemblent plus aux anciens",
+  "stab_body": "Sur ta première moitié de journal, ton espérance était de {avant} par trade. Sur la seconde, {apres}. Les deux fourchettes ne se recouvrent même pas.",
+  "stab_consequence_amelioration": "Prends donc la projection ci-dessus avec prudence : elle mélange les deux périodes et suppose que la suite leur ressemblera. Si le changement vient de toi, elle te sous-estime.",
+  "stab_consequence_degradation": "Prends donc la projection ci-dessus avec prudence : elle mélange les deux périodes et suppose que la suite leur ressemblera. Si la dégradation continue, elle te flatte.",
+  "lev_title": "Et si tu réduisais ta taille de position ?",
+  "lev_subtitle": "C'est le seul paramètre que tu peux changer demain matin sans toucher à ta méthode, tes horaires ou ta psychologie. Voici ce que ça donnerait sur les mêmes trades.",
+  "lev_col_size": "Taille",
+  "lev_col_ruin": "Risque de ruine",
+  "lev_col_expectancy": "Espérance / trade",
+  "lev_col_median": "Résultat médian",
+  "lev_current": "Ta taille actuelle",
+  "lev_divided": "Divisée par {n}",
+  "lev_caveat": "Ça coupe dans les deux sens : diviser ta taille par deux divise aussi tes gains par deux. Ce n'est pas un réglage gratuit, c'est un arbitrage entre moins de ruine et moins de gain. Le calcul suppose aussi que tu aurais pris les mêmes trades avec une taille plus petite, ce qui n'est pas toujours vrai : une position plus petite change souvent le comportement.",
+  "lev_negative_edge": "⚠️ Ton espérance est négative. Réduire ta taille ne la rendra pas positive : elle baisse dans la même proportion, ligne après ligne. Ce tableau te montre comment cesser d'exploser vite, pas comment devenir rentable. La taille de position protège du risque de ruine, elle ne crée pas d'edge. Tant que ton espérance reste négative, le levier est ta méthode, pas ton nombre de lots."
 };
 
 export default dict;

@@ -2847,7 +2847,22 @@ const dict: Record<string, string> = {
   "seg_warning": "Achtung, was das bedeutet. Dieses Segment wurde NACH dem Blick auf deine Ergebnisse ausgewählt: es ist eine Beobachtung über deine Vergangenheit, keine belegte Regel. Wer das schlechteste Segment sucht, findet immer eines, auch in Zufallsdaten. Damit daraus eine echte Regel wird, schreibe sie in dein Regelwerk und lass die Einhaltungsmessung sagen, ob du sie bei den FOLGENDEN Trades hältst.",
   "seg_none": "Deine Verluste ballen sich auf kein erkennbares Segment. Das ist eher eine gute Nachricht über die Gleichmäßigkeit deiner Ausführung, und es heißt, der Hebel liegt woanders: in der Methode selbst oder in deiner Positionsgröße.",
   "seg_hour": "{n}:00",
-  "seg_overlap": "Diese Segmente überschneiden sich: ein Trade kann zu mehreren gleichzeitig gehören. Ihre Kosten addieren sich nicht."
+  "seg_overlap": "Diese Segmente überschneiden sich: ein Trade kann zu mehreren gleichzeitig gehören. Ihre Kosten addieren sich nicht.",
+  "stab_title_amelioration": "Deine jüngsten Trades ähneln deinen alten nicht mehr",
+  "stab_title_degradation": "Deine jüngsten Trades ähneln deinen alten nicht mehr",
+  "stab_body": "In der ersten Hälfte deines Journals lag deine Erwartung bei {avant} pro Trade. In der zweiten bei {apres}. Die beiden Spannen überschneiden sich nicht einmal.",
+  "stab_consequence_amelioration": "Nimm die Projektion oben also mit Vorsicht: sie mischt beide Zeiträume und unterstellt, dass es so weitergeht. Kommt die Änderung von dir, unterschätzt sie dich.",
+  "stab_consequence_degradation": "Nimm die Projektion oben also mit Vorsicht: sie mischt beide Zeiträume und unterstellt, dass es so weitergeht. Hält die Verschlechterung an, schmeichelt sie dir.",
+  "lev_title": "Und wenn du deine Positionsgröße reduzierst?",
+  "lev_subtitle": "Das ist der einzige Parameter, den du morgen früh ändern kannst, ohne Methode, Zeiten oder Psychologie anzurühren. So sähe es auf denselben Trades aus.",
+  "lev_col_size": "Größe",
+  "lev_col_ruin": "Ruinrisiko",
+  "lev_col_expectancy": "Erwartung / Trade",
+  "lev_col_median": "Medianergebnis",
+  "lev_current": "Deine aktuelle Größe",
+  "lev_divided": "Geteilt durch {n}",
+  "lev_caveat": "Das schneidet in beide Richtungen: die Größe zu halbieren halbiert auch deine Gewinne. Das ist keine kostenlose Einstellung, sondern ein Abwägen zwischen weniger Ruin und weniger Gewinn. Die Rechnung unterstellt außerdem, dass du dieselben Trades mit kleinerer Größe genommen hättest, was nicht immer stimmt: eine kleinere Position ändert oft das Verhalten.",
+  "lev_negative_edge": "⚠️ Deine Erwartung ist negativ. Die Größe zu reduzieren macht sie nicht positiv: sie sinkt in derselben Proportion, Zeile für Zeile. Diese Tabelle zeigt dir, wie du aufhörst schnell zu sprengen, nicht wie du profitabel wirst. Die Positionsgröße schützt vor dem Ruin, sie erzeugt keinen Edge. Solange deine Erwartung negativ bleibt, ist der Hebel deine Methode, nicht deine Lotzahl."
 };
 
 export default dict;

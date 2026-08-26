@@ -45,12 +45,14 @@ import {
   type Projection,
   type ProjectionTrade,
 } from "@/lib/projection";
+import { paliersDeTaille, type Palier } from "@/lib/projection-levers";
 import { analyserSegments, type AnalyseSegments, type Segment, type TradeSegmente } from "@/lib/projection-segments";
+import { mesurerStabilite, type Stabilite } from "@/lib/projection-stability";
 import { mesurerAdherence, type Adherence } from "@/lib/strategy-adherence";
 import { verifierCoherence, type Coherence, type RegleStrategie } from "@/lib/strategy-coherence";
 import { createClient } from "@/lib/supabase/client";
 import { fetchAllRows } from "@/lib/supabase-paginate";
-import { AlertTriangle, CheckCircle2, HelpCircle, Lock, Sparkles, Target, TrendingDown } from "lucide-react";
+import { AlertTriangle, CheckCircle2, HelpCircle, Lock, Sparkles, Target, TrendingDown, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -281,6 +283,18 @@ export default function ProjectionPage() {
    * complet prend quelques dizaines de millisecondes dans le navigateur, et
    * c'est la seule partie de la page qui répond à « je fais quoi lundi ».
    */
+  /**
+   * L'hypothèse centrale de la projection, testée au lieu d'être seulement
+   * avertie : est-ce que la seconde moitié du journal ressemble à la première ?
+   */
+  const stabilite: Stabilite = useMemo(() => mesurerStabilite(perimetre), [perimetre]);
+
+  /** Le seul levier que le trader contrôle demain matin. */
+  const paliers: Palier[] = useMemo(
+    () => paliersDeTaille(perimetre, optionsProjection),
+    [perimetre, optionsProjection],
+  );
+
   const segments = useMemo(
     () => analyserSegments(segmentables, optionsProjection, Intl.DateTimeFormat().resolvedOptions().timeZone),
     [segmentables, optionsProjection],
@@ -471,6 +485,12 @@ export default function ProjectionPage() {
             <EncartVerdict projection={projection} eur={eur} t={t} />
           </StaggerItem>
 
+          {stabilite.aChange && stabilite.sens && (
+            <StaggerItem>
+              <EncartStabilite stabilite={stabilite} eur={eur} t={t} />
+            </StaggerItem>
+          )}
+
           <StaggerItem>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <Kpi
@@ -581,6 +601,12 @@ export default function ProjectionPage() {
               lang={lang}
             />
           </StaggerItem>
+
+          {paliers.length > 0 && (
+            <StaggerItem>
+              <EncartPaliers paliers={paliers} eur={eur} t={t} />
+            </StaggerItem>
+          )}
 
           <StaggerItem>
             <EncartAvisCoach
@@ -881,6 +907,149 @@ function EncartAdherence({
           })}
         </ul>
       )}
+    </Card>
+  );
+}
+
+/**
+ * La projection vérifie sa propre hypothèse.
+ *
+ * ⚠️ CE BLOC EST UNE MISE EN GARDE SUR LA PAGE ELLE-MÊME, pas une statistique de
+ * plus. Toute la projection suppose que les prochains trades ressemblent aux
+ * précédents ; quand les deux moitiés du journal ne se ressemblent déjà pas,
+ * cette hypothèse est fragile et le trader doit le lire AVANT le risque de
+ * ruine, pas dans un avertissement générique en bas de page.
+ */
+function EncartStabilite({
+  stabilite,
+  eur,
+  t,
+}: {
+  stabilite: Stabilite;
+  eur: (v: number, signed?: boolean) => string;
+  t: Traduire;
+}) {
+  const sens = stabilite.sens!;
+  const mieux = sens === "amelioration";
+  return (
+    <Card className={cn("p-5 border", mieux ? "border-profit/30 bg-profit/5" : "border-gold/30 bg-gold/5")}>
+      <div className="flex items-start gap-3">
+        <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0", mieux ? "bg-profit/10" : "bg-gold/10")}>
+          {mieux ? (
+            <TrendingUp className="w-4 h-4 text-profit" strokeWidth={1.75} />
+          ) : (
+            <TrendingDown className="w-4 h-4 text-gold" strokeWidth={1.75} />
+          )}
+        </div>
+        <div className="min-w-0 space-y-2">
+          <div className="text-sm font-medium">{t(`stab_title_${sens}`)}</div>
+          <p className="text-sm text-foreground-muted leading-relaxed">
+            {t("stab_body")
+              .replace("{avant}", eur(stabilite.ancienne!.esperance, true))
+              .replace("{apres}", eur(stabilite.recente!.esperance, true))}
+          </p>
+          <p className="text-xs text-foreground-muted leading-relaxed">
+            {t(`stab_consequence_${sens}`)}
+          </p>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+/**
+ * Ce que donnerait une taille de position plus petite.
+ *
+ * ⚠️ LES QUATRE COLONNES VONT ENSEMBLE, ET C'EST NON NÉGOCIABLE. N'afficher que
+ * la chute du risque de ruine vendrait une solution miracle ; diviser la taille
+ * divise aussi les gains. On montre l'arbitrage entier, exactement comme
+ * l'espérance ne s'affiche jamais sans son intervalle.
+ */
+function EncartPaliers({
+  paliers,
+  eur,
+  t,
+}: {
+  paliers: Palier[];
+  eur: (v: number, signed?: boolean) => string;
+  t: Traduire;
+}) {
+  /**
+   * ⚠️ RÉDUIRE LA TAILLE NE CRÉE PAS D'EDGE, ET LE TABLEAU LE LAISSAIT CROIRE.
+   *
+   * Défaut vu en prévisualisation le 2026-08-25, et c'est moi qui l'avais
+   * introduit. Sur un trader à espérance négative, la ligne « divisée par 5 »
+   * affichait un risque de ruine de 0 % EN VERT à côté d'une espérance de
+   * -19 $. Le vert disait « tu es sauvé » quand la lecture juste était « tu vas
+   * saigner lentement au lieu d'exploser vite ».
+   *
+   * C'est exactement la machine à rassurer les perdants que tout cet onglet
+   * s'interdit d'être. Deux corrections : la phrase ci-dessous, et le vert qui
+   * disparaît tant que l'espérance est négative. Un pourcentage rassurant sur un
+   * scénario perdant n'a pas le droit d'être vert.
+   */
+  const edgeNegatif = (paliers[0]?.esperance ?? 0) <= 0;
+
+  return (
+    <Card className="p-6">
+      <div className="mb-4">
+        <CardTitle>{t("lev_title")}</CardTitle>
+        <p className="text-xs text-foreground-muted mt-1 max-w-3xl">{t("lev_subtitle")}</p>
+      </div>
+
+      {edgeNegatif && (
+        <div className="mb-4 p-3 rounded-lg bg-loss/5 border border-loss/25">
+          <p className="text-sm text-foreground-muted leading-relaxed">{t("lev_negative_edge")}</p>
+        </div>
+      )}
+
+      {/* Un tableau large doit défiler dans son propre conteneur, jamais
+          faire déborder la page. */}
+      <div className="overflow-x-auto -mx-2 px-2">
+        <table className="w-full text-sm min-w-[520px]">
+          <thead>
+            <tr className="text-xs text-foreground-muted text-left">
+              <th className="font-normal pb-2">{t("lev_col_size")}</th>
+              <th className="font-normal pb-2 text-right">{t("lev_col_ruin")}</th>
+              <th className="font-normal pb-2 text-right">{t("lev_col_expectancy")}</th>
+              <th className="font-normal pb-2 text-right">{t("lev_col_median")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paliers.map((p) => (
+              <tr key={p.facteur} className="border-t border-border">
+                <td className="py-2.5 font-medium">
+                  {p.facteur === 1
+                    ? t("lev_current")
+                    : t("lev_divided").replace("{n}", String(Math.round(1 / p.facteur)))}
+                </td>
+                <td
+                  className={cn(
+                    "py-2.5 text-right font-medium",
+                    // Pas de vert tant que l'espérance est négative : un risque
+                    // de ruine faible n'est pas une bonne nouvelle quand le
+                    // trader perd de toute façon, il est seulement moins brutal.
+                    p.risqueDeRuine > 0.2 ? "text-loss" : edgeNegatif ? "" : "text-profit",
+                  )}
+                >
+                  {Math.round(p.risqueDeRuine * 100)} %
+                </td>
+                <td className={cn("py-2.5 text-right", p.esperance >= 0 ? "text-profit" : "text-loss")}>
+                  {eur(p.esperance, true)}
+                </td>
+                <td className={cn("py-2.5 text-right", p.median >= 0 ? "text-profit" : "text-loss")}>
+                  {eur(p.median, true)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="mt-5 flex items-start gap-3 p-3 rounded-lg bg-surface border border-border">
+        <AlertTriangle className="w-4 h-4 text-foreground-muted shrink-0 mt-0.5" strokeWidth={1.75} />
+        <p className="text-xs text-foreground-muted leading-relaxed">{t("lev_caveat")}</p>
+      </div>
     </Card>
   );
 }
