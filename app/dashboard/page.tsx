@@ -104,14 +104,6 @@ export default async function DashboardPage() {
       weekTrades={(weekTrades ?? []).map(t => ({ pnl: t.pnl, commission: t.commission, swap: t.swap, challenge_id: t.challenge_id }))}
       monthTrades={(monthTrades ?? []).map(t => ({ pnl: t.pnl, commission: t.commission, swap: t.swap, challenge_id: t.challenge_id }))}
       todayTrades={(todayTrades ?? []).map(t => ({ pnl: t.pnl, commission: t.commission, swap: t.swap, challenge_id: t.challenge_id }))}
-      todayTradesOrdonnes={(todayTrades ?? []).map(t => ({
-        open_time: t.open_time, pnl: t.pnl, commission: t.commission, swap: t.swap, challenge_id: t.challenge_id,
-      }))}
-      reglesSurveillees={primaryStrategy ? {
-        max_trades_per_day: primaryStrategy.max_trades_per_day ?? null,
-        max_consecutive_losses: primaryStrategy.max_consecutive_losses ?? null,
-        risk_per_trade_pct: primaryStrategy.risk_per_trade_pct ?? null,
-      } : null}
       maxTradesPerDay={primaryStrategy?.max_trades_per_day ?? null}
       allowedPairs={primaryStrategy?.pairs ?? null}
       activeAccounts={(activeAccounts ?? []).map(a => ({

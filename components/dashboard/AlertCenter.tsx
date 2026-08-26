@@ -13,6 +13,9 @@
  *   warning/info & dismissed  → excluded by AlertsContext, never reaches here
  */
 
+import { demanderAuCoach } from "@/lib/coach-bus";
+import { track } from "@/lib/track";
+import { useEffect } from "react";
 import { type AlertWithDismiss, useAlerts } from "@/lib/AlertsContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { stopQuotes } from "@/lib/translations";
@@ -84,10 +87,50 @@ function BannerRow({
   // Dismissed criticals: no × button (persistent reminder until midnight)
   const showDismiss = alert.dismissible && !isDismissedCritical;
 
+  /**
+   * On compte les affichages des alertes qui portent une question.
+   *
+   * ⚠️ CETTE MESURE EST LA RAISON D'ÊTRE DU BOUTON, PAS UN BONUS. Il a été
+   * ajouté pour répondre à un chiffre mesuré : 4 messages coach en 30 jours
+   * pour 12 abonnés payants. Le livrer sans mesurer s'il change quoi que ce
+   * soit garantirait qu'on en reparle dans trois mois en devinant.
+   *
+   * ⚠️ Une fois par alerte et par jour, pas à chaque rendu : le centre d'alertes
+   * vit dans le layout et se remonte à chaque navigation. Sans garde, le taux de
+   * clic s'effondrerait pour une raison purement technique.
+   */
+  useEffect(() => {
+    if (!alert.coachQuestion) return;
+    const cle = `td:alerte:${alert.id}:${new Date().toDateString()}`;
+    try {
+      if (sessionStorage.getItem(cle)) return;
+      sessionStorage.setItem(cle, "1");
+    } catch {
+      /* stockage indisponible : on compte quand même plutôt que de rien voir */
+    }
+    track("coach_alert_shown", { code: alert.id });
+  }, [alert.id, alert.coachQuestion]);
+
   return (
     <div className={`border-b px-4 py-2 flex items-center gap-2 text-sm ${colorClass}`}>
       <WarningIcon className={`w-4 h-4 shrink-0 ${iconColorClass}`} />
       <span className="flex-1 font-medium truncate">{alert.message}</span>
+      {/* ⚠️ CE BOUTON TRANSFORME UN CONSTAT EN CONVERSATION, ET NE COÛTE RIEN.
+          Le fait affiché est calculé, pas généré : aucun appel modèle tant que
+          le trader ne clique pas. Et même alors, la question arrive dans son
+          champ de saisie SANS être envoyée. */}
+      {alert.coachQuestion && (
+        <button
+          type="button"
+          onClick={() => {
+            track("coach_alert_clicked", { code: alert.id });
+            demanderAuCoach(alert.coachQuestion!);
+          }}
+          className={`shrink-0 font-semibold hover:underline whitespace-nowrap text-xs ${iconColorClass}`}
+        >
+          {t("alerte_en_parler")}
+        </button>
+      )}
       {alert.action && (
         <Link
           href={alert.action.href}

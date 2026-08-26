@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { alerteLaPlusUrgente, alertesDeSeance, type TradeDuJour } from "./session-alerts";
+import { alertesDeSeance, type TradeDuJour } from "./session-alerts";
 
 /**
  * CE QUE CES TESTS PROTÈGENT.
@@ -12,7 +12,7 @@ import { alerteLaPlusUrgente, alertesDeSeance, type TradeDuJour } from "./sessio
 
 const p = (...pnls: number[]): TradeDuJour[] => pnls.map((netPnl) => ({ netPnl }));
 
-const COMPTE = { capital: 10_000, max_daily_dd_pct: 5 };
+const COMPTE = { capital: 10_000 };
 const codes = (a: ReturnType<typeof alertesDeSeance>) => a.map((x) => x.code);
 
 describe("on ne surveille que les règles qu'il a écrites", () => {
@@ -37,31 +37,17 @@ describe("on ne surveille que les règles qu'il a écrites", () => {
   });
 });
 
-describe("la limite du COMPTE est la seule exception, et elle passe devant", () => {
-  it("dépasser la perte journalière tolérée déclenche l'alerte de compte", () => {
-    // -600 sur un compte de 10 000 dont la limite est 5 %, soit 500.
-    const a = alertesDeSeance(p(-300, -300), {}, COMPTE);
-    expect(codes(a)).toContain("alerte_dd_jour");
-    expect(a[0].gravite).toBe("compte");
-    expect(a[0].valeurs.perte).toBe(600);
-    expect(a[0].valeurs.limite).toBe(500);
-  });
-
-  it("elle passe devant une règle personnelle franchie en même temps", () => {
-    // ⚠️ Un trader qui reçoit trois avertissements d'un coup n'en lit aucun.
-    // Ce qui le DISQUALIFIE passe avant ce qui le contredit lui-même.
-    const a = alertesDeSeance(p(-300, -300, -300), { max_consecutive_losses: 2 }, COMPTE);
-    expect(a.length).toBeGreaterThan(1);
-    expect(alerteLaPlusUrgente(a)!.code).toBe("alerte_dd_jour");
-  });
-
-  it("sans limite de compte connue, aucune alerte de compte", () => {
-    // Compte personnel : personne ne le disqualifie, on n'invente pas un seuil.
-    expect(codes(alertesDeSeance(p(-5000), {}, { capital: 10_000 }))).not.toContain("alerte_dd_jour");
-  });
-
-  it("une journée gagnante ne déclenche jamais l'alerte de compte", () => {
-    expect(codes(alertesDeSeance(p(5000, 5000), {}, COMPTE))).not.toContain("alerte_dd_jour");
+describe("la limite de perte du COMPTE ne nous appartient pas", () => {
+  it("ce module ne la surveille pas, et c'est délibéré", () => {
+    // ⚠️ DOUBLON RATTRAPÉ LE 2026-08-25. Ce module l'a surveillée pendant
+    // quelques heures, alors que `StopTradingGuard` le fait déjà depuis le
+    // layout, sur toutes les pages, avec une échelle bien plus fine (50 %,
+    // 75 %, 95 %, 100 % de la limite). Deux détecteurs pour un même fait, c'est
+    // deux bandeaux à l'écran et deux vérités possibles.
+    //
+    // Ce test tient la frontière : une perte énorme sans règle de fiche ne
+    // produit RIEN ici.
+    expect(alertesDeSeance(p(-99_999), {}, { capital: 10_000 })).toHaveLength(0);
   });
 });
 
@@ -141,7 +127,4 @@ describe("chaque alerte est prête à être traduite et à ouvrir le chat", () =
     }
   });
 
-  it("sans alerte, il n'y a rien à montrer", () => {
-    expect(alerteLaPlusUrgente([])).toBeNull();
-  });
 });

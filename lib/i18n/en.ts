@@ -2866,8 +2866,6 @@ const dict: Record<string, string> = {
   "session_emotion_measured": "Across your {n} past trades in this state, you made {total}, that is {parTrade} per trade. That is {ecart} less per trade than in your other states. This is not a general rule, it is your number.",
   "session_emotion_measured_ok": "Across your {n} past trades in this state, you make {parTrade} per trade, better than in your other states. For you, this state is not a problem.",
   "alerte_en_parler": "Talk it over with the coach",
-  "alerte_dd_jour": "You have lost {perte} today. Your account is disqualified at {limite} for the day, that is {pct}% of capital. You are there.",
-  "alerte_dd_jour_question": "I have just hit my maximum daily loss. What do I do now, and how do I stop this happening again tomorrow?",
   "alerte_serie": "You are on {serie} losses in a row. Your plan says stop at {limite}.",
   "alerte_serie_question": "I have just taken several losses in a row and gone past the limit I set myself. Help me decide whether to carry on or end my session.",
   "alerte_cadence": "You have taken {trades} trades today. Your plan stops at {limite}.",

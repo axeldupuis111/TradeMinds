@@ -12,8 +12,6 @@ import { DEFAULT_CURRENCY, accountCurrency, buildCurrencyMap, commonCurrency, mo
 import { useActiveAccount, type ActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { coutDeLEtat, etatAAlerter, etatFavorable, type TradeEmotion } from "@/lib/emotion-cost";
-import { alerteLaPlusUrgente, alertesDeSeance } from "@/lib/session-alerts";
-import { AlerteSeanceBanner } from "@/components/coach/AlerteSeanceBanner";
 import { dailyQuotes } from "@/lib/translations";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
@@ -470,36 +468,6 @@ export default function SessionPage() {
   // afficher une au hasard.
   const deviseEtat = selectedAccount ? accountCurrency(selectedAccount) : historyCurrency;
 
-  /**
-   * Ce qui, à cet instant, mérite d'interrompre le trader.
-   *
-   * ⚠️ AUCUN APPEL À UN MODÈLE ICI. Le fait est connu exactement (« ta
-   * quatrième perte d'affilée, ta fiche s'arrête à trois ») ; le faire
-   * reformuler par une IA ne pourrait que l'affaiblir, ajouterait un risque
-   * d'invention, et surtout créerait une dépense qui se déclenche toute seule
-   * plusieurs fois par séance sur chaque abonné. Le modèle n'entre en jeu QUE si
-   * le trader clique pour en parler.
-   */
-  const alerteSeance = useMemo(() => {
-    const strat = strategy ?? strategies[0];
-    if (!strat) return null;
-    const aujourdhui = new Date().toDateString();
-    const duJour = recentTrades
-      .filter((tr) => {
-        if (!tr.open_time) return false;
-        if (selectedAccountId && tr.challenge_id !== selectedAccountId) return false;
-        return new Date(tr.open_time).toDateString() === aujourdhui;
-      })
-      .sort((a, b) => new Date(a.open_time!).getTime() - new Date(b.open_time!).getTime())
-      .map((tr) => ({ netPnl: (tr.pnl ?? 0) + (tr.commission ?? 0) + (tr.swap ?? 0) }));
-
-    return alerteLaPlusUrgente(
-      alertesDeSeance(duJour, strat, {
-        capital: selectedAccount?.account_size ?? null,
-        max_daily_dd_pct: selectedAccount?.max_daily_dd_pct ?? null,
-      }),
-    );
-  }, [recentTrades, strategy, strategies, selectedAccountId, selectedAccount]);
   const coutEtat = selectedEmotion ? coutDeLEtat(tradesParEtat, selectedEmotion) : null;
   const alerterEtat = etatAAlerter(coutEtat);
   const favorableEtat = etatFavorable(coutEtat);
@@ -708,8 +676,6 @@ export default function SessionPage() {
             setTimeout(() => setEmotionFeedback(null), 8000);
           }}
         />
-        <AlerteSeanceBanner alerte={alerteSeance} devise={deviseEtat} t={t} />
-
         {emotionFeedback && (
           <div
             className={`rounded-xl border p-4 text-sm font-medium ${

@@ -30,9 +30,21 @@
  * ── ⚠️ ON N'ALERTE QUE SUR CE QU'IL A ÉCRIT ────────────────────────────────
  *
  * Même règle que la mesure de respect : aucune norme extérieure. Une règle
- * absente de sa fiche n'est pas violée, elle n'existe pas. La seule exception
- * est la limite de perte de son COMPTE, qui n'est pas une opinion de notre part
- * mais une contrainte que son broker ou sa prop firm lui impose.
+ * absente de sa fiche n'est pas violée, elle n'existe pas.
+ *
+ * ── ⚠️ CE MODULE NE TOUCHE PAS À LA PERTE JOURNALIÈRE DU COMPTE ────────────
+ *
+ * Il l'a fait pendant quelques heures, et c'était un DOUBLON que j'avais raté.
+ * `StopTradingGuard` surveille déjà cette limite depuis le layout, donc sur
+ * toutes les pages, et avec une échelle bien plus fine que la mienne : 50 %,
+ * 75 %, 95 % puis 100 % de la limite, chacun avec son niveau de gravité. La
+ * réécrire n'aurait rien apporté et aurait risqué une régression sur une
+ * fonctionnalité en production.
+ *
+ * Ce module détecte donc les TROIS RÈGLES DE SA FICHE, et `StopTradingGuard`
+ * l'appelle. Ce que la fusion apporte : sa détection, jusque-là écrite à la
+ * main dans le composant et non testée, passe derrière les tests de ce fichier,
+ * et gagne la surveillance du risque par trade qui lui manquait.
  */
 
 /** Un trade de la journée en cours, dans l'ordre chronologique. */
@@ -47,19 +59,18 @@ export interface ReglesSurveillees {
   risk_per_trade_pct?: number | null;
 }
 
-/** Ce que le compte impose, indépendamment de ce que le trader a écrit. */
+/**
+ * Ce qu'il faut du compte pour convertir un pourcentage en argent.
+ *
+ * ⚠️ Rien d'autre : la limite de perte journalière appartient à
+ * `StopTradingGuard`, qui la traite avec une échelle plus fine.
+ */
 export interface LimitesCompte {
-  /** Capital de référence, pour convertir les pourcentages. */
   capital?: number | null;
-  /** Perte journalière maximale tolérée, en % du capital. */
-  max_daily_dd_pct?: number | null;
 }
 
-export type GraviteAlerte =
-  /** La séance met le COMPTE en danger. Rien ne passe avant. */
-  | "compte"
-  /** Une règle qu'il a lui-même écrite est franchie. */
-  | "regle";
+/** Une règle que le trader a lui-même écrite est franchie. */
+export type GraviteAlerte = "regle";
 
 export interface Alerte {
   /** Clé de traduction. La rédaction vit dans lib/i18n, jamais ici. */
@@ -93,8 +104,8 @@ function positif(v: unknown): number {
  * un franchissement ne l'est pas. C'est ce qui rend l'alerte impossible à
  * balayer d'un revers de main, et donc utile.
  *
- * L'ordre des alertes est celui de leur gravité : ce qui menace le compte passe
- * avant ce qui contredit une règle personnelle.
+ * L'ordre est celui de la détection : la série qui court d'abord, parce que
+ * c'est la décision que le trader est en train de prendre.
  */
 export function alertesDeSeance(
   tradesDuJour: TradeDuJour[],
@@ -104,29 +115,9 @@ export function alertesDeSeance(
   const alertes: Alerte[] = [];
   if (tradesDuJour.length === 0) return alertes;
 
-  const cumul = tradesDuJour.reduce((s, t) => s + t.netPnl, 0);
   const capital = positif(compte.capital);
-  const ddJour = positif(compte.max_daily_dd_pct);
 
-  // ── 1. La perte du jour contre ce que le compte tolère ───────────────────
-  // La seule alerte qui ne vienne pas d'une règle qu'il a écrite, et c'est
-  // assumé : ce n'est pas notre opinion, c'est la limite que son broker ou sa
-  // prop firm lui impose. La franchir ne le met pas en tort avec lui-même, elle
-  // le disqualifie.
-  if (capital && ddJour && cumul < 0) {
-    const plafond = (ddJour / 100) * capital;
-    const perte = -cumul;
-    if (perte >= plafond) {
-      alertes.push({
-        code: "alerte_dd_jour",
-        gravite: "compte",
-        valeurs: { perte: arrondi(perte), limite: arrondi(plafond), pct: arrondi(ddJour, 1) },
-        question: "alerte_dd_jour_question",
-      });
-    }
-  }
-
-  // ── 2. La série de pertes consécutives, en cours ─────────────────────────
+  // ── 1. La série de pertes consécutives, en cours ─────────────────────────
   // ⚠️ On compte la série QUI COURT MAINTENANT, pas la plus longue de la
   // journée. Une série de quatre pertes interrompue par un gain il y a deux
   // heures est de l'histoire ; celle qui court est une décision qu'il est en
@@ -148,7 +139,7 @@ export function alertesDeSeance(
     }
   }
 
-  // ── 3. Le nombre de trades du jour ───────────────────────────────────────
+  // ── 2. Le nombre de trades du jour ───────────────────────────────────────
   const cadence = positif(regles.max_trades_per_day);
   if (cadence && tradesDuJour.length >= cadence) {
     alertes.push({
@@ -159,7 +150,7 @@ export function alertesDeSeance(
     });
   }
 
-  // ── 4. Une perte plus lourde que ce que sa fiche autorise ────────────────
+  // ── 3. Une perte plus lourde que ce que sa fiche autorise ────────────────
   // Signifie l'une de deux choses : la position était trop grosse, ou le stop
   // n'a pas été tenu. Les deux valent d'être dites au moment où c'est frais.
   const risquePct = positif(regles.risk_per_trade_pct);
@@ -190,17 +181,4 @@ export function alertesDeSeance(
   }
 
   return alertes;
-}
-
-/**
- * L'alerte à montrer quand on n'en montre qu'une.
- *
- * ⚠️ UNE SEULE À LA FOIS, ET C'EST UNE DÉCISION DE PRODUIT. Un trader en séance
- * qui reçoit trois avertissements d'un coup n'en lit aucun, et il apprend
- * surtout à fermer le bandeau sans regarder. Ce qui menace le compte passe
- * devant tout le reste ; à gravité égale, l'ordre de détection fait foi.
- */
-export function alerteLaPlusUrgente(alertes: Alerte[]): Alerte | null {
-  if (alertes.length === 0) return null;
-  return alertes.find((a) => a.gravite === "compte") ?? alertes[0];
 }

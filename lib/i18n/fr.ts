@@ -2866,8 +2866,6 @@ const dict: Record<string, string> = {
   "session_emotion_measured": "Sur tes {n} trades passés dans cet état, tu as fait {total}, soit {parTrade} par trade. C'est {ecart} de moins par trade que dans tes autres états. Ce n'est pas une règle générale, c'est ton chiffre.",
   "session_emotion_measured_ok": "Sur tes {n} trades passés dans cet état, tu fais {parTrade} par trade, mieux que dans tes autres états. Chez toi, cet état n'est pas un problème.",
   "alerte_en_parler": "En parler au coach",
-  "alerte_dd_jour": "Tu as perdu {perte} aujourd'hui. Ton compte est disqualifié à {limite} sur la journée, soit {pct} % du capital. Tu y es.",
-  "alerte_dd_jour_question": "Je viens d'atteindre ma perte journalière maximale. Qu'est-ce que je fais maintenant, et comment j'évite que ça se reproduise demain ?",
   "alerte_serie": "Tu enchaînes {serie} pertes d'affilée. Ta fiche dit de t'arrêter à {limite}.",
   "alerte_serie_question": "Je viens d'enchaîner plusieurs pertes d'affilée et j'ai dépassé la limite que je m'étais fixée. Aide-moi à décider si je continue ou si j'arrête ma séance.",
   "alerte_cadence": "Tu as pris {trades} trades aujourd'hui. Ta fiche s'arrête à {limite}.",

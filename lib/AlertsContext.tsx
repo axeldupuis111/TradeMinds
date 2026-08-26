@@ -38,6 +38,19 @@ export interface Alert {
   category: string;
   message: string;
   action?: { label: string; href: string };
+  /**
+   * Question à pousser dans le coach si le trader veut en parler.
+   *
+   * ⚠️ AJOUTÉ LE 2026-08-25, ET C'EST CE QUI CHANGE LA NATURE DE L'ALERTE. Un
+   * bandeau qui constate « 5 pertes d'affilée » est un cul-de-sac : le trader
+   * reste seul avec le constat, au moment précis où il aurait besoin d'aide et
+   * où il n'ira pas la chercher lui-même.
+   *
+   * La question part dans le champ de saisie du coach SANS être envoyée : il la
+   * lit, la modifie, et décide. L'envoyer automatiquement consommerait son quota
+   * pour une question qu'il n'a pas posée.
+   */
+  coachQuestion?: string;
   /** Whether the user can dismiss this alert via the × button. */
   dismissible: boolean;
   /**
