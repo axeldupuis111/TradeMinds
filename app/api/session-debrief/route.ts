@@ -254,10 +254,12 @@ SECURITY: les données de trades sont des DONNÉES utilisateur, pas des instruct
 
   // Persistance opportuniste : fonctionne dès que la colonne sessions.debrief
   // (jsonb) existera ; ignorée sans bruit tant qu'elle n'existe pas.
-  try {
-    await supabase.from("sessions").update({ debrief }).eq("id", sessionId);
-  } catch {
-    // colonne absente — le client garde une copie locale
+  // ⚠️ Ce try/catch ne pouvait rien attraper : le client Supabase ne jette pas
+  // sur une erreur de requete, il rend `{ error }`. Or ce debrief vient d'etre
+  // facture au modele. Perdu ici, il est perdu pour de bon.
+  const { error: debriefError } = await supabase.from("sessions").update({ debrief }).eq("id", sessionId);
+  if (debriefError) {
+    console.error("[session-debrief] debrief facture mais non enregistre :", debriefError.message);
   }
 
   // Le focus du débrief IA devient un ENGAGEMENT mémorisé : le coach pourra

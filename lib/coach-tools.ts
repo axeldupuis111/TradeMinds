@@ -1041,7 +1041,10 @@ export async function executeCoachTool(
           if (error) return fail("Création impossible.");
           // Récurrence en 2e temps, comme la page Objectifs (best-effort si colonnes absentes).
           if (recurring && inserted?.id) {
-            await supabase.from("goals").update({ recurring: true, period_key: periodKeyFor(period) }).eq("id", inserted.id);
+            const { error: recurrenceError } = await supabase.from("goals").update({ recurring: true, period_key: periodKeyFor(period) }).eq("id", inserted.id);
+            // L'objectif existe, sa recurrence non : il ne se reconduira pas et
+            // le coach l'aura pourtant annonce comme recurrent.
+            if (recurrenceError) console.error("[coach] recurrence non posee :", recurrenceError.message);
           }
           return {
             result: { ok: true },
@@ -1391,7 +1394,10 @@ export async function executeCoachTool(
             label_es: it.label.es,
             sort_order: i,
           }));
-          await supabase.from("strategy_tags").insert(seed);
+          // Sans lire `error`, la checklist de depart n'etait pas ecrite et le
+          // coach repondait quand meme qu'il l'avait creee.
+          const { error: seedError } = await supabase.from("strategy_tags").insert(seed);
+          if (seedError) return fail("Checklist de depart impossible a creer.");
         }
 
         let value = slugify(label);
