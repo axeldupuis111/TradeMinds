@@ -133,7 +133,10 @@ async function lireBinance(symbole: string, aaaaMm: string): Promise<LigneOHLC[]
 async function lireDukascopy(symbole: string, aaaaMm: string): Promise<LigneOHLC[]> {
   const { getHistoricalRates } = await import("dukascopy-node");
   const [an, m] = aaaaMm.split("-").map(Number);
-  const rates = (await getHistoricalRates({
+  // La bibliothèque type `instrument` comme une énumération de ses ~1000
+  // symboles ; on prend le nom en argument de ligne de commande, donc la
+  // vérification se fait à l'exécution, quand elle renvoie une liste vide.
+  const config = {
     instrument: symbole,
     dates: { from: new Date(Date.UTC(an, m - 1, 1)), to: new Date(Date.UTC(an, m, 1)) },
     timeframe: "m1",
@@ -141,7 +144,15 @@ async function lireDukascopy(symbole: string, aaaaMm: string): Promise<LigneOHLC
     // Le côté vendeur est le prix affiché par défaut ; le spread est modélisé
     // séparément dans le moteur, il ne doit pas être compté deux fois.
     priceType: "bid",
-  })) as Array<{ timestamp: number; open: number; high: number; low: number; close: number }>;
+  } as unknown as Parameters<typeof getHistoricalRates>[0];
+
+  const rates = (await getHistoricalRates(config)) as Array<{
+    timestamp: number;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+  }>;
 
   return rates.map((r) => ({
     ms: r.timestamp,
