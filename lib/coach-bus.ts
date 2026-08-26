@@ -13,22 +13,34 @@
  * par le compilateur : d'où ce fichier, qui est le SEUL endroit où le nom de
  * l'événement et la forme de sa charge sont écrits.
  *
- * ⚠️ ON POUSSE UNE QUESTION, ON NE L'ENVOIE PAS. Le texte arrive dans le champ
- * de saisie, le trader le lit, le modifie s'il veut, et décide d'appuyer. Envoyer
- * automatiquement consommerait son quota pour une question qu'il n'a pas posée,
- * et transformerait une aide en prélèvement.
+ * ⚠️ LE CLIC ENVOIE, IL NE PRÉ-REMPLIT PLUS.
+ *
+ * Première version : la question arrivait dans le champ de saisie et le trader
+ * devait appuyer lui-même, pour ne pas consommer son quota sans son accord.
+ * L'intention était bonne et le résultat mauvais. Axel l'a dit en une phrase en
+ * regardant l'écran : « pas de message du coach, rien ». On appelait ça « le
+ * coach parle le premier » et le coach ne parlait pas.
+ *
+ * C'était deux clics pour une seule intention, et dans le moment chaud où
+ * l'alerte se déclenche, le second ne serait jamais venu.
+ *
+ * ⚠️ LE CONSENTEMENT N'EST PAS PERDU POUR AUTANT, il est déplacé au bon endroit :
+ * rien ne part tant que le trader n'a pas cliqué « En parler au coach ». Ce clic
+ * EST sa demande. Ce qu'on refuse toujours, c'est qu'un message parte sans qu'il
+ * ait rien demandé, et l'alerte elle-même reste gratuite : aucun appel modèle
+ * tant que personne ne clique.
  */
 
 /** Nom de l'événement. Écrit ici et nulle part ailleurs. */
 export const EVENEMENT_COACH = "td:coach:demander";
 
 export interface DemandeCoach {
-  /** La question, déjà traduite, poussée dans le champ de saisie. */
+  /** La question, déjà traduite, envoyée au coach. */
   question: string;
 }
 
 /**
- * Ouvre le dock du coach avec une question pré-remplie.
+ * Ouvre le dock du coach et lui pose la question.
  *
  * Sans effet côté serveur : si le dock n'est pas monté (rendu serveur, page qui
  * le masque), l'événement se perd silencieusement, ce qui est le comportement

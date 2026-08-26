@@ -90,16 +90,21 @@ export default function CoachDock() {
   /**
    * Une page demande à parler au coach.
    *
-   * ⚠️ ON PRÉ-REMPLIT, ON N'ENVOIE PAS. Le trader lit la question, la modifie
-   * s'il veut, et décide d'appuyer. Envoyer automatiquement consommerait son
-   * quota pour une question qu'il n'a pas posée, et transformerait une aide en
-   * prélèvement.
+   * ⚠️ LE CLIC ENVOIE, IL NE PRÉ-REMPLIT PLUS. La première version posait la
+   * question dans le champ de saisie et attendait que le trader appuie, pour ne
+   * pas consommer son quota sans accord. Résultat à l'écran : « pas de message
+   * du coach, rien ». Deux clics pour une seule intention, et dans le moment
+   * chaud où l'alerte se déclenche, le second ne serait jamais venu.
+   *
+   * Le consentement n'est pas perdu, il est au bon endroit : le clic sur « En
+   * parler au coach » EST la demande. Ce qu'on refuse toujours, c'est qu'un
+   * message parte sans que personne n'ait rien demandé.
    */
   useEffect(
     () =>
       ecouterDemandesCoach(({ question }) => {
-        chat.setInput(question);
         setOpen(true);
+        void chat.send(question);
       }),
     [chat],
   );
