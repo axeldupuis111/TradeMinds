@@ -128,9 +128,6 @@ export async function POST(req: Request) {
     .maybeSingle();
   if (!owned) return NextResponse.json({ ok: false, reason: "not_owner" }, { status: 403 });
 
-  const limited = await rateLimitAi(auth.userId, "community-interpret", DAILY_LIMIT, auth.timezone);
-  if (limited) return limited;
-
   const { text } = (await req.json().catch(() => ({}))) as { text?: string };
   const input = (text ?? "").trim().slice(0, INPUT_MAX);
   if (input.length < 3) return NextResponse.json({ ok: false, reason: "empty" }, { status: 400 });
@@ -144,6 +141,15 @@ export async function POST(req: Request) {
 
   const apiKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return NextResponse.json({ ok: false, reason: "unavailable" }, { status: 503 });
+
+  // ⚠️ LE QUOTA SE PREND ICI, APRÈS LES SORTIES ANTICIPÉES. Même défaut que
+  // `weekly-plan`, découvert le 2026-08-26 : il était consommé avant le filtre
+  // anti promesse de gain, qui est un chemin NORMAL et gratuit. Un partenaire
+  // qui reformule son défi trois fois pour passer le filtre brûlait trois unités
+  // sans qu'aucun appel modèle ait lieu. Le quota borne une dépense ; le prendre
+  // avant de savoir s'il y en a une, c'est facturer un refus.
+  const limited = await rateLimitAi(auth.userId, "community-interpret", DAILY_LIMIT, auth.timezone);
+  if (limited) return limited;
 
   const today = localDateKey(auth.timezone);
 

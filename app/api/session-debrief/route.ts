@@ -116,8 +116,6 @@ function staticDebrief(trades: TradeRow[], lang: string): DebriefPayload {
 export async function POST(req: Request) {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
-  const limited = await rateLimitAi(auth.userId, "session-debrief", 10, auth.timezone);
-  if (limited) return limited;
   const { userId, plan } = auth;
 
   let body: { sessionId?: string; language?: string };
@@ -184,6 +182,15 @@ export async function POST(req: Request) {
   if (!canUseAI) {
     debrief = staticDebrief(tradeList, lang);
   } else {
+    // ⚠️ LE QUOTA SE PREND ICI, PAS À L'ENTRÉE DE LA ROUTE. Même défaut que
+    // `weekly-plan`, découvert le 2026-08-26 : il était consommé avant même la
+    // lecture du corps de la requête, donc avant les sorties « JSON invalide »,
+    // « sessionId manquant » et « session introuvable ». Un client qui boucle
+    // sur une erreur brûlait le quota d'un trader sans qu'aucun appel modèle
+    // n'ait lieu, et le repli statique le brûlait aussi alors qu'il ne coûte
+    // rien.
+    const limite = await rateLimitAi(auth.userId, "session-debrief", 10, auth.timezone);
+    if (limite) return limite;
     try {
       const client = new Anthropic({ apiKey });
       const langName = LANG_NAMES[lang];

@@ -83,9 +83,6 @@ export async function POST(req: Request) {
     });
   }
 
-  const limited = await rateLimitAi(auth.userId, "weekly-plan", 10, auth.timezone);
-  if (limited) return limited;
-
   const since = new Date(Date.now() - 14 * 86_400_000).toISOString();
   const [{ data: trades }, { data: reviews }] = await Promise.all([
     supabase.from("trades").select("pnl, commission, swap, emotion, open_time, pair").eq("user_id", auth.userId).eq("status", "closed").gte("open_time", since),
@@ -118,6 +115,27 @@ export async function POST(req: Request) {
 
   const apiKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return NextResponse.json({ plan: null, reason: "no_api_key" });
+
+  // ── ⚠️ LE QUOTA SE PREND ICI, ET PAS PLUS HAUT ───────────────────────────
+  //
+  // Cause principale de l'alerte de plafond du 2026-08-26, et la plus vicieuse
+  // des deux : il était consommé AVANT de savoir si on allait générer quoi que
+  // ce soit. Or deux sorties anticipées se trouvent entre les deux, dont
+  // « pas assez de trades sur 14 jours ».
+  //
+  // Conséquence pour un trader dont les deux dernières semaines sont creuses :
+  // chaque montage de la carte, donc chaque visite du tableau de bord, brûlait
+  // une unité de quota SANS appeler le modèle et SANS rien écrire en cache. Rien
+  // ne s'accumulait, donc rien ne s'arrêtait : le compteur montait jusqu'au
+  // plafond mensuel, et le mail d'alerte annonçait « 20 appels » là où il n'y
+  // avait eu aucun appel modèle.
+  //
+  // C'est ce qui explique 20 unités consommées pour 7 plans réellement en base.
+  //
+  // Le quota borne une DÉPENSE. Le prendre avant de savoir s'il y a une dépense,
+  // c'est facturer au trader une décision de ne rien faire.
+  const limited = await rateLimitAi(auth.userId, "weekly-plan", 10, auth.timezone);
+  if (limited) return limited;
 
   const prompt = `Tu es le coach de discipline de TradeDiscipline. À partir des 14 derniers jours, rédige un PLAN pour la SEMAINE À VENIR : 3 objectifs CONCRETS, actionnables, centrés sur la DISCIPLINE et le process (jamais de conseil d'investissement, jamais "achète/vends").
 
