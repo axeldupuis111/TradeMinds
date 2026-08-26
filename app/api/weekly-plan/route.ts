@@ -45,22 +45,42 @@ export async function POST(req: Request) {
   // ── Cache : le plan de la semaine est figé une fois généré ────────────────
   // Lu AVANT le rate limit : resservir un plan déjà payé ne doit pas consommer
   // de quota, sinon un trader qui ouvre son dashboard 10 fois se retrouve muré.
-  try {
-    const { data: cached } = await supabase
-      .from("weekly_plans")
-      .select("headline, focuses")
-      .eq("user_id", auth.userId)
-      .eq("week_key", weekKey)
-      .eq("lang", lang)
-      .maybeSingle();
-    if (cached?.headline && Array.isArray(cached.focuses) && cached.focuses.length > 0) {
-      return NextResponse.json({
-        plan: { headline: cached.headline, focuses: cached.focuses as string[] },
-        cached: true,
-      });
-    }
-  } catch {
-    // table absente (migration pas encore appliquée) → on regénère
+  //
+  // ⚠️ CE CACHE ÉCHOUAIT EN SILENCE, ET C'EST CE QUI A DÉCLENCHÉ UNE ALERTE DE
+  // PLAFOND LE 2026-08-26.
+  //
+  // Le code lisait `{ data: cached }` en ignorant `error`, dans un try/catch
+  // censé attraper « table absente ». Or le client Supabase NE JETTE PAS sur une
+  // erreur de requête : il rend `{ data: null, error }`. Le catch ne pouvait
+  // donc jamais se déclencher, et TOUTE panne de lecture (table non migrée,
+  // policy RLS refusée, erreur réseau) tombait dans la branche « pas de cache »
+  // et repayait une génération. Le fail-open fonctionnait par accident, et
+  // surtout il était INVISIBLE : on ne découvrait le problème qu'en recevant un
+  // mail de plafond, sans savoir pourquoi.
+  //
+  // On garde le fail-open, qui est le bon comportement : mieux vaut resservir un
+  // plan payé que murer le trader. Mais on DIT pourquoi.
+  const { data: cached, error: cacheError } = await supabase
+    .from("weekly_plans")
+    .select("headline, focuses")
+    .eq("user_id", auth.userId)
+    .eq("week_key", weekKey)
+    .eq("lang", lang)
+    .maybeSingle();
+
+  if (cacheError) {
+    // Le message porte le diagnostic : « relation does not exist » = migration
+    // à appliquer, « permission denied » = policy RLS, autre = à lire.
+    console.error(
+      `[weekly-plan] CACHE INDISPONIBLE, une génération va être payée pour rien. ` +
+        `Cause: ${cacheError.message}. ` +
+        `Si la table manque, appliquer migrations/20260806_weekly_plan_cache.sql.`,
+    );
+  } else if (cached?.headline && Array.isArray(cached.focuses) && cached.focuses.length > 0) {
+    return NextResponse.json({
+      plan: { headline: cached.headline, focuses: cached.focuses as string[] },
+      cached: true,
+    });
   }
 
   const limited = await rateLimitAi(auth.userId, "weekly-plan", 10, auth.timezone);
@@ -121,14 +141,23 @@ Base les objectifs sur les données ci-dessus quand c'est pertinent (ex. réduir
     // Fige le plan pour la semaine. Best-effort : un échec d'écriture ne doit
     // pas priver le trader du plan qu'on vient de générer.
     try {
-      await supabase
+      // ⚠️ MÊME PIÈGE QUE LA LECTURE : le client ne jette pas, il rend `error`.
+      // Sans cette ligne, une écriture refusée (policy RLS, table absente)
+      // n'aurait produit AUCUN message, et le plan aurait été regénéré à chaque
+      // visite jusqu'à ce que le plafond mensuel tombe.
+      const { error: ecritureError } = await supabase
         .from("weekly_plans")
         .upsert(
           { user_id: auth.userId, week_key: weekKey, lang, ...plan },
           { onConflict: "user_id,week_key,lang", ignoreDuplicates: true },
         );
+      if (ecritureError) throw ecritureError;
     } catch (e) {
-      console.error("[weekly-plan] cache write failed:", e);
+      console.error(
+        "[weekly-plan] ÉCRITURE DU CACHE ÉCHOUÉE : le plan sera regénéré à chaque " +
+          "visite du dashboard, et le plafond mensuel finira par tomber. Cause :",
+        e,
+      );
     }
     return NextResponse.json({ plan });
   } catch (err) {
