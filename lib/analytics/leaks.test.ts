@@ -115,17 +115,30 @@ describe("computeCapitalLeaks", () => {
     expect(oversizing!.cost).toBe(120);
   });
 
-  it("identifie la pire tranche horaire (≥ 5 trades, total négatif)", () => {
-    const losers = Array.from({ length: 5 }, (_, i) =>
-      mk({ open_time: `2026-06-0${i + 1}T09:15:00`, pnl: -40 })
+  it("identifie la pire tranche horaire (≥ 10 trades, total négatif)", () => {
+    const losers = Array.from({ length: 10 }, (_, i) =>
+      mk({ open_time: `2026-06-${String(i + 1).padStart(2, "0")}T09:15:00`, pnl: -40 })
     );
     const trades = [...filler(10, 12, "2026-06-01"), ...losers];
     const res = computeCapitalLeaks(trades);
     const bad = res.leaks.find((l) => l.type === "bad_hour");
     expect(bad).toBeDefined();
-    expect(bad!.count).toBe(5);
-    expect(bad!.cost).toBe(200);
+    expect(bad!.count).toBe(10);
+    expect(bad!.cost).toBe(400);
     expect(bad!.meta?.hour).toBe(9);
+  });
+
+  it("ne nomme PAS une tranche horaire sous le seuil", () => {
+    // ⚠️ SEUIL RELEVÉ DE 5 À 10 LE 2026-08-26. À cinq trades, « ta pire heure »
+    // désignait souvent une seule mauvaise séance. Dix est le plancher que ce
+    // fichier a déjà choisi pour dire quoi que ce soit (`DEFAULT_MIN_TRADES`) :
+    // une tranche horaire n'a aucune raison d'être plus laxiste que le module
+    // qui la contient.
+    const losers = Array.from({ length: 9 }, (_, i) =>
+      mk({ open_time: `2026-06-${String(i + 1).padStart(2, "0")}T09:15:00`, pnl: -40 })
+    );
+    const res = computeCapitalLeaks([...filler(10, 12, "2026-06-01"), ...losers]);
+    expect(res.leaks.find((l) => l.type === "bad_hour")).toBeUndefined();
   });
 
   it("ne double-compte pas un trade flagué par plusieurs catégories", () => {

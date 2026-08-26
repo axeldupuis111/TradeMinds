@@ -13,6 +13,9 @@
  *   warning/info & dismissed  → excluded by AlertsContext, never reaches here
  */
 
+import { demanderAuCoach } from "@/lib/coach-bus";
+import { track } from "@/lib/track";
+import { useEffect } from "react";
 import { type AlertWithDismiss, useAlerts } from "@/lib/AlertsContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { stopQuotes } from "@/lib/translations";
@@ -58,6 +61,51 @@ function CloseIcon({ className }: { className?: string }) {
 
 // ── Banner row ────────────────────────────────────────────────────────────────
 
+/**
+ * Le bouton « en parler au coach ».
+ *
+ * ⚠️ IL EXISTE PARCE QUE TROIS CHEMINS DE RENDU L'ONT OUBLIÉ UNE FOIS. Ce
+ * centre d'alertes affiche la même alerte à trois endroits : la ligne de
+ * bandeau ordinaire, l'écran STOP, et la ligne de rappel quand un critique a
+ * été fermé. J'avais ajouté le bouton au premier seulement, et à l'écran le
+ * bandeau rouge se retrouvait muet quand l'orange juste en dessous proposait
+ * d'en parler. Un composant partagé rend l'oubli impossible au prochain
+ * chemin de rendu.
+ *
+ * Le fait affiché est calculé, pas généré : aucun appel modèle tant que le
+ * trader ne clique pas. Et même alors, la question arrive dans son champ de
+ * saisie SANS être envoyée.
+ */
+function BoutonCoach({
+  alerte,
+  couleur,
+  avant,
+}: {
+  alerte: { id: string; coachQuestion?: string };
+  couleur: string;
+  /** Action à jouer avant d'ouvrir le coach (fermer l'écran STOP). */
+  avant?: () => void;
+}) {
+  const { t } = useLanguage();
+  if (!alerte.coachQuestion) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        track("coach_alert_clicked", { code: alerte.id });
+        avant?.();
+        demanderAuCoach(alerte.coachQuestion!);
+      }}
+      // ⚠️ UNE PASTILLE, PAS UN LIEN. En texte nu au bout d'un bandeau pleine
+      // largeur, la proposition se confondait avec le message et passait
+      // inaperçue. Un fond et une bordure la font lire comme une ACTION.
+      className={`shrink-0 whitespace-nowrap text-xs font-semibold px-2.5 py-1 rounded-full border border-current/30 bg-current/10 hover:bg-current/20 transition-colors ${couleur}`}
+    >
+      {t("alerte_en_parler")}
+    </button>
+  );
+}
+
 function BannerRow({
   alert,
   onDismiss,
@@ -84,10 +132,35 @@ function BannerRow({
   // Dismissed criticals: no × button (persistent reminder until midnight)
   const showDismiss = alert.dismissible && !isDismissedCritical;
 
+  /**
+   * On compte les affichages des alertes qui portent une question.
+   *
+   * ⚠️ CETTE MESURE EST LA RAISON D'ÊTRE DU BOUTON, PAS UN BONUS. Il a été
+   * ajouté pour répondre à un chiffre mesuré : 4 messages coach en 30 jours
+   * pour 12 abonnés payants. Le livrer sans mesurer s'il change quoi que ce
+   * soit garantirait qu'on en reparle dans trois mois en devinant.
+   *
+   * ⚠️ Une fois par alerte et par jour, pas à chaque rendu : le centre d'alertes
+   * vit dans le layout et se remonte à chaque navigation. Sans garde, le taux de
+   * clic s'effondrerait pour une raison purement technique.
+   */
+  useEffect(() => {
+    if (!alert.coachQuestion) return;
+    const cle = `td:alerte:${alert.id}:${new Date().toDateString()}`;
+    try {
+      if (sessionStorage.getItem(cle)) return;
+      sessionStorage.setItem(cle, "1");
+    } catch {
+      /* stockage indisponible : on compte quand même plutôt que de rien voir */
+    }
+    track("coach_alert_shown", { code: alert.id });
+  }, [alert.id, alert.coachQuestion]);
+
   return (
     <div className={`border-b px-4 py-2 flex items-center gap-2 text-sm ${colorClass}`}>
       <WarningIcon className={`w-4 h-4 shrink-0 ${iconColorClass}`} />
       <span className="flex-1 font-medium truncate">{alert.message}</span>
+      <BoutonCoach alerte={alert} couleur={iconColorClass} />
       {alert.action && (
         <Link
           href={alert.action.href}
@@ -174,8 +247,36 @@ export default function AlertCenter() {
             </div>
           )}
 
-          {/* Dismiss all — overlay closes, criticals become reminder banners */}
-          <div className="mt-8 flex justify-center">
+          {/* ⚠️ DEUX SORTIES, PAS UNE, ET AU MÊME NIVEAU.
+              Le lien « en parler au coach » vivait au bout de la ligne d'alerte,
+              en petit texte, à côté d'un gros bouton rouge. Axel l'a dit en le
+              découvrant : « clairement pas visible, personne ne verra la
+              proposition ». Il avait raison, et ce n'était pas un détail : c'est
+              la seule sortie utile de cet écran. « Compris, je stoppe » ferme la
+              fenêtre et laisse le trader seul avec sa série de pertes.
+              Les deux options sont donc côte à côte, à taille égale, là où l'œil
+              se pose. Celle qui aide est même à gauche.
+
+              ⚠️ Et elle ferme l'écran avant d'ouvrir le coach : le dock vit sous
+              cet overlay, sans ça le trader cliquerait et rien ne semblerait se
+              passer. Sur le fond, « j'en parle au coach » vaut arrêt. */}
+          <div className="mt-8 flex flex-wrap gap-3 justify-center">
+            {(() => {
+              const avecQuestion = undismissedCriticals.find((a) => a.coachQuestion);
+              if (!avecQuestion) return null;
+              return (
+                <button
+                  onClick={() => {
+                    track("coach_alert_clicked", { code: avecQuestion.id });
+                    for (const c of undismissedCriticals) dismissAlert(c.id);
+                    demanderAuCoach(avecQuestion.coachQuestion!);
+                  }}
+                  className="px-6 py-3 bg-accent text-on-accent rounded-lg font-medium hover:opacity-90 transition-opacity"
+                >
+                  {t("alerte_en_parler")}
+                </button>
+              );
+            })()}
             <button
               onClick={() => {
                 for (const a of undismissedCriticals) dismissAlert(a.id);
@@ -208,6 +309,7 @@ export default function AlertCenter() {
               d="M12 9v2m0 4h.01M10.29 3.86l-8.6 14.86A1 1 0 002.56 20h18.88a1 1 0 00.87-1.28l-8.6-14.86a1 1 0 00-1.72 0z" />
           </svg>
           <span className="flex-1 font-medium truncate">{dismissedCriticals[0].message}</span>
+          <BoutonCoach alerte={dismissedCriticals[0]} couleur="text-loss" />
         </div>
       )}
       {dismissedCriticals.length > 1 && (

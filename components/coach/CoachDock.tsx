@@ -20,6 +20,7 @@ import { Mic, MicOff, MessageCircle, Send, Volume2, VolumeX, X } from "lucide-re
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ecouterDemandesCoach } from "@/lib/coach-bus";
 import { coachActionMeta, useCoachChat } from "@/lib/hooks/useCoachChat";
 import CoachConfirmBox from "@/components/coach/CoachConfirmBox";
 import { describePage } from "@/lib/coach-page-context";
@@ -86,6 +87,28 @@ export default function CoachDock() {
   // Échap ferme le dock. Une seule façon de sortir d'un dialogue, c'est une
   // façon de trop peu : si la croix devient inatteignable (mise en page
   // étroite, clavier virtuel qui remonte), il reste cette issue.
+  /**
+   * Une page demande à parler au coach.
+   *
+   * ⚠️ LE CLIC ENVOIE, IL NE PRÉ-REMPLIT PLUS. La première version posait la
+   * question dans le champ de saisie et attendait que le trader appuie, pour ne
+   * pas consommer son quota sans accord. Résultat à l'écran : « pas de message
+   * du coach, rien ». Deux clics pour une seule intention, et dans le moment
+   * chaud où l'alerte se déclenche, le second ne serait jamais venu.
+   *
+   * Le consentement n'est pas perdu, il est au bon endroit : le clic sur « En
+   * parler au coach » EST la demande. Ce qu'on refuse toujours, c'est qu'un
+   * message parte sans que personne n'ait rien demandé.
+   */
+  useEffect(
+    () =>
+      ecouterDemandesCoach(({ question }) => {
+        setOpen(true);
+        void chat.send(question);
+      }),
+    [chat],
+  );
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };

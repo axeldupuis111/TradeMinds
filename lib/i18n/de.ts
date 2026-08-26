@@ -2862,7 +2862,17 @@ const dict: Record<string, string> = {
   "lev_current": "Deine aktuelle Größe",
   "lev_divided": "Geteilt durch {n}",
   "lev_caveat": "Das schneidet in beide Richtungen: die Größe zu halbieren halbiert auch deine Gewinne. Das ist keine kostenlose Einstellung, sondern ein Abwägen zwischen weniger Ruin und weniger Gewinn. Die Rechnung unterstellt außerdem, dass du dieselben Trades mit kleinerer Größe genommen hättest, was nicht immer stimmt: eine kleinere Position ändert oft das Verhalten.",
-  "lev_negative_edge": "⚠️ Deine Erwartung ist negativ. Die Größe zu reduzieren macht sie nicht positiv: sie sinkt in derselben Proportion, Zeile für Zeile. Diese Tabelle zeigt dir, wie du aufhörst schnell zu sprengen, nicht wie du profitabel wirst. Die Positionsgröße schützt vor dem Ruin, sie erzeugt keinen Edge. Solange deine Erwartung negativ bleibt, ist der Hebel deine Methode, nicht deine Lotzahl."
+  "lev_negative_edge": "⚠️ Deine Erwartung ist negativ. Die Größe zu reduzieren macht sie nicht positiv: sie sinkt in derselben Proportion, Zeile für Zeile. Diese Tabelle zeigt dir, wie du aufhörst schnell zu sprengen, nicht wie du profitabel wirst. Die Positionsgröße schützt vor dem Ruin, sie erzeugt keinen Edge. Solange deine Erwartung negativ bleibt, ist der Hebel deine Methode, nicht deine Lotzahl.",
+  "session_emotion_measured": "Über deine {n} bisherigen Trades in diesem Zustand hast du {total} gemacht, also {parTrade} pro Trade. Das ist {ecart} weniger pro Trade als in deinen anderen Zuständen. Das ist keine allgemeine Regel, das ist deine Zahl.",
+  "session_emotion_measured_ok": "Über deine {n} bisherigen Trades in diesem Zustand machst du {parTrade} pro Trade, besser als in deinen anderen Zuständen. Bei dir ist dieser Zustand kein Problem.",
+  "alerte_en_parler": "Mit dem Coach besprechen",
+  "alerte_serie": "Du hast {serie} Verluste in Folge. Dein Regelwerk sagt, bei {limite} aufzuhören.",
+  "alerte_serie_question": "Ich habe gerade mehrere Verluste in Folge kassiert und meine eigene Grenze überschritten. Hilf mir zu entscheiden, ob ich weitermache oder die Sitzung beende.",
+  "alerte_cadence": "Du hast heute {trades} Trades genommen. Dein Regelwerk hört bei {limite} auf.",
+  "alerte_cadence_question": "Ich habe meine maximale Anzahl Trades für heute erreicht. Warum überschreite ich diese Grenze immer wieder, und wie halte ich mich daran?",
+  "alerte_risque": "{depassements} Trade(s) heute lagen über dem Risiko, das du dir gesetzt hast ({pct} %, also {plafond}). Der schlimmste kostete {pire}. Entweder war die Position zu groß, oder der Stopp wurde nicht gehalten.",
+  "alerte_risque_question": "Einer meiner heutigen Verluste lag über dem Risiko, das ich mir pro Trade gesetzt hatte. Hilf mir herauszufinden, ob meine Positionsgröße oder mein Stopp abgedriftet ist.",
+  "leaks_cta_projection": "Auf lange Sicht →"
 };
 
 export default dict;

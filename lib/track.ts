@@ -31,7 +31,19 @@ export type ProductEvent =
   | "upgrade_cta_clicked"
   // Attribution marketing : inscription rattachée à une source (meta.source =
   // utm_source du premier contact, ex. pseudo d'un influenceur) (2026-07-14)
-  | "signup_attributed";
+  | "signup_attributed"
+  // ── Le coach qui parle le premier (2026-08-25) ──
+  //
+  // ⚠️ CES DEUX ÉVÉNEMENTS SONT LA RAISON D'ÊTRE DE LA FONCTIONNALITÉ, PAS UN
+  // BONUS. Elle a été construite pour répondre à un chiffre mesuré : 4 messages
+  // coach en 30 jours pour 12 abonnés payants. La livrer sans mesurer si elle
+  // change quoi que ce soit reproduirait exactement l'erreur qu'elle prétend
+  // corriger, et on en reparlerait dans trois mois en devinant.
+  //
+  // `meta.code` porte le type d'alerte : on saura non seulement SI ça marche,
+  // mais laquelle des quatre déclenche une conversation.
+  | "coach_alert_shown"
+  | "coach_alert_clicked";
 
 export function track(event: ProductEvent, meta?: Record<string, unknown>): void {
   void trackAsync(event, meta);

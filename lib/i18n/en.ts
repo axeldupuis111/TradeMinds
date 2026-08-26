@@ -2862,7 +2862,17 @@ const dict: Record<string, string> = {
   "lev_current": "Your current size",
   "lev_divided": "Divided by {n}",
   "lev_caveat": "It cuts both ways: halving your size also halves your gains. This is not a free setting, it is a trade-off between less ruin and less gain. The calculation also assumes you would have taken the same trades at a smaller size, which is not always true: a smaller position often changes behaviour.",
-  "lev_negative_edge": "⚠️ Your expectancy is negative. Cutting your size will not make it positive: it drops in the same proportion, row after row. This table shows you how to stop blowing up fast, not how to become profitable. Position size protects against ruin, it does not create an edge. While your expectancy stays negative, the lever is your method, not your lot count."
+  "lev_negative_edge": "⚠️ Your expectancy is negative. Cutting your size will not make it positive: it drops in the same proportion, row after row. This table shows you how to stop blowing up fast, not how to become profitable. Position size protects against ruin, it does not create an edge. While your expectancy stays negative, the lever is your method, not your lot count.",
+  "session_emotion_measured": "Across your {n} past trades in this state, you made {total}, that is {parTrade} per trade. That is {ecart} less per trade than in your other states. This is not a general rule, it is your number.",
+  "session_emotion_measured_ok": "Across your {n} past trades in this state, you make {parTrade} per trade, better than in your other states. For you, this state is not a problem.",
+  "alerte_en_parler": "Talk it over with the coach",
+  "alerte_serie": "You are on {serie} losses in a row. Your plan says stop at {limite}.",
+  "alerte_serie_question": "I have just taken several losses in a row and gone past the limit I set myself. Help me decide whether to carry on or end my session.",
+  "alerte_cadence": "You have taken {trades} trades today. Your plan stops at {limite}.",
+  "alerte_cadence_question": "I have hit my maximum number of trades for the day. Why do I keep going past this limit, and how do I hold to it?",
+  "alerte_risque": "{depassements} trade(s) today went past the risk you set yourself ({pct}%, that is {plafond}). The worst cost {pire}. Either the position was too big, or the stop was not held.",
+  "alerte_risque_question": "One of today's losses went past the risk I set myself per trade. Help me work out whether my position size or my stop drifted.",
+  "leaks_cta_projection": "Over the long run →"
 };
 
 export default dict;

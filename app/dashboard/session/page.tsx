@@ -11,6 +11,7 @@ import RealTimeGuards from "@/components/session/RealTimeGuards";
 import { DEFAULT_CURRENCY, accountCurrency, buildCurrencyMap, commonCurrency, money } from "@/lib/account-currency";
 import { useActiveAccount, type ActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
+import { coutDeLEtat, etatAAlerter, etatFavorable, type TradeEmotion } from "@/lib/emotion-cost";
 import { dailyQuotes } from "@/lib/translations";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
@@ -174,6 +175,9 @@ export default function SessionPage() {
   const [showEmptyChecklistModal, setShowEmptyChecklistModal] = useState(false);
   const [showQuickLogger, setShowQuickLogger] = useState(false);
   const [emotionFeedback, setEmotionFeedback] = useState<{ type: "warning" | "ok"; message: string } | null>(null);
+
+  /** Historique par état, pour remplacer une hypothèse par sa mesure à lui. */
+  const [tradesParEtat, setTradesParEtat] = useState<TradeEmotion[]>([]);
   const [showStopConfirm, setShowStopConfirm] = useState(false);
   const [paused, setPaused] = useState(false);
   const [pausedAt, setPausedAt] = useState<string | null>(null);
@@ -233,7 +237,7 @@ export default function SessionPage() {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const sevenDaysAgoStr = sevenDaysAgo.toISOString().split("T")[0];
 
-    const [{ data: strats }, { data: session }, { data: history }, { data: recentTrades }] = await Promise.all([
+    const [{ data: strats }, { data: session }, { data: history }, { data: recentTrades }, { data: tradesEtats }] = await Promise.all([
       supabase.from("strategies").select("*").eq("user_id", user.id).order("created_at", { ascending: true }),
       supabase
         .from("sessions")
@@ -255,7 +259,29 @@ export default function SessionPage() {
         .select("pnl, commission, swap, open_time, challenge_id")
         .eq("user_id", user.id)
         .gte("open_time", sevenDaysAgoStr),
+      // ⚠️ TOUT L'HISTORIQUE, pas seulement sept jours. On cherche ce que
+      // CHAQUE état lui coûte, et il faut des dizaines de trades par état pour
+      // que le chiffre veuille dire quelque chose. Sept jours n'en donneraient
+      // aucun, et un chiffre calculé sur trois trades juste avant qu'il ouvre
+      // une position serait pire que pas de chiffre du tout.
+      supabase
+        .from("trades")
+        .select("emotion, pnl, commission, swap")
+        .eq("user_id", user.id)
+        .eq("status", "closed")
+        .not("emotion", "is", null)
+        .limit(2000),
     ]);
+
+    setTradesParEtat(
+      (tradesEtats ?? []).map((x) => ({
+        emotion: (x as { emotion: string | null }).emotion,
+        netPnl:
+          (x as { pnl: number }).pnl +
+          ((x as { commission: number | null }).commission ?? 0) +
+          ((x as { swap: number | null }).swap ?? 0),
+      })),
+    );
 
     const stratList = strats || [];
     setStrategies(stratList);
@@ -422,6 +448,29 @@ export default function SessionPage() {
   }
 
   const riskyEmotion = selectedEmotion && EMOTIONS.find((e) => e.key === selectedEmotion)?.risky;
+
+  /**
+   * Ce que CET état lui a coûté, à lui.
+   *
+   * ⚠️ REMPLACE UNE HYPOTHÈSE PAR UNE MESURE. La liste `EMOTIONS` décrète que
+   * frustré, anxieux, FOMO et revenge sont risqués. C'est une norme extérieure,
+   * et elle peut être fausse pour lui dans les deux sens : certains traders
+   * exécutent très bien sous tension, et l'excès de confiance ne figure dans
+   * aucune liste alors qu'il est parmi les plus coûteux.
+   *
+   * Sous vingt trades dans cet état, `coutDeLEtat` rend `null` et on retombe sur
+   * l'avertissement générique, qui redevient ce qu'il aurait toujours dû être :
+   * un défaut faute de mieux.
+   */
+  // Le compte actif fait autorité sur la devise ; à défaut, celle de
+  // l'historique. `commonCurrency` rend null quand les comptes en mélangent
+  // plusieurs, et on retombe alors sur la devise par défaut plutôt que d'en
+  // afficher une au hasard.
+  const deviseEtat = selectedAccount ? accountCurrency(selectedAccount) : historyCurrency;
+
+  const coutEtat = selectedEmotion ? coutDeLEtat(tradesParEtat, selectedEmotion) : null;
+  const alerterEtat = etatAAlerter(coutEtat);
+  const favorableEtat = etatFavorable(coutEtat);
   const allChecked = checklist.length > 0 && checkedItems.size === checklist.length;
 
   if (loading) {
@@ -840,7 +889,41 @@ export default function SessionPage() {
               ))}
             </div>
 
-            {riskyEmotion && (
+            {/* ⚠️ SES CHIFFRES PRIMENT SUR NOTRE LISTE. Trois cas, dans cet
+                ordre : ce que cet état lui coûte vraiment, ce qu'il lui
+                rapporte vraiment, et seulement à défaut notre avertissement
+                générique. Afficher « état risqué » à quelqu'un qui gagne dans
+                cet état lui apprend à ignorer nos avertissements, y compris
+                ceux qui comptent. */}
+            {alerterEtat && coutEtat && (
+              <div className="mt-4 p-3 rounded-lg bg-loss/10 border border-loss/30 flex items-start gap-3">
+                <svg className="w-5 h-5 text-loss shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01M10.29 3.86l-8.6 14.86A1 1 0 002.56 20h18.88a1 1 0 00.87-1.28l-8.6-14.86a1 1 0 00-1.72 0z" />
+                </svg>
+                <p className="text-sm text-loss">
+                  {t("session_emotion_measured")
+                    .replace("{n}", String(coutEtat.trades))
+                    .replace("{total}", money(coutEtat.netPnl, deviseEtat))
+                    .replace("{parTrade}", money(coutEtat.esperance, deviseEtat))
+                    .replace("{ecart}", money(Math.abs(coutEtat.ecartAvecLeReste), deviseEtat))}
+                </p>
+              </div>
+            )}
+
+            {favorableEtat && coutEtat && (
+              <div className="mt-4 p-3 rounded-lg bg-profit/10 border border-profit/30 flex items-start gap-3">
+                <svg className="w-5 h-5 text-profit shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" />
+                </svg>
+                <p className="text-sm text-profit">
+                  {t("session_emotion_measured_ok")
+                    .replace("{n}", String(coutEtat.trades))
+                    .replace("{parTrade}", money(coutEtat.esperance, deviseEtat))}
+                </p>
+              </div>
+            )}
+
+            {riskyEmotion && !coutEtat && (
               <div className="mt-4 p-3 rounded-lg bg-loss/10 border border-loss/30 flex items-start gap-3">
                 <svg className="w-5 h-5 text-loss shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01M10.29 3.86l-8.6 14.86A1 1 0 002.56 20h18.88a1 1 0 00.87-1.28l-8.6-14.86a1 1 0 00-1.72 0z" />

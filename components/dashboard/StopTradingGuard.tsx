@@ -25,10 +25,13 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { startOfLocalDayUtc, browserTimezone } from "@/lib/timezone";
 import { useEffect, useRef } from "react";
+import { alertesDeSeance } from "@/lib/session-alerts";
 
 interface Strategy {
   max_trades_per_day: number | null;
   max_consecutive_losses: number | null;
+  /** Ajouté le 2026-08-25 : une perte plus lourde que le risque déclaré. */
+  risk_per_trade_pct: number | null;
 }
 
 function netPnl(tr: { pnl: number; commission: number | null; swap: number | null }) {
@@ -118,7 +121,7 @@ export default function StopTradingGuard() {
     const [{ data: strat }, { data: trades }] = await Promise.all([
       supabase
         .from("strategies")
-        .select("max_trades_per_day, max_consecutive_losses")
+        .select("max_trades_per_day, max_consecutive_losses, risk_per_trade_pct")
         .eq("user_id", user.id)
         .limit(1)
         .single(),
@@ -131,7 +134,7 @@ export default function StopTradingGuard() {
         .order("open_time", { ascending: true }),
     ]);
 
-    const strategy: Strategy = strat ?? { max_trades_per_day: null, max_consecutive_losses: null };
+    const strategy: Strategy = strat ?? { max_trades_per_day: null, max_consecutive_losses: null, risk_per_trade_pct: null };
     const todayTrades = trades || [];
 
     // todayPnl — scoped to the active account (challenge_id).
@@ -194,37 +197,71 @@ export default function StopTradingGuard() {
       }
     }
 
-    // ── Max trades per day — from strategy ────────────────────────────────
-    if (
-      strategy.max_trades_per_day !== null &&
-      todayTrades.length >= strategy.max_trades_per_day
-    ) {
+    // ── Les règles de sa fiche, déléguées au module testé ─────────────────
+    //
+    // ⚠️ CES TROIS DÉTECTIONS ÉTAIENT ÉCRITES ICI À LA MAIN, ET NON TESTÉES.
+    // Elles passent désormais par `lib/session-alerts.ts`, qui les tient
+    // derrière quatorze tests, et qui ajoute la troisième : une perte plus
+    // lourde que le risque déclaré, soit une position trop grosse, soit un stop
+    // non tenu. Aucune des deux ne se voit dans un P&L de fin de journée.
+    //
+    // ⚠️ La perte journalière RESTE au-dessus, à la main : son échelle en quatre
+    // paliers est plus fine que tout ce que le module fait, et elle est en
+    // production. On ne la réécrit pas.
+    for (const a of alertesDeSeance(
+      todayTrades.filter((tr) => tr.status === "closed").map((tr) => ({ netPnl: netPnl(tr) })),
+      strategy,
+      { capital: selectedAccount?.account_size ?? null },
+    )) {
+      let message = t(a.code);
+      for (const [cle, valeur] of Object.entries(a.valeurs)) {
+        // ⚠️ SEULES CES DEUX CLÉS SONT DE L'ARGENT. « limite » compte des trades
+        // ou des pertes ; la formater en monnaie donnait « ta fiche s'arrête à
+        // 5$ » au lieu de « à 5 trades ». Le module nomme désormais « plafond »
+        // ce qui est un montant, précisément pour que ce test soit sûr.
+        const rendu =
+          cle === "plafond" || cle === "pire"
+            ? money(valeur, selectedAccount ? accountCurrency(selectedAccount) : DEFAULT_CURRENCY)
+            : String(valeur);
+        message = message.replaceAll(`{${cle}}`, rendu);
+      }
+      /**
+       * ⚠️ LA SÉRIE DE PERTES PASSE EN CRITIQUE, ET ELLE SEULE.
+       *
+       * Décision du 2026-08-26. Jusque-là, l'écran STOP était réservé à ce qui
+       * menace le COMPTE (100 % de la perte journalière tolérée), et franchir
+       * sa propre règle d'arrêt n'était qu'un bandeau. La frontière était nette
+       * mais elle prenait le problème à l'envers : le trader a écrit « j'arrête
+       * après 3 pertes » DANS UN MOMENT CALME, précisément pour se lier les
+       * mains dans un moment chaud. Un bandeau qu'il peut faire défiler donne
+       * raison à son moi de l'instant contre son moi de la veille, ce qui est
+       * l'inverse de ce que ce produit vend.
+       *
+       * ⚠️ MAIS PAS LA CADENCE. Prendre un sixième trade n'est pas la même
+       * chose qu'enchaîner une cinquième perte : c'est là que le revenge
+       * trading arrive, pas à la sortie du compteur. Bloquer sur la cadence
+       * ferait d'un écran d'urgence un péage quotidien, et il serait ignoré
+       * quand il compterait vraiment.
+       *
+       * ⚠️ ET LA FERMETURE EST PERSISTANTE, contrairement au critique de
+       * compte qui revient à chaque rechargement. Ici la règle est la sienne :
+       * il a le droit de passer outre en connaissance de cause, une fois, pour
+       * la journée. C'est une interruption, pas une prison.
+       */
+      const serieDePertes = a.code === "alerte_serie";
       alerts.push({
-        id: "stop_max_trades",
-        level: "warning" as const,
+        id: `stop_${a.code}`,
+        level: serieDePertes ? ("critical" as const) : ("warning" as const),
         category: "daily_loss",
-        message: t("warn_max_trades"),
-        dismissible: false,
+        message,
+        dismissible: serieDePertes,
+        ...(serieDePertes ? { dismissKey: "stop_alerte_serie" } : {}),
+        // ⚠️ CE QUI TRANSFORME UN AVERTISSEMENT EN CONVERSATION. Le bandeau
+        // existant était un cul-de-sac : il constatait, et le trader restait
+        // seul avec le constat. La question part dans le champ de saisie du
+        // coach SANS être envoyée, donc sans consommer son quota.
+        coachQuestion: t(a.question),
       });
-    }
-
-    // ── Consecutive losses — from strategy ────────────────────────────────
-    if (strategy.max_consecutive_losses !== null) {
-      const closedTrades = todayTrades.filter((tr) => tr.status === "closed");
-      let consecutiveLosses = 0;
-      for (const tr of closedTrades) {
-        if (netPnl(tr) < 0) consecutiveLosses++;
-        else consecutiveLosses = 0;
-      }
-      if (consecutiveLosses >= strategy.max_consecutive_losses) {
-        alerts.push({
-          id: "stop_consecutive_losses",
-          level: "warning" as const,
-          category: "daily_loss",
-          message: t("warn_consecutive_losses").replace("{n}", String(consecutiveLosses)),
-          dismissible: false,
-        });
-      }
     }
 
     setSourceAlerts(SOURCE_KEY, alerts);

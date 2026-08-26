@@ -187,6 +187,7 @@ export default function DashboardContent({
   // identifié : on retombe sur l'euro plutôt que d'emprunter le symbole de l'un
   // d'eux.
   const displayCurrency = displayAccount ? accountCurrency(displayAccount) : DEFAULT_CURRENCY;
+
   // Le calendrier et les listes de trades peuvent mélanger les comptes : chaque
   // ligne porte alors la devise du sien.
   const currencyMap = useMemo(() => buildCurrencyMap(activeAccounts), [activeAccounts]);

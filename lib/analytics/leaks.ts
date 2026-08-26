@@ -53,7 +53,26 @@ const REVENGE_WINDOW_MS = 30 * 60 * 1000;
 /** Lot > 1.5× le lot médian après une perte = sizing tilt. */
 const OVERSIZE_FACTOR = 1.5;
 /** Une tranche horaire n'est significative qu'à partir de 5 trades. */
-const MIN_HOUR_TRADES = 5;
+/**
+ * Trades minimum dans une tranche horaire pour la nommer « ta pire heure ».
+ *
+ * ⚠️ RELEVÉ DE 5 À 10 LE 2026-08-26, ET LE CHIFFRE N'EST PAS ARBITRAIRE : c'est
+ * celui que ce fichier a DÉJÀ choisi comme plancher pour dire quoi que ce soit
+ * (`DEFAULT_MIN_TRADES`). Une tranche horaire n'a aucune raison d'être plus
+ * laxiste que le module qui la contient.
+ *
+ * Ce qui a déclenché la revue : `lib/projection-segments.ts` refuse de nommer
+ * un segment sous VINGT trades, au motif qu'en dessous un écart est une
+ * fluctuation d'échantillonnage. Deux modules du même produit ne peuvent pas
+ * être en désaccord sur ce qui constitue une preuve, et à 5 trades « ta pire
+ * heure » désignait souvent une seule mauvaise séance.
+ *
+ * On ne monte pas à 20 pour autant : cette carte est une promesse de la landing
+ * servie au plan GRATUIT, et la museler pour la plupart des comptes ferait plus
+ * de dégâts que l'imprécision qu'on corrige. Le nombre de trades reste affiché
+ * à côté de chaque fuite, donc le constat porte sa propre réserve.
+ */
+const MIN_HOUR_TRADES = 10;
 /** En dessous de ce volume, pas assez de signal pour chiffrer quoi que ce soit. */
 const DEFAULT_MIN_TRADES = 10;
 

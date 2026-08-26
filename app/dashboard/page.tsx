@@ -62,7 +62,7 @@ export default async function DashboardPage() {
     supabase.from("session_reviews").select("discipline_score, created_at, analysis, score_breakdown").eq("user_id", userId!).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     supabase.from("trades").select("pnl, commission, swap, challenge_id").eq("user_id", userId!).gte("open_time", monday),
     supabase.from("trades").select("pnl, commission, swap, challenge_id").eq("user_id", userId!).gte("open_time", monthStart),
-    supabase.from("trades").select("pnl, commission, swap, challenge_id").eq("user_id", userId!).gte("open_time", today),
+    supabase.from("trades").select("open_time, pnl, commission, swap, challenge_id").eq("user_id", userId!).gte("open_time", today).order("open_time", { ascending: true }),
     supabase.from("prop_challenges").select("id, firm, account_number, account_size, profit_target_pct, max_total_dd_pct, max_daily_dd_pct, max_daily_loss_pct, balance, type, currency, synced_currency").eq("user_id", userId!).eq("status", "active").order("created_at", { ascending: false }),
     supabase.from("trades").select("id, open_time, close_time, pair, direction, pnl, commission, swap, challenge_id, lot_size, entry_price, exit_price").eq("user_id", userId!).order("open_time", { ascending: false }).limit(5),
     // Courbe d'équité : lecture paginée. Non bornée, elle s'arrêtait à 1 000
@@ -77,7 +77,7 @@ export default async function DashboardPage() {
         .order("id", { ascending: true })
         .range(from, to),
     ),
-    supabase.from("strategies").select("max_trades_per_day, pairs").eq("user_id", userId!).order("created_at", { ascending: true }).limit(1).maybeSingle(),
+    supabase.from("strategies").select("max_trades_per_day, max_consecutive_losses, risk_per_trade_pct, pairs").eq("user_id", userId!).order("created_at", { ascending: true }).limit(1).maybeSingle(),
   ]);
 
   // Ordre chronologique refait ici : les pages sont lues dans l'ordre stable de
