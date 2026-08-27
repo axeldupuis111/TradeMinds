@@ -20,7 +20,7 @@
  * télécharge ainsi que les mois de la période testée, et les garde en cache.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { inflateRawSync, constants as zlibConstants } from "node:zlib";
 import { encoderSerie, serieDepuisLignes } from "../lib/backtest/serie.ts";
 import type { LigneOHLC } from "../lib/backtest/serie.ts";
@@ -246,6 +246,16 @@ async function principal() {
     );
   }
 
+  // ⚠️ LE MANIFESTE DÉCRIT LE DOSSIER, PAS LA COMMANDE QU'ON VIENT DE LANCER.
+  // Le construire depuis les mois DEMANDÉS a un effet pervers : importer
+  // 2022-2023 après coup réécrit le manifeste avec ces 24 mois seulement et
+  // fait disparaître 2024-2025, pourtant toujours sur le disque et en ligne.
+  // On relit donc ce qui existe vraiment.
+  const surDisque = readdirSync(dossier)
+    .filter((f) => f.endsWith(".tdbt"))
+    .map((f) => f.replace(/\.tdbt$/, ""))
+    .sort();
+
   writeFileSync(
     `${dossier}/manifeste.json`,
     JSON.stringify(
@@ -253,7 +263,7 @@ async function principal() {
         instrument: opts.code,
         tailleTick: opts.tick,
         source: opts.source,
-        mois: disponibles.sort(),
+        mois: surDisque,
         importeLe: new Date().toISOString(),
       },
       null,

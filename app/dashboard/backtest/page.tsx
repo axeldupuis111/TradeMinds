@@ -53,8 +53,19 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 /** Période couverte par les données publiées. */
-const PERIODE_MIN = "2024-01";
+const PERIODE_MIN = "2022-01";
 const PERIODE_MAX = "2025-12";
+/**
+ * Période ouverte au départ.
+ *
+ * ⚠️ Volontairement PLUS COURTE que ce qui est disponible. Quatre ans de bougies
+ * font une trentaine de mégaoctets à télécharger : ouvrir la page sur la
+ * fenêtre maximale ferait payer cette attente à quelqu'un qui voulait juste
+ * essayer. Le sélecteur, lui, propose tout, et laisser 2022-2023 de côté au
+ * premier essai a un autre mérite : ça garde une période intacte pour vérifier
+ * ensuite un réglage trouvé sur celle-ci.
+ */
+const DEBUT_PAR_DEFAUT = "2025-01";
 
 interface StrategieRow {
   id: string;
@@ -109,7 +120,7 @@ export default function BacktestPage() {
   const [strategies, setStrategies] = useState<StrategieRow[]>([]);
   const [strategieId, setStrategieId] = useState<string>("");
   const [code, setCode] = useState<string>("XAUUSD");
-  const [de, setDe] = useState<string>(PERIODE_MIN);
+  const [de, setDe] = useState<string>(DEBUT_PAR_DEFAUT);
   const [a, setA] = useState<string>(PERIODE_MAX);
 
   const instrument: Instrument = instrumentParCode(code) ?? INSTRUMENTS[0];
