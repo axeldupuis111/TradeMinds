@@ -3043,6 +3043,11 @@ const dict: Record<string, string> = {
   "bt_aucun_avantage": "Schon vor jeder Kostenbelastung gewinnt diese Methode nichts: Ihre Bruttoerwartung ist null oder negativ. Der Spread ist also nicht das Thema. Der Einstieg selbst hat in diesem Zeitraum keinen messbaren Vorteil.",
   "bt_journees_arretees": "{n} Tage von deinen Leitplanken abgebrochen. Ein gestoppter Tag erzeugt keine Signale mehr, deshalb zählt er nicht zu den Ablehnungen oben.",
   "bt_verdict_partiel": "Achtung: {pct} % der Signale wurden mangels ausreichend weitem Stop verworfen. Diese Zahl gilt also nicht für deine gesamte Strategie, sondern nur für den ausführbaren Teil ihrer Signale, jenen mit den weitesten Stops.",
+  "bt_unite_de_temps": "Zeitrahmen",
+  "bt_unite_de_temps_aide": "Der deines Charts. Die Kerzen werden aus echten Minuten gruppiert.",
+  "bt_niveau_trendline": "Trendlinie (Diagonale)",
+  "bt_pivots_trendline_aide": "Die Linie verbindet die letzten zwei Tiefs (Unterstützung) oder Hochs (Widerstand) und wird verlängert. Ein Pivot zählt, wenn er so viele Kerzen auf jeder Seite überragt.",
+  "bt_stop_dernier_pivot": "Hinter dem letzten Hoch oder Tief",
   "bt_duree_calcul": "In {ms} ms berechnet, in deinem Browser."
 };
 

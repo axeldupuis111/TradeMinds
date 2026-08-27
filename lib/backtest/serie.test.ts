@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decoderSerie, encoderSerie, fusionnerSeries, serieDepuisLignes } from "./serie";
+import { agreger, decoderSerie, encoderSerie, fusionnerSeries, serieDepuisLignes } from "./serie";
 import type { LigneOHLC } from "./serie";
 
 function ligne(ms: number, o: number, h: number, l: number, c: number): LigneOHLC {
@@ -130,5 +130,53 @@ describe("fusion des mois", () => {
     expect(() => fusionnerSeries([mois(BASE, 5, "XAUUSD", 0.01), mois(BASE, 5, "XAUUSD", 0.1)])).toThrow(
       /tick/,
     );
+  });
+});
+
+describe("regroupement en unités de temps", () => {
+  /** Six minutes de M1, avec des extrêmes placés exprès au milieu des groupes. */
+  const SIX = serieDepuisLignes(
+    [
+      ligne(Date.parse("2026-03-05T14:00:00Z"), 100, 102, 99, 101),
+      ligne(Date.parse("2026-03-05T14:01:00Z"), 101, 110, 95, 104), // extrêmes du groupe 1
+      ligne(Date.parse("2026-03-05T14:02:00Z"), 104, 105, 103, 103),
+      ligne(Date.parse("2026-03-05T14:03:00Z"), 103, 106, 102, 105),
+      ligne(Date.parse("2026-03-05T14:04:00Z"), 105, 120, 90, 108), // extrêmes du groupe 2
+      ligne(Date.parse("2026-03-05T14:05:00Z"), 108, 109, 107, 107),
+    ],
+    "TEST",
+    1,
+  ).serie;
+
+  it("garde l'ouverture du premier, la clôture du dernier et les vrais extrêmes", () => {
+    // ⚠️ C'est ça qui rend l'agrégation honnête : le haut d'une bougie M3 est
+    // celui que le marché a imprimé pendant ces trois minutes, pas une
+    // interpolation. Découper à l'inverse une M3 en trois M1 serait inventé.
+    const m3 = agreger(SIX, 3);
+    expect(m3.t.length).toBe(2);
+    expect([m3.o[0], m3.h[0], m3.l[0], m3.c[0]]).toEqual([100, 110, 95, 103]);
+    expect([m3.o[1], m3.h[1], m3.l[1], m3.c[1]]).toEqual([103, 120, 90, 107]);
+  });
+
+  it("aligne les groupes sur l'heure ronde, pas sur la première bougie du fichier", () => {
+    // Une série qui commence à 14h01 doit quand même caler ses M3 sur 14h00 et
+    // 14h03, sinon les unités de temps se décalent d'un mois à l'autre.
+    const decale = serieDepuisLignes(
+      [
+        ligne(Date.parse("2026-03-05T14:01:00Z"), 100, 101, 99, 100),
+        ligne(Date.parse("2026-03-05T14:02:00Z"), 100, 101, 99, 100),
+        ligne(Date.parse("2026-03-05T14:03:00Z"), 100, 101, 99, 100),
+      ],
+      "TEST",
+      1,
+    ).serie;
+    const m3 = agreger(decale, 3);
+    expect(m3.t.length).toBe(2);
+    expect(new Date(m3.t[0]).toISOString()).toBe("2026-03-05T14:00:00.000Z");
+    expect(new Date(m3.t[1]).toISOString()).toBe("2026-03-05T14:03:00.000Z");
+  });
+
+  it("rend la série telle quelle pour du M1", () => {
+    expect(agreger(SIX, 1)).toBe(SIX);
   });
 });

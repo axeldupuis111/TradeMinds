@@ -229,3 +229,58 @@ export function fusionnerSeries(morceaux: SerieM1[]): SerieM1 {
     c: out.c.slice(0, k),
   };
 }
+
+/**
+ * Regroupe des bougies M1 en bougies de N minutes.
+ *
+ * ⚠️ POURQUOI ON STOCKE DU M1 ET PAS DIRECTEMENT L'UNITÉ VOULUE. Presque
+ * personne ne trade en M1 : la minute est la matière première, pas l'unité de
+ * lecture. En gardant du M1 on peut fabriquer n'importe quelle unité multiple
+ * sans retélécharger, et surtout SANS PERDRE la vérité des mèches : une bougie
+ * M3 construite à partir de trois vraies M1 a exactement le haut et le bas que
+ * le marché a imprimés. L'inverse, découper une M3 en trois M1 supposées, est
+ * une invention pure et c'est le défaut classique des outils de backtest.
+ *
+ * ⚠️ Les groupes sont alignés sur l'heure ronde, comme chez tous les courtiers :
+ * une bougie M3 commence à 10h00, 10h03, 10h06. Aligner sur la première bougie
+ * du fichier décalerait toutes les unités de temps d'un mois à l'autre.
+ */
+export function agreger(serie: SerieM1, minutes: number): SerieM1 {
+  if (minutes <= 1) return serie;
+  const pas = minutes * 60_000;
+  const n = serie.t.length;
+
+  const t: number[] = [];
+  const o: number[] = [];
+  const h: number[] = [];
+  const l: number[] = [];
+  const c: number[] = [];
+
+  let groupe = NaN;
+  for (let i = 0; i < n; i++) {
+    const debut = Math.floor(serie.t[i] / pas) * pas;
+    if (debut !== groupe) {
+      groupe = debut;
+      t.push(debut);
+      o.push(serie.o[i]);
+      h.push(serie.h[i]);
+      l.push(serie.l[i]);
+      c.push(serie.c[i]);
+      continue;
+    }
+    const k = t.length - 1;
+    if (serie.h[i] > h[k]) h[k] = serie.h[i];
+    if (serie.l[i] < l[k]) l[k] = serie.l[i];
+    c[k] = serie.c[i];
+  }
+
+  return {
+    instrument: serie.instrument,
+    tailleTick: serie.tailleTick,
+    t: Float64Array.from(t),
+    o: Int32Array.from(o),
+    h: Int32Array.from(h),
+    l: Int32Array.from(l),
+    c: Int32Array.from(c),
+  };
+}

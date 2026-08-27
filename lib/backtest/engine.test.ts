@@ -465,6 +465,90 @@ describe("un stop plus proche que le coût n'est pas un trade", () => {
   });
 });
 
+describe("trendline : une diagonale, pas un plus-haut horizontal", () => {
+  /**
+   * Reproduit la forme du graphique d'Axel, avec `pivots: 2`.
+   *   b2  creux à 90, confirmé en b4
+   *   b8  creux à 100, confirmé en b10   → soutien montant par ces deux points
+   *   b9  sommet à 120, confirmé en b11  → c'est « le dernier sommet » du stop
+   *   b12 clôture à 105, sous la droite prolongée
+   *
+   * La droite vaut 90 + 10 x (12 - 2) / 6 = 106,67, arrondi à 107 en b12. Une
+   * clôture à 105 la casse donc, alors qu'elle reste TRÈS au-dessus de l'ancien
+   * plus-bas horizontal (90) : c'est exactement là que l'oblique et
+   * l'horizontale divergent, et c'est tout l'objet du bloc.
+   *
+   * Entrée à l'ouverture de b13 (105), stop au-dessus du sommet de b9
+   * (120 + 1 = 121), donc 1R = 16 ticks et l'objectif à 105 - 32 = 73.
+   */
+  const PENTE: Bougie[] = [
+    [100, 104, 96, 100],
+    [100, 104, 95, 100],
+    [100, 104, 90, 100], // creux pivot bas
+    [100, 104, 96, 100],
+    [100, 106, 97, 102],
+    [102, 108, 100, 106],
+    [106, 110, 103, 108],
+    [108, 112, 104, 110],
+    [110, 114, 100, 112], // creux pivot haut (100 > 90)
+    [112, 120, 108, 118], // sommet pivot : le stop se pose derrière lui
+    [118, 119, 110, 115],
+    [115, 117, 109, 112],
+    [112, 114, 104, 105], // clôture sous la droite (107) : cassure
+    [105, 106, 96, 97],
+    [97, 98, 88, 89],
+    [89, 90, 72, 73], // objectif touché
+  ];
+
+  function planTrendline() {
+    return plan({
+      niveau: { type: "trendline", pivots: 2 },
+      stop: { type: "dernier_pivot", bufferTicks: 1 },
+    });
+  }
+
+  it("casse la droite prolongée, et non l'ancien plus-bas", () => {
+    const s = serie(PENTE);
+    const r = lancerBacktest(s, planTrendline());
+
+    expect(r.trades).toHaveLength(1);
+    expect(r.trades[0].sens).toBe("short");
+    expect(r.trades[0].entreeMs).toBe(s.t[13]);
+    // Le stop se mesure depuis le DERNIER SOMMET (120), pas depuis la bougie
+    // de signal. C'est ce qui fait 16 ticks de risque au lieu de deux ou trois.
+    expect(r.trades[0].risqueTicks).toBe(16);
+    expect(r.trades[0].r).toBe(2);
+  });
+
+  it("ne trace aucune droite quand la géométrie ne tient pas", () => {
+    // Un second creux PLUS BAS que le premier ne décrit pas un soutien montant.
+    // Plutôt que de tracer une droite qui ne veut rien dire, ce côté n'a pas de
+    // niveau et rien ne se déclenche.
+    const descendant = PENTE.map((b, i) => (i === 8 ? ([110, 114, 85, 112] as Bougie) : b));
+    expect(lancerBacktest(serie(descendant), planTrendline()).trades).toHaveLength(0);
+  });
+
+  it("refuse d'ouvrir sans pivot confirmé plutôt que de changer de stop", () => {
+    const s = serie([...AMORCE, [200, 205, 195, 200], [200, 225, 199, 220]]);
+    const r = lancerBacktest(s, plan({ stop: { type: "dernier_pivot", bufferTicks: 1 } }));
+    expect(r.audit.signaux).toBeGreaterThan(0);
+    expect(r.trades).toHaveLength(0);
+  });
+});
+
+describe("unité de temps", () => {
+  it("regroupe les M1 avant d'exécuter", () => {
+    // Six bougies M1 identiques deviennent deux bougies M3 : il ne peut plus
+    // rien se passer avant la deuxième, faute d'historique.
+    const s = serie(
+      Array.from({ length: 6 }, () => [100, 101, 99, 100] as Bougie),
+      "2026-03-05T14:00:00Z",
+    );
+    const r = lancerBacktest(s, plan({ uniteDeTemps: 3 }));
+    expect(r.audit.bougies).toBe(2);
+  });
+});
+
 describe("bornes du moteur", () => {
   it("solde une position encore ouverte à la fin de la série, et le dit", () => {
     const s = serie([...AMORCE, [200, 205, 195, 200]]);

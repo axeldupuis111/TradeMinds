@@ -3043,6 +3043,11 @@ const dict: Record<string, string> = {
   "bt_aucun_avantage": "Before any cost, this method already gains nothing: its gross expectancy is zero or negative. So the spread is not the issue. It is the entry itself that has no measurable edge over this period.",
   "bt_journees_arretees": "{n} days cut short by your guardrails. A halted day produces no further signals, which is why it does not count among the refusals above.",
   "bt_verdict_partiel": "Careful: {pct}% of signals were discarded for want of a wide enough stop. This figure therefore does not cover your whole strategy, only the share of its signals that remained executable, the ones with the widest stops.",
+  "bt_unite_de_temps": "Timeframe",
+  "bt_unite_de_temps_aide": "The one on your chart. Candles are grouped from the real minutes.",
+  "bt_niveau_trendline": "Trendline (diagonal)",
+  "bt_pivots_trendline_aide": "The line joins the last two lows (support) or highs (resistance) and extends forward. A pivot counts if it tops that many candles on each side.",
+  "bt_stop_dernier_pivot": "Behind the last high or low",
   "bt_duree_calcul": "Computed in {ms} ms, in your browser."
 };
 

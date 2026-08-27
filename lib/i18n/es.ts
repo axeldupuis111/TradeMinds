@@ -3043,6 +3043,11 @@ const dict: Record<string, string> = {
   "bt_aucun_avantage": "Antes de cualquier coste, este método ya no gana nada: su esperanza bruta es nula o negativa. El spread no es el problema. Es la entrada misma la que no tiene ventaja medible en este periodo.",
   "bt_journees_arretees": "{n} jornadas cortadas por tus salvaguardas. Una jornada detenida ya no produce señales, por eso no cuenta entre los rechazos de arriba.",
   "bt_verdict_partiel": "Atención: se descartó el {pct} % de las señales por falta de un stop lo bastante amplio. Esta cifra no cubre toda tu estrategia, solo la parte de sus señales que seguía siendo ejecutable, la de los stops más amplios.",
+  "bt_unite_de_temps": "Temporalidad",
+  "bt_unite_de_temps_aide": "La de tu gráfico. Las velas se agrupan a partir de los minutos reales.",
+  "bt_niveau_trendline": "Línea de tendencia (diagonal)",
+  "bt_pivots_trendline_aide": "La línea une los dos últimos mínimos (soporte) o máximos (resistencia) y se prolonga. Un pivote cuenta si domina esa cantidad de velas a cada lado.",
+  "bt_stop_dernier_pivot": "Detrás del último máximo o mínimo",
   "bt_duree_calcul": "Calculado en {ms} ms, en tu navegador."
 };
 

@@ -3043,6 +3043,11 @@ const dict: Record<string, string> = {
   "bt_aucun_avantage": "Avant le moindre coût, cette méthode ne gagne déjà rien : son espérance brute est nulle ou négative. Le spread n'est donc pas le sujet. C'est l'entrée elle-même qui n'a pas d'avantage mesurable sur cette période.",
   "bt_journees_arretees": "{n} journées coupées par tes garde-fous. Une journée arrêtée ne produit plus aucun signal : c'est pour ça qu'elle ne compte pas dans les refus ci-dessus.",
   "bt_verdict_partiel": "Attention : {pct} % des signaux ont été écartés faute d'un stop assez large. Ce chiffre ne porte donc pas sur ta stratégie entière, mais sur la part de ses signaux qui restait exécutable, celle des stops les plus larges.",
+  "bt_unite_de_temps": "Unité de temps",
+  "bt_unite_de_temps_aide": "Celle de ton graphique. Les bougies sont regroupées à partir des vraies minutes.",
+  "bt_niveau_trendline": "Trendline (droite oblique)",
+  "bt_pivots_trendline_aide": "La droite relie les deux derniers creux (soutien) ou sommets (résistance) et se prolonge. Un pivot compte s'il domine autant de bougies de chaque côté.",
+  "bt_stop_dernier_pivot": "Derrière le dernier sommet ou creux",
   "bt_duree_calcul": "Calculé en {ms} ms, dans ton navigateur."
 };
 

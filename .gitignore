@@ -52,3 +52,4 @@ coach-cache-mesures.txt
 
 # Bougies M1 importees pour le backtest (hebergees sur Supabase Storage)
 donnees-backtest/
+donnees-backtest-oos/

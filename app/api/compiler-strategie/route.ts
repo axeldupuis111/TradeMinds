@@ -64,7 +64,11 @@ const CATALOGUE = `NIVEAU (un seul, obligatoire)
   {"type":"range_horaire","debut":"HH:MM","fin":"HH:MM"}      plage horaire de reference (ex: la bougie M5 d'ouverture)
   {"type":"extremes_n_bougies","n":<2-500>}                    plus haut/bas des N dernieres bougies M1
   {"type":"extremes_veille"}                                   plus haut/bas de la veille
-  {"type":"liquidite_swing","pivots":<2-500>}                  BSL/SSL : anciens sommets et creux pivots (en bougies M1)
+  {"type":"liquidite_swing","pivots":<2-500>}                  BSL/SSL : anciens sommets et creux pivots
+  {"type":"trendline","pivots":<2-500>}                        TRENDLINE : droite OBLIQUE reliant les deux derniers creux
+        (soutien montant) ou les deux derniers sommets (resistance descendante), prolongee jusqu'a la bougie
+        courante. A choisir des que le trader parle de trendline, de ligne de tendance ou de droite : casser une
+        oblique et casser un plus-haut horizontal sont deux evenements DIFFERENTS.
 
 DECLENCHEUR (un seul, obligatoire)
   {"type":"cassure","mode":"cloture"|"meche"}
@@ -89,6 +93,9 @@ STOP (un seul) — NE PAS PROPOSER SI LA FICHE N'EN PARLE PAS
   {"type":"fixe","ticks":<1+>}
   {"type":"niveau_oppose","bufferTicks":<0+>}
   {"type":"extreme_balayage","bufferTicks":<0+>}               au-dela de l'extreme du balayage (avec balayage_puis_fvg)
+  {"type":"dernier_pivot","bufferTicks":<0+>}                  derriere le dernier sommet (vente) ou creux (achat)
+        C'est le « stop derriere le dernier sommet » des traders de trendline. BEAUCOUP plus large qu'un stop sur
+        la bougie de signal : ne pas confondre les deux, l'ecart va de un a dix sur la taille du risque.
 
 OBJECTIF (un seul) — NE PAS PROPOSER SI LA FICHE N'EN PARLE PAS
   {"type":"multiple_r","r":<0.1-20>}
@@ -99,6 +106,10 @@ SORTIES AUXILIAIRES (facultatif)
 
 GESTION (facultatif)
   {"maxTradesParJour":<1-100>,"maxPertesConsecutives":<1-50>,"maxPerteJournaliereR":<0-100>}
+
+UNITE DE TEMPS (obligatoire) — "uniteDeTemps": 1, 3, 5, 15, 30, 60 ou 240 (minutes)
+  Celle du GRAPHIQUE que le trader regarde pour ses entrees, pas celle de son analyse de contexte. S'il analyse
+  en H4 mais entre sur un graphique M3, c'est 3. Si la fiche ne le dit pas, mets 5 et signale-le dans "deduites".
 
 CONTEXTE (obligatoire) — NE PAS INVENTER D'HORAIRES SI LA FICHE N'EN DONNE PAS
   {"fuseau":"<IANA>","debut":"HH:MM","fin":"HH:MM","jours":[1,2,3,4,5]}`;
@@ -167,7 +178,7 @@ REGLES ABSOLUES
 7. Ne mets dans "traduites" que des noms de bloc de cette liste : contexte, niveau, declencheur, confirmations, entree, stop, objectif, sortiesAuxiliaires, gestion, sens.
 
 Reponds STRICTEMENT en JSON, sans texte autour :
-{"sens":"long"|"short"|"les_deux","contexte":{...},"niveau":{...},"declencheur":{...},"confirmations":[...],"entree":{...},"stop":{...} ou omis,"objectif":{...} ou omis,"sortiesAuxiliaires":{...},"gestion":{...},"traduites":[{"phrase":"citation courte de la fiche","bloc":"declencheur"}],"nonTraduites":["phrase non mecanisable"],"deduites":[{"champ":"stop","pourquoi":"..."}],"absents":["stop","objectif","risque","seance","unite_de_temps"]}`;
+{"uniteDeTemps":<1|3|5|15|30|60|240>,"sens":"long"|"short"|"les_deux","contexte":{...},"niveau":{...},"declencheur":{...},"confirmations":[...],"entree":{...},"stop":{...} ou omis,"objectif":{...} ou omis,"sortiesAuxiliaires":{...},"gestion":{...},"traduites":[{"phrase":"citation courte de la fiche","bloc":"declencheur"}],"nonTraduites":["phrase non mecanisable"],"deduites":[{"champ":"stop","pourquoi":"..."}],"absents":["stop","objectif","risque","seance","unite_de_temps"]}`;
 
   try {
     const client = new Anthropic({ apiKey });

@@ -10,6 +10,7 @@ import type {
   SerieM1,
   TradeSimule,
 } from "./types";
+import { agreger } from "./serie";
 
 /**
  * LE MOTEUR : rejoue un plan mécanique sur des bougies M1 réelles.
@@ -57,6 +58,14 @@ interface EntreeEnAttente {
    * c'est-à-dire une bougie APRÈS que la machine à états l'ait oublié.
    */
   extremeBalayage?: number;
+  /**
+   * Dernier sommet et dernier creux pivots connus AU MOMENT DU SIGNAL. Ils
+   * voyagent avec l'ordre parce qu'un nouveau pivot peut se confirmer entre le
+   * signal et l'entrée : le stop doit être celui que le trader voyait quand il
+   * a décidé, pas celui d'une bougie plus tard.
+   */
+  dernierSommet?: number;
+  dernierCreux?: number;
 }
 
 interface Position {
@@ -146,7 +155,11 @@ function moyenneMobile(c: Int32Array, periode: number): Float64Array {
   return out;
 }
 
-export function lancerBacktest(serie: SerieM1, plan: PlanExecution): ResultatBacktest {
+export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): ResultatBacktest {
+  // Les bougies stockées sont des M1 ; le trader lit peut-être en M3 ou en M15.
+  // Le regroupement se fait ICI, une fois, à partir des vraies minutes : les
+  // mèches d'une bougie M3 sont alors celles que le marché a imprimées.
+  const serie = agreger(serieBrute, plan.uniteDeTemps ?? 1);
   const { t, o, h, l, c } = serie;
   const n = t.length;
   const horloge = fabriqueHorloge(plan.contexte.fuseau);
@@ -195,6 +208,24 @@ export function lancerBacktest(serie: SerieM1, plan: PlanExecution): ResultatBac
   let cassureSens: "long" | "short" | null = null;
   let cassureBarre = -1;
   let fvgBord = 0; // bord du déséquilibre à retester, en ticks
+
+  // ── Pivots confirmés. Un pivot regarde des DEUX côtés, il n'est donc lisible
+  //    que `pivots` bougies après s'être formé. On garde les deux derniers de
+  //    chaque type : il en faut deux pour tracer une droite, et le dernier sert
+  //    de stop.
+  let sommetA: { i: number; prix: number } | null = null; // avant-dernier
+  let sommetB: { i: number; prix: number } | null = null; // dernier
+  let creuxA: { i: number; prix: number } | null = null;
+  let creuxB: { i: number; prix: number } | null = null;
+
+  /** Valeur en `i` de la droite passant par deux pivots. */
+  function droite(
+    p1: { i: number; prix: number },
+    p2: { i: number; prix: number },
+    i: number,
+  ): number {
+    return p1.prix + ((p2.prix - p1.prix) * (i - p1.i)) / (p2.i - p1.i);
+  }
 
   // État du déclencheur à trois temps (balayage, impulsion, retour).
   let balayageSens: "long" | "short" | null = null;
@@ -347,6 +378,8 @@ export function lancerBacktest(serie: SerieM1, plan: PlanExecution): ResultatBac
     prixBrut: number,
     barreSignal: number,
     extremeBalayage?: number,
+    dernierSommet?: number,
+    dernierCreux?: number,
   ): boolean {
     const signe = sens === "long" ? 1 : -1;
     const couts = plan.couts;
@@ -369,6 +402,12 @@ export function lancerBacktest(serie: SerieM1, plan: PlanExecution): ResultatBac
         sens === "long"
           ? extremeBalayage - plan.stop.bufferTicks
           : extremeBalayage + plan.stop.bufferTicks;
+    } else if (plan.stop.type === "dernier_pivot") {
+      const pivot = sens === "long" ? dernierCreux : dernierSommet;
+      // Sans pivot confirmé, ce stop n'existe pas. On refuse plutôt que de
+      // retomber en silence sur un autre : ce serait tester autre chose.
+      if (pivot == null) return false;
+      stop = sens === "long" ? pivot - plan.stop.bufferTicks : pivot + plan.stop.bufferTicks;
     } else {
       const oppose = sens === "long" ? basNiveau : hautNiveau;
       if (oppose == null) return false;
@@ -446,12 +485,18 @@ export function lancerBacktest(serie: SerieM1, plan: PlanExecution): ResultatBac
 
   /** Évalue le déclencheur sur la bougie i, qui vient de clôturer. */
   function evaluerDeclencheur(i: number): "long" | "short" | null {
-    if (hautNiveau == null || basNiveau == null) return null;
+    // ⚠️ CHAQUE CÔTÉ SE TESTE SÉPARÉMENT. Exiger que les deux existent était un
+    // défaut : une trendline n'a très souvent qu'un côté (un soutien montant
+    // sans résistance descendante en face), et la stratégie entière ne
+    // déclenchait alors jamais rien, en silence.
+    const haut = hautNiveau;
+    const bas = basNiveau;
+    if (haut == null && bas == null) return null;
     const d = plan.declencheur;
 
     if (d.type === "cassure") {
-      const dessus = d.mode === "cloture" ? c[i] > hautNiveau : h[i] > hautNiveau;
-      const dessous = d.mode === "cloture" ? c[i] < basNiveau : l[i] < basNiveau;
+      const dessus = haut != null && (d.mode === "cloture" ? c[i] > haut : h[i] > haut);
+      const dessous = bas != null && (d.mode === "cloture" ? c[i] < bas : l[i] < bas);
       if (dessus) return "long";
       if (dessous) return "short";
       return null;
@@ -460,17 +505,17 @@ export function lancerBacktest(serie: SerieM1, plan: PlanExecution): ResultatBac
     if (d.type === "balayage_retour") {
       // Le prix est allé chercher la liquidité au-delà du niveau puis a
       // reclôturé de l'autre côté : le signal est à contre-sens du balayage.
-      if (h[i] > hautNiveau && c[i] < hautNiveau) return "short";
-      if (l[i] < basNiveau && c[i] > basNiveau) return "long";
+      if (haut != null && h[i] > haut && c[i] < haut) return "short";
+      if (bas != null && l[i] < bas && c[i] > bas) return "long";
       return null;
     }
 
     if (d.type === "retest_apres_cassure") {
       if (cassureSens == null) {
-        if (c[i] > hautNiveau) {
+        if (haut != null && c[i] > haut) {
           cassureSens = "long";
           cassureBarre = i;
-        } else if (c[i] < basNiveau) {
+        } else if (bas != null && c[i] < bas) {
           cassureSens = "short";
           cassureBarre = i;
         }
@@ -480,7 +525,11 @@ export function lancerBacktest(serie: SerieM1, plan: PlanExecution): ResultatBac
         cassureSens = null;
         return null;
       }
-      const niveau = cassureSens === "long" ? hautNiveau : basNiveau;
+      const niveau = cassureSens === "long" ? haut : bas;
+      if (niveau == null) {
+        cassureSens = null;
+        return null;
+      }
       const touche =
         cassureSens === "long"
           ? l[i] <= niveau + d.toleranceTicks
@@ -496,10 +545,10 @@ export function lancerBacktest(serie: SerieM1, plan: PlanExecution): ResultatBac
     if (d.type === "balayage_puis_fvg") {
       // ── Temps 1 : la liquidité est-elle prise ?
       if (balayageSens == null) {
-        if (h[i] > hautNiveau) {
+        if (haut != null && h[i] > haut) {
           balayageSens = "short";
           balayageExtreme = h[i];
-        } else if (l[i] < basNiveau) {
+        } else if (bas != null && l[i] < bas) {
           balayageSens = "long";
           balayageExtreme = l[i];
         } else return null;
@@ -561,11 +610,11 @@ export function lancerBacktest(serie: SerieM1, plan: PlanExecution): ResultatBac
       if (i < 2) return null;
       const fvgHaussier = l[i] > h[i - 2];
       const fvgBaissier = h[i] < l[i - 2];
-      if (c[i] > hautNiveau && fvgHaussier) {
+      if (haut != null && c[i] > haut && fvgHaussier) {
         cassureSens = "long";
         cassureBarre = i;
         fvgBord = h[i - 2];
-      } else if (c[i] < basNiveau && fvgBaissier) {
+      } else if (bas != null && c[i] < bas && fvgBaissier) {
         cassureSens = "short";
         cassureBarre = i;
         fvgBord = l[i - 2];
@@ -614,6 +663,36 @@ export function lancerBacktest(serie: SerieM1, plan: PlanExecution): ResultatBac
     } else if (plan.niveau.type === "extremes_veille") {
       hautNiveau = hautVeille;
       basNiveau = basVeille;
+    } else if (plan.niveau.type === "trendline") {
+      const k = plan.niveau.pivots;
+      const p = i - k;
+      if (p >= k) {
+        let estSommet = true;
+        let estCreux = true;
+        for (let j = p - k; j <= p + k; j++) {
+          if (j === p) continue;
+          if (h[j] > h[p]) estSommet = false;
+          if (l[j] < l[p]) estCreux = false;
+        }
+        if (estSommet && (!sommetB || sommetB.i !== p)) {
+          sommetA = sommetB;
+          sommetB = { i: p, prix: h[p] };
+        }
+        if (estCreux && (!creuxB || creuxB.i !== p)) {
+          creuxA = creuxB;
+          creuxB = { i: p, prix: l[p] };
+        }
+      }
+      // ⚠️ La droite n'existe que si la géométrie tient : deux creux qui
+      // MONTENT pour un soutien, deux sommets qui DESCENDENT pour une
+      // résistance. Sinon ce côté n'a pas de niveau du tout, et il vaut mieux
+      // ne rien déclencher que casser une droite qui ne décrit rien.
+      basNiveau =
+        creuxA && creuxB && creuxB.prix > creuxA.prix ? Math.round(droite(creuxA, creuxB, i)) : null;
+      hautNiveau =
+        sommetA && sommetB && sommetB.prix < sommetA.prix
+          ? Math.round(droite(sommetA, sommetB, i))
+          : null;
     } else if (plan.niveau.type === "liquidite_swing") {
       // Un pivot regarde des DEUX cotes : celui de la bougie i-k n'est
       // confirmable qu'a la bougie i. On ne publie donc le niveau qu'avec ce
@@ -629,8 +708,20 @@ export function lancerBacktest(serie: SerieM1, plan: PlanExecution): ResultatBac
           if (h[j] > h[p]) estSommet = false;
           if (l[j] < l[p]) estCreux = false;
         }
-        if (estSommet) hautNiveau = h[p];
-        if (estCreux) basNiveau = l[p];
+        if (estSommet) {
+          hautNiveau = h[p];
+          if (!sommetB || sommetB.i !== p) {
+            sommetA = sommetB;
+            sommetB = { i: p, prix: h[p] };
+          }
+        }
+        if (estCreux) {
+          basNiveau = l[p];
+          if (!creuxB || creuxB.i !== p) {
+            creuxA = creuxB;
+            creuxB = { i: p, prix: l[p] };
+          }
+        }
       }
     } else if (plan.niveau.type === "extremes_n_bougies") {
       const k = plan.niveau.n;
@@ -656,7 +747,7 @@ export function lancerBacktest(serie: SerieM1, plan: PlanExecution): ResultatBac
     if (attente) {
       if (attente.prixLimite == null) {
         // Entrée à l'ouverture de cette bougie, décidée sur la précédente.
-        const ouverte = ouvrir(i, attente.sens, o[i], attente.barreSignal, attente.extremeBalayage);
+        const ouverte = ouvrir(i, attente.sens, o[i], attente.barreSignal, attente.extremeBalayage, attente.dernierSommet, attente.dernierCreux);
         attente = null;
         if (ouverte) {
           gererPosition(i, minutes);
@@ -669,7 +760,7 @@ export function lancerBacktest(serie: SerieM1, plan: PlanExecution): ResultatBac
         const touche =
           attente.sens === "long" ? l[i] <= attente.prixLimite : h[i] >= attente.prixLimite;
         if (touche) {
-          const ouverte = ouvrir(i, attente.sens, attente.prixLimite, attente.barreSignal, attente.extremeBalayage);
+          const ouverte = ouvrir(i, attente.sens, attente.prixLimite, attente.barreSignal, attente.extremeBalayage, attente.dernierSommet, attente.dernierCreux);
           attente = null;
           if (ouverte) {
             gererPosition(i, minutes);
@@ -700,9 +791,11 @@ export function lancerBacktest(serie: SerieM1, plan: PlanExecution): ResultatBac
     // le stop d'invalidation n'aurait plus rien a quoi se raccrocher.
     const extremeBalayage =
       plan.declencheur.type === "balayage_puis_fvg" ? balayageExtreme : undefined;
+    const dernierSommet = sommetB?.prix;
+    const dernierCreux = creuxB?.prix;
 
     if (plan.entree.type === "open_bougie_suivante") {
-      if (i + 1 < n) attente = { sens, barreSignal: i, extremeBalayage };
+      if (i + 1 < n) attente = { sens, barreSignal: i, extremeBalayage, dernierSommet, dernierCreux };
     } else {
       const niveau = sens === "long" ? basNiveau : hautNiveau;
       if (niveau == null) continue;
@@ -712,6 +805,8 @@ export function lancerBacktest(serie: SerieM1, plan: PlanExecution): ResultatBac
         prixLimite: niveau,
         valableJusqua: i + plan.entree.valableNBarres,
         extremeBalayage,
+        dernierSommet,
+        dernierCreux,
       };
     }
   }

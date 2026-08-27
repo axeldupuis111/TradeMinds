@@ -2,6 +2,7 @@
 
 import { Bascule, Bloc, Champ, Heure, Liste, Nombre } from "./Controles";
 import type { Instrument } from "@/lib/backtest/instruments";
+import { UNITES_DE_TEMPS } from "@/lib/backtest/compilation";
 import type {
   BlocConfirmation,
   Couts,
@@ -68,6 +69,19 @@ export function EditeurPlan({ plan, instrument, onChange, t }: EditeurProps) {
     <div className="space-y-4">
       {/* ── Quand on regarde ─────────────────────────────────────────────── */}
       <Bloc titre={t("bt_bloc_contexte")} soustitre={t("bt_bloc_contexte_aide")}>
+        {/* ⚠️ En tête, parce que c'est le réglage le plus lourd de la page :
+            lire une stratégie de M3 sur des bougies M1 change la taille des
+            stops structurels d'un facteur dix, et donc tout le résultat. */}
+        <Champ label={t("bt_unite_de_temps")} aide={t("bt_unite_de_temps_aide")}>
+          <Liste
+            valeur={String(plan.uniteDeTemps ?? 1)}
+            onChange={(v) => maj({ uniteDeTemps: Number(v) })}
+            options={UNITES_DE_TEMPS.map((m) => ({
+              valeur: String(m),
+              label: m < 60 ? `M${m}` : `H${m / 60}`,
+            }))}
+          />
+        </Champ>
         <Champ label={t("bt_sens")}>
           <Liste
             valeur={plan.sens}
@@ -119,9 +133,11 @@ export function EditeurPlan({ plan, instrument, onChange, t }: EditeurProps) {
               if (type === "range_horaire") maj({ niveau: { type, debut: "15:30", fin: "15:35" } });
               else if (type === "extremes_n_bougies") maj({ niveau: { type, n: 20 } });
               else if (type === "liquidite_swing") maj({ niveau: { type, pivots: 20 } });
+              else if (type === "trendline") maj({ niveau: { type, pivots: 10 } });
               else maj({ niveau: { type: "extremes_veille" } });
             }}
             options={[
+              { valeur: "trendline", label: t("bt_niveau_trendline") },
               { valeur: "liquidite_swing", label: t("bt_niveau_liquidite") },
               { valeur: "range_horaire", label: t("bt_niveau_range") },
               { valeur: "extremes_n_bougies", label: t("bt_niveau_extremes") },
@@ -129,13 +145,18 @@ export function EditeurPlan({ plan, instrument, onChange, t }: EditeurProps) {
             ]}
           />
         </Champ>
-        {plan.niveau.type === "liquidite_swing" ? (
-          <Champ label={t("bt_pivots")} aide={t("bt_pivots_aide")}>
+        {plan.niveau.type === "liquidite_swing" || plan.niveau.type === "trendline" ? (
+          <Champ
+            label={t("bt_pivots")}
+            aide={plan.niveau.type === "trendline" ? t("bt_pivots_trendline_aide") : t("bt_pivots_aide")}
+          >
             <Nombre
               valeur={plan.niveau.pivots}
               min={2}
               max={500}
-              onChange={(pivots) => maj({ niveau: { type: "liquidite_swing", pivots } })}
+              onChange={(pivots) =>
+                maj({ niveau: { type: plan.niveau.type as "liquidite_swing" | "trendline", pivots } })
+              }
               suffixe={t("bt_unite_bougies")}
             />
           </Champ>
@@ -355,6 +376,7 @@ export function EditeurPlan({ plan, instrument, onChange, t }: EditeurProps) {
               else maj({ stop: { type, bufferTicks: 1 } });
             }}
             options={[
+              { valeur: "dernier_pivot", label: t("bt_stop_dernier_pivot") },
               { valeur: "extreme_balayage", label: t("bt_stop_balayage") },
               { valeur: "structurel", label: t("bt_stop_structurel") },
               { valeur: "niveau_oppose", label: t("bt_stop_oppose") },
@@ -380,7 +402,11 @@ export function EditeurPlan({ plan, instrument, onChange, t }: EditeurProps) {
               onChange={(v) =>
                 maj({
                   stop: {
-                    type: plan.stop.type as "structurel" | "niveau_oppose" | "extreme_balayage",
+                    type: plan.stop.type as
+                      | "structurel"
+                      | "niveau_oppose"
+                      | "extreme_balayage"
+                      | "dernier_pivot",
                     bufferTicks: enTicks(v),
                   },
                 })

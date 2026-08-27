@@ -53,6 +53,9 @@ export interface Couverture {
   absents: ChampObligatoire[];
 }
 
+/** Unités de temps proposées, en minutes. */
+export const UNITES_DE_TEMPS: number[] = [1, 3, 5, 15, 30, 60, 240];
+
 export type ChampObligatoire = "stop" | "objectif" | "risque" | "seance" | "unite_de_temps";
 
 export interface PlanCompile {
@@ -102,6 +105,10 @@ export function validerNiveau(v: unknown): BlocNiveau | null {
     case "liquidite_swing": {
       const pivots = entier(o.pivots, 2, 500);
       return pivots === null ? null : { type: "liquidite_swing", pivots };
+    }
+    case "trendline": {
+      const pivots = entier(o.pivots, 2, 500);
+      return pivots === null ? null : { type: "trendline", pivots };
     }
     default:
       return null;
@@ -182,7 +189,8 @@ export function validerStop(v: unknown): BlocStop | null {
     }
     case "structurel":
     case "niveau_oppose":
-    case "extreme_balayage": {
+    case "extreme_balayage":
+    case "dernier_pivot": {
       const b = entier(o.bufferTicks, 0, 1_000_000);
       return b === null ? null : { type: o.type, bufferTicks: b };
     }
@@ -288,6 +296,11 @@ export function compilerDepuisModele(brut: unknown, instrument: string): PlanCom
   plan.gestion = validerGestion(o.gestion);
   plan.sens =
     o.sens === "long" || o.sens === "short" || o.sens === "les_deux" ? o.sens : "les_deux";
+  // Liste fermée, celle des plateformes. Une unité arbitraire (7 minutes)
+  // n'existe chez aucun courtier et ne correspondrait au graphique de personne.
+  plan.uniteDeTemps = UNITES_DE_TEMPS.includes(o.uniteDeTemps as number)
+    ? (o.uniteDeTemps as number)
+    : 1;
 
   const traduites: { phrase: string; bloc: string }[] = [];
   if (Array.isArray(o.traduites)) {
@@ -362,6 +375,7 @@ export function socleDePlan(
 ): Omit<PlanExecution, "stop" | "objectif" | "couts"> {
   return {
     instrument,
+    uniteDeTemps: 5,
     sens: "les_deux",
     contexte: { fuseau, debut: "08:00", fin: "22:00", jours: [1, 2, 3, 4, 5] },
     niveau: { type: "liquidite_swing", pivots: 20 },

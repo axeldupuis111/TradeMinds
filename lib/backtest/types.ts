@@ -97,7 +97,26 @@ export type BlocNiveau =
    * moment-là. Le lire dès sa formation serait du lookahead pur, et c'est
    * l'erreur la plus répandue dans les backtests de liquidité.
    */
-  | { type: "liquidite_swing"; pivots: number };
+  | { type: "liquidite_swing"; pivots: number }
+  /**
+   * UNE TRENDLINE EST UNE DIAGONALE, et c'est tout le sujet de ce bloc.
+   *
+   * On relie les deux derniers creux pivots confirmés (ligne de soutien
+   * montante) et les deux derniers sommets pivots confirmés (ligne de
+   * résistance descendante), puis on PROLONGE ces droites jusqu'à la bougie
+   * courante. Le niveau n'est donc pas un prix fixe : il bouge à chaque bougie.
+   *
+   * ⚠️ Casser un plus-haut horizontal et casser une ligne oblique sont deux
+   * événements DIFFÉRENTS. Approcher l'un par l'autre produit un backtest
+   * crédible portant sur une méthode que le trader ne trade pas. C'est
+   * exactement l'erreur qu'on a commise avant d'écrire ce bloc.
+   *
+   * ⚠️ La droite n'existe que si la géométrie tient : deux creux ASCENDANTS
+   * pour un soutien, deux sommets DESCENDANTS pour une résistance. Sinon ce
+   * côté n'a pas de niveau, et on ne déclenche rien plutôt que de tracer une
+   * droite qui ne décrit aucune tendance.
+   */
+  | { type: "trendline"; pivots: number };
 
 // ─── DÉCLENCHEUR : le signal, évalué sur bougies CLÔTURÉES uniquement ──────
 
@@ -174,7 +193,17 @@ export type BlocStop =
    * la prise de liquidité n'était pas un piège.
    * Ne vaut qu'avec le déclencheur `balayage_puis_fvg`.
    */
-  | { type: "extreme_balayage"; bufferTicks: number };
+  | { type: "extreme_balayage"; bufferTicks: number }
+  /**
+   * Derrière le dernier sommet pivot confirmé (en vente) ou le dernier creux
+   * (en achat), plus un buffer.
+   *
+   * C'est le « stop derrière le dernier sommet » que décrivent les traders de
+   * trendline, et il est BEAUCOUP plus large qu'un stop sur la bougie de
+   * signal : sur le Nasdaq en M3, trente points contre sept. Cette différence
+   * décide à elle seule si les coûts mangent le risque ou non.
+   */
+  | { type: "dernier_pivot"; bufferTicks: number };
 
 export type BlocObjectif =
   /** Multiple du risque initial. 2 = on vise deux fois la distance du stop. */
@@ -227,6 +256,15 @@ export interface Couts {
 
 export interface PlanExecution {
   instrument: string;
+  /**
+   * Unité de temps de lecture, en minutes. Les bougies stockées sont des M1 et
+   * sont regroupées avant l'exécution.
+   *
+   * ⚠️ Presque personne ne trade en M1 : lire une stratégie de M3 sur des
+   * bougies d'une minute change TOUT, à commencer par la taille des stops
+   * structurels. Absent ou 1 = M1.
+   */
+  uniteDeTemps?: number;
   /** Sens autorisés. */
   sens: "long" | "short" | "les_deux";
   contexte: Contexte;
