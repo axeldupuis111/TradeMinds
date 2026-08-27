@@ -3096,6 +3096,15 @@ const dict: Record<string, string> = {
   "bt_pire_journee": "Tes {pertes} pertes d'affilée à {risque} % font -{total} % de ton capital dans la même journée. Ce n'est pas une prévision, c'est une multiplication : ça arrivera aussi souvent que trois pertes se suivront.",
   "bt_en_capital_note": "Conversion directe des R par ton risque par trade, à taille de position constante. Un compte qui grossit ou qui fond ne suit pas exactement cette courbe.",
   "bt_comble_dans_le_plan": "complété dans le plan",
+  "bt_suggestions_titre": "Le réglage voisin le plus proche qui produit assez de trades",
+  "bt_levier_tolerance": "Tolérance d'alignement à {apres} au lieu de {avant} : {trades} trades",
+  "bt_levier_pivots": "Un sommet reconnu sur {apres} bougies au lieu de {avant} : {trades} trades",
+  "bt_levier_unite_de_temps": "Unité de temps en {apres} au lieu de {avant} : {trades} trades",
+  "bt_levier_seance": "Séance ouverte à {apres} au lieu de {avant} : {trades} trades",
+  "bt_levier_touches": "{apres} touches au lieu de {avant} : {trades} trades",
+  "bt_levier_delai": "Délai à {apres} au lieu de {avant} : {trades} trades",
+  "bt_appliquer": "Appliquer",
+  "bt_suggestions_note": "Ces réglages agrandissent l'échantillon, ils ne rendent pas ta stratégie meilleure. Ils ne touchent ni à ton stop, ni à ton objectif, ni à tes coûts, et on ne te montre pas leur résultat : ce serait aller pêcher le bon chiffre à ta place. Chaque essai compte dans ton compteur.",
   "bt_duree_calcul": "Calculé en {ms} ms, dans ton navigateur."
 };
 

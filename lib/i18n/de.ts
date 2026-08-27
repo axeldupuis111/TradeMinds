@@ -3096,6 +3096,15 @@ const dict: Record<string, string> = {
   "bt_pire_journee": "Deine {pertes} Verluste in Folge zu je {risque} % ergeben -{total} % deines Kapitals an einem Tag. Das ist keine Prognose, sondern eine Multiplikation: Es passiert so oft, wie drei Verluste aufeinanderfolgen.",
   "bt_en_capital_note": "Direkte Umrechnung der R mit deinem Risiko pro Trade, bei konstanter Positionsgröße. Ein wachsendes oder schrumpfendes Konto folgt dieser Kurve nicht genau.",
   "bt_comble_dans_le_plan": "im Plan ergänzt",
+  "bt_suggestions_titre": "Die nächstliegende Einstellung, die genug Trades erzeugt",
+  "bt_levier_tolerance": "Ausrichtungstoleranz auf {apres} statt {avant}: {trades} Trades",
+  "bt_levier_pivots": "Ein Hoch über {apres} Kerzen statt {avant} erkannt: {trades} Trades",
+  "bt_levier_unite_de_temps": "Zeitrahmen {apres} statt {avant}: {trades} Trades",
+  "bt_levier_seance": "Sitzung auf {apres} statt {avant} geöffnet: {trades} Trades",
+  "bt_levier_touches": "{apres} Berührungen statt {avant}: {trades} Trades",
+  "bt_levier_delai": "Frist {apres} statt {avant}: {trades} Trades",
+  "bt_appliquer": "Übernehmen",
+  "bt_suggestions_note": "Diese Einstellungen vergrößern die Stichprobe, sie machen deine Strategie nicht besser. Sie rühren weder Stop noch Ziel noch Kosten an, und ihr Ergebnis wird nicht gezeigt: Das hieße, für dich nach der schönen Zahl zu angeln. Jeder Lauf zählt in deinem Versuchszähler.",
   "bt_duree_calcul": "In {ms} ms berechnet, in deinem Browser."
 };
 

@@ -4,7 +4,8 @@ import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
 import { coutsEnPrix, type Instrument } from "@/lib/backtest/instruments";
 import { MAX_TENTATIVES_AVANT_ALERTE, type LectureBacktest } from "@/lib/backtest/verdict";
-import type { AuditExecution, TradeSimule } from "@/lib/backtest/types";
+import type { AuditExecution, PlanExecution, TradeSimule } from "@/lib/backtest/types";
+import type { Suggestion } from "@/lib/backtest/suggestions";
 import { AlertTriangle, Info, TrendingDown, TrendingUp } from "lucide-react";
 import {
   Area,
@@ -44,6 +45,10 @@ export interface ResultatProps {
   moisManquants: string[];
   tentatives: number;
   ms: number;
+  /** Réglages voisins qui produiraient assez de trades. */
+  suggestions: Suggestion[];
+  /** Applique un réglage suggéré au plan. */
+  onAppliquer: (p: PlanExecution) => void;
   /** Risque par trade déclaré, en % du capital. Traduit les R en pourcents. */
   risqueParTradePct?: number;
   /** Arrêt après N pertes d'affilée, pour chiffrer la pire journée. */
@@ -85,6 +90,8 @@ export function Resultat({
   contestes,
   risqueParTradePct,
   maxPertesConsecutives,
+  suggestions,
+  onAppliquer,
   t,
 }: ResultatProps) {
   const c = useChartColors();
@@ -112,6 +119,43 @@ export function Resultat({
             <p className="mt-2 text-xs font-medium text-warning">
               {t(`bt_cause_${lecture.cause ?? "trop_peu"}`)}
             </p>
+            {/* ⚠️ NE PAS SE CONTENTER DE DIAGNOSTIQUER. Mesuré sur 108 réglages
+                plausibles : 56 % tombent sous le seuil de conclusion. Un
+                trader qui voit deux fois de suite un écran vide s'en va, et il
+                a raison. On lui montre donc le réglage voisin qui marche.
+                ⚠️ Ces suggestions n'optimisent QUE la taille de l'échantillon.
+                Elles ne touchent ni au stop, ni à l'objectif, ni aux coûts, et
+                on n'affiche jamais leur performance : ce serait chercher le
+                bon chiffre a la place du trader. */}
+            {suggestions.length > 0 ? (
+              <div className="mt-3 rounded-lg border border-accent/40 bg-accent/[0.06] p-3">
+                <p className="text-xs font-medium text-accent">{t("bt_suggestions_titre")}</p>
+                <ul className="mt-2 space-y-1.5">
+                  {suggestions.map((sug, i) => (
+                    <li key={i} className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="min-w-0 flex-1 text-xs text-foreground">
+                        {t(`bt_levier_${sug.levier}`, {
+                          avant: sug.avant,
+                          apres: sug.apres,
+                          trades: sug.trades,
+                        })}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => onAppliquer(sug.plan)}
+                        className="shrink-0 rounded-md border border-accent/60 px-2 py-1 text-[11px] font-medium text-accent transition-colors hover:bg-accent/15"
+                      >
+                        {t("bt_appliquer")}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-2 text-[11px] leading-snug text-foreground-muted">
+                  {t("bt_suggestions_note")}
+                </p>
+              </div>
+            ) : null}
+
             <p className="mt-2 text-xs text-foreground-muted">
               {t("bt_diagnostic_chiffres", {
                 niveau: audit.barresAvecNiveau,

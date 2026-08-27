@@ -154,6 +154,7 @@ export default function BacktestPage() {
     moisManquants: string[];
     ms: number;
     apercus: Apercu[];
+    suggestions: import("@/lib/backtest/suggestions").Suggestion[];
   } | null>(null);
 
   /**
@@ -324,6 +325,7 @@ export default function BacktestPage() {
           moisManquants: r.moisManquants,
           ms: r.ms,
           apercus: r.apercus,
+          suggestions: r.suggestions,
         });
         setEtat({ phase: "repos" });
       }
@@ -560,6 +562,14 @@ export default function BacktestPage() {
               ms={resultat.ms}
               verifie={verifie}
               contestes={contestes.size}
+              suggestions={resultat.suggestions}
+              onAppliquer={(p) => {
+                // On applique et on efface le resultat : le chiffre affiche ne
+                // correspondrait plus au plan visible, et un ecart entre les
+                // deux est la pire chose qui puisse arriver a cette page.
+                setPlan(p);
+                setResultat(null);
+              }}
               risqueParTradePct={plan.gestion.risqueParTradePct}
               maxPertesConsecutives={plan.gestion.maxPertesConsecutives}
               t={tr}

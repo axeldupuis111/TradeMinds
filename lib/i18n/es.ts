@@ -3096,6 +3096,15 @@ const dict: Record<string, string> = {
   "bt_pire_journee": "Tus {pertes} pérdidas seguidas al {risque} % suponen -{total} % de tu capital en una misma jornada. No es una previsión, es una multiplicación: ocurrirá tantas veces como tres pérdidas se encadenen.",
   "bt_en_capital_note": "Conversión directa de los R por tu riesgo por operación, a tamaño de posición constante. Una cuenta que crece o se reduce no sigue exactamente esta curva.",
   "bt_comble_dans_le_plan": "completado en el plan",
+  "bt_suggestions_titre": "El ajuste vecino más cercano que produce suficientes operaciones",
+  "bt_levier_tolerance": "Tolerancia de alineación a {apres} en vez de {avant}: {trades} operaciones",
+  "bt_levier_pivots": "Un máximo reconocido en {apres} velas en vez de {avant}: {trades} operaciones",
+  "bt_levier_unite_de_temps": "Temporalidad en {apres} en vez de {avant}: {trades} operaciones",
+  "bt_levier_seance": "Sesión abierta a {apres} en vez de {avant}: {trades} operaciones",
+  "bt_levier_touches": "{apres} toques en vez de {avant}: {trades} operaciones",
+  "bt_levier_delai": "Plazo a {apres} en vez de {avant}: {trades} operaciones",
+  "bt_appliquer": "Aplicar",
+  "bt_suggestions_note": "Estos ajustes agrandan la muestra, no mejoran tu estrategia. No tocan ni tu stop, ni tu objetivo, ni tus costes, y no se muestra su resultado: sería pescar la buena cifra en tu lugar. Cada ejecución cuenta en tu contador de intentos.",
   "bt_duree_calcul": "Calculado en {ms} ms, en tu navegador."
 };
 

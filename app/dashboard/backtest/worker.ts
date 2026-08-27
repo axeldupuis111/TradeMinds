@@ -3,7 +3,8 @@
 import { chargerSerie } from "@/lib/backtest/chargement";
 import { lancerBacktest } from "@/lib/backtest/engine";
 import { agreger } from "@/lib/backtest/serie";
-import { lireBacktest, type LectureBacktest } from "@/lib/backtest/verdict";
+import { lireBacktest, MIN_TRADES_CONCLUSION, type LectureBacktest } from "@/lib/backtest/verdict";
+import { chercherReglagesViables, type Suggestion } from "@/lib/backtest/suggestions";
 import type { Couts, PlanExecution, ResultatBacktest, SerieM1, TradeSimule } from "@/lib/backtest/types";
 
 /**
@@ -122,6 +123,11 @@ export type ReponseBacktest =
       octets: number;
       ms: number;
       apercus: Apercu[];
+      /**
+       * Réglages voisins qui produiraient assez de trades. Vide dès que le plan
+       * conclut déjà.
+       */
+      suggestions: Suggestion[];
     }
   | { type: "erreur"; message: string };
 
@@ -145,6 +151,15 @@ self.onmessage = async (e: MessageEvent<DemandeBacktest>) => {
     // que le trader ne reconnaîtrait pas, et la vérification perdrait son sens.
     const vues = agreger(serie, complet.uniteDeTemps ?? 1);
 
+    // ⚠️ On ne cherche des voisins QUE si l'échantillon est trop petit, et on ne
+    // regarde que leur NOMBRE de trades. Chercher aussi quand le plan conclut
+    // reviendrait à proposer au trader d'autres réglages « au cas où », c'est-à-
+    // dire à lui suggérer d'aller pêcher un meilleur chiffre.
+    const suggestions =
+      resultat.trades.length < MIN_TRADES_CONCLUSION
+        ? chercherReglagesViables(serie, complet, serie.tailleTick)
+        : [];
+
     poste({
       type: "fini",
       resultat,
@@ -154,6 +169,7 @@ self.onmessage = async (e: MessageEvent<DemandeBacktest>) => {
       octets,
       ms,
       apercus: preparerApercus(vues, resultat.trades),
+      suggestions,
     });
   } catch (err) {
     poste({ type: "erreur", message: err instanceof Error ? err.message : String(err) });
