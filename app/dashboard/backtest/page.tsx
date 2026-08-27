@@ -271,7 +271,11 @@ export default function BacktestPage() {
       // d'un clic comme les autres.
       const couvertureFinale = { ...json.couverture };
       const niveau = json.plan.niveau;
-      if (niveau?.type === "trendline" && niveau.toleranceTicks <= 0) {
+      // ⚠️ LE SEUIL EST LE SPREAD, PAS ZÉRO. Une tolérance d'alignement plus
+      // petite que l'écart achat-vente ne distingue rien du bruit : elle donne
+      // le même zéro trade qu'une tolérance nulle, en ayant l'air d'un réglage.
+      const toleranceMini = Math.round(instrument.spread / instrument.tailleTick);
+      if (niveau?.type === "trendline" && niveau.toleranceTicks < toleranceMini) {
         const parDefaut = Math.max(1, Math.round((instrument.spread * 2) / instrument.tailleTick));
         niveau.toleranceTicks = parDefaut;
         couvertureFinale.deduites = [

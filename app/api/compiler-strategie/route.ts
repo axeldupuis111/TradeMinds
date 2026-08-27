@@ -65,7 +65,7 @@ const CATALOGUE = `NIVEAU (un seul, obligatoire)
   {"type":"extremes_n_bougies","n":<2-500>}                    plus haut/bas des N dernieres bougies M1
   {"type":"extremes_veille"}                                   plus haut/bas de la veille
   {"type":"liquidite_swing","pivots":<2-500>}                  BSL/SSL : anciens sommets et creux pivots
-  {"type":"trendline","pivots":<2-500>,"touchesMin":<3-20>,"toleranceTicks":<0+>}
+  {"type":"trendline","pivots":<2-500>,"touchesMin":<3-20>,"tolerance":<en POINTS de prix>}
         TRENDLINE : une droite sur laquelle le prix REBONDIT au moins "touchesMin" fois (3 par defaut) sans
         jamais cloturer de l'autre cote. Elle peut monter, descendre ou etre horizontale : AUCUN sens n'est
         impose. Si une bougie cloture au travers avant la derniere touche, la droite est morte et ne compte plus.
@@ -76,7 +76,7 @@ const CATALOGUE = `NIVEAU (un seul, obligatoire)
 DECLENCHEUR (un seul, obligatoire)
   {"type":"cassure","mode":"cloture"|"meche"}
   {"type":"balayage_retour"}                                   balayage du niveau puis recloture de l'autre cote
-  {"type":"retest_apres_cassure","delaiMaxBarres":<1-500>,"toleranceTicks":<0+>}
+  {"type":"retest_apres_cassure","delaiMaxBarres":<1-500>,"tolerance":<en POINTS de prix>}
   {"type":"fvg_puis_retest","delaiMaxBarres":<1-500>}          CONTINUATION : cassure avec FVG, puis retest du FVG
   {"type":"balayage_puis_fvg","delaiReaction":<1-500>,"delaiRetest":<1-500>}
         RETOURNEMENT : prise de liquidite, puis impulsion inverse laissant un FVG, puis retour dans ce FVG.
@@ -85,18 +85,18 @@ DECLENCHEUR (un seul, obligatoire)
 CONFIRMATIONS (0 a 3, facultatif)
   {"type":"bougie_reaction"}                                   la bougie de signal cloture dans le sens du trade
   {"type":"biais_moyenne","periode":<2-1000>}                  entrer seulement dans le sens de la moyenne mobile
-  {"type":"amplitude_min","ticks":<1+>}
+  {"type":"amplitude_min","amplitude":<en POINTS de prix>}
 
 ENTREE (une seule, obligatoire)
   {"type":"open_bougie_suivante"}
   {"type":"limite_au_niveau","valableNBarres":<1-500>}
 
 STOP (un seul) — NE PAS PROPOSER SI LA FICHE N'EN PARLE PAS
-  {"type":"structurel","bufferTicks":<0+>}                     extreme de la bougie de signal
-  {"type":"fixe","ticks":<1+>}
-  {"type":"niveau_oppose","bufferTicks":<0+>}
-  {"type":"extreme_balayage","bufferTicks":<0+>}               au-dela de l'extreme du balayage (avec balayage_puis_fvg)
-  {"type":"dernier_pivot","bufferTicks":<0+>}                  derriere le dernier sommet (vente) ou creux (achat)
+  {"type":"structurel","buffer":<en POINTS>}                   extreme de la bougie de signal
+  {"type":"fixe","distance":<en POINTS>}
+  {"type":"niveau_oppose","buffer":<en POINTS>}
+  {"type":"extreme_balayage","buffer":<en POINTS>}             au-dela de l'extreme du balayage (avec balayage_puis_fvg)
+  {"type":"dernier_pivot","buffer":<en POINTS>}                derriere le dernier sommet (vente) ou creux (achat)
         C'est le « stop derriere le dernier sommet » des traders de trendline. BEAUCOUP plus large qu'un stop sur
         la bougie de signal : ne pas confondre les deux, l'ecart va de un a dix sur la taille du risque.
 
@@ -148,6 +148,7 @@ export async function POST(req: Request) {
   const apiKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return NextResponse.json({ plan: null, reason: "no_api_key" });
 
+  const echelle = instrumentParCode(instrument)!;
   const r = corps.regles ?? {};
   const dejaExtrait = [
     r.risk_reward != null ? `objectif annonce : ${r.risk_reward}R` : null,
@@ -165,7 +166,8 @@ FICHE DU TRADER
 ${fiche}
 """
 ${dejaExtrait ? `\nCHAMPS DEJA RENSEIGNES DANS SON PROFIL\n${dejaExtrait}\n` : ""}
-Instrument teste : ${instrument}. Fuseau du trader : ${corps.fuseau ?? "Europe/Paris"}. Les bougies sont en M1.
+Instrument teste : ${instrument}. Fuseau du trader : ${corps.fuseau ?? "Europe/Paris"}.
+ECHELLE DE CET INSTRUMENT, pour que tes distances aient un sens : le spread typique vaut ${echelle.spread} points et le glissement ${echelle.glissement} point(s). Une distance utile se compte en MULTIPLES de ces valeurs, jamais en fractions.
 
 CATALOGUE FERME (aucun autre type n'existe)
 ${CATALOGUE}
@@ -179,10 +181,12 @@ REGLES ABSOLUES
    - Un FILTRE EXPLICITE, meme exprime en mots, SE MECANISE et se DECLARE dans "deduites". "Je ne prends que dans le sens de la tendance H1" est une regle nette : c'est biais_moyenne avec periode 60 (H1) ou 240 (H4), et tu ecris dans "deduites" que la moyenne mobile approche la lecture de tendance du trader. Le mettre dans "nonTraduites" ferait tester une strategie SANS son filtre directionnel, c'est-a-dire des entrees dans les deux sens que le trader ne prend jamais. C'est la faute la plus couteuse possible ici : elle double le nombre de trades et change le resultat du tout au tout.
    - Quand un filtre explicite ne peut PAS etre mecanise faute de bloc adapte, alors seulement il va dans "nonTraduites".
 5. ⚠️ "pivots", "delaiReaction", "delaiRetest", "n", "periode" se comptent en BOUGIES DE "uniteDeTemps", PAS EN MINUTES. C'est la faute la plus couteuse du formulaire : en uniteDeTemps 60 (H1), "pivots": 240 veut dire 240 HEURES de chaque cote, soit dix jours, et plus aucun pivot n'existe jamais. Un pivot utile compte 3 a 10 bougies de chaque cote, quelle que soit l'unite. Ne convertis JAMAIS une duree en minutes ici.
-5b. ⚠️ "toleranceTicks" NE DOIT JAMAIS VALOIR 0 sur une trendline. A zero, un creux doit tomber exactement sur la droite au tick pres, ce qui n'arrive jamais : la troisieme touche ne se produit pas et le backtest rend zero trade sans explication. Compte environ un dixieme de l'amplitude d'une bougie de l'unite choisie.
+5b. ⚠⚠ TOUTES LES DISTANCES S'ECRIVENT EN POINTS DE PRIX, JAMAIS EN TICKS. "tolerance", "buffer", "distance", "amplitude" se lisent comme sur le graphique du trader. C'est la faute la plus insidieuse du formulaire, parce qu'elle ne plante pas : elle rend zero trade sur quatre ans. Vu en vrai sur le Nasdaq, ou le tick vaut 0,001 point : le modele avait ecrit 5 en pensant a une valeur raisonnable, ce qui faisait CINQ MILLIEMES de point sur un indice qui bouge de cent points par heure. Aucune droite n'a jamais ete touchee.
+   Pour te reperer, l'ordre de grandeur de l'instrument teste t'est donne plus haut : appuie-toi dessus. Une tolerance d'alignement utile vaut quelques fois le spread, jamais une fraction de celui-ci.
+5c. ⚠️ "tolerance" NE DOIT JAMAIS VALOIR 0 sur une trendline : a zero, un creux devrait tomber exactement sur la droite, ce qui n'arrive jamais.
 6. SI LE TRADER NE PREND QU'UN SEUL SENS, mets "sens" a "long" ou "short". S'il suit la tendance dans les deux sens, laisse "les_deux" ET pose le filtre de tendance.
 7. DANS "traduites" ET DANS "deduites", le champ "bloc"/"champ" ne prend QUE l'un de ces noms, seul et sans suffixe : contexte, niveau, declencheur, confirmations, entree, stop, objectif, sortiesAuxiliaires, gestion, sens, uniteDeTemps.
-   ⚠️ N'ECRIS JAMAIS « niveau - pivots » ni « stop - bufferTicks ». Le nom du bloc sert a SURLIGNER le reglage a corriger dans l'interface : un nom compose empeche l'interface de le retrouver, et le trader lit alors qu'un bloc est entoure en rouge alors que rien ne l'est. Precise le sous-parametre dans le texte de "pourquoi", pas dans le nom.
+   ⚠️ N'ECRIS JAMAIS « niveau - pivots » ni « stop - buffer ». Le nom du bloc sert a SURLIGNER le reglage a corriger dans l'interface : un nom compose empeche l'interface de le retrouver, et le trader lit alors qu'un bloc est entoure en rouge alors que rien ne l'est. Precise le sous-parametre dans le texte de "pourquoi", pas dans le nom.
 
 Reponds STRICTEMENT en JSON, sans texte autour :
 {"uniteDeTemps":<1|3|5|15|30|60|240>,"sens":"long"|"short"|"les_deux","contexte":{...},"niveau":{...},"declencheur":{...},"confirmations":[...],"entree":{...},"stop":{...} ou omis,"objectif":{...} ou omis,"sortiesAuxiliaires":{...},"gestion":{...},"traduites":[{"phrase":"citation courte de la fiche","bloc":"declencheur"}],"nonTraduites":["phrase non mecanisable"],"deduites":[{"champ":"stop","pourquoi":"..."}],"absents":["stop","objectif","risque","seance","unite_de_temps"]}`;
@@ -220,7 +224,7 @@ Reponds STRICTEMENT en JSON, sans texte autour :
 
     // ⚠️ C'est ICI que la promesse tient. Rien de ce que le modèle a écrit
     // n'entre dans le moteur sans être passé par le catalogue.
-    const compile = compilerDepuisModele(json, instrument);
+    const compile = compilerDepuisModele(json, instrument, echelle.tailleTick);
     return NextResponse.json(compile);
   } catch (err) {
     if (isLowCreditError(err)) await alertLowCreditsOnce();

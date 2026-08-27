@@ -117,6 +117,21 @@ const entier = (v: unknown, min: number, max: number): number | null => {
   return n >= min && n <= max ? n : null;
 };
 
+/**
+ * Une distance ecrite en POINTS DE PRIX, convertie en ticks.
+ *
+ * ⚠️ LE MODELE NE PARLE JAMAIS EN TICKS, ET C'EST UNE REGLE DURE. Un tick vaut
+ * 0,001 point sur le Nasdaq et 0,00001 sur l'euro : « 5 » n'a aucun sens absolu.
+ * Mesure reelle du piege : le modele a ecrit 5 en pensant a une tolerance
+ * raisonnable, ce qui faisait cinq milliemes de point sur un indice qui bouge de
+ * cent points par heure. 1563 droites tracees, ZERO touchee, zero trade sur
+ * quatre ans, et rien qui plante. La conversion se fait ici, une seule fois.
+ */
+function distance(v: unknown, tailleTick: number, min = 0, max = 1e9): number | null {
+  if (typeof v !== "number" || !Number.isFinite(v) || v < min || v > max) return null;
+  return Math.round(v / tailleTick);
+}
+
 const heure = (v: unknown): string | null =>
   typeof v === "string" && /^([01]?\d|2[0-3]):[0-5]\d$/.test(v.trim()) ? v.trim() : null;
 
@@ -131,7 +146,7 @@ function fuseau(v: unknown): string | null {
   }
 }
 
-export function validerNiveau(v: unknown): BlocNiveau | null {
+export function validerNiveau(v: unknown, tailleTick = 1): BlocNiveau | null {
   const o = v as Record<string, unknown>;
   if (!o || typeof o.type !== "string") return null;
   switch (o.type) {
@@ -159,7 +174,7 @@ export function validerNiveau(v: unknown): BlocNiveau | null {
       // par deux points il passe toujours une droite, et une droite à deux
       // touches relie deux hasards.
       const touchesMin = entier(o.touchesMin, 3, 20);
-      const toleranceTicks = entier(o.toleranceTicks, 0, 10_000_000);
+      const toleranceTicks = distance(o.tolerance, tailleTick);
       return pivots === null || touchesMin === null || toleranceTicks === null
         ? null
         : { type: "trendline", pivots, touchesMin, toleranceTicks };
@@ -169,7 +184,7 @@ export function validerNiveau(v: unknown): BlocNiveau | null {
   }
 }
 
-export function validerDeclencheur(v: unknown): BlocDeclencheur | null {
+export function validerDeclencheur(v: unknown, tailleTick = 1): BlocDeclencheur | null {
   const o = v as Record<string, unknown>;
   if (!o || typeof o.type !== "string") return null;
   switch (o.type) {
@@ -181,7 +196,7 @@ export function validerDeclencheur(v: unknown): BlocDeclencheur | null {
       return { type: "balayage_retour" };
     case "retest_apres_cassure": {
       const d = entier(o.delaiMaxBarres, 1, 500);
-      const tol = entier(o.toleranceTicks, 0, 100_000);
+      const tol = distance(o.tolerance, tailleTick);
       return d === null || tol === null
         ? null
         : { type: "retest_apres_cassure", delaiMaxBarres: d, toleranceTicks: tol };
@@ -202,7 +217,7 @@ export function validerDeclencheur(v: unknown): BlocDeclencheur | null {
   }
 }
 
-export function validerConfirmations(v: unknown): BlocConfirmation[] {
+export function validerConfirmations(v: unknown, tailleTick = 1): BlocConfirmation[] {
   if (!Array.isArray(v)) return [];
   const out: BlocConfirmation[] = [];
   for (const x of v) {
@@ -213,8 +228,8 @@ export function validerConfirmations(v: unknown): BlocConfirmation[] {
       const p = entier(o.periode, 2, 1000);
       if (p !== null) out.push({ type: "biais_moyenne", periode: p });
     } else if (o.type === "amplitude_min") {
-      const ticks = entier(o.ticks, 1, 1_000_000);
-      if (ticks !== null) out.push({ type: "amplitude_min", ticks });
+      const ticks = distance(o.amplitude, tailleTick);
+      if (ticks !== null && ticks > 0) out.push({ type: "amplitude_min", ticks });
     }
   }
   // Au-delà de trois filtres, on ne teste plus une méthode, on sculpte une
@@ -233,19 +248,19 @@ export function validerEntree(v: unknown): BlocEntree | null {
   return null;
 }
 
-export function validerStop(v: unknown): BlocStop | null {
+export function validerStop(v: unknown, tailleTick = 1): BlocStop | null {
   const o = v as Record<string, unknown>;
   if (!o || typeof o.type !== "string") return null;
   switch (o.type) {
     case "fixe": {
-      const ticks = entier(o.ticks, 1, 10_000_000);
-      return ticks === null ? null : { type: "fixe", ticks };
+      const ticks = distance(o.distance, tailleTick);
+      return ticks === null || ticks < 1 ? null : { type: "fixe", ticks };
     }
     case "structurel":
     case "niveau_oppose":
     case "extreme_balayage":
     case "dernier_pivot": {
-      const b = entier(o.bufferTicks, 0, 1_000_000);
+      const b = distance(o.buffer, tailleTick);
       return b === null ? null : { type: o.type, bufferTicks: b };
     }
     default:
@@ -336,20 +351,24 @@ const CHAMPS_OBLIGATOIRES: ChampObligatoire[] = [
  * ⚠️ Un bloc invalide n'est pas remplacé par un bloc par défaut : il est
  * ABSENT du plan rendu. L'interface le signale et demande au trader de trancher.
  */
-export function compilerDepuisModele(brut: unknown, instrument: string): PlanCompile {
+export function compilerDepuisModele(
+  brut: unknown,
+  instrument: string,
+  tailleTick = 1,
+): PlanCompile {
   const o = (brut ?? {}) as Record<string, unknown>;
   const plan: Partial<PlanExecution> = { instrument };
 
   const contexte = validerContexte(o.contexte);
   if (contexte) plan.contexte = contexte;
-  const niveau = validerNiveau(o.niveau);
+  const niveau = validerNiveau(o.niveau, tailleTick);
   if (niveau) plan.niveau = niveau;
-  const declencheur = validerDeclencheur(o.declencheur);
+  const declencheur = validerDeclencheur(o.declencheur, tailleTick);
   if (declencheur) plan.declencheur = declencheur;
-  plan.confirmations = validerConfirmations(o.confirmations);
+  plan.confirmations = validerConfirmations(o.confirmations, tailleTick);
   const entree = validerEntree(o.entree);
   if (entree) plan.entree = entree;
-  const stop = validerStop(o.stop);
+  const stop = validerStop(o.stop, tailleTick);
   if (stop) plan.stop = stop;
   const objectif = validerObjectif(o.objectif);
   if (objectif) plan.objectif = objectif;

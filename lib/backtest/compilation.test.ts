@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { champDeBase, compilerDepuisModele, graviteDuChamp, planComplet, validerNiveau, validerObjectif } from "./compilation";
+import { champDeBase, compilerDepuisModele, graviteDuChamp, planComplet, validerNiveau, validerObjectif, validerStop } from "./compilation";
 
 /**
  * Ces tests protègent une seule promesse : ce que le modèle propose n'entre pas
@@ -17,7 +17,7 @@ function propositionValide() {
     declencheur: { type: "balayage_puis_fvg", delaiReaction: 10, delaiRetest: 15 },
     confirmations: [{ type: "bougie_reaction" }],
     entree: { type: "open_bougie_suivante" },
-    stop: { type: "extreme_balayage", bufferTicks: 1 },
+    stop: { type: "extreme_balayage", buffer: 1 },
     objectif: { type: "multiple_r", r: 2 },
     sortiesAuxiliaires: {},
     gestion: { maxTradesParJour: 3 },
@@ -58,8 +58,8 @@ describe("le catalogue est fermé", () => {
   it("refuse une plage horaire qui franchit minuit", () => {
     // Le moteur ne sait pas la traiter. La refuser vaut mieux que rendre un
     // niveau vide sans que personne ne le voie.
-    expect(validerNiveau({ type: "range_horaire", debut: "22:00", fin: "02:00" })).toBeNull();
-    expect(validerNiveau({ type: "range_horaire", debut: "15:30", fin: "15:35" })).not.toBeNull();
+    expect(validerNiveau({ type: "range_horaire", debut: "22:00", fin: "02:00" }, 1)).toBeNull();
+    expect(validerNiveau({ type: "range_horaire", debut: "15:30", fin: "15:35" }, 1)).not.toBeNull();
   });
 
   it("refuse un fuseau inventé", () => {
@@ -196,5 +196,55 @@ describe("noms de champ composés", () => {
     for (const champ of ["niveau - pivots", "stop - bufferTicks", "objectif - r", "uniteDeTemps"]) {
       expect(graviteDuChamp(champ), champ).toBe("critique");
     }
+  });
+});
+
+describe("les distances se lisent en POINTS, jamais en ticks", () => {
+  /**
+   * ⚠️ LE PIÈGE LE PLUS INSIDIEUX DE TOUTE LA CHAÎNE, parce qu'il ne plante
+   * jamais. Un tick vaut 0,001 point sur le Nasdaq et 0,00001 sur l'euro : le
+   * nombre « 5 » n'a aucun sens absolu. Mesuré en vrai : le modèle a écrit 5 en
+   * pensant à une tolérance raisonnable, ce qui faisait cinq MILLIÈMES de point
+   * sur un indice qui bouge de cent points par heure. 1563 droites tracées,
+   * ZÉRO touchée, zéro trade sur quatre ans, et pas la moindre erreur.
+   */
+  const TICK_NASDAQ = 0.001;
+
+  it("convertit une tolérance de 5 points en 5000 ticks sur le Nasdaq", () => {
+    const n = validerNiveau(
+      { type: "trendline", pivots: 10, touchesMin: 3, tolerance: 5 },
+      TICK_NASDAQ,
+    );
+    expect(n).toEqual({ type: "trendline", pivots: 10, touchesMin: 3, toleranceTicks: 5000 });
+  });
+
+  it("donne un nombre de ticks tout autre sur une paire à cinq décimales", () => {
+    // Les mêmes « 5 points » sur l'euro font 500 000 ticks. C'est bien la
+    // preuve qu'un nombre nu ne veut rien dire sans son instrument.
+    const n = validerNiveau(
+      { type: "trendline", pivots: 10, touchesMin: 3, tolerance: 5 },
+      0.00001,
+    );
+    expect((n as { toleranceTicks: number }).toleranceTicks).toBe(500_000);
+  });
+
+  it("convertit aussi les stops et les buffers", () => {
+    expect(validerStop({ type: "fixe", distance: 25 }, TICK_NASDAQ)).toEqual({
+      type: "fixe",
+      ticks: 25_000,
+    });
+    expect(validerStop({ type: "dernier_pivot", buffer: 1.5 }, TICK_NASDAQ)).toEqual({
+      type: "dernier_pivot",
+      bufferTicks: 1_500,
+    });
+  });
+
+  it("refuse un champ en ticks resté du contrat précédent", () => {
+    // Si le modèle envoie encore `toleranceTicks`, le champ `tolerance` manque
+    // et le bloc est rejeté. Mieux vaut un niveau absent, que l'écran réclame,
+    // qu'une valeur mille fois trop petite qui rend zéro sans rien dire.
+    expect(
+      validerNiveau({ type: "trendline", pivots: 10, touchesMin: 3, toleranceTicks: 5 }, TICK_NASDAQ),
+    ).toBeNull();
   });
 });
