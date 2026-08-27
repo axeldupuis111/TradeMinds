@@ -151,6 +151,93 @@ export function minutesDepuisHeure(hhmm: string): number | null {
   return h * 60 + min;
 }
 
+/**
+ * VWAP de séance, remis à zéro à chaque changement de journée locale.
+ *
+ * ⚠️ ON N'A PAS LE VOLUME : les bougies stockées sont OHLC seulement. On pondère
+ * donc par l'AMPLITUDE de chaque bougie, qui lui est fortement corrélée. C'est
+ * une approximation assumée, déclarée à l'écran, et elle ne doit jamais être
+ * présentée comme le VWAP du courtier : les deux courbes se ressemblent sans se
+ * superposer.
+ */
+function vwapSession(
+  h: Int32Array,
+  l: Int32Array,
+  c: Int32Array,
+  t: Float64Array,
+  jourDe: (ms: number) => number,
+): Float64Array {
+  const out = new Float64Array(h.length).fill(NaN);
+  let jour = -1;
+  let sommePoids = 0;
+  let sommeValeur = 0;
+  for (let i = 0; i < h.length; i++) {
+    const j = jourDe(t[i]);
+    if (j !== jour) {
+      jour = j;
+      sommePoids = 0;
+      sommeValeur = 0;
+    }
+    const typique = (h[i] + l[i] + c[i]) / 3;
+    // Plancher à 1 : une bougie plate aurait un poids nul et disparaîtrait de
+    // la moyenne, ce qui est faux, elle a bien traité.
+    const poids = Math.max(1, h[i] - l[i]);
+    sommePoids += poids;
+    sommeValeur += typique * poids;
+    out[i] = sommeValeur / sommePoids;
+  }
+  return out;
+}
+
+/**
+ * Écart-type mobile des clôtures, sur `periode` bougies.
+ * Sert aux bandes de Bollinger. NaN tant que la fenêtre est incomplète.
+ */
+function ecartTypeMobile(c: Int32Array, periode: number, sma: Float64Array): Float64Array {
+  const out = new Float64Array(c.length).fill(NaN);
+  for (let i = periode - 1; i < c.length; i++) {
+    let somme = 0;
+    for (let j = i - periode + 1; j <= i; j++) {
+      const d = c[j] - sma[i];
+      somme += d * d;
+    }
+    out[i] = Math.sqrt(somme / periode);
+  }
+  return out;
+}
+
+/**
+ * RSI de Wilder, sur `periode` bougies.
+ *
+ * ⚠️ Le lissage de Wilder, pas une moyenne simple : c'est celui de toutes les
+ * plateformes. Une moyenne simple donne des valeurs proches mais différentes,
+ * et un trader qui compare notre chiffre au sien sur TradingView verrait un
+ * écart qu'il attribuerait, à raison, à une erreur.
+ */
+function rsiWilder(c: Int32Array, periode: number): Float64Array {
+  const out = new Float64Array(c.length).fill(NaN);
+  if (c.length <= periode) return out;
+
+  let gains = 0;
+  let pertes = 0;
+  for (let i = 1; i <= periode; i++) {
+    const d = c[i] - c[i - 1];
+    if (d > 0) gains += d;
+    else pertes -= d;
+  }
+  let moyGain = gains / periode;
+  let moyPerte = pertes / periode;
+  out[periode] = moyPerte === 0 ? 100 : 100 - 100 / (1 + moyGain / moyPerte);
+
+  for (let i = periode + 1; i < c.length; i++) {
+    const d = c[i] - c[i - 1];
+    moyGain = (moyGain * (periode - 1) + Math.max(0, d)) / periode;
+    moyPerte = (moyPerte * (periode - 1) + Math.max(0, -d)) / periode;
+    out[i] = moyPerte === 0 ? 100 : 100 - 100 / (1 + moyGain / moyPerte);
+  }
+  return out;
+}
+
 /** Moyenne mobile simple, précalculée. NaN tant que la fenêtre est incomplète. */
 function moyenneMobile(c: Int32Array, periode: number): Float64Array {
   const out = new Float64Array(c.length).fill(NaN);
@@ -181,6 +268,26 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
 
   const confBiais = plan.confirmations.find((x) => x.type === "biais_moyenne");
   const sma = confBiais && confBiais.type === "biais_moyenne" ? moyenneMobile(c, confBiais.periode) : null;
+
+  // ── Indicateurs, précalculés UNE FOIS et seulement si le plan les demande.
+  //    Les recalculer dans la boucle multiplierait le temps par la période.
+  const confRsi = plan.confirmations.find((x) => x.type === "rsi");
+  const rsi = confRsi && confRsi.type === "rsi" ? rsiWilder(c, confRsi.periode) : null;
+
+  const smaNiveau =
+    plan.niveau.type === "moyenne_mobile"
+      ? moyenneMobile(c, plan.niveau.periode)
+      : plan.niveau.type === "bollinger"
+        ? moyenneMobile(c, plan.niveau.periode)
+        : null;
+  const ecartType =
+    plan.niveau.type === "bollinger" && smaNiveau
+      ? ecartTypeMobile(c, plan.niveau.periode, smaNiveau)
+      : null;
+  const vwap =
+    plan.niveau.type === "vwap_session"
+      ? vwapSession(h, l, c, t, (ms) => horloge.jour(ms))
+      : null;
 
   const trades: TradeSimule[] = [];
   const audit: AuditExecution = {
@@ -294,6 +401,19 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
     };
   }
 
+  /**
+   * La zone active : order block, breaker ou déséquilibre.
+   *
+   * ⚠️ UNE ZONE PORTE UN SENS, contrairement à un niveau. Une zone de demande ne
+   * s'achète pas et ne se vend pas indifféremment : c'est ce qui la distingue
+   * d'un simple support. Le moteur le retient, et `entree_dans_zone` ne
+   * déclenche que dans ce sens-là.
+   */
+  let zoneSens: "long" | "short" | null = null;
+  let zoneBarre = -1;
+  /** Vrai quand le prix était DEHORS à la bougie précédente. */
+  let zoneDehors = true;
+
   // État du déclencheur à trois temps (balayage, impulsion, retour).
   let balayageSens: "long" | "short" | null = null;
   let balayageExtreme = 0;
@@ -305,6 +425,19 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
   let position: Position | null = null;
 
   const niveauRange = plan.niveau.type === "range_horaire" ? plan.niveau : null;
+  /**
+   * Le niveau courant a-t-il une EPAISSEUR ?
+   *
+   * ⚠️ Sert au dessin. Une zone se trace comme une boite depuis sa naissance,
+   * un niveau comme un trait : confondre les deux redonnerait le defaut qu'on
+   * vient de corriger, un setup qu'on ne reconnait pas.
+   */
+  const estNiveauZone =
+    plan.niveau.type === "range_horaire" ||
+    plan.niveau.type === "order_block" ||
+    plan.niveau.type === "breaker" ||
+    plan.niveau.type === "fvg_zone" ||
+    plan.niveau.type === "bollinger";
   const debutRange = niveauRange ? minutesDepuisHeure(niveauRange.debut) ?? 0 : 0;
   const finRange = niveauRange ? minutesDepuisHeure(niveauRange.fin) ?? 0 : 0;
 
@@ -545,6 +678,17 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
         if (sens === "long" ? c[i] <= o[i] : c[i] >= o[i]) return false;
       } else if (conf.type === "amplitude_min") {
         if (h[i] - l[i] < conf.ticks) return false;
+      } else if (conf.type === "rsi") {
+        const v = rsi ? rsi[i] : NaN;
+        if (Number.isNaN(v)) return false;
+        // ⚠️ Les deux usages sont OPPOSÉS : suivre l'élan, ou jouer l'excès.
+        // Se tromper de mode inverse le filtre, et un filtre inversé ne se voit
+        // pas dans les chiffres, seulement dans le nombre de trades.
+        if (conf.mode === "momentum") {
+          if (sens === "long" ? v < conf.seuil : v > 100 - conf.seuil) return false;
+        } else {
+          if (sens === "long" ? v > 100 - conf.seuil : v < conf.seuil) return false;
+        }
       } else if (conf.type === "biais_moyenne") {
         const m = sma ? sma[i] : NaN;
         if (Number.isNaN(m)) return false;
@@ -616,6 +760,24 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
         return sens;
       }
       return null;
+    }
+
+    if (d.type === "entree_dans_zone") {
+      if (haut == null || bas == null || zoneSens == null) return null;
+      if (i - zoneBarre > d.delaiMaxBarres) return null;
+
+      const dedans = l[i] <= haut && h[i] >= bas;
+      if (!dedans) {
+        zoneDehors = true;
+        return null;
+      }
+      // ⚠️ ON NE DÉCLENCHE QU'À L'ENTRÉE, pas tant que le prix reste dedans.
+      // Sans cette bascule, une zone traversée lentement produirait un signal à
+      // chaque bougie et gonflerait le nombre de trades sans qu'aucun setup
+      // supplémentaire n'ait eu lieu.
+      if (!zoneDehors) return null;
+      zoneDehors = false;
+      return zoneSens;
     }
 
     if (d.type === "balayage_puis_fvg") {
@@ -803,6 +965,89 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
           }
         }
       }
+    } else if (plan.niveau.type === "moyenne_mobile") {
+      const v = smaNiveau ? smaNiveau[i] : NaN;
+      // Une moyenne incomplète ne décrit rien : mieux vaut pas de niveau du
+      // tout qu'un niveau calculé sur trois bougies.
+      const arrondi = Number.isNaN(v) ? null : Math.round(v);
+      hautNiveau = arrondi;
+      basNiveau = arrondi;
+    } else if (plan.niveau.type === "vwap_session") {
+      const v = vwap ? vwap[i] : NaN;
+      const arrondi = Number.isNaN(v) ? null : Math.round(v);
+      hautNiveau = arrondi;
+      basNiveau = arrondi;
+    } else if (plan.niveau.type === "bollinger") {
+      const m = smaNiveau ? smaNiveau[i] : NaN;
+      const e = ecartType ? ecartType[i] : NaN;
+      if (Number.isNaN(m) || Number.isNaN(e)) {
+        hautNiveau = null;
+        basNiveau = null;
+      } else {
+        hautNiveau = Math.round(m + plan.niveau.ecarts * e);
+        basNiveau = Math.round(m - plan.niveau.ecarts * e);
+      }
+    } else if (
+      plan.niveau.type === "order_block" ||
+      plan.niveau.type === "breaker" ||
+      plan.niveau.type === "fvg_zone"
+    ) {
+      // ── Zones. Une nouvelle zone remplace l'ancienne : un trader ne suit pas
+      //    quinze order blocks à la fois, il travaille le dernier en date.
+      if (plan.niveau.type === "fvg_zone") {
+        const taille = plan.niveau.tailleMinTicks;
+        if (i >= 2) {
+          if (l[i] - h[i - 2] >= taille) {
+            basNiveau = h[i - 2];
+            hautNiveau = l[i];
+            zoneSens = "long";
+            zoneBarre = i;
+            zoneDehors = true;
+          } else if (l[i - 2] - h[i] >= taille) {
+            basNiveau = h[i];
+            hautNiveau = l[i - 2];
+            zoneSens = "short";
+            zoneBarre = i;
+            zoneDehors = true;
+          }
+        }
+      } else {
+        // Order block et breaker partagent la même détection : une impulsion,
+        // puis la dernière bougie de sens opposé qui l'a précédée.
+        const mini = plan.niveau.impulsionMinTicks;
+        const impulsion = c[i] - o[i];
+        if (Math.abs(impulsion) >= mini) {
+          const haussiere = impulsion > 0;
+          // On remonte au plus dix bougies : au-delà, la « dernière bougie
+          // opposée » n'a plus de rapport avec l'impulsion.
+          let j = -1;
+          for (let k = i - 1; k >= Math.max(0, i - 10); k--) {
+            if (haussiere ? c[k] < o[k] : c[k] > o[k]) {
+              j = k;
+              break;
+            }
+          }
+          if (j >= 0) {
+            basNiveau = l[j];
+            hautNiveau = h[j];
+            // ⚠️ UN BREAKER EST UN ORDER BLOCK QUI A CÉDÉ : il change de camp,
+            // une ancienne demande devenant une offre. Confondre les deux
+            // inverse le sens du trade, et rien à l'écran ne le montrerait.
+            zoneSens =
+              plan.niveau.type === "breaker" ? (haussiere ? "short" : "long") : haussiere ? "long" : "short";
+            zoneBarre = i;
+            zoneDehors = true;
+          }
+        }
+      }
+
+      // La zone expire : une boîte vieille de trois cents bougies ne décrit plus
+      // rien, et la garder ferait entrer sur un souvenir.
+      if (zoneBarre >= 0 && i - zoneBarre > 300) {
+        hautNiveau = null;
+        basNiveau = null;
+        zoneSens = null;
+      }
     } else if (plan.niveau.type === "extremes_n_bougies") {
       const k = plan.niveau.n;
       if (i >= k) {
@@ -895,20 +1140,22 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
           touches: ligne.points.map((pt) => ({ ms: t[pt.i], prixTicks: pt.prix })),
         };
       }
-    } else if (plan.niveau.type === "range_horaire") {
-      if (hautNiveau != null && basNiveau != null) {
-        trace = {
-          forme: "zone",
-          hautTicks: hautNiveau,
-          basTicks: basNiveau,
-          debutMs: t[Math.max(0, i - 60)],
-          finMs: t[i],
-        };
-      }
+    } else if (estNiveauZone && hautNiveau != null && basNiveau != null) {
+      // Une zone se dessine depuis sa NAISSANCE : la boite d'un order block cree
+      // quarante bougies plus tot n'a de sens que si on voit d'ou elle vient.
+      const naissance = zoneBarre >= 0 && zoneBarre <= i ? zoneBarre : Math.max(0, i - 60);
+      trace = {
+        forme: "zone",
+        hautTicks: hautNiveau,
+        basTicks: basNiveau,
+        debutMs: t[naissance],
+        finMs: t[i],
+      };
     } else {
       const niveau = sens === "long" ? hautNiveau : basNiveau;
       if (niveau != null) trace = { forme: "horizontale", prixTicks: niveau };
     }
+
     // Le niveau que le signal vient de franchir : c'est LUI que le trader doit
     // reconnaître sur le graphique d'inspection.
     const niveauSignal = (sens === "long" ? hautNiveau : basNiveau) ?? c[i];

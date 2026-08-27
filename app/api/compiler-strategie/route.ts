@@ -66,6 +66,17 @@ const CATALOGUE = `NIVEAU (un seul, obligatoire)
   {"type":"extremes_veille"}                                   plus haut/bas de la veille
   {"type":"liquidite_swing","pivots":<2-500>}                  BSL/SSL : anciens sommets et creux pivots
   {"type":"trendline","pivots":<2-500>,"touchesMin":<3-20>,"tolerance":<en POINTS de prix>}
+  {"type":"moyenne_mobile","periode":<2-1000>}                  moyenne mobile simple, en bougies de l'unite choisie
+  {"type":"vwap_session"}                                      VWAP de seance (approxime : on n'a pas le volume)
+  {"type":"bollinger","periode":<5-1000>,"ecarts":<0.5-5>}     bandes de Bollinger : haute et basse
+  {"type":"order_block","impulsionMin":<en POINTS>}            ORDER BLOCK : derniere bougie opposee avant l'impulsion.
+        Zone de demande sous le prix (achat) ou d'offre au-dessus (vente). A employer avec "entree_dans_zone".
+  {"type":"breaker","impulsionMin":<en POINTS>}                BREAKER : un order block que le prix a TRAVERSE.
+        ⚠️ Il change de camp : une ancienne demande devient une offre. Ne pas confondre avec order_block, le sens
+        du trade s'inverse.
+  {"type":"fvg_zone","tailleMin":<en POINTS>}                  le desequilibre a trois bougies pris comme ZONE d'entree
+        (et non comme simple condition). C'est l'usage le plus courant chez les traders ICT : ils attendent le
+        retour DANS la boite. A employer avec "entree_dans_zone".
         TRENDLINE : une droite sur laquelle le prix REBONDIT au moins "touchesMin" fois (3 par defaut) sans
         jamais cloturer de l'autre cote. Elle peut monter, descendre ou etre horizontale : AUCUN sens n'est
         impose. Si une bougie cloture au travers avant la derniere touche, la droite est morte et ne compte plus.
@@ -79,6 +90,9 @@ DECLENCHEUR (un seul, obligatoire)
   {"type":"retest_apres_cassure","delaiMaxBarres":<1-500>,"tolerance":<en POINTS de prix>}
   {"type":"fvg_puis_retest","delaiMaxBarres":<1-500>}          CONTINUATION : cassure avec FVG, puis retest du FVG
   {"type":"balayage_puis_fvg","delaiReaction":<1-500>,"delaiRetest":<1-500>}
+  {"type":"entree_dans_zone","delaiMaxBarres":<1-1000>}        le prix REVIENT dans la zone, on entre dans son sens.
+        C'est l'entree classique sur order block, breaker ou FVG : on ne casse rien, on attend le retour dans la
+        boite. N'a de sens qu'avec un niveau qui est une ZONE.
         RETOURNEMENT : prise de liquidite, puis impulsion inverse laissant un FVG, puis retour dans ce FVG.
         Invalide si le prix redepasse l'extreme du balayage.
 
@@ -86,6 +100,10 @@ CONFIRMATIONS (0 a 3, facultatif)
   {"type":"bougie_reaction"}                                   la bougie de signal cloture dans le sens du trade
   {"type":"biais_moyenne","periode":<2-1000>}                  entrer seulement dans le sens de la moyenne mobile
   {"type":"amplitude_min","amplitude":<en POINTS de prix>}
+  {"type":"rsi","periode":<2-1000>,"seuil":<50-95>,"mode":"momentum"|"exces"}
+        ⚠️ LES DEUX MODES SONT OPPOSES. "momentum" : on n'achete que si le RSI depasse le seuil, donc dans le sens
+        de la force. "exces" : on n'achete que s'il est SOUS le seuil symetrique, donc en survente. Se tromper de
+        mode inverse le filtre, et un filtre inverse ne se voit dans aucun chiffre.
 
 ENTREE (une seule, obligatoire)
   {"type":"open_bougie_suivante"}
@@ -185,6 +203,10 @@ REGLES ABSOLUES
    Pour te reperer, l'ordre de grandeur de l'instrument teste t'est donne plus haut : appuie-toi dessus. Une tolerance d'alignement utile vaut quelques fois le spread, jamais une fraction de celui-ci.
 5c. ⚠️ "tolerance" NE DOIT JAMAIS VALOIR 0 sur une trendline : a zero, un creux devrait tomber exactement sur la droite, ce qui n'arrive jamais.
 6. SI LE TRADER NE PREND QU'UN SEUL SENS, mets "sens" a "long" ou "short". S'il suit la tendance dans les deux sens, laisse "les_deux" ET pose le filtre de tendance.
+6b. CHOISIR LE BON BLOC DE ZONE. Si le trader dit qu'il attend le RETOUR du prix dans un order block, un breaker
+   ou un FVG, prends le niveau correspondant AVEC "entree_dans_zone". Si au contraire il attend une CASSURE d'un
+   niveau, prends "cassure". Un retour dans une zone et une cassure de niveau sont deux evenements opposes : les
+   confondre fait entrer a contresens.
 7. DANS "traduites" ET DANS "deduites", le champ "bloc"/"champ" ne prend QUE l'un de ces noms, seul et sans suffixe : contexte, niveau, declencheur, confirmations, entree, stop, objectif, sortiesAuxiliaires, gestion, sens, uniteDeTemps.
    ⚠️ N'ECRIS JAMAIS « niveau - pivots » ni « stop - buffer ». Le nom du bloc sert a SURLIGNER le reglage a corriger dans l'interface : un nom compose empeche l'interface de le retrouver, et le trader lit alors qu'un bloc est entoure en rouge alors que rien ne l'est. Precise le sous-parametre dans le texte de "pourquoi", pas dans le nom.
 

@@ -155,6 +155,13 @@ export function EditeurPlan({ plan, instrument, onChange, contestes, t }: Editeu
             valeur={plan.niveau.type}
             onChange={(type) => {
               if (type === "range_horaire") maj({ niveau: { type, debut: "15:30", fin: "15:35" } });
+              else if (type === "moyenne_mobile") maj({ niveau: { type, periode: 50 } });
+              else if (type === "vwap_session") maj({ niveau: { type } });
+              else if (type === "bollinger") maj({ niveau: { type, periode: 20, ecarts: 2 } });
+              else if (type === "order_block" || type === "breaker")
+                maj({ niveau: { type, impulsionMinTicks: enTicks(instrument.spread * 8) } });
+              else if (type === "fvg_zone")
+                maj({ niveau: { type, tailleMinTicks: enTicks(instrument.spread * 2) } });
               else if (type === "extremes_n_bougies") maj({ niveau: { type, n: 20 } });
               else if (type === "liquidite_swing") maj({ niveau: { type, pivots: 20 } });
               else if (type === "trendline")
@@ -167,6 +174,12 @@ export function EditeurPlan({ plan, instrument, onChange, contestes, t }: Editeu
               { valeur: "range_horaire", label: t("bt_niveau_range") },
               { valeur: "extremes_n_bougies", label: t("bt_niveau_extremes") },
               { valeur: "extremes_veille", label: t("bt_niveau_veille") },
+              { valeur: "order_block", label: t("bt_niveau_order_block") },
+              { valeur: "breaker", label: t("bt_niveau_breaker") },
+              { valeur: "fvg_zone", label: t("bt_niveau_fvg_zone") },
+              { valeur: "moyenne_mobile", label: t("bt_niveau_moyenne") },
+              { valeur: "vwap_session", label: t("bt_niveau_vwap") },
+              { valeur: "bollinger", label: t("bt_niveau_bollinger") },
             ]}
           />
         </Champ>
@@ -231,6 +244,71 @@ export function EditeurPlan({ plan, instrument, onChange, contestes, t }: Editeu
             </Champ>
           </>
         ) : null}
+        {plan.niveau.type === "moyenne_mobile" || plan.niveau.type === "bollinger" ? (
+          <Champ label={t("bt_periode")} aide={t("bt_periode_aide")}>
+            <Nombre
+              valeur={plan.niveau.periode}
+              min={2}
+              max={1000}
+              suffixe={t("bt_unite_bougies")}
+              onChange={(periode) =>
+                maj({
+                  niveau:
+                    plan.niveau.type === "bollinger"
+                      ? { type: "bollinger", periode, ecarts: (plan.niveau as { ecarts: number }).ecarts }
+                      : { type: "moyenne_mobile", periode },
+                })
+              }
+            />
+          </Champ>
+        ) : null}
+        {plan.niveau.type === "bollinger" ? (
+          <Champ label={t("bt_ecarts")} aide={t("bt_ecarts_aide")}>
+            <Nombre
+              valeur={plan.niveau.ecarts}
+              min={0.5}
+              max={5}
+              pas={0.1}
+              onChange={(ecarts) =>
+                maj({
+                  niveau: { type: "bollinger", periode: (plan.niveau as { periode: number }).periode, ecarts },
+                })
+              }
+            />
+          </Champ>
+        ) : null}
+        {plan.niveau.type === "order_block" || plan.niveau.type === "breaker" ? (
+          <Champ label={t("bt_impulsion_min")} aide={t("bt_impulsion_min_aide")}>
+            <Nombre
+              valeur={prix(plan.niveau.impulsionMinTicks)}
+              min={instrument.tailleTick}
+              pas={instrument.tailleTick}
+              onChange={(v) =>
+                maj({
+                  niveau: {
+                    type: plan.niveau.type as "order_block" | "breaker",
+                    impulsionMinTicks: Math.max(1, enTicks(v)),
+                  },
+                })
+              }
+            />
+          </Champ>
+        ) : null}
+        {plan.niveau.type === "fvg_zone" ? (
+          <Champ label={t("bt_taille_min_fvg")} aide={t("bt_taille_min_fvg_aide")}>
+            <Nombre
+              valeur={prix(plan.niveau.tailleMinTicks)}
+              min={instrument.tailleTick}
+              pas={instrument.tailleTick}
+              onChange={(v) =>
+                maj({ niveau: { type: "fvg_zone", tailleMinTicks: Math.max(1, enTicks(v)) } })
+              }
+            />
+          </Champ>
+        ) : null}
+        {plan.niveau.type === "vwap_session" ? (
+          <p className="text-xs leading-snug text-warning sm:col-span-2">{t("bt_vwap_reserve")}</p>
+        ) : null}
         {plan.niveau.type === "extremes_n_bougies" ? (
           <Champ label={t("bt_n_bougies")}>
             <Nombre
@@ -275,6 +353,7 @@ export function EditeurPlan({ plan, instrument, onChange, contestes, t }: Editeu
               else if (type === "retest_apres_cassure")
                 maj({ declencheur: { type, delaiMaxBarres: 10, toleranceTicks: 2 } });
               else if (type === "fvg_puis_retest") maj({ declencheur: { type, delaiMaxBarres: 5 } });
+              else if (type === "entree_dans_zone") maj({ declencheur: { type, delaiMaxBarres: 30 } });
               else maj({ declencheur: { type: "balayage_puis_fvg", delaiReaction: 10, delaiRetest: 15 } });
             }}
             options={[
@@ -283,6 +362,7 @@ export function EditeurPlan({ plan, instrument, onChange, contestes, t }: Editeu
               { valeur: "fvg_puis_retest", label: t("bt_decl_fvg") },
               { valeur: "retest_apres_cassure", label: t("bt_decl_retest") },
               { valeur: "cassure", label: t("bt_decl_cassure") },
+              { valeur: "entree_dans_zone", label: t("bt_decl_entree_zone") },
             ]}
           />
         </Champ>
@@ -335,6 +415,19 @@ export function EditeurPlan({ plan, instrument, onChange, contestes, t }: Editeu
               />
             </Champ>
           </>
+        ) : null}
+        {plan.declencheur.type === "entree_dans_zone" ? (
+          <Champ label={t("bt_zone_validite")} aide={t("bt_zone_validite_aide")}>
+            <Nombre
+              valeur={plan.declencheur.delaiMaxBarres}
+              min={1}
+              max={1000}
+              suffixe={t("bt_unite_bougies")}
+              onChange={(delaiMaxBarres) =>
+                maj({ declencheur: { type: "entree_dans_zone", delaiMaxBarres } })
+              }
+            />
+          </Champ>
         ) : null}
         {plan.declencheur.type === "fvg_puis_retest" ? (
           <Champ label={t("bt_delai_retest")}>
@@ -400,11 +493,52 @@ export function EditeurPlan({ plan, instrument, onChange, contestes, t }: Editeu
             onChange={() => basculerConfirmation({ type: "biais_moyenne", periode: 50 })}
           />
           <Bascule
+            label={t("bt_conf_rsi")}
+            actif={aConfirmation("rsi")}
+            onChange={() => basculerConfirmation({ type: "rsi", periode: 14, seuil: 55, mode: "momentum" })}
+          />
+          <Bascule
             label={t("bt_conf_amplitude")}
             actif={aConfirmation("amplitude_min")}
             onChange={() => basculerConfirmation({ type: "amplitude_min", ticks: enTicks(instrument.spread * 3) })}
           />
         </div>
+        {/* ⚠️ LE MODE N'EST PAS UN DETAIL : « suivre l'elan » et « jouer
+            l'exces » sont deux usages OPPOSES du meme indicateur. Se tromper
+            inverse le filtre, et un filtre inverse ne se voit dans aucun
+            chiffre, seulement dans le nombre de trades. */}
+        {aConfirmation("rsi") ? (
+          <>
+            <Champ label={t("bt_rsi_mode")} aide={t("bt_rsi_mode_aide")}>
+              <Liste
+                valeur={(plan.confirmations.find((x) => x.type === "rsi") as { mode: string }).mode}
+                onChange={(mode) =>
+                  maj({
+                    confirmations: plan.confirmations.map((x) =>
+                      x.type === "rsi" ? { ...x, mode: mode as "momentum" | "exces" } : x,
+                    ),
+                  })
+                }
+                options={[
+                  { valeur: "momentum", label: t("bt_rsi_momentum") },
+                  { valeur: "exces", label: t("bt_rsi_exces") },
+                ]}
+              />
+            </Champ>
+            <Champ label={t("bt_rsi_seuil")}>
+              <Nombre
+                valeur={(plan.confirmations.find((x) => x.type === "rsi") as { seuil: number }).seuil}
+                min={50}
+                max={95}
+                onChange={(seuil) =>
+                  maj({
+                    confirmations: plan.confirmations.map((x) => (x.type === "rsi" ? { ...x, seuil } : x)),
+                  })
+                }
+              />
+            </Champ>
+          </>
+        ) : null}
       </Bloc>
 
       {/* ── Entrée, stop, objectif ───────────────────────────────────────── */}

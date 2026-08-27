@@ -168,6 +168,31 @@ export function validerNiveau(v: unknown, tailleTick = 1): BlocNiveau | null {
       const pivots = entier(o.pivots, 2, 500);
       return pivots === null ? null : { type: "liquidite_swing", pivots };
     }
+    case "moyenne_mobile": {
+      const periode = entier(o.periode, 2, 1000);
+      return periode === null ? null : { type: "moyenne_mobile", periode };
+    }
+    case "vwap_session":
+      return { type: "vwap_session" };
+    case "bollinger": {
+      const periode = entier(o.periode, 5, 1000);
+      const ecarts =
+        typeof o.ecarts === "number" && o.ecarts >= 0.5 && o.ecarts <= 5
+          ? Math.round(o.ecarts * 10) / 10
+          : null;
+      return periode === null || ecarts === null ? null : { type: "bollinger", periode, ecarts };
+    }
+    case "order_block":
+    case "breaker": {
+      const impulsionMinTicks = distance(o.impulsionMin, tailleTick);
+      return impulsionMinTicks === null || impulsionMinTicks < 1
+        ? null
+        : { type: o.type, impulsionMinTicks };
+    }
+    case "fvg_zone": {
+      const tailleMinTicks = distance(o.tailleMin, tailleTick);
+      return tailleMinTicks === null || tailleMinTicks < 1 ? null : { type: "fvg_zone", tailleMinTicks };
+    }
     case "trendline": {
       const pivots = entier(o.pivots, 2, 500);
       // ⚠️ Trois touches est le PLANCHER, pas un défaut modifiable vers le bas :
@@ -205,6 +230,10 @@ export function validerDeclencheur(v: unknown, tailleTick = 1): BlocDeclencheur 
       const d = entier(o.delaiMaxBarres, 1, 500);
       return d === null ? null : { type: "fvg_puis_retest", delaiMaxBarres: d };
     }
+    case "entree_dans_zone": {
+      const d = entier(o.delaiMaxBarres, 1, 1000);
+      return d === null ? null : { type: "entree_dans_zone", delaiMaxBarres: d };
+    }
     case "balayage_puis_fvg": {
       const a = entier(o.delaiReaction, 1, 500);
       const b = entier(o.delaiRetest, 1, 500);
@@ -227,6 +256,13 @@ export function validerConfirmations(v: unknown, tailleTick = 1): BlocConfirmati
     else if (o.type === "biais_moyenne") {
       const p = entier(o.periode, 2, 1000);
       if (p !== null) out.push({ type: "biais_moyenne", periode: p });
+    } else if (o.type === "rsi") {
+      const periode = entier(o.periode, 2, 1000);
+      // Un seuil hors de 50-95 n'est plus un filtre : sous 50 il laisse tout
+      // passer, au-dela de 95 il ne passe jamais.
+      const seuil = entier(o.seuil, 50, 95);
+      const mode = o.mode === "exces" ? "exces" : "momentum";
+      if (periode !== null && seuil !== null) out.push({ type: "rsi", periode, seuil, mode });
     } else if (o.type === "amplitude_min") {
       const ticks = distance(o.amplitude, tailleTick);
       if (ticks !== null && ticks > 0) out.push({ type: "amplitude_min", ticks });

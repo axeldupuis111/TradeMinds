@@ -131,7 +131,53 @@ export type BlocNiveau =
       touchesMin: number;
       /** Écart maximal, en ticks, pour qu'un pivot compte comme une touche. */
       toleranceTicks: number;
-    };
+    }
+  // ─── Indicateurs : le niveau est une COURBE, pas un prix figé ───────────
+  /**
+   * Moyenne mobile simple. Le niveau se déplace à chaque bougie.
+   * ⚠️ Elle n'existe qu'une fois `periode` bougies écoulées : avant, il n'y a
+   * pas de moyenne, et en calculer une sur un historique incomplet reviendrait
+   * à comparer le prix à un chiffre qui ne décrit rien.
+   */
+  | { type: "moyenne_mobile"; periode: number }
+  /**
+   * VWAP de séance : prix moyen pondéré par le volume depuis l'ouverture.
+   *
+   * ⚠️ ON N'A PAS LE VOLUME. Les bougies stockées sont OHLC seulement, donc on
+   * pondère par l'AMPLITUDE de chaque bougie, qui lui est fortement corrélée.
+   * C'est une approximation, elle est déclarée comme telle à l'écran, et elle
+   * ne doit jamais être présentée comme le VWAP du courtier.
+   */
+  | { type: "vwap_session" }
+  /**
+   * Bandes de Bollinger : la bande haute et la bande basse forment les deux
+   * côtés du niveau. Une cassure en sort, un balayage-retour y revient.
+   */
+  | { type: "bollinger"; periode: number; ecarts: number }
+  // ─── Zones : un niveau qui a une ÉPAISSEUR et un sens ───────────────────
+  /**
+   * ORDER BLOCK : la dernière bougie de sens opposé avant l'impulsion qui casse
+   * la structure. Zone de demande sous le prix (achat), d'offre au-dessus
+   * (vente).
+   *
+   * ⚠️ Contrairement à un niveau, une zone porte un SENS : une zone de demande
+   * ne s'achète pas et ne se vend pas indifféremment. Le moteur le retient, et
+   * `entree_dans_zone` ne déclenche que dans ce sens-là.
+   */
+  | { type: "order_block"; impulsionMinTicks: number }
+  /**
+   * FVG : le déséquilibre à trois bougies, pris comme ZONE d'entrée et non
+   * comme simple condition. C'est la façon dont la plupart des traders ICT
+   * l'emploient : ils attendent le retour DANS la boîte.
+   */
+  | { type: "fvg_zone"; tailleMinTicks: number }
+  /**
+   * BREAKER : un order block que le prix a traversé. Il change alors de camp,
+   * une ancienne demande devenant une offre. C'est la nuance que les traders
+   * distinguent d'un simple order block, et la confondre inverse le sens du
+   * trade.
+   */
+  | { type: "breaker"; impulsionMinTicks: number };
 
 // ─── DÉCLENCHEUR : le signal, évalué sur bougies CLÔTURÉES uniquement ──────
 
@@ -169,7 +215,20 @@ export type BlocDeclencheur =
    * retracement ne doit pas dépasser la prise de liquidité », et sans elle on
    * entre à contresens d'un marché qui continue.
    */
-  | { type: "balayage_puis_fvg"; delaiReaction: number; delaiRetest: number };
+  | { type: "balayage_puis_fvg"; delaiReaction: number; delaiRetest: number }
+  /**
+   * LE PRIX REVIENT DANS LA ZONE, et on entre dans le sens de la zone.
+   *
+   * C'est l'entrée classique sur order block, breaker ou FVG : on ne casse
+   * rien, on attend que le prix revienne dans la boîte. À n'employer qu'avec un
+   * niveau qui est une zone : sur un niveau sans épaisseur, il n'y a pas de
+   * dedans.
+   *
+   * ⚠️ Le signal ne se déclenche qu'à l'ENTRÉE dans la zone, pas tant que le
+   * prix y reste. Sans cette bascule, une zone traversée lentement produirait un
+   * signal à chaque bougie et gonflerait le nombre de trades sans raison.
+   */
+  | { type: "entree_dans_zone"; delaiMaxBarres: number };
 
 // ─── CONFIRMATIONS : filtres facultatifs, TOUS doivent passer ──────────────
 
@@ -179,7 +238,18 @@ export type BlocConfirmation =
   /** On n'entre que dans le sens de la moyenne mobile simple à N périodes. */
   | { type: "biais_moyenne"; periode: number }
   /** La bougie de signal doit avoir une amplitude minimale. */
-  | { type: "amplitude_min"; ticks: number };
+  | { type: "amplitude_min"; ticks: number }
+  /**
+   * RSI, dans l'un des deux usages que les traders en font et qui sont
+   * OPPOSÉS : suivre l'élan, ou jouer l'excès.
+   *
+   * `momentum` : on n'achète que si le RSI est au-dessus du seuil, donc dans le
+   * sens de la force. `exces` : on n'achète que s'il est SOUS le seuil
+   * symétrique, donc en survente. Confondre les deux inverse le filtre, et un
+   * filtre inversé ne se voit pas dans les chiffres, seulement dans le nombre
+   * de trades.
+   */
+  | { type: "rsi"; periode: number; seuil: number; mode: "momentum" | "exces" };
 
 // ─── ENTRÉE ────────────────────────────────────────────────────────────────
 
