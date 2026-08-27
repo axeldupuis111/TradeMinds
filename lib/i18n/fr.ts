@@ -2919,7 +2919,7 @@ const dict: Record<string, string> = {
   "bt_non_traduites_note": "Le chiffre ci-dessous ne les inclut pas. Elles filtreraient probablement des trades que ce test a pris.",
   "bt_deduites": "Choix faits faute de règle écrite",
   "bt_absents": "Ta fiche ne dit rien de ces points",
-  "bt_absents_note": "Ce ne sont pas des détails techniques : sans eux, ta méthode ne peut pas être exécutée deux fois de la même façon, par toi ni par personne. Les valeurs utilisées ci-dessous sont donc les nôtres, pas les tiennes.",
+  "bt_absents_note": "Ce ne sont pas des détails techniques : sans eux, ta méthode ne peut pas être exécutée deux fois de la même façon, par toi ni par personne. Tu peux poser des valeurs dans le plan ci-dessous, mais elles resteront listées ici tant que ta fiche ne les dira pas : c'est là qu'il faut les écrire pour de bon.",
   "bt_absent_stop": "Où se place ton stop",
   "bt_absent_objectif": "Où tu prends tes gains",
   "bt_absent_risque": "Combien tu risques par trade",
@@ -3088,6 +3088,14 @@ const dict: Record<string, string> = {
   "bt_bloc_niveau_trendline_aide": "Une trendline relie au moins trois sommets (ou trois creux) alignés, dans n'importe quel sens, sans qu'aucune clôture ne l'ait traversée. Les trois réglages ci-dessous disent exactement ça.",
   "bt_definition_sommet": "Ce qui compte comme un sommet",
   "bt_definition_sommet_aide": "Détail technique, pas la définition de ta trendline : un sommet doit dominer ce nombre de bougies de chaque côté pour être reconnu. Trois à dix suffisent, quelle que soit l'unité de temps.",
+  "bt_risque_par_trade": "Risque par trade",
+  "bt_risque_par_trade_aide": "Part de ton capital que tu perds sur un stop. Le moteur n'en a pas besoin pour calculer, mais sans elle tout reste en R et tu ne sais pas ce que ça fait à ton compte.",
+  "bt_en_capital": "Ce que ça fait à ton compte",
+  "bt_capital_total": "Résultat total",
+  "bt_capital_drawdown": "Pire recul du compte",
+  "bt_pire_journee": "Tes {pertes} pertes d'affilée à {risque} % font -{total} % de ton capital dans la même journée. Ce n'est pas une prévision, c'est une multiplication : ça arrivera aussi souvent que trois pertes se suivront.",
+  "bt_en_capital_note": "Conversion directe des R par ton risque par trade, à taille de position constante. Un compte qui grossit ou qui fond ne suit pas exactement cette courbe.",
+  "bt_comble_dans_le_plan": "complété dans le plan",
   "bt_duree_calcul": "Calculé en {ms} ms, dans ton navigateur."
 };
 

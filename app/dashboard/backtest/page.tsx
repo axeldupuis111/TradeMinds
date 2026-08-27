@@ -467,6 +467,7 @@ export default function BacktestPage() {
             {couverture ? (
               <CarteCouverture
                 couverture={couverture}
+                plan={plan}
                 contestes={contestes}
                 onContester={(champ) =>
                   setContestes((prec) => {
@@ -555,6 +556,8 @@ export default function BacktestPage() {
               ms={resultat.ms}
               verifie={verifie}
               contestes={contestes.size}
+              risqueParTradePct={plan.gestion.risqueParTradePct}
+              maxPertesConsecutives={plan.gestion.maxPertesConsecutives}
               t={tr}
             />
           </StaggerItem>
@@ -571,13 +574,28 @@ export default function BacktestPage() {
  * outil qui ne montrerait que la première liste laisserait croire que le chiffre
  * porte sur toute la méthode du trader, ce qui est faux dans presque tous les cas.
  */
+/**
+ * Ce trou de la fiche a-t-il ete comble dans le plan ?
+ *
+ * ⚠️ Repond sur ce que le TRADER a pose, pas sur ce que le socle fournit :
+ * un stop present parce qu'on l'a mis par defaut n'est pas un stop qu'il a
+ * choisi. Seuls les champs qu'il remplit lui-meme comptent ici.
+ */
+function estComble(champ: string, plan: PlanExecution): boolean {
+  if (champ === "risque") return (plan.gestion.risqueParTradePct ?? 0) > 0;
+  if (champ === "unite_de_temps") return (plan.uniteDeTemps ?? 1) > 1;
+  return false;
+}
+
 function CarteCouverture({
   couverture,
+  plan,
   contestes,
   onContester,
   t,
 }: {
   couverture: Couverture;
+  plan: PlanExecution;
   contestes: Set<string>;
   onContester: (champ: string) => void;
   t: (k: string, v?: Record<string, string | number>) => string;
@@ -672,10 +690,30 @@ function CarteCouverture({
       {couverture.absents.length > 0 ? (
         <div className={cn("rounded-lg border border-loss/40 bg-loss/[0.06] p-3")}>
           <p className="text-xs font-medium text-loss">{t("bt_absents")}</p>
-          <ul className="mt-1.5 list-disc space-y-1 pl-5 text-xs text-foreground">
-            {couverture.absents.map((c) => (
-              <li key={c}>{t(`bt_absent_${c}`)}</li>
-            ))}
+          <ul className="mt-1.5 space-y-1 pl-1 text-xs text-foreground">
+            {couverture.absents.map((c) => {
+              // ⚠️ LA LIGNE NE DISPARAIT PAS QUAND LE TRADER REMPLIT LE CHAMP,
+              // elle se coche. Ce que ce bloc constate, c'est que sa FICHE ne
+              // dit rien : la valeur qu'il pose ici ne rend pas sa fiche plus
+              // complete, et il devrait aller l'y ecrire. La faire disparaitre
+              // effacerait le seul rappel qui l'y pousse.
+              const comble = estComble(c, plan);
+              return (
+                <li key={c} className="flex items-start gap-1.5">
+                  {comble ? (
+                    <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-profit" />
+                  ) : (
+                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-current" />
+                  )}
+                  <span className={comble ? "text-foreground-muted line-through" : undefined}>
+                    {t(`bt_absent_${c}`)}
+                  </span>
+                  {comble ? (
+                    <span className="text-[11px] text-profit">{t("bt_comble_dans_le_plan")}</span>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
           <p className="mt-2 text-[11px] leading-snug text-foreground-muted">
             {t("bt_absents_note")}

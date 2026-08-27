@@ -547,6 +547,22 @@ export function EditeurPlan({ plan, instrument, onChange, contestes, t }: Editeu
 
       {/* ── Gestion du risque ────────────────────────────────────────────── */}
       <Bloc titre={t("bt_bloc_gestion")} soustitre={t("bt_bloc_gestion_aide")} alerte={alerte("gestion", "risque")}>
+        {/* ⚠️ En tête du bloc : sans lui, tout le résultat reste en R, et « -1690 R »
+            ne dit rien à personne. C'est aussi ce chiffre qui, multiplié par
+            l'arrêt après N pertes, révèle ce que coûte vraiment une mauvaise
+            journée. Il était réclamé par l'écran sans exister nulle part. */}
+        <Champ label={t("bt_risque_par_trade")} aide={t("bt_risque_par_trade_aide")}>
+          <Nombre
+            valeur={plan.gestion.risqueParTradePct ?? 0}
+            min={0}
+            max={100}
+            pas={0.1}
+            suffixe="%"
+            onChange={(v) =>
+              maj({ gestion: { ...plan.gestion, risqueParTradePct: v > 0 ? v : undefined } })
+            }
+          />
+        </Champ>
         <Champ label={t("bt_max_trades")}>
           <Nombre
             valeur={plan.gestion.maxTradesParJour ?? 0}

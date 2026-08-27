@@ -238,6 +238,18 @@ export interface SortiesAuxiliaires {
 // ─── GESTION : les garde-fous, déjà présents dans la fiche du trader ───────
 
 export interface Gestion {
+  /**
+   * Part du capital risquée par trade, en pourcent.
+   *
+   * ⚠️ LE MOTEUR L'IGNORE VOLONTAIREMENT, et ce n'est pas un oubli. Un résultat
+   * mesuré en R ne dépend d'aucune taille de position : c'est ce qui le rend
+   * comparable d'un instrument et d'un trader à l'autre. Ce champ sert à la
+   * LECTURE, en aval : traduire les R en pourcents de capital, et surtout
+   * confronter le risque par trade aux garde-fous. « -1690 R » ne dit rien à
+   * personne ; « trois pertes d'affilée à 5 %, soit -15 % dans la journée »
+   * dit tout, et c'est une multiplication, pas une prévision.
+   */
+  risqueParTradePct?: number;
   /** Plafond de trades ouverts dans la journée. */
   maxTradesParJour?: number;
   /** Arrêt de la journée après N pertes d'affilée. */

@@ -2919,7 +2919,7 @@ const dict: Record<string, string> = {
   "bt_non_traduites_note": "La cifra de abajo no las incluye. Probablemente filtrarían operaciones que esta prueba sí tomó.",
   "bt_deduites": "Decisiones tomadas a falta de una regla escrita",
   "bt_absents": "Tu ficha no dice nada de esto",
-  "bt_absents_note": "No son detalles técnicos: sin ellos, tu método no puede ejecutarse dos veces igual, ni por ti ni por nadie. Los valores usados abajo son los nuestros, no los tuyos.",
+  "bt_absents_note": "No son detalles técnicos: sin ellos, tu método no puede ejecutarse dos veces igual, ni por ti ni por nadie. Puedes fijar valores en el plan de abajo, pero seguirán listados aquí mientras tu ficha no los diga: ahí es donde deben escribirse de verdad.",
   "bt_absent_stop": "Dónde va tu stop",
   "bt_absent_objectif": "Dónde tomas beneficios",
   "bt_absent_risque": "Cuánto arriesgas por operación",
@@ -3088,6 +3088,14 @@ const dict: Record<string, string> = {
   "bt_bloc_niveau_trendline_aide": "Una línea de tendencia une al menos tres máximos (o tres mínimos) alineados, en cualquier sentido, sin que ningún cierre la haya atravesado. Los tres ajustes de abajo dicen exactamente eso.",
   "bt_definition_sommet": "Qué cuenta como un máximo",
   "bt_definition_sommet_aide": "Detalle técnico, no la definición de tu línea de tendencia: un máximo debe dominar esta cantidad de velas a cada lado para ser reconocido. De tres a diez basta, sea cual sea la temporalidad.",
+  "bt_risque_par_trade": "Riesgo por operación",
+  "bt_risque_par_trade_aide": "Parte de tu capital que pierdes en un stop. El motor no lo necesita para calcular, pero sin él todo queda en R y no ves qué le hace a tu cuenta.",
+  "bt_en_capital": "Lo que esto le hace a tu cuenta",
+  "bt_capital_total": "Resultado total",
+  "bt_capital_drawdown": "Peor retroceso de la cuenta",
+  "bt_pire_journee": "Tus {pertes} pérdidas seguidas al {risque} % suponen -{total} % de tu capital en una misma jornada. No es una previsión, es una multiplicación: ocurrirá tantas veces como tres pérdidas se encadenen.",
+  "bt_en_capital_note": "Conversión directa de los R por tu riesgo por operación, a tamaño de posición constante. Una cuenta que crece o se reduce no sigue exactamente esta curva.",
+  "bt_comble_dans_le_plan": "completado en el plan",
   "bt_duree_calcul": "Calculado en {ms} ms, en tu navegador."
 };
 

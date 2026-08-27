@@ -108,7 +108,9 @@ SORTIES AUXILIAIRES (facultatif)
   {"breakEvenApresR":<0-20>,"finDeSession":"HH:MM","apresNBarres":<1+>}
 
 GESTION (facultatif)
-  {"maxTradesParJour":<1-100>,"maxPertesConsecutives":<1-50>,"maxPerteJournaliereR":<0-100>}
+  {"risqueParTradePct":<0.01-100>,"maxTradesParJour":<1-100>,"maxPertesConsecutives":<1-50>,"maxPerteJournaliereR":<0-100>}
+  "risqueParTradePct" = part du capital risquee par trade, en pourcent. Reprends-la de la fiche ou des champs deja
+  renseignes. Si les deux existent et se contredisent, prends celle de la FICHE et signale le conflit dans "deduites".
 
 UNITE DE TEMPS (obligatoire) — "uniteDeTemps": 1, 3, 5, 15, 30, 60 ou 240 (minutes)
   Celle du GRAPHIQUE que le trader regarde pour ses entrees, pas celle de son analyse de contexte. S'il analyse
@@ -152,7 +154,7 @@ export async function POST(req: Request) {
     r.max_sl_pips != null ? `stop maximum annonce : ${r.max_sl_pips} pips` : null,
     r.max_trades_per_day != null ? `maximum ${r.max_trades_per_day} trades par jour` : null,
     r.max_consecutive_losses != null ? `arret apres ${r.max_consecutive_losses} pertes d'affilee` : null,
-    r.risk_per_trade_pct != null ? `risque par trade : ${r.risk_per_trade_pct} %` : null,
+    r.risk_per_trade_pct != null ? `risque par trade declare au profil : ${r.risk_per_trade_pct} %` : null,
     r.sessions?.length ? `seances declarees : ${r.sessions.join(", ")}` : null,
   ].filter(Boolean).join("\n");
 

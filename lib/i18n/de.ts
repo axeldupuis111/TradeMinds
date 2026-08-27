@@ -2919,7 +2919,7 @@ const dict: Record<string, string> = {
   "bt_non_traduites_note": "Die Zahl unten enthält sie nicht. Sie würden vermutlich Trades herausfiltern, die dieser Test genommen hat.",
   "bt_deduites": "Entscheidungen mangels schriftlicher Regel",
   "bt_absents": "Dein Blatt sagt dazu nichts",
-  "bt_absents_note": "Das sind keine technischen Details: Ohne sie lässt sich deine Methode nicht zweimal gleich ausführen, weder von dir noch von jemand anderem. Die unten verwendeten Werte sind daher unsere, nicht deine.",
+  "bt_absents_note": "Das sind keine technischen Details: Ohne sie lässt sich deine Methode nicht zweimal gleich ausführen, weder von dir noch von jemand anderem. Du kannst unten im Plan Werte setzen, aber sie bleiben hier gelistet, solange dein Blatt sie nicht nennt: Dort gehören sie endgültig hin.",
   "bt_absent_stop": "Wo dein Stop liegt",
   "bt_absent_objectif": "Wo du Gewinne mitnimmst",
   "bt_absent_risque": "Wie viel du pro Trade riskierst",
@@ -3088,6 +3088,14 @@ const dict: Record<string, string> = {
   "bt_bloc_niveau_trendline_aide": "Eine Trendlinie verbindet mindestens drei ausgerichtete Hochs (oder drei Tiefs), in beliebiger Richtung, ohne dass ein Schlusskurs sie durchbrochen hat. Die drei Einstellungen unten sagen genau das.",
   "bt_definition_sommet": "Was als Hoch zählt",
   "bt_definition_sommet_aide": "Technisches Detail, nicht die Definition deiner Trendlinie: Ein Hoch muss so viele Kerzen auf jeder Seite überragen, um erkannt zu werden. Drei bis zehn genügen, unabhängig vom Zeitrahmen.",
+  "bt_risque_par_trade": "Risiko pro Trade",
+  "bt_risque_par_trade_aide": "Anteil deines Kapitals, den ein Stop kostet. Die Engine braucht ihn nicht zum Rechnen, aber ohne ihn bleibt alles in R und du siehst nicht, was das mit deinem Konto macht.",
+  "bt_en_capital": "Was das mit deinem Konto macht",
+  "bt_capital_total": "Gesamtergebnis",
+  "bt_capital_drawdown": "Größter Kontorückgang",
+  "bt_pire_journee": "Deine {pertes} Verluste in Folge zu je {risque} % ergeben -{total} % deines Kapitals an einem Tag. Das ist keine Prognose, sondern eine Multiplikation: Es passiert so oft, wie drei Verluste aufeinanderfolgen.",
+  "bt_en_capital_note": "Direkte Umrechnung der R mit deinem Risiko pro Trade, bei konstanter Positionsgröße. Ein wachsendes oder schrumpfendes Konto folgt dieser Kurve nicht genau.",
+  "bt_comble_dans_le_plan": "im Plan ergänzt",
   "bt_duree_calcul": "In {ms} ms berechnet, in deinem Browser."
 };
 

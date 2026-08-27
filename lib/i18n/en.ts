@@ -2919,7 +2919,7 @@ const dict: Record<string, string> = {
   "bt_non_traduites_note": "The figure below does not include them. They would probably filter out trades this test took.",
   "bt_deduites": "Choices made for lack of a written rule",
   "bt_absents": "Your sheet says nothing about these",
-  "bt_absents_note": "These are not technical details: without them, your method cannot be executed the same way twice, by you or anyone. The values used below are therefore ours, not yours.",
+  "bt_absents_note": "These are not technical details: without them, your method cannot be executed the same way twice, by you or anyone. You can set values in the plan below, but they will stay listed here until your sheet states them: that is where they belong for good.",
   "bt_absent_stop": "Where your stop goes",
   "bt_absent_objectif": "Where you take profit",
   "bt_absent_risque": "How much you risk per trade",
@@ -3088,6 +3088,14 @@ const dict: Record<string, string> = {
   "bt_bloc_niveau_trendline_aide": "A trendline joins at least three aligned highs (or three lows), in any direction, with no close having crossed it. The three settings below say exactly that.",
   "bt_definition_sommet": "What counts as a high",
   "bt_definition_sommet_aide": "Technical detail, not the definition of your trendline: a high must top this many bars on each side to be recognised. Three to ten is enough, whatever the timeframe.",
+  "bt_risque_par_trade": "Risk per trade",
+  "bt_risque_par_trade_aide": "Share of your capital lost on a stop. The engine does not need it to compute, but without it everything stays in R and you cannot see what it does to your account.",
+  "bt_en_capital": "What this does to your account",
+  "bt_capital_total": "Total result",
+  "bt_capital_drawdown": "Worst account drawdown",
+  "bt_pire_journee": "Your {pertes} losses in a row at {risque}% make -{total}% of your capital in a single day. This is not a forecast, it is a multiplication: it will happen as often as three losses follow one another.",
+  "bt_en_capital_note": "Direct conversion of R by your risk per trade, at constant position size. An account that grows or shrinks does not follow this curve exactly.",
+  "bt_comble_dans_le_plan": "filled in the plan",
   "bt_duree_calcul": "Computed in {ms} ms, in your browser."
 };
 

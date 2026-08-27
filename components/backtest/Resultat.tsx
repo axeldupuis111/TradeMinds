@@ -44,6 +44,10 @@ export interface ResultatProps {
   moisManquants: string[];
   tentatives: number;
   ms: number;
+  /** Risque par trade déclaré, en % du capital. Traduit les R en pourcents. */
+  risqueParTradePct?: number;
+  /** Arrêt après N pertes d'affilée, pour chiffrer la pire journée. */
+  maxPertesConsecutives?: number;
   /** Le trader a regardé les trades dessinés et reconnu sa méthode. */
   verifie: boolean;
   /**
@@ -79,6 +83,8 @@ export function Resultat({
   ms,
   verifie,
   contestes,
+  risqueParTradePct,
+  maxPertesConsecutives,
   t,
 }: ResultatProps) {
   const c = useChartColors();
@@ -252,6 +258,38 @@ export function Resultat({
           </ResponsiveContainer>
         </div>
       </Card>
+
+      {/* ── Ce que ça fait à un vrai compte ──────────────────────────────── */}
+      {risqueParTradePct ? (
+        <Card>
+          <h4 className="mb-3 text-sm font-semibold text-foreground">{t("bt_en_capital")}</h4>
+          <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+            <Ligne
+              label={t("bt_capital_total")}
+              valeur={`${s.totalR >= 0 ? "+" : ""}${(s.totalR * risqueParTradePct).toFixed(1)} %`}
+            />
+            <Ligne
+              label={t("bt_capital_drawdown")}
+              valeur={`-${(s.drawdownMaxR * risqueParTradePct).toFixed(1)} %`}
+            />
+          </dl>
+          {/* ⚠️ CETTE LIGNE EST UNE MULTIPLICATION, PAS UNE PRÉVISION, et c'est
+              souvent le chiffre le plus utile de la page. Trois pertes d'affilée
+              à 5 % font -15 % dans la journée, que le backtest soit bon ou non. */}
+          {maxPertesConsecutives ? (
+            <p className="mt-3 rounded-lg border border-warning/40 bg-warning/[0.06] p-3 text-xs text-warning">
+              {t("bt_pire_journee", {
+                pertes: maxPertesConsecutives,
+                risque: risqueParTradePct,
+                total: (maxPertesConsecutives * risqueParTradePct).toFixed(1),
+              })}
+            </p>
+          ) : null}
+          <p className="mt-2 text-[11px] leading-snug text-foreground-muted">
+            {t("bt_en_capital_note")}
+          </p>
+        </Card>
+      ) : null}
 
       {/* ── L'audit de coûts ─────────────────────────────────────────────── */}
       <Card>

@@ -282,6 +282,13 @@ export function validerContexte(v: unknown): Contexte | null {
 export function validerGestion(v: unknown): Gestion {
   const o = (v ?? {}) as Record<string, unknown>;
   const g: Gestion = {};
+  // Au-delà de 100 % on ne risque plus, on emprunte ; sous 0,01 % la lecture en
+  // pourcents n'apprend plus rien.
+  const risque =
+    typeof o.risqueParTradePct === "number" && o.risqueParTradePct >= 0.01 && o.risqueParTradePct <= 100
+      ? Math.round(o.risqueParTradePct * 100) / 100
+      : null;
+  if (risque !== null) g.risqueParTradePct = risque;
   const trades = entier(o.maxTradesParJour, 1, 100);
   if (trades !== null) g.maxTradesParJour = trades;
   const pertes = entier(o.maxPertesConsecutives, 1, 50);
