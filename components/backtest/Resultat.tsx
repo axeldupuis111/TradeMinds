@@ -46,6 +46,14 @@ export interface ResultatProps {
   ms: number;
   /** Le trader a regardé les trades dessinés et reconnu sa méthode. */
   verifie: boolean;
+  /**
+   * Interprétations que le trader a explicitement refusées.
+   *
+   * ⚠️ PRIME SUR TOUT LE RESTE, y compris sur la case « je reconnais ma
+   * méthode ». Un chiffre calculé sur une traduction que son auteur a lui-même
+   * démentie ne décrit rien du tout.
+   */
+  contestes: number;
   t: (k: string, v?: Record<string, string | number>) => string;
 }
 
@@ -70,6 +78,7 @@ export function Resultat({
   tentatives,
   ms,
   verifie,
+  contestes,
   t,
 }: ResultatProps) {
   const c = useChartColors();
@@ -126,7 +135,16 @@ export function Resultat({
           personne n'a vérifiée est exactement ce qu'on reproche aux autres
           outils de backtest. Tant que le trader n'a pas regardé les trades
           dessinés, la page le dit. */}
-      {!verifie ? (
+      {contestes > 0 ? (
+        <Card className="border-loss/50 bg-loss/[0.07]">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-loss" />
+            <p className="text-sm leading-relaxed text-foreground">
+              {t("bt_interpretations_refusees", { n: contestes })}
+            </p>
+          </div>
+        </Card>
+      ) : !verifie ? (
         <Card className="border-warning/40 bg-warning/[0.06]">
           <div className="flex items-start gap-3">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning" />

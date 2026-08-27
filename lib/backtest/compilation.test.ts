@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compilerDepuisModele, planComplet, validerNiveau, validerObjectif } from "./compilation";
+import { compilerDepuisModele, graviteDuChamp, planComplet, validerNiveau, validerObjectif } from "./compilation";
 
 /**
  * Ces tests protègent une seule promesse : ce que le modèle propose n'entre pas
@@ -147,5 +147,29 @@ describe("planComplet", () => {
     // Sans coûts, pas de plan jouable : un backtest à coûts nuls est le seul
     // moyen de rendre positive une stratégie qui perd.
     expect(planComplet(r.plan)).toBe(false);
+  });
+});
+
+describe("gravité d'une interprétation", () => {
+  it("traite comme critique tout ce qui définit la stratégie", () => {
+    // ⚠️ Ces six blocs SONT la méthode : se tromper sur l'un d'eux fait tester
+    // autre chose. Deux interprétations fausses (le niveau et le stop) sont
+    // déjà passées inaperçues faute de ce classement.
+    for (const champ of ["niveau", "declencheur", "entree", "stop", "objectif", "uniteDeTemps", "sens"]) {
+      expect(graviteDuChamp(champ), champ).toBe("critique");
+    }
+  });
+
+  it("traite comme mineur ce qui reste un réglage", () => {
+    for (const champ of ["contexte", "gestion", "sortiesAuxiliaires", "confirmations", "couts"]) {
+      expect(graviteDuChamp(champ), champ).toBe("mineure");
+    }
+  });
+
+  it("ne classe jamais critique un champ inconnu", () => {
+    // Le modèle peut nommer un champ qui n'existe pas : il ne doit pas pouvoir
+    // déclencher l'encadré rouge par accident.
+    expect(graviteDuChamp("fibonacci")).toBe("mineure");
+    expect(graviteDuChamp("")).toBe("mineure");
   });
 });

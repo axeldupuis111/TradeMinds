@@ -3070,6 +3070,13 @@ const dict: Record<string, string> = {
   "bt_confirmer_mecanisation": "Ich habe diese Trades angesehen und erkenne meine Methode wieder. Ohne das beschreibt die Zahl womöglich eine Strategie, die nicht meine ist.",
   "bt_non_verifie": "Mechanisierung nicht überprüft. Geh zum Chart darüber, sieh dir drei Trades an und bestätige, dass das wirklich deine Methode ist. Bis dahin beschreibt diese Zahl vielleicht etwas anderes als deine Strategie: Beim Bau dieses Werkzeugs ist das dreimal passiert, und jedes Mal hat es der Chart gezeigt, nie der Text.",
   "bt_niveau_hors_cadre": "Das überschrittene Level ({prix}) liegt zu weit vom Einstieg, um ins Bild zu passen. Der Chart bevorzugt die Lesbarkeit des Trades.",
+  "bt_deduites_critiques": "{n} Interpretationen des Kerns deiner Methode",
+  "bt_deduites_critiques_note": "Dein Blatt hat nicht entschieden, also hat die KI gewählt. Diese Bausteine SIND deine Strategie: Ein Fehler darin testet etwas anderes als deine Methode. Lies sie einzeln.",
+  "bt_ce_nest_pas_ca": "Das ist es nicht",
+  "bt_conteste": "Abgelehnt",
+  "bt_corrige_le_bloc": "Korrigiere diesen Baustein im Plan unten: Er ist rot umrandet.",
+  "bt_bloc_conteste": "Du hast die Interpretation der KI zu diesem Baustein abgelehnt. Hier stellst du es ein.",
+  "bt_interpretations_refusees": "Du hast {n} Interpretation(en) der KI abgelehnt, ohne sie im Plan zu korrigieren. Diese Zahl beruht also auf einer Übersetzung, der du selbst widersprochen hast: Sie beschreibt nicht deine Strategie. Korrigiere die rot umrandeten Bausteine und starte erneut.",
   "bt_duree_calcul": "In {ms} ms berechnet, in deinem Browser."
 };
 

@@ -44,12 +44,12 @@ import {
   instrumentParCode,
   type Instrument,
 } from "@/lib/backtest/instruments";
-import { socleDePlan, type Couverture } from "@/lib/backtest/compilation";
+import { graviteDuChamp, socleDePlan, type Couverture } from "@/lib/backtest/compilation";
 import { moisEntre } from "@/lib/backtest/chargement";
 import type { PlanExecution } from "@/lib/backtest/types";
 import type { LectureBacktest } from "@/lib/backtest/verdict";
 import type { Apercu, DemandeBacktest, ReponseBacktest } from "./worker";
-import { AlertTriangle, CheckCircle2, HelpCircle, Loader2, Lock, Play, Wand2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, HelpCircle, Loader2, Lock, Play, Wand2, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -134,6 +134,15 @@ export default function BacktestPage() {
   }));
 
   const [couverture, setCouverture] = useState<Couverture | null>(null);
+  /**
+   * Interpretations que le trader a marquees « ce n'est pas ca ».
+   *
+   * ⚠️ Contester ne corrige RIEN tout seul, et c'est volontaire : deviner une
+   * seconde fois ce qu'il voulait dire repeterait exactement l'erreur d'origine.
+   * Le refus entoure de rouge le bloc concerne dans l'editeur, et c'est lui qui
+   * tranche.
+   */
+  const [contestes, setContestes] = useState<Set<string>>(new Set());
   const [compilation, setCompilation] = useState<"repos" | "encours" | "erreur">("repos");
   const [compilationMsg, setCompilationMsg] = useState<string | null>(null);
 
@@ -255,6 +264,7 @@ export default function BacktestPage() {
         contexte: json.plan!.contexte ?? p.contexte,
       }));
       setCouverture(json.couverture);
+      setContestes(new Set());
       setCompilation("repos");
       setResultat(null);
     } catch {
@@ -432,7 +442,21 @@ export default function BacktestPage() {
             )}
 
             {compilationMsg ? <p className="mt-3 text-sm text-loss">{compilationMsg}</p> : null}
-            {couverture ? <CarteCouverture couverture={couverture} t={tr} /> : null}
+            {couverture ? (
+              <CarteCouverture
+                couverture={couverture}
+                contestes={contestes}
+                onContester={(champ) =>
+                  setContestes((prec) => {
+                    const suite = new Set(prec);
+                    if (suite.has(champ)) suite.delete(champ);
+                    else suite.add(champ);
+                    return suite;
+                  })
+                }
+                t={tr}
+              />
+            ) : null}
           </Card>
         </StaggerItem>
 
@@ -441,7 +465,7 @@ export default function BacktestPage() {
           <Card>
             <CardTitle className="mb-1">{tr("bt_etape_plan")}</CardTitle>
             <p className="mb-4 text-xs text-foreground-muted">{tr("bt_etape_plan_aide")}</p>
-            <EditeurPlan plan={plan} instrument={instrument} onChange={setPlan} t={tr} />
+            <EditeurPlan plan={plan} instrument={instrument} onChange={setPlan} contestes={contestes} t={tr} />
           </Card>
         </StaggerItem>
 
@@ -508,6 +532,7 @@ export default function BacktestPage() {
               tentatives={tentatives}
               ms={resultat.ms}
               verifie={verifie}
+              contestes={contestes.size}
               t={tr}
             />
           </StaggerItem>
@@ -526,14 +551,50 @@ export default function BacktestPage() {
  */
 function CarteCouverture({
   couverture,
+  contestes,
+  onContester,
   t,
 }: {
   couverture: Couverture;
+  contestes: Set<string>;
+  onContester: (champ: string) => void;
   t: (k: string, v?: Record<string, string | number>) => string;
 }) {
+  // ⚠️ LE TRI PAR GRAVITÉ EST LE CŒUR DE CETTE CARTE, et il est né d'un échec
+  // précis : deux interprétations fausses, sur le niveau et sur le stop, sont
+  // passées inaperçues parce qu'elles voisinaient une note anodine sur le
+  // fuseau horaire, dans le même paragraphe gris. Voir `graviteDuChamp`.
+  const critiques = couverture.deduites.filter((d) => graviteDuChamp(d.champ) === "critique");
+  const mineures = couverture.deduites.filter((d) => graviteDuChamp(d.champ) !== "critique");
+
   return (
     <div className="mt-4 space-y-3 rounded-xl border border-border bg-surface/40 p-4">
       <h4 className="text-sm font-semibold text-foreground">{t("bt_couverture")}</h4>
+
+      {/* ── Les interprétations qui touchent le cœur de la méthode ─────── */}
+      {critiques.length > 0 ? (
+        <div className="rounded-lg border border-warning/50 bg-warning/[0.07] p-3">
+          <p className="flex items-center gap-1.5 text-xs font-semibold text-warning">
+            <AlertTriangle className="h-3.5 w-3.5" />
+            {t("bt_deduites_critiques", { n: critiques.length })}
+          </p>
+          <p className="mt-1 text-[11px] leading-snug text-foreground-muted">
+            {t("bt_deduites_critiques_note")}
+          </p>
+          <ul className="mt-2.5 space-y-2">
+            {critiques.map((d, i) => (
+              <LigneInterpretation
+                key={`c-${i}`}
+                champ={d.champ}
+                pourquoi={d.pourquoi}
+                conteste={contestes.has(d.champ)}
+                onContester={() => onContester(d.champ)}
+                t={t}
+              />
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       {couverture.traduites.length > 0 ? (
         <div>
@@ -568,14 +629,19 @@ function CarteCouverture({
         </div>
       ) : null}
 
-      {couverture.deduites.length > 0 ? (
+      {mineures.length > 0 ? (
         <div>
           <p className="mb-1.5 text-xs font-medium text-foreground-muted">{t("bt_deduites")}</p>
-          <ul className="list-disc space-y-1 pl-8 text-xs text-foreground-muted">
-            {couverture.deduites.map((x, i) => (
-              <li key={i}>
-                <span className="font-mono text-foreground">{x.champ}</span> : {x.pourquoi}
-              </li>
+          <ul className="space-y-2">
+            {mineures.map((d, i) => (
+              <LigneInterpretation
+                key={`m-${i}`}
+                champ={d.champ}
+                pourquoi={d.pourquoi}
+                conteste={contestes.has(d.champ)}
+                onContester={() => onContester(d.champ)}
+                t={t}
+              />
             ))}
           </ul>
         </div>
@@ -597,3 +663,63 @@ function CarteCouverture({
     </div>
   );
 }
+
+/**
+ * Une interprétation, avec le bouton qui permet de la refuser.
+ *
+ * ⚠️ REFUSER NE CORRIGE RIEN AUTOMATIQUEMENT, et c'est tout l'intérêt. Deviner
+ * une seconde fois ce que le trader voulait dire répéterait exactement l'erreur
+ * d'origine. Le refus entoure de rouge le bloc concerné dans l'éditeur juste en
+ * dessous, et c'est lui qui tranche.
+ */
+function LigneInterpretation({
+  champ,
+  pourquoi,
+  conteste,
+  onContester,
+  t,
+}: {
+  champ: string;
+  pourquoi: string;
+  conteste: boolean;
+  onContester: () => void;
+  t: (k: string, v?: Record<string, string | number>) => string;
+}) {
+  return (
+    <li
+      className={cn(
+        "rounded-lg border p-2.5",
+        conteste ? "border-loss/50 bg-loss/[0.06]" : "border-border/60 bg-background/40",
+      )}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <p className="min-w-0 flex-1 text-xs text-foreground-muted">
+          <span className="font-mono text-foreground">{champ}</span> : {pourquoi}
+        </p>
+        <button
+          type="button"
+          onClick={onContester}
+          className={cn(
+            "shrink-0 rounded-md border px-2 py-1 text-[11px] font-medium transition-colors",
+            conteste
+              ? "border-loss/60 bg-loss/15 text-loss"
+              : "border-border text-foreground-muted hover:border-loss/50 hover:text-loss",
+          )}
+        >
+          {conteste ? (
+            <span className="flex items-center gap-1">
+              <X className="h-3 w-3" />
+              {t("bt_conteste")}
+            </span>
+          ) : (
+            t("bt_ce_nest_pas_ca")
+          )}
+        </button>
+      </div>
+      {conteste ? (
+        <p className="mt-1.5 text-[11px] font-medium text-loss">{t("bt_corrige_le_bloc")}</p>
+      ) : null}
+    </li>
+  );
+}
+

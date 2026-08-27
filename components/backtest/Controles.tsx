@@ -133,17 +133,29 @@ export function Bascule({
 export function Bloc({
   titre,
   soustitre,
+  alerte,
   children,
 }: {
   titre: string;
   soustitre?: string;
+  /** Message affiché en tête quand le trader a contesté ce bloc. */
+  alerte?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-surface/40 p-4">
+    <div
+      className={cn(
+        "rounded-xl border p-4",
+        // ⚠️ L'anneau n'est pas décoratif : il relie le « ce n'est pas ça »
+        // cliqué plus haut au réglage exact qu'il faut corriger ici. Sans lui,
+        // le trader sait que quelque chose est faux sans savoir quoi toucher.
+        alerte ? "border-loss/50 bg-loss/[0.05]" : "border-border bg-surface/40",
+      )}
+    >
       <div className="mb-3">
         <h4 className="text-sm font-semibold text-foreground">{titre}</h4>
         {soustitre ? <p className="mt-0.5 text-xs text-foreground-muted">{soustitre}</p> : null}
+        {alerte ? <p className="mt-1.5 text-xs font-medium text-loss">{alerte}</p> : null}
       </div>
       <div className="grid gap-3 sm:grid-cols-2">{children}</div>
     </div>

@@ -3070,6 +3070,13 @@ const dict: Record<string, string> = {
   "bt_confirmer_mecanisation": "J'ai regardé ces trades et je reconnais ma méthode. Sans ça, le chiffre porte peut-être sur une stratégie qui n'est pas la mienne.",
   "bt_non_verifie": "Mécanisation non vérifiée. Remonte au graphique juste au-dessus, regarde trois trades, et confirme que c'est bien ta méthode. Tant que tu ne l'as pas fait, ce chiffre décrit peut-être autre chose que ta stratégie : c'est arrivé trois fois pendant la construction de cet outil, et à chaque fois c'est le graphique qui l'a montré, jamais le texte.",
   "bt_niveau_hors_cadre": "Le niveau franchi ({prix}) est trop loin de l'entrée pour tenir dans le cadre. Le graphique privilégie la lisibilité du trade.",
+  "bt_deduites_critiques": "{n} interprétations sur le cœur de ta méthode",
+  "bt_deduites_critiques_note": "Ta fiche ne tranchait pas, l'IA a choisi. Ces blocs SONT ta stratégie : se tromper sur l'un d'eux fait tester autre chose que ta méthode. Lis-les une par une.",
+  "bt_ce_nest_pas_ca": "Ce n'est pas ça",
+  "bt_conteste": "Refusée",
+  "bt_corrige_le_bloc": "Corrige ce bloc dans le plan ci-dessous : il est entouré de rouge.",
+  "bt_bloc_conteste": "Tu as refusé l'interprétation de l'IA sur ce bloc. C'est ici que ça se règle.",
+  "bt_interpretations_refusees": "Tu as refusé {n} interprétation(s) de l'IA sans les corriger dans le plan. Ce chiffre porte donc sur une traduction que tu as toi-même démentie : il ne décrit pas ta stratégie. Corrige les blocs entourés de rouge, puis relance.",
   "bt_duree_calcul": "Calculé en {ms} ms, dans ton navigateur."
 };
 

@@ -56,6 +56,38 @@ export interface Couverture {
 /** Unités de temps proposées, en minutes. */
 export const UNITES_DE_TEMPS: number[] = [1, 3, 5, 15, 30, 60, 240];
 
+/**
+ * GRAVITÉ D'UNE INTERPRÉTATION, SELON LE BLOC QU'ELLE TOUCHE.
+ *
+ * ⚠️ CE CLASSEMENT EST NÉ D'UN ÉCHEC PRÉCIS. Sur la fiche trendline d'un
+ * trader, le compilateur avait DÉCLARÉ deux interprétations : « les pivots de
+ * swing approchent ses trendlines » et « derrière le dernier sommet = extrême
+ * de la bougie de signal ». Les deux étaient fausses, les deux étaient à
+ * l'écran, et les deux étaient dans le même paragraphe gris qu'une note anodine
+ * sur le fuseau horaire. Personne ne les a vues.
+ *
+ * Une interprétation sur le NIVEAU, le DÉCLENCHEUR, l'ENTRÉE, le STOP,
+ * l'OBJECTIF ou l'UNITÉ DE TEMPS ne se discute pas : ces six blocs SONT la
+ * stratégie, et se tromper sur l'un d'eux fait tester autre chose. Une
+ * supposition d'horaire ou de plafond de trades reste un réglage.
+ */
+export type Gravite = "critique" | "mineure";
+
+const CHAMPS_CRITIQUES = new Set([
+  "niveau",
+  "declencheur",
+  "entree",
+  "stop",
+  "objectif",
+  "uniteDeTemps",
+  "unite_de_temps",
+  "sens",
+]);
+
+export function graviteDuChamp(champ: string): Gravite {
+  return CHAMPS_CRITIQUES.has(champ) ? "critique" : "mineure";
+}
+
 export type ChampObligatoire = "stop" | "objectif" | "risque" | "seance" | "unite_de_temps";
 
 export interface PlanCompile {

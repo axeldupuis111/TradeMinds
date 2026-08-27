@@ -3070,6 +3070,13 @@ const dict: Record<string, string> = {
   "bt_confirmer_mecanisation": "I have looked at these trades and I recognise my method. Without this, the figure may describe a strategy that is not mine.",
   "bt_non_verifie": "Mechanisation not verified. Scroll up to the chart, look at three trades, and confirm this really is your method. Until you do, this figure may describe something other than your strategy: it happened three times while building this tool, and every time it was the chart that revealed it, never the text.",
   "bt_niveau_hors_cadre": "The level crossed ({prix}) is too far from the entry to fit in frame. The chart favours readability of the trade.",
+  "bt_deduites_critiques": "{n} interpretations of the core of your method",
+  "bt_deduites_critiques_note": "Your sheet did not decide, so the AI chose. These blocks ARE your strategy: getting one wrong means testing something other than your method. Read them one by one.",
+  "bt_ce_nest_pas_ca": "That is not it",
+  "bt_conteste": "Rejected",
+  "bt_corrige_le_bloc": "Fix this block in the plan below: it is outlined in red.",
+  "bt_bloc_conteste": "You rejected the AI's interpretation of this block. This is where you fix it.",
+  "bt_interpretations_refusees": "You rejected {n} of the AI's interpretations without fixing them in the plan. This figure therefore rests on a translation you yourself denied: it does not describe your strategy. Fix the blocks outlined in red, then run again.",
   "bt_duree_calcul": "Computed in {ms} ms, in your browser."
 };
 

@@ -42,11 +42,21 @@ export interface EditeurProps {
   plan: PlanExecution;
   instrument: Instrument;
   onChange: (p: PlanExecution) => void;
+  /**
+   * Blocs que le trader a marqués « ce n'est pas ça » depuis la carte de
+   * couverture. Ils s'entourent de rouge ici : c'est ce qui relie le refus au
+   * réglage à corriger.
+   */
+  contestes: Set<string>;
   t: (k: string, v?: Record<string, string | number>) => string;
 }
 
-export function EditeurPlan({ plan, instrument, onChange, t }: EditeurProps) {
+export function EditeurPlan({ plan, instrument, onChange, contestes, t }: EditeurProps) {
   const maj = (partiel: Partial<PlanExecution>) => onChange({ ...plan, ...partiel });
+
+  /** Message d'alerte si l'un des champs de ce bloc a été contesté. */
+  const alerte = (...champs: string[]) =>
+    champs.some((c) => contestes.has(c)) ? t("bt_bloc_conteste") : undefined;
 
   /** Les coûts vivent en ticks dans le plan, en prix à l'écran. */
   const prix = (ticks: number) => Number((ticks * instrument.tailleTick).toFixed(instrument.decimales + 1));
@@ -68,7 +78,7 @@ export function EditeurPlan({ plan, instrument, onChange, t }: EditeurProps) {
   return (
     <div className="space-y-4">
       {/* ── Quand on regarde ─────────────────────────────────────────────── */}
-      <Bloc titre={t("bt_bloc_contexte")} soustitre={t("bt_bloc_contexte_aide")}>
+      <Bloc titre={t("bt_bloc_contexte")} soustitre={t("bt_bloc_contexte_aide")} alerte={alerte("uniteDeTemps", "sens", "contexte", "seance")}>
         {/* ⚠️ En tête, parce que c'est le réglage le plus lourd de la page :
             lire une stratégie de M3 sur des bougies M1 change la taille des
             stops structurels d'un facteur dix, et donc tout le résultat. */}
@@ -125,7 +135,7 @@ export function EditeurPlan({ plan, instrument, onChange, t }: EditeurProps) {
       </Bloc>
 
       {/* ── Le niveau ────────────────────────────────────────────────────── */}
-      <Bloc titre={t("bt_bloc_niveau")} soustitre={t("bt_bloc_niveau_aide")}>
+      <Bloc titre={t("bt_bloc_niveau")} soustitre={t("bt_bloc_niveau_aide")} alerte={alerte("niveau")}>
         <Champ label={t("bt_type")}>
           <Liste
             valeur={plan.niveau.type}
@@ -231,7 +241,7 @@ export function EditeurPlan({ plan, instrument, onChange, t }: EditeurProps) {
       </Bloc>
 
       {/* ── Le déclencheur ───────────────────────────────────────────────── */}
-      <Bloc titre={t("bt_bloc_declencheur")} soustitre={t("bt_bloc_declencheur_aide")}>
+      <Bloc titre={t("bt_bloc_declencheur")} soustitre={t("bt_bloc_declencheur_aide")} alerte={alerte("declencheur")}>
         <Champ label={t("bt_type")} className="sm:col-span-2">
           <Liste
             valeur={plan.declencheur.type}
@@ -353,7 +363,7 @@ export function EditeurPlan({ plan, instrument, onChange, t }: EditeurProps) {
       </Bloc>
 
       {/* ── Confirmations ────────────────────────────────────────────────── */}
-      <Bloc titre={t("bt_bloc_confirmations")} soustitre={t("bt_bloc_confirmations_aide")}>
+      <Bloc titre={t("bt_bloc_confirmations")} soustitre={t("bt_bloc_confirmations_aide")} alerte={alerte("confirmations")}>
         <div className="flex flex-wrap gap-1.5 sm:col-span-2">
           <Bascule
             label={t("bt_conf_reaction")}
@@ -374,7 +384,7 @@ export function EditeurPlan({ plan, instrument, onChange, t }: EditeurProps) {
       </Bloc>
 
       {/* ── Entrée, stop, objectif ───────────────────────────────────────── */}
-      <Bloc titre={t("bt_bloc_execution")} soustitre={t("bt_bloc_execution_aide")}>
+      <Bloc titre={t("bt_bloc_execution")} soustitre={t("bt_bloc_execution_aide")} alerte={alerte("entree", "stop", "objectif")}>
         <Champ label={t("bt_entree")}>
           <Liste
             valeur={plan.entree.type}
@@ -478,7 +488,7 @@ export function EditeurPlan({ plan, instrument, onChange, t }: EditeurProps) {
       </Bloc>
 
       {/* ── Sorties auxiliaires ──────────────────────────────────────────── */}
-      <Bloc titre={t("bt_bloc_sorties")} soustitre={t("bt_bloc_sorties_aide")}>
+      <Bloc titre={t("bt_bloc_sorties")} soustitre={t("bt_bloc_sorties_aide")} alerte={alerte("sortiesAuxiliaires")}>
         <Champ label={t("bt_break_even")} aide={t("bt_break_even_aide")}>
           <Nombre
             valeur={plan.sortiesAuxiliaires.breakEvenApresR ?? 0}
@@ -512,7 +522,7 @@ export function EditeurPlan({ plan, instrument, onChange, t }: EditeurProps) {
       </Bloc>
 
       {/* ── Gestion du risque ────────────────────────────────────────────── */}
-      <Bloc titre={t("bt_bloc_gestion")} soustitre={t("bt_bloc_gestion_aide")}>
+      <Bloc titre={t("bt_bloc_gestion")} soustitre={t("bt_bloc_gestion_aide")} alerte={alerte("gestion", "risque")}>
         <Champ label={t("bt_max_trades")}>
           <Nombre
             valeur={plan.gestion.maxTradesParJour ?? 0}

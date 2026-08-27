@@ -3070,6 +3070,13 @@ const dict: Record<string, string> = {
   "bt_confirmer_mecanisation": "He mirado estas operaciones y reconozco mi método. Sin esto, la cifra puede describir una estrategia que no es la mía.",
   "bt_non_verifie": "Mecanización no verificada. Sube al gráfico de arriba, mira tres operaciones y confirma que es realmente tu método. Hasta entonces, esta cifra puede describir algo distinto de tu estrategia: ocurrió tres veces al construir esta herramienta, y siempre lo reveló el gráfico, nunca el texto.",
   "bt_niveau_hors_cadre": "El nivel cruzado ({prix}) está demasiado lejos de la entrada para caber en el marco. El gráfico prioriza la legibilidad de la operación.",
+  "bt_deduites_critiques": "{n} interpretaciones sobre el núcleo de tu método",
+  "bt_deduites_critiques_note": "Tu ficha no lo decidía, así que la IA eligió. Estos bloques SON tu estrategia: equivocarse en uno significa probar algo que no es tu método. Léelos uno a uno.",
+  "bt_ce_nest_pas_ca": "No es eso",
+  "bt_conteste": "Rechazada",
+  "bt_corrige_le_bloc": "Corrige este bloque en el plan de abajo: está marcado en rojo.",
+  "bt_bloc_conteste": "Rechazaste la interpretación de la IA sobre este bloque. Aquí se ajusta.",
+  "bt_interpretations_refusees": "Rechazaste {n} interpretación(es) de la IA sin corregirlas en el plan. Esta cifra se apoya entonces en una traducción que tú mismo desmentiste: no describe tu estrategia. Corrige los bloques marcados en rojo y vuelve a ejecutar.",
   "bt_duree_calcul": "Calculado en {ms} ms, en tu navegador."
 };
 
