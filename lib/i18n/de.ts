@@ -3048,6 +3048,10 @@ const dict: Record<string, string> = {
   "bt_niveau_trendline": "Trendlinie (Diagonale)",
   "bt_pivots_trendline_aide": "Die Linie verbindet die letzten zwei Tiefs (Unterstützung) oder Hochs (Widerstand) und wird verlängert. Ein Pivot zählt, wenn er so viele Kerzen auf jeder Seite überragt.",
   "bt_stop_dernier_pivot": "Hinter dem letzten Hoch oder Tief",
+  "bt_touches_min": "Mindestberührungen",
+  "bt_touches_min_aide": "Durch zwei beliebige Punkte geht immer eine Gerade. Erst die dritte Berührung macht sie aussagekräftig.",
+  "bt_tolerance_touche": "Berührungstoleranz",
+  "bt_tolerance_touche_aide": "Zulässiger Abstand zwischen Tief und Linie, damit es als Abpraller zählt.",
   "bt_duree_calcul": "In {ms} ms berechnet, in deinem Browser."
 };
 

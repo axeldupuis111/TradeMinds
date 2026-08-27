@@ -3048,6 +3048,10 @@ const dict: Record<string, string> = {
   "bt_niveau_trendline": "Línea de tendencia (diagonal)",
   "bt_pivots_trendline_aide": "La línea une los dos últimos mínimos (soporte) o máximos (resistencia) y se prolonga. Un pivote cuenta si domina esa cantidad de velas a cada lado.",
   "bt_stop_dernier_pivot": "Detrás del último máximo o mínimo",
+  "bt_touches_min": "Toques mínimos",
+  "bt_touches_min_aide": "Por dos puntos siempre pasa una recta. Es el tercer toque el que hace que signifique algo.",
+  "bt_tolerance_touche": "Tolerancia de un toque",
+  "bt_tolerance_touche_aide": "Distancia admitida entre el mínimo y la recta para que cuente como rebote.",
   "bt_duree_calcul": "Calculado en {ms} ms, en tu navegador."
 };
 

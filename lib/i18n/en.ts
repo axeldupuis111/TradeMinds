@@ -3048,6 +3048,10 @@ const dict: Record<string, string> = {
   "bt_niveau_trendline": "Trendline (diagonal)",
   "bt_pivots_trendline_aide": "The line joins the last two lows (support) or highs (resistance) and extends forward. A pivot counts if it tops that many candles on each side.",
   "bt_stop_dernier_pivot": "Behind the last high or low",
+  "bt_touches_min": "Minimum touches",
+  "bt_touches_min_aide": "A line always passes through any two points. It is the third touch that makes it mean something.",
+  "bt_tolerance_touche": "Touch tolerance",
+  "bt_tolerance_touche_aide": "Gap allowed between the low and the line for it to count as a bounce.",
   "bt_duree_calcul": "Computed in {ms} ms, in your browser."
 };
 

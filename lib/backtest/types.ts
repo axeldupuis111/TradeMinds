@@ -99,24 +99,39 @@ export type BlocNiveau =
    */
   | { type: "liquidite_swing"; pivots: number }
   /**
-   * UNE TRENDLINE EST UNE DIAGONALE, et c'est tout le sujet de ce bloc.
+   * UNE TRENDLINE : une droite sur laquelle le prix REBONDIT au moins trois
+   * fois sans jamais clôturer de l'autre côté.
    *
-   * On relie les deux derniers creux pivots confirmés (ligne de soutien
-   * montante) et les deux derniers sommets pivots confirmés (ligne de
-   * résistance descendante), puis on PROLONGE ces droites jusqu'à la bougie
-   * courante. Le niveau n'est donc pas un prix fixe : il bouge à chaque bougie.
+   * Les trois éléments de cette définition comptent autant l'un que l'autre, et
+   * en oublier un donne un objet qui n'est pas une trendline :
    *
-   * ⚠️ Casser un plus-haut horizontal et casser une ligne oblique sont deux
-   * événements DIFFÉRENTS. Approcher l'un par l'autre produit un backtest
-   * crédible portant sur une méthode que le trader ne trade pas. C'est
-   * exactement l'erreur qu'on a commise avant d'écrire ce bloc.
+   * 1. **TROIS TOUCHES AU MINIMUM** (`touchesMin`). Deux points suffisent à
+   *    tracer une droite, et c'est bien le problème : par deux creux
+   *    quelconques il passe toujours une droite. C'est la TROISIÈME touche qui
+   *    fait qu'elle décrit quelque chose plutôt que de relier deux hasards.
+   * 2. **N'IMPORTE QUEL SENS.** Un soutien peut descendre, une résistance peut
+   *    monter, et une droite peut être horizontale. Exiger des creux ascendants
+   *    revient à écarter la moitié des trendlines que les traders tracent.
+   * 3. **RESTÉE INTACTE.** Si une bougie a clôturé de l'autre côté avant la
+   *    troisième touche, la droite est morte et ne compte plus. C'est ce qui
+   *    distingue une trendline respectée d'une droite déjà traversée.
    *
-   * ⚠️ La droite n'existe que si la géométrie tient : deux creux ASCENDANTS
-   * pour un soutien, deux sommets DESCENDANTS pour une résistance. Sinon ce
-   * côté n'a pas de niveau, et on ne déclenche rien plutôt que de tracer une
-   * droite qui ne décrit aucune tendance.
+   * La droite garde ses deux points d'ancrage d'origine : les touches suivantes
+   * la CONFIRMENT sans la faire pivoter, exactement comme un trait tracé à la
+   * main sur un graphique.
+   *
+   * ⚠️ Le niveau n'est exposé qu'une fois `touchesMin` atteint. Avant, ce n'est
+   * qu'une droite candidate, et la casser ne veut rien dire.
    */
-  | { type: "trendline"; pivots: number };
+  | {
+      type: "trendline";
+      /** Bougies de chaque côté pour qu'un pivot soit reconnu. */
+      pivots: number;
+      /** Touches nécessaires pour que la droite devienne une trendline. */
+      touchesMin: number;
+      /** Écart maximal, en ticks, pour qu'un pivot compte comme une touche. */
+      toleranceTicks: number;
+    };
 
 // ─── DÉCLENCHEUR : le signal, évalué sur bougies CLÔTURÉES uniquement ──────
 

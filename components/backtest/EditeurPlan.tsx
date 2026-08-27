@@ -133,7 +133,8 @@ export function EditeurPlan({ plan, instrument, onChange, t }: EditeurProps) {
               if (type === "range_horaire") maj({ niveau: { type, debut: "15:30", fin: "15:35" } });
               else if (type === "extremes_n_bougies") maj({ niveau: { type, n: 20 } });
               else if (type === "liquidite_swing") maj({ niveau: { type, pivots: 20 } });
-              else if (type === "trendline") maj({ niveau: { type, pivots: 10 } });
+              else if (type === "trendline")
+                maj({ niveau: { type, pivots: 10, touchesMin: 3, toleranceTicks: enTicks(instrument.spread * 2) } });
               else maj({ niveau: { type: "extremes_veille" } });
             }}
             options={[
@@ -145,21 +146,56 @@ export function EditeurPlan({ plan, instrument, onChange, t }: EditeurProps) {
             ]}
           />
         </Champ>
-        {plan.niveau.type === "liquidite_swing" || plan.niveau.type === "trendline" ? (
-          <Champ
-            label={t("bt_pivots")}
-            aide={plan.niveau.type === "trendline" ? t("bt_pivots_trendline_aide") : t("bt_pivots_aide")}
-          >
+        {plan.niveau.type === "liquidite_swing" ? (
+          <Champ label={t("bt_pivots")} aide={t("bt_pivots_aide")}>
             <Nombre
               valeur={plan.niveau.pivots}
               min={2}
               max={500}
-              onChange={(pivots) =>
-                maj({ niveau: { type: plan.niveau.type as "liquidite_swing" | "trendline", pivots } })
-              }
+              onChange={(pivots) => maj({ niveau: { type: "liquidite_swing", pivots } })}
               suffixe={t("bt_unite_bougies")}
             />
           </Champ>
+        ) : null}
+        {plan.niveau.type === "trendline" ? (
+          <>
+            <Champ label={t("bt_pivots")} aide={t("bt_pivots_trendline_aide")}>
+              <Nombre
+                valeur={plan.niveau.pivots}
+                min={2}
+                max={500}
+                suffixe={t("bt_unite_bougies")}
+                onChange={(pivots) =>
+                  maj({ niveau: { ...(plan.niveau as Extract<typeof plan.niveau, { type: "trendline" }>), pivots } })
+                }
+              />
+            </Champ>
+            <Champ label={t("bt_touches_min")} aide={t("bt_touches_min_aide")}>
+              <Nombre
+                valeur={plan.niveau.touchesMin}
+                min={3}
+                max={20}
+                onChange={(touchesMin) =>
+                  maj({ niveau: { ...(plan.niveau as Extract<typeof plan.niveau, { type: "trendline" }>), touchesMin } })
+                }
+              />
+            </Champ>
+            <Champ label={t("bt_tolerance_touche")} aide={t("bt_tolerance_touche_aide")}>
+              <Nombre
+                valeur={prix(plan.niveau.toleranceTicks)}
+                min={0}
+                pas={instrument.tailleTick}
+                onChange={(v) =>
+                  maj({
+                    niveau: {
+                      ...(plan.niveau as Extract<typeof plan.niveau, { type: "trendline" }>),
+                      toleranceTicks: enTicks(v),
+                    },
+                  })
+                }
+              />
+            </Champ>
+          </>
         ) : null}
         {plan.niveau.type === "extremes_n_bougies" ? (
           <Champ label={t("bt_n_bougies")}>

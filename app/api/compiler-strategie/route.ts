@@ -65,10 +65,13 @@ const CATALOGUE = `NIVEAU (un seul, obligatoire)
   {"type":"extremes_n_bougies","n":<2-500>}                    plus haut/bas des N dernieres bougies M1
   {"type":"extremes_veille"}                                   plus haut/bas de la veille
   {"type":"liquidite_swing","pivots":<2-500>}                  BSL/SSL : anciens sommets et creux pivots
-  {"type":"trendline","pivots":<2-500>}                        TRENDLINE : droite OBLIQUE reliant les deux derniers creux
-        (soutien montant) ou les deux derniers sommets (resistance descendante), prolongee jusqu'a la bougie
-        courante. A choisir des que le trader parle de trendline, de ligne de tendance ou de droite : casser une
-        oblique et casser un plus-haut horizontal sont deux evenements DIFFERENTS.
+  {"type":"trendline","pivots":<2-500>,"touchesMin":<3-20>,"toleranceTicks":<0+>}
+        TRENDLINE : une droite sur laquelle le prix REBONDIT au moins "touchesMin" fois (3 par defaut) sans
+        jamais cloturer de l'autre cote. Elle peut monter, descendre ou etre horizontale : AUCUN sens n'est
+        impose. Si une bougie cloture au travers avant la derniere touche, la droite est morte et ne compte plus.
+        A choisir des que le trader parle de trendline, de ligne de tendance ou de droite : casser une oblique et
+        casser un plus-haut horizontal sont deux evenements DIFFERENTS.
+        ⚠️ Ne descends JAMAIS "touchesMin" sous 3 : par deux points il passe toujours une droite.
 
 DECLENCHEUR (un seul, obligatoire)
   {"type":"cassure","mode":"cloture"|"meche"}

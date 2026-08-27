@@ -3048,6 +3048,10 @@ const dict: Record<string, string> = {
   "bt_niveau_trendline": "Trendline (droite oblique)",
   "bt_pivots_trendline_aide": "La droite relie les deux derniers creux (soutien) ou sommets (résistance) et se prolonge. Un pivot compte s'il domine autant de bougies de chaque côté.",
   "bt_stop_dernier_pivot": "Derrière le dernier sommet ou creux",
+  "bt_touches_min": "Touches minimum",
+  "bt_touches_min_aide": "Par deux points il passe toujours une droite. C'est la troisième touche qui fait qu'elle décrit quelque chose.",
+  "bt_tolerance_touche": "Tolérance d'une touche",
+  "bt_tolerance_touche_aide": "Écart accepté entre le creux et la droite pour que ça compte comme un rebond.",
   "bt_duree_calcul": "Calculé en {ms} ms, dans ton navigateur."
 };
 

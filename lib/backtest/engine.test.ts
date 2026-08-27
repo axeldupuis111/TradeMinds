@@ -465,67 +465,118 @@ describe("un stop plus proche que le coût n'est pas un trade", () => {
   });
 });
 
-describe("trendline : une diagonale, pas un plus-haut horizontal", () => {
+describe("trendline : trois touches, n'importe quel sens, restée intacte", () => {
   /**
-   * Reproduit la forme du graphique d'Axel, avec `pivots: 2`.
-   *   b2  creux à 90, confirmé en b4
-   *   b8  creux à 100, confirmé en b10   → soutien montant par ces deux points
-   *   b9  sommet à 120, confirmé en b11  → c'est « le dernier sommet » du stop
-   *   b12 clôture à 105, sous la droite prolongée
+   * Soutien montant, `pivots: 2`, tolérance 1 tick.
+   *   b2  creux à 90    confirmé en b4
+   *   b8  creux à 100   confirmé en b10  → droite candidate (2 touches)
+   *   b14 creux à 110   confirmé en b16  → la droite vaut 90 + 10 x 12/6 = 110
+   *                                        pile dessus : TROISIÈME touche
+   *   b17 la droite vaut 115, la clôture tombe à 112 : cassure
+   *   b12 sommet à 130  confirmé en b14  → c'est lui, le stop
    *
-   * La droite vaut 90 + 10 x (12 - 2) / 6 = 106,67, arrondi à 107 en b12. Une
-   * clôture à 105 la casse donc, alors qu'elle reste TRÈS au-dessus de l'ancien
-   * plus-bas horizontal (90) : c'est exactement là que l'oblique et
-   * l'horizontale divergent, et c'est tout l'objet du bloc.
-   *
-   * Entrée à l'ouverture de b13 (105), stop au-dessus du sommet de b9
-   * (120 + 1 = 121), donc 1R = 16 ticks et l'objectif à 105 - 32 = 73.
+   * Entrée à l'ouverture de b18 (112), stop 130 + 1 = 131, donc 1R = 19 ticks
+   * et l'objectif à 112 - 38 = 74, touché en b22.
    */
-  const PENTE: Bougie[] = [
-    [100, 104, 96, 100],
-    [100, 104, 95, 100],
-    [100, 104, 90, 100], // creux pivot bas
-    [100, 104, 96, 100],
-    [100, 106, 97, 102],
-    [102, 108, 100, 106],
-    [106, 110, 103, 108],
-    [108, 112, 104, 110],
-    [110, 114, 100, 112], // creux pivot haut (100 > 90)
-    [112, 120, 108, 118], // sommet pivot : le stop se pose derrière lui
-    [118, 119, 110, 115],
-    [115, 117, 109, 112],
-    [112, 114, 104, 105], // clôture sous la droite (107) : cassure
-    [105, 106, 96, 97],
-    [97, 98, 88, 89],
-    [89, 90, 72, 73], // objectif touché
+  const TROIS_TOUCHES: Bougie[] = [
+    [100, 106, 95, 102],
+    [102, 107, 94, 103],
+    [103, 108, 90, 104], // 1re touche
+    [104, 109, 97, 105],
+    [105, 110, 98, 106],
+    [106, 111, 102, 107],
+    [107, 112, 103, 108],
+    [108, 113, 102, 109],
+    [109, 114, 100, 110], // 2e touche
+    [110, 115, 104, 111],
+    [111, 116, 105, 112],
+    [112, 117, 106, 113],
+    // ⚠️ Le prix s'écarte de la droite ici : sans ces deux plus-bas AU-DESSUS
+    // de 110, la bougie 14 ne serait pas un creux pivot et la troisième touche
+    // n'existerait pas.
+    [113, 130, 111, 120], // sommet pivot : le stop
+    [120, 128, 115, 122],
+    [115, 121, 110, 116], // 3e touche, pile sur la droite
+    [116, 119, 112, 117],
+    [117, 120, 113, 118],
+    [118, 119, 110, 112], // clôture sous la droite : cassure
+    [112, 114, 104, 106],
+    [106, 108, 96, 98],
+    [98, 100, 88, 90],
+    [90, 92, 80, 82],
+    [82, 84, 72, 73], // objectif
   ];
 
-  function planTrendline() {
+  function planTL(over: { touchesMin?: number } = {}) {
     return plan({
-      niveau: { type: "trendline", pivots: 2 },
+      niveau: { type: "trendline", pivots: 2, touchesMin: over.touchesMin ?? 3, toleranceTicks: 1 },
       stop: { type: "dernier_pivot", bufferTicks: 1 },
     });
   }
 
-  it("casse la droite prolongée, et non l'ancien plus-bas", () => {
-    const s = serie(PENTE);
-    const r = lancerBacktest(s, planTrendline());
+  it("entre quand la droite à trois touches est enfin cassée", () => {
+    const s = serie(TROIS_TOUCHES);
+    const r = lancerBacktest(s, planTL());
 
     expect(r.trades).toHaveLength(1);
     expect(r.trades[0].sens).toBe("short");
-    expect(r.trades[0].entreeMs).toBe(s.t[13]);
-    // Le stop se mesure depuis le DERNIER SOMMET (120), pas depuis la bougie
-    // de signal. C'est ce qui fait 16 ticks de risque au lieu de deux ou trois.
-    expect(r.trades[0].risqueTicks).toBe(16);
+    expect(r.trades[0].entreeMs).toBe(s.t[18]);
+    expect(r.trades[0].risqueTicks).toBe(19);
     expect(r.trades[0].r).toBe(2);
   });
 
-  it("ne trace aucune droite quand la géométrie ne tient pas", () => {
-    // Un second creux PLUS BAS que le premier ne décrit pas un soutien montant.
-    // Plutôt que de tracer une droite qui ne veut rien dire, ce côté n'a pas de
-    // niveau et rien ne se déclenche.
-    const descendant = PENTE.map((b, i) => (i === 8 ? ([110, 114, 85, 112] as Bougie) : b));
-    expect(lancerBacktest(serie(descendant), planTrendline()).trades).toHaveLength(0);
+  it("ne fait rien tant que la troisième touche manque", () => {
+    // ⚠️ La règle qui distingue une trendline d'un trait au hasard : par deux
+    // points il passe toujours une droite. En exigeant quatre touches sur ce
+    // même jeu, la droite reste candidate et sa cassure ne vaut rien.
+    expect(lancerBacktest(serie(TROIS_TOUCHES), planTL({ touchesMin: 4 })).trades).toHaveLength(0);
+  });
+
+  it("tue la droite si une clôture la traverse avant la troisième touche", () => {
+    // « Le prix doit rebondir dessus sans clôturer en la cassant. » La bougie 13
+    // clôture à 105 alors que la droite vaut 108 : la droite est morte, la
+    // touche de b14 ne la ressuscite pas, et la cassure de b17 ne signale rien.
+    const traversee = TROIS_TOUCHES.map((b, k) => (k === 13 ? ([120, 128, 104, 105] as Bougie) : b));
+    expect(lancerBacktest(serie(traversee), planTL()).trades).toHaveLength(0);
+  });
+
+  it("accepte un soutien qui DESCEND, parce qu'une trendline n'a pas de sens imposé", () => {
+    // Creux à 110, 100 puis 90 : la droite descend, le prix rebondit dessus
+    // trois fois, puis clôture dessous. Exiger des creux ascendants écarterait
+    // la moitié des trendlines que les traders tracent.
+    const DESCENDANT: Bougie[] = [
+      [120, 126, 115, 122],
+      [122, 127, 114, 123],
+      [123, 128, 110, 124], // 1re touche
+      [124, 129, 117, 125],
+      [125, 130, 118, 126],
+      [126, 131, 120, 127],
+      [127, 132, 105, 128],
+      [128, 133, 104, 129],
+      [129, 134, 100, 130], // 2e touche
+      [130, 135, 104, 131],
+      [131, 136, 105, 132],
+      [132, 137, 106, 133],
+      [133, 150, 110, 140],
+      [140, 148, 115, 142],
+      [142, 144, 90, 138], // 3e touche
+      [138, 141, 92, 139],
+      [139, 142, 93, 140],
+      [140, 141, 83, 84], // clôture sous la droite (85)
+      [84, 86, 74, 76],
+      [76, 78, 62, 64],
+    ];
+    const r = lancerBacktest(
+      serie(DESCENDANT),
+      plan({
+        niveau: { type: "trendline", pivots: 2, touchesMin: 3, toleranceTicks: 1 },
+        stop: { type: "fixe", ticks: 10 },
+      }),
+    );
+
+    expect(r.trades).toHaveLength(1);
+    expect(r.trades[0].sens).toBe("short");
+    expect(r.trades[0].r).toBe(2);
   });
 
   it("refuse d'ouvrir sans pivot confirmé plutôt que de changer de stop", () => {

@@ -108,7 +108,14 @@ export function validerNiveau(v: unknown): BlocNiveau | null {
     }
     case "trendline": {
       const pivots = entier(o.pivots, 2, 500);
-      return pivots === null ? null : { type: "trendline", pivots };
+      // ⚠️ Trois touches est le PLANCHER, pas un défaut modifiable vers le bas :
+      // par deux points il passe toujours une droite, et une droite à deux
+      // touches relie deux hasards.
+      const touchesMin = entier(o.touchesMin, 3, 20);
+      const toleranceTicks = entier(o.toleranceTicks, 0, 10_000_000);
+      return pivots === null || touchesMin === null || toleranceTicks === null
+        ? null
+        : { type: "trendline", pivots, touchesMin, toleranceTicks };
     }
     default:
       return null;

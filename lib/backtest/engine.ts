@@ -209,22 +209,58 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
   let cassureBarre = -1;
   let fvgBord = 0; // bord du déséquilibre à retester, en ticks
 
-  // ── Pivots confirmés. Un pivot regarde des DEUX côtés, il n'est donc lisible
-  //    que `pivots` bougies après s'être formé. On garde les deux derniers de
-  //    chaque type : il en faut deux pour tracer une droite, et le dernier sert
-  //    de stop.
-  let sommetA: { i: number; prix: number } | null = null; // avant-dernier
-  let sommetB: { i: number; prix: number } | null = null; // dernier
-  let creuxA: { i: number; prix: number } | null = null;
+  // ── Dernier pivot confirmé de chaque type. Un pivot regarde des DEUX côtés,
+  //    il n'est donc lisible que `pivots` bougies après s'être formé. Il sert à
+  //    deux choses : ouvrir une droite candidate avec le pivot suivant, et
+  //    porter le stop « derrière le dernier sommet ».
+  let sommetB: { i: number; prix: number } | null = null;
   let creuxB: { i: number; prix: number } | null = null;
 
-  /** Valeur en `i` de la droite passant par deux pivots. */
-  function droite(
-    p1: { i: number; prix: number },
-    p2: { i: number; prix: number },
-    i: number,
-  ): number {
-    return p1.prix + ((p2.prix - p1.prix) * (i - p1.i)) / (p2.i - p1.i);
+  /**
+   * Une droite candidate ou confirmée : deux ancrages, un compte de touches, et
+   * un drapeau de mort. Les ancrages ne bougent JAMAIS après la création : les
+   * touches suivantes confirment la droite sans la faire pivoter, comme un
+   * trait tracé à la main.
+   */
+  interface Droite {
+    i1: number;
+    p1: number;
+    i2: number;
+    p2: number;
+    touches: number;
+    morte: boolean;
+  }
+  let ligneBas: Droite | null = null;
+  let ligneHaut: Droite | null = null;
+
+  /** Valeur d'une droite en `i`, arrondie au tick. */
+  function valeurDroite(d: Droite, i: number): number {
+    return Math.round(d.p1 + ((d.p2 - d.p1) * (i - d.i1)) / (d.i2 - d.i1));
+  }
+
+  /**
+   * Intègre un nouveau pivot : soit il tombe sur la droite en cours et la
+   * confirme, soit il ouvre une nouvelle droite candidate avec le pivot
+   * précédent.
+   */
+  function integrerPivot(
+    courante: Droite | null,
+    precedent: { i: number; prix: number } | null,
+    p: number,
+    prix: number,
+    tolerance: number,
+  ): Droite | null {
+    if (courante && !courante.morte) {
+      const attendu = valeurDroite(courante, p);
+      if (Math.abs(prix - attendu) <= tolerance) {
+        // ⚠️ On n'ancre PAS sur le nouveau point : une droite qui pivote à
+        // chaque touche finit par suivre le prix et ne se casse jamais.
+        courante.touches++;
+        return courante;
+      }
+    }
+    if (!precedent) return null;
+    return { i1: precedent.i, p1: precedent.prix, i2: p, p2: prix, touches: 2, morte: false };
   }
 
   // État du déclencheur à trois temps (balayage, impulsion, retour).
@@ -664,35 +700,41 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
       hautNiveau = hautVeille;
       basNiveau = basVeille;
     } else if (plan.niveau.type === "trendline") {
-      const k = plan.niveau.pivots;
+      const { pivots: k, touchesMin, toleranceTicks } = plan.niveau;
       const p = i - k;
       if (p >= k) {
         let estSommet = true;
         let estCreux = true;
-        for (let j = p - k; j <= p + k; j++) {
-          if (j === p) continue;
-          if (h[j] > h[p]) estSommet = false;
-          if (l[j] < l[p]) estCreux = false;
+        for (let j2 = p - k; j2 <= p + k; j2++) {
+          if (j2 === p) continue;
+          if (h[j2] > h[p]) estSommet = false;
+          if (l[j2] < l[p]) estCreux = false;
         }
         if (estSommet && (!sommetB || sommetB.i !== p)) {
-          sommetA = sommetB;
+          ligneHaut = integrerPivot(ligneHaut, sommetB, p, h[p], toleranceTicks);
           sommetB = { i: p, prix: h[p] };
         }
         if (estCreux && (!creuxB || creuxB.i !== p)) {
-          creuxA = creuxB;
+          ligneBas = integrerPivot(ligneBas, creuxB, p, l[p], toleranceTicks);
           creuxB = { i: p, prix: l[p] };
         }
       }
-      // ⚠️ La droite n'existe que si la géométrie tient : deux creux qui
-      // MONTENT pour un soutien, deux sommets qui DESCENDENT pour une
-      // résistance. Sinon ce côté n'a pas de niveau du tout, et il vaut mieux
-      // ne rien déclencher que casser une droite qui ne décrit rien.
-      basNiveau =
-        creuxA && creuxB && creuxB.prix > creuxA.prix ? Math.round(droite(creuxA, creuxB, i)) : null;
-      hautNiveau =
-        sommetA && sommetB && sommetB.prix < sommetA.prix
-          ? Math.round(droite(sommetA, sommetB, i))
-          : null;
+
+      // ⚠️ On EXPOSE le niveau avant de constater la violation, sinon la
+      // clôture qui casse la droite ne trouverait plus rien à casser. La droite
+      // est marquée morte dans la foulée : elle ne comptera plus aucune touche,
+      // et le prochain pivot en ouvrira une nouvelle.
+      if (ligneBas && !ligneBas.morte) {
+        const v = valeurDroite(ligneBas, i);
+        basNiveau = ligneBas.touches >= touchesMin ? v : null;
+        if (c[i] < v) ligneBas.morte = true;
+      } else basNiveau = null;
+
+      if (ligneHaut && !ligneHaut.morte) {
+        const v = valeurDroite(ligneHaut, i);
+        hautNiveau = ligneHaut.touches >= touchesMin ? v : null;
+        if (c[i] > v) ligneHaut.morte = true;
+      } else hautNiveau = null;
     } else if (plan.niveau.type === "liquidite_swing") {
       // Un pivot regarde des DEUX cotes : celui de la bougie i-k n'est
       // confirmable qu'a la bougie i. On ne publie donc le niveau qu'avec ce
@@ -711,14 +753,12 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
         if (estSommet) {
           hautNiveau = h[p];
           if (!sommetB || sommetB.i !== p) {
-            sommetA = sommetB;
             sommetB = { i: p, prix: h[p] };
           }
         }
         if (estCreux) {
           basNiveau = l[p];
           if (!creuxB || creuxB.i !== p) {
-            creuxA = creuxB;
             creuxB = { i: p, prix: l[p] };
           }
         }
