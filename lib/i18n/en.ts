@@ -3077,6 +3077,14 @@ const dict: Record<string, string> = {
   "bt_corrige_le_bloc": "Fix this block in the plan below: it is outlined in red.",
   "bt_bloc_conteste": "You rejected the AI's interpretation of this block. This is where you fix it.",
   "bt_interpretations_refusees": "You rejected {n} of the AI's interpretations without fixing them in the plan. This figure therefore rests on a translation you yourself denied: it does not describe your strategy. Fix the blocks outlined in red, then run again.",
+  "bt_cause_aucun_niveau": "No level ever existed over the period. The « level you draw » block is at fault, almost always a pivot width that is too large: it counts in bars of your timeframe, not in minutes.",
+  "bt_cause_aucune_droite_confirmee": "Lines were drawn, but none was ever touched enough times. This is almost always the touch tolerance: at zero, a low must land exactly on the line, which never happens.",
+  "bt_cause_aucun_signal": "The level existed but was never crossed under the required conditions. Look at the « signal » block, your time window, and the extra filters.",
+  "bt_cause_tout_ecarte": "Every signal was discarded because its stop fell closer than a round trip costs. Your stop is too tight for this instrument at this timeframe.",
+  "bt_cause_trop_peu": "Your method does trigger, just not often enough over this period. Widen the period before touching any setting: it is the only change that invents nothing.",
+  "bt_diagnostic_chiffres": "Detail: {niveau} bars out of {bougies} with a readable level, {droites} lines drawn of which {confirmees} confirmed, {signaux} signals, {ecartes} discarded.",
+  "bt_cause_droites_trop_rares": "Lines were drawn, but far too few for any to reach three touches. Your pivot width is too large: it counts in bars of your timeframe, not in minutes. Three to ten bars each side is enough.",
+  "bt_deduite_tolerance": "Your sheet does not say how close a low must be to count as a bounce on your trendline. Without a value, no line can ever be touched three times. Set to {valeur}.",
   "bt_duree_calcul": "Computed in {ms} ms, in your browser."
 };
 

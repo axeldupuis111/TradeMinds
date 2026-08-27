@@ -46,6 +46,9 @@ function resultat(gagnants: number, perdants: number, gainR = 2, over: Partial<T
       limitesExpirees: 0,
       refusesRisqueTropPetit: 0,
       journeesArretees: 0,
+      barresAvecNiveau: 0,
+      droitesTracees: 0,
+      droitesConfirmees: 0,
       collisions: 0,
       coutTotalR: 0,
     },
@@ -189,5 +192,49 @@ describe("sur-apprentissage et collisions", () => {
     const r = resultat(139, 269);
     r.audit.collisions = 102;
     expect(lireBacktest(r, SANS_COUT).partCollisions).toBeCloseTo(0.25, 6);
+  });
+});
+
+describe("diagnostic d'un résultat vide", () => {
+  /** Un résultat sans trade, avec l'audit qu'on veut examiner. */
+  function vide(audit: Partial<ResultatBacktest["audit"]>): ResultatBacktest {
+    const r = resultat(0, 0);
+    r.audit = { ...r.audit, bougies: 10_000, signaux: 0, ...audit };
+    return r;
+  }
+
+  it("distingue un niveau qui n'a jamais existé d'un signal jamais venu", () => {
+    // ⚠️ Ces deux causes donnent le même zéro à l'écran et appellent des gestes
+    // OPPOSÉS : régler le bloc niveau, ou constater que la méthode ne se
+    // déclenche pas. Les confondre envoie le trader au mauvais endroit.
+    expect(lireBacktest(vide({ barresAvecNiveau: 0 }), SANS_COUT).cause).toBe("aucun_niveau");
+    expect(lireBacktest(vide({ barresAvecNiveau: 9_000 }), SANS_COUT).cause).toBe("aucun_signal");
+  });
+
+  it("distingue une tolérance trop stricte d'une largeur de pivot trop grande", () => {
+    // ⚠️ Deux causes derrière le même zéro, qui envoient vers deux réglages
+    // OPPOSÉS. Mesuré en vrai sur quatre ans de Nasdaq : une largeur de pivot
+    // de 240 bougies H1 ne produit qu'une droite toutes les 435 bougies, une
+    // largeur de 8 en produit une toutes les 13. Les deux donnaient zéro trade.
+    const rares = vide({ bougies: 23_489, barresAvecNiveau: 0, droitesTracees: 54 });
+    expect(lireBacktest(rares, SANS_COUT).cause).toBe("droites_trop_rares");
+
+    const nombreuses = vide({ bougies: 23_489, barresAvecNiveau: 0, droitesTracees: 1_824 });
+    expect(lireBacktest(nombreuses, SANS_COUT).cause).toBe("aucune_droite_confirmee");
+  });
+
+  it("reconnaît des signaux tous écartés faute de stop assez large", () => {
+    const r = vide({ barresAvecNiveau: 9_000, signaux: 0, refusesRisqueTropPetit: 120 });
+    expect(lireBacktest(r, SANS_COUT).cause).toBe("tout_ecarte");
+  });
+
+  it("dit simplement « trop peu » quand la méthode se déclenche", () => {
+    const r = resultat(20, 30);
+    r.audit = { ...r.audit, bougies: 10_000, barresAvecNiveau: 9_000, signaux: 60 };
+    expect(lireBacktest(r, SANS_COUT).cause).toBe("trop_peu");
+  });
+
+  it("ne rend aucune cause quand le verdict conclut", () => {
+    expect(lireBacktest(resultat(139, 269), SANS_COUT).cause).toBeUndefined();
   });
 });

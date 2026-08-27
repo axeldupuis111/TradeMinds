@@ -3077,6 +3077,14 @@ const dict: Record<string, string> = {
   "bt_corrige_le_bloc": "Korrigiere diesen Baustein im Plan unten: Er ist rot umrandet.",
   "bt_bloc_conteste": "Du hast die Interpretation der KI zu diesem Baustein abgelehnt. Hier stellst du es ein.",
   "bt_interpretations_refusees": "Du hast {n} Interpretation(en) der KI abgelehnt, ohne sie im Plan zu korrigieren. Diese Zahl beruht also auf einer Übersetzung, der du selbst widersprochen hast: Sie beschreibt nicht deine Strategie. Korrigiere die rot umrandeten Bausteine und starte erneut.",
+  "bt_cause_aucun_niveau": "Im gesamten Zeitraum existierte nie ein Level. Schuld ist der Baustein « Das Level, das du zeichnest », fast immer eine zu große Pivot-Breite: Sie zählt in Kerzen deines Zeitrahmens, nicht in Minuten.",
+  "bt_cause_aucune_droite_confirmee": "Linien wurden gezeichnet, aber keine wurde oft genug berührt. Fast immer liegt es an der Berührungstoleranz: Bei null muss ein Tief exakt auf der Linie landen, was nie passiert.",
+  "bt_cause_aucun_signal": "Das Level existierte, wurde aber nie unter den geforderten Bedingungen überschritten. Sieh dir den Baustein « Das Signal », dein Zeitfenster und die zusätzlichen Filter an.",
+  "bt_cause_tout_ecarte": "Alle Signale wurden verworfen, weil ihr Stop näher lag als ein Hin- und Rückweg kostet. Dein Stop ist für dieses Instrument in diesem Zeitrahmen zu eng.",
+  "bt_cause_trop_peu": "Deine Methode löst aus, nur nicht oft genug in diesem Zeitraum. Erweitere den Zeitraum, bevor du Einstellungen änderst: Das ist die einzige Änderung, die nichts erfindet.",
+  "bt_diagnostic_chiffres": "Details: {niveau} von {bougies} Kerzen mit lesbarem Level, {droites} gezeichnete Linien davon {confirmees} bestätigt, {signaux} Signale, {ecartes} verworfen.",
+  "bt_cause_droites_trop_rares": "Es wurden Linien gezeichnet, aber viel zu wenige, als dass eine drei Berührungen erreichte. Deine Pivot-Breite ist zu groß: Sie zählt in Kerzen deines Zeitrahmens, nicht in Minuten. Drei bis zehn Kerzen je Seite genügen.",
+  "bt_deduite_tolerance": "Dein Blatt sagt nicht, wie nah ein Tief liegen muss, um als Abpraller auf deiner Trendlinie zu zählen. Ohne Wert kann keine Linie je dreimal berührt werden. Auf {valeur} gesetzt.",
   "bt_duree_calcul": "In {ms} ms berechnet, in deinem Browser."
 };
 

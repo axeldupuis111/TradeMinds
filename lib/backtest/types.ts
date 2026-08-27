@@ -379,6 +379,20 @@ export interface AuditExecution {
    * bien vus : les deux mécanismes ne se comptent pas au même endroit.
    */
   journeesArretees: number;
+  /**
+   * Bougies pendant lesquelles au moins un côté du niveau existait.
+   *
+   * ⚠️ SANS CE COMPTEUR, UN RÉSULTAT VIDE EST MUET. Un plan qui ne rend aucun
+   * trade a deux causes très différentes : soit le niveau n'a jamais existé
+   * (largeur de pivot absurde, trendline jamais confirmée), soit il existait et
+   * n'a jamais été franchi. La première se corrige en deux clics, la seconde
+   * veut dire que la méthode ne se déclenche pas. Les confondre laisse le
+   * trader devant un zéro sans issue.
+   */
+  barresAvecNiveau: number;
+  /** Droites candidates ouvertes, et celles qui ont atteint leur compte de touches. */
+  droitesTracees: number;
+  droitesConfirmees: number;
   /** Trades dont le stop et l'objectif tombaient dans la même bougie. */
   collisions: number;
   /**

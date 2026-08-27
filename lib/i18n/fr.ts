@@ -3077,6 +3077,14 @@ const dict: Record<string, string> = {
   "bt_corrige_le_bloc": "Corrige ce bloc dans le plan ci-dessous : il est entouré de rouge.",
   "bt_bloc_conteste": "Tu as refusé l'interprétation de l'IA sur ce bloc. C'est ici que ça se règle.",
   "bt_interpretations_refusees": "Tu as refusé {n} interprétation(s) de l'IA sans les corriger dans le plan. Ce chiffre porte donc sur une traduction que tu as toi-même démentie : il ne décrit pas ta stratégie. Corrige les blocs entourés de rouge, puis relance.",
+  "bt_cause_aucun_niveau": "Aucun niveau n'a jamais existé sur la période. Le réglage du bloc « Le niveau que tu traces » est en cause, presque toujours une largeur de pivot trop grande : elle se compte en bougies de ton unité de temps, pas en minutes.",
+  "bt_cause_aucune_droite_confirmee": "Des droites ont été tracées, mais aucune n'a jamais été touchée assez de fois. C'est presque toujours la tolérance d'une touche : à zéro, un creux doit tomber exactement sur la droite, ce qui n'arrive jamais.",
+  "bt_cause_aucun_signal": "Le niveau existait, mais il n'a jamais été franchi dans les conditions demandées. Regarde le bloc « Le signal », ta fenêtre horaire, et les filtres supplémentaires.",
+  "bt_cause_tout_ecarte": "Tous les signaux ont été écartés parce que leur stop tombait plus près que ce que coûte un aller-retour. Ton stop est trop serré pour cet instrument à cette unité de temps.",
+  "bt_cause_trop_peu": "Ta méthode se déclenche, simplement pas assez souvent sur cette période. Élargis la période avant de toucher aux réglages : c'est le seul changement qui n'invente rien.",
+  "bt_diagnostic_chiffres": "Détail : {niveau} bougies sur {bougies} avec un niveau lisible, {droites} droites tracées dont {confirmees} confirmées, {signaux} signaux, {ecartes} écartés.",
+  "bt_cause_droites_trop_rares": "Des droites ont été tracées, mais bien trop peu pour qu'aucune atteigne trois touches. Ta largeur de pivot est trop grande : elle se compte en bougies de ton unité de temps, pas en minutes. Trois à dix bougies de chaque côté suffisent.",
+  "bt_deduite_tolerance": "Ta fiche ne dit pas à quelle distance un creux compte comme un rebond sur ta trendline. Sans valeur, aucune droite ne peut jamais être touchée trois fois. Posé à {valeur}.",
   "bt_duree_calcul": "Calculé en {ms} ms, dans ton navigateur."
 };
 

@@ -263,7 +263,29 @@ export default function BacktestPage() {
         objectif: json.plan!.objectif ?? p.objectif,
         contexte: json.plan!.contexte ?? p.contexte,
       }));
-      setCouverture(json.couverture);
+      // ⚠️ UNE TOLÉRANCE DE TOUCHE À ZÉRO EST UNE IMPASSE MUETTE. Le modèle a
+      // consigne de la remplir, mais s'il l'oublie, une droite ne peut plus
+      // jamais être touchée une troisième fois : le backtest rend zéro trade sur
+      // quatre ans sans que rien ne l'explique. On pose donc une valeur
+      // utilisable, et on la DÉCLARE comme toute autre déduction, refusable
+      // d'un clic comme les autres.
+      const couvertureFinale = { ...json.couverture };
+      const niveau = json.plan.niveau;
+      if (niveau?.type === "trendline" && niveau.toleranceTicks <= 0) {
+        const parDefaut = Math.max(1, Math.round((instrument.spread * 2) / instrument.tailleTick));
+        niveau.toleranceTicks = parDefaut;
+        couvertureFinale.deduites = [
+          {
+            champ: "niveau",
+            pourquoi: tr("bt_deduite_tolerance", {
+              valeur: (parDefaut * instrument.tailleTick).toFixed(instrument.decimales),
+            }),
+          },
+          ...couvertureFinale.deduites,
+        ];
+      }
+
+      setCouverture(couvertureFinale);
       setContestes(new Set());
       setCompilation("repos");
       setResultat(null);
@@ -271,7 +293,7 @@ export default function BacktestPage() {
       setCompilation("erreur");
       setCompilationMsg(tr("bt_compil_error"));
     }
-  }, [strategies, strategieId, code, fuseau, tr]);
+  }, [strategies, strategieId, code, fuseau, instrument, tr]);
 
   const lancer = useCallback(() => {
     if (etat.phase === "telechargement" || etat.phase === "calcul") return;

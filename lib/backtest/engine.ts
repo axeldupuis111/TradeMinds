@@ -187,6 +187,9 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
     limitesExpirees: 0,
     refusesRisqueTropPetit: 0,
     journeesArretees: 0,
+    barresAvecNiveau: 0,
+    droitesTracees: 0,
+    droitesConfirmees: 0,
     collisions: 0,
     coutTotalR: 0,
   };
@@ -254,6 +257,7 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
     p: number,
     prix: number,
     tolerance: number,
+    touchesMin: number,
   ): Droite | null {
     if (courante && !courante.morte) {
       const attendu = valeurDroite(courante, p);
@@ -261,10 +265,12 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
         // ⚠️ On n'ancre PAS sur le nouveau point : une droite qui pivote à
         // chaque touche finit par suivre le prix et ne se casse jamais.
         courante.touches++;
+        if (courante.touches === touchesMin) audit.droitesConfirmees++;
         return courante;
       }
     }
     if (!precedent) return null;
+    audit.droitesTracees++;
     return { i1: precedent.i, p1: precedent.prix, i2: p, p2: prix, touches: 2, morte: false };
   }
 
@@ -722,11 +728,11 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
           if (l[j2] < l[p]) estCreux = false;
         }
         if (estSommet && (!sommetB || sommetB.i !== p)) {
-          ligneHaut = integrerPivot(ligneHaut, sommetB, p, h[p], toleranceTicks);
+          ligneHaut = integrerPivot(ligneHaut, sommetB, p, h[p], toleranceTicks, touchesMin);
           sommetB = { i: p, prix: h[p] };
         }
         if (estCreux && (!creuxB || creuxB.i !== p)) {
-          ligneBas = integrerPivot(ligneBas, creuxB, p, l[p], toleranceTicks);
+          ligneBas = integrerPivot(ligneBas, creuxB, p, l[p], toleranceTicks, touchesMin);
           creuxB = { i: p, prix: l[p] };
         }
       }
@@ -820,6 +826,8 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
         }
       }
     }
+
+    if (hautNiveau != null || basNiveau != null) audit.barresAvecNiveau++;
 
     // ── Recherche d'un signal. Bougie i clôturée, entrée en i+1 au plus tôt.
     if (position || attente) continue;

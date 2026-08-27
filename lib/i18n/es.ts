@@ -3077,6 +3077,14 @@ const dict: Record<string, string> = {
   "bt_corrige_le_bloc": "Corrige este bloque en el plan de abajo: está marcado en rojo.",
   "bt_bloc_conteste": "Rechazaste la interpretación de la IA sobre este bloque. Aquí se ajusta.",
   "bt_interpretations_refusees": "Rechazaste {n} interpretación(es) de la IA sin corregirlas en el plan. Esta cifra se apoya entonces en una traducción que tú mismo desmentiste: no describe tu estrategia. Corrige los bloques marcados en rojo y vuelve a ejecutar.",
+  "bt_cause_aucun_niveau": "Nunca existió ningún nivel en el periodo. La culpa es del bloque « El nivel que trazas », casi siempre una anchura de pivote demasiado grande: se cuenta en velas de tu temporalidad, no en minutos.",
+  "bt_cause_aucune_droite_confirmee": "Se trazaron rectas, pero ninguna fue tocada suficientes veces. Casi siempre es la tolerancia de un toque: a cero, un mínimo debe caer exactamente sobre la recta, lo que nunca ocurre.",
+  "bt_cause_aucun_signal": "El nivel existía pero nunca se cruzó en las condiciones exigidas. Mira el bloque « La señal », tu ventana horaria y los filtros adicionales.",
+  "bt_cause_tout_ecarte": "Todas las señales se descartaron porque su stop caía más cerca de lo que cuesta una ida y vuelta. Tu stop es demasiado ceñido para este instrumento en esta temporalidad.",
+  "bt_cause_trop_peu": "Tu método sí se dispara, solo que no lo bastante en este periodo. Amplía el periodo antes de tocar los ajustes: es el único cambio que no inventa nada.",
+  "bt_diagnostic_chiffres": "Detalle: {niveau} velas de {bougies} con un nivel legible, {droites} rectas trazadas de las cuales {confirmees} confirmadas, {signaux} señales, {ecartes} descartadas.",
+  "bt_cause_droites_trop_rares": "Se trazaron rectas, pero demasiado pocas para que alguna alcance tres toques. Tu anchura de pivote es excesiva: se cuenta en velas de tu temporalidad, no en minutos. De tres a diez velas por lado bastan.",
+  "bt_deduite_tolerance": "Tu ficha no dice a qué distancia un mínimo cuenta como rebote en tu línea de tendencia. Sin valor, ninguna recta puede ser tocada tres veces. Fijado en {valeur}.",
   "bt_duree_calcul": "Calculado en {ms} ms, en tu navegador."
 };
 

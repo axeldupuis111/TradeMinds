@@ -110,8 +110,34 @@ export interface ControleHorsEchantillon {
   neSurvitPas: boolean;
 }
 
+/**
+ * Pourquoi le plan n'a produit aucun trade, ou presque.
+ *
+ * ⚠️ UN RÉSULTAT VIDE SANS EXPLICATION EST LE PIRE ÉCRAN POSSIBLE. Le trader
+ * voit zéro, ne sait pas si sa méthode ne se déclenche jamais ou si un réglage
+ * l'empêche d'exister, et il n'a aucune prise. Mesuré en vrai : une largeur de
+ * pivot de 240 bougies H1 (dix jours de chaque côté) et une tolérance de touche
+ * à zéro donnaient zéro trade sur quatre ans, pour deux raisons distinctes qu'un
+ * simple « pas assez de trades » ne pouvait pas distinguer.
+ */
+export type CauseDuVide =
+  /** Le niveau n'a jamais existe : reglage de niveau a revoir. */
+  | "aucun_niveau"
+  /** Des droites, mais tres peu : la largeur de pivot est trop grande. */
+  | "droites_trop_rares"
+  /** Des droites en nombre, mais aucune n'a atteint son compte de touches. */
+  | "aucune_droite_confirmee"
+  /** Le niveau existait, il n'a simplement jamais ete franchi. */
+  | "aucun_signal"
+  /** Des signaux, mais tous refuses faute d'un stop assez large. */
+  | "tout_ecarte"
+  /** Des trades, juste pas assez pour conclure. */
+  | "trop_peu";
+
 export interface LectureBacktest {
   verdict: CodeVerdict;
+  /** Renseigne des que le plan produit moins que le seuil de conclusion. */
+  cause?: CauseDuVide;
   /** Renseigné seulement si `verdict` vaut "insuffisant". */
   tradesManquants?: number;
   /** Absent tant que le verdict est "insuffisant". Voir règle 1. */
@@ -213,6 +239,30 @@ function controleHorsEchantillon(trades: TradeSimule[]): ControleHorsEchantillon
   };
 }
 
+/**
+ * Diagnostic d'un resultat vide, du plus amont au plus aval.
+ *
+ * L'ordre compte : on remonte a la PREMIERE etape qui a echoue. Dire « aucun
+ * signal » alors qu'aucun niveau n'a jamais existé enverrait le trader régler
+ * le mauvais bloc.
+ */
+function causeDuVide(r: ResultatBacktest): CauseDuVide {
+  const a = r.audit;
+  if (a.barresAvecNiveau === 0) {
+    if (a.droitesTracees === 0) return "aucun_niveau";
+    // ⚠️ Deux causes très différentes derrière le même zéro, et elles envoient
+    // vers deux réglages OPPOSÉS. Le seuil est calibré sur une mesure réelle :
+    // une largeur de pivot de 240 bougies H1 ne produit qu'une droite toutes
+    // les 435 bougies, contre une toutes les 13 avec une largeur de 8. Un
+    // centième sépare proprement les deux régimes.
+    if (a.droitesTracees * 100 < a.bougies) return "droites_trop_rares";
+    return "aucune_droite_confirmee";
+  }
+  if (a.signaux + a.refusesRisqueTropPetit === 0) return "aucun_signal";
+  if (r.trades.length === 0 && a.refusesRisqueTropPetit > 0) return "tout_ecarte";
+  return "trop_peu";
+}
+
 export function lireBacktest(
   resultat: ResultatBacktest,
   couts: Couts,
@@ -229,6 +279,7 @@ export function lireBacktest(
   if (trades.length < MIN_TRADES_CONCLUSION) {
     return {
       verdict: "insuffisant",
+      cause: causeDuVide(resultat),
       tradesManquants: MIN_TRADES_CONCLUSION - trades.length,
       partCollisions,
       partRefusesRisque,

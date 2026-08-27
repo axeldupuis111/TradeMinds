@@ -100,8 +100,21 @@ export function Resultat({
                 manquants: lecture.tradesManquants ?? 0,
               })}
             </p>
+            {/* ⚠️ Le diagnostic, PAS un conseil générique. Un zéro sans cause
+                laisse le trader sans prise : il ne sait pas s'il doit changer
+                un réglage ou renoncer à sa méthode. */}
+            <p className="mt-2 text-xs font-medium text-warning">
+              {t(`bt_cause_${lecture.cause ?? "trop_peu"}`)}
+            </p>
             <p className="mt-2 text-xs text-foreground-muted">
-              {t("bt_insuffisant_pistes")}
+              {t("bt_diagnostic_chiffres", {
+                niveau: audit.barresAvecNiveau,
+                bougies: audit.bougies,
+                droites: audit.droitesTracees,
+                confirmees: audit.droitesConfirmees,
+                signaux: audit.signaux,
+                ecartes: audit.refusesRisqueTropPetit,
+              })}
             </p>
           </div>
         </div>
