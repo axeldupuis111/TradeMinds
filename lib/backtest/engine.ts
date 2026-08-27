@@ -8,6 +8,7 @@ import type {
   PlanExecution,
   ResultatBacktest,
   SerieM1,
+  TraceSignal,
   TradeSimule,
 } from "./types";
 import { agreger } from "./serie";
@@ -69,6 +70,7 @@ interface EntreeEnAttente {
   /** Horodatage et niveau de la bougie de signal, pour l'inspection visuelle. */
   signalMs: number;
   niveauSignal: number;
+  trace?: TraceSignal;
 }
 
 interface Position {
@@ -89,6 +91,7 @@ interface Position {
   breakEvenPose: boolean;
   signalMs: number;
   niveauSignal: number;
+  trace?: TraceSignal;
 }
 
 /** Décalage local, en minutes, mis en cache par heure UTC. */
@@ -237,6 +240,14 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
     p2: number;
     touches: number;
     morte: boolean;
+    /**
+     * Les pivots qui ont touche la droite, ancrages compris.
+     *
+     * ⚠️ Gardes pour etre REDESSINES. Un trader qui ne voit pas ses trois
+     * touches ne peut ni reconnaitre ni dementir son setup, et toute la boucle
+     * de verification tombe : il regarde des bougies et trois traits plats.
+     */
+    points: { i: number; prix: number }[];
   }
   let ligneBas: Droite | null = null;
   let ligneHaut: Droite | null = null;
@@ -265,13 +276,22 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
         // ⚠️ On n'ancre PAS sur le nouveau point : une droite qui pivote à
         // chaque touche finit par suivre le prix et ne se casse jamais.
         courante.touches++;
+        courante.points.push({ i: p, prix });
         if (courante.touches === touchesMin) audit.droitesConfirmees++;
         return courante;
       }
     }
     if (!precedent) return null;
     audit.droitesTracees++;
-    return { i1: precedent.i, p1: precedent.prix, i2: p, p2: prix, touches: 2, morte: false };
+    return {
+      i1: precedent.i,
+      p1: precedent.prix,
+      i2: p,
+      p2: prix,
+      touches: 2,
+      morte: false,
+      points: [{ i: precedent.i, prix: precedent.prix }, { i: p, prix }],
+    };
   }
 
   // État du déclencheur à trois temps (balayage, impulsion, retour).
@@ -332,6 +352,7 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
     trades.push({
       signalMs: p.signalMs,
       niveauSignal: p.niveauSignal,
+      trace: p.trace,
       entreeMs: p.msEntree,
       sortieMs: t[i],
       sens: p.sens,
@@ -431,6 +452,7 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
     dernierCreux: number | undefined,
     signalMs: number,
     niveauSignal: number,
+    trace: TraceSignal | undefined,
   ): boolean {
     const signe = sens === "long" ? 1 : -1;
     const couts = plan.couts;
@@ -511,6 +533,7 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
       breakEvenPose: false,
       signalMs,
       niveauSignal,
+      trace,
     };
     tradesJour++;
     return true;
@@ -804,7 +827,7 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
     if (attente) {
       if (attente.prixLimite == null) {
         // Entrée à l'ouverture de cette bougie, décidée sur la précédente.
-        const ouverte = ouvrir(i, attente.sens, o[i], attente.barreSignal, attente.extremeBalayage, attente.dernierSommet, attente.dernierCreux, attente.signalMs, attente.niveauSignal);
+        const ouverte = ouvrir(i, attente.sens, o[i], attente.barreSignal, attente.extremeBalayage, attente.dernierSommet, attente.dernierCreux, attente.signalMs, attente.niveauSignal, attente.trace);
         attente = null;
         if (ouverte) {
           gererPosition(i, minutes);
@@ -817,7 +840,7 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
         const touche =
           attente.sens === "long" ? l[i] <= attente.prixLimite : h[i] >= attente.prixLimite;
         if (touche) {
-          const ouverte = ouvrir(i, attente.sens, attente.prixLimite, attente.barreSignal, attente.extremeBalayage, attente.dernierSommet, attente.dernierCreux, attente.signalMs, attente.niveauSignal);
+          const ouverte = ouvrir(i, attente.sens, attente.prixLimite, attente.barreSignal, attente.extremeBalayage, attente.dernierSommet, attente.dernierCreux, attente.signalMs, attente.niveauSignal, attente.trace);
           attente = null;
           if (ouverte) {
             gererPosition(i, minutes);
@@ -853,12 +876,45 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
     const dernierSommet = sommetB?.prix;
     const dernierCreux = creuxB?.prix;
     const signalMs = t[i];
+
+    /**
+     * La forme du niveau, telle que le trader l'aurait tracee.
+     *
+     * ⚠️ On la fige AU MOMENT DU SIGNAL : une droite peut mourir ou pivoter
+     * ensuite, et redessiner son etat final montrerait autre chose que ce sur
+     * quoi la decision a ete prise.
+     */
+    let trace: TraceSignal | undefined;
+    if (plan.niveau.type === "trendline") {
+      const ligne = sens === "long" ? ligneHaut : ligneBas;
+      if (ligne) {
+        trace = {
+          forme: "droite",
+          a: { ms: t[ligne.i1], prixTicks: ligne.p1 },
+          b: { ms: t[ligne.i2], prixTicks: ligne.p2 },
+          touches: ligne.points.map((pt) => ({ ms: t[pt.i], prixTicks: pt.prix })),
+        };
+      }
+    } else if (plan.niveau.type === "range_horaire") {
+      if (hautNiveau != null && basNiveau != null) {
+        trace = {
+          forme: "zone",
+          hautTicks: hautNiveau,
+          basTicks: basNiveau,
+          debutMs: t[Math.max(0, i - 60)],
+          finMs: t[i],
+        };
+      }
+    } else {
+      const niveau = sens === "long" ? hautNiveau : basNiveau;
+      if (niveau != null) trace = { forme: "horizontale", prixTicks: niveau };
+    }
     // Le niveau que le signal vient de franchir : c'est LUI que le trader doit
     // reconnaître sur le graphique d'inspection.
     const niveauSignal = (sens === "long" ? hautNiveau : basNiveau) ?? c[i];
 
     if (plan.entree.type === "open_bougie_suivante") {
-      if (i + 1 < n) attente = { sens, barreSignal: i, extremeBalayage, dernierSommet, dernierCreux, signalMs, niveauSignal };
+      if (i + 1 < n) attente = { sens, barreSignal: i, extremeBalayage, dernierSommet, dernierCreux, signalMs, niveauSignal, trace };
     } else {
       const niveau = sens === "long" ? basNiveau : hautNiveau;
       if (niveau == null) continue;
@@ -872,6 +928,7 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
         dernierCreux,
         signalMs,
         niveauSignal,
+        trace,
       };
     }
   }

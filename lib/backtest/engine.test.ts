@@ -585,6 +585,62 @@ describe("trendline : trois touches, n'importe quel sens, restée intacte", () =
     expect(r.audit.signaux).toBeGreaterThan(0);
     expect(r.trades).toHaveLength(0);
   });
+
+  it("rend la droite avec ses ancrages et ses trois touches, pour la redessiner", () => {
+    // ⚠️ SANS CETTE GÉOMÉTRIE, LE GRAPHIQUE D'INSPECTION MENT PAR OMISSION : il
+    // traçait une trendline comme une horizontale, et le trader n'y
+    // reconnaissait ni tendance ni droite. Il ne pouvait donc ni confirmer ni
+    // démentir que c'était sa méthode, et toute la vérification tombait.
+    const s = serie(TROIS_TOUCHES);
+    const r = lancerBacktest(s, planTL());
+    const trace = r.trades[0].trace;
+
+    expect(trace?.forme).toBe("droite");
+    if (trace?.forme !== "droite") return;
+    // Les ancrages sont les deux premiers creux : b2 à 90 et b8 à 100.
+    expect(trace.a).toEqual({ ms: s.t[2], prixTicks: 90 });
+    expect(trace.b).toEqual({ ms: s.t[8], prixTicks: 100 });
+    // Et les trois touches, la dernière étant le creux de b14 à 110.
+    expect(trace.touches).toEqual([
+      { ms: s.t[2], prixTicks: 90 },
+      { ms: s.t[8], prixTicks: 100 },
+      { ms: s.t[14], prixTicks: 110 },
+    ]);
+  });
+});
+
+describe("géométrie du signal", () => {
+  it("rend une horizontale pour un niveau horizontal", () => {
+    const s = serie([...AMORCE, [200, 205, 195, 200], [200, 225, 199, 220]]);
+    const r = lancerBacktest(s, plan());
+    expect(r.trades[0].trace).toEqual({ forme: "horizontale", prixTicks: 101 });
+  });
+
+  it("rend une zone pour une plage horaire de référence", () => {
+    const s = serie(
+      [
+        [100, 101, 99, 100],
+        [100, 101, 99, 100],
+        [100, 500, 99, 500],
+        [100, 101, 99, 100],
+        [100, 101, 99, 100],
+        [100, 101, 99, 100],
+        [100, 101, 50, 60],
+        [60, 65, 55, 60],
+        [60, 61, 59, 60],
+      ],
+      "2026-03-05T15:30:00Z",
+    );
+    const r = lancerBacktest(
+      s,
+      plan({ niveau: { type: "range_horaire", debut: "15:30", fin: "15:35" } }),
+    );
+    const trace = r.trades[0].trace;
+    expect(trace?.forme).toBe("zone");
+    if (trace?.forme !== "zone") return;
+    expect(trace.hautTicks).toBe(500);
+    expect(trace.basTicks).toBe(99);
+  });
 });
 
 describe("unité de temps", () => {

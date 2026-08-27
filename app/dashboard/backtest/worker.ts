@@ -41,6 +41,12 @@ export interface BougieApercu {
   c: number;
 }
 
+/** La geometrie du niveau, en unites de PRIX, prete a dessiner. */
+export type TraceDessin =
+  | { forme: "droite"; a: { ms: number; prix: number }; b: { ms: number; prix: number }; touches: { ms: number; prix: number }[] }
+  | { forme: "horizontale"; prix: number }
+  | { forme: "zone"; haut: number; bas: number; debutMs: number; finMs: number };
+
 /** Un trade et les bougies qui l'entourent, pour vérification à l'œil. */
 export interface Apercu {
   trade: TradeSimule;
@@ -51,6 +57,14 @@ export interface Apercu {
   objectif: number;
   sortie: number;
   niveau: number;
+  /**
+   * La forme du niveau telle que le trader l'aurait tracee.
+   *
+   * ⚠️ SANS ELLE, UNE TRENDLINE S'AFFICHAIT COMME UN TRAIT PLAT et le trader ne
+   * reconnaissait rien de sa methode. C'est la piece qui rend la verification
+   * possible : sans elle, il ne peut ni confirmer ni dementir.
+   */
+  trace?: TraceDessin;
 }
 
 /**
@@ -64,6 +78,16 @@ const APERCUS_MAX = 12;
 /** Bougies visibles avant le signal et après la sortie. */
 const AVANT = 40;
 const APRES = 15;
+/** Bougies gardees avant le premier ancrage d'une droite. */
+const MARGE_AVANT_TRACE = 8;
+/**
+ * Largeur maximale de la fenetre, en bougies.
+ *
+ * ⚠️ Une trendline peut s'ancrer tres loin en arriere. Sans borne, la fenetre
+ * atteint des centaines de bougies et chacune devient un cheveu : on aurait
+ * remplace un graphique illisible par un autre.
+ */
+const FENETRE_MAX = 140;
 
 function preparerApercus(serie: SerieM1, trades: TradeSimule[]): Apercu[] {
   if (trades.length === 0) return [];
@@ -78,15 +102,23 @@ function preparerApercus(serie: SerieM1, trades: TradeSimule[]): Apercu[] {
 
   const apercus: Apercu[] = [];
   for (const trade of choisis) {
+    // ⚠️ La fenetre doit remonter jusqu'au PREMIER ancrage de la droite, sinon
+    // on affiche une trendline dont on ne voit ni le depart ni les touches, et
+    // le trader ne peut toujours pas reconnaitre son setup.
+    const debutTrace =
+      trade.trace?.forme === "droite" ? Math.min(trade.trace.a.ms, trade.trace.b.ms) : trade.signalMs;
     let debut = 0;
     let fin = serie.t.length - 1;
     for (let i = 0; i < serie.t.length; i++) {
-      if (serie.t[i] === trade.signalMs) debut = Math.max(0, i - AVANT);
+      if (serie.t[i] === debutTrace) debut = Math.max(0, i - MARGE_AVANT_TRACE);
+      if (serie.t[i] === trade.signalMs && debut === 0) debut = Math.max(0, i - AVANT);
       if (serie.t[i] === trade.sortieMs) {
         fin = Math.min(serie.t.length - 1, i + APRES);
         break;
       }
     }
+    // Une droite tres ancienne donnerait une fenetre illisible : on la borne.
+    if (fin - debut > FENETRE_MAX) debut = fin - FENETRE_MAX;
     const bougies: BougieApercu[] = [];
     for (let i = debut; i <= fin; i++) {
       bougies.push({
@@ -98,6 +130,27 @@ function preparerApercus(serie: SerieM1, trades: TradeSimule[]): Apercu[] {
       });
     }
     const signe = trade.sens === "long" ? 1 : -1;
+    const brute = trade.trace;
+    const trace: TraceDessin | undefined =
+      brute?.forme === "droite"
+        ? {
+            forme: "droite",
+            a: { ms: brute.a.ms, prix: brute.a.prixTicks * tick },
+            b: { ms: brute.b.ms, prix: brute.b.prixTicks * tick },
+            touches: brute.touches.map((x) => ({ ms: x.ms, prix: x.prixTicks * tick })),
+          }
+        : brute?.forme === "zone"
+          ? {
+              forme: "zone",
+              haut: brute.hautTicks * tick,
+              bas: brute.basTicks * tick,
+              debutMs: brute.debutMs,
+              finMs: brute.finMs,
+            }
+          : brute?.forme === "horizontale"
+            ? { forme: "horizontale", prix: brute.prixTicks * tick }
+            : undefined;
+
     apercus.push({
       trade,
       bougies,
@@ -106,6 +159,7 @@ function preparerApercus(serie: SerieM1, trades: TradeSimule[]): Apercu[] {
       stop: (trade.entreeTicks - signe * trade.risqueTicks) * tick,
       objectif: (trade.entreeTicks + signe * 2 * trade.risqueTicks) * tick,
       niveau: trade.niveauSignal * tick,
+      trace,
     });
   }
   return apercus;

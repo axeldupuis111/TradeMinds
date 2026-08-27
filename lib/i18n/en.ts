@@ -3105,6 +3105,8 @@ const dict: Record<string, string> = {
   "bt_levier_delai": "Delay at {apres} instead of {avant}: {trades} trades",
   "bt_appliquer": "Apply",
   "bt_suggestions_note": "These settings enlarge the sample, they do not make your strategy better. They touch neither your stop, nor your target, nor your costs, and their result is not shown: that would be fishing for the right number on your behalf. Every run counts towards your attempt counter.",
+  "bt_trace_trendline": "Your trendline, {n} touches",
+  "bt_trace_zone": "Your reference range",
   "bt_duree_calcul": "Computed in {ms} ms, in your browser."
 };
 

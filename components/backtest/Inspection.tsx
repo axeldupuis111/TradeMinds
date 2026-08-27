@@ -60,6 +60,9 @@ export function Inspection({ apercus, instrument, verifie, onVerifie, t }: Inspe
       stop: a.stop,
       objectif: a.objectif,
       sortie: a.sortie,
+      // ⚠️ Le niveau passe ici est celui de la DROITE au moment du signal, pas
+      // ses ancrages : une trendline ancrée trente bougies plus tôt peut être
+      // très loin en prix, et l'y forcer réécraserait le trade.
       niveau: a.niveau,
     },
     instrument.tailleTick,
@@ -68,6 +71,20 @@ export function Inspection({ apercus, instrument, verifie, onVerifie, t }: Inspe
   const y = (prix: number) => ((haut - prix) / (haut - bas)) * HAUTEUR;
   const largeurBougie = LARGEUR / a.bougies.length;
   const x = (i: number) => i * largeurBougie + largeurBougie / 2;
+
+  /**
+   * Position horizontale d'un instant quelconque, meme s'il tombe hors des
+   * bougies affichees.
+   *
+   * ⚠️ Les ancrages d'une trendline sont souvent ANTERIEURS a la fenetre. Sans
+   * extrapolation, la droite serait tronquee a son premier point visible et le
+   * trader ne verrait qu'un segment flottant au lieu d'une droite prolongee.
+   */
+  function xDeMs(ms: number): number {
+    const premier = a.bougies[0].t;
+    const pasMs = a.bougies.length > 1 ? a.bougies[1].t - premier : 60_000;
+    return ((ms - premier) / pasMs) * largeurBougie + largeurBougie / 2;
+  }
 
   const iSignal = a.bougies.findIndex((b) => b.t === a.trade.signalMs);
   const iEntree = a.bougies.findIndex((b) => b.t === a.trade.entreeMs);
@@ -174,11 +191,61 @@ export function Inspection({ apercus, instrument, verifie, onVerifie, t }: Inspe
             </>
           ) : null}
 
-          {/* Le niveau franchi : c'est LUI que le trader doit reconnaître.
-              ⚠️ Il n'est tracé que s'il tombe dans le cadre. Sur un retest de
-              déséquilibre, l'entrée se fait parfois très loin du niveau cassé :
-              l'y forcer écraserait le trade, on le renvoie alors en marge. */}
-          {niveauVisible ? (
+          {/* ── LE NIVEAU, DESSINÉ TEL QUE LE TRADER L'AURAIT TRACÉ ────────
+              ⚠️ Une trendline est une DIAGONALE. La dessiner comme un trait
+              plat, ce qu'on faisait, rendait tout setup méconnaissable : le
+              trader voyait des bougies et trois lignes horizontales, et ne
+              pouvait ni confirmer ni démentir que c'était sa méthode. */}
+          {a.trace?.forme === "droite" ? (
+            <g clipPath="url(#cadre-apercu)">
+              <line
+                x1={xDeMs(a.trace.a.ms)}
+                x2={LARGEUR}
+                y1={y(a.trace.a.prix)}
+                y2={y(
+                  a.trace.a.prix +
+                    ((a.trace.b.prix - a.trace.a.prix) *
+                      (a.bougies[a.bougies.length - 1].t - a.trace.a.ms)) /
+                      Math.max(1, a.trace.b.ms - a.trace.a.ms),
+                )}
+                className="stroke-accent"
+                strokeWidth={2}
+              />
+              {/* Chaque touche est marquée : ce sont elles la définition. */}
+              {a.trace.touches.map((pt, k) => (
+                <circle
+                  key={k}
+                  cx={xDeMs(pt.ms)}
+                  cy={y(pt.prix)}
+                  r={4}
+                  className="fill-accent stroke-background"
+                  strokeWidth={1.5}
+                />
+              ))}
+              <text
+                x={Math.max(4, xDeMs(a.trace.a.ms))}
+                y={Math.max(12, y(a.trace.a.prix) - 6)}
+                fontSize={11}
+                className="fill-accent"
+              >
+                {t("bt_trace_trendline", { n: a.trace.touches.length })}
+              </text>
+            </g>
+          ) : a.trace?.forme === "zone" ? (
+            <g clipPath="url(#cadre-apercu)">
+              <rect
+                x={xDeMs(a.trace.debutMs)}
+                y={y(a.trace.haut)}
+                width={Math.max(2, xDeMs(a.trace.finMs) - xDeMs(a.trace.debutMs))}
+                height={Math.max(2, y(a.trace.bas) - y(a.trace.haut))}
+                className="fill-accent/15 stroke-accent"
+                strokeWidth={1}
+              />
+              <text x={4} y={Math.max(12, y(a.trace.haut) - 6)} fontSize={11} className="fill-accent">
+                {t("bt_trace_zone")}
+              </text>
+            </g>
+          ) : niveauVisible ? (
             <>
               <line
                 x1={0}

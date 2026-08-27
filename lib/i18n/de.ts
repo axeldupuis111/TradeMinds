@@ -3105,6 +3105,8 @@ const dict: Record<string, string> = {
   "bt_levier_delai": "Frist {apres} statt {avant}: {trades} Trades",
   "bt_appliquer": "Übernehmen",
   "bt_suggestions_note": "Diese Einstellungen vergrößern die Stichprobe, sie machen deine Strategie nicht besser. Sie rühren weder Stop noch Ziel noch Kosten an, und ihr Ergebnis wird nicht gezeigt: Das hieße, für dich nach der schönen Zahl zu angeln. Jeder Lauf zählt in deinem Versuchszähler.",
+  "bt_trace_trendline": "Deine Trendlinie, {n} Berührungen",
+  "bt_trace_zone": "Dein Referenzbereich",
   "bt_duree_calcul": "In {ms} ms berechnet, in deinem Browser."
 };
 

@@ -318,6 +318,32 @@ export type MotifSortie =
   | "duree_max"
   | "fin_de_serie";
 
+/** Un point du graphique : un instant et un prix, en ticks. */
+export interface PointTrace {
+  ms: number;
+  prixTicks: number;
+}
+
+/**
+ * LA GÉOMÉTRIE QUI A PRODUIT LE SIGNAL, POUR LA REDESSINER TELLE QU'ELLE EST.
+ *
+ * ⚠️ NÉ D'UN CONSTAT SANS APPEL : le graphique d'inspection traçait le niveau
+ * comme une HORIZONTALE, y compris pour une trendline. Un trader regardait donc
+ * son setup et n'y reconnaissait ni tendance, ni trendline, ni rien : il voyait
+ * des bougies et trois traits plats. Le but de cette section est qu'il puisse
+ * dire « oui, c'est ma méthode » ou « non » ; sans la vraie géométrie, il ne
+ * peut dire ni l'un ni l'autre, et toute la boucle de vérification tombe.
+ *
+ * Le moteur porte donc ce que le trader aurait tracé à la main.
+ */
+export type TraceSignal =
+  /** Une trendline : ses deux ancrages, prolongée, plus ses touches. */
+  | { forme: "droite"; a: PointTrace; b: PointTrace; touches: PointTrace[] }
+  /** Un niveau horizontal : ancien sommet, plus haut de la veille, etc. */
+  | { forme: "horizontale"; prixTicks: number }
+  /** Une plage de prix bornée dans le temps : range d'ouverture, déséquilibre. */
+  | { forme: "zone"; hautTicks: number; basTicks: number; debutMs: number; finMs: number };
+
 export interface TradeSimule {
   /**
    * Ouverture de la bougie de SIGNAL, ms epoch. Une bougie avant l'entrée.
@@ -334,6 +360,11 @@ export interface TradeSimule {
    * reconnaître ou démentir.
    */
   niveauSignal: number;
+  /**
+   * De quoi REDESSINER le niveau tel que le trader l'aurait tracé.
+   * Absent quand la forme n'est pas encore modélisée pour ce bloc.
+   */
+  trace?: TraceSignal;
   /** Ouverture de la bougie d'ENTRÉE, ms epoch. */
   entreeMs: number;
   /** Ouverture de la bougie de SORTIE, ms epoch. */
