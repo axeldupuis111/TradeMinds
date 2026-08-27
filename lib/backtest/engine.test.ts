@@ -600,6 +600,120 @@ describe("unité de temps", () => {
   });
 });
 
+describe("garantie structurelle : le futur ne peut pas fuir vers le passé", () => {
+  /**
+   * ⚠️ LE TEST LE PLUS IMPORTANT DU FICHIER, ET IL NE RESSEMBLE À AUCUN AUTRE.
+   *
+   * Les autres tests vérifient des cas qu'on a imaginés. Celui-ci vérifie une
+   * PROPRIÉTÉ, et il attrape les fuites de futur qu'on n'a pas imaginées.
+   *
+   * Le raisonnement : si le moteur lisait, même par accident, une bougie
+   * postérieure à celle qu'il traite, alors couper la série plus tôt changerait
+   * ses décisions PASSÉES. En rejouant la même série tronquée à toutes les
+   * longueurs, chaque trade déjà clos doit rester identique au tick près.
+   *
+   * C'est ce qu'un badge « 0 violation de lookahead » prétend garantir sans
+   * jamais le prouver : ce badge est calculé par le même code qui produirait la
+   * violation. Ici, aucune complicité possible.
+   */
+  function serieTronquee(s: SerieM1, n: number): SerieM1 {
+    return {
+      instrument: s.instrument,
+      tailleTick: s.tailleTick,
+      t: s.t.slice(0, n),
+      o: s.o.slice(0, n),
+      h: s.h.slice(0, n),
+      l: s.l.slice(0, n),
+      c: s.c.slice(0, n),
+    };
+  }
+
+  /** Une série longue et irrégulière, pour que beaucoup de blocs s'activent. */
+  function serieVariee(taille: number): SerieM1 {
+    const bougies: Bougie[] = [];
+    // Marche déterministe : pas de hasard, sinon le test dépend de sa chance.
+    let prix = 10_000;
+    let graine = 12345;
+    const suivant = () => {
+      graine = (graine * 1103515245 + 12345) & 0x7fffffff;
+      return graine / 0x7fffffff;
+    };
+    for (let i = 0; i < taille; i++) {
+      const derive = Math.round((suivant() - 0.5) * 60);
+      const ouverture = prix;
+      const cloture = prix + derive;
+      const haut = Math.max(ouverture, cloture) + Math.round(suivant() * 25);
+      const bas = Math.min(ouverture, cloture) - Math.round(suivant() * 25);
+      bougies.push([ouverture, haut, bas, cloture]);
+      prix = cloture;
+    }
+    return serie(bougies);
+  }
+
+  const PLANS: { nom: string; plan: PlanExecution }[] = [
+    { nom: "cassure + extremes", plan: plan({ niveau: { type: "extremes_n_bougies", n: 10 } }) },
+    {
+      nom: "liquidité + balayage FVG",
+      plan: plan({
+        niveau: { type: "liquidite_swing", pivots: 5 },
+        declencheur: { type: "balayage_puis_fvg", delaiReaction: 8, delaiRetest: 12 },
+        stop: { type: "extreme_balayage", bufferTicks: 2 },
+      }),
+    },
+    {
+      nom: "trendline 3 touches",
+      plan: plan({
+        niveau: { type: "trendline", pivots: 4, touchesMin: 3, toleranceTicks: 8 },
+        stop: { type: "dernier_pivot", bufferTicks: 2 },
+      }),
+    },
+    {
+      nom: "retest + ordre limite",
+      plan: plan({
+        niveau: { type: "extremes_n_bougies", n: 12 },
+        declencheur: { type: "retest_apres_cassure", delaiMaxBarres: 10, toleranceTicks: 5 },
+        entree: { type: "limite_au_niveau", valableNBarres: 8 },
+      }),
+    },
+    {
+      nom: "moyenne + break-even + gestion",
+      plan: plan({
+        niveau: { type: "extremes_n_bougies", n: 8 },
+        confirmations: [{ type: "biais_moyenne", periode: 20 }, { type: "bougie_reaction" }],
+        sortiesAuxiliaires: { breakEvenApresR: 1 },
+        gestion: { maxTradesParJour: 3, maxPertesConsecutives: 2 },
+        couts: { spreadTicks: 3, glissementTicks: 1, commissionTicks: 1 },
+      }),
+    },
+  ];
+
+  const COMPLETE = serieVariee(1500);
+
+  for (const { nom, plan: p } of PLANS) {
+    it(`ne change aucun trade déjà clos quand on coupe le futur : ${nom}`, () => {
+      const complet = lancerBacktest(COMPLETE, p);
+      expect(complet.trades.length).toBeGreaterThan(3);
+
+      for (const n of [300, 600, 900, 1200]) {
+        const tronque = lancerBacktest(serieTronquee(COMPLETE, n), p);
+        // Le dernier trade d'une série coupée peut être soldé d'office : il
+        // n'existerait pas ainsi dans la série complète, on l'exclut.
+        const clos = tronque.trades.filter((x) => x.motif !== "fin_de_serie");
+        expect(clos.length).toBeLessThanOrEqual(complet.trades.length);
+        for (let k = 0; k < clos.length; k++) {
+          expect(clos[k], `${nom} coupé à ${n}, trade ${k}`).toEqual(complet.trades[k]);
+        }
+      }
+    });
+  }
+
+  it("rend deux fois le même résultat sur une série longue", () => {
+    for (const { plan: p } of PLANS) {
+      expect(lancerBacktest(COMPLETE, p)).toEqual(lancerBacktest(COMPLETE, p));
+    }
+  });
+});
+
 describe("bornes du moteur", () => {
   it("solde une position encore ouverte à la fin de la série, et le dit", () => {
     const s = serie([...AMORCE, [200, 205, 195, 200]]);

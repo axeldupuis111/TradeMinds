@@ -31,6 +31,7 @@ import { Card, CardTitle } from "@/components/ui/Card";
 import StaggerContainer, { StaggerItem } from "@/components/animations/StaggerContainer";
 import { EditeurPlan } from "@/components/backtest/EditeurPlan";
 import { Resultat } from "@/components/backtest/Resultat";
+import { Inspection } from "@/components/backtest/Inspection";
 import { Champ, Liste } from "@/components/backtest/Controles";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
@@ -47,7 +48,7 @@ import { socleDePlan, type Couverture } from "@/lib/backtest/compilation";
 import { moisEntre } from "@/lib/backtest/chargement";
 import type { PlanExecution } from "@/lib/backtest/types";
 import type { LectureBacktest } from "@/lib/backtest/verdict";
-import type { DemandeBacktest, ReponseBacktest } from "./worker";
+import type { Apercu, DemandeBacktest, ReponseBacktest } from "./worker";
 import { AlertTriangle, CheckCircle2, HelpCircle, Loader2, Lock, Play, Wand2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -143,6 +144,7 @@ export default function BacktestPage() {
     audit: import("@/lib/backtest/types").AuditExecution;
     moisManquants: string[];
     ms: number;
+    apercus: Apercu[];
   } | null>(null);
 
   /**
@@ -151,6 +153,14 @@ export default function BacktestPage() {
    * celui qui sort le mieux en trouve TOUJOURS un, même dans du bruit pur.
    */
   const [tentatives, setTentatives] = useState(0);
+
+  /**
+   * Le trader a-t-il regardé les trades et reconnu sa méthode ?
+   *
+   * ⚠️ REMIS À FAUX À CHAQUE LANCEMENT. Un plan modifié est une autre stratégie,
+   * et une confirmation qui survivrait au changement ne confirmerait plus rien.
+   */
+  const [verifie, setVerifie] = useState(false);
 
   const workerRef = useRef<Worker | null>(null);
 
@@ -260,6 +270,7 @@ export default function BacktestPage() {
     const prochaine = tentatives + 1;
     setTentatives(prochaine);
     setResultat(null);
+    setVerifie(false);
     setEtat({ phase: "telechargement", faits: 0, total: moisEntre(de, a).length });
 
     const w = new Worker(new URL("./worker.ts", import.meta.url));
@@ -276,6 +287,7 @@ export default function BacktestPage() {
           audit: r.resultat.audit,
           moisManquants: r.moisManquants,
           ms: r.ms,
+          apercus: r.apercus,
         });
         setEtat({ phase: "repos" });
       }
@@ -472,6 +484,18 @@ export default function BacktestPage() {
         </StaggerItem>
 
         {/* ── 5. Le résultat ─────────────────────────────────────────────── */}
+        {resultat && resultat.apercus.length > 0 ? (
+          <StaggerItem>
+            <Inspection
+              apercus={resultat.apercus}
+              instrument={instrument}
+              verifie={verifie}
+              onVerifie={setVerifie}
+              t={tr}
+            />
+          </StaggerItem>
+        ) : null}
+
         {resultat ? (
           <StaggerItem>
             <Resultat
@@ -483,6 +507,7 @@ export default function BacktestPage() {
               moisManquants={resultat.moisManquants}
               tentatives={tentatives}
               ms={resultat.ms}
+              verifie={verifie}
               t={tr}
             />
           </StaggerItem>

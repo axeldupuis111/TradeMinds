@@ -44,6 +44,8 @@ export interface ResultatProps {
   moisManquants: string[];
   tentatives: number;
   ms: number;
+  /** Le trader a regardé les trades dessinés et reconnu sa méthode. */
+  verifie: boolean;
   t: (k: string, v?: Record<string, string | number>) => string;
 }
 
@@ -67,6 +69,7 @@ export function Resultat({
   moisManquants,
   tentatives,
   ms,
+  verifie,
   t,
 }: ResultatProps) {
   const c = useChartColors();
@@ -119,6 +122,19 @@ export function Resultat({
 
   return (
     <div className="space-y-4">
+      {/* ⚠️ EN TÊTE, AVANT LE VERDICT. Un chiffre posé sur une mécanisation que
+          personne n'a vérifiée est exactement ce qu'on reproche aux autres
+          outils de backtest. Tant que le trader n'a pas regardé les trades
+          dessinés, la page le dit. */}
+      {!verifie ? (
+        <Card className="border-warning/40 bg-warning/[0.06]">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
+            <p className="text-sm leading-relaxed text-foreground">{t("bt_non_verifie")}</p>
+          </div>
+        </Card>
+      ) : null}
+
       {/* ── Le verdict ───────────────────────────────────────────────────── */}
       <Card className={cn("border", ton.anneau)}>
         <div className="flex items-start gap-3">

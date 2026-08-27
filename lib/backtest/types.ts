@@ -307,6 +307,21 @@ export type MotifSortie =
   | "fin_de_serie";
 
 export interface TradeSimule {
+  /**
+   * Ouverture de la bougie de SIGNAL, ms epoch. Une bougie avant l'entrée.
+   *
+   * ⚠️ Sert à DESSINER le trade pour que le trader vérifie de ses yeux que la
+   * machine a bien reconnu son setup. C'est la seule vérification qui compte :
+   * trois fois de suite, sur cette fonctionnalité, c'est un graphique et non un
+   * texte qui a révélé qu'on testait autre chose que la méthode décrite.
+   */
+  signalMs: number;
+  /**
+   * Valeur du niveau au moment du signal, en ticks. Pour une trendline, c'est
+   * la hauteur de la droite à cet instant, donc ce que le trader doit
+   * reconnaître ou démentir.
+   */
+  niveauSignal: number;
   /** Ouverture de la bougie d'ENTRÉE, ms epoch. */
   entreeMs: number;
   /** Ouverture de la bougie de SORTIE, ms epoch. */

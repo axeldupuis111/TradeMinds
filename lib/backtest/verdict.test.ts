@@ -6,6 +6,8 @@ const SANS_COUT: Couts = { spreadTicks: 0, glissementTicks: 0, commissionTicks: 
 
 function trade(r: number, over: Partial<TradeSimule> = {}): TradeSimule {
   return {
+    signalMs: 0,
+    niveauSignal: 1000,
     entreeMs: 0,
     sortieMs: 0,
     sens: "long",
