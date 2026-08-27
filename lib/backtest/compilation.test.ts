@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compilerDepuisModele, graviteDuChamp, planComplet, validerNiveau, validerObjectif } from "./compilation";
+import { champDeBase, compilerDepuisModele, graviteDuChamp, planComplet, validerNiveau, validerObjectif } from "./compilation";
 
 /**
  * Ces tests protègent une seule promesse : ce que le modèle propose n'entre pas
@@ -171,5 +171,30 @@ describe("gravité d'une interprétation", () => {
     // déclencher l'encadré rouge par accident.
     expect(graviteDuChamp("fibonacci")).toBe("mineure");
     expect(graviteDuChamp("")).toBe("mineure");
+  });
+});
+
+describe("noms de champ composés", () => {
+  it("ramène au bloc les noms que le modèle compose", () => {
+    // ⚠️ VU EN VRAI, ET ÇA CASSAIT DEUX CHOSES EN SILENCE. Le modèle a rendu
+    // « niveau - pivots » : l'interprétation n'était plus classée critique, et
+    // le bloc refusé ne s'entourait jamais de rouge alors que l'écran venait
+    // de promettre au trader qu'il le serait.
+    expect(champDeBase("niveau - pivots")).toBe("niveau");
+    expect(champDeBase("stop - bufferTicks")).toBe("stop");
+    expect(champDeBase("niveau.toleranceTicks")).toBe("niveau");
+    expect(champDeBase("declencheur > mode")).toBe("declencheur");
+    expect(champDeBase("niveau")).toBe("niveau");
+  });
+
+  it("ne casse pas les noms qui contiennent des underscores", () => {
+    expect(champDeBase("unite_de_temps")).toBe("unite_de_temps");
+    expect(champDeBase("uniteDeTemps")).toBe("uniteDeTemps");
+  });
+
+  it("classe critique une interprétation nommée avec son sous-champ", () => {
+    for (const champ of ["niveau - pivots", "stop - bufferTicks", "objectif - r", "uniteDeTemps"]) {
+      expect(graviteDuChamp(champ), champ).toBe("critique");
+    }
   });
 });

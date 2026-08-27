@@ -3049,9 +3049,9 @@ const dict: Record<string, string> = {
   "bt_pivots_trendline_aide": "The line joins the last two lows (support) or highs (resistance) and extends forward. A pivot counts if it tops that many candles on each side.",
   "bt_stop_dernier_pivot": "Behind the last high or low",
   "bt_touches_min": "Minimum touches",
-  "bt_touches_min_aide": "A line always passes through any two points. It is the third touch that makes it mean something.",
-  "bt_tolerance_touche": "Touch tolerance",
-  "bt_tolerance_touche_aide": "Gap allowed between the low and the line for it to count as a bounce.",
+  "bt_touches_min_aide": "This is the very definition of a trendline. A line always passes through any two points: it is the third touch that makes it mean something.",
+  "bt_tolerance_touche": "Alignment tolerance",
+  "bt_tolerance_touche_aide": "How far from the line a high still counts as aligned. At zero it would have to land on it to the tick, which never happens.",
   "bt_inspection": "Look at what the machine took for you",
   "bt_inspection_aide": "Twelve trades spread across the whole period, on the candles the engine actually saw. If this is not your setup, the figure below means nothing.",
   "bt_niveau_franchi": "Level crossed",
@@ -3085,6 +3085,9 @@ const dict: Record<string, string> = {
   "bt_diagnostic_chiffres": "Detail: {niveau} bars out of {bougies} with a readable level, {droites} lines drawn of which {confirmees} confirmed, {signaux} signals, {ecartes} discarded.",
   "bt_cause_droites_trop_rares": "Lines were drawn, but far too few for any to reach three touches. Your pivot width is too large: it counts in bars of your timeframe, not in minutes. Three to ten bars each side is enough.",
   "bt_deduite_tolerance": "Your sheet does not say how close a low must be to count as a bounce on your trendline. Without a value, no line can ever be touched three times. Set to {valeur}.",
+  "bt_bloc_niveau_trendline_aide": "A trendline joins at least three aligned highs (or three lows), in any direction, with no close having crossed it. The three settings below say exactly that.",
+  "bt_definition_sommet": "What counts as a high",
+  "bt_definition_sommet_aide": "Technical detail, not the definition of your trendline: a high must top this many bars on each side to be recognised. Three to ten is enough, whatever the timeframe.",
   "bt_duree_calcul": "Computed in {ms} ms, in your browser."
 };
 

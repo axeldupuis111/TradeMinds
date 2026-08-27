@@ -3049,9 +3049,9 @@ const dict: Record<string, string> = {
   "bt_pivots_trendline_aide": "Die Linie verbindet die letzten zwei Tiefs (Unterstützung) oder Hochs (Widerstand) und wird verlängert. Ein Pivot zählt, wenn er so viele Kerzen auf jeder Seite überragt.",
   "bt_stop_dernier_pivot": "Hinter dem letzten Hoch oder Tief",
   "bt_touches_min": "Mindestberührungen",
-  "bt_touches_min_aide": "Durch zwei beliebige Punkte geht immer eine Gerade. Erst die dritte Berührung macht sie aussagekräftig.",
-  "bt_tolerance_touche": "Berührungstoleranz",
-  "bt_tolerance_touche_aide": "Zulässiger Abstand zwischen Tief und Linie, damit es als Abpraller zählt.",
+  "bt_touches_min_aide": "Das ist die Definition einer Trendlinie. Durch zwei beliebige Punkte geht immer eine Gerade: Erst die dritte Berührung macht sie aussagekräftig.",
+  "bt_tolerance_touche": "Ausrichtungstoleranz",
+  "bt_tolerance_touche_aide": "Wie weit von der Linie ein Hoch noch als ausgerichtet zählt. Bei null müsste es auf den Tick genau treffen, was nie passiert.",
   "bt_inspection": "Sieh dir an, was die Maschine für dich genommen hat",
   "bt_inspection_aide": "Zwölf über den gesamten Zeitraum verteilte Trades, auf den Kerzen, die die Engine wirklich gesehen hat. Ist das nicht dein Setup, bedeutet die Zahl unten nichts.",
   "bt_niveau_franchi": "Überschrittenes Level",
@@ -3085,6 +3085,9 @@ const dict: Record<string, string> = {
   "bt_diagnostic_chiffres": "Details: {niveau} von {bougies} Kerzen mit lesbarem Level, {droites} gezeichnete Linien davon {confirmees} bestätigt, {signaux} Signale, {ecartes} verworfen.",
   "bt_cause_droites_trop_rares": "Es wurden Linien gezeichnet, aber viel zu wenige, als dass eine drei Berührungen erreichte. Deine Pivot-Breite ist zu groß: Sie zählt in Kerzen deines Zeitrahmens, nicht in Minuten. Drei bis zehn Kerzen je Seite genügen.",
   "bt_deduite_tolerance": "Dein Blatt sagt nicht, wie nah ein Tief liegen muss, um als Abpraller auf deiner Trendlinie zu zählen. Ohne Wert kann keine Linie je dreimal berührt werden. Auf {valeur} gesetzt.",
+  "bt_bloc_niveau_trendline_aide": "Eine Trendlinie verbindet mindestens drei ausgerichtete Hochs (oder drei Tiefs), in beliebiger Richtung, ohne dass ein Schlusskurs sie durchbrochen hat. Die drei Einstellungen unten sagen genau das.",
+  "bt_definition_sommet": "Was als Hoch zählt",
+  "bt_definition_sommet_aide": "Technisches Detail, nicht die Definition deiner Trendlinie: Ein Hoch muss so viele Kerzen auf jeder Seite überragen, um erkannt zu werden. Drei bis zehn genügen, unabhängig vom Zeitrahmen.",
   "bt_duree_calcul": "In {ms} ms berechnet, in deinem Browser."
 };
 

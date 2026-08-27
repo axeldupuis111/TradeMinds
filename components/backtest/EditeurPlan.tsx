@@ -2,7 +2,7 @@
 
 import { Bascule, Bloc, Champ, Heure, Liste, Nombre } from "./Controles";
 import type { Instrument } from "@/lib/backtest/instruments";
-import { UNITES_DE_TEMPS } from "@/lib/backtest/compilation";
+import { UNITES_DE_TEMPS, champDeBase } from "@/lib/backtest/compilation";
 import type {
   BlocConfirmation,
   Couts,
@@ -54,9 +54,17 @@ export interface EditeurProps {
 export function EditeurPlan({ plan, instrument, onChange, contestes, t }: EditeurProps) {
   const maj = (partiel: Partial<PlanExecution>) => onChange({ ...plan, ...partiel });
 
-  /** Message d'alerte si l'un des champs de ce bloc a été contesté. */
+  /**
+   * Message d'alerte si l'un des champs de ce bloc a été contesté.
+   *
+   * ⚠️ ON COMPARE SUR LA BASE DU NOM, PAS SUR LE NOM ENTIER. Le modèle rend
+   * volontiers « niveau - pivots » ou « stop - bufferTicks » : en comparant
+   * bêtement, le bloc ne s'entourait jamais de rouge alors que la carte venait
+   * de promettre qu'il le serait, et le trader cherchait sans trouver.
+   */
+  const bases = new Set(Array.from(contestes, champDeBase));
   const alerte = (...champs: string[]) =>
-    champs.some((c) => contestes.has(c)) ? t("bt_bloc_conteste") : undefined;
+    champs.some((c) => bases.has(c)) ? t("bt_bloc_conteste") : undefined;
 
   /** Les coûts vivent en ticks dans le plan, en prix à l'écran. */
   const prix = (ticks: number) => Number((ticks * instrument.tailleTick).toFixed(instrument.decimales + 1));
@@ -135,7 +143,13 @@ export function EditeurPlan({ plan, instrument, onChange, contestes, t }: Editeu
       </Bloc>
 
       {/* ── Le niveau ────────────────────────────────────────────────────── */}
-      <Bloc titre={t("bt_bloc_niveau")} soustitre={t("bt_bloc_niveau_aide")} alerte={alerte("niveau")}>
+      <Bloc
+        titre={t("bt_bloc_niveau")}
+        soustitre={
+          plan.niveau.type === "trendline" ? t("bt_bloc_niveau_trendline_aide") : t("bt_bloc_niveau_aide")
+        }
+        alerte={alerte("niveau")}
+      >
         <Champ label={t("bt_type")}>
           <Liste
             valeur={plan.niveau.type}
@@ -169,17 +183,12 @@ export function EditeurPlan({ plan, instrument, onChange, contestes, t }: Editeu
         ) : null}
         {plan.niveau.type === "trendline" ? (
           <>
-            <Champ label={t("bt_pivots")} aide={t("bt_pivots_trendline_aide")}>
-              <Nombre
-                valeur={plan.niveau.pivots}
-                min={2}
-                max={500}
-                suffixe={t("bt_unite_bougies")}
-                onChange={(pivots) =>
-                  maj({ niveau: { ...(plan.niveau as Extract<typeof plan.niveau, { type: "trendline" }>), pivots } })
-                }
-              />
-            </Champ>
+            {/* ⚠️ L'ORDRE COMPTE. Une trendline SE DÉFINIT par « au moins trois
+                sommets alignés » : c'est ça, le réglage. La largeur du pivot
+                n'est qu'un détail d'implémentation, la réponse à « qu'est-ce
+                qu'un sommet ». En l'affichant en premier, on faisait passer
+                l'accessoire pour la définition, et un trader y lisait à juste
+                titre qu'on avait mal compris sa méthode. */}
             <Champ label={t("bt_touches_min")} aide={t("bt_touches_min_aide")}>
               <Nombre
                 valeur={plan.niveau.touchesMin}
@@ -202,6 +211,21 @@ export function EditeurPlan({ plan, instrument, onChange, contestes, t }: Editeu
                       toleranceTicks: enTicks(v),
                     },
                   })
+                }
+              />
+            </Champ>
+            <Champ
+              label={t("bt_definition_sommet")}
+              aide={t("bt_definition_sommet_aide")}
+              className="sm:col-span-2"
+            >
+              <Nombre
+                valeur={plan.niveau.pivots}
+                min={2}
+                max={500}
+                suffixe={t("bt_unite_bougies")}
+                onChange={(pivots) =>
+                  maj({ niveau: { ...(plan.niveau as Extract<typeof plan.niveau, { type: "trendline" }>), pivots } })
                 }
               />
             </Champ>

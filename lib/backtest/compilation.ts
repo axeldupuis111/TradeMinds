@@ -84,8 +84,23 @@ const CHAMPS_CRITIQUES = new Set([
   "sens",
 ]);
 
+/**
+ * Ramène un nom de champ à son bloc.
+ *
+ * ⚠️ LE MODÈLE NE NOMME PAS TOUJOURS LE BLOC SEUL. Vu en vrai : il rend
+ * « niveau - pivots », « stop - bufferTicks », « niveau.toleranceTicks ». Sans
+ * cette normalisation, deux choses cassent en silence : l'interprétation n'est
+ * plus classée critique alors qu'elle touche le cœur de la méthode, et le bloc
+ * refusé ne s'entoure jamais de rouge dans l'éditeur, alors que l'écran vient
+ * de promettre au trader qu'il le serait. Une promesse non tenue vaut pire
+ * qu'une absence de bouton.
+ */
+export function champDeBase(champ: string): string {
+  return champ.split(/[\s\-.>:/]+/)[0].trim();
+}
+
 export function graviteDuChamp(champ: string): Gravite {
-  return CHAMPS_CRITIQUES.has(champ) ? "critique" : "mineure";
+  return CHAMPS_CRITIQUES.has(champDeBase(champ)) ? "critique" : "mineure";
 }
 
 export type ChampObligatoire = "stop" | "objectif" | "risque" | "seance" | "unite_de_temps";

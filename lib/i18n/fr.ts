@@ -3049,9 +3049,9 @@ const dict: Record<string, string> = {
   "bt_pivots_trendline_aide": "La droite relie les deux derniers creux (soutien) ou sommets (résistance) et se prolonge. Un pivot compte s'il domine autant de bougies de chaque côté.",
   "bt_stop_dernier_pivot": "Derrière le dernier sommet ou creux",
   "bt_touches_min": "Touches minimum",
-  "bt_touches_min_aide": "Par deux points il passe toujours une droite. C'est la troisième touche qui fait qu'elle décrit quelque chose.",
-  "bt_tolerance_touche": "Tolérance d'une touche",
-  "bt_tolerance_touche_aide": "Écart accepté entre le creux et la droite pour que ça compte comme un rebond.",
+  "bt_touches_min_aide": "C'est la définition même d'une trendline. Par deux points il passe toujours une droite : c'est la troisième touche qui fait qu'elle décrit quelque chose.",
+  "bt_tolerance_touche": "Tolérance d'alignement",
+  "bt_tolerance_touche_aide": "À quelle distance de la droite un sommet compte encore comme aligné. À zéro, il devrait tomber dessus au tick près, ce qui n'arrive jamais.",
   "bt_inspection": "Regarde ce que la machine a pris pour toi",
   "bt_inspection_aide": "Douze trades répartis sur toute la période, sur les bougies que le moteur a vraiment vues. Si ce n'est pas ton setup, le chiffre plus bas ne veut rien dire.",
   "bt_niveau_franchi": "Niveau franchi",
@@ -3085,6 +3085,9 @@ const dict: Record<string, string> = {
   "bt_diagnostic_chiffres": "Détail : {niveau} bougies sur {bougies} avec un niveau lisible, {droites} droites tracées dont {confirmees} confirmées, {signaux} signaux, {ecartes} écartés.",
   "bt_cause_droites_trop_rares": "Des droites ont été tracées, mais bien trop peu pour qu'aucune atteigne trois touches. Ta largeur de pivot est trop grande : elle se compte en bougies de ton unité de temps, pas en minutes. Trois à dix bougies de chaque côté suffisent.",
   "bt_deduite_tolerance": "Ta fiche ne dit pas à quelle distance un creux compte comme un rebond sur ta trendline. Sans valeur, aucune droite ne peut jamais être touchée trois fois. Posé à {valeur}.",
+  "bt_bloc_niveau_trendline_aide": "Une trendline relie au moins trois sommets (ou trois creux) alignés, dans n'importe quel sens, sans qu'aucune clôture ne l'ait traversée. Les trois réglages ci-dessous disent exactement ça.",
+  "bt_definition_sommet": "Ce qui compte comme un sommet",
+  "bt_definition_sommet_aide": "Détail technique, pas la définition de ta trendline : un sommet doit dominer ce nombre de bougies de chaque côté pour être reconnu. Trois à dix suffisent, quelle que soit l'unité de temps.",
   "bt_duree_calcul": "Calculé en {ms} ms, dans ton navigateur."
 };
 

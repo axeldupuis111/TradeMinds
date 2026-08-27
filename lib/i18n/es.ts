@@ -3049,9 +3049,9 @@ const dict: Record<string, string> = {
   "bt_pivots_trendline_aide": "La línea une los dos últimos mínimos (soporte) o máximos (resistencia) y se prolonga. Un pivote cuenta si domina esa cantidad de velas a cada lado.",
   "bt_stop_dernier_pivot": "Detrás del último máximo o mínimo",
   "bt_touches_min": "Toques mínimos",
-  "bt_touches_min_aide": "Por dos puntos siempre pasa una recta. Es el tercer toque el que hace que signifique algo.",
-  "bt_tolerance_touche": "Tolerancia de un toque",
-  "bt_tolerance_touche_aide": "Distancia admitida entre el mínimo y la recta para que cuente como rebote.",
+  "bt_touches_min_aide": "Es la definición misma de una línea de tendencia. Por dos puntos siempre pasa una recta: es el tercer toque el que hace que signifique algo.",
+  "bt_tolerance_touche": "Tolerancia de alineación",
+  "bt_tolerance_touche_aide": "A qué distancia de la recta un máximo sigue contando como alineado. A cero tendría que caer justo encima al tick, lo que nunca ocurre.",
   "bt_inspection": "Mira lo que la máquina tomó por ti",
   "bt_inspection_aide": "Doce operaciones repartidas por todo el periodo, sobre las velas que el motor vio realmente. Si no es tu setup, la cifra de abajo no significa nada.",
   "bt_niveau_franchi": "Nivel cruzado",
@@ -3085,6 +3085,9 @@ const dict: Record<string, string> = {
   "bt_diagnostic_chiffres": "Detalle: {niveau} velas de {bougies} con un nivel legible, {droites} rectas trazadas de las cuales {confirmees} confirmadas, {signaux} señales, {ecartes} descartadas.",
   "bt_cause_droites_trop_rares": "Se trazaron rectas, pero demasiado pocas para que alguna alcance tres toques. Tu anchura de pivote es excesiva: se cuenta en velas de tu temporalidad, no en minutos. De tres a diez velas por lado bastan.",
   "bt_deduite_tolerance": "Tu ficha no dice a qué distancia un mínimo cuenta como rebote en tu línea de tendencia. Sin valor, ninguna recta puede ser tocada tres veces. Fijado en {valeur}.",
+  "bt_bloc_niveau_trendline_aide": "Una línea de tendencia une al menos tres máximos (o tres mínimos) alineados, en cualquier sentido, sin que ningún cierre la haya atravesado. Los tres ajustes de abajo dicen exactamente eso.",
+  "bt_definition_sommet": "Qué cuenta como un máximo",
+  "bt_definition_sommet_aide": "Detalle técnico, no la definición de tu línea de tendencia: un máximo debe dominar esta cantidad de velas a cada lado para ser reconocido. De tres a diez basta, sea cual sea la temporalidad.",
   "bt_duree_calcul": "Calculado en {ms} ms, en tu navegador."
 };
 
