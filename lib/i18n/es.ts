@@ -3131,6 +3131,7 @@ const dict: Record<string, string> = {
   "bt_rsi_momentum": "Seguir el impulso",
   "bt_rsi_exces": "Jugar el exceso",
   "bt_rsi_seuil": "Umbral",
+  "bt_courbes_affichees": "Curvas mostradas: {noms}. Se calculan sobre todo el histórico, no sobre esta ventana, así que son exactamente las que vio el motor.",
   "bt_duree_calcul": "Calculado en {ms} ms, en tu navegador."
 };
 

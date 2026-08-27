@@ -1201,3 +1201,65 @@ export function coutsParDefaut(): Couts {
 export function contexteParDefaut(): Contexte {
   return { fuseau: "Europe/Paris", debut: "00:00", fin: "23:59", jours: [1, 2, 3, 4, 5] };
 }
+
+/**
+ * LA COURBE DE L'INDICATEUR SUR UNE FENÊTRE, POUR LA DESSINER.
+ *
+ * ⚠️ Une moyenne mobile, un VWAP ou des bandes de Bollinger ne sont PAS un prix
+ * figé : les tracer comme un trait horizontal au moment du signal montrerait un
+ * objet qui n'existe pas, et le trader ne reconnaîtrait pas son indicateur. Il
+ * doit voir la courbe serpenter entre ses bougies.
+ *
+ * ⚠️ Recalculée sur la SÉRIE ENTIÈRE puis découpée, jamais sur la seule fenêtre.
+ * Une moyenne à 50 périodes calculée sur les 60 bougies visibles n'aurait pas
+ * les mêmes valeurs que celle qu'a vue le moteur : on afficherait une courbe
+ * plausible et fausse, ce qui est pire que pas de courbe du tout.
+ *
+ * Les valeurs sont en ticks, `null` là où l'indicateur n'existe pas encore.
+ */
+export function courbeIndicateur(
+  serie: SerieM1,
+  plan: PlanExecution,
+  debut: number,
+  fin: number,
+): { nom: string; valeurs: (number | null)[] }[] | undefined {
+  const { c, h, l, t } = serie;
+  const decoupe = (src: Float64Array) => {
+    const out: (number | null)[] = [];
+    for (let i = debut; i <= fin; i++) out.push(Number.isNaN(src[i]) ? null : src[i]);
+    return out;
+  };
+
+  if (plan.niveau.type === "moyenne_mobile") {
+    return [{ nom: `MM${plan.niveau.periode}`, valeurs: decoupe(moyenneMobile(c, plan.niveau.periode)) }];
+  }
+  if (plan.niveau.type === "vwap_session") {
+    const horloge = fabriqueHorloge(plan.contexte.fuseau);
+    return [{ nom: "VWAP", valeurs: decoupe(vwapSession(h, l, c, t, (ms) => horloge.jour(ms))) }];
+  }
+  if (plan.niveau.type === "bollinger") {
+    const m = moyenneMobile(c, plan.niveau.periode);
+    const e = ecartTypeMobile(c, plan.niveau.periode, m);
+    const haute = new Float64Array(c.length).fill(NaN);
+    const basse = new Float64Array(c.length).fill(NaN);
+    for (let i = 0; i < c.length; i++) {
+      if (!Number.isNaN(m[i]) && !Number.isNaN(e[i])) {
+        haute[i] = m[i] + plan.niveau.ecarts * e[i];
+        basse[i] = m[i] - plan.niveau.ecarts * e[i];
+      }
+    }
+    return [
+      { nom: "Bollinger +", valeurs: decoupe(haute) },
+      { nom: "Bollinger -", valeurs: decoupe(basse) },
+      { nom: "Moyenne", valeurs: decoupe(m) },
+    ];
+  }
+
+  // Une confirmation de moyenne mobile mérite d'être vue elle aussi : c'est un
+  // filtre qui décide de la moitié des trades sans jamais apparaître.
+  const biais = plan.confirmations.find((x) => x.type === "biais_moyenne");
+  if (biais && biais.type === "biais_moyenne") {
+    return [{ nom: `MM${biais.periode}`, valeurs: decoupe(moyenneMobile(c, biais.periode)) }];
+  }
+  return undefined;
+}

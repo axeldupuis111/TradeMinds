@@ -262,6 +262,42 @@ export function Inspection({ apercus, instrument, verifie, onVerifie, t }: Inspe
             </>
           ) : null}
 
+          {/* ── LES COURBES D'INDICATEURS, sous les bougies ────────────────
+              ⚠️ Une moyenne mobile ou un VWAP ne sont pas un prix figé. Les
+              tracer comme un trait horizontal montrerait un objet qui n'existe
+              pas, et le trader ne reconnaîtrait pas son indicateur. */}
+          {a.courbes?.map((courbe, k) => {
+            // Une courbe se coupe là où l'indicateur n'existe pas encore : la
+            // relier par-dessus le trou inventerait des valeurs.
+            const segments: string[] = [];
+            let encours = "";
+            for (let i = 0; i < courbe.points.length; i++) {
+              const v = courbe.points[i];
+              if (v === null) {
+                if (encours) segments.push(encours);
+                encours = "";
+                continue;
+              }
+              encours += `${encours ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`;
+            }
+            if (encours) segments.push(encours);
+            return (
+              <g key={courbe.nom} clipPath="url(#cadre-apercu)">
+                {segments.map((d, j) => (
+                  <path
+                    key={j}
+                    d={d}
+                    fill="none"
+                    className="stroke-foreground-muted"
+                    strokeWidth={1.5}
+                    opacity={0.75}
+                    strokeDasharray={k > 0 ? "4 3" : undefined}
+                  />
+                ))}
+              </g>
+            );
+          })}
+
           <g clipPath="url(#cadre-apercu)">
           {a.bougies.map((b, i) => {
             const monte = b.c >= b.o;
@@ -305,6 +341,12 @@ export function Inspection({ apercus, instrument, verifie, onVerifie, t }: Inspe
           ) : null}
         </svg>
       </div>
+
+      {a.courbes?.length ? (
+        <p className="mt-2 text-xs text-foreground-muted">
+          {t("bt_courbes_affichees", { noms: a.courbes.map((c) => c.nom).join(", ") })}
+        </p>
+      ) : null}
 
       {!niveauVisible ? (
         <p className="mt-2 text-xs text-accent">

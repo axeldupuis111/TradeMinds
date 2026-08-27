@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lancerBacktest } from "./engine";
+import { courbeIndicateur, lancerBacktest } from "./engine";
 import type { PlanExecution, SerieM1 } from "./types";
 
 /**
@@ -298,5 +298,68 @@ describe("order block et breaker", () => {
       }),
     );
     expect(r.trades).toHaveLength(0);
+  });
+});
+
+describe("courbes d'indicateurs à dessiner", () => {
+  it("rend la moyenne calculée sur TOUT l'historique, pas sur la fenêtre", () => {
+    /**
+     * ⚠️ LE POINT QUI POURRAIT MENTIR SANS QUE ÇA SE VOIE. Une moyenne à 20
+     * périodes recalculée sur les seules bougies affichées n'aurait pas les
+     * mêmes valeurs que celle qu'a vue le moteur : on tracerait une courbe
+     * plausible et fausse, ce qui est pire que pas de courbe du tout.
+     *
+     * Ici, trente bougies à 100 puis dix à 200. Sur la fenêtre 30-39, une
+     * moyenne calculée localement vaudrait 200 ; celle de l'historique complet
+     * remonte progressivement depuis 100.
+     */
+    const s = serie([...plat(30, 100), ...plat(10, 200)]);
+    const c = courbeIndicateur(s, plan({ niveau: { type: "moyenne_mobile", periode: 20 } }), 30, 39);
+
+    expect(c).toHaveLength(1);
+    const v = c![0].valeurs;
+    expect(c![0].nom).toBe("MM20");
+    // À la bougie 30, dix-neuf des vingt dernières valent encore 100.
+    expect(v[0]).toBeGreaterThan(100);
+    expect(v[0]).toBeLessThan(110);
+    // Et la courbe monte, elle ne saute pas à 200.
+    expect(v[9]!).toBeGreaterThan(v[0]!);
+    expect(v[9]!).toBeLessThan(200);
+  });
+
+  it("laisse un trou là où l'indicateur n'existe pas encore", () => {
+    // Relier par-dessus le trou inventerait des valeurs : la courbe doit être
+    // coupée tant que la fenêtre est incomplète.
+    const s = serie(plat(40));
+    const c = courbeIndicateur(s, plan({ niveau: { type: "moyenne_mobile", periode: 20 } }), 0, 25);
+    expect(c![0].valeurs.slice(0, 19).every((x) => x === null)).toBe(true);
+    expect(c![0].valeurs[19]).not.toBeNull();
+  });
+
+  it("rend les trois courbes des bandes de Bollinger", () => {
+    const s = serie(plat(60));
+    const c = courbeIndicateur(s, plan({ niveau: { type: "bollinger", periode: 20, ecarts: 2 } }), 30, 40);
+    expect(c?.map((x) => x.nom)).toEqual(["Bollinger +", "Bollinger -", "Moyenne"]);
+  });
+
+  it("montre la moyenne du filtre de tendance, même quand le niveau est autre chose", () => {
+    // ⚠️ Un filtre décide de la moitié des trades sans jamais apparaître à
+    // l'écran. Le trader doit pouvoir vérifier qu'il regarde la bonne courbe.
+    const s = serie(plat(60));
+    const c = courbeIndicateur(
+      s,
+      plan({
+        niveau: { type: "liquidite_swing", pivots: 5 },
+        confirmations: [{ type: "biais_moyenne", periode: 30 }],
+      }),
+      40,
+      50,
+    );
+    expect(c?.[0].nom).toBe("MM30");
+  });
+
+  it("ne rend rien quand le plan n'a aucun indicateur", () => {
+    const s = serie(plat(30));
+    expect(courbeIndicateur(s, plan(), 0, 10)).toBeUndefined();
   });
 });

@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 
 import { chargerSerie } from "@/lib/backtest/chargement";
-import { lancerBacktest } from "@/lib/backtest/engine";
+import { courbeIndicateur, lancerBacktest } from "@/lib/backtest/engine";
 import { agreger } from "@/lib/backtest/serie";
 import { lireBacktest, MIN_TRADES_CONCLUSION, type LectureBacktest } from "@/lib/backtest/verdict";
 import { chercherReglagesViables, type Suggestion } from "@/lib/backtest/suggestions";
@@ -58,6 +58,15 @@ export interface Apercu {
   sortie: number;
   niveau: number;
   /**
+   * La COURBE de l'indicateur sur la fenetre, quand le niveau en est un.
+   *
+   * ⚠️ Une moyenne mobile ou un VWAP ne sont pas un prix fige : les dessiner
+   * comme un trait horizontal au moment du signal montrerait un objet qui
+   * n'existe pas. Le trader doit voir la courbe serpenter entre ses bougies,
+   * sinon il ne reconnait pas son indicateur.
+   */
+  courbes?: { nom: string; points: (number | null)[] }[];
+  /**
    * La forme du niveau telle que le trader l'aurait tracee.
    *
    * ⚠️ SANS ELLE, UNE TRENDLINE S'AFFICHAIT COMME UN TRAIT PLAT et le trader ne
@@ -89,7 +98,7 @@ const MARGE_AVANT_TRACE = 8;
  */
 const FENETRE_MAX = 140;
 
-function preparerApercus(serie: SerieM1, trades: TradeSimule[]): Apercu[] {
+function preparerApercus(serie: SerieM1, trades: TradeSimule[], plan: PlanExecution): Apercu[] {
   if (trades.length === 0) return [];
   const tick = serie.tailleTick;
   const pas = Math.max(1, Math.floor(trades.length / APERCUS_MAX));
@@ -154,6 +163,10 @@ function preparerApercus(serie: SerieM1, trades: TradeSimule[]): Apercu[] {
     apercus.push({
       trade,
       bougies,
+      courbes: courbeIndicateur(serie, plan, debut, fin)?.map((c) => ({
+        nom: c.nom,
+        points: c.valeurs.map((v) => (v === null ? null : v * tick)),
+      })),
       entree: trade.entreeTicks * tick,
       sortie: trade.sortieTicks * tick,
       stop: (trade.entreeTicks - signe * trade.risqueTicks) * tick,
@@ -222,7 +235,7 @@ self.onmessage = async (e: MessageEvent<DemandeBacktest>) => {
       moisManquants,
       octets,
       ms,
-      apercus: preparerApercus(vues, resultat.trades),
+      apercus: preparerApercus(vues, resultat.trades, complet),
       suggestions,
     });
   } catch (err) {
