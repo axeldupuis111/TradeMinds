@@ -72,19 +72,19 @@ export function Inspection({ apercus, instrument, verifie, onVerifie, t }: Inspe
   const largeurBougie = LARGEUR / a.bougies.length;
   const x = (i: number) => i * largeurBougie + largeurBougie / 2;
 
-  /**
-   * Position horizontale d'un instant quelconque, meme s'il tombe hors des
-   * bougies affichees.
+  /*
+   * ⚠️⚠️ IL Y AVAIT ICI UNE CONVERSION HORODATAGE -> ABSCISSE, ET ELLE ETAIT
+   * FAUSSE. Elle supposait un pas de temps constant entre deux bougies. Le
+   * moteur, lui, interpole une trendline sur l'INDEX des bougies. Les deux ne
+   * coincident que sur un marche ouvert en continu : des qu'une nuit ou un
+   * week-end passe, la droite dessinee derive de la droite calculee, et ses
+   * propres touches cessent de tomber dessus. Sur le Nasdaq, l'ecart atteignait
+   * plusieurs centaines de points, et le trader voyait une droite qui ne
+   * touchait rien.
    *
-   * ⚠️ Les ancrages d'une trendline sont souvent ANTERIEURS a la fenetre. Sans
-   * extrapolation, la droite serait tronquee a son premier point visible et le
-   * trader ne verrait qu'un segment flottant au lieu d'une droite prolongee.
+   * Les positions arrivent desormais du worker en index de bougie. On se sert
+   * de `x()` comme pour tout le reste, et l'accord avec le moteur est exact.
    */
-  function xDeMs(ms: number): number {
-    const premier = a.bougies[0].t;
-    const pasMs = a.bougies.length > 1 ? a.bougies[1].t - premier : 60_000;
-    return ((ms - premier) / pasMs) * largeurBougie + largeurBougie / 2;
-  }
 
   const iSignal = a.bougies.findIndex((b) => b.t === a.trade.signalMs);
   const iEntree = a.bougies.findIndex((b) => b.t === a.trade.entreeMs);
@@ -155,7 +155,15 @@ export function Inspection({ apercus, instrument, verifie, onVerifie, t }: Inspe
           </button>
         </div>
       </div>
-      <p className="mb-3 text-xs text-foreground-muted">{t("bt_inspection_aide")}</p>
+      {/* ⚠️ LE NOMBRE VIENT DE LA LISTE, IL N'EST PLUS ECRIT DANS LA PHRASE.
+          Le texte annoncait « Douze trades » quel que soit le contenu : sur un
+          plan qui en avait produit trois, l'ecran mentait sur ses propres
+          donnees, juste au-dessus d'un encart disant qu'il en manquait 97. */}
+      <p className="mb-3 text-xs text-foreground-muted">
+        {t(apercus.length === 1 ? "bt_inspection_aide_1" : "bt_inspection_aide", {
+          n: apercus.length,
+        })}
+      </p>
 
       <div className="overflow-x-auto">
         <svg
@@ -199,14 +207,14 @@ export function Inspection({ apercus, instrument, verifie, onVerifie, t }: Inspe
           {a.trace?.forme === "droite" ? (
             <g clipPath="url(#cadre-apercu)">
               <line
-                x1={xDeMs(a.trace.a.ms)}
+                x1={x(a.trace.a.i)}
                 x2={LARGEUR}
                 y1={y(a.trace.a.prix)}
                 y2={y(
                   a.trace.a.prix +
                     ((a.trace.b.prix - a.trace.a.prix) *
-                      (a.bougies[a.bougies.length - 1].t - a.trace.a.ms)) /
-                      Math.max(1, a.trace.b.ms - a.trace.a.ms),
+                      (a.bougies.length - 1 - a.trace.a.i)) /
+                      (a.trace.b.i - a.trace.a.i || 1),
                 )}
                 className="stroke-accent"
                 strokeWidth={2}
@@ -215,7 +223,7 @@ export function Inspection({ apercus, instrument, verifie, onVerifie, t }: Inspe
               {a.trace.touches.map((pt, k) => (
                 <circle
                   key={k}
-                  cx={xDeMs(pt.ms)}
+                  cx={x(pt.i)}
                   cy={y(pt.prix)}
                   r={4}
                   className="fill-accent stroke-background"
@@ -223,7 +231,7 @@ export function Inspection({ apercus, instrument, verifie, onVerifie, t }: Inspe
                 />
               ))}
               <text
-                x={Math.max(4, xDeMs(a.trace.a.ms))}
+                x={Math.max(4, x(a.trace.a.i))}
                 y={Math.max(12, y(a.trace.a.prix) - 6)}
                 fontSize={11}
                 className="fill-accent"
@@ -234,9 +242,9 @@ export function Inspection({ apercus, instrument, verifie, onVerifie, t }: Inspe
           ) : a.trace?.forme === "zone" ? (
             <g clipPath="url(#cadre-apercu)">
               <rect
-                x={xDeMs(a.trace.debutMs)}
+                x={x(a.trace.debut)}
                 y={y(a.trace.haut)}
-                width={Math.max(2, xDeMs(a.trace.finMs) - xDeMs(a.trace.debutMs))}
+                width={Math.max(2, x(a.trace.fin) - x(a.trace.debut))}
                 height={Math.max(2, y(a.trace.bas) - y(a.trace.haut))}
                 className="fill-accent/15 stroke-accent"
                 strokeWidth={1}
@@ -272,9 +280,9 @@ export function Inspection({ apercus, instrument, verifie, onVerifie, t }: Inspe
             m.forme === "desequilibre" ? (
               <g key={k} clipPath="url(#cadre-apercu)">
                 <rect
-                  x={xDeMs(m.debutMs)}
+                  x={x(m.debut)}
                   y={y(m.haut)}
-                  width={Math.max(2, xDeMs(m.finMs) - xDeMs(m.debutMs))}
+                  width={Math.max(2, x(m.fin) - x(m.debut))}
                   height={Math.max(2, y(m.bas) - y(m.haut))}
                   className="fill-warning/15 stroke-warning"
                   strokeWidth={1}
@@ -283,7 +291,7 @@ export function Inspection({ apercus, instrument, verifie, onVerifie, t }: Inspe
                 {/* Le BORD retesté, en trait plein : c'est lui qui déclenche,
                     pas le milieu de la boîte. */}
                 <line
-                  x1={xDeMs(m.debutMs)}
+                  x1={x(m.debut)}
                   x2={LARGEUR}
                   y1={y(m.bord)}
                   y2={y(m.bord)}
@@ -291,7 +299,7 @@ export function Inspection({ apercus, instrument, verifie, onVerifie, t }: Inspe
                   strokeWidth={1.5}
                 />
                 <text
-                  x={Math.max(4, xDeMs(m.debutMs))}
+                  x={Math.max(4, x(m.debut))}
                   y={Math.max(10, y(m.haut) - 4)}
                   fontSize={10}
                   className="fill-warning"
@@ -304,8 +312,8 @@ export function Inspection({ apercus, instrument, verifie, onVerifie, t }: Inspe
                 {/* La mèche qui est allée chercher la liquidité, du niveau
                     jusqu'à la pointe. */}
                 <line
-                  x1={xDeMs(m.ms)}
-                  x2={xDeMs(m.ms)}
+                  x1={x(m.i)}
+                  x2={x(m.i)}
                   y1={y(m.niveau)}
                   y2={y(m.extreme)}
                   className="stroke-warning"
@@ -315,13 +323,13 @@ export function Inspection({ apercus, instrument, verifie, onVerifie, t }: Inspe
                 <polygon
                   points={
                     m.extreme > m.niveau
-                      ? `${xDeMs(m.ms) - 4},${y(m.extreme) + 6} ${xDeMs(m.ms) + 4},${y(m.extreme) + 6} ${xDeMs(m.ms)},${y(m.extreme)}`
-                      : `${xDeMs(m.ms) - 4},${y(m.extreme) - 6} ${xDeMs(m.ms) + 4},${y(m.extreme) - 6} ${xDeMs(m.ms)},${y(m.extreme)}`
+                      ? `${x(m.i) - 4},${y(m.extreme) + 6} ${x(m.i) + 4},${y(m.extreme) + 6} ${x(m.i)},${y(m.extreme)}`
+                      : `${x(m.i) - 4},${y(m.extreme) - 6} ${x(m.i) + 4},${y(m.extreme) - 6} ${x(m.i)},${y(m.extreme)}`
                   }
                   className="fill-warning"
                 />
                 <text
-                  x={Math.max(4, xDeMs(m.ms) - 10)}
+                  x={Math.max(4, x(m.i) - 10)}
                   y={m.extreme > m.niveau ? Math.max(10, y(m.extreme) - 4) : y(m.extreme) + 12}
                   fontSize={10}
                   className="fill-warning"

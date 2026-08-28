@@ -380,13 +380,30 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
     : null;
   const joursAutorises = new Set(plan.contexte.jours);
 
-  const confBiais = plan.confirmations.find((x) => x.type === "biais_moyenne");
-  const sma = confBiais && confBiais.type === "biais_moyenne" ? moyenneMobile(c, confBiais.periode) : null;
-
-  // ── Indicateurs, précalculés UNE FOIS et seulement si le plan les demande.
-  //    Les recalculer dans la boucle multiplierait le temps par la période.
-  const confRsi = plan.confirmations.find((x) => x.type === "rsi");
-  const rsi = confRsi && confRsi.type === "rsi" ? rsiWilder(c, confRsi.periode) : null;
+  /**
+   * LES SERIES PRECALCULEES, UNE PAR CONFIRMATION.
+   *
+   * ⚠️⚠️ ELLES ETAIENT PARTAGEES PAR TYPE, ET C'ETAIT UN BUG SILENCIEUX. Le
+   * moteur cherchait « la » confirmation d'un type donne avec un `find`, puis
+   * precalculait sa serie une fois. Deux filtres du meme type dans un meme plan
+   * — ce que le compilateur peut parfaitement produire, il pose jusqu'a trois
+   * confirmations — se retrouvaient donc a lire la serie du PREMIER. Un filtre
+   * « moyenne 120 » tournait avec une moyenne 3, et rien ne le disait : le
+   * rapport etait propre et decrivait une autre strategie.
+   *
+   * Chaque confirmation a maintenant la sienne, a son propre index.
+   */
+  const seriesFiltre = plan.confirmations.map((conf) => {
+    if (conf.type === "biais_moyenne") return { sma: moyenneMobile(c, conf.periode) };
+    if (conf.type === "rsi") return { rsi: rsiWilder(c, conf.periode) };
+    if (conf.type === "macd") return { macd: macd(c, conf.rapide, conf.lente, conf.signal) };
+    if (conf.type === "stochastique") return { stoch: stochastique(h, l, c, conf.periode) };
+    // ⚠️ La divergence a SON propre RSI : sa periode n'a aucune raison d'etre
+    // celle du filtre RSI, et les confondre ferait dependre un bloc de l'autre
+    // sans que rien ne le dise.
+    if (conf.type === "divergence") return { rsi: rsiWilder(c, conf.periode) };
+    return {};
+  });
 
   const smaNiveau =
     plan.niveau.type === "moyenne_mobile"
@@ -418,21 +435,8 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
       ? (plan.stop.pivots ?? 5)
       : null;
 
-  const confMacd = plan.confirmations.find((x) => x.type === "macd");
-  const lignesMacd =
-    confMacd && confMacd.type === "macd"
-      ? macd(c, confMacd.rapide, confMacd.lente, confMacd.signal)
-      : null;
-
-  const confStoch = plan.confirmations.find((x) => x.type === "stochastique");
-  const stoch =
-    confStoch && confStoch.type === "stochastique" ? stochastique(h, l, c, confStoch.periode) : null;
-
-  // ⚠️ La divergence a SON propre RSI : sa période n'a aucune raison d'être
-  // celle du filtre RSI, et les confondre ferait dépendre un bloc de l'autre
-  // sans que rien ne le dise.
+  /** La divergence pose ses propres pivots : il faut savoir si le plan en a une. */
   const confDiv = plan.confirmations.find((x) => x.type === "divergence");
-  const rsiDiv = confDiv && confDiv.type === "divergence" ? rsiWilder(c, confDiv.periode) : null;
 
   const vwap =
     plan.niveau.type === "vwap_session"
@@ -448,6 +452,7 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
     refusesRisqueTropPetit: 0,
     journeesArretees: 0,
     barresAvecNiveau: 0,
+    refusesParFiltre: Object.fromEntries(plan.confirmations.map((c) => [c.type, 0])),
     droitesTracees: 0,
     droitesConfirmees: 0,
     collisions: 0,
@@ -859,14 +864,24 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
     return true;
   }
 
-  function confirmationsOk(i: number, sens: "long" | "short"): boolean {
-    for (const conf of plan.confirmations as BlocConfirmation[]) {
+  /**
+   * Un seul filtre passe-t-il ? Séparé de la boucle pour que CHAQUE filtre
+   * puisse être interrogé, y compris quand un autre a déjà refusé.
+   */
+  function filtreOk(
+    conf: BlocConfirmation,
+    idx: number,
+    i: number,
+    sens: "long" | "short",
+  ): boolean {
+    const sien = seriesFiltre[idx];
+    {
       if (conf.type === "bougie_reaction") {
         if (sens === "long" ? c[i] <= o[i] : c[i] >= o[i]) return false;
       } else if (conf.type === "amplitude_min") {
         if (h[i] - l[i] < conf.ticks) return false;
       } else if (conf.type === "rsi") {
-        const v = rsi ? rsi[i] : NaN;
+        const v = sien.rsi ? sien.rsi[i] : NaN;
         if (Number.isNaN(v)) return false;
         // ⚠️ Les deux usages sont OPPOSÉS : suivre l'élan, ou jouer l'excès.
         // Se tromper de mode inverse le filtre, et un filtre inversé ne se voit
@@ -877,12 +892,12 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
           if (sens === "long" ? v > 100 - conf.seuil : v < conf.seuil) return false;
         }
       } else if (conf.type === "macd") {
-        const ligne = lignesMacd ? lignesMacd.ligne[i] : NaN;
-        const sig = lignesMacd ? lignesMacd.signal[i] : NaN;
+        const ligne = sien.macd ? sien.macd.ligne[i] : NaN;
+        const sig = sien.macd ? sien.macd.signal[i] : NaN;
         if (Number.isNaN(ligne) || Number.isNaN(sig)) return false;
         if (sens === "long" ? ligne <= sig : ligne >= sig) return false;
       } else if (conf.type === "stochastique") {
-        const v = stoch ? stoch[i] : NaN;
+        const v = sien.stoch ? sien.stoch[i] : NaN;
         if (Number.isNaN(v)) return false;
         // Mêmes deux usages opposés que le RSI, même piège.
         if (conf.mode === "momentum") {
@@ -895,26 +910,46 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
         // extrêmes, elle n'existe pas sur un seul.
         if (sens === "long") {
           if (divCreuxA < 0 || divCreuxB2 < 0) return false;
-          const rA = rsiDiv ? rsiDiv[divCreuxA] : NaN;
-          const rB = rsiDiv ? rsiDiv[divCreuxB2] : NaN;
+          const rA = sien.rsi ? sien.rsi[divCreuxA] : NaN;
+          const rB = sien.rsi ? sien.rsi[divCreuxB2] : NaN;
           if (Number.isNaN(rA) || Number.isNaN(rB)) return false;
           // Le prix fait un creux plus BAS, le RSI un creux plus HAUT.
           if (!(l[divCreuxB2] < l[divCreuxA] && rB > rA)) return false;
         } else {
           if (divSommetA < 0 || divSommetB2 < 0) return false;
-          const rA = rsiDiv ? rsiDiv[divSommetA] : NaN;
-          const rB = rsiDiv ? rsiDiv[divSommetB2] : NaN;
+          const rA = sien.rsi ? sien.rsi[divSommetA] : NaN;
+          const rB = sien.rsi ? sien.rsi[divSommetB2] : NaN;
           if (Number.isNaN(rA) || Number.isNaN(rB)) return false;
           // Le prix fait un sommet plus HAUT, le RSI un sommet plus BAS.
           if (!(h[divSommetB2] > h[divSommetA] && rB < rA)) return false;
         }
       } else if (conf.type === "biais_moyenne") {
-        const m = sma ? sma[i] : NaN;
+        const m = sien.sma ? sien.sma[i] : NaN;
         if (Number.isNaN(m)) return false;
         if (sens === "long" ? c[i] <= m : c[i] >= m) return false;
       }
     }
     return true;
+  }
+
+  /**
+   * ⚠️ ON INTERROGE TOUS LES FILTRES, MEME APRES UN REFUS. Sortir au premier
+   * qui refuse rendrait le compte dépendant de l'ORDRE des blocs : un filtre
+   * placé en second paraîtrait inerte simplement parce qu'un autre a répondu
+   * avant lui. Le surcoût est nul en pratique, ces blocs ne s'évaluent qu'aux
+   * bougies où le déclencheur a déjà tiré.
+   */
+  function confirmationsOk(i: number, sens: "long" | "short"): boolean {
+    let ok = true;
+    const confs = plan.confirmations as BlocConfirmation[];
+    for (let k = 0; k < confs.length; k++) {
+      const conf = confs[k];
+      if (!filtreOk(conf, k, i, sens)) {
+        audit.refusesParFiltre[conf.type] = (audit.refusesParFiltre[conf.type] ?? 0) + 1;
+        ok = false;
+      }
+    }
+    return ok;
   }
 
   /** Le sens est-il autorisé par le plan ? */
@@ -1657,9 +1692,14 @@ export function courbeIndicateur(
 
   // Une confirmation de moyenne mobile mérite d'être vue elle aussi : c'est un
   // filtre qui décide de la moitié des trades sans jamais apparaître.
-  const biais = plan.confirmations.find((x) => x.type === "biais_moyenne");
-  if (biais && biais.type === "biais_moyenne") {
-    return [{ nom: `MM${biais.periode}`, valeurs: decoupe(moyenneMobile(c, biais.periode)) }];
+  // ⚠️ TOUTES, pas la première : un plan peut en porter plusieurs, et n'en
+  // dessiner qu'une laisserait le trader croire que l'autre n'existe pas.
+  const biais = plan.confirmations.filter((x) => x.type === "biais_moyenne");
+  if (biais.length > 0) {
+    return biais.map((b) => ({
+      nom: `MM${(b as { periode: number }).periode}`,
+      valeurs: decoupe(moyenneMobile(c, (b as { periode: number }).periode)),
+    }));
   }
   return undefined;
 }

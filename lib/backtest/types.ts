@@ -624,6 +624,27 @@ export interface AuditExecution {
    * trader devant un zéro sans issue.
    */
   barresAvecNiveau: number;
+  /**
+   * COMBIEN DE SIGNAUX CHAQUE FILTRE A REFUSÉS, par type de bloc.
+   *
+   * ⚠️ NÉ D'UN CAS VU À L'ÉCRAN. Une fiche disait « je ne prends que dans le
+   * sens de la tendance H1 ». Traduite en moyenne mobile à 4 bougies sur un
+   * plan en M15, elle couvrait UNE HEURE de données : une moyenne aussi courte
+   * ne peut jamais contredire une cassure, et sur quatre ans de Nasdaq elle
+   * gardait 100 % des trades. L'écran affichait « filtre de tendance : traduit »
+   * et le backtest tournait sans filtre directionnel.
+   *
+   * C'est la pire panne du lot : le rapport est propre, les chiffres sont
+   * justes, et ils décrivent une autre stratégie que celle de la fiche. Aucun
+   * nombre affiché ne le trahit. Un filtre à zéro refus le dit, lui.
+   *
+   * ⚠️ ON COMPTE ICI, PAS PAR DIFFÉRENCE. Rejouer le plan privé d'un filtre
+   * donne un écart qui SOUS-COMPTE : le moteur ne tient qu'une position à la
+   * fois, donc lever un refus ouvre un trade plus tôt, qui bloque à son tour
+   * des signaux plus tardifs. Mesuré : 34 signaux refusés pour un écart de 14
+   * trades seulement. Un compteur pris à l'instant du refus, lui, ne ment pas.
+   */
+  refusesParFiltre: Record<string, number>;
   /** Droites candidates ouvertes, et celles qui ont atteint leur compte de touches. */
   droitesTracees: number;
   droitesConfirmees: number;

@@ -409,7 +409,15 @@ export function validerSorties(v: unknown): SortiesAuxiliaires {
 function phrase(v: unknown, max = 200): string | null {
   if (typeof v !== "string") return null;
   const t = v.replace(/\s+/g, " ").trim();
-  return t.length === 0 ? null : t.slice(0, max);
+  if (t.length === 0) return null;
+  if (t.length <= max) return t;
+  // ⚠️ ON COUPE SUR UN ESPACE, ET ON LE DIT. La coupe au caractère près
+  // laissait « filtre directionnel explic » à l'écran : le trader lit un mot
+  // tronqué au milieu d'une explication qui décide de sa stratégie, et il doute
+  // alors du reste, alors que seule la ligne était trop longue.
+  const coupe = t.slice(0, max);
+  const espace = coupe.lastIndexOf(" ");
+  return (espace > max * 0.6 ? coupe.slice(0, espace) : coupe).trimEnd() + "…";
 }
 
 const BLOCS_CONNUS = new Set([
@@ -479,7 +487,9 @@ export function compilerDepuisModele(
     for (const x of o.deduites) {
       const e = x as Record<string, unknown>;
       const champ = phrase(e?.champ, 40);
-      const pourquoi = phrase(e?.pourquoi);
+      // Plus long que le défaut : c'est le texte sur lequel le trader décide
+      // si la machine a compris sa méthode, pas une simple citation.
+      const pourquoi = phrase(e?.pourquoi, 320);
       if (champ && pourquoi) deduites.push({ champ, pourquoi });
     }
   }

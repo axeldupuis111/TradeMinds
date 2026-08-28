@@ -88,6 +88,25 @@ type Etat =
   | { phase: "calcul" }
   | { phase: "erreur"; message: string };
 
+/**
+ * Le nom du filtre tel qu'il est écrit dans l'éditeur.
+ *
+ * ⚠️ Jamais le nom technique brut : « biais_moyenne » ne dit rien au trader, et
+ * il doit pouvoir faire le lien avec l'interrupteur qu'il vient de cocher.
+ */
+function nomDuFiltre(type: string, t: (c: string) => string): string {
+  const cles: Record<string, string> = {
+    bougie_reaction: "bt_conf_reaction",
+    biais_moyenne: "bt_conf_moyenne",
+    amplitude_min: "bt_conf_amplitude",
+    rsi: "bt_conf_rsi",
+    macd: "bt_conf_macd",
+    stochastique: "bt_conf_stochastique",
+    divergence: "bt_conf_divergence",
+  };
+  return cles[type] ? t(cles[type]) : type;
+}
+
 export default function BacktestPage() {
   const { t } = useLanguage();
   const { plan: abonnement } = usePlan();
@@ -549,6 +568,41 @@ export default function BacktestPage() {
           </StaggerItem>
         ) : null}
 
+        {/* ── Ce que les filtres ont réellement écarté ────────────────────
+            ⚠️ Placé JUSTE APRÈS les trades et AVANT le chiffre. Un filtre qui
+            n'écarte rien équivaut à pas de filtre, et rien dans le rapport ne
+            le montrerait : le résultat serait propre, il décrirait simplement
+            une autre stratégie que celle décrite dans la fiche. */}
+        {resultat && Object.keys(resultat.audit.refusesParFiltre).length > 0 ? (
+          <StaggerItem>
+            <Card className="p-4 sm:p-5">
+              <p className="mb-2 text-sm font-medium text-foreground">{tr("bt_filtres_titre")}</p>
+              <ul className="space-y-1 text-xs text-foreground-muted">
+                {Object.entries(resultat.audit.refusesParFiltre).map(([type, n]) => (
+                  <li key={type} className="tabular-nums">
+                    {tr("bt_filtre_effet", { nom: nomDuFiltre(type, tr), n })}
+                  </li>
+                ))}
+              </ul>
+              {Object.entries(resultat.audit.refusesParFiltre)
+                .filter(([, n]) => n === 0)
+                .map(([type]) => (
+                  <div
+                    key={type}
+                    className="mt-3 rounded-lg border border-warning/40 bg-warning/5 p-3"
+                  >
+                    <p className="text-xs font-medium text-warning">
+                      {tr("bt_filtre_inerte_titre")}
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-foreground-muted">
+                      {tr("bt_filtre_inerte", { nom: nomDuFiltre(type, tr) })}
+                    </p>
+                  </div>
+                ))}
+            </Card>
+          </StaggerItem>
+        ) : null}
+
         {resultat ? (
           <StaggerItem>
             <Resultat
@@ -630,7 +684,9 @@ function CarteCouverture({
         <div className="rounded-lg border border-warning/50 bg-warning/[0.07] p-3">
           <p className="flex items-center gap-1.5 text-xs font-semibold text-warning">
             <AlertTriangle className="h-3.5 w-3.5" />
-            {t("bt_deduites_critiques", { n: critiques.length })}
+            {t(critiques.length === 1 ? "bt_deduites_critiques_1" : "bt_deduites_critiques", {
+              n: critiques.length,
+            })}
           </p>
           <p className="mt-1 text-[11px] leading-snug text-foreground-muted">
             {t("bt_deduites_critiques_note")}
@@ -654,7 +710,9 @@ function CarteCouverture({
         <div>
           <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-profit">
             <CheckCircle2 className="h-3.5 w-3.5" />
-            {t("bt_traduites", { n: couverture.traduites.length })}
+            {t(couverture.traduites.length === 1 ? "bt_traduites_1" : "bt_traduites", {
+              n: couverture.traduites.length,
+            })}
           </p>
           <ul className="space-y-1 pl-5 text-xs text-foreground-muted">
             {couverture.traduites.map((x, i) => (
@@ -670,7 +728,10 @@ function CarteCouverture({
         <div>
           <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-warning">
             <HelpCircle className="h-3.5 w-3.5" />
-            {t("bt_non_traduites", { n: couverture.nonTraduites.length })}
+            {t(
+              couverture.nonTraduites.length === 1 ? "bt_non_traduites_1" : "bt_non_traduites",
+              { n: couverture.nonTraduites.length },
+            )}
           </p>
           <ul className="list-disc space-y-1 pl-8 text-xs text-foreground-muted">
             {couverture.nonTraduites.map((x, i) => (

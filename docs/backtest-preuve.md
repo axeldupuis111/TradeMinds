@@ -144,3 +144,83 @@ Deux écarts d'usage valent d'être notés, parce qu'ils ne sont pas des défaut
    lit les fichiers source et vérifie que tout bloc proposé au modèle est connu
    du validateur ET visible dans l'éditeur. Un bloc que le modèle peut choisir
    mais que le trader ne peut pas corriger rompt toute la boucle de vérification.
+
+---
+
+# Ce que les captures d'écran ont révélé (2026-08-28)
+
+Quatre captures d'un backtest réel sur le NAS100. Cinq défauts, dont trois
+silencieux.
+
+## 1. La droite dessinée n'était pas la droite calculée
+
+Le moteur interpole une trendline sur l'**index** des bougies. Le graphique la
+redessinait sur l'**horodatage**, en supposant un pas de temps constant. Les
+deux ne coïncident que sur un marché ouvert en continu : dès qu'une nuit ou un
+week-end passe, l'écart s'installe.
+
+Sur le Nasdaq, la droite s'affichait à plusieurs centaines de points de son vrai
+niveau, et **ses propres touches ne tombaient plus dessus**. Le trader regardait
+un objet qui ne touchait rien, sous une légende disant « 3 touches ».
+
+C'est le défaut le plus grave du lot : toute la fonctionnalité repose sur « je
+regarde et je reconnais ma méthode ». Un graphique faux ne casse pas un chiffre,
+il casse la seule vérification qui compte.
+
+Les positions arrivent désormais en index de bougie, et l'accord est exact par
+construction. Un test rejoue une série **trouée** et vérifie que chaque touche
+tombe sur la droite ; un second vérifie que la conversion par le temps, elle, se
+trompe de plus de dix ticks. Sur une série continue, la version fausse passait
+sans broncher : c'est le trou qui révèle le défaut.
+
+## 2. Un filtre déclaré qui ne filtrait rien
+
+La fiche disait « je ne prends que dans le sens de la tendance H1 ». Traduit en
+moyenne mobile à **4 bougies** sur un plan en M15, le filtre couvrait une heure
+de données. Une moyenne aussi courte ne peut pas contredire une cassure : casser
+le plus haut des vingt dernières bougies place forcément la clôture au-dessus.
+
+Mesuré sur quatre ans de Nasdaq :
+
+| période | trades gardés |
+|---|---|
+| MM4 (1 h de données) | **100 %** |
+| MM20 | 100 % |
+| MM40 | 98,8 % |
+| MM80 (20 bougies H1) | 88,3 % |
+| MM200 | 74,7 % |
+
+L'écran affichait « filtre de tendance : traduit », et le backtest tournait sans
+filtre directionnel. Le rapport était propre, les chiffres justes, et ils
+décrivaient une autre stratégie que celle de la fiche.
+
+Deux corrections. Le compilateur reçoit la règle de conversion : 20 à 50 bougies
+**de l'unité de tendance**, converties dans l'unité du plan. Et le moteur compte
+désormais, pour chaque filtre, **combien de signaux il a refusés** ; un filtre à
+zéro refus est affiché comme tel.
+
+⚠️ Ce compteur est pris DANS le moteur, pas par différence. Rejouer le plan privé
+du filtre sous-compte : le moteur ne tient qu'une position à la fois, donc lever
+un refus ouvre un trade plus tôt, qui bloque à son tour des signaux plus tardifs.
+Mesuré : **34 signaux refusés pour un écart de 14 trades**.
+
+## 3. Deux filtres du même type partageaient un seul calcul
+
+Trouvé en écrivant le test précédent. Le moteur cherchait « la » confirmation
+d'un type donné avec un `find`, puis précalculait sa série une fois. Deux blocs
+du même type — le compilateur en pose jusqu'à trois — lisaient tous la série du
+**premier**. Un filtre « moyenne 120 » tournait avec une moyenne 3.
+
+## 4. L'écran annonçait douze trades quand il en avait trois
+
+La phrase d'introduction des aperçus était écrite en dur. Sur un plan qui avait
+produit trois trades, l'écran mentait sur ses propres données, juste au-dessus
+d'un encart expliquant qu'il en manquait 97.
+
+## 5. Deux fautes de finition
+
+« 1 règles non mécanisables », et une explication coupée en plein mot
+(« filtre directionnel explic »). La coupe se fait maintenant sur un espace,
+avec des points de suspension, et la place accordée à une justification est
+passée de 200 à 320 caractères : c'est le texte sur lequel le trader décide si
+la machine a compris sa méthode.

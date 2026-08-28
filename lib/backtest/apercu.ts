@@ -1,3 +1,5 @@
+import type { TradeSimule } from "./types";
+
 /**
  * L'ÉCHELLE VERTICALE DU GRAPHIQUE D'INSPECTION.
  *
@@ -80,4 +82,105 @@ export function echelleApercu(g: GeometrieApercu, tailleTick: number): Echelle {
     ...avecMarge,
     niveauVisible: g.niveau <= avecMarge.haut && g.niveau >= avecMarge.bas,
   };
+}
+
+/**
+ * Un point a dessiner : une abscisse en INDEX DE BOUGIE relatif a la fenetre,
+ * et un prix.
+ *
+ * ⚠️⚠️ EN INDEX, PAS EN MILLISECONDES, ET C'EST UNE CORRECTION MESUREE. Le
+ * moteur interpole une trendline sur l'INDEX des bougies (`valeurDroite`),
+ * tandis que le graphique la redessinait sur l'HORODATAGE en supposant un pas
+ * de temps constant. Les deux ne coincident que sur un marche ouvert en
+ * continu : des qu'une nuit ou un week-end passe, la droite affichee derive de
+ * la droite calculee, et ses propres touches cessent de tomber dessus. Sur le
+ * Nasdaq, l'ecart atteignait plusieurs centaines de points : le trader voyait
+ * une « trendline » qui ne touchait rien, et ne pouvait donc plus rien
+ * reconnaitre.
+ *
+ * L'axe horizontal du graphique EST un axe d'index : une bougie, une colonne.
+ * On y porte donc des index, et l'accord avec le moteur est exact par
+ * construction. L'index peut etre negatif (un ancrage anterieur a la fenetre
+ * affichee) : la droite sort alors du cadre par la gauche, ce qui est voulu.
+ */
+export interface PointDessin {
+  i: number;
+  prix: number;
+}
+
+/** La geometrie du niveau, en unites de PRIX, prete a dessiner. */
+export type TraceDessin =
+  | { forme: "droite"; a: PointDessin; b: PointDessin; touches: PointDessin[] }
+  | { forme: "horizontale"; prix: number }
+  | { forme: "zone"; haut: number; bas: number; debut: number; fin: number };
+
+/** La geometrie de la MECANIQUE d'entree, en unites de PRIX. */
+export type MecaniqueDessin =
+  | {
+      forme: "desequilibre";
+      haut: number;
+      bas: number;
+      debut: number;
+      fin: number;
+      bord: number;
+    }
+  | { forme: "balayage"; niveau: number; extreme: number; i: number };
+
+/**
+ * Convertit ce que le moteur a retenu (des ticks et des horodatages) en ce que
+ * le graphique dessine (des prix et des index de colonne).
+ *
+ * ⚠️ La table `indexParMs` n'est pas un luxe : le pas entre deux bougies n'est
+ * PAS constant. Toute conversion par division se trompe des qu'une fermeture
+ * passe, et c'est precisement le bug que cette fonction repare.
+ */
+export function geometrieDessin(
+  trade: TradeSimule,
+  indexParMs: Map<number, number>,
+  debut: number,
+  tick: number,
+): { trace?: TraceDessin; mecanique?: MecaniqueDessin[] } {
+  /** Horodatage -> index relatif au debut de la fenetre affichee. */
+  const rel = (ms: number) => (indexParMs.get(ms) ?? debut) - debut;
+
+  const brute = trade.trace;
+  const trace: TraceDessin | undefined =
+    brute?.forme === "droite"
+      ? {
+          forme: "droite",
+          a: { i: rel(brute.a.ms), prix: brute.a.prixTicks * tick },
+          b: { i: rel(brute.b.ms), prix: brute.b.prixTicks * tick },
+          touches: brute.touches.map((x) => ({ i: rel(x.ms), prix: x.prixTicks * tick })),
+        }
+      : brute?.forme === "zone"
+        ? {
+            forme: "zone",
+            haut: brute.hautTicks * tick,
+            bas: brute.basTicks * tick,
+            debut: rel(brute.debutMs),
+            fin: rel(brute.finMs),
+          }
+        : brute?.forme === "horizontale"
+          ? { forme: "horizontale", prix: brute.prixTicks * tick }
+          : undefined;
+
+  const mecanique = trade.mecanique?.map<MecaniqueDessin>((m) =>
+    m.forme === "balayage"
+      ? {
+          forme: "balayage",
+          niveau: m.niveauTicks * tick,
+          extreme: m.extremeTicks * tick,
+          i: rel(m.ms),
+        }
+      : {
+          forme: "desequilibre",
+          haut: m.hautTicks * tick,
+          bas: m.basTicks * tick,
+          debut: rel(m.debutMs),
+          fin: rel(m.finMs),
+          bord: m.bordTicks * tick,
+        },
+  );
+
+  return { trace, mecanique };
 }

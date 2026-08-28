@@ -2,9 +2,11 @@
 
 import { chargerSerie } from "@/lib/backtest/chargement";
 import { courbeIndicateur, lancerBacktest } from "@/lib/backtest/engine";
+import { geometrieDessin } from "@/lib/backtest/apercu";
 import { agreger } from "@/lib/backtest/serie";
 import { lireBacktest, MIN_TRADES_CONCLUSION, type LectureBacktest } from "@/lib/backtest/verdict";
 import { chercherReglagesViables, type Suggestion } from "@/lib/backtest/suggestions";
+import type { MecaniqueDessin, TraceDessin } from "@/lib/backtest/apercu";
 import type { Couts, PlanExecution, ResultatBacktest, SerieM1, TradeSimule } from "@/lib/backtest/types";
 
 /**
@@ -40,24 +42,6 @@ export interface BougieApercu {
   l: number;
   c: number;
 }
-
-/** La geometrie du niveau, en unites de PRIX, prete a dessiner. */
-export type TraceDessin =
-  | { forme: "droite"; a: { ms: number; prix: number }; b: { ms: number; prix: number }; touches: { ms: number; prix: number }[] }
-  | { forme: "horizontale"; prix: number }
-  | { forme: "zone"; haut: number; bas: number; debutMs: number; finMs: number };
-
-/** La geometrie de la MECANIQUE d'entree, en unites de PRIX. */
-export type MecaniqueDessin =
-  | {
-      forme: "desequilibre";
-      haut: number;
-      bas: number;
-      debutMs: number;
-      finMs: number;
-      bord: number;
-    }
-  | { forme: "balayage"; niveau: number; extreme: number; ms: number };
 
 /** Un trade et les bougies qui l'entourent, pour vérification à l'œil. */
 export interface Apercu {
@@ -130,6 +114,12 @@ function preparerApercus(serie: SerieM1, trades: TradeSimule[], plan: PlanExecut
     choisis.push(trades[k]);
   }
 
+  // ⚠️ Une table, pas un calcul : le pas entre deux bougies n'est PAS constant
+  // (nuits, week-ends, jours feries). Toute conversion par division se trompe
+  // des qu'une fermeture passe.
+  const indexParMs = new Map<number, number>();
+  for (let i = 0; i < serie.t.length; i++) indexParMs.set(serie.t[i], i);
+
   const apercus: Apercu[] = [];
   for (const trade of choisis) {
     // ⚠️ La fenetre doit remonter jusqu'au PREMIER ancrage de la droite, sinon
@@ -137,6 +127,7 @@ function preparerApercus(serie: SerieM1, trades: TradeSimule[], plan: PlanExecut
     // le trader ne peut toujours pas reconnaitre son setup.
     let debutTrace =
       trade.trace?.forme === "droite" ? Math.min(trade.trace.a.ms, trade.trace.b.ms) : trade.signalMs;
+    if (trade.trace?.forme === "zone") debutTrace = Math.min(debutTrace, trade.trace.debutMs);
     // ⚠️ Un balayage peut preceder le signal de plusieurs centaines de bougies
     // (delaiReaction + delaiRetest). Dessine hors de la fenetre, il ne servirait
     // a rien : le trader verrait une entree sans la prise de liquidite qui la
@@ -168,44 +159,7 @@ function preparerApercus(serie: SerieM1, trades: TradeSimule[], plan: PlanExecut
       });
     }
     const signe = trade.sens === "long" ? 1 : -1;
-    const brute = trade.trace;
-    const trace: TraceDessin | undefined =
-      brute?.forme === "droite"
-        ? {
-            forme: "droite",
-            a: { ms: brute.a.ms, prix: brute.a.prixTicks * tick },
-            b: { ms: brute.b.ms, prix: brute.b.prixTicks * tick },
-            touches: brute.touches.map((x) => ({ ms: x.ms, prix: x.prixTicks * tick })),
-          }
-        : brute?.forme === "zone"
-          ? {
-              forme: "zone",
-              haut: brute.hautTicks * tick,
-              bas: brute.basTicks * tick,
-              debutMs: brute.debutMs,
-              finMs: brute.finMs,
-            }
-          : brute?.forme === "horizontale"
-            ? { forme: "horizontale", prix: brute.prixTicks * tick }
-            : undefined;
-
-    const mecanique = trade.mecanique?.map<MecaniqueDessin>((m) =>
-      m.forme === "balayage"
-        ? {
-            forme: "balayage",
-            niveau: m.niveauTicks * tick,
-            extreme: m.extremeTicks * tick,
-            ms: m.ms,
-          }
-        : {
-            forme: "desequilibre",
-            haut: m.hautTicks * tick,
-            bas: m.basTicks * tick,
-            debutMs: m.debutMs,
-            finMs: m.finMs,
-            bord: m.bordTicks * tick,
-          },
-    );
+    const { trace, mecanique } = geometrieDessin(trade, indexParMs, debut, tick);
 
     apercus.push({
       trade,
