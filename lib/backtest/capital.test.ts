@@ -26,6 +26,33 @@ describe("effet d'une suite de R sur le compte", () => {
     expect(e.ruine).toBe(false);
   });
 
+  it("baisser le risque NE divise PAS le recul proportionnellement", () => {
+    // ⚠️⚠️ CONSTAT CONTRE-INTUITIF, ET IL COMPTE POUR CE QU'ON ÉCRIT À L'ÉCRAN.
+    // On croit qu'en divisant son risque par deux on divise son pire recul par
+    // deux. C'est faux dès que le compte a grossi : le recul se mesure depuis
+    // le SOMMET, et un risque plus petit fait aussi un sommet plus bas.
+    //
+    // Même suite montée à +50 R puis rendue de 29,7 R :
+    //   à 5 %  → -42,4 %
+    //   à 2,5 % → -32,7 %, soit à peine un tiers de moins et non la moitié.
+    //
+    // Ne pas le savoir ferait promettre « divise ton risque par deux et ton
+    // recul par deux », ce qui est un conseil faux.
+    const fort = effetSurLeCompte([50, -29.7], 5);
+    const doux = effetSurLeCompte([50, -29.7], 2.5);
+    expect(doux.reculPct).toBeLessThan(fort.reculPct);
+    expect(fort.reculPct / doux.reculPct).toBeLessThan(1.5);
+  });
+
+  it("mais tout près du départ, la proportion revient", () => {
+    // Sur un compte qui n'a presque pas bougé, le sommet vaut la mise initiale
+    // et le recul redevient proportionnel à la taille de position.
+    const a = effetSurLeCompte([0.2, -4], 2);
+    const b = effetSurLeCompte([0.2, -4], 1);
+    expect(a.reculPct / b.reculPct).toBeGreaterThan(1.9);
+    expect(a.reculPct / b.reculPct).toBeLessThan(2.1);
+  });
+
   it("ne dépasse JAMAIS cent pour cent, quelle que soit la suite", () => {
     // La borne est structurelle : on ne peut pas perdre plus que ce qu'on a.
     const suites = [

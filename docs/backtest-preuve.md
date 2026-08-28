@@ -381,3 +381,73 @@ suppose de continuer à trader sans argent.
 10. **Un chiffre borné par nature doit être borné dans le code.** Un pourcentage
     de perte ne dépasse pas cent. Quand la formule le permet, c'est la formule
     qui est fausse, pas le cas limite qui est rare.
+
+---
+
+# Les propositions (2026-08-29)
+
+Demande d'Axel : « j'aimerais avoir plein de possibilités, d'options, de
+propositions à activer et à accepter : réduire le risque, améliorer les gains,
+plus de trades ».
+
+Deux de ces trois-là se proposent honnêtement. Le troisième, non, et il valait
+mieux savoir le dire que faire semblant.
+
+## Ce qu'on s'autorise
+
+Trois objectifs, chacun avec des leviers **choisis par raisonnement, pas par
+balayage** :
+
+| objectif | pourquoi ces leviers |
+|---|---|
+| Avoir assez de trades | une droite plus épaisse, un pivot plus étroit, une unité de temps plus fine produisent **mécaniquement** plus d'occasions |
+| Protéger le compte | baisser le risque, couper la journée après N pertes : on ne cherche pas à gagner, on cherche à survivre |
+| Alléger les coûts | le coût d'un aller-retour est **fixe en points** ; ce qui change, c'est la taille du risque auquel il se compare |
+
+## Ce qu'on refuse, et c'est écrit à l'écran
+
+**Il n'y a pas de bouton « améliorer mes gains ».** Essayer vingt réglages et
+garder celui qui sort le meilleur chiffre en trouve toujours un, même dans du
+hasard pur. Le faire à la place du trader serait pire que le trader qui le fait
+à la main, parce que ça aurait l'air d'un conseil.
+
+Trois garde-fous dans le code, pas seulement dans les commentaires :
+
+1. **Le module ne lit jamais l'espérance ni le total d'une variante.** Un test
+   lit le fichier source et échoue si `esperance`, `lireBacktest`, `totalR` ou
+   un `.sort(` y apparaissent.
+2. **Aucune proposition ne porte de chiffre de performance.** Un test épingle la
+   liste exacte des champs rendus : trades, recul du compte, part des coûts.
+3. **Le filtre porte sur l'OBJECTIF, jamais sur le résultat.** « Ce réglage
+   produit plus de trades » est un fait mécanique sur la taille de
+   l'échantillon ; « ce réglage a rapporté davantage » serait un choix fait
+   après coup sur une période connue.
+
+## Ce que la mesure a corrigé en route
+
+**Une proposition « plus de trades » qui en rendait moins.** Sur la vraie
+stratégie, « épaissir la trendline » donnait 449 trades au lieu de 522 : une
+droite plus épaisse se confirme plus tôt, donc meurt plus tôt. Elle figurait
+pourtant sous cet objectif. Chaque proposition est maintenant vérifiée contre sa
+propre promesse, avec un écart minimal de 10 % pour ne pas encombrer la liste de
+changements invisibles.
+
+**Baisser le risque ne divise pas le recul proportionnellement.** On croit qu'en
+divisant son risque par deux on divise son pire recul par deux. C'est faux dès
+que le compte a grossi : le recul se mesure depuis le sommet, et un risque plus
+petit fait aussi un sommet plus bas. Sur la même suite montée à +50 R puis rendue
+de 29,7 R, passer de 5 % à 2,5 % fait -42,4 % → -32,7 %, pas la moitié. Ne pas
+le savoir aurait fait écrire un conseil faux.
+
+## Le coût
+
+Sept propositions mesurées en **3,7 secondes** sur quatre ans de Nasdaq. C'est
+pour ça qu'elles sont **sur demande** : les calculer à chaque lancement ferait
+payer cette attente à tout le monde, y compris à ceux qui ne les regardent pas.
+
+## Deux clés de traduction affichées brutes
+
+`bt_collisions_1` s'est affichée telle quelle dans le rapport. Le test de parité
+ne pouvait pas l'attraper : il compare les quatre langues entre elles, et la clé
+manquait dans les quatre. Un nouveau test part du **code** et vérifie que ce
+qu'il appelle existe.

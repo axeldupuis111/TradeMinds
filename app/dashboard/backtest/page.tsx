@@ -32,6 +32,7 @@ import StaggerContainer, { StaggerItem } from "@/components/animations/StaggerCo
 import { EditeurPlan } from "@/components/backtest/EditeurPlan";
 import { Resultat } from "@/components/backtest/Resultat";
 import { Inspection } from "@/components/backtest/Inspection";
+import { Propositions } from "@/components/backtest/Propositions";
 import { Champ, Liste } from "@/components/backtest/Controles";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
@@ -174,6 +175,7 @@ export default function BacktestPage() {
     ms: number;
     apercus: Apercu[];
     suggestions: import("@/lib/backtest/suggestions").Suggestion[];
+    propositions?: import("@/lib/backtest/propositions").Proposition[];
   } | null>(null);
 
   /**
@@ -182,6 +184,7 @@ export default function BacktestPage() {
    * celui qui sort le mieux en trouve TOUJOURS un, même dans du bruit pur.
    */
   const [tentatives, setTentatives] = useState(0);
+
 
   /**
    * Le trader a-t-il regardé les trades et reconnu sa méthode ?
@@ -319,7 +322,15 @@ export default function BacktestPage() {
     }
   }, [strategies, strategieId, code, fuseau, instrument, tr]);
 
-  const lancer = useCallback(() => {
+  /**
+   * @param avecPropositions cherche aussi ce que le trader pourrait changer.
+   *
+   * ⚠️ SUR DEMANDE, JAMAIS D'OFFICE. Chaque proposition est un backtest
+   * complet : une dizaine de variantes ajoutent plusieurs secondes sur un plan
+   * en M1. Les calculer à chaque lancement ferait payer cette attente à tout le
+   * monde, y compris à ceux qui ne les regardent pas.
+   */
+  const lancer = useCallback((avecPropositions = false) => {
     if (etat.phase === "telechargement" || etat.phase === "calcul") return;
     workerRef.current?.terminate();
 
@@ -345,11 +356,20 @@ export default function BacktestPage() {
           ms: r.ms,
           apercus: r.apercus,
           suggestions: r.suggestions,
+          propositions: r.propositions,
         });
         setEtat({ phase: "repos" });
       }
     };
-    const demande: DemandeBacktest = { code, de, a, plan, couts: plan.couts, tentatives: prochaine };
+    const demande: DemandeBacktest = {
+      code,
+      de,
+      a,
+      plan,
+      couts: plan.couts,
+      tentatives: prochaine,
+      propositions: avecPropositions,
+    };
     w.postMessage(demande);
   }, [etat.phase, tentatives, de, a, code, plan]);
 
@@ -533,7 +553,10 @@ export default function BacktestPage() {
               </div>
               <button
                 type="button"
-                onClick={lancer}
+                // ⚠️ Pas `onClick={lancer}` : React passerait l'événement en
+                // premier argument, et le clic demanderait les propositions
+                // sans que personne ne l'ait voulu.
+                onClick={() => lancer()}
                 disabled={occupe}
                 className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
               >
@@ -568,7 +591,41 @@ export default function BacktestPage() {
           </StaggerItem>
         ) : null}
 
-        {/* ── Ce que les filtres ont réellement écarté ────────────────────
+        {resultat?.propositions ? (
+          <StaggerItem>
+            <Propositions
+              propositions={resultat.propositions}
+              instrument={instrument}
+              tradesActuels={resultat.trades.length}
+              onAppliquer={(p) => {
+                // Même règle qu'ailleurs : le chiffre affiché ne correspondrait
+                // plus au plan visible, et un écart entre les deux est la pire
+                // chose qui puisse arriver à cette page.
+                setPlan(p);
+                setResultat(null);
+              }}
+              t={tr}
+            />
+          </StaggerItem>
+        ) : resultat ? (
+          <StaggerItem>
+            <Card className="p-4 sm:p-5">
+              <p className="text-sm font-medium text-foreground">{t_titre(tr)}</p>
+              <p className="mt-1 text-xs leading-relaxed text-foreground-muted">
+                {tr("bt_prop_intro")}
+              </p>
+              <button
+                type="button"
+                onClick={() => lancer(true)}
+                className="mt-3 rounded-lg border border-accent/50 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/10"
+              >
+                {tr("bt_prop_chercher")}
+              </button>
+            </Card>
+          </StaggerItem>
+        ) : null}
+
+      {/* ── Ce que les filtres ont réellement écarté ────────────────────
             ⚠️ Placé JUSTE APRÈS les trades et AVANT le chiffre. Un filtre qui
             n'écarte rien équivaut à pas de filtre, et rien dans le rapport ne
             le montrerait : le résultat serait propre, il décrirait simplement
@@ -867,3 +924,9 @@ function LigneInterpretation({
   );
 }
 
+
+
+/** Le titre de la carte d'invitation, repris de la carte des propositions. */
+function t_titre(t: (c: string) => string): string {
+  return t("bt_prop_titre");
+}

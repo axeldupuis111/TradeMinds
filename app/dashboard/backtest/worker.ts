@@ -6,6 +6,7 @@ import { fenetreApercu, geometrieDessin } from "@/lib/backtest/apercu";
 import { agreger } from "@/lib/backtest/serie";
 import { lireBacktest, MIN_TRADES_CONCLUSION, type LectureBacktest } from "@/lib/backtest/verdict";
 import { chercherReglagesViables, type Suggestion } from "@/lib/backtest/suggestions";
+import { chercherPropositions, type Proposition } from "@/lib/backtest/propositions";
 import type { MecaniqueDessin, TraceDessin } from "@/lib/backtest/apercu";
 import type { Couts, PlanExecution, ResultatBacktest, SerieM1, TradeSimule } from "@/lib/backtest/types";
 
@@ -32,6 +33,15 @@ export interface DemandeBacktest {
   couts: Couts;
   /** Nombre de rejeux déjà effectués. Sert à l'alerte de sur-apprentissage. */
   tentatives: number;
+  /**
+   * Chercher aussi ce que le trader pourrait changer ?
+   *
+   * ⚠️ SUR DEMANDE, JAMAIS D'OFFICE. Chaque proposition est un backtest
+   * complet : une dizaine de variantes ajoutent plusieurs secondes sur un plan
+   * en M1. Les calculer à chaque lancement ferait payer cette attente à tout le
+   * monde, y compris à ceux qui ne les regardent pas.
+   */
+  propositions?: boolean;
 }
 
 /** Une bougie prête à dessiner, en unités de PRIX (plus en ticks). */
@@ -178,13 +188,15 @@ export type ReponseBacktest =
        * conclut déjà.
        */
       suggestions: Suggestion[];
+      /** Ce que le trader pourrait changer, quand il l'a demandé. */
+      propositions?: Proposition[];
     }
   | { type: "erreur"; message: string };
 
 const poste = (r: ReponseBacktest) => (self as unknown as Worker).postMessage(r);
 
 self.onmessage = async (e: MessageEvent<DemandeBacktest>) => {
-  const { code, de, a, plan, couts, tentatives } = e.data;
+  const { code, de, a, plan, couts, tentatives, propositions } = e.data;
   try {
     const { serie, moisCharges, moisManquants, octets } = await chargerSerie(code, de, a, (faits, total) =>
       poste({ type: "avancement", faits, total }),
@@ -220,6 +232,11 @@ self.onmessage = async (e: MessageEvent<DemandeBacktest>) => {
       ms,
       apercus: preparerApercus(vues, resultat.trades, complet),
       suggestions,
+      propositions: propositions
+        ? chercherPropositions(serie, complet, couts, (faits, total) =>
+            poste({ type: "avancement", faits, total }),
+          )
+        : undefined,
     });
   } catch (err) {
     poste({ type: "erreur", message: err instanceof Error ? err.message : String(err) });
