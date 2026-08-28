@@ -2,6 +2,7 @@
 
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
+import { effetSurLeCompte } from "@/lib/backtest/capital";
 import { coutsEnPrix, type Instrument } from "@/lib/backtest/instruments";
 import { MAX_TENTATIVES_AVANT_ALERTE, type LectureBacktest } from "@/lib/backtest/verdict";
 import type { AuditExecution, PlanExecution, TradeSimule } from "@/lib/backtest/types";
@@ -173,6 +174,15 @@ export function Resultat({
   }
 
   const s = lecture.stats;
+  /**
+   * ⚠️ PAS UNE MULTIPLICATION. On multipliait le pire recul en R par le risque
+   * par trade, ce qui affichait « -148,4 % » : on ne perd pas cent quarante-huit
+   * pour cent d'un compte. Un recul se mesure depuis le SOMMET qui le précède.
+   */
+  const compte = effetSurLeCompte(
+    trades.map((x) => x.r),
+    risqueParTradePct ?? 0,
+  );
   const couts = lecture.couts!;
   const prix = coutsEnPrix(instrument, {
     spreadTicks: couts.coutApplique,
@@ -310,13 +320,26 @@ export function Resultat({
           <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
             <Ligne
               label={t("bt_capital_total")}
-              valeur={`${s.totalR >= 0 ? "+" : ""}${(s.totalR * risqueParTradePct).toFixed(1)} %`}
+              valeur={
+                compte.ruine
+                  ? t("bt_capital_vide")
+                  : `${compte.totalPct >= 0 ? "+" : ""}${compte.totalPct.toFixed(1)} %`
+              }
             />
-            <Ligne
-              label={t("bt_capital_drawdown")}
-              valeur={`-${(s.drawdownMaxR * risqueParTradePct).toFixed(1)} %`}
-            />
+            <Ligne label={t("bt_capital_drawdown")} valeur={`-${compte.reculPct.toFixed(1)} %`} />
           </dl>
+          {/* ⚠️ UN COMPTE VIDÉ NE PREND PAS LES TRADES SUIVANTS. Afficher le
+              total de la période entière reviendrait à promettre un gain qui
+              suppose de continuer à trader sans argent. */}
+          {compte.ruine ? (
+            <p className="mt-3 rounded-lg border border-loss/40 bg-loss/[0.06] p-3 text-xs text-loss">
+              {t("bt_capital_ruine", {
+                rang: compte.rangRuine ?? 0,
+                total: trades.length,
+                risque: risqueParTradePct,
+              })}
+            </p>
+          ) : null}
           {/* ⚠️ CETTE LIGNE EST UNE MULTIPLICATION, PAS UNE PRÉVISION, et c'est
               souvent le chiffre le plus utile de la page. Trois pertes d'affilée
               à 5 % font -15 % dans la journée, que le backtest soit bon ou non. */}
@@ -392,7 +415,7 @@ export function Resultat({
             </li>
           ) : null}
           <li className={lecture.partCollisions > 0.15 ? "text-warning" : undefined}>
-            {t("bt_collisions", {
+            {t(audit.collisions === 1 ? "bt_collisions_1" : "bt_collisions", {
               n: audit.collisions,
               pct: (lecture.partCollisions * 100).toFixed(1),
             })}

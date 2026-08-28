@@ -336,3 +336,48 @@ rejeux existe. On a corrigé la mesure, pas trouvé un avantage.
 9. **La tolérance d'alignement se mesure sur le PRIX, pas sur le spread.** Un
    trait tracé à la main a une épaisseur, de l'ordre du millième du prix. Le
    spread n'a rien à voir avec la précision de la main.
+
+---
+
+# Un pire recul de -148,4 % (2026-08-28)
+
+Avec 634 trades, l'outil conclut enfin quelque chose : « on ne peut pas
+conclure », +0,0712 R par trade, intervalle [-0,042 ; 0,185], zéro dedans. C'est
+le bon comportement.
+
+Mais juste en dessous, la carte « ce que ça fait à ton compte » affichait :
+
+> Pire recul du compte : **-148,4 %**
+
+On ne perd pas cent quarante-huit pour cent d'un compte. Le calcul multipliait le
+pire recul en R par le risque par trade (29,7 × 5), c'est-à-dire qu'il rapportait
+un recul au capital de **départ**, alors qu'un recul se mesure depuis le
+**sommet** qui le précède.
+
+Les mêmes 29,7 R survenus après une hausse à +50 R font tomber un compte de 3,5
+fois la mise à 2,0 fois : c'est **-42 %**, pas -148 %.
+
+Mesuré sur la stratégie compilée, quatre ans de NAS100 :
+
+| risque par trade | pire recul, vrai calcul | ce qui s'affichait |
+|---|---|---|
+| 5 % | -76,6 % | -175,9 % |
+| 2 % | -46,3 % | -70,4 % |
+| 1 % | -27,9 % | -35,2 % |
+| 0,5 % | -15,6 % | -17,6 % |
+
+Un nombre impossible ne se contente pas d'être faux : il décrédibilise tous les
+chiffres justes qui l'entourent. Le trader qui lit -148 % cesse de croire
+l'intervalle de confiance affiché deux centimètres plus haut.
+
+Le calcul est maintenant une fonction pure et testée. Elle détecte aussi la
+**ruine** : à 5 % par trade, il faut -20 R depuis le départ pour tout perdre. Un
+compte vidé au trade 150 ne prend pas les 484 suivants, et le total de la période
+ne veut alors plus rien dire — l'écran le dit au lieu d'afficher un gain qui
+suppose de continuer à trader sans argent.
+
+## Ce que ça décide pour nous
+
+10. **Un chiffre borné par nature doit être borné dans le code.** Un pourcentage
+    de perte ne dépasse pas cent. Quand la formule le permet, c'est la formule
+    qui est fausse, pas le cas limite qui est rare.
