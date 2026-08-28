@@ -2,7 +2,7 @@
 
 import { chargerSerie } from "@/lib/backtest/chargement";
 import { courbeIndicateur, lancerBacktest } from "@/lib/backtest/engine";
-import { geometrieDessin } from "@/lib/backtest/apercu";
+import { fenetreApercu, geometrieDessin } from "@/lib/backtest/apercu";
 import { agreger } from "@/lib/backtest/serie";
 import { lireBacktest, MIN_TRADES_CONCLUSION, type LectureBacktest } from "@/lib/backtest/verdict";
 import { chercherReglagesViables, type Suggestion } from "@/lib/backtest/suggestions";
@@ -89,19 +89,6 @@ export interface Apercu {
  * dire « ce n'est pas mon setup ».
  */
 const APERCUS_MAX = 12;
-/** Bougies visibles avant le signal et après la sortie. */
-const AVANT = 40;
-const APRES = 15;
-/** Bougies gardees avant le premier ancrage d'une droite. */
-const MARGE_AVANT_TRACE = 8;
-/**
- * Largeur maximale de la fenetre, en bougies.
- *
- * ⚠️ Une trendline peut s'ancrer tres loin en arriere. Sans borne, la fenetre
- * atteint des centaines de bougies et chacune devient un cheveu : on aurait
- * remplace un graphique illisible par un autre.
- */
-const FENETRE_MAX = 140;
 
 function preparerApercus(serie: SerieM1, trades: TradeSimule[], plan: PlanExecution): Apercu[] {
   if (trades.length === 0) return [];
@@ -136,18 +123,12 @@ function preparerApercus(serie: SerieM1, trades: TradeSimule[], plan: PlanExecut
       const ms = m.forme === "balayage" ? m.ms : m.debutMs;
       if (ms < debutTrace) debutTrace = ms;
     }
-    let debut = 0;
-    let fin = serie.t.length - 1;
-    for (let i = 0; i < serie.t.length; i++) {
-      if (serie.t[i] === debutTrace) debut = Math.max(0, i - MARGE_AVANT_TRACE);
-      if (serie.t[i] === trade.signalMs && debut === 0) debut = Math.max(0, i - AVANT);
-      if (serie.t[i] === trade.sortieMs) {
-        fin = Math.min(serie.t.length - 1, i + APRES);
-        break;
-      }
-    }
-    // Une droite tres ancienne donnerait une fenetre illisible : on la borne.
-    if (fin - debut > FENETRE_MAX) debut = fin - FENETRE_MAX;
+    const iSignal = indexParMs.get(trade.signalMs) ?? 0;
+    const iSortie = indexParMs.get(trade.sortieMs) ?? iSignal;
+    const iAncre = indexParMs.get(debutTrace) ?? iSignal;
+
+    const { debut, fin } = fenetreApercu(iSignal, iSortie, iAncre, serie.t.length);
+
     const bougies: BougieApercu[] = [];
     for (let i = debut; i <= fin; i++) {
       bougies.push({

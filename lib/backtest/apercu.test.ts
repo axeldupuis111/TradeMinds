@@ -58,13 +58,36 @@ describe("échelle du graphique d'inspection", () => {
     expect(echelleApercu(geometrie(), 0.01).niveauVisible).toBe(true);
   });
 
-  it("contient toujours le trade en entier, même quand il déborde des bougies", () => {
-    // Un objectif jamais atteint tombe hors de la fenêtre de bougies. Le rogner
-    // laisserait croire que le trade n'en avait pas.
-    const g = geometrie({ objectif: 10, basBougies: 80 });
+  it("contient toujours l'entrée, le stop et la SORTIE, même hors des bougies", () => {
+    // Ce sont les trois faits du trade. Les rogner rendrait le graphique
+    // incapable de montrer ce qui s'est passé, et c'est sa seule raison d'être.
+    const g = geometrie({ sortie: 130, basBougies: 80 });
     const { haut, bas } = echelleApercu(g, 0.01);
-    expect(bas).toBeLessThan(10);
-    expect(haut).toBeGreaterThan(110);
+    expect(haut).toBeGreaterThanOrEqual(130);
+    expect(bas).toBeLessThanOrEqual(80);
+  });
+
+  it("laisse l'objectif JAMAIS ATTEINT sortir du cadre", () => {
+    // ⚠️ CHANGEMENT DE CONTRAT, ET IL EST MESURE. L'objectif ancrait l'echelle
+    // au meme titre que l'entree et le stop. Sur un trade perdant a 2R, il se
+    // trouve a deux fois le risque au-dessus de l'entree, dans une zone ou le
+    // prix n'est JAMAIS alle : le cadre s'etirait pour l'accueillir et les
+    // bougies s'ecrasaient en bas. Vu sur une capture reelle : 60 % de la
+    // hauteur en blanc, au-dessus d'un trait decrivant ce qui n'a pas eu lieu.
+    //
+    // Le cadre montre ce qui s'est passe, pas ce qui etait espere. Sa valeur
+    // reste affichee en marge, comme celle du niveau.
+    const perdant = geometrie({ entree: 100, stop: 90, objectif: 120, sortie: 90 });
+    const e = echelleApercu(perdant, 0.01);
+    expect(e.objectifVisible).toBe(false);
+    expect(e.haut).toBeLessThan(120);
+  });
+
+  it("garde l'objectif dans le cadre quand il a ete ATTEINT", () => {
+    // Sur un trade gagnant, la sortie vaut l'objectif : il entre par elle, sans
+    // que l'echelle ait a s'etirer pour un prix theorique.
+    const gagnant = geometrie({ entree: 100, stop: 90, objectif: 120, sortie: 120 });
+    expect(echelleApercu(gagnant, 0.01).objectifVisible).toBe(true);
   });
 
   it("montre le contexte quand les bougies tiennent dans la hauteur du trade", () => {

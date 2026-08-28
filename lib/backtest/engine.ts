@@ -453,6 +453,7 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
     journeesArretees: 0,
     barresAvecNiveau: 0,
     refusesParFiltre: Object.fromEntries(plan.confirmations.map((c) => [c.type, 0])),
+    signauxSoumisAuxFiltres: 0,
     droitesTracees: 0,
     droitesConfirmees: 0,
     collisions: 0,
@@ -940,6 +941,7 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
    * bougies où le déclencheur a déjà tiré.
    */
   function confirmationsOk(i: number, sens: "long" | "short"): boolean {
+    if (plan.confirmations.length > 0) audit.signauxSoumisAuxFiltres++;
     let ok = true;
     const confs = plan.confirmations as BlocConfirmation[];
     for (let k = 0; k < confs.length; k++) {

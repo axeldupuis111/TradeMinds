@@ -645,6 +645,18 @@ export interface AuditExecution {
    * trades seulement. Un compteur pris à l'instant du refus, lui, ne ment pas.
    */
   refusesParFiltre: Record<string, number>;
+  /**
+   * Combien de fois les filtres ont été interrogés, c'est-à-dire combien de
+   * fois le déclencheur a tiré.
+   *
+   * ⚠️ C'EST LE DÉNOMINATEUR, ET SANS LUI LE NUMÉRATEUR MENT. « 0 signal
+   * refusé » sur sept signaux ne dit rien du filtre : sur sept tirages, ne
+   * jamais tomber du mauvais côté n'a rien d'étonnant. Le même « 0 » sur trois
+   * mille signaux, lui, est une preuve. Afficher le compte de refus sans le
+   * nombre d'occasions, c'était refaire à l'échelle du filtre l'erreur que
+   * toute cette fonctionnalité corrige à l'échelle du résultat.
+   */
+  signauxSoumisAuxFiltres: number;
   /** Droites candidates ouvertes, et celles qui ont atteint leur compte de touches. */
   droitesTracees: number;
   droitesConfirmees: number;

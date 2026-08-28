@@ -52,7 +52,7 @@ export function Inspection({ apercus, instrument, verifie, onVerifie, t }: Inspe
   // ⚠️ L'échelle est calée sur LE TRADE, pas sur les bougies. Voir l'en-tête de
   // `lib/backtest/apercu.ts` : caler sur les bougies écrase les trades à petit
   // risque en une bande illisible, et le graphique cesse alors de servir.
-  const { haut, bas, niveauVisible } = echelleApercu(
+  const { haut, bas, objectifVisible, niveauVisible } = echelleApercu(
     {
       hautBougies: Math.max(...a.bougies.map((b) => b.h)),
       basBougies: Math.min(...a.bougies.map((b) => b.l)),
@@ -189,11 +189,19 @@ export function Inspection({ apercus, instrument, verifie, onVerifie, t }: Inspe
                 height={Math.abs(y(a.stop) - y(a.entree))}
                 className="fill-loss/10"
               />
+              {/* ⚠️ Bornée au cadre. Un objectif jamais atteint se trouve
+                  hors champ : peindre jusqu'à lui étirerait la zone verte sur
+                  toute la hauteur et donnerait à un trade perdant l'allure d'un
+                  trade largement gagnant. */}
               <rect
                 x={x(iEntree)}
-                y={Math.min(y(a.entree), y(a.objectif))}
+                y={Math.max(0, Math.min(y(a.entree), y(a.objectif)))}
                 width={LARGEUR - x(iEntree)}
-                height={Math.abs(y(a.objectif) - y(a.entree))}
+                height={Math.max(
+                  0,
+                  Math.min(HAUTEUR, Math.max(y(a.entree), y(a.objectif))) -
+                    Math.max(0, Math.min(y(a.entree), y(a.objectif))),
+                )}
                 className="fill-profit/10"
               />
             </>
@@ -232,7 +240,13 @@ export function Inspection({ apercus, instrument, verifie, onVerifie, t }: Inspe
               ))}
               <text
                 x={Math.max(4, x(a.trace.a.i))}
-                y={Math.max(12, y(a.trace.a.prix) - 6)}
+                // Décalé quand il tomberait sur le libellé de l'entrée : deux
+                // textes superposés ne se lisent ni l'un ni l'autre.
+                y={
+                  Math.abs(y(a.trace.a.prix) - y(a.entree)) < 14
+                    ? Math.max(12, y(a.trace.a.prix) + 14)
+                    : Math.max(12, y(a.trace.a.prix) - 6)
+                }
                 fontSize={11}
                 className="fill-accent"
               >
@@ -412,7 +426,9 @@ export function Inspection({ apercus, instrument, verifie, onVerifie, t }: Inspe
 
           <Repere prix={a.entree} couleur="currentColor" label={t("bt_entree_courte")} />
           <Repere prix={a.stop} couleur="rgb(var(--loss))" label={t("bt_stop")} />
-          <Repere prix={a.objectif} couleur="rgb(var(--profit))" label={t("bt_objectif")} tirets />
+          {objectifVisible ? (
+            <Repere prix={a.objectif} couleur="rgb(var(--profit))" label={t("bt_objectif")} tirets />
+          ) : null}
 
           {iSortie >= 0 ? (
             <circle cx={x(iSortie)} cy={y(a.sortie)} r={4} className={gagnant ? "fill-profit" : "fill-loss"} />
@@ -427,6 +443,12 @@ export function Inspection({ apercus, instrument, verifie, onVerifie, t }: Inspe
       {a.courbes?.length ? (
         <p className="mt-2 text-xs text-foreground-muted">
           {t("bt_courbes_affichees", { noms: a.courbes.map((c) => c.nom).join(", ") })}
+        </p>
+      ) : null}
+
+      {!objectifVisible ? (
+        <p className="mt-2 text-xs text-profit">
+          {t("bt_objectif_hors_cadre", { prix: fmt(a.objectif) })}
         </p>
       ) : null}
 

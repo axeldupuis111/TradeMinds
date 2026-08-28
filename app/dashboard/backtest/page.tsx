@@ -580,12 +580,21 @@ export default function BacktestPage() {
               <ul className="space-y-1 text-xs text-foreground-muted">
                 {Object.entries(resultat.audit.refusesParFiltre).map(([type, n]) => (
                   <li key={type} className="tabular-nums">
-                    {tr("bt_filtre_effet", { nom: nomDuFiltre(type, tr), n })}
+                    {tr("bt_filtre_effet", {
+                      nom: nomDuFiltre(type, tr),
+                      n,
+                      total: resultat.audit.signauxSoumisAuxFiltres,
+                    })}
                   </li>
                 ))}
               </ul>
+              {/* ⚠️ PAS D'ALERTE SUR UN ÉCHANTILLON MINUSCULE. « 0 refus » sur
+                  sept signaux ne dit rien du filtre : sur sept tirages, ne
+                  jamais tomber du mauvais côté n'a rien d'étonnant. Crier au
+                  filtre inerte là-dessus, ce serait conclure sur trop peu de
+                  données, exactement ce que cette page refuse partout ailleurs. */}
               {Object.entries(resultat.audit.refusesParFiltre)
-                .filter(([, n]) => n === 0)
+                .filter(([, n]) => n === 0 && resultat.audit.signauxSoumisAuxFiltres >= 30)
                 .map(([type]) => (
                   <div
                     key={type}

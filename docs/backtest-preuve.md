@@ -224,3 +224,50 @@ d'un encart expliquant qu'il en manquait 97.
 avec des points de suspension, et la place accordée à une justification est
 passée de 200 à 320 caractères : c'est le texte sur lequel le trader décide si
 la machine a compris sa méthode.
+
+---
+
+# Deuxième passe de captures (2026-08-28)
+
+La trendline touche enfin ses sommets. Quatre défauts restants, tous sur la
+lisibilité de l'aperçu, c'est-à-dire sur la seule vérification qui compte.
+
+## 1. Un trade long perdait son propre début
+
+Sur un gagnant de +2R, le trait d'entrée flottait **sous toutes les bougies
+visibles**. La borne de largeur de la fenêtre rognait à gauche depuis la
+**sortie** : dès qu'un trade durait plus de cent quarante bougies, le rognage
+passait devant l'entrée, et l'aperçu montrait une fin de trade sans son début.
+
+Le signal est maintenant une borne dure. Un trade plus long que la limite rend
+une fenêtre plus large : des bougies fines valent mieux qu'un trade amputé. Le
+calcul est sorti du worker vers `apercu.ts` pour être testable, ce qu'il n'était
+pas.
+
+## 2. Soixante pour cent du cadre pour un objectif jamais atteint
+
+L'objectif ancrait l'échelle au même titre que l'entrée et le stop. Sur un trade
+perdant à 2R, il se trouve à deux fois le risque au-dessus de l'entrée, dans une
+zone où le prix n'est jamais allé : le cadre s'étirait pour l'accueillir et les
+bougies s'écrasaient sur le tiers inférieur.
+
+**Le cadre montre ce qui s'est passé, pas ce qui était espéré.** L'échelle
+s'ancre sur l'entrée, le stop et la **sortie** — trois faits du trade. Un
+objectif atteint y entre par la sortie ; un objectif manqué s'affiche en marge,
+comme le niveau hors cadre. La zone verte est bornée au cadre : peindre jusqu'à
+un objectif hors champ donnait à un trade perdant l'allure d'un gagnant.
+
+## 3. « 0 signal refusé » sur sept signaux ne prouve rien
+
+L'alerte de filtre inerte s'affichait sur un plan qui n'avait produit que sept
+signaux. Sur sept tirages, ne jamais tomber du mauvais côté n'a rien
+d'étonnant : c'était refaire à l'échelle du filtre l'erreur que toute cette
+fonctionnalité corrige à l'échelle du résultat.
+
+Le compte s'affiche désormais avec son dénominateur (« 0 refusés sur 7
+examinés »), et l'alerte ne se déclenche qu'à partir de trente occasions.
+
+## 4. Deux libellés superposés
+
+Le nom de la trendline se posait sur le prix d'entrée quand les deux tombaient à
+la même hauteur. Décalé quand l'écart est inférieur à quatorze pixels.

@@ -45,6 +45,22 @@ export interface Echelle {
   haut: number;
   bas: number;
   /**
+   * Faux quand l'objectif tombe hors du cadre.
+   *
+   * ⚠️ NÉ D'UN ÉCRAN INUTILISABLE. L'objectif entrait dans l'ancrage de
+   * l'échelle au même titre que l'entrée et le stop. Sur un trade perdant à 2R,
+   * il se trouve donc à deux fois le risque au-dessus de l'entrée, dans une
+   * zone où le prix n'est JAMAIS allé : le cadre s'étirait pour l'accueillir et
+   * les bougies s'écrasaient sur le tiers inférieur. Mesuré sur une capture
+   * réelle : 60 % de la hauteur en blanc, au-dessus du seul trait qui décrivait
+   * quelque chose qui n'a pas eu lieu.
+   *
+   * LE CADRE MONTRE CE QUI S'EST PASSÉ, PAS CE QUI ÉTAIT ESPÉRÉ. L'objectif
+   * atteint est dans le cadre par la sortie ; l'objectif manqué s'affiche en
+   * marge, comme le niveau.
+   */
+  objectifVisible: boolean;
+  /**
    * Faux quand le niveau franchi tombe hors du cadre. L'interface affiche alors
    * sa valeur en marge au lieu de le tracer.
    *
@@ -58,10 +74,12 @@ export interface Echelle {
 }
 
 export function echelleApercu(g: GeometrieApercu, tailleTick: number): Echelle {
-  // Ce que le trade occupe : c'est lui qu'on doit pouvoir lire. Le niveau en
-  // est exclu, voir l'avertissement sur `niveauVisible`.
-  const hautTrade = Math.max(g.entree, g.stop, g.objectif, g.sortie);
-  const basTrade = Math.min(g.entree, g.stop, g.objectif, g.sortie);
+  // Ce que le trade occupe : c'est lui qu'on doit pouvoir lire. Le niveau et
+  // l'objectif en sont exclus, voir les avertissements sur `niveauVisible` et
+  // `objectifVisible`. La SORTIE, elle, y est : c'est un fait du trade, et sur
+  // un trade gagnant elle vaut justement l'objectif.
+  const hautTrade = Math.max(g.entree, g.stop, g.sortie);
+  const basTrade = Math.min(g.entree, g.stop, g.sortie);
   const spanTrade = Math.max(hautTrade - basTrade, tailleTick);
   const centre = (hautTrade + basTrade) / 2;
 
@@ -80,6 +98,7 @@ export function echelleApercu(g: GeometrieApercu, tailleTick: number): Echelle {
   const avecMarge = { haut: haut + amplitude * MARGE, bas: bas - amplitude * MARGE };
   return {
     ...avecMarge,
+    objectifVisible: g.objectif <= avecMarge.haut && g.objectif >= avecMarge.bas,
     niveauVisible: g.niveau <= avecMarge.haut && g.niveau >= avecMarge.bas,
   };
 }
@@ -183,4 +202,54 @@ export function geometrieDessin(
   );
 
   return { trace, mecanique };
+}
+
+
+/**
+ * Combien de bougies on montre avant le signal et apres la sortie, et jusqu'ou
+ * on accepte d'elargir pour faire tenir un ancrage de droite tres ancien.
+ */
+export const FENETRE = {
+  avant: 40,
+  apres: 15,
+  /** Marge devant le premier ancrage d'une droite, quand on remonte jusqu'a lui. */
+  margeAncre: 8,
+  /**
+   * Largeur au-dela de laquelle les bougies deviennent illisibles.
+   *
+   * ⚠️ Une trendline peut s'ancrer tres loin en arriere. Sans borne, la fenetre
+   * atteint des centaines de bougies et chacune devient un cheveu : on aurait
+   * remplace un graphique illisible par un autre.
+   */
+  max: 140,
+};
+
+/**
+ * LES BORNES DE LA FENETRE D'APERCU.
+ *
+ * ⚠️⚠️ LE SIGNAL DOIT TOUJOURS Y ETRE. C'est la borne dure, et elle vient d'un
+ * defaut vu sur une capture. L'ancienne version bornait la largeur en rognant a
+ * gauche depuis la SORTIE (`debut = fin - max`). Des qu'un trade durait plus de
+ * cent quarante bougies, ce rognage passait DEVANT l'entree : l'apercu montrait
+ * une fin de trade sans son debut, le trait d'entree flottait sous toutes les
+ * bougies visibles, et le trader n'avait aucun moyen de comprendre ce qu'il
+ * regardait. C'est pourtant l'ecran cense lui faire dire « oui, c'est ma
+ * methode ».
+ *
+ * Un trade plus long que `max` rend donc une fenetre plus large : des bougies
+ * fines valent mieux qu'un trade ampute.
+ */
+export function fenetreApercu(
+  iSignal: number,
+  iSortie: number,
+  iAncre: number,
+  nBougies: number,
+): { debut: number; fin: number } {
+  const debutMin = Math.max(0, iSignal - FENETRE.avant);
+  const fin = Math.min(nBougies - 1, iSortie + FENETRE.apres);
+  let debut = Math.max(0, Math.min(debutMin, iAncre - FENETRE.margeAncre));
+  if (fin - debut > FENETRE.max) {
+    debut = Math.min(debutMin, Math.max(debut, fin - FENETRE.max));
+  }
+  return { debut, fin };
 }
