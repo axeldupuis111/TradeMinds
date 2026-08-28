@@ -271,3 +271,68 @@ examinés »), et l'alerte ne se déclenche qu'à partir de trente occasions.
 
 Le nom de la trendline se posait sur le prix d'entrée quand les deux tombaient à
 la même hauteur. Décalé quand l'écart est inférieur à quatorze pixels.
+
+---
+
+# Sept trades en quatre ans pour une méthode hebdomadaire (2026-08-28)
+
+Axel prend plusieurs trades par semaine avec sa méthode de trendline. Le moteur
+en trouvait **sept en quatre ans**. Un facteur cent : ce n'est pas un réglage,
+c'est une définition fausse.
+
+## La cause
+
+Le moteur ne suivait qu'**une seule droite candidate à la fois**, ancrée sur
+deux pivots **consécutifs**. Dès qu'un pivot ne tombait pas dessus, la candidate
+était jetée et remplacée par la paire (pivot précédent, nouveau pivot). Pour
+atteindre trois touches, il fallait donc trois pivots consécutifs alignés.
+
+Personne ne trace comme ça. Un trader regarde les derniers sommets, relie **ceux
+qui s'alignent**, et ignore les autres : sa droite passe par les pivots 1, 4 et
+9 sans rien devoir aux 2, 3, 5 à 8.
+
+## La mesure
+
+Sur les 23 489 bougies H1 du Nasdaq, trois touches exigées :
+
+| pivots | tolérance | pivots consécutifs | pivots au choix | rapport |
+|---|---|---|---|---|
+| 3 | 6 pts | 157 | 2 496 | ×16 |
+| 3 | 20 pts | 420 | 2 625 | ×6 |
+| 5 | 6 pts | **75** | **1 419** | **×19** |
+| 5 | 20 pts | 220 | 1 603 | ×7 |
+| 5 | 50 pts | 437 | 1 389 | ×3 |
+
+Le moteur suit désormais plusieurs droites en parallèle. Chaque pivot qui ne
+tombe sur aucune droite vivante en ouvre de nouvelles, appariées avec chacun des
+six derniers pivots et non plus avec le seul précédent. La droite exposée est la
+**confirmée la plus proche du prix** : celle que le trader surveille, celle qui
+est sur le point d'être cassée.
+
+## Ce que ça change sur la stratégie complète
+
+NAS100 en H1, trendline à trois touches, cassure, stop derrière le dernier
+pivot, RR 1:2, filtre de tendance MM40, coûts réels :
+
+| pivots | tolérance | trades sur 4 ans | par semaine | espérance |
+|---|---|---|---|---|
+| 5 | 6 pts | 128 | 0,6 | +0,217 R [-0,04 ; 0,47] |
+| 5 | 20 pts | 164 | 0,8 | +0,118 R [-0,11 ; 0,34] |
+| 3 | 20 pts | 270 | 1,3 | -0,015 R [-0,19 ; 0,16] |
+
+**Sept trades sont devenus 128 à 270**, soit environ un par semaine. L'ordre de
+grandeur correspond enfin à ce que décrit le trader.
+
+⚠️ Et le verdict reste **non concluant** dans les six réglages testés : zéro est
+dans l'intervalle à chaque fois. Le meilleur chiffre (+0,217 R) est le meilleur
+de six essais, ce qui est exactement la situation contre laquelle le compteur de
+rejeux existe. On a corrigé la mesure, pas trouvé un avantage.
+
+## Ce que ça décide pour nous
+
+8. **Un écart d'un facteur dix entre ce que le trader vit et ce que le moteur
+   trouve est un bug, pas une découverte.** Le premier réflexe doit être de
+   remettre en cause la définition, pas la stratégie.
+9. **La tolérance d'alignement se mesure sur le PRIX, pas sur le spread.** Un
+   trait tracé à la main a une épaisseur, de l'ordre du millième du prix. Le
+   spread n'a rien à voir avec la précision de la main.

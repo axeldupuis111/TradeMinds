@@ -145,14 +145,20 @@ describe("chiffres figés sur données réelles", () => {
       totalR: -2.52,
     },
     {
+      // ⚠️ CHIFFRES REECRITS LE 2026-08-28, ET LA RAISON EST DANS LE MOTEUR.
+      // Il ne suivait qu'UNE droite candidate a la fois, ancree sur deux pivots
+      // CONSECUTIFS : un pivot qui ne tombait pas dessus jetait la candidate.
+      // Un trader, lui, relie les pivots QUI S'ALIGNENT et ignore les autres.
+      // Mesure sur les 23 489 bougies H1 du Nasdaq : 75 droites confirmees
+      // avant, 1419 apres. Ici, sur la journee figee : 2 signaux -> 4.
       nom: "trendline à trois touches, M5",
       plan: base({ niveau: { type: "trendline", pivots: 4, touchesMin: 3, toleranceTicks: 5000 } }),
       bougies: 267,
-      signaux: 2,
-      trades: 2,
+      signaux: 4,
+      trades: 4,
       ecartes: 0,
       collisions: 0,
-      totalR: -2.05,
+      totalR: -0.19,
     },
     {
       nom: "balayage de liquidité puis FVG, M3",
