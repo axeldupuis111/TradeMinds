@@ -251,6 +251,107 @@ function rsiWilder(c: Int32Array, periode: number): Float64Array {
   return out;
 }
 
+/**
+ * ATR de Wilder : l'amplitude vraie moyenne.
+ *
+ * ⚠️ L'AMPLITUDE VRAIE N'EST PAS `haut - bas`. Elle compte aussi l'écart avec
+ * la clôture précédente, donc les GAPS. Sur une ouverture de séance qui saute
+ * quarante points, la simple amplitude de la bougie dirait que la volatilité
+ * est normale, et un stop calé dessus serait posé au milieu du trou.
+ */
+function atrWilder(h: Int32Array, l: Int32Array, c: Int32Array, periode: number): Float64Array {
+  const out = new Float64Array(c.length).fill(NaN);
+  if (c.length <= periode) return out;
+
+  const tr = (i: number) =>
+    i === 0
+      ? h[i] - l[i]
+      : Math.max(h[i] - l[i], Math.abs(h[i] - c[i - 1]), Math.abs(l[i] - c[i - 1]));
+
+  let somme = 0;
+  for (let i = 1; i <= periode; i++) somme += tr(i);
+  let moy = somme / periode;
+  out[periode] = moy;
+  for (let i = periode + 1; i < c.length; i++) {
+    moy = (moy * (periode - 1) + tr(i)) / periode;
+    out[i] = moy;
+  }
+  return out;
+}
+
+/** Moyenne mobile exponentielle. NaN tant que la fenêtre est incomplète. */
+function moyenneExpo(c: Int32Array | Float64Array, periode: number): Float64Array {
+  const out = new Float64Array(c.length).fill(NaN);
+  if (c.length < periode) return out;
+  const k = 2 / (periode + 1);
+  let somme = 0;
+  for (let i = 0; i < periode; i++) somme += c[i];
+  let v = somme / periode;
+  out[periode - 1] = v;
+  for (let i = periode; i < c.length; i++) {
+    if (Number.isNaN(c[i])) continue;
+    v = c[i] * k + v * (1 - k);
+    out[i] = v;
+  }
+  return out;
+}
+
+/**
+ * MACD : l'écart entre deux moyennes exponentielles, et sa propre moyenne.
+ *
+ * ⚠️ LA LIGNE DE SIGNAL SE CALCULE SUR LA LIGNE MACD, pas sur le prix. C'est
+ * l'erreur classique, et elle donne une courbe qui ressemble à la bonne : le
+ * croisement tombe à quelques bougies près, donc le filtre a l'air de marcher
+ * tout en laissant passer autre chose.
+ */
+function macd(
+  c: Int32Array,
+  rapide: number,
+  lente: number,
+  signal: number,
+): { ligne: Float64Array; signal: Float64Array } {
+  const er = moyenneExpo(c, rapide);
+  const el = moyenneExpo(c, lente);
+  const ligne = new Float64Array(c.length).fill(NaN);
+  for (let i = 0; i < c.length; i++) {
+    if (!Number.isNaN(er[i]) && !Number.isNaN(el[i])) ligne[i] = er[i] - el[i];
+  }
+  // La moyenne du signal ne peut commencer qu'une fois la ligne MACD née.
+  const depart = ligne.findIndex((v) => !Number.isNaN(v));
+  const sig = new Float64Array(c.length).fill(NaN);
+  if (depart >= 0) {
+    const morceau = ligne.slice(depart);
+    const e = moyenneExpo(morceau, signal);
+    for (let i = 0; i < e.length; i++) sig[depart + i] = e[i];
+  }
+  return { ligne, signal: sig };
+}
+
+/**
+ * Stochastique %K : où se situe la clôture dans l'amplitude des N dernières
+ * bougies. Zéro au plus bas de la fenêtre, cent au plus haut.
+ */
+function stochastique(
+  h: Int32Array,
+  l: Int32Array,
+  c: Int32Array,
+  periode: number,
+): Float64Array {
+  const out = new Float64Array(c.length).fill(NaN);
+  for (let i = periode - 1; i < c.length; i++) {
+    let hi = -Infinity;
+    let lo = Infinity;
+    for (let j = i - periode + 1; j <= i; j++) {
+      if (h[j] > hi) hi = h[j];
+      if (l[j] < lo) lo = l[j];
+    }
+    // Une fenêtre parfaitement plate n'a pas de position relative : la donner
+    // à cinquante serait inventer une valeur neutre qui n'existe pas.
+    out[i] = hi === lo ? NaN : ((c[i] - lo) / (hi - lo)) * 100;
+  }
+  return out;
+}
+
 /** Moyenne mobile simple, précalculée. NaN tant que la fenêtre est incomplète. */
 function moyenneMobile(c: Int32Array, periode: number): Float64Array {
   const out = new Float64Array(c.length).fill(NaN);
@@ -297,6 +398,42 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
     plan.niveau.type === "bollinger" && smaNiveau
       ? ecartTypeMobile(c, plan.niveau.periode, smaNiveau)
       : null;
+  const atr = plan.stop.type === "atr" ? atrWilder(h, l, c, plan.stop.periode) : null;
+
+  /**
+   * Le stop « derriere le dernier sommet » a-t-il besoin qu'on lui calcule ses
+   * propres pivots ?
+   *
+   * ⚠️ IL LES LISAIT CHEZ LE BLOC DE NIVEAU, et seuls trois niveaux en
+   * produisent. Avec tous les autres, il ne trouvait rien et refusait chaque
+   * trade sans le dire : 33 216 signaux et zero trade sur quatre ans de
+   * Nasdaq, pour une strategie que le trader croyait simplement infructueuse.
+   */
+  const niveauDonneDesPivots =
+    plan.niveau.type === "trendline" ||
+    plan.niveau.type === "liquidite_swing" ||
+    plan.niveau.type === "ote_fibonacci";
+  const largeurPivotStop =
+    plan.stop.type === "dernier_pivot" && !niveauDonneDesPivots
+      ? (plan.stop.pivots ?? 5)
+      : null;
+
+  const confMacd = plan.confirmations.find((x) => x.type === "macd");
+  const lignesMacd =
+    confMacd && confMacd.type === "macd"
+      ? macd(c, confMacd.rapide, confMacd.lente, confMacd.signal)
+      : null;
+
+  const confStoch = plan.confirmations.find((x) => x.type === "stochastique");
+  const stoch =
+    confStoch && confStoch.type === "stochastique" ? stochastique(h, l, c, confStoch.periode) : null;
+
+  // ⚠️ La divergence a SON propre RSI : sa période n'a aucune raison d'être
+  // celle du filtre RSI, et les confondre ferait dépendre un bloc de l'autre
+  // sans que rien ne le dise.
+  const confDiv = plan.confirmations.find((x) => x.type === "divergence");
+  const rsiDiv = confDiv && confDiv.type === "divergence" ? rsiWilder(c, confDiv.periode) : null;
+
   const vwap =
     plan.niveau.type === "vwap_session"
       ? vwapSession(h, l, c, t, (ms) => horloge.jour(ms))
@@ -430,6 +567,23 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
    * d'un simple support. Le moteur le retient, et `entree_dans_zone` ne
    * déclenche que dans ce sens-là.
    */
+  // Les pivots du retracement. Ils DOUBLENT `sommetB`/`creuxB` au lieu de les
+  // relire : le stop « dernier pivot » se sert des mêmes variables, et un
+  // niveau OTE combiné à ce stop se retrouverait sinon sans pivot du tout.
+  // En index/prix nus plutôt qu'en objets : le compilateur, voyant que ces
+  // variables ne sont écrites que dans une seule branche, les réduisait à
+  // `null` et refusait toute lecture.
+  // Les deux derniers sommets et creux vus par la DIVERGENCE. En index nus,
+  // pour la même raison que ceux du retracement.
+  let divSommetA = -1;
+  let divSommetB2 = -1;
+  let divCreuxA = -1;
+  let divCreuxB2 = -1;
+
+  let oteSommetI = -1;
+  let oteSommetPrix = 0;
+  let oteCreuxI = -1;
+  let oteCreuxPrix = 0;
   let zoneSens: "long" | "short" | null = null;
   let zoneBarre = -1;
   /** Vrai quand le prix était DEHORS à la bougie précédente. */
@@ -458,7 +612,8 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
     plan.niveau.type === "order_block" ||
     plan.niveau.type === "breaker" ||
     plan.niveau.type === "fvg_zone" ||
-    plan.niveau.type === "bollinger";
+    plan.niveau.type === "bollinger" ||
+    plan.niveau.type === "ote_fibonacci";
   const debutRange = niveauRange ? minutesDepuisHeure(niveauRange.debut) ?? 0 : 0;
   const finRange = niveauRange ? minutesDepuisHeure(niveauRange.fin) ?? 0 : 0;
 
@@ -630,6 +785,16 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
         sens === "long"
           ? extremeBalayage - plan.stop.bufferTicks
           : extremeBalayage + plan.stop.bufferTicks;
+    } else if (plan.stop.type === "atr") {
+      // ⚠️ On lit l'ATR de la bougie de SIGNAL, pas de la bougie d'entrée : le
+      // trader décide de son stop en regardant le graphique au moment où il
+      // voit le setup, une bougie avant de passer l'ordre.
+      const v = atr ? atr[barreSignal] : NaN;
+      // Sans ATR (historique trop court), on refuse plutôt que d'inventer un
+      // stop de repli : un R faux contamine tout le résultat sans se voir.
+      if (Number.isNaN(v)) return false;
+      const distance = Math.round((v * plan.stop.multipleDixiemes) / 10);
+      stop = prixBrut - signe * distance;
     } else if (plan.stop.type === "dernier_pivot") {
       const pivot = sens === "long" ? dernierCreux : dernierSommet;
       // Sans pivot confirmé, ce stop n'existe pas. On refuse plutôt que de
@@ -710,6 +875,38 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
           if (sens === "long" ? v < conf.seuil : v > 100 - conf.seuil) return false;
         } else {
           if (sens === "long" ? v > 100 - conf.seuil : v < conf.seuil) return false;
+        }
+      } else if (conf.type === "macd") {
+        const ligne = lignesMacd ? lignesMacd.ligne[i] : NaN;
+        const sig = lignesMacd ? lignesMacd.signal[i] : NaN;
+        if (Number.isNaN(ligne) || Number.isNaN(sig)) return false;
+        if (sens === "long" ? ligne <= sig : ligne >= sig) return false;
+      } else if (conf.type === "stochastique") {
+        const v = stoch ? stoch[i] : NaN;
+        if (Number.isNaN(v)) return false;
+        // Mêmes deux usages opposés que le RSI, même piège.
+        if (conf.mode === "momentum") {
+          if (sens === "long" ? v < conf.seuil : v > 100 - conf.seuil) return false;
+        } else {
+          if (sens === "long" ? v > 100 - conf.seuil : v < conf.seuil) return false;
+        }
+      } else if (conf.type === "divergence") {
+        // Il faut DEUX pivots du bon type : une divergence compare deux
+        // extrêmes, elle n'existe pas sur un seul.
+        if (sens === "long") {
+          if (divCreuxA < 0 || divCreuxB2 < 0) return false;
+          const rA = rsiDiv ? rsiDiv[divCreuxA] : NaN;
+          const rB = rsiDiv ? rsiDiv[divCreuxB2] : NaN;
+          if (Number.isNaN(rA) || Number.isNaN(rB)) return false;
+          // Le prix fait un creux plus BAS, le RSI un creux plus HAUT.
+          if (!(l[divCreuxB2] < l[divCreuxA] && rB > rA)) return false;
+        } else {
+          if (divSommetA < 0 || divSommetB2 < 0) return false;
+          const rA = rsiDiv ? rsiDiv[divSommetA] : NaN;
+          const rB = rsiDiv ? rsiDiv[divSommetB2] : NaN;
+          if (Number.isNaN(rA) || Number.isNaN(rB)) return false;
+          // Le prix fait un sommet plus HAUT, le RSI un sommet plus BAS.
+          if (!(h[divSommetB2] > h[divSommetA] && rB < rA)) return false;
         }
       } else if (conf.type === "biais_moyenne") {
         const m = sma ? sma[i] : NaN;
@@ -1038,13 +1235,11 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
             hautNiveau = l[i];
             zoneSens = "long";
             zoneBarre = i;
-            zoneDehors = true;
           } else if (l[i - 2] - h[i] >= taille) {
             basNiveau = h[i];
             hautNiveau = l[i - 2];
             zoneSens = "short";
             zoneBarre = i;
-            zoneDehors = true;
           }
         }
       } else {
@@ -1072,13 +1267,93 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
             zoneSens =
               plan.niveau.type === "breaker" ? (haussiere ? "short" : "long") : haussiere ? "long" : "short";
             zoneBarre = i;
-            zoneDehors = true;
           }
         }
       }
 
+      // ⚠️ UNE ZONE QUI NAÎT AUTOUR DU PRIX N'A PAS ÉTÉ « ENTRÉE ». Le prix y
+      // est déjà. Déclarer qu'il en est dehors ferait déclencher l'entrée sur
+      // la bougie de création elle-même, c'est-à-dire sur l'impulsion au lieu
+      // du retour : exactement le contraire de ce que décrit la méthode.
+      if (zoneBarre === i && hautNiveau != null && basNiveau != null) {
+        zoneDehors = !(l[i] <= hautNiveau && h[i] >= basNiveau);
+      }
+
       // La zone expire : une boîte vieille de trois cents bougies ne décrit plus
       // rien, et la garder ferait entrer sur un souvenir.
+      if (zoneBarre >= 0 && i - zoneBarre > 300) {
+        hautNiveau = null;
+        basNiveau = null;
+        zoneSens = null;
+      }
+    } else if (plan.niveau.type === "ote_fibonacci") {
+      // ── La tranche de retracement du dernier segment entre deux pivots.
+      const k = plan.niveau.pivots;
+      const p = i - k;
+      if (p >= k) {
+        // ⚠️ COMPARAISON STRICTE, contrairement aux autres blocs de pivot.
+        // En tolérant l'égalité, un marché plat rend CHAQUE bougie à la fois
+        // sommet et creux : le « segment » se réduit alors à une seule bougie,
+        // et la tranche de retracement se recalcule à chaque barre sur du
+        // bruit. Mesuré sur le jeu d'essai : deux trades sur une jambe qui
+        // n'existait pas.
+        let estSommet = true;
+        let estCreux = true;
+        for (let j = p - k; j <= p + k; j++) {
+          if (j === p) continue;
+          if (h[j] >= h[p]) estSommet = false;
+          if (l[j] <= l[p]) estCreux = false;
+        }
+        // ⚠️ Le pivot n'est lisible qu'ICI, k bougies après s'être formé : sa
+        // définition regarde des deux côtés. Le publier plus tôt serait du
+        // lookahead, et c'est l'erreur la plus répandue de tout l'exercice.
+        const nouveauSommet = estSommet && oteSommetI !== p;
+        const nouveauCreux = estCreux && oteCreuxI !== p;
+        if (nouveauSommet) {
+          oteSommetI = p;
+          oteSommetPrix = h[p];
+          sommetB = { i: p, prix: h[p] };
+        }
+        if (nouveauCreux) {
+          oteCreuxI = p;
+          oteCreuxPrix = l[p];
+          creuxB = { i: p, prix: l[p] };
+        }
+        const nouveau = nouveauSommet || nouveauCreux;
+
+        // Les deux extrémités doivent être DEUX bougies distinctes : une
+        // « jambe » dont le sommet et le creux tombent sur la même bougie est
+        // l'amplitude de cette bougie, pas un mouvement à retracer.
+        if (nouveau && oteSommetI >= 0 && oteCreuxI >= 0 && oteSommetI !== oteCreuxI) {
+          const amplitude = oteSommetPrix - oteCreuxPrix;
+          // Un segment de hauteur nulle ou inversé (un « sommet » sous son
+          // « creux ») ne décrit aucune jambe : on ne retrace rien.
+          if (amplitude > 0) {
+            const bas = plan.niveau.retraceMinPct;
+            const haut = plan.niveau.retraceMaxPct;
+            if (oteSommetI > oteCreuxI) {
+              // Jambe haussière : on cherche l'achat dans le repli.
+              hautNiveau = Math.round(oteSommetPrix - (amplitude * bas) / 100);
+              basNiveau = Math.round(oteSommetPrix - (amplitude * haut) / 100);
+              zoneSens = "long";
+            } else {
+              // Jambe baissière : on cherche la vente dans le rebond.
+              basNiveau = Math.round(oteCreuxPrix + (amplitude * bas) / 100);
+              hautNiveau = Math.round(oteCreuxPrix + (amplitude * haut) / 100);
+              zoneSens = "short";
+            }
+            zoneBarre = i;
+          }
+        }
+      }
+
+      // Même règle que les autres zones : voir l'avertissement plus haut.
+      if (zoneBarre === i && hautNiveau != null && basNiveau != null) {
+        zoneDehors = !(l[i] <= hautNiveau && h[i] >= basNiveau);
+      }
+
+      // Même expiration que les autres zones : une tranche calculée sur un
+      // segment vieux de trois cents bougies ne décrit plus le marché courant.
       if (zoneBarre >= 0 && i - zoneBarre > 300) {
         hautNiveau = null;
         basNiveau = null;
@@ -1132,6 +1407,48 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
     }
 
     if (hautNiveau != null || basNiveau != null) audit.barresAvecNiveau++;
+
+    // ── Les pivots du stop, quand le bloc de niveau n'en fournit aucun.
+    if (largeurPivotStop != null) {
+      const k = largeurPivotStop;
+      const p = i - k;
+      if (p >= k) {
+        let estSommet = true;
+        let estCreux = true;
+        for (let j = p - k; j <= p + k; j++) {
+          if (j === p) continue;
+          if (h[j] > h[p]) estSommet = false;
+          if (l[j] < l[p]) estCreux = false;
+        }
+        if (estSommet && sommetB?.i !== p) sommetB = { i: p, prix: h[p] };
+        if (estCreux && creuxB?.i !== p) creuxB = { i: p, prix: l[p] };
+      }
+    }
+
+    // ── Les pivots de la divergence, détectés à part du niveau.
+    //    ⚠️ Même retard assumé qu'ailleurs : un pivot regarde des deux côtés,
+    //    il n'est lisible que `pivots` bougies après s'être formé.
+    if (confDiv && confDiv.type === "divergence") {
+      const k = confDiv.pivots;
+      const p = i - k;
+      if (p >= k) {
+        let estSommet = true;
+        let estCreux = true;
+        for (let j = p - k; j <= p + k; j++) {
+          if (j === p) continue;
+          if (h[j] > h[p]) estSommet = false;
+          if (l[j] < l[p]) estCreux = false;
+        }
+        if (estSommet && divSommetB2 !== p) {
+          divSommetA = divSommetB2;
+          divSommetB2 = p;
+        }
+        if (estCreux && divCreuxB2 !== p) {
+          divCreuxA = divCreuxB2;
+          divCreuxB2 = p;
+        }
+      }
+    }
 
     // ── Recherche d'un signal. Bougie i clôturée, entrée en i+1 au plus tôt.
     if (position || attente) continue;

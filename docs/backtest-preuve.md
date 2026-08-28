@@ -77,3 +77,70 @@ s'affiche en vert.
 
 Le moteur n'est pas la fonctionnalité. La fonctionnalité, c'est la couche qui
 refuse de conclure, et c'est elle qui nous distingue.
+
+---
+
+# Le catalogue, rejoué en entier sur du réel (2026-08-28)
+
+Vingt-neuf blocs, chacun rejoué seul sur les **1 361 661 bougies M1 du Nasdaq**
+regroupées en M5, quatre ans de marché.
+
+La question posée n'est pas « ce bloc gagne-t-il de l'argent » (elle n'a pas de
+sens hors d'une stratégie complète) mais **« ce bloc produit-il quelque chose »**.
+Un bloc qui ne rend jamais un trade figure quand même au catalogue, le
+compilateur le choisit, et le trader lit « zéro trade » en croyant que sa méthode
+est en cause alors que la faute est chez nous.
+
+## Ce que la mesure a trouvé
+
+**Un bloc mort : le stop « derrière le dernier sommet ».**
+**33 216 signaux, zéro trade.** Il lisait les pivots calculés par le *bloc de
+niveau*, or seuls trois niveaux en calculent (trendline, liquidité de swing,
+retracement). Avec n'importe quel autre niveau, aucun pivot n'existait et le
+moteur refusait chaque trade **en silence**.
+
+C'est exactement le genre de panne qu'on ne voit pas : le rapport dit « aucun
+trade », le trader en conclut que sa méthode ne se déclenche jamais, et il a
+tort. Le stop porte maintenant sa propre définition de sommet.
+
+Corrigé : **170 trades** sur la même période.
+
+**Une zone qui se déclenchait sur sa propre bougie de naissance.**
+Un order block, un FVG ou un retracement naissent souvent *autour* du prix
+courant. On déclarait alors que le prix en était « dehors », donc que la bougie
+suivante y « entrait » : l'entrée se faisait sur l'impulsion au lieu du retour,
+le contraire de ce que décrit la méthode. La position du prix est désormais
+constatée à la naissance de la zone.
+
+**Un piège de pivot sur le retracement.** En tolérant l'égalité, un marché plat
+rend chaque bougie à la fois sommet et creux : la « jambe » se réduit à une seule
+bougie et la tranche se recalcule sur du bruit. Comparaison stricte, et les deux
+extrémités doivent être deux bougies distinctes.
+
+## L'état après correction
+
+| famille | blocs | tous vivants |
+|---|---|---|
+| niveaux | 12 | ✅ |
+| déclencheurs | 6 | ✅ |
+| stops | 5 | ✅ |
+| confirmations | 8 | ✅ |
+
+Deux écarts d'usage valent d'être notés, parce qu'ils ne sont pas des défauts :
+
+- **`rsi` en mode excès : 4 trades contre 23 508 en mode élan.** Le même
+  indicateur, le même seuil, la même série. C'est la démonstration chiffrée que
+  les deux modes sont opposés et qu'en confondre un pour l'autre ne se voit
+  dans aucun chiffre du rapport.
+- **`divergence` : 3 213 trades contre 23 770 sans filtre.** Très sélectif, d'où
+  la consigne donnée au compilateur de ne le poser que si le trader en parle.
+
+## Ce que ça décide pour nous
+
+6. **Un bloc ajouté au catalogue se rejoue sur les quatre ans avant d'être
+   proposé.** Un bloc qui ne produit rien est un écran vide dont le trader
+   s'accuse.
+7. **Le catalogue doit rester d'accord avec lui-même de bout en bout.** Un test
+   lit les fichiers source et vérifie que tout bloc proposé au modèle est connu
+   du validateur ET visible dans l'éditeur. Un bloc que le modèle peut choisir
+   mais que le trader ne peut pas corriger rompt toute la boucle de vérification.

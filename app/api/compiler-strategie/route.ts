@@ -62,11 +62,18 @@ interface CorpsRequete {
 
 const CATALOGUE = `NIVEAU (un seul, obligatoire)
   {"type":"range_horaire","debut":"HH:MM","fin":"HH:MM"}      plage horaire de reference (ex: la bougie M5 d'ouverture)
+        Sert aussi pour les RANGES DE SESSION : range asiatique 00:00-06:00, session de Londres 08:00-11:00.
   {"type":"extremes_n_bougies","n":<2-500>}                    plus haut/bas des N dernieres bougies M1
   {"type":"extremes_veille"}                                   plus haut/bas de la veille
   {"type":"liquidite_swing","pivots":<2-500>}                  BSL/SSL : anciens sommets et creux pivots
   {"type":"trendline","pivots":<2-500>,"touchesMin":<3-20>,"tolerance":<en POINTS de prix>}
-  {"type":"moyenne_mobile","periode":<2-1000>}                  moyenne mobile simple, en bougies de l'unite choisie
+        TRENDLINE : une droite sur laquelle le prix REBONDIT au moins "touchesMin" fois (3 par defaut) sans
+        jamais cloturer de l'autre cote. Elle peut monter, descendre ou etre horizontale : AUCUN sens n'est
+        impose. Si une bougie cloture au travers avant la derniere touche, la droite est morte et ne compte plus.
+        A choisir des que le trader parle de trendline, de ligne de tendance ou de droite : casser une oblique et
+        casser un plus-haut horizontal sont deux evenements DIFFERENTS.
+        ⚠️ Ne descends JAMAIS "touchesMin" sous 3 : par deux points il passe toujours une droite.
+  {"type":"moyenne_mobile","periode":<2-1000>}                 moyenne mobile simple, en bougies de l'unite choisie
   {"type":"vwap_session"}                                      VWAP de seance (approxime : on n'a pas le volume)
   {"type":"bollinger","periode":<5-1000>,"ecarts":<0.5-5>}     bandes de Bollinger : haute et basse
   {"type":"order_block","impulsionMin":<en POINTS>}            ORDER BLOCK : derniere bougie opposee avant l'impulsion.
@@ -77,12 +84,11 @@ const CATALOGUE = `NIVEAU (un seul, obligatoire)
   {"type":"fvg_zone","tailleMin":<en POINTS>}                  le desequilibre a trois bougies pris comme ZONE d'entree
         (et non comme simple condition). C'est l'usage le plus courant chez les traders ICT : ils attendent le
         retour DANS la boite. A employer avec "entree_dans_zone".
-        TRENDLINE : une droite sur laquelle le prix REBONDIT au moins "touchesMin" fois (3 par defaut) sans
-        jamais cloturer de l'autre cote. Elle peut monter, descendre ou etre horizontale : AUCUN sens n'est
-        impose. Si une bougie cloture au travers avant la derniere touche, la droite est morte et ne compte plus.
-        A choisir des que le trader parle de trendline, de ligne de tendance ou de droite : casser une oblique et
-        casser un plus-haut horizontal sont deux evenements DIFFERENTS.
-        ⚠️ Ne descends JAMAIS "touchesMin" sous 3 : par deux points il passe toujours une droite.
+  {"type":"ote_fibonacci","pivots":<1-500>,"retraceMin":<1-99>,"retraceMax":<1-99>}
+        LA ZONE DE RETRACEMENT du dernier mouvement, appelee OTE chez les traders ICT et "zone de Fibonacci"
+        ailleurs. On garde la tranche comprise entre deux POURCENTAGES du dernier segment. Valeurs usuelles :
+        62 et 79 (l'OTE), ou 50 et 62 pour un retracement classique. Ecris des ENTIERS.
+        A employer avec "entree_dans_zone".
 
 DECLENCHEUR (un seul, obligatoire)
   {"type":"cassure","mode":"cloture"|"meche"}
@@ -90,11 +96,11 @@ DECLENCHEUR (un seul, obligatoire)
   {"type":"retest_apres_cassure","delaiMaxBarres":<1-500>,"tolerance":<en POINTS de prix>}
   {"type":"fvg_puis_retest","delaiMaxBarres":<1-500>}          CONTINUATION : cassure avec FVG, puis retest du FVG
   {"type":"balayage_puis_fvg","delaiReaction":<1-500>,"delaiRetest":<1-500>}
-  {"type":"entree_dans_zone","delaiMaxBarres":<1-1000>}        le prix REVIENT dans la zone, on entre dans son sens.
-        C'est l'entree classique sur order block, breaker ou FVG : on ne casse rien, on attend le retour dans la
-        boite. N'a de sens qu'avec un niveau qui est une ZONE.
         RETOURNEMENT : prise de liquidite, puis impulsion inverse laissant un FVG, puis retour dans ce FVG.
         Invalide si le prix redepasse l'extreme du balayage.
+  {"type":"entree_dans_zone","delaiMaxBarres":<1-1000>}        le prix REVIENT dans la zone, on entre dans son sens.
+        C'est l'entree classique sur order block, breaker, FVG ou retracement : on ne casse rien, on attend le
+        retour dans la boite. N'a de sens qu'avec un niveau qui est une ZONE.
 
 CONFIRMATIONS (0 a 3, facultatif)
   {"type":"bougie_reaction"}                                   la bougie de signal cloture dans le sens du trade
@@ -104,6 +110,16 @@ CONFIRMATIONS (0 a 3, facultatif)
         ⚠️ LES DEUX MODES SONT OPPOSES. "momentum" : on n'achete que si le RSI depasse le seuil, donc dans le sens
         de la force. "exces" : on n'achete que s'il est SOUS le seuil symetrique, donc en survente. Se tromper de
         mode inverse le filtre, et un filtre inverse ne se voit dans aucun chiffre.
+  {"type":"macd","rapide":<2-500>,"lente":<3-1000>,"signal":<1-500>}
+        On n'achete que si la ligne MACD est au-dessus de sa ligne de signal, on ne vend que si elle est
+        dessous. Reglage habituel : 12, 26, 9. "rapide" doit rester INFERIEUR a "lente".
+  {"type":"stochastique","periode":<2-1000>,"seuil":<50-95>,"mode":"momentum"|"exces"}
+        ⚠️ MEMES DEUX MODES OPPOSES que le RSI, meme piege. Relis l'avertissement ci-dessus.
+  {"type":"divergence","periode":<2-1000>,"pivots":<1-500>}
+        DIVERGENCE prix / RSI sur les deux derniers pivots : en achat, le prix fait un creux plus bas
+        pendant que le RSI en fait un plus haut. En vente, l'inverse. Ne l'emploie QUE si le trader parle
+        explicitement de divergence : c'est un filtre tres selectif, et l'ajouter sans qu'il l'ait demande
+        supprimerait la plupart de ses trades.
 
 ENTREE (une seule, obligatoire)
   {"type":"open_bougie_suivante"}
@@ -114,9 +130,13 @@ STOP (un seul) — NE PAS PROPOSER SI LA FICHE N'EN PARLE PAS
   {"type":"fixe","distance":<en POINTS>}
   {"type":"niveau_oppose","buffer":<en POINTS>}
   {"type":"extreme_balayage","buffer":<en POINTS>}             au-dela de l'extreme du balayage (avec balayage_puis_fvg)
-  {"type":"dernier_pivot","buffer":<en POINTS>}                derriere le dernier sommet (vente) ou creux (achat)
+  {"type":"dernier_pivot","buffer":<en POINTS>,"pivots":<1-500, facultatif>}
         C'est le « stop derriere le dernier sommet » des traders de trendline. BEAUCOUP plus large qu'un stop sur
         la bougie de signal : ne pas confondre les deux, l'ecart va de un a dix sur la taille du risque.
+        "pivots" est facultatif : sans lui, on reprend la definition de sommet du bloc de niveau.
+  {"type":"atr","periode":<2-1000>,"multiple":<0.1-20>}
+        Stop a N fois l'ATR, la formulation habituelle des traders systematiques ("stop a 1,5 ATR").
+        Ici, et SEULEMENT ici, un nombre a virgule est attendu.
 
 OBJECTIF (un seul) — NE PAS PROPOSER SI LA FICHE N'EN PARLE PAS
   {"type":"multiple_r","r":<0.1-20>}

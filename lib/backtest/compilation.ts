@@ -182,6 +182,17 @@ export function validerNiveau(v: unknown, tailleTick = 1): BlocNiveau | null {
           : null;
       return periode === null || ecarts === null ? null : { type: "bollinger", periode, ecarts };
     }
+    case "ote_fibonacci": {
+      const pivots = entier(o.pivots, 1, 500);
+      const min = entier(o.retraceMin, 1, 99);
+      const max = entier(o.retraceMax, 1, 99);
+      // ⚠️ Une tranche dont le début est au-dessus de la fin ne décrit rien, et
+      // une tranche de largeur nulle ne se laisse jamais toucher. On refuse
+      // plutôt que de réordonner en silence : le modèle aurait alors « raison »
+      // sur un réglage qu'il a écrit à l'envers.
+      if (pivots === null || min === null || max === null || min >= max) return null;
+      return { type: "ote_fibonacci", pivots, retraceMinPct: min, retraceMaxPct: max };
+    }
     case "order_block":
     case "breaker": {
       const impulsionMinTicks = distance(o.impulsionMin, tailleTick);
@@ -263,6 +274,24 @@ export function validerConfirmations(v: unknown, tailleTick = 1): BlocConfirmati
       const seuil = entier(o.seuil, 50, 95);
       const mode = o.mode === "exces" ? "exces" : "momentum";
       if (periode !== null && seuil !== null) out.push({ type: "rsi", periode, seuil, mode });
+    } else if (o.type === "macd") {
+      const rapide = entier(o.rapide, 2, 500);
+      const lente = entier(o.lente, 3, 1000);
+      const signal = entier(o.signal, 1, 500);
+      // Une moyenne « rapide » plus lente que la « lente » inverse le signe du
+      // MACD : ce n'est plus le meme indicateur, c'est son oppose.
+      if (rapide !== null && lente !== null && signal !== null && rapide < lente) {
+        out.push({ type: "macd", rapide, lente, signal });
+      }
+    } else if (o.type === "stochastique") {
+      const periode = entier(o.periode, 2, 1000);
+      const seuil = entier(o.seuil, 50, 95);
+      const mode = o.mode === "exces" ? "exces" : "momentum";
+      if (periode !== null && seuil !== null) out.push({ type: "stochastique", periode, seuil, mode });
+    } else if (o.type === "divergence") {
+      const periode = entier(o.periode, 2, 1000);
+      const pivots = entier(o.pivots, 1, 500);
+      if (periode !== null && pivots !== null) out.push({ type: "divergence", periode, pivots });
     } else if (o.type === "amplitude_min") {
       const ticks = distance(o.amplitude, tailleTick);
       if (ticks !== null && ticks > 0) out.push({ type: "amplitude_min", ticks });
@@ -297,7 +326,18 @@ export function validerStop(v: unknown, tailleTick = 1): BlocStop | null {
     case "extreme_balayage":
     case "dernier_pivot": {
       const b = distance(o.buffer, tailleTick);
-      return b === null ? null : { type: o.type, bufferTicks: b };
+      if (b === null) return null;
+      // Absent, le moteur reprend la definition du niveau quand il en a une.
+      const pivots = o.pivots === undefined ? undefined : entier(o.pivots, 1, 500);
+      if (pivots === null) return null;
+      return { type: "dernier_pivot", bufferTicks: b, ...(pivots ? { pivots } : {}) };
+    }
+    case "atr": {
+      const periode = entier(o.periode, 2, 1000);
+      // Le multiple arrive en nombre decimal (1,5) et se range en dixiemes.
+      const brut = typeof o.multiple === "number" ? o.multiple : null;
+      if (periode === null || brut === null || brut < 0.1 || brut > 20) return null;
+      return { type: "atr", periode, multipleDixiemes: Math.round(brut * 10) };
     }
     default:
       return null;

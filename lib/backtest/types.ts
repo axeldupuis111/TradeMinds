@@ -177,7 +177,34 @@ export type BlocNiveau =
    * distinguent d'un simple order block, et la confondre inverse le sens du
    * trade.
    */
-  | { type: "breaker"; impulsionMinTicks: number };
+  | { type: "breaker"; impulsionMinTicks: number }
+  /**
+   * LA ZONE DE RETRACEMENT du dernier segment, celle que les traders ICT
+   * appellent OTE et les autres « la zone de Fibonacci ».
+   *
+   * On prend le dernier segment entre deux pivots confirmés, et on garde la
+   * tranche située entre deux pourcentages de son amplitude. Le sens vient du
+   * segment : après une jambe haussière on cherche un achat dans le repli,
+   * après une jambe baissière une vente dans le rebond.
+   *
+   * ⚠️ LES POURCENTAGES SONT DES ENTIERS. 0,618 et 0,79 s'écrivent 62 et 79 :
+   * le moteur ne manipule que des entiers, ici comme pour les prix, et un
+   * ratio flottant réintroduirait exactement l'instabilité de dernier chiffre
+   * qu'on a éliminée partout ailleurs.
+   *
+   * ⚠️ La zone n'existe qu'une fois les DEUX pivots confirmés, donc avec le
+   * retard assumé de `pivots` bougies. La tracer dès la formation du second
+   * serait du lookahead.
+   */
+  | {
+      type: "ote_fibonacci";
+      /** Bougies de chaque côté pour qu'un pivot soit reconnu. */
+      pivots: number;
+      /** Début de la tranche, en pourcentage du segment (62 pour 0,618). */
+      retraceMinPct: number;
+      /** Fin de la tranche, en pourcentage du segment (79 pour 0,79). */
+      retraceMaxPct: number;
+    };
 
 // ─── DÉCLENCHEUR : le signal, évalué sur bougies CLÔTURÉES uniquement ──────
 
@@ -249,7 +276,30 @@ export type BlocConfirmation =
    * filtre inversé ne se voit pas dans les chiffres, seulement dans le nombre
    * de trades.
    */
-  | { type: "rsi"; periode: number; seuil: number; mode: "momentum" | "exces" };
+  | { type: "rsi"; periode: number; seuil: number; mode: "momentum" | "exces" }
+  /**
+   * MACD : on n'entre que si la ligne est du bon côté de sa ligne de signal.
+   * C'est le filtre de tendance le plus cité après la moyenne mobile.
+   */
+  | { type: "macd"; rapide: number; lente: number; signal: number }
+  /**
+   * Stochastique %K, avec les deux mêmes usages opposés que le RSI.
+   * Voir l'avertissement sur `rsi` : s'y tromper inverse le filtre.
+   */
+  | { type: "stochastique"; periode: number; seuil: number; mode: "momentum" | "exces" }
+  /**
+   * DIVERGENCE entre le prix et le RSI, sur les deux derniers pivots.
+   *
+   * En achat : le prix fait un creux PLUS BAS pendant que le RSI en fait un
+   * plus haut. En vente : un sommet plus haut pendant que le RSI en fait un
+   * plus bas.
+   *
+   * ⚠️ Elle a ses propres pivots, indépendants du niveau : un trader qui parle
+   * de divergence ne parle pas des mêmes sommets que celui qui trace une
+   * trendline, et réutiliser les uns pour les autres donnerait un filtre qui
+   * change de sens selon le bloc de niveau choisi.
+   */
+  | { type: "divergence"; periode: number; pivots: number };
 
 // ─── ENTRÉE ────────────────────────────────────────────────────────────────
 
@@ -288,7 +338,37 @@ export type BlocStop =
    * signal : sur le Nasdaq en M3, trente points contre sept. Cette différence
    * décide à elle seule si les coûts mangent le risque ou non.
    */
-  | { type: "dernier_pivot"; bufferTicks: number };
+  | {
+      type: "dernier_pivot";
+      bufferTicks: number;
+      /**
+       * Bougies de chaque côté pour qu'un sommet compte comme un sommet.
+       *
+       * ⚠️ NÉ D'UN BUG MESURÉ, PAS D'UN BESOIN DE RÉGLAGE. Ce stop lisait les
+       * pivots calculés par le BLOC DE NIVEAU. Or seuls la trendline, la
+       * liquidité de swing et le retracement en calculent : avec n'importe
+       * quel autre niveau, aucun pivot n'existait, et le moteur refusait
+       * SILENCIEUSEMENT chaque trade. Mesuré sur quatre ans de Nasdaq :
+       * 33 216 signaux, zéro trade.
+       *
+       * Le stop porte donc sa propre définition. Absent, on reprend celle du
+       * niveau quand il en a une, sinon cinq bougies.
+       */
+      pivots?: number;
+    }
+  /**
+   * Un multiple de l'ATR, c'est-à-dire un stop qui s'élargit quand le marché
+   * bouge plus. C'est la formulation la plus répandue chez les traders
+   * systématiques : « stop à 1,5 ATR ».
+   *
+   * ⚠️ LE MULTIPLE EST EN DIXIÈMES, pour rester entier : 1,5 ATR s'écrit 15.
+   *
+   * ⚠️ Tant que l'ATR n'existe pas (moins de `periode` bougies), le trade est
+   * REFUSÉ, pas pris avec un stop de repli. Un stop inventé sur un historique
+   * incomplet produirait des R faux, et des R faux contaminent tout le
+   * résultat sans jamais se voir.
+   */
+  | { type: "atr"; periode: number; multipleDixiemes: number };
 
 export type BlocObjectif =
   /** Multiple du risque initial. 2 = on vise deux fois la distance du stop. */

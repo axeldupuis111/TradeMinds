@@ -162,6 +162,8 @@ export function EditeurPlan({ plan, instrument, onChange, contestes, t }: Editeu
                 maj({ niveau: { type, impulsionMinTicks: enTicks(instrument.spread * 8) } });
               else if (type === "fvg_zone")
                 maj({ niveau: { type, tailleMinTicks: enTicks(instrument.spread * 2) } });
+              else if (type === "ote_fibonacci")
+                maj({ niveau: { type, pivots: 5, retraceMinPct: 62, retraceMaxPct: 79 } });
               else if (type === "extremes_n_bougies") maj({ niveau: { type, n: 20 } });
               else if (type === "liquidite_swing") maj({ niveau: { type, pivots: 20 } });
               else if (type === "trendline")
@@ -177,6 +179,7 @@ export function EditeurPlan({ plan, instrument, onChange, contestes, t }: Editeu
               { valeur: "order_block", label: t("bt_niveau_order_block") },
               { valeur: "breaker", label: t("bt_niveau_breaker") },
               { valeur: "fvg_zone", label: t("bt_niveau_fvg_zone") },
+              { valeur: "ote_fibonacci", label: t("bt_niveau_ote") },
               { valeur: "moyenne_mobile", label: t("bt_niveau_moyenne") },
               { valeur: "vwap_session", label: t("bt_niveau_vwap") },
               { valeur: "bollinger", label: t("bt_niveau_bollinger") },
@@ -293,6 +296,58 @@ export function EditeurPlan({ plan, instrument, onChange, contestes, t }: Editeu
               }
             />
           </Champ>
+        ) : null}
+        {plan.niveau.type === "ote_fibonacci" ? (
+          <>
+            <Champ label={t("bt_ote_min")} aide={t("bt_ote_aide")}>
+              <Nombre
+                valeur={plan.niveau.retraceMinPct}
+                min={1}
+                max={98}
+                suffixe="%"
+                onChange={(retraceMinPct) =>
+                  maj({
+                    niveau:
+                      plan.niveau.type === "ote_fibonacci"
+                        ? { ...plan.niveau, retraceMinPct }
+                        : plan.niveau,
+                  })
+                }
+              />
+            </Champ>
+            <Champ label={t("bt_ote_max")}>
+              <Nombre
+                valeur={plan.niveau.retraceMaxPct}
+                min={2}
+                max={99}
+                suffixe="%"
+                onChange={(retraceMaxPct) =>
+                  maj({
+                    niveau:
+                      plan.niveau.type === "ote_fibonacci"
+                        ? { ...plan.niveau, retraceMaxPct }
+                        : plan.niveau,
+                  })
+                }
+              />
+            </Champ>
+            <Champ label={t("bt_pivots")} aide={t("bt_pivots_aide")}>
+              <Nombre
+                valeur={plan.niveau.pivots}
+                min={1}
+                max={100}
+                suffixe={t("bt_unite_bougies")}
+                onChange={(pivots) =>
+                  maj({
+                    niveau:
+                      plan.niveau.type === "ote_fibonacci"
+                        ? { ...plan.niveau, pivots }
+                        : plan.niveau,
+                  })
+                }
+              />
+            </Champ>
+          </>
         ) : null}
         {plan.niveau.type === "fvg_zone" ? (
           <Champ label={t("bt_taille_min_fvg")} aide={t("bt_taille_min_fvg_aide")}>
@@ -493,6 +548,23 @@ export function EditeurPlan({ plan, instrument, onChange, contestes, t }: Editeu
             onChange={() => basculerConfirmation({ type: "biais_moyenne", periode: 50 })}
           />
           <Bascule
+            label={t("bt_conf_macd")}
+            actif={aConfirmation("macd")}
+            onChange={() => basculerConfirmation({ type: "macd", rapide: 12, lente: 26, signal: 9 })}
+          />
+          <Bascule
+            label={t("bt_conf_stochastique")}
+            actif={aConfirmation("stochastique")}
+            onChange={() =>
+              basculerConfirmation({ type: "stochastique", periode: 14, seuil: 80, mode: "momentum" })
+            }
+          />
+          <Bascule
+            label={t("bt_conf_divergence")}
+            actif={aConfirmation("divergence")}
+            onChange={() => basculerConfirmation({ type: "divergence", periode: 14, pivots: 5 })}
+          />
+          <Bascule
             label={t("bt_conf_rsi")}
             actif={aConfirmation("rsi")}
             onChange={() => basculerConfirmation({ type: "rsi", periode: 14, seuil: 55, mode: "momentum" })}
@@ -507,6 +579,26 @@ export function EditeurPlan({ plan, instrument, onChange, contestes, t }: Editeu
             l'exces » sont deux usages OPPOSES du meme indicateur. Se tromper
             inverse le filtre, et un filtre inverse ne se voit dans aucun
             chiffre, seulement dans le nombre de trades. */}
+        {aConfirmation("stochastique") ? (
+          <Champ label={t("bt_stoch_mode")} aide={t("bt_rsi_mode_aide")}>
+            <Liste
+              valeur={
+                (plan.confirmations.find((x) => x.type === "stochastique") as { mode: string }).mode
+              }
+              onChange={(mode) =>
+                maj({
+                  confirmations: plan.confirmations.map((x) =>
+                    x.type === "stochastique" ? { ...x, mode: mode as "momentum" | "exces" } : x,
+                  ),
+                })
+              }
+              options={[
+                { valeur: "momentum", label: t("bt_rsi_momentum") },
+                { valeur: "exces", label: t("bt_rsi_exces") },
+              ]}
+            />
+          </Champ>
+        ) : null}
         {aConfirmation("rsi") ? (
           <>
             <Champ label={t("bt_rsi_mode")} aide={t("bt_rsi_mode_aide")}>
@@ -577,13 +669,21 @@ export function EditeurPlan({ plan, instrument, onChange, contestes, t }: Editeu
             valeur={plan.stop.type}
             onChange={(type) => {
               if (type === "fixe") maj({ stop: { type, ticks: enTicks(instrument.spread * 10) } });
-              else maj({ stop: { type, bufferTicks: 1 } });
+              else if (type === "atr") maj({ stop: { type, periode: 14, multipleDixiemes: 15 } });
+              else
+                maj({
+                  stop: {
+                    type: type as "structurel" | "niveau_oppose" | "extreme_balayage" | "dernier_pivot",
+                    bufferTicks: 1,
+                  },
+                });
             }}
             options={[
               { valeur: "dernier_pivot", label: t("bt_stop_dernier_pivot") },
               { valeur: "extreme_balayage", label: t("bt_stop_balayage") },
               { valeur: "structurel", label: t("bt_stop_structurel") },
               { valeur: "niveau_oppose", label: t("bt_stop_oppose") },
+              { valeur: "atr", label: t("bt_stop_atr") },
               { valeur: "fixe", label: t("bt_stop_fixe") },
             ]}
           />
@@ -597,6 +697,44 @@ export function EditeurPlan({ plan, instrument, onChange, contestes, t }: Editeu
               onChange={(v) => maj({ stop: { type: "fixe", ticks: Math.max(1, enTicks(v)) } })}
             />
           </Champ>
+        ) : plan.stop.type === "atr" ? (
+          <>
+            <Champ label={t("bt_atr_multiple")} aide={t("bt_atr_multiple_aide")}>
+              <Nombre
+                valeur={plan.stop.multipleDixiemes / 10}
+                min={0.1}
+                max={20}
+                pas={0.1}
+                onChange={(v) =>
+                  maj({
+                    stop: {
+                      type: "atr",
+                      periode: plan.stop.type === "atr" ? plan.stop.periode : 14,
+                      multipleDixiemes: Math.max(1, Math.round(v * 10)),
+                    },
+                  })
+                }
+              />
+            </Champ>
+            <Champ label={t("bt_atr_periode")}>
+              <Nombre
+                valeur={plan.stop.periode}
+                min={2}
+                max={1000}
+                suffixe={t("bt_unite_bougies")}
+                onChange={(periode) =>
+                  maj({
+                    stop: {
+                      type: "atr",
+                      periode,
+                      multipleDixiemes:
+                        plan.stop.type === "atr" ? plan.stop.multipleDixiemes : 15,
+                    },
+                  })
+                }
+              />
+            </Champ>
+          </>
         ) : (
           <Champ label={t("bt_stop_buffer")} aide={t("bt_stop_buffer_aide")}>
             <Nombre
