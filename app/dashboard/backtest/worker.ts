@@ -47,6 +47,18 @@ export type TraceDessin =
   | { forme: "horizontale"; prix: number }
   | { forme: "zone"; haut: number; bas: number; debutMs: number; finMs: number };
 
+/** La geometrie de la MECANIQUE d'entree, en unites de PRIX. */
+export type MecaniqueDessin =
+  | {
+      forme: "desequilibre";
+      haut: number;
+      bas: number;
+      debutMs: number;
+      finMs: number;
+      bord: number;
+    }
+  | { forme: "balayage"; niveau: number; extreme: number; ms: number };
+
 /** Un trade et les bougies qui l'entourent, pour vérification à l'œil. */
 export interface Apercu {
   trade: TradeSimule;
@@ -74,6 +86,15 @@ export interface Apercu {
    * possible : sans elle, il ne peut ni confirmer ni dementir.
    */
   trace?: TraceDessin;
+  /**
+   * Ce que la mecanique d'entree a construit : le desequilibre ou le balayage.
+   *
+   * ⚠️ Sans elle, un trader ICT voyait une ligne et une bougie d'entree, et ne
+   * pouvait pas dire si la machine avait reconnu SA mecanique ou une autre qui
+   * tombe au meme endroit. C'est exactement le defaut qui avait ete constate
+   * sur la trendline dessinee a plat.
+   */
+  mecanique?: MecaniqueDessin[];
 }
 
 /**
@@ -114,8 +135,16 @@ function preparerApercus(serie: SerieM1, trades: TradeSimule[], plan: PlanExecut
     // ⚠️ La fenetre doit remonter jusqu'au PREMIER ancrage de la droite, sinon
     // on affiche une trendline dont on ne voit ni le depart ni les touches, et
     // le trader ne peut toujours pas reconnaitre son setup.
-    const debutTrace =
+    let debutTrace =
       trade.trace?.forme === "droite" ? Math.min(trade.trace.a.ms, trade.trace.b.ms) : trade.signalMs;
+    // ⚠️ Un balayage peut preceder le signal de plusieurs centaines de bougies
+    // (delaiReaction + delaiRetest). Dessine hors de la fenetre, il ne servirait
+    // a rien : le trader verrait une entree sans la prise de liquidite qui la
+    // justifie, donc exactement ce qu'on cherche a corriger.
+    for (const m of trade.mecanique ?? []) {
+      const ms = m.forme === "balayage" ? m.ms : m.debutMs;
+      if (ms < debutTrace) debutTrace = ms;
+    }
     let debut = 0;
     let fin = serie.t.length - 1;
     for (let i = 0; i < serie.t.length; i++) {
@@ -160,6 +189,24 @@ function preparerApercus(serie: SerieM1, trades: TradeSimule[], plan: PlanExecut
             ? { forme: "horizontale", prix: brute.prixTicks * tick }
             : undefined;
 
+    const mecanique = trade.mecanique?.map<MecaniqueDessin>((m) =>
+      m.forme === "balayage"
+        ? {
+            forme: "balayage",
+            niveau: m.niveauTicks * tick,
+            extreme: m.extremeTicks * tick,
+            ms: m.ms,
+          }
+        : {
+            forme: "desequilibre",
+            haut: m.hautTicks * tick,
+            bas: m.basTicks * tick,
+            debutMs: m.debutMs,
+            finMs: m.finMs,
+            bord: m.bordTicks * tick,
+          },
+    );
+
     apercus.push({
       trade,
       bougies,
@@ -173,6 +220,7 @@ function preparerApercus(serie: SerieM1, trades: TradeSimule[], plan: PlanExecut
       objectif: (trade.entreeTicks + signe * 2 * trade.risqueTicks) * tick,
       niveau: trade.niveauSignal * tick,
       trace,
+      mecanique,
     });
   }
   return apercus;

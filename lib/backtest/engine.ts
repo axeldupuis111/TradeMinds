@@ -8,6 +8,7 @@ import type {
   PlanExecution,
   ResultatBacktest,
   SerieM1,
+  TraceMecanique,
   TraceSignal,
   TradeSimule,
 } from "./types";
@@ -44,6 +45,18 @@ import { agreger } from "./serie";
  * de ce qui était atteignable, pas une prévision de ce qui arrivera.
  */
 
+/**
+ * Tout ce qui sert à REDESSINER le setup, figé au moment du signal.
+ *
+ * Regroupé plutôt que passé pièce par pièce : la géométrie voyage du signal à
+ * l'ouverture puis à la fermeture, et un paramètre positionnel de plus à chaque
+ * forme dessinée finissait par rendre les appels illisibles.
+ */
+interface GeoSignal {
+  trace?: TraceSignal;
+  mecanique?: TraceMecanique[];
+}
+
 /** Un ordre en attente d'exécution. */
 interface EntreeEnAttente {
   sens: "long" | "short";
@@ -70,7 +83,7 @@ interface EntreeEnAttente {
   /** Horodatage et niveau de la bougie de signal, pour l'inspection visuelle. */
   signalMs: number;
   niveauSignal: number;
-  trace?: TraceSignal;
+  geo: GeoSignal;
 }
 
 interface Position {
@@ -91,7 +104,7 @@ interface Position {
   breakEvenPose: boolean;
   signalMs: number;
   niveauSignal: number;
-  trace?: TraceSignal;
+  geo: GeoSignal;
 }
 
 /** Décalage local, en minutes, mis en cache par heure UTC. */
@@ -326,6 +339,14 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
   let cassureSens: "long" | "short" | null = null;
   let cassureBarre = -1;
   let fvgBord = 0; // bord du déséquilibre à retester, en ticks
+  // La BOÎTE du déséquilibre, pour la redessiner telle quelle. Un seul jeu de
+  // variables : `fvg_puis_retest` et `balayage_puis_fvg` ne tournent jamais
+  // ensemble, le type de déclencheur est figé pour toute la simulation.
+  let fvgHaut = 0;
+  let fvgBas = 0;
+  let fvgDebut = -1; // index de la première des trois bougies
+  // Le niveau dont la liquidité a été prise, à distinguer de l'extrême atteint.
+  let balayageNiveau = 0;
 
   // ── Dernier pivot confirmé de chaque type. Un pivot regarde des DEUX côtés,
   //    il n'est donc lisible que `pivots` bougies après s'être formé. Il sert à
@@ -485,7 +506,8 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
     trades.push({
       signalMs: p.signalMs,
       niveauSignal: p.niveauSignal,
-      trace: p.trace,
+      trace: p.geo.trace,
+      mecanique: p.geo.mecanique,
       entreeMs: p.msEntree,
       sortieMs: t[i],
       sens: p.sens,
@@ -585,7 +607,7 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
     dernierCreux: number | undefined,
     signalMs: number,
     niveauSignal: number,
-    trace: TraceSignal | undefined,
+    geo: GeoSignal,
   ): boolean {
     const signe = sens === "long" ? 1 : -1;
     const couts = plan.couts;
@@ -666,7 +688,7 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
       breakEvenPose: false,
       signalMs,
       niveauSignal,
-      trace,
+      geo,
     };
     tradesJour++;
     return true;
@@ -786,9 +808,11 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
         if (haut != null && h[i] > haut) {
           balayageSens = "short";
           balayageExtreme = h[i];
+          balayageNiveau = haut;
         } else if (bas != null && l[i] < bas) {
           balayageSens = "long";
           balayageExtreme = l[i];
+          balayageNiveau = bas;
         } else return null;
         balayageBarre = i;
         barreImpulsion = -1;
@@ -818,9 +842,15 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
         if (balayageSens === "short" && h[i] < l[i - 2]) {
           barreImpulsion = i;
           fvgRetour = l[i - 2];
+          fvgHaut = l[i - 2];
+          fvgBas = h[i];
+          fvgDebut = i - 2;
         } else if (balayageSens === "long" && l[i] > h[i - 2]) {
           barreImpulsion = i;
           fvgRetour = h[i - 2];
+          fvgHaut = l[i];
+          fvgBas = h[i - 2];
+          fvgDebut = i - 2;
         }
         return null;
       }
@@ -852,10 +882,16 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
         cassureSens = "long";
         cassureBarre = i;
         fvgBord = h[i - 2];
+        fvgHaut = l[i];
+        fvgBas = h[i - 2];
+        fvgDebut = i - 2;
       } else if (bas != null && c[i] < bas && fvgBaissier) {
         cassureSens = "short";
         cassureBarre = i;
         fvgBord = l[i - 2];
+        fvgHaut = l[i - 2];
+        fvgBas = h[i];
+        fvgDebut = i - 2;
       }
       return null;
     }
@@ -1072,7 +1108,7 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
     if (attente) {
       if (attente.prixLimite == null) {
         // Entrée à l'ouverture de cette bougie, décidée sur la précédente.
-        const ouverte = ouvrir(i, attente.sens, o[i], attente.barreSignal, attente.extremeBalayage, attente.dernierSommet, attente.dernierCreux, attente.signalMs, attente.niveauSignal, attente.trace);
+        const ouverte = ouvrir(i, attente.sens, o[i], attente.barreSignal, attente.extremeBalayage, attente.dernierSommet, attente.dernierCreux, attente.signalMs, attente.niveauSignal, attente.geo);
         attente = null;
         if (ouverte) {
           gererPosition(i, minutes);
@@ -1085,7 +1121,7 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
         const touche =
           attente.sens === "long" ? l[i] <= attente.prixLimite : h[i] >= attente.prixLimite;
         if (touche) {
-          const ouverte = ouvrir(i, attente.sens, attente.prixLimite, attente.barreSignal, attente.extremeBalayage, attente.dernierSommet, attente.dernierCreux, attente.signalMs, attente.niveauSignal, attente.trace);
+          const ouverte = ouvrir(i, attente.sens, attente.prixLimite, attente.barreSignal, attente.extremeBalayage, attente.dernierSommet, attente.dernierCreux, attente.signalMs, attente.niveauSignal, attente.geo);
           attente = null;
           if (ouverte) {
             gererPosition(i, minutes);
@@ -1156,12 +1192,59 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
       if (niveau != null) trace = { forme: "horizontale", prixTicks: niveau };
     }
 
+    /**
+     * La MÉCANIQUE d'entrée, en plus du niveau.
+     *
+     * ⚠️ On la fige au signal, comme la trace : les variables d'état seront
+     * réutilisées par le scénario suivant dès la bougie d'après.
+     *
+     * ⚠️ ORDRE VOULU : le balayage d'abord, le déséquilibre ensuite. C'est
+     * l'ordre des événements, et c'est justement leur ordre qui distingue cette
+     * mécanique d'une simple cassure tombée au même endroit.
+     */
+    const mecanique: TraceMecanique[] = [];
+    if (plan.declencheur.type === "balayage_puis_fvg") {
+      if (balayageBarre >= 0) {
+        mecanique.push({
+          forme: "balayage",
+          niveauTicks: balayageNiveau,
+          extremeTicks: balayageExtreme,
+          ms: t[balayageBarre],
+        });
+      }
+      if (fvgDebut >= 0 && fvgHaut > fvgBas) {
+        mecanique.push({
+          forme: "desequilibre",
+          hautTicks: fvgHaut,
+          basTicks: fvgBas,
+          debutMs: t[fvgDebut],
+          finMs: t[i],
+          bordTicks: fvgRetour,
+        });
+      }
+    } else if (plan.declencheur.type === "fvg_puis_retest") {
+      if (fvgDebut >= 0 && fvgHaut > fvgBas) {
+        mecanique.push({
+          forme: "desequilibre",
+          hautTicks: fvgHaut,
+          basTicks: fvgBas,
+          debutMs: t[fvgDebut],
+          finMs: t[i],
+          bordTicks: fvgBord,
+        });
+      }
+    }
+    const geo: GeoSignal = {
+      trace,
+      mecanique: mecanique.length > 0 ? mecanique : undefined,
+    };
+
     // Le niveau que le signal vient de franchir : c'est LUI que le trader doit
     // reconnaître sur le graphique d'inspection.
     const niveauSignal = (sens === "long" ? hautNiveau : basNiveau) ?? c[i];
 
     if (plan.entree.type === "open_bougie_suivante") {
-      if (i + 1 < n) attente = { sens, barreSignal: i, extremeBalayage, dernierSommet, dernierCreux, signalMs, niveauSignal, trace };
+      if (i + 1 < n) attente = { sens, barreSignal: i, extremeBalayage, dernierSommet, dernierCreux, signalMs, niveauSignal, geo };
     } else {
       const niveau = sens === "long" ? basNiveau : hautNiveau;
       if (niveau == null) continue;
@@ -1175,7 +1258,7 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
         dernierCreux,
         signalMs,
         niveauSignal,
-        trace,
+        geo,
       };
     }
   }

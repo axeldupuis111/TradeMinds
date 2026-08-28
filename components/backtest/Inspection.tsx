@@ -262,6 +262,76 @@ export function Inspection({ apercus, instrument, verifie, onVerifie, t }: Inspe
             </>
           ) : null}
 
+          {/* ── LA MÉCANIQUE D'ENTRÉE ──────────────────────────────────────
+              ⚠️ En AMBRE, jamais en cyan : le cyan est réservé au niveau. Un
+              trader ICT doit pouvoir distinguer d'un coup d'œil ce qu'il a
+              tracé (le niveau) de ce que le marché a fabriqué devant lui (le
+              balayage, le déséquilibre). Confondus dans une même couleur, ils
+              se lisent comme un seul objet et la vérification retombe. */}
+          {a.mecanique?.map((m, k) =>
+            m.forme === "desequilibre" ? (
+              <g key={k} clipPath="url(#cadre-apercu)">
+                <rect
+                  x={xDeMs(m.debutMs)}
+                  y={y(m.haut)}
+                  width={Math.max(2, xDeMs(m.finMs) - xDeMs(m.debutMs))}
+                  height={Math.max(2, y(m.bas) - y(m.haut))}
+                  className="fill-warning/15 stroke-warning"
+                  strokeWidth={1}
+                  strokeDasharray="3 2"
+                />
+                {/* Le BORD retesté, en trait plein : c'est lui qui déclenche,
+                    pas le milieu de la boîte. */}
+                <line
+                  x1={xDeMs(m.debutMs)}
+                  x2={LARGEUR}
+                  y1={y(m.bord)}
+                  y2={y(m.bord)}
+                  className="stroke-warning"
+                  strokeWidth={1.5}
+                />
+                <text
+                  x={Math.max(4, xDeMs(m.debutMs))}
+                  y={Math.max(10, y(m.haut) - 4)}
+                  fontSize={10}
+                  className="fill-warning"
+                >
+                  {t("bt_trace_desequilibre")}
+                </text>
+              </g>
+            ) : (
+              <g key={k} clipPath="url(#cadre-apercu)">
+                {/* La mèche qui est allée chercher la liquidité, du niveau
+                    jusqu'à la pointe. */}
+                <line
+                  x1={xDeMs(m.ms)}
+                  x2={xDeMs(m.ms)}
+                  y1={y(m.niveau)}
+                  y2={y(m.extreme)}
+                  className="stroke-warning"
+                  strokeWidth={2.5}
+                />
+                {/* La pointe, orientée dans le sens du balayage. */}
+                <polygon
+                  points={
+                    m.extreme > m.niveau
+                      ? `${xDeMs(m.ms) - 4},${y(m.extreme) + 6} ${xDeMs(m.ms) + 4},${y(m.extreme) + 6} ${xDeMs(m.ms)},${y(m.extreme)}`
+                      : `${xDeMs(m.ms) - 4},${y(m.extreme) - 6} ${xDeMs(m.ms) + 4},${y(m.extreme) - 6} ${xDeMs(m.ms)},${y(m.extreme)}`
+                  }
+                  className="fill-warning"
+                />
+                <text
+                  x={Math.max(4, xDeMs(m.ms) - 10)}
+                  y={m.extreme > m.niveau ? Math.max(10, y(m.extreme) - 4) : y(m.extreme) + 12}
+                  fontSize={10}
+                  className="fill-warning"
+                >
+                  {t("bt_trace_balayage")}
+                </text>
+              </g>
+            ),
+          )}
+
           {/* ── LES COURBES D'INDICATEURS, sous les bougies ────────────────
               ⚠️ Une moyenne mobile ou un VWAP ne sont pas un prix figé. Les
               tracer comme un trait horizontal montrerait un objet qui n'existe
@@ -341,6 +411,10 @@ export function Inspection({ apercus, instrument, verifie, onVerifie, t }: Inspe
           ) : null}
         </svg>
       </div>
+
+      {a.mecanique?.length ? (
+        <p className="mt-2 text-xs text-warning">{t("bt_mecanique_legende")}</p>
+      ) : null}
 
       {a.courbes?.length ? (
         <p className="mt-2 text-xs text-foreground-muted">

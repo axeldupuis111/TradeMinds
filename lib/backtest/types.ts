@@ -414,6 +414,41 @@ export type TraceSignal =
   /** Une plage de prix bornée dans le temps : range d'ouverture, déséquilibre. */
   | { forme: "zone"; hautTicks: number; basTicks: number; debutMs: number; finMs: number };
 
+/**
+ * Ce que la MÉCANIQUE D'ENTRÉE a construit, en plus du niveau.
+ *
+ * ⚠️ NÉ DU MÊME CONSTAT QUE `TraceSignal`, POUSSÉ D'UN CRAN. On dessinait le
+ * niveau franchi, et rien de ce qui déclenche vraiment l'entrée : un trader ICT
+ * qui attend « le balayage puis le déséquilibre » voyait une ligne et une
+ * bougie d'entrée, sans la mèche qui a pris la liquidité ni la boîte dans
+ * laquelle il revient. Il ne pouvait donc pas dire si la machine avait reconnu
+ * SA mécanique ou une autre qui tombe au même endroit par hasard.
+ *
+ * Un déclencheur peut en produire plusieurs : `balayage_puis_fvg` en pose deux,
+ * la prise de liquidité ET le déséquilibre, parce que ce sont deux événements
+ * distincts dont l'ordre fait toute la méthode.
+ */
+export type TraceMecanique =
+  /** Le déséquilibre à trois bougies, avec le bord que le prix revient toucher. */
+  | {
+      forme: "desequilibre";
+      hautTicks: number;
+      basTicks: number;
+      debutMs: number;
+      finMs: number;
+      /** Le bord retesté. C'est LUI qui décide, pas le milieu de la boîte. */
+      bordTicks: number;
+    }
+  /** La prise de liquidité : d'où le prix est parti chercher, et jusqu'où. */
+  | {
+      forme: "balayage";
+      /** Le niveau dont la liquidité a été prise. */
+      niveauTicks: number;
+      /** La pointe de la mèche, au-delà du niveau. */
+      extremeTicks: number;
+      ms: number;
+    };
+
 export interface TradeSimule {
   /**
    * Ouverture de la bougie de SIGNAL, ms epoch. Une bougie avant l'entrée.
@@ -435,6 +470,12 @@ export interface TradeSimule {
    * Absent quand la forme n'est pas encore modélisée pour ce bloc.
    */
   trace?: TraceSignal;
+  /**
+   * Ce que la mécanique d'entrée a construit : déséquilibre, balayage.
+   * Vide quand le déclencheur n'a pas de forme propre (une simple cassure n'en
+   * a pas : le niveau EST toute sa géométrie).
+   */
+  mecanique?: TraceMecanique[];
   /** Ouverture de la bougie d'ENTRÉE, ms epoch. */
   entreeMs: number;
   /** Ouverture de la bougie de SORTIE, ms epoch. */
