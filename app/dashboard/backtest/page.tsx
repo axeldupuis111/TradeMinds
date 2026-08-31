@@ -33,6 +33,8 @@ import { EditeurPlan } from "@/components/backtest/EditeurPlan";
 import { Resultat } from "@/components/backtest/Resultat";
 import { Inspection } from "@/components/backtest/Inspection";
 import { Propositions } from "@/components/backtest/Propositions";
+import { Modifications } from "@/components/backtest/Modifications";
+import { Enregistrer, type EtatControle } from "@/components/backtest/Enregistrer";
 import { Champ, Liste } from "@/components/backtest/Controles";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
@@ -47,6 +49,22 @@ import {
 } from "@/lib/backtest/instruments";
 import { graviteDuChamp, socleDePlan, type Couverture } from "@/lib/backtest/compilation";
 import { moisEntre } from "@/lib/backtest/chargement";
+import {
+  annulerModification,
+  CLES_PAR_LEVIER,
+  comparerPlans,
+  DESCRIPTEURS,
+  empreintePlan,
+  toutAnnuler,
+  type Origine,
+} from "@/lib/backtest/modifications";
+import { periodeIntacte, type Fenetre } from "@/lib/backtest/hors-periode";
+import {
+  composerBloc,
+  ecrireDansLaFiche,
+  repartirDansLaFiche,
+} from "@/lib/backtest/fiche-reglages";
+import { enregistrerVersion } from "@/lib/backtest/enregistrement";
 import type { PlanExecution } from "@/lib/backtest/types";
 import type { LectureBacktest } from "@/lib/backtest/verdict";
 import type { Apercu, DemandeBacktest, ReponseBacktest } from "./worker";
@@ -153,6 +171,24 @@ export default function BacktestPage() {
     couts: coutsPourInstrument(INSTRUMENTS.find((i) => i.code === "XAUUSD")!),
   }));
 
+  /**
+   * LE PLAN TEL QUE LA FICHE LE DÉCRIT, gardé intact pendant que l'autre dérive.
+   *
+   * ⚠️ SANS LUI, IL N'Y A PAS DE « CE QUE J'AI CHANGÉ ». Un trader nous a écrit
+   * avoir accepté une proposition « sans trop savoir ce qu'il a changé » : la
+   * page n'avait effectivement aucun point de comparaison, elle n'écrasait
+   * qu'un état par un autre. Tout se compare à celui-ci, et jamais à l'état
+   * précédent : trois allers-retours sur le même réglage doivent laisser une
+   * carte vide, pas six lignes.
+   */
+  const [planFiche, setPlanFiche] = useState<PlanExecution | null>(null);
+  /**
+   * Au nom de quel objectif chaque réglage a été changé, quand il vient d'un
+   * bouton. ⚠️ Enregistré AU MOMENT DU CLIC : après coup, plus rien ne permet
+   * de distinguer un réglage proposé d'un réglage posé à la main.
+   */
+  const [origines, setOrigines] = useState<Record<string, Origine>>({});
+
   const [couverture, setCouverture] = useState<Couverture | null>(null);
   /**
    * Interpretations que le trader a marquees « ce n'est pas ca ».
@@ -194,10 +230,27 @@ export default function BacktestPage() {
    */
   const [verifie, setVerifie] = useState(false);
 
+  /**
+   * LE CONTRÔLE SUR UNE PÉRIODE INTACTE, et l'empreinte du plan sur lequel il a
+   * porté.
+   *
+   * ⚠️ L'EMPREINTE N'EST PAS UN LUXE. Un contrôle qui resterait affiché après
+   * qu'un réglage a bougé certifierait un plan qui n'existe plus, et le trader
+   * enregistrerait sa stratégie en croyant l'avoir vérifiée. C'est le seul cas
+   * où l'écran mentirait franchement.
+   */
+  const [controle, setControle] = useState<EtatControle>({ phase: "repos" });
+  const [empreinteControlee, setEmpreinteControlee] = useState<string | null>(null);
+  const [sauvegarde, setSauvegarde] = useState<"repos" | "encours" | "ok" | "erreur">("repos");
+
   const workerRef = useRef<Worker | null>(null);
+  const workerControleRef = useRef<Worker | null>(null);
 
   useEffect(() => {
-    return () => workerRef.current?.terminate();
+    return () => {
+      workerRef.current?.terminate();
+      workerControleRef.current?.terminate();
+    };
   }, []);
 
   // Le fuseau réel du navigateur remplace le repli une fois monté.
@@ -277,15 +330,21 @@ export default function BacktestPage() {
       // bloc inventé : ce qui manque reste manquant, et la carte de couverture
       // le dit. Le socle ne fournit que ce que le compilateur ne décide pas
       // (l'instrument, les coûts).
-      setPlan((p) => ({
-        ...p,
+      // ⚠️ ON CONSTRUIT LE PLAN AVANT DE LE POSER, au lieu de le calculer dans
+      // le `setPlan`. Il faut le MÊME objet dans deux états : celui qu'on va
+      // faire dériver, et celui, intact, auquel tout se comparera. Le calculer
+      // deux fois ouvrirait la porte à deux références qui divergent dès le
+      // premier clic, et la carte des modifications afficherait des écarts
+      // fantômes.
+      const compile: PlanExecution = {
+        ...plan,
         ...json.plan,
         instrument: code,
-        couts: p.couts,
-        stop: json.plan!.stop ?? p.stop,
-        objectif: json.plan!.objectif ?? p.objectif,
-        contexte: json.plan!.contexte ?? p.contexte,
-      }));
+        couts: plan.couts,
+        stop: json.plan.stop ?? plan.stop,
+        objectif: json.plan.objectif ?? plan.objectif,
+        contexte: json.plan.contexte ?? plan.contexte,
+      };
       // ⚠️ UNE TOLÉRANCE DE TOUCHE À ZÉRO EST UNE IMPASSE MUETTE. Le modèle a
       // consigne de la remplir, mais s'il l'oublie, une droite ne peut plus
       // jamais être touchée une troisième fois : le backtest rend zéro trade sur
@@ -312,6 +371,20 @@ export default function BacktestPage() {
         ];
       }
 
+      // ⚠️ POSÉ APRÈS LE RATTRAPAGE DE TOLÉRANCE, et pas avant. La correction
+      // ci-dessus modifie `json.plan.niveau` sur place : appliquée après coup,
+      // elle glisserait dans un objet déjà rangé dans l'état de React, et la
+      // référence intacte porterait une valeur que la fiche n'a jamais dite.
+      setPlan(compile);
+      // La référence à laquelle tout se comparera. Une copie, pas le même
+      // objet : le plan de travail va être remplacé clic après clic, celui-ci
+      // ne doit jamais bouger.
+      setPlanFiche(structuredClone(compile));
+      setOrigines({});
+      setControle({ phase: "repos" });
+      setEmpreinteControlee(null);
+      setSauvegarde("repos");
+
       setCouverture(couvertureFinale);
       setContestes(new Set());
       setCompilation("repos");
@@ -320,7 +393,7 @@ export default function BacktestPage() {
       setCompilation("erreur");
       setCompilationMsg(tr("bt_compil_error"));
     }
-  }, [strategies, strategieId, code, fuseau, instrument, tr]);
+  }, [strategies, strategieId, code, fuseau, instrument, plan, tr]);
 
   /**
    * @param avecPropositions cherche aussi ce que le trader pourrait changer.
@@ -373,6 +446,226 @@ export default function BacktestPage() {
     w.postMessage(demande);
   }, [etat.phase, tentatives, de, a, code, plan]);
 
+  /**
+   * Poser un plan venu d'un BOUTON, en retenant au nom de quoi.
+   *
+   * ⚠️ L'OBJECTIF SE NOTE ICI OU JAMAIS. Une fois le plan remplacé, plus rien
+   * dans les données ne distingue un réglage proposé d'un réglage tapé à la
+   * main, et c'est exactement l'information qui manquait au trader qui a écrit
+   * ne pas savoir ce qu'il avait accepté.
+   */
+  const appliquerPropose = useCallback(
+    (nouveau: PlanExecution, levier: string, objectif: Origine["objectif"]) => {
+      setOrigines((o) => {
+        const suite = { ...o };
+        for (const cle of CLES_PAR_LEVIER[levier] ?? []) suite[cle] = { levier, objectif };
+        return suite;
+      });
+      setPlan(nouveau);
+      // Même règle qu'ailleurs : le chiffre affiché ne correspondrait plus au
+      // plan visible, et un écart entre les deux est la pire chose qui puisse
+      // arriver à cette page.
+      setResultat(null);
+    },
+    [],
+  );
+
+  /**
+   * Poser un plan modifié À LA MAIN dans l'éditeur.
+   *
+   * ⚠️ Ce qu'on retouche soi-même cesse d'être « proposé pour ». Sans cet
+   * oubli, un réglage repris à la main garderait l'étiquette de la proposition
+   * qui l'avait posé, et la carte attribuerait à l'outil un choix du trader.
+   */
+  const appliquerManuel = useCallback(
+    (nouveau: PlanExecution) => {
+      setOrigines((o) => {
+        const suite = { ...o };
+        for (const d of DESCRIPTEURS) {
+          if (d.lire(plan) !== d.lire(nouveau)) delete suite[d.cle];
+        }
+        return suite;
+      });
+      setPlan(nouveau);
+    },
+    [plan],
+  );
+
+  /** L'écart avec la fiche, recalculé à chaque changement de plan. */
+  const modifications = useMemo(
+    () =>
+      planFiche
+        ? comparerPlans(planFiche, plan, instrument, origines, tr("bt_modif_absent"))
+        : [],
+    [planFiche, plan, instrument, origines, tr],
+  );
+
+  /**
+   * La fenêtre intacte, et le contrôle qui la rejoue.
+   *
+   * ⚠️ CE REJEU N'INCRÉMENTE PAS LE COMPTEUR DE TENTATIVES, et la distinction
+   * est de fond. Le compteur mesure combien de fois on a cherché un réglage qui
+   * sorte mieux ; celui-ci ne cherche rien, il vérifie un plan déjà arrêté sur
+   * des mois qui n'ont servi à rien. Le compter comme un essai découragerait la
+   * seule chose qu'on veut encourager.
+   */
+  const fenetreIntacte = useMemo(
+    () => periodeIntacte(de, a, PERIODE_MIN, PERIODE_MAX),
+    [de, a],
+  );
+
+  const lancerControle = useCallback(
+    (fenetre: Fenetre) => {
+      workerControleRef.current?.terminate();
+      setControle({ phase: "encours" });
+      const empreinte = empreintePlan(plan);
+      const w = new Worker(new URL("./worker.ts", import.meta.url));
+      workerControleRef.current = w;
+      w.onmessage = (e: MessageEvent<ReponseBacktest>) => {
+        const r = e.data;
+        if (r.type === "erreur") setControle({ phase: "erreur" });
+        else if (r.type === "fini") {
+          setControle({ phase: "fait", fenetre, lecture: r.lecture, valide: true });
+          setEmpreinteControlee(empreinte);
+        }
+      };
+      const demande: DemandeBacktest = {
+        code,
+        de: fenetre.de,
+        a: fenetre.a,
+        plan,
+        couts: plan.couts,
+        tentatives: 0,
+        propositions: false,
+      };
+      w.postMessage(demande);
+    },
+    [code, plan],
+  );
+
+  /**
+   * Le contrôle porte-t-il encore sur le plan affiché ?
+   *
+   * ⚠️ Recalculé à chaque rendu plutôt que gardé dans l'état : un booléen figé
+   * survivrait au changement de réglage qui l'invalide, et c'est précisément le
+   * moment où il compte.
+   */
+  const controleAffiche: EtatControle = useMemo(
+    () =>
+      controle.phase === "fait"
+        ? { ...controle, valide: empreinteControlee === empreintePlan(plan) }
+        : controle,
+    [controle, empreinteControlee, plan],
+  );
+  const controleValide = controleAffiche.phase === "fait" && controleAffiche.valide;
+
+  const strategieCourante = strategies.find((s) => s.id === strategieId);
+
+  /** Le texte exact qui ira dans la fiche, montré avant d'écrire quoi que ce soit. */
+  const blocFiche = useMemo(() => {
+    if (modifications.length === 0 || !resultat) return "";
+    return composerBloc({
+      titre: tr("bt_sauver_entete", { date: new Date().toLocaleDateString() }),
+      lignes: modifications.map(
+        (m) =>
+          `${tr(`bt_modif_${m.cle}`)} : ${m.avant} → ${m.apres}. ` +
+          tr(`bt_geste_${m.cle}`, { avant: m.avant, apres: m.apres }),
+      ),
+      mesure: tr("bt_sauver_mesure", {
+        instrument: instrument.nom,
+        de,
+        a,
+        trades: resultat.trades.length,
+      }),
+      controle:
+        controleValide && controleAffiche.phase === "fait"
+          ? tr("bt_sauver_controle", {
+              periode: `${controleAffiche.fenetre.de} → ${controleAffiche.fenetre.a}`,
+            })
+          : undefined,
+      avertissement: tr("bt_modif_avertissement"),
+    });
+  }, [modifications, resultat, instrument, de, a, controleValide, controleAffiche, tr]);
+
+  const repartition = useMemo(
+    () =>
+      repartirDansLaFiche(modifications, {
+        risque_par_trade: plan.gestion.risqueParTradePct,
+        pertes_daffilee: plan.gestion.maxPertesConsecutives,
+        trades_par_jour: plan.gestion.maxTradesParJour,
+        objectif_r: plan.objectif.type === "multiple_r" ? plan.objectif.r : null,
+      }),
+    [modifications, plan],
+  );
+
+  const enregistrer = useCallback(async () => {
+    if (!strategieCourante || !resultat || !planFiche) return;
+    if (controleAffiche.phase !== "fait" || !controleAffiche.valide) return;
+    setSauvegarde("encours");
+
+    const rawText = ecrireDansLaFiche(strategieCourante.raw_text ?? "", blocFiche);
+    const stats = resultat.lecture.stats;
+    const statsControle = controleAffiche.lecture.stats;
+
+    const r = await enregistrerVersion(supabase, {
+      strategieId: strategieCourante.id,
+      instrument: code,
+      de,
+      a,
+      plan,
+      modifications,
+      resume: {
+        verdict: resultat.lecture.verdict,
+        trades: resultat.trades.length,
+        esperanceR: stats?.esperanceR ?? null,
+        borneBasse: stats?.borneBasse ?? null,
+        borneHaute: stats?.borneHaute ?? null,
+        tentatives,
+      },
+      controle: {
+        de: controleAffiche.fenetre.de,
+        a: controleAffiche.fenetre.a,
+        trades: statsControle?.nbTrades ?? 0,
+        esperanceR: statsControle?.esperanceR ?? null,
+        borneBasse: statsControle?.borneBasse ?? null,
+        borneHaute: statsControle?.borneHaute ?? null,
+        verdict: controleAffiche.lecture.verdict,
+      },
+      rawText,
+      colonnes: repartition.colonnes,
+    });
+
+    if (!r.ok) {
+      setSauvegarde("erreur");
+      return;
+    }
+    setSauvegarde("ok");
+    // ⚠️ LA FICHE EN MÉMOIRE DOIT SUIVRE CELLE EN BASE. Sans ça, un second
+    // enregistrement repartirait du texte d'avant et effacerait le premier.
+    setStrategies((liste) =>
+      liste.map((s) => (s.id === strategieCourante.id ? { ...s, raw_text: rawText } : s)),
+    );
+    // Ces réglages sont désormais ceux de la fiche : ils cessent d'être un
+    // écart. La carte doit le dire, sinon le trader croit son enregistrement
+    // sans effet et recommence.
+    setPlanFiche(structuredClone(plan));
+    setOrigines({});
+  }, [
+    strategieCourante,
+    resultat,
+    planFiche,
+    controleAffiche,
+    blocFiche,
+    supabase,
+    code,
+    de,
+    a,
+    plan,
+    modifications,
+    tentatives,
+    repartition,
+  ]);
+
   if (!estPremium) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-10">
@@ -391,7 +684,6 @@ export default function BacktestPage() {
     );
   }
 
-  const strategieChoisie = strategies.find((s) => s.id === strategieId);
   const occupe = etat.phase === "telechargement" || etat.phase === "calcul";
   const moisDisponibles = moisEntre(PERIODE_MIN, PERIODE_MAX);
 
@@ -495,7 +787,7 @@ export default function BacktestPage() {
                 <button
                   type="button"
                   onClick={compiler}
-                  disabled={!strategieChoisie?.raw_text || compilation === "encours"}
+                  disabled={!strategieCourante?.raw_text || compilation === "encours"}
                   className="inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {compilation === "encours" ? (
@@ -533,9 +825,36 @@ export default function BacktestPage() {
           <Card>
             <CardTitle className="mb-1">{tr("bt_etape_plan")}</CardTitle>
             <p className="mb-4 text-xs text-foreground-muted">{tr("bt_etape_plan_aide")}</p>
-            <EditeurPlan plan={plan} instrument={instrument} onChange={setPlan} contestes={contestes} t={tr} />
+            <EditeurPlan
+              plan={plan}
+              instrument={instrument}
+              onChange={appliquerManuel}
+              contestes={contestes}
+              t={tr}
+            />
           </Card>
         </StaggerItem>
+
+        {/* ── 3 bis. Ce qui s'écarte de la fiche ──────────────────────────
+            ⚠️ JUSTE SOUS L'ÉDITEUR, et pas en bas de page. Un trader qui vient
+            d'appliquer une proposition doit lire ce qu'elle a changé au moment
+            où il regarde le réglage, pas trois cartes plus loin. La carte ne
+            s'affiche qu'une fois une fiche compilée : sans référence, il n'y a
+            rien à comparer, et un « aucun changement » sur un plan bricolé de
+            zéro serait un mensonge par construction. */}
+        {planFiche ? (
+          <StaggerItem>
+            <Modifications
+              modifications={modifications}
+              onAnnuler={(cle) => setPlan(annulerModification(cle, plan, planFiche))}
+              onToutAnnuler={() => {
+                setPlan(toutAnnuler(plan, planFiche));
+                setOrigines({});
+              }}
+              t={tr}
+            />
+          </StaggerItem>
+        ) : null}
 
         {/* ── 4. Lancer ──────────────────────────────────────────────────── */}
         <StaggerItem>
@@ -597,13 +916,7 @@ export default function BacktestPage() {
               propositions={resultat.propositions}
               instrument={instrument}
               tradesActuels={resultat.trades.length}
-              onAppliquer={(p) => {
-                // Même règle qu'ailleurs : le chiffre affiché ne correspondrait
-                // plus au plan visible, et un écart entre les deux est la pire
-                // chose qui puisse arriver à cette page.
-                setPlan(p);
-                setResultat(null);
-              }}
+              onAppliquer={(p) => appliquerPropose(p.plan, p.levier, p.objectif)}
               t={tr}
             />
           </StaggerItem>
@@ -683,15 +996,38 @@ export default function BacktestPage() {
               verifie={verifie}
               contestes={contestes.size}
               suggestions={resultat.suggestions}
-              onAppliquer={(p) => {
-                // On applique et on efface le resultat : le chiffre affiche ne
-                // correspondrait plus au plan visible, et un ecart entre les
-                // deux est la pire chose qui puisse arriver a cette page.
-                setPlan(p);
-                setResultat(null);
-              }}
+              // ⚠️ Une suggestion de réglage voisin ne cherche QUE de quoi
+              // remplir l'échantillon : son objectif est donc « avoir plus de
+              // trades », et il doit être consigné comme tel.
+              onAppliquer={(sug) => appliquerPropose(sug.plan, sug.levier, "plus_de_trades")}
               risqueParTradePct={plan.gestion.risqueParTradePct}
               maxPertesConsecutives={plan.gestion.maxPertesConsecutives}
+              t={tr}
+            />
+          </StaggerItem>
+        ) : null}
+
+        {/* ── 7. Contrôler ailleurs, puis enregistrer ──────────────────────
+            ⚠️ EN DERNIER, ET APRÈS LE VERDICT. C'est le seul endroit de la page
+            où un chiffre de backtest sort de l'écran pour entrer dans la façon
+            de trader de quelqu'un. Il ne s'ouvre qu'une fois un résultat obtenu
+            et une fiche compilée : sans référence, il n'y a rien à enregistrer,
+            et sans résultat, il n'y a rien à contrôler. */}
+        {resultat && planFiche ? (
+          <StaggerItem>
+            <Enregistrer
+              fenetre={fenetreIntacte}
+              controle={controleAffiche}
+              lectureActuelle={resultat.lecture}
+              periode={{ de, a }}
+              peutEnregistrer={modifications.length > 0}
+              verifie={verifie}
+              apercuFiche={blocFiche}
+              champsRepris={repartition.repris}
+              champsNonRepris={repartition.nonRepris}
+              sauvegarde={sauvegarde}
+              onControler={lancerControle}
+              onEnregistrer={enregistrer}
               t={tr}
             />
           </StaggerItem>

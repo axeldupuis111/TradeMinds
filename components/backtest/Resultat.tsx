@@ -5,7 +5,7 @@ import { cn } from "@/lib/cn";
 import { effetSurLeCompte } from "@/lib/backtest/capital";
 import { coutsEnPrix, type Instrument } from "@/lib/backtest/instruments";
 import { MAX_TENTATIVES_AVANT_ALERTE, type LectureBacktest } from "@/lib/backtest/verdict";
-import type { AuditExecution, PlanExecution, TradeSimule } from "@/lib/backtest/types";
+import type { AuditExecution, TradeSimule } from "@/lib/backtest/types";
 import type { Suggestion } from "@/lib/backtest/suggestions";
 import { AlertTriangle, Info, TrendingDown, TrendingUp } from "lucide-react";
 import {
@@ -48,8 +48,13 @@ export interface ResultatProps {
   ms: number;
   /** Réglages voisins qui produiraient assez de trades. */
   suggestions: Suggestion[];
-  /** Applique un réglage suggéré au plan. */
-  onAppliquer: (p: PlanExecution) => void;
+  /**
+   * Applique un réglage suggéré au plan.
+   * ⚠️ La suggestion ENTIÈRE, pas seulement son plan : son levier doit pouvoir
+   * être retenu, sinon la carte des modifications ne saura pas dire au nom de
+   * quoi ce réglage a été accepté.
+   */
+  onAppliquer: (suggestion: Suggestion) => void;
   /** Risque par trade déclaré, en % du capital. Traduit les R en pourcents. */
   risqueParTradePct?: number;
   /** Arrêt après N pertes d'affilée, pour chiffrer la pire journée. */
@@ -143,7 +148,7 @@ export function Resultat({
                       </span>
                       <button
                         type="button"
-                        onClick={() => onAppliquer(sug.plan)}
+                        onClick={() => onAppliquer(sug)}
                         className="shrink-0 rounded-md border border-accent/60 px-2 py-1 text-[11px] font-medium text-accent transition-colors hover:bg-accent/15"
                       >
                         {t("bt_appliquer")}

@@ -3,7 +3,6 @@
 import { Card } from "@/components/ui/Card";
 import type { Instrument } from "@/lib/backtest/instruments";
 import { OBJECTIFS, type Objectif, type Proposition } from "@/lib/backtest/propositions";
-import type { PlanExecution } from "@/lib/backtest/types";
 import { AlertTriangle, ShieldCheck, TrendingUp, Wand2 } from "lucide-react";
 
 /**
@@ -40,7 +39,14 @@ export function Propositions({
   propositions: Proposition[];
   instrument: Instrument;
   tradesActuels: number;
-  onAppliquer: (plan: PlanExecution) => void;
+  /**
+   * ⚠️ ON REMONTE LA PROPOSITION ENTIÈRE, PAS SEULEMENT SON PLAN. Le levier et
+   * l'objectif ne se retrouvent plus une fois le plan posé : c'est ici ou
+   * jamais que la page peut retenir au nom de quoi ce réglage a été accepté, et
+   * c'est exactement ce qui manquait au trader qui ne savait plus ce qu'il
+   * avait changé.
+   */
+  onAppliquer: (proposition: Proposition) => void;
   t: (cle: string, params?: Record<string, string | number>) => string;
 }) {
   if (propositions.length === 0) return null;
@@ -88,7 +94,7 @@ export function Propositions({
                       </div>
                       <button
                         type="button"
-                        onClick={() => onAppliquer(p.plan)}
+                        onClick={() => onAppliquer(p)}
                         className="shrink-0 rounded-lg border border-accent/50 px-2.5 py-1 text-[11px] font-medium text-accent hover:bg-accent/10"
                       >
                         {t("bt_prop_appliquer")}
