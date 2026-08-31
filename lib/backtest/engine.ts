@@ -1,3 +1,4 @@
+import { DetecteurPivots } from "./pivots";
 import type {
   AuditExecution,
   BlocConfirmation,
@@ -437,6 +438,31 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
 
   /** La divergence pose ses propres pivots : il faut savoir si le plan en a une. */
   const confDiv = plan.confirmations.find((x) => x.type === "divergence");
+
+  /**
+   * LES DÉTECTEURS DE PIVOTS, montés une fois pour toute la passe.
+   *
+   * ⚠️ TROIS AU PLUS, ET JAMAIS PARTAGÉS. Le niveau, le stop et la divergence
+   * ont chacun leur largeur de pivot, et la divergence a en plus ses propres
+   * sommets par construction : réutiliser une file d'un bloc pour un autre
+   * changerait la définition d'un pivot selon le bloc de niveau choisi, ce que
+   * `BlocConfirmation` interdit explicitement.
+   *
+   * ⚠️ La définition STRICTE ne vaut que pour le retracement. Voir l'en-tête de
+   * `pivots.ts` : sur un marché plat, la tolérante fait de chaque bougie un
+   * sommet et un creux, et la tranche de retracement se recalcule sur du bruit.
+   */
+  const detecteurNiveau = niveauDonneDesPivots
+    ? new DetecteurPivots(
+        h,
+        l,
+        (plan.niveau as { pivots: number }).pivots,
+        plan.niveau.type === "ote_fibonacci",
+      )
+    : null;
+  const detecteurStop =
+    largeurPivotStop != null ? new DetecteurPivots(h, l, largeurPivotStop) : null;
+  const detecteurDiv = confDiv ? new DetecteurPivots(h, l, confDiv.pivots) : null;
 
   const vwap =
     plan.niveau.type === "vwap_session"
@@ -1237,6 +1263,13 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
 
   // ─── LA BOUCLE ───────────────────────────────────────────────────────────
   for (let i = 0; i < n; i++) {
+    // ⚠️ AVANT TOUT LE RESTE, ET SANS CONDITION. Une file glissante n'est juste
+    // que si elle voit CHAQUE bougie, dans l'ordre : la nourrir depuis une
+    // branche conditionnelle décalerait sa fenêtre en silence.
+    detecteurNiveau?.pousser(i);
+    detecteurStop?.pousser(i);
+    detecteurDiv?.pousser(i);
+
     const ms = t[i];
     const jour = horloge.jour(ms);
     const minutes = horloge.minutes(ms);
@@ -1268,13 +1301,8 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
       const { pivots: k, touchesMin, toleranceTicks } = plan.niveau;
       const p = i - k;
       if (p >= k) {
-        let estSommet = true;
-        let estCreux = true;
-        for (let j2 = p - k; j2 <= p + k; j2++) {
-          if (j2 === p) continue;
-          if (h[j2] > h[p]) estSommet = false;
-          if (l[j2] < l[p]) estCreux = false;
-        }
+        const estSommet = detecteurNiveau!.estSommet(p);
+        const estCreux = detecteurNiveau!.estCreux(p);
         if (estSommet && (!sommetB || sommetB.i !== p)) {
           integrerPivot(droitesHaut, sommetsRecents, p, h[p], toleranceTicks, touchesMin);
           sommetB = { i: p, prix: h[p] };
@@ -1303,13 +1331,8 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
       const k = plan.niveau.pivots;
       const p = i - k;
       if (p >= k) {
-        let estSommet = true;
-        let estCreux = true;
-        for (let j = p - k; j <= p + k; j++) {
-          if (j === p) continue;
-          if (h[j] > h[p]) estSommet = false;
-          if (l[j] < l[p]) estCreux = false;
-        }
+        const estSommet = detecteurNiveau!.estSommet(p);
+        const estCreux = detecteurNiveau!.estCreux(p);
         if (estSommet) {
           hautNiveau = h[p];
           if (!sommetB || sommetB.i !== p) {
@@ -1422,13 +1445,8 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
         // et la tranche de retracement se recalcule à chaque barre sur du
         // bruit. Mesuré sur le jeu d'essai : deux trades sur une jambe qui
         // n'existait pas.
-        let estSommet = true;
-        let estCreux = true;
-        for (let j = p - k; j <= p + k; j++) {
-          if (j === p) continue;
-          if (h[j] >= h[p]) estSommet = false;
-          if (l[j] <= l[p]) estCreux = false;
-        }
+        const estSommet = detecteurNiveau!.estSommet(p);
+        const estCreux = detecteurNiveau!.estCreux(p);
         // ⚠️ Le pivot n'est lisible qu'ICI, k bougies après s'être formé : sa
         // définition regarde des deux côtés. Le publier plus tôt serait du
         // lookahead, et c'est l'erreur la plus répandue de tout l'exercice.
@@ -1538,13 +1556,8 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
       const k = largeurPivotStop;
       const p = i - k;
       if (p >= k) {
-        let estSommet = true;
-        let estCreux = true;
-        for (let j = p - k; j <= p + k; j++) {
-          if (j === p) continue;
-          if (h[j] > h[p]) estSommet = false;
-          if (l[j] < l[p]) estCreux = false;
-        }
+        const estSommet = detecteurStop!.estSommet(p);
+        const estCreux = detecteurStop!.estCreux(p);
         if (estSommet && sommetB?.i !== p) sommetB = { i: p, prix: h[p] };
         if (estCreux && creuxB?.i !== p) creuxB = { i: p, prix: l[p] };
       }
@@ -1557,13 +1570,8 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
       const k = confDiv.pivots;
       const p = i - k;
       if (p >= k) {
-        let estSommet = true;
-        let estCreux = true;
-        for (let j = p - k; j <= p + k; j++) {
-          if (j === p) continue;
-          if (h[j] > h[p]) estSommet = false;
-          if (l[j] < l[p]) estCreux = false;
-        }
+        const estSommet = detecteurDiv!.estSommet(p);
+        const estCreux = detecteurDiv!.estCreux(p);
         if (estSommet && divSommetB2 !== p) {
           divSommetA = divSommetB2;
           divSommetB2 = p;
