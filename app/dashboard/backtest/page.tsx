@@ -53,12 +53,17 @@ import {
   annulerModification,
   CLES_PAR_LEVIER,
   comparerPlans,
+  demandeUnControle,
   DESCRIPTEURS,
   empreintePlan,
   toutAnnuler,
   type Origine,
 } from "@/lib/backtest/modifications";
-import { periodeIntacte, type Fenetre } from "@/lib/backtest/hors-periode";
+import {
+  fenetreDeTestSuggeree,
+  periodeIntacte,
+  type Fenetre,
+} from "@/lib/backtest/hors-periode";
 import {
   composerBloc,
   ecrireDansLaFiche,
@@ -403,15 +408,22 @@ export default function BacktestPage() {
    * en M1. Les calculer à chaque lancement ferait payer cette attente à tout le
    * monde, y compris à ceux qui ne les regardent pas.
    */
-  const lancer = useCallback((avecPropositions = false) => {
+  const lancer = useCallback((avecPropositions = false, fenetre?: { de: string; a: string }) => {
     if (etat.phase === "telechargement" || etat.phase === "calcul") return;
     workerRef.current?.terminate();
+
+    // ⚠️ LA PÉRIODE PASSE EN ARGUMENT, elle n'est pas relue dans l'état. Le
+    // bouton qui raccourcit la fenêtre pose `de`/`a` et relance dans le même
+    // geste : relire l'état ici rejouerait l'ANCIENNE période, React n'ayant pas
+    // encore rendu. Le trader verrait le même résultat et croirait au bug.
+    const depuis = fenetre?.de ?? de;
+    const jusqua = fenetre?.a ?? a;
 
     const prochaine = tentatives + 1;
     setTentatives(prochaine);
     setResultat(null);
     setVerifie(false);
-    setEtat({ phase: "telechargement", faits: 0, total: moisEntre(de, a).length });
+    setEtat({ phase: "telechargement", faits: 0, total: moisEntre(depuis, jusqua).length });
 
     const w = new Worker(new URL("./worker.ts", import.meta.url));
     workerRef.current = w;
@@ -436,8 +448,8 @@ export default function BacktestPage() {
     };
     const demande: DemandeBacktest = {
       code,
-      de,
-      a,
+      de: depuis,
+      a: jusqua,
       plan,
       couts: plan.couts,
       tentatives: prochaine,
@@ -512,6 +524,30 @@ export default function BacktestPage() {
   const fenetreIntacte = useMemo(
     () => periodeIntacte(de, a, PERIODE_MIN, PERIODE_MAX),
     [de, a],
+  );
+
+  /**
+   * La fenêtre de test à proposer quand il n'en reste aucune d'intacte.
+   *
+   * ⚠️ SANS ELLE, LA RÈGLE EST UN MUR. Vu en vrai sur la preview : un trader
+   * teste sur les quatre ans disponibles, il ne reste rien à contrôler, et le
+   * bouton d'enregistrement ne se débloque plus jamais. Le garde-fou doit avoir
+   * une porte, sinon il ne protège de rien : il empêche seulement de finir.
+   */
+  const periodeSuggeree = useMemo(() => fenetreDeTestSuggeree(PERIODE_MIN, PERIODE_MAX), []);
+
+  const raccourcirEtRelancer = useCallback(
+    (f: { de: string; a: string }) => {
+      setDe(f.de);
+      setA(f.a);
+      setControle({ phase: "repos" });
+      setEmpreinteControlee(null);
+      // On relance dans la foulée, avec la nouvelle fenêtre passée en argument :
+      // demander au trader de recliquer « Lancer » après lui avoir fait cliquer
+      // ici serait une marche de plus sur un chemin déjà long.
+      lancer(false, f);
+    },
+    [lancer],
   );
 
   const lancerControle = useCallback(
@@ -600,12 +636,17 @@ export default function BacktestPage() {
 
   const enregistrer = useCallback(async () => {
     if (!strategieCourante || !resultat || !planFiche) return;
-    if (controleAffiche.phase !== "fait" || !controleAffiche.valide) return;
+    // ⚠️ LE CONTRÔLE N'EST EXIGÉ QUE S'IL A UN SENS. Le refuser aussi quand rien
+    // n'a bougé côté trades bloquait l'enregistrement d'un simple changement de
+    // risque par trade, que le moteur ne lit même pas : le bouton s'affichait
+    // actif et ne faisait rien. Un bouton muet est pire qu'un bouton gris.
+    const controleFait = controleAffiche.phase === "fait" && controleAffiche.valide;
+    if (demandeUnControle(modifications) && !controleFait) return;
     setSauvegarde("encours");
 
     const rawText = ecrireDansLaFiche(strategieCourante.raw_text ?? "", blocFiche);
     const stats = resultat.lecture.stats;
-    const statsControle = controleAffiche.lecture.stats;
+    const statsControle = controleAffiche.phase === "fait" ? controleAffiche.lecture.stats : undefined;
 
     const r = await enregistrerVersion(supabase, {
       strategieId: strategieCourante.id,
@@ -622,15 +663,20 @@ export default function BacktestPage() {
         borneHaute: stats?.borneHaute ?? null,
         tentatives,
       },
-      controle: {
-        de: controleAffiche.fenetre.de,
-        a: controleAffiche.fenetre.a,
-        trades: statsControle?.nbTrades ?? 0,
-        esperanceR: statsControle?.esperanceR ?? null,
-        borneBasse: statsControle?.borneBasse ?? null,
-        borneHaute: statsControle?.borneHaute ?? null,
-        verdict: controleAffiche.lecture.verdict,
-      },
+      // ⚠️ `null` quand il n'a pas eu lieu, et l'archive le dira ainsi. Inscrire
+      // un contrôle vide ferait passer pour vérifiée une version qui ne l'est pas.
+      controle:
+        controleAffiche.phase === "fait" && controleAffiche.valide
+          ? {
+              de: controleAffiche.fenetre.de,
+              a: controleAffiche.fenetre.a,
+              trades: statsControle?.nbTrades ?? 0,
+              esperanceR: statsControle?.esperanceR ?? null,
+              borneBasse: statsControle?.borneBasse ?? null,
+              borneHaute: statsControle?.borneHaute ?? null,
+              verdict: controleAffiche.lecture.verdict,
+            }
+          : null,
       rawText,
       colonnes: repartition.colonnes,
     });
@@ -1017,6 +1063,8 @@ export default function BacktestPage() {
           <StaggerItem>
             <Enregistrer
               fenetre={fenetreIntacte}
+              periodeSuggeree={periodeSuggeree}
+              controleRequis={demandeUnControle(modifications)}
               controle={controleAffiche}
               lectureActuelle={resultat.lecture}
               periode={{ de, a }}
@@ -1027,6 +1075,7 @@ export default function BacktestPage() {
               champsNonRepris={repartition.nonRepris}
               sauvegarde={sauvegarde}
               onControler={lancerControle}
+              onRaccourcir={raccourcirEtRelancer}
               onEnregistrer={enregistrer}
               t={tr}
             />

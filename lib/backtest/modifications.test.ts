@@ -7,6 +7,7 @@ import {
   BLOC_I18N,
   CLES_PAR_LEVIER,
   comparerPlans,
+  demandeUnControle,
   DESCRIPTEURS,
   empreintePlan,
   toutAnnuler,
@@ -14,6 +15,7 @@ import {
 import fr from "../i18n/fr";
 import { socleDePlan } from "./compilation";
 import type { PlanExecution } from "./types";
+import type { Modification } from "./modifications";
 
 const NAS = instrumentParCode("NAS100") ?? INSTRUMENTS[0];
 
@@ -196,6 +198,37 @@ describe("ce que la liste ne sait pas nommer", () => {
     const connues = fr as Record<string, string>;
     expect(connues["bt_modif_autre"]).toBeTruthy();
     expect(connues["bt_geste_autre"]).toBeTruthy();
+  });
+});
+
+/**
+ * ⚠️ NÉ D'UNE IMPASSE VUE EN VRAI, et du bon sens qu'elle a révélé. Le contrôle
+ * hors période protège d'un réglage choisi parce qu'il tombait bien. Le risque
+ * par trade n'est pas de cette nature : le moteur ne le lit jamais.
+ */
+describe("quand un contrôle hors période a un sens", () => {
+  const mod = (cle: string): Modification => ({
+    cle,
+    bloc: "gestion",
+    avant: "5 %",
+    apres: "2.5 %",
+    origine: "manuel",
+  });
+
+  it("ne l'exige pas pour un changement qui ne touche aucun trade", () => {
+    expect(demandeUnControle([mod("risque_par_trade")])).toBe(false);
+  });
+
+  it("l'exige dès qu'un réglage change la stratégie testée", () => {
+    expect(demandeUnControle([mod("risque_par_trade"), mod("niveau_pivots")])).toBe(true);
+  });
+
+  it("l'exige pour ce qu'on ne sait pas nommer", () => {
+    expect(demandeUnControle([mod("autre")])).toBe(true);
+  });
+
+  it("ne l'exige pas quand il n'y a rien à enregistrer", () => {
+    expect(demandeUnControle([])).toBe(false);
   });
 });
 

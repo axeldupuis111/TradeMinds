@@ -82,3 +82,31 @@ export function periodeIntacte(
  * pire qu'un contrôle absent : ça donne l'apparence d'une vérification.
  */
 export const MOIS_MIN_CONTROLE = 6;
+
+/**
+ * LA SORTIE DE L'IMPASSE, et elle a été trouvée en vrai.
+ *
+ * ⚠️⚠️ DÉFAUT MESURÉ SUR LA PREVIEW. Un trader a testé sur la profondeur
+ * COMPLÈTE des données, ce qui est parfaitement légitime : il ne restait donc
+ * aucune fenêtre intacte, le contrôle devenait impossible, et le bouton
+ * d'enregistrement restait gris pour toujours. L'écran lui disait « refais un
+ * test sur une fenêtre plus courte » sans rien lui offrir pour le faire. Une
+ * règle sans porte de sortie n'est pas un garde-fou, c'est un mur.
+ *
+ * On rend donc la fenêtre de test à proposer : elle laisse le PREMIER TIERS
+ * intact et garde le reste pour mesurer. Le premier tiers plutôt que le
+ * dernier, pour la même raison que `periodeIntacte` préfère l'antérieur : c'est
+ * la période la plus lointaine, donc le régime de marché le plus différent,
+ * donc le contrôle le plus exigeant.
+ *
+ * ⚠️ Rend `null` si les données sont trop courtes pour couper en deux sans
+ * rendre l'une des deux parts inutilisable. Mieux vaut ne rien proposer que
+ * proposer un contrôle qui dira « trop peu de trades » à coup sûr.
+ */
+export function fenetreDeTestSuggeree(min: string, max: string): { de: string; a: string } | null {
+  const mois = moisEntre(min, max);
+  const intacts = Math.max(MOIS_MIN_CONTROLE, Math.round(mois.length / 3));
+  // Il faut de quoi mesurer ET de quoi contrôler.
+  if (mois.length - intacts < MOIS_MIN_CONTROLE) return null;
+  return { de: mois[intacts], a: max };
+}

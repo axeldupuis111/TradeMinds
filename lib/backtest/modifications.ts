@@ -54,6 +54,17 @@ export interface Descripteur {
   restaurer(actuel: PlanExecution, reference: PlanExecution): PlanExecution;
   /** L'unité, pour l'affichage seulement. */
   unite?: "ticks" | "pct" | "bougies";
+  /**
+   * Ce réglage laisse-t-il les trades EXACTEMENT identiques ?
+   *
+   * ⚠️ La distinction décide si un contrôle hors période a un sens. Le moteur
+   * ignore volontairement le risque par trade : mêmes entrées, mêmes sorties,
+   * même suite de R, seule la taille de position change. Rejouer ça sur une
+   * autre période ne vérifierait rien du tout, et l'exiger transformerait un
+   * garde-fou en formalité, c'est-à-dire en quelque chose qu'on apprend à
+   * contourner.
+   */
+  sansEffetSurLesTrades?: boolean;
 }
 
 /** Les pivots, quels que soient les blocs qui en portent. */
@@ -349,6 +360,9 @@ export const DESCRIPTEURS: Descripteur[] = [
     cle: "risque_par_trade",
     bloc: "gestion",
     unite: "pct",
+    // ⚠️ Le moteur ne le lit jamais : il raisonne en R. Voir `Gestion` dans
+    // types.ts. C'est de l'arithmétique sur la taille de position, rien d'autre.
+    sansEffetSurLesTrades: true,
     lire: (p) => p.gestion.risqueParTradePct ?? null,
     restaurer: (a, r) => ({
       ...a,
@@ -564,6 +578,23 @@ function stable(v: unknown): string {
     .sort()
     .map((k) => `${JSON.stringify(k)}:${stable(o[k])}`)
     .join(",")}}`;
+}
+
+/**
+ * Ces changements-là méritent-ils un contrôle sur une autre période ?
+ *
+ * ⚠️ NON quand aucun ne touche à un seul trade. Exiger de rejouer quatre ans de
+ * bougies pour inscrire « je risque 2,5 % au lieu de 5 % » donnerait la même
+ * suite de R au tick près : le contrôle ne vérifierait rien, et une vérification
+ * qui ne vérifie rien apprend surtout à cliquer sans lire.
+ *
+ * ⚠️ La ligne « d'autres réglages diffèrent » compte comme un vrai changement :
+ * on ne sait pas ce qu'elle recouvre, donc on ne peut pas la dire inoffensive.
+ */
+export function demandeUnControle(modifications: Modification[]): boolean {
+  return modifications.some(
+    (m) => !DESCRIPTEURS.find((d) => d.cle === m.cle)?.sansEffetSurLesTrades,
+  );
 }
 
 /**

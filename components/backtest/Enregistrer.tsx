@@ -5,7 +5,7 @@ import type { Fenetre } from "@/lib/backtest/hors-periode";
 import { MOIS_MIN_CONTROLE } from "@/lib/backtest/hors-periode";
 import type { LectureBacktest } from "@/lib/backtest/verdict";
 import { MIN_TRADES_CONCLUSION } from "@/lib/backtest/verdict";
-import { AlertTriangle, CheckCircle2, Save, ShieldQuestion } from "lucide-react";
+import { AlertTriangle, CheckCircle2, CalendarRange, Save, ShieldQuestion } from "lucide-react";
 
 /**
  * LE PAS QUI ENGAGE : CONTRÔLER, PUIS ENREGISTRER.
@@ -66,6 +66,8 @@ function verdictDuControle(l: LectureBacktest): string {
 
 export function Enregistrer({
   fenetre,
+  periodeSuggeree,
+  controleRequis,
   controle,
   lectureActuelle,
   periode,
@@ -76,11 +78,27 @@ export function Enregistrer({
   champsNonRepris,
   sauvegarde,
   onControler,
+  onRaccourcir,
   onEnregistrer,
   t,
 }: {
   /** La fenêtre intacte disponible, ou null s'il n'en reste aucune. */
   fenetre: Fenetre | null;
+  /**
+   * La fenêtre de test à proposer quand il n'en reste aucune d'intacte.
+   *
+   * ⚠️ SANS ELLE, LA RÈGLE EST UN MUR. Vu en vrai : un trader teste sur toute la
+   * profondeur disponible, il ne reste rien à contrôler, et le bouton
+   * d'enregistrement ne se débloque plus jamais. Lui dire « refais un test plus
+   * court » sans rien lui offrir pour le faire, c'est le laisser dans l'impasse.
+   */
+  periodeSuggeree: { de: string; a: string } | null;
+  /**
+   * Faux quand aucun changement ne touche un seul trade (baisser son risque par
+   * exemple). Rejouer la même suite de R ailleurs ne vérifierait rien, et une
+   * vérification vide apprend surtout à cliquer sans lire.
+   */
+  controleRequis: boolean;
   controle: EtatControle;
   lectureActuelle: LectureBacktest;
   periode: { de: string; a: string };
@@ -94,17 +112,20 @@ export function Enregistrer({
   champsNonRepris: string[];
   sauvegarde: "repos" | "encours" | "ok" | "erreur";
   onControler: (fenetre: Fenetre) => void;
+  /** Raccourcit la période testée et relance, pour libérer une fenêtre intacte. */
+  onRaccourcir: (periode: { de: string; a: string }) => void;
   onEnregistrer: () => void;
   t: (cle: string, params?: Record<string, string | number>) => string;
 }) {
   const controleFait = controle.phase === "fait" && controle.valide;
   const bloquant = !verifie
     ? t("bt_sauver_bloque_verifie")
-    : !controleFait
+    : controleRequis && !controleFait
       ? t("bt_sauver_bloque")
       : null;
 
   const ici = chiffres(lectureActuelle);
+  const sansFenetre = fenetre === null || fenetre.mois < MOIS_MIN_CONTROLE;
 
   return (
     <Card className="p-4 sm:p-5">
@@ -117,10 +138,38 @@ export function Enregistrer({
         {t("bt_hors_pourquoi")}
       </p>
 
-      {fenetre === null || fenetre.mois < MOIS_MIN_CONTROLE ? (
-        <p className="mt-3 rounded-lg border border-warning/40 bg-warning/[0.06] p-3 text-xs leading-relaxed text-warning">
-          {t("bt_hors_aucune")}
+      {!controleRequis ? (
+        /* ⚠️ Rien de ce qui a changé ne déplace un trade : le contrôle n'aurait
+           littéralement rien à comparer. On le dit, on ne le grise pas. */
+        <p className="mt-3 rounded-lg border border-border bg-surface/40 p-3 text-xs leading-relaxed text-foreground-muted">
+          {t("bt_hors_inutile")}
         </p>
+      ) : sansFenetre ? (
+        <div className="mt-3 rounded-lg border border-warning/40 bg-warning/[0.06] p-3">
+          <p className="text-xs leading-relaxed text-warning">{t("bt_hors_aucune")}</p>
+          {periodeSuggeree ? (
+            <>
+              <button
+                type="button"
+                onClick={() => onRaccourcir(periodeSuggeree)}
+                className="mt-2.5 flex items-center gap-1.5 rounded-lg border border-accent/50 bg-background px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/10"
+              >
+                <CalendarRange className="h-3.5 w-3.5" />
+                {t("bt_hors_raccourcir", {
+                  test: `${periodeSuggeree.de} → ${periodeSuggeree.a}`,
+                })}
+              </button>
+              {/* ⚠️ ON NE FAIT PAS PASSER CETTE FENÊTRE POUR VIERGE. Elle a déjà
+                  été traversée à l'intérieur d'un test plus large : le trader en
+                  a vu le résultat fondu dans un total, pas isolé. C'est un
+                  contrôle plus faible qu'une période jamais ouverte, et le lui
+                  cacher vaudrait mieux ne rien contrôler du tout. */}
+              <p className="mt-2 text-[11px] leading-relaxed text-foreground-muted">
+                {t("bt_hors_deja_vue")}
+              </p>
+            </>
+          ) : null}
+        </div>
       ) : (
         <>
           <button
