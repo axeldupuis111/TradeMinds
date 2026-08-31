@@ -9,6 +9,10 @@ import { chercherReglagesViables, type Suggestion } from "@/lib/backtest/suggest
 import { chercherPropositions, type Proposition } from "@/lib/backtest/propositions";
 import { concentration, type Concentration } from "@/lib/backtest/robustesse";
 import { mesurerStabilite, type Stabilite } from "@/lib/backtest/stabilite";
+import {
+  projeterLeBacktest,
+  type ProjectionDuBacktest,
+} from "@/lib/backtest/projection-backtest";
 import type { Modification } from "@/lib/backtest/modifications";
 import type { MecaniqueDessin, TraceDessin } from "@/lib/backtest/apercu";
 import type { Couts, PlanExecution, ResultatBacktest, SerieM1, TradeSimule } from "@/lib/backtest/types";
@@ -206,6 +210,11 @@ export type ReponseBacktest =
       concentration: Concentration | null;
       /** Le voisinage des réglages changés, quand il l'a demandé. */
       stabilite?: Stabilite[];
+      /**
+       * Ce que donnerait une année de ces trades-là, en pourcents du capital.
+       * `null` sans risque par trade ou sous le seuil de conclusion.
+       */
+      projection: ProjectionDuBacktest | null;
     }
   | { type: "erreur"; message: string };
 
@@ -252,6 +261,10 @@ self.onmessage = async (e: MessageEvent<DemandeBacktest>) => {
       // trades déjà obtenus, elle ne coûte rien et elle répond à une question
       // que personne ne pense à poser (« ton résultat vient-il d'un seul mois »).
       concentration: concentration(resultat.trades),
+      // ⚠️ Une espérance par trade ne dit rien du CHEMIN, et c'est le chemin qui
+      // vide les comptes. Le rééchantillonnage par blocs est déjà écrit et
+      // déjà testé : le brancher ne coûte rien.
+      projection: projeterLeBacktest(resultat.trades, complet.gestion.risqueParTradePct),
       stabilite:
         stabilite && stabilite.length > 0
           ? mesurerStabilite(serie, complet, couts, stabilite, (faits, total) =>

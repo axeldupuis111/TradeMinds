@@ -37,6 +37,7 @@ import { Modifications } from "@/components/backtest/Modifications";
 import { Enregistrer, type EtatControle } from "@/components/backtest/Enregistrer";
 import { Versions } from "@/components/backtest/Versions";
 import { Robustesse } from "@/components/backtest/Robustesse";
+import { ProjectionCarte } from "@/components/backtest/ProjectionCarte";
 import { Champ, Liste } from "@/components/backtest/Controles";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
@@ -72,6 +73,7 @@ import {
   repartirDansLaFiche,
 } from "@/lib/backtest/fiche-reglages";
 import { enregistrerVersion } from "@/lib/backtest/enregistrement";
+import { nomDuFichier, tradesEnCsv } from "@/lib/backtest/export-csv";
 import { compterUnEssai, lireTentatives } from "@/lib/backtest/tentatives";
 import {
   listerVersions,
@@ -227,6 +229,7 @@ export default function BacktestPage() {
     propositions?: import("@/lib/backtest/propositions").Proposition[];
     concentration: import("@/lib/backtest/robustesse").Concentration | null;
     stabilite?: import("@/lib/backtest/stabilite").Stabilite[];
+    projection: import("@/lib/backtest/projection-backtest").ProjectionDuBacktest | null;
   } | null>(null);
 
   /**
@@ -493,6 +496,7 @@ export default function BacktestPage() {
           propositions: r.propositions,
           concentration: r.concentration,
           stabilite: r.stabilite,
+          projection: r.projection,
         });
         setEtat({ phase: "repos" });
       }
@@ -839,6 +843,45 @@ export default function BacktestPage() {
     repartition,
   ]);
 
+  /**
+   * Télécharge la liste complète des trades.
+   *
+   * ⚠️ CE N'EST PAS UN CONFORT. La page demande au trader de reconnaître sa
+   * méthode dans une douzaine d'aperçus dessinés ; sur six cents trades, douze
+   * ne sont qu'un échantillon. Qui veut vraiment vérifier doit pouvoir ouvrir la
+   * liste entière et la confronter à ses propres captures.
+   */
+  const exporterCsv = useCallback(() => {
+    if (!resultat) return;
+    const csv = tradesEnCsv(
+      resultat.trades,
+      instrument,
+      {
+        date: tr("bt_csv_date"),
+        sens: tr("bt_csv_sens"),
+        entree: tr("bt_csv_entree"),
+        sortie: tr("bt_csv_sortie"),
+        stop: tr("bt_csv_stop"),
+        risque: tr("bt_csv_risque"),
+        r: tr("bt_csv_r"),
+        rBrut: tr("bt_csv_rbrut"),
+        motif: tr("bt_csv_motif"),
+        collision: tr("bt_csv_collision"),
+      },
+      (motif) => tr(`bt_motif_${motif}`),
+    );
+    // ⚠️ `text/csv` et pas `application/octet-stream` : sur mobile, un type
+    // générique fait proposer « ouvrir avec » au lieu d'enregistrer.
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const lien = document.createElement("a");
+    lien.href = url;
+    lien.download = nomDuFichier(code, de, a);
+    lien.click();
+    // Sans révocation, l'objet reste en mémoire tant que l'onglet vit, et un
+    // trader qui exporte dix fois garde dix fichiers en RAM.
+    URL.revokeObjectURL(url);
+  }, [resultat, instrument, code, de, a, tr]);
+
   if (!estPremium) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-10">
@@ -1181,6 +1224,29 @@ export default function BacktestPage() {
           </StaggerItem>
         ) : null}
 
+        {/* ── 5 bis. La liste complète, pour la regarder ailleurs ─────────
+            ⚠️ Les douze aperçus dessinés ne sont qu'un échantillon. Sur six
+            cents trades, quelqu'un qui veut vraiment vérifier doit pouvoir
+            ouvrir la liste entière dans son tableur. */}
+        {resultat && resultat.trades.length > 0 ? (
+          <StaggerItem>
+            <Card className="p-4 sm:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="min-w-0 flex-1 text-[11px] leading-relaxed text-foreground-muted">
+                  {tr("bt_csv_aide")}
+                </p>
+                <button
+                  type="button"
+                  onClick={exporterCsv}
+                  className="shrink-0 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground-muted hover:bg-surface hover:text-foreground"
+                >
+                  {tr("bt_csv_exporter", { n: resultat.trades.length })}
+                </button>
+              </div>
+            </Card>
+          </StaggerItem>
+        ) : null}
+
         {/* ── 5 ter. D'où vient le résultat ───────────────────────────────
             ⚠️ JUSTE APRÈS L'INSPECTION VISUELLE ET AVANT LE VERDICT. Le trader
             doit lire « ton résultat vient d'un seul mois » AVANT le chiffre
@@ -1199,6 +1265,16 @@ export default function BacktestPage() {
               onMesurerStabilite={() => lancer(false, undefined, modifications)}
               t={tr}
             />
+          </StaggerItem>
+        ) : null}
+
+        {/* ── 5 quater. Le chemin, pas seulement l'espérance ──────────────
+            ⚠️ Une espérance par trade ne dit rien du chemin, et c'est le chemin
+            qui vide les comptes. Placée après la robustesse : savoir d'où vient
+            le résultat passe avant de le prolonger. */}
+        {resultat?.projection ? (
+          <StaggerItem>
+            <ProjectionCarte donnees={resultat.projection} t={tr} />
           </StaggerItem>
         ) : null}
 
