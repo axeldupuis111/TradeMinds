@@ -35,6 +35,7 @@ import { Inspection } from "@/components/backtest/Inspection";
 import { Propositions } from "@/components/backtest/Propositions";
 import { Modifications } from "@/components/backtest/Modifications";
 import { Enregistrer, type EtatControle } from "@/components/backtest/Enregistrer";
+import { Versions } from "@/components/backtest/Versions";
 import { Champ, Liste } from "@/components/backtest/Controles";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
@@ -70,6 +71,12 @@ import {
   repartirDansLaFiche,
 } from "@/lib/backtest/fiche-reglages";
 import { enregistrerVersion } from "@/lib/backtest/enregistrement";
+import { compterUnEssai, lireTentatives } from "@/lib/backtest/tentatives";
+import {
+  listerVersions,
+  supprimerVersion,
+  type VersionArchivee,
+} from "@/lib/backtest/versions";
 import type { PlanExecution } from "@/lib/backtest/types";
 import type { LectureBacktest } from "@/lib/backtest/verdict";
 import type { Apercu, DemandeBacktest, ReponseBacktest } from "./worker";
@@ -225,6 +232,25 @@ export default function BacktestPage() {
    * celui qui sort le mieux en trouve TOUJOURS un, même dans du bruit pur.
    */
   const [tentatives, setTentatives] = useState(0);
+  /** Date du premier essai sur cette stratégie, pour dire « depuis le … ». */
+  const [tentativesDepuis, setTentativesDepuis] = useState<string | null>(null);
+
+  /**
+   * ⚠️ RELU À CHAQUE CHANGEMENT DE STRATÉGIE, pas seulement au montage. Le
+   * compteur vivait dans le seul état de React : un rechargement d'onglet le
+   * remettait à zéro et l'alerte de sur-apprentissage ne se déclenchait plus
+   * jamais pour quelqu'un qui travaille sa méthode sur plusieurs soirées.
+   */
+  useEffect(() => {
+    if (!strategieId) {
+      setTentatives(0);
+      setTentativesDepuis(null);
+      return;
+    }
+    const lu = lireTentatives(strategieId);
+    setTentatives(lu.n);
+    setTentativesDepuis(lu.n > 0 ? lu.depuis : null);
+  }, [strategieId]);
 
 
   /**
@@ -247,6 +273,20 @@ export default function BacktestPage() {
   const [controle, setControle] = useState<EtatControle>({ phase: "repos" });
   const [empreinteControlee, setEmpreinteControlee] = useState<string | null>(null);
   const [sauvegarde, setSauvegarde] = useState<"repos" | "encours" | "ok" | "erreur">("repos");
+
+  /**
+   * LES VERSIONS DÉJÀ ENREGISTRÉES POUR CETTE STRATÉGIE.
+   *
+   * ⚠️ `erreur` EST DISTINCT DE « LISTE VIDE », et la distinction n'est pas
+   * cosmétique : afficher « aucune version » à quelqu'un qui en a douze lui
+   * ferait croire son travail perdu. Le client Supabase ne jette pas, donc rien
+   * ne signalerait l'échec si on ne le portait pas explicitement.
+   */
+  const [versions, setVersions] = useState<VersionArchivee[]>([]);
+  const [versionsErreur, setVersionsErreur] = useState(false);
+  const [versionsChargement, setVersionsChargement] = useState(false);
+  /** Les deux versions cochées pour la comparaison, dans l'ordre du clic. */
+  const [comparees, setComparees] = useState<string[]>([]);
 
   const workerRef = useRef<Worker | null>(null);
   const workerControleRef = useRef<Worker | null>(null);
@@ -419,8 +459,10 @@ export default function BacktestPage() {
     const depuis = fenetre?.de ?? de;
     const jusqua = fenetre?.a ?? a;
 
-    const prochaine = tentatives + 1;
+    const compte = compterUnEssai(strategieId);
+    const prochaine = compte.n;
     setTentatives(prochaine);
+    setTentativesDepuis(compte.depuis);
     setResultat(null);
     setVerifie(false);
     setEtat({ phase: "telechargement", faits: 0, total: moisEntre(depuis, jusqua).length });
@@ -456,7 +498,7 @@ export default function BacktestPage() {
       propositions: avecPropositions,
     };
     w.postMessage(demande);
-  }, [etat.phase, tentatives, de, a, code, plan]);
+  }, [etat.phase, strategieId, de, a, code, plan]);
 
   /**
    * Poser un plan venu d'un BOUTON, en retenant au nom de quoi.
@@ -502,6 +544,77 @@ export default function BacktestPage() {
     },
     [plan],
   );
+
+  const rafraichirVersions = useCallback(async () => {
+    if (!strategieId) {
+      setVersions([]);
+      setVersionsErreur(false);
+      return;
+    }
+    setVersionsChargement(true);
+    const r = await listerVersions(supabase, strategieId);
+    setVersionsChargement(false);
+    if (r.ok) {
+      setVersions(r.versions);
+      setVersionsErreur(false);
+    } else {
+      // ⚠️ ON N'EFFACE PAS LA LISTE EN MÉMOIRE. Une lecture ratée ne veut pas
+      // dire que les versions ont disparu ; les remplacer par du vide ferait
+      // clignoter l'écran vers « tu n'as rien enregistré ».
+      setVersionsErreur(true);
+    }
+  }, [supabase, strategieId]);
+
+  useEffect(() => {
+    void rafraichirVersions();
+    setComparees([]);
+  }, [rafraichirVersions]);
+
+  /**
+   * ⚠️ DEUX AU PLUS, ET LA PLUS ANCIENNE SORT. Une comparaison à trois n'existe
+   * pas : l'intervalle de la différence se calcule entre DEUX mesures, et
+   * empiler des colonnes transformerait l'écran en tableau de classement, qui
+   * est exactement ce qu'on refuse ici.
+   */
+  const basculerComparaison = useCallback((id: string) => {
+    setComparees((actuels) => {
+      if (actuels.includes(id)) return actuels.filter((x) => x !== id);
+      return [...actuels, id].slice(-2);
+    });
+  }, []);
+
+  const supprimerUneVersion = useCallback(
+    async (v: VersionArchivee) => {
+      const r = await supprimerVersion(supabase, v.id);
+      if (!r.ok) {
+        setVersionsErreur(true);
+        return;
+      }
+      setVersions((liste) => liste.filter((x) => x.id !== v.id));
+      setComparees((actuels) => actuels.filter((x) => x !== v.id));
+    },
+    [supabase],
+  );
+
+  /**
+   * Reprendre le plan d'une version.
+   *
+   * ⚠️ LA RÉFÉRENCE NE BOUGE PAS. `planFiche` reste ce que la fiche décrit :
+   * reprendre un ancien essai doit faire réapparaître son écart avec la fiche,
+   * pas le faire passer pour la nouvelle normale. On efface en revanche le
+   * résultat et le contrôle, qui portaient sur un autre plan.
+   */
+  const reprendreVersion = useCallback((v: VersionArchivee) => {
+    setPlan(v.plan);
+    setCode(v.instrument);
+    setDe(v.de);
+    setA(v.a);
+    setOrigines({});
+    setResultat(null);
+    setControle({ phase: "repos" });
+    setEmpreinteControlee(null);
+    setSauvegarde("repos");
+  }, []);
 
   /** L'écart avec la fiche, recalculé à chaque changement de plan. */
   const modifications = useMemo(
@@ -696,7 +809,11 @@ export default function BacktestPage() {
     // sans effet et recommence.
     setPlanFiche(structuredClone(plan));
     setOrigines({});
+    // La version vient d'être archivée : la liste doit la montrer tout de suite,
+    // sinon le trader doute que l'enregistrement ait fait quelque chose.
+    void rafraichirVersions();
   }, [
+    rafraichirVersions,
     strategieCourante,
     resultat,
     planFiche,
@@ -1038,6 +1155,7 @@ export default function BacktestPage() {
               periode={{ de, a }}
               moisManquants={resultat.moisManquants}
               tentatives={tentatives}
+              tentativesDepuis={tentativesDepuis}
               ms={resultat.ms}
               verifie={verifie}
               contestes={contestes.size}
@@ -1048,6 +1166,27 @@ export default function BacktestPage() {
               onAppliquer={(sug) => appliquerPropose(sug.plan, sug.levier, "plus_de_trades")}
               risqueParTradePct={plan.gestion.risqueParTradePct}
               maxPertesConsecutives={plan.gestion.maxPertesConsecutives}
+              t={tr}
+            />
+          </StaggerItem>
+        ) : null}
+
+        {/* ── 6 bis. L'historique des versions ────────────────────────────
+            ⚠️ IL S'AFFICHE MÊME SANS RÉSULTAT COURANT, contrairement aux cartes
+            au-dessus. Un trader qui rouvre la page trois jours plus tard doit
+            retrouver ce qu'il avait mesuré avant d'avoir à relancer quoi que ce
+            soit : une archive qui exige de refaire le travail pour être lue ne
+            sert à rien. */}
+        {strategieId ? (
+          <StaggerItem>
+            <Versions
+              versions={versions}
+              erreur={versionsErreur}
+              chargement={versionsChargement}
+              selection={comparees}
+              onSelectionner={basculerComparaison}
+              onRecharger={reprendreVersion}
+              onSupprimer={supprimerUneVersion}
               t={tr}
             />
           </StaggerItem>

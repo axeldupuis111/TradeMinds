@@ -45,6 +45,15 @@ export interface ResultatProps {
   periode: { de: string; a: string };
   moisManquants: string[];
   tentatives: number;
+  /**
+   * Date du premier essai, en ISO. `null` quand aucun n'a encore eu lieu.
+   *
+   * ⚠️ « Essai n° 38 » ne dit pas la même chose que « essai n° 38, depuis le 12
+   * août ». Le premier ressemble à un reproche, le second à un fait : trente-huit
+   * réglages sur trois semaines, c'est une recherche, et c'est justement ce que
+   * le compteur mesure.
+   */
+  tentativesDepuis?: string | null;
   ms: number;
   /** Réglages voisins qui produiraient assez de trades. */
   suggestions: Suggestion[];
@@ -91,6 +100,7 @@ export function Resultat({
   periode,
   moisManquants,
   tentatives,
+  tentativesDepuis,
   ms,
   verifie,
   contestes,
@@ -443,6 +453,11 @@ export function Resultat({
             {lecture.risqueDeSurApprentissage
               ? t("bt_sur_apprentissage_alerte", { n: tentatives })
               : t("bt_tentatives", { n: tentatives, max: MAX_TENTATIVES_AVANT_ALERTE })}
+            {tentativesDepuis && tentatives > 1
+              ? ` ${t("bt_tentatives_depuis", {
+                  date: new Date(tentativesDepuis).toLocaleDateString(),
+                })}`
+              : ""}
           </li>
           <li>{t("bt_duree_calcul", { ms })}</li>
         </ul>
