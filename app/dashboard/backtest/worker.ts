@@ -7,6 +7,9 @@ import { agreger } from "@/lib/backtest/serie";
 import { lireBacktest, MIN_TRADES_CONCLUSION, type LectureBacktest } from "@/lib/backtest/verdict";
 import { chercherReglagesViables, type Suggestion } from "@/lib/backtest/suggestions";
 import { chercherPropositions, type Proposition } from "@/lib/backtest/propositions";
+import { concentration, type Concentration } from "@/lib/backtest/robustesse";
+import { mesurerStabilite, type Stabilite } from "@/lib/backtest/stabilite";
+import type { Modification } from "@/lib/backtest/modifications";
 import type { MecaniqueDessin, TraceDessin } from "@/lib/backtest/apercu";
 import type { Couts, PlanExecution, ResultatBacktest, SerieM1, TradeSimule } from "@/lib/backtest/types";
 
@@ -42,6 +45,15 @@ export interface DemandeBacktest {
    * monde, y compris à ceux qui ne les regardent pas.
    */
   propositions?: boolean;
+  /**
+   * Mesurer aussi le voisinage des réglages que le trader a changés ?
+   *
+   * ⚠️ SUR DEMANDE, ET SEULEMENT POUR CE QU'IL A CHANGÉ. C'est un balayage de
+   * paramètres, donc la chose que cette page refuse partout ailleurs ; ce qui le
+   * rend acceptable est décrit en tête de `stabilite.ts`, et repose entre autres
+   * sur le fait qu'il ne rend aucun plan applicable.
+   */
+  stabilite?: Modification[];
 }
 
 /** Une bougie prête à dessiner, en unités de PRIX (plus en ticks). */
@@ -190,13 +202,17 @@ export type ReponseBacktest =
       suggestions: Suggestion[];
       /** Ce que le trader pourrait changer, quand il l'a demandé. */
       propositions?: Proposition[];
+      /** D'où vient le résultat dans le temps. Calculé toujours : c'est une addition. */
+      concentration: Concentration | null;
+      /** Le voisinage des réglages changés, quand il l'a demandé. */
+      stabilite?: Stabilite[];
     }
   | { type: "erreur"; message: string };
 
 const poste = (r: ReponseBacktest) => (self as unknown as Worker).postMessage(r);
 
 self.onmessage = async (e: MessageEvent<DemandeBacktest>) => {
-  const { code, de, a, plan, couts, tentatives, propositions } = e.data;
+  const { code, de, a, plan, couts, tentatives, propositions, stabilite } = e.data;
   try {
     const { serie, moisCharges, moisManquants, octets } = await chargerSerie(code, de, a, (faits, total) =>
       poste({ type: "avancement", faits, total }),
@@ -232,6 +248,16 @@ self.onmessage = async (e: MessageEvent<DemandeBacktest>) => {
       ms,
       apercus: preparerApercus(vues, resultat.trades, complet),
       suggestions,
+      // ⚠️ Toujours calculée, jamais sur demande : c'est une addition sur les
+      // trades déjà obtenus, elle ne coûte rien et elle répond à une question
+      // que personne ne pense à poser (« ton résultat vient-il d'un seul mois »).
+      concentration: concentration(resultat.trades),
+      stabilite:
+        stabilite && stabilite.length > 0
+          ? mesurerStabilite(serie, complet, couts, stabilite, (faits, total) =>
+              poste({ type: "avancement", faits, total }),
+            )
+          : undefined,
       propositions: propositions
         ? chercherPropositions(serie, complet, couts, (faits, total) =>
             poste({ type: "avancement", faits, total }),

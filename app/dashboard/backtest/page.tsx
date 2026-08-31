@@ -36,6 +36,7 @@ import { Propositions } from "@/components/backtest/Propositions";
 import { Modifications } from "@/components/backtest/Modifications";
 import { Enregistrer, type EtatControle } from "@/components/backtest/Enregistrer";
 import { Versions } from "@/components/backtest/Versions";
+import { Robustesse } from "@/components/backtest/Robustesse";
 import { Champ, Liste } from "@/components/backtest/Controles";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
@@ -224,6 +225,8 @@ export default function BacktestPage() {
     apercus: Apercu[];
     suggestions: import("@/lib/backtest/suggestions").Suggestion[];
     propositions?: import("@/lib/backtest/propositions").Proposition[];
+    concentration: import("@/lib/backtest/robustesse").Concentration | null;
+    stabilite?: import("@/lib/backtest/stabilite").Stabilite[];
   } | null>(null);
 
   /**
@@ -448,7 +451,11 @@ export default function BacktestPage() {
    * en M1. Les calculer à chaque lancement ferait payer cette attente à tout le
    * monde, y compris à ceux qui ne les regardent pas.
    */
-  const lancer = useCallback((avecPropositions = false, fenetre?: { de: string; a: string }) => {
+  const lancer = useCallback((
+    avecPropositions = false,
+    fenetre?: { de: string; a: string },
+    avecStabilite?: import("@/lib/backtest/modifications").Modification[],
+  ) => {
     if (etat.phase === "telechargement" || etat.phase === "calcul") return;
     workerRef.current?.terminate();
 
@@ -484,6 +491,8 @@ export default function BacktestPage() {
           apercus: r.apercus,
           suggestions: r.suggestions,
           propositions: r.propositions,
+          concentration: r.concentration,
+          stabilite: r.stabilite,
         });
         setEtat({ phase: "repos" });
       }
@@ -496,6 +505,7 @@ export default function BacktestPage() {
       couts: plan.couts,
       tentatives: prochaine,
       propositions: avecPropositions,
+      stabilite: avecStabilite,
     };
     w.postMessage(demande);
   }, [etat.phase, strategieId, de, a, code, plan]);
@@ -1166,6 +1176,27 @@ export default function BacktestPage() {
               onAppliquer={(sug) => appliquerPropose(sug.plan, sug.levier, "plus_de_trades")}
               risqueParTradePct={plan.gestion.risqueParTradePct}
               maxPertesConsecutives={plan.gestion.maxPertesConsecutives}
+              t={tr}
+            />
+          </StaggerItem>
+        ) : null}
+
+        {/* ── 5 ter. D'où vient le résultat ───────────────────────────────
+            ⚠️ JUSTE APRÈS L'INSPECTION VISUELLE ET AVANT LE VERDICT. Le trader
+            doit lire « ton résultat vient d'un seul mois » AVANT le chiffre
+            global, pas après : après, le chiffre est déjà installé et la nuance
+            arrive trop tard pour changer sa lecture. */}
+        {resultat?.concentration ? (
+          <StaggerItem>
+            <Robustesse
+              concentration={resultat.concentration}
+              stabilite={resultat.stabilite}
+              peutMesurerStabilite={modifications.length > 0}
+              mesureEnCours={occupe}
+              // ⚠️ Relance un backtest complet en demandant le voisinage : le
+              // mesurer d'office ferait payer cinq passes de plus à tout le
+              // monde, y compris à qui n'ouvrira jamais ce tableau.
+              onMesurerStabilite={() => lancer(false, undefined, modifications)}
               t={tr}
             />
           </StaggerItem>
