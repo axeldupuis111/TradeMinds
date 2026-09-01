@@ -38,6 +38,7 @@ import { Enregistrer, type EtatControle } from "@/components/backtest/Enregistre
 import { Versions } from "@/components/backtest/Versions";
 import { Robustesse } from "@/components/backtest/Robustesse";
 import { ProjectionCarte } from "@/components/backtest/ProjectionCarte";
+import { Analyse } from "@/components/backtest/Analyse";
 import { Champ, Liste } from "@/components/backtest/Controles";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
@@ -75,6 +76,7 @@ import {
 import { enregistrerVersion } from "@/lib/backtest/enregistrement";
 import { nomDuFichier, tradesEnCsv } from "@/lib/backtest/export-csv";
 import { compterUnEssai, lireTentatives } from "@/lib/backtest/tentatives";
+import { synthetiser } from "@/lib/backtest/synthese";
 import {
   listerVersions,
   supprimerVersion,
@@ -230,6 +232,8 @@ export default function BacktestPage() {
     concentration: import("@/lib/backtest/robustesse").Concentration | null;
     stabilite?: import("@/lib/backtest/stabilite").Stabilite[];
     projection: import("@/lib/backtest/projection-backtest").ProjectionDuBacktest | null;
+    constats: import("@/lib/backtest/coherence-plan").Constat[];
+    confluences?: import("@/lib/backtest/confluences").Confluence[];
   } | null>(null);
 
   /**
@@ -458,6 +462,7 @@ export default function BacktestPage() {
     avecPropositions = false,
     fenetre?: { de: string; a: string },
     avecStabilite?: import("@/lib/backtest/modifications").Modification[],
+    avecConfluences?: boolean,
   ) => {
     if (etat.phase === "telechargement" || etat.phase === "calcul") return;
     workerRef.current?.terminate();
@@ -497,6 +502,8 @@ export default function BacktestPage() {
           concentration: r.concentration,
           stabilite: r.stabilite,
           projection: r.projection,
+          constats: r.constats,
+          confluences: r.confluences,
         });
         setEtat({ phase: "repos" });
       }
@@ -510,9 +517,23 @@ export default function BacktestPage() {
       tentatives: prochaine,
       propositions: avecPropositions,
       stabilite: avecStabilite,
+      confluences: avecConfluences,
+      // ⚠️ La fiche voyage avec la demande : sans elle, impossible de dire
+      // « ta fiche annonce trois trades par jour et ta méthode en produit
+      // quinze », qui est le constat le plus utile de tout l'écran.
+      fiche: (() => {
+        const strat = strategies.find((x) => x.id === strategieId);
+        return strat
+          ? {
+              pairs: strat.pairs,
+              risk_reward: strat.risk_reward,
+              max_trades_per_day: strat.max_trades_per_day,
+            }
+          : undefined;
+      })(),
     };
     w.postMessage(demande);
-  }, [etat.phase, strategieId, de, a, code, plan]);
+  }, [etat.phase, strategieId, strategies, de, a, code, plan]);
 
   /**
    * Poser un plan venu d'un BOUTON, en retenant au nom de quoi.
@@ -723,6 +744,33 @@ export default function BacktestPage() {
   const controleValide = controleAffiche.phase === "fait" && controleAffiche.valide;
 
   const strategieCourante = strategies.find((s) => s.id === strategieId);
+
+  /**
+   * L'ÉTAT DES LIEUX, assemblé à partir de tout ce qui a déjà été mesuré.
+   *
+   * ⚠️ AUCUN CALCUL DE PLUS. La synthèse ne relance rien : elle rassemble le
+   * verdict, la décomposition dans le temps, le contrôle hors période, la forme
+   * du réglage, le compteur d'essais et les constats de cohérence. C'est
+   * volontaire : une synthèse qui aurait ses propres chiffres finirait par
+   * contredire les cartes qu'elle résume.
+   */
+  const synthese = useMemo(
+    () =>
+      resultat
+        ? synthetiser({
+            lecture: resultat.lecture,
+            concentration: resultat.concentration,
+            stabilite: resultat.stabilite,
+            horsPeriode:
+              controleAffiche.phase === "fait" && controleAffiche.valide
+                ? { lecture: controleAffiche.lecture }
+                : null,
+            constats: resultat.constats,
+            tentatives,
+          })
+        : null,
+    [resultat, controleAffiche, tentatives],
+  );
 
   /** Le texte exact qui ira dans la fiche, montré avant d'écrire quoi que ce soit. */
   const blocFiche = useMemo(() => {
@@ -1219,6 +1267,28 @@ export default function BacktestPage() {
               onAppliquer={(sug) => appliquerPropose(sug.plan, sug.levier, "plus_de_trades")}
               risqueParTradePct={plan.gestion.risqueParTradePct}
               maxPertesConsecutives={plan.gestion.maxPertesConsecutives}
+              t={tr}
+            />
+          </StaggerItem>
+        ) : null}
+
+        {/* ── 5. L'analyse de la stratégie ────────────────────────────────
+            ⚠️ AVANT LES CHIFFRES DE DÉTAIL, ET C'EST DÉLIBÉRÉ. Un trader nous a
+            écrit qu'on lui montrait « des chiffres sans réellement changer sa
+            stratégie ». Ce qui répond à sa question (est-ce viable, est-ce
+            cohérent, mes confluences servent-elles) doit se lire AVANT la
+            décomposition et l'export, pas trois cartes plus bas. */}
+        {resultat && synthese ? (
+          <StaggerItem>
+            <Analyse
+              synthese={synthese}
+              constats={resultat.constats}
+              confluences={resultat.confluences}
+              confluencesEnCours={occupe}
+              // Relance un backtest en demandant les confluences : deux passes
+              // par filtre, c'est la mesure la plus lourde de la page.
+              onMesurerConfluences={() => lancer(false, undefined, undefined, true)}
+              nomDuFiltre={(type) => nomDuFiltre(type, tr)}
               t={tr}
             />
           </StaggerItem>

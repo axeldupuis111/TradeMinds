@@ -8,6 +8,9 @@ import { lireBacktest, MIN_TRADES_CONCLUSION, type LectureBacktest } from "@/lib
 import { chercherReglagesViables, type Suggestion } from "@/lib/backtest/suggestions";
 import { chercherPropositions, type Proposition } from "@/lib/backtest/propositions";
 import { concentration, type Concentration } from "@/lib/backtest/robustesse";
+import { mesurerConfluences, type Confluence } from "@/lib/backtest/confluences";
+import { verifierLePlan, type Constat, type FicheConfrontable } from "@/lib/backtest/coherence-plan";
+import { instrumentParCode, INSTRUMENTS } from "@/lib/backtest/instruments";
 import { mesurerStabilite, type Stabilite } from "@/lib/backtest/stabilite";
 import {
   projeterLeBacktest,
@@ -58,6 +61,21 @@ export interface DemandeBacktest {
    * sur le fait qu'il ne rend aucun plan applicable.
    */
   stabilite?: Modification[];
+  /**
+   * Mesurer aussi l'effet de chaque confluence, avec et sans ?
+   *
+   * ⚠️ SUR DEMANDE. Chaque filtre coûte deux backtests complets, et il y en a
+   * jusqu'à huit : c'est la mesure la plus lourde de la page.
+   */
+  confluences?: boolean;
+  /**
+   * Les champs de la fiche à confronter à ce que la mécanique produit.
+   *
+   * ⚠️ La CONFRONTATION est le sujet : sans eux, on ne peut pas dire « ta fiche
+   * annonce trois trades par jour et ta méthode en produit quinze », qui est le
+   * constat le plus utile de tout l'écran.
+   */
+  fiche?: FicheConfrontable;
 }
 
 /** Une bougie prête à dessiner, en unités de PRIX (plus en ticks). */
@@ -215,13 +233,18 @@ export type ReponseBacktest =
        * `null` sans risque par trade ou sous le seuil de conclusion.
        */
       projection: ProjectionDuBacktest | null;
+      /** Ce que la fiche annonce contre ce que la mécanique a produit. */
+      constats: Constat[];
+      /** L'effet de chaque confluence, quand il l'a demandé. */
+      confluences?: Confluence[];
     }
   | { type: "erreur"; message: string };
 
 const poste = (r: ReponseBacktest) => (self as unknown as Worker).postMessage(r);
 
 self.onmessage = async (e: MessageEvent<DemandeBacktest>) => {
-  const { code, de, a, plan, couts, tentatives, propositions, stabilite } = e.data;
+  const { code, de, a, plan, couts, tentatives, propositions, stabilite, confluences, fiche } =
+    e.data;
   try {
     const { serie, moisCharges, moisManquants, octets } = await chargerSerie(code, de, a, (faits, total) =>
       poste({ type: "avancement", faits, total }),
@@ -247,10 +270,15 @@ self.onmessage = async (e: MessageEvent<DemandeBacktest>) => {
         ? chercherReglagesViables(serie, complet, serie.tailleTick)
         : [];
 
+    // ⚠️ La lecture est calculée UNE fois et réutilisée : la recalculer pour la
+    // cohérence donnerait deux objets qui pourraient diverger si un jour elle
+    // devient dépendante d'autre chose que de ses arguments.
+    const lecture = lireBacktest(resultat, couts, tentatives);
+
     poste({
       type: "fini",
       resultat,
-      lecture: lireBacktest(resultat, couts, tentatives),
+      lecture,
       moisCharges,
       moisManquants,
       octets,
@@ -265,6 +293,25 @@ self.onmessage = async (e: MessageEvent<DemandeBacktest>) => {
       // vide les comptes. Le rééchantillonnage par blocs est déjà écrit et
       // déjà testé : le brancher ne coûte rien.
       projection: projeterLeBacktest(resultat.trades, complet.gestion.risqueParTradePct),
+      // ⚠️ Toujours calculés : ce ne sont que des comparaisons entre ce que le
+      // trader a écrit et ce que le rejeu a produit. Aucun backtest de plus.
+      constats: verifierLePlan(
+        complet,
+        resultat.audit,
+        resultat.trades,
+        instrumentParCode(code) ?? INSTRUMENTS[0],
+        fiche ?? {},
+        lecture.stats,
+      ),
+      confluences: confluences
+        ? mesurerConfluences(
+            serie,
+            complet,
+            couts,
+            instrumentParCode(code) ?? INSTRUMENTS[0],
+            (faits, total) => poste({ type: "avancement", faits, total }),
+          )
+        : undefined,
       stabilite:
         stabilite && stabilite.length > 0
           ? mesurerStabilite(serie, complet, couts, stabilite, (faits, total) =>
