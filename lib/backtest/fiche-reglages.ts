@@ -79,6 +79,38 @@ export function ecrireDansLaFiche(rawText: string, bloc: string): string {
 }
 
 /**
+ * LA FICHE DÉBARRASSÉE DE CE QUE CET OUTIL Y A ÉCRIT.
+ *
+ * ⚠️⚠️ NÉ D'UNE BOUCLE DE RÉTROACTION VUE EN VRAI, SUR LA VRAIE FICHE D'UN
+ * TRADER, ET C'EST LE DÉFAUT LE PLUS GRAVE DE TOUT LE CHANTIER.
+ *
+ * Le trader avait enregistré une version. Le bloc s'est écrit dans son
+ * `raw_text`, comme prévu. À la compilation suivante, le modèle a relu ce bloc
+ * et a listé « Largeur du pivot : 10 → 5 » parmi les CINQ RÈGLES DE SA
+ * STRATÉGIE, à côté de « je risque 5 % de mon capital par trade ».
+ *
+ * Autrement dit : l'outil écrivait sa propre sortie dans la fiche, puis la
+ * relisait comme si le trader l'avait écrite. À chaque enregistrement, la fiche
+ * dérive un peu plus loin de ce qu'il a voulu dire, et le compilateur part d'un
+ * texte qui n'est plus le sien. Rien ne plante, tout se dégrade.
+ *
+ * ⚠️ ON NE RETIRE LE BLOC QUE POUR LE COMPILATEUR. Pour le coach, pour le
+ * trader qui relit sa fiche, pour l'export, ce bloc est une information
+ * légitime : il dit quels réglages ont été mesurés et quand. Ce qui est
+ * illégitime, c'est de le faire passer pour une règle de méthode.
+ */
+export function sansLeBlocDeBacktest(rawText: string): string {
+  const base = rawText ?? "";
+  const debut = base.indexOf(OUVERTURE);
+  if (debut === -1) return base;
+  const fin = base.indexOf(FERMETURE, debut);
+  // Une borne d'ouverture sans fermeture veut dire que quelqu'un a édité le
+  // bloc à la main : on coupe à l'ouverture plutôt que de deviner où il finit.
+  const apres = fin === -1 ? "" : base.slice(fin + FERMETURE.length);
+  return (base.slice(0, debut) + apres).trim();
+}
+
+/**
  * Les colonnes chiffrées de la fiche qu'un réglage peut renseigner.
  *
  * ⚠️ LA LISTE EST COURTE, ET C'EST VOLONTAIRE. Une fiche a quelques cases

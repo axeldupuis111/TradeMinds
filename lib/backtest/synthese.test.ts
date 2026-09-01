@@ -41,6 +41,7 @@ const CONCENTRATION_SAINE: Concentration = {
   meilleurMois: "2024-03",
   anneesPositives: 2,
   tientSansSonMeilleurMois: true,
+  forme: "reparti",
 };
 
 function entrees(partiel: Partial<EntreesSynthese> = {}): EntreesSynthese {
@@ -106,7 +107,33 @@ describe("les piliers de la viabilité", () => {
   it("voit un résultat qui repose sur un seul mois", () => {
     const s = synthetiser(
       entrees({
-        concentration: { ...CONCENTRATION_SAINE, tientSansSonMeilleurMois: false, partDuMeilleurMois: 140 },
+        concentration: {
+          ...CONCENTRATION_SAINE,
+          tientSansSonMeilleurMois: false,
+          forme: "repose_sur_un_mois",
+          partDuMeilleurMois: 140,
+        },
+      }),
+    );
+    expect(etat(s, "regularite")).toBe("pas_etabli");
+  });
+
+  /**
+   * ⚠️⚠️ LA CONTRADICTION VUE À L'ÉCRAN. Un mois apportait 58 % du total, le
+   * reste restait positif, et ce pilier affichait « Établi » juste au-dessus de
+   * « ton meilleur mois apporte 58 % du total ». Les deux phrases étaient vraies
+   * et se contredisaient : un résultat dont la moitié vient d'un mois n'est pas
+   * réparti, même quand le reste ne perd pas.
+   */
+  it("ne tient pas pour établi un résultat dont un mois porte la moitié", () => {
+    const s = synthetiser(
+      entrees({
+        concentration: {
+          ...CONCENTRATION_SAINE,
+          tientSansSonMeilleurMois: true,
+          forme: "domine_par_un_mois",
+          partDuMeilleurMois: 58,
+        },
       }),
     );
     expect(etat(s, "regularite")).toBe("pas_etabli");

@@ -105,27 +105,28 @@ export function Robustesse({
         <div
           className={cn(
             "mt-3 rounded-lg border p-3",
-            c.tientSansSonMeilleurMois
+            c.forme === "reparti"
               ? "border-border bg-surface/40"
               : "border-warning/40 bg-warning/[0.06]",
           )}
         >
           <p className="flex items-start gap-1.5 text-[11px] leading-relaxed">
-            {c.tientSansSonMeilleurMois ? (
+            {c.forme === "reparti" ? (
               <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-profit" />
             ) : (
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
             )}
-            <span className={c.tientSansSonMeilleurMois ? "text-foreground-muted" : "text-warning"}>
-              {t(
-                c.tientSansSonMeilleurMois ? "bt_rob_tient" : "bt_rob_ne_tient_pas",
-                {
-                  mois: c.meilleurMois,
-                  part: c.partDuMeilleurMois.toFixed(0),
-                  total: signe(c.totalR),
-                  sans: signe(c.totalSansLeMeilleurMoisR),
-                },
-              )}
+            {/* ⚠️ TROIS MESSAGES, PAS DEUX. « Le total reste positif sans ce
+                mois » et « ce mois apporte 58 % du total » sont deux vérités
+                différentes : les faire dire la même chose était la contradiction
+                que cette carte affichait à l'écran. */}
+            <span className={c.forme === "reparti" ? "text-foreground-muted" : "text-warning"}>
+              {t(`bt_rob_forme_repartition_${c.forme}`, {
+                mois: c.meilleurMois ?? "",
+                part: c.partDuMeilleurMois.toFixed(0),
+                total: signe(c.totalR),
+                sans: signe(c.totalSansLeMeilleurMoisR),
+              })}
             </span>
           </p>
         </div>

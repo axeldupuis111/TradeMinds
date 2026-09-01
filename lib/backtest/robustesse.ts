@@ -86,7 +86,35 @@ export interface Concentration {
    * « faux » sans que ça dise du bien de lui.
    */
   tientSansSonMeilleurMois: boolean;
+  /**
+   * La forme de la répartition, en trois états.
+   *
+   * ⚠️⚠️ NÉ D'UNE CONTRADICTION VUE À L'ÉCRAN. Un booléen ne suffisait pas : un
+   * mois apportait 58 % du total, le reste restait positif, et la page affichait
+   * donc « ce résultat ne repose pas sur un seul accident » juste au-dessus de
+   * « ton meilleur mois apporte 58 % du total ». Les deux phrases étaient vraies
+   * et se contredisaient. Un résultat dont la moitié vient d'un mois n'est pas
+   * « réparti », même si le reste ne perd pas.
+   */
+  forme: FormeDeLaRepartition;
 }
+
+export type FormeDeLaRepartition =
+  /** Aucun mois ne domine : le résultat vient de partout. */
+  | "reparti"
+  /** Le reste tient debout, mais un seul mois pèse la moitié ou plus. */
+  | "domine_par_un_mois"
+  /** Sans son meilleur mois, il ne reste rien. */
+  | "repose_sur_un_mois";
+
+/**
+ * À partir de quelle part un seul mois « domine » le résultat.
+ *
+ * ⚠️ La moitié, et pas un seuil plus subtil : au-delà, il y a plus de résultat
+ * dans un mois que dans tous les autres réunis, et aucune façon de présenter ça
+ * comme une méthode régulière.
+ */
+export const PART_QUI_DOMINE = 50;
 
 /**
  * @param minTranches en dessous, la découpe ne veut rien dire. Deux trades dans
@@ -112,15 +140,23 @@ export function concentration(trades: TradeSimule[]): Concentration | null {
   const gainDuMeilleur = meilleur ? meilleur.totalR : 0;
   const totalSansLeMeilleurMoisR = totalR - gainDuMeilleur;
 
+  const tient = totalR > 0 && totalSansLeMeilleurMoisR > 0;
+  const part = totalR === 0 ? 0 : (gainDuMeilleur / totalR) * 100;
+
   return {
     annees,
     trimestres,
     totalR,
     // Un total nul rendrait une division absurde : on rend 0 plutôt qu'un infini.
-    partDuMeilleurMois: totalR === 0 ? 0 : (gainDuMeilleur / totalR) * 100,
+    partDuMeilleurMois: part,
     totalSansLeMeilleurMoisR,
     meilleurMois: meilleur?.cle ?? null,
     anneesPositives: annees.filter((a) => a.totalR > 0).length,
-    tientSansSonMeilleurMois: totalR > 0 && totalSansLeMeilleurMoisR > 0,
+    tientSansSonMeilleurMois: tient,
+    forme: !tient
+      ? "repose_sur_un_mois"
+      : part >= PART_QUI_DOMINE
+        ? "domine_par_un_mois"
+        : "reparti",
   };
 }

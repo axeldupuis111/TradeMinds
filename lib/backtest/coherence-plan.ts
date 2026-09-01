@@ -1,3 +1,4 @@
+import { effetSurLeCompte } from "./capital";
 import type { Instrument } from "./instruments";
 import type { AuditExecution, PlanExecution, TradeSimule } from "./types";
 import type { Statistiques } from "./verdict";
@@ -40,6 +41,10 @@ export type CodeConstat =
   | "rr_hors_fiche"
   /** Un filtre n'a jamais écarté le moindre signal. */
   | "filtre_inerte"
+  /** Un filtre a écarté si peu de signaux que le test s'est déroulé sans lui. */
+  | "filtre_presque_inerte"
+  /** Le risque par trade a produit un recul de compte considérable. */
+  | "risque_par_trade_lourd"
   /** Le plafond de trades par jour ne s'est jamais appliqué. */
   | "plafond_jour_inerte"
   /** La règle d'arrêt après N pertes ne s'est jamais déclenchée. */
@@ -70,6 +75,18 @@ export interface FicheConfrontable {
   risk_reward?: number | null;
   max_trades_per_day?: number | null;
 }
+
+/**
+ * En dessous de cette part de signaux écartés, une règle n'a rien changé.
+ *
+ * ⚠️ Un signal sur cinquante : le test s'est alors déroulé à peu près exactement
+ * comme si la règle n'existait pas, et le trader croit pourtant qu'elle le
+ * protège de quelque chose.
+ */
+export const SEUIL_FILTRE_PRESQUE_INERTE = 0.02;
+
+/** Recul du compte à partir duquel le risque par trade mérite d'être dit. */
+export const SEUIL_RECUL_LOURD = 30;
 
 /** Écart relatif entre deux nombres, en pourcentage du second. */
 function ecartPct(a: number, b: number): number {
@@ -154,9 +171,46 @@ export function verifierLePlan(
   // ⚠️ Une règle inerte n'est pas anodine : le test s'est déroulé exactement
   // comme si elle n'existait pas, donc ce qui a été mesuré n'est pas la méthode
   // que le trader croit avoir décrite.
+  // ⚠️⚠️ « ZÉRO REFUS » NE SUFFIT PAS COMME SEUIL, et l'écran l'a montré : un
+  // filtre directionnel avait écarté 4 signaux sur 498, la carte des confluences
+  // disait « il ne trie rien de mesurable », et cette carte-ci disait dans le
+  // même écran « aucune de tes règles n'est restée inerte ». Deux vérités qui se
+  // contredisaient. En dessous d'un signal sur cinquante, le test s'est déroulé
+  // à peu près exactement comme si la règle n'existait pas.
   if (audit.signauxSoumisAuxFiltres >= 30) {
     for (const [type, n] of Object.entries(audit.refusesParFiltre)) {
       if (n === 0) ajouter("filtre_inerte", "a_verifier", { type });
+      else if (n / audit.signauxSoumisAuxFiltres < SEUIL_FILTRE_PRESQUE_INERTE) {
+        ajouter("filtre_presque_inerte", "a_verifier", {
+          type,
+          n,
+          total: audit.signauxSoumisAuxFiltres,
+          part: ((n / audit.signauxSoumisAuxFiltres) * 100).toFixed(1),
+        });
+      }
+    }
+  }
+
+  // ── 4 bis. Ce que le risque par trade a réellement fait au compte ────────
+  // ⚠️ UNE MULTIPLICATION SUR DES R DÉJÀ MESURÉS, pas une prévision. Le trader
+  // écrit « je risque 5 % » sans jamais voir ce que ça donne sur quatre ans de
+  // sa propre méthode : ici, -69 % de recul depuis le sommet du compte. Personne
+  // ne le lui dit, et c'est le chiffre qui décide s'il tient ou s'il arrête.
+  if (trades.length >= 30 && (plan.gestion.risqueParTradePct ?? 0) > 0) {
+    const compte = effetSurLeCompte(
+      trades.map((t) => t.r),
+      plan.gestion.risqueParTradePct!,
+    );
+    if (compte.ruine) {
+      ajouter("risque_par_trade_lourd", "bloquant", {
+        risque: plan.gestion.risqueParTradePct!,
+        recul: "100",
+      });
+    } else if (compte.reculPct >= SEUIL_RECUL_LOURD) {
+      ajouter("risque_par_trade_lourd", compte.reculPct >= 50 ? "bloquant" : "a_verifier", {
+        risque: plan.gestion.risqueParTradePct!,
+        recul: compte.reculPct.toFixed(1),
+      });
     }
   }
   if (plan.gestion.maxTradesParJour != null && jours >= 20 && audit.refusesParGestion === 0) {

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { composerBloc, ecrireDansLaFiche, repartirDansLaFiche } from "./fiche-reglages";
+import {
+  composerBloc,
+  ecrireDansLaFiche,
+  repartirDansLaFiche,
+  sansLeBlocDeBacktest,
+} from "./fiche-reglages";
 import type { Modification } from "./modifications";
 
 const BLOC = composerBloc({
@@ -105,5 +110,67 @@ describe("ce qui rentre dans les cases chiffrées de la fiche", () => {
   it("écrit null quand le réglage a été retiré", () => {
     const r = repartirDansLaFiche([mod("pertes_daffilee")], { pertes_daffilee: undefined });
     expect(r.colonnes).toEqual({ max_consecutive_losses: null });
+  });
+});
+
+/**
+ * ⚠️⚠️ LA BOUCLE DE RÉTROACTION, VUE EN VRAI SUR LA FICHE D'UN TRADER.
+ *
+ * Il avait enregistré une version. Le bloc s'est écrit dans son `raw_text`,
+ * comme prévu. À la compilation suivante, le modèle a relu ce bloc et a listé
+ * « Largeur du pivot : 10 → 5 » parmi les CINQ RÈGLES DE SA STRATÉGIE, à côté
+ * de « je risque 5 % de mon capital par trade ».
+ *
+ * L'outil écrivait sa propre sortie dans la fiche puis la relisait comme si le
+ * trader l'avait écrite. Rien ne plantait : la fiche dérivait, c'est tout.
+ */
+describe("ce que le compilateur doit ignorer dans la fiche", () => {
+  const METHODE = "Je trade le NAS100. Je risque 5 % par trade, RR de 1:2.";
+
+  it("retire le bloc que cet outil a écrit", () => {
+    const fiche = ecrireDansLaFiche(METHODE, BLOC);
+    const propre = sansLeBlocDeBacktest(fiche);
+    expect(propre).toBe(METHODE);
+    expect(propre).not.toContain("TRADEDISCIPLINE");
+    expect(propre).not.toContain("Largeur du pivot");
+  });
+
+  it("ne touche à rien quand la fiche n'en contient pas", () => {
+    expect(sansLeBlocDeBacktest(METHODE)).toBe(METHODE);
+  });
+
+  it("garde ce que le trader a écrit après le bloc", () => {
+    const fiche = `${METHODE}\n\n${BLOC}\n\nUne note ajoutée après coup.`;
+    const propre = sansLeBlocDeBacktest(fiche);
+    expect(propre).toContain(METHODE);
+    expect(propre).toContain("Une note ajoutée après coup.");
+    expect(propre).not.toContain("TRADEDISCIPLINE");
+  });
+
+  /**
+   * ⚠️ Une borne d'ouverture seule veut dire que quelqu'un a coupé le bloc à la
+   * main. On coupe à l'ouverture plutôt que de deviner où il finit : mieux vaut
+   * perdre la fin d'un bloc abîmé que de laisser passer nos propres phrases
+   * pour des règles du trader.
+   */
+  it("coupe même quand la borne de fermeture manque", () => {
+    const fiche = `${METHODE}\n\n[TRADEDISCIPLINE:BACKTEST]\nRéglages vérifiés`;
+    expect(sansLeBlocDeBacktest(fiche)).toBe(METHODE);
+  });
+
+  it("supporte une fiche vide", () => {
+    expect(sansLeBlocDeBacktest("")).toBe("");
+  });
+
+  /**
+   * ⚠️ Enregistrer, compiler, enregistrer, compiler : la fiche nettoyée doit
+   * être la MÊME à chaque tour. Sans ça, la dérive est seulement plus lente.
+   */
+  it("rend la même fiche après plusieurs allers-retours", () => {
+    let fiche = METHODE;
+    for (let i = 0; i < 3; i++) {
+      fiche = ecrireDansLaFiche(fiche, BLOC);
+      expect(sansLeBlocDeBacktest(fiche)).toBe(METHODE);
+    }
   });
 });

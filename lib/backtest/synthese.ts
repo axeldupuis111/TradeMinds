@@ -112,11 +112,17 @@ export function synthetiser(e: EntreesSynthese): Synthese {
     ajouter("regularite", "pas_regarde");
   } else {
     const c = e.concentration;
-    ajouter("regularite", c.tientSansSonMeilleurMois ? "etabli" : "pas_etabli", {
+    // ⚠️⚠️ TROIS ÉTATS, PAS DEUX, et la correction vient d'une contradiction vue
+    // à l'écran : un mois apportait 58 % du total, le reste restait positif, et
+    // ce pilier affichait « Établi » juste au-dessus de « ton meilleur mois
+    // apporte 58 % du total ». Un résultat dont la moitié vient d'un mois n'est
+    // pas réparti, même quand le reste ne perd pas.
+    ajouter("regularite", c.forme === "reparti" ? "etabli" : "pas_etabli", {
       mois: c.meilleurMois ?? "",
       part: c.partDuMeilleurMois.toFixed(0),
       annees: c.anneesPositives,
       total: c.annees.length,
+      sans: c.totalSansLeMeilleurMoisR.toFixed(2),
     });
   }
 

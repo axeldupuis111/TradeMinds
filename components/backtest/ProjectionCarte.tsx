@@ -26,6 +26,13 @@ import { AlertTriangle, TrendingDown } from "lucide-react";
  * qui les sépare est donc en tête, en texte visible, pas en note de bas de page.
  */
 
+/**
+ * ⚠️⚠️ ON NE PERD PAS PLUS DE 100 % D'UN COMPTE, et l'écran l'affichait :
+ * « sur les pires 5 % : -106,1 % ». Le tirage additionne des R à taille de
+ * position constante, donc la somme peut dépasser le capital ; le compte, lui,
+ * s'arrête à zéro. C'est exactement le défaut déjà corrigé une fois sur le
+ * recul (« -148,4 % »), revenu par une autre porte.
+ */
 function pct(v: number, decimales = 1): string {
   return `${v >= 0 ? "+" : ""}${v.toFixed(decimales)} %`;
 }
@@ -56,18 +63,17 @@ export function ProjectionCarte({
       </p>
 
       <p className="mt-3 text-xs leading-relaxed text-foreground-muted">
-        {t("bt_proj_intro", { risque: donnees.risquePct, trades: p.tradesParAn })}
+        {t("bt_proj_intro", {
+          risque: donnees.risquePct,
+          trades: Math.round(p.tradesParAn),
+        })}
       </p>
 
       <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2.5 text-xs sm:grid-cols-4">
-        <Chiffre label={t("bt_proj_pire")} valeur={pct(p.p05)} ton="loss" />
-        <Chiffre label={t("bt_proj_median")} valeur={pct(p.median)} />
-        <Chiffre label={t("bt_proj_meilleur")} valeur={pct(p.p95)} ton="profit" />
-        <Chiffre
-          label={t("bt_proj_creux")}
-          valeur={pct(p.drawdownMedian)}
-          ton="loss"
-        />
+        <Chiffre label={t("bt_proj_pire")} valeur={montant(p.p05, t)} ton="loss" />
+        <Chiffre label={t("bt_proj_median")} valeur={montant(p.median, t)} />
+        <Chiffre label={t("bt_proj_meilleur")} valeur={montant(p.p95, t)} ton="profit" />
+        <Chiffre label={t("bt_proj_creux")} valeur={montant(p.drawdownMedian, t)} ton="loss" />
       </dl>
 
       {/* ⚠️ LE RISQUE DE RUINE NE SE COLORE JAMAIS EN VERT. Un « 3 % » rassurant
@@ -91,6 +97,11 @@ export function ProjectionCarte({
       </p>
     </Card>
   );
+}
+
+/** Un montant en % du capital, ou « compte vidé » quand il n'en reste rien. */
+function montant(v: number, t: (cle: string) => string): string {
+  return v <= -100 ? t("bt_capital_vide") : pct(v);
 }
 
 function Chiffre({

@@ -68,6 +68,7 @@ export function Enregistrer({
   fenetre,
   periodeSuggeree,
   controleRequis,
+  aDesModifications,
   controle,
   lectureActuelle,
   periode,
@@ -97,8 +98,17 @@ export function Enregistrer({
    * Faux quand aucun changement ne touche un seul trade (baisser son risque par
    * exemple). Rejouer la même suite de R ailleurs ne vérifierait rien, et une
    * vérification vide apprend surtout à cliquer sans lire.
+   *
+   * ⚠️⚠️ CE DRAPEAU NE GOUVERNE QUE LE VERROU D'ENREGISTREMENT, JAMAIS L'ACCÈS
+   * AU CONTRÔLE. Une première version cachait le bouton quand le contrôle
+   * n'était pas exigé : sur un plan identique à la fiche, il devenait donc
+   * introuvable, alors que la synthèse annonçait juste au-dessus « c'est le
+   * contrôle qui manque, et c'est le plus important de tous ». Deux cartes du
+   * même écran se contredisaient, et celle qui avait raison était désarmée.
    */
   controleRequis: boolean;
+  /** Vrai dès qu'un réglage s'écarte de la fiche. */
+  aDesModifications: boolean;
   controle: EtatControle;
   lectureActuelle: LectureBacktest;
   periode: { de: string; a: string };
@@ -138,13 +148,16 @@ export function Enregistrer({
         {t("bt_hors_pourquoi")}
       </p>
 
-      {!controleRequis ? (
-        /* ⚠️ Rien de ce qui a changé ne déplace un trade : le contrôle n'aurait
-           littéralement rien à comparer. On le dit, on ne le grise pas. */
+      {/* ⚠️ La note se lit EN PLUS du contrôle, jamais À LA PLACE. Elle explique
+          pourquoi le verrou d'enregistrement ne l'exige pas ; elle n'a aucune
+          raison d'empêcher le trader de le lancer s'il en a envie. */}
+      {aDesModifications && !controleRequis ? (
         <p className="mt-3 rounded-lg border border-border bg-surface/40 p-3 text-xs leading-relaxed text-foreground-muted">
           {t("bt_hors_inutile")}
         </p>
-      ) : sansFenetre ? (
+      ) : null}
+
+      {sansFenetre ? (
         <div className="mt-3 rounded-lg border border-warning/40 bg-warning/[0.06] p-3">
           <p className="text-xs leading-relaxed text-warning">{t("bt_hors_aucune")}</p>
           {periodeSuggeree ? (

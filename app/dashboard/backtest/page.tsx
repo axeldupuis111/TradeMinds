@@ -73,6 +73,7 @@ import {
   composerBloc,
   ecrireDansLaFiche,
   repartirDansLaFiche,
+  sansLeBlocDeBacktest,
 } from "@/lib/backtest/fiche-reglages";
 import { enregistrerVersion } from "@/lib/backtest/enregistrement";
 import { nomDuFichier, tradesEnCsv } from "@/lib/backtest/export-csv";
@@ -358,7 +359,14 @@ export default function BacktestPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          raw_text: strat.raw_text,
+          // ⚠️⚠️ ON RETIRE CE QUE CET OUTIL A LUI-MÊME ÉCRIT DANS LA FICHE.
+          // Vu en vrai : après un enregistrement, le modèle a relu notre bloc
+          // et a listé « Largeur du pivot : 10 → 5 » parmi les CINQ RÈGLES de
+          // la stratégie du trader, à côté de « je risque 5 % par trade ».
+          // L'outil écrivait sa sortie dans la fiche puis la relisait comme si
+          // le trader l'avait écrite : à chaque enregistrement, la fiche
+          // dérivait un peu plus loin de ce qu'il avait voulu dire.
+          raw_text: sansLeBlocDeBacktest(strat.raw_text),
           instrument: code,
           fuseau,
           regles: {
@@ -1422,6 +1430,7 @@ export default function BacktestPage() {
               fenetre={fenetreIntacte}
               periodeSuggeree={periodeSuggeree}
               controleRequis={demandeUnControle(modifications)}
+              aDesModifications={modifications.length > 0}
               controle={controleAffiche}
               lectureActuelle={resultat.lecture}
               periode={{ de, a }}

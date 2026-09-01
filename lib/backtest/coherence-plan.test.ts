@@ -156,6 +156,36 @@ describe("les règles qui ne s'appliquent jamais", () => {
     expect(c.filter((x) => x.code === "filtre_inerte")).toHaveLength(1);
   });
 
+  /**
+   * ⚠️⚠️ « ZÉRO REFUS » NE SUFFISAIT PAS COMME SEUIL, et l'écran l'a montré : un
+   * filtre directionnel avait écarté 4 signaux sur 498, la carte des confluences
+   * disait « il ne trie rien de mesurable », et cette carte-ci disait dans le
+   * même écran « aucune de tes règles n'est restée inerte ».
+   */
+  it("signale un filtre qui n'écarte presque rien", () => {
+    const c = verifierLePlan(
+      plan(),
+      audit({ signauxSoumisAuxFiltres: 498, refusesParFiltre: { biais_moyenne: 4 } }),
+      trades(200, 60),
+      NAS,
+      RIEN,
+    );
+    expect(codes(c)).toContain("filtre_presque_inerte");
+    expect(c.find((x) => x.code === "filtre_presque_inerte")!.valeurs.part).toBe("0.8");
+  });
+
+  it("ne dit rien d'un filtre qui écarte pour de bon", () => {
+    const c = verifierLePlan(
+      plan(),
+      audit({ signauxSoumisAuxFiltres: 498, refusesParFiltre: { biais_moyenne: 120 } }),
+      trades(200, 60),
+      NAS,
+      RIEN,
+    );
+    expect(codes(c)).not.toContain("filtre_presque_inerte");
+    expect(codes(c)).not.toContain("filtre_inerte");
+  });
+
   it("ne crie pas au filtre inerte sur trop peu de signaux", () => {
     const c = verifierLePlan(
       plan(),
@@ -203,6 +233,36 @@ describe("les coûts devant le risque", () => {
     expect(codes(verifierLePlan(plan(), audit(), trades(200, 60, 200_000), NAS, RIEN))).not.toContain(
       "couts_lourds",
     );
+  });
+});
+
+/**
+ * ⚠️ UNE MULTIPLICATION SUR DES R DÉJÀ MESURÉS, pas une prévision. Le trader
+ * écrit « je risque 5 % » sans jamais voir ce que ça donne sur quatre ans de sa
+ * propre méthode. C'est le chiffre qui décide s'il tient ou s'il arrête, et
+ * personne ne le lui dit.
+ */
+describe("ce que le risque par trade a fait au compte", () => {
+  /** Des trades qui alternent pour creuser un vrai recul. */
+  function enDentsDeScie(n: number, jours: number): TradeSimule[] {
+    return trades(n, jours).map((t, i) => ({ ...t, r: i < n / 2 ? -1 : 0.5 }));
+  }
+
+  it("signale un recul de compte considérable", () => {
+    const p = plan({ gestion: { risqueParTradePct: 5 } });
+    const c = verifierLePlan(p, audit(), enDentsDeScie(60, 60), NAS, RIEN);
+    expect(codes(c)).toContain("risque_par_trade_lourd");
+  });
+
+  it("ne dit rien quand le risque reste tenable", () => {
+    const p = plan({ gestion: { risqueParTradePct: 0.1 } });
+    const c = verifierLePlan(p, audit(), enDentsDeScie(60, 60), NAS, RIEN);
+    expect(codes(c)).not.toContain("risque_par_trade_lourd");
+  });
+
+  it("ne dit rien sans risque par trade déclaré", () => {
+    const c = verifierLePlan(plan(), audit(), enDentsDeScie(60, 60), NAS, RIEN);
+    expect(codes(c)).not.toContain("risque_par_trade_lourd");
   });
 });
 
@@ -298,6 +358,8 @@ describe("l'ordre et la rédaction", () => {
       "rythme_hors_fiche",
       "rr_hors_fiche",
       "filtre_inerte",
+      "filtre_presque_inerte",
+      "risque_par_trade_lourd",
       "plafond_jour_inerte",
       "arret_inerte",
       "couts_lourds",
