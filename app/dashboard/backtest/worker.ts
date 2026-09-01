@@ -10,6 +10,11 @@ import { chercherPropositions, type Proposition } from "@/lib/backtest/propositi
 import { concentration, type Concentration } from "@/lib/backtest/robustesse";
 import { mesurerConfluences, type Confluence } from "@/lib/backtest/confluences";
 import { verifierLePlan, type Constat, type FicheConfrontable } from "@/lib/backtest/coherence-plan";
+import {
+  amplitudeTypique,
+  transposerPlan,
+  type ResultatMarche,
+} from "@/lib/backtest/marches";
 import { instrumentParCode, INSTRUMENTS } from "@/lib/backtest/instruments";
 import { mesurerStabilite, type Stabilite } from "@/lib/backtest/stabilite";
 import {
@@ -76,6 +81,15 @@ export interface DemandeBacktest {
    * constat le plus utile de tout l'écran.
    */
   fiche?: FicheConfrontable;
+  /**
+   * Rejouer la même méthode sur d'autres marchés comparables.
+   *
+   * ⚠️ SUR DEMANDE, ET C'EST LA MESURE LA PLUS LOURDE DE TOUTES : chaque marché
+   * demande de télécharger sa propre profondeur de bougies. La règle d'échelle
+   * appliquée aux distances est décrite en tête de `marches.ts` et affichée au
+   * trader ; sans elle, transposer un plan serait une faute silencieuse.
+   */
+  marches?: string[];
 }
 
 /** Une bougie prête à dessiner, en unités de PRIX (plus en ticks). */
@@ -237,13 +251,15 @@ export type ReponseBacktest =
       constats: Constat[];
       /** L'effet de chaque confluence, quand il l'a demandé. */
       confluences?: Confluence[];
+      /** La même méthode sur d'autres marchés, quand il l'a demandé. */
+      marches?: ResultatMarche[];
     }
   | { type: "erreur"; message: string };
 
 const poste = (r: ReponseBacktest) => (self as unknown as Worker).postMessage(r);
 
 self.onmessage = async (e: MessageEvent<DemandeBacktest>) => {
-  const { code, de, a, plan, couts, tentatives, propositions, stabilite, confluences, fiche } =
+  const { code, de, a, plan, couts, tentatives, propositions, stabilite, confluences, fiche, marches } =
     e.data;
   try {
     const { serie, moisCharges, moisManquants, octets } = await chargerSerie(code, de, a, (faits, total) =>
@@ -275,6 +291,70 @@ self.onmessage = async (e: MessageEvent<DemandeBacktest>) => {
     // devient dépendante d'autre chose que de ses arguments.
     const lecture = lireBacktest(resultat, couts, tentatives);
 
+    /**
+     * LA MÊME MÉTHODE AILLEURS.
+     *
+     * ⚠️ APRÈS TOUT LE RESTE, ET SÉQUENTIELLEMENT. Chaque marché demande son
+     * propre téléchargement : les lancer en parallèle saturerait la mémoire du
+     * navigateur au moment le plus tendu, et la progression deviendrait
+     * illisible pour le trader qui attend.
+     */
+    let surDAutresMarches: ResultatMarche[] | undefined;
+    if (marches && marches.length > 0) {
+      const monInstrument = instrumentParCode(code) ?? INSTRUMENTS[0];
+      const monAmplitude = amplitudeTypique(serie, complet.uniteDeTemps ?? 1);
+      surDAutresMarches = [];
+
+      for (const autre of marches) {
+        const cible = instrumentParCode(autre);
+        if (!cible) continue;
+        try {
+          const chargement =
+            autre === code
+              ? { serie, moisManquants: [] as string[] }
+              : await chargerSerie(autre, de, a, (faits, total) =>
+                  poste({ type: "avancement", faits, total }),
+                );
+          const amplitudeCible = amplitudeTypique(chargement.serie, complet.uniteDeTemps ?? 1);
+          const planTranspose =
+            autre === code
+              ? complet
+              : transposerPlan(complet, monInstrument, cible, monAmplitude, amplitudeCible);
+          const r = lancerBacktest(chargement.serie, planTranspose);
+          const l = lireBacktest(r, planTranspose.couts, 0);
+          surDAutresMarches.push({
+            code: cible.code,
+            nom: cible.nom,
+            trades: r.trades.length,
+            esperanceR: l.stats?.esperanceR ?? null,
+            borneBasse: l.stats?.borneBasse ?? null,
+            borneHaute: l.stats?.borneHaute ?? null,
+            // ⚠️ Le même critère que partout : zéro doit être HORS de
+            // l'intervalle. On n'assouplit pas la règle parce qu'on compare.
+            avantageRetrouve: l.verdict === "positif",
+            insuffisant: l.verdict === "insuffisant",
+            sien: autre === code,
+            moisManquants: chargement.moisManquants.length,
+          });
+        } catch {
+          // ⚠️ Un marché dont les bougies manquent ne doit pas faire tomber les
+          // autres : on le déclare insuffisant, ce qu'il est, et on continue.
+          surDAutresMarches.push({
+            code: cible.code,
+            nom: cible.nom,
+            trades: 0,
+            esperanceR: null,
+            borneBasse: null,
+            borneHaute: null,
+            avantageRetrouve: false,
+            insuffisant: true,
+            sien: autre === code,
+            moisManquants: 0,
+          });
+        }
+      }
+    }
+
     poste({
       type: "fini",
       resultat,
@@ -303,6 +383,7 @@ self.onmessage = async (e: MessageEvent<DemandeBacktest>) => {
         fiche ?? {},
         lecture.stats,
       ),
+      marches: surDAutresMarches,
       confluences: confluences
         ? mesurerConfluences(
             serie,

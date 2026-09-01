@@ -39,6 +39,7 @@ import { Versions } from "@/components/backtest/Versions";
 import { Robustesse } from "@/components/backtest/Robustesse";
 import { ProjectionCarte } from "@/components/backtest/ProjectionCarte";
 import { Analyse } from "@/components/backtest/Analyse";
+import { Marches } from "@/components/backtest/Marches";
 import { Champ, Liste } from "@/components/backtest/Controles";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
@@ -234,6 +235,7 @@ export default function BacktestPage() {
     projection: import("@/lib/backtest/projection-backtest").ProjectionDuBacktest | null;
     constats: import("@/lib/backtest/coherence-plan").Constat[];
     confluences?: import("@/lib/backtest/confluences").Confluence[];
+    marches?: import("@/lib/backtest/marches").ResultatMarche[];
   } | null>(null);
 
   /**
@@ -463,6 +465,7 @@ export default function BacktestPage() {
     fenetre?: { de: string; a: string },
     avecStabilite?: import("@/lib/backtest/modifications").Modification[],
     avecConfluences?: boolean,
+    avecMarches?: string[],
   ) => {
     if (etat.phase === "telechargement" || etat.phase === "calcul") return;
     workerRef.current?.terminate();
@@ -504,6 +507,7 @@ export default function BacktestPage() {
           projection: r.projection,
           constats: r.constats,
           confluences: r.confluences,
+          marches: r.marches,
         });
         setEtat({ phase: "repos" });
       }
@@ -518,6 +522,7 @@ export default function BacktestPage() {
       propositions: avecPropositions,
       stabilite: avecStabilite,
       confluences: avecConfluences,
+      marches: avecMarches,
       // ⚠️ La fiche voyage avec la demande : sans elle, impossible de dire
       // « ta fiche annonce trois trades par jour et ta méthode en produit
       // quinze », qui est le constat le plus utile de tout l'écran.
@@ -650,6 +655,26 @@ export default function BacktestPage() {
     setEmpreinteControlee(null);
     setSauvegarde("repos");
   }, []);
+
+  /**
+   * Les marchés qu'on accepte de comparer au sien.
+   *
+   * ⚠️ MÊME CATÉGORIE, ET C'EST UNE CONDITION DE SENS. Transposer une méthode
+   * d'indice vers une crypto passerait la règle d'échelle sans broncher et ne
+   * voudrait rien dire : ce ne sont ni les mêmes heures d'ouverture, ni les
+   * mêmes participants, ni la même façon de bouger. « Comparable » veut dire
+   * quelque chose, sinon la mesure ne veut rien dire non plus.
+   *
+   * ⚠️ BORNÉ À CINQ, LE SIEN COMPRIS. Chaque marché de plus est une profondeur
+   * de bougies à télécharger, et surtout une occasion de plus de trouver celui
+   * qui sort bien par hasard.
+   */
+  const marchesComparables = useMemo(() => {
+    const autres = INSTRUMENTS.filter(
+      (i) => i.categorie === instrument.categorie && i.code !== instrument.code,
+    ).map((i) => i.code);
+    return [instrument.code, ...autres].slice(0, 5);
+  }, [instrument]);
 
   /** L'écart avec la fiche, recalculé à chaque changement de plan. */
   const modifications = useMemo(
@@ -1289,6 +1314,22 @@ export default function BacktestPage() {
               // par filtre, c'est la mesure la plus lourde de la page.
               onMesurerConfluences={() => lancer(false, undefined, undefined, true)}
               nomDuFiltre={(type) => nomDuFiltre(type, tr)}
+              t={tr}
+            />
+          </StaggerItem>
+        ) : null}
+
+        {/* ── 5 ter. La même méthode ailleurs ─────────────────────────────
+            ⚠️ Après l'analyse, parce que la question « est-ce que ça tient
+            ailleurs » n'a de sens qu'une fois qu'on sait ce que « ça » vaut ici.
+            Et avant l'export, parce que c'est une conclusion, pas un détail. */}
+        {resultat ? (
+          <StaggerItem>
+            <Marches
+              marches={resultat.marches}
+              enCours={occupe}
+              candidats={marchesComparables}
+              onMesurer={() => lancer(false, undefined, undefined, false, marchesComparables)}
               t={tr}
             />
           </StaggerItem>
