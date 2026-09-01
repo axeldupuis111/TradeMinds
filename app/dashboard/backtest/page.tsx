@@ -122,7 +122,13 @@ interface StrategieRow {
 
 type Etat =
   | { phase: "repos" }
-  | { phase: "telechargement"; faits: number; total: number }
+  | {
+      phase: "telechargement";
+      faits: number;
+      total: number;
+      /** Le marché en cours, quand plusieurs se téléchargent à la suite. */
+      etape?: import("./worker").EtapeMarche;
+    }
   | { phase: "calcul" }
   | { phase: "erreur"; message: string };
 
@@ -497,7 +503,9 @@ export default function BacktestPage() {
     workerRef.current = w;
     w.onmessage = (e: MessageEvent<ReponseBacktest>) => {
       const r = e.data;
-      if (r.type === "avancement") setEtat({ phase: "telechargement", faits: r.faits, total: r.total });
+      if (r.type === "avancement") {
+        setEtat({ phase: "telechargement", faits: r.faits, total: r.total, etape: r.etape });
+      }
       else if (r.type === "calcul") setEtat({ phase: "calcul" });
       else if (r.type === "erreur") setEtat({ phase: "erreur", message: r.message });
       else {
@@ -1161,7 +1169,8 @@ export default function BacktestPage() {
                 <CardTitle>{tr("bt_etape_lancer")}</CardTitle>
                 <p className="mt-1 text-xs text-foreground-muted">
                   {etat.phase === "telechargement"
-                    ? tr("bt_telechargement", { faits: etat.faits, total: etat.total })
+                    ? tr("bt_telechargement", { faits: etat.faits, total: etat.total }) +
+                      (etat.etape ? ` · ${tr("bt_telechargement_etape", { ...etat.etape })}` : "")
                     : etat.phase === "calcul"
                       ? tr("bt_calcul")
                       : tr("bt_lancer_aide")}

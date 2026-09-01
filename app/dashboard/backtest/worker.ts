@@ -93,6 +93,13 @@ export interface DemandeBacktest {
 }
 
 /** Une bougie prête à dessiner, en unités de PRIX (plus en ticks). */
+/** Sur quel marché porte le téléchargement en cours, et à quel rang. */
+export interface EtapeMarche {
+  marche: string;
+  rang: number;
+  total: number;
+}
+
 export interface BougieApercu {
   t: number;
   o: number;
@@ -220,7 +227,13 @@ function preparerApercus(serie: SerieM1, trades: TradeSimule[], plan: PlanExecut
 }
 
 export type ReponseBacktest =
-  | { type: "avancement"; faits: number; total: number }
+  /**
+   * ⚠️ `etape` EXISTE PARCE QUE LA BARRE MENTAIT SUR LA MESURE LA PLUS LONGUE.
+   * Sur quatre marchés, elle affichait « 1 / 48 mois », puis repartait à 1 / 48,
+   * quatre fois de suite : le trader voyait la même barre recommencer sans
+   * jamais savoir où il en était, sur la seule mesure qui dure des minutes.
+   */
+  | { type: "avancement"; faits: number; total: number; etape?: EtapeMarche }
   | { type: "calcul" }
   | {
       type: "fini";
@@ -313,7 +326,16 @@ self.onmessage = async (e: MessageEvent<DemandeBacktest>) => {
             autre === code
               ? { serie, moisManquants: [] as string[] }
               : await chargerSerie(autre, de, a, (faits, total) =>
-                  poste({ type: "avancement", faits, total }),
+                  poste({
+                    type: "avancement",
+                    faits,
+                    total,
+                    etape: {
+                      marche: cible.nom,
+                      rang: marches.indexOf(autre) + 1,
+                      total: marches.length,
+                    },
+                  }),
                 );
           const amplitudeCible = amplitudeTypique(chargement.serie, complet.uniteDeTemps ?? 1);
           const planTranspose =
