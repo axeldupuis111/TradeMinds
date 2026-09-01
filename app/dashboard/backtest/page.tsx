@@ -40,6 +40,7 @@ import { Robustesse } from "@/components/backtest/Robustesse";
 import { ProjectionCarte } from "@/components/backtest/ProjectionCarte";
 import { Analyse } from "@/components/backtest/Analyse";
 import { Marches } from "@/components/backtest/Marches";
+import { Trouver } from "@/components/backtest/Trouver";
 import { Champ, Liste } from "@/components/backtest/Controles";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
@@ -66,6 +67,7 @@ import {
 } from "@/lib/backtest/modifications";
 import {
   fenetreDeTestSuggeree,
+  MOIS_MIN_CONTROLE,
   periodeIntacte,
   type Fenetre,
 } from "@/lib/backtest/hors-periode";
@@ -243,6 +245,7 @@ export default function BacktestPage() {
     constats: import("@/lib/backtest/coherence-plan").Constat[];
     confluences?: import("@/lib/backtest/confluences").Confluence[];
     marches?: import("@/lib/backtest/marches").ResultatMarche[];
+    exploration?: import("./worker").ReponseExploration;
   } | null>(null);
 
   /**
@@ -480,6 +483,7 @@ export default function BacktestPage() {
     avecStabilite?: import("@/lib/backtest/modifications").Modification[],
     avecConfluences?: boolean,
     avecMarches?: string[],
+    avecExploration?: { confirmationDe: string; confirmationA: string },
   ) => {
     if (etat.phase === "telechargement" || etat.phase === "calcul") return;
     workerRef.current?.terminate();
@@ -524,6 +528,7 @@ export default function BacktestPage() {
           constats: r.constats,
           confluences: r.confluences,
           marches: r.marches,
+          exploration: r.exploration,
         });
         setEtat({ phase: "repos" });
       }
@@ -539,6 +544,7 @@ export default function BacktestPage() {
       stabilite: avecStabilite,
       confluences: avecConfluences,
       marches: avecMarches,
+      exploration: avecExploration,
       // ⚠️ La fiche voyage avec la demande : sans elle, impossible de dire
       // « ta fiche annonce trois trades par jour et ta méthode en produit
       // quinze », qui est le constat le plus utile de tout l'écran.
@@ -1309,6 +1315,33 @@ export default function BacktestPage() {
               onAppliquer={(sug) => appliquerPropose(sug.plan, sug.levier, "plus_de_trades")}
               risqueParTradePct={plan.gestion.risqueParTradePct}
               maxPertesConsecutives={plan.gestion.maxPertesConsecutives}
+              t={tr}
+            />
+          </StaggerItem>
+        ) : null}
+
+        {/* ── 4 bis. Trouver ce qui pourrait marcher ──────────────────────
+            ⚠️ EN TÊTE DE TOUT CE QUI SUIT, ET C'EST LE POINT DE LA REFONTE. Le
+            trader vient ici avec un seul objectif : trouver quelque chose qui
+            tienne et repartir avec un plan à respecter. Les mesures qui suivent
+            servent à comprendre pourquoi ; celle-ci répond à la question. */}
+        {resultat ? (
+          <StaggerItem>
+            <Trouver
+              exploration={resultat.exploration}
+              enCours={occupe}
+              fenetreDeConfirmation={
+                fenetreIntacte && fenetreIntacte.mois >= MOIS_MIN_CONTROLE
+                  ? { de: fenetreIntacte.de, a: fenetreIntacte.a }
+                  : null
+              }
+              onChercher={() => {
+                if (!fenetreIntacte) return;
+                lancer(false, undefined, undefined, false, undefined, {
+                  confirmationDe: fenetreIntacte.de,
+                  confirmationA: fenetreIntacte.a,
+                });
+              }}
               t={tr}
             />
           </StaggerItem>

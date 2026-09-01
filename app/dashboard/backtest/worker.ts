@@ -10,6 +10,9 @@ import { chercherPropositions, type Proposition } from "@/lib/backtest/propositi
 import { concentration, type Concentration } from "@/lib/backtest/robustesse";
 import { mesurerConfluences, type Confluence } from "@/lib/backtest/confluences";
 import { verifierLePlan, type Constat, type FicheConfrontable } from "@/lib/backtest/coherence-plan";
+import { explorer, type Exploration } from "@/lib/backtest/exploration";
+import { dimensionsDeRecherche } from "@/lib/backtest/dimensions";
+import { composerPlanComplet, type PlanComplet } from "@/lib/backtest/plan-complet";
 import {
   amplitudeTypique,
   transposerPlan,
@@ -90,6 +93,14 @@ export interface DemandeBacktest {
    * trader ; sans elle, transposer un plan serait une faute silencieuse.
    */
   marches?: string[];
+  /**
+   * Chercher une combinaison qui tienne, puis la confirmer.
+   *
+   * ⚠️⚠️ LA FENÊTRE DE CONFIRMATION EST DÉCLARÉE AVANT DE CHERCHER, et
+   * l'exploration ne reçoit jamais ses bougies. Ce n'est pas une politesse :
+   * c'est ce qui rend la triche impossible plutôt que seulement interdite.
+   */
+  exploration?: { confirmationDe: string; confirmationA: string };
 }
 
 /** Une bougie prête à dessiner, en unités de PRIX (plus en ticks). */
@@ -266,13 +277,38 @@ export type ReponseBacktest =
       confluences?: Confluence[];
       /** La même méthode sur d'autres marchés, quand il l'a demandé. */
       marches?: ResultatMarche[];
+      /** La recherche, quand il l'a demandée. */
+      exploration?: ReponseExploration;
     }
   | { type: "erreur"; message: string };
+
+/** Ce que la recherche rend : les essais, le plan, et la confirmation. */
+export interface ReponseExploration {
+  recherche: Exploration;
+  /** Le plan complet de la candidate, prêt à respecter. */
+  plan: PlanComplet;
+  /**
+   * La confirmation sur la fenêtre jamais ouverte.
+   *
+   * ⚠️ `null` quand la candidate n'a pas franchi la barre de la recherche :
+   * confirmer ce qui n'a rien démontré offrirait un second tirage à qui n'aime
+   * pas le premier, c'est-à-dire exactement la pêche au chiffre.
+   */
+  confirmation: {
+    de: string;
+    a: string;
+    trades: number;
+    esperanceR: number | null;
+    borneBasse: number | null;
+    borneHaute: number | null;
+    verdict: string;
+  } | null;
+}
 
 const poste = (r: ReponseBacktest) => (self as unknown as Worker).postMessage(r);
 
 self.onmessage = async (e: MessageEvent<DemandeBacktest>) => {
-  const { code, de, a, plan, couts, tentatives, propositions, stabilite, confluences, fiche, marches } =
+  const { code, de, a, plan, couts, tentatives, propositions, stabilite, confluences, fiche, marches, exploration } =
     e.data;
   try {
     const { serie, moisCharges, moisManquants, octets } = await chargerSerie(code, de, a, (faits, total) =>
@@ -377,6 +413,67 @@ self.onmessage = async (e: MessageEvent<DemandeBacktest>) => {
       }
     }
 
+    /**
+     * LA RECHERCHE, PUIS LA CONFIRMATION.
+     *
+     * ⚠️ DEUX SÉRIES, DEUX RÔLES, ET ELLES NE SE CROISENT JAMAIS. La recherche
+     * ne voit que `serie` (la fenêtre testée) ; la confirmation charge la
+     * fenêtre intacte APRÈS coup, une seule fois, sur la seule candidate
+     * retenue. Un test unique n'a pas à être corrigé du nombre d'essais.
+     */
+    let recherche: Exploration | undefined;
+    let planComplet: PlanComplet | undefined;
+    let confirmation: {
+      de: string;
+      a: string;
+      trades: number;
+      esperanceR: number | null;
+      borneBasse: number | null;
+      borneHaute: number | null;
+      verdict: string;
+    } | null = null;
+
+    if (exploration) {
+      const instrument = instrumentParCode(code) ?? INSTRUMENTS[0];
+      recherche = explorer(
+        serie,
+        complet,
+        couts,
+        dimensionsDeRecherche(instrument),
+        (faits, total) => poste({ type: "avancement", faits, total }),
+      );
+
+      const rTrouve = lancerBacktest(serie, { ...recherche.plan, couts });
+      planComplet = composerPlanComplet(recherche.plan, rTrouve.trades, instrument);
+
+      // ⚠️ ON NE CONFIRME QUE CE QUI A FRANCHI LA BARRE. Confirmer une candidate
+      // qui n'a rien démontré sur l'entraînement offrirait un second tirage à
+      // qui n'aime pas le premier, c'est-à-dire exactement la pêche au chiffre.
+      if (recherche.franchitLaBarre) {
+        try {
+          const { serie: serieConfirmation } = await chargerSerie(
+            code,
+            exploration.confirmationDe,
+            exploration.confirmationA,
+            (faits, total) => poste({ type: "avancement", faits, total }),
+          );
+          const rc = lancerBacktest(serieConfirmation, { ...recherche.plan, couts });
+          const lc = lireBacktest(rc, couts, 0);
+          confirmation = {
+            de: exploration.confirmationDe,
+            a: exploration.confirmationA,
+            trades: rc.trades.length,
+            esperanceR: lc.stats?.esperanceR ?? null,
+            borneBasse: lc.stats?.borneBasse ?? null,
+            borneHaute: lc.stats?.borneHaute ?? null,
+            verdict: lc.verdict,
+          };
+        } catch {
+          confirmation = null;
+        }
+      }
+    }
+
     poste({
       type: "fini",
       resultat,
@@ -406,6 +503,10 @@ self.onmessage = async (e: MessageEvent<DemandeBacktest>) => {
         lecture.stats,
       ),
       marches: surDAutresMarches,
+      exploration:
+        recherche && planComplet
+          ? { recherche, plan: planComplet, confirmation }
+          : undefined,
       confluences: confluences
         ? mesurerConfluences(
             serie,
