@@ -69,7 +69,6 @@ import {
   fenetreDeTestSuggeree,
   MOIS_MIN_CONTROLE,
   periodeIntacte,
-  type Fenetre,
 } from "@/lib/backtest/hors-periode";
 import {
   composerBloc,
@@ -246,7 +245,19 @@ export default function BacktestPage() {
     confluences?: import("@/lib/backtest/confluences").Confluence[];
     marches?: import("@/lib/backtest/marches").ResultatMarche[];
     exploration?: import("./worker").ReponseExploration;
+    controle?: { de: string; a: string; lecture: LectureBacktest };
+    /** Plan, période et instrument sur lesquels ce résultat a été calculé. */
+    empreinte: string;
   } | null>(null);
+
+  /**
+   * Le plan, la période et l'instrument du résultat affiché.
+   *
+   * ⚠️ Une ref et pas un état : elle sert à décider, dans le corps de `lancer`,
+   * s'il faut effacer le résultat. Un état ne serait pas encore à jour au
+   * moment où on en a besoin.
+   */
+  const empreinteDuResultat = useRef<string | null>(null);
 
   /**
    * ⚠️ Compteur de rejeux. C'est le garde-fou le plus important de la page et
@@ -283,17 +294,6 @@ export default function BacktestPage() {
    */
   const [verifie, setVerifie] = useState(false);
 
-  /**
-   * LE CONTRÔLE SUR UNE PÉRIODE INTACTE, et l'empreinte du plan sur lequel il a
-   * porté.
-   *
-   * ⚠️ L'EMPREINTE N'EST PAS UN LUXE. Un contrôle qui resterait affiché après
-   * qu'un réglage a bougé certifierait un plan qui n'existe plus, et le trader
-   * enregistrerait sa stratégie en croyant l'avoir vérifiée. C'est le seul cas
-   * où l'écran mentirait franchement.
-   */
-  const [controle, setControle] = useState<EtatControle>({ phase: "repos" });
-  const [empreinteControlee, setEmpreinteControlee] = useState<string | null>(null);
   const [sauvegarde, setSauvegarde] = useState<"repos" | "encours" | "ok" | "erreur">("repos");
 
   /**
@@ -311,13 +311,9 @@ export default function BacktestPage() {
   const [comparees, setComparees] = useState<string[]>([]);
 
   const workerRef = useRef<Worker | null>(null);
-  const workerControleRef = useRef<Worker | null>(null);
 
   useEffect(() => {
-    return () => {
-      workerRef.current?.terminate();
-      workerControleRef.current?.terminate();
-    };
+    return () => workerRef.current?.terminate();
   }, []);
 
   // Le fuseau réel du navigateur remplace le repli une fois monté.
@@ -455,8 +451,6 @@ export default function BacktestPage() {
       // ne doit jamais bouger.
       setPlanFiche(structuredClone(compile));
       setOrigines({});
-      setControle({ phase: "repos" });
-      setEmpreinteControlee(null);
       setSauvegarde("repos");
 
       setCouverture(couvertureFinale);
@@ -470,21 +464,40 @@ export default function BacktestPage() {
   }, [strategies, strategieId, code, fuseau, instrument, plan, tr]);
 
   /**
-   * @param avecPropositions cherche aussi ce que le trader pourrait changer.
+   * UN SEUL LANCEMENT, DES MESURES QUI S'AJOUTENT.
    *
-   * ⚠️ SUR DEMANDE, JAMAIS D'OFFICE. Chaque proposition est un backtest
-   * complet : une dizaine de variantes ajoutent plusieurs secondes sur un plan
-   * en M1. Les calculer à chaque lancement ferait payer cette attente à tout le
-   * monde, y compris à ceux qui ne les regardent pas.
+   * ⚠️⚠️ SEPT ENDROITS DE LA PAGE APPELAIENT CETTE FONCTION, chacun avec sa
+   * combinaison de six arguments positionnels, et chacun repartait de
+   * `setResultat(null)`. Mesurer les confluences effaçait les marchés, qui
+   * effaçaient le voisinage des réglages : le trader cliquait, quelque chose
+   * apparaissait, et ce qu'il avait mesuré avant disparaissait. Son verdict :
+   * « je peux appuyer à plein d'endroits, au final je suis perdu ».
+   *
+   * Deux corrections, et la première est de fond :
+   *
+   * 1. **Les mesures s'ACCUMULENT** tant que le plan, la période et
+   *    l'instrument n'ont pas bougé. Ce qui a déjà été mesuré reste affiché.
+   * 2. **Des options nommées.** Six arguments positionnels dont quatre
+   *    `undefined` sur chaque appel étaient le symptôme de la même dérive.
    */
-  const lancer = useCallback((
-    avecPropositions = false,
-    fenetre?: { de: string; a: string },
-    avecStabilite?: import("@/lib/backtest/modifications").Modification[],
-    avecConfluences?: boolean,
-    avecMarches?: string[],
-    avecExploration?: { confirmationDe: string; confirmationA: string },
-  ) => {
+  const lancer = useCallback((options: {
+    propositions?: boolean;
+    fenetre?: { de: string; a: string };
+    stabilite?: import("@/lib/backtest/modifications").Modification[];
+    confluences?: boolean;
+    marches?: string[];
+    exploration?: { confirmationDe: string; confirmationA: string };
+    controle?: { de: string; a: string };
+  } = {}) => {
+    const {
+      propositions: avecPropositions,
+      fenetre,
+      stabilite: avecStabilite,
+      confluences: avecConfluences,
+      marches: avecMarches,
+      exploration: avecExploration,
+      controle: avecControle,
+    } = options;
     if (etat.phase === "telechargement" || etat.phase === "calcul") return;
     workerRef.current?.terminate();
 
@@ -499,8 +512,18 @@ export default function BacktestPage() {
     const prochaine = compte.n;
     setTentatives(prochaine);
     setTentativesDepuis(compte.depuis);
-    setResultat(null);
-    setVerifie(false);
+
+    // ⚠️ ON N'EFFACE QUE CE QUI NE CORRESPOND PLUS. Le résultat affiché décrit
+    // le plan, la période et l'instrument sur lesquels il a été calculé : tant
+    // que les trois sont inchangés, il reste juste, et l'effacer ferait
+    // clignoter la page à chaque mesure.
+    const empreinte = `${empreintePlan(plan)}|${depuis}|${jusqua}|${code}`;
+    const memeContexte = empreinte === empreinteDuResultat.current;
+    if (!memeContexte) {
+      setResultat(null);
+      setVerifie(false);
+    }
+    empreinteDuResultat.current = empreinte;
     setEtat({ phase: "telechargement", faits: 0, total: moisEntre(depuis, jusqua).length });
 
     const w = new Worker(new URL("./worker.ts", import.meta.url));
@@ -513,7 +536,12 @@ export default function BacktestPage() {
       else if (r.type === "calcul") setEtat({ phase: "calcul" });
       else if (r.type === "erreur") setEtat({ phase: "erreur", message: r.message });
       else {
-        setResultat({
+        // ⚠️ CE QUI N'A PAS ÉTÉ RECALCULÉ EST CONSERVÉ. Le worker rend
+        // `undefined` pour les mesures qu'on ne lui a pas demandées : les
+        // écraser avec `undefined` ferait disparaître le travail précédent, ce
+        // qui est exactement le défaut qu'on répare.
+        setResultat((prec) => ({
+          empreinte,
           lecture: r.lecture,
           trades: r.resultat.trades,
           audit: r.resultat.audit,
@@ -521,15 +549,16 @@ export default function BacktestPage() {
           ms: r.ms,
           apercus: r.apercus,
           suggestions: r.suggestions,
-          propositions: r.propositions,
           concentration: r.concentration,
-          stabilite: r.stabilite,
           projection: r.projection,
           constats: r.constats,
-          confluences: r.confluences,
-          marches: r.marches,
-          exploration: r.exploration,
-        });
+          propositions: r.propositions ?? (memeContexte ? prec?.propositions : undefined),
+          stabilite: r.stabilite ?? (memeContexte ? prec?.stabilite : undefined),
+          confluences: r.confluences ?? (memeContexte ? prec?.confluences : undefined),
+          marches: r.marches ?? (memeContexte ? prec?.marches : undefined),
+          exploration: r.exploration ?? (memeContexte ? prec?.exploration : undefined),
+          controle: r.controle ?? (memeContexte ? prec?.controle : undefined),
+        }));
         setEtat({ phase: "repos" });
       }
     };
@@ -545,6 +574,7 @@ export default function BacktestPage() {
       confluences: avecConfluences,
       marches: avecMarches,
       exploration: avecExploration,
+      controle: avecControle,
       // ⚠️ La fiche voyage avec la demande : sans elle, impossible de dire
       // « ta fiche annonce trois trades par jour et ta méthode en produit
       // quinze », qui est le constat le plus utile de tout l'écran.
@@ -673,8 +703,6 @@ export default function BacktestPage() {
     setA(v.a);
     setOrigines({});
     setResultat(null);
-    setControle({ phase: "repos" });
-    setEmpreinteControlee(null);
     setSauvegarde("repos");
   }, []);
 
@@ -731,63 +759,77 @@ export default function BacktestPage() {
    */
   const periodeSuggeree = useMemo(() => fenetreDeTestSuggeree(PERIODE_MIN, PERIODE_MAX), []);
 
+  /**
+   * TOUTES LES MESURES LOURDES, EN UNE SEULE PASSE.
+   *
+   * ⚠️⚠️ ELLES AVAIENT CHACUNE LEUR BOUTON, ET CHACUNE EFFAÇAIT LES AUTRES.
+   * Confluences, voisinage des réglages, autres marchés, contrôle hors période :
+   * quatre boutons, quatre lancements, et à chaque fois le résultat des trois
+   * autres disparaissait. C'est ce qui rendait la page impraticable, bien avant
+   * le nombre de cartes.
+   *
+   * Elles partent maintenant ensemble, avec une seule barre de progression. Ça
+   * dure plusieurs minutes, et c'est annoncé : mieux vaut une attente qu'on
+   * comprend que quatre attentes qui se défont.
+   */
+  const analyserAFond = useCallback(() => {
+    lancer({
+      // ⚠️ Les propositions partent avec le reste : c'était le dernier bouton
+      // isolé, donc la dernière façon d'effacer le travail des autres.
+      propositions: true,
+      confluences: true,
+      stabilite: modifications,
+      marches: marchesComparables,
+      controle:
+        fenetreIntacte && fenetreIntacte.mois >= MOIS_MIN_CONTROLE
+          ? { de: fenetreIntacte.de, a: fenetreIntacte.a }
+          : undefined,
+    });
+  }, [lancer, modifications, marchesComparables, fenetreIntacte]);
+
+
   const raccourcirEtRelancer = useCallback(
     (f: { de: string; a: string }) => {
       setDe(f.de);
       setA(f.a);
-      setControle({ phase: "repos" });
-      setEmpreinteControlee(null);
       // On relance dans la foulée, avec la nouvelle fenêtre passée en argument :
       // demander au trader de recliquer « Lancer » après lui avoir fait cliquer
       // ici serait une marche de plus sur un chemin déjà long.
-      lancer(false, f);
+      lancer({ fenetre: f });
     },
     [lancer],
   );
 
-  const lancerControle = useCallback(
-    (fenetre: Fenetre) => {
-      workerControleRef.current?.terminate();
-      setControle({ phase: "encours" });
-      const empreinte = empreintePlan(plan);
-      const w = new Worker(new URL("./worker.ts", import.meta.url));
-      workerControleRef.current = w;
-      w.onmessage = (e: MessageEvent<ReponseBacktest>) => {
-        const r = e.data;
-        if (r.type === "erreur") setControle({ phase: "erreur" });
-        else if (r.type === "fini") {
-          setControle({ phase: "fait", fenetre, lecture: r.lecture, valide: true });
-          setEmpreinteControlee(empreinte);
-        }
-      };
-      const demande: DemandeBacktest = {
-        code,
-        de: fenetre.de,
-        a: fenetre.a,
-        plan,
-        couts: plan.couts,
-        tentatives: 0,
-        propositions: false,
-      };
-      w.postMessage(demande);
-    },
-    [code, plan],
-  );
+  /**
+   * Le résultat affiché décrit-il encore le plan à l'écran ?
+   *
+   * ⚠️⚠️ UN SEUL DRAPEAU POUR TOUTE LA PAGE, et c'est la simplification qui
+   * compte. Chaque carte gardait sa propre notion de « périmé », avec sa propre
+   * empreinte : le contrôle pouvait être déclaré caduc pendant que le verdict
+   * d'à côté, calculé sur le même plan, restait affiché comme valable. Une seule
+   * comparaison, un seul message, en haut.
+   */
+  const resultatPerime =
+    resultat != null &&
+    resultat.empreinte !== `${empreintePlan(plan)}|${de}|${a}|${code}`;
 
   /**
-   * Le contrôle porte-t-il encore sur le plan affiché ?
+   * Le contrôle hors période, tel que la carte d'enregistrement l'attend.
    *
-   * ⚠️ Recalculé à chaque rendu plutôt que gardé dans l'état : un booléen figé
-   * survivrait au changement de réglage qui l'invalide, et c'est précisément le
-   * moment où il compte.
+   * ⚠️ Il vient désormais du MÊME lancement que le résultat : il ne peut plus
+   * décrire un autre plan que lui, et son état se déduit, il ne se stocke plus.
    */
-  const controleAffiche: EtatControle = useMemo(
-    () =>
-      controle.phase === "fait"
-        ? { ...controle, valide: empreinteControlee === empreintePlan(plan) }
-        : controle,
-    [controle, empreinteControlee, plan],
-  );
+  const controleAffiche: EtatControle = useMemo(() => {
+    if (etat.phase !== "repos") return { phase: "encours" };
+    const c = resultat?.controle;
+    if (!c) return { phase: "repos" };
+    return {
+      phase: "fait",
+      fenetre: { de: c.de, a: c.a, mois: moisEntre(c.de, c.a).length },
+      lecture: c.lecture,
+      valide: !resultatPerime,
+    };
+  }, [resultat, etat.phase, resultatPerime]);
   const controleValide = controleAffiche.phase === "fait" && controleAffiche.valide;
 
   const strategieCourante = strategies.find((s) => s.id === strategieId);
@@ -1232,22 +1274,6 @@ export default function BacktestPage() {
               t={tr}
             />
           </StaggerItem>
-        ) : resultat ? (
-          <StaggerItem>
-            <Card className="p-4 sm:p-5">
-              <p className="text-sm font-medium text-foreground">{t_titre(tr)}</p>
-              <p className="mt-1 text-xs leading-relaxed text-foreground-muted">
-                {tr("bt_prop_intro")}
-              </p>
-              <button
-                type="button"
-                onClick={() => lancer(true)}
-                className="mt-3 rounded-lg border border-accent/50 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/10"
-              >
-                {tr("bt_prop_chercher")}
-              </button>
-            </Card>
-          </StaggerItem>
         ) : null}
 
       {/* ── Ce que les filtres ont réellement écarté ────────────────────
@@ -1320,7 +1346,69 @@ export default function BacktestPage() {
           </StaggerItem>
         ) : null}
 
-        {/* ── 4 bis. Trouver ce qui pourrait marcher ──────────────────────
+        {resultatPerime ? (
+          <StaggerItem>
+            <Card className="border-warning/40 bg-warning/[0.06] p-4 sm:p-5">
+              <p className="flex items-start gap-2 text-xs font-medium text-warning">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                {tr("bt_perime_titre")}
+              </p>
+              <p className="mt-1.5 pl-6 text-xs leading-relaxed text-foreground-muted">
+                {tr("bt_perime")}
+              </p>
+            </Card>
+          </StaggerItem>
+        ) : null}
+
+        {/* ── 4 ter. Un seul endroit pour lancer ce qui est long ───────────
+            ⚠️⚠️ C'EST LA CORRECTION QUI COMPTE. Sept boutons répartis sur sept
+            cartes lançaient chacun un test, et chacun effaçait le résultat des
+            six autres. Le trader cliquait, quelque chose apparaissait, et son
+            travail précédent disparaissait : « je peux appuyer à plein
+            d'endroits, au final je suis perdu ». Deux intentions, deux boutons,
+            un seul endroit. Toutes les cartes au-dessous ne font qu'AFFICHER. */}
+        {resultat ? (
+          <StaggerItem>
+            <Card className="p-4 sm:p-5">
+              <h4 className="text-sm font-semibold text-foreground">{tr("bt_aller_titre")}</h4>
+              <p className="mt-1 text-xs leading-relaxed text-foreground-muted">
+                {tr("bt_aller_intro")}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={occupe}
+                  onClick={analyserAFond}
+                  className="rounded-lg border border-accent/50 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/10 disabled:opacity-50"
+                >
+                  {occupe ? tr("bt_aller_encours") : tr("bt_aller_analyser")}
+                </button>
+                {fenetreIntacte && fenetreIntacte.mois >= MOIS_MIN_CONTROLE ? (
+                  <button
+                    type="button"
+                    disabled={occupe}
+                    onClick={() =>
+                      lancer({
+                        exploration: {
+                          confirmationDe: fenetreIntacte.de,
+                          confirmationA: fenetreIntacte.a,
+                        },
+                      })
+                    }
+                    className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
+                  >
+                    {occupe ? tr("bt_exp_encours") : tr("bt_exp_lancer")}
+                  </button>
+                ) : null}
+              </div>
+              <p className="mt-2 text-[11px] leading-relaxed text-foreground-muted">
+                {tr("bt_aller_analyser_aide")}
+              </p>
+            </Card>
+          </StaggerItem>
+        ) : null}
+
+        {/* ── 4 quater. Ce que la recherche a trouvé ──────────────────────
             ⚠️ EN TÊTE DE TOUT CE QUI SUIT, ET C'EST LE POINT DE LA REFONTE. Le
             trader vient ici avec un seul objectif : trouver quelque chose qui
             tienne et repartir avec un plan à respecter. Les mesures qui suivent
@@ -1329,19 +1417,11 @@ export default function BacktestPage() {
           <StaggerItem>
             <Trouver
               exploration={resultat.exploration}
-              enCours={occupe}
               fenetreDeConfirmation={
                 fenetreIntacte && fenetreIntacte.mois >= MOIS_MIN_CONTROLE
                   ? { de: fenetreIntacte.de, a: fenetreIntacte.a }
                   : null
               }
-              onChercher={() => {
-                if (!fenetreIntacte) return;
-                lancer(false, undefined, undefined, false, undefined, {
-                  confirmationDe: fenetreIntacte.de,
-                  confirmationA: fenetreIntacte.a,
-                });
-              }}
               t={tr}
             />
           </StaggerItem>
@@ -1359,10 +1439,6 @@ export default function BacktestPage() {
               synthese={synthese}
               constats={resultat.constats}
               confluences={resultat.confluences}
-              confluencesEnCours={occupe}
-              // Relance un backtest en demandant les confluences : deux passes
-              // par filtre, c'est la mesure la plus lourde de la page.
-              onMesurerConfluences={() => lancer(false, undefined, undefined, true)}
               nomDuFiltre={(type) => nomDuFiltre(type, tr)}
               t={tr}
             />
@@ -1377,9 +1453,6 @@ export default function BacktestPage() {
           <StaggerItem>
             <Marches
               marches={resultat.marches}
-              enCours={occupe}
-              candidats={marchesComparables}
-              onMesurer={() => lancer(false, undefined, undefined, false, marchesComparables)}
               t={tr}
             />
           </StaggerItem>
@@ -1418,12 +1491,6 @@ export default function BacktestPage() {
             <Robustesse
               concentration={resultat.concentration}
               stabilite={resultat.stabilite}
-              peutMesurerStabilite={modifications.length > 0}
-              mesureEnCours={occupe}
-              // ⚠️ Relance un backtest complet en demandant le voisinage : le
-              // mesurer d'office ferait payer cinq passes de plus à tout le
-              // monde, y compris à qui n'ouvrira jamais ce tableau.
-              onMesurerStabilite={() => lancer(false, undefined, modifications)}
               t={tr}
             />
           </StaggerItem>
@@ -1482,7 +1549,6 @@ export default function BacktestPage() {
               champsRepris={repartition.repris}
               champsNonRepris={repartition.nonRepris}
               sauvegarde={sauvegarde}
-              onControler={lancerControle}
               onRaccourcir={raccourcirEtRelancer}
               onEnregistrer={enregistrer}
               t={tr}
@@ -1717,9 +1783,3 @@ function LigneInterpretation({
   );
 }
 
-
-
-/** Le titre de la carte d'invitation, repris de la carte des propositions. */
-function t_titre(t: (c: string) => string): string {
-  return t("bt_prop_titre");
-}

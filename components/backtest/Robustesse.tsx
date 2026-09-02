@@ -36,17 +36,11 @@ function signe(v: number | null | undefined, d = 2): string {
 export function Robustesse({
   concentration,
   stabilite,
-  peutMesurerStabilite,
-  mesureEnCours,
-  onMesurerStabilite,
   t,
 }: {
   concentration: Concentration | null;
+  /** ⚠️ La section n'apparaît qu'une fois la mesure faite. */
   stabilite: Stabilite[] | undefined;
-  /** Faux quand aucun réglage changé ne se prête au voisinage. */
-  peutMesurerStabilite: boolean;
-  mesureEnCours: boolean;
-  onMesurerStabilite: () => void;
   t: (cle: string, params?: Record<string, string | number>) => string;
 }) {
   if (!concentration) return null;
@@ -133,24 +127,14 @@ export function Robustesse({
       ) : null}
 
       {/* ── 2. Dans le réglage ───────────────────────────────────────────── */}
-      {peutMesurerStabilite ? (
+      {stabilite && stabilite.length > 0 ? (
         <div className="mt-5 border-t border-border pt-4">
           <p className="text-xs font-medium text-foreground">{t("bt_rob_reglage")}</p>
           <p className="mt-1 text-[11px] leading-relaxed text-foreground-muted">
             {t("bt_rob_reglage_pourquoi")}
           </p>
 
-          {!stabilite ? (
-            <button
-              type="button"
-              disabled={mesureEnCours}
-              onClick={onMesurerStabilite}
-              className="mt-2.5 rounded-lg border border-accent/50 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/10 disabled:opacity-50"
-            >
-              {mesureEnCours ? t("bt_rob_mesure_encours") : t("bt_rob_mesurer")}
-            </button>
-          ) : (
-            stabilite.map((s) => (
+          {stabilite.map((s) => (
               <div key={s.cle} className="mt-3">
                 <p className="text-[11px] font-medium text-foreground">{t(`bt_modif_${s.cle}`)}</p>
                 <div className="mt-1.5 overflow-x-auto">
@@ -202,8 +186,7 @@ export function Robustesse({
                   {t(`bt_rob_forme_${s.forme}`)}
                 </p>
               </div>
-            ))
-          )}
+          ))}
         </div>
       ) : null}
     </Card>

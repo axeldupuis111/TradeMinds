@@ -101,9 +101,17 @@ export interface DemandeBacktest {
    * c'est ce qui rend la triche impossible plutôt que seulement interdite.
    */
   exploration?: { confirmationDe: string; confirmationA: string };
+  /**
+   * Rejouer le MÊME plan sur une fenêtre qu'on n'a pas réglée.
+   *
+   * ⚠️ RAPATRIÉ DANS LA PASSE UNIQUE. Il vivait dans un second worker, avec son
+   * propre bouton et son propre cycle : sept endroits de la page lançaient un
+   * test, chacun effaçant le résultat des six autres. Le trader cliquait,
+   * quelque chose apparaissait, et ce qu'il avait mesuré avant disparaissait.
+   */
+  controle?: { de: string; a: string };
 }
 
-/** Une bougie prête à dessiner, en unités de PRIX (plus en ticks). */
 /** Sur quel marché porte le téléchargement en cours, et à quel rang. */
 export interface EtapeMarche {
   marche: string;
@@ -111,6 +119,7 @@ export interface EtapeMarche {
   total: number;
 }
 
+/** Une bougie prête à dessiner, en unités de PRIX (plus en ticks). */
 export interface BougieApercu {
   t: number;
   o: number;
@@ -279,6 +288,8 @@ export type ReponseBacktest =
       marches?: ResultatMarche[];
       /** La recherche, quand il l'a demandée. */
       exploration?: ReponseExploration;
+      /** Le même plan sur une fenêtre intacte, quand il l'a demandé. */
+      controle?: { de: string; a: string; lecture: LectureBacktest };
     }
   | { type: "erreur"; message: string };
 
@@ -308,7 +319,7 @@ export interface ReponseExploration {
 const poste = (r: ReponseBacktest) => (self as unknown as Worker).postMessage(r);
 
 self.onmessage = async (e: MessageEvent<DemandeBacktest>) => {
-  const { code, de, a, plan, couts, tentatives, propositions, stabilite, confluences, fiche, marches, exploration } =
+  const { code, de, a, plan, couts, tentatives, propositions, stabilite, confluences, fiche, marches, exploration, controle } =
     e.data;
   try {
     const { serie, moisCharges, moisManquants, octets } = await chargerSerie(code, de, a, (faits, total) =>
@@ -474,6 +485,31 @@ self.onmessage = async (e: MessageEvent<DemandeBacktest>) => {
       }
     }
 
+    /**
+     * LE CONTRÔLE HORS PÉRIODE, dans la même passe.
+     *
+     * ⚠️ Il ne cherche rien : il rejoue le plan tel quel là où le trader n'a
+     * rien réglé. C'est pour ça qu'il n'incrémente aucun compteur d'essais.
+     */
+    let horsPeriode: { de: string; a: string; lecture: LectureBacktest } | undefined;
+    if (controle) {
+      try {
+        const { serie: serieControle } = await chargerSerie(
+          code,
+          controle.de,
+          controle.a,
+          (faits, total) => poste({ type: "avancement", faits, total }),
+        );
+        horsPeriode = {
+          de: controle.de,
+          a: controle.a,
+          lecture: lireBacktest(lancerBacktest(serieControle, complet), couts, 0),
+        };
+      } catch {
+        horsPeriode = undefined;
+      }
+    }
+
     poste({
       type: "fini",
       resultat,
@@ -503,6 +539,7 @@ self.onmessage = async (e: MessageEvent<DemandeBacktest>) => {
         lecture.stats,
       ),
       marches: surDAutresMarches,
+      controle: horsPeriode,
       exploration:
         recherche && planComplet
           ? { recherche, plan: planComplet, confirmation }

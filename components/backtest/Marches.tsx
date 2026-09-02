@@ -29,19 +29,14 @@ function r(v: number | null, d = 3): string {
 
 export function Marches({
   marches,
-  enCours,
-  candidats,
-  onMesurer,
   t,
 }: {
+  /** ⚠️ Rien à afficher tant que la mesure n'a pas eu lieu : la carte disparaît. */
   marches: ResultatMarche[] | undefined;
-  enCours: boolean;
-  /** Les marchés qui seront essayés, pour l'annoncer avant de télécharger. */
-  candidats: string[];
-  onMesurer: () => void;
   t: (cle: string, params?: Record<string, string | number>) => string;
 }) {
-  const lecture = marches ? lireLesMarches(marches) : null;
+  if (!marches) return null;
+  const lecture = lireLesMarches(marches);
 
   return (
     <Card className="p-4 sm:p-5">
@@ -58,23 +53,7 @@ export function Marches({
         {t("bt_mar_echelle")}
       </p>
 
-      {!marches ? (
-        <>
-          <button
-            type="button"
-            disabled={enCours || candidats.length < 2}
-            onClick={onMesurer}
-            className="mt-3 rounded-lg border border-accent/50 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/10 disabled:opacity-50"
-          >
-            {enCours ? t("bt_mar_encours") : t("bt_mar_mesurer", { n: candidats.length })}
-          </button>
-          <p className="mt-2 text-[11px] leading-snug text-foreground-muted">
-            {t("bt_mar_telechargement")}
-          </p>
-        </>
-      ) : (
-        <>
-          <div className="mt-3 overflow-x-auto">
+      <div className="mt-3 overflow-x-auto">
             <table className="w-full min-w-[26rem] text-[11px] tabular-nums">
               <thead>
                 <tr className="text-left text-foreground-muted">
@@ -124,26 +103,22 @@ export function Marches({
             </table>
           </div>
 
-          {lecture ? (
-            <p
-              className={cn(
-                "mt-3 flex items-start gap-1.5 rounded-lg border p-3 text-[11px] leading-relaxed",
-                lecture.verdict === "seul_le_sien" || lecture.verdict === "nulle_part"
-                  ? "border-warning/40 bg-warning/[0.06] text-warning"
-                  : "border-border bg-surface/40 text-foreground-muted",
-              )}
-            >
-              {lecture.verdict === "seul_le_sien" || lecture.verdict === "nulle_part" ? (
-                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              ) : null}
-              {t(`bt_mar_verdict_${lecture.verdict}`, {
-                retrouves: lecture.retrouves,
-                mesurables: lecture.mesurables,
-              })}
-            </p>
-          ) : null}
-        </>
-      )}
+      <p
+        className={cn(
+          "mt-3 flex items-start gap-1.5 rounded-lg border p-3 text-[11px] leading-relaxed",
+          lecture.verdict === "seul_le_sien" || lecture.verdict === "nulle_part"
+            ? "border-warning/40 bg-warning/[0.06] text-warning"
+            : "border-border bg-surface/40 text-foreground-muted",
+        )}
+      >
+        {lecture.verdict === "seul_le_sien" || lecture.verdict === "nulle_part" ? (
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        ) : null}
+        {t(`bt_mar_verdict_${lecture.verdict}`, {
+          retrouves: lecture.retrouves,
+          mesurables: lecture.mesurables,
+        })}
+      </p>
     </Card>
   );
 }

@@ -66,16 +66,12 @@ export function Analyse({
   synthese,
   constats,
   confluences,
-  confluencesEnCours,
-  onMesurerConfluences,
   nomDuFiltre,
   t,
 }: {
   synthese: Synthese;
   constats: Constat[];
   confluences: Confluence[] | undefined;
-  confluencesEnCours: boolean;
-  onMesurerConfluences: () => void;
   /**
    * Le nom du filtre tel qu'il est écrit dans l'éditeur.
    *
@@ -168,7 +164,11 @@ export function Analyse({
         )}
       </div>
 
-      {/* ── 3. Mes confluences servent-elles ? ────────────────────────────── */}
+      {/* ── 3. Mes confluences servent-elles ? ──────────────────────────────
+          ⚠️ La section n'apparaît qu'une fois la mesure faite. Un bouton par
+          carte, c'était sept endroits pour lancer un test et sept façons
+          d'effacer le travail des six autres. */}
+      {confluences ? (
       <div className="mt-5 border-t border-border pt-4">
         <h4 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
           <Filter className="h-4 w-4" />
@@ -183,16 +183,7 @@ export function Analyse({
           {t("bt_conf_avertissement")}
         </p>
 
-        {!confluences ? (
-          <button
-            type="button"
-            disabled={confluencesEnCours}
-            onClick={onMesurerConfluences}
-            className="mt-3 rounded-lg border border-accent/50 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/10 disabled:opacity-50"
-          >
-            {confluencesEnCours ? t("bt_conf_encours") : t("bt_conf_mesurer")}
-          </button>
-        ) : confluences.length === 0 ? (
+        {confluences.length === 0 ? (
           <p className="mt-3 text-xs text-foreground-muted">{t("bt_conf_rien")}</p>
         ) : (
           <ul className="mt-3 space-y-2">
@@ -234,6 +225,7 @@ export function Analyse({
           </ul>
         )}
       </div>
+      ) : null}
     </Card>
   );
 }

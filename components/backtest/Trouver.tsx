@@ -48,9 +48,7 @@ function r(v: number | null | undefined, d = 3): string {
 
 export function Trouver({
   exploration,
-  enCours,
   fenetreDeConfirmation,
-  onChercher,
   t,
 }: {
   exploration:
@@ -68,10 +66,8 @@ export function Trouver({
         } | null;
       }
     | undefined;
-  enCours: boolean;
   /** ⚠️ `null` = pas de fenêtre intacte, donc pas de confirmation possible. */
   fenetreDeConfirmation: { de: string; a: string } | null;
-  onChercher: () => void;
   t: (cle: string, params?: Record<string, string | number>) => string;
 }) {
   /** Une étiquette d'essai : soit une clé de traduction, soit un code de bloc. */
@@ -99,14 +95,10 @@ export function Trouver({
           {t("bt_hors_aucune")}
         </p>
       ) : !exploration ? (
-        <button
-          type="button"
-          disabled={enCours}
-          onClick={onChercher}
-          className="mt-3 rounded-lg bg-accent px-3.5 py-2 text-xs font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
-        >
-          {enCours ? t("bt_exp_encours") : t("bt_exp_lancer")}
-        </button>
+        /* ⚠️ Plus de bouton ici : tout ce qui se lance se lance au même endroit,
+           plus haut. Un bouton par carte, c'etait sept facons d'effacer le
+           travail des six autres. */
+        null
       ) : (
         <Resultats exploration={exploration} libelle={libelle} t={t} />
       )}

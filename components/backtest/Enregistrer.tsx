@@ -78,7 +78,6 @@ export function Enregistrer({
   champsRepris,
   champsNonRepris,
   sauvegarde,
-  onControler,
   onRaccourcir,
   onEnregistrer,
   t,
@@ -121,7 +120,6 @@ export function Enregistrer({
   champsRepris: string[];
   champsNonRepris: string[];
   sauvegarde: "repos" | "encours" | "ok" | "erreur";
-  onControler: (fenetre: Fenetre) => void;
   /** Raccourcit la période testée et relance, pour libérer une fenêtre intacte. */
   onRaccourcir: (periode: { de: string; a: string }) => void;
   onEnregistrer: () => void;
@@ -185,19 +183,6 @@ export function Enregistrer({
         </div>
       ) : (
         <>
-          <button
-            type="button"
-            disabled={controle.phase === "encours"}
-            onClick={() => onControler(fenetre)}
-            className="mt-3 rounded-lg border border-accent/50 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/10 disabled:opacity-50"
-          >
-            {controle.phase === "encours"
-              ? t("bt_hors_encours")
-              : controle.phase === "fait"
-                ? t("bt_hors_relancer")
-                : t("bt_hors_lancer", { periode: `${fenetre.de} → ${fenetre.a}` })}
-          </button>
-
           {/* ⚠️ UN CONTRÔLE PÉRIMÉ EST PIRE QU'AUCUN CONTRÔLE : il certifierait
               un plan qui n'existe plus, et le trader enregistrerait sa stratégie
               en croyant l'avoir vérifiée. */}
@@ -208,8 +193,10 @@ export function Enregistrer({
             </p>
           ) : null}
 
-          {controle.phase === "erreur" ? (
-            <p className="mt-3 text-xs text-loss">{t("bt_sauver_erreur")}</p>
+          {controle.phase === "repos" ? (
+            <p className="mt-3 text-xs leading-relaxed text-foreground-muted">
+              {t("bt_hors_par_analyse", { periode: `${fenetre.de} → ${fenetre.a}` })}
+            </p>
           ) : null}
 
           {controle.phase === "fait" && controle.valide ? (
