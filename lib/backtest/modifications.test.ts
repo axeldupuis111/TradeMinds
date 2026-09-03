@@ -10,6 +10,7 @@ import {
   demandeUnControle,
   DESCRIPTEURS,
   empreintePlan,
+  nommerLesFiltres,
   toutAnnuler,
 } from "./modifications";
 import fr from "../i18n/fr";
@@ -365,5 +366,75 @@ describe("chaque levier proposable sait s'expliquer", () => {
     for (const cle of cles) {
       expect(DESCRIPTEURS.some((d) => d.cle === cle)).toBe(true);
     }
+  });
+});
+
+/**
+ * ⚠️⚠️ VU À L'ÉCRAN, SUR LA MÊME CARTE. La liste des écarts affichait
+ * « Filtres avant d'entrer : biais_moyenne (80) → biais_moyenne (50) », trois
+ * lignes au-dessus de « Conditions supplémentaires exigées : Sens de la moyenne
+ * mobile ». Le même filtre, deux écritures, dont une que personne ne comprend.
+ */
+describe("les filtres se lisent avec leur nom, pas avec leur code", () => {
+  const NOMS: Record<string, string> = {
+    biais_moyenne: "Sens de la moyenne mobile",
+    rsi: "RSI",
+  };
+  const nommer = (type: string) => NOMS[type] ?? type;
+  const planAvec = (p: Partial<PlanExecution>): PlanExecution => ({ ...planDeBase(), ...p });
+
+  it("remplace le code par le nom en gardant les paramètres", () => {
+    expect(nommerLesFiltres("biais_moyenne (80)", nommer)).toBe("Sens de la moyenne mobile (80)");
+  });
+
+  it("traite chaque filtre d'une liste", () => {
+    expect(nommerLesFiltres("biais_moyenne (80), rsi (14/55)", nommer)).toBe(
+      "Sens de la moyenne mobile (80), RSI (14/55)",
+    );
+  });
+
+  /**
+   * ⚠️ ON NE TOUCHE QU'AU PRÉFIXE. Les paramètres sont des nombres et des
+   * barres obliques : les faire passer dans une table de noms les abîmerait.
+   */
+  it("ne touche pas aux paramètres", () => {
+    expect(nommerLesFiltres("rsi (14/55/momentum)", nommer)).toBe("RSI (14/55/momentum)");
+  });
+
+  it("rend le code tel quel quand personne ne sait le nommer", () => {
+    expect(nommerLesFiltres("bloc_inconnu (3)", nommer)).toBe("bloc_inconnu (3)");
+  });
+
+  it("laisse passer ce qui n'est pas un filtre", () => {
+    expect(nommerLesFiltres("aucun", nommer)).toBe("aucun");
+    expect(nommerLesFiltres("non défini", nommer)).toBe("non défini");
+  });
+
+  /**
+   * ⚠️ SANS FONCTION DE NOMMAGE, LE COMPORTEMENT D'HIER. Les appelants qui
+   * n'ont pas de traductions sous la main gardent le code brut, et seul l'écran,
+   * qui en a, affiche des noms.
+   */
+  it("comparerPlans nomme les filtres quand on lui dit comment", () => {
+    const avec = comparerPlans(
+      planAvec({ confirmations: [{ type: "biais_moyenne", periode: 80 }] }),
+      planAvec({ confirmations: [{ type: "biais_moyenne", periode: 50 }] }),
+      NAS,
+      {},
+      "non défini",
+      nommer,
+    );
+    const ligne = avec.find((m) => m.cle === "confirmations")!;
+    expect(ligne.avant).toBe("Sens de la moyenne mobile (80)");
+    expect(ligne.apres).toBe("Sens de la moyenne mobile (50)");
+  });
+
+  it("garde le code brut quand on ne lui dit pas", () => {
+    const sans = comparerPlans(
+      planAvec({ confirmations: [{ type: "biais_moyenne", periode: 80 }] }),
+      planAvec({ confirmations: [{ type: "biais_moyenne", periode: 50 }] }),
+      NAS,
+    );
+    expect(sans.find((m) => m.cle === "confirmations")!.avant).toBe("biais_moyenne (80)");
   });
 });

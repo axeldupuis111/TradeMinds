@@ -95,6 +95,39 @@ function resumerConfirmation(c: BlocConfirmation): string {
   return params.length > 0 ? `${c.type} (${params.join("/")})` : c.type;
 }
 
+/**
+ * Le résumé des filtres, avec des noms lisibles à la place des codes.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN, SUR LA MÊME CARTE. La liste des écarts affichait « Filtres
+ * avant d'entrer : biais_moyenne (80) → biais_moyenne (50) », trois lignes
+ * au-dessus de « Conditions supplémentaires exigées : Sens de la moyenne
+ * mobile ». Le même filtre, deux écritures, dont une que personne ne comprend.
+ *
+ * ⚠️ LA TABLE DE NOMS NE PEUT PAS VIVRE DANS LES DESCRIPTEURS : ce sont des
+ * constantes de module, sans accès aux traductions. On renomme donc APRÈS coup,
+ * sur la chaîne déjà composée, en ne touchant qu'au préfixe de chaque filtre et
+ * jamais à ses paramètres.
+ */
+export function nommerLesFiltres(resume: string, nommer: (type: string) => string): string {
+  return resume
+    .split(", ")
+    .map((part) => {
+      const m = part.match(/^([a-z_0-9]+)(\s*\(.*\))?$/);
+      if (!m) return part;
+      return `${nommer(m[1])}${m[2] ?? ""}`;
+    })
+    .join(", ");
+}
+/** Renomme les filtres, et seulement eux. */
+function nommerSiFiltre(
+  valeur: string,
+  d: Descripteur,
+  nommer: (type: string) => string,
+): string {
+  return d.cle === "confirmations" ? nommerLesFiltres(valeur, nommer) : valeur;
+}
+
+
 export const DESCRIPTEURS: Descripteur[] = [
   {
     cle: "unite_de_temps",
@@ -508,6 +541,14 @@ export function comparerPlans(
    * projet l'interdit dans tout ce qui s'écrit en son nom.
    */
   absent = "non défini",
+  /**
+   * Comment nommer un type de filtre.
+   *
+   * ⚠️ Par défaut on rend le code brut, comme avant : les appelants qui n'ont
+   * pas de traductions sous la main (les tests) gardent le comportement d'hier,
+   * et seul l'écran, qui en a, affiche des noms.
+   */
+  nommerFiltre: (type: string) => string = (type) => type,
 ): Modification[] {
   const naturesChangees = new Set<string>();
   for (const d of DESCRIPTEURS) {
@@ -526,8 +567,8 @@ export function comparerPlans(
     out.push({
       cle: d.cle,
       bloc: d.bloc,
-      avant: formater(avant, d, instrument, absent),
-      apres: formater(apres, d, instrument, absent),
+      avant: nommerSiFiltre(formater(avant, d, instrument, absent), d, nommerFiltre),
+      apres: nommerSiFiltre(formater(apres, d, instrument, absent), d, nommerFiltre),
       origine: origine ? "proposition" : "manuel",
       objectif: origine?.objectif,
     });

@@ -88,6 +88,7 @@ import {
   lireBlocPlan,
   sansLeBlocDePlan,
 } from "@/lib/backtest/fiche-plan";
+import { nommer, NOM_CONFIRMATION } from "@/lib/backtest/noms";
 import { methodeParCode } from "@/lib/backtest/methodes";
 import { composerDepart, departsPossibles, type Depart as UnDepart } from "@/lib/backtest/depart";
 import { CODES_QUESTIONS, evaluerCompletude } from "@/lib/backtest/completude";
@@ -866,6 +867,10 @@ export default function BacktestPage() {
             instrument,
             {},
             tr("bt_modif_absent"),
+            // ⚠️ « biais_moyenne (80) → biais_moyenne (50) » etait affiche trois
+            // lignes au-dessus de « Sens de la moyenne mobile ». Le meme filtre,
+            // deux ecritures, dont une que personne ne comprend.
+            (type) => nommer(NOM_CONFIRMATION, type, tr),
           )
         : [],
     [resultat?.exploration, plan, instrument, tr],
@@ -875,7 +880,9 @@ export default function BacktestPage() {
   const modifications = useMemo(
     () =>
       planFiche
-        ? comparerPlans(planFiche, plan, instrument, origines, tr("bt_modif_absent"))
+        ? comparerPlans(planFiche, plan, instrument, origines, tr("bt_modif_absent"), (type) =>
+            nommer(NOM_CONFIRMATION, type, tr),
+          )
         : [],
     [planFiche, plan, instrument, origines, tr],
   );
