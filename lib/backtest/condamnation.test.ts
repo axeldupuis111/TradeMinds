@@ -252,6 +252,46 @@ describe("les cinq lignes, et rien que de l'arithmétique", () => {
     expect(Number(a.valeurs.pct)).toBeGreaterThan(30);
   });
 
+  /**
+   * ⚠️⚠️ LE COÛT MESURÉ N'EST PAS LE COÛT THÉORIQUE, ET L'ÉCART EST GROS.
+   *
+   * Vu à l'écran : le coût d'un aller-retour divisé par le risque MOYEN donnait
+   * 0,0186 R, quand l'audit du moteur mesurait 0,0266 R sur les mêmes trades,
+   * soit 43 % de plus. Un coût fixe en points pèse proportionnellement plus
+   * lourd sur les trades à stop serré : la moyenne des rapports n'est pas le
+   * rapport des moyennes. Le coût annuel affiché était donc sous-estimé d'un
+   * tiers, sur la ligne qui sert précisément à dire « ça mange ton compte ».
+   */
+  it("préfère le coût réellement payé au coût théorique", () => {
+    const commun = {
+      plan: plan({ gestion: { risqueParTradePct: 1 } }),
+      couts: couts(10),
+      risqueMoyenTicks: 500,
+      tradesParAn: 400,
+    };
+    const theorique = verifierCondamnation(commun);
+    const mesure = verifierCondamnation({ ...commun, coutParTradeMesureR: 0.03 });
+    expect(Number(trouver(mesure, "cout_annuel")!.valeurs.pct)).toBeCloseTo(0.03 * 400 * 1, 1);
+    expect(Number(trouver(mesure, "cout_annuel")!.valeurs.pct)).toBeGreaterThan(
+      Number(trouver(theorique, "cout_annuel")!.valeurs.pct),
+    );
+  });
+
+  /**
+   * ⚠️ Le théorique reste le repli AVANT le premier rejeu : sans lui, la ligne
+   * disparaîtrait tant que rien n'a tourné, alors qu'elle ne demande aucun
+   * backtest par ailleurs.
+   */
+  it("retombe sur le théorique tant que rien n'a été mesuré", () => {
+    const c = verifierCondamnation({
+      plan: plan({ gestion: { risqueParTradePct: 1 } }),
+      couts: couts(10),
+      risqueMoyenTicks: 500,
+      tradesParAn: 400,
+    });
+    expect(trouver(c, "cout_annuel")).toBeTruthy();
+  });
+
   it("ne rend pas de coût annuel sans rythme connu", () => {
     const c = verifierCondamnation({
       plan: plan({ gestion: { risqueParTradePct: 1 } }),

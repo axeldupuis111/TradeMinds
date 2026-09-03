@@ -88,6 +88,23 @@ const SETTEURS: Record<string, { lire: (p: PlanExecution) => number | null; ecri
   },
 };
 
+/**
+ * L'unité d'un réglage balayé.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN : « Épaisseur de la droite · 9000 · 12000 · 15000 ». Ce
+ * sont des TICKS, et le trader lit des points partout ailleurs — la même
+ * tolérance s'écrit « 15 » dans l'éditeur et dans la liste des écarts. Un
+ * millier de fois trop grand, sur un tableau censé l'aider à juger si son
+ * réglage est sur un plateau : il ne pouvait même pas reconnaître le sien.
+ */
+const UNITE_DU_REGLAGE: Record<string, "ticks" | "bougies" | "r"> = {
+  niveau_pivots: "bougies",
+  niveau_touches: "bougies",
+  niveau_tolerance: "ticks",
+  stop_pivots: "bougies",
+  objectif_r: "r",
+};
+
 /** Un point du voisinage : une valeur, et ce qu'elle a produit. */
 export interface Point {
   valeur: number;
@@ -109,6 +126,14 @@ export type FormeDuVoisinage =
   | "pic_isole";
 
 export interface Stabilite {
+  /**
+   * Comment lire les valeurs du voisinage.
+   *
+   * ⚠️ Rendu ici plutôt que deviné à l'écran : une deuxième table finirait par
+   * diverger de celle-ci, et le trader lirait des ticks sur une carte et des
+   * points sur l'autre.
+   */
+  unite: "ticks" | "bougies" | "r";
   cle: string;
   points: Point[];
   forme: FormeDuVoisinage;
@@ -229,7 +254,14 @@ export function mesurerStabilite(
       if (!variante) continue;
       points.push({ valeur, sienne: valeur === sienne, ...mesurer(serie, variante, couts) });
     }
-    if (points.length > 0) out.push({ cle, points, forme: forme(points) });
+    if (points.length > 0) {
+      out.push({
+        cle,
+        unite: UNITE_DU_REGLAGE[cle] ?? "bougies",
+        points,
+        forme: forme(points),
+      });
+    }
   }
   return out;
 }

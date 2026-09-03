@@ -152,7 +152,7 @@ describe("les piliers de la viabilité", () => {
   it("voit un réglage sur un pic isolé", () => {
     const s = synthetiser({
       ...entrees(),
-      stabilite: [{ cle: "niveau_pivots", points: [], forme: "pic_isole" }],
+      stabilite: [{ cle: "niveau_pivots", unite: "bougies" as const, points: [], forme: "pic_isole" as const }],
     });
     expect(etat(s, "reglage_stable")).toBe("pas_etabli");
   });
@@ -160,7 +160,7 @@ describe("les piliers de la viabilité", () => {
   it("ne conclut rien sur un voisinage indécidable", () => {
     const s = synthetiser({
       ...entrees(),
-      stabilite: [{ cle: "niveau_pivots", points: [], forme: "indecidable" }],
+      stabilite: [{ cle: "niveau_pivots", unite: "bougies" as const, points: [], forme: "indecidable" as const }],
     });
     expect(etat(s, "reglage_stable")).toBe("pas_regarde");
   });

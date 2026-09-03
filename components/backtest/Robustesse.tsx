@@ -2,6 +2,8 @@
 
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
+import { pointsDe } from "@/lib/backtest/modifications";
+import type { Instrument } from "@/lib/backtest/instruments";
 import type { Concentration } from "@/lib/backtest/robustesse";
 import type { Stabilite } from "@/lib/backtest/stabilite";
 import { Activity, AlertTriangle, CalendarClock, CheckCircle2 } from "lucide-react";
@@ -36,11 +38,14 @@ function signe(v: number | null | undefined, d = 2): string {
 export function Robustesse({
   concentration,
   stabilite,
+  instrument,
   t,
 }: {
   concentration: Concentration | null;
   /** ⚠️ La section n'apparaît qu'une fois la mesure faite. */
   stabilite: Stabilite[] | undefined;
+  /** Sert à écrire les distances en points, jamais en ticks. */
+  instrument: Instrument;
   t: (cle: string, params?: Record<string, string | number>) => string;
 }) {
   if (!concentration) return null;
@@ -159,7 +164,15 @@ export function Robustesse({
                           )}
                         >
                           <td className="py-1 pr-3 text-foreground">
-                            {p.valeur}
+                            {/* ⚠️⚠️ VU À L'ÉCRAN : « Épaisseur de la droite ·
+                                9000 · 12000 · 15000 ». Des TICKS, là où le
+                                trader lit « 15 » partout ailleurs, y compris
+                                dans l'éditeur juste au-dessus. Mille fois trop
+                                grand, sur le tableau censé lui faire
+                                reconnaître SA valeur. */}
+                            {s.unite === "ticks"
+                              ? pointsDe(p.valeur, instrument.tailleTick)
+                              : p.valeur}
                             {p.sienne ? (
                               <span className="ml-1.5 text-[10px] text-accent">
                                 {t("bt_rob_la_tienne")}

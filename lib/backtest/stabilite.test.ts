@@ -175,3 +175,58 @@ describe("rien de ce que ce module rend n'est applicable", () => {
     expect(sansCommentaires).not.toMatch(/meilleurPoint|meilleureValeur|recommand/i);
   });
 });
+
+/**
+ * ⚠️⚠️ VU À L'ÉCRAN : « Épaisseur de la droite · 9000 · 12000 · 15000 ».
+ *
+ * Ce sont des TICKS, là où le trader lit « 15 » partout ailleurs, y compris
+ * dans l'éditeur juste au-dessus et dans la liste des écarts. Mille fois trop
+ * grand, sur le tableau censé lui faire reconnaître SA valeur au milieu de ses
+ * voisines. Le voisinage rend désormais son unité, et l'écran convertit.
+ */
+
+/**
+ * ⚠️⚠️ VU À L'ÉCRAN : « Épaisseur de la droite · 9000 · 12000 · 15000 ».
+ *
+ * Ce sont des TICKS, là où le trader lit « 15 » partout ailleurs, y compris
+ * dans l'éditeur juste au-dessus et dans la liste des écarts. Mille fois trop
+ * grand, sur le tableau censé lui faire reconnaître SA valeur au milieu de ses
+ * voisines. Le voisinage rend désormais son unité, et l'écran convertit.
+ */
+describe("chaque réglage balayé dit dans quelle unité il se lit", () => {
+  const serieDeTest = serie(60_000);
+  const surTrendline = (): PlanExecution => ({
+    ...plan(),
+    niveau: { type: "trendline", pivots: 5, touchesMin: 3, toleranceTicks: 3000 },
+  });
+
+  it("la tolérance d'une trendline est en ticks", () => {
+    const r = mesurerStabilite(serieDeTest, surTrendline(), plan().couts, [
+      mod("niveau_tolerance"),
+    ]);
+    expect(r).toHaveLength(1);
+    expect(r[0].unite).toBe("ticks");
+  });
+
+  it("une largeur de pivot se compte en bougies", () => {
+    const r = mesurerStabilite(serieDeTest, plan(), plan().couts, [mod("niveau_pivots")]);
+    expect(r[0].unite).toBe("bougies");
+  });
+
+  it("un objectif se compte en R", () => {
+    const r = mesurerStabilite(serieDeTest, plan(), plan().couts, [mod("objectif_r")]);
+    expect(r[0].unite).toBe("r");
+  });
+
+  /**
+   * ⚠️ Aucun réglage ne doit sortir sans unité : le défaut d'affichage
+   * venait précisément de ce que personne n'avait à en déclarer une.
+   */
+  it("aucun réglage ne sort sans unité, repli compris", () => {
+    const tous = mesurerStabilite(serieDeTest, surTrendline(), plan().couts, []);
+    expect(tous.length).toBeGreaterThan(0);
+    for (const x of tous) {
+      expect(["ticks", "bougies", "r"], x.cle).toContain(x.unite);
+    }
+  });
+});

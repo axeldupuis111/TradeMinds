@@ -473,7 +473,7 @@ export interface Modification {
  * toujours un point décimal, ce qui rend en prime le rognage des zéros sûr :
  * sur un instrument affiché sans décimale, `"100"` serait rogné en `"1"`.
  */
-function pointsDe(ticks: number, tailleTick: number): string {
+export function pointsDe(ticks: number, tailleTick: number): string {
   return (ticks * tailleTick).toFixed(3).replace(/\.?0+$/, "");
 }
 

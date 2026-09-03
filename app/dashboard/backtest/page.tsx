@@ -1017,6 +1017,10 @@ export default function BacktestPage() {
       plan,
       couts: plan.couts,
       risqueMoyenTicks: resultat?.lecture.couts?.risqueMoyenTicks,
+      // ⚠️ Le coût vraiment payé, quand il a été mesuré : il dépasse le coût
+      // théorique de 40 % environ, parce qu'un coût fixe en points pèse plus
+      // lourd sur les trades à stop serré.
+      coutParTradeMesureR: resultat?.lecture.couts?.coutParTradeR,
       amplitudeBougieTicks: resultat?.amplitudeBougieTicks,
       tradesParAn: trades && mois > 0 ? (trades * 12) / mois : undefined,
     });
@@ -1807,6 +1811,7 @@ export default function BacktestPage() {
             <Robustesse
               concentration={resultat.concentration}
               stabilite={resultat.stabilite}
+              instrument={instrument}
               t={tr}
             />
           </StaggerItem>

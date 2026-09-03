@@ -3009,7 +3009,7 @@ const dict: Record<string, string> = {
   "bt_cond_cout_annuel_titre": "El bróker, en un año",
   "bt_cond_cout_annuel": "Con {trades} operaciones al año y un {risque} % de riesgo por operación, tus comisiones suponen el {pct} % de tu capital al año. Es una multiplicación, no una previsión: hay que ganar eso antes de ganar nada.",
   "bt_cond_stop_dans_le_bruit_titre": "Tu stop frente al ruido",
-  "bt_cond_stop_dans_le_bruit": "Tu stop vale {bougies} de una vela de {minutes} minutos. Por debajo de {seuil}, lo toca el vaivén normal del mercado antes de que tu idea haya tenido tiempo de ser falsa.",
+  "bt_cond_stop_dans_le_bruit": "Tu stop vale {bougies} velas de {minutes} minutos. Por debajo de {seuil}, lo toca el vaivén normal del mercado antes de que tu idea haya tenido tiempo de ser falsa.",
   "bt_cond_taux_equilibre_titre": "Lo que hay que acertar solo para no perder",
   "bt_cond_taux_equilibre": "Con un objetivo a {rr} veces tu riesgo, necesitas un {pct} % de operaciones ganadoras para cubrir tus costes. Sin costes necesitarías un {sansCouts} %. Por encima del {seuilLourd} % el método pide mucho, por encima del {seuil} % pide lo que casi nadie sostiene.",
   "bt_cond_risque_contre_serie_titre": "Una racha de pérdidas normal",

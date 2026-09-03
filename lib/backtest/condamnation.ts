@@ -132,6 +132,20 @@ export interface EntreeCondamnation {
   amplitudeBougieTicks?: number;
   /** Rythme observé ou déclaré, en trades par an. */
   tradesParAn?: number;
+  /**
+   * Coût réellement payé par trade, en R, quand un rejeu a eu lieu.
+   *
+   * ⚠️⚠️ IL N'EST PAS ÉGAL AU COÛT THÉORIQUE, ET L'ÉCART N'EST PAS PETIT. Vu à
+   * l'écran : le coût d'un aller-retour divisé par le risque MOYEN donnait
+   * 0,0186 R, quand l'audit du moteur mesurait 0,0266 R sur les mêmes trades,
+   * soit 43 % de plus. La raison est mécanique : le coût est fixe en points, il
+   * pèse donc proportionnellement PLUS LOURD sur les trades à stop serré, et la
+   * moyenne des rapports n'est pas le rapport des moyennes.
+   *
+   * Quand la mesure existe, elle gagne. Le théorique ne sert qu'avant le
+   * premier rejeu, pour ne pas laisser la carte vide.
+   */
+  coutParTradeMesureR?: number;
 }
 
 /**
@@ -247,8 +261,12 @@ export function verifierCondamnation(e: EntreeCondamnation): Constat[] {
   }
 
   // ── 5. Le courtier, sur une année entière ───────────────────────────────
-  if (coutEnR != null && e.tradesParAn && e.tradesParAn > 0 && risquePct != null && risquePct > 0) {
-    const pct = coutEnR * e.tradesParAn * risquePct;
+  // ⚠️ LA MESURE PASSE AVANT LE THÉORIQUE. Le coût par trade réellement payé
+  // dépasse le coût rapporté au risque moyen, parce qu'un coût fixe en points
+  // pèse plus lourd sur les stops serrés.
+  const coutAnnuelEnR = e.coutParTradeMesureR ?? coutEnR;
+  if (coutAnnuelEnR != null && e.tradesParAn && e.tradesParAn > 0 && risquePct != null && risquePct > 0) {
+    const pct = coutAnnuelEnR * e.tradesParAn * risquePct;
     out.push({
       code: "cout_annuel",
       gravite:
