@@ -114,10 +114,26 @@ export const FEATURE_MONTHLY_CEILING: Record<string, number> = {
   // semaine. Le client dégrade désormais au lieu de bloquer, mais un plafond
   // qui mord sur la création de stratégie reste une mauvaise idée.
   "parse-strategy": 30,
-  // Julie : 2 a 5. Compiler sa fiche en plan mecanique se refait a chaque fois
-  // qu'elle la reecrit, et le parcours consiste justement a la reecrire jusqu'a
-  // ce qu'elle soit complete. ×3 de la borne haute.
-  "compiler-strategie": 15,
+  // ⚠️⚠️ CORRIGÉ LE 2026-09-03 SUR UN USAGE RÉEL, ET C'EST L'ESTIMATION QUI
+  // ÉTAIT FAUSSE, PAS LE MULTIPLICATEUR. On supposait « Julie : 2 à 5 » et on
+  // avait posé ×3, soit 15. Un utilisateur qui travaille vraiment sa stratégie
+  // les a épuisés en deux séances : le parcours consiste à réécrire sa fiche
+  // jusqu'à ce qu'elle soit complète, et chaque réécriture se recompile.
+  //
+  // L'usage intensif réel est de l'ordre de 20 dans le mois où l'on construit
+  // sa méthode.
+  //
+  // ⚠️⚠️ ET C'EST LA MESURE QUI A FIXÉ 40, PAS L'ENVIE. J'ai d'abord posé 60,
+  // par ×3 comme ailleurs. Le garde-fou de marge à 50 abonnés l'a refusé :
+  // 60 laisse -0,09 € et 45 n'en laisse que +0,07 €, c'est-à-dire exactement la
+  // finesse qui avait déjà fait refuser la hausse du coach de 340 à 380. À 40,
+  // il reste +0,12 € dans le pire cas structurel, celui où aucun point de cache
+  // n'est jamais relu. C'est le plus haut chiffre qui garde un vrai coussin.
+  //
+  // ⚠️ Un plafond que l'utilisateur le plus motivé atteint en deux séances ne
+  // protège pas la marge, il empêche l'usage du produit. Celui-ci en autorise
+  // cinq, pour 0,47 € par mois au pire cas sur 29,99 € d'abonnement.
+  "compiler-strategie": 40,
   "goals-interpret": 15, // Julie : 4
   "calendar-explain": 36, // Julie : 12
   "community-interpret": 20, // Julie : 5 (était à ×12, le plus dérivé du lot)

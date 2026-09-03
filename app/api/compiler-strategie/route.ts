@@ -36,8 +36,16 @@ import { instrumentParCode, INSTRUMENTS } from "@/lib/backtest/instruments";
 
 export const dynamic = "force-dynamic";
 
-/** Julie compile sa fiche 1 à 2 fois. Généreux parce que ça touche le parcours d'entrée. */
-const LIMITE_JOUR = 10;
+/**
+ * Le quota du jour.
+ *
+ * ⚠️ IL SE MESURE EN SÉANCES DE TRAVAIL, PAS EN JOURNÉES MOYENNES. Personne ne
+ * répartit ses compilations sur le mois : on ouvre l'onglet un dimanche, on
+ * réécrit sa fiche six fois de suite, et on n'y revient pas de la semaine. Un
+ * quota journalier calé sur une moyenne mensuelle coupe donc exactement au
+ * moment où l'outil sert, et jamais le reste du temps.
+ */
+const LIMITE_JOUR = 20;
 
 const MODELE = "claude-haiku-4-5-20251001";
 
@@ -157,6 +165,54 @@ UNITE DE TEMPS (obligatoire) — "uniteDeTemps": 1, 3, 5, 15, 30, 60 ou 240 (min
 CONTEXTE (obligatoire) — NE PAS INVENTER D'HORAIRES SI LA FICHE N'EN DONNE PAS
   {"fuseau":"<IANA>","debut":"HH:MM","fin":"HH:MM","jours":[1,2,3,4,5]}`;
 
+/**
+ * LE PREFIXE INVARIANT, IDENTIQUE POUR TOUS LES TRADERS ET TOUS LES APPELS.
+ *
+ * ⚠️⚠️ MESURE DU 2026-09-03 : le prompt complet pese 4 987 tokens, dont 4 700
+ * dans ce bloc-ci. Autrement dit, 94 % de ce qu'on payait a chaque traduction
+ * etait exactement le meme texte que la fois d'avant, et que chez le voisin.
+ * Le modele de marge, lui, supposait 3 000 tokens : devines, jamais comptes.
+ *
+ * ⚠️ IL DOIT RESTER IDENTIQUE AU CARACTERE PRES. Un point de cache ne se
+ * declenche que sur un prefixe exactement egal : y glisser la moindre valeur
+ * variable (l'instrument, l'heure, le nom du trader) le ferait manquer a tous
+ * les coups, et couterait 1,25x au lieu de 0,1x. C'est pour ca que l'echelle
+ * de l'instrument est passee dans le message et non ici.
+ *
+ * ⚠️ LA FICHE ARRIVE APRES, ET C'EST L'ORDRE QUI COMPTE. Un prefixe ne se
+ * cache que s'il est au DEBUT : mettre la fiche en tete, comme c'etait le cas,
+ * rendait le cache impossible quoi qu'on fasse.
+ */
+const SYSTEME = `Tu traduis la fiche de strategie d'un trader en un PLAN MECANIQUE, en choisissant uniquement dans le catalogue ci-dessous.
+
+CATALOGUE FERME (aucun autre type n'existe)
+${CATALOGUE}
+
+REGLES ABSOLUES
+1. N'INVENTE AUCUN BLOC. Si une phrase ne correspond a rien du catalogue, mets-la dans "nonTraduites". Ne la rapproche pas du bloc le plus proche.
+2. NE COMBLE AUCUN TROU. Si la fiche ne dit pas ou se place le stop, OMETS "stop" et mets "stop" dans "absents". Idem pour l'objectif, la seance, le risque. Un objectif de 2R que le trader n'a jamais ecrit produirait un resultat chiffre portant sur une strategie qui n'est pas la sienne.
+3. UNE DEDUCTION SE DECLARE. Si la fiche parle d'invalidation sans placer le stop et que tu proposes quand meme extreme_balayage, mets-le dans "deduites" avec le motif. Une deduction n'est pas une regle du trader.
+4. DISTINGUE UN ADJECTIF FLOU D'UN FILTRE EXPLICITE. C'est la regle la plus delicate, lis-la en entier.
+   - Un JUGEMENT DE QUALITE sans seuil ("une reaction claire", "un retracement propre", "un contexte favorable", "une bougie forte") va dans "nonTraduites". Ne l'approche jamais par amplitude_min ou par une periode de moyenne : tu inventerais le seuil que le trader n'a pas ecrit.
+   - Un FILTRE EXPLICITE, meme exprime en mots, SE MECANISE et se DECLARE dans "deduites". "Je ne prends que dans le sens de la tendance H1" est une regle nette : c'est biais_moyenne, et sa periode se compte en BOUGIES DE "uniteDeTemps" : prends 20 a 50 bougies DE L'UNITE DE TENDANCE, converties. Exemple : tendance H1 lue sur un plan en M15, c'est 20 x (60/15) = 80. ⚠️ N'ECRIS JAMAIS 60 POUR H1 : sur un plan en M15, une periode de 4 (une heure de donnees) ne peut JAMAIS contredire une cassure, et sur quatre ans de Nasdaq elle garde 100 % des trades. Un filtre qui n'ecarte rien equivaut a pas de filtre, sans que rien ne le dise. Ecris dans "deduites" la periode reellement posee ET l'unite de tendance qu'elle approche, et tu ecris dans "deduites" que la moyenne mobile approche la lecture de tendance du trader. Le mettre dans "nonTraduites" ferait tester une strategie SANS son filtre directionnel, c'est-a-dire des entrees dans les deux sens que le trader ne prend jamais. C'est la faute la plus couteuse possible ici : elle double le nombre de trades et change le resultat du tout au tout.
+   - Quand un filtre explicite ne peut PAS etre mecanise faute de bloc adapte, alors seulement il va dans "nonTraduites".
+5. ⚠️ "pivots", "delaiReaction", "delaiRetest", "n", "periode" se comptent en BOUGIES DE "uniteDeTemps", PAS EN MINUTES. C'est la faute la plus couteuse du formulaire : en uniteDeTemps 60 (H1), "pivots": 240 veut dire 240 HEURES de chaque cote, soit dix jours, et plus aucun pivot n'existe jamais. Un pivot utile compte 3 a 10 bougies de chaque cote, quelle que soit l'unite. Ne convertis JAMAIS une duree en minutes ici.
+5b. ⚠⚠ TOUTES LES DISTANCES S'ECRIVENT EN POINTS DE PRIX, JAMAIS EN TICKS. "tolerance", "buffer", "distance", "amplitude" se lisent comme sur le graphique du trader. C'est la faute la plus insidieuse du formulaire, parce qu'elle ne plante pas : elle rend zero trade sur quatre ans. Vu en vrai sur le Nasdaq, ou le tick vaut 0,001 point : le modele avait ecrit 5 en pensant a une valeur raisonnable, ce qui faisait CINQ MILLIEMES de point sur un indice qui bouge de cent points par heure. Aucune droite n'a jamais ete touchee.
+   Pour te reperer, l'ordre de grandeur de l'instrument teste t'est donne AVEC LA FICHE : appuie-toi dessus.
+   Pour la tolerance d'alignement d'une TRENDLINE, vise environ UN MILLIEME DU PRIX de l'instrument (15 points sur un indice a 15 000, 2 dollars sur l'or a 2 000). Un trait trace a la main a une epaisseur : elle se mesure sur le prix, pas sur le spread, qui n'a rien a voir avec la precision de la main. Mesure sur quatre ans de Nasdaq : la tolerance qui confirme le plus de droites est de cet ordre.
+5c. ⚠️ "tolerance" NE DOIT JAMAIS VALOIR 0 sur une trendline : a zero, un creux devrait tomber exactement sur la droite, ce qui n'arrive jamais.
+6. SI LE TRADER NE PREND QU'UN SEUL SENS, mets "sens" a "long" ou "short". S'il suit la tendance dans les deux sens, laisse "les_deux" ET pose le filtre de tendance.
+6b. CHOISIR LE BON BLOC DE ZONE. Si le trader dit qu'il attend le RETOUR du prix dans un order block, un breaker
+   ou un FVG, prends le niveau correspondant AVEC "entree_dans_zone". Si au contraire il attend une CASSURE d'un
+   niveau, prends "cassure". Un retour dans une zone et une cassure de niveau sont deux evenements opposes : les
+   confondre fait entrer a contresens.
+7. DANS "traduites" ET DANS "deduites", le champ "bloc"/"champ" ne prend QUE l'un de ces noms, seul et sans suffixe : contexte, niveau, declencheur, confirmations, entree, stop, objectif, sortiesAuxiliaires, gestion, sens, uniteDeTemps.
+   ⚠️ N'ECRIS JAMAIS « niveau - pivots » ni « stop - buffer ». Le nom du bloc sert a SURLIGNER le reglage a corriger dans l'interface : un nom compose empeche l'interface de le retrouver, et le trader lit alors qu'un bloc est entoure en rouge alors que rien ne l'est. Precise le sous-parametre dans le texte de "pourquoi", pas dans le nom.
+
+Reponds STRICTEMENT en JSON, sans texte autour :
+{"uniteDeTemps":<1|3|5|15|30|60|240>,"sens":"long"|"short"|"les_deux","contexte":{...},"niveau":{...},"declencheur":{...},"confirmations":[...],"entree":{...},"stop":{...} ou omis,"objectif":{...} ou omis,"sortiesAuxiliaires":{...},"gestion":{...},"traduites":[{"phrase":"citation courte de la fiche","bloc":"declencheur"}],"nonTraduites":["phrase non mecanisable"],"deduites":[{"champ":"stop","pourquoi":"..."}],"absents":["stop","objectif","risque","seance","unite_de_temps"]}`;
+
+
 export async function POST(req: Request) {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
@@ -197,49 +253,39 @@ export async function POST(req: Request) {
     r.sessions?.length ? `seances declarees : ${r.sessions.join(", ")}` : null,
   ].filter(Boolean).join("\n");
 
-  const prompt = `Tu traduis la fiche de strategie d'un trader en un PLAN MECANIQUE, en choisissant uniquement dans le catalogue ci-dessous.
-
-FICHE DU TRADER
+  const message = `FICHE DU TRADER
 """
 ${fiche}
 """
 ${dejaExtrait ? `\nCHAMPS DEJA RENSEIGNES DANS SON PROFIL\n${dejaExtrait}\n` : ""}
 Instrument teste : ${instrument}. Fuseau du trader : ${corps.fuseau ?? "Europe/Paris"}.
-ECHELLE DE CET INSTRUMENT, pour que tes distances aient un sens : le spread typique vaut ${echelle.spread} points et le glissement ${echelle.glissement} point(s). Une distance utile se compte en MULTIPLES de ces valeurs, jamais en fractions.
-
-CATALOGUE FERME (aucun autre type n'existe)
-${CATALOGUE}
-
-REGLES ABSOLUES
-1. N'INVENTE AUCUN BLOC. Si une phrase ne correspond a rien du catalogue, mets-la dans "nonTraduites". Ne la rapproche pas du bloc le plus proche.
-2. NE COMBLE AUCUN TROU. Si la fiche ne dit pas ou se place le stop, OMETS "stop" et mets "stop" dans "absents". Idem pour l'objectif, la seance, le risque. Un objectif de 2R que le trader n'a jamais ecrit produirait un resultat chiffre portant sur une strategie qui n'est pas la sienne.
-3. UNE DEDUCTION SE DECLARE. Si la fiche parle d'invalidation sans placer le stop et que tu proposes quand meme extreme_balayage, mets-le dans "deduites" avec le motif. Une deduction n'est pas une regle du trader.
-4. DISTINGUE UN ADJECTIF FLOU D'UN FILTRE EXPLICITE. C'est la regle la plus delicate, lis-la en entier.
-   - Un JUGEMENT DE QUALITE sans seuil ("une reaction claire", "un retracement propre", "un contexte favorable", "une bougie forte") va dans "nonTraduites". Ne l'approche jamais par amplitude_min ou par une periode de moyenne : tu inventerais le seuil que le trader n'a pas ecrit.
-   - Un FILTRE EXPLICITE, meme exprime en mots, SE MECANISE et se DECLARE dans "deduites". "Je ne prends que dans le sens de la tendance H1" est une regle nette : c'est biais_moyenne, et sa periode se compte en BOUGIES DE "uniteDeTemps" : prends 20 a 50 bougies DE L'UNITE DE TENDANCE, converties. Exemple : tendance H1 lue sur un plan en M15, c'est 20 x (60/15) = 80. ⚠️ N'ECRIS JAMAIS 60 POUR H1 : sur un plan en M15, une periode de 4 (une heure de donnees) ne peut JAMAIS contredire une cassure, et sur quatre ans de Nasdaq elle garde 100 % des trades. Un filtre qui n'ecarte rien equivaut a pas de filtre, sans que rien ne le dise. Ecris dans "deduites" la periode reellement posee ET l'unite de tendance qu'elle approche, et tu ecris dans "deduites" que la moyenne mobile approche la lecture de tendance du trader. Le mettre dans "nonTraduites" ferait tester une strategie SANS son filtre directionnel, c'est-a-dire des entrees dans les deux sens que le trader ne prend jamais. C'est la faute la plus couteuse possible ici : elle double le nombre de trades et change le resultat du tout au tout.
-   - Quand un filtre explicite ne peut PAS etre mecanise faute de bloc adapte, alors seulement il va dans "nonTraduites".
-5. ⚠️ "pivots", "delaiReaction", "delaiRetest", "n", "periode" se comptent en BOUGIES DE "uniteDeTemps", PAS EN MINUTES. C'est la faute la plus couteuse du formulaire : en uniteDeTemps 60 (H1), "pivots": 240 veut dire 240 HEURES de chaque cote, soit dix jours, et plus aucun pivot n'existe jamais. Un pivot utile compte 3 a 10 bougies de chaque cote, quelle que soit l'unite. Ne convertis JAMAIS une duree en minutes ici.
-5b. ⚠⚠ TOUTES LES DISTANCES S'ECRIVENT EN POINTS DE PRIX, JAMAIS EN TICKS. "tolerance", "buffer", "distance", "amplitude" se lisent comme sur le graphique du trader. C'est la faute la plus insidieuse du formulaire, parce qu'elle ne plante pas : elle rend zero trade sur quatre ans. Vu en vrai sur le Nasdaq, ou le tick vaut 0,001 point : le modele avait ecrit 5 en pensant a une valeur raisonnable, ce qui faisait CINQ MILLIEMES de point sur un indice qui bouge de cent points par heure. Aucune droite n'a jamais ete touchee.
-   Pour te reperer, l'ordre de grandeur de l'instrument teste t'est donne plus haut : appuie-toi dessus.
-   Pour la tolerance d'alignement d'une TRENDLINE, vise environ UN MILLIEME DU PRIX de l'instrument (15 points sur un indice a 15 000, 2 dollars sur l'or a 2 000). Un trait trace a la main a une epaisseur : elle se mesure sur le prix, pas sur le spread, qui n'a rien a voir avec la precision de la main. Mesure sur quatre ans de Nasdaq : la tolerance qui confirme le plus de droites est de cet ordre.
-5c. ⚠️ "tolerance" NE DOIT JAMAIS VALOIR 0 sur une trendline : a zero, un creux devrait tomber exactement sur la droite, ce qui n'arrive jamais.
-6. SI LE TRADER NE PREND QU'UN SEUL SENS, mets "sens" a "long" ou "short". S'il suit la tendance dans les deux sens, laisse "les_deux" ET pose le filtre de tendance.
-6b. CHOISIR LE BON BLOC DE ZONE. Si le trader dit qu'il attend le RETOUR du prix dans un order block, un breaker
-   ou un FVG, prends le niveau correspondant AVEC "entree_dans_zone". Si au contraire il attend une CASSURE d'un
-   niveau, prends "cassure". Un retour dans une zone et une cassure de niveau sont deux evenements opposes : les
-   confondre fait entrer a contresens.
-7. DANS "traduites" ET DANS "deduites", le champ "bloc"/"champ" ne prend QUE l'un de ces noms, seul et sans suffixe : contexte, niveau, declencheur, confirmations, entree, stop, objectif, sortiesAuxiliaires, gestion, sens, uniteDeTemps.
-   ⚠️ N'ECRIS JAMAIS « niveau - pivots » ni « stop - buffer ». Le nom du bloc sert a SURLIGNER le reglage a corriger dans l'interface : un nom compose empeche l'interface de le retrouver, et le trader lit alors qu'un bloc est entoure en rouge alors que rien ne l'est. Precise le sous-parametre dans le texte de "pourquoi", pas dans le nom.
-
-Reponds STRICTEMENT en JSON, sans texte autour :
-{"uniteDeTemps":<1|3|5|15|30|60|240>,"sens":"long"|"short"|"les_deux","contexte":{...},"niveau":{...},"declencheur":{...},"confirmations":[...],"entree":{...},"stop":{...} ou omis,"objectif":{...} ou omis,"sortiesAuxiliaires":{...},"gestion":{...},"traduites":[{"phrase":"citation courte de la fiche","bloc":"declencheur"}],"nonTraduites":["phrase non mecanisable"],"deduites":[{"champ":"stop","pourquoi":"..."}],"absents":["stop","objectif","risque","seance","unite_de_temps"]}`;
+ECHELLE DE CET INSTRUMENT, pour que tes distances aient un sens : le spread typique vaut ${echelle.spread} points et le glissement ${echelle.glissement} point(s). Une distance utile se compte en MULTIPLES de ces valeurs, jamais en fractions.`;
 
   try {
     const client = new Anthropic({ apiKey });
     const msg = await client.messages.create({
       model: MODELE,
       max_tokens: 2000,
-      messages: [{ role: "user", content: prompt }],
+      /**
+       * ⚠️⚠️ LE PREFIXE EST MIS EN CACHE, ET C'EST CE QUI REND LE PLAFOND
+       * TENABLE. Mesure du 2026-09-03 : sur 4 987 tokens d'entree, 4 700 sont
+       * ce bloc, identique pour tous les traders et tous les appels. On les
+       * repayait plein tarif a chaque traduction.
+       *
+       * ⚠️ TTL DE CINQ MINUTES, PAS UNE HEURE, et c'est un calcul et non une
+       * habitude. L'ecriture coute 1,25x l'entree en cinq minutes contre 2x en
+       * une heure. Avec une douzaine d'abonnes, une fenetre d'une heure ne
+       * serait presque jamais reutilisee par quelqu'un d'autre : on paierait le
+       * double a chaque fois pour un cache que personne ne relit. En cinq
+       * minutes, c'est le MEME trader qui relit, celui qui reecrit sa fiche et
+       * recompile, c'est-a-dire exactement le parcours de cet onglet.
+       *
+       * Le seuil de rentabilite se calcule : au-dessus de 22 % de relectures,
+       * le cache est gagnant. Un trader qui compile deux fois de suite est
+       * deja a 50 %.
+       */
+      system: [{ type: "text", text: SYSTEME, cache_control: { type: "ephemeral" } }],
+      messages: [{ role: "user", content: message }],
     });
 
     logAiCost(createClient(), auth.userId, {

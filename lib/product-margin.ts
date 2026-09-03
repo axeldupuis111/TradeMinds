@@ -103,15 +103,36 @@ export const AI_ROUTES: AiRoute[] = [
     source: "majorant",
   },
   {
+    /**
+     * ⚠️⚠️ MESURÉ LE 2026-09-03, ET LE MAJORANT ÉTAIT FAUX DANS LES DEUX SENS.
+     * Le modèle supposait 3 000 tokens d'entrée et 1 500 de sortie. Comptés :
+     * le prompt pèse 4 986 tokens (dont 4 649 de catalogue et de règles), et
+     * les appels réellement facturés, relus dans le journal de coût, sortent
+     * 950 et 1 000 tokens. L'entrée était sous-estimée de 66 %, la sortie
+     * sur-estimée de 50 %. Un majorant qui SOUS-estime n'est pas un majorant,
+     * c'est une erreur avec un nom rassurant, et celui-ci a survécu jusqu'à ce
+     * qu'on décide de toucher au plafond.
+     *
+     * ⚠️⚠️ LE PIRE CAS DU CACHE EST PLUS CHER QUE PAS DE CACHE DU TOUT, et
+     * c'est le piège de ce chiffrage. Écrire un point de cache coûte 1,25× le
+     * tarif d'entrée, le relire 0,1×. Un mois où AUCUNE relecture ne tombe dans
+     * la fenêtre de cinq minutes coûte donc 25 % de plus qu'avant le cache.
+     * C'est ce mois-là qu'on modélise : 4 649 × 1,25 + 851 = 6 662 tokens.
+     * Modéliser 4 986 « sans cache » aurait été optimiste en se croyant prudent.
+     *
+     * Au-dessus de 21,7 % de relectures le cache devient gagnant, et un trader
+     * qui recompile deux fois de suite est déjà à 50 %. Ce gain-là n'est pas
+     * compté : il dépend du trafic, donc d'une hypothèse.
+     */
     nom: "compilation de fiche en plan de backtest",
     model: "claude-haiku-4-5-20251001",
     plafond: {
       plus: FEATURE_MONTHLY_CEILING["compiler-strategie"],
       premium: FEATURE_MONTHLY_CEILING["compiler-strategie"],
     },
-    inputTokens: 3000,
-    outputTokens: 1500,
-    source: "majorant",
+    inputTokens: 6662,
+    outputTokens: 1000,
+    source: "mesurée",
   },
   {
     nom: "fiche stratégie (parsing)",
