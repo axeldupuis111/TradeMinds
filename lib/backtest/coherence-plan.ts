@@ -58,9 +58,39 @@ export type CodeConstat =
   /** Une part notable des trades a été tranchée par la convention de collision. */
   | "collisions_nombreuses"
   /** Une part notable des signaux a été écartée faute de stop assez large. */
-  | "signaux_ecartes";
+  | "signaux_ecartes"
+  /**
+   * L'objectif n'a JAMAIS décidé d'une sortie.
+   *
+   * ⚠️⚠️ VU À L'ÉCRAN, ET C'EST LE CONSTAT LE PLUS PARLANT QUE LA PAGE AIT
+   * PRODUIT. Le journal de recherche affichait trois lignes rigoureusement
+   * identiques : « Objectif 1.5 R · 201 · t = 1.49 », « 2 R · 201 · t = 1.49 »,
+   * « 3 R · 201 · t = 1.49 ». Changer le rapport gain/risque du simple au double
+   * ne changeait rien du tout, ce qui n'a qu'une explication : le prix n'atteint
+   * jamais l'objectif, et toutes les sorties se font au stop ou à la fermeture
+   * de séance.
+   *
+   * Autrement dit son « RR de 1:2 » est une fiction : il ne décrit aucun de ses
+   * trades. C'est exactement le genre de chose qu'un trader ne peut pas voir
+   * seul, et l'outil l'affichait sous la forme de trois lignes redondantes que
+   * personne n'aurait rapprochées.
+   */
+  | "objectif_jamais_atteint"
+  /** L'objectif ne décide qu'une poignée de sorties. */
+  | "objectif_rare";
 
 export type Gravite = "bloquant" | "a_verifier";
+
+/**
+ * En dessous de cette part de sorties à l'objectif, le rapport gain/risque
+ * annoncé ne décrit presque aucun trade.
+ *
+ * ⚠️ UN DIXIÈME, ET C'EST DÉJÀ GÉNÉREUX. Une méthode en 1:2 dont neuf sorties
+ * sur dix se font ailleurs qu'à l'objectif n'est pas une méthode en 1:2 : c'est
+ * une méthode dont on ignore le vrai rapport, et le « 2R » qu'elle affiche
+ * partout est un chiffre de fiche, pas un chiffre de marché.
+ */
+export const PART_OBJECTIF_RARE = 0.1;
 
 export interface Constat {
   code: CodeConstat;
@@ -271,6 +301,45 @@ export function verifierLePlan(
         observe: (stats.tauxReussite * 100).toFixed(1),
         equilibre: (equilibre * 100).toFixed(1),
         r: plan.objectif.r,
+      });
+    }
+  }
+
+  /**
+   * ── 7 bis. L'objectif décide-t-il seulement d'une sortie ? ───────────────
+   *
+   * ⚠️⚠️ VU À L'ÉCRAN, ET C'EST LE CONSTAT LE PLUS PARLANT QUE CETTE PAGE AIT
+   * PRODUIT. Le journal de recherche affichait trois lignes rigoureusement
+   * identiques : « Objectif 1.5 R · 201 trades · t = 1.49 », puis « 2 R » et
+   * « 3 R » avec exactement les mêmes chiffres. Doubler le rapport gain/risque
+   * sans rien changer au résultat n'a qu'une explication : le prix n'atteint
+   * jamais l'objectif, et toutes les sorties se font au stop ou à la fermeture
+   * de séance.
+   *
+   * Son « RR de 1:2 » ne décrivait alors aucun de ses trades. C'est le genre de
+   * chose qu'un trader ne peut pas voir seul, et l'outil le lui montrait sous
+   * forme de trois lignes redondantes que personne n'aurait rapprochées.
+   *
+   * ⚠️ ON NE COMPTE QUE LES SORTIES À L'OBJECTIF, pas les trades gagnants : un
+   * trade fermé en fin de séance à +0,8 R est un gagnant, et il ne dit rien de
+   * la cible. Ce sont deux mesures différentes, et c'est justement la confusion
+   * entre les deux qui rend ce constat invisible.
+   */
+  if (trades.length >= 30 && plan.objectif.type === "multiple_r") {
+    const atteints = trades.filter((t) => t.motif === "objectif").length;
+    const part = atteints / trades.length;
+    if (atteints === 0) {
+      ajouter("objectif_jamais_atteint", "bloquant", {
+        r: plan.objectif.r,
+        trades: trades.length,
+      });
+    } else if (part < PART_OBJECTIF_RARE) {
+      ajouter("objectif_rare", "a_verifier", {
+        r: plan.objectif.r,
+        part: (part * 100).toFixed(1),
+        atteints,
+        trades: trades.length,
+        seuil: (PART_OBJECTIF_RARE * 100).toFixed(0),
       });
     }
   }

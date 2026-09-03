@@ -374,3 +374,74 @@ describe("l'ordre et la rédaction", () => {
     }
   });
 });
+
+/**
+ * ⚠️⚠️ LE CONSTAT LE PLUS PARLANT QUE CETTE PAGE AIT PRODUIT, ET IL ÉTAIT
+ * INVISIBLE.
+ *
+ * Vu à l'écran : le journal de recherche affichait trois lignes rigoureusement
+ * identiques, « Objectif 1.5 R · 201 trades · t = 1.49 », puis « 2 R » et
+ * « 3 R » avec exactement les mêmes chiffres. Doubler le rapport gain/risque
+ * sans rien changer au résultat n'a qu'une explication : le prix n'atteint
+ * jamais l'objectif. Le « RR de 1:2 » de sa fiche ne décrivait alors aucun de
+ * ses trades, et l'outil le lui montrait sous forme de trois lignes redondantes
+ * que personne n'aurait rapprochées.
+ */
+describe("l'objectif décide-t-il seulement d'une sortie", () => {
+  const connues = fr as Record<string, string>;
+
+  /** `n` trades sortis par ce motif, avec ce R. */
+  const sorties = (n: number, motif: TradeSimule["motif"], r: number): TradeSimule[] =>
+    trades(n, 10).map((t) => ({ ...t, motif, r, rBrut: r }));
+
+  it("le dit quand aucune sortie ne vient de l'objectif", () => {
+    const c = verifierLePlan(plan(), audit(), sorties(40, "fin_de_session", -0.2), NAS, {});
+    const x = c.find((y) => y.code === "objectif_jamais_atteint")!;
+    expect(x).toBeTruthy();
+    expect(x.gravite).toBe("bloquant");
+    expect(x.valeurs.trades).toBe(40);
+  });
+
+  /**
+   * ⚠️ ON COMPTE LES SORTIES À L'OBJECTIF, PAS LES TRADES GAGNANTS. Un
+   * trade fermé en fin de séance à +0,8 R est un gagnant et ne dit rien de la
+   * cible : c'est justement cette confusion qui rend le constat invisible.
+   */
+  it("ne confond pas un trade gagnant avec un objectif atteint", () => {
+    const c = verifierLePlan(plan(), audit(), sorties(40, "fin_de_session", 0.8), NAS, {});
+    expect(c.map((x) => x.code)).toContain("objectif_jamais_atteint");
+  });
+
+  it("signale un objectif qui ne décide qu'une poignée de sorties", () => {
+    const melange = [
+      ...sorties(2, "objectif", 2),
+      ...sorties(38, "stop", -1),
+    ];
+    const c = verifierLePlan(plan(), audit(), melange, NAS, {});
+    const x = c.find((y) => y.code === "objectif_rare")!;
+    expect(x).toBeTruthy();
+    expect(x.valeurs.atteints).toBe(2);
+  });
+
+  it("ne reproche rien quand l'objectif décide souvent", () => {
+    const melange = [...sorties(15, "objectif", 2), ...sorties(25, "stop", -1)];
+    const codes = verifierLePlan(plan(), audit(), melange, NAS, {}).map((x) => x.code);
+    expect(codes).not.toContain("objectif_jamais_atteint");
+    expect(codes).not.toContain("objectif_rare");
+  });
+
+  /**
+   * ⚠️ Sous trente trades, on ne dit rien : l'absence d'objectif atteint
+   * sur dix trades n'apprend rien que le hasard n'expliquerait.
+   */
+  it("se tait sur un échantillon trop petit", () => {
+    const c = verifierLePlan(plan(), audit(), sorties(10, "fin_de_session", -0.2), NAS, {});
+    expect(c.map((x) => x.code)).not.toContain("objectif_jamais_atteint");
+  });
+
+  it("chaque code a sa rédaction", () => {
+    for (const code of ["objectif_jamais_atteint", "objectif_rare"]) {
+      expect(connues[`bt_coh_${code}`], `bt_coh_${code} manquante`).toBeTruthy();
+    }
+  });
+});
