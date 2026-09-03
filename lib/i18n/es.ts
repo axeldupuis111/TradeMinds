@@ -3088,6 +3088,8 @@ const dict: Record<string, string> = {
   "bt_aucune_strategie": "Aún no tienes una estrategia escrita.",
   "bt_creer_strategie": "Escribir una",
   "bt_compil_error": "La traducción falló. Inténtalo de nuevo en un momento.",
+  "bt_compil_quota_jour": "Has alcanzado tu límite de traducciones por hoy. Se reinicia mañana. Mientras tanto nada está bloqueado: puedes ajustar tu plan a mano justo abajo, y el resto de la página funciona sin traducción.",
+  "bt_compil_quota_mois": "Has alcanzado tu límite de traducciones de este mes. Volver a intentarlo ahora no puede funcionar. Pero traducir no es obligatorio: ajusta tu plan a mano justo abajo, y las tarjetas de arriba (tu método, tus trece preguntas, lo que exigen tus costes, la diferencia con tu diario) nunca lo necesitaron.",
   "bt_compil_fiche_trop_courte": "Tu ficha es demasiado corta para traducirla. Describe tu entrada, tu stop y tu objetivo.",
   "bt_compil_instrument_inconnu": "Este instrumento aún no está disponible para backtest. Elige uno de la lista de arriba.",
   "bt_compil_parse_failed": "La traducción volvió ilegible. Inténtalo de nuevo.",

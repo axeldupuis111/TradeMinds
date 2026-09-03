@@ -3088,6 +3088,8 @@ const dict: Record<string, string> = {
   "bt_aucune_strategie": "Tu n'as pas encore de stratégie écrite.",
   "bt_creer_strategie": "En écrire une",
   "bt_compil_error": "La traduction a échoué. Réessaie dans un instant.",
+  "bt_compil_quota_jour": "Tu as atteint ta limite de traductions pour aujourd'hui. Elle repart demain. En attendant, rien n'est bloqué : tu peux régler ton plan à la main juste en dessous, et tout le reste de la page fonctionne sans traduction.",
+  "bt_compil_quota_mois": "Tu as atteint ta limite de traductions pour ce mois-ci. Réessayer maintenant ne peut pas marcher. Mais la traduction n'est pas obligatoire : règle ton plan à la main juste en dessous, et les cartes au-dessus (ta méthode, tes treize questions, ce que tes frais exigent, l'écart avec ton journal) n'en ont jamais eu besoin.",
   "bt_compil_fiche_trop_courte": "Ta fiche est trop courte pour être traduite. Décris ton entrée, ton stop et ton objectif.",
   "bt_compil_instrument_inconnu": "Cet instrument n'est pas encore disponible au backtest. Choisis-en un dans la liste ci-dessus.",
   "bt_compil_parse_failed": "La traduction est revenue illisible. Réessaie.",

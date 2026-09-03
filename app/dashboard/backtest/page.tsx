@@ -485,7 +485,27 @@ export default function BacktestPage() {
         plan?: Partial<PlanExecution>;
         couverture?: Couverture;
         reason?: string;
+        /** Rendu par le limiteur : "day" ou "month". */
+        scope?: string;
       };
+
+      /**
+       * ⚠️⚠️ UN QUOTA ÉPUISÉ N'EST PAS UNE PANNE, ET LE DIRE AINSI FAIT PERDRE
+       * DU TEMPS AU TRADER. Vu à l'écran : le plafond mensuel était atteint,
+       * l'outil répondait « la traduction a échoué, réessaie dans un instant »,
+       * et il a réessayé trois fois. Réessayer ne pouvait pas marcher avant le
+       * mois suivant, et chaque tentative consommait un quota journalier.
+       *
+       * ⚠️ ET SURTOUT : la traduction n'est pas obligatoire. Tout le reste de la
+       * page fonctionne sans elle, y compris les treize questions et les frais.
+       * Le message doit le dire, sinon un quota épuisé ferme un onglet entier.
+       */
+      if (rep.status === 429) {
+        setCompilation("erreur");
+        setCompilationMsg(tr(json.scope === "day" ? "bt_compil_quota_jour" : "bt_compil_quota_mois"));
+        return;
+      }
+
       if (!json.plan || !json.couverture) {
         setCompilation("erreur");
         setCompilationMsg(tr(`bt_compil_${json.reason ?? "error"}`));

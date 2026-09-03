@@ -3088,6 +3088,8 @@ const dict: Record<string, string> = {
   "bt_aucune_strategie": "Du hast noch keine schriftliche Strategie.",
   "bt_creer_strategie": "Eine schreiben",
   "bt_compil_error": "Übersetzung fehlgeschlagen. Versuche es gleich erneut.",
+  "bt_compil_quota_jour": "Du hast dein Übersetzungslimit für heute erreicht. Morgen beginnt es neu. In der Zwischenzeit ist nichts blockiert: du kannst deinen Plan direkt darunter von Hand einstellen, und der Rest der Seite funktioniert ohne Übersetzung.",
+  "bt_compil_quota_mois": "Du hast dein Übersetzungslimit für diesen Monat erreicht. Ein erneuter Versuch kann jetzt nicht funktionieren. Aber die Übersetzung ist nicht Pflicht: stelle deinen Plan direkt darunter von Hand ein, und die Karten darüber (deine Methode, deine dreizehn Fragen, was deine Kosten verlangen, der Abstand zu deinem Journal) brauchten sie nie.",
   "bt_compil_fiche_trop_courte": "Dein Blatt ist zu kurz zum Übersetzen. Beschreibe Einstieg, Stop und Ziel.",
   "bt_compil_instrument_inconnu": "Dieses Instrument steht noch nicht für den Backtest zur Verfügung. Wähle eines aus der Liste oben.",
   "bt_compil_parse_failed": "Die Übersetzung kam unlesbar zurück. Versuche es erneut.",
