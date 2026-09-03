@@ -2,7 +2,7 @@
 
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
-import type { Constat, Gravite } from "@/lib/backtest/condamnation";
+import { LIGNES_POSSIBLES, type Constat, type Gravite } from "@/lib/backtest/condamnation";
 import { AlertTriangle, Calculator, Info, TriangleAlert } from "lucide-react";
 
 /**
@@ -57,6 +57,16 @@ export function Condamnation({
         {t("bt_cond_titre")}
       </h4>
       <p className="mt-1 text-xs leading-relaxed text-foreground-muted">{t("bt_cond_intro")}</p>
+
+      {/* ⚠️ LA CARTE NE PROMET PAS CINQ LIGNES POUR EN MONTRER UNE. Trois des
+          cinq demandent le risque moyen d'un trade, qui vient du rejeu, ou le
+          risque par trade, que le trader n'a pas toujours renseigné. On dit ce
+          qui manque au lieu de laisser croire qu'il n'y avait que ça à dire. */}
+      {constats.length < LIGNES_POSSIBLES ? (
+        <p className="mt-2 text-[11px] leading-relaxed text-foreground-muted">
+          {t("bt_cond_incomplet", { rendues: constats.length, total: LIGNES_POSSIBLES })}
+        </p>
+      ) : null}
 
       <ul className="mt-3 space-y-2">
         {constats.map((c) => {

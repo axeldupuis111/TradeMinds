@@ -41,6 +41,16 @@ export type CodeCondamnation =
   | "stop_dans_le_bruit"
   /** Le taux de réussite qu'il faut atteindre pour seulement rentrer dans ses frais. */
   | "taux_equilibre"
+  /**
+   * Le même, mais AVANT frais, parce qu'on ne connaît pas encore le risque moyen.
+   *
+   * ⚠️⚠️ VU À L'ÉCRAN, ET C'ÉTAIT LA FAUTE QUE TOUTE CETTE PAGE COMBAT. Faute de
+   * risque moyen, le coût était pris pour zéro et la carte affichait « il te
+   * faut 33.3 % pour rentrer dans tes frais. Sans les frais, il t'en faudrait
+   * 33.3 % ». Deux fois le même nombre, c'est-à-dire l'affirmation que le
+   * courtier ne prend rien. Un chiffre à coûts nuls porte son propre code.
+   */
+  | "taux_equilibre_sans_couts"
   /** Une série de pertes ordinaire suffit à couper le compte en deux. */
   | "risque_contre_serie";
 
@@ -94,6 +104,9 @@ export const EQUILIBRE_CONDAMNE = 75;
  * survit pas à huit pertes ne survit pas à une année normale.
  */
 export const SERIE_ORDINAIRE = 8;
+
+/** Combien de lignes ce module sait rendre, quand tout est connu. */
+export const LIGNES_POSSIBLES = 5;
 
 /** Part du capital perdue en frais sur une année au-delà de laquelle c'est fini. */
 export const COUT_ANNUEL_CONDAMNE_PCT = 30;
@@ -190,10 +203,20 @@ export function verifierCondamnation(e: EntreeCondamnation): Constat[] {
   if (e.plan.objectif.type === "multiple_r") {
     const p = tauxDequilibrePct(e.plan.objectif.r, coutEnR ?? 0);
     if (p != null) {
+      // ⚠️⚠️ SANS RISQUE MOYEN, LE COÛT N'EST PAS ZÉRO, IL EST INCONNU, et la
+      // différence est exactement celle qui rend positives des stratégies qui
+      // perdent. Le chiffre est rendu quand même, sous un autre code, avec ce
+      // qu'il lui manque écrit à côté.
+      const connus = coutEnR != null;
       out.push({
-        code: "taux_equilibre",
-        gravite:
-          p >= EQUILIBRE_CONDAMNE ? "condamne" : p >= EQUILIBRE_LOURD ? "lourd" : "informatif",
+        code: connus ? "taux_equilibre" : "taux_equilibre_sans_couts",
+        gravite: !connus
+          ? "informatif"
+          : p >= EQUILIBRE_CONDAMNE
+            ? "condamne"
+            : p >= EQUILIBRE_LOURD
+              ? "lourd"
+              : "informatif",
         valeurs: {
           pct: p.toFixed(1),
           rr: e.plan.objectif.r,

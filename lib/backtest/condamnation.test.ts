@@ -152,6 +152,34 @@ describe("les cinq lignes, et rien que de l'arithmétique", () => {
     expect(e.gravite).toBe("condamne");
   });
 
+  /**
+   * ⚠️⚠️ VU À L'ÉCRAN, ET C'ÉTAIT LA FAUTE QUE TOUTE CETTE PAGE COMBAT. Faute de
+   * risque moyen, le coût était pris pour ZÉRO, et la carte affichait « il te
+   * faut 33.3 % pour rentrer dans tes frais. Sans les frais, il t'en faudrait
+   * 33.3 % ». Deux fois le même nombre, c'est-à-dire l'affirmation que le
+   * courtier ne prend rien.
+   */
+  it("ne fait jamais passer un coût inconnu pour un coût nul", () => {
+    const c = verifierCondamnation({
+      plan: plan({ stop: { type: "dernier_pivot", bufferTicks: 10 } }),
+      couts: couts(50),
+    });
+    expect(trouver(c, "taux_equilibre")).toBeUndefined();
+    const sans = trouver(c, "taux_equilibre_sans_couts")!;
+    expect(sans.gravite).toBe("informatif");
+    expect(sans.valeurs.pct).toBe(sans.valeurs.sansCouts);
+  });
+
+  it("rend le taux avec coûts dès que le risque moyen est connu", () => {
+    const c = verifierCondamnation({
+      plan: plan(),
+      couts: couts(50),
+      risqueMoyenTicks: 500,
+    });
+    expect(trouver(c, "taux_equilibre_sans_couts")).toBeUndefined();
+    expect(trouver(c, "taux_equilibre")).toBeTruthy();
+  });
+
   it("ne rend pas de taux d'équilibre sur un objectif qui n'est pas un multiple", () => {
     const c = verifierCondamnation({
       plan: plan({ objectif: { type: "niveau_oppose" } }),
@@ -229,6 +257,7 @@ describe("l'ordre et la rédaction", () => {
       "cout_annuel",
       "stop_dans_le_bruit",
       "taux_equilibre",
+      "taux_equilibre_sans_couts",
       "risque_contre_serie",
     ];
     for (const c of codes) {

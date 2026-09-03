@@ -1441,6 +1441,7 @@ export default function BacktestPage() {
             completude={completude}
             reponses={reponses}
             onEnregistrer={(r) => void enregistrerLesReponses(r)}
+            peutEnregistrer={Boolean(strategieCourante)}
             etat={etatReponses}
             t={tr}
           />

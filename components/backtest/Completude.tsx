@@ -47,6 +47,7 @@ export function Completude({
   completude,
   reponses,
   onEnregistrer,
+  peutEnregistrer,
   etat,
   t,
 }: {
@@ -59,6 +60,12 @@ export function Completude({
    * et que le coach relit.
    */
   onEnregistrer: (reponses: Record<string, string>) => void;
+  /**
+   * ⚠️ FAUX QUAND AUCUNE FICHE N'EST CHOISIE. Le bouton était proposé quand même
+   * et ne faisait rien du tout : un clic sans effet et sans message est pire
+   * qu'un bouton grisé, parce que le trader croit avoir enregistré.
+   */
+  peutEnregistrer: boolean;
   etat: "repos" | "encours" | "fait" | "erreur";
   t: (cle: string, params?: Record<string, string | number>) => string;
 }) {
@@ -167,7 +174,7 @@ export function Completude({
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <button
           type="button"
-          disabled={!modifie || etat === "encours"}
+          disabled={!peutEnregistrer || !modifie || etat === "encours"}
           onClick={() => onEnregistrer(brouillon)}
           className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
         >
@@ -188,7 +195,7 @@ export function Completude({
         ) : null}
       </div>
       <p className="mt-2 text-[11px] leading-relaxed text-foreground-muted">
-        {t("bt_comp_ou_ca_va")}
+        {t(peutEnregistrer ? "bt_comp_ou_ca_va" : "bt_comp_sans_fiche")}
       </p>
 
       {/* ⚠️ AUCUNE NOTE, ET C'EST DIT À L'ÉCRAN. Un score de complétude se
