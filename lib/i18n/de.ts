@@ -3074,6 +3074,8 @@ const dict: Record<string, string> = {
   "bt_dep_remplace": "Eine Basis auszuprobieren ersetzt die Testeinstellungen durch ihre eigenen. Dein Strategieblatt bleibt unberührt, und « Was du gegenüber deinem Blatt geändert hast » sagt dir genau, was sich bewegt hat.",
   "bt_prof_tester_ici": "Auf {marche} testen",
   "bt_prof_tester_aide": "Der Test wechselt auf den Markt, den du wirklich handelst, mit den Kosten dieses Marktes. Der Rest deines Plans bleibt: « Dein Stop gegen das Rauschen » weiter oben sagt dir, ob deine Distanzen dort noch Sinn ergeben.",
+  "bt_elargir_periode": "Auf {de} → {a} erweitern ({mois} Monate)",
+  "bt_elargir_periode_aide": "Das ist die einzige Änderung, die nichts erfindet: deine Methode bleibt exakt dieselbe, sie bekommt nur mehr Gelegenheiten auszulösen. Der erste Download dauert einige Minuten.",
   "bt_etape_perimetre": "1. Der Rahmen",
   "bt_etape_fiche": "2. Von deinem Strategieblatt ausgehen",
   "bt_etape_fiche_aide": "Die KI übersetzt dein Blatt in mechanische Bausteine und sagt dir genau, was sie nicht übersetzen konnte. Du kannst diesen Schritt auch überspringen und alles von Hand einstellen.",

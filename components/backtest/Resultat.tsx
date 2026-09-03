@@ -58,6 +58,21 @@ export interface ResultatProps {
   /** Réglages voisins qui produiraient assez de trades. */
   suggestions: Suggestion[];
   /**
+   * De quoi élargir la période sans quitter l'écran.
+   *
+   * ⚠️⚠️ `null` QUAND ELLE EST DÉJÀ AU MAXIMUM, et c'est important : un bouton
+   * qui ne changerait rien serait pire qu'aucun bouton. Le diagnostic dit
+   * « élargis la période avant de toucher aux réglages : c'est le seul
+   * changement qui n'invente rien » ; il faut donc que ce soit possible pour
+   * qu'on le propose.
+   */
+  periodePlusLarge?: {
+    de: string;
+    a: string;
+    mois: number;
+    elargir: () => void;
+  } | null;
+  /**
    * Applique un réglage suggéré au plan.
    * ⚠️ La suggestion ENTIÈRE, pas seulement son plan : son levier doit pouvoir
    * être retenu, sinon la carte des modifications ne saura pas dire au nom de
@@ -108,6 +123,7 @@ export function Resultat({
   maxPertesConsecutives,
   suggestions,
   onAppliquer,
+  periodePlusLarge,
   t,
 }: ResultatProps) {
   const c = useChartColors();
@@ -135,6 +151,33 @@ export function Resultat({
             <p className="mt-2 text-xs font-medium text-warning">
               {t(`bt_cause_${lecture.cause ?? "trop_peu"}`)}
             </p>
+
+            {/* ⚠️⚠️ L'ÉCRAN NOMMAIT LA BONNE ACTION ET NE L'OFFRAIT PAS. Le
+                diagnostic dit « élargis la période avant de toucher aux
+                réglages : c'est le seul changement qui n'invente rien », et les
+                seuls boutons proposés en dessous étaient... des changements de
+                réglage. Le mouvement recommandé demandait de remonter en haut de
+                page et de comprendre tout seul quoi changer.
+                ⚠️ Il passe AVANT les suggestions de réglage, parce que c'est
+                celui qui n'invente rien. */}
+            {periodePlusLarge ? (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={periodePlusLarge.elargir}
+                  className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-on-accent hover:bg-accent-hover"
+                >
+                  {t("bt_elargir_periode", {
+                    de: periodePlusLarge.de,
+                    a: periodePlusLarge.a,
+                    mois: periodePlusLarge.mois,
+                  })}
+                </button>
+                <span className="text-[11px] leading-relaxed text-foreground-muted">
+                  {t("bt_elargir_periode_aide")}
+                </span>
+              </div>
+            ) : null}
             {/* ⚠️ NE PAS SE CONTENTER DE DIAGNOSTIQUER. Mesuré sur 108 réglages
                 plausibles : 56 % tombent sous le seuil de conclusion. Un
                 trader qui voit deux fois de suite un écran vide s'en va, et il

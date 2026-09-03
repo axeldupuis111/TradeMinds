@@ -955,6 +955,32 @@ export default function BacktestPage() {
     resultat.empreinte !== `${empreintePlan(plan)}|${de}|${a}|${code}`;
 
   /**
+   * DE QUOI ÉLARGIR LA PÉRIODE SANS QUITTER L'ÉCRAN.
+   *
+   * ⚠️⚠️ L'ÉCRAN NOMMAIT LA BONNE ACTION ET NE L'OFFRAIT PAS. Sous le seuil de
+   * conclusion, le diagnostic dit « élargis la période avant de toucher aux
+   * réglages : c'est le seul changement qui n'invente rien », et les seuls
+   * boutons proposés en dessous étaient des changements de réglage. Le mouvement
+   * recommandé demandait de remonter en haut de page et de deviner quoi changer.
+   *
+   * ⚠️ `null` quand elle couvre déjà tout : un bouton qui ne change rien est
+   * pire qu'aucun bouton.
+   */
+  const periodePlusLarge = useMemo(() => {
+    if (de === PERIODE_MIN && a === PERIODE_MAX) return null;
+    return {
+      de: PERIODE_MIN,
+      a: PERIODE_MAX,
+      mois: moisEntre(PERIODE_MIN, PERIODE_MAX).length,
+      elargir: () => {
+        setDe(PERIODE_MIN);
+        setA(PERIODE_MAX);
+        setResultat(null);
+      },
+    };
+  }, [de, a]);
+
+  /**
    * Le contrôle hors période, tel que la carte d'enregistrement l'attend.
    *
    * ⚠️ Il vient désormais du MÊME lancement que le résultat : il ne peut plus
@@ -1768,6 +1794,7 @@ export default function BacktestPage() {
               verifie={verifie}
               contestes={contestes.size}
               suggestions={resultat.suggestions}
+              periodePlusLarge={periodePlusLarge}
               // ⚠️ Une suggestion de réglage voisin ne cherche QUE de quoi
               // remplir l'échantillon : son objectif est donc « avoir plus de
               // trades », et il doit être consigné comme tel.

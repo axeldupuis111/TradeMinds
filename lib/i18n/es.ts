@@ -3074,6 +3074,8 @@ const dict: Record<string, string> = {
   "bt_dep_remplace": "Probar una base sustituye los ajustes de la prueba por los suyos. Tu ficha no se toca, y «Lo que has cambiado respecto a tu ficha» te dirá exactamente qué se ha movido.",
   "bt_prof_tester_ici": "Probar en {marche}",
   "bt_prof_tester_aide": "La prueba cambia al mercado que operas de verdad, con los costes de ese mercado. El resto de tu plan no se mueve: «Tu stop frente al ruido», más arriba, te dirá si tus distancias siguen teniendo sentido allí.",
+  "bt_elargir_periode": "Ampliar a {de} → {a} ({mois} meses)",
+  "bt_elargir_periode_aide": "Es el único cambio que no inventa nada: tu método sigue siendo exactamente el mismo, solo tiene más ocasiones de dispararse. La primera descarga tarda unos minutos.",
   "bt_etape_perimetre": "1. El alcance",
   "bt_etape_fiche": "2. Partir de tu ficha",
   "bt_etape_fiche_aide": "La IA traduce tu ficha en bloques mecánicos y te dice exactamente lo que no supo traducir. También puedes saltarte este paso y ajustarlo todo a mano.",

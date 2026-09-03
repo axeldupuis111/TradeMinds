@@ -3074,6 +3074,8 @@ const dict: Record<string, string> = {
   "bt_dep_remplace": "Trying a base replaces the test settings with its own. Your strategy sheet is untouched, and \"What you changed compared with your sheet\" will tell you exactly what moved.",
   "bt_prof_tester_ici": "Test on {marche}",
   "bt_prof_tester_aide": "The test switches to the market you actually trade, with that market's costs. The rest of your plan does not move: \"Your stop against the noise\" above will tell you whether your distances still make sense there.",
+  "bt_elargir_periode": "Widen to {de} → {a} ({mois} months)",
+  "bt_elargir_periode_aide": "This is the only change that invents nothing: your method stays exactly the same, it simply gets more chances to fire. The first download takes a few minutes.",
   "bt_etape_perimetre": "1. Scope",
   "bt_etape_fiche": "2. Start from your strategy sheet",
   "bt_etape_fiche_aide": "The AI translates your sheet into mechanical blocks and tells you exactly what it could not translate. You can also skip this step and set everything by hand.",

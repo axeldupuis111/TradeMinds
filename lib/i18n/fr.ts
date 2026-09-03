@@ -3074,6 +3074,8 @@ const dict: Record<string, string> = {
   "bt_dep_remplace": "Essayer une base remplace les réglages du test par les siens. Ta fiche n'est pas touchée, et « Ce que tu as changé par rapport à ta fiche » te dira exactement ce qui a bougé.",
   "bt_prof_tester_ici": "Tester sur {marche}",
   "bt_prof_tester_aide": "Le test bascule sur le marché que tu trades vraiment, avec les coûts de ce marché. Le reste de ton plan ne bouge pas : c'est « Ton stop face au bruit », plus haut, qui te dira si tes distances ont encore un sens là-bas.",
+  "bt_elargir_periode": "Élargir à {de} → {a} ({mois} mois)",
+  "bt_elargir_periode_aide": "C'est le seul changement qui n'invente rien : ta méthode reste exactement la même, elle a juste plus d'occasions de se déclencher. Le premier téléchargement prend quelques minutes.",
   "bt_etape_perimetre": "1. Le périmètre",
   "bt_etape_fiche": "2. Partir de ta fiche",
   "bt_etape_fiche_aide": "L'IA traduit ta fiche en blocs mécaniques et te dit exactement ce qu'elle n'a pas su traduire. Tu peux aussi sauter cette étape et tout régler à la main.",
