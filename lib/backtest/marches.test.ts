@@ -209,3 +209,38 @@ describe("lire une série de marchés", () => {
     expect(r.mesurables).toBe(2);
   });
 });
+
+/**
+ * ⚠️⚠️ « NULLE PART » EST UNE AFFIRMATION SUR UN ENSEMBLE.
+ *
+ * Vu à l'écran sur l'or : la famille des métaux ne contient que l'argent, donc
+ * UN seul marché de comparaison, et l'outil concluait quand même « l'avantage ne
+ * se retrouve nulle part ». Peut-être vrai, pas démontré. Chaque verdict a
+ * désormais sa rédaction quand il ne repose que sur une comparaison.
+ */
+describe("le nombre de comparaisons est compté à part", () => {
+  const marche = (sien: boolean, avantageRetrouve: boolean, insuffisant = false) => ({
+    code: sien ? "XAUUSD" : "XAGUSD",
+    nom: sien ? "Or" : "Argent",
+    trades: insuffisant ? 10 : 300,
+    esperanceR: 0.1,
+    borneBasse: avantageRetrouve ? 0.02 : -0.1,
+    borneHaute: 0.3,
+    avantageRetrouve,
+    insuffisant,
+    sien,
+    moisManquants: 0,
+  });
+
+  it("ne compte pas son propre marché comme une comparaison", () => {
+    const l = lireLesMarches([marche(true, false), marche(false, false)]);
+    expect(l.comparaisons).toBe(1);
+    expect(l.verdict).toBe("nulle_part");
+  });
+
+  it("sans aucun autre marché mesurable, rien ne se conclut", () => {
+    const l = lireLesMarches([marche(true, false), marche(false, false, true)]);
+    expect(l.comparaisons).toBe(0);
+    expect(l.verdict).toBe("indecidable");
+  });
+});

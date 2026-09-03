@@ -8,6 +8,7 @@ import {
   NOM_ENTREE,
   NOM_NIVEAU,
   NOM_OBJECTIF,
+  NOM_SENS,
   NOM_STOP,
 } from "./noms";
 import fr from "../i18n/fr";
@@ -57,6 +58,26 @@ describe("chaque bloc du catalogue a un nom lisible", () => {
       }
     });
   }
+});
+
+/**
+ * ⚠️ LE SENS N'EST PAS UNE UNION `type: "..."`, donc la boucle ci-dessus ne le
+ * voyait pas, et « Sens autorisés : les_deux » s'est retrouvé dans un plan écrit
+ * pour être suivi. Ce test lit la déclaration du champ dans `types.ts`.
+ */
+describe("le sens autorisé a un nom lisible", () => {
+  it("chaque valeur du champ sens est nommée, et le nom existe", () => {
+    const i = TYPES.indexOf("  sens:");
+    expect(i, "champ sens introuvable dans types.ts").toBeGreaterThan(-1);
+    const ligne = TYPES.slice(i, TYPES.indexOf(";", i));
+    const valeurs = Array.from(ligne.matchAll(/"([a-z_]+)"/g), (m) => m[1]);
+    expect(valeurs.length).toBeGreaterThan(1);
+    const connues = fr as Record<string, string>;
+    for (const v of valeurs) {
+      expect(NOM_SENS[v], `sens « ${v} » absent de la table des noms`).toBeTruthy();
+      expect(connues[NOM_SENS[v]], `${NOM_SENS[v]} manquante en français`).toBeTruthy();
+    }
+  });
 });
 
 describe("nommer", () => {

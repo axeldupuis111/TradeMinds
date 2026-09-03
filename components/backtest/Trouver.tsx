@@ -3,6 +3,7 @@
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
 import type { Exploration } from "@/lib/backtest/exploration";
+import type { Modification } from "@/lib/backtest/modifications";
 import type { PlanComplet } from "@/lib/backtest/plan-complet";
 import {
   nommer,
@@ -10,8 +11,10 @@ import {
   NOM_DECLENCHEUR,
   NOM_NIVEAU,
   NOM_OBJECTIF,
+  NOM_SENS,
   NOM_STOP,
 } from "@/lib/backtest/noms";
+import { MIN_TRADES_CONCLUSION } from "@/lib/backtest/verdict";
 import { AlertTriangle, CheckCircle2, Compass, ClipboardList } from "lucide-react";
 
 /**
@@ -46,9 +49,25 @@ function r(v: number | null | undefined, d = 3): string {
   return v == null ? "—" : `${v >= 0 ? "+" : ""}${v.toFixed(d)}`;
 }
 
+/**
+ * CE QUE LA CANDIDATE A DÉMONTRÉ, ET RIEN DE PLUS.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN, SUR LA VRAIE STRATÉGIE D'AXEL : la confirmation disait
+ * « trop peu de trades pour trancher », et juste en dessous l'outil titrait
+ * « Ton plan, écrit · Les règles à respecter » puis lui ordonnait de risquer 3 %
+ * par trade. Un plan que rien n'a confirmé, présenté comme un plan à suivre,
+ * c'est la faute exacte que toute cette architecture existe pour empêcher.
+ *
+ * Les règles restent affichées : savoir ce que la recherche a trouvé a de la
+ * valeur. C'est le TITRE et le CADRE qui changent, et ils changent en premier,
+ * au-dessus, là où l'œil tombe.
+ */
+export type EtatDuPlan = "confirme" | "infirme" | "indecidable" | "sans_confirmation";
+
 export function Trouver({
   exploration,
   fenetreDeConfirmation,
+  ecarts,
   t,
 }: {
   exploration:
@@ -68,6 +87,16 @@ export function Trouver({
     | undefined;
   /** ⚠️ `null` = pas de fenêtre intacte, donc pas de confirmation possible. */
   fenetreDeConfirmation: { de: string; a: string } | null;
+  /**
+   * Ce qui sépare la combinaison trouvée du plan mesuré en haut de page.
+   *
+   * ⚠️⚠️ SANS ÇA, DEUX STRATÉGIES SE LISENT COMME UNE SEULE. Vu à l'écran : la
+   * carte de cohérence disait « ta règle d'arrêt ne s'est jamais déclenchée » et
+   * le plan trouvé disait « elle se serait déclenchée 16 fois », sur le même
+   * écran, à propos de la même règle. Les deux étaient justes, sur deux plans
+   * différents, et rien ne le disait.
+   */
+  ecarts: Modification[];
   t: (cle: string, params?: Record<string, string | number>) => string;
 }) {
   /** Une étiquette d'essai : soit une clé de traduction, soit un code de bloc. */
@@ -100,7 +129,7 @@ export function Trouver({
            travail des six autres. */
         null
       ) : (
-        <Resultats exploration={exploration} libelle={libelle} t={t} />
+        <Resultats exploration={exploration} ecarts={ecarts} libelle={libelle} t={t} />
       )}
     </Card>
   );
@@ -108,14 +137,24 @@ export function Trouver({
 
 function Resultats({
   exploration,
+  ecarts,
   libelle,
   t,
 }: {
   exploration: NonNullable<Parameters<typeof Trouver>[0]["exploration"]>;
+  ecarts: Modification[];
   libelle: (dimension: string, etiquette: string) => string;
   t: (cle: string, params?: Record<string, string | number>) => string;
 }) {
   const { recherche, plan, confirmation } = exploration;
+
+  const etat: EtatDuPlan = !confirmation
+    ? "sans_confirmation"
+    : confirmation.trades < MIN_TRADES_CONCLUSION
+      ? "indecidable"
+      : confirmation.verdict === "positif"
+        ? "confirme"
+        : "infirme";
 
   return (
     <>
@@ -178,8 +217,8 @@ function Resultats({
         </div>
       ) : null}
 
-      {/* ── Le plan complet ──────────────────────────────────────────────── */}
-      <PlanEcrit plan={plan} t={t} />
+      {/* ── Le plan complet, cadré par ce qu'il a démontré ───────────────── */}
+      <PlanEcrit plan={plan} etat={etat} ecarts={ecarts} confirmation={confirmation} t={t} />
 
       {/* ── Le journal : tout, retenu ou non ─────────────────────────────── */}
       <div className="mt-5 border-t border-border pt-4">
@@ -228,16 +267,24 @@ function Resultats({
  */
 function PlanEcrit({
   plan,
+  etat,
+  ecarts,
+  confirmation,
   t,
 }: {
   plan: PlanComplet;
+  etat: EtatDuPlan;
+  ecarts: Modification[];
+  confirmation: { trades: number } | null;
   t: (cle: string, params?: Record<string, string | number>) => string;
 }) {
+  const confirme = etat === "confirme";
   const traduire = (cle: string, valeurs: Record<string, string | number>) => {
     if (cle === "niveau") return t("bt_plan_niveau", { type: nommer(NOM_NIVEAU, String(valeurs.type), t) });
     if (cle === "declencheur") {
       return t("bt_plan_declencheur", { type: nommer(NOM_DECLENCHEUR, String(valeurs.type), t) });
     }
+    if (cle === "sens") return t("bt_plan_sens", { sens: nommer(NOM_SENS, String(valeurs.sens), t) });
     if (cle === "stop") return t("bt_plan_stop", { type: nommer(NOM_STOP, String(valeurs.type), t) });
     if (cle === "objectif") {
       return t("bt_plan_objectif", {
@@ -260,9 +307,54 @@ function PlanEcrit({
     <div className="mt-5 border-t border-border pt-4">
       <h4 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
         <ClipboardList className="h-4 w-4" />
-        {t("bt_plan_titre")}
+        {t(confirme ? "bt_plan_titre" : "bt_plan_titre_candidat")}
       </h4>
-      <p className="mt-1 text-xs leading-relaxed text-foreground-muted">{t("bt_plan_intro")}</p>
+      <p className="mt-1 text-xs leading-relaxed text-foreground-muted">
+        {t(confirme ? "bt_plan_intro" : "bt_plan_intro_candidat")}
+      </p>
+
+      {/* ⚠️⚠️ CE QUE CES RÈGLES ONT DÉMONTRÉ, AVANT LES RÈGLES ELLES-MÊMES.
+          L'ordre de lecture n'est pas un détail de mise en page : un trader qui
+          lit quatorze règles impératives avant d'apprendre qu'aucune n'a été
+          confirmée les a déjà notées. */}
+      <p
+        className={cn(
+          "mt-3 flex items-start gap-1.5 rounded-lg border p-3 text-xs leading-relaxed",
+          confirme
+            ? "border-profit/40 bg-profit/[0.06] text-foreground-muted"
+            : "border-warning/40 bg-warning/[0.06] text-warning",
+        )}
+      >
+        {confirme ? (
+          <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-profit" />
+        ) : (
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        )}
+        <span>{t(`bt_plan_etat_${etat}`, { n: confirmation?.trades ?? 0 })}</span>
+      </p>
+
+      {/* ── Et de quel plan on parle, puisqu'il y en a deux à l'écran ────── */}
+      <div className="mt-3 rounded-lg border border-border bg-surface/40 p-3">
+        <p className="text-[11px] font-medium text-foreground">{t("bt_plan_ecarts_titre")}</p>
+        {ecarts.length === 0 ? (
+          <p className="mt-1 text-[11px] leading-relaxed text-foreground-muted">
+            {t("bt_plan_ecarts_aucun")}
+          </p>
+        ) : (
+          <>
+            <p className="mt-1 text-[11px] leading-relaxed text-foreground-muted">
+              {t("bt_plan_ecarts_intro", { n: ecarts.length })}
+            </p>
+            <ul className="mt-1.5 space-y-1">
+              {ecarts.map((e) => (
+                <li key={e.cle} className="text-[11px] leading-relaxed text-foreground-muted">
+                  {t(`bt_modif_${e.cle}`)} : {e.avant} → {e.apres}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
 
       <ol className="mt-3 space-y-2">
         {plan.lignes.map((l) => (

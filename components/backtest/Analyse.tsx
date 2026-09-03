@@ -90,12 +90,21 @@ export function Analyse({
         {t("bt_syn_titre")}
       </h4>
       <p className="mt-1 text-xs leading-relaxed text-foreground-muted">{t("bt_syn_intro")}</p>
+      {/* ⚠️ « 1 pas encore regardés » : la même faute que « 1 journées » et
+          « 3 année(s) », vue à l'écran, et elle se remarque autant. Trois
+          segments séparés, chacun avec sa forme au singulier. */}
       <p className="mt-1.5 text-[11px] tabular-nums text-foreground-muted">
-        {t("bt_syn_compte", {
-          etablis: synthese.etablis,
-          pasEtablis: synthese.pasEtablis,
-          pasRegardes: synthese.pasRegardes,
-        })}
+        {[
+          t(synthese.etablis === 1 ? "bt_syn_compte_etabli" : "bt_syn_compte_etablis", {
+            n: synthese.etablis,
+          }),
+          t(synthese.pasEtablis === 1 ? "bt_syn_compte_non_etabli" : "bt_syn_compte_non_etablis", {
+            n: synthese.pasEtablis,
+          }),
+          t(synthese.pasRegardes === 1 ? "bt_syn_compte_non_vu" : "bt_syn_compte_non_vus", {
+            n: synthese.pasRegardes,
+          }),
+        ].join(" · ")}
       </p>
 
       <ul className="mt-3 space-y-2.5">

@@ -96,7 +96,42 @@ describe("l'exploration", () => {
   it("essaie chaque valeur de chaque dimension, et les compte toutes", () => {
     const r = explorer(s, plan(), plan().couts, [UT, OBJECTIF]);
     expect(r.essais).toBe(6);
-    expect(r.journal).toHaveLength(6);
+    // Six essais, plus une ligne de référence par dimension.
+    expect(r.journal).toHaveLength(8);
+  });
+
+  /**
+   * LA LIGNE DE RÉFÉRENCE NE COÛTE RIEN ET NE FAIT PAS MONTER LA BARRE.
+   *
+   * ⚠️⚠️ VU À L'ÉCRAN : le journal disait « ta trendline : 73 trades, trop peu »
+   * à un trader dont la trendline en produisait 167, parce que la valeur du
+   * catalogue emporte ses propres pivots. Sa valeur à lui a maintenant sa ligne,
+   * prise sur la mesure courante. Elle ne consomme donc AUCUN essai : la compter
+   * ferait monter la barre à franchir sans qu'aucun backtest de plus ait servi
+   * à chercher, c'est-à-dire punir le trader pour une ligne d'affichage.
+   */
+  it("la ligne de référence ne consomme aucun essai", () => {
+    const r = explorer(s, plan(), plan().couts, [UT, OBJECTIF]);
+    const references = r.journal.filter((e) => e.etiquette === "bt_exp_ta_valeur");
+    expect(references).toHaveLength(2);
+    expect(r.essais).toBe(r.journal.length - references.length);
+  });
+
+  /**
+   * ⚠️ « Rien n'a battu ce que tu fais déjà » est un résultat, et il doit se
+   * voir : sans ça, une dimension entière s'affichait sans aucun « retenu » et
+   * le trader ne savait pas ce qui avait été gardé.
+   */
+  it("marque la référence quand aucune valeur ne la bat", () => {
+    const inutile = {
+      cle: "inutile",
+      valeurs: [
+        { etiquette: "a", appliquer: (p: PlanExecution) => ({ ...p, uniteDeTemps: 1 }) },
+      ],
+    };
+    const r = explorer(s, plan(), plan().couts, [inutile]);
+    const gardees = r.journal.filter((e) => e.retenu);
+    expect(gardees).toHaveLength(1);
   });
 
   /**

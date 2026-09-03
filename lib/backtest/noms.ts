@@ -74,6 +74,19 @@ export const NOM_CONFIRMATION: Record<string, string> = {
   divergence: "bt_conf_divergence",
 };
 
+/**
+ * Les sens autorisés.
+ *
+ * ⚠️ Ce n'est pas une union `type: "..."` comme les autres, donc le test qui
+ * lit `types.ts` ne l'attrapait pas : le plan écrit affichait « Sens autorisés :
+ * les_deux » à un trader censé le suivre le lendemain matin.
+ */
+export const NOM_SENS: Record<string, string> = {
+  les_deux: "bt_sens_deux",
+  long: "bt_sens_long",
+  short: "bt_sens_short",
+};
+
 /** Traduit un type de bloc, ou rend le code brut si personne ne l'a nommé. */
 export function nommer(
   table: Record<string, string>,

@@ -65,8 +65,10 @@ function stopEchelle(facteur: number) {
  *
  * @param instrument sert à donner au filtre d'amplitude une taille qui a du sens
  * sur ce marché-là ; un seuil en ticks transposé à l'aveugle ne veut rien dire.
+ * @param depart le plan du trader, pour ne pas lui proposer une version standard
+ * de son propre bloc à la place du sien. Voir la note ci-dessous.
  */
-export function dimensionsDeRecherche(instrument: Instrument): Dimension[] {
+export function dimensionsDeRecherche(instrument: Instrument, depart?: PlanExecution): Dimension[] {
   const enTicks = (prix: number) => Math.max(1, Math.round(prix / instrument.tailleTick));
 
   const confluences: BlocConfirmation[] = [
@@ -78,6 +80,25 @@ export function dimensionsDeRecherche(instrument: Instrument): Dimension[] {
     { type: "divergence", periode: 14, pivots: 5 },
     { type: "amplitude_min", ticks: enTicks(instrument.spread * 3) },
   ];
+
+  /**
+   * ÉCARTE LA VERSION STANDARD DU BLOC QUE LE TRADER UTILISE DÉJÀ.
+   *
+   * ⚠️⚠️ VU À L'ÉCRAN, ET C'ÉTAIT UN MENSONGE. Le journal affichait « Ce que tu
+   * traces · Trendline · 73 trades · trop peu de trades » à un trader dont la
+   * trendline en produisait 167. La valeur « trendline » du catalogue emporte
+   * SES PROPRES pivots, touches et tolérance : ce n'était pas sa trendline, mais
+   * rien ne le disait, et il lisait que sa méthode ne produit rien.
+   *
+   * Sa valeur à lui a désormais sa propre ligne dans le journal, mesurée sans
+   * backtest supplémentaire (voir `explorer`). Essayer en plus une version
+   * standard du même bloc ne répondrait à aucune question qu'il se pose : le
+   * voisinage de SES réglages est une autre mesure, et elle a sa propre carte.
+   */
+  const sansSonPropreBloc = (
+    valeurs: { etiquette: string; appliquer: (p: PlanExecution) => PlanExecution }[],
+    sien: string | undefined,
+  ) => valeurs.filter((v) => v.etiquette !== sien);
 
   return [
     {
@@ -127,25 +148,31 @@ export function dimensionsDeRecherche(instrument: Instrument): Dimension[] {
     },
     {
       cle: "declencheur",
-      valeurs: [
+      valeurs: sansSonPropreBloc(
+        [
         { etiquette: "cassure", appliquer: (p: PlanExecution) => ({ ...p, declencheur: { type: "cassure", mode: "cloture" } }) },
         { etiquette: "balayage_retour", appliquer: (p: PlanExecution) => ({ ...p, declencheur: { type: "balayage_retour" } }) },
         { etiquette: "retest_apres_cassure", appliquer: (p: PlanExecution) => ({ ...p, declencheur: { type: "retest_apres_cassure", delaiMaxBarres: 20, toleranceTicks: enTicks(instrument.spread * 2) } }) },
         { etiquette: "fvg_puis_retest", appliquer: (p: PlanExecution) => ({ ...p, declencheur: { type: "fvg_puis_retest", delaiMaxBarres: 20 } }) },
         { etiquette: "balayage_puis_fvg", appliquer: (p: PlanExecution) => ({ ...p, declencheur: { type: "balayage_puis_fvg", delaiReaction: 10, delaiRetest: 15 } }) },
         { etiquette: "entree_dans_zone", appliquer: (p: PlanExecution) => ({ ...p, declencheur: { type: "entree_dans_zone", delaiMaxBarres: 20 } }) },
-      ],
+        ],
+        depart?.declencheur.type,
+      ),
     },
     {
       cle: "niveau",
-      valeurs: [
+      valeurs: sansSonPropreBloc(
+        [
         { etiquette: "trendline", appliquer: (p: PlanExecution) => ({ ...p, niveau: { type: "trendline", pivots: 10, touchesMin: 3, toleranceTicks: enTicks(instrument.spread * 2) } }) },
         { etiquette: "liquidite_swing", appliquer: (p: PlanExecution) => ({ ...p, niveau: { type: "liquidite_swing", pivots: 10 } }) },
         { etiquette: "extremes_n_bougies", appliquer: (p: PlanExecution) => ({ ...p, niveau: { type: "extremes_n_bougies", n: 50 } }) },
         { etiquette: "ote_fibonacci", appliquer: (p: PlanExecution) => ({ ...p, niveau: { type: "ote_fibonacci", pivots: 10, retraceMinPct: 62, retraceMaxPct: 79 } }) },
         { etiquette: "order_block", appliquer: (p: PlanExecution) => ({ ...p, niveau: { type: "order_block", impulsionMinTicks: enTicks(instrument.spread * 6) } }) },
         { etiquette: "fvg_zone", appliquer: (p: PlanExecution) => ({ ...p, niveau: { type: "fvg_zone", tailleMinTicks: enTicks(instrument.spread) } }) },
-      ],
+        ],
+        depart?.niveau.type,
+      ),
     },
     {
       cle: "confluence",

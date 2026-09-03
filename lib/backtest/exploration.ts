@@ -164,6 +164,29 @@ export function explorer(
 
   for (const dimension of dimensions) {
     let meilleur: { valeur: Valeur; mesure: Mesure; index: number } | null = null;
+
+    /**
+     * LA LIGNE DE RÉFÉRENCE : CE QUE LE TRADER FAIT DÉJÀ.
+     *
+     * ⚠️⚠️ VU À L'ÉCRAN SUR SA VRAIE STRATÉGIE. Le journal affichait « Ce que tu
+     * traces · Trendline · 73 · trop peu de trades » alors que sa trendline en
+     * produisait 167 deux lignes plus haut. La valeur « trendline » du catalogue
+     * n'est PAS la sienne : elle emporte ses propres pivots, ses propres touches
+     * et sa propre tolérance. Le trader lisait donc que sa méthode ne produit
+     * rien, sur une mesure qui ne portait pas sur sa méthode.
+     *
+     * La ligne de référence coûte zéro backtest : la mesure courante est déjà
+     * là. Elle ne compte donc pas comme un essai, et ne fait pas monter la barre.
+     */
+    journal.push({
+      dimension: dimension.cle,
+      etiquette: "bt_exp_ta_valeur",
+      trades: mesureCourante.trades,
+      esperanceR: mesureCourante.esperanceR,
+      t: mesureCourante.t,
+      retenu: false,
+    });
+    const indexDeLaReference = journal.length - 1;
     const debutDeDimension = journal.length;
 
     for (let i = 0; i < dimension.valeurs.length; i++) {
@@ -197,6 +220,11 @@ export function explorer(
       planCourant = meilleur.valeur.appliquer(planCourant);
       mesureCourante = meilleur.mesure;
       journal[meilleur.index].retenu = true;
+    } else {
+      // ⚠️ « Rien n'a battu ce que tu fais déjà » est un résultat, et il doit se
+      // voir. Sans cette ligne marquée, une dimension entière apparaissait sans
+      // aucun « retenu », et le trader ne savait pas ce qui avait été gardé.
+      journal[indexDeLaReference].retenu = true;
     }
   }
 

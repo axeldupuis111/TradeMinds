@@ -726,6 +726,29 @@ export default function BacktestPage() {
     return [instrument.code, ...autres].slice(0, 5);
   }, [instrument]);
 
+  /**
+   * CE QUI SÉPARE LA COMBINAISON TROUVÉE DU PLAN MESURÉ EN HAUT DE PAGE.
+   *
+   * ⚠️⚠️ VU À L'ÉCRAN : la carte de cohérence affirmait « ta règle d'arrêt après
+   * 3 pertes ne s'est jamais déclenchée » pendant que le plan trouvé, six cartes
+   * plus bas, affirmait « elle se serait déclenchée 16 fois ». Les deux étaient
+   * exacts, sur deux plans différents, et rien à l'écran ne disait qu'il y en
+   * avait deux. Cette liste est ce qui manquait.
+   */
+  const ecartsDeLaRecherche = useMemo(
+    () =>
+      resultat?.exploration
+        ? comparerPlans(
+            plan,
+            resultat.exploration.recherche.plan,
+            instrument,
+            {},
+            tr("bt_modif_absent"),
+          )
+        : [],
+    [resultat?.exploration, plan, instrument, tr],
+  );
+
   /** L'écart avec la fiche, recalculé à chaque changement de plan. */
   const modifications = useMemo(
     () =>
@@ -1417,6 +1440,7 @@ export default function BacktestPage() {
           <StaggerItem>
             <Trouver
               exploration={resultat.exploration}
+              ecarts={ecartsDeLaRecherche}
               fenetreDeConfirmation={
                 fenetreIntacte && fenetreIntacte.mois >= MOIS_MIN_CONTROLE
                   ? { de: fenetreIntacte.de, a: fenetreIntacte.a }

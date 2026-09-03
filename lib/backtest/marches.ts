@@ -163,19 +163,41 @@ export function lireLesMarches(resultats: ResultatMarche[]): {
   verdict: VerdictMarches;
   retrouves: number;
   mesurables: number;
+  /** Marchés mesurables AUTRES que le sien : c'est eux qui font la comparaison. */
+  comparaisons: number;
 } {
   const mesurables = resultats.filter((r) => !r.insuffisant);
   const retrouves = mesurables.filter((r) => r.avantageRetrouve);
-  if (mesurables.length < 2) {
-    return { verdict: "indecidable", retrouves: retrouves.length, mesurables: mesurables.length };
+  /**
+   * ⚠️⚠️ « NULLE PART » SE COMPTE SUR LES AUTRES MARCHÉS, PAS SUR LE SIEN.
+   *
+   * Vu à l'écran sur l'or : la seule famille comparable contenait l'argent, donc
+   * DEUX marchés mesurables, dont le sien. L'outil concluait « l'avantage ne se
+   * retrouve nulle part » sur la foi d'UN seul point de comparaison. C'était
+   * peut-être vrai, ce n'était pas démontré : « nulle part » est une affirmation
+   * sur un ensemble, et un ensemble d'un élément n'en supporte aucune.
+   */
+  const comparaisons = mesurables.filter((r) => !r.sien).length;
+  if (mesurables.length < 2 || comparaisons < 1) {
+    return {
+      verdict: "indecidable",
+      retrouves: retrouves.length,
+      mesurables: mesurables.length,
+      comparaisons,
+    };
   }
   if (retrouves.length === 0) {
-    return { verdict: "nulle_part", retrouves: 0, mesurables: mesurables.length };
+    return { verdict: "nulle_part", retrouves: 0, mesurables: mesurables.length, comparaisons };
   }
   // ⚠️ « Seul le sien » est le cas qu'il faut savoir nommer : c'est celui qui
   // ressemble le plus à une bonne nouvelle et qui en est le contraire.
   if (retrouves.length === 1 && retrouves[0].sien) {
-    return { verdict: "seul_le_sien", retrouves: 1, mesurables: mesurables.length };
+    return { verdict: "seul_le_sien", retrouves: 1, mesurables: mesurables.length, comparaisons };
   }
-  return { verdict: "partage", retrouves: retrouves.length, mesurables: mesurables.length };
+  return {
+    verdict: "partage",
+    retrouves: retrouves.length,
+    mesurables: mesurables.length,
+    comparaisons,
+  };
 }

@@ -73,12 +73,28 @@ describe("le voisinage du réglage choisi", () => {
   });
 
   /**
-   * ⚠️ ON NE BALAIE QUE CE QUE LE TRADER A CHANGÉ. Balayer un réglage qu'il n'a
-   * pas touché serait une exploration à sa place, c'est-à-dire la pêche au
-   * meilleur chiffre que toute la page refuse.
+   * ⚠️⚠️ RIEN DE CHANGÉ NE VEUT PAS DIRE RIEN À REGARDER.
+   *
+   * Vu à l'écran : un trader dont le plan collait exactement à sa fiche lisait
+   * « un réglage qui ne tient pas à une valeur exacte : pas encore regardé »,
+   * définitivement, parce que la mesure ne partait que sur des réglages modifiés.
+   * Le pilier le plus utile de la page restait gris pour qui ne bricole pas. Un
+   * réglage compilé depuis sa fiche est le sien autant qu'un réglage tapé à la
+   * main, et la question se pose exactement pareil.
    */
-  it("ne balaie rien quand rien n'a été changé", () => {
-    expect(mesurerStabilite(s, plan(), plan().couts, [])).toEqual([]);
+  it("regarde autour de ses propres réglages quand il n'a rien changé", () => {
+    const r = mesurerStabilite(s, plan(), plan().couts, []);
+    expect(r.length).toBeGreaterThan(0);
+    // ⚠️ Et ça reste un CONTRÔLE : toujours aucun plan applicable en sortie.
+    for (const x of r) expect(x).not.toHaveProperty("plan");
+  });
+
+  /**
+   * ⚠️ La borne vaut aussi pour le repli : sans elle, un trader qui n'a rien
+   * changé paierait plus de backtests que celui qui a changé deux réglages.
+   */
+  it("le repli respecte la même borne que les réglages changés", () => {
+    expect(mesurerStabilite(s, plan(), plan().couts, []).length).toBeLessThanOrEqual(REGLAGES_MAX);
   });
 
   it("ignore un réglage dont ce plan n'a pas la forme", () => {

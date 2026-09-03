@@ -170,3 +170,39 @@ describe("ce que chaque valeur fait au plan", () => {
     }
   });
 });
+
+/**
+ * ON NE PROPOSE PAS AU TRADER UNE VERSION STANDARD DE SON PROPRE BLOC.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN, ET C'ÉTAIT FAUX. Le journal affichait « Ce que tu traces ·
+ * Trendline · 73 trades · trop peu de trades » alors que la trendline du trader
+ * en produisait 167 : la valeur « trendline » du catalogue emporte SES PROPRES
+ * pivots, touches et tolérance. Le trader lisait que sa méthode ne produit rien,
+ * sur une mesure qui ne portait pas sur sa méthode.
+ */
+describe("le catalogue ne double pas le bloc du trader", () => {
+  const etiquettes = (dims: ReturnType<typeof dimensionsDeRecherche>, cle: string) =>
+    dims.find((d) => d.cle === cle)!.valeurs.map((v) => v.etiquette);
+
+  it("écarte le niveau et le déclencheur qu'il utilise déjà", () => {
+    const sien = dimensionsDeRecherche(NAS, plan());
+    expect(etiquettes(sien, "niveau")).not.toContain(plan().niveau.type);
+    expect(etiquettes(sien, "declencheur")).not.toContain(plan().declencheur.type);
+  });
+
+  it("les garde tous quand on ne lui donne pas de plan de départ", () => {
+    const sans = dimensionsDeRecherche(NAS);
+    expect(etiquettes(sans, "niveau")).toContain(plan().niveau.type);
+    expect(etiquettes(sans, "declencheur")).toContain(plan().declencheur.type);
+  });
+
+  /**
+   * ⚠️ Retirer une valeur ne doit jamais vider une dimension : une dimension
+   * sans alternative ne cherche rien et ferait croire qu'on a cherché.
+   */
+  it("laisse toujours au moins deux valeurs à essayer", () => {
+    for (const d of dimensionsDeRecherche(NAS, plan())) {
+      expect(d.valeurs.length, d.cle).toBeGreaterThanOrEqual(2);
+    }
+  });
+});

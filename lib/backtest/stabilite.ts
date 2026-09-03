@@ -23,9 +23,18 @@ import type { Couts, PlanExecution, SerieM1 } from "./types";
  * refuse de faire. Trois règles le séparent de la pêche au meilleur chiffre, et
  * aucune n'est négociable :
  *
- * 1. **ON NE BALAIE QUE CE QUE LE TRADER A DÉJÀ CHANGÉ.** Le voisinage d'une
- *    valeur qu'il a lui-même retenue, jamais un espace de recherche. C'est un
- *    contrôle sur SON choix, pas une exploration à sa place.
+ * 1. **ON NE BALAIE QUE DES VALEURS QUI SONT DÉJÀ LES SIENNES.** Le voisinage
+ *    d'un réglage qu'il porte, jamais un espace de recherche. C'est un contrôle
+ *    sur SON choix, pas une exploration à sa place.
+ *
+ *    ⚠️⚠️ Ça inclut les réglages qu'il n'a pas touchés. Vu à l'écran : un trader
+ *    dont le plan collait exactement à sa fiche lisait « un réglage qui ne tient
+ *    pas à une valeur exacte : pas encore regardé », définitivement, parce que la
+ *    mesure ne partait que sur des réglages MODIFIÉS. Le pilier le plus utile de
+ *    la page restait gris pour quiconque ne bricole pas, c'est-à-dire pour celui
+ *    qui en a le plus besoin. Un réglage compilé depuis sa fiche est son réglage
+ *    autant qu'un réglage tapé à la main, et la question « ton résultat tient-il
+ *    si ton pivot passe de 5 à 6 » se pose exactement pareil.
  * 2. **AUCUN PLAN N'EST RENDU, DONC RIEN N'EST APPLICABLE.** Le résultat ne
  *    contient que des nombres. Un bouton « appliquer » sur le voisin qui sort le
  *    mieux transformerait ce garde-fou en son contraire, et un test lit ce
@@ -131,6 +140,17 @@ export const MIN_TRADES_POINT = 100;
 /** Combien de réglages on accepte de balayer. Chaque point est un backtest complet. */
 export const REGLAGES_MAX = 2;
 
+/**
+ * À DÉFAUT DE RÉGLAGE MODIFIÉ, CEUX-LÀ, DANS CET ORDRE.
+ *
+ * ⚠️ L'ORDRE EST DÉCLARÉ, PAS DÉDUIT D'UN RÉSULTAT. On regarde d'abord ce qui
+ * décide COMBIEN de signaux existent (la largeur du pivot, puis la tolérance
+ * d'alignement), et seulement ensuite ce qui décide de leur issue. Choisir
+ * l'ordre d'après ce qui sort le mieux serait exactement le balayage que ce
+ * fichier refuse.
+ */
+const REGLAGES_PAR_DEFAUT = ["niveau_pivots", "niveau_tolerance", "niveau_touches", "objectif_r"];
+
 function mesurer(serie: SerieM1, plan: PlanExecution, couts: Couts): Omit<Point, "valeur" | "sienne"> {
   const r = lancerBacktest(serie, { ...plan, couts });
   const rs = r.trades.map((t) => t.r);
@@ -190,8 +210,8 @@ export function mesurerStabilite(
   modifications: Modification[],
   avancement?: (faits: number, total: number) => void,
 ): Stabilite[] {
-  const cles = modifications
-    .map((m) => m.cle)
+  const demandees = modifications.map((m) => m.cle);
+  const cles = (demandees.length > 0 ? demandees : REGLAGES_PAR_DEFAUT)
     .filter((cle) => SETTEURS[cle] && SETTEURS[cle].lire(plan) != null)
     .slice(0, REGLAGES_MAX);
 

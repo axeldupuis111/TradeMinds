@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { composerPlanComplet, SEUIL_RECUL_PAR_DEFAUT } from "./plan-complet";
 import { socleDePlan } from "./compilation";
@@ -183,9 +185,39 @@ describe("chaque ligne du plan sait se dire en français", () => {
       .lignes.map((l) => l.cle),
     "arret_pertes_absent",
     "risque_aucun",
+    // Le rythme a deux redactions : « 1 trades par jour » etait ecrit tel quel
+    // dans un plan qu'on imprime pour le suivre.
+    "rythme_un",
   ];
 
   it.each(Array.from(new Set(toutesLesCles)))("« %s »", (cle) => {
     expect(connues[`bt_plan_${cle}`], `bt_plan_${cle} manquante`).toBeTruthy();
+  });
+});
+
+/**
+ * CE QUE LE PLAN TROUVE A DEMONTRE, DIT AVANT LE PLAN.
+ *
+ * ⚠️⚠️ VU A L'ECRAN SUR LA VRAIE STRATEGIE : la confirmation disait
+ * « trop peu de trades pour trancher » et l'outil titrait juste en dessous
+ * « Ton plan, ecrit · Les regles a respecter ». Chaque etat doit avoir sa
+ * phrase, sinon un plan que rien n'a confirme se lit comme un plan a suivre.
+ */
+describe("chaque etat du plan trouve a sa phrase", () => {
+  const SOURCE = readFileSync(join(process.cwd(), "components/backtest/Trouver.tsx"), "utf8");
+  const i = SOURCE.indexOf("export type EtatDuPlan =");
+
+  it("l'union EtatDuPlan est lue dans la source, pas recopiee", () => {
+    expect(i).toBeGreaterThan(-1);
+  });
+
+  it("chaque etat a sa cle en francais", () => {
+    const union = SOURCE.slice(i, SOURCE.indexOf(";", i));
+    const etats = Array.from(union.matchAll(/"([a-z_]+)"/g), (m) => m[1]);
+    expect(etats.length).toBeGreaterThan(1);
+    const connues = fr as Record<string, string>;
+    for (const e of etats) {
+      expect(connues[`bt_plan_etat_${e}`], `bt_plan_etat_${e} manquante`).toBeTruthy();
+    }
   });
 });

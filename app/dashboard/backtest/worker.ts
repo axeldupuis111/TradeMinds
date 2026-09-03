@@ -450,7 +450,7 @@ self.onmessage = async (e: MessageEvent<DemandeBacktest>) => {
         serie,
         complet,
         couts,
-        dimensionsDeRecherche(instrument),
+        dimensionsDeRecherche(instrument, complet),
         (faits, total) => poste({ type: "avancement", faits, total }),
       );
 
@@ -553,12 +553,19 @@ self.onmessage = async (e: MessageEvent<DemandeBacktest>) => {
             (faits, total) => poste({ type: "avancement", faits, total }),
           )
         : undefined,
-      stabilite:
-        stabilite && stabilite.length > 0
-          ? mesurerStabilite(serie, complet, couts, stabilite, (faits, total) =>
-              poste({ type: "avancement", faits, total }),
-            )
-          : undefined,
+      /**
+       * ⚠️⚠️ LA LISTE VIDE EST UNE DEMANDE, PAS UN REFUS. Le garde était
+       * `stabilite.length > 0`, donc un trader dont le plan collait exactement à
+       * sa fiche ne mesurait jamais rien, et lisait « un réglage qui ne tient pas
+       * à une valeur exacte : pas encore regardé » pour toujours. Le pilier le
+       * plus utile de la page restait gris pour qui ne bricole pas. À liste vide,
+       * `mesurerStabilite` regarde autour de SES propres réglages.
+       */
+      stabilite: stabilite
+        ? mesurerStabilite(serie, complet, couts, stabilite, (faits, total) =>
+            poste({ type: "avancement", faits, total }),
+          )
+        : undefined,
       propositions: propositions
         ? chercherPropositions(serie, complet, couts, (faits, total) =>
             poste({ type: "avancement", faits, total }),

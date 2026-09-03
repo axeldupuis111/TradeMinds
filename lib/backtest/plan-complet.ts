@@ -206,7 +206,9 @@ export function composerPlanComplet(
   }
 
   const rythme = rythmeParJour(trades);
-  ajouter("rythme", { d9: rythme.d9, max: rythme.max }, true);
+  // ⚠️ « 1 trades par jour » dans un plan qu'on imprime pour le suivre : la même
+  // faute que « 1 journées » et « 3 année(s) », et elle se voit tout autant.
+  ajouter(rythme.d9 <= 1 ? "rythme_un" : "rythme", { d9: rythme.d9, max: rythme.max }, true);
 
   return { lignes, risques, risqueRecommandePct, seuilReculPct };
 }

@@ -114,10 +114,20 @@ export function Marches({
         {lecture.verdict === "seul_le_sien" || lecture.verdict === "nulle_part" ? (
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
         ) : null}
-        {t(`bt_mar_verdict_${lecture.verdict}`, {
-          retrouves: lecture.retrouves,
-          mesurables: lecture.mesurables,
-        })}
+        {/* ⚠️⚠️ « NULLE PART » EST UNE AFFIRMATION SUR UN ENSEMBLE, et un
+            ensemble d'un seul élément n'en supporte aucune. Vu à l'écran sur
+            l'or : une seule famille comparable, donc UN marché de comparaison,
+            et l'outil concluait tout de même « nulle part ». */}
+        {t(
+          lecture.comparaisons === 1
+            ? `bt_mar_verdict_${lecture.verdict}_un`
+            : `bt_mar_verdict_${lecture.verdict}`,
+          {
+            retrouves: lecture.retrouves,
+            mesurables: lecture.mesurables,
+            comparaisons: lecture.comparaisons,
+          },
+        )}
       </p>
     </Card>
   );
