@@ -197,12 +197,47 @@ describe("le catalogue ne double pas le bloc du trader", () => {
   });
 
   /**
-   * ⚠️ Retirer une valeur ne doit jamais vider une dimension : une dimension
+   * ⚠️ Retirer une valeur ne doit jamais VIDER une dimension : une dimension
    * sans alternative ne cherche rien et ferait croire qu'on a cherché.
+   *
+   * ⚠️ Une seule alternative suffit désormais, et ce n'est pas un relâchement.
+   * La valeur du trader a sa propre ligne de référence dans le journal, prise
+   * sur la mesure courante : une dimension à une alternative fait donc bien une
+   * comparaison, entre ce qu'il fait et la seule autre chose à essayer.
    */
-  it("laisse toujours au moins deux valeurs à essayer", () => {
+  it("ne vide jamais une dimension", () => {
     for (const d of dimensionsDeRecherche(NAS, plan())) {
-      expect(d.valeurs.length, d.cle).toBeGreaterThanOrEqual(2);
+      expect(d.valeurs.length, d.cle).toBeGreaterThanOrEqual(1);
     }
+  });
+
+  /**
+   * ⚠️⚠️ VU À L'ÉCRAN, ET C'ÉTAIT LA MÊME LIGNE DEUX FOIS. Le journal affichait
+   * « Unité de temps · ce que tu fais déjà · 415 · t = -0.27 » puis « Unité de
+   * temps · M5 · 415 · t = -0.27 » juste en dessous. Idem pour « Largeur du stop
+   * ×1 » et « Jours L M M J V ». Le trader lisait deux essais là où il n'y en
+   * avait qu'un, et la barre de recherche montait pour rien.
+   */
+  it("n'essaie jamais une valeur qui reproduit le plan de départ", () => {
+    const p = plan();
+    for (const d of dimensionsDeRecherche(NAS, p)) {
+      for (const v of d.valeurs) {
+        expect(
+          JSON.stringify(v.appliquer(p)),
+          `${d.cle} / ${v.etiquette} ne change rien`,
+        ).not.toBe(JSON.stringify(p));
+      }
+    }
+  });
+
+  /**
+   * ⚠️ La comparaison se fait sur le PLAN PRODUIT, pas sur l'étiquette :
+   * « ×1 » ne ressemble à rien, et c'est pourtant l'identité.
+   */
+  it("écarte l'identité même quand son étiquette ne la trahit pas", () => {
+    const etiquettes = (dims: ReturnType<typeof dimensionsDeRecherche>, cle: string) =>
+      dims.find((d) => d.cle === cle)!.valeurs.map((v) => v.etiquette);
+    expect(etiquettes(dimensionsDeRecherche(NAS, plan()), "stop")).not.toContain("×1");
+    expect(etiquettes(dimensionsDeRecherche(NAS), "stop")).toContain("×1");
   });
 });

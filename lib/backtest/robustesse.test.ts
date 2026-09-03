@@ -115,6 +115,39 @@ describe("d'où vient le résultat dans le temps", () => {
     const trades = [...mois("2024-01", 15, 1), ...mois("2024-02", 15, -1)];
     const c = concentration(trades)!;
     expect(c.totalR).toBeCloseTo(0, 6);
-    expect(Number.isFinite(c.partDuMeilleurMois)).toBe(true);
+    expect(c.partDuMeilleurMois).toBeNull();
+  });
+
+  /**
+   * ⚠️⚠️ UNE PART DE TOTAL NE VEUT RIEN DIRE QUAND LE TOTAL EST NÉGATIF.
+   *
+   * Vu à l'écran : « ton meilleur mois est 2025-10, il apporte -137 % du
+   * total ». Arithmétiquement exact (un mois à +9,27 R divisé par un total de
+   * -6,76 R) et parfaitement illisible : un pourcentage négatif, pour un mois
+   * positif, d'un total qui perd. Et la phrase enchaînait sur « sans lui, il ne
+   * reste rien », alors que sans lui c'est PIRE.
+   */
+  it("ne calcule aucune part quand le total perd", () => {
+    const trades = [...mois("2024-01", 15, 1), ...mois("2024-02", 15, -3)];
+    const c = concentration(trades)!;
+    expect(c.totalR).toBeLessThan(0);
+    expect(c.partDuMeilleurMois).toBeNull();
+    expect(c.forme).toBe("rien_a_repartir");
+  });
+
+  /**
+   * ⚠️ « Rien à répartir » n'est pas « mal réparti ». Le meilleur mois est
+   * quand même nommé : le trader doit pouvoir aller le regarder.
+   */
+  it("nomme quand même le meilleur mois", () => {
+    const trades = [...mois("2024-01", 15, 1), ...mois("2024-02", 15, -3)];
+    expect(concentration(trades)!.meilleurMois).toBe("2024-01");
+  });
+
+  it("calcule bien la part quand le total gagne", () => {
+    const trades = [...mois("2024-01", 15, 3), ...mois("2024-02", 15, 1)];
+    const c = concentration(trades)!;
+    expect(c.partDuMeilleurMois).toBeGreaterThan(50);
+    expect(c.forme).not.toBe("rien_a_repartir");
   });
 });

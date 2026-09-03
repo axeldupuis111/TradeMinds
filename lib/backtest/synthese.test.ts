@@ -227,3 +227,48 @@ describe("la synthèse ne note rien", () => {
     }
   });
 });
+
+/**
+ * ⚠️⚠️ LE PILIER DE RECHERCHE RASSURAIT À TORT.
+ *
+ * Vu à l'écran : « Une recherche qui n'a pas dérivé · Établi · 3 essais sur
+ * cette stratégie », affiché juste en dessous d'un balayage de trente-six
+ * combinaisons. Le compteur manuel ne voit que les rejeux lancés à la main ;
+ * la recherche automatique, elle, en essaie quarante d'un coup. Les deux
+ * comptent, et un pilier vert au-dessus d'un balayage est un mensonge poli.
+ */
+describe("les combinaisons de la recherche comptent comme des essais", () => {
+  const connues = fr as Record<string, string>;
+
+  const pilier = (s: ReturnType<typeof synthetiser>) =>
+    s.piliers.find((p) => p.code === "recherche_bornee")!;
+
+  it("additionne les rejeux à la main et le balayage", () => {
+    const p = pilier(synthetiser({ ...entrees(), tentatives: 3, combinaisonsExplorees: 36 }));
+    expect(p.valeurs.essais).toBe(39);
+    expect(p.valeurs.mains).toBe(3);
+    expect(p.valeurs.explorees).toBe(36);
+  });
+
+  it("passe à « pas établi » quand le total dépasse le seuil", () => {
+    const p = pilier(synthetiser({ ...entrees(), tentatives: 3, combinaisonsExplorees: 36 }));
+    expect(p.etat).toBe("pas_etabli");
+  });
+
+  /**
+   * ⚠️ La phrase doit dire d'où vient le total : « 39 essais » sans
+   * explication ressemble à un compteur qui s'emballe.
+   */
+  it("emploie une rédaction qui nomme les deux sources", () => {
+    const p = pilier(synthetiser({ ...entrees(), tentatives: 3, combinaisonsExplorees: 36 }));
+    expect(p.variante).toBe("avec_recherche_au_dela");
+    expect(connues[`bt_syn_recherche_bornee_${p.variante}`]).toBeTruthy();
+  });
+
+  it("garde la rédaction ordinaire quand aucune recherche n'a tourné", () => {
+    const p = pilier(synthetiser({ ...entrees(), tentatives: 3 }));
+    expect(p.variante).toBeUndefined();
+    expect(p.valeurs.essais).toBe(3);
+    expect(p.etat).toBe("etabli");
+  });
+});

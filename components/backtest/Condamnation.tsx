@@ -81,7 +81,14 @@ export function Condamnation({
                 </span>
               </p>
               <p className="mt-1.5 text-[11px] leading-relaxed text-foreground-muted">
-                {t(`bt_cond_${c.code}`, c.valeurs)}
+                {/* ⚠️ « Ton stop vaut 7.05 bougie » : la même faute que « 1 trades »
+                    et « 1 journées », vue à l'écran une fois de plus. */}
+                {t(
+                  c.code === "stop_dans_le_bruit" && Number(c.valeurs.bougies) < 2
+                    ? "bt_cond_stop_dans_le_bruit_une"
+                    : `bt_cond_${c.code}`,
+                  c.valeurs,
+                )}
               </p>
             </li>
           );

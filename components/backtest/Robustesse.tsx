@@ -117,7 +117,7 @@ export function Robustesse({
             <span className={c.forme === "reparti" ? "text-foreground-muted" : "text-warning"}>
               {t(`bt_rob_forme_repartition_${c.forme}`, {
                 mois: c.meilleurMois ?? "",
-                part: c.partDuMeilleurMois.toFixed(0),
+                part: c.partDuMeilleurMois?.toFixed(0) ?? "",
                 total: signe(c.totalR),
                 sans: signe(c.totalSansLeMeilleurMoisR),
               })}

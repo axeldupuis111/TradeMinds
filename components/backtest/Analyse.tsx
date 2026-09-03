@@ -121,7 +121,7 @@ export function Analyse({
                   </span>
                 </p>
                 <p className="mt-0.5 text-[11px] leading-relaxed text-foreground-muted">
-                  {t(`bt_syn_${p.code}_${p.etat}`, p.valeurs)}
+                  {t(`bt_syn_${p.code}_${p.variante ?? p.etat}`, p.valeurs)}
                 </p>
               </div>
             </li>

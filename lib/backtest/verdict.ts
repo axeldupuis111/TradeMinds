@@ -1,3 +1,4 @@
+import { coutAllerRetourTicks } from "./couts";
 import type { Couts, ResultatBacktest, TradeSimule } from "./types";
 
 /**
@@ -215,7 +216,7 @@ function auditCouts(trades: TradeSimule[], couts: Couts): AuditCouts {
     risqueMoyenTicks,
     coutBreakEvenTicks: esperanceNetteR > 0 ? esperanceNetteR * risqueMoyenTicks : null,
     aucunAvantageAvantCouts: esperanceBruteR <= 0,
-    coutApplique: couts.spreadTicks + 2 * couts.glissementTicks + couts.commissionTicks,
+    coutApplique: coutAllerRetourTicks(couts),
     edgeDetruitParLesCouts: esperanceBruteR > 0 && esperanceNetteR <= 0,
   };
 }

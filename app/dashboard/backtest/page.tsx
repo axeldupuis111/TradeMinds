@@ -1119,6 +1119,8 @@ export default function BacktestPage() {
                 : null,
             constats: resultat.constats,
             tentatives,
+            // ⚠️ Le balayage compte autant que les rejeux lancés à la main.
+            combinaisonsExplorees: resultat.exploration?.recherche.essais,
           })
         : null,
     [resultat, controleAffiche, tentatives],

@@ -1,3 +1,4 @@
+import { coutAllerRetourTicks } from "./couts";
 import { DetecteurPivots } from "./pivots";
 import type {
   AuditExecution,
@@ -948,8 +949,7 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
     // position est perdante par construction, avant même que le marché bouge.
     // Le refus est COMPTÉ, jamais silencieux : c'est souvent le signe que le
     // plan applique une structure trop fine pour l'instrument choisi.
-    const coutAllerRetour =
-      couts.spreadTicks + 2 * couts.glissementTicks + couts.commissionTicks;
+    const coutAllerRetour = coutAllerRetourTicks(couts);
     if (risqueTicks < Math.max(1, coutAllerRetour)) {
       audit.refusesRisqueTropPetit++;
       return false;

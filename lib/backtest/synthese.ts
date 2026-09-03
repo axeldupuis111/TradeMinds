@@ -61,6 +61,15 @@ export interface Pilier {
   etat: EtatPilier;
   /** Les nombres de la phrase traduite. Vides quand le pilier n'a pas été regardé. */
   valeurs: Record<string, string | number>;
+  /**
+   * Suffixe de clé quand un même état recouvre deux situations différentes.
+   *
+   * ⚠️⚠️ NÉ D'UNE PHRASE VIDE VUE À L'ÉCRAN. « Pas établi » disait toujours
+   * « {mois} apporte {part} % du total », or quand le total est NÉGATIF il n'y
+   * a pas de part à calculer : la phrase sortait avec un trou. Deux situations
+   * qui partagent un état ne partagent pas forcément une rédaction.
+   */
+  variante?: string;
 }
 
 export interface Synthese {
@@ -78,12 +87,26 @@ export interface EntreesSynthese {
   horsPeriode?: { lecture: LectureBacktest } | null;
   constats: Constat[];
   tentatives: number;
+  /**
+   * Combinaisons essayées par la recherche automatique, quand elle a tourné.
+   *
+   * ⚠️⚠️ SANS ELLES, LE PILIER RASSURAIT À TORT. Vu à l'écran : « Une recherche
+   * qui n'a pas dérivé · Établi · 3 essais sur cette stratégie » affiché juste
+   * en dessous d'un balayage de trente-six combinaisons. Le compteur manuel ne
+   * voit que les rejeux lancés à la main ; la recherche, elle, en essaie
+   * quarante d'un coup. Les deux comptent, et le trader doit voir le total.
+   */
+  combinaisonsExplorees?: number;
 }
 
 export function synthetiser(e: EntreesSynthese): Synthese {
   const piliers: Pilier[] = [];
-  const ajouter = (code: CodePilier, etat: EtatPilier, valeurs: Record<string, string | number> = {}) =>
-    piliers.push({ code, etat, valeurs });
+  const ajouter = (
+    code: CodePilier,
+    etat: EtatPilier,
+    valeurs: Record<string, string | number> = {},
+    variante?: string,
+  ) => piliers.push({ code, etat, valeurs, variante });
 
   // ── 1. L'échantillon ─────────────────────────────────────────────────────
   const trades = e.lecture.stats?.nbTrades ?? 0;
@@ -117,13 +140,20 @@ export function synthetiser(e: EntreesSynthese): Synthese {
     // ce pilier affichait « Établi » juste au-dessus de « ton meilleur mois
     // apporte 58 % du total ». Un résultat dont la moitié vient d'un mois n'est
     // pas réparti, même quand le reste ne perd pas.
-    ajouter("regularite", c.forme === "reparti" ? "etabli" : "pas_etabli", {
-      mois: c.meilleurMois ?? "",
-      part: c.partDuMeilleurMois.toFixed(0),
-      annees: c.anneesPositives,
-      total: c.annees.length,
-      sans: c.totalSansLeMeilleurMoisR.toFixed(2),
-    });
+    ajouter(
+      "regularite",
+      c.forme === "reparti" ? "etabli" : "pas_etabli",
+      {
+        mois: c.meilleurMois ?? "",
+        part: c.partDuMeilleurMois?.toFixed(0) ?? "",
+        annees: c.anneesPositives,
+        total: c.annees.length,
+        sans: c.totalSansLeMeilleurMoisR.toFixed(2),
+      },
+      // ⚠️ Quand le total perd, il n'y a rien à répartir : la phrase ordinaire
+      // sortirait avec un pourcentage vide au milieu.
+      c.forme === "rien_a_repartir" ? "rien_a_repartir" : undefined,
+    );
   }
 
   // ── 4. La période intacte ────────────────────────────────────────────────
@@ -155,10 +185,20 @@ export function synthetiser(e: EntreesSynthese): Synthese {
   }
 
   // ── 6. La recherche ──────────────────────────────────────────────────────
+  const explorees = e.combinaisonsExplorees ?? 0;
+  const essaisTotal = e.tentatives + explorees;
   ajouter(
     "recherche_bornee",
-    e.tentatives <= MAX_TENTATIVES_AVANT_ALERTE ? "etabli" : "pas_etabli",
-    { essais: e.tentatives, seuil: MAX_TENTATIVES_AVANT_ALERTE },
+    essaisTotal <= MAX_TENTATIVES_AVANT_ALERTE ? "etabli" : "pas_etabli",
+    {
+      essais: essaisTotal,
+      seuil: MAX_TENTATIVES_AVANT_ALERTE,
+      mains: e.tentatives,
+      explorees,
+    },
+    // ⚠️ Quand la recherche a tourné, la phrase doit dire d'où vient le total :
+    // « 39 essais » sans explication ressemble à un compteur qui s'emballe.
+    explorees > 0 ? (essaisTotal <= MAX_TENTATIVES_AVANT_ALERTE ? "avec_recherche" : "avec_recherche_au_dela") : undefined,
   );
 
   // ── 7. La cohérence ──────────────────────────────────────────────────────

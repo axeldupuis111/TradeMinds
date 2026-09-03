@@ -1,6 +1,7 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-  coutAllerRetourTicks,
   COUT_CONDAMNE_PCT,
   EQUILIBRE_CONDAMNE,
   SERIE_ORDINAIRE,
@@ -10,6 +11,7 @@ import {
   type CodeCondamnation,
   type Constat,
 } from "./condamnation";
+import { coutAllerRetourTicks } from "./couts";
 import { socleDePlan } from "./compilation";
 import { coutsPourInstrument, instrumentParCode } from "./instruments";
 import type { Couts, PlanExecution } from "./types";
@@ -42,12 +44,35 @@ const trouver = (c: Constat[], code: CodeCondamnation) => c.find((x) => x.code =
 
 describe("le coût d'un aller-retour", () => {
   /**
-   * ⚠️ Le spread est payé DEUX FOIS, le glissement aussi, la commission une
-   * seule. Se tromper là-dessus divise le coût par deux et rend positives des
-   * méthodes qui perdent.
+   * ⚠️⚠️ LE SPREAD SE COMPTE UNE FOIS, LE GLISSEMENT DEUX, ET CE N'EST PAS
+   * INTUITIF. Le moteur fait entrer au prix brut décalé du spread COMPLET (on
+   * achète à l'offre, on revend à la demande) : l'écart entier est payé à
+   * l'entrée et la sortie ne le repaie pas. Le glissement, lui, frappe deux
+   * fois, parce qu'il y a deux ordres au marché.
+   *
+   * Le premier jet de ce module doublait le spread, en croyant être prudent.
+   * Vu à l'écran : le même aller-retour valait « 3,9 % du risque » dans une
+   * carte et « 2,4 % » trois cartes plus bas, et la ligne était classée « hors
+   * d'atteinte » sur le chiffre faux.
    */
-  it("compte le spread et le glissement deux fois, la commission une", () => {
-    expect(coutAllerRetourTicks(couts(10, 4, 7))).toBe(10 * 2 + 4 * 2 + 7);
+  it("compte le spread une fois, le glissement deux, la commission une", () => {
+    expect(coutAllerRetourTicks(couts(10, 4, 7))).toBe(10 + 4 * 2 + 7);
+  });
+
+  /**
+   * ⚠️⚠️ UNE SEULE DÉFINITION DANS TOUT LE DÉPÔT. La formule était recopiée à
+   * trois endroits ; la troisième copie a divergé sans que rien ne plante. Ce
+   * test lit la source et refuse une quatrième copie.
+   */
+  it("n'est écrit qu'à un seul endroit", () => {
+    const fichiers = ["engine.ts", "verdict.ts", "condamnation.ts", "couts.ts"];
+    const copies = fichiers.filter((f) => {
+      const src = readFileSync(join(process.cwd(), "lib/backtest", f), "utf8")
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/\/\/[^\n]*/g, "");
+      return /spreadTicks\s*\+\s*2\s*\*\s*[a-z.]*glissementTicks/i.test(src);
+    });
+    expect(copies, `la formule est écrite dans : ${copies.join(", ")}`).toEqual(["couts.ts"]);
   });
 });
 
@@ -79,7 +104,7 @@ describe("les cinq lignes, et rien que de l'arithmétique", () => {
   it("condamne quand les frais avalent le tiers du risque", () => {
     const c = verifierCondamnation({
       plan: plan(),
-      couts: couts(100),
+      couts: couts(200),
       risqueMoyenTicks: 500,
     });
     const cout = trouver(c, "cout_structurel")!;

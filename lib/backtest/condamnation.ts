@@ -1,4 +1,5 @@
 import { pertesPourMoitie } from "../strategy-coherence";
+import { coutAllerRetourTicks } from "./couts";
 import type { Couts, PlanExecution } from "./types";
 
 /**
@@ -131,13 +132,6 @@ export interface EntreeCondamnation {
   amplitudeBougieTicks?: number;
   /** Rythme observé ou déclaré, en trades par an. */
   tradesParAn?: number;
-}
-
-/** Le coût complet d'un aller-retour, en ticks. */
-export function coutAllerRetourTicks(c: Couts): number {
-  // Le spread est payé à l'entrée et à la sortie, le glissement à l'entrée et
-  // sur toute sortie au marché, la commission une fois pour l'aller-retour.
-  return c.spreadTicks * 2 + c.glissementTicks * 2 + c.commissionTicks;
 }
 
 /**

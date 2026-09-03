@@ -101,36 +101,58 @@ export function dimensionsDeRecherche(instrument: Instrument, depart?: PlanExecu
     sien: string | undefined,
   ) => valeurs.filter((v) => v.etiquette !== sien);
 
+  /**
+   * ÉCARTE AUSSI LA VALEUR QUI REPRODUIT EXACTEMENT LE PLAN DE DÉPART.
+   *
+   * ⚠️⚠️ VU À L'ÉCRAN, ET C'ÉTAIT LA MÊME LIGNE DEUX FOIS. Le journal affichait
+   * « Unité de temps · ce que tu fais déjà · 415 · t = -0.27 » puis, juste en
+   * dessous, « Unité de temps · M5 · 415 · t = -0.27 ». Idem pour « Largeur du
+   * stop ×1 » et pour « Jours L M M J V ». Le trader lisait deux essais là où il
+   * n'y en avait qu'un, et la barre de recherche montait pour rien : chaque
+   * doublon compte comme une combinaison de plus.
+   *
+   * La comparaison se fait sur le PLAN PRODUIT, pas sur l'étiquette : « ×1 » ne
+   * ressemble à rien, et c'est pourtant l'identité.
+   */
+  const sansCeQuiNeChangeRien = (
+    valeurs: { etiquette: string; appliquer: (p: PlanExecution) => PlanExecution }[],
+  ) =>
+    depart
+      ? valeurs.filter((v) => JSON.stringify(v.appliquer(depart)) !== JSON.stringify(depart))
+      : valeurs;
+
   return [
     {
       cle: "unite_de_temps",
-      valeurs: [5, 15, 30, 60].map((v) => ({
-        etiquette: `M${v}`,
-        appliquer: (p: PlanExecution) => ({ ...p, uniteDeTemps: v }),
-      })),
+      valeurs: sansCeQuiNeChangeRien(
+        [5, 15, 30, 60].map((v) => ({
+          etiquette: `M${v}`,
+          appliquer: (p: PlanExecution) => ({ ...p, uniteDeTemps: v }),
+        })),
+      ),
     },
     {
       cle: "stop",
-      valeurs: [
+      valeurs: sansCeQuiNeChangeRien([
         { etiquette: "×1", appliquer: stopEchelle(1) },
         { etiquette: "×2", appliquer: stopEchelle(2) },
         { etiquette: "×3", appliquer: stopEchelle(3) },
-      ],
+      ]),
     },
     {
       cle: "seance",
-      valeurs: [
+      valeurs: sansCeQuiNeChangeRien([
         { etiquette: "bt_exp_toutes_heures", appliquer: heures("00:00", "23:59") },
         { etiquette: "08:00-12:00", appliquer: heures("08:00", "12:00") },
         { etiquette: "08:00-17:00", appliquer: heures("08:00", "17:00") },
         { etiquette: "13:00-17:00", appliquer: heures("13:00", "17:00") },
         { etiquette: "14:00-18:00", appliquer: heures("14:00", "18:00") },
         { etiquette: "13:00-22:00", appliquer: heures("13:00", "22:00") },
-      ],
+      ]),
     },
     {
       cle: "jours",
-      valeurs: [
+      valeurs: sansCeQuiNeChangeRien([
         {
           etiquette: "L M M J V",
           appliquer: (p: PlanExecution) => ({
@@ -145,7 +167,7 @@ export function dimensionsDeRecherche(instrument: Instrument, depart?: PlanExecu
             contexte: { ...p.contexte, jours: [2, 3, 4] },
           }),
         },
-      ],
+      ]),
     },
     {
       cle: "declencheur",
@@ -197,7 +219,7 @@ export function dimensionsDeRecherche(instrument: Instrument, depart?: PlanExecu
     },
     {
       cle: "confluence",
-      valeurs: [
+      valeurs: sansCeQuiNeChangeRien([
         {
           etiquette: "bt_exp_aucune_confluence",
           appliquer: (p: PlanExecution) => ({ ...p, confirmations: [] }),
@@ -206,14 +228,16 @@ export function dimensionsDeRecherche(instrument: Instrument, depart?: PlanExecu
           etiquette: c.type,
           appliquer: (p: PlanExecution) => ({ ...p, confirmations: [c] }),
         })),
-      ],
+      ]),
     },
     {
       cle: "objectif",
-      valeurs: [1.5, 2, 3].map((r) => ({
-        etiquette: `${r} R`,
-        appliquer: (p: PlanExecution) => ({ ...p, objectif: { type: "multiple_r" as const, r } }),
-      })),
+      valeurs: sansCeQuiNeChangeRien(
+        [1.5, 2, 3].map((r) => ({
+          etiquette: `${r} R`,
+          appliquer: (p: PlanExecution) => ({ ...p, objectif: { type: "multiple_r" as const, r } }),
+        })),
+      ),
     },
   ];
 }

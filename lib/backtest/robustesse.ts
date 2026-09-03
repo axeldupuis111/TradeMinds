@@ -70,7 +70,11 @@ export interface Concentration {
    * porte plus que le total. C'est précisément le cas qu'il faut voir, et
    * plafonner l'affichage à 100 le cacherait.
    */
-  partDuMeilleurMois: number;
+  /**
+   * `null` quand le total est négatif ou nul : il n'y a alors rien à répartir,
+   * et un pourcentage donnerait à une absurdité l'air d'une mesure.
+   */
+  partDuMeilleurMois: number | null;
   /** Ce que devient le total si on retire ce mois-là. */
   totalSansLeMeilleurMoisR: number;
   /** Le meilleur mois, pour pouvoir le nommer. */
@@ -105,7 +109,15 @@ export type FormeDeLaRepartition =
   /** Le reste tient debout, mais un seul mois pèse la moitié ou plus. */
   | "domine_par_un_mois"
   /** Sans son meilleur mois, il ne reste rien. */
-  | "repose_sur_un_mois";
+  | "repose_sur_un_mois"
+  /**
+   * Le total est negatif : il n'y a aucun resultat a repartir.
+   *
+   * ⚠️ Ce n'est pas « mal reparti », c'est « la question ne se pose pas ». Un
+   * pourcentage du total, quand le total perd, rend des phrases comme « ton
+   * meilleur mois apporte -137 % du total » : exactes et illisibles.
+   */
+  | "rien_a_repartir";
 
 /**
  * À partir de quelle part un seul mois « domine » le résultat.
@@ -141,22 +153,39 @@ export function concentration(trades: TradeSimule[]): Concentration | null {
   const totalSansLeMeilleurMoisR = totalR - gainDuMeilleur;
 
   const tient = totalR > 0 && totalSansLeMeilleurMoisR > 0;
-  const part = totalR === 0 ? 0 : (gainDuMeilleur / totalR) * 100;
+
+  /**
+   * ⚠️⚠️ UNE PART DE TOTAL NE VEUT RIEN DIRE QUAND LE TOTAL EST NÉGATIF.
+   *
+   * Vu à l'écran : « ton meilleur mois est 2025-10, il apporte -137 % du
+   * total ». Arithmétiquement exact (un mois à +9,27 R divisé par un total de
+   * -6,76 R) et parfaitement illisible : un pourcentage négatif, pour un mois
+   * positif, d'un total qui perd. Et la phrase enchaînait sur « sans lui, il ne
+   * reste rien », alors que sans lui c'est PIRE.
+   *
+   * La vérité est plus simple : quand le total est négatif, il n'y a aucun
+   * résultat à répartir, donc la question « un seul mois le porte-t-il ? » ne
+   * se pose pas. On rend `null` plutôt qu'un nombre qui aurait l'air d'une
+   * mesure.
+   */
+  const part = totalR > 0 ? (gainDuMeilleur / totalR) * 100 : null;
 
   return {
     annees,
     trimestres,
     totalR,
-    // Un total nul rendrait une division absurde : on rend 0 plutôt qu'un infini.
     partDuMeilleurMois: part,
     totalSansLeMeilleurMoisR,
     meilleurMois: meilleur?.cle ?? null,
     anneesPositives: annees.filter((a) => a.totalR > 0).length,
     tientSansSonMeilleurMois: tient,
-    forme: !tient
-      ? "repose_sur_un_mois"
-      : part >= PART_QUI_DOMINE
-        ? "domine_par_un_mois"
-        : "reparti",
+      forme:
+      part == null
+        ? "rien_a_repartir"
+        : !tient
+          ? "repose_sur_un_mois"
+          : part >= PART_QUI_DOMINE
+            ? "domine_par_un_mois"
+            : "reparti",
   };
 }
