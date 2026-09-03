@@ -287,6 +287,16 @@ export type ReponseBacktest =
       /** La même méthode sur d'autres marchés, quand il l'a demandé. */
       marches?: ResultatMarche[];
       /** La recherche, quand il l'a demandée. */
+      /**
+       * Amplitude typique d'une bougie de l'unité de temps du plan, en TICKS.
+       *
+       * ⚠️ ELLE NE DÉPEND D'AUCUNE STRATÉGIE, et c'est ce qui la rend précieuse :
+       * « ton stop vaut 0,3 bougie » est vrai avant même qu'un trade existe.
+       * C'est la seule échelle qui permette de dire si un stop est dans le bruit,
+       * et « 15 points » ne le dit pas : c'est large sur l'EUR/USD et c'est à
+       * l'intérieur d'une seule bougie sur le Nasdaq.
+       */
+      amplitudeBougieTicks?: number;
       exploration?: ReponseExploration;
       /** Le même plan sur une fenêtre intacte, quand il l'a demandé. */
       controle?: { de: string; a: string; lecture: LectureBacktest };
@@ -561,6 +571,9 @@ self.onmessage = async (e: MessageEvent<DemandeBacktest>) => {
        * plus utile de la page restait gris pour qui ne bricole pas. À liste vide,
        * `mesurerStabilite` regarde autour de SES propres réglages.
        */
+      amplitudeBougieTicks:
+        amplitudeTypique(serie, complet.uniteDeTemps ?? 1) /
+        (instrumentParCode(code) ?? INSTRUMENTS[0]).tailleTick,
       stabilite: stabilite
         ? mesurerStabilite(serie, complet, couts, stabilite, (faits, total) =>
             poste({ type: "avancement", faits, total }),

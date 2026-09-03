@@ -1,3 +1,4 @@
+import { declencheurStandard, niveauStandard } from "./blocs-standards";
 import type { Dimension } from "./exploration";
 import type { Instrument } from "./instruments";
 import type { BlocConfirmation, PlanExecution } from "./types";
@@ -150,12 +151,22 @@ export function dimensionsDeRecherche(instrument: Instrument, depart?: PlanExecu
       cle: "declencheur",
       valeurs: sansSonPropreBloc(
         [
-        { etiquette: "cassure", appliquer: (p: PlanExecution) => ({ ...p, declencheur: { type: "cassure", mode: "cloture" } }) },
-        { etiquette: "balayage_retour", appliquer: (p: PlanExecution) => ({ ...p, declencheur: { type: "balayage_retour" } }) },
-        { etiquette: "retest_apres_cassure", appliquer: (p: PlanExecution) => ({ ...p, declencheur: { type: "retest_apres_cassure", delaiMaxBarres: 20, toleranceTicks: enTicks(instrument.spread * 2) } }) },
-        { etiquette: "fvg_puis_retest", appliquer: (p: PlanExecution) => ({ ...p, declencheur: { type: "fvg_puis_retest", delaiMaxBarres: 20 } }) },
-        { etiquette: "balayage_puis_fvg", appliquer: (p: PlanExecution) => ({ ...p, declencheur: { type: "balayage_puis_fvg", delaiReaction: 10, delaiRetest: 15 } }) },
-        { etiquette: "entree_dans_zone", appliquer: (p: PlanExecution) => ({ ...p, declencheur: { type: "entree_dans_zone", delaiMaxBarres: 20 } }) },
+        ...(
+          [
+            "cassure",
+            "balayage_retour",
+            "retest_apres_cassure",
+            "fvg_puis_retest",
+            "balayage_puis_fvg",
+            "entree_dans_zone",
+          ] as const
+        ).map((type) => ({
+          etiquette: type,
+          appliquer: (p: PlanExecution) => ({
+            ...p,
+            declencheur: declencheurStandard(type, instrument),
+          }),
+        })),
         ],
         depart?.declencheur.type,
       ),
@@ -164,12 +175,22 @@ export function dimensionsDeRecherche(instrument: Instrument, depart?: PlanExecu
       cle: "niveau",
       valeurs: sansSonPropreBloc(
         [
-        { etiquette: "trendline", appliquer: (p: PlanExecution) => ({ ...p, niveau: { type: "trendline", pivots: 10, touchesMin: 3, toleranceTicks: enTicks(instrument.spread * 2) } }) },
-        { etiquette: "liquidite_swing", appliquer: (p: PlanExecution) => ({ ...p, niveau: { type: "liquidite_swing", pivots: 10 } }) },
-        { etiquette: "extremes_n_bougies", appliquer: (p: PlanExecution) => ({ ...p, niveau: { type: "extremes_n_bougies", n: 50 } }) },
-        { etiquette: "ote_fibonacci", appliquer: (p: PlanExecution) => ({ ...p, niveau: { type: "ote_fibonacci", pivots: 10, retraceMinPct: 62, retraceMaxPct: 79 } }) },
-        { etiquette: "order_block", appliquer: (p: PlanExecution) => ({ ...p, niveau: { type: "order_block", impulsionMinTicks: enTicks(instrument.spread * 6) } }) },
-        { etiquette: "fvg_zone", appliquer: (p: PlanExecution) => ({ ...p, niveau: { type: "fvg_zone", tailleMinTicks: enTicks(instrument.spread) } }) },
+        ...(
+          [
+            "trendline",
+            "liquidite_swing",
+            "extremes_n_bougies",
+            "ote_fibonacci",
+            "order_block",
+            "fvg_zone",
+          ] as const
+        ).map((type) => ({
+          etiquette: type,
+          appliquer: (p: PlanExecution) => {
+            const niveau = niveauStandard(type, instrument);
+            return niveau ? { ...p, niveau } : p;
+          },
+        })),
         ],
         depart?.niveau.type,
       ),

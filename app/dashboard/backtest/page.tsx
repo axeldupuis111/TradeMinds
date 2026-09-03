@@ -41,6 +41,10 @@ import { ProjectionCarte } from "@/components/backtest/ProjectionCarte";
 import { Analyse } from "@/components/backtest/Analyse";
 import { Marches } from "@/components/backtest/Marches";
 import { Trouver } from "@/components/backtest/Trouver";
+import { Methode } from "@/components/backtest/Methode";
+import { Completude } from "@/components/backtest/Completude";
+import { Condamnation } from "@/components/backtest/Condamnation";
+import { Profil } from "@/components/backtest/Profil";
 import { Champ, Liste } from "@/components/backtest/Controles";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
@@ -76,6 +80,16 @@ import {
   repartirDansLaFiche,
   sansLeBlocDeBacktest,
 } from "@/lib/backtest/fiche-reglages";
+import {
+  composerBlocPlan,
+  ecrireLePlanDansLaFiche,
+  lireBlocPlan,
+  sansLeBlocDePlan,
+} from "@/lib/backtest/fiche-plan";
+import { methodeParCode } from "@/lib/backtest/methodes";
+import { CODES_QUESTIONS, evaluerCompletude } from "@/lib/backtest/completude";
+import { verifierCondamnation } from "@/lib/backtest/condamnation";
+import { confronterAuProfil, lireLeProfil, type TradeReel } from "@/lib/backtest/profil";
 import { enregistrerVersion } from "@/lib/backtest/enregistrement";
 import { nomDuFichier, tradesEnCsv } from "@/lib/backtest/export-csv";
 import { compterUnEssai, lireTentatives } from "@/lib/backtest/tentatives";
@@ -228,6 +242,20 @@ export default function BacktestPage() {
   const [compilation, setCompilation] = useState<"repos" | "encours" | "erreur">("repos");
   const [compilationMsg, setCompilationMsg] = useState<string | null>(null);
 
+  /**
+   * LA MÉTHODE DÉCLARÉE ET LES RÉPONSES DU TRADER.
+   *
+   * ⚠️⚠️ C'EST LA MOITIÉ DE LA PAGE QUI NE DÉPEND D'AUCUN BACKTEST, et c'est
+   * celle qui sert au plus grand nombre. Un trader d'orderflow ne verra jamais
+   * un chiffre sur sa méthode ; il a exactement les mêmes treize trous à combler
+   * qu'un autre, et le même écart entre ce qu'il a écrit et ce qu'il fait.
+   */
+  const [methodeCode, setMethodeCode] = useState<string>("");
+  const [reponses, setReponses] = useState<Record<string, string>>({});
+  const [etatReponses, setEtatReponses] = useState<"repos" | "encours" | "fait" | "erreur">("repos");
+  /** Son journal réel, pour confronter ce qu'il a écrit à ce qu'il fait. */
+  const [tradesReels, setTradesReels] = useState<TradeReel[] | null>(null);
+
   const [etat, setEtat] = useState<Etat>({ phase: "repos" });
   const [resultat, setResultat] = useState<{
     lecture: LectureBacktest;
@@ -245,6 +273,8 @@ export default function BacktestPage() {
     confluences?: import("@/lib/backtest/confluences").Confluence[];
     marches?: import("@/lib/backtest/marches").ResultatMarche[];
     exploration?: import("./worker").ReponseExploration;
+    /** Ne dépend d'aucune stratégie : sert à dire si un stop est dans le bruit. */
+    amplitudeBougieTicks?: number;
     controle?: { de: string; a: string; lecture: LectureBacktest };
     /** Plan, période et instrument sur lesquels ce résultat a été calculé. */
     empreinte: string;
@@ -284,6 +314,65 @@ export default function BacktestPage() {
     setTentatives(lu.n);
     setTentativesDepuis(lu.n > 0 ? lu.depuis : null);
   }, [strategieId]);
+
+  /**
+   * LA MÉTHODE ET LES RÉPONSES, RELUES DANS SA FICHE.
+   *
+   * ⚠️ Elles vivent dans `raw_text`, dans un bloc à part : ses réponses aux
+   * treize questions SONT sa stratégie, au même titre que « je risque 1 % par
+   * trade » qui y est déjà. Les ranger ailleurs créerait une deuxième fiche que
+   * le coach ne lirait pas.
+   */
+  useEffect(() => {
+    const strat = strategies.find((x) => x.id === strategieId);
+    const lu = lireBlocPlan(strat?.raw_text ?? "");
+    setMethodeCode(lu.methode ?? "");
+    setReponses(lu.reponses);
+    setEtatReponses("repos");
+  }, [strategieId, strategies]);
+
+  /**
+   * SON JOURNAL RÉEL.
+   *
+   * ⚠️⚠️ LE BRANCHEMENT QUI MANQUAIT. Ses heures, ses instruments, son rythme
+   * sont dans l'application depuis toujours, et cet onglet mesurait des bougies
+   * sans jamais regarder l'homme qui allait les trader.
+   *
+   * ⚠️ Le client Supabase NE JETTE PAS : un `data` nul est un échec silencieux,
+   * pas un journal vide. On garde `null` pour ne rien afficher plutôt que
+   * d'annoncer « zéro trade » à quelqu'un qui en a trois cents.
+   */
+  useEffect(() => {
+    if (!estPremium) return;
+    let annule = false;
+    (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("trades")
+        .select("open_time, pnl, commission, swap, pair")
+        .eq("user_id", user.id)
+        .not("open_time", "is", null)
+        .order("open_time", { ascending: false })
+        .limit(500);
+      if (annule || !data) return;
+      setTradesReels(
+        data.map((t) => ({
+          ouvertureMs: new Date(t.open_time as string).getTime(),
+          // ⚠️ Net de frais, comme partout ailleurs : une perte brute et une
+          // perte nette ne se ressemblent pas, et c'est la dispersion des
+          // pertes qu'on mesure.
+          pnlNet: (t.pnl ?? 0) + (t.commission ?? 0) + (t.swap ?? 0),
+          pair: t.pair,
+        })),
+      );
+    })();
+    return () => {
+      annule = true;
+    };
+  }, [estPremium, supabase]);
 
 
   /**
@@ -371,7 +460,13 @@ export default function BacktestPage() {
           // L'outil écrivait sa sortie dans la fiche puis la relisait comme si
           // le trader l'avait écrite : à chaque enregistrement, la fiche
           // dérivait un peu plus loin de ce qu'il avait voulu dire.
-          raw_text: sansLeBlocDeBacktest(strat.raw_text),
+          // ⚠️⚠️ LES DEUX BLOCS QUE CET OUTIL ÉCRIT SONT RETIRÉS AVANT LA
+          // COMPILATION. Le premier avait déjà produit une boucle : le modèle
+          // relisait « Largeur du pivot : 10 → 5 » et le listait parmi les cinq
+          // règles de la stratégie. Le second porte les réponses du trader, donc
+          // sa prose, mais dans NOTRE mise en forme : on ne la lui redonne pas à
+          // lire comme si c'était sa fiche.
+          raw_text: sansLeBlocDePlan(sansLeBlocDeBacktest(strat.raw_text)),
           instrument: code,
           fuseau,
           regles: {
@@ -552,6 +647,7 @@ export default function BacktestPage() {
           concentration: r.concentration,
           projection: r.projection,
           constats: r.constats,
+          amplitudeBougieTicks: r.amplitudeBougieTicks,
           propositions: r.propositions ?? (memeContexte ? prec?.propositions : undefined),
           stabilite: r.stabilite ?? (memeContexte ? prec?.stabilite : undefined),
           confluences: r.confluences ?? (memeContexte ? prec?.confluences : undefined),
@@ -856,6 +952,130 @@ export default function BacktestPage() {
   const controleValide = controleAffiche.phase === "fait" && controleAffiche.valide;
 
   const strategieCourante = strategies.find((s) => s.id === strategieId);
+
+  /**
+   * LA MOITIÉ DE LA PAGE QUI NE DÉPEND D'AUCUN BACKTEST.
+   *
+   * ⚠️⚠️ TOUT CE QUI SUIT SE CALCULE AVANT D'AVOIR LANCÉ QUOI QUE CE SOIT, et
+   * c'est le point de la refonte. La complétude du plan, ce que les frais
+   * exigent, l'écart avec son journal : trois réponses certaines pour un trader
+   * dont la méthode ne sera peut-être jamais rejouable.
+   */
+  const methode = useMemo(() => methodeParCode(methodeCode), [methodeCode]);
+
+  const completude = useMemo(
+    () =>
+      evaluerCompletude({
+        plan: couverture ? plan : undefined,
+        fiche: strategieCourante
+          ? {
+              pairs: strategieCourante.pairs,
+              sessions: strategieCourante.sessions,
+              riskReward: strategieCourante.risk_reward,
+              maxSlPips: strategieCourante.max_sl_pips,
+              maxTradesParJour: strategieCourante.max_trades_per_day,
+              maxPertesConsecutives: strategieCourante.max_consecutive_losses,
+              risqueParTradePct: strategieCourante.risk_per_trade_pct,
+              reglesSetup: strategieCourante.setup_rules,
+            }
+          : undefined,
+        reponses,
+        methode,
+      }),
+    [couverture, plan, strategieCourante, reponses, methode],
+  );
+
+  /**
+   * ⚠️ LE RISQUE MOYEN VIENT D'UN REJEU QUAND IL Y EN A EU UN, sinon du stop du
+   * plan quand il est à distance fixe. Jamais d'une valeur devinée : les lignes
+   * qui en dépendent disparaissent plutôt que d'être fausses.
+   */
+  const condamnations = useMemo(() => {
+    const mois = moisEntre(de, a).length;
+    const trades = resultat?.lecture.stats?.nbTrades;
+    return verifierCondamnation({
+      plan,
+      couts: plan.couts,
+      risqueMoyenTicks: resultat?.lecture.couts?.risqueMoyenTicks,
+      amplitudeBougieTicks: resultat?.amplitudeBougieTicks,
+      tradesParAn: trades && mois > 0 ? (trades * 12) / mois : undefined,
+    });
+  }, [plan, resultat, de, a]);
+
+  const constatsProfil = useMemo(
+    () => (tradesReels ? confronterAuProfil(plan, lireLeProfil(tradesReels, fuseau), instrument) : []),
+    [tradesReels, plan, fuseau, instrument],
+  );
+
+  /**
+   * Enregistre ses réponses dans sa fiche.
+   *
+   * ⚠️ LE CLIENT SUPABASE NE JETTE PAS : un `update` sans `.select()` rend
+   * `{ ok: true }` même quand aucune ligne n'a bougé. On exige la preuve.
+   */
+  const enregistrerLesReponses = useCallback(
+    async (nouvelles: Record<string, string>) => {
+      const strat = strategies.find((x) => x.id === strategieId);
+      if (!strat) return;
+      setEtatReponses("encours");
+
+      const bloc = composerBlocPlan({
+        titre: tr("bt_comp_entete", { date: new Date().toLocaleDateString() }),
+        methode: methodeCode || undefined,
+        reponses: nouvelles,
+        intitules: Object.fromEntries(CODES_QUESTIONS.map((c) => [c, tr(`bt_q_${c}`)])),
+      });
+      const rawText = ecrireLePlanDansLaFiche(strat.raw_text ?? "", bloc);
+
+      const { data, error } = await supabase
+        .from("strategies")
+        .update({ raw_text: rawText })
+        .eq("id", strategieId)
+        .select("id");
+
+      if (error || !data || data.length === 0) {
+        setEtatReponses("erreur");
+        return;
+      }
+      setReponses(nouvelles);
+      setStrategies((liste) =>
+        liste.map((x) => (x.id === strategieId ? { ...x, raw_text: rawText } : x)),
+      );
+      setEtatReponses("fait");
+    },
+    [strategies, strategieId, methodeCode, supabase, tr],
+  );
+
+  /**
+   * ⚠️ CHANGER DE MÉTHODE ÉCRIT AUSSI DANS LA FICHE, sinon le choix disparaît
+   * au prochain chargement et le trader le refait à chaque visite.
+   */
+  const choisirLaMethode = useCallback(
+    (nouveau: string) => {
+      setMethodeCode(nouveau);
+      const strat = strategies.find((x) => x.id === strategieId);
+      if (!strat) return;
+      const bloc = composerBlocPlan({
+        titre: tr("bt_comp_entete", { date: new Date().toLocaleDateString() }),
+        methode: nouveau || undefined,
+        reponses,
+        intitules: Object.fromEntries(CODES_QUESTIONS.map((c) => [c, tr(`bt_q_${c}`)])),
+      });
+      const rawText = ecrireLePlanDansLaFiche(strat.raw_text ?? "", bloc);
+      void supabase
+        .from("strategies")
+        .update({ raw_text: rawText })
+        .eq("id", strategieId)
+        .select("id")
+        .then(({ data, error }) => {
+          if (error || !data || data.length === 0) return;
+          setStrategies((liste) =>
+            liste.map((x) => (x.id === strategieId ? { ...x, raw_text: rawText } : x)),
+          );
+        });
+    },
+    [strategies, strategieId, reponses, supabase, tr],
+  );
 
   /**
    * L'ÉTAT DES LIEUX, assemblé à partir de tout ce qui a déjà été mesuré.
@@ -1196,7 +1416,37 @@ export default function BacktestPage() {
           </Card>
         </StaggerItem>
 
-        {/* ── 3. Le plan, entièrement modifiable ─────────────────────────── */}
+        {/* ── 3. La méthode déclarée, et ce qu'elle exige pour exister ────
+            ⚠️⚠️ AVANT TOUT CHIFFRE, ET SANS EN PRODUIRE UN SEUL. Un trader
+            d'orderflow sur un CFD peut trouver ici toute son explication sans
+            qu'une bougie ait été lue : le volume qu'il regarde est celui des
+            clients de son courtier, pas celui du marché. */}
+        <StaggerItem>
+          <Methode
+            code={methodeCode}
+            instrument={instrument}
+            plan={plan}
+            onChoisir={choisirLaMethode}
+            t={tr}
+          />
+        </StaggerItem>
+
+        {/* ── 4. Le plan, de A à Z ────────────────────────────────────────
+            ⚠️⚠️ LA SEULE CARTE DE LA PAGE QUI NE SE TROMPE JAMAIS. Toutes les
+            autres rendent une estimation entourée d'un intervalle ; celle-ci
+            constate qu'une ligne est écrite ou qu'elle ne l'est pas. Et elle
+            fonctionne pour une méthode qu'on ne saura jamais rejouer. */}
+        <StaggerItem>
+          <Completude
+            completude={completude}
+            reponses={reponses}
+            onEnregistrer={(r) => void enregistrerLesReponses(r)}
+            etat={etatReponses}
+            t={tr}
+          />
+        </StaggerItem>
+
+        {/* ── 5. Les réglages du test, entièrement modifiables ───────────── */}
         <StaggerItem>
           <Card>
             <CardTitle className="mb-1">{tr("bt_etape_plan")}</CardTitle>
@@ -1232,7 +1482,26 @@ export default function BacktestPage() {
           </StaggerItem>
         ) : null}
 
-        {/* ── 4. Lancer ──────────────────────────────────────────────────── */}
+        {/* ── 5 bis. Ce qu'on peut affirmer sans rien lancer ──────────────
+            ⚠️⚠️ CES DEUX CARTES SONT AU-DESSUS DU BOUTON, ET C'EST VOLONTAIRE.
+            Elles ne demandent aucun backtest : cinq divisions sur ses coûts et
+            son risque, et la comparaison de ce qu'il a écrit avec ce que son
+            journal montre. Pour un trader dont la méthode n'est pas rejouable,
+            c'est tout ce que cette page peut lui donner, et c'est déjà
+            beaucoup. */}
+        {condamnations.length > 0 ? (
+          <StaggerItem>
+            <Condamnation constats={condamnations} t={tr} />
+          </StaggerItem>
+        ) : null}
+
+        {constatsProfil.length > 0 ? (
+          <StaggerItem>
+            <Profil constats={constatsProfil} t={tr} />
+          </StaggerItem>
+        ) : null}
+
+        {/* ── 6. Lancer ──────────────────────────────────────────────────── */}
         <StaggerItem>
           <Card>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
