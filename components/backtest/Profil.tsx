@@ -26,9 +26,18 @@ import { CheckCircle2, TriangleAlert, UserRound } from "lucide-react";
  */
 export function Profil({
   constats,
+  marcheReel,
+  onTesterSurSonMarche,
   t,
 }: {
   constats: ConstatProfil[];
+  /**
+   * Le marché qu'il trade vraiment, quand on sait le retrouver dans le
+   * catalogue. `null` quand son courtier l'écrit d'une façon qu'on ne reconnaît
+   * pas : mieux vaut aucun bouton qu'un bouton mort.
+   */
+  marcheReel: { code: string; nom: string } | null;
+  onTesterSurSonMarche: (code: string) => void;
   t: (cle: string, params?: Record<string, string | number>) => string;
 }) {
   if (constats.length === 0) return null;
@@ -63,7 +72,29 @@ export function Profil({
               ) : neutre ? null : (
                 <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               )}
-              <span>{t(`bt_prof_${c.code}`, c.valeurs)}</span>
+              <span className="min-w-0">
+                {t(`bt_prof_${c.code}`, c.valeurs)}
+
+                {/* ⚠️⚠️ LE CONSTAT SANS L'ACTION NE SERT À RIEN. « Tu testes le
+                    Nasdaq mais 92 % de tes trades sont sur l'or » s'affichait
+                    depuis le début, et l'outil n'a jamais proposé de tester sur
+                    l'or. Le seul mouvement utile de tout l'écran était à un
+                    clic, et personne ne l'offrait. */}
+                {c.marcheACodeTester && marcheReel ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => onTesterSurSonMarche(marcheReel.code)}
+                      className="mt-2 block rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-on-accent hover:bg-accent-hover"
+                    >
+                      {t("bt_prof_tester_ici", { marche: marcheReel.nom })}
+                    </button>
+                    <span className="mt-1.5 block text-[11px] leading-relaxed text-foreground-muted">
+                      {t("bt_prof_tester_aide")}
+                    </span>
+                  </>
+                ) : null}
+              </span>
             </li>
           );
         })}

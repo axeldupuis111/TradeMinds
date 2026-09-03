@@ -152,6 +152,14 @@ export type CodeConstatProfil =
 export interface ConstatProfil {
   code: CodeConstatProfil;
   valeurs: Record<string, string | number>;
+  /**
+   * Le marché qu'il trade vraiment, quand ce n'est pas celui qu'on teste.
+   *
+   * ⚠️ Un CODE de courtier, pas forcément l'un des nôtres : « XAUUSD.r » ne se
+   * trouvera pas dans le catalogue. L'écran doit le résoudre et ne rien
+   * proposer s'il n'y arrive pas, plutôt que d'offrir un bouton mort.
+   */
+  marcheACodeTester?: string;
 }
 
 /** Une part d'écart en dessous de laquelle on ne dérange pas le trader. */
@@ -248,6 +256,14 @@ export function confronterAuProfil(
           pct: pct.toFixed(0),
           teste: instrument.nom,
         },
+        /**
+         * ⚠️⚠️ LE CONSTAT SANS L'ACTION NE SERT À RIEN, ET C'EST LA CRITIQUE
+         * D'AXEL. « Tu testes le Nasdaq mais 92 % de tes trades sont sur l'or »
+         * était affiché depuis le début, et l'outil n'a jamais proposé de
+         * tester sur l'or. Le seul mouvement utile de tout l'écran était à un
+         * clic, et personne ne l'offrait.
+         */
+        marcheACodeTester: principal.code,
       });
     }
   }

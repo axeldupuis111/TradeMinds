@@ -45,6 +45,7 @@ import { Methode } from "@/components/backtest/Methode";
 import { Completude } from "@/components/backtest/Completude";
 import { Condamnation } from "@/components/backtest/Condamnation";
 import { Profil } from "@/components/backtest/Profil";
+import { Depart } from "@/components/backtest/Depart";
 import { Champ, Liste } from "@/components/backtest/Controles";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
@@ -87,6 +88,7 @@ import {
   sansLeBlocDePlan,
 } from "@/lib/backtest/fiche-plan";
 import { methodeParCode } from "@/lib/backtest/methodes";
+import { composerDepart, departsPossibles, type Depart as UnDepart } from "@/lib/backtest/depart";
 import { CODES_QUESTIONS, evaluerCompletude } from "@/lib/backtest/completude";
 import { verifierCondamnation } from "@/lib/backtest/condamnation";
 import { confronterAuProfil, lireLeProfil, type TradeReel } from "@/lib/backtest/profil";
@@ -1026,10 +1028,106 @@ export default function BacktestPage() {
     });
   }, [plan, resultat, de, a]);
 
-  const constatsProfil = useMemo(
-    () => (tradesReels ? confronterAuProfil(plan, lireLeProfil(tradesReels, fuseau), instrument) : []),
-    [tradesReels, plan, fuseau, instrument],
+  const profilLu = useMemo(
+    () => (tradesReels ? lireLeProfil(tradesReels, fuseau) : null),
+    [tradesReels, fuseau],
   );
+
+  const constatsProfil = useMemo(
+    () => (profilLu ? confronterAuProfil(plan, profilLu, instrument) : []),
+    [profilLu, plan, instrument],
+  );
+
+  /**
+   * SES HEURES RÉELLES, POUR MONTER DES BASES QU'IL POURRA SUIVRE.
+   *
+   * ⚠️ Proposer une méthode d'ouverture de Londres à quelqu'un qui n'allume son
+   * écran qu'à 20 h, c'est proposer une méthode qu'il ne prendra jamais. On
+   * garde la plage qui couvre le gros de ses trades, bornée à l'heure pleine.
+   */
+  const heuresReelles = useMemo(() => {
+    if (!profilLu || profilLu.trades < 30) return undefined;
+    const heures = profilLu.parHeure
+      .map((n, h) => ({ n, h }))
+      .filter((x) => x.n > 0)
+      .sort((a, b) => b.n - a.n);
+    if (heures.length === 0) return undefined;
+    // Les heures qui portent 80 % de ses trades, prises de la plus chargée à la
+    // moins chargée, puis refermées en une plage continue.
+    const cible = profilLu.trades * 0.8;
+    let cumul = 0;
+    const gardees: number[] = [];
+    for (const x of heures) {
+      gardees.push(x.h);
+      cumul += x.n;
+      if (cumul >= cible) break;
+    }
+    const min = Math.min(...gardees);
+    const max = Math.max(...gardees);
+    return {
+      debut: `${String(min).padStart(2, "0")}:00`,
+      fin: `${String(Math.min(23, max + 1)).padStart(2, "0")}:00`,
+    };
+  }, [profilLu]);
+
+  /**
+   * LES BASES PROFESSIONNELLES COMPLÈTES QU'ON PEUT LUI PROPOSER.
+   *
+   * ⚠️⚠️ NÉES DE LA CRITIQUE LA PLUS DURE : « il dit que ma stratégie n'est pas
+   * rentable, il ne trouve pas de moyen de l'améliorer, donc inutile d'utiliser
+   * le backtest à part pour se démotiver ». La recherche partait toujours de SON
+   * plan, et une descente par coordonnées qui part d'un mauvais point reste dans
+   * le mauvais coin. Le référentiel, lui, contenait des méthodes complètes que
+   * rien n'avait jamais essayées.
+   */
+  const departs = useMemo(
+    () =>
+      departsPossibles(instrument)
+        .map((m) =>
+          composerDepart(m, instrument, plan.couts, fuseau, {
+            heures: heuresReelles,
+            risqueParTradePct: plan.gestion.risqueParTradePct,
+            maxTradesParJour: plan.gestion.maxTradesParJour,
+            maxPertesConsecutives: plan.gestion.maxPertesConsecutives,
+          }),
+        )
+        .filter((d): d is UnDepart => d != null),
+    [instrument, plan.couts, plan.gestion, fuseau, heuresReelles],
+  );
+
+  /**
+   * Essaie une base : elle remplace les réglages du test, et on relance.
+   *
+   * ⚠️ ELLE COMPTE COMME UN ESSAI, comme n'importe quel changement de plan. En
+   * essayer huit et garder la meilleure serait le sur-apprentissage habituel,
+   * simplement déplacé d'un cran.
+   */
+  const essayerUnDepart = useCallback(
+    (d: UnDepart) => {
+      setPlan(d.plan);
+      setOrigines({});
+      setResultat(null);
+      setSauvegarde("repos");
+      setMethodeCode(d.methode.code);
+    },
+    [],
+  );
+
+  /**
+   * Bascule le test sur le marché qu'il trade vraiment.
+   *
+   * ⚠️⚠️ LE MOUVEMENT LE PLUS UTILE DE TOUT L'ÉCRAN, ET IL N'EXISTAIT PAS. La
+   * carte disait « tu testes le Nasdaq mais 92 % de tes trades sont sur l'or »
+   * depuis le début, sans jamais proposer de tester sur l'or.
+   */
+  const marcheReelTestable = useMemo(() => {
+    const code = constatsProfil.find((c) => c.marcheACodeTester)?.marcheACodeTester;
+    if (!code) return null;
+    // Le journal écrit « XAUUSD.r » ou « GOLD » selon le courtier : on cherche
+    // celui de nos instruments dont le code est contenu dans le sien.
+    const trouve = INSTRUMENTS.find((i) => code.includes(i.code) || i.code.includes(code));
+    return trouve ?? null;
+  }, [constatsProfil]);
 
   /**
    * Enregistre ses réponses dans sa fiche.
@@ -1524,9 +1622,25 @@ export default function BacktestPage() {
 
         {constatsProfil.length > 0 ? (
           <StaggerItem>
-            <Profil constats={constatsProfil} t={tr} />
+            <Profil
+              constats={constatsProfil}
+              marcheReel={marcheReelTestable}
+              onTesterSurSonMarche={changerInstrument}
+              t={tr}
+            />
           </StaggerItem>
         ) : null}
+
+        {/* ── 5 ter. Partir d'une base qui tient debout ────────────────────
+            ⚠️⚠️ LA RÉPONSE À « IL NE TROUVE PAS DE MOYEN DE L'AMÉLIORER ». La
+            recherche part toujours de SON plan : une descente par coordonnées
+            qui démarre d'un mauvais point reste dans le mauvais coin. Ces
+            bases-là viennent du référentiel, montées sur son marché, ses heures
+            et son risque. Elles ne promettent rien ; elles donnent un point de
+            départ complet, ce que l'outil ne savait pas faire. */}
+        <StaggerItem>
+          <Depart departs={departs} enCours={occupe} onEssayer={essayerUnDepart} t={tr} />
+        </StaggerItem>
 
         {/* ── 6. Lancer ──────────────────────────────────────────────────── */}
         <StaggerItem>
