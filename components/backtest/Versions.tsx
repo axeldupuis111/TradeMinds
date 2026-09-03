@@ -2,6 +2,7 @@
 
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
+import { signe } from "@/lib/backtest/format";
 import { comparerMesures, ecartsDeReglages } from "@/lib/backtest/comparaison";
 import type { VersionArchivee } from "@/lib/backtest/versions";
 import { AlertTriangle, Archive, RotateCcw, Scale, Trash2 } from "lucide-react";
@@ -35,7 +36,7 @@ const TON: Record<string, string> = {
 };
 
 function chiffre(v: number | null | undefined, decimales = 3): string {
-  return v == null ? "—" : `${v >= 0 ? "+" : ""}${v.toFixed(decimales)}`;
+  return signe(v, decimales);
 }
 
 export function Versions({

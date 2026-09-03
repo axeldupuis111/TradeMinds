@@ -2,6 +2,7 @@
 
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
+import { signe } from "@/lib/backtest/format";
 import { pointsDe } from "@/lib/backtest/modifications";
 import type { Instrument } from "@/lib/backtest/instruments";
 import type { Concentration } from "@/lib/backtest/robustesse";
@@ -30,10 +31,6 @@ import { Activity, AlertTriangle, CalendarClock, CheckCircle2 } from "lucide-rea
  * sur-apprentissage en machine à le produire. Un test lit `stabilite.ts` pour
  * s'assurer qu'il ne rend même pas de plan.
  */
-
-function signe(v: number | null | undefined, d = 2): string {
-  return v == null ? "—" : `${v >= 0 ? "+" : ""}${v.toFixed(d)}`;
-}
 
 export function Robustesse({
   concentration,

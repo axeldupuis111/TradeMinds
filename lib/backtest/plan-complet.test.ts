@@ -185,6 +185,8 @@ describe("chaque ligne du plan sait se dire en français", () => {
       .lignes.map((l) => l.cle),
     "arret_pertes_absent",
     "risque_aucun",
+    // Quand le risque retenu est le dernier de la liste, la phrase change.
+    "risque_plafond",
     // Le rythme a deux redactions : « 1 trades par jour » etait ecrit tel quel
     // dans un plan qu'on imprime pour le suivre.
     "rythme_un",
@@ -218,6 +220,39 @@ describe("chaque etat du plan trouve a sa phrase", () => {
     const connues = fr as Record<string, string>;
     for (const e of etats) {
       expect(connues[`bt_plan_etat_${e}`], `bt_plan_etat_${e} manquante`).toBeTruthy();
+    }
+  });
+});
+
+/**
+ * ⚠️⚠️ « LE PLUS HAUT RISQUE QUI TIENT » N'EST PAS LA MÊME PHRASE QUAND ON A
+ * BUTÉ SUR LE HAUT DE LA LISTE.
+ *
+ * Vu à l'écran : « tu risques 5 % du capital par trade, c'est le plus haut
+ * risque qui garde ton recul sous 20 %. Au-dessus, tu ne tiendrais pas la
+ * série. » Or 5 % est simplement le dernier de la liste des risques essayés :
+ * on n'a jamais regardé 6 %, et rien ne dit qu'il casserait. La phrase
+ * affirmait une limite trouvée là où il n'y avait qu'un bout de tableau.
+ */
+describe("le risque retenu ne s'annonce pas comme une limite trouvée", () => {
+  /** Une suite de R si sage que même le risque le plus haut tient. */
+  const douce = () => trades(Array.from({ length: 60 }, (_, i) => (i % 5 === 0 ? -0.2 : 0.1)));
+
+  it("change de phrase quand le risque retenu est le plafond de la liste", () => {
+    const p = composerPlanComplet(plan(), douce(), NAS);
+    const risque = p.risques[p.risques.length - 1];
+    expect(p.risqueRecommandePct).toBe(risque.risquePct);
+    expect(p.lignes.map((l) => l.cle)).toContain("risque_plafond");
+    expect(p.lignes.map((l) => l.cle)).not.toContain("risque");
+  });
+
+  it("garde la phrase ordinaire quand la limite a vraiment été trouvée", () => {
+  const rude = trades(Array.from({ length: 60 }, (_, i) => (i < 12 ? -1 : 0.2)));
+    const p = composerPlanComplet(plan(), rude, NAS);
+    if (p.risqueRecommandePct != null) {
+      const plafond = p.risques[p.risques.length - 1].risquePct;
+      expect(p.risqueRecommandePct).toBeLessThan(plafond);
+      expect(p.lignes.map((l) => l.cle)).toContain("risque");
     }
   });
 });

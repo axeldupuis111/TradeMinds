@@ -10,6 +10,7 @@ import { chercherPropositions, type Proposition } from "@/lib/backtest/propositi
 import { concentration, type Concentration } from "@/lib/backtest/robustesse";
 import { mesurerConfluences, type Confluence } from "@/lib/backtest/confluences";
 import { verifierLePlan, type Constat, type FicheConfrontable } from "@/lib/backtest/coherence-plan";
+import { mesurerLeMarche, type CaractereMarche } from "@/lib/backtest/caractere-marche";
 import { explorer, type Exploration } from "@/lib/backtest/exploration";
 import { dimensionsDeRecherche } from "@/lib/backtest/dimensions";
 import { composerPlanComplet, type PlanComplet } from "@/lib/backtest/plan-complet";
@@ -297,6 +298,8 @@ export type ReponseBacktest =
        * l'intérieur d'une seule bougie sur le Nasdaq.
        */
       amplitudeBougieTicks?: number;
+      /** Ce que vaut ce marché, indépendamment de toute stratégie. */
+      caractere?: CaractereMarche;
       exploration?: ReponseExploration;
       /** Le même plan sur une fenêtre intacte, quand il l'a demandé. */
       controle?: { de: string; a: string; lecture: LectureBacktest };
@@ -571,6 +574,17 @@ self.onmessage = async (e: MessageEvent<DemandeBacktest>) => {
        * plus utile de la page restait gris pour qui ne bricole pas. À liste vide,
        * `mesurerStabilite` regarde autour de SES propres réglages.
        */
+      /**
+       * Le caractère du marché testé : directionnel ou non, séance marquée ou
+       * non, coût rapporté à l'amplitude.
+       *
+       * ⚠️⚠️ AUCUNE STRATÉGIE N'ENTRE DANS CE CALCUL, et c'est ce qui autorise à
+       * s'en servir pour choisir un marché. Mesurer huit marchés et garder celui
+       * où la stratégie sort le mieux serait du sur-apprentissage ; mesurer une
+       * propriété des bougies et la confronter à ce qu'une méthode DÉCLARE
+       * exiger, c'est vérifier qu'on apporte un marteau à un clou.
+       */
+      caractere: mesurerLeMarche(serie, complet.uniteDeTemps ?? 1, couts),
       amplitudeBougieTicks:
         amplitudeTypique(serie, complet.uniteDeTemps ?? 1) /
         (instrumentParCode(code) ?? INSTRUMENTS[0]).tailleTick,

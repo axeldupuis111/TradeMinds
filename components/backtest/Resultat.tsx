@@ -2,6 +2,7 @@
 
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
+import { signe, signePourcent } from "@/lib/backtest/format";
 import { effetSurLeCompte } from "@/lib/backtest/capital";
 import { coutsEnPrix, type Instrument } from "@/lib/backtest/instruments";
 import { MAX_TENTATIVES_AVANT_ALERTE, type LectureBacktest } from "@/lib/backtest/verdict";
@@ -102,10 +103,6 @@ const TON: Record<string, { classe: string; anneau: string }> = {
   non_concluant: { classe: "text-warning", anneau: "border-warning/40 bg-warning/[0.06]" },
   insuffisant: { classe: "text-foreground-muted", anneau: "border-border bg-surface/40" },
 };
-
-function signe(v: number, decimales = 3): string {
-  return `${v >= 0 ? "+" : ""}${v.toFixed(decimales)}`;
-}
 
 export function Resultat({
   lecture,
@@ -381,7 +378,7 @@ export function Resultat({
               valeur={
                 compte.ruine
                   ? t("bt_capital_vide")
-                  : `${compte.totalPct >= 0 ? "+" : ""}${compte.totalPct.toFixed(1)} %`
+                  : signePourcent(compte.totalPct, 1)
               }
             />
             <Ligne label={t("bt_capital_drawdown")} valeur={`-${compte.reculPct.toFixed(1)} %`} />

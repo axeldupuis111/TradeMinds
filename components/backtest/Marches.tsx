@@ -2,6 +2,7 @@
 
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
+import { signe as r } from "@/lib/backtest/format";
 import { lireLesMarches, type ResultatMarche } from "@/lib/backtest/marches";
 import { AlertTriangle, Globe } from "lucide-react";
 
@@ -22,10 +23,6 @@ import { AlertTriangle, Globe } from "lucide-react";
  * D'où l'écran : aucun tri, aucune mise en avant, aucun bouton pour « passer
  * sur ce marché ». Le sien est marqué comme le sien, et rien d'autre.
  */
-
-function r(v: number | null, d = 3): string {
-  return v == null ? "—" : `${v >= 0 ? "+" : ""}${v.toFixed(d)}`;
-}
 
 export function Marches({
   marches,

@@ -2,6 +2,7 @@
 
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
+import { signePourcent } from "@/lib/backtest/format";
 import type { ProjectionDuBacktest } from "@/lib/backtest/projection-backtest";
 import { AlertTriangle, TrendingDown } from "lucide-react";
 
@@ -34,7 +35,7 @@ import { AlertTriangle, TrendingDown } from "lucide-react";
  * recul (« -148,4 % »), revenu par une autre porte.
  */
 function pct(v: number, decimales = 1): string {
-  return `${v >= 0 ? "+" : ""}${v.toFixed(decimales)} %`;
+  return signePourcent(v, decimales);
 }
 
 export function ProjectionCarte({

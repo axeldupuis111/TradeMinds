@@ -1,3 +1,4 @@
+import type { BesoinMarche } from "./caractere-marche";
 import type { CategorieInstrument, Instrument } from "./instruments";
 import type { BlocDeclencheur, BlocNiveau, PlanExecution } from "./types";
 
@@ -104,6 +105,21 @@ export interface Methode {
   };
   /** La fenêtre où la méthode a un sens, en heure de New York. */
   seance?: { debut: string; fin: string };
+  /**
+   * Ce que la méthode exige du MARCHÉ, indépendamment de tout réglage.
+   *
+   * ⚠️⚠️ « CERTAINES STRATÉGIES SONT ADAPTÉES À DES ACTIFS PRÉCIS », répété
+   * plusieurs fois, et l'outil n'en faisait rien. Une méthode de continuation a
+   * besoin d'un marché qui va quelque part ; un retour à la moyenne a besoin du
+   * contraire ; une cassure d'ouverture a besoin d'un marché qui OUVRE. Ce sont
+   * des propriétés de la méthode, connues avant tout backtest.
+   *
+   * ⚠️ DÉCLARÉES ICI, MESURÉES AILLEURS. Le caractère du marché se mesure sur
+   * les bougies seules (voir le fichier caractere-marche), sans qu'aucune stratégie
+   * n'entre dans le calcul : confronter les deux n'est donc pas une sélection
+   * sur le résultat, c'est vérifier qu'on apporte un marteau à un clou.
+   */
+  besoinsMarche: BesoinMarche[];
 }
 
 /**
@@ -118,6 +134,7 @@ export const METHODES: Methode[] = [
   // ── Structure : ce que le prix a laissé derrière lui ─────────────────────
   {
     code: "ict_liquidite",
+    besoinsMarche: ["tendance"],
     famille: "structure",
     besoins: ["ohlc"],
     marches: [],
@@ -132,6 +149,7 @@ export const METHODES: Methode[] = [
   },
   {
     code: "ict_silver_bullet",
+    besoinsMarche: ["seance_marquee"],
     famille: "structure",
     besoins: ["ohlc"],
     marches: ["indices", "devises"],
@@ -143,6 +161,7 @@ export const METHODES: Methode[] = [
   },
   {
     code: "cassure_structure",
+    besoinsMarche: ["tendance"],
     famille: "structure",
     besoins: ["ohlc"],
     marches: [],
@@ -157,6 +176,7 @@ export const METHODES: Methode[] = [
   },
   {
     code: "trendline",
+    besoinsMarche: ["tendance"],
     famille: "structure",
     besoins: ["ohlc"],
     marches: [],
@@ -167,6 +187,7 @@ export const METHODES: Methode[] = [
   },
   {
     code: "supply_demand",
+    besoinsMarche: ["range"],
     famille: "structure",
     besoins: ["ohlc"],
     marches: [],
@@ -177,6 +198,7 @@ export const METHODES: Methode[] = [
   },
   {
     code: "fibonacci_ote",
+    besoinsMarche: ["tendance"],
     famille: "structure",
     besoins: ["ohlc"],
     marches: [],
@@ -189,6 +211,7 @@ export const METHODES: Methode[] = [
   // ── Flux : qui achète, qui vend, et avec quelle agressivité ──────────────
   {
     code: "orderflow_absorption",
+    besoinsMarche: ["range"],
     famille: "flux",
     besoins: ["ohlc", "volume_reel", "delta"],
     marches: ["indices", "energie", "metaux"],
@@ -202,6 +225,7 @@ export const METHODES: Methode[] = [
   },
   {
     code: "orderflow_carnet",
+    besoinsMarche: [],
     famille: "flux",
     besoins: ["ohlc", "carnet", "delta"],
     marches: ["indices", "energie"],
@@ -212,6 +236,7 @@ export const METHODES: Methode[] = [
   },
   {
     code: "volume_profile",
+    besoinsMarche: ["range"],
     famille: "flux",
     besoins: ["ohlc", "volume_reel"],
     marches: ["indices", "energie", "metaux"],
@@ -226,6 +251,7 @@ export const METHODES: Methode[] = [
   },
   {
     code: "wyckoff",
+    besoinsMarche: [],
     famille: "flux",
     besoins: ["ohlc", "volume_reel"],
     marches: [],
@@ -242,6 +268,7 @@ export const METHODES: Methode[] = [
   // ── Statistique : on joue une régularité, pas une histoire ───────────────
   {
     code: "vwap_reversion",
+    besoinsMarche: ["range"],
     famille: "statistique",
     besoins: ["ohlc"],
     marches: ["indices", "metaux", "energie"],
@@ -252,6 +279,7 @@ export const METHODES: Methode[] = [
   },
   {
     code: "retour_moyenne",
+    besoinsMarche: ["range"],
     famille: "statistique",
     besoins: ["ohlc"],
     marches: [],
@@ -262,6 +290,7 @@ export const METHODES: Methode[] = [
   },
   {
     code: "opening_range",
+    besoinsMarche: ["seance_marquee"],
     famille: "statistique",
     besoins: ["ohlc"],
     marches: ["indices", "metaux"],
@@ -275,6 +304,7 @@ export const METHODES: Methode[] = [
   // ── Tendance : on accepte de perdre souvent pour gagner gros ─────────────
   {
     code: "suivi_tendance",
+    besoinsMarche: ["tendance"],
     famille: "tendance",
     besoins: ["ohlc"],
     marches: [],
@@ -287,6 +317,7 @@ export const METHODES: Methode[] = [
   // ── Événement : on trade une annonce, pas un graphique ───────────────────
   {
     code: "news_scalping",
+    besoinsMarche: [],
     famille: "evenement",
     besoins: ["ohlc", "calendrier"],
     marches: ["devises", "indices", "metaux"],

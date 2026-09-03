@@ -2,6 +2,7 @@
 
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
+import { signe as r } from "@/lib/backtest/format";
 import type { Exploration } from "@/lib/backtest/exploration";
 import type { Modification } from "@/lib/backtest/modifications";
 import type { PlanComplet } from "@/lib/backtest/plan-complet";
@@ -44,10 +45,6 @@ import { AlertTriangle, CheckCircle2, Compass, ClipboardList } from "lucide-reac
  * combinaisons et les montre toutes, au lieu d'un « non » qui n'a rien tenté.
  * C'est exactement la différence que le trader réclamait.
  */
-
-function r(v: number | null | undefined, d = 3): string {
-  return v == null ? "—" : `${v >= 0 ? "+" : ""}${v.toFixed(d)}`;
-}
 
 /**
  * CE QUE LA CANDIDATE A DÉMONTRÉ, ET RIEN DE PLUS.

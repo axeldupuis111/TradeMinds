@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
+import { signe } from "@/lib/backtest/format";
 import type { Instrument } from "@/lib/backtest/instruments";
 import type { Apercu } from "@/app/dashboard/backtest/worker";
 import { echelleApercu } from "@/lib/backtest/apercu";
@@ -473,7 +474,7 @@ export function Inspection({ apercus, instrument, verifie, onVerifie, t }: Inspe
         />
         <Ligne
           label={t("bt_resultat")}
-          valeur={`${a.trade.r >= 0 ? "+" : ""}${a.trade.r.toFixed(2)} R · ${t(`bt_motif_${a.trade.motif}`)}`}
+          valeur={`${signe(a.trade.r, 2)} R · ${t(`bt_motif_${a.trade.motif}`)}`}
         />
       </dl>
 

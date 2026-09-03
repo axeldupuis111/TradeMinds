@@ -46,6 +46,7 @@ import { Completude } from "@/components/backtest/Completude";
 import { Condamnation } from "@/components/backtest/Condamnation";
 import { Profil } from "@/components/backtest/Profil";
 import { Depart } from "@/components/backtest/Depart";
+import { CaractereDuMarche } from "@/components/backtest/CaractereDuMarche";
 import { Champ, Liste } from "@/components/backtest/Controles";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
@@ -277,6 +278,8 @@ export default function BacktestPage() {
     exploration?: import("./worker").ReponseExploration;
     /** Ne dépend d'aucune stratégie : sert à dire si un stop est dans le bruit. */
     amplitudeBougieTicks?: number;
+    /** Le caractère du marché : directionnel ou non, séance marquée ou non. */
+    caractere?: import("@/lib/backtest/caractere-marche").CaractereMarche;
     controle?: { de: string; a: string; lecture: LectureBacktest };
     /** Plan, période et instrument sur lesquels ce résultat a été calculé. */
     empreinte: string;
@@ -670,6 +673,7 @@ export default function BacktestPage() {
           projection: r.projection,
           constats: r.constats,
           amplitudeBougieTicks: r.amplitudeBougieTicks,
+          caractere: r.caractere,
           propositions: r.propositions ?? (memeContexte ? prec?.propositions : undefined),
           stabilite: r.stabilite ?? (memeContexte ? prec?.stabilite : undefined),
           confluences: r.confluences ?? (memeContexte ? prec?.confluences : undefined),
@@ -1652,6 +1656,25 @@ export default function BacktestPage() {
               constats={constatsProfil}
               marcheReel={marcheReelTestable}
               onTesterSurSonMarche={changerInstrument}
+              t={tr}
+            />
+          </StaggerItem>
+        ) : null}
+
+        {/* ── 5 bis bis. Ce que vaut ce marché, avant toute stratégie ──────
+            ⚠️⚠️ « CERTAINES STRATÉGIES SONT ADAPTÉES À DES ACTIFS PRÉCIS »,
+            répété plusieurs fois, et l'outil n'en faisait rien. Cette carte
+            mesure des propriétés du MARCHÉ sur les bougies seules, sans qu'aucune
+            stratégie n'entre dans le calcul, puis les confronte à ce que la
+            méthode DÉCLARE exiger. Ce n'est pas chercher le marché qui sort le
+            mieux : c'est vérifier qu'on apporte un marteau à un clou. */}
+        {resultat?.caractere ? (
+          <StaggerItem>
+            <CaractereDuMarche
+              caractere={resultat.caractere}
+              instrument={instrument}
+              uniteDeTemps={plan.uniteDeTemps ?? 1}
+              methode={methode}
               t={tr}
             />
           </StaggerItem>

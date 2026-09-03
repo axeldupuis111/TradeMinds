@@ -187,7 +187,22 @@ export function composerPlanComplet(
 
   if (risqueRecommandePct != null) {
     const choisi = risques.find((r) => r.risquePct === risqueRecommandePct)!;
-    ajouter("risque", { pct: risqueRecommandePct, recul: choisi.reculPct.toFixed(1), seuil: seuilReculPct }, true);
+    /**
+     * ⚠️⚠️ « LE PLUS HAUT RISQUE QUI TIENT » N'EST PAS LA MÊME PHRASE QUAND ON
+     * A BUTÉ SUR LE HAUT DE LA LISTE.
+     *
+     * Vu à l'écran : « tu risques 5 % du capital par trade, c'est le plus haut
+     * risque qui garde ton recul sous 20 %. Au-dessus, tu ne tiendrais pas la
+     * série. » Or 5 % est simplement le dernier de RISQUES : on n'a jamais
+     * regardé 6 %, et rien ne dit qu'il casserait. La phrase affirmait une
+     * limite trouvée là où il n'y avait qu'un bout de tableau.
+     */
+    const auPlafond = risqueRecommandePct === RISQUES[RISQUES.length - 1];
+    ajouter(
+      auPlafond ? "risque_plafond" : "risque",
+      { pct: risqueRecommandePct, recul: choisi.reculPct.toFixed(1), seuil: seuilReculPct },
+      true,
+    );
   } else {
     ajouter("risque_aucun", { seuil: seuilReculPct, mini: RISQUES[0] }, true);
   }

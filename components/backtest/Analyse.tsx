@@ -2,6 +2,7 @@
 
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
+import { signe } from "@/lib/backtest/format";
 import type { Constat } from "@/lib/backtest/coherence-plan";
 import type { Confluence } from "@/lib/backtest/confluences";
 import type { Synthese, EtatPilier } from "@/lib/backtest/synthese";
@@ -59,7 +60,9 @@ const TON: Record<EtatPilier, string> = {
 function r(v: string | number | undefined, d = 3): string {
   if (v == null) return "—";
   const n = typeof v === "number" ? v : Number(v);
-  return Number.isFinite(n) ? `${n >= 0 ? "+" : ""}${n.toFixed(d)}` : String(v);
+  // ⚠️ Les valeurs des constats arrivent parfois déjà formatées en chaîne :
+  // on ne reformate que ce qui est vraiment un nombre.
+  return Number.isFinite(n) ? signe(n, d) : String(v);
 }
 
 export function Analyse({
