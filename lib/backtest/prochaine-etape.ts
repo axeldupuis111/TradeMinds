@@ -64,6 +64,8 @@ export type CodeEtape =
   | "changer_de_base"
   /** Il reste des piliers ouverts, mais la mesure qui les fermerait existe. */
   | "controler"
+  /** Des lignes du plan ne se déduisent d'aucune mesure : elles s'écrivent. */
+  | "completer_le_plan"
   /** Tout ce qui pouvait être établi l'est. */
   | "enregistrer";
 
@@ -94,6 +96,15 @@ export interface EtatDeLaPage {
   analyseFaite: boolean;
   /** La synthèse en piliers, quand il y a un rejeu. */
   synthese: Synthese | null;
+  /**
+   * Lignes du plan qui ne sont écrites nulle part.
+   *
+   * ⚠️⚠️ C'EST L'OBJECTIF DE L'ONGLET, ET IL PASSE DEVANT L'ENREGISTREMENT :
+   * « l'utilisateur sort avec un plan clair et complet de sa stratégie afin de
+   * pouvoir être discipliné ». Archiver une version dont cinq lignes manquent,
+   * c'est ranger un plan qu'il ne pourra pas suivre.
+   */
+  lignesAEcrire: number;
 }
 
 /**
@@ -105,7 +116,7 @@ export interface EtatDeLaPage {
  */
 export function prochaineEtape(e: EtatDeLaPage): Etape {
   // ── 1. Il n'y a rien à rejouer ───────────────────────────────────────────
-  if (!e.planPret) return { code: "compiler", valeurs: {}, ancre: "fiche" };
+  if (!e.planPret) return { code: "compiler", valeurs: {}, ancre: "bt-fiche" };
 
   /**
    * ── 2. Des blocs choisis par l'IA, pas par lui ─────────────────────────
@@ -118,7 +129,7 @@ export function prochaineEtape(e: EtatDeLaPage): Etape {
     return {
       code: "lire_les_interpretations",
       valeurs: { n: e.interpretations },
-      ancre: "fiche",
+      ancre: "bt-fiche",
     };
   }
 
@@ -134,7 +145,7 @@ export function prochaineEtape(e: EtatDeLaPage): Etape {
     return {
       code: "lever_une_condamnation",
       valeurs: { ...condamne.valeurs, ligne: condamne.code },
-      ancre: "condamnation",
+      ancre: "bt-condamnation",
     };
   }
 
@@ -152,7 +163,7 @@ export function prochaineEtape(e: EtatDeLaPage): Etape {
     return {
       code: "elargir_la_periode",
       valeurs: { n: e.trades, seuil: MIN_TRADES_CONCLUSION },
-      ancre: "periode",
+      ancre: "bt-periode",
     };
   }
 
@@ -169,7 +180,7 @@ export function prochaineEtape(e: EtatDeLaPage): Etape {
     return {
       code: "tester_son_marche",
       valeurs: { ...ailleurs.valeurs, marche: ailleurs.marcheACodeTester ?? "" },
-      ancre: "profil",
+      ancre: "bt-profil",
     };
   }
 
@@ -180,7 +191,7 @@ export function prochaineEtape(e: EtatDeLaPage): Etape {
    * fois c'est le graphique qui l'a montré, jamais le texte.
    */
   if (!e.mecaniqueVerifiee) {
-    return { code: "verifier_la_mecanique", valeurs: {}, ancre: "apercus" };
+    return { code: "verifier_la_mecanique", valeurs: {}, ancre: "bt-apercus" };
   }
 
   // ── 8. Les mesures profondes n'ont pas tourné ────────────────────────────
@@ -207,7 +218,7 @@ export function prochaineEtape(e: EtatDeLaPage): Etape {
     return {
       code: "changer_de_base",
       valeurs: { ouverts: ouverts.length },
-      ancre: "departs",
+      ancre: "bt-departs",
     };
   }
 
@@ -217,7 +228,7 @@ export function prochaineEtape(e: EtatDeLaPage): Etape {
     return {
       code: "controler",
       valeurs: { pilier: pasRegarde.code, ouverts: ouverts.length },
-      ancre: "analyse",
+      ancre: "bt-analyse",
     };
   }
 
@@ -225,10 +236,27 @@ export function prochaineEtape(e: EtatDeLaPage): Etape {
     return {
       code: "changer_de_base",
       valeurs: { ouverts: ouverts.length },
-      ancre: "departs",
+      ancre: "bt-departs",
     };
   }
 
-  // ── 11. Tout ce qui pouvait être établi l'est ────────────────────────────
-  return { code: "enregistrer", valeurs: {}, ancre: "enregistrer" };
+  /**
+   * ── 11. Le plan n'est pas encore complet ──────────────────────────────
+   *
+   * ⚠️⚠️ DEVANT L'ENREGISTREMENT, ET C'EST L'OBJECTIF DE L'ONGLET. Un backtest
+   * sait dire à quelle heure entrer et où poser le stop ; il ne saura jamais
+   * dire quand le trader ne doit RIEN prendre, ni ce qu'il note après coup. Ces
+   * lignes-là ne se déduisent pas, elles s'écrivent, et ce sont exactement
+   * celles qui manquent aux plans qu'on n'arrive pas à suivre.
+   */
+  if (e.lignesAEcrire > 0) {
+    return {
+      code: "completer_le_plan",
+      valeurs: { n: e.lignesAEcrire },
+      ancre: "bt-completude",
+    };
+  }
+
+  // ── 12. Tout ce qui pouvait être établi l'est ────────────────────────────
+  return { code: "enregistrer", valeurs: {}, ancre: "bt-enregistrer" };
 }

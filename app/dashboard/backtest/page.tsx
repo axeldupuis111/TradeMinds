@@ -98,6 +98,10 @@ import { composerDepart, departsPossibles, type Depart as UnDepart } from "@/lib
 import { CODES_QUESTIONS, evaluerCompletude } from "@/lib/backtest/completude";
 import { verifierCondamnation } from "@/lib/backtest/condamnation";
 import { prochaineEtape } from "@/lib/backtest/prochaine-etape";
+import { composerMonPlan } from "@/lib/backtest/mon-plan";
+import { composerPlanComplet } from "@/lib/backtest/plan-complet";
+import { MonPlan } from "@/components/backtest/MonPlan";
+import { phraseDuPlan } from "@/lib/backtest/phrases";
 import { ProchaineEtape } from "@/components/backtest/ProchaineEtape";
 import { confronterAuProfil, lireLeProfil, type TradeReel } from "@/lib/backtest/profil";
 import { enregistrerVersion } from "@/lib/backtest/enregistrement";
@@ -1564,6 +1568,63 @@ export default function BacktestPage() {
   }, [resultat, instrument, code, de, a, plan.contexte.fuseau, tr]);
 
   /**
+   * LE PLAN QU'IL EMPORTE.
+   *
+   * ⚠️⚠️ C'EST L'OBJECTIF DE L'ONGLET, ET IL N'ÉTAIT PAS LIVRÉ SUR LE PARCOURS
+   * LE PLUS FRÉQUENT. « L'objectif principal est qu'à la fin, l'utilisateur
+   * sorte avec un plan clair et complet de sa stratégie afin de pouvoir être
+   * discipliné. » Le plan écrit existait, mais il ne s'affichait que dans la
+   * carte « Chercher » : traduire sa fiche, lancer et lire ne produisait aucun
+   * document.
+   *
+   * ⚠️ SUR SON PLAN À LUI, jamais sur la combinaison trouvée par la recherche.
+   * Celle-ci garde sa propre carte, avec sa propre mise en garde : ce n'est pas
+   * encore un plan à suivre.
+   */
+  const monPlan = useMemo(() => {
+    if (!resultat?.trades.length) return null;
+    return composerMonPlan(
+      composerPlanComplet(plan, resultat.trades, instrument),
+      completude,
+      reponses,
+      synthese,
+    );
+  }, [resultat, plan, instrument, completude, reponses, synthese]);
+
+  /**
+   * Le document en texte brut, pour qu'il l'ait vraiment.
+   *
+   * ⚠️ UN PLAN QU'ON NE PEUT PAS SORTIR DE LA PAGE N'EST PAS UN PLAN QU'ON
+   * EMPORTE. Celui-ci se colle dans un carnet, un fichier, une note de
+   * téléphone : là où il le relira avant d'ouvrir son graphique.
+   */
+  const monPlanEnTexte = useCallback(() => {
+    if (!monPlan) return "";
+    const lignes = monPlan.lignes.map((l) => {
+      if (l.cle.startsWith("bt_q_")) {
+        const titre = tr(l.cle);
+        return l.texte ? `- ${titre} : ${l.texte}` : `- ${titre} : ${tr("bt_mon_plan_a_ecrire")}`;
+      }
+      return `- ${phraseDuPlan(
+        { cle: l.cle.replace(/^bt_plan_/, ""), valeurs: l.valeurs ?? {}, deduite: false },
+        tr,
+      )}`;
+    });
+    return [
+      tr("bt_mon_plan_titre"),
+      `${instrument.nom} · ${de} → ${a}`,
+      "",
+      ...lignes,
+      "",
+      tr("bt_mon_plan_compte", {
+        reglees: monPlan.reglees,
+        mesurees: monPlan.mesurees,
+        ecrites: monPlan.ecrites,
+      }),
+    ].join("\n");
+  }, [monPlan, tr, instrument, de, a]);
+
+  /**
    * LA SEULE CHOSE À FAIRE MAINTENANT.
    *
    * ⚠️⚠️ LA PAGE FAIT NEUF ÉCRANS DE HAUT AVANT MÊME D'AVOIR MESURÉ QUOI QUE
@@ -1594,8 +1655,22 @@ export default function BacktestPage() {
         mecaniqueVerifiee: verifie,
         analyseFaite: resultat?.confluences != null,
         synthese,
+        // ⚠️ L'objectif de l'onglet passe devant l'enregistrement : archiver une
+        // version dont cinq lignes manquent, c'est ranger un plan qu'il ne
+        // pourra pas suivre.
+        lignesAEcrire: monPlan?.manquantes ?? 0,
       }),
-    [planFiche, resultat, couverture, contestes, condamnations, constatsProfil, verifie, synthese],
+    [
+      planFiche,
+      resultat,
+      couverture,
+      contestes,
+      condamnations,
+      constatsProfil,
+      verifie,
+      synthese,
+      monPlan,
+    ],
   );
 
   /**
@@ -1800,7 +1875,7 @@ export default function BacktestPage() {
             autres rendent une estimation entourée d'un intervalle ; celle-ci
             constate qu'une ligne est écrite ou qu'elle ne l'est pas. Et elle
             fonctionne pour une méthode qu'on ne saura jamais rejouer. */}
-        <StaggerItem>
+        <StaggerItem id="bt-completude">
           <Completude
             completude={completude}
             reponses={reponses}
@@ -2127,6 +2202,22 @@ export default function BacktestPage() {
             stratégie ». Ce qui répond à sa question (est-ce viable, est-ce
             cohérent, mes confluences servent-elles) doit se lire AVANT la
             décomposition et l'export, pas trois cartes plus bas. */}
+        {/* ── Le plan qu'il emporte ────────────────────────────────────
+            ⚠️⚠️ C'EST L'OBJECTIF DE L'ONGLET, et il n'était livré que sur un
+            parcours sur deux. « L'objectif principal est qu'à la fin,
+            l'utilisateur sorte avec un plan clair et complet de sa stratégie
+            afin de pouvoir être discipliné. » Le plan écrit existait, mais ne
+            s'affichait que dans la carte « Chercher » : traduire sa fiche,
+            lancer et lire ne produisait aucun document.
+            ⚠️ JUSTE AVANT « Ce qui est établi » : on lit d'abord ce qu'on
+            s'engage à faire, ensuite ce que la mesure en dit. L'inverse ferait
+            du plan une récompense accordée par le verdict. */}
+        {monPlan ? (
+          <StaggerItem id="bt-mon-plan">
+            <MonPlan plan={monPlan} onCopier={monPlanEnTexte} t={tr} />
+          </StaggerItem>
+        ) : null}
+
         {resultat && synthese ? (
           <StaggerItem id="bt-analyse">
             <Analyse
