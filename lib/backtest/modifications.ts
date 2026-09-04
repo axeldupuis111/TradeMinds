@@ -1,4 +1,5 @@
-import type { Instrument } from "./instruments";
+import { coutAllerRetourTicks } from "./couts";
+import { instrumentParCode, type Instrument } from "./instruments";
 import type { Objectif } from "./propositions";
 import type { BlocConfirmation, PlanExecution } from "./types";
 
@@ -65,6 +66,21 @@ export interface Descripteur {
    * contourner.
    */
   sansEffetSurLesTrades?: boolean;
+  /**
+   * Ce réglage reste-t-il hors de l'empreinte du plan ?
+   *
+   * ⚠️ L'EMPREINTE DIT « CE CONTRÔLE PORTE-T-IL ENCORE SUR CE PLAN ». Les
+   * coûts n'appartiennent pas à la méthode : corriger le spread de son courtier
+   * ne doit pas effacer un contrôle hors période, sinon le trader le relance
+   * pour rien et finit par ne plus le lancer du tout.
+   *
+   * ⚠️⚠️ LE MARCHÉ, LUI, RESTE DANS L'EMPREINTE. Un contrôle mesuré sur le
+   * Nasdaq ne dit rien d'un plan qui teste l'or : le laisser affiché
+   * certifierait un plan qui n'existe pas. Rien ne s'en apercevait jusqu'ici
+   * parce que changer de marché efface le résultat par un autre chemin, et
+   * dépendre d'un effet de bord pour une garantie n'est pas une garantie.
+   */
+  horsEmpreinte?: boolean;
 }
 
 /** Les pivots, quels que soient les blocs qui en portent. */
@@ -118,17 +134,86 @@ export function nommerLesFiltres(resume: string, nommer: (type: string) => strin
     })
     .join(", ");
 }
-/** Renomme les filtres, et seulement eux. */
-function nommerSiFiltre(
+/**
+ * Les réglages dont la VALEUR est un code de catalogue, pas un nombre.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN, APRÈS UN CLIC SUR « ESSAYER CETTE BASE » : « Ce que tu
+ * traces sur ton graphique : trendline → range_horaire ». Deux identifiants
+ * internes, dans une carte dont le rôle est d'expliquer. Les noms existaient
+ * pourtant, et le trader venait de les lire dans la liste déroulante juste
+ * au-dessus : « Trendline (droite oblique) » et « Plage horaire de référence ».
+ *
+ * ⚠️ C'EST LA MÊME FAUTE QUE « biais_moyenne (80) », corrigée deux pilotages
+ * plus tôt sur les seuls filtres. Elle vivait encore sur six autres réglages,
+ * parce que le crochet de nommage n'avait été ouvert que pour `confirmations`.
+ */
+const NOMMABLES = new Set([
+  "instrument",
+  "sens",
+  "niveau_type",
+  "declencheur_type",
+  "entree_type",
+  "stop_type",
+  "objectif_type",
+]);
+
+/** Renomme ce qui est un code, et rend le reste tel quel. */
+function nommerLaValeur(
   valeur: string,
   d: Descripteur,
-  nommer: (type: string) => string,
+  nommer: (cle: string, valeur: string) => string,
 ): string {
-  return d.cle === "confirmations" ? nommerLesFiltres(valeur, nommer) : valeur;
+  if (d.cle === "confirmations") return nommerLesFiltres(valeur, (t) => nommer(d.cle, t));
+  // Le catalogue des instruments porte deja leurs noms, sans passer par les
+  // traductions : l'appelant n'a pas a s'en souvenir, et ne peut donc pas
+  // l'oublier.
+  if (d.cle === "instrument") return instrumentParCode(valeur)?.nom ?? valeur;
+  if (!NOMMABLES.has(d.cle)) return valeur;
+  // ⚠️ On ne renomme jamais un « non défini » : ce n'est pas un code, c'est
+  // l'absence de valeur, et la table de noms le rendrait tel quel de toute
+  // façon. Le dire ici évite de le découvrir un jour à l'écran.
+  return nommer(d.cle, valeur);
 }
 
 
 export const DESCRIPTEURS: Descripteur[] = [
+  /**
+   * LE MARCHÉ LUI-MÊME, ET C'EST LE PLUS GROS ÉCART POSSIBLE.
+   *
+   * ⚠️⚠️ VU À L'ÉCRAN. Après un clic sur « Tester sur Or (XAU/USD) », la
+   * carte « Ce que tu as changé par rapport à ta fiche » affichait « Le plan
+   * testé est exactement celui de ta fiche. Il n'y a rien à changer dans ta
+   * façon de trader. » On venait de changer de marché ET de coûts. La carte
+   * dont c'est le seul rôle était muette sur le plus grand changement qu'elle
+   * pouvait avoir à décrire, et le produit promet ailleurs, noir sur blanc,
+   * qu'elle « te dira exactement ce qui a bougé ».
+   *
+   * ⚠️ PREMIER DE LA LISTE : tout le reste se lit différemment selon le
+   * marché. Une distance de stop de 10 points ne veut pas dire la même chose
+   * sur l'or et sur le Nasdaq.
+   */
+  {
+    cle: "instrument",
+    bloc: "perimetre",
+    nature: true,
+    lire: (p) => p.instrument,
+    // Les coûts suivent le marché, jamais l'inverse : les remettre ensemble.
+    restaurer: (a, r) => ({ ...a, instrument: r.instrument, couts: { ...r.couts } }),
+  },
+  /**
+   * Ce que le courtier prend, en ticks d'aller-retour.
+   *
+   * ⚠️ MASQUÉ QUAND LE MARCHÉ A CHANGÉ, parce que les coûts le suivent
+   * automatiquement : deux lignes pour un seul geste. Voir `comparerPlans`.
+   */
+  {
+    cle: "couts",
+    bloc: "couts",
+    unite: "ticks",
+    horsEmpreinte: true,
+    lire: (p) => coutAllerRetourTicks(p.couts),
+    restaurer: (a, r) => ({ ...a, couts: { ...r.couts } }),
+  },
   {
     cle: "unite_de_temps",
     bloc: "uniteDeTemps",
@@ -462,6 +547,8 @@ export const CLES_PAR_LEVIER: Record<string, string[]> = {
  * renvoyer au titre exact qu'il lit plus haut dans la page lui laisse chercher.
  */
 export const BLOC_I18N: Record<string, string> = {
+  perimetre: "bt_bloc_perimetre",
+  couts: "bt_bloc_couts",
   uniteDeTemps: "bt_bloc_contexte",
   sens: "bt_bloc_contexte",
   contexte: "bt_bloc_contexte",
@@ -475,10 +562,23 @@ export const BLOC_I18N: Record<string, string> = {
   gestion: "bt_bloc_gestion",
 };
 
-/** D'où vient un changement, tel que la page l'a enregistré au moment du clic. */
+/**
+ * D'où vient un changement, tel que la page l'a enregistré au moment du clic.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN. Après un clic sur « Essayer cette base », les six
+ * réglages remplacés portaient tous la mention « Réglé par toi, à la main ».
+ * Le trader n'avait rien réglé : il avait cliqué un bouton, et la carte dont
+ * le rôle est de dire D'OÙ ÇA VIENT attribuait à sa main ce que la machine
+ * avait posé. C'est la même famille de faute que le plan présenté comme un
+ * plan à suivre alors que sa confirmation avait échoué : une provenance
+ * inventée vaut moins que pas de provenance du tout.
+ */
 export interface Origine {
-  levier: string;
-  objectif: Objectif;
+  /** Le réglage visé par une proposition. Absent quand la ligne vient d'une base. */
+  levier?: string;
+  objectif?: Objectif;
+  /** Le nom de la base appliquée, quand tout le plan vient d'un départ. */
+  base?: string;
 }
 
 export interface Modification {
@@ -492,8 +592,25 @@ export interface Modification {
    * calculé pour un OBJECTIF précis, et c'est cet objectif-là qui doit être
    * rappelé, pas le résultat qu'il a produit.
    */
-  origine: "proposition" | "manuel";
+  /**
+   * Vrai quand ce réglage n'existe QUE d'un côté.
+   *
+   * ⚠️⚠️ VU À L'ÉCRAN, ET LA PHRASE NE VOULAIT RIEN DIRE : « Le sommet
+   * derrière lequel tu poses ton stop doit dominer NON DÉFINI bougies de chaque
+   * côté au lieu de 5. » Le marqueur d'absence était injecté dans une phrase
+   * qui attend un nombre. Ça arrive dès qu'une base change la nature d'un bloc :
+   * le nouveau stop n'a pas de largeur de pivot, il n'en a pas « non défini ».
+   *
+   * ⚠️ LA PHRASE DOIT CHANGER, PAS LE MOT. Remplacer « non défini » par « zéro »
+   * ou par un tiret produirait une autre phrase fausse ; ce qu'il faut dire,
+   * c'est que le réglage ne s'applique plus.
+   */
+  disparu?: boolean;
+  apparu?: boolean;
+  origine: "proposition" | "manuel" | "base";
   objectif?: Objectif;
+  /** Le nom de la base, quand l'origine est « base ». */
+  base?: string;
 }
 
 /**
@@ -544,19 +661,31 @@ export function comparerPlans(
   /**
    * Comment nommer un type de filtre.
    *
-   * ⚠️ Par défaut on rend le code brut, comme avant : les appelants qui n'ont
-   * pas de traductions sous la main (les tests) gardent le comportement d'hier,
-   * et seul l'écran, qui en a, affiche des noms.
+   * ⚠️ Par défaut on rend le code brut : les appelants qui n'ont pas de
+   * traductions sous la main (les tests) gardent le comportement d'hier, et
+   * seul l'écran, qui en a, affiche des noms.
    */
-  nommerFiltre: (type: string) => string = (type) => type,
+  nommerValeur: (cle: string, valeur: string) => string = (_cle, valeur) => valeur,
 ): Modification[] {
   const naturesChangees = new Set<string>();
   for (const d of DESCRIPTEURS) {
     if (d.nature && d.lire(reference) !== d.lire(actuel)) naturesChangees.add(d.bloc);
   }
+  /**
+   * ⚠️ LES COÛTS SUIVENT LE MARCHÉ, DONC ILS NE SE COMPTENT PAS DEUX FOIS.
+   * Changer de marché change les coûts par défaut : afficher « Marché : Nasdaq
+   * 100 → Or » PUIS « Coût aller-retour : 2.30 → 0.42 » ferait lire deux
+   * décisions là où il n'y en a eu qu'une. La ligne des coûts est donc réservée
+   * à ce qui est vraiment une décision : les avoir modifiés à la main.
+   *
+   * C'est la seule dépendance entre deux blocs différents, et elle est écrite
+   * ici plutôt que dans les descripteurs parce qu'elle ne se déduit d'aucun.
+   */
+  const marcheChange = reference.instrument !== actuel.instrument;
 
   const out: Modification[] = [];
   for (const d of DESCRIPTEURS) {
+    if (d.cle === "couts" && marcheChange) continue;
     // Le bloc a changé de nature : sa ligne le dit déjà, ses réglages n'ont
     // plus de vis-à-vis.
     if (!d.nature && naturesChangees.has(d.bloc)) continue;
@@ -567,9 +696,15 @@ export function comparerPlans(
     out.push({
       cle: d.cle,
       bloc: d.bloc,
-      avant: nommerSiFiltre(formater(avant, d, instrument, absent), d, nommerFiltre),
-      apres: nommerSiFiltre(formater(apres, d, instrument, absent), d, nommerFiltre),
-      origine: origine ? "proposition" : "manuel",
+      base: origine?.base,
+      // ⚠️ On lit les valeurs BRUTES, pas les chaînes formatées : le marqueur
+      // d'absence est un texte traduit, et le comparer reviendrait à décider
+      // d'après une traduction.
+      disparu: avant !== null && apres === null,
+      apparu: avant === null && apres !== null,
+      avant: nommerLaValeur(formater(avant, d, instrument, absent), d, nommerValeur),
+      apres: nommerLaValeur(formater(apres, d, instrument, absent), d, nommerValeur),
+      origine: origine?.base ? "base" : origine ? "proposition" : "manuel",
       objectif: origine?.objectif,
     });
   }
@@ -718,6 +853,6 @@ function restaurerLesDecrits(actuel: PlanExecution, reference: PlanExecution): P
  */
 export function empreintePlan(plan: PlanExecution): string {
   return JSON.stringify(
-    DESCRIPTEURS.map((d) => [d.cle, d.lire(plan)]),
+    DESCRIPTEURS.filter((d) => !d.horsEmpreinte).map((d) => [d.cle, d.lire(plan)]),
   );
 }

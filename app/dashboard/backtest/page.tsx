@@ -88,7 +88,16 @@ import {
   lireBlocPlan,
   sansLeBlocDePlan,
 } from "@/lib/backtest/fiche-plan";
-import { nommer, NOM_CONFIRMATION } from "@/lib/backtest/noms";
+import {
+  nommer,
+  NOM_CONFIRMATION,
+  NOM_DECLENCHEUR,
+  NOM_ENTREE,
+  NOM_NIVEAU,
+  NOM_OBJECTIF,
+  NOM_SENS,
+  NOM_STOP,
+} from "@/lib/backtest/noms";
 import { methodeParCode } from "@/lib/backtest/methodes";
 import { composerDepart, departsPossibles, type Depart as UnDepart } from "@/lib/backtest/depart";
 import { CODES_QUESTIONS, evaluerCompletude } from "@/lib/backtest/completude";
@@ -439,6 +448,25 @@ export default function BacktestPage() {
       annule = true;
     };
   }, [estPremium, supabase]);
+
+  /**
+   * Le sélecteur suit le plan, quel que soit le chemin qui a changé le plan.
+   *
+   * ⚠️⚠️ LE MARCHÉ EST DEVENU UN ÉCART ANNULABLE, DONC IL PEUT MAINTENANT
+   * CHANGER SANS PASSER PAR LE SÉLECTEUR. Cliquer « annuler » sur la ligne
+   * « Marché testé » remet `plan.instrument` à celui de la fiche ; sans ce
+   * recalage, la liste déroulante continuerait d'afficher l'or pendant que le
+   * moteur rejouerait le Nasdaq, et rien à l'écran ne trahirait le décalage.
+   *
+   * ⚠️ ET LE RÉSULTAT AFFICHÉ TOMBE AVEC, pour la même raison que dans
+   * `changerInstrument` : des trades mesurés sur un marché ne décrivent pas
+   * un plan qui en teste un autre.
+   */
+  useEffect(() => {
+    if (plan.instrument === code) return;
+    setCode(plan.instrument);
+    setResultat(null);
+  }, [plan.instrument, code]);
 
   /** Change d'instrument : les coûts par défaut suivent, jamais l'inverse. */
   const changerInstrument = useCallback((nouveau: string) => {
@@ -884,21 +912,47 @@ export default function BacktestPage() {
             // ⚠️ « biais_moyenne (80) → biais_moyenne (50) » etait affiche trois
             // lignes au-dessus de « Sens de la moyenne mobile ». Le meme filtre,
             // deux ecritures, dont une que personne ne comprend.
-            (type) => nommer(NOM_CONFIRMATION, type, tr),
+            nommerUneValeur,
           )
         : [],
     [resultat?.exploration, plan, instrument, tr],
   );
 
   /** L'écart avec la fiche, recalculé à chaque changement de plan. */
+  /**
+   * Le nom lisible d'un réglage dont la valeur est un code de catalogue.
+   *
+   * ⚠️⚠️ VU À L'ÉCRAN : « Ce que tu traces sur ton graphique : trendline →
+   * range_horaire ». Deux identifiants internes, dans la carte dont le rôle est
+   * d'expliquer, alors que le trader venait de lire « Trendline (droite
+   * oblique) » et « Plage horaire de référence » dans la liste juste au-dessus.
+   *
+   * ⚠️ LE CROCHET N'AVAIT ÉTÉ OUVERT QUE POUR LES FILTRES, deux pilotages plus
+   * tôt. Six autres réglages affichaient encore leur code.
+   */
+  const nommerUneValeur = useCallback(
+    (cle: string, valeur: string) => {
+      const TABLES: Record<string, Record<string, string>> = {
+        confirmations: NOM_CONFIRMATION,
+        sens: NOM_SENS,
+        niveau_type: NOM_NIVEAU,
+        declencheur_type: NOM_DECLENCHEUR,
+        entree_type: NOM_ENTREE,
+        stop_type: NOM_STOP,
+        objectif_type: NOM_OBJECTIF,
+      };
+      const table = TABLES[cle];
+      return table ? nommer(table, valeur, tr) : valeur;
+    },
+    [tr],
+  );
+
   const modifications = useMemo(
     () =>
       planFiche
-        ? comparerPlans(planFiche, plan, instrument, origines, tr("bt_modif_absent"), (type) =>
-            nommer(NOM_CONFIRMATION, type, tr),
-          )
+        ? comparerPlans(planFiche, plan, instrument, origines, tr("bt_modif_absent"), nommerUneValeur)
         : [],
-    [planFiche, plan, instrument, origines, tr],
+    [planFiche, plan, instrument, origines, tr, nommerUneValeur],
   );
 
   /**
@@ -1168,13 +1222,26 @@ export default function BacktestPage() {
    */
   const essayerUnDepart = useCallback(
     (d: UnDepart) => {
+      /**
+       * ⚠️⚠️ VU À L'ÉCRAN. Les six réglages remplacés par une base portaient
+       * tous « Réglé par toi, à la main ». Le trader n'avait rien réglé : il
+       * avait cliqué un bouton, et la carte dont le rôle est de dire D'OÙ ÇA
+       * VIENT attribuait à sa main ce que la machine avait posé.
+       *
+       * ⚠️ ON MARQUE TOUS LES RÉGLAGES, pas seulement ceux qui ont bougé : la
+       * comparaison décidera lesquels apparaissent, et une base pose bien le
+       * plan entier.
+       */
+      const nom = tr(`bt_meth_${d.methode.code}`);
+      setOrigines(
+        Object.fromEntries(DESCRIPTEURS.map((x) => [x.cle, { base: nom }])),
+      );
       setPlan(d.plan);
-      setOrigines({});
       setResultat(null);
       setSauvegarde("repos");
       setMethodeCode(d.methode.code);
     },
-    [],
+    [tr],
   );
 
   /**

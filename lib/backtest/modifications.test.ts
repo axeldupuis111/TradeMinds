@@ -173,14 +173,44 @@ describe("ce que la liste ne sait pas nommer", () => {
     expect(comparerPlans(fiche, actuel, NAS).some((m) => m.cle === "autre")).toBe(false);
   });
 
-  it("ne crie pas non plus sur un simple changement d'instrument", () => {
+  /**
+   * ⚠️⚠️ VU À L'ÉCRAN, ET CE TEST DISAIT LE CONTRAIRE. Après un clic sur
+   * « Tester sur Or (XAU/USD) », la carte « Ce que tu as changé par rapport à
+   * ta fiche » affichait « Le plan testé est exactement celui de ta fiche. Il
+   * n'y a rien à changer dans ta façon de trader. » On venait de changer de
+   * marché.
+   *
+   * L'intention d'origine était bonne (ne pas produire une ligne « autre » que
+   * personne ne comprend) mais la conclusion était fausse : la réponse n'est
+   * pas le silence, c'est une ligne NOMMÉE.
+   */
+  it("nomme le changement de marché au lieu de se taire", () => {
     const fiche = planDeBase();
     const actuel: PlanExecution = {
       ...fiche,
       instrument: "XAUUSD",
       couts: { spreadTicks: 9, glissementTicks: 9, commissionTicks: 9 },
     };
-    expect(comparerPlans(fiche, actuel, NAS)).toEqual([]);
+    const mods = comparerPlans(fiche, actuel, NAS);
+    expect(mods.map((m) => m.cle)).toEqual(["instrument"]);
+    // ⚠️ Le nom du marché, pas son code : « NAS100 → XAUUSD » n'est pas une
+    // phrase pour un trader.
+    expect(mods[0].avant).toBe("Nasdaq 100");
+    expect(mods[0].apres).toBe("Or (XAU/USD)");
+    expect(mods.some((m) => m.cle === "autre")).toBe(false);
+  });
+
+  /**
+   * ⚠️ LES COÛTS SUIVENT LE MARCHÉ, DONC ILS NE SE COMPTENT PAS DEUX FOIS.
+   * Deux lignes pour un seul geste feraient lire deux décisions.
+   */
+  it("garde la ligne des coûts pour ce qui est vraiment une décision", () => {
+    const fiche = planDeBase();
+    const aLaMain: PlanExecution = {
+      ...fiche,
+      couts: { ...fiche.couts, spreadTicks: fiche.couts.spreadTicks + 500 },
+    };
+    expect(comparerPlans(fiche, aLaMain, NAS).map((m) => m.cle)).toEqual(["couts"]);
   });
 
   it("sait tout remettre depuis cette ligne-là", () => {
@@ -289,18 +319,33 @@ describe("l'empreinte du plan", () => {
   });
 
   /**
-   * ⚠️ Elle ne doit PAS bouger sur ce qui ne change aucun trade et n'appartient
-   * pas à la méthode : sinon le contrôle hors période serait invalidé pour
-   * rien, et le trader devrait le relancer sans raison.
+   * ⚠️ ELLE NE DOIT PAS BOUGER SUR CE QUI N'APPARTIENT PAS À LA MÉTHODE :
+   * sinon le contrôle hors période serait invalidé pour rien, et le trader
+   * devrait le relancer sans raison. Corriger le spread de son courtier ne
+   * change pas la méthode qu'on contrôle.
    */
-  it("ignore l'instrument et les coûts", () => {
+  it("ignore les coûts", () => {
     const fiche = planDeBase();
     const memeMethode: PlanExecution = {
       ...fiche,
-      instrument: "XAUUSD",
       couts: { spreadTicks: 9, glissementTicks: 9, commissionTicks: 9 },
     };
     expect(empreintePlan(memeMethode)).toBe(empreintePlan(fiche));
+  });
+
+  /**
+   * ⚠️⚠️ LE MARCHÉ, LUI, EN FAIT PARTIE. Un contrôle mesuré sur le Nasdaq ne
+   * dit rien d'un plan qui teste l'or : le laisser affiché certifierait un plan
+   * qui n'existe pas, et c'est précisément ce que l'empreinte doit empêcher.
+   *
+   * Rien ne s'en apercevait jusqu'ici parce que changer de marché efface le
+   * résultat par un autre chemin. Dépendre d'un effet de bord pour une garantie
+   * n'est pas une garantie.
+   */
+  it("change avec le marché", () => {
+    const fiche = planDeBase();
+    const ailleurs: PlanExecution = { ...fiche, instrument: "XAUUSD" };
+    expect(empreintePlan(ailleurs)).not.toBe(empreintePlan(fiche));
   });
 });
 
@@ -422,7 +467,7 @@ describe("les filtres se lisent avec leur nom, pas avec leur code", () => {
       NAS,
       {},
       "non défini",
-      nommer,
+      (_cle, valeur) => nommer(valeur),
     );
     const ligne = avec.find((m) => m.cle === "confirmations")!;
     expect(ligne.avant).toBe("Sens de la moyenne mobile (80)");
@@ -436,5 +481,123 @@ describe("les filtres se lisent avec leur nom, pas avec leur code", () => {
       NAS,
     );
     expect(sans.find((m) => m.cle === "confirmations")!.avant).toBe("biais_moyenne (80)");
+  });
+});
+
+/**
+ * ⚠️⚠️ CE QU'UN CLIC SUR « ESSAYER CETTE BASE » AFFICHAIT, VU À L'ÉCRAN.
+ *
+ * Trois fautes sur la même carte, celle dont le rôle est d'expliquer :
+ *
+ *   « Ce que tu traces sur ton graphique : trendline → range_horaire »
+ *   « Réglé par toi, à la main » (sur les six lignes, après un clic sur un bouton)
+ *   « Le sommet derrière lequel tu poses ton stop doit dominer NON DÉFINI
+ *     bougies de chaque côté au lieu de 5. »
+ */
+describe("ce qu'une base remplace, dit correctement", () => {
+  const NOMS: Record<string, Record<string, string>> = {
+    niveau_type: { trendline: "Trendline (droite oblique)", range_horaire: "Plage horaire de référence" },
+  };
+  const nommer = (cle: string, valeur: string) => NOMS[cle]?.[valeur] ?? valeur;
+
+  const base = (): PlanExecution => ({
+    ...planDeBase(),
+    niveau: { type: "range_horaire", debut: "09:30", fin: "11:30" },
+    stop: { type: "niveau_oppose", bufferTicks: 500 },
+  });
+
+  /**
+   * ⚠️ LA MÊME FAUTE QUE « biais_moyenne (80) », sur six autres réglages : le
+   * crochet de nommage n'avait été ouvert que pour les filtres.
+   */
+  it("nomme le type de niveau au lieu d'afficher son code", () => {
+    const m = comparerPlans(planDeBase(), base(), NAS, {}, "non défini", nommer).find(
+      (x) => x.cle === "niveau_type",
+    )!;
+    expect(m.avant).toBe("Trendline (droite oblique)");
+    expect(m.apres).toBe("Plage horaire de référence");
+  });
+
+  it("laisse le code brut quand personne ne sait le nommer", () => {
+    const m = comparerPlans(planDeBase(), base(), NAS).find((x) => x.cle === "niveau_type")!;
+    expect(m.avant).toBe("trendline");
+  });
+
+  /**
+   * ⚠️⚠️ LA PROVENANCE INVENTÉE VAUT MOINS QUE PAS DE PROVENANCE. Le trader
+   * n'avait rien réglé : il avait cliqué un bouton.
+   */
+  it("attribue à la base ce que la base a posé", () => {
+    const origines = Object.fromEntries(
+      DESCRIPTEURS.map((d) => [d.cle, { base: "Cassure de l'ouverture" }]),
+    );
+    const mods = comparerPlans(planDeBase(), base(), NAS, origines);
+    expect(mods.length).toBeGreaterThan(0);
+    for (const m of mods) {
+      expect(m.origine, `${m.cle} attribué à la main`).toBe("base");
+      expect(m.base).toBe("Cassure de l'ouverture");
+    }
+  });
+
+  it("garde « manuel » quand rien n'a été enregistré au clic", () => {
+    const mods = comparerPlans(planDeBase(), base(), NAS);
+    expect(mods.every((m) => m.origine === "manuel")).toBe(true);
+  });
+
+  /**
+   * ⚠️⚠️ « DOIT DOMINER NON DÉFINI BOUGIES ». Le marqueur d'absence injecté
+   * dans une phrase qui attend un nombre. Le réglage n'a pas été mis à zéro,
+   * il a cessé d'exister, et c'est la phrase qui doit changer.
+   */
+  it("signale un réglage qui a cessé d'exister, au lieu de l'écrire « non défini »", () => {
+    const avecPivots: PlanExecution = {
+      ...planDeBase(),
+      stop: { type: "dernier_pivot", bufferTicks: 2, pivots: 5 },
+    };
+    // Même nature de stop des deux côtés : c'est bien la largeur de pivot qui
+    // cesse d'exister, et sa ligne n'est donc pas absorbée par un changement de
+    // bloc. C'est le cas exact vu à l'écran.
+    const sansPivots: PlanExecution = {
+      ...avecPivots,
+      stop: { type: "dernier_pivot", bufferTicks: 2 },
+    };
+    const pivot = comparerPlans(avecPivots, sansPivots, NAS).find(
+      (m) => m.cle === "stop_pivots",
+    )!;
+    expect(pivot).toBeTruthy();
+    expect(pivot.disparu).toBe(true);
+    expect(pivot.apparu).toBeFalsy();
+    expect(pivot.avant).toBe("5");
+  });
+
+  it("marque l'apparition dans l'autre sens", () => {
+    const sansBreakEven = planDeBase();
+    const avec: PlanExecution = {
+      ...sansBreakEven,
+      sortiesAuxiliaires: { breakEvenApresR: 1 },
+    };
+    const m = comparerPlans(sansBreakEven, avec, NAS).find((x) => x.cle === "break_even")!;
+    expect(m).toBeTruthy();
+    expect(m.apparu).toBe(true);
+    expect(m.disparu).toBeFalsy();
+  });
+
+  /**
+   * ⚠️ LES DEUX PHRASES EXISTENT, dans les quatre langues. Ce sont des clés
+   * fixes, mais elles ne sont citées que dans une branche de condition : le
+   * balayage des clés utilisées ne prouve rien sur leur contenu.
+   */
+  it("a une phrase pour chacun des deux cas", () => {
+    const c = fr as Record<string, string>;
+    expect(c.bt_geste_disparu).toContain("{reglage}");
+    expect(c.bt_geste_disparu).toContain("{valeur}");
+    expect(c.bt_geste_apparu).toContain("{reglage}");
+    // Ni l'une ni l'autre ne doit reparler d'une valeur « avant / après ».
+    expect(c.bt_geste_disparu).not.toContain("{avant}");
+    expect(c.bt_geste_apparu).not.toContain("{avant}");
+  });
+
+  it("a une phrase pour la provenance d'une base", () => {
+    expect((fr as Record<string, string>).bt_modif_origine_base).toContain("{base}");
   });
 });
