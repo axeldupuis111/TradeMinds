@@ -263,3 +263,35 @@ describe("ce que la carte n'a pas le droit de dire", () => {
     }
   });
 });
+
+/**
+ * ⚠️⚠️ VU À L'ÉCRAN : LE BOUTON NE FAISAIT RIEN.
+ *
+ * La carte affichait « Lire les interprétations », le trader cliquait, et la
+ * page ne bougeait pas d'un pixel. `scrollIntoView` fonctionnait parfaitement ;
+ * c'est `document.getElementById("fiche")` qui rendait `null`, parce que les
+ * ancres posées dans la page s'appellent `bt-fiche`. Deux listes qui devaient se
+ * couvrir, et rien ne le vérifiait.
+ *
+ * ⚠️ UN BOUTON QUI NE FAIT RIEN EST PIRE QU'UN BOUTON ABSENT : le trader croit
+ * avoir mal compris, et cette carte est la première chose qu'il lit.
+ */
+describe("les ancres de la carte existent dans la page", () => {
+  const source = readFileSync(join(process.cwd(), "app/dashboard/backtest/page.tsx"), "utf8");
+  const ids = new Set(
+    (source.match(/id="([a-z-]+)"/g) ?? []).map((x) => x.replace(/id="|"/g, "")),
+  );
+
+  it("la page pose bien des ancres", () => {
+    // Garde sur le garde : sans ancre lue, le test ci-dessous ne vérifie rien.
+    expect(ids.size).toBeGreaterThan(5);
+  });
+
+  for (const code of TOUTES) {
+    it(`${code} pointe une ancre qui existe`, () => {
+      const { ancre } = trouver(code);
+      if (ancre === null) return; // L'étape EST l'action : rien à faire remonter.
+      expect(ids.has(ancre), `id="${ancre}" absent de la page`).toBe(true);
+    });
+  }
+});
