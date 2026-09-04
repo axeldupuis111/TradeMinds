@@ -165,12 +165,25 @@ export function synthetiser(e: EntreesSynthese): Synthese {
     ajouter("hors_periode", "pas_regarde");
   } else {
     const s = e.horsPeriode.lecture.stats;
+    const v = e.horsPeriode.lecture.verdict;
+    /**
+     * ⚠️⚠️ « L'AVANTAGE NE SE RETROUVE PAS » DISAIT LE CONTRAIRE DES CHIFFRES
+     * QU'IL PORTAIT. Vu à l'écran : « Sur la période intacte, l'avantage ne se
+     * retrouve pas : 0.031 R, intervalle [-0.029 ; 0.091] », alors que la
+     * période de test, elle, rendait -0.052 R. Le contrôle était donc MEILLEUR
+     * que le test, et il n'y avait aucun avantage à ne pas retrouver.
+     *
+     * Trois situations très différentes tombaient sous la même phrase :
+     * l'avantage s'effondre, le contrôle ne tranche pas, le contrôle n'a pas
+     * assez de trades. Seule la première méritait ce mot-là.
+     */
     ajouter(
       "hors_periode",
-      e.horsPeriode.lecture.verdict === "positif" ? "etabli" : "pas_etabli",
+      v === "positif" ? "etabli" : "pas_etabli",
       s
         ? { esperance: s.esperanceR.toFixed(3), bas: s.borneBasse.toFixed(3), haut: s.borneHaute.toFixed(3), trades: s.nbTrades }
         : { trades: 0 },
+      v === "non_concluant" ? "pas_etabli_non_concluant" : v === "insuffisant" ? "pas_etabli_insuffisant" : undefined,
     );
   }
 

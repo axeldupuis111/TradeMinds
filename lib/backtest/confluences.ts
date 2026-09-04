@@ -74,7 +74,27 @@ export type EffetDuFiltre =
   /** Les trades qu'il écarte gagnaient : il coûte de l'argent. */
   | "ecarte_des_gagnants"
   /** Il ne laisse plus assez de trades pour qu'on puisse conclure quoi que ce soit. */
-  | "assechele";
+  | "assechele"
+  /**
+   * Il n'a écarté aucun trade : sa condition était toujours remplie.
+   *
+   * ⚠️⚠️ VU À L'ÉCRAN, ET LA PHRASE ÉTAIT FAUSSE DANS LES DEUX SENS. Le
+   * tableau affichait « Bougie de réaction · 484 trades avec · 484 sans · il en
+   * écarte 0 % », puis « ce filtre ne trie rien de MESURABLE : avec ou sans
+   * lui, le résultat est le même à l'incertitude près. Il écarte 0 % de tes
+   * trades sans rien acheter en échange, donc il élargit ton intervalle et rend
+   * ta stratégie MOINS démontrable. »
+   *
+   * Un filtre qui n'écarte rien ne peut pas élargir un intervalle : les deux
+   * rejeux sont le MÊME rejeu, au trade près. Et « à l'incertitude près » laisse
+   * croire qu'une mesure serrée a été faite, alors qu'il n'y avait rien à
+   * mesurer.
+   *
+   * ⚠️ CE N'EST PAS UN CAS DÉGÉNÉRÉ, C'EST UN CONSTAT UTILE : le trader
+   * découvre que la condition qu'il croit s'imposer ne se produit jamais sur ce
+   * marché à cette unité de temps.
+   */
+  | "inerte";
 
 export interface Confluence {
   /** Le type du bloc de confirmation, pour le nommer à l'écran. */
@@ -174,7 +194,13 @@ export function mesurerConfluences(
     const c = comparerMesures(avec, sans, { de: "", a: "" }, { de: "", a: "" });
 
     let effet: EffetDuFiltre;
-    if (avec.esperanceR == null) {
+    // ⚠️ AVANT TOUT LE RESTE, parce qu'un filtre inerte ressemble à un filtre
+    // sans effet mesurable, et que ce n'est pas la même chose : l'un a été
+    // mesuré, l'autre n'a jamais eu l'occasion de l'être. Un filtre ne peut que
+    // retirer des signaux : à nombre égal, les deux jeux sont le même.
+    if (avec.trades === sans.trades) {
+      effet = "inerte";
+    } else if (avec.esperanceR == null) {
       // ⚠️ Un filtre qui assèche est une information à part entière, pas un
       // échec de mesure : il empêche la stratégie d'être démontrable du tout.
       effet = "assechele";

@@ -427,12 +427,25 @@ export function Resultat({
             label={t("bt_risque_moyen")}
             valeur={`${(couts.risqueMoyenTicks * instrument.tailleTick).toFixed(instrument.decimales)} ${t("bt_unite_prix")}`}
           />
+{/**
+           * ⚠️⚠️ DEUX NOMBRES POUR LE MÊME FAIT, SUR LA MÊME CARTE, VU À
+           * L'ÉCRAN. Cette ligne affichait « 2.30 (1.8 % du risque) » juste
+           * sous « Coût par trade : 0.0243 R », c'est-à-dire 2.4 % du risque.
+           * Le même aller-retour, deux pourcentages, à deux lignes d'écart.
+           *
+           * Le 1.8 % venait de `coutApplique / risqueMoyen`, le rapport des
+           * MOYENNES. Le 2.43 % est la moyenne des RAPPORTS, mesurée trade par
+           * trade : un coût fixe en points pèse plus lourd sur les stops
+           * serrés, et c'est cette moyenne-là que le trader paye vraiment.
+           *
+           * ⚠️ LA MÊME FAUTE DORMAIT DANS LA CARTE DES CONDAMNATIONS, corrigée
+           * un pilotage plus tôt. Elle avait survécu ici parce que les deux
+           * lignes se lisent comme deux mesures différentes : « coût par trade »
+           * et « coût de l'aller-retour ». C'est le même coût.
+           */}
           <Ligne
             label={t("bt_cout_aller_retour")}
-            valeur={`${prix.spread.toFixed(instrument.decimales)} (${(
-              (couts.coutApplique / Math.max(1, couts.risqueMoyenTicks)) *
-              100
-            ).toFixed(1)} % ${t("bt_du_risque")})`}
+            valeur={`${prix.spread.toFixed(instrument.decimales)} (${(couts.coutParTradeR * 100).toFixed(1)} % ${t("bt_du_risque")})`}
           />
           {/* ⚠️ Masquée dès qu'il n'y a plus d'avantage à annuler : la formule
               rendrait un nombre négatif sous un intitulé qui ne lui correspond

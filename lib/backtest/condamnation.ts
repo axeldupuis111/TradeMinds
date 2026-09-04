@@ -249,7 +249,12 @@ export function verifierCondamnation(e: EntreeCondamnation): Constat[] {
       gravite:
         pct >= COUT_CONDAMNE_PCT ? "condamne" : pct >= COUT_LOURD_PCT ? "lourd" : "informatif",
       valeurs: {
-        pct: pct.toFixed(1),
+        // ⚠️ DEUX DÉCIMALES SOUS 10 %, SINON LA MULTIPLICATION NE TOMBE PAS
+        // JUSTE. Vu à l'écran : « l'aller-retour coûte 2.4 % de ton risque » et
+        // « à 484 trades et 5 % de risque, tes frais représentent 58.8 % ». Le
+        // lecteur qui refait 484 × 5 × 2.4 % trouve 58.1. Le coût réel est
+        // 2.43 %, et la carte invite explicitement à refaire le calcul.
+        pct: pct < 10 ? pct.toFixed(2) : pct.toFixed(1),
         seuil: COUT_CONDAMNE_PCT,
         seuilLourd: COUT_LOURD_PCT,
         mesure: e.coutParTradeMesureR != null ? "oui" : "non",

@@ -310,3 +310,51 @@ describe("le premier essai se dit au singulier", () => {
     expect(cle(1, 31)).toBe("bt_syn_recherche_bornee_avec_recherche_au_dela");
   });
 });
+
+/**
+ * ⚠️⚠️ « L'AVANTAGE NE SE RETROUVE PAS » DISAIT LE CONTRAIRE DES CHIFFRES
+ * QU'IL PORTAIT, VU À L'ÉCRAN.
+ *
+ *   « Sur la période intacte, l'avantage ne se retrouve pas : 0.031 R,
+ *     intervalle [-0.029 ; 0.091]. »
+ *
+ * La période de test, elle, rendait -0.052 R. Le contrôle était donc MEILLEUR
+ * que le test, et il n'y avait aucun avantage à ne pas retrouver. Trois
+ * situations très différentes tombaient sous la même phrase : l'avantage
+ * s'effondre, le contrôle ne tranche pas, le contrôle n'a pas assez de trades.
+ */
+describe("les trois lectures du contrôle hors période", () => {
+  const variante = (verdict: LectureBacktest["verdict"]) => {
+    const p = synthetiser({
+      ...entrees(),
+      horsPeriode: { lecture: lecture(verdict, stats(0.031, 0.06)) } as never,
+    }).piliers.find((x) => x.code === "hors_periode")!;
+    return { cle: `bt_syn_hors_periode_${p.variante ?? p.etat}`, etat: p.etat };
+  };
+
+  it("un contrôle qui ne tranche pas ne dit pas que l'avantage s'effondre", () => {
+    const v = variante("non_concluant");
+    expect(v.etat).toBe("pas_etabli");
+    expect(v.cle).toBe("bt_syn_hors_periode_pas_etabli_non_concluant");
+    const texte = (fr as Record<string, string>)[v.cle];
+    expect(texte).toBeTruthy();
+    expect(texte).not.toContain("ne se retrouve pas");
+  });
+
+  it("un contrôle sans assez de trades le dit, au lieu de conclure", () => {
+    const v = variante("insuffisant");
+    expect(v.cle).toBe("bt_syn_hors_periode_pas_etabli_insuffisant");
+    expect((fr as Record<string, string>)[v.cle]).toBeTruthy();
+  });
+
+  /**
+   * ⚠️ LE SEUL CAS QUI MÉRITE LE MOT : l'avantage était là, il n'y est plus.
+   */
+  it("un contrôle négatif garde la phrase d'origine", () => {
+    expect(variante("negatif").cle).toBe("bt_syn_hors_periode_pas_etabli");
+  });
+
+  it("un contrôle positif établit le pilier", () => {
+    expect(variante("positif").etat).toBe("etabli");
+  });
+});

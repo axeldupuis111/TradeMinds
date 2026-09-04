@@ -523,3 +523,61 @@ describe("les variantes de rédaction existent", () => {
     });
   }
 });
+
+/**
+ * ⚠️⚠️ LE MÊME DÉFAUT, UNE CARTE PLUS BAS, SURVIVANT À SA PROPRE CORRECTION.
+ *
+ * La carte « Ce que les coûts ont pris » affichait, à deux lignes d'écart :
+ *
+ *   « Coût par trade : 0.0243 R »
+ *   « Coût de l'aller-retour : 2.30 (1.8 % du risque) »
+ *
+ * Le même aller-retour, deux pourcentages. Le 1.8 % venait du rapport des
+ * MOYENNES (cout / risque moyen), le 2.43 % de la moyenne des RAPPORTS. Seul le
+ * second est ce que le trader paye. Le composant ne doit donc plus jamais
+ * refabriquer ce pourcentage à partir du risque moyen : un test lit la source.
+ */
+describe("aucune carte ne refabrique le coût à partir du risque moyen", () => {
+  const sansCommentaires = (chemin: string) =>
+    readFileSync(join(process.cwd(), chemin), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/.*$/gm, "");
+
+  it("le résultat affiche le coût mesuré, pas un quotient de moyennes", () => {
+    const src = sansCommentaires("components/backtest/Resultat.tsx");
+    expect(src).not.toMatch(/coutApplique\s*\/[\s\S]{0,60}risqueMoyenTicks/);
+  });
+});
+
+/**
+ * ⚠️ LA CARTE PROMET DES DIVISIONS QU'ON PEUT REFAIRE SUR UN COIN DE TABLE,
+ * donc elles doivent tomber juste avec les chiffres AFFICHÉS, pas seulement avec
+ * ceux qui sont en mémoire.
+ *
+ * Vu à l'écran : « l'aller-retour coûte 2.4 % de ton risque » et « à 484 trades
+ * et 5 % de risque, tes frais représentent 58.8 % de ton capital par an ».
+ * 484 × 5 × 2.4 % fait 58.1. Le coût réel était 2.43 %, arrondi à l'affichage.
+ */
+describe("la multiplication annuelle tombe juste sur les chiffres affichés", () => {
+  const cas = [
+    { cout: 0.0243, trades: 484, risque: 5 },
+    { cout: 0.029, trades: 506, risque: 5 },
+    { cout: 0.0178, trades: 300, risque: 2 },
+    { cout: 0.121, trades: 120, risque: 1 },
+  ];
+  for (const { cout, trades, risque } of cas) {
+    it(`${cout} R sur ${trades} trades à ${risque} %`, () => {
+      const c = verifierCondamnation({
+        plan: plan({ gestion: { risqueParTradePct: risque } }),
+        couts: coutsPourInstrument(NAS),
+        risqueMoyenTicks: 128930,
+        tradesParAn: trades,
+        coutParTradeMesureR: cout,
+      });
+      const affiche = Number(trouver(c, "cout_structurel")!.valeurs.pct);
+      const annuel = Number(trouver(c, "cout_annuel")!.valeurs.pct);
+      // Ce que fait le lecteur avec le nombre qu'il a sous les yeux.
+      expect(((affiche / 100) * trades * risque).toFixed(1)).toBe(annuel.toFixed(1));
+    });
+  }
+});

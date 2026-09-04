@@ -5,6 +5,7 @@ import { FILTRES_MAX, mesurerConfluences } from "./confluences";
 import { socleDePlan } from "./compilation";
 import { coutsPourInstrument, instrumentParCode } from "./instruments";
 import type { PlanExecution, SerieM1 } from "./types";
+import fr from "../i18n/fr";
 
 const NAS = instrumentParCode("NAS100")!;
 
@@ -138,5 +139,50 @@ describe("aucun filtre n'est mis en avant", () => {
     const deux = mesurerConfluences(s, plan(), plan().couts, NAS).map((c) => c.type);
     const encore = mesurerConfluences(s, plan(), plan().couts, NAS).map((c) => c.type);
     expect(deux).toEqual(encore);
+  });
+});
+
+/**
+ * ⚠️⚠️ VU À L'ÉCRAN, ET LA PHRASE ÉTAIT FAUSSE DANS LES DEUX SENS.
+ *
+ *   « Bougie de réaction · 484 trades avec · 484 sans · il en écarte 0 % »
+ *   « Ce filtre ne trie rien de MESURABLE : avec ou sans lui, le résultat est
+ *     le même à l'incertitude près. Il écarte 0 % de tes trades sans rien
+ *     acheter en échange, donc il élargit ton intervalle et rend ta stratégie
+ *     MOINS démontrable. »
+ *
+ * Un filtre qui n'écarte rien ne peut pas élargir un intervalle : les deux
+ * rejeux sont le MÊME rejeu, au trade près. Et « à l'incertitude près » laisse
+ * croire à une mesure serrée là où il n'y avait rien à mesurer.
+ *
+ * ⚠️ CE N'EST PAS UN CAS DÉGÉNÉRÉ. Le trader apprend que la condition qu'il
+ * croit s'imposer ne se produit jamais sur ce marché à cette unité de temps.
+ */
+describe("un filtre qui n'écarte rien", () => {
+  const inerte = (c: { tradesAvec: number; tradesSans: number; effet: string }) =>
+    c.tradesAvec === c.tradesSans;
+
+  it("porte son propre effet, pas celui d'une mesure serrée", () => {
+    const mesures = mesurerConfluences(serie(80_000), plan(), plan().couts, NAS);
+    for (const c of mesures) {
+      if (inerte(c)) {
+        expect(c.effet, `${c.type} n'écarte rien`).toBe("inerte");
+        expect(c.partEcarteePct).toBe(0);
+      } else if (c.effet === "inerte") {
+        throw new Error(`${c.type} est dit inerte alors qu'il écarte des trades`);
+      }
+    }
+  });
+
+  /**
+   * ⚠️ ET SA PHRASE NE PARLE NI D'INTERVALLE ÉLARGI NI D'INCERTITUDE : ce
+   * sont exactement les deux mots qui rendaient l'ancienne fausse.
+   */
+  it("a une rédaction qui ne conclut rien sur la mesure", () => {
+    const texte = (fr as Record<string, string>).bt_conf_effet_inerte;
+    expect(texte).toBeTruthy();
+    expect(texte).not.toContain("incertitude");
+    expect(texte).not.toContain("élargit");
+    expect(texte).not.toContain("démontrable");
   });
 });
