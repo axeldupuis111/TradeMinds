@@ -3656,7 +3656,7 @@ const dict: Record<string, string> = {
   "bt_hors_esperance": "{r} R pro Trade",
   "bt_hors_intervalle": "Intervall [{bas} ; {haut}]",
   "bt_hors_trop_peu": "Zu wenige Trades im unberührten Zeitraum, um zu entscheiden. Das bestätigt nichts und widerlegt nichts: zähle diese Prüfung nicht als bestanden.",
-  "bt_hors_ne_survit_pas": "Der Vorteil taucht nicht wieder auf. Im Zeitraum, den du nicht angesehen hattest, liegt die Null im Intervall: was du misst, ist mit dem völligen Fehlen eines Vorteils vereinbar. Das ist das häufigste Ergebnis und genau das, was eine im Nachhinein gewählte Einstellung erzeugt.",
+  "bt_hors_ne_survit_pas": "Die Kontrolle belegt keinen Vorteil, und sie belegt auch nicht dessen Fehlen: im Zeitraum, den du nicht angesehen hattest, liegt die Null im Intervall. Das ist das häufigste Ergebnis, und genau das, was eine nachträglich gewählte Einstellung hervorbringt. Zähle diese Kontrolle nicht als bestanden.",
   "bt_hors_survit": "Der Vorteil taucht im unberührten Zeitraum wieder auf. Das ist das beste Zeichen, das hier zu haben ist, und immer noch kein Versprechen: es ist ein zweites Fenster, nicht die Zukunft.",
   "bt_hors_negatif": "Im unberührten Zeitraum verliert der Plan. Die Einstellung, die du behalten hast, beschreibt keinen Vorteil, sie beschreibt genau diesen einen Zeitraum.",
   "bt_hors_perime": "Seit dieser Prüfung hat sich eine Einstellung geändert: sie gilt nicht mehr für den angezeigten Plan. Führe sie erneut aus.",

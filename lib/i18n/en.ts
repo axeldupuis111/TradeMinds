@@ -3656,7 +3656,7 @@ const dict: Record<string, string> = {
   "bt_hors_esperance": "{r} R per trade",
   "bt_hors_intervalle": "interval [{bas} ; {haut}]",
   "bt_hors_trop_peu": "Too few trades on the untouched period to decide. This confirms nothing and denies nothing: do not count this check as passed.",
-  "bt_hors_ne_survit_pas": "The edge does not show up again. On the period you had not looked at, zero sits inside the interval: what you measure is compatible with no edge at all. This is the most common outcome, and exactly what a setting picked after the fact produces.",
+  "bt_hors_ne_survit_pas": "The control does not demonstrate an advantage, and it does not demonstrate its absence either: on the period you had not looked at, zero is inside the interval. This is the most common outcome, and it is exactly what a setting chosen after the fact produces. Do not count this control as passed.",
   "bt_hors_survit": "The edge shows up again on the untouched period. That is the best sign available here, and it is still not a promise: it is a second window, not the future.",
   "bt_hors_negatif": "On the untouched period, the plan loses. The setting you kept does not describe an edge, it describes that one period.",
   "bt_hors_perime": "A setting has moved since this check: it no longer applies to the plan on screen. Run it again.",

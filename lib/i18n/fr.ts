@@ -3656,7 +3656,7 @@ const dict: Record<string, string> = {
   "bt_hors_esperance": "{r} R par trade",
   "bt_hors_intervalle": "intervalle [{bas} ; {haut}]",
   "bt_hors_trop_peu": "Trop peu de trades sur la période intacte pour trancher. Ça ne confirme rien et ça n'infirme rien : ne compte pas ce contrôle comme réussi.",
-  "bt_hors_ne_survit_pas": "L'avantage ne se retrouve pas. Sur la période que tu n'avais pas regardée, zéro est dans l'intervalle : ce que tu mesures est compatible avec l'absence totale d'avantage. C'est le résultat le plus fréquent, et c'est exactement ce qu'un réglage choisi après coup produit.",
+  "bt_hors_ne_survit_pas": "Le contrôle ne démontre pas d'avantage, et il n'en démontre pas l'absence non plus : sur la période que tu n'avais pas regardée, zéro est dans l'intervalle. C'est le résultat le plus fréquent, et c'est exactement ce qu'un réglage choisi après coup produit. Ne compte pas ce contrôle comme réussi.",
   "bt_hors_survit": "L'avantage se retrouve sur la période intacte. C'est le meilleur signe disponible ici, et il ne vaut toujours pas une promesse : c'est une deuxième fenêtre, pas l'avenir.",
   "bt_hors_negatif": "Sur la période intacte, le plan perd. Le réglage que tu as gardé ne décrit pas un avantage, il décrit cette période-là.",
   "bt_hors_perime": "Un réglage a bougé depuis ce contrôle : il ne porte plus sur le plan affiché. Refais-le.",

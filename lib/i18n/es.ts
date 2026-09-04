@@ -3656,7 +3656,7 @@ const dict: Record<string, string> = {
   "bt_hors_esperance": "{r} R por operación",
   "bt_hors_intervalle": "intervalo [{bas} ; {haut}]",
   "bt_hors_trop_peu": "Demasiadas pocas operaciones en el periodo intacto para decidir. Esto no confirma nada y no desmiente nada: no cuentes este control como superado.",
-  "bt_hors_ne_survit_pas": "La ventaja no reaparece. En el periodo que no habías mirado, el cero está dentro del intervalo: lo que mides es compatible con la ausencia total de ventaja. Es el resultado más frecuente, y exactamente lo que produce un ajuste elegido a posteriori.",
+  "bt_hors_ne_survit_pas": "El control no demuestra ninguna ventaja, y tampoco demuestra su ausencia: en el periodo que no habías mirado, el cero está dentro del intervalo. Es el resultado más frecuente, y es exactamente lo que produce un ajuste elegido a posteriori. No cuentes este control como superado.",
   "bt_hors_survit": "La ventaja reaparece en el periodo intacto. Es la mejor señal disponible aquí, y sigue sin ser una promesa: es una segunda ventana, no el futuro.",
   "bt_hors_negatif": "En el periodo intacto, el plan pierde. El ajuste que has conservado no describe una ventaja, describe ese periodo concreto.",
   "bt_hors_perime": "Un ajuste ha cambiado desde este control: ya no se aplica al plan en pantalla. Vuelve a hacerlo.",
