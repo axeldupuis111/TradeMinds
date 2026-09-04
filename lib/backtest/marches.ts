@@ -165,6 +165,25 @@ export function lireLesMarches(resultats: ResultatMarche[]): {
   mesurables: number;
   /** Marchés mesurables AUTRES que le sien : c'est eux qui font la comparaison. */
   comparaisons: number;
+  /**
+   * Marchés dont le chiffre penche du bon côté sans que l'intervalle tranche.
+   *
+   * ⚠️⚠️ VU À L'ÉCRAN, ET C'EST LA MÊME FAUTE QUE « L'AVANTAGE NE SE RETROUVE
+   * PAS SUR LA PÉRIODE INTACTE », corrigée deux jours plus tôt sur une autre
+   * carte. Le tableau affichait :
+   *
+   *   Nasdaq 100 (le tien)  -0.130 R [-0.293 ; +0.033]
+   *   S&P 500               +0.078 R [-0.111 ; +0.267]
+   *   Dow Jones 30          +0.182 R [-0.039 ; +0.404]
+   *   DAX 40                +0.029 R [-0.183 ; +0.241]
+   *
+   * puis « L'avantage ne se retrouve NULLE PART, pas même sur ton marché
+   * d'origine ». C'est exact au sens de la démonstration, et faux au sens où on
+   * le lit : trois marchés sur quatre penchent du bon côté, dont un à deux
+   * doigts de trancher. « Nulle part » dit « il n'y en a pas » là où la mesure
+   * dit « aucun ne le prouve ».
+   */
+  penchent: number;
 } {
   const mesurables = resultats.filter((r) => !r.insuffisant);
   const retrouves = mesurables.filter((r) => r.avantageRetrouve);
@@ -178,24 +197,41 @@ export function lireLesMarches(resultats: ResultatMarche[]): {
    * sur un ensemble, et un ensemble d'un élément n'en supporte aucune.
    */
   const comparaisons = mesurables.filter((r) => !r.sien).length;
+  // ⚠️ SUR LES AUTRES MARCHÉS, comme « nulle part » : c'est la comparaison qui
+  // est en cause, pas le marché d'origine dont on sait déjà tout.
+  const penchent = mesurables.filter((r) => !r.sien && (r.esperanceR ?? 0) > 0).length;
   if (mesurables.length < 2 || comparaisons < 1) {
     return {
       verdict: "indecidable",
       retrouves: retrouves.length,
       mesurables: mesurables.length,
       comparaisons,
+      penchent,
     };
   }
   if (retrouves.length === 0) {
-    return { verdict: "nulle_part", retrouves: 0, mesurables: mesurables.length, comparaisons };
+    return {
+      verdict: "nulle_part",
+      retrouves: 0,
+      mesurables: mesurables.length,
+      comparaisons,
+      penchent,
+    };
   }
   // ⚠️ « Seul le sien » est le cas qu'il faut savoir nommer : c'est celui qui
   // ressemble le plus à une bonne nouvelle et qui en est le contraire.
   if (retrouves.length === 1 && retrouves[0].sien) {
-    return { verdict: "seul_le_sien", retrouves: 1, mesurables: mesurables.length, comparaisons };
+    return {
+      verdict: "seul_le_sien",
+      retrouves: 1,
+      mesurables: mesurables.length,
+      comparaisons,
+      penchent,
+    };
   }
   return {
     verdict: "partage",
+    penchent,
     retrouves: retrouves.length,
     mesurables: mesurables.length,
     comparaisons,

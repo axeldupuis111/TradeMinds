@@ -115,14 +115,23 @@ export function Marches({
             ensemble d'un seul élément n'en supporte aucune. Vu à l'écran sur
             l'or : une seule famille comparable, donc UN marché de comparaison,
             et l'outil concluait tout de même « nulle part ». */}
+        {/* ⚠️⚠️ « L'AVANTAGE NE SE RETROUVE NULLE PART » DIT « IL N'Y EN A PAS »
+            LÀ OÙ LA MESURE DIT « AUCUN NE LE PROUVE ». Vu à l'écran : trois
+            marchés sur quatre penchaient du bon côté, dont un à deux doigts de
+            trancher, sous cette phrase-là. C'est la même faute que « l'avantage
+            ne se retrouve pas sur la période intacte », corrigée deux jours plus
+            tôt sur une autre carte : je n'avais pas cherché les autres copies. */}
         {t(
           lecture.comparaisons === 1
             ? `bt_mar_verdict_${lecture.verdict}_un`
-            : `bt_mar_verdict_${lecture.verdict}`,
+            : lecture.verdict === "nulle_part" && lecture.penchent > 0
+              ? "bt_mar_verdict_nulle_part_penchent"
+              : `bt_mar_verdict_${lecture.verdict}`,
           {
             retrouves: lecture.retrouves,
             mesurables: lecture.mesurables,
             comparaisons: lecture.comparaisons,
+            penchent: lecture.penchent,
           },
         )}
       </p>

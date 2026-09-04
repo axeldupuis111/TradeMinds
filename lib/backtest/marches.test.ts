@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import fr from "../i18n/fr";
 import {
   amplitudeTypique,
   lireLesMarches,
@@ -242,5 +243,72 @@ describe("le nombre de comparaisons est compté à part", () => {
     const l = lireLesMarches([marche(true, false), marche(false, false, true)]);
     expect(l.comparaisons).toBe(0);
     expect(l.verdict).toBe("indecidable");
+  });
+});
+
+/**
+ * ⚠️⚠️ VU À L'ÉCRAN, ET C'EST LA MÊME FAUTE QUE « L'AVANTAGE NE SE RETROUVE PAS
+ * SUR LA PÉRIODE INTACTE », corrigée deux jours plus tôt sur une autre carte.
+ * Je n'avais pas cherché les autres copies.
+ *
+ *   Nasdaq 100 (le tien)  -0.130 R [-0.293 ; +0.033]
+ *   S&P 500               +0.078 R [-0.111 ; +0.267]
+ *   Dow Jones 30          +0.182 R [-0.039 ; +0.404]
+ *   DAX 40                +0.029 R [-0.183 ; +0.241]
+ *
+ * puis « L'avantage ne se retrouve NULLE PART, pas même sur ton marché
+ * d'origine ». Exact au sens de la démonstration, faux au sens où on le lit :
+ * trois marchés sur quatre penchent du bon côté, dont un à deux doigts de
+ * trancher. « Nulle part » dit « il n'y en a pas » là où la mesure dit « aucun
+ * ne le prouve ».
+ */
+describe("« nulle part » quand les chiffres penchent du bon côté", () => {
+  const m = (
+    code: string,
+    esperanceR: number,
+    sien = false,
+  ): ResultatMarche => ({
+    code,
+    nom: code,
+    trades: 200,
+    esperanceR,
+    borneBasse: esperanceR - 0.2,
+    borneHaute: esperanceR + 0.2,
+    avantageRetrouve: false,
+    insuffisant: false,
+    sien,
+    moisManquants: 0,
+  });
+
+  it("compte les marchés de comparaison qui penchent, pas le sien", () => {
+    const l = lireLesMarches([
+      m("NAS100", -0.13, true),
+      m("SPX500", 0.078),
+      m("US30", 0.182),
+      m("DAX40", 0.029),
+    ]);
+    expect(l.verdict).toBe("nulle_part");
+    expect(l.penchent).toBe(3);
+  });
+
+  /**
+   * ⚠️ QUAND RIEN NE PENCHE, LA PHRASE D'ORIGINE EST LA BONNE : elle n'est
+   * fausse que lorsqu'elle contredit ce que le tableau montre.
+   */
+  it("ne compte rien quand tous les autres marchés perdent", () => {
+    const l = lireLesMarches([
+      m("NAS100", -0.13, true),
+      m("SPX500", -0.08),
+      m("US30", -0.02),
+    ]);
+    expect(l.verdict).toBe("nulle_part");
+    expect(l.penchent).toBe(0);
+  });
+
+  it("a une rédaction qui ne nie pas ce que le tableau montre", () => {
+    const texte = (fr as Record<string, string>).bt_mar_verdict_nulle_part_penchent;
+    expect(texte).toContain("{penchent}");
+    expect(texte).toContain("{comparaisons}");
+    expect(texte).not.toContain("nulle part");
   });
 });

@@ -112,7 +112,19 @@ export function Versions({
         <Archive className="h-4 w-4" />
         {t("bt_ver_titre")}
       </h4>
-      <p className="mt-1 text-xs leading-relaxed text-foreground-muted">{t("bt_ver_intro")}</p>
+      {/**
+        * ⚠️⚠️ VU À L'ÉCRAN, AVEC UNE SEULE VERSION ENREGISTRÉE : « Coche deux
+        * versions pour voir ce qui les sépare vraiment », puis, plus bas,
+        * « Coche deux versions pour les comparer. » Deux fois une consigne
+        * qu'aucun clic ne peut satisfaire, sous une liste qui n'a qu'une ligne.
+        *
+        * ⚠️ UNE CONSIGNE IMPOSSIBLE N'EST PAS UN DÉTAIL D'ERGONOMIE : le trader
+        * cherche la deuxième case, ne la trouve pas, et conclut que quelque
+        * chose ne marche pas.
+        */}
+      <p className="mt-1 text-xs leading-relaxed text-foreground-muted">
+        {t(versions.length >= 2 ? "bt_ver_intro" : "bt_ver_intro_une")}
+      </p>
 
       <ul className="mt-4 space-y-2">
         {versions.map((v) => {
@@ -215,11 +227,13 @@ export function Versions({
         })}
       </ul>
 
-      {a && b ? <Comparaison a={a} b={b} t={t} /> : (
+      {a && b ? (
+        <Comparaison a={a} b={b} t={t} />
+      ) : versions.length >= 2 ? (
         <p className="mt-3 text-[11px] leading-snug text-foreground-muted">
           {t("bt_ver_comment_comparer")}
         </p>
-      )}
+      ) : null}
     </Card>
   );
 }
