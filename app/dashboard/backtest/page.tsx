@@ -94,7 +94,13 @@ import {
   sansCodeInterne,
 } from "@/lib/backtest/phrases";
 import { methodeParCode } from "@/lib/backtest/methodes";
-import { composerDepart, departsPossibles, type Depart as UnDepart } from "@/lib/backtest/depart";
+import {
+  composerDepart,
+  departsPossibles,
+  STYLE_PAR_DEFAUT,
+  type Depart as UnDepart,
+  type StyleDeTrader,
+} from "@/lib/backtest/depart";
 import { CODES_QUESTIONS, evaluerCompletude } from "@/lib/backtest/completude";
 import { verifierCondamnation } from "@/lib/backtest/condamnation";
 import { prochaineEtape } from "@/lib/backtest/prochaine-etape";
@@ -398,6 +404,16 @@ export default function BacktestPage() {
    * et une confirmation qui survivrait au changement ne confirmerait plus rien.
    */
   const [verifie, setVerifie] = useState(false);
+  /**
+   * Comment il trade, tel qu'il le déclare.
+   *
+   * ⚠️⚠️ DEUX DIMENSIONS QUE LE JOURNAL NE PEUT PAS DEVINER : « certains
+   * travaillent avec des sell/buy limit, d'autres tradent en direct », « certains
+   * aiment plein de confirmations, d'autres cherchent une stratégie simple à
+   * appliquer ». Aucune ligne de résultat ne dit s'il pose des ordres en
+   * attente : ça se déclare.
+   */
+  const [style, setStyle] = useState<StyleDeTrader>(STYLE_PAR_DEFAUT);
 
   const [sauvegarde, setSauvegarde] = useState<"repos" | "encours" | "ok" | "erreur">("repos");
 
@@ -1252,10 +1268,16 @@ export default function BacktestPage() {
             risqueParTradePct: plan.gestion.risqueParTradePct,
             maxTradesParJour: plan.gestion.maxTradesParJour,
             maxPertesConsecutives: plan.gestion.maxPertesConsecutives,
+            // ⚠️⚠️ CE QU'IL A DÉCLARÉ DE SA FAÇON DE TRADER. Une base qui entre
+            // au marché n'est pas la même méthode qu'une base qui pose une
+            // limite au niveau : le risque, donc le rapport gain/risque, change
+            // sur exactement le même signal.
+            entree: style.entree,
+            tolerance: style.tolerance,
           }),
         )
         .filter((d): d is UnDepart => d != null),
-    [instrument, plan.couts, plan.gestion, fuseau, heuresReelles],
+    [instrument, plan.couts, plan.gestion, fuseau, heuresReelles, style],
   );
 
   /**
@@ -1973,7 +1995,14 @@ export default function BacktestPage() {
             et son risque. Elles ne promettent rien ; elles donnent un point de
             départ complet, ce que l'outil ne savait pas faire. */}
         <StaggerItem id="bt-departs">
-          <Depart departs={departs} enCours={occupe} onEssayer={essayerUnDepart} t={tr} />
+          <Depart
+            departs={departs}
+            enCours={occupe}
+            style={style}
+            onStyle={setStyle}
+            onEssayer={essayerUnDepart}
+            t={tr}
+          />
         </StaggerItem>
 
         {/* ── 6. Lancer ──────────────────────────────────────────────────── */}

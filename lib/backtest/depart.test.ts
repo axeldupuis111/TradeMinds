@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { composerDepart, departsPossibles } from "./depart";
+import { STYLE_PAR_DEFAUT, type StyleDeTrader, composerDepart, departsPossibles } from "./depart";
 import { besoinsNonCouverts, methodeParCode, METHODES } from "./methodes";
 import { coutsPourInstrument, instrumentParCode } from "./instruments";
+import de from "../i18n/de";
+import en from "../i18n/en";
+import es from "../i18n/es";
 import fr from "../i18n/fr";
 
 const NAS = instrumentParCode("NAS100")!;
@@ -167,5 +170,104 @@ describe("aucune promesse de rentabilité", () => {
     const avant = departsPossibles(NAS).map((m) => m.code);
     const ordre = METHODES.filter((m) => avant.includes(m.code)).map((m) => m.code);
     expect(avant).toEqual(ordre);
+  });
+});
+
+/**
+ * ⚠️⚠️ ADAPTER LA STRATÉGIE À CHAQUE UTILISATEUR, ÉNONCÉ PAR AXEL :
+ *
+ *   « Certains aiment plein de confirmations, d'autres cherchent une stratégie
+ *     simple à appliquer, certains travaillent avec des sell/buy limit, d'autres
+ *     tradent en direct. Il y a énormément de profils et l'objectif de l'onglet
+ *     backtest est justement d'adapter la stratégie à chaque utilisateur. »
+ *
+ * Le moteur savait rejouer les deux façons d'entrer depuis le début, et TOUTES
+ * les bases proposées entraient au marché.
+ */
+describe("les bases suivent la façon de trader qu'il déclare", () => {
+  const base = (style: Partial<StyleDeTrader> = {}) =>
+    composerDepart(
+      METHODES.find((m) => m.code === "cassure_structure")!,
+      NAS,
+      coutsPourInstrument(NAS),
+      "Europe/Paris",
+      { ...STYLE_PAR_DEFAUT, ...style },
+    );
+
+  /**
+   * ⚠️ CE N'EST PAS UN DÉTAIL DE CONFORT. L'ordre limite entre AU niveau, donc
+   * plus près du stop, donc avec un risque plus petit et un rapport gain/risque
+   * différent sur exactement le même signal.
+   */
+  it("pose un ordre en attente quand il en pose", () => {
+    expect(base({ entree: "limite" })!.plan.entree.type).toBe("limite_au_niveau");
+    expect(base({ entree: "marche" })!.plan.entree.type).toBe("open_bougie_suivante");
+  });
+
+  /**
+   * ⚠️ UNE LIMITE QUI TRAÎNE N'EST PLUS LA MÉTHODE, c'est un ordre oublié : elle
+   * porte une validité.
+   */
+  it("donne une validité à l'ordre en attente", () => {
+    const e = base({ entree: "limite" })!.plan.entree;
+    expect(e.type === "limite_au_niveau" && e.valableNBarres > 0).toBe(true);
+  });
+
+  it("le dit au trader plutôt que de le faire en silence", () => {
+    expect(base({ entree: "limite" })!.adapte).toContain("entree");
+    expect(base({ entree: "marche" })!.adapte).not.toContain("entree");
+  });
+
+  /**
+   * ⚠️⚠️ ON NE SIMPLIFIE QUE CE QUI A UNE FORME SIMPLE ÉQUIVALENTE. Un balayage
+   * de liquidité ramené à une cassure n'est plus la même méthode : la remplacer
+   * en silence donnerait une base qui ne fait pas ce que son nom annonce.
+   */
+  it("ne simplifie que les déclencheurs qui ont un équivalent", () => {
+    const retest = METHODES.find((m) => m.squelette?.declencheur === "retest_apres_cassure");
+    if (retest) {
+      const simple = composerDepart(retest, NAS, coutsPourInstrument(NAS), "Europe/Paris", {
+        tolerance: "simple",
+      })!;
+      expect(simple.plan.declencheur.type).toBe("cassure");
+      expect(simple.adapte).toContain("simplicite");
+    }
+    const balayage = METHODES.find((m) => m.squelette?.declencheur === "balayage_puis_fvg");
+    if (balayage) {
+      const garde = composerDepart(balayage, NAS, coutsPourInstrument(NAS), "Europe/Paris", {
+        tolerance: "simple",
+      })!;
+      expect(garde.plan.declencheur.type).toBe("balayage_puis_fvg");
+      expect(garde.adapte).not.toContain("simplicite");
+    }
+  });
+
+  /**
+   * ⚠️ LA TOLÉRANCE NE POSE AUCUN FILTRE. Zéro au départ pour tout le monde : un
+   * filtre ajouté d'emblée ne se distingue pas d'un filtre choisi parce qu'il
+   * améliore le chiffre.
+   */
+  it("ne pose aucun filtre, quelle que soit la tolérance", () => {
+    for (const tolerance of ["simple", "confluente"] as const) {
+      expect(base({ tolerance })!.plan.confirmations).toEqual([]);
+    }
+  });
+
+  it("a une rédaction pour chaque adaptation, dans les quatre langues", () => {
+    for (const [nom, dico] of Object.entries({ fr, en, es, de })) {
+      for (const a of ["entree", "simplicite", "marche", "heures", "jours", "risque", "garde_fous"]) {
+        expect((dico as Record<string, string>)[`bt_dep_adapte_${a}`], `${a} en ${nom}`).toBeTruthy();
+      }
+      for (const cle of [
+        "bt_dep_style_titre",
+        "bt_dep_style_aide",
+        "bt_dep_style_entree_marche",
+        "bt_dep_style_entree_limite",
+        "bt_dep_style_tolerance_simple",
+        "bt_dep_style_tolerance_confluente",
+      ]) {
+        expect((dico as Record<string, string>)[cle], `${cle} en ${nom}`).toBeTruthy();
+      }
+    }
   });
 });

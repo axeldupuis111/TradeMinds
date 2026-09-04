@@ -44,6 +44,26 @@ import type { PlanExecution } from "./types";
  */
 
 /** Ce qu'on sait du trader, et qui sert à adapter la base. */
+/**
+ * Ce que le trader déclare de sa façon de trader.
+ *
+ * ⚠️ SÉPARÉ DE `ProfilDeDepart`, qui vient du journal. Celui-ci vient de lui :
+ * aucune ligne de résultat ne dit s'il pose des ordres en attente.
+ */
+export interface StyleDeTrader {
+  entree: "marche" | "limite";
+  tolerance: "simple" | "confluente";
+}
+
+/** Ce qu'on suppose tant qu'il n'a rien dit. */
+export const STYLE_PAR_DEFAUT: StyleDeTrader = {
+  // ⚠️ L'ENTRÉE AU MARCHÉ EST LE DÉFAUT PARCE QU'ELLE EST LE PIRE CAS : elle
+  // paye le spread en entier et entre plus loin du niveau. Une base qui tient
+  // debout au marché tient debout à la limite ; l'inverse n'est pas vrai.
+  entree: "marche",
+  tolerance: "confluente",
+};
+
 export interface ProfilDeDepart {
   /**
    * La fenêtre horaire où il prend réellement ses positions.
@@ -60,6 +80,34 @@ export interface ProfilDeDepart {
   /** Ses garde-fous déjà posés, qu'on ne remplace pas. */
   maxTradesParJour?: number;
   maxPertesConsecutives?: number;
+  /**
+   * Comment il entre : au marché, ou avec un ordre en attente sur le niveau.
+   *
+   * ⚠️⚠️ DEUX FAÇONS DE TRADER QUE RIEN NE DEMANDAIT, et Axel les a nommées
+   * explicitement : « certains travaillent avec des sell/buy limit, d'autres
+   * tradent en direct ». Le moteur savait rejouer les deux depuis le début, et
+   * toutes les bases proposées entraient au marché.
+   *
+   * Ce n'est pas un détail de confort : l'ordre limite entre AU niveau, donc
+   * plus près du stop, donc avec un risque plus petit et un rapport gain/risque
+   * différent sur exactement le même signal. Proposer une base au marché à
+   * quelqu'un qui pose des limites, c'est lui proposer une autre méthode.
+   */
+  entree?: "marche" | "limite";
+  /**
+   * Combien de conditions il accepte de tenir devant son écran.
+   *
+   * ⚠️⚠️ L'AUTRE DIMENSION NOMMÉE : « certains aiment plein de confirmations,
+   * d'autres cherchent une stratégie simple à appliquer. » Ce n'est pas une
+   * question de rigueur, c'est une question de ce qu'un humain tient en séance.
+   *
+   * ⚠️ ELLE NE CHANGE PAS LE NOMBRE DE FILTRES POSÉS AU DÉPART, qui reste zéro
+   * pour tout le monde : un filtre ajouté d'emblée ne se distingue pas d'un
+   * filtre choisi parce qu'il améliore le chiffre. Elle décide du DÉCLENCHEUR :
+   * une cassure simple se lit d'un coup d'œil, un balayage suivi d'un retour
+   * dans un déséquilibre demande de suivre trois choses à la fois.
+   */
+  tolerance?: "simple" | "confluente";
 }
 
 export interface Depart {
@@ -73,7 +121,7 @@ export interface Depart {
    * ⚠️ Écrit à l'écran : une base « adaptée » dont personne ne dit ce qui a été
    * adapté ressemble à un tour de passe-passe.
    */
-  adapte: ("heures" | "jours" | "risque" | "garde_fous" | "marche")[];
+  adapte: ("heures" | "jours" | "risque" | "garde_fous" | "marche" | "entree" | "simplicite")[];
 }
 
 /**
@@ -127,6 +175,36 @@ function heurePlus(hhmm: string, minutes: number): string {
  * de son heure n'est pas la même méthode : lui proposer « ta » version d'un
  * opening range à 20 h serait lui proposer autre chose sous le même nom.
  */
+/**
+ * Le déclencheur que ce trader peut réellement tenir.
+ *
+ * ⚠️⚠️ « Certains aiment plein de confirmations, d'autres cherchent une
+ * stratégie simple à appliquer. » Une méthode dont le déclencheur demande de
+ * suivre un balayage, puis un retour, puis un déséquilibre, n'est pas plus
+ * rigoureuse : elle est plus dure à appliquer sans hésiter, et l'hésitation est
+ * exactement ce que cet onglet existe pour supprimer.
+ *
+ * ⚠️ ON NE SIMPLIFIE QUE CE QUI A UNE FORME SIMPLE ÉQUIVALENTE. Un balayage de
+ * liquidité ramené à une cassure n'est plus la même méthode, et la remplacer en
+ * silence donnerait au trader une base qui ne fait pas ce que son nom annonce.
+ * Les méthodes qui n'ont pas d'équivalent simple gardent le leur.
+ */
+type Declencheur = NonNullable<NonNullable<Methode["squelette"]>["declencheur"]>;
+
+function declencheurSelonLeProfil(
+  declencheur: Declencheur,
+  profil: ProfilDeDepart,
+): Declencheur {
+  if (profil.tolerance !== "simple") return declencheur;
+  const PLUS_SIMPLE: Partial<Record<Declencheur, Declencheur>> = {
+    // Un retest après cassure se joue à la cassure, sur le même niveau.
+    retest_apres_cassure: "cassure",
+    // Une cassure avec déséquilibre puis retest, de même.
+    fvg_puis_retest: "cassure",
+  };
+  return PLUS_SIMPLE[declencheur] ?? declencheur;
+}
+
 export function composerDepart(
   methode: Methode,
   instrument: Instrument,
@@ -152,6 +230,10 @@ export function composerDepart(
   });
   if (!niveau) return null;
 
+  if (profil.entree === "limite") adapte.push("entree");
+  if (profil.tolerance === "simple" && declencheurSelonLeProfil(s.declencheur, profil) !== s.declencheur) {
+    adapte.push("simplicite");
+  }
   if (profil.risqueParTradePct) adapte.push("risque");
   if (profil.maxTradesParJour || profil.maxPertesConsecutives) adapte.push("garde_fous");
 
@@ -169,13 +251,24 @@ export function composerDepart(
         jours: jours as PlanExecution["contexte"]["jours"],
       },
       niveau,
-      declencheur: declencheurStandard(s.declencheur, instrument),
+      declencheur: declencheurStandard(declencheurSelonLeProfil(s.declencheur, profil), instrument),
       // ⚠️ AUCUN FILTRE AU DÉPART, ET C'EST VOLONTAIRE. Un filtre ajouté
       // d'emblée ne se distingue pas d'un filtre choisi parce qu'il améliore le
       // chiffre. La carte des confluences existe pour les mesurer ensuite, une
       // par une, sur une base déjà posée.
       confirmations: [],
-      entree: { type: "open_bougie_suivante" },
+      /**
+       * ⚠️⚠️ « Certains travaillent avec des sell/buy limit, d'autres tradent
+       * en direct. » Le moteur rejouait les deux depuis le début, et toutes les
+       * bases proposées entraient au marché.
+       */
+      entree:
+        profil.entree === "limite"
+          ? // ⚠️ UNE VALIDITÉ, PAS UN ORDRE ÉTERNEL. Une limite qui traîne dix
+            // séances n'est plus la méthode : c'est un ordre oublié. Cinq
+            // bougies, comme la fenêtre d'un retest.
+            { type: "limite_au_niveau" as const, valableNBarres: 5 }
+          : { type: "open_bougie_suivante" as const },
       stop: { type: "dernier_pivot", bufferTicks: Math.max(1, Math.round(instrument.spread * 2 / instrument.tailleTick)) },
       objectif: { type: "multiple_r", r: OBJECTIF_PAR_DEFAUT },
       sortiesAuxiliaires: {},

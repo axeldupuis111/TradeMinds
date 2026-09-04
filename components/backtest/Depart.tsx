@@ -1,7 +1,7 @@
 "use client";
 
 import { Card } from "@/components/ui/Card";
-import type { Depart as UnDepart } from "@/lib/backtest/depart";
+import type { Depart as UnDepart, StyleDeTrader } from "@/lib/backtest/depart";
 import { Compass, Loader2 } from "lucide-react";
 
 /**
@@ -27,12 +27,103 @@ import { Compass, Loader2 } from "lucide-react";
  * ⚠️ CHAQUE BASE ESSAYÉE COMPTE COMME UN ESSAI, et l'écran le dit avant les
  * boutons, pas après.
  */
+/**
+ * Comment il trade, en deux questions.
+ *
+ * ⚠️⚠️ DEUX DIMENSIONS QUE RIEN NE DEMANDAIT, ET QU'AXEL A NOMMÉES :
+ *
+ *   « Certains aiment plein de confirmations, d'autres cherchent une stratégie
+ *     simple à appliquer, certains travaillent avec des sell/buy limit, d'autres
+ *     tradent en direct. Il y a énormément de profils et l'objectif de l'onglet
+ *     backtest est justement d'adapter la stratégie à chaque utilisateur. »
+ *
+ * Le journal sait dire QUEL marché il trade et À QUELLE HEURE. Il ne dira jamais
+ * s'il pose des ordres en attente ou s'il entre au marché : ça ne se déduit
+ * d'aucune ligne de résultat, ça se déclare.
+ *
+ * ⚠️ DEUX BOUTONS, PAS UN FORMULAIRE. Chaque question de plus est une question
+ * à laquelle il faut répondre avant d'obtenir quoi que ce soit, et la page en
+ * demande déjà treize ailleurs.
+ */
+function CommentTuTrades({
+  style,
+  onChanger,
+  t,
+}: {
+  style: StyleDeTrader;
+  onChanger: (s: StyleDeTrader) => void;
+  t: (cle: string, valeurs?: Record<string, string | number>) => string;
+}) {
+  const Choix = ({
+    valeur,
+    actif,
+    onClic,
+  }: {
+    valeur: string;
+    actif: boolean;
+    onClic: () => void;
+  }) => (
+    <button
+      type="button"
+      onClick={onClic}
+      className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
+        actif
+          ? "border-accent bg-accent/10 text-foreground"
+          : "border-border text-foreground-muted hover:bg-surface"
+      }`}
+    >
+      {t(valeur)}
+    </button>
+  );
+
+  return (
+    <div className="mt-3 rounded-lg border border-border/60 bg-background/40 p-3">
+      <p className="text-[11px] font-medium text-foreground">{t("bt_dep_style_titre")}</p>
+      <p className="mt-0.5 text-[11px] leading-snug text-foreground-muted">
+        {t("bt_dep_style_aide")}
+      </p>
+      <div className="mt-2.5 flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] text-foreground-muted">{t("bt_dep_style_entree")}</span>
+          <Choix
+            valeur="bt_dep_style_entree_marche"
+            actif={style.entree !== "limite"}
+            onClic={() => onChanger({ ...style, entree: "marche" })}
+          />
+          <Choix
+            valeur="bt_dep_style_entree_limite"
+            actif={style.entree === "limite"}
+            onClic={() => onChanger({ ...style, entree: "limite" })}
+          />
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] text-foreground-muted">{t("bt_dep_style_tolerance")}</span>
+          <Choix
+            valeur="bt_dep_style_tolerance_simple"
+            actif={style.tolerance === "simple"}
+            onClic={() => onChanger({ ...style, tolerance: "simple" })}
+          />
+          <Choix
+            valeur="bt_dep_style_tolerance_confluente"
+            actif={style.tolerance !== "simple"}
+            onClic={() => onChanger({ ...style, tolerance: "confluente" })}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function Depart({
   departs,
   enCours,
+  style,
+  onStyle,
   onEssayer,
   t,
 }: {
+  style: StyleDeTrader;
+  onStyle: (s: StyleDeTrader) => void;
   departs: UnDepart[];
   enCours: boolean;
   onEssayer: (d: UnDepart) => void;
@@ -48,6 +139,11 @@ export function Depart({
       <p className="mt-2 text-[11px] leading-relaxed text-foreground-muted">
         {t("bt_dep_pourquoi")}
       </p>
+
+      {/* ⚠️⚠️ AVANT LA LISTE, PARCE QUE ÇA LA CHANGE. Les bases se montent sur
+          ces deux réponses : les poser après reviendrait à faire lire une liste
+          qui se réécrit sous les yeux du trader. */}
+      <CommentTuTrades style={style} onChanger={onStyle} t={t} />
 
       {/* ⚠️ CE QUE ÇA COÛTE, DIT AVANT LES BOUTONS. En essayer huit et garder
           la meilleure serait le même sur-apprentissage, simplement déplacé. */}
