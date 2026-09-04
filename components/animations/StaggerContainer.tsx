@@ -35,15 +35,35 @@ export default function StaggerContainer({ children, className = "", staggerDela
   );
 }
 
-export function StaggerItem({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+export function StaggerItem({
+  children,
+  className = "",
+  id,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  /**
+   * Ancre de defilement.
+   *
+   * ⚠️ La page de backtest fait neuf ecrans de haut : sa carte « la prochaine
+   * chose a faire » doit pouvoir amener le trader au bloc concerne plutot que
+   * de lui demander de le chercher.
+   */
+  id?: string;
+}) {
   const prefersReducedMotion = useReducedMotion();
 
   if (prefersReducedMotion) {
-    return <div className={className}>{children}</div>;
+    return (
+      <div className={className} id={id}>
+        {children}
+      </div>
+    );
   }
 
   return (
     <motion.div
+      id={id}
       className={className}
       variants={{
         hidden: { opacity: 0, y: 20 },

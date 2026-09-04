@@ -97,6 +97,8 @@ import { methodeParCode } from "@/lib/backtest/methodes";
 import { composerDepart, departsPossibles, type Depart as UnDepart } from "@/lib/backtest/depart";
 import { CODES_QUESTIONS, evaluerCompletude } from "@/lib/backtest/completude";
 import { verifierCondamnation } from "@/lib/backtest/condamnation";
+import { prochaineEtape } from "@/lib/backtest/prochaine-etape";
+import { ProchaineEtape } from "@/components/backtest/ProchaineEtape";
 import { confronterAuProfil, lireLeProfil, type TradeReel } from "@/lib/backtest/profil";
 import { enregistrerVersion } from "@/lib/backtest/enregistrement";
 import { nomDuFichier, tradesEnCsv } from "@/lib/backtest/export-csv";
@@ -1561,6 +1563,59 @@ export default function BacktestPage() {
     URL.revokeObjectURL(url);
   }, [resultat, instrument, code, de, a, plan.contexte.fuseau, tr]);
 
+  /**
+   * LA SEULE CHOSE À FAIRE MAINTENANT.
+   *
+   * ⚠️⚠️ LA PAGE FAIT NEUF ÉCRANS DE HAUT AVANT MÊME D'AVOIR MESURÉ QUOI QUE
+   * CE SOIT : 3 031 mots, 47 boutons, 20 titres, et 38 titres une fois l'analyse
+   * complète passée. Chaque carte répond à une vraie question, et aucune ne dit
+   * par où commencer. C'est le reproche qu'Axel a formulé trois fois sous trois
+   * formes : « il me montre des chiffres sans changer ma stratégie », « il ne
+   * trouve pas de moyen de l'améliorer », « j'avais fait un tribunal, il voulait
+   * un atelier ».
+   *
+   * ⚠️ ELLE NE CACHE RIEN ET NE RÉSUME RIEN. Tout est toujours en dessous, dans
+   * l'ordre. C'est une entrée, pas un filtre.
+   */
+  const etape = useMemo(
+    () =>
+      prochaineEtape({
+        planPret: planFiche != null || resultat != null,
+        // Les blocs que l'IA a tranchés seule, et que le trader n'a pas refusés.
+        // ⚠️ Seulement les blocs CRITIQUES, et seulement ceux qu'il n'a pas
+        // encore refuses : « il manque le fuseau horaire » n'est pas du meme
+        // ordre que « l'IA a choisi ton declencheur a ta place ».
+        interpretations: (couverture?.deduites ?? []).filter(
+          (d) => graviteDuChamp(d.champ) === "critique" && !contestes.has(d.champ),
+        ).length,
+        condamnations,
+        profil: constatsProfil,
+        trades: resultat?.lecture.stats?.nbTrades ?? null,
+        mecaniqueVerifiee: verifie,
+        analyseFaite: resultat?.confluences != null,
+        synthese,
+      }),
+    [planFiche, resultat, couverture, contestes, condamnations, constatsProfil, verifie, synthese],
+  );
+
+  /**
+   * Le geste de la carte.
+   *
+   * ⚠️ DEUX ÉTAPES SONT L'ACTION ELLE-MÊME (lancer, analyser) : les envoyer
+   * vers une ancre ferait descendre le trader jusqu'à un bouton qu'on aurait pu
+   * cliquer pour lui. Les autres pointent un bloc à lire, et là c'est à lui de
+   * décider.
+   */
+  const agirSurLEtape = useCallback(
+    (ancre: string | null, code: string) => {
+      if (code === "lancer") return void lancer();
+      if (code === "analyser") return void analyserAFond();
+      if (!ancre) return;
+      document.getElementById(ancre)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
+    [lancer, analyserAFond],
+  );
+
   if (!estPremium) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-10">
@@ -1598,8 +1653,18 @@ export default function BacktestPage() {
       </Card>
 
       <StaggerContainer className="space-y-5">
-        {/* ── 1. Le périmètre ────────────────────────────────────────────── */}
+        {/* ── 0. La seule chose à faire maintenant ────────────────────────
+            ⚠️⚠️ EN TÊTE DE TOUT, ET C'EST LE POINT DE CETTE CARTE. La page fait
+            neuf écrans avant même d'avoir mesuré quoi que ce soit : 3 031 mots,
+            47 boutons, 20 titres, et 38 une fois l'analyse passée. Chaque carte
+            répond à une vraie question, et aucune ne disait par où commencer.
+            ⚠️ Elle ne cache rien : tout reste en dessous, dans le même ordre. */}
         <StaggerItem>
+          <ProchaineEtape etape={etape} onAgir={agirSurLEtape} enCours={occupe} t={tr} />
+        </StaggerItem>
+
+        {/* ── 1. Le périmètre ────────────────────────────────────────────── */}
+        <StaggerItem id="bt-periode">
           <Card>
             <CardTitle className="mb-4">{tr("bt_etape_perimetre")}</CardTitle>
             <div className="grid gap-3 sm:grid-cols-3">
@@ -1650,7 +1715,7 @@ export default function BacktestPage() {
         </StaggerItem>
 
         {/* ── 2. Partir de sa fiche ──────────────────────────────────────── */}
-        <StaggerItem>
+        <StaggerItem id="bt-fiche">
           <Card>
             <CardTitle className="mb-1">{tr("bt_etape_fiche")}</CardTitle>
             <p className="mb-4 text-xs text-foreground-muted">{tr("bt_etape_fiche_aide")}</p>
@@ -1790,13 +1855,13 @@ export default function BacktestPage() {
             c'est tout ce que cette page peut lui donner, et c'est déjà
             beaucoup. */}
         {condamnations.length > 0 ? (
-          <StaggerItem>
+          <StaggerItem id="bt-condamnation">
             <Condamnation constats={condamnations} t={tr} />
           </StaggerItem>
         ) : null}
 
         {constatsProfil.length > 0 ? (
-          <StaggerItem>
+          <StaggerItem id="bt-profil">
             <Profil
               constats={constatsProfil}
               marcheReel={marcheReelTestable}
@@ -1832,7 +1897,7 @@ export default function BacktestPage() {
             bases-là viennent du référentiel, montées sur son marché, ses heures
             et son risque. Elles ne promettent rien ; elles donnent un point de
             départ complet, ce que l'outil ne savait pas faire. */}
-        <StaggerItem>
+        <StaggerItem id="bt-departs">
           <Depart departs={departs} enCours={occupe} onEssayer={essayerUnDepart} t={tr} />
         </StaggerItem>
 
@@ -1880,7 +1945,7 @@ export default function BacktestPage() {
 
         {/* ── 5. Le résultat ─────────────────────────────────────────────── */}
         {resultat && resultat.apercus.length > 0 ? (
-          <StaggerItem>
+          <StaggerItem id="bt-apercus">
             <Inspection
               apercus={resultat.apercus}
               instrument={instrument}
@@ -2063,7 +2128,7 @@ export default function BacktestPage() {
             cohérent, mes confluences servent-elles) doit se lire AVANT la
             décomposition et l'export, pas trois cartes plus bas. */}
         {resultat && synthese ? (
-          <StaggerItem>
+          <StaggerItem id="bt-analyse">
             <Analyse
               synthese={synthese}
               constats={resultat.constats}
@@ -2165,7 +2230,7 @@ export default function BacktestPage() {
             et une fiche compilée : sans référence, il n'y a rien à enregistrer,
             et sans résultat, il n'y a rien à contrôler. */}
         {resultat && planFiche ? (
-          <StaggerItem>
+          <StaggerItem id="bt-enregistrer">
             <Enregistrer
               fenetre={fenetreIntacte}
               periodeSuggeree={periodeSuggeree}
