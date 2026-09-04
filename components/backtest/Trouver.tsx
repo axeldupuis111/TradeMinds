@@ -6,14 +6,12 @@ import { signe as r } from "@/lib/backtest/format";
 import type { Exploration } from "@/lib/backtest/exploration";
 import type { Modification } from "@/lib/backtest/modifications";
 import type { PlanComplet } from "@/lib/backtest/plan-complet";
+import { phraseDuPlan } from "@/lib/backtest/phrases";
 import {
   nommer,
   NOM_CONFIRMATION,
   NOM_DECLENCHEUR,
   NOM_NIVEAU,
-  NOM_OBJECTIF,
-  NOM_SENS,
-  NOM_STOP,
 } from "@/lib/backtest/noms";
 import { MIN_TRADES_CONCLUSION } from "@/lib/backtest/verdict";
 import { AlertTriangle, CheckCircle2, Compass, ClipboardList } from "lucide-react";
@@ -276,29 +274,8 @@ function PlanEcrit({
   t: (cle: string, params?: Record<string, string | number>) => string;
 }) {
   const confirme = etat === "confirme";
-  const traduire = (cle: string, valeurs: Record<string, string | number>) => {
-    if (cle === "niveau") return t("bt_plan_niveau", { type: nommer(NOM_NIVEAU, String(valeurs.type), t) });
-    if (cle === "declencheur") {
-      return t("bt_plan_declencheur", { type: nommer(NOM_DECLENCHEUR, String(valeurs.type), t) });
-    }
-    if (cle === "sens") return t("bt_plan_sens", { sens: nommer(NOM_SENS, String(valeurs.sens), t) });
-    if (cle === "stop") return t("bt_plan_stop", { type: nommer(NOM_STOP, String(valeurs.type), t) });
-    if (cle === "objectif") {
-      return t("bt_plan_objectif", {
-        type: nommer(NOM_OBJECTIF, String(valeurs.type), t),
-        r: valeurs.r,
-      });
-    }
-    if (cle === "confirmations") {
-      if (!valeurs.n) return t("bt_plan_confirmations_aucune");
-      const liste = String(valeurs.liste)
-        .split(", ")
-        .map((x) => nommer(NOM_CONFIRMATION, x, t))
-        .join(", ");
-      return t("bt_plan_confirmations", { liste });
-    }
-    return t(`bt_plan_${cle}`, valeurs);
-  };
+  /* La composition vit dans `lib/backtest/phrases.ts`, où un test la relit
+     dans les quatre langues sur toutes les natures de blocs. */
 
   return (
     <div className="mt-5 border-t border-border pt-4">
@@ -358,7 +335,7 @@ function PlanEcrit({
           <li key={l.cle} className="flex items-start gap-2.5">
             <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
             <span className="min-w-0 text-xs leading-relaxed text-foreground">
-              {traduire(l.cle, l.valeurs)}
+              {phraseDuPlan(l, t)}
               {l.deduite ? (
                 <span className="ml-1.5 text-[10px] text-foreground-muted">
                   ({t("bt_plan_deduit")})

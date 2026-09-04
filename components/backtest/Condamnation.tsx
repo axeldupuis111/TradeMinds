@@ -2,7 +2,7 @@
 
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
-import { LIGNES_POSSIBLES, type Constat, type Gravite } from "@/lib/backtest/condamnation";
+import { clePourLeConstat, LIGNES_POSSIBLES, type Constat, type Gravite } from "@/lib/backtest/condamnation";
 import { AlertTriangle, Calculator, Info, TriangleAlert } from "lucide-react";
 
 /**
@@ -41,33 +41,6 @@ const TON: Record<Gravite, string> = {
   lourd: "border-warning/40 bg-warning/[0.06]",
   informatif: "border-border bg-surface/40",
 };
-
-/**
- * Quelle phrase pour ce constat.
- *
- * ⚠️ TROIS LIGNES CHANGENT DE TEXTE SELON CE QU'ON SAIT, et chacune l'a fait
- * après avoir été vue fausse à l'écran :
- *
- * 1. « Ton stop vaut 7.05 bougie », un pluriel appliqué à moins de deux.
- * 2. Le coût, selon qu'il est mesuré sur les trades ou déduit du risque moyen.
- *    Les deux nombres diffèrent de près de moitié, et la carte les affichait
- *    tous les deux sans dire lequel était lequel.
- * 3. L'équilibre mesuré, selon qu'il reste ou non des trades sortis ailleurs
- *    qu'à l'objectif ou au stop : sans eux, la phrase sur la fin de séance
- *    parlerait de zéro trade.
- */
-export function clePourLeConstat(c: Constat): string {
-  if (c.code === "stop_dans_le_bruit" && Number(c.valeurs.bougies) < 2) {
-    return "bt_cond_stop_dans_le_bruit_une";
-  }
-  if (c.code === "cout_structurel" && c.valeurs.mesure === "oui") {
-    return "bt_cond_cout_structurel_mesure";
-  }
-  if (c.code === "taux_equilibre_mesure" && Number(c.valeurs.horsCible) <= 0) {
-    return "bt_cond_taux_equilibre_mesure_pur";
-  }
-  return `bt_cond_${c.code}`;
-}
 
 const TON_TEXTE: Record<Gravite, string> = {
   condamne: "text-loss",

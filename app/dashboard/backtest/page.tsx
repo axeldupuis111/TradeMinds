@@ -88,16 +88,7 @@ import {
   lireBlocPlan,
   sansLeBlocDePlan,
 } from "@/lib/backtest/fiche-plan";
-import {
-  nommer,
-  NOM_CONFIRMATION,
-  NOM_DECLENCHEUR,
-  NOM_ENTREE,
-  NOM_NIVEAU,
-  NOM_OBJECTIF,
-  NOM_SENS,
-  NOM_STOP,
-} from "@/lib/backtest/noms";
+import { nommerUneValeur as nommerLaValeur } from "@/lib/backtest/phrases";
 import { methodeParCode } from "@/lib/backtest/methodes";
 import { composerDepart, departsPossibles, type Depart as UnDepart } from "@/lib/backtest/depart";
 import { CODES_QUESTIONS, evaluerCompletude } from "@/lib/backtest/completude";
@@ -927,42 +918,17 @@ export default function BacktestPage() {
   }, [instrument]);
 
   /**
-   * Le nom lisible d'un réglage dont la valeur est un code de catalogue.
+   * Le nom lisible d'une valeur qui est un code de catalogue.
    *
-   * ⚠️⚠️ VU À L'ÉCRAN : « Ce que tu traces sur ton graphique : trendline →
-   * range_horaire ». Deux identifiants internes, dans la carte dont le rôle est
-   * d'expliquer, alors que le trader venait de lire « Trendline (droite
-   * oblique) » et « Plage horaire de référence » dans la liste juste au-dessus.
-   *
-   * ⚠️ LE CROCHET N'AVAIT ÉTÉ OUVERT QUE POUR LES FILTRES, deux pilotages plus
-   * tôt. Six autres réglages affichaient encore leur code.
+   * La regle vit dans `lib/backtest/phrases.ts`, ou un test la relit dans les
+   * quatre langues sur toutes les natures de blocs. Ici on ne fait que la lier
+   * aux traductions.
    */
   const nommerUneValeur = useCallback(
-    (cle: string, valeur: string) => {
-      const TABLES: Record<string, Record<string, string>> = {
-        confirmations: NOM_CONFIRMATION,
-        sens: NOM_SENS,
-        niveau_type: NOM_NIVEAU,
-        declencheur_type: NOM_DECLENCHEUR,
-        entree_type: NOM_ENTREE,
-        stop_type: NOM_STOP,
-        objectif_type: NOM_OBJECTIF,
-      };
-      const table = TABLES[cle];
-      return table ? nommer(table, valeur, tr) : valeur;
-    },
+    (cle: string, valeur: string) => nommerLaValeur(cle, valeur, tr),
     [tr],
   );
 
-  /**
-   * CE QUI SÉPARE LA COMBINAISON TROUVÉE DU PLAN MESURÉ EN HAUT DE PAGE.
-   *
-   * ⚠️⚠️ VU À L'ÉCRAN : la carte de cohérence affirmait « ta règle d'arrêt après
-   * 3 pertes ne s'est jamais déclenchée » pendant que le plan trouvé, six cartes
-   * plus bas, affirmait « elle se serait déclenchée 16 fois ». Les deux étaient
-   * exacts, sur deux plans différents, et rien à l'écran ne disait qu'il y en
-   * avait deux. Cette liste est ce qui manquait.
-   */
   const ecartsDeLaRecherche = useMemo(
     () =>
       resultat?.exploration

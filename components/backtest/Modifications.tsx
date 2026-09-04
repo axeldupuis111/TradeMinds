@@ -2,6 +2,7 @@
 
 import { Card } from "@/components/ui/Card";
 import { BLOC_I18N, type Modification } from "@/lib/backtest/modifications";
+import { gesteDeLaModification, provenanceDeLaModification } from "@/lib/backtest/phrases";
 import { Eye, RotateCcw, Sliders, Wand2 } from "lucide-react";
 
 /**
@@ -106,48 +107,24 @@ export function Modifications({
                     {t("bt_modif_geste_titre")}
                   </p>
                   <p className="mt-1 text-[11px] leading-relaxed text-foreground-muted">
-                    {/**
-                      * ⚠️⚠️ VU À L'ÉCRAN : « Le sommet derrière lequel tu poses
-                      * ton stop doit dominer NON DÉFINI bougies de chaque côté au
-                      * lieu de 5. » Le marqueur d'absence injecté dans une phrase
-                      * qui attend un nombre. Quand un réglage n'existe que d'un
-                      * côté, c'est la PHRASE qui doit changer, pas le mot.
-                      */}
-                    {m.disparu || m.apparu
-                      ? t(m.disparu ? "bt_geste_disparu" : "bt_geste_apparu", {
-                          reglage: t(`bt_modif_${m.cle}`),
-                          valeur: m.disparu ? m.avant : m.apres,
-                        })
-                      : t(`bt_geste_${m.cle}`, { avant: m.avant, apres: m.apres })}
+                    {/* La composition vit dans `lib/backtest/phrases.ts`, où un
+                        test la relit dans les quatre langues. */}
+                    {gesteDeLaModification(m, t)}
                   </p>
                 </div>
 
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-foreground-muted">
-                  {/**
-                    * ⚠️⚠️ VU À L'ÉCRAN. Les six réglages remplacés par un clic
-                    * sur « Essayer cette base » portaient tous « Réglé par toi,
-                    * à la main ». La carte dont le rôle est de dire d'où ça
-                    * vient attribuait à la main du trader ce que la machine
-                    * avait posé, et il n'avait aucun moyen de s'en apercevoir.
-                    */}
-                  {m.origine !== "manuel" && m.origine !== "proposition" ? (
-                    <span className="flex items-center gap-1">
-                      <Wand2 className="h-3 w-3" />
-                      {t(`bt_modif_origine_${m.origine}`, { quoi: m.label ?? "" })}
-                    </span>
-                  ) : m.origine === "proposition" && m.objectif ? (
-                    <span className="flex items-center gap-1">
-                      <Wand2 className="h-3 w-3" />
-                      {t("bt_modif_origine_proposition", {
-                        objectif: t(`bt_prop_objectif_${m.objectif}`),
-                      })}
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1">
+                  {/* ⚠️⚠️ Trois pilotages de suite ont vu « Réglé par toi, à
+                      la main » sur des réglages que personne n'avait réglés.
+                      La règle vit maintenant dans `phrases.ts`, testée. */}
+                  <span className="flex items-center gap-1">
+                    {m.origine === "manuel" ? (
                       <Sliders className="h-3 w-3" />
-                      {t("bt_modif_origine_manuel")}
-                    </span>
-                  )}
+                    ) : (
+                      <Wand2 className="h-3 w-3" />
+                    )}
+                    {provenanceDeLaModification(m, t)}
+                  </span>
                   {BLOC_I18N[m.bloc] ? (
                     <span>{t("bt_modif_editeur", { bloc: t(BLOC_I18N[m.bloc]) })}</span>
                   ) : null}
