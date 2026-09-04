@@ -2268,7 +2268,14 @@ function CarteCouverture({
           <ul className="space-y-1 pl-5 text-xs text-foreground-muted">
             {couverture.traduites.map((x, i) => (
               <li key={i}>
-                « {x.phrase} » → <span className="font-mono text-foreground">{x.bloc}</span>
+                {/* ⚠️⚠️ VU À L'ÉCRAN, SIX LIGNES D'AFFILÉE : « … » → confirmations,
+                    → declencheur, → gestion, → stop. Le nom interne du bloc, dans
+                    la liste qui montre au trader ce que l'IA a retenu de SES
+                    règles. La section juste en dessous, elle, disait déjà
+                    « Filtres supplémentaires » et « Tes garde-fous » : deux
+                    écritures du même bloc à trois lignes d'écart. */}
+                « {x.phrase} » →{" "}
+                <span className="font-medium text-foreground">{nommerUnChamp(x.bloc, t)}</span>
               </li>
             ))}
           </ul>

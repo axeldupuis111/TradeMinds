@@ -518,19 +518,37 @@ for (const d of dimensionsDeRecherche(NAS)) {
 // ⚠️⚠️ LA CARTE LA PLUS IMPORTANTE DE LA PAGE, et la dernière à avoir gardé
 // des identifiants internes : c'est là que l'IA annonce ce qu'elle a décidé À LA
 // PLACE du trader, et où il doit pouvoir répondre « ce n'est pas ça ».
-const CHAMPS = [
-  "uniteDeTemps",
-  "sens",
-  "contexte",
-  "niveau",
-  "declencheur",
-  "confirmations",
-  "entree",
-  "stop",
-  "objectif",
-  "sortiesAuxiliaires",
-  "gestion",
-];
+/**
+ * Les blocs que le modèle peut nommer, LUS DANS LE SCHÉMA QU'ON LUI DONNE.
+ *
+ * ⚠️⚠️ DEUX LISTES QUI DÉRIVENT, C'EST LE DÉFAUT GARANTI. Le prompt énumère
+ * les blocs que le modèle doit renvoyer ; l'interface a une table pour les
+ * nommer. Si l'une gagne un bloc que l'autre n'a pas, l'écran affiche
+ * l'identifiant brut, et c'est exactement ce qui s'est passé : six lignes
+ * « … » → confirmations, → declencheur, → gestion, → stop.
+ */
+/**
+ * Un saut de ligne, construit plutot qu'ecrit : les scripts de patch qui ont
+ * servi a ecrire ce fichier mangeaient l'echappement, et un `.split()` casse
+ * silencieusement rendrait CHAMPS vide, donc le garde muet.
+ */
+const SAUT_DE_LIGNE = new RegExp(String.fromCharCode(13) + "?" + String.fromCharCode(10));
+
+const CHAMPS = (() => {
+  const route = readFileSync(join(process.cwd(), "app/api/compiler-strategie/route.ts"), "utf8");
+  // La ligne du schema JSON, celle qui enumere les blocs attendus en retour.
+  const ligne = route
+    .split(SAUT_DE_LIGNE)
+    .find((l) => l.includes('"uniteDeTemps"') && l.includes('"traduites"'));
+  if (!ligne) return [];
+  const noms = (ligne.split('"traduites"')[0].match(/"([a-zA-Z]+)":/g) ?? []).map((x) =>
+    x.replace(/[":]/g, ""),
+  );
+  return Array.from(new Set(noms));
+})();
+
+/** Les champs que le modèle déclare ABSENTS de la fiche, mêmes règles. */
+const ABSENTS = ["stop", "objectif", "risque", "seance", "unite_de_temps"];
 
 /**
  * Des justifications telles que le modèle les écrit, codes internes compris.
@@ -578,6 +596,9 @@ function phrasesComposees(langue: Record<string, string>): { texte: string; orig
   for (const champ of CHAMPS) {
     out.push({ texte: nommerUnChamp(champ, t), origine: `champ ${champ}` });
   }
+  for (const c of ABSENTS) {
+    out.push({ texte: t(`bt_absent_${c}`), origine: `champ absent ${c}` });
+  }
   for (const j of JUSTIFICATIONS) {
     out.push({ texte: sansCodeInterne(j, t), origine: "justification de l'IA" });
   }
@@ -590,11 +611,32 @@ describe("tout ce que l'onglet peut écrire", () => {
     // ci-dessous passeraient en ne vérifiant rien du tout.
     expect(aTester.length).toBeGreaterThan(200);
     expect(modifications.length).toBeGreaterThan(50);
+    // ⚠️ Le schéma du prompt a bien été lu : sans ça, CHAMPS serait vide et
+    // les blocs ne seraient plus vérifiés du tout.
+    expect(CHAMPS).toContain("uniteDeTemps");
+    expect(CHAMPS).toContain("sortiesAuxiliaires");
+    expect(CHAMPS.length).toBeGreaterThan(9);
     expect(lignesDuPlan.length).toBeGreaterThan(50);
   });
 
   for (const [nom, langue] of Object.entries(LANGUES)) {
     describe(nom, () => {
+      /**
+       * ⚠️⚠️ LE GARDE DE TEXTE NE PEUT PAS VOIR CELUI-LÀ, et je l'ai vérifié :
+       * `confirmations`, `declencheur`, `gestion`, `stop` sont des mots
+       * minuscules sans tiret bas ni camelCase, donc indiscernables de la prose
+       * pour une expression régulière. Ils étaient pourtant à l'écran, six
+       * lignes d'affilée : « … » → confirmations, → declencheur, → gestion.
+       *
+       * ⚠️ LA BONNE QUESTION N'EST PAS « ce texte ressemble-t-il à un code » mais
+       * « ce bloc a-t-il un nom ». Deux listes qui doivent se couvrir : celle
+       * que le prompt demande au modèle, et celle que l'interface sait nommer.
+       */
+      it("sait nommer chaque bloc que le prompt peut renvoyer", () => {
+        const sansNom = CHAMPS.filter((c) => nommerUnChamp(c, (k) => rendre(langue, k)) === c);
+        expect(sansNom, `blocs affichés en identifiant brut : ${sansNom.join(", ")}`).toEqual([]);
+      });
+
       it("n'a aucune clé manquante", () => {
         const manquantes = aTester
           .filter((a) => langue[a.cle] === undefined)
