@@ -88,7 +88,11 @@ import {
   lireBlocPlan,
   sansLeBlocDePlan,
 } from "@/lib/backtest/fiche-plan";
-import { nommerUneValeur as nommerLaValeur } from "@/lib/backtest/phrases";
+import {
+  nommerUnChamp,
+  nommerUneValeur as nommerLaValeur,
+  sansCodeInterne,
+} from "@/lib/backtest/phrases";
 import { methodeParCode } from "@/lib/backtest/methodes";
 import { composerDepart, departsPossibles, type Depart as UnDepart } from "@/lib/backtest/depart";
 import { CODES_QUESTIONS, evaluerCompletude } from "@/lib/backtest/completude";
@@ -171,7 +175,7 @@ function nomDuFiltre(type: string, t: (c: string) => string): string {
 }
 
 export default function BacktestPage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { plan: abonnement } = usePlan();
   const supabase = createClient();
   const estPremium = abonnement === "premium";
@@ -518,6 +522,11 @@ export default function BacktestPage() {
           raw_text: sansLeBlocDePlan(sansLeBlocDeBacktest(strat.raw_text)),
           instrument: code,
           fuseau,
+          // ⚠️⚠️ VU À L'ÉCRAN, INTERFACE EN ANGLAIS : toute la page traduite, et
+          // les deux phrases où l'IA annonce ce qu'elle a décidé À LA PLACE du
+          // trader restaient en français. Le prompt ne disait rien de la
+          // langue, le modèle répondait dans celle de la fiche.
+          langue: lang,
           regles: {
             pairs: strat.pairs,
             sessions: strat.sessions,
@@ -625,7 +634,7 @@ export default function BacktestPage() {
       setCompilation("erreur");
       setCompilationMsg(tr("bt_compil_error"));
     }
-  }, [strategies, strategieId, code, fuseau, instrument, plan, tr]);
+  }, [strategies, strategieId, code, fuseau, instrument, lang, plan, tr]);
 
   /**
    * UN SEUL LANCEMENT, DES MESURES QUI S'AJOUTENT.
@@ -2370,8 +2379,16 @@ function LigneInterpretation({
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
+        {/**
+          * ⚠️⚠️ VU À L'ÉCRAN : « uniteDeTemps : La fiche dit H1/H4… » et
+          * « stop : … dernier_pivot avec buffer ». Deux identifiants internes en
+          * tête des phrases les plus importantes de la page, celles où l'IA
+          * annonce ce qu'elle a décidé À LA PLACE du trader. Il ne peut pas
+          * contester un champ qu'il ne reconnaît pas.
+          */}
         <p className="min-w-0 flex-1 text-xs text-foreground-muted">
-          <span className="font-mono text-foreground">{champ}</span> : {pourquoi}
+          <span className="font-medium text-foreground">{nommerUnChamp(champ, t)}</span> :{" "}
+          {sansCodeInterne(pourquoi, t)}
         </p>
         <button
           type="button"

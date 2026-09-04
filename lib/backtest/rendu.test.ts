@@ -13,7 +13,14 @@ import { confronterAuMarche, mesurerLeMarche } from "./caractere-marche";
 import { dimensionsDeRecherche } from "./dimensions";
 import { coutsPourInstrument, instrumentParCode, INSTRUMENTS } from "./instruments";
 import { comparerPlans, DESCRIPTEURS } from "./modifications";
-import { gesteDeLaModification, nommerUneValeur, phraseDuPlan, provenanceDeLaModification } from "./phrases";
+import {
+  gesteDeLaModification,
+  nommerUnChamp,
+  nommerUneValeur,
+  phraseDuPlan,
+  provenanceDeLaModification,
+  sansCodeInterne,
+} from "./phrases";
 import { METHODES } from "./methodes";
 import { composerPlanComplet } from "./plan-complet";
 import { confronterAuProfil, lireLeProfil, type TradeReel } from "./profil";
@@ -63,10 +70,15 @@ const NAS = instrumentParCode("NAS100")!;
 
 /**
  * ⚠️ UN IDENTIFIANT INTERNE À L'ÉCRAN EST UN BUG, PAS UN DÉTAIL. Aucune des
- * quatre langues n'écrit `mot_mot` dans une phrase : ce motif ne peut venir que
- * d'un code de catalogue rendu tel quel.
+ * quatre langues n'écrit `mot_mot` ni `motMot` dans une phrase : ces deux
+ * motifs ne peuvent venir que d'un code rendu tel quel.
+ *
+ * ⚠️⚠️ LE CAMELCASE MANQUAIT, ET IL ÉTAIT À L'ÉCRAN. La carte des
+ * interprétations affichait « uniteDeTemps : La fiche dit H1/H4… » et
+ * « sortiesAuxiliaires : … » en tête des phrases où l'IA annonce ce qu'elle a
+ * décidé à la place du trader. Le premier garde ne cherchait que le tiret bas.
  */
-const CODE_BRUT = /\b[a-z][a-z0-9]*_[a-z0-9_]+\b/;
+const CODE_BRUT = /\b[a-z][a-z0-9]*(_[a-z0-9]+)+\b|\b[a-z]+[A-Z][a-zA-Z]*\b/;
 
 /** Ce qu'une valeur mal formée laisse derrière elle. */
 const VALEUR_SALE = /NaN|undefined|\bnull\b|Infinity|\[object |-0\.0+\b/;
@@ -501,6 +513,40 @@ for (const d of dimensionsDeRecherche(NAS)) {
   ajouter("exploration", `bt_exp_dim_${d.cle}`);
 }
 
+// 11. Ce que l'IA a traduit, et pourquoi.
+//
+// ⚠️⚠️ LA CARTE LA PLUS IMPORTANTE DE LA PAGE, et la dernière à avoir gardé
+// des identifiants internes : c'est là que l'IA annonce ce qu'elle a décidé À LA
+// PLACE du trader, et où il doit pouvoir répondre « ce n'est pas ça ».
+const CHAMPS = [
+  "uniteDeTemps",
+  "sens",
+  "contexte",
+  "niveau",
+  "declencheur",
+  "confirmations",
+  "entree",
+  "stop",
+  "objectif",
+  "sortiesAuxiliaires",
+  "gestion",
+];
+
+/**
+ * Des justifications telles que le modèle les écrit, codes internes compris.
+ *
+ * ⚠️ CELLE DU MILIEU EST COPIÉE MOT POUR MOT DE L'ÉCRAN. C'est elle qui a fait
+ * découvrir que le modèle nomme nos blocs avec nos identifiants, parce que ce
+ * sont ceux qu'on lui donne dans le prompt.
+ */
+const JUSTIFICATIONS = [
+  "Le trader place le stop derrière le dernier sommet : c'est dernier_pivot avec buffer.",
+  "La fiche dit « cassure de trendline » : traduit en cassure sur un niveau trendline, mode cloture.",
+  "Traduit en biais_moyenne sur 240 bougies, ce qui approche la lecture H4 du trader.",
+  "Aucune règle écrite : on garde multiple_r à 2, et les_deux comme sens autorisés.",
+  "Séances london et new_york fusionnées ; entree_dans_zone n'aurait rien donné ici.",
+];
+
 // ─── Les vérifications ─────────────────────────────────────────────────────
 
 /** Une clé identique rendue avec les mêmes valeurs ne se teste qu'une fois. */
@@ -528,6 +574,12 @@ function phrasesComposees(langue: Record<string, string>): { texte: string; orig
   }
   for (const [origine, l] of lignesDuPlan) {
     out.push({ texte: phraseDuPlan(l, t), origine: `${origine} · ${l.cle}` });
+  }
+  for (const champ of CHAMPS) {
+    out.push({ texte: nommerUnChamp(champ, t), origine: `champ ${champ}` });
+  }
+  for (const j of JUSTIFICATIONS) {
+    out.push({ texte: sansCodeInterne(j, t), origine: "justification de l'IA" });
   }
   return out;
 }

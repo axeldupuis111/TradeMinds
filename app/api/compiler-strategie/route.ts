@@ -52,6 +52,13 @@ const MODELE = "claude-haiku-4-5-20251001";
 interface CorpsRequete {
   /** Texte libre de la fiche, tel que le trader l'a écrit. */
   raw_text?: string;
+  /**
+   * La langue de l'interface, pour que les explications la suivent.
+   *
+   * ⚠️ PAS CELLE DE LA FICHE. Un trader anglophone peut avoir écrit sa fiche en
+   * français : c'est l'écran qu'il lit, pas son propre texte, qui décide.
+   */
+  langue?: string;
   /** Champs déjà extraits par /api/parse-strategy, s'ils existent. */
   regles?: {
     pairs?: string[] | null;
@@ -253,7 +260,39 @@ export async function POST(req: Request) {
     r.sessions?.length ? `seances declarees : ${r.sessions.join(", ")}` : null,
   ].filter(Boolean).join("\n");
 
-  const message = `FICHE DU TRADER
+  /**
+   * La langue dans laquelle le modele ECRIT SES EXPLICATIONS.
+   *
+   * ⚠️⚠️ VU A L'ECRAN, INTERFACE EN ANGLAIS. Toute la page etait traduite,
+   * et les deux phrases les plus importantes restaient en francais :
+   * « stop : Le trader place le stop derriere le dernier sommet… » et
+   * « gestion : Conflit detecte : fiche 5 % vs profil 10 % ». Ce sont
+   * exactement celles ou l'IA annonce ce qu'elle a decide A LA PLACE du trader,
+   * et ou il doit pouvoir repondre « ce n'est pas ca ».
+   *
+   * Le prompt ne disait rien de la langue : le modele repondait dans celle de
+   * la fiche. Un trader anglophone dont la fiche est en francais, ou qui change
+   * de langue apres avoir compile, lisait du francais.
+   *
+   * ⚠️ LA CITATION DE LA FICHE N'EST PAS TRADUITE, et c'est volontaire : elle
+   * sert a retrouver la phrase dans son propre texte. La traduire la rendrait
+   * introuvable.
+   *
+   * ⚠️ L'INSTRUCTION VA DANS LA PARTIE VARIABLE, jamais dans le prefixe mis en
+   * cache : une consigne qui change d'un trader a l'autre invaliderait le cache
+   * pour tout le monde, et c'est lui qui rend le plafond tenable.
+   */
+  const LANGUES: Record<string, string> = {
+    fr: "francais",
+    en: "anglais",
+    es: "espagnol",
+    de: "allemand",
+  };
+  const langue = LANGUES[String(corps.langue ?? "fr")] ?? LANGUES.fr;
+
+  const message = `LANGUE DE TES EXPLICATIONS : ${langue}. Ecris "pourquoi" et "nonTraduites" dans cette langue, quelle que soit celle de la fiche. Les citations du champ "phrase" restent VERBATIM dans la langue de la fiche : elles servent au trader a retrouver ses propres mots.
+
+FICHE DU TRADER
 """
 ${fiche}
 """

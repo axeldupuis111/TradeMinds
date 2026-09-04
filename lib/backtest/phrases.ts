@@ -1,5 +1,5 @@
 import type { Modification } from "./modifications";
-import { nommerLesFiltres } from "./modifications";
+import { BLOC_I18N, nommerLesFiltres } from "./modifications";
 import {
   nommer,
   NOM_CONFIRMATION,
@@ -150,4 +150,74 @@ export function phraseDuPlan(l: LigneDuPlan, t: Traduire): string {
     default:
       return t(`bt_plan_${l.cle}`, v);
   }
+}
+
+// ─── Ce que l'IA a traduit, et pourquoi ────────────────────────────────────
+
+/**
+ * Le nom lisible d'un bloc du plan.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN, DANS LA CARTE QUI EXPLIQUE : « uniteDeTemps : La fiche
+ * dit H1/H4 pour la tendance… », « contexte : Séances déclarées… »,
+ * « gestion : Conflit détecté… ». Trois identifiants de code, en tête des
+ * phrases les plus importantes de la page : ce sont celles où l'IA annonce ce
+ * qu'elle a décidé À LA PLACE du trader, et il doit pouvoir dire « ce n'est pas
+ * ça ». Il ne peut pas contester un champ qu'il ne reconnaît pas.
+ *
+ * ⚠️ LE CAMELCASE ÉCHAPPAIT AU GARDE, qui ne cherchait que le tiret bas. Il
+ * cherche les deux maintenant.
+ */
+export function nommerUnChamp(champ: string, t: Traduire): string {
+  const cle = BLOC_I18N[champ];
+  return cle ? t(cle) : champ;
+}
+
+/**
+ * Tous les codes de catalogue, avec la clé qui les nomme.
+ *
+ * ⚠️ Construite une fois : c'est une boucle sur sept tables, faite à chaque
+ * justification sinon.
+ */
+const SEANCES: Record<string, string> = {
+  london: "analytics_session_london",
+  new_york: "analytics_session_ny",
+  newyork: "analytics_session_ny",
+  london_ny_overlap: "analytics_session_ny",
+};
+
+const TOUS_LES_CODES: [string, string][] = [...Object.values(TABLES), SEANCES]
+  .flatMap((table) => Object.entries(table))
+  .sort((a, b) => b[0].length - a[0].length);
+
+/**
+ * La justification écrite par l'IA, débarrassée des codes internes.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN : « stop : "Stop Loss placé derrière le dernier sommet de
+ * la trendline" : dernier_pivot avec buffer. » Le modèle nomme le bloc qu'il a
+ * choisi, et il le nomme avec notre identifiant interne, parce que c'est
+ * l'identifiant qu'on lui donne dans le prompt.
+ *
+ * ⚠️ ON NE DEMANDE PAS AU MODÈLE DE S'EN ABSTENIR, ON LE CORRIGE. Une
+ * consigne de prompt est respectée la plupart du temps, ce qui veut dire
+ * qu'elle ne l'est pas toujours, et un défaut d'affichage intermittent est pire
+ * qu'un défaut constant : personne ne le reproduit.
+ *
+ * ⚠️ LES NOMS DE SÉANCE AUSSI. Vu à l'écran : « Le trader déclare les séances
+ * 'london' et 'new_york' ». Ce sont les codes de la fiche, pas des mots.
+ *
+ * ⚠️ LES PLUS LONGS D'ABORD, sinon « cassure » remplacerait le début de
+ * « cassure_structure » et laisserait « _structure » derrière lui.
+ */
+export function sansCodeInterne(texte: string, t: Traduire): string {
+  let sortie = texte;
+  for (const [code, cle] of TOUS_LES_CODES) {
+    if (!sortie.includes(code)) continue;
+    // Une frontière de mot qui accepte le tiret bas, que \b traite comme une
+    // lettre : sans ça, « dernier_pivot » ne serait jamais reconnu en entier.
+    sortie = sortie.replace(
+      new RegExp(`(^|[^A-Za-z0-9_])${code}(?![A-Za-z0-9_])`, "g"),
+      (_, avant) => `${avant}${t(cle)}`,
+    );
+  }
+  return sortie;
 }

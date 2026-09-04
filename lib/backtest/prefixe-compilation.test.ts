@@ -141,3 +141,45 @@ describe("ce que la compilation coûte, et ce qu'elle autorise", () => {
     expect(FEATURE_MONTHLY_CEILING["compiler-strategie"]).toBe(40);
   });
 });
+
+/**
+ * ⚠️⚠️ VU À L'ÉCRAN, INTERFACE EN ANGLAIS. Toute la page était traduite, et
+ * les deux phrases les plus importantes restaient en français :
+ *
+ *   « stop : Le trader place le stop derrière le dernier sommet… »
+ *   « gestion : Conflit détecté : fiche 5 % vs profil 10 % »
+ *
+ * Ce sont exactement celles où l'IA annonce ce qu'elle a décidé À LA PLACE du
+ * trader, et où il doit pouvoir répondre « ce n'est pas ça ». Le prompt ne
+ * disait rien de la langue : le modèle répondait dans celle de la fiche.
+ */
+describe("la langue des explications", () => {
+  it("est demandée, et dans les quatre langues de l'application", () => {
+    expect(ROUTE).toContain("LANGUE DE TES EXPLICATIONS");
+    for (const l of ["francais", "anglais", "espagnol", "allemand"]) {
+      expect(ROUTE, `${l} absent du dictionnaire de langues`).toContain(`"${l}"`);
+    }
+  });
+
+  /**
+   * ⚠️⚠️ DANS LA PARTIE VARIABLE, JAMAIS DANS LE PRÉFIXE MIS EN CACHE. Une
+   * consigne qui change d'un trader à l'autre invaliderait le cache pour tout
+   * le monde, et c'est lui qui rend le plafond mensuel tenable : 93 % du prompt
+   * est invariant et partagé.
+   */
+  it("ne casse pas le cache du préfixe", () => {
+    // ⚠️ LE CORPS DU LITTÉRAL, pas la tranche de fichier : les commentaires du
+    // gestionnaire parlent forcément de langue, ce n'est pas le prompt.
+    expect(corpsDuSysteme()).not.toContain("LANGUE DE TES EXPLICATIONS");
+    expect(corpsDuSysteme().toLowerCase()).not.toContain("langue");
+  });
+
+  /**
+   * ⚠️ LA CITATION DE LA FICHE N'EST PAS TRADUITE, et c'est volontaire : elle
+   * sert au trader à retrouver la phrase dans SON texte. La traduire la rendrait
+   * introuvable, et la carte perdrait tout son intérêt.
+   */
+  it("laisse les citations de la fiche verbatim", () => {
+    expect(ROUTE).toContain("VERBATIM");
+  });
+});
