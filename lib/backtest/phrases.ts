@@ -185,8 +185,36 @@ const SEANCES: Record<string, string> = {
   london_ny_overlap: "analytics_session_ny",
 };
 
+/**
+ * Un code qu'aucun trader n'écrirait dans une phrase.
+ *
+ * ⚠️⚠️ MA PROPRE CORRECTION A CASSÉ LES CITATIONS, VU À L'ÉCRAN AU PILOTAGE
+ * SUIVANT. En remplaçant tous les codes de catalogue par leur nom, j'avais
+ * transformé la phrase du modèle
+ *
+ *   « Le trader parle de "tracer mes trendlines" et de "Cassure simple de
+ *     trendline" : c'est une trendline. »
+ *
+ * en
+ *
+ *   « … et de "Cassure simple de Trendline (droite oblique)" : c'est une
+ *     Trendline (droite oblique). »
+ *
+ * Or ces guillemets citent LES MOTS DU TRADER. Je réécrivais sa propre phrase
+ * en quelque chose qu'il n'a jamais écrit, dans la carte dont le seul rôle est
+ * de lui montrer ce qu'on a compris de ce qu'il a écrit.
+ *
+ * ⚠️ LA RÈGLE : `trendline`, `cassure`, `breaker`, `structurel`, `rsi` sont
+ * des mots de trading ordinaires ; `dernier_pivot`, `biais_moyenne`,
+ * `multiple_r`, `new_york` ne le sont pas. Seul ce qui PORTE la marque d'un
+ * identifiant (tiret bas ou camelCase) est remplacé, ce qui est exactement la
+ * définition que le garde de `rendu.test.ts` utilise.
+ */
+const RESSEMBLE_A_UN_CODE = /_|[a-z][A-Z]/;
+
 const TOUS_LES_CODES: [string, string][] = [...Object.values(TABLES), SEANCES]
   .flatMap((table) => Object.entries(table))
+  .filter(([code]) => RESSEMBLE_A_UN_CODE.test(code))
   .sort((a, b) => b[0].length - a[0].length);
 
 /**
