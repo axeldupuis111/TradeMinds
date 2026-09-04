@@ -3627,6 +3627,7 @@ const dict: Record<string, string> = {
   "bt_modif_origine_proposition": "Vorgeschlagen für: {objectif}",
   "bt_modif_origine_manuel": "Von dir selbst eingestellt",
   "bt_modif_origine_base": "Von der Basis « {base} » gesetzt, nicht von dir",
+  "bt_modif_origine_journal": "Aus deinem Journal vorgeschlagen, nicht von dir gesetzt",
   "bt_modif_pourquoi_proposition": "Dieser Vorschlag wurde behalten, weil er diesem Ziel dient, nie weil er im Zeitraum mehr eingebracht hat.",
   "bt_modif_annuler": "Zurück zu meinem Blatt",
   "bt_modif_tout_annuler": "Alles aus meinem Blatt wiederherstellen",

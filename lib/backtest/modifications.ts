@@ -579,6 +579,20 @@ export interface Origine {
   objectif?: Objectif;
   /** Le nom de la base appliquée, quand tout le plan vient d'un départ. */
   base?: string;
+  /**
+   * Vrai quand c'est un constat tiré du JOURNAL RÉEL qui a posé ce réglage.
+   *
+   * ⚠️⚠️ VU À L'ÉCRAN, ET C'EST LA MÊME FAUTE QUE CELLE CORRIGÉE LA VEILLE
+   * SUR « Essayer cette base », UN BOUTON PLUS LOIN. Après un clic sur
+   * « Tester sur Or (XAU/USD) », la ligne « Marché testé : Nasdaq 100 → Or »
+   * portait « Réglé par toi, à la main ». Le trader n'avait rien réglé : la
+   * page lui avait proposé ce marché parce que son journal montre 92 % de ses
+   * trades dessus.
+   *
+   * ⚠️ UNE CORRECTION NE TUE QUE L'EXEMPLAIRE QU'ON A VU. Les deux boutons
+   * qui réécrivent le plan devaient être traités ensemble.
+   */
+  journal?: boolean;
 }
 
 export interface Modification {
@@ -607,7 +621,7 @@ export interface Modification {
    */
   disparu?: boolean;
   apparu?: boolean;
-  origine: "proposition" | "manuel" | "base";
+  origine: "proposition" | "manuel" | "base" | "journal";
   objectif?: Objectif;
   /** Le nom de la base, quand l'origine est « base ». */
   base?: string;
@@ -704,7 +718,13 @@ export function comparerPlans(
       apparu: avant === null && apres !== null,
       avant: nommerLaValeur(formater(avant, d, instrument, absent), d, nommerValeur),
       apres: nommerLaValeur(formater(apres, d, instrument, absent), d, nommerValeur),
-      origine: origine?.base ? "base" : origine ? "proposition" : "manuel",
+      origine: origine?.base
+        ? "base"
+        : origine?.journal
+          ? "journal"
+          : origine
+            ? "proposition"
+            : "manuel",
       objectif: origine?.objectif,
     });
   }

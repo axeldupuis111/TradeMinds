@@ -130,7 +130,12 @@ export function Modifications({
                     * vient attribuait à la main du trader ce que la machine
                     * avait posé, et il n'avait aucun moyen de s'en apercevoir.
                     */}
-                  {m.origine === "base" && m.base ? (
+                  {m.origine === "journal" ? (
+                    <span className="flex items-center gap-1">
+                      <Wand2 className="h-3 w-3" />
+                      {t("bt_modif_origine_journal")}
+                    </span>
+                  ) : m.origine === "base" && m.base ? (
                     <span className="flex items-center gap-1">
                       <Wand2 className="h-3 w-3" />
                       {t("bt_modif_origine_base", { base: m.base })}

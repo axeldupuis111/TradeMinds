@@ -3627,6 +3627,7 @@ const dict: Record<string, string> = {
   "bt_modif_origine_proposition": "Propuesto para: {objectif}",
   "bt_modif_origine_manuel": "Ajustado por ti, a mano",
   "bt_modif_origine_base": "Puesto por la base « {base} », no por ti",
+  "bt_modif_origine_journal": "Propuesto a partir de tu diario, no ajustado por ti",
   "bt_modif_pourquoi_proposition": "Esta propuesta se retuvo porque sirve a ese objetivo, nunca porque rindiera más en el periodo.",
   "bt_modif_annuler": "Volver a mi ficha",
   "bt_modif_tout_annuler": "Restaurar todo desde mi ficha",

@@ -3627,6 +3627,7 @@ const dict: Record<string, string> = {
   "bt_modif_origine_proposition": "Suggested for: {objectif}",
   "bt_modif_origine_manuel": "Set by you, by hand",
   "bt_modif_origine_base": "Set by the « {base} » base, not by you",
+  "bt_modif_origine_journal": "Suggested from your journal, not set by you",
   "bt_modif_pourquoi_proposition": "This suggestion was kept because it serves that goal, never because it made more money over the period.",
   "bt_modif_annuler": "Back to my sheet",
   "bt_modif_tout_annuler": "Restore everything from my sheet",

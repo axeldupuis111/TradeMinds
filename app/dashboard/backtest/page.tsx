@@ -468,12 +468,30 @@ export default function BacktestPage() {
     setResultat(null);
   }, [plan.instrument, code]);
 
-  /** Change d'instrument : les coûts par défaut suivent, jamais l'inverse. */
-  const changerInstrument = useCallback((nouveau: string) => {
+  /**
+   * Change d'instrument : les coûts par défaut suivent, jamais l'inverse.
+   *
+   * ⚠️⚠️ DEUX CHEMINS MÈNENT ICI, ET ILS NE SE RACONTENT PAS PAREIL. La
+   * liste déroulante, c'est le trader qui choisit. Le bouton « Tester sur
+   * Or (XAU/USD) », c'est la page qui propose, parce que son journal montre
+   * 92 % de ses trades là-bas. Les confondre faisait écrire « Réglé par toi, à
+   * la main » sur une ligne que personne n'avait réglée, exactement comme sur
+   * « Essayer cette base » la veille.
+   */
+  const changerInstrument = useCallback((nouveau: string, depuisLeJournal = false) => {
     const inst = instrumentParCode(nouveau);
     if (!inst) return;
     setCode(inst.code);
     setPlan((p) => ({ ...p, instrument: inst.code, couts: coutsPourInstrument(inst) }));
+    setOrigines((o) => {
+      const suivant = { ...o };
+      if (depuisLeJournal) suivant.instrument = { journal: true };
+      // ⚠️ Un choix à la main EFFACE la provenance précédente : sans ça, un
+      // marché repris en main garderait l'étiquette du bouton qui l'avait
+      // proposé la première fois.
+      else delete suivant.instrument;
+      return suivant;
+    });
     setResultat(null);
   }, []);
 
@@ -892,34 +910,6 @@ export default function BacktestPage() {
   }, [instrument]);
 
   /**
-   * CE QUI SÉPARE LA COMBINAISON TROUVÉE DU PLAN MESURÉ EN HAUT DE PAGE.
-   *
-   * ⚠️⚠️ VU À L'ÉCRAN : la carte de cohérence affirmait « ta règle d'arrêt après
-   * 3 pertes ne s'est jamais déclenchée » pendant que le plan trouvé, six cartes
-   * plus bas, affirmait « elle se serait déclenchée 16 fois ». Les deux étaient
-   * exacts, sur deux plans différents, et rien à l'écran ne disait qu'il y en
-   * avait deux. Cette liste est ce qui manquait.
-   */
-  const ecartsDeLaRecherche = useMemo(
-    () =>
-      resultat?.exploration
-        ? comparerPlans(
-            plan,
-            resultat.exploration.recherche.plan,
-            instrument,
-            {},
-            tr("bt_modif_absent"),
-            // ⚠️ « biais_moyenne (80) → biais_moyenne (50) » etait affiche trois
-            // lignes au-dessus de « Sens de la moyenne mobile ». Le meme filtre,
-            // deux ecritures, dont une que personne ne comprend.
-            nommerUneValeur,
-          )
-        : [],
-    [resultat?.exploration, plan, instrument, tr],
-  );
-
-  /** L'écart avec la fiche, recalculé à chaque changement de plan. */
-  /**
    * Le nom lisible d'un réglage dont la valeur est un code de catalogue.
    *
    * ⚠️⚠️ VU À L'ÉCRAN : « Ce que tu traces sur ton graphique : trendline →
@@ -947,6 +937,34 @@ export default function BacktestPage() {
     [tr],
   );
 
+  /**
+   * CE QUI SÉPARE LA COMBINAISON TROUVÉE DU PLAN MESURÉ EN HAUT DE PAGE.
+   *
+   * ⚠️⚠️ VU À L'ÉCRAN : la carte de cohérence affirmait « ta règle d'arrêt après
+   * 3 pertes ne s'est jamais déclenchée » pendant que le plan trouvé, six cartes
+   * plus bas, affirmait « elle se serait déclenchée 16 fois ». Les deux étaient
+   * exacts, sur deux plans différents, et rien à l'écran ne disait qu'il y en
+   * avait deux. Cette liste est ce qui manquait.
+   */
+  const ecartsDeLaRecherche = useMemo(
+    () =>
+      resultat?.exploration
+        ? comparerPlans(
+            plan,
+            resultat.exploration.recherche.plan,
+            instrument,
+            {},
+            tr("bt_modif_absent"),
+            // ⚠️ « biais_moyenne (80) → biais_moyenne (50) » etait affiche trois
+            // lignes au-dessus de « Sens de la moyenne mobile ». Le meme filtre,
+            // deux ecritures, dont une que personne ne comprend.
+            nommerUneValeur,
+          )
+        : [],
+    [resultat?.exploration, plan, instrument, tr, nommerUneValeur],
+  );
+
+  /** L'écart avec la fiche, recalculé à chaque changement de plan. */
   const modifications = useMemo(
     () =>
       planFiche
@@ -1756,7 +1774,7 @@ export default function BacktestPage() {
             <Profil
               constats={constatsProfil}
               marcheReel={marcheReelTestable}
-              onTesterSurSonMarche={changerInstrument}
+              onTesterSurSonMarche={(c) => changerInstrument(c, true)}
               t={tr}
             />
           </StaggerItem>

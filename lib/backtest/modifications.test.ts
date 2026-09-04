@@ -601,3 +601,58 @@ describe("ce qu'une base remplace, dit correctement", () => {
     expect((fr as Record<string, string>).bt_modif_origine_base).toContain("{base}");
   });
 });
+
+/**
+ * ⚠️⚠️ UNE CORRECTION NE TUE QUE L'EXEMPLAIRE QU'ON A VU.
+ *
+ * La veille, « Essayer cette base » affichait « Réglé par toi, à la main » sur
+ * les six réglages qu'elle venait de poser. Corrigé. Le lendemain, un bouton
+ * plus loin, « Tester sur Or (XAU/USD) » affichait exactement la même chose sur
+ * la ligne « Marché testé : Nasdaq 100 → Or (XAU/USD) ». Le trader n'avait rien
+ * réglé : la page lui avait proposé ce marché parce que son journal montre 92 %
+ * de ses trades dessus.
+ *
+ * Les DEUX chemins qui réécrivent le plan sont donc testés ensemble ici, et le
+ * troisième (la liste déroulante) avec eux, parce que lui doit bien rester
+ * « à la main ».
+ */
+describe("d'où vient un réglage, pour chacun des chemins qui le pose", () => {
+  const ailleurs = (): PlanExecution => ({
+    ...planDeBase(),
+    instrument: "XAUUSD",
+  });
+
+  it("le bouton tiré du journal ne s'attribue pas à la main du trader", () => {
+    const m = comparerPlans(planDeBase(), ailleurs(), NAS, {
+      instrument: { journal: true },
+    }).find((x) => x.cle === "instrument")!;
+    expect(m.origine).toBe("journal");
+  });
+
+  it("la liste déroulante, elle, reste bien un choix à la main", () => {
+    const m = comparerPlans(planDeBase(), ailleurs(), NAS).find(
+      (x) => x.cle === "instrument",
+    )!;
+    expect(m.origine).toBe("manuel");
+  });
+
+  /**
+   * ⚠️ LES TROIS PROVENANCES SONT EXCLUSIVES, et chacune a sa phrase. Une
+   * quatrième qui retomberait silencieusement sur « à la main » recréerait
+   * exactement la faute corrigée deux fois de suite.
+   */
+  it("chaque provenance a sa rédaction", () => {
+    const c = fr as Record<string, string>;
+    expect(c.bt_modif_origine_manuel).toBeTruthy();
+    expect(c.bt_modif_origine_base).toContain("{base}");
+    expect(c.bt_modif_origine_journal).toBeTruthy();
+    expect(c.bt_modif_origine_proposition).toContain("{objectif}");
+  });
+
+  it("une base l'emporte sur le journal, une origine ne se lit pas deux fois", () => {
+    const m = comparerPlans(planDeBase(), ailleurs(), NAS, {
+      instrument: { journal: true, base: "Suivi de tendance" },
+    }).find((x) => x.cle === "instrument")!;
+    expect(m.origine).toBe("base");
+  });
+});
