@@ -1543,6 +1543,11 @@ export default function BacktestPage() {
         collision: tr("bt_csv_collision"),
       },
       (motif) => tr(`bt_motif_${motif}`),
+      // ⚠️⚠️ LE FUSEAU DU TRADER, PAS L'UTC. Le fichier sortait en
+      // « 2025-01-06T15:00:00.000Z » alors que toute la page travaille en heure
+      // locale, et que la carte qui le propose annonce exactement l'usage qui
+      // casse : « trie-le PAR HEURE pour retrouver tes propres captures ».
+      plan.contexte.fuseau,
     );
     // ⚠️ `text/csv` et pas `application/octet-stream` : sur mobile, un type
     // générique fait proposer « ouvrir avec » au lieu d'enregistrer.
@@ -1554,7 +1559,7 @@ export default function BacktestPage() {
     // Sans révocation, l'objet reste en mémoire tant que l'onglet vit, et un
     // trader qui exporte dix fois garde dix fichiers en RAM.
     URL.revokeObjectURL(url);
-  }, [resultat, instrument, code, de, a, tr]);
+  }, [resultat, instrument, code, de, a, plan.contexte.fuseau, tr]);
 
   if (!estPremium) {
     return (

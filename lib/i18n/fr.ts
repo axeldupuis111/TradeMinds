@@ -3387,7 +3387,7 @@ const dict: Record<string, string> = {
   "bt_geste_autre": "Le plan testé s'écarte encore de ta fiche sur des réglages que cet écran ne sait pas nommer un par un. Ouvre l'éditeur plus haut pour les comparer, ou remets tout comme dans ta fiche. On préfère te le dire ainsi plutôt que de te laisser croire que la liste ci-dessus est complète.",
   "bt_csv_exporter": "Télécharger les {n} trades (CSV)",
   "bt_csv_aide": "Les douze aperçus ci-dessus ne sont qu'un échantillon. Ouvre la liste entière dans ton tableur pour la trier par heure, par sens ou par motif de sortie, et retrouver tes propres captures.",
-  "bt_csv_date": "Date d'entrée",
+  "bt_csv_date": "Date d'entrée (ton fuseau)",
   "bt_csv_sens": "Sens",
   "bt_csv_entree": "Entrée",
   "bt_csv_sortie": "Sortie",

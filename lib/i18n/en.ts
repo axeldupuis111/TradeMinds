@@ -3387,7 +3387,7 @@ const dict: Record<string, string> = {
   "bt_geste_autre": "The tested plan still departs from your sheet on settings this screen cannot name one by one. Open the editor above to compare them, or restore everything from your sheet. We would rather tell you this than let you believe the list above is complete.",
   "bt_csv_exporter": "Download the {n} trades (CSV)",
   "bt_csv_aide": "The twelve previews above are only a sample. Open the full list in your spreadsheet to sort it by hour, by direction or by exit reason, and match it against your own screenshots.",
-  "bt_csv_date": "Entry date",
+  "bt_csv_date": "Entry date (your time zone)",
   "bt_csv_sens": "Direction",
   "bt_csv_entree": "Entry",
   "bt_csv_sortie": "Exit",

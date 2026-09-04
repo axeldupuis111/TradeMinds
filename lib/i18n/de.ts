@@ -3387,7 +3387,7 @@ const dict: Record<string, string> = {
   "bt_geste_autre": "Der getestete Plan weicht noch bei Einstellungen von deinem Blatt ab, die dieser Bildschirm nicht einzeln benennen kann. Öffne oben den Editor, um sie zu vergleichen, oder stelle alles aus deinem Blatt wieder her. Wir sagen es dir lieber so, als dich glauben zu lassen, die Liste oben sei vollständig.",
   "bt_csv_exporter": "Die {n} Trades herunterladen (CSV)",
   "bt_csv_aide": "Die zwölf Vorschauen oben sind nur eine Stichprobe. Öffne die vollständige Liste in deiner Tabellenkalkulation, um sie nach Stunde, Richtung oder Ausstiegsgrund zu sortieren und mit deinen eigenen Screenshots abzugleichen.",
-  "bt_csv_date": "Einstiegsdatum",
+  "bt_csv_date": "Einstiegsdatum (deine Zeitzone)",
   "bt_csv_sens": "Richtung",
   "bt_csv_entree": "Einstieg",
   "bt_csv_sortie": "Ausstieg",

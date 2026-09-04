@@ -3387,7 +3387,7 @@ const dict: Record<string, string> = {
   "bt_geste_autre": "El plan probado aún se aparta de tu ficha en ajustes que esta pantalla no sabe nombrar uno a uno. Abre el editor más arriba para compararlos, o restaura todo desde tu ficha. Preferimos decírtelo así antes que dejarte creer que la lista de arriba está completa.",
   "bt_csv_exporter": "Descargar las {n} operaciones (CSV)",
   "bt_csv_aide": "Las doce vistas previas de arriba son solo una muestra. Abre la lista completa en tu hoja de cálculo para ordenarla por hora, por dirección o por motivo de salida, y compararla con tus propias capturas.",
-  "bt_csv_date": "Fecha de entrada",
+  "bt_csv_date": "Fecha de entrada (tu zona horaria)",
   "bt_csv_sens": "Dirección",
   "bt_csv_entree": "Entrada",
   "bt_csv_sortie": "Salida",
