@@ -1,5 +1,7 @@
 "use client";
 
+import type { Modification } from "@/lib/backtest/modifications";
+
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
 import { signe } from "@/lib/backtest/format";
@@ -47,9 +49,28 @@ export function Versions({
   onSelectionner,
   onRecharger,
   onSupprimer,
+  ecartsAvecLaFiche,
   t,
 }: {
   versions: VersionArchivee[];
+  /**
+   * L'écart de cette version avec la fiche TELLE QU'ELLE EST AUJOURD'HUI.
+   *
+   * ⚠️⚠️ VU À L'ÉCRAN. La carte annonçait « Écart avec ta fiche : Largeur du
+   * pivot 10 → 5 », une seule ligne. Un clic sur « Reprendre ce plan », et la
+   * carte des écarts, deux cartes plus haut, en affichait SEPT, dont aucune
+   * n'était celle-là.
+   *
+   * Les deux étaient exactes, sur deux fiches différentes : la liste archivée
+   * décrit la fiche telle qu'elle était le jour de l'enregistrement, et la
+   * traduction IA de la fiche change d'une compilation à l'autre. Mais le
+   * trader lit « l'écart avec ma fiche » deux fois sur le même écran, avec deux
+   * réponses. C'est la signature du défaut qu'on chasse depuis le début.
+   *
+   * ⚠️ ON RECALCULE PLUTÔT QUE D'ARCHIVER. Rendre `null` quand aucune fiche
+   * n'est compilée : on retombe alors sur la liste enregistrée, en le disant.
+   */
+  ecartsAvecLaFiche: (v: VersionArchivee) => Modification[] | null;
   /** Vrai quand la lecture a échoué : ⚠️ jamais confondre avec « aucune version ». */
   erreur: boolean;
   chargement: boolean;
@@ -169,17 +190,26 @@ export function Versions({
                   : t("bt_ver_non_controlee")}
               </p>
 
-              {v.modifications.length > 0 ? (
-                <p className="mt-1 text-[11px] leading-snug text-foreground-muted">
-                  {t("bt_ver_reglages", {
-                    liste: v.modifications
-                      .map((m) => `${t(`bt_modif_${m.cle}`)} ${m.avant} → ${m.apres}`)
-                      .join(" · "),
-                  })}
-                </p>
-              ) : (
-                <p className="mt-1 text-[11px] text-foreground-muted">{t("bt_ver_sans_ecart")}</p>
-              )}
+              {(() => {
+                const vivants = ecartsAvecLaFiche(v);
+                const ecarts = vivants ?? v.modifications;
+                if (ecarts.length === 0) {
+                  return (
+                    <p className="mt-1 text-[11px] text-foreground-muted">
+                      {t(vivants ? "bt_ver_sans_ecart" : "bt_ver_sans_ecart_archive")}
+                    </p>
+                  );
+                }
+                return (
+                  <p className="mt-1 text-[11px] leading-snug text-foreground-muted">
+                    {t(vivants ? "bt_ver_reglages" : "bt_ver_reglages_archive", {
+                      liste: ecarts
+                        .map((m) => `${t(`bt_modif_${m.cle}`)} ${m.avant} → ${m.apres}`)
+                        .join(" · "),
+                    })}
+                  </p>
+                );
+              })()}
             </li>
           );
         })}

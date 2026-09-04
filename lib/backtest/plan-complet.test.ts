@@ -107,14 +107,58 @@ describe("le plan complet", () => {
     expect(ligne(p, "arret_pertes_absent")).toBeTruthy();
   });
 
-  it("dit le rythme à attendre, au neuvième décile et au maximum", () => {
-    const beaucoup = trades(suite()).map((t, i) => ({
+  /**
+   * ⚠️⚠️ VU À L'ÉCRAN : « Attends-toi à 2 trades par jour, 2 les jours les
+   * plus chargés. » La phrase promet un contraste et rend deux fois le même
+   * nombre, ce qui la fait lire comme une panne. Ce n'était pas un arrondi : le
+   * neuvième décile et le maximum valaient vraiment 2 tous les deux.
+   *
+   * ⚠️ ET C'EST UNE INFORMATION PLUS FORTE, PAS PLUS FAIBLE : quand les deux se
+   * rejoignent, le rythme n'a jamais dépassé ce chiffre de toute la période.
+   *
+   * Le test d'origine construisait par accident exactement ce cas-là (trois
+   * trades tous les jours, sans exception) et affirmait la phrase à contraste.
+   */
+  it("dit le plafond quand le rythme ne l'a jamais dépassé", () => {
+    const regulier = trades(suite()).map((t, i) => ({
       ...t,
-      // Trois trades le même jour, tous les trois trades.
+      // Trois trades le même jour, tous les jours : le décile égale le maximum.
       entreeMs: Date.UTC(2024, 0, 1) + Math.floor(i / 3) * 86_400_000,
     }));
-    const p = composerPlanComplet(plan(), beaucoup, NAS);
-    expect(ligne(p, "rythme")!.valeurs.max).toBe(3);
+    const p = composerPlanComplet(plan(), regulier, NAS);
+    expect(ligne(p, "rythme")).toBeUndefined();
+    const l = ligne(p, "rythme_plafond")!;
+    expect(l).toBeTruthy();
+    expect(l.valeurs.max).toBe(3);
+    expect(l.valeurs.d9).toBe(3);
+  });
+
+  it("garde la phrase à contraste quand une journée dépasse les autres", () => {
+    // Un trade par jour, sauf une journée qui en porte cinq.
+    const irregulier = trades(suite()).map((t, i) => ({
+      ...t,
+      entreeMs: Date.UTC(2024, 0, 1) + (i < 5 ? 0 : (i - 4) * 86_400_000),
+    }));
+    const p = composerPlanComplet(plan(), irregulier, NAS);
+    const l = ligne(p, "rythme") ?? ligne(p, "rythme_un")!;
+    expect(l).toBeTruthy();
+    expect(l.valeurs.max).toBe(5);
+    expect(l.valeurs.d9).not.toBe(l.valeurs.max);
+  });
+
+  /**
+   * ⚠️ LES QUATRE FORMES ONT LEUR RÉDACTION, et deux d'entre elles ne sont
+   * citées que dans une branche : le balayage des clés littérales ne prouve
+   * rien sur leur existence.
+   */
+  it("a une phrase pour chacune des quatre formes du rythme", () => {
+    const c = fr as Record<string, string>;
+    for (const k of ["bt_plan_rythme", "bt_plan_rythme_un", "bt_plan_rythme_plafond", "bt_plan_rythme_un_plafond"]) {
+      expect(c[k], `${k} manquante`).toBeTruthy();
+    }
+    // ⚠️ Les deux formes « plafond » ne doivent PAS reparler d'un maximum
+    // distinct : c'est exactement la répétition qu'elles remplacent.
+    expect(c.bt_plan_rythme_un_plafond).not.toContain("{d9}");
   });
 });
 

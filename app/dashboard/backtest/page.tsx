@@ -420,7 +420,13 @@ export default function BacktestPage() {
     return () => workerRef.current?.terminate();
   }, []);
 
-  // Le fuseau réel du navigateur remplace le repli une fois monté.
+  /**
+   * Le fuseau réel du navigateur remplace le repli une fois monté.
+   *
+   * sans-provenance: le fuseau n'est comparé par aucun descripteur, donc ce
+   * `setPlan` ne peut produire aucune ligne d'écart à attribuer. Ce n'est pas
+   * non plus un choix : c'est l'horloge de la machine qui arrive.
+   */
   useEffect(() => {
     setPlan((p) => ({ ...p, contexte: { ...p.contexte, fuseau } }));
   }, [fuseau]);
@@ -485,7 +491,7 @@ export default function BacktestPage() {
     setPlan((p) => ({ ...p, instrument: inst.code, couts: coutsPourInstrument(inst) }));
     setOrigines((o) => {
       const suivant = { ...o };
-      if (depuisLeJournal) suivant.instrument = { journal: true };
+      if (depuisLeJournal) suivant.instrument = { pose: "journal" };
       // ⚠️ Un choix à la main EFFACE la provenance précédente : sans ça, un
       // marché repris en main garderait l'étiquette du bouton qui l'avait
       // proposé la première fois.
@@ -884,7 +890,18 @@ export default function BacktestPage() {
     setCode(v.instrument);
     setDe(v.de);
     setA(v.a);
-    setOrigines({});
+    /**
+     * ⚠️⚠️ TROISIÈME EXEMPLAIRE DE LA MÊME FAUTE. Après « Reprendre ce
+     * plan », les sept réglages repris portaient « Réglé par toi, à la main ».
+     * Le trader avait cliqué sur une version archivée, datée, qu'il n'avait
+     * pas retapée.
+     */
+    const quand = new Date(v.creeLe).toLocaleDateString();
+    setOrigines(
+      Object.fromEntries(
+        DESCRIPTEURS.map((x) => [x.cle, { pose: "version" as const, label: quand }]),
+      ),
+    );
     setResultat(null);
     setSauvegarde("repos");
   }, []);
@@ -972,6 +989,35 @@ export default function BacktestPage() {
         : [],
     [planFiche, plan, instrument, origines, tr, nommerUneValeur],
   );
+
+  /**
+   * L'écart d'une version archivée avec la fiche telle qu'elle est AUJOURD'HUI.
+   *
+   * ⚠️⚠️ VU À L'ÉCRAN : la carte de la version disait « Écart avec ta fiche :
+   * Largeur du pivot 10 → 5 », et un clic sur « Reprendre ce plan » en affichait
+   * SEPT, dont aucune n'était celle-là. Les deux étaient exactes, sur deux
+   * fiches différentes : la traduction IA change d'une compilation à l'autre, et
+   * la liste archivée décrit la fiche du jour de l'enregistrement.
+   *
+   * ⚠️ `null` QUAND AUCUNE FICHE N'EST COMPILÉE, pour retomber sur la liste
+   * archivée en le disant, plutôt que d'annoncer « aucun écart » à quelqu'un
+   * dont on n'a simplement pas la référence.
+   */
+  const ecartsDUneVersion = useCallback(
+    (v: VersionArchivee) =>
+      planFiche
+        ? comparerPlans(
+            planFiche,
+            v.plan,
+            instrumentParCode(v.instrument) ?? instrument,
+            {},
+            tr("bt_modif_absent"),
+            nommerUneValeur,
+          )
+        : null,
+    [planFiche, instrument, tr, nommerUneValeur],
+  );
+
 
   /**
    * La fenêtre intacte, et le contrôle qui la rejoue.
@@ -1252,7 +1298,7 @@ export default function BacktestPage() {
        */
       const nom = tr(`bt_meth_${d.methode.code}`);
       setOrigines(
-        Object.fromEntries(DESCRIPTEURS.map((x) => [x.cle, { base: nom }])),
+        Object.fromEntries(DESCRIPTEURS.map((x) => [x.cle, { pose: "base" as const, label: nom }])),
       );
       setPlan(d.plan);
       setResultat(null);
@@ -2124,6 +2170,7 @@ export default function BacktestPage() {
               chargement={versionsChargement}
               selection={comparees}
               onSelectionner={basculerComparaison}
+              ecartsAvecLaFiche={ecartsDUneVersion}
               onRecharger={reprendreVersion}
               onSupprimer={supprimerUneVersion}
               t={tr}

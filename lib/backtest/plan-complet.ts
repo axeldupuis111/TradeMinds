@@ -221,9 +221,31 @@ export function composerPlanComplet(
   }
 
   const rythme = rythmeParJour(trades);
-  // ⚠️ « 1 trades par jour » dans un plan qu'on imprime pour le suivre : la même
-  // faute que « 1 journées » et « 3 année(s) », et elle se voit tout autant.
-  ajouter(rythme.d9 <= 1 ? "rythme_un" : "rythme", { d9: rythme.d9, max: rythme.max }, true);
+  /**
+   * ⚠️ « 1 trades par jour » dans un plan qu'on imprime pour le suivre : la
+   * même faute que « 1 journées » et « 3 année(s) », et elle se voit tout
+   * autant.
+   *
+   * ⚠️⚠️ VU À L'ÉCRAN : « Attends-toi à 2 trades par jour, 2 les jours les
+   * plus chargés. » La phrase promet un contraste et rend deux fois le même
+   * nombre, ce qui la fait lire comme une panne. Ce n'est pourtant pas un
+   * arrondi : le neuvième décile et le maximum valent vraiment 2 tous les deux.
+   *
+   * ⚠️ ET C'EST UNE INFORMATION PLUS FORTE, PAS PLUS FAIBLE. Quand les deux se
+   * rejoignent, le rythme n'a jamais dépassé ce chiffre de toute la période :
+   * le plafond est dur. Il faut le dire, pas le cacher derrière une répétition.
+   */
+  ajouter(
+    rythme.d9 === rythme.max
+      ? rythme.d9 <= 1
+        ? "rythme_un_plafond"
+        : "rythme_plafond"
+      : rythme.d9 <= 1
+        ? "rythme_un"
+        : "rythme",
+    { d9: rythme.d9, max: rythme.max },
+    true,
+  );
 
   return { lignes, risques, risqueRecommandePct, seuilReculPct };
 }

@@ -529,13 +529,13 @@ describe("ce qu'une base remplace, dit correctement", () => {
    */
   it("attribue à la base ce que la base a posé", () => {
     const origines = Object.fromEntries(
-      DESCRIPTEURS.map((d) => [d.cle, { base: "Cassure de l'ouverture" }]),
+      DESCRIPTEURS.map((d) => [d.cle, { pose: "base" as const, label: "Cassure de l'ouverture" }]),
     );
     const mods = comparerPlans(planDeBase(), base(), NAS, origines);
     expect(mods.length).toBeGreaterThan(0);
     for (const m of mods) {
       expect(m.origine, `${m.cle} attribué à la main`).toBe("base");
-      expect(m.base).toBe("Cassure de l'ouverture");
+      expect(m.label).toBe("Cassure de l'ouverture");
     }
   });
 
@@ -598,7 +598,7 @@ describe("ce qu'une base remplace, dit correctement", () => {
   });
 
   it("a une phrase pour la provenance d'une base", () => {
-    expect((fr as Record<string, string>).bt_modif_origine_base).toContain("{base}");
+    expect((fr as Record<string, string>).bt_modif_origine_base).toContain("{quoi}");
   });
 });
 
@@ -624,7 +624,7 @@ describe("d'où vient un réglage, pour chacun des chemins qui le pose", () => {
 
   it("le bouton tiré du journal ne s'attribue pas à la main du trader", () => {
     const m = comparerPlans(planDeBase(), ailleurs(), NAS, {
-      instrument: { journal: true },
+      instrument: { pose: "journal" as const },
     }).find((x) => x.cle === "instrument")!;
     expect(m.origine).toBe("journal");
   });
@@ -644,15 +644,110 @@ describe("d'où vient un réglage, pour chacun des chemins qui le pose", () => {
   it("chaque provenance a sa rédaction", () => {
     const c = fr as Record<string, string>;
     expect(c.bt_modif_origine_manuel).toBeTruthy();
-    expect(c.bt_modif_origine_base).toContain("{base}");
+    expect(c.bt_modif_origine_base).toContain("{quoi}");
     expect(c.bt_modif_origine_journal).toBeTruthy();
     expect(c.bt_modif_origine_proposition).toContain("{objectif}");
   });
 
   it("une base l'emporte sur le journal, une origine ne se lit pas deux fois", () => {
     const m = comparerPlans(planDeBase(), ailleurs(), NAS, {
-      instrument: { journal: true, base: "Suivi de tendance" },
+      instrument: { pose: "base" as const, label: "Suivi de tendance" },
     }).find((x) => x.cle === "instrument")!;
     expect(m.origine).toBe("base");
+  });
+});
+
+/**
+ * ⚠️⚠️ TROIS FOIS LA MÊME FAUTE, TROIS PILOTAGES DE SUITE, parce que je
+ * corrigeais l'exemplaire au lieu de la classe.
+ *
+ *   « Essayer cette base »      -> « Réglé par toi, à la main » (6 lignes)
+ *   « Tester sur Or (XAU/USD) » -> « Réglé par toi, à la main » (1 ligne)
+ *   « Reprendre ce plan »       -> « Réglé par toi, à la main » (7 lignes)
+ *
+ * À chaque fois le trader n'avait rien réglé, et à chaque fois la carte dont le
+ * rôle est de dire D'OÙ ÇA VIENT l'affirmait.
+ *
+ * Le vrai défaut n'est aucun de ces trois-là : c'est que « manuel » est une
+ * valeur par DÉFAUT SILENCIEUSE. Un chemin qui réécrit le plan sans rien
+ * déclarer y retombe sans que rien ne proteste. Ce test lit la source de la
+ * page et exige qu'un `setPlan` s'accompagne d'une déclaration de provenance.
+ */
+describe("aucun chemin ne réécrit le plan sans dire d'où il vient", () => {
+  /**
+   * ⚠️ ON GARDE LES COMMENTAIRES, contrairement aux autres gardes qui lisent la
+   * source. Ici ils portent l'exemption : un `setPlan` qui ne touche AUCUNE
+   * dimension comparée ne peut produire aucune ligne à attribuer, et il doit
+   * pouvoir le dire. Le marqueur `sans-provenance:` exige une raison écrite à
+   * côté, ce qui le rend coûteux à poser à la légère.
+   */
+  const source = readFileSync(join(process.cwd(), "app/dashboard/backtest/page.tsx"), "utf8");
+
+  /**
+   * ⚠️ QUINZE LIGNES DE CHAQUE CÔTÉ, ce qui couvre un corps de `useCallback`
+   * sans avaler le voisin. Trop large, le test ne prouve rien ; trop étroit, il
+   * crie sur une mise en forme.
+   */
+  const FENETRE = 15;
+
+  it("chaque setPlan est accompagné d'un setOrigines", () => {
+    const lignes = source.split("\n");
+    const manquants: string[] = [];
+    for (let i = 0; i < lignes.length; i++) {
+      if (!lignes[i].includes("setPlan(")) continue;
+      const autour = lignes
+        .slice(Math.max(0, i - FENETRE), Math.min(lignes.length, i + FENETRE))
+        .join("\n");
+      if (autour.includes("setOrigines(") || autour.includes("sans-provenance:")) continue;
+      manquants.push(`ligne ${i + 1} : ${lignes[i].trim()}`);
+    }
+    expect(manquants, `setPlan sans provenance :\n${manquants.join("\n")}`).toEqual([]);
+  });
+
+  /**
+   * ⚠️ ET CHAQUE PROVENANCE A SA PHRASE, dans les quatre langues. Une
+   * quatrième valeur de `pose` qui n'aurait pas la sienne afficherait son
+   * propre nom de clé.
+   */
+  it("chaque provenance a sa rédaction", () => {
+    const c = fr as Record<string, string>;
+    for (const p of ["base", "journal", "version"]) {
+      expect(c[`bt_modif_origine_${p}`], `bt_modif_origine_${p} manquante`).toBeTruthy();
+    }
+    expect(c.bt_modif_origine_manuel).toBeTruthy();
+    expect(c.bt_modif_origine_proposition).toBeTruthy();
+  });
+
+  /**
+   * ⚠️ UN GARDE QUI NE MORD PAS N'EST PAS UN GARDE. On lui donne une source
+   * fabriquée qui contient exactement la faute qu'il doit voir.
+   */
+  it("verrait un nouveau chemin qui oublie la provenance", () => {
+    const faux = [
+      "const essayerAutreChose = useCallback(() => {",
+      "  setPlan(unNouveauPlan);",
+      "  setResultat(null);",
+      "}, []);",
+    ];
+    const manquants = faux.filter(
+      (l, i) =>
+        l.includes("setPlan(") &&
+        !faux
+          .slice(Math.max(0, i - FENETRE), i + FENETRE)
+          .join("\n")
+          .match(/setOrigines\(|sans-provenance:/),
+    );
+    expect(manquants).toHaveLength(1);
+  });
+
+  it("une version reprise ne s'attribue pas à la main du trader", () => {
+    const repris = comparerPlans(
+      planDeBase(),
+      { ...planDeBase(), uniteDeTemps: 60 },
+      NAS,
+      { unite_de_temps: { pose: "version" as const, label: "01/09/2026" } },
+    ).find((m) => m.cle === "unite_de_temps")!;
+    expect(repris.origine).toBe("version");
+    expect(repris.label).toBe("01/09/2026");
   });
 });
