@@ -43,6 +43,16 @@ export type CodeCondamnation =
   /** Le taux de réussite qu'il faut atteindre pour seulement rentrer dans ses frais. */
   | "taux_equilibre"
   /**
+   * Le même, mais calculé sur les trades qui ont vraiment eu lieu.
+   *
+   * ⚠⚠ IL REMPLACE `taux_equilibre` DÈS QU'UN REJEU EXISTE, il ne s'ajoute
+   * pas à lui. Vu à l'écran : « il te faut 34.0 % » à côté de « Taux de
+   * réussite 39.1 % » et d'un total de -18.9 R. Le 34 % suppose que chaque
+   * trade finit à +rr ou à -1 ; 31 % d'entre eux finissaient en fin de séance.
+   * L'équilibre réel était 40.8 %. Voir `tauxDequilibreMesurePct`.
+   */
+  | "taux_equilibre_mesure"
+  /**
    * Le même, mais AVANT frais, parce qu'on ne connaît pas encore le risque moyen.
    *
    * ⚠️⚠️ VU À L'ÉCRAN, ET C'ÉTAIT LA FAUTE QUE TOUTE CETTE PAGE COMBAT. Faute de
@@ -146,6 +156,19 @@ export interface EntreeCondamnation {
    * premier rejeu, pour ne pas laisser la carte vide.
    */
   coutParTradeMesureR?: number;
+  /**
+   * Gain moyen d'un gagnant et perte moyenne d'un perdant, en R nets, mesurés
+   * sur le rejeu. `perteMoyenneR` est POSITIVE : c'est une taille.
+   *
+   * ⚠⚠ SANS EUX, LA LIGNE D'ÉQUILIBRE DÉCRIT UNE MÉTHODE QUI N'EST PAS
+   * CELLE-LÀ. Voir l'en-tête de `tauxDequilibreMesurePct`.
+   */
+  gainMoyenR?: number;
+  perteMoyenneR?: number;
+  /** Part des trades sortis ni à l'objectif ni au stop, entre 0 et 1. */
+  partHorsCible?: number;
+  /** Taux de réussite observé sur le rejeu, entre 0 et 1. */
+  tauxReussiteObserve?: number;
 }
 
 /**
@@ -165,6 +188,33 @@ export function tauxDequilibrePct(rr: number, coutEnR: number): number | null {
   return p > 0 && p <= 1 ? p * 100 : null;
 }
 
+/**
+ * Le taux de réussite qu'il faut atteindre, calculé sur les trades qui ont
+ * VRAIMENT eu lieu.
+ *
+ * ⚠⚠ VU À L'ÉCRAN, ET C'EST LE PIÈGE LE PLUS COÛTEUX QUE CETTE PAGE AIT
+ * PRODUIT. Elle affichait « il te faut 34.0 % de trades gagnants pour rentrer
+ * dans tes frais », et deux cartes plus bas « Taux de réussite 39.1 % », puis
+ * « Total -18.9 R ». Trente-neuf est plus grand que trente-quatre : n'importe
+ * qui en conclut que la méthode gagne, et elle perd.
+ *
+ * Le 34 % n'était pas faux, il répondait à une autre question. Il suppose que
+ * chaque trade finit à +rr ou à -1. Sur ce rejeu, 31 % des trades finissaient
+ * en fin de séance, à n'importe quel R : gain moyen 1.29 R, perte moyenne
+ * 0.89 R. L'équilibre réel était donc 0.89 / (1.29 + 0.89) = 40.8 %, au-dessus
+ * du 39.1 % observé, et c'est cette ligne-là qui explique le total négatif.
+ *
+ * ⚠ DÈS QU'UN REJEU EXISTE, IL GAGNE. Le théorique ne sert qu'avant, pour ne
+ * pas laisser la carte vide, et il disparaît ensuite au lieu de cohabiter avec
+ * le mesuré : deux taux d'équilibre sur le même écran, c'est le trader qui
+ * choisit celui qui l'arrange.
+ */
+export function tauxDequilibreMesurePct(gainMoyenR: number, perteMoyenneR: number): number | null {
+  if (!(gainMoyenR > 0) || !(perteMoyenneR > 0)) return null;
+  const p = perteMoyenneR / (gainMoyenR + perteMoyenneR);
+  return p > 0 && p <= 1 ? p * 100 : null;
+}
+
 /** La distance du stop en ticks, quand le plan la fixe lui-même. */
 function stopFixeEnTicks(plan: PlanExecution): number | null {
   if (plan.stop.type === "fixe") return plan.stop.ticks;
@@ -179,7 +229,20 @@ export function verifierCondamnation(e: EntreeCondamnation): Constat[] {
   // ── 1. Ce que le courtier prend sur chaque unité de risque ──────────────
   let coutEnR: number | null = null;
   if (risque != null && risque > 0) {
-    coutEnR = cout / risque;
+    /**
+     * ⚠⚠ VU À L'ÉCRAN : DEUX COÛTS POUR LE MÊME ALLER-RETOUR, SUR LA MÊME
+     * CARTE. Une ligne disait « l'aller-retour coûte 2.0 % de ton risque
+     * moyen », une autre « tes frais représentent 73.4 % de ton capital par
+     * an » à 506 trades et 5 % de risque. Or 506 × 5 % × 2.0 % fait 50.6 %, pas
+     * 73.4 % : la seconde ligne utilisait déjà le coût MESURÉ (2.9 %), la
+     * première le coût théorique. La carte promet des divisions qu'on peut
+     * refaire sur un coin de table, et elles ne tombaient pas juste.
+     *
+     * ⚠ LA MESURE GAGNE PARTOUT, PAS SEULEMENT LÀ OÙ ON Y AVAIT PENSÉ. Un
+     * coût fixe en points pèse plus lourd sur les stops serrés : la moyenne des
+     * rapports dépasse le rapport des moyennes, ici de 48 %.
+     */
+    coutEnR = e.coutParTradeMesureR ?? cout / risque;
     const pct = coutEnR * 100;
     out.push({
       code: "cout_structurel",
@@ -189,6 +252,7 @@ export function verifierCondamnation(e: EntreeCondamnation): Constat[] {
         pct: pct.toFixed(1),
         seuil: COUT_CONDAMNE_PCT,
         seuilLourd: COUT_LOURD_PCT,
+        mesure: e.coutParTradeMesureR != null ? "oui" : "non",
       },
     });
   }
@@ -208,7 +272,36 @@ export function verifierCondamnation(e: EntreeCondamnation): Constat[] {
   }
 
   // ── 3. Ce qu'il faut réussir, seulement pour ne rien perdre ─────────────
-  if (e.plan.objectif.type === "multiple_r") {
+  const mesure =
+    e.gainMoyenR != null && e.perteMoyenneR != null
+      ? tauxDequilibreMesurePct(e.gainMoyenR, e.perteMoyenneR)
+      : null;
+  if (mesure != null && e.gainMoyenR != null && e.perteMoyenneR != null) {
+    const observe = e.tauxReussiteObserve != null ? e.tauxReussiteObserve * 100 : null;
+    out.push({
+      code: "taux_equilibre_mesure",
+      // La gravité compare deux mesures, elle ne juge pas la méthode : sous
+      // l'équilibre, ces trades-là perdaient, et c'est une soustraction.
+      gravite:
+        observe != null && observe < mesure
+          ? "lourd"
+          : mesure >= EQUILIBRE_CONDAMNE
+            ? "condamne"
+            : mesure >= EQUILIBRE_LOURD
+              ? "lourd"
+              : "informatif",
+      valeurs: {
+        pct: mesure.toFixed(1),
+        gain: e.gainMoyenR.toFixed(2),
+        perte: e.perteMoyenneR.toFixed(2),
+        observe: observe != null ? observe.toFixed(1) : "",
+        horsCible: e.partHorsCible != null ? (e.partHorsCible * 100).toFixed(0) : "0",
+        rr: e.plan.objectif.type === "multiple_r" ? e.plan.objectif.r : 0,
+        seuil: EQUILIBRE_CONDAMNE,
+        seuilLourd: EQUILIBRE_LOURD,
+      },
+    });
+  } else if (e.plan.objectif.type === "multiple_r") {
     const p = tauxDequilibrePct(e.plan.objectif.r, coutEnR ?? 0);
     if (p != null) {
       // ⚠️⚠️ SANS RISQUE MOYEN, LE COÛT N'EST PAS ZÉRO, IL EST INCONNU, et la

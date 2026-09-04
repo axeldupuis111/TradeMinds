@@ -65,6 +65,43 @@ export function lireTentatives(strategieId: string): Tentatives {
   }
 }
 
+/**
+ * Remonte le compteur au plus grand numéro d'essai déjà archivé.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN, ET C'EST L'ARCHIVE ELLE-MÊME QUI DÉNONÇAIT LE COMPTEUR.
+ * La carte des garde-fous affichait « 1 essai sur cette stratégie, sous le
+ * seuil de 20 · Établi », et trois cartes plus bas la liste des versions
+ * enregistrées disait « Enregistrée à l'essai n° 6 » pour la MÊME stratégie.
+ * Le stockage local avait été perdu entre les deux (changement de navigateur,
+ * navigation privée, données de site effacées, ou simplement un autre poste),
+ * et le garde-fou le plus important de la page repartait de zéro sans le dire.
+ *
+ * ⚠️ ON NE FAIT QUE MONTER, JAMAIS DESCENDRE. Une archive prouve qu'un essai a
+ * eu lieu ; elle ne prouve jamais qu'il n'y en a pas eu d'autres, puisqu'on
+ * n'enregistre pas tous les rejeux. Le compteur local reste donc la référence
+ * quand il est déjà plus haut.
+ *
+ * ⚠️ LA DATE SUIT LE COMPTEUR. Dire « 6 essais depuis aujourd'hui » quand cinq
+ * d'entre eux datent de la semaine dernière serait une deuxième contrevérité.
+ */
+export function recalerSurLArchive(strategieId: string, archives: number[]): Tentatives {
+  const actuel = lireTentatives(strategieId);
+  const plancher = archives.reduce(
+    (max, n) => (typeof n === "number" && Number.isFinite(n) && n > max ? Math.floor(n) : max),
+    0,
+  );
+  if (plancher <= actuel.n) return actuel;
+  const suivant: Tentatives = { n: plancher, depuis: actuel.depuis };
+  if (!strategieId || typeof window === "undefined") return suivant;
+  try {
+    window.localStorage.setItem(PREFIXE + strategieId, JSON.stringify(suivant));
+  } catch {
+    // Voir compterUnEssai : une écriture refusée laisse la session en cours
+    // juste, et le trader n'y peut rien.
+  }
+  return suivant;
+}
+
 /** Enregistre un essai de plus et rend le nouvel état. */
 export function compterUnEssai(strategieId: string): Tentatives {
   const actuel = lireTentatives(strategieId);

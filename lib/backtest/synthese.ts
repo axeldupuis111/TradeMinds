@@ -198,7 +198,18 @@ export function synthetiser(e: EntreesSynthese): Synthese {
     },
     // ⚠️ Quand la recherche a tourné, la phrase doit dire d'où vient le total :
     // « 39 essais » sans explication ressemble à un compteur qui s'emballe.
-    explorees > 0 ? (essaisTotal <= MAX_TENTATIVES_AVANT_ALERTE ? "avec_recherche" : "avec_recherche_au_dela") : undefined,
+    //
+    // ⚠️⚠️ « 1 ESSAIS », VU À L'ÉCRAN. La même faute que « 7.05 bougie » et
+    // « 1 ans » : un pluriel appliqué à un. Elle est d'autant plus visible ici
+    // que c'est le premier rejeu de tout le monde, donc la phrase que le plus
+    // grand nombre de traders lira.
+    explorees > 0
+      ? essaisTotal <= MAX_TENTATIVES_AVANT_ALERTE
+        ? "avec_recherche"
+        : "avec_recherche_au_dela"
+      : essaisTotal === 1
+        ? "etabli_un"
+        : undefined,
   );
 
   // ── 7. La cohérence ──────────────────────────────────────────────────────

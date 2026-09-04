@@ -96,7 +96,7 @@ import { verifierCondamnation } from "@/lib/backtest/condamnation";
 import { confronterAuProfil, lireLeProfil, type TradeReel } from "@/lib/backtest/profil";
 import { enregistrerVersion } from "@/lib/backtest/enregistrement";
 import { nomDuFichier, tradesEnCsv } from "@/lib/backtest/export-csv";
-import { compterUnEssai, lireTentatives } from "@/lib/backtest/tentatives";
+import { compterUnEssai, lireTentatives, recalerSurLArchive } from "@/lib/backtest/tentatives";
 import { synthetiser } from "@/lib/backtest/synthese";
 import {
   listerVersions,
@@ -772,6 +772,20 @@ export default function BacktestPage() {
     if (r.ok) {
       setVersions(r.versions);
       setVersionsErreur(false);
+      /**
+       * ⚠️⚠️ L'ARCHIVE SAIT COMBIEN D'ESSAIS ONT EU LIEU, LE NAVIGATEUR PEUT
+       * L'AVOIR OUBLIÉ. Vu à l'écran : « 1 essai sur cette stratégie · Établi »
+       * au-dessus d'une version « enregistrée à l'essai n° 6 », sur la même
+       * stratégie. Le compteur vit dans le stockage local et se perd avec lui ;
+       * les versions, elles, sont en base. On remonte le compteur au plus haut
+       * numéro archivé, et jamais dans l'autre sens.
+       */
+      const recale = recalerSurLArchive(
+        strategieId,
+        r.versions.map((v) => v.resume.tentatives),
+      );
+      setTentatives(recale.n);
+      setTentativesDepuis(recale.n > 0 ? recale.depuis : null);
     } else {
       // ⚠️ ON N'EFFACE PAS LA LISTE EN MÉMOIRE. Une lecture ratée ne veut pas
       // dire que les versions ont disparu ; les remplacer par du vide ferait
@@ -1062,6 +1076,19 @@ export default function BacktestPage() {
       coutParTradeMesureR: resultat?.lecture.couts?.coutParTradeR,
       amplitudeBougieTicks: resultat?.amplitudeBougieTicks,
       tradesParAn: trades && mois > 0 ? (trades * 12) / mois : undefined,
+      /**
+       * ⚠️⚠️ SANS EUX, LA LIGNE D'ÉQUILIBRE DÉCRIT UNE MÉTHODE QUI N'EST PAS
+       * CELLE-LÀ. Vu à l'écran : « il te faut 34.0 % de trades gagnants » à
+       * côté de « Taux de réussite 39.1 % » et d'un total de -18.9 R. Le 34 %
+       * suppose que chaque trade finit à +2 R ou à -1 R ; 31 % d'entre eux
+       * finissaient en fin de séance. Gain moyen 1.29 R, perte moyenne 0.89 R,
+       * donc équilibre réel à 40.8 % : au-dessus des 39.1 % observés, et c'est
+       * ça qui explique le total.
+       */
+      gainMoyenR: resultat?.lecture.stats?.gainMoyenR ?? undefined,
+      perteMoyenneR: resultat?.lecture.stats?.perteMoyenneR ?? undefined,
+      partHorsCible: resultat?.lecture.stats?.partHorsCible,
+      tauxReussiteObserve: resultat?.lecture.stats?.tauxReussite,
     });
   }, [plan, resultat, de, a]);
 

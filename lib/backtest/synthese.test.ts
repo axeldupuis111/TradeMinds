@@ -13,6 +13,9 @@ function stats(esperanceR: number, marge: number): Statistiques {
     esperanceR,
     borneBasse: esperanceR - marge,
     borneHaute: esperanceR + marge,
+    gainMoyenR: 1.5,
+    perteMoyenneR: 1,
+    partHorsCible: 0,
     totalR: 20,
     profitFactor: 1.2,
     drawdownMaxR: 8,
@@ -270,5 +273,40 @@ describe("les combinaisons de la recherche comptent comme des essais", () => {
     expect(p.variante).toBeUndefined();
     expect(p.valeurs.essais).toBe(3);
     expect(p.etat).toBe("etabli");
+  });
+});
+
+/**
+ * ⚠️⚠️ « 1 ESSAIS », VU À L'ÉCRAN. La même faute que « 7.05 bougie » et
+ * « 1 ans » : un pluriel appliqué à un. Elle est ici la plus visible de toutes,
+ * puisque le premier rejeu est celui que tout le monde lance.
+ */
+describe("le premier essai se dit au singulier", () => {
+  const cle = (tentatives: number, explorees?: number) => {
+    const p = synthetiser({
+      ...entrees(),
+      tentatives,
+      combinaisonsExplorees: explorees,
+    }).piliers.find((x) => x.code === "recherche_bornee")!;
+    return `bt_syn_recherche_bornee_${p.variante ?? p.etat}`;
+  };
+
+  it("un seul essai prend la rédaction au singulier, et elle existe", () => {
+    const c = cle(1);
+    expect(c).toBe("bt_syn_recherche_bornee_etabli_un");
+    expect((fr as Record<string, string>)[c]).toBeTruthy();
+    expect((fr as Record<string, string>)[c]).not.toContain("{essais}");
+  });
+
+  it("deux essais gardent le pluriel", () => {
+    expect(cle(2)).toBe("bt_syn_recherche_bornee_etabli");
+  });
+
+  /**
+   * ⚠️ UNE RECHERCHE NE PRODUIT JAMAIS UN SEUL ESSAI, et sa phrase dit d'où
+   * vient le total. Le singulier ne doit pas la lui voler.
+   */
+  it("une recherche garde sa propre phrase", () => {
+    expect(cle(1, 31)).toBe("bt_syn_recherche_bornee_avec_recherche_au_dela");
   });
 });

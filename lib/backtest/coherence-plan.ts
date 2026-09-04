@@ -1,3 +1,4 @@
+import { tauxDequilibreMesurePct } from "./condamnation";
 import { effetSurLeCompte } from "./capital";
 import type { Instrument } from "./instruments";
 import type { AuditExecution, PlanExecution, TradeSimule } from "./types";
@@ -295,7 +296,23 @@ export function verifierLePlan(
   // être à l'équilibre AVANT coûts. Le dire n'est pas juger l'objectif, c'est
   // rappeler l'arithmétique que l'objectif implique.
   if (stats && plan.objectif.type === "multiple_r" && plan.objectif.r > 0) {
-    const equilibre = 1 / (1 + plan.objectif.r);
+    /**
+     * ⚠️⚠️ TROISIÈME DÉFINITION DE L'ÉQUILIBRE DANS LE MÊME PRODUIT, ET LA
+     * PLUS OPTIMISTE DES TROIS. `1 / (1 + r)` suppose deux choses fausses ici :
+     * que le courtier ne prend rien, et que chaque trade finit à +r ou à -1.
+     * Vu à l'écran : 31 % des trades sortaient en fin de séance, ce qui portait
+     * l'équilibre réel de 33.3 % à 40.8 %. Annoncer 33.3 % à quelqu'un qui doit
+     * battre 40.8 % lui dit qu'il est au-dessus quand il est en dessous.
+     *
+     * ⚠️ LA MESURE QUAND ELLE EXISTE, la formule sinon. Le gain et la perte
+     * moyens viennent du même rejeu que le taux de réussite : ils sont là ou
+     * absents ensemble.
+     */
+    const mesure =
+      stats.gainMoyenR != null && stats.perteMoyenneR != null
+        ? tauxDequilibreMesurePct(stats.gainMoyenR, stats.perteMoyenneR)
+        : null;
+    const equilibre = mesure != null ? mesure / 100 : 1 / (1 + plan.objectif.r);
     if (stats.tauxReussite < equilibre) {
       ajouter("reussite_sous_equilibre", "a_verifier", {
         observe: (stats.tauxReussite * 100).toFixed(1),

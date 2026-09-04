@@ -21,6 +21,13 @@ import { AlertTriangle, Calculator, Info, TriangleAlert } from "lucide-react";
  *
  * ⚠️ AUCUN BACKTEST N'EST NÉCESSAIRE POUR CETTE CARTE. Un trader dont la méthode
  * ne sera jamais rejouable obtient ces cinq lignes exactement comme les autres.
+ *
+ * ⚠️⚠️ MAIS QUAND UN REJEU EXISTE, SES CHIFFRES REMPLACENT LES ESTIMATIONS, et
+ * ils ne cohabitent pas avec elles. Deux fois le même fait sous deux nombres
+ * différents, c'est le trader qui choisit celui qui l'arrange : la carte
+ * affichait « il te faut 34.0 % de trades gagnants » quand l'équilibre réel de
+ * ces trades-là était à 40.8 %, et « l'aller-retour coûte 2.0 % de ton risque »
+ * juste au-dessus d'une ligne annuelle calculée, elle, sur 2.9 %.
  */
 
 const ICONE: Record<Gravite, typeof Info> = {
@@ -34,6 +41,33 @@ const TON: Record<Gravite, string> = {
   lourd: "border-warning/40 bg-warning/[0.06]",
   informatif: "border-border bg-surface/40",
 };
+
+/**
+ * Quelle phrase pour ce constat.
+ *
+ * ⚠️ TROIS LIGNES CHANGENT DE TEXTE SELON CE QU'ON SAIT, et chacune l'a fait
+ * après avoir été vue fausse à l'écran :
+ *
+ * 1. « Ton stop vaut 7.05 bougie », un pluriel appliqué à moins de deux.
+ * 2. Le coût, selon qu'il est mesuré sur les trades ou déduit du risque moyen.
+ *    Les deux nombres diffèrent de près de moitié, et la carte les affichait
+ *    tous les deux sans dire lequel était lequel.
+ * 3. L'équilibre mesuré, selon qu'il reste ou non des trades sortis ailleurs
+ *    qu'à l'objectif ou au stop : sans eux, la phrase sur la fin de séance
+ *    parlerait de zéro trade.
+ */
+export function clePourLeConstat(c: Constat): string {
+  if (c.code === "stop_dans_le_bruit" && Number(c.valeurs.bougies) < 2) {
+    return "bt_cond_stop_dans_le_bruit_une";
+  }
+  if (c.code === "cout_structurel" && c.valeurs.mesure === "oui") {
+    return "bt_cond_cout_structurel_mesure";
+  }
+  if (c.code === "taux_equilibre_mesure" && Number(c.valeurs.horsCible) <= 0) {
+    return "bt_cond_taux_equilibre_mesure_pur";
+  }
+  return `bt_cond_${c.code}`;
+}
 
 const TON_TEXTE: Record<Gravite, string> = {
   condamne: "text-loss",
@@ -81,14 +115,7 @@ export function Condamnation({
                 </span>
               </p>
               <p className="mt-1.5 text-[11px] leading-relaxed text-foreground-muted">
-                {/* ⚠️ « Ton stop vaut 7.05 bougie » : la même faute que « 1 trades »
-                    et « 1 journées », vue à l'écran une fois de plus. */}
-                {t(
-                  c.code === "stop_dans_le_bruit" && Number(c.valeurs.bougies) < 2
-                    ? "bt_cond_stop_dans_le_bruit_une"
-                    : `bt_cond_${c.code}`,
-                  c.valeurs,
-                )}
+                {t(clePourLeConstat(c), c.valeurs)}
               </p>
             </li>
           );

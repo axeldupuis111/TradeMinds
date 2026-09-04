@@ -73,6 +73,9 @@ const stats = (tauxReussite: number): Statistiques => ({
   borneBasse: -0.02,
   borneHaute: 0.12,
   totalR: 20,
+  gainMoyenR: 1.5,
+  perteMoyenneR: 1,
+  partHorsCible: 0,
   profitFactor: 1.1,
   drawdownMaxR: 10,
 });
@@ -292,14 +295,43 @@ describe("le niveau a-t-il le temps d'exister", () => {
 
 describe("le taux de réussite qu'exige l'objectif", () => {
   /**
-   * ⚠️ UNE DIVISION, PAS UN AVIS. Viser 2R demande un tiers de réussite pour
-   * être à l'équilibre avant coûts.
+   * ⚠️ UNE DIVISION, PAS UN AVIS. Le dire n'est pas juger l'objectif, c'est
+   * rappeler l'arithmétique qu'il impose.
+   *
+   * ⚠️⚠️ MAIS PAS LA DIVISION `1 / (1 + r)`, ET C'EST TOUT LE SUJET. Elle
+   * suppose que le courtier ne prend rien et que chaque trade finit à +r ou
+   * à -1. Vu à l'écran : 31 % des trades sortaient en fin de séance, ce qui
+   * portait l'équilibre réel de 33.3 % à 40.8 %. Annoncer 33.3 % à quelqu'un
+   * qui doit battre 40.8 % lui dit qu'il est au-dessus quand il est en dessous,
+   * et c'était la troisième définition de l'équilibre dans le même produit.
    */
-  it("signale un taux observé sous l'équilibre de l'objectif", () => {
+  it("mesure l'équilibre sur les gains et les pertes réels", () => {
+    // Gain moyen 1.5 R, perte moyenne 1 R : l'équilibre est à 40 %, pas 33.3 %.
     const c = verifierLePlan(plan(), audit(), trades(200, 60), NAS, RIEN, stats(0.25));
     const constat = c.find((x) => x.code === "reussite_sous_equilibre");
     expect(constat).toBeTruthy();
-    expect(constat!.valeurs.equilibre).toBe("33.3");
+    expect(constat!.valeurs.equilibre).toBe("40.0");
+  });
+
+  /**
+   * ⚠️ SIGNALE CE QUE LA FORMULE THÉORIQUE LAISSAIT PASSER : entre les deux
+   * chiffres, il y a exactement les traders qui se croient au-dessus.
+   */
+  it("voit un taux que la formule théorique aurait déclaré suffisant", () => {
+    const entre = 0.36; // au-dessus de 33.3 %, sous 40 %
+    const c = verifierLePlan(plan(), audit(), trades(200, 60), NAS, RIEN, stats(entre));
+    expect(codes(c)).toContain("reussite_sous_equilibre");
+  });
+
+  /**
+   * ⚠️ SANS REJEU, LA FORMULE REPREND LA MAIN. Le gain et la perte moyens
+   * viennent du même rejeu que le taux de réussite ; quand ils manquent, mieux
+   * vaut la division théorique que le silence.
+   */
+  it("retombe sur 1 / (1 + r) quand rien n'a été mesuré", () => {
+    const sansTailles = { ...stats(0.25), gainMoyenR: null, perteMoyenneR: null };
+    const c = verifierLePlan(plan(), audit(), trades(200, 60), NAS, RIEN, sansTailles);
+    expect(c.find((x) => x.code === "reussite_sous_equilibre")!.valeurs.equilibre).toBe("33.3");
   });
 
   it("ne dit rien quand le taux dépasse l'équilibre", () => {

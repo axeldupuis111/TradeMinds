@@ -7,6 +7,7 @@ import {
   SERIE_ORDINAIRE,
   STOP_MINIMUM_EN_BOUGIES,
   tauxDequilibrePct,
+  tauxDequilibreMesurePct,
   verifierCondamnation,
   type CodeCondamnation,
   type Constat,
@@ -323,6 +324,7 @@ describe("l'ordre et la rédaction", () => {
       "stop_dans_le_bruit",
       "taux_equilibre",
       "taux_equilibre_sans_couts",
+      "taux_equilibre_mesure",
       "risque_contre_serie",
     ];
     for (const c of codes) {
@@ -349,4 +351,175 @@ describe("l'ordre et la rédaction", () => {
       expect(corps.toLowerCase().includes(mot), mot).toBe(false);
     }
   });
+});
+
+/**
+ * ⚠️⚠️ LE PIÈGE LE PLUS COÛTEUX QUE CETTE PAGE AIT PRODUIT, VU À L'ÉCRAN.
+ *
+ * Elle affichait, sur le même écran :
+ *
+ *   « Avec un objectif à 2 fois ton risque, il te faut 34.0 % de trades
+ *     gagnants pour rentrer dans tes frais. »
+ *   « Taux de réussite : 39.1 % »
+ *   « Total : -18.9 R »
+ *
+ * Trente-neuf est plus grand que trente-quatre. N'importe quel lecteur en
+ * conclut que la méthode gagne, et elle vidait le compte au trade 401.
+ *
+ * Le 34 % n'était pas faux, il répondait à une autre question : il suppose que
+ * CHAQUE trade finit à +2 R ou à -1 R. Sur ce rejeu, 106 trades sortaient à
+ * l'objectif, 241 au stop, et 159 (31 %) en fin de séance à n'importe quel R.
+ * Gain moyen réel 1.29 R, perte moyenne 0.89 R, donc équilibre à 40.8 % : au-
+ * dessus des 39.1 % observés, et c'est cette ligne-là qui explique le total.
+ */
+describe("le taux d'équilibre mesuré", () => {
+  it("se calcule sur le gain et la perte moyens, pas sur l'objectif", () => {
+    // Les chiffres exacts vus à l'écran.
+    expect(tauxDequilibreMesurePct(1.291, 0.891)).toBeCloseTo(40.8, 1);
+  });
+
+  /**
+   * ⚠️ C'EST TOUTE LA DIFFÉRENCE : le théorique répond « 34 % », le mesuré
+   * « 41 % », et seul le second décrit ces trades-là.
+   */
+  it("s'écarte du théorique quand les sorties ne sont pas binaires", () => {
+    const theorique = tauxDequilibrePct(2, 0.029)!;
+    const mesure = tauxDequilibreMesurePct(1.291, 0.891)!;
+    expect(theorique).toBeCloseTo(34.3, 1);
+    expect(mesure - theorique).toBeGreaterThan(6);
+  });
+
+  it("retombe sur le théorique quand tout finit à l'objectif ou au stop", () => {
+    // Objectif 2 R et stop 1 R, sans coûts : les deux formules disent 33.3 %.
+    expect(tauxDequilibreMesurePct(2, 1)).toBeCloseTo(tauxDequilibrePct(2, 0)!, 5);
+  });
+
+  it("refuse de rendre un chiffre sur des tailles absurdes", () => {
+    expect(tauxDequilibreMesurePct(0, 1)).toBeNull();
+    expect(tauxDequilibreMesurePct(1, 0)).toBeNull();
+    expect(tauxDequilibreMesurePct(1, -1)).toBeNull();
+  });
+
+  /**
+   * ⚠️⚠️ LES DEUX NE COHABITENT JAMAIS. Deux taux d'équilibre sur le même
+   * écran, c'est le trader qui choisit celui qui l'arrange.
+   */
+  it("remplace la ligne théorique dès qu'un rejeu existe", () => {
+    const avec = verifierCondamnation({
+      plan: plan(),
+      couts: coutsPourInstrument(NAS),
+      risqueMoyenTicks: 117270,
+      gainMoyenR: 1.291,
+      perteMoyenneR: 0.891,
+      partHorsCible: 0.314,
+      tauxReussiteObserve: 0.391,
+    });
+    expect(trouver(avec, "taux_equilibre_mesure")).toBeTruthy();
+    expect(trouver(avec, "taux_equilibre")).toBeUndefined();
+    expect(trouver(avec, "taux_equilibre_sans_couts")).toBeUndefined();
+  });
+
+  it("garde la ligne théorique tant que rien n'a été rejoué", () => {
+    const sans = verifierCondamnation({
+      plan: plan(),
+      couts: coutsPourInstrument(NAS),
+      risqueMoyenTicks: 117270,
+    });
+    expect(trouver(sans, "taux_equilibre")).toBeTruthy();
+    expect(trouver(sans, "taux_equilibre_mesure")).toBeUndefined();
+  });
+
+  /**
+   * ⚠️ LA COMPARAISON EST UNE SOUSTRACTION, PAS UN AVIS. Sous l'équilibre,
+   * ces trades-là perdaient ; le dire n'est pas juger la méthode.
+   */
+  it("marque la ligne quand le taux observé est sous l'équilibre", () => {
+    const c = verifierCondamnation({
+      plan: plan(),
+      couts: coutsPourInstrument(NAS),
+      risqueMoyenTicks: 117270,
+      gainMoyenR: 1.291,
+      perteMoyenneR: 0.891,
+      partHorsCible: 0.314,
+      tauxReussiteObserve: 0.391,
+    });
+    expect(trouver(c, "taux_equilibre_mesure")!.gravite).not.toBe("informatif");
+  });
+});
+
+/**
+ * ⚠️⚠️ DEUX COÛTS POUR LE MÊME ALLER-RETOUR, SUR LA MÊME CARTE, VU À L'ÉCRAN.
+ *
+ *   « L'aller-retour coûte 2.0 % de ton risque moyen. »
+ *   « À 506 trades par an et 5 % de risque par trade, tes frais représentent
+ *     73.4 % de ton capital par an. »
+ *
+ * 506 × 5 % × 2.0 % fait 50.6 %, pas 73.4 %. La ligne annuelle utilisait déjà le
+ * coût MESURÉ (2.9 %), la ligne du haut le coût théorique. La carte promet des
+ * divisions qu'on peut refaire sur un coin de table, et elles ne tombaient pas
+ * juste : c'est exactement la confiance qu'elle est censée gagner.
+ *
+ * L'écart n'est pas une erreur d'arrondi. Un coût fixe en points pèse plus lourd
+ * sur les stops serrés, donc la moyenne des rapports dépasse le rapport des
+ * moyennes, ici de 48 %.
+ */
+describe("un seul coût sur toute la carte", () => {
+  const entree = {
+    plan: plan({ gestion: { risqueParTradePct: 5 } }),
+    couts: coutsPourInstrument(NAS),
+    risqueMoyenTicks: 117270,
+    tradesParAn: 506,
+  };
+
+  it("les deux lignes se recalculent l'une l'autre", () => {
+    const c = verifierCondamnation({ ...entree, coutParTradeMesureR: 0.029 });
+    const structurel = Number(trouver(c, "cout_structurel")!.valeurs.pct);
+    const annuel = Number(trouver(c, "cout_annuel")!.valeurs.pct);
+    // La multiplication que la carte invite à refaire.
+    expect(structurel / 100 * 506 * 5).toBeCloseTo(annuel, 1);
+  });
+
+  it("la mesure l'emporte sur le théorique", () => {
+    const c = verifierCondamnation({ ...entree, coutParTradeMesureR: 0.029 });
+    expect(Number(trouver(c, "cout_structurel")!.valeurs.pct)).toBeCloseTo(2.9, 1);
+    expect(trouver(c, "cout_structurel")!.valeurs.mesure).toBe("oui");
+  });
+
+  it("le théorique sert tant qu'aucun rejeu n'a eu lieu", () => {
+    const c = verifierCondamnation(entree);
+    const attendu = (coutAllerRetourTicks(entree.couts) / 117270) * 100;
+    expect(Number(trouver(c, "cout_structurel")!.valeurs.pct)).toBeCloseTo(attendu, 1);
+    expect(trouver(c, "cout_structurel")!.valeurs.mesure).toBe("non");
+  });
+
+  /**
+   * ⚠️ ET LE TAUX D'ÉQUILIBRE THÉORIQUE AUSSI PAYE LE COÛT MESURÉ, tant qu'il
+   * est la ligne affichée : sinon la carte porterait un troisième coût.
+   */
+  it("le taux d'équilibre théorique utilise le même coût", () => {
+    const c = verifierCondamnation({ ...entree, coutParTradeMesureR: 0.029 });
+    const p = Number(trouver(c, "taux_equilibre")!.valeurs.pct);
+    expect(p).toBeCloseTo(tauxDequilibrePct(2, 0.029)!, 1);
+  });
+});
+
+/**
+ * ⚠️ CES CLÉS SONT CONSTRUITES, DONC LE TEST GÉNÉRAL NE LES VOIT PAS. Le
+ * balayage des clés utilisées ne lit que les littéraux ; une variante composée
+ * à l'exécution manquerait à l'écran sans faire échouer quoi que ce soit, et
+ * s'afficherait sous la forme de son propre nom de clé.
+ */
+describe("les variantes de rédaction existent", () => {
+  const variantes = [
+    "bt_cond_stop_dans_le_bruit_une",
+    "bt_cond_cout_structurel_mesure",
+    "bt_cond_taux_equilibre_mesure",
+    "bt_cond_taux_equilibre_mesure_pur",
+    "bt_cond_taux_equilibre_mesure_titre",
+  ];
+  for (const v of variantes) {
+    it(v, () => {
+      expect(connues[v], `${v} manquante`).toBeTruthy();
+    });
+  }
 });

@@ -64,6 +64,33 @@ export interface Statistiques {
   profitFactor: number;
   /** Pire recul de la courbe cumulée, en R. Toujours positif ou nul. */
   drawdownMaxR: number;
+  /**
+   * Gain moyen d'un trade gagnant, et perte moyenne d'un perdant, en R nets.
+   *
+   * ⚠️⚠️ VU À L'ÉCRAN, ET C'EST LE PIÈGE LE PLUS COÛTEUX DE LA PAGE. L'écran
+   * affichait « il te faut 34.0 % de trades gagnants pour rentrer dans tes
+   * frais » à côté de « Taux de réussite 39.1 % », et un total de -18.9 R.
+   * N'importe qui en conclut que la méthode gagne. Le 34 % suppose que chaque
+   * trade finit à +2 R ou à -1 R ; ici 31 % d'entre eux finissaient en fin de
+   * séance, à n'importe quel R. Le gain moyen était de 1.29 R et la perte
+   * moyenne de 0.89 R, ce qui met l'équilibre réel à 40.8 %, au-dessus des
+   * 39.1 % observés. Le chiffre théorique n'était pas faux, il ne décrivait
+   * simplement pas ces trades-là.
+   *
+   * ⚠️ EN R NETS, coûts payés, parce que c'est ce que le trader encaisse.
+   * ⚠️ `perteMoyenneR` EST POSITIVE : c'est une taille, pas un résultat.
+   * Rendre un nombre négatif ici ferait écrire des sommes fausses en aval.
+   */
+  gainMoyenR: number | null;
+  perteMoyenneR: number | null;
+  /**
+   * Part des trades sortis ni à l'objectif ni au stop.
+   *
+   * ⚠️ C'est exactement ce qui invalide le taux d'équilibre théorique : ces
+   * trades-là ne valent ni +rr ni -1, et plus ils sont nombreux, moins la
+   * formule décrit la méthode.
+   */
+  partHorsCible: number;
 }
 
 export interface AuditCouts {
@@ -192,9 +219,19 @@ function statistiques(trades: TradeSimule[]): Statistiques {
     if (recul > drawdownMaxR) drawdownMaxR = recul;
   }
 
+  const rGagnants = rs.filter((r) => r > 0);
+  const rPerdants = rs.filter((r) => r <= 0);
+  const horsCible = trades.filter((t) => t.motif !== "objectif" && t.motif !== "stop").length;
+
   return {
     nbTrades: rs.length,
-    tauxReussite: rs.filter((r) => r > 0).length / rs.length,
+    tauxReussite: rGagnants.length / rs.length,
+    gainMoyenR:
+      rGagnants.length > 0 ? rGagnants.reduce((a, b) => a + b, 0) / rGagnants.length : null,
+    // Positive : voir le commentaire du champ.
+    perteMoyenneR:
+      rPerdants.length > 0 ? -(rPerdants.reduce((a, b) => a + b, 0) / rPerdants.length) : null,
+    partHorsCible: horsCible / rs.length,
     esperanceR,
     borneBasse: esperanceR - marge,
     borneHaute: esperanceR + marge,
