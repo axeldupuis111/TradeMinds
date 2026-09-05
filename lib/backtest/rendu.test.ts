@@ -218,6 +218,8 @@ function trades(
       risqueTicks: 40_000 + (i % 7) * 5_000,
       r,
       rBrut: r + 0.02,
+      mfeR: Math.max(0, r),
+      maeR: Math.min(0, r),
       motif: motifs[i % motifs.length],
       collisionMemeBarre: i % 23 === 0,
     };

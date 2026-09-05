@@ -60,6 +60,8 @@ function trades(n: number, jours: number, risqueTicks = 40_000): TradeSimule[] {
       risqueTicks,
       r: 0.1,
       rBrut: 0.15,
+      mfeR: 0.15,
+      maeR: 0,
       motif: "objectif" as const,
       collisionMemeBarre: false,
     };

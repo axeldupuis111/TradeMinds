@@ -40,6 +40,8 @@ function trades(rs: number[]): TradeSimule[] {
       risqueTicks: 1000,
       r,
       rBrut: r,
+      mfeR: Math.max(0, r),
+      maeR: Math.min(0, r),
       motif: "objectif" as const,
       collisionMemeBarre: false,
     };

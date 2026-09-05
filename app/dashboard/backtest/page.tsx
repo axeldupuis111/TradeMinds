@@ -66,6 +66,7 @@ import {
   CLES_PAR_LEVIER,
   comparerPlans,
   demandeUnControle,
+  BLOC_I18N,
   DESCRIPTEURS,
   empreintePlan,
   toutAnnuler,
@@ -104,6 +105,8 @@ import {
 import { CODES_QUESTIONS, evaluerCompletude } from "@/lib/backtest/completude";
 import { verifierCondamnation } from "@/lib/backtest/condamnation";
 import { prochaineEtape } from "@/lib/backtest/prochaine-etape";
+import { diagnostiquer } from "@/lib/backtest/diagnostic";
+import { Diagnostic } from "@/components/backtest/Diagnostic";
 import { composerMonPlan } from "@/lib/backtest/mon-plan";
 import { composerPlanComplet } from "@/lib/backtest/plan-complet";
 import { MonPlan } from "@/components/backtest/MonPlan";
@@ -1680,6 +1683,19 @@ export default function BacktestPage() {
   }, [monPlan, tr, instrument, de, a]);
 
   /**
+   * CE QUI NE FONCTIONNE PAS, ET OÙ LE CHANGER.
+   *
+   * ⚠️⚠️ LE REPROCHE FORMULÉ TROIS FOIS : « je vois que ma stratégie n'est pas
+   * rentable, mais ça me dit pas concrètement ce qui ne fonctionne pas, ce
+   * qu'il faut changer ». La page savait mesurer et balayer ; elle ne savait
+   * pas diagnostiquer, et c'est la seule des trois qui répond à la question.
+   */
+  const diagnostics = useMemo(
+    () => (resultat ? diagnostiquer(resultat.trades, plan) : []),
+    [resultat, plan],
+  );
+
+  /**
    * LA SEULE CHOSE À FAIRE MAINTENANT.
    *
    * ⚠️⚠️ LA PAGE FAIT NEUF ÉCRANS DE HAUT AVANT MÊME D'AVOIR MESURÉ QUOI QUE
@@ -2266,6 +2282,28 @@ export default function BacktestPage() {
             stratégie ». Ce qui répond à sa question (est-ce viable, est-ce
             cohérent, mes confluences servent-elles) doit se lire AVANT la
             décomposition et l'export, pas trois cartes plus bas. */}
+        {/* ── Ce qui ne fonctionne pas ─────────────────────────────────
+            ⚠️⚠️ JUSTE APRÈS LE CHIFFRE, ET AVANT TOUT LE RESTE. Le verdict dit
+            « ça ne gagne pas » ; sans cette carte, le trader referme la page.
+            C'est le reproche qu'Axel a formulé trois fois. */}
+        {resultat ? (
+          <StaggerItem id="bt-diagnostic">
+            <Diagnostic
+              diagnostics={diagnostics}
+              /* ⚠️ L'ANCRE VIENT DE `BLOC_I18N`, PAS DU NOM DU BLOC. Le
+                 diagnostic parle de `stop` et de `objectif` ; l'éditeur les
+                 range tous deux dans « Entrée, stop, objectif ». Deux tables
+                 qui se recoupent à la main finiraient par diverger. */
+              onAller={(bloc) =>
+                document
+                  .getElementById((BLOC_I18N[bloc] ?? "").replace("bt_bloc_", "bt-bloc-"))
+                  ?.scrollIntoView({ behavior: "smooth", block: "center" })
+              }
+              t={tr}
+            />
+          </StaggerItem>
+        ) : null}
+
         {/* ── Le plan qu'il emporte ────────────────────────────────────
             ⚠️⚠️ C'EST L'OBJECTIF DE L'ONGLET, et il n'était livré que sur un
             parcours sur deux. « L'objectif principal est qu'à la fin,

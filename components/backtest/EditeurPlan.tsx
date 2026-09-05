@@ -86,7 +86,7 @@ export function EditeurPlan({ plan, instrument, onChange, contestes, t }: Editeu
   return (
     <div className="space-y-4">
       {/* ── Quand on regarde ─────────────────────────────────────────────── */}
-      <Bloc titre={t("bt_bloc_contexte")} soustitre={t("bt_bloc_contexte_aide")} alerte={alerte("uniteDeTemps", "sens", "contexte", "seance")}>
+      <Bloc ancre="bt-bloc-contexte" titre={t("bt_bloc_contexte")} soustitre={t("bt_bloc_contexte_aide")} alerte={alerte("uniteDeTemps", "sens", "contexte", "seance")}>
         {/* ⚠️ En tête, parce que c'est le réglage le plus lourd de la page :
             lire une stratégie de M3 sur des bougies M1 change la taille des
             stops structurels d'un facteur dix, et donc tout le résultat. */}
@@ -144,6 +144,7 @@ export function EditeurPlan({ plan, instrument, onChange, contestes, t }: Editeu
 
       {/* ── Le niveau ────────────────────────────────────────────────────── */}
       <Bloc
+        ancre="bt-bloc-niveau"
         titre={t("bt_bloc_niveau")}
         soustitre={
           plan.niveau.type === "trendline" ? t("bt_bloc_niveau_trendline_aide") : t("bt_bloc_niveau_aide")
@@ -398,7 +399,7 @@ export function EditeurPlan({ plan, instrument, onChange, contestes, t }: Editeu
       </Bloc>
 
       {/* ── Le déclencheur ───────────────────────────────────────────────── */}
-      <Bloc titre={t("bt_bloc_declencheur")} soustitre={t("bt_bloc_declencheur_aide")} alerte={alerte("declencheur")}>
+      <Bloc ancre="bt-bloc-declencheur" titre={t("bt_bloc_declencheur")} soustitre={t("bt_bloc_declencheur_aide")} alerte={alerte("declencheur")}>
         <Champ label={t("bt_type")} className="sm:col-span-2">
           <Liste
             valeur={plan.declencheur.type}
@@ -535,7 +536,7 @@ export function EditeurPlan({ plan, instrument, onChange, contestes, t }: Editeu
       </Bloc>
 
       {/* ── Confirmations ────────────────────────────────────────────────── */}
-      <Bloc titre={t("bt_bloc_confirmations")} soustitre={t("bt_bloc_confirmations_aide")} alerte={alerte("confirmations")}>
+      <Bloc ancre="bt-bloc-confirmations" titre={t("bt_bloc_confirmations")} soustitre={t("bt_bloc_confirmations_aide")} alerte={alerte("confirmations")}>
         <div className="flex flex-wrap gap-1.5 sm:col-span-2">
           <Bascule
             label={t("bt_conf_reaction")}
@@ -634,7 +635,7 @@ export function EditeurPlan({ plan, instrument, onChange, contestes, t }: Editeu
       </Bloc>
 
       {/* ── Entrée, stop, objectif ───────────────────────────────────────── */}
-      <Bloc titre={t("bt_bloc_execution")} soustitre={t("bt_bloc_execution_aide")} alerte={alerte("entree", "stop", "objectif")}>
+      <Bloc ancre="bt-bloc-execution" titre={t("bt_bloc_execution")} soustitre={t("bt_bloc_execution_aide")} alerte={alerte("entree", "stop", "objectif")}>
         <Champ label={t("bt_entree")}>
           <Liste
             valeur={plan.entree.type}
@@ -784,7 +785,7 @@ export function EditeurPlan({ plan, instrument, onChange, contestes, t }: Editeu
       </Bloc>
 
       {/* ── Sorties auxiliaires ──────────────────────────────────────────── */}
-      <Bloc titre={t("bt_bloc_sorties")} soustitre={t("bt_bloc_sorties_aide")} alerte={alerte("sortiesAuxiliaires")}>
+      <Bloc ancre="bt-bloc-sorties" titre={t("bt_bloc_sorties")} soustitre={t("bt_bloc_sorties_aide")} alerte={alerte("sortiesAuxiliaires")}>
         <Champ label={t("bt_break_even")} aide={t("bt_break_even_aide")}>
           <Nombre
             valeur={plan.sortiesAuxiliaires.breakEvenApresR ?? 0}
@@ -818,7 +819,7 @@ export function EditeurPlan({ plan, instrument, onChange, contestes, t }: Editeu
       </Bloc>
 
       {/* ── Gestion du risque ────────────────────────────────────────────── */}
-      <Bloc titre={t("bt_bloc_gestion")} soustitre={t("bt_bloc_gestion_aide")} alerte={alerte("gestion", "risque")}>
+      <Bloc ancre="bt-bloc-gestion" titre={t("bt_bloc_gestion")} soustitre={t("bt_bloc_gestion_aide")} alerte={alerte("gestion", "risque")}>
         {/* ⚠️ En tête du bloc : sans lui, tout le résultat reste en R, et « -1690 R »
             ne dit rien à personne. C'est aussi ce chiffre qui, multiplié par
             l'arrêt après N pertes, révèle ce que coûte vraiment une mauvaise
@@ -868,7 +869,7 @@ export function EditeurPlan({ plan, instrument, onChange, contestes, t }: Editeu
       </Bloc>
 
       {/* ── Coûts ────────────────────────────────────────────────────────── */}
-      <Bloc titre={t("bt_bloc_couts")} soustitre={t("bt_bloc_couts_aide")}>
+      <Bloc ancre="bt-bloc-couts" titre={t("bt_bloc_couts")} soustitre={t("bt_bloc_couts_aide")}>
         <Champ label={t("bt_spread")}>
           <Nombre
             valeur={prix(plan.couts.spreadTicks)}

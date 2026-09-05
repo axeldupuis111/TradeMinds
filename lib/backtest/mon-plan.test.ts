@@ -45,6 +45,8 @@ function trades(n = 200): TradeSimule[] {
       risqueTicks: 40_000,
       r,
       rBrut: r + 0.02,
+      mfeR: Math.max(0, r),
+      maeR: Math.min(0, r),
       motif: (i % 3 === 0 ? "objectif" : "stop") as TradeSimule["motif"],
       collisionMemeBarre: false,
     };

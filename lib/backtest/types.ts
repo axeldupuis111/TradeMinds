@@ -571,6 +571,26 @@ export interface TradeSimule {
   r: number;
   /** Le même résultat SANS aucun coût. Sert à l'audit de coûts. */
   rBrut: number;
+  /**
+   * Le plus loin que le trade est allé DANS LE BON SENS, en R, avant de finir.
+   *
+   * ⚠️⚠️ C'EST LA MESURE QUI DIT « POURQUOI ÇA PERD », ET ELLE MANQUAIT.
+   * L'onglet savait dire qu'une méthode ne gagne pas ; il ne savait pas dire ce
+   * qui, dans la mécanique, la fait perdre. Ces deux nombres le disent :
+   *
+   *   Un perdant monté à +1.4 R avant de revenir au stop n'a pas un problème
+   *   d'entrée : il a un problème de SORTIE. Le signal était bon, le trade est
+   *   rendu.
+   *
+   *   Un gagnant descendu à -0.9 R avant de repartir dit l'inverse : le stop
+   *   est frôlé, et quelques ticks de plus le transformaient en perdant.
+   *
+   * Sans elles, la page ne peut que constater. Avec elles, elle peut nommer le
+   * bloc à changer.
+   */
+  mfeR: number;
+  /** Le plus loin dans le MAUVAIS sens, en R, toujours négatif ou nul. */
+  maeR: number;
   motif: MotifSortie;
   /**
    * Vrai si le stop et l'objectif étaient tous deux atteignables dans la même

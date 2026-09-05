@@ -104,6 +104,9 @@ interface Position {
   barreEntree: number;
   msEntree: number;
   breakEvenPose: boolean;
+  /** Les extrêmes parcourus depuis l'entrée, en R sur le prix brut. */
+  extremeFavorable: number;
+  extremeAdverse: number;
   signalMs: number;
   niveauSignal: number;
   geo: GeoSignal;
@@ -797,6 +800,8 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
       risqueTicks: p.risqueTicks,
       r,
       rBrut,
+      mfeR: p.extremeFavorable,
+      maeR: p.extremeAdverse,
       motif,
       collisionMemeBarre: collision,
     });
@@ -820,6 +825,21 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
   function gererPosition(i: number, minutes: number) {
     const p = position!;
     const estLong = p.sens === "long";
+
+    /**
+     * ⚠️⚠️ AVANT TOUTE SORTIE, ET SUR LES EXTRÊMES DE LA BOUGIE. Mesurer
+     * après la fermeture raterait précisément la bougie qui décide, et mesurer
+     * sur les clôtures raterait la mèche qui est allée chercher le stop.
+     *
+     * ⚠️ EN PRIX BRUT, RAPPORTÉ AU RISQUE : c'est ce que le marché a offert,
+     * pas ce que le trader a encaissé. Y mêler les coûts mélangerait « le
+     * marché est allé jusque-là » et « voilà ce qu'il t'en serait resté ».
+     */
+    const signe = estLong ? 1 : -1;
+    const favorable = (signe * ((estLong ? h[i] : l[i]) - p.entreeBrute)) / p.risqueTicks;
+    const adverse = (signe * ((estLong ? l[i] : h[i]) - p.entreeBrute)) / p.risqueTicks;
+    if (favorable > p.extremeFavorable) p.extremeFavorable = favorable;
+    if (adverse < p.extremeAdverse) p.extremeAdverse = adverse;
 
     // 1. Trou d'ouverture : le marché rouvre déjà au-delà du stop ou de
     //    l'objectif. On sort au prix réel, pas au niveau souhaité. Ignorer ce
@@ -976,6 +996,11 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
       barreEntree: i,
       msEntree: t[i],
       breakEvenPose: false,
+      // ⚠️ LES EXTRÊMES PARCOURUS, mis à jour à chaque bougie tenue. Ils
+      // partent à zéro : un trade qui se ferme sur sa bougie d'entrée n'a
+      // parcouru ni l'un ni l'autre.
+      extremeFavorable: 0,
+      extremeAdverse: 0,
       signalMs,
       niveauSignal,
       geo,

@@ -134,16 +134,27 @@ export function Bloc({
   titre,
   soustitre,
   alerte,
+  ancre,
   children,
 }: {
   titre: string;
   soustitre?: string;
   /** Message affiché en tête quand le trader a contesté ce bloc. */
   alerte?: string;
+  /**
+   * Ancre de défilement.
+   *
+   * ⚠️ LA CARTE DU DIAGNOSTIC DÉSIGNE UN BLOC : « c'est Sorties supplémentaires
+   * qui décide de ça ». Sans ancre, elle le nomme et laisse le trader le
+   * chercher dans une page de neuf écrans, ce qui est exactement le reproche
+   * qu'elle est censée traiter.
+   */
+  ancre?: string;
   children: React.ReactNode;
 }) {
   return (
     <div
+      id={ancre}
       className={cn(
         "rounded-xl border p-4",
         // ⚠️ L'anneau n'est pas décoratif : il relie le « ce n'est pas ça »

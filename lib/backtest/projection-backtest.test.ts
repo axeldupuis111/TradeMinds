@@ -16,6 +16,8 @@ function trade(jour: number, r: number): TradeSimule {
     risqueTicks: 100,
     r,
     rBrut: r,
+    mfeR: Math.max(0, r),
+    maeR: Math.min(0, r),
     motif: "objectif",
     collisionMemeBarre: false,
   };

@@ -31,6 +31,8 @@ function trade(partiel: Partial<TradeSimule> = {}): TradeSimule {
     risqueTicks: 43_680,
     r: -1.05,
     rBrut: -1,
+    mfeR: 0.4,
+    maeR: -1,
     motif: "stop",
     collisionMemeBarre: false,
     ...partiel,
