@@ -108,6 +108,12 @@ import { prochaineEtape } from "@/lib/backtest/prochaine-etape";
 import { diagnostiquer } from "@/lib/backtest/diagnostic";
 import { Diagnostic } from "@/components/backtest/Diagnostic";
 import { Section } from "@/components/backtest/Section";
+import { Parcours } from "@/components/backtest/Parcours";
+import {
+  etapesDuParcours,
+  replierVers,
+  type CodeEtapeParcours,
+} from "@/lib/backtest/etapes";
 import { composerMonPlan } from "@/lib/backtest/mon-plan";
 import { composerPlanComplet } from "@/lib/backtest/plan-complet";
 import { MonPlan } from "@/components/backtest/MonPlan";
@@ -124,9 +130,9 @@ import {
   type VersionArchivee,
 } from "@/lib/backtest/versions";
 import type { PlanExecution } from "@/lib/backtest/types";
-import type { LectureBacktest } from "@/lib/backtest/verdict";
+import { MIN_TRADES_CONCLUSION, type LectureBacktest } from "@/lib/backtest/verdict";
 import type { Apercu, DemandeBacktest, ReponseBacktest } from "./worker";
-import { AlertTriangle, CheckCircle2, HelpCircle, Loader2, Lock, Play, Wand2, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, HelpCircle, Loader2, Lock, Play, RotateCcw, Wand2, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -307,6 +313,16 @@ export default function BacktestPage() {
    * décide où on entre, et elle sait déjà le faire.
    */
   const [section, setSection] = useState<string | null>(null);
+  /**
+   * L'étape du parcours qu'on regarde.
+   *
+   * ⚠️⚠️ TROISIÈME RÉPONSE AU MÊME REPROCHE, ET LES DEUX PREMIÈRES ÉTAIENT
+   * INSUFFISANTES. Une carte « la prochaine chose à faire » posée sur un mur
+   * reste un mur ; des sections repliées restent vingt décisions à prendre dans
+   * un ordre que rien n'impose. « Limite tu fais des onglets. Il faut trouver un
+   * ordre logique, on ne doit pas sauter des étapes. »
+   */
+  const [etapeCourante, setEtapeCourante] = useState<CodeEtapeParcours>("strategie");
   const basculer = useCallback(
     (nom: string) => setSection((s) => (s === nom ? null : nom)),
     [],
@@ -958,6 +974,41 @@ export default function BacktestPage() {
    * pas le faire passer pour la nouvelle normale. On efface en revanche le
    * résultat et le contrôle, qui portaient sur un autre plan.
    */
+  /**
+   * Repartir de zéro, sur une autre méthode.
+   *
+   * ⚠️⚠️ DEMANDÉ EXPLICITEMENT : « si aucune amélioration est possible alors tu
+   * proposes de chercher une autre stratégie, il clique sur le bouton et hop ça
+   * efface tout, ça propose des stratégies ».
+   *
+   * ⚠️ ÇA N'EFFACE QUE LE TRAVAIL EN COURS, JAMAIS SA FICHE. Un bouton qui
+   * remet à zéro doit être précis sur ce qu'il emporte, sinon personne ne
+   * l'ose : le plan testé, le résultat, les écarts. Sa stratégie enregistrée et
+   * ses versions archivées ne bougent pas.
+   */
+  const repartirDeZero = useCallback(() => {
+    // ⚠️ LE MÊME SOCLE QUE L'ÉTAT INITIAL, pas un socle nu : `socleDePlan` ne
+    // pose ni stop, ni objectif, ni coûts, et un plan amputé ferait planter le
+    // premier rejeu au lieu de repartir proprement.
+    setPlan({
+      ...socleDePlan(code, fuseau),
+      stop: { type: "extreme_balayage", bufferTicks: 1 },
+      objectif: { type: "multiple_r", r: 2 },
+      couts: coutsPourInstrument(instrument),
+    });
+    setPlanFiche(null);
+    setCouverture(null);
+    setContestes(new Set());
+    setOrigines({});
+    setResultat(null);
+    setSauvegarde("repos");
+    setStrategieId("");
+    setMethodeCode("");
+    // On le ramène là où les bases l'attendent, dépliées.
+    setEtapeCourante("strategie");
+    setSection("bt-departs");
+  }, [code, fuseau, instrument]);
+
   const reprendreVersion = useCallback((v: VersionArchivee) => {
     setPlan(v.plan);
     setCode(v.instrument);
@@ -1716,6 +1767,28 @@ export default function BacktestPage() {
     [resultat, plan],
   );
 
+  const etapesParcours = useMemo(
+    () =>
+      etapesDuParcours({
+        aUnPlan: planFiche != null || resultat != null || modifications.length > 0,
+        aUnResultat: Boolean(resultat?.trades.length),
+        assezDeTrades: (resultat?.lecture.stats?.nbTrades ?? 0) >= MIN_TRADES_CONCLUSION,
+      }),
+    [planFiche, resultat, modifications],
+  );
+
+  /**
+   * ⚠️⚠️ ON NE LAISSE JAMAIS LE TRADER SUR UNE ÉTAPE QUI VIENT DE SE FERMER.
+   * Changer d'instrument efface le résultat : rester sur « Ton plan » afficherait
+   * une page vide sans dire pourquoi. On recule vers la dernière étape ouverte,
+   * jamais vers l'avant : faire avancer quelqu'un qui vient de reculer est la
+   * façon la plus sûre de le perdre.
+   */
+  useEffect(() => {
+    const ici = etapesParcours.find((e) => e.code === etapeCourante);
+    if (ici && !ici.ouverte) setEtapeCourante(replierVers(etapeCourante, etapesParcours));
+  }, [etapesParcours, etapeCourante]);
+
   /**
    * LA SEULE CHOSE À FAIRE MAINTENANT.
    *
@@ -1843,6 +1916,17 @@ export default function BacktestPage() {
         </div>
       </Card>
 
+      {/* ⚠️⚠️ LES CINQ ÉTAPES, EN HAUT, TOUJOURS VISIBLES. Troisième réponse au
+          même reproche : une carte « la prochaine chose à faire » posée sur un
+          mur reste un mur, et des sections repliées restent vingt décisions
+          dans un ordre que rien n'impose. */}
+      <Parcours
+        etapes={etapesParcours}
+        courante={etapeCourante}
+        onAller={setEtapeCourante}
+        t={tr}
+      />
+
       <StaggerContainer className="space-y-5">
         {/* ── 0. La seule chose à faire maintenant ────────────────────────
             ⚠️⚠️ EN TÊTE DE TOUT, ET C'EST LE POINT DE CETTE CARTE. La page fait
@@ -1855,6 +1939,7 @@ export default function BacktestPage() {
         </StaggerItem>
 
         {/* ── 1. Le périmètre ────────────────────────────────────────────── */}
+        {etapeCourante === "strategie" ? (
         <StaggerItem>
           <Section
             ancre="bt-periode"
@@ -1913,8 +1998,10 @@ export default function BacktestPage() {
             </Card>
           </Section>
         </StaggerItem>
+        ) : null}
 
         {/* ── 2. Partir de sa fiche ──────────────────────────────────────── */}
+        {etapeCourante === "strategie" ? (
         <StaggerItem>
           <Section
             ancre="bt-fiche"
@@ -1998,12 +2085,14 @@ export default function BacktestPage() {
           </Card>
           </Section>
         </StaggerItem>
+        ) : null}
 
         {/* ── 3. La méthode déclarée, et ce qu'elle exige pour exister ────
             ⚠️⚠️ AVANT TOUT CHIFFRE, ET SANS EN PRODUIRE UN SEUL. Un trader
             d'orderflow sur un CFD peut trouver ici toute son explication sans
             qu'une bougie ait été lue : le volume qu'il regarde est celui des
             clients de son courtier, pas celui du marché. */}
+        {etapeCourante === "strategie" ? (
         <StaggerItem>
           <Section
             ancre="bt-methode"
@@ -2027,12 +2116,14 @@ export default function BacktestPage() {
           />
           </Section>
         </StaggerItem>
+        ) : null}
 
         {/* ── 4. Le plan, de A à Z ────────────────────────────────────────
             ⚠️⚠️ LA SEULE CARTE DE LA PAGE QUI NE SE TROMPE JAMAIS. Toutes les
             autres rendent une estimation entourée d'un intervalle ; celle-ci
             constate qu'une ligne est écrite ou qu'elle ne l'est pas. Et elle
             fonctionne pour une méthode qu'on ne saura jamais rejouer. */}
+        {etapeCourante === "regles" ? (
         <StaggerItem>
           <Section
             ancre="bt-completude"
@@ -2057,12 +2148,14 @@ export default function BacktestPage() {
           />
           </Section>
         </StaggerItem>
+        ) : null}
 
         {/* ── 5. Les réglages du test, entièrement modifiables ─────────────
             ⚠️⚠️ LA SECTION LA PLUS LOURDE DE LA PAGE : huit blocs, une trentaine
             de champs. Dépliée par défaut, elle portait à elle seule la moitié du
             mur qu'Axel décrit. Un trader qui part de sa fiche n'a aucune raison
             de l'ouvrir, et celui qui règle à la main la cherchait au milieu. */}
+        {etapeCourante === "regles" ? (
         <StaggerItem>
           <Section
             ancre="bt-reglages"
@@ -2089,6 +2182,7 @@ export default function BacktestPage() {
           </Card>
           </Section>
         </StaggerItem>
+        ) : null}
 
         {/* ── 3 bis. Ce qui s'écarte de la fiche ──────────────────────────
             ⚠️ JUSTE SOUS L'ÉDITEUR, et pas en bas de page. Un trader qui vient
@@ -2097,7 +2191,7 @@ export default function BacktestPage() {
             s'affiche qu'une fois une fiche compilée : sans référence, il n'y a
             rien à comparer, et un « aucun changement » sur un plan bricolé de
             zéro serait un mensonge par construction. */}
-        {planFiche ? (
+        {planFiche && etapeCourante === "regles" ? (
           <StaggerItem>
             <Modifications
               modifications={modifications}
@@ -2118,13 +2212,13 @@ export default function BacktestPage() {
             journal montre. Pour un trader dont la méthode n'est pas rejouable,
             c'est tout ce que cette page peut lui donner, et c'est déjà
             beaucoup. */}
-        {condamnations.length > 0 ? (
+        {condamnations.length > 0 && etapeCourante === "regles" ? (
           <StaggerItem id="bt-condamnation">
             <Condamnation constats={condamnations} t={tr} />
           </StaggerItem>
         ) : null}
 
-        {constatsProfil.length > 0 ? (
+        {constatsProfil.length > 0 && etapeCourante === "regles" ? (
           <StaggerItem id="bt-profil">
             <Profil
               constats={constatsProfil}
@@ -2142,7 +2236,7 @@ export default function BacktestPage() {
             stratégie n'entre dans le calcul, puis les confronte à ce que la
             méthode DÉCLARE exiger. Ce n'est pas chercher le marché qui sort le
             mieux : c'est vérifier qu'on apporte un marteau à un clou. */}
-        {resultat?.caractere ? (
+        {resultat?.caractere && etapeCourante === "regles" ? (
           <StaggerItem>
             <CaractereDuMarche
               caractere={resultat.caractere}
@@ -2161,6 +2255,7 @@ export default function BacktestPage() {
             bases-là viennent du référentiel, montées sur son marché, ses heures
             et son risque. Elles ne promettent rien ; elles donnent un point de
             départ complet, ce que l'outil ne savait pas faire. */}
+        {etapeCourante === "strategie" ? (
         <StaggerItem id="bt-departs">
           <Depart
             departs={departs}
@@ -2171,6 +2266,7 @@ export default function BacktestPage() {
             t={tr}
           />
         </StaggerItem>
+        ) : null}
 
         {/* ── 6. Lancer ──────────────────────────────────────────────────── */}
         <StaggerItem>
@@ -2215,7 +2311,7 @@ export default function BacktestPage() {
         </StaggerItem>
 
         {/* ── 5. Le résultat ─────────────────────────────────────────────── */}
-        {resultat && resultat.apercus.length > 0 ? (
+        {resultat && resultat.apercus.length > 0 && etapeCourante === "test" ? (
           <StaggerItem id="bt-apercus">
             <Inspection
               apercus={resultat.apercus}
@@ -2227,7 +2323,7 @@ export default function BacktestPage() {
           </StaggerItem>
         ) : null}
 
-        {resultat?.propositions ? (
+        {resultat?.propositions && etapeCourante === "test" ? (
           <StaggerItem>
             <Propositions
               propositions={resultat.propositions}
@@ -2283,7 +2379,7 @@ export default function BacktestPage() {
           </StaggerItem>
         ) : null}
 
-        {resultat ? (
+        {resultat && etapeCourante === "test" ? (
           <StaggerItem>
             <Resultat
               lecture={resultat.lecture}
@@ -2377,7 +2473,7 @@ export default function BacktestPage() {
             trader vient ici avec un seul objectif : trouver quelque chose qui
             tienne et repartir avec un plan à respecter. Les mesures qui suivent
             servent à comprendre pourquoi ; celle-ci répond à la question. */}
-        {resultat ? (
+        {resultat && etapeCourante === "ameliorer" ? (
           <StaggerItem>
             <Trouver
               exploration={resultat.exploration}
@@ -2402,7 +2498,7 @@ export default function BacktestPage() {
             ⚠️⚠️ JUSTE APRÈS LE CHIFFRE, ET AVANT TOUT LE RESTE. Le verdict dit
             « ça ne gagne pas » ; sans cette carte, le trader referme la page.
             C'est le reproche qu'Axel a formulé trois fois. */}
-        {resultat ? (
+        {resultat && etapeCourante === "ameliorer" ? (
           <StaggerItem id="bt-diagnostic">
             <Diagnostic
               diagnostics={diagnostics}
@@ -2430,13 +2526,13 @@ export default function BacktestPage() {
             ⚠️ JUSTE AVANT « Ce qui est établi » : on lit d'abord ce qu'on
             s'engage à faire, ensuite ce que la mesure en dit. L'inverse ferait
             du plan une récompense accordée par le verdict. */}
-        {monPlan ? (
+        {monPlan && etapeCourante === "plan" ? (
           <StaggerItem id="bt-mon-plan">
             <MonPlan plan={monPlan} onCopier={monPlanEnTexte} t={tr} />
           </StaggerItem>
         ) : null}
 
-        {resultat && synthese ? (
+        {resultat && synthese && etapeCourante === "plan" ? (
           <StaggerItem id="bt-analyse">
             <Analyse
               synthese={synthese}
@@ -2452,7 +2548,7 @@ export default function BacktestPage() {
             ⚠️ Après l'analyse, parce que la question « est-ce que ça tient
             ailleurs » n'a de sens qu'une fois qu'on sait ce que « ça » vaut ici.
             Et avant l'export, parce que c'est une conclusion, pas un détail. */}
-        {resultat ? (
+        {resultat && etapeCourante === "ameliorer" ? (
           <StaggerItem>
             <Marches
               marches={resultat.marches}
@@ -2489,7 +2585,7 @@ export default function BacktestPage() {
             doit lire « ton résultat vient d'un seul mois » AVANT le chiffre
             global, pas après : après, le chiffre est déjà installé et la nuance
             arrive trop tard pour changer sa lecture. */}
-        {resultat?.concentration ? (
+        {resultat?.concentration && etapeCourante === "ameliorer" ? (
           <StaggerItem>
             <Robustesse
               concentration={resultat.concentration}
@@ -2499,6 +2595,37 @@ export default function BacktestPage() {
             />
           </StaggerItem>
         ) : null}
+
+        {/* ── La sortie de secours, en fin d'étape 4 ────────────────────
+            ⚠️⚠️ DEMANDÉ EXPLICITEMENT : « si aucune amélioration est possible
+            alors tu proposes de chercher une autre stratégie, il clique sur le
+            bouton et hop ça efface tout, ça propose des stratégies ».
+            ⚠️ EN DERNIER, APRÈS LES PISTES. Le proposer avant reviendrait à dire
+            « laisse tomber » à quelqu'un qui n'a rien essayé. */}
+        {etapeCourante === "ameliorer" ? (
+          <StaggerItem>
+            <Card className="border-warning/40 bg-warning/[0.05]">
+              <h4 className="text-sm font-semibold text-foreground">
+                {tr("bt_recommencer_titre")}
+              </h4>
+              <p className="mt-1 text-xs leading-relaxed text-foreground-muted">
+                {tr("bt_recommencer_texte")}
+              </p>
+              <button
+                type="button"
+                onClick={repartirDeZero}
+                className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-warning/50 px-3 py-1.5 text-xs font-medium text-warning hover:bg-warning/10"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                {tr("bt_recommencer_bouton")}
+              </button>
+              <p className="mt-2 text-[11px] leading-snug text-foreground-muted">
+                {tr("bt_recommencer_avertit")}
+              </p>
+            </Card>
+          </StaggerItem>
+        ) : null}
+
 
         {/* ── 5 quater. Le chemin, pas seulement l'espérance ──────────────
             ⚠️ Une espérance par trade ne dit rien du chemin, et c'est le chemin
