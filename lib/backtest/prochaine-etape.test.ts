@@ -281,8 +281,16 @@ describe("ce que la carte n'a pas le droit de dire", () => {
  */
 describe("les ancres de la carte existent dans la page", () => {
   const source = readFileSync(join(process.cwd(), "app/dashboard/backtest/page.tsx"), "utf8");
+  /**
+   * ⚠️ `id=` ET `ancre=`. Depuis que les étapes sont repliables, l'ancre est
+   * passée en propriété à `<Section>`, qui la rend en `id` sur son conteneur.
+   * Ne chercher que `id=` ferait échouer le garde sur des ancres parfaitement
+   * valides, ce qui finit toujours par le faire désactiver.
+   */
   const ids = new Set(
-    (source.match(/id="([a-z-]+)"/g) ?? []).map((x) => x.replace(/id="|"/g, "")),
+    (source.match(/(?:id|ancre)="([a-z-]+)"/g) ?? []).map((x) =>
+      x.replace(/(?:id|ancre)="|"/g, ""),
+    ),
   );
 
   it("la page pose bien des ancres", () => {

@@ -107,6 +107,7 @@ import { verifierCondamnation } from "@/lib/backtest/condamnation";
 import { prochaineEtape } from "@/lib/backtest/prochaine-etape";
 import { diagnostiquer } from "@/lib/backtest/diagnostic";
 import { Diagnostic } from "@/components/backtest/Diagnostic";
+import { Section } from "@/components/backtest/Section";
 import { composerMonPlan } from "@/lib/backtest/mon-plan";
 import { composerPlanComplet } from "@/lib/backtest/plan-complet";
 import { MonPlan } from "@/components/backtest/MonPlan";
@@ -290,6 +291,26 @@ export default function BacktestPage() {
    * l'autre.
    */
   const [brouillon, setBrouillon] = useState<Record<string, string>>({});
+  /**
+   * La section dépliée, une seule à la fois.
+   *
+   * ⚠️⚠️ MESURÉ AVANT DE RANGER : 9,5 écrans de haut, 21 titres, 3 188 mots,
+   * tout empilé à plat, AVANT MÊME D'AVOIR LANCÉ. « J'y comprends rien, il y a
+   * énormément de choses et c'est très mal rangé. Tout est à la suite, c'est
+   * incompréhensible. »
+   *
+   * ⚠️ UNE SEULE OUVERTE, comme un accordéon. Deux sections ouvertes recréent
+   * le mur à deux exemplaires près, et la page ne serait rangée qu'au premier
+   * clic.
+   *
+   * ⚠️ `null` AU DÉPART : c'est la carte « la prochaine chose à faire » qui
+   * décide où on entre, et elle sait déjà le faire.
+   */
+  const [section, setSection] = useState<string | null>(null);
+  const basculer = useCallback(
+    (nom: string) => setSection((s) => (s === nom ? null : nom)),
+    [],
+  );
   /** Ce qu'il a écrit, enregistré ou non. */
   const reponsesVues = useMemo(() => ({ ...reponses, ...brouillon }), [reponses, brouillon]);
   /** Les questions écrites mais pas encore dans sa fiche. */
@@ -1709,6 +1730,21 @@ export default function BacktestPage() {
    * ⚠️ ELLE NE CACHE RIEN ET NE RÉSUME RIEN. Tout est toujours en dessous, dans
    * l'ordre. C'est une entrée, pas un filtre.
    */
+  /**
+   * Les blocs que l'IA a tranchés seule et qu'il n'a pas relus.
+   *
+   * ⚠️ EXTRAIT POUR SERVIR DEUX FOIS : l'étape à faire, et l'état affiché dans
+   * l'en-tête replié de la section. Deux comptes calculés séparément finiraient
+   * par diverger, et l'un des deux serait faux.
+   */
+  const interpretationsALire = useMemo(
+    () =>
+      (couverture?.deduites ?? []).filter(
+        (d) => graviteDuChamp(d.champ) === "critique" && !contestes.has(d.champ),
+      ).length,
+    [couverture, contestes],
+  );
+
   const etape = useMemo(
     () =>
       prochaineEtape({
@@ -1717,9 +1753,7 @@ export default function BacktestPage() {
         // ⚠️ Seulement les blocs CRITIQUES, et seulement ceux qu'il n'a pas
         // encore refuses : « il manque le fuseau horaire » n'est pas du meme
         // ordre que « l'IA a choisi ton declencheur a ta place ».
-        interpretations: (couverture?.deduites ?? []).filter(
-          (d) => graviteDuChamp(d.champ) === "critique" && !contestes.has(d.champ),
-        ).length,
+        interpretations: interpretationsALire,
         condamnations,
         profil: constatsProfil,
         trades: resultat?.lecture.stats?.nbTrades ?? null,
@@ -1735,8 +1769,7 @@ export default function BacktestPage() {
     [
       planFiche,
       resultat,
-      couverture,
-      contestes,
+      interpretationsALire,
       condamnations,
       constatsProfil,
       verifie,
@@ -1758,7 +1791,18 @@ export default function BacktestPage() {
       if (code === "lancer") return void lancer();
       if (code === "analyser") return void analyserAFond();
       if (!ancre) return;
-      document.getElementById(ancre)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      /**
+       * ⚠️⚠️ OUVRIR AVANT DE FAIRE REMONTER. Depuis que les sections sont
+       * repliées, faire défiler vers une section fermée amène le trader devant
+       * un titre et rien d'autre : le bouton aurait l'air de ne pas marcher,
+       * exactement le défaut corrigé deux jours plus tôt sur ces mêmes ancres.
+       */
+      setSection(ancre);
+      // Le rendu de la section ouverte doit avoir eu lieu avant de mesurer sa
+      // position, sinon on défile vers l'endroit où elle n'est pas encore.
+      requestAnimationFrame(() =>
+        document.getElementById(ancre)?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      );
     },
     [lancer, analyserAFond],
   );
@@ -1811,9 +1855,17 @@ export default function BacktestPage() {
         </StaggerItem>
 
         {/* ── 1. Le périmètre ────────────────────────────────────────────── */}
-        <StaggerItem id="bt-periode">
-          <Card>
-            <CardTitle className="mb-4">{tr("bt_etape_perimetre")}</CardTitle>
+        <StaggerItem>
+          <Section
+            ancre="bt-periode"
+            numero={1}
+            titre={tr("bt_etape_perimetre")}
+            etat={`${instrument.nom} · ${de} → ${a}`}
+            faite
+            ouverte={section === "bt-periode"}
+            onBasculer={() => basculer("bt-periode")}
+          >
+            <Card>
             <div className="grid gap-3 sm:grid-cols-3">
               <Champ label={tr("bt_instrument")}>
                 <select
@@ -1858,11 +1910,30 @@ export default function BacktestPage() {
             <p className="mt-3 text-xs text-foreground-muted">
               {tr("bt_donnees_source", { mois: moisEntre(de, a).length })}
             </p>
-          </Card>
+            </Card>
+          </Section>
         </StaggerItem>
 
         {/* ── 2. Partir de sa fiche ──────────────────────────────────────── */}
-        <StaggerItem id="bt-fiche">
+        <StaggerItem>
+          <Section
+            ancre="bt-fiche"
+            numero={2}
+            titre={tr("bt_etape_fiche")}
+            etat={
+              strategieCourante
+                ? interpretationsALire > 0
+                  ? tr("bt_sec_fiche_interpretations", {
+                      nom: strategieCourante.name || tr("bt_sans_nom"),
+                      n: interpretationsALire,
+                    })
+                  : tr("bt_sec_fiche_traduite", { nom: strategieCourante.name || tr("bt_sans_nom") })
+                : tr("bt_sec_fiche_aucune")
+            }
+            faite={Boolean(couverture) && interpretationsALire === 0}
+            ouverte={section === "bt-fiche"}
+            onBasculer={() => basculer("bt-fiche")}
+          >
           <Card>
             <CardTitle className="mb-1">{tr("bt_etape_fiche")}</CardTitle>
             <p className="mb-4 text-xs text-foreground-muted">{tr("bt_etape_fiche_aide")}</p>
@@ -1925,6 +1996,7 @@ export default function BacktestPage() {
               />
             ) : null}
           </Card>
+          </Section>
         </StaggerItem>
 
         {/* ── 3. La méthode déclarée, et ce qu'elle exige pour exister ────
@@ -1947,7 +2019,19 @@ export default function BacktestPage() {
             autres rendent une estimation entourée d'un intervalle ; celle-ci
             constate qu'une ligne est écrite ou qu'elle ne l'est pas. Et elle
             fonctionne pour une méthode qu'on ne saura jamais rejouer. */}
-        <StaggerItem id="bt-completude">
+        <StaggerItem>
+          <Section
+            ancre="bt-completude"
+            numero={4}
+            titre={tr("bt_etape_completude")}
+            etat={tr("bt_sec_completude", {
+              ecrits: completude.ecrits,
+              total: completude.lignes.length,
+            })}
+            faite={completude.flous === 0 && completude.absents === 0}
+            ouverte={section === "bt-completude"}
+            onBasculer={() => basculer("bt-completude")}
+          >
           <Completude
             completude={completude}
             reponses={reponses}
@@ -1957,12 +2041,29 @@ export default function BacktestPage() {
             etat={etatReponses}
             t={tr}
           />
+          </Section>
         </StaggerItem>
 
-        {/* ── 5. Les réglages du test, entièrement modifiables ───────────── */}
+        {/* ── 5. Les réglages du test, entièrement modifiables ─────────────
+            ⚠️⚠️ LA SECTION LA PLUS LOURDE DE LA PAGE : huit blocs, une trentaine
+            de champs. Dépliée par défaut, elle portait à elle seule la moitié du
+            mur qu'Axel décrit. Un trader qui part de sa fiche n'a aucune raison
+            de l'ouvrir, et celui qui règle à la main la cherchait au milieu. */}
         <StaggerItem>
+          <Section
+            ancre="bt-reglages"
+            numero={5}
+            titre={tr("bt_etape_plan")}
+            etat={
+              modifications.length > 0
+                ? tr("bt_sec_reglages_modifies", { n: modifications.length })
+                : tr("bt_sec_reglages_fiche")
+            }
+            faite={contestes.size === 0}
+            ouverte={section === "bt-reglages"}
+            onBasculer={() => basculer("bt-reglages")}
+          >
           <Card>
-            <CardTitle className="mb-1">{tr("bt_etape_plan")}</CardTitle>
             <p className="mb-4 text-xs text-foreground-muted">{tr("bt_etape_plan_aide")}</p>
             <EditeurPlan
               plan={plan}
@@ -1972,6 +2073,7 @@ export default function BacktestPage() {
               t={tr}
             />
           </Card>
+          </Section>
         </StaggerItem>
 
         {/* ── 3 bis. Ce qui s'écarte de la fiche ──────────────────────────
