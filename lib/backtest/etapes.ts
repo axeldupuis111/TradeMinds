@@ -85,15 +85,26 @@ export function etapesDuParcours(e: EtatDuParcours): EtapeDuParcours[] {
       faite: e.aUnPlan,
     },
     {
+      /**
+       * ⚠️⚠️ TOUJOURS OUVERTE, ET C'EST UNE CORRECTION D'UN CUL-DE-SAC QUE
+       * J'AVAIS CRÉÉ. Je bloquais cette étape tant qu'aucune fiche n'était
+       * traduite. Or quand la limite mensuelle de traductions est atteinte,
+       * l'écran dit — à juste titre — « la traduction n'est pas obligatoire :
+       * règle ton plan à la main ». Et l'éditeur qui permet de le faire était
+       * derrière le verrou. La porte de secours fermée à clé.
+       *
+       * ⚠️ MA PROPRE RÈGLE LE DISAIT DÉJÀ : on ne bloque que ce qui n'a
+       * LITTÉRALEMENT rien à montrer. Le plan existe toujours, avec ses valeurs
+       * par défaut : ces deux étapes ont toujours quelque chose à régler et
+       * quelque chose à rejouer.
+       */
       code: "regles",
-      ouverte: e.aUnPlan,
-      raison: e.aUnPlan ? undefined : "bt_par_bloque_sans_plan",
+      ouverte: true,
       faite: e.aUnPlan && e.aUnResultat,
     },
     {
       code: "test",
-      ouverte: e.aUnPlan,
-      raison: e.aUnPlan ? undefined : "bt_par_bloque_sans_plan",
+      ouverte: true,
       faite: e.aUnResultat,
     },
     {

@@ -30,9 +30,18 @@ const ouvertes = (e: EtatDuParcours) =>
  *     pas sauter des étapes car on n'est pas intéressé. »
  */
 describe("le parcours", () => {
-  it("commence toujours par la stratégie, même à froid", () => {
+  /**
+   * ⚠️⚠️ RÉGLER ET LANCER SONT TOUJOURS OUVERTS, ET C'EST LA CORRECTION D'UN
+   * CUL-DE-SAC. Je les bloquais tant qu'aucune fiche n'était traduite. Quand la
+   * limite mensuelle de traductions est atteinte, l'écran dit — à juste titre —
+   * « la traduction n'est pas obligatoire, règle ton plan à la main », et
+   * l'éditeur qui permet de le faire était derrière le verrou.
+   */
+  it("laisse toujours régler et lancer, même à froid", () => {
     expect(ouvertes(etat({ aUnPlan: false, aUnResultat: false, assezDeTrades: false }))).toEqual([
       "strategie",
+      "regles",
+      "test",
     ]);
   });
 
@@ -41,10 +50,8 @@ describe("le parcours", () => {
    * contrainte pour la forme : ces écrans n'auraient littéralement rien à
    * montrer.
    */
-  it("ouvre les règles et le test dès qu'il y a un plan", () => {
+  it("ferme encore ce qui n'a rien à montrer sans rejeu", () => {
     const o = ouvertes(etat({ aUnPlan: true, aUnResultat: false, assezDeTrades: false }));
-    expect(o).toContain("regles");
-    expect(o).toContain("test");
     expect(o).not.toContain("ameliorer");
     expect(o).not.toContain("plan");
   });
@@ -111,7 +118,7 @@ describe("le parcours", () => {
     expect(replierVers("plan", e)).toBe("test");
     expect(replierVers("ameliorer", e)).toBe("test");
     const froid = etapesDuParcours(etat({ aUnPlan: false, aUnResultat: false, assezDeTrades: false }));
-    expect(replierVers("plan", froid)).toBe("strategie");
+    expect(replierVers("plan", froid)).toBe("test");
   });
 
   it("ne bouge pas quand l'étape courante est encore ouverte", () => {
@@ -170,5 +177,44 @@ describe("l'ordre des écrans dans la page", () => {
     expect((fr as Record<string, string>).bt_recommencer_avertit).toMatch(
       /fiche n'est pas touchée/i,
     );
+  });
+});
+
+/**
+ * ⚠️⚠️ VU À L'ÉCRAN, ET C'EST LE PIRE MESSAGE POSSIBLE. Après avoir sélectionné
+ * sa stratégie, les quatre étapes restaient fermées avec « choisis ou construis
+ * une stratégie » : la raison lui demandait de faire ce qu'il venait de faire.
+ * Un blocage dont la raison est déjà satisfaite ne se distingue pas d'une panne.
+ */
+/**
+ * ⚠️⚠️ VU À L'ÉCRAN, ET C'ÉTAIT LE PIRE MESSAGE POSSIBLE. Après avoir
+ * sélectionné sa stratégie, les quatre étapes restaient fermées avec « choisis
+ * ou construis une stratégie » : la raison lui demandait de faire ce qu'il
+ * venait de faire.
+ *
+ * La correction n'a pas été de mieux rédiger la raison, mais de RETIRER LE
+ * BLOCAGE : régler et lancer ont toujours quelque chose à montrer. Il ne reste
+ * donc plus aucune étape dont la raison puisse être déjà satisfaite, et ce test
+ * le vérifie.
+ */
+describe("aucune raison de blocage n'est déjà satisfaite", () => {
+  it("ne bloque plus rien sur l'absence de traduction", () => {
+    for (const cas of [
+      etat({ aUnPlan: false, aUnResultat: false, assezDeTrades: false }),
+      etat({ aUnPlan: false, aUnResultat: false, assezDeTrades: false }),
+    ]) {
+      const fermees = etapesDuParcours(cas).filter((x) => !x.ouverte);
+      for (const e of fermees) {
+        expect(e.raison, `${e.code}`).toBe("bt_par_bloque_sans_test");
+      }
+    }
+  });
+
+  it("garde les rédactions dans les quatre langues", () => {
+    for (const [nom, dico] of Object.entries({ fr, en, es, de })) {
+      const d = dico as Record<string, string>;
+      expect(d.bt_par_bloque_sans_test, nom).toBeTruthy();
+      expect(d.bt_par_bloque_trop_peu, nom).toBeTruthy();
+    }
   });
 });
