@@ -2005,6 +2005,19 @@ export default function BacktestPage() {
             qu'une bougie ait été lue : le volume qu'il regarde est celui des
             clients de son courtier, pas celui du marché. */}
         <StaggerItem>
+          <Section
+            ancre="bt-methode"
+            numero={3}
+            titre={tr("bt_etape_methode")}
+            etat={
+              methode
+                ? tr(`bt_meth_${methode.code}`)
+                : tr("bt_sec_methode_aucune")
+            }
+            faite={Boolean(methode)}
+            ouverte={section === "bt-methode"}
+            onBasculer={() => basculer("bt-methode")}
+          >
           <Methode
             code={methodeCode}
             instrument={instrument}
@@ -2012,6 +2025,7 @@ export default function BacktestPage() {
             onChoisir={choisirLaMethode}
             t={tr}
           />
+          </Section>
         </StaggerItem>
 
         {/* ── 4. Le plan, de A à Z ────────────────────────────────────────
