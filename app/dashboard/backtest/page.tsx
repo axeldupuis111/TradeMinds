@@ -1638,11 +1638,14 @@ export default function BacktestPage() {
       "",
       ...lignes,
       "",
-      tr("bt_mon_plan_compte", {
-        reglees: monPlan.reglees,
-        mesurees: monPlan.mesurees,
-        ecrites: monPlan.ecrites,
-      }),
+      // ⚠️ La même légende que l'écran, et pour la même raison : un nombre
+      // placé après son étiquette ne s'accorde avec rien.
+      [
+        `${tr("bt_mon_plan_entete_reglee")} : ${monPlan.reglees}`,
+        `${tr("bt_mon_plan_entete_mesuree")} : ${monPlan.mesurees}`,
+        `${tr("bt_mon_plan_entete_ecrite")} : ${monPlan.ecrites}`,
+        `${tr("bt_mon_plan_entete_manquante")} : ${monPlan.manquantes}`,
+      ].join(" · "),
     ].join("\n");
   }, [monPlan, tr, instrument, de, a]);
 

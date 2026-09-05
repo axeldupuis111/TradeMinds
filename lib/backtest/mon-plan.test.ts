@@ -204,7 +204,6 @@ describe("le plan à emporter", () => {
       ]) {
         expect(t(cle)).toBeTruthy();
       }
-      expect(t("bt_mon_plan_compte", { reglees: 1, mesurees: 2, ecrites: 3 })).not.toContain("{");
       expect(t("bt_mon_plan_manquantes", { n: 2 })).not.toContain("{");
       expect(t("bt_mon_plan_mesure", { etablis: 1, ouverts: 2 })).not.toContain("{");
     }
@@ -249,5 +248,53 @@ describe("ce que le plan n'a pas le droit de dire", () => {
     for (const interdit of ["esperanceR", "totalR", "profitFactor", "tauxReussite", "sort("]) {
       expect(source, `${interdit} intervient dans le document`).not.toContain(interdit);
     }
+  });
+});
+
+/**
+ * ⚠️⚠️ « 1 ÉCRITES DE TA MAIN », VU À L'ÉCRAN DANS UNE CARTE ÉCRITE LA VEILLE.
+ *
+ * C'est la quatrième fois que ce défaut apparaît : « 1 essais », « 7.05 bougie »,
+ * « 1 ans », et maintenant celui-ci. Il ne se voit qu'avec la bonne valeur, donc
+ * jamais en relisant la rédaction.
+ *
+ * ⚠️ LA CORRECTION N'EST PAS UN PLURIEL DE PLUS, C'EST UNE FORME QUI N'EN A PAS
+ * BESOIN : le nombre APRÈS l'étiquette. « Écrit de ta main : 1 » ne s'accorde
+ * avec rien, dans aucune des quatre langues.
+ */
+describe("les comptes du plan ne s'accordent avec rien", () => {
+  const ETIQUETTES = ["reglee", "mesuree", "ecrite", "manquante"];
+
+  for (const [nom, dico] of Object.entries({ fr, en, es, de })) {
+    it(`les étiquettes existent et ne portent aucun nombre en ${nom}`, () => {
+      for (const e of ETIQUETTES) {
+        const texte = (dico as Record<string, string>)[`bt_mon_plan_entete_${e}`];
+        expect(texte, `bt_mon_plan_entete_${e} en ${nom}`).toBeTruthy();
+        // Une étiquette qui contient un {placeholder} redeviendrait une phrase
+        // à accorder.
+        expect(texte).not.toMatch(/\{[a-zA-Z]+\}/);
+      }
+    });
+  }
+
+  /**
+   * ⚠️ ET LA PHRASE FAUTIVE NE DOIT PAS REVENIR. Une clé supprimée qu'on
+   * réintroduit sans y penser est le chemin le plus court vers le même défaut.
+   */
+  it("ne réintroduit pas la phrase à accorder", () => {
+    for (const [nom, dico] of Object.entries({ fr, en, es, de })) {
+      expect((dico as Record<string, string>).bt_mon_plan_compte, nom).toBeUndefined();
+    }
+  });
+
+  /**
+   * ⚠️ LE COMPOSANT AFFICHE LA LÉGENDE, pas une phrase. Un test lit sa source :
+   * remettre un compte devant un mot recréerait le défaut sans qu'aucun autre
+   * test ne bronche.
+   */
+  it("le composant compose une légende", () => {
+    const source = readFileSync(join(process.cwd(), "components/backtest/MonPlan.tsx"), "utf8");
+    expect(source).toContain("bt_mon_plan_entete_");
+    expect(source).not.toContain("bt_mon_plan_compte");
   });
 });

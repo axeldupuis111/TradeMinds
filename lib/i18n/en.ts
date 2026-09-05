@@ -3059,7 +3059,6 @@ const dict: Record<string, string> = {
   "bt_comp_sans_fiche": "Pick a strategy first, in \"Start from your strategy sheet\" above: that is where your answers get stored.",
   "bt_mon_plan_titre": "Your plan, to take away",
   "bt_mon_plan_intro": "This is what this page exists for. The rules to follow, in the order you need them in front of your screen, each with its source: what you set, what the measurement uncovered, and what you wrote yourself.",
-  "bt_mon_plan_compte": "{reglees} rules set by you · {mesurees} deduced from measurement · {ecrites} written in your own words",
   "bt_mon_plan_a_ecrire": "Not written yet. This line cannot be deduced from any measurement: it is yours to set, and it is often the one missing from plans people cannot follow.",
   "bt_mon_plan_manquantes": "{n} lines of this plan are not written yet. They stay on screen on purpose: a plan that looks complete without being complete is worse than a visibly incomplete one, because you believe you answered. Answer them in « Your plan, A to Z », above.",
   "bt_mon_plan_complet": "This plan is complete: every line is written, set or measured. This is what you can follow without improvising in front of the screen.",

@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { STYLE_PAR_DEFAUT, type StyleDeTrader, composerDepart, departsPossibles } from "./depart";
 import { besoinsNonCouverts, methodeParCode, METHODES } from "./methodes";
@@ -269,5 +271,46 @@ describe("les bases suivent la façon de trader qu'il déclare", () => {
         expect((dico as Record<string, string>)[cle], `${cle} en ${nom}`).toBeTruthy();
       }
     }
+  });
+});
+
+/**
+ * ⚠️⚠️ VU À L'ÉCRAN : LE PREMIER DES DEUX CHOIX ÉTAIT PERDU.
+ *
+ * En cliquant « avec un ordre en attente » puis « peu de conditions » coup sur
+ * coup, seule la tolérance restait : le second bouton repartait du `style`
+ * capturé au rendu précédent et le réécrivait par-dessus. Deux réglages posés
+ * côte à côte se cliquent forcément coup sur coup, donc le défaut se déclenchait
+ * exactement dans l'usage normal.
+ *
+ * ⚠️ LA CORRECTION EST UNE FONCTION DE MISE À JOUR, pas une valeur. Un test lit
+ * la source du composant : une valeur littérale passée à `onChanger` recrée le
+ * défaut, et il ne se voit qu'en cliquant vite.
+ */
+describe("les deux réglages de style ne s'écrasent pas", () => {
+  const source = readFileSync(join(process.cwd(), "components/backtest/Depart.tsx"), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/.*$/gm, "");
+
+  it("met à jour par fonction, jamais par valeur capturée", () => {
+    // « onChanger({ ...style » est exactement la forme qui perdait le clic.
+    expect(source).not.toMatch(/onChanger\(\s*\{/);
+    expect(source).toMatch(/onChanger\(\(s\)\s*=>/);
+  });
+
+  /**
+   * ⚠️ ET LES DEUX CHOIX SONT BIEN INDÉPENDANTS DANS LE MODÈLE : appliqués
+   * ensemble, ils produisent les deux adaptations, pas une seule.
+   */
+  it("les deux adaptations se cumulent", () => {
+    const d = composerDepart(
+      METHODES.find((m) => m.squelette?.declencheur === "retest_apres_cassure")!,
+      NAS,
+      coutsPourInstrument(NAS),
+      "Europe/Paris",
+      { entree: "limite", tolerance: "simple" },
+    )!;
+    expect(d.adapte).toContain("entree");
+    expect(d.adapte).toContain("simplicite");
   });
 });

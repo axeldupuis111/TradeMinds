@@ -51,7 +51,14 @@ function CommentTuTrades({
   t,
 }: {
   style: StyleDeTrader;
-  onChanger: (s: StyleDeTrader) => void;
+  /**
+   * ⚠️⚠️ UNE FONCTION DE MISE À JOUR, PAS UNE VALEUR, ET C'EST UN VRAI DÉFAUT VU
+   * À L'ÉCRAN. En cliquant « avec un ordre en attente » puis « peu de
+   * conditions » coup sur coup, le premier choix était PERDU : le second
+   * repartait du `style` capturé au rendu précédent et le réécrivait par-dessus.
+   * Deux réglages côte à côte se cliquent forcément coup sur coup.
+   */
+  onChanger: (maj: (s: StyleDeTrader) => StyleDeTrader) => void;
   t: (cle: string, valeurs?: Record<string, string | number>) => string;
 }) {
   const Choix = ({
@@ -88,12 +95,12 @@ function CommentTuTrades({
           <Choix
             valeur="bt_dep_style_entree_marche"
             actif={style.entree !== "limite"}
-            onClic={() => onChanger({ ...style, entree: "marche" })}
+            onClic={() => onChanger((s) => ({ ...s, entree: "marche" }))}
           />
           <Choix
             valeur="bt_dep_style_entree_limite"
             actif={style.entree === "limite"}
-            onClic={() => onChanger({ ...style, entree: "limite" })}
+            onClic={() => onChanger((s) => ({ ...s, entree: "limite" }))}
           />
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
@@ -101,12 +108,12 @@ function CommentTuTrades({
           <Choix
             valeur="bt_dep_style_tolerance_simple"
             actif={style.tolerance === "simple"}
-            onClic={() => onChanger({ ...style, tolerance: "simple" })}
+            onClic={() => onChanger((s) => ({ ...s, tolerance: "simple" }))}
           />
           <Choix
             valeur="bt_dep_style_tolerance_confluente"
             actif={style.tolerance !== "simple"}
-            onClic={() => onChanger({ ...style, tolerance: "confluente" })}
+            onClic={() => onChanger((s) => ({ ...s, tolerance: "confluente" }))}
           />
         </div>
       </div>
@@ -123,7 +130,7 @@ export function Depart({
   t,
 }: {
   style: StyleDeTrader;
-  onStyle: (s: StyleDeTrader) => void;
+  onStyle: (maj: (s: StyleDeTrader) => StyleDeTrader) => void;
   departs: UnDepart[];
   enCours: boolean;
   onEssayer: (d: UnDepart) => void;

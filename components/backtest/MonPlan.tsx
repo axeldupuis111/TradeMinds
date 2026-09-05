@@ -86,13 +86,38 @@ export function MonPlan({
         {t("bt_mon_plan_intro")}
       </p>
 
-      <p className="mt-2 text-[11px] text-foreground-muted">
-        {t("bt_mon_plan_compte", {
-          reglees: plan.reglees,
-          mesurees: plan.mesurees,
-          ecrites: plan.ecrites,
-        })}
-      </p>
+      {/**
+        * ⚠️⚠️ UNE LÉGENDE, PLUS UNE PHRASE, ET C'EST UNE CORRECTION VUE À
+        * L'ÉCRAN : « 10 règles réglées par toi · 4 déduites de la mesure ·
+        * 1 écrites de ta main ». Un pluriel appliqué à un, la même faute que
+        * « 1 essais » et « 7.05 bougie », dans une carte qui vient d'être
+        * écrite.
+        *
+        * ⚠️ LE NOMBRE APRÈS L'ÉTIQUETTE, PAS AVANT : « Écrit de ta main : 1 »
+        * ne s'accorde avec rien, dans aucune des quatre langues. C'est une
+        * légende de couleurs, pas de la prose : elle n'a jamais eu besoin d'être
+        * une phrase.
+        */}
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+        {(
+          [
+            ["reglee", plan.reglees],
+            ["mesuree", plan.mesurees],
+            ["ecrite", plan.ecrites],
+            ["manquante", plan.manquantes],
+          ] as const
+        )
+          .filter(([, n]) => n > 0)
+          .map(([p, n]) => {
+            const Icone = ICONE[p];
+            return (
+              <span key={p} className="flex items-center gap-1 text-[11px] text-foreground-muted">
+                <Icone className={`h-3 w-3 ${TON[p]}`} />
+                {t(`bt_mon_plan_entete_${p}`)} : <span className="tabular-nums">{n}</span>
+              </span>
+            );
+          })}
+      </div>
 
       <ol className="mt-4 space-y-2.5">
         {plan.lignes.map((l, i) => (

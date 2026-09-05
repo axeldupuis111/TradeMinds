@@ -3059,7 +3059,6 @@ const dict: Record<string, string> = {
   "bt_comp_sans_fiche": "Wähle zuerst eine Strategie unter « Von deinem Strategieblatt ausgehen » weiter oben: dort werden deine Antworten abgelegt.",
   "bt_mon_plan_titre": "Dein Plan, zum Mitnehmen",
   "bt_mon_plan_intro": "Dafür gibt es diese Seite. Die Regeln, an die du dich hältst, in der Reihenfolge, in der du sie vor dem Bildschirm brauchst, jeweils mit ihrer Quelle: was du eingestellt hast, was die Messung aufgedeckt hat, und was du selbst geschrieben hast.",
-  "bt_mon_plan_compte": "{reglees} Regeln von dir eingestellt · {mesurees} aus der Messung abgeleitet · {ecrites} in deinen eigenen Worten",
   "bt_mon_plan_a_ecrire": "Noch nicht geschrieben. Diese Zeile lässt sich aus keiner Messung ableiten: sie liegt bei dir, und sie ist oft die, die in Plänen fehlt, denen man nicht folgen kann.",
   "bt_mon_plan_manquantes": "{n} Zeilen dieses Plans sind noch nicht geschrieben. Sie bleiben absichtlich sichtbar: ein Plan, der vollständig aussieht ohne es zu sein, ist schlimmer als ein sichtbar unvollständiger, weil du glaubst, geantwortet zu haben. Beantworte sie oben in « Dein Plan, von A bis Z ».",
   "bt_mon_plan_complet": "Dieser Plan ist vollständig: jede Zeile ist geschrieben, eingestellt oder gemessen. Das ist es, dem du folgen kannst, ohne vor dem Bildschirm zu improvisieren.",
