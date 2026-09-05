@@ -23,6 +23,7 @@ const TOUTES: CodeEtape[] = [
   "changer_de_base",
   "controler",
   "completer_le_plan",
+  "enregistrer_les_reponses",
   "enregistrer",
 ];
 
@@ -57,6 +58,7 @@ const etat = (p: Partial<EtatDeLaPage> = {}): EtatDeLaPage => ({
   analyseFaite: true,
   synthese: TOUT_ETABLI,
   lignesAEcrire: 0,
+  lignesAEnregistrer: 0,
   ...p,
 });
 
@@ -196,6 +198,7 @@ function trouver(code: CodeEtape) {
       ]),
     },
     completer_le_plan: { lignesAEcrire: 3 },
+    enregistrer_les_reponses: { lignesAEnregistrer: 2 },
     enregistrer: {},
   };
   const e = prochaineEtape(etat(cas[code]));

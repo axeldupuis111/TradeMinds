@@ -125,6 +125,12 @@ export function MonPlan({
         ))}
       </ol>
 
+      {plan.nonEnregistrees > 0 ? (
+        <p className="mt-4 rounded-lg border border-warning/40 bg-warning/[0.06] p-3 text-xs leading-relaxed text-warning">
+          {t("bt_mon_plan_a_enregistrer", { n: plan.nonEnregistrees })}
+        </p>
+      ) : null}
+
       {plan.manquantes > 0 ? (
         <p className="mt-4 rounded-lg border border-warning/40 bg-warning/[0.06] p-3 text-xs leading-relaxed text-warning">
           {t("bt_mon_plan_manquantes", { n: plan.manquantes })}
@@ -183,6 +189,18 @@ function Ligne({
                 {t("bt_mon_plan_a_ecrire")}
               </p>
             )}
+            {/**
+              * ⚠️⚠️ NI « ÉCRITE » NI « MANQUANTE ». Vu à l'écran : quatre
+              * réponses tapées, visibles dans leurs champs, et le document
+              * affichait toujours « À écrire : 4 ». Les compter comme
+              * enregistrées serait mentir dans l'autre sens : sa fiche ne les
+              * contient pas, et le coach y lirait autre chose que lui.
+              */}
+            {ligne.nonEnregistree ? (
+              <p className="mt-0.5 text-[11px] leading-snug text-warning">
+                {t("bt_mon_plan_non_enregistree")}
+              </p>
+            ) : null}
           </>
         ) : (
           <p className="text-xs leading-relaxed text-foreground">

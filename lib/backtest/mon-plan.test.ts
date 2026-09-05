@@ -298,3 +298,70 @@ describe("les comptes du plan ne s'accordent avec rien", () => {
     expect(source).not.toContain("bt_mon_plan_compte");
   });
 });
+
+/**
+ * ⚠️⚠️ VU À L'ÉCRAN, ET C'EST L'OBJECTIF DE L'ONGLET QUI TOMBAIT.
+ *
+ * Quatre réponses tapées, visibles dans leurs champs, et le document affichait
+ * toujours « Écrit de ta main : 1 · À écrire : 4 ». Le brouillon vivait dans la
+ * carte des treize questions et n'en sortait pas : il fallait un aller-retour en
+ * base pour que le plan reflète les propres mots du trader, et rien ne le
+ * disait. Il conclut que c'est cassé.
+ *
+ * ⚠️ NI « ÉCRITE » NI « MANQUANTE », LES DEUX RACCOURCIS MENTENT. Manquante
+ * ignore ce qu'il vient de taper sous ses yeux ; enregistrée annonce que sa
+ * fiche contient une ligne qui n'y est pas, et le coach y lirait autre chose
+ * que lui.
+ */
+describe("ce qu'il vient d'écrire, avant tout enregistrement", () => {
+  const AVEC = { regime: "Un marché qui va quelque part." };
+
+  it("compte la ligne comme écrite dès qu'il l'a tapée", () => {
+    const p = composerMonPlan(
+      composerPlanComplet(plan(), trades(), NAS),
+      completude(AVEC),
+      AVEC,
+      null,
+      ["regime"],
+    );
+    const l = p.lignes.find((x) => x.cle === "bt_q_regime")!;
+    expect(l.provenance).toBe("ecrite");
+    expect(l.texte).toBe(AVEC.regime);
+  });
+
+  it("mais dit qu'elle n'est pas encore dans sa fiche", () => {
+    const p = composerMonPlan(
+      composerPlanComplet(plan(), trades(), NAS),
+      completude(AVEC),
+      AVEC,
+      null,
+      ["regime"],
+    );
+    expect(p.lignes.find((x) => x.cle === "bt_q_regime")!.nonEnregistree).toBe(true);
+    expect(p.nonEnregistrees).toBe(1);
+  });
+
+  /**
+   * ⚠️ ET UNE FOIS ENREGISTRÉE, PLUS AUCUNE MENTION. Le signal doit disparaître,
+   * sinon il devient un décor que personne ne lit.
+   */
+  it("ne signale plus rien une fois la réponse dans la fiche", () => {
+    const p = composerMonPlan(
+      composerPlanComplet(plan(), trades(), NAS),
+      completude(AVEC),
+      AVEC,
+      null,
+      [],
+    );
+    expect(p.lignes.find((x) => x.cle === "bt_q_regime")!.nonEnregistree).toBeUndefined();
+    expect(p.nonEnregistrees).toBe(0);
+  });
+
+  it("a une rédaction dans les quatre langues", () => {
+    for (const [nom, dico] of Object.entries({ fr, en, es, de })) {
+      const d = dico as Record<string, string>;
+      expect(d.bt_mon_plan_non_enregistree, nom).toBeTruthy();
+      expect(d.bt_mon_plan_a_enregistrer, nom).toContain("{n}");
+    }
+  });
+});

@@ -50,6 +50,16 @@ export interface LigneDeMonPlan {
   valeurs?: Record<string, string | number>;
   /** Sa réponse, mot pour mot, pour les lignes écrites. */
   texte?: string;
+  /**
+   * Vrai quand la réponse est écrite mais pas encore dans sa fiche.
+   *
+   * ⚠️⚠️ NI « ÉCRITE » NI « MANQUANTE », ET LES DEUX RACCOURCIS MENTENT. La
+   * compter comme manquante ignorerait ce qu'il vient de taper, sous ses yeux :
+   * c'est ce que faisait la page, et le trader concluait que le document était
+   * cassé. La compter comme enregistrée annoncerait que sa fiche contient une
+   * ligne qui n'y est pas, et le coach lirait alors autre chose que lui.
+   */
+  nonEnregistree?: boolean;
 }
 
 export interface MonPlan {
@@ -70,6 +80,8 @@ export interface MonPlan {
    */
   etablis: number;
   ouverts: number;
+  /** Lignes écrites qui ne sont pas encore dans sa fiche. */
+  nonEnregistrees: number;
 }
 
 /**
@@ -144,6 +156,8 @@ export function composerMonPlan(
    */
   reponses: Record<string, string>,
   synthese: Synthese | null,
+  /** Les codes écrits mais pas encore enregistrés dans sa fiche. */
+  nonEnregistrees: readonly string[] = [],
 ): MonPlan {
   const parCle = new Map<string, LigneDuPlan>();
   for (const l of plan.lignes) parCle.set(l.cle, l);
@@ -163,6 +177,7 @@ export function composerMonPlan(
       // où la discipline se négocie.
       provenance: q.etat === "ecrit" ? "ecrite" : "manquante",
       texte: reponses[code]?.trim() || undefined,
+      nonEnregistree: nonEnregistrees.includes(code) || undefined,
     });
   };
 
@@ -209,6 +224,7 @@ export function composerMonPlan(
     mesurees: compte("mesuree"),
     ecrites: compte("ecrite"),
     manquantes: compte("manquante"),
+    nonEnregistrees: lignes.filter((l) => l.nonEnregistree).length,
     etablis: piliers.filter((p) => p.etat === "etabli").length,
     ouverts: piliers.filter((p) => p.etat !== "etabli").length,
   };

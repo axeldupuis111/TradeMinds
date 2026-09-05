@@ -66,6 +66,8 @@ export type CodeEtape =
   | "controler"
   /** Des lignes du plan ne se déduisent d'aucune mesure : elles s'écrivent. */
   | "completer_le_plan"
+  /** Il les a écrites, elles ne sont pas encore dans sa fiche. */
+  | "enregistrer_les_reponses"
   /** Tout ce qui pouvait être établi l'est. */
   | "enregistrer";
 
@@ -105,6 +107,14 @@ export interface EtatDeLaPage {
    * c'est ranger un plan qu'il ne pourra pas suivre.
    */
   lignesAEcrire: number;
+  /**
+   * Lignes écrites mais pas encore dans sa fiche.
+   *
+   * ⚠️ ELLES NE SONT PAS « MANQUANTES » : il vient de les taper. Mais tant
+   * qu'elles ne sont pas enregistrées, le coach et ses objectifs lisent autre
+   * chose que lui, et un rechargement de page les perd.
+   */
+  lignesAEnregistrer: number;
 }
 
 /**
@@ -257,6 +267,21 @@ export function prochaineEtape(e: EtatDeLaPage): Etape {
     };
   }
 
-  // ── 12. Tout ce qui pouvait être établi l'est ────────────────────────────
+  /**
+   * ── 12. Écrites, mais pas encore dans sa fiche ────────────────────────
+   *
+   * ⚠️ APRÈS « compléter », AVANT « enregistrer la version » : il a fait le
+   * travail, il reste à le mettre là où le coach et ses objectifs le liront. Un
+   * rechargement de page perdrait sa saisie.
+   */
+  if (e.lignesAEnregistrer > 0) {
+    return {
+      code: "enregistrer_les_reponses",
+      valeurs: { n: e.lignesAEnregistrer },
+      ancre: "bt-completude",
+    };
+  }
+
+  // ── 13. Tout ce qui pouvait être établi l'est ────────────────────────────
   return { code: "enregistrer", valeurs: {}, ancre: "bt-enregistrer" };
 }

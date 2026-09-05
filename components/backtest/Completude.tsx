@@ -47,6 +47,7 @@ export function Completude({
   completude,
   reponses,
   onEnregistrer,
+  onBrouillon,
   peutEnregistrer,
   etat,
   t,
@@ -60,6 +61,19 @@ export function Completude({
    * et que le coach relit.
    */
   onEnregistrer: (reponses: Record<string, string>) => void;
+  /**
+   * Ce qu'il est en train d'écrire, remonté à chaque frappe.
+   *
+   * ⚠️⚠️ SANS ÇA, LE PLAN À EMPORTER IGNORAIT CE QU'IL VENAIT D'ÉCRIRE, ET
+   * C'EST L'OBJECTIF DE L'ONGLET QUI TOMBAIT. Vu à l'écran : quatre réponses
+   * tapées, visibles dans leurs champs, et le document affichait toujours
+   * « Écrit de ta main : 1 · À écrire : 4 ». Le brouillon ne quittait pas cette
+   * carte, et rien ne disait pourquoi : le trader conclut que c'est cassé.
+   *
+   * ⚠️ LE PLAN DIRA QUE CES LIGNES NE SONT PAS ENCORE DANS SA FICHE. Les
+   * compter comme enregistrées serait mentir dans l'autre sens.
+   */
+  onBrouillon: (reponses: Record<string, string>) => void;
   /**
    * ⚠️ FAUX QUAND AUCUNE FICHE N'EST CHOISIE. Le bouton était proposé quand même
    * et ne faisait rien du tout : un clic sans effet et sans message est pire
@@ -85,6 +99,24 @@ export function Completude({
   useEffect(() => {
     setBrouillon(reponses);
   }, [reponses]);
+
+  /**
+   * ⚠️ REMONTÉ À CHAQUE CHANGEMENT, y compris au chargement de la fiche : le
+   * plan doit refléter ce qu'il a sous les yeux, pas ce qu'il avait au premier
+   * rendu.
+   */
+  useEffect(() => {
+    onBrouillon(brouillon);
+  }, [brouillon, onBrouillon]);
+
+  /**
+   * ⚠️ REMONTÉ À CHAQUE CHANGEMENT, y compris au chargement de la fiche : le
+   * plan doit refléter ce qu'il a sous les yeux, pas ce qu'il avait au premier
+   * rendu.
+   */
+  useEffect(() => {
+    onBrouillon(brouillon);
+  }, [brouillon, onBrouillon]);
 
   const modifie = QUESTIONS_DECLARATIVES.some(
     (c) => (brouillon[c] ?? "").trim() !== (reponses[c] ?? "").trim(),

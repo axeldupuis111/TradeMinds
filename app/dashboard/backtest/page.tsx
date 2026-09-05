@@ -272,6 +272,33 @@ export default function BacktestPage() {
    */
   const [methodeCode, setMethodeCode] = useState<string>("");
   const [reponses, setReponses] = useState<Record<string, string>>({});
+  /**
+   * Ce qu'il est en train d'écrire, avant tout enregistrement.
+   *
+   * ⚠️⚠️ VU À L'ÉCRAN : quatre réponses tapées, visibles dans leurs champs, et le
+   * plan à emporter affichait toujours « À écrire : 4 ». Le brouillon vivait
+   * dans la carte des treize questions et n'en sortait pas ; il fallait un
+   * aller-retour en base pour que le document reflète ses propres mots. Rien ne
+   * le disait, donc le trader conclut que c'est cassé.
+   *
+   * ⚠️ DEUX ÉTATS, PAS UN. `reponses` est ce qui est DANS SA FICHE ; `brouillon`
+   * est ce qu'il a SOUS LES YEUX. Le plan lit le second et signale ce qui n'est
+   * pas encore dans le premier : les confondre mentirait dans un sens ou dans
+   * l'autre.
+   */
+  const [brouillon, setBrouillon] = useState<Record<string, string>>({});
+  /** Ce qu'il a écrit, enregistré ou non. */
+  const reponsesVues = useMemo(() => ({ ...reponses, ...brouillon }), [reponses, brouillon]);
+  /** Les questions écrites mais pas encore dans sa fiche. */
+  const reponsesNonEnregistrees = useMemo(
+    () =>
+      Object.keys(brouillon).filter(
+        (c) =>
+          (brouillon[c] ?? "").trim() &&
+          (brouillon[c] ?? "").trim() !== (reponses[c] ?? "").trim(),
+      ),
+    [brouillon, reponses],
+  );
   const [etatReponses, setEtatReponses] = useState<"repos" | "encours" | "fait" | "erreur">("repos");
   /** Son journal réel, pour confronter ce qu'il a écrit à ce qu'il fait. */
   const [tradesReels, setTradesReels] = useState<TradeReel[] | null>(null);
@@ -1167,10 +1194,12 @@ export default function BacktestPage() {
               reglesSetup: strategieCourante.setup_rules,
             }
           : undefined,
-        reponses,
+        // ⚠️ CE QU'IL A SOUS LES YEUX, enregistré ou non. La carte du plan
+        // signale ensuite ce qui n'est pas encore dans sa fiche.
+        reponses: reponsesVues,
         methode,
       }),
-    [couverture, plan, strategieCourante, reponses, methode],
+    [couverture, plan, strategieCourante, reponsesVues, methode],
   );
 
   /**
@@ -1608,10 +1637,11 @@ export default function BacktestPage() {
     return composerMonPlan(
       composerPlanComplet(plan, resultat.trades, instrument),
       completude,
-      reponses,
+      reponsesVues,
       synthese,
+      reponsesNonEnregistrees,
     );
-  }, [resultat, plan, instrument, completude, reponses, synthese]);
+  }, [resultat, plan, instrument, completude, reponsesVues, reponsesNonEnregistrees, synthese]);
 
   /**
    * Le document en texte brut, pour qu'il l'ait vraiment.
@@ -1684,6 +1714,7 @@ export default function BacktestPage() {
         // version dont cinq lignes manquent, c'est ranger un plan qu'il ne
         // pourra pas suivre.
         lignesAEcrire: monPlan?.manquantes ?? 0,
+        lignesAEnregistrer: monPlan?.nonEnregistrees ?? 0,
       }),
     [
       planFiche,
@@ -1905,6 +1936,7 @@ export default function BacktestPage() {
             completude={completude}
             reponses={reponses}
             onEnregistrer={(r) => void enregistrerLesReponses(r)}
+            onBrouillon={setBrouillon}
             peutEnregistrer={Boolean(strategieCourante)}
             etat={etatReponses}
             t={tr}
