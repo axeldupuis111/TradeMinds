@@ -190,7 +190,7 @@ describe("les phrases qui portent un compte", () => {
         }
         rendu = rendu.replace(/\{[a-zA-Z]+\}/g, "7");
 
-        for (const m of rendu.matchAll(PLURIEL_APRES_UN)) {
+        for (const m of Array.from(rendu.matchAll(PLURIEL_APRES_UN))) {
           const mot = m[1].toLowerCase();
           if (INVARIABLES.has(mot)) continue;
           fautes.push(`${cle} (avec {${c}} = 1) → « 1 ${m[1]} »`);
