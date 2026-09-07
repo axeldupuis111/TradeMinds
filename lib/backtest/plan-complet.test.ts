@@ -77,15 +77,40 @@ describe("le plan complet", () => {
    * trader, ce n'est pas la liste de ses réglages, c'est ce qu'ils lui ont fait.
    */
   it("distingue ce qui est recopié de ce qui est mesuré", () => {
-    const p = composerPlanComplet(plan(), trades(suite()), NAS);
+    const p = composerPlanComplet(plan({ gestion: { maxPertesConsecutives: 3 } }), trades(suite()), NAS);
     expect(p.lignes.some((l) => l.deduite)).toBe(true);
     expect(ligne(p, "actif")!.deduite).toBe(false);
     expect(ligne(p, "serie_de_pertes")!.deduite).toBe(true);
   });
 
   it("compte la plus longue série de pertes réellement traversée", () => {
-    const p = composerPlanComplet(plan(), trades([2, -1, -1, -1, -1, -1, -1, 2, -1, -1]), NAS);
+    const p = composerPlanComplet(
+      plan({ gestion: { maxPertesConsecutives: 3 } }),
+      trades([2, -1, -1, -1, -1, -1, -1, 2, -1, -1]),
+      NAS,
+    );
     expect(ligne(p, "serie_de_pertes")!.valeurs.n).toBe(6);
+  });
+
+  /**
+   * ⚠️⚠️ LE MÊME NOMBRE NE SE DIT PAS DEUX FOIS DANS LE DOCUMENT QU'IL EMPORTE.
+   * Vu à l'écran, deux lignes collées : « Attends-toi à des pertes d'affilée,
+   * jusqu'à 8 à la suite » puis « Tu n'as aucune règle d'arrêt : tu aurais
+   * traversé jusqu'à 8 pertes d'affilée sans que rien ne t'arrête ». Le même
+   * fait, le même nombre, deux fois de suite.
+   *
+   * ⚠️ FACE À UNE RÈGLE, LES DEUX LIGNES SE JUSTIFIENT : « tu t'arrêtes à 3, la
+   * méthode en a enchaîné 8 » est une comparaison, pas une répétition.
+   */
+  it("ne dit pas deux fois la série quand aucune règle ne l'arrête", () => {
+    const rs = [2, -1, -1, -1, -1, -1, -1, 2, -1, -1];
+    const sans = composerPlanComplet(plan({ gestion: {} }), trades(rs), NAS);
+    expect(ligne(sans, "arret_pertes_absent")!.valeurs.serie).toBe(6);
+    expect(ligne(sans, "serie_de_pertes")).toBeUndefined();
+
+    const avec = composerPlanComplet(plan({ gestion: { maxPertesConsecutives: 3 } }), trades(rs), NAS);
+    expect(ligne(avec, "serie_de_pertes")!.valeurs.n).toBe(6);
+    expect(ligne(avec, "arret_pertes")!.valeurs.n).toBe(3);
   });
 
   /**

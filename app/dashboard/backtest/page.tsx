@@ -2448,8 +2448,15 @@ export default function BacktestPage() {
             travail précédent disparaissait : « je peux appuyer à plein
             d'endroits, au final je suis perdu ». Deux intentions, deux boutons,
             un seul endroit. Toutes les cartes au-dessous ne font qu'AFFICHER. */}
-        {/* les constats de coherence, qui lisent le rejeu */}
-        {resultat && etapeCourante === "test" ? (
+        {/* ⚠️⚠️ SUR L ETAPE QUI EN AFFICHE LE RESULTAT, ET PAS AVANT. Ces deux
+            boutons etaient sur « Le test », alors que TOUT ce qu ils produisent
+            (la recherche, le diagnostic, les marches comparables, le voisinage
+            des reglages) s affiche sur « L ameliorer ». Quelqu un qui arrivait a
+            l etape 4 y voyait les emplacements de ces mesures et plus aucun
+            bouton pour les lancer : ma propre regle, ecrite dans
+            prochaine-etape.ts, dit qu un constat qui nomme une action doit
+            porter le bouton. */}
+        {resultat && etapeCourante === "ameliorer" ? (
           <StaggerItem>
             <Card className="p-4 sm:p-5">
               <h4 className="text-sm font-semibold text-foreground">{tr("bt_aller_titre")}</h4>

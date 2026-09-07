@@ -323,3 +323,46 @@ describe("aucun bloc ne fuit d'une étape à l'autre", () => {
     }
   });
 });
+
+/**
+ * LE BOUTON EST SUR L'ÉTAPE QUI MONTRE CE QU'IL PRODUIT.
+ *
+ * ⚠️⚠️ VU EN PILOTANT, APRÈS AVOIR RANGÉ LA PAGE : « Analyser à fond » et
+ * « Chercher » étaient restés sur « Le test », alors que TOUT ce qu'ils
+ * produisent (la recherche, le diagnostic, les marchés comparables, le
+ * voisinage des réglages) s'affiche sur « L'améliorer ». Tant que les blocs
+ * fuyaient d'une étape à l'autre, ça marchait par accident ; en les rangeant,
+ * j'ai créé une étape 4 qui montre des emplacements de mesures et plus aucun
+ * bouton pour les lancer.
+ *
+ * ⚠️ MA PROPRE RÈGLE LE DISAIT DÉJÀ, dans prochaine-etape.ts : « un constat qui
+ * nomme une action doit porter le bouton ». Elle vaut aussi entre étapes.
+ */
+describe("le bouton et son résultat sont sur la même étape", () => {
+  const source = readFileSync(join(process.cwd(), "app/dashboard/backtest/page.tsx"), "utf8");
+  const SAUT2 = String.fromCharCode(10);
+  const lignes = source.split(new RegExp(String.fromCharCode(13) + "?" + SAUT2));
+
+  /** L'étape du bloc qui contient ce morceau de code. */
+  function etapeDe(morceau: string): string | null {
+    const k = lignes.findIndex((l) => l.includes(morceau));
+    expect(k, `${morceau} : introuvable dans la page`).toBeGreaterThan(0);
+    for (let j = k; j >= 0; j--) {
+      const m = lignes[j].match(/etapeCourante === "([a-z]+)"/);
+      if (m) return m[1];
+      if (lignes[j].includes("</StaggerItem>")) return null;
+    }
+    return null;
+  }
+
+  const LANCEUR = "onClick={analyserAFond}";
+  const PRODUITS = ["<Trouver", "<Diagnostic", "<Marches", "<Robustesse"];
+
+  it("les mesures profondes se lancent depuis l'étape qui les affiche", () => {
+    const etapeDuBouton = etapeDe(LANCEUR);
+    expect(etapeDuBouton).not.toBeNull();
+    for (const produit of PRODUITS) {
+      expect(etapeDe(produit), `${produit} n'est pas sur l'étape du bouton`).toBe(etapeDuBouton);
+    }
+  });
+});

@@ -208,15 +208,25 @@ export function composerPlanComplet(
   }
 
   const serie = plusLongueSerieDePertes(rs);
-  ajouter("serie_de_pertes", { n: serie }, true);
 
   // ⚠️ CE QUE SA PROPRE RÈGLE AURAIT FAIT. Une règle d'arrêt qu'on n'a jamais
   // vue s'appliquer n'est pas une règle, c'est une intention : le nombre de
   // déclenchements est la seule chose qui la rende réelle.
   const arret = plan.gestion.maxPertesConsecutives;
   if (arret != null && arret > 0) {
+    // La serie traversee ne vaut d etre annoncee que face a une regle : « tu
+    // t arretes a 3, la methode en a enchaine 8 » est une comparaison.
+    ajouter("serie_de_pertes", { n: serie }, true);
     ajouter("arret_pertes", { n: arret, fois: occurrencesDeSerie(rs, arret) }, true);
   } else {
+    /**
+     * ⚠️⚠️ UNE SEULE LIGNE, ET LE NOMBRE UNE SEULE FOIS. Vu a l ecran, deux
+     * lignes collees dans le document a emporter : « Attends-toi a des pertes
+     * d affilee, jusqu a 8 a la suite » puis « Tu n as aucune regle d arret :
+     * tu aurais traverse jusqu a 8 pertes d affilee sans que rien ne t arrete ».
+     * Le meme fait, le meme nombre, deux fois de suite, dans le seul document
+     * que le trader emporte.
+     */
     ajouter("arret_pertes_absent", { serie }, true);
   }
 

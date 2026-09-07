@@ -161,8 +161,17 @@ describe("le compteur se recale sur ce que la base a gardé", () => {
    * datent de la semaine dernière serait une deuxième contrevérité ; on garde
    * donc la date connue plutôt que d'en inventer une.
    */
+  /**
+   * ⚠️⚠️ ET IL FAUT UNE DATE RÉELLEMENT ENREGISTRÉE POUR TESTER ÇA. Ce test
+   * lisait d'abord une clé vide, ce qui INVENTE une date à l'instant de la
+   * lecture, puis comparait avec la date inventée par la lecture suivante : il
+   * ne passait que si les deux tombaient dans la même milliseconde. Vert cent
+   * fois de suite en local, rouge une fois dans la suite complète, et rien à
+   * voir avec le code testé. Un test qui échoue au hasard finit relancé jusqu'à
+   * ce qu'il passe, ce qui revient à ne plus le lire.
+   */
   it("garde la date du premier essai connu", () => {
-    const avant = lireTentatives("s5").depuis;
+    const avant = compterUnEssai("s5").depuis;
     expect(recalerSurLArchive("s5", [4]).depuis).toBe(avant);
   });
 });
