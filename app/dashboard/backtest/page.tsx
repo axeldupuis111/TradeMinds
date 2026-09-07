@@ -59,7 +59,7 @@ import {
   instrumentParCode,
   type Instrument,
 } from "@/lib/backtest/instruments";
-import { graviteDuChamp, socleDePlan, type Couverture } from "@/lib/backtest/compilation";
+import { graviteDuChamp, type Couverture } from "@/lib/backtest/compilation";
 import { moisEntre } from "@/lib/backtest/chargement";
 import {
   annulerModification,
@@ -100,6 +100,7 @@ import { methodeParCode } from "@/lib/backtest/methodes";
 import {
   composerDepart,
   departsPossibles,
+  planParDefaut,
   STYLE_PAR_DEFAUT,
   type Depart as UnDepart,
   type StyleDeTrader,
@@ -231,12 +232,9 @@ export default function BacktestPage() {
 
   const instrument: Instrument = instrumentParCode(code) ?? INSTRUMENTS[0];
 
-  const [plan, setPlan] = useState<PlanExecution>(() => ({
-    ...socleDePlan("XAUUSD", "Europe/Paris"),
-    stop: { type: "extreme_balayage", bufferTicks: 1 },
-    objectif: { type: "multiple_r", r: 2 },
-    couts: coutsPourInstrument(INSTRUMENTS.find((i) => i.code === "XAUUSD")!),
-  }));
+  const [plan, setPlan] = useState<PlanExecution>(() =>
+    planParDefaut("XAUUSD", "Europe/Paris", INSTRUMENTS.find((i) => i.code === "XAUUSD")!),
+  );
 
   /**
    * LE PLAN TEL QUE LA FICHE LE DÉCRIT, gardé intact pendant que l'autre dérive.
@@ -984,15 +982,7 @@ export default function BacktestPage() {
    * ses versions archivées ne bougent pas.
    */
   const repartirDeZero = useCallback(() => {
-    // ⚠️ LE MÊME SOCLE QUE L'ÉTAT INITIAL, pas un socle nu : `socleDePlan` ne
-    // pose ni stop, ni objectif, ni coûts, et un plan amputé ferait planter le
-    // premier rejeu au lieu de repartir proprement.
-    setPlan({
-      ...socleDePlan(code, fuseau),
-      stop: { type: "extreme_balayage", bufferTicks: 1 },
-      objectif: { type: "multiple_r", r: 2 },
-      couts: coutsPourInstrument(instrument),
-    });
+    setPlan(planParDefaut(code, fuseau, instrument));
     setPlanFiche(null);
     setCouverture(null);
     setContestes(new Set());
@@ -1769,14 +1759,39 @@ export default function BacktestPage() {
     [resultat, plan],
   );
 
+  /**
+   * UN PLAN A-T-IL ÉTÉ POSÉ ? UNE SEULE QUESTION, UNE SEULE RÉPONSE.
+   *
+   * ⚠️⚠️ VU À L'ÉCRAN. Je clique « Essayer cette base » sur « Cassure de
+   * trendline ». La carte « Ta méthode » affiche aussitôt une coche et
+   * « Cassure de trendline ». Et deux cartes plus haut, « la prochaine chose à
+   * faire » répond toujours : « Choisis ta fiche de stratégie… tant qu'il n'y a
+   * pas de plan, il n'y a rien à rejouer. » La page se contredit d'un bloc à
+   * l'autre, sur l'écran qu'un débutant voit en premier.
+   *
+   * ⚠️ DEUX ENDROITS POSAIENT LA MÊME QUESTION ET N'AVAIENT JAMAIS LA MÊME
+   * RÉPONSE : le parcours acceptait « le plan diffère de la fiche », la carte
+   * exigeait « une fiche compilée ». Aucun des deux ne voyait une base
+   * appliquée, qui est pourtant le chemin que cette page PROPOSE en premier à
+   * quelqu'un qui n'a pas encore de stratégie.
+   *
+   * ⚠️ ET ON NE STOCKE PAS UN BOOLÉEN DE PLUS : un drapeau qu'il faut penser à
+   * lever finit par ne pas l'être, exactement comme ici. On regarde l'état.
+   */
+  const planPose = useMemo(() => {
+    if (planFiche != null || resultat != null || methodeCode !== "") return true;
+    const socle = planParDefaut(code, fuseau, instrument);
+    return DESCRIPTEURS.some((d) => d.lire(plan) !== d.lire(socle));
+  }, [planFiche, resultat, methodeCode, plan, code, fuseau, instrument]);
+
   const etapesParcours = useMemo(
     () =>
       etapesDuParcours({
-        aUnPlan: planFiche != null || resultat != null || modifications.length > 0,
+        aUnPlan: planPose,
         aUnResultat: Boolean(resultat?.trades.length),
         assezDeTrades: (resultat?.trades.length ?? 0) >= MIN_TRADES_CONCLUSION,
       }),
-    [planFiche, resultat, modifications],
+    [planPose, resultat],
   );
 
   /**
@@ -1823,7 +1838,7 @@ export default function BacktestPage() {
   const etape = useMemo(
     () =>
       prochaineEtape({
-        planPret: planFiche != null || resultat != null,
+        planPret: planPose,
         // Les blocs que l'IA a tranchés seule, et que le trader n'a pas refusés.
         // ⚠️ Seulement les blocs CRITIQUES, et seulement ceux qu'il n'a pas
         // encore refuses : « il manque le fuseau horaire » n'est pas du meme
@@ -1855,7 +1870,7 @@ export default function BacktestPage() {
         lignesAEnregistrer: monPlan?.nonEnregistrees ?? 0,
       }),
     [
-      planFiche,
+      planPose,
       resultat,
       interpretationsALire,
       condamnations,

@@ -1,4 +1,6 @@
 import { declencheurStandard, niveauStandard } from "./blocs-standards";
+import { socleDePlan } from "./compilation";
+import { coutsPourInstrument } from "./instruments";
 import { besoinsNonCouverts, METHODES, type Methode } from "./methodes";
 import type { Instrument } from "./instruments";
 import type { PlanExecution } from "./types";
@@ -279,5 +281,30 @@ export function composerDepart(
       },
       couts,
     },
+  };
+}
+
+/**
+ * LE PLAN VIDE DONT LA PAGE PART, ET AUQUEL ELLE REVIENT.
+ *
+ * ⚠️⚠️ IL ÉTAIT ÉCRIT DEUX FOIS DANS LA PAGE, à l'état initial et dans
+ * « Repartir d'une autre stratégie », avec déjà un commentaire pour rappeler
+ * que les deux devaient rester identiques. Un commentaire n'est pas un lien :
+ * la troisième copie, celle qui devait servir à répondre « ce trader a-t-il
+ * posé un plan ? », est ce qui a fait naître cette fonction.
+ *
+ * ⚠️ `socleDePlan` ne pose ni stop, ni objectif, ni coûts : un plan amputé fait
+ * planter le premier rejeu au lieu de repartir proprement.
+ */
+export function planParDefaut(
+  code: string,
+  fuseau: string,
+  instrument: Instrument,
+): PlanExecution {
+  return {
+    ...socleDePlan(code, fuseau),
+    stop: { type: "extreme_balayage", bufferTicks: 1 },
+    objectif: { type: "multiple_r", r: 2 },
+    couts: coutsPourInstrument(instrument),
   };
 }

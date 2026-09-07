@@ -348,3 +348,53 @@ describe("la page compte les trades là où ils sont", () => {
     expect(code).toContain("trades: resultat ? resultat.trades.length : null");
   });
 });
+
+/**
+ * UNE SEULE QUESTION, UNE SEULE RÉPONSE.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN. Je clique « Essayer cette base » sur « Cassure de
+ * trendline » : la carte « Ta méthode » affiche aussitôt une coche et le nom de
+ * la base ; deux cartes plus haut, « la prochaine chose à faire » répond
+ * toujours « Choisis ta fiche de stratégie… tant qu'il n'y a pas de plan, il
+ * n'y a rien à rejouer ». La page se contredit sur l'écran qu'un débutant voit
+ * en premier.
+ *
+ * La cause : deux endroits posaient la même question avec deux définitions
+ * différentes, et aucune des deux ne voyait une base appliquée, qui est
+ * pourtant le chemin que cette page PROPOSE en premier.
+ */
+describe("« un plan a-t-il été posé » se demande une seule fois", () => {
+  const page = readFileSync(join(process.cwd(), "app/dashboard/backtest/page.tsx"), "utf8");
+  const code = page
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .split(new RegExp(String.fromCharCode(13) + "?" + String.fromCharCode(10)))
+    .filter((l) => !l.trim().startsWith("//"))
+    .join(String.fromCharCode(10));
+
+  it("le parcours et la carte lisent la même valeur", () => {
+    expect(code).toContain("aUnPlan: planPose,");
+    expect(code).toContain("planPret: planPose,");
+  });
+
+  /**
+   * ⚠️ ET ELLE VOIT UNE BASE APPLIQUÉE. C'est le seul des trois signaux qui
+   * manquait des DEUX côtés, et c'est celui du débutant qui n'a pas de fiche.
+   */
+  it("une base appliquée compte comme un plan", () => {
+    const bloc = code.slice(code.indexOf("const planPose"), code.indexOf("const etapesParcours"));
+    expect(bloc).toContain('methodeCode !== ""');
+    expect(bloc).toContain("planFiche != null");
+    expect(bloc).toContain("resultat != null");
+  });
+
+  /**
+   * ⚠️ ET LE PLAN VIDE N'EST ÉCRIT QU'UNE FOIS. Il l'était deux fois, avec un
+   * commentaire pour rappeler de les garder identiques ; un commentaire n'est
+   * pas un lien, et la troisième copie aurait été celle-ci.
+   */
+  it("le plan de départ ne se recopie pas", () => {
+    const copies = code.match(/stop: \{ type: "extreme_balayage", bufferTicks: 1 \}/g) ?? [];
+    expect(copies, "le plan vide est recopié dans la page").toEqual([]);
+    expect(code).toContain("planParDefaut(");
+  });
+});
