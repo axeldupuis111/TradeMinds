@@ -2141,7 +2141,7 @@ export default function BacktestPage() {
         <StaggerItem>
           <Section
             ancre="bt-completude"
-            numero={4}
+            numero={1}
             titre={tr("bt_etape_completude")}
             etat={tr("bt_sec_completude", {
               ecrits: completude.ecrits,
@@ -2173,7 +2173,7 @@ export default function BacktestPage() {
         <StaggerItem>
           <Section
             ancre="bt-reglages"
-            numero={5}
+            numero={2}
             titre={tr("bt_etape_plan")}
             etat={
               modifications.length > 0

@@ -366,3 +366,45 @@ describe("le bouton et son résultat sont sur la même étape", () => {
     }
   });
 });
+
+/**
+ * LES CARTES SE COMPTENT DANS LEUR ÉTAPE, PAS DANS LA PAGE.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN, ET C'EST LA TROISIÈME FOIS QUE DEUX NUMÉROTATIONS SE
+ * CROISENT SUR LE MÊME ÉCRAN. Le fil annonce cinq étapes, et l'étape 1
+ * affichait des cartes numérotées 2 et 3, l'étape 2 des cartes 4 et 5 : les
+ * numéros de l'ancienne page à plat, qui n'avait pas d'étapes. Un trader lit
+ * « étape 1 » puis « 3. Ta méthode » et se demande légitimement lequel des deux
+ * comptes le concerne.
+ *
+ * ⚠️ J'AVAIS DÉJÀ CORRIGÉ LA MOITIÉ DU DÉFAUT, ce qui est pire que rien : les
+ * préfixes « 1. », « 2. » avaient été retirés des TITRES traduits, et la
+ * pastille numérotée du composant, elle, était restée.
+ */
+describe("les cartes se numérotent dans leur étape", () => {
+  const source = readFileSync(join(process.cwd(), "app/dashboard/backtest/page.tsx"), "utf8");
+  const SAUT3 = String.fromCharCode(10);
+  const lignes = source.split(new RegExp(String.fromCharCode(13) + "?" + SAUT3));
+
+  it("chaque étape compte ses cartes à partir de un, sans trou", () => {
+    const parEtape = new Map<string, number[]>();
+    let etape: string | null = null;
+    for (const ligne of lignes) {
+      const e = ligne.match(/etapeCourante === "([a-z]+)"/);
+      if (e) etape = e[1];
+      const n = ligne.match(/numero=\{(\d+)\}/);
+      if (!n) continue;
+      expect(etape, `une carte numérotée ${n[1]} n'est sur aucune étape`).not.toBeNull();
+      const liste = parEtape.get(etape!) ?? [];
+      liste.push(Number(n[1]));
+      parEtape.set(etape!, liste);
+    }
+    // Garde sur le garde : sans carte lue, la boucle ci-dessous ne dit rien.
+    expect(parEtape.size).toBeGreaterThan(0);
+    for (const [code, numeros] of Array.from(parEtape.entries())) {
+      expect(numeros, `l'étape ${code} numérote ses cartes ${numeros.join(", ")}`).toEqual(
+        numeros.map((_, i) => i + 1),
+      );
+    }
+  });
+});
