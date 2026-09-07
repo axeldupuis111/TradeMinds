@@ -3075,6 +3075,7 @@ const dict: Record<string, string> = {
   "bt_par_ameliorer": "L'améliorer",
   "bt_par_plan": "Ton plan",
   "bt_par_bloque_sans_test": "Lance le test à l'étape 3 : ces étapes lisent tes trades, et il n'y en a pas encore.",
+  "bt_par_bloque_sans_test_ici": "Lance le test ci-dessous : ces étapes lisent tes trades, et il n'y en a pas encore.",
   "bt_par_bloque_trop_peu": "Le rejeu a produit trop peu de trades pour qu'on diagnostique quoi que ce soit. La carte « la prochaine chose à faire » dit combien il en manque, et élargit la période pour toi.",
   "bt_ameliorer_titre": "Comment l'améliorer",
   "bt_ameliorer_intro": "Ce qui ne fonctionne pas, où le changer, et si c'est le bon actif pour cette méthode. Chaque piste est une mesure sur tes trades, jamais une promesse.",

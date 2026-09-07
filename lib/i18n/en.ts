@@ -3075,6 +3075,7 @@ const dict: Record<string, string> = {
   "bt_par_ameliorer": "Improve it",
   "bt_par_plan": "Your plan",
   "bt_par_bloque_sans_test": "Run the test at step 3: these steps read your trades, and there are none yet.",
+  "bt_par_bloque_sans_test_ici": "Run the test below: these steps read your trades, and there are none yet.",
   "bt_par_bloque_trop_peu": "The replay produced too few trades to diagnose anything. The “next thing to do” card says how many are missing, and widens the period for you.",
   "bt_ameliorer_titre": "How to improve it",
   "bt_ameliorer_intro": "What is not working, where to change it, and whether this is the right asset for this method. Each lead is a measurement on your trades, never a promise.",

@@ -191,3 +191,22 @@ export const ETAPE_PAR_ANCRE: Record<string, CodeEtapeParcours> = {
   "bt-analyse": "plan",
   "bt-enregistrer": "plan",
 };
+
+/**
+ * LA RAISON D'UN BLOCAGE, DITE DEPUIS L'ENDROIT OÙ ON SE TIENT.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN : debout sur l'étape 3, la barre m'expliquait « Lance le
+ * test À L'ÉTAPE 3 ». Envoyer quelqu'un là où il est déjà, c'est le message le
+ * plus sûr pour lui faire croire qu'il n'a pas compris la page.
+ *
+ * ⚠️ LA RAISON RESTE UNE ACTION dans les deux cas : seule la destination
+ * disparaît, jamais le geste.
+ */
+const RAISON_QUAND_ON_Y_EST: Record<string, { etape: CodeEtapeParcours; cle: string }> = {
+  bt_par_bloque_sans_test: { etape: "test", cle: "bt_par_bloque_sans_test_ici" },
+};
+
+export function raisonAffichee(raison: string, courante: CodeEtapeParcours): string {
+  const variante = RAISON_QUAND_ON_Y_EST[raison];
+  return variante && variante.etape === courante ? variante.cle : raison;
+}

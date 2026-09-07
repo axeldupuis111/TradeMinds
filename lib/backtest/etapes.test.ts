@@ -9,6 +9,7 @@ import {
   ETAPE_PAR_ANCRE,
   etapesDuParcours,
   PARCOURS,
+  raisonAffichee,
   replierVers,
   type EtatDuParcours,
 } from "./etapes";
@@ -469,5 +470,48 @@ describe("chaque ancre sait sur quelle étape elle vit", () => {
     expect(designees.length).toBeGreaterThan(5);
     const orphelines = designees.filter((a) => !(a in ETAPE_PAR_ANCRE));
     expect(orphelines, `sans étape connue : ${orphelines.join(", ")}`).toEqual([]);
+  });
+});
+
+/**
+ * ⚠️⚠️ VU À L'ÉCRAN : debout sur l'étape 3, la barre expliquait « Lance le test
+ * À L'ÉTAPE 3 ». Envoyer quelqu'un là où il se tient déjà est le message le
+ * plus sûr pour lui faire croire qu'il n'a pas compris la page.
+ */
+describe("la raison d'un blocage se dit depuis là où on est", () => {
+  it("nomme l'étape quand on est ailleurs", () => {
+    expect(raisonAffichee("bt_par_bloque_sans_test", "strategie")).toBe("bt_par_bloque_sans_test");
+    expect(raisonAffichee("bt_par_bloque_sans_test", "regles")).toBe("bt_par_bloque_sans_test");
+  });
+
+  it("ne renvoie pas vers l'étape où l'on se tient", () => {
+    expect(raisonAffichee("bt_par_bloque_sans_test", "test")).toBe("bt_par_bloque_sans_test_ici");
+  });
+
+  it("laisse intacte une raison qui ne nomme aucune destination", () => {
+    for (const code of PARCOURS) {
+      expect(raisonAffichee("bt_par_bloque_trop_peu", code)).toBe("bt_par_bloque_trop_peu");
+    }
+  });
+
+  /** ⚠️ Et les deux versions existent dans les quatre langues. */
+  it("les deux versions sont traduites partout", () => {
+    for (const [nom, dico] of Array.from(Object.entries({ fr, en, es, de }))) {
+      for (const cle of ["bt_par_bloque_sans_test", "bt_par_bloque_sans_test_ici"]) {
+        expect((dico as Record<string, string>)[cle], `${cle} en ${nom}`).toBeTruthy();
+      }
+    }
+  });
+
+  /**
+   * ⚠️ ET LA VARIANTE NE DIT PLUS « à l'étape » : sans ça, on aurait deux clés
+   * et le même défaut.
+   */
+  it("la variante ne renvoie plus vers une étape numérotée", () => {
+    // Une étape NUMÉROTÉE : « ces étapes lisent tes trades » est légitime,
+    // « à l’étape 3 » ne l’est pas quand on s’y tient déjà.
+    const DESTINATION = new RegExp("l" + String.fromCharCode(39) + "étape [0-9]");
+    expect(DESTINATION.test(fr.bt_par_bloque_sans_test)).toBe(true);
+    expect(DESTINATION.test(fr.bt_par_bloque_sans_test_ici)).toBe(false);
   });
 });

@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/cn";
+import { raisonAffichee } from "@/lib/backtest/etapes";
 import type { CodeEtapeParcours, EtapeDuParcours } from "@/lib/backtest/etapes";
 import { Check, Lock } from "lucide-react";
 
@@ -52,7 +53,7 @@ export function Parcours({
                 type="button"
                 onClick={() => e.ouverte && onAller(e.code)}
                 disabled={!e.ouverte}
-                title={e.ouverte ? undefined : t(e.raison ?? "")}
+                title={e.ouverte ? undefined : t(raisonAffichee(e.raison ?? "", courante))}
                 aria-current={active ? "step" : undefined}
                 className={cn(
                   "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors",
@@ -97,7 +98,7 @@ export function Parcours({
         const bloquee = etapes.find((e) => !e.ouverte && e.raison);
         return bloquee ? (
           <p className="mt-1.5 px-2.5 pb-1 text-[11px] text-foreground-muted">
-            {t(bloquee.raison!)}
+            {t(raisonAffichee(bloquee.raison!, courante))}
           </p>
         ) : null;
       })()}

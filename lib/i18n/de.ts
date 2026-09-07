@@ -3075,6 +3075,7 @@ const dict: Record<string, string> = {
   "bt_par_ameliorer": "Verbessern",
   "bt_par_plan": "Dein Plan",
   "bt_par_bloque_sans_test": "Starte den Test in Schritt 3: diese Schritte lesen deine Trades, und es gibt noch keine.",
+  "bt_par_bloque_sans_test_ici": "Starte den Test unten: diese Schritte lesen deine Trades, und es gibt noch keine.",
   "bt_par_bloque_trop_peu": "Der Durchlauf hat zu wenige Trades erzeugt, um irgendetwas zu diagnostizieren. Die Karte „das Nächste, was zu tun ist“ nennt die fehlende Anzahl und erweitert den Zeitraum für dich.",
   "bt_ameliorer_titre": "Wie du sie verbesserst",
   "bt_ameliorer_intro": "Was nicht funktioniert, wo du es änderst, und ob das der richtige Basiswert für diese Methode ist. Jede Spur ist eine Messung an deinen Trades, nie ein Versprechen.",
