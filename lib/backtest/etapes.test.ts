@@ -249,30 +249,28 @@ describe("aucun bloc ne fuit d'une étape à l'autre", () => {
   it("chaque bloc du parcours déclare son étape", () => {
     const lignes = corps.split(new RegExp(String.fromCharCode(13) + "?" + SAUT));
     /**
-     * ⚠️ SEULS LES BLOCS DE PREMIER NIVEAU, repérés par leur indentation : les
-     * `<StaggerItem>` imbriqués héritent de la condition de leur parent.
-     */
-    const NIVEAU = "        <StaggerItem";
-    /**
-     * ⚠️ LA SEULE EXCEPTION, ET ELLE EST DÉLIBÉRÉE. La carte « la prochaine
-     * chose à faire » suit le trader d'une étape à l'autre : la barre du
-     * parcours dit OÙ il est, cette carte dit QUOI faire là où il est. Ce sont
-     * deux informations différentes, et c'est la seule qui a le droit de
-     * traverser.
+     * ⚠️⚠️ ON REMONTE JUSQU'À LA CONDITION, SANS SE FIER À L'INDENTATION. Ma
+     * première version ne regardait que les blocs indentés de huit espaces, en
+     * supposant que les autres étaient imbriqués. Faux : un bloc placé dans un
+     * `{resultat ? (` gagne deux espaces et échappait au contrôle. Trois blocs
+     * fuyaient encore vers l'étape « Le test » — la projection, le contrôle hors
+     * période et l'enregistrement — et le garde disait que tout allait bien.
      *
-     * ⚠️ Une exception exige sa raison, comme les planchers de
-     * `pluriels.test.ts` : c'est ce qui empêche cette liste de grossir.
+     * La règle juste ne parle pas d'espaces : en remontant depuis un bloc, on
+     * doit rencontrer une condition d'étape AVANT de sortir du conteneur.
      */
     const SUIT_PARTOUT = ["<ProchaineEtape"];
     const sansEtape: string[] = [];
     for (let k = 0; k < lignes.length; k++) {
-      if (!lignes[k].startsWith(NIVEAU)) continue;
+      if (!lignes[k].includes("<StaggerItem")) continue;
       const dedans = lignes.slice(k, k + 4).join(SAUT);
       if (SUIT_PARTOUT.some((x) => dedans.includes(x))) continue;
-      // La condition d'étape est posée juste au-dessus, éventuellement après un
-      // commentaire.
-      const avant = lignes.slice(Math.max(0, k - 12), k).join(SAUT);
-      if (!avant.includes("etapeCourante ===")) sansEtape.push(lignes[k].trim());
+      // ⚠️ Vingt lignes suffisent : au-delà, ce n'est plus « juste au-dessus »,
+      // c'est un autre bloc, et le rattacher serait une illusion de couverture.
+      const avant = lignes.slice(Math.max(0, k - 20), k).join(SAUT);
+      if (!avant.includes("etapeCourante ===")) {
+        sansEtape.push(`ligne ${k + 1} : ${(lignes[k + 1] ?? "").trim().slice(0, 60)}`);
+      }
     }
     expect(
       sansEtape,

@@ -2412,7 +2412,8 @@ export default function BacktestPage() {
           </StaggerItem>
         ) : null}
 
-        {resultatPerime ? (
+        {/* l'avertissement d'un resultat perime, qui commente le rejeu */}
+        {resultatPerime && etapeCourante === "test" ? (
           <StaggerItem>
             <Card className="border-warning/40 bg-warning/[0.06] p-4 sm:p-5">
               <p className="flex items-start gap-2 text-xs font-medium text-warning">
@@ -2433,7 +2434,8 @@ export default function BacktestPage() {
             travail précédent disparaissait : « je peux appuyer à plein
             d'endroits, au final je suis perdu ». Deux intentions, deux boutons,
             un seul endroit. Toutes les cartes au-dessous ne font qu'AFFICHER. */}
-        {resultat ? (
+        {/* les constats de coherence, qui lisent le rejeu */}
+        {resultat && etapeCourante === "test" ? (
           <StaggerItem>
             <Card className="p-4 sm:p-5">
               <h4 className="text-sm font-semibold text-foreground">{tr("bt_aller_titre")}</h4>
@@ -2637,7 +2639,8 @@ export default function BacktestPage() {
             ⚠️ Une espérance par trade ne dit rien du chemin, et c'est le chemin
             qui vide les comptes. Placée après la robustesse : savoir d'où vient
             le résultat passe avant de le prolonger. */}
-        {resultat?.projection ? (
+        {/* la projection sur une annee de ces trades */}
+        {resultat?.projection && etapeCourante === "plan" ? (
           <StaggerItem>
             <ProjectionCarte donnees={resultat.projection} t={tr} />
           </StaggerItem>
@@ -2649,7 +2652,8 @@ export default function BacktestPage() {
             retrouver ce qu'il avait mesuré avant d'avoir à relancer quoi que ce
             soit : une archive qui exige de refaire le travail pour être lue ne
             sert à rien. */}
-        {strategieId ? (
+        {/* les versions archivees */}
+        {strategieId && etapeCourante === "plan" ? (
           <StaggerItem>
             <Versions
               versions={versions}
@@ -2671,7 +2675,8 @@ export default function BacktestPage() {
             de trader de quelqu'un. Il ne s'ouvre qu'une fois un résultat obtenu
             et une fiche compilée : sans référence, il n'y a rien à enregistrer,
             et sans résultat, il n'y a rien à contrôler. */}
-        {resultat && planFiche ? (
+        {/* l'enregistrement de la version */}
+        {resultat && planFiche && etapeCourante === "plan" ? (
           <StaggerItem id="bt-enregistrer">
             <Enregistrer
               fenetre={fenetreIntacte}
