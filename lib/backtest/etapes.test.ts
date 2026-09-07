@@ -260,16 +260,29 @@ describe("aucun bloc ne fuit d'une étape à l'autre", () => {
      * doit rencontrer une condition d'étape AVANT de sortir du conteneur.
      */
     const SUIT_PARTOUT = ["<ProchaineEtape"];
+    /**
+     * DEUXIEME REPARATION DU MEME GARDE : REGARDER VINGT LIGNES EN ARRIERE NE
+     * MARCHE PAS NON PLUS. La carte « Ce que tes filtres ont refuse » n'a jamais
+     * porte d'etape, et le garde la laissait passer parce que le bloc VOISIN,
+     * vingt lignes plus haut, en portait une. Un garde qui accepte un bloc grace
+     * a la condition d'un autre ne garde rien.
+     *
+     * La condition d'un bloc, c'est ce qui le separe de la fin du bloc
+     * precedent. On remonte jusqu'a cette frontiere, et pas plus loin.
+     */
+    const FRONTIERES = [") : null}", "</StaggerItem>", "<StaggerContainer"];
     const sansEtape: string[] = [];
     for (let k = 0; k < lignes.length; k++) {
       if (!lignes[k].includes("<StaggerItem")) continue;
       const dedans = lignes.slice(k, k + 4).join(SAUT);
       if (SUIT_PARTOUT.some((x) => dedans.includes(x))) continue;
-      // ⚠️ Vingt lignes suffisent : au-delà, ce n'est plus « juste au-dessus »,
-      // c'est un autre bloc, et le rattacher serait une illusion de couverture.
-      const avant = lignes.slice(Math.max(0, k - 20), k).join(SAUT);
-      if (!avant.includes("etapeCourante ===")) {
-        sansEtape.push(`ligne ${k + 1} : ${(lignes[k + 1] ?? "").trim().slice(0, 60)}`);
+      const condition: string[] = [];
+      for (let j = k - 1; j >= 0; j--) {
+        if (FRONTIERES.some((f) => lignes[j].includes(f))) break;
+        condition.push(lignes[j]);
+      }
+      if (!condition.join(SAUT).includes("etapeCourante ===")) {
+        sansEtape.push("ligne " + (k + 1) + " : " + (lignes[k + 1] ?? "").trim().slice(0, 60));
       }
     }
     expect(

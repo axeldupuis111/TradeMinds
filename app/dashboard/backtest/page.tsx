@@ -2346,7 +2346,7 @@ export default function BacktestPage() {
             n'écarte rien équivaut à pas de filtre, et rien dans le rapport ne
             le montrerait : le résultat serait propre, il décrirait simplement
             une autre stratégie que celle décrite dans la fiche. */}
-        {resultat && Object.keys(resultat.audit.refusesParFiltre).length > 0 ? (
+        {resultat && Object.keys(resultat.audit.refusesParFiltre).length > 0 && etapeCourante === "test" ? (
           <StaggerItem>
             <Card className="p-4 sm:p-5">
               <p className="mb-2 text-sm font-medium text-foreground">{tr("bt_filtres_titre")}</p>
@@ -2355,7 +2355,7 @@ export default function BacktestPage() {
                   <li key={type} className="tabular-nums">
                     {tr("bt_filtre_effet", {
                       nom: nomDuFiltre(type, tr),
-                      n,
+                      refuses: n,
                       total: resultat.audit.signauxSoumisAuxFiltres,
                     })}
                   </li>
@@ -2569,7 +2569,7 @@ export default function BacktestPage() {
             ⚠️ Les douze aperçus dessinés ne sont qu'un échantillon. Sur six
             cents trades, quelqu'un qui veut vraiment vérifier doit pouvoir
             ouvrir la liste entière dans son tableur. */}
-        {resultat && resultat.trades.length > 0 ? (
+        {resultat && resultat.trades.length > 0 && etapeCourante === "test" ? (
           <StaggerItem>
             <Card className="p-4 sm:p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
