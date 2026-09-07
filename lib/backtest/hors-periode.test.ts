@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { fenetreDeTestSuggeree, MOIS_MIN_CONTROLE, periodeIntacte } from "./hors-periode";
+import {
+  fenetreDeTestSuggeree,
+  MOIS_MIN_CONTROLE,
+  periodeIntacte,
+  periodePlusLargeQue,
+} from "./hors-periode";
+import { moisEntre } from "./chargement";
 
 const MIN = "2022-01";
 const MAX = "2025-12";
@@ -92,5 +98,45 @@ describe("la fenêtre de test à proposer quand tout a servi", () => {
    */
   it("ne propose rien quand les données sont trop courtes pour couper", () => {
     expect(fenetreDeTestSuggeree("2025-01", "2025-08")).toBeNull();
+  });
+});
+
+/**
+ * ⚠️⚠️ L'ONGLET NE DOIT PAS REPROCHER CE QU'IL VIENT DE DEMANDER. Vu en
+ * pilotant : « trop peu de trades, élargis la période » → j'élargis avec le
+ * bouton fourni → « toute la période disponible a servi à ce test, il ne reste
+ * aucune fenêtre intacte pour contrôler, refais un test plus court ».
+ */
+describe("élargir la période sans détruire le contrôle", () => {
+  const MIN = "2022-01";
+  const MAX = "2025-12";
+
+  it("propose d'abord la fenêtre qui laisse de quoi contrôler", () => {
+    const cible = periodePlusLargeQue("2025-01", MAX, MIN, MAX);
+    expect(cible).not.toBeNull();
+    expect(cible).toEqual(fenetreDeTestSuggeree(MIN, MAX));
+    // Et ce palier laisse bien une fenêtre intacte, ce qui est tout l'objet.
+    expect(periodeIntacte(cible!.de, cible!.a, MIN, MAX)).not.toBeNull();
+  });
+
+  it("ne propose toute la profondeur qu'une fois ce palier pris", () => {
+    const suggeree = fenetreDeTestSuggeree(MIN, MAX)!;
+    expect(periodePlusLargeQue(suggeree.de, suggeree.a, MIN, MAX)).toEqual({ de: MIN, a: MAX });
+  });
+
+  it("ne propose rien quand toute la profondeur est déjà prise", () => {
+    expect(periodePlusLargeQue(MIN, MAX, MIN, MAX)).toBeNull();
+  });
+
+  /**
+   * ⚠️ ET ON NE RECULE JAMAIS : un bouton « élargir » qui rétrécit la période
+   * effacerait des trades en promettant l'inverse.
+   */
+  it("n'est jamais plus étroite que la période courante", () => {
+    for (const de of ["2022-01", "2023-05", "2024-01", "2025-06"]) {
+      const cible = periodePlusLargeQue(de, MAX, MIN, MAX);
+      if (!cible) continue;
+      expect(moisEntre(cible.de, cible.a).length).toBeGreaterThan(moisEntre(de, MAX).length);
+    }
   });
 });

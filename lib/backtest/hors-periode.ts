@@ -110,3 +110,35 @@ export function fenetreDeTestSuggeree(min: string, max: string): { de: string; a
   if (mois.length - intacts < MOIS_MIN_CONTROLE) return null;
   return { de: mois[intacts], a: max };
 }
+
+/**
+ * LA PROCHAINE PÉRIODE À PROPOSER, QUAND LE REJEU EST TROP MAIGRE.
+ *
+ * ── LA CONTRADICTION QUE ÇA CORRIGE ─────────────────────────────────────────
+ *
+ * ⚠️⚠️ MESURÉ EN PILOTANT, DEUX ÉCRANS D'ÉCART. J'ai monté une stratégie depuis
+ * une base proposée par l'onglet, sur douze mois : 41 trades, « trop peu pour
+ * diagnostiquer, élargis la période ». J'ai élargi, comme l'écran le demandait,
+ * et le bouton d'élargissement prenait TOUTE la profondeur disponible. L'écran
+ * suivant m'a annoncé : « toute la période disponible a servi à ce test, il ne
+ * reste aucune fenêtre intacte pour contrôler ; refais un test sur une fenêtre
+ * plus courte ». L'onglet me reprochait d'avoir fait ce qu'il venait de me
+ * demander.
+ *
+ * ⚠️ ON ÉLARGIT DONC PAR PALIERS : d'abord la fenêtre qui laisse de quoi
+ * contrôler, et seulement si elle est déjà prise, toute la profondeur. Le
+ * deuxième palier coûte le contrôle, et l'écran le dit déjà ; le premier ne
+ * coûte rien, et c'est celui qu'on ne proposait jamais.
+ */
+export function periodePlusLargeQue(
+  de: string,
+  a: string,
+  min: string,
+  max: string,
+): { de: string; a: string } | null {
+  const combien = (d: string, f: string) => moisEntre(d, f).length;
+  const suggeree = fenetreDeTestSuggeree(min, max);
+  if (suggeree && combien(suggeree.de, suggeree.a) > combien(de, a)) return suggeree;
+  if (de === min && a === max) return null;
+  return { de: min, a: max };
+}

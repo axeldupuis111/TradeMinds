@@ -74,6 +74,7 @@ import {
 } from "@/lib/backtest/modifications";
 import {
   fenetreDeTestSuggeree,
+  periodePlusLargeQue,
   MOIS_MIN_CONTROLE,
   periodeIntacte,
 } from "@/lib/backtest/hors-periode";
@@ -1204,14 +1205,15 @@ export default function BacktestPage() {
    * pire qu'aucun bouton.
    */
   const periodePlusLarge = useMemo(() => {
-    if (de === PERIODE_MIN && a === PERIODE_MAX) return null;
+    const cible = periodePlusLargeQue(de, a, PERIODE_MIN, PERIODE_MAX);
+    if (!cible) return null;
     return {
-      de: PERIODE_MIN,
-      a: PERIODE_MAX,
-      mois: moisEntre(PERIODE_MIN, PERIODE_MAX).length,
+      de: cible.de,
+      a: cible.a,
+      mois: moisEntre(cible.de, cible.a).length,
       elargir: () => {
-        setDe(PERIODE_MIN);
-        setA(PERIODE_MAX);
+        setDe(cible.de);
+        setA(cible.a);
         setResultat(null);
       },
     };
