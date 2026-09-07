@@ -5,7 +5,13 @@ import de from "../i18n/de";
 import en from "../i18n/en";
 import es from "../i18n/es";
 import fr from "../i18n/fr";
-import { etapesDuParcours, PARCOURS, replierVers, type EtatDuParcours } from "./etapes";
+import {
+  ETAPE_PAR_ANCRE,
+  etapesDuParcours,
+  PARCOURS,
+  replierVers,
+  type EtatDuParcours,
+} from "./etapes";
 
 const etat = (p: Partial<EtatDuParcours> = {}): EtatDuParcours => ({
   aUnPlan: true,
@@ -406,5 +412,62 @@ describe("les cartes se numérotent dans leur étape", () => {
         numeros.map((_, i) => i + 1),
       );
     }
+  });
+});
+
+/**
+ * LE BOUTON QUI TRAVERSE UNE ÉTAPE.
+ *
+ * ⚠️⚠️ TROIS CASSURES DU MÊME BOUTON, TOUJOURS INVISIBLES AUTREMENT QU'À
+ * L'ÉCRAN : identifiant qui ne correspond pas, section repliée, puis étape non
+ * rendue. Les trois donnent le même symptôme (on clique, rien ne se passe) et
+ * aucune erreur, parce que `getElementById` rend `null` en silence.
+ *
+ * Ce garde tient les deux bouts : chaque ancre que la carte désigne existe dans
+ * la page, et la table dit la BONNE étape.
+ */
+describe("chaque ancre sait sur quelle étape elle vit", () => {
+  const page = readFileSync(join(process.cwd(), "app/dashboard/backtest/page.tsx"), "utf8");
+  const carte = readFileSync(join(process.cwd(), "lib/backtest/prochaine-etape.ts"), "utf8");
+  const SAUT4 = String.fromCharCode(10);
+
+  /** L'étape réelle de chaque ancre, lue dans la page. */
+  const reelles = (() => {
+    const par: Record<string, string> = {};
+    let etape: string | null = null;
+    for (const ligne of page.split(new RegExp(String.fromCharCode(13) + "?" + SAUT4))) {
+      const e = ligne.match(/etapeCourante === "([a-z]+)"/);
+      if (e) etape = e[1];
+      const a = ligne.match(/(?:ancre|id)="(bt-[a-z-]+)"/);
+      if (a && etape) par[a[1]] = etape;
+    }
+    return par;
+  })();
+
+  it("la page pose bien des ancres réparties sur les étapes", () => {
+    // Garde sur le garde : sans lecture, tout ce qui suit passerait à vide.
+    expect(Object.keys(reelles).length).toBeGreaterThan(8);
+    expect(new Set(Object.values(reelles)).size).toBeGreaterThan(2);
+  });
+
+  it("la table décrit l'étape où l'ancre se trouve vraiment", () => {
+    const fautes: string[] = [];
+    for (const [ancre, etape] of Array.from(Object.entries(ETAPE_PAR_ANCRE))) {
+      const vraie = reelles[ancre];
+      if (!vraie) fautes.push(`${ancre} : plus aucune ancre de ce nom dans la page`);
+      else if (vraie !== etape) fautes.push(`${ancre} : table dit ${etape}, la page dit ${vraie}`);
+    }
+    expect(fautes, fautes.join(" | ")).toEqual([]);
+  });
+
+  /**
+   * ⚠️ ET C'EST CE SENS-LÀ QUI A CASSÉ : une ancre désignée par la carte mais
+   * absente de la table laisse le bouton sur place, sans rien dire.
+   */
+  it("toute ancre désignée par la carte est dans la table", () => {
+    const designees = Array.from(carte.matchAll(/ancre: "(bt-[a-z-]+)"/g)).map((m) => m[1]);
+    expect(designees.length).toBeGreaterThan(5);
+    const orphelines = designees.filter((a) => !(a in ETAPE_PAR_ANCRE));
+    expect(orphelines, `sans étape connue : ${orphelines.join(", ")}`).toEqual([]);
   });
 });

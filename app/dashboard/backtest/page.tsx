@@ -112,6 +112,7 @@ import { Diagnostic } from "@/components/backtest/Diagnostic";
 import { Section } from "@/components/backtest/Section";
 import { Parcours } from "@/components/backtest/Parcours";
 import {
+  ETAPE_PAR_ANCRE,
   etapesDuParcours,
   replierVers,
   type CodeEtapeParcours,
@@ -1879,17 +1880,32 @@ export default function BacktestPage() {
       if (code === "analyser") return void analyserAFond();
       if (!ancre) return;
       /**
-       * ⚠️⚠️ OUVRIR AVANT DE FAIRE REMONTER. Depuis que les sections sont
-       * repliées, faire défiler vers une section fermée amène le trader devant
-       * un titre et rien d'autre : le bouton aurait l'air de ne pas marcher,
-       * exactement le défaut corrigé deux jours plus tôt sur ces mêmes ancres.
+       * TROIS CHOSES, DANS CET ORDRE : L'ÉTAPE, LA SECTION, PUIS LE DÉFILEMENT.
+       *
+       * ⚠️⚠️ CE BOUTON A CASSÉ TROIS FOIS, TOUJOURS DE LA MÊME FAÇON VUE DE
+       * L'ÉCRAN : on clique, rien ne se passe, et aucune erreur nulle part.
+       *   1. l'identifiant posé ne correspondait pas à celui qu'on cherchait ;
+       *   2. la section était repliée, on défilait vers un titre seul ;
+       *   3. l'étape entière n'était pas rendue, donc l'élément n'existait pas.
+       * Les trois se ressemblent parce que `getElementById` rend `null` en
+       * silence : il n'y a rien à voir dans la console, jamais.
        */
+      const etapeDeLAncre = ETAPE_PAR_ANCRE[ancre];
+      if (etapeDeLAncre) setEtapeCourante(etapeDeLAncre);
       setSection(ancre);
-      // Le rendu de la section ouverte doit avoir eu lieu avant de mesurer sa
-      // position, sinon on défile vers l'endroit où elle n'est pas encore.
-      requestAnimationFrame(() =>
-        document.getElementById(ancre)?.scrollIntoView({ behavior: "smooth", block: "start" }),
-      );
+      /**
+       * ⚠️ ON RÉESSAIE QUELQUES IMAGES, PLUTÔT QU'UNE SEULE. Changer d'étape
+       * remonte un pan entier de la page : exiger qu'il soit peint à l'image
+       * suivante, c'est parier sur l'ordonnancement de React. Le pari coûte un
+       * bouton mort, et le défaut ne se voit qu'à l'écran.
+       */
+      let restant = 20;
+      const remonter = () => {
+        const cible = document.getElementById(ancre);
+        if (cible) return cible.scrollIntoView({ behavior: "smooth", block: "start" });
+        if (restant-- > 0) requestAnimationFrame(remonter);
+      };
+      requestAnimationFrame(remonter);
     },
     [lancer, analyserAFond],
   );

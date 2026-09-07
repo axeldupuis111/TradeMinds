@@ -155,3 +155,39 @@ export function replierVers(
   }
   return "strategie";
 }
+
+/**
+ * OÙ VIT CHAQUE ANCRE.
+ *
+ * ── POURQUOI CETTE TABLE EXISTE ─────────────────────────────────────────────
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN, ET C'EST MA REFONTE QUI L'A CASSÉ : depuis l'étape 3, le
+ * bouton « Aller à ma fiche » de la carte « la prochaine chose à faire » ne
+ * faisait RIEN. Il ouvrait la section et faisait défiler vers son ancre ; or la
+ * fiche vit sur l'étape 1, qui n'est pas rendue quand on est sur l'étape 3.
+ * `getElementById` rendait `null`, en silence, et le bouton avait l'air mort.
+ *
+ * ⚠️ C'EST LA TROISIÈME FOIS QUE CES MÊMES ANCRES CASSENT LE MÊME BOUTON. La
+ * première, l'identifiant ne correspondait pas ; la deuxième, la section était
+ * repliée et on défilait vers un titre seul ; celle-ci, l'étape entière était
+ * absente du document. Chaque fois le symptôme est identique : un bouton qui ne
+ * fait rien, sans erreur nulle part.
+ *
+ * ⚠️ UNE LISTE ÉCRITE À LA MAIN NE PROTÈGE DE RIEN TOUTE SEULE : un test lit la
+ * page et refuse cette table dès qu'elle ne décrit plus où sont les ancres.
+ */
+export const ETAPE_PAR_ANCRE: Record<string, CodeEtapeParcours> = {
+  "bt-periode": "strategie",
+  "bt-fiche": "strategie",
+  "bt-methode": "strategie",
+  "bt-departs": "strategie",
+  "bt-completude": "regles",
+  "bt-reglages": "regles",
+  "bt-condamnation": "regles",
+  "bt-profil": "regles",
+  "bt-apercus": "test",
+  "bt-diagnostic": "ameliorer",
+  "bt-mon-plan": "plan",
+  "bt-analyse": "plan",
+  "bt-enregistrer": "plan",
+};
