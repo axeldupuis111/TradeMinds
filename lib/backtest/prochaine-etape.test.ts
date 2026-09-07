@@ -306,3 +306,45 @@ describe("les ancres de la carte existent dans la page", () => {
     });
   }
 });
+
+/**
+ * CE QUE LA PAGE LUI DONNE À LIRE.
+ *
+ * ⚠️⚠️ UNE ÉTAPE PEUT ÊTRE PARFAITEMENT TESTÉE ET JAMAIS ATTEINTE. Tous les
+ * tests ci-dessus appellent `prochaineEtape` avec des états que je fabrique :
+ * ils prouvent que la fonction répond bien, jamais que la page lui pose la
+ * bonne question. Elle lui passait `resultat?.lecture.stats?.nbTrades`, or le
+ * moteur ne calcule `stats` QU'AU-DESSUS de cent trades. Sous ce seuil la page
+ * disait donc « rien n'a été rejoué » à quelqu'un qui venait de rejouer, et la
+ * branche « élargis la période » ne pouvait jamais s'afficher : le seul cas où
+ * elle devait parler était exactement celui où ce nombre valait `null`.
+ *
+ * ⚠️ VU À L'ÉCRAN pour s'en rendre compte, pas dans le code : 41 trades
+ * rejoués, le CSV les proposait au téléchargement, l'en-tête disait « trop peu
+ * de trades pour diagnostiquer », et la carte disait « lance le test ».
+ */
+describe("la page compte les trades là où ils sont", () => {
+  const source = readFileSync(join(process.cwd(), "app/dashboard/backtest/page.tsx"), "utf8");
+
+  /** Le code, sans les commentaires : ce garde parle du seul code exécuté. */
+  const code = source
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .split(new RegExp(String.fromCharCode(13) + "?" + String.fromCharCode(10)))
+    .filter((l) => !l.trim().startsWith("//"))
+    .join(String.fromCharCode(10));
+
+  it("ne déduit jamais un nombre de trades des statistiques", () => {
+    const fautes = Array.from(code.matchAll(/[a-zA-Z.?]*stats\??\.nbTrades/g)).map((m) => m[0]);
+    // `statsControle?.nbTrades` est légitime : le contrôle hors période N'EST
+    // ARCHIVÉ que lorsqu'il a conclu, donc ses statistiques existent.
+    const interdites = fautes.filter((f) => !f.startsWith("statsControle"));
+    expect(
+      interdites,
+      "sous cent trades `stats` n'existe pas : compter par `resultat.trades.length`",
+    ).toEqual([]);
+  });
+
+  it("passe bien le compte des trades à la carte", () => {
+    expect(code).toContain("trades: resultat ? resultat.trades.length : null");
+  });
+});

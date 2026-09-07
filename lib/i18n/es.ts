@@ -3075,7 +3075,7 @@ const dict: Record<string, string> = {
   "bt_par_ameliorer": "Mejorarla",
   "bt_par_plan": "Tu plan",
   "bt_par_bloque_sans_test": "Lanza la prueba en la etapa 3: estas etapas leen tus operaciones, y todavía no hay ninguna.",
-  "bt_par_bloque_trop_peu": "La repetición produjo muy pocas operaciones para diagnosticar nada. Amplía el periodo en la etapa 1 y vuelve a lanzar.",
+  "bt_par_bloque_trop_peu": "La repetición produjo muy pocas operaciones para diagnosticar nada. La tarjeta «lo siguiente que hay que hacer» dice cuántas faltan y amplía el periodo por ti.",
   "bt_ameliorer_titre": "Cómo mejorarla",
   "bt_ameliorer_intro": "Lo que no funciona, dónde cambiarlo, y si este es el activo adecuado para este método. Cada pista es una medición sobre tus operaciones, nunca una promesa.",
   "bt_recommencer_titre": "¿Y si nada mejora?",

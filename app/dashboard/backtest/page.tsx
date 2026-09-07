@@ -1279,7 +1279,11 @@ export default function BacktestPage() {
    */
   const condamnations = useMemo(() => {
     const mois = moisEntre(de, a).length;
-    const trades = resultat?.lecture.stats?.nbTrades;
+    // ⚠️ LE COMPTE BRUT, PAS CELUI DES STATISTIQUES : un rythme annuel est une
+    // division, pas une estimation d avantage. Le lire dans `stats` le faisait
+    // disparaitre sous cent trades, c est-a-dire precisement quand une methode
+    // trop rare merite qu on lui dise que ses frais annuels ne passeront pas.
+    const trades = resultat?.trades.length;
     return verifierCondamnation({
       plan,
       couts: plan.couts,
@@ -1767,7 +1771,7 @@ export default function BacktestPage() {
       etapesDuParcours({
         aUnPlan: planFiche != null || resultat != null || modifications.length > 0,
         aUnResultat: Boolean(resultat?.trades.length),
-        assezDeTrades: (resultat?.lecture.stats?.nbTrades ?? 0) >= MIN_TRADES_CONCLUSION,
+        assezDeTrades: (resultat?.trades.length ?? 0) >= MIN_TRADES_CONCLUSION,
       }),
     [planFiche, resultat, modifications],
   );
@@ -1824,7 +1828,20 @@ export default function BacktestPage() {
         interpretations: interpretationsALire,
         condamnations,
         profil: constatsProfil,
-        trades: resultat?.lecture.stats?.nbTrades ?? null,
+        /**
+         * ⚠️⚠️ LE NOMBRE DE TRADES, PAS CELUI DES STATISTIQUES. Sous cent
+         * trades, le moteur sort AVANT de calculer `stats` : cette ligne lisait
+         * donc `null` apres un vrai rejeu, et la carte repondait « lance le
+         * test » a quelqu un qui venait de le lancer. Pire, toute la branche
+         * « elargis la periode » etait INATTEIGNABLE : le seul cas ou elle
+         * devait parler etait justement celui ou ce nombre valait null.
+         *
+         * ⚠️ VU A L ECRAN : 41 trades rejoues, le CSV les proposait au
+         * telechargement, l en-tete disait « trop peu de trades pour
+         * diagnostiquer », et la carte de la prochaine chose a faire disait
+         * « rien n a encore ete rejoue ».
+         */
+        trades: resultat ? resultat.trades.length : null,
         mecaniqueVerifiee: verifie,
         analyseFaite: resultat?.confluences != null,
         synthese,
