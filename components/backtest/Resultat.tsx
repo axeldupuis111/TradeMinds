@@ -400,7 +400,7 @@ export function Resultat({
               à 5 % font -15 % dans la journée, que le backtest soit bon ou non. */}
           {maxPertesConsecutives ? (
             <p className="mt-3 rounded-lg border border-warning/40 bg-warning/[0.06] p-3 text-xs text-warning">
-              {t("bt_pire_journee", {
+              {t(maxPertesConsecutives === 1 ? "bt_pire_journee_une" : "bt_pire_journee", {
                 pertes: maxPertesConsecutives,
                 risque: risqueParTradePct,
                 total: (maxPertesConsecutives * risqueParTradePct).toFixed(1),

@@ -18,6 +18,7 @@ import {
   nommerUnChamp,
   nommerUneValeur,
   phraseDuPlan,
+  remplir,
   provenanceDeLaModification,
   sansCodeInterne,
 } from "./phrases";
@@ -83,8 +84,14 @@ const CODE_BRUT = /\b[a-z][a-z0-9]*(_[a-z0-9]+)+\b|\b[a-z]+[A-Z][a-zA-Z]*\b/;
 /** Ce qu'une valeur mal formée laisse derrière elle. */
 const VALEUR_SALE = /NaN|undefined|\bnull\b|Infinity|\[object |-0\.0+\b/;
 
-/** Un remplacement oublié. */
-const TROU = /\{[a-zA-Z]+\}/;
+/**
+ * Un remplacement oublié.
+ *
+ * ⚠️ LA FORME D'ACCORD COMPTE AUSSI. « {apres|bougie|bougies} » non résolu
+ * s'affiche tel quel à l'écran, et l'ancienne expression, qui n'acceptait que
+ * des lettres entre accolades, ne le voyait pas.
+ */
+const TROU = /\{[a-zA-Z0-9_]+(\|[^{}]*)?\}/;
 
 const LANGUES: Record<string, Record<string, string>> = {
   fr: fr as Record<string, string>,
@@ -93,18 +100,23 @@ const LANGUES: Record<string, Record<string, string>> = {
   de: de as Record<string, string>,
 };
 
-/** Le `tr()` de la page, à l'identique. */
+/**
+ * Le rendu de la page, PAR LA FONCTION DE LA PAGE.
+ *
+ * ⚠️⚠️ C'ÉTAIT UNE COPIE, ET UNE COPIE CESSE D'ÊTRE VRAIE SANS RIEN DIRE. Le
+ * commentaire promettait « le tr() de la page, à l'identique » ; le jour où la
+ * page a appris les accords, la copie ne les faisait plus, et ce test rendait
+ * des phrases que personne ne verra jamais. Un garde qui teste autre chose que
+ * le vrai code passe toujours.
+ */
 function rendre(
   langue: Record<string, string>,
   cle: string,
   valeurs?: Record<string, string | number>,
 ): string {
-  let sortie = langue[cle];
-  if (sortie === undefined) return `!!MANQUANTE:${cle}`;
-  for (const [nom, valeur] of Object.entries(valeurs ?? {})) {
-    sortie = sortie.split(`{${nom}}`).join(String(valeur));
-  }
-  return sortie;
+  const gabarit = langue[cle];
+  if (gabarit === undefined) return `!!MANQUANTE:${cle}`;
+  return remplir(gabarit, valeurs);
 }
 
 interface AVerifier {

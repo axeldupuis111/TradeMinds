@@ -92,6 +92,7 @@ import {
 import {
   nommerUnChamp,
   nommerUneValeur as nommerLaValeur,
+  remplir,
   sansCodeInterne,
 } from "@/lib/backtest/phrases";
 import { methodeParCode } from "@/lib/backtest/methodes";
@@ -210,13 +211,7 @@ export default function BacktestPage() {
    */
   const tr = useCallback(
     (cle: string, valeurs?: Record<string, string | number>) => {
-      let sortie = t(cle);
-      if (valeurs) {
-        for (const [nom, valeur] of Object.entries(valeurs)) {
-          sortie = sortie.split(`{${nom}}`).join(String(valeur));
-        }
-      }
-      return sortie;
+      return remplir(t(cle), valeurs);
     },
     [t],
   );

@@ -57,7 +57,13 @@ function trousParCle(): Map<string, string[]> {
   // pas, et l'exiger faisait dire à mon scanner qu'elle n'existait pas.
   for (const m of Array.from(fr.matchAll(/^\s*"(bt_[a-z0-9_]+)":\s*(".*?")\s*,?\s*$/gm))) {
     const texte = JSON.parse(m[2]) as string;
-    const noms = Array.from(texte.matchAll(/\{([a-zA-Z0-9_]+)\}/g)).map((x) => x[1]);
+    // ⚠️ LES DEUX FORMES : le trou simple « {n} » et l'accord
+    // « {n|bougie|bougies} », qui nomme le même compteur. Un accord dont le
+    // compteur n'est pas fourni reste affiché tel quel à l'écran.
+    const noms = [
+      ...Array.from(texte.matchAll(/\{([a-zA-Z0-9_]+)\}/g)).map((x) => x[1]),
+      ...Array.from(texte.matchAll(/\{([a-zA-Z0-9_]+)\|/g)).map((x) => x[1]),
+    ];
     par.set(m[1], Array.from(new Set(noms)));
   }
   return par;
@@ -94,15 +100,21 @@ describe("les phrases reçoivent les valeurs qu'elles demandent", () => {
     const fautes: string[] = [];
     for (const chemin of fichiersDeLOnglet()) {
       const source = readFileSync(chemin, "utf8");
-      const nom = chemin.split(/[\/]/).slice(-2).join("/");
-      for (const appel of Array.from(source.matchAll(/\b(?:tr|t)\(\s*"(bt_[a-z0-9_]+)"\s*(,|\))/g))) {
-        const cle = appel[1];
+      const nom = chemin.split(/[\\/]/).slice(-2).join("/");
+      // ⚠️ LA CLÉ N'EST PAS TOUJOURS LE PREMIER CARACTÈRE DE L'APPEL : depuis
+      // que la pire journée choisit sa phrase selon le compte
+      // (`t(n === 1 ? "…_une" : "…", { … })`), un scan qui exigeait la
+      // parenthèse suivie du guillemet ne voyait plus cet appel du tout.
+      const APPELS =
+        /\b(?:tr|t)\(\s*(?:[^,;()]{0,120}\?\s*)?"(bt_[a-z0-9_]+)"(?:\s*:\s*"(bt_[a-z0-9_]+)")?\s*(,|\))/g;
+      for (const appel of Array.from(source.matchAll(APPELS))) {
+        for (const cle of [appel[1], appel[2]].filter(Boolean) as string[]) {
         const attendus = trous.get(cle);
         if (!attendus) {
           fautes.push(`${nom} : ${cle} n'existe pas en français`);
           continue;
         }
-        if (appel[2] === ")") {
+        if (appel[3] === ")") {
           if (attendus.length > 0) {
             fautes.push(`${nom} : ${cle} attend {${attendus.join("}, {")}} et est appelée sans rien`);
           }
@@ -127,6 +139,7 @@ describe("les phrases reçoivent les valeurs qu'elles demandent", () => {
             `${nom} : ${cle} attend {${manquants.join("}, {")}} et reçoit ` +
               Array.from(fournis).join(", "),
           );
+        }
         }
       }
     }

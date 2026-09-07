@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { remplir } from "../backtest/phrases";
 import fr from "./fr";
 
 /**
@@ -39,26 +40,22 @@ import fr from "./fr";
  * ⚠️ PAS TOUTES LES VARIABLES. « {pct} % » et « {r} R » sont suivis d'une unité
  * invariable ; c'est devant un NOM que l'accord se joue.
  */
-const COMPTEURS = [
-  "n",
-  "total",
-  "trades",
-  "essais",
-  "ouverts",
-  "etablis",
-  "rendues",
-  "mesurees",
-  "reglees",
-  "ecrites",
-  "manquantes",
-  "penchent",
-  "comparaisons",
-  "tranches",
-  "fois",
-  "mois",
-  "ecrits",
-  "bougies",
-];
+/**
+ * TOUT TROU DE PHRASE EST UN COMPTEUR POTENTIEL.
+ *
+ * ⚠️⚠️ J'AVAIS ÉCRIT LA LISTE À LA MAIN, ET ELLE A LAISSÉ PASSER LA FAUTE
+ * SUIVANTE. « Tes {pertes} pertes d'affilée » ne figurait pas dans mes dix-huit
+ * noms, donc personne n'a essayé la valeur 1. C'est exactement la leçon que je
+ * m'étais déjà écrite ailleurs : ne jamais taper une liste fermée à la main,
+ * la LIRE. Ici il n'y a rien à lire ailleurs : on essaie donc CHAQUE trou.
+ *
+ * Le coût est quelques essais inutiles ({risque} = 1 ne veut rien dire) ; le
+ * contrôle qui suit, lui, ne se déclenche que devant « 1 » suivi d'un mot au
+ * pluriel, ce qu'une valeur non comptable ne produit presque jamais.
+ */
+const compteursDe = (gabarit: string): string[] =>
+  Array.from(new Set(Array.from(gabarit.matchAll(/\{([a-zA-Z0-9_]+)\}/g)).map((m) => m[1])));
+
 
 /**
  * Ce qu'on refuse : « 1 » puis un mot au pluriel.
@@ -87,9 +84,21 @@ const INVARIABLES = new Set([
   // « 1 des 5 lignes » est du francais correct : « un des » est une tournure,
   // pas un accord rate.
   "des",
+  // « tu montes a {d9} les jours charges » : un article, jamais un nom compte.
+  "les",
+  // Symbole d'unite : « 1 ms », comme « 1 kg ». Il ne prend pas la marque du
+  // pluriel, et l'ecrire « 1 m » n'aurait aucun sens.
+  "ms",
 ]);
 
-const PLURIEL_APRES_UN = /\b1\s+([a-zéèêàîôûç]+s)\b/gi;
+/**
+ * ⚠️⚠️ LA CLASSE DE CARACTÈRES DOIT COUVRIR LES ACCENTS DES DEUX CÔTÉS, et ça
+ * m'a valu un faux positif que j'ai failli « corriger » dans la phrase :
+ * « dont 1 refusé » était signalé comme « 1 refus », parce que \b, qui ne
+ * connaît que l'ASCII, voyait une fin de mot juste avant le « é ». Un garde qui
+ * accuse une phrase juste apprend à lire ses alertes en diagonale.
+ */
+const PLURIEL_APRES_UN = /\b1\s+([a-zéèêàîôûç]+s)(?![a-zéèêàîôûç])/gi;
 
 describe("les phrases qui portent un compte", () => {
   const dico = fr as Record<string, string>;
@@ -176,19 +185,23 @@ describe("les phrases qui portent un compte", () => {
       if (!cle.startsWith("bt_")) continue;
       if (aUneSoeurAuSingulier(cle)) continue;
       if (PLANCHERS[cle]) continue;
-      const compteurs = COMPTEURS.filter((c) => gabarit.includes(`{${c}}`));
+      const compteurs = compteursDe(gabarit);
       if (compteurs.length === 0) continue;
 
       // Un seul compteur à la fois : deux valeurs à 1 dans la même phrase
       // produiraient des faux positifs croisés.
       for (const c of compteurs) {
-        let rendu = gabarit.split(`{${c}}`).join("1");
-        // Les autres variables prennent une valeur neutre qui n'introduit
-        // jamais de « 1 ».
-        for (const autre of compteurs) {
-          if (autre !== c) rendu = rendu.split(`{${autre}}`).join("7");
-        }
-        rendu = rendu.replace(/\{[a-zA-Z]+\}/g, "7");
+        /**
+         * ON REND PAR remplir(), LA FONCTION DE LA PAGE, ET PAS PAR UN
+         * REMPLACEMENT MAISON. Le jour où la page a appris les accords
+         * (« {apres} {apres|bougie|bougies} »), un remplacement maison aurait
+         * laissé l'accord non résolu dans le texte : le mot au pluriel
+         * disparaissait de la phrase rendue, et le garde déclarait tout propre
+         * alors qu'il ne regardait plus rien.
+         */
+        const valeurs: Record<string, string | number> = {};
+        for (const autre of compteurs) valeurs[autre] = autre === c ? 1 : 7;
+        const rendu = remplir(gabarit, valeurs);
 
         for (const m of Array.from(rendu.matchAll(PLURIEL_APRES_UN))) {
           const mot = m[1].toLowerCase();

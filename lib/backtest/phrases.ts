@@ -249,3 +249,55 @@ export function sansCodeInterne(texte: string, t: Traduire): string {
   }
   return sortie;
 }
+
+/**
+ * REMPLIR UNE PHRASE, ACCORDS COMPRIS.
+ *
+ * ── POURQUOI CETTE FONCTION EXISTE ──────────────────────────────────────────
+ *
+ * ⚠️⚠️ TRENTE PHRASES ÉCRIVAIENT « 1 bougies », « 1 touches », « 1 points ».
+ * Le garde de pluriels ne les voyait pas parce que je lui avais donné les noms
+ * de compteurs À LA MAIN, et que ma liste s'arrêtait à dix-huit. En la
+ * remplaçant par « essaie CHAQUE trou », trente fautes sont tombées d'un coup,
+ * dans des phrases que je croyais relues.
+ *
+ * ⚠️ ET CE N'EST PAS THÉORIQUE : le moteur travaille en bougies d'UNE minute,
+ * un stop peut être à un point, une droite peut avoir une touche. Chacune de
+ * ces valeurs vaut un tous les jours.
+ *
+ * ── LA FORME ────────────────────────────────────────────────────────────────
+ *
+ *   « Tu sors après {apres} {apres|bougie|bougies} en position. »
+ *
+ * Le mot regarde le nombre qui le précède, et le NOMME : c'est ce qui permet à
+ * chaque langue de placer le mot où elle veut, et à ce fichier de vérifier que
+ * le nombre est bien fourni.
+ *
+ * ⚠️ CENT VINGT CLÉS SŒURS AURAIENT MARCHÉ AUSSI, et c'est ce que j'allais
+ * faire. Trente phrases × quatre langues, chacune à maintenir en double pour
+ * toujours : la première rédaction oubliée aurait rétabli la faute sans que
+ * rien ne le dise.
+ */
+export function remplir(
+  gabarit: string,
+  valeurs?: Record<string, string | number>,
+): string {
+  let sortie = gabarit;
+  // Les accords d'abord : ils nomment un compteur, qui sera remplacé ensuite.
+  sortie = sortie.replace(
+    /\{([a-zA-Z0-9_]+)\|([^|{}]*)\|([^|{}]*)\}/g,
+    (brut, nom: string, un: string, plusieurs: string) => {
+      const valeur = valeurs?.[nom];
+      // ⚠️ Une valeur absente laisse le gabarit INTACT plutôt que de choisir un
+      // accord au hasard : c'est visible à l'écran, donc réparable.
+      if (valeur === undefined) return brut;
+      return Number(valeur) === 1 ? un : plusieurs;
+    },
+  );
+  if (valeurs) {
+    for (const [nom, valeur] of Object.entries(valeurs)) {
+      sortie = sortie.split(`{${nom}}`).join(String(valeur));
+    }
+  }
+  return sortie;
+}
