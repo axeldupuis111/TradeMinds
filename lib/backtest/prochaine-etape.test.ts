@@ -398,3 +398,40 @@ describe("« un plan a-t-il été posé » se demande une seule fois", () => {
     expect(code).toContain("planParDefaut(");
   });
 });
+
+/**
+ * ⚠️⚠️ DEUX BOUTONS, LA MÊME INTENTION, DEUX COMPORTEMENTS. Vu à l'écran :
+ * « Choisir une période plus large » faisait remonter vers le sélecteur de
+ * l'étape 1, pendant qu'un bouton « Élargir à 2023-05 → 2025-12 (32 mois) » se
+ * tenait dix lignes plus bas et le faisait vraiment. C'est le reproche qu'Axel
+ * avait déjà formulé : « je peux appuyer à plein d'endroits, au final je suis
+ * perdu ».
+ */
+describe("les gestes de la carte agissent quand ils le peuvent", () => {
+  const page = readFileSync(join(process.cwd(), "app/dashboard/backtest/page.tsx"), "utf8");
+  const geste = (() => {
+    /**
+     * ⚠️ LA BORNE DE FIN SE CHERCHE APRÈS LE DÉBUT. La première occurrence de
+     * « if (!estPremium) » est mille lignes plus haut : découpée sans point de
+     * départ, la tranche était vide et le garde échouait sur un code juste.
+     * Un garde qui accuse à tort s'apprend à lire en diagonale.
+     */
+    const debut = page.indexOf("const agirSurLEtape");
+    return page.slice(debut, page.indexOf("if (!estPremium) {", debut));
+  })();
+
+  it("le geste est branché sur l'action, pas seulement sur une ancre", () => {
+    expect(geste.length).toBeGreaterThan(200);
+    for (const code of ["lancer", "analyser", "elargir_la_periode"]) {
+      expect(geste, `${code} n'a pas de geste propre`).toContain(`code === "${code}"`);
+    }
+  });
+
+  /**
+   * ⚠️ ET LE REPLI RESTE LE SÉLECTEUR : quand il n'y a plus rien à élargir, le
+   * geste doit redevenir un déplacement, sinon le bouton ne fait rien.
+   */
+  it("l'élargissement retombe sur l'ancre quand il n'y a plus de marge", () => {
+    expect(geste).toContain('code === "elargir_la_periode" && periodePlusLarge');
+  });
+});

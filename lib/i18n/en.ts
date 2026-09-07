@@ -3116,7 +3116,7 @@ const dict: Record<string, string> = {
   "bt_faire_lancer": "Your plan is ready and nothing condemns it in advance. Replay it on real candles: the computation runs in your browser, it costs nothing and you can rerun it as often as you like.",
   "bt_faire_lancer_geste": "Run the test",
   "bt_faire_elargir_la_periode": "{n} trades, under the {seuil} threshold. That is not a bad result, it is an absence of result: under a hundred trades, no figure on this page means anything. Widen the period before reading anything else.",
-  "bt_faire_elargir_la_periode_geste": "Pick a wider period",
+  "bt_faire_elargir_la_periode_geste": "Widen the test period",
   "bt_faire_tester_son_marche": "You are finely measuring a method on a market you do not trade. That is rigorous work with no use: switch the test to the market where you actually take your positions, the rest of your plan will follow.",
   "bt_faire_tester_son_marche_geste": "See where you actually trade",
   "bt_faire_verifier_la_mecanique": "Nobody has looked yet at the trades the machine took. Open three previews: three times during the building of this tool the chart showed something other than the announced method, and the text never showed it.",

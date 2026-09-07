@@ -1893,6 +1893,20 @@ export default function BacktestPage() {
     (ancre: string | null, code: string) => {
       if (code === "lancer") return void lancer();
       if (code === "analyser") return void analyserAFond();
+      /**
+       * ⚠️⚠️ LE GESTE, PAS LE CHEMIN VERS LE GESTE. Vu à l'écran : « Choisir une
+       * période plus large » faisait remonter vers le sélecteur de l'étape 1,
+       * pendant qu'un bouton « Élargir à 2023-05 → 2025-12 (32 mois) » se
+       * tenait dix lignes plus bas. Deux boutons, la même intention, deux
+       * comportements : « je peux appuyer à plein d'endroits, au final je suis
+       * perdu ».
+       *
+       * ⚠️ ET LE REPLI RESTE LE SÉLECTEUR quand il n'y a plus rien à élargir :
+       * un bouton qui ne change rien est pire qu'aucun bouton.
+       */
+      if (code === "elargir_la_periode" && periodePlusLarge) {
+        return periodePlusLarge.elargir();
+      }
       if (!ancre) return;
       /**
        * TROIS CHOSES, DANS CET ORDRE : L'ÉTAPE, LA SECTION, PUIS LE DÉFILEMENT.
@@ -1922,7 +1936,7 @@ export default function BacktestPage() {
       };
       requestAnimationFrame(remonter);
     },
-    [lancer, analyserAFond],
+    [lancer, analyserAFond, periodePlusLarge],
   );
 
   if (!estPremium) {
