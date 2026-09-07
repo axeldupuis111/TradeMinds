@@ -368,8 +368,18 @@ export function verifierLePlan(
     });
   }
   if (audit.signaux >= 30 && audit.refusesRisqueTropPetit / audit.signaux >= 0.1) {
+    /**
+     * ⚠️⚠️ LE RESTE SE MESURE, IL NE S'ESTIME PAS EN TOUTES LETTRES. La phrase
+     * disait : « {part} % de tes signaux ont été écartés […] le résultat porte
+     * sur LA MOITIÉ de ses signaux qui restait exécutable ». À 30 % d'écartés
+     * il en reste 70, pas la moitié : la phrase se contredisait elle-même, dans
+     * la même ligne, sous les yeux du lecteur qui vient de lire le premier
+     * chiffre.
+     */
+    const ecartes = (audit.refusesRisqueTropPetit / audit.signaux) * 100;
     ajouter("signaux_ecartes", "a_verifier", {
-      part: ((audit.refusesRisqueTropPetit / audit.signaux) * 100).toFixed(1),
+      part: ecartes.toFixed(1),
+      reste: (100 - ecartes).toFixed(1),
     });
   }
 

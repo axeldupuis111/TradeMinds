@@ -1,5 +1,5 @@
 import type { Constat } from "./coherence-plan";
-import type { Concentration } from "./robustesse";
+import { PART_QUI_DOMINE, type Concentration } from "./robustesse";
 import type { Stabilite } from "./stabilite";
 import { MAX_TENTATIVES_AVANT_ALERTE, MIN_TRADES_CONCLUSION, type LectureBacktest } from "./verdict";
 
@@ -149,6 +149,16 @@ export function synthetiser(e: EntreesSynthese): Synthese {
         annees: c.anneesPositives,
         total: c.annees.length,
         sans: c.totalSansLeMeilleurMoisR.toFixed(2),
+        /**
+         * ⚠️⚠️ LE SEUIL EST UNE VALEUR, PAS UN MOT DE LA PHRASE. Vu à l'écran :
+         * « 2025-06 apporte 83 % du total à lui seul » suivi de « un résultat
+         * dont un seul mois porte LA MOITIÉ n'est pas réparti ». Deux quantités
+         * pour le même fait sur la même ligne, et le lecteur doit deviner
+         * laquelle est la mesure et laquelle est la règle. Écrire le seuil en
+         * toutes lettres dans la copie l'aurait en plus figé à 50 le jour où
+         * cette constante bouge.
+         */
+        seuil: PART_QUI_DOMINE,
       },
       // ⚠️ Quand le total perd, il n'y a rien à répartir : la phrase ordinaire
       // sortirait avec un pourcentage vide au milieu.

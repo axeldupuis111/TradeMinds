@@ -235,3 +235,43 @@ describe("les phrases qui portent un compte", () => {
     expect(trouve).toHaveLength(0);
   });
 });
+
+/**
+ * UNE FRACTION ÉCRITE EN TOUTES LETTRES À CÔTÉ D'UN POURCENTAGE MESURÉ.
+ *
+ * ⚠️⚠️ DEUX PHRASES, DEUX DÉFAUTS, ET LE SECOND SE CONTREDISAIT LUI-MÊME :
+ *
+ *   « 2025-06 apporte 83 % du total à lui seul […] un résultat dont un seul
+ *     mois porte LA MOITIÉ n'est pas réparti. »
+ *   « {part} % de tes signaux ont été écartés […] le résultat porte sur LA
+ *     MOITIÉ de ses signaux qui restait exécutable. »
+ *
+ * Dans la première, « la moitié » est un seuil et « 83 % » une mesure : rien ne
+ * dit au lecteur laquelle des deux quantités le concerne. Dans la seconde, à
+ * 30 % d'écartés il en reste 70, pas la moitié : la phrase est simplement
+ * fausse, dans la ligne même où elle donne le bon chiffre.
+ *
+ * ⚠️ C'EST LA FORME DE PRESQUE TOUS LES DÉFAUTS DE CET ONGLET : deux nombres
+ * pour le même fait sur le même écran. Ici l'un des deux était écrit en lettres,
+ * ce qui l'avait rendu invisible à tous les gardes.
+ */
+describe("les phrases ne doublent pas un pourcentage par une fraction écrite", () => {
+  const dico = fr as Record<string, string>;
+  const FRACTIONS = /(la moitié|un tiers|un quart|les deux tiers|les trois quarts)/;
+  const POURCENTAGE = /\{[a-zA-Z0-9_]+\} ?%/;
+
+  it("aucune phrase chiffrée n'énonce une fraction en toutes lettres", () => {
+    const fautes = Object.entries(dico)
+      .filter(([cle, texte]) => cle.startsWith("bt_") && typeof texte === "string")
+      .filter(([, texte]) => POURCENTAGE.test(texte) && FRACTIONS.test(texte))
+      .map(([cle, texte]) => `${cle} : « ${texte.match(FRACTIONS)![1]} » à côté d'un pourcentage`);
+    expect(fautes, fautes.join(" | ")).toEqual([]);
+  });
+
+  /** ⚠️ Et le garde mord : on lui redonne la phrase exacte qui est passée. */
+  it("attrape la phrase qui se contredisait", () => {
+    const passee =
+      "{part} % de tes signaux ont été écartés. Le résultat porte sur la moitié de ses signaux.";
+    expect(POURCENTAGE.test(passee) && FRACTIONS.test(passee)).toBe(true);
+  });
+});
