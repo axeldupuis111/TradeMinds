@@ -2269,6 +2269,11 @@ export default function BacktestPage() {
         ) : null}
 
         {/* ── 6. Lancer ──────────────────────────────────────────────────── */}
+        {/* ⚠️⚠️ VU À L'ÉCRAN : « 6. Lancer le test » s'affichait sur LES TROIS
+            étapes. Le bloc n'avait pas été affecté, donc il fuyait partout. Un
+            bouton « Lancer » présent à l'étape « Ta stratégie » invite à sauter
+            exactement ce que le parcours existe pour ordonner. */}
+        {etapeCourante === "test" ? (
         <StaggerItem>
           <Card>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -2309,6 +2314,7 @@ export default function BacktestPage() {
             ) : null}
           </Card>
         </StaggerItem>
+        ) : null}
 
         {/* ── 5. Le résultat ─────────────────────────────────────────────── */}
         {resultat && resultat.apercus.length > 0 && etapeCourante === "test" ? (

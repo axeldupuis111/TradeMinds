@@ -218,3 +218,97 @@ describe("aucune raison de blocage n'est déjà satisfaite", () => {
     }
   });
 });
+
+/**
+ * ⚠️⚠️ VU À L'ÉCRAN : « Lancer le test » S'AFFICHAIT SUR LES TROIS ÉTAPES.
+ *
+ * Le bloc n'avait pas été affecté à une étape, donc il fuyait partout. Un bouton
+ * « Lancer » présent à l'étape « Ta stratégie » invite à sauter exactement ce
+ * que le parcours existe pour ordonner, et la fuite ne se voit qu'en cliquant
+ * d'un onglet à l'autre.
+ *
+ * ⚠️ CE TEST LIT LA SOURCE et exige que chaque bloc de premier niveau du
+ * parcours porte une étape. Un bloc ajouté demain sans étape sera signalé au
+ * lieu d'apparaître cinq fois.
+ */
+describe("aucun bloc ne fuit d'une étape à l'autre", () => {
+  const source = readFileSync(join(process.cwd(), "app/dashboard/backtest/page.tsx"), "utf8");
+
+  /** Le corps du conteneur, entre son ouverture et sa fermeture. */
+  const corps = (() => {
+    const i = source.indexOf("<StaggerContainer");
+    const j = source.indexOf("</StaggerContainer>");
+    expect(i).toBeGreaterThan(0);
+    expect(j).toBeGreaterThan(i);
+    return source.slice(i, j);
+  })();
+
+  /** Un saut de ligne, construit plutôt qu'échappé : voir `pluriels.test.ts`. */
+  const SAUT = String.fromCharCode(10);
+
+  it("chaque bloc du parcours déclare son étape", () => {
+    const lignes = corps.split(new RegExp(String.fromCharCode(13) + "?" + SAUT));
+    /**
+     * ⚠️ SEULS LES BLOCS DE PREMIER NIVEAU, repérés par leur indentation : les
+     * `<StaggerItem>` imbriqués héritent de la condition de leur parent.
+     */
+    const NIVEAU = "        <StaggerItem";
+    /**
+     * ⚠️ LA SEULE EXCEPTION, ET ELLE EST DÉLIBÉRÉE. La carte « la prochaine
+     * chose à faire » suit le trader d'une étape à l'autre : la barre du
+     * parcours dit OÙ il est, cette carte dit QUOI faire là où il est. Ce sont
+     * deux informations différentes, et c'est la seule qui a le droit de
+     * traverser.
+     *
+     * ⚠️ Une exception exige sa raison, comme les planchers de
+     * `pluriels.test.ts` : c'est ce qui empêche cette liste de grossir.
+     */
+    const SUIT_PARTOUT = ["<ProchaineEtape"];
+    const sansEtape: string[] = [];
+    for (let k = 0; k < lignes.length; k++) {
+      if (!lignes[k].startsWith(NIVEAU)) continue;
+      const dedans = lignes.slice(k, k + 4).join(SAUT);
+      if (SUIT_PARTOUT.some((x) => dedans.includes(x))) continue;
+      // La condition d'étape est posée juste au-dessus, éventuellement après un
+      // commentaire.
+      const avant = lignes.slice(Math.max(0, k - 12), k).join(SAUT);
+      if (!avant.includes("etapeCourante ===")) sansEtape.push(lignes[k].trim());
+    }
+    expect(
+      sansEtape,
+      "blocs affichés sur toutes les étapes : " + sansEtape.join(" | "),
+    ).toEqual([]);
+  });
+
+  /**
+   * ⚠️ ET LES CINQ ÉTAPES ONT CHACUNE DU CONTENU. Une étape vide serait une
+   * porte qui s'ouvre sur rien, ce qui est pire qu'une porte fermée.
+   */
+  it("chaque étape a au moins un bloc", () => {
+    for (const code of PARCOURS) {
+      expect(corps, `l'étape ${code} n'affiche rien`).toContain(`etapeCourante === "${code}"`);
+    }
+  });
+
+  /**
+   * ⚠️⚠️ UNE SEULE NUMÉROTATION À L'ÉCRAN. La barre du parcours numérote cinq
+   * étapes ; les cartes portaient encore « 2. », « 4. », « 6. » de la page à
+   * plat. Un trader à l'étape 2 lisait « 6. Lancer le test ». C'est la faute que
+   * cette page passe son temps à corriger : deux façons de compter la même
+   * chose.
+   */
+  it("les titres de cartes ne portent plus de numéro", () => {
+    const dico = fr as Record<string, string>;
+    for (const cle of [
+      "bt_etape_perimetre",
+      "bt_etape_fiche",
+      "bt_etape_methode",
+      "bt_etape_completude",
+      "bt_etape_plan",
+      "bt_etape_lancer",
+    ]) {
+      expect(dico[cle], cle).toBeTruthy();
+      expect(dico[cle], `${cle} porte encore un numéro`).not.toMatch(/^\d+\.\s/);
+    }
+  });
+});
