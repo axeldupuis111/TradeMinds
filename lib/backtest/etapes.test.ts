@@ -363,7 +363,15 @@ describe("le bouton et son résultat sont sur la même étape", () => {
   }
 
   const LANCEUR = "onClick={analyserAFond}";
-  const PRODUITS = ["<Trouver", "<Diagnostic", "<Marches", "<Robustesse"];
+  /**
+   * ⚠️ ET LA LISTE ÉTAIT INCOMPLÈTE : « Tes confluences » n'y figurait pas, et
+   * ce tableau s'affichait donc sur « Ton plan », sept cartes de filtres non
+   * utilisés posées APRÈS le document à emporter. Le garde passait au vert
+   * parce que je lui avais donné quatre noms sur cinq. C'est la limite de
+   * toute liste écrite à la main, et la seule parade est de la relire à chaque
+   * fois qu'un bloc naît.
+   */
+  const PRODUITS = ["<Trouver", "<Diagnostic", "<Marches", "<Robustesse", "<Confluences"];
 
   it("les mesures profondes se lancent depuis l'étape qui les affiche", () => {
     const etapeDuBouton = etapeDe(LANCEUR);

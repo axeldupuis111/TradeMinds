@@ -122,6 +122,7 @@ import { composerMonPlan } from "@/lib/backtest/mon-plan";
 import { composerPlanComplet } from "@/lib/backtest/plan-complet";
 import { MonPlan } from "@/components/backtest/MonPlan";
 import { phraseDuPlan } from "@/lib/backtest/phrases";
+import { Confluences } from "@/components/backtest/Confluences";
 import { ProchaineEtape } from "@/components/backtest/ProchaineEtape";
 import { confronterAuProfil, lireLeProfil, type TradeReel } from "@/lib/backtest/profil";
 import { enregistrerVersion } from "@/lib/backtest/enregistrement";
@@ -2547,6 +2548,22 @@ export default function BacktestPage() {
             trader vient ici avec un seul objectif : trouver quelque chose qui
             tienne et repartir avec un plan à respecter. Les mesures qui suivent
             servent à comprendre pourquoi ; celle-ci répond à la question. */}
+        {/* ── Les confluences, avec les autres produits d'« Analyser à fond »
+            ⚠️⚠️ ELLES S'AFFICHAIENT SUR « TON PLAN », la dernière étape, celle
+            du document à emporter : sept cartes de filtres non utilisés posées
+            APRÈS le plan. Elles n'étaient là que parce qu'elles partageaient un
+            fichier avec les piliers ; un découpage de fichier avait décidé
+            d'une place dans le parcours, et personne ne l'avait choisi. */}
+        {resultat?.confluences && etapeCourante === "ameliorer" ? (
+          <StaggerItem>
+            <Confluences
+              confluences={resultat.confluences}
+              nomDuFiltre={(type: string) => nomDuFiltre(type, tr)}
+              t={tr}
+            />
+          </StaggerItem>
+        ) : null}
+
         {resultat && etapeCourante === "ameliorer" ? (
           <StaggerItem>
             <Trouver
@@ -2608,13 +2625,7 @@ export default function BacktestPage() {
 
         {resultat && synthese && etapeCourante === "plan" ? (
           <StaggerItem id="bt-analyse">
-            <Analyse
-              synthese={synthese}
-              constats={resultat.constats}
-              confluences={resultat.confluences}
-              nomDuFiltre={(type) => nomDuFiltre(type, tr)}
-              t={tr}
-            />
+            <Analyse synthese={synthese} constats={resultat.constats} t={tr} />
           </StaggerItem>
         ) : null}
 

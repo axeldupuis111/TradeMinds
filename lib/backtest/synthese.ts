@@ -123,11 +123,33 @@ export function synthetiser(e: EntreesSynthese): Synthese {
   if (!e.lecture.stats) {
     ajouter("avantage_mesure", "pas_regarde");
   } else {
-    ajouter("avantage_mesure", e.lecture.verdict === "positif" ? "etabli" : "pas_etabli", {
-      esperance: e.lecture.stats.esperanceR.toFixed(3),
-      bas: e.lecture.stats.borneBasse.toFixed(3),
-      haut: e.lecture.stats.borneHaute.toFixed(3),
-    });
+    /**
+     * ⚠️⚠️ TROIS CAS, PAS DEUX, ET LE TROISIÈME MENTAIT SUR SES PROPRES
+     * CHIFFRES. Vu à l'écran : « -0.201 R par trade, mais l'intervalle va de
+     * -0.313 à -0.088. ZÉRO EST DEDANS ». Il ne l'était pas : l'intervalle
+     * était entièrement sous zéro, et l'écran du dessus disait à juste titre
+     * « perdante sur la période testée ».
+     *
+     * L'avantage n'est pas établi dans les deux cas, c'est vrai, mais on ne les
+     * dit pas avec les mêmes mots : « on ne peut pas conclure » et « c'est
+     * démontré perdant » sont exactement les deux états que cette carte existe
+     * pour distinguer. Les confondre transforme une perte prouvée en doute
+     * rassurant, dans le sens le plus coûteux pour le trader.
+     *
+     * ⚠️ LE MÊME DÉFAUT AVAIT DÉJÀ ÉTÉ CORRIGÉ SUR LE PILIER DE LA RÉGULARITÉ,
+     * avec le même commentaire « trois états, pas deux ». Je ne l'avais pas
+     * cherché ailleurs.
+     */
+    ajouter(
+      "avantage_mesure",
+      e.lecture.verdict === "positif" ? "etabli" : "pas_etabli",
+      {
+        esperance: e.lecture.stats.esperanceR.toFixed(3),
+        bas: e.lecture.stats.borneBasse.toFixed(3),
+        haut: e.lecture.stats.borneHaute.toFixed(3),
+      },
+      e.lecture.verdict === "negatif" ? "negatif" : undefined,
+    );
   }
 
   // ── 3. La régularité dans le temps ───────────────────────────────────────

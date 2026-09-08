@@ -94,7 +94,17 @@ export type EffetDuFiltre =
    * découvre que la condition qu'il croit s'imposer ne se produit jamais sur ce
    * marché à cette unité de temps.
    */
-  | "inerte";
+  | "inerte"
+  | "quasi_inerte";
+
+/**
+ * En dessous, le pourcentage affiché s'arrondit à zéro.
+ *
+ * ⚠️ CE N'EST PAS UN SEUIL DE MATÉRIALITÉ, c'est la frontière d'arrondi de
+ * l'affichage : la seule chose qu'on refuse ici, c'est qu'une phrase montre
+ * « 0 % » et affirme dans la même ligne une conséquence qui demande un effet.
+ */
+export const PART_AFFICHEE_NULLE = 0.5;
 
 export interface Confluence {
   /** Le type du bloc de confirmation, pour le nommer à l'écran. */
@@ -198,8 +208,23 @@ export function mesurerConfluences(
     // sans effet mesurable, et que ce n'est pas la même chose : l'un a été
     // mesuré, l'autre n'a jamais eu l'occasion de l'être. Un filtre ne peut que
     // retirer des signaux : à nombre égal, les deux jeux sont le même.
+    const partEcartee = sans.trades === 0 ? 0 : ((sans.trades - avec.trades) / sans.trades) * 100;
     if (avec.trades === sans.trades) {
       effet = "inerte";
+    } else if (partEcartee < PART_AFFICHEE_NULLE) {
+      /**
+       * ⚠️⚠️ VU À L'ÉCRAN, ET LA PHRASE SE CONTREDISAIT ELLE-MÊME :
+       *
+       *   « Amplitude minimale · 613 trades avec · 614 sans · IL EN ÉCARTE 0 %
+       *     […] il écarte 0 % de tes trades sans rien acheter en échange, donc
+       *     il ÉLARGIT ton intervalle et rend ta stratégie MOINS démontrable. »
+       *
+       * Retirer un trade sur 614 n'élargit rien. Le seuil n'est pas un jugement
+       * sur ce qui compte : c'est exactement la frontière d'arrondi de
+       * l'affichage, pour que le nombre montré et la phrase disent la même
+       * chose. En dessous, on nomme le compte brut plutôt qu'un pourcentage nul.
+       */
+      effet = "quasi_inerte";
     } else if (avec.esperanceR == null) {
       // ⚠️ Un filtre qui assèche est une information à part entière, pas un
       // échec de mesure : il empêche la stratégie d'être démontrable du tout.

@@ -5,6 +5,8 @@ import de from "../i18n/de";
 import en from "../i18n/en";
 import es from "../i18n/es";
 import fr from "../i18n/fr";
+import { synthetiser } from "./synthese";
+import type { LectureBacktest } from "./verdict";
 
 /**
  * NE PAS DIRE « IL N'Y EN A PAS » QUAND LA MESURE DIT « AUCUN NE LE PROUVE ».
@@ -140,5 +142,88 @@ describe("les verdicts sous un intervalle qui contient zéro", () => {
     const dico = fr as Record<string, string>;
     expect(dico.bt_hors_negatif).toContain("perd");
     expect(dico.bt_hors_survit).toContain("se retrouve");
+  });
+});
+
+/**
+ * ET LE SENS INVERSE : NE PAS DIRE « ZÉRO EST DEDANS » QUAND IL EST DEHORS.
+ *
+ * ── LE DÉFAUT, VU À L'ÉCRAN ─────────────────────────────────────────────────
+ *
+ * ⚠️⚠️ Le pilier « Un avantage que le hasard n'explique pas » affichait :
+ *
+ *   « -0.201 R par trade, mais l'intervalle va de -0.313 à -0.088.
+ *     ZÉRO EST DEDANS : ce que tu mesures est compatible avec l'absence totale
+ *     d'avantage. »
+ *
+ * Zéro n'était pas dedans : l'intervalle était entièrement sous zéro, et
+ * l'écran du dessus disait à juste titre « perdante sur la période testée ».
+ * Le branchement n'avait que deux sorties là où la page en distingue trois, et
+ * le cas « démontré perdant » tombait dans la phrase de « on ne peut pas
+ * conclure ». Cette confusion-là va dans le sens le plus coûteux : elle
+ * transforme une perte prouvée en doute rassurant.
+ *
+ * ⚠️ TOUS LES TESTS DE CE FICHIER LISENT DES RÉDACTIONS ; celui-ci FAIT TOURNER
+ * la synthèse et lit ce qu'elle produit. Aucune relecture de copie ne pouvait
+ * attraper ce défaut : les deux phrases étaient justes, c'est le choix entre
+ * elles qui était faux.
+ */
+describe("la phrase du pilier dit la vérité sur son propre intervalle", () => {
+  const dico = fr as Record<string, string>;
+
+  /** Ce que le composant affiche : `bt_syn_<code>_<variante ?? etat>`. */
+  const phraseDuPilier = (verdict: "positif" | "negatif" | "non_concluant", bas: number, haut: number) => {
+    const s = synthetiser({
+      lecture: {
+        verdict,
+        stats: {
+          nbTrades: 300,
+          esperanceR: (bas + haut) / 2,
+          borneBasse: bas,
+          borneHaute: haut,
+        },
+        partCollisions: 0,
+        partRefusesRisque: 0,
+        risqueDeSurApprentissage: false,
+      } as unknown as LectureBacktest,
+      concentration: null,
+      constats: [],
+      tentatives: 1,
+    });
+    const p = s.piliers.find((x) => x.code === "avantage_mesure")!;
+    return { pilier: p, texte: dico[`bt_syn_avantage_mesure_${p.variante ?? p.etat}`] };
+  };
+
+  const DIT_DEDANS = /zéro est dedans|zéro est à l'intérieur/i;
+  const DIT_DEHORS = /zéro est en dehors|entièrement sous zéro|entièrement au-dessus/i;
+
+  it("un intervalle entièrement négatif ne se dit pas « zéro est dedans »", () => {
+    const { texte } = phraseDuPilier("negatif", -0.313, -0.088);
+    expect(texte, "phrase absente").toBeTruthy();
+    expect(DIT_DEDANS.test(texte), `« ${texte} » alors que l'intervalle exclut zéro`).toBe(false);
+    expect(DIT_DEHORS.test(texte), `« ${texte} » ne dit pas où est zéro`).toBe(true);
+  });
+
+  it("un intervalle qui contient zéro le dit, et ne tranche pas", () => {
+    const { texte } = phraseDuPilier("non_concluant", -0.2, 0.09);
+    expect(DIT_DEDANS.test(texte)).toBe(true);
+  });
+
+  it("un intervalle entièrement positif reste établi", () => {
+    const { pilier, texte } = phraseDuPilier("positif", 0.05, 0.31);
+    expect(pilier.etat).toBe("etabli");
+    expect(DIT_DEDANS.test(texte)).toBe(false);
+  });
+
+  /**
+   * ⚠️ ET LES TROIS SORTIES SONT TRADUITES. Une variante sans phrase afficherait
+   * sa propre clé au milieu du document que le trader emporte.
+   */
+  it("les trois sorties existent dans les quatre langues", () => {
+    for (const [langue, d] of Object.entries(LANGUES)) {
+      for (const fin of ["etabli", "pas_etabli", "negatif"]) {
+        expect(d[`bt_syn_avantage_mesure_${fin}`], `${fin} en ${langue}`).toBeTruthy();
+      }
+    }
   });
 });

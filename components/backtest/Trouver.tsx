@@ -103,6 +103,21 @@ export function Trouver({
     return etiquette;
   };
 
+  /**
+   * RIEN À MONTRER, DONC RIEN À L'ÉCRAN.
+   *
+   * ⚠️⚠️ VU À L'ÉCRAN : cette carte s'affichait avec son titre « Chercher ce
+   * qui pourrait marcher », son paragraphe d'intro, et RIEN d'autre. Ni
+   * résultat, ni bouton : le bouton avait été déplacé en haut, à juste titre,
+   * et la coquille était restée. Un bloc qui décrit une fonctionnalité sans
+   * rien en montrer est exactement l'encombrement qu'on reproche à cette page.
+   *
+   * ⚠️ SAUF SANS FENÊTRE INTACTE : la carte porte alors le seul avertissement
+   * qui compte, « chercher sans pouvoir confirmer fabrique une candidate qu'on
+   * n'éprouvera jamais ». Celui-là se lit avant de cliquer, pas après.
+   */
+  if (fenetreDeConfirmation && !exploration) return null;
+
   return (
     <Card className="p-4 sm:p-5">
       <h4 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">

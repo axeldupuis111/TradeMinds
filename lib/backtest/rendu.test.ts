@@ -505,7 +505,13 @@ function unionDe(fichier: string, nom: string): string[] {
 }
 
 for (const e of unionDe("lib/backtest/confluences.ts", "EffetDuFiltre")) {
-  ajouter("confluences", `bt_conf_effet_${e}`, { part: 14, avec: "-0.05", sans: "+0.01" });
+  ajouter("confluences", `bt_conf_effet_${e}`, {
+    part: 14,
+    avec: "-0.05",
+    sans: "+0.01",
+    n: 3,
+    total: 614,
+  });
 }
 for (const f of unionDe("lib/backtest/robustesse.ts", "FormeDeStabilite")) {
   ajouter("robustesse", `bt_rob_forme_${f}`);
