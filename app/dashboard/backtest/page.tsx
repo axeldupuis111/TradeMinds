@@ -408,13 +408,32 @@ export default function BacktestPage() {
    * trade » qui y est déjà. Les ranger ailleurs créerait une deuxième fiche que
    * le coach ne lirait pas.
    */
+  /**
+   * ⚠️⚠️ UNE RÉPONSE RÉSEAU EFFAÇAIT UN CHOIX DU TRADER. Vu à l'écran : un rejeu
+   * de 614 trades tournait sur une base appliquée, et la carte « Ta méthode »
+   * affichait « Pas encore déclarée ».
+   *
+   * Cet effet dépendait de `strategies`, chargé en asynchrone. Quand la liste
+   * arrive — ou à chaque fois qu'elle est rafraîchie — l'effet rejoue ; sans
+   * fiche sélectionnée, `strat` est `undefined`, et il posait `""` sur la
+   * méthode. Quelqu'un qui clique « Essayer cette base » pendant que la liste
+   * charge voit donc son choix disparaître, sans rien à l'écran pour le dire.
+   *
+   * ⚠️ SANS FICHE CHOISIE, IL N'Y A RIEN À RELIRE, ET SURTOUT RIEN À ÉCRASER :
+   * la méthode vient alors d'une base ou d'un choix à la main, et ce n'est pas
+   * à cette lecture-là de trancher.
+   *
+   * ⚠️ ET ON DÉPEND DU TEXTE DE LA FICHE, PAS DU TABLEAU : l'identité du
+   * tableau change à chaque rafraîchissement, son contenu presque jamais.
+   */
+  const raw = strategies.find((x) => x.id === strategieId)?.raw_text ?? null;
   useEffect(() => {
-    const strat = strategies.find((x) => x.id === strategieId);
-    const lu = lireBlocPlan(strat?.raw_text ?? "");
+    if (!strategieId) return;
+    const lu = lireBlocPlan(raw ?? "");
     setMethodeCode(lu.methode ?? "");
     setReponses(lu.reponses);
     setEtatReponses("repos");
-  }, [strategieId, strategies]);
+  }, [strategieId, raw]);
 
   /**
    * SON JOURNAL RÉEL.

@@ -439,3 +439,38 @@ describe("les gestes de la carte agissent quand ils le peuvent", () => {
     expect(geste).toContain('code === "elargir_la_periode" && periodePlusLarge');
   });
 });
+
+/**
+ * UNE RÉPONSE RÉSEAU N'EFFACE PAS UN CHOIX DU TRADER.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN : un rejeu de 614 trades tournait sur une base appliquée,
+ * et la carte « Ta méthode » affichait « Pas encore déclarée ». L'effet qui
+ * relit la fiche dépendait du TABLEAU des stratégies, chargé en asynchrone :
+ * à son arrivée, l'effet rejouait, ne trouvait aucune fiche sélectionnée, et
+ * posait une méthode vide. Cliquer « Essayer cette base » pendant le
+ * chargement suffisait à perdre son choix, sans rien à l'écran pour le dire.
+ *
+ * ⚠️ CE GENRE DE DÉFAUT NE SE VOIT QU'EN PILOTANT, ET SEULEMENT SI LE RÉSEAU
+ * EST LENT AU BON MOMENT. Le garde tient la forme du branchement en place,
+ * faute de pouvoir rejouer la course.
+ */
+describe("la lecture de la fiche ne piétine pas ce qui est déjà posé", () => {
+  const page = readFileSync(join(process.cwd(), "app/dashboard/backtest/page.tsx"), "utf8");
+  const effet = (() => {
+    const debut = page.indexOf("const lu = lireBlocPlan(");
+    expect(debut, "la relecture de la fiche est introuvable").toBeGreaterThan(0);
+    return page.slice(Math.max(0, debut - 400), debut + 400);
+  })();
+
+  it("ne relit rien tant qu'aucune fiche n'est choisie", () => {
+    expect(effet, "un garde sur strategieId est nécessaire").toContain("if (!strategieId) return;");
+  });
+
+  it("dépend du texte de la fiche, pas de l'identité du tableau", () => {
+    expect(effet).toContain("[strategieId, raw]");
+    expect(
+      effet.includes("[strategieId, strategies]"),
+      "dépendre du tableau fait rejouer l'effet à chaque rafraîchissement",
+    ).toBe(false);
+  });
+});
