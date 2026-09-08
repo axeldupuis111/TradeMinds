@@ -3719,6 +3719,7 @@ const dict: Record<string, string> = {
   "bt_ver_ecart_mesurable": "La diferencia es de {ecart} R, y su intervalo va de {bas} a {haut}: el cero queda fuera. Es el único caso en que dos versiones se distinguen de verdad. ⚠️ Siguen siendo dos medidas sobre el pasado: si la segunda se encontró buscando, la diferencia mide sobre todo la búsqueda.",
   "bt_modif_titre": "Lo que has cambiado respecto a tu ficha",
   "bt_modif_aucune": "El plan probado es exactamente el de tu ficha. No hay nada que cambiar en tu forma de operar.",
+  "bt_modif_aucune_mais_deduit": "Los ajustes probados son exactamente la traducción de tu ficha. Pero {n} de ellos {n|lo decidió|los decidió} la IA a falta de una regla escrita: no {n|está|están} en tu ficha, y nada aquí {n|lo|los} pondrá. Mientras siga así, nadie (tú incluido, dentro de tres meses) puede repetir tu método de forma idéntica.",
   "bt_modif_compte": "Ajustes que difieren de tu ficha: {n}",
   "bt_modif_intro": "Cada línea dice qué se movió, de dónde viene y qué significa delante de tu gráfico. Puedes anular una sin tocar las demás.",
   "bt_modif_origine_proposition": "Propuesto para: {objectif}",

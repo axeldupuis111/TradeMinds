@@ -3719,6 +3719,7 @@ const dict: Record<string, string> = {
   "bt_ver_ecart_mesurable": "Der Abstand beträgt {ecart} R, sein Intervall reicht von {bas} bis {haut}: die Null liegt außerhalb. Das ist der einzige Fall, in dem sich zwei Versionen wirklich unterscheiden. ⚠️ Es bleiben zwei Messungen an der Vergangenheit: wurde die zweite durch Suchen gefunden, misst der Abstand vor allem das Suchen.",
   "bt_modif_titre": "Was du gegenüber deinem Strategieblatt geändert hast",
   "bt_modif_aucune": "Der getestete Plan ist genau der aus deinem Strategieblatt. An deiner Art zu handeln ist nichts zu ändern.",
+  "bt_modif_aucune_mais_deduit": "Die getesteten Einstellungen sind genau die Übersetzung deines Blatts. Aber {n} davon hat die KI mangels geschriebener Regel entschieden: {n|sie steht|sie stehen} nicht in deinem Blatt, und nichts hier trägt {n|sie|sie} dort ein. Solange das so bleibt, kann niemand (auch du nicht, in drei Monaten) deine Methode identisch wiederholen.",
   "bt_modif_compte": "Einstellungen, die von deinem Blatt abweichen: {n}",
   "bt_modif_intro": "Jede Zeile sagt, was sich bewegt hat, woher es kommt und was es vor deinem Chart bedeutet. Du kannst eine einzelne rückgängig machen, ohne die anderen anzurühren.",
   "bt_modif_origine_proposition": "Vorgeschlagen für: {objectif}",

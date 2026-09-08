@@ -70,6 +70,7 @@ export function Enregistrer({
   controleRequis,
   aDesModifications,
   controle,
+  deduites,
   lectureActuelle,
   periode,
   peutEnregistrer,
@@ -109,6 +110,13 @@ export function Enregistrer({
   /** Vrai dès qu'un réglage s'écarte de la fiche. */
   aDesModifications: boolean;
   controle: EtatControle;
+  /**
+   * Blocs que l'IA a tranchés faute de règle écrite dans la fiche.
+   *
+   * ⚠️ On les compte, qu'ils aient été relus ou non : les relire ne les met pas
+   * dans sa fiche, et c'est de la fiche que parle la phrase.
+   */
+  deduites: number;
   lectureActuelle: LectureBacktest;
   periode: { de: string; a: string };
   /** Faux tant qu'il n'y a rien à enregistrer (aucun écart avec la fiche). */
@@ -270,8 +278,20 @@ export function Enregistrer({
             </button>
           </>
         ) : (
+          /**
+           * ⚠️⚠️ « IL N'Y A RIEN À CHANGER DANS TA FAÇON DE TRADER » ÉTAIT FAUX
+           * SUR LA CARTE QUI ÉCRIT DANS SA FICHE. Vu à l'écran, après une
+           * traduction : le plan testé égalait bien la traduction de la fiche,
+           * mais cette traduction contenait quatre valeurs que l'IA avait
+           * choisies faute de règle écrite — la tolérance, la largeur de pivot,
+           * la marge du stop, l'unité de temps. Aucune n'est dans sa fiche, et
+           * la phrase lui disait qu'il n'avait rien à y écrire.
+           *
+           * ⚠️ C'EST LE MOMENT LE PLUS COÛTEUX DE L'ONGLET POUR SE TROMPER :
+           * c'est là que des valeurs devinées deviennent une discipline écrite.
+           */
           <p className="mt-2 text-xs leading-relaxed text-foreground-muted">
-            {t("bt_modif_aucune")}
+            {deduites > 0 ? t("bt_modif_aucune_mais_deduit", { n: deduites }) : t("bt_modif_aucune")}
           </p>
         )}
 

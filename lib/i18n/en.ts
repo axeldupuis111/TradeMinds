@@ -3719,6 +3719,7 @@ const dict: Record<string, string> = {
   "bt_ver_ecart_mesurable": "The gap is {ecart} R, and its interval runs from {bas} to {haut}: zero sits outside. This is the only case where two versions really differ. ⚠️ These are still two measurements of the past: if the second was found by searching, the gap mostly measures the searching.",
   "bt_modif_titre": "What you changed compared with your strategy sheet",
   "bt_modif_aucune": "The plan tested is exactly the one from your sheet. There is nothing to change in the way you trade.",
+  "bt_modif_aucune_mais_deduit": "The tested settings are exactly the translation of your sheet. But {n} of them {n|was|were} decided by the AI for lack of a written rule: {n|it is not|they are not} in your sheet, and nothing here will put {n|it|them} there. Until that changes, nobody, including you three months from now, can replay your method identically.",
   "bt_modif_compte": "Settings that differ from your sheet: {n}",
   "bt_modif_intro": "Each line says what moved, where it came from, and what it means in front of your chart. You can undo one without touching the others.",
   "bt_modif_origine_proposition": "Suggested for: {objectif}",

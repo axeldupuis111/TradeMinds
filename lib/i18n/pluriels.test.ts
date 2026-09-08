@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { remplir } from "../backtest/phrases";
+import de from "./de";
+import en from "./en";
+import es from "./es";
 import fr from "./fr";
 
 /**
@@ -273,5 +276,33 @@ describe("les phrases ne doublent pas un pourcentage par une fraction écrite", 
     const passee =
       "{part} % de tes signaux ont été écartés. Le résultat porte sur la moitié de ses signaux.";
     expect(POURCENTAGE.test(passee) && FRACTIONS.test(passee)).toBe(true);
+  });
+});
+
+/**
+ * PAS DE TIRET LONG DANS CE QUE L'APPLICATION ÉCRIT.
+ *
+ * ⚠️⚠️ RÈGLE POSÉE PAR AXEL, ET JE VIENS DE LA CASSER MOI-MÊME en écrivant
+ * « personne — toi compris, dans trois mois — ne peut rejouer ta méthode ».
+ * Le tiret long est un marqueur de texte généré : ces phrases sont signées de
+ * son produit, pas du mien. Deux points, une virgule ou une parenthèse font le
+ * même travail.
+ *
+ * ⚠️ CE GARDE NE COUVRE QUE L'ONGLET, comme les autres de ce fichier :
+ * l'étendre sans avoir relu le reste de l'application le rendrait bruyant, et
+ * un garde bruyant finit désactivé.
+ */
+describe("la ponctuation de l'onglet", () => {
+  const TIRET_LONG = String.fromCharCode(8212);
+
+  it("n'utilise jamais de tiret long", () => {
+    const fautes: string[] = [];
+    for (const [nom, dico] of Array.from(Object.entries({ fr, en, es, de }))) {
+      for (const [cle, texte] of Object.entries(dico as Record<string, string>)) {
+        if (!cle.startsWith("bt_") || typeof texte !== "string") continue;
+        if (texte.includes(TIRET_LONG)) fautes.push(`${cle} (${nom})`);
+      }
+    }
+    expect(fautes, "tiret long : " + fautes.join(", ")).toEqual([]);
   });
 });

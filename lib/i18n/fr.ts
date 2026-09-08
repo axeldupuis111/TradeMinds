@@ -3719,6 +3719,7 @@ const dict: Record<string, string> = {
   "bt_ver_ecart_mesurable": "L'écart vaut {ecart} R, et son intervalle va de {bas} à {haut} : zéro est en dehors. C'est le seul cas où deux versions se distinguent vraiment. ⚠️ Ça reste deux mesures sur du passé : si la seconde a été trouvée en cherchant, l'écart mesure surtout la recherche.",
   "bt_modif_titre": "Ce que tu as changé par rapport à ta fiche",
   "bt_modif_aucune": "Le plan testé est exactement celui de ta fiche. Il n'y a rien à changer dans ta façon de trader.",
+  "bt_modif_aucune_mais_deduit": "Les réglages testés sont exactement la traduction de ta fiche. Mais {n} {n|d'entre eux a été décidé|d'entre eux ont été décidés} par l'IA faute de règle écrite : {n|il n'est pas dans ta fiche|ils ne sont pas dans ta fiche}, et rien ici ne {n|l'y mettra|les y mettra}. Tant que c'est le cas, personne (toi compris, dans trois mois) ne peut rejouer ta méthode à l'identique.",
   "bt_modif_compte": "Réglages qui diffèrent de ta fiche : {n}",
   "bt_modif_intro": "Chaque ligne dit ce qui a bougé, d'où ça vient, et ce que ça veut dire devant ton graphique. Tu peux en annuler une sans toucher aux autres.",
   "bt_modif_origine_proposition": "Proposé pour : {objectif}",

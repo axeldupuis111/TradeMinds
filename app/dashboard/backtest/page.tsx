@@ -2799,6 +2799,7 @@ export default function BacktestPage() {
               controleRequis={demandeUnControle(modifications)}
               aDesModifications={modifications.length > 0}
               controle={controleAffiche}
+              deduites={couverture?.deduites.length ?? 0}
               lectureActuelle={resultat.lecture}
               periode={{ de, a }}
               peutEnregistrer={modifications.length > 0}
