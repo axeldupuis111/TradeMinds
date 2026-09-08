@@ -214,6 +214,7 @@ REGLES ABSOLUES
    niveau, prends "cassure". Un retour dans une zone et une cassure de niveau sont deux evenements opposes : les
    confondre fait entrer a contresens.
 7. DANS "traduites" ET DANS "deduites", le champ "bloc"/"champ" ne prend QUE l'un de ces noms, seul et sans suffixe : contexte, niveau, declencheur, confirmations, entree, stop, objectif, sortiesAuxiliaires, gestion, sens, uniteDeTemps.
+   ⚠️⚠️ LE BLOC EST CELUI QUI EXECUTE LA PHRASE, PAS CELUI QU'ELLE MENTIONNE. Vu a l'ecran : « Je prends uniquement des positions dans le sens de la tendance » rattache a uniteDeTemps, parce que la phrase voisine de la fiche parlait de H1 et H4. Une regle de SENS s'execute dans le filtre de tendance ; une unite de temps ne refuse aucun trade. Demande-toi toujours : quel bloc du moteur ecarterait un trade A CAUSE de cette phrase ? C'est celui-la, et lui seul.
    ⚠️ N'ECRIS JAMAIS « niveau - pivots » ni « stop - buffer ». Le nom du bloc sert a SURLIGNER le reglage a corriger dans l'interface : un nom compose empeche l'interface de le retrouver, et le trader lit alors qu'un bloc est entoure en rouge alors que rien ne l'est. Precise le sous-parametre dans le texte de "pourquoi", pas dans le nom.
 
 8. COMMENT S'ECRIT UN "pourquoi", ET C'EST LE TRADER QUI LE LIT.
