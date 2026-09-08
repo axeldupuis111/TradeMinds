@@ -124,6 +124,11 @@ import { composerPlanComplet } from "@/lib/backtest/plan-complet";
 import { MonPlan } from "@/components/backtest/MonPlan";
 import { phraseDuPlan } from "@/lib/backtest/phrases";
 import { Confluences } from "@/components/backtest/Confluences";
+import { Construire } from "@/components/backtest/Construire";
+import {
+  construireLePlan,
+  type CodeQuestion as CodeQuestionConstruction,
+} from "@/lib/backtest/construire";
 import { ProchaineEtape } from "@/components/backtest/ProchaineEtape";
 import { confronterAuProfil, lireLeProfil, type TradeReel } from "@/lib/backtest/profil";
 import { enregistrerVersion } from "@/lib/backtest/enregistrement";
@@ -1799,6 +1804,41 @@ export default function BacktestPage() {
    * ⚠️ ET ON NE STOCKE PAS UN BOOLÉEN DE PLUS : un drapeau qu'il faut penser à
    * lever finit par ne pas l'être, exactement comme ici. On regarde l'état.
    */
+  /**
+   * LES GESTES QU'IL A RECONNUS COMME LES SIENS.
+   *
+   * ⚠️⚠️ « PARTIR D'UNE BASE » ÉTAIT UN MENU, PAS UNE CONSTRUCTION, et je l'ai
+   * présenté comme une construction pendant des semaines. Neuf méthodes
+   * complètes portant des noms d'école : quelqu'un qui n'a pas de stratégie
+   * doit reconnaître « OTE » ou « order block » et faire confiance au reste.
+   * Ici il choisit des gestes écrits dans ses mots, et l'assemblage donne un
+   * plan que le moteur rejoue tel quel.
+   */
+  const [gestes, setGestes] = useState<Partial<Record<CodeQuestionConstruction, string>>>({});
+
+  const construction = useMemo(
+    () => construireLePlan(gestes, planParDefaut(code, fuseau, instrument), instrument),
+    [gestes, code, fuseau, instrument],
+  );
+
+  /**
+   * ⚠️ ASSEMBLER EFFACE LE RÉSULTAT, comme tout ce qui change le plan. Un
+   * chiffre affiché à côté d'un plan qui n'est plus celui qui l'a produit est
+   * la pire chose qui puisse arriver à cette page, et c'est déjà arrivé.
+   */
+  const assemblerLaConstruction = useCallback(() => {
+    setPlan(construction.plan);
+    setOrigines(
+      Object.fromEntries(
+        DESCRIPTEURS.map((x) => [x.cle, { pose: "construit" as const, label: tr("bt_cons_titre") }]),
+      ),
+    );
+    setResultat(null);
+    setSauvegarde("repos");
+    setEtapeCourante("regles");
+    setSection("bt-reglages");
+  }, [construction.plan, tr]);
+
   const planPose = useMemo(() => {
     if (planFiche != null || resultat != null || methodeCode !== "") return true;
     const socle = planParDefaut(code, fuseau, instrument);
@@ -2390,6 +2430,27 @@ export default function BacktestPage() {
             style={style}
             onStyle={setStyle}
             onEssayer={essayerUnDepart}
+            t={tr}
+          />
+        </StaggerItem>
+        ) : null}
+
+        {/* ── Construire la sienne, geste par geste ──────────────────────────
+            ⚠️⚠️ APRÈS LES BASES, PAS AVANT. Choisir une méthode toute faite est
+            plus rapide et convient à la plupart ; construire la sienne est le
+            chemin de celui qui sait ce qu'il fait mais n'a jamais écrit ses
+            règles. Mettre le long avant le court ferait passer tout le monde
+            par sept questions dont il n'a pas besoin. */}
+        {etapeCourante === "strategie" ? (
+        <StaggerItem id="bt-construire">
+          <Construire
+            reponses={gestes}
+            resultat={construction}
+            onRepondre={(question, geste) =>
+              setGestes((g) => ({ ...g, [question]: g[question] === geste ? undefined : geste }))
+            }
+            onAssembler={assemblerLaConstruction}
+            occupe={occupe}
             t={tr}
           />
         </StaggerItem>

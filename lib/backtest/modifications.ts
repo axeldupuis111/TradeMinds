@@ -593,7 +593,7 @@ export interface Origine {
    * provenances, et un test qui lit la source de la page pour exiger qu'un
    * `setPlan` s'accompagne d'un `setOrigines`.
    */
-  pose?: "base" | "journal" | "version";
+  pose?: "base" | "journal" | "version" | "construit";
   /** Le nom, la date ou le marché à citer dans la phrase. */
   label?: string;
 }
@@ -624,7 +624,7 @@ export interface Modification {
    */
   disparu?: boolean;
   apparu?: boolean;
-  origine: "proposition" | "manuel" | "base" | "journal" | "version";
+  origine: "proposition" | "manuel" | "base" | "journal" | "version" | "construit";
   objectif?: Objectif;
   /** Le nom, la date ou le marché à citer, selon la provenance. */
   label?: string;

@@ -13,6 +13,7 @@ import { confronterAuMarche, mesurerLeMarche } from "./caractere-marche";
 import { dimensionsDeRecherche } from "./dimensions";
 import { coutsPourInstrument, instrumentParCode, INSTRUMENTS } from "./instruments";
 import { comparerPlans, DESCRIPTEURS } from "./modifications";
+import { QUESTIONS_DE_CONSTRUCTION } from "./construire";
 import {
   gesteDeLaModification,
   nommerUnChamp,
@@ -488,6 +489,22 @@ const MOTIFS = (
     .match(/"([a-z_]+)"/g) ?? []
 ).map((x) => x.replace(/"/g, ""));
 for (const motif of MOTIFS) ajouter("motifs", `bt_motif_${motif}`);
+
+/**
+ * ⚠️ LA CONSTRUCTION GESTE PAR GESTE, LUE DEPUIS SON CATALOGUE. Trente-neuf
+ * phrases écrites d'un coup : les relire à l'œil dans quatre langues n'aurait
+ * prouvé qu'une chose, c'est que je les ai relues.
+ */
+for (const question of QUESTIONS_DE_CONSTRUCTION) {
+  ajouter("construction", `bt_cons_q_${question.code}`);
+  for (const geste of question.gestes) {
+    ajouter("construction", `bt_cons_g_${geste.code}`);
+    for (const x of geste.exclut ?? []) ajouter("construction", x.cle);
+  }
+}
+for (const c of ["titre", "intro", "construire", "manque"]) ajouter("construction", `bt_cons_${c}`);
+ajouter("construction", "bt_cons_socle", { n: 3 });
+ajouter("construction", "bt_modif_origine_construit", { quoi: "Construire ta stratégie" });
 for (const v of ["insuffisant", "negatif", "non_concluant", "positif"]) {
   ajouter("verdicts", `bt_verdict_${v}`);
 }
