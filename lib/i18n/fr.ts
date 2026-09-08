@@ -2878,6 +2878,7 @@ const dict: Record<string, string> = {
 
   // Backtest de strategie
   "bt_titre": "Backtest de stratégie",
+  "bt_chargement_abonnement": "Un instant, on vérifie ton abonnement.",
   "bt_sous_titre": "Rejoue tes règles sur des bougies d'une minute réelles, coûts compris.",
   "cap_backtest": "Rejoue ta stratégie sur des années de bougies réelles et mesure ce qu'elle aurait donné",
   "sidebar_backtest": "Backtest",

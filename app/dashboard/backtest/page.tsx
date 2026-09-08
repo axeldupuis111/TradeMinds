@@ -204,7 +204,7 @@ function nomDuFiltre(type: string, t: (c: string) => string): string {
 
 export default function BacktestPage() {
   const { t, lang } = useLanguage();
-  const { plan: abonnement } = usePlan();
+  const { plan: abonnement, loading: abonnementEnCours } = usePlan();
   const supabase = createClient();
   const estPremium = abonnement === "premium";
 
@@ -1963,6 +1963,35 @@ export default function BacktestPage() {
     },
     [lancer, analyserAFond, periodePlusLarge],
   );
+
+  /**
+   * TANT QU'ON NE SAIT PAS, ON NE DIT RIEN.
+   *
+   * ⚠️⚠️ LE CONTEXTE D'ABONNEMENT DÉMARRE À « free », et cette page ne lisait
+   * que le plan, jamais son chargement : un abonné Premium voyait donc le mur
+   * payant de son propre onglet à chaque ouverture, le temps que la requête
+   * revienne. Dire à quelqu'un qui paie qu'il n'a pas accès est la pire seconde
+   * que ce produit puisse lui offrir.
+   *
+   * ⚠️ ET ON N'AFFICHE PAS DU VIDE NON PLUS : `loadPlan` n'a pas de garde
+   * autour de son appel réseau, donc un échec laisse ce chargement à `true`
+   * pour toujours. Une page blanche définitive serait un défaut muet ; un état
+   * de chargement, lui, décrit exactement ce qui s'est passé.
+   *
+   * ⚠️ LE MÊME OUBLI EXISTE SUR D'AUTRES ONGLETS GARDÉS PAR LE PLAN. Corrigé
+   * ici seulement, faute de les avoir pilotés : une correction non vérifiée
+   * ailleurs vaut moins qu'un défaut connu.
+   */
+  if (abonnementEnCours) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-10">
+        <Card className="text-center">
+          <h1 className="text-xl font-semibold text-foreground">{tr("bt_titre")}</h1>
+          <p className="mt-2 text-sm text-foreground-muted">{tr("bt_chargement_abonnement")}</p>
+        </Card>
+      </div>
+    );
+  }
 
   if (!estPremium) {
     return (

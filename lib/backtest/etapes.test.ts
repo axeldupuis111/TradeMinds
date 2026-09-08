@@ -587,3 +587,47 @@ describe("le résumé de la fiche dit son état réel", () => {
     ).toBe(true);
   });
 });
+
+/**
+ * ON NE DIT PAS « TU N'AS PAS ACCÈS » AVANT DE SAVOIR.
+ *
+ * ⚠️⚠️ LE CONTEXTE D'ABONNEMENT DÉMARRE À « free » avec un chargement à `true`,
+ * et cette page ne lisait que le plan : un abonné Premium voyait donc le mur
+ * payant de son propre onglet à chaque ouverture, le temps que la requête
+ * revienne. Dire à quelqu'un qui paie qu'il n'a pas accès est la pire seconde
+ * que ce produit puisse lui offrir, et elle se répète à chaque visite.
+ */
+describe("le mur payant attend de savoir", () => {
+  const page = readFileSync(join(process.cwd(), "app/dashboard/backtest/page.tsx"), "utf8");
+
+  it("lit le chargement de l'abonnement, pas seulement le plan", () => {
+    expect(page).toContain("loading: abonnementEnCours");
+  });
+
+  it("rend un état de chargement AVANT de conclure à l'absence d'accès", () => {
+    /**
+     * ⚠️ LE MUR SE CHERCHE PAR SA FORME DE BLOC. « if (!estPremium) » tout court
+     * apparaît aussi dans deux effets, mille lignes plus haut : la première
+     * occurrence n'est pas le rendu, et le garde accusait un ordre pourtant juste.
+     */
+    const iCharge = page.indexOf("if (abonnementEnCours) {");
+    const iMur = page.indexOf("if (!estPremium) {");
+    expect(iCharge, "aucun état de chargement").toBeGreaterThan(0);
+    expect(iMur).toBeGreaterThan(0);
+    expect(iCharge, "le mur payant est testé avant le chargement").toBeLessThan(iMur);
+  });
+
+  /**
+   * ⚠️ ET PAS DU VIDE : `loadPlan` n'a pas de garde autour de son appel réseau,
+   * donc un échec laisse ce chargement à `true` pour toujours. Une page blanche
+   * définitive serait un défaut muet.
+   */
+  it("dit ce qu'il attend au lieu de ne rien afficher", () => {
+    const bloc = page.slice(
+      page.indexOf("if (abonnementEnCours) {"),
+      page.indexOf("if (!estPremium) {"),
+    );
+    expect(bloc).toContain("bt_chargement_abonnement");
+    expect(bloc.includes("return null"), "une page blanche ne dit rien").toBe(false);
+  });
+});
