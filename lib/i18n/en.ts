@@ -3689,6 +3689,7 @@ const dict: Record<string, string> = {
   "bt_rob_la_tienne": "yours",
   "bt_rob_trop_peu": "too few trades",
   "bt_rob_forme_plateau": "Your neighbours tell the same story: your setting sits on a plateau, not on a peak. That is the good sign, and the only one this table can give.",
+  "bt_rob_forme_plateau_negatif": "Your neighbours tell the same story, and it is a bad one: your setting sits on a plateau, not a peak, and the whole plateau loses. No nearby value rescues this one; the setting is not what needs changing.",
   "bt_rob_forme_pic_isole": "Your setting beats its immediate neighbours by more than its own uncertainty. One notch away and the result collapses: that is the signature of a value met by luck over this particular period, not of a property of the market.",
   "bt_rob_forme_indecidable": "Too few measurable values around yours to say anything about its shape.",
   "bt_ver_titre": "My saved versions",

@@ -500,8 +500,25 @@ for (const v of ["insuffisant", "negatif", "non_concluant", "positif"]) {
 function unionDe(fichier: string, nom: string): string[] {
   const source = readFileSync(join(process.cwd(), fichier), "utf8");
   const apres = source.split(`export type ${nom} =`)[1];
-  if (!apres) return [];
-  return (apres.split(";")[0].match(/"([a-z_0-9]+)"/g) ?? []).map((x) => x.replace(/"/g, ""));
+  /**
+   * ⚠️⚠️ ÉCHOUER PLUTÔT QUE RENDRE UNE LISTE VIDE. Cette fonction rendait `[]`
+   * quand le type était introuvable, et deux des cinq appels de ce fichier
+   * pointaient vers un nom qui n'existait plus : `FormeDeStabilite` et
+   * `FormeDeRepartition`, cherchés dans `robustesse.ts` alors qu'ils
+   * s'appellent `FormeDuVoisinage` (dans `stabilite.ts`) et
+   * `FormeDeLaRepartition`. Les phrases du voisinage et de la répartition
+   * n'ont donc JAMAIS été rendues par ce garde, qui affichait vert.
+   *
+   * Une boucle sur zéro élément ne se voit pas. C'est la faute la plus
+   * silencieuse qu'un test puisse contenir : il ne rate rien, il ne regarde
+   * rien.
+   */
+  if (!apres) throw new Error(`union ${nom} introuvable dans ${fichier}`);
+  const membres = (apres.split(";")[0].match(/"([a-z_0-9]+)"/g) ?? []).map((x) =>
+    x.replace(/"/g, ""),
+  );
+  if (membres.length === 0) throw new Error(`union ${nom} sans membre lisible`);
+  return membres;
 }
 
 for (const e of unionDe("lib/backtest/confluences.ts", "EffetDuFiltre")) {
@@ -513,11 +530,16 @@ for (const e of unionDe("lib/backtest/confluences.ts", "EffetDuFiltre")) {
     total: 614,
   });
 }
-for (const f of unionDe("lib/backtest/robustesse.ts", "FormeDeStabilite")) {
+for (const f of unionDe("lib/backtest/stabilite.ts", "FormeDuVoisinage")) {
   ajouter("robustesse", `bt_rob_forme_${f}`);
 }
-for (const f of unionDe("lib/backtest/robustesse.ts", "FormeDeRepartition")) {
-  ajouter("robustesse", `bt_rob_forme_repartition_${f}`, { mois: "2025-03", part: 42 });
+for (const f of unionDe("lib/backtest/robustesse.ts", "FormeDeLaRepartition")) {
+  ajouter("robustesse", `bt_rob_forme_repartition_${f}`, {
+    mois: "2025-03",
+    part: 42,
+    total: "+5.94",
+    sans: "+1.01",
+  });
 }
 for (const v of unionDe("lib/backtest/verdict.ts", "CodeVerdict")) {
   ajouter("verdicts", `bt_verdict_${v}`);

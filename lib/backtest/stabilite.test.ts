@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { mesurerStabilite, REGLAGES_MAX } from "./stabilite";
+import { formeDuVoisinage, mesurerStabilite, REGLAGES_MAX } from "./stabilite";
 import { socleDePlan } from "./compilation";
 import { coutsPourInstrument, instrumentParCode } from "./instruments";
 import type { Modification } from "./modifications";
@@ -228,5 +228,50 @@ describe("chaque réglage balayé dit dans quelle unité il se lit", () => {
     for (const x of tous) {
       expect(["ticks", "bougies", "r"], x.cle).toContain(x.unite);
     }
+  });
+});
+
+/**
+ * ⚠️⚠️ VU À L'ÉCRAN, SOUS CINQ ESPÉRANCES TOUTES NÉGATIVES : « ton réglage est
+ * sur un plateau, pas sur un pic. C'EST LE BON SIGNE. » La forme était juste,
+ * la lecture ne l'était pas. Un plateau dit que le résultat ne tient pas à une
+ * valeur exacte ; quand ce résultat perd, il confirme la perte au lieu de
+ * rassurer, et c'est le contraire d'un bon signe.
+ */
+describe("un plateau entièrement sous zéro se dit autrement", () => {
+  const point = (valeur: number, esperanceR: number, sienne = false) => ({
+    valeur,
+    trades: 300,
+    esperanceR,
+    borneBasse: esperanceR - 0.1,
+    borneHaute: esperanceR + 0.1,
+    sienne,
+  });
+
+  it("nomme le plateau négatif quand tous les voisins perdent", () => {
+    const f = formeDuVoisinage([
+      point(1, -0.21),
+      point(2, -0.2, true),
+      point(3, -0.19),
+    ]);
+    expect(f).toBe("plateau_negatif");
+  });
+
+  it("reste un plateau ordinaire dès qu'une valeur mesurée gagne", () => {
+    const f = formeDuVoisinage([
+      point(1, 0.02),
+      point(2, -0.01, true),
+      point(3, -0.02),
+    ]);
+    expect(f).toBe("plateau");
+  });
+
+  it("un pic isolé reste un pic isolé", () => {
+    const f = formeDuVoisinage([
+      point(1, -0.9),
+      point(2, 0.4, true),
+      point(3, -0.9),
+    ]);
+    expect(f).toBe("pic_isole");
   });
 });

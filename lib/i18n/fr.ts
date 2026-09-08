@@ -3689,6 +3689,7 @@ const dict: Record<string, string> = {
   "bt_rob_la_tienne": "la tienne",
   "bt_rob_trop_peu": "trop peu de trades",
   "bt_rob_forme_plateau": "Tes voisins racontent la même histoire : ton réglage est sur un plateau, pas sur un pic. C'est le bon signe, et c'est le seul que ce tableau puisse donner.",
+  "bt_rob_forme_plateau_negatif": "Tes voisins racontent la même histoire, et c'est une mauvaise histoire : ton réglage est sur un plateau, pas sur un pic, et tout ce plateau perd. Aucune valeur voisine ne vient sauver celle-ci ; ce n'est pas le réglage qu'il faut changer.",
   "bt_rob_forme_pic_isole": "Ton réglage dépasse ses voisins immédiats de plus que sa propre incertitude. Un cran à côté, et le résultat s'effondre : c'est la signature d'une valeur rencontrée par chance sur cette période-là, pas d'une propriété du marché.",
   "bt_rob_forme_indecidable": "Trop peu de valeurs mesurables autour de la tienne pour dire quoi que ce soit de sa forme.",
   "bt_ver_titre": "Mes versions enregistrées",

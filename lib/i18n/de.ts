@@ -3689,6 +3689,7 @@ const dict: Record<string, string> = {
   "bt_rob_la_tienne": "deiner",
   "bt_rob_trop_peu": "zu wenige Trades",
   "bt_rob_forme_plateau": "Deine Nachbarn erzählen dieselbe Geschichte: deine Einstellung liegt auf einem Plateau, nicht auf einer Spitze. Das ist das gute Zeichen, und das einzige, das diese Tabelle geben kann.",
+  "bt_rob_forme_plateau_negatif": "Deine Nachbarn erzählen dieselbe Geschichte, und es ist eine schlechte: deine Einstellung liegt auf einem Plateau, nicht auf einer Spitze, und dieses ganze Plateau verliert. Kein benachbarter Wert rettet diesen; nicht die Einstellung ist das Problem.",
   "bt_rob_forme_pic_isole": "Deine Einstellung übertrifft ihre unmittelbaren Nachbarn um mehr als ihre eigene Unsicherheit. Eine Stufe daneben, und das Ergebnis bricht ein: das ist die Signatur eines Werts, der in genau diesem Zeitraum durch Glück getroffen wurde, nicht einer Eigenschaft des Marktes.",
   "bt_rob_forme_indecidable": "Zu wenige messbare Werte rund um deinen, um etwas über seine Form zu sagen.",
   "bt_ver_titre": "Meine gespeicherten Versionen",

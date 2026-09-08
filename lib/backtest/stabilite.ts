@@ -122,6 +122,16 @@ export type FormeDuVoisinage =
   | "indecidable"
   /** Les voisins racontent la même histoire : le réglage n'est pas un accident. */
   | "plateau"
+  /**
+   * Le même plateau, mais entièrement du mauvais côté.
+   *
+   * ⚠️⚠️ VU À L'ÉCRAN, SOUS UN TABLEAU DE CINQ ESPÉRANCES TOUTES NÉGATIVES :
+   * « ton réglage est sur un plateau, pas sur un pic. C'EST LE BON SIGNE. » La
+   * forme était juste, la lecture ne l'était pas : un plateau confirme que le
+   * résultat n'est pas un accident de réglage, ce qui, quand ce résultat perd,
+   * confirme la perte au lieu de rassurer.
+   */
+  | "plateau_negatif"
   /** Le réglage choisi dépasse ses voisins immédiats de plus que son incertitude. */
   | "pic_isole";
 
@@ -205,7 +215,7 @@ function mesurer(serie: SerieM1, plan: PlanExecution, couts: Couts): Omit<Point,
  * l'écart avec le meilleur voisin tient dans la demi-largeur de son propre
  * intervalle, il n'y a rien à voir : c'est du bruit de mesure.
  */
-function forme(points: Point[]): FormeDuVoisinage {
+export function formeDuVoisinage(points: Point[]): FormeDuVoisinage {
   const mesurables = points.filter((p) => p.esperanceR != null);
   const sien = points.find((p) => p.sienne);
   if (mesurables.length < 3 || !sien || sien.esperanceR == null || sien.borneHaute == null) {
@@ -219,7 +229,10 @@ function forme(points: Point[]): FormeDuVoisinage {
 
   const meilleurVoisin = Math.max(...voisins.map((p) => p.esperanceR!));
   const demiIntervalle = sien.borneHaute - sien.esperanceR;
-  return sien.esperanceR - meilleurVoisin > demiIntervalle ? "pic_isole" : "plateau";
+  if (sien.esperanceR - meilleurVoisin > demiIntervalle) return "pic_isole";
+  // ⚠️ Le voisinage ENTIER du mauvais côté : ce n'est plus une bonne nouvelle,
+  // c'est la même mauvaise nouvelle confirmée cinq fois.
+  return mesurables.every((p) => (p.esperanceR ?? 0) < 0) ? "plateau_negatif" : "plateau";
 }
 
 /**
@@ -259,7 +272,7 @@ export function mesurerStabilite(
         cle,
         unite: UNITE_DU_REGLAGE[cle] ?? "bougies",
         points,
-        forme: forme(points),
+        forme: formeDuVoisinage(points),
       });
     }
   }

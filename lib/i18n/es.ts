@@ -3689,6 +3689,7 @@ const dict: Record<string, string> = {
   "bt_rob_la_tienne": "el tuyo",
   "bt_rob_trop_peu": "muy pocas operaciones",
   "bt_rob_forme_plateau": "Tus vecinos cuentan la misma historia: tu ajuste está en una meseta, no en un pico. Es la buena señal, y la única que esta tabla puede dar.",
+  "bt_rob_forme_plateau_negatif": "Tus vecinos cuentan la misma historia, y es una mala historia: tu ajuste está en una meseta, no en un pico, y toda esa meseta pierde. Ningún valor vecino salva a este; no es el ajuste lo que hay que cambiar.",
   "bt_rob_forme_pic_isole": "Tu ajuste supera a sus vecinos inmediatos por más que su propia incertidumbre. Un escalón al lado y el resultado se hunde: es la firma de un valor encontrado por suerte en ese periodo concreto, no de una propiedad del mercado.",
   "bt_rob_forme_indecidable": "Demasiados pocos valores medibles alrededor del tuyo para decir algo de su forma.",
   "bt_ver_titre": "Mis versiones guardadas",
