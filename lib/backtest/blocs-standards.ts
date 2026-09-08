@@ -41,7 +41,31 @@ export function niveauStandard(
 ): BlocNiveau | null {
   switch (type) {
     case "trendline":
-      return { type, pivots: 10, touchesMin: 3, toleranceTicks: enTicks(instrument, instrument.spread * 2) };
+      /**
+       * ⚠️⚠️ L'ÉPAISSEUR D'UN TRAIT SE MESURE SUR LE PRIX, PAS SUR LE SPREAD.
+       * Ce réglage valait `spread × 2`, soit 0,5 point sur l'or et 3 points sur
+       * le Nasdaq. Une droite tracée à la main a une épaisseur de l'ordre du
+       * MILLIÈME DU PRIX (2,6 points sur l'or à 2 600, 20 points sur un indice
+       * à 20 000) : le standard était six à sept fois trop fin, et une tolérance
+       * trop fine ne confirme presque aucune droite.
+       *
+       * ⚠️ LE PROMPT DE COMPILATION DIT DÉJÀ CETTE RÈGLE, mesurée sur quatre ans
+       * de Nasdaq, et le code standard disait le contraire. C'est en reprochant
+       * au modèle d'avoir posé 0,5 point sur l'or que je suis tombé sur la même
+       * valeur ici, écrite en dur depuis le début.
+       *
+       * ⚠️ ET LE SPREAD N'EST PLUS LA SEULE ÉCHELLE DISPONIBLE : chaque
+       * instrument porte désormais un ordre de grandeur de son prix. L'en-tête
+       * de ce fichier dit encore le contraire pour les autres blocs, où le
+       * spread reste la bonne échelle : un contact se mesure en spreads, une
+       * épaisseur de trait en prix.
+       */
+      return {
+        type,
+        pivots: 10,
+        touchesMin: 3,
+        toleranceTicks: enTicks(instrument, instrument.prixIndicatif / 1000),
+      };
     case "liquidite_swing":
       return { type, pivots: 10 };
     case "extremes_n_bougies":
