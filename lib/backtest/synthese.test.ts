@@ -6,6 +6,9 @@ import fr from "../i18n/fr";
 import type { LectureBacktest, Statistiques } from "./verdict";
 import type { Concentration } from "./robustesse";
 
+/** La fenêtre intacte, nommée dans la phrase du pilier depuis qu’on la mesure. */
+const FENETRE = { de: "2022-01", a: "2024-12" };
+
 function stats(esperanceR: number, marge: number): Statistiques {
   return {
     nbTrades: 400,
@@ -143,12 +146,12 @@ describe("les piliers de la viabilité", () => {
   });
 
   it("tient le contrôle hors période pour établi quand il conclut positif", () => {
-    const s = synthetiser(entrees({ horsPeriode: { lecture: lecture("positif", stats(0.18, 0.08)) } }));
+    const s = synthetiser(entrees({ horsPeriode: { lecture: lecture("positif", stats(0.18, 0.08)), fenetre: FENETRE } }));
     expect(etat(s, "hors_periode")).toBe("etabli");
   });
 
   it("ne le tient pas quand l'avantage ne s'y retrouve pas", () => {
-    const s = synthetiser(entrees({ horsPeriode: { lecture: lecture("non_concluant", stats(0.01, 0.28)) } }));
+    const s = synthetiser(entrees({ horsPeriode: { lecture: lecture("non_concluant", stats(0.01, 0.28)), fenetre: FENETRE } }));
     expect(etat(s, "hors_periode")).toBe("pas_etabli");
   });
 
@@ -327,7 +330,7 @@ describe("les trois lectures du contrôle hors période", () => {
   const variante = (verdict: LectureBacktest["verdict"]) => {
     const p = synthetiser({
       ...entrees(),
-      horsPeriode: { lecture: lecture(verdict, stats(0.031, 0.06)) } as never,
+      horsPeriode: { lecture: lecture(verdict, stats(0.031, 0.06)), fenetre: FENETRE } as never,
     }).piliers.find((x) => x.code === "hors_periode")!;
     return { cle: `bt_syn_hors_periode_${p.variante ?? p.etat}`, etat: p.etat };
   };

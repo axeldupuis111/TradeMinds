@@ -355,7 +355,7 @@ for (const v of ["insuffisant", "negatif", "non_concluant", "positif"] as const)
     for (const explorees of [0, 32]) {
       const s = synthetiser({
         lecture: lectureBidon("non_concluant") as never,
-        horsPeriode: { lecture: lectureBidon(v) } as never,
+        horsPeriode: { lecture: lectureBidon(v), fenetre: { de: "2022-01", a: "2024-12" } } as never,
         concentration: concentration(SUITES[0].trades),
         stabilite: [],
         constats: [],

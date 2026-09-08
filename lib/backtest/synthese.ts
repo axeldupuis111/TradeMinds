@@ -84,7 +84,7 @@ export interface EntreesSynthese {
   concentration: Concentration | null;
   stabilite?: Stabilite[];
   /** Le contrôle hors période, quand il a eu lieu ET porte encore sur ce plan. */
-  horsPeriode?: { lecture: LectureBacktest } | null;
+  horsPeriode?: { lecture: LectureBacktest; fenetre: { de: string; a: string } } | null;
   constats: Constat[];
   tentatives: number;
   /**
@@ -212,9 +212,21 @@ export function synthetiser(e: EntreesSynthese): Synthese {
     ajouter(
       "hors_periode",
       v === "positif" ? "etabli" : "pas_etabli",
+      /**
+       * ⚠️ LA FENÊTRE EST NOMMÉE. « Sur la période intacte » ne dit pas laquelle,
+       * et c'est la mesure que cette page appelle « la plus importante de
+       * toutes » : le trader doit pouvoir juger sur quels mois elle porte,
+       * exactement comme le verdict nomme son marché et ses dates.
+       */
       s
-        ? { esperance: s.esperanceR.toFixed(3), bas: s.borneBasse.toFixed(3), haut: s.borneHaute.toFixed(3), trades: s.nbTrades }
-        : { trades: 0 },
+        ? {
+            esperance: s.esperanceR.toFixed(3),
+            bas: s.borneBasse.toFixed(3),
+            haut: s.borneHaute.toFixed(3),
+            trades: s.nbTrades,
+            periode: `${e.horsPeriode.fenetre.de} → ${e.horsPeriode.fenetre.a}`,
+          }
+        : { trades: 0, periode: `${e.horsPeriode.fenetre.de} → ${e.horsPeriode.fenetre.a}` },
       v === "non_concluant" ? "pas_etabli_non_concluant" : v === "insuffisant" ? "pas_etabli_insuffisant" : undefined,
     );
   }

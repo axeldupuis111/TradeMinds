@@ -1512,7 +1512,7 @@ export default function BacktestPage() {
             stabilite: resultat.stabilite,
             horsPeriode:
               controleAffiche.phase === "fait" && controleAffiche.valide
-                ? { lecture: controleAffiche.lecture }
+                ? { lecture: controleAffiche.lecture, fenetre: controleAffiche.fenetre }
                 : null,
             constats: resultat.constats,
             tentatives,
