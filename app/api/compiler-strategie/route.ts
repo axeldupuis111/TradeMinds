@@ -307,7 +307,7 @@ ${fiche}
 """
 ${dejaExtrait ? `\nCHAMPS DEJA RENSEIGNES DANS SON PROFIL\n${dejaExtrait}\n` : ""}
 Instrument teste : ${instrument}. Fuseau du trader : ${corps.fuseau ?? "Europe/Paris"}.
-ECHELLE DE CET INSTRUMENT, pour que tes distances aient un sens : le spread typique vaut ${echelle.spread} points et le glissement ${echelle.glissement} point(s). Une distance utile se compte en MULTIPLES de ces valeurs, jamais en fractions.`;
+ECHELLE DE CET INSTRUMENT, pour que tes distances aient un sens : le prix se situe autour de ${echelle.prixIndicatif} (ordre de grandeur, pas une cotation), le spread typique vaut ${echelle.spread} points et le glissement ${echelle.glissement} point(s). Une distance utile se compte en MULTIPLES du spread, jamais en fractions ; et la tolerance d'une trendline se calcule sur le PRIX ci-dessus, pas sur le spread. N'affirme jamais qu'une valeur vaut un millieme du prix sans avoir fait la division.`;
 
   try {
     const client = new Anthropic({ apiKey });

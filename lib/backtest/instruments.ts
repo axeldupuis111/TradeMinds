@@ -45,37 +45,53 @@ export interface Instrument {
   commission: number;
   /** Nombre de décimales à afficher. */
   decimales: number;
+  /**
+   * L'ORDRE DE GRANDEUR DU PRIX, ET RIEN DE PLUS.
+   *
+   * ⚠️⚠️ LA COMPILATION DEMANDAIT AU MODÈLE UNE FRACTION D'UN NOMBRE QU'ELLE NE
+   * LUI DONNAIT PAS. La règle du prompt dit qu'une tolérance de trendline vaut
+   * environ un millième du prix ; l'écran ne lui envoyait que le spread. Vu à
+   * l'écran, sur l'or : « une tolérance de 0,5 point (un millième du prix
+   * approximativement sur l'or) » — c'est cinq fois trop petit, et la
+   * justification affirmait le contraire.
+   *
+   * ⚠️ CE N'EST PAS UNE COTATION : elle dérive, et c'est sans importance. Ce
+   * chiffre ne sert qu'à donner une échelle à une distance tracée à la main ;
+   * se tromper de 30 % ne change rien à cette précision-là, se tromper d'un
+   * facteur mille change tout.
+   */
+  prixIndicatif: number;
 }
 
 export const INSTRUMENTS: Instrument[] = [
   // ── Devises majeures ────────────────────────────────────────────────────
-  { code: "EURUSD", nom: "EUR/USD", source: "eurusd", categorie: "devises", tailleTick: 0.00001, spread: 0.00012, glissement: 0.00002, commission: 0, decimales: 5 },
-  { code: "GBPUSD", nom: "GBP/USD", source: "gbpusd", categorie: "devises", tailleTick: 0.00001, spread: 0.00016, glissement: 0.00003, commission: 0, decimales: 5 },
-  { code: "USDJPY", nom: "USD/JPY", source: "usdjpy", categorie: "devises", tailleTick: 0.001, spread: 0.013, glissement: 0.003, commission: 0, decimales: 3 },
-  { code: "AUDUSD", nom: "AUD/USD", source: "audusd", categorie: "devises", tailleTick: 0.00001, spread: 0.00016, glissement: 0.00003, commission: 0, decimales: 5 },
-  { code: "USDCAD", nom: "USD/CAD", source: "usdcad", categorie: "devises", tailleTick: 0.00001, spread: 0.00020, glissement: 0.00004, commission: 0, decimales: 5 },
-  { code: "USDCHF", nom: "USD/CHF", source: "usdchf", categorie: "devises", tailleTick: 0.00001, spread: 0.00018, glissement: 0.00004, commission: 0, decimales: 5 },
-  { code: "NZDUSD", nom: "NZD/USD", source: "nzdusd", categorie: "devises", tailleTick: 0.00001, spread: 0.00022, glissement: 0.00004, commission: 0, decimales: 5 },
-  { code: "EURJPY", nom: "EUR/JPY", source: "eurjpy", categorie: "devises", tailleTick: 0.001, spread: 0.019, glissement: 0.004, commission: 0, decimales: 3 },
-  { code: "GBPJPY", nom: "GBP/JPY", source: "gbpjpy", categorie: "devises", tailleTick: 0.001, spread: 0.029, glissement: 0.006, commission: 0, decimales: 3 },
-  { code: "EURGBP", nom: "EUR/GBP", source: "eurgbp", categorie: "devises", tailleTick: 0.00001, spread: 0.00019, glissement: 0.00004, commission: 0, decimales: 5 },
+  { code: "EURUSD", nom: "EUR/USD", source: "eurusd", categorie: "devises", tailleTick: 0.00001, spread: 0.00012, glissement: 0.00002, commission: 0, decimales: 5, prixIndicatif: 1.1 },
+  { code: "GBPUSD", nom: "GBP/USD", source: "gbpusd", categorie: "devises", tailleTick: 0.00001, spread: 0.00016, glissement: 0.00003, commission: 0, decimales: 5, prixIndicatif: 1.3 },
+  { code: "USDJPY", nom: "USD/JPY", source: "usdjpy", categorie: "devises", tailleTick: 0.001, spread: 0.013, glissement: 0.003, commission: 0, decimales: 3, prixIndicatif: 150 },
+  { code: "AUDUSD", nom: "AUD/USD", source: "audusd", categorie: "devises", tailleTick: 0.00001, spread: 0.00016, glissement: 0.00003, commission: 0, decimales: 5, prixIndicatif: 0.65 },
+  { code: "USDCAD", nom: "USD/CAD", source: "usdcad", categorie: "devises", tailleTick: 0.00001, spread: 0.00020, glissement: 0.00004, commission: 0, decimales: 5, prixIndicatif: 1.35 },
+  { code: "USDCHF", nom: "USD/CHF", source: "usdchf", categorie: "devises", tailleTick: 0.00001, spread: 0.00018, glissement: 0.00004, commission: 0, decimales: 5, prixIndicatif: 0.9 },
+  { code: "NZDUSD", nom: "NZD/USD", source: "nzdusd", categorie: "devises", tailleTick: 0.00001, spread: 0.00022, glissement: 0.00004, commission: 0, decimales: 5, prixIndicatif: 0.6 },
+  { code: "EURJPY", nom: "EUR/JPY", source: "eurjpy", categorie: "devises", tailleTick: 0.001, spread: 0.019, glissement: 0.004, commission: 0, decimales: 3, prixIndicatif: 165 },
+  { code: "GBPJPY", nom: "GBP/JPY", source: "gbpjpy", categorie: "devises", tailleTick: 0.001, spread: 0.029, glissement: 0.006, commission: 0, decimales: 3, prixIndicatif: 195 },
+  { code: "EURGBP", nom: "EUR/GBP", source: "eurgbp", categorie: "devises", tailleTick: 0.00001, spread: 0.00019, glissement: 0.00004, commission: 0, decimales: 5, prixIndicatif: 0.85 },
 
   // ── Métaux ──────────────────────────────────────────────────────────────
-  { code: "XAUUSD", nom: "Or (XAU/USD)", source: "xauusd", categorie: "metaux", tailleTick: 0.001, spread: 0.25, glissement: 0.05, commission: 0.07, decimales: 3 },
-  { code: "XAGUSD", nom: "Argent (XAG/USD)", source: "xagusd", categorie: "metaux", tailleTick: 0.001, spread: 0.025, glissement: 0.005, commission: 0.005, decimales: 3 },
+  { code: "XAUUSD", nom: "Or (XAU/USD)", source: "xauusd", categorie: "metaux", tailleTick: 0.001, spread: 0.25, glissement: 0.05, commission: 0.07, decimales: 3, prixIndicatif: 2600 },
+  { code: "XAGUSD", nom: "Argent (XAG/USD)", source: "xagusd", categorie: "metaux", tailleTick: 0.001, spread: 0.025, glissement: 0.005, commission: 0.005, decimales: 3, prixIndicatif: 30 },
 
   // ── Indices ─────────────────────────────────────────────────────────────
-  { code: "NAS100", nom: "Nasdaq 100", source: "usatechidxusd", categorie: "indices", tailleTick: 0.001, spread: 1.5, glissement: 0.4, commission: 0, decimales: 2 },
-  { code: "SPX500", nom: "S&P 500", source: "usa500idxusd", categorie: "indices", tailleTick: 0.001, spread: 0.5, glissement: 0.12, commission: 0, decimales: 2 },
-  { code: "US30", nom: "Dow Jones 30", source: "usa30idxusd", categorie: "indices", tailleTick: 0.001, spread: 2.5, glissement: 0.6, commission: 0, decimales: 2 },
-  { code: "GER40", nom: "DAX 40", source: "deuidxeur", categorie: "indices", tailleTick: 0.001, spread: 1.2, glissement: 0.3, commission: 0, decimales: 2 },
+  { code: "NAS100", nom: "Nasdaq 100", source: "usatechidxusd", categorie: "indices", tailleTick: 0.001, spread: 1.5, glissement: 0.4, commission: 0, decimales: 2, prixIndicatif: 20000 },
+  { code: "SPX500", nom: "S&P 500", source: "usa500idxusd", categorie: "indices", tailleTick: 0.001, spread: 0.5, glissement: 0.12, commission: 0, decimales: 2, prixIndicatif: 6000 },
+  { code: "US30", nom: "Dow Jones 30", source: "usa30idxusd", categorie: "indices", tailleTick: 0.001, spread: 2.5, glissement: 0.6, commission: 0, decimales: 2, prixIndicatif: 44000 },
+  { code: "GER40", nom: "DAX 40", source: "deuidxeur", categorie: "indices", tailleTick: 0.001, spread: 1.2, glissement: 0.3, commission: 0, decimales: 2, prixIndicatif: 20000 },
 
   // ── Énergie ─────────────────────────────────────────────────────────────
-  { code: "USOIL", nom: "Pétrole WTI", source: "lightcmdusd", categorie: "energie", tailleTick: 0.001, spread: 0.03, glissement: 0.008, commission: 0, decimales: 3 },
+  { code: "USOIL", nom: "Pétrole WTI", source: "lightcmdusd", categorie: "energie", tailleTick: 0.001, spread: 0.03, glissement: 0.008, commission: 0, decimales: 3, prixIndicatif: 70 },
 
   // ── Crypto ──────────────────────────────────────────────────────────────
-  { code: "BTCUSD", nom: "Bitcoin", source: "btcusd", categorie: "crypto", tailleTick: 0.1, spread: 25, glissement: 6, commission: 0, decimales: 1 },
-  { code: "ETHUSD", nom: "Ethereum", source: "ethusd", categorie: "crypto", tailleTick: 0.1, spread: 1.5, glissement: 0.4, commission: 0, decimales: 1 },
+  { code: "BTCUSD", nom: "Bitcoin", source: "btcusd", categorie: "crypto", tailleTick: 0.1, spread: 25, glissement: 6, commission: 0, decimales: 1, prixIndicatif: 90000 },
+  { code: "ETHUSD", nom: "Ethereum", source: "ethusd", categorie: "crypto", tailleTick: 0.1, spread: 1.5, glissement: 0.4, commission: 0, decimales: 1, prixIndicatif: 3000 },
 ];
 
 const PAR_CODE = new Map(INSTRUMENTS.map((i) => [i.code, i]));
