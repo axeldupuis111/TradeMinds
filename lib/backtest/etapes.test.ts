@@ -523,3 +523,35 @@ describe("la raison d'un blocage se dit depuis là où on est", () => {
     expect(DESTINATION.test(fr.bt_par_bloque_sans_test_ici)).toBe(false);
   });
 });
+
+/**
+ * LE FIL SE LIT SUR UN TÉLÉPHONE.
+ *
+ * ⚠️⚠️ MESURÉ DANS LA PAGE, PAS DEVINÉ : à 375 px de large, chaque libellé du
+ * fil recevait DIX-NEUF PIXELS. Les cinq étaient tronqués à néant côte à côte,
+ * et le fil des étapes, qui est tout l'objet de cette refonte, ne se lisait pas
+ * du tout sur un écran de téléphone. Cinq éléments en `flex-1` ne se replient
+ * jamais : leur base vaut zéro, donc ils se serrent au lieu de passer à la
+ * ligne.
+ *
+ * ⚠️ CE TEST LIT UNE CLASSE, ce qui ne prouve pas le rendu. Il tient la
+ * décision en place : quelqu'un qui remet `flex-1` verra ce texte au lieu de
+ * refaire la mesure.
+ */
+describe("le fil des étapes tient sur un écran étroit", () => {
+  const source = readFileSync(join(process.cwd(), "components/backtest/Parcours.tsx"), "utf8");
+
+  it("les étapes se replient au lieu de se serrer", () => {
+    const li = source.match(/<li key=\{e\.code\} className="([^"]+)"/);
+    expect(li, "l'élément de liste du fil est introuvable").toBeTruthy();
+    const classes = li![1];
+    expect(classes, "une base explicite est nécessaire pour que la ligne se replie").toContain(
+      "basis-[",
+    );
+    expect(classes, "et une base large seulement sur les petits écrans").toContain("sm:basis-0");
+    expect(
+      /(^|\s)flex-1(\s|$)/.test(classes),
+      "`flex-1` repose une base à zéro et annule le repli",
+    ).toBe(false);
+  });
+});

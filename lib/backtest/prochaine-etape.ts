@@ -54,6 +54,16 @@ export type CodeEtape =
   | "lancer"
   /** Le rejeu a produit trop peu de trades pour qu'un chiffre veuille dire quoi que ce soit. */
   | "elargir_la_periode"
+  /**
+   * Trop peu de trades, et plus une seule bougie à ajouter.
+   *
+   * ⚠️⚠️ SANS LUI, LA PAGE DEMANDE L'IMPOSSIBLE. « Élargis la période » est le
+   * bon conseil neuf fois sur dix ; à la profondeur maximale des données, c'est
+   * une porte peinte sur un mur, et c'est exactement la situation où quelqu'un
+   * a le plus besoin qu'on lui dise quoi faire d'autre. Ce qui reste est réel :
+   * une méthode qui se déclenche plus souvent, ou une autre base.
+   */
+  | "elargir_impossible"
   /** Le journal montre qu'il trade ailleurs. */
   | "tester_son_marche"
   /** Personne n'a vérifié que les trades rejoués sont bien sa méthode. */
@@ -92,6 +102,13 @@ export interface EtatDeLaPage {
   profil: ConstatProfil[];
   /** Le rejeu, s'il a eu lieu. */
   trades: number | null;
+  /**
+   * Reste-t-il de la période à ajouter ?
+   *
+   * ⚠️ LA PAGE LE SAIT, PAS CE MODULE : les bornes des données vivent dans
+   * l'écran. On le lui demande plutôt que de le deviner.
+   */
+  peutElargir: boolean;
   /** Le trader a coché « je reconnais ma méthode ». */
   mecaniqueVerifiee: boolean;
   /** Les mesures profondes ont tourné. */
@@ -170,11 +187,17 @@ export function prochaineEtape(e: EtatDeLaPage): Etape {
    * intervalles si larges qu'ils passeraient pour de la prudence.
    */
   if (e.trades < MIN_TRADES_CONCLUSION) {
-    return {
-      code: "elargir_la_periode",
-      valeurs: { n: e.trades, seuil: MIN_TRADES_CONCLUSION },
-      ancre: "bt-periode",
-    };
+    return e.peutElargir
+      ? {
+          code: "elargir_la_periode",
+          valeurs: { n: e.trades, seuil: MIN_TRADES_CONCLUSION },
+          ancre: "bt-periode",
+        }
+      : {
+          code: "elargir_impossible",
+          valeurs: { n: e.trades, seuil: MIN_TRADES_CONCLUSION },
+          ancre: "bt-propositions",
+        };
   }
 
   /**

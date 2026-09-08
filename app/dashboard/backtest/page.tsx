@@ -1861,6 +1861,9 @@ export default function BacktestPage() {
          * « rien n a encore ete rejoue ».
          */
         trades: resultat ? resultat.trades.length : null,
+        // ⚠️ « Élargis la période » est une porte peinte sur un mur quand il
+        // n'y a plus une bougie à ajouter.
+        peutElargir: periodePlusLarge != null,
         mecaniqueVerifiee: verifie,
         analyseFaite: resultat?.confluences != null,
         synthese,
@@ -1872,6 +1875,7 @@ export default function BacktestPage() {
       }),
     [
       planPose,
+      periodePlusLarge,
       resultat,
       interpretationsALire,
       condamnations,
@@ -2390,7 +2394,7 @@ export default function BacktestPage() {
         ) : null}
 
         {resultat?.propositions && etapeCourante === "test" ? (
-          <StaggerItem>
+          <StaggerItem id="bt-propositions">
             <Propositions
               propositions={resultat.propositions}
               instrument={instrument}

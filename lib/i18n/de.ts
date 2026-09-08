@@ -3117,6 +3117,8 @@ const dict: Record<string, string> = {
   "bt_faire_lancer_geste": "Test starten",
   "bt_faire_elargir_la_periode": "{n} Trades, unter der Schwelle von {seuil}. Das ist kein schlechtes Ergebnis, es ist gar keines: unter hundert Trades bedeutet keine Zahl dieser Seite irgendetwas. Erweitere den Zeitraum, bevor du sonst etwas liest.",
   "bt_faire_elargir_la_periode_geste": "Den Testzeitraum erweitern",
+  "bt_faire_elargir_impossible": "Der Durchlauf hat zu wenige Trades erzeugt: {n}, unter der Schwelle von {seuil}. Und es gibt keine Kerze mehr hinzuzufügen: dein Zeitraum deckt bereits alle verfügbaren Daten ab. Was bleibt, ist nicht erweitern, sondern eine Methode zu wählen, die häufiger auslöst, oder eine andere Basis.",
+  "bt_faire_elargir_impossible_geste": "Die Einstellungen ansehen, die genug Trades erzeugen",
   "bt_faire_tester_son_marche": "Du misst eine Methode fein auf einem Markt, den du nicht handelst. Das ist saubere Arbeit ohne Nutzen: stell den Test auf den Markt um, auf dem du wirklich Positionen nimmst, der Rest deines Plans folgt.",
   "bt_faire_tester_son_marche_geste": "Sehen, wo du wirklich handelst",
   "bt_faire_verifier_la_mecanique": "Noch niemand hat die Trades angesehen, die die Maschine genommen hat. Öffne drei Vorschauen: dreimal während des Baus dieses Werkzeugs zeigte der Chart etwas anderes als die angekündigte Methode, und der Text zeigte es nie.",

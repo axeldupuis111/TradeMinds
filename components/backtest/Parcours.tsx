@@ -48,7 +48,19 @@ export function Parcours({
         {etapes.map((e, i) => {
           const active = e.code === courante;
           return (
-            <li key={e.code} className="min-w-0 flex-1">
+            /**
+             * ⚠️⚠️ DEUX PAR LIGNE SUR TELEPHONE, ET C EST MESURE : a 375 px,
+             * `flex-1` donnait 19 PIXELS de large a chaque libelle. Les cinq
+             * etaient tronques a neant, cote a cote, et le fil des etapes,
+             * qui est tout l objet de cette refonte, ne se lisait pas du tout
+             * sur un ecran de telephone. Avec une base de 50 %, trois rangees,
+             * et aucun libelle coupe.
+             *
+             * ⚠️ `grow` PLUTOT QUE `flex-1` : le raccourci pose lui-meme une
+             * flex-basis a 0, et la base explicite se battrait contre lui
+             * selon l ordre de la feuille de style.
+             */
+            <li key={e.code} className="min-w-0 grow basis-[calc(50%-3px)] sm:basis-0">
               <button
                 type="button"
                 onClick={() => e.ouverte && onAller(e.code)}

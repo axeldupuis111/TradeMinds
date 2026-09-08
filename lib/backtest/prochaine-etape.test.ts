@@ -54,6 +54,7 @@ const etat = (p: Partial<EtatDeLaPage> = {}): EtatDeLaPage => ({
   condamnations: [],
   profil: [],
   trades: 400,
+  peutElargir: true,
   mecaniqueVerifiee: true,
   analyseFaite: true,
   synthese: TOUT_ETABLI,
@@ -183,6 +184,9 @@ function trouver(code: CodeEtape) {
     lever_une_condamnation: { condamnations: condamne() },
     lancer: { trades: null },
     elargir_la_periode: { trades: 10 },
+    // ⚠️ Trop peu de trades ET plus une bougie à ajouter : « élargis la
+    // période » serait une porte peinte sur un mur.
+    elargir_impossible: { trades: 10, peutElargir: false },
     tester_son_marche: {
       profil: [{ code: "actif_ailleurs", valeurs: {}, marcheACodeTester: "XAUUSD" } as ConstatProfil],
     },

@@ -186,6 +186,7 @@ export const ETAPE_PAR_ANCRE: Record<string, CodeEtapeParcours> = {
   "bt-condamnation": "regles",
   "bt-profil": "regles",
   "bt-apercus": "test",
+  "bt-propositions": "test",
   "bt-diagnostic": "ameliorer",
   "bt-mon-plan": "plan",
   "bt-analyse": "plan",

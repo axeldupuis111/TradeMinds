@@ -3117,6 +3117,8 @@ const dict: Record<string, string> = {
   "bt_faire_lancer_geste": "Lancer le test",
   "bt_faire_elargir_la_periode": "Le rejeu a produit trop peu de trades : {n}, sous le seuil de {seuil}. Ce n'est pas un mauvais résultat, c'est une absence de résultat : sous cent trades, aucun chiffre de cette page ne veut dire quoi que ce soit. Élargis la période avant de lire quoi que ce soit d'autre.",
   "bt_faire_elargir_la_periode_geste": "Élargir la période de test",
+  "bt_faire_elargir_impossible": "Le rejeu a produit trop peu de trades : {n}, sous le seuil de {seuil}. Et il n'y a plus une bougie à ajouter : ta période couvre déjà toutes les données disponibles. Ce qui reste n'est pas d'élargir, c'est de choisir une méthode qui se déclenche plus souvent, ou une autre base.",
+  "bt_faire_elargir_impossible_geste": "Voir les réglages qui produisent assez de trades",
   "bt_faire_tester_son_marche": "Tu mesures finement une méthode sur un marché que tu ne trades pas. C'est un travail rigoureux et sans usage : bascule le test sur le marché où tu prends vraiment tes positions, tout le reste de ton plan suivra.",
   "bt_faire_tester_son_marche_geste": "Voir où tu trades vraiment",
   "bt_faire_verifier_la_mecanique": "Personne n'a encore regardé les trades que la machine a pris. Ouvre trois aperçus : c'est arrivé trois fois pendant la construction de cet outil que le graphique montre autre chose que la méthode annoncée, et le texte ne l'a jamais montré.",
