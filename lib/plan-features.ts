@@ -98,6 +98,22 @@ export const PLAN_FEATURES: PlanFeature[] = [
   { key: "plan_feat_mt_sync",           free: false,         plus: false,            premium: true, groupKey: "plan_group_automation" },
   { key: "plan_feat_challenge_guardian", free: false,        plus: false,            premium: true },
   { key: "plan_feat_macro",             free: false,         plus: false,            premium: true },
+  /**
+   * ⚠️⚠️ DEUX ONGLETS ENTIERS MANQUAIENT À CETTE TABLE, qui est la source de
+   * vérité de la page de tarifs ET de la landing. Backtest et Projection sont
+   * verrouillés « premium » dans la barre latérale depuis leur sortie, et
+   * n'apparaissaient dans aucune comparaison de plans : quelqu'un qui hésite
+   * entre Plus et Premium ne voyait pas les deux plus grosses raisons de
+   * prendre Premium. Le compteur « N fonctionnalités verrouillées » les
+   * oubliait aussi.
+   *
+   * ⚠️ UN GARDE LIT MAINTENANT LA BARRE LATÉRALE et refuse qu'une page gardée
+   * par un plan soit absente d'ici. C'est le seul moyen que la prochaine sortie
+   * ne se reproduise pas en silence : personne ne pense à la table de tarifs le
+   * jour où il écrit une page.
+   */
+  { key: "plan_feat_backtest",          free: false,         plus: false,            premium: true },
+  { key: "plan_feat_projection",        free: false,         plus: false,            premium: true },
   { key: "plan_feat_sizer_dd",          free: false,         plus: false,            premium: true },
   { key: "plan_feat_badge_premium",     free: false,         plus: false,            premium: true },
   { key: "plan_feat_priority_support",  free: false,         plus: false,            premium: true },
@@ -123,7 +139,19 @@ export const PLUS_BENEFITS = [
 
 // Uniquement ce que le Premium AJOUTE par rapport au Plus — jamais mélangé
 // avec le contenu du Plus (affiché à part sous « Tout le plan Plus inclus »).
+/**
+ * ⚠️⚠️ LE BACKTEST N'Y ÉTAIT PAS, ALORS QUE C'EST LA PLUS GROSSE DIFFÉRENCE
+ * ENTRE PLUS ET PREMIUM. Sept puces vantaient le Premium, aucune ne parlait de
+ * l'onglet qui rejoue une stratégie sur des années de bougies et rend un plan
+ * écrit. Il est en deuxième position, après le coach : c'est ce que personne
+ * d'autre ne propose, donc c'est ce qui doit se lire avant le reste.
+ *
+ * ⚠️ ET LA PROMESSE EST CELLE QUE L'ONGLET TIENT VRAIMENT : rejouer et repartir
+ * avec un plan. Pas « trouve une stratégie rentable » : l'onglet refuse de le
+ * dire, la landing ne va pas le dire à sa place.
+ */
 export const PREMIUM_BENEFITS = [
-  "plan_benefit_premium_coach", "plan_benefit_premium_1", "plan_benefit_premium_2", "plan_benefit_premium_3",
+  "plan_benefit_premium_coach", "plan_benefit_premium_backtest",
+  "plan_benefit_premium_1", "plan_benefit_premium_2", "plan_benefit_premium_3",
   "plan_benefit_premium_4", "plan_benefit_premium_5", "plan_benefit_premium_6",
 ] as const;
