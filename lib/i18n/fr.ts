@@ -3531,6 +3531,7 @@ const dict: Record<string, string> = {
   "bt_plan_unite_de_temps": "Tu travailles en bougies de {minutes} {minutes|minute|minutes}.",
   "bt_plan_jours": "Tu ne prends de position que ces jours-là : {jours}.",
   "bt_plan_heures": "Tu n'ouvres rien avant {debut} ni après {fin}, quelle que soit la qualité du signal.",
+  "bt_plan_heures_aucune": "Tu n'as aucune restriction d'horaire : la journée entière est ouverte. C'est un choix, pas un oubli, et c'est souvent la première chose à resserrer.",
   "bt_plan_sens": "Sens autorisés : {sens}.",
   "bt_plan_niveau": "Tu traces : {type}.",
   "bt_plan_declencheur": "Tu n'entres que sur : {type}, et seulement sur bougie clôturée.",

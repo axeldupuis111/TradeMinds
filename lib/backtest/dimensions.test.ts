@@ -241,3 +241,48 @@ describe("le catalogue ne double pas le bloc du trader", () => {
     expect(etiquettes(dimensionsDeRecherche(NAS), "stop")).toContain("×1");
   });
 });
+
+/**
+ * ⚠️⚠️ VU À L'ÉCRAN, DANS LE RÉSULTAT DE LA RECHERCHE : « Marge derrière le
+ * stop : 0 → 0.001 » sur l'or, soit UN TICK, présenté comme la règle à changer.
+ * La compilation avait posé une marge de 0, légitime puisque le stop est déjà
+ * derrière la structure, et le plancher à un tick transformait « mettre zéro à
+ * l'échelle » en une variante inventée.
+ *
+ * ⚠️ ET ELLE COÛTAIT TROIS ESSAIS : ×1, ×2 et ×3 donnaient le même plan à un
+ * tick, tous différents du départ, donc tous gardés. La barre statistique de la
+ * recherche monte avec le nombre d'essais : du bruit qui rend la recherche plus
+ * exigeante envers elle-même, pour rien.
+ */
+describe("la dimension du stop quand la marge vaut zéro", () => {
+  const planAvecMarge = (bufferTicks: number): PlanExecution => ({
+    ...socleDePlan("XAUUSD", "Europe/Paris"),
+    uniteDeTemps: 5,
+    niveau: { type: "trendline", pivots: 10, touchesMin: 3, toleranceTicks: 2600 },
+    declencheur: { type: "cassure", mode: "cloture" },
+    confirmations: [],
+    stop: { type: "dernier_pivot", bufferTicks },
+    objectif: { type: "multiple_r", r: 2 },
+    gestion: {},
+    couts: coutsPourInstrument(instrumentParCode("XAUUSD")!),
+  });
+
+  const valeursDuStop = (p: PlanExecution) =>
+    dimensionsDeRecherche(instrumentParCode("XAUUSD")!, p).find((d) => d.cle === "stop")?.valeurs ??
+    [];
+
+  it("n'invente aucune variante à partir d'une marge nulle", () => {
+    expect(valeursDuStop(planAvecMarge(0))).toEqual([]);
+  });
+
+  it("continue de mettre une vraie marge à l'échelle", () => {
+    const valeurs = valeursDuStop(planAvecMarge(200));
+    expect(valeurs.length).toBeGreaterThan(0);
+    const applique = valeurs.map((v) => {
+      const s = v.appliquer(planAvecMarge(200)).stop;
+      return s.type === "dernier_pivot" ? s.bufferTicks : null;
+    });
+    expect(applique).not.toContain(200);
+    expect(applique.every((x) => x !== null && x > 0)).toBe(true);
+  });
+});

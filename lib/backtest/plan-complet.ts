@@ -160,7 +160,21 @@ export function composerPlanComplet(
       .map((j) => JOURS[j])
       .join(" "),
   });
-  ajouter("heures", { debut: plan.contexte.debut, fin: plan.contexte.fin });
+  /**
+   * ⚠️⚠️ UNE PLAGE QUI COUVRE LA JOURNÉE ENTIÈRE N'EST PAS UNE RÈGLE D'HORAIRE.
+   * Vu à l'écran, dans le plan sorti de la recherche : « Tu n'ouvres rien avant
+   * 00:00 ni après 23:59, quelle que soit la qualité du signal. » Une phrase
+   * qui a l'air d'une discipline et qui n'interdit rien. Le plan à emporter est
+   * le seul document que le trader relit devant son écran : une ligne qui ne
+   * contraint rien y prend la place d'une ligne qui contraindrait.
+   *
+   * ⚠️ ET ON NE LA SUPPRIME PAS : « aucune restriction d'horaire » est un fait
+   * sur sa méthode, et souvent celui qu'il faudrait changer. On le dit, au lieu
+   * de le déguiser en règle.
+   */
+  const toutLeJour = plan.contexte.debut === "00:00" && plan.contexte.fin === "23:59";
+  if (toutLeJour) ajouter("heures_aucune", {});
+  else ajouter("heures", { debut: plan.contexte.debut, fin: plan.contexte.fin });
   ajouter("sens", { sens: plan.sens });
   ajouter("niveau", { type: plan.niveau.type });
   ajouter("declencheur", { type: plan.declencheur.type });

@@ -46,18 +46,34 @@ function heures(debut: string, fin: string) {
   });
 }
 
-/** Multiplie les distances de prix du stop, seul levier structurel sur les coûts. */
+/**
+ * Multiplie les distances de prix du stop, seul levier structurel sur les coûts.
+ *
+ * ⚠️⚠️ METTRE ZÉRO À L'ÉCHELLE DONNE ZÉRO, ET LE PLANCHER À UN TICK FABRIQUAIT
+ * UNE VARIANTE. Vu à l'écran : la recherche proposait « Marge derrière le stop :
+ * 0 → 0.001 » sur l'or, soit UN TICK, présenté au trader comme la règle à
+ * changer. La compilation avait posé une marge de 0 (légitime : le stop est déjà
+ * derrière la structure), et `Math.max(1, 0 × facteur)` rendait 1 pour ×1, ×2
+ * et ×3.
+ *
+ * ⚠️ ET ÇA COÛTAIT TROIS FOIS. Les trois valeurs donnaient le même plan, mais
+ * toutes les trois différaient du plan de départ, donc le filtre « sans ce qui
+ * ne change rien » les gardait : trois essais identiques comptés séparément, et
+ * la barre statistique monte avec le nombre d'essais. Du bruit qui rend la
+ * recherche plus exigeante envers elle-même, pour rien.
+ *
+ * ⚠️ LE PLANCHER RESTE POUR LES DISTANCES : un stop à zéro tick n'est pas un
+ * stop. Une marge à zéro, elle, est un réglage valide.
+ */
 function stopEchelle(facteur: number) {
+  const echelle = (base: number) => (base === 0 ? 0 : Math.max(1, Math.round(base * facteur)));
   return (p: PlanExecution): PlanExecution => {
     const s = p.stop;
-    if (s.type === "fixe") return { ...p, stop: { ...s, ticks: Math.max(1, Math.round(s.ticks * facteur)) } };
+    if (s.type === "fixe") return { ...p, stop: { ...s, ticks: echelle(s.ticks) } };
     if (s.type === "atr") {
-      return {
-        ...p,
-        stop: { ...s, multipleDixiemes: Math.max(1, Math.round(s.multipleDixiemes * facteur)) },
-      };
+      return { ...p, stop: { ...s, multipleDixiemes: echelle(s.multipleDixiemes) } };
     }
-    return { ...p, stop: { ...s, bufferTicks: Math.max(1, Math.round(s.bufferTicks * facteur)) } };
+    return { ...p, stop: { ...s, bufferTicks: echelle(s.bufferTicks) } };
   };
 }
 

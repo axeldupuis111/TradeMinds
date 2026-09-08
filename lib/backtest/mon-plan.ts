@@ -112,6 +112,7 @@ const ORDRE_MOTEUR = [
   "unite_de_temps",
   "jours",
   "heures",
+  "heures_aucune",
   "sens",
   "niveau",
   "declencheur",

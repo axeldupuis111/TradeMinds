@@ -3531,6 +3531,7 @@ const dict: Record<string, string> = {
   "bt_plan_unite_de_temps": "Trabajas con velas de {minutes} {minutes|minuto|minutos}.",
   "bt_plan_jours": "Solo abres posiciones estos días: {jours}.",
   "bt_plan_heures": "No abres nada antes de las {debut} ni después de las {fin}, por buena que sea la señal.",
+  "bt_plan_heures_aucune": "No tienes ninguna restricción horaria: todo el día está abierto. Es una elección, no un olvido, y suele ser lo primero que conviene ajustar.",
   "bt_plan_sens": "Direcciones permitidas: {sens}.",
   "bt_plan_niveau": "Trazas: {type}.",
   "bt_plan_declencheur": "Solo entras con: {type}, y únicamente con vela cerrada.",

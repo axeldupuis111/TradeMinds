@@ -327,3 +327,27 @@ describe("le risque retenu ne s'annonce pas comme une limite trouvée", () => {
     }
   });
 });
+
+/**
+ * ⚠️⚠️ VU À L'ÉCRAN, DANS LE PLAN SORTI DE LA RECHERCHE : « Tu n'ouvres rien
+ * avant 00:00 ni après 23:59, quelle que soit la qualité du signal. » Une
+ * phrase qui a l'air d'une discipline et qui n'interdit rien. Le plan à
+ * emporter est le seul document que le trader relit devant son écran : une
+ * ligne qui ne contraint rien y prend la place d'une ligne qui contraindrait.
+ */
+describe("la ligne des horaires", () => {
+  const auxHeures = (debut: string, fin: string) =>
+    plan({ contexte: { fuseau: "Europe/Paris", debut, fin, jours: [1, 2, 3, 4, 5] } });
+
+  it("dit qu'il n'y a aucune restriction quand la journée est entière", () => {
+    const p = composerPlanComplet(auxHeures("00:00", "23:59"), trades(suite()), NAS);
+    expect(ligne(p, "heures_aucune")).toBeTruthy();
+    expect(ligne(p, "heures")).toBeUndefined();
+  });
+
+  it("garde la plage dès qu'elle contraint quelque chose", () => {
+    const p = composerPlanComplet(auxHeures("09:00", "17:00"), trades(suite()), NAS);
+    expect(ligne(p, "heures")!.valeurs).toMatchObject({ debut: "09:00", fin: "17:00" });
+    expect(ligne(p, "heures_aucune")).toBeUndefined();
+  });
+});
