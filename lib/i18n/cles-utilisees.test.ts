@@ -47,7 +47,24 @@ function clesLitterales(source: string): string[] {
   const sansCommentaires = source
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/\/\/[^\n]*/g, "");
-  return Array.from(sansCommentaires.matchAll(/\bt\(\s*"([a-z0-9_]+)"/g), (m) => m[1]);
+  /**
+   * ⚠️⚠️ `t(` ET `tr(`, ET C'EST LE SECOND QUI MANQUAIT. L'onglet backtest
+   * enveloppe la traduction dans un `tr()` qui interpole les valeurs, et c'est
+   * par lui que passe la TOTALITÉ de ses appels. Le motif ne voyait que `t(` :
+   * tout l'onglet échappait à ce garde, qui affichait vert.
+   *
+   * ⚠️ VU À L'ÉCRAN pour s'en apercevoir : sur le mur payant, le seul bouton de
+   * la page affichait « upgrade_cta », l'identifiant brut, à un visiteur qui
+   * découvre le produit. La clé n'existait dans aucune des quatre langues.
+   *
+   * ⚠️ ET LE COMPTE A PLUS QUE QUINTUPLÉ en corrigeant le motif : 3 032 appels
+   * lus au lieu de quelques centaines. Un garde qui ne lit qu'un sixième du code
+   * ne le dit pas, il passe.
+   */
+  return Array.from(
+    sansCommentaires.matchAll(/(?<![A-Za-z0-9_])(?:t|tr)\(\s*"([a-z0-9_]+)"/g),
+    (m) => m[1],
+  );
 }
 
 
@@ -57,7 +74,7 @@ describe("les clés de traduction appelées par le code", () => {
 
   it("trouve bien des appels à traduire, sinon ce test ne prouve rien", () => {
     const total = sources.reduce((n, f) => n + clesLitterales(readFileSync(f, "utf8")).length, 0);
-    expect(total).toBeGreaterThan(500);
+    expect(total).toBeGreaterThan(2500);
   });
 
   it("existent toutes dans le fichier français", () => {

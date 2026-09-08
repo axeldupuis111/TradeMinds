@@ -942,6 +942,7 @@ const dict: Record<string, string> = {
   "plan_ai_remaining_week_one": "restante cette semaine",
   "plan_two_months_free": "-25%",
   "plan_billed_annual": "Facturé {price}/an",
+  "upgrade_cta": "Passer au Premium",
   "upgrade_redirecting": "Redirection...",
   "upgrade_checkout_error": "Une erreur est survenue. Veuillez réessayer.",
   "founding_public_tag": "Offre de lancement",
