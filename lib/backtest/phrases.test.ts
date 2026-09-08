@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fr from "../i18n/fr";
-import { sansCodeInterne } from "./phrases";
+import { sansCodeInterne, sansPhraseCoupee } from "./phrases";
 
 const t = (cle: string) => (fr as Record<string, string>)[cle] ?? cle;
 
@@ -82,5 +82,42 @@ describe("les justifications de l'IA", () => {
 
   it("ne touche pas à un identifiant collé à un mot", () => {
     expect(sansCodeInterne("le multiple_rr n'existe pas", t)).toContain("multiple_rr");
+  });
+});
+
+/**
+ * ⚠️⚠️ VU À L'ÉCRAN, DANS LA PHRASE LA PLUS IMPORTANTE DE LA PAGE DE
+ * COMPILATION : « …est un standard robuste. tolerance:… ». Le modèle avait
+ * coupé sa propre justification sur un nom de champ.
+ */
+describe("une justification coupée par le modèle", () => {
+  it("se termine sur la dernière phrase complète", () => {
+    expect(
+      sansPhraseCoupee("Tu traces en H1. Dix bougies de chaque côté est robuste. tolerance:…"),
+    ).toBe("Tu traces en H1. Dix bougies de chaque côté est robuste.");
+  });
+
+  it("laisse intacte une phrase qui se termine bien", () => {
+    const bonne = "Ton stop se place derrière le dernier sommet, avec une marge de 0,25 point.";
+    expect(sansPhraseCoupee(bonne)).toBe(bonne);
+  });
+
+  it("accepte une fin entre guillemets ou parenthèses", () => {
+    const bonne = "Déduit de ta fiche (non explicite)";
+    expect(sansPhraseCoupee(bonne)).toBe(bonne);
+  });
+
+  /**
+   * ⚠️ ON NE REND JAMAIS UNE CHAÎNE VIDE : une ligne qui disparaît est un
+   * défaut plus difficile à voir qu'une ligne tronquée.
+   */
+  it("garde quelque chose même sans aucune phrase complète", () => {
+    const reste = sansPhraseCoupee("Le niveau que tu traces, tolerance:…");
+    expect(reste.length).toBeGreaterThan(0);
+    expect(reste).not.toContain("…");
+  });
+
+  it("ne touche pas au texte vide", () => {
+    expect(sansPhraseCoupee("")).toBe("");
   });
 });

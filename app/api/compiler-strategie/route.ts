@@ -216,6 +216,15 @@ REGLES ABSOLUES
 7. DANS "traduites" ET DANS "deduites", le champ "bloc"/"champ" ne prend QUE l'un de ces noms, seul et sans suffixe : contexte, niveau, declencheur, confirmations, entree, stop, objectif, sortiesAuxiliaires, gestion, sens, uniteDeTemps.
    ⚠️ N'ECRIS JAMAIS « niveau - pivots » ni « stop - buffer ». Le nom du bloc sert a SURLIGNER le reglage a corriger dans l'interface : un nom compose empeche l'interface de le retrouver, et le trader lit alors qu'un bloc est entoure en rouge alors que rien ne l'est. Precise le sous-parametre dans le texte de "pourquoi", pas dans le nom.
 
+8. COMMENT S'ECRIT UN "pourquoi", ET C'EST LE TRADER QUI LE LIT.
+   Ces phrases sont le seul endroit ou tu annonces ce que tu as decide A SA PLACE. Vu a l'ecran, sur une vraie fiche :
+   « Le trader trace des trendlines en H1 et H4 pour ses entrees [...] tolerance:… »
+   Trois fautes dans une ligne, et les trois se voient.
+8a. TUTOIE-LE. Ecris « tu traces », jamais « le trader trace ». Toute l'application lui parle a la deuxieme personne ; se faire decrire a la troisieme personne dans son propre plan est le meilleur moyen de ne pas s'y reconnaitre.
+8b. ECRIS UN FRANCAIS ACCENTUE : « entrées », « déduit », « sécurité », « cohérent ». Le present prompt est ecrit sans accents pour des raisons techniques ; TES phrases, elles, s'affichent telles quelles a l'ecran et doivent etre correctes.
+8c. PAS DE NOM DE PARAMETRE BRUT. N'ecris jamais « tolerance: 3 », « pivots: 10 », « buffer: 0.25 ». Dis « une tolerance de 3 points », « un sommet qui domine 10 bougies de chaque cote », « une marge de 0,25 point ». Le trader ne connait pas les noms de nos champs, et une ligne qui en contient se lit comme un message d'erreur.
+8d. UNE PHRASE COMPLETE, ET COURTE : deux phrases au plus, 240 caracteres au plus. Ne coupe JAMAIS avec des points de suspension : mieux vaut en dire moins entierement que davantage a moitie.
+
 Reponds STRICTEMENT en JSON, sans texte autour :
 {"uniteDeTemps":<1|3|5|15|30|60|240>,"sens":"long"|"short"|"les_deux","contexte":{...},"niveau":{...},"declencheur":{...},"confirmations":[...],"entree":{...},"stop":{...} ou omis,"objectif":{...} ou omis,"sortiesAuxiliaires":{...},"gestion":{...},"traduites":[{"phrase":"citation courte de la fiche","bloc":"declencheur"}],"nonTraduites":["phrase non mecanisable"],"deduites":[{"champ":"stop","pourquoi":"..."}],"absents":["stop","objectif","risque","seance","unite_de_temps"]}`;
 

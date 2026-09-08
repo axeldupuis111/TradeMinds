@@ -3063,6 +3063,7 @@ const dict: Record<string, string> = {
   "bt_faire_enregistrer_les_reponses_geste": "Guardar mis respuestas",
   "bt_sec_methode_aucune": "Todavía sin declarar",
   "bt_sec_fiche_aucune": "Ninguna ficha elegida",
+  "bt_sec_fiche_a_traduire": "{nom} · todavía sin traducir a un plan",
   "bt_sec_fiche_traduite": "{nom} · traducida a un plan",
   "bt_sec_fiche_interpretations": "{nom} · interpretaciones por releer: {n}",
   "bt_sec_completude": "líneas escritas: {ecrits} de {total}",

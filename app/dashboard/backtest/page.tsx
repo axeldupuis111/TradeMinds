@@ -95,6 +95,7 @@ import {
   nommerUneValeur as nommerLaValeur,
   remplir,
   sansCodeInterne,
+  sansPhraseCoupee,
 } from "@/lib/backtest/phrases";
 import { methodeParCode } from "@/lib/backtest/methodes";
 import {
@@ -2091,14 +2092,28 @@ export default function BacktestPage() {
             numero={2}
             titre={tr("bt_etape_fiche")}
             etat={
-              strategieCourante
-                ? interpretationsALire > 0
-                  ? tr("bt_sec_fiche_interpretations", {
+              /**
+               * ⚠️⚠️ CETTE LIGNE DISAIT « TRADUITE EN PLAN » DÈS QU'UNE FICHE
+               * ÉTAIT CHOISIE, avant toute traduction, pendant que le bouton
+               * juste en dessous proposait encore de la traduire. Le résumé
+               * d'une section repliée existe pour qu'on n'ait PAS à l'ouvrir :
+               * c'est la seule ligne de la page où une contrevérité ne peut pas
+               * être rattrapée par ce qu'on voit à côté.
+               */
+              !strategieCourante
+                ? tr("bt_sec_fiche_aucune")
+                : !couverture
+                  ? tr("bt_sec_fiche_a_traduire", {
                       nom: strategieCourante.name || tr("bt_sans_nom"),
-                      n: interpretationsALire,
                     })
-                  : tr("bt_sec_fiche_traduite", { nom: strategieCourante.name || tr("bt_sans_nom") })
-                : tr("bt_sec_fiche_aucune")
+                  : interpretationsALire > 0
+                    ? tr("bt_sec_fiche_interpretations", {
+                        nom: strategieCourante.name || tr("bt_sans_nom"),
+                        n: interpretationsALire,
+                      })
+                    : tr("bt_sec_fiche_traduite", {
+                        nom: strategieCourante.name || tr("bt_sans_nom"),
+                      })
             }
             faite={Boolean(couverture) && interpretationsALire === 0}
             ouverte={section === "bt-fiche"}
@@ -3012,7 +3027,7 @@ function LigneInterpretation({
           */}
         <p className="min-w-0 flex-1 text-xs text-foreground-muted">
           <span className="font-medium text-foreground">{nommerUnChamp(champ, t)}</span> :{" "}
-          {sansCodeInterne(pourquoi, t)}
+          {sansCodeInterne(sansPhraseCoupee(pourquoi), t)}
         </p>
         <button
           type="button"

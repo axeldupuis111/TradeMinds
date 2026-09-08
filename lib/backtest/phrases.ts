@@ -301,3 +301,42 @@ export function remplir(
   }
   return sortie;
 }
+
+/**
+ * COUPER PROPREMENT CE QUE LE MODÈLE A COUPÉ SALEMENT.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN, DANS LA PHRASE OÙ L'IA ANNONCE CE QU'ELLE A DÉCIDÉ À LA
+ * PLACE DU TRADER : « …une trendline (5-10 jours de donnees sur une timeframe
+ * hebdo) est un standard robuste. tolerance:… ». La phrase s'arrête sur un nom
+ * de champ suivi de deux points, et le trader doit deviner ce qui manquait.
+ *
+ * ⚠️ LE PROMPT LE DEMANDE DÉJÀ, ET ÇA NE SUFFIT PAS. C'est la règle que ce
+ * fichier applique partout ailleurs : une consigne de prompt est respectée la
+ * plupart du temps, ce qui veut dire qu'elle ne l'est pas toujours, et un
+ * défaut d'affichage intermittent est pire qu'un défaut constant parce que
+ * personne ne le reproduit.
+ *
+ * ⚠️ ON NE COMPLÈTE RIEN, ON COUPE. Inventer la fin d'une justification écrite
+ * par un modèle serait pire que la tronquer : on afficherait comme sien un
+ * raisonnement que personne n'a tenu.
+ */
+export function sansPhraseCoupee(texte: string): string {
+  const propre = texte.trim();
+  // Rien à faire : la phrase se termine normalement.
+  if (/[.!?»)]$/.test(propre)) return propre;
+
+  // On remonte à la dernière fin de phrase franche.
+  const fins = Array.from(propre.matchAll(/[.!?][\s»)]*/g));
+  const derniere = fins[fins.length - 1];
+  if (derniere?.index != null) {
+    const coupe = propre.slice(0, derniere.index + derniere[0].length).trim();
+    if (coupe.length > 0) return coupe;
+  }
+
+  // Pas une seule phrase complète : on retire au moins le fragment pendant,
+  // c'est-à-dire les points de suspension et le mot tronqué qui les précède.
+  return propre
+    .replace(/\s*[A-Za-zÀ-ÿ]*\s*:?\s*(\.{3}|…)\s*$/, "")
+    .replace(/[\s,;:–-]+$/, "")
+    .trim();
+}

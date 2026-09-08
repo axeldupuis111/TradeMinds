@@ -555,3 +555,35 @@ describe("le fil des étapes tient sur un écran étroit", () => {
     ).toBe(false);
   });
 });
+
+/**
+ * LE RÉSUMÉ D'UNE SECTION REPLIÉE NE PEUT PAS MENTIR.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN : « trendline nas100 · TRADUITE EN PLAN », affiché à la
+ * seconde où la fiche était choisie, pendant que le bouton juste en dessous
+ * proposait encore de la traduire et qu'aucun plan n'existait. La condition ne
+ * regardait que « une fiche est-elle sélectionnée ».
+ *
+ * ⚠️ C'EST LA SEULE LIGNE DE LA PAGE OÙ UNE CONTREVÉRITÉ NE SE RATTRAPE PAS :
+ * ce résumé existe précisément pour qu'on n'ouvre PAS la section, donc pour
+ * qu'on ne voie pas ce qui la contredit.
+ */
+describe("le résumé de la fiche dit son état réel", () => {
+  const page = readFileSync(join(process.cwd(), "app/dashboard/backtest/page.tsx"), "utf8");
+  const resume = (() => {
+    const i = page.indexOf('tr("bt_sec_fiche_aucune")');
+    expect(i, "le résumé de la section fiche est introuvable").toBeGreaterThan(0);
+    return page.slice(Math.max(0, i - 900), i + 900);
+  })();
+
+  it("distingue « choisie » de « traduite »", () => {
+    expect(resume, "l'état « pas encore traduite » manque").toContain("bt_sec_fiche_a_traduire");
+  });
+
+  it("s'appuie sur la traduction elle-même, pas sur la sélection", () => {
+    expect(
+      /!couverture/.test(resume),
+      "sans regarder `couverture`, la ligne annonce un plan qui n'existe pas",
+    ).toBe(true);
+  });
+});
