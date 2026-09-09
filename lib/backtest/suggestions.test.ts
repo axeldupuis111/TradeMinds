@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chercherReglagesViables } from "./suggestions";
+import { chercherReglagesViables, variantes } from "./suggestions";
 import { MIN_TRADES_CONCLUSION } from "./verdict";
 import { BOUGIES_NAS100, DEBUT_MS, TAILLE_TICK } from "./bougies-reelles";
 import type { PlanExecution, SerieM1 } from "./types";
@@ -114,5 +114,51 @@ describe("recherche de réglages viables", () => {
 
   it("s'arrête au nombre demandé", () => {
     expect(chercherReglagesViables(SERIE, planEtroit(), TAILLE_TICK, 2).length).toBeLessThanOrEqual(2);
+  });
+});
+
+/**
+ * « LE RÉGLAGE VOISIN LE PLUS PROCHE » DOIT ÊTRE LE PLUS PROCHE.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN, SOUS CE TITRE EXACT : « Séance ouverte à 00:00-23:59 au
+ * lieu de 08:00-17:00 ». Passer de neuf heures à vingt-quatre est le contraire
+ * d'un voisin : c'est le changement le plus lourd que cette liste puisse
+ * contenir, et c'était le SEUL proposé sur ce levier.
+ *
+ * ⚠️ ET CE LEVIER N'EST PAS COMME LES AUTRES. Descendre d'une unité de temps se
+ * fait devant le même écran, aux mêmes heures. Ouvrir la séance 24 h demande au
+ * trader d'être là la nuit : c'est sa vie qu'on règle, pas son graphique, et cet
+ * onglet existe pour produire un plan qu'il puisse tenir.
+ */
+describe("l'élargissement de séance procède par paliers", () => {
+  const seances = (heures: { debut: string; fin: string }) =>
+    variantes(
+      { ...planEtroit(), contexte: { fuseau: "Europe/Paris", ...heures, jours: [] } },
+      TAILLE_TICK,
+    )
+      .filter((v) => v.levier === "seance")
+      .map((v) => v.apres);
+
+  it("commence par une heure de chaque côté, pas par la journée entière", () => {
+    const s = seances({ debut: "08:00", fin: "17:00" });
+    expect(s[0]).toBe("07:00-18:00");
+    expect(s).toEqual(["07:00-18:00", "06:00-19:00", "04:00-21:00", "00:00-23:59"]);
+  });
+
+  /** ⚠️ La journée entière reste proposée : c'est le dernier palier, pas le premier. */
+  it("finit tout de même par ouvrir la journée entière", () => {
+    expect(seances({ debut: "08:00", fin: "17:00" })).toContain("00:00-23:59");
+  });
+
+  /** ⚠️ Une séance déjà ouverte n'a rien à élargir. */
+  it("ne propose rien quand la séance couvre déjà la journée", () => {
+    expect(seances({ debut: "00:00", fin: "23:59" })).toEqual([]);
+  });
+
+  /** ⚠️ Et aucun palier ne se répète : deux lignes identiques n'apprennent rien. */
+  it("ne répète jamais deux fois le même horaire", () => {
+    const s = seances({ debut: "01:00", fin: "23:00" });
+    expect(new Set(s).size).toBe(s.length);
+    expect(s[s.length - 1]).toBe("00:00-23:59");
   });
 });

@@ -55,13 +55,40 @@ export interface Suggestion {
 const ECHELLE_UT = [1, 3, 5, 15, 30, 60, 240];
 
 /**
+ * Les deux bornes d'une séance, élargies d'un nombre d'heures.
+ *
+ * ⚠️ ON NE PASSE PAS MINUIT. Une séance 22:00-02:00 existe, mais l'élargir en
+ * franchissant minuit produirait un intervalle dont on ne sait plus dire s'il
+ * couvre deux heures ou vingt-deux. On s'arrête aux bornes de la journée, et le
+ * palier suivant, lui, ouvre franchement les vingt-quatre heures.
+ */
+function reculerDe(heure: string, heures: number): string {
+  const [h, m] = heure.split(":").map(Number);
+  const total = Math.max(0, h * 60 + m - heures * 60);
+  return total === 0 ? "00:00" : formater(total);
+}
+
+function avancerDe(heure: string, heures: number): string {
+  const [h, m] = heure.split(":").map(Number);
+  const total = Math.min(23 * 60 + 59, h * 60 + m + heures * 60);
+  return formater(total);
+}
+
+function formater(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+
+/**
  * Fabrique les variantes candidates, du changement le plus léger au plus lourd.
  *
  * ⚠️ Un seul levier bouge par variante. La liste est courte volontairement :
  * chaque variante est un backtest complet, et en essayer trente ferait de cette
  * aide une recherche exhaustive, c'est-à-dire la chose qu'on refuse.
  */
-function variantes(plan: PlanExecution, tailleTick: number): Omit<Suggestion, "trades">[] {
+export function variantes(plan: PlanExecution, tailleTick: number): Omit<Suggestion, "trades">[] {
   const out: Omit<Suggestion, "trades">[] = [];
   const enPoints = (ticks: number) => (ticks * tailleTick).toFixed(3).replace(/\.?0+$/, "");
 
@@ -111,15 +138,54 @@ function variantes(plan: PlanExecution, tailleTick: number): Omit<Suggestion, "t
     }
   }
 
-  // La séance n'est un levier que si elle borde vraiment quelque chose.
+  /**
+   * La séance s'élargit PAR PALIERS, et c'est la promesse de la carte.
+   *
+   * ⚠️⚠️ VU À L'ÉCRAN, SOUS LE TITRE « LE RÉGLAGE VOISIN LE PLUS PROCHE » :
+   * « Séance ouverte à 00:00-23:59 au lieu de 08:00-17:00 ». Passer de neuf
+   * heures à vingt-quatre est le contraire d'un voisin : c'est le changement le
+   * plus lourd que cette liste puisse contenir, et c'était le SEUL proposé sur
+   * ce levier.
+   *
+   * ⚠️ ET CE LEVIER N'EST PAS COMME LES AUTRES. Descendre d'une unité de temps
+   * se fait devant le même écran, aux mêmes heures. Ouvrir la séance 24 h
+   * demande au trader d'être là la nuit : c'est sa vie qu'on règle, pas son
+   * graphique, et cet onglet existe pour produire un plan qu'il puisse tenir.
+   * On propose donc d'abord une heure de chaque côté, puis deux, puis quatre.
+   */
   const { debut, fin } = plan.contexte;
   if (debut !== "00:00" || fin !== "23:59") {
-    out.push({
-      levier: "seance",
-      avant: `${debut}-${fin}`,
-      apres: "00:00-23:59",
-      plan: { ...plan, contexte: { ...plan.contexte, debut: "00:00", fin: "23:59" } },
-    });
+    /**
+     * ⚠️ UN PALIER PEUT DÉJÀ OUVRIR LA JOURNÉE, et le test me l'a appris : sur
+     * une séance 01:00-23:00, le premier palier atteint déjà 00:00-23:59, et le
+     * dernier bloc la reproposait à l'identique. Deux lignes identiques dans
+     * une liste de « réglages voisins » n'apprennent rien et font douter du
+     * reste.
+     */
+    let journeeOuverte = false;
+    for (const heures of [1, 2, 4]) {
+      const d = reculerDe(debut, heures);
+      const f = avancerDe(fin, heures);
+      if (d === debut && f === fin) continue;
+      out.push({
+        levier: "seance",
+        avant: `${debut}-${fin}`,
+        apres: `${d}-${f}`,
+        plan: { ...plan, contexte: { ...plan.contexte, debut: d, fin: f } },
+      });
+      if (d === "00:00" && f === "23:59") {
+        journeeOuverte = true;
+        break;
+      }
+    }
+    if (!journeeOuverte) {
+      out.push({
+        levier: "seance",
+        avant: `${debut}-${fin}`,
+        apres: "00:00-23:59",
+        plan: { ...plan, contexte: { ...plan.contexte, debut: "00:00", fin: "23:59" } },
+      });
+    }
   }
 
   return out;
