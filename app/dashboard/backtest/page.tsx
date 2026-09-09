@@ -2255,6 +2255,33 @@ export default function BacktestPage() {
         </StaggerItem>
         ) : null}
 
+        {/* ── Ce que tu as déjà testé sur cette stratégie ──────────────────
+            ⚠️⚠️ L'ARCHIVE ÉTAIT INATTEIGNABLE SANS RELANCER UN TEST. Elle vivait
+            sur « Ton plan », étape verrouillée tant qu'aucun rejeu n'a tourné :
+            revenir trois jours plus tard pour consulter ce qu'on avait déjà
+            mesuré obligeait à tout relancer d'abord. Or c'est exactement le
+            moment où on ne veut PAS relancer : on veut voir, et reprendre.
+
+            ⚠️ ET SA PLACE EST ICI, à l'étape où l'on choisit sa stratégie :
+            « qu'est-ce que j'ai déjà essayé » est une question qu'on se pose
+            AVANT de tester, et « reprendre ce plan » est un point de départ,
+            pas une conclusion. */}
+        {strategieId && etapeCourante === "strategie" ? (
+          <StaggerItem>
+            <Versions
+              versions={versions}
+              erreur={versionsErreur}
+              chargement={versionsChargement}
+              selection={comparees}
+              onSelectionner={basculerComparaison}
+              ecartsAvecLaFiche={ecartsDUneVersion}
+              onRecharger={reprendreVersion}
+              onSupprimer={supprimerUneVersion}
+              t={tr}
+            />
+          </StaggerItem>
+        ) : null}
+
         {/* ── 3. La méthode déclarée, et ce qu'elle exige pour exister ────
             ⚠️⚠️ AVANT TOUT CHIFFRE, ET SANS EN PRODUIRE UN SEUL. Un trader
             d'orderflow sur un CFD peut trouver ici toute son explication sans
@@ -2858,22 +2885,6 @@ export default function BacktestPage() {
             retrouver ce qu'il avait mesuré avant d'avoir à relancer quoi que ce
             soit : une archive qui exige de refaire le travail pour être lue ne
             sert à rien. */}
-        {/* les versions archivees */}
-        {strategieId && etapeCourante === "plan" ? (
-          <StaggerItem>
-            <Versions
-              versions={versions}
-              erreur={versionsErreur}
-              chargement={versionsChargement}
-              selection={comparees}
-              onSelectionner={basculerComparaison}
-              ecartsAvecLaFiche={ecartsDUneVersion}
-              onRecharger={reprendreVersion}
-              onSupprimer={supprimerUneVersion}
-              t={tr}
-            />
-          </StaggerItem>
-        ) : null}
 
         {/* ── 7. Contrôler ailleurs, puis enregistrer ──────────────────────
             ⚠️ EN DERNIER, ET APRÈS LE VERDICT. C'est le seul endroit de la page
