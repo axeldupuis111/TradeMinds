@@ -765,6 +765,35 @@ export default function BacktestPage() {
    * 2. **Des options nommées.** Six arguments positionnels dont quatre
    *    `undefined` sur chaque appel étaient le symptôme de la même dérive.
    */
+  /**
+   * AMENER LE TRADER DEVANT UN BLOC : L'ÉTAPE, LA SECTION, PUIS LE DÉFILEMENT.
+   *
+   * ⚠️⚠️ CE MOUVEMENT A CASSÉ TROIS FOIS, TOUJOURS DE LA MÊME FAÇON VUE DE
+   * L'ÉCRAN : on clique, rien ne se passe, et aucune erreur nulle part.
+   *   1. l'identifiant posé ne correspondait pas à celui qu'on cherchait ;
+   *   2. la section était repliée, on défilait vers un titre seul ;
+   *   3. l'étape entière n'était pas rendue, donc l'élément n'existait pas.
+   * Les trois se ressemblent parce que `getElementById` rend `null` en
+   * silence : il n'y a rien à voir dans la console, jamais.
+   *
+   * ⚠️ ON RÉESSAIE QUELQUES IMAGES, PLUTÔT QU'UNE SEULE. Changer d'étape
+   * remonte un pan entier de la page : exiger qu'il soit peint à l'image
+   * suivante, c'est parier sur l'ordonnancement de React. Le pari coûte un
+   * bouton mort, et le défaut ne se voit qu'à l'écran.
+   */
+  const remonterVers = useCallback((ancre: string) => {
+    const etapeDeLAncre = ETAPE_PAR_ANCRE[ancre];
+    if (etapeDeLAncre) setEtapeCourante(etapeDeLAncre);
+    setSection(ancre);
+    let restant = 20;
+    const remonter = () => {
+      const cible = document.getElementById(ancre);
+      if (cible) return cible.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (restant-- > 0) requestAnimationFrame(remonter);
+    };
+    requestAnimationFrame(remonter);
+  }, []);
+
   const lancer = useCallback((options: {
     propositions?: boolean;
     fenetre?: { de: string; a: string };
@@ -784,6 +813,21 @@ export default function BacktestPage() {
       controle: avecControle,
     } = options;
     if (etat.phase === "telechargement" || etat.phase === "calcul") return;
+    /**
+     * ⚠️⚠️ UN REJEU QUI DÉMARRE AILLEURS QUE SOUS LES YEUX DU TRADER EST MUET.
+     * Vu à l'écran : depuis « la prochaine chose à faire », j'appuie sur
+     * « Lancer le test » alors que je suis à l'étape « Tes règles ». Le calcul
+     * part, dure dix secondes, et RIEN ne bouge : la barre d'avancement, le
+     * message d'erreur et le résultat vivent tous les trois dans la carte
+     * « Lancer », qui ne s'affiche qu'à l'étape « Le test ». Un téléchargement
+     * qui échoue depuis ce chemin ne dit donc jamais qu'il a échoué.
+     *
+     * ⚠️ LA GARANTIE SE POSE ICI ET PAS DANS LES BOUTONS. Sept chemins
+     * déclenchent un rejeu (le bouton, l'analyse à fond, l'élargissement, le
+     * raccourcissement…) : la tenir dans chaque appelant, c'est l'oublier au
+     * huitième.
+     */
+    remonterVers("bt-lancer");
     workerRef.current?.terminate();
 
     // ⚠️ LA PÉRIODE PASSE EN ARGUMENT, elle n'est pas relue dans l'état. Le
@@ -877,7 +921,7 @@ export default function BacktestPage() {
       })(),
     };
     w.postMessage(demande);
-  }, [etat.phase, strategieId, strategies, de, a, code, plan]);
+  }, [etat.phase, strategieId, strategies, de, a, code, plan, remonterVers]);
 
   /**
    * Poser un plan venu d'un BOUTON, en retenant au nom de quoi.
@@ -1993,6 +2037,13 @@ export default function BacktestPage() {
    * vers une ancre ferait descendre le trader jusqu'à un bouton qu'on aurait pu
    * cliquer pour lui. Les autres pointent un bloc à lire, et là c'est à lui de
    * décider.
+   *
+   * ⚠️⚠️ « L'ACTION ELLE-MÊME » NE VEUT PAS DIRE « SANS RIEN MONTRER », et je
+   * l'avais lu comme ça. Ces deux-là partaient sans déplacer personne, et le
+   * trader restait devant l'écran qu'il lisait pendant que l'avancement,
+   * l'erreur et le résultat s'écrivaient sur un autre. C'est `lancer` qui amène
+   * maintenant le trader devant sa propre carte, pour les sept chemins à la
+   * fois.
    */
   const agirSurLEtape = useCallback(
     (ancre: string | null, code: string) => {
@@ -2013,35 +2064,9 @@ export default function BacktestPage() {
         return periodePlusLarge.elargir();
       }
       if (!ancre) return;
-      /**
-       * TROIS CHOSES, DANS CET ORDRE : L'ÉTAPE, LA SECTION, PUIS LE DÉFILEMENT.
-       *
-       * ⚠️⚠️ CE BOUTON A CASSÉ TROIS FOIS, TOUJOURS DE LA MÊME FAÇON VUE DE
-       * L'ÉCRAN : on clique, rien ne se passe, et aucune erreur nulle part.
-       *   1. l'identifiant posé ne correspondait pas à celui qu'on cherchait ;
-       *   2. la section était repliée, on défilait vers un titre seul ;
-       *   3. l'étape entière n'était pas rendue, donc l'élément n'existait pas.
-       * Les trois se ressemblent parce que `getElementById` rend `null` en
-       * silence : il n'y a rien à voir dans la console, jamais.
-       */
-      const etapeDeLAncre = ETAPE_PAR_ANCRE[ancre];
-      if (etapeDeLAncre) setEtapeCourante(etapeDeLAncre);
-      setSection(ancre);
-      /**
-       * ⚠️ ON RÉESSAIE QUELQUES IMAGES, PLUTÔT QU'UNE SEULE. Changer d'étape
-       * remonte un pan entier de la page : exiger qu'il soit peint à l'image
-       * suivante, c'est parier sur l'ordonnancement de React. Le pari coûte un
-       * bouton mort, et le défaut ne se voit qu'à l'écran.
-       */
-      let restant = 20;
-      const remonter = () => {
-        const cible = document.getElementById(ancre);
-        if (cible) return cible.scrollIntoView({ behavior: "smooth", block: "start" });
-        if (restant-- > 0) requestAnimationFrame(remonter);
-      };
-      requestAnimationFrame(remonter);
+      remonterVers(ancre);
     },
-    [lancer, analyserAFond, periodePlusLarge],
+    [lancer, analyserAFond, periodePlusLarge, remonterVers],
   );
 
   /**
@@ -2544,7 +2569,7 @@ export default function BacktestPage() {
             bouton « Lancer » présent à l'étape « Ta stratégie » invite à sauter
             exactement ce que le parcours existe pour ordonner. */}
         {etapeCourante === "test" ? (
-        <StaggerItem>
+        <StaggerItem id="bt-lancer">
           <Card>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">

@@ -6,6 +6,7 @@ import en from "../i18n/en";
 import es from "../i18n/es";
 import fr from "../i18n/fr";
 import type { Constat } from "./condamnation";
+import { ETAPE_PAR_ANCRE } from "./etapes";
 import type { ConstatProfil } from "./profil";
 import { prochaineEtape, type CodeEtape, type EtatDeLaPage } from "./prochaine-etape";
 import type { Synthese } from "./synthese";
@@ -581,5 +582,63 @@ describe("la remise à zéro n'oublie aucun état", () => {
   it("n'exempte que des états qui existent encore", () => {
     const fantomes = Object.keys(SURVIT).filter((e) => !etats.includes(e));
     expect(fantomes, "exemptions mortes : " + fantomes.join(", ")).toEqual([]);
+  });
+});
+
+/**
+ * UN REJEU NE DÉMARRE JAMAIS HORS DU CHAMP DE VISION.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN : depuis « la prochaine chose à faire », j'appuie sur
+ * « Lancer le test » alors que je suis à l'étape « Tes règles ». Le calcul
+ * part, dure dix secondes, et RIEN ne bouge. La barre d'avancement, le message
+ * d'erreur et le résultat vivent tous les trois dans la carte « Lancer », qui
+ * ne s'affiche qu'à l'étape « Le test ». Un téléchargement qui échoue depuis ce
+ * chemin ne dit donc jamais qu'il a échoué : c'est un défaut MUET, la seule
+ * catégorie que ni les tests ni la console ne peuvent trouver.
+ *
+ * ⚠️ LA GARANTIE SE POSE DANS `lancer`, PAS DANS LES BOUTONS. Sept chemins
+ * déclenchent un rejeu ; la tenir dans chaque appelant, c'est l'oublier au
+ * huitième. Et elle ne vaut que si la carte visée porte bien ce que le rejeu a
+ * à dire : ce test lit donc AUSSI le contenu du bloc, pas seulement son nom.
+ */
+describe("un rejeu se voit toujours", () => {
+  const page = readFileSync(join(process.cwd(), "app/dashboard/backtest/page.tsx"), "utf8");
+
+  /** Le corps d'un `const nom = useCallback(...)`, par comptage d'accolades. */
+  function corps(nom: string): string {
+    const debut = page.indexOf(`const ${nom} = useCallback(`);
+    expect(debut, `${nom} introuvable`).toBeGreaterThan(0);
+    const ouvrante = page.indexOf("{", page.indexOf("=>", debut));
+    let profondeur = 0;
+    for (let i = ouvrante; i < page.length; i++) {
+      if (page[i] === "{") profondeur++;
+      else if (page[i] === "}" && --profondeur === 0) return page.slice(ouvrante, i + 1);
+    }
+    throw new Error(`fin de ${nom} introuvable`);
+  }
+
+  it("le rejeu amène le trader devant la carte du lancement", () => {
+    expect(corps("lancer")).toContain('remonterVers("bt-lancer")');
+  });
+
+  it("et cette ancre désigne l'étape où cette carte s'affiche", () => {
+    expect(ETAPE_PAR_ANCRE["bt-lancer"]).toBe("test");
+  });
+
+  /**
+   * ⚠️ CE QUE LE REJEU A À DIRE EST DANS CE BLOC-LÀ. Déplacer la barre ou le
+   * message d'erreur ailleurs referait le trou, et le nom de l'ancre, lui,
+   * continuerait de passer.
+   */
+  it("l'avancement et l'erreur vivent dans ce bloc", () => {
+    const debut = page.indexOf('<StaggerItem id="bt-lancer">');
+    expect(debut, "la carte du lancement n'a pas d'ancre").toBeGreaterThan(0);
+    const fin = page.indexOf("</StaggerItem>", debut);
+    expect(fin).toBeGreaterThan(debut);
+    const carte = page.slice(debut, fin);
+    expect(carte, "la barre d'avancement a quitté la carte").toContain(
+      'etat.phase === "telechargement"',
+    );
+    expect(carte, "le message d'erreur a quitté la carte").toContain('etat.phase === "erreur"');
   });
 });
