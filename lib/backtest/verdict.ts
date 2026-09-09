@@ -159,6 +159,15 @@ export type CauseDuVide =
   | "aucun_signal"
   /** Des signaux, mais tous refuses faute d'un stop assez large. */
   | "tout_ecarte"
+  /**
+   * Des signaux, des ordres poses, et le prix n'est jamais revenu les chercher.
+   *
+   * ⚠️⚠️ CETTE CAUSE ETAIT MESUREE ET IGNOREE. `limitesExpirees` existe dans
+   * l'audit depuis toujours ; `causeDuVide` ne l'a jamais regardee, et le
+   * diagnostic tombait alors sur « tous les signaux ont ete ecartes », qui
+   * envoie regler le STOP quand le probleme est l'ordre en attente.
+   */
+  | "limites_jamais_touchees"
   /** Des trades, juste pas assez pour conclure. */
   | "trop_peu";
 
@@ -297,7 +306,27 @@ function causeDuVide(r: ResultatBacktest): CauseDuVide {
     return "aucune_droite_confirmee";
   }
   if (a.signaux + a.refusesRisqueTropPetit === 0) return "aucun_signal";
-  if (r.trades.length === 0 && a.refusesRisqueTropPetit > 0) return "tout_ecarte";
+  /**
+   * ⚠️⚠️ VU À L'ÉCRAN, ET C'ÉTAIT UN MENSONGE SUR LA CAUSE : « TOUS les signaux
+   * ont été écartés parce que leur stop tombait plus près que ce que coûte un
+   * aller-retour », deux lignes au-dessus de « 3350 signaux, 685 écartés ».
+   * 2 665 signaux avaient disparu pour une tout autre raison, et le trader
+   * était envoyé régler son stop.
+   *
+   * La condition disait « au moins UN écarté » et affirmait « tous ». On exige
+   * maintenant que ce soit vrai : tous, c'est tous.
+   */
+  if (r.trades.length === 0) {
+    if (a.refusesRisqueTropPetit >= a.signaux) return "tout_ecarte";
+    /**
+     * ⚠️ L'ORDRE EN ATTENTE QUI N'EST JAMAIS TOUCHÉ. C'est le mode d'échec
+     * propre aux buy/sell limit, et il n'avait aucun diagnostic : le prix
+     * franchit le niveau, l'ordre est posé derrière lui, et il ne revient
+     * jamais. Régler le stop n'y changerait rien ; c'est le délai de validité,
+     * ou l'entrée elle-même, qu'il faut revoir.
+     */
+    if (a.limitesExpirees > 0) return "limites_jamais_touchees";
+  }
   return "trop_peu";
 }
 

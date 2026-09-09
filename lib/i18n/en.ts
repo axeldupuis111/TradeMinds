@@ -3445,6 +3445,7 @@ const dict: Record<string, string> = {
   "bt_cause_aucune_droite_confirmee": "Lines were drawn, but none was ever touched enough times. This is almost always the touch tolerance: at zero, a low must land exactly on the line, which never happens.",
   "bt_cause_aucun_signal": "The level existed but was never crossed under the required conditions. Look at the « signal » block, your time window, and the extra filters.",
   "bt_cause_tout_ecarte": "Every signal was discarded because its stop fell closer than a round trip costs. Your stop is too tight for this instrument at this timeframe.",
+  "bt_cause_limites_jamais_touchees": "Your pending orders were placed, and price never came back for them: {n} expired untouched. Neither your signal nor your stop is the problem, it is waiting for price to come back. Try entering at market, or give the order a longer life.",
   "bt_cause_trop_peu": "Your method does trigger, just not often enough over this period. Widen the period before touching any setting: it is the only change that invents nothing.",
   "bt_diagnostic_chiffres": "Detail: {niveau} bars out of {bougies} with a readable level, {droites} {droites|line|lines} drawn of which {confirmees} confirmed, {signaux} {signaux|signal|signals}, {ecartes} discarded.",
   "bt_cause_droites_trop_rares": "Lines were drawn, but far too few for any to reach three touches. Your pivot width is too large: it counts in bars of your timeframe, not in minutes. Three to ten bars each side is enough.",

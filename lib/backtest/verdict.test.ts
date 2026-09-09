@@ -242,3 +242,57 @@ describe("diagnostic d'un résultat vide", () => {
     expect(lireBacktest(resultat(139, 269), SANS_COUT).cause).toBeUndefined();
   });
 });
+
+/**
+ * ⚠️⚠️ VU À L'ÉCRAN, ET C'ÉTAIT UN MENSONGE SUR LA CAUSE : « TOUS les signaux
+ * ont été écartés parce que leur stop tombait plus près que ce que coûte un
+ * aller-retour », deux lignes au-dessus de « 3350 signaux, 685 écartés ».
+ * 2 665 signaux avaient disparu pour une tout autre raison, et le trader était
+ * envoyé régler son stop, qui n'y était pour rien.
+ *
+ * La condition disait « au moins UN écarté » et la phrase affirmait « tous ».
+ */
+describe("la cause d'un rejeu vide ne s'invente pas", () => {
+  /** Le meme fabricant que le bloc voisin : un audit vide, complete au besoin. */
+  function vide(audit: Partial<ResultatBacktest["audit"]>): ResultatBacktest {
+    const r = resultat(0, 0);
+    r.audit = { ...r.audit, bougies: 10_000, signaux: 0, ...audit };
+    return r;
+  }
+
+  it("n'affirme « tous écartés » que si ce sont vraiment tous", () => {
+    const partiel = vide({ barresAvecNiveau: 9_000, signaux: 3_350, refusesRisqueTropPetit: 685 });
+    expect(lireBacktest(partiel, SANS_COUT).cause).not.toBe("tout_ecarte");
+  });
+
+  /**
+   * ⚠️ ET LA VRAIE CAUSE ÉTAIT MESURÉE DEPUIS TOUJOURS. `limitesExpirees` vit
+   * dans l'audit ; personne ne la lisait. C'est le mode d'échec propre aux
+   * buy/sell limit : le prix franchit le niveau, l'ordre est posé derrière lui,
+   * et il ne revient jamais. Régler le stop n'y changerait rien.
+   */
+  it("nomme les ordres en attente jamais touchés", () => {
+    const r = vide({
+      barresAvecNiveau: 9_000,
+      signaux: 3_350,
+      refusesRisqueTropPetit: 685,
+      limitesExpirees: 2_665,
+    });
+    expect(lireBacktest(r, SANS_COUT).cause).toBe("limites_jamais_touchees");
+  });
+
+  it("garde « tous écartés » quand aucun signal n'a survécu", () => {
+    const r = vide({ barresAvecNiveau: 9_000, signaux: 120, refusesRisqueTropPetit: 120 });
+    expect(lireBacktest(r, SANS_COUT).cause).toBe("tout_ecarte");
+  });
+
+  /**
+   * ⚠️ Un ordre expiré ne prend pas le pas sur un vrai résultat : avec des
+   * trades, la cause d'un vide ne se pose pas.
+   */
+  it("ne parle pas des limites quand des trades existent", () => {
+    const r = resultat(20, 30);
+    r.audit = { ...r.audit, barresAvecNiveau: 9_000, signaux: 60, limitesExpirees: 400 };
+    expect(lireBacktest(r, SANS_COUT).cause).toBe("trop_peu");
+  });
+});

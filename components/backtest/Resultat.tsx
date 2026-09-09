@@ -146,7 +146,16 @@ export function Resultat({
                 laisse le trader sans prise : il ne sait pas s'il doit changer
                 un réglage ou renoncer à sa méthode. */}
             <p className="mt-2 text-xs font-medium text-warning">
-              {t(`bt_cause_${lecture.cause ?? "trop_peu"}`)}
+              {/* ⚠️ LES VALEURS PARTENT AVEC, MEME SI UNE SEULE CAUSE S EN SERT.
+                  La cle est construite (`bt_cause_${cause}`), donc le garde qui
+                  verifie que chaque trou est bouche NE LA VOIT PAS : il ne lit que
+                  les cles ecrites en toutes lettres. Un `{n}` oublie ici
+                  s afficherait tel quel, comme « {refuses} » l a fait ailleurs. */}
+              {t(`bt_cause_${lecture.cause ?? "trop_peu"}`, {
+                n: audit.limitesExpirees,
+                signaux: audit.signaux,
+                ecartes: audit.refusesRisqueTropPetit,
+              })}
             </p>
 
             {/* ⚠️⚠️ L'ÉCRAN NOMMAIT LA BONNE ACTION ET NE L'OFFRAIT PAS. Le
