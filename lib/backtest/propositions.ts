@@ -65,6 +65,21 @@ export interface Proposition {
   trades: number;
   /** Pire recul du compte, en % de son sommet. */
   reculComptePct: number;
+  /**
+   * Ce recul a-t-il pu être MESURÉ ?
+   *
+   * ⚠️⚠️ SANS RISQUE PAR TRADE, IL VAUT ZÉRO, ET ZÉRO SE LIT COMME UNE MESURE.
+   * Vu à l'écran : « pire recul : -0.0 % » sur chaque proposition, parce que
+   * le risque par trade n'était pas renseigné et que la conversion des R en
+   * pourcentage du compte le multiplie par zéro. Un trader lit « ce réglage ne
+   * fait pas reculer mon compte », alors que la seule chose vraie est qu'on ne
+   * l'a pas calculé.
+   *
+   * ⚠️ ET LE MÊME ZÉRO ÉTEINT TOUT UN OBJECTIF EN SILENCE : « protéger le
+   * compte » compare des reculs, et aucun ne peut être plus petit que zéro. Le
+   * groupe entier disparaît sans que rien ne dise pourquoi.
+   */
+  reculMesurable: boolean;
   /** Le compte est-il vidé en route ? */
   ruine: boolean;
   /**
@@ -84,13 +99,45 @@ export interface Proposition {
   sansRejeu: boolean;
 }
 
+/**
+ * CE QU'ON ÉCRIT DANS LA COLONNE « PIRE RECUL ».
+ *
+ * ⚠️⚠️ « -0.0 % » S'AFFICHAIT SUR CHAQUE LIGNE, et deux fautes s'y empilaient.
+ * Le signe moins était collé devant le nombre quel qu'il soit ; et le nombre
+ * valait zéro parce que le risque par trade n'était pas renseigné. La seconde
+ * est la grave : un zéro NON CALCULÉ se lit exactement comme un zéro mesuré, et
+ * celui-là dit au trader que le réglage ne fait pas reculer son compte.
+ *
+ * ⚠️ SORTI EN FONCTION PLUTÔT QU'ÉCRIT DANS LE JSX pour que le test décide sur
+ * la valeur rendue, et non sur la présence d'un bout de code dans un fichier.
+ * Mon premier garde cherchait « !p.reculMesurable » dans la source : le même
+ * texte apparaissait ailleurs dans le composant, et casser la ligne visée ne
+ * l'a pas fait broncher.
+ */
+export function libelleDuRecul(
+  p: Pick<Proposition, "ruine" | "reculMesurable" | "reculComptePct">,
+  t: (cle: string) => string,
+): string {
+  if (p.ruine) return t("bt_capital_vide");
+  if (!p.reculMesurable) return t("bt_prop_recul_inconnu");
+  const chiffre = p.reculComptePct.toFixed(1);
+  /**
+   * ⚠️ ON DÉCIDE SUR LE CHIFFRE ARRONDI, PAS SUR LA VALEUR BRUTE, et c'est le
+   * test qui me l'a appris : un recul de 0,04 % est bien positif, donc il
+   * recevait son signe, et l'arrondi le ramenait à « -0.0 % ». Un recul réel
+   * mais plus petit que le dernier chiffre affiché se dit en toutes lettres.
+   */
+  if (Number(chiffre) === 0) return p.reculComptePct > 0 ? t("bt_prop_recul_minime") : "0.0 %";
+  return `-${chiffre} %`;
+}
+
 /** Unités de temps, de la plus fine à la plus large. */
 const ECHELLE_UT = [1, 3, 5, 15, 30, 60, 240];
 
 /** Une variante candidate, avant qu'on la mesure. */
 type Candidate = Omit<
   Proposition,
-  "trades" | "reculComptePct" | "ruine" | "partDesCoutsPct"
+  "trades" | "reculComptePct" | "reculMesurable" | "ruine" | "partDesCoutsPct"
 >;
 
 function pointsDe(ticks: number, tailleTick: number): string {
@@ -298,6 +345,8 @@ function enProposition(candidate: Candidate, m: Mesure, couts: Couts, risquePct:
     ...candidate,
     trades: m.trades,
     reculComptePct: compte.reculPct,
+    // Voir `reculMesurable` : sans risque par trade, la conversion rend zéro.
+    reculMesurable: risquePct > 0,
     ruine: compte.ruine,
     partDesCoutsPct: m.risqueMoyenTicks > 0 ? (allerRetour / m.risqueMoyenTicks) * 100 : 0,
   };

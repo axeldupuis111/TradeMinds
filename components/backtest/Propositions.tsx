@@ -3,7 +3,12 @@
 import { Card } from "@/components/ui/Card";
 import { nomDuMarche } from "@/lib/backtest/phrases";
 import type { Instrument } from "@/lib/backtest/instruments";
-import { OBJECTIFS, type Objectif, type Proposition } from "@/lib/backtest/propositions";
+import {
+  libelleDuRecul,
+  OBJECTIFS,
+  type Objectif,
+  type Proposition,
+} from "@/lib/backtest/propositions";
 import { AlertTriangle, ShieldCheck, TrendingUp, Wand2 } from "lucide-react";
 
 /**
@@ -64,6 +69,18 @@ export function Propositions({
         {t("bt_prop_pas_de_gain")}
       </p>
 
+      {/* ⚠️⚠️ CE QUI MANQUE EST DIT, PAS TU. Sans risque par trade, la
+          conversion des R en pourcentage du compte multiplie tout par zéro :
+          chaque ligne affichait « pire recul : -0.0 % », et l'objectif
+          « protéger le compte » disparaissait entièrement, puisqu'aucun recul
+          ne peut être plus petit que zéro. Deux effets d'une seule case vide,
+          et rien ne les reliait à elle. */}
+      {propositions.some((p) => !p.reculMesurable) ? (
+        <p className="mt-3 text-xs leading-relaxed text-foreground-muted">
+          {t("bt_prop_sans_risque")}
+        </p>
+      ) : null}
+
       <div className="mt-4 space-y-5">
         {OBJECTIFS.map((objectif) => {
           const groupe = propositions.filter((p) => p.objectif === objectif);
@@ -112,7 +129,9 @@ export function Propositions({
                       <div>
                         <dt className="inline">{t("bt_prop_recul")} </dt>
                         <dd className="inline font-medium text-foreground">
-                          {p.ruine ? t("bt_capital_vide") : `-${p.reculComptePct.toFixed(1)} %`}
+                          {/* ⚠️ La règle est dans `libelleDuRecul` : voir son
+                              en-tête, « -0.0 % » s'affichait sur chaque ligne. */}
+                          {libelleDuRecul(p, t)}
                         </dd>
                       </div>
                       <div>

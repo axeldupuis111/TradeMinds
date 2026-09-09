@@ -1,6 +1,16 @@
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { chercherPropositions, OBJECTIFS, VARIANTES_MAX } from "./propositions";
+import de from "../i18n/de";
+import en from "../i18n/en";
+import es from "../i18n/es";
+import fr from "../i18n/fr";
+import {
+  chercherPropositions,
+  libelleDuRecul,
+  OBJECTIFS,
+  VARIANTES_MAX,
+} from "./propositions";
 import { lancerBacktest } from "./engine";
 import type { PlanExecution, SerieM1 } from "./types";
 
@@ -226,11 +236,97 @@ describe("la frontière : aucune recherche de performance", () => {
           "partDesCoutsPct",
           "plan",
           "reculComptePct",
+          "reculMesurable",
           "ruine",
           "sansRejeu",
           "trades",
         ].sort(),
       );
+    }
+  });
+});
+
+/**
+ * UN CHIFFRE QU'ON N'A PAS PU CALCULER NE S'AFFICHE PAS COMME UN ZÉRO MESURÉ.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN : « pire recul : -0.0 % » sur chacune des propositions. Le
+ * risque par trade n'était pas renseigné, et la conversion des R en pourcentage
+ * du compte les multiplie tous par zéro. Le trader lit « ce réglage ne fait pas
+ * reculer mon compte » ; la seule chose vraie est qu'on ne l'a pas calculé.
+ *
+ * ⚠️ ET LE MÊME ZÉRO ÉTEINT UN OBJECTIF ENTIER EN SILENCE : « protéger le
+ * compte » ne retient une variante que si son recul est plus petit que
+ * l'actuel, et rien n'est plus petit que zéro. Le groupe disparaissait sans que
+ * rien ne le relie à la case vide qui en était la cause.
+ */
+describe("ce qui n'a pas pu être mesuré le dit", () => {
+  const s = serie(marche());
+
+  it("marque le recul comme non mesurable quand le risque n'est pas renseigné", () => {
+    const props = chercherPropositions(s, plan({ gestion: { risqueParTradePct: 0 } }), COUTS);
+    expect(props.length).toBeGreaterThan(0);
+    for (const prop of props) {
+      expect(prop.reculMesurable, prop.levier).toBe(false);
+      // Le zéro est bien là : c'est justement pour ça qu'il ne doit pas s'afficher.
+      expect(prop.reculComptePct).toBe(0);
+    }
+  });
+
+  it("le mesure dès qu'un risque est posé", () => {
+    const props = chercherPropositions(s, plan({ gestion: { risqueParTradePct: 1 } }), COUTS);
+    expect(props.length).toBeGreaterThan(0);
+    for (const prop of props) expect(prop.reculMesurable, prop.levier).toBe(true);
+  });
+
+  /**
+   * ⚠️⚠️ ET C'EST LA VALEUR RENDUE QU'ON JUGE, PAS LA PRÉSENCE D'UN BOUT DE
+   * CODE. Mon premier garde cherchait « !p.reculMesurable » dans la source du
+   * composant : j'ai cassé exprès la ligne visée, et il n'a pas bronché, parce
+   * que le même texte apparaissait ailleurs dans le fichier. Un garde qui
+   * survit à la faute qu'il surveille est pire qu'aucun garde.
+   */
+  it("écrit ce qu'il y a à écrire, pour les quatre cas", () => {
+    const t = (cle: string) => cle;
+    const base = { ruine: false, reculMesurable: true, reculComptePct: 12.34 };
+    expect(libelleDuRecul(base, t)).toBe("-12.3 %");
+    expect(libelleDuRecul({ ...base, reculComptePct: 0 }, t)).toBe("0.0 %");
+    expect(libelleDuRecul({ ...base, reculMesurable: false, reculComptePct: 0 }, t)).toBe(
+      "bt_prop_recul_inconnu",
+    );
+    expect(libelleDuRecul({ ...base, ruine: true }, t)).toBe("bt_capital_vide");
+  });
+
+  /** ⚠️ Aucun cas ne colle un moins devant un zéro. */
+  it("ne colle jamais un moins devant un zéro", () => {
+    const t = (cle: string) => cle;
+    for (const reculComptePct of [0, 0.04, 1, 99.9]) {
+      for (const reculMesurable of [true, false]) {
+        const rendu = libelleDuRecul({ ruine: false, reculMesurable, reculComptePct }, t);
+        expect(rendu, `${reculComptePct} / ${reculMesurable}`).not.toMatch(/^-0(\.0+)? %$/);
+      }
+    }
+  });
+
+  /**
+   * ⚠️ ET L'ÉCRAN S'EN SERT. Une donnée juste qu'aucun rendu ne lit ne corrige
+   * rien : c'est exactement ce qui est arrivé à `limitesExpirees`, mesuré dès
+   * le premier jour et lu par personne pendant des semaines.
+   */
+  it("la carte passe par cette règle, et explique la case vide", () => {
+    const source = readFileSync(
+      join(process.cwd(), "components/backtest/Propositions.tsx"),
+      "utf8",
+    );
+    expect(source).toContain("libelleDuRecul(p, t)");
+    expect(source).toContain('t("bt_prop_sans_risque")');
+  });
+
+  it("les deux phrases existent dans les quatre langues", () => {
+    for (const [nom, dico] of Array.from(Object.entries({ fr, en, es, de }))) {
+      const d = dico as Record<string, string>;
+      expect(d.bt_prop_recul_inconnu, `bt_prop_recul_inconnu en ${nom}`).toBeTruthy();
+      expect(d.bt_prop_recul_minime, `bt_prop_recul_minime en ${nom}`).toBeTruthy();
+      expect(d.bt_prop_sans_risque, `bt_prop_sans_risque en ${nom}`).toBeTruthy();
     }
   });
 });
