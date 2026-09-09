@@ -2511,6 +2511,7 @@ export default function BacktestPage() {
             }
             onAssembler={assemblerLaConstruction}
             occupe={occupe}
+            lang={lang}
             t={tr}
           />
         </StaggerItem>

@@ -502,7 +502,12 @@ for (const question of QUESTIONS_DE_CONSTRUCTION) {
     for (const x of geste.exclut ?? []) ajouter("construction", x.cle);
   }
 }
-for (const c of ["titre", "intro", "construire", "manque"]) ajouter("construction", `bt_cons_${c}`);
+for (const c of ["titre", "intro", "construire"]) ajouter("construction", `bt_cons_${c}`);
+// La phrase enumere ce qui manque : on la rend avec une liste, comme l'ecran.
+ajouter("construction", "bt_cons_manque", { liste: "ce que tu traces" });
+for (const q of QUESTIONS_DE_CONSTRUCTION.filter((x) => x.obligatoire)) {
+  ajouter("construction", `bt_cons_manque_${q.code}`);
+}
 ajouter("construction", "bt_cons_socle", { n: 3 });
 ajouter("construction", "bt_modif_origine_construit", { quoi: "Construire ta stratégie" });
 for (const v of ["insuffisant", "negatif", "non_concluant", "positif"]) {

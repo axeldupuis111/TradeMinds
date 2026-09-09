@@ -324,6 +324,47 @@ describe("les gestes qui en exigent un autre", () => {
     expect(fantomes, "exigences vers le vide : " + fantomes.join(", ")).toEqual([]);
   });
 
+  /**
+   * ⚠️⚠️ CE QUI MANQUE DOIT SE NOMMER, ET L'ÉCRAN A DIT L'INVERSE DE LA VÉRITÉ.
+   * La phrase « il manque le cœur du signal : sans ce que tu traces ni ce qui
+   * te fait entrer » était figée dans la traduction. Le jour où le stop est
+   * devenu obligatoire, un trader qui avait répondu à ces deux questions-là
+   * lisait qu'il lui manquait précisément les deux choses qu'il venait de
+   * choisir, sous un bouton grisé : plus rien à corriger, plus rien à faire.
+   *
+   * ⚠️ LA RÈGLE N'EST PAS « CETTE PHRASE-LÀ EST JUSTE », c'est « toute question
+   * obligatoire sait se nommer ». Rendre une question obligatoire sans écrire
+   * son nom court refait l'impasse, dans les quatre langues.
+   */
+  it("nomme chaque question obligatoire dans les quatre langues", () => {
+    const obligatoires = QUESTIONS_DE_CONSTRUCTION.filter((q) => q.obligatoire);
+    expect(obligatoires.length).toBeGreaterThan(0);
+    for (const [nom, dico] of Array.from(Object.entries({ fr, en, es, de }))) {
+      const d = dico as Record<string, string>;
+      // La phrase énumère : sans le trou, elle ne dirait toujours rien.
+      expect(d.bt_cons_manque, `bt_cons_manque en ${nom}`).toContain("{liste}");
+      for (const q of obligatoires) {
+        expect(d[`bt_cons_manque_${q.code}`], `bt_cons_manque_${q.code} en ${nom}`).toBeTruthy();
+      }
+    }
+  });
+
+  /**
+   * ⚠️ ET LE NOM COURT N'EST PAS L'INTITULÉ DE LA QUESTION. « Sur ton graphique,
+   * tu traces… » inséré dans « il manque encore … » donne une phrase illisible.
+   * On exige donc qu'il soit court et sans points de suspension.
+   */
+  it("nomme les questions par un groupe de mots, pas par leur intitulé", () => {
+    for (const [nom, dico] of Array.from(Object.entries({ fr, en, es, de }))) {
+      const d = dico as Record<string, string>;
+      for (const q of QUESTIONS_DE_CONSTRUCTION.filter((x) => x.obligatoire)) {
+        const court = d[`bt_cons_manque_${q.code}`];
+        expect(court.length, `bt_cons_manque_${q.code} en ${nom}`).toBeLessThan(40);
+        expect(court, `bt_cons_manque_${q.code} en ${nom}`).not.toContain("…");
+      }
+    }
+  });
+
   /** ⚠️ Chaque exigence a sa phrase, dans les quatre langues. */
   it("explique chaque exigence dans les quatre langues", () => {
     const cles = QUESTIONS_DE_CONSTRUCTION.flatMap((q) => q.gestes)

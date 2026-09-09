@@ -38,6 +38,7 @@ export function Construire({
   onRepondre,
   onAssembler,
   occupe,
+  lang,
   t,
 }: {
   reponses: Partial<Record<CodeQuestion, string>>;
@@ -46,6 +47,8 @@ export function Construire({
   onRepondre: (question: CodeQuestion, geste: string) => void;
   onAssembler: () => void;
   occupe: boolean;
+  /** Pour enumerer ce qui manque avec le « et » de la langue lue. */
+  lang: string;
   t: (cle: string, valeurs?: Record<string, string | number>) => string;
 }) {
   const pret = resultat.manquantes.length === 0 && resultat.conflits.length === 0;
@@ -100,9 +103,23 @@ export function Construire({
         </p>
       ))}
 
+      {/* ⚠️⚠️ ON NOMME CE QUI MANQUE, ET ÇA A ÉTÉ FAUX À L'ÉCRAN. La phrase
+          était figée : « il manque le cœur du signal : sans ce que tu traces ni
+          ce qui te fait entrer ». Le jour où le stop est devenu obligatoire,
+          un trader qui avait répondu à ces deux questions-là lisait qu'il lui
+          manquait exactement les deux choses qu'il venait de choisir, devant
+          un bouton grisé. Une impasse : rien à corriger, rien à faire.
+
+          ⚠️ La liste se construit donc à partir des questions réellement sans
+          réponse, et un test lie chaque question obligatoire à son nom court
+          dans les quatre langues. */}
       {resultat.manquantes.length > 0 ? (
         <p className="mt-3 text-[11px] leading-relaxed text-foreground-muted">
-          {t("bt_cons_manque")}
+          {t("bt_cons_manque", {
+            liste: new Intl.ListFormat(lang, { style: "long", type: "conjunction" }).format(
+              resultat.manquantes.map((code) => t(`bt_cons_manque_${code}`)),
+            ),
+          })}
         </p>
       ) : null}
 
