@@ -469,7 +469,17 @@ export function Inspection({ apercus, total, instrument, verifie, onVerifie, t }
       ) : null}
 
       <dl className="mt-3 grid gap-x-6 gap-y-1 text-xs sm:grid-cols-2">
-        <Ligne label={t("bt_sens")} valeur={t(a.trade.sens === "long" ? "bt_sens_long" : "bt_sens_short")} />
+        {/* ⚠️⚠️ CE N'EST PAS UNE AUTORISATION, C'EST UN FAIT. Vu à l'écran :
+            « Sens autorisés : Achat seulement » sous un trade acheteur, alors
+            que le plan autorisait les deux. La fiche empruntait les libellés du
+            RÉGLAGE pour décrire un trade, et disait donc au trader que sa
+            méthode ne prenait que des achats. Sur la carte dont le seul rôle
+            est de lui faire confirmer « c'est bien ma méthode », c'est le pire
+            endroit possible pour une phrase fausse. */}
+        <Ligne
+          label={t("bt_apercu_sens")}
+          valeur={t(a.trade.sens === "long" ? "bt_apercu_sens_long" : "bt_apercu_sens_short")}
+        />
         <Ligne
           label={t("bt_date")}
           valeur={new Date(a.trade.entreeMs).toLocaleString(undefined, {

@@ -177,3 +177,41 @@ describe("les aperçus se présentent pour ce qu'ils sont", () => {
     expect(source).toContain('t("bt_inspection_aide_echantillon", { n: apercus.length, total })');
   });
 });
+
+/**
+ * LA FICHE D'UN TRADE DÉCRIT UN FAIT, JAMAIS UNE PERMISSION.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN : sous un trade acheteur, « Sens autorisés : Achat
+ * seulement », alors que le plan autorisait les deux sens. La fiche empruntait
+ * les libellés du RÉGLAGE pour décrire ce qui s'était passé, et disait donc au
+ * trader que sa méthode ne prenait que des achats. Sur la carte dont le seul
+ * rôle est de lui faire confirmer « c'est bien ma méthode », c'est le pire
+ * endroit possible pour une phrase fausse.
+ *
+ * ⚠️ LA RÈGLE N'EST PAS « PAS CETTE CLÉ-LÀ », c'est « aucun mot de permission
+ * dans cette carte ». Emprunter un autre libellé de réglage referait le même
+ * défaut avec un autre mot, et une liste d'exemples ne l'attraperait pas.
+ */
+describe("la fiche d'un aperçu ne décrit pas une permission", () => {
+  const source = readFileSync(join(process.cwd(), "components/backtest/Inspection.tsx"), "utf8");
+  const cles = Array.from(source.matchAll(/[^A-Za-z0-9_]t\(\s*(?:[^,;()]{0,80}\?\s*)?"([a-z0-9_]+)"(?:\s*:\s*"([a-z0-9_]+)")?/g))
+    .flatMap((m) => [m[1], m[2]])
+    .filter((c): c is string => Boolean(c));
+
+  it("lit bien les clés de la carte, sinon ce test ne prouve rien", () => {
+    expect(new Set(cles).size).toBeGreaterThan(10);
+  });
+
+  const PERMISSION = /autoris|seulement|uniquement|maximum|allowed|only/i;
+
+  it("n'emprunte aucun libellé qui parle de ce qui est permis", () => {
+    const empruntes = Array.from(new Set(cles)).filter((c) => {
+      const texte = (fr as Record<string, string>)[c];
+      return typeof texte === "string" && PERMISSION.test(texte);
+    });
+    expect(
+      empruntes,
+      "libellés de réglage réutilisés pour décrire un trade : " + empruntes.join(", "),
+    ).toEqual([]);
+  });
+});
