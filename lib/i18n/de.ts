@@ -3071,6 +3071,7 @@ const dict: Record<string, string> = {
   "bt_comp_absents": "fehlend: {n}",
   "bt_comp_placeholder": "Schreib deine Regel, in deinen Worten.",
   "bt_comp_vient_du_plan": "Diese Zeile wird aus deinem Plan oben gelesen: ändere die Einstellung, und sie folgt.",
+  "bt_comp_absent_du_plan": "Noch keine Einstellung deines Plans beantwortet diese Zeile. Sie wird hier nicht getippt: sie schreibt sich von selbst, sobald du den passenden Block im Editor gesetzt hast.",
   "bt_comp_enregistrer": "Meine Antworten in meinem Blatt speichern",
   "bt_comp_encours": "Wird gespeichert…",
   "bt_comp_fait": "Gespeichert.",

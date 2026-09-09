@@ -3071,6 +3071,7 @@ const dict: Record<string, string> = {
   "bt_comp_absents": "missing: {n}",
   "bt_comp_placeholder": "Write your rule, in your own words.",
   "bt_comp_vient_du_plan": "This line is read from your plan above: change the setting and it follows.",
+  "bt_comp_absent_du_plan": "No setting in your plan answers this line yet. It is not something to type here: it will write itself as soon as you set the matching block in the editor.",
   "bt_comp_enregistrer": "Save my answers to my sheet",
   "bt_comp_encours": "Saving…",
   "bt_comp_fait": "Saved.",

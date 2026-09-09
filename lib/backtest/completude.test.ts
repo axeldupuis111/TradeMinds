@@ -1,5 +1,8 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  cleSousLaLigne,
   CODES_QUESTIONS,
   evaluerCompletude,
   QUESTIONS_DECLARATIVES,
@@ -9,6 +12,9 @@ import { methodeParCode } from "./methodes";
 import { socleDePlan } from "./compilation";
 import { coutsPourInstrument, instrumentParCode } from "./instruments";
 import type { PlanExecution } from "./types";
+import de from "../i18n/de";
+import en from "../i18n/en";
+import es from "../i18n/es";
 import fr from "../i18n/fr";
 
 const NAS = instrumentParCode("NAS100")!;
@@ -231,5 +237,64 @@ describe("aucune note", () => {
     const r = evaluerCompletude({ plan: plan(), reponses: {} });
     expect(Object.keys(r).sort()).toEqual(["absents", "ecrits", "flous", "lignes"]);
     expect(r.ecrits + r.flous + r.absents).toBe(13);
+  });
+});
+
+/**
+ * CE QU'ON MET SOUS UNE LIGNE NE CONTREDIT PAS SON ÉTAT.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN, À DEUX LIGNES D'INTERVALLE :
+ *
+ *   « 5. Ton biais avant de chercher · ABSENT (nulle part) »
+ *   « Cette ligne se LIT DANS TON PLAN plus haut : change le réglage et elle
+ *     suivra. »
+ *
+ * Elle ne se lit nulle part, c'est exactement ce que dit son état. Le message
+ * ne regardait que « cette question n'a pas de champ à taper » et en déduisait
+ * « donc elle vient du plan » : faux précisément dans le seul cas où le trader
+ * a besoin qu'on lui parle, celui où rien ne la remplit.
+ *
+ * ⚠️ ET TROIS ÉCRANS ÉTAIENT D'ACCORD POUR L'Y ENVOYER : le document final
+ * compte cette ligne parmi celles « à écrire », son bouton amène ici, et ici on
+ * lui répond qu'il n'y a rien à faire.
+ */
+describe("ce qui s'affiche sous une ligne dépliée", () => {
+  it("propose un champ pour ce qui se déclare, et pour rien d'autre", () => {
+    for (const code of QUESTIONS_DECLARATIVES) {
+      expect(cleSousLaLigne({ code, etat: "absent" }), code).toBe("champ");
+      expect(cleSousLaLigne({ code, etat: "ecrit" }), code).toBe("champ");
+    }
+  });
+
+  /**
+   * ⚠️ LA RÈGLE TENUE ICI : jamais « ça vient de ton plan » sur une ligne dont
+   * l'état dit que rien ne la remplit. Le reste est du vocabulaire.
+   */
+  it("ne dit jamais qu'une ligne vient du plan quand elle n'en vient pas", () => {
+    const autres = CODES_QUESTIONS.filter((c) => !QUESTIONS_DECLARATIVES.includes(c));
+    expect(autres.length).toBeGreaterThan(0);
+    for (const code of autres) {
+      expect(cleSousLaLigne({ code, etat: "absent" }), code).toBe("bt_comp_absent_du_plan");
+      expect(cleSousLaLigne({ code, etat: "ecrit" }), code).toBe("bt_comp_vient_du_plan");
+      expect(cleSousLaLigne({ code, etat: "flou" }), code).toBe("bt_comp_vient_du_plan");
+    }
+  });
+
+  it("les deux phrases existent dans les quatre langues", () => {
+    for (const [nom, dico] of Array.from(Object.entries({ fr, en, es, de }))) {
+      const d = dico as Record<string, string>;
+      expect(d.bt_comp_absent_du_plan, `bt_comp_absent_du_plan en ${nom}`).toBeTruthy();
+      expect(d.bt_comp_vient_du_plan, `bt_comp_vient_du_plan en ${nom}`).toBeTruthy();
+    }
+  });
+
+  /** ⚠️ Et la carte passe par cette règle plutôt que par « a-t-elle un champ ». */
+  it("la carte choisit par cette règle", () => {
+    const source = readFileSync(
+      join(process.cwd(), "components/backtest/Completude.tsx"),
+      "utf8",
+    );
+    expect(source).toContain('cleSousLaLigne(l) === "champ"');
+    expect(source).toContain('cleSousLaLigne(l) === "bt_comp_absent_du_plan"');
   });
 });

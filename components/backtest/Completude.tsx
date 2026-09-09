@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
 import type { Completude as CompletudeResultat, EtatReponse } from "@/lib/backtest/completude";
-import { QUESTIONS_DECLARATIVES } from "@/lib/backtest/completude";
+import { cleSousLaLigne, QUESTIONS_DECLARATIVES } from "@/lib/backtest/completude";
 import { AlertCircle, Check, CircleDashed, ClipboardCheck, Loader2 } from "lucide-react";
 
 /**
@@ -152,7 +152,6 @@ export function Completude({
       <ol className="mt-3 space-y-1">
         {completude.lignes.map((l, i) => {
           const Icone = ICONE[l.etat];
-          const modifiable = QUESTIONS_DECLARATIVES.includes(l.code);
           const estOuverte = ouverte === l.code;
           return (
             <li key={l.code} className="rounded-lg border border-border">
@@ -191,7 +190,7 @@ export function Completude({
                     </p>
                   ) : null}
 
-                  {modifiable ? (
+                  {cleSousLaLigne(l) === "champ" ? (
                     <textarea
                       value={brouillon[l.code] ?? ""}
                       onChange={(e) =>
@@ -202,8 +201,13 @@ export function Completude({
                       className="mt-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground"
                     />
                   ) : (
+                    /* ⚠️ La règle est dans `cleSousLaLigne` : voir son en-tête,
+                       « cette ligne se lit dans ton plan » s'affichait sous une
+                       ligne dont l'état disait « nulle part ». */
                     <p className="mt-2 text-[11px] leading-relaxed text-foreground-muted">
-                      {t("bt_comp_vient_du_plan")}
+                      {cleSousLaLigne(l) === "bt_comp_absent_du_plan"
+                        ? t("bt_comp_absent_du_plan")
+                        : t("bt_comp_vient_du_plan")}
                     </p>
                   )}
                 </div>

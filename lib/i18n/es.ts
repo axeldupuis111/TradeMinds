@@ -3071,6 +3071,7 @@ const dict: Record<string, string> = {
   "bt_comp_absents": "ausentes: {n}",
   "bt_comp_placeholder": "Escribe tu regla, con tus palabras.",
   "bt_comp_vient_du_plan": "Esta línea se lee en tu plan de arriba: cambia el ajuste y se actualizará.",
+  "bt_comp_absent_du_plan": "Ningún ajuste de tu plan responde todavía a esta línea. No se escribe aquí: aparecerá sola en cuanto configures el bloque correspondiente en el editor.",
   "bt_comp_enregistrer": "Guardar mis respuestas en mi ficha",
   "bt_comp_encours": "Guardando…",
   "bt_comp_fait": "Guardado.",

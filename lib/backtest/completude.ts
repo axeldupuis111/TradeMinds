@@ -297,6 +297,30 @@ export const QUESTIONS_DECLARATIVES = [
   "marche",
 ];
 
+/**
+ * CE QU'ON MET SOUS UNE LIGNE DÉPLIÉE.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN, ET LA PHRASE CONTREDISAIT L'ÉTIQUETTE JUSTE AU-DESSUS :
+ *
+ *   « 5. Ton biais avant de chercher · ABSENT (nulle part) »
+ *   « Cette ligne se LIT DANS TON PLAN plus haut : change le réglage et elle
+ *     suivra. »
+ *
+ * Elle ne se lit nulle part, c'est précisément ce que dit son état. Le message
+ * ne regardait que « cette question n'a pas de champ à taper » et en déduisait
+ * « donc elle vient du plan », ce qui est faux exactement dans le cas où le
+ * trader a besoin qu'on lui parle : quand rien ne la remplit.
+ *
+ * ⚠️ ET C'EST LA LIGNE QUE « ALLER ÉCRIRE CES LIGNES » DÉSIGNE. Le document
+ * final compte cette ligne parmi celles à écrire, le bouton amène ici, et ici
+ * on lui répond qu'il n'y a rien à faire. Trois écrans d'accord entre eux pour
+ * envoyer quelqu'un dans le vide.
+ */
+export function cleSousLaLigne(l: { code: string; etat: EtatReponse }): string {
+  if (QUESTIONS_DECLARATIVES.includes(l.code)) return "champ";
+  return l.etat === "absent" ? "bt_comp_absent_du_plan" : "bt_comp_vient_du_plan";
+}
+
 export function evaluerCompletude(c: ContexteCompletude): Completude {
   const lignes: LigneCompletude[] = QUESTIONS.map((q) => {
     const { etat, source } = q.lire(c);
