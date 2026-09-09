@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { MIN_TRADES_CONCLUSION } from "./verdict";
 import de from "../i18n/de";
 import en from "../i18n/en";
 import es from "../i18n/es";
@@ -328,5 +329,51 @@ describe("ce qui n'a pas pu être mesuré le dit", () => {
       expect(d.bt_prop_recul_minime, `bt_prop_recul_minime en ${nom}`).toBeTruthy();
       expect(d.bt_prop_sans_risque, `bt_prop_sans_risque en ${nom}`).toBeTruthy();
     }
+  });
+});
+
+/**
+ * ON NE PROPOSE PAS DE RÉSOUDRE UN PROBLÈME QUE LE TRADER N'A PAS.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN : au-dessus d'un rejeu de 225 trades, le groupe « Avoir
+ * assez de trades pour conclure », et sa phrase « sous cent trades, aucun
+ * chiffre ne veut dire quoi que ce soit ». Il en avait deux cent vingt-cinq.
+ *
+ * ⚠️ ET CE N'EST PAS SEULEMENT INUTILE, C'EST COÛTEUX. Cet onglet compte les
+ * essais et fait monter la barre à franchir avec : l'inviter à rejouer pour un
+ * besoin déjà couvert lui prend un essai et lui rend zéro information.
+ */
+describe("les propositions ne répondent qu'aux besoins réels", () => {
+  /**
+   * ⚠️ UNE SÉRIE PLUS LONGUE QUE CELLE DES AUTRES TESTS, ET C'EST LE SUJET :
+   * le jeu d'essai commun rend 68 trades, c'est-à-dire toujours moins que le
+   * seuil de conclusion. Le distinguer ici est la seule façon d'exercer les
+   * deux côtés de la règle.
+   */
+  const long = marche().concat(marche(), marche());
+  const s = serie(long);
+
+  it("le jeu d'essai a bien assez de trades pour que ce test veuille dire quelque chose", () => {
+    expect(lancerBacktest(s, { ...plan(), couts: COUTS }).trades.length).toBeGreaterThanOrEqual(
+      MIN_TRADES_CONCLUSION,
+    );
+  });
+
+  it("ne cherche pas plus de trades quand il y en a déjà assez pour conclure", () => {
+    const props = chercherPropositions(s, plan(), COUTS);
+    expect(props.map((p) => p.objectif)).not.toContain("plus_de_trades");
+  });
+
+  /**
+   * ⚠️ ET LE GROUPE REVIENT DÈS QU'IL MANQUE DES TRADES : couper un objectif
+   * pour de bon serait un autre défaut, exactement symétrique.
+   */
+  it("le cherche encore quand il en manque", () => {
+    const court = serie(marche().slice(0, 1500));
+    const rejoues = lancerBacktest(court, { ...plan(), couts: COUTS }).trades.length;
+    expect(rejoues).toBeLessThan(MIN_TRADES_CONCLUSION);
+    expect(rejoues).toBeGreaterThan(0);
+    const props = chercherPropositions(court, plan(), COUTS);
+    expect(props.map((p) => p.objectif)).toContain("plus_de_trades");
   });
 });

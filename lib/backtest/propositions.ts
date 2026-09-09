@@ -1,6 +1,7 @@
 import { effetSurLeCompte } from "./capital";
 import { lancerBacktest } from "./engine";
 import type { Couts, PlanExecution, SerieM1 } from "./types";
+import { MIN_TRADES_CONCLUSION } from "./verdict";
 
 /**
  * LES PROPOSITIONS : « voici ce que tu pourrais changer, et ce que ça ferait ».
@@ -398,16 +399,31 @@ export function chercherPropositions(
   avancement?: (faits: number, total: number) => void,
 ): Proposition[] {
   const tailleTick = serie.tailleTick;
-  const candidates = [
-    ...pourPlusDeTrades(plan, tailleTick),
-    ...pourProtegerLeCompte(plan),
-    ...pourReduireLesCouts(plan, tailleTick),
-  ].slice(0, VARIANTES_MAX);
 
   // ⚠️ La reference sert aux variantes qui ne changent AUCUN trade. Rejouer le
   // plan pour un simple changement de taille de position serait du temps
   // depense a recalculer une suite de R identique au tick pres.
   const reference = mesurerPlan(serie, plan, couts);
+
+  /**
+   * ⚠️⚠️ ON NE CHERCHE PAS PLUS DE TRADES A QUELQU'UN QUI EN A ASSEZ. Vu a
+   * l'ecran : au-dessus d'un rejeu de 225 trades, le groupe « Avoir assez de
+   * trades pour conclure » et sa phrase « sous cent trades, aucun chiffre ne
+   * veut dire quoi que ce soit ». C'est un conseil pour un probleme qu'il n'a
+   * pas, et cet onglet le facture cher : chaque reglage essaye compte comme un
+   * essai de plus, et la barre a franchir monte avec.
+   *
+   * ⚠️ ET LES PLACES LIBEREES PROFITENT AUX AUTRES OBJECTIFS : `VARIANTES_MAX`
+   * bornait la liste avant tout filtrage, donc des variantes utiles etaient
+   * coupees par des variantes dont personne n'avait besoin.
+   */
+  const assezDeTrades = reference.trades >= MIN_TRADES_CONCLUSION;
+
+  const candidates = [
+    ...(assezDeTrades ? [] : pourPlusDeTrades(plan, tailleTick)),
+    ...pourProtegerLeCompte(plan),
+    ...pourReduireLesCouts(plan, tailleTick),
+  ].slice(0, VARIANTES_MAX);
 
   const actuel = enProposition(
     { objectif: "plus_de_trades", levier: "", bloc: "", avant: "", apres: "", plan, sansRejeu: true },
