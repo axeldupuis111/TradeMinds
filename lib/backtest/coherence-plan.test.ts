@@ -33,6 +33,7 @@ function audit(partiel: Partial<AuditExecution> = {}): AuditExecution {
     refusesParGestion: 10,
     limitesExpirees: 0,
     refusesRisqueTropPetit: 0,
+    refusesGeometrie: 0,
     journeesArretees: 5,
     barresAvecNiveau: 50_000,
     refusesParFiltre: {},

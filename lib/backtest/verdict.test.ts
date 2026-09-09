@@ -47,6 +47,7 @@ function resultat(gagnants: number, perdants: number, gainR = 2, over: Partial<T
       refusesParGestion: 0,
       limitesExpirees: 0,
       refusesRisqueTropPetit: 0,
+      refusesGeometrie: 0,
       journeesArretees: 0,
       barresAvecNiveau: 0,
       refusesParFiltre: {},

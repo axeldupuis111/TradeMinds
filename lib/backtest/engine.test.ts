@@ -801,3 +801,94 @@ describe("minutesDepuisHeure", () => {
     expect(minutesDepuisHeure("bonjour")).toBeNull();
   });
 });
+
+/**
+ * LES COMPTEURS DE L'AUDIT DOIVENT SE RECONCILIER.
+ *
+ * ── POURQUOI CE TEST EXISTE ─────────────────────────────────────────────────
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN, SUR UN PLAN À ORDRE EN ATTENTE : « 1183 signaux, 209
+ * écartés », « 924 ordres expirés sans être touchés », et ZÉRO trade. Or
+ * 1183 − 209 − 924 = 50 : cinquante signaux avaient disparu sans qu'aucun
+ * compteur ne les explique.
+ *
+ * ⚠️ UN SIGNAL QUI S'ÉVAPORE SANS COMPTEUR EST PIRE QU'UN BUG DE CALCUL : la
+ * page entière existe pour dire POURQUOI il n'y a rien, et chaque chemin de
+ * disparition non compté est une explication qu'elle ne peut pas donner.
+ *
+ * ⚠️ CE TEST NE FIXE AUCUN CHIFFRE. Il vérifie une identité comptable sur des
+ * séries variées : tout signal finit trade, écarté, expiré, refusé par un
+ * garde-fou, ou encore en cours à la dernière bougie. Aucune autre issue.
+ */
+describe("l'audit rend compte de chaque signal", () => {
+  const serieDeTest = (taille: number) => {
+    const bougies: Bougie[] = [];
+    let prix = 10_000;
+    let graine = 987654321;
+    const suivant = () => {
+      graine = (graine * 1103515245 + 12345) & 0x7fffffff;
+      return graine / 0x7fffffff;
+    };
+    for (let i = 0; i < taille; i++) {
+      const derive = Math.round((suivant() - 0.5) * 60);
+      const ouverture = prix;
+      const cloture = prix + derive;
+      bougies.push([
+        ouverture,
+        Math.max(ouverture, cloture) + Math.round(suivant() * 25),
+        Math.min(ouverture, cloture) - Math.round(suivant() * 25),
+        cloture,
+      ]);
+      prix = cloture;
+    }
+    return serie(bougies);
+  };
+
+  it("aucun signal ne disparaît sans compteur, avec un ordre en attente", () => {
+    const s = serieDeTest(6_000);
+    const p = plan({
+      niveau: { type: "liquidite_swing", pivots: 5 },
+      declencheur: { type: "retest_apres_cassure", delaiMaxBarres: 20, toleranceTicks: 20 },
+      entree: { type: "limite_au_niveau", valableNBarres: 20 },
+      stop: { type: "dernier_pivot", pivots: 5, bufferTicks: 5 },
+      objectif: { type: "multiple_r", r: 2 },
+    });
+    const r = lancerBacktest(s, p);
+    const a = r.audit;
+    const explique =
+      r.trades.length +
+      a.refusesRisqueTropPetit +
+      a.refusesGeometrie +
+      a.limitesExpirees +
+      a.refusesParGestion;
+    // Une position encore ouverte à la dernière bougie est la seule issue qui
+    // ne porte pas de compteur : elle vaut au plus UN signal.
+    expect(
+      a.signaux - explique,
+      `signaux ${a.signaux}, trades ${r.trades.length}, écartés ${a.refusesRisqueTropPetit}, ` +
+        `géométrie ${a.refusesGeometrie}, expirés ${a.limitesExpirees}, gestion ${a.refusesParGestion}`,
+    ).toBeLessThanOrEqual(1);
+    expect(a.signaux - explique).toBeGreaterThanOrEqual(0);
+  });
+
+  it("aucun signal ne disparaît sans compteur, à l'entrée au marché", () => {
+    const s = serieDeTest(6_000);
+    const p = plan({
+      niveau: { type: "extremes_n_bougies", n: 10 },
+      declencheur: { type: "cassure", mode: "cloture" },
+      entree: { type: "open_bougie_suivante" },
+      stop: { type: "structurel", bufferTicks: 5 },
+      objectif: { type: "multiple_r", r: 2 },
+    });
+    const r = lancerBacktest(s, p);
+    const a = r.audit;
+    const explique =
+      r.trades.length +
+      a.refusesRisqueTropPetit +
+      a.refusesGeometrie +
+      a.limitesExpirees +
+      a.refusesParGestion;
+    expect(a.signaux - explique).toBeLessThanOrEqual(1);
+    expect(a.signaux - explique).toBeGreaterThanOrEqual(0);
+  });
+});

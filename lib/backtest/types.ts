@@ -608,7 +608,15 @@ export interface AuditExecution {
   signaux: number;
   /** Signaux refusés par un plafond de gestion (trades/jour, pertes d'affilée). */
   refusesParGestion: number;
-  /** Ordres limites expirés sans être touchés. */
+  /**
+   * Ordres limites qui n'ont jamais été touchés : délai écoulé, ou journée
+   * terminée avant que le prix ne revienne.
+   *
+   * ⚠️ LES DEUX COMPTENT ICI, et c'est délibéré. Pour le trader, « mon ordre
+   * n'a jamais été rempli » est UN fait, pas deux ; séparer les deux causes
+   * donnerait deux nombres pour la même chose, ce que cet onglet passe son
+   * temps à corriger ailleurs.
+   */
   limitesExpirees: number;
   /**
    * Signaux refusés parce que le stop tombait plus près que ce que coûte un
@@ -623,6 +631,18 @@ export interface AuditExecution {
    * risque un dixième de centime pour en payer quarante-deux.
    */
   refusesRisqueTropPetit: number;
+  /**
+   * Signaux dont la GÉOMÉTRIE ne tenait pas : stop du mauvais côté de l'entrée
+   * ou collé dessus, objectif introuvable, objectif du mauvais côté.
+   *
+   * ⚠️⚠️ CES SIGNAUX S'ÉVAPORAIENT SANS COMPTEUR. Reproduit sur une série de
+   * test : 222 signaux, 46 trades, 172 ordres expirés, zéro écarté pour un stop
+   * trop serré — et QUATRE signaux que rien n'expliquait. `ouvrir()` rendait
+   * `false` par trois chemins muets, et la page entière existe pour dire
+   * POURQUOI il n'y a rien : chaque disparition non comptée est une explication
+   * qu'elle ne peut pas donner.
+   */
+  refusesGeometrie: number;
   /**
    * Journées où un garde-fou a coupé court (pertes d'affilée, perte du jour).
    *

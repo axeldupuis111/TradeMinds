@@ -480,6 +480,7 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
     refusesParGestion: 0,
     limitesExpirees: 0,
     refusesRisqueTropPetit: 0,
+    refusesGeometrie: 0,
     journeesArretees: 0,
     barresAvecNiveau: 0,
     refusesParFiltre: Object.fromEntries(plan.confirmations.map((c) => [c.type, 0])),
@@ -768,6 +769,19 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
     cassureBarre = -1;
     balayageSens = null;
     barreImpulsion = -1;
+    /**
+     * ⚠️⚠️ UN ORDRE EN ATTENTE NE SURVIT PAS À LA JOURNÉE, ET IL SE COMPTE.
+     * Cette ligne annulait en silence, et c'est là que passaient les signaux
+     * introuvables : 222 signaux, 46 trades, 172 expirés, et QUATRE que rien
+     * n'expliquait. Ce sont les ordres posés trop tard dans la séance, pour
+     * lesquels le prix n'est jamais revenu avant la clôture.
+     *
+     * ⚠️ LE COMPORTEMENT NE CHANGE PAS, SEULE LA MESURE : un ordre annulé à la
+     * fin du jour n'a jamais été touché, exactement comme un ordre dont le
+     * délai a expiré. C'est le même fait pour le trader, et c'est le seul
+     * chiffre dont la page a besoin pour le lui dire.
+     */
+    if (attente?.prixLimite != null) audit.limitesExpirees++;
     attente = null;
   }
 
@@ -926,7 +940,10 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
       // Sans balayage identifié, ce stop n'a pas de sens et on ne prend pas le
       // trade. Retomber en silence sur un autre stop changerait la stratégie
       // testée sans que personne ne le voie.
-      if (extremeBalayage == null) return false;
+      if (extremeBalayage == null) {
+        audit.refusesGeometrie++;
+        return false;
+      }
       stop =
         sens === "long"
           ? extremeBalayage - plan.stop.bufferTicks
@@ -938,25 +955,39 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
       const v = atr ? atr[barreSignal] : NaN;
       // Sans ATR (historique trop court), on refuse plutôt que d'inventer un
       // stop de repli : un R faux contamine tout le résultat sans se voir.
-      if (Number.isNaN(v)) return false;
+      if (Number.isNaN(v)) {
+        audit.refusesGeometrie++;
+        return false;
+      }
       const distance = Math.round((v * plan.stop.multipleDixiemes) / 10);
       stop = prixBrut - signe * distance;
     } else if (plan.stop.type === "dernier_pivot") {
       const pivot = sens === "long" ? dernierCreux : dernierSommet;
       // Sans pivot confirmé, ce stop n'existe pas. On refuse plutôt que de
       // retomber en silence sur un autre : ce serait tester autre chose.
-      if (pivot == null) return false;
+      if (pivot == null) {
+        audit.refusesGeometrie++;
+        return false;
+      }
       stop = sens === "long" ? pivot - plan.stop.bufferTicks : pivot + plan.stop.bufferTicks;
     } else {
       const oppose = sens === "long" ? basNiveau : hautNiveau;
-      if (oppose == null) return false;
+      if (oppose == null) {
+        audit.refusesGeometrie++;
+        return false;
+      }
       stop = sens === "long" ? oppose - plan.stop.bufferTicks : oppose + plan.stop.bufferTicks;
     }
 
     const risqueTicks = signe * (prixBrut - stop);
     // Un stop du mauvais côté de l'entrée, ou collé dessus, n'est pas un trade :
     // il rendrait un R infini et empoisonnerait toutes les moyennes.
-    if (risqueTicks <= 0) return false;
+    // ⚠️ Un stop du mauvais côté de l'entrée, ou collé dessus : il n'y a pas
+    // de trade à mesurer, et le dire coûte un compteur.
+    if (risqueTicks <= 0) {
+      audit.refusesGeometrie++;
+      return false;
+    }
 
     // ⚠️ ET UN STOP PLUS PROCHE QUE CE QUE COÛTE L'ALLER-RETOUR N'EN EST PAS UN
     // NON PLUS. Le résultat se mesure en multiples du risque : un stop à un
@@ -980,9 +1011,16 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
       objectif = prixBrut + signe * plan.objectif.r * risqueTicks;
     } else {
       const cible = sens === "long" ? hautNiveau : basNiveau;
-      if (cible == null) return false;
+      if (cible == null) {
+        audit.refusesGeometrie++;
+        return false;
+      }
       objectif = cible;
-      if (signe * (objectif - prixBrut) <= 0) return false;
+      // ⚠️ Un objectif derrière l'entrée : le trade partirait déjà gagné.
+      if (signe * (objectif - prixBrut) <= 0) {
+        audit.refusesGeometrie++;
+        return false;
+      }
     }
 
     position = {
@@ -1718,11 +1756,29 @@ export function lancerBacktest(serieBrute: SerieM1, plan: PlanExecution): Result
     // reconnaître sur le graphique d'inspection.
     const niveauSignal = (sens === "long" ? hautNiveau : basNiveau) ?? c[i];
 
+    /**
+     * ⚠️⚠️ LE SIGNAL EST DÉJÀ COMPTÉ ICI, ET L'ORDRE PEUT NE JAMAIS ÊTRE POSÉ.
+     * Deux chemins muets, reproduits sur une série de test : 222 signaux,
+     * 46 trades, 172 ordres expirés, et QUATRE signaux que rien n'expliquait.
+     *
+     *   1. un ordre en attente sans prix de ce côté du niveau : rien à poser ;
+     *   2. un signal sur la DERNIÈRE bougie : plus d'ouverture suivante.
+     *
+     * La page entière existe pour dire POURQUOI il n'y a rien : une disparition
+     * non comptée est une explication qu'elle ne peut pas donner.
+     */
     if (plan.entree.type === "open_bougie_suivante") {
-      if (i + 1 < n) attente = { sens, barreSignal: i, extremeBalayage, dernierSommet, dernierCreux, signalMs, niveauSignal, geo };
+      if (i + 1 < n) {
+        attente = { sens, barreSignal: i, extremeBalayage, dernierSommet, dernierCreux, signalMs, niveauSignal, geo };
+      } else {
+        audit.refusesGeometrie++;
+      }
     } else {
       const niveau = sens === "long" ? basNiveau : hautNiveau;
-      if (niveau == null) continue;
+      if (niveau == null) {
+        audit.refusesGeometrie++;
+        continue;
+      }
       attente = {
         sens,
         barreSignal: i,
