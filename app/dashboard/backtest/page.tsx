@@ -69,6 +69,7 @@ import {
   BLOC_I18N,
   DESCRIPTEURS,
   empreintePlan,
+  etatDesReglages,
   toutAnnuler,
   type Origine,
 } from "@/lib/backtest/modifications";
@@ -1133,6 +1134,12 @@ export default function BacktestPage() {
         ? comparerPlans(planFiche, plan, instrument, origines, tr("bt_modif_absent"), nommerUneValeur)
         : [],
     [planFiche, plan, instrument, origines, tr, nommerUneValeur],
+  );
+
+  /** D'où viennent les réglages affichés : voir `etatDesReglages`. */
+  const etatReglages = useMemo(
+    () => etatDesReglages(planFiche != null, modifications.length, origines),
+    [planFiche, modifications.length, origines],
   );
 
   /**
@@ -2388,10 +2395,24 @@ export default function BacktestPage() {
             ancre="bt-reglages"
             numero={2}
             titre={tr("bt_etape_plan")}
+            /**
+             * ⚠️ SIX APPELS LITTÉRAUX PLUTÔT QU'UNE CLÉ CALCULÉE : les scanners
+             * qui vérifient qu'une phrase existe dans les quatre langues et
+             * qu'elle reçoit ses valeurs ne lisent que des clés écrites en
+             * toutes lettres. Une clé construite passerait sous leur nez.
+             */
             etat={
-              modifications.length > 0
+              etatReglages === "modifies"
                 ? tr("bt_sec_reglages_modifies", { n: modifications.length })
-                : tr("bt_sec_reglages_fiche")
+                : etatReglages === "fiche"
+                  ? tr("bt_sec_reglages_fiche")
+                  : etatReglages === "construit"
+                    ? tr("bt_sec_reglages_construit")
+                    : etatReglages === "version"
+                      ? tr("bt_sec_reglages_version")
+                      : etatReglages === "base"
+                        ? tr("bt_sec_reglages_base")
+                        : tr("bt_sec_reglages_defaut")
             }
             faite={contestes.size === 0}
             ouverte={section === "bt-reglages"}

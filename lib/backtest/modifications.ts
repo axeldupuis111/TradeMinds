@@ -598,6 +598,46 @@ export interface Origine {
   label?: string;
 }
 
+/**
+ * D'OÙ VIENNENT LES RÉGLAGES AFFICHÉS, en un mot.
+ *
+ * ⚠️⚠️ « EXACTEMENT CEUX DE TA FICHE » S'AFFICHAIT SANS AUCUNE FICHE. Vu à
+ * l'écran : je construis une stratégie geste par geste, sans jamais choisir de
+ * fiche, j'assemble, et l'en-tête de l'éditeur annonce que ces réglages sont
+ * exactement ceux de ma fiche. Il n'y en avait pas.
+ *
+ * ⚠️ LA CAUSE EST UN SINON, PAS UN CALCUL FAUX. L'en-tête ne connaissait que
+ * deux états : « des écarts avec la fiche » et « aucun écart ». Sans fiche, il
+ * n'y a aucun écart à compter, donc on tombait dans le second, qui AFFIRME une
+ * provenance. C'est la même forme que les trois « réglé par toi, à la main » :
+ * une provenance par défaut, qui ment dès qu'un chemin nouveau y tombe.
+ *
+ * Ici on ne devine plus : sans fiche, on lit ce que les origines déclarent.
+ */
+export type EtatDesReglages = "fiche" | "modifies" | "construit" | "version" | "base" | "defaut";
+
+export function etatDesReglages(
+  aUneFiche: boolean,
+  nbModifications: number,
+  origines: Record<string, Origine>,
+): EtatDesReglages {
+  if (aUneFiche) return nbModifications > 0 ? "modifies" : "fiche";
+  const poses = new Set(
+    Object.values(origines)
+      .map((o) => o.pose)
+      .filter((p): p is NonNullable<Origine["pose"]> => Boolean(p)),
+  );
+  // ⚠️ L'ORDRE EST CELUI DU GESTE LE PLUS RÉCENT POSSIBLE. Assembler, reprendre
+  // une version et essayer une base réécrivent TOUTES les origines d'un coup :
+  // deux provenances ne coexistent que le temps d'une retouche manuelle, et
+  // c'est alors la dernière qui a posé le plan qui doit être nommée.
+  if (poses.has("construit")) return "construit";
+  if (poses.has("version")) return "version";
+  if (poses.has("base")) return "base";
+  // « journal » ne pose que le marché, jamais un plan : il ne nomme rien ici.
+  return "defaut";
+}
+
 export interface Modification {
   cle: string;
   bloc: string;

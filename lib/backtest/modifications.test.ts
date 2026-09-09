@@ -10,13 +10,17 @@ import {
   demandeUnControle,
   DESCRIPTEURS,
   empreintePlan,
+  etatDesReglages,
   nommerLesFiltres,
   toutAnnuler,
 } from "./modifications";
+import de from "../i18n/de";
+import en from "../i18n/en";
+import es from "../i18n/es";
 import fr from "../i18n/fr";
 import { socleDePlan } from "./compilation";
 import type { PlanExecution } from "./types";
-import type { Modification } from "./modifications";
+import type { EtatDesReglages, Modification, Origine } from "./modifications";
 
 const NAS = instrumentParCode("NAS100") ?? INSTRUMENTS[0];
 
@@ -738,6 +742,67 @@ describe("aucun chemin ne réécrit le plan sans dire d'où il vient", () => {
           .match(/setOrigines\(|sans-provenance:/),
     );
     expect(manquants).toHaveLength(1);
+  });
+
+  /**
+   * ⚠️⚠️ « EXACTEMENT CEUX DE TA FICHE » SANS AUCUNE FICHE. Vu à l'écran :
+   * stratégie construite geste par geste, aucune fiche choisie, et l'en-tête de
+   * l'éditeur affirmait que ces réglages venaient de ma fiche. Le calcul
+   * n'était pas faux : il n'y avait que deux états, « des écarts » et « aucun
+   * écart », et sans fiche il n'y a aucun écart à compter.
+   *
+   * ⚠️ LA RÈGLE TENUE ICI EST LA SEULE QUI COMPTE : sans fiche, on ne nomme
+   * JAMAIS la fiche. Le reste est du vocabulaire.
+   */
+  describe("d'où viennent les réglages affichés", () => {
+    it("ne parle jamais de la fiche quand il n'y en a pas", () => {
+      const provenances: Origine["pose"][] = ["base", "journal", "version", "construit", undefined];
+      for (const pose of provenances) {
+        for (const n of [0, 3]) {
+          const etat = etatDesReglages(false, n, { unite_de_temps: { pose } });
+          expect(etat, `pose=${pose} n=${n}`).not.toBe("fiche");
+          expect(etat, `pose=${pose} n=${n}`).not.toBe("modifies");
+        }
+      }
+    });
+
+    it("nomme la fiche, et ses écarts, quand il y en a une", () => {
+      expect(etatDesReglages(true, 0, {})).toBe("fiche");
+      expect(etatDesReglages(true, 4, {})).toBe("modifies");
+    });
+
+    it("nomme ce qui a posé le plan", () => {
+      expect(etatDesReglages(false, 0, { a: { pose: "construit" } })).toBe("construit");
+      expect(etatDesReglages(false, 0, { a: { pose: "version" } })).toBe("version");
+      expect(etatDesReglages(false, 0, { a: { pose: "base" } })).toBe("base");
+      expect(etatDesReglages(false, 0, {})).toBe("defaut");
+      // Le journal ne pose que le marché : il ne nomme pas une provenance de plan.
+      expect(etatDesReglages(false, 0, { instrument: { pose: "journal" } })).toBe("defaut");
+    });
+
+    /**
+     * ⚠️ CHAQUE ÉTAT A SA PHRASE, ET LA PAGE SAIT L'AFFICHER. Un état ajouté
+     * sans clé retomberait sur la branche finale, c'est-à-dire sur une phrase
+     * qui parle d'autre chose : exactement le défaut qu'on vient de corriger.
+     */
+    it("chaque état a sa phrase dans les quatre langues, et la page l'appelle", () => {
+      const etats: EtatDesReglages[] = [
+        "fiche",
+        "modifies",
+        "construit",
+        "version",
+        "base",
+        "defaut",
+      ];
+      const page = readFileSync(join(process.cwd(), "app/dashboard/backtest/page.tsx"), "utf8");
+      for (const e of etats) {
+        const cle = `bt_sec_reglages_${e}`;
+        for (const [nom, dico] of Array.from(Object.entries({ fr, en, es, de }))) {
+          expect((dico as Record<string, string>)[cle], `${cle} en ${nom}`).toBeTruthy();
+        }
+        expect(page, `${cle} jamais appelée par la page`).toContain(`tr("${cle}"`);
+      }
+    });
   });
 
   it("une version reprise ne s'attribue pas à la main du trader", () => {
