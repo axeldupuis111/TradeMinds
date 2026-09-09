@@ -306,3 +306,53 @@ describe("la ponctuation de l'onglet", () => {
     expect(fautes, "tiret long : " + fautes.join(", ")).toEqual([]);
   });
 });
+
+/**
+ * UNE PHRASE IDENTIQUE AU FRANÇAIS EST UNE TRADUCTION OUBLIÉE.
+ *
+ * ⚠️⚠️ LA PARITÉ DES CLÉS NE DIT RIEN DE LA JUSTESSE. Le test de parité vérifie
+ * depuis toujours que les quatre langues ont les mêmes clés ; il passait au vert
+ * pendant que « Or (XAU/USD) » s'affichait dans la version anglaise, et il
+ * passerait encore si quelqu'un recopiait le français dans les trois autres
+ * fichiers pour faire taire la parité. Cette copie-là se voit ici.
+ *
+ * ⚠️ UNE EXEMPTION EXIGE UNE RAISON ÉCRITE, comme partout dans ce fichier :
+ * « ça m'embête » n'en est pas une, « c'est un nom propre » si.
+ */
+describe("les traductions ne recopient pas le français", () => {
+  const dico = fr as Record<string, string>;
+
+  const IDENTIQUES_A_RAISON: Record<string, string> = {
+    // Le nom d'une méthode, tel que ses praticiens l'écrivent dans toutes les
+    // langues. Le traduire le rendrait méconnaissable.
+    bt_meth_ict_silver_bullet: "nom propre d'une méthode",
+    // Terme anglais employé tel quel par les traders francophones : le libellé
+    // français EST l'anglais, donc l'anglais ne peut pas en différer.
+    bt_niveau_order_block: "terme anglais employé tel quel en français",
+    // Le nom propre d'un indice : il s'ecrit pareil dans les quatre langues,
+    // et le traduire donnerait un marche que personne ne reconnait sur sa
+    // plateforme. Les autres indices passent sous le seuil de douze caracteres.
+    bt_instr_US30: "nom propre d'un indice",
+  };
+
+  it("n'exempte que des clés qui existent encore", () => {
+    const fantomes = Object.keys(IDENTIQUES_A_RAISON).filter((c) => typeof dico[c] !== "string");
+    expect(fantomes).toEqual([]);
+  });
+
+  it("aucune phrase longue n'est recopiée telle quelle", () => {
+    const copies: string[] = [];
+    for (const [nom, autre] of Array.from(Object.entries({ en, es, de }))) {
+      for (const [cle, texte] of Object.entries(dico)) {
+        if (!cle.startsWith("bt_") || typeof texte !== "string") continue;
+        // ⚠️ Sous douze caractères, l'identité ne prouve rien : « 1 R », « M5 »,
+        // « OK » se disent pareil partout, et les signaler rendrait ce garde
+        // bruyant, donc ignoré.
+        if (texte.length < 12) continue;
+        if (IDENTIQUES_A_RAISON[cle]) continue;
+        if ((autre as Record<string, string>)[cle] === texte) copies.push(`${cle} (${nom})`);
+      }
+    }
+    expect(copies, "recopié du français : " + copies.join(", ")).toEqual([]);
+  });
+});
