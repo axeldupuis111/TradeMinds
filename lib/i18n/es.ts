@@ -3398,6 +3398,8 @@ const dict: Record<string, string> = {
   "bt_tentatives": "Intento n.º {n}. Más allá de {max} {max|ajuste|ajustes} distintos, el mejor resultado encontrado es probablemente azar bien elegido.",
   "bt_sur_apprentissage_alerte": "Vas por {n} ajustes distintos. A estas alturas, buscar entre tantas combinaciones siempre encuentra una que brilla, incluso en puro ruido. Este resultado ya no cuenta como hallazgo: pruébalo en un periodo que aún no hayas mirado.",
   "bt_refuses_risque": "{n} señales descartadas porque el stop caía más cerca de lo que cuesta una ida y vuelta. Este plan aplica una estructura demasiado fina para este instrumento.",
+  "bt_refuses_geometrie": "{n} {n|señal no pudo convertirse en operación|señales no pudieron convertirse en operaciones}: el stop o el objetivo no tenía referencia en ese momento (ningún máximo confirmado, ningún lado opuesto, o un objetivo detrás de la entrada). No es un rechazo de tu método, es un momento en que no podía aplicarse.",
+  "bt_limites_expirees": "{n} {n|orden pendiente nunca fue tocada|órdenes pendientes nunca fueron tocadas}: venció el plazo, o la sesión terminó antes de que el precio volviera.",
   "bt_unite_prix": "pts",
   "bt_aucun_avantage": "Antes de cualquier coste, este método ya no gana nada: su esperanza bruta es nula o negativa. El spread no es el problema. Es la entrada misma la que no tiene ventaja medible en este periodo.",
   "bt_journees_arretees": "Jornadas cortadas por tus límites: {n}. Una jornada detenida ya no produce ninguna señal: por eso no cuenta en los rechazos de arriba.",

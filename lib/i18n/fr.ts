@@ -3398,6 +3398,8 @@ const dict: Record<string, string> = {
   "bt_tentatives": "Essai n° {n}. Au-delà de {max} {max|réglage|réglages} différents, le meilleur résultat trouvé devient probablement du hasard bien choisi.",
   "bt_sur_apprentissage_alerte": "Tu en es à {n} réglages différents. À ce stade, chercher parmi tant de combinaisons en trouve toujours une qui brille, même dans du bruit pur. Ce résultat ne vaut plus comme découverte : teste-le sur une période que tu n'as pas encore regardée.",
   "bt_refuses_risque": "{n} signaux écartés parce que le stop tombait plus près que ce que coûte un aller-retour. Ce plan applique une structure trop fine pour cet instrument.",
+  "bt_refuses_geometrie": "{n} {n|signal n'a pas pu devenir un trade|signaux n'ont pas pu devenir des trades} : le stop ou l'objectif n'avait pas de repère à ce moment-là (aucun sommet confirmé, aucun côté opposé, ou une cible derrière l'entrée). Ce n'est pas un refus de ta méthode, c'est un moment où elle ne pouvait pas s'appliquer.",
+  "bt_limites_expirees": "{n} {n|ordre en attente n'a jamais été touché|ordres en attente n'ont jamais été touchés} : le délai est passé, ou la séance s'est terminée avant que le prix ne revienne.",
   "bt_unite_prix": "pts",
   "bt_aucun_avantage": "Avant le moindre coût, cette méthode ne gagne déjà rien : son espérance brute est nulle ou négative. Le spread n'est donc pas le sujet. C'est l'entrée elle-même qui n'a pas d'avantage mesurable sur cette période.",
   "bt_journees_arretees": "Journées coupées par tes garde-fous : {n}. Une journée arrêtée ne produit plus aucun signal : c'est pour ça qu'elle ne compte pas dans les refus ci-dessus.",

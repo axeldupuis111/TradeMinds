@@ -3398,6 +3398,8 @@ const dict: Record<string, string> = {
   "bt_tentatives": "Versuch Nr. {n}. Jenseits von {max} verschiedenen Einstellungen ist das beste Ergebnis wahrscheinlich gut gewähltes Glück.",
   "bt_sur_apprentissage_alerte": "Du bist bei {n} verschiedenen Einstellungen. Ab hier findet die Suche über so viele Kombinationen immer eine, die glänzt, selbst in reinem Rauschen. Dieses Ergebnis zählt nicht mehr als Entdeckung: Teste es auf einem Zeitraum, den du noch nicht angesehen hast.",
   "bt_refuses_risque": "{n} Signale verworfen, weil der Stop näher lag als ein Hin- und Rückweg kostet. Dieser Plan wendet eine für dieses Instrument zu feine Struktur an.",
+  "bt_refuses_geometrie": "{n} {n|Signal konnte kein Trade werden|Signale konnten keine Trades werden}: Stop oder Ziel hatten in diesem Moment keinen Bezugspunkt (kein bestätigtes Hoch, keine Gegenseite, oder ein Ziel hinter dem Einstieg). Das ist keine Ablehnung deiner Methode, sondern ein Moment, in dem sie nicht anwendbar war.",
+  "bt_limites_expirees": "{n} {n|Pending-Order wurde nie berührt|Pending-Orders wurden nie berührt}: die Frist lief ab, oder die Session endete, bevor der Preis zurückkam.",
   "bt_unite_prix": "Pkt",
   "bt_aucun_avantage": "Schon vor jeder Kostenbelastung gewinnt diese Methode nichts: Ihre Bruttoerwartung ist null oder negativ. Der Spread ist also nicht das Thema. Der Einstieg selbst hat in diesem Zeitraum keinen messbaren Vorteil.",
   "bt_journees_arretees": "Von deinen Schutzregeln abgebrochene Tage: {n}. Ein abgebrochener Tag erzeugt kein Signal mehr: deshalb zählt er nicht zu den Ablehnungen oben.",

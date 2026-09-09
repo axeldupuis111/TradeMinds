@@ -3398,6 +3398,8 @@ const dict: Record<string, string> = {
   "bt_tentatives": "Attempt #{n}. Beyond {max} different settings, the best result found is probably well-chosen luck.",
   "bt_sur_apprentissage_alerte": "You are at {n} different settings. At this point, searching across that many combinations always finds one that shines, even in pure noise. This result no longer counts as a discovery: test it on a period you have not looked at yet.",
   "bt_refuses_risque": "{n} signals discarded because the stop fell closer than a round trip costs. This plan applies a structure too fine for this instrument.",
+  "bt_refuses_geometrie": "{n} {n|signal could not become a trade|signals could not become trades}: the stop or the target had no reference at that moment (no confirmed high, no opposite side, or a target behind the entry). This is not a rejection of your method, it is a moment where it could not apply.",
+  "bt_limites_expirees": "{n} {n|pending order was never touched|pending orders were never touched}: the delay ran out, or the session ended before price came back.",
   "bt_unite_prix": "pts",
   "bt_aucun_avantage": "Before any cost, this method already gains nothing: its gross expectancy is zero or negative. So the spread is not the issue. It is the entry itself that has no measurable edge over this period.",
   "bt_journees_arretees": "Days cut short by your guardrails: {n}. A stopped day produces no further signal: that is why it does not count in the rejections above.",

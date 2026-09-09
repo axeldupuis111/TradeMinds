@@ -506,6 +506,20 @@ export function Resultat({
               {t("bt_refuses_risque", { n: audit.refusesRisqueTropPetit })}
             </li>
           ) : null}
+          {/* ⚠️⚠️ CES SIGNAUX DISPARAISSAIENT SANS UN MOT. Ils sont comptés
+              depuis peu, et un compteur qui ne s'affiche nulle part ne répond à
+              personne : « 1183 signaux, 209 écartés, 0 trade » restait
+              inexplicable pour celui qui le lisait. */}
+          {audit.refusesGeometrie > 0 ? (
+            <li className="text-warning">
+              {t("bt_refuses_geometrie", { n: audit.refusesGeometrie })}
+            </li>
+          ) : null}
+          {audit.limitesExpirees > 0 ? (
+            <li className="text-warning">
+              {t("bt_limites_expirees", { n: audit.limitesExpirees })}
+            </li>
+          ) : null}
           {moisManquants.length > 0 ? (
             <li className="text-warning">
               {t("bt_mois_manquants", { n: moisManquants.length, liste: moisManquants.slice(0, 3).join(", ") })}
