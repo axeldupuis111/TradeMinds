@@ -3445,6 +3445,7 @@ const dict: Record<string, string> = {
   "bt_non_traduites_1": "1 regla no mecanizable",
   "bt_deduites_critiques_1": "1 interpretación sobre el núcleo de tu método",
   "bt_inspection_aide_1": "La única operación que tomó este plan, sobre las velas que el motor vio realmente. Si no es tu setup, la cifra de abajo no significa nada.",
+  "bt_inspection_aide_echantillon": "Una muestra: {n} {n|operación|operaciones} de las {total} de este plan, {n|elegida|elegidas} a lo largo de todo el periodo, sobre las velas que el motor vio realmente. Si no es tu setup, la cifra de abajo no significa nada.",
   "bt_niveau_franchi": "Nivel cruzado",
   "bt_entree_courte": "Entrada",
   "bt_precedent": "Operación anterior",

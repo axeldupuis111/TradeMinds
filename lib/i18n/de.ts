@@ -3445,6 +3445,7 @@ const dict: Record<string, string> = {
   "bt_non_traduites_1": "1 Regel, die sich nicht mechanisieren lässt",
   "bt_deduites_critiques_1": "1 Auslegung im Kern deiner Methode",
   "bt_inspection_aide_1": "Der einzige Trade, den dieser Plan genommen hat, auf den Kerzen, die die Engine wirklich gesehen hat. Wenn das nicht dein Setup ist, sagt die Zahl darunter nichts aus.",
+  "bt_inspection_aide_echantillon": "Eine Stichprobe: {n} von {total} {total|Trade|Trades} dieses Plans, über den gesamten Zeitraum verteilt, auf den Kerzen, die die Engine wirklich gesehen hat. Wenn das nicht dein Setup ist, sagt die Zahl darunter nichts aus.",
   "bt_niveau_franchi": "Überschrittenes Level",
   "bt_entree_courte": "Einstieg",
   "bt_precedent": "Vorheriger Trade",

@@ -6,7 +6,7 @@ import { cn } from "@/lib/cn";
 import { signe } from "@/lib/backtest/format";
 import type { Instrument } from "@/lib/backtest/instruments";
 import type { Apercu } from "@/app/dashboard/backtest/worker";
-import { echelleApercu } from "@/lib/backtest/apercu";
+import { clePourLesApercus, echelleApercu } from "@/lib/backtest/apercu";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 /**
@@ -34,6 +34,8 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export interface InspectionProps {
   apercus: Apercu[];
+  /** Le nombre de trades du rejeu : les aperçus n'en sont qu'un échantillon. */
+  total: number;
   instrument: Instrument;
   /** Vrai quand le trader a confirmé reconnaître sa méthode. */
   verifie: boolean;
@@ -44,7 +46,7 @@ export interface InspectionProps {
 const LARGEUR = 720;
 const HAUTEUR = 300;
 
-export function Inspection({ apercus, instrument, verifie, onVerifie, t }: InspectionProps) {
+export function Inspection({ apercus, total, instrument, verifie, onVerifie, t }: InspectionProps) {
   const [index, setIndex] = useState(0);
 
   if (apercus.length === 0) return null;
@@ -159,11 +161,18 @@ export function Inspection({ apercus, instrument, verifie, onVerifie, t }: Inspe
       {/* ⚠️ LE NOMBRE VIENT DE LA LISTE, IL N'EST PLUS ECRIT DANS LA PHRASE.
           Le texte annoncait « Douze trades » quel que soit le contenu : sur un
           plan qui en avait produit trois, l'ecran mentait sur ses propres
-          donnees, juste au-dessus d'un encart disant qu'il en manquait 97. */}
+          donnees, juste au-dessus d'un encart disant qu'il en manquait 97.
+
+          ⚠️⚠️ ET CA NE SUFFISAIT PAS : « 12 trades repartis sur toute la
+          periode » s'affichait au-dessus d'un verdict qui annoncait 225 trades.
+          Le nombre etait juste, il comptait simplement AUTRE CHOSE : les
+          dessins, pas les trades. Un echantillon dit sur combien il est pris. */}
       <p className="mb-3 text-xs text-foreground-muted">
-        {t(apercus.length === 1 ? "bt_inspection_aide_1" : "bt_inspection_aide", {
-          n: apercus.length,
-        })}
+        {clePourLesApercus(apercus.length, total) === "bt_inspection_aide_echantillon"
+          ? t("bt_inspection_aide_echantillon", { n: apercus.length, total })
+          : apercus.length === 1
+            ? t("bt_inspection_aide_1")
+            : t("bt_inspection_aide", { n: apercus.length })}
       </p>
 
       <div className="overflow-x-auto">

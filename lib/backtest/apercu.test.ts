@@ -1,5 +1,11 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { echelleApercu, type GeometrieApercu } from "./apercu";
+import de from "../i18n/de";
+import en from "../i18n/en";
+import es from "../i18n/es";
+import fr from "../i18n/fr";
+import { clePourLesApercus, echelleApercu, type GeometrieApercu } from "./apercu";
 
 /** Un trade de 10 points de risque, objectif à 2R, au milieu de sa fenêtre. */
 function geometrie(over: Partial<GeometrieApercu> = {}): GeometrieApercu {
@@ -123,5 +129,51 @@ describe("échelle du graphique d'inspection", () => {
     });
     const { haut, bas } = echelleApercu(plat, 0.01);
     expect(haut - bas).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * ⚠️⚠️ DEUX NOMBRES POUR LE MÊME FAIT, ENCORE. Vu à l'écran : « 12 trades
+ * répartis sur toute la période » au-dessus d'un verdict qui annonçait
+ * « +0.0709 R par trade sur 225 trades ». Douze est le nombre de DESSINS.
+ *
+ * ⚠️ ET LA CORRECTION PRÉCÉDENTE AVAIT EU LIEU AU MÊME ENDROIT : le texte
+ * disait « Douze trades » en dur, on l'a branché sur la longueur de la liste,
+ * et on a remplacé un nombre faux par un nombre juste qui compte autre chose.
+ * Ça se lit exactement pareil.
+ */
+describe("les aperçus se présentent pour ce qu'ils sont", () => {
+  it("annonce un échantillon dès qu'il en manque un seul", () => {
+    expect(clePourLesApercus(12, 225)).toBe("bt_inspection_aide_echantillon");
+    expect(clePourLesApercus(11, 12)).toBe("bt_inspection_aide_echantillon");
+    expect(clePourLesApercus(1, 2)).toBe("bt_inspection_aide_echantillon");
+  });
+
+  it("ne parle d'échantillon que s'il en est un", () => {
+    expect(clePourLesApercus(12, 12)).toBe("bt_inspection_aide");
+    expect(clePourLesApercus(1, 1)).toBe("bt_inspection_aide_1");
+  });
+
+  /**
+   * ⚠️ LA PHRASE DE L'ÉCHANTILLON DIT LES DEUX NOMBRES, sinon elle ne dit rien
+   * de plus que celle qu'elle remplace, dans les quatre langues.
+   */
+  it("la phrase de l'échantillon cite le total, dans les quatre langues", () => {
+    for (const [nom, dico] of Array.from(Object.entries({ fr, en, es, de }))) {
+      const phrase = (dico as Record<string, string>).bt_inspection_aide_echantillon;
+      expect(phrase, `manquante en ${nom}`).toBeTruthy();
+      expect(phrase, `sans {n} en ${nom}`).toContain("{n");
+      expect(phrase, `sans {total} en ${nom}`).toContain("{total");
+    }
+  });
+
+  /** ⚠️ Et le composant s'en sert : une règle que personne n'appelle ne règle rien. */
+  it("le composant choisit sa phrase par cette règle", () => {
+    const source = readFileSync(
+      join(process.cwd(), "components/backtest/Inspection.tsx"),
+      "utf8",
+    );
+    expect(source).toContain("clePourLesApercus(apercus.length, total)");
+    expect(source).toContain('t("bt_inspection_aide_echantillon", { n: apercus.length, total })');
   });
 });

@@ -253,3 +253,23 @@ export function fenetreApercu(
   }
   return { debut, fin };
 }
+
+/**
+ * LA PHRASE QUI PRÉSENTE LES APERÇUS, SELON CE QU'ILS MONTRENT VRAIMENT.
+ *
+ * ⚠️⚠️ DEUX NOMBRES POUR LE MÊME FAIT, ENCORE. Vu à l'écran : « 12 trades
+ * répartis sur toute la période » au-dessus d'un verdict qui annonce
+ * « +0.0709 R par trade sur 225 trades ». Douze est le nombre de dessins,
+ * deux cent vingt-cinq le nombre de trades ; la phrase disait « trades » pour
+ * les deux.
+ *
+ * ⚠️ ET LA CORRECTION PRÉCÉDENTE AVAIT DÉJÀ EU LIEU AU MÊME ENDROIT. Le texte
+ * disait « Douze trades » en dur ; on l'a branché sur la longueur de la liste
+ * en croyant boucher le trou. On a remplacé un nombre faux par un nombre juste
+ * qui compte AUTRE CHOSE, ce qui se lit exactement pareil. Un échantillon se
+ * présente comme un échantillon : il dit sur combien il est pris.
+ */
+export function clePourLesApercus(montres: number, total: number): string {
+  if (montres < total) return "bt_inspection_aide_echantillon";
+  return montres === 1 ? "bt_inspection_aide_1" : "bt_inspection_aide";
+}

@@ -2616,6 +2616,7 @@ export default function BacktestPage() {
           <StaggerItem id="bt-apercus">
             <Inspection
               apercus={resultat.apercus}
+              total={resultat.trades.length}
               instrument={instrument}
               verifie={verifie}
               onVerifie={setVerifie}
