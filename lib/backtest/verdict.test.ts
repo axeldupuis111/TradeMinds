@@ -297,3 +297,46 @@ describe("la cause d'un rejeu vide ne s'invente pas", () => {
     expect(lireBacktest(r, SANS_COUT).cause).toBe("trop_peu");
   });
 });
+
+/**
+ * ⚠️⚠️ VU À L'ÉCRAN, ET C'ÉTAIT L'INVERSE DE LA VÉRITÉ : « 15302 signaux »,
+ * zéro trade, et le diagnostic « ta méthode se déclenche, simplement pas assez
+ * souvent sur cette période : élargis la période ». Elle se déclenchait quinze
+ * mille fois, et élargir n'y aurait rien changé.
+ *
+ * La cause réelle : un stop « au-delà de l'extrême du balayage » avec un signal
+ * de cassure. Le stop n'avait aucun repère, aucun trade ne pouvait s'ouvrir.
+ */
+describe("des signaux en nombre et pas un trade", () => {
+  function vide2(audit: Partial<ResultatBacktest["audit"]>): ResultatBacktest {
+    const r = resultat(0, 0);
+    r.audit = { ...r.audit, bougies: 70_000, signaux: 0, ...audit };
+    return r;
+  }
+
+  it("ne conseille pas d'élargir quand la géométrie ne tient pas", () => {
+    const r = vide2({ barresAvecNiveau: 70_000, signaux: 15_302, refusesGeometrie: 15_302 });
+    expect(lireBacktest(r, SANS_COUT).cause).toBe("geometrie_impossible");
+  });
+
+  /**
+   * ⚠️ ET « TROP PEU » RESTE LA CAUSE QUAND ELLE EST VRAIE : une méthode qui
+   * produit trois trades se déclenche vraiment trop peu, et là élargir aide.
+   */
+  it("garde « trop peu » quand la méthode produit peu de trades", () => {
+    const r = resultat(3, 5);
+    r.audit = { ...r.audit, barresAvecNiveau: 9_000, signaux: 8 };
+    expect(lireBacktest(r, SANS_COUT).cause).toBe("trop_peu");
+  });
+
+  /** ⚠️ Les ordres jamais touchés passent devant : ils expliquent mieux. */
+  it("nomme les ordres en attente avant la géométrie", () => {
+    const r = vide2({
+      barresAvecNiveau: 70_000,
+      signaux: 1_000,
+      limitesExpirees: 900,
+      refusesGeometrie: 100,
+    });
+    expect(lireBacktest(r, SANS_COUT).cause).toBe("limites_jamais_touchees");
+  });
+});

@@ -168,6 +168,15 @@ export type CauseDuVide =
    * envoie regler le STOP quand le probleme est l'ordre en attente.
    */
   | "limites_jamais_touchees"
+  /**
+   * Des signaux en nombre, et pas un seul trade : la géométrie ne tenait pas.
+   *
+   * ⚠️⚠️ SANS CETTE CAUSE, L'ÉCRAN DISAIT L'INVERSE DE LA VÉRITÉ. Vu en vrai :
+   * « 15302 signaux », zéro trade, et le diagnostic « ta méthode se déclenche,
+   * simplement pas assez souvent sur cette période : élargis la période ».
+   * Elle se déclenchait quinze mille fois, et élargir n'y aurait rien changé.
+   */
+  | "geometrie_impossible"
   /** Des trades, juste pas assez pour conclure. */
   | "trop_peu";
 
@@ -326,6 +335,13 @@ function causeDuVide(r: ResultatBacktest): CauseDuVide {
      * ou l'entrée elle-même, qu'il faut revoir.
      */
     if (a.limitesExpirees > 0) return "limites_jamais_touchees";
+    /**
+     * ⚠️ LE STOP OU L'OBJECTIF N'AVAIT PAS DE REPÈRE, à chaque fois. C'est le
+     * mode d'échec d'un plan dont les blocs ne vont pas ensemble : un stop
+     * « au-delà de l'extrême du balayage » sans balayage, un objectif « au
+     * niveau opposé » sur un niveau qui n'en a pas.
+     */
+    if (a.refusesGeometrie > 0) return "geometrie_impossible";
   }
   return "trop_peu";
 }

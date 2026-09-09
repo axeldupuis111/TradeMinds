@@ -227,8 +227,21 @@ export const QUESTIONS_DE_CONSTRUCTION: QuestionDeConstruction[] = [
     ],
   },
   {
+    /**
+     * ⚠️⚠️ OBLIGATOIRE, ET ÇA A COÛTÉ QUINZE MILLE SIGNAUX POUR ZÉRO TRADE.
+     * Vu à l'écran : une construction où je n'avais choisi que le niveau et le
+     * déclencheur. Le stop restait celui du socle — « au-delà de l'extrême du
+     * balayage » — qui n'existe QUE si le signal est un balayage. Avec une
+     * cassure, aucun trade ne pouvait s'ouvrir : 15 302 signaux, zéro trade, et
+     * l'écran conseillait d'élargir la période.
+     *
+     * ⚠️ LE SOCLE EST COHÉRENT, C'EST MOI QUI NE L'ÉTAIS PAS : il forme un
+     * triplet ICT (sommets et creux, balayage, stop au-delà du balayage), et
+     * ma construction laissait changer le déclencheur en gardant le stop. Un
+     * plan sans stop choisi n'est pas un plan : on le demande.
+     */
     code: "stop",
-    obligatoire: false,
+    obligatoire: true,
     gestes: [
       {
         code: "stop_structure",

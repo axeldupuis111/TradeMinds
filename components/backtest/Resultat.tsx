@@ -223,6 +223,11 @@ export function Resultat({
             ) : null}
 
             <p className="mt-2 text-xs text-foreground-muted">
+              {/* ⚠️⚠️ LES DEUX COMPTEURS QUI EXPLIQUENT UN ZÉRO VIVAIENT DANS
+                  « ce qui relativise ce chiffre », un bloc qui ne s'affiche QUE
+                  s'il y a des trades. Ils existent précisément pour le cas où
+                  il n'y en a aucun : ils rejoignent donc la seule ligne de
+                  détail que ce cas-là montre. */}
               {t("bt_diagnostic_chiffres", {
                 niveau: audit.barresAvecNiveau,
                 bougies: audit.bougies,
@@ -230,6 +235,8 @@ export function Resultat({
                 confirmees: audit.droitesConfirmees,
                 signaux: audit.signaux,
                 ecartes: audit.refusesRisqueTropPetit,
+                geometrie: audit.refusesGeometrie,
+                attente: audit.limitesExpirees,
               })}
             </p>
           </div>

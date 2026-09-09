@@ -28,7 +28,11 @@ const toutesLesReponses = (): Partial<Record<CodeQuestion, string>> =>
 
 describe("construire une stratégie à partir de gestes", () => {
   it("pose exactement ce qui a été choisi", () => {
-    const r = construireLePlan({ trace: "trendline", declenche: "cassure" }, socle(), OR);
+    const r = construireLePlan(
+      { trace: "trendline", declenche: "cassure", stop: "stop_bougie" },
+      socle(),
+      OR,
+    );
     expect(r.plan.niveau.type).toBe("trendline");
     expect(r.plan.declencheur.type).toBe("cassure");
     expect(r.manquantes).toEqual([]);
@@ -40,8 +44,14 @@ describe("construire une stratégie à partir de gestes", () => {
    * devient sa discipline sans qu'il l'ait décidée.
    */
   it("annonce ce qui garde le réglage par défaut", () => {
-    const r = construireLePlan({ trace: "trendline", declenche: "cassure" }, socle(), OR);
-    expect(r.laisseesAuSocle).toContain("stop");
+    const r = construireLePlan(
+      { trace: "trendline", declenche: "cassure", stop: "stop_bougie" },
+      socle(),
+      OR,
+    );
+    // ⚠️ Le stop n'y est plus : il est devenu obligatoire, parce que le laisser
+    // au socle donnait quinze mille signaux pour zero trade.
+    expect(r.laisseesAuSocle).not.toContain("stop");
     expect(r.laisseesAuSocle).toContain("sortie");
     expect(r.laisseesAuSocle).toContain("arret");
   });
@@ -49,6 +59,12 @@ describe("construire une stratégie à partir de gestes", () => {
   it("réclame le cœur du signal, et lui seul", () => {
     const r = construireLePlan({ stop: "stop_structure" }, socle(), OR);
     expect(r.manquantes.sort()).toEqual(["declenche", "trace"]);
+    // ⚠️ Et sans stop, il manque aussi : un plan sans stop n'est pas un plan.
+    expect(construireLePlan({}, socle(), OR).manquantes.sort()).toEqual([
+      "declenche",
+      "stop",
+      "trace",
+    ]);
   });
 
   /**
