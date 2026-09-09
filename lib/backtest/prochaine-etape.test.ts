@@ -474,3 +474,112 @@ describe("la lecture de la fiche ne piétine pas ce qui est déjà posé", () =>
     ).toBe(false);
   });
 });
+
+/**
+ * « ÇA EFFACE TOUT » DOIT VRAIMENT TOUT EFFACER.
+ *
+ * ── LES DÉFAUTS QUI ONT FAIT NAÎTRE CE GARDE ────────────────────────────────
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN, ET C'ÉTAIT MA PROPRE RÉGRESSION. Après « Repartir d'une
+ * autre stratégie », les six gestes qui venaient de produire une stratégie
+ * perdante étaient encore cochés, prêts à être réassemblés à l'identique. Le
+ * bouton promet « ça remet les réglages à zéro » et invitait à refaire
+ * exactement ce qui venait d'échouer.
+ *
+ * ⚠️⚠️ MA PREMIÈRE VERSION DE CE GARDE NE L'AURAIT PAS ATTRAPÉ. Elle ne
+ * regardait que les états écrits DANS les chemins de pose du plan ; celui-là
+ * s'écrit dans le JSX, à chaque clic sur un geste. La règle juste ne parle pas
+ * d'où l'état s'écrit : elle parle de TOUS les états de la page, et exige une
+ * raison écrite pour chacun que la remise à zéro laisse en place.
+ *
+ * ⚠️ ET LA RÈGLE ÉLARGIE A TROUVÉ DEUX AUTRES OUBLIS DU MÊME COUP : la case
+ * « je reconnais ma méthode », qui certifiait une mécanisation effacée, et les
+ * réponses aux treize questions, qui décrivaient une fiche désélectionnée.
+ *
+ * ⚠️ C'EST UNE LISTE DE COURSES, ET C'EST VOULU. Le jour où quelqu'un ajoute un
+ * état à cette page, ce test lui demande de décider s'il survit à la remise à
+ * zéro. Personne n'y pense de lui-même : moi non plus, deux fois.
+ */
+describe("la remise à zéro n'oublie aucun état", () => {
+  const page = readFileSync(join(process.cwd(), "app/dashboard/backtest/page.tsx"), "utf8");
+
+  /**
+   * Le corps d'une fonction déclarée en `const nom = useCallback((...) => {`.
+   *
+   * ⚠️ ON COMPTE LES ACCOLADES. Couper à la première ligne « }, [ » tombe dans
+   * une fonction imbriquée : le corps débordait sur les voisines, et le garde
+   * accusait un code juste.
+   */
+  function corpsDe(nom: string): string {
+    const debut = page.indexOf(`const ${nom} = useCallback(`);
+    expect(debut, `${nom} introuvable`).toBeGreaterThan(0);
+    const ouvrante = page.indexOf("{", page.indexOf("=>", debut));
+    let profondeur = 0;
+    for (let i = ouvrante; i < page.length; i++) {
+      if (page[i] === "{") profondeur++;
+      else if (page[i] === "}") {
+        profondeur--;
+        if (profondeur === 0) return page.slice(ouvrante, i + 1);
+      }
+    }
+    throw new Error(`fin de ${nom} introuvable`);
+  }
+
+  /** Tous les états de la page, lus dans leurs déclarations. */
+  const etats = Array.from(page.matchAll(/const \[[a-zA-Z0-9]+, set([A-Za-z0-9]+)\]/g)).map(
+    (m) => m[1],
+  );
+
+  /**
+   * Ce que la remise à zéro laisse en place, et pourquoi.
+   *
+   * ⚠️ CHAQUE LIGNE PORTE SA RAISON. Une liste d'exemptions sans raisons
+   * devient une poubelle, et le garde ne garde plus rien.
+   */
+  const SURVIT: Record<string, string> = {
+    // Le PÉRIMÈTRE n'est pas la stratégie : changer de méthode ne doit pas
+    // changer le marché qu'on trade ni la fenêtre qu'on mesure.
+    Code: "le marché testé, conservé volontairement",
+    De: "le début de la période, conservé pour la même raison",
+    A: "la fin de la période, conservée pour la même raison",
+    // Ce qui décrit le TRADER, pas le plan : il entre au marché ou en attente,
+    // il veut peu de conditions ou la méthode entière. Ça ne s'efface pas
+    // parce qu'il change de stratégie.
+    Style: "la façon de trader du trader, pas un réglage du plan",
+    // Des données chargées depuis la base, pas des choix : les rejeter
+    // forcerait un aller-retour réseau pour rien.
+    Strategies: "liste chargée depuis la base",
+    TradesReels: "journal réel, chargé depuis la base",
+    Versions: "archive de la base, rechargée quand une fiche est choisie",
+    VersionsErreur: "état de ce chargement",
+    VersionsChargement: "état de ce chargement",
+    // Des travaux EN COURS : les annuler d'un bouton qui parle de stratégie
+    // serait une surprise, et le rejeu en vol se termine de lui-même.
+    Etat: "phase du rejeu en cours",
+    Compilation: "phase de la traduction en cours",
+  };
+
+  it("lit bien les états de la page, sinon ce test ne prouve rien", () => {
+    expect(etats.length).toBeGreaterThan(20);
+  });
+
+  it("chaque état est remis à zéro, ou exempté avec sa raison", () => {
+    const remis = new Set(
+      Array.from(corpsDe("repartirDeZero").matchAll(/\bset([A-Z][A-Za-z0-9]*)\(/g)).map(
+        (m) => m[1],
+      ),
+    );
+    const oublis = etats.filter((e) => !remis.has(e) && !SURVIT[e]);
+    expect(
+      oublis,
+      "états que « ça efface tout » n'efface pas, et qui n'ont pas de raison écrite : " +
+        oublis.join(", "),
+    ).toEqual([]);
+  });
+
+  /** ⚠️ Une exemption sur un état qui n'existe plus ne protège rien. */
+  it("n'exempte que des états qui existent encore", () => {
+    const fantomes = Object.keys(SURVIT).filter((e) => !etats.includes(e));
+    expect(fantomes, "exemptions mortes : " + fantomes.join(", ")).toEqual([]);
+  });
+});

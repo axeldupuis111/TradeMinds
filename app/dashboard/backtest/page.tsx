@@ -1018,6 +1018,38 @@ export default function BacktestPage() {
     setSauvegarde("repos");
     setStrategieId("");
     setMethodeCode("");
+    /**
+     * ⚠️⚠️ ET LES REPONSES DE LA CONSTRUCTION, QUE J AVAIS OUBLIEES. Vu a
+     * l ecran : apres « ca efface tout », les six gestes qui venaient de
+     * produire une strategie perdante etaient encore coches, prets a etre
+     * reassembles a l identique. Le bouton promet « ca remet les reglages a
+     * zero » et invitait a refaire exactement ce qui vient d echouer.
+     */
+    setGestes({});
+    /**
+     * ⚠️⚠️ LA CASE « JE RECONNAIS MA MÉTHODE » RESTAIT COCHÉE. Elle certifie
+     * que le trader a REGARDÉ les trades produits et qu'il s'y reconnaît :
+     * après avoir effacé le plan, elle certifie une mécanisation qui n'existe
+     * plus, et le rejeu suivant démarrerait « vérifié » sans que personne
+     * n'ait rien vérifié.
+     */
+    setVerifie(false);
+    /**
+     * ⚠️ SES RÉPONSES AUX TREIZE QUESTIONS VIENNENT DE SA FICHE, et la fiche
+     * vient d'être désélectionnée. Les garder afficherait le plan d'une
+     * stratégie qu'on ne teste plus. L'effet qui les relit ne le fera pas à
+     * notre place : il ne relit RIEN sans fiche choisie, exprès, pour ne pas
+     * piétiner un choix en cours.
+     */
+    setReponses({});
+    setBrouillon({});
+    setEtatReponses("repos");
+    // Le compteur d'essais et les versions comparées appartiennent à la fiche
+    // qu'on vient de quitter : les garder afficherait le compte d'une autre.
+    setTentatives(0);
+    setTentativesDepuis(null);
+    setComparees([]);
+    setCompilationMsg(null);
     // On le ramène là où les bases l'attendent, dépliées.
     setEtapeCourante("strategie");
     setSection("bt-departs");
