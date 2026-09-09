@@ -49,10 +49,20 @@ export function Completude({
   onEnregistrer,
   onBrouillon,
   peutEnregistrer,
+  onChoisirUneFiche,
   etat,
   t,
 }: {
   completude: CompletudeResultat;
+  /**
+   * Emmener le trader choisir sa fiche.
+   *
+   * ⚠️⚠️ « CHOISIS D'ABORD UNE STRATÉGIE DANS « PARTIR DE TA FICHE », PLUS
+   * HAUT » DÉSIGNAIT UNE AUTRE ÉTAPE. Ce bloc vit à l'étape « Tes règles » ;
+   * « Partir de ta fiche » vit à l'étape « Ta stratégie », dont rien n'est
+   * rendu ici. Le trader remonte et ne trouve rien.
+   */
+  onChoisirUneFiche: () => void;
   /** Les réponses déjà enregistrées, par code de question. */
   reponses: Record<string, string>;
   /**
@@ -226,9 +236,20 @@ export function Completude({
           <span className="text-[11px] text-loss">{t("bt_comp_erreur")}</span>
         ) : null}
       </div>
-      <p className="mt-2 text-[11px] leading-relaxed text-foreground-muted">
-        {t(peutEnregistrer ? "bt_comp_ou_ca_va" : "bt_comp_sans_fiche")}
-      </p>
+      <div className="mt-2">
+        <p className="text-[11px] leading-relaxed text-foreground-muted">
+          {t(peutEnregistrer ? "bt_comp_ou_ca_va" : "bt_comp_sans_fiche")}
+        </p>
+        {peutEnregistrer ? null : (
+          <button
+            type="button"
+            onClick={onChoisirUneFiche}
+            className="mt-2 rounded-lg border border-border px-2.5 py-1.5 text-[11px] font-medium text-foreground-muted hover:border-accent/50 hover:text-foreground"
+          >
+            {t("bt_comp_aller_fiche")}
+          </button>
+        )}
+      </div>
 
       {/* ⚠️ AUCUNE NOTE, ET C'EST DIT À L'ÉCRAN. Un score de complétude se
           compare entre traders, se capture en photo, et transforme « il me

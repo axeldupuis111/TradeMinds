@@ -80,11 +80,20 @@ export function Enregistrer({
   champsNonRepris,
   sauvegarde,
   onRaccourcir,
+  onAnalyser,
   onEnregistrer,
   t,
 }: {
   /** La fenêtre intacte disponible, ou null s'il n'en reste aucune. */
   fenetre: Fenetre | null;
+  /**
+   * Lancer l'analyse à fond, qui emporte le contrôle hors période.
+   *
+   * ⚠️ Le geste, pas le chemin : ce bloc vit à l'étape « Ton plan » et le
+   * bouton « Analyser à fond » à l'étape « L'améliorer ». Faire voyager le
+   * trader pour appuyer sur un bouton qu'on peut appuyer d'ici n'aide personne.
+   */
+  onAnalyser: () => void;
   /**
    * La fenêtre de test à proposer quand il n'en reste aucune d'intacte.
    *
@@ -204,6 +213,18 @@ export function Enregistrer({
           {controle.phase === "repos" ? (
             <p className="mt-3 text-xs leading-relaxed text-foreground-muted">
               {t("bt_hors_par_analyse", { periode: `${fenetre.de} → ${fenetre.a}` })}
+              {/* ⚠️⚠️ « PART AVEC « ANALYSER À FOND », PLUS HAUT » DÉSIGNAIT UNE
+                  AUTRE ÉTAPE : ce bloc vit à l'étape « Ton plan », ce bouton-là
+                  à l'étape « L'améliorer ». Le geste est le lancement
+                  lui-même, il n'y a aucune raison de faire voyager le trader
+                  pour appuyer sur un bouton qu'on peut appuyer ici. */}
+              <button
+                type="button"
+                onClick={onAnalyser}
+                className="mt-2 block rounded-lg border border-border px-2.5 py-1.5 text-[11px] font-medium text-foreground-muted hover:border-accent/50 hover:text-foreground"
+              >
+                {t("bt_hors_lancer_analyse")}
+              </button>
             </p>
           ) : null}
 

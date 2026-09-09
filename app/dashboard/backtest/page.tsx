@@ -2311,6 +2311,7 @@ export default function BacktestPage() {
                     return suite;
                   })
                 }
+                onOuvrirLEditeur={() => remonterVers("bt-reglages")}
                 t={tr}
               />
             ) : null}
@@ -2402,6 +2403,7 @@ export default function BacktestPage() {
             onEnregistrer={(r) => void enregistrerLesReponses(r)}
             onBrouillon={setBrouillon}
             peutEnregistrer={Boolean(strategieCourante)}
+            onChoisirUneFiche={() => remonterVers("bt-fiche")}
             etat={etatReponses}
             t={tr}
           />
@@ -2516,6 +2518,7 @@ export default function BacktestPage() {
               instrument={instrument}
               uniteDeTemps={plan.uniteDeTemps ?? 1}
               methode={methode}
+              onDeclarerMethode={() => remonterVers("bt-methode")}
               t={tr}
             />
           </StaggerItem>
@@ -2996,6 +2999,7 @@ export default function BacktestPage() {
               champsNonRepris={repartition.nonRepris}
               sauvegarde={sauvegarde}
               onRaccourcir={raccourcirEtRelancer}
+              onAnalyser={analyserAFond}
               onEnregistrer={enregistrer}
               t={tr}
             />
@@ -3031,12 +3035,15 @@ function CarteCouverture({
   plan,
   contestes,
   onContester,
+  onOuvrirLEditeur,
   t,
 }: {
   couverture: Couverture;
   plan: PlanExecution;
   contestes: Set<string>;
   onContester: (champ: string) => void;
+  /** Voir `LigneInterpretation` : l'éditeur vit à une autre étape. */
+  onOuvrirLEditeur: () => void;
   t: (k: string, v?: Record<string, string | number>) => string;
 }) {
   // ⚠️ LE TRI PAR GRAVITÉ EST LE CŒUR DE CETTE CARTE, et il est né d'un échec
@@ -3070,6 +3077,7 @@ function CarteCouverture({
                 pourquoi={d.pourquoi}
                 conteste={contestes.has(d.champ)}
                 onContester={() => onContester(d.champ)}
+                onOuvrirLEditeur={onOuvrirLEditeur}
                 t={t}
               />
             ))}
@@ -3133,6 +3141,7 @@ function CarteCouverture({
                 pourquoi={d.pourquoi}
                 conteste={contestes.has(d.champ)}
                 onContester={() => onContester(d.champ)}
+                onOuvrirLEditeur={onOuvrirLEditeur}
                 t={t}
               />
             ))}
@@ -3190,12 +3199,24 @@ function LigneInterpretation({
   pourquoi,
   conteste,
   onContester,
+  onOuvrirLEditeur,
   t,
 }: {
   champ: string;
   pourquoi: string;
   conteste: boolean;
   onContester: () => void;
+  /**
+   * Ouvrir l'éditeur sur ce bloc.
+   *
+   * ⚠️⚠️ « CORRIGE CE BLOC DANS LE PLAN CI-DESSOUS : IL EST ENTOURÉ DE ROUGE »
+   * DÉSIGNAIT UNE AUTRE ÉTAPE. Cette carte vit à l'étape « Ta stratégie » et
+   * l'éditeur à l'étape « Tes règles » : rien n'était entouré de rouge nulle
+   * part, puisque rien n'était rendu. Le trader vient de dire « ce n'est pas
+   * ça » sur une décision prise à sa place, c'est le pire moment pour
+   * l'envoyer chercher.
+   */
+  onOuvrirLEditeur: () => void;
   t: (k: string, v?: Record<string, string | number>) => string;
 }) {
   return (
@@ -3238,7 +3259,16 @@ function LigneInterpretation({
         </button>
       </div>
       {conteste ? (
-        <p className="mt-1.5 text-[11px] font-medium text-loss">{t("bt_corrige_le_bloc")}</p>
+        <div className="mt-1.5">
+          <p className="text-[11px] font-medium text-loss">{t("bt_corrige_le_bloc")}</p>
+          <button
+            type="button"
+            onClick={onOuvrirLEditeur}
+            className="mt-1.5 rounded-lg border border-loss/50 px-2.5 py-1 text-[11px] font-medium text-loss hover:bg-loss/10"
+          >
+            {t("bt_corrige_aller_editeur")}
+          </button>
+        </div>
       ) : null}
     </li>
   );

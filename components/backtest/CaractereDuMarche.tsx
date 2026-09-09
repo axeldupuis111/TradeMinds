@@ -42,6 +42,7 @@ export function CaractereDuMarche({
   instrument,
   uniteDeTemps,
   methode,
+  onDeclarerMethode,
   t,
 }: {
   caractere: CaractereMarche;
@@ -49,6 +50,15 @@ export function CaractereDuMarche({
   uniteDeTemps: number;
   /** La méthode déclarée, quand il en a choisi une. */
   methode?: Methode;
+  /**
+   * Emmener le trader déclarer sa méthode.
+   *
+   * ⚠️⚠️ « DÉCLARE TA MÉTHODE PLUS HAUT » DÉSIGNAIT UNE AUTRE ÉTAPE. Ce bloc
+   * vit à l'étape « Tes règles » ; « Ta méthode » vit à l'étape « Ta
+   * stratégie », dont rien n'est rendu ici. Le trader remonte et ne trouve
+   * rien : une indication de direction au lieu du geste.
+   */
+  onDeclarerMethode: () => void;
   t: (cle: string, params?: Record<string, string | number>) => string;
 }) {
   const accords = methode ? confronterAuMarche(methode.besoinsMarche, caractere) : [];
@@ -134,9 +144,18 @@ export function CaractereDuMarche({
           </ul>
         )
       ) : (
-        <p className="mt-3 text-[11px] leading-relaxed text-foreground-muted">
-          {t("bt_car_sans_methode")}
-        </p>
+        <div className="mt-3">
+          <p className="text-[11px] leading-relaxed text-foreground-muted">
+            {t("bt_car_sans_methode")}
+          </p>
+          <button
+            type="button"
+            onClick={onDeclarerMethode}
+            className="mt-2 rounded-lg border border-border px-2.5 py-1.5 text-[11px] font-medium text-foreground-muted hover:border-accent/50 hover:text-foreground"
+          >
+            {t("bt_car_aller_methode")}
+          </button>
+        </div>
       )}
 
       {/* ⚠️ CE QUE CETTE CARTE NE FAIT PAS, dit ici pour qu'on ne le lui

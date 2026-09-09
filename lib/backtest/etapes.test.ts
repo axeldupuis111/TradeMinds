@@ -10,6 +10,7 @@ import {
   etapesDuParcours,
   PARCOURS,
   raisonAffichee,
+  type CodeEtapeParcours,
   replierVers,
   type EtatDuParcours,
 } from "./etapes";
@@ -629,5 +630,115 @@ describe("le mur payant attend de savoir", () => {
     );
     expect(bloc).toContain("bt_chargement_abonnement");
     expect(bloc.includes("return null"), "une page blanche ne dit rien").toBe(false);
+  });
+});
+
+/**
+ * UNE PHRASE QUI DIT « PLUS HAUT » PARLE DE LA MÊME ÉTAPE, OU ELLE MENT.
+ *
+ * ── CE QUE J'AI VU À L'ÉCRAN, QUATRE FOIS ───────────────────────────────────
+ *
+ * Depuis l'étape « Ton plan » : « Réponds-y dans « Ton plan, de A à Z », plus
+ * haut. » Depuis « Tes règles » : « Déclare ta méthode plus haut, dans « Ta
+ * méthode ». » Depuis « Ta stratégie » : « Corrige ce bloc dans le plan
+ * ci-dessous : il est entouré de rouge. » Depuis « Ton plan » encore : « part
+ * avec « Analyser à fond », plus haut. »
+ *
+ * ⚠️⚠️ AUCUN DE CES BLOCS N'ÉTAIT SUR LA PAGE. Depuis que le parcours est
+ * découpé en étapes, un bloc d'une autre étape n'est pas ailleurs sur l'écran :
+ * il n'est RENDU NULLE PART. Le trader remonte, ne trouve rien, et en conclut
+ * qu'il n'a pas compris la page. C'est le même défaut que « lance le test à
+ * l'étape 3 » lu depuis l'étape 3, dont un commentaire du parcours dit déjà
+ * qu'il est « le message le plus sûr pour lui faire croire qu'il n'a pas
+ * compris ».
+ *
+ * ── LA RÈGLE, ET POURQUOI ELLE EST UNE LISTE ────────────────────────────────
+ *
+ * Un test ne peut pas deviner à quel bloc « plus haut » fait allusion. Il peut
+ * exiger qu'on le DÉCLARE : toute phrase de l'onglet qui indique une direction
+ * doit figurer ici avec l'étape d'où on la lit et l'étape qu'elle vise, et les
+ * deux doivent être la même. Ajouter une phrase qui pointe ailleurs oblige à
+ * écrire les deux étapes, donc à voir qu'elles diffèrent.
+ */
+describe("aucune phrase n'envoie le trader sur une autre étape", () => {
+  const DIRECTION = /plus haut|plus bas|ci-dessus|ci-dessous|juste au-dessus|juste en dessous/i;
+
+  /**
+   * Les phrases qui indiquent une direction, et l'étape des deux côtés.
+   *
+   * ⚠️ « lue » = l'étape où la phrase s'affiche. « vise » = l'étape du bloc
+   * qu'elle désigne. Les deux doivent être égales : sinon la phrase désigne
+   * quelque chose qui n'est pas rendu.
+   */
+  const DECLAREES: Record<string, { lue: CodeEtapeParcours; vise: CodeEtapeParcours }> = {
+    // « le plus haut et le plus bas de la veille » : un prix, pas une direction.
+    bt_cons_g_veille: { lue: "strategie", vise: "strategie" },
+    bt_niveau_veille: { lue: "regles", vise: "regles" },
+    // Ces phrases désignent un bloc de leur propre étape.
+    bt_comp_vient_du_plan: { lue: "regles", vise: "regles" },
+    bt_par_bloque_sans_test_ici: { lue: "test", vise: "test" },
+    bt_recommencer_texte: { lue: "ameliorer", vise: "ameliorer" },
+    bt_diag_intro: { lue: "ameliorer", vise: "ameliorer" },
+    bt_diag_aucun: { lue: "ameliorer", vise: "ameliorer" },
+    bt_diag_stop_frole: { lue: "ameliorer", vise: "ameliorer" },
+    bt_dep_aucune: { lue: "strategie", vise: "strategie" },
+    bt_prof_tester_aide: { lue: "regles", vise: "regles" },
+    bt_compil_quota_jour: { lue: "strategie", vise: "strategie" },
+    bt_compil_instrument_inconnu: { lue: "strategie", vise: "strategie" },
+    bt_non_traduites_note: { lue: "strategie", vise: "strategie" },
+    bt_absents_note: { lue: "strategie", vise: "strategie" },
+    bt_journees_arretees: { lue: "test", vise: "test" },
+    bt_inspection_aide: { lue: "test", vise: "test" },
+    bt_inspection_aide_1: { lue: "test", vise: "test" },
+    bt_inspection_aide_echantillon: { lue: "test", vise: "test" },
+    bt_non_verifie: { lue: "test", vise: "test" },
+    bt_bloc_niveau_trendline_aide: { lue: "regles", vise: "regles" },
+    bt_prop_pas_de_gain: { lue: "ameliorer", vise: "ameliorer" },
+    bt_prop_note: { lue: "ameliorer", vise: "ameliorer" },
+    bt_geste_autre: { lue: "regles", vise: "regles" },
+    bt_csv_aide: { lue: "test", vise: "test" },
+    bt_plan_intro_candidat: { lue: "ameliorer", vise: "ameliorer" },
+    bt_plan_ecarts_intro: { lue: "ameliorer", vise: "ameliorer" },
+    bt_plan_risque: { lue: "plan", vise: "plan" },
+    bt_plan_risque_plafond: { lue: "plan", vise: "plan" },
+    bt_perime: { lue: "test", vise: "test" },
+    bt_exp_regle: { lue: "ameliorer", vise: "ameliorer" },
+    bt_exp_pas_franchie: { lue: "ameliorer", vise: "ameliorer" },
+    bt_syn_coherence_pas_etabli: { lue: "plan", vise: "plan" },
+    bt_coh_instrument_hors_fiche: { lue: "regles", vise: "regles" },
+    bt_rob_intro: { lue: "ameliorer", vise: "ameliorer" },
+    bt_ver_periodes_differentes: { lue: "strategie", vise: "strategie" },
+    bt_modif_editeur: { lue: "regles", vise: "regles" },
+    bt_cond_incomplet: { lue: "regles", vise: "regles" },
+  };
+
+  const phrases = Object.entries(fr as Record<string, string>).filter(
+    ([cle, texte]) => cle.startsWith("bt_") && DIRECTION.test(texte),
+  );
+
+  it("lit bien les phrases, sinon ce test ne prouve rien", () => {
+    expect(phrases.length).toBeGreaterThan(20);
+  });
+
+  it("chaque direction est déclarée, et les deux étapes sont la même", () => {
+    const fautes: string[] = [];
+    for (const [cle, texte] of phrases) {
+      const d = DECLAREES[cle];
+      if (!d) {
+        fautes.push(`${cle} indique une direction sans déclarer ses deux étapes : « ${texte.slice(0, 70)}… »`);
+        continue;
+      }
+      if (d.lue !== d.vise) {
+        fautes.push(`${cle} se lit à « ${d.lue} » et désigne « ${d.vise} »`);
+      }
+    }
+    expect(fautes, fautes.join(" | ")).toEqual([]);
+  });
+
+  /** ⚠️ Une déclaration sur une phrase disparue ne protège plus rien. */
+  it("ne déclare que des phrases qui existent encore et pointent encore", () => {
+    const vivantes = new Set(phrases.map(([cle]) => cle));
+    const mortes = Object.keys(DECLAREES).filter((c) => !vivantes.has(c));
+    expect(mortes, "déclarations mortes : " + mortes.join(", ")).toEqual([]);
   });
 });
