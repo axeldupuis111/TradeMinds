@@ -1,6 +1,7 @@
 "use client";
 
 import { Card } from "@/components/ui/Card";
+import { nomDuMarche } from "@/lib/backtest/phrases";
 import { cn } from "@/lib/cn";
 import type { ConstatProfil } from "@/lib/backtest/profil";
 import { CheckCircle2, TriangleAlert, UserRound } from "lucide-react";
@@ -73,7 +74,17 @@ export function Profil({
                 <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               )}
               <span className="min-w-0">
-                {t(`bt_prof_${c.code}`, c.valeurs)}
+                {/* ⚠️ Les marches se traduisent : le constat porte des CODES,
+                    parce que le catalogue ecrit ses noms en dur en francais. */}
+                {t(`bt_prof_${c.code}`, {
+                  ...c.valeurs,
+                  ...(c.valeurs.teste != null
+                    ? { teste: nomDuMarche(String(c.valeurs.teste), String(c.valeurs.testeNom ?? c.valeurs.teste), t) }
+                    : {}),
+                  ...(c.valeurs.sien != null
+                    ? { sien: nomDuMarche(String(c.valeurs.sien), String(c.valeurs.sien), t) }
+                    : {}),
+                })}
 
                 {/* ⚠️⚠️ LE CONSTAT SANS L'ACTION NE SERT À RIEN. « Tu testes le
                     Nasdaq mais 92 % de tes trades sont sur l'or » s'affichait
@@ -87,7 +98,7 @@ export function Profil({
                       onClick={() => onTesterSurSonMarche(marcheReel.code)}
                       className="mt-2 block rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-on-accent hover:bg-accent-hover"
                     >
-                      {t("bt_prof_tester_ici", { marche: marcheReel.nom })}
+                      {t("bt_prof_tester_ici", { marche: nomDuMarche(marcheReel.code, marcheReel.nom, t) })}
                     </button>
                     <span className="mt-1.5 block text-[11px] leading-relaxed text-foreground-muted">
                       {t("bt_prof_tester_aide")}

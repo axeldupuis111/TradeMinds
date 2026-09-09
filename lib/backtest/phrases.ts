@@ -124,6 +124,15 @@ export function provenanceDeLaModification(m: Modification, t: Traduire): string
 export function phraseDuPlan(l: LigneDuPlan, t: Traduire): string {
   const v = l.valeurs;
   switch (l.cle) {
+    /**
+     * ⚠️ LE MARCHE SE TRADUIT ICI. La ligne porte le CODE, jamais le nom du
+     * catalogue, qui est ecrit en dur en francais et sortait tel quel dans les
+     * quatre langues, jusque dans le document que le trader emporte.
+     */
+    case "actif":
+      return t("bt_plan_actif", {
+        instrument: nomDuMarche(String(v.instrument), String(v.nom ?? v.instrument), t),
+      });
     case "niveau":
       return t("bt_plan_niveau", { type: nommerUneValeur("niveau_type", String(v.type), t) });
     case "declencheur":
@@ -320,6 +329,26 @@ export function remplir(
  * par un modèle serait pire que la tronquer : on afficherait comme sien un
  * raisonnement que personne n'a tenu.
  */
+/**
+ * LE NOM D'UN MARCHÉ, DANS LA LANGUE DE L'ÉCRAN.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN, EN ANGLAIS : « On **Or** (XAU/USD), from 2025-01 to
+ * 2025-12, costs included, this plan would have returned -0.2648 R ». Le
+ * catalogue des instruments porte des noms écrits en dur en français : « Or »,
+ * « Argent », « Pétrole WTI ». Ils sortaient tels quels dans les quatre
+ * langues, sur le verdict, le plan à emporter, la comparaison des marchés et la
+ * carte du caractère du marché.
+ *
+ * ⚠️ LE REPLI SUR LE NOM DU CATALOGUE EST UN FILET, PAS UNE HABITUDE : un test
+ * exige une clé pour chaque instrument dans les quatre langues. Sans lui, le
+ * jour où un marché s'ajoute, il reparlerait français partout en silence.
+ */
+export function nomDuMarche(code: string, secours: string, t: Traduire): string {
+  const cle = `bt_instr_${code}`;
+  const traduit = t(cle);
+  return traduit && traduit !== cle ? traduit : secours;
+}
+
 export function sansPhraseCoupee(texte: string): string {
   const propre = texte.trim();
   // Rien à faire : la phrase se termine normalement.

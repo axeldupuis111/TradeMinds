@@ -254,7 +254,8 @@ export function confronterAuProfil(
         valeurs: {
           sien: principal.code,
           pct: pct.toFixed(0),
-          teste: instrument.nom,
+          teste: instrument.code,
+          testeNom: instrument.nom,
         },
         /**
          * ⚠️⚠️ LE CONSTAT SANS L'ACTION NE SERT À RIEN, ET C'EST LA CRITIQUE

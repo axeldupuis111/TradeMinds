@@ -91,6 +91,7 @@ import {
   sansLeBlocDePlan,
 } from "@/lib/backtest/fiche-plan";
 import {
+  nomDuMarche,
   nommerUnChamp,
   nommerUneValeur as nommerLaValeur,
   remplir,
@@ -1559,7 +1560,7 @@ export default function BacktestPage() {
           tr(`bt_geste_${m.cle}`, { avant: m.avant, apres: m.apres }),
       ),
       mesure: tr("bt_sauver_mesure", {
-        instrument: instrument.nom,
+        instrument: nomDuMarche(instrument.code, instrument.nom, tr),
         de,
         a,
         trades: resultat.trades.length,
@@ -1757,7 +1758,7 @@ export default function BacktestPage() {
     });
     return [
       tr("bt_mon_plan_titre"),
-      `${instrument.nom} · ${de} → ${a}`,
+      `${nomDuMarche(instrument.code, instrument.nom, tr)} · ${de} → ${a}`,
       "",
       ...lignes,
       "",
@@ -2098,7 +2099,7 @@ export default function BacktestPage() {
             ancre="bt-periode"
             numero={1}
             titre={tr("bt_etape_perimetre")}
-            etat={`${instrument.nom} · ${de} → ${a}`}
+            etat={`${nomDuMarche(instrument.code, instrument.nom, tr)} · ${de} → ${a}`}
             faite
             ouverte={section === "bt-periode"}
             onBasculer={() => basculer("bt-periode")}

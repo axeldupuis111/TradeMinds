@@ -141,7 +141,9 @@ describe("l'écart entre le plan écrit et le trader réel", () => {
     const c = confronterAuProfil(plan(), lireLeProfil(trades(40, 10, "XAUUSD"), UTC), NAS);
     const a = c.find((x) => x.code === "actif_ailleurs")!;
     expect(a.valeurs.sien).toBe("XAUUSD");
-    expect(a.valeurs.teste).toBe(NAS.nom);
+    // ⚠️ Le CODE, que l'écran traduit ; le nom reste disponible en secours.
+    expect(a.valeurs.teste).toBe(NAS.code);
+    expect(a.valeurs.testeNom).toBe(NAS.nom);
   });
 
   /**

@@ -1,6 +1,7 @@
 "use client";
 
 import { Card } from "@/components/ui/Card";
+import { nomDuMarche } from "@/lib/backtest/phrases";
 import { cn } from "@/lib/cn";
 import {
   confronterAuMarche,
@@ -56,7 +57,7 @@ export function CaractereDuMarche({
     <Card className="p-4 sm:p-5">
       <h4 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
         <Gauge className="h-4 w-4" />
-        {t("bt_car_titre", { marche: instrument.nom })}
+        {t("bt_car_titre", { marche: nomDuMarche(instrument.code, instrument.nom, t) })}
       </h4>
       <p className="mt-1 text-xs leading-relaxed text-foreground-muted">{t("bt_car_intro")}</p>
 
@@ -125,7 +126,7 @@ export function CaractereDuMarche({
                   {t(`bt_car_${a.besoin}_${a.code}`, {
                     ...a.valeurs,
                     methode: t(`bt_meth_${methode.code}`),
-                    marche: instrument.nom,
+                    marche: nomDuMarche(instrument.code, instrument.nom, t),
                   })}
                 </span>
               </li>

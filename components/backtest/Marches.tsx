@@ -1,6 +1,7 @@
 "use client";
 
 import { Card } from "@/components/ui/Card";
+import { nomDuMarche } from "@/lib/backtest/phrases";
 import { cn } from "@/lib/cn";
 import { signe as r } from "@/lib/backtest/format";
 import { lireLesMarches, type ResultatMarche } from "@/lib/backtest/marches";
@@ -66,7 +67,7 @@ export function Marches({
                     className={cn("border-t border-border", m.sien && "bg-accent/[0.06]")}
                   >
                     <td className="py-1 pr-3 text-foreground">
-                      {m.nom}
+                      {nomDuMarche(m.code, m.nom, t)}
                       {m.sien ? (
                         <span className="ml-1.5 text-[10px] text-accent">{t("bt_mar_le_tien")}</span>
                       ) : null}

@@ -152,7 +152,13 @@ export function composerPlanComplet(
     lignes.push({ cle, valeurs, deduite });
 
   // ── Ce qui se recopie du plan : le quoi, le quand, le comment ────────────
-  ajouter("actif", { instrument: instrument.nom });
+  /**
+   * ⚠️ LE CODE, PAS LE NOM. Le catalogue écrit ses noms en dur en français
+   * (« Or », « Argent », « Pétrole WTI ») : figer le nom ici les faisait sortir
+   * tels quels dans les quatre langues, jusque dans le document que le trader
+   * emporte. La ligne porte le code, et `phraseDuPlan` le traduit.
+   */
+  ajouter("actif", { instrument: instrument.code, nom: instrument.nom });
   ajouter("unite_de_temps", { minutes: plan.uniteDeTemps ?? 1 });
   ajouter("jours", {
     jours: [...plan.contexte.jours]

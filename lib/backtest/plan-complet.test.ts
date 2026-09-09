@@ -5,6 +5,7 @@ import { composerPlanComplet, SEUIL_RECUL_PAR_DEFAUT } from "./plan-complet";
 import { socleDePlan } from "./compilation";
 import { coutsPourInstrument, instrumentParCode } from "./instruments";
 import fr from "../i18n/fr";
+import { phraseDuPlan, remplir } from "./phrases";
 import type { PlanExecution, TradeSimule } from "./types";
 
 const NAS = instrumentParCode("NAS100")!;
@@ -66,7 +67,18 @@ describe("le plan complet", () => {
     for (const cle of ["actif", "unite_de_temps", "jours", "heures", "sens", "niveau", "declencheur", "stop", "objectif"]) {
       expect(ligne(p, cle), cle).toBeTruthy();
     }
-    expect(ligne(p, "actif")!.valeurs.instrument).toBe("Nasdaq 100");
+    /**
+     * ⚠️ LA LIGNE PORTE LE CODE, ET LA PHRASE PORTE LE NOM TRADUIT. Le
+     * catalogue écrit ses noms en dur en français (« Or », « Argent »,
+     * « Pétrole WTI ») : figés dans la valeur, ils sortaient tels quels dans
+     * les quatre langues, jusque dans le document que le trader emporte.
+     */
+    expect(ligne(p, "actif")!.valeurs.instrument).toBe("NAS100");
+    expect(phraseDuPlan(ligne(p, "actif")!, (c, v) =>
+      remplir((fr as Record<string, string>)[c] ?? c, v),
+    )).toContain(
+      "Nasdaq 100",
+    );
     expect(ligne(p, "unite_de_temps")!.valeurs.minutes).toBe(15);
     expect(ligne(p, "jours")!.valeurs.jours).toBe("L M M J V");
   });

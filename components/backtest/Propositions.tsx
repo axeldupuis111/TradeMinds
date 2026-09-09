@@ -1,6 +1,7 @@
 "use client";
 
 import { Card } from "@/components/ui/Card";
+import { nomDuMarche } from "@/lib/backtest/phrases";
 import type { Instrument } from "@/lib/backtest/instruments";
 import { OBJECTIFS, type Objectif, type Proposition } from "@/lib/backtest/propositions";
 import { AlertTriangle, ShieldCheck, TrendingUp, Wand2 } from "lucide-react";
@@ -141,7 +142,7 @@ export function Propositions({
       </div>
 
       <p className="mt-4 text-[11px] leading-snug text-foreground-muted">
-        {t("bt_prop_note", { instrument: instrument.nom })}
+        {t("bt_prop_note", { instrument: nomDuMarche(instrument.code, instrument.nom, t) })}
       </p>
     </Card>
   );

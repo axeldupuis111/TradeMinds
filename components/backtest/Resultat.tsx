@@ -1,6 +1,7 @@
 "use client";
 
 import { Card } from "@/components/ui/Card";
+import { nomDuMarche } from "@/lib/backtest/phrases";
 import { cn } from "@/lib/cn";
 import { signe, signePourcent } from "@/lib/backtest/format";
 import { effetSurLeCompte } from "@/lib/backtest/capital";
@@ -307,7 +308,7 @@ export function Resultat({
             {/* ⚠️ L'espérance ne voyage JAMAIS sans son intervalle. */}
             <p className="mt-1 text-sm text-foreground">
               {t("bt_verdict_phrase", {
-                instrument: instrument.nom,
+                instrument: nomDuMarche(instrument.code, instrument.nom, t),
                 de: periode.de,
                 a: periode.a,
                 esperance: signe(s.esperanceR, 4),
