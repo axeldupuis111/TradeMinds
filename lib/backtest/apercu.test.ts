@@ -215,3 +215,46 @@ describe("la fiche d'un aperçu ne décrit pas une permission", () => {
     ).toEqual([]);
   });
 });
+
+/**
+ * LE NOMBRE D'APERÇUS EST UNE CONSTANTE DU CODE, PAS UN MOT DE LA TRADUCTION.
+ *
+ * ⚠️⚠️ DEUX PHRASES DE LA MÊME CARTE L'AVAIENT ÉCRIT EN DUR, et j'ai corrigé
+ * la première sans voir la seconde : « Les douze aperçus ci-dessus ne sont
+ * qu'un échantillon », affiché quel que soit le nombre réellement dessiné. Sur
+ * un plan à trois trades, l'écran comptait jusqu'à douze tout seul.
+ *
+ * ⚠️ UN NOMBRE ÉCRIT EN TOUTES LETTRES NE PEUT PAS SE TROMPER À MOITIÉ : il est
+ * juste tant que personne ne touche à la constante, et faux pour toujours
+ * ensuite, dans quatre langues, sans que rien ne le signale.
+ */
+describe("aucune phrase ne compte les aperçus à la place du code", () => {
+  const worker = readFileSync(join(process.cwd(), "app/dashboard/backtest/worker.ts"), "utf8");
+  const m = worker.match(/const APERCUS_MAX = (\d+);/);
+
+  const MOTS: Record<string, string[]> = {
+    fr: ["zéro", "un", "deux", "trois", "quatre", "cinq", "six", "sept", "huit", "neuf", "dix", "onze", "douze"],
+    en: ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"],
+    es: ["cero", "uno", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve", "diez", "once", "doce"],
+    de: ["null", "eins", "zwei", "drei", "vier", "fünf", "sechs", "sieben", "acht", "neun", "zehn", "elf", "zwölf"],
+  };
+
+  it("la constante est lisible, sinon ce test ne prouve rien", () => {
+    expect(m, "APERCUS_MAX introuvable dans le worker").not.toBeNull();
+    expect(Number(m![1])).toBeLessThanOrEqual(12);
+  });
+
+  for (const [nom, dico] of Array.from(Object.entries({ fr, en, es, de }))) {
+    it(`ne l'écrit pas en toutes lettres en ${nom}`, () => {
+      const mot = MOTS[nom][Number(m![1])];
+      const motif = new RegExp(`(^|[^\p{L}])${mot}([^\p{L}]|$)`, "iu");
+      const fautives = Object.entries(dico as Record<string, string>)
+        .filter(([cle, texte]) => cle.startsWith("bt_") && motif.test(texte))
+        .map(([cle]) => cle);
+      expect(
+        fautives,
+        `phrases qui écrivent « ${mot} » alors que le code compte : ` + fautives.join(", "),
+      ).toEqual([]);
+    });
+  }
+});
