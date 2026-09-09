@@ -566,6 +566,22 @@ for (const f of unionDe("lib/backtest/robustesse.ts", "FormeDeLaRepartition")) {
 for (const v of unionDe("lib/backtest/verdict.ts", "CodeVerdict")) {
   ajouter("verdicts", `bt_verdict_${v}`);
 }
+/**
+ * ⚠️ LA LIGNE DE DÉTAIL N'ÉTAIT COUVERTE PAR AUCUN RENDU. C'est la seule ligne
+ * chiffrée qu'un rejeu sans trade affiche, elle porte sept nombres et six
+ * accords, et rien ne la rendait dans les quatre langues.
+ */
+ajouter("diagnostic", "bt_diagnostic_chiffres", {
+  niveau: 1,
+  bougies: 2,
+  examines: 1,
+  signaux: 1,
+  ecartes: 1,
+  geometrie: 1,
+  attente: 1,
+});
+ajouter("diagnostic", "bt_diagnostic_droites", { droites: 1, confirmees: 1 });
+
 for (const g of ["condamne", "lourd", "informatif"]) ajouter("gravités", `bt_grav_${g}`);
 for (const g of unionDe("lib/backtest/coherence-plan.ts", "Gravite")) {
   ajouter("gravités", `bt_coh_${g}`);
@@ -773,4 +789,54 @@ describe("tout ce que l'onglet peut écrire", () => {
       });
     });
   }
+});
+
+/**
+ * LA LIGNE DE DÉTAIL NE COMPTE PAS DEUX CHOSES SOUS LE MÊME MOT.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN, SUR LE MÊME ÉCRAN, À SIX LIGNES D'INTERVALLE :
+ *
+ *   « Bougie de réaction : 359 signaux refusés, sur un total examiné de 423 »
+ *   « Détail : […] 64 signaux, 0 écartés […] »
+ *
+ * Les deux nombres sont justes et cohérents (423 examinés, 359 refusés, 64
+ * retenus) et aucun des deux ne le disait. Un lecteur voit « signaux » valoir
+ * 423 puis 64 et cesse de faire confiance aux deux.
+ *
+ * ⚠️ ET « 0 DROITES TRACÉES DONT 0 CONFIRMÉES » S'AFFICHAIT SUR UN PLAN QUI
+ * REPÈRE D'ANCIENS SOMMETS ET CREUX : un compteur structurellement nul, qui
+ * décrit un mécanisme que ce plan n'emploie pas, et qui se lit comme un échec
+ * du moteur. Sur un plan qui EN trace, « 0 droites » explique un zéro trade à
+ * lui seul : le compteur reste, sa phrase se conditionne.
+ */
+describe("la ligne de détail nomme ce qu'elle compte", () => {
+  const composant = readFileSync(
+    join(process.cwd(), "components/backtest/Resultat.tsx"),
+    "utf8",
+  );
+
+  it("dit les deux comptes de signaux, l'examiné et le retenu", () => {
+    for (const [nom, dico] of Array.from(Object.entries({ fr, en, es, de }))) {
+      const phrase = (dico as Record<string, string>).bt_diagnostic_chiffres;
+      expect(phrase, `bt_diagnostic_chiffres en ${nom}`).toContain("{examines");
+      expect(phrase, `bt_diagnostic_chiffres en ${nom}`).toContain("{signaux");
+    }
+    expect(composant).toContain("examines: Math.max(audit.signauxSoumisAuxFiltres, audit.signaux)");
+  });
+
+  /**
+   * ⚠️ L'EXAMINÉ NE PEUT PAS ÊTRE PLUS PETIT QUE LE RETENU. Le dénominateur
+   * n'est incrémenté que là où des filtres existent : sans filtre il reste à
+   * zéro, et « 0 signaux examinés dont 64 retenus » serait un troisième
+   * mensonge à la place des deux qu'on corrige.
+   */
+  it("ne peut pas annoncer moins d'examinés que de retenus", () => {
+    expect(composant).toContain("Math.max(");
+  });
+
+  it("ne compte les droites que sur un plan qui en trace", () => {
+    expect(composant).toContain("{traceDesDroites");
+    const page = readFileSync(join(process.cwd(), "app/dashboard/backtest/page.tsx"), "utf8");
+    expect(page).toContain('traceDesDroites={plan.niveau.type === "trendline"}');
+  });
 });

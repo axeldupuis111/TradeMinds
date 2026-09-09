@@ -2690,6 +2690,7 @@ export default function BacktestPage() {
               lecture={resultat.lecture}
               trades={resultat.trades}
               audit={resultat.audit}
+              traceDesDroites={plan.niveau.type === "trendline"}
               instrument={instrument}
               periode={{ de, a }}
               moisManquants={resultat.moisManquants}

@@ -43,6 +43,16 @@ export interface ResultatProps {
   lecture: LectureBacktest;
   trades: TradeSimule[];
   audit: AuditExecution;
+  /**
+   * Le plan trace-t-il des droites ?
+   *
+   * ⚠️⚠️ « 0 DROITES TRACÉES DONT 0 CONFIRMÉES » S'AFFICHAIT SUR UN PLAN QUI
+   * REPÈRE D'ANCIENS SOMMETS ET CREUX. Un compteur structurellement nul, qui
+   * décrit un mécanisme que ce plan n'emploie pas, et qui se lit comme un échec
+   * du moteur. Sur un plan qui EN trace, en revanche, « 0 droites » explique un
+   * zéro trade à lui seul : le compteur reste, sa phrase se conditionne.
+   */
+  traceDesDroites: boolean;
   instrument: Instrument;
   periode: { de: string; a: string };
   moisManquants: string[];
@@ -109,6 +119,7 @@ export function Resultat({
   lecture,
   trades,
   audit,
+  traceDesDroites,
   instrument,
   periode,
   moisManquants,
@@ -228,16 +239,32 @@ export function Resultat({
                   s'il y a des trades. Ils existent précisément pour le cas où
                   il n'y en a aucun : ils rejoignent donc la seule ligne de
                   détail que ce cas-là montre. */}
+              {/* ⚠️⚠️ DEUX NOMBRES POUR LE MÊME MOT, SUR LE MÊME ÉCRAN. Cette
+                  ligne annonçait « 64 signaux » pendant que la carte des
+                  filtres, six lignes plus haut, disait « 359 signaux refusés
+                  sur un total examiné de 423 ». Les deux sont justes : 423
+                  examinés, 64 retenus. Aucun des deux ne le disait. */}
               {t("bt_diagnostic_chiffres", {
                 niveau: audit.barresAvecNiveau,
                 bougies: audit.bougies,
-                droites: audit.droitesTracees,
-                confirmees: audit.droitesConfirmees,
+                examines: Math.max(audit.signauxSoumisAuxFiltres, audit.signaux),
                 signaux: audit.signaux,
                 ecartes: audit.refusesRisqueTropPetit,
                 geometrie: audit.refusesGeometrie,
                 attente: audit.limitesExpirees,
               })}
+              {/* ⚠️ LES DROITES NE SE COMPTENT QUE SI ON EN TRACE. « 0 droites
+                  tracées dont 0 confirmées » s'affichait sur un plan qui repère
+                  d'anciens sommets et creux : un compteur structurellement nul,
+                  qui décrit un mécanisme que ce plan n'emploie pas, et qui se
+                  lit comme un échec du moteur. */}
+              {traceDesDroites
+                ? " " +
+                  t("bt_diagnostic_droites", {
+                    droites: audit.droitesTracees,
+                    confirmees: audit.droitesConfirmees,
+                  })
+                : null}
             </p>
           </div>
         </div>
