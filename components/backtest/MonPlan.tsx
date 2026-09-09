@@ -54,11 +54,23 @@ const TON: Record<Provenance, string> = {
 export function MonPlan({
   plan,
   onCopier,
+  onCompleter,
   t,
 }: {
   plan: Plan;
   /** Le texte brut du document, pour le presse-papier. */
   onCopier: () => string;
+  /**
+   * Emmener le trader écrire les lignes qui manquent.
+   *
+   * ⚠️⚠️ « RÉPONDS-Y DANS « TON PLAN, DE A À Z », PLUS HAUT » ENVOYAIT DANS LE
+   * VIDE. Ce bloc-là n'est pas plus haut sur la page : il vit à une AUTRE
+   * ÉTAPE du parcours, et rien n'est affiché de celle-ci pendant qu'on lit son
+   * plan. Le trader remonte, ne trouve rien, et conclut qu'il n'a pas compris
+   * la page. C'est le même défaut que « lance le test à l'étape 3 » lu depuis
+   * l'étape 3 : une indication de chemin au lieu du geste.
+   */
+  onCompleter: () => void;
   t: (cle: string, valeurs?: Record<string, string | number>) => string;
 }) {
   const [copie, setCopie] = useState(false);
@@ -126,15 +138,37 @@ export function MonPlan({
       </ol>
 
       {plan.nonEnregistrees > 0 ? (
-        <p className="mt-4 rounded-lg border border-warning/40 bg-warning/[0.06] p-3 text-xs leading-relaxed text-warning">
-          {t("bt_mon_plan_a_enregistrer", { n: plan.nonEnregistrees })}
-        </p>
+        <div className="mt-4 rounded-lg border border-warning/40 bg-warning/[0.06] p-3">
+          <p className="text-xs leading-relaxed text-warning">
+            {t("bt_mon_plan_a_enregistrer", { n: plan.nonEnregistrees })}
+          </p>
+          {/* ⚠️ Le même geste que pour les lignes manquantes, et pour la même
+              raison : ce bloc n'est pas « plus haut », il est à une autre
+              étape. Celui-ci est le plus urgent des deux, ces réponses-là
+              disparaissent au rechargement. */}
+          <button
+            type="button"
+            onClick={onCompleter}
+            className="mt-2.5 rounded-lg border border-warning/50 px-2.5 py-1.5 text-[11px] font-medium text-warning hover:bg-warning/10"
+          >
+            {t("bt_mon_plan_aller_enregistrer")}
+          </button>
+        </div>
       ) : null}
 
       {plan.manquantes > 0 ? (
-        <p className="mt-4 rounded-lg border border-warning/40 bg-warning/[0.06] p-3 text-xs leading-relaxed text-warning">
-          {t("bt_mon_plan_manquantes", { n: plan.manquantes })}
-        </p>
+        <div className="mt-4 rounded-lg border border-warning/40 bg-warning/[0.06] p-3">
+          <p className="text-xs leading-relaxed text-warning">
+            {t("bt_mon_plan_manquantes", { n: plan.manquantes })}
+          </p>
+          <button
+            type="button"
+            onClick={onCompleter}
+            className="mt-2.5 rounded-lg border border-warning/50 px-2.5 py-1.5 text-[11px] font-medium text-warning hover:bg-warning/10"
+          >
+            {t("bt_mon_plan_aller_completer")}
+          </button>
+        </div>
       ) : (
         <p className="mt-4 rounded-lg border border-profit/40 bg-profit/[0.06] p-3 text-xs leading-relaxed text-profit">
           {t("bt_mon_plan_complet")}

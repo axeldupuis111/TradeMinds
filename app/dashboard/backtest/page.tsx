@@ -2855,7 +2855,12 @@ export default function BacktestPage() {
             du plan une récompense accordée par le verdict. */}
         {monPlan && etapeCourante === "plan" ? (
           <StaggerItem id="bt-mon-plan">
-            <MonPlan plan={monPlan} onCopier={monPlanEnTexte} t={tr} />
+            <MonPlan
+              plan={monPlan}
+              onCopier={monPlanEnTexte}
+              onCompleter={() => remonterVers("bt-completude")}
+              t={tr}
+            />
           </StaggerItem>
         ) : null}
 

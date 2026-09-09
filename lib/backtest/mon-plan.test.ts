@@ -409,3 +409,58 @@ describe("le document ne se répète pas", () => {
     }
   });
 });
+
+/**
+ * ON NE DONNE PAS UN CHEMIN, ON DONNE LE GESTE.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN, DEPUIS L'ÉTAPE « TON PLAN » : « Réponds-y dans « Ton plan,
+ * de A à Z », PLUS HAUT. » Ce bloc-là n'est pas plus haut sur la page : il vit
+ * à une AUTRE étape du parcours, et rien de celle-ci n'est rendu pendant qu'on
+ * lit son plan. Le trader remonte, ne trouve rien, et conclut qu'il n'a pas
+ * compris la page.
+ *
+ * ⚠️ C'EST EXACTEMENT « LANCE LE TEST À L'ÉTAPE 3 » LU DEPUIS L'ÉTAPE 3, sous
+ * une autre forme : une indication de direction au lieu du geste. La règle
+ * tenue ici est donc générale : aucune phrase de ce document n'envoie le
+ * lecteur dans une direction, et le bouton fait le trajet.
+ */
+describe("le document n'envoie personne chercher un bloc", () => {
+  const DIRECTIONS: Record<string, RegExp> = {
+    fr: /plus haut|plus bas|ci-dessus|ci-dessous|remonte/i,
+    en: /above|below|scroll up|further down/i,
+    es: /más arriba|más abajo|arriba|abajo/i,
+    de: /weiter oben|weiter unten|oben|unten/i,
+  };
+
+  for (const [nom, dico] of Array.from(Object.entries({ fr, en, es, de }))) {
+    it(`aucune direction dans les phrases de la carte en ${nom}`, () => {
+      const d = dico as Record<string, string>;
+      const fautives = Object.keys(d)
+        .filter((c) => c.startsWith("bt_mon_plan_"))
+        .filter((c) => DIRECTIONS[nom].test(d[c]));
+      expect(
+        fautives,
+        `phrases qui indiquent une direction au lieu d'agir : ` + fautives.join(", "),
+      ).toEqual([]);
+    });
+  }
+
+  /** ⚠️ Et le geste existe vraiment : la carte porte le bouton, la page le branche. */
+  it("le bouton existe et mène au bloc des lignes à écrire", () => {
+    const carte = readFileSync(join(process.cwd(), "components/backtest/MonPlan.tsx"), "utf8");
+    expect(carte).toContain('t("bt_mon_plan_aller_completer")');
+    expect(carte).toContain('t("bt_mon_plan_aller_enregistrer")');
+    expect(carte).toContain("onClick={onCompleter}");
+    const page = readFileSync(join(process.cwd(), "app/dashboard/backtest/page.tsx"), "utf8");
+    expect(page).toContain('onCompleter={() => remonterVers("bt-completude")}');
+  });
+
+  it("et sa phrase existe dans les quatre langues", () => {
+    for (const [nom, dico] of Array.from(Object.entries({ fr, en, es, de }))) {
+      expect(
+        (dico as Record<string, string>).bt_mon_plan_aller_completer,
+        `bt_mon_plan_aller_completer en ${nom}`,
+      ).toBeTruthy();
+    }
+  });
+});
