@@ -892,3 +892,92 @@ describe("l'audit rend compte de chaque signal", () => {
     expect(a.signaux - explique).toBeGreaterThanOrEqual(0);
   });
 });
+
+/**
+ * L'IDENTITÉ COMPTABLE TIENT SUR TOUTES LES COMBINAISONS, PAS SUR DEUX.
+ *
+ * ⚠️⚠️ LES DEUX TESTS PRÉCÉDENTS ONT TROUVÉ UN CHEMIN MUET, ET C'ÉTAIT DEUX
+ * COMBINAISONS SUR DES DIZAINES. Un ordre annulé au changement de journée ne se
+ * voyait que sur l'entrée en attente ; rien ne dit que les autres blocs n'ont
+ * pas leur propre fuite. On balaie donc chaque stop et chaque entrée.
+ *
+ * ⚠️ ON NE FIXE AUCUN NOMBRE DE TRADES : il dépendrait de la série, donc de la
+ * chance du générateur. On vérifie seulement que RIEN NE DISPARAÎT, ce qui est
+ * vrai quelle que soit la série.
+ */
+describe("chaque combinaison rend compte de ses signaux", () => {
+  const serieBalayee = (() => {
+    const bougies: Bougie[] = [];
+    let prix = 10_000;
+    let graine = 246813579;
+    const suivant = () => {
+      graine = (graine * 1103515245 + 12345) & 0x7fffffff;
+      return graine / 0x7fffffff;
+    };
+    for (let i = 0; i < 5_000; i++) {
+      const derive = Math.round((suivant() - 0.5) * 60);
+      const ouverture = prix;
+      const cloture = prix + derive;
+      bougies.push([
+        ouverture,
+        Math.max(ouverture, cloture) + Math.round(suivant() * 25),
+        Math.min(ouverture, cloture) - Math.round(suivant() * 25),
+        cloture,
+      ]);
+      prix = cloture;
+    }
+    return serie(bougies);
+  })();
+
+  const STOPS: PlanExecution["stop"][] = [
+    { type: "structurel", bufferTicks: 5 },
+    { type: "fixe", ticks: 40 },
+    { type: "niveau_oppose", bufferTicks: 5 },
+    { type: "dernier_pivot", pivots: 5, bufferTicks: 5 },
+  ];
+  const ENTREES: PlanExecution["entree"][] = [
+    { type: "open_bougie_suivante" },
+    { type: "limite_au_niveau", valableNBarres: 20 },
+  ];
+  /**
+   * ⚠️ LES DEUX OBJECTIFS, parce que « la cible est introuvable » ne peut se
+   * declencher que sur le niveau oppose : un multiple du risque se calcule
+   * toujours.
+   */
+  const OBJECTIFS: PlanExecution["objectif"][] = [
+    { type: "multiple_r", r: 2 },
+    { type: "niveau_oppose" },
+  ];
+
+  for (const stop of STOPS) {
+    for (const entree of ENTREES) {
+      for (const objectif of OBJECTIFS) {
+      it(`stop ${stop.type} + entrée ${entree.type} + objectif ${objectif.type}`, () => {
+        const r = lancerBacktest(
+          serieBalayee,
+          plan({
+            niveau: { type: "extremes_n_bougies", n: 10 },
+            declencheur: { type: "cassure", mode: "cloture" },
+            entree,
+            stop,
+            objectif,
+          }),
+        );
+        const a = r.audit;
+        const explique =
+          r.trades.length +
+          a.refusesRisqueTropPetit +
+          a.refusesGeometrie +
+          a.limitesExpirees +
+          a.refusesParGestion;
+        expect(
+          a.signaux - explique,
+          `signaux ${a.signaux}, trades ${r.trades.length}, écartés ${a.refusesRisqueTropPetit}, ` +
+            `géométrie ${a.refusesGeometrie}, expirés ${a.limitesExpirees}, gestion ${a.refusesParGestion}`,
+        ).toBeLessThanOrEqual(1);
+        expect(a.signaux - explique).toBeGreaterThanOrEqual(0);
+      });
+      }
+    }
+  }
+});
