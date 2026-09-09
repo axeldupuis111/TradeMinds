@@ -367,3 +367,45 @@ describe("ce qu'il vient d'écrire, avant tout enregistrement", () => {
     }
   });
 });
+
+/**
+ * CE QUI SE RÉPÈTE À CHAQUE LIGNE RESTE COURT.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN, DANS LE DOCUMENT QUI EST L'OBJECTIF DE TOUT L'ONGLET :
+ * cinq lignes non écrites, et cinq fois le même paragraphe de trente mots,
+ * « Pas encore écrit. Cette ligne ne se déduit d'aucune mesure : c'est à toi de
+ * la poser, et c'est souvent celle qui manque aux plans qu'on n'arrive pas à
+ * suivre. » Le même texte part aussi cinq fois dans le presse-papier, puisque
+ * « Copier ce plan » recopie la même clé.
+ *
+ * ⚠️ L'EXPLICATION N'A PAS DISPARU, ELLE A ÉTÉ DITE UNE FOIS : elle a rejoint
+ * l'encart « il reste {n} lignes à écrire », qui s'affiche exactement une fois.
+ * Ce qui se répète autant de fois qu'il y a de lignes doit être un MARQUEUR.
+ */
+describe("le document ne se répète pas", () => {
+  /** Ce qui se répète par ligne : au plus une phrase courte. */
+  const PAR_LIGNE = ["bt_mon_plan_a_ecrire", "bt_mon_plan_non_enregistree"];
+
+  for (const [nom, dico] of Array.from(Object.entries({ fr, en, es, de }))) {
+    it(`les marqueurs répétés à chaque ligne restent des marqueurs en ${nom}`, () => {
+      for (const cle of PAR_LIGNE) {
+        const texte = (dico as Record<string, string>)[cle];
+        expect(texte, `${cle} en ${nom}`).toBeTruthy();
+        expect(texte.length, `${cle} en ${nom} : « ${texte} »`).toBeLessThanOrEqual(80);
+      }
+    });
+  }
+
+  /**
+   * ⚠️ ET L'EXPLICATION EXISTE TOUJOURS QUELQUE PART : la raccourcir sans la
+   * reloger ailleurs serait perdre ce qu'elle disait, ce qui est un autre
+   * défaut.
+   */
+  it("l'explication vit dans l'encart qui ne s'affiche qu'une fois", () => {
+    for (const [nom, dico] of Array.from(Object.entries({ fr, en, es, de }))) {
+      const encart = (dico as Record<string, string>).bt_mon_plan_manquantes;
+      expect(encart, `bt_mon_plan_manquantes en ${nom}`).toBeTruthy();
+      expect(encart.length, `bt_mon_plan_manquantes en ${nom}`).toBeGreaterThan(150);
+    }
+  });
+});
