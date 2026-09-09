@@ -3095,6 +3095,8 @@ const dict: Record<string, string> = {
   "bt_cons_manque": "The core of the signal is missing: without what you draw and what makes you enter, there is no strategy to replay.",
   "bt_cons_socle": "These points keep their default setting: {n} in total. They are not your rules, they are the ones nobody wrote. You can set them block by block right after.",
   "bt_cons_conflit_balayage": "Your stop sits beyond the extreme of a sweep, but your signal waits for none. Pick “price sweeps then comes back”, or put your stop elsewhere.",
+  "bt_cons_exige_liquidite": "“Running the stops” only means something on a previous high or low, where orders sit. On what you chose to draw, this trigger becomes a break in disguise. Draw the last highs and lows, or pick another trigger.",
+  "bt_cons_exige_zone": "“Coming back into the zone” needs a zone, which has two edges and a direction. On a line or a single high, there is nothing to come back into. Draw the zone an impulse started from, or pick another trigger.",
   "bt_cons_q_regarde": "Before looking for anything, you check…",
   "bt_cons_g_tendance_moyenne": "the overall trend, and I only take trades in its direction",
   "bt_cons_g_rien": "nothing in particular: I take the signal both ways",

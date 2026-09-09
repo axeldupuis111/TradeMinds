@@ -243,3 +243,81 @@ describe("le catalogue de gestes", () => {
     expect(r.laisseesAuSocle).toEqual([]);
   });
 });
+
+/**
+ * ⚠️⚠️ TROUVÉ EN PILOTANT MA PROPRE CONSTRUCTION, UNE HEURE APRÈS L'AVOIR
+ * ÉCRITE. J'ai assemblé « une droite oblique » avec « le prix va chercher les
+ * stops, repart, et revient dans son déséquilibre », et rien ne m'a averti :
+ * 231 trades, un verdict, un plan complet. Or « aller chercher les stops » n'a
+ * de référent que sur un ancien sommet ou creux, là où les ordres dorment ; sur
+ * une droite oblique, ce déclencheur dégénère en cassure déguisée. Le
+ * référentiel des méthodes ne l'apparie jamais à autre chose, et pour cette
+ * raison-là.
+ */
+describe("les gestes qui en exigent un autre", () => {
+  it("signale un balayage sur autre chose que des sommets et creux", () => {
+    const r = construireLePlan(
+      { trace: "trendline", declenche: "balayage_puis_retour" },
+      socle(),
+      OR,
+    );
+    expect(r.conflits.map((c) => c.cle)).toContain("bt_cons_exige_liquidite");
+  });
+
+  it("ne signale rien quand le niveau porte bien de la liquidité", () => {
+    const r = construireLePlan(
+      { trace: "sommets_creux", declenche: "balayage_puis_retour" },
+      socle(),
+      OR,
+    );
+    expect(r.conflits).toEqual([]);
+  });
+
+  it("signale un retour dans la zone sans zone", () => {
+    const r = construireLePlan({ trace: "veille", declenche: "retour_dans_zone" }, socle(), OR);
+    expect(r.conflits.map((c) => c.cle)).toContain("bt_cons_exige_zone");
+  });
+
+  it("accepte le retour dans la zone quand une zone est tracée", () => {
+    const r = construireLePlan(
+      { trace: "zone_impulsion", declenche: "retour_dans_zone" },
+      socle(),
+      OR,
+    );
+    expect(r.conflits).toEqual([]);
+  });
+
+  /**
+   * ⚠️ UNE EXIGENCE NE SE SIGNALE QUE SI L'AUTRE QUESTION EST DÉJÀ RÉPONDUE.
+   * Sans réponse, elle figure déjà dans `manquantes` : ajouter un conflit
+   * par-dessus reprocherait deux fois la même chose, et la première fois à
+   * quelqu'un qui n'a encore rien fait de mal.
+   */
+  it("ne reproche rien tant que le niveau n'est pas choisi", () => {
+    const r = construireLePlan({ declenche: "balayage_puis_retour" }, socle(), OR);
+    expect(r.conflits).toEqual([]);
+    expect(r.manquantes).toContain("trace");
+  });
+
+  /** ⚠️ Et une exigence pointe un geste qui existe, sinon elle ne parle jamais. */
+  it("n'exige que des gestes qui existent", () => {
+    const codes = new Set(QUESTIONS_DE_CONSTRUCTION.flatMap((q) => q.gestes.map((g) => g.code)));
+    const fantomes = QUESTIONS_DE_CONSTRUCTION.flatMap((q) => q.gestes)
+      .map((g) => g.exige?.geste)
+      .filter((c): c is string => typeof c === "string" && !codes.has(c));
+    expect(fantomes, "exigences vers le vide : " + fantomes.join(", ")).toEqual([]);
+  });
+
+  /** ⚠️ Chaque exigence a sa phrase, dans les quatre langues. */
+  it("explique chaque exigence dans les quatre langues", () => {
+    const cles = QUESTIONS_DE_CONSTRUCTION.flatMap((q) => q.gestes)
+      .map((g) => g.exige?.cle)
+      .filter((c): c is string => Boolean(c));
+    expect(cles.length).toBeGreaterThan(0);
+    for (const [nom, dico] of Array.from(Object.entries({ fr, en, es, de }))) {
+      for (const cle of cles) {
+        expect((dico as Record<string, string>)[cle], `${cle} en ${nom}`).toBeTruthy();
+      }
+    }
+  });
+});

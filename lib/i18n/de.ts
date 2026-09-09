@@ -3095,6 +3095,8 @@ const dict: Record<string, string> = {
   "bt_cons_manque": "Der Kern des Signals fehlt: ohne das, was du zeichnest, und das, was dich einsteigen lässt, gibt es keine Strategie zum Nachspielen.",
   "bt_cons_socle": "Diese Punkte behalten ihre Voreinstellung: {n} insgesamt. Das sind nicht deine Regeln, sondern die, die niemand geschrieben hat. Du kannst sie gleich danach Block für Block setzen.",
   "bt_cons_conflit_balayage": "Dein Stop liegt jenseits des Extrems eines Sweeps, aber dein Signal erwartet keinen. Wähle „der Preis sweept und kommt zurück“, oder setze deinen Stop woanders.",
+  "bt_cons_exige_liquidite": "„Die Stops abholen“ ergibt nur an einem früheren Hoch oder Tief Sinn, wo die Orders liegen. Auf dem, was du zeichnen willst, wird dieser Auslöser zu einem verkleideten Ausbruch. Zeichne die letzten Hochs und Tiefs, oder wähle einen anderen Auslöser.",
+  "bt_cons_exige_zone": "„In die Zone zurückkommen“ verlangt eine Zone mit zwei Rändern und einer Richtung. Auf einer Linie oder einem einzelnen Hoch gibt es nichts, wohin man zurückkommt. Zeichne die Zone, aus der ein Impuls startete, oder wähle einen anderen Auslöser.",
   "bt_cons_q_regarde": "Bevor du überhaupt suchst, schaust du auf…",
   "bt_cons_g_tendance_moyenne": "den übergeordneten Trend, und ich handle nur in seine Richtung",
   "bt_cons_g_rien": "nichts Besonderes: ich nehme das Signal in beide Richtungen",

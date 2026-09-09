@@ -73,6 +73,24 @@ export interface Geste {
    * balayage, mais tu n'en attends aucun » se comprend, « incompatible » non.
    */
   exclut?: { geste: string; cle: string }[];
+  /**
+   * Geste d'une AUTRE question sans lequel celui-ci ne veut rien dire.
+   *
+   * ⚠️⚠️ TROUVÉ EN PILOTANT MA PROPRE CONSTRUCTION, une heure après l'avoir
+   * écrite. J'ai assemblé « une droite oblique » avec « le prix va chercher les
+   * stops, repart, et revient dans son déséquilibre », et rien ne m'a averti :
+   * 231 trades, un verdict, un plan. Or « aller chercher les stops » n'a de
+   * référent que sur un ANCIEN SOMMET ou CREUX, là où les ordres dorment ; sur
+   * une droite oblique, ce déclencheur dégénère en simple cassure déguisée. Le
+   * référentiel des méthodes ne l'apparie JAMAIS à autre chose, et pour cette
+   * raison-là.
+   *
+   * ⚠️ « EXCLUT » NE SUFFISAIT PAS. Interdire les quatre niveaux qui ne
+   * conviennent pas dirait la même chose en quatre lignes, et la cinquième
+   * serait oubliée le jour où un niveau s'ajoute. Une exigence se maintient
+   * toute seule.
+   */
+  exige?: { geste: string; cle: string };
 }
 
 export interface QuestionDeConstruction {
@@ -178,11 +196,19 @@ export const QUESTIONS_DE_CONSTRUCTION: QuestionDeConstruction[] = [
       {
         code: "balayage_puis_retour",
         poser: (p, i) => ({ ...p, declencheur: declencheurStandard("balayage_puis_fvg", i) }),
+        exige: { geste: "sommets_creux", cle: "bt_cons_exige_liquidite" },
       },
       {
+        /**
+         * ⚠️ UNE ZONE PORTE UN SENS, CONTRAIREMENT À UN NIVEAU, et le moteur le
+         * retient : une zone de demande ne s'achète pas et ne se vend pas
+         * indifféremment. « Revenir dans la zone » n'a donc de sens que sur une
+         * zone ; sur une droite ou sur un sommet, il n'y a rien où revenir.
+         */
         code: "retour_dans_zone",
         poser: (p, i) => ({ ...p, declencheur: declencheurStandard("entree_dans_zone", i) }),
         exclut: [{ geste: "stop_balayage", cle: "bt_cons_conflit_balayage" }],
+        exige: { geste: "zone_impulsion", cle: "bt_cons_exige_zone" },
       },
     ],
   },
@@ -322,6 +348,22 @@ export function construireLePlan(
     plan = geste.poser(plan, instrument);
     for (const { geste: autre, cle } of geste.exclut ?? []) {
       if (choisis.has(autre)) conflits.push({ gestes: [geste.code, autre], cle });
+    }
+    /**
+     * ⚠️ UNE EXIGENCE NE SE SIGNALE QUE SI L'AUTRE QUESTION EST DÉJÀ RÉPONDUE.
+     * Sans réponse, elle figure déjà dans `manquantes` : ajouter un conflit
+     * par-dessus reprocherait deux fois la même chose, et la première fois à
+     * quelqu'un qui n'a encore rien fait de mal.
+     */
+    const exigence = geste.exige;
+    if (exigence) {
+      const question = QUESTIONS_DE_CONSTRUCTION.find((q) =>
+        q.gestes.some((g) => g.code === exigence.geste),
+      );
+      const repondue = question ? Boolean(reponses[question.code]) : false;
+      if (repondue && !choisis.has(exigence.geste)) {
+        conflits.push({ gestes: [geste.code, exigence.geste], cle: exigence.cle });
+      }
     }
   }
 

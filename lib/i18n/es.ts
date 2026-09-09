@@ -3095,6 +3095,8 @@ const dict: Record<string, string> = {
   "bt_cons_manque": "Falta el núcleo de la señal: sin lo que trazas ni lo que te hace entrar, no hay estrategia que repetir.",
   "bt_cons_socle": "Estos puntos mantienen su ajuste por defecto: {n} en total. No son tus reglas, son las que nadie escribió. Puedes ajustarlas bloque a bloque justo después.",
   "bt_cons_conflit_balayage": "Tu stop se coloca más allá del extremo de un barrido, pero tu señal no espera ninguno. Elige «el precio barre y vuelve», o pon tu stop en otro sitio.",
+  "bt_cons_exige_liquidite": "«Ir a buscar los stops» solo tiene sentido sobre un máximo o mínimo anterior, donde duermen las órdenes. Sobre lo que has elegido trazar, este disparador se convierte en una ruptura disfrazada. Traza los últimos máximos y mínimos, o elige otro disparador.",
+  "bt_cons_exige_zone": "«Volver a la zona» exige una zona, que tiene dos bordes y un sentido. Sobre una recta o un máximo no hay adonde volver. Traza la zona de la que partió un impulso, o elige otro disparador.",
   "bt_cons_q_regarde": "Antes de buscar nada, miras…",
   "bt_cons_g_tendance_moyenne": "la tendencia general, y solo opero en su sentido",
   "bt_cons_g_rien": "nada en particular: tomo la señal en ambos sentidos",

@@ -3095,6 +3095,8 @@ const dict: Record<string, string> = {
   "bt_cons_manque": "Il manque le cœur du signal : sans ce que tu traces ni ce qui te fait entrer, il n'y a pas de stratégie à rejouer.",
   "bt_cons_socle": "Ces points-là gardent le réglage par défaut : {n} en tout. Ce ne sont pas tes règles, ce sont celles que personne n'a écrites. Tu peux les régler bloc par bloc juste après.",
   "bt_cons_conflit_balayage": "Ton stop se place au-delà de l'extrême d'un balayage, mais ton signal n'en attend aucun. Choisis « le prix balaye puis revient », ou pose ton stop ailleurs.",
+  "bt_cons_exige_liquidite": "« Aller chercher les stops » n'a de sens que sur un ancien sommet ou creux, là où les ordres dorment. Sur ce que tu as choisi de tracer, ce déclencheur devient une cassure déguisée. Trace les derniers sommets et creux, ou choisis un autre déclencheur.",
+  "bt_cons_exige_zone": "« Revenir dans la zone » demande une zone, qui a deux bords et un sens. Sur une droite ou sur un sommet, il n'y a rien où revenir. Trace la zone d'où est partie une impulsion, ou choisis un autre déclencheur.",
   "bt_cons_q_regarde": "Avant de chercher quoi que ce soit, tu regardes…",
   "bt_cons_g_tendance_moyenne": "la tendance générale, et je ne prends que dans son sens",
   "bt_cons_g_rien": "rien de particulier : je prends le signal dans les deux sens",
