@@ -181,14 +181,54 @@ describe("les phrases qui portent un compte", () => {
       (c) => c !== cle && typeof dico[c] === "string",
     );
 
+  /**
+   * QUEL COMPTEUR LA SŒUR AU SINGULIER PREND EN CHARGE.
+   *
+   * ⚠️⚠️ UNE SŒUR EXEMPTAIT LA PHRASE ENTIÈRE, ET C'ÉTAIT LE TROU. Vu à
+   * l'écran : « Ton stop vaut 7.70 bougies de 15 minutes ». La sœur
+   * `_une` existe pour le cas où le stop vaut UNE bougie ; elle ne dit rien de
+   * `{minutes}`, qui vaut 1 sur un plan en M1 et produisait « de 1 minutes ».
+   * Le garde sautait la clé d'un bloc, donc ne regardait plus aucun de ses
+   * compteurs.
+   *
+   * ⚠️ LA RÈGLE JUSTE NE SAUTE QU'UN COMPTEUR, CELUI QUE LA SŒUR COUVRE. Les
+   * autres sont vérifiés comme partout ailleurs, et une phrase à deux comptes
+   * doit donc porter l'accord sur le second.
+   */
+  const COUVERT_PAR_LA_SOEUR: Record<string, string> = {
+    bt_cond_stop_dans_le_bruit: "bougies",
+    bt_collisions: "n",
+    bt_pire_journee: "pertes",
+    bt_mar_verdict_partage: "retrouves",
+    bt_plan_rythme: "d9",
+    bt_syn_recherche_bornee_etabli: "essais",
+  };
+
   it("s'accordent quand le compte vaut un", () => {
     const fautes: string[] = [];
     for (const [cle, gabarit] of Object.entries(dico)) {
       if (typeof gabarit !== "string") continue;
       if (!cle.startsWith("bt_")) continue;
-      if (aUneSoeurAuSingulier(cle)) continue;
       if (PLANCHERS[cle]) continue;
-      const compteurs = compteursDe(gabarit);
+      const tous = compteursDe(gabarit);
+      if (tous.length === 0) continue;
+      let compteurs = tous;
+      if (aUneSoeurAuSingulier(cle)) {
+        /**
+         * ⚠️ UN SEUL COMPTEUR : la sœur le couvre forcément, rien à déclarer.
+         * PLUSIEURS : il faut dire lequel, sinon on retombe sur le trou où une
+         * sœur exemptait la phrase entière.
+         */
+        if (tous.length === 1) continue;
+        const couvert = COUVERT_PAR_LA_SOEUR[cle];
+        if (couvert === undefined) {
+          fautes.push(
+            `${cle} porte ${tous.length} comptes et une sœur au singulier : dis lequel elle couvre dans COUVERT_PAR_LA_SOEUR`,
+          );
+          continue;
+        }
+        compteurs = tous.filter((c) => c !== couvert);
+      }
       if (compteurs.length === 0) continue;
 
       // Un seul compteur à la fois : deux valeurs à 1 dans la même phrase
@@ -214,6 +254,26 @@ describe("les phrases qui portent un compte", () => {
       }
     }
     expect(Array.from(new Set(fautes))).toEqual([]);
+  });
+
+  /**
+   * ⚠️ ET LA TABLE NE NOMME QUE DES COMPTEURS QUI EXISTENT. Une entrée qui
+   * désigne un trou disparu exempte alors un compteur au hasard, sans que rien
+   * ne le dise.
+   */
+  it("la table des sœurs ne nomme que des compteurs présents", () => {
+    const fautes: string[] = [];
+    for (const [cle, compteur] of Object.entries(COUVERT_PAR_LA_SOEUR)) {
+      const gabarit = dico[cle];
+      if (typeof gabarit !== "string") {
+        fautes.push(`${cle} n'existe plus`);
+        continue;
+      }
+      if (!compteursDe(gabarit).includes(compteur)) {
+        fautes.push(`${cle} ne porte pas de {${compteur}}`);
+      }
+    }
+    expect(fautes, fautes.join(" | ")).toEqual([]);
   });
 
   /**
