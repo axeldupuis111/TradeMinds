@@ -3963,7 +3963,24 @@ const dict: Record<string, string> = {
   "bt_rsi_exces": "Jugar el exceso",
   "bt_rsi_seuil": "Umbral",
   "bt_courbes_affichees": "Curvas mostradas: {noms}. Se calculan sobre todo el histórico, no sobre esta ventana, así que son exactamente las que vio el motor.",
-  "bt_duree_calcul": "Calculado en {ms} ms, en tu navegador."
+  "bt_duree_calcul": "Calculado en {ms} ms, en tu navegador.",
+  "pubprofile_subtitle": "Perfil público de TradeDiscipline",
+  "pubprofile_total_trades": "Operaciones totales",
+  "pubprofile_winrate": "Tasa de acierto",
+  "pubprofile_sessions": "Balances realizados",
+  "pubprofile_discipline": "Disciplina",
+  "pubprofile_streak": "{n} {n|día de disciplina|días de disciplina}",
+  "pubprofile_streak_sub": "Racha actual sin incumplir tus reglas",
+  "pubprofile_chart_title": "Puntuación de disciplina a lo largo del tiempo",
+  "pubprofile_achievements": "Logros",
+  "pubprofile_cta": "Crea tu perfil de TradeDiscipline",
+  "pubprofile_cta_sub": "Registra tus operaciones. Domina tu disciplina.",
+  "pubprofile_founding": "Uno de los 100 primeros miembros",
+  "pubprofile_badge_discipline_3": "3 días de disciplina",
+  "pubprofile_badge_discipline_10": "10 días de disciplina",
+  "pubprofile_badge_discipline_30": "30 días de disciplina",
+  "pubprofile_badge_winrate_60": "Tasa de acierto > 60 %",
+  "pubprofile_badge_score_80": "Puntuación > 80 durante un mes",
 };
 
 export default dict;

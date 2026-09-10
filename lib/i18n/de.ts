@@ -3963,7 +3963,24 @@ const dict: Record<string, string> = {
   "bt_rsi_exces": "Den Exzess spielen",
   "bt_rsi_seuil": "Schwelle",
   "bt_courbes_affichees": "Angezeigte Kurven: {noms}. Sie werden über die gesamte Historie berechnet, nicht über dieses Fenster, also genau die, die die Engine gesehen hat.",
-  "bt_duree_calcul": "In {ms} ms berechnet, in deinem Browser."
+  "bt_duree_calcul": "In {ms} ms berechnet, in deinem Browser.",
+  "pubprofile_subtitle": "Öffentliches TradeDiscipline-Profil",
+  "pubprofile_total_trades": "Trades insgesamt",
+  "pubprofile_winrate": "Trefferquote",
+  "pubprofile_sessions": "Abgeschlossene Bilanzen",
+  "pubprofile_discipline": "Disziplin",
+  "pubprofile_streak": "{n} {n|Tag Disziplin|Tage Disziplin}",
+  "pubprofile_streak_sub": "Aktuelle Serie ohne Regelverstoß",
+  "pubprofile_chart_title": "Disziplin-Score im Zeitverlauf",
+  "pubprofile_achievements": "Auszeichnungen",
+  "pubprofile_cta": "Erstelle dein TradeDiscipline-Profil",
+  "pubprofile_cta_sub": "Verfolge deine Trades. Halte deine Disziplin.",
+  "pubprofile_founding": "Einer der ersten 100 Mitglieder",
+  "pubprofile_badge_discipline_3": "3 Tage Disziplin",
+  "pubprofile_badge_discipline_10": "10 Tage Disziplin",
+  "pubprofile_badge_discipline_30": "30 Tage Disziplin",
+  "pubprofile_badge_winrate_60": "Trefferquote > 60 %",
+  "pubprofile_badge_score_80": "Score > 80 einen Monat lang",
 };
 
 export default dict;

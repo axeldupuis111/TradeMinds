@@ -3963,7 +3963,24 @@ const dict: Record<string, string> = {
   "bt_rsi_exces": "Jouer l'excès",
   "bt_rsi_seuil": "Seuil",
   "bt_courbes_affichees": "Courbes affichées : {noms}. Elles sont calculées sur tout l'historique, pas sur cette fenêtre, donc ce sont exactement celles que le moteur a vues.",
-  "bt_duree_calcul": "Calculé en {ms} ms, dans ton navigateur."
+  "bt_duree_calcul": "Calculé en {ms} ms, dans ton navigateur.",
+  "pubprofile_subtitle": "Profil public TradeDiscipline",
+  "pubprofile_total_trades": "Trades au total",
+  "pubprofile_winrate": "Taux de réussite",
+  "pubprofile_sessions": "Bilans passés",
+  "pubprofile_discipline": "Discipline",
+  "pubprofile_streak": "{n} {n|jour de discipline|jours de discipline}",
+  "pubprofile_streak_sub": "Série en cours sans entorse aux règles",
+  "pubprofile_chart_title": "Score de discipline dans le temps",
+  "pubprofile_achievements": "Distinctions",
+  "pubprofile_cta": "Crée ton profil TradeDiscipline",
+  "pubprofile_cta_sub": "Suis tes trades. Tiens ta discipline.",
+  "pubprofile_founding": "L'un des 100 premiers membres",
+  "pubprofile_badge_discipline_3": "3 jours de discipline",
+  "pubprofile_badge_discipline_10": "10 jours de discipline",
+  "pubprofile_badge_discipline_30": "30 jours de discipline",
+  "pubprofile_badge_winrate_60": "Taux de réussite > 60 %",
+  "pubprofile_badge_score_80": "Score > 80 pendant un mois",
 };
 
 export default dict;
