@@ -37,6 +37,7 @@ export function Methode({
   instrument,
   plan,
   onChoisir,
+  echec,
   t,
 }: {
   /** Le code de la méthode déclarée, ou vide. */
@@ -44,6 +45,16 @@ export function Methode({
   instrument: Instrument;
   plan?: PlanExecution;
   onChoisir: (code: string) => void;
+  /**
+   * L'enregistrement de ce choix dans la fiche a-t-il échoué ?
+   *
+   * ⚠️⚠️ IL ÉCHOUAIT EN SILENCE. Le choix s'affichait, l'écriture partait, et
+   * son erreur était lue puis jetée : `if (error) return;`. Le trader voyait sa
+   * méthode déclarée, rechargeait la page trois jours plus tard, et elle avait
+   * disparu sans que rien n'ait jamais dit pourquoi. Le client Supabase ne
+   * jette pas : une erreur lue et non montrée est une erreur perdue.
+   */
+  echec: boolean;
   t: (cle: string, params?: Record<string, string | number>) => string;
 }) {
   const methode = methodeParCode(code);
@@ -72,6 +83,8 @@ export function Methode({
           </optgroup>
         ))}
       </select>
+
+      {echec ? <p className="mt-2 text-[11px] text-loss">{t("bt_meth_non_enregistree")}</p> : null}
 
       {methode ? <Detail methode={methode} instrument={instrument} plan={plan} t={t} /> : null}
     </Card>

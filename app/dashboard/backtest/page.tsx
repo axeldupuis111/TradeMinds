@@ -286,6 +286,8 @@ export default function BacktestPage() {
    * qu'un autre, et le même écart entre ce qu'il a écrit et ce qu'il fait.
    */
   const [methodeCode, setMethodeCode] = useState<string>("");
+  /** Voir `choisirLaMethode` : l'écriture dans la fiche peut échouer sans bruit. */
+  const [methodeNonEnregistree, setMethodeNonEnregistree] = useState(false);
   const [reponses, setReponses] = useState<Record<string, string>>({});
   /**
    * Ce qu'il est en train d'écrire, avant tout enregistrement.
@@ -1070,6 +1072,9 @@ export default function BacktestPage() {
     setSauvegarde("repos");
     setStrategieId("");
     setMethodeCode("");
+    // ⚠️ Un « ce choix n'a pas pu être enregistré » qui survivrait à la remise
+    // à zéro parlerait d'une méthode qui n'existe plus.
+    setMethodeNonEnregistree(false);
     /**
      * ⚠️⚠️ ET LES REPONSES DE LA CONSTRUCTION, QUE J AVAIS OUBLIEES. Vu a
      * l ecran : apres « ca efface tout », les six gestes qui venaient de
@@ -1586,6 +1591,7 @@ export default function BacktestPage() {
   const choisirLaMethode = useCallback(
     (nouveau: string) => {
       setMethodeCode(nouveau);
+      setMethodeNonEnregistree(false);
       const strat = strategies.find((x) => x.id === strategieId);
       if (!strat) return;
       const bloc = composerBlocPlan({
@@ -1601,7 +1607,19 @@ export default function BacktestPage() {
         .eq("id", strategieId)
         .select("id")
         .then(({ data, error }) => {
-          if (error || !data || data.length === 0) return;
+          /**
+           * ⚠️⚠️ CETTE ERREUR ÉTAIT LUE PUIS JETÉE. Le choix s'affichait, la
+           * fiche ne le recevait pas, et rien ne le disait : au rechargement
+           * suivant la méthode déclarée avait disparu. Le client Supabase ne
+           * jette pas, donc une erreur lue et non montrée est une erreur
+           * perdue, et c'est la panne la plus difficile à comprendre pour
+           * quelqu'un qui la subit.
+           */
+          if (error || !data || data.length === 0) {
+            setMethodeNonEnregistree(true);
+            return;
+          }
+          setMethodeNonEnregistree(false);
           setStrategies((liste) =>
             liste.map((x) => (x.id === strategieId ? { ...x, raw_text: rawText } : x)),
           );
@@ -2437,6 +2455,7 @@ export default function BacktestPage() {
             instrument={instrument}
             plan={plan}
             onChoisir={choisirLaMethode}
+            echec={methodeNonEnregistree}
             t={tr}
           />
           </Section>

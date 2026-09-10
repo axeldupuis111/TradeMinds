@@ -3056,6 +3056,7 @@ const dict: Record<string, string> = {
   "bt_sq_bloc_declencheur": "der Auslöser",
   "bt_meth_intro": "Gib an, zu welcher Familie deine Methode gehört. Hier wird nichts gestartet und nichts gemessen: diese Karte vergleicht, was deine Methode verlangt, mit dem, was dein Markt und unsere Daten ihr geben können. Für manche Trader steht die ganze Erklärung genau hier.",
   "bt_meth_aucune": "Ich finde sie nicht in der Liste",
+  "bt_meth_non_enregistree": "Diese Wahl konnte nicht in deinem Blatt gespeichert werden. Für diesen Test zählt sie, aber beim nächsten Laden der Seite ist sie weg: wähle sie erneut, nachdem du deine Verbindung geprüft hast.",
   "bt_meth_besoins": "Was sie braucht",
   "bt_meth_manquant": "(haben wir nicht)",
   "bt_meth_regimes": "Der Markt, in dem sie lebt",

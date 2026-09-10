@@ -3056,6 +3056,7 @@ const dict: Record<string, string> = {
   "bt_sq_bloc_declencheur": "le déclencheur",
   "bt_meth_intro": "Déclare la famille à laquelle ta méthode appartient. Rien n'est lancé ici, rien n'est mesuré : cette carte confronte ce que ta méthode demande à ce que ton marché et nos données peuvent lui donner. Pour certains traders, l'explication est entièrement ici.",
   "bt_meth_aucune": "Je ne la retrouve pas dans la liste",
+  "bt_meth_non_enregistree": "Ce choix n'a pas pu être enregistré dans ta fiche. Il est bien pris en compte pour ce test, mais il aura disparu au prochain chargement de la page : reprends-le après avoir vérifié ta connexion.",
   "bt_meth_besoins": "Ce dont elle a besoin",
   "bt_meth_manquant": "(nous ne l'avons pas)",
   "bt_meth_regimes": "Le marché dans lequel elle vit",

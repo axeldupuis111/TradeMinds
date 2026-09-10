@@ -3056,6 +3056,7 @@ const dict: Record<string, string> = {
   "bt_sq_bloc_declencheur": "the trigger",
   "bt_meth_intro": "Declare the family your method belongs to. Nothing runs here and nothing is measured: this card compares what your method requires with what your market and our data can give it. For some traders, the whole explanation is right here.",
   "bt_meth_aucune": "I cannot find it in the list",
+  "bt_meth_non_enregistree": "This choice could not be saved to your sheet. It counts for this test, but it will be gone the next time the page loads: pick it again once you have checked your connection.",
   "bt_meth_besoins": "What it needs",
   "bt_meth_manquant": "(we do not have it)",
   "bt_meth_regimes": "The market it lives in",
