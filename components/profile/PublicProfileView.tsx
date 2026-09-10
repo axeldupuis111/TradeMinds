@@ -99,7 +99,7 @@ export default function PublicProfileView({
   }, [trades, reviews]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground force-dark">
       <div className="max-w-4xl mx-auto px-6 py-10">
         {/* Header */}
         <div className="flex items-center justify-between mb-10">

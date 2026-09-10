@@ -30,7 +30,7 @@ export default function BlogPostView({ post }: { post: BlogPost }) {
   const mentionsNinjaTrader = `${c.title} ${c.body}`.includes("NinjaTrader");
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground force-dark">
       <PublicHeader />
       <article className="max-w-2xl mx-auto px-6 py-14">
         <Link

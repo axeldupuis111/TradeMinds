@@ -365,7 +365,7 @@ export default function TradingJournalPage({ locale }: { locale: Locale }) {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground force-dark">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       <PublicHeader />
 

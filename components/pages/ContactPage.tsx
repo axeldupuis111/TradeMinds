@@ -40,7 +40,7 @@ export default function ContactPage() {
   return (
     <>
       <PublicHeader />
-      <div className="min-h-screen bg-background flex items-center justify-center px-4 py-16 pt-24">
+      <div className="min-h-screen bg-background flex items-center justify-center px-4 py-16 pt-24 force-dark">
         <div className="max-w-md w-full">
           <h1 className="text-2xl font-bold text-foreground">{t("contact_title")}</h1>
           <p className="text-muted mt-2 text-sm">{t("contact_subtitle")}</p>
