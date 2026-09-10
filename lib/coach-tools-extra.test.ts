@@ -11,7 +11,7 @@ function mockClient(seq: { data?: unknown; error?: unknown }[]) {
   const calls: { method: string; args: unknown[] }[] = [];
   const builder: Record<string, unknown> = {};
   const chain = (m: string) => (...args: unknown[]) => { calls.push({ method: m, args }); return builder; };
-  for (const m of ["select", "eq", "in", "is", "ilike", "gte", "lt", "order", "limit", "insert", "update", "delete", "upsert", "maybeSingle", "single"]) {
+  for (const m of ["select", "eq", "in", "is", "ilike", "gte", "lt", "order", "limit", "range", "insert", "update", "delete", "upsert", "maybeSingle", "single"]) {
     builder[m] = chain(m);
   }
   builder.then = (resolve: (v: unknown) => unknown) => resolve(seq[Math.min(i++, seq.length - 1)]);

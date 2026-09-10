@@ -17,6 +17,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { setDemoWatermark } from "@/lib/pdf/kit";
 import { createClient } from "@/lib/supabase/client";
+import { lireTousLesTradesDuCompte, netDuTrade } from "@/lib/trades-du-compte";
 import { fetchAllRows, chunk, ID_CHUNK } from "@/lib/supabase-paginate";
 import { useEffect, useState, useCallback } from "react";
 
@@ -929,13 +930,17 @@ export default function ChallengePage() {
     const today = new Date().toISOString().split("T")[0];
 
     for (const ac of actives || []) {
-      const [{ data: challengeTrades }, { data: todayTrades }] = await Promise.all([
-        supabase
-          .from("trades")
-          .select("open_time, pnl, commission, swap")
-          .eq("user_id", user.id)
-          .eq("challenge_id", ac.id)
-          .order("open_time", { ascending: true }),
+      // ⚠️⚠️ LECTURE PAGINÉE, ET ICI C'EST LE PLUS GRAVE : ce total est ÉCRIT
+      // dans prop_challenges.balance quelques lignes plus bas. Non bornée, la
+      // lecture s'arrêtait à mille trades sans le dire, et le solde faux
+      // devenait le solde enregistré.
+      const [challengeTrades, { data: todayTrades }] = await Promise.all([
+        lireTousLesTradesDuCompte<{ pnl: number | null; commission: number | null; swap: number | null; open_time: string | null }>(
+          supabase,
+          user.id,
+          ac.id,
+          "open_time, pnl, commission, swap",
+        ),
         supabase
           .from("trades")
           .select("pnl, commission, swap")
@@ -944,10 +949,11 @@ export default function ChallengePage() {
           .gte("open_time", today),
       ]);
 
-      const netOf = (t: { pnl: number | null; commission: number | null; swap: number | null }) =>
-        (t.pnl || 0) + (t.commission || 0) + (t.swap || 0);
+      // ⚠️ Lecture incomplète : on n'écrit surtout pas un solde qu'on sait faux.
+      if (challengeTrades === null) continue;
+      const netOf = netDuTrade;
 
-      const totalPnl = (challengeTrades || []).reduce((sum, t) => sum + netOf(t), 0);
+      const totalPnl = challengeTrades.reduce((sum, t) => sum + netOf(t), 0);
 
       // Solde réel du broker quand l'EA l'a poussé, reconstitution sinon.
       // Voir lib/challenge-balance.ts pour la règle exacte.

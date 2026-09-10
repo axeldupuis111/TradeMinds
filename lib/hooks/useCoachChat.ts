@@ -15,6 +15,8 @@ import { DEMO_COACH } from "@/lib/demo-fixtures";
 import type { Lang } from "@/lib/translations";
 import { FREE_LIFETIME_CHAT_MESSAGES, PLAN_LIMITS } from "@/lib/plan-limits";
 import { PLAN_MONTHLY_CEILING } from "@/lib/ai-ceilings";
+import { fetchAllRows } from "@/lib/supabase-paginate";
+import { trierParOuverture } from "@/lib/trades-du-compte";
 import type { PlanType } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
 import { track } from "@/lib/track";
@@ -245,13 +247,19 @@ async function exportTradesPdf(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return false;
 
-  const [{ data: trades }, { data: review }] = await Promise.all([
-    supabase
-      .from("trades")
-      .select("open_time, close_time, pair, direction, lot_size, entry_price, exit_price, pnl, commission, swap, emotion, ict_setup")
-      .eq("user_id", user.id).eq("status", "closed")
-      .gte("open_time", from).lt("open_time", to)
-      .order("open_time", { ascending: true }),
+  // ⚠️ LECTURE PAGINÉE : un export tronqué est le pire des cas, le PDF a l'air
+  // complet et il manque des trades. La pagination se fait sur `id`, unique et
+  // stable ; l'ordre chronologique est refait ensuite (voir fetchAllRows).
+  const [trades, { data: review }] = await Promise.all([
+    fetchAllRows<{ open_time: string | null }>((debut, fin) =>
+      supabase
+        .from("trades")
+        .select("open_time, close_time, pair, direction, lot_size, entry_price, exit_price, pnl, commission, swap, emotion, ict_setup")
+        .eq("user_id", user.id).eq("status", "closed")
+        .gte("open_time", from).lt("open_time", to)
+        .order("id", { ascending: true })
+        .range(debut, fin),
+    ).then((lignes) => (lignes === null ? null : trierParOuverture(lignes))),
     supabase
       .from("session_reviews").select("discipline_score, analysis")
       .eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),

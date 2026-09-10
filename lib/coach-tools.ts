@@ -17,6 +17,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { appendCommitment, parseCoachMemory } from "@/lib/coach-memory";
 import { challengesForWeek, getCommunityChallenge, isoWeekKey } from "@/lib/community-challenges";
+import { lireTousLesTradesDuCompte } from "./trades-du-compte";
 import { projeter } from "./projection";
 import { palierSousLeSeuil, paliersDeTaille } from "./projection-levers";
 import { analyserSegments } from "./projection-segments";
@@ -1826,13 +1827,16 @@ export async function executeCoachTool(
         const acc = (accounts ?? [])[0] as unknown as Record<string, unknown> | undefined;
         if (!acc) return fail("Aucun challenge de prop firm actif. Utilise list_accounts pour voir les comptes existants.");
 
-        const { data: trades } = await supabase
-          .from("trades")
-          .select("pnl, commission, swap, open_time")
-          .eq("user_id", userId)
-          .eq("challenge_id", acc.id)
-          .eq("status", "closed");
-        const rows = (trades ?? []) as unknown as TradeRow[];
+        // ⚠️ LECTURE PAGINÉE : non bornée, elle s'arrêtait à mille trades sans
+        // le dire, et le coach annonçait alors un solde et un drawdown faux.
+        const trades = await lireTousLesTradesDuCompte<TradeRow>(
+          supabase,
+          userId,
+          String(acc.id),
+          "pnl, commission, swap, open_time",
+        );
+        if (trades === null) return fail("Lecture des trades du challenge incomplète.");
+        const rows = trades;
         const tradesPnl = rows.reduce((s, t) => s + netPnl(t), 0);
 
         // Passe par resolveAccountBalance : quand l'EA du courtier pousse un

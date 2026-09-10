@@ -19,6 +19,7 @@ import {
 } from "@/lib/futures-contracts";
 import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
+import { lireTousLesTradesDuCompte, netDuTrade } from "@/lib/trades-du-compte";
 import { startOfLocalDayUtc, browserTimezone } from "@/lib/timezone";
 import { Info, X } from "lucide-react";
 import Link from "next/link";
@@ -81,13 +82,16 @@ export default function PositionSizer({ strategy }: Props) {
 
     const today = startOfLocalDayUtc(browserTimezone()).toISOString();
 
-    const [{ data: allTrades }, { data: todayTrades }] = await Promise.all([
-      supabase
-        .from("trades")
-        .select("pnl, commission, swap")
-        .eq("user_id", user.id)
-        .eq("challenge_id", challengeId)
-        .order("open_time", { ascending: true }),
+    // ⚠️ LECTURE PAGINÉE : non bornée, elle s'arrêtait à mille trades en
+    // silence, et c'est cette courbe qui donne le drawdown restant, donc la
+    // taille de position proposée.
+    const [allTrades, { data: todayTrades }] = await Promise.all([
+      lireTousLesTradesDuCompte<{ pnl: number | null; commission: number | null; swap: number | null; open_time: string | null }>(
+        supabase,
+        user.id,
+        challengeId,
+        "pnl, commission, swap, open_time",
+      ),
       supabase
         .from("trades")
         .select("pnl, commission, swap, status")
@@ -96,9 +100,12 @@ export default function PositionSizer({ strategy }: Props) {
         .gte("open_time", today),
     ]);
 
+    // ⚠️ Lecture incomplète : on ne propose pas une taille de position sur un
+    // historique amputé. Voir lib/trades-du-compte.ts.
+    if (allTrades === null) return;
     let running = account.account_size;
-    const equityCurveBalances = (allTrades || []).map((tr) => {
-      running += (tr.pnl || 0) + (tr.commission || 0) + (tr.swap || 0);
+    const equityCurveBalances = allTrades.map((tr) => {
+      running += netDuTrade(tr);
       return running;
     });
 
