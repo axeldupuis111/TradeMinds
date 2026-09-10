@@ -303,6 +303,9 @@ export default function StrategyPage() {
       .eq("strategy_id", existingId);
     if (unlinkError) { showToast("error", t("strategy_delete_error")); return; }
 
+    // ⚠️ RÉSULTAT VOLONTAIREMENT IGNORÉ : ces repères pointent vers une fiche
+    // qu'on supprime juste après. S'ils survivaient, ils ne seraient rattachés
+    // à rien et n'apparaîtraient nulle part. C'est la ligne suivante qui décide.
     await supabase.from("strategy_tags").delete().eq("strategy_id", existingId);
     // ⚠️ C'est CETTE ligne qui décide si la stratégie a disparu. Sans lire son
     // `error`, un refus RLS affichait « supprimée » puis la fiche revenait au

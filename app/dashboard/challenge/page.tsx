@@ -962,6 +962,10 @@ export default function ChallengePage() {
       const newBalance = resolved.balance;
 
       // Update balance in Supabase if changed
+      // ⚠️ RÉSULTAT VOLONTAIREMENT IGNORÉ : ce solde est une COPIE, recalculée
+      // depuis les trades à chaque ouverture de la page. Un échec d'écriture ne
+      // fausse donc rien à l'écran, et la valeur juste repart au chargement
+      // suivant. C'est la LECTURE des trades qui doit être sûre, et elle l'est.
       if (Math.abs(newBalance - ac.balance) > 0.01) {
         await supabase.from("prop_challenges").update({ balance: newBalance }).eq("id", ac.id);
       }

@@ -55,9 +55,20 @@ export default function PushNotificationsCard() {
 
   async function setPref(key: PrefKey, value: boolean) {
     setPrefs((p) => ({ ...p, [key]: value }));
+    setError(null);
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase.from("profiles").update({ [key]: value }).eq("id", user.id);
+    /**
+     * ⚠️⚠️ L'ÉTAT OPTIMISTE N'ÉTAIT JAMAIS REPRIS. Le client Supabase ne jette
+     * pas : un échec laissait l'interrupteur sur « activé » pendant que le
+     * profil restait à « désactivé », donc le trader croyait recevoir des
+     * alertes qui ne partiraient jamais.
+     */
+    const { error } = user
+      ? await supabase.from("profiles").update({ [key]: value }).eq("id", user.id)
+      : { error: new Error("no user") };
+    if (error) {
+      setPrefs((p) => ({ ...p, [key]: !value }));
+      setError(t("save_failed"));
     }
   }
 

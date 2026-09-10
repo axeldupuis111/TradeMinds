@@ -151,9 +151,18 @@ export function LanguageProvider({
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
+        /**
+         * ⚠️ RÉSULTAT VOLONTAIREMENT IGNORÉ, ET LA RAISON TIENT ICI : la langue
+         * affichée ne dépend pas de cette écriture. Elle vient de l'URL et du
+         * stockage local, déjà posés avant d'arriver ici ; la base ne sert qu'à
+         * la retrouver sur un autre appareil.
+         *
+         * ⚠️ ET LE `try` NE PROTÈGE DE RIEN : le client Supabase ne jette pas.
+         * Il ne couvre que `createClient` et `getUser`.
+         */
         await supabase.from("profiles").update({ language: lang }).eq("id", user.id);
       } catch {
-        // Pas de session ou erreur réseau : on ignore silencieusement.
+        // Client impossible à créer ou session illisible : rien à faire ici.
       }
     })();
   }, [mounted, lang]);

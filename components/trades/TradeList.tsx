@@ -295,6 +295,14 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
   const [selectAllMatching, setSelectAllMatching] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
+  /**
+   * ⚠️⚠️ LA SUPPRESSION D'UN SEUL TRADE NE DISAIT RIEN QUAND ELLE ÉCHOUAIT.
+   * Le client Supabase ne jette pas : la ligne partait dans sa branche succès,
+   * la liste se rechargeait, et le trade réapparaissait sans un mot. La
+   * suppression EN LOT, douze lignes plus bas dans le même fichier, lisait déjà
+   * son erreur et le disait. La règle était écrite, pas appliquée à côté.
+   */
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const [selectedTrade, setSelectedTrade] = useState<TradeDetail | null>(null);
   const [allPairs, setAllPairs] = useState<string[]>([]);
@@ -635,13 +643,27 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     if (!confirm(t("trades_confirm_delete"))) return;
     setDeletingId(id);
 
+    setDeleteError(null);
+
     const trade = trades.find((tr) => tr.id === id);
     if (trade?.screenshot_path) {
       await supabase.storage.from("trade-screenshots").remove([trade.screenshot_path]);
     }
 
-    await supabase.from("trades").delete().eq("id", id);
+    // ⚠️ `.select("id")` N'EST PAS DÉCORATIF : sans lui, une suppression que la
+    // sécurité de ligne réduit à zéro ligne rend un succès vide, indiscernable
+    // d'une vraie suppression. Avec lui, « rien n'a été supprimé » se voit.
+    const { data: supprimes, error } = await supabase
+      .from("trades")
+      .delete()
+      .eq("id", id)
+      .select("id");
     setDeletingId(null);
+    if (error || (supprimes ?? []).length === 0) {
+      setDeleteError(t("trades_delete_one_failed"));
+      loadTrades();
+      return;
+    }
     setSelectedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
     loadTrades();
     loadGlobalStats();
@@ -1093,6 +1115,15 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
 
           {bulkError && <p className="text-sm text-loss mt-2">{bulkError}</p>}
         </div>
+      )}
+
+      {/* ⚠️ HORS de la barre de sélection : celle-ci ne s'affiche que quand des
+          lignes sont cochées, donc l'échec d'une suppression à l'unité y serait
+          resté invisible. */}
+      {deleteError && (
+        <p className="text-sm text-loss mb-3" role="alert">
+          {deleteError}
+        </p>
       )}
 
       {/* Table */}

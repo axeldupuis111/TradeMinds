@@ -509,11 +509,21 @@ export default function AnalysisPage() {
     setClearingChat(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setClearingChat(false); return; }
-    await supabase.from("chat_messages").delete().eq("user_id", user.id);
+    /**
+     * ⚠️⚠️ « EFFACER L'HISTORIQUE » VIDAIT L'ÉCRAN SANS VÉRIFIER LA BASE. Le
+     * client Supabase ne jette pas : un échec laissait le trader convaincu
+     * d'avoir effacé ses échanges, jusqu'au rechargement où ils revenaient
+     * tous. Sur une suppression, c'est le mensonge le plus coûteux.
+     */
+    const { error } = await supabase.from("chat_messages").delete().eq("user_id", user.id);
+    setClearingChat(false);
+    if (error) {
+      alert(t("save_failed"));
+      return;
+    }
     setChatMessages([]);
     setHasOlderChat(false);
     setShowOlderChat(false);
-    setClearingChat(false);
   }, [supabase, t, setChatMessages, setHasOlderChat]);
 
   // sendChatMessage et undoCoachAction vivent désormais dans

@@ -226,6 +226,9 @@ export default function SessionPage() {
     const today = new Date().toISOString().split("T")[0];
 
     // Auto-close any session older than today that is still flagged active
+    // ⚠️ RÉSULTAT VOLONTAIREMENT IGNORÉ : c'est un ménage, refait à chaque
+    // chargement. Un échec ne change rien à ce qui s'affiche et se rattrape
+    // tout seul la fois d'après.
     await supabase
       .from("sessions")
       .update({ active: false, ended_at: new Date(today + "T00:00:00").toISOString() })

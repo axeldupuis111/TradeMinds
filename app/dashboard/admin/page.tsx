@@ -251,7 +251,17 @@ export default function AdminPage() {
   }
 
   async function markHandled(id: string) {
-    await supabase.from("contact_messages").update({ status: "handled" }).eq("id", id);
+    // ⚠️ Le client Supabase ne jette pas : sans lire l'erreur, le message
+    // passait en « traité » à l'écran alors qu'il restait en attente en base,
+    // et il serait revenu au rechargement suivant.
+    const { error } = await supabase
+      .from("contact_messages")
+      .update({ status: "handled" })
+      .eq("id", id);
+    if (error) {
+      alert("Marquage impossible : " + error.message);
+      return;
+    }
     setContactMessages((prev) => prev.map((m) => m.id === id ? { ...m, status: "handled" } : m));
   }
 

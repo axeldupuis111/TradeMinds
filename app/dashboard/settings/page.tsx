@@ -699,10 +699,22 @@ export default function SettingsPage() {
               setEmailNotifLoading(true);
               setEmailNotifSession(enabled);
               const { data: { user } } = await supabase.auth.getUser();
-              if (user) {
-                await supabase.from("profiles").update({ email_notif_session: enabled }).eq("id", user.id);
-              }
+              /**
+               * ⚠️⚠️ CETTE CASE ANNONÇAIT « Paramètres sauvegardés ✓ » SANS RIEN
+               * VÉRIFIER. Le client Supabase ne jette pas : un refus RLS ou une
+               * coupure réseau laissaient la coche en place, le message de
+               * succès s'affichait, et le réglage revenait à l'ancien au
+               * rechargement suivant.
+               */
+              const { error } = user
+                ? await supabase.from("profiles").update({ email_notif_session: enabled }).eq("id", user.id)
+                : { error: new Error("no user") };
               setEmailNotifLoading(false);
+              if (error) {
+                setEmailNotifSession(!enabled);
+                showToast("error", t("save_failed"));
+                return;
+              }
               showToast("success", t("settings_saved"));
             }}
             className="accent-accent w-4 h-4"

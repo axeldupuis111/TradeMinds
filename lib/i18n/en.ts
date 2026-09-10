@@ -3983,6 +3983,7 @@ const dict: Record<string, string> = {
   "pubprofile_badge_score_80": "Score > 80 for a month",
   "common_trades_count": "{n} {n|trade|trades}",
   "dash_today_trades_sub": "{n} {n|trade|trades} today",
+  "trades_delete_one_failed": "This trade was not deleted. Try again.",
 };
 
 export default dict;

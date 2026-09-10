@@ -477,9 +477,23 @@ export default function GoalsPage() {
       setNotice("echec");
       return;
     }
-    // Récurrence en 2e temps (best-effort si colonnes absentes).
+    /**
+     * Récurrence en 2e temps (les colonnes peuvent manquer sur une base non
+     * migrée).
+     *
+     * ⚠️ L'OBJECTIF EXISTE DÉJÀ À CE STADE : un échec ici ne le perd pas, il le
+     * laisse simplement non récurrent. On le DIT quand même, parce que le
+     * trader a coché « chaque semaine » et qu'il ne le reverrait pas revenir.
+     */
     if (recurring && inserted?.id) {
-      await supabase.from("goals").update({ recurring: true, period_key: periodKeyClient(p) }).eq("id", inserted.id);
+      const { error: erreurRecurrence } = await supabase
+        .from("goals")
+        .update({ recurring: true, period_key: periodKeyClient(p) })
+        .eq("id", inserted.id);
+      if (erreurRecurrence) {
+        console.error("[goals] récurrence refusée :", erreurRecurrence.message);
+        setNotice("echec");
+      }
     }
   }
 
