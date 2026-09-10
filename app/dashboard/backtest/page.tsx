@@ -1853,6 +1853,15 @@ export default function BacktestPage() {
         `${tr("bt_mon_plan_entete_ecrite")} : ${monPlan.ecrites}`,
         `${tr("bt_mon_plan_entete_manquante")} : ${monPlan.manquantes}`,
       ].join(" · "),
+      /**
+       * ⚠️⚠️ CE DOCUMENT SORT DE L'APPLICATION, ET IL PORTE DES CHIFFRES
+       * MESURÉS. « c'est le plus haut risque qui garde le recul de ton compte
+       * à 17.1 % », « tu aurais traversé jusqu'à 7 pertes d'affilée » : collés
+       * dans un journal, imprimés, envoyés à quelqu'un, ces chiffres n'ont plus
+       * l'avertissement qui les entoure à l'écran. Il part donc avec eux.
+       */
+      "",
+      tr("bt_modif_avertissement"),
     ].join("\n");
   }, [monPlan, tr, instrument, de, a]);
 

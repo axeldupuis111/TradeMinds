@@ -464,3 +464,53 @@ describe("le document n'envoie personne chercher un bloc", () => {
     }
   });
 });
+
+/**
+ * LE DOCUMENT QUI SORT DE L'APPLICATION EMPORTE SON AVERTISSEMENT.
+ *
+ * ⚠️⚠️ VU EN COPIANT LE PLAN POUR DE VRAI : le texte mis dans le presse-papier
+ * portait « c'est le plus haut risque qui garde le recul de ton compte à
+ * 17.1 % » et « tu aurais traversé jusqu'à 7 pertes d'affilée », et rien
+ * d'autre. Collé dans un journal, imprimé, envoyé à quelqu'un, ce sont des
+ * chiffres de rejeu présentés comme des faits, sans la phrase qui les entoure
+ * partout à l'écran.
+ *
+ * ⚠️ L'ÉCRAN NE PROTÈGE QUE L'ÉCRAN. Trois cartes de la page portent
+ * l'avertissement ; aucune ne suit le texte quand il en sort. C'est le seul
+ * endroit de l'onglet où un chiffre voyage hors de son contexte.
+ */
+describe("le plan copié emporte l'avertissement", () => {
+  const page = readFileSync(join(process.cwd(), "app/dashboard/backtest/page.tsx"), "utf8");
+
+  /** Le corps de `monPlanEnTexte`, par comptage d'accolades. */
+  function corpsDeLExport(): string {
+    const debut = page.indexOf("const monPlanEnTexte = useCallback(");
+    expect(debut, "monPlanEnTexte introuvable").toBeGreaterThan(0);
+    const ouvrante = page.indexOf("{", page.indexOf("=>", debut));
+    let profondeur = 0;
+    for (let i = ouvrante; i < page.length; i++) {
+      if (page[i] === "{") profondeur++;
+      else if (page[i] === "}" && --profondeur === 0) return page.slice(ouvrante, i + 1);
+    }
+    throw new Error("fin de monPlanEnTexte introuvable");
+  }
+
+  it("l'export cite l'avertissement", () => {
+    expect(corpsDeLExport()).toContain('tr("bt_modif_avertissement")');
+  });
+
+  /** ⚠️ Et cette phrase dit bien ce qu'elle doit dire, dans les quatre langues. */
+  it("l'avertissement nomme le rejeu et refuse toute garantie", () => {
+    const attendus: Record<string, RegExp> = {
+      fr: /hypoth|pass/i,
+      en: /hypothetical|past/i,
+      es: /hipot|pasad/i,
+      de: /hypothet|vergangen/i,
+    };
+    for (const [nom, dico] of Array.from(Object.entries({ fr, en, es, de }))) {
+      const phrase = (dico as Record<string, string>).bt_modif_avertissement;
+      expect(phrase, `bt_modif_avertissement en ${nom}`).toBeTruthy();
+      expect(phrase, `bt_modif_avertissement en ${nom}`).toMatch(attendus[nom]);
+    }
+  });
+});
