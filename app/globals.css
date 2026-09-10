@@ -175,6 +175,46 @@ html.light {
   --sheen:         rgba(0,0,0,.06);
 }
 
+
+/* ─── Palette figée en clair : compatibilité des couleurs Tailwind vives ───
+   ⚠️⚠️ MESURÉ SUR « Mes Trades », EN THÈME CLAIR : les pastilles « À annoter »
+   étaient en `text-amber-400` (#fbbf24) sur blanc, soit **1,67:1** — le texte
+   et le fond ont pratiquement la même clarté, c'est illisible. Les pastilles
+   de séance en `text-emerald-400` : 1,92:1. Cent six occurrences de ce genre
+   dans vingt-quatre fichiers.
+
+   Ce sont des couleurs Tailwind de niveau 300/400, conçues pour du texte SUR
+   FOND SOMBRE. Elles ont été écrites quand l'application n'avait qu'un thème.
+
+   ⚠️ ON NE TOUCHE QU'AUX UTILITAIRES DE TEXTE, et seulement en thème clair :
+   `bg-amber-400/10` garde son aplat, le sombre garde ses couleurs vives, et
+   les pages forcées en sombre (landing, login, pages légales) sont exclues,
+   puisqu'elles sont sombres même quand le reste ne l'est pas.
+
+   ⚠️ CE BLOC EST UNE COMPATIBILITÉ, PAS UN MODÈLE. Une pastille nouvelle se
+   colore avec les tokens de l'application (`text-warning`, `text-profit`…),
+   qui savent déjà changer avec le thème. Un test mesure les ratios d'ici.
+   ──────────────────────────────────────────────────────────────────────── */
+html.light .text-orange-400:not(.force-dark *) { color: #c2410c; }
+html.light .text-orange-300:not(.force-dark *) { color: #c2410c; }
+html.light .text-yellow-400:not(.force-dark *) { color: #9a5e07; }
+html.light .text-yellow-300:not(.force-dark *) { color: #9a5e07; }
+html.light .text-green-400:not(.force-dark *) { color: #15803d; }
+html.light .text-emerald-400:not(.force-dark *) { color: #047857; }
+html.light .text-sky-400:not(.force-dark *) { color: #0369a1; }
+html.light .text-amber-400:not(.force-dark *) { color: #b45309; }
+html.light .text-amber-300:not(.force-dark *) { color: #b45309; }
+html.light .text-violet-400:not(.force-dark *) { color: #6d28d9; }
+html.light .text-purple-400:not(.force-dark *) { color: #7e22ce; }
+html.light .text-red-400:not(.force-dark *) { color: #b91c1c; }
+html.light .text-blue-400:not(.force-dark *) { color: #1d4ed8; }
+html.light .text-blue-300:not(.force-dark *) { color: #1d4ed8; }
+html.light .text-cyan-300:not(.force-dark *) { color: #0e7490; }
+html.light .text-teal-300:not(.force-dark *) { color: #0f766e; }
+html.light .text-gray-400:not(.force-dark *) { color: #4b5563; }
+html.light .text-gray-300:not(.force-dark *) { color: #4b5563; }
+html.light .text-slate-300:not(.force-dark *) { color: #475569; }
+
 /* ─── Force-dark: public pages always stay in dark mode ─────────────────────
    Applied on the root element of landing, login, and legal pages.
    Direct CSS custom-property declarations beat inherited values (html.light),
