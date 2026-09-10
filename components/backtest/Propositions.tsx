@@ -10,6 +10,7 @@ import {
   type Proposition,
 } from "@/lib/backtest/propositions";
 import { AlertTriangle, ShieldCheck, TrendingUp, Wand2 } from "lucide-react";
+import { pourcent } from "@/lib/nombres";
 
 /**
  * CE QUE LE TRADER POURRAIT CHANGER, ET CE QUE ÇA FERAIT.
@@ -137,7 +138,7 @@ export function Propositions({
                       <div>
                         <dt className="inline">{t("bt_prop_couts")} </dt>
                         <dd className="inline font-medium text-foreground">
-                          {p.partDesCoutsPct.toFixed(1)} %
+                          {pourcent(p.partDesCoutsPct, 1)}
                         </dd>
                       </div>
                     </dl>

@@ -1,3 +1,4 @@
+import { langueCourante } from "@/lib/nombres";
 // Devise d'un compte de trading.
 //
 // En prop firm on jongle couramment entre un compte en euros et un compte en
@@ -188,19 +189,6 @@ export interface MoneyOptions {
  * Le symbole est suffixé comme partout ailleurs dans l'app, ce qui garde la
  * mise en page identique quelle que soit la devise du compte.
  */
-/**
- * La langue à employer quand l'appelant n'en donne pas.
- *
- * ⚠️ ON LIT LE DOCUMENT, PAS UNE VARIABLE. `document.documentElement.lang` est
- * tenu à jour par le contexte de langue, il est propre à chaque page, et il
- * n'existe pas côté serveur : le repli français y est donc explicite plutôt
- * qu'accidentel.
- */
-function langueCourante(): string {
-  if (typeof document === "undefined") return "fr-FR";
-  return document.documentElement.lang || "fr-FR";
-}
-
 export function money(
   amount: number,
   currency: string | null | undefined,

@@ -22,6 +22,7 @@ import {
   YAxis,
 } from "recharts";
 import { useChartColors } from "@/lib/useChartColors";
+import { nombre, pourcent } from "@/lib/nombres";
 
 /**
  * CE QUE L'ÉCRAN A LE DROIT DE DIRE.
@@ -388,7 +389,7 @@ export function Resultat({
       {/* ── Les chiffres ─────────────────────────────────────────────────── */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Chiffre label={t("bt_trades")} valeur={String(s.nbTrades)} />
-        <Chiffre label={t("bt_taux_reussite")} valeur={`${(s.tauxReussite * 100).toFixed(1)} %`} />
+        <Chiffre label={t("bt_taux_reussite")} valeur={pourcent(s.tauxReussite * 100, 1)} />
         <Chiffre
           label={t("bt_total_r")}
           valeur={`${signe(s.totalR, 1)} R`}
@@ -444,7 +445,7 @@ export function Resultat({
                   : signePourcent(compte.totalPct, 1)
               }
             />
-            <Ligne label={t("bt_capital_drawdown")} valeur={`-${compte.reculPct.toFixed(1)} %`} />
+            <Ligne label={t("bt_capital_drawdown")} valeur={`-${pourcent(compte.reculPct, 1)}`} />
           </dl>
           {/* ⚠️ UN COMPTE VIDÉ NE PREND PAS LES TRADES SUIVANTS. Afficher le
               total de la période entière reviendrait à promettre un gain qui
@@ -508,7 +509,7 @@ export function Resultat({
            */}
           <Ligne
             label={t("bt_cout_aller_retour")}
-            valeur={`${prix.spread.toFixed(instrument.decimales)} (${(couts.coutParTradeR * 100).toFixed(1)} % ${t("bt_du_risque")})`}
+            valeur={`${nombre(prix.spread, instrument.decimales)} (${pourcent(couts.coutParTradeR * 100, 1)} ${t("bt_du_risque")})`}
           />
           {/* ⚠️ Masquée dès qu'il n'y a plus d'avantage à annuler : la formule
               rendrait un nombre négatif sous un intitulé qui ne lui correspond

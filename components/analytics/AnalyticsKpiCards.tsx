@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { ScoreRing } from "@/components/dashboard/ScoreRing";
 import { useLanguage } from "@/lib/LanguageContext";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
+import { nombre, pourcent } from "@/lib/nombres";
 
 export interface AnalyticsKpiCardsProps {
   totalPnl: number;
@@ -74,7 +75,7 @@ export function AnalyticsKpiCards({
           trend={totalPnl >= 0 ? "up" : "down"}
           sublabel={
             pnlDiff !== null && pnlDiff !== 0
-              ? `${pnlDiff > 0 ? "↑" : "↓"} ${Math.abs(pnlDiff).toFixed(2)}`
+              ? `${pnlDiff > 0 ? "↑" : "↓"} ${nombre(Math.abs(pnlDiff), 2)}`
               : undefined
           }
         />
@@ -84,11 +85,11 @@ export function AnalyticsKpiCards({
           layout="kpi"
           accentColor="cyan"
           label={t("analytics_kpi_winrate")}
-          value={`${winrate.toFixed(1)}%`}
+          value={pourcent(winrate, 1)}
           trend={winrate >= 50 ? "up" : "down"}
           sublabel={
             wrDiff !== null && wrDiff !== 0
-              ? `${wrDiff > 0 ? "↑" : "↓"} ${Math.abs(wrDiff).toFixed(1)}pp`
+              ? `${wrDiff > 0 ? "↑" : "↓"} ${nombre(Math.abs(wrDiff), 1)}pp`
               : `${wins}/${tradesCount}`
           }
         />

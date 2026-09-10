@@ -17,6 +17,7 @@ import {
 } from "@/lib/analytics/resilience";
 import type { AnalyticsTrade } from "@/lib/analytics/types";
 import { cn } from "@/lib/cn";
+import { pourcent } from "@/lib/nombres";
 
 type Props = {
   trades: AnalyticsTrade[];
@@ -68,7 +69,7 @@ function DrawdownZone({ trades, currency }: { trades: AnalyticsTrade[]; currency
           ) : (
             <>
               <span className="text-loss font-medium">
-                -{maxDD.maxDrawdownPct.toFixed(1)}&nbsp;%
+                -{pourcent(maxDD.maxDrawdownPct, 1)}
               </span>
               {t("resilience_of_peak_post")}
             </>
@@ -123,7 +124,7 @@ function DrawdownZone({ trades, currency }: { trades: AnalyticsTrade[]; currency
 
         <p className="text-[10px] text-foreground-muted mt-1.5">
           {currentDrawdown > 0
-            ? `-${Math.round(currentDDPct) === 100 ? "100" : currentDDPct.toFixed(1)} %${t("resilience_of_peak_post")}`
+            ? `-${Math.round(currentDDPct) === 100 ? pourcent(100) : pourcent(currentDDPct, 1)}${t("resilience_of_peak_post")}`
             : t("resilience_no_dd")}
         </p>
         {currentDrawdown > 0 && Math.round(currentDDPct) === 100 && (

@@ -24,6 +24,7 @@ import { startOfLocalDayUtc, browserTimezone } from "@/lib/timezone";
 import { Info, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { nombre, pourcent } from "@/lib/nombres";
 
 interface Props {
   strategy: {
@@ -637,7 +638,7 @@ export default function PositionSizer({ strategy }: Props) {
                         <div className="flex items-baseline gap-2 flex-wrap">
                           <span className="text-xs text-muted uppercase tracking-wider">{t("sizer_lot_label")}</span>
                           <span className="text-2xl font-bold text-accent tabular-nums motion-safe:transition-all">
-                            {lotResult.lots.toFixed(2)}
+                            {nombre(lotResult.lots, 2)}
                           </span>
                           <span className="text-xs text-muted">lots</span>
                           {Math.abs(lotResult.raw - lotResult.lots) >= 0.005 && (
@@ -665,7 +666,7 @@ export default function PositionSizer({ strategy }: Props) {
                               {enArgent(fundsAtRisk)}
                               {balanceNum > 0 && (
                                 <span className="text-muted font-normal">
-                                  {" "}({((fundsAtRisk / balanceNum) * 100).toFixed(1)}%)
+                                  {" "}({pourcent((fundsAtRisk / balanceNum) * 100, 1)})
                                 </span>
                               )}
                             </p>

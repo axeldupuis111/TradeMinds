@@ -5,6 +5,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import RiskDisclosure from "@/components/legal/RiskDisclosure";
 import { Gem } from "lucide-react";
 import { useMemo } from "react";
+import { pourcent } from "@/lib/nombres";
 
 interface Trade {
   open_time: string;
@@ -151,7 +152,7 @@ export default function PublicProfileView({
           </div>
           <div className="bg-card border border-border rounded-xl p-5">
             <p className="text-xs text-muted">{t("pubprofile_winrate")}</p>
-            <p className="text-2xl font-bold mt-1 text-foreground">{stats.winrate.toFixed(1)}%</p>
+            <p className="text-2xl font-bold mt-1 text-foreground">{pourcent(stats.winrate, 1)}</p>
           </div>
           <div className="bg-card border border-border rounded-xl p-5">
             <p className="text-xs text-muted">{t("pubprofile_sessions")}</p>

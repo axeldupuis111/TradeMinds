@@ -22,6 +22,7 @@ import {
 import { useChartColors } from "@/lib/useChartColors";
 import { useLanguage } from "@/lib/LanguageContext";
 import type { ChecklistItem } from "@/lib/hooks/useStrategyTags";
+import { nombre } from "@/lib/nombres";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -94,7 +95,7 @@ function ZoneA({ trades, checklistTotal }: { trades: TradeRow[]; checklistTotal:
           {t("da_avg_score")}
         </p>
         <p className={`text-3xl font-black tabular-nums leading-none ${scoreColor}`}>
-          {avgScore.toFixed(1)}
+          {nombre(avgScore, 1)}
           <span className="text-lg font-normal text-foreground-muted ml-1">/ {checklistTotal}</span>
         </p>
         <p className="text-xs text-foreground-muted mt-1.5">{sentiment}</p>

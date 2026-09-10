@@ -11,6 +11,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 
 import { PLAN_FEATURES as features, FREE_BENEFITS, PLUS_BENEFITS, PREMIUM_BENEFITS, planQuotaSegments } from "@/lib/plan-features";
+import { langueCourante, nombre } from "@/lib/nombres";
 
 const faqKeys = [
   { q: "faq_upgrade_q1", a: "faq_upgrade_a1" },
@@ -276,9 +277,11 @@ export default function UpgradePage() {
 
   function formatMoney(cents: number, currency: string): string {
     try {
-      return new Intl.NumberFormat("fr-FR", { style: "currency", currency: currency.toUpperCase() }).format(cents / 100);
+      // ⚠️ La langue du LECTEUR, pas « fr-FR » en dur : un abonné anglophone
+      // voyait « 14,99 € » là où sa langue écrit « €14.99 ».
+      return new Intl.NumberFormat(langueCourante(), { style: "currency", currency: currency.toUpperCase() }).format(cents / 100);
     } catch {
-      return `${(cents / 100).toFixed(2)} €`;
+      return `${nombre(cents / 100, 2)} €`;
     }
   }
 

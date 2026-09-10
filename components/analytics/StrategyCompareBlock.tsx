@@ -15,6 +15,7 @@ import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/cn";
 import { Target } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { nombre } from "@/lib/nombres";
 
 interface StrategyTrade {
   pnl: number;
@@ -127,7 +128,7 @@ export default function StrategyCompareBlock({ trades, currency = DEFAULT_CURREN
                   {b.profitFactor !== null ? b.profitFactor.toFixed(2) : "—"}
                 </td>
                 <td className="py-2.5 pl-3 text-right tabular-nums text-foreground-muted">
-                  {b.avgChecklist !== null ? `${b.avgChecklist.toFixed(1)}/7` : "—"}
+                  {b.avgChecklist !== null ? `${nombre(b.avgChecklist, 1)}/7` : "—"}
                 </td>
               </tr>
             ))}

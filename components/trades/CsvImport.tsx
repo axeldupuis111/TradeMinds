@@ -10,6 +10,7 @@ import { splitAlreadyImported, type DedupeTrade } from "@/lib/trades/dedupe-impo
 import { track } from "@/lib/track";
 import { createClient } from "@/lib/supabase/client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { nombre } from "@/lib/nombres";
 
 interface ActiveAccount {
   id: string;
@@ -663,7 +664,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
                       const net = tr.pnl + (tr.commission || 0) + (tr.swap || 0);
                       return (
                         <td className={`px-3 py-2 font-medium ${net >= 0 ? "text-profit" : "text-loss"}`}>
-                          {net >= 0 ? "+" : ""}{net.toFixed(2)}
+                          {net >= 0 ? "+" : ""}{nombre(net, 2)}
                         </td>
                       );
                     })()}

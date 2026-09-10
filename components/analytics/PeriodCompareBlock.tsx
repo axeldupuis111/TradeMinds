@@ -14,6 +14,7 @@ import { DEFAULT_CURRENCY, currencySymbol, money } from "@/lib/account-currency"
 import { cn } from "@/lib/cn";
 import { Scale } from "lucide-react";
 import { useMemo } from "react";
+import { nombre } from "@/lib/nombres";
 
 interface CompareTrade {
   open_time: string;
@@ -186,7 +187,7 @@ export default function PeriodCompareBlock({
                   >
                     {row.delta === null || Math.abs(row.delta) < 0.005
                       ? "="
-                      : `${row.delta > 0 ? "↑" : "↓"}${Math.abs(row.delta) >= 10 ? Math.round(Math.abs(row.delta)) : Math.abs(row.delta).toFixed(1)}${row.suffix}`}
+                      : `${row.delta > 0 ? "↑" : "↓"}${Math.abs(row.delta) >= 10 ? nombre(Math.round(Math.abs(row.delta))) : nombre(Math.abs(row.delta), 1)}${row.suffix}`}
                   </td>
                 </tr>
               );

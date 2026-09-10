@@ -18,6 +18,7 @@ import { usePlan } from "@/lib/PlanContext";
 import { setDemoWatermark } from "@/lib/pdf/kit";
 import { createClient } from "@/lib/supabase/client";
 import { lireTousLesTradesDuCompte, netDuTrade } from "@/lib/trades-du-compte";
+import { pourcent } from "@/lib/nombres";
 import { fetchAllRows, chunk, ID_CHUNK } from "@/lib/supabase-paginate";
 import { useEffect, useState, useCallback } from "react";
 
@@ -169,7 +170,7 @@ function ProgressBar({
       <div className="flex justify-between text-sm mb-1">
         <span className="text-muted">{label}</span>
         <span className="text-foreground">
-          {money(value, currency)} / {money(max, currency)} · {pct.toFixed(1)}%
+          {money(value, currency)} / {money(max, currency)} · {pourcent(pct, 1)}
         </span>
       </div>
       <div className="h-3 bg-border rounded-full overflow-hidden">

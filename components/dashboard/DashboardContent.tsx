@@ -35,6 +35,7 @@ import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import StaggerContainer, { StaggerItem } from "@/components/animations/StaggerContainer";
+import { pourcent } from "@/lib/nombres";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -654,7 +655,7 @@ export default function DashboardContent({
                 </div>
                 <p className="text-foreground text-sm">
                   {displayAccount.firm} · Drawdown{" "}
-                  <span className="font-bold tabular-nums">{ddPct.toFixed(1)}%</span>
+                  <span className="font-bold tabular-nums">{pourcent(ddPct, 1)}</span>
                   {" "}({money(ddUsed, displayCurrency)} / {money(ddMax, displayCurrency)})
                 </p>
               </div>

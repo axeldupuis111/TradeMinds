@@ -15,6 +15,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Plus, Sparkles, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { pourcent } from "@/lib/nombres";
 
 interface Strategy {
   id: string;
@@ -213,7 +214,7 @@ export default function TradesPage() {
           <h1 className="text-2xl font-bold text-foreground">{t("trades_title")}</h1>
           {recap && (
             <p className="text-sm text-muted mt-1">
-              {recap.count} trades · WR {recap.wr.toFixed(1)}% · P&amp;L{" "}
+              {t("common_trades_count", { n: recap.count })} · WR {pourcent(recap.wr, 1)} · P&amp;L{" "}
               {pnlByCurrency.map(([cur, value], i) => (
                 <span key={cur}>
                   {i > 0 && " · "}

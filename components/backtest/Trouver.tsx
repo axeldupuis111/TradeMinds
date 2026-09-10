@@ -15,6 +15,7 @@ import {
 } from "@/lib/backtest/noms";
 import { MIN_TRADES_CONCLUSION } from "@/lib/backtest/verdict";
 import { AlertTriangle, CheckCircle2, Compass, ClipboardList } from "lucide-react";
+import { pourcent } from "@/lib/nombres";
 
 /**
  * TROUVER CE QUI POURRAIT MARCHER, ET EN SORTIR UN PLAN À RESPECTER.
@@ -394,7 +395,7 @@ function PlanEcrit({
                   ) : null}
                 </td>
                 <td className={cn("py-1", x.ruine || x.reculPct > plan.seuilReculPct ? "text-loss" : "text-foreground-muted")}>
-                  {x.ruine ? t("bt_plan_ruine") : `-${x.reculPct.toFixed(1)} %`}
+                  {x.ruine ? t("bt_plan_ruine") : `-${pourcent(x.reculPct, 1)}`}
                 </td>
               </tr>
             ))}
