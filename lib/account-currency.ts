@@ -164,6 +164,22 @@ export interface MoneyOptions {
   digits?: number;
   /** Préfixer les montants positifs d'un « + » (P&L). */
   signed?: boolean;
+  /**
+   * La langue qui décide de la forme du nombre.
+   *
+   * ⚠️⚠️ ELLE ÉTAIT ÉCRITE EN DUR À « fr-FR », POUR TOUT LE MONDE. Un lecteur
+   * anglophone voyait « 14 607,50 € » : virgule décimale et espace fine comme
+   * séparateur de milliers, là où sa langue écrit « 14,607.50 ». C'est le même
+   * défaut que les dates de l'onglet backtest, à l'échelle de tout le produit,
+   * et il est invisible tant qu'on développe en français.
+   *
+   * ⚠️ À NE PAS RÉSOUDRE PAR UNE VARIABLE DE MODULE. Cette fonction sert aussi
+   * aux e-mails et aux PDF, c'est-à-dire au SERVEUR, où un état partagé mêlerait
+   * les langues de deux abonnés servis en même temps. Côté navigateur on lit la
+   * langue du document, que le contexte de langue tient déjà à jour ; côté
+   * serveur, l'appelant la passe, ou on garde le français.
+   */
+  locale?: string;
 }
 
 /**
@@ -172,14 +188,27 @@ export interface MoneyOptions {
  * Le symbole est suffixé comme partout ailleurs dans l'app, ce qui garde la
  * mise en page identique quelle que soit la devise du compte.
  */
+/**
+ * La langue à employer quand l'appelant n'en donne pas.
+ *
+ * ⚠️ ON LIT LE DOCUMENT, PAS UNE VARIABLE. `document.documentElement.lang` est
+ * tenu à jour par le contexte de langue, il est propre à chaque page, et il
+ * n'existe pas côté serveur : le repli français y est donc explicite plutôt
+ * qu'accidentel.
+ */
+function langueCourante(): string {
+  if (typeof document === "undefined") return "fr-FR";
+  return document.documentElement.lang || "fr-FR";
+}
+
 export function money(
   amount: number,
   currency: string | null | undefined,
-  { digits = 0, signed = false }: MoneyOptions = {},
+  { digits = 0, signed = false, locale }: MoneyOptions = {},
 ): string {
   const code = (currency || DEFAULT_CURRENCY).toUpperCase();
   const fractionDigits = ZERO_DECIMAL.has(code) ? 0 : digits;
-  const formatted = amount.toLocaleString("fr-FR", {
+  const formatted = amount.toLocaleString(locale ?? langueCourante(), {
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,
   });
