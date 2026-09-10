@@ -124,3 +124,37 @@ describe("la ponctuation vient de la langue", () => {
     expect(fautes, "initiales de jours en dur : " + fautes.join(", ")).toEqual([]);
   });
 });
+
+/**
+ * LE FRANÇAIS NE CONTOURNE PAS SES ACCORDS.
+ *
+ * ⚠️⚠️ ONZE PHRASES DISAIENT « au nombre de {n} », et seulement en français.
+ * « Ta fiche ne tranchait pas sur certains blocs, AU NOMBRE DE 2 » en tête de
+ * la carte la plus lue de la page ; « Tes trades sortis à l'objectif, AU
+ * NOMBRE DE 47 » ; « Il reste des lignes ouvertes, AU NOMBRE DE 3 ». L'anglais
+ * et l'allemand disaient simplement « on 2 blocks », « nach 3 Verlusten ».
+ *
+ * ⚠️ C'ÉTAIT UN CONTOURNEMENT D'ACCORD : placer le nombre APRÈS le nom lui
+ * évite de s'accorder avec lui. La syntaxe « {n|singulier|pluriel} » existe
+ * depuis, et elle rend la tournure inutile. La langue que lisent le trader et
+ * l'auteur de ce produit était la plus mal écrite des quatre, dans ses phrases
+ * les plus visibles.
+ */
+describe("le français ne contourne pas ses accords", () => {
+  const CONTOURNEMENTS: { motif: RegExp; pourquoi: string }[] = [
+    { motif: /au nombre de/i, pourquoi: "le nombre placé après le nom pour éviter l'accord" },
+    { motif: /\(s\)/, pourquoi: "un pluriel entre parenthèses" },
+  ];
+
+  it("aucune phrase de l'onglet ne place le nombre après le nom", () => {
+    const dico = fr as Record<string, string>;
+    const fautes: string[] = [];
+    for (const [cle, texte] of Object.entries(dico)) {
+      if (!cle.startsWith("bt_") || typeof texte !== "string") continue;
+      for (const { motif, pourquoi } of CONTOURNEMENTS) {
+        if (motif.test(texte)) fautes.push(`${cle} : ${pourquoi}`);
+      }
+    }
+    expect(fautes, fautes.join(" | ")).toEqual([]);
+  });
+});

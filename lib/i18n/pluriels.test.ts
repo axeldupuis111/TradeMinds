@@ -155,6 +155,9 @@ describe("les phrases qui portent un compte", () => {
     bt_levier_touches: "idem",
     bt_levier_tolerance: "idem",
     bt_levier_delai: "idem",
+    // ⚠️ `MIN_TRADES_PROFIL = 30` : ce constat ne se rend pas sous ce seuil, et
+    // « sur tes 1 derniers trades » ne peut donc pas s'afficher.
+    bt_prof_conforme: "MIN_TRADES_PROFIL = 30",
     bt_diag_objectif_trop_pres: "MIN_TRADES_TRANCHE = 30",
     bt_diag_heure_qui_perd: "idem",
     bt_diag_sens_qui_perd: "idem",
