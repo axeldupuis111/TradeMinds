@@ -622,7 +622,14 @@ export default function StrategyPage() {
                   : "bg-surface border border-border text-foreground hover:bg-card"
               }`}
             >
-              {s.name || t("strategy_select")}
+              {/* ⚠️⚠️ UNE STRATÉGIE SANS NOM S'AFFICHAIT « Sélectionner une
+                  stratégie », c'est-à-dire avec le libellé d'une INSTRUCTION.
+                  Vu à l'écran : trois stratégies en base, deux visibles, et la
+                  troisième déguisée en invite. Le trader clique sur ce qu'il
+                  prend pour une consigne et ouvre une de ses méthodes ; il ne
+                  peut ni la reconnaître, ni la renommer, ni la supprimer,
+                  puisqu'elle ne se présente pas comme une stratégie. */}
+              {s.name || t("stratcmp_unnamed")}
             </button>
           ))}
           {strategyLimitReached ? (
