@@ -135,7 +135,9 @@
      ambre 9,3:1) : les variantes y valent la couleur d'origine. */
   --accent-text:  0 212 216;
   --profit-text:  34 197 94;
-  --loss-text:    239 68 68;
+  /* ⚠️ Un cran plus clair que --loss : sur sa propre pastille (bg-loss/20),
+     #ef4444 tombait à 3,70:1. Nu, il gagne (6,3:1 au lieu de 4,6:1). */
+  --loss-text:    248 113 113;          /* #f87171 */
   --warning-text: 245 158 11;
   --gold-text:    234 179 8;
 
@@ -177,11 +179,11 @@ html.light {
   --foreground-subtle:  103 110 123;    /* #676e7b — 4,6:1 jusque sur --surface */
 
   /* Encres de texte : voir la note du thème sombre. */
-  --accent-text:  0 118 122;            /* #00767A — 5,1:1 */
-  --profit-text:  21 128 61;            /* #15803d — 4,7:1 */
-  --loss-text:    185 28 28;            /* #b91c1c — 6,1:1 */
-  --warning-text: 180 83 9;             /* #b45309 — 4,8:1 */
-  --gold-text:    154 94 7;             /* #9a5e07 — 4,8:1 jusque sur --surface */
+  --accent-text:  0 95 98;              /* #005f62 — 6,8:1 nu, 5,3:1 sur sa pastille */
+  --profit-text:  22 101 52;            /* #166534 — 6,5:1 nu, 5,0:1 sur sa pastille */
+  --loss-text:    153 27 27;            /* #991b1b — 7,6:1 nu, 5,1:1 sur sa pastille */
+  --warning-text: 146 64 14;            /* #92400e — 6,4:1 nu, 5,0:1 sur sa pastille */
+  --gold-text:    133 77 14;            /* #854d0e — 6,2:1 nu, 4,9:1 sur sa pastille */
 
   /* ── Effect tokens — KPI Premium cards ──────────────────────────────── */
   --accent-glow:        0 168 172;     /* #00A8AC */
@@ -292,7 +294,9 @@ html.light .force-dark {
 
   --accent-text:  0 212 216;
   --profit-text:  34 197 94;
-  --loss-text:    239 68 68;
+  /* ⚠️ Un cran plus clair que --loss : sur sa propre pastille (bg-loss/20),
+     #ef4444 tombait à 3,70:1. Nu, il gagne (6,3:1 au lieu de 4,6:1). */
+  --loss-text:    248 113 113;          /* #f87171 */
   --warning-text: 245 158 11;
   --gold-text:    234 179 8;
 
