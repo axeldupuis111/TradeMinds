@@ -676,47 +676,67 @@ describe("aucune phrase n'envoie le trader sur une autre étape", () => {
   /**
    * Les phrases qui indiquent une direction, et l'étape des deux côtés.
    *
+   * ⚠️⚠️ ET CETTE TABLE M'A PRIS EN FLAGRANT DÉLIT, NEUF FOIS. Je l'avais
+   * remplie d'un coup, sans vérifier, et neuf lignes affirmaient deux étapes
+   * égales là où elles ne l'étaient pas : le diagnostic renvoyait au chiffre du
+   * test, la robustesse aux trades du test, la couverture à l'éditeur, la
+   * cohérence au résultat. Toutes lues à une étape, toutes visant une autre.
+   * Une déclaration écrite est vérifiable ; une phrase qui n'en a pas ne l'est
+   * pas. C'est tout l'intérêt de la table, et c'est aussi son piège : la
+   * remplir pour faire passer le test la transforme en blanchisserie.
+   *
+   * Exemple exact : J'y avais écrit
+   * `bt_plan_ecarts_intro: { lue: "ameliorer", vise: "ameliorer" }` sans
+   * vérifier : « les chiffres, les cartes et le CSV PLUS HAUT décrivent TES
+   * réglages » se lit bien à l'étape « L'améliorer », mais le CSV et les cartes
+   * de résultat vivent à l'étape « Le test ». La phrase nomme maintenant
+   * l'étape au lieu d'indiquer une direction, et sa ligne a donc disparu d'ici.
+   * Une déclaration écrite est vérifiable ; une phrase qui n'en a pas ne l'est
+   * pas. C'est tout l'intérêt de la table.
+   *
    * ⚠️ « lue » = l'étape où la phrase s'affiche. « vise » = l'étape du bloc
    * qu'elle désigne. Les deux doivent être égales : sinon la phrase désigne
    * quelque chose qui n'est pas rendu.
    */
-  const DECLAREES: Record<string, { lue: CodeEtapeParcours; vise: CodeEtapeParcours }> = {
+  /**
+   * ⚠️ DEUX FORMES, PARCE QUE LE FILET ATTRAPE AUSSI DES SUPERLATIFS. « le plus
+   * haut et le plus bas de la veille », « le plus haut risque qui garde ton
+   * recul sous 20 % », « ça rend la barre plus haute » : aucune n'indique une
+   * direction. Leur faire déclarer deux étapes reviendrait à écrire une
+   * affirmation fausse pour faire taire un test, ce qui est exactement ce
+   * qu'une liste d'exemptions devient quand on la remplit sans réfléchir.
+   */
+  type Declaration =
+    | { lue: CodeEtapeParcours; vise: CodeEtapeParcours }
+    | { pasUneDirection: string };
+
+  const DECLAREES: Record<string, Declaration> = {
     // « le plus haut et le plus bas de la veille » : un prix, pas une direction.
-    bt_cons_g_veille: { lue: "strategie", vise: "strategie" },
-    bt_niveau_veille: { lue: "regles", vise: "regles" },
+    bt_cons_g_veille: { pasUneDirection: "« le plus haut et le plus bas de la veille » : deux prix, pas une direction" },
+    bt_niveau_veille: { pasUneDirection: "« Plus haut et plus bas de la veille » : deux prix" },
     // Ces phrases désignent un bloc de leur propre étape.
-    bt_comp_vient_du_plan: { lue: "regles", vise: "regles" },
     bt_par_bloque_sans_test_ici: { lue: "test", vise: "test" },
     bt_recommencer_texte: { lue: "ameliorer", vise: "ameliorer" },
-    bt_diag_intro: { lue: "ameliorer", vise: "ameliorer" },
-    bt_diag_aucun: { lue: "ameliorer", vise: "ameliorer" },
-    bt_diag_stop_frole: { lue: "ameliorer", vise: "ameliorer" },
     bt_dep_aucune: { lue: "strategie", vise: "strategie" },
     bt_prof_tester_aide: { lue: "regles", vise: "regles" },
-    bt_compil_quota_jour: { lue: "strategie", vise: "strategie" },
     bt_compil_instrument_inconnu: { lue: "strategie", vise: "strategie" },
-    bt_non_traduites_note: { lue: "strategie", vise: "strategie" },
-    bt_absents_note: { lue: "strategie", vise: "strategie" },
     bt_journees_arretees: { lue: "test", vise: "test" },
     bt_inspection_aide: { lue: "test", vise: "test" },
     bt_inspection_aide_1: { lue: "test", vise: "test" },
     bt_inspection_aide_echantillon: { lue: "test", vise: "test" },
     bt_non_verifie: { lue: "test", vise: "test" },
     bt_bloc_niveau_trendline_aide: { lue: "regles", vise: "regles" },
-    bt_prop_pas_de_gain: { lue: "ameliorer", vise: "ameliorer" },
-    bt_prop_note: { lue: "ameliorer", vise: "ameliorer" },
+    bt_prop_pas_de_gain: { pasUneDirection: "« améliorer mes gains » entre guillemets, et « plus bas » qui vise la même carte" },
+    bt_prop_note: { lue: "test", vise: "test" },
     bt_geste_autre: { lue: "regles", vise: "regles" },
     bt_csv_aide: { lue: "test", vise: "test" },
     bt_plan_intro_candidat: { lue: "ameliorer", vise: "ameliorer" },
-    bt_plan_ecarts_intro: { lue: "ameliorer", vise: "ameliorer" },
-    bt_plan_risque: { lue: "plan", vise: "plan" },
+    bt_plan_risque: { pasUneDirection: "« le plus haut risque qui garde ton recul sous la limite » : un superlatif" },
     bt_plan_risque_plafond: { lue: "plan", vise: "plan" },
     bt_perime: { lue: "test", vise: "test" },
-    bt_exp_regle: { lue: "ameliorer", vise: "ameliorer" },
+    bt_exp_regle: { pasUneDirection: "« ça rend la barre plus haute » : un superlatif" },
     bt_exp_pas_franchie: { lue: "ameliorer", vise: "ameliorer" },
     bt_syn_coherence_pas_etabli: { lue: "plan", vise: "plan" },
-    bt_coh_instrument_hors_fiche: { lue: "regles", vise: "regles" },
-    bt_rob_intro: { lue: "ameliorer", vise: "ameliorer" },
     bt_ver_periodes_differentes: { lue: "strategie", vise: "strategie" },
     bt_modif_editeur: { lue: "regles", vise: "regles" },
     bt_cond_incomplet: { lue: "regles", vise: "regles" },
@@ -738,6 +758,7 @@ describe("aucune phrase n'envoie le trader sur une autre étape", () => {
         fautes.push(`${cle} indique une direction sans déclarer ses deux étapes : « ${texte.slice(0, 70)}… »`);
         continue;
       }
+      if ("pasUneDirection" in d) continue;
       if (d.lue !== d.vise) {
         fautes.push(`${cle} se lit à « ${d.lue} » et désigne « ${d.vise} »`);
       }
