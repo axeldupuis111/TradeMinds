@@ -23,6 +23,29 @@ interface Props {
   currency?: string;
 }
 
+/**
+ * LA COULEUR D'UN MONTANT SUIT SON SIGNE, PAS LE TITRE DE SA CARTE.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN, SUR ANALYTICS : « PAIRE À RISQUE · GBPUSD · WR 43 % »
+ * suivi de « 393,00 € » EN ROUGE ET SANS SIGNE. Ces 393 € sont un GAIN : la
+ * paire est retenue parce qu'elle a le plus faible taux de réussite, ce qui
+ * n'empêche pas d'y gagner de l'argent. Le trader lit une perte de 393 €.
+ *
+ * ⚠️ ET LES QUATRE CARTES AVAIENT LE MÊME DÉFAUT, dans les deux sens : « pire
+ * journée » et « émotion à risque » peignaient en rouge un montant qui peut
+ * être positif, « meilleure heure » peignait en VERT un montant qui peut être
+ * négatif quand toutes les heures perdent.
+ *
+ * Le titre de la carte décrit un CLASSEMENT (le pire, le meilleur) ; le montant
+ * décrit un FAIT. Les deux n'ont pas le même signe, et c'est justement quand
+ * ils divergent que la carte a quelque chose à apprendre au trader.
+ */
+function tonDuMontant(v: number): string {
+  if (v > 0) return "text-profit";
+  if (v < 0) return "text-loss";
+  return "text-foreground-muted";
+}
+
 export function AnalyticsInsightCards({ worstDay, bestHour, riskyPairInfo, byEmotion, currency = DEFAULT_CURRENCY }: Props) {
   const { t } = useLanguage();
 
@@ -49,8 +72,8 @@ export function AnalyticsInsightCards({ worstDay, bestHour, riskyPairInfo, byEmo
               <p className="text-sm font-semibold text-foreground">
                 {worstDay.name} ({worstDay.count} trades)
               </p>
-              <p className="text-xs text-loss tabular-nums mt-0.5">
-                {money(worstDay.pnl, currency, { digits: 2 })} · WR {worstDay.winrate}%
+              <p className={`text-xs tabular-nums mt-0.5 ${tonDuMontant(worstDay.pnl)}`}>
+                {money(worstDay.pnl, currency, { digits: 2, signed: true })} · WR {worstDay.winrate}%
               </p>
             </div>
           </div>
@@ -69,7 +92,7 @@ export function AnalyticsInsightCards({ worstDay, bestHour, riskyPairInfo, byEmo
               <p className="text-sm font-semibold text-foreground">
                 {bestHour.name} ({bestHour.count} trades)
               </p>
-              <p className="text-xs text-profit tabular-nums mt-0.5">
+              <p className={`text-xs tabular-nums mt-0.5 ${tonDuMontant(bestHour.pnl)}`}>
                 {money(bestHour.pnl, currency, { digits: 2, signed: true })} · WR {bestHour.winrate}%
               </p>
             </div>
@@ -97,8 +120,8 @@ export function AnalyticsInsightCards({ worstDay, bestHour, riskyPairInfo, byEmo
                   <p className="text-sm font-semibold text-foreground">
                     {riskyPairInfo.pair} · WR {riskyPairInfo.winrate}%
                   </p>
-                  <p className="text-xs text-loss tabular-nums mt-0.5">
-                    {money(riskyPairInfo.pnl, currency, { digits: 2 })}
+                  <p className={`text-xs tabular-nums mt-0.5 ${tonDuMontant(riskyPairInfo.pnl)}`}>
+                    {money(riskyPairInfo.pnl, currency, { digits: 2, signed: true })}
                   </p>
                 </>
               )}
@@ -119,7 +142,9 @@ export function AnalyticsInsightCards({ worstDay, bestHour, riskyPairInfo, byEmo
                   {t("analytics_insight_emotion")}
                 </p>
                 <p className="text-sm font-semibold text-foreground">{riskyEmotion.name}</p>
-                <p className="text-xs text-loss tabular-nums mt-0.5">{money(riskyEmotion.pnl, currency, { digits: 2 })}</p>
+                <p className={`text-xs tabular-nums mt-0.5 ${tonDuMontant(riskyEmotion.pnl)}`}>
+                  {money(riskyEmotion.pnl, currency, { digits: 2, signed: true })}
+                </p>
               </div>
             </div>
           </KpiCardPremium>
