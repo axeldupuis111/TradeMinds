@@ -7,6 +7,7 @@
  * toujours utilisé par la page Session.)
  */
 
+import { DEFAULT_CURRENCY, accountCurrency, money } from "@/lib/account-currency";
 import { CardTitle } from "@/components/ui/Card";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
@@ -122,6 +123,19 @@ export default function DayState() {
   const isDark = theme !== "light";
   const supabase = createClient();
   const { selectedAccount, loading: accountLoading } = useActiveAccount();
+  /**
+   * La devise du compte affiché, et son format.
+   *
+   * ⚠️⚠️ CETTE CARTE ÉCRIVAIT « +0.00 € » : un point décimal dans une interface
+   * française, aucun séparateur de milliers sur le budget (« 2500 € »), et
+   * surtout un EURO EN DUR sur une carte qui porte le nom du compte en titre.
+   * Un compte en dollars voyait donc son P&L du jour libellé en euros, et le
+   * même montant s'écrivait « +0,00 € » douze pixels plus haut dans le KPI.
+   *
+   * ⚠️ LA RÈGLE EXISTE DÉJÀ, elle n'était simplement pas appliquée ici : partout
+   * où un compte est identifié, le montant passe par money(v, accountCurrency(compte)).
+   */
+  const devise = selectedAccount ? accountCurrency(selectedAccount) : DEFAULT_CURRENCY;
   const [stats, setStats] = useState<DayStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -215,7 +229,7 @@ export default function DayState() {
           </p>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
             <span className={cn("text-xl font-bold tabular-nums", todayPnl >= 0 ? "text-profit" : "text-loss")}>
-              {todayPnl >= 0 ? "+" : ""}{todayPnl.toFixed(2)} &euro;
+              {money(todayPnl, devise, { digits: 2, signed: true })}
             </span>
             {/* Badge icône — seulement si le P&L est non nul */}
             {todayPnl > 0 && (
@@ -270,7 +284,7 @@ export default function DayState() {
                 "text-xl font-bold mt-1 tabular-nums",
                 budgetPct > 50 ? "text-profit" : budgetPct > 20 ? "text-warning" : "text-loss"
               )}>
-                {remainingBudget.toFixed(0)} &euro;
+                {money(remainingBudget, devise, { digits: 0 })}
               </p>
               <MiniSegBar pct={budgetPct} isDark={isDark} />
             </>

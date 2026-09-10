@@ -294,7 +294,9 @@ export function KpiCards({
                 label={t("dash_today_pnl")}
                 value={
                   filteredTodayCount > 0
-                    ? money(todayPnl, currency, { signed: true })
+                    /* ⚠️ Deux décimales comme la grande carte : le même
+                       montant y était arrondi à l'unité. */
+                    ? money(todayPnl, currency, { digits: 2, signed: true })
                     : "—"
                 }
                 positive={
@@ -335,12 +337,15 @@ export function KpiCards({
         <CountUp
           end={Math.abs(todayPnl)}
           prefix={pnlPositive ? "+" : "-"}
-          suffix={` ${currencySymbol(currency).trim()}`}
+          /* ⚠️ SANS ESPACE, COMME money() : le même P&L du jour s'écrivait
+             « +0,00 € » ici et « +0,00€ » dans le mini-KPI douze pixels plus
+             bas, sur le même écran. */
+          suffix={currencySymbol(currency)}
           decimals={2}
           duration={1.5}
         />
       }
-      sublabel={`${filteredTodayCount} trade${filteredTodayCount !== 1 ? "s" : ""} ${t("dash_today_label")}`}
+      sublabel={t("dash_today_trades_sub", { n: filteredTodayCount })}
       trend={pnlPositive ? "up" : "down"}
       accentColor={pnlPositive ? "cyan" : "amber"}
       visual={sparklineElement}

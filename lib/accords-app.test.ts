@@ -109,4 +109,63 @@ describe("les accords du produit", () => {
     expect(remplir(g, { n: 4 })).toBe("4 jours");
     expect(remplir(g, {})).toBe("{n} {n|jour|jours}");
   });
+
+  /**
+   * ⚠️⚠️ ZÉRO NE S'ACCORDE PAS PAREIL D'UNE LANGUE À L'AUTRE. Le français dit
+   * « 0 jour », l'anglais « 0 days ». La première version comparait à 1, c'est-
+   * à-dire appliquait la règle anglaise aux quatre langues : le profil public
+   * écrivait « 0 jours de discipline », et c'est l'écran qu'un nouveau membre
+   * voit en premier. Les trois autres langues rendaient la faute invisible.
+   */
+  it("zéro prend la forme que veut la langue, pas celle de l'anglais", () => {
+    const gabarits: Record<string, [string, string]> = {
+      fr: ["{n} {n|jour|jours}", "0 jour"],
+      en: ["{n} {n|day|days}", "0 days"],
+      es: ["{n} {n|día|días}", "0 días"],
+      de: ["{n} {n|Tag|Tage}", "0 Tage"],
+    };
+    for (const [langue, [gabarit, attendu]] of Object.entries(gabarits)) {
+      expect(remplir(gabarit, { n: 0 }, langue), `zéro en ${langue}`).toBe(attendu);
+    }
+    // Et un reste inchangé partout.
+    for (const langue of Object.keys(gabarits)) {
+      const [gabarit] = gabarits[langue];
+      expect(remplir(gabarit, { n: 1 }, langue).endsWith("s")).toBe(false);
+    }
+  });
+
+  /**
+   * ⚠️⚠️ ET AUCUN COMPOSANT NE REFAIT L'ACCORD EN JAVASCRIPT. Cinq endroits
+   * écrivaient `trade${n > 1 ? "s" : ""}` ou `n !== 1 ? "s" : ""` : deux règles
+   * OPPOSÉES pour un seul fait dans le même produit (« 0 trade » sur le
+   * calendrier, « 0 trades » sur le dashboard), et le mot « trade » traduit
+   * dans aucune des quatre langues. Un « s » anglais n'accorde ni l'allemand ni
+   * l'espagnol.
+   */
+  it("aucun composant ne fabrique un pluriel en JavaScript", () => {
+    function fichiers(d: string, out: string[] = []): string[] {
+      for (const f of readdirSync(d)) {
+        if (f === "node_modules" || f === ".next") continue;
+        const chemin = join(d, f);
+        if (statSync(chemin).isDirectory()) fichiers(chemin, out);
+        else if (/\.tsx$/.test(chemin) && !chemin.includes(".test.")) out.push(chemin);
+      }
+      return out;
+    }
+    const MOTIF = /[?]\s*"(s|es|n|en)"\s*:\s*""|""\s*:\s*"(s|es|n|en)"/;
+    const fautes: string[] = [];
+    for (const chemin of [...fichiers("app"), ...fichiers("components")]) {
+      const nom = chemin.split(/[\\\/]/).slice(-2).join("/");
+      readFileSync(chemin, "utf8")
+        .split(new RegExp(String.fromCharCode(13) + "?" + String.fromCharCode(10)))
+        .forEach((ligne, i) => {
+          if (MOTIF.test(ligne)) fautes.push(`${nom}:${i + 1}`);
+        });
+    }
+    expect(
+      fautes,
+      "pluriels fabriqués en JavaScript (une phrase accordée du dictionnaire à la place) : " +
+        fautes.join(", "),
+    ).toEqual([]);
+  });
 });

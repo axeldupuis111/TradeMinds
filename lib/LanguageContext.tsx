@@ -206,8 +206,11 @@ export function LanguageProvider({
       lang: mounted ? lang : initialLang,
       setLang,
       // Active dict first, English fallback (always loaded), then the key.
+      // ⚠️ LA LANGUE PART AVEC LA PHRASE : c'est elle qui décide de l'accord.
+      // Sans elle, `remplir` appliquait la règle anglaise à tout le monde, et
+      // le français écrivait « 0 jours » là où il dit « 0 jour ».
       t: (key: string, valeurs?: Record<string, string | number>) =>
-        remplir(dict[key] || enDict[key] || key, valeurs),
+        remplir(dict[key] || enDict[key] || key, valeurs, mounted ? lang : initialLang),
     }),
     [mounted, lang, initialLang, setLang, dict]
   );

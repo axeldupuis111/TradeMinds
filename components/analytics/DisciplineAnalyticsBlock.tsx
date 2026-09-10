@@ -311,7 +311,7 @@ function ZoneC({ trades, currency }: { trades: TradeRow[]; currency: string }) {
                   {money(entry.pnl, currency, { digits: 2, signed: true })}
                 </p>
                 <p style={{ color: c.axis }}>
-                  {entry.count} trade{entry.count > 1 ? "s" : ""} · WR {entry.winrate}%
+                  {t("common_trades_count", { n: entry.count })} · WR {entry.winrate}%
                 </p>
               </div>
             );

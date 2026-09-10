@@ -29,7 +29,44 @@
  * toujours : la première rédaction oubliée aurait rétabli la faute sans que
  * rien ne le dise.
  */
-export function remplir(gabarit: string, valeurs?: Record<string, string | number>): string {
+
+/**
+ * La langue décide de la forme, PAS UNE COMPARAISON À 1.
+ *
+ * ⚠️⚠️ LA PREMIÈRE VERSION FAISAIT `Number(valeur) === 1 ? un : plusieurs`,
+ * c'est-à-dire la règle ANGLAISE, appliquée aux quatre langues. En français,
+ * zéro prend le singulier : le profil public écrivait « 0 jours de discipline »
+ * là où il faut « 0 jour de discipline », et c'est le cas qu'un nouveau membre
+ * voit en premier. L'anglais, l'espagnol et l'allemand, eux, veulent bien le
+ * pluriel à zéro : les trois autres langues rendaient la faute invisible.
+ *
+ * ⚠️ ET LA MÊME RÈGLE ÉTAIT AUSSI ÉCRITE EN JAVASCRIPT, cinq fois, dans les
+ * composants : `count > 1 ? "s" : ""` sur le calendrier, `count !== 1` sur le
+ * dashboard. Deux règles opposées pour un seul fait, dans le même produit, et
+ * le mot « trade » jamais traduit.
+ *
+ * `Intl.PluralRules` connaît la règle de chaque langue ; nos quatre langues
+ * n'ont que les catégories « one » et « other ».
+ */
+function estSingulier(valeur: number, langue: string): boolean {
+  try {
+    return new Intl.PluralRules(langue).select(valeur) === "one";
+  } catch {
+    // Langue illisible : on ne perd pas la phrase pour autant.
+    return valeur === 1;
+  }
+}
+
+/**
+ * @param langue La langue du lecteur. ⚠️ Le défaut français n'est pas un choix
+ * de confort : `t()` la passe toujours, et un appelant qui l'oublie doit obtenir
+ * la langue de rédaction du produit plutôt qu'une règle étrangère silencieuse.
+ */
+export function remplir(
+  gabarit: string,
+  valeurs?: Record<string, string | number>,
+  langue = "fr",
+): string {
   let sortie = gabarit;
   // Les accords d'abord : ils nomment un compteur, qui sera remplacé ensuite.
   sortie = sortie.replace(
@@ -39,7 +76,7 @@ export function remplir(gabarit: string, valeurs?: Record<string, string | numbe
       // ⚠️ Une valeur absente laisse le gabarit INTACT plutôt que de choisir un
       // accord au hasard : c'est visible à l'écran, donc réparable.
       if (valeur === undefined) return brut;
-      return Number(valeur) === 1 ? un : plusieurs;
+      return estSingulier(Number(valeur), langue) ? un : plusieurs;
     },
   );
   if (valeurs) {

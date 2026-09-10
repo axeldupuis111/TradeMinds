@@ -96,7 +96,6 @@ import {
   nomDuMarche,
   nommerUnChamp,
   nommerUneValeur as nommerLaValeur,
-  remplir,
   sansCodeInterne,
   sansPhraseCoupee,
 } from "@/lib/backtest/phrases";
@@ -217,15 +216,15 @@ export default function BacktestPage() {
   const estPremium = abonnement === "premium";
 
   /**
-   * `t()` de l'application ne rend qu'une chaine ; l'interpolation se fait par
-   * `.replace("{n}", …)` partout ailleurs. On l'enveloppe une fois ici plutot
-   * que de chainer trente remplacements dans les composants, ou l'oubli d'un
-   * seul laisserait un « {n} » brut a l'ecran.
+   * L'interpolation et les accords de l'onglet.
+   *
+   * ⚠️ CE N'EST PLUS QU'UN ALIAS : `remplir` est remontée dans `t()` pour tout
+   * le produit, et la rappeler ici la ferait tourner une seconde fois sur une
+   * phrase déjà remplie, sans la langue du lecteur. On garde le nom, employé
+   * par une trentaine d'appels, et on délègue.
    */
   const tr = useCallback(
-    (cle: string, valeurs?: Record<string, string | number>) => {
-      return remplir(t(cle), valeurs);
-    },
+    (cle: string, valeurs?: Record<string, string | number>) => t(cle, valeurs),
     [t],
   );
 

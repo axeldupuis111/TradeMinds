@@ -419,7 +419,7 @@ export default function TradingCalendar({
                 {!isPinnedPanel && (
                   <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                     <span className="text-[10px] text-muted">
-                      {displayDayData.count} trade{displayDayData.count > 1 ? "s" : ""}
+                      {t("common_trades_count", { n: displayDayData.count })}
                     </span>
                     {topPairs.map((pair) => (
                       <span
@@ -434,7 +434,7 @@ export default function TradingCalendar({
                 {/* Pinned mode: count on second line */}
                 {isPinnedPanel && (
                   <span className="text-[10px] text-muted block mt-0.5">
-                    {displayDayData.count} trade{displayDayData.count > 1 ? "s" : ""}
+                    {t("common_trades_count", { n: displayDayData.count })}
                   </span>
                 )}
               </div>

@@ -3981,6 +3981,8 @@ const dict: Record<string, string> = {
   "pubprofile_badge_discipline_30": "30 días de disciplina",
   "pubprofile_badge_winrate_60": "Tasa de acierto > 60 %",
   "pubprofile_badge_score_80": "Puntuación > 80 durante un mes",
+  "common_trades_count": "{n} {n|operación|operaciones}",
+  "dash_today_trades_sub": "{n} {n|operación|operaciones} hoy",
 };
 
 export default dict;

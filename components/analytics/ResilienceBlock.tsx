@@ -82,10 +82,12 @@ function DrawdownZone({ trades, currency }: { trades: AnalyticsTrade[]; currency
         {maxDD.recoveryTrades !== null && (
           <p className="mt-1 text-xs text-foreground-muted">
             {t("resilience_recovered_pre")}
+            {/* ⚠️ Le compte et son mot dans UNE phrase du dictionnaire : le
+                pluriel était bâti en JavaScript avec un « s » anglais, et le
+                mot « trade » n'était traduit dans aucune langue. */}
             <span className="text-foreground font-semibold tabular-nums">
-              {maxDD.recoveryTrades}
+              &nbsp;{t("common_trades_count", { n: maxDD.recoveryTrades })}
             </span>
-            &nbsp;trade{maxDD.recoveryTrades !== 1 ? "s" : ""}
           </p>
         )}
         {maxDD.recoveryTrades === null && maxDD.maxDrawdown > 0 && (

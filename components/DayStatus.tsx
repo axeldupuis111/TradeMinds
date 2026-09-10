@@ -1,5 +1,6 @@
 "use client";
 
+import { DEFAULT_CURRENCY, accountCurrency, money } from "@/lib/account-currency";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
@@ -29,6 +30,19 @@ export default function DayStatus() {
   const { t } = useLanguage();
   const supabase = createClient();
   const { selectedAccount, loading: accountLoading } = useActiveAccount();
+  /**
+   * La devise du compte affiché, et son format.
+   *
+   * ⚠️⚠️ CETTE CARTE ÉCRIVAIT « +0.00 € » : un point décimal dans une interface
+   * française, aucun séparateur de milliers sur le budget (« 2500 € »), et
+   * surtout un EURO EN DUR sur une carte qui porte le nom du compte en titre.
+   * Un compte en dollars voyait donc son P&L du jour libellé en euros, et le
+   * même montant s'écrivait « +0,00 € » douze pixels plus haut dans le KPI.
+   *
+   * ⚠️ LA RÈGLE EXISTE DÉJÀ, elle n'était simplement pas appliquée ici : partout
+   * où un compte est identifié, le montant passe par money(v, accountCurrency(compte)).
+   */
+  const devise = selectedAccount ? accountCurrency(selectedAccount) : DEFAULT_CURRENCY;
   const [stats, setStats] = useState<DayStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -116,7 +130,7 @@ export default function DayStatus() {
         <div>
           <p className="text-xs text-muted">{t("session_today_pnl")}</p>
           <p className={`text-xl font-bold mt-1 ${todayPnl >= 0 ? "text-profit" : "text-loss"}`}>
-            {todayPnl >= 0 ? "+" : ""}{todayPnl.toFixed(2)} &euro;
+            {money(todayPnl, devise, { digits: 2, signed: true })}
           </p>
         </div>
         <div>
@@ -135,7 +149,7 @@ export default function DayStatus() {
           <p className="text-xs text-muted">{t("session_risk_budget")}</p>
           {maxLossEuro !== null && remainingBudget !== null ? (
             <p className={`text-xl font-bold mt-1 ${budgetPct > 50 ? "text-profit" : budgetPct > 20 ? "text-orange-400" : "text-loss"}`}>
-              {remainingBudget.toFixed(0)} &euro;
+              {money(remainingBudget, devise, { digits: 0 })}
             </p>
           ) : (
             <p className="text-xl font-bold mt-1 text-muted">&mdash;</p>
