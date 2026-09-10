@@ -389,7 +389,7 @@ function PlanEcrit({
                 )}
               >
                 <td className="py-1 pr-3 text-foreground">
-                  {x.risquePct} %
+                  {pourcent(x.risquePct)}
                   {x.risquePct === plan.risqueRecommandePct ? (
                     <span className="ml-1.5 text-[10px] text-accent">{t("bt_plan_retenu")}</span>
                   ) : null}

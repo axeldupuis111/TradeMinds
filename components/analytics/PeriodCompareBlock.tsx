@@ -14,7 +14,7 @@ import { DEFAULT_CURRENCY, currencySymbol, money } from "@/lib/account-currency"
 import { cn } from "@/lib/cn";
 import { Scale } from "lucide-react";
 import { useMemo } from "react";
-import { nombre } from "@/lib/nombres";
+import { nombre, pourcent } from "@/lib/nombres";
 
 interface CompareTrade {
   open_time: string;
@@ -121,8 +121,8 @@ export default function PeriodCompareBlock({
     },
     {
       label: t("compare_winrate"),
-      cur: current.winrate !== null ? `${Math.round(current.winrate)}%` : "—",
-      prev: previous.winrate !== null ? `${Math.round(previous.winrate)}%` : "—",
+      cur: current.winrate !== null ? `${pourcent(Math.round(current.winrate))}` : "—",
+      prev: previous.winrate !== null ? `${pourcent(Math.round(previous.winrate))}` : "—",
       delta: current.winrate !== null && previous.winrate !== null ? current.winrate - previous.winrate : null,
       suffix: "pt",
     },

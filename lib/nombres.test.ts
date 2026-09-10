@@ -63,7 +63,7 @@ describe("les nombres suivent la langue", () => {
    * compte : la règle existait déjà pour les montants (`money`), et personne ne
    * l'avait étendue aux pourcentages.
    */
-  it("aucun composant n'écrit un pourcentage avec toFixed", () => {
+  it("aucun composant n'écrit un pourcentage à la main", () => {
     function fichiers(d: string, out: string[] = []): string[] {
       for (const f of readdirSync(d)) {
         if (f === "node_modules" || f === ".next") continue;
@@ -82,23 +82,42 @@ describe("les nombres suivent la langue", () => {
      */
     const MOTIF = /toFixed\(\s*[1-9]\s*\)\s*\}?\s*(&nbsp;)?\s*%/;
     /**
+     * Et la forme sans décimale : `{x}%` ou `${x} %`.
+     *
+     * ⚠️⚠️ LES DEUX CONVENTIONS COEXISTAIENT DANS LE MÊME PRODUIT : cinquante
+     * endroits écrivaient `{x}%` (règle anglaise) et une douzaine `{x} %`
+     * (règle française). Sur Analytics, « 63,1 % » et « WR 53% » se lisaient sur
+     * le même écran. Deux conventions codées en dur, c'est la preuve qu'aucune
+     * n'est décidée : c'est la langue qui décide, donc `Intl`.
+     */
+    const A_LA_MAIN = /\$?\{[^{}]+\}\s?%/;
+    /**
      * ⚠️ UNE LARGEUR CSS N'EST PAS UN POURCENTAGE LU PAR QUELQU'UN. `left: "12.34%"`
      * doit rester en notation machine : le formater à la française donnerait une
      * valeur CSS invalide. On écarte donc les propriétés de position et de taille.
      */
-    const CSS = /^\s*(left|top|right|bottom|width|height|transform|stroke\w*|flexBasis)\s*:/;
+    const CSS = /width:|left:|top:|right:|bottom:|height:|strokeDash|flexBasis|translate|background:|gradient|const width/;
+    /**
+     * ⚠️ L'IMAGE DE PARTAGE N'A PAS DE LECTEUR CONNU. Elle est rendue par le
+     * serveur pour un robot social, sans langue de visiteur : `pourcent()` y
+     * retomberait sur le français pour le monde entier. C'est la seule
+     * exception, et elle est écrite.
+     */
+    const SANS_LECTEUR = /opengraph-image/;
     const fautes: string[] = [];
     for (const chemin of [...fichiers("app"), ...fichiers("components")]) {
+      if (SANS_LECTEUR.test(chemin)) continue;
       const nom = chemin.split(/[\\/]/).slice(-2).join("/");
       readFileSync(chemin, "utf8")
         .split(new RegExp(String.fromCharCode(13) + "?" + String.fromCharCode(10)))
         .forEach((ligne, i) => {
-          if (MOTIF.test(ligne) && !CSS.test(ligne)) fautes.push(`${nom}:${i + 1}`);
+          if (CSS.test(ligne)) return;
+          if (MOTIF.test(ligne) || A_LA_MAIN.test(ligne)) fautes.push(`${nom}:${i + 1}`);
         });
     }
     expect(
       fautes,
-      "pourcentages écrits avec toFixed (voir lib/nombres.ts) : " + fautes.join(", "),
+      "pourcentages écrits à la main (voir lib/nombres.ts) : " + fautes.join(", "),
     ).toEqual([]);
   });
 

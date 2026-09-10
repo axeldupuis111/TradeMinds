@@ -7,6 +7,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { startOfLocalDayUtc, browserTimezone } from "@/lib/timezone";
 import { useEffect, useState } from "react";
+import { pourcent } from "@/lib/nombres";
 
 interface Strategy {
   max_trades_per_day: number | null;
@@ -163,7 +164,7 @@ export default function DayStatus() {
               <>
                 <div className="flex justify-between text-xs text-muted mb-1">
                   <span>{t("session_budget_label")}</span>
-                  <span>{consumedPct.toFixed(0)}%</span>
+                  <span>{pourcent(consumedPct)}</span>
                 </div>
                 <div className="h-2 bg-border rounded-full overflow-hidden">
                   <div className={`h-full transition-all ${barColor}`} style={{ width: `${consumedPct}%` }} />

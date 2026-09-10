@@ -22,7 +22,7 @@ import {
 import { useChartColors } from "@/lib/useChartColors";
 import { useLanguage } from "@/lib/LanguageContext";
 import type { ChecklistItem } from "@/lib/hooks/useStrategyTags";
-import { nombre } from "@/lib/nombres";
+import { nombre, pourcent } from "@/lib/nombres";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -208,7 +208,7 @@ function ZoneB({
           </p>
           <div className="flex items-center gap-2 flex-wrap">
             <span className={`text-xs font-semibold ${s.delta > 0 ? "text-profit" : "text-loss"}`}>
-              WR {s.wrWith}%
+              WR {pourcent(s.wrWith)}
             </span>
             <span className="text-xs text-foreground-muted">
               {t("da_vs_without").replace("{wr}", String(s.wrWithout))}
@@ -312,7 +312,7 @@ function ZoneC({ trades, currency }: { trades: TradeRow[]; currency: string }) {
                   {money(entry.pnl, currency, { digits: 2, signed: true })}
                 </p>
                 <p style={{ color: c.axis }}>
-                  {t("common_trades_count", { n: entry.count })} · WR {entry.winrate}%
+                  {t("common_trades_count", { n: entry.count })} · WR {pourcent(entry.winrate)}
                 </p>
               </div>
             );
@@ -396,7 +396,7 @@ function ZoneD({ trades, currency }: { trades: TradeRow[]; currency: string }) {
               {s.count}
             </p>
             <p className="text-[10px] text-foreground-muted leading-relaxed">
-              WR {wr}%
+              WR {pourcent(wr)}
               <br />
               <span className={pnlAvg >= 0 ? "text-profit" : "text-loss"}>
                 {money(pnlAvg, currency, { signed: true })} {t("da_avg_suffix")}

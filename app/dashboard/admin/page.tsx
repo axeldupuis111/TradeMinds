@@ -3,6 +3,7 @@
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { Fragment, useEffect, useState } from "react";
+import { pourcent } from "@/lib/nombres";
 
 const ADMIN_EMAIL = "axel.dupuis111@gmail.com";
 
@@ -668,7 +669,7 @@ export default function AdminPage() {
                             {l.source && <span className="block text-[10px]">{l.source}</span>}
                           </td>
                           <td className="py-2 pl-3 text-right tabular-nums text-muted">
-                            {l.tauxCache !== null ? `${Math.round(l.tauxCache * 100)} %` : "—"}
+                            {l.tauxCache !== null ? `${pourcent(Math.round(l.tauxCache * 100))}` : "—"}
                           </td>
                         </tr>
                       );
@@ -778,7 +779,7 @@ export default function AdminPage() {
                   <span className="text-sm text-muted flex-1">{step.label}</span>
                   <span className="text-sm font-bold text-foreground tabular-nums">{step.value}</span>
                   <span className="text-xs text-muted tabular-nums w-14 text-right">
-                    {step.base != null && step.base > 0 ? `${Math.round((step.value / step.base) * 100)} %` : "—"}
+                    {step.base != null && step.base > 0 ? `${pourcent(Math.round((step.value / step.base) * 100))}` : "—"}
                   </span>
                 </div>
               ))}
@@ -873,7 +874,7 @@ export default function AdminPage() {
                                   part !== null && part > 25 ? "text-red-500" : "text-muted"
                                 }`}
                               >
-                                {part !== null ? `${part.toFixed(0)} %` : "—"}
+                                {part !== null ? `${pourcent(part)}` : "—"}
                               </span>
                             </div>
                           );
@@ -947,7 +948,7 @@ export default function AdminPage() {
                           <td className="py-2 pr-3 text-right tabular-nums text-foreground">{c.subscriptions} ({c.activeSubscriptions})</td>
                           <td className="py-2 pr-3 text-right tabular-nums text-foreground">{euros(c.gross)}</td>
                           <td className="py-2 pr-3 text-right tabular-nums text-foreground">{euros(c.eligible)}</td>
-                          <td className="py-2 pr-3 text-right text-foreground whitespace-nowrap">{c.tier} · {Math.round(c.rate * 100)} %</td>
+                          <td className="py-2 pr-3 text-right text-foreground whitespace-nowrap">{c.tier} · {pourcent(Math.round(c.rate * 100))}</td>
                           <td className="py-2 text-right tabular-nums font-bold text-accent">{euros(c.commission)}</td>
                         </tr>
                       ))}
@@ -1035,7 +1036,7 @@ export default function AdminPage() {
                             <td className="py-2 pr-3 text-right tabular-nums text-foreground">{p.reps.length}</td>
                             <td className="py-2 pr-3 text-right tabular-nums text-foreground">{euros(p.gross)}</td>
                             <td className="py-2 pr-3 text-right tabular-nums text-foreground">{euros(p.eligible)}</td>
-                            <td className="py-2 pr-3 text-right text-foreground whitespace-nowrap">{p.tier} · {Math.round(p.rate * 100)} %</td>
+                            <td className="py-2 pr-3 text-right text-foreground whitespace-nowrap">{p.tier} · {pourcent(Math.round(p.rate * 100))}</td>
                             <td className="py-2 text-right tabular-nums font-bold text-accent">{euros(p.commission)}</td>
                           </tr>
                           {netOpen === p.id && p.reps.map((r) => (

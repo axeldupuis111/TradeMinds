@@ -23,6 +23,7 @@ import type { Lang } from "@/lib/translations";
 import { ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { pourcent } from "@/lib/nombres";
 
 export interface TradeDetail {
   id: string;
@@ -740,7 +741,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
                   {t("ict_checklist_title")} {checkedCount}/{checklistTotal}
                   <SavedIndicator etat={savedField?.field === "ict_checklist" ? savedField.ok : null} echec={t("save_failed")} />
                 </span>
-                <span className="text-xs text-muted">{Math.round((checkedCount / checklistTotal) * 100)}%</span>
+                <span className="text-xs text-muted">{pourcent(Math.round((checkedCount / checklistTotal) * 100))}</span>
               </div>
               <div className="h-1.5 bg-border rounded-full overflow-hidden mb-3">
                 <div

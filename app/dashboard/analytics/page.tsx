@@ -30,6 +30,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { fetchAllRows } from "@/lib/supabase-paginate";
 import { cn } from "@/lib/cn";
+import { pourcent } from "@/lib/nombres";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Search, ShieldCheck, ShieldAlert, Filter, X } from "lucide-react";
@@ -626,7 +627,7 @@ export default function AnalyticsPage() {
         <p style={{ color: entry.pnl >= 0 ? c.profit : c.loss }}>
           {formatPnl(entry.pnl, pageCurrency)}
         </p>
-        <p style={{ color: c.axis }}>{entry.count} trades · WR {entry.winrate}%</p>
+        <p style={{ color: c.axis }}>{entry.count} trades · WR {pourcent(entry.winrate)}</p>
       </div>
     );
   };

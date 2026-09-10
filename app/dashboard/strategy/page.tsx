@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { verifierCoherence } from "@/lib/strategy-coherence";
 import { cn } from "@/lib/cn";
+import { pourcent } from "@/lib/nombres";
 
 const SESSION_LABELS: Record<string, string> = {
   london: "London (08:00–12:00 UTC)",
@@ -893,7 +894,7 @@ export default function StrategyPage() {
                   { label: t("strategy_rr"), value: parsed.risk_reward != null ? `${parsed.risk_reward}:1` : "—" },
                   { label: t("strategy_sl_max"), value: parsed.max_sl_pips != null ? `${parsed.max_sl_pips} pips` : "—" },
                   { label: t("strategy_max_trades"), value: parsed.max_trades_per_day != null ? String(parsed.max_trades_per_day) : "—" },
-                  { label: t("strategy_risk_pct"), value: parsed.risk_per_trade_pct != null ? `${parsed.risk_per_trade_pct} %` : "—" },
+                  { label: t("strategy_risk_pct"), value: parsed.risk_per_trade_pct != null ? `${pourcent(parsed.risk_per_trade_pct)}` : "—" },
                 ].map((row) => (
                   <div key={row.label} className="flex items-baseline justify-between gap-3">
                     <dt className="text-muted">{row.label}</dt>
@@ -916,7 +917,7 @@ export default function StrategyPage() {
                   </div>
                   <div className="rounded-lg bg-surface border border-border p-3">
                     <p className="text-[11px] text-muted uppercase tracking-wider">{t("trades_winrate")}</p>
-                    <p className="text-lg font-bold text-foreground tabular-nums mt-0.5">{perf.winrate.toFixed(0)}%</p>
+                    <p className="text-lg font-bold text-foreground tabular-nums mt-0.5">{pourcent(perf.winrate)}</p>
                   </div>
                 </div>
                 <div className="rounded-lg bg-surface border border-border p-3">

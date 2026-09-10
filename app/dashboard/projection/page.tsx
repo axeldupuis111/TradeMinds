@@ -67,6 +67,7 @@ import {
   YAxis,
 } from "recharts";
 import { useChartColors } from "@/lib/useChartColors";
+import { pourcent } from "@/lib/nombres";
 
 /** Horizons proposés. Quinze ans parce que c'est ce que l'utilisateur demandait. */
 const HORIZONS = [1, 2, 5, 10, 15] as const;
@@ -495,7 +496,7 @@ export default function ProjectionPage() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <Kpi
                 titre={t("proj_ruin")}
-                valeur={`${Math.round(projection.risqueDeRuine * 100)} %`}
+                valeur={`${pourcent(Math.round(projection.risqueDeRuine * 100))}`}
                 aide={t(seuilVientDuCompte ? "proj_ruin_help_account" : "proj_ruin_help").replace(
                   "{pct}",
                   String(seuilRuinePct),
@@ -516,7 +517,7 @@ export default function ProjectionPage() {
               />
               <Kpi
                 titre={t("proj_winning_share")}
-                valeur={`${Math.round(projection.partGagnante * 100)} %`}
+                valeur={`${pourcent(Math.round(projection.partGagnante * 100))}`}
                 aide={t("proj_winning_share_help")}
                 ton={projection.partGagnante >= 0.5 ? "profit" : "loss"}
               />
@@ -864,7 +865,7 @@ function EncartAdherence({
                 adherence.taux >= 0.9 ? "text-profit" : adherence.taux >= 0.7 ? "text-gold" : "text-loss",
               )}
             >
-              {Math.round(adherence.taux * 100)} %
+              {pourcent(Math.round(adherence.taux * 100))}
             </div>
           </div>
         )}
@@ -1032,7 +1033,7 @@ function EncartPaliers({
                     p.risqueDeRuine > 0.2 ? "text-loss" : edgeNegatif ? "" : "text-profit",
                   )}
                 >
-                  {Math.round(p.risqueDeRuine * 100)} %
+                  {pourcent(Math.round(p.risqueDeRuine * 100))}
                 </td>
                 <td className={cn("py-2.5 text-right", p.esperance >= 0 ? "text-profit" : "text-loss")}>
                   {eur(p.esperance, true)}

@@ -4,6 +4,7 @@ import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { DEFAULT_CURRENCY, money } from "@/lib/account-currency";
 import { useLanguage } from "@/lib/LanguageContext";
 import { AlertTriangle, Brain, Clock, TrendingDown } from "lucide-react";
+import { pourcent } from "@/lib/nombres";
 
 interface DayEntry    { name: string; count: number; pnl: number; winrate: number }
 interface HourEntry   { name: string; count: number; pnl: number; winrate: number }
@@ -73,7 +74,7 @@ export function AnalyticsInsightCards({ worstDay, bestHour, riskyPairInfo, byEmo
                 {worstDay.name} ({worstDay.count} trades)
               </p>
               <p className={`text-xs tabular-nums mt-0.5 ${tonDuMontant(worstDay.pnl)}`}>
-                {money(worstDay.pnl, currency, { digits: 2, signed: true })} · WR {worstDay.winrate}%
+                {money(worstDay.pnl, currency, { digits: 2, signed: true })} · WR {pourcent(worstDay.winrate)}
               </p>
             </div>
           </div>
@@ -93,7 +94,7 @@ export function AnalyticsInsightCards({ worstDay, bestHour, riskyPairInfo, byEmo
                 {bestHour.name} ({bestHour.count} trades)
               </p>
               <p className={`text-xs tabular-nums mt-0.5 ${tonDuMontant(bestHour.pnl)}`}>
-                {money(bestHour.pnl, currency, { digits: 2, signed: true })} · WR {bestHour.winrate}%
+                {money(bestHour.pnl, currency, { digits: 2, signed: true })} · WR {pourcent(bestHour.winrate)}
               </p>
             </div>
           </div>
@@ -118,7 +119,7 @@ export function AnalyticsInsightCards({ worstDay, bestHour, riskyPairInfo, byEmo
               ) : (
                 <>
                   <p className="text-sm font-semibold text-foreground">
-                    {riskyPairInfo.pair} · WR {riskyPairInfo.winrate}%
+                    {riskyPairInfo.pair} · WR {pourcent(riskyPairInfo.winrate)}
                   </p>
                   <p className={`text-xs tabular-nums mt-0.5 ${tonDuMontant(riskyPairInfo.pnl)}`}>
                     {money(riskyPairInfo.pnl, currency, { digits: 2, signed: true })}

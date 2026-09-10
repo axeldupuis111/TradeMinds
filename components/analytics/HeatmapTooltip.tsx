@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { DEFAULT_CURRENCY, money } from "@/lib/account-currency";
 import { createPortal } from "react-dom";
 import { useLanguage } from "@/lib/LanguageContext";
+import { pourcent } from "@/lib/nombres";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 // `visible` est géré côté HourDayHeatmap via rendu conditionnel ; le tooltip
@@ -147,7 +148,7 @@ export function HeatmapTooltip({
                 fontVariantNumeric: "tabular-nums",
               }}
             >
-              {Math.round(winRate * 100)} %
+              {pourcent(Math.round(winRate * 100))}
             </span>
           </div>
         </div>

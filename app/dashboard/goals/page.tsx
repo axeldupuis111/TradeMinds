@@ -13,6 +13,7 @@ import GrowBar from "@/components/animations/GrowBar";
 import { AnimatePresence, motion } from "framer-motion";
 import { Trash2, Plus, Target, CheckCircle2, PenLine, Layers, Flame, Repeat, Sparkles, Clock, CalendarDays, Flag, Crown, Scale, ShieldCheck, Zap, Gauge, TrendingUp, TrendingDown, Minus, Lock, X, Trophy, Activity } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { pourcent } from "@/lib/nombres";
 
 type Metric = "discipline_score" | "sessions" | "win_rate" | "trades_per_day" | "max_consecutive_losses";
 type Comparator = "gte" | "lte";
@@ -855,7 +856,7 @@ export default function GoalsPage() {
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-2xl font-black tabular-nums text-accent leading-none">{focusGoal.progress}%</p>
+                <p className="text-2xl font-black tabular-nums text-accent leading-none">{pourcent(focusGoal.progress)}</p>
                 <p className="text-[11px] text-muted mt-1 max-w-[160px]">{focusGap}</p>
               </div>
             </div>

@@ -1664,7 +1664,7 @@ export default function ChallengePage() {
                   <div className="rounded-lg bg-surface border border-border p-3">
                     <p className="text-[11px] text-muted uppercase tracking-wider">{t("trades_winrate")}</p>
                     <p className="text-lg font-bold text-foreground tabular-nums mt-0.5">
-                      {portfolio.trades > 0 ? `${portfolioWinrate.toFixed(0)}%` : "—"}
+                      {portfolio.trades > 0 ? `${pourcent(portfolioWinrate)}` : "—"}
                     </p>
                   </div>
                 </div>
@@ -1704,7 +1704,7 @@ export default function ChallengePage() {
                             </p>
                             <p className="text-[10px] text-muted tabular-nums">
                               {s?.tradeCount ?? 0} trades
-                              {s && s.tradeCount > 0 ? ` · WR ${s.winrate.toFixed(0)}%` : ""}
+                              {s && s.tradeCount > 0 ? ` · WR ${pourcent(s.winrate)}` : ""}
                             </p>
                           </div>
                           <span

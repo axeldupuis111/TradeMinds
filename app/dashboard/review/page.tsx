@@ -15,6 +15,7 @@ import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { ScoreRing } from "@/components/dashboard/ScoreRing";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { X } from "lucide-react";
+import { pourcent } from "@/lib/nombres";
 
 interface Stats { trades: number; winRate: number; totalPnl: number; sessions: number; avgDisciplineScore: number | null; tradingDays: number }
 interface Deltas { trades: number; winRate: number; sessions: number; avgDisciplineScore: number | null; tradingDays: number }
@@ -254,10 +255,10 @@ export default function MonthlyReviewPage() {
       pdf.statGrid([
         { label: t("review_kpi_trades"), value: `${stats.trades}`, ...deltaCard(deltas?.trades) },
         { label: t("review_kpi_days"), value: `${stats.tradingDays}`, ...deltaCard(deltas?.tradingDays) },
-        { label: t("review_kpi_winrate"), value: `${stats.winRate}%`, color: stats.winRate >= 50 ? C.green : C.amber, ...deltaCard(deltas?.winRate, " pts") },
+        { label: t("review_kpi_winrate"), value: `${pourcent(stats.winRate)}`, color: stats.winRate >= 50 ? C.green : C.amber, ...deltaCard(deltas?.winRate, " pts") },
         { label: t("review_kpi_sessions"), value: `${stats.sessions}`, ...deltaCard(deltas?.sessions) },
         { label: t("review_kpi_score"), value: stats.avgDisciplineScore != null ? `${stats.avgDisciplineScore}/100` : "—", color: stats.avgDisciplineScore != null ? scoreColor(stats.avgDisciplineScore) : C.faint, ...deltaCard(deltas?.avgDisciplineScore, " pts") },
-        { label: t("review_kpi_prep"), value: extras?.prepRate != null ? `${extras.prepRate}%` : "—", color: C.teal },
+        { label: t("review_kpi_prep"), value: extras?.prepRate != null ? `${pourcent(extras.prepRate)}` : "—", color: C.teal },
       ]);
 
       // ── Equity du mois ──
@@ -326,7 +327,7 @@ export default function MonthlyReviewPage() {
         const maxAbs = Math.max(1, ...emotions.map((e) => Math.abs(e.pnl)));
         pdf.bars(
           emotions.map((e) => ({
-            label: `${t(`emotion_${e.emotion}`)} (${e.winRate}%)`,
+            label: `${t(`emotion_${e.emotion}`)} (${pourcent(e.winRate)})`,
             value: fmtMoney(e.pnl, displayCurrency),
             ratio: Math.abs(e.pnl) / maxAbs,
             color: e.pnl >= 0 ? C.green : C.red,
@@ -360,7 +361,7 @@ export default function MonthlyReviewPage() {
         const maxAbs = Math.max(1, ...pairs.map((p) => Math.abs(p.pnl)));
         pdf.bars(
           pairs.slice(0, 6).map((p) => ({
-            label: `${p.pair} (${p.winRate}%)`,
+            label: `${p.pair} (${pourcent(p.winRate)})`,
             value: fmtMoney(p.pnl, displayCurrency),
             ratio: Math.abs(p.pnl) / maxAbs,
             color: p.pnl >= 0 ? C.green : C.red,
@@ -379,7 +380,7 @@ export default function MonthlyReviewPage() {
             label: t(`review_day_${d.dir}`),
             value: fmtMoney(d.pnl, displayCurrency),
             color: d.pnl >= 0 ? C.green : C.red,
-            sub: `${d.winRate}% · ${d.count}`,
+            sub: `${pourcent(d.winRate)} · ${d.count}`,
           })),
           { cols: 2, height: 22 },
         );
@@ -543,10 +544,10 @@ export default function MonthlyReviewPage() {
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                     <Kpi label={t("review_kpi_trades")} value={`${stats.trades}`} delta={deltas?.trades} />
                     <Kpi label={t("review_kpi_days")} value={`${stats.tradingDays}`} delta={deltas?.tradingDays} />
-                    <Kpi label={t("review_kpi_winrate")} value={`${stats.winRate}%`} delta={deltas?.winRate} suffix="pts" valueClass={stats.winRate >= 50 ? "text-profit" : "text-warning"} />
+                    <Kpi label={t("review_kpi_winrate")} value={`${pourcent(stats.winRate)}`} delta={deltas?.winRate} suffix="pts" valueClass={stats.winRate >= 50 ? "text-profit" : "text-warning"} />
                     <Kpi label={t("review_kpi_sessions")} value={`${stats.sessions}`} delta={deltas?.sessions} />
                     <Kpi label={t("review_kpi_score")} value={stats.avgDisciplineScore != null ? `${stats.avgDisciplineScore}/100` : "—"} delta={deltas?.avgDisciplineScore ?? undefined} suffix="pts" valueClass={stats.avgDisciplineScore != null ? scoreText(stats.avgDisciplineScore) : "text-foreground"} />
-                    {extras?.prepRate != null && <Kpi label={t("review_kpi_prep")} value={`${extras.prepRate}%`} valueClass="text-teal-300" />}
+                    {extras?.prepRate != null && <Kpi label={t("review_kpi_prep")} value={`${pourcent(extras.prepRate)}`} valueClass="text-teal-300" />}
                   </div>
 
                   {/* Comparaison mois-sur-mois */}
@@ -701,7 +702,7 @@ export default function MonthlyReviewPage() {
                             {t(`review_day_${d.dir}`)}
                           </p>
                           <p className={`text-lg font-bold mt-0.5 tabular-nums ${d.pnl >= 0 ? "text-profit" : "text-loss"}`}>{fmtMoney(d.pnl, displayCurrency)}</p>
-                          <p className="text-[11px] text-muted">{d.winRate}% · {d.count} {t("review_kpi_trades").toLowerCase()}</p>
+                          <p className="text-[11px] text-muted">{pourcent(d.winRate)} · {d.count} {t("review_kpi_trades").toLowerCase()}</p>
                         </div>
                       ))}
                     </div>
@@ -724,7 +725,7 @@ export default function MonthlyReviewPage() {
                               {weekdays.map((w) => {
                                 const pct = w.count ? Math.max(10, Math.round((Math.abs(w.pnl) / maxAbs) * 100)) : 0;
                                 return (
-                                  <div key={w.wd} className="flex-1 flex flex-col items-center" title={w.count ? `${fmtMoney(w.pnl, displayCurrency)} · ${w.winRate}% · ${w.count} ${t("review_kpi_trades").toLowerCase()}` : t("review_day_no_trades")}>
+                                  <div key={w.wd} className="flex-1 flex flex-col items-center" title={w.count ? `${fmtMoney(w.pnl, displayCurrency)} · ${pourcent(w.winRate)} · ${w.count} ${t("review_kpi_trades").toLowerCase()}` : t("review_day_no_trades")}>
                                     <div className="w-full h-9 flex items-end justify-center">
                                       {w.pnl > 0 && <div className="w-full max-w-[24px] h-full flex items-end"><GrowBar vertical pct={pct} durationMs={700} delayMs={w.wd * 50} className="rounded-t bg-profit/70" /></div>}
                                     </div>
@@ -753,7 +754,7 @@ export default function MonthlyReviewPage() {
                                 return (
                                   <div key={p.pair} className="flex items-center gap-2 text-xs" title={`${p.count} ${t("review_kpi_trades").toLowerCase()}`}>
                                     <span className="w-16 shrink-0 font-semibold text-foreground truncate">{p.pair}</span>
-                                    <span className="w-9 text-muted tabular-nums shrink-0 text-right">{p.winRate}%</span>
+                                    <span className="w-9 text-muted tabular-nums shrink-0 text-right">{pourcent(p.winRate)}</span>
                                     <div className="flex-1 h-2 min-w-0">
                                       <GrowBar pct={pct} className={`rounded-full ${p.pnl >= 0 ? "bg-profit/70" : "bg-loss/70"}`} />
                                     </div>
@@ -789,7 +790,7 @@ export default function MonthlyReviewPage() {
                             const pct = d ? Math.max(10, Math.round((Math.abs(d.pnl) / maxAbs) * 100)) : 0;
                             return (
                               <div key={h} className="flex-1 flex flex-col items-center min-w-0"
-                                title={d ? `${h}h · ${fmtMoney(d.pnl, displayCurrency)} · ${d.winRate}% · ${d.count} ${t("review_kpi_trades").toLowerCase()}` : `${h}h`}>
+                                title={d ? `${h}h · ${fmtMoney(d.pnl, displayCurrency)} · ${pourcent(d.winRate)} · ${d.count} ${t("review_kpi_trades").toLowerCase()}` : `${h}h`}>
                                 <div className="w-full h-9 flex items-end justify-center">
                                   {d && d.pnl > 0 && <div className="w-full max-w-[18px] h-full flex items-end"><GrowBar vertical pct={pct} durationMs={700} delayMs={i * 35} className="rounded-t bg-profit/70" /></div>}
                                 </div>
@@ -874,7 +875,7 @@ export default function MonthlyReviewPage() {
                                   <span className="text-base leading-none">{EMOTION_EMOJI[e.emotion] ?? "\u{1F642}"}</span>
                                   <span className="text-foreground truncate">{t(`emotion_${e.emotion}`)}</span>
                                 </div>
-                                <span className="w-9 text-muted tabular-nums shrink-0 text-right">{e.winRate}%</span>
+                                <span className="w-9 text-muted tabular-nums shrink-0 text-right">{pourcent(e.winRate)}</span>
                                 <div className="flex-1 flex items-center min-w-0">
                                   <div className="w-1/2 h-2 flex justify-end">{e.pnl < 0 && <GrowBar pct={pct} className="bg-loss rounded-full" />}</div>
                                   <div className="w-px h-3.5 bg-border shrink-0" />
@@ -1126,7 +1127,7 @@ function DayDetailDrawer({ date, onClose }: { date: string; onClose: () => void 
                 </div>
                 <div className="rounded-xl border border-border bg-surface/40 p-3">
                   <p className="text-xs text-muted">{t("review_kpi_winrate")}</p>
-                  <p className={`text-lg font-bold mt-0.5 tabular-nums ${data!.winRate >= 50 ? "text-profit" : "text-warning"}`}>{data!.trades > 0 ? `${data!.winRate}%` : "—"}</p>
+                  <p className={`text-lg font-bold mt-0.5 tabular-nums ${data!.winRate >= 50 ? "text-profit" : "text-warning"}`}>{data!.trades > 0 ? `${pourcent(data!.winRate)}` : "—"}</p>
                 </div>
                 <div className="rounded-xl border border-border bg-surface/40 p-3">
                   <p className="text-xs text-muted">{t("review_kpi_score")}</p>

@@ -12,6 +12,7 @@ import {
 import type { Instrument } from "@/lib/backtest/instruments";
 import type { Methode } from "@/lib/backtest/methodes";
 import { AlertTriangle, CheckCircle2, Gauge, Info } from "lucide-react";
+import { pourcent } from "@/lib/nombres";
 
 /**
  * CE QUE VAUT CE MARCHÉ, ET SI TA MÉTHODE Y EST CHEZ ELLE.
@@ -90,14 +91,14 @@ export function CaractereDuMarche({
         />
         <Mesure
           titre={t("bt_car_seance")}
-          valeur={`${(caractere.concentrationSeance * 100).toFixed(0)} %`}
+          valeur={`${pourcent((caractere.concentrationSeance * 100))}`}
           aide={t("bt_car_seance_aide", {
             heure: `${String(caractere.heurePointe).padStart(2, "0")}:00`,
           })}
         />
         <Mesure
           titre={t("bt_car_cout")}
-          valeur={`${(caractere.coutEnBougies * 100).toFixed(0)} %`}
+          valeur={`${pourcent((caractere.coutEnBougies * 100))}`}
           aide={t("bt_car_cout_aide", {
             amplitude: caractere.amplitudePoints.toFixed(2),
             minutes: uniteDeTemps,

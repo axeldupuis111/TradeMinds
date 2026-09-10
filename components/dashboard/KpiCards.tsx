@@ -22,6 +22,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { useTheme } from "@/lib/ThemeContext";
 import { Wallet } from "lucide-react";
 import Link from "next/link";
+import { pourcent } from "@/lib/nombres";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -283,7 +284,7 @@ export function KpiCards({
                 label="Win rate"
                 value={
                   weekCount > 0
-                    ? `${Math.round((weekWins / weekCount) * 100)}%`
+                    ? `${pourcent(Math.round((weekWins / weekCount) * 100))}`
                     : "—"
                 }
                 positive={
@@ -373,7 +374,7 @@ export function KpiCards({
   if (displayAccount) {
     const challengeSubLabel =
       challengePct !== null
-        ? `${challengePct.toFixed(0)}% ${t("dash_challenge_target") || "objectif"}`
+        ? `${pourcent(challengePct)} ${t("dash_challenge_target") || "objectif"}`
         : money(displayAccount.balanceChange, currency, { digits: 2, signed: true });
 
     card4 = (

@@ -19,6 +19,7 @@ import { startOfLocalDayUtc, browserTimezone } from "@/lib/timezone";
 import { cn } from "@/lib/cn";
 import { Flame, TrendingUp, TrendingDown } from "lucide-react";
 import { useEffect, useState } from "react";
+import { pourcent } from "@/lib/nombres";
 
 interface Strategy {
   max_trades_per_day: number | null;
@@ -297,7 +298,7 @@ export default function DayState() {
         <div className="mt-4">
           <div className="flex justify-between text-[10px] text-foreground-subtle mb-1">
             <span>{t("session_budget_label")}</span>
-            <span className="tabular-nums">{consumedPct.toFixed(0)}%</span>
+            <span className="tabular-nums">{pourcent(consumedPct)}</span>
           </div>
           <div className="h-1.5 bg-border rounded-full overflow-hidden">
             <div className={cn("h-full transition-all", barColor)} style={{ width: `${consumedPct}%` }} />

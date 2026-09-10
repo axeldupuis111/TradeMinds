@@ -18,6 +18,7 @@ import { DEFAULT_CURRENCY, currencySymbol, money } from "@/lib/account-currency"
 import { cn } from "@/lib/cn";
 import { CalendarRange, Share2, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import { useMemo, useState } from "react";
+import { pourcent } from "@/lib/nombres";
 
 interface RecapTrade {
   open_time: string;
@@ -164,7 +165,7 @@ export default function WeeklyRecap({
     {
       key: "winrate",
       label: t("recap_winrate"),
-      value: current.winrate !== null ? `${Math.round(current.winrate)}%` : "—",
+      value: current.winrate !== null ? `${pourcent(Math.round(current.winrate))}` : "—",
       delta: (
         <DeltaBadge
           delta={current.winrate !== null && previous.winrate !== null ? current.winrate - previous.winrate : null}

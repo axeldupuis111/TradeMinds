@@ -4,6 +4,7 @@ import { DEFAULT_CURRENCY, money } from "@/lib/account-currency";
 import { useLanguage } from "@/lib/LanguageContext";
 import type { ChallengeProjection } from "@/lib/challenge-projection";
 import { TrendingUp, Gauge } from "lucide-react";
+import { pourcent } from "@/lib/nombres";
 
 const STATUS_META: Record<string, { color: string; bar: string; labelKey: string }> = {
   on_track: { color: "text-profit", bar: "bg-profit", labelKey: "challenge_proj_status_on_track" },
@@ -38,7 +39,7 @@ export function ChallengeProjectionBlock({
         <>
           <div className="flex items-end justify-between mb-1.5">
             <span className="text-xs text-foreground-muted">{t("challenge_proj_success")}</span>
-            <span className={`text-2xl font-black tabular-nums leading-none ${meta.color}`}>{pct}%</span>
+            <span className={`text-2xl font-black tabular-nums leading-none ${meta.color}`}>{pourcent(pct)}</span>
           </div>
           <div className="h-2 bg-foreground/5 rounded-full overflow-hidden">
             <div className={`h-full rounded-full transition-all duration-700 ${meta.bar}`} style={{ width: `${pct}%` }} />
