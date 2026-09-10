@@ -834,21 +834,6 @@ export default function BacktestPage() {
       controle: avecControle,
     } = options;
     if (etat.phase === "telechargement" || etat.phase === "calcul") return;
-    /**
-     * ⚠️⚠️ UN REJEU QUI DÉMARRE AILLEURS QUE SOUS LES YEUX DU TRADER EST MUET.
-     * Vu à l'écran : depuis « la prochaine chose à faire », j'appuie sur
-     * « Lancer le test » alors que je suis à l'étape « Tes règles ». Le calcul
-     * part, dure dix secondes, et RIEN ne bouge : la barre d'avancement, le
-     * message d'erreur et le résultat vivent tous les trois dans la carte
-     * « Lancer », qui ne s'affiche qu'à l'étape « Le test ». Un téléchargement
-     * qui échoue depuis ce chemin ne dit donc jamais qu'il a échoué.
-     *
-     * ⚠️ LA GARANTIE SE POSE ICI ET PAS DANS LES BOUTONS. Sept chemins
-     * déclenchent un rejeu (le bouton, l'analyse à fond, l'élargissement, le
-     * raccourcissement…) : la tenir dans chaque appelant, c'est l'oublier au
-     * huitième.
-     */
-    remonterVers("bt-lancer");
     workerRef.current?.terminate();
 
     // ⚠️ LA PÉRIODE PASSE EN ARGUMENT, elle n'est pas relue dans l'état. Le
@@ -942,7 +927,7 @@ export default function BacktestPage() {
       })(),
     };
     w.postMessage(demande);
-  }, [etat.phase, strategieId, strategies, de, a, code, plan, remonterVers]);
+  }, [etat.phase, strategieId, strategies, de, a, code, plan]);
 
   /**
    * Poser un plan venu d'un BOUTON, en retenant au nom de quoi.
@@ -2186,6 +2171,53 @@ export default function BacktestPage() {
           <ProchaineEtape etape={etape} onAgir={agirSurLEtape} enCours={occupe} t={tr} />
         </StaggerItem>
 
+        {/* ── Ce que le rejeu en cours a à dire, sur TOUTES les étapes ─────
+            ⚠️⚠️ UN REJEU LANCÉ D'AILLEURS NE DISAIT RIEN, PAS MÊME SES ERREURS.
+            Vu à l'écran : depuis « la prochaine chose à faire », j'appuie sur
+            « Lancer le test » alors que je suis à l'étape « Tes règles ». Le
+            calcul part, dure dix secondes, et rien ne bouge : la barre
+            d'avancement ET le message d'erreur vivaient tous les deux dans la
+            carte « Lancer », qui ne s'affiche qu'à l'étape « Le test ».
+
+            ⚠️ MA PREMIÈRE CORRECTION DÉPLAÇAIT LE TRADER vers cette carte. Elle
+            réparait le silence et en cassait autre chose : « Analyser à fond »
+            et « Chercher » vivent à l'étape « L'améliorer », leurs boutons
+            disent déjà « en cours », et leurs résultats atterrissent là. Les
+            arracher de la carte qu'ils lisaient pour les poser devant une barre
+            de progression est un remède pire que le mal.
+
+            ⚠️ CE QUI EST VRAI DANS LES DEUX CAS : l'avancement et l'erreur
+            appartiennent à la PAGE, pas à un bloc. Ils se lisent donc d'où
+            qu'on ait appuyé, et personne n'est déplacé. */}
+        {etat.phase === "telechargement" || etat.phase === "calcul" || etat.phase === "erreur" ? (
+          <StaggerItem id="bt-suivi">
+            <Card>
+              {etat.phase === "erreur" ? (
+                <p className="text-sm text-loss">{etat.message}</p>
+              ) : (
+                <>
+                  <p className="text-xs text-foreground-muted">
+                    {etat.phase === "telechargement"
+                      ? tr("bt_telechargement", { faits: etat.faits, total: etat.total }) +
+                        (etat.etape ? ` · ${tr("bt_telechargement_etape", { ...etat.etape })}` : "")
+                      : tr("bt_calcul")}
+                  </p>
+                  {etat.phase === "telechargement" ? (
+                    <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-surface">
+                      <div
+                        className="h-full rounded-full bg-accent transition-all"
+                        style={{
+                          width: `${Math.round((etat.faits / Math.max(1, etat.total)) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                  ) : null}
+                </>
+              )}
+            </Card>
+          </StaggerItem>
+        ) : null}
+
         {/* ── 1. Le périmètre ────────────────────────────────────────────── */}
         {etapeCourante === "strategie" ? (
         <StaggerItem>
@@ -2602,7 +2634,7 @@ export default function BacktestPage() {
             bouton « Lancer » présent à l'étape « Ta stratégie » invite à sauter
             exactement ce que le parcours existe pour ordonner. */}
         {etapeCourante === "test" ? (
-        <StaggerItem id="bt-lancer">
+        <StaggerItem>
           <Card>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">

@@ -267,7 +267,17 @@ describe("aucun bloc ne fuit d'une étape à l'autre", () => {
      * La règle juste ne parle pas d'espaces : en remontant depuis un bloc, on
      * doit rencontrer une condition d'étape AVANT de sortir du conteneur.
      */
-    const SUIT_PARTOUT = ["<ProchaineEtape"];
+    /**
+     * Ce qui s'affiche volontairement sur toutes les étapes, et pourquoi.
+     *
+     * ⚠️ DEUX ENTRÉES, DEUX RAISONS ÉCRITES. La carte du parcours dit par où
+     * commencer : la cacher sur une étape reviendrait à la cacher là où on est
+     * le plus perdu. Le suivi du rejeu porte l'avancement et l'ERREUR d'un
+     * calcul qu'on peut lancer depuis quatre étapes différentes : le réserver à
+     * une seule, c'est le défaut qu'il vient de corriger, où un téléchargement
+     * qui échouait ne le disait jamais.
+     */
+    const SUIT_PARTOUT = ['<ProchaineEtape', 'id="bt-suivi"'];
     /**
      * DEUXIEME REPARATION DU MEME GARDE : REGARDER VINGT LIGNES EN ARRIERE NE
      * MARCHE PAS NON PLUS. La carte « Ce que tes filtres ont refuse » n'a jamais

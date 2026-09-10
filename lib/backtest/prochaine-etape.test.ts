@@ -6,7 +6,6 @@ import en from "../i18n/en";
 import es from "../i18n/es";
 import fr from "../i18n/fr";
 import type { Constat } from "./condamnation";
-import { ETAPE_PAR_ANCRE } from "./etapes";
 import type { ConstatProfil } from "./profil";
 import { prochaineEtape, type CodeEtape, type EtatDeLaPage } from "./prochaine-etape";
 import type { Synthese } from "./synthese";
@@ -596,60 +595,81 @@ describe("la remise à zéro n'oublie aucun état", () => {
 });
 
 /**
- * UN REJEU NE DÉMARRE JAMAIS HORS DU CHAMP DE VISION.
+ * UN REJEU SE VOIT, D'OÙ QU'ON L'AIT LANCÉ.
  *
  * ⚠️⚠️ VU À L'ÉCRAN : depuis « la prochaine chose à faire », j'appuie sur
  * « Lancer le test » alors que je suis à l'étape « Tes règles ». Le calcul
- * part, dure dix secondes, et RIEN ne bouge. La barre d'avancement, le message
- * d'erreur et le résultat vivent tous les trois dans la carte « Lancer », qui
- * ne s'affiche qu'à l'étape « Le test ». Un téléchargement qui échoue depuis ce
- * chemin ne dit donc jamais qu'il a échoué : c'est un défaut MUET, la seule
- * catégorie que ni les tests ni la console ne peuvent trouver.
+ * part, dure dix secondes, et RIEN ne bouge. La barre d'avancement ET le
+ * message d'erreur vivaient tous les deux dans la carte « Lancer », qui ne
+ * s'affiche qu'à l'étape « Le test ». Un téléchargement qui échoue depuis ce
+ * chemin ne disait donc jamais qu'il avait échoué : un défaut MUET, la seule
+ * catégorie que ni les tests ni la console ne trouvent.
  *
- * ⚠️ LA GARANTIE SE POSE DANS `lancer`, PAS DANS LES BOUTONS. Sept chemins
- * déclenchent un rejeu ; la tenir dans chaque appelant, c'est l'oublier au
- * huitième. Et elle ne vaut que si la carte visée porte bien ce que le rejeu a
- * à dire : ce test lit donc AUSSI le contenu du bloc, pas seulement son nom.
+ * ⚠️⚠️ ET MA PREMIÈRE CORRECTION EN A CASSÉ AUTRE CHOSE. Elle déplaçait le
+ * trader vers cette carte à chaque rejeu. Or « Analyser à fond » et
+ * « Chercher » vivent à l'étape « L'améliorer », leurs boutons disent déjà
+ * « en cours », et leurs résultats atterrissent là : les arracher de la carte
+ * qu'ils lisaient pour les poser devant une barre de progression est un remède
+ * pire que le mal. Piloté, vu, corrigé une deuxième fois.
+ *
+ * ⚠️ CE QUI EST VRAI DANS LES DEUX CAS : l'avancement et l'erreur appartiennent
+ * à la PAGE, pas à un bloc. Ils se lisent donc d'où qu'on ait appuyé, et
+ * personne n'est déplacé. La règle tenue ici est celle-là, et pas « ce bloc
+ * porte cette barre » : c'est ce qui la rend indifférente à l'endroit où les
+ * boutons se trouveront demain.
  */
 describe("un rejeu se voit toujours", () => {
   const page = readFileSync(join(process.cwd(), "app/dashboard/backtest/page.tsx"), "utf8");
 
-  /** Le corps d'un `const nom = useCallback(...)`, par comptage d'accolades. */
-  function corps(nom: string): string {
-    const debut = page.indexOf(`const ${nom} = useCallback(`);
-    expect(debut, `${nom} introuvable`).toBeGreaterThan(0);
-    const ouvrante = page.indexOf("{", page.indexOf("=>", debut));
-    let profondeur = 0;
-    for (let i = ouvrante; i < page.length; i++) {
-      if (page[i] === "{") profondeur++;
-      else if (page[i] === "}" && --profondeur === 0) return page.slice(ouvrante, i + 1);
-    }
-    throw new Error(`fin de ${nom} introuvable`);
-  }
+  /**
+   * Ce qui est rendu sur TOUTES les étapes : la portion du JSX qui précède le
+   * premier bloc conditionné par une étape.
+   *
+   * ⚠️ ON S'ARRÊTE AU PREMIER `etapeCourante === `, pas à une distance : tout ce
+   * qui vient après est, par construction, réservé à une étape.
+   */
+  const enTete = (() => {
+    const debut = page.indexOf("<ProchaineEtape");
+    expect(debut, "la carte du parcours est introuvable").toBeGreaterThan(0);
+    const fin = page.indexOf("etapeCourante ===", debut);
+    expect(fin, "aucun bloc d'étape après la carte du parcours").toBeGreaterThan(debut);
+    return page.slice(debut, fin);
+  })();
 
-  it("le rejeu amène le trader devant la carte du lancement", () => {
-    expect(corps("lancer")).toContain('remonterVers("bt-lancer")');
+  it("l'erreur d'un rejeu se lit sur toutes les étapes", () => {
+    expect(
+      enTete,
+      "le message d'erreur n'est rendu que dans un bloc réservé à une étape",
+    ).toContain('etat.phase === "erreur"');
   });
 
-  it("et cette ancre désigne l'étape où cette carte s'affiche", () => {
-    expect(ETAPE_PAR_ANCRE["bt-lancer"]).toBe("test");
+  it("son avancement aussi", () => {
+    expect(enTete).toContain('etat.phase === "telechargement"');
+    expect(enTete).toContain('etat.phase === "calcul"');
   });
 
   /**
-   * ⚠️ CE QUE LE REJEU A À DIRE EST DANS CE BLOC-LÀ. Déplacer la barre ou le
-   * message d'erreur ailleurs referait le trou, et le nom de l'ancre, lui,
-   * continuerait de passer.
+   * ⚠️ ET LE REJEU NE DÉPLACE PLUS PERSONNE. Une correction qui remettrait un
+   * `remonterVers` dans `lancer` ramènerait le second défaut, celui qui arrache
+   * le trader à la carte sur laquelle il vient d'appuyer.
    */
-  it("l'avancement et l'erreur vivent dans ce bloc", () => {
-    const debut = page.indexOf('<StaggerItem id="bt-lancer">');
-    expect(debut, "la carte du lancement n'a pas d'ancre").toBeGreaterThan(0);
-    const fin = page.indexOf("</StaggerItem>", debut);
-    expect(fin).toBeGreaterThan(debut);
-    const carte = page.slice(debut, fin);
-    expect(carte, "la barre d'avancement a quitté la carte").toContain(
-      'etat.phase === "telechargement"',
+  it("et il ne déplace pas le trader", () => {
+    const debut = page.indexOf("const lancer = useCallback(");
+    expect(debut).toBeGreaterThan(0);
+    const ouvrante = page.indexOf("{", page.indexOf("=>", debut));
+    let profondeur = 0;
+    let corps = "";
+    for (let i = ouvrante; i < page.length; i++) {
+      if (page[i] === "{") profondeur++;
+      else if (page[i] === "}" && --profondeur === 0) {
+        corps = page.slice(ouvrante, i + 1);
+        break;
+      }
+    }
+    expect(corps.length).toBeGreaterThan(100);
+    expect(corps, "le rejeu déplace le trader hors de la carte qu'il lisait").not.toContain(
+      "remonterVers(",
     );
-    expect(carte, "le message d'erreur a quitté la carte").toContain('etat.phase === "erreur"');
   });
 });
 
