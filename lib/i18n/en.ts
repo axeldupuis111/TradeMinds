@@ -3919,7 +3919,7 @@ const dict: Record<string, string> = {
   "bt_geste_perte_journaliere": "You end your day at {apres} R of loss, instead of {avant}.",
   "bt_filtre_inerte_titre": "One filter removed no trades at all",
   "bt_filtre_inerte": "The \"{nom}\" filter refused no signal at all over this period: the test ran exactly as if it did not exist. That is not necessarily a mistake, but if you described it as a rule that makes you skip trades, then what was tested is not your method.",
-  "bt_filtre_effet": "{nom}: {n} signals refused out of {total} examined",
+  "bt_filtre_effet": "{nom}: {refuses} signals refused out of {total} examined",
   "bt_filtres_titre": "What your filters refused",
   "bt_niveau_ote": "Retracement zone (Fibonacci / OTE)",
   "bt_ote_min": "Start of the band",

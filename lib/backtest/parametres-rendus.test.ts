@@ -1,6 +1,10 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import de from "../i18n/de";
+import en from "../i18n/en";
+import es from "../i18n/es";
+import fr from "../i18n/fr";
 
 /**
  * CHAQUE TROU DE PHRASE EST BOUCHÉ PAR CELUI QUI L'ÉCRIT.
@@ -158,4 +162,48 @@ describe("les phrases reçoivent les valeurs qu'elles demandent", () => {
     expect(fournis).not.toBeNull();
     expect(attendus.filter((a) => !fournis!.has(a))).toEqual(["refuses"]);
   });
+});
+
+/**
+ * LES QUATRE LANGUES DEMANDENT LES MÊMES VALEURS.
+ *
+ * ⚠️⚠️ LE GARDE D'AU-DESSUS NE LIT QUE LE FRANÇAIS, et il a laissé passer
+ * pendant tout ce temps la faute même pour laquelle il a été écrit. La phrase
+ * d'origine, « {refuses} signaux refusés », avait été corrigée en français et
+ * l'appel réparé ; l'anglais, l'espagnol et l'allemand demandaient toujours
+ * « {n} », que plus personne ne fournit. Sur ces trois langues, l'écran
+ * affichait donc « Moving average bias: {n} signals refused » en toutes
+ * lettres, exactement comme au premier jour.
+ *
+ * ⚠️ ON NE PEUT PAS LIRE LES APPELS QUATRE FOIS : les appels sont écrits une
+ * fois et fournissent un seul jeu de noms. La règle qui tient est plus simple
+ * et plus forte : une clé demande les MÊMES trous dans les quatre langues.
+ * Alors vérifier le français suffit, et c'est vrai pour toutes les autres
+ * gardes de ce dossier qui ne lisent que lui.
+ */
+describe("les quatre langues demandent les mêmes valeurs", () => {
+  const trous = (texte: string) =>
+    Array.from(new Set(Array.from(texte.matchAll(/\{([a-zA-Z0-9_]+)[}|]/g)).map((m) => m[1])))
+      .sort()
+      .join(",");
+
+  const francais = fr as Record<string, string>;
+
+  it("lit bien le dictionnaire, sinon ce test ne prouve rien", () => {
+    expect(Object.keys(francais).filter((c) => c.startsWith("bt_")).length).toBeGreaterThan(500);
+  });
+
+  for (const [nom, dico] of Array.from(Object.entries({ en, es, de }))) {
+    it(`aucun écart de trous en ${nom}`, () => {
+      const autre = dico as Record<string, string>;
+      const fautes: string[] = [];
+      for (const [cle, texte] of Object.entries(francais)) {
+        if (!cle.startsWith("bt_") || typeof autre[cle] !== "string") continue;
+        const a = trous(texte);
+        const b = trous(autre[cle]);
+        if (a !== b) fautes.push(`${cle} : fr demande [${a}], ${nom} demande [${b}]`);
+      }
+      expect(fautes, fautes.join(" | ")).toEqual([]);
+    });
+  }
 });

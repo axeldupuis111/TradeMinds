@@ -3919,7 +3919,7 @@ const dict: Record<string, string> = {
   "bt_geste_perte_journaliere": "Du beendest deinen Tag bei {apres} R Verlust statt bei {avant}.",
   "bt_filtre_inerte_titre": "Ein Filter hat keinen einzigen Trade aussortiert",
   "bt_filtre_inerte": "Der Filter „{nom}“ hat in diesem Zeitraum kein einziges Signal abgelehnt: der Test lief genau so, als gäbe es ihn nicht. Das muss kein Fehler sein, aber wenn du ihn als Regel beschrieben hast, die dich auf Trades verzichten lässt, dann ist das Getestete nicht deine Methode.",
-  "bt_filtre_effet": "{nom}: {n} von {total} geprüften Signalen abgelehnt",
+  "bt_filtre_effet": "{nom}: {refuses} von {total} geprüften Signalen abgelehnt",
   "bt_filtres_titre": "Was deine Filter abgelehnt haben",
   "bt_niveau_ote": "Retracement-Zone (Fibonacci / OTE)",
   "bt_ote_min": "Beginn des Bandes",

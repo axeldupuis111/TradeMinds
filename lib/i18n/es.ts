@@ -3919,7 +3919,7 @@ const dict: Record<string, string> = {
   "bt_geste_perte_journaliere": "Cortas tu jornada en {apres} R de pérdida, en lugar de {avant}.",
   "bt_filtre_inerte_titre": "Un filtro no descartó ninguna operación",
   "bt_filtre_inerte": "El filtro «{nom}» no rechazó ninguna señal en este periodo: la prueba se ejecutó exactamente como si no existiera. No es necesariamente un error, pero si lo describiste como una regla que te hace renunciar a operaciones, entonces lo que se probó no es tu método.",
-  "bt_filtre_effet": "{nom}: {n} señales rechazadas de {total} examinadas",
+  "bt_filtre_effet": "{nom}: {refuses} señales rechazadas de {total} examinadas",
   "bt_filtres_titre": "Lo que rechazaron tus filtros",
   "bt_niveau_ote": "Zona de retroceso (Fibonacci / OTE)",
   "bt_ote_min": "Inicio de la franja",
