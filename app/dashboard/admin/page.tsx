@@ -791,7 +791,7 @@ export default function AdminPage() {
                     .sort(([, a], [, b]) => b - a)
                     .map(([source, count]) => (
                       <div key={source} className="flex items-center gap-3">
-                        <span className="text-xs text-muted/80 flex-1">via {source}</span>
+                        <span className="text-xs text-muted flex-1">via {source}</span>
                         <span className="text-xs font-semibold text-foreground tabular-nums">{count}</span>
                         <span className="w-14" />
                       </div>
@@ -822,7 +822,7 @@ export default function AdminPage() {
                   .sort(([, a], [, b]) => b - a)
                   .map(([source, count]) => (
                     <div key={source} className="flex items-center gap-3 pl-4">
-                      <span className="text-xs text-muted/80 flex-1">
+                      <span className="text-xs text-muted flex-1">
                         {{
                           countdown: "Compte à rebours (quota hebdo)",
                           teaser_coach: "Carte teaser · coach",
@@ -885,7 +885,7 @@ export default function AdminPage() {
                     <div className="space-y-1">
                       {Object.entries(funnel.aiCost.byRoute).map(([route, v]) => (
                         <div key={route} className="flex items-center gap-3">
-                          <span className="text-xs text-muted/80 flex-1">{route}</span>
+                          <span className="text-xs text-muted flex-1">{route}</span>
                           <span className="text-xs text-muted tabular-nums">{v.calls} appels</span>
                           <span className="text-xs font-semibold text-foreground tabular-nums w-20 text-right">
                             {v.eur.toFixed(2)} €

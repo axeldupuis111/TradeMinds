@@ -63,7 +63,7 @@ export function ChallengeProjectionBlock({
       </div>
 
       {pct !== null && (
-        <p className="mt-2 text-[10px] text-foreground-muted/60 italic leading-snug">
+        <p className="mt-2 text-[10px] text-foreground-subtle italic leading-snug">
           {t("challenge_proj_disclaimer")}
         </p>
       )}

@@ -33,7 +33,7 @@ export default function DashboardError({
         </p>
 
         {isDev && error?.message && (
-          <pre className="text-xs text-left bg-surface border border-border rounded-lg p-3 mb-6 overflow-x-auto max-h-40 text-loss/80">
+          <pre className="text-xs text-left bg-surface border border-border rounded-lg p-3 mb-6 overflow-x-auto max-h-40 text-loss">
             {error.message}
             {error.stack && `\n\n${error.stack}`}
           </pre>

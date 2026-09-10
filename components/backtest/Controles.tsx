@@ -28,7 +28,7 @@ export function Champ({
     <label className={cn("flex flex-col gap-1", className)}>
       <span className="text-xs font-medium text-foreground-muted">{label}</span>
       {children}
-      {aide ? <span className="text-[11px] leading-snug text-foreground-muted/80">{aide}</span> : null}
+      {aide ? <span className="text-[11px] leading-snug text-foreground-subtle">{aide}</span> : null}
     </label>
   );
 }

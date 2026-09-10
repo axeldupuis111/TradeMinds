@@ -486,7 +486,7 @@ export default function MonthlyReviewPage() {
           ) : stats && !hasContent ? (
             <div className="mt-4 rounded-xl border border-dashed border-border p-10 text-center">
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-surface mb-3">
-                <CalendarX className="w-6 h-6 text-muted/50" />
+                <CalendarX className="w-6 h-6 text-muted" />
               </div>
               <p className="text-muted text-sm">{t("review_empty")}</p>
             </div>
@@ -630,7 +630,7 @@ export default function MonthlyReviewPage() {
                           <div className="rounded-xl border border-border bg-card p-3">
                             <p className="text-xs text-muted flex items-center gap-1.5"><Award className="w-3.5 h-3.5 text-violet-400" />{t("review_best_discipline")}</p>
                             <p className="text-lg font-bold text-foreground mt-0.5">{records.bestDisciplineDay.score}/100</p>
-                            <p className="text-[10px] text-muted/70">{fmtDate(records.bestDisciplineDay.date, lang)}</p>
+                            <p className="text-[10px] text-muted">{fmtDate(records.bestDisciplineDay.date, lang)}</p>
                           </div>
                         )}
                       </div>
@@ -798,7 +798,7 @@ export default function MonthlyReviewPage() {
                                 <div className="w-full h-9 flex items-start justify-center">
                                   {d && d.pnl < 0 && <div className="w-full max-w-[18px] h-full flex items-start"><GrowBar vertical pct={pct} durationMs={700} delayMs={i * 35} className="rounded-b bg-loss/70" /></div>}
                                 </div>
-                                <span className={`text-[9px] mt-1 tabular-nums ${d ? "text-muted" : "text-muted/30"}`}>{h}h</span>
+                                <span className={`text-[9px] mt-1 tabular-nums ${d ? "text-muted" : "text-muted"}`}>{h}h</span>
                               </div>
                             );
                           })}
@@ -897,13 +897,13 @@ export default function MonthlyReviewPage() {
                         <p className="text-xs text-muted mb-2">{t("review_calendar_title")}</p>
                         <div className="grid grid-cols-7 gap-1">
                           {[0, 1, 2, 3, 4, 5, 6].map((wd) => (
-                            <span key={wd} className="text-[9px] text-muted/60 text-center">{t(`review_wd_${wd}`)}</span>
+                            <span key={wd} className="text-[9px] text-muted text-center">{t(`review_wd_${wd}`)}</span>
                           ))}
                           {Array.from({ length: firstWeekday }).map((_, i) => <span key={`e${i}`} />)}
                           {Array.from({ length: daysInMonth }).map((_, i) => {
                             const day = i + 1;
                             const c = calByDay.get(day);
-                            const cls = !c ? "bg-surface/40 text-muted/40"
+                            const cls = !c ? "bg-surface/40 text-muted"
                               : c.score != null ? scoreBg(c.score)
                               : c.pnl > 0 ? "bg-profit/20 text-foreground" : c.pnl < 0 ? "bg-loss/20 text-foreground" : "bg-surface text-muted";
                             const isToday = day === todayDay;
@@ -938,7 +938,7 @@ export default function MonthlyReviewPage() {
                     {trend.some((p) => p.score != null) && (
                       <div className="rounded-xl border border-border bg-card p-4 mt-4 lg:mt-0">
                         <p className="text-xs text-muted">{t("review_trend_title")}</p>
-                        <p className="text-[10px] text-muted/70 mb-3">{t("review_trend_legend")}</p>
+                        <p className="text-[10px] text-muted mb-3">{t("review_trend_legend")}</p>
                         <div className="flex items-end justify-between gap-2 h-28">
                           {trend.map((p, i) => (
                             <div key={p.label} className="flex-1 flex flex-col items-center gap-1" title={`${p.score != null ? `${p.score}/100` : "—"} · ${fmtMoney(p.pnl, displayCurrency)}`}>
@@ -949,7 +949,7 @@ export default function MonthlyReviewPage() {
                                 </div>
                               </div>
                               <span className="text-[10px] text-muted">{p.label.slice(5)}</span>
-                              <span className={`text-[9px] font-semibold tabular-nums leading-none ${p.pnl > 0 ? "text-profit" : p.pnl < 0 ? "text-loss" : "text-muted/50"}`}>{fmtMoneyShort(p.pnl)}</span>
+                              <span className={`text-[9px] font-semibold tabular-nums leading-none ${p.pnl > 0 ? "text-profit" : p.pnl < 0 ? "text-loss" : "text-muted"}`}>{fmtMoneyShort(p.pnl)}</span>
                             </div>
                           ))}
                         </div>
@@ -987,7 +987,7 @@ function Kpi({ label, value, delta, suffix, valueClass = "text-foreground" }: { 
           <span className={`inline-flex items-center text-xs font-medium ${positive ? "text-profit" : "text-loss"}`}>
             {positive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}{Math.abs(delta as number)}{suffix ? ` ${suffix}` : ""}
           </span>
-        ) : (typeof delta === "number" && <Minus className="w-3 h-3 text-muted/40" />)}
+        ) : (typeof delta === "number" && <Minus className="w-3 h-3 text-muted" />)}
       </div>
     </div>
   );
@@ -1008,7 +1008,7 @@ function Highlight({ label, value, sub, positive, onClick }: { label: string; va
     <>
       <p className="text-xs text-muted">{label}</p>
       <p className={`text-base font-bold mt-1 ${positive ? "text-profit" : "text-foreground"}`}>{value}</p>
-      <p className="text-xs text-muted/70">{sub}</p>
+      <p className="text-xs text-muted">{sub}</p>
     </>
   );
   if (onClick) {
@@ -1044,7 +1044,7 @@ function CompareTable({ a, b, aLabel, bLabel, t }: { a: Stats; b: Stats; aLabel:
             <span className="text-muted truncate">{t(r.k)}</span>
             <span className="text-right font-semibold text-foreground tabular-nums">{r.a == null ? "—" : `${r.a}${r.suffix}`}</span>
             <span className="text-right text-muted tabular-nums">{r.b == null ? "—" : `${r.b}${r.suffix}`}</span>
-            <span className={`text-right tabular-nums font-medium ${both && delta > 0 ? "text-profit" : both && delta < 0 ? "text-loss" : "text-muted/40"}`}>
+            <span className={`text-right tabular-nums font-medium ${both && delta > 0 ? "text-profit" : both && delta < 0 ? "text-loss" : "text-muted"}`}>
               {both ? `${delta > 0 ? "+" : ""}${Math.round(delta * 10) / 10}${r.suffix}` : "—"}
             </span>
           </Fragment>

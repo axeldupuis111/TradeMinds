@@ -326,7 +326,7 @@ export default function TradingCalendar({
               <span
                 className={`text-xs sm:text-sm font-medium ${
                   !isCurrentMonth
-                    ? "text-muted/40"
+                    ? "text-muted"
                     : hasTrades
                       ? isPositive ? "text-profit" : "text-loss"
                       : isToday
@@ -370,7 +370,7 @@ export default function TradingCalendar({
               )}
               {dayClean && (
                 <ShieldCheck
-                  className="absolute bottom-1 right-1 w-3 h-3 sm:w-3.5 sm:h-3.5 text-profit/70"
+                  className="absolute bottom-1 right-1 w-3 h-3 sm:w-3.5 sm:h-3.5 text-profit"
                   strokeWidth={2}
                   aria-hidden="true"
                 />
@@ -451,7 +451,7 @@ export default function TradingCalendar({
                   <span>{panelBreaches.map(breachLabel).join(" · ")}</span>
                 </div>
               ) : (
-                <div className="flex items-center gap-1.5 px-3 pb-2 text-[11px] text-profit/80">
+                <div className="flex items-center gap-1.5 px-3 pb-2 text-[11px] text-profit">
                   <ShieldCheck className="w-3.5 h-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />
                   <span>{t("cal_disciplined_day")}</span>
                 </div>

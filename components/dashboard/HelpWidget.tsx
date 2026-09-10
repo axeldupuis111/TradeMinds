@@ -113,7 +113,7 @@ export default function HelpWidget() {
             {view === "contact" ? (
               <button
                 onClick={() => { setView("home"); setStatus("idle"); }}
-                className="inline-flex items-center gap-1.5 text-sm text-on-accent/80 hover:text-on-accent transition-colors mb-2"
+                className="inline-flex items-center gap-1.5 text-sm text-on-accent hover:text-on-accent transition-colors mb-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -126,13 +126,13 @@ export default function HelpWidget() {
                   <span className="absolute inline-flex h-full w-full rounded-full bg-white/70 opacity-75 motion-safe:animate-ping" />
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white" />
                 </span>
-                <span className="text-xs font-medium text-on-accent/80">{t("help_status_online")}</span>
+                <span className="text-xs font-medium text-on-accent">{t("help_status_online")}</span>
               </div>
             )}
             <h2 className="text-lg font-bold leading-tight">
               {view === "contact" ? t("help_contact_cta") : t("help_greeting")}
             </h2>
-            <p className="text-sm text-on-accent/80 mt-0.5">
+            <p className="text-sm text-on-accent mt-0.5">
               {view === "contact" ? t("help_contact_intro") : t("help_subtitle")}
             </p>
           </div>

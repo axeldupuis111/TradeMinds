@@ -330,7 +330,7 @@ export default function CoachDock() {
                   rows={1}
                   placeholder={t("coach_dock_placeholder")}
                   disabled={chat.loading}
-                  className="flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-foreground-muted/70 focus:outline-none focus:border-accent max-h-24"
+                  className="flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-foreground-subtle focus:outline-none focus:border-accent max-h-24"
                 />
                 <button
                   onClick={() => void handleSend()}

@@ -51,7 +51,7 @@ export default function SizerPage() {
             <li className="flex gap-2"><span className="text-accent font-bold">2.</span><span>{t("sizer_help_2")}</span></li>
             <li className="flex gap-2"><span className="text-accent font-bold">3.</span><span>{t("sizer_help_3")}</span></li>
           </ul>
-          <p className="text-xs text-muted/70 mt-4 border-t border-border pt-3">{t("sizer_help_note")}</p>
+          <p className="text-xs text-muted mt-4 border-t border-border pt-3">{t("sizer_help_note")}</p>
         </aside>
       </div>
     </div>

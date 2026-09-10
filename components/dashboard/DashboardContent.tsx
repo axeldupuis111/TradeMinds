@@ -312,7 +312,7 @@ export default function DashboardContent({
           <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 mb-3">
             {(["missing_1", "missing_2", "missing_3", "missing_4"] as const).map((k) => (
               <li key={k} className="flex items-start gap-2 text-sm text-foreground-muted">
-                <Lock className="w-3.5 h-3.5 text-gold/70 mt-0.5 shrink-0" strokeWidth={1.75} />
+                <Lock className="w-3.5 h-3.5 text-gold mt-0.5 shrink-0" strokeWidth={1.75} />
                 <span>{t(k)}</span>
               </li>
             ))}

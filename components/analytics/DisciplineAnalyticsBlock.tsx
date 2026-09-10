@@ -71,7 +71,7 @@ function ZoneA({ trades, checklistTotal }: { trades: TradeRow[]; checklistTotal:
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
         <p className="text-sm text-foreground-muted">{t("da_no_checklist")}</p>
-        <p className="text-xs text-foreground-muted/70">{t("da_no_checklist_hint")}</p>
+        <p className="text-xs text-foreground-subtle">{t("da_no_checklist_hint")}</p>
       </div>
     );
   }
@@ -103,7 +103,7 @@ function ZoneA({ trades, checklistTotal }: { trades: TradeRow[]; checklistTotal:
 
       {/* Mini histogram */}
       <div>
-        <p className="text-[10px] text-foreground-muted/60 mb-2">{t("da_score_dist")}</p>
+        <p className="text-[10px] text-foreground-subtle mb-2">{t("da_score_dist")}</p>
         <div className="flex items-end gap-1 h-12">
           {distribution.map((d) => (
             <div key={d.score} className="flex-1 flex flex-col items-center gap-0.5">
@@ -120,7 +120,7 @@ function ZoneA({ trades, checklistTotal }: { trades: TradeRow[]; checklistTotal:
                   opacity: d.count === 0 ? 0.2 : 1,
                 }}
               />
-              <span className="text-[8px] text-foreground-muted/50 tabular-nums">{d.score}</span>
+              <span className="text-[8px] text-foreground-subtle tabular-nums">{d.score}</span>
             </div>
           ))}
         </div>
@@ -190,7 +190,7 @@ function ZoneB({
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
         <p className="text-sm text-foreground-muted">{t("da_not_enough_criteria")}</p>
-        <p className="text-xs text-foreground-muted/70">{t("da_not_enough_criteria_hint")}</p>
+        <p className="text-xs text-foreground-subtle">{t("da_not_enough_criteria_hint")}</p>
       </div>
     );
   }
@@ -461,7 +461,7 @@ export function DisciplineAnalyticsBlock({
           <p className="text-sm text-foreground-muted">
             {t("da_empty")}
           </p>
-          <p className="text-xs text-foreground-muted/70">
+          <p className="text-xs text-foreground-subtle">
             {t("da_trades_needed")
               .replace("{n}", String(10 - trades.length))
               .replace("{have}", String(trades.length))}
@@ -478,7 +478,7 @@ export function DisciplineAnalyticsBlock({
         <p className="text-xs text-foreground-muted mt-1">
           {t("da_subtitle")}
           {durationSublabel && (
-            <span className="ml-1 text-foreground-muted/60">
+            <span className="ml-1 text-foreground-subtle">
               · {t("da_all_duration").replace("{dur}", durationSublabel)}
             </span>
           )}

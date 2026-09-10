@@ -873,7 +873,7 @@ export default function StrategyPage() {
                 })}
               </div>
             ) : (
-              <p className="text-xs text-muted/70 italic">{t("strategy_tags_empty")}</p>
+              <p className="text-xs text-muted italic">{t("strategy_tags_empty")}</p>
             )}
           </div>
         </div>

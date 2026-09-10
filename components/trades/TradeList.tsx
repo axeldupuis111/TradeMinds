@@ -1213,7 +1213,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
                               « Analyse visuelle IA » aux lecteurs d'écran pour
                               ce qui n'est plus qu'un trombone. */}
                           {tr.screenshot_path ? (
-                            <Camera className="w-3.5 h-3.5 text-muted/60 shrink-0" aria-label={t("trade_screenshot")} />
+                            <Camera className="w-3.5 h-3.5 text-muted shrink-0" aria-label={t("trade_screenshot")} />
                           ) : null}
                         </span>
                       </td>

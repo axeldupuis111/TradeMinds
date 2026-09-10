@@ -730,7 +730,7 @@ export default function GoalsPage() {
         <KpiCardPremium layout="full" accentColor="amber" intensity="hero" className="mt-6">
           <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
             <div className="flex items-center gap-3.5">
-              <Flame className={`w-10 h-10 shrink-0 ${streak.current > 0 ? "text-warning" : "text-muted/50"}`} strokeWidth={1.75} />
+              <Flame className={`w-10 h-10 shrink-0 ${streak.current > 0 ? "text-warning" : "text-muted"}`} strokeWidth={1.75} />
               <div>
                 <div className="flex items-baseline gap-1.5 flex-wrap">
                   <CountUp end={streak.current} duration={1.1} className="text-3xl font-black tabular-nums text-foreground leading-none" />
@@ -826,7 +826,7 @@ export default function GoalsPage() {
         <div className={`mt-4 flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-sm ${notice === "echec" ? "border-loss/40 bg-loss/[0.06] text-foreground" : notice === "auto" ? "border-profit/30 bg-profit/[0.05] text-foreground" : "border-accent/30 bg-accent/[0.05] text-foreground"}`}>
           <Sparkles className={`w-4 h-4 shrink-0 ${notice === "echec" ? "text-loss" : notice === "auto" ? "text-profit" : "text-accent"}`} />
           <span>{notice === "echec" ? t("save_failed") : notice === "auto" ? t("goals_ai_auto") : t("goals_ai_manual")}</span>
-          <button onClick={() => setNotice(null)} className="ml-auto text-muted/50 hover:text-muted transition-colors" aria-label={t("close")}>
+          <button onClick={() => setNotice(null)} className="ml-auto text-muted hover:text-muted transition-colors" aria-label={t("close")}>
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -883,7 +883,7 @@ export default function GoalsPage() {
                       <Plus className="w-3.5 h-3.5" /> {t("goals_add_quick")}
                     </button>
                     <button onClick={() => setDismissedRecos((s) => new Set(s).add(`${r.metric}:${r.period}`))}
-                      className="shrink-0 text-muted/40 hover:text-muted transition-colors p-1 -mr-1" aria-label={t("goals_reco_dismiss")} title={t("goals_reco_dismiss")}>
+                      className="shrink-0 text-muted hover:text-muted transition-colors p-1 -mr-1" aria-label={t("goals_reco_dismiss")} title={t("goals_reco_dismiss")}>
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -926,7 +926,7 @@ export default function GoalsPage() {
             ) : goals.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border p-10 text-center">
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-surface mb-3">
-                  <Target className="w-6 h-6 text-muted/50" />
+                  <Target className="w-6 h-6 text-muted" />
                 </div>
                 <p className="text-muted text-sm">{t("goals_empty_new")}</p>
                 <button
@@ -960,7 +960,7 @@ export default function GoalsPage() {
                           <HIcon className={`w-3.5 h-3.5 ${hs.icon}`} />
                         </span>
                         <span className="text-[13px] font-semibold text-foreground">{t(`goals_horizon_${h}`)}</span>
-                        <span className="text-[11px] text-muted/70 hidden sm:inline">{t(`goals_horizon_${h}_sub`)}</span>
+                        <span className="text-[11px] text-muted hidden sm:inline">{t(`goals_horizon_${h}_sub`)}</span>
                         <span className="ml-auto text-[11px] font-semibold text-muted bg-surface rounded-full px-2 py-0.5 tabular-nums">{rows.length}</span>
                       </div>
 
@@ -1038,7 +1038,7 @@ export default function GoalsPage() {
                                     <p className={`font-medium text-sm leading-tight ${g.done ? "text-muted line-through" : "text-foreground"}`}>{g.title}</p>
                                     {g.recurring && (
                                       <div className="flex items-center gap-2 mt-0.5">
-                                        <span className="inline-flex items-center gap-0.5 text-[11px] text-muted/70">
+                                        <span className="inline-flex items-center gap-0.5 text-[11px] text-muted">
                                           <Repeat className="w-3 h-3" /> {t("goals_recurring_badge")}
                                         </span>
                                         {g.streak > 0 && (
@@ -1057,7 +1057,7 @@ export default function GoalsPage() {
                             <div className="hidden md:flex flex-col">
                               <span className="text-xs text-foreground-muted whitespace-nowrap">{periodLabel(g.period)}</span>
                               {g.period !== "day" && status !== "met" && (
-                                <span className="text-[10px] text-muted/60 tabular-nums whitespace-nowrap mt-0.5">{t("goals_days_left").replace("{n}", String(daysLeftIn(g.period)))}</span>
+                                <span className="text-[10px] text-muted tabular-nums whitespace-nowrap mt-0.5">{t("goals_days_left").replace("{n}", String(daysLeftIn(g.period)))}</span>
                               )}
                             </div>
 
@@ -1071,7 +1071,7 @@ export default function GoalsPage() {
                                   <span className={`text-xs font-bold tabular-nums whitespace-nowrap ${sv.text}`}>{g.value}{unit(g.metric)}</span>
                                 </>
                               ) : (
-                                <span className="text-xs text-muted/30">—</span>
+                                <span className="text-xs text-muted">—</span>
                               )}
                             </div>
 
@@ -1080,7 +1080,7 @@ export default function GoalsPage() {
                               {g.kind === "metric" && g.history ? (
                                 <HistoryDots history={g.history} unit={unit(g.metric)} t={t} />
                               ) : (
-                                <span className="text-xs text-muted/30">—</span>
+                                <span className="text-xs text-muted">—</span>
                               )}
                             </div>
 
@@ -1101,7 +1101,7 @@ export default function GoalsPage() {
                                 </button>
                               ) : (
                                 <button onClick={() => { setConfirmDelete(g.id); window.setTimeout(() => setConfirmDelete((c) => (c === g.id ? null : c)), 3500); }}
-                                  className="shrink-0 text-muted/40 hover:text-loss transition-all sm:opacity-0 sm:group-hover:opacity-100" aria-label={t("goals_delete")}>
+                                  className="shrink-0 text-muted hover:text-loss transition-all sm:opacity-0 sm:group-hover:opacity-100" aria-label={t("goals_delete")}>
                                   <Trash2 className="w-4 h-4" strokeWidth={1.5} />
                                 </button>
                               )}
@@ -1138,7 +1138,7 @@ export default function GoalsPage() {
         <div className="mt-5 space-y-5">
           {!showDiscipline ? (
             <div className="flex items-start gap-3 rounded-2xl border border-dashed border-border p-6">
-              <Lock className="w-4 h-4 text-muted/60 shrink-0 mt-0.5" />
+              <Lock className="w-4 h-4 text-muted shrink-0 mt-0.5" />
               <p className="text-sm text-muted">{t("goals_discipline_empty")}</p>
             </div>
           ) : (
@@ -1218,7 +1218,7 @@ export default function GoalsPage() {
                     </>
                   ) : (
                     <div className="flex items-start gap-3 rounded-xl border border-dashed border-border p-4">
-                      <Lock className="w-4 h-4 text-muted/60 shrink-0 mt-0.5" />
+                      <Lock className="w-4 h-4 text-muted shrink-0 mt-0.5" />
                       <p className="text-sm text-muted">{t("goals_edge_locked")}</p>
                     </div>
                   )}
@@ -1264,7 +1264,7 @@ export default function GoalsPage() {
                           </span>
                         ) : (
                           <button onClick={() => addMetricGoal(s.metric, DEFAULT_TARGET[s.metric], "month")} disabled={busy}
-                            className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-accent hover:text-accent/70 transition-colors disabled:opacity-50">
+                            className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-accent hover:text-accent transition-colors disabled:opacity-50">
                             <Plus className="w-3 h-3" /> {t("goals_scorecard_track")}
                           </button>
                         )}
@@ -1340,7 +1340,7 @@ export default function GoalsPage() {
                       <input type="checkbox" checked={customRecurring} onChange={(e) => setCustomRecurring(e.target.checked)} className="accent-accent w-4 h-4" />
                       <span className="text-xs text-muted">{t("goals_recurring_label")}</span>
                     </label>
-                    <p className="text-xs text-muted/70 mt-2 flex items-center gap-1.5">
+                    <p className="text-xs text-muted mt-2 flex items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-accent shrink-0" /> {t("goals_ai_hint")}
                     </p>
                     <button onClick={addCustomGoal} disabled={busy || !customText.trim()}
@@ -1389,7 +1389,7 @@ export default function GoalsPage() {
                         <div className="flex-1 min-w-[200px]">
                           <p className="text-sm font-semibold text-foreground">{t(`pack_${pack.id}_title`)}</p>
                           <p className="text-xs text-muted mt-0.5">{t(`pack_${pack.id}_desc`)}</p>
-                          <p className="text-[11px] text-muted/70 mt-1.5">
+                          <p className="text-[11px] text-muted mt-1.5">
                             {t("goals_pack_contains")} : {pack.metrics.map((m) => metricLabel(m.metric)).join(" · ")} · {t(pack.habits[0].titleKey)}
                           </p>
                         </div>

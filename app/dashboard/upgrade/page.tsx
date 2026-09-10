@@ -300,7 +300,7 @@ export default function UpgradePage() {
     }
     if (val === false) {
       return (
-        <svg role="img" aria-label={t("upgrade_not_included")} className="w-5 h-5 text-muted/40 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg role="img" aria-label={t("upgrade_not_included")} className="w-5 h-5 text-muted mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
         </svg>
       );

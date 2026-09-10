@@ -104,7 +104,7 @@ export default function WeeklyPlanCard() {
           </li>
         ))}
       </ol>
-      <p className="mt-3 flex items-center gap-1.5 text-[11px] text-foreground-muted/80">
+      <p className="mt-3 flex items-center gap-1.5 text-[11px] text-foreground-subtle">
         <Sparkles className="w-3 h-3 text-accent" /> {t("wplan_ai")}
       </p>
     </div>

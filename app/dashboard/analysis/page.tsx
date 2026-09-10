@@ -355,12 +355,12 @@ function DataFieldsSummary({ fields, lang, t }: { fields?: DataFields; lang: str
   const provided = all.length - missing.length;
 
   if (missing.length === 0) {
-    return <p className="text-xs text-muted/70 mt-1">{t("score_based_on_all")}</p>;
+    return <p className="text-xs text-muted mt-1">{t("score_based_on_all")}</p>;
   }
 
   const missingLabels = missing.map((k) => DATA_FIELD_LABELS[k][lang] || k).join(", ");
   const base = t("score_based_on_n").replace("{n}", String(provided));
-  return <p className="text-xs text-muted/70 mt-1">{base} ({missingLabels})</p>;
+  return <p className="text-xs text-muted mt-1">{base} ({missingLabels})</p>;
 }
 
 type PeriodKey = "today" | "yesterday" | "this_week" | "this_month" | "last_7_days" | "last_30_days" | "all";
@@ -931,7 +931,7 @@ export default function AnalysisPage() {
               <span className="text-loss text-xl shrink-0">⚠️</span>
               <div className="flex-1">
                 <p className="text-sm font-semibold text-loss">{t("analysis_no_strategy")}</p>
-                <p className="text-xs text-loss/70 mt-1">{t("analysis_no_strategy_description")}</p>
+                <p className="text-xs text-loss mt-1">{t("analysis_no_strategy_description")}</p>
                 <Link href="/dashboard/strategy" className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline mt-2">
                   {t("analysis_no_strategy_cta")}
                 </Link>
@@ -1034,7 +1034,7 @@ export default function AnalysisPage() {
               <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
               <p className="text-muted">{t("analysis_loading")}</p>
             </div>
-            <p className="text-xs text-muted/60 mt-2 ml-8">{t("analysis_loading_hint")}</p>
+            <p className="text-xs text-muted mt-2 ml-8">{t("analysis_loading_hint")}</p>
           </div>
         )}
 
@@ -1331,7 +1331,7 @@ export default function AnalysisPage() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-foreground text-sm font-medium">{r.pair}</span>
                         <span className="text-muted text-xs uppercase">{r.direction}</span>
-                        <span className="text-muted/70 text-xs">
+                        <span className="text-muted text-xs">
                           {new Date(r.open_time).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
                         </span>
                         <span className={`ml-auto text-xs font-bold tabular-nums ${r.net_pnl >= 0 ? "text-profit" : "text-loss"}`}>
@@ -1452,7 +1452,7 @@ export default function AnalysisPage() {
                 </Link>
               ))}
             </div>
-            <p className="text-[11px] text-muted/70 mt-2">{t("teaser_hint")}</p>
+            <p className="text-[11px] text-muted mt-2">{t("teaser_hint")}</p>
           </section>
         )}
 
@@ -1462,7 +1462,7 @@ export default function AnalysisPage() {
             <div>
               <h2 className="text-lg font-semibold text-foreground">{t("coach_title")}</h2>
               <p className="text-muted text-sm mt-1">{t("coach_subtitle")}</p>
-              <p className="text-xs text-muted/60 mt-0.5 mb-4 flex items-center gap-1.5">
+              <p className="text-xs text-muted mt-0.5 mb-4 flex items-center gap-1.5">
                 <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
                 </svg>
@@ -1531,7 +1531,7 @@ export default function AnalysisPage() {
                       </button>
                     ))}
                   </div>
-                  <p className="text-center text-[11px] text-muted/70 mt-4">{t("coach_showcase_hint")}</p>
+                  <p className="text-center text-[11px] text-muted mt-4">{t("coach_showcase_hint")}</p>
                 </div>
               )}
               {chatMessages.map((msg, i) => (
@@ -1608,7 +1608,7 @@ export default function AnalysisPage() {
                       </div>
                     )}
                     {msg.created_at && (
-                      <p className={`text-[10px] text-muted/60 ${msg.role === "user" ? "text-right" : "text-left"}`}>
+                      <p className={`text-[10px] text-muted ${msg.role === "user" ? "text-right" : "text-left"}`}>
                         {new Date(msg.created_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
                       </p>
                     )}
@@ -1724,7 +1724,7 @@ export default function AnalysisPage() {
           ) : (
             <div className="bg-card border border-border rounded-xl p-6 card-shadow flex flex-col items-center text-center">
               <div className="w-20 h-20 rounded-full border-2 border-dashed border-border flex items-center justify-center mb-4">
-                <svg className="w-8 h-8 text-muted/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-8 h-8 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
                 </svg>
               </div>
@@ -1753,7 +1753,7 @@ export default function AnalysisPage() {
                     <div key={item.id} className="border border-border rounded-lg p-2.5">
                       <p className="text-xs text-accent font-medium truncate">Q: {item.question}</p>
                       <p className="text-[11px] text-muted mt-1 line-clamp-2">{item.answer}</p>
-                      <p className="text-[10px] text-muted/50 mt-1">{new Date(item.created_at).toLocaleDateString()}</p>
+                      <p className="text-[10px] text-muted mt-1">{new Date(item.created_at).toLocaleDateString()}</p>
                     </div>
                   ))}
                 </div>

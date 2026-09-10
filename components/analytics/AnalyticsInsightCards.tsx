@@ -67,7 +67,7 @@ export function AnalyticsInsightCards({ worstDay, bestHour, riskyPairInfo, byEmo
           <div className="flex items-start gap-2">
             <TrendingDown className="w-4 h-4 text-loss mt-0.5 shrink-0" strokeWidth={1.75} />
             <div>
-              <p className="text-[10px] text-loss/80 font-semibold uppercase tracking-wider mb-1">
+              <p className="text-[10px] text-loss font-semibold uppercase tracking-wider mb-1">
                 {t("analytics_insight_worst_day")}
               </p>
               <p className="text-sm font-semibold text-foreground">
@@ -87,7 +87,7 @@ export function AnalyticsInsightCards({ worstDay, bestHour, riskyPairInfo, byEmo
           <div className="flex items-start gap-2">
             <Clock className="w-4 h-4 text-profit mt-0.5 shrink-0" strokeWidth={1.75} />
             <div>
-              <p className="text-[10px] text-profit/80 font-semibold uppercase tracking-wider mb-1">
+              <p className="text-[10px] text-profit font-semibold uppercase tracking-wider mb-1">
                 {t("analytics_insight_best_hour")}
               </p>
               <p className="text-sm font-semibold text-foreground">
@@ -110,7 +110,7 @@ export function AnalyticsInsightCards({ worstDay, bestHour, riskyPairInfo, byEmo
               strokeWidth={1.75}
             />
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] text-warning/80 font-semibold uppercase tracking-wider mb-1">
+              <p className="text-[10px] text-warning font-semibold uppercase tracking-wider mb-1">
                 {t("analytics_insight_risk_pair")}
               </p>
               {riskyPairInfo.type === "good" ? (
@@ -139,7 +139,7 @@ export function AnalyticsInsightCards({ worstDay, bestHour, riskyPairInfo, byEmo
             <div className="flex items-start gap-2">
               <Brain className="w-4 h-4 text-accent mt-0.5 shrink-0" strokeWidth={1.75} />
               <div>
-                <p className="text-[10px] text-accent/80 font-semibold uppercase tracking-wider mb-1">
+                <p className="text-[10px] text-accent font-semibold uppercase tracking-wider mb-1">
                   {t("analytics_insight_emotion")}
                 </p>
                 <p className="text-sm font-semibold text-foreground">{riskyEmotion.name}</p>

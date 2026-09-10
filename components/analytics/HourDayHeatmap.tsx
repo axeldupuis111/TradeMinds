@@ -246,7 +246,7 @@ export function HourDayHeatmap({ trades, currency = DEFAULT_CURRENCY }: Props) {
 
       {/* ── Legend ───────────────────────────────────────────────────────── */}
       <div className="flex flex-col items-end gap-1 mt-3">
-        <span className="text-[10px] text-foreground-muted/60 select-none">
+        <span className="text-[10px] text-foreground-subtle select-none">
           {t("analytics_pnl_per_cell")}
         </span>
         <div className="flex items-center gap-2">

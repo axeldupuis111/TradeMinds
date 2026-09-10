@@ -204,7 +204,7 @@ export function AnalyticsKpiCards({
               </div>
               {projection !== null && (
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-foreground-muted/70">{t("analytics_proj100")}</span>
+                  <span className="text-foreground-subtle">{t("analytics_proj100")}</span>
                   <span className="text-foreground-muted tabular-nums">
                     {projection >= 0 ? "+" : ""}
                     {money(projection, currency)}

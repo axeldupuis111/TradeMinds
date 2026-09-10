@@ -389,7 +389,7 @@ export default function PositionSizer({ strategy }: Props) {
           <span className="text-loss text-lg leading-none mt-0.5">⛔</span>
           <div>
             <p className="text-sm font-semibold text-loss">{t("sizer_limit_reached")}</p>
-            <p className="text-xs text-loss/80 mt-0.5">{cappedByLabel(maxRisk.cappedBy)}</p>
+            <p className="text-xs text-loss mt-0.5">{cappedByLabel(maxRisk.cappedBy)}</p>
           </div>
         </div>
       ) : (
@@ -474,7 +474,7 @@ export default function PositionSizer({ strategy }: Props) {
                 {contractCount === null ? (
                   <p className="text-sm text-muted">{t("sizer_fill_sl_pip")}</p>
                 ) : contractCount === 0 ? (
-                  <p className="text-sm text-loss/90">{t("sizer_futures_no_contract")}</p>
+                  <p className="text-sm text-loss">{t("sizer_futures_no_contract")}</p>
                 ) : (
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                     <div className="flex items-baseline gap-2">
@@ -655,7 +655,7 @@ export default function PositionSizer({ strategy }: Props) {
                               {units !== null ? units.toLocaleString(undefined, { maximumFractionDigits: 0 }) : "—"}
                             </p>
                             {unitsPerLot !== null && (
-                              <p className="text-[10px] text-muted/70 mt-0.5">
+                              <p className="text-[10px] text-muted mt-0.5">
                                 {t("sizer_contract_size")}: {unitsPerLot.toLocaleString()}
                               </p>
                             )}

@@ -260,7 +260,7 @@ export default function CommandPalette() {
           ) : (
             groups.map((group) => (
               <div key={group.key + group.items[0].index}>
-                <p className="px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-foreground-muted/60">
+                <p className="px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-foreground-subtle">
                   {GROUP_LABELS[group.key]}
                 </p>
                 {group.items.map(({ cmd, index }) => {

@@ -76,7 +76,7 @@ function DrawdownZone({ trades, currency }: { trades: AnalyticsTrade[]; currency
           )}
         </p>
         {Math.round(maxDD.maxDrawdownPct) === 100 && (
-          <p className="text-xs text-loss/80 mt-0.5">
+          <p className="text-xs text-loss mt-0.5">
             {t("resilience_above_peak")}
           </p>
         )}
@@ -92,7 +92,7 @@ function DrawdownZone({ trades, currency }: { trades: AnalyticsTrade[]; currency
           </p>
         )}
         {maxDD.recoveryTrades === null && maxDD.maxDrawdown > 0 && (
-          <p className="mt-1 text-xs text-loss/70">{t("resilience_not_recovered")}</p>
+          <p className="mt-1 text-xs text-loss">{t("resilience_not_recovered")}</p>
         )}
       </div>
 
@@ -237,7 +237,7 @@ function StreakZone({ trades }: { trades: AnalyticsTrade[] }) {
       {/* Streak band timeline */}
       {stats.streaks.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <p className="text-[10px] text-foreground-muted/60 select-none">
+          <p className="text-[10px] text-foreground-subtle select-none">
             {t("resilience_streak_timeline")}
           </p>
           <div className="flex flex-wrap gap-0.5 items-end" style={{ minHeight: 12 }}>
@@ -411,7 +411,7 @@ export function ResilienceBlock({ trades, currency = DEFAULT_CURRENCY }: Props) 
             <p className="text-sm text-foreground-muted">
               {t("resilience_not_enough")}
             </p>
-            <p className="text-xs text-foreground-muted/60">
+            <p className="text-xs text-foreground-subtle">
               <span className="text-foreground font-semibold tabular-nums">
                 {trades.length}
               </span>

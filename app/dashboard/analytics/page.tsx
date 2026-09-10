@@ -1274,11 +1274,11 @@ export default function AnalyticsPage() {
                         <div className="flex items-start gap-2.5">
                           <ShieldAlert className="w-5 h-5 text-loss mt-0.5 shrink-0" strokeWidth={1.75} />
                           <div>
-                            <p className="text-sm text-loss/80 mb-1">{t("discipline_cost")}</p>
+                            <p className="text-sm text-loss mb-1">{t("discipline_cost")}</p>
                             <p className="text-3xl font-bold text-loss">
                               {money(Math.abs(disciplineStats.rulesBroken.pnl), pageCurrency, { digits: 2 })}
                             </p>
-                            <p className="text-xs text-loss/70 mt-1">{t("discipline_cost_desc")}</p>
+                            <p className="text-xs text-loss mt-1">{t("discipline_cost_desc")}</p>
                           </div>
                         </div>
                       </KpiCardPremium>

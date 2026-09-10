@@ -73,7 +73,7 @@ export function Parcours({
                     ? "bg-accent text-on-accent"
                     : e.ouverte
                       ? "text-foreground-muted hover:bg-surface hover:text-foreground"
-                      : "cursor-not-allowed text-foreground-muted/50",
+                      : "cursor-not-allowed text-foreground-subtle",
                 )}
               >
                 <span

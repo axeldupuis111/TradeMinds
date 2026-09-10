@@ -171,7 +171,7 @@ function EventDetail({ ev, onClose }: { ev: EventRow; onClose: () => void }) {
             <h3 className="text-base font-bold text-foreground leading-snug">{clearTitle}</h3>
             {/* Nom original du flux — pour recouper avec d'autres calendriers */}
             {clearTitle !== ev.title && (
-              <p className="text-[11px] text-foreground-muted/70 mt-0.5">{t("cal_feed_name")} : {ev.title}</p>
+              <p className="text-[11px] text-foreground-subtle mt-0.5">{t("cal_feed_name")} : {ev.title}</p>
             )}
             <p className="text-xs text-foreground-muted mt-0.5">{time} · {relativeLabel(ev, t)}</p>
           </div>

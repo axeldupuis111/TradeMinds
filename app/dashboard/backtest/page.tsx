@@ -3224,7 +3224,7 @@ function CarteCouverture({
               <li key={i}>{x}</li>
             ))}
           </ul>
-          <p className="mt-1.5 pl-5 text-[11px] text-foreground-muted/80">
+          <p className="mt-1.5 pl-5 text-[11px] text-foreground-subtle">
             {t("bt_non_traduites_note")}
           </p>
         </div>
