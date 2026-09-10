@@ -248,15 +248,30 @@ export function Resultat({
                   filtres, six lignes plus haut, disait « 359 signaux refusés
                   sur un total examiné de 423 ». Les deux sont justes : 423
                   examinés, 64 retenus. Aucun des deux ne le disait. */}
-              {t("bt_diagnostic_chiffres", {
-                niveau: audit.barresAvecNiveau,
-                bougies: audit.bougies,
-                examines: Math.max(audit.signauxSoumisAuxFiltres, audit.signaux),
-                signaux: audit.signaux,
-                ecartes: audit.refusesRisqueTropPetit,
-                geometrie: audit.refusesGeometrie,
-                attente: audit.limitesExpirees,
-              })}
+              {/* ⚠️ ET ON NE NOMME LES FILTRES QUE S'ILS ONT ÉCARTÉ QUELQUE CHOSE.
+                  Sur un plan sans aucun filtre, les deux comptes sont égaux :
+                  « 108 signaux examinés dont 108 retenus par tes filtres »
+                  affiche deux fois le même nombre et invoque des filtres qui
+                  n'existent pas. C'est la faute que toute cette ligne existe
+                  pour ne plus commettre. */}
+              {Math.max(audit.signauxSoumisAuxFiltres, audit.signaux) > audit.signaux
+                ? t("bt_diagnostic_chiffres", {
+                    niveau: audit.barresAvecNiveau,
+                    bougies: audit.bougies,
+                    examines: Math.max(audit.signauxSoumisAuxFiltres, audit.signaux),
+                    signaux: audit.signaux,
+                    ecartes: audit.refusesRisqueTropPetit,
+                    geometrie: audit.refusesGeometrie,
+                    attente: audit.limitesExpirees,
+                  })
+                : t("bt_diagnostic_chiffres_sans_filtre", {
+                    niveau: audit.barresAvecNiveau,
+                    bougies: audit.bougies,
+                    signaux: audit.signaux,
+                    ecartes: audit.refusesRisqueTropPetit,
+                    geometrie: audit.refusesGeometrie,
+                    attente: audit.limitesExpirees,
+                  })}
               {/* ⚠️ LES DROITES NE SE COMPTENT QUE SI ON EN TRACE. « 0 droites
                   tracées dont 0 confirmées » s'affichait sur un plan qui repère
                   d'anciens sommets et creux : un compteur structurellement nul,

@@ -580,6 +580,14 @@ ajouter("diagnostic", "bt_diagnostic_chiffres", {
   geometrie: 1,
   attente: 1,
 });
+ajouter("diagnostic", "bt_diagnostic_chiffres_sans_filtre", {
+  niveau: 1,
+  bougies: 2,
+  signaux: 1,
+  ecartes: 1,
+  geometrie: 1,
+  attente: 1,
+});
 ajouter("diagnostic", "bt_diagnostic_droites", { droites: 1, confirmees: 1 });
 
 for (const g of ["condamne", "lourd", "informatif"]) ajouter("gravités", `bt_grav_${g}`);
@@ -814,6 +822,21 @@ describe("la ligne de détail nomme ce qu'elle compte", () => {
     join(process.cwd(), "components/backtest/Resultat.tsx"),
     "utf8",
   );
+
+  /**
+   * ⚠️ ET SUR UN PLAN SANS FILTRE, ON N'EN NOMME AUCUN. Les deux comptes sont
+   * alors égaux : « 108 signaux examinés dont 108 retenus par tes filtres »
+   * affiche deux fois le même nombre et invoque des filtres qui n'existent pas,
+   * ce qui est la faute que toute cette ligne existe pour ne plus commettre.
+   */
+  it("ne nomme les filtres que s'ils ont écarté quelque chose", () => {
+    expect(composant).toContain("bt_diagnostic_chiffres_sans_filtre");
+    for (const [nom, dico] of Array.from(Object.entries({ fr, en, es, de }))) {
+      const phrase = (dico as Record<string, string>).bt_diagnostic_chiffres_sans_filtre;
+      expect(phrase, `bt_diagnostic_chiffres_sans_filtre en ${nom}`).toBeTruthy();
+      expect(phrase, `bt_diagnostic_chiffres_sans_filtre en ${nom}`).not.toContain("{examines");
+    }
+  });
 
   it("dit les deux comptes de signaux, l'examiné et le retenu", () => {
     for (const [nom, dico] of Array.from(Object.entries({ fr, en, es, de }))) {
