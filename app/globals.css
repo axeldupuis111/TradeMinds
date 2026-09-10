@@ -183,8 +183,15 @@ html.light {
    de séance en `text-emerald-400` : 1,92:1. Cent six occurrences de ce genre
    dans vingt-quatre fichiers.
 
-   Ce sont des couleurs Tailwind de niveau 300/400, conçues pour du texte SUR
-   FOND SOMBRE. Elles ont été écrites quand l'application n'avait qu'un thème.
+   Ce sont des couleurs Tailwind conçues pour du texte SUR FOND SOMBRE. Elles
+   ont été écrites quand l'application n'avait qu'un thème.
+
+   ⚠️⚠️ ET LA PREMIÈRE VERSION DE CE BLOC S'ARRÊTAIT AUX NIVEAUX 300 ET 400,
+   comme son test. Le pilotage du site a trouvé l'astérisque « champ requis »
+   du défi en `text-red-500` : **3,57:1**. Le niveau 500 est vif lui aussi, et
+   personne ne l'avait regardé. La règle existait, appliquée à une partie
+   seulement de ce qu'elle vise. Le test mesure maintenant TOUS les niveaux, à
+   partir de la vraie palette Tailwind.
 
    ⚠️ ON NE TOUCHE QU'AUX UTILITAIRES DE TEXTE, et seulement en thème clair :
    `bg-amber-400/10` garde son aplat, le sombre garde ses couleurs vives, et
@@ -214,6 +221,11 @@ html.light .text-teal-300:not(.force-dark *) { color: #0f766e; }
 html.light .text-gray-400:not(.force-dark *) { color: #4b5563; }
 html.light .text-gray-300:not(.force-dark *) { color: #4b5563; }
 html.light .text-slate-300:not(.force-dark *) { color: #475569; }
+html.light .text-red-500:not(.force-dark *) { color: #b91c1c; }
+html.light .text-orange-500:not(.force-dark *) { color: #c2410c; }
+html.light .text-amber-600:not(.force-dark *) { color: #b45309; }
+html.light .text-yellow-600:not(.force-dark *) { color: #9a5e07; }
+html.light .text-gray-500:not(.force-dark *) { color: #4b5563; }
 
 /* ─── Force-dark: public pages always stay in dark mode ─────────────────────
    Applied on the root element of landing, login, and legal pages.

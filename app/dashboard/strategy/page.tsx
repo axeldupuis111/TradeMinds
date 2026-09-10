@@ -840,7 +840,11 @@ export default function StrategyPage() {
                 </div>
               ))}
             </div>
-            <button onClick={addRule} className="mt-2 text-sm text-accent hover:text-blue-400 transition-colors">{t("strategy_add_rule")}</button>
+            {/* ⚠️ Le survol virait au bleu Tailwind (#60a5fa) : 2,31:1 en thème
+                clair, donc « Ajouter une règle » DISPARAISSAIT au moment où on
+                le vise. Et un bouton d'accent cyan n'a aucune raison de virer
+                au bleu. On garde la couleur, on souligne. */}
+            <button onClick={addRule} className="mt-2 text-sm text-accent hover:underline transition-colors">{t("strategy_add_rule")}</button>
           </div>
 
           {/* Generated strategy tags */}

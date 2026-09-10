@@ -34,6 +34,15 @@ describe("les vues traduites ne parlent pas anglais en dur", () => {
     "components/profile/PublicProfileView.tsx",
     "components/pages/FaqPage.tsx",
     "components/pages/ContactPage.tsx",
+    "components/pages/LoginPage.tsx",
+    "components/pages/ResetPasswordPage.tsx",
+    "components/pages/PartnerJoinPage.tsx",
+    "components/pages/PartnerStatsPage.tsx",
+    "components/seo/TradingJournalPage.tsx",
+    "components/blog/BlogListView.tsx",
+    "components/blog/BlogPostView.tsx",
+    "components/legal/LegalDocView.tsx",
+    "components/landing/LandingPage.tsx",
   ];
 
   /**
