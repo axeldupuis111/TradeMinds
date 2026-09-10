@@ -13,6 +13,7 @@ import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useTheme } from "@/lib/ThemeContext";
+import { chargerLaSerieDeDiscipline } from "@/lib/discipline-streak-source";
 import { createClient } from "@/lib/supabase/client";
 import { startOfLocalDayUtc, browserTimezone } from "@/lib/timezone";
 import { cn } from "@/lib/cn";
@@ -153,10 +154,9 @@ export default function DayState() {
 
     const today = startOfLocalDayUtc(browserTimezone()).toISOString();
 
-    const [{ data: strat }, { data: trades }, { data: reviews }, { data: activeSession }] = await Promise.all([
+    const [{ data: strat }, { data: trades }, { data: activeSession }] = await Promise.all([
       supabase.from("strategies").select("max_trades_per_day").eq("user_id", user.id).limit(1).maybeSingle(),
       supabase.from("trades").select("pnl, commission, swap").eq("user_id", user.id).eq("challenge_id", selectedAccount.id).gte("open_time", today),
-      supabase.from("session_reviews").select("created_at, analysis").eq("user_id", user.id).order("created_at", { ascending: false }).limit(30),
       supabase.from("sessions").select("created_at").eq("user_id", user.id).eq("active", true).gte("created_at", today).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     ]);
 
@@ -166,18 +166,16 @@ export default function DayState() {
     const todayCount = todaysTrades.length;
     const todayPnl = todaysTrades.reduce((s, tr) => s + netPnl(tr), 0);
 
-    // Discipline streak
-    const reviewList = reviews || [];
-    let streakCount = 0;
-    const seenDays = new Set<string>();
-    for (const r of reviewList) {
-      const day = r.created_at.split("T")[0];
-      if (seenDays.has(day)) continue;
-      seenDays.add(day);
-      const violations = (r.analysis as { violations?: unknown[] })?.violations;
-      if (!violations || violations.length === 0) streakCount++;
-      else break;
-    }
+    /**
+     * ⚠️⚠️ CETTE CARTE CALCULAIT SA PROPRE SÉRIE, et le tableau de bord
+     * affichait donc « 75 jours de discipline » d'un côté et
+     * « STREAK DISCIPLINE 0 » de l'autre, en même temps, sur le même écran.
+     * Elle comptait les BILANS sans violation ; la carte Objectifs compte les
+     * JOURS DE TRADING sans trade émotionnel. Deux mesures différentes sous un
+     * seul nom. Voir lib/discipline-streak-source.ts.
+     */
+    const serie = await chargerLaSerieDeDiscipline(supabase, user.id);
+    const streakCount = serie.current;
 
     const maxDailyLoss = selectedAccount?.max_daily_loss_pct ?? selectedAccount?.max_daily_dd_pct ?? null;
     const maxLossEuro = maxDailyLoss !== null && maxDailyLoss > 0 && accountSize > 0 ? (accountSize * maxDailyLoss) / 100 : null;

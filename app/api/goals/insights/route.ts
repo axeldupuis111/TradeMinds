@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { computeDisciplineStreaks } from "@/lib/discipline-streak";
+import { serieDepuisLesTrades } from "@/lib/discipline-streak-source";
+import { fetchAllRows } from "@/lib/supabase-paginate";
 
 export const dynamic = "force-dynamic";
 
@@ -33,28 +34,39 @@ export async function GET() {
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
-  const [tradesRes, reviewsRes] = await Promise.all([
-    supabase.from("trades").select("pnl, commission, swap, emotion, open_time").eq("user_id", user.id).order("open_time", { ascending: true }),
+  // ⚠️ LECTURE PAGINÉE : non bornée, elle rend exactement mille lignes avec un
+  // statut 200 (voir lib/supabase-paginate.ts). Tout ce qui suit agrège sur
+  // l'historique entier ; au-delà de mille trades, ces chiffres devenaient faux
+  // en silence. L'ordre n'importe pas ici : tout est filtré ou sommé.
+  const [tradesRows, reviewsRes, gelsRes] = await Promise.all([
+    fetchAllRows<TradeRow>((from, to) =>
+      supabase
+        .from("trades")
+        .select("pnl, commission, swap, emotion, open_time")
+        .eq("user_id", user.id)
+        .order("id", { ascending: true })
+        .range(from, to),
+    ),
     supabase.from("session_reviews").select("discipline_score, created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(400),
+    supabase.from("streak_freezes").select("day").eq("user_id", user.id),
   ]);
-  if (tradesRes.error || reviewsRes.error) {
-    console.error("[Goals insights] data query error:", tradesRes.error ?? reviewsRes.error);
+  if (tradesRows === null || reviewsRes.error) {
+    console.error("[Goals insights] data query error:", reviewsRes.error ?? "lecture des trades incomplète");
     return NextResponse.json({ error: "Failed to load insights data" }, { status: 503 });
   }
-  const { data: tradesRaw } = tradesRes;
   const { data: reviewsRaw } = reviewsRes;
-  const trades = (tradesRaw ?? []) as TradeRow[];
+  const trades = tradesRows;
   const reviews = ((reviewsRaw ?? []) as ReviewRow[]).filter((r) => r.discipline_score != null);
 
-  // ── Série de discipline (jour émotionnel = revenge/FOMO), cohérente avec le dashboard.
-  const dayEmotional = new Map<string, boolean>();
-  for (const t of trades) {
-    if (!t.open_time) continue;
-    const day = t.open_time.split("T")[0];
-    const bad = t.emotion === "revenge" || t.emotion === "fomo";
-    dayEmotional.set(day, (dayEmotional.get(day) ?? false) || bad);
-  }
-  const streak = computeDisciplineStreaks(Array.from(dayEmotional.entries()).map(([day, emotional]) => ({ day, emotional })));
+  // ── Série de discipline, celle du produit et pas une deuxième.
+  //
+  // ⚠️⚠️ LE COMMENTAIRE D'ORIGINE DISAIT « cohérente avec le dashboard », ET
+  // ELLE NE L'ÉTAIT PAS : ce calcul ignorait les GELS DE SÉRIE. Un jour gelé y
+  // cassait la série, donc les objectifs proposés par l'IA partaient d'un
+  // chiffre que l'écran contredisait. Une phrase qui affirme ne remplace pas
+  // un appel à la fonction dont elle parle.
+  const geles = ((gelsRes.data as { day: string }[] | null) ?? []).map((g) => g.day);
+  const streak = serieDepuisLesTrades(trades, geles);
 
   // ── Edge de discipline : trades posés vs impulsifs (win rate + résultat moyen).
   const composed = aggregate(trades.filter((t) => t.emotion != null && COMPOSED.has(t.emotion)));

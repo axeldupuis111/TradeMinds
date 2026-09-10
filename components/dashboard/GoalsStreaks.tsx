@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Flame, Trophy, Gem, Target, Star, Lock, PartyPopper, Crown, Snowflake, type LucideIcon } from "lucide-react";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
-import { computeDisciplineStreaks } from "@/lib/discipline-streak";
+import { joursEmotionnels, serieDepuisLesTrades } from "@/lib/discipline-streak-source";
 import { weekStartLocalKey, browserTimezone } from "@/lib/timezone";
 import { BASE_FREEZE_QUOTA, freezeBonusFor } from "@/lib/badges";
 import { challengeFreezeBonus } from "@/lib/community-challenges";
@@ -125,21 +125,12 @@ export default function GoalsStreaks() {
     // Discipline streak — consecutive distinct TRADING DAYS (most recent first)
     // with no revenge/FOMO trade. Days with no trades are skipped, so weekends
     // and trading breaks never reset the streak (markets are closed anyway).
-    const dayHasEmotionalTrade = new Map<string, boolean>();
-    for (const tr of trades || []) {
-      if (!tr.open_time) continue;
-      const day = tr.open_time.split("T")[0];
-      const bad = tr.emotion === "revenge" || tr.emotion === "fomo";
-      dayHasEmotionalTrade.set(day, (dayHasEmotionalTrade.get(day) ?? false) || bad);
-    }
-    // Frozen days count as clean: a grace token lets one slip not reset the run.
+    //
+    // ⚠️ LE CALCUL EST PARTAGÉ : « État du jour » en avait écrit un autre, et le
+    // tableau de bord annonçait deux séries différentes sous le même nom, sur le
+    // même écran. Voir lib/discipline-streak-source.ts.
     const frozenDays = new Set<string>((freezes || []).map((f) => (f as { day: string }).day));
-    const streaks = computeDisciplineStreaks(
-      Array.from(dayHasEmotionalTrade.entries()).map(([day, emotional]) => ({
-        day,
-        emotional: frozenDays.has(day) ? false : emotional,
-      })),
-    );
+    const streaks = serieDepuisLesTrades(trades || [], frozenDays);
     const streakCount = streaks.current;
     setStreak(streaks.current);
     setRecord(streaks.record);
@@ -167,7 +158,7 @@ export default function GoalsStreaks() {
 
     // Candidate = most recent emotional, not-yet-frozen day (the one breaking the
     // current streak), only if recent enough (≤ 30 days) to be worth protecting.
-    const emotionalDays = Array.from(dayHasEmotionalTrade.entries())
+    const emotionalDays = Array.from(joursEmotionnels(trades || []).entries())
       .filter(([day, emotional]) => emotional && !frozenDays.has(day))
       .map(([day]) => day)
       .sort();
