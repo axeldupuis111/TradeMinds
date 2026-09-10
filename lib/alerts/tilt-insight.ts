@@ -16,6 +16,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { DEFAULT_CURRENCY, buildCurrencyMap, commonCurrency, money } from "@/lib/account-currency";
 import { computeCapitalLeaks, type LeakTrade, type LeakType } from "@/lib/analytics/leaks";
 import { sendPushToUser } from "@/lib/push";
 import { localDateKey } from "@/lib/timezone";
@@ -24,25 +25,31 @@ const WINDOW_HOURS = 24;
 /** 3 trades suffisent : le revenge se joue sur 2 trades consécutifs. */
 const MIN_TRADES = 3;
 
+/**
+ * ⚠️⚠️ L'EURO ÉTAIT ÉCRIT DANS LES QUATRE PHRASES : un trader dont le compte
+ * est en dollars recevait « −240 € » sur son téléphone. Le montant arrive
+ * maintenant déjà formaté par `money()`, qui connaît la devise du compte, et le
+ * gabarit ne place plus que {amount}.
+ */
 const TEXTS: Record<string, { title: string; body: string; types: Record<LeakType, string> }> = {
   fr: {
     title: "⚠️ Fuite détectée en session",
-    body: "{type} : −{amount} € sur tes dernières 24 h. Fais une pause, ton plan d'abord.",
+    body: "{type} : −{amount} sur tes dernières 24 h. Fais une pause, ton plan d'abord.",
     types: { revenge: "Revenge trading", emotional: "Trades sous émotion", overtrading: "Overtrading", oversizing: "Taille gonflée après perte", bad_hour: "Mauvaise tranche horaire" },
   },
   en: {
     title: "⚠️ Leak detected this session",
-    body: "{type}: −€{amount} over your last 24h. Take a break, plan first.",
+    body: "{type}: −{amount} over your last 24h. Take a break, plan first.",
     types: { revenge: "Revenge trading", emotional: "Emotional trades", overtrading: "Overtrading", oversizing: "Oversized after a loss", bad_hour: "Bad trading hour" },
   },
   de: {
     title: "⚠️ Leck in dieser Session erkannt",
-    body: "{type}: −{amount} € in den letzten 24 h. Mach eine Pause, Plan zuerst.",
+    body: "{type}: −{amount} in den letzten 24 h. Mach eine Pause, Plan zuerst.",
     types: { revenge: "Revenge-Trading", emotional: "Emotionale Trades", overtrading: "Overtrading", oversizing: "Zu groß nach Verlust", bad_hour: "Schlechte Handelsstunde" },
   },
   es: {
     title: "⚠️ Fuga detectada en la sesión",
-    body: "{type}: −{amount} € en tus últimas 24 h. Haz una pausa, el plan primero.",
+    body: "{type}: −{amount} en tus últimas 24 h. Haz una pausa, el plan primero.",
     types: { revenge: "Revenge trading", emotional: "Trades emocionales", overtrading: "Overtrading", oversizing: "Tamaño inflado tras pérdida", bad_hour: "Mala franja horaria" },
   },
 };
@@ -68,7 +75,7 @@ export async function checkTiltInsight(
     const since = new Date(Date.now() - WINDOW_HOURS * 3600000).toISOString();
     const { data: rows } = await admin
       .from("trades")
-      .select("open_time, close_time, pnl, commission, swap, lot_size, pair, emotion")
+      .select("open_time, close_time, pnl, commission, swap, lot_size, pair, emotion, challenge_id")
       .eq("user_id", userId)
       .eq("status", "closed")
       .gte("open_time", since)
@@ -94,12 +101,30 @@ export async function checkTiltInsight(
     const row = (Array.isArray(data) ? data[0] : data) as { allowed: boolean } | undefined;
     if (!row?.allowed) return;
 
+    /**
+     * La devise commune aux comptes touchés par la fuite.
+     *
+     * ⚠️ MÉLANGE = REPLI EXPLICITE : `commonCurrency` rend null quand deux
+     * comptes n'ont pas la même devise, et il n'existe pas de symbole juste dans
+     * ce cas. On retombe sur la devise par défaut plutôt que d'inventer.
+     */
+    const idsComptes = trades.map((tr) => (tr as { challenge_id?: string | null }).challenge_id);
+    const { data: comptes } = await admin
+      .from("prop_challenges")
+      .select("id, currency, synced_currency")
+      .eq("user_id", userId)
+      .in("id", Array.from(new Set(idsComptes.filter(Boolean))) as string[]);
+    const carte = buildCurrencyMap(
+      (comptes ?? []) as { id: string; currency: string | null; synced_currency: string | null }[],
+    );
+    const devise = commonCurrency(idsComptes, carte) ?? DEFAULT_CURRENCY;
+
     const t = TEXTS[lang] ?? TEXTS.en;
     await sendPushToUser(userId, {
       title: t.title,
       body: t.body
         .replace("{type}", t.types[top.type])
-        .replace("{amount}", String(Math.round(top.cost))),
+        .replace("{amount}", money(Math.round(top.cost), devise, { locale: lang })),
       url: "/dashboard",
       tag: "tilt-insight",
     });

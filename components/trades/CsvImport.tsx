@@ -1,7 +1,7 @@
 "use client";
 
 import ExportGuideModal from "@/components/trades/ExportGuideModal";
-import { accountCurrency, money } from "@/lib/account-currency";
+import { DEFAULT_CURRENCY, accountCurrency, money } from "@/lib/account-currency";
 import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { applyManualMapping, parseCSV, parseXlsx, type ParsedTrade } from "@/lib/csv-parser";
@@ -184,6 +184,13 @@ export default function CsvImport({ strategyId, onImported }: Props) {
   const [accountNotFound, setAccountNotFound] = useState(false);
   const [activeAccounts, setActiveAccounts] = useState<ActiveAccount[]>([]);
   const [selectedChallengeId, setSelectedChallengeId] = useState<string | null>(null);
+
+  /** La devise du compte visé par l'import, pour tout ce qui affiche un montant. */
+  const deviseDuCompte = (() => {
+    const id = selectedChallengeId || matchedChallengeId;
+    const compte = id ? activeAccounts.find((a) => a.id === id) : undefined;
+    return compte ? accountCurrency(compte) : DEFAULT_CURRENCY;
+  })();
 
   // Free plan import cooldown
   const [lastImportAt, setLastImportAt] = useState<string | null>(null);
@@ -418,7 +425,15 @@ export default function CsvImport({ strategyId, onImported }: Props) {
           const res = await fetch("/api/daily-summary", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ trades: importedTrades, strategyName: strat?.name || null, language: lang }),
+            // ⚠️ LA DEVISE PART AVEC LES TRADES : le prompt écrivait « P&L
+            // total : +1 234,00€ » quel que soit le compte, donc le résumé
+            // parlait en euros à un trader dont le compte est en dollars.
+            body: JSON.stringify({
+              trades: importedTrades,
+              strategyName: strat?.name || null,
+              language: lang,
+              currency: deviseDuCompte,
+            }),
           });
           const data = await res.json();
           if (res.ok && data.summary) setDailySummary(data.summary);

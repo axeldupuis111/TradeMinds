@@ -1060,7 +1060,7 @@ export default function AnalyticsPage() {
                 <CardHeader>
                   <CardTitle>{t("analytics_what_we_notice")}</CardTitle>
                 </CardHeader>
-                <AutoInsights trades={filtered} />
+                <AutoInsights trades={filtered} currency={pageCurrency} />
               </KpiCardPremium>
 
             </div>

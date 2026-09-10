@@ -1,4 +1,6 @@
-﻿import { type AnalyticsTrade, netPnl } from "./types";
+﻿import { money } from "@/lib/account-currency";
+import { nombre, pourcent } from "@/lib/nombres";
+import { type AnalyticsTrade, netPnl } from "./types";
 
 export type Insight = {
   id: string;
@@ -20,26 +22,33 @@ export type Insight = {
 /** Translator injected from the UI so insight text is localized (fr/en/de/es). */
 type Translate = (key: string) => string;
 
-// ─── Formatting helpers ───────────────────────────────────────────────────────
-// Non-breaking space =  , multiplication sign = ×
-
-function fmtPnl(n: number): string {
-  const rounded = Math.round(n);
-  if (rounded === 0) return `0 €`;
-  return `${rounded > 0 ? "+" : ""}${rounded} €`;
+/**
+ * ── LES CHIFFRES DE CES PHRASES SONT ÉCRITS COMME PARTOUT AILLEURS ──────────
+ *
+ * ⚠️⚠️ CE FICHIER AVAIT SON PROPRE FORMATEUR D'ARGENT. Sur la page Analytics,
+ * le KPI écrivait « +14 607,50€ » pendant que la phrase juste à côté disait
+ * « -2365 € » : euro en dur, aucun séparateur de milliers, espace avant le
+ * symbole. Sur la MÊME page, et sur un compte qui pourrait être en dollars.
+ *
+ * ⚠️ ET LE RATIO ÉTAIT EN « 5.7× » : point décimal anglais dans une phrase
+ * française. La quatrième copie privée d'une règle qui existe déjà.
+ */
+function fmtPnl(n: number, devise: string): string {
+  return money(Math.round(n), devise, { signed: true });
 }
 
 function fmtPct(n: number): string {
-  return `${Math.round(n)} %`;
+  return pourcent(Math.round(n));
 }
 
+/** Le signe multiplié est « × », pas la lettre x. */
 function fmtRatio(n: number): string {
-  return `${n.toFixed(1)}×`;
+  return `${nombre(n, 1)}×`;
 }
 
 // ─── Individual detectors ─────────────────────────────────────────────────────
 
-function detectStrongHour(trades: AnalyticsTrade[], t: Translate): Insight | null {
+function detectStrongHour(trades: AnalyticsTrade[], t: Translate, devise: string): Insight | null {
   const globalTotal = trades.reduce((s, t) => s + netPnl(t), 0);
   const globalAvg = globalTotal / trades.length;
   // Only meaningful when overall avg is positive
@@ -80,13 +89,13 @@ function detectStrongHour(trades: AnalyticsTrade[], t: Translate): Insight | nul
     description: t("insights_hour_strong_desc")
       .replace("{hour}", String(best.hour))
       .replace("{ratio}", fmtRatio(best.ratio))
-      .replace("{avg}", fmtPnl(best.avg))
-      .replace("{global}", fmtPnl(globalAvg)),
+      .replace("{avg}", fmtPnl(best.avg, devise))
+      .replace("{global}", fmtPnl(globalAvg, devise)),
     strength: Math.min(1, (best.ratio - 1) / 3),
   };
 }
 
-function detectWeakHour(trades: AnalyticsTrade[], t: Translate): Insight | null {
+function detectWeakHour(trades: AnalyticsTrade[], t: Translate, devise: string): Insight | null {
   const byHour = Array.from({ length: 24 }, (_, h) => ({
     hour: h,
     pnl: 0,
@@ -130,7 +139,7 @@ function detectWeakHour(trades: AnalyticsTrade[], t: Translate): Insight | null 
     title: t("insights_hour_weak_title"),
     description: t("insights_hour_weak_desc")
       .replace("{hour}", String(worst.hour))
-      .replace("{pnl}", fmtPnl(worst.totalPnl))
+      .replace("{pnl}", fmtPnl(worst.totalPnl, devise))
       .replace("{count}", String(worst.count))
       .replace("{wr}", fmtPct(worst.wr)),
     strength: Math.min(1, Math.abs(worst.totalPnl) / 500),
@@ -312,7 +321,7 @@ function detectPairConcentration(trades: AnalyticsTrade[], t: Translate): Insigh
  * Run all 6 detectors and return insights sorted by strength (highest first).
  * Returns [] if fewer than 10 trades.
  */
-export function generateInsights(trades: AnalyticsTrade[], t: Translate): Insight[] {
+export function generateInsights(trades: AnalyticsTrade[], t: Translate, devise: string): Insight[] {
   if (trades.length < 10) return [];
 
   const detectors = [
@@ -324,9 +333,11 @@ export function generateInsights(trades: AnalyticsTrade[], t: Translate): Insigh
     detectPairConcentration,
   ];
 
+  // ⚠️ Les détecteurs qui n'annoncent aucun montant ne prennent pas la devise :
+  // une fonction à deux paramètres satisfait une signature à trois.
   const results: Insight[] = [];
   for (const detect of detectors) {
-    const ins = detect(trades, t);
+    const ins = detect(trades, t, devise);
     if (ins) results.push(ins);
   }
 

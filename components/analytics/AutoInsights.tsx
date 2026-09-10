@@ -15,7 +15,7 @@ import type { AnalyticsTrade } from "@/lib/analytics/types";
 import { useLanguage } from "@/lib/LanguageContext";
 import { cn } from "@/lib/cn";
 
-type Props = { trades: AnalyticsTrade[] };
+type Props = { trades: AnalyticsTrade[]; currency: string };
 
 // ─── Icon map ─────────────────────────────────────────────────────────────────
 
@@ -92,10 +92,10 @@ function InsightRow({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function AutoInsights({ trades }: Props) {
+export function AutoInsights({ trades, currency }: Props) {
   const { t } = useLanguage();
   const reduced = useReducedMotion();
-  const insights = useMemo(() => generateInsights(trades, t), [trades, t]);
+  const insights = useMemo(() => generateInsights(trades, t, currency), [trades, t, currency]);
 
   if (insights.length === 0) {
     return (
