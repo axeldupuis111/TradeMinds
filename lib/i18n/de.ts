@@ -3650,6 +3650,7 @@ const dict: Record<string, string> = {
   "bt_aller_intro": "Zwei Knöpfe, zwei Absichten. Verstehen, was deine jetzige Methode wert ist, oder eine bessere Kombination suchen. Alles Übrige auf dieser Seite zeigt nur an, was diese beiden gemessen haben.",
   "bt_aller_analyser": "Gründlich analysieren",
   "bt_aller_analyser_aide": "Deine Konfluenzen einzeln, die Umgebung deiner Einstellungen, deine Methode auf vergleichbaren Märkten und die Prüfung auf einem Zeitraum, den du nicht angesehen hast. Alles läuft zusammen, in einer einzigen Wartezeit von mehreren Minuten.",
+  "bt_aller_chercher_aide": "Sie probiert eine begrenzte und angekündigte Zahl von Kombinationen deiner Blöcke aus und bestätigt die beste dann auf einem Zeitraum, den sie nicht gesehen hat. Sie empfiehlt nichts: sie sagt dir, ob das Gefundene die Latte überspringt, die reiner Zufall ebenfalls überspringen würde. Mehrere Minuten Rechenzeit, und jeder Versuch zählt in deinem Zähler.",
   "bt_aller_encours": "Wird gemessen…",
   "bt_perime_titre": "Dieses Ergebnis beschreibt den angezeigten Plan nicht mehr",
   "bt_perime": "Du hast seit dieser Messung eine Einstellung geändert. Die Zahlen unten beziehen sich auf den vorherigen Plan. Starte den Test erneut, um sie wieder in Einklang zu bringen.",

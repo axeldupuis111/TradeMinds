@@ -1,6 +1,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import de from "../i18n/de";
+import en from "../i18n/en";
+import es from "../i18n/es";
+import fr from "../i18n/fr";
 import { barreDeRecherche, explorer, type Dimension } from "./exploration";
 import { socleDePlan } from "./compilation";
 import { coutsPourInstrument, instrumentParCode } from "./instruments";
@@ -232,5 +236,58 @@ describe("ce que l'exploration s'interdit", () => {
 
   it("compte toujours les essais dans la barre", () => {
     expect(sansCommentaires).toContain("barreDeRecherche(faits)");
+  });
+});
+
+/**
+ * LE BOUTON LE PLUS LOURD DE LA PAGE DIT CE QU'IL FAIT.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN : « Analyser à fond » et « Chercher » côte à côte, puis UN
+ * SEUL paragraphe dessous, qui décrit le premier. « Chercher » est le geste le
+ * plus lourd de l'onglet — plusieurs minutes de calcul, et le seul qui essaie
+ * des combinaisons — c'est-à-dire celui dont on a le plus besoin de savoir ce
+ * qu'il fait avant d'appuyer.
+ *
+ * ⚠️ ET SA PHRASE DOIT PORTER LES TROIS CHOSES QUI LE RENDENT DÉFENDABLE : un
+ * nombre d'essais borné et annoncé, une confirmation sur une période non vue,
+ * et aucune recommandation. Une aide qui vendrait « trouve la meilleure
+ * combinaison » ferait de cet écran la machine à sur-apprentissage que tout ce
+ * fichier existe pour empêcher.
+ */
+describe("la recherche s'annonce avant qu'on l'appuie", () => {
+  const page = readFileSync(join(process.cwd(), "app/dashboard/backtest/page.tsx"), "utf8");
+
+  it("chaque bouton porte sa propre phrase", () => {
+    expect(page).toContain('tr("bt_aller_analyser_aide")');
+    expect(page).toContain('tr("bt_aller_chercher_aide")');
+  });
+
+  it("la phrase existe dans les quatre langues", () => {
+    for (const [nom, dico] of Array.from(Object.entries({ fr, en, es, de }))) {
+      expect(
+        (dico as Record<string, string>).bt_aller_chercher_aide,
+        `bt_aller_chercher_aide en ${nom}`,
+      ).toBeTruthy();
+    }
+  });
+
+  /**
+   * ⚠️ ELLE NE PROMET RIEN. Le reste de cet onglet refuse de classer, de
+   * recommander et de promettre : la phrase qui présente sa recherche ne peut
+   * pas être le seul endroit où on s'y autorise.
+   */
+  it("ne promet ni gain ni meilleure stratégie", () => {
+    const interdits: Record<string, RegExp> = {
+      fr: /meilleur[e]? (stratégie|réglage)|gagnant|rentab|améliore tes/i,
+      en: /best (strategy|setting)|winning|profitab|improves your/i,
+      es: /mejor (estrategia|ajuste)|ganador|rentab/i,
+      de: /beste[rns]? (Strategie|Einstellung)|gewinnbringend|rentabel/i,
+    };
+    for (const [nom, dico] of Array.from(Object.entries({ fr, en, es, de }))) {
+      const phrase = (dico as Record<string, string>).bt_aller_chercher_aide;
+      expect(phrase, `bt_aller_chercher_aide en ${nom} promet quelque chose`).not.toMatch(
+        interdits[nom],
+      );
+    }
   });
 });

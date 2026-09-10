@@ -3650,6 +3650,7 @@ const dict: Record<string, string> = {
   "bt_aller_intro": "Two buttons, two intentions. Understand what your current method is worth, or look for a better combination. Everything else on this page only displays what those two measured.",
   "bt_aller_analyser": "Analyse in depth",
   "bt_aller_analyser_aide": "Your confluences one by one, the neighbourhood of your settings, your method on comparable markets, and the check on a period you have not looked at. It all goes together, in a single wait of several minutes.",
+  "bt_aller_chercher_aide": "It tries a bounded, announced number of combinations of your blocks, then confirms the best one on a period it has not seen. It recommends nothing: it tells you whether what it found clears the bar that pure chance would clear too. Several minutes of computation, and every attempt counts in your tally.",
   "bt_aller_encours": "Measuring…",
   "bt_perime_titre": "This result no longer describes the plan on screen",
   "bt_perime": "You changed a setting since this measurement. The figures below describe the previous plan. Run the test again to bring them back in line.",

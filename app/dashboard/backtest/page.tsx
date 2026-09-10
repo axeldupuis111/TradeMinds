@@ -2779,36 +2779,50 @@ export default function BacktestPage() {
               <p className="mt-1 text-xs leading-relaxed text-foreground-muted">
                 {tr("bt_aller_intro")}
               </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  disabled={occupe}
-                  onClick={analyserAFond}
-                  className="rounded-lg border border-accent/50 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/10 disabled:opacity-50"
-                >
-                  {occupe ? tr("bt_aller_encours") : tr("bt_aller_analyser")}
-                </button>
-                {fenetreIntacte && fenetreIntacte.mois >= MOIS_MIN_CONTROLE ? (
+{/* ⚠️⚠️ CHAQUE BOUTON PORTE SA PHRASE, ET C'EST NÉ D'UN ÉCRAN OÙ IL N'Y
+                  EN AVAIT QU'UNE POUR DEUX. « Analyser à fond » et « Chercher »
+                  côte à côte, puis un seul paragraphe dessous, qui décrit le
+                  premier. Le second est le geste le plus lourd de la page,
+                  plusieurs minutes de calcul et le seul qui essaie des
+                  combinaisons : celui dont on a le plus besoin de savoir ce
+                  qu'il fait avant d'appuyer. */}
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div>
                   <button
                     type="button"
                     disabled={occupe}
-                    onClick={() =>
-                      lancer({
-                        exploration: {
-                          confirmationDe: fenetreIntacte.de,
-                          confirmationA: fenetreIntacte.a,
-                        },
-                      })
-                    }
-                    className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
+                    onClick={analyserAFond}
+                    className="rounded-lg border border-accent/50 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/10 disabled:opacity-50"
                   >
-                    {occupe ? tr("bt_exp_encours") : tr("bt_exp_lancer")}
+                    {occupe ? tr("bt_aller_encours") : tr("bt_aller_analyser")}
                   </button>
+                  <p className="mt-2 text-[11px] leading-relaxed text-foreground-muted">
+                    {tr("bt_aller_analyser_aide")}
+                  </p>
+                </div>
+                {fenetreIntacte && fenetreIntacte.mois >= MOIS_MIN_CONTROLE ? (
+                  <div>
+                    <button
+                      type="button"
+                      disabled={occupe}
+                      onClick={() =>
+                        lancer({
+                          exploration: {
+                            confirmationDe: fenetreIntacte.de,
+                            confirmationA: fenetreIntacte.a,
+                          },
+                        })
+                      }
+                      className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
+                    >
+                      {occupe ? tr("bt_exp_encours") : tr("bt_exp_lancer")}
+                    </button>
+                    <p className="mt-2 text-[11px] leading-relaxed text-foreground-muted">
+                      {tr("bt_aller_chercher_aide")}
+                    </p>
+                  </div>
                 ) : null}
               </div>
-              <p className="mt-2 text-[11px] leading-relaxed text-foreground-muted">
-                {tr("bt_aller_analyser_aide")}
-              </p>
             </Card>
           </StaggerItem>
         ) : null}

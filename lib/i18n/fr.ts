@@ -3650,6 +3650,7 @@ const dict: Record<string, string> = {
   "bt_aller_intro": "Deux boutons, deux intentions. Comprendre ce que ta méthode actuelle vaut, ou chercher une meilleure combinaison. Tout le reste de la page ne fait qu'afficher ce que ces deux-là ont mesuré.",
   "bt_aller_analyser": "Analyser à fond",
   "bt_aller_analyser_aide": "Tes confluences une par une, le voisinage de tes réglages, ta méthode sur les marchés comparables, et le contrôle sur une période que tu n'as pas regardée. Tout part ensemble, en une seule attente de plusieurs minutes.",
+  "bt_aller_chercher_aide": "Elle essaie un nombre borné et annoncé de combinaisons de tes blocs, puis confirme la meilleure sur une période qu'elle n'a pas vue. Elle ne te recommande rien : elle te dit si ce qu'elle a trouvé franchit la barre qu'un pur hasard franchirait aussi. Plusieurs minutes de calcul, et chaque essai compte dans ton compteur.",
   "bt_aller_encours": "Mesure en cours…",
   "bt_perime_titre": "Ce résultat ne décrit plus le plan affiché",
   "bt_perime": "Tu as changé un réglage depuis cette mesure. Les chiffres ci-dessous portent sur le plan d'avant. Relance le test pour les remettre d'accord.",
