@@ -438,7 +438,20 @@ export default function BacktestPage() {
   useEffect(() => {
     if (!strategieId) return;
     const lu = lireBlocPlan(raw ?? "");
-    setMethodeCode(lu.methode ?? "");
+    /**
+     * ⚠️⚠️ ET LA MÊME FAUTE AVAIT UN SECOND EXEMPLAIRE, QUE JE N'AVAIS PAS VU.
+     * Vu à l'écran : j'applique la base « Cassure de structure et retest », je
+     * rejoue, 106 trades, puis je choisis une fiche pour voir mes versions
+     * archivées. « Ta méthode » repasse à « Pas encore déclarée », au-dessus du
+     * plan de cette base et du résultat qu'elle vient de produire.
+     *
+     * ⚠️ UNE FICHE QUI NE DÉCLARE RIEN NE DÉCLARE PAS « AUCUNE ». Le `?? ""`
+     * traitait l'absence de déclaration comme une déclaration de vide, et
+     * effaçait un fait vrai sur le plan affiché. Tant que le plan reste celui
+     * de la base, la méthode de la base reste sa méthode ; c'est la traduction
+     * de la fiche, plus bas, qui remplace le plan et tranche donc la question.
+     */
+    if (lu.methode) setMethodeCode(lu.methode);
     setReponses(lu.reponses);
     setEtatReponses("repos");
   }, [strategieId, raw]);
@@ -737,6 +750,14 @@ export default function BacktestPage() {
       setPlanFiche(structuredClone(compile));
       setOrigines({});
       setSauvegarde("repos");
+      /**
+       * ⚠️ LE PLAN EST DÉSORMAIS CELUI DE LA FICHE, DONC SA MÉTHODE AUSSI. La
+       * lecture d'en haut ne pose plus une méthode vide, exprès : elle ne
+       * saurait pas si le plan affiché vient encore d'une base. Ici, si : on
+       * vient de le remplacer. Une fiche qui ne déclare rien laisse donc la
+       * carte vide, et c'est la vérité.
+       */
+      setMethodeCode(lireBlocPlan(strat.raw_text ?? "").methode ?? "");
 
       setCouverture(couvertureFinale);
       setContestes(new Set());

@@ -457,10 +457,20 @@ describe("les gestes de la carte agissent quand ils le peuvent", () => {
  */
 describe("la lecture de la fiche ne piétine pas ce qui est déjà posé", () => {
   const page = readFileSync(join(process.cwd(), "app/dashboard/backtest/page.tsx"), "utf8");
+  /**
+   * ⚠️ L'EFFET ENTIER, PAS UNE FENÊTRE DE QUATRE CENTS CARACTÈRES AUTOUR. Ma
+   * fenêtre a cessé de contenir la ligne des dépendances le jour où j'ai ajouté
+   * un commentaire au milieu de l'effet, et le garde a accusé un code juste.
+   * C'est la troisième fois qu'une découpe par distance me fait ça.
+   */
   const effet = (() => {
-    const debut = page.indexOf("const lu = lireBlocPlan(");
-    expect(debut, "la relecture de la fiche est introuvable").toBeGreaterThan(0);
-    return page.slice(Math.max(0, debut - 400), debut + 400);
+    const ancre = page.indexOf("const lu = lireBlocPlan(");
+    expect(ancre, "la relecture de la fiche est introuvable").toBeGreaterThan(0);
+    const debut = page.lastIndexOf("useEffect(", ancre);
+    expect(debut, "le useEffect qui la contient est introuvable").toBeGreaterThan(0);
+    const fin = page.indexOf("]);", ancre);
+    expect(fin, "la fin de l'effet est introuvable").toBeGreaterThan(ancre);
+    return page.slice(debut, fin + 3);
   })();
 
   it("ne relit rien tant qu'aucune fiche n'est choisie", () => {
@@ -640,5 +650,45 @@ describe("un rejeu se voit toujours", () => {
       'etat.phase === "telechargement"',
     );
     expect(carte, "le message d'erreur a quitté la carte").toContain('etat.phase === "erreur"');
+  });
+});
+
+/**
+ * UNE FICHE QUI NE DÉCLARE RIEN NE DÉCLARE PAS « AUCUNE MÉTHODE ».
+ *
+ * ⚠️⚠️ QUATRIÈME EXEMPLAIRE DE LA MÊME FAUTE, ET LES TROIS PREMIERS ONT DÉJÀ
+ * LEUR COMMENTAIRE DANS `modifications.ts`. Vu à l'écran : j'applique la base
+ * « Cassure de structure et retest », je rejoue, 106 trades, puis je choisis
+ * une fiche pour consulter mes versions archivées. « Ta méthode » repasse à
+ * « Pas encore déclarée », au-dessus du plan de cette base et du résultat
+ * qu'elle vient de produire.
+ *
+ * ⚠️ LA CAUSE EST UN `?? ""`. L'absence de déclaration était traitée comme une
+ * déclaration de vide, et effaçait un fait vrai sur le plan affiché. C'est la
+ * forme exacte de « manuel » devenu valeur par défaut silencieuse : un chemin
+ * qui écrit une provenance sans rien savoir de celle qui était là.
+ *
+ * ⚠️ ET LE MOMENT OÙ LA QUESTION SE TRANCHE EXISTE : c'est la traduction de la
+ * fiche, qui REMPLACE le plan. Là, une fiche muette laisse la carte vide, et
+ * c'est la vérité.
+ */
+describe("choisir une fiche n'efface pas la méthode du plan affiché", () => {
+  const page = readFileSync(join(process.cwd(), "app/dashboard/backtest/page.tsx"), "utf8");
+
+  it("la relecture d'une fiche ne pose une méthode que si la fiche en déclare une", () => {
+    expect(page).toContain("if (lu.methode) setMethodeCode(lu.methode);");
+    expect(
+      page,
+      "la relecture repose un « ?? \"\" » : une fiche muette effacerait à nouveau la méthode d'une base",
+    ).not.toContain('setMethodeCode(lu.methode ?? "");');
+  });
+
+  /**
+   * ⚠️ ET LA TRADUCTION, ELLE, TRANCHE : sans ça, une fiche muette laisserait
+   * la méthode d'une base au-dessus d'un plan qui n'est plus le sien. Retirer
+   * l'un des deux sans l'autre refait le défaut, dans un sens ou dans l'autre.
+   */
+  it("la traduction de la fiche, elle, pose la méthode de la fiche", () => {
+    expect(page).toContain('setMethodeCode(lireBlocPlan(strat.raw_text ?? "").methode ?? "");');
   });
 });
