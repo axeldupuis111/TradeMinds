@@ -63,6 +63,31 @@ const LABELS: Record<string, Localized> = {
  */
 const NORM_OVERRIDES: Record<string, Localized> = {
   "employment change": { fr: "Variation de l'emploi", en: "Employment change", de: "Beschäftigungsänderung", es: "Variación del empleo" },
+
+  /**
+   * ⚠️⚠️ VU À L'ÉCRAN, SUR « AVANT LA SESSION » : deux fois « 🔴 14:15 · EUR ·
+   * Décision de taux directeur », à la même minute. Ce ne sont pas des
+   * doublons : la BCE publie son TAUX puis son COMMUNIQUÉ, et le glossaire
+   * aliase les deux sur `rate_decision` — ce qui est juste pour EXPLIQUER
+   * l'indicateur, et faux pour le NOMMER.
+   *
+   * ⚠️ LE TRADER, LUI, EN CONCLUT QUE LE CALENDRIER EST CASSÉ. Il ne peut plus
+   * distinguer les deux, alors que ce sont deux moments différents de la même
+   * séance : le chiffre, puis la conférence qui l'explique.
+   *
+   * ⚠️ ET LES TROIS GRANDES BANQUES CENTRALES ONT LA MÊME PAIRE : Fed (Federal
+   * Funds Rate + FOMC Statement), BCE (Main Refinancing Rate + Monetary Policy
+   * Statement), BoE (Official Bank Rate + Monetary Policy Summary). On nomme
+   * donc ce que chaque ligne EST, et l'alias du glossaire reste inchangé.
+   */
+  "main refinancing rate": { fr: "Taux de refinancement BCE", en: "ECB main refinancing rate", de: "EZB-Hauptrefinanzierungssatz", es: "Tipo de refinanciación del BCE" },
+  "deposit facility rate": { fr: "Taux de dépôt BCE", en: "ECB deposit facility rate", de: "EZB-Einlagesatz", es: "Tipo de la facilidad de depósito del BCE" },
+  "federal funds rate": { fr: "Taux des fonds fédéraux", en: "Federal funds rate", de: "US-Leitzins", es: "Tipo de los fondos federales" },
+  "official bank rate": { fr: "Taux directeur BoE", en: "BoE official bank rate", de: "BoE-Leitzins", es: "Tipo oficial del BoE" },
+  "cash rate": { fr: "Taux directeur RBA", en: "RBA cash rate", de: "RBA-Leitzins", es: "Tipo oficial del RBA" },
+  "overnight rate": { fr: "Taux directeur BoC", en: "BoC overnight rate", de: "BoC-Leitzins", es: "Tipo oficial del BoC" },
+  "monetary policy statement": { fr: "Communiqué de politique monétaire", en: "Monetary policy statement", de: "Geldpolitische Erklärung", es: "Comunicado de política monetaria" },
+  "rate statement": { fr: "Communiqué sur les taux", en: "Rate statement", de: "Zinserklärung", es: "Comunicado sobre tipos" },
 };
 
 /** Qualificatifs détectés dans le titre brut, traduits et ré-affichés. */
