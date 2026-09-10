@@ -121,6 +121,20 @@ export function provenanceDeLaModification(m: Modification, t: Traduire): string
  * liste des filtres. Sans cette fonction, elles s'affichent comme
  * « Ta cible : multiple_r » et « Sens autorisés : les_deux ».
  */
+/**
+ * Les initiales des jours d'une semaine, dans la langue lue.
+ *
+ * ⚠️ ON REND LA LISTE TELLE QUELLE SI ELLE NE CONTIENT PAS DE NUMÉROS. Les
+ * versions archivées avant cette correction portent « L M M J V » en dur : les
+ * relire ne doit pas produire une ligne vide, et personne ne peut retrouver
+ * après coup quels jours ces lettres désignaient.
+ */
+export function nommerLesJours(liste: string, t: Traduire): string {
+  const morceaux = liste.split(",").map((x) => x.trim());
+  if (!morceaux.every((x) => /^[0-6]$/.test(x))) return liste;
+  return morceaux.map((n) => t(`bt_jour_${n}`)).join(" ");
+}
+
 export function phraseDuPlan(l: LigneDuPlan, t: Traduire): string {
   const v = l.valeurs;
   switch (l.cle) {
@@ -133,6 +147,12 @@ export function phraseDuPlan(l: LigneDuPlan, t: Traduire): string {
       return t("bt_plan_actif", {
         instrument: nomDuMarche(String(v.instrument), String(v.nom ?? v.instrument), t),
       });
+    /**
+     * ⚠️ LES JOURS SE TRADUISENT ICI, pour la même raison que le marché. La
+     * ligne porte leurs numéros ; les initiales d'un jour n'ont rien d'universel.
+     */
+    case "jours":
+      return t("bt_plan_jours", { jours: nommerLesJours(String(v.jours), t) });
     case "niveau":
       return t("bt_plan_niveau", { type: nommerUneValeur("niveau_type", String(v.type), t) });
     case "declencheur":

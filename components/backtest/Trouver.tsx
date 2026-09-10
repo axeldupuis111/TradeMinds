@@ -337,7 +337,9 @@ function PlanEcrit({
             <ul className="mt-1.5 space-y-1">
               {ecarts.map((e) => (
                 <li key={e.cle} className="text-[11px] leading-relaxed text-foreground-muted">
-                  {t(`bt_modif_${e.cle}`)} : {e.avant} → {e.apres}
+                  {t(`bt_modif_${e.cle}`)}
+                  {t("bt_deux_points")}
+                  {e.avant} → {e.apres}
                 </li>
               ))}
             </ul>

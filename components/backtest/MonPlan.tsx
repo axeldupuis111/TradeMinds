@@ -125,7 +125,9 @@ export function MonPlan({
             return (
               <span key={p} className="flex items-center gap-1 text-[11px] text-foreground-muted">
                 <Icone className={`h-3 w-3 ${TON[p]}`} />
-                {t(`bt_mon_plan_entete_${p}`)} : <span className="tabular-nums">{n}</span>
+                {t(`bt_mon_plan_entete_${p}`)}
+                {t("bt_deux_points")}
+                <span className="tabular-nums">{n}</span>
               </span>
             );
           })}

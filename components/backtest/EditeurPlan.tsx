@@ -28,15 +28,12 @@ import type {
  * ticks se fait à l'enregistrement, une seule fois.
  */
 
-const JOURS: { valeur: JourSemaine; label: string }[] = [
-  { valeur: 1, label: "L" },
-  { valeur: 2, label: "M" },
-  { valeur: 3, label: "M" },
-  { valeur: 4, label: "J" },
-  { valeur: 5, label: "V" },
-  { valeur: 6, label: "S" },
-  { valeur: 0, label: "D" },
-];
+/**
+ * ⚠️ LES INITIALES VIENNENT DE LA TRADUCTION, PAS D'UNE TABLE. Écrites en dur
+ * en français, elles sortaient telles quelles dans les quatre langues : « L M M
+ * J V » n'apprend rien à un lecteur anglophone.
+ */
+const JOURS: JourSemaine[] = [1, 2, 3, 4, 5, 6, 0];
 
 export interface EditeurProps {
   plan: PlanExecution;
@@ -121,18 +118,18 @@ export function EditeurPlan({ plan, instrument, onChange, contestes, t }: Editeu
         </div>
         <Champ label={t("bt_jours")} aide={t("bt_jours_aide")} className="sm:col-span-2">
           <div className="flex flex-wrap gap-1.5">
-            {JOURS.map((j, i) => (
+            {JOURS.map((j) => (
               <Bascule
-                key={`${j.valeur}-${i}`}
-                label={j.label}
-                actif={plan.contexte.jours.includes(j.valeur)}
+                key={j}
+                label={t(`bt_jour_${j}`)}
+                actif={plan.contexte.jours.includes(j)}
                 onChange={(actif) =>
                   maj({
                     contexte: {
                       ...plan.contexte,
                       jours: actif
-                        ? [...plan.contexte.jours, j.valeur]
-                        : plan.contexte.jours.filter((x) => x !== j.valeur),
+                        ? [...plan.contexte.jours, j]
+                        : plan.contexte.jours.filter((x) => x !== j),
                     },
                   })
                 }

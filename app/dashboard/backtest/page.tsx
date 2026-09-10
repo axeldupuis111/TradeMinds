@@ -1646,7 +1646,7 @@ export default function BacktestPage() {
       titre: tr("bt_sauver_entete", { date: enDate(new Date(), lang) }),
       lignes: modifications.map(
         (m) =>
-          `${tr(`bt_modif_${m.cle}`)} : ${m.avant} → ${m.apres}. ` +
+          `${tr(`bt_modif_${m.cle}`)}${tr("bt_deux_points")}${m.avant} → ${m.apres}. ` +
           tr(`bt_geste_${m.cle}`, { avant: m.avant, apres: m.apres }),
       ),
       mesure: tr("bt_sauver_mesure", {
@@ -1839,7 +1839,8 @@ export default function BacktestPage() {
     const lignes = monPlan.lignes.map((l) => {
       if (l.cle.startsWith("bt_q_")) {
         const titre = tr(l.cle);
-        return l.texte ? `- ${titre} : ${l.texte}` : `- ${titre} : ${tr("bt_mon_plan_a_ecrire")}`;
+        const sep = tr("bt_deux_points");
+        return `- ${titre}${sep}${l.texte || tr("bt_mon_plan_a_ecrire")}`;
       }
       return `- ${phraseDuPlan(
         { cle: l.cle.replace(/^bt_plan_/, ""), valeurs: l.valeurs ?? {}, deduite: false },
@@ -1855,10 +1856,10 @@ export default function BacktestPage() {
       // ⚠️ La même légende que l'écran, et pour la même raison : un nombre
       // placé après son étiquette ne s'accorde avec rien.
       [
-        `${tr("bt_mon_plan_entete_reglee")} : ${monPlan.reglees}`,
-        `${tr("bt_mon_plan_entete_mesuree")} : ${monPlan.mesurees}`,
-        `${tr("bt_mon_plan_entete_ecrite")} : ${monPlan.ecrites}`,
-        `${tr("bt_mon_plan_entete_manquante")} : ${monPlan.manquantes}`,
+        `${tr("bt_mon_plan_entete_reglee")}${tr("bt_deux_points")}${monPlan.reglees}`,
+        `${tr("bt_mon_plan_entete_mesuree")}${tr("bt_deux_points")}${monPlan.mesurees}`,
+        `${tr("bt_mon_plan_entete_ecrite")}${tr("bt_deux_points")}${monPlan.ecrites}`,
+        `${tr("bt_mon_plan_entete_manquante")}${tr("bt_deux_points")}${monPlan.manquantes}`,
       ].join(" · "),
       /**
        * ⚠️⚠️ CE DOCUMENT SORT DE L'APPLICATION, ET IL PORTE DES CHIFFRES

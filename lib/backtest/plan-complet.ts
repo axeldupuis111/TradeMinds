@@ -138,7 +138,7 @@ function rythmeParJour(trades: TradeSimule[]): { max: number; d9: number } {
   };
 }
 
-const JOURS = ["D", "L", "M", "M", "J", "V", "S"];
+
 
 export function composerPlanComplet(
   plan: PlanExecution,
@@ -160,11 +160,16 @@ export function composerPlanComplet(
    */
   ajouter("actif", { instrument: instrument.code, nom: instrument.nom });
   ajouter("unite_de_temps", { minutes: plan.uniteDeTemps ?? 1 });
+  /**
+   * ⚠️⚠️ LES INITIALES ÉTAIENT ÉCRITES EN DUR EN FRANÇAIS, exactement comme les
+   * noms de marchés dix lignes plus haut, et pour le même résultat : « You only
+   * take positions on these days: L M M J V » dans le document que le trader
+   * anglophone emporte. Cinq lettres qui ne veulent rien dire pour lui.
+   *
+   * La ligne porte donc les NUMÉROS des jours, et `phraseDuPlan` les traduit.
+   */
   ajouter("jours", {
-    jours: [...plan.contexte.jours]
-      .sort((a, b) => a - b)
-      .map((j) => JOURS[j])
-      .join(" "),
+    jours: [...plan.contexte.jours].sort((a, b) => a - b).join(","),
   });
   /**
    * ⚠️⚠️ UNE PLAGE QUI COUVRE LA JOURNÉE ENTIÈRE N'EST PAS UNE RÈGLE D'HORAIRE.

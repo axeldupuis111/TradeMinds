@@ -80,7 +80,13 @@ describe("le plan complet", () => {
       "Nasdaq 100",
     );
     expect(ligne(p, "unite_de_temps")!.valeurs.minutes).toBe(15);
-    expect(ligne(p, "jours")!.valeurs.jours).toBe("L M M J V");
+    /**
+     * ⚠️ LES NUMÉROS, PAS LES INITIALES. Écrites en dur en français, elles
+     * sortaient telles quelles dans les quatre langues : « You only take
+     * positions on these days: L M M J V » dans le document que le trader
+     * anglophone emporte. `phraseDuPlan` les traduit à l'affichage.
+     */
+    expect(ligne(p, "jours")!.valeurs.jours).toBe("1,2,3,4,5");
   });
 
   /**

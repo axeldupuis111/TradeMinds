@@ -60,7 +60,14 @@ export function composerBlocPlan(b: BlocPlan): string {
     const propre = surUneLigne(valeur);
     if (propre.length === 0) continue;
     const intitule = b.intitules[code] ?? code;
-    lignes.push(`- ${code}: ${intitule} : ${propre}`);
+    /**
+   * ⚠️⚠️ CE « : » N'EST PAS DE LA TYPOGRAPHIE, C'EST UN FORMAT. La lecture, plus
+   * bas, retrouve l'intitulé et la réponse en cherchant exactement cette
+   * séquence dans le texte de la fiche. Le traduire selon la langue rendrait
+   * illisibles toutes les fiches écrites dans une autre, y compris celles du
+   * trader lui-même s'il change de langue.
+   */
+  lignes.push(`- ${code}: ${intitule} : ${propre}`);
   }
   return [OUVERTURE, ...lignes, FERMETURE].join("\n");
 }
