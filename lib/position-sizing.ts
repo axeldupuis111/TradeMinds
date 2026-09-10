@@ -104,10 +104,23 @@ export function computeMaxRiskEur(params: ComputeMaxRiskParams): MaxRiskResult |
 
 // ---------------------------------------------------------------------------
 // computeLotSize
-// lots = riskEur / (slPips * pipValuePerLot), rounded to 0.01.
+// lots = riskEur / (slPips * pipValuePerLot), FLOORED to 0.01.
+//
+// ⚠️⚠️ IL ARRONDISSAIT AU PLUS PROCHE, ET LE PLUS PROCHE PEUT ÊTRE AU-DESSUS.
+// Vu à l'écran sur le calculateur de lot : « RISQUE MAX 500,00 € · plafonné par
+// ta règle de risque par trade », puis, six lignes plus bas, « LOT RECOMMANDÉ
+// 0.67 » et « FONDS À RISQUE 502,50 € ». L'outil dont le métier est de risquer
+// EXACTEMENT ce que le trader a décidé lui en proposait 2,50 € de plus que son
+// propre plafond, sur le même écran que le plafond.
+//
+// ⚠️ ET LA RÈGLE ÉTAIT DÉJÀ ÉCRITE DOUZE LIGNES PLUS BAS, pour les futures :
+// « FLOOR (never round up) — must never exceed riskAmount. » Un contrat est
+// indivisible, donc l'auteur y avait pensé ; un lot se divise par centièmes, et
+// l'arrondi a semblé inoffensif. Sur un compte prop avec une perte journalière
+// plafonnée, il ne l'est pas.
 // ---------------------------------------------------------------------------
 export interface LotSizeResult {
-  lots: number;   // rounded to 0.01
+  lots: number;   // floored to 0.01, jamais au-dessus du risque demandé
   raw: number;    // unrounded
 }
 
@@ -120,7 +133,8 @@ export function computeLotSize(params: {
   if (slPips <= 0 || pipValuePerLot <= 0 || riskEur <= 0) return null;
 
   const raw = riskEur / (slPips * pipValuePerLot);
-  const lots = Math.round(raw * 100) / 100; // 0.01 precision
+  // ⚠️ Voir l'en-tête : on descend, jamais on ne monte.
+  const lots = Math.floor(raw * 100) / 100; // 0.01 precision
   return { lots, raw };
 }
 

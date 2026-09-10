@@ -1,6 +1,6 @@
 "use client";
 
-import { DEFAULT_CURRENCY, accountCurrency, currencySymbol } from "@/lib/account-currency";
+import { DEFAULT_CURRENCY, accountCurrency, currencySymbol, money } from "@/lib/account-currency";
 import { computeChallengeRules } from "@/lib/challenge-rules";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -146,9 +146,16 @@ export default function PositionSizer({ strategy }: Props) {
   // à côté dès qu'un compte prop en dollars traitait des CFD, ou l'inverse.
   // `.trim()` : le symbole d'une devise inconnue est rendu par son code précédé
   // d'une espace (« PLN »), et il est ici toujours affiché après une espace.
-  const cur = currencySymbol(
-    selectedAccount ? accountCurrency(selectedAccount) : DEFAULT_CURRENCY,
-  ).trim();
+  const devise = selectedAccount ? accountCurrency(selectedAccount) : DEFAULT_CURRENCY;
+  const cur = currencySymbol(devise).trim();
+  /**
+   * ⚠️⚠️ « RISQUE MAX 500.00 € » : le point décimal est anglais, et la page
+   * était en français. Trois montants étaient composés à la main avec
+   * `toFixed(2)` suivi du symbole, alors que le reste du produit passe par
+   * `money()`, qui suit la langue lue. Sur l'écran qui compte l'argent que le
+   * trader met en jeu, deux écritures différentes du même euro.
+   */
+  const enArgent = (v: number) => money(v, devise, { digits: 2 });
 
   // ── Common inputs: account balance + risk per trade (editable) ────────────
   // Prefilled from the active account / strategy, but the user can override —
@@ -387,7 +394,7 @@ export default function PositionSizer({ strategy }: Props) {
           {maxRisk ? (
             <>
               <span className="text-xl font-bold text-profit tabular-nums">
-                {maxRisk.riskEur.toFixed(2)} {cur}
+                {enArgent(maxRisk.riskEur)}
               </span>
               <span className="text-xs text-muted">{cappedByLabel(maxRisk.cappedBy)}</span>
             </>
@@ -474,7 +481,7 @@ export default function PositionSizer({ strategy }: Props) {
                       <div className="flex items-baseline gap-1">
                         <span className="text-xs text-muted">{t("sizer_futures_actual_risk")}</span>
                         <span className="text-sm font-semibold text-foreground tabular-nums">
-                          {actualRisk.toFixed(2)} {cur}
+                          {enArgent(actualRisk)}
                         </span>
                       </div>
                     )}
@@ -648,7 +655,7 @@ export default function PositionSizer({ strategy }: Props) {
                           <div>
                             <p className="text-[11px] text-muted uppercase tracking-wider">{t("sizer_funds_at_risk")}</p>
                             <p className="text-sm font-semibold text-foreground tabular-nums mt-0.5">
-                              {fundsAtRisk.toFixed(2)} {cur}
+                              {enArgent(fundsAtRisk)}
                               {balanceNum > 0 && (
                                 <span className="text-muted font-normal">
                                   {" "}({((fundsAtRisk / balanceNum) * 100).toFixed(1)}%)
