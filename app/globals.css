@@ -73,7 +73,9 @@
   --card:       17 17 19;     /* #111113 */
   --surface:    26 26 26;     /* #1a1a1a */
   --border:     28 28 30;     /* #1c1c1e */
-  --muted:      113 113 122;  /* #71717a */
+  /* ⚠️ #71717a tombait a 3,60:1 sur --surface : un gris "attenue" reste du
+     texte. Meme teinte, un cran plus clair, 5,5:1 sur la surface la plus pale. */
+  --muted:      138 138 147;  /* #8a8a93 */
 
   /* Accents */
   --accent:           0 212 216;        /* #00D4D8 — cyan-teal, signature TradeDiscipline */
@@ -95,7 +97,29 @@
 
   /* Niveaux de gris du texte */
   --foreground-muted:   161 161 170;    /* #a1a1aa — texte secondaire */
-  --foreground-subtle:  82 82 91;       /* #52525b — texte tertiaire/labels */
+  /* ⚠️ #52525b sur #09090b ne faisait que 2,57:1. Un texte « tertiaire » reste
+     un texte : il descend d'un cran d'emphase, pas sous le seuil de lecture. */
+  --foreground-subtle:  134 134 143;    /* #86868f — 4,7:1 jusque sur --surface */
+
+  /* ── Encres de texte : les MÊMES couleurs, assez foncées pour être lues ───
+     ⚠️⚠️ MESURÉ, PAS ESTIMÉ. En thème clair, TOUTES les couleurs sémantiques
+     échouaient au seuil AA (4,5:1) dès qu'elles servaient de texte :
+     accent 2,77:1 (« Compléter ma session → »), or 2,94:1 (« Premium »),
+     ambre 3,02:1, vert 3,13:1 (« +0,00 € »). Elles sont pensées pour des
+     APLATS et des bordures, où le contraste ne se joue pas de la même façon.
+
+     ⚠️ ON NE TOUCHE DONC PAS AUX APLATS : `bg-accent` garde le cyan de
+     signature, `border-loss` garde son rouge. Seules les utilitaires de TEXTE
+     pointent vers ces variantes (voir tailwind.config.ts). Même teinte, plus
+     foncée : rien ne change d'identité, tout devient lisible.
+
+     ⚠️ EN SOMBRE, ELLES PASSENT DÉJÀ (accent 10,8:1, vert 8,7:1, rouge 5,3:1,
+     ambre 9,3:1) : les variantes y valent la couleur d'origine. */
+  --accent-text:  0 212 216;
+  --profit-text:  34 197 94;
+  --loss-text:    239 68 68;
+  --warning-text: 245 158 11;
+  --gold-text:    234 179 8;
 
   /* ── Effect tokens — KPI Premium cards ──────────────────────────────── */
   --accent-glow:        0 229 208;     /* #00E5D0 — vivid cyan for dark-mode auras */
@@ -114,7 +138,8 @@ html.light {
   --card:       255 255 255;  /* #ffffff */
   --surface:    243 244 246;  /* #f3f4f6 */
   --border:     229 231 235;  /* #e5e7eb */
-  --muted:      107 114 128;  /* #6b7280 */
+  /* ⚠️ Voir la note du theme sombre : 4,39:1 sur --surface. */
+  --muted:      91 98 112;    /* #5b6270 */
 
   /* Accents */
   --accent:           0 168 172;        /* #00A8AC — légèrement plus foncé pour contraste */
@@ -129,7 +154,16 @@ html.light {
 
   /* Niveaux de gris du texte */
   --foreground-muted:   82 82 91;       /* #52525b */
-  --foreground-subtle:  161 161 170;    /* #a1a1aa */
+  /* ⚠️ #a1a1aa sur #f8f9fa ne faisait que 2,43:1, sur des étiquettes de KPI
+     (« Trades cette semaine »). Voir la note du thème sombre. */
+  --foreground-subtle:  103 110 123;    /* #676e7b — 4,6:1 jusque sur --surface */
+
+  /* Encres de texte : voir la note du thème sombre. */
+  --accent-text:  0 118 122;            /* #00767A — 5,1:1 */
+  --profit-text:  21 128 61;            /* #15803d — 4,7:1 */
+  --loss-text:    185 28 28;            /* #b91c1c — 6,1:1 */
+  --warning-text: 180 83 9;             /* #b45309 — 4,8:1 */
+  --gold-text:    154 94 7;             /* #9a5e07 — 4,8:1 jusque sur --surface */
 
   /* ── Effect tokens — KPI Premium cards ──────────────────────────────── */
   --accent-glow:        0 168 172;     /* #00A8AC */
@@ -172,7 +206,7 @@ html.light .force-dark {
   --card:       17 17 19;
   --surface:    26 26 26;
   --border:     28 28 30;
-  --muted:      113 113 122;
+  --muted:      138 138 147;
 
   --accent:           0 212 216;
   --accent-hover:     0 168 172;
@@ -184,7 +218,13 @@ html.light .force-dark {
   --gold:             234 179 8;
 
   --foreground-muted:   161 161 170;
-  --foreground-subtle:  82 82 91;
+  --foreground-subtle:  134 134 143;
+
+  --accent-text:  0 212 216;
+  --profit-text:  34 197 94;
+  --loss-text:    239 68 68;
+  --warning-text: 245 158 11;
+  --gold-text:    234 179 8;
 
   --accent-glow:        0 229 208;
   --accent-amber-glow:  251 191 36;

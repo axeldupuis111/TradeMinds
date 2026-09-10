@@ -78,7 +78,7 @@ describe("force-dark annule tout ce que le thème clair pose", () => {
       const fermante = css.indexOf("\n}", ouvrante);
       const corps = css.slice(ouvrante, fermante);
       const m = new Map<string, string>();
-      for (const x of corps.matchAll(/^\s*(--[a-z-]+)\s*:\s*([^;]+);/gm)) {
+      for (const x of Array.from(corps.matchAll(/^\s*(--[a-z-]+)\s*:\s*([^;]+);/gm))) {
         m.set(x[1], x[2].trim().replace(/\s+/g, " "));
       }
       return m;
