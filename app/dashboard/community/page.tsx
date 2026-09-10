@@ -159,7 +159,7 @@ export default function CommunityPage() {
               )}
             </div>
             <p className="mt-1 text-xs text-muted">
-              {t("com_members").replace("{n}", String(community.memberCount))}
+              {t("com_members", { n: community.memberCount })}
             </p>
           </div>
           {community.isOwner && (

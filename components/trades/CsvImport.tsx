@@ -729,9 +729,10 @@ export default function CsvImport({ strategyId, onImported }: Props) {
         <div className="mt-3 p-4 rounded-xl border border-accent/20 bg-accent/5 flex flex-wrap items-center gap-3">
           <span className="text-sm font-medium text-accent shrink-0">{t("auto_analysis_title")}</span>
           <p className="text-sm text-foreground flex-1 min-w-[200px]">
-            {t("auto_analysis_result")
-              .replace("{score}", String(autoAnalysis.score))
-              .replace("{n}", String(autoAnalysis.violations))}
+            {t("auto_analysis_result", {
+              score: autoAnalysis.score,
+              n: autoAnalysis.violations,
+            })}
           </p>
           <a href="/dashboard/analysis" className="text-xs font-semibold text-accent hover:underline whitespace-nowrap">
             {t("auto_analysis_link")}

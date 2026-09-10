@@ -205,9 +205,10 @@ export default function CoachDock() {
                  * une limite qu'on peut atteindre doit se voir avant.
                  */
                 <p className="text-[11px] text-foreground-muted">
-                  {t("coach_dock_remaining_both")
-                    .replace("{d}", String(chat.remaining))
-                    .replace("{m}", String(chat.monthlyRemaining))}
+                  {t("coach_dock_remaining_both", {
+                    d: chat.remaining,
+                    m: chat.monthlyRemaining,
+                  })}
                 </p>
               )}
             </div>

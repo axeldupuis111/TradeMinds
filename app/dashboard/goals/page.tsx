@@ -783,7 +783,7 @@ export default function GoalsPage() {
           {nextMilestone && (
             <div className="mt-4">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[11px] text-foreground-muted">{t("goals_milestone_to_next").replace("{n}", String(nextMilestone - streak.current)).replace("{m}", String(nextMilestone))}</span>
+                <span className="text-[11px] text-foreground-muted">{t("goals_milestone_to_next", { n: nextMilestone - streak.current, m: nextMilestone })}</span>
                 <span className="text-[11px] text-foreground-muted tabular-nums">{streak.current}/{nextMilestone}</span>
               </div>
               <div className="h-1.5 bg-border rounded-full overflow-hidden">
@@ -905,7 +905,7 @@ export default function GoalsPage() {
                     <>
                       {counts.met > 0 && (
                         <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-profit bg-profit/10 rounded-full px-2.5 py-1">
-                          <CheckCircle2 className="w-3 h-3" /> {counts.met} {t("goals_stat_met")}
+                          <CheckCircle2 className="w-3 h-3" /> {counts.met} {t("goals_stat_met", { n: counts.met })}
                         </span>
                       )}
                       {counts.progress > 0 && (

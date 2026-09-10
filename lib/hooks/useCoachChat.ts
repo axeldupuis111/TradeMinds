@@ -82,7 +82,7 @@ export interface ChatMessage {
 /** Libellé + lien du chip affiché quand le coach a agi. */
 export function coachActionMeta(
   a: CoachActionEvent,
-  t: (k: string) => string,
+  t: (k: string, valeurs?: Record<string, string | number>) => string,
 ): { label: string; href?: string } {
   switch (a.type) {
     case "goal_created": return { label: t("coach_action_goal_created"), href: "/dashboard/goals" };
@@ -90,7 +90,7 @@ export function coachActionMeta(
     case "goal_deleted": return { label: t("coach_action_goal_deleted"), href: "/dashboard/goals" };
     case "challenge_joined": return { label: t("coach_action_challenge_joined"), href: "/dashboard/leaderboard" };
     case "challenge_left": return { label: t("coach_action_challenge_left"), href: "/dashboard/leaderboard" };
-    case "trades_annotated": return { label: t("coach_action_trades_annotated").replace("{n}", String(a.count ?? 0)), href: "/dashboard/trades" };
+    case "trades_annotated": return { label: t("coach_action_trades_annotated", { n: a.count ?? 0 }), href: "/dashboard/trades" };
     case "note_saved": return { label: t("coach_action_note_saved") };
     case "strategy_created": return { label: t("coach_action_strategy_created"), href: "/dashboard/strategy" };
     case "strategy_updated": return { label: t("coach_action_strategy_updated"), href: "/dashboard/strategy" };
@@ -100,8 +100,8 @@ export function coachActionMeta(
     case "trade_created": return { label: t("coach_action_trade_created"), href: "/dashboard/trades" };
     case "trade_updated": return { label: t("coach_action_trade_updated"), href: "/dashboard/trades" };
     case "trade_closed": return { label: t("coach_action_trade_closed"), href: "/dashboard/trades" };
-    case "trades_deleted": return { label: t("coach_action_trades_deleted").replace("{n}", String(a.count ?? 0)), href: "/dashboard/trades" };
-    case "trades_reassigned": return { label: t("coach_action_trades_reassigned").replace("{n}", String(a.count ?? 0)), href: "/dashboard/trades" };
+    case "trades_deleted": return { label: t("coach_action_trades_deleted", { n: a.count ?? 0 }), href: "/dashboard/trades" };
+    case "trades_reassigned": return { label: t("coach_action_trades_reassigned", { n: a.count ?? 0 }), href: "/dashboard/trades" };
     case "account_created": return { label: t("coach_action_account_created"), href: "/dashboard/accounts" };
     case "account_updated": return { label: t("coach_action_account_updated"), href: "/dashboard/accounts" };
     case "session_started": return { label: t("coach_action_session_started"), href: "/dashboard/session" };

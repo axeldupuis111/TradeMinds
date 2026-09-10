@@ -91,7 +91,7 @@ export default function TradesPage() {
       } else if (data.retryInSeconds > 0) {
         setSyncMsg(t("trades_sync_wait").replace("{n}", String(data.retryInSeconds)));
       } else if (data.synced > 0) {
-        setSyncMsg(t("trades_sync_imported").replace("{n}", String(data.synced)));
+        setSyncMsg(t("trades_sync_imported", { n: data.synced }));
         setRefreshKey((k) => k + 1);
         await loadRecap();
       } else {

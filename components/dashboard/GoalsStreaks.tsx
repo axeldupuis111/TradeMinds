@@ -320,7 +320,7 @@ export default function GoalsStreaks() {
           <p className="text-muted text-xs">{t("goals_streak_desc")}</p>
           {record > 0 && streak > 0 && streak < record && (
             <p className="text-warning/90 text-[11px] font-medium mt-0.5">
-              {t("goals_beat_record").replace("{n}", String(record - streak + 1))}
+              {t("goals_beat_record", { n: record - streak + 1 })}
             </p>
           )}
         </div>
@@ -335,7 +335,7 @@ export default function GoalsStreaks() {
         <div className="mb-4">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[11px] text-foreground-muted">
-              {t("goals_next_badge").replace("{n}", String(nextMilestone - streak))}
+              {t("goals_next_badge", { n: nextMilestone - streak })}
             </span>
             <span className="text-[11px] text-foreground-muted tabular-nums">{streak}/{nextMilestone}</span>
           </div>
@@ -369,13 +369,13 @@ export default function GoalsStreaks() {
                 >
                   <Snowflake className="w-3.5 h-3.5" strokeWidth={2} />
                   {t("freeze_cta_button")}
-                  <span className="opacity-70">· {t("freeze_remaining").replace("{n}", String(freezeRemaining))}</span>
+                  <span className="opacity-70">· {t("freeze_remaining", { n: freezeRemaining })}</span>
                 </button>
               ) : (
                 <p className="mt-2 text-[11px] text-muted">{t("freeze_none_left")}</p>
               )}
               {freezeBonus > 0 && (
-                <p className="mt-1.5 text-[11px] text-sky-400/80">{t("freeze_bonus_note").replace("{n}", String(freezeBonus))}</p>
+                <p className="mt-1.5 text-[11px] text-sky-400/80">{t("freeze_bonus_note", { n: freezeBonus })}</p>
               )}
             </div>
           </div>

@@ -12,6 +12,7 @@ import {
 import { usePathname, useRouter } from "next/navigation";
 import { type Lang, type Dict, enDict, loadDict } from "./translations";
 import { createClient } from "./supabase/client";
+import { remplir } from "./remplir";
 
 const LOCALES: ReadonlyArray<Lang> = ["fr", "en", "de", "es"];
 const DEFAULT_LANG: Lang = "en";
@@ -21,7 +22,17 @@ const COOKIE_NAME = "NEXT_LOCALE";
 interface LanguageContextValue {
   lang: Lang;
   setLang: (lang: Lang) => void;
-  t: (key: string) => string;
+  /**
+   * ⚠️⚠️ ELLE NE PRENAIT AUCUNE VALEUR, et c'est ce qui a produit dix-huit
+   * « 1 atteint(s) » dans le produit. Sans mécanisme d'accord, chaque appelant
+   * remplaçait ses trous à la main avec `.replace()`, et le seul moyen d'écrire
+   * une phrase juste au singulier ET au pluriel était de mettre les deux
+   * formes. L'onglet backtest avait déjà résolu ça de son côté : la fonction
+   * est simplement remontée d'un cran.
+   *
+   * La forme des accords : « {n} {n|objectif atteint|objectifs atteints} ».
+   */
+  t: (key: string, valeurs?: Record<string, string | number>) => string;
 }
 
 const LanguageContext = createContext<LanguageContextValue>({
@@ -195,7 +206,8 @@ export function LanguageProvider({
       lang: mounted ? lang : initialLang,
       setLang,
       // Active dict first, English fallback (always loaded), then the key.
-      t: (key: string) => dict[key] || enDict[key] || key,
+      t: (key: string, valeurs?: Record<string, string | number>) =>
+        remplir(dict[key] || enDict[key] || key, valeurs),
     }),
     [mounted, lang, initialLang, setLang, dict]
   );

@@ -657,7 +657,7 @@ export default function StrategyPage() {
           <div className="bg-card border border-border rounded-xl p-6 max-w-sm w-full mx-4 space-y-4">
             <p className="text-foreground text-sm">
               {deleteTradeCount > 0
-                ? t("strategy_delete_confirm_trades").replace("{count}", String(deleteTradeCount))
+                ? t("strategy_delete_confirm_trades", { count: deleteTradeCount })
                 : t("strategy_delete_confirm")}
             </p>
             <div className="flex gap-3 justify-end">

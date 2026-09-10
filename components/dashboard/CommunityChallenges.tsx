@@ -143,7 +143,7 @@ export default function CommunityChallenges() {
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {myFinished > 0 && (
                 <span className="text-[11px] text-sky-400">
-                  {t("cc_gels_earned").replace("{n}", String(myFinished))}
+                  {t("cc_gels_earned", { n: myFinished })}
                 </span>
               )}
               {myWins.map((r) => (

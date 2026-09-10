@@ -823,14 +823,14 @@ export default function MonthlyReviewPage() {
                             <p className={`text-2xl font-black tabular-nums mt-1 ${payoffInsight.hiAvg >= 0 ? "text-profit" : "text-loss"}`}>
                               <CountUp end={Math.round(payoffInsight.hiAvg)} prefix={payoffInsight.hiAvg >= 0 ? "+" : ""} suffix={` ${currencySymbol(displayCurrency).trim()}`} duration={1} />
                             </p>
-                            <p className="text-[11px] text-muted mt-1">{t("review_payoff_days").replace("{n}", String(payoffInsight.hiN))}</p>
+                            <p className="text-[11px] text-muted mt-1">{t("review_payoff_days", { n: payoffInsight.hiN })}</p>
                           </div>
                           <div className="rounded-xl border border-loss/30 bg-loss/[0.04] p-4">
                             <p className="text-xs text-muted">{t("review_payoff_other")}</p>
                             <p className={`text-2xl font-black tabular-nums mt-1 ${payoffInsight.loAvg >= 0 ? "text-profit" : "text-loss"}`}>
                               <CountUp end={Math.round(payoffInsight.loAvg)} prefix={payoffInsight.loAvg >= 0 ? "+" : ""} suffix={` ${currencySymbol(displayCurrency).trim()}`} duration={1} />
                             </p>
-                            <p className="text-[11px] text-muted mt-1">{t("review_payoff_days").replace("{n}", String(payoffInsight.loN))}</p>
+                            <p className="text-[11px] text-muted mt-1">{t("review_payoff_days", { n: payoffInsight.loN })}</p>
                           </div>
                         </div>
                         {payoffInsight.diff > 0 && (
