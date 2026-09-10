@@ -28,6 +28,9 @@ const config: Config = {
         // Semantic trading colors — CSS-variable driven
         profit:              "rgb(var(--profit) / <alpha-value>)",
         loss:                "rgb(var(--loss) / <alpha-value>)",
+        // L'aplat d'un bouton destructeur, assez foncé pour porter du blanc dans
+        // les deux thèmes. Distinct de `loss` : voir la note dans globals.css.
+        "loss-fill":         "rgb(var(--loss-fill) / <alpha-value>)",
         warning:             "rgb(var(--warning) / <alpha-value>)",
         gold:                "rgb(var(--gold) / <alpha-value>)",
       },

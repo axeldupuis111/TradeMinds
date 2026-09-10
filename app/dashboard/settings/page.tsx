@@ -641,7 +641,7 @@ export default function SettingsPage() {
               <button
                 onClick={generateMtToken}
                 disabled={mtGenerating}
-                className="px-4 py-2 rounded-lg bg-loss text-white text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+                className="px-4 py-2 rounded-lg bg-loss-fill text-white text-sm font-medium hover:bg-loss-fill/90 transition-colors disabled:opacity-50"
               >
                 {mtGenerating ? "..." : t("sync_mt_regen")}
               </button>
@@ -755,7 +755,7 @@ export default function SettingsPage() {
               <button
                 onClick={handleDeleteAccount}
                 disabled={deleteConfirmInput !== confirmWord || isDeleting}
-                className="px-4 py-2 rounded-lg bg-loss text-white text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 rounded-lg bg-loss-fill text-white text-sm font-medium hover:bg-loss-fill/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isDeleting ? "..." : t("settings_delete_confirm_btn")}
               </button>

@@ -341,7 +341,7 @@ export default function UpgradePage() {
               <button
                 onClick={handleDowngrade}
                 disabled={downgrading}
-                className="flex-1 py-2.5 rounded-lg bg-loss text-white text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
+                className="flex-1 py-2.5 rounded-lg bg-loss-fill text-white text-sm font-medium hover:bg-loss-fill/90 transition-colors disabled:opacity-50"
               >
                 {downgrading ? "..." : t("downgrade_confirm")}
               </button>

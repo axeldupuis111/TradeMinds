@@ -24,8 +24,8 @@ const inputClass =
   "w-full px-3 py-2 bg-surface border border-border rounded-lg text-foreground placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent";
 
 const EMOTION_SELECTED_COLORS: Record<string, string> = {
-  positive: "bg-profit border-profit text-white",
-  negative: "bg-loss border-loss text-white",
+  positive: "bg-profit border-profit text-on-accent",
+  negative: "bg-loss-fill border-loss-fill text-white",
   warning: "bg-orange-500 border-orange-500 text-white",
   neutral: "bg-muted border-muted text-white",
 };

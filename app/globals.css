@@ -82,12 +82,30 @@
   --accent-hover:     0 168 172;        /* #00A8AC — variant hover/active */
   --accent-muted:     0 212 216;        /* même valeur, on joue sur l'alpha via Tailwind */
 
-  /* Encre posée SUR un aplat d'accent (boutons pleins). Volontairement la même
-     valeur dans les deux thèmes : le cyan reste clair partout, seule une encre
-     sombre y tient le AA. `text-background` faisait 10,8:1 en sombre mais
-     retombait à 2,77:1 en clair (le token vire au quasi-blanc), et `text-white`
-     plafonnait à 1,7:1 en sombre. Ici : 10,8:1 en sombre, 6,8:1 en clair. */
+  /* Encre posée SUR un aplat vif (boutons pleins). Volontairement la même
+     valeur dans les deux thèmes : ces couleurs restent claires partout, seule
+     une encre sombre y tient le AA. `text-background` faisait 10,8:1 en sombre
+     mais retombait à 2,77:1 en clair (le token vire au quasi-blanc), et
+     `text-white` plafonnait à 1,7:1 en sombre.
+     Sur le cyan : 10,8:1 en sombre, 6,8:1 en clair.
+
+     ⚠️⚠️ ET ELLE NE SERT PAS QU'À L'ACCENT. Mesuré sur « Valider et
+     sauvegarder » : `bg-profit text-white` fait **3,30:1** en clair et
+     **2,28:1** en sombre. Sur `--warning` : 3,19 et 2,15. Sur `--gold` : 2,94
+     et 1,92. Le blanc ne tient sur AUCUN de ces aplats. Cette encre-ci y fait
+     respectivement 6,0/8,7, 6,2/9,3 et 6,8/10,4.
+
+     ⚠️ LE ROUGE EST LE SEUL CAS OÙ AUCUNE ENCRE UNIQUE NE MARCHE : blanc sur
+     `--loss` donne 4,83:1 en clair mais 3,76:1 en sombre, et l'encre sombre
+     l'inverse (4,12 puis 5,29). Un bouton « supprimer » à texte noir n'existe
+     nulle part : c'est donc l'APLAT qui change, voir `--loss-fill`. */
   --on-accent:        9 9 11;           /* #09090b */
+
+  /* L'aplat d'un bouton destructeur. Le même rouge dans les deux thèmes, assez
+     foncé pour porter du blanc (6,47:1) : voir la note ci-dessus.
+     ⚠️ DISTINCT DE `--loss`, qui reste la couleur SÉMANTIQUE des pertes, des
+     bordures et des fonds teintés. On ne repeint pas les chiffres. */
+  --loss-fill:        185 28 28;        /* #b91c1c */
 
   /* Sémantiques */
   --profit:           34 197 94;        /* #22c55e */

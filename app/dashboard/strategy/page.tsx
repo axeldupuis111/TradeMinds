@@ -596,7 +596,7 @@ export default function StrategyPage() {
                   setIsDirty(false);
                   if (pendingNavRef.current) window.location.href = pendingNavRef.current;
                 }}
-                className="px-4 py-2 text-sm bg-loss text-white rounded-lg hover:opacity-90 transition-opacity"
+                className="px-4 py-2 text-sm bg-loss-fill text-white rounded-lg hover:opacity-90 transition-opacity"
               >
                 {t("strategy_leave")}
               </button>
@@ -665,7 +665,7 @@ export default function StrategyPage() {
               <button onClick={() => setShowDeleteConfirm(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-foreground hover:bg-surface transition-colors">
                 {t("strategy_stay")}
               </button>
-              <button onClick={handleDelete} className="px-4 py-2 text-sm bg-loss text-white rounded-lg hover:opacity-90 transition-opacity">
+              <button onClick={handleDelete} className="px-4 py-2 text-sm bg-loss-fill text-white rounded-lg hover:opacity-90 transition-opacity">
                 {t("strategy_delete")}
               </button>
             </div>
@@ -957,7 +957,7 @@ export default function StrategyPage() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-8 py-2.5 bg-profit text-white rounded-lg font-medium hover:bg-green-600 transition-colors disabled:opacity-50"
+            className="px-8 py-2.5 bg-profit text-on-accent rounded-lg font-medium hover:bg-profit/90 transition-colors disabled:opacity-50"
           >
             {saving ? t("strategy_saving") : t("strategy_save")}
           </button>

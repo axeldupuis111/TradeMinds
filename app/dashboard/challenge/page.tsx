@@ -547,7 +547,7 @@ function DeleteAccountModal({
           <button onClick={onCancel} disabled={busy} className="flex-1 py-2 bg-surface border border-border text-muted rounded-lg text-sm font-medium hover:text-foreground transition-colors disabled:opacity-50">
             {t("csv_cancel")}
           </button>
-          <button onClick={confirm} disabled={busy} className="flex-1 py-2 bg-loss text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-50">
+          <button onClick={confirm} disabled={busy} className="flex-1 py-2 bg-loss-fill text-white rounded-lg text-sm font-medium hover:bg-loss-fill/90 transition-colors disabled:opacity-50">
             {busy ? t("challenge_deleting") : t("challenge_delete_btn")}
           </button>
         </div>
