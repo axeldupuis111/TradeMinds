@@ -7,6 +7,7 @@ import { signe } from "@/lib/backtest/format";
 import type { Instrument } from "@/lib/backtest/instruments";
 import type { Apercu } from "@/app/dashboard/backtest/worker";
 import { clePourLesApercus, echelleApercu } from "@/lib/backtest/apercu";
+import { enDateEtHeure } from "@/lib/backtest/dates";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 /**
@@ -36,6 +37,14 @@ export interface InspectionProps {
   apercus: Apercu[];
   /** Le nombre de trades du rejeu : les aperçus n'en sont qu'un échantillon. */
   total: number;
+  /**
+   * La langue de l'application, pour la date du trade.
+   *
+   * ⚠️⚠️ « Direction : Buy · Date : 02/01/2025 10:45 » : le 2 janvier, écrit
+   * dans un ordre que n'importe quel lecteur anglophone lit « February 1st ».
+   * Voir l'en-tête de `lib/backtest/dates.ts`.
+   */
+  langue: string;
   instrument: Instrument;
   /** Vrai quand le trader a confirmé reconnaître sa méthode. */
   verifie: boolean;
@@ -46,7 +55,15 @@ export interface InspectionProps {
 const LARGEUR = 720;
 const HAUTEUR = 300;
 
-export function Inspection({ apercus, total, instrument, verifie, onVerifie, t }: InspectionProps) {
+export function Inspection({
+  apercus,
+  total,
+  langue,
+  instrument,
+  verifie,
+  onVerifie,
+  t,
+}: InspectionProps) {
   const [index, setIndex] = useState(0);
 
   if (apercus.length === 0) return null;
@@ -482,10 +499,7 @@ export function Inspection({ apercus, total, instrument, verifie, onVerifie, t }
         />
         <Ligne
           label={t("bt_date")}
-          valeur={new Date(a.trade.entreeMs).toLocaleString(undefined, {
-            dateStyle: "short",
-            timeStyle: "short",
-          })}
+          valeur={enDateEtHeure(a.trade.entreeMs, langue)}
         />
         <Ligne
           label={t("bt_risque_du_trade")}

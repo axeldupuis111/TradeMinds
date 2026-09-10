@@ -4,6 +4,7 @@ import type { Modification } from "@/lib/backtest/modifications";
 
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
+import { enDateEtHeure } from "@/lib/backtest/dates";
 import { signe } from "@/lib/backtest/format";
 import { comparerMesures, ecartsDeReglages } from "@/lib/backtest/comparaison";
 import type { VersionArchivee } from "@/lib/backtest/versions";
@@ -50,9 +51,12 @@ export function Versions({
   onRecharger,
   onSupprimer,
   ecartsAvecLaFiche,
+  langue,
   t,
 }: {
   versions: VersionArchivee[];
+  /** La langue de l'application, pour la date d'archivage. Voir `lib/backtest/dates.ts`. */
+  langue: string;
   /**
    * L'écart de cette version avec la fiche TELLE QU'ELLE EST AUJOURD'HUI.
    *
@@ -147,7 +151,7 @@ export function Versions({
                   />
                   <span className="min-w-0">
                     <span className="block text-xs font-medium text-foreground">
-                      {new Date(v.creeLe).toLocaleString()} · {v.instrument} · {v.de} → {v.a}
+                      {enDateEtHeure(v.creeLe, langue)} · {v.instrument} · {v.de} → {v.a}
                     </span>
                     <span className="mt-0.5 block text-[11px] tabular-nums text-foreground-muted">
                       <span className={TON[v.resume.verdict] ?? ""}>

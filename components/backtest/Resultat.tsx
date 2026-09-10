@@ -3,6 +3,7 @@
 import { Card } from "@/components/ui/Card";
 import { nomDuMarche } from "@/lib/backtest/phrases";
 import { cn } from "@/lib/cn";
+import { enDate } from "@/lib/backtest/dates";
 import { signe, signePourcent } from "@/lib/backtest/format";
 import { effetSurLeCompte } from "@/lib/backtest/capital";
 import { coutsEnPrix, type Instrument } from "@/lib/backtest/instruments";
@@ -43,6 +44,8 @@ export interface ResultatProps {
   lecture: LectureBacktest;
   trades: TradeSimule[];
   audit: AuditExecution;
+  /** La langue de l'application, pour les dates. Voir `lib/backtest/dates.ts`. */
+  langue: string;
   /**
    * Le plan trace-t-il des droites ?
    *
@@ -119,6 +122,7 @@ export function Resultat({
   lecture,
   trades,
   audit,
+  langue,
   traceDesDroites,
   instrument,
   periode,
@@ -566,7 +570,7 @@ export function Resultat({
               : t("bt_tentatives", { n: tentatives, max: MAX_TENTATIVES_AVANT_ALERTE })}
             {tentativesDepuis && tentatives > 1
               ? ` ${t("bt_tentatives_depuis", {
-                  date: new Date(tentativesDepuis).toLocaleDateString(),
+                  date: enDate(tentativesDepuis, langue),
                 })}`
               : ""}
           </li>

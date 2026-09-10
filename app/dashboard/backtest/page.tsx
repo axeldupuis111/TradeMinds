@@ -79,6 +79,7 @@ import {
   MOIS_MIN_CONTROLE,
   periodeIntacte,
 } from "@/lib/backtest/hors-periode";
+import { enDate } from "@/lib/backtest/dates";
 import {
   composerBloc,
   ecrireDansLaFiche,
@@ -1117,7 +1118,7 @@ export default function BacktestPage() {
      * Le trader avait cliqué sur une version archivée, datée, qu'il n'avait
      * pas retapée.
      */
-    const quand = new Date(v.creeLe).toLocaleDateString();
+    const quand = enDate(v.creeLe, lang);
     setOrigines(
       Object.fromEntries(
         DESCRIPTEURS.map((x) => [x.cle, { pose: "version" as const, label: quand }]),
@@ -1125,7 +1126,7 @@ export default function BacktestPage() {
     );
     setResultat(null);
     setSauvegarde("repos");
-  }, []);
+  }, [lang]);
 
   /**
    * Les marchés qu'on accepte de comparer au sien.
@@ -1552,7 +1553,7 @@ export default function BacktestPage() {
       setEtatReponses("encours");
 
       const bloc = composerBlocPlan({
-        titre: tr("bt_comp_entete", { date: new Date().toLocaleDateString() }),
+        titre: tr("bt_comp_entete", { date: enDate(new Date(), lang) }),
         methode: methodeCode || undefined,
         reponses: nouvelles,
         intitules: Object.fromEntries(CODES_QUESTIONS.map((c) => [c, tr(`bt_q_${c}`)])),
@@ -1575,7 +1576,7 @@ export default function BacktestPage() {
       );
       setEtatReponses("fait");
     },
-    [strategies, strategieId, methodeCode, supabase, tr],
+    [strategies, strategieId, methodeCode, supabase, tr, lang],
   );
 
   /**
@@ -1588,7 +1589,7 @@ export default function BacktestPage() {
       const strat = strategies.find((x) => x.id === strategieId);
       if (!strat) return;
       const bloc = composerBlocPlan({
-        titre: tr("bt_comp_entete", { date: new Date().toLocaleDateString() }),
+        titre: tr("bt_comp_entete", { date: enDate(new Date(), lang) }),
         methode: nouveau || undefined,
         reponses,
         intitules: Object.fromEntries(CODES_QUESTIONS.map((c) => [c, tr(`bt_q_${c}`)])),
@@ -1606,7 +1607,7 @@ export default function BacktestPage() {
           );
         });
     },
-    [strategies, strategieId, reponses, supabase, tr],
+    [strategies, strategieId, reponses, supabase, tr, lang],
   );
 
   /**
@@ -1642,7 +1643,7 @@ export default function BacktestPage() {
   const blocFiche = useMemo(() => {
     if (modifications.length === 0 || !resultat) return "";
     return composerBloc({
-      titre: tr("bt_sauver_entete", { date: new Date().toLocaleDateString() }),
+      titre: tr("bt_sauver_entete", { date: enDate(new Date(), lang) }),
       lignes: modifications.map(
         (m) =>
           `${tr(`bt_modif_${m.cle}`)} : ${m.avant} → ${m.apres}. ` +
@@ -1662,7 +1663,7 @@ export default function BacktestPage() {
           : undefined,
       avertissement: tr("bt_modif_avertissement"),
     });
-  }, [modifications, resultat, instrument, de, a, controleValide, controleAffiche, tr]);
+  }, [modifications, resultat, instrument, de, a, controleValide, controleAffiche, tr, lang]);
 
   const repartition = useMemo(
     () =>
@@ -2404,6 +2405,7 @@ export default function BacktestPage() {
               ecartsAvecLaFiche={ecartsDUneVersion}
               onRecharger={reprendreVersion}
               onSupprimer={supprimerUneVersion}
+              langue={lang}
               t={tr}
             />
           </StaggerItem>
@@ -2682,6 +2684,7 @@ export default function BacktestPage() {
             <Inspection
               apercus={resultat.apercus}
               total={resultat.trades.length}
+              langue={lang}
               instrument={instrument}
               verifie={verifie}
               onVerifie={setVerifie}
@@ -2752,6 +2755,7 @@ export default function BacktestPage() {
               lecture={resultat.lecture}
               trades={resultat.trades}
               audit={resultat.audit}
+              langue={lang}
               traceDesDroites={plan.niveau.type === "trendline"}
               instrument={instrument}
               periode={{ de, a }}
