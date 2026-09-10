@@ -148,12 +148,52 @@ html.light {
    ──────────────────────────────────────────────────────────────────────── */
 .force-dark,
 html.light .force-dark {
+  /* ⚠️⚠️ LA LISTE COMPLÈTE, ET IL EN MANQUAIT ONZE SUR DIX-SEPT. Mesuré sur la
+     landing, ouverte par quelqu'un dont le thème est CLAIR — le cas d'Axel :
+
+       --foreground-muted gardait sa valeur claire (#52525b) sur un fond
+       #09090b, soit 2,57:1 sur QUATRE-VINGT-DIX-NEUF éléments, dont toute la
+       navigation (« Fonctionnalités », « Tarifs », « FAQ », « Blog »). En
+       dessous du seuil AA de 4,5, et illisible pour de vrai.
+
+       --accent valait #00A8AC, la variante assombrie POUR FOND CLAIR, au lieu
+       du cyan de signature #00D4D8. La page qu'il a choisie « parce qu'elle est
+       cyan et plus pro » n'était pas cyan chez lui.
+
+       --loss, --profit, --warning, --gold et les trois auras : mêmes valeurs
+       claires posées sur du noir.
+
+     ⚠️ CE BLOC REDÉCLARE DONC TOUT CE QUE html.light REDÉCLARE. La règle est
+     là : une liste d'annulation qui n'annule qu'une partie laisse passer le
+     reste sans rien signaler, et personne ne voit ce qui manque en la lisant.
+     Un test compare les deux listes. */
   --background: 9 9 11;
   --foreground: 250 250 250;
   --card:       17 17 19;
   --surface:    26 26 26;
   --border:     28 28 30;
   --muted:      113 113 122;
+
+  --accent:           0 212 216;
+  --accent-hover:     0 168 172;
+  --accent-muted:     0 212 216;
+
+  --profit:           34 197 94;
+  --loss:             239 68 68;
+  --warning:          245 158 11;
+  --gold:             234 179 8;
+
+  --foreground-muted:   161 161 170;
+  --foreground-subtle:  82 82 91;
+
+  --accent-glow:        0 229 208;
+  --accent-amber-glow:  251 191 36;
+  --accent-violet-glow: 167 139 250;
+  --card-grad-top: 22 22 30;
+  --card-grad-bot: 8 8 12;
+  --glow-shadow:   0 30px 70px -20px rgba(0,0,0,.95), inset 0 0 0 1px rgba(255,255,255,.025), 0 0 80px -20px rgba(0,229,208,.28);
+  --sheen:         rgba(255,255,255,.22);
+
   color-scheme: dark;
   /* Ensure body-level bg/text picks up local variables */
   background-color: rgb(var(--background));
