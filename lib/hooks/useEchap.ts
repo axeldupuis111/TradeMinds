@@ -24,17 +24,37 @@ import { useEffect } from "react";
  * fenêtres différentes (la séance, la fiche stratégie). Un écouteur posé sans
  * condition les fermerait toutes les deux, ou fermerait la mauvaise. Ici chaque
  * fenêtre déclare quand elle écoute.
- *
- * ⚠️ `keydown` SUR LE DOCUMENT, en phase de capture, pour passer avant un champ
- * de saisie qui absorberait la touche.
  */
+
+/** Une cible d'événements : le document du navigateur, ou un double de test. */
+export interface CibleClavier {
+  addEventListener(type: "keydown", h: (e: KeyboardEvent) => void, capture: boolean): void;
+  removeEventListener(type: "keydown", h: (e: KeyboardEvent) => void, capture: boolean): void;
+}
+
+/**
+ * Branche Échap sur une cible et rend de quoi le débrancher.
+ *
+ * ⚠️ SÉPARÉE DU HOOK POUR ÊTRE TESTABLE : ce dépôt n'a ni jsdom ni bibliothèque
+ * de rendu, donc un hook ne se teste pas. Sans cette fonction, on ne pourrait
+ * vérifier que la PRÉSENCE des appels, jamais qu'appuyer sur Échap ferme
+ * vraiment quelque chose — vingt-huit fenêtres pourraient appeler une fonction
+ * vide et tous les tests resteraient verts.
+ *
+ * ⚠️ EN PHASE DE CAPTURE, pour passer AVANT un champ de saisie qui absorberait
+ * la touche : une fenêtre de saisie est exactement le cas où Échap doit marcher.
+ */
+export function brancherEchap(cible: CibleClavier, fermer: () => void): () => void {
+  const surTouche = (e: KeyboardEvent) => {
+    if (e.key === "Escape") fermer();
+  };
+  cible.addEventListener("keydown", surTouche, true);
+  return () => cible.removeEventListener("keydown", surTouche, true);
+}
+
 export function useEchap(actif: boolean, fermer: () => void) {
   useEffect(() => {
     if (!actif) return;
-    const surTouche = (e: KeyboardEvent) => {
-      if (e.key === "Escape") fermer();
-    };
-    document.addEventListener("keydown", surTouche, true);
-    return () => document.removeEventListener("keydown", surTouche, true);
+    return brancherEchap(document, fermer);
   }, [actif, fermer]);
 }
