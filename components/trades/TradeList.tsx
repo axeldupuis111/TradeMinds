@@ -410,6 +410,11 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     setSelectedIds(new Set());
   }, [filters]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /**
+   * ⚠️ LECTURE SEULE, DONC PAS DE NOTIFICATION : changer de page, de tri ou de
+   * filtre ne modifie AUCUN trade. Prévenir la page ici lui ferait recharger
+   * son total à chaque clic de pagination, pour un chiffre qui n'a pas bougé.
+   */
   useEffect(() => {
     loadTrades();
     loadGlobalStats();
@@ -432,6 +437,10 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
       loadTrades();
       loadGlobalStats();
       loadAllPairs();
+      // ⚠️ ET LE BANDEAU DE LA PAGE AUSSI : un trade qui arrive de l'EA change
+      // le total autant qu'un trade saisi à la main. Sans ça, la ligne
+      // apparaissait sous un total qui l'ignorait.
+      onTradeUpdated?.();
     };
   });
 
@@ -668,6 +677,19 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     setSelectedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
     loadTrades();
     loadGlobalStats();
+    /**
+     * ⚠️⚠️ ET ON PRÉVIENT LA PAGE. Le bandeau « 86 trades · WR 46,5 % · P&L … »
+     * qui surplombe cette liste n'appartient PAS à ce composant : il vit dans
+     * `app/dashboard/trades/page.tsx` et se recharge par `onTradeUpdated`.
+     * Sans cet appel, supprimer un trade retirait bien la ligne et laissait le
+     * total au-dessus inchangé : deux chiffres pour le même fait, sur le même
+     * écran, à trente pixels d'écart.
+     *
+     * ⚠️ CRÉER UN TRADE, LUI, RAFRAÎCHISSAIT DÉJÀ LES DEUX, parce que la modale
+     * de création est montée par la page et appelle son `loadRecap`. La règle
+     * était donc écrite, et appliquée à une moitié de la paire.
+     */
+    onTradeUpdated?.();
   }
 
   /** Le filtre gagnant/perdant, qui ne s'exprime pas en SQL (voir applySqlFilters). */
@@ -777,6 +799,9 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     setPage(0); // la page courante n'existe peut-être plus après coup
     loadTrades();
     loadGlobalStats();
+    // ⚠️ Même raison qu'à la suppression à l'unité : le bandeau de la page
+    // ne se recharge que si on le lui demande.
+    onTradeUpdated?.();
   }
 
   function toggleSelect(id: string) {
