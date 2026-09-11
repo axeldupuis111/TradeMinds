@@ -1,3 +1,4 @@
+import { SITE_URL } from "@/lib/seo";
 import { createClient } from "@/lib/supabase/server";
 import { fetchAllRows } from "@/lib/supabase-paginate";
 import { chargerLaSerieDeDiscipline } from "@/lib/discipline-streak-source";
@@ -18,7 +19,6 @@ interface Props {
   params: { username: string };
 }
 
-const SITE_URL = "https://tradediscipline.app";
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // Pseudo bloqué par la modération → même comportement qu'un profil inexistant.

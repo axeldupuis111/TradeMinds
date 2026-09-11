@@ -1,6 +1,6 @@
+import { SITE_URL } from "@/lib/seo";
 import { MetadataRoute } from "next";
 
-const SITE_URL = "https://tradediscipline.app";
 
 export default function robots(): MetadataRoute.Robots {
   return {

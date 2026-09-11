@@ -1,8 +1,8 @@
+import { SITE_URL } from "@/lib/seo";
 import { MetadataRoute } from "next";
 import { locales, defaultLocale } from "@/i18n/config";
 import { getAllPosts } from "@/lib/blog/posts";
 
-const SITE_URL = "https://tradediscipline.app";
 
 // Pages multilingues (indexées dans les 4 langues avec hreflang)
 const MULTILANG_PAGES = ["", "/trading-journal", "/login", "/faq", "/contact"];

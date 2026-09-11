@@ -38,6 +38,22 @@ describe("les liens à partager partent du site canonique", () => {
     return out;
   }
 
+  /**
+   * ⚠️ ET L'ADRESSE DU SITE NE S'ÉCRIT QU'UNE FOIS DANS CE QUI LA DÉCLARE :
+   * `robots.txt`, le plan du site et la canonique du profil public en tenaient
+   * chacun leur copie. Trois vérités indépendantes sur la même chose, et le
+   * jour d'un changement de domaine, deux d'entre elles restent en arrière
+   * sans rien casser visiblement — c'est Google qui s'en aperçoit.
+   */
+  it("le domaine canonique n'est déclaré qu'à un endroit", () => {
+    const fautes: string[] = [];
+    for (const chemin of ["app/robots.ts", "app/sitemap.ts", "app/profile/[username]/page.tsx"]) {
+      const source = readFileSync(join(process.cwd(), chemin), "utf8");
+      if (/const SITE_URL\s*=\s*"https/.test(source)) fautes.push(chemin);
+    }
+    expect(fautes, "copies du domaine canonique : " + fautes.join(", ")).toEqual([]);
+  });
+
   it("le constructeur rend bien une adresse du site", () => {
     expect(lienPartageable("/profile/abc")).toBe(`${SITE_URL}/profile/abc`);
     // Une barre oubliée ne doit pas coller deux morceaux d'URL.
