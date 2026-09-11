@@ -82,13 +82,25 @@ export default async function DashboardPage() {
 
   // Ordre chronologique refait ici : les pages sont lues dans l'ordre stable de
   // `id`, la courbe d'équité, elle, se lit dans le temps.
+  /**
+   * ⚠️⚠️ `?? []` TRANSFORMAIT « JE N'AI PAS TOUT » EN « IL N'Y A RIEN ».
+   * `fetchAllRows` rend `null` des qu'une page echoue, et le tableau vide qui
+   * en sortait faisait dire au tableau de bord trois choses fausses d'un coup :
+   * la courbe d'equite se vidait, la liste d'activation repassait a « enregistre
+   * ton premier trade », et l'encart de DONNEES DE DEMONSTRATION s'affichait a
+   * quelqu'un qui a un vrai journal. Mesure sur « Mes Trades » le meme jour :
+   * l'ecran y disait « Aucun trade enregistre » a un compte de 85 trades.
+   */
+  const lectureIncomplete = allTradesRows === null;
   const allTrades = (allTradesRows ?? [])
     .slice()
     .sort((a, b) => new Date(a.open_time).getTime() - new Date(b.open_time).getTime());
 
   const onboarding = {
     hasAccount: (activeAccounts?.length ?? 0) > 0,
-    hasTrades: allTrades.length > 0,
+    // ⚠️ Ne pas savoir n'est pas « il n'y en a pas » : la lecture courte des
+    // cinq derniers trades, elle, a peut-etre reussi.
+    hasTrades: allTrades.length > 0 || (recentTrades?.length ?? 0) > 0,
     hasStrategy: !!primaryStrategy,
     hasSession: !!lastReview,
   };
@@ -125,6 +137,7 @@ export default async function DashboardPage() {
         lot_size: t.lot_size ?? null, entry_price: t.entry_price ?? null, exit_price: t.exit_price ?? null,
       }))}
       onboarding={onboarding}
+      lectureIncomplete={lectureIncomplete}
     />
   );
 }

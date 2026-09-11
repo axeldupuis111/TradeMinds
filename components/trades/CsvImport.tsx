@@ -9,6 +9,7 @@ import { exitDemoModeFromClient } from "@/lib/demo-data";
 import { splitAlreadyImported, type DedupeTrade } from "@/lib/trades/dedupe-import";
 import { track } from "@/lib/track";
 import { createClient } from "@/lib/supabase/client";
+import { fetchAllRows } from "@/lib/supabase-paginate";
 import { messageDErreurSupabase } from "@/lib/erreurs-de-base";
 import { useCallback, useEffect, useState } from "react";
 import { nombre } from "@/lib/nombres";
@@ -355,13 +356,40 @@ export default function CsvImport({ strategyId, onImported }: Props) {
     if (openTimes.length > 0) {
       const minTime = openTimes.reduce((a, b) => (a < b ? a : b));
       const maxTime = openTimes.reduce((a, b) => (a > b ? a : b));
-      const { data: existing } = await supabase
-        .from("trades")
-        .select("open_time, pair, direction, lot_size")
-        .eq("user_id", user.id)
-        .gte("open_time", minTime)
-        .lte("open_time", maxTime);
-      existingTrades = (existing || []) as DedupeTrade[];
+      /**
+       * ⚠️⚠️ CETTE LECTURE DECIDE DE CE QUI SERA ECRIT, ET ELLE ETAIT
+       * DOUBLEMENT MUETTE.
+       *
+       * ⚠️ SON `error` ETAIT JETE : une lecture refusee donnait
+       * `existing = null`, donc « aucun trade existant », donc AUCUN doublon
+       * detecte. Le fichier repassait en entier et le journal se dedoublait,
+       * sans un mot.
+       *
+       * ⚠️ ET ELLE N'ETAIT PAS PAGINEE : PostgREST s'arrete a mille lignes
+       * avec un statut 200. La fenetre de dates n'est pas une borne ici, c'est
+       * l'etendue du fichier importe : un export d'historique complet la rend
+       * aussi large que le compte. Au-dela de mille trades deja presents dans
+       * cette fenetre, les suivants n'etaient pas vus et repartaient en double.
+       *
+       * `fetchAllRows` rend `null` des qu'une page echoue, et on REFUSE
+       * l'import dans ce cas : ne pas savoir n'autorise pas a ecrire.
+       */
+      const existing = await fetchAllRows<DedupeTrade>((from, to) =>
+        supabase
+          .from("trades")
+          .select("open_time, pair, direction, lot_size")
+          .eq("user_id", user.id)
+          .gte("open_time", minTime)
+          .lte("open_time", maxTime)
+          .order("id", { ascending: true })
+          .range(from, to),
+      );
+      if (existing === null) {
+        setImporting(false);
+        setMessage({ type: "error", text: t("csv_dedupe_unreadable") });
+        return;
+      }
+      existingTrades = existing;
     }
 
     const { toImport: uniqueTrades, skipped: skippedCount } = splitAlreadyImported(

@@ -1,0 +1,114 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+import frDict from "./i18n/fr";
+import enDict from "./i18n/en";
+import esDict from "./i18n/es";
+import deDict from "./i18n/de";
+
+/**
+ * UNE LECTURE RATÉE N'EST PAS UN JOURNAL VIDE.
+ *
+ * ── LE DÉFAUT, MESURÉ EN PRODUCTION ─────────────────────────────────────────
+ *
+ * ⚠️⚠️ « AUCUN TRADE ENREGISTRÉ. » À UN TRADER QUI EN A QUATRE-VINGT-CINQ. En
+ * faisant échouer la lecture REST du journal depuis le navigateur : le tableau
+ * se vide, le message d'état vide s'affiche, et le bandeau juste au-dessus
+ * continue d'annoncer « 85 trades au total ». Deux chiffres pour le même fait
+ * sur le même écran, et le plus visible des deux dit à quelqu'un qu'il a tout
+ * perdu.
+ *
+ * ⚠️ LE TABLEAU DE BORD FAISAIT PIRE, PARCE QU'IL AGIT DESSUS. `fetchAllRows`
+ * rend `null` dès qu'une page échoue, et il écrivait `?? []` : la courbe
+ * d'équité se vidait, la liste d'activation repassait à « enregistre ton
+ * premier trade », et l'encart de DONNÉES DE DÉMONSTRATION s'affichait. Le
+ * produit proposait des trades fictifs à quelqu'un dont il venait de ne pas
+ * réussir à lire les vrais.
+ *
+ * ⚠️ ET LA RÈGLE ÉTAIT DÉJÀ ÉCRITE, dans `lib/lectures-bornees.test.ts` : « un
+ * appelant qui écrirait `?? []` transformerait je n'ai pas tout en il n'y a
+ * rien ». Elle tenait trois fichiers nommés. Le tableau de bord n'en faisait
+ * pas partie.
+ *
+ * ── LA RÈGLE ────────────────────────────────────────────────────────────────
+ *
+ * Un écran qui montre une liste distingue TROIS états, pas deux : je charge,
+ * je n'ai pas pu lire, il n'y a rien. Le deuxième se dit, et il ne déclenche
+ * aucune des conséquences du troisième.
+ */
+describe("les écrans distinguent « rien » de « je n'ai pas pu lire »", () => {
+  const lire = (chemin: string) => readFileSync(join(process.cwd(), chemin), "utf8");
+
+  it("« Mes Trades » a un état de lecture ratée, distinct de l'état vide", () => {
+    const src = lire("components/trades/TradeList.tsx");
+    // La lecture lit son erreur…
+    expect(src, "l'erreur de lecture n'est plus lue").toMatch(
+      /const \{ data, count, error \} = await query\.range/,
+    );
+    // … et l'écran a bien DEUX branches distinctes.
+    expect(src).toContain("lectureEchouee ? (");
+    expect(src).toContain('t("trades_load_failed")');
+    expect(src).toContain('t("trades_empty")');
+    // La branche d'échec passe avant l'état vide, sinon elle ne sert à rien.
+    expect(
+      src.indexOf("lectureEchouee ? ("),
+      "l'état vide est testé avant l'échec de lecture",
+    ).toBeLessThan(src.indexOf('trades.length === 0 ? ('));
+  });
+
+  it("le tableau de bord ne prend pas une lecture partielle pour un journal vide", () => {
+    const src = lire("app/dashboard/page.tsx");
+    expect(src, "le `null` de fetchAllRows n'est plus regardé").toContain(
+      "const lectureIncomplete = allTradesRows === null;",
+    );
+    expect(src, "le fait n'est pas transmis à l'écran").toContain(
+      "lectureIncomplete={lectureIncomplete}",
+    );
+    /**
+     * ⚠️ ET L'ACTIVATION NE SE DÉDUIT PLUS D'UN SEUL CHIFFRE. Ne pas savoir
+     * n'est pas « il n'y en a pas » : la lecture courte des cinq derniers
+     * trades, elle, a peut-être réussi.
+     */
+    expect(src).toContain("hasTrades: allTrades.length > 0 || (recentTrades?.length ?? 0) > 0");
+  });
+
+  it("le tableau de bord le dit, et ne propose pas de données fictives", () => {
+    const src = lire("components/dashboard/DashboardContent.tsx");
+    expect(src).toContain('t("dash_read_incomplete")');
+    expect(src, "l'encart démo s'affiche encore sur une lecture ratée").toContain(
+      "{allTrades.length === 0 && !lectureIncomplete && <DemoDataCta />}",
+    );
+  });
+
+  /**
+   * ⚠️ L'IMPORT CSV EST LE CAS OÙ CETTE RÈGLE N'EST PAS COSMÉTIQUE : la lecture
+   * des trades déjà présents DÉCIDE de ce qui sera écrit. Ratée, elle rendait
+   * « aucun trade existant », donc aucun doublon détecté, donc le fichier
+   * repassait en entier et le journal se dédoublait. Et elle n'était pas
+   * paginée : au-delà de mille trades déjà présents dans la fenêtre du fichier,
+   * les suivants repartaient en double sans un mot.
+   */
+  it("l'import CSV refuse d'écrire quand il n'a pas pu vérifier", () => {
+    const src = lire("components/trades/CsvImport.tsx");
+    expect(src, "la lecture de déduplication n'est pas paginée").toContain(
+      "const existing = await fetchAllRows<DedupeTrade>(",
+    );
+    expect(src, "la déduplication ne trie pas sur une colonne unique").toMatch(
+      /\.order\("id", \{ ascending: true \}\)/,
+    );
+    expect(src, "une lecture incomplète n'arrête pas l'import").toContain(
+      "if (existing === null) {",
+    );
+    expect(src).toContain('t("csv_dedupe_unreadable")');
+  });
+
+  it("les trois messages existent dans les quatre langues", () => {
+    for (const [nom, dico] of Object.entries({ fr: frDict, en: enDict, es: esDict, de: deDict })) {
+      for (const cle of ["trades_load_failed", "dash_read_incomplete", "csv_dedupe_unreadable"]) {
+        const texte = (dico as Record<string, string>)[cle];
+        expect(texte, `${cle} manque en ${nom}`).toBeTruthy();
+        expect(texte.length, `${cle} trop court en ${nom}`).toBeGreaterThan(30);
+      }
+    }
+  });
+});

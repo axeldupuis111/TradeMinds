@@ -103,6 +103,8 @@ interface Props {
   maxTradesPerDay: number | null;
   allowedPairs: string[] | null;
   onboarding: OnboardingState;
+  /** Vrai quand la lecture du journal s'est arretee en cours de route. */
+  lectureIncomplete?: boolean;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -144,6 +146,7 @@ export default function DashboardContent({
   maxTradesPerDay,
   allowedPairs,
   onboarding,
+  lectureIncomplete = false,
 }: Props) {
   const { t } = useLanguage();
   const { plan, canUseAI, loading: planLoading } = usePlan();
@@ -279,11 +282,25 @@ export default function DashboardContent({
            key sur le volume de trades : router.refresh() après injection/
            purge remonte le composant, qui re-vérifie son état. ── */}
 
+      {/* ⚠️⚠️ « Je n'ai pas pu tout lire » se DIT, sinon tout ce qui suit
+           raconte un journal vide a quelqu'un qui n'en a pas. */}
+      {lectureIncomplete && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="mb-4 rounded-xl border border-loss/40 bg-loss/[0.06] px-4 py-3.5 text-sm text-foreground"
+        >
+          {t("dash_read_incomplete")}
+        </div>
+      )}
+
       {/* ── Onboarding / activation ──────────────────────────────────── */}
       <OnboardingChecklist state={onboarding} />
 
-      {/* ── Mode démo : proposer des données fictives si compte vide ── */}
-      {allTrades.length === 0 && <DemoDataCta />}
+      {/* ── Mode démo : proposer des données fictives si compte vide ──
+           ⚠️ Pas quand la lecture a echoue : proposer des trades fictifs a
+           quelqu'un dont on n'a pas pu lire les vrais est la pire des reponses. */}
+      {allTrades.length === 0 && !lectureIncomplete && <DemoDataCta />}
 
       {/* ── « Ce que tu rates » : les fonctionnalités verrouillées, visibles.
            Remplace l'ancienne bannière upsell générique — un free doit VOIR

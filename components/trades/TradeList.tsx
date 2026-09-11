@@ -285,6 +285,17 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
+  /**
+   * Vrai quand la LECTURE du journal a echoue.
+   *
+   * ⚠️⚠️ SANS LUI, L'ECRAN DISAIT « Aucun trade enregistre. » A UN TRADER QUI
+   * EN A QUATRE-VINGT-CINQ. Mesure en production en faisant echouer la lecture
+   * REST : le tableau se vide, le message d'etat vide s'affiche, et le bandeau
+   * juste au-dessus continue d'annoncer « 85 trades au total ». Deux chiffres
+   * pour le meme fait sur le meme ecran, et le plus visible des deux est un
+   * mensonge : « tu n'as rien » au lieu de « je n'ai pas pu lire ».
+   */
+  const [lectureEchouee, setLectureEchouee] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   /**
@@ -564,7 +575,14 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
         .order("id", { ascending: false });
     }
 
-    const { data, count } = await query.range(from, to);
+    const { data, count, error } = await query.range(from, to);
+    if (error) {
+      console.error("[trades] lecture du journal refusee :", error.message);
+      setLectureEchouee(true);
+      setLoading(false);
+      return;
+    }
+    setLectureEchouee(false);
 
     // Aucun dédoublonnage d'affichage ici : ouvrir trois positions identiques
     // à la même seconde (même paire, même prix) est un scénario de trading
@@ -1188,6 +1206,17 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
               ))}
             </tbody>
           </table>
+        </div>
+      ) : lectureEchouee ? (
+        /* ⚠️ « Je n'ai pas pu lire » n'est PAS « tu n'as rien ». */
+        <div role="alert" aria-live="assertive" className="py-4 flex flex-wrap items-center gap-3">
+          <p className="text-loss text-sm">{t("trades_load_failed")}</p>
+          <button
+            onClick={() => void loadTrades()}
+            className="px-3 py-1.5 bg-surface border border-border text-foreground rounded-lg text-sm hover:bg-border transition-colors"
+          >
+            {t("error_retry")}
+          </button>
         </div>
       ) : trades.length === 0 ? (
         <p className="text-muted py-4">{t("trades_empty")}</p>
