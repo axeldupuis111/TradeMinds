@@ -872,6 +872,7 @@ const dict: Record<string, string> = {
   "notfound_title": "Seite nicht gefunden",
   "notfound_subtitle": "Die gesuchte Seite existiert nicht oder wurde verschoben.",
   "notfound_cta": "Zurück zum Dashboard",
+  "notfound_cta_home": "Zurück zur Startseite",
   "plan_free": "Kostenlos",
   "plan_plus": "Plus",
   "plan_premium": "Premium",
