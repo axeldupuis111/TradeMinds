@@ -89,4 +89,64 @@ describe("un seul chiffre de discipline", () => {
       expect(ligne?.[1], `${langue} : ${ligne?.[1]}`).toContain(attendu);
     }
   });
+
+  /**
+   * ── LA QUATRIÈME SURFACE ────────────────────────────────────────────────────
+   *
+   * ⚠️⚠️ LE CLASSEMENT DISAIT « Discipline 0 » ET « 🔥 0 Série » le jour où le
+   * tableau de bord affichait 74 et 75. Le même compte, à un clic d'écart. Ses
+   * chiffres ne sont pourtant pas faux : ce sont ceux de la FENÊTRE de
+   * classement (moyenne des bilans sur trente jours, plus longue suite de jours
+   * à 70+ dans cette fenêtre), et ce compte n'a plus de bilan depuis cinq
+   * semaines. C'est encore le NOM qui mentait, exactement comme sur le profil,
+   * et la correction du profil n'avait pas été portée ici : trois surfaces
+   * réconciliées sur quatre.
+   *
+   * ⚠️ ON NE TOUCHE PAS AU CALCUL. Un classement se joue sur une période, sinon
+   * il compare des anciennetés ; c'est le libellé qui doit le dire.
+   */
+  it("le classement nomme ses chiffres comme des chiffres de période", () => {
+    const attendu: Record<string, [string, string]> = {
+      // [ce que le score doit contenir, ce que la série doit contenir]
+      fr: ["moyenne", "Meilleure"],
+      en: ["verage", "Best"],
+      es: ["media", "Mejor"],
+      de: ["urchschnittliche", "Beste"],
+    };
+    for (const [langue, [moyenne, meilleure]] of Object.entries(attendu)) {
+      const dico = readFileSync(join(process.cwd(), "lib", "i18n", `${langue}.ts`), "utf8");
+      const score = /"leaderboard_stat_score":\s*"([^"]*)"/.exec(dico)?.[1];
+      const serie = /"leaderboard_stat_streak":\s*"([^"]*)"/.exec(dico)?.[1];
+      expect(score, `${langue} : le score du classement s'appelle « ${score} »`).toContain(moyenne);
+      expect(serie, `${langue} : la série du classement s'appelle « ${serie} »`).toContain(meilleure);
+    }
+  });
+
+  /**
+   * ⚠️ ET SURTOUT : IL NE PORTE PAS LE MÊME NOM QUE LE TABLEAU DE BORD. C'est la
+   * règle, pas la formulation : deux mesures différentes ne partagent pas un
+   * libellé, quelle que soit la langue.
+   */
+  it("aucun libellé n'est partagé entre deux mesures différentes", () => {
+    for (const langue of ["fr", "en", "es", "de"]) {
+      const dico = readFileSync(join(process.cwd(), "lib", "i18n", `${langue}.ts`), "utf8");
+      /**
+       * ⚠️ ET SI LA CLÉ EST INTROUVABLE, ON ÉCHOUE. Un repli sur le nom de la
+       * clé ferait passer ce test sans rien comparer : deux noms de clés sont
+       * toujours différents.
+       */
+      const lire = (cle: string) => {
+        const trouve = new RegExp(`"${cle}":\\s*"([^"]*)"`).exec(dico)?.[1];
+        expect(trouve, `${langue} : clé ${cle} introuvable`).toBeTruthy();
+        return trouve!;
+      };
+      const tableauDeBord = lire("dash_discipline");
+      for (const cle of ["leaderboard_stat_score", "pubprofile_discipline"]) {
+        expect(
+          lire(cle).toLowerCase(),
+          `${langue} : « ${lire(cle)} » est aussi le nom du chiffre du tableau de bord`,
+        ).not.toBe(tableauDeBord.toLowerCase());
+      }
+    }
+  });
 });
