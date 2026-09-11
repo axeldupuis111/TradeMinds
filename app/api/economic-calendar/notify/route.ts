@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { fetchAllRows } from "@/lib/supabase-paginate";
 import { NextResponse } from "next/server";
 import { sendPushToUser } from "@/lib/push";
 import {
@@ -83,15 +84,21 @@ async function handle(req: Request) {
   if (events.length === 0) return NextResponse.json({ notified: 0, reason: "no upcoming events" });
 
   // 2. Users who have at least one push subscription.
-  const { data: subRows } = await supabase.from("push_subscriptions").select("user_id");
-  const subscribedIds = Array.from(new Set((subRows ?? []).map((r) => (r as { user_id: string }).user_id)));
+  // ⚠️ PAGINÉE : au-delà de mille abonnements, PostgREST tronque sans erreur
+  // et l'annonce ne partirait plus qu'aux premiers inscrits.
+  const subRows = await fetchAllRows<{ user_id: string }>((from, to) =>
+    supabase.from("push_subscriptions").select("user_id").order("user_id").range(from, to),
+  );
+  const subscribedIds = Array.from(new Set((subRows ?? []).map((r) => r.user_id)));
   if (subscribedIds.length === 0) return NextResponse.json({ notified: 0, reason: "no subscribers" });
 
   // 3. Their language + opt-out preference.
   const { data: profiles } = await supabase
     .from("profiles")
     .select("id, language, push_notif_news")
-    .in("id", subscribedIds);
+    .in("id", subscribedIds)
+    .order("id")
+    .limit(subscribedIds.length);
   const optedUsers = (profiles ?? []).filter((p) => (p as { push_notif_news?: boolean }).push_notif_news !== false);
   if (optedUsers.length === 0) return NextResponse.json({ notified: 0, reason: "no opted-in users" });
 

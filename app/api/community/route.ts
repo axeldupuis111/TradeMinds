@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
+import { fetchAllRows as lireToutesLesLignes } from "@/lib/supabase-paginate";
 import { groupByUser, statsForPeriod, type ReviewRow, type TradeRow } from "@/lib/challenge-stats";
 import {
   challengeCompleted,
@@ -53,8 +54,6 @@ const ENDED_VISIBLE_DAYS = 30;
 const BOARD_SIZE = 20;
 /** Fenêtre du signal d'activité affiché à l'animateur dans la liste des membres. */
 const ACTIVITY_DAYS = 30;
-/** Pagination des lectures en masse (voir fetchAllRows). */
-const PAGE_SIZE = 1000;
 
 function serviceClient() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
@@ -98,17 +97,29 @@ type Admin = ReturnType<typeof serviceClient>;
  * un peu vivante, les trades de tous les membres dépassent ce plafond : sans
  * pagination le classement se calculerait sur des données tronquées, en
  * silence, et ce sont les derniers membres qui disparaîtraient.
+ *
+ * ── CE QUE CETTE FONCTION FAISAIT ───────────────────────────────────────────
+ *
+ * ⚠️⚠️ ELLE EXISTAIT EN DEUX EXEMPLAIRES, et la copie locale AVALAIT L'ERREUR.
+ * Elle lisait `{ data }` sans jamais regarder `error` : une page qui échoue
+ * rendait `data: null`, donc « zéro ligne », donc « fin de la pagination », et
+ * la fonction rendait tranquillement ce qu'elle avait déjà. Le classement d'une
+ * communauté se calculait alors sur une partie des membres, et rien ne le
+ * disait. C'est exactement le défaut que `lib/supabase-paginate.ts` décrit dans
+ * son en-tête, et contre lequel il rend `null` plutôt qu'une liste partielle.
+ *
+ * ⚠️ ICI ON JETTE, parce que les dix appels de ce fichier se font par paires
+ * dans des `Promise.all` : une exception remonte au `try` de la route, qui
+ * répond 500. Mieux vaut un refus visible qu'un classement faux.
  */
 async function fetchAllRows<T>(
-  build: () => { range: (from: number, to: number) => PromiseLike<{ data: unknown[] | null }> },
+  build: () => { range: (from: number, to: number) => PromiseLike<{ data: unknown[] | null; error: unknown }> },
 ): Promise<T[]> {
-  const out: T[] = [];
-  for (let page = 0; ; page++) {
-    const { data } = await build().range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
-    const rows = (data ?? []) as T[];
-    out.push(...rows);
-    if (rows.length < PAGE_SIZE) return out;
-  }
+  const rows = await lireToutesLesLignes<T>(
+    (from, to) => build().range(from, to) as PromiseLike<{ data: T[] | null; error: unknown }>,
+  );
+  if (rows === null) throw new Error("lecture paginée incomplète");
+  return rows;
 }
 
 /** Une communauté par n'importe laquelle de ses clés. */

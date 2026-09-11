@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { sendPushToUser } from "@/lib/push";
 import { alertCronFailure } from "@/lib/cron-alert";
+import { fetchAllRows } from "@/lib/supabase-paginate";
 import { localHour, localWeekday } from "@/lib/timezone";
 import { renderBrandEmail, statCell, statRow, EMAIL_GREEN, EMAIL_RED, EMAIL_INK } from "@/lib/email-template";
 
@@ -230,24 +231,38 @@ async function handle(req: Request) {
   // ce qui casserait aussi le mode dryRun en local.
   let resend: Resend | null = null;
 
-  const { data: users, error } = await supabase
-    .from("profiles")
-    .select("id, email, language, timezone")
-    .eq("email_notif_session", true)
-    .not("email", "is", null);
+  /**
+   * ⚠️⚠️ PLAFONNÉE À MILLE ABONNÉS, SANS LE DIRE. PostgREST rend au plus mille
+   * lignes, statut 200, sans erreur : au millier et unième inscrit, l'envoi
+   * aurait simplement cessé pour les suivants, sans que rien ne dise lesquels.
+   */
+  const users = await fetchAllRows<{ id: string; email: string | null; language: string | null; timezone: string | null }>(
+    (from, to) =>
+      supabase
+        .from("profiles")
+        .select("id, email, language, timezone")
+        .eq("email_notif_session", true)
+        .not("email", "is", null)
+        .order("id")
+        .range(from, to),
+  );
 
-  if (error || !users) {
-    await alertCronFailure("weekly-report", `Failed to fetch users: ${error?.message ?? "no rows"}`);
+  if (!users) {
+    await alertCronFailure("weekly-report", "Failed to fetch users: lecture paginée incomplète");
     return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
   }
 
   // Préférence push « rapport hebdo » (défensif : colonne absente → opt-in).
   const weeklyPushOptOut = new Set<string>();
-  const { data: weeklyPrefs, error: weeklyPrefErr } = await supabase
-    .from("profiles")
-    .select("id, push_notif_weekly")
-    .in("id", users.map((u) => u.id));
-  if (!weeklyPrefErr) {
+  const weeklyPrefs = await fetchAllRows<{ id: string; push_notif_weekly?: boolean }>((from, to) =>
+    supabase
+      .from("profiles")
+      .select("id, push_notif_weekly")
+      .in("id", users.map((u) => u.id))
+      .order("id")
+      .range(from, to),
+  );
+  {
     for (const r of weeklyPrefs ?? []) {
       if ((r as { push_notif_weekly?: boolean }).push_notif_weekly === false) weeklyPushOptOut.add(r.id);
     }
