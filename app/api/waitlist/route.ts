@@ -1,16 +1,27 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { adressePlausible } from "@/lib/message-de-contact";
 
 export async function POST(request: Request) {
   try {
     const { email } = await request.json();
 
-    if (!email || typeof email !== "string" || !email.includes("@")) {
+    /**
+     * ⚠️ « CONTIENT UN @ » N'EST PAS UNE VÉRIFICATION : `"@"` seul passait, et
+     * une chaîne d'un mégaoctet aussi. Cet endpoint est public et écrit en
+     * base ; il partage donc la vérification d'adresse du formulaire de
+     * contact, sinon c'est la plus faible des deux qui compte.
+     *
+     * ⚠️ ET PLUS AUCUNE PAGE NE L'APPELLE : la liste d'attente d'avant le
+     * lancement a disparu de l'interface, la route est restée ouverte. À
+     * arbitrer (la table garde ses inscriptions dans les deux cas) ; en
+     * attendant, elle ne doit plus être un guichet libre.
+     */
+    const normalised = typeof email === "string" ? email.toLowerCase().trim() : "";
+    if (!adressePlausible(normalised)) {
       return NextResponse.json({ status: "error", message: "Email invalide" }, { status: 400 });
     }
-
-    const normalised = email.toLowerCase().trim();
     const cookieStore = cookies();
 
     const supabase = createServerClient(

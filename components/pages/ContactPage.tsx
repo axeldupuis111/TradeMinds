@@ -14,12 +14,20 @@ export default function ContactPage() {
   const { lang, t } = useLanguage();
   const [form, setForm] = useState({ name: "", email: "", subject: "", message: "" });
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  /**
+   * ⚠️ LE SERVEUR REFUSE MAINTENANT POUR DES RAISONS PRÉCISES (adresse mal
+   * formée, message trop long, cadence), et un « Erreur lors de l'envoi »
+   * unique les effacerait toutes : celui qui écrit 6 000 caractères
+   * recommencerait à l'identique. La raison arrive en CLÉ de traduction.
+   */
+  const [codeDErreur, setCodeDErreur] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.name.trim() || !form.email.trim() || !form.message.trim()) return;
 
     setStatus("sending");
+    setCodeDErreur(null);
     try {
       const res = await fetch("/api/contact", {
         method: "POST",
@@ -30,6 +38,8 @@ export default function ContactPage() {
         setStatus("sent");
         setForm({ name: "", email: "", subject: "", message: "" });
       } else {
+        const corps = await res.json().catch(() => ({}));
+        setCodeDErreur(typeof corps.code === "string" ? corps.code : null);
         setStatus("error");
       }
     } catch {
@@ -74,7 +84,11 @@ export default function ContactPage() {
                 <textarea id="contactpage-contact-message" required rows={5} value={form.message} onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))} className={inputClass} />
               </div>
 
-              {status === "error" && <p className="text-loss text-sm">{t("contact_error")}</p>}
+              {status === "error" && (
+                <p role="alert" className="text-loss text-sm">
+                  {codeDErreur ? t(codeDErreur) : t("contact_error")}
+                </p>
+              )}
 
               <button type="submit" disabled={status === "sending"} className="w-full py-2.5 bg-accent text-on-accent rounded-lg font-medium hover:bg-accent-hover transition-colors disabled:opacity-50">
                 {status === "sending" ? "..." : t("contact_send")}
