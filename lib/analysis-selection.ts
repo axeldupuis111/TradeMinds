@@ -295,21 +295,34 @@ export function selectSignificantTrades(
   return { indices, reasons };
 }
 
+/**
+ * Le nom LISIBLE de chaque violation.
+ *
+ * ⚠️⚠️ IL ETAIT ENFERME DANS `renderMechanicalBlock`, et la memoire du
+ * coach, elle, poussait les CODES BRUTS dans le prompt. Mesure en production en
+ * posant au coach une question banale : il a repondu au trader « violations
+ * recurrentes de pertes consecutives (consecutive_losses) et de stop trop large
+ * (sl_too_wide) ». Des identifiants internes, en anglais, dans la voix du
+ * produit. C'est le meme defaut que `sync_cooldown` affiche tel quel sur la
+ * page des reglages, deja corrige une fois ailleurs.
+ */
+export const LIBELLE_DE_VIOLATION: Record<MechanicalViolationType, string> = {
+  wrong_pair: "paire non autorisée",
+  wrong_session: "hors session autorisée",
+  low_rr: "RR planifié sous le minimum",
+  sl_too_wide: "SL au-delà du maximum",
+  missing_sl: "aucun SL",
+  missing_tp: "aucun TP",
+  max_trades_day: "dépassement du nb max de trades/jour",
+  consecutive_losses: "trading poursuivi après N pertes consécutives",
+};
+
 /** Rend les violations mécaniques en bloc de faits pour le prompt. */
 export function renderMechanicalBlock(violations: MechanicalViolation[], total: number): string {
   if (violations.length === 0) {
     return `Aucune violation mécanique détectée sur les ${total} trades de la période.`;
   }
-  const label: Record<MechanicalViolationType, string> = {
-    wrong_pair: "paire non autorisée",
-    wrong_session: "hors session autorisée",
-    low_rr: "RR planifié sous le minimum",
-    sl_too_wide: "SL au-delà du maximum",
-    missing_sl: "aucun SL",
-    missing_tp: "aucun TP",
-    max_trades_day: "dépassement du nb max de trades/jour",
-    consecutive_losses: "trading poursuivi après N pertes consécutives",
-  };
+  const label = LIBELLE_DE_VIOLATION;
   const unit: Partial<Record<MechanicalViolationType, string>> = {
     max_trades_day: "jour(s)",
     consecutive_losses: "trade(s) de continuation",

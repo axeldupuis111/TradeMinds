@@ -100,4 +100,64 @@ describe("renderCoachMemory", () => {
     expect(text).toContain("Stop après 2 pertes consécutives");
     expect(text).toContain("2026-06-20");
   });
+
+  /**
+   * ⚠️⚠️ LES CODES INTERNES NE SORTENT PAS DE LA MAISON. Mesuré en production en
+   * posant au coach une question banale : il a répondu au trader « violations
+   * récurrentes de pertes consécutives (consecutive_losses) et de stop trop
+   * large (sl_too_wide) ». Des identifiants techniques, en anglais, dans la voix
+   * du produit. Le modèle ne les avait pas inventés : c'est ce bloc de mémoire
+   * qui les lui servait bruts.
+   *
+   * ⚠️ C'est le même défaut que `sync_cooldown` affiché tel quel sur la page des
+   * réglages, corrigé une fois ailleurs. Le libellé lisible existait déjà,
+   * enfermé dans le rendu d'une autre route.
+   */
+  it("ne met aucun code technique dans le prompt", () => {
+    const memoire = parseCoachMemory({
+      snapshots: [
+        {
+          date: "2026-09-01",
+          score: 62,
+          trades: 40,
+          top_violations: [
+            { type: "consecutive_losses", occurrences: 3 },
+            { type: "sl_too_wide", occurrences: 2 },
+          ],
+        },
+        {
+          date: "2026-09-08",
+          score: 58,
+          trades: 45,
+          top_violations: [
+            { type: "consecutive_losses", occurrences: 4 },
+            { type: "sl_too_wide", occurrences: 1 },
+          ],
+        },
+      ],
+      commitments: [],
+    });
+    const rendu = renderCoachMemory(memoire);
+
+    expect(rendu, "le prompt sert encore les codes bruts").not.toMatch(/consecutive_losses|sl_too_wide/);
+    expect(rendu).toContain("trading poursuivi après N pertes consécutives");
+    expect(rendu).toContain("SL au-delà du maximum");
+    // Et les faits survivent à la traduction.
+    expect(rendu).toContain("×4");
+    expect(rendu).toMatch(/RÉCURRENTES/);
+  });
+
+  /**
+   * ⚠️ UN TYPE INCONNU REND SON CODE plutôt que rien : une analyse plus ancienne
+   * que la liste actuelle des violations ne doit pas disparaître du prompt.
+   */
+  it("garde un fait dont elle ne connaît pas le nom", () => {
+    const memoire = parseCoachMemory({
+      snapshots: [
+        { date: "2026-01-01", score: 70, trades: 10, top_violations: [{ type: "regle_disparue", occurrences: 2 }] },
+      ],
+      commitments: [],
+    });
+    expect(renderCoachMemory(memoire)).toContain("regle_disparue");
+  });
 });

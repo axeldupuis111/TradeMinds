@@ -16,6 +16,7 @@
  *
  * Aucun appel IA supplémentaire, aucun coût : c'est de l'agrégation.
  */
+import { LIBELLE_DE_VIOLATION } from "@/lib/analysis-selection";
 
 export interface MemorySnapshot {
   /** Date ISO (jour) de l'analyse. */
@@ -99,6 +100,22 @@ export function recurringViolations(memory: CoachMemory): { type: string; timesS
  * Rédigé en français : les prompts du repo le sont, la langue de RÉPONSE
  * est imposée séparément par chaque route.
  */
+/**
+ * Le nom LISIBLE d'une violation, pour le prompt.
+ *
+ * ⚠️⚠️ CE BLOC POUSSAIT LES CODES BRUTS DANS LE PROMPT, et le modele les
+ * repetait au trader. Mesure en production sur une question banale : « violations
+ * recurrentes de pertes consecutives (consecutive_losses) et de stop trop large
+ * (sl_too_wide) ». Des identifiants internes, en anglais, dans la voix du
+ * produit. Le libelle existait deja, enferme dans le rendu d'une autre route.
+ *
+ * ⚠️ Un type inconnu (une analyse plus ancienne que la liste actuelle) rend
+ * son code plutot que rien : mieux vaut un mot etrange qu'un fait perdu.
+ */
+function lisible(type: string): string {
+  return (LIBELLE_DE_VIOLATION as Record<string, string>)[type] ?? type;
+}
+
 export function renderCoachMemory(memory: CoachMemory): string {
   const { snapshots, commitments } = memory;
   if (snapshots.length === 0 && commitments.length === 0) return "";
@@ -116,12 +133,12 @@ export function renderCoachMemory(memory: CoachMemory): string {
 
     const recurring = recurringViolations(memory);
     if (recurring.length > 0) {
-      lines.push(`Violations RÉCURRENTES (plusieurs analyses) : ${recurring.map((r) => `${r.type} (vue ${r.timesSeen}×)`).join(", ")}.`);
+      lines.push(`Violations RÉCURRENTES (plusieurs analyses) : ${recurring.map((r) => `${lisible(r.type)} (vue ${r.timesSeen}×)`).join(", ")}.`);
     }
 
     const lastSnap = snapshots[snapshots.length - 1];
     if (lastSnap.top_violations.length > 0) {
-      lines.push(`Dernière analyse (${lastSnap.date}${lastSnap.period ? `, ${lastSnap.period}` : ""}) : score ${lastSnap.score}/100 sur ${lastSnap.trades} trades — violations principales : ${lastSnap.top_violations.map((v) => `${v.type} ×${v.occurrences}`).join(", ")}.`);
+      lines.push(`Dernière analyse (${lastSnap.date}${lastSnap.period ? `, ${lastSnap.period}` : ""}) : score ${lastSnap.score}/100 sur ${lastSnap.trades} trades — violations principales : ${lastSnap.top_violations.map((v) => `${lisible(v.type)} ×${v.occurrences}`).join(", ")}.`);
     } else {
       lines.push(`Dernière analyse (${lastSnap.date}) : score ${lastSnap.score}/100 sur ${lastSnap.trades} trades, aucune violation majeure.`);
     }

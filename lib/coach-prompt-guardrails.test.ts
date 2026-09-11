@@ -661,4 +661,26 @@ describe("le prompt ne promet aucune capacité absente", () => {
     expect(prompt).toContain("find_trades");
     expect(prompt).toContain("update_strategy");
   });
+
+  /**
+   * ⚠️⚠️ LE PROMPT ENSEIGNAIT LUI-MÊME À NOMMER SES OUTILS AU TRADER. Une ligne
+   * lui disait de proposer « lire ses trades chiffrés avec find_trades », et le
+   * modèle a fait exactement ça en production : « je peux sortir la liste de tes
+   * trades perdants (find_trades avec result=loss) ». Le trader ne sait pas ce
+   * qu'est `find_trades`, et il n'a pas à le savoir.
+   */
+  it("interdit les noms internes, et ne les enseigne pas", () => {
+    const prompt = promptSysteme();
+    expect(prompt, "la règle sur les noms internes a disparu").toContain("NOMS INTERNES");
+    expect(prompt).toMatch(/N'ecris JAMAIS dans ta reponse un nom d'outil/);
+    /**
+     * ⚠️ ET LA CONSIGNE NE SE CONTREDIT PAS. Une règle qui interdit quelque
+     * chose deux paragraphes après l'avoir recommandé ne tient pas : c'est
+     * exactement ce qui produisait le défaut.
+     */
+    expect(
+      prompt,
+      "le prompt recommande encore de nommer un outil au trader",
+    ).not.toMatch(/chiffrés avec find_trades/);
+  });
 });
