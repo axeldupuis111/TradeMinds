@@ -1,6 +1,24 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useState } from "react";
+
+/**
+ * ⚠️ AVANT LA PEINTURE, PAS APRÈS.
+ *
+ * `useEffect` s'exécute APRÈS que le navigateur a peint. Or l'état initial du
+ * thème est « sombre » (il doit l'être : c'est ce que le serveur a rendu, et un
+ * autre choix ferait une incohérence d'hydratation). Un abonné en thème CLAIR
+ * voyait donc une image complète du thème sombre avant la correction : les
+ * halos d'ambiance du tableau de bord et les couleurs des courbes. Une frame
+ * sur une machine rapide, bien plus sur un téléphone.
+ *
+ * `useLayoutEffect` corrige entre le rendu et la peinture : le premier rendu
+ * reste identique au serveur, la première IMAGE est déjà la bonne.
+ *
+ * ⚠️ ET IL N'EXISTE PAS SUR LE SERVEUR, où React avertit qu'il ne fait rien :
+ * on y retombe sur `useEffect`, qui n'y tourne pas non plus.
+ */
+const useEffetAvantPeinture = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 type Theme = "dark" | "light";
 
@@ -17,8 +35,8 @@ const ThemeContext = createContext<ThemeContextValue>({
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>("dark");
 
-  // On mount: read from localStorage or system preference
-  useEffect(() => {
+  // Au montage : localStorage, sinon le défaut sombre.
+  useEffetAvantPeinture(() => {
     const stored = localStorage.getItem("tm-theme") as Theme | null;
     if (stored === "light" || stored === "dark") {
       setTheme(stored);
