@@ -29,6 +29,11 @@ describe("les pages publiques ont un repère de contenu principal", () => {
    * « publique » est une décision de routage, pas une propriété qu'un fichier
    * porte. Une vue ajoutée ici sans repère échoue, ce qui est le rappel qu'il
    * faut.
+   *
+   * ⚠️ LES QUATRE PAGES LÉGALES N'Y SONT PAS, comme dans l'autre test : elles
+   * délèguent toute leur mise en page à `LegalDocView`, qui porte le repère.
+   * Le leur demander ferait écrire quatre fois la même chose et mentirait sur
+   * qui décide.
    */
   const VUES = [
     "components/landing/LandingPage.tsx",
@@ -40,6 +45,16 @@ describe("les pages publiques ont un repère de contenu principal", () => {
     "components/pages/ContactPage.tsx",
     "components/pages/PartnerJoinPage.tsx",
     "components/pages/PartnerStatsPage.tsx",
+    /**
+     * ⚠️ CES TROIS-LÀ N'ONT PAS DE LIEN DE SAUT, ET C'EST JUSTE : elles ne
+     * rendent pas l'en-tête public, donc il n'y a aucun bloc répété à sauter
+     * (au-dessus du contenu, un sélecteur de langue et un logo). La règle de
+     * WCAG 2.4.1 porte sur les blocs RÉPÉTÉS d'une page à l'autre. Elles
+     * gardent en revanche leur repère de contenu, qui, lui, sert toujours.
+     */
+    "components/pages/LoginPage.tsx",
+    "components/pages/ResetPasswordPage.tsx",
+    "components/profile/PublicProfileView.tsx",
   ];
 
   it("chaque vue publique nomme sa cible de saut", () => {

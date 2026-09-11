@@ -179,7 +179,7 @@ export default function LoginPage() {
         <div className="blob-drift-rev absolute -bottom-40 -right-24 w-[380px] h-[380px] rounded-full bg-[#a78bfa]/[0.06] blur-3xl" />
       </div>
 
-      <div className="relative w-full max-w-sm">
+      <main id="main-content" tabIndex={-1} className="relative w-full max-w-sm">
         <div className="flex justify-end mb-4">
           <LanguageSelector />
         </div>
@@ -348,7 +348,7 @@ export default function LoginPage() {
         <p className="text-center mt-6">
           <Link href={localizedHref("/", lang)} className="text-sm text-muted hover:text-foreground">{t("login_back")}</Link>
         </p>
-      </div>
+      </main>
     </div>
     <RiskDisclosure />
     </>

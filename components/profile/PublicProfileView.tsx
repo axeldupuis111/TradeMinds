@@ -113,7 +113,7 @@ export default function PublicProfileView({
 
   return (
     <div className="min-h-screen bg-background text-foreground force-dark">
-      <div className="max-w-4xl mx-auto px-6 py-10">
+      <main id="main-content" tabIndex={-1} className="max-w-4xl mx-auto px-6 py-10">
         {/* Header */}
         <div className="flex items-center justify-between mb-10">
           <div className="flex items-center gap-3">
@@ -229,7 +229,7 @@ export default function PublicProfileView({
           </a>
           <p className="text-xs text-muted mt-3">{t("pubprofile_cta_sub")}</p>
         </div>
-      </div>
+      </main>
       <RiskDisclosure />
     </div>
   );

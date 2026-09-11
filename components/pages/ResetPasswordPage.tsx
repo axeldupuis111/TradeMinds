@@ -86,7 +86,7 @@ export default function ResetPasswordPage() {
   return (
     <>
     <div className="min-h-screen flex items-center justify-center hero-gradient px-4 force-dark">
-      <div className="w-full max-w-sm">
+      <main id="main-content" tabIndex={-1} className="w-full max-w-sm">
         <div className="text-center mb-8">
           <Link href={localizedHref("/", lang)} className="inline-block">
             <h1 className="text-3xl font-bold text-foreground tracking-tight">TradeDiscipline</h1>
@@ -178,7 +178,7 @@ export default function ResetPasswordPage() {
             ← {t("login_back").replace("← ", "")}
           </Link>
         </p>
-      </div>
+      </main>
     </div>
     <RiskDisclosure />
     </>
