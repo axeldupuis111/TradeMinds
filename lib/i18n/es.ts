@@ -1472,6 +1472,7 @@ const dict: Record<string, string> = {
   "sync_status_error": "Error",
   "sync_status_disabled": "Pausada",
   "pdf_no_data": "No hay trades este mes. No se puede generar el informe.",
+  "pdf_devises_melangees": "Tu selección mezcla varias divisas: el informe sumaría euros y dólares bajo un mismo símbolo. Elige una cuenta y vuelve a exportar.",
   "pdf_error": "Error al generar el PDF.",
   "dash_greeting": "Hola,",
   "greeting_morning": "Buenos días",

@@ -805,6 +805,8 @@ export default function AnalysisPage() {
       const historyItem = viewingHistory ? history.find((h) => h.id === viewingHistory) : null;
       await exportAnalysisPdf({
         lang: (["fr", "en", "de", "es"].includes(lang) ? lang : "fr") as "fr" | "en" | "de" | "es",
+        // ⚠️ La même devise que l'écran : sans elle, le PDF écrivait des euros.
+        currency: displayCurrency,
         periodLabel: historyItem?.period_label || periodLabel,
         score: a.discipline_score,
         totalTrades: a.total_trades,

@@ -1,6 +1,7 @@
 import type { Traduire } from "@/lib/LanguageContext";
 import { jsPDF } from "jspdf";
-import { Pdf, C, money, signedMoney, groupNum, type RGB, setPdfLocale } from "@/lib/pdf/kit";
+import { Pdf, C, money, signedMoney, groupNum, type RGB, setPdfLocale, setMoneySymbol } from "@/lib/pdf/kit";
+import { currencySymbol } from "@/lib/account-currency";
 import { ensureBrandFont } from "@/lib/pdf/fonts";
 
 /**
@@ -41,6 +42,17 @@ export interface AnalyticsPdfInput {
   t: Traduire;
   /** Dernier bilan de session (score + infractions/recommandations), optionnel. */
   review: AnalyticsReview | null;
+  /**
+   * Le code devise de la selection (« USD », « EUR »...).
+   *
+   * ⚠️⚠️ SANS LUI, CE RAPPORT ECRIVAIT DES EUROS SUR TOUT. Le symbole du
+   * kit PDF est une variable de MODULE, posee par le rapport de compte et
+   * remise a null apres : ce generateur-ci ne la posait jamais, donc tous ses
+   * montants sortaient en « € », y compris pour un compte en dollars dont
+   * l'ecran, juste avant l'export, affichait « $ ». Un PDF quitte l'app : c'est
+   * la pire place pour un symbole faux.
+   */
+  currency?: string | null;
 }
 
 function netPnl(t: { pnl: number; commission: number | null; swap: number | null }) {
@@ -63,9 +75,11 @@ function label(t: Traduire, key: string): string {
 const TABLE_MAX_ROWS = 25;
 
 export async function buildAnalyticsPdf(input: AnalyticsPdfInput): Promise<jsPDF> {
-  const { trades, periodLabel, accountLabel, locale, t, review } = input;
+  const { trades, periodLabel, accountLabel, locale, t, review, currency } = input;
   // ⚠️ Avant le premier nombre écrit : les séparateurs suivent la langue du PDF.
   setPdfLocale(locale);
+  // ⚠️ Et le symbole avant le premier montant, pour la même raison.
+  setMoneySymbol(currency ? currencySymbol(currency) : null);
 
   // ── Stats ──────────────────────────────────────────────────────────────────
   const netPnls = trades.map(netPnl);
@@ -326,5 +340,7 @@ export async function buildAnalyticsPdf(input: AnalyticsPdfInput): Promise<jsPDF
   }
 
   pdf.footer(`${t("analytics_title")} · ${periodLabel} · ${accountLabel}`);
+  // ⚠️ Rendu à null : le symbole est partagé par tous les générateurs du module.
+  setMoneySymbol(null);
   return doc;
 }

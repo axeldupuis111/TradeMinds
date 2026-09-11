@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
-import { Pdf, C, money, signedMoney, groupNum, type RGB, setPdfLocale } from "@/lib/pdf/kit";
+import { Pdf, C, money, signedMoney, groupNum, type RGB, setPdfLocale, setMoneySymbol } from "@/lib/pdf/kit";
+import { currencySymbol } from "@/lib/account-currency";
 import { ensureBrandFont } from "@/lib/pdf/fonts";
 
 /**
@@ -16,6 +17,17 @@ import { ensureBrandFont } from "@/lib/pdf/fonts";
 
 export interface AnalysisPdfData {
   lang: "fr" | "en" | "de" | "es";
+  /**
+   * Le code devise des montants (« USD », « EUR »...).
+   *
+   * ⚠️⚠️ SANS LUI, CE RAPPORT ECRIVAIT DES EUROS SUR TOUT. Le symbole du
+   * kit PDF est une variable de MODULE : ce generateur ne la posait jamais,
+   * donc les memes montants sortaient en « € » dans le PDF alors que l'ecran,
+   * juste avant l'export, les affichait en « $ ». Et un PDF quitte l'app : le
+   * trader le garde, l'imprime, l'envoie. C'est la seule surface qu'il ne peut
+   * pas recouper.
+   */
+  currency?: string | null;
   periodLabel: string;
   score: number;
   totalTrades: number;
@@ -286,6 +298,8 @@ export async function buildAnalysisPdf(data: AnalysisPdfData): Promise<jsPDF> {
   const locale = { fr: "fr-FR", en: "en-GB", de: "de-DE", es: "es-ES" }[data.lang] ?? "fr-FR";
   // ⚠️ Avant le premier nombre écrit : les séparateurs du document suivent sa langue.
   setPdfLocale(locale);
+  // ⚠️ Et le symbole avant le premier montant, pour la même raison.
+  setMoneySymbol(data.currency ? currencySymbol(data.currency) : null);
 
   const dateStr = new Date().toLocaleDateString(locale, {
     day: "numeric",
@@ -446,6 +460,11 @@ export async function buildAnalysisPdf(data: AnalysisPdfData): Promise<jsPDF> {
 }
 
 export async function exportAnalysisPdf(data: AnalysisPdfData) {
-  const doc = await buildAnalysisPdf(data);
-  doc.save(`tradediscipline_analyse_${new Date().toISOString().split("T")[0]}.pdf`);
+  try {
+    const doc = await buildAnalysisPdf(data);
+    doc.save(`tradediscipline_analyse_${new Date().toISOString().split("T")[0]}.pdf`);
+  } finally {
+    // ⚠️ Le symbole est partagé par tous les générateurs du module.
+    setMoneySymbol(null);
+  }
 }

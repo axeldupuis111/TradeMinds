@@ -875,7 +875,7 @@ export default function AnalyticsPage() {
           {hasAdvancedFilters && <span className="w-1.5 h-1.5 rounded-full bg-accent" />}
         </button>
 
-        <ExportPdfButton trades={filtered} periodLabel={periodLabel} accountLabel={accountLabel} />
+        <ExportPdfButton trades={filtered} periodLabel={periodLabel} accountLabel={accountLabel} currency={devisesMelangees ? null : pageCurrency} devisesMelangees={devisesMelangees} />
       </div>
 
       {/* ── Advanced Filters Panel ────────────────────────────────────────── */}

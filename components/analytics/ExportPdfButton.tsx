@@ -18,9 +18,18 @@ interface ExportPdfButtonProps {
   periodLabel: string;
   /** Libellé lisible du compte sélectionné (ex. "Tous les comptes"). */
   accountLabel: string;
+  /** Devise de la sélection (« USD », « EUR »...). */
+  currency?: string | null;
+  /**
+   * ⚠️⚠️ Vrai quand la sélection mêle plusieurs devises. Un PDF quitte
+   * l'app : le trader le garde, l'imprime, l'envoie a son mentor. C'est la pire
+   * place pour un total qui additionne des euros et des dollars sous un seul
+   * symbole, parce que c'est la seule qu'il ne pourra pas recouper.
+   */
+  devisesMelangees?: boolean;
 }
 
-export default function ExportPdfButton({ trades, periodLabel, accountLabel }: ExportPdfButtonProps) {
+export default function ExportPdfButton({ trades, periodLabel, accountLabel, currency, devisesMelangees = false }: ExportPdfButtonProps) {
   const { t, lang } = useLanguage();
   const pdfLocale = ({ fr: "fr-FR", en: "en-US", de: "de-DE", es: "es-ES" } as const)[lang] ?? "en-US";
   const { plan, demoMode, loading: planLoading } = usePlan();
@@ -45,6 +54,10 @@ export default function ExportPdfButton({ trades, periodLabel, accountLabel }: E
     const selection = (trades || []).filter((tr) => tr.open_time).slice().sort((a, b) => a.open_time.localeCompare(b.open_time));
     if (selection.length === 0) {
       alert(t("pdf_no_data"));
+      return;
+    }
+    if (devisesMelangees) {
+      alert(t("pdf_devises_melangees"));
       return;
     }
 
@@ -73,6 +86,7 @@ export default function ExportPdfButton({ trades, periodLabel, accountLabel }: E
         locale: pdfLocale,
         t,
         review: lastReview,
+        currency,
       });
 
       // NFD sépare les accents en marques combinantes, retirées ensuite comme
