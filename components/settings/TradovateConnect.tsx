@@ -67,6 +67,29 @@ export default function TradovateConnect() {
     load();
   }, []);
 
+  /**
+   * LE MESSAGE À AFFICHER POUR UNE RÉPONSE REFUSÉE.
+   *
+   * ⚠️⚠️ CET ÉCRAN MONTRAIT LA RÉPONSE BRUTE DE L'API, ET L'API RÉPOND EN
+   * FRANÇAIS : « Commission invalide. », « Erreur serveur », lus tels quels par
+   * un utilisateur anglophone, espagnol ou allemand. Pire, le délai entre deux
+   * synchros renvoyait le code interne `sync_cooldown`, affiché mot pour mot
+   * sur la ligne de la connexion.
+   *
+   * ⚠️ ET LA RÈGLE EXISTAIT DÉJÀ À TROIS CLICS D'ICI : « Mes trades » traduit ce
+   * même délai depuis toujours, avec ce même `retryInSeconds`.
+   *
+   * `code` = ce que le produit a écrit, donc traduisible. `error` = le message
+   * du broker, qu'on garde brut parce qu'il est la seule piste de diagnostic.
+   */
+  function messageDErreur(data: { code?: string; error?: string; retryInSeconds?: number }): string {
+    if (data.code === "sync_cooldown") {
+      return t("trades_sync_wait").replace("{n}", String(data.retryInSeconds ?? 0));
+    }
+    if (data.code) return t(data.code);
+    return data.error || t("settings_save_error");
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
@@ -84,7 +107,7 @@ export default function TradovateConnect() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || t("settings_save_error"));
+        setError(messageDErreur(data));
         return;
       }
       setShowForm(false);
@@ -120,7 +143,7 @@ export default function TradovateConnect() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setSyncError((prev) => ({ ...prev, [id]: data.error || t("settings_save_error") }));
+        setSyncError((prev) => ({ ...prev, [id]: messageDErreur(data) }));
       }
       await load();
     } catch {
@@ -147,7 +170,7 @@ export default function TradovateConnect() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setSyncError((prev) => ({ ...prev, [id]: data.error || t("settings_save_error") }));
+        setSyncError((prev) => ({ ...prev, [id]: messageDErreur(data) }));
         return;
       }
       await load();
@@ -170,7 +193,7 @@ export default function TradovateConnect() {
         const data = await res.json().catch(() => ({}));
         // Un taux qu'on croit enregistré alors qu'il ne l'est pas fausserait
         // durablement le P&L sans que rien ne le signale.
-        setSyncError((prev) => ({ ...prev, [id]: data.error || t("settings_save_error") }));
+        setSyncError((prev) => ({ ...prev, [id]: messageDErreur(data) }));
         return;
       }
       await load();
@@ -185,7 +208,7 @@ export default function TradovateConnect() {
       const res = await fetch(`/api/broker/connections/${id}`, { method: "DELETE" });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setSyncError((prev) => ({ ...prev, [id]: data.error || t("settings_save_error") }));
+        setSyncError((prev) => ({ ...prev, [id]: messageDErreur(data) }));
         return;
       }
       await load();

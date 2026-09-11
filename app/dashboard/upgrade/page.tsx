@@ -35,6 +35,12 @@ export default function UpgradePage() {
   const [checkoutLoadingPlan, setCheckoutLoadingPlan] = useState<"plus" | "premium" | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [isPortalLoading, setIsPortalLoading] = useState(false);
+  /**
+   * ⚠️ « GÉRER MON ABONNEMENT » NE DISAIT RIEN QUAND IL ÉCHOUAIT. L'erreur
+   * partait dans la console, le bouton reprenait son libellé, et l'abonné
+   * restait devant un lien qui, de son point de vue, ne faisait rien.
+   */
+  const [portalError, setPortalError] = useState<string | null>(null);
 
   // Changement de plan in-app (Plus <-> Premium)
   interface ChangePreview {
@@ -215,10 +221,12 @@ export default function UpgradePage() {
   // Wrapper UI : gère le loading + les erreurs autour de l'ouverture du portail.
   async function handleManagePortal() {
     setIsPortalLoading(true);
+    setPortalError(null);
     try {
       await openBillingPortal();
     } catch (err) {
       console.error("[Manage subscription] Error:", err);
+      setPortalError(t("upgrade_checkout_error"));
       setIsPortalLoading(false);
     }
   }
@@ -231,6 +239,7 @@ export default function UpgradePage() {
     } catch (err) {
       console.error("[Downgrade] Error:", err);
       setShowDowngradeModal(false);
+      setPortalError(t("upgrade_checkout_error"));
       setDowngrading(false);
     }
   }
@@ -711,7 +720,7 @@ export default function UpgradePage() {
 
       {/* Manage subscription — only visible for real Stripe subscribers */}
       {hasStripeSubscription && (
-        <div className="mt-6 max-w-2xl mx-auto pb-2 flex justify-center">
+        <div className="mt-6 max-w-2xl mx-auto pb-2 flex flex-col items-center gap-2">
           <button
             onClick={handleManagePortal}
             disabled={isPortalLoading}
@@ -719,6 +728,7 @@ export default function UpgradePage() {
           >
             {isPortalLoading ? t("upgrade_manage_subscription_loading") : t("upgrade_manage_subscription")}
           </button>
+          {portalError && <p role="alert" className="text-sm text-loss">{portalError}</p>}
         </div>
       )}
 

@@ -28,7 +28,7 @@ export async function GET() {
 
   if (error) {
     console.error("[Broker connections GET]", error.message);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    return NextResponse.json({ code: "server_error" }, { status: 500 });
   }
 
   // `tradovateOAuth` dit à l'interface s'il faut proposer la connexion par
@@ -44,19 +44,19 @@ export async function POST(req: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   if (auth.plan !== "premium") {
-    return NextResponse.json({ error: "Premium plan required." }, { status: 403 });
+    return NextResponse.json({ code: "api_error_forbidden" }, { status: 403 });
   }
 
   let body: Record<string, unknown>;
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Corps JSON invalide." }, { status: 400 });
+    return NextResponse.json({ code: "server_error" }, { status: 400 });
   }
 
   const broker = String(body.broker ?? "").trim().toLowerCase();
   if (!SUPPORTED_BROKERS.includes(broker as Broker)) {
-    return NextResponse.json({ error: "Broker non supporté." }, { status: 400 });
+    return NextResponse.json({ code: "broker_err_unsupported" }, { status: 400 });
   }
 
   const environment = body.environment === "demo" ? "demo" : "live";
@@ -69,10 +69,7 @@ export async function POST(req: NextRequest) {
   const sec = String(body.sec ?? "").trim();
 
   if (!username || !password || !cid || !sec) {
-    return NextResponse.json(
-      { error: "Identifiants incomplets (username, password, cid, sec requis)." },
-      { status: 400 },
-    );
+    return NextResponse.json({ code: "broker_err_credentials" }, { status: 400 });
   }
 
   const commissionRaw = Number(body.commission_per_contract ?? 0);
@@ -111,10 +108,10 @@ export async function POST(req: NextRequest) {
   if (insertErr || !inserted) {
     // 23505 = unique_violation (same broker + label already exists)
     if (insertErr?.code === "23505") {
-      return NextResponse.json({ error: "Une connexion avec ce nom existe déjà." }, { status: 409 });
+      return NextResponse.json({ code: "broker_err_duplicate" }, { status: 409 });
     }
     console.error("[Broker connections POST]", insertErr?.message);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    return NextResponse.json({ code: "server_error" }, { status: 500 });
   }
 
   // La première synchro (90 jours, un appel par contrat) est volontairement

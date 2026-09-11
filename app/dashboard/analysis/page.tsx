@@ -748,7 +748,14 @@ export default function AnalysisPage() {
           const scope = (data as { scope?: string }).scope;
           throw new Error(t(scope === "month" ? "api_error_monthly_limit" : "api_error_rate_limited"));
         }
-        throw new Error(data.error || "Erreur serveur.");
+        /**
+         * ⚠️ LA ROUTE RÉPONDAIT EN FRANÇAIS À TOUT LE MONDE, et cet écran
+         * affichait sa phrase telle quelle : « L'IA a renvoyé une réponse
+         * inexploitable » arrivait ainsi en français chez un lecteur anglais,
+         * espagnol ou allemand. Elle renvoie maintenant une CLÉ.
+         */
+        const code = (data as { code?: string }).code;
+        throw new Error(code ? t(code) : data.error || t("server_error"));
       }
 
       setAnalysis(data);
