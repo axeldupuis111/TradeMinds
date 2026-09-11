@@ -57,6 +57,15 @@ export interface KpiCardsProps {
    * l'euro : aucun symbole unique ne serait juste sur un total mélangé.
    */
   currency?: string;
+  /**
+   * ⚠️⚠️ DEUX QUESTIONS DISTINCTES, PAS UNE. Le journal entier peut mêler
+   * deux devises alors que la journée d'aujourd'hui n'en a qu'une : masquer le
+   * P&L du jour pour cette raison-là serait aussi faux que l'afficher mêlé.
+   */
+  deviseDuJourConnue?: boolean;
+  deviseTotaleConnue?: boolean;
+  /** La devise du total « tous comptes », quand elle existe. */
+  deviseTotale?: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -128,6 +137,9 @@ export function KpiCards({
   activeAccountsCount,
   totalPnl,
   currency = DEFAULT_CURRENCY,
+  deviseDuJourConnue = true,
+  deviseTotaleConnue = true,
+  deviseTotale,
 }: KpiCardsProps) {
   const { t } = useLanguage();
   const { theme } = useTheme();
@@ -310,7 +322,11 @@ export function KpiCards({
                 /* ⚠️ Deux décimales comme la grande carte : le même montant y
                    était arrondi à l'unité. Et sans condition : la grande carte
                    écrit « +0,00 € » à zéro trade, celle-ci écrivait « — ». */
-                value={money(todayPnl, currency, { digits: 2, signed: true })}
+                value={
+                  deviseDuJourConnue
+                    ? money(todayPnl, currency, { digits: 2, signed: true })
+                    : "—"
+                }
                 positive={todayPnl >= 0}
               />
             </div>
@@ -344,6 +360,9 @@ export function KpiCards({
     <KpiCardPremium
       label={t("dash_today_pnl")}
       value={
+        !deviseDuJourConnue ? (
+          <span className="text-foreground-muted">—</span>
+        ) : (
         <CountUp
           end={Math.abs(todayPnl)}
           prefix={pnlPositive ? "+" : "-"}
@@ -354,6 +373,7 @@ export function KpiCards({
           decimals={2}
           duration={1.5}
         />
+        )
       }
       sublabel={t("dash_today_trades_sub", { n: filteredTodayCount })}
       trend={pnlPositive ? "up" : "down"}
@@ -434,8 +454,12 @@ export function KpiCards({
             suffix={` ${t("dash_accounts_count")}`}
           />
         }
-        sublabel={money(totalPnl, currency, { digits: 2, signed: true })}
-        trend={totalPnl >= 0 ? "up" : "down"}
+        sublabel={
+          deviseTotaleConnue
+            ? money(totalPnl, deviseTotale ?? currency, { digits: 2, signed: true })
+            : t("dash_devises_melangees_court")
+        }
+        trend={deviseTotaleConnue ? (totalPnl >= 0 ? "up" : "down") : undefined}
         accentColor="cyan"
         visual={walletVisual}
       >

@@ -112,10 +112,17 @@ function weeklyCoachNote(cur: WeekStats, prev: WeekStats, t: Traduire, currency:
 export default function WeeklyRecap({
   trades,
   currency = DEFAULT_CURRENCY,
+  devisesMelangees = false,
 }: {
   trades: RecapTrade[];
-  /** Devise du compte affiché ; euro en vue « tous les comptes ». */
+  /** Devise commune aux trades affichés, ou celle du compte choisi. */
   currency?: string;
+  /**
+   * ⚠️ Vrai quand les trades affichés n'ont pas tous la même devise. Le
+   * récapitulatif compare la semaine à la précédente en MONTANT : additionner
+   * deux devises pour en tirer « tu as fait mieux » est doublement faux.
+   */
+  devisesMelangees?: boolean;
 }) {
   const { t } = useLanguage();
   const [shareOpen, setShareOpen] = useState(false);
@@ -188,6 +195,22 @@ export default function WeeklyRecap({
       ),
     },
   ];
+
+  // ⚠️ Comparer deux semaines en MONTANT n'a pas de sens si les montants
+  // melangent les devises : on le dit plutot que de trancher a faux.
+  if (devisesMelangees) {
+    return (
+      <KpiCardPremium layout="full" intensity="default" accentColor="cyan">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <CalendarRange className="w-4 h-4 text-accent" strokeWidth={1.75} />
+            <CardTitle>{t("recap_title")}</CardTitle>
+          </div>
+        </CardHeader>
+        <p role="status" className="text-sm text-foreground-muted">{t("recap_devises_melangees")}</p>
+      </KpiCardPremium>
+    );
+  }
 
   return (
     <KpiCardPremium layout="full" intensity="default" accentColor={pnlPositive ? "green" : "amber"}>

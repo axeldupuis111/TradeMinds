@@ -51,11 +51,23 @@ describe("les deux affichages d'un même fait s'accordent", () => {
 
   it("le P&L du jour s'écrit pareil des deux côtés", () => {
     const src = source();
-    expect(src, "la mini-mesure a repris une condition").toContain(
-      "value={money(todayPnl, currency, { digits: 2, signed: true })}",
+    expect(src, "la mini-mesure n'écrit plus le même montant").toContain(
+      'money(todayPnl, currency, { digits: 2, signed: true })',
     );
     expect(src, "le P&L du jour redevient un tiret quand il vaut zéro").not.toMatch(
       /filteredTodayCount > 0[^]{0,200}"—"/,
+    );
+    /**
+     * ⚠️⚠️ LA SEULE CONDITION ADMISE EST LA MÊME DES DEUX CÔTÉS. Les deux
+     * affichages peuvent se taire ensemble (devises mêlées : aucun montant
+     * n'existe), jamais séparément. C'est exactement le défaut d'origine, où
+     * l'un écrivait « — » et l'autre « +0,00 € » à douze pixels d'écart.
+     */
+    const conditions = Array.from(src.matchAll(/deviseDuJourConnue/g)).length;
+    expect(conditions, "les deux affichages ne sont plus gouvernés par la même condition")
+      .toBeGreaterThanOrEqual(2);
+    expect(src, "un des deux côtés a repris une condition qui lui est propre").not.toMatch(
+      /todayPnl[^]{0,80}(filteredTodayCount|weekCount)\s*(>|===)/,
     );
   });
 

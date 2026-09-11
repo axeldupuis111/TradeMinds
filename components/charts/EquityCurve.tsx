@@ -27,9 +27,15 @@ interface Props {
   initialBalance: number;
   /** Devise du compte tracé ; euro en vue « tous les comptes ». */
   currency?: string;
+  /**
+   * ⚠️⚠️ UNE COURBE D'EQUITE EN DEVISES MELEES NE VEUT RIEN DIRE. Elle
+   * empile des euros sur des dollars et dessine une progression qui n'a lieu
+   * sur aucun compte. Mieux vaut ne rien tracer que tracer un mensonge.
+   */
+  devisesMelangees?: boolean;
 }
 
-export default function EquityCurve({ data, initialBalance, currency = DEFAULT_CURRENCY }: Props) {
+export default function EquityCurve({ data, initialBalance, currency = DEFAULT_CURRENCY, devisesMelangees = false }: Props) {
   const { t } = useLanguage();
   const c = useChartColors();
   const { theme } = useTheme();
@@ -40,6 +46,17 @@ export default function EquityCurve({ data, initialBalance, currency = DEFAULT_C
       <KpiCardPremium layout="full" intensity="default" accentColor="cyan">
         <CardTitle className="mb-4">{t("equity_title")}</CardTitle>
         <p className="text-foreground-muted text-sm">{t("equity_empty")}</p>
+      </KpiCardPremium>
+    );
+  }
+
+  // ⚠️ Empiler des euros sur des dollars dessine une progression qui n'a lieu
+  // sur aucun compte : on le dit au lieu de la tracer.
+  if (devisesMelangees) {
+    return (
+      <KpiCardPremium layout="full" intensity="default" accentColor="cyan">
+        <CardTitle className="mb-4">{t("equity_title")}</CardTitle>
+        <p role="status" className="text-foreground-muted text-sm">{t("equity_devises_melangees")}</p>
       </KpiCardPremium>
     );
   }

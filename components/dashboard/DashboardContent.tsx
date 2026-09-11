@@ -211,6 +211,19 @@ export default function DashboardContent({
     () => commonCurrency(filteredAll.map((tr) => tr.challenge_id), currencyMap),
     [filteredAll, currencyMap],
   );
+  /**
+   * ⚠️ CHAQUE TRANCHE A SA PROPRE RÉPONSE. Le journal entier peut mêler deux
+   * devises alors que la journée d'aujourd'hui n'en a qu'une : masquer le P&L
+   * du jour pour cette raison-là serait aussi faux que l'afficher mêlé.
+   */
+  const deviseDuJour = useMemo(
+    () => commonCurrency(filteredToday.map((tr) => tr.challenge_id), currencyMap),
+    [filteredToday, currencyMap],
+  );
+  const deviseDeLaSemaine = useMemo(
+    () => commonCurrency(activePeriodTrades.map((tr) => tr.challenge_id), currencyMap),
+    [activePeriodTrades, currencyMap],
+  );
 
   const profitTargetAmount = displayAccount && displayAccount.profit_target_pct > 0
     ? (displayAccount.account_size * displayAccount.profit_target_pct) / 100
@@ -466,7 +479,10 @@ export default function DashboardContent({
           challengePct={challengePct}
           activeAccountsCount={activeAccounts.length}
           totalPnl={totalPnl}
-          currency={displayCurrency}
+          currency={deviseDuJour ?? displayCurrency}
+          deviseDuJourConnue={filteredToday.length === 0 || deviseDuJour !== null}
+          deviseTotaleConnue={deviseUnique !== null}
+          deviseTotale={deviseUnique ?? displayCurrency}
         />
       </StaggerItem>
 
@@ -493,7 +509,7 @@ export default function DashboardContent({
       {/* ── Ta semaine : bilan (rétrospectif) + plan IA (prospectif) ──── */}
       <StaggerItem className="mt-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 [&>*]:min-w-0 lg:[&>*:only-child]:col-span-2">
-          <WeeklyRecap trades={filteredAll} currency={displayCurrency} />
+          <WeeklyRecap trades={filteredAll} currency={deviseDeLaSemaine ?? deviseUnique ?? displayCurrency} devisesMelangees={deviseUnique === null} />
           <WeeklyPlanCard />
         </div>
       </StaggerItem>
@@ -501,7 +517,7 @@ export default function DashboardContent({
       {/* ── Évolution du capital — le grand graphique, pleine largeur ─── */}
       {equityCurveData.length > 0 && (
         <StaggerItem className="mt-6">
-          <EquityCurve data={equityCurveData} initialBalance={initialBalance} currency={displayCurrency} />
+          <EquityCurve data={equityCurveData} initialBalance={initialBalance} currency={deviseUnique ?? displayCurrency} devisesMelangees={deviseUnique === null} />
         </StaggerItem>
       )}
 
