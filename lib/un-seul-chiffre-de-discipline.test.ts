@@ -149,4 +149,35 @@ describe("un seul chiffre de discipline", () => {
       }
     }
   });
+
+  /**
+   * ── UNE SÉANCE N'EST PAS UN BILAN ───────────────────────────────────────────
+   *
+   * ⚠️⚠️ LE CLASSEMENT COMPTAIT DES BILANS ET LES APPELAIT « SÉANCES ». Le
+   * produit a deux tables distinctes et deux gestes distincts : `sessions`, le
+   * rituel d'avant-marché (émotion, checklist, règles affichées), et
+   * `session_reviews`, les analyses IA. Mesuré sur le compte réel : 38 séances,
+   * 24 bilans. Le classement lit `session_reviews` et affichait « Séances
+   * comptées », pendant que le profil public appelle exactement la même chose
+   * « Bilans passés ».
+   *
+   * ⚠️ TERMINER UNE SÉANCE N'ÉCRIT AUCUN BILAN, vérifié en le faisant : la
+   * séance se ferme, son débrief est stocké, et `session_reviews` ne bouge pas.
+   * Les deux chiffres ne peuvent donc jamais coïncider, et les confondre fait
+   * dire au classement « 0 séance » à quelqu'un qui en a trente-huit.
+   */
+  it("le classement ne confond pas une séance avec un bilan", () => {
+    for (const langue of ["fr", "en", "es", "de"]) {
+      const dico = readFileSync(join(process.cwd(), "lib", "i18n", `${langue}.ts`), "utf8");
+      const lire2 = (cle: string) => {
+        const v = new RegExp(`"${cle}":\\s*"([^"]*)"`).exec(dico)?.[1];
+        expect(v, `${langue} : clé ${cle} introuvable`).toBeTruthy();
+        return v!;
+      };
+      expect(
+        /s.ance|session|sesi.n/i.test(lire2("leaderboard_stat_sessions")),
+        `${langue} : le classement appelle « ${lire2("leaderboard_stat_sessions")} » ce qui est un compte de bilans`,
+      ).toBe(false);
+    }
+  });
 });

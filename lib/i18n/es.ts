@@ -2324,7 +2324,7 @@ const dict: Record<string, string> = {
   "leaderboard_percentile": "top {p}%",
   "leaderboard_min_note": "Clasificación limitada a traders con al menos {n} sesiones en el periodo. Basada en la disciplina, nunca el P&L.",
   "leaderboard_stat_score": "Disciplina media",
-  "leaderboard_stat_sessions": "Sesiones contadas",
+  "leaderboard_stat_sessions": "Balances contados",
   "leaderboard_stat_streak": "Mejor racha",
   "leaderboard_not_ranked": "Aún sin clasificar: completa al menos {n} sesiones en el periodo.",
   "leaderboard_badges_title": "Tus insignias",
