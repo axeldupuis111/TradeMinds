@@ -3987,6 +3987,8 @@ const dict: Record<string, string> = {
   "quick_trade_reason": "¿Por qué tomas esta operación?",
   "coach_send": "Enviar el mensaje",
   "terms_agree_full": "Acepto los {cgu}, las {cgv} y la {confidentialite}",
+  "trades_select_page": "Seleccionar todas las operaciones de esta página",
+  "trades_select_one": "Seleccionar la operación {pair} del {date}",
 };
 
 export default dict;

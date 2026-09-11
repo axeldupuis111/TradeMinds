@@ -113,10 +113,14 @@ function TrailingDdToggle({
   const [showTooltip, setShowTooltip] = useState(false);
   return (
     <div className="flex items-center gap-3">
+      {/* ⚠️ role="switch" ET aria-checked SANS NOM : une lecture d'écran
+          annonçait « interrupteur, non coché », sans dire de quoi. Le mot
+          « Drawdown trailing » était juste à côté, mais rien ne les reliait. */}
       <button
         type="button"
         role="switch"
         aria-checked={value}
+        aria-label={t("challenge_trailing_dd")}
         onClick={() => onChange(!value)}
         className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-card ${value ? "bg-accent" : "bg-border"}`}
       >

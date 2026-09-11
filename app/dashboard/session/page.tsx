@@ -829,13 +829,18 @@ export default function SessionPage() {
             <div className="space-y-2">
               {checklist.map((item, idx) => (
                 <div key={idx} className={`flex items-start gap-3 group rounded-lg transition-colors ${!checkedItems.has(idx) && !allChecked ? "border border-orange-400/40 px-2 py-1" : "px-2 py-1"}`}>
+                  {/* ⚠️ L'ÉTIQUETTE VIENT APRÈS LA CASE, et sans `htmlFor`
+                      elle ne la nommait pas : chaque point de la checklist de
+                      séance s'annonçait « case à cocher », sans son texte.
+                      L'identifiant est CALCULÉ, on est dans une boucle. */}
                   <input
+                    id={`checklist-${idx}`}
                     type="checkbox"
                     checked={checkedItems.has(idx)}
                     onChange={() => toggleCheck(idx)}
                     className="accent-accent w-5 h-5 mt-0.5 cursor-pointer shrink-0"
                   />
-                  <label className={`flex-1 text-sm cursor-pointer ${checkedItems.has(idx) ? "line-through text-muted" : "text-foreground"}`} onClick={() => toggleCheck(idx)}>
+                  <label htmlFor={`checklist-${idx}`} className={`flex-1 text-sm cursor-pointer ${checkedItems.has(idx) ? "line-through text-muted" : "text-foreground"}`} onClick={() => toggleCheck(idx)}>
                     {item}
                   </label>
                   <button

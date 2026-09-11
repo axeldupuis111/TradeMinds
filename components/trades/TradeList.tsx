@@ -1,6 +1,7 @@
 "use client";
 
 import { buildCurrencyMap, money, tradeCurrency } from "@/lib/account-currency";
+import { enDate } from "@/lib/dates";
 import { getEmotionDisplay } from "@/lib/emotions";
 import type { ChecklistItem } from "@/lib/hooks/useStrategyTags";
 import { detectKillzone } from "@/lib/ict-constants";
@@ -1172,8 +1173,11 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
               <thead>
                 <tr className="bg-surface text-muted text-left">
                   <th className="px-3 py-2 w-8">
+                    {/* ⚠️ Une case à cocher sans nom s'annonce « case à
+                        cocher », point. Celle-ci en sélectionne cinquante. */}
                     <input
                       type="checkbox"
+                      aria-label={t("trades_select_page")}
                       checked={allSelected}
                       onChange={toggleSelectAll}
                       className="accent-accent w-4 h-4 cursor-pointer"
@@ -1222,8 +1226,15 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
                     >
                       {/* Checkbox */}
                       <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                        {/* ⚠️ ET CHAQUE LIGNE DIT LAQUELLE : sans ça,
+                            cinquante et une cases identiques se suivaient,
+                            toutes nommées « case à cocher ». */}
                         <input
                           type="checkbox"
+                          aria-label={t("trades_select_one", {
+                            pair: tr.pair,
+                            date: tr.open_time ? enDate(tr.open_time) : "—",
+                          })}
                           checked={isChecked(tr.id)}
                           onChange={() => toggleSelect(tr.id)}
                           className="accent-accent w-4 h-4 cursor-pointer"

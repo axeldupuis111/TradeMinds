@@ -411,7 +411,10 @@ export default function SettingsPage() {
       <section className="bg-card border border-border rounded-xl p-5">
         <h2 className="text-lg font-semibold text-foreground mb-1">{t("settings_timezone_title")}</h2>
         <p className="text-muted text-sm mb-4">{t("settings_timezone_desc")}</p>
+        {/* ⚠️ Le titre au-dessus est un <h2>, pas une étiquette : il ne nomme
+            pas la liste pour une lecture d'écran. */}
         <select
+          aria-label={t("settings_timezone_title")}
           value={timezone}
           onChange={(e) => setTimezone(e.target.value)}
           className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
@@ -561,6 +564,7 @@ export default function SettingsPage() {
                 type="text"
                 value={mtToken}
                 readOnly
+                aria-label={t("sync_token_label")}
                 className="flex-1 px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm font-mono cursor-text focus:outline-none focus:ring-1 focus:ring-accent select-all"
               />
               <button
