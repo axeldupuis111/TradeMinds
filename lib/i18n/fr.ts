@@ -3984,6 +3984,8 @@ const dict: Record<string, string> = {
   "common_trades_count": "{n} {n|trade|trades}",
   "dash_today_trades_sub": "{n} {n|trade|trades} aujourd'hui",
   "trades_delete_one_failed": "Ce trade n'a pas été supprimé. Réessaie.",
+  "challenge_portfolio_trades": "Trades sur ces comptes",
+  "challenge_portfolio_winrate": "Winrate sur ces comptes",
 };
 
 export default dict;

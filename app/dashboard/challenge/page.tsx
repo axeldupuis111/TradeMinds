@@ -1667,14 +1667,19 @@ export default function ChallengePage() {
                     <p className="text-lg font-bold text-foreground tabular-nums mt-0.5">{activeAccounts.length}</p>
                   </div>
                   <div className="rounded-lg bg-surface border border-border p-3">
-                    <p className="text-[11px] text-muted uppercase tracking-wider">{t("trades_winrate")}</p>
+                    {/* ⚠️ « Winrate sur ces comptes », pas « Winrate » : cette
+                        carte ne compte que les comptes ACTIFS, et l'onglet
+                        Trades affichait 63,1 % sur 157 trades pendant qu'on
+                        lisait ici 64 % sur 39. Deux chiffres justes, un seul
+                        libellé, donc une contradiction à l'écran. */}
+                    <p className="text-[11px] text-muted uppercase tracking-wider">{t("challenge_portfolio_winrate")}</p>
                     <p className="text-lg font-bold text-foreground tabular-nums mt-0.5">
                       {portfolio.trades > 0 ? `${pourcent(portfolioWinrate)}` : "—"}
                     </p>
                   </div>
                 </div>
                 <div className="rounded-lg bg-surface border border-border p-3">
-                  <p className="text-[11px] text-muted uppercase tracking-wider">{t("trades_total")}</p>
+                  <p className="text-[11px] text-muted uppercase tracking-wider">{t("challenge_portfolio_trades")}</p>
                   <p className="text-lg font-bold text-foreground tabular-nums mt-0.5">{portfolio.trades}</p>
                 </div>
               </div>
