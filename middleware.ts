@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { locales, defaultLocale } from "./i18n/config";
+import { recopierLesCookies } from "./lib/recopier-les-cookies";
 
 const COOKIE_NAME = "NEXT_LOCALE";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 an
@@ -273,10 +274,14 @@ export async function middleware(request: NextRequest) {
         path: "/",
         sameSite: "lax",
       });
-      // Recopie aussi les cookies Supabase si modifiés
-      supabaseResponse.cookies.getAll().forEach((c) => {
-        response.cookies.set(c.name, c.value);
-      });
+      /**
+       * ⚠️⚠️ AVEC LEURS OPTIONS. Cette recopie se faisait en
+       * `set(c.name, c.value)`, c'est-à-dire en jetant `httpOnly`, `secure`,
+       * `sameSite`, `path` et `maxAge` : un cookie de session Supabase reposé
+       * sans `httpOnly` devient lisible par n'importe quel script de la page.
+       * La perte était invisible, la session continuant de marcher.
+       */
+      recopierLesCookies(supabaseResponse.cookies.getAll(), response.cookies);
       return response;
     }
   }
