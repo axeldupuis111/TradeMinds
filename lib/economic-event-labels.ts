@@ -192,6 +192,7 @@ const TERMES: Record<string, Localized> = {
   "labor cost index":           { fr: "Indice du coût du travail",          en: "Labor cost index",            de: "Arbeitskostenindex",                   es: "Índice de costes laborales" },
   "wage price index":           { fr: "Indice des salaires",                en: "Wage price index",            de: "Lohnpreisindex",                       es: "Índice de precios salariales" },
   "inflation expectations":     { fr: "Anticipations d'inflation",          en: "Inflation expectations",      de: "Inflationserwartungen",                es: "Expectativas de inflación" },
+  "budget balance":             { fr: "Solde budgétaire",                   en: "Budget balance",              de: "Haushaltssaldo",                       es: "Saldo presupuestario" },
   "public sector net borrowing":{ fr: "Besoin de financement public",       en: "Public sector net borrowing", de: "Nettokreditaufnahme des Staates",      es: "Endeudamiento neto del sector público" },
   "employment cost index":      { fr: "Indice du coût de l'emploi",         en: "Employment cost index",       de: "Index der Beschäftigungskosten",       es: "Índice de costes de empleo" },
   // ⚠️ Le PMI seul, pour les enquêtes régionales (« Ivey PMI ») que le
@@ -205,6 +206,14 @@ const DISCOURS: Localized = {
   en: "{qui} speaks",
   de: "Rede von {qui}",
   es: "Discurso de {qui}",
+};
+
+/** « BRICS Summit », « G20 Meetings » : une réunion, pas un indicateur. */
+const SOMMET: Localized = {
+  fr: "Sommet {qui}",
+  en: "{qui} summit",
+  de: "{qui}-Gipfel",
+  es: "Cumbre {qui}",
 };
 
 /** « German 10-y Bond Auction » : une forme, elle aussi. */
@@ -228,6 +237,8 @@ function parPatron(title: string, lang: GlossaryLang): string | undefined {
   if (discours) return DISCOURS[lang].replace("{qui}", discours[1].trim());
   const adjudication = /(\d+)\s*[-\s]?(?:y|yr|year)\s+bond\s+auction/i.exec(title);
   if (adjudication) return ADJUDICATION[lang].replace("{n}", adjudication[1]);
+  const sommet = /^(.+?)\s+summit$/i.exec(title.trim());
+  if (sommet) return SOMMET[lang].replace("{qui}", sommet[1].trim());
   return undefined;
 }
 
