@@ -69,7 +69,9 @@ describe("les commandes sans texte portent un nom", () => {
   function muettes(source: string): { ligne: number; quoi: string }[] {
     const out: { ligne: number; quoi: string }[] = [];
     const marques: [RegExp, string][] = [
-      [/<input\b/g, "checkbox"],
+      [/<input\b/g, "champ"],
+      [/<select\b/g, "liste"],
+      [/<textarea\b/g, "zone"],
       [/<button\b/g, "switch"],
     ];
     for (const [motif, sorte] of marques) {
@@ -77,8 +79,30 @@ describe("les commandes sans texte portent un nom", () => {
         const fin = finDeBalise(source, m.index!);
         if (fin < 0) continue;
         const balise = source.slice(m.index!, fin + 1);
-        if (sorte === "checkbox" && !/type="checkbox"/.test(balise)) continue;
         if (sorte === "switch" && !/role="switch"/.test(balise)) continue;
+        /**
+         * ⚠️ UN CHAMP CACHÉ N'A PERSONNE À QUI PARLER. Et un texte d'exemple
+         * (`placeholder`) N'EST PAS UN NOM : il disparaît dès qu'on tape, et
+         * certaines lectures d'écran ne l'annoncent pas du tout. Il ne figure
+         * donc pas dans ce qui dispense.
+         */
+        if (/type="hidden"/.test(balise)) continue;
+        /**
+         * ⚠️ UN CHAMP MASQUÉ PAR `hidden` N'EST PAS DANS L'ORDRE DE TABULATION :
+         * l'import CSV garde un `<input type="file">` en `display:none`, qu'un
+         * bouton nommé déclenche à sa place. Le nommer ne servirait personne.
+         * ⚠️ À NE PAS CONFONDRE AVEC `sr-only`, qui reste focusable, et que ce
+         * garde juge donc normalement.
+         */
+        if (/className="[^"]*\bhidden\b/.test(balise)) continue;
+        /**
+         * ⚠️ UN CHAMP RENDU DANS `<Champ>` EST DÉJÀ DANS UNE ÉTIQUETTE.
+         * `components/backtest/Controles.tsx` expose ce composant, qui rend
+         * `<label>…{children}</label>` : le test le vérifie plus bas, pour que
+         * cette dispense reste adossée à un fait et non à une habitude.
+         */
+        const avantChamp = source.slice(0, m.index!);
+        if (avantChamp.lastIndexOf("<Champ") > avantChamp.lastIndexOf("</Champ>")) continue;
         if (/aria-label|aria-labelledby/.test(balise)) continue;
         /**
          * Enveloppée dans un `<label>` : le texte du label la nomme.
@@ -126,11 +150,33 @@ describe("les commandes sans texte portent un nom", () => {
     expect(muettes(`<button onClick={f}>Enregistrer</button>`)).toHaveLength(0);
   });
 
-  it("aucune case à cocher, aucun interrupteur, n'est laissé sans nom", () => {
+  /**
+   * ⚠️ LA DISPENSE DE `<Champ>` REPOSE SUR UN FAIT, PAS SUR UNE HABITUDE : ce
+   * composant doit vraiment envelopper ce qu'on lui donne dans une étiquette.
+   * Le jour où il cesse de le faire, cette dispense devient un trou, et c'est
+   * ce test qui le dira.
+   */
+  it("le composant Champ enveloppe bien ses enfants dans une étiquette", () => {
+    const source = readFileSync(join(process.cwd(), "components/backtest/Controles.tsx"), "utf8");
+    const i = source.indexOf("<label");
+    expect(i, "Controles.tsx ne rend plus d'étiquette").toBeGreaterThan(0);
+    expect(source.slice(i, source.indexOf("</label>", i))).toContain("{children}");
+  });
+
+  it("aucune commande n'est laissée sans nom", () => {
     const fautes: string[] = [];
     for (const chemin of [...fichiers("app"), ...fichiers("components")]) {
+      const source = readFileSync(chemin, "utf8");
+      /**
+       * ⚠️ UN FICHIER QUI DÉFINIT UNE ÉTIQUETTE ENVELOPPANTE EST HORS PORTÉE.
+       * `components/backtest/Controles.tsx` expose un `Champ` qui rend
+       * `<label>…{children}</label>` : ses `<select>` nus sont bel et bien
+       * dans un label à l'exécution, mais aucune lecture statique ne peut le
+       * savoir, puisque l'assemblage se fait chez l'appelant.
+       */
+      if (/<label[\s\S]{0,400}\{children\}/.test(source)) continue;
       const nom = chemin.split(/[\\/]/).slice(-2).join("/");
-      for (const { ligne, quoi } of muettes(readFileSync(chemin, "utf8"))) {
+      for (const { ligne, quoi } of muettes(source)) {
         fautes.push(`${nom}:${ligne} (${quoi})`);
       }
     }

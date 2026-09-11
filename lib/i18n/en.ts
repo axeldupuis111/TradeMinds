@@ -3989,6 +3989,14 @@ const dict: Record<string, string> = {
   "terms_agree_full": "I agree to the {cgu}, the {cgv} and the {confidentialite}",
   "trades_select_page": "Select every trade on this page",
   "trades_select_one": "Select the {pair} trade of {date}",
+  "a11y_date_from": "Start date",
+  "a11y_date_to": "End date",
+  "a11y_amount_min": "Minimum amount",
+  "a11y_amount_max": "Maximum amount",
+  "a11y_period": "Period",
+  "a11y_account": "Account",
+  "a11y_environment": "Environment",
+  "a11y_month": "Month",
 };
 
 export default dict;

@@ -986,7 +986,7 @@ export default function AnalysisPage() {
           )}
           {/* Period selector */}
           <div className="flex items-center gap-3 flex-wrap mb-3">
-            <select
+            <select aria-label={t("a11y_period")}
               value={selectedPeriod}
               onChange={(e) => setSelectedPeriod(e.target.value as PeriodKey)}
               className="px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
@@ -1649,7 +1649,7 @@ export default function AnalysisPage() {
 
             {/* Input */}
             <div className="border-t border-border p-3 flex gap-2">
-              <input
+              <input aria-label={t("coach_placeholder")}
                 type="text"
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}

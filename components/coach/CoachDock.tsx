@@ -322,7 +322,7 @@ export default function CoachDock() {
                     {listening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
                   </button>
                 )}
-                <textarea
+                <textarea aria-label={t("coach_dock_placeholder")}
                   ref={inputRef}
                   value={chat.input}
                   onChange={(e) => chat.setInput(e.target.value)}

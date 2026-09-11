@@ -368,7 +368,7 @@ export default function DashboardContent({
 
         <div className="flex flex-wrap items-center gap-2">
           {activeAccounts.length > 0 && (
-            <select
+            <select aria-label={t("a11y_account")}
               value={selectedAccountId || ""}
               onChange={(e) => setSelectedAccountId(e.target.value)}
               className="px-3 py-1.5 bg-surface border border-border rounded-lg text-foreground text-xs font-medium focus:outline-none focus:ring-1 focus:ring-accent"

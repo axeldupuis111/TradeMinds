@@ -787,6 +787,7 @@ export default function SessionPage() {
               {/* Strategy selector */}
               {strategies.length > 1 && (
                 <select
+                  aria-label={t("strategy_select")}
                   value={strategy?.id || ""}
                   onChange={(e) => handleStrategyChange(e.target.value)}
                   className="px-2 py-1 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-accent shrink-0"
@@ -864,6 +865,9 @@ export default function SessionPage() {
                 onChange={(e) => setNewItemText(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") addChecklistItem(); }}
                 placeholder={t("session_add_placeholder")}
+                // ⚠️ Un texte d'exemple N'EST PAS un nom : il disparaît dès
+                // qu'on tape, et certaines lectures d'écran ne l'annoncent pas.
+                aria-label={t("session_add_placeholder")}
                 className="flex-1 px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
               />
               <button

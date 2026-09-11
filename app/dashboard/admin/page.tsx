@@ -449,6 +449,7 @@ export default function AdminPage() {
                     </div>
                     <div className="mt-2 flex flex-col sm:flex-row gap-2">
                       <input
+                        aria-label="E-mail du compte partenaire"
                         value={comOwner[c.id] ?? ""}
                         onChange={(e) => setComOwner((p) => ({ ...p, [c.id]: e.target.value }))}
                         placeholder="e-mail du compte partenaire"
@@ -467,6 +468,7 @@ export default function AdminPage() {
                         rejoindraient jamais sans passer par ici. */}
                     <div className="mt-2 flex flex-col sm:flex-row gap-2">
                       <textarea
+                        aria-label="Rattacher des membres en masse"
                         value={comEmails[c.id] ?? ""}
                         rows={2}
                         onChange={(e) => setComEmails((p) => ({ ...p, [c.id]: e.target.value }))}

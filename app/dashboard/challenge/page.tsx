@@ -1368,7 +1368,7 @@ export default function ChallengePage() {
                 <option value={CUSTOM_VALUE}>— {accountType === "prop" ? "Autre prop firm" : "Autre broker"}</option>
               </select>
               {firm === CUSTOM_VALUE && (
-                <input
+                <input aria-label={t("challenge_label_prop_firm")}
                   type="text"
                   value={customFirm}
                   onChange={(e) => setCustomFirm(e.target.value)}

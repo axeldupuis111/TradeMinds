@@ -191,7 +191,7 @@ export function Completude({
                   ) : null}
 
                   {cleSousLaLigne(l) === "champ" ? (
-                    <textarea
+                    <textarea aria-label={t("bt_comp_placeholder")}
                       value={brouillon[l.code] ?? ""}
                       onChange={(e) =>
                         setBrouillon((b) => ({ ...b, [l.code]: e.target.value }))

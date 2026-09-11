@@ -758,7 +758,7 @@ export default function SettingsPage() {
             <p className="text-sm text-muted">{t("settings_delete_confirm_text")}</p>
             <div>
               <p className="text-xs text-muted mb-2">{t("settings_delete_type_word")}</p>
-              <input
+              <input aria-label={t("settings_delete_type_word")}
                 type="text"
                 value={deleteConfirmInput}
                 onChange={(e) => setDeleteConfirmInput(e.target.value)}

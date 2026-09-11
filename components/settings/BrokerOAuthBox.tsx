@@ -57,7 +57,7 @@ export default function BrokerOAuthBox() {
       <p className="text-sm font-semibold text-foreground">{t("sync_oauth_title")}</p>
       <p className="mt-1 text-xs text-foreground-muted leading-relaxed">{t("sync_oauth_desc")}</p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <select
+        <select aria-label={t("a11y_environment")}
           value={environment}
           onChange={(e) => setEnvironment(e.target.value as "demo" | "live")}
           className="px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-accent"

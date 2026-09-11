@@ -136,7 +136,7 @@ export default function MembersPanel({ onClose, onChanged }: { onClose: () => vo
           <div className="rounded-lg border border-border bg-surface p-3">
             <p className="text-[11px] text-muted mb-2">{t("com_member_add_title")}</p>
             <div className="flex flex-col sm:flex-row gap-2">
-              <input
+              <input aria-label={t("com_member_add_placeholder")}
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") void addMember(); }}

@@ -275,14 +275,14 @@ export default function TradovateConnect() {
           {showForm ? (
             <form onSubmit={submit} className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <input
+                <input aria-label={t("sync_tradovate_label")}
                   type="text"
                   placeholder={t("sync_tradovate_label")}
                   value={form.label}
                   onChange={(e) => setForm({ ...form, label: e.target.value })}
                   className="px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-accent"
                 />
-                <select
+                <select aria-label={t("a11y_environment")}
                   value={form.environment}
                   onChange={(e) =>
                     setForm({ ...form, environment: e.target.value as "demo" | "live" })
@@ -292,7 +292,7 @@ export default function TradovateConnect() {
                   <option value="live">{t("sync_tradovate_env_live")}</option>
                   <option value="demo">{t("sync_tradovate_env_demo")}</option>
                 </select>
-                <input
+                <input aria-label={t("sync_tradovate_username")}
                   type="text"
                   placeholder={t("sync_tradovate_username")}
                   value={form.username}
@@ -300,7 +300,7 @@ export default function TradovateConnect() {
                   autoComplete="off"
                   className="px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-accent"
                 />
-                <input
+                <input aria-label={t("sync_tradovate_password")}
                   type="password"
                   placeholder={t("sync_tradovate_password")}
                   value={form.password}
@@ -308,7 +308,7 @@ export default function TradovateConnect() {
                   autoComplete="new-password"
                   className="px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-accent"
                 />
-                <input
+                <input aria-label={t("sync_tradovate_cid")}
                   type="text"
                   placeholder={t("sync_tradovate_cid")}
                   value={form.cid}
@@ -316,7 +316,7 @@ export default function TradovateConnect() {
                   autoComplete="off"
                   className="px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-accent"
                 />
-                <input
+                <input aria-label={t("sync_tradovate_sec")}
                   type="password"
                   placeholder={t("sync_tradovate_sec")}
                   value={form.sec}
@@ -324,7 +324,7 @@ export default function TradovateConnect() {
                   autoComplete="new-password"
                   className="px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-accent"
                 />
-                <input
+                <input aria-label={t("sync_tradovate_commission")}
                   type="number"
                   min="0"
                   max="100"

@@ -515,7 +515,7 @@ export default function PositionSizer({ strategy }: Props) {
                     <option value={CUSTOM_INSTRUMENT}>{t("sizer_instrument_custom")}</option>
                   </select>
                   {isCustomInstrument && (
-                    <input
+                    <input aria-label={t("sizer_instrument_custom")}
                       type="text"
                       value={symbol}
                       onChange={(e) => handleSymbolChange(e.target.value)}
@@ -569,7 +569,7 @@ export default function PositionSizer({ strategy }: Props) {
                           <Info className="w-3.5 h-3.5" />
                         </button>
                       </div>
-                      <input
+                      <input aria-label={t("sizer_pip_value")}
                         type="number"
                         min="0"
                         step="0.01"

@@ -752,14 +752,14 @@ export default function AnalyticsPage() {
         {/* Custom date range */}
         {period === "custom" && (
           <div className="flex items-center gap-1.5">
-            <input
+            <input aria-label={t("a11y_date_from")}
               type="date"
               value={customDateFrom}
               onChange={(e) => setCustomDateFrom(e.target.value)}
               className="px-3 py-1.5 bg-card border border-border rounded-lg text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
             />
             <span className="text-foreground-muted text-xs">→</span>
-            <input
+            <input aria-label={t("a11y_date_to")}
               type="date"
               value={customDateTo}
               onChange={(e) => setCustomDateTo(e.target.value)}
@@ -771,6 +771,7 @@ export default function AnalyticsPage() {
         {/* Account selector */}
         {accounts.length > 0 && (
           <select
+            aria-label={t("analytics_all_accounts")}
             value={accountFilter}
             onChange={(e) => setAccountFilter(e.target.value)}
             className="px-3 py-1.5 bg-card border border-border rounded-lg text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
@@ -881,7 +882,7 @@ export default function AnalyticsPage() {
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-foreground-muted mb-2">P&L ({currencySymbol(pageCurrency).trim()})</p>
                 <div className="flex items-center gap-2">
-                  <input
+                  <input aria-label={t("a11y_amount_min")}
                     type="number"
                     placeholder="Min"
                     value={stagingPnlMin}
@@ -889,7 +890,7 @@ export default function AnalyticsPage() {
                     className="flex-1 px-3 py-1.5 bg-surface border border-border rounded-lg text-sm text-foreground placeholder-foreground-muted/50 focus:outline-none focus:ring-1 focus:ring-accent"
                   />
                   <span className="text-foreground-muted text-xs shrink-0">→</span>
-                  <input
+                  <input aria-label={t("a11y_amount_max")}
                     type="number"
                     placeholder="Max"
                     value={stagingPnlMax}

@@ -559,7 +559,7 @@ export default function MonthlyReviewPage() {
                       <div className="mt-2 rounded-xl border border-border bg-card p-4">
                         <div className="flex items-center gap-2 mb-3 flex-wrap">
                           <span className="text-xs text-muted">{t("review_compare_with")}</span>
-                          <input type="month" value={compareMonth} max={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`}
+                          <input aria-label={t("a11y_month")} type="month" value={compareMonth} max={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`}
                             onChange={(e) => setCompareMonth(e.target.value)}
                             className="px-2.5 py-1.5 bg-surface border border-border rounded-lg text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-accent" />
                         </div>

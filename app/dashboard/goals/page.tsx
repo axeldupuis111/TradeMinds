@@ -1016,7 +1016,7 @@ export default function GoalsPage() {
                                     {editingTarget === g.id ? (
                                       <div className="flex items-center gap-1 mt-0.5">
                                         <span className="text-[11px] text-muted">{g.comparator === "gte" ? "≥" : "≤"}</span>
-                                        <input
+                                        <input aria-label={t("goals_target")}
                                           type="number" autoFocus value={editValue}
                                           onChange={(e) => setEditValue(e.target.value)}
                                           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
@@ -1339,13 +1339,13 @@ export default function GoalsPage() {
                 {createMode === "write" && (
                   <div className="mt-4">
                     <div className="flex flex-col sm:flex-row gap-2">
-                      <input
+                      <input aria-label={t("goals_custom_text_placeholder")}
                         type="text" value={customText} onChange={(e) => setCustomText(e.target.value)}
                         onKeyDown={(e) => { if (e.key === "Enter") addCustomGoal(); }}
                         placeholder={t("goals_custom_text_placeholder")} maxLength={120} autoFocus
                         className="flex-1 px-3 py-2.5 bg-surface border border-border rounded-lg text-foreground text-sm placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent"
                       />
-                      <select value={customPeriod} onChange={(e) => setCustomPeriod(e.target.value as Period)}
+                      <select aria-label={t("a11y_period")} value={customPeriod} onChange={(e) => setCustomPeriod(e.target.value as Period)}
                         className="px-3 py-2.5 bg-surface border border-border rounded-lg text-foreground text-sm">
                         {PERIODS.map((p) => <option key={p} value={p}>{periodLabel(p)}</option>)}
                       </select>
@@ -1379,11 +1379,11 @@ export default function GoalsPage() {
                     <div className="mt-3 grid grid-cols-2 gap-2">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-semibold text-muted shrink-0">{METRIC_COMPARATOR[metric] === "gte" ? "≥" : "≤"}</span>
-                        <input type="number" value={target} onChange={(e) => setTarget(e.target.value)} placeholder={t("goals_target")}
+                        <input aria-label={t("goals_target")} type="number" value={target} onChange={(e) => setTarget(e.target.value)} placeholder={t("goals_target")}
                           className="w-full px-3 py-2.5 bg-surface border border-border rounded-lg text-foreground text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-accent" />
                         <span className="text-xs text-muted shrink-0">{unit(metric)}</span>
                       </div>
-                      <select value={period} onChange={(e) => setPeriod(e.target.value as Period)}
+                      <select aria-label={t("a11y_period")} value={period} onChange={(e) => setPeriod(e.target.value as Period)}
                         className="px-3 py-2.5 bg-surface border border-border rounded-lg text-foreground text-sm">
                         {PERIODS.map((p) => <option key={p} value={p}>{periodLabel(p)}</option>)}
                       </select>

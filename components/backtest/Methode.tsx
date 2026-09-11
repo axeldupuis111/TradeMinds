@@ -67,7 +67,7 @@ export function Methode({
       </h4>
       <p className="mt-1 text-xs leading-relaxed text-foreground-muted">{t("bt_meth_intro")}</p>
 
-      <select
+      <select aria-label={t("bt_etape_methode")}
         value={code}
         onChange={(e) => onChoisir(e.target.value)}
         className="mt-3 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"

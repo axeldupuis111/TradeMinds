@@ -417,9 +417,9 @@ export default function CalendarPage() {
         </div>
         {dateMode === "custom" && (
           <div className="flex items-center gap-1.5">
-            <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className={dateInputCls} />
+            <input aria-label={t("a11y_date_from")} type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className={dateInputCls} />
             <span className="text-foreground-muted text-xs">→</span>
-            <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className={dateInputCls} />
+            <input aria-label={t("a11y_date_to")} type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className={dateInputCls} />
           </div>
         )}
       </div>
