@@ -58,22 +58,25 @@ export function brancherEchap(cible: CibleClavier, fermer: () => void): () => vo
 
 /**
  * Donne le focus à la dernière fenêtre ouverte et rend de quoi le remettre où
- * il était.
+ * il était. Rend `null` si aucune fenêtre n'est encore posée.
  *
  * ⚠️ ON RENVOIE LE FOCUS À LA FERMETURE, et c'est la moitié qui s'oublie : sans
  * ça, refermer une fenêtre repart du haut de la page, et le bouton qu'on venait
  * d'actionner est perdu.
+ *
+ * ⚠️ `null` PLUTÔT QU'UNE FONCTION VIDE : l'appelant doit pouvoir faire la
+ * différence entre « c'est fait » et « il n'y avait rien à viser », sinon il ne
+ * peut pas réessayer.
  */
-export function donnerLeFocus(): () => void {
+export function donnerLeFocus(): (() => void) | null {
   const precedent = document.activeElement as HTMLElement | null;
   const fenetres = document.querySelectorAll<HTMLElement>('[role="dialog"], [role="alertdialog"]');
   const fenetre = fenetres[fenetres.length - 1];
-  if (fenetre) {
-    // ⚠️ Un conteneur n'est pas focusable par défaut : on le rend atteignable
-    // par programme seulement (-1), jamais par tabulation.
-    if (!fenetre.hasAttribute("tabindex")) fenetre.setAttribute("tabindex", "-1");
-    fenetre.focus({ preventScroll: true });
-  }
+  if (!fenetre) return null;
+  // ⚠️ Un conteneur n'est pas focusable par défaut : on le rend atteignable
+  // par programme seulement (-1), jamais par tabulation.
+  if (!fenetre.hasAttribute("tabindex")) fenetre.setAttribute("tabindex", "-1");
+  fenetre.focus({ preventScroll: true });
   return () => {
     if (precedent && document.contains(precedent)) precedent.focus({ preventScroll: true });
   };
@@ -83,14 +86,26 @@ export function useFenetreModale(actif: boolean, fermer: () => void) {
   useEffect(() => {
     if (!actif) return;
     const debrancher = brancherEchap(document, fermer);
-    // ⚠️ Après la peinture : la fenêtre n'est pas encore dans le document quand
-    // l'effet part, sur les composants qui la montent au même rendu.
-    let rendreLeFocus: (() => void) | null = null;
-    const image = requestAnimationFrame(() => {
-      rendreLeFocus = donnerLeFocus();
-    });
+    /**
+     * ⚠️⚠️ PAS D'IMAGE D'ANIMATION ICI, ET C'EST LE DÉFAUT QUE J'AI ÉCRIT
+     * MOI-MÊME : j'attendais `requestAnimationFrame` « le temps que la fenêtre
+     * soit posée ». Or un effet part DÉJÀ après la pose du DOM, donc l'attente
+     * n'apportait rien, et elle coûtait cher : une image d'animation ne se
+     * déclenche JAMAIS dans un onglet caché. Le focus n'entrait alors nulle
+     * part, et la fenêtre restait déclarée `aria-modal` sur une page que la
+     * lecture d'écran avait reçu l'ordre d'ignorer.
+     *
+     * ⚠️ LE SECOND ESSAI EST POUR LES FENÊTRES QUI ARRIVENT PLUS TARD (contenu
+     * chargé, montage différé) : `setTimeout`, lui, finit toujours par partir.
+     */
+    let rendreLeFocus = donnerLeFocus();
+    const secondEssai = rendreLeFocus
+      ? null
+      : setTimeout(() => {
+          rendreLeFocus = donnerLeFocus();
+        }, 0);
     return () => {
-      cancelAnimationFrame(image);
+      if (secondEssai !== null) clearTimeout(secondEssai);
       debrancher();
       rendreLeFocus?.();
     };

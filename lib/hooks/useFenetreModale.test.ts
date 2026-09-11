@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { brancherEchap, donnerLeFocus, type CibleClavier } from "./useFenetreModale";
 
@@ -142,12 +144,34 @@ describe("donnerLeFocus", () => {
   it("rend le focus à l'élément d'où l'on venait", () => {
     const { avant } = faux([{ id: "a" }], "bouton");
     const rendre = donnerLeFocus();
-    rendre();
+    expect(rendre).not.toBeNull();
+    rendre!();
     expect(avant.focusRecu).toBe(1);
   });
 
-  it("ne plante pas si aucune fenêtre n'est ouverte", () => {
+  /**
+   * ⚠️ AUCUNE FENÊTRE : on rend `null`, pas une fonction vide. L'appelant doit
+   * pouvoir distinguer « c'est fait » de « il n'y avait rien à viser », sinon
+   * il ne peut pas réessayer quand la fenêtre arrive une pincée plus tard.
+   */
+  it("signale qu'aucune fenêtre n'est ouverte", () => {
     faux([], "bouton");
-    expect(() => donnerLeFocus()()).not.toThrow();
+    expect(donnerLeFocus()).toBeNull();
+  });
+
+  /**
+   * ⚠️⚠️ ET LE FOCUS NE DÉPEND PAS D'UNE IMAGE D'ANIMATION : c'est le défaut
+   * que j'avais écrit moi-même. `requestAnimationFrame` ne se déclenche JAMAIS
+   * dans un onglet caché, donc le focus n'entrait nulle part, sur des fenêtres
+   * qui venaient de recevoir l'ordre `aria-modal` de faire ignorer le reste de
+   * la page. Un effet part déjà après la pose du DOM : l'attente ne servait à
+   * rien et coûtait tout.
+   *
+   * ⚠️ CE TEST LIT LA SOURCE parce que ce dépôt n'a pas de DOM : c'est la
+   * seule façon de tenir la promesse sans rendre le composant.
+   */
+  it("ne fait pas dépendre le focus d'une image d'animation", () => {
+    const source = readFileSync(join(process.cwd(), "lib/hooks/useFenetreModale.ts"), "utf8");
+    expect(source, "une image d'animation ne part pas dans un onglet cache").not.toContain("requestAnimationFrame(");
   });
 });
