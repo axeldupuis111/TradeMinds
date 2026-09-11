@@ -213,4 +213,24 @@ describe("un seul chiffre de discipline", () => {
     expect(lire("components/dashboard/DayState.tsx")).toContain('streak === null ? "—"');
     expect(lire("components/profile/PublicProfileView.tsx")).toContain('serie === null ? "—"');
   });
+
+  /**
+   * ⚠️⚠️ ET LES TROIS AUTRES CHIFFRES DE CETTE PAGE. Réparer la série et laisser
+   * « 0 trade, 0 % de réussite » une ligne au-dessus, c'est corriger une moitié
+   * du défaut et garder l'autre, sur la même surface : celle que le trader
+   * partage, la seule qu'un lecteur ne peut pas recouper.
+   */
+  it("le profil public n'annonce aucun chiffre qu'il n'a pas pu lire", () => {
+    const page = lire("app/profile/[username]/page.tsx");
+    expect(page, "le null de fetchAllRows n'est plus regardé").toContain(
+      "const tradesComplets = tradeRows !== null;",
+    );
+    expect(page, "l'erreur des bilans est jetée").toContain("error: erreurBilans");
+    expect(page, "l'erreur du compteur de séances est jetée").toContain("error: erreurSeances");
+
+    const vue = lire("components/profile/PublicProfileView.tsx");
+    for (const marqueur of ["tradesComplets ? stats.count", "tradesComplets ? pourcent", "sessionCount === null", "disciplineComplete ?"]) {
+      expect(vue, `la vue affiche encore un chiffre inventé : ${marqueur}`).toContain(marqueur);
+    }
+  });
 });

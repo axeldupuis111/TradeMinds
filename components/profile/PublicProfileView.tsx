@@ -55,6 +55,8 @@ export default function PublicProfileView({
   sessionCount,
   achievements,
   serie,
+  tradesComplets = true,
+  disciplineComplete = true,
 }: {
   username: string;
   /** Membre fondateur : l'un des 100 premiers abonnés, statut à vie. */
@@ -62,8 +64,16 @@ export default function PublicProfileView({
   trades: Trade[];
   /** Derniers bilans, du plus récent au plus ancien. Bornés pour la courbe. */
   reviews: Review[];
-  /** Total réel des bilans, compté en base : `reviews` est tronqué. */
-  sessionCount: number;
+  /** Total réel des bilans, compté en base : `reviews` est tronqué. `null` si illisible. */
+  sessionCount: number | null;
+  /**
+   * ⚠️⚠️ Vrai quand le journal a ete lu EN ENTIER. Faux, la page affichait
+   * « 0 trade, 0 % de reussite » a des inconnus : un compte vide annonce sur la
+   * surface que le trader partage, sans rien signaler.
+   */
+  tradesComplets?: boolean;
+  /** Idem pour les bilans, d'ou sortent le score moyen et la courbe. */
+  disciplineComplete?: boolean;
   achievements: Achievement[];
   /**
    * La série de discipline, calculée par `lib/discipline-streak-source.ts`.
@@ -147,20 +157,26 @@ export default function PublicProfileView({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-card border border-border rounded-xl p-5">
             <p className="text-xs text-muted">{t("pubprofile_total_trades")}</p>
-            <p className="text-2xl font-bold mt-1 text-foreground">{stats.count}</p>
+            <p className="text-2xl font-bold mt-1 text-foreground">
+              {tradesComplets ? stats.count : "—"}
+            </p>
           </div>
           <div className="bg-card border border-border rounded-xl p-5">
             <p className="text-xs text-muted">{t("pubprofile_winrate")}</p>
-            <p className="text-2xl font-bold mt-1 text-foreground">{pourcent(stats.winrate, 1)}</p>
+            <p className="text-2xl font-bold mt-1 text-foreground">
+              {tradesComplets ? pourcent(stats.winrate, 1) : "—"}
+            </p>
           </div>
           <div className="bg-card border border-border rounded-xl p-5">
             <p className="text-xs text-muted">{t("pubprofile_sessions")}</p>
-            <p className="text-2xl font-bold mt-1 text-foreground">{sessionCount}</p>
+            <p className="text-2xl font-bold mt-1 text-foreground">
+              {sessionCount === null ? "—" : sessionCount}
+            </p>
           </div>
           <div className="bg-card border border-border rounded-xl p-5">
             <p className="text-xs text-muted">{t("pubprofile_discipline")}</p>
             <p className={`text-2xl font-bold mt-1 ${stats.avgScore >= 90 ? "text-profit" : stats.avgScore >= 75 ? "text-green-400" : stats.avgScore >= 60 ? "text-yellow-400" : stats.avgScore >= 40 ? "text-orange-400" : "text-loss"}`}>
-              {stats.avgScore.toFixed(0)}/100
+              {disciplineComplete ? `${stats.avgScore.toFixed(0)}/100` : "—"}
             </p>
           </div>
         </div>

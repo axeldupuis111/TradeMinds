@@ -104,7 +104,13 @@ export default async function PublicProfilePage({ params }: Props) {
    * clos entre deux cartes du tableau de bord, et ce troisième calcul, sur
    * la page que le trader PARTAGE, n'avait jamais été rapproché.
    */
-  const [tradeRows, { data: reviews }, { count: sessionCount }, { data: achievements }, serie] = await Promise.all([
+  const [
+    tradeRows,
+    { data: reviews, error: erreurBilans },
+    { count: sessionCount, error: erreurSeances },
+    { data: achievements },
+    serie,
+  ] = await Promise.all([
     // Lecture paginée : ce profil est PUBLIC et affiche un nombre de trades et
     // un winrate. Non bornée, la lecture s'arrête à 1 000 trades en silence
     // (voir lib/supabase-paginate.ts), et le profil publierait des chiffres
@@ -147,6 +153,14 @@ export default async function PublicProfilePage({ params }: Props) {
     chargerLaSerieDeDiscipline(supabase, userId, { sansDemo: true }),
   ]);
 
+  /**
+   * ⚠️⚠️ `?? []` DISAIT « ZERO TRADE, 0 % DE REUSSITE » SUR LA PAGE QUE LE
+   * TRADER PARTAGE. `fetchAllRows` rend `null` des qu'une page echoue : le
+   * profil public annoncait alors un compte vide a des inconnus, sans rien
+   * signaler. Meme surface et meme gravite que la serie de discipline juste en
+   * dessous, a une ligne d'ecart.
+   */
+  const tradesComplets = tradeRows !== null;
   // Ordre chronologique refait ici : les pages sont lues dans l'ordre de `id`.
   const trades = (tradeRows ?? [])
     .slice()
@@ -167,7 +181,9 @@ export default async function PublicProfilePage({ params }: Props) {
       founding={isFounding}
       trades={trades}
       reviews={reviews || []}
-      sessionCount={sessionCount ?? 0}
+      tradesComplets={tradesComplets}
+      sessionCount={erreurSeances ? null : sessionCount ?? 0}
+      disciplineComplete={!erreurBilans}
       achievements={achievements || []}
       serie={serie.complet ? serie.current : null}
     />
