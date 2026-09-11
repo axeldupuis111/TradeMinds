@@ -268,7 +268,14 @@ export default function DayState() {
             {streak > 0 && (
               <Flame className="w-4 h-4 text-warning shrink-0 motion-safe:animate-pulse" strokeWidth={1.75} />
             )}
-            {streak}
+            {/*
+              ⚠️ AVEC SON UNITÉ : ce nombre s'écrivait nu, à quatre-vingts
+              pixels d'un « 74 /100 » qui, lui, est un score. « 75 » sous
+              « 74 /100 » se lit comme un second score, et un score de
+              discipline qui monte d'un point pendant qu'on regarde la page.
+              C'est un nombre de JOURS.
+            */}
+            {t("review_payoff_days", { n: streak })}
           </p>
         </div>
 

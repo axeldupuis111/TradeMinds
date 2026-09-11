@@ -270,7 +270,21 @@ export function KpiCards({
               )}
             />
 
-            {/* Mini-stats */}
+            {/*
+              Mini-stats.
+
+              ⚠️⚠️ ELLES RÉPÈTENT DEUX FAITS QUE LES CARTES D'À CÔTÉ AFFICHENT
+              DÉJÀ, ET ELLES LES ÉCRIVAIENT AUTREMENT. Sans trade cette
+              semaine, le même écran disait « Trades cette semaine — » ici et
+              « Trades cette semaine 0 » quatre-vingt-dix pixels plus bas ; et
+              « P&L du jour — » contre « +0,00 € ». Un tiret veut dire « on ne
+              sait pas », un zéro veut dire « on sait, et c'est zéro » : les
+              deux ne peuvent pas être vrais en même temps.
+
+              ⚠️ LE TAUX DE RÉUSSITE, LUI, GARDE SON TIRET, et ce n'est pas une
+              exception oubliée : sans aucun trade il n'a pas de dénominateur.
+              Écrire « 0 % » dirait qu'on a perdu tous ses trades.
+            */}
             <div className="flex items-start gap-6 flex-wrap">
               <MiniStat
                 label={
@@ -278,7 +292,7 @@ export function KpiCards({
                     ? t("dash_month_trades")
                     : t("dash_week_trades")
                 }
-                value={weekCount > 0 ? String(weekCount) : "—"}
+                value={String(weekCount)}
               />
               <MiniStat
                 label="Win rate"
@@ -293,16 +307,11 @@ export function KpiCards({
               />
               <MiniStat
                 label={t("dash_today_pnl")}
-                value={
-                  filteredTodayCount > 0
-                    /* ⚠️ Deux décimales comme la grande carte : le même
-                       montant y était arrondi à l'unité. */
-                    ? money(todayPnl, currency, { digits: 2, signed: true })
-                    : "—"
-                }
-                positive={
-                  filteredTodayCount > 0 ? todayPnl >= 0 : undefined
-                }
+                /* ⚠️ Deux décimales comme la grande carte : le même montant y
+                   était arrondi à l'unité. Et sans condition : la grande carte
+                   écrit « +0,00 € » à zéro trade, celle-ci écrivait « — ». */
+                value={money(todayPnl, currency, { digits: 2, signed: true })}
+                positive={todayPnl >= 0}
               />
             </div>
           </div>
