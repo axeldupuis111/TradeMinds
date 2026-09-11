@@ -3260,7 +3260,7 @@ const dict: Record<string, string> = {
   "bt_instrument": "Instrumento",
   "bt_periode_de": "Desde",
   "bt_periode_a": "Hasta",
-  "bt_donnees_source": "{mois} meses de velas reales de un minuto. Se descargan una vez y se guardan en caché.",
+  "bt_donnees_source": "{mois} meses de velas reales de un minuto, procedentes de Dukascopy. Se descargan una vez y se guardan en caché.",
   "bt_cat_devises": "Divisas",
   "bt_cat_metaux": "Metales",
   "bt_cat_indices": "Índices",
