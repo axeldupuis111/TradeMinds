@@ -191,6 +191,9 @@ const TERMES: Record<string, Localized> = {
   "natural gas storage":        { fr: "Stocks de gaz naturel",              en: "Natural gas storage",         de: "Erdgasspeicher",                       es: "Almacenamiento de gas natural" },
   "labor cost index":           { fr: "Indice du coût du travail",          en: "Labor cost index",            de: "Arbeitskostenindex",                   es: "Índice de costes laborales" },
   "wage price index":           { fr: "Indice des salaires",                en: "Wage price index",            de: "Lohnpreisindex",                       es: "Índice de precios salariales" },
+  "inflation expectations":     { fr: "Anticipations d'inflation",          en: "Inflation expectations",      de: "Inflationserwartungen",                es: "Expectativas de inflación" },
+  "public sector net borrowing":{ fr: "Besoin de financement public",       en: "Public sector net borrowing", de: "Nettokreditaufnahme des Staates",      es: "Endeudamiento neto del sector público" },
+  "employment cost index":      { fr: "Indice du coût de l'emploi",         en: "Employment cost index",       de: "Index der Beschäftigungskosten",       es: "Índice de costes de empleo" },
   // ⚠️ Le PMI seul, pour les enquêtes régionales (« Ivey PMI ») que le
   // glossaire ne distingue pas entre industrie et services.
   "pmi":                        { fr: "Indice PMI",                         en: "PMI",                         de: "PMI-Index",                            es: "Índice PMI" },
@@ -226,6 +229,32 @@ function parPatron(title: string, lang: GlossaryLang): string | undefined {
   const adjudication = /(\d+)\s*[-\s]?(?:y|yr|year)\s+bond\s+auction/i.exec(title);
   if (adjudication) return ADJUDICATION[lang].replace("{n}", adjudication[1]);
   return undefined;
+}
+
+/**
+ * Les instituts qui publient une enquête sous leur propre nom, et qui ne sont
+ * ni des sigles ni des mots composés : il faut donc les nommer.
+ */
+const INSTITUTS = new Set([
+  "westpac", "sentix", "lloyds", "ivey", "halifax", "rightmove", "nationwide",
+  "markit", "caixin", "tankan", "ifo", "zew", "gfk", "empire", "redbook",
+  "challenger", "conference", "michigan", "richmond", "chicago", "dallas",
+]);
+
+/**
+ * ⚠️⚠️ UN MOT ANGLAIS AVEC UNE MAJUSCULE N'EST PAS UN NOM D'INSTITUT. La
+ * première version gardait tout mot capitalisé, et affichait « Quarterly ·
+ * Taux de chômage · Italie » ou « Consumer · Anticipations d'inflation » : des
+ * qualificatifs promus au rang d'éditeur. Un institut est un SIGLE (ANZ, NFIB,
+ * SECO), un mot composé (BusinessNZ), ou un nom propre qu'on connaît.
+ */
+function estUnInstitut(mot: string): boolean {
+  const nu = mot.replace(/[^A-Za-z]/g, "");
+  if (nu.length < 2) return false;
+  if (PAYS.some((p) => p.test.test(mot))) return false;
+  if (nu === nu.toUpperCase()) return true;
+  if (/[A-Z]/.test(nu.slice(1))) return true;
+  return INSTITUTS.has(nu.toLowerCase());
 }
 
 /** Le pays mentionné dans le titre BRUT, s'il y en a un. */
@@ -265,7 +294,7 @@ function parComposition(title: string, lang: GlossaryLang): string | undefined {
     const brut = title.split(/\s+/);
     const coupure = brut.findIndex((m) => normalizeIndicator(m) === premierMot);
     const institut = (coupure > 0 ? brut.slice(0, coupure) : [])
-      .filter((m) => /^[A-Z][A-Za-z.&-]*$/.test(m) && !PAYS.some((p) => p.test.test(m)))
+      .filter(estUnInstitut)
       .join(" ");
 
     /**

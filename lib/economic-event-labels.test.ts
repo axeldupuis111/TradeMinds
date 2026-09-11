@@ -97,6 +97,26 @@ describe("displayEventTitle", () => {
   });
 
   /**
+   * ⚠️⚠️ ET UN MOT ANGLAIS AVEC UNE MAJUSCULE N'EST PAS UN NOM D'INSTITUT. Ma
+   * première version gardait tout mot capitalisé et promouvait des
+   * qualificatifs au rang d'éditeur : « Quarterly · Taux de chômage · Italie »,
+   * « Consumer · Anticipations d'inflation ». Un institut est un SIGLE (ANZ,
+   * NFIB, SECO), un mot composé (BusinessNZ), ou un nom propre qu'on connaît.
+   */
+  it("ne prend pas un qualificatif anglais pour un institut", () => {
+    expect(displayEventTitle("Italian Quarterly Unemployment Rate", "fr")).toBe(
+      "Taux de chômage · Italie",
+    );
+    expect(displayEventTitle("Consumer Inflation Expectations", "fr")).toBe(
+      "Anticipations d'inflation",
+    );
+    expect(displayEventTitle("BusinessNZ Manufacturing Index", "fr")).toBe(
+      "BusinessNZ · Indice manufacturier",
+    );
+    expect(displayEventTitle("Ivey PMI", "fr")).toBe("Ivey · Indice PMI");
+  });
+
+  /**
    * ⚠️ L'ANGLAIS GARDE LE TITRE DU FLUX : il est déjà en anglais, et le
    * recomposer ne gagnerait rien tout en l'éloignant des autres calendriers que
    * le trader recoupe.
