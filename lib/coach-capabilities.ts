@@ -35,7 +35,7 @@ export interface CoachCapability {
  */
 export const COACH_CAPABILITIES: CoachCapability[] = [
   // ── Il lit ton journal (gratuit) ──
-  { key: "cap_find_trades", tools: ["find_trades", "list_open_trades"] },
+  { key: "cap_find_trades", tools: ["find_trades", "list_open_trades", "get_journal_summary"] },
   { key: "cap_diagnose", tools: ["get_performance", "get_challenge_status"] },
   { key: "cap_position_size", tools: ["calculate_position_size"] },
   { key: "cap_knows_setup", tools: ["list_accounts", "list_strategies", "list_goals"] },

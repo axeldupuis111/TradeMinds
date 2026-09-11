@@ -30,6 +30,13 @@ export const TOOL_MIN_PLAN: Record<string, PlanType> = {
   list_goals: "free",
   list_challenges: "free",
   find_trades: "free",
+  /**
+   * ⚠️ GRATUIT COMME `find_trades`, ET POUR LA MÊME RAISON : ce sont les
+   * chiffres que l'écran affiche déjà à tout le monde. Les réserver à un plan
+   * payant ferait répondre au coach « 24 gagnants sur 60 » là où la page dit
+   * 85 : deux chiffres pour le même fait, ce qu'on vient justement de corriger.
+   */
+  get_journal_summary: "free",
   list_strategies: "free",
 
   list_open_trades: "free",

@@ -18,6 +18,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { appendCommitment, parseCoachMemory } from "@/lib/coach-memory";
 import { challengesForWeek, getCommunityChallenge, isoWeekKey } from "@/lib/community-challenges";
 import { lireTousLesTradesDuCompte } from "./trades-du-compte";
+import { fetchAllRows } from "@/lib/supabase-paginate";
+import { recapitulatif, type LigneDuRecapitulatif } from "@/lib/trades/recapitulatif";
 import { projeter } from "./projection";
 import { palierSousLeSeuil, paliersDeTaille } from "./projection-levers";
 import { analyserSegments } from "./projection-segments";
@@ -647,6 +649,18 @@ export const COACH_TOOLS = [
       type: "object" as const,
       properties: {
         account_id: { type: "string", description: "Compte visé. Par défaut : le challenge prop actif le plus récent." },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "get_journal_summary",
+    description:
+      "TOTAUX du journal : trades clôturés, gagnants, taux de réussite, P&L net. Pour « combien de trades », « mon winrate », « mon P&L ». Ne les recompte JAMAIS depuis find_trades, qui n'en rend qu'un échantillon.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        account_id: { type: "string", description: "Limiter à un compte. Omis = tous les comptes." },
       },
       required: [],
     },
@@ -2052,6 +2066,45 @@ export async function executeCoachTool(
             })(),
             note:
               "Ne cite JAMAIS l'espérance sans son intervalle : si l'intervalle contient zéro, rien n'est démontré et tu dois le dire. Ce sont des scénarios rééchantillonnés sur son passé, jamais une prévision. Une espérance positive avec un risque de ruine élevé veut dire que sa taille de position est trop grosse pour la volatilité de sa méthode : c'est le diagnostic le plus utile que tu puisses poser ici. Si `coherence.contradictions` n'est pas vide, TRAITE-LA D'ABORD : projeter une stratégie qui disqualifie son porteur revient à chiffrer un avenir qu'il ne vivra pas. ⚠️ `segments_couteux` est une OBSERVATION, PAS UNE RÈGLE : le segment a été choisi APRÈS avoir vu ses résultats, et chercher le pire parmi des dizaines en trouve toujours un, même dans du bruit. Tu peux lui dire ce que ce segment lui a coûté ; tu ne lui promets JAMAIS qu'en le retirant il gagnera. Propose-lui plutôt d'en faire une règle écrite dans sa fiche, pour qu'on mesure sur les trades SUIVANTS. Et `adherence` compare ses règles ÉCRITES à ce qu'il a fait : ne lui reproche jamais une règle absente de sa fiche, et donne le compte (« 4 jours sur 30 ») plutôt qu'un jugement.",
+          },
+        };
+      }
+
+      /**
+       * ⚠️⚠️ IL RÉPONDAIT « 24 GAGNANTS SUR 60 » QUAND L'ÉCRAN DISAIT
+       * « 85 trades · WR 45,9 % ». Aucun outil ne rendait les totaux : le coach
+       * n'avait que `find_trades`, plafonné, et comptait son échantillon. Il le
+       * disait honnêtement, ce qui ne suffit pas : le trader lisait deux
+       * chiffres pour le même fait, à un clic d'écart.
+       *
+       * ⚠️ MÊME CALCUL QUE LE BANDEAU DE « MES TRADES » (lib/trades/recapitulatif),
+       * et lecture PAGINÉE : au-delà de mille trades, une lecture nue en rendrait
+       * mille et présenterait le compte comme un total.
+       */
+      case "get_journal_summary": {
+        const compte = typeof input.account_id === "string" ? input.account_id : null;
+        const lignes = await fetchAllRows<LigneDuRecapitulatif>((from, to) => {
+          let q = supabase
+            .from("trades")
+            .select("pnl, commission, swap")
+            .eq("user_id", userId)
+            .eq("status", "closed");
+          if (compte) q = q.eq("challenge_id", compte);
+          return q.order("id", { ascending: true }).range(from, to);
+        });
+        if (lignes === null) return fail("Lecture des trades impossible.");
+        const r = recapitulatif(lignes);
+        return {
+          result: {
+            trades: r.trades,
+            gagnants: r.gagnants,
+            perdants: r.perdants,
+            taux_de_reussite: `${r.tauxDeReussite.toFixed(1).replace(".", ",")} %`,
+            pnl_net: r.pnlNet,
+            meilleur: r.meilleur,
+            pire: r.pire,
+            note:
+              "Totaux complets, tous trades clôturés compris. Ne les recalcule pas à partir de find_trades.",
           },
         };
       }
