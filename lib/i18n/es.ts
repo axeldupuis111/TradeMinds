@@ -2659,10 +2659,8 @@ const dict: Record<string, string> = {
   "review_hours_sub": "P&L neto según la hora de apertura de tus trades.",
   "review_hours_best": "Tu mejor franja: {hour}h ({money}).",
   "upsell_banner_dismiss": "Más tarde",
-  "terms_agree": "Acepto los",
   "terms_link": "términos de uso",
   "terms_cgv_link": "condiciones de venta",
-  "terms_and": "y la",
   "privacy_link": "política de privacidad",
   "terms_required": "Debes aceptar los términos para crear una cuenta.",
   "legal_terms_title": "Términos de uso",
@@ -3988,6 +3986,7 @@ const dict: Record<string, string> = {
   "challenge_portfolio_winrate": "Tasa de acierto en estas cuentas",
   "quick_trade_reason": "¿Por qué tomas esta operación?",
   "coach_send": "Enviar el mensaje",
+  "terms_agree_full": "Acepto los {cgu}, las {cgv} y la {confidentialite}",
 };
 
 export default dict;
