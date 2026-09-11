@@ -3986,6 +3986,7 @@ const dict: Record<string, string> = {
   "trades_delete_one_failed": "This trade was not deleted. Try again.",
   "challenge_portfolio_trades": "Trades on these accounts",
   "challenge_portfolio_winrate": "Win rate on these accounts",
+  "quick_trade_reason": "Why are you taking this trade?",
 };
 
 export default dict;

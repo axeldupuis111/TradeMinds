@@ -11,6 +11,12 @@ import { useEffect, useState } from "react";
  * société qui le fait selon son propre découpage (voir app/api/partner/stats).
  * Afficher un montant ici créerait une créance envers quelqu'un avec qui nous
  * n'avons aucun contrat.
+ *
+ * ⚠️ RÉDIGÉE EN FRANÇAIS, sans passer par t(), comme sa page sœur
+ * `PartnerJoinPage`. Exception assumée : elle ne s'adresse pas aux traders mais
+ * aux collaborateurs d'une société française, et son adresse n'existe que dans
+ * le lien qu'ils ont reçu. Le jour où un réseau non francophone arrive, il
+ * faudra passer les DEUX pages aux quatre langues.
  */
 
 interface Stats {

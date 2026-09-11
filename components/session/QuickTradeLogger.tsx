@@ -190,7 +190,11 @@ export default function QuickTradeLogger({ strategyId, pairs, onClose, onSaved }
           {/* Reason / Notes */}
           <div>
             <label className="block text-xs text-muted mb-1">
-              Pourquoi tu prends ce trade ? <span className="text-muted opacity-60">({t("manual_optional")})</span>
+              {/* ⚠️ Cette question était écrite EN FRANÇAIS, en dur, dans un
+                  produit traduit en quatre langues, sur l'écran de saisie
+                  rapide d'un trade. Et son « (optionnel) » juste à côté, lui,
+                  passait bien par le dictionnaire. */}
+              {t("quick_trade_reason")} <span className="text-muted">({t("manual_optional")})</span>
             </label>
             <textarea
               value={form.notes}

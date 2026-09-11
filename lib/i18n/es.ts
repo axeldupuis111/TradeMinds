@@ -3986,6 +3986,7 @@ const dict: Record<string, string> = {
   "trades_delete_one_failed": "Esta operación no se ha eliminado. Inténtalo de nuevo.",
   "challenge_portfolio_trades": "Operaciones en estas cuentas",
   "challenge_portfolio_winrate": "Tasa de acierto en estas cuentas",
+  "quick_trade_reason": "¿Por qué tomas esta operación?",
 };
 
 export default dict;

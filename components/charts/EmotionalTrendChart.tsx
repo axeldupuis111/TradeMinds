@@ -144,7 +144,11 @@ export default function EmotionalTrendChart({
           <p className="text-xs text-foreground-muted mt-1">{t("emotional_trend_subtitle")}</p>
         </div>
         <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
-          <Brain className="w-12 h-12 text-foreground-muted opacity-30 mb-4" />
+          {/* ⚠️ DÉCLARÉ DÉCORATIF : l'icône ne dit rien que le titre et la
+              phrase en dessous ne disent, et elle est à 30 % d'opacité. Le
+              déclarer la sort aussi de la lecture d'écran, où elle n'apportait
+              qu'un « image » sans nom. */}
+          <Brain className="w-12 h-12 text-foreground-muted opacity-30 mb-4" aria-hidden />
           <p className="text-sm font-medium text-foreground mb-2">
             {t("emotional_empty_title")}
           </p>

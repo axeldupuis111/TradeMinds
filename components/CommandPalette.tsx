@@ -245,7 +245,7 @@ export default function CommandPalette() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onInputKeyDown}
             placeholder={t("cmdk_placeholder")}
-            className="flex-1 h-12 bg-transparent text-sm text-foreground placeholder:text-foreground-muted focus:outline-none"
+            className="flex-1 h-12 bg-transparent text-sm text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-1 focus:ring-accent rounded"
             aria-label={t("cmdk_placeholder")}
           />
           <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded border border-border bg-surface text-[10px] font-medium text-foreground-muted">

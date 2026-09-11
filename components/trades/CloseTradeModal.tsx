@@ -298,7 +298,7 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
           {/* Closing notes (new) */}
           <div>
             <label className="block text-xs text-muted mb-1">
-              {t("close_trade_closing_notes")} <span className="text-muted opacity-60">({t("close_trade_optional")})</span>
+              {t("close_trade_closing_notes")} <span className="text-muted">({t("close_trade_optional")})</span>
             </label>
             <textarea
               value={closingNotes}

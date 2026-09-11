@@ -311,7 +311,12 @@ export default function SettingsPage() {
                 type="email"
                 value={userEmail || ""}
                 readOnly
-                className="w-full px-3 py-2 pr-36 bg-surface border border-border rounded-lg text-foreground text-sm opacity-60 cursor-not-allowed focus:outline-none"
+                /* ⚠️ PAS D'opacity-60 ICI : l'adresse e-mail est une
+                   information qu'on doit LIRE, pas un contrôle désactivé, et
+                   --foreground à 60 % tombe à 4,51:1 en thème clair, soit un
+                   centième au-dessus du seuil. Un centième n'est pas une marge.
+                   Le champ dit qu'il est en lecture seule par sa pastille. */
+                className="w-full px-3 py-2 pr-36 bg-surface border border-border rounded-lg text-foreground-muted text-sm cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-accent"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted pointer-events-none">
                 {t("settings_email_readonly")}
@@ -556,7 +561,7 @@ export default function SettingsPage() {
                 type="text"
                 value={mtToken}
                 readOnly
-                className="flex-1 px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm font-mono cursor-text focus:outline-none select-all"
+                className="flex-1 px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm font-mono cursor-text focus:outline-none focus:ring-1 focus:ring-accent select-all"
               />
               <button
                 onClick={() => {

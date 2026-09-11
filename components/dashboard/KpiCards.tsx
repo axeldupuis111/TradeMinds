@@ -238,7 +238,7 @@ export function KpiCards({
                 <span className="text-3xl font-black tabular-nums text-foreground leading-none">
                   <CountUp end={score} duration={1.5} />
                 </span>
-                <span className="text-sm font-semibold text-foreground-muted opacity-60">
+                <span className="text-sm font-semibold text-foreground-subtle">
                   /100
                 </span>
               </div>

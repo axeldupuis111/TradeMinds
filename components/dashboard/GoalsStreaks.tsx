@@ -406,7 +406,7 @@ export default function GoalsStreaks() {
                     ? isLatest
                       ? "bg-accent/10 border-accent/50 text-accent shadow-[0_0_12px_rgb(var(--accent)_/_0.3)]"
                       : "bg-accent/10 border-accent/30 text-accent"
-                    : "bg-background border-border text-muted opacity-40"
+                    : "bg-background border-border text-muted"
                 }`}
               >
                 <div className="relative">

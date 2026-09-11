@@ -110,17 +110,42 @@ describe("les encres diluées restent lisibles", () => {
   it("aucune encre diluée ne passe sous 4,5:1", () => {
     const noms = Object.keys(JETONS).join("|");
     /**
-     * Les deux façons d'écrire la même chose.
+     * LES TROIS FAÇONS D'ÉCRIRE LA MÊME CHOSE.
      *
      * ⚠️⚠️ LA PREMIÈRE VERSION NE CONNAISSAIT QUE LES CLASSES TAILWIND. La
      * landing, elle, pose ses couleurs en STYLE EN LIGNE :
      * `style={{ color: "rgb(var(--muted)/0.7)" }}`. « Compatible avec tes
      * plateformes », en haut de la page d'accueil, faisait 3,35:1 et le test
-     * restait vert. Un garde qui ne connaît qu'une syntaxe protège la moitié du
-     * produit en croyant le protéger tout entier.
+     * restait vert.
+     *
+     * ⚠️⚠️ ET LA DEUXIÈME NE VOYAIT PAS `opacity-60`. Diluer l'ÉLÉMENT revient
+     * exactement au même que diluer sa couleur : « (optionnel) » de la modale de
+     * clôture, `text-muted opacity-60`, faisait 2,67:1. Un garde qui ne connaît
+     * qu'une syntaxe protège une partie du produit en croyant le protéger tout
+     * entier. Chaque fois que j'en écris un, la question utile est : **de quelle
+     * AUTRE façon la même chose s'écrit-elle ?**
      */
     const CLASSE = new RegExp(`\\btext-(${noms})/(\\d+)(?![\\w-])`, "g");
     const EN_LIGNE = new RegExp(`color:\\s*["'\`]rgb\\(var\\(--(${noms})\\)\\s*/\\s*([0-9.]+)\\)`, "g");
+    /**
+     * `text-muted … opacity-60` dans UNE MÊME chaîne de classes.
+     *
+     * ⚠️ `opacity-0` EST EXCLU, ET CE N'EST PAS UNE FAIBLESSE : un contrôle
+     * révélé au survol (`opacity-0 group-hover:opacity-100`) est invisible au
+     * repos par construction, et parfaitement opaque quand il se montre.
+     * Mesurer son repos dirait 1:1 sur tout le produit.
+     */
+    const OPACITE = new RegExp(
+      `\\btext-(${noms})(?![\\w/-])[^"\`]*\\bopacity-([1-9]\\d)(?![\\w-])|\\bopacity-([1-9]\\d)(?![\\w-])[^"\`]*\\btext-(${noms})(?![\\w/-])`,
+      "g",
+    );
+    /**
+     * ⚠️ UN CONTRÔLE DÉSACTIVÉ EST HORS RÈGLE, et c'est la norme qui le dit :
+     * WCAG 1.4.3 exempte explicitement les composants inactifs. Ce qui n'exempte
+     * PAS un texte simplement atténué, ni une pastille « palier pas encore
+     * atteint », que le trader doit justement pouvoir lire.
+     */
+    const DESACTIVE = /cursor-not-allowed|disabled:|\bdisabled\b|grayscale/;
     const fautes: string[] = [];
     let vues = 0;
     for (const chemin of [...fichiers("app"), ...fichiers("components")]) {
@@ -133,6 +158,12 @@ describe("les encres diluées restent lisibles", () => {
           const trouves = [
             ...Array.from(ligne.matchAll(CLASSE)).map((m) => [m[0], m[1], Number(m[2]) / 100] as const),
             ...Array.from(ligne.matchAll(EN_LIGNE)).map((m) => [m[0], m[1], Number(m[2])] as const),
+            ...(DESACTIVE.test(ligne)
+              ? []
+              : Array.from(ligne.matchAll(OPACITE)).map(
+                  (m) =>
+                    [m[0], (m[1] ?? m[4]) as string, Number(m[2] ?? m[3]) / 100] as const,
+                )),
           ];
           if (trouves.length === 0) return;
           /**
