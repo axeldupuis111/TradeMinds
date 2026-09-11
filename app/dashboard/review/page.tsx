@@ -114,7 +114,7 @@ export default function MonthlyReviewPage() {
   const { t, lang } = useLanguage();
   // Vue multi-comptes : devise commune aux comptes actifs, euro s'ils la mélangent.
   const displayCurrency = useDisplayCurrency();
-  const { plan, demoMode } = usePlan();
+  const { plan, demoMode, loading: abonnementEnCours } = usePlan();
   const isPaid = plan === "plus" || plan === "premium";
   const [monthParam, setMonthParam] = useState<string | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
@@ -454,7 +454,18 @@ export default function MonthlyReviewPage() {
         )}
       </div>
 
-      {!isPaid ? (
+      {/*
+        ⚠️⚠️ « INCONNU » N'EST PAS « GRATUIT ». `plan` vaut « free » tant que la
+        requête n'a pas répondu : sans cette attente, un abonné voyait « Le
+        bilan mensuel IA est réservé aux plans payants » à chaque arrivée sur la
+        page, puis le bilan qu'il paie. Dire à quelqu'un qu'il n'a pas ce qu'il
+        paie, même une seconde, est pire que de le faire patienter.
+      */}
+      {abonnementEnCours ? (
+        <div className="mt-6 rounded-xl border border-border p-6 text-center">
+          <p className="text-sm text-foreground-muted">{t("plan_verification")}</p>
+        </div>
+      ) : !isPaid ? (
         <div className="mt-6 rounded-xl border border-accent/30 bg-accent/5 p-6 text-center">
           <p className="text-foreground font-medium">{t("review_locked")}</p>
           <Link href="/dashboard/upgrade" className="inline-block mt-3 text-sm text-accent hover:underline">{t("upsell_banner_cta")}</Link>

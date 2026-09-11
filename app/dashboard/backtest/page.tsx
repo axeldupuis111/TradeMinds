@@ -2126,7 +2126,7 @@ export default function BacktestPage() {
       <div className="mx-auto max-w-3xl px-4 py-10">
         <Card className="text-center">
           <h1 className="text-xl font-semibold text-foreground">{tr("bt_titre")}</h1>
-          <p className="mt-2 text-sm text-foreground-muted">{tr("bt_chargement_abonnement")}</p>
+          <p className="mt-2 text-sm text-foreground-muted">{tr("plan_verification")}</p>
         </Card>
       </div>
     );

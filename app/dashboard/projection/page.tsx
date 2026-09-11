@@ -112,7 +112,7 @@ const COLONNES_STRATEGIE =
 
 export default function ProjectionPage() {
   const { t, lang } = useLanguage();
-  const { plan } = usePlan();
+  const { plan, loading: abonnementEnCours } = usePlan();
   const { selectedAccount } = useActiveAccount();
   const c = useChartColors();
   const supabase = createClient();
@@ -384,6 +384,24 @@ export default function ProjectionPage() {
   }, [perimetre, projection.esperance]);
 
   const eur = (v: number, signed = false) => money(v, devise, { signed });
+
+  /**
+   * ⚠️⚠️ ON ATTEND DE SAVOIR AVANT DE FERMER LA PORTE. `plan` vaut « free »
+   * tant que la requête n'a pas répondu : sans cette attente, un abonné
+   * Premium voit « Réservé au plan Premium · Passer au Premium » à chaque
+   * arrivée sur la page, puis le contenu qu'il paie. Dire à quelqu'un qu'il
+   * n'a pas ce qu'il paie, même une seconde, est pire que de le faire
+   * patienter.
+   */
+  if (abonnementEnCours) {
+    return (
+      <div className="max-w-2xl mx-auto py-16 px-4">
+        <Card className="text-center p-8">
+          <p className="text-sm text-foreground-muted">{t("plan_verification")}</p>
+        </Card>
+      </div>
+    );
+  }
 
   // ── Mur d'upgrade ─────────────────────────────────────────────────────────
   if (!estPremium) {

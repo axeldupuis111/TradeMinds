@@ -638,7 +638,7 @@ describe("le mur payant attend de savoir", () => {
       page.indexOf("if (abonnementEnCours) {"),
       page.indexOf("if (!estPremium) {"),
     );
-    expect(bloc).toContain("bt_chargement_abonnement");
+    expect(bloc).toContain("plan_verification");
     expect(bloc.includes("return null"), "une page blanche ne dit rien").toBe(false);
   });
 });

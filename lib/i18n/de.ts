@@ -2899,7 +2899,7 @@ const dict: Record<string, string> = {
   "bt_instr_BTCUSD": "Bitcoin",
   "bt_instr_ETHUSD": "Ethereum",
   "bt_titre": "Strategie-Backtest",
-  "bt_chargement_abonnement": "Einen Moment, wir prüfen dein Abonnement.",
+  "plan_verification": "Einen Moment, wir prüfen dein Abonnement.",
   "bt_sous_titre": "Spiele deine Regeln auf echten Ein-Minuten-Kerzen nach, Kosten inbegriffen.",
   "cap_backtest": "Spiele deine Strategie über Jahre echter Kerzen nach und miss, was sie ergeben hätte",
   "sidebar_backtest": "Backtest",
