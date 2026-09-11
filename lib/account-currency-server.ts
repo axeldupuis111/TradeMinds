@@ -21,6 +21,36 @@ import { DEFAULT_CURRENCY, accountCurrency, type AccountCurrencyState } from "./
  * Best-effort : toute erreur de lecture retombe sur l'euro plutôt que de faire
  * échouer l'envoi d'un email.
  */
+/**
+ * La devise de CHAQUE compte du trader, clotures compris.
+ *
+ * ⚠️⚠️ `resolveUserCurrency` ne regarde que les comptes ACTIFS, et c'est
+ * exactement l'erreur mesuree sur Analytics : les montants d'un envoi portent
+ * sur des TRADES, dont certains appartiennent a des comptes termines. Poser la
+ * question sur le mauvais ensemble donne une reponse assuree et fausse.
+ *
+ * Best-effort comme le reste de ce module : une lecture ratee rend une carte
+ * vide, jamais une exception qui ferait echouer un envoi.
+ */
+export async function resolveAccountCurrencies(
+  admin: SupabaseClient,
+  userId: string,
+): Promise<Map<string, string>> {
+  const carte = new Map<string, string>();
+  try {
+    const { data } = await admin
+      .from("prop_challenges")
+      .select("id, currency, synced_currency")
+      .eq("user_id", userId);
+    for (const ligne of (data ?? []) as (AccountCurrencyState & { id: string })[]) {
+      carte.set(ligne.id, accountCurrency(ligne));
+    }
+  } catch {
+    // carte vide : l'appelant retombe sur sa valeur par defaut.
+  }
+  return carte;
+}
+
 export async function resolveUserCurrency(
   admin: SupabaseClient,
   userId: string,

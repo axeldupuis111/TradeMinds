@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
-import { resolveUserCurrency } from "@/lib/account-currency-server";
+import { resolveAccountCurrencies, resolveUserCurrency } from "@/lib/account-currency-server";
+import { sumByCurrency } from "@/lib/account-currency";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { alertCronFailure } from "@/lib/cron-alert";
@@ -94,21 +95,35 @@ const REACTIVATION_COPY: Record<Lang, {
   },
 };
 
+/**
+ * ⚠️⚠️ LE P&L CUMULE D'UN TRADER MULTI-COMPTES MELE FORCEMENT LES DEVISES,
+ * et cet email-ci l'annonce depuis toujours. `resolveUserCurrency` ne regarde
+ * que les comptes ACTIFS : il repondait « euro » avec assurance sur une somme
+ * qui n'en etait pas. Le total se VENTILE plutot que de porter un symbole qui
+ * n'est celui d'aucun de ses termes ; rien de nouveau a traduire, ce sont les
+ * memes montants ecrits separement.
+ */
 function buildEmailHtml(
-  stats: { count: number; pnl: number; winrate: number },
+  stats: { count: number; pnl: number; winrate: number; parDevise: [string, number][] },
   idleDays: number,
   copy: typeof REACTIVATION_COPY[Lang],
   locale: string,
   currency: string,
   lang: Lang
 ): string {
-  const money = new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  });
-  // Intl ajoute déjà le signe « - » ; on ne préfixe que le « + ».
-  const signedMoney = `${stats.pnl >= 0 ? "+" : ""}${money.format(stats.pnl)}`;
+  const formater = (devise: string, montant: number) => {
+    const nf = new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: devise,
+      maximumFractionDigits: 0,
+    });
+    // Intl ajoute déjà le signe « - » ; on ne préfixe que le « + ».
+    return `${montant >= 0 ? "+" : ""}${nf.format(montant)}`;
+  };
+  const signedMoney =
+    stats.parDevise.length > 1
+      ? stats.parDevise.map(([devise, montant]) => formater(devise, montant)).join(" · ")
+      : formater(currency, stats.pnl);
   const pnlColor = stats.pnl >= 0 ? EMAIL_GREEN : EMAIL_RED;
 
   return renderBrandEmail({
@@ -179,10 +194,10 @@ async function handle(req: Request) {
       // Lecture paginée : ces chiffres partent dans un e-mail nominatif. Non
       // bornée, la lecture s'arrête à 1 000 trades en silence (voir
       // lib/supabase-paginate.ts) et on écrirait un bilan faux à l'utilisateur.
-      fetchAllRows<{ pnl: number; commission: number | null; swap: number | null }>((from, to) =>
+      fetchAllRows<{ pnl: number; commission: number | null; swap: number | null; challenge_id: string | null }>((from, to) =>
         supabase
           .from("trades")
-          .select("pnl, commission, swap")
+          .select("pnl, commission, swap, challenge_id")
           .eq("user_id", user.id)
           .eq("status", "closed")
           .order("id", { ascending: true })
@@ -204,10 +219,20 @@ async function handle(req: Request) {
     const trades = allTrades ?? [];
     if (trades.length === 0) { skipped++; continue; }
     const nets = trades.map((tr) => tr.pnl + (tr.commission || 0) + (tr.swap || 0));
+    // ⚠️ La carte porte TOUS les comptes, clotures compris : un P&L cumule
+    // les traverse par definition.
+    const carteDesDevises = await resolveAccountCurrencies(supabase, user.id as string);
     const stats = {
       count: trades.length,
       pnl: nets.reduce((a, b) => a + b, 0),
       winrate: (nets.filter((n) => n > 0).length / trades.length) * 100,
+      parDevise: sumByCurrency(
+        trades.map((tr) => ({
+          pnl: tr.pnl + (tr.commission || 0) + (tr.swap || 0),
+          challengeId: tr.challenge_id,
+        })),
+        carteDesDevises,
+      ),
     };
 
     const lang: Lang = (user.language as Lang) in REACTIVATION_COPY ? (user.language as Lang) : "en";

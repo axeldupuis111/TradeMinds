@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
-import { resolveUserCurrency } from "@/lib/account-currency-server";
+import { resolveAccountCurrencies, resolveUserCurrency } from "@/lib/account-currency-server";
+import { commonCurrency, sumByCurrency, tradeCurrency } from "@/lib/account-currency";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { sendPushToUser } from "@/lib/push";
@@ -33,6 +34,8 @@ interface TradeRow {
   commission: number | null;
   swap: number | null;
   pair: string;
+  /** Le compte du trade : c'est lui qui porte la devise. */
+  challenge_id?: string | null;
 }
 
 function netPnl(t: TradeRow): number {
@@ -145,20 +148,20 @@ interface WeekStats {
   pnl: number;
   winrate: number;
   profitFactor: number | null;
-  best: { pair: string; pnl: number } | null;
-  worst: { pair: string; pnl: number } | null;
+  best: { pair: string; pnl: number; challengeId?: string | null } | null;
+  worst: { pair: string; pnl: number; challengeId?: string | null } | null;
 }
 
 function computeStats(trades: TradeRow[]): WeekStats {
   let pnl = 0, wins = 0, grossWin = 0, grossLoss = 0;
-  let best: { pair: string; pnl: number } | null = null;
-  let worst: { pair: string; pnl: number } | null = null;
+  let best: WeekStats["best"] = null;
+  let worst: WeekStats["worst"] = null;
   for (const tr of trades) {
     const net = netPnl(tr);
     pnl += net;
     if (net > 0) { wins++; grossWin += net; } else { grossLoss += Math.abs(net); }
-    if (!best || net > best.pnl) best = { pair: tr.pair, pnl: net };
-    if (!worst || net < worst.pnl) worst = { pair: tr.pair, pnl: net };
+    if (!best || net > best.pnl) best = { pair: tr.pair, pnl: net, challengeId: tr.challenge_id ?? null };
+    if (!worst || net < worst.pnl) worst = { pair: tr.pair, pnl: net, challengeId: tr.challenge_id ?? null };
   }
   return {
     count: trades.length,
@@ -170,7 +173,21 @@ function computeStats(trades: TradeRow[]): WeekStats {
   };
 }
 
-function buildEmailHtml(stats: WeekStats, weekLabel: string, copy: Copy, fmt: Formatters, lang: Lang): string {
+/**
+ * ⚠️ TROIS FORMATEURS, PAS UN. Le total peut etre ventile (la semaine mele
+ * les devises), et le meilleur comme le pire trade portent LEUR devise : ce
+ * sont deux lignes, pas des termes d'une somme.
+ */
+function buildEmailHtml(
+  stats: WeekStats,
+  weekLabel: string,
+  copy: Copy,
+  fmt: Formatters,
+  lang: Lang,
+  totalLisible: string,
+  fmtMeilleur: Formatters,
+  fmtPire: Formatters,
+): string {
   const pnlColor = stats.pnl >= 0 ? EMAIL_GREEN : EMAIL_RED;
 
   const bestWorst = stats.best
@@ -179,28 +196,28 @@ function buildEmailHtml(stats: WeekStats, weekLabel: string, copy: Copy, fmt: Fo
         <tr>
           <td style="font-size: 13px; color: #6e7887; padding: 6px 0;">
             ${copy.best} <strong style="color: ${EMAIL_INK};">${stats.best.pair}</strong>
-            <strong style="color: ${EMAIL_GREEN};">${fmt.signedMoney(stats.best.pnl)}</strong>
+            <strong style="color: ${EMAIL_GREEN};">${fmtMeilleur.signedMoney(stats.best.pnl)}</strong>
           </td>
         </tr>
         ${stats.worst && stats.worst.pnl < 0 ? `
         <tr>
           <td style="font-size: 13px; color: #6e7887; padding: 6px 0;">
             ${copy.worst} <strong style="color: ${EMAIL_INK};">${stats.worst.pair}</strong>
-            <strong style="color: ${EMAIL_RED};">${fmt.signedMoney(stats.worst.pnl)}</strong>
+            <strong style="color: ${EMAIL_RED};">${fmtPire.signedMoney(stats.worst.pnl)}</strong>
           </td>
         </tr>` : ""}
       </table>`
     : "";
 
   return renderBrandEmail({
-    preheader: `${fmt.signedMoney(stats.pnl)} · ${stats.count} ${copy.trades} · ${fmt.percent(stats.winrate)}`,
+    preheader: `${totalLisible} · ${stats.count} ${copy.trades} · ${fmt.percent(stats.winrate)}`,
     headerNote: weekLabel,
     heading: copy.heading,
     subheading: copy.subheading,
     bodyHtml: `
       <!-- P&L principal -->
       <div style="font-size: 38px; font-weight: 900; color: ${pnlColor}; margin-bottom: 4px; font-variant-numeric: tabular-nums;">
-        ${fmt.signedMoney(stats.pnl)}
+        ${totalLisible}
       </div>
       ${statRow([
         statCell(copy.trades, String(stats.count)),
@@ -290,7 +307,7 @@ async function handle(req: Request) {
     // tant que la colonne is_demo n'existe pas (migration non appliquée).
     let { data: trades } = await supabase
       .from("trades")
-      .select("pnl, commission, swap, pair")
+      .select("pnl, commission, swap, pair, challenge_id")
       .eq("user_id", user.id)
       .eq("status", "closed")
       .eq("is_demo", false)
@@ -298,7 +315,7 @@ async function handle(req: Request) {
     if (trades === null) {
       ({ data: trades } = await supabase
         .from("trades")
-        .select("pnl, commission, swap, pair")
+        .select("pnl, commission, swap, pair, challenge_id")
         .eq("user_id", user.id)
         .eq("status", "closed")
         .gte("open_time", sinceIso));
@@ -317,7 +334,48 @@ async function handle(req: Request) {
     const locale = LOCALES[lang];
     // Devise deduite des comptes du trader (voir resolveUserCurrency) : un
     // trader qui n'a que des comptes en dollars ne doit pas lire des euros.
-    const fmt = makeFormatters(locale, await resolveUserCurrency(supabase, user.id as string));
+    /**
+     * ⚠️⚠️ LA DEVISE SE DEDUIT DES TRADES DE LA SEMAINE, pas des comptes
+     * actifs. Un trade de la semaine peut appartenir a un compte termine
+     * entre-temps, et deux comptes actifs peuvent ne pas partager de devise :
+     * `resolveUserCurrency` repondait alors « euro » avec assurance, sur des
+     * montants qui n'en sont pas. Meme erreur qu'Analytics, mesuree le meme
+     * jour : poser la question sur le mauvais ensemble.
+     */
+    const carteDesDevises = await resolveAccountCurrencies(supabase, user.id as string);
+    const deviseDeLaSemaine = commonCurrency(
+      trades.map((tr) => (tr as TradeRow).challenge_id),
+      carteDesDevises,
+    );
+    const deviseParDefaut = await resolveUserCurrency(supabase, user.id as string);
+    const fmt = makeFormatters(locale, deviseDeLaSemaine ?? deviseParDefaut);
+    /**
+     * ⚠️ Quand la semaine mele les devises, le total se VENTILE au lieu de
+     * porter un symbole qui n'est celui d'aucun de ses termes. Rien de nouveau
+     * a traduire : ce sont les memes montants, ecrits separement.
+     */
+    const totalLisible = deviseDeLaSemaine
+      ? fmt.signedMoney(stats.pnl)
+      : sumByCurrency(
+          (trades as TradeRow[]).map((tr) => ({
+            pnl: netPnl(tr),
+            challengeId: tr.challenge_id,
+          })),
+          carteDesDevises,
+          deviseParDefaut,
+        )
+          .map(([devise, montant]) => makeFormatters(locale, devise).signedMoney(montant))
+          .join(" · ");
+    // Le meilleur et le pire trade portent LEUR devise : ce sont deux lignes,
+    // pas un total.
+    const fmtMeilleur = makeFormatters(
+      locale,
+      tradeCurrency(stats.best?.challengeId, carteDesDevises, deviseDeLaSemaine ?? deviseParDefaut),
+    );
+    const fmtPire = makeFormatters(
+      locale,
+      tradeCurrency(stats.worst?.challengeId, carteDesDevises, deviseDeLaSemaine ?? deviseParDefaut),
+    );
     const weekLabel = `${since.toLocaleDateString(locale, { day: "numeric", month: "short" })} – ${now.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" })}`;
 
     if (dryRun) {
@@ -330,8 +388,8 @@ async function handle(req: Request) {
       await resend.emails.send({
         from: "TradeDiscipline <noreply@tradediscipline.app>",
         to: user.email,
-        subject: copy.subject(fmt.signedMoney(stats.pnl), stats.count),
-        html: buildEmailHtml(stats, weekLabel, copy, fmt, lang),
+        subject: copy.subject(totalLisible, stats.count),
+        html: buildEmailHtml(stats, weekLabel, copy, fmt, lang, totalLisible, fmtMeilleur, fmtPire),
       });
       sent++;
     } catch (emailErr) {
@@ -342,7 +400,7 @@ async function handle(req: Request) {
     if (!weeklyPushOptOut.has(user.id)) {
       await sendPushToUser(user.id, {
         title: copy.heading,
-        body: `${fmt.signedMoney(stats.pnl)} · ${stats.count} ${copy.trades} · ${fmt.percent(stats.winrate)}`,
+        body: `${totalLisible} · ${stats.count} ${copy.trades} · ${fmt.percent(stats.winrate)}`,
         url: "/dashboard/analytics",
         tag: "weekly-report",
       });
