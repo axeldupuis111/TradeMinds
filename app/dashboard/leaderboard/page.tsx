@@ -567,7 +567,7 @@ export default function LeaderboardPage() {
             🏆 {t("leaderboard_season_title").replace("{month}", seasonMonth)}
           </p>
           <p className="text-xs text-muted">
-            {t("leaderboard_season_left").replace("{n}", String(seasonDaysLeft()))} · {t("leaderboard_season_reset")}
+            {t("leaderboard_season_left", { n: String(seasonDaysLeft()) })} · {t("leaderboard_season_reset")}
           </p>
         </div>
       )}

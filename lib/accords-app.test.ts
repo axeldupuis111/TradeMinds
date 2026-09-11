@@ -51,8 +51,18 @@ describe("les accords du produit", () => {
      * n'a pas d'accord. Les signaler tous ferait un garde de quatre cent
      * cinquante lignes qu'on apprendrait à ignorer en une journée.
      */
+    /**
+     * ⚠️⚠️ LES QUATRE LANGUES, PAS SEULEMENT LE FRANÇAIS. Une phrase peut
+     * demander un accord dans une langue et pas dans une autre : « the first
+     * {n} {n|member|members} » en anglais, « les {n} premiers membres » en
+     * français, où le mot accordé n'est pas au même endroit. Un garde bâti sur
+     * le seul français laisse alors l'appelant remplacer le trou à la main, et
+     * c'est l'ANGLAIS qui affiche le gabarit brut. Vu en relisant ce garde
+     * juste après avoir accordé trois cents phrases.
+     */
     const accordees = new Set(
-      Object.entries(fr as Record<string, string>)
+      Object.values({ fr, en, es, de } as Record<string, Record<string, string>>)
+        .flatMap((dico) => Object.entries(dico))
         .filter(([, texte]) => typeof texte === "string" && /\{[a-zA-Z0-9_]+\|/.test(texte))
         .map(([cle]) => cle),
     );
@@ -99,6 +109,43 @@ describe("les accords du produit", () => {
     expect(
       fautes,
       "phrases accordées dont un appelant remplace le trou à la main : " + fautes.join(", "),
+    ).toEqual([]);
+  });
+
+  /**
+   * ⚠️⚠️ ET PERSONNE NE RÉÉCRIT `remplir()` DANS SON COIN. Trois composants
+   * avaient leur propre `fmt(cle, valeurs)` : une boucle de `.replace()` sur
+   * les trous, qui ne connaît pas la syntaxe d'accord. Le garde du dessus ne
+   * les voyait pas, parce qu'ils n'écrivent pas `t("…").replace(…)` mais
+   * `fmt(t("…"), { … })`.
+   *
+   * ⚠️ C'EST MOI QUI LES AI RENDUS DANGEREUX : le jour où le dictionnaire a
+   * reçu ses accords, ces trois-là se sont mis à afficher le gabarit BRUT à
+   * l'écran — « Basé sur tes 157 {count|trade|trades} » sur le tableau de bord.
+   * Une correction qui casse trois écrans est pire que le défaut qu'elle
+   * répare, et c'est exactement ce que le test d'à côté annonçait.
+   */
+  it("aucun composant ne réécrit le remplissage des trous", () => {
+    function fichiers(d: string, out: string[] = []): string[] {
+      for (const f of readdirSync(d)) {
+        if (f === "node_modules" || f === ".next") continue;
+        const chemin = join(d, f);
+        if (statSync(chemin).isDirectory()) fichiers(chemin, out);
+        else if (/\.tsx?$/.test(chemin) && !chemin.includes(".test.")) out.push(chemin);
+      }
+      return out;
+    }
+    const fautes: string[] = [];
+    for (const chemin of [...fichiers("app"), ...fichiers("components"), ...fichiers("lib")]) {
+      if (chemin.endsWith("remplir.ts")) continue;
+      const source = readFileSync(chemin, "utf8");
+      // Un remplissage de trou écrit à la main : `.replace(`{${k}}`, …)`.
+      if (!/\.replace\(\s*`\{\$\{/.test(source)) continue;
+      fautes.push(chemin.split(/[\\\/]/).slice(-2).join("/"));
+    }
+    expect(
+      fautes,
+      "remplissages de trous écrits à la main (passer par t(clé, valeurs)) : " + fautes.join(", "),
     ).toEqual([]);
   });
 

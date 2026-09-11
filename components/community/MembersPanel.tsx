@@ -162,7 +162,7 @@ export default function MembersPanel({ onClose, onChanged }: { onClose: () => vo
           ) : (
             <>
               <p className="text-[11px] text-muted">
-                {t("com_members_activity_note").replace("{n}", String(activityDays))}
+                {t("com_members_activity_note", { n: String(activityDays) })}
               </p>
               <ul className="divide-y divide-border">
                 {members.map((m) => (

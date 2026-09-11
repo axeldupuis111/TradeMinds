@@ -203,7 +203,7 @@ export default function CommunityPage() {
         <p className="mt-3 text-[11px] text-muted">{t("com_rules_note")}</p>
         {community.isOwner && community.rankedCap !== null && (
           <p className="mt-1 text-[11px] text-muted">
-            {t("com_ranked_cap").replace("{n}", String(community.rankedCap))}
+            {t("com_ranked_cap", { n: String(community.rankedCap) })}
           </p>
         )}
       </div>
@@ -235,7 +235,7 @@ export default function CommunityPage() {
                     {c.description && <p className="mt-1 text-xs text-foreground-muted">{c.description}</p>}
                     <p className="mt-1 text-[11px] text-muted">
                       {spec ? t(spec.hintKey) : c.metric}
-                      {c.phase === "live" && ` · ${t("com_days_left").replace("{n}", String(Math.max(0, remaining)))}`}
+                      {c.phase === "live" && ` · ${t("com_days_left", { n: String(Math.max(0, remaining)) })}`}
                       {c.phase === "upcoming" && ` · ${t("com_starts_on").replace("{d}", c.startsOn)}`}
                       {/* Une cible corrigée en cours de route ne doit pas passer
                           inaperçue auprès de ceux qui courent déjà. */}

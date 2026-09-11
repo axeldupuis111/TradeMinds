@@ -154,7 +154,7 @@ export default function PeriodCompareBlock({
           <h3 className="text-sm font-semibold text-foreground">{t("compare_title")}</h3>
         </div>
         <span className="text-[11px] text-foreground-muted uppercase tracking-wider">
-          {t("compare_subtitle").replaceAll("{days}", String(days))}
+          {t("compare_subtitle", { days: String(days) })}
         </span>
       </div>
 

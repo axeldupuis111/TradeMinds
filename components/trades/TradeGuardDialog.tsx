@@ -12,11 +12,6 @@ const MESSAGE_KEY: Record<GuardWarning["type"], string> = {
   daily_loss: "guard_daily_loss",
 };
 
-function interpolate(template: string, values: Record<string, string | number>): string {
-  let out = template;
-  for (const [k, v] of Object.entries(values)) out = out.replace(`{${k}}`, String(v));
-  return out;
-}
 
 /**
  * Commitment-device gate: shown when a trade about to be logged breaks the
@@ -49,7 +44,7 @@ export function TradeGuardDialog({
           {warnings.map((w, i) => (
             <li key={i} className="flex items-start gap-2 text-sm text-foreground bg-loss/5 border border-loss/15 rounded-lg px-3 py-2">
               <span className="text-loss mt-0.5 shrink-0">•</span>
-              <span>{interpolate(t(MESSAGE_KEY[w.type]), w.values)}</span>
+              <span>{t(MESSAGE_KEY[w.type], w.values)}</span>
             </li>
           ))}
         </ul>
