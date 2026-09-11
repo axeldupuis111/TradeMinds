@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import robots from "../app/robots";
 import { SITE_URL } from "./seo";
@@ -24,12 +26,30 @@ describe("robots.txt", () => {
   const autorise = ([] as string[]).concat(premiere.allow ?? []);
   const interdit = ([] as string[]).concat(premiere.disallow ?? []);
 
-  it("garde les profils hors de l'index", () => {
-    expect(interdit, "la règle de vie privée a disparu").toContain("/profile/");
+  /**
+   * ⚠️⚠️ LA PREMIÈRE CORRECTION ÉTAIT UNE DEMI-CORRECTION. On avait autorisé
+   * l'IMAGE de partage tout en laissant `Disallow: /profile/` sur la page. Or
+   * un robot d'aperçu lit D'ABORD LA PAGE pour y trouver `og:image` : lui
+   * interdire la page, c'est lui interdire de découvrir l'image. Le lien
+   * partagé sortait donc toujours nu.
+   *
+   * ⚠️⚠️ ET L'INTERDIT EMPÊCHAIT LA VIE PRIVÉE DE S'EXPRIMER : un moteur peut
+   * lister une adresse interdite au crawl s'il la trouve ailleurs, en affichant
+   * le lien SANS contenu. La seule consigne qu'il respecte vraiment est
+   * `noindex`, et pour la lire il doit pouvoir ouvrir la page.
+   */
+  it("laisse les robots ouvrir un profil et sa carte de partage", () => {
+    expect(autorise, "le profil est de nouveau interdit au crawl").toContain("/profile/");
+    expect(interdit, "un Disallow sur /profile/ empêche de lire le noindex").not.toContain("/profile/");
   });
 
-  it("laisse passer l'image de partage d'un profil", () => {
-    expect(autorise).toContain("/profile/*/opengraph-image");
+  /** ⚠️ Et la vie privée vit maintenant DANS LA PAGE, pas dans ce fichier. */
+  it("la page du profil se déclare hors des résultats de recherche", () => {
+    const source = readFileSync(
+      join(process.cwd(), "app/profile/[username]/page.tsx"),
+      "utf8",
+    );
+    expect(source, "le noindex du profil a disparu").toMatch(/robots:\s*\{\s*index:\s*false/);
   });
 
   it("garde le tableau de bord, les API et l'authentification hors de l'index", () => {

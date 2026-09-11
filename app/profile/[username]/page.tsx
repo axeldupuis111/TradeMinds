@@ -44,6 +44,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title,
     description,
+    /**
+     * ⚠️⚠️ HORS DES RÉSULTATS DE RECHERCHE, MAIS LISIBLE PAR LES APERÇUS.
+     *
+     * C'est ici que vit désormais la décision de vie privée, et non plus dans
+     * un `Disallow` de robots.txt : un robot doit pouvoir LIRE la page pour y
+     * découvrir cette consigne, et pour y trouver la carte de partage. Lui
+     * interdire la page revenait à lui cacher les deux.
+     *
+     * ⚠️ `follow: true` : les liens de la page (l'accueil, les mentions
+     * légales) restent suivis, ils n'ont rien de privé.
+     */
+    robots: { index: false, follow: true },
     alternates: { canonical: url },
     openGraph: { title, description, url, siteName: "TradeDiscipline", type: "profile" },
     twitter: { card: "summary_large_image", title, description },

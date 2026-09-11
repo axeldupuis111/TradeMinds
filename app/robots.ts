@@ -10,27 +10,34 @@ export default function robots(): MetadataRoute.Robots {
         allow: [
           "/",
           /**
-           * ⚠️⚠️ L'IMAGE DE PARTAGE D'UN PROFIL, ET ELLE SEULE.
+           * ── LE PROFIL PARTAGÉ, ET LA MOITIÉ QUI MANQUAIT ──────────────────
            *
-           * `Disallow: /profile/` couvrait aussi
-           * `/profile/<pseudo>/opengraph-image`, l'image que les robots
-           * d'APERÇU vont chercher quand quelqu'un colle son lien. Or ces
-           * robots-là ne sont pas des moteurs de recherche : LinkedIn, par
-           * exemple, respecte robots.txt avant d'afficher une vignette. Le
-           * produit fabriquait donc une carte soignée pour le partage, et
-           * interdisait au même moment de la lire.
+           * ⚠️⚠️ PREMIÈRE CORRECTION, INSUFFISANTE : `Disallow: /profile/`
+           * couvrait aussi `/profile/<pseudo>/opengraph-image`, et on avait
+           * ouvert l'image seule. Mais un robot d'aperçu lit D'ABORD LA PAGE
+           * pour y trouver la balise `og:image` : lui interdire la page, c'est
+           * lui interdire de découvrir l'image. Autoriser l'image sans la page
+           * ne servait donc à rien, et le lien partagé sortait toujours nu.
            *
-           * ⚠️ LA RÈGLE DE VIE PRIVÉE N'EST PAS TOUCHÉE : les profils
-           * eux-mêmes restent hors de l'index. On rend seulement lisible ce
-           * qui n'a de sens que partagé.
+           * ⚠️⚠️ ET LE `Disallow` EMPÊCHAIT LA VIE PRIVÉE DE S'EXPRIMER. Un
+           * moteur peut lister une adresse interdite au crawl s'il la trouve
+           * ailleurs : il affiche alors le lien SANS contenu, faute d'avoir pu
+           * lire la page. La seule façon de dire « n'indexe pas » est de
+           * laisser le robot LIRE la page et d'y écrire `noindex`, ce que fait
+           * désormais `app/profile/[username]/page.tsx`.
+           *
+           * ⚠️ LA DÉCISION DE VIE PRIVÉE NE CHANGE PAS : un profil n'apparaît
+           * toujours pas dans les résultats de recherche, et un profil qui n'a
+           * pas coché « profil public » répond 404. On remplace un interdit qui
+           * ne protégeait rien et cassait le partage par une consigne que les
+           * moteurs respectent vraiment.
            */
-          "/profile/*/opengraph-image",
+          "/profile/",
         ],
         disallow: [
           "/dashboard/",
           "/api/",
           "/auth/",
-          "/profile/", // profils utilisateurs : pas indexés par défaut (vie privée)
         ],
       },
     ],
