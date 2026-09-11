@@ -123,7 +123,9 @@ export default function CreateChallengeModal({
         body: JSON.stringify({ text }),
       });
       const body = await res.json().catch(() => ({ ok: false, reason: "unavailable" }));
-      if (!body.ok || !body.draft) {
+      // ⚠️ LE STATUT SE LIT AUSSI : un 500 nu n'a pas de corps, et `body.ok`
+      // seul ferait dépendre le message d'un champ que le serveur n'a pas écrit.
+      if (!res.ok || !body.ok || !body.draft) {
         setAiError(t(`com_ai_err_${body.reason ?? "unavailable"}`));
         return;
       }

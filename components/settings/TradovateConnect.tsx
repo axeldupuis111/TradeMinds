@@ -130,15 +130,29 @@ export default function TradovateConnect() {
     }
   }
 
+  /**
+   * ⚠️ METTRE EN PAUSE ET SUPPRIMER SE TAISAIENT, alors que `runSync` et
+   * `saveCommission`, dans ce même fichier, lisaient déjà `res.ok` et
+   * affichaient le refus sur la ligne. La règle était écrite deux fois, appliquée
+   * à la moitié des gestes : un refus repeignait la liste à l'identique, et la
+   * connexion qu'on croyait en pause continuait d'importer des trades.
+   */
   async function action(id: string, body: { action: "pause" | "resume" }) {
     setBusyId(id);
     try {
-      await fetch(`/api/broker/connections/${id}`, {
+      const res = await fetch(`/api/broker/connections/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setSyncError((prev) => ({ ...prev, [id]: data.error || t("settings_save_error") }));
+        return;
+      }
       await load();
+    } catch {
+      setSyncError((prev) => ({ ...prev, [id]: t("settings_save_error") }));
     } finally {
       setBusyId(null);
     }
@@ -168,8 +182,15 @@ export default function TradovateConnect() {
   async function remove(id: string) {
     setBusyId(id);
     try {
-      await fetch(`/api/broker/connections/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/broker/connections/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setSyncError((prev) => ({ ...prev, [id]: data.error || t("settings_save_error") }));
+        return;
+      }
       await load();
+    } catch {
+      setSyncError((prev) => ({ ...prev, [id]: t("settings_save_error") }));
     } finally {
       setBusyId(null);
     }

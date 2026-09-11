@@ -68,6 +68,15 @@ export default function CommunityPage() {
   const [editing, setEditing] = useState<EditableChallenge | null>(null);
   const [showMembers, setShowMembers] = useState(false);
   const [copied, setCopied] = useState(false);
+  /**
+   * ⚠️ CE QUI MANQUAIT ICI : quitter une communauté et supprimer un défi
+   * appelaient l'API sans jamais regarder sa réponse, puis rechargeaient. Un
+   * refus (l'animateur ne peut pas quitter sa propre communauté, le défi a déjà
+   * été supprimé, le serveur tombe) se traduisait par un écran IDENTIQUE, sans
+   * un mot : le geste avait l'air d'avoir marché. Le code d'erreur renvoyé par
+   * `/api/community` est déjà une clé de traduction, on l'affiche telle quelle.
+   */
+  const [erreur, setErreur] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -82,13 +91,30 @@ export default function CommunityPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  /** Envoie une action et DIT pourquoi quand le serveur la refuse. */
+  async function envoyer(corps: Record<string, unknown>): Promise<boolean> {
+    setErreur(null);
+    try {
+      const res = await fetch("/api/community", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(corps),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setErreur(t(body.error || "cc_err_network"));
+        return false;
+      }
+      return true;
+    } catch {
+      setErreur(t("cc_err_network"));
+      return false;
+    }
+  }
+
   async function leave() {
     if (!window.confirm(t("com_leave_confirm"))) return;
-    await fetch("/api/community", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "leave" }),
-    });
+    if (!(await envoyer({ action: "leave" }))) return;
     await load();
   }
 
@@ -104,11 +130,7 @@ export default function CommunityPage() {
 
   async function removeChallenge(id: string) {
     if (!window.confirm(t("com_delete_confirm"))) return;
-    await fetch("/api/community", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "delete_challenge", id }),
-    });
+    if (!(await envoyer({ action: "delete_challenge", id }))) return;
     await load();
   }
 
@@ -145,6 +167,12 @@ export default function CommunityPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-5">
+      {erreur && (
+        <p role="alert" className="rounded-lg border border-loss/30 bg-loss/10 px-3 py-2 text-sm text-loss">
+          {erreur}
+        </p>
+      )}
+
       {/* En-tête de la communauté */}
       <div className="rounded-xl border border-border bg-card p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">

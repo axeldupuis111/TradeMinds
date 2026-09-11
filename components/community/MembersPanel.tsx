@@ -44,6 +44,13 @@ export default function MembersPanel({ onClose, onChanged }: { onClose: () => vo
   const [newName, setNewName] = useState("");
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
+  /**
+   * ⚠️ AJOUTER UN MEMBRE LISAIT DÉJÀ SON ERREUR, PAS LE RETIRER. Deux gestes du
+   * même écran, à quinze lignes d'écart : l'un disait « membre introuvable »,
+   * l'autre rechargeait la liste sans un mot et le membre réapparaissait comme
+   * si le clic n'avait jamais eu lieu.
+   */
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => {
@@ -68,14 +75,22 @@ export default function MembersPanel({ onClose, onChanged }: { onClose: () => vo
 
   async function act(action: "remove_member" | "unblock_member", userId: string) {
     setBusy(userId);
+    setActionError(null);
     try {
-      await fetch("/api/community", {
+      const res = await fetch("/api/community", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, userId }),
       });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setActionError(t(body.error || "cc_err_network"));
+        return;
+      }
       await load();
       onChanged();
+    } catch {
+      setActionError(t("cc_err_network"));
     } finally {
       setBusy(null);
     }
@@ -131,6 +146,12 @@ export default function MembersPanel({ onClose, onChanged }: { onClose: () => vo
         </div>
 
         <div className="px-5 py-4 space-y-4">
+          {actionError && (
+            <p role="alert" className="rounded-lg border border-loss/30 bg-loss/10 px-3 py-2 text-xs text-loss">
+              {actionError}
+            </p>
+          )}
+
           {/* Rattraper les abonnés d'avant : le code promo n'ouvre la
               communauté qu'au moment du paiement, eux étaient déjà clients. */}
           <div className="rounded-lg border border-border bg-surface p-3">

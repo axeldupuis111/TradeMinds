@@ -48,6 +48,7 @@ export default function CommunityChallenges() {
   const [data, setData] = useState<ApiPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  const [erreur, setErreur] = useState<string | null>(null);
 
   async function load() {
     try {
@@ -62,15 +63,28 @@ export default function CommunityChallenges() {
 
   useEffect(() => { load(); }, []);
 
+  /**
+   * ⚠️ REJOINDRE UN DÉFI NE REGARDAIT PAS LA RÉPONSE. Un refus (plafond
+   * atteint, défi clos entre-temps, serveur tombé) redessinait la carte à
+   * l'identique : le bouton disait toujours « Rejoindre », sans un mot pour
+   * expliquer pourquoi rien n'avait bougé.
+   */
   async function toggle(key: string, joined: boolean) {
     setBusy(key);
+    setErreur(null);
     try {
-      await fetch("/api/community-challenges", {
+      const res = await fetch("/api/community-challenges", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ challengeKey: key, action: joined ? "leave" : "join" }),
       });
+      if (!res.ok) {
+        setErreur(t("cc_err_network"));
+        return;
+      }
       await load();
+    } catch {
+      setErreur(t("cc_err_network"));
     } finally {
       setBusy(null);
     }
@@ -99,6 +113,12 @@ export default function CommunityChallenges() {
         </span>
         <span className="text-[11px] text-muted">{t("cc_new_every_monday")}</span>
       </div>
+
+      {erreur && (
+        <p role="alert" className="mb-3 rounded-lg border border-loss/30 bg-loss/10 px-3 py-2 text-xs text-loss">
+          {erreur}
+        </p>
+      )}
 
       {/* Récompenses en jeu — mêmes mécaniques que les badges. */}
       <p className="mb-3 text-[11px] text-muted flex flex-wrap items-center gap-x-3 gap-y-1">

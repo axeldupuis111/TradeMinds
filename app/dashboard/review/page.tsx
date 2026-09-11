@@ -119,6 +119,7 @@ export default function MonthlyReviewPage() {
   const [monthParam, setMonthParam] = useState<string | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiErreur, setAiErreur] = useState<string | null>(null);
   const [month, setMonth] = useState<Month | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [deltas, setDeltas] = useState<Deltas | null>(null);
@@ -146,7 +147,7 @@ export default function MonthlyReviewPage() {
   const loadStats = useCallback(async (mp: string | null) => {
     if (!isPaid) { setLoadingStats(false); return; }
     setLoadingStats(true);
-    setReview(null); setRawSummary(null);
+    setReview(null); setRawSummary(null); setAiErreur(null);
     try {
       const res = await fetch(`/api/monthly-review${mp ? `?month=${mp}` : ""}`);
       if (res.ok) {
@@ -208,15 +209,33 @@ export default function MonthlyReviewPage() {
     setMonthParam(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
   }
 
+  /**
+   * ⚠️⚠️ CE BOUTON POUVAIT NE RIEN FAIRE, SANS UN MOT. La réponse n'était jamais
+   * regardée : quota du jour épuisé (429), plan insuffisant (403), modèle
+   * indisponible (200 avec `review: null`), tout finissait de la même façon, en
+   * remettant le bouton « Générer le bilan » à l'écran. Le trader recliquait, et
+   * chaque clic consommait un appel de plus.
+   */
   async function generate() {
     setAiLoading(true);
+    setAiErreur(null);
     try {
       const res = await fetch("/api/monthly-review", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ language: lang, month: month?.key }),
       });
-      const d = await res.json();
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (res.status === 429) setAiErreur(t(d?.scope === "month" ? "api_error_monthly_limit" : "api_error_rate_limited"));
+        else if (res.status === 403) setAiErreur(t("api_error_forbidden"));
+        else setAiErreur(t("review_generate_failed"));
+        return;
+      }
       setReview(d.review ?? null); setRawSummary(d.rawSummary ?? null);
+      // Réponse acceptée mais vide : le modèle n'a rien rendu d'exploitable.
+      if (!d.review && !d.rawSummary) setAiErreur(t("review_generate_failed"));
+    } catch {
+      setAiErreur(t("review_generate_failed"));
     } finally { setAiLoading(false); }
   }
 
@@ -668,9 +687,14 @@ export default function MonthlyReviewPage() {
                   ) : rawSummary ? (
                     <div className="rounded-xl border border-border bg-card p-5"><p className="text-sm text-muted leading-relaxed whitespace-pre-line">{rawSummary.replace(/\*\*/g, "")}</p></div>
                   ) : (
-                    <button onClick={generate} disabled={aiLoading} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-on-accent text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-50">
-                      <Sparkles className="w-4 h-4" />{aiLoading ? t("review_generating") : t("review_generate")}
-                    </button>
+                    <div className="space-y-3">
+                      {aiErreur && (
+                        <p role="alert" className="rounded-lg border border-loss/30 bg-loss/10 px-3 py-2 text-sm text-loss">{aiErreur}</p>
+                      )}
+                      <button onClick={generate} disabled={aiLoading} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-on-accent text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-50">
+                        <Sparkles className="w-4 h-4" />{aiLoading ? t("review_generating") : t("review_generate")}
+                      </button>
+                    </div>
                   )}
                 </div>
               )}

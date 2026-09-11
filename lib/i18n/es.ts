@@ -2632,6 +2632,7 @@ const dict: Record<string, string> = {
   "review_improvement": "A mejorar",
   "review_focus": "Foco del próximo mes",
   "review_regenerate": "Regenerar balance",
+  "review_generate_failed": "No se pudo redactar el balance. Vuelve a intentarlo en un momento.",
   "review_kpi_prep": "Tasa de preparación",
   "review_equity_title": "Curva de equity del mes",
   "review_best_day": "Mejor día",

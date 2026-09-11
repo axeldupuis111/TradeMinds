@@ -44,6 +44,13 @@ describe("les écritures d'un geste du trader ne se taisent pas", () => {
     "components/session",
     "components/trades",
     "components/profile",
+    /**
+     * ⚠️ AJOUTÉS APRÈS COUP, ET C'EST LE MÊME OUBLI QUE LA RÈGLE DÉCRIT : ces
+     * deux dossiers sont pleins de gestes du trader (rejoindre un défi, retirer
+     * un membre), ils n'étaient simplement pas dans la liste.
+     */
+    "components/community",
+    "components/dashboard",
   ];
 
   const SAUT = new RegExp(String.fromCharCode(13) + "?" + String.fromCharCode(10));
@@ -56,6 +63,49 @@ describe("les écritures d'un geste du trader ne se taisent pas", () => {
       else if (/\.tsx?$/.test(chemin) && !chemin.includes(".test.")) out.push(chemin);
     }
     return out;
+  }
+
+  /** L'appel complet à partir de l'index de `fetch`, parenthèses équilibrées. */
+  function appelComplet(source: string, depart: number): string {
+    let prof = 0;
+    for (let j = source.indexOf("(", depart); j < source.length; j++) {
+      if (source[j] === "(") prof++;
+      else if (source[j] === ")") {
+        prof--;
+        if (prof === 0) return source.slice(depart, j + 1);
+      }
+    }
+    return source.slice(depart, depart + 600);
+  }
+
+  /**
+   * Le corps de la FONCTION qui contient l'index donné.
+   *
+   * ⚠️ ON REMONTE LES ACCOLADES, ON NE COMPTE PAS LES CARACTÈRES : une fenêtre
+   * de taille fixe coupe au milieu d'une fonction longue et déclare fautif ce
+   * qui vérifie trente lignes plus bas.
+   */
+  function fonctionEnglobante(source: string, depart: number): string | null {
+    let prof = 0;
+    for (let j = depart; j >= 0; j--) {
+      const c = source[j];
+      if (c === "}") prof++;
+      else if (c === "{") {
+        if (prof > 0) { prof--; continue; }
+        // Un `{` non fermé : début d'un bloc. Une fonction si `) {` ou `=> {`.
+        if (!/(?:=>|\))\s*$/.test(source.slice(Math.max(0, j - 140), j))) continue;
+        let p = 0;
+        for (let k = j; k < source.length; k++) {
+          if (source[k] === "{") p++;
+          else if (source[k] === "}") {
+            p--;
+            if (p === 0) return source.slice(j, k + 1);
+          }
+        }
+        return source.slice(j);
+      }
+    }
+    return null;
   }
 
   it("balaie bien des fichiers, sinon ce test ne prouve rien", () => {
@@ -97,6 +147,70 @@ describe("les écritures d'un geste du trader ne se taisent pas", () => {
     expect(
       fautes,
       "écritures dont personne ne lit l'échec : " + fautes.join(" | "),
+    ).toEqual([]);
+  });
+
+  /**
+   * ── LA MÊME RÈGLE, L'AUTRE MOITIÉ DU PRODUIT ────────────────────────────────
+   *
+   * ⚠️⚠️ TOUT CE QUI PRÉCÈDE NE REGARDE QUE `supabase.from(…)`. Or la moitié des
+   * gestes du trader ne passe pas par la base directement : ils POSTent sur une
+   * route de l'app. Sept d'entre eux jetaient la réponse :
+   *
+   *   - mettre une connexion broker EN PAUSE, et la SUPPRIMER, dans un fichier
+   *     où `runSync` et `saveCommission` lisaient déjà `res.ok` dix lignes plus
+   *     haut ;
+   *   - COUPER les notifications push, quand les activer vérifiait déjà ;
+   *   - RETIRER un membre de sa communauté, quand en ajouter un vérifiait déjà ;
+   *   - QUITTER une communauté, SUPPRIMER un défi, REJOINDRE un défi ;
+   *   - GÉNÉRER le bilan du mois, où un quota épuisé (429) remettait simplement
+   *     le bouton « Générer » à l'écran, et où chaque nouveau clic coûtait un
+   *     appel de plus.
+   *
+   * ⚠️ LA FORME DU DÉFAUT EST TOUJOURS LA MÊME : la règle était écrite, et même
+   * appliquée dans le fichier d'à côté, parfois dans la fonction d'à côté.
+   */
+  it("aucune écriture par fetch ne se tait", () => {
+    const fautes: string[] = [];
+    let vues = 0;
+    for (const d of PORTEE) {
+      for (const chemin of fichiers(join(process.cwd(), d))) {
+        const source = readFileSync(chemin, "utf8");
+        const nom = chemin.split(/[\\/]/).slice(-2).join("/");
+        let i = -1;
+        while ((i = source.indexOf("fetch(", i + 1)) !== -1) {
+          // `prefetch(`, `refetch(` et autres : on ne vise que l'appel global.
+          if (/[A-Za-z0-9_$]/.test(source[i - 1] ?? "")) continue;
+          const appel = appelComplet(source, i);
+          if (!/method:\s*["'](?:POST|PUT|PATCH|DELETE)/.test(appel)) continue;
+          vues++;
+          const ligne = source.slice(0, i).split(SAUT).length;
+          const ou = `${nom}:${ligne}`;
+          const amont = source.slice(Math.max(0, i - 400), i);
+          if (/VOLONTAIREMENT IGNORÉ/.test(amont)) continue;
+
+          const suite = source.slice(i + appel.length, i + appel.length + 900);
+          const variable = /(?:const|let)\s+(\w+)\s*=\s*await\s*$/.exec(amont);
+
+          if (variable) {
+            const corps = fonctionEnglobante(source, i) ?? "";
+            const lu = new RegExp(`\\b${variable[1]}\\.(?:ok|status)\\b`).test(corps);
+            if (!lu) fautes.push(`${ou} (${variable[1]}.ok jamais lu)`);
+            continue;
+          }
+          // Chaîne de promesses : elle doit au moins rattraper son échec.
+          if (/^\s*\.(?:then|catch)\b/.test(suite)) {
+            if (!/\.catch\s*\(/.test(suite)) fautes.push(`${ou} (chaîne sans .catch)`);
+            continue;
+          }
+          fautes.push(`${ou} (réponse jetée)`);
+        }
+      }
+    }
+    expect(vues, "plus aucune écriture par fetch : le motif ne correspond plus").toBeGreaterThan(10);
+    expect(
+      fautes,
+      "écritures par fetch dont personne ne lit l'échec : " + fautes.join(" | "),
     ).toEqual([]);
   });
 
