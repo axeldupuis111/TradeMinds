@@ -254,7 +254,7 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-      <div className="bg-card border border-border rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
+      <div role="dialog" aria-modal="true" aria-label={t("manual_title")} className="bg-card border border-border rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-foreground">{t("manual_title")}</h2>
           <button onClick={onClose} aria-label={t("detail_close")} className="text-muted hover:text-foreground transition-colors">

@@ -116,7 +116,7 @@ export default function ShareCardModal({
   // Portal vers document.body : la carte parente (KpiCardPremium) a un
   // transform + overflow-hidden qui casserait le positionnement fixed.
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+    <div aria-label={t("share_modal_title")} className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
       <div className="relative w-full max-w-[640px] bg-card border border-border rounded-2xl p-5 shadow-2xl">

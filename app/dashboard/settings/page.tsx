@@ -637,7 +637,7 @@ export default function SettingsPage() {
       {/* MetaTrader regenerate confirmation modal */}
       {showMtRegenModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-card border border-border rounded-xl p-6 max-w-md w-full space-y-4">
+          <div role="dialog" aria-modal="true" aria-label={t("sync_mt_modal_title")} className="bg-card border border-border rounded-xl p-6 max-w-md w-full space-y-4">
             <h3 className="text-lg font-semibold text-foreground">{t("sync_mt_modal_title")}</h3>
             <p className="text-sm text-muted">{t("sync_mt_modal_desc")}</p>
             <div className="flex gap-3 justify-end">
@@ -753,7 +753,7 @@ export default function SettingsPage() {
       {/* Delete confirmation modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-card border border-border rounded-xl p-6 max-w-md w-full space-y-4">
+          <div role="dialog" aria-modal="true" aria-label={t("settings_danger_title")} className="bg-card border border-border rounded-xl p-6 max-w-md w-full space-y-4">
             <h3 className="text-lg font-semibold text-loss">{t("settings_danger_title")}</h3>
             <p className="text-sm text-muted">{t("settings_delete_confirm_text")}</p>
             <div>

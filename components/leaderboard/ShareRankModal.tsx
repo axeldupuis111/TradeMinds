@@ -87,7 +87,7 @@ export default function ShareRankModal({ stats, onClose }: { stats: ShareRankSta
   ];
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+    <div aria-label={t("leaderboard_share_title")} className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
       <div className="relative w-full max-w-[560px] bg-card border border-border rounded-2xl p-5 shadow-2xl">

@@ -103,7 +103,7 @@ export default function ExportPdfButton({ trades, periodLabel, accountLabel }: E
 
       {showLocked && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-6" onClick={() => setShowLocked(false)}>
-          <div className="max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+          <div role="dialog" aria-modal="true" aria-label={t("pdf_export")} className="max-w-md w-full" onClick={(e) => e.stopPropagation()}>
             <UpgradeBanner message={t("pdf_locked")} />
             <button
               onClick={() => setShowLocked(false)}

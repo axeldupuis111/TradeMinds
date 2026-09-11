@@ -113,7 +113,7 @@ export default function QuickTradeLogger({ strategyId, pairs, onClose, onSaved }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-      <div className="bg-card border border-border rounded-xl w-full max-w-md p-6">
+      <div role="dialog" aria-modal="true" aria-label={t("session_active_log_trade")} className="bg-card border border-border rounded-xl w-full max-w-md p-6">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-base font-semibold text-foreground">{t("session_active_log_trade")}</h2>
           <button onClick={onClose} aria-label={t("detail_close")} className="text-muted hover:text-foreground transition-colors">

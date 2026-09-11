@@ -167,7 +167,7 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
   if (loading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-        <div className="bg-card border border-border rounded-xl w-full max-w-md p-6">
+        <div role="dialog" aria-modal="true" aria-label={t("close_trade_title")} className="bg-card border border-border rounded-xl w-full max-w-md p-6">
           <p className="text-muted text-sm">{t("close_trade_loading")}</p>
         </div>
       </div>
@@ -177,7 +177,7 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
   if (loadError || !trade) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-        <div className="bg-card border border-border rounded-xl w-full max-w-md p-6 space-y-4">
+        <div role="dialog" aria-modal="true" aria-label={t("close_trade_title")} className="bg-card border border-border rounded-xl w-full max-w-md p-6 space-y-4">
           <h2 className="text-base font-semibold text-foreground">{t("close_trade_title")}</h2>
           <p className="text-loss text-sm">{loadError || t("close_trade_not_found")}</p>
           <div className="flex justify-end">
@@ -199,7 +199,7 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 overflow-y-auto py-8">
-      <div className="bg-card border border-border rounded-xl w-full max-w-md p-6 my-auto">
+      <div role="dialog" aria-modal="true" aria-label={t("close_trade_title")} className="bg-card border border-border rounded-xl w-full max-w-md p-6 my-auto">
         {/* Header */}
         <div className="flex items-start justify-between mb-5">
           <div>

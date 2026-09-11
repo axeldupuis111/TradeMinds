@@ -94,7 +94,7 @@ function ColumnMappingModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={onCancel}>
-      <div
+      <div role="dialog" aria-modal="true" aria-label={t("csv_mapping_title")}
         className="bg-card border border-border rounded-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >

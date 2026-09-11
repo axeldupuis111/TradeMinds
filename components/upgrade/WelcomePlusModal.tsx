@@ -33,8 +33,13 @@ export function WelcomePlusModal({ isOpen, onClose, isPlanReady, plan = "plus" }
         t("upgrade_welcome_feature_5"),
       ];
 
+  /**
+   * ⚠️ LE NOM DU DIALOGUE DOIT ÊTRE REMPLI : « Bienvenue dans {plan} ! »
+   * posé tel quel ferait annoncer le trou à voix haute. C'est le même défaut
+   * que les « {n} » restés à l'écran, mais dans un endroit qu'on ne voit pas.
+   */
   return (
-    <div
+    <div aria-label={t("upgrade_welcome_title_dyn", { plan: planLabel })}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
       onClick={onClose}
       role="dialog"
@@ -58,7 +63,7 @@ export function WelcomePlusModal({ isOpen, onClose, isPlanReady, plan = "plus" }
         <div className="text-center mb-4">
           <div className="text-5xl mb-2">🎉</div>
           <h2 className="text-2xl font-bold text-foreground">
-            {t("upgrade_welcome_title_dyn").replace("{plan}", planLabel)}
+            {t("upgrade_welcome_title_dyn", { plan: planLabel })}
           </h2>
           <p className="text-muted mt-2 text-sm">
             {isPlanReady

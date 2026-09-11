@@ -122,7 +122,7 @@ export default function ScreenshotAnnotator({
   ];
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true">
+    <div aria-label={t("annotate_draw_title")} className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true">
       <div className="bg-card border border-border rounded-xl w-full max-w-3xl p-4 max-h-[94vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-foreground">{t("annotate_draw_title")}</h3>

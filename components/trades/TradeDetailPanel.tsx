@@ -520,7 +520,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
     <>
       <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} />
 
-      <div className="fixed top-0 right-0 z-50 h-full w-full sm:w-[440px] bg-card border-l border-border overflow-y-auto animate-in slide-in-from-right duration-200">
+      <div role="dialog" aria-modal="true" aria-label={t("detail_title")} className="fixed top-0 right-0 z-50 h-full w-full sm:w-[440px] bg-card border-l border-border overflow-y-auto animate-in slide-in-from-right duration-200">
         <div className="sticky top-0 bg-card border-b border-border px-5 py-4 flex items-center justify-between z-10">
           <h2 className="text-lg font-semibold text-foreground">{t("detail_title")}</h2>
           <button

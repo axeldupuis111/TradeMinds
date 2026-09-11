@@ -83,7 +83,7 @@ export default function InstallAppButton({ className }: { className?: string }) 
       </button>
 
       {showIOS && (
-        <div
+        <div aria-label={t("install_ios_title")}
           className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4"
           onClick={() => setShowIOS(false)}
           role="dialog"

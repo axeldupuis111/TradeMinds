@@ -330,7 +330,7 @@ export default function UpgradePage() {
       {/* Downgrade confirmation modal */}
       {showDowngradeModal && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-card border border-border rounded-xl p-6 max-w-md w-full shadow-xl">
+          <div role="dialog" aria-modal="true" aria-label={t("downgrade_modal_title")} className="bg-card border border-border rounded-xl p-6 max-w-md w-full shadow-xl">
             <h3 className="text-lg font-bold text-foreground mb-2">{t("downgrade_modal_title")}</h3>
             <p className="text-muted text-sm mb-5">{t("downgrade_modal_body")}</p>
             <div className="flex gap-3">
@@ -730,7 +730,7 @@ export default function UpgradePage() {
       {/* Modale de changement de plan (Plus <-> Premium) */}
       {changeTarget && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-card border border-border rounded-xl p-6 max-w-md w-full shadow-xl">
+          <div role="dialog" aria-modal="true" aria-label={t("planchange_to_premium")} className="bg-card border border-border rounded-xl p-6 max-w-md w-full shadow-xl">
             <h3 className="text-lg font-bold text-foreground mb-3">
               {changeTarget === "premium" ? t("planchange_to_premium") : t("planchange_to_plus")}
             </h3>

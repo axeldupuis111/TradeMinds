@@ -33,7 +33,7 @@ export function TradeGuardDialog({
   const { t } = useLanguage();
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4" role="dialog" aria-modal="true">
+    <div aria-label={t("guard_title")} className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4" role="dialog" aria-modal="true">
       <div className="w-full max-w-md bg-card border border-loss/30 rounded-xl p-6 shadow-2xl">
         <div className="flex items-center gap-2.5 mb-3">
           <ShieldAlert className="w-6 h-6 text-loss shrink-0" strokeWidth={1.75} />

@@ -362,7 +362,7 @@ function EditAccountModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-      <div className="bg-card border border-border rounded-xl p-6 max-w-md w-full shadow-xl max-h-[90vh] overflow-y-auto">
+      <div role="dialog" aria-modal="true" aria-label={t("challenge_edit_title")} className="bg-card border border-border rounded-xl p-6 max-w-md w-full shadow-xl max-h-[90vh] overflow-y-auto">
         <h3 className="text-foreground font-semibold mb-4">{t("challenge_edit_title")}</h3>
         <div className="space-y-3">
           <div>
@@ -542,7 +542,7 @@ function DeleteAccountModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-      <div className="bg-card border border-border rounded-xl p-6 max-w-sm w-full shadow-xl">
+      <div role="dialog" aria-modal="true" aria-label={t("challenge_delete_account_title")} className="bg-card border border-border rounded-xl p-6 max-w-sm w-full shadow-xl">
         <h3 className="text-loss font-semibold mb-3">{t("challenge_delete_account_title")}</h3>
         <p className="text-foreground text-sm leading-relaxed">{question}</p>
         {error && (
@@ -841,7 +841,7 @@ function DeleteModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-card border border-border rounded-xl p-6 max-w-sm w-full mx-4 shadow-xl">
+      <div role="dialog" aria-modal="true" aria-label={t("challenge_delete_history_confirm")} className="bg-card border border-border rounded-xl p-6 max-w-sm w-full mx-4 shadow-xl">
         <p className="text-foreground text-sm leading-relaxed">{t("challenge_delete_history_confirm")}</p>
         {error && (
           <p className="text-loss text-sm leading-relaxed mt-3 border-t border-border pt-3">{error}</p>

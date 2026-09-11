@@ -513,7 +513,7 @@ export default function SessionPage() {
         {/* Stop confirm modal */}
         {showStopConfirm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-            <div className="bg-card border border-border rounded-xl p-6 max-w-sm w-full space-y-4">
+            <div role="dialog" aria-modal="true" aria-label={t("session_active_stop_trading")} className="bg-card border border-border rounded-xl p-6 max-w-sm w-full space-y-4">
               <h3 className="text-base font-semibold text-foreground">{t("session_active_stop_trading")}</h3>
               <p className="text-muted text-sm">{t("session_active_stop_confirm")}</p>
               <div className="flex gap-3 justify-end">
@@ -750,7 +750,7 @@ export default function SessionPage() {
       {/* Empty checklist confirmation modal */}
       {showEmptyChecklistModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="bg-card border border-border rounded-xl p-6 max-w-sm w-full space-y-4">
+          <div role="dialog" aria-modal="true" aria-label={t("session_empty_checklist_title")} className="bg-card border border-border rounded-xl p-6 max-w-sm w-full space-y-4">
             <h3 className="text-base font-semibold text-foreground">{t("session_empty_checklist_title")}</h3>
             <p className="text-muted text-sm">{t("session_empty_checklist_body")}</p>
             <div className="flex gap-3 justify-end">
