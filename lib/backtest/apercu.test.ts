@@ -247,7 +247,13 @@ describe("aucune phrase ne compte les aperçus à la place du code", () => {
   for (const [nom, dico] of Array.from(Object.entries({ fr, en, es, de }))) {
     it(`ne l'écrit pas en toutes lettres en ${nom}`, () => {
       const mot = MOTS[nom][Number(m![1])];
-      const motif = new RegExp(`(^|[^\p{L}])${mot}([^\p{L}]|$)`, "iu");
+      /**
+       * ⚠️⚠️ DEUX BARRES OBLIQUES, PAS UNE. Dans un gabarit, `\p` vaut « p » :
+       * la classe devenait `[^p{L}]`, et ce garde acceptait alors le mot au
+       * milieu d'un autre mot tout en le refusant apres un « p ». Il regardait
+       * quelque chose, simplement pas ce qu'il annonce.
+       */
+      const motif = new RegExp(`(^|[^\\p{L}])${mot}([^\\p{L}]|$)`, "iu");
       const fautives = Object.entries(dico as Record<string, string>)
         .filter(([cle, texte]) => cle.startsWith("bt_") && motif.test(texte))
         .map(([cle]) => cle);

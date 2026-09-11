@@ -443,9 +443,16 @@ export default function GoalsPage() {
     return () => window.clearTimeout(id);
   }, [notice]);
 
-  async function addMetricGoal(m: Metric, tgt: number, p: Period) {
-    if (isNaN(tgt) || tgt <= 0) return;
+  /**
+   * ⚠️⚠️ ELLE REND MAINTENANT UN VERDICT, et ce n'est pas un detail : son
+   * appelant annoncait « objectif ajoute » JUSTE APRES qu'elle ait affiche
+   * « Non enregistre. Reessaie. ». Le message de reussite ecrasait le message
+   * d'echec, la modale se fermait, et le texte du trader etait efface.
+   */
+  async function addMetricGoal(m: Metric, tgt: number, p: Period): Promise<boolean> {
+    if (isNaN(tgt) || tgt <= 0) return false;
     setBusy(true);
+    let ecrit = false;
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       // On omet 'kind' (défaut SQL 'metric') pour rester compatible avant la migration.
@@ -457,15 +464,22 @@ export default function GoalsPage() {
       if (error) {
         console.error("[goals] création d'objectif refusée :", error.message);
         setNotice("echec");
+      } else {
+        ecrit = true;
       }
       await load();
     }
     setBusy(false);
+    return ecrit;
   }
 
-  async function createCustom(title: string, p: Period, recurring: boolean) {
+  /** ⚠️ Meme raison que ci-dessus : l'appelant doit pouvoir se taire. */
+  async function createCustom(title: string, p: Period, recurring: boolean): Promise<boolean> {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      setNotice("echec");
+      return false;
+    }
     // Insert de base (compatible même sans les colonnes de récurrence).
     const { data: inserted, error } = await supabase
       .from("goals")
@@ -475,7 +489,7 @@ export default function GoalsPage() {
     if (error) {
       console.error("[goals] création d'objectif libre refusée :", error.message);
       setNotice("echec");
-      return;
+      return false;
     }
     /**
      * Récurrence en 2e temps (les colonnes peuvent manquer sur une base non
@@ -493,8 +507,10 @@ export default function GoalsPage() {
       if (erreurRecurrence) {
         console.error("[goals] récurrence refusée :", erreurRecurrence.message);
         setNotice("echec");
+        return false;
       }
     }
+    return true;
   }
 
   async function addCustomGoal() {
@@ -508,16 +524,24 @@ export default function GoalsPage() {
         body: JSON.stringify({ text: title, period: customPeriod }),
       });
       const data = await res.json().catch(() => ({ trackable: false }));
+      let ecrit: boolean;
       if (res.ok && data.trackable && data.metric) {
         // 2a. Mesurable → objectif suivi automatiquement.
-        await addMetricGoal(data.metric, Number(data.target), customPeriod);
-        setNotice("auto");
+        ecrit = await addMetricGoal(data.metric, Number(data.target), customPeriod);
+        if (ecrit) setNotice("auto");
       } else {
         // 2b. Non mesurable → objectif à cocher manuellement.
-        await createCustom(title, customPeriod, customRecurring);
+        ecrit = await createCustom(title, customPeriod, customRecurring);
         await load();
-        setNotice("manual");
+        if (ecrit) setNotice("manual");
       }
+      /**
+       * ⚠️⚠️ RIEN N'EST ECRIT, DONC RIEN N'EST EFFACE. Avant, la modale se
+       * fermait et le champ se vidait meme quand l'insertion venait d'etre
+       * refusee : le trader perdait sa phrase, lisait « objectif ajoute », et
+       * ne trouvait l'objectif nulle part.
+       */
+      if (!ecrit) return;
       setCustomText("");
       setShowCreate(false);
     } finally {
@@ -527,8 +551,10 @@ export default function GoalsPage() {
 
   async function applyPack(pack: Pack) {
     setBusy(true);
+    let tout = false;
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
+      tout = true;
       const existingMetrics = new Set(metricGoals.map((g) => `${g.metric}:${g.period}`));
       for (const m of pack.metrics) {
         if (existingMetrics.has(`${m.metric}:${m.period}`)) continue;
@@ -536,15 +562,18 @@ export default function GoalsPage() {
         if (error) {
           console.error("[goals] objectif du pack refusé :", error.message);
           setNotice("echec");
+          tout = false;
         }
       }
       for (const h of pack.habits) {
-        await createCustom(t(h.titleKey), h.period, true);
+        if (!(await createCustom(t(h.titleKey), h.period, true))) tout = false;
       }
       await load();
     }
     setBusy(false);
-    setShowCreate(false);
+    // ⚠️ La modale reste ouverte si une seule ligne du pack a ete refusee :
+    // la refermer laisserait croire que le pack entier est en place.
+    if (tout) setShowCreate(false);
   }
 
   async function toggleDone(id: string, done: boolean) {
