@@ -56,11 +56,46 @@ export const C = {
 
 // ─── Formatage ───────────────────────────────────────────────────────────────
 
+/**
+ * La langue du document en cours.
+ *
+ * ⚠️ ÉTAT DE MODULE, COMME LE FILIGRANE ET LA POLICE UNICODE juste en dessous,
+ * et pour la même raison : les quatre générateurs ont des signatures
+ * différentes, et `groupNum` est appelée depuis `money()` et `pct()`, qui n'ont
+ * pas de langue à passer. Un PDF se fabrique d'un bloc, dans le navigateur :
+ * il n'y en a jamais deux en cours.
+ */
+let langueDuDocument = "fr-FR";
+
+/** À appeler au début de chaque générateur, avant le premier nombre écrit. */
+export function setPdfLocale(locale: string | undefined) {
+  langueDuDocument = locale || "fr-FR";
+}
+
+/**
+ * Un nombre groupé, dans la langue du document.
+ *
+ * ── LE DÉFAUT ───────────────────────────────────────────────────────────────
+ *
+ * ⚠️⚠️ LE FRANÇAIS ÉTAIT CODÉ EN DUR : espace pour les milliers, virgule pour
+ * les décimales, quelle que soit la langue du PDF. Un rapport anglais écrivait
+ * donc « 1 234,50 » là où il faut « 1,234.50 », et un allemand « 1.234,50 ».
+ * C'est le même défaut que le `.replace(".", ",")` trouvé à l'écran, vu depuis
+ * l'autre côté : il donne le bon résultat pour qui l'écrit.
+ *
+ * ⚠️ ET LA RAISON DU CALCUL À LA MAIN TENAIT, ELLE : `Intl` pose une ESPACE
+ * FINE INSÉCABLE (U+202F) entre les milliers en français, et les polices
+ * standard d'un PDF ne l'ont pas dans leur encodage WinAnsi — elle sortirait en
+ * caractère parasite. On ramène donc les espaces exotiques à l'espace ASCII.
+ * Les trois autres langues sont déjà entièrement ASCII, signe compris.
+ */
 export function groupNum(n: number, decimals = 0): string {
-  const neg = n < 0;
-  const [int, dec] = Math.abs(n).toFixed(decimals).split(".");
-  const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-  return `${neg ? "-" : ""}${grouped}${dec ? "," + dec : ""}`;
+  return new Intl.NumberFormat(langueDuDocument, {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  })
+    .format(n)
+    .replace(/[   ]/g, " ");
 }
 
 const EURO_WINANSI = String.fromCharCode(128); // € en WinAnsi (polices standard)

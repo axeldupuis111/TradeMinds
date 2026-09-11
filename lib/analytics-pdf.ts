@@ -1,6 +1,6 @@
 import type { Traduire } from "@/lib/LanguageContext";
 import { jsPDF } from "jspdf";
-import { Pdf, C, money, signedMoney, groupNum, type RGB } from "@/lib/pdf/kit";
+import { Pdf, C, money, signedMoney, groupNum, type RGB, setPdfLocale } from "@/lib/pdf/kit";
 import { ensureBrandFont } from "@/lib/pdf/fonts";
 
 /**
@@ -64,6 +64,8 @@ const TABLE_MAX_ROWS = 25;
 
 export async function buildAnalyticsPdf(input: AnalyticsPdfInput): Promise<jsPDF> {
   const { trades, periodLabel, accountLabel, locale, t, review } = input;
+  // ⚠️ Avant le premier nombre écrit : les séparateurs suivent la langue du PDF.
+  setPdfLocale(locale);
 
   // ── Stats ──────────────────────────────────────────────────────────────────
   const netPnls = trades.map(netPnl);
