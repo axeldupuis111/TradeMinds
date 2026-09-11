@@ -998,9 +998,7 @@ export default function AnalysisPage() {
             <span className={`text-sm ${filteredTradeCount === 0 ? "text-muted" : "text-foreground"}`}>
               {filteredTradeCount === 0
                 ? t("period_no_trades")
-                : filteredTradeCount === 1
-                  ? t("period_trades_count_one")
-                  : t("period_trades_count", { n: String(filteredTradeCount) })}
+                : t("period_trades_count", { n: filteredTradeCount })}
             </span>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
@@ -1031,7 +1029,7 @@ export default function AnalysisPage() {
             ) : (
               aiRemaining !== null && !aiLimitReached && aiRemaining > 0 && (
                 <span className="text-muted text-sm">
-                  ({aiRemaining} {aiRemaining === 1 ? t("plan_ai_remaining_one") : t("plan_ai_remaining")})
+                  ({aiRemaining} {t("plan_ai_remaining", { n: aiRemaining })})
                 </span>
               )
             )}
@@ -1115,7 +1113,7 @@ export default function AnalysisPage() {
                 {displayedAnalysis.total_trades} trades
               </p>
               <p className="text-muted text-sm mt-1">
-                {displayedAnalysis.violations.length} {displayedAnalysis.violations.length === 1 ? t("analysis_violation_detected_one") : t("analysis_violations_detected")}
+                {displayedAnalysis.violations.length} {t("analysis_violations_detected", { n: displayedAnalysis.violations.length })}
               </p>
             </div>
           </div>
@@ -1138,9 +1136,7 @@ export default function AnalysisPage() {
                     {fmtEuro(ins.violation_cost, displayCurrency)}
                   </span>
                   <span className="text-sm text-muted">
-                    {ins.violation_trade_count === 1
-                      ? t("analysis_cost_trades_one")
-                      : t("analysis_cost_trades", { n: String(ins.violation_trade_count) })}
+                    {t("analysis_cost_trades", { n: ins.violation_trade_count })}
                   </span>
                 </div>
                 <p className="text-sm text-muted mt-2">
@@ -1683,9 +1679,7 @@ export default function AnalysisPage() {
                       désormais atteignable. Deux composants montrent ce
                       compteur, les deux doivent le montrer entier. */}
                   {chatRemaining > 0
-                    ? (chatRemaining === 1 ? t("coach_remaining_one") : t("coach_remaining"))
-                        .replace("{n}", String(chatRemaining))
-                        .replace("{m}", String(chat.monthlyRemaining))
+                    ? t("coach_remaining", { n: chatRemaining, m: chat.monthlyRemaining })
                     : t("coach_no_messages")}
                 </p>
               ) : (
@@ -1725,7 +1719,7 @@ export default function AnalysisPage() {
                 {displayedAnalysis.total_trades} trades
               </p>
               <p className="text-muted text-sm mt-1">
-                {displayedAnalysis.violations.length} {displayedAnalysis.violations.length === 1 ? t("analysis_violation_detected_one") : t("analysis_violations_detected")}
+                {displayedAnalysis.violations.length} {t("analysis_violations_detected", { n: displayedAnalysis.violations.length })}
               </p>
               <p className="text-xs text-muted mt-2">
                 {displayedAnalysis.discipline_score >= 90 ? t("band_excellent") :

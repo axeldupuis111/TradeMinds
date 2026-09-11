@@ -460,7 +460,7 @@ export default function ProjectionPage() {
                     : "bg-surface border-border text-foreground-muted hover:text-foreground",
                 )}
               >
-                {h === 1 ? t("proj_year_one") : t("proj_years").replace("{n}", String(h))}
+                {t("proj_years", { n: h })}
               </button>
             ))}
           </div>

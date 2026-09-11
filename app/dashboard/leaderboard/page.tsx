@@ -605,7 +605,7 @@ export default function LeaderboardPage() {
           )}
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs text-muted">{(total === 1 ? t("leaderboard_participants_one") : t("leaderboard_participants")).replace("{n}", String(total))}</p>
+            <p className="text-xs text-muted">{t("leaderboard_participants", { n: total })}</p>
             {/* Plus forte ascension de la période */}
             {topMover && (
               <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-profit bg-profit/10 rounded-full px-2.5 py-1">

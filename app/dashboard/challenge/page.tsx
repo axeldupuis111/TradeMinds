@@ -735,7 +735,7 @@ function AccountCard({
               </span>
               <span className="text-muted">
                 {" · "}
-                {stats.openPositions} {stats.openPositions > 1 ? t("challenge_open_positions") : t("challenge_open_position")}
+                {stats.openPositions} {t("challenge_open_positions", { n: stats.openPositions })}
               </span>
             </p>
           ) : (

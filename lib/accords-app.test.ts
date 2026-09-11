@@ -103,7 +103,15 @@ describe("les accords du produit", () => {
         source.matchAll(/[^A-Za-z0-9_](?:t|tr)\(\s*"([a-z0-9_]+)"\s*\)(?=([\s\S]{0,120}))/g),
       )) {
         if (!accordees.has(m[1])) continue;
-        if (/^\s*\.replace(All)?\(/.test(m[2])) fautes.push(`${nom} : ${m[1]}`);
+        /**
+         * ⚠️ ON LAISSE PASSER LES PARENTHÈSES FERMANTES, et c'est ce qui
+         * manquait : la séance écrivait
+         * `(reste === 1 ? t("…_one") : t("…")).replace("{N}", …)`. Le
+         * `.replace` ne suivait pas le `t(` mais la parenthèse du ternaire, et
+         * le garde ne voyait rien — sur une phrase qui, elle, venait de
+         * recevoir un accord.
+         */
+        if (/^[\s)]*\.replace(All)?\(/.test(m[2])) fautes.push(`${nom} : ${m[1]}`);
       }
     }
     expect(
@@ -146,6 +154,66 @@ describe("les accords du produit", () => {
     expect(
       fautes,
       "remplissages de trous écrits à la main (passer par t(clé, valeurs)) : " + fautes.join(", "),
+    ).toEqual([]);
+  });
+
+  /**
+   * ⚠️⚠️ ET PERSONNE NE CHOISIT SA FORME EN JAVASCRIPT AVEC DEUX CLÉS SŒURS.
+   * Neuf endroits écrivaient `n === 1 ? t("…_one") : t("…")`. C'est la solution
+   * que `remplir()` remplace, et elle a trois défauts :
+   *
+   * ⚠️ ELLE APPLIQUE LA RÈGLE ANGLAISE AUX QUATRE LANGUES. En français, ZÉRO
+   * prend le singulier : « 0 violations détectées » est faux, et c'est l'état
+   * qu'on voit le plus souvent au début.
+   *
+   * ⚠️ ELLE DOUBLE LA MAINTENANCE : deux phrases à tenir d'accord pour
+   * toujours, et la première rédaction oubliée rétablit la faute en silence.
+   *
+   * ⚠️ ET ELLE DEVIENT DANGEREUSE dès qu'une des deux sœurs reçoit un accord :
+   * la séance affichait le gabarit brut, « ⚠️ 3 {N|point|points} … », parce que
+   * le `.replace()` du ternaire ne résout pas les accords.
+   *
+   * ⚠️ LES EXCEPTIONS SONT ÉCRITES, ET CHACUNE POUR LA MÊME RAISON : au
+   * singulier, la phrase n'est pas la même phrase. « Dernier message
+   * découverte » contre « {n} messages découverte offerts », « Le seul trade
+   * que ce plan a pris » contre « {n} trades répartis sur toute la période »,
+   * « Plus qu'un seul trade possible » contre « Tu as encore {n} trades
+   * possibles ». Un accord remplace des mots, il ne reformule pas.
+   *
+   * ⚠️ ET UNE QUI N'EST PAS UN PLURIEL DU TOUT : `lev_current`/`lev_divided`
+   * choisit entre « Ta taille actuelle » et « Divisée par {n} ». Le motif voit
+   * un `=== 1` suivi de deux clés, il ne peut pas savoir.
+   */
+  it("aucun composant ne choisit sa forme avec deux clés sœurs", () => {
+    const EXCEPTIONS = [
+      "coach_taster_offer",
+      "bt_inspection_aide_1",
+      "session_active_trade_remaining_one",
+      "lev_current",
+      "lev_divided",
+    ];
+    function fichiers(d: string, out: string[] = []): string[] {
+      for (const f of readdirSync(d)) {
+        if (f === "node_modules" || f === ".next") continue;
+        const chemin = join(d, f);
+        if (statSync(chemin).isDirectory()) fichiers(chemin, out);
+        else if (/\.tsx?$/.test(chemin) && !chemin.includes(".test.")) out.push(chemin);
+      }
+      return out;
+    }
+    const fautes: string[] = [];
+    for (const chemin of [...fichiers("app"), ...fichiers("components"), ...fichiers("lib")]) {
+      const source = readFileSync(chemin, "utf8");
+      for (const m of Array.from(
+        source.matchAll(/[=><!]=?\s*1\s*\?\s*(?:t|tr)\(\s*"([a-z0-9_]+)"[\s\S]{0,80}?:\s*(?:t|tr)\(\s*"([a-z0-9_]+)"/g),
+      )) {
+        if (EXCEPTIONS.some((e) => m[1] === e || m[2] === e)) continue;
+        fautes.push(`${chemin.split(/[\\\/]/).slice(-2).join("/")} : ${m[1]} / ${m[2]}`);
+      }
+    }
+    expect(
+      fautes,
+      "formes choisies en JavaScript (une seule clé accordée à la place) : " + fautes.join(", "),
     ).toEqual([]);
   });
 

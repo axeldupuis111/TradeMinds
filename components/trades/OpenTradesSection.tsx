@@ -123,9 +123,7 @@ export default function OpenTradesSection({ refreshKey, onCloseTrade }: Props) {
   if (trades.length === 0) return null;
 
   const count = trades.length;
-  const countLabel = count === 1
-    ? t("open_trades_count_one")
-    : t("open_trades_count_many", { n: String(count) });
+  const countLabel = t("open_trades_count_many", { n: count });
 
   return (
     <section className="mb-6">

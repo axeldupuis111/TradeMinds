@@ -212,7 +212,7 @@ export default function CommunityChallenges() {
 
               {/* Participants + mini leaderboard */}
               <div className="mt-3 flex items-center gap-1.5 text-[11px] text-muted">
-                <Users className="w-3.5 h-3.5" /> {t("cc_participants").replace("{n}", String(c.participantCount))}
+                <Users className="w-3.5 h-3.5" /> {t("cc_participants", { n: String(c.participantCount) })}
               </div>
 
               {c.leaderboard.length > 0 ? (
