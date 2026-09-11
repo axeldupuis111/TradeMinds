@@ -933,7 +933,7 @@ export default function AdminPage() {
           </div>
 
           {affLoading && <p className="text-sm text-muted">Chargement depuis Stripe…</p>}
-          {affError && <p className="text-sm text-loss">{affError}</p>}
+          {affError && <p role="alert" className="text-sm text-loss">{affError}</p>}
 
           {affData && !affLoading && !affError && (
             affData.codes.length === 0 ? (
@@ -1009,7 +1009,7 @@ export default function AdminPage() {
           </div>
 
           {netLoading && <p className="text-sm text-muted">Chargement…</p>}
-          {netError && <p className="text-sm text-loss">{netError}</p>}
+          {netError && <p role="alert" className="text-sm text-loss">{netError}</p>}
 
           {netData && !netLoading && !netError && (
             netData.partners.length === 0 ? (

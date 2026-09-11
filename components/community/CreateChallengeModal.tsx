@@ -213,7 +213,7 @@ export default function CreateChallengeModal({
                   {thinking ? t("com_ai_thinking") : t("com_ai_generate")}
                 </button>
               </div>
-              {aiError && <p className="text-xs text-loss">{aiError}</p>}
+              {aiError && <p role="alert" className="text-xs text-loss">{aiError}</p>}
               {aiFilled && !aiError && <p className="text-xs text-profit">{t("com_ai_filled")}</p>}
             </div>
           )}

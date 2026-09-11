@@ -528,7 +528,7 @@ export default function UpgradePage() {
                     {checkoutLoadingPlan === "plus" ? t("upgrade_redirecting") : t("pricing_choose_plus")}
                   </button>
                   {checkoutError && (
-                    <p className="text-red-500 text-sm mt-2 text-center">{checkoutError}</p>
+                    <p role="alert" className="text-red-500 text-sm mt-2 text-center">{checkoutError}</p>
                   )}
                 </>
               ) : (
@@ -760,7 +760,7 @@ export default function UpgradePage() {
             ) : null}
 
             {changeError && (
-              <p className="text-red-500 text-sm mb-4">{changeError}</p>
+              <p role="alert" className="text-red-500 text-sm mb-4">{changeError}</p>
             )}
 
             <div className="flex gap-3">

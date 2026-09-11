@@ -66,7 +66,7 @@ export function DemoDataCta() {
           <h3 className="text-sm font-semibold text-foreground">{t("demo_cta_title")}</h3>
           <p className="text-xs text-foreground-muted mt-0.5 leading-relaxed">{t("demo_cta_desc")}</p>
           {error && (
-            <p className="text-xs text-loss mt-1">
+            <p role="alert" className="text-xs text-loss mt-1">
               {t("demo_insert_error")} <span className="opacity-70">({error})</span>
             </p>
           )}
@@ -147,7 +147,7 @@ export function DemoDataBanner() {
         {t("demo_banner_delete")}
       </button>
       {exitError && (
-        <p className="w-full text-xs text-loss">
+        <p role="alert" className="w-full text-xs text-loss">
           {t("demo_exit_error")} <span className="opacity-70">({exitError})</span>
         </p>
       )}

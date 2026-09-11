@@ -291,7 +291,7 @@ export default function CoachDock() {
           </div>
 
           <footer className="border-t border-border p-3">
-            {micError && <p className="text-[11px] text-red-500 mb-1.5">{micError}</p>}
+            {micError && <p role="alert" className="text-[11px] text-red-500 mb-1.5">{micError}</p>}
             {listening && (
               <p className="text-[11px] text-accent mb-1.5 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-accent motion-safe:animate-pulse" />

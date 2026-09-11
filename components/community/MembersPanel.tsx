@@ -151,7 +151,7 @@ export default function MembersPanel({ onClose, onChanged }: { onClose: () => vo
                 <UserPlus className="w-4 h-4" strokeWidth={2} />{t("com_member_add")}
               </button>
             </div>
-            {addError && <p className="mt-2 text-xs text-loss">{addError}</p>}
+            {addError && <p role="alert" className="mt-2 text-xs text-loss">{addError}</p>}
             <p className="mt-2 text-[11px] text-muted">{t("com_member_add_note")}</p>
           </div>
 

@@ -338,7 +338,7 @@ export default function TradovateConnect() {
 
               <p className="text-xs text-foreground-muted">{t("sync_tradovate_commission_hint")}</p>
 
-              {error && <p className="text-sm text-loss">{error}</p>}
+              {error && <p role="alert" className="text-sm text-loss">{error}</p>}
 
               <div className="flex gap-2">
                 <button

@@ -160,7 +160,7 @@ export default function PushNotificationsCard() {
           </button>
         </div>
       )}
-      {error && <p className="text-loss text-sm mt-2">{error}</p>}
+      {error && <p role="alert" className="text-loss text-sm mt-2">{error}</p>}
 
       {/* Préférences par type de notification */}
       {supported && (

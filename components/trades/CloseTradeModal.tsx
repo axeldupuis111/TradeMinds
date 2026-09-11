@@ -313,7 +313,7 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
           </div>
         </div>
 
-        {saveError && <p className="text-loss text-sm mt-3">{saveError}</p>}
+        {saveError && <p role="alert" className="text-loss text-sm mt-3">{saveError}</p>}
 
         {/* Actions */}
         <div className="flex gap-3 mt-5">

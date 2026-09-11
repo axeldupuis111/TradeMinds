@@ -584,8 +584,11 @@ export default function StrategyPage() {
 
   return (
     <div className="max-w-6xl mx-auto pb-44 lg:pb-24">
+      {/* ⚠️ Une lecture d’écran n’entend rien d’un message qui apparaît tout
+          seul : une erreur est annoncée tout de suite, une réussite attend une
+          pause dans la lecture. */}
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-[100] px-4 py-3 rounded-lg text-white text-sm font-medium shadow-lg ${toast.type === "success" ? "bg-green-800" : "bg-red-700"}`}>
+        <div role={toast.type === "error" ? "alert" : "status"} aria-live={toast.type === "error" ? "assertive" : "polite"} className={`fixed bottom-6 right-6 z-[100] px-4 py-3 rounded-lg text-white text-sm font-medium shadow-lg ${toast.type === "success" ? "bg-green-800" : "bg-red-700"}`}>
           {toast.text}
         </div>
       )}

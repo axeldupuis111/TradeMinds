@@ -1200,7 +1200,7 @@ function EncartAvisCoach({
           <Sparkles className="w-4 h-4" strokeWidth={1.75} />
           {enCours ? t("proj_ai_loading") : t("proj_ai_cta")}
         </button>
-        {erreur && <p className="text-xs text-foreground-muted mt-3">{erreur}</p>}
+        {erreur && <p role="alert" className="text-xs text-foreground-muted mt-3">{erreur}</p>}
       </Card>
     );
   }

@@ -551,7 +551,7 @@ function DeleteAccountModal({
         <h3 className="text-loss font-semibold mb-3">{t("challenge_delete_account_title")}</h3>
         <p className="text-foreground text-sm leading-relaxed">{question}</p>
         {error && (
-          <p className="text-loss text-sm leading-relaxed mt-3 border-t border-border pt-3">{error}</p>
+          <p role="alert" className="text-loss text-sm leading-relaxed mt-3 border-t border-border pt-3">{error}</p>
         )}
         <div className="flex gap-3 mt-5">
           <button onClick={onCancel} disabled={busy} className="flex-1 py-2 bg-surface border border-border text-muted rounded-lg text-sm font-medium hover:text-foreground transition-colors disabled:opacity-50">
@@ -851,7 +851,7 @@ function DeleteModal({
       <div role="dialog" aria-modal="true" aria-label={t("challenge_delete_history_confirm")} className="bg-card border border-border rounded-xl p-6 max-w-sm w-full mx-4 shadow-xl">
         <p className="text-foreground text-sm leading-relaxed">{t("challenge_delete_history_confirm")}</p>
         {error && (
-          <p className="text-loss text-sm leading-relaxed mt-3 border-t border-border pt-3">{error}</p>
+          <p role="alert" className="text-loss text-sm leading-relaxed mt-3 border-t border-border pt-3">{error}</p>
         )}
         <div className="flex gap-3 mt-5">
           <button

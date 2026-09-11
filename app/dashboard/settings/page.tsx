@@ -286,8 +286,14 @@ export default function SettingsPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Toast */}
+      {/* ⚠️ UNE LECTURE D'ÉCRAN N'ENTEND RIEN D'UN MESSAGE QUI APPARAÎT TOUT
+          SEUL : sans région vivante, « Paramètres sauvegardés ✓ » et surtout
+          « Non enregistré. Réessaie. » passaient en silence. Une erreur est
+          annoncée tout de suite, une réussite attend une pause dans la lecture. */}
       {toast && (
         <div
+          role={toast.type === "error" ? "alert" : "status"}
+          aria-live={toast.type === "error" ? "assertive" : "polite"}
           className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium ${
             toast.type === "success"
               ? "bg-profit/10 border border-profit/30 text-profit"

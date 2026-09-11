@@ -138,7 +138,7 @@ export default function TaxExportButton() {
       {/* Un export comptable qui échoue doit le dire : le menu se referme, et
           sans ce message il ne resterait qu'un bouton qui n'a rien téléchargé. */}
       {error && (
-        <p className="absolute right-0 top-full mt-1 z-20 w-64 rounded-lg border border-border bg-card p-2 text-xs text-loss shadow-lg">
+        <p role="alert" className="absolute right-0 top-full mt-1 z-20 w-64 rounded-lg border border-border bg-card p-2 text-xs text-loss shadow-lg">
           {error}
         </p>
       )}

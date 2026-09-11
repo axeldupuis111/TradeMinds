@@ -543,7 +543,7 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
 
         </div>
 
-        {error && <p className="text-loss text-sm mt-3">{error}</p>}
+        {error && <p role="alert" className="text-loss text-sm mt-3">{error}</p>}
 
         <div className="flex gap-3 mt-6">
           <button onClick={handleSave} disabled={saving} className="flex-1 py-2 bg-accent text-on-accent rounded-lg font-medium hover:bg-accent-hover transition-colors disabled:opacity-50">

@@ -189,7 +189,7 @@ export default function PartnerJoinPage() {
                   </label>
                 </div>
 
-                {error && <p className="text-loss text-sm">{error}</p>}
+                {error && <p role="alert" className="text-loss text-sm">{error}</p>}
 
                 <button
                   type="submit"

@@ -210,7 +210,7 @@ export default function QuickTradeLogger({ strategyId, pairs, onClose, onSaved }
           </div>
         </div>
 
-        {saveError && <p className="text-loss text-sm mt-3">{saveError}</p>}
+        {saveError && <p role="alert" className="text-loss text-sm mt-3">{saveError}</p>}
 
         <div className="flex gap-3 mt-5">
           <button

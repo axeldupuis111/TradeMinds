@@ -1051,7 +1051,7 @@ export default function AnalysisPage() {
 
         {/* Error */}
         {error && (
-          <div className="flex items-start gap-3 p-4 bg-loss/10 border border-loss/30 rounded-xl animate-in fade-in duration-300">
+          <div role="alert" className="flex items-start gap-3 p-4 bg-loss/10 border border-loss/30 rounded-xl animate-in fade-in duration-300">
             <span className="text-loss text-xl shrink-0">❌</span>
             <div>
               <p className="text-sm font-semibold text-loss">{error}</p>

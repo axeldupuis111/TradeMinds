@@ -1061,7 +1061,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
           </div>
           {/* L'échec s'affiche sous le bouton : un fichier qui ne se télécharge
               pas et ne dit rien ressemble à un bouton mort. */}
-          {exportError && <p className="text-sm text-loss mt-2">{exportError}</p>}
+          {exportError && <p role="alert" className="text-sm text-loss mt-2">{exportError}</p>}
         </div>
       </div>
 
@@ -1115,7 +1115,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
             </p>
           )}
 
-          {bulkError && <p className="text-sm text-loss mt-2">{bulkError}</p>}
+          {bulkError && <p role="alert" className="text-sm text-loss mt-2">{bulkError}</p>}
         </div>
       )}
 
