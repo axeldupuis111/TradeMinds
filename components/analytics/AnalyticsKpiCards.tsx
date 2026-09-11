@@ -23,8 +23,27 @@ export interface AnalyticsKpiCardsProps {
   prevKpis: { totalPnl: number; winrate: number; trades: number } | null;
   avgWin: number;
   avgLoss: number;
-  /** Devise du compte filtré ; euro sur une vue multi-comptes. */
+  /** Devise du compte filtré, ou devise commune aux trades affichés. */
   currency?: string;
+  /**
+   * Le P&L VENTILE PAR DEVISE, quand les trades affiches en melangent
+   * plusieurs.
+   *
+   * ⚠️⚠️ SANS LUI, CETTE PAGE ADDITIONNAIT DES EUROS ET DES DOLLARS.
+   * Mesure en production : « Mes Trades » affichait « -6 619,77 € · -449,36 $ »
+   * et Analytics, a un clic de la, « P&L TOTAL -7 069,13 $ ». La somme des deux
+   * montants, avec le symbole du plus recent. C'est exactement le defaut
+   * corrige dans le coach le meme jour, a un autre endroit du produit.
+   *
+   * ⚠️ LA CAUSE ETAIT SUBTILE : la devise de la page se deduisait des
+   * comptes ACTIFS (un seul, en dollars), alors que les totaux portent sur TOUS
+   * les trades, y compris ceux des comptes clotures et ceux qui n'ont pas de
+   * compte du tout.
+   */
+  pnlParDevise?: [string, number][];
+  /** La devise du meilleur trade, et celle du pire : ce sont deux lignes, pas un total. */
+  deviseMeilleur?: string;
+  devisePire?: string;
 }
 
 export function AnalyticsKpiCards({
@@ -42,6 +61,9 @@ export function AnalyticsKpiCards({
   avgWin,
   avgLoss,
   currency = DEFAULT_CURRENCY,
+  pnlParDevise,
+  deviseMeilleur,
+  devisePire,
 }: AnalyticsKpiCardsProps) {
   const { t, lang } = useLanguage();
   const dateLocale = ({ fr: "fr-FR", en: "en-US", de: "de-DE", es: "es-ES" } as const)[lang] ?? "en-US";
@@ -57,7 +79,15 @@ export function AnalyticsKpiCards({
     ? Math.round(expectancy * 100)
     : null;
 
-  const pnlAccent: AccentColor = totalPnl > 0 ? "green" : totalPnl < 0 ? "loss" : "cyan";
+  /**
+   * ⚠️ PLUSIEURS DEVISES : ON NE REND PAS UN TOTAL, ON REND LA LISTE. Le
+   * signe global n'a alors plus de sens non plus (gagner 100 $ et perdre 100 €
+   * n'est ni un gain ni une perte), d'ou l'accent neutre.
+   */
+  const melange = (pnlParDevise?.length ?? 0) > 1;
+  const pnlAccent: AccentColor = melange
+    ? "cyan"
+    : totalPnl > 0 ? "green" : totalPnl < 0 ? "loss" : "cyan";
   const synthAccent: AccentColor = totalPnl >= 0 ? "green" : "loss";
 
   return (
@@ -71,12 +101,27 @@ export function AnalyticsKpiCards({
           layout="kpi"
           accentColor={pnlAccent}
           label={t("analytics_kpi_pnl")}
-          value={money(totalPnl, currency, { digits: 2, signed: true })}
-          trend={totalPnl >= 0 ? "up" : "down"}
+          value={
+            melange ? (
+              <span className="flex flex-col items-start leading-tight">
+                {pnlParDevise!.map(([devise, montant]) => (
+                  <span key={devise} className="tabular-nums">
+                    {money(montant, devise, { digits: 2, signed: true })}
+                  </span>
+                ))}
+              </span>
+            ) : (
+              money(totalPnl, currency, { digits: 2, signed: true })
+            )
+          }
+          trend={melange ? undefined : totalPnl >= 0 ? "up" : "down"}
           sublabel={
-            pnlDiff !== null && pnlDiff !== 0
-              ? `${pnlDiff > 0 ? "↑" : "↓"} ${nombre(Math.abs(pnlDiff), 2)}`
-              : undefined
+            // ⚠️ Comparer deux sommes de devises mêlées ne veut rien dire.
+            melange
+              ? t("analytics_devises_melangees_court")
+              : pnlDiff !== null && pnlDiff !== 0
+                ? `${pnlDiff > 0 ? "↑" : "↓"} ${nombre(Math.abs(pnlDiff), 2)}`
+                : undefined
           }
         />
 
@@ -137,7 +182,7 @@ export function AnalyticsKpiCards({
           layout="kpi"
           accentColor="green"
           label={t("analytics_kpi_best")}
-          value={money(best, currency, { digits: 2, signed: true })}
+          value={money(best, deviseMeilleur ?? currency, { digits: 2, signed: true })}
           trend="up"
           sublabel={
             bestTrade?.date
@@ -151,7 +196,7 @@ export function AnalyticsKpiCards({
           layout="kpi"
           accentColor="loss"
           label={t("analytics_kpi_worst")}
-          value={money(worst, currency, { digits: 2 })}
+          value={money(worst, devisePire ?? currency, { digits: 2 })}
           trend="down"
           sublabel={
             worstTrade?.date
@@ -160,20 +205,25 @@ export function AnalyticsKpiCards({
           }
         />
 
-        {/* Synthèse — Profit Factor */}
+        {/* Synthèse — Profit Factor
+            ⚠️ Un facteur de profit calculé sur des devises mêlées est un
+            rapport entre deux sommes qui n'existent pas : la carte le dit au
+            lieu de rendre un nombre. */}
         <KpiCardPremium
           layout="kpi"
-          accentColor={synthAccent}
+          accentColor={melange ? "cyan" : synthAccent}
           label={t("analytics_kpi_title")}
           value={
-            profitFactor !== null
-              ? isFinite(profitFactor)
-                ? nombre(profitFactor, 2)
-                : "∞"
-              : "—"
+            melange
+              ? "—"
+              : profitFactor !== null
+                ? isFinite(profitFactor)
+                  ? nombre(profitFactor, 2)
+                  : "∞"
+                : "—"
           }
           sublabel="Profit Factor"
-          badge={
+          badge={melange ? undefined : (
             <Badge variant={totalPnl >= 0 ? "success" : "danger"} size="sm">
               {totalPnl >= 0 ? (
                 <>
@@ -187,9 +237,9 @@ export function AnalyticsKpiCards({
                 </>
               )}
             </Badge>
-          }
+          )}
         >
-          {expectancy !== null && (
+          {!melange && expectancy !== null && (
             <div className="flex flex-col gap-0.5">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-foreground-muted">{t("analytics_expectancy")}</span>

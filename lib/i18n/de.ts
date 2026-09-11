@@ -1058,6 +1058,8 @@ const dict: Record<string, string> = {
   "analytics_90d": "90 Tage",
   "analytics_all": "Alle",
   "analytics_all_accounts": "Alle Konten",
+  "analytics_devises_melangees": "Diese Ansicht mischt mehrere Währungen: die Summen werden getrennt angezeigt, und der Profitfaktor ergibt hier keinen Sinn. Wähle ein Konto für vergleichbare Zahlen.",
+  "analytics_devises_melangees_court": "mehrere Währungen",
   "analytics_no_data": "Keine Daten für diesen Zeitraum.",
   "analytics_by_day": "Performance nach Wochentag",
   "analytics_by_hour": "Performance nach Stunde",

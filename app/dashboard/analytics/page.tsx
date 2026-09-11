@@ -25,6 +25,8 @@ import {
   commonCurrency,
   currencySymbol,
   money,
+  sumByCurrency,
+  tradeCurrency,
 } from "@/lib/account-currency";
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
@@ -96,6 +98,8 @@ interface Account {
   account_size: number;
   currency: string | null;
   synced_currency: string | null;
+  /** « active », « passed » ou « failed » : la liste les montre tous. */
+  status?: string | null;
 }
 
 const DAY_KEYS = ["analytics_sun", "analytics_mon", "analytics_tue", "analytics_wed", "analytics_thu", "analytics_fri", "analytics_sat"];
@@ -216,11 +220,20 @@ export default function AnalyticsPage() {
             .order("id", { ascending: true })
             .range(from, to),
         ),
+        /**
+         * ⚠️⚠️ TOUS LES COMPTES, PAS SEULEMENT LES ACTIFS. La devise de la
+         * page se deduisait des comptes ACTIFS (un seul, en dollars) alors que
+         * les totaux portent sur TOUS les trades, y compris ceux des comptes
+         * clotures. Resultat mesure en production : « Mes Trades » affichait
+         * « -6 619,77 € · -449,36 $ » et Analytics, a un clic de la,
+         * « P&L TOTAL -7 069,13 $ » : la somme des deux, avec le symbole du
+         * plus recent. La liste deroulante, elle, ne montre toujours que les
+         * comptes actifs (voir `comptesActifs`).
+         */
         supabase
           .from("prop_challenges")
-          .select("id, firm, account_number, account_size, currency, synced_currency")
-          .eq("user_id", user.id)
-          .eq("status", "active"),
+          .select("id, firm, account_number, account_size, currency, synced_currency, status")
+          .eq("user_id", user.id),
         supabase
           .from("session_reviews")
           .select("created_at, discipline_score, analysis")
@@ -343,14 +356,34 @@ export default function AnalyticsPage() {
   // Devise de la page : celle du compte filtré, sinon celle que partagent tous
   // les comptes. À défaut l'euro — un total mélangeant EUR et USD n'a pas de
   // devise, et lui en coller une afficherait un chiffre faux.
+  const currencyMap = useMemo(() => buildCurrencyMap(accounts), [accounts]);
+
   const pageCurrency = useMemo(() => {
     if (accountFilter !== "all") {
       const a = accounts.find((x) => x.id === accountFilter);
       if (a) return accountCurrency(a);
     }
-    const map = buildCurrencyMap(accounts);
-    return commonCurrency(accounts.map((a) => a.id), map) ?? DEFAULT_CURRENCY;
-  }, [accountFilter, accounts]);
+    /**
+     * ⚠️ LA DEVISE SE DEDUIT DES TRADES AFFICHES, pas de la liste des
+     * comptes : un trade sans compte, ou rattache a un compte clos, compte dans
+     * les totaux autant que les autres.
+     */
+    return commonCurrency(filtered.map((tr) => tr.challenge_id), currencyMap) ?? DEFAULT_CURRENCY;
+  }, [accountFilter, accounts, filtered, currencyMap]);
+
+  /**
+   * Le P&L ventile par devise. Une seule entree : la vue a une devise et les
+   * totaux ont un sens. Plusieurs : aucun total unique n'est affichable.
+   */
+  const pnlParDevise = useMemo(
+    () =>
+      sumByCurrency(
+        filtered.map((tr) => ({ pnl: netPnl(tr), challengeId: tr.challenge_id })),
+        currencyMap,
+      ),
+    [filtered, currencyMap],
+  );
+  const devisesMelangees = pnlParDevise.length > 1;
 
   const accountLabel = useMemo(() => {
     if (accountFilter === "all") return t("analytics_all_accounts");
@@ -382,7 +415,7 @@ export default function AnalyticsPage() {
   }, [prevFiltered]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── KPI aggregates ────────────────────────────────────────────────────────
-  const { totalPnl, wins, winrate, best, worst, bestTrade, worstTrade } = useMemo(() => {
+  const { totalPnl, wins, winrate, best, worst, bestTrade, worstTrade, bestTradeRow, worstTradeRow } = useMemo(() => {
     const pnls = filtered.map(netPnl);
     const w = filtered.filter((tr) => netPnl(tr) > 0).length;
     let bestTr = filtered[0] ?? null;
@@ -399,6 +432,10 @@ export default function AnalyticsPage() {
       worst: pnls.length > 0 ? Math.min(...pnls) : 0,
       bestTrade:  bestTr  ? { pnl: netPnl(bestTr),  date: bestTr.open_time  } : null,
       worstTrade: worstTr ? { pnl: netPnl(worstTr), date: worstTr.open_time } : null,
+      // ⚠️ La LIGNE elle-même, pour pouvoir nommer sa devise : un « meilleur
+      // trade » affiché dans la devise d'un autre compte est un faux montant.
+      bestTradeRow: bestTr,
+      worstTradeRow: worstTr,
     };
   }, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -793,9 +830,16 @@ export default function AnalyticsPage() {
             className="px-3 py-1.5 bg-card border border-border rounded-lg text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
           >
             <option value="all">{t("analytics_all_accounts")}</option>
+            {/* ⚠️ LES COMPTES CLOS AUSSI, ET NOMMES COMME DANS « MES TRADES ».
+                Cette liste s'arretait aux comptes actifs : les trades d'un
+                compte termine entraient dans tous les totaux sans qu'on puisse
+                les isoler, alors que l'ecran d'a cote le permet. */}
             {accounts.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.firm} · {a.account_number || money(a.account_size, accountCurrency(a))}
+                {a.status && a.status !== "active"
+                  ? ` (${a.status === "passed" ? t("challenge_status_passed") : t("challenge_status_failed")})`
+                  : ""}
               </option>
             ))}
           </select>
@@ -980,6 +1024,21 @@ export default function AnalyticsPage() {
       ) : (
         <StaggerContainer staggerDelay={0.08} className="space-y-4">
 
+          {/* ⚠️⚠️ LE MELANGE DE DEVISES SE DIT EN TOUTES LETTRES. Sans ca,
+              le trader lit des cartes qui se contredisent d'un ecran a l'autre
+              sans savoir pourquoi : « Mes Trades » ventile, Analytics ne le
+              pouvait pas et additionnait. */}
+          {devisesMelangees && (
+            <StaggerItem>
+              <p
+                role="status"
+                className="rounded-xl border border-border bg-surface px-4 py-3 text-sm text-foreground-muted"
+              >
+                {t("analytics_devises_melangees")}
+              </p>
+            </StaggerItem>
+          )}
+
           {/* ── KPI cards ─────────────────────────────────────────────── */}
           <StaggerItem>
             <AnalyticsKpiCards
@@ -997,6 +1056,13 @@ export default function AnalyticsPage() {
               avgWin={avgWin}
               avgLoss={avgLoss}
               currency={pageCurrency}
+              pnlParDevise={pnlParDevise}
+              deviseMeilleur={
+                bestTradeRow ? tradeCurrency(bestTradeRow.challenge_id, currencyMap) : undefined
+              }
+              devisePire={
+                worstTradeRow ? tradeCurrency(worstTradeRow.challenge_id, currencyMap) : undefined
+              }
             />
           </StaggerItem>
 
