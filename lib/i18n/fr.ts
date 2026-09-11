@@ -3987,6 +3987,7 @@ const dict: Record<string, string> = {
   "challenge_portfolio_trades": "Trades sur ces comptes",
   "challenge_portfolio_winrate": "Winrate sur ces comptes",
   "quick_trade_reason": "Pourquoi tu prends ce trade ?",
+  "coach_send": "Envoyer le message",
 };
 
 export default dict;

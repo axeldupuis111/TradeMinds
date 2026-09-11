@@ -845,6 +845,7 @@ export default function AnalyticsPage() {
               <h3 className="text-sm font-bold text-foreground">{t("analytics_advanced_filters")}</h3>
               <button
                 onClick={() => setShowAdvancedFilters(false)}
+                aria-label={t("close")}
                 className="p-1 rounded hover:bg-border/40 transition-colors"
               >
                 <X className="w-4 h-4 text-foreground-muted" />

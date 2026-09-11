@@ -1660,6 +1660,10 @@ export default function AnalysisPage() {
               />
               <button
                 onClick={sendChatMessage}
+                // ⚠️ Un bouton qui ne contient qu'une icône n'a AUCUN nom pour
+                // une lecture d'écran : celui-ci est celui qui envoie la
+                // question au coach.
+                aria-label={t("coach_send")}
                 disabled={chatLoading || !chatInput.trim() || (chatRemaining !== null && chatRemaining <= 0)}
                 className="px-4 py-2 bg-accent text-on-accent rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
               >

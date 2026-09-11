@@ -208,6 +208,7 @@ export default function TradingCalendar({
         <div className="flex items-center gap-3">
           <button
             onClick={prevMonth}
+            aria-label={t("review_prev_month")}
             className="p-1.5 rounded-lg hover:bg-border text-muted hover:text-foreground transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -219,6 +220,7 @@ export default function TradingCalendar({
           </h2>
           <button
             onClick={nextMonth}
+            aria-label={t("review_next_month")}
             className="p-1.5 rounded-lg hover:bg-border text-muted hover:text-foreground transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
