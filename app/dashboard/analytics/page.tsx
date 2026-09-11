@@ -768,10 +768,15 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {/* Account selector */}
+        {/* Account selector.
+            ⚠️ « Compte », pas « Tous les comptes » : le nom d'un champ dit ce
+            qu'on y CHOISIT, pas ce qui s'y trouve. Nommé par une de ses
+            propres options, il s'annonçait « Tous les comptes, liste, Tous les
+            comptes » et n'apprenait rien. La clé existait déjà, posée ailleurs
+            lors d'une passe précédente. */}
         {accounts.length > 0 && (
           <select
-            aria-label={t("analytics_all_accounts")}
+            aria-label={t("a11y_account")}
             value={accountFilter}
             onChange={(e) => setAccountFilter(e.target.value)}
             className="px-3 py-1.5 bg-card border border-border rounded-lg text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"

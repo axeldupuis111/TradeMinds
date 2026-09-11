@@ -183,4 +183,42 @@ describe("les commandes sans texte portent un nom", () => {
     }
     expect(fautes, "commandes muettes : " + fautes.join(", ")).toEqual([]);
   });
+
+  /**
+   * ⚠️⚠️ UN NOM QUI RÉPÈTE UNE VALEUR N'EST PAS UN NOM. Le sélecteur de compte
+   * d'Analytics portait `aria-label={t("analytics_all_accounts")}`, c'est-à-dire
+   * le texte de SA PREMIÈRE OPTION : une lecture d'écran annonçait « Tous les
+   * comptes, liste, Tous les comptes ». Le nom d'un champ dit ce qu'on y
+   * CHOISIT, pas ce qui s'y trouve en ce moment.
+   *
+   * ⚠️ ET LA BONNE CLÉ EXISTAIT DÉJÀ (`a11y_account`), posée sur les autres
+   * listes lors d'une passe précédente. Encore une règle appliquée à neuf
+   * champs sur dix.
+   *
+   * ⚠️ CE GARDE COMPLÈTE LE PRÉCÉDENT : celui d'au-dessus vérifie qu'un nom
+   * EXISTE, celui-ci qu'il dit quelque chose. Un test qui se contente de
+   * l'existence accepte n'importe quelle chaîne.
+   */
+  it("aucun champ n'est nommé par le texte d'une de ses options", () => {
+    const fautes: string[] = [];
+    let vus = 0;
+    for (const chemin of [...fichiers("app"), ...fichiers("components")]) {
+      const source = readFileSync(chemin, "utf8");
+      for (const m of Array.from(source.matchAll(/<select\b/g))) {
+        const fin = source.indexOf("</select>", m.index!);
+        if (fin < 0) continue;
+        const bloc = source.slice(m.index!, fin);
+        const nom = /aria-label=\{t\("([a-z0-9_]+)"\)\}/.exec(bloc);
+        if (!nom) continue;
+        vus++;
+        const options = Array.from(bloc.matchAll(/<option[^>]*>\{t\("([a-z0-9_]+)"\)\}/g)).map((x) => x[1]);
+        if (!options.includes(nom[1])) continue;
+        fautes.push(
+          `${chemin.split(/[\\/]/).slice(-2).join("/")}:${source.slice(0, m.index!).split(SAUT).length} (${nom[1]})`,
+        );
+      }
+    }
+    expect(vus, "aucune liste nommée trouvée : le motif ne cherche rien").toBeGreaterThan(5);
+    expect(fautes, "champs nommés par leur propre valeur : " + fautes.join(", ")).toEqual([]);
+  });
 });

@@ -199,7 +199,15 @@ export function AnalyticsKpiCards({
                   }
                 >
                   {expectancy >= 0 ? "+" : ""}
-                  {money(Math.round(expectancy), currency)}/trade
+                  {/*
+                    ⚠️⚠️ AU CENTIME, PARCE QUE LA LIGNE D'EN DESSOUS MULTIPLIE
+                    CELLE-CI PAR CENT. Arrondie à l'unité, la carte affichait
+                    « Espérance +93€/trade » puis « Proj. 100 trades +9 304€ » :
+                    le lecteur qui fait la multiplication trouve 9 300 et croit
+                    à une erreur, alors que c'est l'espérance qui était
+                    tronquée (93,04). Les deux lignes se recollent maintenant.
+                  */}
+                  {money(expectancy, currency, { digits: 2 })}/trade
                 </span>
               </div>
               {projection !== null && (

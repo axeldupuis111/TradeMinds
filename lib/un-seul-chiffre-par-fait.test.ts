@@ -60,6 +60,25 @@ describe("les deux affichages d'un même fait s'accordent", () => {
   });
 
   /**
+   * ⚠️⚠️ UN NOMBRE QUE LA LIGNE D'À CÔTÉ MULTIPLIE DOIT PORTER SA PRÉCISION.
+   * La carte de synthèse d'Analytics affichait « Espérance +93€/trade » puis,
+   * juste dessous, « Proj. 100 trades +9 304€ ». Le lecteur multiplie par cent
+   * et trouve 9 300 : il croit à une erreur alors que c'est l'espérance qui
+   * était tronquée (93,04). La projection, elle, était juste.
+   */
+  it("l'espérance s'écrit au centime, puisqu'elle est multipliée par cent", () => {
+    const src = sansCommentaires(
+      readFileSync(join(process.cwd(), "components/analytics/AnalyticsKpiCards.tsx"), "utf8"),
+    );
+    expect(src, "l'espérance est de nouveau arrondie à l'unité").not.toContain(
+      "money(Math.round(expectancy), currency)",
+    );
+    expect(src).toContain("money(expectancy, currency, { digits: 2 })");
+    // Et la projection reste bien le centuple de la même espérance.
+    expect(src).toContain("Math.round(expectancy * 100)");
+  });
+
+  /**
    * ⚠️ ET LE TAUX DE RÉUSSITE GARDE SON TIRET : sans trade, il n'a pas de
    * dénominateur. Écrire « 0 % » dirait qu'on a perdu tous ses trades, ce qui
    * est faux et décourageant. Sans ce test, « harmoniser » finirait par lui
