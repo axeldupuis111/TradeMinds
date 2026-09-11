@@ -64,6 +64,20 @@ describe("aucune couleur ne décide du signe à la place du nombre", () => {
     // Moyenne des trades PERDANTS (`nets.filter(n => n < 0)`) : jamais positive.
     "strategy/page.tsx|money(perf.avgLoss, displayCurrency":
       "moyenne des pertes seules, négative par construction",
+    /**
+     * ⚠️ CES DEUX-LÀ SONT APPARUES EN ACCORDANT LES PHRASES, pas en changeant
+     * une couleur : les montants vivaient dans un `.replace()` en fin de
+     * chaîne, ils sont passés en valeurs de `t()` et se sont retrouvés sur la
+     * ligne de la classe. Le garde ne les avait donc jamais vues, alors
+     * qu'elles étaient là depuis le début. Leur signe, lui, est bien constant :
+     * `etatAAlerter` exige `esperance < 0 ET ecartAvecLeReste < 0` (et
+     * l'espérance est le net divisé par le nombre de trades, donc le net est
+     * négatif aussi), `etatFavorable` exige `esperance > 0`.
+     */
+    "session/page.tsx|session_emotion_measured\", {":
+      "rendu sous etatAAlerter : esperance et net négatifs par construction",
+    "session/page.tsx|session_emotion_measured_ok\", {":
+      "rendu sous etatFavorable : esperance positive par construction",
   };
 
   /** L'exemption qui couvre une ligne, s'il y en a une. */

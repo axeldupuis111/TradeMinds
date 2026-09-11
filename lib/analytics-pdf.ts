@@ -1,3 +1,4 @@
+import type { Traduire } from "@/lib/LanguageContext";
 import { jsPDF } from "jspdf";
 import { Pdf, C, money, signedMoney, groupNum, type RGB } from "@/lib/pdf/kit";
 import { ensureBrandFont } from "@/lib/pdf/fonts";
@@ -37,7 +38,7 @@ export interface AnalyticsPdfInput {
   accountLabel: string;
   /** Locale BCP 47 pour les dates ("fr-FR", "en-US"...). */
   locale: string;
-  t: (key: string) => string;
+  t: Traduire;
   /** Dernier bilan de session (score + infractions/recommandations), optionnel. */
   review: AnalyticsReview | null;
 }
@@ -55,7 +56,7 @@ function sideOf(direction: string | undefined): "long" | "short" | null {
 }
 
 /** Certains libellés existants finissent par " :" (usage inline) — on nettoie. */
-function label(t: (key: string) => string, key: string): string {
+function label(t: Traduire, key: string): string {
   return t(key).replace(/\s*:\s*$/, "");
 }
 

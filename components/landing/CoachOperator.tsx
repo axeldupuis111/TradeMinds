@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence, useReducedMotion, useInView } from "framer-motion";
-import { useLanguage } from "@/lib/LanguageContext";
+import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { localizedHref } from "@/lib/locale-href";
 import {
   CAPABILITY_TIERS,
@@ -95,7 +95,7 @@ function CoachAvatar() {
 }
 
 /** Rejoue la scène choisie, une ligne à la fois. */
-function Stage({ scenario, t }: { scenario: Scenario; t: (k: string) => string }) {
+function Stage({ scenario, t }: { scenario: Scenario; t: Traduire }) {
   const prefersReduced = useReducedMotion();
   const [step, setStep] = useState(prefersReduced ? scenario.beats.length + 1 : 0);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -223,7 +223,7 @@ function Stage({ scenario, t }: { scenario: Scenario; t: (k: string) => string }
 }
 
 /** Les trois paliers : il te répond, il te corrige, il le fait à ta place. */
-function TierColumn({ tier, t }: { tier: (typeof CAPABILITY_TIERS)[number]; t: (k: string) => string }) {
+function TierColumn({ tier, t }: { tier: (typeof CAPABILITY_TIERS)[number]; t: Traduire }) {
   const gained = COACH_CAPABILITIES.filter((c) => capabilityPlan(c) === tier.plan);
   const highlight = tier.plan === "premium";
   const quota = coachQuotaText(tier.plan, t);

@@ -72,7 +72,7 @@ export function AiInsights({ insights, filteredAllLength }: AiInsightsProps) {
       ) : filteredAllLength > 0 ? (
         <div className="space-y-3">
           <p className="text-sm text-foreground-muted">
-            {t("dash_insights_has_trades").replace("{count}", String(filteredAllLength))}
+            {t("dash_insights_has_trades", { count: String(filteredAllLength) })}
           </p>
           <Link
             href="/dashboard/analysis"

@@ -19,6 +19,19 @@ const DEFAULT_LANG: Lang = "en";
 const STORAGE_KEY = "TradeDiscipline_lang";
 const COOKIE_NAME = "NEXT_LOCALE";
 
+/**
+ * LA SIGNATURE DE `t`, ÉCRITE UNE FOIS.
+ *
+ * ⚠️⚠️ QUARANTE-DEUX COMPOSANTS LA RECOPIAIENT EN `(key: string) => string`,
+ * c'est-à-dire SANS les valeurs. La recopie compile (une fonction à deux
+ * paramètres se passe là où on en attend un), mais elle AMPUTE : le composant
+ * qui la reçoit ne peut plus accorder une phrase, et il est renvoyé au
+ * `.replace()` à la main, donc au pluriel entre parenthèses. Le jour où j'ai
+ * accordé trois cents phrases, ces quarante-deux copies ont fait échouer la
+ * compilation, chacune à un endroit différent.
+ */
+export type Traduire = (key: string, valeurs?: Record<string, string | number>) => string;
+
 interface LanguageContextValue {
   lang: Lang;
   setLang: (lang: Lang) => void;
@@ -32,7 +45,7 @@ interface LanguageContextValue {
    *
    * La forme des accords : « {n} {n|objectif atteint|objectifs atteints} ».
    */
-  t: (key: string, valeurs?: Record<string, string | number>) => string;
+  t: Traduire;
 }
 
 const LanguageContext = createContext<LanguageContextValue>({

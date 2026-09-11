@@ -10,6 +10,7 @@
  * deux habillages.
  */
 
+import type { Traduire } from "@/lib/LanguageContext";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DEMO_COACH } from "@/lib/demo-fixtures";
 import type { Lang } from "@/lib/translations";
@@ -98,7 +99,7 @@ export function coachActionMeta(
     case "strategy_updated": return { label: t("coach_action_strategy_updated"), href: "/dashboard/strategy" };
     case "checklist_item_added": return { label: t("coach_action_checklist_added"), href: "/dashboard/strategy" };
     case "checklist_item_removed": return { label: t("coach_action_checklist_removed"), href: "/dashboard/strategy" };
-    case "export_ready": return { label: t("coach_action_export_ready").replace("{n}", String(a.count ?? 0)) };
+    case "export_ready": return { label: t("coach_action_export_ready", { n: String(a.count ?? 0) }) };
     case "trade_created": return { label: t("coach_action_trade_created"), href: "/dashboard/trades" };
     case "trade_updated": return { label: t("coach_action_trade_updated"), href: "/dashboard/trades" };
     case "trade_closed": return { label: t("coach_action_trade_closed"), href: "/dashboard/trades" };
@@ -242,7 +243,7 @@ async function exportTradesPdf(
   to: string,
   periodLabel: string,
   lang: string,
-  t: (k: string) => string,
+  t: Traduire,
 ): Promise<boolean> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return false;
@@ -296,7 +297,7 @@ function downloadCsv(filename: string, csv: string) {
 interface UseCoachChatOptions {
   plan: PlanType;
   lang: Lang;
-  t: (k: string) => string;
+  t: Traduire;
   demoMode: boolean;
   /** Description de la page courante, transmise au coach (dock global). */
   pageContext?: string;

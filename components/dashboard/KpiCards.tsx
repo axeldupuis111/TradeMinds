@@ -18,7 +18,7 @@ import { Sparkline } from "@/components/dashboard/Sparkline";
 import { WinRateGauge } from "@/components/dashboard/WinRateGauge";
 import { DEFAULT_CURRENCY, currencySymbol, money } from "@/lib/account-currency";
 import { cn } from "@/lib/cn";
-import { useLanguage } from "@/lib/LanguageContext";
+import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { useTheme } from "@/lib/ThemeContext";
 import { Wallet } from "lucide-react";
 import Link from "next/link";
@@ -61,7 +61,7 @@ export interface KpiCardsProps {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function scoreSubLabel(score: number, t: (k: string) => string): string {
+function scoreSubLabel(score: number, t: Traduire): string {
   if (score >= 90) return t("dash_score_excellent");
   if (score >= 75) return t("dash_score_good");
   if (score >= 60) return t("dash_score_ok");
@@ -70,7 +70,7 @@ function scoreSubLabel(score: number, t: (k: string) => string): string {
 }
 
 /** Phrase de contexte en fonction du niveau de discipline */
-function scoreContextPhrase(score: number, t: (k: string) => string): string {
+function scoreContextPhrase(score: number, t: Traduire): string {
   if (score >= 90) return t("dash_score_ctx_excellent");
   if (score >= 75) return t("dash_score_ctx_good");
   if (score >= 60) return t("dash_score_ctx_ok");

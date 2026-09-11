@@ -11,6 +11,7 @@
  * la suite tant que personne n'a décidé comment le vendre.
  */
 
+import type { Traduire } from "@/lib/LanguageContext";
 import { PLAN_MONTHLY_CEILING } from "./ai-ceilings";
 import { TOOL_MIN_PLAN } from "./coach-tool-plans";
 import { FREE_LIFETIME_CHAT_MESSAGES, PLAN_LIMITS } from "./plan-limits";
@@ -120,7 +121,7 @@ const JOURS_PAR_MOIS = 30;
  * être modifiées toutes les deux, et l'une des deux finit toujours par être
  * oubliée. Une seule fonction, deux appelants.
  */
-export function coachQuotaText(plan: CapabilityPlan, t: (k: string) => string): string {
+export function coachQuotaText(plan: CapabilityPlan, t: Traduire): string {
   const key = coachQuotaKey(plan);
   if (key === "cap_quota_taster") {
     return t(key).replace("{count}", String(FREE_LIFETIME_CHAT_MESSAGES));

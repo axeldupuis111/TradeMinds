@@ -1,6 +1,6 @@
 "use client";
 
-import { useLanguage } from "@/lib/LanguageContext";
+import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
@@ -186,7 +186,7 @@ function heatCls(score: number | null): string {
 // Heatmap de régularité façon GitHub : ~13 semaines × 7 jours, colorée par le
 // score de discipline quotidien (échelle de qualité, pas d'« intensité »).
 // Repères mois + jours, « aujourd'hui » marqué, et stats de synthèse à droite.
-function DisciplineHeatmap({ data, t }: { data: { date: string; score: number }[]; t: (k: string) => string }) {
+function DisciplineHeatmap({ data, t }: { data: { date: string; score: number }[]; t: Traduire }) {
   const WEEKS = 13;
   const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const scoreByDate = new Map(data.map((h) => [h.date, h.score]));
@@ -296,7 +296,7 @@ function DisciplineHeatmap({ data, t }: { data: { date: string; score: number }[
 
 // Pastilles d'historique : chaque période passée évaluée rétroactivement
 // (✓ vert / ✗ rouge / neutre si aucune activité), la courante cerclée.
-function HistoryDots({ history, unit: u, t }: { history: PeriodHistory[]; unit: string; t: (k: string) => string }) {
+function HistoryDots({ history, unit: u, t }: { history: PeriodHistory[]; unit: string; t: Traduire }) {
   if (!history || history.length < 2) return null;
   return (
     <div className="flex items-center gap-[3px]">
@@ -1199,7 +1199,7 @@ export default function GoalsPage() {
                             <GrowBar pct={edge.composed.winRate} className="rounded-full bg-profit" />
                           </div>
                           <p className="text-xs text-muted mt-2">
-                            {t("goals_edge_trades").replace("{n}", String(edge.composed.count))} · {t("goals_edge_avg")} <span className={edge.composed.avgNet >= 0 ? "text-profit" : "text-loss"}>{money(edge.composed.avgNet, displayCurrency)}</span>
+                            {t("goals_edge_trades", { n: String(edge.composed.count) })} · {t("goals_edge_avg")} <span className={edge.composed.avgNet >= 0 ? "text-profit" : "text-loss"}>{money(edge.composed.avgNet, displayCurrency)}</span>
                           </p>
                         </div>
                         <div className="rounded-xl border border-loss/30 bg-loss/[0.04] p-4">
@@ -1214,7 +1214,7 @@ export default function GoalsPage() {
                             <GrowBar pct={edge.impulsive.winRate} className="rounded-full bg-loss" />
                           </div>
                           <p className="text-xs text-muted mt-2">
-                            {t("goals_edge_trades").replace("{n}", String(edge.impulsive.count))} · {t("goals_edge_avg")} <span className={edge.impulsive.avgNet >= 0 ? "text-profit" : "text-loss"}>{money(edge.impulsive.avgNet, displayCurrency)}</span>
+                            {t("goals_edge_trades", { n: String(edge.impulsive.count) })} · {t("goals_edge_avg")} <span className={edge.impulsive.avgNet >= 0 ? "text-profit" : "text-loss"}>{money(edge.impulsive.avgNet, displayCurrency)}</span>
                           </p>
                         </div>
                       </div>

@@ -297,7 +297,7 @@ export default function CreateChallengeModal({
               <input id="com-end" type="date" value={endsOn} onChange={(e) => setEndsOn(e.target.value)} className={fieldClass} />
             </div>
           </div>
-          <p className="text-[11px] text-muted">{t("com_form_hint").replace("{n}", String(maxDays))}</p>
+          <p className="text-[11px] text-muted">{t("com_form_hint", { n: String(maxDays) })}</p>
 
           {/* Le bouton reste actif même invalide : un bouton grisé sans explication
               laisse le partenaire deviner ce qui cloche. */}

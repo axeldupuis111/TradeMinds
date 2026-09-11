@@ -13,7 +13,7 @@ import { computeChallengeRules } from "@/lib/challenge-rules";
 import { projectChallenge } from "@/lib/challenge-projection";
 import { ChallengeProjectionBlock } from "@/components/dashboard/ChallengeProjectionBlock";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
-import { useLanguage } from "@/lib/LanguageContext";
+import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { setDemoWatermark } from "@/lib/pdf/kit";
 import { createClient } from "@/lib/supabase/client";
@@ -109,7 +109,7 @@ function TrailingDdToggle({
 }: {
   value: boolean;
   onChange: (v: boolean) => void;
-  t: (key: string) => string;
+  t: Traduire;
 }) {
   const [showTooltip, setShowTooltip] = useState(false);
   return (
@@ -206,7 +206,7 @@ function DailyLossGauge({
   stopEur: number | null;
   challengeEur: number;
   currency: string;
-  t: (k: string) => string;
+  t: Traduire;
 }) {
   const fillPct = challengeEur > 0 ? Math.min((lossEur / challengeEur) * 100, 100) : 0;
   const stopPct =
@@ -262,7 +262,7 @@ function DailyLossGauge({
   );
 }
 
-function StatusBadge({ status, t }: { status: string; t: (key: string) => string }) {
+function StatusBadge({ status, t }: { status: string; t: Traduire }) {
   if (status === "active") {
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-green-500/30 text-green-400 select-none">
@@ -322,7 +322,7 @@ function EditAccountModal({
   account: Challenge;
   onConfirm: (data: Partial<Challenge>) => void;
   onCancel: () => void;
-  t: (key: string) => string;
+  t: Traduire;
 }) {
   // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
   useFenetreModale(true, onCancel);
@@ -519,7 +519,7 @@ function DeleteAccountModal({
   /** Renvoie null si la suppression a eu lieu, sinon le message a afficher. */
   onConfirm: () => Promise<string | null>;
   onCancel: () => void;
-  t: (key: string) => string;
+  t: Traduire;
 }) {
   // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
   useFenetreModale(true, onCancel);
@@ -540,9 +540,7 @@ function DeleteAccountModal({
 
   const question =
     tradeCount > 0
-      ? t("challenge_delete_account_confirm_trades")
-          .replace("{name}", accountName)
-          .replace("{count}", String(tradeCount))
+      ? t("challenge_delete_account_confirm_trades", { name: accountName, count: String(tradeCount) })
       : t("challenge_delete_account_confirm").replace("{name}", accountName);
 
   return (
@@ -586,7 +584,7 @@ function AccountCard({
   /** Renvoie null si le compte est parti, sinon le message a afficher. */
   onDelete: (id: string) => Promise<string | null>;
   onExportPdf: () => void;
-  t: (key: string) => string;
+  t: Traduire;
 }) {
   const [showEdit, setShowEdit] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -829,7 +827,7 @@ function DeleteModal({
   /** Renvoie null si la suppression a eu lieu, sinon le message à afficher. */
   onConfirm: () => Promise<string | null>;
   onCancel: () => void;
-  t: (key: string) => string;
+  t: Traduire;
 }) {
   // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
   useFenetreModale(true, onCancel);

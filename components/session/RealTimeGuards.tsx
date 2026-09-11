@@ -2,7 +2,7 @@
 
 import { DEFAULT_CURRENCY, accountCurrency, money } from "@/lib/account-currency";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
-import { useLanguage } from "@/lib/LanguageContext";
+import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { startOfLocalDayUtc, browserTimezone } from "@/lib/timezone";
 import { useEffect, useState } from "react";
@@ -32,7 +32,7 @@ function netPnl(tr: Trade) {
 
 function formatSessionDuration(
   minutes: number,
-  t: (k: string) => string
+  t: Traduire
 ): string {
   if (minutes < 60)
     return t("session_duration_mins").replace("{m}", String(minutes));
@@ -130,9 +130,9 @@ export default function RealTimeGuards({ strategy, accountSize, sessionStartedAt
       tradeMsg =
         remaining === 1
           ? t("session_active_trade_remaining_one")
-          : t("session_active_trades_remaining").replace("{n}", String(remaining));
+          : t("session_active_trades_remaining", { n: String(remaining) });
     } else {
-      tradeMsg = t("session_active_trades_remaining").replace("{n}", String(remaining));
+      tradeMsg = t("session_active_trades_remaining", { n: String(remaining) });
     }
   }
 

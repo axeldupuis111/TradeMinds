@@ -2,7 +2,7 @@
 
 import ExportGuideModal from "@/components/trades/ExportGuideModal";
 import { DEFAULT_CURRENCY, accountCurrency, money } from "@/lib/account-currency";
-import { useLanguage } from "@/lib/LanguageContext";
+import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { applyManualMapping, parseCSV, parseXlsx, type ParsedTrade } from "@/lib/csv-parser";
 import { exitDemoModeFromClient } from "@/lib/demo-data";
@@ -82,7 +82,7 @@ function ColumnMappingModal({
   rawRows: Record<string, string>[];
   onApply: (trades: ParsedTrade[]) => void;
   onCancel: () => void;
-  t: (k: string) => string;
+  t: Traduire;
 }) {
   // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
   useFenetreModale(true, onCancel);

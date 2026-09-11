@@ -153,7 +153,7 @@ export default function EmotionalTrendChart({
             {t("emotional_empty_title")}
           </p>
           <p className="text-xs text-foreground-muted max-w-md">
-            {t("emotional_empty_desc").replace("{n}", String(remaining))}
+            {t("emotional_empty_desc", { n: String(remaining) })}
           </p>
           <p className="text-xs text-foreground-muted mt-1">
             {t("emotional_progress").replace("{done}", String(tradesWithEmotion)).replace("{total}", String(EMOTION_THRESHOLD))}

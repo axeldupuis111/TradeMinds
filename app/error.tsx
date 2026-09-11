@@ -1,6 +1,6 @@
 "use client";
 
-import { useLanguage } from "@/lib/LanguageContext";
+import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { useRouter } from "next/navigation";
 
 export default function GlobalError({
@@ -12,7 +12,7 @@ export default function GlobalError({
 }) {
   const router = useRouter();
 
-  let t: (k: string) => string;
+  let t: Traduire;
   try {
     // eslint-disable-next-line react-hooks/rules-of-hooks
     ({ t } = useLanguage());

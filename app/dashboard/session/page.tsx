@@ -10,7 +10,7 @@ import QuickTradeLogger from "@/components/session/QuickTradeLogger";
 import RealTimeGuards from "@/components/session/RealTimeGuards";
 import { DEFAULT_CURRENCY, accountCurrency, buildCurrencyMap, commonCurrency, money } from "@/lib/account-currency";
 import { useActiveAccount, type ActiveAccount } from "@/lib/ActiveAccountContext";
-import { useLanguage } from "@/lib/LanguageContext";
+import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { coutDeLEtat, etatAAlerter, etatFavorable, type TradeEmotion } from "@/lib/emotion-cost";
 import { dailyQuotes } from "@/lib/translations";
 import { createClient } from "@/lib/supabase/client";
@@ -103,7 +103,7 @@ function AccountSelector({
   selectedAccountId: string | null;
   setSelectedAccountId: (id: string) => void;
   loading: boolean;
-  t: (k: string) => string;
+  t: Traduire;
 }) {
   if (loading) return null;
 
@@ -625,7 +625,7 @@ export default function SessionPage() {
               {strategy.max_trades_per_day !== null && (
                 <li className="text-sm text-foreground flex gap-2">
                   <span className="text-muted shrink-0">🔢</span>
-                  <span>{t("session_rule_max_trades").replace("{n}", String(strategy.max_trades_per_day))}</span>
+                  <span>{t("session_rule_max_trades", { n: String(strategy.max_trades_per_day) })}</span>
                 </li>
               )}
               {strategy.max_daily_loss !== null && (
@@ -637,7 +637,7 @@ export default function SessionPage() {
               {strategy.max_consecutive_losses !== null && (
                 <li className="text-sm text-foreground flex gap-2">
                   <span className="text-muted shrink-0">⛔</span>
-                  <span>{t("session_rule_stop_losses").replace("{n}", String(strategy.max_consecutive_losses))}</span>
+                  <span>{t("session_rule_stop_losses", { n: String(strategy.max_consecutive_losses) })}</span>
                 </li>
               )}
               {strategy.max_session_minutes !== null && (
@@ -926,11 +926,7 @@ export default function SessionPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01M10.29 3.86l-8.6 14.86A1 1 0 002.56 20h18.88a1 1 0 00.87-1.28l-8.6-14.86a1 1 0 00-1.72 0z" />
                 </svg>
                 <p className="text-sm text-loss">
-                  {t("session_emotion_measured")
-                    .replace("{n}", String(coutEtat.trades))
-                    .replace("{total}", money(coutEtat.netPnl, deviseEtat))
-                    .replace("{parTrade}", money(coutEtat.esperance, deviseEtat))
-                    .replace("{ecart}", money(Math.abs(coutEtat.ecartAvecLeReste), deviseEtat))}
+                  {t("session_emotion_measured", { n: String(coutEtat.trades), total: money(coutEtat.netPnl, deviseEtat), parTrade: money(coutEtat.esperance, deviseEtat), ecart: money(Math.abs(coutEtat.ecartAvecLeReste), deviseEtat) })}
                 </p>
               </div>
             )}
@@ -941,9 +937,7 @@ export default function SessionPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" />
                 </svg>
                 <p className="text-sm text-profit">
-                  {t("session_emotion_measured_ok")
-                    .replace("{n}", String(coutEtat.trades))
-                    .replace("{parTrade}", money(coutEtat.esperance, deviseEtat))}
+                  {t("session_emotion_measured_ok", { n: String(coutEtat.trades), parTrade: money(coutEtat.esperance, deviseEtat) })}
                 </p>
               </div>
             )}

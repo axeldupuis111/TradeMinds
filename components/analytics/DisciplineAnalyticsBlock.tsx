@@ -462,9 +462,7 @@ export function DisciplineAnalyticsBlock({
             {t("da_empty")}
           </p>
           <p className="text-xs text-foreground-subtle">
-            {t("da_trades_needed")
-              .replace("{n}", String(10 - trades.length))
-              .replace("{have}", String(trades.length))}
+            {t("da_trades_needed", { n: String(10 - trades.length), have: String(trades.length) })}
           </p>
         </div>
       </KpiCardPremium>

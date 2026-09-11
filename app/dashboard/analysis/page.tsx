@@ -10,7 +10,7 @@ import {
 } from "@/lib/hooks/useCoachChat";
 import CoachConfirmBox from "@/components/coach/CoachConfirmBox";
 import type { CategoryBreakdown } from "@/lib/discipline-score";
-import { useLanguage } from "@/lib/LanguageContext";
+import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { PLAN_LIMITS } from "@/lib/plan-limits";
 import { buildDemoAnalysis, type DemoTradeForAnalysis } from "@/lib/demo-fixtures";
@@ -224,7 +224,7 @@ const VIOLATION_TYPE_LABELS: Record<string, string> = {
   missing_setup_tag: "violation_missing_setup",
 };
 
-function ScoreBreakdownCard({ breakdown, score, t, className }: { breakdown: CategoryBreakdown[]; score: number; t: (k: string) => string; className?: string }) {
+function ScoreBreakdownCard({ breakdown, score, t, className }: { breakdown: CategoryBreakdown[]; score: number; t: Traduire; className?: string }) {
   const [open, setOpen] = useState(false);
   const hasDeductions = breakdown.some((b) => b.totalCapped > 0);
 
@@ -349,7 +349,7 @@ const DATA_FIELD_LABELS: Record<string, Record<string, string>> = {
   checklist: { fr: "Checklist", en: "Checklist", de: "Checkliste", es: "Checklist" },
 };
 
-function DataFieldsSummary({ fields, lang, t }: { fields?: DataFields; lang: string; t: (k: string) => string }) {
+function DataFieldsSummary({ fields, lang, t }: { fields?: DataFields; lang: string; t: Traduire }) {
   if (!fields) return null;
   const all = ["setup", "timing", "emotion", "rr", "checklist"];
   const missing = all.filter((k) => !fields[k as keyof DataFields]);
@@ -829,7 +829,7 @@ export default function AnalysisPage() {
         })),
         edge: (ins?.edge ?? []).map((h) => ({
           label: `${t(`edge_dim_${h.dimension}` as Parameters<typeof t>[0])} · ${edgeKeyLabel(h, lang)}`,
-          value: `${fmtEuro(h.netPnl, displayCurrency)} · ${t("analysis_edge_stats").replace("{n}", String(h.trades)).replace("{p}", String(h.winRate))}`,
+          value: `${fmtEuro(h.netPnl, displayCurrency)} · ${t("analysis_edge_stats", { n: String(h.trades), p: String(h.winRate) })}`,
           positive: h.kind === "best",
         })),
         strengths: a.strengths,
@@ -1000,14 +1000,14 @@ export default function AnalysisPage() {
                 ? t("period_no_trades")
                 : filteredTradeCount === 1
                   ? t("period_trades_count_one")
-                  : t("period_trades_count").replace("{n}", String(filteredTradeCount))}
+                  : t("period_trades_count", { n: String(filteredTradeCount) })}
             </span>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <button
               onClick={() => {
                 if (selectedPeriod === "all" && filteredTradeCount > 200) {
-                  alert(t("period_warning_large").replace("{n}", String(filteredTradeCount)));
+                  alert(t("period_warning_large", { n: String(filteredTradeCount) }));
                 }
                 runAnalysis();
               }}
@@ -1140,7 +1140,7 @@ export default function AnalysisPage() {
                   <span className="text-sm text-muted">
                     {ins.violation_trade_count === 1
                       ? t("analysis_cost_trades_one")
-                      : t("analysis_cost_trades").replace("{n}", String(ins.violation_trade_count))}
+                      : t("analysis_cost_trades", { n: String(ins.violation_trade_count) })}
                   </span>
                 </div>
                 <p className="text-sm text-muted mt-2">
@@ -1293,7 +1293,7 @@ export default function AnalysisPage() {
                       {fmtEuro(h.netPnl, displayCurrency)}
                     </p>
                     <p className="text-xs text-muted mt-1">
-                      {t("analysis_edge_stats").replace("{n}", String(h.trades)).replace("{p}", String(h.winRate))}
+                      {t("analysis_edge_stats", { n: String(h.trades), p: String(h.winRate) })}
                     </p>
                   </div>
                 ))}

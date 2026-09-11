@@ -8,7 +8,7 @@
  * isn't there yet. Filters persist across reloads (localStorage).
  */
 
-import { useLanguage } from "@/lib/LanguageContext";
+import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { usePersistentState } from "@/lib/hooks/usePersistentState";
 import {
@@ -53,7 +53,7 @@ function impactStyle(impact: Impact): { row: string; badge: string } {
   }
 }
 
-function relativeLabel(ev: EconomicEvent, t: (k: string) => string): string {
+function relativeLabel(ev: EconomicEvent, t: Traduire): string {
   const mins = minutesUntil(ev.event_time);
   if (mins < -5) return t("news_passed");
   if (Math.abs(mins) <= 5) return t("news_now");

@@ -161,7 +161,7 @@ export default function QuickAnnotateModal({
               </span>
               <p className="text-base font-semibold text-foreground">{t("annotate_done_title")}</p>
               <p className="text-sm text-foreground-muted mt-1.5">
-                {t("annotate_done_desc").replace("{count}", String(annotated))}
+                {t("annotate_done_desc", { count: String(annotated) })}
               </p>
               <button
                 onClick={handleClose}

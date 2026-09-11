@@ -723,7 +723,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
   async function handleBulkDelete() {
     const count = selectAllMatching ? total : selectedIds.size;
     if (count === 0) return;
-    if (!confirm(t("trades_confirm_delete_mass").replace("{count}", String(count)))) return;
+    if (!confirm(t("trades_confirm_delete_mass", { count: String(count) }))) return;
 
     setBulkDeleting(true);
     setBulkError(null);
@@ -764,9 +764,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
         // Les tranches déjà passées sont bel et bien supprimées : on le dit
         // plutôt que de laisser croire à un échec total ou à une réussite.
         setBulkError(
-          t("trades_delete_partial")
-            .replace("{done}", String(deleted))
-            .replace("{total}", String(ids.length)),
+          t("trades_delete_partial", { done: String(deleted), total: String(ids.length) }),
         );
         break;
       }
@@ -925,8 +923,8 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
         <div className="flex items-center justify-between gap-2 p-3">
           <p className="text-[11px] text-muted">
             {hasActiveFilters
-              ? t("trades_filtered_by").replace("{count}", String(total))
-              : t("trades_all_accounts").replace("{count}", String(statsCount))}
+              ? t("trades_filtered_by", { count: String(total) })
+              : t("trades_all_accounts", { count: String(statsCount) })}
           </p>
           {/* Repli disponible à TOUTE largeur : un 14 pouces a autant besoin de
               récupérer ces 150 px qu'un téléphone, et un grand écran peut
@@ -1093,7 +1091,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
             <p className="text-sm text-muted mt-2 pt-2 border-t border-border">
               {selectAllMatching ? (
                 <>
-                  {t("trades_select_all_matching_done").replace("{count}", String(total))}{" "}
+                  {t("trades_select_all_matching_done", { count: String(total) })}{" "}
                   <button
                     onClick={() => setSelectAllMatching(false)}
                     className="text-accent hover:underline font-medium"
@@ -1103,12 +1101,12 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
                 </>
               ) : (
                 <>
-                  {t("trades_select_page_done").replace("{count}", String(trades.length))}{" "}
+                  {t("trades_select_page_done", { count: String(trades.length) })}{" "}
                   <button
                     onClick={() => setSelectAllMatching(true)}
                     className="text-accent hover:underline font-medium"
                   >
-                    {t("trades_select_all_matching").replace("{count}", String(total))}
+                    {t("trades_select_all_matching", { count: String(total) })}
                   </button>
                 </>
               )}

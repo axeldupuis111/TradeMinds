@@ -411,7 +411,14 @@ describe("les traductions ne recopient pas le français", () => {
         // ⚠️ Sous douze caractères, l'identité ne prouve rien : « 1 R », « M5 »,
         // « OK » se disent pareil partout, et les signaler rendrait ce garde
         // bruyant, donc ignoré.
-        if (texte.length < 12) continue;
+        //
+        // ⚠️ ON MESURE LE TEXTE VISIBLE, PAS LE GABARIT. Le jour où
+        // « {n} trades » est devenu « {n} {n|trade|trades} », sa longueur a
+        // doublé sans qu'un seul mot soit ajouté, et le garde a signalé comme
+        // recopiée une phrase qui ne dit toujours qu'un mot, le même dans les
+        // deux langues. Un accord est de la mécanique, pas de la prose.
+        const visible = texte.replace(/\{[^{}]*\}/g, "");
+        if (visible.length < 12) continue;
         if (IDENTIQUES_A_RAISON[cle]) continue;
         if ((autre as Record<string, string>)[cle] === texte) copies.push(`${cle} (${nom})`);
       }

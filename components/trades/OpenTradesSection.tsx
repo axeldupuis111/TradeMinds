@@ -1,6 +1,6 @@
 "use client";
 
-import { useLanguage } from "@/lib/LanguageContext";
+import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
 
@@ -27,7 +27,7 @@ function normalizeDirection(dir: string): "long" | "short" {
   return "short";
 }
 
-function formatDuration(openTime: string, now: number, t: (key: string) => string) {
+function formatDuration(openTime: string, now: number, t: Traduire) {
   const opened = new Date(openTime).getTime();
   const diffMs = now - opened;
   const totalMin = Math.max(0, Math.floor(diffMs / 60000));
@@ -46,7 +46,7 @@ function formatDuration(openTime: string, now: number, t: (key: string) => strin
   return t("open_trades_duration_min").replace("{m}", String(totalMin));
 }
 
-function formatOpenLabel(openTime: string, t: (key: string) => string) {
+function formatOpenLabel(openTime: string, t: Traduire) {
   const opened = new Date(openTime);
   const today = new Date();
   const yesterday = new Date();
@@ -125,7 +125,7 @@ export default function OpenTradesSection({ refreshKey, onCloseTrade }: Props) {
   const count = trades.length;
   const countLabel = count === 1
     ? t("open_trades_count_one")
-    : t("open_trades_count_many").replace("{n}", String(count));
+    : t("open_trades_count_many", { n: String(count) });
 
   return (
     <section className="mb-6">

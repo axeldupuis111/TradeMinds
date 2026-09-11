@@ -1,6 +1,6 @@
 "use client";
 
-import { useLanguage } from "@/lib/LanguageContext";
+import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { BADGE_EMOJI, BADGE_REWARDS, FREE_BADGE_KEY, computeBadges, type BadgeKey, type BadgeState } from "@/lib/badges";
 import { generateBadgeCertificate, hasCertificate, type CertLang } from "@/lib/badge-certificate";
@@ -494,7 +494,7 @@ export default function LeaderboardPage() {
                   <>🎯 {t("leaderboard_feed_day_record").replace("{user}", `@${f.user}`).replace("{score}", String(f.score))}</>
                 )}
                 {f.type === "streak" && (
-                  <>🔥 {t("leaderboard_feed_streak").replace("{user}", `@${f.user}`).replace("{n}", String(f.days))}</>
+                  <>🔥 {t("leaderboard_feed_streak", { user: `@${f.user}`, n: String(f.days) })}</>
                 )}
                 {f.type === "join" && (
                   <>🤝 {t("leaderboard_feed_join").replace("{user}", `@${f.user}`).replace("{challenge}", t(`challenge_c_${f.challengeKey.replace(/-/g, "_")}_title`))}</>
@@ -696,7 +696,7 @@ export default function LeaderboardPage() {
   );
 }
 
-function Row({ e, t, value }: { e: Entry; t: (k: string) => string; value: string }) {
+function Row({ e, t, value }: { e: Entry; t: Traduire; value: string }) {
   return (
     <div className={`flex items-center gap-3 px-4 py-3 ${e.isMe ? "bg-accent/5" : "bg-card"}`}>
       <span className="text-sm font-bold text-muted w-7 text-center tabular-nums">{e.rank}</span>

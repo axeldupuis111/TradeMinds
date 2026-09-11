@@ -724,11 +724,7 @@ export default function AnalyticsPage() {
             new Date(d).toLocaleDateString(dateLocale, { day: "2-digit", month: "2-digit", year: "2-digit" });
           return (
             <p className="text-xs text-foreground-muted mt-1">
-              {t("analytics_daterange")
-                .replace("{count}", String(filtered.length))
-                .replace("{from}", fmt(first))
-                .replace("{to}", fmt(last))
-                .replace("{dur}", duration)}
+              {t("analytics_daterange", { count: String(filtered.length), from: fmt(first), to: fmt(last), dur: duration })}
             </p>
           );
         })()}

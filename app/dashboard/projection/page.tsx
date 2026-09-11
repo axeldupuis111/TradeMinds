@@ -28,6 +28,9 @@
  * qui est exactement l'inverse de ce que vend TradeDiscipline.
  */
 
+// ⚠️ La signature vient d'un seul endroit : recopiée sans ses valeurs, elle
+// interdit tout accord au composant qui la reçoit.
+import type { Traduire } from "@/lib/LanguageContext";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { Card, CardTitle } from "@/components/ui/Card";
 import StaggerContainer, { StaggerItem } from "@/components/animations/StaggerContainer";
@@ -419,7 +422,7 @@ export default function ProjectionPage() {
             {strategieCourante ? nomStrategie(strategieCourante) : t("proj_scope_all")}
           </span>
           <span className="text-foreground-muted">
-            {t("proj_scope_trades").replace("{n}", String(perimetre.length))}
+            {t("proj_scope_trades", { n: String(perimetre.length) })}
           </span>
         </div>
       </header>
@@ -630,7 +633,6 @@ export default function ProjectionPage() {
 
 // ── Sous-composants ─────────────────────────────────────────────────────────
 
-type Traduire = (k: string) => string;
 
 /**
  * Ce qui s'affiche quand on n'a pas de quoi conclure.
@@ -665,7 +667,7 @@ function EncartInsuffisant({
           ) : (
             <>
               <p className="text-sm text-foreground-muted">
-                {t("proj_insufficient_body").replace("{n}", String(projection.tradesManquants))}
+                {t("proj_insufficient_body", { n: String(projection.tradesManquants) })}
               </p>
               {mois !== null && (
                 <p className="text-sm text-foreground-muted">
@@ -1123,10 +1125,7 @@ function EncartSegments({
                 <div className="min-w-0">
                   <div className="text-sm font-medium">{nommer(s)}</div>
                   <p className="text-xs text-foreground-muted mt-0.5">
-                    {t("seg_cost")
-                      .replace("{n}", String(s.trades))
-                      .replace("{cout}", eur(s.netPnl, true))
-                      .replace("{esperance}", eur(s.esperance, true))}
+                    {t("seg_cost", { n: String(s.trades), cout: eur(s.netPnl, true), esperance: eur(s.esperance, true) })}
                   </p>
                 </div>
               </li>

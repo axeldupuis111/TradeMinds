@@ -6,7 +6,7 @@ import CoachOperator from "@/components/landing/CoachOperator";
 import PublicHeader from "@/components/PublicHeader";
 import RiskDisclosure from "@/components/legal/RiskDisclosure";
 import { FoundingBanner } from "@/components/FoundingBanner";
-import { useLanguage } from "@/lib/LanguageContext";
+import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { localizedHref } from "@/lib/locale-href";
 import { PLAN_FEATURES, FREE_BENEFITS, PLUS_BENEFITS, PREMIUM_BENEFITS, planQuotaSegments } from "@/lib/plan-features";
 import Link from "next/link";
@@ -999,7 +999,7 @@ function Problem() {
 ───────────────────────────────────────────── */
 const PLATFORMS = ["MT5", "MT4", "cTrader", "Binance", "Bybit", "OKX", "Bitget", "TradingView"];
 
-function BentoImport({ t }: { t: (k: string) => string }) {
+function BentoImport({ t }: { t: Traduire }) {
   return (
     <div className="h-full flex flex-col gap-4 p-6">
       <div
@@ -1049,7 +1049,7 @@ function AiAvatar() {
   );
 }
 
-function BentoAIChat({ t }: { t: (k: string) => string }) {
+function BentoAIChat({ t }: { t: Traduire }) {
   const [showTyping, setShowTyping] = useState(true);
   const prefersReduced = useReducedMotion();
 
@@ -1150,7 +1150,7 @@ function BentoAIChat({ t }: { t: (k: string) => string }) {
   );
 }
 
-function BentoDisciplineScore({ t }: { t: (k: string) => string }) {
+function BentoDisciplineScore({ t }: { t: Traduire }) {
   const r = 34, circ = 2 * Math.PI * r;
   const rules = [
     { label: "SL ≤ 1%",                 ok: true  },
@@ -1218,7 +1218,7 @@ function BentoDisciplineScore({ t }: { t: (k: string) => string }) {
 }
 
 /* MetaTrader → TradeDiscipline live sync — animated connection */
-function BentoSync({ t }: { t: (k: string) => string }) {
+function BentoSync({ t }: { t: Traduire }) {
   const prefersReduced = useReducedMotion();
 
   const Node = ({ label, sub, children }: { label: string; sub?: string; children: React.ReactNode }) => (
@@ -1298,7 +1298,7 @@ function BentoSync({ t }: { t: (k: string) => string }) {
 }
 
 /* Strategy coach — natural language → setup rules, tags & params (real app behaviour) */
-function BentoStrategy({ t }: { t: (k: string) => string }) {
+function BentoStrategy({ t }: { t: Traduire }) {
   const prefersReduced = useReducedMotion();
   const violet = "rgb(167,139,250)";
 
@@ -1663,7 +1663,7 @@ const ROI_PAID_PLANS = [
   { nameKey: "plan_premium", price: "29.99€", perDay: "0.99€", tone: "--warning" },
 ];
 
-function RoiPayback({ t }: { t: (k: string) => string }) {
+function RoiPayback({ t }: { t: Traduire }) {
   const reduced = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
@@ -1760,7 +1760,7 @@ function RoiPayback({ t }: { t: (k: string) => string }) {
   );
 }
 
-function ROIBand({ t }: { t: (k: string) => string }) {
+function ROIBand({ t }: { t: Traduire }) {
   const points = [
     {
       tone: "--profit",
@@ -1843,7 +1843,7 @@ function ROIBand({ t }: { t: (k: string) => string }) {
    Rend la matrice partagée lib/plan-features.ts
    (la même que la page « gérer mon plan »).
 ───────────────────────────────────────────── */
-function CompareCell({ val, t }: { val: boolean | string; t: (k: string) => string }) {
+function CompareCell({ val, t }: { val: boolean | string; t: Traduire }) {
   if (val === true) {
     return (
       <svg role="img" aria-label={t("upgrade_included")} className="w-4 h-4 mx-auto" style={{ color: "rgb(var(--profit))" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1876,7 +1876,7 @@ function CompareCell({ val, t }: { val: boolean | string; t: (k: string) => stri
   return <span className="text-sm" style={{ color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}>{val}</span>;
 }
 
-function PricingCompareTable({ t }: { t: (k: string) => string }) {
+function PricingCompareTable({ t }: { t: Traduire }) {
   const [open, setOpen] = useState(false);
   return (
     <Reveal className="mt-8">
@@ -2654,7 +2654,7 @@ function Conduit({ fire, reverse = false, tone }: { fire: boolean; reverse?: boo
 }
 
 /* Petit rendu de résultat CONCRET, distinct par capacité, assemblé pièce à pièce. */
-function CoachOutcome({ step, show, t }: { step: CoachStep; show: boolean; t: (k: string) => string }) {
+function CoachOutcome({ step, show, t }: { step: CoachStep; show: boolean; t: Traduire }) {
   const reduced = useReducedMotion();
   const col = `rgb(var(${step.tone}))`;
   const container = {

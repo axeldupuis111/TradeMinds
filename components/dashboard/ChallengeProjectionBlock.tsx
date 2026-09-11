@@ -54,7 +54,7 @@ export function ChallengeProjectionBlock({
         {projection.daysToTarget !== null && (
           <span className="inline-flex items-center gap-1.5">
             <TrendingUp className="w-3.5 h-3.5 text-profit" />
-            {t("challenge_proj_eta").replace("{n}", String(projection.daysToTarget))}
+            {t("challenge_proj_eta", { n: String(projection.daysToTarget) })}
           </span>
         )}
         <span className="tabular-nums">

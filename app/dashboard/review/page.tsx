@@ -1,6 +1,6 @@
 "use client";
 
-import { useLanguage } from "@/lib/LanguageContext";
+import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { currencySymbol, money } from "@/lib/account-currency";
 import { useDisplayCurrency } from "@/lib/hooks/useDisplayCurrency";
 import { usePlan } from "@/lib/PlanContext";
@@ -1023,7 +1023,7 @@ function Highlight({ label, value, sub, positive, onClick }: { label: string; va
 }
 
 // Tableau comparatif de deux mois (KPIs côte à côte + écart).
-function CompareTable({ a, b, aLabel, bLabel, t }: { a: Stats; b: Stats; aLabel: string; bLabel: string; t: (k: string) => string }) {
+function CompareTable({ a, b, aLabel, bLabel, t }: { a: Stats; b: Stats; aLabel: string; bLabel: string; t: Traduire }) {
   const rows: { k: string; a: number | null; b: number | null; suffix: string }[] = [
     { k: "review_kpi_trades", a: a.trades, b: b.trades, suffix: "" },
     { k: "review_kpi_days", a: a.tradingDays, b: b.tradingDays, suffix: "" },

@@ -2,9 +2,17 @@ import { describe, it, expect } from "vitest";
 import { generateResilienceInsights } from "./resilience";
 import type { AnalyticsTrade } from "./types";
 import fr from "@/lib/i18n/fr";
+import { remplir } from "@/lib/remplir";
 
 const tKey = (k: string) => k;
-const tFr = (k: string) => fr[k] ?? k;
+/**
+ * ⚠️ LE FAUX TRADUCTEUR REMPLIT LES TROUS, COMME LE VRAI. Sans ça, ce test
+ * cherche des trous non remplis dans une phrase que personne n a remplie : il
+ * accuse le jour où une phrase reçoit un accord, et il ne prouve rien le reste
+ * du temps.
+ */
+const tFr = (k: string, valeurs?: Record<string, string | number>) =>
+  remplir(fr[k] ?? k, valeurs, "fr");
 
 function trade(open_time: string, pnl: number): AnalyticsTrade {
   return { open_time, pnl, commission: 0, swap: 0, pair: "XAUUSD", direction: "long" };
