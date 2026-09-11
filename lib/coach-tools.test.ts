@@ -373,7 +373,15 @@ describe("une annulation qui échoue ne doit JAMAIS se déclarer réussie", () =
     const debut = src.indexOf("export type CoachUndo =");
     // ⚠️ On coupe à la ligne vide, pas au premier « ; » : le type en contient
     // un dans chaque membre de l'union (`{ op: "delete_goal"; goal_id: string }`).
-    const union = src.slice(debut, src.indexOf("\n\n", debut));
+    //
+    // ⚠️⚠️ ET LA LIGNE VIDE SE CHERCHE SANS SUPPOSER LA FIN DE LIGNE. Chercher
+    // « \n\n » ne trouve rien dans un fichier en CRLF : `indexOf` rend -1, le
+    // `slice` emporte tout le module, et le test compare alors la liste des
+    // opérations à TOUS les `op: "…"` du fichier, doublons compris. Il est
+    // passé des semaines parce que la copie de travail était en LF, et il a
+    // échoué au premier changement de branche, sur un code identique.
+    const finDeLUnion = /\r?\n\r?\n/.exec(src.slice(debut));
+    const union = src.slice(debut, finDeLUnion ? debut + finDeLUnion.index : undefined);
     const declarees = (union.match(/op: "[a-z_]+"/g) ?? []).map((m) => m.slice(5, -1)).sort();
     const couvertes = TOUTES.map((u) => u.op).sort();
     expect(couvertes).toEqual(declarees);
