@@ -640,7 +640,15 @@ export default function UpgradePage() {
       {/* Feature comparison table */}
       <div className="mt-10 max-w-4xl mx-auto">
         <h2 className="text-base font-semibold text-foreground mb-4">{t("plan_compare_title")}</h2>
-        <div className="rounded-xl border border-border overflow-hidden">
+        {/*
+          ⚠️ `overflow-x-auto` ET NON `overflow-hidden` : mesuré sur le site
+          déployé, ce tableau ne descend pas sous 389 px de large, pour 341 px
+          de place sur un téléphone de 375 px. Avec `hidden`, les 48 px qui
+          dépassent étaient COUPÉS sans aucun moyen de les atteindre, et ils
+          tombaient sur la colonne Premium : la page où l'on choisit ce qu'on
+          paie amputait la formule la plus chère.
+        */}
+        <div className="rounded-xl border border-border overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-surface">
