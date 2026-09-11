@@ -9,7 +9,7 @@ import { exitDemoModeFromClient } from "@/lib/demo-data";
 import { splitAlreadyImported, type DedupeTrade } from "@/lib/trades/dedupe-import";
 import { track } from "@/lib/track";
 import { createClient } from "@/lib/supabase/client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { nombre } from "@/lib/nombres";
 import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
@@ -181,7 +181,6 @@ export default function CsvImport({ strategyId, onImported }: Props) {
   const [dragOver, setDragOver] = useState(false);
   const [importing, setImporting] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
 
   // Account matching state
@@ -560,12 +559,34 @@ export default function CsvImport({ strategyId, onImported }: Props) {
       {preview.length === 0 ? (
         <div className="space-y-4">
           {/* Drop zone */}
-          <div
+          {/*
+            ⚠️⚠️ LA ZONE DE DÉPÔT ÉTAIT UN CUL-DE-SAC AU CLAVIER. Le seul chemin
+            vers le sélecteur de fichier était de CLIQUER ce bloc : le champ,
+            lui, portait `hidden`, et ce qui est `display:none` ne reçoit jamais
+            le focus. Qui navigue au clavier ne pouvait donc pas importer de
+            CSV du tout, sur la page dont c'est l'unique raison d'être.
+
+            ⚠️ D'OÙ LE COUPLE `<input class="peer sr-only">` + `<label>` : c'est
+            le montage standard d'un envoi de fichier. `sr-only` garde le champ
+            atteignable (contrairement à `hidden`), le label lui donne son nom
+            et sa surface cliquable, et `peer-focus-visible` dessine sur le
+            label l'anneau de focus que le champ, replié à un pixel, ne peut
+            plus montrer lui-même.
+          */}
+          <input
+            id="csv-file"
+            type="file"
+            accept=".csv,.txt,.xlsx"
+            onChange={handleFileInput}
+            disabled={isCooldownActive}
+            className="peer sr-only"
+          />
+          <label
+            htmlFor="csv-file"
             onDragOver={(e) => { if (!isCooldownActive) { e.preventDefault(); setDragOver(true); } }}
             onDragLeave={() => setDragOver(false)}
             onDrop={(e) => { if (!isCooldownActive) handleDrop(e); else e.preventDefault(); }}
-            onClick={() => { if (!isCooldownActive) fileRef.current?.click(); }}
-            className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
+            className={`block border-2 border-dashed rounded-xl p-8 text-center transition-colors peer-focus-visible:border-accent peer-focus-visible:ring-2 peer-focus-visible:ring-accent/40 ${
               isCooldownActive
                 ? "border-border opacity-50 cursor-not-allowed"
                 : dragOver
@@ -578,8 +599,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
             </svg>
             <p className="text-foreground font-medium">{t("csv_drop_title")}</p>
             <p className="text-muted text-sm mt-1">{t("csv_drop_sub")}</p>
-            <input ref={fileRef} type="file" accept=".csv,.txt,.xlsx" onChange={handleFileInput} disabled={isCooldownActive} className="hidden" />
-          </div>
+          </label>
 
           {/* Supported platforms */}
           <div>

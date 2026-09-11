@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { sansCommentaires } from "./sans-commentaires";
 
 /**
  * UNE COMMANDE SANS TEXTE VISIBLE PORTE UN NOM QUAND MÊME.
@@ -166,7 +167,7 @@ describe("les commandes sans texte portent un nom", () => {
   it("aucune commande n'est laissée sans nom", () => {
     const fautes: string[] = [];
     for (const chemin of [...fichiers("app"), ...fichiers("components")]) {
-      const source = readFileSync(chemin, "utf8");
+      const source = sansCommentaires(readFileSync(chemin, "utf8"));
       /**
        * ⚠️ UN FICHIER QUI DÉFINIT UNE ÉTIQUETTE ENVELOPPANTE EST HORS PORTÉE.
        * `components/backtest/Controles.tsx` expose un `Champ` qui rend

@@ -449,7 +449,7 @@ export default function AdminPage() {
                     </div>
                     <div className="mt-2 flex flex-col sm:flex-row gap-2">
                       <input
-                        aria-label="E-mail du compte partenaire"
+                        aria-label="E-mail du compte partenaire"
                         value={comOwner[c.id] ?? ""}
                         onChange={(e) => setComOwner((p) => ({ ...p, [c.id]: e.target.value }))}
                         placeholder="e-mail du compte partenaire"
@@ -468,7 +468,7 @@ export default function AdminPage() {
                         rejoindraient jamais sans passer par ici. */}
                     <div className="mt-2 flex flex-col sm:flex-row gap-2">
                       <textarea
-                        aria-label="Rattacher des membres en masse"
+                        aria-label="Rattacher des membres en masse"
                         value={comEmails[c.id] ?? ""}
                         rows={2}
                         onChange={(e) => setComEmails((p) => ({ ...p, [c.id]: e.target.value }))}
@@ -1041,7 +1041,17 @@ export default function AdminPage() {
                             onClick={() => setNetOpen(netOpen === p.id ? null : p.id)}
                           >
                             <td className="py-2 pr-3 font-semibold text-foreground">
-                              {netOpen === p.id ? "▾" : "▸"} {p.name}
+                              {/* ⚠️ Le repli vivait sur la ligne entière, qui ne
+                                  reçoit pas le focus : au clavier, aucun
+                                  partenaire ne s'ouvrait. Le clic de la ligne
+                                  double maintenant ce bouton. */}
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setNetOpen(netOpen === p.id ? null : p.id); }}
+                                aria-expanded={netOpen === p.id}
+                                className="font-semibold text-foreground hover:text-accent transition-colors"
+                              >
+                                {netOpen === p.id ? "▾" : "▸"} {p.name}
+                              </button>
                               <span className="text-muted font-normal text-xs ml-2">
                                 {p.kind === "network" ? "réseau" : "influenceur"}
                               </span>

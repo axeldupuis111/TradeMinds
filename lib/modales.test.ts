@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { sansCommentaires } from "./sans-commentaires";
 
 /**
  * UNE FENÊTRE QUI RECOUVRE LA PAGE SE DÉCLARE COMME TELLE.
@@ -64,7 +65,7 @@ describe("les fenêtres modales se déclarent", () => {
     const fautes: string[] = [];
     let vues = 0;
     for (const chemin of tous()) {
-      const source = readFileSync(chemin, "utf8");
+      const source = sansCommentaires(readFileSync(chemin, "utf8"));
       for (const m of Array.from(source.matchAll(/fixed inset-0/g))) {
         const debut = source.lastIndexOf("<", m.index!);
         if (debut < 0) continue;
@@ -90,7 +91,7 @@ describe("les fenêtres modales se déclarent", () => {
   it("chaque dialogue porte un nom", () => {
     const fautes: string[] = [];
     for (const chemin of tous()) {
-      const source = readFileSync(chemin, "utf8");
+      const source = sansCommentaires(readFileSync(chemin, "utf8"));
       for (const m of Array.from(source.matchAll(/role="(dialog|alertdialog)"/g))) {
         const debut = source.lastIndexOf("<", m.index!);
         const fin = finDeBalise(source, debut);
@@ -111,7 +112,7 @@ describe("les fenêtres modales se déclarent", () => {
   it("les dialogues plein écran déclarent aria-modal", () => {
     const fautes: string[] = [];
     for (const chemin of tous()) {
-      const source = readFileSync(chemin, "utf8");
+      const source = sansCommentaires(readFileSync(chemin, "utf8"));
       for (const m of Array.from(source.matchAll(/role="(dialog|alertdialog)"/g))) {
         const debut = source.lastIndexOf("<", m.index!);
         const fin = finDeBalise(source, debut);
@@ -168,7 +169,7 @@ describe("les fenêtres modales se déclarent", () => {
     const fr = readFileSync(join(process.cwd(), "lib/i18n/fr.ts"), "utf8");
     const fautes: string[] = [];
     for (const chemin of tous()) {
-      const source = readFileSync(chemin, "utf8");
+      const source = sansCommentaires(readFileSync(chemin, "utf8"));
       for (const m of Array.from(source.matchAll(/aria-label=\{t\("([a-z0-9_]+)"\)\}/g))) {
         const ligne = new RegExp('"' + m[1] + '":\\s*"([^"]*)"').exec(fr);
         if (ligne && /\{[a-zA-Z0-9_]+[|}]/.test(ligne[1])) {

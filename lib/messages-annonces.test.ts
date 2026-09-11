@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { sansCommentaires } from "./sans-commentaires";
 
 /**
  * UN MESSAGE QUI APPARAÎT TOUT SEUL DOIT ÊTRE ANNONCÉ.
@@ -64,7 +65,7 @@ describe("les messages qui surgissent sont annoncés", () => {
     const fautes: string[] = [];
     let vus = 0;
     for (const chemin of tous()) {
-      const source = readFileSync(chemin, "utf8");
+      const source = sansCommentaires(readFileSync(chemin, "utf8"));
       for (const m of Array.from(source.matchAll(/\{\s*(\w*(?:[eE]rror|[eE]rreur))\s*&&/g))) {
         const b = /<(p|div|span)\b/.exec(source.slice(m.index! + m[0].length, m.index! + m[0].length + 200));
         if (!b) continue;

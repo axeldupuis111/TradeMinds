@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { sansCommentaires } from "./sans-commentaires";
 
 /**
  * UN BOUTON QUI N'EST QU'UNE ICÔNE PORTE QUAND MÊME UN NOM.
@@ -115,7 +116,7 @@ describe("les boutons icône ont un nom", () => {
     const fautes: string[] = [];
     for (const chemin of [...fichiers("app"), ...fichiers("components")]) {
       const nom = chemin.split(/[\\/]/).slice(-2).join("/");
-      for (const ligne of boutonsSansNom(readFileSync(chemin, "utf8"))) {
+      for (const ligne of boutonsSansNom(sansCommentaires(readFileSync(chemin, "utf8")))) {
         fautes.push(`${nom}:${ligne}`);
       }
     }

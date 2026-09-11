@@ -791,7 +791,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
               <div className="mb-2 relative group">
                 <Image src={screenshotUrl} alt="Trade screenshot" width={800} height={600} className="w-full rounded-lg border border-border" style={{ height: "auto" }} />
                 {annotations.length > 0 && <AnnotationOverlay shapes={annotations} />}
-                <div className="absolute top-2 right-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute top-2 right-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                   <button
                     onClick={() => setShowAnnotator(true)}
                     className="px-2 py-1 bg-black/70 rounded-full text-xs text-white hover:text-accent"

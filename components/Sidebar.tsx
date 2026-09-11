@@ -29,6 +29,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { brancherEchap } from "@/lib/hooks/useFenetreModale";
 import type { LucideIcon } from "lucide-react";
 
 // requiredPlan = plan minimum pour utiliser la page (mur d'upgrade en dessous).
@@ -88,6 +90,20 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
     required && !loading && PLAN_RANK[plan] < PLAN_RANK[required] ? required : undefined;
 
   const lockedCount = loading ? 0 : countLockedFeatures(plan);
+
+  /**
+   * ⚠️ LE TIROIR MOBILE NE SE FERMAIT QU'AU CLIC SUR LE VOILE. Échap ne faisait
+   * rien : le seul moyen de le refermer était de viser, à la souris ou au
+   * doigt, une zone qui n'annonce rien.
+   *
+   * ⚠️ ON NE PASSE PAS PAR `useFenetreModale` : ce tiroir n'est pas une fenêtre
+   * de dialogue mais la navigation du site, et lui faire prendre le focus le
+   * ferait passer pour ce qu'il n'est pas.
+   */
+  useEffect(() => {
+    if (!open) return;
+    return brancherEchap(document, onClose);
+  }, [open, onClose]);
 
   return (
     <>

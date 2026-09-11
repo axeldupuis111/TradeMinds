@@ -1115,7 +1115,7 @@ export default function GoalsPage() {
                                 </button>
                               ) : (
                                 <button onClick={() => { setConfirmDelete(g.id); window.setTimeout(() => setConfirmDelete((c) => (c === g.id ? null : c)), 3500); }}
-                                  className="shrink-0 text-muted hover:text-loss transition-all sm:opacity-0 sm:group-hover:opacity-100" aria-label={t("goals_delete")}>
+                                  className="shrink-0 text-muted hover:text-loss transition-all sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100" aria-label={t("goals_delete")}>
                                   <Trash2 className="w-4 h-4" strokeWidth={1.5} />
                                 </button>
                               )}

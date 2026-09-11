@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { sansCommentaires } from "./sans-commentaires";
 
 /**
  * UNE ÉTIQUETTE VISIBLE EST AUSSI L'ÉTIQUETTE DU CHAMP, POUR LA MACHINE.
@@ -121,7 +122,7 @@ describe("chaque champ porte le nom qu'on lit à côté", () => {
     const fautes: string[] = [];
     for (const chemin of [...fichiers("app"), ...fichiers("components")]) {
       const nom = chemin.split(/[\\/]/).slice(-2).join("/");
-      for (const ligne of detachees(readFileSync(chemin, "utf8"))) {
+      for (const ligne of detachees(sansCommentaires(readFileSync(chemin, "utf8")))) {
         fautes.push(`${nom}:${ligne}`);
       }
     }
@@ -129,6 +130,43 @@ describe("chaque champ porte le nom qu'on lit à côté", () => {
       fautes,
       "étiquettes détachées de leur champ : " + fautes.slice(0, 15).join(", "),
     ).toEqual([]);
+  });
+
+  /**
+   * ⚠️⚠️ ET LE LIEN SE VÉRIFIE DANS LES DEUX SENS. Le test ci-dessus part de
+   * l'ÉTIQUETTE et cherche son champ : il ne voit donc rien quand le champ est
+   * écrit AVANT son étiquette. C'est exactement le montage d'un envoi de
+   * fichier, où le champ doit précéder pour que le style du focus puisse
+   * descendre sur l'étiquette. J'ai détaché l'étiquette de l'import CSV pour
+   * m'en assurer : le garde est resté vert.
+   *
+   * On part donc aussi du CHAMP : un identifiant que personne ne désigne ne
+   * relie rien, et le champ reste anonyme quel que soit le texte d'à côté.
+   */
+  it("aucun identifiant de champ n'est laissé sans étiquette qui le désigne", () => {
+    const fautes: string[] = [];
+    let vus = 0;
+    for (const chemin of [...fichiers("app"), ...fichiers("components")]) {
+      const source = sansCommentaires(readFileSync(chemin, "utf8"));
+      for (const m of Array.from(source.matchAll(/<(input|textarea|select)\b/gi))) {
+        const fin = finDeBalise(source, m.index!);
+        if (fin < 0) continue;
+        const balise = source.slice(m.index!, fin + 1);
+        // Un champ caché ou un bouton de formulaire ne s'annonce pas.
+        if (/type="(hidden|submit|button)"/.test(balise)) continue;
+        if (/aria-label|aria-labelledby/.test(balise)) continue;
+        const identifiant = /\bid=("[^"]*"|\{[^}]*\})/.exec(balise);
+        if (!identifiant) continue;
+        // Un champ ENVELOPPÉ par son étiquette est déjà nommé par elle.
+        const avant = source.slice(0, m.index!);
+        if (avant.lastIndexOf("<label") > avant.lastIndexOf("</label>")) continue;
+        vus++;
+        if (source.includes("htmlFor=" + identifiant[1])) continue;
+        fautes.push(`${chemin.split(/[\\/]/).slice(-2).join("/")}:${avant.split(/\r?\n/).length}`);
+      }
+    }
+    expect(vus, "aucun champ identifié trouvé : le motif ne cherche rien").toBeGreaterThan(50);
+    expect(fautes, "identifiants que personne ne désigne : " + fautes.join(", ")).toEqual([]);
   });
 
   /**
@@ -142,7 +180,7 @@ describe("chaque champ porte le nom qu'on lit à côté", () => {
     for (const chemin of [...fichiers("app"), ...fichiers("components")]) {
       const nom = chemin.split(/[\\/]/).slice(-2).join("/");
       const vus = new Map<string, number>();
-      for (const m of Array.from(readFileSync(chemin, "utf8").matchAll(/htmlFor="([^"]+)"/g))) {
+      for (const m of Array.from(sansCommentaires(readFileSync(chemin, "utf8")).matchAll(/htmlFor="([^"]+)"/g))) {
         vus.set(m[1], (vus.get(m[1]) ?? 0) + 1);
       }
       for (const [id, n] of Array.from(vus)) {

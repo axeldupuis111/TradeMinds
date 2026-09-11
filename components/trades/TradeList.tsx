@@ -1249,7 +1249,26 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
                       {/* Paire */}
                       <td className="px-3 py-2">
                         <span className="inline-flex items-center gap-1.5">
-                          <span className="font-mono text-sm font-semibold text-foreground">{tr.pair}</span>
+                          {/*
+                            ⚠️⚠️ LE DÉTAIL D'UN TRADE N'ÉTAIT ATTEIGNABLE QU'À LA
+                            SOURIS : la ligne entière portait le clic, et une
+                            ligne de tableau ne reçoit pas le focus. Au clavier,
+                            AUCUN trade du journal ne pouvait s'ouvrir.
+
+                            ⚠️ LE CLIC RESTE SUR LA LIGNE, pour ne rien retirer
+                            à la souris : il double maintenant un vrai bouton,
+                            au lieu d'être le seul chemin.
+                          */}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setSelectedTrade(tr as TradeDetail); }}
+                            aria-label={t("trades_open_detail", {
+                              pair: tr.pair,
+                              date: tr.open_time ? enDate(tr.open_time) : "—",
+                            })}
+                            className="font-mono text-sm font-semibold text-foreground hover:text-accent transition-colors"
+                          >
+                            {tr.pair}
+                          </button>
                           {/* Indicateur de capture jointe. Il portait aussi
                               une note A-D venue de l'analyse visuelle IA,
                               retirée le 2026-08-14 : le libellé annonçait donc
@@ -1304,7 +1323,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
                         <button
                           onClick={() => handleDelete(tr.id)}
                           disabled={deletingId === tr.id}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted hover:text-loss disabled:opacity-50"
+                          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-muted hover:text-loss disabled:opacity-50"
                           title={t("trades_delete")}
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

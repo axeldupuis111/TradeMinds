@@ -851,7 +851,7 @@ export default function SessionPage() {
                   </label>
                   <button
                     onClick={() => removeChecklistItem(idx)} aria-label={t("session_remove")}
-                    className="text-muted hover:text-loss transition-colors opacity-0 group-hover:opacity-100"
+                    className="text-muted hover:text-loss transition-colors opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                     title={t("session_remove")}
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -3989,6 +3989,7 @@ const dict: Record<string, string> = {
   "terms_agree_full": "J'accepte les {cgu}, les {cgv} et la {confidentialite}",
   "trades_select_page": "Sélectionner tous les trades de cette page",
   "trades_select_one": "Sélectionner le trade {pair} du {date}",
+  "trades_open_detail": "Ouvrir le détail du trade {pair} du {date}",
   "a11y_date_from": "Date de début",
   "a11y_date_to": "Date de fin",
   "a11y_amount_min": "Montant minimum",
