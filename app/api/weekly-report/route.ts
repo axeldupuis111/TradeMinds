@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { sendPushToUser } from "@/lib/push";
 import { alertCronFailure } from "@/lib/cron-alert";
-import { fetchAllRows } from "@/lib/supabase-paginate";
+import { fetchAllByIds, fetchAllRows } from "@/lib/supabase-paginate";
 import { localHour, localWeekday } from "@/lib/timezone";
 import { renderBrandEmail, statCell, statRow, EMAIL_GREEN, EMAIL_RED, EMAIL_INK } from "@/lib/email-template";
 
@@ -254,13 +254,17 @@ async function handle(req: Request) {
 
   // Préférence push « rapport hebdo » (défensif : colonne absente → opt-in).
   const weeklyPushOptOut = new Set<string>();
-  const weeklyPrefs = await fetchAllRows<{ id: string; push_notif_weekly?: boolean }>((from, to) =>
-    supabase
-      .from("profiles")
-      .select("id, push_notif_weekly")
-      .in("id", users.map((u) => u.id))
-      .order("id")
-      .range(from, to),
+  // ⚠️ Deux plafonds : la liste d'identifiants dans l'URL et les mille lignes
+  // de réponse. `fetchAllByIds` découpe l'une et pagine l'autre.
+  const weeklyPrefs = await fetchAllByIds<{ id: string; push_notif_weekly?: boolean }>(
+    users.map((u) => u.id),
+    (lot, from, to) =>
+      supabase
+        .from("profiles")
+        .select("id, push_notif_weekly")
+        .in("id", lot)
+        .order("id")
+        .range(from, to),
   );
   {
     for (const r of weeklyPrefs ?? []) {

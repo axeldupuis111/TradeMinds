@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { sendPushToUser } from "@/lib/push";
 import { alertCronFailure } from "@/lib/cron-alert";
-import { fetchAllRows } from "@/lib/supabase-paginate";
+import { fetchAllByIds, fetchAllRows } from "@/lib/supabase-paginate";
 import { localHour } from "@/lib/timezone";
 import { streakAtRisk, type ReviewRow } from "@/lib/streak-guard";
 
@@ -86,16 +86,16 @@ async function handle(req: Request) {
   // 2. Their language / timezone / alert opt-out.
   // ⚠️ `.in(...)` PLAFONNE AUSSI À MILLE LIGNES : une liste d'identifiants plus
   // longue ne fait pas grandir la réponse, elle la fait tronquer en silence.
-  const profiles = await fetchAllRows<{
+  const profiles = await fetchAllByIds<{
     id: string;
     language: string | null;
     timezone: string | null;
     push_notif_alerts?: boolean;
-  }>((from, to) =>
+  }>(userIds, (lot, from, to) =>
     supabase
       .from("profiles")
       .select("id, language, timezone, push_notif_alerts")
-      .in("id", userIds)
+      .in("id", lot)
       .order("id")
       .range(from, to),
   );

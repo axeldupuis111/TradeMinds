@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { sendPushToUser } from "@/lib/push";
 import { alertCronFailure } from "@/lib/cron-alert";
-import { fetchAllRows } from "@/lib/supabase-paginate";
+import { fetchAllByIds, fetchAllRows } from "@/lib/supabase-paginate";
 import { localHour, localWeekday } from "@/lib/timezone";
 import { renderBrandEmail, emailParagraph } from "@/lib/email-template";
 
@@ -142,12 +142,19 @@ export async function POST(req: Request) {
   const pushUserIds = Array.from(new Set((pushSubs ?? []).map((s) => s.user_id)));
 
   if (pushUserIds.length > 0) {
-    const pushProfiles = await fetchAllRows<{ id: string; language: string | null; timezone: string | null }>(
-      (from, to) =>
+    /**
+     * ⚠️ DEUX PLAFONDS, PAS UN : la liste d'identifiants voyage dans l'URL
+     * (`?id=in.(…)`, 37 caractères par UUID) et la réponse est plafonnée à
+     * mille lignes. La première panne est franche (414), la seconde
+     * silencieuse. `fetchAllByIds` couvre les deux.
+     */
+    const pushProfiles = await fetchAllByIds<{ id: string; language: string | null; timezone: string | null }>(
+      pushUserIds,
+      (lot, from, to) =>
         supabase
           .from("profiles")
           .select("id, language, timezone")
-          .in("id", pushUserIds)
+          .in("id", lot)
           .order("id")
           .range(from, to),
     );
@@ -157,13 +164,15 @@ export async function POST(req: Request) {
 
     // Préférence push « rappel de session » (défensif : colonne absente → opt-in).
     const optedOut = new Set<string>();
-    const prefRows = await fetchAllRows<{ id: string; push_notif_session?: boolean }>((from, to) =>
-      supabase
-        .from("profiles")
-        .select("id, push_notif_session")
-        .in("id", pushUserIds)
-        .order("id")
-        .range(from, to),
+    const prefRows = await fetchAllByIds<{ id: string; push_notif_session?: boolean }>(
+      pushUserIds,
+      (lot, from, to) =>
+        supabase
+          .from("profiles")
+          .select("id, push_notif_session")
+          .in("id", lot)
+          .order("id")
+          .range(from, to),
     );
     {
       for (const r of prefRows ?? []) {

@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { fetchAllRows } from "@/lib/supabase-paginate";
+import { fetchAllByIds, fetchAllRows } from "@/lib/supabase-paginate";
 import { NextResponse } from "next/server";
 import { sendPushToUser } from "@/lib/push";
 import {
@@ -93,12 +93,18 @@ async function handle(req: Request) {
   if (subscribedIds.length === 0) return NextResponse.json({ notified: 0, reason: "no subscribers" });
 
   // 3. Their language + opt-out preference.
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, language, push_notif_news")
-    .in("id", subscribedIds)
-    .order("id")
-    .limit(subscribedIds.length);
+  // ⚠️ Deux plafonds : la liste d'identifiants dans l'URL et les mille lignes
+  // de réponse. `fetchAllByIds` découpe l'une et pagine l'autre.
+  const profiles = await fetchAllByIds<{ id: string; language: string | null; push_notif_news?: boolean }>(
+    subscribedIds,
+    (lot, from, to) =>
+      supabase
+        .from("profiles")
+        .select("id, language, push_notif_news")
+        .in("id", lot)
+        .order("id")
+        .range(from, to),
+  );
   const optedUsers = (profiles ?? []).filter((p) => (p as { push_notif_news?: boolean }).push_notif_news !== false);
   if (optedUsers.length === 0) return NextResponse.json({ notified: 0, reason: "no opted-in users" });
 
