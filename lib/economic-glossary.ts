@@ -40,7 +40,7 @@ const NATIONALITIES = new Set([
  * which indicator we're talking about.
  */
 const NOISE = new Set([
-  "m/m", "y/y", "q/q", "q/y", "mom", "yoy", "qoq", "m/m.", "y/y.",
+  "m/m", "y/y", "q/q", "q/y", "mom", "yoy", "qoq", "m/m.", "y/y.", "3m/3m", "3m/3m.",
   "flash", "prelim", "preliminary", "advance", "advanced", "final", "revised",
   "second", "third", "1st", "2nd", "3rd", "est", "estimate",
 ]);
