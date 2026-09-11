@@ -238,3 +238,58 @@ describe("money() et la langue", () => {
     );
   });
 });
+
+/**
+ * LA COLONNE QUE PLUS PERSONNE NE DOIT LIRE.
+ *
+ * ── POURQUOI CE TEST ────────────────────────────────────────────────────────
+ *
+ * ⚠️⚠️ `profiles.currency` EXISTE TOUJOURS EN BASE, avec des valeurs. C'est
+ * l'ancien réglage : UNE devise pour tout le compte, demandée à l'inscription.
+ * La devise se décide désormais PAR COMPTE de trading, et le broker fait
+ * autorité (voir l'en-tête de `account-currency-server.ts`).
+ *
+ * ⚠️ ON NE SUPPRIME PAS LA COLONNE : une suppression de données en production
+ * ne s'improvise pas, elle ne rapporte rien, et une colonne morte ne coûte
+ * rien. Ce qui coûte, c'est qu'on se remette à la LIRE : un écran qui la
+ * relirait afficherait de nouveau une devise unique pour des comptes qui n'en
+ * partagent plus, et le défaut serait invisible tant que tous les comptes sont
+ * en euros, comme aujourd'hui.
+ */
+describe("l'ancien réglage de devise du profil", () => {
+  it("n'est lu par aucun écran", async () => {
+    const { readdirSync, readFileSync, statSync } = await import("node:fs");
+    const { join } = await import("node:path");
+
+    function fichiers(d: string, out: string[] = []): string[] {
+      for (const f of readdirSync(d)) {
+        if (f === "node_modules" || f === ".next") continue;
+        const chemin = join(d, f);
+        if (statSync(chemin).isDirectory()) fichiers(chemin, out);
+        else if (/\.tsx?$/.test(chemin) && !chemin.includes(".test.")) out.push(chemin);
+      }
+      return out;
+    }
+
+    const fautes: string[] = [];
+    for (const racine of ["app", "components", "lib"]) {
+      for (const chemin of fichiers(join(process.cwd(), racine))) {
+        const source = readFileSync(chemin, "utf8");
+        // Une lecture de `profiles` qui demande la colonne `currency`.
+        const lectures = Array.from(
+          source.matchAll(/from\(\s*["'`]profiles["'`]\s*\)[\s\S]{0,200}?\.select\(\s*["'`]([^"'`]*)["'`]/g),
+        );
+        for (const m of lectures) {
+          if (/\bcurrency\b/.test(m[1])) {
+            fautes.push(chemin.split(/[\/]/).slice(-2).join("/"));
+          }
+        }
+      }
+    }
+    expect(
+      Array.from(new Set(fautes)),
+      "profiles.currency est relu : la devise redevient unique pour tous les comptes : " +
+        fautes.join(", "),
+    ).toEqual([]);
+  });
+});
