@@ -355,7 +355,7 @@ export const COACH_TOOLS = [
   {
     name: "find_trades",
     description:
-      "Recherche les trades clôturés du trader. SEULE source d'ids valides : passe par lui avant d'annoter, de rattacher ou de supprimer.",
+      "Trades clôturés, par ÉCHANTILLON plafonné : pour un total ou un taux, get_journal_summary. SEULE source d'ids valides : passe par lui avant d'annoter, de rattacher ou de supprimer.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -656,7 +656,7 @@ export const COACH_TOOLS = [
   {
     name: "get_journal_summary",
     description:
-      "TOTAUX du journal : trades clôturés, gagnants, taux de réussite, P&L net. Pour « combien de trades », « mon winrate », « mon P&L ». Ne les recompte JAMAIS depuis find_trades, qui n'en rend qu'un échantillon.",
+      "TOTAUX du journal : trades clôturés, gagnants, taux de réussite, P&L net. Pour « combien de trades », « mon winrate », « mon P&L total ».",
     input_schema: {
       type: "object" as const,
       properties: {

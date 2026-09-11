@@ -61,8 +61,14 @@ describe("l'outil qui donne les totaux au coach", () => {
     const { join } = await import("node:path");
     const src = readFileSync(join(process.cwd(), "lib/coach-tools.ts"), "utf8");
     expect(src).toContain('name: "get_journal_summary"');
-    expect(src, "rien n'interdit au coach de recompter depuis find_trades").toMatch(
-      /find_trades[^"]*échantillon/,
+    /**
+     * ⚠️ LE DÉTOURNEMENT SE DIT LÀ OÙ LE MODÈLE CHOISIT. Une consigne posée sur
+     * le bon outil ne suffit pas : c'est la description du MAUVAIS outil qui
+     * doit renvoyer vers le bon, parce que c'est elle qu'il lit en premier
+     * quand il cherche « des trades ».
+     */
+    expect(src, "find_trades ne renvoie pas vers l'outil des totaux").toMatch(
+      /ÉCHANTILLON plafonné[^"]*get_journal_summary/,
     );
     expect(src, "les totaux ne passent pas par le calcul partagé").toContain("recapitulatif(lignes)");
     expect(src, "lecture non paginée : au-delà de mille trades le total serait faux").toMatch(
