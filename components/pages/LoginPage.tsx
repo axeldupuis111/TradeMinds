@@ -45,6 +45,28 @@ export default function LoginPage() {
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const router = useRouter();
+
+  /**
+   * Ou ramener quelqu'un apres sa reconnexion.
+   *
+   * ⚠️⚠️ LE BANDEAU D'EXPIRATION DE SESSION POSE `?redirect=`, ET LA PAGE
+   * L'IGNORAIT : le trader interrompu au milieu de son Analytics repartait sur
+   * le tableau de bord et devait retrouver son chemin. Un parametre qu'on pose
+   * et qu'on ne lit pas est une promesse qu'on ne tient pas.
+   *
+   * ⚠️ ET ON N'ACCEPTE QUE `/dashboard…`. Suivre une destination arbitraire
+   * venue de l'adresse, c'est une redirection ouverte : il suffirait d'un lien
+   * « connecte-toi » pour renvoyer ailleurs quelqu'un qui vient de saisir son
+   * mot de passe. Deux barres obliques de suite sont deja une autre origine.
+   */
+  function destination(): string {
+    if (typeof window === "undefined") return "/dashboard";
+    const demande = new URLSearchParams(window.location.search).get("redirect");
+    if (!demande) return "/dashboard";
+    if (!demande.startsWith("/dashboard")) return "/dashboard";
+    if (demande.startsWith("//")) return "/dashboard";
+    return demande;
+  }
   const supabase = createClient();
 
   // Lu depuis window plutôt que via useSearchParams : ça évite d'avoir à
@@ -117,7 +139,7 @@ export default function LoginPage() {
     if (error) {
       showAuthError(error);
     } else {
-      router.push("/dashboard");
+      router.push(destination());
       router.refresh();
     }
   }

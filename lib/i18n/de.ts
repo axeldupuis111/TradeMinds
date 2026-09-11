@@ -648,6 +648,8 @@ const dict: Record<string, string> = {
   "trades_load_failed": "Dein Journal konnte gerade nicht gelesen werden. Deine Trades sind weiterhin da: die Anzeige konnte sie nur nicht laden.",
   "dash_read_incomplete": "Dein Journal konnte nicht vollständig gelesen werden: was du unten siehst, ist unvollständig. Es ist nichts verloren, lade die Seite gleich neu.",
   "lecture_impossible": "Deine Daten konnten nicht gelesen werden. Es ist nichts verloren: die Anzeige konnte sie nur nicht laden.",
+  "session_expiree": "Deine Sitzung ist abgelaufen. Es ist nichts verloren, aber diese Seite kann nichts mehr speichern oder neu laden, bis du dich wieder anmeldest.",
+  "session_expiree_action": "Erneut anmelden",
   "trades_col_date": "Datum",
   "trades_col_pair": "Paar",
   "trades_col_dir": "Richtung",

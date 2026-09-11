@@ -648,6 +648,8 @@ const dict: Record<string, string> = {
   "trades_load_failed": "Impossible de lire ton journal pour l'instant. Tes trades sont bien là : c'est l'affichage qui n'a pas pu les charger.",
   "dash_read_incomplete": "Ton journal n'a pas pu être lu en entier : ce qui s'affiche ci-dessous est incomplet. Rien n'est perdu, recharge la page dans un instant.",
   "lecture_impossible": "Tes données n'ont pas pu être lues. Rien n'est perdu : c'est l'affichage qui n'a pas réussi à les charger.",
+  "session_expiree": "Ta session a expiré. Rien n'est perdu, mais cette page ne peut plus rien enregistrer ni recharger tant que tu n'es pas reconnecté.",
+  "session_expiree_action": "Me reconnecter",
   "trades_col_date": "Date",
   "trades_col_pair": "Paire",
   "trades_col_dir": "Direction",

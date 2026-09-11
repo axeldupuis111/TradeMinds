@@ -36,9 +36,44 @@ import type { SupabaseClient, UserResponse } from "@supabase/supabase-js";
  */
 const TTL_MS = 3_000;
 
+/**
+ * L'EXPIRATION DE SESSION SE DIT, UNE FOIS.
+ *
+ * ⚠️⚠️ QUAND LA SESSION EXPIRE, LE PRODUIT NE FAISAIT RIEN DU TOUT. Mesure
+ * en production en faisant repondre 401 « JWT expired » a Supabase : le trader
+ * change de page de liste, `getUser()` ne rend plus personne, et le motif ecrit
+ * quatre-vingt-seize fois dans ce depot, `if (!user) return;`, rend la main en
+ * silence. Pas de lecture, pas de message, pas de redirection. L'ecran garde
+ * ses anciens chiffres et ne repond plus a rien, indefiniment.
+ *
+ * ⚠️ LE SIGNAL PART D'ICI, pas des appelants : les corriger un par un
+ * demanderait de ne jamais en oublier un, et c'est exactement la forme de
+ * defaut que ce depot passe son temps a reparer.
+ *
+ * ⚠️ ET IL NE PART QUE SI L'ON A DEJA VU QUELQU'UN. Sur la page de
+ * connexion, ne rendre aucun utilisateur est la situation normale : prevenir la
+ * serait une fausse alerte, et une fausse alerte s'apprend a ignorer.
+ */
+export const EVENEMENT_SESSION_EXPIREE = "td:session-expiree";
+
 let client: SupabaseClient | null = null;
 let enCours: Promise<UserResponse> | null = null;
 let dernier: { a: number; reponse: UserResponse } | null = null;
+let aVuQuelquun = false;
+let dejaSignale = false;
+
+function examiner(reponse: UserResponse): void {
+  if (reponse.data?.user) {
+    aVuQuelquun = true;
+    dejaSignale = false;
+    return;
+  }
+  if (!aVuQuelquun || dejaSignale) return;
+  dejaSignale = true;
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(EVENEMENT_SESSION_EXPIREE));
+  }
+}
 
 export function createClient(): SupabaseClient {
   if (client) return client;
@@ -61,6 +96,7 @@ export function createClient(): SupabaseClient {
     enCours = origine().then(
       (reponse) => {
         enCours = null;
+        examiner(reponse);
         // Une réponse en erreur n'est pas mise de côté : le prochain appelant
         // doit pouvoir retenter tout de suite.
         if (!reponse.error) dernier = { a: Date.now(), reponse };
@@ -74,9 +110,18 @@ export function createClient(): SupabaseClient {
     return enCours;
   }) as typeof client.auth.getUser;
 
-  client.auth.onAuthStateChange(() => {
+  client.auth.onAuthStateChange((evenement, session) => {
     dernier = null;
     enCours = null;
+    if (session?.user) {
+      aVuQuelquun = true;
+      dejaSignale = false;
+    }
+    // Une sortie de session VOULUE n'est pas une expiration.
+    if (evenement === "SIGNED_OUT") {
+      aVuQuelquun = false;
+      dejaSignale = false;
+    }
   });
 
   return client;

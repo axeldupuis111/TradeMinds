@@ -1,6 +1,7 @@
 "use client";
 
 import AmbientBackground from "@/components/dashboard/AmbientBackground";
+import SessionExpiree from "@/components/SessionExpiree";
 import CoachDock from "@/components/coach/CoachDock";
 import CommandPalette from "@/components/CommandPalette";
 import Header from "@/components/Header";
@@ -225,6 +226,9 @@ export default function DashboardLayout({
         <NewsWindowGuard />
         <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
         {/* AlertCenter: unified alert bus (inert until sources push in B2+) */}
+        {/* ⚠️ AVANT TOUS LES AUTRES BANDEAUX : une session expirée rend tout
+            le reste de l'écran inopérant, c'est donc la première chose à lire. */}
+        <SessionExpiree />
         <AlertCenter />
         <SubscriptionBanner />
         <SessionReminderBanner />
