@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useLanguage } from "@/lib/LanguageContext";
 import SyncGuide from "./SyncGuide";
 import BrokerOAuthBox from "./BrokerOAuthBox";
+import { enDateEtHeure } from "@/lib/dates";
 
 interface Connection {
   id: string;
@@ -213,7 +214,7 @@ export default function TradovateConnect() {
                       {c.last_synced_at && c.status === "active" && (
                         <span className="text-muted">
                           {" · "}
-                          {new Date(c.last_synced_at).toLocaleString()}
+                          {enDateEtHeure(c.last_synced_at)}
                         </span>
                       )}
                       {c.status === "error" && c.last_error && (

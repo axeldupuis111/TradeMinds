@@ -24,6 +24,7 @@ import { ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { pourcent } from "@/lib/nombres";
+import { enDate } from "@/lib/dates";
 
 export interface TradeDetail {
   id: string;
@@ -573,7 +574,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2 text-sm">
-              <div><span className="text-muted">{t("trades_col_date")}:</span> <span className="text-foreground">{trade.open_time ? new Date(trade.open_time).toLocaleDateString() : "—"}</span></div>
+              <div><span className="text-muted">{t("trades_col_date")}:</span> <span className="text-foreground">{trade.open_time ? enDate(trade.open_time) : "—"}</span></div>
               <div><span className="text-muted">{t("trades_col_lot")}:</span> <span className="text-foreground">{trade.lot_size}</span></div>
               <div><span className="text-muted">{t("trades_col_entry")}:</span> <span className="text-foreground">{trade.entry_price}</span></div>
               <div><span className="text-muted">{t("trades_col_exit")}:</span> <span className="text-foreground">{trade.exit_price}</span></div>

@@ -4,6 +4,8 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { Fragment, useEffect, useState } from "react";
 import { pourcent } from "@/lib/nombres";
+import { enDate, enDateEtHeure } from "@/lib/dates";
+import { langueCourante } from "@/lib/nombres";
 
 const ADMIN_EMAIL = "axel.dupuis111@gmail.com";
 
@@ -247,7 +249,7 @@ export default function AdminPage() {
   }
 
   function euros(cents: number): string {
-    return (cents / 100).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
+    return (cents / 100).toLocaleString(langueCourante(), { style: "currency", currency: "EUR" });
   }
 
   async function markHandled(id: string) {
@@ -505,7 +507,7 @@ export default function AdminPage() {
                                       {m.isOwner && <span className="text-gold"> · animateur</span>}
                                     </p>
                                     <p className="text-[10px] text-muted">
-                                      {m.source} · {m.joinedAt ? new Date(m.joinedAt).toLocaleDateString("fr-FR") : ""}
+                                      {m.source} · {m.joinedAt ? enDate(m.joinedAt) : ""}
                                     </p>
                                   </div>
                                   {!m.isOwner && (
@@ -1118,7 +1120,7 @@ export default function AdminPage() {
                     <span className="text-muted text-xs">{msg.email}</span>
                     {msg.status === "new" && <span className="px-1.5 py-0.5 bg-accent/10 text-accent text-xs rounded-full font-medium">{t("admin_msg_new")}</span>}
                   </div>
-                  <span className="text-muted text-xs">{new Date(msg.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                  <span className="text-muted text-xs">{enDateEtHeure(msg.created_at)}</span>
                 </div>
                 {msg.subject && <p className="text-foreground text-sm font-medium mb-1">{msg.subject}</p>}
                 <p className="text-muted text-sm whitespace-pre-wrap">{msg.message}</p>

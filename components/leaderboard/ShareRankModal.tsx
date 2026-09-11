@@ -12,6 +12,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { Activity, Check, Copy, Download, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { enDate } from "@/lib/dates";
 
 export interface ShareRankStats {
   score: number;
@@ -118,7 +119,7 @@ export default function ShareRankModal({ stats, onClose }: { stats: ShareRankSta
                 </span>
                 <span style={{ fontSize: 14, fontWeight: 700, color: FG, letterSpacing: "-0.01em" }}>TradeDiscipline</span>
               </div>
-              <span style={{ fontSize: 11, color: MUTED }}>{new Date().toLocaleDateString()}</span>
+              <span style={{ fontSize: 11, color: MUTED }}>{enDate(new Date())}</span>
             </div>
 
             {/* Palier + score */}

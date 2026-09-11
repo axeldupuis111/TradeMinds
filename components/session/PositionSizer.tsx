@@ -656,7 +656,7 @@ export default function PositionSizer({ strategy }: Props) {
                             </p>
                             {unitsPerLot !== null && (
                               <p className="text-[10px] text-muted mt-0.5">
-                                {t("sizer_contract_size")}: {unitsPerLot.toLocaleString()}
+                                {t("sizer_contract_size")}: {nombre(unitsPerLot)}
                               </p>
                             )}
                           </div>

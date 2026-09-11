@@ -13,6 +13,7 @@ import Link from "next/link";
 import React, { useRef, useState, useEffect } from "react";
 import { motion, useInView, useReducedMotion, AnimatePresence, useMotionValue, useSpring, useTransform, useScroll } from "framer-motion";
 import type { TargetAndTransition, Transition } from "framer-motion";
+import { nombre } from "@/lib/nombres";
 
 /* ─────────────────────────────────────────────
    ANIMATION PRIMITIVES
@@ -136,7 +137,7 @@ function LiveActivity() {
           className="text-xs font-bold tabular-nums"
           style={{ color: "rgb(var(--foreground))" }}
         >
-          {n.toLocaleString("fr-FR")}
+          {nombre(n)}
         </motion.span>
       </AnimatePresence>
       <svg className="w-2.5 h-2.5 shrink-0" style={{ color: "rgb(var(--profit))" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} aria-hidden>

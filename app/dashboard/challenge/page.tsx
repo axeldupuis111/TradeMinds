@@ -17,6 +17,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { setDemoWatermark } from "@/lib/pdf/kit";
 import { createClient } from "@/lib/supabase/client";
+import { enDate, enJourEtMois } from "@/lib/dates";
 import { lireTousLesTradesDuCompte, netDuTrade } from "@/lib/trades-du-compte";
 import { pourcent } from "@/lib/nombres";
 import { fetchAllRows, chunk, ID_CHUNK } from "@/lib/supabase-paginate";
@@ -649,7 +650,7 @@ function AccountCard({
           </div>
           <p className="text-muted text-sm">
             {ac.account_number && <span className="text-foreground">#{ac.account_number} · </span>}
-            {t("challenge_started")} {new Date(ac.start_date).toLocaleDateString()}
+            {t("challenge_started")} {enDate(ac.start_date)}
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -976,7 +977,7 @@ export default function ChallengePage() {
       const eqData = (challengeTrades || []).map((t) => {
         running += netOf(t);
         return {
-          date: t.open_time ? new Date(t.open_time).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }) : "—",
+          date: t.open_time ? enJourEtMois(t.open_time) : "—",
           balance: Math.round(running * 100) / 100,
         };
       });
@@ -1603,8 +1604,8 @@ export default function ChallengePage() {
                       )}
                     </div>
                     <p className="text-muted text-sm mt-1">
-                      {new Date(c.start_date).toLocaleDateString("fr-FR")}
-                      {c.end_date && ` → ${new Date(c.end_date).toLocaleDateString("fr-FR")}`}
+                      {enDate(c.start_date)}
+                      {c.end_date && ` → ${enDate(c.end_date)}`}
                     </p>
                   </div>
                   <div className="flex items-center gap-4">

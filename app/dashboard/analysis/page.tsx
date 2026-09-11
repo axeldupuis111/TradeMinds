@@ -20,6 +20,7 @@ import { track } from "@/lib/track";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import { enDate } from "@/lib/dates";
 
 // Action posée par le coach (chip affiché sous le message assistant).
 /**
@@ -1763,7 +1764,7 @@ export default function AnalysisPage() {
                     <div key={item.id} className="border border-border rounded-lg p-2.5">
                       <p className="text-xs text-accent font-medium truncate">Q: {item.question}</p>
                       <p className="text-[11px] text-muted mt-1 line-clamp-2">{item.answer}</p>
-                      <p className="text-[10px] text-muted mt-1">{new Date(item.created_at).toLocaleDateString()}</p>
+                      <p className="text-[10px] text-muted mt-1">{enDate(item.created_at)}</p>
                     </div>
                   ))}
                 </div>

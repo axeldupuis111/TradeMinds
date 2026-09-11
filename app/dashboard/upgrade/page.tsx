@@ -11,6 +11,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 
 import { PLAN_FEATURES as features, FREE_BENEFITS, PLUS_BENEFITS, PREMIUM_BENEFITS, planQuotaSegments } from "@/lib/plan-features";
+import { enDateLongue } from "@/lib/dates";
 import { langueCourante, nombre } from "@/lib/nombres";
 
 const faqKeys = [
@@ -287,7 +288,8 @@ export default function UpgradePage() {
 
   function formatDate(epochSeconds: number | null): string {
     if (!epochSeconds) return "—";
-    return new Date(epochSeconds * 1000).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+    // ⚠️ La langue du LECTEUR : c'est la date à laquelle il sera débité.
+    return enDateLongue(epochSeconds * 1000);
   }
 
   function renderValue(val: boolean | string): React.ReactNode {
