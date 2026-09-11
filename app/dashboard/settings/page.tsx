@@ -1,5 +1,6 @@
 "use client";
 
+import { lienPartageable } from "@/lib/seo";
 import UpgradeBanner from "@/components/UpgradeBanner";
 import SyncPlatformCard from "@/components/settings/SyncPlatformCard";
 import SyncGuide from "@/components/settings/SyncGuide";
@@ -238,7 +239,7 @@ export default function SettingsPage() {
   }
 
   function copyLink() {
-    const url = `${window.location.origin}/profile/${username.trim().toLowerCase()}`;
+    const url = lienPartageable(`/profile/${username.trim().toLowerCase()}`);
     navigator.clipboard.writeText(url);
     showToast("success", t("settings_link_copied"));
   }
@@ -281,7 +282,7 @@ export default function SettingsPage() {
 
   const canShare = plan === "plus" || plan === "premium";
   const confirmWord = t("settings_delete_confirm_word");
-  const profileUrl = `${window.location.origin}/profile/${originalUsername}`;
+  const profileUrl = lienPartageable(`/profile/${originalUsername}`);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

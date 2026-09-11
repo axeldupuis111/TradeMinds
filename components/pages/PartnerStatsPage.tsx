@@ -1,5 +1,6 @@
 "use client";
 
+import { lienPartageable } from "@/lib/seo";
 import PublicHeader from "@/components/PublicHeader";
 import RiskDisclosure from "@/components/legal/RiskDisclosure";
 import { useEffect, useState } from "react";
@@ -43,8 +44,7 @@ export default function PartnerStatsPage({ token }: { token: string }) {
       .catch((e: Error) => setError(e.message));
   }, [token]);
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "https://tradediscipline.app";
-  const link = stats ? `${origin}/?ref=${stats.code}` : "";
+  const link = stats ? lienPartageable(`/?ref=${stats.code}`) : "";
 
   return (
     <>

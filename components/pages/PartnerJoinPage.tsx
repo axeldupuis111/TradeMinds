@@ -1,5 +1,6 @@
 "use client";
 
+import { lienPartageable } from "@/lib/seo";
 import PublicHeader from "@/components/PublicHeader";
 import RiskDisclosure from "@/components/legal/RiskDisclosure";
 import { useEffect, useState } from "react";
@@ -48,9 +49,8 @@ export default function PartnerJoinPage() {
     }
   }, []);
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "https://tradediscipline.app";
-  const personalLink = result ? `${origin}/?ref=${result.code}` : "";
-  const statsLink = result ? `${origin}/partner/stats/${result.statsToken}` : "";
+  const personalLink = result ? lienPartageable(`/?ref=${result.code}`) : "";
+  const statsLink = result ? lienPartageable(`/partner/stats/${result.statsToken}`) : "";
 
   async function copy(value: string, which: "link" | "stats") {
     try {

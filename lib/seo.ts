@@ -293,3 +293,27 @@ export const LEGAL_META: Record<string, Record<Locale, TextesDePage>> = {
     es: { title: "Aviso legal - TradeDiscipline", description: "Editor, alojamiento y datos de contacto del sitio TradeDiscipline." },
   },
 };
+
+/**
+ * L'ADRESSE D'UN LIEN DESTINÉ À ÊTRE PARTAGÉ.
+ *
+ * ── LE DÉFAUT, VU À L'ÉCRAN ─────────────────────────────────────────────────
+ *
+ * ⚠️⚠️ SUR « PARAMÈTRES », LE « LIEN PUBLIC » PROPOSÉ À LA COPIE ÉTAIT :
+ * `https://tradediscipline-git-feat-backtes-…vercel.app/profile/besttrader`.
+ * Il était construit sur `window.location.origin`, c'est-à-dire sur l'adresse
+ * où l'on se trouve. Copié depuis une préversion, il mène à un domaine protégé
+ * que personne d'autre ne peut ouvrir : le lien qu'on partage ne doit pas
+ * dépendre de la porte par laquelle on est entré.
+ *
+ * ⚠️ LA RÈGLE ÉTAIT DÉJÀ ÀMOITIÉ ÉCRITE : les deux pages partenaires
+ * retombaient sur `https://tradediscipline.app` côté serveur, ce qui dit bien
+ * quelle adresse fait foi, mais gardaient l'origine courante côté navigateur,
+ * c'est-à-dire exactement là où le lien est copié.
+ *
+ * ⚠️ À NE PAS CONFONDRE AVEC UNE REDIRECTION D'AUTHENTIFICATION : celle-là doit
+ * ramener là où l'on est, et garde donc `window.location.origin`.
+ */
+export function lienPartageable(chemin: string): string {
+  return `${SITE_URL}${chemin.startsWith("/") ? chemin : `/${chemin}`}`;
+}
