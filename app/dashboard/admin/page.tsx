@@ -395,12 +395,12 @@ export default function AdminPage() {
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="block text-sm text-muted mb-1">Slug (lien ?ref=)</label>
-                <input value={comSlug} onChange={(e) => setComSlug(e.target.value)} placeholder="infx" className={inputClass} />
+                <label htmlFor="admin-slug-lien-ref" className="block text-sm text-muted mb-1">Slug (lien ?ref=)</label>
+                <input id="admin-slug-lien-ref" value={comSlug} onChange={(e) => setComSlug(e.target.value)} placeholder="infx" className={inputClass} />
               </div>
               <div>
-                <label className="block text-sm text-muted mb-1">Nom affiché</label>
-                <input value={comName} onChange={(e) => setComName(e.target.value)} placeholder="INFX" className={inputClass} />
+                <label htmlFor="admin-nom-affich" className="block text-sm text-muted mb-1">Nom affiché</label>
+                <input id="admin-nom-affich" value={comName} onChange={(e) => setComName(e.target.value)} placeholder="INFX" className={inputClass} />
               </div>
             </div>
             <button
@@ -562,8 +562,8 @@ export default function AdminPage() {
       {tab === "plans" && (
         <div className="mt-6 bg-card border border-border rounded-xl p-6 space-y-4">
           <div>
-            <label className="block text-sm text-muted mb-1">{t("admin_email")}</label>
-            <input
+            <label htmlFor="admin-admin-email" className="block text-sm text-muted mb-1">{t("admin_email")}</label>
+            <input id="admin-admin-email"
               type="email"
               value={targetEmail}
               onChange={(e) => setTargetEmail(e.target.value)}
@@ -573,8 +573,8 @@ export default function AdminPage() {
           </div>
 
           <div>
-            <label className="block text-sm text-muted mb-1">{t("admin_plan")}</label>
-            <select
+            <label htmlFor="admin-admin-plan" className="block text-sm text-muted mb-1">{t("admin_plan")}</label>
+            <select id="admin-admin-plan"
               value={targetPlan}
               onChange={(e) => setTargetPlan(e.target.value as "free" | "plus")}
               className={inputClass}
@@ -712,8 +712,8 @@ export default function AdminPage() {
           </div>
 
           <div>
-            <label className="block text-sm text-muted mb-1">Pseudo actuel</label>
-            <input
+            <label htmlFor="admin-pseudo-actuel" className="block text-sm text-muted mb-1">Pseudo actuel</label>
+            <input id="admin-pseudo-actuel"
               type="text"
               value={modUsername}
               onChange={(e) => setModUsername(e.target.value)}
@@ -723,8 +723,8 @@ export default function AdminPage() {
           </div>
 
           <div>
-            <label className="block text-sm text-muted mb-1">Nouveau pseudo (pour renommer)</label>
-            <input
+            <label htmlFor="admin-nouveau-pseudo-pour-reno" className="block text-sm text-muted mb-1">Nouveau pseudo (pour renommer)</label>
+            <input id="admin-nouveau-pseudo-pour-reno"
               type="text"
               value={modNewUsername}
               onChange={(e) => setModNewUsername(e.target.value)}

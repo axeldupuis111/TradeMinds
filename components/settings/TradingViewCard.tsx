@@ -32,9 +32,9 @@ export default function TradingViewCard({ token }: Props) {
 
       {webhookUrl ? (
         <div>
-          <label className="block text-xs text-muted mb-1.5">{t("sync_tv_url_label")}</label>
+          <label htmlFor="tradingviewcard-sync-tv-url-label" className="block text-xs text-muted mb-1.5">{t("sync_tv_url_label")}</label>
           <div className="flex gap-2">
-            <input
+            <input id="tradingviewcard-sync-tv-url-label"
               type="text"
               readOnly
               value={webhookUrl}

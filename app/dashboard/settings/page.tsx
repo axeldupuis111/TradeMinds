@@ -305,9 +305,9 @@ export default function SettingsPage() {
         <h2 className="text-lg font-semibold text-foreground mb-4">{t("settings_account_title")}</h2>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm text-muted mb-1">{t("settings_account_email")}</label>
+            <label htmlFor="settings-settings-account-email" className="block text-sm text-muted mb-1">{t("settings_account_email")}</label>
             <div className="relative">
-              <input
+              <input id="settings-settings-account-email"
                 type="email"
                 value={userEmail || ""}
                 readOnly
@@ -438,8 +438,8 @@ export default function SettingsPage() {
         ) : (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-muted mb-1">{t("settings_username")}</label>
-              <input
+              <label htmlFor="settings-settings-username" className="block text-sm text-muted mb-1">{t("settings_username")}</label>
+              <input id="settings-settings-username"
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}

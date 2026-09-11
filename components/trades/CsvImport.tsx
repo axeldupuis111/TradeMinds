@@ -111,10 +111,14 @@ function ColumnMappingModal({
         <div className="space-y-2.5">
           {MAPPING_FIELDS.map((f) => (
             <div key={f.key} className="flex items-center gap-3">
-              <label className={`text-xs w-44 shrink-0 ${f.required ? "text-foreground font-medium" : "text-muted"}`}>
+              {/* ⚠️ IDENTIFIANT CALCULÉ, parce qu'on est dans une boucle : un
+                  identifiant fixe serait répété autant de fois que la table a
+                  de colonnes, et un identifiant en double ne relie plus rien. */}
+              <label htmlFor={`csv-colonne-${f.key}`} className={`text-xs w-44 shrink-0 ${f.required ? "text-foreground font-medium" : "text-muted"}`}>
                 {t(f.labelKey)}
               </label>
               <select
+                id={`csv-colonne-${f.key}`}
                 value={mapping[f.key] || ""}
                 onChange={(e) => setMapping((m) => ({ ...m, [f.key]: e.target.value || undefined }))}
                 className="flex-1 px-2 py-1.5 bg-surface border border-border rounded-lg text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
@@ -629,8 +633,8 @@ export default function CsvImport({ strategyId, onImported }: Props) {
           {/* Account selector */}
           {activeAccounts.length > 0 && (
             <div className="mb-4">
-              <label className="block text-sm text-muted mb-1">{t("csv_select_account")}</label>
-              <select
+              <label htmlFor="csvimport-csv-select-account" className="block text-sm text-muted mb-1">{t("csv_select_account")}</label>
+              <select id="csvimport-csv-select-account"
                 value={selectedChallengeId || ""}
                 onChange={(e) => setSelectedChallengeId(e.target.value || null)}
                 className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"

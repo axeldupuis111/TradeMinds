@@ -677,8 +677,8 @@ export default function StrategyPage() {
       )}
 
       <div className="mt-6">
-        <label className="block text-sm text-muted mb-1">{t("strategy_name")}</label>
-        <input
+        <label htmlFor="strategy-strategy-name" className="block text-sm text-muted mb-1">{t("strategy_name")}</label>
+        <input id="strategy-strategy-name"
           type="text"
           value={name}
           onChange={(e) => { setName(e.target.value); markDirty(); }}
@@ -688,8 +688,8 @@ export default function StrategyPage() {
       </div>
 
       <div className="mt-4">
-        <label className="block text-sm text-muted mb-1">{t("strategy_describe")}</label>
-        <textarea
+        <label htmlFor="strategy-strategy-describe" className="block text-sm text-muted mb-1">{t("strategy_describe")}</label>
+        <textarea id="strategy-strategy-describe"
           value={rawText}
           onChange={(e) => { setRawText(e.target.value); markDirty(); }}
           rows={10}
@@ -755,24 +755,24 @@ export default function StrategyPage() {
             <label className="block text-sm text-muted mb-3">{t("strategy_risk")}</label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <div>
-                <label className="block text-xs text-muted mb-1">{t("strategy_rr")}</label>
-                <input type="number" step="0.1" value={parsed.risk_reward ?? ""} onChange={(e) => updateParsedField("risk_reward", e.target.value ? parseFloat(e.target.value) : null)} placeholder={t("strategy_not_set")} className={inputClass} />
+                <label htmlFor="strategy-strategy-rr" className="block text-xs text-muted mb-1">{t("strategy_rr")}</label>
+                <input id="strategy-strategy-rr" type="number" step="0.1" value={parsed.risk_reward ?? ""} onChange={(e) => updateParsedField("risk_reward", e.target.value ? parseFloat(e.target.value) : null)} placeholder={t("strategy_not_set")} className={inputClass} />
               </div>
               <div>
-                <label className="block text-xs text-muted mb-1">{t("strategy_sl_max")}</label>
-                <input type="number" value={parsed.max_sl_pips ?? ""} onChange={(e) => updateParsedField("max_sl_pips", e.target.value ? parseFloat(e.target.value) : null)} placeholder={t("strategy_not_set")} className={inputClass} />
+                <label htmlFor="strategy-strategy-sl-max" className="block text-xs text-muted mb-1">{t("strategy_sl_max")}</label>
+                <input id="strategy-strategy-sl-max" type="number" value={parsed.max_sl_pips ?? ""} onChange={(e) => updateParsedField("max_sl_pips", e.target.value ? parseFloat(e.target.value) : null)} placeholder={t("strategy_not_set")} className={inputClass} />
               </div>
               <div>
-                <label className="block text-xs text-muted mb-1">{t("strategy_max_trades")}</label>
-                <input type="number" value={parsed.max_trades_per_day ?? ""} onChange={(e) => updateParsedField("max_trades_per_day", e.target.value ? parseInt(e.target.value) : null)} placeholder={t("strategy_not_set")} className={inputClass} />
+                <label htmlFor="strategy-strategy-max-trades" className="block text-xs text-muted mb-1">{t("strategy_max_trades")}</label>
+                <input id="strategy-strategy-max-trades" type="number" value={parsed.max_trades_per_day ?? ""} onChange={(e) => updateParsedField("max_trades_per_day", e.target.value ? parseInt(e.target.value) : null)} placeholder={t("strategy_not_set")} className={inputClass} />
               </div>
               <div>
-                <label className="block text-xs text-muted mb-1">{t("strategy_consec_losses")}</label>
-                <input type="number" value={parsed.max_consecutive_losses ?? ""} onChange={(e) => updateParsedField("max_consecutive_losses", e.target.value ? parseInt(e.target.value) : null)} placeholder={t("strategy_not_set")} className={inputClass} />
+                <label htmlFor="strategy-strategy-consec-losses" className="block text-xs text-muted mb-1">{t("strategy_consec_losses")}</label>
+                <input id="strategy-strategy-consec-losses" type="number" value={parsed.max_consecutive_losses ?? ""} onChange={(e) => updateParsedField("max_consecutive_losses", e.target.value ? parseInt(e.target.value) : null)} placeholder={t("strategy_not_set")} className={inputClass} />
               </div>
               <div>
-                <label className="block text-xs text-muted mb-1">{t("strategy_max_session")}</label>
-                <input
+                <label htmlFor="strategy-strategy-max-session" className="block text-xs text-muted mb-1">{t("strategy_max_session")}</label>
+                <input id="strategy-strategy-max-session"
                   type="number"
                   value={parsed.max_session_minutes ?? ""}
                   onChange={(e) => updateParsedField("max_session_minutes", e.target.value ? parseInt(e.target.value) : null)}
@@ -781,10 +781,10 @@ export default function StrategyPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-muted mb-1" title={t("strategy_risk_pct_tooltip")}>
+                <label htmlFor="strategy-strategy-risk-pct" className="block text-xs text-muted mb-1" title={t("strategy_risk_pct_tooltip")}>
                   {t("strategy_risk_pct")}
                 </label>
-                <input
+                <input id="strategy-strategy-risk-pct"
                   type="number"
                   step="0.1"
                   min="0"
@@ -831,11 +831,15 @@ export default function StrategyPage() {
 
           {/* Setup rules */}
           <div className="bg-card border border-border rounded-xl p-4">
-            <label className="block text-sm text-muted mb-2">{t("strategy_setup_rules")}</label>
+            {/* ⚠️ UN TITRE DE GROUPE, PAS UNE ÉTIQUETTE DE CHAMP : il coiffe
+                une LISTE de règles. Écrit en <label>, il ne nommait aucune des
+                zones de saisie, et chacune s'annonçait « zone de saisie » sans
+                rien de plus. Chaque ligne porte donc son propre nom, numéroté. */}
+            <p className="block text-sm text-muted mb-2">{t("strategy_setup_rules")}</p>
             <div className="space-y-2">
               {parsed.setup_rules.map((rule, i) => (
                 <div key={i} className="flex gap-2 items-start">
-                  <textarea value={rule} title={rule} onChange={(e) => updateRule(i, e.target.value)} rows={2} className={`${inputClass} flex-1 resize-y`} />
+                  <textarea aria-label={`${t("strategy_setup_rules")} ${i + 1}`} value={rule} title={rule} onChange={(e) => updateRule(i, e.target.value)} rows={2} className={`${inputClass} flex-1 resize-y`} />
                   <button onClick={() => removeRule(i)} aria-label={t("session_remove")} className="px-3 py-2 text-muted hover:text-loss transition-colors mt-1 shrink-0">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />

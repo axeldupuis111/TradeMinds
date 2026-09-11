@@ -123,10 +123,10 @@ function AccountSelector({
 
   return (
     <div className="flex items-center gap-3">
-      <label className="text-xs text-muted uppercase tracking-wider shrink-0">
+      <label htmlFor="session-session-account-label" className="text-xs text-muted uppercase tracking-wider shrink-0">
         {t("session_account_label")}
       </label>
-      <select
+      <select id="session-session-account-label"
         value={selectedAccountId ?? ""}
         onChange={(e) => setSelectedAccountId(e.target.value)}
         className="bg-surface border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent"

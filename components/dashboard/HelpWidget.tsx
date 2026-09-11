@@ -224,20 +224,20 @@ export default function HelpWidget() {
             ) : (
               <form onSubmit={handleSubmit} className="space-y-3">
                 <div>
-                  <label className="block text-xs text-muted mb-1">{t("contact_name")}</label>
-                  <input type="text" required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className={inputClass} />
+                  <label htmlFor="helpwidget-contact-name" className="block text-xs text-muted mb-1">{t("contact_name")}</label>
+                  <input id="helpwidget-contact-name" type="text" required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className={inputClass} />
                 </div>
                 <div>
-                  <label className="block text-xs text-muted mb-1">{t("contact_email")}</label>
-                  <input type="email" required value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className={inputClass} />
+                  <label htmlFor="helpwidget-contact-email" className="block text-xs text-muted mb-1">{t("contact_email")}</label>
+                  <input id="helpwidget-contact-email" type="email" required value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className={inputClass} />
                 </div>
                 <div>
-                  <label className="block text-xs text-muted mb-1">{t("contact_subject")}</label>
-                  <input type="text" value={form.subject} onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))} className={inputClass} />
+                  <label htmlFor="helpwidget-contact-subject" className="block text-xs text-muted mb-1">{t("contact_subject")}</label>
+                  <input id="helpwidget-contact-subject" type="text" value={form.subject} onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))} className={inputClass} />
                 </div>
                 <div>
-                  <label className="block text-xs text-muted mb-1">{t("contact_message")}</label>
-                  <textarea required rows={4} value={form.message} onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))} className={`${inputClass} resize-none`} />
+                  <label htmlFor="helpwidget-contact-message" className="block text-xs text-muted mb-1">{t("contact_message")}</label>
+                  <textarea id="helpwidget-contact-message" required rows={4} value={form.message} onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))} className={`${inputClass} resize-none`} />
                 </div>
                 {status === "error" && <p className="text-loss text-xs">{t("contact_error")}</p>}
                 <button

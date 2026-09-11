@@ -592,11 +592,11 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
           {/* Account assignment */}
           {accounts.length > 0 && (
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">
+              <label htmlFor="tradedetailpanel-detail-account" className="block text-sm font-medium text-foreground mb-1.5">
                 {t("detail_account")}
                 <SavedIndicator etat={savedField?.field === "challenge_id" ? savedField.ok : null} echec={t("save_failed")} />
               </label>
-              <select
+              <select id="tradedetailpanel-detail-account"
                 value={challengeId || ""}
                 onChange={(e) => handleAccountChange(e.target.value)}
                 className={selectClass}
@@ -617,11 +617,11 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
             <p className="text-xs text-muted">{t("initial_values_help")}</p>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-muted mb-1">
+                <label htmlFor="tradedetailpanel-sl-initial-label" className="block text-xs text-muted mb-1">
                   {t("sl_initial_label")}
                   <SavedIndicator etat={savedField?.field === "sl_initial" ? savedField.ok : null} echec={t("save_failed")} />
                 </label>
-                <input
+                <input id="tradedetailpanel-sl-initial-label"
                   type="number"
                   step="0.00001"
                   value={slInitial}
@@ -631,11 +631,11 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
                 />
               </div>
               <div>
-                <label className="block text-xs text-muted mb-1">
+                <label htmlFor="tradedetailpanel-tp-initial-label" className="block text-xs text-muted mb-1">
                   {t("tp_initial_label")}
                   <SavedIndicator etat={savedField?.field === "tp_initial" ? savedField.ok : null} echec={t("save_failed")} />
                 </label>
-                <input
+                <input id="tradedetailpanel-tp-initial-label"
                   type="number"
                   step="0.00001"
                   value={tpInitial}
@@ -717,11 +717,11 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
           {/* Strategy selector */}
           {!isFree && userStrategies && userStrategies.length > 0 && (
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">
+              <label htmlFor="tradedetailpanel-stratcmp-strategy" className="block text-sm font-medium text-foreground mb-1.5">
                 {t("stratcmp_strategy")}
                 <SavedIndicator etat={savedField?.field === "strategy_id" ? savedField.ok : null} echec={t("save_failed")} />
               </label>
-              <select
+              <select id="tradedetailpanel-stratcmp-strategy"
                 value={selectedStrategyId || ""}
                 onChange={(e) => void handleStrategyChange(e.target.value)}
                 className={selectClass}
@@ -771,8 +771,8 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
 
           {/* Notes */}
           <div>
-            <label className="block text-sm text-muted mb-2">{t("detail_notes")}</label>
-            <textarea
+            <label htmlFor="tradedetailpanel-detail-notes" className="block text-sm text-muted mb-2">{t("detail_notes")}</label>
+            <textarea id="tradedetailpanel-detail-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}

@@ -315,8 +315,8 @@ export default function PositionSizer({ strategy }: Props) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {/* Account balance */}
         <div>
-          <label className="block text-xs text-muted mb-1">{t("sizer_balance_label")} ({cur})</label>
-          <input
+          <label htmlFor="positionsizer-sizer-balance-label" className="block text-xs text-muted mb-1">{t("sizer_balance_label")} ({cur})</label>
+          <input id="positionsizer-sizer-balance-label"
             type="number"
             min="0"
             step="100"
@@ -332,9 +332,9 @@ export default function PositionSizer({ strategy }: Props) {
 
         {/* Risk per trade with %/€ toggle */}
         <div>
-          <label className="block text-xs text-muted mb-1">{t("sizer_risk_label")}</label>
+          <label htmlFor="positionsizer-sizer-risk-label" className="block text-xs text-muted mb-1">{t("sizer_risk_label")}</label>
           <div className="flex gap-2">
-            <input
+            <input id="positionsizer-sizer-risk-label"
               type="number"
               min="0"
               step={riskMode === "pct" ? "0.1" : "10"}
@@ -421,10 +421,10 @@ export default function PositionSizer({ strategy }: Props) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Contract selector */}
                 <div>
-                  <label className="block text-xs text-muted mb-1">
+                  <label htmlFor="positionsizer-sizer-futures-contract" className="block text-xs text-muted mb-1">
                     {t("sizer_futures_contract")}
                   </label>
-                  <select
+                  <select id="positionsizer-sizer-futures-contract"
                     value={futuresSymbol}
                     onChange={(e) => setFuturesSymbol(e.target.value)}
                     className={inputClass}
@@ -446,10 +446,10 @@ export default function PositionSizer({ strategy }: Props) {
 
                 {/* SL in points */}
                 <div>
-                  <label className="block text-xs text-muted mb-1">
+                  <label htmlFor="positionsizer-sizer-futures-sl-points" className="block text-xs text-muted mb-1">
                     {t("sizer_futures_sl_points")}
                   </label>
-                  <input
+                  <input id="positionsizer-sizer-futures-sl-points"
                     type="number"
                     min="0"
                     step={futuresContract ? String(futuresContract.tickSize) : "0.25"}
@@ -503,8 +503,8 @@ export default function PositionSizer({ strategy }: Props) {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {/* Instrument — preset dropdown + custom fallback */}
                 <div>
-                  <label className="block text-xs text-muted mb-1">{t("sizer_instrument")}</label>
-                  <select
+                  <label htmlFor="positionsizer-sizer-instrument" className="block text-xs text-muted mb-1">{t("sizer_instrument")}</label>
+                  <select id="positionsizer-sizer-instrument"
                     value={isCustomInstrument ? CUSTOM_INSTRUMENT : symbol}
                     onChange={(e) => handleInstrumentSelect(e.target.value)}
                     className={inputClass}
@@ -528,8 +528,8 @@ export default function PositionSizer({ strategy }: Props) {
 
                 {/* SL pips */}
                 <div>
-                  <label className="block text-xs text-muted mb-1">{t("sizer_sl_pips")}</label>
-                  <input
+                  <label htmlFor="positionsizer-sizer-sl-pips" className="block text-xs text-muted mb-1">{t("sizer_sl_pips")}</label>
+                  <input id="positionsizer-sizer-sl-pips"
                     type="number"
                     min="0"
                     step="0.1"

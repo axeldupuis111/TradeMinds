@@ -144,8 +144,8 @@ export default function PartnerJoinPage() {
 
               <form onSubmit={handleSubmit} className="mt-6 space-y-4">
                 <div>
-                  <label className="block text-sm text-foreground-muted mb-1">Code d&apos;inscription</label>
-                  <input
+                  <label htmlFor="partnerjoinpage-code-d-apos-inscription" className="block text-sm text-foreground-muted mb-1">Code d&apos;inscription</label>
+                  <input id="partnerjoinpage-code-d-apos-inscription"
                     className={`${inputClass} font-mono`}
                     value={joinCode}
                     onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
@@ -154,8 +154,8 @@ export default function PartnerJoinPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-foreground-muted mb-1">Nom et prénom</label>
-                  <input
+                  <label htmlFor="partnerjoinpage-nom-et-pr-nom" className="block text-sm text-foreground-muted mb-1">Nom et prénom</label>
+                  <input id="partnerjoinpage-nom-et-pr-nom"
                     className={inputClass}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -163,8 +163,8 @@ export default function PartnerJoinPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-foreground-muted mb-1">Email</label>
-                  <input
+                  <label htmlFor="partnerjoinpage-email" className="block text-sm text-foreground-muted mb-1">Email</label>
+                  <input id="partnerjoinpage-email"
                     type="email"
                     className={inputClass}
                     value={email}

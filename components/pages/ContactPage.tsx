@@ -58,20 +58,20 @@ export default function ContactPage() {
           ) : (
             <form onSubmit={handleSubmit} className="mt-6 space-y-4">
               <div>
-                <label className="block text-sm text-muted mb-1">{t("contact_name")}</label>
-                <input type="text" required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className={inputClass} />
+                <label htmlFor="contactpage-contact-name" className="block text-sm text-muted mb-1">{t("contact_name")}</label>
+                <input id="contactpage-contact-name" type="text" required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className={inputClass} />
               </div>
               <div>
-                <label className="block text-sm text-muted mb-1">{t("contact_email")}</label>
-                <input type="email" required value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className={inputClass} />
+                <label htmlFor="contactpage-contact-email" className="block text-sm text-muted mb-1">{t("contact_email")}</label>
+                <input id="contactpage-contact-email" type="email" required value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className={inputClass} />
               </div>
               <div>
-                <label className="block text-sm text-muted mb-1">{t("contact_subject")}</label>
-                <input type="text" value={form.subject} onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))} className={inputClass} />
+                <label htmlFor="contactpage-contact-subject" className="block text-sm text-muted mb-1">{t("contact_subject")}</label>
+                <input id="contactpage-contact-subject" type="text" value={form.subject} onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))} className={inputClass} />
               </div>
               <div>
-                <label className="block text-sm text-muted mb-1">{t("contact_message")}</label>
-                <textarea required rows={5} value={form.message} onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))} className={inputClass} />
+                <label htmlFor="contactpage-contact-message" className="block text-sm text-muted mb-1">{t("contact_message")}</label>
+                <textarea id="contactpage-contact-message" required rows={5} value={form.message} onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))} className={inputClass} />
               </div>
 
               {status === "error" && <p className="text-loss text-sm">{t("contact_error")}</p>}

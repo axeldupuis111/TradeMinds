@@ -230,10 +230,10 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
         <div className="space-y-4">
           {/* Exit price */}
           <div>
-            <label className="block text-xs text-muted mb-1">
+            <label htmlFor="closetrademodal-close-trade-exit-price" className="block text-xs text-muted mb-1">
               {t("close_trade_exit_price")} <span className="text-loss">*</span>
             </label>
-            <input
+            <input id="closetrademodal-close-trade-exit-price"
               type="number"
               step="any"
               value={exitPrice}
@@ -246,10 +246,10 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
 
           {/* Close time */}
           <div>
-            <label className="block text-xs text-muted mb-1">
+            <label htmlFor="closetrademodal-close-trade-close-time" className="block text-xs text-muted mb-1">
               {t("close_trade_close_time")} <span className="text-loss">*</span>
             </label>
-            <input
+            <input id="closetrademodal-close-trade-close-time"
               type="datetime-local"
               value={closeTime}
               onChange={(e) => { setCloseTime(e.target.value); update("close_time"); }}
@@ -261,7 +261,7 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
           {/* P&L (auto-calculated, editable) */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs text-muted">
+              <label htmlFor="closetrademodal-close-trade-pnl" className="block text-xs text-muted">
                 {t("close_trade_pnl")} <span className="text-loss">*</span>
               </label>
               {pnlTouched && estimated !== null && (
@@ -274,7 +274,7 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
                 </button>
               )}
             </div>
-            <input
+            <input id="closetrademodal-close-trade-pnl"
               type="number"
               step="any"
               value={pnl}
@@ -297,10 +297,10 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
 
           {/* Closing notes (new) */}
           <div>
-            <label className="block text-xs text-muted mb-1">
+            <label htmlFor="closetrademodal-close-trade-closing-notes" className="block text-xs text-muted mb-1">
               {t("close_trade_closing_notes")} <span className="text-muted">({t("close_trade_optional")})</span>
             </label>
-            <textarea
+            <textarea id="closetrademodal-close-trade-closing-notes"
               value={closingNotes}
               onChange={(e) => setClosingNotes(e.target.value)}
               rows={2}

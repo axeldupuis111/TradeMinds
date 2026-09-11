@@ -362,16 +362,16 @@ function EditAccountModal({
         <h3 className="text-foreground font-semibold mb-4">{t("challenge_edit_title")}</h3>
         <div className="space-y-3">
           <div>
-            <label className="block text-sm text-muted mb-1">{t("challenge_edit_name")}</label>
-            <input type="text" value={firm} onChange={(e) => setFirm(e.target.value)} className={inputClass} />
+            <label htmlFor="challenge-challenge-edit-name" className="block text-sm text-muted mb-1">{t("challenge_edit_name")}</label>
+            <input id="challenge-challenge-edit-name" type="text" value={firm} onChange={(e) => setFirm(e.target.value)} className={inputClass} />
           </div>
           <div>
-            <label className="block text-sm text-muted mb-1">{t("challenge_account_number")}</label>
-            <input type="text" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} className={inputClass} />
+            <label htmlFor="challenge-challenge-account-number" className="block text-sm text-muted mb-1">{t("challenge_account_number")}</label>
+            <input id="challenge-challenge-account-number" type="text" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} className={inputClass} />
           </div>
           <div>
-            <label className="block text-sm text-muted mb-1">{t("challenge_account_type")}</label>
-            <select value={accountType} onChange={(e) => setAccountType(e.target.value as "prop" | "personal")} className={inputClass}>
+            <label htmlFor="challenge-challenge-account-type" className="block text-sm text-muted mb-1">{t("challenge_account_type")}</label>
+            <select id="challenge-challenge-account-type" value={accountType} onChange={(e) => setAccountType(e.target.value as "prop" | "personal")} className={inputClass}>
               <option value="prop">{t("challenge_type_prop")}</option>
               <option value="personal">{t("challenge_type_personal")}</option>
             </select>
@@ -391,12 +391,12 @@ function EditAccountModal({
           </div>
           <div className="grid grid-cols-[1fr_auto] gap-3">
             <div>
-              <label className="block text-sm text-muted mb-1">{t("challenge_account_size")}</label>
-              <input type="number" value={accountSize} onChange={(e) => setAccountSize(e.target.value)} className={inputClass} />
+              <label htmlFor="challenge-challenge-account-size" className="block text-sm text-muted mb-1">{t("challenge_account_size")}</label>
+              <input id="challenge-challenge-account-size" type="number" value={accountSize} onChange={(e) => setAccountSize(e.target.value)} className={inputClass} />
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">{t("challenge_currency")}</label>
-              <select value={currency} onChange={(e) => setCurrency(e.target.value)} className={inputClass}>
+              <label htmlFor="challenge-challenge-currency" className="block text-sm text-muted mb-1">{t("challenge_currency")}</label>
+              <select id="challenge-challenge-currency" value={currency} onChange={(e) => setCurrency(e.target.value)} className={inputClass}>
                 {SUPPORTED_CURRENCIES.map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
@@ -430,23 +430,23 @@ function EditAccountModal({
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-sm text-muted mb-1">{t("challenge_profit_target_pct")}</label>
-                  <input type="number" step="0.1" value={profitTarget} onChange={(e) => setProfitTarget(e.target.value)} className={inputClass} />
+                  <label htmlFor="challenge-challenge-profit-target-pct" className="block text-sm text-muted mb-1">{t("challenge_profit_target_pct")}</label>
+                  <input id="challenge-challenge-profit-target-pct" type="number" step="0.1" value={profitTarget} onChange={(e) => setProfitTarget(e.target.value)} className={inputClass} />
                 </div>
                 <div>
-                  <label className="block text-sm text-muted mb-1">{t("challenge_daily_dd_pct")}</label>
-                  <input type="number" step="0.1" value={maxDailyDd} onChange={(e) => setMaxDailyDd(e.target.value)} className={inputClass} />
+                  <label htmlFor="challenge-challenge-daily-dd-pct" className="block text-sm text-muted mb-1">{t("challenge_daily_dd_pct")}</label>
+                  <input id="challenge-challenge-daily-dd-pct" type="number" step="0.1" value={maxDailyDd} onChange={(e) => setMaxDailyDd(e.target.value)} className={inputClass} />
                 </div>
                 <div>
-                  <label className="block text-sm text-muted mb-1">{t("challenge_total_dd_pct")}</label>
-                  <input type="number" step="0.1" value={maxTotalDd} onChange={(e) => setMaxTotalDd(e.target.value)} className={inputClass} />
+                  <label htmlFor="challenge-challenge-total-dd-pct" className="block text-sm text-muted mb-1">{t("challenge_total_dd_pct")}</label>
+                  <input id="challenge-challenge-total-dd-pct" type="number" step="0.1" value={maxTotalDd} onChange={(e) => setMaxTotalDd(e.target.value)} className={inputClass} />
                 </div>
               </div>
               <TrailingDdToggle value={trailingDrawdown} onChange={setTrailingDrawdown} t={t} />
               {/* Discipline limit — personal stop-trading rule, optional */}
               <div>
-                <label className="block text-sm text-muted mb-1">{t("challenge_max_daily_loss_pct")}</label>
-                <input
+                <label htmlFor="challenge-challenge-max-daily-loss-pct" className="block text-sm text-muted mb-1">{t("challenge_max_daily_loss_pct")}</label>
+                <input id="challenge-challenge-max-daily-loss-pct"
                   type="number"
                   step="0.1"
                   min="0"
@@ -462,17 +462,17 @@ function EditAccountModal({
           )}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm text-muted mb-1">{t("challenge_start_date")}</label>
-              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputClass} />
+              <label htmlFor="challenge-challenge-start-date" className="block text-sm text-muted mb-1">{t("challenge_start_date")}</label>
+              <input id="challenge-challenge-start-date" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputClass} />
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">{t("challenge_end_date")}</label>
-              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputClass} />
+              <label htmlFor="challenge-challenge-end-date" className="block text-sm text-muted mb-1">{t("challenge_end_date")}</label>
+              <input id="challenge-challenge-end-date" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputClass} />
             </div>
           </div>
           <div>
-            <label className="block text-sm text-muted mb-1">{t("challenge_edit_status")}</label>
-            <select value={status} onChange={(e) => setStatus(e.target.value as Challenge["status"])} className={inputClass}>
+            <label htmlFor="challenge-challenge-edit-status" className="block text-sm text-muted mb-1">{t("challenge_edit_status")}</label>
+            <select id="challenge-challenge-edit-status" value={status} onChange={(e) => setStatus(e.target.value as Challenge["status"])} className={inputClass}>
               <option value="active">{t("challenge_status_active")}</option>
               <option value="passed">{t("challenge_status_passed")}</option>
               <option value="failed">{t("challenge_status_failed")}</option>
@@ -1354,8 +1354,8 @@ export default function ChallengePage() {
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm text-muted mb-1">{accountType === "prop" ? t("challenge_label_prop_firm") : t("challenge_label_broker")}</label>
-              <select
+              <label htmlFor="challenge-challenge-label-prop-firm" className="block text-sm text-muted mb-1">{accountType === "prop" ? t("challenge_label_prop_firm") : t("challenge_label_broker")}</label>
+              <select id="challenge-challenge-label-prop-firm"
                 value={firm}
                 onChange={(e) => { setFirm(e.target.value); setCustomFirm(""); }}
                 className={inputClass}
@@ -1375,10 +1375,10 @@ export default function ChallengePage() {
               )}
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">
+              <label htmlFor="challenge-challenge-account-number-2" className="block text-sm text-muted mb-1">
                 {t("challenge_account_number")} <span className="text-red-500">*</span>
               </label>
-              <input
+              <input id="challenge-challenge-account-number-2"
                 type="text"
                 value={accountNumber}
                 onChange={(e) => { setAccountNumber(e.target.value); if (formErrors.accountNumber) setFormErrors((p) => ({ ...p, accountNumber: false })); }}
@@ -1392,10 +1392,10 @@ export default function ChallengePage() {
             <div>
               <div className="grid grid-cols-[1fr_auto] gap-3">
                 <div>
-                  <label className="block text-sm text-muted mb-1">
+                  <label htmlFor="challenge-challenge-account-size-2" className="block text-sm text-muted mb-1">
                     {t("challenge_account_size")} <span className="text-red-500">*</span>
                   </label>
-                  <input
+                  <input id="challenge-challenge-account-size-2"
                     type="number"
                     value={accountSize}
                     onChange={(e) => { setAccountSize(e.target.value); if (formErrors.accountSize) setFormErrors((p) => ({ ...p, accountSize: false })); }}
@@ -1404,8 +1404,8 @@ export default function ChallengePage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-muted mb-1">{t("challenge_currency")}</label>
-                  <select
+                  <label htmlFor="challenge-challenge-currency-2" className="block text-sm text-muted mb-1">{t("challenge_currency")}</label>
+                  <select id="challenge-challenge-currency-2"
                     value={currency}
                     onChange={(e) => setCurrency(e.target.value)}
                     className={inputClass}
@@ -1473,23 +1473,23 @@ export default function ChallengePage() {
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-sm text-muted mb-1">{t("challenge_profit_target_pct")}</label>
-                  <input type="number" step="0.1" value={profitTarget} onChange={(e) => setProfitTarget(e.target.value)} className={inputClass} />
+                  <label htmlFor="challenge-challenge-profit-target-pct-2" className="block text-sm text-muted mb-1">{t("challenge_profit_target_pct")}</label>
+                  <input id="challenge-challenge-profit-target-pct-2" type="number" step="0.1" value={profitTarget} onChange={(e) => setProfitTarget(e.target.value)} className={inputClass} />
                 </div>
                 <div>
-                  <label className="block text-sm text-muted mb-1">{t("challenge_daily_dd_pct")}</label>
-                  <input type="number" step="0.1" value={maxDailyDd} onChange={(e) => setMaxDailyDd(e.target.value)} className={inputClass} />
+                  <label htmlFor="challenge-challenge-daily-dd-pct-2" className="block text-sm text-muted mb-1">{t("challenge_daily_dd_pct")}</label>
+                  <input id="challenge-challenge-daily-dd-pct-2" type="number" step="0.1" value={maxDailyDd} onChange={(e) => setMaxDailyDd(e.target.value)} className={inputClass} />
                 </div>
                 <div>
-                  <label className="block text-sm text-muted mb-1">{t("challenge_total_dd_pct")}</label>
-                  <input type="number" step="0.1" value={maxTotalDd} onChange={(e) => setMaxTotalDd(e.target.value)} className={inputClass} />
+                  <label htmlFor="challenge-challenge-total-dd-pct-2" className="block text-sm text-muted mb-1">{t("challenge_total_dd_pct")}</label>
+                  <input id="challenge-challenge-total-dd-pct-2" type="number" step="0.1" value={maxTotalDd} onChange={(e) => setMaxTotalDd(e.target.value)} className={inputClass} />
                 </div>
               </div>
               <TrailingDdToggle value={trailingDrawdown} onChange={setTrailingDrawdown} t={t} />
               {/* Discipline limit — personal stop-trading rule, optional */}
               <div>
-                <label className="block text-sm text-muted mb-1">{t("challenge_max_daily_loss_pct")}</label>
-                <input
+                <label htmlFor="challenge-challenge-max-daily-loss-pct-2" className="block text-sm text-muted mb-1">{t("challenge_max_daily_loss_pct")}</label>
+                <input id="challenge-challenge-max-daily-loss-pct-2"
                   type="number"
                   step="0.1"
                   min="0"
@@ -1503,10 +1503,10 @@ export default function ChallengePage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm text-muted mb-1">
+                  <label htmlFor="challenge-challenge-start-date-2" className="block text-sm text-muted mb-1">
                     {t("challenge_start_date")} <span className="text-red-500">*</span>
                   </label>
-                  <input
+                  <input id="challenge-challenge-start-date-2"
                     type="date"
                     value={startDate}
                     onChange={(e) => { setStartDate(e.target.value); if (formErrors.startDate) setFormErrors((p) => ({ ...p, startDate: false })); }}
@@ -1517,8 +1517,8 @@ export default function ChallengePage() {
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm text-muted mb-1">{t("challenge_end_date")}</label>
-                  <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputClass} />
+                  <label htmlFor="challenge-challenge-end-date-2" className="block text-sm text-muted mb-1">{t("challenge_end_date")}</label>
+                  <input id="challenge-challenge-end-date-2" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputClass} />
                 </div>
               </div>
             </>
@@ -1528,10 +1528,10 @@ export default function ChallengePage() {
           {accountType === "personal" && (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm text-muted mb-1">
+                <label htmlFor="challenge-challenge-start-date-3" className="block text-sm text-muted mb-1">
                   {t("challenge_start_date")} <span className="text-red-500">*</span>
                 </label>
-                <input
+                <input id="challenge-challenge-start-date-3"
                   type="date"
                   value={startDate}
                   onChange={(e) => { setStartDate(e.target.value); if (formErrors.startDate) setFormErrors((p) => ({ ...p, startDate: false })); }}

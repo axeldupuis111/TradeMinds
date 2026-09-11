@@ -961,8 +961,8 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
                 un compte, et que chaque compte peut avoir sa propre devise. */}
             {accounts.length > 0 && (
               <div className="flex flex-col gap-1 min-w-[170px]">
-                <label className="text-xs text-muted">{t("trades_filter_label_account")}</label>
-                <select
+                <label htmlFor="tradelist-trades-filter-label-account" className="text-xs text-muted">{t("trades_filter_label_account")}</label>
+                <select id="tradelist-trades-filter-label-account"
                   value={filters.account}
                   onChange={(e) => setFilters((f) => ({ ...f, account: e.target.value }))}
                   className="bg-surface border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-accent"
@@ -983,8 +983,8 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
             )}
 
             <div className="flex flex-col gap-1 min-w-[140px]">
-              <label className="text-xs text-muted">{t("trades_filter_label_pair")}</label>
-              <select
+              <label htmlFor="tradelist-trades-filter-label-pair" className="text-xs text-muted">{t("trades_filter_label_pair")}</label>
+              <select id="tradelist-trades-filter-label-pair"
                 value={filters.pair}
                 onChange={(e) => setFilters((f) => ({ ...f, pair: e.target.value }))}
                 className="bg-surface border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-accent"
@@ -995,8 +995,9 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
             </div>
 
             <div className="flex flex-col gap-1 min-w-[120px]">
-              <label className="text-xs text-muted">{t("trades_filter_label_dir")}</label>
+              <label htmlFor="tradelist-trades-filter-label-dir" className="text-xs text-muted">{t("trades_filter_label_dir")}</label>
               <select
+                id="tradelist-trades-filter-label-dir"
                 value={filters.direction}
                 onChange={(e) => setFilters((f) => ({ ...f, direction: e.target.value }))}
                 className="bg-surface border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-accent"
@@ -1008,8 +1009,8 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
             </div>
 
             <div className="flex flex-col gap-1 min-w-[120px]">
-              <label className="text-xs text-muted">{t("trades_filter_label_result")}</label>
-              <select
+              <label htmlFor="tradelist-trades-filter-label-result" className="text-xs text-muted">{t("trades_filter_label_result")}</label>
+              <select id="tradelist-trades-filter-label-result"
                 value={filters.result}
                 onChange={(e) => setFilters((f) => ({ ...f, result: e.target.value }))}
                 className="bg-surface border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-accent"
@@ -1021,8 +1022,8 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
             </div>
 
             <div className="flex flex-col gap-1 min-w-[130px]">
-              <label className="text-xs text-muted">{t("trades_filter_date_from")}</label>
-              <input
+              <label htmlFor="tradelist-trades-filter-date-from" className="text-xs text-muted">{t("trades_filter_date_from")}</label>
+              <input id="tradelist-trades-filter-date-from"
                 type="date"
                 value={filters.dateFrom}
                 onChange={(e) => setFilters((f) => ({ ...f, dateFrom: e.target.value }))}
@@ -1031,8 +1032,8 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
             </div>
 
             <div className="flex flex-col gap-1 min-w-[130px]">
-              <label className="text-xs text-muted">{t("trades_filter_date_to")}</label>
-              <input
+              <label htmlFor="tradelist-trades-filter-date-to" className="text-xs text-muted">{t("trades_filter_date_to")}</label>
+              <input id="tradelist-trades-filter-date-to"
                 type="date"
                 value={filters.dateTo}
                 onChange={(e) => setFilters((f) => ({ ...f, dateTo: e.target.value }))}

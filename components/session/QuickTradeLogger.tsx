@@ -127,8 +127,9 @@ export default function QuickTradeLogger({ strategyId, pairs, onClose, onSaved }
           {/* Pair + Direction */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-muted mb-1">{t("manual_pair")} <span className="text-loss">*</span></label>
+              <label htmlFor="quicktradelogger-manual-pair" className="block text-xs text-muted mb-1">{t("manual_pair")} <span className="text-loss">*</span></label>
               <input
+                id="quicktradelogger-manual-pair"
                 type="text"
                 list="ql-pairs"
                 value={form.pair}
@@ -145,8 +146,8 @@ export default function QuickTradeLogger({ strategyId, pairs, onClose, onSaved }
               {errors.pair && <p className="text-loss text-xs mt-1">{errors.pair}</p>}
             </div>
             <div>
-              <label className="block text-xs text-muted mb-1">{t("manual_direction")} <span className="text-loss">*</span></label>
-              <select value={form.direction} onChange={(e) => update("direction", e.target.value)} className={inputClass}>
+              <label htmlFor="quicktradelogger-manual-direction" className="block text-xs text-muted mb-1">{t("manual_direction")} <span className="text-loss">*</span></label>
+              <select id="quicktradelogger-manual-direction" value={form.direction} onChange={(e) => update("direction", e.target.value)} className={inputClass}>
                 <option value="long">Long / Buy</option>
                 <option value="short">Short / Sell</option>
               </select>
@@ -155,20 +156,20 @@ export default function QuickTradeLogger({ strategyId, pairs, onClose, onSaved }
 
           {/* Open hour */}
           <div>
-            <label className="block text-xs text-muted mb-1">{t("manual_open_time")}</label>
-            <input type="time" value={form.open_hour} onChange={(e) => update("open_hour", e.target.value)} className={inputClass} />
+            <label htmlFor="quicktradelogger-manual-open-time" className="block text-xs text-muted mb-1">{t("manual_open_time")}</label>
+            <input id="quicktradelogger-manual-open-time" type="time" value={form.open_hour} onChange={(e) => update("open_hour", e.target.value)} className={inputClass} />
           </div>
 
           {/* Entry + Lot */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-muted mb-1">{t("manual_entry")} <span className="text-loss">*</span></label>
-              <input type="number" step="any" value={form.entry_price} onChange={(e) => update("entry_price", e.target.value)} className={`${inputClass} ${errors.entry_price ? "!border-loss" : ""}`} />
+              <label htmlFor="quicktradelogger-manual-entry" className="block text-xs text-muted mb-1">{t("manual_entry")} <span className="text-loss">*</span></label>
+              <input id="quicktradelogger-manual-entry" type="number" step="any" value={form.entry_price} onChange={(e) => update("entry_price", e.target.value)} className={`${inputClass} ${errors.entry_price ? "!border-loss" : ""}`} />
               {errors.entry_price && <p className="text-loss text-xs mt-1">{errors.entry_price}</p>}
             </div>
             <div>
-              <label className="block text-xs text-muted mb-1">{t("manual_lot")} <span className="text-loss">*</span></label>
-              <input type="number" step="0.01" min="0.01" value={form.lot_size} onChange={(e) => update("lot_size", e.target.value)} placeholder="0.10" className={`${inputClass} ${errors.lot_size ? "!border-loss" : ""}`} />
+              <label htmlFor="quicktradelogger-manual-lot" className="block text-xs text-muted mb-1">{t("manual_lot")} <span className="text-loss">*</span></label>
+              <input id="quicktradelogger-manual-lot" type="number" step="0.01" min="0.01" value={form.lot_size} onChange={(e) => update("lot_size", e.target.value)} placeholder="0.10" className={`${inputClass} ${errors.lot_size ? "!border-loss" : ""}`} />
               {errors.lot_size && <p className="text-loss text-xs mt-1">{errors.lot_size}</p>}
             </div>
           </div>
@@ -176,27 +177,27 @@ export default function QuickTradeLogger({ strategyId, pairs, onClose, onSaved }
           {/* SL + TP */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-muted mb-1">{t("manual_sl")} <span className="text-loss">*</span></label>
-              <input type="number" step="any" value={form.sl} onChange={(e) => update("sl", e.target.value)} className={`${inputClass} ${errors.sl ? "!border-loss" : ""}`} />
+              <label htmlFor="quicktradelogger-manual-sl" className="block text-xs text-muted mb-1">{t("manual_sl")} <span className="text-loss">*</span></label>
+              <input id="quicktradelogger-manual-sl" type="number" step="any" value={form.sl} onChange={(e) => update("sl", e.target.value)} className={`${inputClass} ${errors.sl ? "!border-loss" : ""}`} />
               {errors.sl && <p className="text-loss text-xs mt-1">{errors.sl}</p>}
             </div>
             <div>
-              <label className="block text-xs text-muted mb-1">{t("manual_tp")} <span className="text-loss">*</span></label>
-              <input type="number" step="any" value={form.tp} onChange={(e) => update("tp", e.target.value)} className={`${inputClass} ${errors.tp ? "!border-loss" : ""}`} />
+              <label htmlFor="quicktradelogger-manual-tp" className="block text-xs text-muted mb-1">{t("manual_tp")} <span className="text-loss">*</span></label>
+              <input id="quicktradelogger-manual-tp" type="number" step="any" value={form.tp} onChange={(e) => update("tp", e.target.value)} className={`${inputClass} ${errors.tp ? "!border-loss" : ""}`} />
               {errors.tp && <p className="text-loss text-xs mt-1">{errors.tp}</p>}
             </div>
           </div>
 
           {/* Reason / Notes */}
           <div>
-            <label className="block text-xs text-muted mb-1">
+            <label htmlFor="quicktradelogger-quick-trade-reason" className="block text-xs text-muted mb-1">
               {/* ⚠️ Cette question était écrite EN FRANÇAIS, en dur, dans un
                   produit traduit en quatre langues, sur l'écran de saisie
                   rapide d'un trade. Et son « (optionnel) » juste à côté, lui,
                   passait bien par le dictionnaire. */}
               {t("quick_trade_reason")} <span className="text-muted">({t("manual_optional")})</span>
             </label>
-            <textarea
+            <textarea id="quicktradelogger-quick-trade-reason"
               value={form.notes}
               onChange={(e) => update("notes", e.target.value)}
               rows={2}
