@@ -1,5 +1,6 @@
 "use client";
 
+import { nombre } from "@/lib/nombres";
 import { Fragment, useMemo, useState, useEffect, useRef } from "react";
 import { DEFAULT_CURRENCY, money } from "@/lib/account-currency";
 import { buildHeatmap, getHeatmapBounds, getActiveBounds } from "@/lib/analytics/heatmap";
@@ -46,7 +47,7 @@ function fmtPnl(n: number, currency: string): string {
 // FIX 5 — compact in-cell label with k suffix above 1 000
 function formatCellPnl(n: number): string {
   if (Math.abs(n) >= 1000) {
-    return `${n > 0 ? "+" : ""}${(n / 1000).toFixed(1)}k`;
+    return `${n > 0 ? "+" : ""}${nombre(n / 1000, 1)}k`;
   }
   return `${n > 0 ? "+" : ""}${Math.round(n)}`;
 }

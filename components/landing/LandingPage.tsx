@@ -102,7 +102,7 @@ function NumberCount({ end, decimals = 0, duration = 1700 }: { end: number; deci
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [end, reduced, duration]);
-  return <>{decimals > 0 ? val.toFixed(decimals) : Math.round(val)}</>;
+  return <>{decimals > 0 ? nombre(val, decimals) : Math.round(val)}</>;
 }
 
 /* Indicateur "live" — compteur d'inscrits qui monte (FOMO).

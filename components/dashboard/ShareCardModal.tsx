@@ -13,7 +13,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { Activity, Check, Copy, Download, Eye, EyeOff, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { pourcent } from "@/lib/nombres";
+import { pourcent, nombre } from "@/lib/nombres";
 import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 export interface ShareStats {
@@ -113,7 +113,7 @@ export default function ShareCardModal({
   const miniStats: { label: string; value: string }[] = [
     { label: t("recap_trades"), value: String(stats.count) },
     { label: t("recap_winrate"), value: stats.winrate !== null ? `${pourcent(Math.round(stats.winrate))}` : "—" },
-    { label: t("recap_profit_factor"), value: stats.profitFactor !== null ? stats.profitFactor.toFixed(2) : "—" },
+    { label: t("recap_profit_factor"), value: stats.profitFactor !== null ? nombre(stats.profitFactor, 2) : "—" },
   ];
 
   // Portal vers document.body : la carte parente (KpiCardPremium) a un

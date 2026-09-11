@@ -12,7 +12,7 @@ import {
 import type { Instrument } from "@/lib/backtest/instruments";
 import type { Methode } from "@/lib/backtest/methodes";
 import { AlertTriangle, CheckCircle2, Gauge, Info } from "lucide-react";
-import { pourcent } from "@/lib/nombres";
+import { pourcent, nombre } from "@/lib/nombres";
 
 /**
  * CE QUE VAUT CE MARCHÉ, ET SI TA MÉTHODE Y EST CHEZ ELLE.
@@ -75,7 +75,7 @@ export function CaractereDuMarche({
       <div className="mt-3 grid gap-2 sm:grid-cols-3">
         <Mesure
           titre={t("bt_car_efficience")}
-          valeur={caractere.efficience.toFixed(2)}
+          valeur={nombre(caractere.efficience, 2)}
           aide={t(
             caractere.efficience >= EFFICIENCE_DIRECTIONNELLE
               ? "bt_car_efficience_haute"
@@ -100,7 +100,7 @@ export function CaractereDuMarche({
           titre={t("bt_car_cout")}
           valeur={`${pourcent((caractere.coutEnBougies * 100))}`}
           aide={t("bt_car_cout_aide", {
-            amplitude: caractere.amplitudePoints.toFixed(2),
+            amplitude: nombre(caractere.amplitudePoints, 2),
             minutes: uniteDeTemps,
           })}
         />

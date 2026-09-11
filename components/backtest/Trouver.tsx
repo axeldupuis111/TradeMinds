@@ -15,7 +15,7 @@ import {
 } from "@/lib/backtest/noms";
 import { MIN_TRADES_CONCLUSION } from "@/lib/backtest/verdict";
 import { AlertTriangle, CheckCircle2, Compass, ClipboardList } from "lucide-react";
-import { pourcent } from "@/lib/nombres";
+import { pourcent, nombre } from "@/lib/nombres";
 
 /**
  * TROUVER CE QUI POURRAIT MARCHER, ET EN SORTIR UN PLAN À RESPECTER.
@@ -173,13 +173,13 @@ function Resultats({
           après trente-neuf essais ne se lit pas comme un chiffre trouvé du
           premier coup, et l'ordre de lecture doit l'imposer. */}
       <p className="mt-3 rounded-lg border border-border bg-surface/40 p-3 text-[11px] leading-relaxed text-foreground-muted">
-        {t("bt_exp_regle", { n: recherche.essais, barre: recherche.barre.toFixed(2) })}
+        {t("bt_exp_regle", { n: recherche.essais, barre: nombre(recherche.barre, 2) })}
       </p>
       <p className="mt-2 text-[11px] tabular-nums text-foreground-muted">
         {t("bt_exp_essais", {
           n: recherche.essais,
-          barre: recherche.barre.toFixed(2),
-          t: recherche.t == null ? "—" : recherche.t.toFixed(2),
+          barre: nombre(recherche.barre, 2),
+          t: recherche.t == null ? "—" : nombre(recherche.t, 2),
         })}
       </p>
 
@@ -256,7 +256,7 @@ function Resultats({
                   </td>
                   <td className="py-1 pr-3 text-foreground-muted">{e.trades}</td>
                   <td className="py-1 text-foreground-muted">
-                    {e.t == null ? t("bt_rob_trop_peu") : `t = ${e.t.toFixed(2)}`}
+                    {e.t == null ? t("bt_rob_trop_peu") : `t = ${nombre(e.t, 2)}`}
                   </td>
                 </tr>
               ))}

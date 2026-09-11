@@ -856,13 +856,15 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     );
 
     const headers = ["Date", "Pair", "Direction", "Lot", "Entry", "Exit", "SL", "TP", "PnL", "Commission", "Swap", "Net PnL", "Emotion", "Tags", "Notes"];
+    // ⚠️ Un CSV est un fichier machine : point décimal, quelle que soit la langue.
+    const csvNum = (v: number) => v.toFixed(2);
     const csvRows = rows.map((tr) => {
       const net = (tr.pnl ?? 0) + (tr.commission ?? 0) + (tr.swap ?? 0);
       return [
         tr.open_time ? new Date(tr.open_time).toISOString().split("T")[0] : "",
         tr.pair, tr.direction, tr.lot_size, tr.entry_price, tr.exit_price,
         tr.sl ?? "", tr.tp ?? "", tr.pnl, tr.commission ?? 0, tr.swap ?? 0,
-        net.toFixed(2), tr.emotion ?? "",
+        csvNum(net), tr.emotion ?? "",
         Array.isArray(tr.tags) ? tr.tags.join("; ") : "",
         (tr.notes ?? "").replace(/"/g, '""'),
       ].map((v) => `"${v}"`).join(",");

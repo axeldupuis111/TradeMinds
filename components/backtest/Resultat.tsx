@@ -366,8 +366,8 @@ export function Resultat({
                 de: periode.de,
                 a: periode.a,
                 esperance: signe(s.esperanceR, 4),
-                bas: s.borneBasse.toFixed(3),
-                haut: s.borneHaute.toFixed(3),
+                bas: nombre(s.borneBasse, 3),
+                haut: nombre(s.borneHaute, 3),
                 trades: s.nbTrades,
               })}
             </p>
@@ -395,7 +395,7 @@ export function Resultat({
           valeur={`${signe(s.totalR, 1)} R`}
           ton={s.totalR >= 0 && gagne ? "profit" : s.totalR < 0 ? "loss" : "neutre"}
         />
-        <Chiffre label={t("bt_drawdown")} valeur={`${s.drawdownMaxR.toFixed(1)} R`} />
+        <Chiffre label={t("bt_drawdown")} valeur={`${nombre(s.drawdownMaxR, 1)} R`} />
       </div>
 
       {/* ── La courbe ────────────────────────────────────────────────────── */}
@@ -467,7 +467,7 @@ export function Resultat({
               {t(maxPertesConsecutives === 1 ? "bt_pire_journee_une" : "bt_pire_journee", {
                 pertes: maxPertesConsecutives,
                 risque: risqueParTradePct,
-                total: (maxPertesConsecutives * risqueParTradePct).toFixed(1),
+                total: nombre(maxPertesConsecutives * risqueParTradePct, 1),
               })}
             </p>
           ) : null}
@@ -485,11 +485,11 @@ export function Resultat({
           <Ligne label={t("bt_esperance_nette")} valeur={`${signe(couts.esperanceNetteR, 4)} R`} />
           <Ligne
             label={t("bt_cout_par_trade")}
-            valeur={`${couts.coutParTradeR.toFixed(4)} R`}
+            valeur={`${nombre(couts.coutParTradeR, 4)} R`}
           />
           <Ligne
             label={t("bt_risque_moyen")}
-            valeur={`${(couts.risqueMoyenTicks * instrument.tailleTick).toFixed(instrument.decimales)} ${t("bt_unite_prix")}`}
+            valeur={`${nombre(couts.risqueMoyenTicks * instrument.tailleTick, instrument.decimales)} ${t("bt_unite_prix")}`}
           />
 {/**
            * ⚠️⚠️ DEUX NOMBRES POUR LE MÊME FAIT, SUR LA MÊME CARTE, VU À
@@ -517,7 +517,7 @@ export function Resultat({
           {couts.coutBreakEvenTicks !== null ? (
             <Ligne
               label={t("bt_cout_break_even")}
-              valeur={`${(couts.coutBreakEvenTicks * instrument.tailleTick).toFixed(instrument.decimales)} ${t("bt_unite_prix")}`}
+              valeur={`${nombre(couts.coutBreakEvenTicks * instrument.tailleTick, instrument.decimales)} ${t("bt_unite_prix")}`}
             />
           ) : null}
         </dl>
@@ -549,7 +549,7 @@ export function Resultat({
           <li className={lecture.partCollisions > 0.15 ? "text-warning" : undefined}>
             {t(audit.collisions === 1 ? "bt_collisions_1" : "bt_collisions", {
               n: audit.collisions,
-              pct: (lecture.partCollisions * 100).toFixed(1),
+              pct: nombre(lecture.partCollisions * 100, 1),
             })}
           </li>
           <li>{t("bt_signaux", { signaux: audit.signaux, refuses: audit.refusesParGestion })}</li>

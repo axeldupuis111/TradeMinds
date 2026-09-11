@@ -1,5 +1,6 @@
 "use client";
 
+import { nombre } from "@/lib/nombres";
 import { Card } from "@/components/ui/Card";
 import type { Fenetre } from "@/lib/backtest/hors-periode";
 import { MOIS_MIN_CONTROLE } from "@/lib/backtest/hors-periode";
@@ -45,8 +46,8 @@ function chiffres(l: LectureBacktest): { trades: number; esperance: string; inte
   const s = l.stats;
   return {
     trades: s.nbTrades,
-    esperance: s.esperanceR.toFixed(3),
-    intervalle: [s.borneBasse.toFixed(3), s.borneHaute.toFixed(3)],
+    esperance: nombre(s.esperanceR, 3),
+    intervalle: [nombre(s.borneBasse, 3), nombre(s.borneHaute, 3)],
   };
 }
 

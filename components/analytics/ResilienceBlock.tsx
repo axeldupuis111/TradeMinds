@@ -17,7 +17,7 @@ import {
 } from "@/lib/analytics/resilience";
 import type { AnalyticsTrade } from "@/lib/analytics/types";
 import { cn } from "@/lib/cn";
-import { pourcent } from "@/lib/nombres";
+import { pourcent, nombre } from "@/lib/nombres";
 
 type Props = {
   trades: AnalyticsTrade[];
@@ -30,7 +30,7 @@ type Props = {
 function fmtEur(n: number, currency: string): string {
   const r = Math.round(Math.abs(n));
   const sym = currencySymbol(currency).trim();
-  if (r >= 1000) return `${(Math.abs(n) / 1000).toFixed(1)}k${sym}`;
+  if (r >= 1000) return `${nombre(Math.abs(n) / 1000, 1)}k${sym}`;
   return `${r}${sym}`;
 }
 

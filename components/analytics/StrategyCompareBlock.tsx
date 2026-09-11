@@ -125,7 +125,7 @@ export default function StrategyCompareBlock({ trades, currency = DEFAULT_CURREN
                 </td>
                 <td className="py-2.5 px-3 text-right tabular-nums text-foreground">{pourcent(Math.round(b.winrate))}</td>
                 <td className="py-2.5 px-3 text-right tabular-nums text-foreground">
-                  {b.profitFactor !== null ? b.profitFactor.toFixed(2) : "—"}
+                  {b.profitFactor !== null ? nombre(b.profitFactor, 2) : "—"}
                 </td>
                 <td className="py-2.5 pl-3 text-right tabular-nums text-foreground-muted">
                   {b.avgChecklist !== null ? `${nombre(b.avgChecklist, 1)}/7` : "—"}

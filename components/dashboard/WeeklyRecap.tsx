@@ -18,7 +18,7 @@ import { DEFAULT_CURRENCY, currencySymbol, money } from "@/lib/account-currency"
 import { cn } from "@/lib/cn";
 import { CalendarRange, Share2, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import { useMemo, useState } from "react";
-import { pourcent } from "@/lib/nombres";
+import { pourcent, nombre } from "@/lib/nombres";
 
 interface RecapTrade {
   open_time: string;
@@ -93,7 +93,7 @@ function DeltaBadge({ delta, suffix = "", invert = false }: { delta: number | nu
       )}
     >
       {delta > 0 ? "↑" : "↓"}
-      {Math.abs(delta) >= 100 ? Math.round(Math.abs(delta)) : Math.abs(delta).toFixed(Math.abs(delta) >= 10 ? 0 : 1)}
+      {Math.abs(delta) >= 100 ? Math.round(Math.abs(delta)) : nombre(Math.abs(delta), Math.abs(delta) >= 10 ? 0 : 1)}
       {suffix}
     </span>
   );
@@ -176,7 +176,7 @@ export default function WeeklyRecap({
     {
       key: "pf",
       label: t("recap_profit_factor"),
-      value: current.profitFactor !== null ? current.profitFactor.toFixed(2) : "—",
+      value: current.profitFactor !== null ? nombre(current.profitFactor, 2) : "—",
       delta: (
         <DeltaBadge
           delta={

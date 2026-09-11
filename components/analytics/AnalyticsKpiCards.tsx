@@ -168,7 +168,7 @@ export function AnalyticsKpiCards({
           value={
             profitFactor !== null
               ? isFinite(profitFactor)
-                ? profitFactor.toFixed(2)
+                ? nombre(profitFactor, 2)
                 : "∞"
               : "—"
           }

@@ -27,6 +27,7 @@
  * et elle ne se négocie pas.
  */
 
+import { nombre } from "@/lib/nombres";
 import { Card, CardTitle } from "@/components/ui/Card";
 import StaggerContainer, { StaggerItem } from "@/components/animations/StaggerContainer";
 import { EditeurPlan } from "@/components/backtest/EditeurPlan";
@@ -734,7 +735,7 @@ export default function BacktestPage() {
           {
             champ: "niveau",
             pourquoi: tr("bt_deduite_tolerance", {
-              valeur: (parDefaut * instrument.tailleTick).toFixed(instrument.decimales),
+              valeur: nombre(parDefaut * instrument.tailleTick, instrument.decimales),
             }),
           },
           ...couvertureFinale.deduites,

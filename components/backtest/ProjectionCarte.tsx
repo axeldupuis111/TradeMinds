@@ -1,5 +1,6 @@
 "use client";
 
+import { nombre } from "@/lib/nombres";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
 import { signePourcent } from "@/lib/backtest/format";
@@ -89,7 +90,7 @@ export function ProjectionCarte({
             : "border-border bg-surface/40 text-foreground-muted",
         )}
       >
-        {t("bt_proj_ruine", { pct: ruinePct.toFixed(1) })}
+        {t("bt_proj_ruine", { pct: nombre(ruinePct, 1) })}
       </p>
 
       <p className="mt-3 flex items-start gap-1.5 text-[11px] leading-relaxed text-foreground-muted">

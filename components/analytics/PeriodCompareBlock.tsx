@@ -128,8 +128,8 @@ export default function PeriodCompareBlock({
     },
     {
       label: t("compare_profit_factor"),
-      cur: current.profitFactor !== null ? current.profitFactor.toFixed(2) : "—",
-      prev: previous.profitFactor !== null ? previous.profitFactor.toFixed(2) : "—",
+      cur: current.profitFactor !== null ? nombre(current.profitFactor, 2) : "—",
+      prev: previous.profitFactor !== null ? nombre(previous.profitFactor, 2) : "—",
       delta: current.profitFactor !== null && previous.profitFactor !== null
         ? current.profitFactor - previous.profitFactor
         : null,

@@ -15,7 +15,7 @@ import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { ScoreRing } from "@/components/dashboard/ScoreRing";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { X } from "lucide-react";
-import { pourcent } from "@/lib/nombres";
+import { pourcent, nombre } from "@/lib/nombres";
 import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 interface Stats { trades: number; winRate: number; totalPnl: number; sessions: number; avgDisciplineScore: number | null; tradingDays: number }
@@ -54,7 +54,7 @@ function fmtMoney(n: number, currency: string) { return money(n, currency, { sig
 function fmtMoneyShort(n: number) {
   const a = Math.abs(n);
   const sign = n > 0 ? "+" : n < 0 ? "-" : "";
-  if (a >= 1000) return `${sign}${(a / 1000).toFixed(1).replace(".", ",")}k`;
+  if (a >= 1000) return `${sign}${nombre(a / 1000, 1)}k`;
   return `${sign}${Math.round(a)}`;
 }
 function fmtDate(iso: string, lang: string) { return new Date(iso).toLocaleDateString(lang, { day: "numeric", month: "short" }); }
@@ -296,8 +296,8 @@ export default function MonthlyReviewPage() {
         pdf.ensure(40, contTitle);
         pdf.section(t("review_risk_title"));
         pdf.statGrid([
-          { label: t("review_risk_pf"), value: risk.profitFactor == null ? "∞" : risk.profitFactor.toFixed(2), color: risk.profitFactor == null || risk.profitFactor >= 1.5 ? C.green : risk.profitFactor >= 1 ? C.amber : C.red },
-          { label: t("review_risk_payoff"), value: risk.payoff == null ? "—" : risk.payoff.toFixed(2), color: risk.payoff != null && risk.payoff >= 1 ? C.green : C.amber },
+          { label: t("review_risk_pf"), value: risk.profitFactor == null ? "∞" : nombre(risk.profitFactor, 2), color: risk.profitFactor == null || risk.profitFactor >= 1.5 ? C.green : risk.profitFactor >= 1 ? C.amber : C.red },
+          { label: t("review_risk_payoff"), value: risk.payoff == null ? "—" : nombre(risk.payoff, 2), color: risk.payoff != null && risk.payoff >= 1 ? C.green : C.amber },
           { label: t("review_risk_expectancy"), value: fmtMoney(risk.expectancy, displayCurrency), color: risk.expectancy >= 0 ? C.green : C.red },
           { label: t("review_risk_dd"), value: risk.maxDrawdown > 0 ? fmtMoney(-risk.maxDrawdown, displayCurrency) : "—", color: C.red },
           { label: t("review_risk_win_streak"), value: `${risk.bestWinStreak}`, color: C.green },
@@ -685,10 +685,10 @@ export default function MonthlyReviewPage() {
                       <p className="text-xs text-muted mt-0.5 mb-3">{t("review_risk_sub")}</p>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <RiskStat label={t("review_risk_pf")} hint={t("review_risk_pf_hint")}
-                          value={risk.profitFactor == null ? "∞" : risk.profitFactor.toFixed(2).replace(".", ",")}
+                          value={risk.profitFactor == null ? "∞" : nombre(risk.profitFactor, 2)}
                           cls={risk.profitFactor == null || risk.profitFactor >= 1.5 ? "text-profit" : risk.profitFactor >= 1 ? "text-warning" : "text-loss"} />
                         <RiskStat label={t("review_risk_payoff")} hint={t("review_risk_payoff_hint")}
-                          value={risk.payoff == null ? "—" : risk.payoff.toFixed(2).replace(".", ",")}
+                          value={risk.payoff == null ? "—" : nombre(risk.payoff, 2)}
                           cls={risk.payoff == null ? "text-muted" : risk.payoff >= 1 ? "text-profit" : "text-warning"} />
                         <RiskStat label={t("review_risk_expectancy")} hint={t("review_risk_expectancy_hint")}
                           value={fmtMoney(risk.expectancy, displayCurrency)}

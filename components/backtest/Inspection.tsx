@@ -110,7 +110,7 @@ export function Inspection({
   const iEntree = a.bougies.findIndex((b) => b.t === a.trade.entreeMs);
   const iSortie = a.bougies.findIndex((b) => b.t === a.trade.sortieMs);
 
-  const fmt = (p: number) => p.toFixed(instrument.decimales);
+  const fmtPrice = (p: number) => p.toFixed(instrument.decimales);
   const gagnant = a.trade.r > 0;
 
   /** Un trait horizontal légendé, tracé de l'entrée à la sortie. */
@@ -141,7 +141,7 @@ export function Inspection({
           strokeDasharray={tirets ? "5 4" : undefined}
         />
         <text x={depart + 4} y={yTexte} fontSize={11} fill={couleur}>
-          {label} {fmt(prix)}
+          {label} {fmtPrice(prix)}
         </text>
       </g>
     );
@@ -306,7 +306,7 @@ export function Inspection({
                 strokeDasharray="2 3"
               />
               <text x={4} y={y(a.niveau) - 4} fontSize={11} className="fill-accent">
-                {t("bt_niveau_franchi")} {fmt(a.niveau)}
+                {t("bt_niveau_franchi")} {fmtPrice(a.niveau)}
               </text>
             </>
           ) : null}
@@ -475,13 +475,13 @@ export function Inspection({
 
       {!objectifVisible ? (
         <p className="mt-2 text-xs text-profit">
-          {t("bt_objectif_hors_cadre", { prix: fmt(a.objectif) })}
+          {t("bt_objectif_hors_cadre", { prix: fmtPrice(a.objectif) })}
         </p>
       ) : null}
 
       {!niveauVisible ? (
         <p className="mt-2 text-xs text-accent">
-          {t("bt_niveau_hors_cadre", { prix: fmt(a.niveau) })}
+          {t("bt_niveau_hors_cadre", { prix: fmtPrice(a.niveau) })}
         </p>
       ) : null}
 
@@ -503,7 +503,7 @@ export function Inspection({
         />
         <Ligne
           label={t("bt_risque_du_trade")}
-          valeur={`${fmt(a.trade.risqueTicks * instrument.tailleTick)} ${t("bt_unite_prix")}`}
+          valeur={`${fmtPrice(a.trade.risqueTicks * instrument.tailleTick)} ${t("bt_unite_prix")}`}
         />
         <Ligne
           label={t("bt_resultat")}

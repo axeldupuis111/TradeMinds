@@ -643,7 +643,7 @@ export default function PositionSizer({ strategy }: Props) {
                           <span className="text-xs text-muted">lots</span>
                           {Math.abs(lotResult.raw - lotResult.lots) >= 0.005 && (
                             <span className="text-xs text-muted">
-                              ({t("sizer_raw_label")} {lotResult.raw.toFixed(3)})
+                              ({t("sizer_raw_label")} {nombre(lotResult.raw, 3)})
                             </span>
                           )}
                         </div>
