@@ -28,7 +28,8 @@ interface Strategy {
 interface DayStats {
   todayPnl: number;
   todayCount: number;
-  streak: number;
+  /** `null` quand la serie n'a pas pu etre lue : ce n'est pas zero. */
+  streak: number | null;
   maxLossEuro: number | null;
   remainingBudget: number | null;
   budgetPct: number;
@@ -176,7 +177,10 @@ export default function DayState() {
      * seul nom. Voir lib/discipline-streak-source.ts.
      */
     const serie = await chargerLaSerieDeDiscipline(supabase, user.id);
-    const streakCount = serie.current;
+    // ⚠️⚠️ `complet` EXISTAIT ET PERSONNE NE LE LISAIT : une lecture ratee
+    // affichait « 0 jour de discipline », soit exactement le defaut pour lequel
+    // ce calcul partage a ete ecrit, par une autre porte.
+    const streakCount = serie.complet ? serie.current : null;
 
     const maxDailyLoss = selectedAccount?.max_daily_loss_pct ?? selectedAccount?.max_daily_dd_pct ?? null;
     const maxLossEuro = maxDailyLoss !== null && maxDailyLoss > 0 && accountSize > 0 ? (accountSize * maxDailyLoss) / 100 : null;
@@ -265,7 +269,7 @@ export default function DayState() {
             {t("session_streak")}
           </p>
           <p className="text-xl font-bold mt-1 text-foreground tabular-nums flex items-center gap-1.5">
-            {streak > 0 && (
+            {streak !== null && streak > 0 && (
               <Flame className="w-4 h-4 text-warning shrink-0 motion-safe:animate-pulse" strokeWidth={1.75} />
             )}
             {/*
@@ -275,7 +279,7 @@ export default function DayState() {
               discipline qui monte d'un point pendant qu'on regarde la page.
               C'est un nombre de JOURS.
             */}
-            {t("review_payoff_days", { n: streak })}
+            {streak === null ? "—" : t("review_payoff_days", { n: streak })}
           </p>
         </div>
 

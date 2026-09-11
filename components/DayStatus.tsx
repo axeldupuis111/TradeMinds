@@ -16,7 +16,8 @@ interface Strategy {
 interface DayStats {
   todayPnl: number;
   todayCount: number;
-  streak: number;
+  /** `null` quand la serie n'a pas pu etre lue : ce n'est pas zero. */
+  streak: number | null;
   maxLossEuro: number | null;
   remainingBudget: number | null;
   budgetPct: number;
@@ -82,7 +83,14 @@ export default function DayStatus() {
      * même temps, sous le même nom. Voir lib/discipline-streak-source.ts.
      */
     const serie = await chargerLaSerieDeDiscipline(supabase, user.id);
-    const streakCount = serie.current;
+    /**
+     * ⚠️⚠️ `complet` EXISTAIT ET PERSONNE NE LE LISAIT. Le calcul partage
+     * rend `{ current: 0, complet: false }` quand la lecture echoue, et les
+     * quatre appelants ne prenaient que `current` : une lecture ratee affichait
+     * donc « 0 jour de discipline », c'est-a-dire EXACTEMENT le defaut pour
+     * lequel ce calcul partage a ete ecrit, par une autre porte.
+     */
+    const streakCount = serie.complet ? serie.current : null;
 
     const maxDailyLoss = selectedAccount?.max_daily_loss_pct ?? selectedAccount?.max_daily_dd_pct ?? null;
     const maxLossEuro = maxDailyLoss !== null && maxDailyLoss > 0 && accountSize > 0 ? (accountSize * maxDailyLoss) / 100 : null;
@@ -140,7 +148,7 @@ export default function DayStatus() {
         <div>
           <p className="text-xs text-muted">{t("session_streak")}</p>
           <p className="text-xl font-bold mt-1 text-foreground">
-            {streak > 0 ? `🔥 ${streak}` : "0"}
+            {streak === null ? "—" : streak > 0 ? `🔥 ${streak}` : "0"}
           </p>
         </div>
         <div>

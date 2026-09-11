@@ -152,6 +152,15 @@ export default async function PublicProfilePage({ params }: Props) {
     .slice()
     .sort((a, b) => new Date(a.open_time).getTime() - new Date(b.open_time).getTime());
 
+  /**
+   * ⚠️⚠️ `complet` EXISTAIT ET PERSONNE NE LE LISAIT. Le calcul partage rend
+   * `{ current: 0, complet: false }` quand la lecture echoue, et les quatre
+   * appelants ne prenaient que `current` : une lecture ratee affichait donc
+   * « 0 jour de discipline » avec un flocon, SUR LA PAGE QUE LE TRADER
+   * PARTAGE, la surface ou un chiffre faux est le moins recoupable. C'est
+   * exactement le defaut pour lequel ce calcul partage a ete ecrit, atteint
+   * par une autre porte.
+   */
   return (
     <PublicProfileView
       username={profile.username}
@@ -160,7 +169,7 @@ export default async function PublicProfilePage({ params }: Props) {
       reviews={reviews || []}
       sessionCount={sessionCount ?? 0}
       achievements={achievements || []}
-      serie={serie.current}
+      serie={serie.complet ? serie.current : null}
     />
   );
 }

@@ -47,7 +47,15 @@ describe("un seul chiffre de discipline", () => {
   it("le profil public ne compte plus sa propre série", () => {
     const vue = lire("components/profile/PublicProfileView.tsx");
     expect(vue, "la vue recompte une série").not.toMatch(/let streak = 0;/);
-    expect(vue, "la série doit arriver toute faite").toMatch(/serie: number;/);
+    /**
+     * ⚠️ ELLE ARRIVE TOUTE FAITE, ET ELLE PEUT ARRIVER ABSENTE. Le calcul
+     * partage rend `complet: false` quand la lecture echoue, et la vue doit
+     * pouvoir le dire au lieu d'afficher zero : « 0 jour de discipline »
+     * sur la page que le trader PARTAGE est precisement le defaut que ce
+     * fichier protege, atteint par une autre porte.
+     */
+    expect(vue, "la série doit arriver toute faite").toMatch(/serie: number \| null;/);
+    expect(vue, "la vue affiche zéro quand elle ne sait pas").toContain("serie === null");
     const page = lire("app/profile/[username]/page.tsx");
     expect(page).toMatch(/chargerLaSerieDeDiscipline\(supabase, userId/);
   });
@@ -179,5 +187,30 @@ describe("un seul chiffre de discipline", () => {
         `${langue} : le classement appelle « ${lire2("leaderboard_stat_sessions")} » ce qui est un compte de bilans`,
       ).toBe(false);
     }
+  });
+
+  /**
+   * ⚠️⚠️ `complet` EXISTAIT ET PERSONNE NE LE LISAIT. Le calcul partagé rend
+   * `{ current: 0, complet: false }` quand la lecture échoue, et les quatre
+   * appelants ne prenaient que `current` : une lecture ratée affichait donc
+   * « 0 jour de discipline », c'est-à-dire EXACTEMENT le défaut pour lequel ce
+   * calcul partagé a été écrit, atteint par une autre porte.
+   *
+   * ⚠️ Un champ que personne ne lit n'est pas une protection, c'est une
+   * intention. Ce test le rend obligatoire.
+   */
+  it("les quatre lecteurs distinguent « zéro » de « je n'ai pas pu lire »", () => {
+    for (const chemin of [
+      "components/DayStatus.tsx",
+      "components/dashboard/DayState.tsx",
+      "app/profile/[username]/page.tsx",
+    ]) {
+      const src = lire(chemin);
+      expect(src, `${chemin} ignore encore \`complet\``).toContain("serie.complet");
+    }
+    // Et chaque écran a de quoi rendre l'absence.
+    expect(lire("components/DayStatus.tsx")).toContain('streak === null ? "—"');
+    expect(lire("components/dashboard/DayState.tsx")).toContain('streak === null ? "—"');
+    expect(lire("components/profile/PublicProfileView.tsx")).toContain('serie === null ? "—"');
   });
 });

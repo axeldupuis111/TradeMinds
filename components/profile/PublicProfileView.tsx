@@ -72,7 +72,8 @@ export default function PublicProfileView({
    * propres bilans sans violation et annonçait « 0 jour » quand le tableau
    * de bord en affichait 75, pour le même compte, le même jour.
    */
-  serie: number;
+  /** `null` quand la serie n'a pas pu etre lue : ce n'est pas zero. */
+  serie: number | null;
 }) {
   const { t } = useLanguage();
   const stats = useMemo(() => {
@@ -166,9 +167,16 @@ export default function PublicProfileView({
 
         {/* Streak */}
         <div className="bg-card border border-border rounded-xl p-5 mb-8 flex items-center gap-4">
-          <span className="text-4xl">{serie > 0 ? "\u{1F525}" : "\u{2744}\u{FE0F}"}</span>
+          {/* ⚠️ Trois états, pas deux : en série, à zéro, ou illisible. Un
+              flocon sur une lecture ratée dirait « il a laissé filer », ce qui
+              est une affirmation, et elle serait fausse. */}
+          <span className="text-4xl">
+            {serie === null ? "\u{2753}" : serie > 0 ? "\u{1F525}" : "\u{2744}\u{FE0F}"}
+          </span>
           <div>
-            <p className="text-xl font-bold text-foreground">{t("pubprofile_streak", { n: serie })}</p>
+            <p className="text-xl font-bold text-foreground">
+              {serie === null ? "—" : t("pubprofile_streak", { n: serie })}
+            </p>
             <p className="text-xs text-muted">{t("pubprofile_streak_sub")}</p>
           </div>
         </div>
