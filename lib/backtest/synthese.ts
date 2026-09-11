@@ -1,0 +1,282 @@
+import type { Constat } from "./coherence-plan";
+import { PART_QUI_DOMINE, type Concentration } from "./robustesse";
+import type { Stabilite } from "./stabilite";
+import { MAX_TENTATIVES_AVANT_ALERTE, MIN_TRADES_CONCLUSION, type LectureBacktest } from "./verdict";
+
+/**
+ * TA STRATÉGIE EST-ELLE VIABLE DANS LE TEMPS ?
+ *
+ * ── LA DEMANDE, ET POURQUOI ELLE N'A PAS DE RÉPONSE EN UN MOT ───────────────
+ *
+ * « Dis-moi si ma stratégie est viable et cohérente. » C'est la bonne question,
+ * et la mauvaise réponse serait une note sur dix. Une note se capture en photo,
+ * se compare entre traders, et fait exactement ce que tout ce chantier refuse :
+ * transformer une absence de preuve en chiffre rassurant.
+ *
+ * ⚠️ ON NE REND DONC PAS UN SCORE. On rend une liste de PILIERS, chacun dans
+ * l'un de trois états : établi, pas établi, ou pas encore regardé. Un pilier
+ * n'est jamais « moyen » : soit la mesure le tient, soit elle ne le tient pas.
+ *
+ * ── POURQUOI CETTE LISTE-LÀ ─────────────────────────────────────────────────
+ *
+ * Parce que « viable » n'est pas une propriété, c'est une conjonction. Une
+ * stratégie dont l'espérance est positive mais qui vient d'un seul mois n'est
+ * pas viable. Une stratégie régulière dont le réglage s'effondre au cran d'à
+ * côté ne l'est pas non plus. Une stratégie parfaite sur le papier dont la fiche
+ * annonce trois trades par jour et qui en produit quinze n'est même pas la
+ * stratégie du trader. Chaque pilier ferme une porte de sortie différente, et il
+ * suffit qu'une reste ouverte pour que le chiffre global ne veuille rien dire.
+ *
+ * ⚠️ AUCUN PILIER NE DIT « RENTABLE ». Ils disent ce qui est DÉMONTRÉ et ce qui
+ * ne l'est pas, ce qui est une question différente et préalable. Un test lit ce
+ * fichier pour s'assurer qu'aucun jugement de valeur n'y entre.
+ */
+
+export type EtatPilier =
+  /** La mesure le tient. */
+  | "etabli"
+  /** La mesure dit le contraire. */
+  | "pas_etabli"
+  /** Personne ne l'a encore regardé : ce n'est ni bon ni mauvais signe. */
+  | "pas_regarde";
+
+export type CodePilier =
+  /** Assez de trades pour qu'un chiffre veuille dire quelque chose. */
+  | "echantillon"
+  /** L'intervalle de l'espérance exclut zéro. */
+  | "avantage_mesure"
+  /** Le résultat ne repose pas sur un seul mois. */
+  | "regularite"
+  /** L'avantage se retrouve sur une période qui n'a pas servi à le trouver. */
+  | "hors_periode"
+  /** Le réglage est sur un plateau, pas sur un pic isolé. */
+  | "reglage_stable"
+  /** La recherche n'a pas dérivé en pêche au meilleur chiffre. */
+  | "recherche_bornee"
+  /** Ce que la fiche annonce et ce que la mécanique produit se ressemblent. */
+  | "coherence";
+
+export interface Pilier {
+  code: CodePilier;
+  etat: EtatPilier;
+  /** Les nombres de la phrase traduite. Vides quand le pilier n'a pas été regardé. */
+  valeurs: Record<string, string | number>;
+  /**
+   * Suffixe de clé quand un même état recouvre deux situations différentes.
+   *
+   * ⚠️⚠️ NÉ D'UNE PHRASE VIDE VUE À L'ÉCRAN. « Pas établi » disait toujours
+   * « {mois} apporte {part} % du total », or quand le total est NÉGATIF il n'y
+   * a pas de part à calculer : la phrase sortait avec un trou. Deux situations
+   * qui partagent un état ne partagent pas forcément une rédaction.
+   */
+  variante?: string;
+}
+
+export interface Synthese {
+  piliers: Pilier[];
+  etablis: number;
+  pasEtablis: number;
+  pasRegardes: number;
+}
+
+export interface EntreesSynthese {
+  lecture: LectureBacktest;
+  concentration: Concentration | null;
+  stabilite?: Stabilite[];
+  /** Le contrôle hors période, quand il a eu lieu ET porte encore sur ce plan. */
+  horsPeriode?: { lecture: LectureBacktest; fenetre: { de: string; a: string } } | null;
+  constats: Constat[];
+  tentatives: number;
+  /**
+   * Combinaisons essayées par la recherche automatique, quand elle a tourné.
+   *
+   * ⚠️⚠️ SANS ELLES, LE PILIER RASSURAIT À TORT. Vu à l'écran : « Une recherche
+   * qui n'a pas dérivé · Établi · 3 essais sur cette stratégie » affiché juste
+   * en dessous d'un balayage de trente-six combinaisons. Le compteur manuel ne
+   * voit que les rejeux lancés à la main ; la recherche, elle, en essaie
+   * quarante d'un coup. Les deux comptent, et le trader doit voir le total.
+   */
+  combinaisonsExplorees?: number;
+}
+
+export function synthetiser(e: EntreesSynthese): Synthese {
+  const piliers: Pilier[] = [];
+  const ajouter = (
+    code: CodePilier,
+    etat: EtatPilier,
+    valeurs: Record<string, string | number> = {},
+    variante?: string,
+  ) => piliers.push({ code, etat, valeurs, variante });
+
+  // ── 1. L'échantillon ─────────────────────────────────────────────────────
+  const trades = e.lecture.stats?.nbTrades ?? 0;
+  ajouter(
+    "echantillon",
+    e.lecture.verdict === "insuffisant" ? "pas_etabli" : "etabli",
+    { trades, seuil: MIN_TRADES_CONCLUSION, manquants: e.lecture.tradesManquants ?? 0 },
+  );
+
+  // ── 2. L'avantage mesuré ─────────────────────────────────────────────────
+  // ⚠️ « Positif » exige que zéro soit HORS de l'intervalle, jamais que la
+  // moyenne soit au-dessus de zéro. C'est la règle du verdict, on ne l'assouplit
+  // pas ici sous prétexte de faire une synthèse.
+  if (!e.lecture.stats) {
+    ajouter("avantage_mesure", "pas_regarde");
+  } else {
+    /**
+     * ⚠️⚠️ TROIS CAS, PAS DEUX, ET LE TROISIÈME MENTAIT SUR SES PROPRES
+     * CHIFFRES. Vu à l'écran : « -0.201 R par trade, mais l'intervalle va de
+     * -0.313 à -0.088. ZÉRO EST DEDANS ». Il ne l'était pas : l'intervalle
+     * était entièrement sous zéro, et l'écran du dessus disait à juste titre
+     * « perdante sur la période testée ».
+     *
+     * L'avantage n'est pas établi dans les deux cas, c'est vrai, mais on ne les
+     * dit pas avec les mêmes mots : « on ne peut pas conclure » et « c'est
+     * démontré perdant » sont exactement les deux états que cette carte existe
+     * pour distinguer. Les confondre transforme une perte prouvée en doute
+     * rassurant, dans le sens le plus coûteux pour le trader.
+     *
+     * ⚠️ LE MÊME DÉFAUT AVAIT DÉJÀ ÉTÉ CORRIGÉ SUR LE PILIER DE LA RÉGULARITÉ,
+     * avec le même commentaire « trois états, pas deux ». Je ne l'avais pas
+     * cherché ailleurs.
+     */
+    ajouter(
+      "avantage_mesure",
+      e.lecture.verdict === "positif" ? "etabli" : "pas_etabli",
+      {
+        esperance: e.lecture.stats.esperanceR.toFixed(3),
+        bas: e.lecture.stats.borneBasse.toFixed(3),
+        haut: e.lecture.stats.borneHaute.toFixed(3),
+      },
+      e.lecture.verdict === "negatif" ? "negatif" : undefined,
+    );
+  }
+
+  // ── 3. La régularité dans le temps ───────────────────────────────────────
+  if (!e.concentration) {
+    ajouter("regularite", "pas_regarde");
+  } else {
+    const c = e.concentration;
+    // ⚠️⚠️ TROIS ÉTATS, PAS DEUX, et la correction vient d'une contradiction vue
+    // à l'écran : un mois apportait 58 % du total, le reste restait positif, et
+    // ce pilier affichait « Établi » juste au-dessus de « ton meilleur mois
+    // apporte 58 % du total ». Un résultat dont la moitié vient d'un mois n'est
+    // pas réparti, même quand le reste ne perd pas.
+    ajouter(
+      "regularite",
+      c.forme === "reparti" ? "etabli" : "pas_etabli",
+      {
+        mois: c.meilleurMois ?? "",
+        part: c.partDuMeilleurMois?.toFixed(0) ?? "",
+        annees: c.anneesPositives,
+        total: c.annees.length,
+        sans: c.totalSansLeMeilleurMoisR.toFixed(2),
+        /**
+         * ⚠️⚠️ LE SEUIL EST UNE VALEUR, PAS UN MOT DE LA PHRASE. Vu à l'écran :
+         * « 2025-06 apporte 83 % du total à lui seul » suivi de « un résultat
+         * dont un seul mois porte LA MOITIÉ n'est pas réparti ». Deux quantités
+         * pour le même fait sur la même ligne, et le lecteur doit deviner
+         * laquelle est la mesure et laquelle est la règle. Écrire le seuil en
+         * toutes lettres dans la copie l'aurait en plus figé à 50 le jour où
+         * cette constante bouge.
+         */
+        seuil: PART_QUI_DOMINE,
+      },
+      // ⚠️ Quand le total perd, il n'y a rien à répartir : la phrase ordinaire
+      // sortirait avec un pourcentage vide au milieu.
+      c.forme === "rien_a_repartir" ? "rien_a_repartir" : undefined,
+    );
+  }
+
+  // ── 4. La période intacte ────────────────────────────────────────────────
+  // ⚠️ « Pas regardé » et « pas établi » sont deux choses différentes, et les
+  // confondre serait le mensonge le plus commode de cet écran : ne pas avoir
+  // fait le contrôle n'est pas un mauvais résultat, c'est une absence de
+  // résultat, et c'est une action précise à faire.
+  if (!e.horsPeriode) {
+    ajouter("hors_periode", "pas_regarde");
+  } else {
+    const s = e.horsPeriode.lecture.stats;
+    const v = e.horsPeriode.lecture.verdict;
+    /**
+     * ⚠️⚠️ « L'AVANTAGE NE SE RETROUVE PAS » DISAIT LE CONTRAIRE DES CHIFFRES
+     * QU'IL PORTAIT. Vu à l'écran : « Sur la période intacte, l'avantage ne se
+     * retrouve pas : 0.031 R, intervalle [-0.029 ; 0.091] », alors que la
+     * période de test, elle, rendait -0.052 R. Le contrôle était donc MEILLEUR
+     * que le test, et il n'y avait aucun avantage à ne pas retrouver.
+     *
+     * Trois situations très différentes tombaient sous la même phrase :
+     * l'avantage s'effondre, le contrôle ne tranche pas, le contrôle n'a pas
+     * assez de trades. Seule la première méritait ce mot-là.
+     */
+    ajouter(
+      "hors_periode",
+      v === "positif" ? "etabli" : "pas_etabli",
+      /**
+       * ⚠️ LA FENÊTRE EST NOMMÉE. « Sur la période intacte » ne dit pas laquelle,
+       * et c'est la mesure que cette page appelle « la plus importante de
+       * toutes » : le trader doit pouvoir juger sur quels mois elle porte,
+       * exactement comme le verdict nomme son marché et ses dates.
+       */
+      s
+        ? {
+            esperance: s.esperanceR.toFixed(3),
+            bas: s.borneBasse.toFixed(3),
+            haut: s.borneHaute.toFixed(3),
+            trades: s.nbTrades,
+            periode: `${e.horsPeriode.fenetre.de} → ${e.horsPeriode.fenetre.a}`,
+          }
+        : { trades: 0, periode: `${e.horsPeriode.fenetre.de} → ${e.horsPeriode.fenetre.a}` },
+      v === "non_concluant" ? "pas_etabli_non_concluant" : v === "insuffisant" ? "pas_etabli_insuffisant" : undefined,
+    );
+  }
+
+  // ── 5. La forme du réglage ───────────────────────────────────────────────
+  if (!e.stabilite || e.stabilite.length === 0) {
+    ajouter("reglage_stable", "pas_regarde");
+  } else {
+    const pics = e.stabilite.filter((s) => s.forme === "pic_isole");
+    const mesures = e.stabilite.filter((s) => s.forme !== "indecidable");
+    if (mesures.length === 0) ajouter("reglage_stable", "pas_regarde");
+    else ajouter("reglage_stable", pics.length === 0 ? "etabli" : "pas_etabli", { pics: pics.length });
+  }
+
+  // ── 6. La recherche ──────────────────────────────────────────────────────
+  const explorees = e.combinaisonsExplorees ?? 0;
+  const essaisTotal = e.tentatives + explorees;
+  ajouter(
+    "recherche_bornee",
+    essaisTotal <= MAX_TENTATIVES_AVANT_ALERTE ? "etabli" : "pas_etabli",
+    {
+      essais: essaisTotal,
+      seuil: MAX_TENTATIVES_AVANT_ALERTE,
+      mains: e.tentatives,
+      explorees,
+    },
+    // ⚠️ Quand la recherche a tourné, la phrase doit dire d'où vient le total :
+    // « 39 essais » sans explication ressemble à un compteur qui s'emballe.
+    //
+    // ⚠️⚠️ « 1 ESSAIS », VU À L'ÉCRAN. La même faute que « 7.05 bougie » et
+    // « 1 ans » : un pluriel appliqué à un. Elle est d'autant plus visible ici
+    // que c'est le premier rejeu de tout le monde, donc la phrase que le plus
+    // grand nombre de traders lira.
+    explorees > 0
+      ? essaisTotal <= MAX_TENTATIVES_AVANT_ALERTE
+        ? "avec_recherche"
+        : "avec_recherche_au_dela"
+      : essaisTotal === 1
+        ? "etabli_un"
+        : undefined,
+  );
+
+  // ── 7. La cohérence ──────────────────────────────────────────────────────
+  const bloquants = e.constats.filter((c) => c.gravite === "bloquant").length;
+  ajouter("coherence", bloquants === 0 ? "etabli" : "pas_etabli", { bloquants });
+
+  return {
+    piliers,
+    etablis: piliers.filter((p) => p.etat === "etabli").length,
+    pasEtablis: piliers.filter((p) => p.etat === "pas_etabli").length,
+    pasRegardes: piliers.filter((p) => p.etat === "pas_regarde").length,
+  };
+}

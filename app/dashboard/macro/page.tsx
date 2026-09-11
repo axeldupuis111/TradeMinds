@@ -387,7 +387,7 @@ export default function MacroPage() {
             <p className="flex items-center gap-1.5 text-[11px] text-foreground-muted">
               <Sparkles className="w-3.5 h-3.5 text-accent" /> {t("macro_generated_by_ai")}
             </p>
-            <p className="text-[11px] text-foreground-muted/80 leading-relaxed">{t("macro_disclaimer")}</p>
+            <p className="text-[11px] text-foreground-subtle leading-relaxed">{t("macro_disclaimer")}</p>
           </div>
         </motion.article>
 

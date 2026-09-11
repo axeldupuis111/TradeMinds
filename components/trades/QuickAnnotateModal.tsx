@@ -119,7 +119,7 @@ export default function QuickAnnotateModal({
   const done = queue !== null && index >= total;
 
   const body = (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+    <div aria-label={t("annotate_title")} className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={handleClose} />
 
       <div className="relative w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
@@ -161,7 +161,7 @@ export default function QuickAnnotateModal({
               </span>
               <p className="text-base font-semibold text-foreground">{t("annotate_done_title")}</p>
               <p className="text-sm text-foreground-muted mt-1.5">
-                {t("annotate_done_desc").replace("{count}", String(annotated))}
+                {t("annotate_done_desc", { count: String(annotated) })}
               </p>
               <button
                 onClick={handleClose}

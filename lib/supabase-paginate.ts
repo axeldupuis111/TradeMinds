@@ -55,3 +55,40 @@ export function chunk<T>(items: T[], size: number): T[][] {
 
 /** Taille de tranche sûre pour une requête portant des identifiants en URL. */
 export const ID_CHUNK = 100;
+
+/**
+ * Lit toutes les lignes correspondant à une LISTE D'IDENTIFIANTS.
+ *
+ * ── LES DEUX PLAFONDS, ET POURQUOI ILS VONT ENSEMBLE ────────────────────────
+ *
+ * ⚠️⚠️ `chunk` EXISTAIT, ET NE SERVAIT QU'AUX ÉCRITURES. Son commentaire le dit
+ * lui-même (« sert aux écritures par identifiants ») : les suppressions en lot
+ * de trades découpaient bien leur liste, et AUCUNE lecture ne le faisait. Or une
+ * lecture `?id=in.(…)` voyage dans la même URL, avec la même limite de taille.
+ *
+ * ⚠️ ET LES DEUX PLAFONDS SE CUMULENT, chacun avec sa panne :
+ *
+ *   - trop d'identifiants dans l'URL → la requête échoue D'UN BLOC (414) ;
+ *   - trop de lignes en réponse → elle réussit, tronquée à mille, EN SILENCE.
+ *
+ * Corriger l'un sans l'autre déplace la panne au lieu de la réparer : c'est
+ * pourquoi cette fonction découpe la liste ET pagine chaque tranche.
+ *
+ * ⚠️ ORDRE DÉTERMINISTE OBLIGATOIRE dans `build`, pour la même raison que
+ * `fetchAllRows` : un tri à doublons fait sauter ou répéter des lignes.
+ *
+ * Rend `null` si une seule tranche échoue, jamais une liste partielle.
+ */
+export async function fetchAllByIds<T>(
+  ids: readonly string[],
+  build: (lot: string[], from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
+): Promise<T[] | null> {
+  if (ids.length === 0) return [];
+  const all: T[] = [];
+  for (const lot of chunk([...ids], ID_CHUNK)) {
+    const page = await fetchAllRows<T>((from, to) => build(lot, from, to));
+    if (page === null) return null;
+    all.push(...page);
+  }
+  return all;
+}

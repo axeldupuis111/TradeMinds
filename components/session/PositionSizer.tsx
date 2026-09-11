@@ -1,6 +1,6 @@
 "use client";
 
-import { DEFAULT_CURRENCY, accountCurrency, currencySymbol } from "@/lib/account-currency";
+import { DEFAULT_CURRENCY, accountCurrency, currencySymbol, money } from "@/lib/account-currency";
 import { computeChallengeRules } from "@/lib/challenge-rules";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -19,10 +19,12 @@ import {
 } from "@/lib/futures-contracts";
 import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
+import { lireTousLesTradesDuCompte, netDuTrade } from "@/lib/trades-du-compte";
 import { startOfLocalDayUtc, browserTimezone } from "@/lib/timezone";
 import { Info, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { nombre, pourcent } from "@/lib/nombres";
 
 interface Props {
   strategy: {
@@ -81,13 +83,16 @@ export default function PositionSizer({ strategy }: Props) {
 
     const today = startOfLocalDayUtc(browserTimezone()).toISOString();
 
-    const [{ data: allTrades }, { data: todayTrades }] = await Promise.all([
-      supabase
-        .from("trades")
-        .select("pnl, commission, swap")
-        .eq("user_id", user.id)
-        .eq("challenge_id", challengeId)
-        .order("open_time", { ascending: true }),
+    // ⚠️ LECTURE PAGINÉE : non bornée, elle s'arrêtait à mille trades en
+    // silence, et c'est cette courbe qui donne le drawdown restant, donc la
+    // taille de position proposée.
+    const [allTrades, { data: todayTrades }] = await Promise.all([
+      lireTousLesTradesDuCompte<{ pnl: number | null; commission: number | null; swap: number | null; open_time: string | null }>(
+        supabase,
+        user.id,
+        challengeId,
+        "pnl, commission, swap, open_time",
+      ),
       supabase
         .from("trades")
         .select("pnl, commission, swap, status")
@@ -96,9 +101,12 @@ export default function PositionSizer({ strategy }: Props) {
         .gte("open_time", today),
     ]);
 
+    // ⚠️ Lecture incomplète : on ne propose pas une taille de position sur un
+    // historique amputé. Voir lib/trades-du-compte.ts.
+    if (allTrades === null) return;
     let running = account.account_size;
-    const equityCurveBalances = (allTrades || []).map((tr) => {
-      running += (tr.pnl || 0) + (tr.commission || 0) + (tr.swap || 0);
+    const equityCurveBalances = allTrades.map((tr) => {
+      running += netDuTrade(tr);
       return running;
     });
 
@@ -146,9 +154,16 @@ export default function PositionSizer({ strategy }: Props) {
   // à côté dès qu'un compte prop en dollars traitait des CFD, ou l'inverse.
   // `.trim()` : le symbole d'une devise inconnue est rendu par son code précédé
   // d'une espace (« PLN »), et il est ici toujours affiché après une espace.
-  const cur = currencySymbol(
-    selectedAccount ? accountCurrency(selectedAccount) : DEFAULT_CURRENCY,
-  ).trim();
+  const devise = selectedAccount ? accountCurrency(selectedAccount) : DEFAULT_CURRENCY;
+  const cur = currencySymbol(devise).trim();
+  /**
+   * ⚠️⚠️ « RISQUE MAX 500.00 € » : le point décimal est anglais, et la page
+   * était en français. Trois montants étaient composés à la main avec
+   * `toFixed(2)` suivi du symbole, alors que le reste du produit passe par
+   * `money()`, qui suit la langue lue. Sur l'écran qui compte l'argent que le
+   * trader met en jeu, deux écritures différentes du même euro.
+   */
+  const enArgent = (v: number) => money(v, devise, { digits: 2 });
 
   // ── Common inputs: account balance + risk per trade (editable) ────────────
   // Prefilled from the active account / strategy, but the user can override —
@@ -300,8 +315,8 @@ export default function PositionSizer({ strategy }: Props) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {/* Account balance */}
         <div>
-          <label className="block text-xs text-muted mb-1">{t("sizer_balance_label")} ({cur})</label>
-          <input
+          <label htmlFor="positionsizer-sizer-balance-label" className="block text-xs text-muted mb-1">{t("sizer_balance_label")} ({cur})</label>
+          <input id="positionsizer-sizer-balance-label"
             type="number"
             min="0"
             step="100"
@@ -317,9 +332,9 @@ export default function PositionSizer({ strategy }: Props) {
 
         {/* Risk per trade with %/€ toggle */}
         <div>
-          <label className="block text-xs text-muted mb-1">{t("sizer_risk_label")}</label>
+          <label htmlFor="positionsizer-sizer-risk-label" className="block text-xs text-muted mb-1">{t("sizer_risk_label")}</label>
           <div className="flex gap-2">
-            <input
+            <input id="positionsizer-sizer-risk-label"
               type="number"
               min="0"
               step={riskMode === "pct" ? "0.1" : "10"}
@@ -374,7 +389,7 @@ export default function PositionSizer({ strategy }: Props) {
           <span className="text-loss text-lg leading-none mt-0.5">⛔</span>
           <div>
             <p className="text-sm font-semibold text-loss">{t("sizer_limit_reached")}</p>
-            <p className="text-xs text-loss/80 mt-0.5">{cappedByLabel(maxRisk.cappedBy)}</p>
+            <p className="text-xs text-loss mt-0.5">{cappedByLabel(maxRisk.cappedBy)}</p>
           </div>
         </div>
       ) : (
@@ -387,7 +402,7 @@ export default function PositionSizer({ strategy }: Props) {
           {maxRisk ? (
             <>
               <span className="text-xl font-bold text-profit tabular-nums">
-                {maxRisk.riskEur.toFixed(2)} {cur}
+                {enArgent(maxRisk.riskEur)}
               </span>
               <span className="text-xs text-muted">{cappedByLabel(maxRisk.cappedBy)}</span>
             </>
@@ -406,10 +421,10 @@ export default function PositionSizer({ strategy }: Props) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Contract selector */}
                 <div>
-                  <label className="block text-xs text-muted mb-1">
+                  <label htmlFor="positionsizer-sizer-futures-contract" className="block text-xs text-muted mb-1">
                     {t("sizer_futures_contract")}
                   </label>
-                  <select
+                  <select id="positionsizer-sizer-futures-contract"
                     value={futuresSymbol}
                     onChange={(e) => setFuturesSymbol(e.target.value)}
                     className={inputClass}
@@ -431,10 +446,10 @@ export default function PositionSizer({ strategy }: Props) {
 
                 {/* SL in points */}
                 <div>
-                  <label className="block text-xs text-muted mb-1">
+                  <label htmlFor="positionsizer-sizer-futures-sl-points" className="block text-xs text-muted mb-1">
                     {t("sizer_futures_sl_points")}
                   </label>
-                  <input
+                  <input id="positionsizer-sizer-futures-sl-points"
                     type="number"
                     min="0"
                     step={futuresContract ? String(futuresContract.tickSize) : "0.25"}
@@ -459,7 +474,7 @@ export default function PositionSizer({ strategy }: Props) {
                 {contractCount === null ? (
                   <p className="text-sm text-muted">{t("sizer_fill_sl_pip")}</p>
                 ) : contractCount === 0 ? (
-                  <p className="text-sm text-loss/90">{t("sizer_futures_no_contract")}</p>
+                  <p className="text-sm text-loss">{t("sizer_futures_no_contract")}</p>
                 ) : (
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                     <div className="flex items-baseline gap-2">
@@ -474,7 +489,7 @@ export default function PositionSizer({ strategy }: Props) {
                       <div className="flex items-baseline gap-1">
                         <span className="text-xs text-muted">{t("sizer_futures_actual_risk")}</span>
                         <span className="text-sm font-semibold text-foreground tabular-nums">
-                          {actualRisk.toFixed(2)} {cur}
+                          {enArgent(actualRisk)}
                         </span>
                       </div>
                     )}
@@ -488,8 +503,8 @@ export default function PositionSizer({ strategy }: Props) {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {/* Instrument — preset dropdown + custom fallback */}
                 <div>
-                  <label className="block text-xs text-muted mb-1">{t("sizer_instrument")}</label>
-                  <select
+                  <label htmlFor="positionsizer-sizer-instrument" className="block text-xs text-muted mb-1">{t("sizer_instrument")}</label>
+                  <select id="positionsizer-sizer-instrument"
                     value={isCustomInstrument ? CUSTOM_INSTRUMENT : symbol}
                     onChange={(e) => handleInstrumentSelect(e.target.value)}
                     className={inputClass}
@@ -500,7 +515,7 @@ export default function PositionSizer({ strategy }: Props) {
                     <option value={CUSTOM_INSTRUMENT}>{t("sizer_instrument_custom")}</option>
                   </select>
                   {isCustomInstrument && (
-                    <input
+                    <input aria-label={t("sizer_instrument_custom")}
                       type="text"
                       value={symbol}
                       onChange={(e) => handleSymbolChange(e.target.value)}
@@ -513,8 +528,8 @@ export default function PositionSizer({ strategy }: Props) {
 
                 {/* SL pips */}
                 <div>
-                  <label className="block text-xs text-muted mb-1">{t("sizer_sl_pips")}</label>
-                  <input
+                  <label htmlFor="positionsizer-sizer-sl-pips" className="block text-xs text-muted mb-1">{t("sizer_sl_pips")}</label>
+                  <input id="positionsizer-sizer-sl-pips"
                     type="number"
                     min="0"
                     step="0.1"
@@ -554,7 +569,7 @@ export default function PositionSizer({ strategy }: Props) {
                           <Info className="w-3.5 h-3.5" />
                         </button>
                       </div>
-                      <input
+                      <input aria-label={t("sizer_pip_value")}
                         type="number"
                         min="0"
                         step="0.01"
@@ -623,12 +638,12 @@ export default function PositionSizer({ strategy }: Props) {
                         <div className="flex items-baseline gap-2 flex-wrap">
                           <span className="text-xs text-muted uppercase tracking-wider">{t("sizer_lot_label")}</span>
                           <span className="text-2xl font-bold text-accent tabular-nums motion-safe:transition-all">
-                            {lotResult.lots.toFixed(2)}
+                            {nombre(lotResult.lots, 2)}
                           </span>
                           <span className="text-xs text-muted">lots</span>
                           {Math.abs(lotResult.raw - lotResult.lots) >= 0.005 && (
                             <span className="text-xs text-muted">
-                              ({t("sizer_raw_label")} {lotResult.raw.toFixed(3)})
+                              ({t("sizer_raw_label")} {nombre(lotResult.raw, 3)})
                             </span>
                           )}
                         </div>
@@ -640,18 +655,18 @@ export default function PositionSizer({ strategy }: Props) {
                               {units !== null ? units.toLocaleString(undefined, { maximumFractionDigits: 0 }) : "—"}
                             </p>
                             {unitsPerLot !== null && (
-                              <p className="text-[10px] text-muted/70 mt-0.5">
-                                {t("sizer_contract_size")}: {unitsPerLot.toLocaleString()}
+                              <p className="text-[10px] text-muted mt-0.5">
+                                {t("sizer_contract_size")}: {nombre(unitsPerLot)}
                               </p>
                             )}
                           </div>
                           <div>
                             <p className="text-[11px] text-muted uppercase tracking-wider">{t("sizer_funds_at_risk")}</p>
                             <p className="text-sm font-semibold text-foreground tabular-nums mt-0.5">
-                              {fundsAtRisk.toFixed(2)} {cur}
+                              {enArgent(fundsAtRisk)}
                               {balanceNum > 0 && (
                                 <span className="text-muted font-normal">
-                                  {" "}({((fundsAtRisk / balanceNum) * 100).toFixed(1)}%)
+                                  {" "}({pourcent((fundsAtRisk / balanceNum) * 100, 1)})
                                 </span>
                               )}
                             </p>

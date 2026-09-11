@@ -10,12 +10,13 @@ import QuickTradeLogger from "@/components/session/QuickTradeLogger";
 import RealTimeGuards from "@/components/session/RealTimeGuards";
 import { DEFAULT_CURRENCY, accountCurrency, buildCurrencyMap, commonCurrency, money } from "@/lib/account-currency";
 import { useActiveAccount, type ActiveAccount } from "@/lib/ActiveAccountContext";
-import { useLanguage } from "@/lib/LanguageContext";
+import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { coutDeLEtat, etatAAlerter, etatFavorable, type TradeEmotion } from "@/lib/emotion-cost";
 import { dailyQuotes } from "@/lib/translations";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 const SESSION_LABELS: Record<string, string> = {
   london: "London (08:00–12:00 UTC)",
@@ -102,7 +103,7 @@ function AccountSelector({
   selectedAccountId: string | null;
   setSelectedAccountId: (id: string) => void;
   loading: boolean;
-  t: (k: string) => string;
+  t: Traduire;
 }) {
   if (loading) return null;
 
@@ -123,10 +124,10 @@ function AccountSelector({
 
   return (
     <div className="flex items-center gap-3">
-      <label className="text-xs text-muted uppercase tracking-wider shrink-0">
+      <label htmlFor="session-session-account-label" className="text-xs text-muted uppercase tracking-wider shrink-0">
         {t("session_account_label")}
       </label>
-      <select
+      <select id="session-session-account-label"
         value={selectedAccountId ?? ""}
         onChange={(e) => setSelectedAccountId(e.target.value)}
         className="bg-surface border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
@@ -173,12 +174,16 @@ export default function SessionPage() {
   const [debrief, setDebrief] = useState<SessionDebrief | null>(null);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [showEmptyChecklistModal, setShowEmptyChecklistModal] = useState(false);
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(showEmptyChecklistModal, () => setShowEmptyChecklistModal(false));
   const [showQuickLogger, setShowQuickLogger] = useState(false);
   const [emotionFeedback, setEmotionFeedback] = useState<{ type: "warning" | "ok"; message: string } | null>(null);
 
   /** Historique par état, pour remplacer une hypothèse par sa mesure à lui. */
   const [tradesParEtat, setTradesParEtat] = useState<TradeEmotion[]>([]);
   const [showStopConfirm, setShowStopConfirm] = useState(false);
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(showStopConfirm, () => setShowStopConfirm(false));
   const [paused, setPaused] = useState(false);
   const [pausedAt, setPausedAt] = useState<string | null>(null);
   const [recentTrades, setRecentTrades] = useState<RecentTrade[]>([]);
@@ -226,6 +231,9 @@ export default function SessionPage() {
     const today = new Date().toISOString().split("T")[0];
 
     // Auto-close any session older than today that is still flagged active
+    // ⚠️ RÉSULTAT VOLONTAIREMENT IGNORÉ : c'est un ménage, refait à chaque
+    // chargement. Un échec ne change rien à ce qui s'affiche et se rattrape
+    // tout seul la fois d'après.
     await supabase
       .from("sessions")
       .update({ active: false, ended_at: new Date(today + "T00:00:00").toISOString() })
@@ -510,7 +518,7 @@ export default function SessionPage() {
         {/* Stop confirm modal */}
         {showStopConfirm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-            <div className="bg-card border border-border rounded-xl p-6 max-w-sm w-full space-y-4">
+            <div role="dialog" aria-modal="true" aria-label={t("session_active_stop_trading")} className="bg-card border border-border rounded-xl p-6 max-w-sm w-full space-y-4">
               <h3 className="text-base font-semibold text-foreground">{t("session_active_stop_trading")}</h3>
               <p className="text-muted text-sm">{t("session_active_stop_confirm")}</p>
               <div className="flex gap-3 justify-end">
@@ -617,7 +625,7 @@ export default function SessionPage() {
               {strategy.max_trades_per_day !== null && (
                 <li className="text-sm text-foreground flex gap-2">
                   <span className="text-muted shrink-0">🔢</span>
-                  <span>{t("session_rule_max_trades").replace("{n}", String(strategy.max_trades_per_day))}</span>
+                  <span>{t("session_rule_max_trades", { n: String(strategy.max_trades_per_day) })}</span>
                 </li>
               )}
               {strategy.max_daily_loss !== null && (
@@ -629,7 +637,7 @@ export default function SessionPage() {
               {strategy.max_consecutive_losses !== null && (
                 <li className="text-sm text-foreground flex gap-2">
                   <span className="text-muted shrink-0">⛔</span>
-                  <span>{t("session_rule_stop_losses").replace("{n}", String(strategy.max_consecutive_losses))}</span>
+                  <span>{t("session_rule_stop_losses", { n: String(strategy.max_consecutive_losses) })}</span>
                 </li>
               )}
               {strategy.max_session_minutes !== null && (
@@ -747,7 +755,7 @@ export default function SessionPage() {
       {/* Empty checklist confirmation modal */}
       {showEmptyChecklistModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="bg-card border border-border rounded-xl p-6 max-w-sm w-full space-y-4">
+          <div role="dialog" aria-modal="true" aria-label={t("session_empty_checklist_title")} className="bg-card border border-border rounded-xl p-6 max-w-sm w-full space-y-4">
             <h3 className="text-base font-semibold text-foreground">{t("session_empty_checklist_title")}</h3>
             <p className="text-muted text-sm">{t("session_empty_checklist_body")}</p>
             <div className="flex gap-3 justify-end">
@@ -784,6 +792,7 @@ export default function SessionPage() {
               {/* Strategy selector */}
               {strategies.length > 1 && (
                 <select
+                  aria-label={t("strategy_select")}
                   value={strategy?.id || ""}
                   onChange={(e) => handleStrategyChange(e.target.value)}
                   className="px-2 py-1 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-accent shrink-0"
@@ -826,18 +835,23 @@ export default function SessionPage() {
             <div className="space-y-2">
               {checklist.map((item, idx) => (
                 <div key={idx} className={`flex items-start gap-3 group rounded-lg transition-colors ${!checkedItems.has(idx) && !allChecked ? "border border-orange-400/40 px-2 py-1" : "px-2 py-1"}`}>
+                  {/* ⚠️ L'ÉTIQUETTE VIENT APRÈS LA CASE, et sans `htmlFor`
+                      elle ne la nommait pas : chaque point de la checklist de
+                      séance s'annonçait « case à cocher », sans son texte.
+                      L'identifiant est CALCULÉ, on est dans une boucle. */}
                   <input
+                    id={`checklist-${idx}`}
                     type="checkbox"
                     checked={checkedItems.has(idx)}
                     onChange={() => toggleCheck(idx)}
                     className="accent-accent w-5 h-5 mt-0.5 cursor-pointer shrink-0"
                   />
-                  <label className={`flex-1 text-sm cursor-pointer ${checkedItems.has(idx) ? "line-through text-muted" : "text-foreground"}`} onClick={() => toggleCheck(idx)}>
+                  <label htmlFor={`checklist-${idx}`} className={`flex-1 text-sm cursor-pointer ${checkedItems.has(idx) ? "line-through text-muted" : "text-foreground"}`} onClick={() => toggleCheck(idx)}>
                     {item}
                   </label>
                   <button
                     onClick={() => removeChecklistItem(idx)} aria-label={t("session_remove")}
-                    className="text-muted hover:text-loss transition-colors opacity-0 group-hover:opacity-100"
+                    className="text-muted hover:text-loss transition-colors opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                     title={t("session_remove")}
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -856,6 +870,9 @@ export default function SessionPage() {
                 onChange={(e) => setNewItemText(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") addChecklistItem(); }}
                 placeholder={t("session_add_placeholder")}
+                // ⚠️ Un texte d'exemple N'EST PAS un nom : il disparaît dès
+                // qu'on tape, et certaines lectures d'écran ne l'annoncent pas.
+                aria-label={t("session_add_placeholder")}
                 className="flex-1 px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
               />
               <button
@@ -909,11 +926,7 @@ export default function SessionPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01M10.29 3.86l-8.6 14.86A1 1 0 002.56 20h18.88a1 1 0 00.87-1.28l-8.6-14.86a1 1 0 00-1.72 0z" />
                 </svg>
                 <p className="text-sm text-loss">
-                  {t("session_emotion_measured")
-                    .replace("{n}", String(coutEtat.trades))
-                    .replace("{total}", money(coutEtat.netPnl, deviseEtat))
-                    .replace("{parTrade}", money(coutEtat.esperance, deviseEtat))
-                    .replace("{ecart}", money(Math.abs(coutEtat.ecartAvecLeReste), deviseEtat))}
+                  {t("session_emotion_measured", { n: String(coutEtat.trades), total: money(coutEtat.netPnl, deviseEtat), parTrade: money(coutEtat.esperance, deviseEtat), ecart: money(Math.abs(coutEtat.ecartAvecLeReste), deviseEtat) })}
                 </p>
               </div>
             )}
@@ -924,9 +937,7 @@ export default function SessionPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" />
                 </svg>
                 <p className="text-sm text-profit">
-                  {t("session_emotion_measured_ok")
-                    .replace("{n}", String(coutEtat.trades))
-                    .replace("{parTrade}", money(coutEtat.esperance, deviseEtat))}
+                  {t("session_emotion_measured_ok", { n: String(coutEtat.trades), parTrade: money(coutEtat.esperance, deviseEtat) })}
                 </p>
               </div>
             )}
@@ -947,7 +958,7 @@ export default function SessionPage() {
               <p className={`text-sm font-medium ${allChecked ? "text-profit" : "text-orange-400"}`}>
                 {allChecked
                   ? t("session_all_ready")
-                  : (checklist.length - checkedItems.size === 1 ? t("session_item_remaining_one") : t("session_items_remaining")).replace("{N}", String(checklist.length - checkedItems.size))}
+                  : t("session_items_remaining", { N: checklist.length - checkedItems.size })}
               </p>
             )}
             <div className="flex flex-col sm:flex-row items-center gap-3 w-full">

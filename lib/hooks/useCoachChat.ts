@@ -10,11 +10,14 @@
  * deux habillages.
  */
 
+import type { Traduire } from "@/lib/LanguageContext";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DEMO_COACH } from "@/lib/demo-fixtures";
 import type { Lang } from "@/lib/translations";
 import { FREE_LIFETIME_CHAT_MESSAGES, PLAN_LIMITS } from "@/lib/plan-limits";
 import { PLAN_MONTHLY_CEILING } from "@/lib/ai-ceilings";
+import { fetchAllRows } from "@/lib/supabase-paginate";
+import { trierParOuverture } from "@/lib/trades-du-compte";
 import type { PlanType } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
 import { track } from "@/lib/track";
@@ -82,7 +85,7 @@ export interface ChatMessage {
 /** Libellé + lien du chip affiché quand le coach a agi. */
 export function coachActionMeta(
   a: CoachActionEvent,
-  t: (k: string) => string,
+  t: (k: string, valeurs?: Record<string, string | number>) => string,
 ): { label: string; href?: string } {
   switch (a.type) {
     case "goal_created": return { label: t("coach_action_goal_created"), href: "/dashboard/goals" };
@@ -90,18 +93,18 @@ export function coachActionMeta(
     case "goal_deleted": return { label: t("coach_action_goal_deleted"), href: "/dashboard/goals" };
     case "challenge_joined": return { label: t("coach_action_challenge_joined"), href: "/dashboard/leaderboard" };
     case "challenge_left": return { label: t("coach_action_challenge_left"), href: "/dashboard/leaderboard" };
-    case "trades_annotated": return { label: t("coach_action_trades_annotated").replace("{n}", String(a.count ?? 0)), href: "/dashboard/trades" };
+    case "trades_annotated": return { label: t("coach_action_trades_annotated", { n: a.count ?? 0 }), href: "/dashboard/trades" };
     case "note_saved": return { label: t("coach_action_note_saved") };
     case "strategy_created": return { label: t("coach_action_strategy_created"), href: "/dashboard/strategy" };
     case "strategy_updated": return { label: t("coach_action_strategy_updated"), href: "/dashboard/strategy" };
     case "checklist_item_added": return { label: t("coach_action_checklist_added"), href: "/dashboard/strategy" };
     case "checklist_item_removed": return { label: t("coach_action_checklist_removed"), href: "/dashboard/strategy" };
-    case "export_ready": return { label: t("coach_action_export_ready").replace("{n}", String(a.count ?? 0)) };
+    case "export_ready": return { label: t("coach_action_export_ready", { n: String(a.count ?? 0) }) };
     case "trade_created": return { label: t("coach_action_trade_created"), href: "/dashboard/trades" };
     case "trade_updated": return { label: t("coach_action_trade_updated"), href: "/dashboard/trades" };
     case "trade_closed": return { label: t("coach_action_trade_closed"), href: "/dashboard/trades" };
-    case "trades_deleted": return { label: t("coach_action_trades_deleted").replace("{n}", String(a.count ?? 0)), href: "/dashboard/trades" };
-    case "trades_reassigned": return { label: t("coach_action_trades_reassigned").replace("{n}", String(a.count ?? 0)), href: "/dashboard/trades" };
+    case "trades_deleted": return { label: t("coach_action_trades_deleted", { n: a.count ?? 0 }), href: "/dashboard/trades" };
+    case "trades_reassigned": return { label: t("coach_action_trades_reassigned", { n: a.count ?? 0 }), href: "/dashboard/trades" };
     case "account_created": return { label: t("coach_action_account_created"), href: "/dashboard/accounts" };
     case "account_updated": return { label: t("coach_action_account_updated"), href: "/dashboard/accounts" };
     case "session_started": return { label: t("coach_action_session_started"), href: "/dashboard/session" };
@@ -240,18 +243,24 @@ async function exportTradesPdf(
   to: string,
   periodLabel: string,
   lang: string,
-  t: (k: string) => string,
+  t: Traduire,
 ): Promise<boolean> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return false;
 
-  const [{ data: trades }, { data: review }] = await Promise.all([
-    supabase
-      .from("trades")
-      .select("open_time, close_time, pair, direction, lot_size, entry_price, exit_price, pnl, commission, swap, emotion, ict_setup")
-      .eq("user_id", user.id).eq("status", "closed")
-      .gte("open_time", from).lt("open_time", to)
-      .order("open_time", { ascending: true }),
+  // ⚠️ LECTURE PAGINÉE : un export tronqué est le pire des cas, le PDF a l'air
+  // complet et il manque des trades. La pagination se fait sur `id`, unique et
+  // stable ; l'ordre chronologique est refait ensuite (voir fetchAllRows).
+  const [trades, { data: review }] = await Promise.all([
+    fetchAllRows<{ open_time: string | null }>((debut, fin) =>
+      supabase
+        .from("trades")
+        .select("open_time, close_time, pair, direction, lot_size, entry_price, exit_price, pnl, commission, swap, emotion, ict_setup")
+        .eq("user_id", user.id).eq("status", "closed")
+        .gte("open_time", from).lt("open_time", to)
+        .order("id", { ascending: true })
+        .range(debut, fin),
+    ).then((lignes) => (lignes === null ? null : trierParOuverture(lignes))),
     supabase
       .from("session_reviews").select("discipline_score, analysis")
       .eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
@@ -288,7 +297,7 @@ function downloadCsv(filename: string, csv: string) {
 interface UseCoachChatOptions {
   plan: PlanType;
   lang: Lang;
-  t: (k: string) => string;
+  t: Traduire;
   demoMode: boolean;
   /** Description de la page courante, transmise au coach (dock global). */
   pageContext?: string;

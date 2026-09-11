@@ -73,21 +73,19 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
   const [currentPeriodEnd, setCurrentPeriodEnd] = useState<Date | null>(null);
   const [demoMode, setDemoMode] = useState(false);
 
-  const loadPlan = useCallback(async () => {
+  /** La lecture elle-même. Elle a le droit d'échouer ; c'est son appelant qui range. */
+  const chargerLePlan = useCallback(async () => {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+    if (!user) return;
 
     // Ordre de deploiement indifferent : on tente la colonne demo_mode, et on
     // se rabat sur le select historique si la migration 20260730_demo_mode.sql
     // n'est pas encore passee. Sans ce repli, un select en echec ferait lire
     // « free » a un abonne payant (la colonne inconnue renvoie une erreur, pas
     // une valeur nulle) — regression bien plus grave que l'absence du mode demo.
-    const BASE_COLS = "plan, plan_expires_at, daily_ai_count, daily_ai_reset";
+    const BASE_COLS = "plan, plan_expires_at, daily_ai_count, daily_ai_reset, email";
     let { data, error: profileError } = await supabase
       .from("profiles")
       .select(`${BASE_COLS}, demo_mode`)
@@ -103,8 +101,15 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
 
     let effectivePlan: PlanType = "free";
     if (data) {
-      // Ensure email is synced in profile
-      if (user.email) {
+      /**
+       * ⚠️⚠️ ON N'ÉCRIT QUE SI C'EST DIFFÉRENT. Cette ligne réécrivait le même
+       * e-mail À CHAQUE CHARGEMENT DE PAGE : relevé sur le réseau, trois PATCH
+       * sur `profiles` pour une seule arrivée sur « Mes trades », dont deux qui
+       * remettaient la valeur déjà en place. Une écriture qui ne change rien
+       * n'est pas gratuite : elle réveille la ligne, ses déclencheurs et ses
+       * abonnements temps réel, pour chaque page vue de chaque abonné.
+       */
+      if (user.email && data.email !== user.email) {
         await supabase.from("profiles").update({ email: user.email }).eq("id", user.id);
       }
       // Check expiration
@@ -186,8 +191,35 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       setCurrentPeriodEnd(null);
     }
 
-    setLoading(false);
   }, [supabase]);
+
+  /**
+   * LE CHARGEMENT SE TERMINE, MÊME QUAND LE RÉSEAU NON.
+   *
+   * ⚠️⚠️ `getUser()` REJETTE POUR DE VRAI, ET SOUVENT. Relevé dans la console
+   * d'une session ordinaire : quatorze « TypeError: Failed to fetch » sur
+   * `_getUser` et `_refreshAccessToken`, étalés sur la journée, à chaque fois
+   * que la machine se réveille. Cette lecture n'avait aucune garde : une seule
+   * de ces rejections laissait `loading` à `true` POUR TOUJOURS.
+   *
+   * ⚠️ ET LES DEUX SYMPTÔMES ONT LA MÊME CAUSE. Les pages gardées par le plan
+   * lisent `plan`, qui vaut « free » au départ : un abonné restait devant le
+   * mur payant jusqu'au rechargement. Et depuis que la page de backtest attend
+   * le chargement pour ne plus mentir, une rejection la figerait sur son écran
+   * d'attente. C'est ici qu'il faut traiter ça, pas dans chaque page.
+   *
+   * ⚠️ ON N'INVENTE PAS DE PLAN EN CAS D'ÉCHEC : on garde celui qu'on avait, et
+   * on arrête d'attendre. Promouvoir quelqu'un par accident ouvrirait des
+   * fonctionnalités payantes sur une panne réseau ; le rétrograder afficherait
+   * un mur payant à un abonné.
+   */
+  const loadPlan = useCallback(async () => {
+    try {
+      await chargerLePlan();
+    } finally {
+      setLoading(false);
+    }
+  }, [chargerLePlan]);
 
   useEffect(() => {
     loadPlan();

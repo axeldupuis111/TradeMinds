@@ -1,0 +1,44 @@
+XAUUSD  710187 bougies M1  2024-01-01 → 2025-12-31
+⚠️ CE TABLEAU N'EST PAS UNE RECHERCHE DU MEILLEUR RÉGLAGE.
+   C'est une mesure de sensibilité : la fiche ne fixe ni l'objectif ni
+   l'ancienneté des sommets, donc elle ne détermine aucun résultat.
+pivots  objR  trades   réussite   espérance    intervalle 95%      verdict
+──────────────────────────────────────────────────────────────────────────────
+    10     1   14011    45.5 %     -0.5309     -0.556 … -0.506  negatif
+    10     2   12536    32.8 %     -0.5123     -0.544 … -0.480  negatif
+    10     3   11300    25.5 %     -0.4861     -0.525 … -0.447  negatif
+    20     1   12119    45.0 %     -0.5596     -0.588 … -0.531  negatif
+    20     2   11008    32.6 %     -0.5288     -0.564 … -0.494  negatif
+    20     3   10071    25.2 %     -0.5011     -0.543 … -0.459  negatif
+    30     1   11240    45.1 %     -0.5462     -0.575 … -0.518  negatif
+    30     2   10194    32.7 %     -0.5030     -0.537 … -0.469  negatif
+    30     3    9422    25.2 %     -0.4811     -0.522 … -0.440  negatif
+── LE MÊME, À COÛTS NULS (pivots 20, objectif 2R) ──
+  coûts réels   11008 trades   espérance -0.5288 R   total -5820.8 R   negatif
+  coûts nuls    11008 trades   espérance +0.0001 R   total +1.2 R   non_concluant
+── DÉTAIL DU RÉGLAGE CENTRAL (pivots 20, objectif 2R, coûts réels) ──
+  signaux détectés    11037
+  collisions          162 (1.5 %)
+  risque moyen        143 ticks, soit 1.43 $
+  coût aller-retour   31 ticks, soit 21.7 % du risque par trade
+  drawdown max        5836.1 R
+  hors échantillon    début -0.624 puis fin -0.308
+  (9 réglages joués en 2127 ms)
+XAUUSD  710187 bougies M1  2024-01-01 → 2025-12-31
+
+⚠️ NEUF MÉCANISATIONS DE LA MÊME FICHE. Ce n'est pas une recherche du
+   meilleur réglage : c'est la démonstration que la fiche n'en fixe aucun.
+   Le compteur de tentatives est à 9 ; au-delà de 20 l'outil refuserait de
+   présenter le meilleur résultat comme une découverte.
+
+mécanisation                    trades  /jour  réussite   espérance   coûts nuls   verdict
+───────────────────────────────────────────────────────────────────────────────────────────
+littérale (rien n'est borné)     11016   15.1    32.6 %      -0.529       +0.000  negatif
+structure 1h                      8833   12.1    32.4 %      -0.484       -0.007  negatif
+structure 2h                      8023   11.0    32.6 %      -0.486       -0.001  negatif
+structure 4h                      7252    9.9    32.9 %      -0.469       +0.010  negatif
+2h + séance 14h-20h               2569    3.5    33.9 %      -0.339       +0.009  negatif
+2h + séance + 2 trades/j           919    1.3    33.5 %      -0.272       +0.008  negatif
+idem + bougie de réaction          432    0.6    32.4 %      -0.203       -0.049  negatif
+idem, objectif 3R                  428    0.6    25.7 %      -0.250       -0.096  negatif
+4h + séance + 2 trades/j           398    0.5    33.9 %      -0.182       -0.012  negatif

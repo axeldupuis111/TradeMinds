@@ -3,8 +3,8 @@ import { resolveUserCurrency } from "@/lib/account-currency-server";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { alertCronFailure } from "@/lib/cron-alert";
-import { localHour, localWeekday } from "@/lib/timezone";
 import { fetchAllRows } from "@/lib/supabase-paginate";
+import { localHour, localWeekday } from "@/lib/timezone";
 import { renderBrandEmail, emailParagraph, statCell, statRow, EMAIL_GREEN, EMAIL_RED } from "@/lib/email-template";
 
 // Sent Wednesday late-morning in each trader's LOCAL timezone (was a fixed
@@ -142,14 +142,24 @@ async function handle(req: Request) {
   );
   let resend: Resend | null = null;
 
-  const { data: users, error } = await supabase
-    .from("profiles")
-    .select("id, email, timezone, language")
-    .eq("email_notif_session", true)
-    .not("email", "is", null);
+  /**
+   * ⚠️⚠️ PLAFONNÉE À MILLE ABONNÉS, SANS LE DIRE. PostgREST rend au plus mille
+   * lignes, statut 200, sans erreur : au millier et unième inscrit, l'e-mail
+   * aurait cessé de partir pour les suivants, sans que rien ne dise lesquels.
+   */
+  const users = await fetchAllRows<{ id: string; email: string | null; timezone: string | null; language: string | null }>(
+    (from, to) =>
+      supabase
+        .from("profiles")
+        .select("id, email, timezone, language")
+        .eq("email_notif_session", true)
+        .not("email", "is", null)
+        .order("id")
+        .range(from, to),
+  );
 
-  if (error || !users) {
-    await alertCronFailure("reactivation", `Failed to fetch users: ${error?.message ?? "no rows"}`);
+  if (!users) {
+    await alertCronFailure("reactivation", "Failed to fetch users: lecture paginée incomplète");
     return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
   }
 

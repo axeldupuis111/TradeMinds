@@ -45,7 +45,8 @@ export default function SyncTokenField({ token }: Props) {
           type="text"
           value={token}
           readOnly
-          className="flex-1 px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm font-mono cursor-text focus:outline-none select-all"
+          aria-label={t("sync_token_label")}
+          className="flex-1 px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm font-mono cursor-text focus:outline-none focus:ring-1 focus:ring-accent select-all"
         />
         <button
           onClick={() => {

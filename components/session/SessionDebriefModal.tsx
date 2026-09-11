@@ -16,6 +16,7 @@ import { motion } from "framer-motion";
 import { CheckCircle2, AlertTriangle, Crosshair, Lock, Sparkles, X } from "lucide-react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
+import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 export interface SessionDebrief {
   score: number | null;
@@ -45,6 +46,8 @@ export default function SessionDebriefModal({
   currency?: string;
   onClose: () => void;
 }) {
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(true, onClose);
   const { t } = useLanguage();
 
   const rows = debrief
@@ -56,7 +59,7 @@ export default function SessionDebriefModal({
     : [];
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+    <div aria-label={t("debrief_title")} className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={loading ? undefined : onClose} />
 
       <motion.div

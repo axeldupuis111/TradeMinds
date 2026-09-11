@@ -1,6 +1,6 @@
 "use client";
 
-import { useLanguage } from "@/lib/LanguageContext";
+import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { BADGE_EMOJI, BADGE_REWARDS, FREE_BADGE_KEY, computeBadges, type BadgeKey, type BadgeState } from "@/lib/badges";
 import { generateBadgeCertificate, hasCertificate, type CertLang } from "@/lib/badge-certificate";
@@ -119,7 +119,7 @@ function Delta({ d }: { d: number | null }) {
   if (d === null) return <span className="text-[10px] font-semibold text-accent">NEW</span>;
   if (d > 0) return <span className="inline-flex items-center text-[11px] text-profit"><ArrowUp className="w-3 h-3" />{d}</span>;
   if (d < 0) return <span className="inline-flex items-center text-[11px] text-loss"><ArrowDown className="w-3 h-3" />{Math.abs(d)}</span>;
-  return <Minus className="w-3 h-3 text-muted/40" />;
+  return <Minus className="w-3 h-3 text-muted" />;
 }
 
 export default function LeaderboardPage() {
@@ -494,7 +494,7 @@ export default function LeaderboardPage() {
                   <>🎯 {t("leaderboard_feed_day_record").replace("{user}", `@${f.user}`).replace("{score}", String(f.score))}</>
                 )}
                 {f.type === "streak" && (
-                  <>🔥 {t("leaderboard_feed_streak").replace("{user}", `@${f.user}`).replace("{n}", String(f.days))}</>
+                  <>🔥 {t("leaderboard_feed_streak", { user: `@${f.user}`, n: String(f.days) })}</>
                 )}
                 {f.type === "join" && (
                   <>🤝 {t("leaderboard_feed_join").replace("{user}", `@${f.user}`).replace("{challenge}", t(`challenge_c_${f.challengeKey.replace(/-/g, "_")}_title`))}</>
@@ -567,7 +567,7 @@ export default function LeaderboardPage() {
             🏆 {t("leaderboard_season_title").replace("{month}", seasonMonth)}
           </p>
           <p className="text-xs text-muted">
-            {t("leaderboard_season_left").replace("{n}", String(seasonDaysLeft()))} · {t("leaderboard_season_reset")}
+            {t("leaderboard_season_left", { n: String(seasonDaysLeft()) })} · {t("leaderboard_season_reset")}
           </p>
         </div>
       )}
@@ -605,7 +605,7 @@ export default function LeaderboardPage() {
           )}
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs text-muted">{(total === 1 ? t("leaderboard_participants_one") : t("leaderboard_participants")).replace("{n}", String(total))}</p>
+            <p className="text-xs text-muted">{t("leaderboard_participants", { n: total })}</p>
             {/* Plus forte ascension de la période */}
             {topMover && (
               <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-profit bg-profit/10 rounded-full px-2.5 py-1">
@@ -671,7 +671,7 @@ export default function LeaderboardPage() {
             </div>
           )}
 
-          <p className="text-xs text-muted/60 mt-4 text-center">{t("leaderboard_min_note").replace("{n}", "3")}</p>
+          <p className="text-xs text-muted mt-4 text-center">{t("leaderboard_min_note").replace("{n}", "3")}</p>
         </>
       )}
       </main>
@@ -696,7 +696,7 @@ export default function LeaderboardPage() {
   );
 }
 
-function Row({ e, t, value }: { e: Entry; t: (k: string) => string; value: string }) {
+function Row({ e, t, value }: { e: Entry; t: Traduire; value: string }) {
   return (
     <div className={`flex items-center gap-3 px-4 py-3 ${e.isMe ? "bg-accent/5" : "bg-card"}`}>
       <span className="text-sm font-bold text-muted w-7 text-center tabular-nums">{e.rank}</span>

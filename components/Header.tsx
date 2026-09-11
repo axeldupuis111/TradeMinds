@@ -1,5 +1,6 @@
 "use client";
 
+import { nomDeLaPage } from "@/lib/titres-de-page";
 import { OPEN_CMDK_EVENT } from "@/components/CommandPalette";
 import HelpWidget from "@/components/dashboard/HelpWidget";
 import LanguageSelector from "@/components/LanguageSelector";
@@ -17,21 +18,20 @@ const planBadgeStyles: Record<string, string> = {
   premium: "bg-gold/20 text-gold",
 };
 
-const PAGE_KEYS: Record<string, string> = {
-  "/dashboard":            "header_page_dashboard",
-  "/dashboard/session":    "header_page_session",
-  "/dashboard/trades":     "header_page_trades",
-  "/dashboard/sizer":      "sidebar_sizer",
-  "/dashboard/strategy":   "header_page_strategy",
-  "/dashboard/challenge":  "header_page_challenge",
-  "/dashboard/analysis":   "header_page_analysis",
-  "/dashboard/analytics":  "header_page_analytics",
-  "/dashboard/calendar":   "cal_title",
-  "/dashboard/goals":      "sidebar_goals",
-  "/dashboard/review":     "sidebar_review",
-  "/dashboard/leaderboard": "sidebar_leaderboard",
-  "/dashboard/settings":   "header_page_settings",
-  "/dashboard/upgrade":    "header_page_upgrade",
+/**
+ * Les trois endroits où l'en-tête veut un libellé PLUS LONG que la barre
+ * latérale : elle a la place, la barre non.
+ *
+ * ⚠️⚠️ ET RIEN D'AUTRE. Cette carte en contenait quatorze, avec un repli sur
+ * « Tableau de bord » pour tout ce qu'elle ignorait : Analyse macro,
+ * Projection, Backtest, Ma communauté et l'admin affichaient donc « Tableau de
+ * bord » EN HAUT DE L'ÉCRAN. Le nom d'une page vient maintenant d'un seul
+ * endroit, confronté à l'arborescence par un test.
+ */
+const LIBELLES_LONGS: Record<string, string> = {
+  "/dashboard": "header_page_dashboard",
+  "/dashboard/trades": "header_page_trades",
+  "/dashboard/calendar": "cal_title",
 };
 
 export default function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
@@ -41,7 +41,8 @@ export default function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
   const pathname = usePathname();
   const supabase = createClient();
 
-  const pageKey = PAGE_KEYS[pathname] || "header_page_dashboard";
+  const libelleLong = LIBELLES_LONGS[pathname];
+  const titrePage = libelleLong ? t(libelleLong) : nomDeLaPage(pathname, t);
 
   // Raccourci affiché selon la plateforme (⌘K sur Mac, Ctrl K ailleurs)
   const [shortcutLabel, setShortcutLabel] = useState("Ctrl K");
@@ -74,10 +75,10 @@ export default function Header({ onMenuToggle }: { onMenuToggle: () => void }) {
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm">
           <span className="text-muted hidden sm:inline">TradeDiscipline</span>
-          <svg className="w-3.5 h-3.5 text-muted/40 hidden sm:inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-3.5 h-3.5 text-muted hidden sm:inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.25 4.5l7.5 7.5-7.5 7.5" />
           </svg>
-          <span className="font-medium text-foreground text-[13px]">{t(pageKey)}</span>
+          <span className="font-medium text-foreground text-[13px]">{titrePage}</span>
         </div>
       </div>
 

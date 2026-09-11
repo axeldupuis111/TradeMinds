@@ -28,8 +28,26 @@ const config: Config = {
         // Semantic trading colors — CSS-variable driven
         profit:              "rgb(var(--profit) / <alpha-value>)",
         loss:                "rgb(var(--loss) / <alpha-value>)",
+        // L'aplat d'un bouton destructeur, assez foncé pour porter du blanc dans
+        // les deux thèmes. Distinct de `loss` : voir la note dans globals.css.
+        "loss-fill":         "rgb(var(--loss-fill) / <alpha-value>)",
         warning:             "rgb(var(--warning) / <alpha-value>)",
         gold:                "rgb(var(--gold) / <alpha-value>)",
+      },
+      /**
+       * ⚠️⚠️ SEULES LES UTILITAIRES DE TEXTE. `bg-accent` garde le cyan de
+       * signature et `border-loss` son rouge ; `text-accent` et `text-loss`
+       * pointent vers une variante assez foncée pour être lue en thème clair,
+       * où toutes ces couleurs échouaient au seuil AA (accent 2,77:1, or
+       * 2,94:1, ambre 3,02:1, vert 3,13:1). Même teinte, rien ne change
+       * d'identité. En sombre, les variantes valent la couleur d'origine.
+       */
+      textColor: {
+        accent:  "rgb(var(--accent-text) / <alpha-value>)",
+        profit:  "rgb(var(--profit-text) / <alpha-value>)",
+        loss:    "rgb(var(--loss-text) / <alpha-value>)",
+        warning: "rgb(var(--warning-text) / <alpha-value>)",
+        gold:    "rgb(var(--gold-text) / <alpha-value>)",
       },
       fontFamily: {
         sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],

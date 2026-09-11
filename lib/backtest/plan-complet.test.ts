@@ -1,0 +1,371 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+import { composerPlanComplet, SEUIL_RECUL_PAR_DEFAUT } from "./plan-complet";
+import { socleDePlan } from "./compilation";
+import { coutsPourInstrument, instrumentParCode } from "./instruments";
+import fr from "../i18n/fr";
+import { phraseDuPlan, remplir } from "./phrases";
+import type { PlanExecution, TradeSimule } from "./types";
+
+const NAS = instrumentParCode("NAS100")!;
+
+function plan(partiel: Partial<PlanExecution> = {}): PlanExecution {
+  return {
+    ...socleDePlan("NAS100", "Europe/Paris"),
+    uniteDeTemps: 15,
+    contexte: { fuseau: "Europe/Paris", debut: "08:00", fin: "22:00", jours: [1, 2, 3, 4, 5] },
+    niveau: { type: "trendline", pivots: 10, touchesMin: 3, toleranceTicks: 3000 },
+    declencheur: { type: "cassure", mode: "cloture" },
+    confirmations: [],
+    stop: { type: "dernier_pivot", bufferTicks: 200 },
+    objectif: { type: "multiple_r", r: 2 },
+    gestion: {},
+    couts: coutsPourInstrument(NAS),
+    ...partiel,
+  };
+}
+
+/** Une suite de R, un trade par jour, dans l'ordre donné. */
+function trades(rs: number[]): TradeSimule[] {
+  return rs.map((r, i) => {
+    const ms = Date.UTC(2024, 0, 1) + i * 86_400_000;
+    return {
+      signalMs: ms,
+      niveauSignal: 0,
+      entreeMs: ms,
+      sortieMs: ms + 3_600_000,
+      sens: "long" as const,
+      entreeTicks: 0,
+      sortieTicks: 0,
+      risqueTicks: 1000,
+      r,
+      rBrut: r,
+      mfeR: Math.max(0, r),
+      maeR: Math.min(0, r),
+      motif: "objectif" as const,
+      collisionMemeBarre: false,
+    };
+  });
+}
+
+/** Une suite qui gagne doucement, avec une série de pertes au milieu. */
+function suite(): number[] {
+  const rs: number[] = [];
+  for (let i = 0; i < 40; i++) rs.push(i % 3 === 0 ? 2 : -1);
+  rs.push(-1, -1, -1, -1, -1);
+  for (let i = 0; i < 40; i++) rs.push(i % 3 === 0 ? 2 : -1);
+  return rs;
+}
+
+const ligne = (p: ReturnType<typeof composerPlanComplet>, cle: string) =>
+  p.lignes.find((l) => l.cle === cle);
+
+describe("le plan complet", () => {
+  it("recopie ce qu'il faut savoir avant d'ouvrir le graphique", () => {
+    const p = composerPlanComplet(plan(), trades(suite()), NAS);
+    for (const cle of ["actif", "unite_de_temps", "jours", "heures", "sens", "niveau", "declencheur", "stop", "objectif"]) {
+      expect(ligne(p, cle), cle).toBeTruthy();
+    }
+    /**
+     * ⚠️ LA LIGNE PORTE LE CODE, ET LA PHRASE PORTE LE NOM TRADUIT. Le
+     * catalogue écrit ses noms en dur en français (« Or », « Argent »,
+     * « Pétrole WTI ») : figés dans la valeur, ils sortaient tels quels dans
+     * les quatre langues, jusque dans le document que le trader emporte.
+     */
+    expect(ligne(p, "actif")!.valeurs.instrument).toBe("NAS100");
+    expect(phraseDuPlan(ligne(p, "actif")!, (c, v) =>
+      remplir((fr as Record<string, string>)[c] ?? c, v),
+    )).toContain(
+      "Nasdaq 100",
+    );
+    expect(ligne(p, "unite_de_temps")!.valeurs.minutes).toBe(15);
+    /**
+     * ⚠️ LES NUMÉROS, PAS LES INITIALES. Écrites en dur en français, elles
+     * sortaient telles quelles dans les quatre langues : « You only take
+     * positions on these days: L M M J V » dans le document que le trader
+     * anglophone emporte. `phraseDuPlan` les traduit à l'affichage.
+     */
+    expect(ligne(p, "jours")!.valeurs.jours).toBe("1,2,3,4,5");
+  });
+
+  /**
+   * ⚠️ LA MOITIÉ DES LIGNES DOIT ÊTRE DÉDUITE DE LA MESURE. Un plan qui se
+   * contenterait de redire les réglages n'apprendrait rien : ce qui manque au
+   * trader, ce n'est pas la liste de ses réglages, c'est ce qu'ils lui ont fait.
+   */
+  it("distingue ce qui est recopié de ce qui est mesuré", () => {
+    const p = composerPlanComplet(plan({ gestion: { maxPertesConsecutives: 3 } }), trades(suite()), NAS);
+    expect(p.lignes.some((l) => l.deduite)).toBe(true);
+    expect(ligne(p, "actif")!.deduite).toBe(false);
+    expect(ligne(p, "serie_de_pertes")!.deduite).toBe(true);
+  });
+
+  it("compte la plus longue série de pertes réellement traversée", () => {
+    const p = composerPlanComplet(
+      plan({ gestion: { maxPertesConsecutives: 3 } }),
+      trades([2, -1, -1, -1, -1, -1, -1, 2, -1, -1]),
+      NAS,
+    );
+    expect(ligne(p, "serie_de_pertes")!.valeurs.n).toBe(6);
+  });
+
+  /**
+   * ⚠️⚠️ LE MÊME NOMBRE NE SE DIT PAS DEUX FOIS DANS LE DOCUMENT QU'IL EMPORTE.
+   * Vu à l'écran, deux lignes collées : « Attends-toi à des pertes d'affilée,
+   * jusqu'à 8 à la suite » puis « Tu n'as aucune règle d'arrêt : tu aurais
+   * traversé jusqu'à 8 pertes d'affilée sans que rien ne t'arrête ». Le même
+   * fait, le même nombre, deux fois de suite.
+   *
+   * ⚠️ FACE À UNE RÈGLE, LES DEUX LIGNES SE JUSTIFIENT : « tu t'arrêtes à 3, la
+   * méthode en a enchaîné 8 » est une comparaison, pas une répétition.
+   */
+  it("ne dit pas deux fois la série quand aucune règle ne l'arrête", () => {
+    const rs = [2, -1, -1, -1, -1, -1, -1, 2, -1, -1];
+    const sans = composerPlanComplet(plan({ gestion: {} }), trades(rs), NAS);
+    expect(ligne(sans, "arret_pertes_absent")!.valeurs.serie).toBe(6);
+    expect(ligne(sans, "serie_de_pertes")).toBeUndefined();
+
+    const avec = composerPlanComplet(plan({ gestion: { maxPertesConsecutives: 3 } }), trades(rs), NAS);
+    expect(ligne(avec, "serie_de_pertes")!.valeurs.n).toBe(6);
+    expect(ligne(avec, "arret_pertes")!.valeurs.n).toBe(3);
+  });
+
+  /**
+   * ⚠️ UNE RÈGLE D'ARRÊT QU'ON N'A JAMAIS VUE S'APPLIQUER N'EST PAS UNE RÈGLE,
+   * c'est une intention. Le nombre de déclenchements est la seule chose qui la
+   * rende réelle pour celui qui doit la respecter.
+   */
+  it("dit combien de fois la règle d'arrêt se serait déclenchée", () => {
+    const p = composerPlanComplet(
+      plan({ gestion: { maxPertesConsecutives: 3 } }),
+      trades([-1, -1, -1, 2, -1, -1, -1, -1, -1, -1]),
+      NAS,
+    );
+    // Une série de trois, puis une de six : trois déclenchements en tout.
+    expect(ligne(p, "arret_pertes")!.valeurs.fois).toBe(3);
+  });
+
+  it("signale l'absence de règle d'arrêt plutôt que de l'inventer", () => {
+    const p = composerPlanComplet(plan(), trades(suite()), NAS);
+    expect(ligne(p, "arret_pertes")).toBeUndefined();
+    expect(ligne(p, "arret_pertes_absent")).toBeTruthy();
+  });
+
+  /**
+   * ⚠️⚠️ VU À L'ÉCRAN : « Attends-toi à 2 trades par jour, 2 les jours les
+   * plus chargés. » La phrase promet un contraste et rend deux fois le même
+   * nombre, ce qui la fait lire comme une panne. Ce n'était pas un arrondi : le
+   * neuvième décile et le maximum valaient vraiment 2 tous les deux.
+   *
+   * ⚠️ ET C'EST UNE INFORMATION PLUS FORTE, PAS PLUS FAIBLE : quand les deux se
+   * rejoignent, le rythme n'a jamais dépassé ce chiffre de toute la période.
+   *
+   * Le test d'origine construisait par accident exactement ce cas-là (trois
+   * trades tous les jours, sans exception) et affirmait la phrase à contraste.
+   */
+  it("dit le plafond quand le rythme ne l'a jamais dépassé", () => {
+    const regulier = trades(suite()).map((t, i) => ({
+      ...t,
+      // Trois trades le même jour, tous les jours : le décile égale le maximum.
+      entreeMs: Date.UTC(2024, 0, 1) + Math.floor(i / 3) * 86_400_000,
+    }));
+    const p = composerPlanComplet(plan(), regulier, NAS);
+    expect(ligne(p, "rythme")).toBeUndefined();
+    const l = ligne(p, "rythme_plafond")!;
+    expect(l).toBeTruthy();
+    expect(l.valeurs.max).toBe(3);
+    expect(l.valeurs.d9).toBe(3);
+  });
+
+  it("garde la phrase à contraste quand une journée dépasse les autres", () => {
+    // Un trade par jour, sauf une journée qui en porte cinq.
+    const irregulier = trades(suite()).map((t, i) => ({
+      ...t,
+      entreeMs: Date.UTC(2024, 0, 1) + (i < 5 ? 0 : (i - 4) * 86_400_000),
+    }));
+    const p = composerPlanComplet(plan(), irregulier, NAS);
+    const l = ligne(p, "rythme") ?? ligne(p, "rythme_un")!;
+    expect(l).toBeTruthy();
+    expect(l.valeurs.max).toBe(5);
+    expect(l.valeurs.d9).not.toBe(l.valeurs.max);
+  });
+
+  /**
+   * ⚠️ LES QUATRE FORMES ONT LEUR RÉDACTION, et deux d'entre elles ne sont
+   * citées que dans une branche : le balayage des clés littérales ne prouve
+   * rien sur leur existence.
+   */
+  it("a une phrase pour chacune des quatre formes du rythme", () => {
+    const c = fr as Record<string, string>;
+    for (const k of ["bt_plan_rythme", "bt_plan_rythme_un", "bt_plan_rythme_plafond", "bt_plan_rythme_un_plafond"]) {
+      expect(c[k], `${k} manquante`).toBeTruthy();
+    }
+    // ⚠️ Les deux formes « plafond » ne doivent PAS reparler d'un maximum
+    // distinct : c'est exactement la répétition qu'elles remplacent.
+    expect(c.bt_plan_rythme_un_plafond).not.toContain("{d9}");
+  });
+});
+
+describe("le risque par trade, déduit du recul qu'il produit", () => {
+  /**
+   * ⚠️ LE PLUS HAUT QUI TIENT, PAS LE PLUS RENTABLE. On ne maximise rien : on
+   * cherche la limite au-delà de laquelle le trader ne tiendrait pas, et on
+   * s'arrête juste en dessous. Un risque « optimal » calculé sur le passé est la
+   * façon la plus rapide de faire sauter un compte sur l'avenir.
+   */
+  it("retient le plus haut risque qui garde le recul sous le seuil", () => {
+    const p = composerPlanComplet(plan(), trades(suite()), NAS);
+    expect(p.risqueRecommandePct).not.toBeNull();
+    const choisi = p.risques.find((r) => r.risquePct === p.risqueRecommandePct)!;
+    expect(choisi.reculPct).toBeLessThanOrEqual(p.seuilReculPct);
+    const plusHauts = p.risques.filter((r) => r.risquePct > p.risqueRecommandePct!);
+    for (const r of plusHauts) {
+      expect(r.ruine || r.reculPct > p.seuilReculPct).toBe(true);
+    }
+  });
+
+  it("rend le tableau complet pour que le trader tranche lui-même", () => {
+    const p = composerPlanComplet(plan(), trades(suite()), NAS);
+    expect(p.risques.length).toBeGreaterThan(4);
+    for (const r of p.risques) expect(Number.isFinite(r.reculPct)).toBe(true);
+  });
+
+  it("le recul grandit avec le risque", () => {
+    const p = composerPlanComplet(plan(), trades(suite()), NAS);
+    const sansRuine = p.risques.filter((r) => !r.ruine);
+    for (let i = 1; i < sansRuine.length; i++) {
+      expect(sansRuine[i].reculPct).toBeGreaterThanOrEqual(sansRuine[i - 1].reculPct);
+    }
+  });
+
+  /**
+   * ⚠️ Quand même le risque le plus petit fait sauter le seuil, on ne recommande
+   * RIEN. Proposer quand même le moins mauvais reviendrait à dire « c'est
+   * tenable » d'une méthode qui ne l'est pas.
+   */
+  it("ne recommande rien quand aucun risque ne tient", () => {
+    const catastrophe = trades(Array.from({ length: 200 }, () => -1));
+    const p = composerPlanComplet(plan(), catastrophe, NAS);
+    expect(p.risqueRecommandePct).toBeNull();
+    expect(ligne(p, "risque_aucun")).toBeTruthy();
+  });
+
+  it("respecte un seuil de recul différent", () => {
+    const large = composerPlanComplet(plan(), trades(suite()), NAS, 60);
+    const serre = composerPlanComplet(plan(), trades(suite()), NAS, 5);
+    expect(large.seuilReculPct).toBe(60);
+    if (large.risqueRecommandePct != null && serre.risqueRecommandePct != null) {
+      expect(large.risqueRecommandePct).toBeGreaterThanOrEqual(serre.risqueRecommandePct);
+    }
+  });
+
+  it("part du seuil déclaré quand on ne lui en donne pas", () => {
+    expect(composerPlanComplet(plan(), trades(suite()), NAS).seuilReculPct).toBe(
+      SEUIL_RECUL_PAR_DEFAUT,
+    );
+  });
+});
+
+describe("chaque ligne du plan sait se dire en français", () => {
+  const connues = fr as Record<string, string>;
+  const toutesLesCles = [
+    ...composerPlanComplet(plan({ gestion: { maxPertesConsecutives: 3 } }), trades(suite()), NAS)
+      .lignes.map((l) => l.cle),
+    "arret_pertes_absent",
+    "risque_aucun",
+    // Quand le risque retenu est le dernier de la liste, la phrase change.
+    "risque_plafond",
+    // Le rythme a deux redactions : « 1 trades par jour » etait ecrit tel quel
+    // dans un plan qu'on imprime pour le suivre.
+    "rythme_un",
+  ];
+
+  it.each(Array.from(new Set(toutesLesCles)))("« %s »", (cle) => {
+    expect(connues[`bt_plan_${cle}`], `bt_plan_${cle} manquante`).toBeTruthy();
+  });
+});
+
+/**
+ * CE QUE LE PLAN TROUVE A DEMONTRE, DIT AVANT LE PLAN.
+ *
+ * ⚠️⚠️ VU A L'ECRAN SUR LA VRAIE STRATEGIE : la confirmation disait
+ * « trop peu de trades pour trancher » et l'outil titrait juste en dessous
+ * « Ton plan, ecrit · Les regles a respecter ». Chaque etat doit avoir sa
+ * phrase, sinon un plan que rien n'a confirme se lit comme un plan a suivre.
+ */
+describe("chaque etat du plan trouve a sa phrase", () => {
+  const SOURCE = readFileSync(join(process.cwd(), "components/backtest/Trouver.tsx"), "utf8");
+  const i = SOURCE.indexOf("export type EtatDuPlan =");
+
+  it("l'union EtatDuPlan est lue dans la source, pas recopiee", () => {
+    expect(i).toBeGreaterThan(-1);
+  });
+
+  it("chaque etat a sa cle en francais", () => {
+    const union = SOURCE.slice(i, SOURCE.indexOf(";", i));
+    const etats = Array.from(union.matchAll(/"([a-z_]+)"/g), (m) => m[1]);
+    expect(etats.length).toBeGreaterThan(1);
+    const connues = fr as Record<string, string>;
+    for (const e of etats) {
+      expect(connues[`bt_plan_etat_${e}`], `bt_plan_etat_${e} manquante`).toBeTruthy();
+    }
+  });
+});
+
+/**
+ * ⚠️⚠️ « LE PLUS HAUT RISQUE QUI TIENT » N'EST PAS LA MÊME PHRASE QUAND ON A
+ * BUTÉ SUR LE HAUT DE LA LISTE.
+ *
+ * Vu à l'écran : « tu risques 5 % du capital par trade, c'est le plus haut
+ * risque qui garde ton recul sous 20 %. Au-dessus, tu ne tiendrais pas la
+ * série. » Or 5 % est simplement le dernier de la liste des risques essayés :
+ * on n'a jamais regardé 6 %, et rien ne dit qu'il casserait. La phrase
+ * affirmait une limite trouvée là où il n'y avait qu'un bout de tableau.
+ */
+describe("le risque retenu ne s'annonce pas comme une limite trouvée", () => {
+  /** Une suite de R si sage que même le risque le plus haut tient. */
+  const douce = () => trades(Array.from({ length: 60 }, (_, i) => (i % 5 === 0 ? -0.2 : 0.1)));
+
+  it("change de phrase quand le risque retenu est le plafond de la liste", () => {
+    const p = composerPlanComplet(plan(), douce(), NAS);
+    const risque = p.risques[p.risques.length - 1];
+    expect(p.risqueRecommandePct).toBe(risque.risquePct);
+    expect(p.lignes.map((l) => l.cle)).toContain("risque_plafond");
+    expect(p.lignes.map((l) => l.cle)).not.toContain("risque");
+  });
+
+  it("garde la phrase ordinaire quand la limite a vraiment été trouvée", () => {
+  const rude = trades(Array.from({ length: 60 }, (_, i) => (i < 12 ? -1 : 0.2)));
+    const p = composerPlanComplet(plan(), rude, NAS);
+    if (p.risqueRecommandePct != null) {
+      const plafond = p.risques[p.risques.length - 1].risquePct;
+      expect(p.risqueRecommandePct).toBeLessThan(plafond);
+      expect(p.lignes.map((l) => l.cle)).toContain("risque");
+    }
+  });
+});
+
+/**
+ * ⚠️⚠️ VU À L'ÉCRAN, DANS LE PLAN SORTI DE LA RECHERCHE : « Tu n'ouvres rien
+ * avant 00:00 ni après 23:59, quelle que soit la qualité du signal. » Une
+ * phrase qui a l'air d'une discipline et qui n'interdit rien. Le plan à
+ * emporter est le seul document que le trader relit devant son écran : une
+ * ligne qui ne contraint rien y prend la place d'une ligne qui contraindrait.
+ */
+describe("la ligne des horaires", () => {
+  const auxHeures = (debut: string, fin: string) =>
+    plan({ contexte: { fuseau: "Europe/Paris", debut, fin, jours: [1, 2, 3, 4, 5] } });
+
+  it("dit qu'il n'y a aucune restriction quand la journée est entière", () => {
+    const p = composerPlanComplet(auxHeures("00:00", "23:59"), trades(suite()), NAS);
+    expect(ligne(p, "heures_aucune")).toBeTruthy();
+    expect(ligne(p, "heures")).toBeUndefined();
+  });
+
+  it("garde la plage dès qu'elle contraint quelque chose", () => {
+    const p = composerPlanComplet(auxHeures("09:00", "17:00"), trades(suite()), NAS);
+    expect(ligne(p, "heures")!.valeurs).toMatchObject({ debut: "09:00", fin: "17:00" });
+    expect(ligne(p, "heures_aucune")).toBeUndefined();
+  });
+});

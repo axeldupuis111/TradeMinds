@@ -1,0 +1,314 @@
+import { describe, expect, it } from "vitest";
+import fr from "../i18n/fr";
+import {
+  amplitudeTypique,
+  lireLesMarches,
+  transposerPlan,
+  type ResultatMarche,
+} from "./marches";
+import { socleDePlan } from "./compilation";
+import { coutsPourInstrument, instrumentParCode } from "./instruments";
+import type { PlanExecution, SerieM1 } from "./types";
+
+const NAS = instrumentParCode("NAS100")!;
+const BTC = instrumentParCode("BTCUSD")!;
+
+/** Une série dont chaque bougie a exactement l'amplitude demandée, en ticks. */
+function serie(amplitudeTicks: number, tailleTick: number, n = 500): SerieM1 {
+  const t = new Float64Array(n);
+  const o = new Int32Array(n);
+  const h = new Int32Array(n);
+  const l = new Int32Array(n);
+  const c = new Int32Array(n);
+  const depart = Date.UTC(2024, 0, 1, 8, 0, 0);
+  for (let i = 0; i < n; i++) {
+    t[i] = depart + i * 60_000;
+    o[i] = 1_000_000;
+    h[i] = 1_000_000 + amplitudeTicks;
+    l[i] = 1_000_000;
+    c[i] = 1_000_000;
+  }
+  return { instrument: "X", tailleTick, t, o, h, l, c };
+}
+
+function plan(partiel: Partial<PlanExecution> = {}): PlanExecution {
+  return {
+    ...socleDePlan("NAS100", "Europe/Paris"),
+    uniteDeTemps: 1,
+    niveau: { type: "trendline", pivots: 20, touchesMin: 3, toleranceTicks: 3000 },
+    declencheur: { type: "cassure", mode: "cloture" },
+    confirmations: [],
+    stop: { type: "fixe", ticks: 10_000 },
+    objectif: { type: "multiple_r", r: 2 },
+    gestion: { risqueParTradePct: 1 },
+    couts: coutsPourInstrument(NAS),
+    ...partiel,
+  };
+}
+
+describe("l'amplitude typique d'une bougie", () => {
+  it("rend la médiane en points, pas en ticks", () => {
+    // 2000 ticks de 0,001 point font 2 points.
+    expect(amplitudeTypique(serie(2000, 0.001), 1)).toBeCloseTo(2, 6);
+  });
+
+  /**
+   * ⚠️ LA MÉDIANE, PAS LA MOYENNE. Une poignée de bougies de publication
+   * économique suffirait à doubler une moyenne, et toute l'échelle de
+   * transposition partirait avec elle.
+   */
+  it("ne se laisse pas emporter par quelques bougies énormes", () => {
+    const s = serie(1000, 0.001, 500);
+    for (let i = 0; i < 20; i++) s.h[i] = s.l[i] + 500_000;
+    expect(amplitudeTypique(s, 1)).toBeCloseTo(1, 6);
+  });
+
+  it("rend zéro sur une série vide plutôt que de diviser par rien", () => {
+    const vide: SerieM1 = {
+      instrument: "X",
+      tailleTick: 0.001,
+      t: new Float64Array(0),
+      o: new Int32Array(0),
+      h: new Int32Array(0),
+      l: new Int32Array(0),
+      c: new Int32Array(0),
+    };
+    expect(amplitudeTypique(vide, 1)).toBe(0);
+  });
+});
+
+describe("transposer un plan d'un marché à l'autre", () => {
+  /**
+   * ⚠️ LE CŒUR DE LA RÈGLE. « Une tolérance de 3 points sur un marché dont la
+   * bougie fait 15 points » vaut 0,2 bougie ; sur un marché dont la bougie fait
+   * 150 points, ça doit redonner 30 points. Garder les mêmes ticks aurait donné
+   * une tolérance deux cents fois trop fine, et un « zéro trade » qui n'aurait
+   * rien à voir avec la méthode.
+   */
+  it("met les distances à l'échelle de l'amplitude du marché cible", () => {
+    const p = transposerPlan(plan(), NAS, BTC, 15, 150);
+    expect(p.niveau.type === "trendline" && p.niveau.toleranceTicks).toBeTruthy();
+    if (p.niveau.type !== "trendline" || p.stop.type !== "fixe") throw new Error("forme");
+    // 3000 ticks NAS = 3 points = 0,2 bougie ; 0,2 × 150 = 30 points BTC ;
+    // 30 / 0,1 = 300 ticks BTC.
+    expect(p.niveau.toleranceTicks).toBe(300);
+    // 10 000 ticks NAS = 10 points = 0,667 bougie ; × 150 = 100 points = 1000 ticks.
+    expect(p.stop.ticks).toBe(1000);
+  });
+
+  /**
+   * ⚠️ CE QUI SE COMPTE EN BOUGIES NE SE MET PAS À L'ÉCHELLE. Une largeur de
+   * pivot, une période, un délai ne dépendent pas du prix : les convertir serait
+   * une faute, et une faute invisible.
+   */
+  it("ne touche pas à ce qui se compte en bougies", () => {
+    const p = transposerPlan(plan(), NAS, BTC, 15, 150);
+    if (p.niveau.type !== "trendline") throw new Error("forme");
+    expect(p.niveau.pivots).toBe(20);
+    expect(p.niveau.touchesMin).toBe(3);
+    expect(p.uniteDeTemps).toBe(1);
+  });
+
+  it("ne touche ni à l'objectif en R ni au risque en pourcent", () => {
+    const p = transposerPlan(plan(), NAS, BTC, 15, 150);
+    expect(p.objectif).toEqual({ type: "multiple_r", r: 2 });
+    expect(p.gestion.risqueParTradePct).toBe(1);
+  });
+
+  /**
+   * ⚠️ LES COÛTS SONT CEUX DU MARCHÉ CIBLE. Transporter le spread du Nasdaq sur
+   * le Bitcoin fabriquerait un avantage de toutes pièces, et c'est exactement
+   * l'erreur qui rendait « rentable » la stratégie de la vidéo.
+   */
+  it("prend les coûts du marché d'arrivée", () => {
+    const p = transposerPlan(plan(), NAS, BTC, 15, 150);
+    expect(p.couts).toEqual(coutsPourInstrument(BTC));
+    expect(p.instrument).toBe("BTCUSD");
+  });
+
+  it("met aussi à l'échelle le filtre d'amplitude minimale", () => {
+    const p = transposerPlan(
+      plan({ confirmations: [{ type: "amplitude_min", ticks: 3000 }] }),
+      NAS,
+      BTC,
+      15,
+      150,
+    );
+    const f = p.confirmations[0];
+    expect(f.type === "amplitude_min" && f.ticks).toBe(300);
+  });
+
+  /**
+   * ⚠️ Une distance mise à zéro rendrait le stop ou la tolérance inutilisables,
+   * et le marché cible sortirait « zéro trade » pour une raison qui n'a rien à
+   * voir avec la méthode.
+   */
+  it("ne réduit jamais une distance à zéro", () => {
+    const p = transposerPlan(plan({ stop: { type: "fixe", ticks: 1 } }), NAS, BTC, 1500, 1);
+    if (p.stop.type !== "fixe") throw new Error("forme");
+    expect(p.stop.ticks).toBeGreaterThanOrEqual(1);
+  });
+
+  it("laisse le plan intact quand une amplitude est inconnue", () => {
+    const p = transposerPlan(plan(), NAS, BTC, 0, 150);
+    if (p.stop.type !== "fixe") throw new Error("forme");
+    expect(p.stop.ticks).toBe(10_000);
+  });
+});
+
+describe("lire une série de marchés", () => {
+  const m = (partiel: Partial<ResultatMarche>): ResultatMarche => ({
+    code: "X",
+    nom: "X",
+    trades: 400,
+    esperanceR: 0.1,
+    borneBasse: 0.02,
+    borneHaute: 0.18,
+    avantageRetrouve: true,
+    insuffisant: false,
+    sien: false,
+    moisManquants: 0,
+    ...partiel,
+  });
+
+  /**
+   * ⚠️⚠️ LE CAS QU'IL FAUT SAVOIR NOMMER. Une méthode qui ne tient que sur son
+   * marché d'origine ressemble à une bonne nouvelle et en est le contraire :
+   * elle ne décrit pas ce marché-là, elle décrit la chance qu'elle y a eue.
+   */
+  it("nomme le cas où seul le marché d'origine tient", () => {
+    const r = lireLesMarches([
+      m({ sien: true, avantageRetrouve: true }),
+      m({ avantageRetrouve: false }),
+      m({ avantageRetrouve: false }),
+    ]);
+    expect(r.verdict).toBe("seul_le_sien");
+  });
+
+  it("voit un avantage partagé entre plusieurs marchés", () => {
+    const r = lireLesMarches([
+      m({ sien: true }),
+      m({}),
+      m({ avantageRetrouve: false }),
+    ]);
+    expect(r.verdict).toBe("partage");
+    expect(r.retrouves).toBe(2);
+  });
+
+  it("voit un avantage qu'on ne retrouve nulle part", () => {
+    const r = lireLesMarches([m({ avantageRetrouve: false }), m({ avantageRetrouve: false })]);
+    expect(r.verdict).toBe("nulle_part");
+  });
+
+  it("ne conclut rien avec moins de deux marchés mesurables", () => {
+    const r = lireLesMarches([m({ sien: true }), m({ insuffisant: true })]);
+    expect(r.verdict).toBe("indecidable");
+  });
+
+  it("ne compte jamais un marché insuffisant comme mesurable", () => {
+    const r = lireLesMarches([m({}), m({}), m({ insuffisant: true, avantageRetrouve: true })]);
+    expect(r.mesurables).toBe(2);
+  });
+});
+
+/**
+ * ⚠️⚠️ « NULLE PART » EST UNE AFFIRMATION SUR UN ENSEMBLE.
+ *
+ * Vu à l'écran sur l'or : la famille des métaux ne contient que l'argent, donc
+ * UN seul marché de comparaison, et l'outil concluait quand même « l'avantage ne
+ * se retrouve nulle part ». Peut-être vrai, pas démontré. Chaque verdict a
+ * désormais sa rédaction quand il ne repose que sur une comparaison.
+ */
+describe("le nombre de comparaisons est compté à part", () => {
+  const marche = (sien: boolean, avantageRetrouve: boolean, insuffisant = false) => ({
+    code: sien ? "XAUUSD" : "XAGUSD",
+    nom: sien ? "Or" : "Argent",
+    trades: insuffisant ? 10 : 300,
+    esperanceR: 0.1,
+    borneBasse: avantageRetrouve ? 0.02 : -0.1,
+    borneHaute: 0.3,
+    avantageRetrouve,
+    insuffisant,
+    sien,
+    moisManquants: 0,
+  });
+
+  it("ne compte pas son propre marché comme une comparaison", () => {
+    const l = lireLesMarches([marche(true, false), marche(false, false)]);
+    expect(l.comparaisons).toBe(1);
+    expect(l.verdict).toBe("nulle_part");
+  });
+
+  it("sans aucun autre marché mesurable, rien ne se conclut", () => {
+    const l = lireLesMarches([marche(true, false), marche(false, false, true)]);
+    expect(l.comparaisons).toBe(0);
+    expect(l.verdict).toBe("indecidable");
+  });
+});
+
+/**
+ * ⚠️⚠️ VU À L'ÉCRAN, ET C'EST LA MÊME FAUTE QUE « L'AVANTAGE NE SE RETROUVE PAS
+ * SUR LA PÉRIODE INTACTE », corrigée deux jours plus tôt sur une autre carte.
+ * Je n'avais pas cherché les autres copies.
+ *
+ *   Nasdaq 100 (le tien)  -0.130 R [-0.293 ; +0.033]
+ *   S&P 500               +0.078 R [-0.111 ; +0.267]
+ *   Dow Jones 30          +0.182 R [-0.039 ; +0.404]
+ *   DAX 40                +0.029 R [-0.183 ; +0.241]
+ *
+ * puis « L'avantage ne se retrouve NULLE PART, pas même sur ton marché
+ * d'origine ». Exact au sens de la démonstration, faux au sens où on le lit :
+ * trois marchés sur quatre penchent du bon côté, dont un à deux doigts de
+ * trancher. « Nulle part » dit « il n'y en a pas » là où la mesure dit « aucun
+ * ne le prouve ».
+ */
+describe("« nulle part » quand les chiffres penchent du bon côté", () => {
+  const m = (
+    code: string,
+    esperanceR: number,
+    sien = false,
+  ): ResultatMarche => ({
+    code,
+    nom: code,
+    trades: 200,
+    esperanceR,
+    borneBasse: esperanceR - 0.2,
+    borneHaute: esperanceR + 0.2,
+    avantageRetrouve: false,
+    insuffisant: false,
+    sien,
+    moisManquants: 0,
+  });
+
+  it("compte les marchés de comparaison qui penchent, pas le sien", () => {
+    const l = lireLesMarches([
+      m("NAS100", -0.13, true),
+      m("SPX500", 0.078),
+      m("US30", 0.182),
+      m("DAX40", 0.029),
+    ]);
+    expect(l.verdict).toBe("nulle_part");
+    expect(l.penchent).toBe(3);
+  });
+
+  /**
+   * ⚠️ QUAND RIEN NE PENCHE, LA PHRASE D'ORIGINE EST LA BONNE : elle n'est
+   * fausse que lorsqu'elle contredit ce que le tableau montre.
+   */
+  it("ne compte rien quand tous les autres marchés perdent", () => {
+    const l = lireLesMarches([
+      m("NAS100", -0.13, true),
+      m("SPX500", -0.08),
+      m("US30", -0.02),
+    ]);
+    expect(l.verdict).toBe("nulle_part");
+    expect(l.penchent).toBe(0);
+  });
+
+  it("a une rédaction qui ne nie pas ce que le tableau montre", () => {
+    const texte = (fr as Record<string, string>).bt_mar_verdict_nulle_part_penchent;
+    expect(texte).toContain("{penchent}");
+    expect(texte).toContain("{comparaisons}");
+    expect(texte).not.toContain("nulle part");
+  });
+});

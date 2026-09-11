@@ -1,6 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
+import {
+  fetchAllRows as lireToutesLesLignes,
+  fetchAllByIds as lireParIdentifiants,
+} from "@/lib/supabase-paginate";
 import { groupByUser, statsForPeriod, type ReviewRow, type TradeRow } from "@/lib/challenge-stats";
 import {
   challengeCompleted,
@@ -53,8 +57,6 @@ const ENDED_VISIBLE_DAYS = 30;
 const BOARD_SIZE = 20;
 /** Fenêtre du signal d'activité affiché à l'animateur dans la liste des membres. */
 const ACTIVITY_DAYS = 30;
-/** Pagination des lectures en masse (voir fetchAllRows). */
-const PAGE_SIZE = 1000;
 
 function serviceClient() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
@@ -98,17 +100,54 @@ type Admin = ReturnType<typeof serviceClient>;
  * un peu vivante, les trades de tous les membres dépassent ce plafond : sans
  * pagination le classement se calculerait sur des données tronquées, en
  * silence, et ce sont les derniers membres qui disparaîtraient.
+ *
+ * ── CE QUE CETTE FONCTION FAISAIT ───────────────────────────────────────────
+ *
+ * ⚠️⚠️ ELLE EXISTAIT EN DEUX EXEMPLAIRES, et la copie locale AVALAIT L'ERREUR.
+ * Elle lisait `{ data }` sans jamais regarder `error` : une page qui échoue
+ * rendait `data: null`, donc « zéro ligne », donc « fin de la pagination », et
+ * la fonction rendait tranquillement ce qu'elle avait déjà. Le classement d'une
+ * communauté se calculait alors sur une partie des membres, et rien ne le
+ * disait. C'est exactement le défaut que `lib/supabase-paginate.ts` décrit dans
+ * son en-tête, et contre lequel il rend `null` plutôt qu'une liste partielle.
+ *
+ * ⚠️ ICI ON JETTE, parce que les dix appels de ce fichier se font par paires
+ * dans des `Promise.all` : une exception remonte au `try` de la route, qui
+ * répond 500. Mieux vaut un refus visible qu'un classement faux.
  */
 async function fetchAllRows<T>(
-  build: () => { range: (from: number, to: number) => PromiseLike<{ data: unknown[] | null }> },
+  build: () => { range: (from: number, to: number) => PromiseLike<{ data: unknown[] | null; error: unknown }> },
 ): Promise<T[]> {
-  const out: T[] = [];
-  for (let page = 0; ; page++) {
-    const { data } = await build().range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
-    const rows = (data ?? []) as T[];
-    out.push(...rows);
-    if (rows.length < PAGE_SIZE) return out;
-  }
+  const rows = await lireToutesLesLignes<T>(
+    (from, to) => build().range(from, to) as PromiseLike<{ data: T[] | null; error: unknown }>,
+  );
+  if (rows === null) throw new Error("lecture paginée incomplète");
+  return rows;
+}
+
+/**
+ * La même chose, pour une lecture filtrée par une LISTE D'IDENTIFIANTS.
+ *
+ * ⚠️⚠️ CE FICHIER LISAIT LES MEMBRES AVEC `.in("id", ids)` SANS DÉCOUPER. Les
+ * identifiants voyagent dans l'URL (`?id=in.(…)`, 37 caractères par UUID) : à
+ * trois cents membres, l'URL fait onze mille caractères et la requête échoue
+ * D'UN BLOC. Or ce produit vise des communautés de partenaires « à des
+ * centaines de collaborateurs » : le défaut se déclenche exactement quand la
+ * fonctionnalité réussit.
+ *
+ * ⚠️ `chunk` EXISTAIT POURTANT, avec le bon commentaire, et ne servait qu'aux
+ * ÉCRITURES. Une règle écrite, appliquée à une moitié du problème.
+ */
+async function fetchAllByIds<T>(
+  ids: readonly string[],
+  build: (lot: string[]) => { range: (from: number, to: number) => PromiseLike<{ data: unknown[] | null; error: unknown }> },
+): Promise<T[]> {
+  const rows = await lireParIdentifiants<T>(
+    ids,
+    (lot, from, to) => build(lot).range(from, to) as PromiseLike<{ data: T[] | null; error: unknown }>,
+  );
+  if (rows === null) throw new Error("lecture paginée incomplète");
+  return rows;
 }
 
 /** Une communauté par n'importe laquelle de ses clés. */
@@ -259,11 +298,11 @@ async function membersView(admin: Admin, community: CommunityRow, userId: string
 
   const since = new Date(Date.now() - ACTIVITY_DAYS * DAY_MS).toISOString();
   const [profs, reviews] = await Promise.all([
-    fetchAllRows<{ id: string; username: string | null; timezone: string | null; created_at: string }>(() =>
-      admin.from("profiles").select("id, username, timezone, created_at").in("id", ids),
+    fetchAllByIds<{ id: string; username: string | null; timezone: string | null; created_at: string }>(ids, (lot) =>
+      admin.from("profiles").select("id, username, timezone, created_at").in("id", lot).order("id"),
     ),
-    fetchAllRows<{ user_id: string; created_at: string }>(() =>
-      admin.from("session_reviews").select("user_id, created_at").in("user_id", ids).gte("created_at", since),
+    fetchAllByIds<{ user_id: string; created_at: string }>(ids, (lot) =>
+      admin.from("session_reviews").select("user_id, created_at").in("user_id", lot).gte("created_at", since).order("id"),
     ),
   ]);
 
@@ -482,19 +521,20 @@ async function rankMembers(
 
   const since = windowStart(challenges, today);
   const [profs, trades, reviews] = await Promise.all([
-    fetchAllRows<{ id: string; username: string | null; timezone: string | null }>(() =>
-      admin.from("profiles").select("id, username, timezone").in("id", ids),
+    fetchAllByIds<{ id: string; username: string | null; timezone: string | null }>(ids, (lot) =>
+      admin.from("profiles").select("id, username, timezone").in("id", lot).order("id"),
     ),
-    fetchAllRows<TradeRow>(() =>
+    fetchAllByIds<TradeRow>(ids, (lot) =>
       admin
         .from("trades")
         .select("user_id, emotion, open_time")
-        .in("user_id", ids)
+        .in("user_id", lot)
         .eq("status", "closed")
-        .gte("open_time", since),
+        .gte("open_time", since)
+        .order("id"),
     ),
-    fetchAllRows<ReviewRow>(() =>
-      admin.from("session_reviews").select("user_id, discipline_score, created_at").in("user_id", ids).gte("created_at", since),
+    fetchAllByIds<ReviewRow>(ids, (lot) =>
+      admin.from("session_reviews").select("user_id, discipline_score, created_at").in("user_id", lot).gte("created_at", since).order("id"),
     ),
   ]);
 

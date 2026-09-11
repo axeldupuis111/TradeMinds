@@ -1,0 +1,633 @@
+"use client";
+
+import { Card } from "@/components/ui/Card";
+import { nomDuMarche } from "@/lib/backtest/phrases";
+import { cn } from "@/lib/cn";
+import { enDate } from "@/lib/backtest/dates";
+import { signe, signePourcent } from "@/lib/backtest/format";
+import { effetSurLeCompte } from "@/lib/backtest/capital";
+import { coutsEnPrix, type Instrument } from "@/lib/backtest/instruments";
+import { MAX_TENTATIVES_AVANT_ALERTE, type LectureBacktest } from "@/lib/backtest/verdict";
+import type { AuditExecution, TradeSimule } from "@/lib/backtest/types";
+import type { Suggestion } from "@/lib/backtest/suggestions";
+import { AlertTriangle, Info, TrendingDown, TrendingUp } from "lucide-react";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { useChartColors } from "@/lib/useChartColors";
+import { nombre, pourcent } from "@/lib/nombres";
+
+/**
+ * CE QUE L'ÉCRAN A LE DROIT DE DIRE.
+ *
+ * ⚠️ L'INTERFACE N'EST JAMAIS PLUS AFFIRMATIVE QUE LE MOTEUR. Sous le seuil de
+ * trades, `lecture.stats` n'existe même pas et cette carte affiche ce qui
+ * manque. Au-dessus, l'espérance ne s'affiche JAMAIS sans son intervalle, et le
+ * vert n'apparaît que si zéro est hors de cet intervalle.
+ *
+ * ⚠️ AUCUN VERT SUR UN SCÉNARIO PERDANT. C'est la leçon la plus chère de
+ * l'onglet Projection : un « 0 % de risque de ruine » en vert à côté d'une
+ * espérance négative disait « tu es sauvé » là où la lecture juste était « tu
+ * vas saigner lentement ». Ici la couleur suit le verdict, jamais un sous-chiffre.
+ *
+ * ⚠️ LE MOT « RENTABLE » N'APPARAÎT NULLE PART, ni ici ni dans les traductions.
+ * On dit ce qu'on a mesuré, sur quelle période, avec quels coûts.
+ */
+
+export interface ResultatProps {
+  lecture: LectureBacktest;
+  trades: TradeSimule[];
+  audit: AuditExecution;
+  /** La langue de l'application, pour les dates. Voir `lib/backtest/dates.ts`. */
+  langue: string;
+  /**
+   * Le plan trace-t-il des droites ?
+   *
+   * ⚠️⚠️ « 0 DROITES TRACÉES DONT 0 CONFIRMÉES » S'AFFICHAIT SUR UN PLAN QUI
+   * REPÈRE D'ANCIENS SOMMETS ET CREUX. Un compteur structurellement nul, qui
+   * décrit un mécanisme que ce plan n'emploie pas, et qui se lit comme un échec
+   * du moteur. Sur un plan qui EN trace, en revanche, « 0 droites » explique un
+   * zéro trade à lui seul : le compteur reste, sa phrase se conditionne.
+   */
+  traceDesDroites: boolean;
+  instrument: Instrument;
+  periode: { de: string; a: string };
+  moisManquants: string[];
+  tentatives: number;
+  /**
+   * Date du premier essai, en ISO. `null` quand aucun n'a encore eu lieu.
+   *
+   * ⚠️ « Essai n° 38 » ne dit pas la même chose que « essai n° 38, depuis le 12
+   * août ». Le premier ressemble à un reproche, le second à un fait : trente-huit
+   * réglages sur trois semaines, c'est une recherche, et c'est justement ce que
+   * le compteur mesure.
+   */
+  tentativesDepuis?: string | null;
+  ms: number;
+  /** Réglages voisins qui produiraient assez de trades. */
+  suggestions: Suggestion[];
+  /**
+   * De quoi élargir la période sans quitter l'écran.
+   *
+   * ⚠️⚠️ `null` QUAND ELLE EST DÉJÀ AU MAXIMUM, et c'est important : un bouton
+   * qui ne changerait rien serait pire qu'aucun bouton. Le diagnostic dit
+   * « élargis la période avant de toucher aux réglages : c'est le seul
+   * changement qui n'invente rien » ; il faut donc que ce soit possible pour
+   * qu'on le propose.
+   */
+  periodePlusLarge?: {
+    de: string;
+    a: string;
+    mois: number;
+    elargir: () => void;
+  } | null;
+  /**
+   * Applique un réglage suggéré au plan.
+   * ⚠️ La suggestion ENTIÈRE, pas seulement son plan : son levier doit pouvoir
+   * être retenu, sinon la carte des modifications ne saura pas dire au nom de
+   * quoi ce réglage a été accepté.
+   */
+  onAppliquer: (suggestion: Suggestion) => void;
+  /** Risque par trade déclaré, en % du capital. Traduit les R en pourcents. */
+  risqueParTradePct?: number;
+  /** Arrêt après N pertes d'affilée, pour chiffrer la pire journée. */
+  maxPertesConsecutives?: number;
+  /** Le trader a regardé les trades dessinés et reconnu sa méthode. */
+  verifie: boolean;
+  /**
+   * Interprétations que le trader a explicitement refusées.
+   *
+   * ⚠️ PRIME SUR TOUT LE RESTE, y compris sur la case « je reconnais ma
+   * méthode ». Un chiffre calculé sur une traduction que son auteur a lui-même
+   * démentie ne décrit rien du tout.
+   */
+  contestes: number;
+  t: (k: string, v?: Record<string, string | number>) => string;
+}
+
+const TON: Record<string, { classe: string; anneau: string }> = {
+  positif: { classe: "text-profit", anneau: "border-profit/40 bg-profit/[0.06]" },
+  negatif: { classe: "text-loss", anneau: "border-loss/40 bg-loss/[0.06]" },
+  non_concluant: { classe: "text-warning", anneau: "border-warning/40 bg-warning/[0.06]" },
+  insuffisant: { classe: "text-foreground-muted", anneau: "border-border bg-surface/40" },
+};
+
+export function Resultat({
+  lecture,
+  trades,
+  audit,
+  langue,
+  traceDesDroites,
+  instrument,
+  periode,
+  moisManquants,
+  tentatives,
+  tentativesDepuis,
+  ms,
+  verifie,
+  contestes,
+  risqueParTradePct,
+  maxPertesConsecutives,
+  suggestions,
+  onAppliquer,
+  periodePlusLarge,
+  t,
+}: ResultatProps) {
+  const c = useChartColors();
+  const ton = TON[lecture.verdict] ?? TON.insuffisant;
+
+  // ── Sous le seuil, on ne rend AUCUN chiffre de performance. Le moteur est
+  //    sorti avant de les calculer : il n'y a rien à masquer ici, et c'est
+  //    exactement l'intérêt de la règle.
+  if (!lecture.stats) {
+    return (
+      <Card className={cn("border", ton.anneau)}>
+        <div className="flex items-start gap-3">
+          <Info className="mt-0.5 h-5 w-5 shrink-0 text-foreground-muted" />
+          <div>
+            <h3 className="text-base font-semibold text-foreground">{t("bt_verdict_insuffisant")}</h3>
+            <p className="mt-1 text-sm text-foreground-muted">
+              {t("bt_verdict_insuffisant_detail", {
+                trades: trades.length,
+                manquants: lecture.tradesManquants ?? 0,
+              })}
+            </p>
+            {/* ⚠️ Le diagnostic, PAS un conseil générique. Un zéro sans cause
+                laisse le trader sans prise : il ne sait pas s'il doit changer
+                un réglage ou renoncer à sa méthode. */}
+            <p className="mt-2 text-xs font-medium text-warning">
+              {/* ⚠️ LES VALEURS PARTENT AVEC, MEME SI UNE SEULE CAUSE S EN SERT.
+                  La cle est construite (`bt_cause_${cause}`), donc le garde qui
+                  verifie que chaque trou est bouche NE LA VOIT PAS : il ne lit que
+                  les cles ecrites en toutes lettres. Un `{n}` oublie ici
+                  s afficherait tel quel, comme « {refuses} » l a fait ailleurs. */}
+              {t(`bt_cause_${lecture.cause ?? "trop_peu"}`, {
+                n: audit.limitesExpirees,
+                signaux: audit.signaux,
+                ecartes: audit.refusesRisqueTropPetit,
+              })}
+            </p>
+
+            {/* ⚠️⚠️ L'ÉCRAN NOMMAIT LA BONNE ACTION ET NE L'OFFRAIT PAS. Le
+                diagnostic dit « élargis la période avant de toucher aux
+                réglages : c'est le seul changement qui n'invente rien », et les
+                seuls boutons proposés en dessous étaient... des changements de
+                réglage. Le mouvement recommandé demandait de remonter en haut de
+                page et de comprendre tout seul quoi changer.
+                ⚠️ Il passe AVANT les suggestions de réglage, parce que c'est
+                celui qui n'invente rien. */}
+            {periodePlusLarge ? (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={periodePlusLarge.elargir}
+                  className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-on-accent hover:bg-accent-hover"
+                >
+                  {t("bt_elargir_periode", {
+                    de: periodePlusLarge.de,
+                    a: periodePlusLarge.a,
+                    mois: periodePlusLarge.mois,
+                  })}
+                </button>
+                <span className="text-[11px] leading-relaxed text-foreground-muted">
+                  {t("bt_elargir_periode_aide")}
+                </span>
+              </div>
+            ) : null}
+            {/* ⚠️ NE PAS SE CONTENTER DE DIAGNOSTIQUER. Mesuré sur 108 réglages
+                plausibles : 56 % tombent sous le seuil de conclusion. Un
+                trader qui voit deux fois de suite un écran vide s'en va, et il
+                a raison. On lui montre donc le réglage voisin qui marche.
+                ⚠️ Ces suggestions n'optimisent QUE la taille de l'échantillon.
+                Elles ne touchent ni au stop, ni à l'objectif, ni aux coûts, et
+                on n'affiche jamais leur performance : ce serait chercher le
+                bon chiffre a la place du trader. */}
+            {suggestions.length > 0 ? (
+              <div className="mt-3 rounded-lg border border-accent/40 bg-accent/[0.06] p-3">
+                <p className="text-xs font-medium text-accent">{t("bt_suggestions_titre")}</p>
+                <ul className="mt-2 space-y-1.5">
+                  {suggestions.map((sug, i) => (
+                    <li key={i} className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="min-w-0 flex-1 text-xs text-foreground">
+                        {t(`bt_levier_${sug.levier}`, {
+                          avant: sug.avant,
+                          apres: sug.apres,
+                          trades: sug.trades,
+                        })}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => onAppliquer(sug)}
+                        className="shrink-0 rounded-md border border-accent/60 px-2 py-1 text-[11px] font-medium text-accent transition-colors hover:bg-accent/15"
+                      >
+                        {t("bt_appliquer")}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-2 text-[11px] leading-snug text-foreground-muted">
+                  {t("bt_suggestions_note")}
+                </p>
+              </div>
+            ) : null}
+
+            <p className="mt-2 text-xs text-foreground-muted">
+              {/* ⚠️⚠️ LES DEUX COMPTEURS QUI EXPLIQUENT UN ZÉRO VIVAIENT DANS
+                  « ce qui relativise ce chiffre », un bloc qui ne s'affiche QUE
+                  s'il y a des trades. Ils existent précisément pour le cas où
+                  il n'y en a aucun : ils rejoignent donc la seule ligne de
+                  détail que ce cas-là montre. */}
+              {/* ⚠️⚠️ DEUX NOMBRES POUR LE MÊME MOT, SUR LE MÊME ÉCRAN. Cette
+                  ligne annonçait « 64 signaux » pendant que la carte des
+                  filtres, six lignes plus haut, disait « 359 signaux refusés
+                  sur un total examiné de 423 ». Les deux sont justes : 423
+                  examinés, 64 retenus. Aucun des deux ne le disait. */}
+              {/* ⚠️ ET ON NE NOMME LES FILTRES QUE S'ILS ONT ÉCARTÉ QUELQUE CHOSE.
+                  Sur un plan sans aucun filtre, les deux comptes sont égaux :
+                  « 108 signaux examinés dont 108 retenus par tes filtres »
+                  affiche deux fois le même nombre et invoque des filtres qui
+                  n'existent pas. C'est la faute que toute cette ligne existe
+                  pour ne plus commettre. */}
+              {Math.max(audit.signauxSoumisAuxFiltres, audit.signaux) > audit.signaux
+                ? t("bt_diagnostic_chiffres", {
+                    niveau: audit.barresAvecNiveau,
+                    bougies: audit.bougies,
+                    examines: Math.max(audit.signauxSoumisAuxFiltres, audit.signaux),
+                    signaux: audit.signaux,
+                    ecartes: audit.refusesRisqueTropPetit,
+                    geometrie: audit.refusesGeometrie,
+                    attente: audit.limitesExpirees,
+                  })
+                : t("bt_diagnostic_chiffres_sans_filtre", {
+                    niveau: audit.barresAvecNiveau,
+                    bougies: audit.bougies,
+                    signaux: audit.signaux,
+                    ecartes: audit.refusesRisqueTropPetit,
+                    geometrie: audit.refusesGeometrie,
+                    attente: audit.limitesExpirees,
+                  })}
+              {/* ⚠️ LES DROITES NE SE COMPTENT QUE SI ON EN TRACE. « 0 droites
+                  tracées dont 0 confirmées » s'affichait sur un plan qui repère
+                  d'anciens sommets et creux : un compteur structurellement nul,
+                  qui décrit un mécanisme que ce plan n'emploie pas, et qui se
+                  lit comme un échec du moteur. */}
+              {traceDesDroites
+                ? " " +
+                  t("bt_diagnostic_droites", {
+                    droites: audit.droitesTracees,
+                    confirmees: audit.droitesConfirmees,
+                  })
+                : null}
+            </p>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  const s = lecture.stats;
+  /**
+   * ⚠️ PAS UNE MULTIPLICATION. On multipliait le pire recul en R par le risque
+   * par trade, ce qui affichait « -148,4 % » : on ne perd pas cent quarante-huit
+   * pour cent d'un compte. Un recul se mesure depuis le SOMMET qui le précède.
+   */
+  const compte = effetSurLeCompte(
+    trades.map((x) => x.r),
+    risqueParTradePct ?? 0,
+  );
+  const couts = lecture.couts!;
+  const prix = coutsEnPrix(instrument, {
+    spreadTicks: couts.coutApplique,
+    glissementTicks: 0,
+    commissionTicks: 0,
+  });
+
+  // Courbe cumulée en R. Échantillonnée si le journal est long : dix mille
+  // points dans un SVG font ramer la page sans rien montrer de plus.
+  const pas = Math.max(1, Math.ceil(trades.length / 600));
+  const courbe: { i: number; r: number }[] = [];
+  let cumul = 0;
+  for (let i = 0; i < trades.length; i++) {
+    cumul += trades[i].r;
+    if (i % pas === 0 || i === trades.length - 1) courbe.push({ i: i + 1, r: Number(cumul.toFixed(2)) });
+  }
+
+  const gagne = lecture.verdict === "positif";
+
+  return (
+    <div className="space-y-4">
+      {/* ⚠️ EN TÊTE, AVANT LE VERDICT. Un chiffre posé sur une mécanisation que
+          personne n'a vérifiée est exactement ce qu'on reproche aux autres
+          outils de backtest. Tant que le trader n'a pas regardé les trades
+          dessinés, la page le dit. */}
+      {contestes > 0 ? (
+        <Card className="border-loss/50 bg-loss/[0.07]">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-loss" />
+            <p className="text-sm leading-relaxed text-foreground">
+              {t("bt_interpretations_refusees", { n: contestes })}
+            </p>
+          </div>
+        </Card>
+      ) : !verifie ? (
+        <Card className="border-warning/40 bg-warning/[0.06]">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
+            <p className="text-sm leading-relaxed text-foreground">{t("bt_non_verifie")}</p>
+          </div>
+        </Card>
+      ) : null}
+
+      {/* ── Le verdict ───────────────────────────────────────────────────── */}
+      <Card className={cn("border", ton.anneau)}>
+        <div className="flex items-start gap-3">
+          {gagne ? (
+            <TrendingUp className={cn("mt-0.5 h-5 w-5 shrink-0", ton.classe)} />
+          ) : lecture.verdict === "negatif" ? (
+            <TrendingDown className={cn("mt-0.5 h-5 w-5 shrink-0", ton.classe)} />
+          ) : (
+            <AlertTriangle className={cn("mt-0.5 h-5 w-5 shrink-0", ton.classe)} />
+          )}
+          <div className="min-w-0 flex-1">
+            <h3 className={cn("text-base font-semibold", ton.classe)}>
+              {t(`bt_verdict_${lecture.verdict}`)}
+            </h3>
+            {/* ⚠️ L'espérance ne voyage JAMAIS sans son intervalle. */}
+            <p className="mt-1 text-sm text-foreground">
+              {t("bt_verdict_phrase", {
+                instrument: nomDuMarche(instrument.code, instrument.nom, t),
+                de: periode.de,
+                a: periode.a,
+                esperance: signe(s.esperanceR, 4),
+                bas: nombre(s.borneBasse, 3),
+                haut: nombre(s.borneHaute, 3),
+                trades: s.nbTrades,
+              })}
+            </p>
+            {lecture.verdict === "non_concluant" ? (
+              <p className="mt-2 text-xs text-foreground-muted">{t("bt_zero_dans_intervalle")}</p>
+            ) : null}
+            {/* ⚠️ Au-delà d'un signal écarté sur dix, le chiffre ne porte plus
+                sur la stratégie mais sur la part de ses signaux qui restait
+                exécutable, et cette part est celle des stops larges. */}
+            {lecture.partRefusesRisque > 0.1 ? (
+              <p className="mt-2 text-xs font-medium text-warning">
+                {t("bt_verdict_partiel", { pct: (lecture.partRefusesRisque * 100).toFixed(0) })}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      </Card>
+
+      {/* ── Les chiffres ─────────────────────────────────────────────────── */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Chiffre label={t("bt_trades")} valeur={String(s.nbTrades)} />
+        <Chiffre label={t("bt_taux_reussite")} valeur={pourcent(s.tauxReussite * 100, 1)} />
+        <Chiffre
+          label={t("bt_total_r")}
+          valeur={`${signe(s.totalR, 1)} R`}
+          ton={s.totalR >= 0 && gagne ? "profit" : s.totalR < 0 ? "loss" : "neutre"}
+        />
+        <Chiffre label={t("bt_drawdown")} valeur={`${nombre(s.drawdownMaxR, 1)} R`} />
+      </div>
+
+      {/* ── La courbe ────────────────────────────────────────────────────── */}
+      <Card>
+        <h4 className="mb-3 text-sm font-semibold text-foreground">{t("bt_courbe")}</h4>
+        <div className="h-56 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={courbe} margin={{ top: 4, right: 8, bottom: 4, left: -12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={c.grid} vertical={false} />
+              <XAxis dataKey="i" tick={{ fontSize: 11, fill: c.axis }} stroke={c.grid} />
+              <YAxis tick={{ fontSize: 11, fill: c.axis }} stroke={c.grid} width={48} />
+              <ReferenceLine y={0} stroke={c.axis} strokeDasharray="4 4" />
+              <Tooltip
+                contentStyle={{
+                  background: c.tooltipBg,
+                  border: `1px solid ${c.grid}`,
+                  borderRadius: 8,
+                  fontSize: 12,
+                }}
+                formatter={(v) => [`${signe(Number(v), 2)} R`, t("bt_cumul")]}
+                labelFormatter={(v) => t("bt_trade_n", { n: String(v) })}
+              />
+              <Area
+                type="monotone"
+                dataKey="r"
+                stroke={s.totalR >= 0 ? c.profit : c.loss}
+                fill={s.totalR >= 0 ? c.profit : c.loss}
+                fillOpacity={0.14}
+                strokeWidth={2}
+                isAnimationActive={false}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
+
+      {/* ── Ce que ça fait à un vrai compte ──────────────────────────────── */}
+      {risqueParTradePct ? (
+        <Card>
+          <h4 className="mb-3 text-sm font-semibold text-foreground">{t("bt_en_capital")}</h4>
+          <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+            <Ligne
+              label={t("bt_capital_total")}
+              valeur={
+                compte.ruine
+                  ? t("bt_capital_vide")
+                  : signePourcent(compte.totalPct, 1)
+              }
+            />
+            <Ligne label={t("bt_capital_drawdown")} valeur={`-${pourcent(compte.reculPct, 1)}`} />
+          </dl>
+          {/* ⚠️ UN COMPTE VIDÉ NE PREND PAS LES TRADES SUIVANTS. Afficher le
+              total de la période entière reviendrait à promettre un gain qui
+              suppose de continuer à trader sans argent. */}
+          {compte.ruine ? (
+            <p className="mt-3 rounded-lg border border-loss/40 bg-loss/[0.06] p-3 text-xs text-loss">
+              {t("bt_capital_ruine", {
+                rang: compte.rangRuine ?? 0,
+                total: trades.length,
+                risque: risqueParTradePct,
+              })}
+            </p>
+          ) : null}
+          {/* ⚠️ CETTE LIGNE EST UNE MULTIPLICATION, PAS UNE PRÉVISION, et c'est
+              souvent le chiffre le plus utile de la page. Trois pertes d'affilée
+              à 5 % font -15 % dans la journée, que le backtest soit bon ou non. */}
+          {maxPertesConsecutives ? (
+            <p className="mt-3 rounded-lg border border-warning/40 bg-warning/[0.06] p-3 text-xs text-warning">
+              {t(maxPertesConsecutives === 1 ? "bt_pire_journee_une" : "bt_pire_journee", {
+                pertes: maxPertesConsecutives,
+                risque: risqueParTradePct,
+                total: nombre(maxPertesConsecutives * risqueParTradePct, 1),
+              })}
+            </p>
+          ) : null}
+          <p className="mt-2 text-[11px] leading-snug text-foreground-muted">
+            {t("bt_en_capital_note")}
+          </p>
+        </Card>
+      ) : null}
+
+      {/* ── L'audit de coûts ─────────────────────────────────────────────── */}
+      <Card>
+        <h4 className="mb-3 text-sm font-semibold text-foreground">{t("bt_audit_couts")}</h4>
+        <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+          <Ligne label={t("bt_esperance_brute")} valeur={`${signe(couts.esperanceBruteR, 4)} R`} />
+          <Ligne label={t("bt_esperance_nette")} valeur={`${signe(couts.esperanceNetteR, 4)} R`} />
+          <Ligne
+            label={t("bt_cout_par_trade")}
+            valeur={`${nombre(couts.coutParTradeR, 4)} R`}
+          />
+          <Ligne
+            label={t("bt_risque_moyen")}
+            valeur={`${nombre(couts.risqueMoyenTicks * instrument.tailleTick, instrument.decimales)} ${t("bt_unite_prix")}`}
+          />
+{/**
+           * ⚠️⚠️ DEUX NOMBRES POUR LE MÊME FAIT, SUR LA MÊME CARTE, VU À
+           * L'ÉCRAN. Cette ligne affichait « 2.30 (1.8 % du risque) » juste
+           * sous « Coût par trade : 0.0243 R », c'est-à-dire 2.4 % du risque.
+           * Le même aller-retour, deux pourcentages, à deux lignes d'écart.
+           *
+           * Le 1.8 % venait de `coutApplique / risqueMoyen`, le rapport des
+           * MOYENNES. Le 2.43 % est la moyenne des RAPPORTS, mesurée trade par
+           * trade : un coût fixe en points pèse plus lourd sur les stops
+           * serrés, et c'est cette moyenne-là que le trader paye vraiment.
+           *
+           * ⚠️ LA MÊME FAUTE DORMAIT DANS LA CARTE DES CONDAMNATIONS, corrigée
+           * un pilotage plus tôt. Elle avait survécu ici parce que les deux
+           * lignes se lisent comme deux mesures différentes : « coût par trade »
+           * et « coût de l'aller-retour ». C'est le même coût.
+           */}
+          <Ligne
+            label={t("bt_cout_aller_retour")}
+            valeur={`${nombre(prix.spread, instrument.decimales)} (${pourcent(couts.coutParTradeR * 100, 1)} ${t("bt_du_risque")})`}
+          />
+          {/* ⚠️ Masquée dès qu'il n'y a plus d'avantage à annuler : la formule
+              rendrait un nombre négatif sous un intitulé qui ne lui correspond
+              pas, ce qui est aussi faux qu'un mauvais chiffre. */}
+          {couts.coutBreakEvenTicks !== null ? (
+            <Ligne
+              label={t("bt_cout_break_even")}
+              valeur={`${nombre(couts.coutBreakEvenTicks * instrument.tailleTick, instrument.decimales)} ${t("bt_unite_prix")}`}
+            />
+          ) : null}
+        </dl>
+        {couts.aucunAvantageAvantCouts ? (
+          <p className="mt-3 rounded-lg border border-warning/40 bg-warning/[0.06] p-3 text-xs text-warning">
+            {t("bt_aucun_avantage")}
+          </p>
+        ) : null}
+        {couts.edgeDetruitParLesCouts ? (
+          <p className="mt-3 rounded-lg border border-loss/40 bg-loss/[0.06] p-3 text-xs text-loss">
+            {t("bt_edge_detruit")}
+          </p>
+        ) : null}
+      </Card>
+
+      {/* ── Ce qui relativise le chiffre ─────────────────────────────────── */}
+      <Card>
+        <h4 className="mb-3 text-sm font-semibold text-foreground">{t("bt_reserves")}</h4>
+        <ul className="space-y-2 text-xs text-foreground-muted">
+          {lecture.horsEchantillon?.applicable ? (
+            <li className={lecture.horsEchantillon.neSurvitPas ? "text-warning" : undefined}>
+              {t("bt_hors_echantillon", {
+                debut: signe(lecture.horsEchantillon.esperanceDebutR),
+                fin: signe(lecture.horsEchantillon.esperanceFinR),
+              })}
+              {lecture.horsEchantillon.neSurvitPas ? ` ${t("bt_hors_echantillon_alerte")}` : ""}
+            </li>
+          ) : null}
+          <li className={lecture.partCollisions > 0.15 ? "text-warning" : undefined}>
+            {t(audit.collisions === 1 ? "bt_collisions_1" : "bt_collisions", {
+              n: audit.collisions,
+              pct: nombre(lecture.partCollisions * 100, 1),
+            })}
+          </li>
+          <li>{t("bt_signaux", { signaux: audit.signaux, refuses: audit.refusesParGestion })}</li>
+          {audit.journeesArretees > 0 ? (
+            <li>{t("bt_journees_arretees", { n: audit.journeesArretees })}</li>
+          ) : null}
+          {audit.refusesRisqueTropPetit > 0 ? (
+            <li className="text-warning">
+              {t("bt_refuses_risque", { n: audit.refusesRisqueTropPetit })}
+            </li>
+          ) : null}
+          {/* ⚠️⚠️ CES SIGNAUX DISPARAISSAIENT SANS UN MOT. Ils sont comptés
+              depuis peu, et un compteur qui ne s'affiche nulle part ne répond à
+              personne : « 1183 signaux, 209 écartés, 0 trade » restait
+              inexplicable pour celui qui le lisait. */}
+          {audit.refusesGeometrie > 0 ? (
+            <li className="text-warning">
+              {t("bt_refuses_geometrie", { n: audit.refusesGeometrie })}
+            </li>
+          ) : null}
+          {audit.limitesExpirees > 0 ? (
+            <li className="text-warning">
+              {t("bt_limites_expirees", { n: audit.limitesExpirees })}
+            </li>
+          ) : null}
+          {moisManquants.length > 0 ? (
+            <li className="text-warning">
+              {t("bt_mois_manquants", { n: moisManquants.length, liste: moisManquants.slice(0, 3).join(", ") })}
+            </li>
+          ) : null}
+          <li className={lecture.risqueDeSurApprentissage ? "text-warning" : undefined}>
+            {lecture.risqueDeSurApprentissage
+              ? t("bt_sur_apprentissage_alerte", { n: tentatives })
+              : t("bt_tentatives", { n: tentatives, max: MAX_TENTATIVES_AVANT_ALERTE })}
+            {tentativesDepuis && tentatives > 1
+              ? ` ${t("bt_tentatives_depuis", {
+                  date: enDate(tentativesDepuis, langue),
+                })}`
+              : ""}
+          </li>
+          <li>{t("bt_duree_calcul", { ms })}</li>
+        </ul>
+      </Card>
+    </div>
+  );
+}
+
+function Chiffre({
+  label,
+  valeur,
+  ton = "neutre",
+}: {
+  label: string;
+  valeur: string;
+  ton?: "profit" | "loss" | "neutre";
+}) {
+  return (
+    <Card padding="sm">
+      <p className="text-xs text-foreground-muted">{label}</p>
+      <p
+        className={cn(
+          "mt-1 font-mono text-xl font-semibold tabular-nums",
+          ton === "profit" && "text-profit",
+          ton === "loss" && "text-loss",
+          ton === "neutre" && "text-foreground",
+        )}
+      >
+        {valeur}
+      </p>
+    </Card>
+  );
+}
+
+function Ligne({ label, valeur }: { label: string; valeur: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 border-b border-border/50 pb-1.5">
+      <dt className="text-foreground-muted">{label}</dt>
+      <dd className="font-mono tabular-nums text-foreground">{valeur}</dd>
+    </div>
+  );
+}

@@ -83,16 +83,18 @@ export default function TaxExportButton() {
             new Date(a.close_time ?? 0).getTime() - new Date(b.close_time ?? 0).getTime(),
         );
       const header = ["Date", "Pair", "Direction", "Lots", "Entry", "Exit", "Gross P&L", "Commission", "Swap", "Net P&L"];
-      const num = (v: number | null) => (v ?? 0).toFixed(2);
+      // ⚠️ Nommé pour ce qu'il est : un CSV est un fichier machine, il garde le
+      // point décimal quelle que soit la langue du lecteur.
+      const csvNum = (v: number | null) => (v ?? 0).toFixed(2);
 
       const body = rows.map((r) => {
         const netv = (r.pnl ?? 0) + (r.commission ?? 0) + (r.swap ?? 0);
         const date = String(r.close_time || r.open_time || "").slice(0, 10);
-        return [date, r.pair ?? "", r.direction ?? "", r.lot_size ?? "", r.entry_price ?? "", r.exit_price ?? "", num(r.pnl), num(r.commission), num(r.swap), netv.toFixed(2)];
+        return [date, r.pair ?? "", r.direction ?? "", r.lot_size ?? "", r.entry_price ?? "", r.exit_price ?? "", csvNum(r.pnl), csvNum(r.commission), csvNum(r.swap), csvNum(netv)];
       });
 
       const total = rows.reduce((s, r) => s + (r.pnl ?? 0) + (r.commission ?? 0) + (r.swap ?? 0), 0);
-      const allRows: (string | number)[][] = [header, ...body, [], ["TOTAL", "", "", "", "", "", "", "", "", total.toFixed(2)]];
+      const allRows: (string | number)[][] = [header, ...body, [], ["TOTAL", "", "", "", "", "", "", "", "", csvNum(total)]];
 
       const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
       const csv = "﻿" + allRows.map((row) => row.map(esc).join(",")).join("\r\n");
@@ -138,7 +140,7 @@ export default function TaxExportButton() {
       {/* Un export comptable qui échoue doit le dire : le menu se referme, et
           sans ce message il ne resterait qu'un bouton qui n'a rien téléchargé. */}
       {error && (
-        <p className="absolute right-0 top-full mt-1 z-20 w-64 rounded-lg border border-border bg-card p-2 text-xs text-loss shadow-lg">
+        <p role="alert" className="absolute right-0 top-full mt-1 z-20 w-64 rounded-lg border border-border bg-card p-2 text-xs text-loss shadow-lg">
           {error}
         </p>
       )}

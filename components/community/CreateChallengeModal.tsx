@@ -123,7 +123,9 @@ export default function CreateChallengeModal({
         body: JSON.stringify({ text }),
       });
       const body = await res.json().catch(() => ({ ok: false, reason: "unavailable" }));
-      if (!body.ok || !body.draft) {
+      // ⚠️ LE STATUT SE LIT AUSSI : un 500 nu n'a pas de corps, et `body.ok`
+      // seul ferait dépendre le message d'un champ que le serveur n'a pas écrit.
+      if (!res.ok || !body.ok || !body.draft) {
         setAiError(t(`com_ai_err_${body.reason ?? "unavailable"}`));
         return;
       }
@@ -170,7 +172,7 @@ export default function CreateChallengeModal({
   if (!mounted) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+    <div aria-label={t("com_form_edit_title")} className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
       <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto bg-card border border-border rounded-2xl shadow-2xl">
@@ -213,7 +215,7 @@ export default function CreateChallengeModal({
                   {thinking ? t("com_ai_thinking") : t("com_ai_generate")}
                 </button>
               </div>
-              {aiError && <p className="text-xs text-loss">{aiError}</p>}
+              {aiError && <p role="alert" className="text-xs text-loss">{aiError}</p>}
               {aiFilled && !aiError && <p className="text-xs text-profit">{t("com_ai_filled")}</p>}
             </div>
           )}
@@ -297,7 +299,7 @@ export default function CreateChallengeModal({
               <input id="com-end" type="date" value={endsOn} onChange={(e) => setEndsOn(e.target.value)} className={fieldClass} />
             </div>
           </div>
-          <p className="text-[11px] text-muted">{t("com_form_hint").replace("{n}", String(maxDays))}</p>
+          <p className="text-[11px] text-muted">{t("com_form_hint", { n: String(maxDays) })}</p>
 
           {/* Le bouton reste actif même invalide : un bouton grisé sans explication
               laisse le partenaire deviner ce qui cloche. */}

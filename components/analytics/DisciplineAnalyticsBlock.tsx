@@ -22,6 +22,7 @@ import {
 import { useChartColors } from "@/lib/useChartColors";
 import { useLanguage } from "@/lib/LanguageContext";
 import type { ChecklistItem } from "@/lib/hooks/useStrategyTags";
+import { nombre, pourcent } from "@/lib/nombres";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -70,7 +71,7 @@ function ZoneA({ trades, checklistTotal }: { trades: TradeRow[]; checklistTotal:
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
         <p className="text-sm text-foreground-muted">{t("da_no_checklist")}</p>
-        <p className="text-xs text-foreground-muted/70">{t("da_no_checklist_hint")}</p>
+        <p className="text-xs text-foreground-subtle">{t("da_no_checklist_hint")}</p>
       </div>
     );
   }
@@ -94,7 +95,7 @@ function ZoneA({ trades, checklistTotal }: { trades: TradeRow[]; checklistTotal:
           {t("da_avg_score")}
         </p>
         <p className={`text-3xl font-black tabular-nums leading-none ${scoreColor}`}>
-          {avgScore.toFixed(1)}
+          {nombre(avgScore, 1)}
           <span className="text-lg font-normal text-foreground-muted ml-1">/ {checklistTotal}</span>
         </p>
         <p className="text-xs text-foreground-muted mt-1.5">{sentiment}</p>
@@ -102,7 +103,7 @@ function ZoneA({ trades, checklistTotal }: { trades: TradeRow[]; checklistTotal:
 
       {/* Mini histogram */}
       <div>
-        <p className="text-[10px] text-foreground-muted/60 mb-2">{t("da_score_dist")}</p>
+        <p className="text-[10px] text-foreground-subtle mb-2">{t("da_score_dist")}</p>
         <div className="flex items-end gap-1 h-12">
           {distribution.map((d) => (
             <div key={d.score} className="flex-1 flex flex-col items-center gap-0.5">
@@ -119,7 +120,7 @@ function ZoneA({ trades, checklistTotal }: { trades: TradeRow[]; checklistTotal:
                   opacity: d.count === 0 ? 0.2 : 1,
                 }}
               />
-              <span className="text-[8px] text-foreground-muted/50 tabular-nums">{d.score}</span>
+              <span className="text-[8px] text-foreground-subtle tabular-nums">{d.score}</span>
             </div>
           ))}
         </div>
@@ -189,7 +190,7 @@ function ZoneB({
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
         <p className="text-sm text-foreground-muted">{t("da_not_enough_criteria")}</p>
-        <p className="text-xs text-foreground-muted/70">{t("da_not_enough_criteria_hint")}</p>
+        <p className="text-xs text-foreground-subtle">{t("da_not_enough_criteria_hint")}</p>
       </div>
     );
   }
@@ -207,7 +208,7 @@ function ZoneB({
           </p>
           <div className="flex items-center gap-2 flex-wrap">
             <span className={`text-xs font-semibold ${s.delta > 0 ? "text-profit" : "text-loss"}`}>
-              WR {s.wrWith}%
+              WR {pourcent(s.wrWith)}
             </span>
             <span className="text-xs text-foreground-muted">
               {t("da_vs_without").replace("{wr}", String(s.wrWithout))}
@@ -311,7 +312,7 @@ function ZoneC({ trades, currency }: { trades: TradeRow[]; currency: string }) {
                   {money(entry.pnl, currency, { digits: 2, signed: true })}
                 </p>
                 <p style={{ color: c.axis }}>
-                  {entry.count} trade{entry.count > 1 ? "s" : ""} · WR {entry.winrate}%
+                  {t("common_trades_count", { n: entry.count })} · WR {pourcent(entry.winrate)}
                 </p>
               </div>
             );
@@ -395,7 +396,7 @@ function ZoneD({ trades, currency }: { trades: TradeRow[]; currency: string }) {
               {s.count}
             </p>
             <p className="text-[10px] text-foreground-muted leading-relaxed">
-              WR {wr}%
+              WR {pourcent(wr)}
               <br />
               <span className={pnlAvg >= 0 ? "text-profit" : "text-loss"}>
                 {money(pnlAvg, currency, { signed: true })} {t("da_avg_suffix")}
@@ -460,10 +461,8 @@ export function DisciplineAnalyticsBlock({
           <p className="text-sm text-foreground-muted">
             {t("da_empty")}
           </p>
-          <p className="text-xs text-foreground-muted/70">
-            {t("da_trades_needed")
-              .replace("{n}", String(10 - trades.length))
-              .replace("{have}", String(trades.length))}
+          <p className="text-xs text-foreground-subtle">
+            {t("da_trades_needed", { n: String(10 - trades.length), have: String(trades.length) })}
           </p>
         </div>
       </KpiCardPremium>
@@ -477,7 +476,7 @@ export function DisciplineAnalyticsBlock({
         <p className="text-xs text-foreground-muted mt-1">
           {t("da_subtitle")}
           {durationSublabel && (
-            <span className="ml-1 text-foreground-muted/60">
+            <span className="ml-1 text-foreground-subtle">
               · {t("da_all_duration").replace("{dur}", durationSublabel)}
             </span>
           )}

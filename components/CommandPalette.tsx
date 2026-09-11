@@ -245,7 +245,7 @@ export default function CommandPalette() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onInputKeyDown}
             placeholder={t("cmdk_placeholder")}
-            className="flex-1 h-12 bg-transparent text-sm text-foreground placeholder:text-foreground-muted focus:outline-none"
+            className="flex-1 h-12 bg-transparent text-sm text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-1 focus:ring-accent rounded"
             aria-label={t("cmdk_placeholder")}
           />
           <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded border border-border bg-surface text-[10px] font-medium text-foreground-muted">
@@ -260,7 +260,7 @@ export default function CommandPalette() {
           ) : (
             groups.map((group) => (
               <div key={group.key + group.items[0].index}>
-                <p className="px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-foreground-muted/60">
+                <p className="px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-foreground-subtle">
                   {GROUP_LABELS[group.key]}
                 </p>
                 {group.items.map(({ cmd, index }) => {

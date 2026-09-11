@@ -1,0 +1,260 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+import de from "../i18n/de";
+import en from "../i18n/en";
+import es from "../i18n/es";
+import fr from "../i18n/fr";
+import { clePourLesApercus, echelleApercu, type GeometrieApercu } from "./apercu";
+
+/** Un trade de 10 points de risque, objectif à 2R, au milieu de sa fenêtre. */
+function geometrie(over: Partial<GeometrieApercu> = {}): GeometrieApercu {
+  return {
+    hautBougies: 120,
+    basBougies: 80,
+    entree: 100,
+    stop: 110,
+    objectif: 80,
+    sortie: 80,
+    niveau: 104,
+    ...over,
+  };
+}
+
+/**
+ * Part de la hauteur occupée par l'écart stop-objectif.
+ *
+ * ⚠️ Elle reste sous le quart visé, et c'est normal : l'amplitude retenue
+ * couvre aussi le prix de SORTIE réel, qui déborde du stop quand le marché a
+ * ouvert au-delà. Mesuré sur treize trades réels : entre 17 et 53 %.
+ */
+function partDuTrade(g: GeometrieApercu, tick = 0.01): number {
+  const { haut, bas } = echelleApercu(g, tick);
+  return Math.abs(g.objectif - g.stop) / (haut - bas);
+}
+
+describe("échelle du graphique d'inspection", () => {
+  it("laisse toujours le trade nettement lisible, même à risque minuscule", () => {
+    // ⚠️ LE DÉFAUT QUI A MOTIVÉ CE FICHIER. Un risque de 3 points dans une
+    // fenêtre qui en couvre 60 : en calant l'échelle sur les bougies, stop,
+    // entrée et objectif se superposaient en une bande d'un millimètre. Le
+    // graphique s'affichait et ne servait plus à rien.
+    const minuscule = geometrie({
+      hautBougies: 20_360,
+      basBougies: 20_300,
+      entree: 20_342,
+      stop: 20_345,
+      objectif: 20_336,
+      sortie: 20_345,
+      niveau: 20_342,
+    });
+    expect(partDuTrade(minuscule)).toBeGreaterThan(0.15);
+  });
+
+  it("laisse le niveau franchi sortir du cadre plutôt que d'écraser le trade", () => {
+    // ⚠️ Mesuré sur treize trades réels : en ancrant l'échelle sur le niveau,
+    // cinq d'entre eux retombaient à trois pixels entre le stop et l'entrée.
+    const loin = geometrie({ niveau: 60, entree: 100, stop: 110, objectif: 80, sortie: 110 });
+    const e = echelleApercu(loin, 0.01);
+    expect(e.niveauVisible).toBe(false);
+    expect(partDuTrade(loin)).toBeGreaterThan(0.15);
+  });
+
+  it("trace le niveau quand il tombe dans le cadre", () => {
+    expect(echelleApercu(geometrie(), 0.01).niveauVisible).toBe(true);
+  });
+
+  it("contient toujours l'entrée, le stop et la SORTIE, même hors des bougies", () => {
+    // Ce sont les trois faits du trade. Les rogner rendrait le graphique
+    // incapable de montrer ce qui s'est passé, et c'est sa seule raison d'être.
+    const g = geometrie({ sortie: 130, basBougies: 80 });
+    const { haut, bas } = echelleApercu(g, 0.01);
+    expect(haut).toBeGreaterThanOrEqual(130);
+    expect(bas).toBeLessThanOrEqual(80);
+  });
+
+  it("laisse l'objectif JAMAIS ATTEINT sortir du cadre", () => {
+    // ⚠️ CHANGEMENT DE CONTRAT, ET IL EST MESURE. L'objectif ancrait l'echelle
+    // au meme titre que l'entree et le stop. Sur un trade perdant a 2R, il se
+    // trouve a deux fois le risque au-dessus de l'entree, dans une zone ou le
+    // prix n'est JAMAIS alle : le cadre s'etirait pour l'accueillir et les
+    // bougies s'ecrasaient en bas. Vu sur une capture reelle : 60 % de la
+    // hauteur en blanc, au-dessus d'un trait decrivant ce qui n'a pas eu lieu.
+    //
+    // Le cadre montre ce qui s'est passe, pas ce qui etait espere. Sa valeur
+    // reste affichee en marge, comme celle du niveau.
+    const perdant = geometrie({ entree: 100, stop: 90, objectif: 120, sortie: 90 });
+    const e = echelleApercu(perdant, 0.01);
+    expect(e.objectifVisible).toBe(false);
+    expect(e.haut).toBeLessThan(120);
+  });
+
+  it("garde l'objectif dans le cadre quand il a ete ATTEINT", () => {
+    // Sur un trade gagnant, la sortie vaut l'objectif : il entre par elle, sans
+    // que l'echelle ait a s'etirer pour un prix theorique.
+    const gagnant = geometrie({ entree: 100, stop: 90, objectif: 120, sortie: 120 });
+    expect(echelleApercu(gagnant, 0.01).objectifVisible).toBe(true);
+  });
+
+  it("montre le contexte quand les bougies tiennent dans la hauteur du trade", () => {
+    // Fenêtre serrée autour d'un trade large : rien à rogner, on garde tout.
+    const g = geometrie({ hautBougies: 112, basBougies: 78 });
+    const { haut, bas } = echelleApercu(g, 0.01);
+    expect(haut).toBeGreaterThanOrEqual(112);
+    expect(bas).toBeLessThanOrEqual(78);
+  });
+
+  it("rogne les bougies lointaines plutôt que d'écraser le trade", () => {
+    // ⚠️ L'arbitrage central : perdre le haut d'une mèche lointaine est sans
+    // conséquence, perdre la distance entre le stop et l'entrée rend la
+    // vérification impossible.
+    const g = geometrie({ hautBougies: 5_000, basBougies: 0 });
+    const { haut, bas } = echelleApercu(g, 0.01);
+    expect(haut).toBeLessThan(5_000);
+    expect(bas).toBeGreaterThan(0);
+    expect(partDuTrade(g)).toBeGreaterThan(0.15);
+  });
+
+  it("ne rend jamais une hauteur nulle", () => {
+    // Tous les prix confondus : sans plancher, la division par la hauteur
+    // renverrait des NaN dans tout le tracé.
+    const plat = geometrie({
+      hautBougies: 100,
+      basBougies: 100,
+      entree: 100,
+      stop: 100,
+      objectif: 100,
+      sortie: 100,
+      niveau: 100,
+    });
+    const { haut, bas } = echelleApercu(plat, 0.01);
+    expect(haut - bas).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * ⚠️⚠️ DEUX NOMBRES POUR LE MÊME FAIT, ENCORE. Vu à l'écran : « 12 trades
+ * répartis sur toute la période » au-dessus d'un verdict qui annonçait
+ * « +0.0709 R par trade sur 225 trades ». Douze est le nombre de DESSINS.
+ *
+ * ⚠️ ET LA CORRECTION PRÉCÉDENTE AVAIT EU LIEU AU MÊME ENDROIT : le texte
+ * disait « Douze trades » en dur, on l'a branché sur la longueur de la liste,
+ * et on a remplacé un nombre faux par un nombre juste qui compte autre chose.
+ * Ça se lit exactement pareil.
+ */
+describe("les aperçus se présentent pour ce qu'ils sont", () => {
+  it("annonce un échantillon dès qu'il en manque un seul", () => {
+    expect(clePourLesApercus(12, 225)).toBe("bt_inspection_aide_echantillon");
+    expect(clePourLesApercus(11, 12)).toBe("bt_inspection_aide_echantillon");
+    expect(clePourLesApercus(1, 2)).toBe("bt_inspection_aide_echantillon");
+  });
+
+  it("ne parle d'échantillon que s'il en est un", () => {
+    expect(clePourLesApercus(12, 12)).toBe("bt_inspection_aide");
+    expect(clePourLesApercus(1, 1)).toBe("bt_inspection_aide_1");
+  });
+
+  /**
+   * ⚠️ LA PHRASE DE L'ÉCHANTILLON DIT LES DEUX NOMBRES, sinon elle ne dit rien
+   * de plus que celle qu'elle remplace, dans les quatre langues.
+   */
+  it("la phrase de l'échantillon cite le total, dans les quatre langues", () => {
+    for (const [nom, dico] of Array.from(Object.entries({ fr, en, es, de }))) {
+      const phrase = (dico as Record<string, string>).bt_inspection_aide_echantillon;
+      expect(phrase, `manquante en ${nom}`).toBeTruthy();
+      expect(phrase, `sans {n} en ${nom}`).toContain("{n");
+      expect(phrase, `sans {total} en ${nom}`).toContain("{total");
+    }
+  });
+
+  /** ⚠️ Et le composant s'en sert : une règle que personne n'appelle ne règle rien. */
+  it("le composant choisit sa phrase par cette règle", () => {
+    const source = readFileSync(
+      join(process.cwd(), "components/backtest/Inspection.tsx"),
+      "utf8",
+    );
+    expect(source).toContain("clePourLesApercus(apercus.length, total)");
+    expect(source).toContain('t("bt_inspection_aide_echantillon", { n: apercus.length, total })');
+  });
+});
+
+/**
+ * LA FICHE D'UN TRADE DÉCRIT UN FAIT, JAMAIS UNE PERMISSION.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN : sous un trade acheteur, « Sens autorisés : Achat
+ * seulement », alors que le plan autorisait les deux sens. La fiche empruntait
+ * les libellés du RÉGLAGE pour décrire ce qui s'était passé, et disait donc au
+ * trader que sa méthode ne prenait que des achats. Sur la carte dont le seul
+ * rôle est de lui faire confirmer « c'est bien ma méthode », c'est le pire
+ * endroit possible pour une phrase fausse.
+ *
+ * ⚠️ LA RÈGLE N'EST PAS « PAS CETTE CLÉ-LÀ », c'est « aucun mot de permission
+ * dans cette carte ». Emprunter un autre libellé de réglage referait le même
+ * défaut avec un autre mot, et une liste d'exemples ne l'attraperait pas.
+ */
+describe("la fiche d'un aperçu ne décrit pas une permission", () => {
+  const source = readFileSync(join(process.cwd(), "components/backtest/Inspection.tsx"), "utf8");
+  const cles = Array.from(source.matchAll(/[^A-Za-z0-9_]t\(\s*(?:[^,;()]{0,80}\?\s*)?"([a-z0-9_]+)"(?:\s*:\s*"([a-z0-9_]+)")?/g))
+    .flatMap((m) => [m[1], m[2]])
+    .filter((c): c is string => Boolean(c));
+
+  it("lit bien les clés de la carte, sinon ce test ne prouve rien", () => {
+    expect(new Set(cles).size).toBeGreaterThan(10);
+  });
+
+  const PERMISSION = /autoris|seulement|uniquement|maximum|allowed|only/i;
+
+  it("n'emprunte aucun libellé qui parle de ce qui est permis", () => {
+    const empruntes = Array.from(new Set(cles)).filter((c) => {
+      const texte = (fr as Record<string, string>)[c];
+      return typeof texte === "string" && PERMISSION.test(texte);
+    });
+    expect(
+      empruntes,
+      "libellés de réglage réutilisés pour décrire un trade : " + empruntes.join(", "),
+    ).toEqual([]);
+  });
+});
+
+/**
+ * LE NOMBRE D'APERÇUS EST UNE CONSTANTE DU CODE, PAS UN MOT DE LA TRADUCTION.
+ *
+ * ⚠️⚠️ DEUX PHRASES DE LA MÊME CARTE L'AVAIENT ÉCRIT EN DUR, et j'ai corrigé
+ * la première sans voir la seconde : « Les douze aperçus ci-dessus ne sont
+ * qu'un échantillon », affiché quel que soit le nombre réellement dessiné. Sur
+ * un plan à trois trades, l'écran comptait jusqu'à douze tout seul.
+ *
+ * ⚠️ UN NOMBRE ÉCRIT EN TOUTES LETTRES NE PEUT PAS SE TROMPER À MOITIÉ : il est
+ * juste tant que personne ne touche à la constante, et faux pour toujours
+ * ensuite, dans quatre langues, sans que rien ne le signale.
+ */
+describe("aucune phrase ne compte les aperçus à la place du code", () => {
+  const worker = readFileSync(join(process.cwd(), "app/dashboard/backtest/worker.ts"), "utf8");
+  const m = worker.match(/const APERCUS_MAX = (\d+);/);
+
+  const MOTS: Record<string, string[]> = {
+    fr: ["zéro", "un", "deux", "trois", "quatre", "cinq", "six", "sept", "huit", "neuf", "dix", "onze", "douze"],
+    en: ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"],
+    es: ["cero", "uno", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve", "diez", "once", "doce"],
+    de: ["null", "eins", "zwei", "drei", "vier", "fünf", "sechs", "sieben", "acht", "neun", "zehn", "elf", "zwölf"],
+  };
+
+  it("la constante est lisible, sinon ce test ne prouve rien", () => {
+    expect(m, "APERCUS_MAX introuvable dans le worker").not.toBeNull();
+    expect(Number(m![1])).toBeLessThanOrEqual(12);
+  });
+
+  for (const [nom, dico] of Array.from(Object.entries({ fr, en, es, de }))) {
+    it(`ne l'écrit pas en toutes lettres en ${nom}`, () => {
+      const mot = MOTS[nom][Number(m![1])];
+      const motif = new RegExp(`(^|[^\p{L}])${mot}([^\p{L}]|$)`, "iu");
+      const fautives = Object.entries(dico as Record<string, string>)
+        .filter(([cle, texte]) => cle.startsWith("bt_") && motif.test(texte))
+        .map(([cle]) => cle);
+      expect(
+        fautives,
+        `phrases qui écrivent « ${mot} » alors que le code compte : ` + fautives.join(", "),
+      ).toEqual([]);
+    });
+  }
+});

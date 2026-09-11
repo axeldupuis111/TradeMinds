@@ -12,6 +12,8 @@ export default function LeaderboardOptInCard() {
   const [hasUsername, setHasUsername] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  /** ⚠️ L'écriture pouvait échouer sans que rien ne le dise : voir toggle(). */
+  const [erreur, setErreur] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
 
   // Scroll vers cette carte si on arrive avec #leaderboard (depuis l'onglet Classement),
@@ -39,12 +41,23 @@ export default function LeaderboardOptInCard() {
 
   async function toggle(value: boolean) {
     setSaving(true);
+    setErreur(false);
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase.from("profiles").update({ leaderboard_opt_in: value }).eq("id", user.id);
-      setOptIn(value);
-    }
+    /**
+     * ⚠️⚠️ LA COCHE S'APPLIQUAIT QUOI QU'IL ARRIVE. Le client Supabase ne jette
+     * pas : un refus laissait « je participe au classement » coché à l'écran
+     * alors que le profil disait le contraire. Sur un réglage de VIE PRIVÉE,
+     * c'est le pire endroit où se tromper.
+     */
+    const { error } = user
+      ? await supabase.from("profiles").update({ leaderboard_opt_in: value }).eq("id", user.id)
+      : { error: new Error("no user") };
     setSaving(false);
+    if (error) {
+      setErreur(true);
+      return;
+    }
+    setOptIn(value);
   }
 
   if (loading) return null;
@@ -76,6 +89,11 @@ export default function LeaderboardOptInCard() {
         />
         <span className="text-sm text-foreground">{t("leaderboard_optin_label")}</span>
       </label>
+      {erreur && (
+        <p className="text-sm text-loss mt-2" role="alert">
+          {t("save_failed")}
+        </p>
+      )}
     </section>
   );
 }

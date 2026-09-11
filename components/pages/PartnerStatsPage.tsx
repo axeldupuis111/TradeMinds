@@ -1,5 +1,6 @@
 "use client";
 
+import { lienPartageable } from "@/lib/seo";
 import PublicHeader from "@/components/PublicHeader";
 import RiskDisclosure from "@/components/legal/RiskDisclosure";
 import { useEffect, useState } from "react";
@@ -11,6 +12,12 @@ import { useEffect, useState } from "react";
  * société qui le fait selon son propre découpage (voir app/api/partner/stats).
  * Afficher un montant ici créerait une créance envers quelqu'un avec qui nous
  * n'avons aucun contrat.
+ *
+ * ⚠️ RÉDIGÉE EN FRANÇAIS, sans passer par t(), comme sa page sœur
+ * `PartnerJoinPage`. Exception assumée : elle ne s'adresse pas aux traders mais
+ * aux collaborateurs d'une société française, et son adresse n'existe que dans
+ * le lien qu'ils ont reçu. Le jour où un réseau non francophone arrive, il
+ * faudra passer les DEUX pages aux quatre langues.
  */
 
 interface Stats {
@@ -37,15 +44,14 @@ export default function PartnerStatsPage({ token }: { token: string }) {
       .catch((e: Error) => setError(e.message));
   }, [token]);
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "https://tradediscipline.app";
-  const link = stats ? `${origin}/?ref=${stats.code}` : "";
+  const link = stats ? lienPartageable(`/?ref=${stats.code}`) : "";
 
   return (
     <>
       <PublicHeader />
-      <div className="min-h-screen bg-background px-4 py-16 pt-24">
+      <main id="main-content" tabIndex={-1} className="min-h-screen bg-background px-4 py-16 pt-24 force-dark">
         <div className="max-w-lg mx-auto">
-          {error && <p className="text-loss text-sm">{error}</p>}
+          {error && <p role="alert" className="text-loss text-sm">{error}</p>}
 
           {stats && (
             <>
@@ -93,7 +99,7 @@ export default function PartnerStatsPage({ token }: { token: string }) {
             </>
           )}
         </div>
-      </div>
+      </main>
       <RiskDisclosure />
     </>
   );

@@ -1,3 +1,4 @@
+import { langueCourante } from "@/lib/nombres";
 // Devise d'un compte de trading.
 //
 // En prop firm on jongle couramment entre un compte en euros et un compte en
@@ -164,6 +165,22 @@ export interface MoneyOptions {
   digits?: number;
   /** Préfixer les montants positifs d'un « + » (P&L). */
   signed?: boolean;
+  /**
+   * La langue qui décide de la forme du nombre.
+   *
+   * ⚠️⚠️ ELLE ÉTAIT ÉCRITE EN DUR À « fr-FR », POUR TOUT LE MONDE. Un lecteur
+   * anglophone voyait « 14 607,50 € » : virgule décimale et espace fine comme
+   * séparateur de milliers, là où sa langue écrit « 14,607.50 ». C'est le même
+   * défaut que les dates de l'onglet backtest, à l'échelle de tout le produit,
+   * et il est invisible tant qu'on développe en français.
+   *
+   * ⚠️ À NE PAS RÉSOUDRE PAR UNE VARIABLE DE MODULE. Cette fonction sert aussi
+   * aux e-mails et aux PDF, c'est-à-dire au SERVEUR, où un état partagé mêlerait
+   * les langues de deux abonnés servis en même temps. Côté navigateur on lit la
+   * langue du document, que le contexte de langue tient déjà à jour ; côté
+   * serveur, l'appelant la passe, ou on garde le français.
+   */
+  locale?: string;
 }
 
 /**
@@ -175,11 +192,11 @@ export interface MoneyOptions {
 export function money(
   amount: number,
   currency: string | null | undefined,
-  { digits = 0, signed = false }: MoneyOptions = {},
+  { digits = 0, signed = false, locale }: MoneyOptions = {},
 ): string {
   const code = (currency || DEFAULT_CURRENCY).toUpperCase();
   const fractionDigits = ZERO_DECIMAL.has(code) ? 0 : digits;
-  const formatted = amount.toLocaleString("fr-FR", {
+  const formatted = amount.toLocaleString(locale ?? langueCourante(), {
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,
   });

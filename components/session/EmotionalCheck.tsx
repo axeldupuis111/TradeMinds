@@ -30,12 +30,24 @@ export default function EmotionalCheck({ sessionId, onFeedback }: Props) {
     setSelected(emotionKey);
 
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase.from("session_emotional_checks").insert({
-        user_id: user.id,
-        session_id: sessionId,
-        emotion: emotionKey,
-      });
+    /**
+     * ⚠️⚠️ L'ÉTAT ÉMOTIONNEL ÉTAIT PERDU EN SILENCE. Le client Supabase ne
+     * jette pas : la pastille restait sélectionnée, et le point ne figurait
+     * nulle part dans le bilan de séance. C'est précisément la donnée que cet
+     * écran existe pour recueillir.
+     */
+    const { error } = user
+      ? await supabase.from("session_emotional_checks").insert({
+          user_id: user.id,
+          session_id: sessionId,
+          emotion: emotionKey,
+        })
+      : { error: new Error("no user") };
+    if (error) {
+      setSelected(null);
+      setSaving(false);
+      onFeedback({ type: "warning", message: t("save_failed") });
+      return;
     }
 
     const em = EMOTIONS.find((e) => e.key === emotionKey);

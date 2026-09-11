@@ -26,6 +26,13 @@ export default function TimezoneSync() {
           .eq("id", user.id)
           .single();
         if (data && !data.timezone) {
+          /**
+           * ⚠️ RÉSULTAT VOLONTAIREMENT IGNORÉ, et la raison tient ici : aucun
+           * geste du trader n'attend cette écriture, il n'y a donc personne à
+           * qui dire qu'elle a raté, et aucun écran à remettre dans son état
+           * d'avant. La condition `!data.timezone` la refait au chargement
+           * suivant tant qu'elle n'a pas abouti.
+           */
           await supabase.from("profiles").update({ timezone: browserTimezone() }).eq("id", user.id);
         }
       } catch {

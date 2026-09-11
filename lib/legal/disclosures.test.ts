@@ -143,3 +143,69 @@ describe("avertissement sur les performances hypothétiques", () => {
     expect(needsHypotheticalDisclosure({ pathname: null, demoMode: true })).toBe(true);
   });
 });
+
+/**
+ * UN TÉMOIGNAGE NE PART JAMAIS SEUL.
+ *
+ * ── CE QUI DORMAIT DANS LE DICTIONNAIRE ─────────────────────────────────────
+ *
+ * ⚠️⚠️ TROIS TÉMOIGNAGES INVENTÉS, AVEC PRÉNOM, MÉTIER ET CHIFFRE
+ * (« j'ai passé mon challenge prop firm en 8 jours »), plus une ligne de preuve
+ * sociale qui se contredisait d'une langue à l'autre : « 500+ trades analysés ·
+ * 50+ traders actifs » en français, « 500+ active traders · 10 000+ trades
+ * analysed » en anglais. Aucun écran ne les affichait, ce qui est la seule
+ * raison pour laquelle personne ne s'en était aperçu. Ils ont été retirés.
+ *
+ * ── LA RÈGLE QUI RESTE ──────────────────────────────────────────────────────
+ *
+ * `RiskDisclosure` porte déjà le texte d'annexe A qui accompagne un témoignage,
+ * derrière une option `testimonials` que PERSONNE n'active. Le jour où de vrais
+ * témoignages reviendront, la conformité NinjaTrader exige que cet
+ * avertissement les accompagne : ce test le rappelle au bon moment, c'est-à-dire
+ * le jour où la première clé de témoignage réapparaît.
+ */
+describe("les témoignages n'existent pas sans leur avertissement", () => {
+  it("aucun témoignage dans les dictionnaires, ou alors l'avertissement est affiché", async () => {
+    const { readdirSync, readFileSync, statSync } = await import("node:fs");
+    const { join } = await import("node:path");
+
+    const dictionnaires = LANGS.map((l) =>
+      readFileSync(join(process.cwd(), `lib/i18n/${l}.ts`), "utf8"),
+    );
+    const avecTemoignage = dictionnaires.some((s) => /^\s*"testimonial_/m.test(s));
+    if (!avecTemoignage) {
+      expect(avecTemoignage).toBe(false);
+      return;
+    }
+
+    function fichiers(d: string, out: string[] = []): string[] {
+      for (const f of readdirSync(d)) {
+        if (f === "node_modules" || f === ".next") continue;
+        const chemin = join(d, f);
+        if (statSync(chemin).isDirectory()) fichiers(chemin, out);
+        else if (/\.tsx$/.test(chemin) && !chemin.includes(".test.")) out.push(chemin);
+      }
+      return out;
+    }
+    /**
+     * ⚠️ ON CHERCHE UN APPELANT QUI PASSE L'OPTION, pas le composant qui la
+     * déclare : `RiskDisclosure` contient forcément le mot « testimonials »
+     * dans sa propre définition, et un motif qui se contente du mot répond
+     * « oui » pour toujours.
+     */
+    const affiche = [
+      ...fichiers(join(process.cwd(), "app")),
+      ...fichiers(join(process.cwd(), "components")),
+    ].some((c) => {
+      const source = readFileSync(c, "utf8");
+      if (c.endsWith("RiskDisclosure.tsx")) return false;
+      return Array.from(source.matchAll(/<RiskDisclosure[^>]*>/g)).some((m) =>
+        /testimonials/.test(m[0]),
+      );
+    });
+    expect(
+      affiche,
+      "des témoignages sont revenus sans l'avertissement d'annexe A (RiskDisclosure testimonials)",
+    ).toBe(true);
+  });
+});

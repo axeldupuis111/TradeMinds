@@ -13,6 +13,8 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { Activity, Check, Copy, Download, Eye, EyeOff, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { pourcent, nombre } from "@/lib/nombres";
+import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 export interface ShareStats {
   pnl: number;
@@ -51,6 +53,8 @@ export default function ShareCardModal({
   currency?: string;
   onClose: () => void;
 }) {
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(true, onClose);
   const { t, lang } = useLanguage();
   const cardRef = useRef<HTMLDivElement>(null);
   const [hideAmounts, setHideAmounts] = useState(false);
@@ -108,14 +112,14 @@ export default function ShareCardModal({
 
   const miniStats: { label: string; value: string }[] = [
     { label: t("recap_trades"), value: String(stats.count) },
-    { label: t("recap_winrate"), value: stats.winrate !== null ? `${Math.round(stats.winrate)}%` : "—" },
-    { label: t("recap_profit_factor"), value: stats.profitFactor !== null ? stats.profitFactor.toFixed(2) : "—" },
+    { label: t("recap_winrate"), value: stats.winrate !== null ? `${pourcent(Math.round(stats.winrate))}` : "—" },
+    { label: t("recap_profit_factor"), value: stats.profitFactor !== null ? nombre(stats.profitFactor, 2) : "—" },
   ];
 
   // Portal vers document.body : la carte parente (KpiCardPremium) a un
   // transform + overflow-hidden qui casserait le positionnement fixed.
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+    <div aria-label={t("share_modal_title")} className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
       <div className="relative w-full max-w-[640px] bg-card border border-border rounded-2xl p-5 shadow-2xl">

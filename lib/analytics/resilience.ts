@@ -1,3 +1,4 @@
+import type { Traduire } from "@/lib/LanguageContext";
 import { type AnalyticsTrade, netPnl } from "./types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -27,7 +28,7 @@ export type ResilienceInsight = {
 };
 
 /** Translator injected from the UI so insight text is localized (fr/en/de/es). */
-type Translate = (key: string) => string;
+type Translate = Traduire;
 
 // ─── Drawdown series ──────────────────────────────────────────────────────────
 
@@ -347,7 +348,7 @@ function detectAverageRecovery(series: DrawdownPoint[], t: Translate): Resilienc
     id: "avg_recovery",
     type: "positive",
     title: t("resilience_ins_recovery_title"),
-    description: t("resilience_ins_recovery_desc").replace("{med}", String(Math.round(med))),
+    description: t("resilience_ins_recovery_desc", { med: String(Math.round(med)) }),
     strength: Math.min(1, (6 - med) / 5),
   };
 }
@@ -398,10 +399,7 @@ function detectRevengeTrading(trades: AnalyticsTrade[], t: Translate): Resilienc
     id: "revenge_trading",
     type: "negative",
     title: t("resilience_ins_revenge_title"),
-    description: t("resilience_ins_revenge_desc")
-      .replace("{count}", String(revengeTrades.length))
-      .replace("{avg}", revengeAvgPnl.toFixed(0))
-      .replace("{global}", globalAvgPnl.toFixed(0)),
+    description: t("resilience_ins_revenge_desc", { count: String(revengeTrades.length), avg: revengeAvgPnl.toFixed(0), global: globalAvgPnl.toFixed(0) }),
     strength: Math.min(1, Math.abs(revengeAvgPnl - globalAvgPnl) / (Math.abs(globalAvgPnl) + 1)),
   };
 }

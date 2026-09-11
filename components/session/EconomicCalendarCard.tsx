@@ -10,7 +10,7 @@
  * or the migration isn't applied yet.
  */
 
-import { useLanguage } from "@/lib/LanguageContext";
+import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { loadTodayNews } from "@/lib/economic-calendar-client";
 import { impactEmoji, minutesUntil, type EconomicEvent, type Impact } from "@/lib/economic-calendar";
@@ -28,7 +28,7 @@ function impactStyle(impact: Impact): { row: string; badge: string } {
   }
 }
 
-function relativeLabel(ev: EconomicEvent, t: (k: string) => string): string {
+function relativeLabel(ev: EconomicEvent, t: Traduire): string {
   const mins = minutesUntil(ev.event_time);
   if (mins < -5) return t("news_passed");
   if (Math.abs(mins) <= 5) return t("news_now");

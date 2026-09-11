@@ -1,9 +1,11 @@
 "use client";
 
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { useLanguage } from "@/lib/LanguageContext";
 import RiskDisclosure from "@/components/legal/RiskDisclosure";
 import { Gem } from "lucide-react";
 import { useMemo } from "react";
+import { pourcent } from "@/lib/nombres";
 
 interface Trade {
   open_time: string;
@@ -23,12 +25,22 @@ interface Achievement {
   unlocked_at: string;
 }
 
-const BADGE_LABELS: Record<string, { label: string; emoji: string }> = {
-  discipline_3: { label: "3 days discipline", emoji: "\u{1F525}" },
-  discipline_10: { label: "10 days discipline", emoji: "\u{1F3C6}" },
-  discipline_30: { label: "30 days discipline", emoji: "\u{1F48E}" },
-  winrate_60: { label: "Winrate > 60%", emoji: "\u{1F3AF}" },
-  score_80: { label: "Score > 80 for 1 month", emoji: "\u{2B50}" },
+/**
+ * ⚠️⚠️ TOUTE CETTE PAGE ÉTAIT EN ANGLAIS, en dur, sur un produit traduit en
+ * quatre langues — et l'avertissement de risque en bas, lui, sortait en
+ * français. Deux langues sur la page qu'un trader partage publiquement,
+ * c'est-à-dire la vitrine du produit.
+ *
+ * ⚠️ LA LANGUE EST CELLE DU VISITEUR, pas celle du profil : quelqu'un qui
+ * découvre TradeDiscipline par ce lien doit le lire dans sa langue, sinon le
+ * bouton « crée ton profil » juste en dessous ne veut rien dire pour lui.
+ */
+const BADGES: Record<string, { cle: string; emoji: string }> = {
+  discipline_3: { cle: "pubprofile_badge_discipline_3", emoji: "\u{1F525}" },
+  discipline_10: { cle: "pubprofile_badge_discipline_10", emoji: "\u{1F3C6}" },
+  discipline_30: { cle: "pubprofile_badge_discipline_30", emoji: "\u{1F48E}" },
+  winrate_60: { cle: "pubprofile_badge_winrate_60", emoji: "\u{1F3AF}" },
+  score_80: { cle: "pubprofile_badge_score_80", emoji: "\u{2B50}" },
 };
 
 function netPnl(t: Trade) {
@@ -42,6 +54,7 @@ export default function PublicProfileView({
   reviews,
   sessionCount,
   achievements,
+  serie,
 }: {
   username: string;
   /** Membre fondateur : l'un des 100 premiers abonnés, statut à vie. */
@@ -52,7 +65,16 @@ export default function PublicProfileView({
   /** Total réel des bilans, compté en base : `reviews` est tronqué. */
   sessionCount: number;
   achievements: Achievement[];
+  /**
+   * La série de discipline, calculée par `lib/discipline-streak-source.ts`.
+   *
+   * ⚠️ ELLE ARRIVE TOUTE FAITE, et c'est le point : cette vue comptait ses
+   * propres bilans sans violation et annonçait « 0 jour » quand le tableau
+   * de bord en affichait 75, pour le même compte, le même jour.
+   */
+  serie: number;
 }) {
+  const { t } = useLanguage();
   const stats = useMemo(() => {
     const count = trades.length;
     const netPnls = trades.map(netPnl);
@@ -84,23 +106,12 @@ export default function PublicProfileView({
     const scores = reviews.map((r) => r.discipline_score);
     const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
 
-    // Current streak
-    let streak = 0;
-    const seenDays = new Set<string>();
-    for (const r of reviews) {
-      const day = r.created_at.split("T")[0];
-      if (seenDays.has(day)) continue;
-      seenDays.add(day);
-      if (!r.analysis?.violations || r.analysis.violations.length === 0) streak++;
-      else break;
-    }
-
-    return { count, winrate, avgScore, streak, disciplineSeries };
+    return { count, winrate, avgScore, disciplineSeries };
   }, [trades, reviews]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="max-w-4xl mx-auto px-6 py-10">
+    <div className="min-h-screen bg-background text-foreground force-dark">
+      <main id="main-content" tabIndex={-1} className="max-w-4xl mx-auto px-6 py-10">
         {/* Header */}
         <div className="flex items-center justify-between mb-10">
           <div className="flex items-center gap-3">
@@ -113,14 +124,14 @@ export default function PublicProfileView({
                 {founding && (
                   <span
                     className="inline-flex items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 text-[11px] font-semibold text-accent"
-                    title="One of the first 100 members"
+                    title={t("pubprofile_founding")}
                   >
                     <Gem className="w-3 h-3" strokeWidth={2} aria-hidden />
                     Founding member
                   </span>
                 )}
               </div>
-              <p className="text-xs text-muted">TradeDiscipline Public Profile</p>
+              <p className="text-xs text-muted">{t("pubprofile_subtitle")}</p>
             </div>
           </div>
           <a
@@ -134,19 +145,19 @@ export default function PublicProfileView({
         {/* Stats grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-card border border-border rounded-xl p-5">
-            <p className="text-xs text-muted">Total Trades</p>
+            <p className="text-xs text-muted">{t("pubprofile_total_trades")}</p>
             <p className="text-2xl font-bold mt-1 text-foreground">{stats.count}</p>
           </div>
           <div className="bg-card border border-border rounded-xl p-5">
-            <p className="text-xs text-muted">Winrate</p>
-            <p className="text-2xl font-bold mt-1 text-foreground">{stats.winrate.toFixed(1)}%</p>
+            <p className="text-xs text-muted">{t("pubprofile_winrate")}</p>
+            <p className="text-2xl font-bold mt-1 text-foreground">{pourcent(stats.winrate, 1)}</p>
           </div>
           <div className="bg-card border border-border rounded-xl p-5">
-            <p className="text-xs text-muted">Sessions reviewed</p>
+            <p className="text-xs text-muted">{t("pubprofile_sessions")}</p>
             <p className="text-2xl font-bold mt-1 text-foreground">{sessionCount}</p>
           </div>
           <div className="bg-card border border-border rounded-xl p-5">
-            <p className="text-xs text-muted">Discipline</p>
+            <p className="text-xs text-muted">{t("pubprofile_discipline")}</p>
             <p className={`text-2xl font-bold mt-1 ${stats.avgScore >= 90 ? "text-profit" : stats.avgScore >= 75 ? "text-green-400" : stats.avgScore >= 60 ? "text-yellow-400" : stats.avgScore >= 40 ? "text-orange-400" : "text-loss"}`}>
               {stats.avgScore.toFixed(0)}/100
             </p>
@@ -155,10 +166,10 @@ export default function PublicProfileView({
 
         {/* Streak */}
         <div className="bg-card border border-border rounded-xl p-5 mb-8 flex items-center gap-4">
-          <span className="text-4xl">{stats.streak > 0 ? "\u{1F525}" : "\u{2744}\u{FE0F}"}</span>
+          <span className="text-4xl">{serie > 0 ? "\u{1F525}" : "\u{2744}\u{FE0F}"}</span>
           <div>
-            <p className="text-xl font-bold text-foreground">{stats.streak} days of discipline</p>
-            <p className="text-xs text-muted">Current streak without rule violations</p>
+            <p className="text-xl font-bold text-foreground">{t("pubprofile_streak", { n: serie })}</p>
+            <p className="text-xs text-muted">{t("pubprofile_streak_sub")}</p>
           </div>
         </div>
 
@@ -167,7 +178,7 @@ export default function PublicProfileView({
             revendique, et elle ne publie aucune performance de compte. */}
         {stats.disciplineSeries.length > 0 && (
           <div className="bg-card border border-border rounded-xl p-5 mb-8">
-            <h2 className="text-foreground font-semibold mb-4">Discipline score over time</h2>
+            <h2 className="text-foreground font-semibold mb-4">{t("pubprofile_chart_title")}</h2>
             <ResponsiveContainer width="100%" height={280}>
               <AreaChart data={stats.disciplineSeries}>
                 <defs>
@@ -182,7 +193,7 @@ export default function PublicProfileView({
                 <Tooltip
                   contentStyle={{ background: "rgb(var(--surface))", border: "1px solid rgb(var(--border))", borderRadius: 8 }}
                   labelStyle={{ color: "rgb(var(--muted))" }}
-                  formatter={(v) => [`${Number(v).toFixed(0)}/100`, "Discipline"]}
+                  formatter={(v) => [`${Number(v).toFixed(0)}/100`, t("pubprofile_discipline")]}
                 />
                 <Area type="monotone" dataKey="value" stroke="rgb(var(--accent))" fill="url(#gradient)" strokeWidth={2} />
               </AreaChart>
@@ -193,15 +204,15 @@ export default function PublicProfileView({
         {/* Badges */}
         {achievements.length > 0 && (
           <div className="bg-card border border-border rounded-xl p-5 mb-8">
-            <h2 className="text-foreground font-semibold mb-4">Achievements</h2>
+            <h2 className="text-foreground font-semibold mb-4">{t("pubprofile_achievements")}</h2>
             <div className="flex flex-wrap gap-2">
               {achievements.map((a) => {
-                const def = BADGE_LABELS[a.key];
+                const def = BADGES[a.key];
                 if (!def) return null;
                 return (
                   <div key={a.key} className="flex items-center gap-2 px-3 py-2 rounded-full bg-accent/10 border border-accent/30 text-accent text-xs">
                     <span>{def.emoji}</span>
-                    <span>{def.label}</span>
+                    <span>{t(def.cle)}</span>
                   </div>
                 );
               })}
@@ -212,11 +223,11 @@ export default function PublicProfileView({
         {/* Footer */}
         <div className="text-center mt-12 pb-8">
           <a href="/" className="inline-block px-6 py-2.5 bg-accent text-on-accent rounded-lg font-medium hover:bg-accent-hover transition-colors text-sm">
-            Create your TradeDiscipline profile
+            {t("pubprofile_cta")}
           </a>
-          <p className="text-xs text-muted mt-3">Track your trades. Master your discipline.</p>
+          <p className="text-xs text-muted mt-3">{t("pubprofile_cta_sub")}</p>
         </div>
-      </div>
+      </main>
       <RiskDisclosure />
     </div>
   );

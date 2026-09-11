@@ -1,15 +1,17 @@
 "use client";
 
 import ExportGuideModal from "@/components/trades/ExportGuideModal";
-import { accountCurrency, money } from "@/lib/account-currency";
-import { useLanguage } from "@/lib/LanguageContext";
+import { DEFAULT_CURRENCY, accountCurrency, money } from "@/lib/account-currency";
+import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { applyManualMapping, parseCSV, parseXlsx, type ParsedTrade } from "@/lib/csv-parser";
 import { exitDemoModeFromClient } from "@/lib/demo-data";
 import { splitAlreadyImported, type DedupeTrade } from "@/lib/trades/dedupe-import";
 import { track } from "@/lib/track";
 import { createClient } from "@/lib/supabase/client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { nombre } from "@/lib/nombres";
+import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 interface ActiveAccount {
   id: string;
@@ -80,8 +82,10 @@ function ColumnMappingModal({
   rawRows: Record<string, string>[];
   onApply: (trades: ParsedTrade[]) => void;
   onCancel: () => void;
-  t: (k: string) => string;
+  t: Traduire;
 }) {
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(true, onCancel);
   const [mapping, setMapping] = useState<Partial<Record<MappableField, string>>>({});
 
   const mandatoryMapped = MAPPING_FIELDS.filter((f) => f.required).every((f) => mapping[f.key]);
@@ -93,13 +97,13 @@ function ColumnMappingModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={onCancel}>
-      <div
+      <div role="dialog" aria-modal="true" aria-label={t("csv_mapping_title")}
         className="bg-card border border-border rounded-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between mb-1">
           <h2 className="text-base font-semibold text-foreground">{t("csv_mapping_title")}</h2>
-          <button onClick={onCancel} className="text-muted hover:text-foreground ml-4 shrink-0">
+          <button onClick={onCancel} aria-label={t("close")} className="text-muted hover:text-foreground ml-4 shrink-0">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -110,10 +114,14 @@ function ColumnMappingModal({
         <div className="space-y-2.5">
           {MAPPING_FIELDS.map((f) => (
             <div key={f.key} className="flex items-center gap-3">
-              <label className={`text-xs w-44 shrink-0 ${f.required ? "text-foreground font-medium" : "text-muted"}`}>
+              {/* ⚠️ IDENTIFIANT CALCULÉ, parce qu'on est dans une boucle : un
+                  identifiant fixe serait répété autant de fois que la table a
+                  de colonnes, et un identifiant en double ne relie plus rien. */}
+              <label htmlFor={`csv-colonne-${f.key}`} className={`text-xs w-44 shrink-0 ${f.required ? "text-foreground font-medium" : "text-muted"}`}>
                 {t(f.labelKey)}
               </label>
               <select
+                id={`csv-colonne-${f.key}`}
                 value={mapping[f.key] || ""}
                 onChange={(e) => setMapping((m) => ({ ...m, [f.key]: e.target.value || undefined }))}
                 className="flex-1 px-2 py-1.5 bg-surface border border-border rounded-lg text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
@@ -173,7 +181,6 @@ export default function CsvImport({ strategyId, onImported }: Props) {
   const [dragOver, setDragOver] = useState(false);
   const [importing, setImporting] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
 
   // Account matching state
@@ -183,6 +190,13 @@ export default function CsvImport({ strategyId, onImported }: Props) {
   const [accountNotFound, setAccountNotFound] = useState(false);
   const [activeAccounts, setActiveAccounts] = useState<ActiveAccount[]>([]);
   const [selectedChallengeId, setSelectedChallengeId] = useState<string | null>(null);
+
+  /** La devise du compte visé par l'import, pour tout ce qui affiche un montant. */
+  const deviseDuCompte = (() => {
+    const id = selectedChallengeId || matchedChallengeId;
+    const compte = id ? activeAccounts.find((a) => a.id === id) : undefined;
+    return compte ? accountCurrency(compte) : DEFAULT_CURRENCY;
+  })();
 
   // Free plan import cooldown
   const [lastImportAt, setLastImportAt] = useState<string | null>(null);
@@ -417,7 +431,15 @@ export default function CsvImport({ strategyId, onImported }: Props) {
           const res = await fetch("/api/daily-summary", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ trades: importedTrades, strategyName: strat?.name || null, language: lang }),
+            // ⚠️ LA DEVISE PART AVEC LES TRADES : le prompt écrivait « P&L
+            // total : +1 234,00€ » quel que soit le compte, donc le résumé
+            // parlait en euros à un trader dont le compte est en dollars.
+            body: JSON.stringify({
+              trades: importedTrades,
+              strategyName: strat?.name || null,
+              language: lang,
+              currency: deviseDuCompte,
+            }),
           });
           const data = await res.json();
           if (res.ok && data.summary) setDailySummary(data.summary);
@@ -537,12 +559,34 @@ export default function CsvImport({ strategyId, onImported }: Props) {
       {preview.length === 0 ? (
         <div className="space-y-4">
           {/* Drop zone */}
-          <div
+          {/*
+            ⚠️⚠️ LA ZONE DE DÉPÔT ÉTAIT UN CUL-DE-SAC AU CLAVIER. Le seul chemin
+            vers le sélecteur de fichier était de CLIQUER ce bloc : le champ,
+            lui, portait `hidden`, et ce qui est `display:none` ne reçoit jamais
+            le focus. Qui navigue au clavier ne pouvait donc pas importer de
+            CSV du tout, sur la page dont c'est l'unique raison d'être.
+
+            ⚠️ D'OÙ LE COUPLE `<input class="peer sr-only">` + `<label>` : c'est
+            le montage standard d'un envoi de fichier. `sr-only` garde le champ
+            atteignable (contrairement à `hidden`), le label lui donne son nom
+            et sa surface cliquable, et `peer-focus-visible` dessine sur le
+            label l'anneau de focus que le champ, replié à un pixel, ne peut
+            plus montrer lui-même.
+          */}
+          <input
+            id="csv-file"
+            type="file"
+            accept=".csv,.txt,.xlsx"
+            onChange={handleFileInput}
+            disabled={isCooldownActive}
+            className="peer sr-only"
+          />
+          <label
+            htmlFor="csv-file"
             onDragOver={(e) => { if (!isCooldownActive) { e.preventDefault(); setDragOver(true); } }}
             onDragLeave={() => setDragOver(false)}
             onDrop={(e) => { if (!isCooldownActive) handleDrop(e); else e.preventDefault(); }}
-            onClick={() => { if (!isCooldownActive) fileRef.current?.click(); }}
-            className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
+            className={`block border-2 border-dashed rounded-xl p-8 text-center transition-colors peer-focus-visible:border-accent peer-focus-visible:ring-2 peer-focus-visible:ring-accent/40 ${
               isCooldownActive
                 ? "border-border opacity-50 cursor-not-allowed"
                 : dragOver
@@ -555,8 +599,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
             </svg>
             <p className="text-foreground font-medium">{t("csv_drop_title")}</p>
             <p className="text-muted text-sm mt-1">{t("csv_drop_sub")}</p>
-            <input ref={fileRef} type="file" accept=".csv,.txt,.xlsx" onChange={handleFileInput} disabled={isCooldownActive} className="hidden" />
-          </div>
+          </label>
 
           {/* Supported platforms */}
           <div>
@@ -613,8 +656,8 @@ export default function CsvImport({ strategyId, onImported }: Props) {
           {/* Account selector */}
           {activeAccounts.length > 0 && (
             <div className="mb-4">
-              <label className="block text-sm text-muted mb-1">{t("csv_select_account")}</label>
-              <select
+              <label htmlFor="csvimport-csv-select-account" className="block text-sm text-muted mb-1">{t("csv_select_account")}</label>
+              <select id="csvimport-csv-select-account"
                 value={selectedChallengeId || ""}
                 onChange={(e) => setSelectedChallengeId(e.target.value || null)}
                 className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
@@ -663,7 +706,7 @@ export default function CsvImport({ strategyId, onImported }: Props) {
                       const net = tr.pnl + (tr.commission || 0) + (tr.swap || 0);
                       return (
                         <td className={`px-3 py-2 font-medium ${net >= 0 ? "text-profit" : "text-loss"}`}>
-                          {net >= 0 ? "+" : ""}{net.toFixed(2)}
+                          {net >= 0 ? "+" : ""}{nombre(net, 2)}
                         </td>
                       );
                     })()}
@@ -729,9 +772,10 @@ export default function CsvImport({ strategyId, onImported }: Props) {
         <div className="mt-3 p-4 rounded-xl border border-accent/20 bg-accent/5 flex flex-wrap items-center gap-3">
           <span className="text-sm font-medium text-accent shrink-0">{t("auto_analysis_title")}</span>
           <p className="text-sm text-foreground flex-1 min-w-[200px]">
-            {t("auto_analysis_result")
-              .replace("{score}", String(autoAnalysis.score))
-              .replace("{n}", String(autoAnalysis.violations))}
+            {t("auto_analysis_result", {
+              score: autoAnalysis.score,
+              n: autoAnalysis.violations,
+            })}
           </p>
           <a href="/dashboard/analysis" className="text-xs font-semibold text-accent hover:underline whitespace-nowrap">
             {t("auto_analysis_link")}

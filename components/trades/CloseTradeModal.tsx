@@ -4,6 +4,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { estimatePnl } from "@/lib/pnl-calculator";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useMemo, useState } from "react";
+import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 interface OpenTrade {
   id: string;
@@ -39,6 +40,8 @@ function normalizeDirection(dir: string): "long" | "short" {
 }
 
 export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(true, onClose);
   const { t } = useLanguage();
   const supabase = createClient();
 
@@ -167,7 +170,7 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
   if (loading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-        <div className="bg-card border border-border rounded-xl w-full max-w-md p-6">
+        <div role="dialog" aria-modal="true" aria-label={t("close_trade_title")} className="bg-card border border-border rounded-xl w-full max-w-md p-6">
           <p className="text-muted text-sm">{t("close_trade_loading")}</p>
         </div>
       </div>
@@ -177,7 +180,7 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
   if (loadError || !trade) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-        <div className="bg-card border border-border rounded-xl w-full max-w-md p-6 space-y-4">
+        <div role="dialog" aria-modal="true" aria-label={t("close_trade_title")} className="bg-card border border-border rounded-xl w-full max-w-md p-6 space-y-4">
           <h2 className="text-base font-semibold text-foreground">{t("close_trade_title")}</h2>
           <p className="text-loss text-sm">{loadError || t("close_trade_not_found")}</p>
           <div className="flex justify-end">
@@ -199,7 +202,7 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 overflow-y-auto py-8">
-      <div className="bg-card border border-border rounded-xl w-full max-w-md p-6 my-auto">
+      <div role="dialog" aria-modal="true" aria-label={t("close_trade_title")} className="bg-card border border-border rounded-xl w-full max-w-md p-6 my-auto">
         {/* Header */}
         <div className="flex items-start justify-between mb-5">
           <div>
@@ -230,10 +233,10 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
         <div className="space-y-4">
           {/* Exit price */}
           <div>
-            <label className="block text-xs text-muted mb-1">
+            <label htmlFor="closetrademodal-close-trade-exit-price" className="block text-xs text-muted mb-1">
               {t("close_trade_exit_price")} <span className="text-loss">*</span>
             </label>
-            <input
+            <input id="closetrademodal-close-trade-exit-price"
               type="number"
               step="any"
               value={exitPrice}
@@ -246,10 +249,10 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
 
           {/* Close time */}
           <div>
-            <label className="block text-xs text-muted mb-1">
+            <label htmlFor="closetrademodal-close-trade-close-time" className="block text-xs text-muted mb-1">
               {t("close_trade_close_time")} <span className="text-loss">*</span>
             </label>
-            <input
+            <input id="closetrademodal-close-trade-close-time"
               type="datetime-local"
               value={closeTime}
               onChange={(e) => { setCloseTime(e.target.value); update("close_time"); }}
@@ -261,7 +264,7 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
           {/* P&L (auto-calculated, editable) */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs text-muted">
+              <label htmlFor="closetrademodal-close-trade-pnl" className="block text-xs text-muted">
                 {t("close_trade_pnl")} <span className="text-loss">*</span>
               </label>
               {pnlTouched && estimated !== null && (
@@ -274,7 +277,7 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
                 </button>
               )}
             </div>
-            <input
+            <input id="closetrademodal-close-trade-pnl"
               type="number"
               step="any"
               value={pnl}
@@ -297,10 +300,10 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
 
           {/* Closing notes (new) */}
           <div>
-            <label className="block text-xs text-muted mb-1">
-              {t("close_trade_closing_notes")} <span className="text-muted opacity-60">({t("close_trade_optional")})</span>
+            <label htmlFor="closetrademodal-close-trade-closing-notes" className="block text-xs text-muted mb-1">
+              {t("close_trade_closing_notes")} <span className="text-muted">({t("close_trade_optional")})</span>
             </label>
-            <textarea
+            <textarea id="closetrademodal-close-trade-closing-notes"
               value={closingNotes}
               onChange={(e) => setClosingNotes(e.target.value)}
               rows={2}
@@ -310,7 +313,7 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
           </div>
         </div>
 
-        {saveError && <p className="text-loss text-sm mt-3">{saveError}</p>}
+        {saveError && <p role="alert" className="text-loss text-sm mt-3">{saveError}</p>}
 
         {/* Actions */}
         <div className="flex gap-3 mt-5">

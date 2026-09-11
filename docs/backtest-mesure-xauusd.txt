@@ -1,0 +1,34 @@
+
+bougies               710187 (24 mois)
+période               2024-01-01 → 2025-12-31
+moteur                220 ms
+signaux               359
+collisions            1 (0.28 %)
+
+── SANS COÛT (le réglage de la vidéo) ──
+  trades              359
+  taux de réussite    34.26 %
+  espérance           +0.0060 R
+  intervalle 95 %     -0.1389 … 0.1508
+  profit factor       1.0091
+  total               +2.14 R
+  drawdown max        18.47 R
+  coût break-even     0.8 ticks
+  coût appliqué       0 ticks
+  edge tué par coûts  non
+  hors échantillon    0.017 puis -0.019
+  VERDICT             NON_CONCLUANT
+
+── AVEC LES COÛTS RÉELS DE L'OR ──
+  trades              359
+  taux de réussite    33.43 %
+  espérance           -0.3345 R
+  intervalle 95 %     -0.4839 … -0.1850
+  profit factor       0.6223
+  total               -120.08 R
+  drawdown max        122.31 R
+  coût break-even     -45.8 ticks
+  coût appliqué       31 ticks
+  edge tué par coûts  OUI
+  hors échantillon    -0.372 puis -0.247
+  VERDICT             NEGATIF

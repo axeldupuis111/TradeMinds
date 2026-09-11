@@ -17,6 +17,7 @@ import {
 } from "@/lib/analytics/resilience";
 import type { AnalyticsTrade } from "@/lib/analytics/types";
 import { cn } from "@/lib/cn";
+import { pourcent, nombre } from "@/lib/nombres";
 
 type Props = {
   trades: AnalyticsTrade[];
@@ -29,7 +30,7 @@ type Props = {
 function fmtEur(n: number, currency: string): string {
   const r = Math.round(Math.abs(n));
   const sym = currencySymbol(currency).trim();
-  if (r >= 1000) return `${(Math.abs(n) / 1000).toFixed(1)}k${sym}`;
+  if (r >= 1000) return `${nombre(Math.abs(n) / 1000, 1)}k${sym}`;
   return `${r}${sym}`;
 }
 
@@ -68,28 +69,30 @@ function DrawdownZone({ trades, currency }: { trades: AnalyticsTrade[]; currency
           ) : (
             <>
               <span className="text-loss font-medium">
-                -{maxDD.maxDrawdownPct.toFixed(1)}&nbsp;%
+                -{pourcent(maxDD.maxDrawdownPct, 1)}
               </span>
               {t("resilience_of_peak_post")}
             </>
           )}
         </p>
         {Math.round(maxDD.maxDrawdownPct) === 100 && (
-          <p className="text-xs text-loss/80 mt-0.5">
+          <p className="text-xs text-loss mt-0.5">
             {t("resilience_above_peak")}
           </p>
         )}
         {maxDD.recoveryTrades !== null && (
           <p className="mt-1 text-xs text-foreground-muted">
             {t("resilience_recovered_pre")}
+            {/* ⚠️ Le compte et son mot dans UNE phrase du dictionnaire : le
+                pluriel était bâti en JavaScript avec un « s » anglais, et le
+                mot « trade » n'était traduit dans aucune langue. */}
             <span className="text-foreground font-semibold tabular-nums">
-              {maxDD.recoveryTrades}
+              &nbsp;{t("common_trades_count", { n: maxDD.recoveryTrades })}
             </span>
-            &nbsp;trade{maxDD.recoveryTrades !== 1 ? "s" : ""}
           </p>
         )}
         {maxDD.recoveryTrades === null && maxDD.maxDrawdown > 0 && (
-          <p className="mt-1 text-xs text-loss/70">{t("resilience_not_recovered")}</p>
+          <p className="mt-1 text-xs text-loss">{t("resilience_not_recovered")}</p>
         )}
       </div>
 
@@ -121,7 +124,7 @@ function DrawdownZone({ trades, currency }: { trades: AnalyticsTrade[]; currency
 
         <p className="text-[10px] text-foreground-muted mt-1.5">
           {currentDrawdown > 0
-            ? `-${Math.round(currentDDPct) === 100 ? "100" : currentDDPct.toFixed(1)} %${t("resilience_of_peak_post")}`
+            ? `-${Math.round(currentDDPct) === 100 ? pourcent(100) : pourcent(currentDDPct, 1)}${t("resilience_of_peak_post")}`
             : t("resilience_no_dd")}
         </p>
         {currentDrawdown > 0 && Math.round(currentDDPct) === 100 && (
@@ -234,7 +237,7 @@ function StreakZone({ trades }: { trades: AnalyticsTrade[] }) {
       {/* Streak band timeline */}
       {stats.streaks.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <p className="text-[10px] text-foreground-muted/60 select-none">
+          <p className="text-[10px] text-foreground-subtle select-none">
             {t("resilience_streak_timeline")}
           </p>
           <div className="flex flex-wrap gap-0.5 items-end" style={{ minHeight: 12 }}>
@@ -408,7 +411,7 @@ export function ResilienceBlock({ trades, currency = DEFAULT_CURRENCY }: Props) 
             <p className="text-sm text-foreground-muted">
               {t("resilience_not_enough")}
             </p>
-            <p className="text-xs text-foreground-muted/60">
+            <p className="text-xs text-foreground-subtle">
               <span className="text-foreground font-semibold tabular-nums">
                 {trades.length}
               </span>

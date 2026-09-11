@@ -44,6 +44,13 @@ export default function MembersPanel({ onClose, onChanged }: { onClose: () => vo
   const [newName, setNewName] = useState("");
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
+  /**
+   * ⚠️ AJOUTER UN MEMBRE LISAIT DÉJÀ SON ERREUR, PAS LE RETIRER. Deux gestes du
+   * même écran, à quinze lignes d'écart : l'un disait « membre introuvable »,
+   * l'autre rechargeait la liste sans un mot et le membre réapparaissait comme
+   * si le clic n'avait jamais eu lieu.
+   */
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => {
@@ -68,14 +75,22 @@ export default function MembersPanel({ onClose, onChanged }: { onClose: () => vo
 
   async function act(action: "remove_member" | "unblock_member", userId: string) {
     setBusy(userId);
+    setActionError(null);
     try {
-      await fetch("/api/community", {
+      const res = await fetch("/api/community", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, userId }),
       });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setActionError(t(body.error || "cc_err_network"));
+        return;
+      }
       await load();
       onChanged();
+    } catch {
+      setActionError(t("cc_err_network"));
     } finally {
       setBusy(null);
     }
@@ -115,7 +130,7 @@ export default function MembersPanel({ onClose, onChanged }: { onClose: () => vo
   if (!mounted) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+    <div aria-label={t("com_members_title")} className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
       <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-card border border-border rounded-2xl shadow-2xl">
@@ -131,12 +146,18 @@ export default function MembersPanel({ onClose, onChanged }: { onClose: () => vo
         </div>
 
         <div className="px-5 py-4 space-y-4">
+          {actionError && (
+            <p role="alert" className="rounded-lg border border-loss/30 bg-loss/10 px-3 py-2 text-xs text-loss">
+              {actionError}
+            </p>
+          )}
+
           {/* Rattraper les abonnés d'avant : le code promo n'ouvre la
               communauté qu'au moment du paiement, eux étaient déjà clients. */}
           <div className="rounded-lg border border-border bg-surface p-3">
             <p className="text-[11px] text-muted mb-2">{t("com_member_add_title")}</p>
             <div className="flex flex-col sm:flex-row gap-2">
-              <input
+              <input aria-label={t("com_member_add_placeholder")}
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") void addMember(); }}
@@ -151,7 +172,7 @@ export default function MembersPanel({ onClose, onChanged }: { onClose: () => vo
                 <UserPlus className="w-4 h-4" strokeWidth={2} />{t("com_member_add")}
               </button>
             </div>
-            {addError && <p className="mt-2 text-xs text-loss">{addError}</p>}
+            {addError && <p role="alert" className="mt-2 text-xs text-loss">{addError}</p>}
             <p className="mt-2 text-[11px] text-muted">{t("com_member_add_note")}</p>
           </div>
 
@@ -162,7 +183,7 @@ export default function MembersPanel({ onClose, onChanged }: { onClose: () => vo
           ) : (
             <>
               <p className="text-[11px] text-muted">
-                {t("com_members_activity_note").replace("{n}", String(activityDays))}
+                {t("com_members_activity_note", { n: String(activityDays) })}
               </p>
               <ul className="divide-y divide-border">
                 {members.map((m) => (

@@ -1,5 +1,7 @@
+import { SITE_URL } from "@/lib/seo";
 import { createClient } from "@/lib/supabase/server";
 import { fetchAllRows } from "@/lib/supabase-paginate";
+import { chargerLaSerieDeDiscipline } from "@/lib/discipline-streak-source";
 import PublicProfileView from "@/components/profile/PublicProfileView";
 
 /** Colonnes du profil public (voir la lecture paginée plus bas). */
@@ -17,7 +19,6 @@ interface Props {
   params: { username: string };
 }
 
-const SITE_URL = "https://tradediscipline.app";
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // Pseudo bloqué par la modération → même comportement qu'un profil inexistant.
@@ -82,7 +83,16 @@ export default async function PublicProfilePage({ params }: Props) {
 
   // Les trades démo n'apparaissent jamais sur un profil PUBLIC ; fallback
   // sans filtre tant que la colonne is_demo n'existe pas en prod.
-  const [tradeRows, { data: reviews }, { count: sessionCount }, { data: achievements }] = await Promise.all([
+  /**
+   * ⚠️⚠️ LA SÉRIE VIENT DU CALCUL PARTAGÉ, PAS D'UN TROISIÈME. Ce profil
+   * comptait ses propres « bilans de séance sans violation » et annonçait
+   * « 0 jour de discipline » pendant que le tableau de bord en affichait
+   * 75, pour le même compte, le même jour. C'est exactement le défaut que
+   * `lib/discipline-streak-source.ts` a été écrit pour clore : il l'avait
+   * clos entre deux cartes du tableau de bord, et ce troisième calcul, sur
+   * la page que le trader PARTAGE, n'avait jamais été rapproché.
+   */
+  const [tradeRows, { data: reviews }, { count: sessionCount }, { data: achievements }, serie] = await Promise.all([
     // Lecture paginée : ce profil est PUBLIC et affiche un nombre de trades et
     // un winrate. Non bornée, la lecture s'arrête à 1 000 trades en silence
     // (voir lib/supabase-paginate.ts), et le profil publierait des chiffres
@@ -122,6 +132,7 @@ export default async function PublicProfilePage({ params }: Props) {
       .from("achievements")
       .select("key, unlocked_at")
       .eq("user_id", userId),
+    chargerLaSerieDeDiscipline(supabase, userId, { sansDemo: true }),
   ]);
 
   // Ordre chronologique refait ici : les pages sont lues dans l'ordre de `id`.
@@ -137,6 +148,7 @@ export default async function PublicProfilePage({ params }: Props) {
       reviews={reviews || []}
       sessionCount={sessionCount ?? 0}
       achievements={achievements || []}
+      serie={serie.current}
     />
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { buildCurrencyMap, money, tradeCurrency } from "@/lib/account-currency";
+import { enDate } from "@/lib/dates";
 import { getEmotionDisplay } from "@/lib/emotions";
 import type { ChecklistItem } from "@/lib/hooks/useStrategyTags";
 import { detectKillzone } from "@/lib/ict-constants";
@@ -295,6 +296,14 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
   const [selectAllMatching, setSelectAllMatching] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
+  /**
+   * ⚠️⚠️ LA SUPPRESSION D'UN SEUL TRADE NE DISAIT RIEN QUAND ELLE ÉCHOUAIT.
+   * Le client Supabase ne jette pas : la ligne partait dans sa branche succès,
+   * la liste se rechargeait, et le trade réapparaissait sans un mot. La
+   * suppression EN LOT, douze lignes plus bas dans le même fichier, lisait déjà
+   * son erreur et le disait. La règle était écrite, pas appliquée à côté.
+   */
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const [selectedTrade, setSelectedTrade] = useState<TradeDetail | null>(null);
   const [allPairs, setAllPairs] = useState<string[]>([]);
@@ -635,13 +644,27 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     if (!confirm(t("trades_confirm_delete"))) return;
     setDeletingId(id);
 
+    setDeleteError(null);
+
     const trade = trades.find((tr) => tr.id === id);
     if (trade?.screenshot_path) {
       await supabase.storage.from("trade-screenshots").remove([trade.screenshot_path]);
     }
 
-    await supabase.from("trades").delete().eq("id", id);
+    // ⚠️ `.select("id")` N'EST PAS DÉCORATIF : sans lui, une suppression que la
+    // sécurité de ligne réduit à zéro ligne rend un succès vide, indiscernable
+    // d'une vraie suppression. Avec lui, « rien n'a été supprimé » se voit.
+    const { data: supprimes, error } = await supabase
+      .from("trades")
+      .delete()
+      .eq("id", id)
+      .select("id");
     setDeletingId(null);
+    if (error || (supprimes ?? []).length === 0) {
+      setDeleteError(t("trades_delete_one_failed"));
+      loadTrades();
+      return;
+    }
     setSelectedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
     loadTrades();
     loadGlobalStats();
@@ -700,7 +723,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
   async function handleBulkDelete() {
     const count = selectAllMatching ? total : selectedIds.size;
     if (count === 0) return;
-    if (!confirm(t("trades_confirm_delete_mass").replace("{count}", String(count)))) return;
+    if (!confirm(t("trades_confirm_delete_mass", { count: String(count) }))) return;
 
     setBulkDeleting(true);
     setBulkError(null);
@@ -741,9 +764,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
         // Les tranches déjà passées sont bel et bien supprimées : on le dit
         // plutôt que de laisser croire à un échec total ou à une réussite.
         setBulkError(
-          t("trades_delete_partial")
-            .replace("{done}", String(deleted))
-            .replace("{total}", String(ids.length)),
+          t("trades_delete_partial", { done: String(deleted), total: String(ids.length) }),
         );
         break;
       }
@@ -835,13 +856,15 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
     );
 
     const headers = ["Date", "Pair", "Direction", "Lot", "Entry", "Exit", "SL", "TP", "PnL", "Commission", "Swap", "Net PnL", "Emotion", "Tags", "Notes"];
+    // ⚠️ Un CSV est un fichier machine : point décimal, quelle que soit la langue.
+    const csvNum = (v: number) => v.toFixed(2);
     const csvRows = rows.map((tr) => {
       const net = (tr.pnl ?? 0) + (tr.commission ?? 0) + (tr.swap ?? 0);
       return [
         tr.open_time ? new Date(tr.open_time).toISOString().split("T")[0] : "",
         tr.pair, tr.direction, tr.lot_size, tr.entry_price, tr.exit_price,
         tr.sl ?? "", tr.tp ?? "", tr.pnl, tr.commission ?? 0, tr.swap ?? 0,
-        net.toFixed(2), tr.emotion ?? "",
+        csvNum(net), tr.emotion ?? "",
         Array.isArray(tr.tags) ? tr.tags.join("; ") : "",
         (tr.notes ?? "").replace(/"/g, '""'),
       ].map((v) => `"${v}"`).join(",");
@@ -902,8 +925,8 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
         <div className="flex items-center justify-between gap-2 p-3">
           <p className="text-[11px] text-muted">
             {hasActiveFilters
-              ? t("trades_filtered_by").replace("{count}", String(total))
-              : t("trades_all_accounts").replace("{count}", String(statsCount))}
+              ? t("trades_filtered_by", { count: String(total) })
+              : t("trades_all_accounts", { count: String(statsCount) })}
           </p>
           {/* Repli disponible à TOUTE largeur : un 14 pouces a autant besoin de
               récupérer ces 150 px qu'un téléphone, et un grand écran peut
@@ -939,8 +962,8 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
                 un compte, et que chaque compte peut avoir sa propre devise. */}
             {accounts.length > 0 && (
               <div className="flex flex-col gap-1 min-w-[170px]">
-                <label className="text-xs text-muted">{t("trades_filter_label_account")}</label>
-                <select
+                <label htmlFor="tradelist-trades-filter-label-account" className="text-xs text-muted">{t("trades_filter_label_account")}</label>
+                <select id="tradelist-trades-filter-label-account"
                   value={filters.account}
                   onChange={(e) => setFilters((f) => ({ ...f, account: e.target.value }))}
                   className="bg-surface border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-accent"
@@ -961,8 +984,8 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
             )}
 
             <div className="flex flex-col gap-1 min-w-[140px]">
-              <label className="text-xs text-muted">{t("trades_filter_label_pair")}</label>
-              <select
+              <label htmlFor="tradelist-trades-filter-label-pair" className="text-xs text-muted">{t("trades_filter_label_pair")}</label>
+              <select id="tradelist-trades-filter-label-pair"
                 value={filters.pair}
                 onChange={(e) => setFilters((f) => ({ ...f, pair: e.target.value }))}
                 className="bg-surface border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-accent"
@@ -973,8 +996,9 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
             </div>
 
             <div className="flex flex-col gap-1 min-w-[120px]">
-              <label className="text-xs text-muted">{t("trades_filter_label_dir")}</label>
+              <label htmlFor="tradelist-trades-filter-label-dir" className="text-xs text-muted">{t("trades_filter_label_dir")}</label>
               <select
+                id="tradelist-trades-filter-label-dir"
                 value={filters.direction}
                 onChange={(e) => setFilters((f) => ({ ...f, direction: e.target.value }))}
                 className="bg-surface border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-accent"
@@ -986,8 +1010,8 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
             </div>
 
             <div className="flex flex-col gap-1 min-w-[120px]">
-              <label className="text-xs text-muted">{t("trades_filter_label_result")}</label>
-              <select
+              <label htmlFor="tradelist-trades-filter-label-result" className="text-xs text-muted">{t("trades_filter_label_result")}</label>
+              <select id="tradelist-trades-filter-label-result"
                 value={filters.result}
                 onChange={(e) => setFilters((f) => ({ ...f, result: e.target.value }))}
                 className="bg-surface border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-accent"
@@ -999,8 +1023,8 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
             </div>
 
             <div className="flex flex-col gap-1 min-w-[130px]">
-              <label className="text-xs text-muted">{t("trades_filter_date_from")}</label>
-              <input
+              <label htmlFor="tradelist-trades-filter-date-from" className="text-xs text-muted">{t("trades_filter_date_from")}</label>
+              <input id="tradelist-trades-filter-date-from"
                 type="date"
                 value={filters.dateFrom}
                 onChange={(e) => setFilters((f) => ({ ...f, dateFrom: e.target.value }))}
@@ -1009,8 +1033,8 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
             </div>
 
             <div className="flex flex-col gap-1 min-w-[130px]">
-              <label className="text-xs text-muted">{t("trades_filter_date_to")}</label>
-              <input
+              <label htmlFor="tradelist-trades-filter-date-to" className="text-xs text-muted">{t("trades_filter_date_to")}</label>
+              <input id="tradelist-trades-filter-date-to"
                 type="date"
                 value={filters.dateTo}
                 onChange={(e) => setFilters((f) => ({ ...f, dateTo: e.target.value }))}
@@ -1037,7 +1061,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
           </div>
           {/* L'échec s'affiche sous le bouton : un fichier qui ne se télécharge
               pas et ne dit rien ressemble à un bouton mort. */}
-          {exportError && <p className="text-sm text-loss mt-2">{exportError}</p>}
+          {exportError && <p role="alert" className="text-sm text-loss mt-2">{exportError}</p>}
         </div>
       </div>
 
@@ -1069,7 +1093,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
             <p className="text-sm text-muted mt-2 pt-2 border-t border-border">
               {selectAllMatching ? (
                 <>
-                  {t("trades_select_all_matching_done").replace("{count}", String(total))}{" "}
+                  {t("trades_select_all_matching_done", { count: String(total) })}{" "}
                   <button
                     onClick={() => setSelectAllMatching(false)}
                     className="text-accent hover:underline font-medium"
@@ -1079,20 +1103,29 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
                 </>
               ) : (
                 <>
-                  {t("trades_select_page_done").replace("{count}", String(trades.length))}{" "}
+                  {t("trades_select_page_done", { count: String(trades.length) })}{" "}
                   <button
                     onClick={() => setSelectAllMatching(true)}
                     className="text-accent hover:underline font-medium"
                   >
-                    {t("trades_select_all_matching").replace("{count}", String(total))}
+                    {t("trades_select_all_matching", { count: String(total) })}
                   </button>
                 </>
               )}
             </p>
           )}
 
-          {bulkError && <p className="text-sm text-loss mt-2">{bulkError}</p>}
+          {bulkError && <p role="alert" className="text-sm text-loss mt-2">{bulkError}</p>}
         </div>
+      )}
+
+      {/* ⚠️ HORS de la barre de sélection : celle-ci ne s'affiche que quand des
+          lignes sont cochées, donc l'échec d'une suppression à l'unité y serait
+          resté invisible. */}
+      {deleteError && (
+        <p className="text-sm text-loss mb-3" role="alert">
+          {deleteError}
+        </p>
       )}
 
       {/* Table */}
@@ -1140,8 +1173,11 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
               <thead>
                 <tr className="bg-surface text-muted text-left">
                   <th className="px-3 py-2 w-8">
+                    {/* ⚠️ Une case à cocher sans nom s'annonce « case à
+                        cocher », point. Celle-ci en sélectionne cinquante. */}
                     <input
                       type="checkbox"
+                      aria-label={t("trades_select_page")}
                       checked={allSelected}
                       onChange={toggleSelectAll}
                       className="accent-accent w-4 h-4 cursor-pointer"
@@ -1190,8 +1226,15 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
                     >
                       {/* Checkbox */}
                       <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                        {/* ⚠️ ET CHAQUE LIGNE DIT LAQUELLE : sans ça,
+                            cinquante et une cases identiques se suivaient,
+                            toutes nommées « case à cocher ». */}
                         <input
                           type="checkbox"
+                          aria-label={t("trades_select_one", {
+                            pair: tr.pair,
+                            date: tr.open_time ? enDate(tr.open_time) : "—",
+                          })}
                           checked={isChecked(tr.id)}
                           onChange={() => toggleSelect(tr.id)}
                           className="accent-accent w-4 h-4 cursor-pointer"
@@ -1206,14 +1249,33 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
                       {/* Paire */}
                       <td className="px-3 py-2">
                         <span className="inline-flex items-center gap-1.5">
-                          <span className="font-mono text-sm font-semibold text-foreground">{tr.pair}</span>
+                          {/*
+                            ⚠️⚠️ LE DÉTAIL D'UN TRADE N'ÉTAIT ATTEIGNABLE QU'À LA
+                            SOURIS : la ligne entière portait le clic, et une
+                            ligne de tableau ne reçoit pas le focus. Au clavier,
+                            AUCUN trade du journal ne pouvait s'ouvrir.
+
+                            ⚠️ LE CLIC RESTE SUR LA LIGNE, pour ne rien retirer
+                            à la souris : il double maintenant un vrai bouton,
+                            au lieu d'être le seul chemin.
+                          */}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setSelectedTrade(tr as TradeDetail); }}
+                            aria-label={t("trades_open_detail", {
+                              pair: tr.pair,
+                              date: tr.open_time ? enDate(tr.open_time) : "—",
+                            })}
+                            className="font-mono text-sm font-semibold text-foreground hover:text-accent transition-colors"
+                          >
+                            {tr.pair}
+                          </button>
                           {/* Indicateur de capture jointe. Il portait aussi
                               une note A-D venue de l'analyse visuelle IA,
                               retirée le 2026-08-14 : le libellé annonçait donc
                               « Analyse visuelle IA » aux lecteurs d'écran pour
                               ce qui n'est plus qu'un trombone. */}
                           {tr.screenshot_path ? (
-                            <Camera className="w-3.5 h-3.5 text-muted/60 shrink-0" aria-label={t("trade_screenshot")} />
+                            <Camera className="w-3.5 h-3.5 text-muted shrink-0" aria-label={t("trade_screenshot")} />
                           ) : null}
                         </span>
                       </td>
@@ -1261,7 +1323,7 @@ export default function TradeList({ refreshKey, onTradeUpdated }: Props) {
                         <button
                           onClick={() => handleDelete(tr.id)}
                           disabled={deletingId === tr.id}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted hover:text-loss disabled:opacity-50"
+                          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-muted hover:text-loss disabled:opacity-50"
                           title={t("trades_delete")}
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

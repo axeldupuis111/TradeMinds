@@ -205,9 +205,10 @@ export default function CoachDock() {
                  * une limite qu'on peut atteindre doit se voir avant.
                  */
                 <p className="text-[11px] text-foreground-muted">
-                  {t("coach_dock_remaining_both")
-                    .replace("{d}", String(chat.remaining))
-                    .replace("{m}", String(chat.monthlyRemaining))}
+                  {t("coach_dock_remaining_both", {
+                    d: chat.remaining,
+                    m: chat.monthlyRemaining,
+                  })}
                 </p>
               )}
             </div>
@@ -290,7 +291,7 @@ export default function CoachDock() {
           </div>
 
           <footer className="border-t border-border p-3">
-            {micError && <p className="text-[11px] text-red-500 mb-1.5">{micError}</p>}
+            {micError && <p role="alert" className="text-[11px] text-red-500 mb-1.5">{micError}</p>}
             {listening && (
               <p className="text-[11px] text-accent mb-1.5 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-accent motion-safe:animate-pulse" />
@@ -321,7 +322,7 @@ export default function CoachDock() {
                     {listening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
                   </button>
                 )}
-                <textarea
+                <textarea aria-label={t("coach_dock_placeholder")}
                   ref={inputRef}
                   value={chat.input}
                   onChange={(e) => chat.setInput(e.target.value)}
@@ -329,7 +330,7 @@ export default function CoachDock() {
                   rows={1}
                   placeholder={t("coach_dock_placeholder")}
                   disabled={chat.loading}
-                  className="flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-foreground-muted/70 focus:outline-none focus:border-accent max-h-24"
+                  className="flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-foreground-subtle focus:outline-none focus:border-accent max-h-24"
                 />
                 <button
                   onClick={() => void handleSend()}

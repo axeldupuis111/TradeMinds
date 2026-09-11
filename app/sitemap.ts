@@ -1,11 +1,17 @@
+import { SITE_URL } from "@/lib/seo";
 import { MetadataRoute } from "next";
 import { locales, defaultLocale } from "@/i18n/config";
 import { getAllPosts } from "@/lib/blog/posts";
 
-const SITE_URL = "https://tradediscipline.app";
 
 // Pages multilingues (indexées dans les 4 langues avec hreflang)
-const MULTILANG_PAGES = ["", "/trading-journal", "/login", "/faq", "/contact"];
+//
+// ⚠️⚠️ LA CONNEXION N'Y EST PLUS, ET C'EST UNE CONTRADICTION QU'ON RETIRE :
+// elle se déclare `noindex` dans ses métadonnées (il n'y a rien à y chercher),
+// et un plan du site qui soumet une page marquée « ne pas indexer » demande à
+// Google de faire deux choses opposées. La Search Console le signale comme une
+// erreur, et cette erreur masque les vraies.
+const MULTILANG_PAGES = ["", "/trading-journal", "/faq", "/contact"];
 
 // Pages mono-langue (URL unique, pas de hreflang)
 const MONOLANG_PAGES = ["/legal/terms", "/legal/privacy", "/mentions-legales"];

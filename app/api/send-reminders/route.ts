@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { sendPushToUser } from "@/lib/push";
 import { alertCronFailure } from "@/lib/cron-alert";
+import { fetchAllByIds, fetchAllRows } from "@/lib/supabase-paginate";
 import { localHour, localWeekday } from "@/lib/timezone";
 import { renderBrandEmail, emailParagraph } from "@/lib/email-template";
 
@@ -86,14 +87,26 @@ export async function POST(req: Request) {
 
   const resend = new Resend(process.env.RESEND_API_KEY);
 
-  const { data: users, error } = await supabase
-    .from("profiles")
-    .select("id, email, language, timezone")
-    .eq("email_notif_session", true)
-    .not("email", "is", null);
+  /**
+   * ⚠️⚠️ CETTE LECTURE ÉTAIT PLAFONNÉE À MILLE ABONNÉS, SANS LE DIRE. PostgREST
+   * rend au plus mille lignes, statut 200, sans erreur : au millier et unième
+   * inscrit, le rappel quotidien aurait simplement cessé de partir pour les
+   * suivants, et rien n'aurait signalé lesquels. Le défaut n'apparaît que le
+   * jour où le produit marche.
+   */
+  const users = await fetchAllRows<{ id: string; email: string | null; language: string | null; timezone: string | null }>(
+    (from, to) =>
+      supabase
+        .from("profiles")
+        .select("id, email, language, timezone")
+        .eq("email_notif_session", true)
+        .not("email", "is", null)
+        .order("id")
+        .range(from, to),
+  );
 
-  if (error || !users) {
-    await alertCronFailure("send-reminders", `Failed to fetch users: ${error?.message ?? "no rows"}`);
+  if (!users) {
+    await alertCronFailure("send-reminders", "Failed to fetch users: lecture paginée incomplète");
     return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
   }
 
@@ -122,28 +135,46 @@ export async function POST(req: Request) {
   // Indépendant des emails : on notifie tous les utilisateurs ayant un
   // abonnement push actif (sendPushToUser no-op s'il n'y en a pas).
   let pushed = 0;
-  const { data: pushSubs } = await supabase
-    .from("push_subscriptions")
-    .select("user_id");
+  const pushSubs = await fetchAllRows<{ user_id: string }>((from, to) =>
+    supabase.from("push_subscriptions").select("user_id").order("user_id").range(from, to),
+  );
 
   const pushUserIds = Array.from(new Set((pushSubs ?? []).map((s) => s.user_id)));
 
   if (pushUserIds.length > 0) {
-    const { data: pushProfiles } = await supabase
-      .from("profiles")
-      .select("id, language, timezone")
-      .in("id", pushUserIds);
+    /**
+     * ⚠️ DEUX PLAFONDS, PAS UN : la liste d'identifiants voyage dans l'URL
+     * (`?id=in.(…)`, 37 caractères par UUID) et la réponse est plafonnée à
+     * mille lignes. La première panne est franche (414), la seconde
+     * silencieuse. `fetchAllByIds` couvre les deux.
+     */
+    const pushProfiles = await fetchAllByIds<{ id: string; language: string | null; timezone: string | null }>(
+      pushUserIds,
+      (lot, from, to) =>
+        supabase
+          .from("profiles")
+          .select("id, language, timezone")
+          .in("id", lot)
+          .order("id")
+          .range(from, to),
+    );
 
     const langById = new Map((pushProfiles ?? []).map((p) => [p.id, p.language as string]));
     const tzById = new Map((pushProfiles ?? []).map((p) => [p.id, (p.timezone as string) || "UTC"]));
 
     // Préférence push « rappel de session » (défensif : colonne absente → opt-in).
     const optedOut = new Set<string>();
-    const { data: prefRows, error: prefErr } = await supabase
-      .from("profiles")
-      .select("id, push_notif_session")
-      .in("id", pushUserIds);
-    if (!prefErr) {
+    const prefRows = await fetchAllByIds<{ id: string; push_notif_session?: boolean }>(
+      pushUserIds,
+      (lot, from, to) =>
+        supabase
+          .from("profiles")
+          .select("id, push_notif_session")
+          .in("id", lot)
+          .order("id")
+          .range(from, to),
+    );
+    {
       for (const r of prefRows ?? []) {
         if ((r as { push_notif_session?: boolean }).push_notif_session === false) optedOut.add(r.id);
       }

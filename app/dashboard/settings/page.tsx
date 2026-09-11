@@ -1,5 +1,6 @@
 "use client";
 
+import { lienPartageable } from "@/lib/seo";
 import UpgradeBanner from "@/components/UpgradeBanner";
 import SyncPlatformCard from "@/components/settings/SyncPlatformCard";
 import SyncGuide from "@/components/settings/SyncGuide";
@@ -16,6 +17,7 @@ import { normalizeTimezone } from "@/lib/timezone";
 import { normalizeUsername, validateUsername } from "@/lib/username-moderation";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 const LANGUAGES = [
   { code: "fr", label: "Français" },
@@ -84,6 +86,8 @@ export default function SettingsPage() {
   const [mtLoading, setMtLoading] = useState(true);
   const [mtGenerating, setMtGenerating] = useState(false);
   const [showMtRegenModal, setShowMtRegenModal] = useState(false);
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(showMtRegenModal, () => setShowMtRegenModal(false));
   const [isDeleting, setIsDeleting] = useState(false);
 
   const hasChanges =
@@ -235,7 +239,7 @@ export default function SettingsPage() {
   }
 
   function copyLink() {
-    const url = `${window.location.origin}/profile/${username.trim().toLowerCase()}`;
+    const url = lienPartageable(`/profile/${username.trim().toLowerCase()}`);
     navigator.clipboard.writeText(url);
     showToast("success", t("settings_link_copied"));
   }
@@ -278,13 +282,19 @@ export default function SettingsPage() {
 
   const canShare = plan === "plus" || plan === "premium";
   const confirmWord = t("settings_delete_confirm_word");
-  const profileUrl = `${window.location.origin}/profile/${originalUsername}`;
+  const profileUrl = lienPartageable(`/profile/${originalUsername}`);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Toast */}
+      {/* ⚠️ UNE LECTURE D'ÉCRAN N'ENTEND RIEN D'UN MESSAGE QUI APPARAÎT TOUT
+          SEUL : sans région vivante, « Paramètres sauvegardés ✓ » et surtout
+          « Non enregistré. Réessaie. » passaient en silence. Une erreur est
+          annoncée tout de suite, une réussite attend une pause dans la lecture. */}
       {toast && (
         <div
+          role={toast.type === "error" ? "alert" : "status"}
+          aria-live={toast.type === "error" ? "assertive" : "polite"}
           className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium ${
             toast.type === "success"
               ? "bg-profit/10 border border-profit/30 text-profit"
@@ -305,13 +315,18 @@ export default function SettingsPage() {
         <h2 className="text-lg font-semibold text-foreground mb-4">{t("settings_account_title")}</h2>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm text-muted mb-1">{t("settings_account_email")}</label>
+            <label htmlFor="settings-settings-account-email" className="block text-sm text-muted mb-1">{t("settings_account_email")}</label>
             <div className="relative">
-              <input
+              <input id="settings-settings-account-email"
                 type="email"
                 value={userEmail || ""}
                 readOnly
-                className="w-full px-3 py-2 pr-36 bg-surface border border-border rounded-lg text-foreground text-sm opacity-60 cursor-not-allowed focus:outline-none"
+                /* ⚠️ PAS D'opacity-60 ICI : l'adresse e-mail est une
+                   information qu'on doit LIRE, pas un contrôle désactivé, et
+                   --foreground à 60 % tombe à 4,51:1 en thème clair, soit un
+                   centième au-dessus du seuil. Un centième n'est pas une marge.
+                   Le champ dit qu'il est en lecture seule par sa pastille. */
+                className="w-full px-3 py-2 pr-36 bg-surface border border-border rounded-lg text-foreground-muted text-sm cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-accent"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted pointer-events-none">
                 {t("settings_email_readonly")}
@@ -406,7 +421,10 @@ export default function SettingsPage() {
       <section className="bg-card border border-border rounded-xl p-5">
         <h2 className="text-lg font-semibold text-foreground mb-1">{t("settings_timezone_title")}</h2>
         <p className="text-muted text-sm mb-4">{t("settings_timezone_desc")}</p>
+        {/* ⚠️ Le titre au-dessus est un <h2>, pas une étiquette : il ne nomme
+            pas la liste pour une lecture d'écran. */}
         <select
+          aria-label={t("settings_timezone_title")}
           value={timezone}
           onChange={(e) => setTimezone(e.target.value)}
           className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
@@ -433,8 +451,8 @@ export default function SettingsPage() {
         ) : (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-muted mb-1">{t("settings_username")}</label>
-              <input
+              <label htmlFor="settings-settings-username" className="block text-sm text-muted mb-1">{t("settings_username")}</label>
+              <input id="settings-settings-username"
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -556,7 +574,8 @@ export default function SettingsPage() {
                 type="text"
                 value={mtToken}
                 readOnly
-                className="flex-1 px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm font-mono cursor-text focus:outline-none select-all"
+                aria-label={t("sync_token_label")}
+                className="flex-1 px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm font-mono cursor-text focus:outline-none focus:ring-1 focus:ring-accent select-all"
               />
               <button
                 onClick={() => {
@@ -628,7 +647,7 @@ export default function SettingsPage() {
       {/* MetaTrader regenerate confirmation modal */}
       {showMtRegenModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-card border border-border rounded-xl p-6 max-w-md w-full space-y-4">
+          <div role="dialog" aria-modal="true" aria-label={t("sync_mt_modal_title")} className="bg-card border border-border rounded-xl p-6 max-w-md w-full space-y-4">
             <h3 className="text-lg font-semibold text-foreground">{t("sync_mt_modal_title")}</h3>
             <p className="text-sm text-muted">{t("sync_mt_modal_desc")}</p>
             <div className="flex gap-3 justify-end">
@@ -641,7 +660,7 @@ export default function SettingsPage() {
               <button
                 onClick={generateMtToken}
                 disabled={mtGenerating}
-                className="px-4 py-2 rounded-lg bg-loss text-white text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+                className="px-4 py-2 rounded-lg bg-loss-fill text-white text-sm font-medium hover:bg-loss-fill/90 transition-colors disabled:opacity-50"
               >
                 {mtGenerating ? "..." : t("sync_mt_regen")}
               </button>
@@ -699,10 +718,22 @@ export default function SettingsPage() {
               setEmailNotifLoading(true);
               setEmailNotifSession(enabled);
               const { data: { user } } = await supabase.auth.getUser();
-              if (user) {
-                await supabase.from("profiles").update({ email_notif_session: enabled }).eq("id", user.id);
-              }
+              /**
+               * ⚠️⚠️ CETTE CASE ANNONÇAIT « Paramètres sauvegardés ✓ » SANS RIEN
+               * VÉRIFIER. Le client Supabase ne jette pas : un refus RLS ou une
+               * coupure réseau laissaient la coche en place, le message de
+               * succès s'affichait, et le réglage revenait à l'ancien au
+               * rechargement suivant.
+               */
+              const { error } = user
+                ? await supabase.from("profiles").update({ email_notif_session: enabled }).eq("id", user.id)
+                : { error: new Error("no user") };
               setEmailNotifLoading(false);
+              if (error) {
+                setEmailNotifSession(!enabled);
+                showToast("error", t("save_failed"));
+                return;
+              }
               showToast("success", t("settings_saved"));
             }}
             className="accent-accent w-4 h-4"
@@ -732,12 +763,12 @@ export default function SettingsPage() {
       {/* Delete confirmation modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-card border border-border rounded-xl p-6 max-w-md w-full space-y-4">
+          <div role="dialog" aria-modal="true" aria-label={t("settings_danger_title")} className="bg-card border border-border rounded-xl p-6 max-w-md w-full space-y-4">
             <h3 className="text-lg font-semibold text-loss">{t("settings_danger_title")}</h3>
             <p className="text-sm text-muted">{t("settings_delete_confirm_text")}</p>
             <div>
               <p className="text-xs text-muted mb-2">{t("settings_delete_type_word")}</p>
-              <input
+              <input aria-label={t("settings_delete_type_word")}
                 type="text"
                 value={deleteConfirmInput}
                 onChange={(e) => setDeleteConfirmInput(e.target.value)}
@@ -755,7 +786,7 @@ export default function SettingsPage() {
               <button
                 onClick={handleDeleteAccount}
                 disabled={deleteConfirmInput !== confirmWord || isDeleting}
-                className="px-4 py-2 rounded-lg bg-loss text-white text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 rounded-lg bg-loss-fill text-white text-sm font-medium hover:bg-loss-fill/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isDeleting ? "..." : t("settings_delete_confirm_btn")}
               </button>

@@ -30,6 +30,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { fetchAllRows } from "@/lib/supabase-paginate";
 import { cn } from "@/lib/cn";
+import { pourcent } from "@/lib/nombres";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Search, ShieldCheck, ShieldAlert, Filter, X } from "lucide-react";
@@ -626,7 +627,7 @@ export default function AnalyticsPage() {
         <p style={{ color: entry.pnl >= 0 ? c.profit : c.loss }}>
           {formatPnl(entry.pnl, pageCurrency)}
         </p>
-        <p style={{ color: c.axis }}>{entry.count} trades · WR {entry.winrate}%</p>
+        <p style={{ color: c.axis }}>{entry.count} trades · WR {pourcent(entry.winrate)}</p>
       </div>
     );
   };
@@ -723,11 +724,7 @@ export default function AnalyticsPage() {
             new Date(d).toLocaleDateString(dateLocale, { day: "2-digit", month: "2-digit", year: "2-digit" });
           return (
             <p className="text-xs text-foreground-muted mt-1">
-              {t("analytics_daterange")
-                .replace("{count}", String(filtered.length))
-                .replace("{from}", fmt(first))
-                .replace("{to}", fmt(last))
-                .replace("{dur}", duration)}
+              {t("analytics_daterange", { count: String(filtered.length), from: fmt(first), to: fmt(last), dur: duration })}
             </p>
           );
         })()}
@@ -751,14 +748,14 @@ export default function AnalyticsPage() {
         {/* Custom date range */}
         {period === "custom" && (
           <div className="flex items-center gap-1.5">
-            <input
+            <input aria-label={t("a11y_date_from")}
               type="date"
               value={customDateFrom}
               onChange={(e) => setCustomDateFrom(e.target.value)}
               className="px-3 py-1.5 bg-card border border-border rounded-lg text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
             />
             <span className="text-foreground-muted text-xs">→</span>
-            <input
+            <input aria-label={t("a11y_date_to")}
               type="date"
               value={customDateTo}
               onChange={(e) => setCustomDateTo(e.target.value)}
@@ -767,9 +764,15 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {/* Account selector */}
+        {/* Account selector.
+            ⚠️ « Compte », pas « Tous les comptes » : le nom d'un champ dit ce
+            qu'on y CHOISIT, pas ce qui s'y trouve. Nommé par une de ses
+            propres options, il s'annonçait « Tous les comptes, liste, Tous les
+            comptes » et n'apprenait rien. La clé existait déjà, posée ailleurs
+            lors d'une passe précédente. */}
         {accounts.length > 0 && (
           <select
+            aria-label={t("a11y_account")}
             value={accountFilter}
             onChange={(e) => setAccountFilter(e.target.value)}
             className="px-3 py-1.5 bg-card border border-border rounded-lg text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
@@ -844,6 +847,7 @@ export default function AnalyticsPage() {
               <h3 className="text-sm font-bold text-foreground">{t("analytics_advanced_filters")}</h3>
               <button
                 onClick={() => setShowAdvancedFilters(false)}
+                aria-label={t("close")}
                 className="p-1 rounded hover:bg-border/40 transition-colors"
               >
                 <X className="w-4 h-4 text-foreground-muted" />
@@ -879,7 +883,7 @@ export default function AnalyticsPage() {
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-foreground-muted mb-2">P&L ({currencySymbol(pageCurrency).trim()})</p>
                 <div className="flex items-center gap-2">
-                  <input
+                  <input aria-label={t("a11y_amount_min")}
                     type="number"
                     placeholder="Min"
                     value={stagingPnlMin}
@@ -887,7 +891,7 @@ export default function AnalyticsPage() {
                     className="flex-1 px-3 py-1.5 bg-surface border border-border rounded-lg text-sm text-foreground placeholder-foreground-muted/50 focus:outline-none focus:ring-1 focus:ring-accent"
                   />
                   <span className="text-foreground-muted text-xs shrink-0">→</span>
-                  <input
+                  <input aria-label={t("a11y_amount_max")}
                     type="number"
                     placeholder="Max"
                     value={stagingPnlMax}
@@ -1060,7 +1064,7 @@ export default function AnalyticsPage() {
                 <CardHeader>
                   <CardTitle>{t("analytics_what_we_notice")}</CardTitle>
                 </CardHeader>
-                <AutoInsights trades={filtered} />
+                <AutoInsights trades={filtered} currency={pageCurrency} />
               </KpiCardPremium>
 
             </div>
@@ -1273,11 +1277,11 @@ export default function AnalyticsPage() {
                         <div className="flex items-start gap-2.5">
                           <ShieldAlert className="w-5 h-5 text-loss mt-0.5 shrink-0" strokeWidth={1.75} />
                           <div>
-                            <p className="text-sm text-loss/80 mb-1">{t("discipline_cost")}</p>
+                            <p className="text-sm text-loss mb-1">{t("discipline_cost")}</p>
                             <p className="text-3xl font-bold text-loss">
                               {money(Math.abs(disciplineStats.rulesBroken.pnl), pageCurrency, { digits: 2 })}
                             </p>
-                            <p className="text-xs text-loss/70 mt-1">{t("discipline_cost_desc")}</p>
+                            <p className="text-xs text-loss mt-1">{t("discipline_cost_desc")}</p>
                           </div>
                         </div>
                       </KpiCardPremium>

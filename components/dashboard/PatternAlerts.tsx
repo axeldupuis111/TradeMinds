@@ -42,13 +42,6 @@ function netPnl(t: TradeRow): number {
   return t.pnl + (t.commission || 0) + (t.swap || 0);
 }
 
-function fmt(key: string, vars: Record<string, string | number>): string {
-  let out = key;
-  for (const [k, v] of Object.entries(vars)) {
-    out = out.replace(`{${k}}`, String(v));
-  }
-  return out;
-}
 
 export default function PatternAlerts({ compact = false }: { compact?: boolean }) {
   const { t } = useLanguage();
@@ -97,14 +90,14 @@ export default function PatternAlerts({ compact = false }: { compact?: boolean }
           id: "bad-hour",
           tone: "danger",
           icon: <Clock className="w-3.5 h-3.5" strokeWidth={1.75} />,
-          text: fmt(t("rtcoach_bad_hour"), { hour, pnl: Math.round(total), count: hourTrades.length }),
+          text: t("rtcoach_bad_hour", { hour, pnl: Math.round(total), count: hourTrades.length }),
         });
       } else if (wr >= 65) {
         out.push({
           id: "good-hour",
           tone: "positive",
           icon: <TrendingUp className="w-3.5 h-3.5" strokeWidth={1.75} />,
-          text: fmt(t("rtcoach_good_hour"), { hour, wr }),
+          text: t("rtcoach_good_hour", { hour, wr }),
         });
       }
     }
@@ -127,7 +120,7 @@ export default function PatternAlerts({ compact = false }: { compact?: boolean }
         id: "risky-pair",
         tone: "warning",
         icon: <ShieldAlert className="w-3.5 h-3.5" strokeWidth={1.75} />,
-        text: fmt(t("rtcoach_risky_pair"), {
+        text: t("rtcoach_risky_pair", {
           pair: risky[0],
           wr: Math.round((risky[1].wins / risky[1].count) * 100),
           count: risky[1].count,
@@ -154,14 +147,14 @@ export default function PatternAlerts({ compact = false }: { compact?: boolean }
         id: "win-streak",
         tone: "warning",
         icon: <Flame className="w-3.5 h-3.5" strokeWidth={1.75} />,
-        text: fmt(t("rtcoach_win_streak"), { n: streak }),
+        text: t("rtcoach_win_streak", { n: streak }),
       });
     } else if (streak >= 3 && streakWin === false) {
       out.push({
         id: "loss-streak",
         tone: "danger",
         icon: <AlertTriangle className="w-3.5 h-3.5" strokeWidth={1.75} />,
-        text: fmt(t("rtcoach_loss_streak"), { n: streak }),
+        text: t("rtcoach_loss_streak", { n: streak }),
       });
     }
 
@@ -186,7 +179,7 @@ export default function PatternAlerts({ compact = false }: { compact?: boolean }
           <h3 className="text-sm font-semibold text-foreground">{t("rtcoach_title")}</h3>
         </div>
         <span className="text-[10px] text-foreground-muted">
-          {fmt(t("rtcoach_based_on"), { count: trades?.length ?? 0 })}
+          {t("rtcoach_based_on", { count: trades?.length ?? 0 })}
         </span>
       </div>
       <div className="space-y-2">

@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { sendPushToUser } from "@/lib/push";
 import { alertCronFailure } from "@/lib/cron-alert";
+import { fetchAllByIds, fetchAllRows } from "@/lib/supabase-paginate";
 import { localHour } from "@/lib/timezone";
 import { streakAtRisk, type ReviewRow } from "@/lib/streak-guard";
 
@@ -70,21 +71,36 @@ async function handle(req: Request) {
   }
 
   // 1. Users with at least one push subscription.
-  const { data: subs, error: subErr } = await supabase.from("push_subscriptions").select("user_id");
-  if (subErr) {
-    await alertCronFailure("streak-guard", `push_subscriptions query failed: ${subErr.message}`);
+  // ⚠️ PAGINÉE : PostgREST rend au plus mille lignes sans erreur, et au-delà
+  // le gel de série aurait cessé d'être proposé aux derniers inscrits.
+  const subs = await fetchAllRows<{ user_id: string }>((from, to) =>
+    supabase.from("push_subscriptions").select("user_id").order("user_id").range(from, to),
+  );
+  if (!subs) {
+    await alertCronFailure("streak-guard", "push_subscriptions query failed: lecture paginée incomplète");
     return NextResponse.json({ error: "subs query failed" }, { status: 500 });
   }
   const userIds = Array.from(new Set((subs ?? []).map((s) => s.user_id)));
   if (userIds.length === 0) return NextResponse.json({ notified: 0, reason: "no subscribers" });
 
   // 2. Their language / timezone / alert opt-out.
-  const { data: profiles, error: profErr } = await supabase
-    .from("profiles")
-    .select("id, language, timezone, push_notif_alerts")
-    .in("id", userIds);
-  if (profErr) {
-    await alertCronFailure("streak-guard", `profiles query failed: ${profErr.message}`);
+  // ⚠️ `.in(...)` PLAFONNE AUSSI À MILLE LIGNES : une liste d'identifiants plus
+  // longue ne fait pas grandir la réponse, elle la fait tronquer en silence.
+  const profiles = await fetchAllByIds<{
+    id: string;
+    language: string | null;
+    timezone: string | null;
+    push_notif_alerts?: boolean;
+  }>(userIds, (lot, from, to) =>
+    supabase
+      .from("profiles")
+      .select("id, language, timezone, push_notif_alerts")
+      .in("id", lot)
+      .order("id")
+      .range(from, to),
+  );
+  if (!profiles) {
+    await alertCronFailure("streak-guard", "profiles query failed: lecture paginée incomplète");
     return NextResponse.json({ error: "profiles query failed" }, { status: 500 });
   }
 

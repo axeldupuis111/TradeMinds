@@ -15,6 +15,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Plus, Sparkles, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { pourcent } from "@/lib/nombres";
 
 interface Strategy {
   id: string;
@@ -91,7 +92,7 @@ export default function TradesPage() {
       } else if (data.retryInSeconds > 0) {
         setSyncMsg(t("trades_sync_wait").replace("{n}", String(data.retryInSeconds)));
       } else if (data.synced > 0) {
-        setSyncMsg(t("trades_sync_imported").replace("{n}", String(data.synced)));
+        setSyncMsg(t("trades_sync_imported", { n: data.synced }));
         setRefreshKey((k) => k + 1);
         await loadRecap();
       } else {
@@ -213,7 +214,7 @@ export default function TradesPage() {
           <h1 className="text-2xl font-bold text-foreground">{t("trades_title")}</h1>
           {recap && (
             <p className="text-sm text-muted mt-1">
-              {recap.count} trades · WR {recap.wr.toFixed(1)}% · P&amp;L{" "}
+              {t("common_trades_count", { n: recap.count })} · WR {pourcent(recap.wr, 1)} · P&amp;L{" "}
               {pnlByCurrency.map(([cur, value], i) => (
                 <span key={cur}>
                   {i > 0 && " · "}

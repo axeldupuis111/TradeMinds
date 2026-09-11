@@ -256,7 +256,7 @@ export default function OnboardingChecklist({ state }: { state: OnboardingState 
               ) : completed ? (
                 // ── Faite : compacte, barrée ──
                 <div className="flex items-center gap-3">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-profit text-white">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-profit text-on-accent">
                     <Check className="h-3 w-3" strokeWidth={3} />
                   </span>
                   <span className="flex-1 text-sm text-foreground-muted line-through">{t(step.labelKey)}</span>

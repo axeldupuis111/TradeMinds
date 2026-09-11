@@ -227,7 +227,7 @@ export default function LiveDemo() {
           {steps.map((s, i) => (
             <div key={s.label} className="flex items-center gap-1.5 sm:gap-3">
               {i > 0 && (
-                <svg className="w-3 h-3" style={{ color: "rgb(var(--muted)/0.5)" }} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                <svg className="w-3 h-3" style={{ color: "rgb(var(--muted))" }} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                 </svg>
               )}

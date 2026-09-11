@@ -24,10 +24,13 @@ import {
   Users,
   Wallet,
   Zap,
+  History,
   LineChart,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { brancherEchap } from "@/lib/hooks/useFenetreModale";
 import type { LucideIcon } from "lucide-react";
 
 // requiredPlan = plan minimum pour utiliser la page (mur d'upgrade en dessous).
@@ -49,6 +52,7 @@ const analyseItems: { key: string; href: string; icon: LucideIcon; requiredPlan?
   { key: "sidebar_calendar",  href: "/dashboard/calendar",  icon: CalendarClock },
   { key: "sidebar_macro",     href: "/dashboard/macro",     icon: Globe2, requiredPlan: "premium" },
   { key: "sidebar_projection", href: "/dashboard/projection", icon: LineChart, requiredPlan: "premium" },
+  { key: "sidebar_backtest", href: "/dashboard/backtest", icon: History, requiredPlan: "premium" },
   { key: "sidebar_goals",     href: "/dashboard/goals",     icon: Flag, requiredPlan: "plus" },
   { key: "sidebar_review",    href: "/dashboard/review",    icon: CalendarCheck, requiredPlan: "plus" },
   { key: "sidebar_leaderboard", href: "/dashboard/leaderboard", icon: Trophy },
@@ -87,6 +91,20 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
 
   const lockedCount = loading ? 0 : countLockedFeatures(plan);
 
+  /**
+   * ⚠️ LE TIROIR MOBILE NE SE FERMAIT QU'AU CLIC SUR LE VOILE. Échap ne faisait
+   * rien : le seul moyen de le refermer était de viser, à la souris ou au
+   * doigt, une zone qui n'annonce rien.
+   *
+   * ⚠️ ON NE PASSE PAS PAR `useFenetreModale` : ce tiroir n'est pas une fenêtre
+   * de dialogue mais la navigation du site, et lui faire prendre le focus le
+   * ferait passer pour ce qu'il n'est pas.
+   */
+  useEffect(() => {
+    if (!open) return;
+    return brancherEchap(document, onClose);
+  }, [open, onClose]);
+
   return (
     <>
       {open && (
@@ -113,7 +131,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
         <nav className="flex-1 py-4 px-2.5 space-y-4 overflow-y-auto">
           {/* TRADING group */}
           <div>
-            <p className="text-[10px] font-semibold text-muted/60 tracking-[0.1em] uppercase px-3 mb-1.5">
+            <p className="text-[10px] font-semibold text-muted tracking-[0.1em] uppercase px-3 mb-1.5">
               {t("sidebar_group_trading")}
             </p>
             <div className="space-y-0.5">
@@ -135,7 +153,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
 
           {/* ANALYSE group */}
           <div>
-            <p className="text-[10px] font-semibold text-muted/60 tracking-[0.1em] uppercase px-3 mb-1.5">
+            <p className="text-[10px] font-semibold text-muted tracking-[0.1em] uppercase px-3 mb-1.5">
               {t("sidebar_group_analyse")}
             </p>
             <div className="space-y-0.5">
@@ -157,7 +175,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
         <div className="px-2.5 pb-3 space-y-0.5">
           <div className="h-px bg-border mx-1 mb-2" />
 
-          <p className="text-[10px] font-semibold text-muted/60 tracking-[0.1em] uppercase px-3 mb-1.5">
+          <p className="text-[10px] font-semibold text-muted tracking-[0.1em] uppercase px-3 mb-1.5">
             {t("sidebar_group_compte")}
           </p>
 

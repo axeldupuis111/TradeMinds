@@ -26,11 +26,6 @@ import { useEffect, useMemo, useState } from "react";
 const WINDOW_DAYS = 30;
 const MIN_TRADES = 10;
 
-function fmt(key: string, vars: Record<string, string | number>): string {
-  let out = key;
-  for (const [k, v] of Object.entries(vars)) out = out.replace(`{${k}}`, String(v));
-  return out;
-}
 
 
 
@@ -126,7 +121,7 @@ export default function CapitalLeaks({ currency = DEFAULT_CURRENCY }: { currency
   // Pas encore chargé ou pas assez de données pour un chiffre honnête.
   if (!result || result.tradesAnalyzed < MIN_TRADES) return null;
 
-  const basedOn = fmt(t(wholeHistory ? "leaks_based_on_all" : "leaks_based_on"), {
+  const basedOn = t(wholeHistory ? "leaks_based_on_all" : "leaks_based_on", {
     n: result.tradesAnalyzed,
   });
 
@@ -158,11 +153,11 @@ export default function CapitalLeaks({ currency = DEFAULT_CURRENCY }: { currency
     switch (leak.type) {
       case "revenge": return t("leaks_type_revenge");
       case "emotional": return t("leaks_type_emotional");
-      case "overtrading": return fmt(t("leaks_type_overtrading"), { max: leak.meta?.maxPerDay ?? "—" });
+      case "overtrading": return t("leaks_type_overtrading", { max: leak.meta?.maxPerDay ?? "—" });
       case "oversizing": return t("leaks_type_oversizing");
       case "bad_hour": {
         const h = leak.meta?.hour ?? 0;
-        return fmt(t("leaks_type_bad_hour"), { hour: h, hourEnd: (h + 1) % 24 });
+        return t("leaks_type_bad_hour", { hour: h, hourEnd: (h + 1) % 24 });
       }
     }
   }
@@ -189,7 +184,7 @@ export default function CapitalLeaks({ currency = DEFAULT_CURRENCY }: { currency
             </p>
           </div>
           <p className="text-xs text-foreground-muted mb-4">
-            {fmt(t("leaks_total_label"), { n: result.flaggedCount })}
+            {t("leaks_total_label", { n: result.flaggedCount })}
           </p>
         </>
       )}
@@ -205,7 +200,7 @@ export default function CapitalLeaks({ currency = DEFAULT_CURRENCY }: { currency
                 </span>
                 <span className="truncate">{leakLabel(leak)}</span>
                 <span className="text-[10px] text-foreground-muted shrink-0">
-                  {fmt(t("leaks_trades_count"), { n: leak.count })}
+                  {t("leaks_trades_count", { n: leak.count })}
                 </span>
               </span>
               <span className="text-xs font-bold text-loss tabular-nums shrink-0">−{fmtEur(leak.cost)}</span>
@@ -227,7 +222,7 @@ export default function CapitalLeaks({ currency = DEFAULT_CURRENCY }: { currency
           <div className="flex items-center justify-between gap-3 mb-2">
             <p className="text-xs font-semibold text-foreground">{t("leaks_curve_title")}</p>
             <span className="text-[10px] font-bold text-profit tabular-nums whitespace-nowrap">
-              {fmt(t("leaks_curve_gap"), { n: fmtEur(curves.finalGap) })}
+              {t("leaks_curve_gap", { n: fmtEur(curves.finalGap) })}
             </span>
           </div>
           <DisciplineCurveChart real={curves.real} disciplined={curves.disciplined} />

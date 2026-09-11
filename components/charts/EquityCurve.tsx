@@ -71,7 +71,13 @@ export default function EquityCurve({ data, initialBalance, currency = DEFAULT_C
     <KpiCardPremium layout="full" intensity="default" accentColor="cyan">
       <CardTitle className="mb-4">{t("equity_title")}</CardTitle>
       <div style={{ width: "100%", height: 300 }}>
-        <ResponsiveContainer>
+        {/* ⚠️ LA TAILLE SE DÉCLARE ICI, PAS SEULEMENT SUR LE PARENT. Sans ces
+            deux propriétés, Recharts mesure son conteneur au premier rendu,
+            trouve -1 × -1 pendant que la carte s'anime, et écrit un
+            avertissement dans la console à chaque visite du suivi de compte.
+            C'était le SEUL des onze graphiques du produit à ne pas les
+            déclarer. */}
+        <ResponsiveContainer width="100%" height={300}>
           <AreaChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
             <defs>
               {/* Dégradé d'aire — opacité 0.25 (légèrement intensifié) */}

@@ -28,6 +28,9 @@
  * qui est exactement l'inverse de ce que vend TradeDiscipline.
  */
 
+// ⚠️ La signature vient d'un seul endroit : recopiée sans ses valeurs, elle
+// interdit tout accord au composant qui la reçoit.
+import type { Traduire } from "@/lib/LanguageContext";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { Card, CardTitle } from "@/components/ui/Card";
 import StaggerContainer, { StaggerItem } from "@/components/animations/StaggerContainer";
@@ -67,6 +70,7 @@ import {
   YAxis,
 } from "recharts";
 import { useChartColors } from "@/lib/useChartColors";
+import { pourcent } from "@/lib/nombres";
 
 /** Horizons proposés. Quinze ans parce que c'est ce que l'utilisateur demandait. */
 const HORIZONS = [1, 2, 5, 10, 15] as const;
@@ -108,7 +112,7 @@ const COLONNES_STRATEGIE =
 
 export default function ProjectionPage() {
   const { t, lang } = useLanguage();
-  const { plan } = usePlan();
+  const { plan, loading: abonnementEnCours } = usePlan();
   const { selectedAccount } = useActiveAccount();
   const c = useChartColors();
   const supabase = createClient();
@@ -381,6 +385,24 @@ export default function ProjectionPage() {
 
   const eur = (v: number, signed = false) => money(v, devise, { signed });
 
+  /**
+   * ⚠️⚠️ ON ATTEND DE SAVOIR AVANT DE FERMER LA PORTE. `plan` vaut « free »
+   * tant que la requête n'a pas répondu : sans cette attente, un abonné
+   * Premium voit « Réservé au plan Premium · Passer au Premium » à chaque
+   * arrivée sur la page, puis le contenu qu'il paie. Dire à quelqu'un qu'il
+   * n'a pas ce qu'il paie, même une seconde, est pire que de le faire
+   * patienter.
+   */
+  if (abonnementEnCours) {
+    return (
+      <div className="max-w-2xl mx-auto py-16 px-4">
+        <Card className="text-center p-8">
+          <p className="text-sm text-foreground-muted">{t("plan_verification")}</p>
+        </Card>
+      </div>
+    );
+  }
+
   // ── Mur d'upgrade ─────────────────────────────────────────────────────────
   if (!estPremium) {
     return (
@@ -418,7 +440,7 @@ export default function ProjectionPage() {
             {strategieCourante ? nomStrategie(strategieCourante) : t("proj_scope_all")}
           </span>
           <span className="text-foreground-muted">
-            {t("proj_scope_trades").replace("{n}", String(perimetre.length))}
+            {t("proj_scope_trades", { n: String(perimetre.length) })}
           </span>
         </div>
       </header>
@@ -456,7 +478,7 @@ export default function ProjectionPage() {
                     : "bg-surface border-border text-foreground-muted hover:text-foreground",
                 )}
               >
-                {h === 1 ? t("proj_year_one") : t("proj_years").replace("{n}", String(h))}
+                {t("proj_years", { n: h })}
               </button>
             ))}
           </div>
@@ -495,7 +517,7 @@ export default function ProjectionPage() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <Kpi
                 titre={t("proj_ruin")}
-                valeur={`${Math.round(projection.risqueDeRuine * 100)} %`}
+                valeur={`${pourcent(Math.round(projection.risqueDeRuine * 100))}`}
                 aide={t(seuilVientDuCompte ? "proj_ruin_help_account" : "proj_ruin_help").replace(
                   "{pct}",
                   String(seuilRuinePct),
@@ -516,7 +538,7 @@ export default function ProjectionPage() {
               />
               <Kpi
                 titre={t("proj_winning_share")}
-                valeur={`${Math.round(projection.partGagnante * 100)} %`}
+                valeur={`${pourcent(Math.round(projection.partGagnante * 100))}`}
                 aide={t("proj_winning_share_help")}
                 ton={projection.partGagnante >= 0.5 ? "profit" : "loss"}
               />
@@ -629,7 +651,6 @@ export default function ProjectionPage() {
 
 // ── Sous-composants ─────────────────────────────────────────────────────────
 
-type Traduire = (k: string) => string;
 
 /**
  * Ce qui s'affiche quand on n'a pas de quoi conclure.
@@ -664,7 +685,7 @@ function EncartInsuffisant({
           ) : (
             <>
               <p className="text-sm text-foreground-muted">
-                {t("proj_insufficient_body").replace("{n}", String(projection.tradesManquants))}
+                {t("proj_insufficient_body", { n: String(projection.tradesManquants) })}
               </p>
               {mois !== null && (
                 <p className="text-sm text-foreground-muted">
@@ -864,7 +885,7 @@ function EncartAdherence({
                 adherence.taux >= 0.9 ? "text-profit" : adherence.taux >= 0.7 ? "text-gold" : "text-loss",
               )}
             >
-              {Math.round(adherence.taux * 100)} %
+              {pourcent(Math.round(adherence.taux * 100))}
             </div>
           </div>
         )}
@@ -1032,7 +1053,7 @@ function EncartPaliers({
                     p.risqueDeRuine > 0.2 ? "text-loss" : edgeNegatif ? "" : "text-profit",
                   )}
                 >
-                  {Math.round(p.risqueDeRuine * 100)} %
+                  {pourcent(Math.round(p.risqueDeRuine * 100))}
                 </td>
                 <td className={cn("py-2.5 text-right", p.esperance >= 0 ? "text-profit" : "text-loss")}>
                   {eur(p.esperance, true)}
@@ -1122,10 +1143,7 @@ function EncartSegments({
                 <div className="min-w-0">
                   <div className="text-sm font-medium">{nommer(s)}</div>
                   <p className="text-xs text-foreground-muted mt-0.5">
-                    {t("seg_cost")
-                      .replace("{n}", String(s.trades))
-                      .replace("{cout}", eur(s.netPnl, true))
-                      .replace("{esperance}", eur(s.esperance, true))}
+                    {t("seg_cost", { n: String(s.trades), cout: eur(s.netPnl, true), esperance: eur(s.esperance, true) })}
                   </p>
                 </div>
               </li>
@@ -1199,7 +1217,7 @@ function EncartAvisCoach({
           <Sparkles className="w-4 h-4" strokeWidth={1.75} />
           {enCours ? t("proj_ai_loading") : t("proj_ai_cta")}
         </button>
-        {erreur && <p className="text-xs text-foreground-muted mt-3">{erreur}</p>}
+        {erreur && <p role="alert" className="text-xs text-foreground-muted mt-3">{erreur}</p>}
       </Card>
     );
   }

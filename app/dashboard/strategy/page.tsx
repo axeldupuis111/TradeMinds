@@ -11,6 +11,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { verifierCoherence } from "@/lib/strategy-coherence";
 import { cn } from "@/lib/cn";
+import { pourcent } from "@/lib/nombres";
+import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 const SESSION_LABELS: Record<string, string> = {
   london: "London (08:00–12:00 UTC)",
@@ -103,8 +105,12 @@ export default function StrategyPage() {
   const [isDirty, setIsDirty] = useState(false);
   const [toast, setToast] = useState<Toast | null>(null);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(showUnsavedModal, () => setShowUnsavedModal(false));
   const [strategies, setStrategies] = useState<{ id: string; name: string }[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(showDeleteConfirm, () => setShowDeleteConfirm(false));
   const [deleteTradeCount, setDeleteTradeCount] = useState(0);
   const [perf, setPerf] = useState<{
     count: number;
@@ -302,6 +308,9 @@ export default function StrategyPage() {
       .eq("strategy_id", existingId);
     if (unlinkError) { showToast("error", t("strategy_delete_error")); return; }
 
+    // ⚠️ RÉSULTAT VOLONTAIREMENT IGNORÉ : ces repères pointent vers une fiche
+    // qu'on supprime juste après. S'ils survivaient, ils ne seraient rattachés
+    // à rien et n'apparaîtraient nulle part. C'est la ligne suivante qui décide.
     await supabase.from("strategy_tags").delete().eq("strategy_id", existingId);
     // ⚠️ C'est CETTE ligne qui décide si la stratégie a disparu. Sans lire son
     // `error`, un refus RLS affichait « supprimée » puis la fiche revenait au
@@ -575,15 +584,18 @@ export default function StrategyPage() {
 
   return (
     <div className="max-w-6xl mx-auto pb-44 lg:pb-24">
+      {/* ⚠️ Une lecture d’écran n’entend rien d’un message qui apparaît tout
+          seul : une erreur est annoncée tout de suite, une réussite attend une
+          pause dans la lecture. */}
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-[100] px-4 py-3 rounded-lg text-white text-sm font-medium shadow-lg ${toast.type === "success" ? "bg-green-800" : "bg-red-700"}`}>
+        <div role={toast.type === "error" ? "alert" : "status"} aria-live={toast.type === "error" ? "assertive" : "polite"} className={`fixed bottom-6 right-6 z-[100] px-4 py-3 rounded-lg text-white text-sm font-medium shadow-lg ${toast.type === "success" ? "bg-green-800" : "bg-red-700"}`}>
           {toast.text}
         </div>
       )}
 
       {showUnsavedModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-card border border-border rounded-xl p-6 max-w-sm w-full mx-4 space-y-4">
+          <div role="dialog" aria-modal="true" aria-label={t("strategy_title")} className="bg-card border border-border rounded-xl p-6 max-w-sm w-full mx-4 space-y-4">
             <p className="text-foreground text-sm">{t("strategy_unsaved_warning")}</p>
             <div className="flex gap-3 justify-end">
               <button onClick={() => setShowUnsavedModal(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-foreground hover:bg-surface transition-colors">
@@ -595,7 +607,7 @@ export default function StrategyPage() {
                   setIsDirty(false);
                   if (pendingNavRef.current) window.location.href = pendingNavRef.current;
                 }}
-                className="px-4 py-2 text-sm bg-loss text-white rounded-lg hover:opacity-90 transition-opacity"
+                className="px-4 py-2 text-sm bg-loss-fill text-white rounded-lg hover:opacity-90 transition-opacity"
               >
                 {t("strategy_leave")}
               </button>
@@ -622,7 +634,14 @@ export default function StrategyPage() {
                   : "bg-surface border border-border text-foreground hover:bg-card"
               }`}
             >
-              {s.name || t("strategy_select")}
+              {/* ⚠️⚠️ UNE STRATÉGIE SANS NOM S'AFFICHAIT « Sélectionner une
+                  stratégie », c'est-à-dire avec le libellé d'une INSTRUCTION.
+                  Vu à l'écran : trois stratégies en base, deux visibles, et la
+                  troisième déguisée en invite. Le trader clique sur ce qu'il
+                  prend pour une consigne et ouvre une de ses méthodes ; il ne
+                  peut ni la reconnaître, ni la renommer, ni la supprimer,
+                  puisqu'elle ne se présente pas comme une stratégie. */}
+              {s.name || t("stratcmp_unnamed")}
             </button>
           ))}
           {strategyLimitReached ? (
@@ -647,17 +666,17 @@ export default function StrategyPage() {
       {/* Delete confirmation modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-card border border-border rounded-xl p-6 max-w-sm w-full mx-4 space-y-4">
+          <div role="dialog" aria-modal="true" aria-label={t("strategy_delete_confirm")} className="bg-card border border-border rounded-xl p-6 max-w-sm w-full mx-4 space-y-4">
             <p className="text-foreground text-sm">
               {deleteTradeCount > 0
-                ? t("strategy_delete_confirm_trades").replace("{count}", String(deleteTradeCount))
+                ? t("strategy_delete_confirm_trades", { count: deleteTradeCount })
                 : t("strategy_delete_confirm")}
             </p>
             <div className="flex gap-3 justify-end">
               <button onClick={() => setShowDeleteConfirm(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-foreground hover:bg-surface transition-colors">
                 {t("strategy_stay")}
               </button>
-              <button onClick={handleDelete} className="px-4 py-2 text-sm bg-loss text-white rounded-lg hover:opacity-90 transition-opacity">
+              <button onClick={handleDelete} className="px-4 py-2 text-sm bg-loss-fill text-white rounded-lg hover:opacity-90 transition-opacity">
                 {t("strategy_delete")}
               </button>
             </div>
@@ -666,8 +685,8 @@ export default function StrategyPage() {
       )}
 
       <div className="mt-6">
-        <label className="block text-sm text-muted mb-1">{t("strategy_name")}</label>
-        <input
+        <label htmlFor="strategy-strategy-name" className="block text-sm text-muted mb-1">{t("strategy_name")}</label>
+        <input id="strategy-strategy-name"
           type="text"
           value={name}
           onChange={(e) => { setName(e.target.value); markDirty(); }}
@@ -677,8 +696,8 @@ export default function StrategyPage() {
       </div>
 
       <div className="mt-4">
-        <label className="block text-sm text-muted mb-1">{t("strategy_describe")}</label>
-        <textarea
+        <label htmlFor="strategy-strategy-describe" className="block text-sm text-muted mb-1">{t("strategy_describe")}</label>
+        <textarea id="strategy-strategy-describe"
           value={rawText}
           onChange={(e) => { setRawText(e.target.value); markDirty(); }}
           rows={10}
@@ -744,24 +763,24 @@ export default function StrategyPage() {
             <label className="block text-sm text-muted mb-3">{t("strategy_risk")}</label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <div>
-                <label className="block text-xs text-muted mb-1">{t("strategy_rr")}</label>
-                <input type="number" step="0.1" value={parsed.risk_reward ?? ""} onChange={(e) => updateParsedField("risk_reward", e.target.value ? parseFloat(e.target.value) : null)} placeholder={t("strategy_not_set")} className={inputClass} />
+                <label htmlFor="strategy-strategy-rr" className="block text-xs text-muted mb-1">{t("strategy_rr")}</label>
+                <input id="strategy-strategy-rr" type="number" step="0.1" value={parsed.risk_reward ?? ""} onChange={(e) => updateParsedField("risk_reward", e.target.value ? parseFloat(e.target.value) : null)} placeholder={t("strategy_not_set")} className={inputClass} />
               </div>
               <div>
-                <label className="block text-xs text-muted mb-1">{t("strategy_sl_max")}</label>
-                <input type="number" value={parsed.max_sl_pips ?? ""} onChange={(e) => updateParsedField("max_sl_pips", e.target.value ? parseFloat(e.target.value) : null)} placeholder={t("strategy_not_set")} className={inputClass} />
+                <label htmlFor="strategy-strategy-sl-max" className="block text-xs text-muted mb-1">{t("strategy_sl_max")}</label>
+                <input id="strategy-strategy-sl-max" type="number" value={parsed.max_sl_pips ?? ""} onChange={(e) => updateParsedField("max_sl_pips", e.target.value ? parseFloat(e.target.value) : null)} placeholder={t("strategy_not_set")} className={inputClass} />
               </div>
               <div>
-                <label className="block text-xs text-muted mb-1">{t("strategy_max_trades")}</label>
-                <input type="number" value={parsed.max_trades_per_day ?? ""} onChange={(e) => updateParsedField("max_trades_per_day", e.target.value ? parseInt(e.target.value) : null)} placeholder={t("strategy_not_set")} className={inputClass} />
+                <label htmlFor="strategy-strategy-max-trades" className="block text-xs text-muted mb-1">{t("strategy_max_trades")}</label>
+                <input id="strategy-strategy-max-trades" type="number" value={parsed.max_trades_per_day ?? ""} onChange={(e) => updateParsedField("max_trades_per_day", e.target.value ? parseInt(e.target.value) : null)} placeholder={t("strategy_not_set")} className={inputClass} />
               </div>
               <div>
-                <label className="block text-xs text-muted mb-1">{t("strategy_consec_losses")}</label>
-                <input type="number" value={parsed.max_consecutive_losses ?? ""} onChange={(e) => updateParsedField("max_consecutive_losses", e.target.value ? parseInt(e.target.value) : null)} placeholder={t("strategy_not_set")} className={inputClass} />
+                <label htmlFor="strategy-strategy-consec-losses" className="block text-xs text-muted mb-1">{t("strategy_consec_losses")}</label>
+                <input id="strategy-strategy-consec-losses" type="number" value={parsed.max_consecutive_losses ?? ""} onChange={(e) => updateParsedField("max_consecutive_losses", e.target.value ? parseInt(e.target.value) : null)} placeholder={t("strategy_not_set")} className={inputClass} />
               </div>
               <div>
-                <label className="block text-xs text-muted mb-1">{t("strategy_max_session")}</label>
-                <input
+                <label htmlFor="strategy-strategy-max-session" className="block text-xs text-muted mb-1">{t("strategy_max_session")}</label>
+                <input id="strategy-strategy-max-session"
                   type="number"
                   value={parsed.max_session_minutes ?? ""}
                   onChange={(e) => updateParsedField("max_session_minutes", e.target.value ? parseInt(e.target.value) : null)}
@@ -770,10 +789,10 @@ export default function StrategyPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-muted mb-1" title={t("strategy_risk_pct_tooltip")}>
+                <label htmlFor="strategy-strategy-risk-pct" className="block text-xs text-muted mb-1" title={t("strategy_risk_pct_tooltip")}>
                   {t("strategy_risk_pct")}
                 </label>
-                <input
+                <input id="strategy-strategy-risk-pct"
                   type="number"
                   step="0.1"
                   min="0"
@@ -820,11 +839,15 @@ export default function StrategyPage() {
 
           {/* Setup rules */}
           <div className="bg-card border border-border rounded-xl p-4">
-            <label className="block text-sm text-muted mb-2">{t("strategy_setup_rules")}</label>
+            {/* ⚠️ UN TITRE DE GROUPE, PAS UNE ÉTIQUETTE DE CHAMP : il coiffe
+                une LISTE de règles. Écrit en <label>, il ne nommait aucune des
+                zones de saisie, et chacune s'annonçait « zone de saisie » sans
+                rien de plus. Chaque ligne porte donc son propre nom, numéroté. */}
+            <p className="block text-sm text-muted mb-2">{t("strategy_setup_rules")}</p>
             <div className="space-y-2">
               {parsed.setup_rules.map((rule, i) => (
                 <div key={i} className="flex gap-2 items-start">
-                  <textarea value={rule} title={rule} onChange={(e) => updateRule(i, e.target.value)} rows={2} className={`${inputClass} flex-1 resize-y`} />
+                  <textarea aria-label={`${t("strategy_setup_rules")} ${i + 1}`} value={rule} title={rule} onChange={(e) => updateRule(i, e.target.value)} rows={2} className={`${inputClass} flex-1 resize-y`} />
                   <button onClick={() => removeRule(i)} aria-label={t("session_remove")} className="px-3 py-2 text-muted hover:text-loss transition-colors mt-1 shrink-0">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
@@ -833,7 +856,11 @@ export default function StrategyPage() {
                 </div>
               ))}
             </div>
-            <button onClick={addRule} className="mt-2 text-sm text-accent hover:text-blue-400 transition-colors">{t("strategy_add_rule")}</button>
+            {/* ⚠️ Le survol virait au bleu Tailwind (#60a5fa) : 2,31:1 en thème
+                clair, donc « Ajouter une règle » DISPARAISSAIT au moment où on
+                le vise. Et un bouton d'accent cyan n'a aucune raison de virer
+                au bleu. On garde la couleur, on souligne. */}
+            <button onClick={addRule} className="mt-2 text-sm text-accent hover:underline transition-colors">{t("strategy_add_rule")}</button>
           </div>
 
           {/* Generated strategy tags */}
@@ -861,7 +888,7 @@ export default function StrategyPage() {
                 })}
               </div>
             ) : (
-              <p className="text-xs text-muted/70 italic">{t("strategy_tags_empty")}</p>
+              <p className="text-xs text-muted italic">{t("strategy_tags_empty")}</p>
             )}
           </div>
         </div>
@@ -882,7 +909,7 @@ export default function StrategyPage() {
                   { label: t("strategy_rr"), value: parsed.risk_reward != null ? `${parsed.risk_reward}:1` : "—" },
                   { label: t("strategy_sl_max"), value: parsed.max_sl_pips != null ? `${parsed.max_sl_pips} pips` : "—" },
                   { label: t("strategy_max_trades"), value: parsed.max_trades_per_day != null ? String(parsed.max_trades_per_day) : "—" },
-                  { label: t("strategy_risk_pct"), value: parsed.risk_per_trade_pct != null ? `${parsed.risk_per_trade_pct} %` : "—" },
+                  { label: t("strategy_risk_pct"), value: parsed.risk_per_trade_pct != null ? `${pourcent(parsed.risk_per_trade_pct)}` : "—" },
                 ].map((row) => (
                   <div key={row.label} className="flex items-baseline justify-between gap-3">
                     <dt className="text-muted">{row.label}</dt>
@@ -905,7 +932,7 @@ export default function StrategyPage() {
                   </div>
                   <div className="rounded-lg bg-surface border border-border p-3">
                     <p className="text-[11px] text-muted uppercase tracking-wider">{t("trades_winrate")}</p>
-                    <p className="text-lg font-bold text-foreground tabular-nums mt-0.5">{perf.winrate.toFixed(0)}%</p>
+                    <p className="text-lg font-bold text-foreground tabular-nums mt-0.5">{pourcent(perf.winrate)}</p>
                   </div>
                 </div>
                 <div className="rounded-lg bg-surface border border-border p-3">
@@ -945,7 +972,7 @@ export default function StrategyPage() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-8 py-2.5 bg-profit text-white rounded-lg font-medium hover:bg-green-600 transition-colors disabled:opacity-50"
+            className="px-8 py-2.5 bg-profit text-on-accent rounded-lg font-medium hover:bg-profit/90 transition-colors disabled:opacity-50"
           >
             {saving ? t("strategy_saving") : t("strategy_save")}
           </button>

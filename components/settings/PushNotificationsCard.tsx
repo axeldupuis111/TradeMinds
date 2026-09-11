@@ -55,9 +55,20 @@ export default function PushNotificationsCard() {
 
   async function setPref(key: PrefKey, value: boolean) {
     setPrefs((p) => ({ ...p, [key]: value }));
+    setError(null);
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase.from("profiles").update({ [key]: value }).eq("id", user.id);
+    /**
+     * ⚠️⚠️ L'ÉTAT OPTIMISTE N'ÉTAIT JAMAIS REPRIS. Le client Supabase ne jette
+     * pas : un échec laissait l'interrupteur sur « activé » pendant que le
+     * profil restait à « désactivé », donc le trader croyait recevoir des
+     * alertes qui ne partiraient jamais.
+     */
+    const { error } = user
+      ? await supabase.from("profiles").update({ [key]: value }).eq("id", user.id)
+      : { error: new Error("no user") };
+    if (error) {
+      setPrefs((p) => ({ ...p, [key]: !value }));
+      setError(t("save_failed"));
     }
   }
 
@@ -103,22 +114,36 @@ export default function PushNotificationsCard() {
     }
   }
 
+  /**
+   * ⚠️ ACTIVER LISAIT `res.ok`, DÉSACTIVER NON. Quatorze lignes plus haut, la
+   * même règle était écrite et appliquée ; ici l'appel partait sans qu'on
+   * regarde la réponse, l'interrupteur passait sur « désactivé » et le serveur
+   * gardait l'abonnement : les notifications continuaient d'arriver sur un
+   * écran qui affirmait les avoir coupées.
+   *
+   * ⚠️ ET LE SERVEUR EST INTERROGÉ AVANT LE DÉSABONNEMENT LOCAL : une fois
+   * `unsubscribe()` passé, l'endpoint n'existe plus côté navigateur, et plus
+   * personne ne peut demander au serveur de l'oublier.
+   */
   async function disable() {
+    setError(null);
     setBusy(true);
     try {
       const reg = await navigator.serviceWorker.getRegistration();
       const sub = reg ? await reg.pushManager.getSubscription() : null;
       if (sub) {
-        await fetch("/api/push/subscribe", {
+        const res = await fetch("/api/push/subscribe", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ endpoint: sub.endpoint }),
         });
+        if (!res.ok) throw new Error("unsubscribe failed");
         await sub.unsubscribe();
       }
       setEnabled(false);
     } catch (err) {
       console.error("[Push] disable error:", err);
+      setError(t("push_error"));
     } finally {
       setBusy(false);
     }
@@ -149,7 +174,7 @@ export default function PushNotificationsCard() {
           </button>
         </div>
       )}
-      {error && <p className="text-loss text-sm mt-2">{error}</p>}
+      {error && <p role="alert" className="text-loss text-sm mt-2">{error}</p>}
 
       {/* Préférences par type de notification */}
       {supported && (

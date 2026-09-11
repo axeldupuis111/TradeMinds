@@ -23,6 +23,9 @@ import type { Lang } from "@/lib/translations";
 import { ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { pourcent } from "@/lib/nombres";
+import { enDate } from "@/lib/dates";
+import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 export interface TradeDetail {
   id: string;
@@ -120,6 +123,8 @@ function SavedIndicator({ etat, echec }: { etat: boolean | null; echec: string }
 }
 
 export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNext, hasPrev = false, hasNext = false, navIndex, navTotal }: Props) {
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(true, onClose);
   const { t, lang } = useLanguage();
   const l = lang as Lang;
   const { plan, demoMode, loading: planLoading } = usePlan();
@@ -518,7 +523,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
     <>
       <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} />
 
-      <div className="fixed top-0 right-0 z-50 h-full w-full sm:w-[440px] bg-card border-l border-border overflow-y-auto animate-in slide-in-from-right duration-200">
+      <div role="dialog" aria-modal="true" aria-label={t("detail_title")} className="fixed top-0 right-0 z-50 h-full w-full sm:w-[440px] bg-card border-l border-border overflow-y-auto animate-in slide-in-from-right duration-200">
         <div className="sticky top-0 bg-card border-b border-border px-5 py-4 flex items-center justify-between z-10">
           <h2 className="text-lg font-semibold text-foreground">{t("detail_title")}</h2>
           <button
@@ -572,7 +577,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2 text-sm">
-              <div><span className="text-muted">{t("trades_col_date")}:</span> <span className="text-foreground">{trade.open_time ? new Date(trade.open_time).toLocaleDateString() : "—"}</span></div>
+              <div><span className="text-muted">{t("trades_col_date")}:</span> <span className="text-foreground">{trade.open_time ? enDate(trade.open_time) : "—"}</span></div>
               <div><span className="text-muted">{t("trades_col_lot")}:</span> <span className="text-foreground">{trade.lot_size}</span></div>
               <div><span className="text-muted">{t("trades_col_entry")}:</span> <span className="text-foreground">{trade.entry_price}</span></div>
               <div><span className="text-muted">{t("trades_col_exit")}:</span> <span className="text-foreground">{trade.exit_price}</span></div>
@@ -590,11 +595,11 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
           {/* Account assignment */}
           {accounts.length > 0 && (
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">
+              <label htmlFor="tradedetailpanel-detail-account" className="block text-sm font-medium text-foreground mb-1.5">
                 {t("detail_account")}
                 <SavedIndicator etat={savedField?.field === "challenge_id" ? savedField.ok : null} echec={t("save_failed")} />
               </label>
-              <select
+              <select id="tradedetailpanel-detail-account"
                 value={challengeId || ""}
                 onChange={(e) => handleAccountChange(e.target.value)}
                 className={selectClass}
@@ -615,11 +620,11 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
             <p className="text-xs text-muted">{t("initial_values_help")}</p>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-muted mb-1">
+                <label htmlFor="tradedetailpanel-sl-initial-label" className="block text-xs text-muted mb-1">
                   {t("sl_initial_label")}
                   <SavedIndicator etat={savedField?.field === "sl_initial" ? savedField.ok : null} echec={t("save_failed")} />
                 </label>
-                <input
+                <input id="tradedetailpanel-sl-initial-label"
                   type="number"
                   step="0.00001"
                   value={slInitial}
@@ -629,11 +634,11 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
                 />
               </div>
               <div>
-                <label className="block text-xs text-muted mb-1">
+                <label htmlFor="tradedetailpanel-tp-initial-label" className="block text-xs text-muted mb-1">
                   {t("tp_initial_label")}
                   <SavedIndicator etat={savedField?.field === "tp_initial" ? savedField.ok : null} echec={t("save_failed")} />
                 </label>
-                <input
+                <input id="tradedetailpanel-tp-initial-label"
                   type="number"
                   step="0.00001"
                   value={tpInitial}
@@ -715,11 +720,11 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
           {/* Strategy selector */}
           {!isFree && userStrategies && userStrategies.length > 0 && (
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">
+              <label htmlFor="tradedetailpanel-stratcmp-strategy" className="block text-sm font-medium text-foreground mb-1.5">
                 {t("stratcmp_strategy")}
                 <SavedIndicator etat={savedField?.field === "strategy_id" ? savedField.ok : null} echec={t("save_failed")} />
               </label>
-              <select
+              <select id="tradedetailpanel-stratcmp-strategy"
                 value={selectedStrategyId || ""}
                 onChange={(e) => void handleStrategyChange(e.target.value)}
                 className={selectClass}
@@ -740,7 +745,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
                   {t("ict_checklist_title")} {checkedCount}/{checklistTotal}
                   <SavedIndicator etat={savedField?.field === "ict_checklist" ? savedField.ok : null} echec={t("save_failed")} />
                 </span>
-                <span className="text-xs text-muted">{Math.round((checkedCount / checklistTotal) * 100)}%</span>
+                <span className="text-xs text-muted">{pourcent(Math.round((checkedCount / checklistTotal) * 100))}</span>
               </div>
               <div className="h-1.5 bg-border rounded-full overflow-hidden mb-3">
                 <div
@@ -769,8 +774,8 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
 
           {/* Notes */}
           <div>
-            <label className="block text-sm text-muted mb-2">{t("detail_notes")}</label>
-            <textarea
+            <label htmlFor="tradedetailpanel-detail-notes" className="block text-sm text-muted mb-2">{t("detail_notes")}</label>
+            <textarea id="tradedetailpanel-detail-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
@@ -786,7 +791,7 @@ export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNe
               <div className="mb-2 relative group">
                 <Image src={screenshotUrl} alt="Trade screenshot" width={800} height={600} className="w-full rounded-lg border border-border" style={{ height: "auto" }} />
                 {annotations.length > 0 && <AnnotationOverlay shapes={annotations} />}
-                <div className="absolute top-2 right-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute top-2 right-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                   <button
                     onClick={() => setShowAnnotator(true)}
                     className="px-2 py-1 bg-black/70 rounded-full text-xs text-white hover:text-accent"

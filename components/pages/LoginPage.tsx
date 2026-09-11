@@ -9,6 +9,20 @@ import { createClient } from "@/lib/supabase/client";
 import { Activity } from "lucide-react";
 import RiskDisclosure from "@/components/legal/RiskDisclosure";
 import Link from "next/link";
+import { Fragment } from "react";
+
+/**
+ * Les trois liens de la phrase de consentement, nommés comme dans le gabarit.
+ *
+ * ⚠️ C'EST LA TRADUCTION QUI PLACE LES LIENS, pas le JSX : chaque langue écrit
+ * sa phrase avec {cgu}, {cgv} et {confidentialite} là où elle veut, ponctuation
+ * comprise.
+ */
+const LIENS_LEGAUX: Record<string, { href: string; cle: string }> = {
+  cgu: { href: "/legal/terms", cle: "terms_link" },
+  cgv: { href: "/legal/cgv", cle: "terms_cgv_link" },
+  confidentialite: { href: "/legal/privacy", cle: "privacy_link" },
+};
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -165,7 +179,7 @@ export default function LoginPage() {
         <div className="blob-drift-rev absolute -bottom-40 -right-24 w-[380px] h-[380px] rounded-full bg-[#a78bfa]/[0.06] blur-3xl" />
       </div>
 
-      <div className="relative w-full max-w-sm">
+      <main id="main-content" tabIndex={-1} className="relative w-full max-w-sm">
         <div className="flex justify-end mb-4">
           <LanguageSelector />
         </div>
@@ -276,12 +290,31 @@ export default function LoginPage() {
                   onChange={(e) => setTermsAccepted(e.target.checked)}
                   className="mt-0.5 accent-accent w-4 h-4 cursor-pointer shrink-0"
                 />
+{/**
+                  ⚠️⚠️ CETTE PHRASE ÉTAIT ASSEMBLÉE DANS L'ORDRE DU FRANÇAIS :
+                  « J'accepte les » + lien + « , » + lien + « et la » + lien.
+                  Les virgules et les espaces vivaient dans le JSX, donc aucune
+                  traduction ne pouvait changer l'ordre des mots. En allemand,
+                  « Ich stimme … ZU » veut sa particule à la FIN : la case de
+                  consentement affichait une phrase inachevée, sur l'écran de
+                  création de compte, juste à côté du bouton qui engage.
+
+                  ⚠️ La parité des dictionnaires ne pouvait pas le voir : les
+                  quatre langues avaient bien les cinq morceaux. C'est le
+                  GABARIT qui manquait.
+                */}
                 <span className="text-xs text-muted leading-relaxed">
-                  {t("terms_agree")}{" "}
-                  <Link href="/legal/terms" className="text-accent hover:underline">{t("terms_link")}</Link>,{" "}
-                  <Link href="/legal/cgv" className="text-accent hover:underline">{t("terms_cgv_link")}</Link>{" "}
-                  {t("terms_and")}{" "}
-                  <Link href="/legal/privacy" className="text-accent hover:underline">{t("privacy_link")}</Link>
+                  {t("terms_agree_full")
+                    .split(/(\{cgu\}|\{cgv\}|\{confidentialite\})/)
+                    .map((morceau, i) => {
+                      const lien = LIENS_LEGAUX[morceau.slice(1, -1)];
+                      if (!lien) return <Fragment key={i}>{morceau}</Fragment>;
+                      return (
+                        <Link key={i} href={lien.href} className="text-accent hover:underline">
+                          {t(lien.cle)}
+                        </Link>
+                      );
+                    })}
                 </span>
               </label>
             )}
@@ -315,7 +348,7 @@ export default function LoginPage() {
         <p className="text-center mt-6">
           <Link href={localizedHref("/", lang)} className="text-sm text-muted hover:text-foreground">{t("login_back")}</Link>
         </p>
-      </div>
+      </main>
     </div>
     <RiskDisclosure />
     </>

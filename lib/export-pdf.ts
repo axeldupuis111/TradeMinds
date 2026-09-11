@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import { currencySymbol } from "@/lib/account-currency";
-import { Pdf, C, money, signedMoney, pct, groupNum, setMoneySymbol, type RGB } from "@/lib/pdf/kit";
+import { Pdf, C, money, signedMoney, pct, groupNum, setMoneySymbol, type RGB, setPdfLocale } from "@/lib/pdf/kit";
 import { ensureBrandFont } from "@/lib/pdf/fonts";
 
 /**
@@ -144,6 +144,8 @@ const LABELS = {
 export async function buildAccountPdf(data: PdfAccountData): Promise<jsPDF> {
   const L = LABELS[data.lang ?? "en"];
   const locale = data.lang ?? "en";
+  // ⚠️ Avant le premier nombre écrit : les séparateurs suivent la langue du PDF.
+  setPdfLocale(locale);
   const doc = new jsPDF();
   const font = await ensureBrandFont(doc);
   const pdf = new Pdf(doc, { font });

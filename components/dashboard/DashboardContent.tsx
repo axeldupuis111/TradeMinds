@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtPrice } from "@/lib/prix-instrument";
 import EquityCurve from "@/components/charts/EquityCurve";
 import TradingCalendar from "@/components/charts/TradingCalendar";
 import { AiInsights } from "@/components/dashboard/AiInsights";
@@ -35,6 +36,7 @@ import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import StaggerContainer, { StaggerItem } from "@/components/animations/StaggerContainer";
+import { pourcent } from "@/lib/nombres";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -109,13 +111,6 @@ function netPnl(t: { pnl: number; commission: number | null; swap: number | null
   return t.pnl + (t.commission || 0) + (t.swap || 0);
 }
 
-/** Smart price formatter — adapts decimal places to the instrument magnitude */
-function fmtPrice(p: number): string {
-  if (p >= 10000) return p.toFixed(0);
-  if (p >= 100)   return p.toFixed(2);
-  if (p >= 1)     return p.toFixed(4);
-  return p.toFixed(5);
-}
 
 /** Button-style class strings for action Links in the header */
 const linkBtnBase =
@@ -311,7 +306,7 @@ export default function DashboardContent({
           <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 mb-3">
             {(["missing_1", "missing_2", "missing_3", "missing_4"] as const).map((k) => (
               <li key={k} className="flex items-start gap-2 text-sm text-foreground-muted">
-                <Lock className="w-3.5 h-3.5 text-gold/70 mt-0.5 shrink-0" strokeWidth={1.75} />
+                <Lock className="w-3.5 h-3.5 text-gold mt-0.5 shrink-0" strokeWidth={1.75} />
                 <span>{t(k)}</span>
               </li>
             ))}
@@ -367,7 +362,7 @@ export default function DashboardContent({
 
         <div className="flex flex-wrap items-center gap-2">
           {activeAccounts.length > 0 && (
-            <select
+            <select aria-label={t("a11y_account")}
               value={selectedAccountId || ""}
               onChange={(e) => setSelectedAccountId(e.target.value)}
               className="px-3 py-1.5 bg-surface border border-border rounded-lg text-foreground text-xs font-medium focus:outline-none focus:ring-1 focus:ring-accent"
@@ -403,7 +398,7 @@ export default function DashboardContent({
         <div className="mt-4 flex flex-wrap items-center gap-3 px-4 py-3 bg-surface/60 border border-border rounded-xl">
           <AlertTriangle className="w-4 h-4 text-warning shrink-0" strokeWidth={1.5} />
           <p className="text-sm text-foreground flex-1 min-w-[200px]">
-            {t("dash_account_no_trades").replace("{count}", String(allTrades.length))}
+            {t("dash_account_no_trades", { count: String(allTrades.length) })}
           </p>
           <button
             onClick={() => setSelectedAccountId("")}
@@ -654,7 +649,7 @@ export default function DashboardContent({
                 </div>
                 <p className="text-foreground text-sm">
                   {displayAccount.firm} · Drawdown{" "}
-                  <span className="font-bold tabular-nums">{ddPct.toFixed(1)}%</span>
+                  <span className="font-bold tabular-nums">{pourcent(ddPct, 1)}</span>
                   {" "}({money(ddUsed, displayCurrency)} / {money(ddMax, displayCurrency)})
                 </p>
               </div>

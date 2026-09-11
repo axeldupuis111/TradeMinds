@@ -1,5 +1,5 @@
 import jsPDF from "jspdf";
-import { Pdf, C, money, signedMoney, groupNum, type RGB } from "@/lib/pdf/kit";
+import { Pdf, C, money, signedMoney, groupNum, type RGB, setPdfLocale } from "@/lib/pdf/kit";
 import { ensureBrandFont } from "@/lib/pdf/fonts";
 
 /**
@@ -283,10 +283,15 @@ export async function buildAnalysisPdf(data: AnalysisPdfData): Promise<jsPDF> {
   const font = await ensureBrandFont(doc);
   const p = new Pdf(doc, { font });
 
-  const dateStr = new Date().toLocaleDateString(
-    { fr: "fr-FR", en: "en-GB", de: "de-DE", es: "es-ES" }[data.lang] ?? "fr-FR",
-    { day: "numeric", month: "long", year: "numeric" },
-  );
+  const locale = { fr: "fr-FR", en: "en-GB", de: "de-DE", es: "es-ES" }[data.lang] ?? "fr-FR";
+  // ⚠️ Avant le premier nombre écrit : les séparateurs du document suivent sa langue.
+  setPdfLocale(locale);
+
+  const dateStr = new Date().toLocaleDateString(locale, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 
   p.header({
     kicker: L.kicker,

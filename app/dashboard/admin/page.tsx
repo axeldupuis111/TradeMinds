@@ -3,6 +3,9 @@
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { Fragment, useEffect, useState } from "react";
+import { pourcent } from "@/lib/nombres";
+import { enDate, enDateEtHeure } from "@/lib/dates";
+import { langueCourante } from "@/lib/nombres";
 
 const ADMIN_EMAIL = "axel.dupuis111@gmail.com";
 
@@ -246,11 +249,21 @@ export default function AdminPage() {
   }
 
   function euros(cents: number): string {
-    return (cents / 100).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
+    return (cents / 100).toLocaleString(langueCourante(), { style: "currency", currency: "EUR" });
   }
 
   async function markHandled(id: string) {
-    await supabase.from("contact_messages").update({ status: "handled" }).eq("id", id);
+    // ⚠️ Le client Supabase ne jette pas : sans lire l'erreur, le message
+    // passait en « traité » à l'écran alors qu'il restait en attente en base,
+    // et il serait revenu au rechargement suivant.
+    const { error } = await supabase
+      .from("contact_messages")
+      .update({ status: "handled" })
+      .eq("id", id);
+    if (error) {
+      alert("Marquage impossible : " + error.message);
+      return;
+    }
     setContactMessages((prev) => prev.map((m) => m.id === id ? { ...m, status: "handled" } : m));
   }
 
@@ -382,12 +395,12 @@ export default function AdminPage() {
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="block text-sm text-muted mb-1">Slug (lien ?ref=)</label>
-                <input value={comSlug} onChange={(e) => setComSlug(e.target.value)} placeholder="infx" className={inputClass} />
+                <label htmlFor="admin-slug-lien-ref" className="block text-sm text-muted mb-1">Slug (lien ?ref=)</label>
+                <input id="admin-slug-lien-ref" value={comSlug} onChange={(e) => setComSlug(e.target.value)} placeholder="infx" className={inputClass} />
               </div>
               <div>
-                <label className="block text-sm text-muted mb-1">Nom affiché</label>
-                <input value={comName} onChange={(e) => setComName(e.target.value)} placeholder="INFX" className={inputClass} />
+                <label htmlFor="admin-nom-affich" className="block text-sm text-muted mb-1">Nom affiché</label>
+                <input id="admin-nom-affich" value={comName} onChange={(e) => setComName(e.target.value)} placeholder="INFX" className={inputClass} />
               </div>
             </div>
             <button
@@ -436,6 +449,7 @@ export default function AdminPage() {
                     </div>
                     <div className="mt-2 flex flex-col sm:flex-row gap-2">
                       <input
+                        aria-label="E-mail du compte partenaire"
                         value={comOwner[c.id] ?? ""}
                         onChange={(e) => setComOwner((p) => ({ ...p, [c.id]: e.target.value }))}
                         placeholder="e-mail du compte partenaire"
@@ -454,6 +468,7 @@ export default function AdminPage() {
                         rejoindraient jamais sans passer par ici. */}
                     <div className="mt-2 flex flex-col sm:flex-row gap-2">
                       <textarea
+                        aria-label="Rattacher des membres en masse"
                         value={comEmails[c.id] ?? ""}
                         rows={2}
                         onChange={(e) => setComEmails((p) => ({ ...p, [c.id]: e.target.value }))}
@@ -494,7 +509,7 @@ export default function AdminPage() {
                                       {m.isOwner && <span className="text-gold"> · animateur</span>}
                                     </p>
                                     <p className="text-[10px] text-muted">
-                                      {m.source} · {m.joinedAt ? new Date(m.joinedAt).toLocaleDateString("fr-FR") : ""}
+                                      {m.source} · {m.joinedAt ? enDate(m.joinedAt) : ""}
                                     </p>
                                   </div>
                                   {!m.isOwner && (
@@ -549,8 +564,8 @@ export default function AdminPage() {
       {tab === "plans" && (
         <div className="mt-6 bg-card border border-border rounded-xl p-6 space-y-4">
           <div>
-            <label className="block text-sm text-muted mb-1">{t("admin_email")}</label>
-            <input
+            <label htmlFor="admin-admin-email" className="block text-sm text-muted mb-1">{t("admin_email")}</label>
+            <input id="admin-admin-email"
               type="email"
               value={targetEmail}
               onChange={(e) => setTargetEmail(e.target.value)}
@@ -560,8 +575,8 @@ export default function AdminPage() {
           </div>
 
           <div>
-            <label className="block text-sm text-muted mb-1">{t("admin_plan")}</label>
-            <select
+            <label htmlFor="admin-admin-plan" className="block text-sm text-muted mb-1">{t("admin_plan")}</label>
+            <select id="admin-admin-plan"
               value={targetPlan}
               onChange={(e) => setTargetPlan(e.target.value as "free" | "plus")}
               className={inputClass}
@@ -668,7 +683,7 @@ export default function AdminPage() {
                             {l.source && <span className="block text-[10px]">{l.source}</span>}
                           </td>
                           <td className="py-2 pl-3 text-right tabular-nums text-muted">
-                            {l.tauxCache !== null ? `${Math.round(l.tauxCache * 100)} %` : "—"}
+                            {l.tauxCache !== null ? `${pourcent(Math.round(l.tauxCache * 100))}` : "—"}
                           </td>
                         </tr>
                       );
@@ -699,8 +714,8 @@ export default function AdminPage() {
           </div>
 
           <div>
-            <label className="block text-sm text-muted mb-1">Pseudo actuel</label>
-            <input
+            <label htmlFor="admin-pseudo-actuel" className="block text-sm text-muted mb-1">Pseudo actuel</label>
+            <input id="admin-pseudo-actuel"
               type="text"
               value={modUsername}
               onChange={(e) => setModUsername(e.target.value)}
@@ -710,8 +725,8 @@ export default function AdminPage() {
           </div>
 
           <div>
-            <label className="block text-sm text-muted mb-1">Nouveau pseudo (pour renommer)</label>
-            <input
+            <label htmlFor="admin-nouveau-pseudo-pour-reno" className="block text-sm text-muted mb-1">Nouveau pseudo (pour renommer)</label>
+            <input id="admin-nouveau-pseudo-pour-reno"
               type="text"
               value={modNewUsername}
               onChange={(e) => setModNewUsername(e.target.value)}
@@ -778,7 +793,7 @@ export default function AdminPage() {
                   <span className="text-sm text-muted flex-1">{step.label}</span>
                   <span className="text-sm font-bold text-foreground tabular-nums">{step.value}</span>
                   <span className="text-xs text-muted tabular-nums w-14 text-right">
-                    {step.base != null && step.base > 0 ? `${Math.round((step.value / step.base) * 100)} %` : "—"}
+                    {step.base != null && step.base > 0 ? `${pourcent(Math.round((step.value / step.base) * 100))}` : "—"}
                   </span>
                 </div>
               ))}
@@ -790,7 +805,7 @@ export default function AdminPage() {
                     .sort(([, a], [, b]) => b - a)
                     .map(([source, count]) => (
                       <div key={source} className="flex items-center gap-3">
-                        <span className="text-xs text-muted/80 flex-1">via {source}</span>
+                        <span className="text-xs text-muted flex-1">via {source}</span>
                         <span className="text-xs font-semibold text-foreground tabular-nums">{count}</span>
                         <span className="w-14" />
                       </div>
@@ -821,7 +836,7 @@ export default function AdminPage() {
                   .sort(([, a], [, b]) => b - a)
                   .map(([source, count]) => (
                     <div key={source} className="flex items-center gap-3 pl-4">
-                      <span className="text-xs text-muted/80 flex-1">
+                      <span className="text-xs text-muted flex-1">
                         {{
                           countdown: "Compte à rebours (quota hebdo)",
                           teaser_coach: "Carte teaser · coach",
@@ -873,7 +888,7 @@ export default function AdminPage() {
                                   part !== null && part > 25 ? "text-red-500" : "text-muted"
                                 }`}
                               >
-                                {part !== null ? `${part.toFixed(0)} %` : "—"}
+                                {part !== null ? `${pourcent(part)}` : "—"}
                               </span>
                             </div>
                           );
@@ -884,7 +899,7 @@ export default function AdminPage() {
                     <div className="space-y-1">
                       {Object.entries(funnel.aiCost.byRoute).map(([route, v]) => (
                         <div key={route} className="flex items-center gap-3">
-                          <span className="text-xs text-muted/80 flex-1">{route}</span>
+                          <span className="text-xs text-muted flex-1">{route}</span>
                           <span className="text-xs text-muted tabular-nums">{v.calls} appels</span>
                           <span className="text-xs font-semibold text-foreground tabular-nums w-20 text-right">
                             {v.eur.toFixed(2)} €
@@ -918,7 +933,7 @@ export default function AdminPage() {
           </div>
 
           {affLoading && <p className="text-sm text-muted">Chargement depuis Stripe…</p>}
-          {affError && <p className="text-sm text-loss">{affError}</p>}
+          {affError && <p role="alert" className="text-sm text-loss">{affError}</p>}
 
           {affData && !affLoading && !affError && (
             affData.codes.length === 0 ? (
@@ -947,7 +962,7 @@ export default function AdminPage() {
                           <td className="py-2 pr-3 text-right tabular-nums text-foreground">{c.subscriptions} ({c.activeSubscriptions})</td>
                           <td className="py-2 pr-3 text-right tabular-nums text-foreground">{euros(c.gross)}</td>
                           <td className="py-2 pr-3 text-right tabular-nums text-foreground">{euros(c.eligible)}</td>
-                          <td className="py-2 pr-3 text-right text-foreground whitespace-nowrap">{c.tier} · {Math.round(c.rate * 100)} %</td>
+                          <td className="py-2 pr-3 text-right text-foreground whitespace-nowrap">{c.tier} · {pourcent(Math.round(c.rate * 100))}</td>
                           <td className="py-2 text-right tabular-nums font-bold text-accent">{euros(c.commission)}</td>
                         </tr>
                       ))}
@@ -994,7 +1009,7 @@ export default function AdminPage() {
           </div>
 
           {netLoading && <p className="text-sm text-muted">Chargement…</p>}
-          {netError && <p className="text-sm text-loss">{netError}</p>}
+          {netError && <p role="alert" className="text-sm text-loss">{netError}</p>}
 
           {netData && !netLoading && !netError && (
             netData.partners.length === 0 ? (
@@ -1026,7 +1041,17 @@ export default function AdminPage() {
                             onClick={() => setNetOpen(netOpen === p.id ? null : p.id)}
                           >
                             <td className="py-2 pr-3 font-semibold text-foreground">
-                              {netOpen === p.id ? "▾" : "▸"} {p.name}
+                              {/* ⚠️ Le repli vivait sur la ligne entière, qui ne
+                                  reçoit pas le focus : au clavier, aucun
+                                  partenaire ne s'ouvrait. Le clic de la ligne
+                                  double maintenant ce bouton. */}
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setNetOpen(netOpen === p.id ? null : p.id); }}
+                                aria-expanded={netOpen === p.id}
+                                className="font-semibold text-foreground hover:text-accent transition-colors"
+                              >
+                                {netOpen === p.id ? "▾" : "▸"} {p.name}
+                              </button>
                               <span className="text-muted font-normal text-xs ml-2">
                                 {p.kind === "network" ? "réseau" : "influenceur"}
                               </span>
@@ -1035,7 +1060,7 @@ export default function AdminPage() {
                             <td className="py-2 pr-3 text-right tabular-nums text-foreground">{p.reps.length}</td>
                             <td className="py-2 pr-3 text-right tabular-nums text-foreground">{euros(p.gross)}</td>
                             <td className="py-2 pr-3 text-right tabular-nums text-foreground">{euros(p.eligible)}</td>
-                            <td className="py-2 pr-3 text-right text-foreground whitespace-nowrap">{p.tier} · {Math.round(p.rate * 100)} %</td>
+                            <td className="py-2 pr-3 text-right text-foreground whitespace-nowrap">{p.tier} · {pourcent(Math.round(p.rate * 100))}</td>
                             <td className="py-2 text-right tabular-nums font-bold text-accent">{euros(p.commission)}</td>
                           </tr>
                           {netOpen === p.id && p.reps.map((r) => (
@@ -1107,7 +1132,7 @@ export default function AdminPage() {
                     <span className="text-muted text-xs">{msg.email}</span>
                     {msg.status === "new" && <span className="px-1.5 py-0.5 bg-accent/10 text-accent text-xs rounded-full font-medium">{t("admin_msg_new")}</span>}
                   </div>
-                  <span className="text-muted text-xs">{new Date(msg.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                  <span className="text-muted text-xs">{enDateEtHeure(msg.created_at)}</span>
                 </div>
                 {msg.subject && <p className="text-foreground text-sm font-medium mb-1">{msg.subject}</p>}
                 <p className="text-muted text-sm whitespace-pre-wrap">{msg.message}</p>

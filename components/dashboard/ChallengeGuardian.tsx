@@ -13,6 +13,7 @@
 
 import { accountCurrency, money } from "@/lib/account-currency";
 import { resolveAccountBalance } from "@/lib/challenge-balance";
+import { lireTousLesTradesDuCompte, netDuTrade } from "@/lib/trades-du-compte";
 import { computeChallengeRules } from "@/lib/challenge-rules";
 import { useAlerts, type Alert } from "@/lib/AlertsContext";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -115,13 +116,15 @@ export default function ChallengeGuardian() {
     // Evaluate each challenge in parallel.
     const perChallenge = await Promise.all(
       challenges.map(async (challenge) => {
-        const [{ data: allTrades }, { data: todayTrades }] = await Promise.all([
-          supabase
-            .from("trades")
-            .select("pnl, commission, swap")
-            .eq("user_id", user.id)
-            .eq("challenge_id", challenge.id)
-            .order("open_time", { ascending: true }),
+        // ⚠️ LECTURE PAGINÉE : non bornée, elle s'arrêtait à mille trades sans
+        // le dire, et c'est ce total qui décide de l'alerte d'arrêt.
+        const [allTrades, { data: todayTrades }] = await Promise.all([
+          lireTousLesTradesDuCompte<{ pnl: number | null; commission: number | null; swap: number | null; open_time: string | null }>(
+            supabase,
+            user.id,
+            challenge.id,
+            "pnl, commission, swap, open_time",
+          ),
           supabase
             .from("trades")
             .select("pnl, commission, swap, status")
@@ -134,16 +137,16 @@ export default function ChallengeGuardian() {
         // s'y afficherait pendant que le drawdown serait jugé, ici, sur la
         // reconstitution — deux chiffres différents, dont celui qui déclenche
         // l'alerte d'arrêt.
-        const totalPnl = (allTrades || []).reduce(
-          (s, tr) => s + (tr.pnl || 0) + (tr.commission || 0) + (tr.swap || 0),
-          0,
-        );
+        // ⚠️ Lecture incomplète : on ne juge pas un compte sur des trades
+        // manquants, on se tait. Un garde qui se trompe est pire qu'absent.
+        if (allTrades === null) return null;
+        const totalPnl = allTrades.reduce((s, tr) => s + netDuTrade(tr), 0);
         const resolved = resolveAccountBalance(challenge, totalPnl);
         const balance = resolved.balance;
 
         let running = challenge.account_size + resolved.curveOffset;
-        const equityCurveBalances = (allTrades || []).map((tr) => {
-          running += (tr.pnl || 0) + (tr.commission || 0) + (tr.swap || 0);
+        const equityCurveBalances = allTrades.map((tr) => {
+          running += netDuTrade(tr);
           return running;
         });
 

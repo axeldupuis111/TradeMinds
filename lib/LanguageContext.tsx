@@ -12,16 +12,40 @@ import {
 import { usePathname, useRouter } from "next/navigation";
 import { type Lang, type Dict, enDict, loadDict } from "./translations";
 import { createClient } from "./supabase/client";
+import { remplir } from "./remplir";
 
 const LOCALES: ReadonlyArray<Lang> = ["fr", "en", "de", "es"];
 const DEFAULT_LANG: Lang = "en";
 const STORAGE_KEY = "TradeDiscipline_lang";
 const COOKIE_NAME = "NEXT_LOCALE";
 
+/**
+ * LA SIGNATURE DE `t`, ÉCRITE UNE FOIS.
+ *
+ * ⚠️⚠️ QUARANTE-DEUX COMPOSANTS LA RECOPIAIENT EN `(key: string) => string`,
+ * c'est-à-dire SANS les valeurs. La recopie compile (une fonction à deux
+ * paramètres se passe là où on en attend un), mais elle AMPUTE : le composant
+ * qui la reçoit ne peut plus accorder une phrase, et il est renvoyé au
+ * `.replace()` à la main, donc au pluriel entre parenthèses. Le jour où j'ai
+ * accordé trois cents phrases, ces quarante-deux copies ont fait échouer la
+ * compilation, chacune à un endroit différent.
+ */
+export type Traduire = (key: string, valeurs?: Record<string, string | number>) => string;
+
 interface LanguageContextValue {
   lang: Lang;
   setLang: (lang: Lang) => void;
-  t: (key: string) => string;
+  /**
+   * ⚠️⚠️ ELLE NE PRENAIT AUCUNE VALEUR, et c'est ce qui a produit dix-huit
+   * « 1 atteint(s) » dans le produit. Sans mécanisme d'accord, chaque appelant
+   * remplaçait ses trous à la main avec `.replace()`, et le seul moyen d'écrire
+   * une phrase juste au singulier ET au pluriel était de mettre les deux
+   * formes. L'onglet backtest avait déjà résolu ça de son côté : la fonction
+   * est simplement remontée d'un cran.
+   *
+   * La forme des accords : « {n} {n|objectif atteint|objectifs atteints} ».
+   */
+  t: Traduire;
 }
 
 const LanguageContext = createContext<LanguageContextValue>({
@@ -140,9 +164,34 @@ export function LanguageProvider({
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-        await supabase.from("profiles").update({ language: lang }).eq("id", user.id);
+        /**
+         * ⚠️ RÉSULTAT VOLONTAIREMENT IGNORÉ, ET LA RAISON TIENT ICI : la langue
+         * affichée ne dépend pas de cette écriture. Elle vient de l'URL et du
+         * stockage local, déjà posés avant d'arriver ici ; la base ne sert qu'à
+         * la retrouver sur un autre appareil.
+         *
+         * ⚠️ ET LE `try` NE PROTÈGE DE RIEN : le client Supabase ne jette pas.
+         * Il ne couvre que `createClient` et `getUser`.
+         *
+         * ⚠️⚠️ LA CONDITION EST DANS LA REQUÊTE, PAS DANS LE COMPOSANT. Le
+         * `ref` au-dessus n'évite les doublons que dans une même page : il
+         * repart à zéro à chaque rechargement complet, et la ligne était donc
+         * réécrite à l'identique à chaque arrivée sur le site. Relevé sur le
+         * réseau : trois PATCH sur `profiles` pour une seule ouverture de
+         * « Mes trades ». `neq` laisse la base décider, sans lecture
+         * supplémentaire.
+         *
+         * ⚠️ ET LE CAS NUL EST EXPLICITE : en SQL, `NULL <> 'fr'` ne vaut pas
+         * VRAI mais NULL, donc un profil sans langue ne serait JAMAIS renseigné
+         * par un `neq` seul.
+         */
+        await supabase
+          .from("profiles")
+          .update({ language: lang })
+          .eq("id", user.id)
+          .or(`language.is.null,language.neq.${lang}`);
       } catch {
-        // Pas de session ou erreur réseau : on ignore silencieusement.
+        // Client impossible à créer ou session illisible : rien à faire ici.
       }
     })();
   }, [mounted, lang]);
@@ -195,7 +244,11 @@ export function LanguageProvider({
       lang: mounted ? lang : initialLang,
       setLang,
       // Active dict first, English fallback (always loaded), then the key.
-      t: (key: string) => dict[key] || enDict[key] || key,
+      // ⚠️ LA LANGUE PART AVEC LA PHRASE : c'est elle qui décide de l'accord.
+      // Sans elle, `remplir` appliquait la règle anglaise à tout le monde, et
+      // le français écrivait « 0 jours » là où il dit « 0 jour ».
+      t: (key: string, valeurs?: Record<string, string | number>) =>
+        remplir(dict[key] || enDict[key] || key, valeurs, mounted ? lang : initialLang),
     }),
     [mounted, lang, initialLang, setLang, dict]
   );

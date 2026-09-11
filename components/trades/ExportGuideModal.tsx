@@ -2,6 +2,7 @@
 
 import { useLanguage } from "@/lib/LanguageContext";
 import { useState } from "react";
+import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 type Platform = "mt5" | "mt4" | "ctrader" | "binance" | "bybit" | "tradingview" | "other";
 
@@ -28,6 +29,8 @@ interface Props {
 }
 
 export default function ExportGuideModal({ onClose }: Props) {
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(true, onClose);
   const { t } = useLanguage();
   const [platform, setPlatform] = useState<Platform>("mt5");
 
@@ -36,7 +39,7 @@ export default function ExportGuideModal({ onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
-      <div
+      <div aria-label={t("guide_title")}
         role="dialog"
         aria-modal="true"
         className="bg-card border border-border rounded-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto"

@@ -20,22 +20,22 @@ const dataset: AnalyticsTrade[] = [
 
 describe("generateInsights", () => {
   it("returns nothing below 10 trades", () => {
-    expect(generateInsights(dataset.slice(0, 9), tKey)).toEqual([]);
+    expect(generateInsights(dataset.slice(0, 9), tKey, "EUR")).toEqual([]);
   });
 
   it("detects a strong hour and pair concentration on the crafted data", () => {
-    const ids = generateInsights(dataset, tKey).map((i) => i.id);
+    const ids = generateInsights(dataset, tKey, "EUR").map((i) => i.id);
     expect(ids).toContain("hour-strong");
     expect(ids).toContain("pair-concentration");
   });
 
   it("fills the {hour} placeholder with the actual strong hour (17)", () => {
-    const hourStrong = generateInsights(dataset, tFr).find((i) => i.id === "hour-strong")!;
+    const hourStrong = generateInsights(dataset, tFr, "EUR").find((i) => i.id === "hour-strong")!;
     expect(hourStrong.description).toContain("[[17h]]");
   });
 
   it("leaves no unreplaced {placeholder} in any title or description (interpolation complete)", () => {
-    for (const insight of generateInsights(dataset, tFr)) {
+    for (const insight of generateInsights(dataset, tFr, "EUR")) {
       expect(insight.title, `title of ${insight.id}`).not.toMatch(/[{}]/);
       expect(insight.description, `desc of ${insight.id}`).not.toMatch(/\{[a-z]+\}/);
       expect(insight.title.length).toBeGreaterThan(0);
@@ -43,7 +43,7 @@ describe("generateInsights", () => {
   });
 
   it("flags overexposure as negative when a pair holds ≥70% of P&L", () => {
-    const pair = generateInsights(dataset, tKey).find((i) => i.id === "pair-concentration")!;
+    const pair = generateInsights(dataset, tKey, "EUR").find((i) => i.id === "pair-concentration")!;
     expect(pair.severity).toBe("negative");
   });
 });

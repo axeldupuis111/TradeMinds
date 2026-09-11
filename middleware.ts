@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { locales, defaultLocale } from "./i18n/config";
+import { recopierLesCookies } from "./lib/recopier-les-cookies";
 
 const COOKIE_NAME = "NEXT_LOCALE";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 an
@@ -58,6 +59,32 @@ function isPublicPath(pathname: string): boolean {
     p === "/TradeDiscipline_MT5.mq5" ||
     p === "/TradeDiscipline_MT4.mq4"
   );
+}
+
+/**
+ * Une adresse PRIVÉE : elle exige une session, et son absence renvoie vers la
+ * connexion.
+ *
+ * ⚠️⚠️ ELLE NE SE DÉDUIT PAS DE « PAS DANS LA LISTE BLANCHE ». C'est ce que
+ * faisait ce fichier, et un visiteur qui suivait un lien cassé vers
+ * `/page-qui-nexiste-pas` se retrouvait sur un FORMULAIRE DE CONNEXION au lieu
+ * d'une page 404 : l'adresse n'était dans aucune liste, donc réputée privée.
+ * Pour un moteur de recherche, une adresse morte répondait une redirection au
+ * lieu d'un 404 ; pour un lecteur venu d'un réseau social, le site demandait
+ * un mot de passe pour une page qui n'existe pas.
+ *
+ * ⚠️ LES PAGES PRIVÉES VIVENT TOUTES SOUS `/dashboard`, et c'est une
+ * convention que ce fichier tient déjà ailleurs (détection de langue,
+ * en-têtes). Un test la vérifie contre l'arborescence.
+ *
+ * ⚠️ ET LES `/api` GARDENT LA LISTE BLANCHE : chacune vérifie aussi sa
+ * session, mais on ne retire pas une ceinture sans avoir lu les bretelles,
+ * une par une. Ce n'est pas le sujet d'une correction de page 404.
+ */
+function estPrivee(pathname: string): boolean {
+  if (pathname.startsWith("/api")) return true;
+  const p = stripLocalePrefix(pathname);
+  return p === "/dashboard" || p.startsWith("/dashboard/");
 }
 
 export async function middleware(request: NextRequest) {
@@ -178,8 +205,10 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Page non publique sans session → redirect vers /login (en respectant la locale)
-  if (!user && !isPublicPath(pathname)) {
+  // Page PRIVÉE sans session → redirect vers /login (en respectant la locale).
+  // Une adresse inconnue, elle, continue son chemin et reçoit le 404 de Next :
+  // voir `estPrivee`.
+  if (!user && !isPublicPath(pathname) && estPrivee(pathname)) {
     const url = request.nextUrl.clone();
     // Préserve la locale courante dans la redirection
     const localeMatch = pathname.match(/^\/(fr|de|es)(\/|$)/);
@@ -245,10 +274,14 @@ export async function middleware(request: NextRequest) {
         path: "/",
         sameSite: "lax",
       });
-      // Recopie aussi les cookies Supabase si modifiés
-      supabaseResponse.cookies.getAll().forEach((c) => {
-        response.cookies.set(c.name, c.value);
-      });
+      /**
+       * ⚠️⚠️ AVEC LEURS OPTIONS. Cette recopie se faisait en
+       * `set(c.name, c.value)`, c'est-à-dire en jetant `httpOnly`, `secure`,
+       * `sameSite`, `path` et `maxAge` : un cookie de session Supabase reposé
+       * sans `httpOnly` devient lisible par n'importe quel script de la page.
+       * La perte était invisible, la session continuant de marcher.
+       */
+      recopierLesCookies(supabaseResponse.cookies.getAll(), response.cookies);
       return response;
     }
   }

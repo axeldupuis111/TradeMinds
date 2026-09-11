@@ -11,6 +11,9 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 
 import { PLAN_FEATURES as features, FREE_BENEFITS, PLUS_BENEFITS, PREMIUM_BENEFITS, planQuotaSegments } from "@/lib/plan-features";
+import { enDateLongue } from "@/lib/dates";
+import { langueCourante, nombre } from "@/lib/nombres";
+import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 const faqKeys = [
   { q: "faq_upgrade_q1", a: "faq_upgrade_a1" },
@@ -25,11 +28,19 @@ export default function UpgradePage() {
   const hasStripeSubscription = subscriptionStatus !== null;
   const [annual, setAnnual] = useState(false);
   const [showDowngradeModal, setShowDowngradeModal] = useState(false);
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(showDowngradeModal, () => setShowDowngradeModal(false));
   const [downgrading, setDowngrading] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [checkoutLoadingPlan, setCheckoutLoadingPlan] = useState<"plus" | "premium" | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [isPortalLoading, setIsPortalLoading] = useState(false);
+  /**
+   * ⚠️ « GÉRER MON ABONNEMENT » NE DISAIT RIEN QUAND IL ÉCHOUAIT. L'erreur
+   * partait dans la console, le bouton reprenait son libellé, et l'abonné
+   * restait devant un lien qui, de son point de vue, ne faisait rien.
+   */
+  const [portalError, setPortalError] = useState<string | null>(null);
 
   // Changement de plan in-app (Plus <-> Premium)
   interface ChangePreview {
@@ -210,10 +221,12 @@ export default function UpgradePage() {
   // Wrapper UI : gère le loading + les erreurs autour de l'ouverture du portail.
   async function handleManagePortal() {
     setIsPortalLoading(true);
+    setPortalError(null);
     try {
       await openBillingPortal();
     } catch (err) {
       console.error("[Manage subscription] Error:", err);
+      setPortalError(t("upgrade_checkout_error"));
       setIsPortalLoading(false);
     }
   }
@@ -226,6 +239,7 @@ export default function UpgradePage() {
     } catch (err) {
       console.error("[Downgrade] Error:", err);
       setShowDowngradeModal(false);
+      setPortalError(t("upgrade_checkout_error"));
       setDowngrading(false);
     }
   }
@@ -276,15 +290,18 @@ export default function UpgradePage() {
 
   function formatMoney(cents: number, currency: string): string {
     try {
-      return new Intl.NumberFormat("fr-FR", { style: "currency", currency: currency.toUpperCase() }).format(cents / 100);
+      // ⚠️ La langue du LECTEUR, pas « fr-FR » en dur : un abonné anglophone
+      // voyait « 14,99 € » là où sa langue écrit « €14.99 ».
+      return new Intl.NumberFormat(langueCourante(), { style: "currency", currency: currency.toUpperCase() }).format(cents / 100);
     } catch {
-      return `${(cents / 100).toFixed(2)} €`;
+      return `${nombre(cents / 100, 2)} €`;
     }
   }
 
   function formatDate(epochSeconds: number | null): string {
     if (!epochSeconds) return "—";
-    return new Date(epochSeconds * 1000).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+    // ⚠️ La langue du LECTEUR : c'est la date à laquelle il sera débité.
+    return enDateLongue(epochSeconds * 1000);
   }
 
   function renderValue(val: boolean | string): React.ReactNode {
@@ -297,7 +314,7 @@ export default function UpgradePage() {
     }
     if (val === false) {
       return (
-        <svg role="img" aria-label={t("upgrade_not_included")} className="w-5 h-5 text-muted/40 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg role="img" aria-label={t("upgrade_not_included")} className="w-5 h-5 text-muted mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
         </svg>
       );
@@ -325,7 +342,7 @@ export default function UpgradePage() {
       {/* Downgrade confirmation modal */}
       {showDowngradeModal && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-card border border-border rounded-xl p-6 max-w-md w-full shadow-xl">
+          <div role="dialog" aria-modal="true" aria-label={t("downgrade_modal_title")} className="bg-card border border-border rounded-xl p-6 max-w-md w-full shadow-xl">
             <h3 className="text-lg font-bold text-foreground mb-2">{t("downgrade_modal_title")}</h3>
             <p className="text-muted text-sm mb-5">{t("downgrade_modal_body")}</p>
             <div className="flex gap-3">
@@ -338,7 +355,7 @@ export default function UpgradePage() {
               <button
                 onClick={handleDowngrade}
                 disabled={downgrading}
-                className="flex-1 py-2.5 rounded-lg bg-loss text-white text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
+                className="flex-1 py-2.5 rounded-lg bg-loss-fill text-white text-sm font-medium hover:bg-loss-fill/90 transition-colors disabled:opacity-50"
               >
                 {downgrading ? "..." : t("downgrade_confirm")}
               </button>
@@ -357,8 +374,15 @@ export default function UpgradePage() {
         <span className={`text-sm font-medium transition-colors ${!annual ? "text-foreground" : "text-muted"}`}>
           {t("plan_monthly")}
         </span>
+        {/* ⚠️ UN INTERRUPTEUR QUI N'EN DISAIT RIEN : ni son rôle, ni son
+            état, ni son nom. Une lecture d'écran annonçait « bouton », sans
+            moyen de savoir qu'on choisit entre mensuel et annuel, ni ce qui est
+            sélectionné. Les deux mots l'encadrent, sans rien qui les relie. */}
         <button
           onClick={() => setAnnual(!annual)}
+          role="switch"
+          aria-checked={annual}
+          aria-label={t("plan_annual")}
           className="relative w-14 h-7 rounded-full bg-surface border border-border transition-colors"
         >
           <div
@@ -513,7 +537,7 @@ export default function UpgradePage() {
                     {checkoutLoadingPlan === "plus" ? t("upgrade_redirecting") : t("pricing_choose_plus")}
                   </button>
                   {checkoutError && (
-                    <p className="text-red-500 text-sm mt-2 text-center">{checkoutError}</p>
+                    <p role="alert" className="text-red-500 text-sm mt-2 text-center">{checkoutError}</p>
                   )}
                 </>
               ) : (
@@ -625,7 +649,15 @@ export default function UpgradePage() {
       {/* Feature comparison table */}
       <div className="mt-10 max-w-4xl mx-auto">
         <h2 className="text-base font-semibold text-foreground mb-4">{t("plan_compare_title")}</h2>
-        <div className="rounded-xl border border-border overflow-hidden">
+        {/*
+          ⚠️ `overflow-x-auto` ET NON `overflow-hidden` : mesuré sur le site
+          déployé, ce tableau ne descend pas sous 389 px de large, pour 341 px
+          de place sur un téléphone de 375 px. Avec `hidden`, les 48 px qui
+          dépassent étaient COUPÉS sans aucun moyen de les atteindre, et ils
+          tombaient sur la colonne Premium : la page où l'on choisit ce qu'on
+          paie amputait la formule la plus chère.
+        */}
+        <div className="rounded-xl border border-border overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-surface">
@@ -688,7 +720,7 @@ export default function UpgradePage() {
 
       {/* Manage subscription — only visible for real Stripe subscribers */}
       {hasStripeSubscription && (
-        <div className="mt-6 max-w-2xl mx-auto pb-2 flex justify-center">
+        <div className="mt-6 max-w-2xl mx-auto pb-2 flex flex-col items-center gap-2">
           <button
             onClick={handleManagePortal}
             disabled={isPortalLoading}
@@ -696,6 +728,7 @@ export default function UpgradePage() {
           >
             {isPortalLoading ? t("upgrade_manage_subscription_loading") : t("upgrade_manage_subscription")}
           </button>
+          {portalError && <p role="alert" className="text-sm text-loss">{portalError}</p>}
         </div>
       )}
 
@@ -718,7 +751,7 @@ export default function UpgradePage() {
       {/* Modale de changement de plan (Plus <-> Premium) */}
       {changeTarget && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-card border border-border rounded-xl p-6 max-w-md w-full shadow-xl">
+          <div role="dialog" aria-modal="true" aria-label={t("planchange_to_premium")} className="bg-card border border-border rounded-xl p-6 max-w-md w-full shadow-xl">
             <h3 className="text-lg font-bold text-foreground mb-3">
               {changeTarget === "premium" ? t("planchange_to_premium") : t("planchange_to_plus")}
             </h3>
@@ -745,7 +778,7 @@ export default function UpgradePage() {
             ) : null}
 
             {changeError && (
-              <p className="text-red-500 text-sm mb-4">{changeError}</p>
+              <p role="alert" className="text-red-500 text-sm mb-4">{changeError}</p>
             )}
 
             <div className="flex gap-3">

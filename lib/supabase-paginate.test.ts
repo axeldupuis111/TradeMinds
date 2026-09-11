@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { fetchAllRows, chunk, ROWS_PER_REQUEST, ID_CHUNK } from "./supabase-paginate";
+import { fetchAllRows, fetchAllByIds, chunk, ROWS_PER_REQUEST, ID_CHUNK } from "./supabase-paginate";
 
 /**
  * Faux PostgREST : rend au plus ROWS_PER_REQUEST lignes par appel, exactement
@@ -94,5 +94,72 @@ describe("chunk", () => {
     // 100 UUID de 37 caractères, séparateurs compris, tiennent largement dans
     // les ~8 Ko qu'un serveur accepte en ligne de requête.
     expect(ID_CHUNK * 37).toBeLessThan(8000);
+  });
+});
+
+/**
+ * LIRE PAR IDENTIFIANTS : DEUX PLAFONDS, PAS UN.
+ *
+ * ⚠️⚠️ `chunk` NE SERVAIT QU'AUX ÉCRITURES, son propre commentaire le disait.
+ * Les suppressions en lot de trades découpaient leur liste d'identifiants ;
+ * aucune LECTURE ne le faisait, alors qu'un `?id=in.(…)` voyage dans la même
+ * URL avec la même limite de taille. Une communauté de trois cents membres
+ * suffit à la dépasser : trois cents UUID font onze mille caractères.
+ *
+ * ⚠️ ET LES DEUX PANNES SONT DE NATURES OPPOSÉES : trop d'identifiants fait
+ * échouer la requête D'UN BLOC, trop de lignes la fait réussir TRONQUÉE. En
+ * corriger une seule déplace la panne.
+ */
+describe("fetchAllByIds", () => {
+  /** Faux client : rend `total` lignes par identifiant, par pages de 1000. */
+  function faux(parId: number) {
+    const appels: { lot: string[]; from: number; to: number }[] = [];
+    const build = (lot: string[], from: number, to: number) => {
+      appels.push({ lot, from, to });
+      const total = lot.length * parId;
+      const data = Array.from({ length: Math.max(0, Math.min(to - from + 1, total - from)) }, (_, i) => ({
+        n: from + i,
+      }));
+      return Promise.resolve({ data, error: null });
+    };
+    return { appels, build };
+  }
+
+  it("découpe la liste d'identifiants sous la limite d'URL", async () => {
+    const ids = Array.from({ length: 250 }, (_, i) => `id-${i}`);
+    const { appels, build } = faux(1);
+    await fetchAllByIds<{ n: number }>(ids, build);
+    const tailles = appels.map((a) => a.lot.length);
+    expect(Math.max(...tailles)).toBeLessThanOrEqual(ID_CHUNK);
+    // Chaque identifiant est demandé une fois et une seule.
+    expect(appels.flatMap((a) => a.lot)).toEqual(ids);
+  });
+
+  it("pagine AUSSI chaque tranche quand elle dépasse mille lignes", async () => {
+    const ids = ["a", "b"];
+    const { appels, build } = faux(900); // 1800 lignes pour une seule tranche
+    const rows = await fetchAllByIds<{ n: number }>(ids, build);
+    expect(rows).toHaveLength(1800);
+    expect(appels.length, "une seule requête : la troncature à mille est passée").toBeGreaterThan(1);
+  });
+
+  it("rend null si une tranche échoue, jamais une liste partielle", async () => {
+    const ids = Array.from({ length: 150 }, (_, i) => `id-${i}`);
+    let appel = 0;
+    const rows = await fetchAllByIds<{ n: number }>(ids, () => {
+      appel++;
+      return Promise.resolve(appel === 1 ? { data: [], error: null } : { data: null, error: new Error("boum") });
+    });
+    expect(rows).toBeNull();
+  });
+
+  it("ne demande rien pour une liste vide", async () => {
+    let appels = 0;
+    const rows = await fetchAllByIds<{ n: number }>([], () => {
+      appels++;
+      return Promise.resolve({ data: [], error: null });
+    });
+    expect(rows).toEqual([]);
+    expect(appels).toBe(0);
   });
 });

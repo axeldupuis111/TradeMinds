@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { chunk, ID_CHUNK } from "@/lib/supabase-paginate";
 
 /**
  * Chiffres d'UN collaborateur, lus par son jeton.
@@ -55,15 +56,21 @@ export async function GET(
       .select("user_id")
       .eq("rep_id", rep.id);
 
+    /**
+     * ⚠️ LE COMPTAGE SE FAIT PAR PAQUETS. Les identifiants voyagent dans l'URL
+     * (37 caractères par UUID) : un collaborateur qui a rattaché plus de deux
+     * cents inscrits faisait échouer sa propre page de statistiques, d'un bloc.
+     * Le réseau de partenaires est justement conçu pour ces volumes-là.
+     */
     let subscribers = 0;
     const ids = (attributed ?? []).map((a) => a.user_id as string);
-    if (ids.length > 0) {
+    for (const lot of chunk(ids, ID_CHUNK)) {
       const { count } = await supabase
         .from("profiles")
         .select("id", { count: "exact", head: true })
-        .in("id", ids)
+        .in("id", lot)
         .in("plan", ["plus", "premium"]);
-      subscribers = count ?? 0;
+      subscribers += count ?? 0;
     }
 
     return NextResponse.json({

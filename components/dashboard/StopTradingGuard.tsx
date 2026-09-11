@@ -213,18 +213,25 @@ export default function StopTradingGuard() {
       strategy,
       { capital: selectedAccount?.account_size ?? null },
     )) {
-      let message = t(a.code);
+      /**
+       * ⚠️ ON PASSE LES VALEURS À `t`, ON NE REMPLACE PLUS À LA MAIN. Depuis que
+       * les phrases portent leurs accords (« {n} {n|trade a dépassé|trades ont
+       * dépassé} »), un `replaceAll("{n}", …)` ne voit plus le trou : il
+       * laisserait l'accord non résolu à l'écran.
+       *
+       * ⚠️ SEULES CES DEUX CLÉS SONT DE L'ARGENT. « limite » compte des trades
+       * ou des pertes ; la formater en monnaie donnait « ta fiche s'arrête à
+       * 5$ » au lieu de « à 5 trades ». Le module nomme désormais « plafond »
+       * ce qui est un montant, précisément pour que ce test soit sûr.
+       */
+      const valeurs: Record<string, string | number> = {};
       for (const [cle, valeur] of Object.entries(a.valeurs)) {
-        // ⚠️ SEULES CES DEUX CLÉS SONT DE L'ARGENT. « limite » compte des trades
-        // ou des pertes ; la formater en monnaie donnait « ta fiche s'arrête à
-        // 5$ » au lieu de « à 5 trades ». Le module nomme désormais « plafond »
-        // ce qui est un montant, précisément pour que ce test soit sûr.
-        const rendu =
+        valeurs[cle] =
           cle === "plafond" || cle === "pire"
             ? money(valeur, selectedAccount ? accountCurrency(selectedAccount) : DEFAULT_CURRENCY)
-            : String(valeur);
-        message = message.replaceAll(`{${cle}}`, rendu);
+            : valeur;
       }
+      const message = t(a.code, valeurs);
       /**
        * ⚠️ LA SÉRIE DE PERTES PASSE EN CRITIQUE, ET ELLE SEULE.
        *

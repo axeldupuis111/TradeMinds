@@ -9,6 +9,7 @@ import { setDemoWatermark } from "@/lib/pdf/kit";
 import { createClient } from "@/lib/supabase/client";
 import { FileDown } from "lucide-react";
 import { useState } from "react";
+import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 interface ExportPdfButtonProps {
   /** Trades déjà filtrés par la page (période + compte + filtres avancés). */
@@ -26,6 +27,8 @@ export default function ExportPdfButton({ trades, periodLabel, accountLabel }: E
   const supabase = createClient();
   const [generating, setGenerating] = useState(false);
   const [showLocked, setShowLocked] = useState(false);
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(showLocked, () => setShowLocked(false));
 
   // Le mode démo ouvre l'export : c'est tout l'intérêt de la visite guidée, et
   // le PDF produit ne contient que des données fictives, filigranées. Aucune
@@ -103,7 +106,7 @@ export default function ExportPdfButton({ trades, periodLabel, accountLabel }: E
 
       {showLocked && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-6" onClick={() => setShowLocked(false)}>
-          <div className="max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+          <div role="dialog" aria-modal="true" aria-label={t("pdf_export")} className="max-w-md w-full" onClick={(e) => e.stopPropagation()}>
             <UpgradeBanner message={t("pdf_locked")} />
             <button
               onClick={() => setShowLocked(false)}

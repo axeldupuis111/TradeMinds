@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { ScoreRing } from "@/components/dashboard/ScoreRing";
 import { useLanguage } from "@/lib/LanguageContext";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
+import { nombre, pourcent } from "@/lib/nombres";
 
 export interface AnalyticsKpiCardsProps {
   totalPnl: number;
@@ -74,7 +75,7 @@ export function AnalyticsKpiCards({
           trend={totalPnl >= 0 ? "up" : "down"}
           sublabel={
             pnlDiff !== null && pnlDiff !== 0
-              ? `${pnlDiff > 0 ? "↑" : "↓"} ${Math.abs(pnlDiff).toFixed(2)}`
+              ? `${pnlDiff > 0 ? "↑" : "↓"} ${nombre(Math.abs(pnlDiff), 2)}`
               : undefined
           }
         />
@@ -84,11 +85,11 @@ export function AnalyticsKpiCards({
           layout="kpi"
           accentColor="cyan"
           label={t("analytics_kpi_winrate")}
-          value={`${winrate.toFixed(1)}%`}
+          value={pourcent(winrate, 1)}
           trend={winrate >= 50 ? "up" : "down"}
           sublabel={
             wrDiff !== null && wrDiff !== 0
-              ? `${wrDiff > 0 ? "↑" : "↓"} ${Math.abs(wrDiff).toFixed(1)}pp`
+              ? `${wrDiff > 0 ? "↑" : "↓"} ${nombre(Math.abs(wrDiff), 1)}pp`
               : `${wins}/${tradesCount}`
           }
         />
@@ -167,7 +168,7 @@ export function AnalyticsKpiCards({
           value={
             profitFactor !== null
               ? isFinite(profitFactor)
-                ? profitFactor.toFixed(2)
+                ? nombre(profitFactor, 2)
                 : "∞"
               : "—"
           }
@@ -198,12 +199,20 @@ export function AnalyticsKpiCards({
                   }
                 >
                   {expectancy >= 0 ? "+" : ""}
-                  {money(Math.round(expectancy), currency)}/trade
+                  {/*
+                    ⚠️⚠️ AU CENTIME, PARCE QUE LA LIGNE D'EN DESSOUS MULTIPLIE
+                    CELLE-CI PAR CENT. Arrondie à l'unité, la carte affichait
+                    « Espérance +93€/trade » puis « Proj. 100 trades +9 304€ » :
+                    le lecteur qui fait la multiplication trouve 9 300 et croit
+                    à une erreur, alors que c'est l'espérance qui était
+                    tronquée (93,04). Les deux lignes se recollent maintenant.
+                  */}
+                  {money(expectancy, currency, { digits: 2 })}/trade
                 </span>
               </div>
               {projection !== null && (
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-foreground-muted/70">{t("analytics_proj100")}</span>
+                  <span className="text-foreground-subtle">{t("analytics_proj100")}</span>
                   <span className="text-foreground-muted tabular-nums">
                     {projection >= 0 ? "+" : ""}
                     {money(projection, currency)}

@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtPrice } from "@/lib/prix-instrument";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { DEFAULT_CURRENCY, commonCurrency, money, tradeCurrency } from "@/lib/account-currency";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -61,13 +62,6 @@ function netPnl(t: { pnl: number; commission: number | null; swap: number | null
   return t.pnl + (t.commission || 0) + (t.swap || 0);
 }
 
-/** Adapts decimal precision to instrument magnitude */
-function fmtPrice(p: number): string {
-  if (p >= 10000) return p.toFixed(0);
-  if (p >= 100)   return p.toFixed(2);
-  if (p >= 1)     return p.toFixed(4);
-  return p.toFixed(5);
-}
 
 /** ISO timestamp → HH:MM string, or null if invalid/missing */
 function fmtTime(iso: string | null | undefined): string | null {
@@ -208,6 +202,7 @@ export default function TradingCalendar({
         <div className="flex items-center gap-3">
           <button
             onClick={prevMonth}
+            aria-label={t("review_prev_month")}
             className="p-1.5 rounded-lg hover:bg-border text-muted hover:text-foreground transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -219,6 +214,7 @@ export default function TradingCalendar({
           </h2>
           <button
             onClick={nextMonth}
+            aria-label={t("review_next_month")}
             className="p-1.5 rounded-lg hover:bg-border text-muted hover:text-foreground transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -326,7 +322,7 @@ export default function TradingCalendar({
               <span
                 className={`text-xs sm:text-sm font-medium ${
                   !isCurrentMonth
-                    ? "text-muted/40"
+                    ? "text-muted"
                     : hasTrades
                       ? isPositive ? "text-profit" : "text-loss"
                       : isToday
@@ -370,7 +366,7 @@ export default function TradingCalendar({
               )}
               {dayClean && (
                 <ShieldCheck
-                  className="absolute bottom-1 right-1 w-3 h-3 sm:w-3.5 sm:h-3.5 text-profit/70"
+                  className="absolute bottom-1 right-1 w-3 h-3 sm:w-3.5 sm:h-3.5 text-profit"
                   strokeWidth={2}
                   aria-hidden="true"
                 />
@@ -419,7 +415,7 @@ export default function TradingCalendar({
                 {!isPinnedPanel && (
                   <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                     <span className="text-[10px] text-muted">
-                      {displayDayData.count} trade{displayDayData.count > 1 ? "s" : ""}
+                      {t("common_trades_count", { n: displayDayData.count })}
                     </span>
                     {topPairs.map((pair) => (
                       <span
@@ -434,7 +430,7 @@ export default function TradingCalendar({
                 {/* Pinned mode: count on second line */}
                 {isPinnedPanel && (
                   <span className="text-[10px] text-muted block mt-0.5">
-                    {displayDayData.count} trade{displayDayData.count > 1 ? "s" : ""}
+                    {t("common_trades_count", { n: displayDayData.count })}
                   </span>
                 )}
               </div>
@@ -451,7 +447,7 @@ export default function TradingCalendar({
                   <span>{panelBreaches.map(breachLabel).join(" · ")}</span>
                 </div>
               ) : (
-                <div className="flex items-center gap-1.5 px-3 pb-2 text-[11px] text-profit/80">
+                <div className="flex items-center gap-1.5 px-3 pb-2 text-[11px] text-profit">
                   <ShieldCheck className="w-3.5 h-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />
                   <span>{t("cal_disciplined_day")}</span>
                 </div>

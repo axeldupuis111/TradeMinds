@@ -8,7 +8,7 @@
  * isn't there yet. Filters persist across reloads (localStorage).
  */
 
-import { useLanguage } from "@/lib/LanguageContext";
+import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { usePersistentState } from "@/lib/hooks/usePersistentState";
 import {
@@ -23,6 +23,7 @@ import { displayEventTitle } from "@/lib/economic-event-labels";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { CalendarClock, CalendarDays, ChevronDown, Filter, Sparkles, X } from "lucide-react";
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 type EventRow = EconomicEvent & { id: string };
 
@@ -52,7 +53,7 @@ function impactStyle(impact: Impact): { row: string; badge: string } {
   }
 }
 
-function relativeLabel(ev: EconomicEvent, t: (k: string) => string): string {
+function relativeLabel(ev: EconomicEvent, t: Traduire): string {
   const mins = minutesUntil(ev.event_time);
   if (mins < -5) return t("news_passed");
   if (Math.abs(mins) <= 5) return t("news_now");
@@ -171,7 +172,7 @@ function EventDetail({ ev, onClose }: { ev: EventRow; onClose: () => void }) {
             <h3 className="text-base font-bold text-foreground leading-snug">{clearTitle}</h3>
             {/* Nom original du flux — pour recouper avec d'autres calendriers */}
             {clearTitle !== ev.title && (
-              <p className="text-[11px] text-foreground-muted/70 mt-0.5">{t("cal_feed_name")} : {ev.title}</p>
+              <p className="text-[11px] text-foreground-subtle mt-0.5">{t("cal_feed_name")} : {ev.title}</p>
             )}
             <p className="text-xs text-foreground-muted mt-0.5">{time} · {relativeLabel(ev, t)}</p>
           </div>
@@ -273,6 +274,8 @@ export default function CalendarPage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<EventRow | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(showFilters, () => setShowFilters(false));
 
   // Date range (investing.com-style) — pick a day/range, including the past.
   const [dateMode, setDateMode] = useState<DateMode>("upcoming");
@@ -417,9 +420,9 @@ export default function CalendarPage() {
         </div>
         {dateMode === "custom" && (
           <div className="flex items-center gap-1.5">
-            <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className={dateInputCls} />
+            <input aria-label={t("a11y_date_from")} type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className={dateInputCls} />
             <span className="text-foreground-muted text-xs">→</span>
-            <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className={dateInputCls} />
+            <input aria-label={t("a11y_date_to")} type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className={dateInputCls} />
           </div>
         )}
       </div>

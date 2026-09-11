@@ -206,3 +206,35 @@ describe("sumByCurrency", () => {
     expect(sumByCurrency([], map)).toEqual([]);
   });
 });
+
+/**
+ * LA FORME DU NOMBRE SUIT LA LANGUE, PAS LE PAYS DE L'AUTEUR.
+ *
+ * ⚠️⚠️ « fr-FR » ÉTAIT ÉCRIT EN DUR, POUR TOUT LE MONDE. Un lecteur anglophone
+ * voyait « 14 607,50 € » : virgule décimale et espace fine comme séparateur de
+ * milliers, là où sa langue écrit « 14,607.50 ». Même défaut que les dates de
+ * l'onglet backtest, à l'échelle de tout le produit, et invisible tant qu'on
+ * développe en français.
+ *
+ * ⚠️ ET SURTOUT PAS PAR UNE VARIABLE DE MODULE : cette fonction sert aussi aux
+ * e-mails et aux PDF, c'est-à-dire au serveur, où un état partagé mêlerait les
+ * langues de deux abonnés servis en même temps.
+ */
+describe("money() et la langue", () => {
+  it("écrit le nombre à l'anglaise quand on le lui demande", () => {
+    expect(money(14607.5, "EUR", { digits: 2, locale: "en" })).toBe("14,607.50€");
+  });
+
+  it("et à la française par défaut, hors navigateur", () => {
+    // ⚠️ `document` n'existe pas ici : c'est le chemin serveur, celui des
+    // e-mails et des PDF. Le repli doit rester explicite et stable.
+    expect(typeof document).toBe("undefined");
+    expect(money(14607.5, "EUR", { digits: 2 })).toBe(money(14607.5, "EUR", { digits: 2, locale: "fr-FR" }));
+  });
+
+  it("les deux formes diffèrent vraiment, sinon ce test ne prouve rien", () => {
+    expect(money(14607.5, "EUR", { digits: 2, locale: "en" })).not.toBe(
+      money(14607.5, "EUR", { digits: 2, locale: "fr-FR" }),
+    );
+  });
+});

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useLanguage } from "@/lib/LanguageContext";
 import SyncGuide from "./SyncGuide";
 import BrokerOAuthBox from "./BrokerOAuthBox";
+import { enDateEtHeure } from "@/lib/dates";
 
 interface Connection {
   id: string;
@@ -66,6 +67,29 @@ export default function TradovateConnect() {
     load();
   }, []);
 
+  /**
+   * LE MESSAGE À AFFICHER POUR UNE RÉPONSE REFUSÉE.
+   *
+   * ⚠️⚠️ CET ÉCRAN MONTRAIT LA RÉPONSE BRUTE DE L'API, ET L'API RÉPOND EN
+   * FRANÇAIS : « Commission invalide. », « Erreur serveur », lus tels quels par
+   * un utilisateur anglophone, espagnol ou allemand. Pire, le délai entre deux
+   * synchros renvoyait le code interne `sync_cooldown`, affiché mot pour mot
+   * sur la ligne de la connexion.
+   *
+   * ⚠️ ET LA RÈGLE EXISTAIT DÉJÀ À TROIS CLICS D'ICI : « Mes trades » traduit ce
+   * même délai depuis toujours, avec ce même `retryInSeconds`.
+   *
+   * `code` = ce que le produit a écrit, donc traduisible. `error` = le message
+   * du broker, qu'on garde brut parce qu'il est la seule piste de diagnostic.
+   */
+  function messageDErreur(data: { code?: string; error?: string; retryInSeconds?: number }): string {
+    if (data.code === "sync_cooldown") {
+      return t("trades_sync_wait").replace("{n}", String(data.retryInSeconds ?? 0));
+    }
+    if (data.code) return t(data.code);
+    return data.error || t("settings_save_error");
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
@@ -83,7 +107,7 @@ export default function TradovateConnect() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || t("settings_save_error"));
+        setError(messageDErreur(data));
         return;
       }
       setShowForm(false);
@@ -119,7 +143,7 @@ export default function TradovateConnect() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setSyncError((prev) => ({ ...prev, [id]: data.error || t("settings_save_error") }));
+        setSyncError((prev) => ({ ...prev, [id]: messageDErreur(data) }));
       }
       await load();
     } catch {
@@ -129,15 +153,29 @@ export default function TradovateConnect() {
     }
   }
 
+  /**
+   * ⚠️ METTRE EN PAUSE ET SUPPRIMER SE TAISAIENT, alors que `runSync` et
+   * `saveCommission`, dans ce même fichier, lisaient déjà `res.ok` et
+   * affichaient le refus sur la ligne. La règle était écrite deux fois, appliquée
+   * à la moitié des gestes : un refus repeignait la liste à l'identique, et la
+   * connexion qu'on croyait en pause continuait d'importer des trades.
+   */
   async function action(id: string, body: { action: "pause" | "resume" }) {
     setBusyId(id);
     try {
-      await fetch(`/api/broker/connections/${id}`, {
+      const res = await fetch(`/api/broker/connections/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setSyncError((prev) => ({ ...prev, [id]: messageDErreur(data) }));
+        return;
+      }
       await load();
+    } catch {
+      setSyncError((prev) => ({ ...prev, [id]: t("settings_save_error") }));
     } finally {
       setBusyId(null);
     }
@@ -155,7 +193,7 @@ export default function TradovateConnect() {
         const data = await res.json().catch(() => ({}));
         // Un taux qu'on croit enregistré alors qu'il ne l'est pas fausserait
         // durablement le P&L sans que rien ne le signale.
-        setSyncError((prev) => ({ ...prev, [id]: data.error || t("settings_save_error") }));
+        setSyncError((prev) => ({ ...prev, [id]: messageDErreur(data) }));
         return;
       }
       await load();
@@ -167,8 +205,15 @@ export default function TradovateConnect() {
   async function remove(id: string) {
     setBusyId(id);
     try {
-      await fetch(`/api/broker/connections/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/broker/connections/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setSyncError((prev) => ({ ...prev, [id]: messageDErreur(data) }));
+        return;
+      }
       await load();
+    } catch {
+      setSyncError((prev) => ({ ...prev, [id]: t("settings_save_error") }));
     } finally {
       setBusyId(null);
     }
@@ -213,7 +258,7 @@ export default function TradovateConnect() {
                       {c.last_synced_at && c.status === "active" && (
                         <span className="text-muted">
                           {" · "}
-                          {new Date(c.last_synced_at).toLocaleString()}
+                          {enDateEtHeure(c.last_synced_at)}
                         </span>
                       )}
                       {c.status === "error" && c.last_error && (
@@ -274,14 +319,14 @@ export default function TradovateConnect() {
           {showForm ? (
             <form onSubmit={submit} className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <input
+                <input aria-label={t("sync_tradovate_label")}
                   type="text"
                   placeholder={t("sync_tradovate_label")}
                   value={form.label}
                   onChange={(e) => setForm({ ...form, label: e.target.value })}
                   className="px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-accent"
                 />
-                <select
+                <select aria-label={t("a11y_environment")}
                   value={form.environment}
                   onChange={(e) =>
                     setForm({ ...form, environment: e.target.value as "demo" | "live" })
@@ -291,7 +336,7 @@ export default function TradovateConnect() {
                   <option value="live">{t("sync_tradovate_env_live")}</option>
                   <option value="demo">{t("sync_tradovate_env_demo")}</option>
                 </select>
-                <input
+                <input aria-label={t("sync_tradovate_username")}
                   type="text"
                   placeholder={t("sync_tradovate_username")}
                   value={form.username}
@@ -299,7 +344,7 @@ export default function TradovateConnect() {
                   autoComplete="off"
                   className="px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-accent"
                 />
-                <input
+                <input aria-label={t("sync_tradovate_password")}
                   type="password"
                   placeholder={t("sync_tradovate_password")}
                   value={form.password}
@@ -307,7 +352,7 @@ export default function TradovateConnect() {
                   autoComplete="new-password"
                   className="px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-accent"
                 />
-                <input
+                <input aria-label={t("sync_tradovate_cid")}
                   type="text"
                   placeholder={t("sync_tradovate_cid")}
                   value={form.cid}
@@ -315,7 +360,7 @@ export default function TradovateConnect() {
                   autoComplete="off"
                   className="px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-accent"
                 />
-                <input
+                <input aria-label={t("sync_tradovate_sec")}
                   type="password"
                   placeholder={t("sync_tradovate_sec")}
                   value={form.sec}
@@ -323,7 +368,7 @@ export default function TradovateConnect() {
                   autoComplete="new-password"
                   className="px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:border-accent"
                 />
-                <input
+                <input aria-label={t("sync_tradovate_commission")}
                   type="number"
                   min="0"
                   max="100"
@@ -337,7 +382,7 @@ export default function TradovateConnect() {
 
               <p className="text-xs text-foreground-muted">{t("sync_tradovate_commission_hint")}</p>
 
-              {error && <p className="text-sm text-loss">{error}</p>}
+              {error && <p role="alert" className="text-sm text-loss">{error}</p>}
 
               <div className="flex gap-2">
                 <button

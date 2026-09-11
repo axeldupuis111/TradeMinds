@@ -11,6 +11,7 @@ import { track } from "@/lib/track";
 import { createClient } from "@/lib/supabase/client";
 import type { Lang } from "@/lib/translations";
 import { useEffect, useMemo, useState } from "react";
+import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 interface Props {
   pairs: string[];
@@ -24,8 +25,8 @@ const inputClass =
   "w-full px-3 py-2 bg-surface border border-border rounded-lg text-foreground placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent";
 
 const EMOTION_SELECTED_COLORS: Record<string, string> = {
-  positive: "bg-profit border-profit text-white",
-  negative: "bg-loss border-loss text-white",
+  positive: "bg-profit border-profit text-on-accent",
+  negative: "bg-loss-fill border-loss-fill text-white",
   warning: "bg-orange-500 border-orange-500 text-white",
   neutral: "bg-muted border-muted text-white",
 };
@@ -45,6 +46,8 @@ interface Account {
 
 
 export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, initialChecklist }: Props) {
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(true, onClose);
   const { t, lang } = useLanguage();
   const { plan, loading: planLoading } = usePlan();
   const { selectedAccountId: activeAccountId } = useActiveAccount();
@@ -254,7 +257,7 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-      <div className="bg-card border border-border rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
+      <div role="dialog" aria-modal="true" aria-label={t("manual_title")} className="bg-card border border-border rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-foreground">{t("manual_title")}</h2>
           <button onClick={onClose} aria-label={t("detail_close")} className="text-muted hover:text-foreground transition-colors">
@@ -268,8 +271,8 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
           {/* Account selector */}
           {accounts.length > 0 ? (
             <div>
-              <label className="block text-sm text-muted mb-1">{t("manual_account")}</label>
-              <select value={selectedAccountId} onChange={(e) => setSelectedAccountId(e.target.value)} className={inputClass}>
+              <label htmlFor="manualtrademodal-manual-account" className="block text-sm text-muted mb-1">{t("manual_account")}</label>
+              <select id="manualtrademodal-manual-account" value={selectedAccountId} onChange={(e) => setSelectedAccountId(e.target.value)} className={inputClass}>
                 <option value="">{t("manual_no_account")}</option>
                 {accounts.map((a) => (
                   <option key={a.id} value={a.id}>
@@ -293,43 +296,43 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
           {/* Open date / time */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm text-muted mb-1">
+              <label htmlFor="manualtrademodal-manual-open-date" className="block text-sm text-muted mb-1">
                 {t("manual_open_date")} <span className="text-loss">*</span>
               </label>
-              <input type="date" value={form.open_date} onChange={(e) => update("open_date", e.target.value)} className={`${inputClass} ${fieldErrors.open_date ? "!border-loss" : ""}`} />
+              <input id="manualtrademodal-manual-open-date" type="date" value={form.open_date} onChange={(e) => update("open_date", e.target.value)} className={`${inputClass} ${fieldErrors.open_date ? "!border-loss" : ""}`} />
               {fieldErrors.open_date && <p className="text-loss text-xs mt-1">{fieldErrors.open_date}</p>}
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">
+              <label htmlFor="manualtrademodal-manual-open-time" className="block text-sm text-muted mb-1">
                 {t("manual_open_time")}
               </label>
-              <input type="time" value={form.open_hour} onChange={(e) => update("open_hour", e.target.value)} className={inputClass} />
+              <input id="manualtrademodal-manual-open-time" type="time" value={form.open_hour} onChange={(e) => update("open_hour", e.target.value)} className={inputClass} />
             </div>
           </div>
 
           {/* Close date / time */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm text-muted mb-1">
+              <label htmlFor="manualtrademodal-manual-close-date" className="block text-sm text-muted mb-1">
                 {t("manual_close_date")}
               </label>
-              <input type="date" value={form.close_date} onChange={(e) => update("close_date", e.target.value)} className={inputClass} />
+              <input id="manualtrademodal-manual-close-date" type="date" value={form.close_date} onChange={(e) => update("close_date", e.target.value)} className={inputClass} />
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">
+              <label htmlFor="manualtrademodal-manual-close-time" className="block text-sm text-muted mb-1">
                 {t("manual_close_time")}
               </label>
-              <input type="time" value={form.close_hour} onChange={(e) => update("close_hour", e.target.value)} className={inputClass} />
+              <input id="manualtrademodal-manual-close-time" type="time" value={form.close_hour} onChange={(e) => update("close_hour", e.target.value)} className={inputClass} />
             </div>
           </div>
 
           {/* Pair / Direction */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm text-muted mb-1">
+              <label htmlFor="manualtrademodal-manual-pair" className="block text-sm text-muted mb-1">
                 {t("manual_pair")} <span className="text-loss">*</span>
               </label>
-              <input
+              <input id="manualtrademodal-manual-pair"
                 type="text"
                 list="instrument-list"
                 value={form.pair}
@@ -348,10 +351,10 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
               </datalist>
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">
+              <label htmlFor="manualtrademodal-manual-direction" className="block text-sm text-muted mb-1">
                 {t("manual_direction")} <span className="text-loss">*</span>
               </label>
-              <select value={form.direction} onChange={(e) => update("direction", e.target.value)} className={inputClass}>
+              <select id="manualtrademodal-manual-direction" value={form.direction} onChange={(e) => update("direction", e.target.value)} className={inputClass}>
                 <option value="long">Long</option>
                 <option value="short">Short</option>
               </select>
@@ -361,24 +364,24 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
           {/* Lot / Entry / Exit */}
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm text-muted mb-1">
+              <label htmlFor="manualtrademodal-manual-lot" className="block text-sm text-muted mb-1">
                 {t("manual_lot")} <span className="text-loss">*</span>
               </label>
-              <input type="number" step="0.01" min="0.01" value={form.lot_size} onChange={(e) => update("lot_size", e.target.value)} placeholder="0.10" className={`${inputClass} ${fieldErrors.lot_size ? "!border-loss" : ""}`} />
+              <input id="manualtrademodal-manual-lot" type="number" step="0.01" min="0.01" value={form.lot_size} onChange={(e) => update("lot_size", e.target.value)} placeholder="0.10" className={`${inputClass} ${fieldErrors.lot_size ? "!border-loss" : ""}`} />
               {fieldErrors.lot_size && <p className="text-loss text-xs mt-1">{fieldErrors.lot_size}</p>}
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">
+              <label htmlFor="manualtrademodal-manual-entry" className="block text-sm text-muted mb-1">
                 {t("manual_entry")} <span className="text-loss">*</span>
               </label>
-              <input type="number" step="any" value={form.entry_price} onChange={(e) => update("entry_price", e.target.value)} className={`${inputClass} ${fieldErrors.entry_price ? "!border-loss" : ""}`} />
+              <input id="manualtrademodal-manual-entry" type="number" step="any" value={form.entry_price} onChange={(e) => update("entry_price", e.target.value)} className={`${inputClass} ${fieldErrors.entry_price ? "!border-loss" : ""}`} />
               {fieldErrors.entry_price && <p className="text-loss text-xs mt-1">{fieldErrors.entry_price}</p>}
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">
+              <label htmlFor="manualtrademodal-manual-exit" className="block text-sm text-muted mb-1">
                 {t("manual_exit")}
               </label>
-              <input type="number" step="any" value={form.exit_price} onChange={(e) => update("exit_price", e.target.value)} className={inputClass} />
+              <input id="manualtrademodal-manual-exit" type="number" step="any" value={form.exit_price} onChange={(e) => update("exit_price", e.target.value)} className={inputClass} />
             </div>
           </div>
 
@@ -407,24 +410,24 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
           {/* SL / TP / P&L */}
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm text-muted mb-1 flex items-center">
+              <label htmlFor="manualtrademodal-manual-sl" className="block text-sm text-muted mb-1 flex items-center">
                 {t("manual_sl")} {closedManually ? <span className="text-xs text-muted ml-1">{t("manual_optional")}</span> : <span className="text-loss ml-1">*</span>}
               </label>
-              <input type="number" step="any" value={form.sl} onChange={(e) => update("sl", e.target.value)} className={`${inputClass} ${fieldErrors.sl ? "!border-loss" : ""}`} />
+              <input id="manualtrademodal-manual-sl" type="number" step="any" value={form.sl} onChange={(e) => update("sl", e.target.value)} className={`${inputClass} ${fieldErrors.sl ? "!border-loss" : ""}`} />
               {fieldErrors.sl && <p className="text-loss text-xs mt-1">{fieldErrors.sl}</p>}
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1 flex items-center">
+              <label htmlFor="manualtrademodal-manual-tp" className="block text-sm text-muted mb-1 flex items-center">
                 {t("manual_tp")} {closedManually ? <span className="text-xs text-muted ml-1">{t("manual_optional")}</span> : <span className="text-loss ml-1">*</span>}
               </label>
-              <input type="number" step="any" value={form.tp} onChange={(e) => update("tp", e.target.value)} className={`${inputClass} ${fieldErrors.tp ? "!border-loss" : ""}`} />
+              <input id="manualtrademodal-manual-tp" type="number" step="any" value={form.tp} onChange={(e) => update("tp", e.target.value)} className={`${inputClass} ${fieldErrors.tp ? "!border-loss" : ""}`} />
               {fieldErrors.tp && <p className="text-loss text-xs mt-1">{fieldErrors.tp}</p>}
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">
+              <label htmlFor="manualtrademodal-manual-pnl" className="block text-sm text-muted mb-1">
                 {t("manual_pnl")} <span className="text-loss">*</span>
               </label>
-              <input type="number" step="any" value={form.pnl} onChange={(e) => update("pnl", e.target.value)} className={`${inputClass} ${fieldErrors.pnl ? "!border-loss" : ""}`} />
+              <input id="manualtrademodal-manual-pnl" type="number" step="any" value={form.pnl} onChange={(e) => update("pnl", e.target.value)} className={`${inputClass} ${fieldErrors.pnl ? "!border-loss" : ""}`} />
               {fieldErrors.pnl && <p className="text-loss text-xs mt-1">{fieldErrors.pnl}</p>}
             </div>
           </div>
@@ -432,16 +435,16 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
           {/* SL initial / TP initial */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm text-muted mb-1">
+              <label htmlFor="manualtrademodal-sl-initial-label" className="block text-sm text-muted mb-1">
                 {t("sl_initial_label")} <span className="text-muted text-xs">{t("manual_optional")}</span>
               </label>
-              <input type="number" step="any" value={form.sl_initial} onChange={(e) => update("sl_initial", e.target.value)} placeholder={form.sl ? `${t("initial_current")}: ${form.sl}` : "—"} className={inputClass} />
+              <input id="manualtrademodal-sl-initial-label" type="number" step="any" value={form.sl_initial} onChange={(e) => update("sl_initial", e.target.value)} placeholder={form.sl ? `${t("initial_current")}: ${form.sl}` : "—"} className={inputClass} />
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">
+              <label htmlFor="manualtrademodal-tp-initial-label" className="block text-sm text-muted mb-1">
                 {t("tp_initial_label")} <span className="text-muted text-xs">{t("manual_optional")}</span>
               </label>
-              <input type="number" step="any" value={form.tp_initial} onChange={(e) => update("tp_initial", e.target.value)} placeholder={form.tp ? `${t("initial_current")}: ${form.tp}` : "—"} className={inputClass} />
+              <input id="manualtrademodal-tp-initial-label" type="number" step="any" value={form.tp_initial} onChange={(e) => update("tp_initial", e.target.value)} placeholder={form.tp ? `${t("initial_current")}: ${form.tp}` : "—"} className={inputClass} />
             </div>
           </div>
 
@@ -532,15 +535,15 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
 
           {/* Notes */}
           <div>
-            <label className="block text-sm text-muted mb-1">
+            <label htmlFor="manualtrademodal-manual-notes" className="block text-sm text-muted mb-1">
               {t("manual_notes")} <span className="text-muted text-xs">{t("manual_optional")}</span>
             </label>
-            <textarea value={form.notes} onChange={(e) => update("notes", e.target.value)} rows={3} placeholder={t("detail_notes_placeholder_v2")} className={inputClass} />
+            <textarea id="manualtrademodal-manual-notes" value={form.notes} onChange={(e) => update("notes", e.target.value)} rows={3} placeholder={t("detail_notes_placeholder_v2")} className={inputClass} />
           </div>
 
         </div>
 
-        {error && <p className="text-loss text-sm mt-3">{error}</p>}
+        {error && <p role="alert" className="text-loss text-sm mt-3">{error}</p>}
 
         <div className="flex gap-3 mt-6">
           <button onClick={handleSave} disabled={saving} className="flex-1 py-2 bg-accent text-on-accent rounded-lg font-medium hover:bg-accent-hover transition-colors disabled:opacity-50">

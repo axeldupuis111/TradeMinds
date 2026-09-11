@@ -14,6 +14,7 @@ import { DEFAULT_CURRENCY, currencySymbol, money } from "@/lib/account-currency"
 import { cn } from "@/lib/cn";
 import { Scale } from "lucide-react";
 import { useMemo } from "react";
+import { nombre, pourcent } from "@/lib/nombres";
 
 interface CompareTrade {
   open_time: string;
@@ -120,15 +121,15 @@ export default function PeriodCompareBlock({
     },
     {
       label: t("compare_winrate"),
-      cur: current.winrate !== null ? `${Math.round(current.winrate)}%` : "—",
-      prev: previous.winrate !== null ? `${Math.round(previous.winrate)}%` : "—",
+      cur: current.winrate !== null ? `${pourcent(Math.round(current.winrate))}` : "—",
+      prev: previous.winrate !== null ? `${pourcent(Math.round(previous.winrate))}` : "—",
       delta: current.winrate !== null && previous.winrate !== null ? current.winrate - previous.winrate : null,
       suffix: "pt",
     },
     {
       label: t("compare_profit_factor"),
-      cur: current.profitFactor !== null ? current.profitFactor.toFixed(2) : "—",
-      prev: previous.profitFactor !== null ? previous.profitFactor.toFixed(2) : "—",
+      cur: current.profitFactor !== null ? nombre(current.profitFactor, 2) : "—",
+      prev: previous.profitFactor !== null ? nombre(previous.profitFactor, 2) : "—",
       delta: current.profitFactor !== null && previous.profitFactor !== null
         ? current.profitFactor - previous.profitFactor
         : null,
@@ -153,7 +154,7 @@ export default function PeriodCompareBlock({
           <h3 className="text-sm font-semibold text-foreground">{t("compare_title")}</h3>
         </div>
         <span className="text-[11px] text-foreground-muted uppercase tracking-wider">
-          {t("compare_subtitle").replaceAll("{days}", String(days))}
+          {t("compare_subtitle", { days: String(days) })}
         </span>
       </div>
 
@@ -186,7 +187,7 @@ export default function PeriodCompareBlock({
                   >
                     {row.delta === null || Math.abs(row.delta) < 0.005
                       ? "="
-                      : `${row.delta > 0 ? "↑" : "↓"}${Math.abs(row.delta) >= 10 ? Math.round(Math.abs(row.delta)) : Math.abs(row.delta).toFixed(1)}${row.suffix}`}
+                      : `${row.delta > 0 ? "↑" : "↓"}${Math.abs(row.delta) >= 10 ? nombre(Math.round(Math.abs(row.delta))) : nombre(Math.abs(row.delta), 1)}${row.suffix}`}
                   </td>
                 </tr>
               );

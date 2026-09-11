@@ -35,7 +35,7 @@ export default function NavItem({ href, icon: Icon, labelKey, badge, lockedPlan,
         active
           ? "text-accent font-semibold"
           : lockedPlan
-          ? "text-muted/50 hover:text-foreground font-medium"
+          ? "text-muted hover:text-foreground font-medium"
           : "text-muted hover:text-foreground font-medium"
       }`}
     >

@@ -14,12 +14,20 @@ export default function ContactPage() {
   const { lang, t } = useLanguage();
   const [form, setForm] = useState({ name: "", email: "", subject: "", message: "" });
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  /**
+   * ⚠️ LE SERVEUR REFUSE MAINTENANT POUR DES RAISONS PRÉCISES (adresse mal
+   * formée, message trop long, cadence), et un « Erreur lors de l'envoi »
+   * unique les effacerait toutes : celui qui écrit 6 000 caractères
+   * recommencerait à l'identique. La raison arrive en CLÉ de traduction.
+   */
+  const [codeDErreur, setCodeDErreur] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.name.trim() || !form.email.trim() || !form.message.trim()) return;
 
     setStatus("sending");
+    setCodeDErreur(null);
     try {
       const res = await fetch("/api/contact", {
         method: "POST",
@@ -30,6 +38,8 @@ export default function ContactPage() {
         setStatus("sent");
         setForm({ name: "", email: "", subject: "", message: "" });
       } else {
+        const corps = await res.json().catch(() => ({}));
+        setCodeDErreur(typeof corps.code === "string" ? corps.code : null);
         setStatus("error");
       }
     } catch {
@@ -40,7 +50,7 @@ export default function ContactPage() {
   return (
     <>
       <PublicHeader />
-      <div className="min-h-screen bg-background flex items-center justify-center px-4 py-16 pt-24">
+      <main id="main-content" tabIndex={-1} className="min-h-screen bg-background flex items-center justify-center px-4 py-16 pt-24 force-dark">
         <div className="max-w-md w-full">
           <h1 className="text-2xl font-bold text-foreground">{t("contact_title")}</h1>
           <p className="text-muted mt-2 text-sm">{t("contact_subtitle")}</p>
@@ -58,23 +68,27 @@ export default function ContactPage() {
           ) : (
             <form onSubmit={handleSubmit} className="mt-6 space-y-4">
               <div>
-                <label className="block text-sm text-muted mb-1">{t("contact_name")}</label>
-                <input type="text" required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className={inputClass} />
+                <label htmlFor="contactpage-contact-name" className="block text-sm text-muted mb-1">{t("contact_name")}</label>
+                <input id="contactpage-contact-name" type="text" required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className={inputClass} />
               </div>
               <div>
-                <label className="block text-sm text-muted mb-1">{t("contact_email")}</label>
-                <input type="email" required value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className={inputClass} />
+                <label htmlFor="contactpage-contact-email" className="block text-sm text-muted mb-1">{t("contact_email")}</label>
+                <input id="contactpage-contact-email" type="email" required value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className={inputClass} />
               </div>
               <div>
-                <label className="block text-sm text-muted mb-1">{t("contact_subject")}</label>
-                <input type="text" value={form.subject} onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))} className={inputClass} />
+                <label htmlFor="contactpage-contact-subject" className="block text-sm text-muted mb-1">{t("contact_subject")}</label>
+                <input id="contactpage-contact-subject" type="text" value={form.subject} onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))} className={inputClass} />
               </div>
               <div>
-                <label className="block text-sm text-muted mb-1">{t("contact_message")}</label>
-                <textarea required rows={5} value={form.message} onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))} className={inputClass} />
+                <label htmlFor="contactpage-contact-message" className="block text-sm text-muted mb-1">{t("contact_message")}</label>
+                <textarea id="contactpage-contact-message" required rows={5} value={form.message} onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))} className={inputClass} />
               </div>
 
-              {status === "error" && <p className="text-loss text-sm">{t("contact_error")}</p>}
+              {status === "error" && (
+                <p role="alert" className="text-loss text-sm">
+                  {codeDErreur ? t(codeDErreur) : t("contact_error")}
+                </p>
+              )}
 
               <button type="submit" disabled={status === "sending"} className="w-full py-2.5 bg-accent text-on-accent rounded-lg font-medium hover:bg-accent-hover transition-colors disabled:opacity-50">
                 {status === "sending" ? "..." : t("contact_send")}
@@ -86,7 +100,7 @@ export default function ContactPage() {
             <Link href={localizedHref("/faq", lang)} className="text-accent text-sm hover:underline">{t("contact_faq_link")}</Link>
           </div>
         </div>
-      </div>
+      </main>
       <RiskDisclosure />
     </>
   );

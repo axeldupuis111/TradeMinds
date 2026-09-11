@@ -199,11 +199,19 @@ export default function AlertCenter() {
   const undismissedCriticals = alerts.filter((a) => a.level === "critical" && !a.dismissed);
   const bannerAlerts = alerts.filter((a) => a.level !== "critical" || a.dismissed);
 
+  /**
+   * ⚠️ CE VOILE NE SE FERME PAS À ÉCHAP, ET C'EST VOULU. Toutes les autres
+   * fenêtres du produit le font (voir lib/hooks/useFenetreModale.ts) ; celle-ci dit
+   * « STOP » parce qu'une règle de risque ÉCRITE vient d'être franchie. La
+   * congédier d'une touche réflexe, sans avoir lu, est exactement ce contre
+   * quoi elle existe. Elle reste accessible au clavier : le bouton de rejet
+   * est atteignable à la tabulation, et il faut le viser.
+   */
   // ── Critical overlay (undismissed criticals) ────────────────────────────────
   if (undismissedCriticals.length > 0) {
     return (
       <div className="fixed inset-0 z-[101] bg-black/95 flex items-center justify-center p-6 overflow-y-auto motion-safe:animate-[fadeIn_120ms_ease]">
-        <div className="max-w-xl w-full">
+        <div role="dialog" aria-modal="true" aria-label={t("alert_center_stop_title")} className="max-w-xl w-full">
           {/* STOP heading */}
           <div className="text-center">
             <h1 className="text-[100px] sm:text-[160px] font-black text-loss leading-none tracking-tight">

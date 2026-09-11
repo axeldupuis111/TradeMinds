@@ -20,7 +20,7 @@ const variantClasses: Record<NonNullable<ButtonProps["variant"]>, string> = {
   primary:   "bg-accent text-on-accent hover:bg-accent-hover",
   secondary: "bg-surface text-foreground border border-border hover:bg-border/60",
   ghost:     "text-foreground-muted hover:text-foreground hover:bg-foreground/[0.04]",
-  danger:    "bg-loss text-white hover:bg-loss/90",
+  danger:    "bg-loss-fill text-white hover:bg-loss-fill/90",
 };
 
 const sizeClasses: Record<NonNullable<ButtonProps["size"]>, string> = {

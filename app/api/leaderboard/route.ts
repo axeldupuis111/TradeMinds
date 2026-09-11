@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdmin } from "@supabase/supabase-js";
 import { isUsernameDisplayable } from "@/lib/username-moderation";
-import { fetchAllRows } from "@/lib/supabase-paginate";
+import { fetchAllByIds, fetchAllRows } from "@/lib/supabase-paginate";
 import { computeAllTimeStats } from "@/lib/leaderboard-extras";
 import { PODIUM_FLAIR, getCommunityChallenge, isoWeekKey, previousWeekKey } from "@/lib/community-challenges";
 import { FREE_BADGE_KEY, awardMeta, bestFlair, computeBadges, type BadgeStats } from "@/lib/badges";
@@ -200,9 +200,22 @@ export async function GET(req: NextRequest) {
   // classement continue de fonctionner.
   const foundingIds = new Set<string>();
   {
-    const { data: founders, error: foundingErr } = await admin
-      .from("profiles").select("id").eq("founding_member", true).in("id", ids);
-    if (!foundingErr) for (const f of founders ?? []) foundingIds.add(f.id as string);
+    /**
+     * ⚠️ LA LISTE D'IDENTIFIANTS VOYAGE DANS L'URL : à deux cents inscrits
+     * classés, `?id=in.(…)` dépasse la taille acceptée et la requête échoue
+     * d'un bloc. Ici l'échec est déjà absorbé (personne n'est fondateur), mais
+     * il valait aussi pour les deux lectures suivantes, qui décident du score.
+     */
+    const founders = await fetchAllByIds<{ id: string }>(ids, (lot, from, to) =>
+      admin
+        .from("profiles")
+        .select("id")
+        .eq("founding_member", true)
+        .in("id", lot)
+        .order("id")
+        .range(from, to),
+    );
+    for (const f of founders ?? []) foundingIds.add(f.id);
   }
 
   // Reviews des 2 fenêtres (courante + précédente) pour le calcul du mouvement.
@@ -213,11 +226,11 @@ export async function GET(req: NextRequest) {
   // alors sans erreur (voir lib/supabase-paginate.ts). Les bilans manquants
   // n'auraient pas fait disparaître des gens du classement : ils les auraient
   // fait descendre, avec un score calculé sur une partie de leurs sessions.
-  const reviews = await fetchAllRows<ReviewRow>((from, to) =>
+  const reviews = await fetchAllByIds<ReviewRow>(ids, (lot, from, to) =>
     admin
       .from("session_reviews")
       .select("user_id, discipline_score, created_at")
-      .in("user_id", ids)
+      .in("user_id", lot)
       .gte("created_at", sincePrev)
       .order("id", { ascending: true })
       .range(from, to),
@@ -255,13 +268,15 @@ export async function GET(req: NextRequest) {
     if (rankedIds.length > 0) {
       // Paginé : plusieurs badges par personne, donc cette table dépasse le
       // plafond avant même que le classement n'ait 1 000 inscrits.
-      const awardRows = await fetchAllRows<{ user_id: string; badge_key: string }>((from, to) =>
-        admin
-          .from("badge_awards")
-          .select("user_id, badge_key")
-          .in("user_id", rankedIds)
-          .order("id", { ascending: true })
-          .range(from, to),
+      const awardRows = await fetchAllByIds<{ user_id: string; badge_key: string }>(
+        rankedIds,
+        (lot, from, to) =>
+          admin
+            .from("badge_awards")
+            .select("user_id, badge_key")
+            .in("user_id", lot)
+            .order("id", { ascending: true })
+            .range(from, to),
       );
       // ⚠️ `fetchAllRows` rend `null` quand une page échoue, et jamais une liste
       // partielle. Sans ce test, une panne de lecture se confondait avec « aucun
@@ -282,10 +297,16 @@ export async function GET(req: NextRequest) {
       // affiche 👑/🥈/🥉 pendant TOUTE la semaine suivante, par-dessus le flair
       // de badge (il faut re-gagner pour le garder — c'est le moteur).
       const prevWeek = previousWeekKey(isoWeekKey());
-      const { data: podiumRows } = await admin
-        .from("challenge_awards").select("user_id, rank")
-        .eq("week_key", prevWeek).not("rank", "is", null).lte("rank", 3)
-        .in("user_id", rankedIds);
+      const podiumRows = await fetchAllByIds<{ user_id: string; rank: number }>(
+        rankedIds,
+        (lot, from, to) =>
+          admin
+            .from("challenge_awards").select("user_id, rank")
+            .eq("week_key", prevWeek).not("rank", "is", null).lte("rank", 3)
+            .in("user_id", lot)
+            .order("id", { ascending: true })
+            .range(from, to),
+      );
       const bestRank = new Map<string, number>();
       for (const r of podiumRows ?? []) {
         const cur = bestRank.get(r.user_id as string);
@@ -354,6 +375,9 @@ export async function GET(req: NextRequest) {
     .order("joined_at", { ascending: false }).limit(8);
   const joinerIds = Array.from(new Set((joins ?? []).map((j) => j.user_id as string)))
     .filter((id) => !usernameById.has(id));
+  // ⚠️ LISTE BORNÉE : `joins` est lu avec `.limit(8)` six lignes plus haut, donc
+  // huit identifiants au maximum dans l'URL. Découper ici ajouterait une
+  // machinerie que rien ne justifie.
   const { data: joinerProfs } = joinerIds.length
     ? await admin.from("profiles").select("id, username").in("id", joinerIds)
     : { data: [] as { id: string; username: string | null }[] };

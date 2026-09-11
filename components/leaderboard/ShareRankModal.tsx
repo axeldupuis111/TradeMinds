@@ -12,6 +12,8 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { Activity, Check, Copy, Download, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { enDate } from "@/lib/dates";
+import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 export interface ShareRankStats {
   score: number;
@@ -36,6 +38,8 @@ function scoreHex(s: number): string {
 }
 
 export default function ShareRankModal({ stats, onClose }: { stats: ShareRankStats; onClose: () => void }) {
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(true, onClose);
   const { t } = useLanguage();
   const cardRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);
@@ -86,7 +90,7 @@ export default function ShareRankModal({ stats, onClose }: { stats: ShareRankSta
   ];
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+    <div aria-label={t("leaderboard_share_title")} className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
       <div className="relative w-full max-w-[560px] bg-card border border-border rounded-2xl p-5 shadow-2xl">
@@ -118,7 +122,7 @@ export default function ShareRankModal({ stats, onClose }: { stats: ShareRankSta
                 </span>
                 <span style={{ fontSize: 14, fontWeight: 700, color: FG, letterSpacing: "-0.01em" }}>TradeDiscipline</span>
               </div>
-              <span style={{ fontSize: 11, color: MUTED }}>{new Date().toLocaleDateString()}</span>
+              <span style={{ fontSize: 11, color: MUTED }}>{enDate(new Date())}</span>
             </div>
 
             {/* Palier + score */}

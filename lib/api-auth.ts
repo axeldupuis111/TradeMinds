@@ -335,7 +335,13 @@ async function consumeMonthlyCeiling(
       | { allowed: boolean; current_count: number; already_alerted: boolean }
       | undefined;
     if (row && !row.allowed) {
-      console.error(`[AI ceiling] ${feature} MONTHLY ceiling hit for user ${userId} (limit ${row.current_count})`);
+      // ⚠️ Le compteur et le plafond sont deux nombres differents, et le log
+      // ecrivait le COMPTEUR sous le mot « limit ». Quand les deux sont egaux,
+      // ce qui arrive exactement au moment ou l'alerte se declenche, l'erreur
+      // est invisible : on lit un plafond juste, par coincidence.
+      console.error(
+        `[AI ceiling] ${feature} MONTHLY ceiling hit for user ${userId} (compte ${row.current_count}, plafond ${limit})`,
+      );
       // Une seule alerte par (compte, feature, mois) : la RPC porte le témoin.
       if (!row.already_alerted) await alertAiCeiling(userId, feature, row.current_count);
       return false;

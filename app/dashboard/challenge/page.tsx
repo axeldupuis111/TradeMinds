@@ -13,12 +13,16 @@ import { computeChallengeRules } from "@/lib/challenge-rules";
 import { projectChallenge } from "@/lib/challenge-projection";
 import { ChallengeProjectionBlock } from "@/components/dashboard/ChallengeProjectionBlock";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
-import { useLanguage } from "@/lib/LanguageContext";
+import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { setDemoWatermark } from "@/lib/pdf/kit";
 import { createClient } from "@/lib/supabase/client";
+import { enDate, enJourEtMois } from "@/lib/dates";
+import { lireTousLesTradesDuCompte, netDuTrade } from "@/lib/trades-du-compte";
+import { pourcent } from "@/lib/nombres";
 import { fetchAllRows, chunk, ID_CHUNK } from "@/lib/supabase-paginate";
 import { useEffect, useState, useCallback } from "react";
+import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 interface Challenge {
   id: string;
@@ -105,15 +109,19 @@ function TrailingDdToggle({
 }: {
   value: boolean;
   onChange: (v: boolean) => void;
-  t: (key: string) => string;
+  t: Traduire;
 }) {
   const [showTooltip, setShowTooltip] = useState(false);
   return (
     <div className="flex items-center gap-3">
+      {/* ⚠️ role="switch" ET aria-checked SANS NOM : une lecture d'écran
+          annonçait « interrupteur, non coché », sans dire de quoi. Le mot
+          « Drawdown trailing » était juste à côté, mais rien ne les reliait. */}
       <button
         type="button"
         role="switch"
         aria-checked={value}
+        aria-label={t("challenge_trailing_dd")}
         onClick={() => onChange(!value)}
         className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-card ${value ? "bg-accent" : "bg-border"}`}
       >
@@ -168,7 +176,7 @@ function ProgressBar({
       <div className="flex justify-between text-sm mb-1">
         <span className="text-muted">{label}</span>
         <span className="text-foreground">
-          {money(value, currency)} / {money(max, currency)} · {pct.toFixed(1)}%
+          {money(value, currency, { digits: 2 })} / {money(max, currency, { digits: 2 })} · {pourcent(pct, 1)}
         </span>
       </div>
       <div className="h-3 bg-border rounded-full overflow-hidden">
@@ -198,7 +206,7 @@ function DailyLossGauge({
   stopEur: number | null;
   challengeEur: number;
   currency: string;
-  t: (k: string) => string;
+  t: Traduire;
 }) {
   const fillPct = challengeEur > 0 ? Math.min((lossEur / challengeEur) * 100, 100) : 0;
   const stopPct =
@@ -221,11 +229,11 @@ function DailyLossGauge({
 
   let status: string;
   if (stopEur == null) {
-    status = `${money(lossEur, currency)} / ${money(challengeEur, currency)}`;
+    status = `${money(lossEur, currency, { digits: 2 })} / ${money(challengeEur, currency, { digits: 2 })}`;
   } else if (lossEur >= stopEur) {
-    status = t("gauge_stop_exceeded").replace("{amount}", money(lossEur - stopEur, currency));
+    status = t("gauge_stop_exceeded").replace("{amount}", money(lossEur - stopEur, currency, { digits: 2 }));
   } else {
-    status = t("gauge_remaining").replace("{amount}", money(stopEur - lossEur, currency));
+    status = t("gauge_remaining").replace("{amount}", money(stopEur - lossEur, currency, { digits: 2 }));
   }
 
   return (
@@ -237,7 +245,7 @@ function DailyLossGauge({
       <div className="relative h-4 text-xs text-muted">
         {stopPct != null && (
           <span className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: `${stopPct}%` }}>
-            {t("gauge_stop_marker")} · {money(stopEur as number, currency)}
+            {t("gauge_stop_marker")} · {money(stopEur as number, currency, { digits: 2 })}
           </span>
         )}
       </div>
@@ -248,13 +256,13 @@ function DailyLossGauge({
         )}
       </div>
       <div className="text-right text-xs text-muted mt-1">
-        {t("gauge_challenge_marker")} · {money(challengeEur, currency)}
+        {t("gauge_challenge_marker")} · {money(challengeEur, currency, { digits: 2 })}
       </div>
     </div>
   );
 }
 
-function StatusBadge({ status, t }: { status: string; t: (key: string) => string }) {
+function StatusBadge({ status, t }: { status: string; t: Traduire }) {
   if (status === "active") {
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-green-500/30 text-green-400 select-none">
@@ -314,8 +322,10 @@ function EditAccountModal({
   account: Challenge;
   onConfirm: (data: Partial<Challenge>) => void;
   onCancel: () => void;
-  t: (key: string) => string;
+  t: Traduire;
 }) {
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(true, onCancel);
   const [firm, setFirm] = useState(account.firm);
   const [accountNumber, setAccountNumber] = useState(account.account_number || "");
   const [accountType, setAccountType] = useState<"prop" | "personal">(account.type);
@@ -355,20 +365,20 @@ function EditAccountModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-      <div className="bg-card border border-border rounded-xl p-6 max-w-md w-full shadow-xl max-h-[90vh] overflow-y-auto">
+      <div role="dialog" aria-modal="true" aria-label={t("challenge_edit_title")} className="bg-card border border-border rounded-xl p-6 max-w-md w-full shadow-xl max-h-[90vh] overflow-y-auto">
         <h3 className="text-foreground font-semibold mb-4">{t("challenge_edit_title")}</h3>
         <div className="space-y-3">
           <div>
-            <label className="block text-sm text-muted mb-1">{t("challenge_edit_name")}</label>
-            <input type="text" value={firm} onChange={(e) => setFirm(e.target.value)} className={inputClass} />
+            <label htmlFor="challenge-challenge-edit-name" className="block text-sm text-muted mb-1">{t("challenge_edit_name")}</label>
+            <input id="challenge-challenge-edit-name" type="text" value={firm} onChange={(e) => setFirm(e.target.value)} className={inputClass} />
           </div>
           <div>
-            <label className="block text-sm text-muted mb-1">{t("challenge_account_number")}</label>
-            <input type="text" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} className={inputClass} />
+            <label htmlFor="challenge-challenge-account-number" className="block text-sm text-muted mb-1">{t("challenge_account_number")}</label>
+            <input id="challenge-challenge-account-number" type="text" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} className={inputClass} />
           </div>
           <div>
-            <label className="block text-sm text-muted mb-1">{t("challenge_account_type")}</label>
-            <select value={accountType} onChange={(e) => setAccountType(e.target.value as "prop" | "personal")} className={inputClass}>
+            <label htmlFor="challenge-challenge-account-type" className="block text-sm text-muted mb-1">{t("challenge_account_type")}</label>
+            <select id="challenge-challenge-account-type" value={accountType} onChange={(e) => setAccountType(e.target.value as "prop" | "personal")} className={inputClass}>
               <option value="prop">{t("challenge_type_prop")}</option>
               <option value="personal">{t("challenge_type_personal")}</option>
             </select>
@@ -388,12 +398,12 @@ function EditAccountModal({
           </div>
           <div className="grid grid-cols-[1fr_auto] gap-3">
             <div>
-              <label className="block text-sm text-muted mb-1">{t("challenge_account_size")}</label>
-              <input type="number" value={accountSize} onChange={(e) => setAccountSize(e.target.value)} className={inputClass} />
+              <label htmlFor="challenge-challenge-account-size" className="block text-sm text-muted mb-1">{t("challenge_account_size")}</label>
+              <input id="challenge-challenge-account-size" type="number" value={accountSize} onChange={(e) => setAccountSize(e.target.value)} className={inputClass} />
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">{t("challenge_currency")}</label>
-              <select value={currency} onChange={(e) => setCurrency(e.target.value)} className={inputClass}>
+              <label htmlFor="challenge-challenge-currency" className="block text-sm text-muted mb-1">{t("challenge_currency")}</label>
+              <select id="challenge-challenge-currency" value={currency} onChange={(e) => setCurrency(e.target.value)} className={inputClass}>
                 {SUPPORTED_CURRENCIES.map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
@@ -427,23 +437,23 @@ function EditAccountModal({
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-sm text-muted mb-1">{t("challenge_profit_target_pct")}</label>
-                  <input type="number" step="0.1" value={profitTarget} onChange={(e) => setProfitTarget(e.target.value)} className={inputClass} />
+                  <label htmlFor="challenge-challenge-profit-target-pct" className="block text-sm text-muted mb-1">{t("challenge_profit_target_pct")}</label>
+                  <input id="challenge-challenge-profit-target-pct" type="number" step="0.1" value={profitTarget} onChange={(e) => setProfitTarget(e.target.value)} className={inputClass} />
                 </div>
                 <div>
-                  <label className="block text-sm text-muted mb-1">{t("challenge_daily_dd_pct")}</label>
-                  <input type="number" step="0.1" value={maxDailyDd} onChange={(e) => setMaxDailyDd(e.target.value)} className={inputClass} />
+                  <label htmlFor="challenge-challenge-daily-dd-pct" className="block text-sm text-muted mb-1">{t("challenge_daily_dd_pct")}</label>
+                  <input id="challenge-challenge-daily-dd-pct" type="number" step="0.1" value={maxDailyDd} onChange={(e) => setMaxDailyDd(e.target.value)} className={inputClass} />
                 </div>
                 <div>
-                  <label className="block text-sm text-muted mb-1">{t("challenge_total_dd_pct")}</label>
-                  <input type="number" step="0.1" value={maxTotalDd} onChange={(e) => setMaxTotalDd(e.target.value)} className={inputClass} />
+                  <label htmlFor="challenge-challenge-total-dd-pct" className="block text-sm text-muted mb-1">{t("challenge_total_dd_pct")}</label>
+                  <input id="challenge-challenge-total-dd-pct" type="number" step="0.1" value={maxTotalDd} onChange={(e) => setMaxTotalDd(e.target.value)} className={inputClass} />
                 </div>
               </div>
               <TrailingDdToggle value={trailingDrawdown} onChange={setTrailingDrawdown} t={t} />
               {/* Discipline limit — personal stop-trading rule, optional */}
               <div>
-                <label className="block text-sm text-muted mb-1">{t("challenge_max_daily_loss_pct")}</label>
-                <input
+                <label htmlFor="challenge-challenge-max-daily-loss-pct" className="block text-sm text-muted mb-1">{t("challenge_max_daily_loss_pct")}</label>
+                <input id="challenge-challenge-max-daily-loss-pct"
                   type="number"
                   step="0.1"
                   min="0"
@@ -459,17 +469,17 @@ function EditAccountModal({
           )}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm text-muted mb-1">{t("challenge_start_date")}</label>
-              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputClass} />
+              <label htmlFor="challenge-challenge-start-date" className="block text-sm text-muted mb-1">{t("challenge_start_date")}</label>
+              <input id="challenge-challenge-start-date" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputClass} />
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">{t("challenge_end_date")}</label>
-              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputClass} />
+              <label htmlFor="challenge-challenge-end-date" className="block text-sm text-muted mb-1">{t("challenge_end_date")}</label>
+              <input id="challenge-challenge-end-date" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputClass} />
             </div>
           </div>
           <div>
-            <label className="block text-sm text-muted mb-1">{t("challenge_edit_status")}</label>
-            <select value={status} onChange={(e) => setStatus(e.target.value as Challenge["status"])} className={inputClass}>
+            <label htmlFor="challenge-challenge-edit-status" className="block text-sm text-muted mb-1">{t("challenge_edit_status")}</label>
+            <select id="challenge-challenge-edit-status" value={status} onChange={(e) => setStatus(e.target.value as Challenge["status"])} className={inputClass}>
               <option value="active">{t("challenge_status_active")}</option>
               <option value="passed">{t("challenge_status_passed")}</option>
               <option value="failed">{t("challenge_status_failed")}</option>
@@ -509,8 +519,10 @@ function DeleteAccountModal({
   /** Renvoie null si la suppression a eu lieu, sinon le message a afficher. */
   onConfirm: () => Promise<string | null>;
   onCancel: () => void;
-  t: (key: string) => string;
+  t: Traduire;
 }) {
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(true, onCancel);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -528,24 +540,22 @@ function DeleteAccountModal({
 
   const question =
     tradeCount > 0
-      ? t("challenge_delete_account_confirm_trades")
-          .replace("{name}", accountName)
-          .replace("{count}", String(tradeCount))
+      ? t("challenge_delete_account_confirm_trades", { name: accountName, count: String(tradeCount) })
       : t("challenge_delete_account_confirm").replace("{name}", accountName);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-      <div className="bg-card border border-border rounded-xl p-6 max-w-sm w-full shadow-xl">
+      <div role="dialog" aria-modal="true" aria-label={t("challenge_delete_account_title")} className="bg-card border border-border rounded-xl p-6 max-w-sm w-full shadow-xl">
         <h3 className="text-loss font-semibold mb-3">{t("challenge_delete_account_title")}</h3>
         <p className="text-foreground text-sm leading-relaxed">{question}</p>
         {error && (
-          <p className="text-loss text-sm leading-relaxed mt-3 border-t border-border pt-3">{error}</p>
+          <p role="alert" className="text-loss text-sm leading-relaxed mt-3 border-t border-border pt-3">{error}</p>
         )}
         <div className="flex gap-3 mt-5">
           <button onClick={onCancel} disabled={busy} className="flex-1 py-2 bg-surface border border-border text-muted rounded-lg text-sm font-medium hover:text-foreground transition-colors disabled:opacity-50">
             {t("csv_cancel")}
           </button>
-          <button onClick={confirm} disabled={busy} className="flex-1 py-2 bg-loss text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-50">
+          <button onClick={confirm} disabled={busy} className="flex-1 py-2 bg-loss-fill text-white rounded-lg text-sm font-medium hover:bg-loss-fill/90 transition-colors disabled:opacity-50">
             {busy ? t("challenge_deleting") : t("challenge_delete_btn")}
           </button>
         </div>
@@ -574,7 +584,7 @@ function AccountCard({
   /** Renvoie null si le compte est parti, sinon le message a afficher. */
   onDelete: (id: string) => Promise<string | null>;
   onExportPdf: () => void;
-  t: (key: string) => string;
+  t: Traduire;
 }) {
   const [showEdit, setShowEdit] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -647,7 +657,7 @@ function AccountCard({
           </div>
           <p className="text-muted text-sm">
             {ac.account_number && <span className="text-foreground">#{ac.account_number} · </span>}
-            {t("challenge_started")} {new Date(ac.start_date).toLocaleDateString()}
+            {t("challenge_started")} {enDate(ac.start_date)}
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -715,17 +725,17 @@ function AccountCard({
               </span>
             )}
           </div>
-          <p className="text-lg font-bold text-foreground">{money(balance, cur)}</p>
+          <p className="text-lg font-bold text-foreground">{money(balance, cur, { digits: 2 })}</p>
           {/* Equity : seulement position ouverte, sinon elle vaut le solde et
               afficher deux fois le même chiffre n'apprend rien. */}
           {stats.equity !== null ? (
             <p className="text-xs mt-0.5">
               <span className={stats.equity >= balance ? "text-profit" : "text-loss"}>
-                {t("challenge_equity")} {money(stats.equity, cur)}
+                {t("challenge_equity")} {money(stats.equity, cur, { digits: 2 })}
               </span>
               <span className="text-muted">
                 {" · "}
-                {stats.openPositions} {stats.openPositions > 1 ? t("challenge_open_positions") : t("challenge_open_position")}
+                {stats.openPositions} {t("challenge_open_positions", { n: stats.openPositions })}
               </span>
             </p>
           ) : (
@@ -817,8 +827,10 @@ function DeleteModal({
   /** Renvoie null si la suppression a eu lieu, sinon le message à afficher. */
   onConfirm: () => Promise<string | null>;
   onCancel: () => void;
-  t: (key: string) => string;
+  t: Traduire;
 }) {
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(true, onCancel);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -834,10 +846,10 @@ function DeleteModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-card border border-border rounded-xl p-6 max-w-sm w-full mx-4 shadow-xl">
+      <div role="dialog" aria-modal="true" aria-label={t("challenge_delete_history_confirm")} className="bg-card border border-border rounded-xl p-6 max-w-sm w-full mx-4 shadow-xl">
         <p className="text-foreground text-sm leading-relaxed">{t("challenge_delete_history_confirm")}</p>
         {error && (
-          <p className="text-loss text-sm leading-relaxed mt-3 border-t border-border pt-3">{error}</p>
+          <p role="alert" className="text-loss text-sm leading-relaxed mt-3 border-t border-border pt-3">{error}</p>
         )}
         <div className="flex gap-3 mt-5">
           <button
@@ -929,13 +941,17 @@ export default function ChallengePage() {
     const today = new Date().toISOString().split("T")[0];
 
     for (const ac of actives || []) {
-      const [{ data: challengeTrades }, { data: todayTrades }] = await Promise.all([
-        supabase
-          .from("trades")
-          .select("open_time, pnl, commission, swap")
-          .eq("user_id", user.id)
-          .eq("challenge_id", ac.id)
-          .order("open_time", { ascending: true }),
+      // ⚠️⚠️ LECTURE PAGINÉE, ET ICI C'EST LE PLUS GRAVE : ce total est ÉCRIT
+      // dans prop_challenges.balance quelques lignes plus bas. Non bornée, la
+      // lecture s'arrêtait à mille trades sans le dire, et le solde faux
+      // devenait le solde enregistré.
+      const [challengeTrades, { data: todayTrades }] = await Promise.all([
+        lireTousLesTradesDuCompte<{ pnl: number | null; commission: number | null; swap: number | null; open_time: string | null }>(
+          supabase,
+          user.id,
+          ac.id,
+          "open_time, pnl, commission, swap",
+        ),
         supabase
           .from("trades")
           .select("pnl, commission, swap")
@@ -944,10 +960,11 @@ export default function ChallengePage() {
           .gte("open_time", today),
       ]);
 
-      const netOf = (t: { pnl: number | null; commission: number | null; swap: number | null }) =>
-        (t.pnl || 0) + (t.commission || 0) + (t.swap || 0);
+      // ⚠️ Lecture incomplète : on n'écrit surtout pas un solde qu'on sait faux.
+      if (challengeTrades === null) continue;
+      const netOf = netDuTrade;
 
-      const totalPnl = (challengeTrades || []).reduce((sum, t) => sum + netOf(t), 0);
+      const totalPnl = challengeTrades.reduce((sum, t) => sum + netOf(t), 0);
 
       // Solde réel du broker quand l'EA l'a poussé, reconstitution sinon.
       // Voir lib/challenge-balance.ts pour la règle exacte.
@@ -955,6 +972,10 @@ export default function ChallengePage() {
       const newBalance = resolved.balance;
 
       // Update balance in Supabase if changed
+      // ⚠️ RÉSULTAT VOLONTAIREMENT IGNORÉ : ce solde est une COPIE, recalculée
+      // depuis les trades à chaque ouverture de la page. Un échec d'écriture ne
+      // fausse donc rien à l'écran, et la valeur juste repart au chargement
+      // suivant. C'est la LECTURE des trades qui doit être sûre, et elle l'est.
       if (Math.abs(newBalance - ac.balance) > 0.01) {
         await supabase.from("prop_challenges").update({ balance: newBalance }).eq("id", ac.id);
       }
@@ -965,7 +986,7 @@ export default function ChallengePage() {
       const eqData = (challengeTrades || []).map((t) => {
         running += netOf(t);
         return {
-          date: t.open_time ? new Date(t.open_time).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }) : "—",
+          date: t.open_time ? enJourEtMois(t.open_time) : "—",
           balance: Math.round(running * 100) / 100,
         };
       });
@@ -1342,8 +1363,8 @@ export default function ChallengePage() {
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm text-muted mb-1">{accountType === "prop" ? t("challenge_label_prop_firm") : t("challenge_label_broker")}</label>
-              <select
+              <label htmlFor="challenge-challenge-label-prop-firm" className="block text-sm text-muted mb-1">{accountType === "prop" ? t("challenge_label_prop_firm") : t("challenge_label_broker")}</label>
+              <select id="challenge-challenge-label-prop-firm"
                 value={firm}
                 onChange={(e) => { setFirm(e.target.value); setCustomFirm(""); }}
                 className={inputClass}
@@ -1352,7 +1373,7 @@ export default function ChallengePage() {
                 <option value={CUSTOM_VALUE}>— {accountType === "prop" ? "Autre prop firm" : "Autre broker"}</option>
               </select>
               {firm === CUSTOM_VALUE && (
-                <input
+                <input aria-label={t("challenge_label_prop_firm")}
                   type="text"
                   value={customFirm}
                   onChange={(e) => setCustomFirm(e.target.value)}
@@ -1363,10 +1384,10 @@ export default function ChallengePage() {
               )}
             </div>
             <div>
-              <label className="block text-sm text-muted mb-1">
+              <label htmlFor="challenge-challenge-account-number-2" className="block text-sm text-muted mb-1">
                 {t("challenge_account_number")} <span className="text-red-500">*</span>
               </label>
-              <input
+              <input id="challenge-challenge-account-number-2"
                 type="text"
                 value={accountNumber}
                 onChange={(e) => { setAccountNumber(e.target.value); if (formErrors.accountNumber) setFormErrors((p) => ({ ...p, accountNumber: false })); }}
@@ -1380,10 +1401,10 @@ export default function ChallengePage() {
             <div>
               <div className="grid grid-cols-[1fr_auto] gap-3">
                 <div>
-                  <label className="block text-sm text-muted mb-1">
+                  <label htmlFor="challenge-challenge-account-size-2" className="block text-sm text-muted mb-1">
                     {t("challenge_account_size")} <span className="text-red-500">*</span>
                   </label>
-                  <input
+                  <input id="challenge-challenge-account-size-2"
                     type="number"
                     value={accountSize}
                     onChange={(e) => { setAccountSize(e.target.value); if (formErrors.accountSize) setFormErrors((p) => ({ ...p, accountSize: false })); }}
@@ -1392,8 +1413,8 @@ export default function ChallengePage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-muted mb-1">{t("challenge_currency")}</label>
-                  <select
+                  <label htmlFor="challenge-challenge-currency-2" className="block text-sm text-muted mb-1">{t("challenge_currency")}</label>
+                  <select id="challenge-challenge-currency-2"
                     value={currency}
                     onChange={(e) => setCurrency(e.target.value)}
                     className={inputClass}
@@ -1461,23 +1482,23 @@ export default function ChallengePage() {
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-sm text-muted mb-1">{t("challenge_profit_target_pct")}</label>
-                  <input type="number" step="0.1" value={profitTarget} onChange={(e) => setProfitTarget(e.target.value)} className={inputClass} />
+                  <label htmlFor="challenge-challenge-profit-target-pct-2" className="block text-sm text-muted mb-1">{t("challenge_profit_target_pct")}</label>
+                  <input id="challenge-challenge-profit-target-pct-2" type="number" step="0.1" value={profitTarget} onChange={(e) => setProfitTarget(e.target.value)} className={inputClass} />
                 </div>
                 <div>
-                  <label className="block text-sm text-muted mb-1">{t("challenge_daily_dd_pct")}</label>
-                  <input type="number" step="0.1" value={maxDailyDd} onChange={(e) => setMaxDailyDd(e.target.value)} className={inputClass} />
+                  <label htmlFor="challenge-challenge-daily-dd-pct-2" className="block text-sm text-muted mb-1">{t("challenge_daily_dd_pct")}</label>
+                  <input id="challenge-challenge-daily-dd-pct-2" type="number" step="0.1" value={maxDailyDd} onChange={(e) => setMaxDailyDd(e.target.value)} className={inputClass} />
                 </div>
                 <div>
-                  <label className="block text-sm text-muted mb-1">{t("challenge_total_dd_pct")}</label>
-                  <input type="number" step="0.1" value={maxTotalDd} onChange={(e) => setMaxTotalDd(e.target.value)} className={inputClass} />
+                  <label htmlFor="challenge-challenge-total-dd-pct-2" className="block text-sm text-muted mb-1">{t("challenge_total_dd_pct")}</label>
+                  <input id="challenge-challenge-total-dd-pct-2" type="number" step="0.1" value={maxTotalDd} onChange={(e) => setMaxTotalDd(e.target.value)} className={inputClass} />
                 </div>
               </div>
               <TrailingDdToggle value={trailingDrawdown} onChange={setTrailingDrawdown} t={t} />
               {/* Discipline limit — personal stop-trading rule, optional */}
               <div>
-                <label className="block text-sm text-muted mb-1">{t("challenge_max_daily_loss_pct")}</label>
-                <input
+                <label htmlFor="challenge-challenge-max-daily-loss-pct-2" className="block text-sm text-muted mb-1">{t("challenge_max_daily_loss_pct")}</label>
+                <input id="challenge-challenge-max-daily-loss-pct-2"
                   type="number"
                   step="0.1"
                   min="0"
@@ -1491,10 +1512,10 @@ export default function ChallengePage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm text-muted mb-1">
+                  <label htmlFor="challenge-challenge-start-date-2" className="block text-sm text-muted mb-1">
                     {t("challenge_start_date")} <span className="text-red-500">*</span>
                   </label>
-                  <input
+                  <input id="challenge-challenge-start-date-2"
                     type="date"
                     value={startDate}
                     onChange={(e) => { setStartDate(e.target.value); if (formErrors.startDate) setFormErrors((p) => ({ ...p, startDate: false })); }}
@@ -1505,8 +1526,8 @@ export default function ChallengePage() {
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm text-muted mb-1">{t("challenge_end_date")}</label>
-                  <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputClass} />
+                  <label htmlFor="challenge-challenge-end-date-2" className="block text-sm text-muted mb-1">{t("challenge_end_date")}</label>
+                  <input id="challenge-challenge-end-date-2" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputClass} />
                 </div>
               </div>
             </>
@@ -1516,10 +1537,10 @@ export default function ChallengePage() {
           {accountType === "personal" && (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm text-muted mb-1">
+                <label htmlFor="challenge-challenge-start-date-3" className="block text-sm text-muted mb-1">
                   {t("challenge_start_date")} <span className="text-red-500">*</span>
                 </label>
-                <input
+                <input id="challenge-challenge-start-date-3"
                   type="date"
                   value={startDate}
                   onChange={(e) => { setStartDate(e.target.value); if (formErrors.startDate) setFormErrors((p) => ({ ...p, startDate: false })); }}
@@ -1592,17 +1613,17 @@ export default function ChallengePage() {
                       )}
                     </div>
                     <p className="text-muted text-sm mt-1">
-                      {new Date(c.start_date).toLocaleDateString("fr-FR")}
-                      {c.end_date && ` → ${new Date(c.end_date).toLocaleDateString("fr-FR")}`}
+                      {enDate(c.start_date)}
+                      {c.end_date && ` → ${enDate(c.end_date)}`}
                     </p>
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="text-right">
                       <p className={`text-lg font-bold ${pnl >= 0 ? "text-profit" : "text-loss"}`}>
-                        {money(pnl, accountCurrency(c), { signed: true })}
+                        {money(pnl, accountCurrency(c), { digits: 2, signed: true })}
                       </p>
                       <p className="text-muted text-sm">
-                        {t("challenge_final_balance")} {money(c.balance, accountCurrency(c))}
+                        {t("challenge_final_balance")} {money(c.balance, accountCurrency(c), { digits: 2 })}
                       </p>
                     </div>
                     <button
@@ -1634,7 +1655,7 @@ export default function ChallengePage() {
                   <p className="text-[11px] text-muted uppercase tracking-wider">{t("challenge_portfolio_capital")}</p>
                   {portfolioByCurrency.map(([curCode, sums]) => (
                     <p key={curCode} className="text-xl font-bold text-foreground tabular-nums mt-0.5">
-                      {money(sums.capital, curCode)}
+                      {money(sums.capital, curCode, { digits: 2 })}
                     </p>
                   ))}
                 </div>
@@ -1645,7 +1666,7 @@ export default function ChallengePage() {
                       key={curCode}
                       className={`text-xl font-bold tabular-nums mt-0.5 ${sums.pnl >= 0 ? "text-profit" : "text-loss"}`}
                     >
-                      {money(sums.pnl, curCode, { signed: true })}
+                      {money(sums.pnl, curCode, { digits: 2, signed: true })}
                     </p>
                   ))}
                 </div>
@@ -1655,14 +1676,19 @@ export default function ChallengePage() {
                     <p className="text-lg font-bold text-foreground tabular-nums mt-0.5">{activeAccounts.length}</p>
                   </div>
                   <div className="rounded-lg bg-surface border border-border p-3">
-                    <p className="text-[11px] text-muted uppercase tracking-wider">{t("trades_winrate")}</p>
+                    {/* ⚠️ « Winrate sur ces comptes », pas « Winrate » : cette
+                        carte ne compte que les comptes ACTIFS, et l'onglet
+                        Trades affichait 63,1 % sur 157 trades pendant qu'on
+                        lisait ici 64 % sur 39. Deux chiffres justes, un seul
+                        libellé, donc une contradiction à l'écran. */}
+                    <p className="text-[11px] text-muted uppercase tracking-wider">{t("challenge_portfolio_winrate")}</p>
                     <p className="text-lg font-bold text-foreground tabular-nums mt-0.5">
-                      {portfolio.trades > 0 ? `${portfolioWinrate.toFixed(0)}%` : "—"}
+                      {portfolio.trades > 0 ? `${pourcent(portfolioWinrate)}` : "—"}
                     </p>
                   </div>
                 </div>
                 <div className="rounded-lg bg-surface border border-border p-3">
-                  <p className="text-[11px] text-muted uppercase tracking-wider">{t("trades_total")}</p>
+                  <p className="text-[11px] text-muted uppercase tracking-wider">{t("challenge_portfolio_trades")}</p>
                   <p className="text-lg font-bold text-foreground tabular-nums mt-0.5">{portfolio.trades}</p>
                 </div>
               </div>
@@ -1697,7 +1723,7 @@ export default function ChallengePage() {
                             </p>
                             <p className="text-[10px] text-muted tabular-nums">
                               {s?.tradeCount ?? 0} trades
-                              {s && s.tradeCount > 0 ? ` · WR ${s.winrate.toFixed(0)}%` : ""}
+                              {s && s.tradeCount > 0 ? ` · WR ${pourcent(s.winrate)}` : ""}
                             </p>
                           </div>
                           <span
@@ -1705,7 +1731,7 @@ export default function ChallengePage() {
                               pnl > 0 ? "text-profit" : pnl < 0 ? "text-loss" : "text-muted"
                             }`}
                           >
-                            {money(pnl, accountCurrency(ac), { signed: true })}
+                            {money(pnl, accountCurrency(ac), { digits: 2, signed: true })}
                           </span>
                         </button>
                       );

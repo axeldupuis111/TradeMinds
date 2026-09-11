@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Flame, Trophy, Gem, Target, Star, Lock, PartyPopper, Crown, Snowflake, type LucideIcon } from "lucide-react";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
-import { computeDisciplineStreaks } from "@/lib/discipline-streak";
+import { joursEmotionnels, serieDepuisLesTrades } from "@/lib/discipline-streak-source";
 import { weekStartLocalKey, browserTimezone } from "@/lib/timezone";
 import { BASE_FREEZE_QUOTA, freezeBonusFor } from "@/lib/badges";
 import { challengeFreezeBonus } from "@/lib/community-challenges";
@@ -125,21 +125,12 @@ export default function GoalsStreaks() {
     // Discipline streak — consecutive distinct TRADING DAYS (most recent first)
     // with no revenge/FOMO trade. Days with no trades are skipped, so weekends
     // and trading breaks never reset the streak (markets are closed anyway).
-    const dayHasEmotionalTrade = new Map<string, boolean>();
-    for (const tr of trades || []) {
-      if (!tr.open_time) continue;
-      const day = tr.open_time.split("T")[0];
-      const bad = tr.emotion === "revenge" || tr.emotion === "fomo";
-      dayHasEmotionalTrade.set(day, (dayHasEmotionalTrade.get(day) ?? false) || bad);
-    }
-    // Frozen days count as clean: a grace token lets one slip not reset the run.
+    //
+    // ⚠️ LE CALCUL EST PARTAGÉ : « État du jour » en avait écrit un autre, et le
+    // tableau de bord annonçait deux séries différentes sous le même nom, sur le
+    // même écran. Voir lib/discipline-streak-source.ts.
     const frozenDays = new Set<string>((freezes || []).map((f) => (f as { day: string }).day));
-    const streaks = computeDisciplineStreaks(
-      Array.from(dayHasEmotionalTrade.entries()).map(([day, emotional]) => ({
-        day,
-        emotional: frozenDays.has(day) ? false : emotional,
-      })),
-    );
+    const streaks = serieDepuisLesTrades(trades || [], frozenDays);
     const streakCount = streaks.current;
     setStreak(streaks.current);
     setRecord(streaks.record);
@@ -167,7 +158,7 @@ export default function GoalsStreaks() {
 
     // Candidate = most recent emotional, not-yet-frozen day (the one breaking the
     // current streak), only if recent enough (≤ 30 days) to be worth protecting.
-    const emotionalDays = Array.from(dayHasEmotionalTrade.entries())
+    const emotionalDays = Array.from(joursEmotionnels(trades || []).entries())
       .filter(([day, emotional]) => emotional && !frozenDays.has(day))
       .map(([day]) => day)
       .sort();
@@ -308,7 +299,7 @@ export default function GoalsStreaks() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-foreground font-bold text-lg">
-              {streak > 0 ? `${streak} ${t("goals_streak_days")}` : `0 ${t("goals_streak_days")}`}
+              {`${streak} ${t("goals_streak_days", { n: streak })}`}
             </p>
             {isRecord && streak >= 3 && (
               <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-warning/15 text-warning">
@@ -319,8 +310,8 @@ export default function GoalsStreaks() {
           </div>
           <p className="text-muted text-xs">{t("goals_streak_desc")}</p>
           {record > 0 && streak > 0 && streak < record && (
-            <p className="text-warning/90 text-[11px] font-medium mt-0.5">
-              {t("goals_beat_record").replace("{n}", String(record - streak + 1))}
+            <p className="text-warning text-[11px] font-medium mt-0.5">
+              {t("goals_beat_record", { n: record - streak + 1 })}
             </p>
           )}
         </div>
@@ -335,7 +326,7 @@ export default function GoalsStreaks() {
         <div className="mb-4">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[11px] text-foreground-muted">
-              {t("goals_next_badge").replace("{n}", String(nextMilestone - streak))}
+              {t("goals_next_badge", { n: nextMilestone - streak })}
             </span>
             <span className="text-[11px] text-foreground-muted tabular-nums">{streak}/{nextMilestone}</span>
           </div>
@@ -369,13 +360,13 @@ export default function GoalsStreaks() {
                 >
                   <Snowflake className="w-3.5 h-3.5" strokeWidth={2} />
                   {t("freeze_cta_button")}
-                  <span className="opacity-70">· {t("freeze_remaining").replace("{n}", String(freezeRemaining))}</span>
+                  <span className="opacity-70">· {t("freeze_remaining", { n: freezeRemaining })}</span>
                 </button>
               ) : (
                 <p className="mt-2 text-[11px] text-muted">{t("freeze_none_left")}</p>
               )}
               {freezeBonus > 0 && (
-                <p className="mt-1.5 text-[11px] text-sky-400/80">{t("freeze_bonus_note").replace("{n}", String(freezeBonus))}</p>
+                <p className="mt-1.5 text-[11px] text-sky-400/80">{t("freeze_bonus_note", { n: freezeBonus })}</p>
               )}
             </div>
           </div>
@@ -387,7 +378,7 @@ export default function GoalsStreaks() {
         <div className="flex items-center justify-between mb-2">
           <p className="text-sm text-foreground font-medium">{t("goals_weekly")}</p>
           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${weeklyProgress.met ? "bg-profit/10 text-profit" : "bg-loss/10 text-loss"}`}>
-            {weeklyProgress.met ? t("goals_on_track") : `${weeklyProgress.current} ${weeklyProgress.current === 1 ? t("goals_violation_one") : t("goals_violations")}`}
+            {weeklyProgress.met ? t("goals_on_track") : `${weeklyProgress.current} ${t("goals_violations", { n: weeklyProgress.current })}`}
           </span>
         </div>
         <p className="text-xs text-muted">{t("goals_weekly_desc")}</p>
@@ -415,7 +406,7 @@ export default function GoalsStreaks() {
                     ? isLatest
                       ? "bg-accent/10 border-accent/50 text-accent shadow-[0_0_12px_rgb(var(--accent)_/_0.3)]"
                       : "bg-accent/10 border-accent/30 text-accent"
-                    : "bg-background border-border text-muted opacity-40"
+                    : "bg-background border-border text-muted"
                 }`}
               >
                 <div className="relative">

@@ -18,10 +18,11 @@ import { Sparkline } from "@/components/dashboard/Sparkline";
 import { WinRateGauge } from "@/components/dashboard/WinRateGauge";
 import { DEFAULT_CURRENCY, currencySymbol, money } from "@/lib/account-currency";
 import { cn } from "@/lib/cn";
-import { useLanguage } from "@/lib/LanguageContext";
+import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { useTheme } from "@/lib/ThemeContext";
 import { Wallet } from "lucide-react";
 import Link from "next/link";
+import { pourcent } from "@/lib/nombres";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -60,7 +61,7 @@ export interface KpiCardsProps {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function scoreSubLabel(score: number, t: (k: string) => string): string {
+function scoreSubLabel(score: number, t: Traduire): string {
   if (score >= 90) return t("dash_score_excellent");
   if (score >= 75) return t("dash_score_good");
   if (score >= 60) return t("dash_score_ok");
@@ -69,7 +70,7 @@ function scoreSubLabel(score: number, t: (k: string) => string): string {
 }
 
 /** Phrase de contexte en fonction du niveau de discipline */
-function scoreContextPhrase(score: number, t: (k: string) => string): string {
+function scoreContextPhrase(score: number, t: Traduire): string {
   if (score >= 90) return t("dash_score_ctx_excellent");
   if (score >= 75) return t("dash_score_ctx_good");
   if (score >= 60) return t("dash_score_ctx_ok");
@@ -237,7 +238,7 @@ export function KpiCards({
                 <span className="text-3xl font-black tabular-nums text-foreground leading-none">
                   <CountUp end={score} duration={1.5} />
                 </span>
-                <span className="text-sm font-semibold text-foreground-muted opacity-60">
+                <span className="text-sm font-semibold text-foreground-subtle">
                   /100
                 </span>
               </div>
@@ -269,7 +270,21 @@ export function KpiCards({
               )}
             />
 
-            {/* Mini-stats */}
+            {/*
+              Mini-stats.
+
+              ⚠️⚠️ ELLES RÉPÈTENT DEUX FAITS QUE LES CARTES D'À CÔTÉ AFFICHENT
+              DÉJÀ, ET ELLES LES ÉCRIVAIENT AUTREMENT. Sans trade cette
+              semaine, le même écran disait « Trades cette semaine — » ici et
+              « Trades cette semaine 0 » quatre-vingt-dix pixels plus bas ; et
+              « P&L du jour — » contre « +0,00 € ». Un tiret veut dire « on ne
+              sait pas », un zéro veut dire « on sait, et c'est zéro » : les
+              deux ne peuvent pas être vrais en même temps.
+
+              ⚠️ LE TAUX DE RÉUSSITE, LUI, GARDE SON TIRET, et ce n'est pas une
+              exception oubliée : sans aucun trade il n'a pas de dénominateur.
+              Écrire « 0 % » dirait qu'on a perdu tous ses trades.
+            */}
             <div className="flex items-start gap-6 flex-wrap">
               <MiniStat
                 label={
@@ -277,13 +292,13 @@ export function KpiCards({
                     ? t("dash_month_trades")
                     : t("dash_week_trades")
                 }
-                value={weekCount > 0 ? String(weekCount) : "—"}
+                value={String(weekCount)}
               />
               <MiniStat
                 label="Win rate"
                 value={
                   weekCount > 0
-                    ? `${Math.round((weekWins / weekCount) * 100)}%`
+                    ? `${pourcent(Math.round((weekWins / weekCount) * 100))}`
                     : "—"
                 }
                 positive={
@@ -292,14 +307,11 @@ export function KpiCards({
               />
               <MiniStat
                 label={t("dash_today_pnl")}
-                value={
-                  filteredTodayCount > 0
-                    ? money(todayPnl, currency, { signed: true })
-                    : "—"
-                }
-                positive={
-                  filteredTodayCount > 0 ? todayPnl >= 0 : undefined
-                }
+                /* ⚠️ Deux décimales comme la grande carte : le même montant y
+                   était arrondi à l'unité. Et sans condition : la grande carte
+                   écrit « +0,00 € » à zéro trade, celle-ci écrivait « — ». */
+                value={money(todayPnl, currency, { digits: 2, signed: true })}
+                positive={todayPnl >= 0}
               />
             </div>
           </div>
@@ -321,7 +333,7 @@ export function KpiCards({
     <KpiCardPremium
       label={useMonthFallback ? t("dash_month_trades") : t("dash_week_trades")}
       value={<CountUp end={weekCount} duration={1.2} />}
-      sublabel={`${weekWins} ${t("dash_wins")} · ${weekCount - weekWins} ${t("dash_losses")}`}
+      sublabel={`${weekWins} ${t("dash_wins", { n: weekWins })} · ${weekCount - weekWins} ${t("dash_losses", { n: weekCount - weekWins })}`}
       accentColor="green"
       visual={<WinRateGauge wins={weekWins} total={weekCount} />}
     />
@@ -335,12 +347,15 @@ export function KpiCards({
         <CountUp
           end={Math.abs(todayPnl)}
           prefix={pnlPositive ? "+" : "-"}
-          suffix={` ${currencySymbol(currency).trim()}`}
+          /* ⚠️ SANS ESPACE, COMME money() : le même P&L du jour s'écrivait
+             « +0,00 € » ici et « +0,00€ » dans le mini-KPI douze pixels plus
+             bas, sur le même écran. */
+          suffix={currencySymbol(currency)}
           decimals={2}
           duration={1.5}
         />
       }
-      sublabel={`${filteredTodayCount} trade${filteredTodayCount !== 1 ? "s" : ""} ${t("dash_today_label")}`}
+      sublabel={t("dash_today_trades_sub", { n: filteredTodayCount })}
       trend={pnlPositive ? "up" : "down"}
       accentColor={pnlPositive ? "cyan" : "amber"}
       visual={sparklineElement}
@@ -368,7 +383,7 @@ export function KpiCards({
   if (displayAccount) {
     const challengeSubLabel =
       challengePct !== null
-        ? `${challengePct.toFixed(0)}% ${t("dash_challenge_target") || "objectif"}`
+        ? `${pourcent(challengePct)} ${t("dash_challenge_target") || "objectif"}`
         : money(displayAccount.balanceChange, currency, { digits: 2, signed: true });
 
     card4 = (

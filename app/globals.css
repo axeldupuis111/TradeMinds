@@ -73,19 +73,39 @@
   --card:       17 17 19;     /* #111113 */
   --surface:    26 26 26;     /* #1a1a1a */
   --border:     28 28 30;     /* #1c1c1e */
-  --muted:      113 113 122;  /* #71717a */
+  /* ⚠️ #71717a tombait a 3,60:1 sur --surface : un gris "attenue" reste du
+     texte. Meme teinte, un cran plus clair, 5,5:1 sur la surface la plus pale. */
+  --muted:      138 138 147;  /* #8a8a93 */
 
   /* Accents */
   --accent:           0 212 216;        /* #00D4D8 — cyan-teal, signature TradeDiscipline */
   --accent-hover:     0 168 172;        /* #00A8AC — variant hover/active */
   --accent-muted:     0 212 216;        /* même valeur, on joue sur l'alpha via Tailwind */
 
-  /* Encre posée SUR un aplat d'accent (boutons pleins). Volontairement la même
-     valeur dans les deux thèmes : le cyan reste clair partout, seule une encre
-     sombre y tient le AA. `text-background` faisait 10,8:1 en sombre mais
-     retombait à 2,77:1 en clair (le token vire au quasi-blanc), et `text-white`
-     plafonnait à 1,7:1 en sombre. Ici : 10,8:1 en sombre, 6,8:1 en clair. */
+  /* Encre posée SUR un aplat vif (boutons pleins). Volontairement la même
+     valeur dans les deux thèmes : ces couleurs restent claires partout, seule
+     une encre sombre y tient le AA. `text-background` faisait 10,8:1 en sombre
+     mais retombait à 2,77:1 en clair (le token vire au quasi-blanc), et
+     `text-white` plafonnait à 1,7:1 en sombre.
+     Sur le cyan : 10,8:1 en sombre, 6,8:1 en clair.
+
+     ⚠️⚠️ ET ELLE NE SERT PAS QU'À L'ACCENT. Mesuré sur « Valider et
+     sauvegarder » : `bg-profit text-white` fait **3,30:1** en clair et
+     **2,28:1** en sombre. Sur `--warning` : 3,19 et 2,15. Sur `--gold` : 2,94
+     et 1,92. Le blanc ne tient sur AUCUN de ces aplats. Cette encre-ci y fait
+     respectivement 6,0/8,7, 6,2/9,3 et 6,8/10,4.
+
+     ⚠️ LE ROUGE EST LE SEUL CAS OÙ AUCUNE ENCRE UNIQUE NE MARCHE : blanc sur
+     `--loss` donne 4,83:1 en clair mais 3,76:1 en sombre, et l'encre sombre
+     l'inverse (4,12 puis 5,29). Un bouton « supprimer » à texte noir n'existe
+     nulle part : c'est donc l'APLAT qui change, voir `--loss-fill`. */
   --on-accent:        9 9 11;           /* #09090b */
+
+  /* L'aplat d'un bouton destructeur. Le même rouge dans les deux thèmes, assez
+     foncé pour porter du blanc (6,47:1) : voir la note ci-dessus.
+     ⚠️ DISTINCT DE `--loss`, qui reste la couleur SÉMANTIQUE des pertes, des
+     bordures et des fonds teintés. On ne repeint pas les chiffres. */
+  --loss-fill:        185 28 28;        /* #b91c1c */
 
   /* Sémantiques */
   --profit:           34 197 94;        /* #22c55e */
@@ -95,7 +115,31 @@
 
   /* Niveaux de gris du texte */
   --foreground-muted:   161 161 170;    /* #a1a1aa — texte secondaire */
-  --foreground-subtle:  82 82 91;       /* #52525b — texte tertiaire/labels */
+  /* ⚠️ #52525b sur #09090b ne faisait que 2,57:1. Un texte « tertiaire » reste
+     un texte : il descend d'un cran d'emphase, pas sous le seuil de lecture. */
+  --foreground-subtle:  134 134 143;    /* #86868f — 4,7:1 jusque sur --surface */
+
+  /* ── Encres de texte : les MÊMES couleurs, assez foncées pour être lues ───
+     ⚠️⚠️ MESURÉ, PAS ESTIMÉ. En thème clair, TOUTES les couleurs sémantiques
+     échouaient au seuil AA (4,5:1) dès qu'elles servaient de texte :
+     accent 2,77:1 (« Compléter ma session → »), or 2,94:1 (« Premium »),
+     ambre 3,02:1, vert 3,13:1 (« +0,00 € »). Elles sont pensées pour des
+     APLATS et des bordures, où le contraste ne se joue pas de la même façon.
+
+     ⚠️ ON NE TOUCHE DONC PAS AUX APLATS : `bg-accent` garde le cyan de
+     signature, `border-loss` garde son rouge. Seules les utilitaires de TEXTE
+     pointent vers ces variantes (voir tailwind.config.ts). Même teinte, plus
+     foncée : rien ne change d'identité, tout devient lisible.
+
+     ⚠️ EN SOMBRE, ELLES PASSENT DÉJÀ (accent 10,8:1, vert 8,7:1, rouge 5,3:1,
+     ambre 9,3:1) : les variantes y valent la couleur d'origine. */
+  --accent-text:  0 212 216;
+  --profit-text:  34 197 94;
+  /* ⚠️ Un cran plus clair que --loss : sur sa propre pastille (bg-loss/20),
+     #ef4444 tombait à 3,70:1. Nu, il gagne (6,3:1 au lieu de 4,6:1). */
+  --loss-text:    248 113 113;          /* #f87171 */
+  --warning-text: 245 158 11;
+  --gold-text:    234 179 8;
 
   /* ── Effect tokens — KPI Premium cards ──────────────────────────────── */
   --accent-glow:        0 229 208;     /* #00E5D0 — vivid cyan for dark-mode auras */
@@ -114,7 +158,8 @@ html.light {
   --card:       255 255 255;  /* #ffffff */
   --surface:    243 244 246;  /* #f3f4f6 */
   --border:     229 231 235;  /* #e5e7eb */
-  --muted:      107 114 128;  /* #6b7280 */
+  /* ⚠️ Voir la note du theme sombre : 4,39:1 sur --surface. */
+  --muted:      91 98 112;    /* #5b6270 */
 
   /* Accents */
   --accent:           0 168 172;        /* #00A8AC — légèrement plus foncé pour contraste */
@@ -129,7 +174,16 @@ html.light {
 
   /* Niveaux de gris du texte */
   --foreground-muted:   82 82 91;       /* #52525b */
-  --foreground-subtle:  161 161 170;    /* #a1a1aa */
+  /* ⚠️ #a1a1aa sur #f8f9fa ne faisait que 2,43:1, sur des étiquettes de KPI
+     (« Trades cette semaine »). Voir la note du thème sombre. */
+  --foreground-subtle:  103 110 123;    /* #676e7b — 4,6:1 jusque sur --surface */
+
+  /* Encres de texte : voir la note du thème sombre. */
+  --accent-text:  0 95 98;              /* #005f62 — 6,8:1 nu, 5,3:1 sur sa pastille */
+  --profit-text:  22 101 52;            /* #166534 — 6,5:1 nu, 5,0:1 sur sa pastille */
+  --loss-text:    153 27 27;            /* #991b1b — 7,6:1 nu, 5,1:1 sur sa pastille */
+  --warning-text: 146 64 14;            /* #92400e — 6,4:1 nu, 5,0:1 sur sa pastille */
+  --gold-text:    133 77 14;            /* #854d0e — 6,2:1 nu, 4,9:1 sur sa pastille */
 
   /* ── Effect tokens — KPI Premium cards ──────────────────────────────── */
   --accent-glow:        0 168 172;     /* #00A8AC */
@@ -141,6 +195,58 @@ html.light {
   --sheen:         rgba(0,0,0,.06);
 }
 
+
+/* ─── Palette figée en clair : compatibilité des couleurs Tailwind vives ───
+   ⚠️⚠️ MESURÉ SUR « Mes Trades », EN THÈME CLAIR : les pastilles « À annoter »
+   étaient en `text-amber-400` (#fbbf24) sur blanc, soit **1,67:1** — le texte
+   et le fond ont pratiquement la même clarté, c'est illisible. Les pastilles
+   de séance en `text-emerald-400` : 1,92:1. Cent six occurrences de ce genre
+   dans vingt-quatre fichiers.
+
+   Ce sont des couleurs Tailwind conçues pour du texte SUR FOND SOMBRE. Elles
+   ont été écrites quand l'application n'avait qu'un thème.
+
+   ⚠️⚠️ ET LA PREMIÈRE VERSION DE CE BLOC S'ARRÊTAIT AUX NIVEAUX 300 ET 400,
+   comme son test. Le pilotage du site a trouvé l'astérisque « champ requis »
+   du défi en `text-red-500` : **3,57:1**. Le niveau 500 est vif lui aussi, et
+   personne ne l'avait regardé. La règle existait, appliquée à une partie
+   seulement de ce qu'elle vise. Le test mesure maintenant TOUS les niveaux, à
+   partir de la vraie palette Tailwind.
+
+   ⚠️ ON NE TOUCHE QU'AUX UTILITAIRES DE TEXTE, et seulement en thème clair :
+   `bg-amber-400/10` garde son aplat, le sombre garde ses couleurs vives, et
+   les pages forcées en sombre (landing, login, pages légales) sont exclues,
+   puisqu'elles sont sombres même quand le reste ne l'est pas.
+
+   ⚠️ CE BLOC EST UNE COMPATIBILITÉ, PAS UN MODÈLE. Une pastille nouvelle se
+   colore avec les tokens de l'application (`text-warning`, `text-profit`…),
+   qui savent déjà changer avec le thème. Un test mesure les ratios d'ici.
+   ──────────────────────────────────────────────────────────────────────── */
+html.light .text-orange-400:not(.force-dark *) { color: #c2410c; }
+html.light .text-orange-300:not(.force-dark *) { color: #c2410c; }
+html.light .text-yellow-400:not(.force-dark *) { color: #9a5e07; }
+html.light .text-yellow-300:not(.force-dark *) { color: #9a5e07; }
+html.light .text-green-400:not(.force-dark *) { color: #15803d; }
+html.light .text-emerald-400:not(.force-dark *) { color: #047857; }
+html.light .text-sky-400:not(.force-dark *) { color: #0369a1; }
+html.light .text-amber-400:not(.force-dark *) { color: #b45309; }
+html.light .text-amber-300:not(.force-dark *) { color: #b45309; }
+html.light .text-violet-400:not(.force-dark *) { color: #6d28d9; }
+html.light .text-purple-400:not(.force-dark *) { color: #7e22ce; }
+html.light .text-red-400:not(.force-dark *) { color: #b91c1c; }
+html.light .text-blue-400:not(.force-dark *) { color: #1d4ed8; }
+html.light .text-blue-300:not(.force-dark *) { color: #1d4ed8; }
+html.light .text-cyan-300:not(.force-dark *) { color: #0e7490; }
+html.light .text-teal-300:not(.force-dark *) { color: #0f766e; }
+html.light .text-gray-400:not(.force-dark *) { color: #4b5563; }
+html.light .text-gray-300:not(.force-dark *) { color: #4b5563; }
+html.light .text-slate-300:not(.force-dark *) { color: #475569; }
+html.light .text-red-500:not(.force-dark *) { color: #b91c1c; }
+html.light .text-orange-500:not(.force-dark *) { color: #c2410c; }
+html.light .text-amber-600:not(.force-dark *) { color: #b45309; }
+html.light .text-yellow-600:not(.force-dark *) { color: #9a5e07; }
+html.light .text-gray-500:not(.force-dark *) { color: #4b5563; }
+
 /* ─── Force-dark: public pages always stay in dark mode ─────────────────────
    Applied on the root element of landing, login, and legal pages.
    Direct CSS custom-property declarations beat inherited values (html.light),
@@ -148,12 +254,60 @@ html.light {
    ──────────────────────────────────────────────────────────────────────── */
 .force-dark,
 html.light .force-dark {
+  /* ⚠️⚠️ LA LISTE COMPLÈTE, ET IL EN MANQUAIT ONZE SUR DIX-SEPT. Mesuré sur la
+     landing, ouverte par quelqu'un dont le thème est CLAIR — le cas d'Axel :
+
+       --foreground-muted gardait sa valeur claire (#52525b) sur un fond
+       #09090b, soit 2,57:1 sur QUATRE-VINGT-DIX-NEUF éléments, dont toute la
+       navigation (« Fonctionnalités », « Tarifs », « FAQ », « Blog »). En
+       dessous du seuil AA de 4,5, et illisible pour de vrai.
+
+       --accent valait #00A8AC, la variante assombrie POUR FOND CLAIR, au lieu
+       du cyan de signature #00D4D8. La page qu'il a choisie « parce qu'elle est
+       cyan et plus pro » n'était pas cyan chez lui.
+
+       --loss, --profit, --warning, --gold et les trois auras : mêmes valeurs
+       claires posées sur du noir.
+
+     ⚠️ CE BLOC REDÉCLARE DONC TOUT CE QUE html.light REDÉCLARE. La règle est
+     là : une liste d'annulation qui n'annule qu'une partie laisse passer le
+     reste sans rien signaler, et personne ne voit ce qui manque en la lisant.
+     Un test compare les deux listes. */
   --background: 9 9 11;
   --foreground: 250 250 250;
   --card:       17 17 19;
   --surface:    26 26 26;
   --border:     28 28 30;
-  --muted:      113 113 122;
+  --muted:      138 138 147;
+
+  --accent:           0 212 216;
+  --accent-hover:     0 168 172;
+  --accent-muted:     0 212 216;
+
+  --profit:           34 197 94;
+  --loss:             239 68 68;
+  --warning:          245 158 11;
+  --gold:             234 179 8;
+
+  --foreground-muted:   161 161 170;
+  --foreground-subtle:  134 134 143;
+
+  --accent-text:  0 212 216;
+  --profit-text:  34 197 94;
+  /* ⚠️ Un cran plus clair que --loss : sur sa propre pastille (bg-loss/20),
+     #ef4444 tombait à 3,70:1. Nu, il gagne (6,3:1 au lieu de 4,6:1). */
+  --loss-text:    248 113 113;          /* #f87171 */
+  --warning-text: 245 158 11;
+  --gold-text:    234 179 8;
+
+  --accent-glow:        0 229 208;
+  --accent-amber-glow:  251 191 36;
+  --accent-violet-glow: 167 139 250;
+  --card-grad-top: 22 22 30;
+  --card-grad-bot: 8 8 12;
+  --glow-shadow:   0 30px 70px -20px rgba(0,0,0,.95), inset 0 0 0 1px rgba(255,255,255,.025), 0 0 80px -20px rgba(0,229,208,.28);
+  --sheen:         rgba(255,255,255,.22);
+
   color-scheme: dark;
   /* Ensure body-level bg/text picks up local variables */
   background-color: rgb(var(--background));

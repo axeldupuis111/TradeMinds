@@ -14,6 +14,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useReducedMotion } from "framer-motion";
 import { useTheme } from "@/lib/ThemeContext";
+import { pourcent } from "@/lib/nombres";
 
 interface WinRateGaugeProps {
   wins: number;
@@ -129,7 +130,7 @@ export function WinRateGauge({ wins, total }: WinRateGaugeProps) {
 
       {/* Percentage label — HTML span (Tailwind token resolves correctly) */}
       <span className="text-xs font-bold tabular-nums text-foreground leading-none">
-        {total > 0 ? `${Math.round(winRate)}%` : "—"}
+        {total > 0 ? `${pourcent(Math.round(winRate))}` : "—"}
       </span>
     </div>
   );

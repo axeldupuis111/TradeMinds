@@ -1,6 +1,6 @@
 "use client";
 
-import { useLanguage } from "@/lib/LanguageContext";
+import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { currencySymbol, money } from "@/lib/account-currency";
 import { useDisplayCurrency } from "@/lib/hooks/useDisplayCurrency";
 import { usePlan } from "@/lib/PlanContext";
@@ -15,6 +15,8 @@ import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { ScoreRing } from "@/components/dashboard/ScoreRing";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { X } from "lucide-react";
+import { pourcent, nombre } from "@/lib/nombres";
+import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 interface Stats { trades: number; winRate: number; totalPnl: number; sessions: number; avgDisciplineScore: number | null; tradingDays: number }
 interface Deltas { trades: number; winRate: number; sessions: number; avgDisciplineScore: number | null; tradingDays: number }
@@ -52,7 +54,7 @@ function fmtMoney(n: number, currency: string) { return money(n, currency, { sig
 function fmtMoneyShort(n: number) {
   const a = Math.abs(n);
   const sign = n > 0 ? "+" : n < 0 ? "-" : "";
-  if (a >= 1000) return `${sign}${(a / 1000).toFixed(1).replace(".", ",")}k`;
+  if (a >= 1000) return `${sign}${nombre(a / 1000, 1)}k`;
   return `${sign}${Math.round(a)}`;
 }
 function fmtDate(iso: string, lang: string) { return new Date(iso).toLocaleDateString(lang, { day: "numeric", month: "short" }); }
@@ -112,11 +114,12 @@ export default function MonthlyReviewPage() {
   const { t, lang } = useLanguage();
   // Vue multi-comptes : devise commune aux comptes actifs, euro s'ils la mélangent.
   const displayCurrency = useDisplayCurrency();
-  const { plan, demoMode } = usePlan();
+  const { plan, demoMode, loading: abonnementEnCours } = usePlan();
   const isPaid = plan === "plus" || plan === "premium";
   const [monthParam, setMonthParam] = useState<string | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiErreur, setAiErreur] = useState<string | null>(null);
   const [month, setMonth] = useState<Month | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [deltas, setDeltas] = useState<Deltas | null>(null);
@@ -144,7 +147,7 @@ export default function MonthlyReviewPage() {
   const loadStats = useCallback(async (mp: string | null) => {
     if (!isPaid) { setLoadingStats(false); return; }
     setLoadingStats(true);
-    setReview(null); setRawSummary(null);
+    setReview(null); setRawSummary(null); setAiErreur(null);
     try {
       const res = await fetch(`/api/monthly-review${mp ? `?month=${mp}` : ""}`);
       if (res.ok) {
@@ -206,15 +209,33 @@ export default function MonthlyReviewPage() {
     setMonthParam(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
   }
 
+  /**
+   * ⚠️⚠️ CE BOUTON POUVAIT NE RIEN FAIRE, SANS UN MOT. La réponse n'était jamais
+   * regardée : quota du jour épuisé (429), plan insuffisant (403), modèle
+   * indisponible (200 avec `review: null`), tout finissait de la même façon, en
+   * remettant le bouton « Générer le bilan » à l'écran. Le trader recliquait, et
+   * chaque clic consommait un appel de plus.
+   */
   async function generate() {
     setAiLoading(true);
+    setAiErreur(null);
     try {
       const res = await fetch("/api/monthly-review", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ language: lang, month: month?.key }),
       });
-      const d = await res.json();
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (res.status === 429) setAiErreur(t(d?.scope === "month" ? "api_error_monthly_limit" : "api_error_rate_limited"));
+        else if (res.status === 403) setAiErreur(t("api_error_forbidden"));
+        else setAiErreur(t("review_generate_failed"));
+        return;
+      }
       setReview(d.review ?? null); setRawSummary(d.rawSummary ?? null);
+      // Réponse acceptée mais vide : le modèle n'a rien rendu d'exploitable.
+      if (!d.review && !d.rawSummary) setAiErreur(t("review_generate_failed"));
+    } catch {
+      setAiErreur(t("review_generate_failed"));
     } finally { setAiLoading(false); }
   }
 
@@ -254,10 +275,10 @@ export default function MonthlyReviewPage() {
       pdf.statGrid([
         { label: t("review_kpi_trades"), value: `${stats.trades}`, ...deltaCard(deltas?.trades) },
         { label: t("review_kpi_days"), value: `${stats.tradingDays}`, ...deltaCard(deltas?.tradingDays) },
-        { label: t("review_kpi_winrate"), value: `${stats.winRate}%`, color: stats.winRate >= 50 ? C.green : C.amber, ...deltaCard(deltas?.winRate, " pts") },
+        { label: t("review_kpi_winrate"), value: `${pourcent(stats.winRate)}`, color: stats.winRate >= 50 ? C.green : C.amber, ...deltaCard(deltas?.winRate, " pts") },
         { label: t("review_kpi_sessions"), value: `${stats.sessions}`, ...deltaCard(deltas?.sessions) },
         { label: t("review_kpi_score"), value: stats.avgDisciplineScore != null ? `${stats.avgDisciplineScore}/100` : "—", color: stats.avgDisciplineScore != null ? scoreColor(stats.avgDisciplineScore) : C.faint, ...deltaCard(deltas?.avgDisciplineScore, " pts") },
-        { label: t("review_kpi_prep"), value: extras?.prepRate != null ? `${extras.prepRate}%` : "—", color: C.teal },
+        { label: t("review_kpi_prep"), value: extras?.prepRate != null ? `${pourcent(extras.prepRate)}` : "—", color: C.teal },
       ]);
 
       // ── Equity du mois ──
@@ -294,8 +315,8 @@ export default function MonthlyReviewPage() {
         pdf.ensure(40, contTitle);
         pdf.section(t("review_risk_title"));
         pdf.statGrid([
-          { label: t("review_risk_pf"), value: risk.profitFactor == null ? "∞" : risk.profitFactor.toFixed(2), color: risk.profitFactor == null || risk.profitFactor >= 1.5 ? C.green : risk.profitFactor >= 1 ? C.amber : C.red },
-          { label: t("review_risk_payoff"), value: risk.payoff == null ? "—" : risk.payoff.toFixed(2), color: risk.payoff != null && risk.payoff >= 1 ? C.green : C.amber },
+          { label: t("review_risk_pf"), value: risk.profitFactor == null ? "∞" : nombre(risk.profitFactor, 2), color: risk.profitFactor == null || risk.profitFactor >= 1.5 ? C.green : risk.profitFactor >= 1 ? C.amber : C.red },
+          { label: t("review_risk_payoff"), value: risk.payoff == null ? "—" : nombre(risk.payoff, 2), color: risk.payoff != null && risk.payoff >= 1 ? C.green : C.amber },
           { label: t("review_risk_expectancy"), value: fmtMoney(risk.expectancy, displayCurrency), color: risk.expectancy >= 0 ? C.green : C.red },
           { label: t("review_risk_dd"), value: risk.maxDrawdown > 0 ? fmtMoney(-risk.maxDrawdown, displayCurrency) : "—", color: C.red },
           { label: t("review_risk_win_streak"), value: `${risk.bestWinStreak}`, color: C.green },
@@ -326,7 +347,7 @@ export default function MonthlyReviewPage() {
         const maxAbs = Math.max(1, ...emotions.map((e) => Math.abs(e.pnl)));
         pdf.bars(
           emotions.map((e) => ({
-            label: `${t(`emotion_${e.emotion}`)} (${e.winRate}%)`,
+            label: `${t(`emotion_${e.emotion}`)} (${pourcent(e.winRate)})`,
             value: fmtMoney(e.pnl, displayCurrency),
             ratio: Math.abs(e.pnl) / maxAbs,
             color: e.pnl >= 0 ? C.green : C.red,
@@ -360,7 +381,7 @@ export default function MonthlyReviewPage() {
         const maxAbs = Math.max(1, ...pairs.map((p) => Math.abs(p.pnl)));
         pdf.bars(
           pairs.slice(0, 6).map((p) => ({
-            label: `${p.pair} (${p.winRate}%)`,
+            label: `${p.pair} (${pourcent(p.winRate)})`,
             value: fmtMoney(p.pnl, displayCurrency),
             ratio: Math.abs(p.pnl) / maxAbs,
             color: p.pnl >= 0 ? C.green : C.red,
@@ -379,7 +400,7 @@ export default function MonthlyReviewPage() {
             label: t(`review_day_${d.dir}`),
             value: fmtMoney(d.pnl, displayCurrency),
             color: d.pnl >= 0 ? C.green : C.red,
-            sub: `${d.winRate}% · ${d.count}`,
+            sub: `${pourcent(d.winRate)} · ${d.count}`,
           })),
           { cols: 2, height: 22 },
         );
@@ -452,7 +473,18 @@ export default function MonthlyReviewPage() {
         )}
       </div>
 
-      {!isPaid ? (
+      {/*
+        ⚠️⚠️ « INCONNU » N'EST PAS « GRATUIT ». `plan` vaut « free » tant que la
+        requête n'a pas répondu : sans cette attente, un abonné voyait « Le
+        bilan mensuel IA est réservé aux plans payants » à chaque arrivée sur la
+        page, puis le bilan qu'il paie. Dire à quelqu'un qu'il n'a pas ce qu'il
+        paie, même une seconde, est pire que de le faire patienter.
+      */}
+      {abonnementEnCours ? (
+        <div className="mt-6 rounded-xl border border-border p-6 text-center">
+          <p className="text-sm text-foreground-muted">{t("plan_verification")}</p>
+        </div>
+      ) : !isPaid ? (
         <div className="mt-6 rounded-xl border border-accent/30 bg-accent/5 p-6 text-center">
           <p className="text-foreground font-medium">{t("review_locked")}</p>
           <Link href="/dashboard/upgrade" className="inline-block mt-3 text-sm text-accent hover:underline">{t("upsell_banner_cta")}</Link>
@@ -485,7 +517,7 @@ export default function MonthlyReviewPage() {
           ) : stats && !hasContent ? (
             <div className="mt-4 rounded-xl border border-dashed border-border p-10 text-center">
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-surface mb-3">
-                <CalendarX className="w-6 h-6 text-muted/50" />
+                <CalendarX className="w-6 h-6 text-muted" />
               </div>
               <p className="text-muted text-sm">{t("review_empty")}</p>
             </div>
@@ -543,10 +575,10 @@ export default function MonthlyReviewPage() {
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                     <Kpi label={t("review_kpi_trades")} value={`${stats.trades}`} delta={deltas?.trades} />
                     <Kpi label={t("review_kpi_days")} value={`${stats.tradingDays}`} delta={deltas?.tradingDays} />
-                    <Kpi label={t("review_kpi_winrate")} value={`${stats.winRate}%`} delta={deltas?.winRate} suffix="pts" valueClass={stats.winRate >= 50 ? "text-profit" : "text-warning"} />
+                    <Kpi label={t("review_kpi_winrate")} value={`${pourcent(stats.winRate)}`} delta={deltas?.winRate} suffix="pts" valueClass={stats.winRate >= 50 ? "text-profit" : "text-warning"} />
                     <Kpi label={t("review_kpi_sessions")} value={`${stats.sessions}`} delta={deltas?.sessions} />
                     <Kpi label={t("review_kpi_score")} value={stats.avgDisciplineScore != null ? `${stats.avgDisciplineScore}/100` : "—"} delta={deltas?.avgDisciplineScore ?? undefined} suffix="pts" valueClass={stats.avgDisciplineScore != null ? scoreText(stats.avgDisciplineScore) : "text-foreground"} />
-                    {extras?.prepRate != null && <Kpi label={t("review_kpi_prep")} value={`${extras.prepRate}%`} valueClass="text-teal-300" />}
+                    {extras?.prepRate != null && <Kpi label={t("review_kpi_prep")} value={`${pourcent(extras.prepRate)}`} valueClass="text-teal-300" />}
                   </div>
 
                   {/* Comparaison mois-sur-mois */}
@@ -558,7 +590,7 @@ export default function MonthlyReviewPage() {
                       <div className="mt-2 rounded-xl border border-border bg-card p-4">
                         <div className="flex items-center gap-2 mb-3 flex-wrap">
                           <span className="text-xs text-muted">{t("review_compare_with")}</span>
-                          <input type="month" value={compareMonth} max={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`}
+                          <input aria-label={t("a11y_month")} type="month" value={compareMonth} max={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`}
                             onChange={(e) => setCompareMonth(e.target.value)}
                             className="px-2.5 py-1.5 bg-surface border border-border rounded-lg text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-accent" />
                         </div>
@@ -582,7 +614,7 @@ export default function MonthlyReviewPage() {
                       <Target className="w-5 h-5 text-accent shrink-0" />
                       <div className="flex-1">
                         <p className="text-sm font-semibold text-foreground">{t("review_goals_title")}</p>
-                        <p className="text-xs text-muted">{t("review_goals_sub").replace("{met}", String(goalsSummary.met)).replace("{total}", String(goalsSummary.total))}</p>
+                        <p className="text-xs text-muted">{t("review_goals_sub", { met: goalsSummary.met, total: goalsSummary.total })}</p>
                       </div>
                       <span className="text-xs text-accent font-medium whitespace-nowrap">{t("review_goals_link")} →</span>
                     </Link>
@@ -629,7 +661,7 @@ export default function MonthlyReviewPage() {
                           <div className="rounded-xl border border-border bg-card p-3">
                             <p className="text-xs text-muted flex items-center gap-1.5"><Award className="w-3.5 h-3.5 text-violet-400" />{t("review_best_discipline")}</p>
                             <p className="text-lg font-bold text-foreground mt-0.5">{records.bestDisciplineDay.score}/100</p>
-                            <p className="text-[10px] text-muted/70">{fmtDate(records.bestDisciplineDay.date, lang)}</p>
+                            <p className="text-[10px] text-muted">{fmtDate(records.bestDisciplineDay.date, lang)}</p>
                           </div>
                         )}
                       </div>
@@ -655,9 +687,14 @@ export default function MonthlyReviewPage() {
                   ) : rawSummary ? (
                     <div className="rounded-xl border border-border bg-card p-5"><p className="text-sm text-muted leading-relaxed whitespace-pre-line">{rawSummary.replace(/\*\*/g, "")}</p></div>
                   ) : (
-                    <button onClick={generate} disabled={aiLoading} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-on-accent text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-50">
-                      <Sparkles className="w-4 h-4" />{aiLoading ? t("review_generating") : t("review_generate")}
-                    </button>
+                    <div className="space-y-3">
+                      {aiErreur && (
+                        <p role="alert" className="rounded-lg border border-loss/30 bg-loss/10 px-3 py-2 text-sm text-loss">{aiErreur}</p>
+                      )}
+                      <button onClick={generate} disabled={aiLoading} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-on-accent text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-50">
+                        <Sparkles className="w-4 h-4" />{aiLoading ? t("review_generating") : t("review_generate")}
+                      </button>
+                    </div>
                   )}
                 </div>
               )}
@@ -672,10 +709,10 @@ export default function MonthlyReviewPage() {
                       <p className="text-xs text-muted mt-0.5 mb-3">{t("review_risk_sub")}</p>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <RiskStat label={t("review_risk_pf")} hint={t("review_risk_pf_hint")}
-                          value={risk.profitFactor == null ? "∞" : risk.profitFactor.toFixed(2).replace(".", ",")}
+                          value={risk.profitFactor == null ? "∞" : nombre(risk.profitFactor, 2)}
                           cls={risk.profitFactor == null || risk.profitFactor >= 1.5 ? "text-profit" : risk.profitFactor >= 1 ? "text-warning" : "text-loss"} />
                         <RiskStat label={t("review_risk_payoff")} hint={t("review_risk_payoff_hint")}
-                          value={risk.payoff == null ? "—" : risk.payoff.toFixed(2).replace(".", ",")}
+                          value={risk.payoff == null ? "—" : nombre(risk.payoff, 2)}
                           cls={risk.payoff == null ? "text-muted" : risk.payoff >= 1 ? "text-profit" : "text-warning"} />
                         <RiskStat label={t("review_risk_expectancy")} hint={t("review_risk_expectancy_hint")}
                           value={fmtMoney(risk.expectancy, displayCurrency)}
@@ -701,7 +738,7 @@ export default function MonthlyReviewPage() {
                             {t(`review_day_${d.dir}`)}
                           </p>
                           <p className={`text-lg font-bold mt-0.5 tabular-nums ${d.pnl >= 0 ? "text-profit" : "text-loss"}`}>{fmtMoney(d.pnl, displayCurrency)}</p>
-                          <p className="text-[11px] text-muted">{d.winRate}% · {d.count} {t("review_kpi_trades").toLowerCase()}</p>
+                          <p className="text-[11px] text-muted">{pourcent(d.winRate)} · {d.count} {t("review_kpi_trades").toLowerCase()}</p>
                         </div>
                       ))}
                     </div>
@@ -724,7 +761,7 @@ export default function MonthlyReviewPage() {
                               {weekdays.map((w) => {
                                 const pct = w.count ? Math.max(10, Math.round((Math.abs(w.pnl) / maxAbs) * 100)) : 0;
                                 return (
-                                  <div key={w.wd} className="flex-1 flex flex-col items-center" title={w.count ? `${fmtMoney(w.pnl, displayCurrency)} · ${w.winRate}% · ${w.count} ${t("review_kpi_trades").toLowerCase()}` : t("review_day_no_trades")}>
+                                  <div key={w.wd} className="flex-1 flex flex-col items-center" title={w.count ? `${fmtMoney(w.pnl, displayCurrency)} · ${pourcent(w.winRate)} · ${w.count} ${t("review_kpi_trades").toLowerCase()}` : t("review_day_no_trades")}>
                                     <div className="w-full h-9 flex items-end justify-center">
                                       {w.pnl > 0 && <div className="w-full max-w-[24px] h-full flex items-end"><GrowBar vertical pct={pct} durationMs={700} delayMs={w.wd * 50} className="rounded-t bg-profit/70" /></div>}
                                     </div>
@@ -753,7 +790,7 @@ export default function MonthlyReviewPage() {
                                 return (
                                   <div key={p.pair} className="flex items-center gap-2 text-xs" title={`${p.count} ${t("review_kpi_trades").toLowerCase()}`}>
                                     <span className="w-16 shrink-0 font-semibold text-foreground truncate">{p.pair}</span>
-                                    <span className="w-9 text-muted tabular-nums shrink-0 text-right">{p.winRate}%</span>
+                                    <span className="w-9 text-muted tabular-nums shrink-0 text-right">{pourcent(p.winRate)}</span>
                                     <div className="flex-1 h-2 min-w-0">
                                       <GrowBar pct={pct} className={`rounded-full ${p.pnl >= 0 ? "bg-profit/70" : "bg-loss/70"}`} />
                                     </div>
@@ -789,7 +826,7 @@ export default function MonthlyReviewPage() {
                             const pct = d ? Math.max(10, Math.round((Math.abs(d.pnl) / maxAbs) * 100)) : 0;
                             return (
                               <div key={h} className="flex-1 flex flex-col items-center min-w-0"
-                                title={d ? `${h}h · ${fmtMoney(d.pnl, displayCurrency)} · ${d.winRate}% · ${d.count} ${t("review_kpi_trades").toLowerCase()}` : `${h}h`}>
+                                title={d ? `${h}h · ${fmtMoney(d.pnl, displayCurrency)} · ${pourcent(d.winRate)} · ${d.count} ${t("review_kpi_trades").toLowerCase()}` : `${h}h`}>
                                 <div className="w-full h-9 flex items-end justify-center">
                                   {d && d.pnl > 0 && <div className="w-full max-w-[18px] h-full flex items-end"><GrowBar vertical pct={pct} durationMs={700} delayMs={i * 35} className="rounded-t bg-profit/70" /></div>}
                                 </div>
@@ -797,7 +834,7 @@ export default function MonthlyReviewPage() {
                                 <div className="w-full h-9 flex items-start justify-center">
                                   {d && d.pnl < 0 && <div className="w-full max-w-[18px] h-full flex items-start"><GrowBar vertical pct={pct} durationMs={700} delayMs={i * 35} className="rounded-b bg-loss/70" /></div>}
                                 </div>
-                                <span className={`text-[9px] mt-1 tabular-nums ${d ? "text-muted" : "text-muted/30"}`}>{h}h</span>
+                                <span className={`text-[9px] mt-1 tabular-nums ${d ? "text-muted" : "text-muted"}`}>{h}h</span>
                               </div>
                             );
                           })}
@@ -823,14 +860,14 @@ export default function MonthlyReviewPage() {
                             <p className={`text-2xl font-black tabular-nums mt-1 ${payoffInsight.hiAvg >= 0 ? "text-profit" : "text-loss"}`}>
                               <CountUp end={Math.round(payoffInsight.hiAvg)} prefix={payoffInsight.hiAvg >= 0 ? "+" : ""} suffix={` ${currencySymbol(displayCurrency).trim()}`} duration={1} />
                             </p>
-                            <p className="text-[11px] text-muted mt-1">{t("review_payoff_days").replace("{n}", String(payoffInsight.hiN))}</p>
+                            <p className="text-[11px] text-muted mt-1">{t("review_payoff_days", { n: payoffInsight.hiN })}</p>
                           </div>
                           <div className="rounded-xl border border-loss/30 bg-loss/[0.04] p-4">
                             <p className="text-xs text-muted">{t("review_payoff_other")}</p>
                             <p className={`text-2xl font-black tabular-nums mt-1 ${payoffInsight.loAvg >= 0 ? "text-profit" : "text-loss"}`}>
                               <CountUp end={Math.round(payoffInsight.loAvg)} prefix={payoffInsight.loAvg >= 0 ? "+" : ""} suffix={` ${currencySymbol(displayCurrency).trim()}`} duration={1} />
                             </p>
-                            <p className="text-[11px] text-muted mt-1">{t("review_payoff_days").replace("{n}", String(payoffInsight.loN))}</p>
+                            <p className="text-[11px] text-muted mt-1">{t("review_payoff_days", { n: payoffInsight.loN })}</p>
                           </div>
                         </div>
                         {payoffInsight.diff > 0 && (
@@ -874,7 +911,7 @@ export default function MonthlyReviewPage() {
                                   <span className="text-base leading-none">{EMOTION_EMOJI[e.emotion] ?? "\u{1F642}"}</span>
                                   <span className="text-foreground truncate">{t(`emotion_${e.emotion}`)}</span>
                                 </div>
-                                <span className="w-9 text-muted tabular-nums shrink-0 text-right">{e.winRate}%</span>
+                                <span className="w-9 text-muted tabular-nums shrink-0 text-right">{pourcent(e.winRate)}</span>
                                 <div className="flex-1 flex items-center min-w-0">
                                   <div className="w-1/2 h-2 flex justify-end">{e.pnl < 0 && <GrowBar pct={pct} className="bg-loss rounded-full" />}</div>
                                   <div className="w-px h-3.5 bg-border shrink-0" />
@@ -896,13 +933,13 @@ export default function MonthlyReviewPage() {
                         <p className="text-xs text-muted mb-2">{t("review_calendar_title")}</p>
                         <div className="grid grid-cols-7 gap-1">
                           {[0, 1, 2, 3, 4, 5, 6].map((wd) => (
-                            <span key={wd} className="text-[9px] text-muted/60 text-center">{t(`review_wd_${wd}`)}</span>
+                            <span key={wd} className="text-[9px] text-muted text-center">{t(`review_wd_${wd}`)}</span>
                           ))}
                           {Array.from({ length: firstWeekday }).map((_, i) => <span key={`e${i}`} />)}
                           {Array.from({ length: daysInMonth }).map((_, i) => {
                             const day = i + 1;
                             const c = calByDay.get(day);
-                            const cls = !c ? "bg-surface/40 text-muted/40"
+                            const cls = !c ? "bg-surface/40 text-muted"
                               : c.score != null ? scoreBg(c.score)
                               : c.pnl > 0 ? "bg-profit/20 text-foreground" : c.pnl < 0 ? "bg-loss/20 text-foreground" : "bg-surface text-muted";
                             const isToday = day === todayDay;
@@ -937,7 +974,7 @@ export default function MonthlyReviewPage() {
                     {trend.some((p) => p.score != null) && (
                       <div className="rounded-xl border border-border bg-card p-4 mt-4 lg:mt-0">
                         <p className="text-xs text-muted">{t("review_trend_title")}</p>
-                        <p className="text-[10px] text-muted/70 mb-3">{t("review_trend_legend")}</p>
+                        <p className="text-[10px] text-muted mb-3">{t("review_trend_legend")}</p>
                         <div className="flex items-end justify-between gap-2 h-28">
                           {trend.map((p, i) => (
                             <div key={p.label} className="flex-1 flex flex-col items-center gap-1" title={`${p.score != null ? `${p.score}/100` : "—"} · ${fmtMoney(p.pnl, displayCurrency)}`}>
@@ -948,7 +985,7 @@ export default function MonthlyReviewPage() {
                                 </div>
                               </div>
                               <span className="text-[10px] text-muted">{p.label.slice(5)}</span>
-                              <span className={`text-[9px] font-semibold tabular-nums leading-none ${p.pnl > 0 ? "text-profit" : p.pnl < 0 ? "text-loss" : "text-muted/50"}`}>{fmtMoneyShort(p.pnl)}</span>
+                              <span className={`text-[9px] font-semibold tabular-nums leading-none ${p.pnl > 0 ? "text-profit" : p.pnl < 0 ? "text-loss" : "text-muted"}`}>{fmtMoneyShort(p.pnl)}</span>
                             </div>
                           ))}
                         </div>
@@ -986,7 +1023,7 @@ function Kpi({ label, value, delta, suffix, valueClass = "text-foreground" }: { 
           <span className={`inline-flex items-center text-xs font-medium ${positive ? "text-profit" : "text-loss"}`}>
             {positive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}{Math.abs(delta as number)}{suffix ? ` ${suffix}` : ""}
           </span>
-        ) : (typeof delta === "number" && <Minus className="w-3 h-3 text-muted/40" />)}
+        ) : (typeof delta === "number" && <Minus className="w-3 h-3 text-muted" />)}
       </div>
     </div>
   );
@@ -1007,7 +1044,7 @@ function Highlight({ label, value, sub, positive, onClick }: { label: string; va
     <>
       <p className="text-xs text-muted">{label}</p>
       <p className={`text-base font-bold mt-1 ${positive ? "text-profit" : "text-foreground"}`}>{value}</p>
-      <p className="text-xs text-muted/70">{sub}</p>
+      <p className="text-xs text-muted">{sub}</p>
     </>
   );
   if (onClick) {
@@ -1021,7 +1058,7 @@ function Highlight({ label, value, sub, positive, onClick }: { label: string; va
 }
 
 // Tableau comparatif de deux mois (KPIs côte à côte + écart).
-function CompareTable({ a, b, aLabel, bLabel, t }: { a: Stats; b: Stats; aLabel: string; bLabel: string; t: (k: string) => string }) {
+function CompareTable({ a, b, aLabel, bLabel, t }: { a: Stats; b: Stats; aLabel: string; bLabel: string; t: Traduire }) {
   const rows: { k: string; a: number | null; b: number | null; suffix: string }[] = [
     { k: "review_kpi_trades", a: a.trades, b: b.trades, suffix: "" },
     { k: "review_kpi_days", a: a.tradingDays, b: b.tradingDays, suffix: "" },
@@ -1043,7 +1080,7 @@ function CompareTable({ a, b, aLabel, bLabel, t }: { a: Stats; b: Stats; aLabel:
             <span className="text-muted truncate">{t(r.k)}</span>
             <span className="text-right font-semibold text-foreground tabular-nums">{r.a == null ? "—" : `${r.a}${r.suffix}`}</span>
             <span className="text-right text-muted tabular-nums">{r.b == null ? "—" : `${r.b}${r.suffix}`}</span>
-            <span className={`text-right tabular-nums font-medium ${both && delta > 0 ? "text-profit" : both && delta < 0 ? "text-loss" : "text-muted/40"}`}>
+            <span className={`text-right tabular-nums font-medium ${both && delta > 0 ? "text-profit" : both && delta < 0 ? "text-loss" : "text-muted"}`}>
               {both ? `${delta > 0 ? "+" : ""}${Math.round(delta * 10) / 10}${r.suffix}` : "—"}
             </span>
           </Fragment>
@@ -1064,6 +1101,8 @@ function ReviewCard({ icon, title, body, accent }: { icon: React.ReactNode; titl
 
 // Tiroir latéral : détail d'une journée cliquée dans le calendrier de discipline.
 function DayDetailDrawer({ date, onClose }: { date: string; onClose: () => void }) {
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(true, onClose);
   const displayCurrency = useDisplayCurrency();
   const { t, lang } = useLanguage();
   const reduced = useReducedMotion();
@@ -1126,7 +1165,7 @@ function DayDetailDrawer({ date, onClose }: { date: string; onClose: () => void 
                 </div>
                 <div className="rounded-xl border border-border bg-surface/40 p-3">
                   <p className="text-xs text-muted">{t("review_kpi_winrate")}</p>
-                  <p className={`text-lg font-bold mt-0.5 tabular-nums ${data!.winRate >= 50 ? "text-profit" : "text-warning"}`}>{data!.trades > 0 ? `${data!.winRate}%` : "—"}</p>
+                  <p className={`text-lg font-bold mt-0.5 tabular-nums ${data!.winRate >= 50 ? "text-profit" : "text-warning"}`}>{data!.trades > 0 ? `${pourcent(data!.winRate)}` : "—"}</p>
                 </div>
                 <div className="rounded-xl border border-border bg-surface/40 p-3">
                   <p className="text-xs text-muted">{t("review_kpi_score")}</p>

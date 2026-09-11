@@ -1,5 +1,6 @@
 "use client";
 
+import type { Traduire } from "@/lib/LanguageContext";
 import type { CoachConfirmItem } from "@/lib/hooks/useCoachChat";
 
 /**
@@ -49,7 +50,7 @@ export default function CoachConfirmBox({
 }: {
   item: CoachConfirmItem;
   onResolve: (accept: boolean) => void;
-  t: (key: string) => string;
+  t: Traduire;
 }) {
   const tone = toneOf(item.confirm);
   const style = TONE_STYLE[tone];

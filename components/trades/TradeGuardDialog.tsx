@@ -3,6 +3,7 @@
 import { useLanguage } from "@/lib/LanguageContext";
 import type { GuardWarning } from "@/lib/trade-guard";
 import { ShieldAlert } from "lucide-react";
+import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 const MESSAGE_KEY: Record<GuardWarning["type"], string> = {
   wrong_pair: "guard_wrong_pair",
@@ -11,11 +12,6 @@ const MESSAGE_KEY: Record<GuardWarning["type"], string> = {
   daily_loss: "guard_daily_loss",
 };
 
-function interpolate(template: string, values: Record<string, string | number>): string {
-  let out = template;
-  for (const [k, v] of Object.entries(values)) out = out.replace(`{${k}}`, String(v));
-  return out;
-}
 
 /**
  * Commitment-device gate: shown when a trade about to be logged breaks the
@@ -30,10 +26,12 @@ export function TradeGuardDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(true, onCancel);
   const { t } = useLanguage();
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4" role="dialog" aria-modal="true">
+    <div aria-label={t("guard_title")} className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4" role="dialog" aria-modal="true">
       <div className="w-full max-w-md bg-card border border-loss/30 rounded-xl p-6 shadow-2xl">
         <div className="flex items-center gap-2.5 mb-3">
           <ShieldAlert className="w-6 h-6 text-loss shrink-0" strokeWidth={1.75} />
@@ -46,7 +44,7 @@ export function TradeGuardDialog({
           {warnings.map((w, i) => (
             <li key={i} className="flex items-start gap-2 text-sm text-foreground bg-loss/5 border border-loss/15 rounded-lg px-3 py-2">
               <span className="text-loss mt-0.5 shrink-0">•</span>
-              <span>{interpolate(t(MESSAGE_KEY[w.type]), w.values)}</span>
+              <span>{t(MESSAGE_KEY[w.type], w.values)}</span>
             </li>
           ))}
         </ul>

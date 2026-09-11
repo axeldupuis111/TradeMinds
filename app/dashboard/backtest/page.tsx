@@ -1,0 +1,3377 @@
+"use client";
+
+/**
+ * BACKTEST DE STRATÉGIE — rejouer ses règles sur des bougies M1 réelles.
+ *
+ * ── CE QUI A CHANGÉ DEPUIS LE REFUS ─────────────────────────────────────────
+ *
+ * On a longtemps refusé cette page, et le raisonnement est dans l'en-tête de
+ * `lib/projection.ts` : une fiche écrite en français n'est pas mécanisable sans
+ * inventer la moitié des seuils. Ce qui était faux, c'était la conclusion, pas
+ * le constat. On ne mécanise pas le texte : on offre un CATALOGUE FERMÉ de blocs
+ * paramétrés, le compilateur y choisit, et il DÉCLARE ce qu'il n'a pas su
+ * traduire. Le danger n'a jamais été de mécaniser, c'était de mécaniser en
+ * silence.
+ *
+ * ⚠️ TOUT TOURNE DANS LE NAVIGATEUR, comme la projection. Les bougies viennent
+ * d'un bucket public, le moteur tourne dans un Web Worker. Un backtest ne coûte
+ * ni temps de fonction, ni appel IA, quel que soit le nombre de rejeux. Seule la
+ * compilation de la fiche passe par le serveur, une fois.
+ *
+ * ⚠️ L'ÉCRAN N'EST JAMAIS PLUS AFFIRMATIF QUE LE MOTEUR. Sous 100 trades, aucun
+ * chiffre de performance n'existe. Au-dessus, l'espérance ne s'affiche jamais
+ * sans son intervalle, et « positif » exige que zéro soit hors de l'intervalle.
+ *
+ * ⚠️ L'AVERTISSEMENT DE PERFORMANCE HYPOTHÉTIQUE EST DU TEXTE VISIBLE, en haut,
+ * jamais un lien ni un repli. C'est la règle apprise sur le dossier NinjaTrader,
+ * et elle ne se négocie pas.
+ */
+
+import { nombre } from "@/lib/nombres";
+import { Card, CardTitle } from "@/components/ui/Card";
+import StaggerContainer, { StaggerItem } from "@/components/animations/StaggerContainer";
+import { EditeurPlan } from "@/components/backtest/EditeurPlan";
+import { Resultat } from "@/components/backtest/Resultat";
+import { Inspection } from "@/components/backtest/Inspection";
+import { Propositions } from "@/components/backtest/Propositions";
+import { Modifications } from "@/components/backtest/Modifications";
+import { Enregistrer, type EtatControle } from "@/components/backtest/Enregistrer";
+import { Versions } from "@/components/backtest/Versions";
+import { Robustesse } from "@/components/backtest/Robustesse";
+import { ProjectionCarte } from "@/components/backtest/ProjectionCarte";
+import { Analyse } from "@/components/backtest/Analyse";
+import { Marches } from "@/components/backtest/Marches";
+import { Trouver } from "@/components/backtest/Trouver";
+import { Methode } from "@/components/backtest/Methode";
+import { Completude } from "@/components/backtest/Completude";
+import { Condamnation } from "@/components/backtest/Condamnation";
+import { Profil } from "@/components/backtest/Profil";
+import { Depart } from "@/components/backtest/Depart";
+import { CaractereDuMarche } from "@/components/backtest/CaractereDuMarche";
+import { Champ, Liste } from "@/components/backtest/Controles";
+import { useLanguage } from "@/lib/LanguageContext";
+import { usePlan } from "@/lib/PlanContext";
+import { cn } from "@/lib/cn";
+import { createClient } from "@/lib/supabase/client";
+import {
+  INSTRUMENTS,
+  categoriesOrdonnees,
+  coutsPourInstrument,
+  instrumentParCode,
+  type Instrument,
+} from "@/lib/backtest/instruments";
+import { graviteDuChamp, type Couverture } from "@/lib/backtest/compilation";
+import { moisEntre } from "@/lib/backtest/chargement";
+import {
+  annulerModification,
+  CLES_PAR_LEVIER,
+  comparerPlans,
+  demandeUnControle,
+  BLOC_I18N,
+  DESCRIPTEURS,
+  empreintePlan,
+  etatDesReglages,
+  toutAnnuler,
+  type Origine,
+} from "@/lib/backtest/modifications";
+import {
+  fenetreDeTestSuggeree,
+  periodePlusLargeQue,
+  MOIS_MIN_CONTROLE,
+  periodeIntacte,
+} from "@/lib/backtest/hors-periode";
+import { enDate } from "@/lib/backtest/dates";
+import {
+  composerBloc,
+  ecrireDansLaFiche,
+  repartirDansLaFiche,
+  sansLeBlocDeBacktest,
+} from "@/lib/backtest/fiche-reglages";
+import {
+  composerBlocPlan,
+  ecrireLePlanDansLaFiche,
+  lireBlocPlan,
+  sansLeBlocDePlan,
+} from "@/lib/backtest/fiche-plan";
+import {
+  nomDuMarche,
+  nommerUnChamp,
+  nommerUneValeur as nommerLaValeur,
+  sansCodeInterne,
+  sansPhraseCoupee,
+} from "@/lib/backtest/phrases";
+import { methodeParCode } from "@/lib/backtest/methodes";
+import {
+  composerDepart,
+  departsPossibles,
+  planParDefaut,
+  STYLE_PAR_DEFAUT,
+  type Depart as UnDepart,
+  type StyleDeTrader,
+} from "@/lib/backtest/depart";
+import { CODES_QUESTIONS, evaluerCompletude } from "@/lib/backtest/completude";
+import { verifierCondamnation } from "@/lib/backtest/condamnation";
+import { prochaineEtape } from "@/lib/backtest/prochaine-etape";
+import { diagnostiquer } from "@/lib/backtest/diagnostic";
+import { Diagnostic } from "@/components/backtest/Diagnostic";
+import { Section } from "@/components/backtest/Section";
+import { Parcours } from "@/components/backtest/Parcours";
+import {
+  ETAPE_PAR_ANCRE,
+  etapesDuParcours,
+  replierVers,
+  type CodeEtapeParcours,
+} from "@/lib/backtest/etapes";
+import { composerMonPlan } from "@/lib/backtest/mon-plan";
+import { composerPlanComplet } from "@/lib/backtest/plan-complet";
+import { MonPlan } from "@/components/backtest/MonPlan";
+import { phraseDuPlan } from "@/lib/backtest/phrases";
+import { Confluences } from "@/components/backtest/Confluences";
+import { Construire } from "@/components/backtest/Construire";
+import {
+  construireLePlan,
+  type CodeQuestion as CodeQuestionConstruction,
+} from "@/lib/backtest/construire";
+import { ProchaineEtape } from "@/components/backtest/ProchaineEtape";
+import { confronterAuProfil, lireLeProfil, type TradeReel } from "@/lib/backtest/profil";
+import { enregistrerVersion } from "@/lib/backtest/enregistrement";
+import { nomDuFichier, tradesEnCsv } from "@/lib/backtest/export-csv";
+import { compterUnEssai, lireTentatives, recalerSurLArchive } from "@/lib/backtest/tentatives";
+import { synthetiser } from "@/lib/backtest/synthese";
+import {
+  listerVersions,
+  supprimerVersion,
+  type VersionArchivee,
+} from "@/lib/backtest/versions";
+import type { PlanExecution } from "@/lib/backtest/types";
+import { MIN_TRADES_CONCLUSION, type LectureBacktest } from "@/lib/backtest/verdict";
+import type { Apercu, DemandeBacktest, ReponseBacktest } from "./worker";
+import { AlertTriangle, CheckCircle2, HelpCircle, Loader2, Lock, Play, RotateCcw, Wand2, X } from "lucide-react";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+/** Période couverte par les données publiées. */
+const PERIODE_MIN = "2022-01";
+const PERIODE_MAX = "2025-12";
+/**
+ * Période ouverte au départ.
+ *
+ * ⚠️ Volontairement PLUS COURTE que ce qui est disponible. Quatre ans de bougies
+ * font une trentaine de mégaoctets à télécharger : ouvrir la page sur la
+ * fenêtre maximale ferait payer cette attente à quelqu'un qui voulait juste
+ * essayer. Le sélecteur, lui, propose tout, et laisser 2022-2023 de côté au
+ * premier essai a un autre mérite : ça garde une période intacte pour vérifier
+ * ensuite un réglage trouvé sur celle-ci.
+ */
+const DEBUT_PAR_DEFAUT = "2025-01";
+
+interface StrategieRow {
+  id: string;
+  name: string | null;
+  raw_text: string | null;
+  pairs: string[] | null;
+  sessions: string[] | null;
+  risk_reward: number | null;
+  max_sl_pips: number | null;
+  max_trades_per_day: number | null;
+  max_consecutive_losses: number | null;
+  risk_per_trade_pct: number | null;
+  setup_rules: string[] | null;
+}
+
+type Etat =
+  | { phase: "repos" }
+  | {
+      phase: "telechargement";
+      faits: number;
+      total: number;
+      /** Le marché en cours, quand plusieurs se téléchargent à la suite. */
+      etape?: import("./worker").EtapeMarche;
+    }
+  | { phase: "calcul" }
+  | { phase: "erreur"; message: string };
+
+/**
+ * Le nom du filtre tel qu'il est écrit dans l'éditeur.
+ *
+ * ⚠️ Jamais le nom technique brut : « biais_moyenne » ne dit rien au trader, et
+ * il doit pouvoir faire le lien avec l'interrupteur qu'il vient de cocher.
+ */
+function nomDuFiltre(type: string, t: (c: string) => string): string {
+  const cles: Record<string, string> = {
+    bougie_reaction: "bt_conf_reaction",
+    biais_moyenne: "bt_conf_moyenne",
+    amplitude_min: "bt_conf_amplitude",
+    rsi: "bt_conf_rsi",
+    macd: "bt_conf_macd",
+    stochastique: "bt_conf_stochastique",
+    divergence: "bt_conf_divergence",
+  };
+  return cles[type] ? t(cles[type]) : type;
+}
+
+export default function BacktestPage() {
+  const { t, lang } = useLanguage();
+  const { plan: abonnement, loading: abonnementEnCours } = usePlan();
+  const supabase = createClient();
+  const estPremium = abonnement === "premium";
+
+  /**
+   * L'interpolation et les accords de l'onglet.
+   *
+   * ⚠️ CE N'EST PLUS QU'UN ALIAS : `remplir` est remontée dans `t()` pour tout
+   * le produit, et la rappeler ici la ferait tourner une seconde fois sur une
+   * phrase déjà remplie, sans la langue du lecteur. On garde le nom, employé
+   * par une trentaine d'appels, et on délègue.
+   */
+  const tr = useCallback(
+    (cle: string, valeurs?: Record<string, string | number>) => t(cle, valeurs),
+    [t],
+  );
+
+  const fuseau = useMemo(
+    () => Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Paris",
+    [],
+  );
+
+  const [strategies, setStrategies] = useState<StrategieRow[]>([]);
+  const [strategieId, setStrategieId] = useState<string>("");
+  const [code, setCode] = useState<string>("XAUUSD");
+  const [de, setDe] = useState<string>(DEBUT_PAR_DEFAUT);
+  const [a, setA] = useState<string>(PERIODE_MAX);
+
+  const instrument: Instrument = instrumentParCode(code) ?? INSTRUMENTS[0];
+
+  const [plan, setPlan] = useState<PlanExecution>(() =>
+    planParDefaut("XAUUSD", "Europe/Paris", INSTRUMENTS.find((i) => i.code === "XAUUSD")!),
+  );
+
+  /**
+   * LE PLAN TEL QUE LA FICHE LE DÉCRIT, gardé intact pendant que l'autre dérive.
+   *
+   * ⚠️ SANS LUI, IL N'Y A PAS DE « CE QUE J'AI CHANGÉ ». Un trader nous a écrit
+   * avoir accepté une proposition « sans trop savoir ce qu'il a changé » : la
+   * page n'avait effectivement aucun point de comparaison, elle n'écrasait
+   * qu'un état par un autre. Tout se compare à celui-ci, et jamais à l'état
+   * précédent : trois allers-retours sur le même réglage doivent laisser une
+   * carte vide, pas six lignes.
+   */
+  const [planFiche, setPlanFiche] = useState<PlanExecution | null>(null);
+  /**
+   * Au nom de quel objectif chaque réglage a été changé, quand il vient d'un
+   * bouton. ⚠️ Enregistré AU MOMENT DU CLIC : après coup, plus rien ne permet
+   * de distinguer un réglage proposé d'un réglage posé à la main.
+   */
+  const [origines, setOrigines] = useState<Record<string, Origine>>({});
+
+  const [couverture, setCouverture] = useState<Couverture | null>(null);
+  /**
+   * Interpretations que le trader a marquees « ce n'est pas ca ».
+   *
+   * ⚠️ Contester ne corrige RIEN tout seul, et c'est volontaire : deviner une
+   * seconde fois ce qu'il voulait dire repeterait exactement l'erreur d'origine.
+   * Le refus entoure de rouge le bloc concerne dans l'editeur, et c'est lui qui
+   * tranche.
+   */
+  const [contestes, setContestes] = useState<Set<string>>(new Set());
+  const [compilation, setCompilation] = useState<"repos" | "encours" | "erreur">("repos");
+  const [compilationMsg, setCompilationMsg] = useState<string | null>(null);
+
+  /**
+   * LA MÉTHODE DÉCLARÉE ET LES RÉPONSES DU TRADER.
+   *
+   * ⚠️⚠️ C'EST LA MOITIÉ DE LA PAGE QUI NE DÉPEND D'AUCUN BACKTEST, et c'est
+   * celle qui sert au plus grand nombre. Un trader d'orderflow ne verra jamais
+   * un chiffre sur sa méthode ; il a exactement les mêmes treize trous à combler
+   * qu'un autre, et le même écart entre ce qu'il a écrit et ce qu'il fait.
+   */
+  const [methodeCode, setMethodeCode] = useState<string>("");
+  /** Voir `choisirLaMethode` : l'écriture dans la fiche peut échouer sans bruit. */
+  const [methodeNonEnregistree, setMethodeNonEnregistree] = useState(false);
+  const [reponses, setReponses] = useState<Record<string, string>>({});
+  /**
+   * Ce qu'il est en train d'écrire, avant tout enregistrement.
+   *
+   * ⚠️⚠️ VU À L'ÉCRAN : quatre réponses tapées, visibles dans leurs champs, et le
+   * plan à emporter affichait toujours « À écrire : 4 ». Le brouillon vivait
+   * dans la carte des treize questions et n'en sortait pas ; il fallait un
+   * aller-retour en base pour que le document reflète ses propres mots. Rien ne
+   * le disait, donc le trader conclut que c'est cassé.
+   *
+   * ⚠️ DEUX ÉTATS, PAS UN. `reponses` est ce qui est DANS SA FICHE ; `brouillon`
+   * est ce qu'il a SOUS LES YEUX. Le plan lit le second et signale ce qui n'est
+   * pas encore dans le premier : les confondre mentirait dans un sens ou dans
+   * l'autre.
+   */
+  const [brouillon, setBrouillon] = useState<Record<string, string>>({});
+  /**
+   * La section dépliée, une seule à la fois.
+   *
+   * ⚠️⚠️ MESURÉ AVANT DE RANGER : 9,5 écrans de haut, 21 titres, 3 188 mots,
+   * tout empilé à plat, AVANT MÊME D'AVOIR LANCÉ. « J'y comprends rien, il y a
+   * énormément de choses et c'est très mal rangé. Tout est à la suite, c'est
+   * incompréhensible. »
+   *
+   * ⚠️ UNE SEULE OUVERTE, comme un accordéon. Deux sections ouvertes recréent
+   * le mur à deux exemplaires près, et la page ne serait rangée qu'au premier
+   * clic.
+   *
+   * ⚠️ `null` AU DÉPART : c'est la carte « la prochaine chose à faire » qui
+   * décide où on entre, et elle sait déjà le faire.
+   */
+  const [section, setSection] = useState<string | null>(null);
+  /**
+   * L'étape du parcours qu'on regarde.
+   *
+   * ⚠️⚠️ TROISIÈME RÉPONSE AU MÊME REPROCHE, ET LES DEUX PREMIÈRES ÉTAIENT
+   * INSUFFISANTES. Une carte « la prochaine chose à faire » posée sur un mur
+   * reste un mur ; des sections repliées restent vingt décisions à prendre dans
+   * un ordre que rien n'impose. « Limite tu fais des onglets. Il faut trouver un
+   * ordre logique, on ne doit pas sauter des étapes. »
+   */
+  const [etapeCourante, setEtapeCourante] = useState<CodeEtapeParcours>("strategie");
+  const basculer = useCallback(
+    (nom: string) => setSection((s) => (s === nom ? null : nom)),
+    [],
+  );
+  /** Ce qu'il a écrit, enregistré ou non. */
+  const reponsesVues = useMemo(() => ({ ...reponses, ...brouillon }), [reponses, brouillon]);
+  /** Les questions écrites mais pas encore dans sa fiche. */
+  const reponsesNonEnregistrees = useMemo(
+    () =>
+      Object.keys(brouillon).filter(
+        (c) =>
+          (brouillon[c] ?? "").trim() &&
+          (brouillon[c] ?? "").trim() !== (reponses[c] ?? "").trim(),
+      ),
+    [brouillon, reponses],
+  );
+  const [etatReponses, setEtatReponses] = useState<"repos" | "encours" | "fait" | "erreur">("repos");
+  /** Son journal réel, pour confronter ce qu'il a écrit à ce qu'il fait. */
+  const [tradesReels, setTradesReels] = useState<TradeReel[] | null>(null);
+
+  const [etat, setEtat] = useState<Etat>({ phase: "repos" });
+  const [resultat, setResultat] = useState<{
+    lecture: LectureBacktest;
+    trades: import("@/lib/backtest/types").TradeSimule[];
+    audit: import("@/lib/backtest/types").AuditExecution;
+    moisManquants: string[];
+    ms: number;
+    apercus: Apercu[];
+    suggestions: import("@/lib/backtest/suggestions").Suggestion[];
+    propositions?: import("@/lib/backtest/propositions").Proposition[];
+    concentration: import("@/lib/backtest/robustesse").Concentration | null;
+    stabilite?: import("@/lib/backtest/stabilite").Stabilite[];
+    projection: import("@/lib/backtest/projection-backtest").ProjectionDuBacktest | null;
+    constats: import("@/lib/backtest/coherence-plan").Constat[];
+    confluences?: import("@/lib/backtest/confluences").Confluence[];
+    marches?: import("@/lib/backtest/marches").ResultatMarche[];
+    exploration?: import("./worker").ReponseExploration;
+    /** Ne dépend d'aucune stratégie : sert à dire si un stop est dans le bruit. */
+    amplitudeBougieTicks?: number;
+    /** Le caractère du marché : directionnel ou non, séance marquée ou non. */
+    caractere?: import("@/lib/backtest/caractere-marche").CaractereMarche;
+    controle?: { de: string; a: string; lecture: LectureBacktest };
+    /** Plan, période et instrument sur lesquels ce résultat a été calculé. */
+    empreinte: string;
+  } | null>(null);
+
+  /**
+   * Le plan, la période et l'instrument du résultat affiché.
+   *
+   * ⚠️ Une ref et pas un état : elle sert à décider, dans le corps de `lancer`,
+   * s'il faut effacer le résultat. Un état ne serait pas encore à jour au
+   * moment où on en a besoin.
+   */
+  const empreinteDuResultat = useRef<string | null>(null);
+
+  /**
+   * ⚠️ Compteur de rejeux. C'est le garde-fou le plus important de la page et
+   * presque aucun outil ne l'affiche : chercher parmi vingt jeux de paramètres
+   * celui qui sort le mieux en trouve TOUJOURS un, même dans du bruit pur.
+   */
+  const [tentatives, setTentatives] = useState(0);
+  /** Date du premier essai sur cette stratégie, pour dire « depuis le … ». */
+  const [tentativesDepuis, setTentativesDepuis] = useState<string | null>(null);
+
+  /**
+   * ⚠️ RELU À CHAQUE CHANGEMENT DE STRATÉGIE, pas seulement au montage. Le
+   * compteur vivait dans le seul état de React : un rechargement d'onglet le
+   * remettait à zéro et l'alerte de sur-apprentissage ne se déclenchait plus
+   * jamais pour quelqu'un qui travaille sa méthode sur plusieurs soirées.
+   */
+  useEffect(() => {
+    if (!strategieId) {
+      setTentatives(0);
+      setTentativesDepuis(null);
+      return;
+    }
+    const lu = lireTentatives(strategieId);
+    setTentatives(lu.n);
+    setTentativesDepuis(lu.n > 0 ? lu.depuis : null);
+  }, [strategieId]);
+
+  /**
+   * LA MÉTHODE ET LES RÉPONSES, RELUES DANS SA FICHE.
+   *
+   * ⚠️ Elles vivent dans `raw_text`, dans un bloc à part : ses réponses aux
+   * treize questions SONT sa stratégie, au même titre que « je risque 1 % par
+   * trade » qui y est déjà. Les ranger ailleurs créerait une deuxième fiche que
+   * le coach ne lirait pas.
+   */
+  /**
+   * ⚠️⚠️ UNE RÉPONSE RÉSEAU EFFAÇAIT UN CHOIX DU TRADER. Vu à l'écran : un rejeu
+   * de 614 trades tournait sur une base appliquée, et la carte « Ta méthode »
+   * affichait « Pas encore déclarée ».
+   *
+   * Cet effet dépendait de `strategies`, chargé en asynchrone. Quand la liste
+   * arrive — ou à chaque fois qu'elle est rafraîchie — l'effet rejoue ; sans
+   * fiche sélectionnée, `strat` est `undefined`, et il posait `""` sur la
+   * méthode. Quelqu'un qui clique « Essayer cette base » pendant que la liste
+   * charge voit donc son choix disparaître, sans rien à l'écran pour le dire.
+   *
+   * ⚠️ SANS FICHE CHOISIE, IL N'Y A RIEN À RELIRE, ET SURTOUT RIEN À ÉCRASER :
+   * la méthode vient alors d'une base ou d'un choix à la main, et ce n'est pas
+   * à cette lecture-là de trancher.
+   *
+   * ⚠️ ET ON DÉPEND DU TEXTE DE LA FICHE, PAS DU TABLEAU : l'identité du
+   * tableau change à chaque rafraîchissement, son contenu presque jamais.
+   */
+  const raw = strategies.find((x) => x.id === strategieId)?.raw_text ?? null;
+  useEffect(() => {
+    if (!strategieId) return;
+    const lu = lireBlocPlan(raw ?? "");
+    /**
+     * ⚠️⚠️ ET LA MÊME FAUTE AVAIT UN SECOND EXEMPLAIRE, QUE JE N'AVAIS PAS VU.
+     * Vu à l'écran : j'applique la base « Cassure de structure et retest », je
+     * rejoue, 106 trades, puis je choisis une fiche pour voir mes versions
+     * archivées. « Ta méthode » repasse à « Pas encore déclarée », au-dessus du
+     * plan de cette base et du résultat qu'elle vient de produire.
+     *
+     * ⚠️ UNE FICHE QUI NE DÉCLARE RIEN NE DÉCLARE PAS « AUCUNE ». Le `?? ""`
+     * traitait l'absence de déclaration comme une déclaration de vide, et
+     * effaçait un fait vrai sur le plan affiché. Tant que le plan reste celui
+     * de la base, la méthode de la base reste sa méthode ; c'est la traduction
+     * de la fiche, plus bas, qui remplace le plan et tranche donc la question.
+     */
+    if (lu.methode) setMethodeCode(lu.methode);
+    setReponses(lu.reponses);
+    setEtatReponses("repos");
+  }, [strategieId, raw]);
+
+  /**
+   * SON JOURNAL RÉEL.
+   *
+   * ⚠️⚠️ LE BRANCHEMENT QUI MANQUAIT. Ses heures, ses instruments, son rythme
+   * sont dans l'application depuis toujours, et cet onglet mesurait des bougies
+   * sans jamais regarder l'homme qui allait les trader.
+   *
+   * ⚠️ Le client Supabase NE JETTE PAS : un `data` nul est un échec silencieux,
+   * pas un journal vide. On garde `null` pour ne rien afficher plutôt que
+   * d'annoncer « zéro trade » à quelqu'un qui en a trois cents.
+   */
+  useEffect(() => {
+    if (!estPremium) return;
+    let annule = false;
+    (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("trades")
+        .select("open_time, pnl, commission, swap, pair")
+        .eq("user_id", user.id)
+        .not("open_time", "is", null)
+        .order("open_time", { ascending: false })
+        .limit(500);
+      if (annule || !data) return;
+      setTradesReels(
+        data.map((t) => ({
+          ouvertureMs: new Date(t.open_time as string).getTime(),
+          // ⚠️ Net de frais, comme partout ailleurs : une perte brute et une
+          // perte nette ne se ressemblent pas, et c'est la dispersion des
+          // pertes qu'on mesure.
+          pnlNet: (t.pnl ?? 0) + (t.commission ?? 0) + (t.swap ?? 0),
+          pair: t.pair,
+        })),
+      );
+    })();
+    return () => {
+      annule = true;
+    };
+  }, [estPremium, supabase]);
+
+
+  /**
+   * Le trader a-t-il regardé les trades et reconnu sa méthode ?
+   *
+   * ⚠️ REMIS À FAUX À CHAQUE LANCEMENT. Un plan modifié est une autre stratégie,
+   * et une confirmation qui survivrait au changement ne confirmerait plus rien.
+   */
+  const [verifie, setVerifie] = useState(false);
+  /**
+   * Comment il trade, tel qu'il le déclare.
+   *
+   * ⚠️⚠️ DEUX DIMENSIONS QUE LE JOURNAL NE PEUT PAS DEVINER : « certains
+   * travaillent avec des sell/buy limit, d'autres tradent en direct », « certains
+   * aiment plein de confirmations, d'autres cherchent une stratégie simple à
+   * appliquer ». Aucune ligne de résultat ne dit s'il pose des ordres en
+   * attente : ça se déclare.
+   */
+  const [style, setStyle] = useState<StyleDeTrader>(STYLE_PAR_DEFAUT);
+
+  const [sauvegarde, setSauvegarde] = useState<"repos" | "encours" | "ok" | "erreur">("repos");
+
+  /**
+   * LES VERSIONS DÉJÀ ENREGISTRÉES POUR CETTE STRATÉGIE.
+   *
+   * ⚠️ `erreur` EST DISTINCT DE « LISTE VIDE », et la distinction n'est pas
+   * cosmétique : afficher « aucune version » à quelqu'un qui en a douze lui
+   * ferait croire son travail perdu. Le client Supabase ne jette pas, donc rien
+   * ne signalerait l'échec si on ne le portait pas explicitement.
+   */
+  const [versions, setVersions] = useState<VersionArchivee[]>([]);
+  const [versionsErreur, setVersionsErreur] = useState(false);
+  const [versionsChargement, setVersionsChargement] = useState(false);
+  /** Les deux versions cochées pour la comparaison, dans l'ordre du clic. */
+  const [comparees, setComparees] = useState<string[]>([]);
+
+  const workerRef = useRef<Worker | null>(null);
+
+  useEffect(() => {
+    return () => workerRef.current?.terminate();
+  }, []);
+
+  /**
+   * Le fuseau réel du navigateur remplace le repli une fois monté.
+   *
+   * sans-provenance: le fuseau n'est comparé par aucun descripteur, donc ce
+   * `setPlan` ne peut produire aucune ligne d'écart à attribuer. Ce n'est pas
+   * non plus un choix : c'est l'horloge de la machine qui arrive.
+   */
+  useEffect(() => {
+    setPlan((p) => ({ ...p, contexte: { ...p.contexte, fuseau } }));
+  }, [fuseau]);
+
+  useEffect(() => {
+    if (!estPremium) return;
+    let annule = false;
+    (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("strategies")
+        .select(
+          "id, name, raw_text, pairs, sessions, risk_reward, max_sl_pips, max_trades_per_day, max_consecutive_losses, risk_per_trade_pct, setup_rules",
+        )
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      // ⚠️ Le client Supabase NE JETTE PAS : un `data` nul est un échec
+      // silencieux, pas une absence de stratégie. On distingue les deux.
+      if (!annule && data) setStrategies(data as StrategieRow[]);
+    })();
+    return () => {
+      annule = true;
+    };
+  }, [estPremium, supabase]);
+
+  /**
+   * Le sélecteur suit le plan, quel que soit le chemin qui a changé le plan.
+   *
+   * ⚠️⚠️ LE MARCHÉ EST DEVENU UN ÉCART ANNULABLE, DONC IL PEUT MAINTENANT
+   * CHANGER SANS PASSER PAR LE SÉLECTEUR. Cliquer « annuler » sur la ligne
+   * « Marché testé » remet `plan.instrument` à celui de la fiche ; sans ce
+   * recalage, la liste déroulante continuerait d'afficher l'or pendant que le
+   * moteur rejouerait le Nasdaq, et rien à l'écran ne trahirait le décalage.
+   *
+   * ⚠️ ET LE RÉSULTAT AFFICHÉ TOMBE AVEC, pour la même raison que dans
+   * `changerInstrument` : des trades mesurés sur un marché ne décrivent pas
+   * un plan qui en teste un autre.
+   */
+  useEffect(() => {
+    if (plan.instrument === code) return;
+    setCode(plan.instrument);
+    setResultat(null);
+  }, [plan.instrument, code]);
+
+  /**
+   * Change d'instrument : les coûts par défaut suivent, jamais l'inverse.
+   *
+   * ⚠️⚠️ DEUX CHEMINS MÈNENT ICI, ET ILS NE SE RACONTENT PAS PAREIL. La
+   * liste déroulante, c'est le trader qui choisit. Le bouton « Tester sur
+   * Or (XAU/USD) », c'est la page qui propose, parce que son journal montre
+   * 92 % de ses trades là-bas. Les confondre faisait écrire « Réglé par toi, à
+   * la main » sur une ligne que personne n'avait réglée, exactement comme sur
+   * « Essayer cette base » la veille.
+   */
+  const changerInstrument = useCallback((nouveau: string, depuisLeJournal = false) => {
+    const inst = instrumentParCode(nouveau);
+    if (!inst) return;
+    setCode(inst.code);
+    setPlan((p) => ({ ...p, instrument: inst.code, couts: coutsPourInstrument(inst) }));
+    setOrigines((o) => {
+      const suivant = { ...o };
+      if (depuisLeJournal) suivant.instrument = { pose: "journal" };
+      // ⚠️ Un choix à la main EFFACE la provenance précédente : sans ça, un
+      // marché repris en main garderait l'étiquette du bouton qui l'avait
+      // proposé la première fois.
+      else delete suivant.instrument;
+      return suivant;
+    });
+    setResultat(null);
+  }, []);
+
+  const compiler = useCallback(async () => {
+    const strat = strategies.find((s) => s.id === strategieId);
+    if (!strat?.raw_text) return;
+    setCompilation("encours");
+    setCompilationMsg(null);
+    try {
+      const rep = await fetch("/api/compiler-strategie", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          // ⚠️⚠️ ON RETIRE CE QUE CET OUTIL A LUI-MÊME ÉCRIT DANS LA FICHE.
+          // Vu en vrai : après un enregistrement, le modèle a relu notre bloc
+          // et a listé « Largeur du pivot : 10 → 5 » parmi les CINQ RÈGLES de
+          // la stratégie du trader, à côté de « je risque 5 % par trade ».
+          // L'outil écrivait sa sortie dans la fiche puis la relisait comme si
+          // le trader l'avait écrite : à chaque enregistrement, la fiche
+          // dérivait un peu plus loin de ce qu'il avait voulu dire.
+          // ⚠️⚠️ LES DEUX BLOCS QUE CET OUTIL ÉCRIT SONT RETIRÉS AVANT LA
+          // COMPILATION. Le premier avait déjà produit une boucle : le modèle
+          // relisait « Largeur du pivot : 10 → 5 » et le listait parmi les cinq
+          // règles de la stratégie. Le second porte les réponses du trader, donc
+          // sa prose, mais dans NOTRE mise en forme : on ne la lui redonne pas à
+          // lire comme si c'était sa fiche.
+          raw_text: sansLeBlocDePlan(sansLeBlocDeBacktest(strat.raw_text)),
+          instrument: code,
+          fuseau,
+          // ⚠️⚠️ VU À L'ÉCRAN, INTERFACE EN ANGLAIS : toute la page traduite, et
+          // les deux phrases où l'IA annonce ce qu'elle a décidé À LA PLACE du
+          // trader restaient en français. Le prompt ne disait rien de la
+          // langue, le modèle répondait dans celle de la fiche.
+          langue: lang,
+          regles: {
+            pairs: strat.pairs,
+            sessions: strat.sessions,
+            risk_reward: strat.risk_reward,
+            max_sl_pips: strat.max_sl_pips,
+            max_trades_per_day: strat.max_trades_per_day,
+            max_consecutive_losses: strat.max_consecutive_losses,
+            risk_per_trade_pct: strat.risk_per_trade_pct,
+            setup_rules: strat.setup_rules,
+          },
+        }),
+      });
+      const json = (await rep.json()) as {
+        plan?: Partial<PlanExecution>;
+        couverture?: Couverture;
+        reason?: string;
+        /** Rendu par le limiteur : "day" ou "month". */
+        scope?: string;
+      };
+
+      /**
+       * ⚠️⚠️ UN QUOTA ÉPUISÉ N'EST PAS UNE PANNE, ET LE DIRE AINSI FAIT PERDRE
+       * DU TEMPS AU TRADER. Vu à l'écran : le plafond mensuel était atteint,
+       * l'outil répondait « la traduction a échoué, réessaie dans un instant »,
+       * et il a réessayé trois fois. Réessayer ne pouvait pas marcher avant le
+       * mois suivant, et chaque tentative consommait un quota journalier.
+       *
+       * ⚠️ ET SURTOUT : la traduction n'est pas obligatoire. Tout le reste de la
+       * page fonctionne sans elle, y compris les treize questions et les frais.
+       * Le message doit le dire, sinon un quota épuisé ferme un onglet entier.
+       */
+      if (rep.status === 429) {
+        setCompilation("erreur");
+        setCompilationMsg(tr(json.scope === "day" ? "bt_compil_quota_jour" : "bt_compil_quota_mois"));
+        return;
+      }
+
+      if (!json.plan || !json.couverture) {
+        setCompilation("erreur");
+        setCompilationMsg(tr(`bt_compil_${json.reason ?? "error"}`));
+        return;
+      }
+      // ⚠️ On FUSIONNE sur le socle sans jamais remplacer un bloc absent par un
+      // bloc inventé : ce qui manque reste manquant, et la carte de couverture
+      // le dit. Le socle ne fournit que ce que le compilateur ne décide pas
+      // (l'instrument, les coûts).
+      // ⚠️ ON CONSTRUIT LE PLAN AVANT DE LE POSER, au lieu de le calculer dans
+      // le `setPlan`. Il faut le MÊME objet dans deux états : celui qu'on va
+      // faire dériver, et celui, intact, auquel tout se comparera. Le calculer
+      // deux fois ouvrirait la porte à deux références qui divergent dès le
+      // premier clic, et la carte des modifications afficherait des écarts
+      // fantômes.
+      const compile: PlanExecution = {
+        ...plan,
+        ...json.plan,
+        instrument: code,
+        couts: plan.couts,
+        stop: json.plan.stop ?? plan.stop,
+        objectif: json.plan.objectif ?? plan.objectif,
+        contexte: json.plan.contexte ?? plan.contexte,
+      };
+      // ⚠️ UNE TOLÉRANCE DE TOUCHE À ZÉRO EST UNE IMPASSE MUETTE. Le modèle a
+      // consigne de la remplir, mais s'il l'oublie, une droite ne peut plus
+      // jamais être touchée une troisième fois : le backtest rend zéro trade sur
+      // quatre ans sans que rien ne l'explique. On pose donc une valeur
+      // utilisable, et on la DÉCLARE comme toute autre déduction, refusable
+      // d'un clic comme les autres.
+      const couvertureFinale = { ...json.couverture };
+      const niveau = json.plan.niveau;
+      // ⚠️ LE SEUIL EST LE SPREAD, PAS ZÉRO. Une tolérance d'alignement plus
+      // petite que l'écart achat-vente ne distingue rien du bruit : elle donne
+      // le même zéro trade qu'une tolérance nulle, en ayant l'air d'un réglage.
+      const toleranceMini = Math.round(instrument.spread / instrument.tailleTick);
+      if (niveau?.type === "trendline" && niveau.toleranceTicks < toleranceMini) {
+        const parDefaut = Math.max(1, Math.round((instrument.spread * 2) / instrument.tailleTick));
+        niveau.toleranceTicks = parDefaut;
+        couvertureFinale.deduites = [
+          {
+            champ: "niveau",
+            pourquoi: tr("bt_deduite_tolerance", {
+              valeur: nombre(parDefaut * instrument.tailleTick, instrument.decimales),
+            }),
+          },
+          ...couvertureFinale.deduites,
+        ];
+      }
+
+      // ⚠️ POSÉ APRÈS LE RATTRAPAGE DE TOLÉRANCE, et pas avant. La correction
+      // ci-dessus modifie `json.plan.niveau` sur place : appliquée après coup,
+      // elle glisserait dans un objet déjà rangé dans l'état de React, et la
+      // référence intacte porterait une valeur que la fiche n'a jamais dite.
+      setPlan(compile);
+      // La référence à laquelle tout se comparera. Une copie, pas le même
+      // objet : le plan de travail va être remplacé clic après clic, celui-ci
+      // ne doit jamais bouger.
+      setPlanFiche(structuredClone(compile));
+      setOrigines({});
+      setSauvegarde("repos");
+      /**
+       * ⚠️ LE PLAN EST DÉSORMAIS CELUI DE LA FICHE, DONC SA MÉTHODE AUSSI. La
+       * lecture d'en haut ne pose plus une méthode vide, exprès : elle ne
+       * saurait pas si le plan affiché vient encore d'une base. Ici, si : on
+       * vient de le remplacer. Une fiche qui ne déclare rien laisse donc la
+       * carte vide, et c'est la vérité.
+       */
+      setMethodeCode(lireBlocPlan(strat.raw_text ?? "").methode ?? "");
+
+      setCouverture(couvertureFinale);
+      setContestes(new Set());
+      setCompilation("repos");
+      setResultat(null);
+    } catch {
+      setCompilation("erreur");
+      setCompilationMsg(tr("bt_compil_error"));
+    }
+  }, [strategies, strategieId, code, fuseau, instrument, lang, plan, tr]);
+
+  /**
+   * UN SEUL LANCEMENT, DES MESURES QUI S'AJOUTENT.
+   *
+   * ⚠️⚠️ SEPT ENDROITS DE LA PAGE APPELAIENT CETTE FONCTION, chacun avec sa
+   * combinaison de six arguments positionnels, et chacun repartait de
+   * `setResultat(null)`. Mesurer les confluences effaçait les marchés, qui
+   * effaçaient le voisinage des réglages : le trader cliquait, quelque chose
+   * apparaissait, et ce qu'il avait mesuré avant disparaissait. Son verdict :
+   * « je peux appuyer à plein d'endroits, au final je suis perdu ».
+   *
+   * Deux corrections, et la première est de fond :
+   *
+   * 1. **Les mesures s'ACCUMULENT** tant que le plan, la période et
+   *    l'instrument n'ont pas bougé. Ce qui a déjà été mesuré reste affiché.
+   * 2. **Des options nommées.** Six arguments positionnels dont quatre
+   *    `undefined` sur chaque appel étaient le symptôme de la même dérive.
+   */
+  /**
+   * AMENER LE TRADER DEVANT UN BLOC : L'ÉTAPE, LA SECTION, PUIS LE DÉFILEMENT.
+   *
+   * ⚠️⚠️ CE MOUVEMENT A CASSÉ TROIS FOIS, TOUJOURS DE LA MÊME FAÇON VUE DE
+   * L'ÉCRAN : on clique, rien ne se passe, et aucune erreur nulle part.
+   *   1. l'identifiant posé ne correspondait pas à celui qu'on cherchait ;
+   *   2. la section était repliée, on défilait vers un titre seul ;
+   *   3. l'étape entière n'était pas rendue, donc l'élément n'existait pas.
+   * Les trois se ressemblent parce que `getElementById` rend `null` en
+   * silence : il n'y a rien à voir dans la console, jamais.
+   *
+   * ⚠️ ON RÉESSAIE QUELQUES IMAGES, PLUTÔT QU'UNE SEULE. Changer d'étape
+   * remonte un pan entier de la page : exiger qu'il soit peint à l'image
+   * suivante, c'est parier sur l'ordonnancement de React. Le pari coûte un
+   * bouton mort, et le défaut ne se voit qu'à l'écran.
+   */
+  const remonterVers = useCallback((ancre: string) => {
+    const etapeDeLAncre = ETAPE_PAR_ANCRE[ancre];
+    if (etapeDeLAncre) setEtapeCourante(etapeDeLAncre);
+    setSection(ancre);
+    let restant = 20;
+    const remonter = () => {
+      const cible = document.getElementById(ancre);
+      if (cible) return cible.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (restant-- > 0) requestAnimationFrame(remonter);
+    };
+    requestAnimationFrame(remonter);
+  }, []);
+
+  const lancer = useCallback((options: {
+    propositions?: boolean;
+    fenetre?: { de: string; a: string };
+    stabilite?: import("@/lib/backtest/modifications").Modification[];
+    confluences?: boolean;
+    marches?: string[];
+    exploration?: { confirmationDe: string; confirmationA: string };
+    controle?: { de: string; a: string };
+  } = {}) => {
+    const {
+      propositions: avecPropositions,
+      fenetre,
+      stabilite: avecStabilite,
+      confluences: avecConfluences,
+      marches: avecMarches,
+      exploration: avecExploration,
+      controle: avecControle,
+    } = options;
+    if (etat.phase === "telechargement" || etat.phase === "calcul") return;
+    workerRef.current?.terminate();
+
+    // ⚠️ LA PÉRIODE PASSE EN ARGUMENT, elle n'est pas relue dans l'état. Le
+    // bouton qui raccourcit la fenêtre pose `de`/`a` et relance dans le même
+    // geste : relire l'état ici rejouerait l'ANCIENNE période, React n'ayant pas
+    // encore rendu. Le trader verrait le même résultat et croirait au bug.
+    const depuis = fenetre?.de ?? de;
+    const jusqua = fenetre?.a ?? a;
+
+    const compte = compterUnEssai(strategieId);
+    const prochaine = compte.n;
+    setTentatives(prochaine);
+    setTentativesDepuis(compte.depuis);
+
+    // ⚠️ ON N'EFFACE QUE CE QUI NE CORRESPOND PLUS. Le résultat affiché décrit
+    // le plan, la période et l'instrument sur lesquels il a été calculé : tant
+    // que les trois sont inchangés, il reste juste, et l'effacer ferait
+    // clignoter la page à chaque mesure.
+    const empreinte = `${empreintePlan(plan)}|${depuis}|${jusqua}|${code}`;
+    const memeContexte = empreinte === empreinteDuResultat.current;
+    if (!memeContexte) {
+      setResultat(null);
+      setVerifie(false);
+    }
+    empreinteDuResultat.current = empreinte;
+    setEtat({ phase: "telechargement", faits: 0, total: moisEntre(depuis, jusqua).length });
+
+    const w = new Worker(new URL("./worker.ts", import.meta.url));
+    workerRef.current = w;
+    w.onmessage = (e: MessageEvent<ReponseBacktest>) => {
+      const r = e.data;
+      if (r.type === "avancement") {
+        setEtat({ phase: "telechargement", faits: r.faits, total: r.total, etape: r.etape });
+      }
+      else if (r.type === "calcul") setEtat({ phase: "calcul" });
+      else if (r.type === "erreur") setEtat({ phase: "erreur", message: r.message });
+      else {
+        // ⚠️ CE QUI N'A PAS ÉTÉ RECALCULÉ EST CONSERVÉ. Le worker rend
+        // `undefined` pour les mesures qu'on ne lui a pas demandées : les
+        // écraser avec `undefined` ferait disparaître le travail précédent, ce
+        // qui est exactement le défaut qu'on répare.
+        setResultat((prec) => ({
+          empreinte,
+          lecture: r.lecture,
+          trades: r.resultat.trades,
+          audit: r.resultat.audit,
+          moisManquants: r.moisManquants,
+          ms: r.ms,
+          apercus: r.apercus,
+          suggestions: r.suggestions,
+          concentration: r.concentration,
+          projection: r.projection,
+          constats: r.constats,
+          amplitudeBougieTicks: r.amplitudeBougieTicks,
+          caractere: r.caractere,
+          propositions: r.propositions ?? (memeContexte ? prec?.propositions : undefined),
+          stabilite: r.stabilite ?? (memeContexte ? prec?.stabilite : undefined),
+          confluences: r.confluences ?? (memeContexte ? prec?.confluences : undefined),
+          marches: r.marches ?? (memeContexte ? prec?.marches : undefined),
+          exploration: r.exploration ?? (memeContexte ? prec?.exploration : undefined),
+          controle: r.controle ?? (memeContexte ? prec?.controle : undefined),
+        }));
+        setEtat({ phase: "repos" });
+      }
+    };
+    const demande: DemandeBacktest = {
+      code,
+      de: depuis,
+      a: jusqua,
+      plan,
+      couts: plan.couts,
+      tentatives: prochaine,
+      propositions: avecPropositions,
+      stabilite: avecStabilite,
+      confluences: avecConfluences,
+      marches: avecMarches,
+      exploration: avecExploration,
+      controle: avecControle,
+      // ⚠️ La fiche voyage avec la demande : sans elle, impossible de dire
+      // « ta fiche annonce trois trades par jour et ta méthode en produit
+      // quinze », qui est le constat le plus utile de tout l'écran.
+      fiche: (() => {
+        const strat = strategies.find((x) => x.id === strategieId);
+        return strat
+          ? {
+              pairs: strat.pairs,
+              risk_reward: strat.risk_reward,
+              max_trades_per_day: strat.max_trades_per_day,
+            }
+          : undefined;
+      })(),
+    };
+    w.postMessage(demande);
+  }, [etat.phase, strategieId, strategies, de, a, code, plan]);
+
+  /**
+   * Poser un plan venu d'un BOUTON, en retenant au nom de quoi.
+   *
+   * ⚠️ L'OBJECTIF SE NOTE ICI OU JAMAIS. Une fois le plan remplacé, plus rien
+   * dans les données ne distingue un réglage proposé d'un réglage tapé à la
+   * main, et c'est exactement l'information qui manquait au trader qui a écrit
+   * ne pas savoir ce qu'il avait accepté.
+   */
+  const appliquerPropose = useCallback(
+    (nouveau: PlanExecution, levier: string, objectif: Origine["objectif"]) => {
+      setOrigines((o) => {
+        const suite = { ...o };
+        for (const cle of CLES_PAR_LEVIER[levier] ?? []) suite[cle] = { levier, objectif };
+        return suite;
+      });
+      setPlan(nouveau);
+      // Même règle qu'ailleurs : le chiffre affiché ne correspondrait plus au
+      // plan visible, et un écart entre les deux est la pire chose qui puisse
+      // arriver à cette page.
+      setResultat(null);
+    },
+    [],
+  );
+
+  /**
+   * Poser un plan modifié À LA MAIN dans l'éditeur.
+   *
+   * ⚠️ Ce qu'on retouche soi-même cesse d'être « proposé pour ». Sans cet
+   * oubli, un réglage repris à la main garderait l'étiquette de la proposition
+   * qui l'avait posé, et la carte attribuerait à l'outil un choix du trader.
+   */
+  const appliquerManuel = useCallback(
+    (nouveau: PlanExecution) => {
+      setOrigines((o) => {
+        const suite = { ...o };
+        for (const d of DESCRIPTEURS) {
+          if (d.lire(plan) !== d.lire(nouveau)) delete suite[d.cle];
+        }
+        return suite;
+      });
+      setPlan(nouveau);
+    },
+    [plan],
+  );
+
+  const rafraichirVersions = useCallback(async () => {
+    if (!strategieId) {
+      setVersions([]);
+      setVersionsErreur(false);
+      return;
+    }
+    setVersionsChargement(true);
+    const r = await listerVersions(supabase, strategieId);
+    setVersionsChargement(false);
+    if (r.ok) {
+      setVersions(r.versions);
+      setVersionsErreur(false);
+      /**
+       * ⚠️⚠️ L'ARCHIVE SAIT COMBIEN D'ESSAIS ONT EU LIEU, LE NAVIGATEUR PEUT
+       * L'AVOIR OUBLIÉ. Vu à l'écran : « 1 essai sur cette stratégie · Établi »
+       * au-dessus d'une version « enregistrée à l'essai n° 6 », sur la même
+       * stratégie. Le compteur vit dans le stockage local et se perd avec lui ;
+       * les versions, elles, sont en base. On remonte le compteur au plus haut
+       * numéro archivé, et jamais dans l'autre sens.
+       */
+      const recale = recalerSurLArchive(
+        strategieId,
+        r.versions.map((v) => v.resume.tentatives),
+      );
+      setTentatives(recale.n);
+      setTentativesDepuis(recale.n > 0 ? recale.depuis : null);
+    } else {
+      // ⚠️ ON N'EFFACE PAS LA LISTE EN MÉMOIRE. Une lecture ratée ne veut pas
+      // dire que les versions ont disparu ; les remplacer par du vide ferait
+      // clignoter l'écran vers « tu n'as rien enregistré ».
+      setVersionsErreur(true);
+    }
+  }, [supabase, strategieId]);
+
+  useEffect(() => {
+    void rafraichirVersions();
+    setComparees([]);
+  }, [rafraichirVersions]);
+
+  /**
+   * ⚠️ DEUX AU PLUS, ET LA PLUS ANCIENNE SORT. Une comparaison à trois n'existe
+   * pas : l'intervalle de la différence se calcule entre DEUX mesures, et
+   * empiler des colonnes transformerait l'écran en tableau de classement, qui
+   * est exactement ce qu'on refuse ici.
+   */
+  const basculerComparaison = useCallback((id: string) => {
+    setComparees((actuels) => {
+      if (actuels.includes(id)) return actuels.filter((x) => x !== id);
+      return [...actuels, id].slice(-2);
+    });
+  }, []);
+
+  const supprimerUneVersion = useCallback(
+    async (v: VersionArchivee) => {
+      const r = await supprimerVersion(supabase, v.id);
+      if (!r.ok) {
+        setVersionsErreur(true);
+        return;
+      }
+      setVersions((liste) => liste.filter((x) => x.id !== v.id));
+      setComparees((actuels) => actuels.filter((x) => x !== v.id));
+    },
+    [supabase],
+  );
+
+  /**
+   * Reprendre le plan d'une version.
+   *
+   * ⚠️ LA RÉFÉRENCE NE BOUGE PAS. `planFiche` reste ce que la fiche décrit :
+   * reprendre un ancien essai doit faire réapparaître son écart avec la fiche,
+   * pas le faire passer pour la nouvelle normale. On efface en revanche le
+   * résultat et le contrôle, qui portaient sur un autre plan.
+   */
+  /**
+   * Repartir de zéro, sur une autre méthode.
+   *
+   * ⚠️⚠️ DEMANDÉ EXPLICITEMENT : « si aucune amélioration est possible alors tu
+   * proposes de chercher une autre stratégie, il clique sur le bouton et hop ça
+   * efface tout, ça propose des stratégies ».
+   *
+   * ⚠️ ÇA N'EFFACE QUE LE TRAVAIL EN COURS, JAMAIS SA FICHE. Un bouton qui
+   * remet à zéro doit être précis sur ce qu'il emporte, sinon personne ne
+   * l'ose : le plan testé, le résultat, les écarts. Sa stratégie enregistrée et
+   * ses versions archivées ne bougent pas.
+   */
+  const repartirDeZero = useCallback(() => {
+    setPlan(planParDefaut(code, fuseau, instrument));
+    setPlanFiche(null);
+    setCouverture(null);
+    setContestes(new Set());
+    setOrigines({});
+    setResultat(null);
+    setSauvegarde("repos");
+    setStrategieId("");
+    setMethodeCode("");
+    // ⚠️ Un « ce choix n'a pas pu être enregistré » qui survivrait à la remise
+    // à zéro parlerait d'une méthode qui n'existe plus.
+    setMethodeNonEnregistree(false);
+    /**
+     * ⚠️⚠️ ET LES REPONSES DE LA CONSTRUCTION, QUE J AVAIS OUBLIEES. Vu a
+     * l ecran : apres « ca efface tout », les six gestes qui venaient de
+     * produire une strategie perdante etaient encore coches, prets a etre
+     * reassembles a l identique. Le bouton promet « ca remet les reglages a
+     * zero » et invitait a refaire exactement ce qui vient d echouer.
+     */
+    setGestes({});
+    /**
+     * ⚠️⚠️ LA CASE « JE RECONNAIS MA MÉTHODE » RESTAIT COCHÉE. Elle certifie
+     * que le trader a REGARDÉ les trades produits et qu'il s'y reconnaît :
+     * après avoir effacé le plan, elle certifie une mécanisation qui n'existe
+     * plus, et le rejeu suivant démarrerait « vérifié » sans que personne
+     * n'ait rien vérifié.
+     */
+    setVerifie(false);
+    /**
+     * ⚠️ SES RÉPONSES AUX TREIZE QUESTIONS VIENNENT DE SA FICHE, et la fiche
+     * vient d'être désélectionnée. Les garder afficherait le plan d'une
+     * stratégie qu'on ne teste plus. L'effet qui les relit ne le fera pas à
+     * notre place : il ne relit RIEN sans fiche choisie, exprès, pour ne pas
+     * piétiner un choix en cours.
+     */
+    setReponses({});
+    setBrouillon({});
+    setEtatReponses("repos");
+    // Le compteur d'essais et les versions comparées appartiennent à la fiche
+    // qu'on vient de quitter : les garder afficherait le compte d'une autre.
+    setTentatives(0);
+    setTentativesDepuis(null);
+    setComparees([]);
+    setCompilationMsg(null);
+    // On le ramène là où les bases l'attendent, dépliées.
+    setEtapeCourante("strategie");
+    setSection("bt-departs");
+  }, [code, fuseau, instrument]);
+
+  const reprendreVersion = useCallback((v: VersionArchivee) => {
+    setPlan(v.plan);
+    setCode(v.instrument);
+    setDe(v.de);
+    setA(v.a);
+    /**
+     * ⚠️⚠️ TROISIÈME EXEMPLAIRE DE LA MÊME FAUTE. Après « Reprendre ce
+     * plan », les sept réglages repris portaient « Réglé par toi, à la main ».
+     * Le trader avait cliqué sur une version archivée, datée, qu'il n'avait
+     * pas retapée.
+     */
+    const quand = enDate(v.creeLe, lang);
+    setOrigines(
+      Object.fromEntries(
+        DESCRIPTEURS.map((x) => [x.cle, { pose: "version" as const, label: quand }]),
+      ),
+    );
+    setResultat(null);
+    setSauvegarde("repos");
+  }, [lang]);
+
+  /**
+   * Les marchés qu'on accepte de comparer au sien.
+   *
+   * ⚠️ MÊME CATÉGORIE, ET C'EST UNE CONDITION DE SENS. Transposer une méthode
+   * d'indice vers une crypto passerait la règle d'échelle sans broncher et ne
+   * voudrait rien dire : ce ne sont ni les mêmes heures d'ouverture, ni les
+   * mêmes participants, ni la même façon de bouger. « Comparable » veut dire
+   * quelque chose, sinon la mesure ne veut rien dire non plus.
+   *
+   * ⚠️ BORNÉ À CINQ, LE SIEN COMPRIS. Chaque marché de plus est une profondeur
+   * de bougies à télécharger, et surtout une occasion de plus de trouver celui
+   * qui sort bien par hasard.
+   */
+  const marchesComparables = useMemo(() => {
+    const autres = INSTRUMENTS.filter(
+      (i) => i.categorie === instrument.categorie && i.code !== instrument.code,
+    ).map((i) => i.code);
+    return [instrument.code, ...autres].slice(0, 5);
+  }, [instrument]);
+
+  /**
+   * Le nom lisible d'une valeur qui est un code de catalogue.
+   *
+   * La regle vit dans `lib/backtest/phrases.ts`, ou un test la relit dans les
+   * quatre langues sur toutes les natures de blocs. Ici on ne fait que la lier
+   * aux traductions.
+   */
+  const nommerUneValeur = useCallback(
+    (cle: string, valeur: string) => nommerLaValeur(cle, valeur, tr),
+    [tr],
+  );
+
+  const ecartsDeLaRecherche = useMemo(
+    () =>
+      resultat?.exploration
+        ? comparerPlans(
+            plan,
+            resultat.exploration.recherche.plan,
+            instrument,
+            {},
+            tr("bt_modif_absent"),
+            // ⚠️ « biais_moyenne (80) → biais_moyenne (50) » etait affiche trois
+            // lignes au-dessus de « Sens de la moyenne mobile ». Le meme filtre,
+            // deux ecritures, dont une que personne ne comprend.
+            nommerUneValeur,
+          )
+        : [],
+    [resultat?.exploration, plan, instrument, tr, nommerUneValeur],
+  );
+
+  /** L'écart avec la fiche, recalculé à chaque changement de plan. */
+  const modifications = useMemo(
+    () =>
+      planFiche
+        ? comparerPlans(planFiche, plan, instrument, origines, tr("bt_modif_absent"), nommerUneValeur)
+        : [],
+    [planFiche, plan, instrument, origines, tr, nommerUneValeur],
+  );
+
+  /** D'où viennent les réglages affichés : voir `etatDesReglages`. */
+  const etatReglages = useMemo(
+    () => etatDesReglages(planFiche != null, modifications.length, origines),
+    [planFiche, modifications.length, origines],
+  );
+
+  /**
+   * L'écart d'une version archivée avec la fiche telle qu'elle est AUJOURD'HUI.
+   *
+   * ⚠️⚠️ VU À L'ÉCRAN : la carte de la version disait « Écart avec ta fiche :
+   * Largeur du pivot 10 → 5 », et un clic sur « Reprendre ce plan » en affichait
+   * SEPT, dont aucune n'était celle-là. Les deux étaient exactes, sur deux
+   * fiches différentes : la traduction IA change d'une compilation à l'autre, et
+   * la liste archivée décrit la fiche du jour de l'enregistrement.
+   *
+   * ⚠️ `null` QUAND AUCUNE FICHE N'EST COMPILÉE, pour retomber sur la liste
+   * archivée en le disant, plutôt que d'annoncer « aucun écart » à quelqu'un
+   * dont on n'a simplement pas la référence.
+   */
+  const ecartsDUneVersion = useCallback(
+    (v: VersionArchivee) =>
+      planFiche
+        ? comparerPlans(
+            planFiche,
+            v.plan,
+            instrumentParCode(v.instrument) ?? instrument,
+            {},
+            tr("bt_modif_absent"),
+            nommerUneValeur,
+          )
+        : null,
+    [planFiche, instrument, tr, nommerUneValeur],
+  );
+
+
+  /**
+   * La fenêtre intacte, et le contrôle qui la rejoue.
+   *
+   * ⚠️ CE REJEU N'INCRÉMENTE PAS LE COMPTEUR DE TENTATIVES, et la distinction
+   * est de fond. Le compteur mesure combien de fois on a cherché un réglage qui
+   * sorte mieux ; celui-ci ne cherche rien, il vérifie un plan déjà arrêté sur
+   * des mois qui n'ont servi à rien. Le compter comme un essai découragerait la
+   * seule chose qu'on veut encourager.
+   */
+  const fenetreIntacte = useMemo(
+    () => periodeIntacte(de, a, PERIODE_MIN, PERIODE_MAX),
+    [de, a],
+  );
+
+  /**
+   * La fenêtre de test à proposer quand il n'en reste aucune d'intacte.
+   *
+   * ⚠️ SANS ELLE, LA RÈGLE EST UN MUR. Vu en vrai sur la preview : un trader
+   * teste sur les quatre ans disponibles, il ne reste rien à contrôler, et le
+   * bouton d'enregistrement ne se débloque plus jamais. Le garde-fou doit avoir
+   * une porte, sinon il ne protège de rien : il empêche seulement de finir.
+   */
+  const periodeSuggeree = useMemo(() => fenetreDeTestSuggeree(PERIODE_MIN, PERIODE_MAX), []);
+
+  /**
+   * TOUTES LES MESURES LOURDES, EN UNE SEULE PASSE.
+   *
+   * ⚠️⚠️ ELLES AVAIENT CHACUNE LEUR BOUTON, ET CHACUNE EFFAÇAIT LES AUTRES.
+   * Confluences, voisinage des réglages, autres marchés, contrôle hors période :
+   * quatre boutons, quatre lancements, et à chaque fois le résultat des trois
+   * autres disparaissait. C'est ce qui rendait la page impraticable, bien avant
+   * le nombre de cartes.
+   *
+   * Elles partent maintenant ensemble, avec une seule barre de progression. Ça
+   * dure plusieurs minutes, et c'est annoncé : mieux vaut une attente qu'on
+   * comprend que quatre attentes qui se défont.
+   */
+  const analyserAFond = useCallback(() => {
+    lancer({
+      // ⚠️ Les propositions partent avec le reste : c'était le dernier bouton
+      // isolé, donc la dernière façon d'effacer le travail des autres.
+      propositions: true,
+      confluences: true,
+      stabilite: modifications,
+      marches: marchesComparables,
+      controle:
+        fenetreIntacte && fenetreIntacte.mois >= MOIS_MIN_CONTROLE
+          ? { de: fenetreIntacte.de, a: fenetreIntacte.a }
+          : undefined,
+    });
+  }, [lancer, modifications, marchesComparables, fenetreIntacte]);
+
+
+  const raccourcirEtRelancer = useCallback(
+    (f: { de: string; a: string }) => {
+      setDe(f.de);
+      setA(f.a);
+      // On relance dans la foulée, avec la nouvelle fenêtre passée en argument :
+      // demander au trader de recliquer « Lancer » après lui avoir fait cliquer
+      // ici serait une marche de plus sur un chemin déjà long.
+      lancer({ fenetre: f });
+    },
+    [lancer],
+  );
+
+  /**
+   * Le résultat affiché décrit-il encore le plan à l'écran ?
+   *
+   * ⚠️⚠️ UN SEUL DRAPEAU POUR TOUTE LA PAGE, et c'est la simplification qui
+   * compte. Chaque carte gardait sa propre notion de « périmé », avec sa propre
+   * empreinte : le contrôle pouvait être déclaré caduc pendant que le verdict
+   * d'à côté, calculé sur le même plan, restait affiché comme valable. Une seule
+   * comparaison, un seul message, en haut.
+   */
+  const resultatPerime =
+    resultat != null &&
+    resultat.empreinte !== `${empreintePlan(plan)}|${de}|${a}|${code}`;
+
+  /**
+   * DE QUOI ÉLARGIR LA PÉRIODE SANS QUITTER L'ÉCRAN.
+   *
+   * ⚠️⚠️ L'ÉCRAN NOMMAIT LA BONNE ACTION ET NE L'OFFRAIT PAS. Sous le seuil de
+   * conclusion, le diagnostic dit « élargis la période avant de toucher aux
+   * réglages : c'est le seul changement qui n'invente rien », et les seuls
+   * boutons proposés en dessous étaient des changements de réglage. Le mouvement
+   * recommandé demandait de remonter en haut de page et de deviner quoi changer.
+   *
+   * ⚠️ `null` quand elle couvre déjà tout : un bouton qui ne change rien est
+   * pire qu'aucun bouton.
+   */
+  const periodePlusLarge = useMemo(() => {
+    const cible = periodePlusLargeQue(de, a, PERIODE_MIN, PERIODE_MAX);
+    if (!cible) return null;
+    return {
+      de: cible.de,
+      a: cible.a,
+      mois: moisEntre(cible.de, cible.a).length,
+      elargir: () => {
+        setDe(cible.de);
+        setA(cible.a);
+        setResultat(null);
+      },
+    };
+  }, [de, a]);
+
+  /**
+   * Le contrôle hors période, tel que la carte d'enregistrement l'attend.
+   *
+   * ⚠️ Il vient désormais du MÊME lancement que le résultat : il ne peut plus
+   * décrire un autre plan que lui, et son état se déduit, il ne se stocke plus.
+   */
+  const controleAffiche: EtatControle = useMemo(() => {
+    if (etat.phase !== "repos") return { phase: "encours" };
+    const c = resultat?.controle;
+    if (!c) return { phase: "repos" };
+    return {
+      phase: "fait",
+      fenetre: { de: c.de, a: c.a, mois: moisEntre(c.de, c.a).length },
+      lecture: c.lecture,
+      valide: !resultatPerime,
+    };
+  }, [resultat, etat.phase, resultatPerime]);
+  const controleValide = controleAffiche.phase === "fait" && controleAffiche.valide;
+
+  const strategieCourante = strategies.find((s) => s.id === strategieId);
+
+  /**
+   * LA MOITIÉ DE LA PAGE QUI NE DÉPEND D'AUCUN BACKTEST.
+   *
+   * ⚠️⚠️ TOUT CE QUI SUIT SE CALCULE AVANT D'AVOIR LANCÉ QUOI QUE CE SOIT, et
+   * c'est le point de la refonte. La complétude du plan, ce que les frais
+   * exigent, l'écart avec son journal : trois réponses certaines pour un trader
+   * dont la méthode ne sera peut-être jamais rejouable.
+   */
+  const methode = useMemo(() => methodeParCode(methodeCode), [methodeCode]);
+
+  const completude = useMemo(
+    () =>
+      evaluerCompletude({
+        plan: couverture ? plan : undefined,
+        fiche: strategieCourante
+          ? {
+              pairs: strategieCourante.pairs,
+              sessions: strategieCourante.sessions,
+              riskReward: strategieCourante.risk_reward,
+              maxSlPips: strategieCourante.max_sl_pips,
+              maxTradesParJour: strategieCourante.max_trades_per_day,
+              maxPertesConsecutives: strategieCourante.max_consecutive_losses,
+              risqueParTradePct: strategieCourante.risk_per_trade_pct,
+              reglesSetup: strategieCourante.setup_rules,
+            }
+          : undefined,
+        // ⚠️ CE QU'IL A SOUS LES YEUX, enregistré ou non. La carte du plan
+        // signale ensuite ce qui n'est pas encore dans sa fiche.
+        reponses: reponsesVues,
+        methode,
+      }),
+    [couverture, plan, strategieCourante, reponsesVues, methode],
+  );
+
+  /**
+   * ⚠️ LE RISQUE MOYEN VIENT D'UN REJEU QUAND IL Y EN A EU UN, sinon du stop du
+   * plan quand il est à distance fixe. Jamais d'une valeur devinée : les lignes
+   * qui en dépendent disparaissent plutôt que d'être fausses.
+   */
+  const condamnations = useMemo(() => {
+    const mois = moisEntre(de, a).length;
+    // ⚠️ LE COMPTE BRUT, PAS CELUI DES STATISTIQUES : un rythme annuel est une
+    // division, pas une estimation d avantage. Le lire dans `stats` le faisait
+    // disparaitre sous cent trades, c est-a-dire precisement quand une methode
+    // trop rare merite qu on lui dise que ses frais annuels ne passeront pas.
+    const trades = resultat?.trades.length;
+    return verifierCondamnation({
+      plan,
+      couts: plan.couts,
+      risqueMoyenTicks: resultat?.lecture.couts?.risqueMoyenTicks,
+      // ⚠️ Le coût vraiment payé, quand il a été mesuré : il dépasse le coût
+      // théorique de 40 % environ, parce qu'un coût fixe en points pèse plus
+      // lourd sur les trades à stop serré.
+      coutParTradeMesureR: resultat?.lecture.couts?.coutParTradeR,
+      amplitudeBougieTicks: resultat?.amplitudeBougieTicks,
+      tradesParAn: trades && mois > 0 ? (trades * 12) / mois : undefined,
+      /**
+       * ⚠️⚠️ SANS EUX, LA LIGNE D'ÉQUILIBRE DÉCRIT UNE MÉTHODE QUI N'EST PAS
+       * CELLE-LÀ. Vu à l'écran : « il te faut 34.0 % de trades gagnants » à
+       * côté de « Taux de réussite 39.1 % » et d'un total de -18.9 R. Le 34 %
+       * suppose que chaque trade finit à +2 R ou à -1 R ; 31 % d'entre eux
+       * finissaient en fin de séance. Gain moyen 1.29 R, perte moyenne 0.89 R,
+       * donc équilibre réel à 40.8 % : au-dessus des 39.1 % observés, et c'est
+       * ça qui explique le total.
+       */
+      gainMoyenR: resultat?.lecture.stats?.gainMoyenR ?? undefined,
+      perteMoyenneR: resultat?.lecture.stats?.perteMoyenneR ?? undefined,
+      partHorsCible: resultat?.lecture.stats?.partHorsCible,
+      tauxReussiteObserve: resultat?.lecture.stats?.tauxReussite,
+    });
+  }, [plan, resultat, de, a]);
+
+  const profilLu = useMemo(
+    () => (tradesReels ? lireLeProfil(tradesReels, fuseau) : null),
+    [tradesReels, fuseau],
+  );
+
+  const constatsProfil = useMemo(
+    () => (profilLu ? confronterAuProfil(plan, profilLu, instrument) : []),
+    [profilLu, plan, instrument],
+  );
+
+  /**
+   * SES HEURES RÉELLES, POUR MONTER DES BASES QU'IL POURRA SUIVRE.
+   *
+   * ⚠️ Proposer une méthode d'ouverture de Londres à quelqu'un qui n'allume son
+   * écran qu'à 20 h, c'est proposer une méthode qu'il ne prendra jamais. On
+   * garde la plage qui couvre le gros de ses trades, bornée à l'heure pleine.
+   */
+  const heuresReelles = useMemo(() => {
+    if (!profilLu || profilLu.trades < 30) return undefined;
+    const heures = profilLu.parHeure
+      .map((n, h) => ({ n, h }))
+      .filter((x) => x.n > 0)
+      .sort((a, b) => b.n - a.n);
+    if (heures.length === 0) return undefined;
+    // Les heures qui portent 80 % de ses trades, prises de la plus chargée à la
+    // moins chargée, puis refermées en une plage continue.
+    const cible = profilLu.trades * 0.8;
+    let cumul = 0;
+    const gardees: number[] = [];
+    for (const x of heures) {
+      gardees.push(x.h);
+      cumul += x.n;
+      if (cumul >= cible) break;
+    }
+    const min = Math.min(...gardees);
+    const max = Math.max(...gardees);
+    return {
+      debut: `${String(min).padStart(2, "0")}:00`,
+      fin: `${String(Math.min(23, max + 1)).padStart(2, "0")}:00`,
+    };
+  }, [profilLu]);
+
+  /**
+   * LES BASES PROFESSIONNELLES COMPLÈTES QU'ON PEUT LUI PROPOSER.
+   *
+   * ⚠️⚠️ NÉES DE LA CRITIQUE LA PLUS DURE : « il dit que ma stratégie n'est pas
+   * rentable, il ne trouve pas de moyen de l'améliorer, donc inutile d'utiliser
+   * le backtest à part pour se démotiver ». La recherche partait toujours de SON
+   * plan, et une descente par coordonnées qui part d'un mauvais point reste dans
+   * le mauvais coin. Le référentiel, lui, contenait des méthodes complètes que
+   * rien n'avait jamais essayées.
+   */
+  const departs = useMemo(
+    () =>
+      departsPossibles(instrument)
+        .map((m) =>
+          composerDepart(m, instrument, plan.couts, fuseau, {
+            heures: heuresReelles,
+            risqueParTradePct: plan.gestion.risqueParTradePct,
+            maxTradesParJour: plan.gestion.maxTradesParJour,
+            maxPertesConsecutives: plan.gestion.maxPertesConsecutives,
+            // ⚠️⚠️ CE QU'IL A DÉCLARÉ DE SA FAÇON DE TRADER. Une base qui entre
+            // au marché n'est pas la même méthode qu'une base qui pose une
+            // limite au niveau : le risque, donc le rapport gain/risque, change
+            // sur exactement le même signal.
+            entree: style.entree,
+            tolerance: style.tolerance,
+          }),
+        )
+        .filter((d): d is UnDepart => d != null),
+    [instrument, plan.couts, plan.gestion, fuseau, heuresReelles, style],
+  );
+
+  /**
+   * Essaie une base : elle remplace les réglages du test, et on relance.
+   *
+   * ⚠️ ELLE COMPTE COMME UN ESSAI, comme n'importe quel changement de plan. En
+   * essayer huit et garder la meilleure serait le sur-apprentissage habituel,
+   * simplement déplacé d'un cran.
+   */
+  const essayerUnDepart = useCallback(
+    (d: UnDepart) => {
+      /**
+       * ⚠️⚠️ VU À L'ÉCRAN. Les six réglages remplacés par une base portaient
+       * tous « Réglé par toi, à la main ». Le trader n'avait rien réglé : il
+       * avait cliqué un bouton, et la carte dont le rôle est de dire D'OÙ ÇA
+       * VIENT attribuait à sa main ce que la machine avait posé.
+       *
+       * ⚠️ ON MARQUE TOUS LES RÉGLAGES, pas seulement ceux qui ont bougé : la
+       * comparaison décidera lesquels apparaissent, et une base pose bien le
+       * plan entier.
+       */
+      const nom = tr(`bt_meth_${d.methode.code}`);
+      setOrigines(
+        Object.fromEntries(DESCRIPTEURS.map((x) => [x.cle, { pose: "base" as const, label: nom }])),
+      );
+      setPlan(d.plan);
+      setResultat(null);
+      setSauvegarde("repos");
+      setMethodeCode(d.methode.code);
+    },
+    [tr],
+  );
+
+  /**
+   * Bascule le test sur le marché qu'il trade vraiment.
+   *
+   * ⚠️⚠️ LE MOUVEMENT LE PLUS UTILE DE TOUT L'ÉCRAN, ET IL N'EXISTAIT PAS. La
+   * carte disait « tu testes le Nasdaq mais 92 % de tes trades sont sur l'or »
+   * depuis le début, sans jamais proposer de tester sur l'or.
+   */
+  const marcheReelTestable = useMemo(() => {
+    const code = constatsProfil.find((c) => c.marcheACodeTester)?.marcheACodeTester;
+    if (!code) return null;
+    // Le journal écrit « XAUUSD.r » ou « GOLD » selon le courtier : on cherche
+    // celui de nos instruments dont le code est contenu dans le sien.
+    const trouve = INSTRUMENTS.find((i) => code.includes(i.code) || i.code.includes(code));
+    return trouve ?? null;
+  }, [constatsProfil]);
+
+  /**
+   * Enregistre ses réponses dans sa fiche.
+   *
+   * ⚠️ LE CLIENT SUPABASE NE JETTE PAS : un `update` sans `.select()` rend
+   * `{ ok: true }` même quand aucune ligne n'a bougé. On exige la preuve.
+   */
+  const enregistrerLesReponses = useCallback(
+    async (nouvelles: Record<string, string>) => {
+      const strat = strategies.find((x) => x.id === strategieId);
+      if (!strat) return;
+      setEtatReponses("encours");
+
+      const bloc = composerBlocPlan({
+        titre: tr("bt_comp_entete", { date: enDate(new Date(), lang) }),
+        methode: methodeCode || undefined,
+        reponses: nouvelles,
+        intitules: Object.fromEntries(CODES_QUESTIONS.map((c) => [c, tr(`bt_q_${c}`)])),
+      });
+      const rawText = ecrireLePlanDansLaFiche(strat.raw_text ?? "", bloc);
+
+      const { data, error } = await supabase
+        .from("strategies")
+        .update({ raw_text: rawText })
+        .eq("id", strategieId)
+        .select("id");
+
+      if (error || !data || data.length === 0) {
+        setEtatReponses("erreur");
+        return;
+      }
+      setReponses(nouvelles);
+      setStrategies((liste) =>
+        liste.map((x) => (x.id === strategieId ? { ...x, raw_text: rawText } : x)),
+      );
+      setEtatReponses("fait");
+    },
+    [strategies, strategieId, methodeCode, supabase, tr, lang],
+  );
+
+  /**
+   * ⚠️ CHANGER DE MÉTHODE ÉCRIT AUSSI DANS LA FICHE, sinon le choix disparaît
+   * au prochain chargement et le trader le refait à chaque visite.
+   */
+  const choisirLaMethode = useCallback(
+    (nouveau: string) => {
+      setMethodeCode(nouveau);
+      setMethodeNonEnregistree(false);
+      const strat = strategies.find((x) => x.id === strategieId);
+      if (!strat) return;
+      const bloc = composerBlocPlan({
+        titre: tr("bt_comp_entete", { date: enDate(new Date(), lang) }),
+        methode: nouveau || undefined,
+        reponses,
+        intitules: Object.fromEntries(CODES_QUESTIONS.map((c) => [c, tr(`bt_q_${c}`)])),
+      });
+      const rawText = ecrireLePlanDansLaFiche(strat.raw_text ?? "", bloc);
+      void supabase
+        .from("strategies")
+        .update({ raw_text: rawText })
+        .eq("id", strategieId)
+        .select("id")
+        .then(({ data, error }) => {
+          /**
+           * ⚠️⚠️ CETTE ERREUR ÉTAIT LUE PUIS JETÉE. Le choix s'affichait, la
+           * fiche ne le recevait pas, et rien ne le disait : au rechargement
+           * suivant la méthode déclarée avait disparu. Le client Supabase ne
+           * jette pas, donc une erreur lue et non montrée est une erreur
+           * perdue, et c'est la panne la plus difficile à comprendre pour
+           * quelqu'un qui la subit.
+           */
+          if (error || !data || data.length === 0) {
+            setMethodeNonEnregistree(true);
+            return;
+          }
+          setMethodeNonEnregistree(false);
+          setStrategies((liste) =>
+            liste.map((x) => (x.id === strategieId ? { ...x, raw_text: rawText } : x)),
+          );
+        });
+    },
+    [strategies, strategieId, reponses, supabase, tr, lang],
+  );
+
+  /**
+   * L'ÉTAT DES LIEUX, assemblé à partir de tout ce qui a déjà été mesuré.
+   *
+   * ⚠️ AUCUN CALCUL DE PLUS. La synthèse ne relance rien : elle rassemble le
+   * verdict, la décomposition dans le temps, le contrôle hors période, la forme
+   * du réglage, le compteur d'essais et les constats de cohérence. C'est
+   * volontaire : une synthèse qui aurait ses propres chiffres finirait par
+   * contredire les cartes qu'elle résume.
+   */
+  const synthese = useMemo(
+    () =>
+      resultat
+        ? synthetiser({
+            lecture: resultat.lecture,
+            concentration: resultat.concentration,
+            stabilite: resultat.stabilite,
+            horsPeriode:
+              controleAffiche.phase === "fait" && controleAffiche.valide
+                ? { lecture: controleAffiche.lecture, fenetre: controleAffiche.fenetre }
+                : null,
+            constats: resultat.constats,
+            tentatives,
+            // ⚠️ Le balayage compte autant que les rejeux lancés à la main.
+            combinaisonsExplorees: resultat.exploration?.recherche.essais,
+          })
+        : null,
+    [resultat, controleAffiche, tentatives],
+  );
+
+  /** Le texte exact qui ira dans la fiche, montré avant d'écrire quoi que ce soit. */
+  const blocFiche = useMemo(() => {
+    if (modifications.length === 0 || !resultat) return "";
+    return composerBloc({
+      titre: tr("bt_sauver_entete", { date: enDate(new Date(), lang) }),
+      lignes: modifications.map(
+        (m) =>
+          `${tr(`bt_modif_${m.cle}`)}${tr("bt_deux_points")}${m.avant} → ${m.apres}. ` +
+          tr(`bt_geste_${m.cle}`, { avant: m.avant, apres: m.apres }),
+      ),
+      mesure: tr("bt_sauver_mesure", {
+        instrument: nomDuMarche(instrument.code, instrument.nom, tr),
+        de,
+        a,
+        trades: resultat.trades.length,
+      }),
+      controle:
+        controleValide && controleAffiche.phase === "fait"
+          ? tr("bt_sauver_controle", {
+              periode: `${controleAffiche.fenetre.de} → ${controleAffiche.fenetre.a}`,
+            })
+          : undefined,
+      avertissement: tr("bt_modif_avertissement"),
+    });
+  }, [modifications, resultat, instrument, de, a, controleValide, controleAffiche, tr, lang]);
+
+  const repartition = useMemo(
+    () =>
+      repartirDansLaFiche(modifications, {
+        risque_par_trade: plan.gestion.risqueParTradePct,
+        pertes_daffilee: plan.gestion.maxPertesConsecutives,
+        trades_par_jour: plan.gestion.maxTradesParJour,
+        objectif_r: plan.objectif.type === "multiple_r" ? plan.objectif.r : null,
+      }),
+    [modifications, plan],
+  );
+
+  const enregistrer = useCallback(async () => {
+    if (!strategieCourante || !resultat || !planFiche) return;
+    // ⚠️ LE CONTRÔLE N'EST EXIGÉ QUE S'IL A UN SENS. Le refuser aussi quand rien
+    // n'a bougé côté trades bloquait l'enregistrement d'un simple changement de
+    // risque par trade, que le moteur ne lit même pas : le bouton s'affichait
+    // actif et ne faisait rien. Un bouton muet est pire qu'un bouton gris.
+    const controleFait = controleAffiche.phase === "fait" && controleAffiche.valide;
+    if (demandeUnControle(modifications) && !controleFait) return;
+    setSauvegarde("encours");
+
+    const rawText = ecrireDansLaFiche(strategieCourante.raw_text ?? "", blocFiche);
+    const stats = resultat.lecture.stats;
+    const statsControle = controleAffiche.phase === "fait" ? controleAffiche.lecture.stats : undefined;
+
+    const r = await enregistrerVersion(supabase, {
+      strategieId: strategieCourante.id,
+      instrument: code,
+      de,
+      a,
+      plan,
+      modifications,
+      resume: {
+        verdict: resultat.lecture.verdict,
+        trades: resultat.trades.length,
+        esperanceR: stats?.esperanceR ?? null,
+        borneBasse: stats?.borneBasse ?? null,
+        borneHaute: stats?.borneHaute ?? null,
+        tentatives,
+      },
+      // ⚠️ `null` quand il n'a pas eu lieu, et l'archive le dira ainsi. Inscrire
+      // un contrôle vide ferait passer pour vérifiée une version qui ne l'est pas.
+      controle:
+        controleAffiche.phase === "fait" && controleAffiche.valide
+          ? {
+              de: controleAffiche.fenetre.de,
+              a: controleAffiche.fenetre.a,
+              trades: statsControle?.nbTrades ?? 0,
+              esperanceR: statsControle?.esperanceR ?? null,
+              borneBasse: statsControle?.borneBasse ?? null,
+              borneHaute: statsControle?.borneHaute ?? null,
+              verdict: controleAffiche.lecture.verdict,
+            }
+          : null,
+      rawText,
+      colonnes: repartition.colonnes,
+    });
+
+    if (!r.ok) {
+      setSauvegarde("erreur");
+      return;
+    }
+    setSauvegarde("ok");
+    // ⚠️ LA FICHE EN MÉMOIRE DOIT SUIVRE CELLE EN BASE. Sans ça, un second
+    // enregistrement repartirait du texte d'avant et effacerait le premier.
+    setStrategies((liste) =>
+      liste.map((s) => (s.id === strategieCourante.id ? { ...s, raw_text: rawText } : s)),
+    );
+    // Ces réglages sont désormais ceux de la fiche : ils cessent d'être un
+    // écart. La carte doit le dire, sinon le trader croit son enregistrement
+    // sans effet et recommence.
+    setPlanFiche(structuredClone(plan));
+    setOrigines({});
+    // La version vient d'être archivée : la liste doit la montrer tout de suite,
+    // sinon le trader doute que l'enregistrement ait fait quelque chose.
+    void rafraichirVersions();
+  }, [
+    rafraichirVersions,
+    strategieCourante,
+    resultat,
+    planFiche,
+    controleAffiche,
+    blocFiche,
+    supabase,
+    code,
+    de,
+    a,
+    plan,
+    modifications,
+    tentatives,
+    repartition,
+  ]);
+
+  /**
+   * Télécharge la liste complète des trades.
+   *
+   * ⚠️ CE N'EST PAS UN CONFORT. La page demande au trader de reconnaître sa
+   * méthode dans une douzaine d'aperçus dessinés ; sur six cents trades, douze
+   * ne sont qu'un échantillon. Qui veut vraiment vérifier doit pouvoir ouvrir la
+   * liste entière et la confronter à ses propres captures.
+   */
+  const exporterCsv = useCallback(() => {
+    if (!resultat) return;
+    const csv = tradesEnCsv(
+      resultat.trades,
+      instrument,
+      {
+        date: tr("bt_csv_date"),
+        sens: tr("bt_csv_sens"),
+        entree: tr("bt_csv_entree"),
+        sortie: tr("bt_csv_sortie"),
+        stop: tr("bt_csv_stop"),
+        risque: tr("bt_csv_risque"),
+        r: tr("bt_csv_r"),
+        rBrut: tr("bt_csv_rbrut"),
+        motif: tr("bt_csv_motif"),
+        collision: tr("bt_csv_collision"),
+      },
+      (motif) => tr(`bt_motif_${motif}`),
+      // ⚠️⚠️ LE FUSEAU DU TRADER, PAS L'UTC. Le fichier sortait en
+      // « 2025-01-06T15:00:00.000Z » alors que toute la page travaille en heure
+      // locale, et que la carte qui le propose annonce exactement l'usage qui
+      // casse : « trie-le PAR HEURE pour retrouver tes propres captures ».
+      plan.contexte.fuseau,
+    );
+    // ⚠️ `text/csv` et pas `application/octet-stream` : sur mobile, un type
+    // générique fait proposer « ouvrir avec » au lieu d'enregistrer.
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const lien = document.createElement("a");
+    lien.href = url;
+    lien.download = nomDuFichier(code, de, a);
+    lien.click();
+    // Sans révocation, l'objet reste en mémoire tant que l'onglet vit, et un
+    // trader qui exporte dix fois garde dix fichiers en RAM.
+    URL.revokeObjectURL(url);
+  }, [resultat, instrument, code, de, a, plan.contexte.fuseau, tr]);
+
+  /**
+   * LE PLAN QU'IL EMPORTE.
+   *
+   * ⚠️⚠️ C'EST L'OBJECTIF DE L'ONGLET, ET IL N'ÉTAIT PAS LIVRÉ SUR LE PARCOURS
+   * LE PLUS FRÉQUENT. « L'objectif principal est qu'à la fin, l'utilisateur
+   * sorte avec un plan clair et complet de sa stratégie afin de pouvoir être
+   * discipliné. » Le plan écrit existait, mais il ne s'affichait que dans la
+   * carte « Chercher » : traduire sa fiche, lancer et lire ne produisait aucun
+   * document.
+   *
+   * ⚠️ SUR SON PLAN À LUI, jamais sur la combinaison trouvée par la recherche.
+   * Celle-ci garde sa propre carte, avec sa propre mise en garde : ce n'est pas
+   * encore un plan à suivre.
+   */
+  const monPlan = useMemo(() => {
+    if (!resultat?.trades.length) return null;
+    return composerMonPlan(
+      composerPlanComplet(plan, resultat.trades, instrument),
+      completude,
+      reponsesVues,
+      synthese,
+      reponsesNonEnregistrees,
+    );
+  }, [resultat, plan, instrument, completude, reponsesVues, reponsesNonEnregistrees, synthese]);
+
+  /**
+   * Le document en texte brut, pour qu'il l'ait vraiment.
+   *
+   * ⚠️ UN PLAN QU'ON NE PEUT PAS SORTIR DE LA PAGE N'EST PAS UN PLAN QU'ON
+   * EMPORTE. Celui-ci se colle dans un carnet, un fichier, une note de
+   * téléphone : là où il le relira avant d'ouvrir son graphique.
+   */
+  const monPlanEnTexte = useCallback(() => {
+    if (!monPlan) return "";
+    const lignes = monPlan.lignes.map((l) => {
+      if (l.cle.startsWith("bt_q_")) {
+        const titre = tr(l.cle);
+        const sep = tr("bt_deux_points");
+        return `- ${titre}${sep}${l.texte || tr("bt_mon_plan_a_ecrire")}`;
+      }
+      return `- ${phraseDuPlan(
+        { cle: l.cle.replace(/^bt_plan_/, ""), valeurs: l.valeurs ?? {}, deduite: false },
+        tr,
+      )}`;
+    });
+    return [
+      tr("bt_mon_plan_titre"),
+      `${nomDuMarche(instrument.code, instrument.nom, tr)} · ${de} → ${a}`,
+      "",
+      ...lignes,
+      "",
+      // ⚠️ La même légende que l'écran, et pour la même raison : un nombre
+      // placé après son étiquette ne s'accorde avec rien.
+      [
+        `${tr("bt_mon_plan_entete_reglee")}${tr("bt_deux_points")}${monPlan.reglees}`,
+        `${tr("bt_mon_plan_entete_mesuree")}${tr("bt_deux_points")}${monPlan.mesurees}`,
+        `${tr("bt_mon_plan_entete_ecrite")}${tr("bt_deux_points")}${monPlan.ecrites}`,
+        `${tr("bt_mon_plan_entete_manquante")}${tr("bt_deux_points")}${monPlan.manquantes}`,
+      ].join(" · "),
+      /**
+       * ⚠️⚠️ CE DOCUMENT SORT DE L'APPLICATION, ET IL PORTE DES CHIFFRES
+       * MESURÉS. « c'est le plus haut risque qui garde le recul de ton compte
+       * à 17.1 % », « tu aurais traversé jusqu'à 7 pertes d'affilée » : collés
+       * dans un journal, imprimés, envoyés à quelqu'un, ces chiffres n'ont plus
+       * l'avertissement qui les entoure à l'écran. Il part donc avec eux.
+       */
+      "",
+      tr("bt_modif_avertissement"),
+    ].join("\n");
+  }, [monPlan, tr, instrument, de, a]);
+
+  /**
+   * CE QUI NE FONCTIONNE PAS, ET OÙ LE CHANGER.
+   *
+   * ⚠️⚠️ LE REPROCHE FORMULÉ TROIS FOIS : « je vois que ma stratégie n'est pas
+   * rentable, mais ça me dit pas concrètement ce qui ne fonctionne pas, ce
+   * qu'il faut changer ». La page savait mesurer et balayer ; elle ne savait
+   * pas diagnostiquer, et c'est la seule des trois qui répond à la question.
+   */
+  const diagnostics = useMemo(
+    () => (resultat ? diagnostiquer(resultat.trades, plan) : []),
+    [resultat, plan],
+  );
+
+  /**
+   * UN PLAN A-T-IL ÉTÉ POSÉ ? UNE SEULE QUESTION, UNE SEULE RÉPONSE.
+   *
+   * ⚠️⚠️ VU À L'ÉCRAN. Je clique « Essayer cette base » sur « Cassure de
+   * trendline ». La carte « Ta méthode » affiche aussitôt une coche et
+   * « Cassure de trendline ». Et deux cartes plus haut, « la prochaine chose à
+   * faire » répond toujours : « Choisis ta fiche de stratégie… tant qu'il n'y a
+   * pas de plan, il n'y a rien à rejouer. » La page se contredit d'un bloc à
+   * l'autre, sur l'écran qu'un débutant voit en premier.
+   *
+   * ⚠️ DEUX ENDROITS POSAIENT LA MÊME QUESTION ET N'AVAIENT JAMAIS LA MÊME
+   * RÉPONSE : le parcours acceptait « le plan diffère de la fiche », la carte
+   * exigeait « une fiche compilée ». Aucun des deux ne voyait une base
+   * appliquée, qui est pourtant le chemin que cette page PROPOSE en premier à
+   * quelqu'un qui n'a pas encore de stratégie.
+   *
+   * ⚠️ ET ON NE STOCKE PAS UN BOOLÉEN DE PLUS : un drapeau qu'il faut penser à
+   * lever finit par ne pas l'être, exactement comme ici. On regarde l'état.
+   */
+  /**
+   * LES GESTES QU'IL A RECONNUS COMME LES SIENS.
+   *
+   * ⚠️⚠️ « PARTIR D'UNE BASE » ÉTAIT UN MENU, PAS UNE CONSTRUCTION, et je l'ai
+   * présenté comme une construction pendant des semaines. Neuf méthodes
+   * complètes portant des noms d'école : quelqu'un qui n'a pas de stratégie
+   * doit reconnaître « OTE » ou « order block » et faire confiance au reste.
+   * Ici il choisit des gestes écrits dans ses mots, et l'assemblage donne un
+   * plan que le moteur rejoue tel quel.
+   */
+  const [gestes, setGestes] = useState<Partial<Record<CodeQuestionConstruction, string>>>({});
+
+  const construction = useMemo(
+    () => construireLePlan(gestes, planParDefaut(code, fuseau, instrument), instrument),
+    [gestes, code, fuseau, instrument],
+  );
+
+  /**
+   * ⚠️ ASSEMBLER EFFACE LE RÉSULTAT, comme tout ce qui change le plan. Un
+   * chiffre affiché à côté d'un plan qui n'est plus celui qui l'a produit est
+   * la pire chose qui puisse arriver à cette page, et c'est déjà arrivé.
+   */
+  const assemblerLaConstruction = useCallback(() => {
+    setPlan(construction.plan);
+    setOrigines(
+      Object.fromEntries(
+        DESCRIPTEURS.map((x) => [x.cle, { pose: "construit" as const, label: tr("bt_cons_titre") }]),
+      ),
+    );
+    setResultat(null);
+    setSauvegarde("repos");
+    setEtapeCourante("regles");
+    setSection("bt-reglages");
+  }, [construction.plan, tr]);
+
+  const planPose = useMemo(() => {
+    if (planFiche != null || resultat != null || methodeCode !== "") return true;
+    const socle = planParDefaut(code, fuseau, instrument);
+    return DESCRIPTEURS.some((d) => d.lire(plan) !== d.lire(socle));
+  }, [planFiche, resultat, methodeCode, plan, code, fuseau, instrument]);
+
+  const etapesParcours = useMemo(
+    () =>
+      etapesDuParcours({
+        aUnPlan: planPose,
+        aUnResultat: Boolean(resultat?.trades.length),
+        assezDeTrades: (resultat?.trades.length ?? 0) >= MIN_TRADES_CONCLUSION,
+      }),
+    [planPose, resultat],
+  );
+
+  /**
+   * ⚠️⚠️ ON NE LAISSE JAMAIS LE TRADER SUR UNE ÉTAPE QUI VIENT DE SE FERMER.
+   * Changer d'instrument efface le résultat : rester sur « Ton plan » afficherait
+   * une page vide sans dire pourquoi. On recule vers la dernière étape ouverte,
+   * jamais vers l'avant : faire avancer quelqu'un qui vient de reculer est la
+   * façon la plus sûre de le perdre.
+   */
+  useEffect(() => {
+    const ici = etapesParcours.find((e) => e.code === etapeCourante);
+    if (ici && !ici.ouverte) setEtapeCourante(replierVers(etapeCourante, etapesParcours));
+  }, [etapesParcours, etapeCourante]);
+
+  /**
+   * LA SEULE CHOSE À FAIRE MAINTENANT.
+   *
+   * ⚠️⚠️ LA PAGE FAIT NEUF ÉCRANS DE HAUT AVANT MÊME D'AVOIR MESURÉ QUOI QUE
+   * CE SOIT : 3 031 mots, 47 boutons, 20 titres, et 38 titres une fois l'analyse
+   * complète passée. Chaque carte répond à une vraie question, et aucune ne dit
+   * par où commencer. C'est le reproche qu'Axel a formulé trois fois sous trois
+   * formes : « il me montre des chiffres sans changer ma stratégie », « il ne
+   * trouve pas de moyen de l'améliorer », « j'avais fait un tribunal, il voulait
+   * un atelier ».
+   *
+   * ⚠️ ELLE NE CACHE RIEN ET NE RÉSUME RIEN. Tout est toujours en dessous, dans
+   * l'ordre. C'est une entrée, pas un filtre.
+   */
+  /**
+   * Les blocs que l'IA a tranchés seule et qu'il n'a pas relus.
+   *
+   * ⚠️ EXTRAIT POUR SERVIR DEUX FOIS : l'étape à faire, et l'état affiché dans
+   * l'en-tête replié de la section. Deux comptes calculés séparément finiraient
+   * par diverger, et l'un des deux serait faux.
+   */
+  const interpretationsALire = useMemo(
+    () =>
+      (couverture?.deduites ?? []).filter(
+        (d) => graviteDuChamp(d.champ) === "critique" && !contestes.has(d.champ),
+      ).length,
+    [couverture, contestes],
+  );
+
+  const etape = useMemo(
+    () =>
+      prochaineEtape({
+        planPret: planPose,
+        // Les blocs que l'IA a tranchés seule, et que le trader n'a pas refusés.
+        // ⚠️ Seulement les blocs CRITIQUES, et seulement ceux qu'il n'a pas
+        // encore refuses : « il manque le fuseau horaire » n'est pas du meme
+        // ordre que « l'IA a choisi ton declencheur a ta place ».
+        interpretations: interpretationsALire,
+        condamnations,
+        profil: constatsProfil,
+        /**
+         * ⚠️⚠️ LE NOMBRE DE TRADES, PAS CELUI DES STATISTIQUES. Sous cent
+         * trades, le moteur sort AVANT de calculer `stats` : cette ligne lisait
+         * donc `null` apres un vrai rejeu, et la carte repondait « lance le
+         * test » a quelqu un qui venait de le lancer. Pire, toute la branche
+         * « elargis la periode » etait INATTEIGNABLE : le seul cas ou elle
+         * devait parler etait justement celui ou ce nombre valait null.
+         *
+         * ⚠️ VU A L ECRAN : 41 trades rejoues, le CSV les proposait au
+         * telechargement, l en-tete disait « trop peu de trades pour
+         * diagnostiquer », et la carte de la prochaine chose a faire disait
+         * « rien n a encore ete rejoue ».
+         */
+        trades: resultat ? resultat.trades.length : null,
+        // ⚠️ « Élargis la période » est une porte peinte sur un mur quand il
+        // n'y a plus une bougie à ajouter.
+        peutElargir: periodePlusLarge != null,
+        mecaniqueVerifiee: verifie,
+        analyseFaite: resultat?.confluences != null,
+        synthese,
+        // ⚠️ L'objectif de l'onglet passe devant l'enregistrement : archiver une
+        // version dont cinq lignes manquent, c'est ranger un plan qu'il ne
+        // pourra pas suivre.
+        lignesAEcrire: monPlan?.manquantes ?? 0,
+        lignesAEnregistrer: monPlan?.nonEnregistrees ?? 0,
+      }),
+    [
+      planPose,
+      periodePlusLarge,
+      resultat,
+      interpretationsALire,
+      condamnations,
+      constatsProfil,
+      verifie,
+      synthese,
+      monPlan,
+    ],
+  );
+
+  /**
+   * Le geste de la carte.
+   *
+   * ⚠️ DEUX ÉTAPES SONT L'ACTION ELLE-MÊME (lancer, analyser) : les envoyer
+   * vers une ancre ferait descendre le trader jusqu'à un bouton qu'on aurait pu
+   * cliquer pour lui. Les autres pointent un bloc à lire, et là c'est à lui de
+   * décider.
+   *
+   * ⚠️⚠️ « L'ACTION ELLE-MÊME » NE VEUT PAS DIRE « SANS RIEN MONTRER », et je
+   * l'avais lu comme ça. Ces deux-là partaient sans déplacer personne, et le
+   * trader restait devant l'écran qu'il lisait pendant que l'avancement,
+   * l'erreur et le résultat s'écrivaient sur un autre. C'est `lancer` qui amène
+   * maintenant le trader devant sa propre carte, pour les sept chemins à la
+   * fois.
+   */
+  const agirSurLEtape = useCallback(
+    (ancre: string | null, code: string) => {
+      if (code === "lancer") return void lancer();
+      if (code === "analyser") return void analyserAFond();
+      /**
+       * ⚠️⚠️ LE GESTE, PAS LE CHEMIN VERS LE GESTE. Vu à l'écran : « Choisir une
+       * période plus large » faisait remonter vers le sélecteur de l'étape 1,
+       * pendant qu'un bouton « Élargir à 2023-05 → 2025-12 (32 mois) » se
+       * tenait dix lignes plus bas. Deux boutons, la même intention, deux
+       * comportements : « je peux appuyer à plein d'endroits, au final je suis
+       * perdu ».
+       *
+       * ⚠️ ET LE REPLI RESTE LE SÉLECTEUR quand il n'y a plus rien à élargir :
+       * un bouton qui ne change rien est pire qu'aucun bouton.
+       */
+      if (code === "elargir_la_periode" && periodePlusLarge) {
+        return periodePlusLarge.elargir();
+      }
+      if (!ancre) return;
+      remonterVers(ancre);
+    },
+    [lancer, analyserAFond, periodePlusLarge, remonterVers],
+  );
+
+  /**
+   * TANT QU'ON NE SAIT PAS, ON NE DIT RIEN.
+   *
+   * ⚠️⚠️ LE CONTEXTE D'ABONNEMENT DÉMARRE À « free », et cette page ne lisait
+   * que le plan, jamais son chargement : un abonné Premium voyait donc le mur
+   * payant de son propre onglet à chaque ouverture, le temps que la requête
+   * revienne. Dire à quelqu'un qui paie qu'il n'a pas accès est la pire seconde
+   * que ce produit puisse lui offrir.
+   *
+   * ⚠️ ET ON N'AFFICHE PAS DU VIDE NON PLUS : `loadPlan` n'a pas de garde
+   * autour de son appel réseau, donc un échec laisse ce chargement à `true`
+   * pour toujours. Une page blanche définitive serait un défaut muet ; un état
+   * de chargement, lui, décrit exactement ce qui s'est passé.
+   *
+   * ⚠️ LE MÊME OUBLI EXISTE SUR D'AUTRES ONGLETS GARDÉS PAR LE PLAN. Corrigé
+   * ici seulement, faute de les avoir pilotés : une correction non vérifiée
+   * ailleurs vaut moins qu'un défaut connu.
+   */
+  if (abonnementEnCours) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-10">
+        <Card className="text-center">
+          <h1 className="text-xl font-semibold text-foreground">{tr("bt_titre")}</h1>
+          <p className="mt-2 text-sm text-foreground-muted">{tr("plan_verification")}</p>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!estPremium) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-10">
+        <Card className="text-center">
+          <Lock className="mx-auto h-8 w-8 text-foreground-muted" />
+          <h1 className="mt-3 text-xl font-semibold text-foreground">{tr("bt_titre")}</h1>
+          <p className="mx-auto mt-2 max-w-lg text-sm text-foreground-muted">{tr("cap_backtest")}</p>
+          <Link
+            href="/dashboard/upgrade"
+            className="mt-5 inline-flex rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-hover"
+          >
+            {tr("upgrade_cta")}
+          </Link>
+        </Card>
+      </div>
+    );
+  }
+
+  const occupe = etat.phase === "telechargement" || etat.phase === "calcul";
+  const moisDisponibles = moisEntre(PERIODE_MIN, PERIODE_MAX);
+
+  return (
+    <div className="mx-auto max-w-5xl space-y-5 px-4 py-6">
+      <div>
+        <h1 className="text-2xl font-semibold text-foreground">{tr("bt_titre")}</h1>
+        <p className="mt-1 text-sm text-foreground-muted">{tr("bt_sous_titre")}</p>
+      </div>
+
+      {/* ⚠️ TEXTE VISIBLE, PAS UN LIEN, PAS UN REPLI. Voir l'en-tête. */}
+      <Card className="border-warning/40 bg-warning/[0.06]">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
+          <p className="text-sm leading-relaxed text-foreground">{tr("bt_avertissement")}</p>
+        </div>
+      </Card>
+
+      {/* ⚠️⚠️ LES CINQ ÉTAPES, EN HAUT, TOUJOURS VISIBLES. Troisième réponse au
+          même reproche : une carte « la prochaine chose à faire » posée sur un
+          mur reste un mur, et des sections repliées restent vingt décisions
+          dans un ordre que rien n'impose. */}
+      <Parcours
+        etapes={etapesParcours}
+        courante={etapeCourante}
+        onAller={setEtapeCourante}
+        t={tr}
+      />
+
+      <StaggerContainer className="space-y-5">
+        {/* ── 0. La seule chose à faire maintenant ────────────────────────
+            ⚠️⚠️ EN TÊTE DE TOUT, ET C'EST LE POINT DE CETTE CARTE. La page fait
+            neuf écrans avant même d'avoir mesuré quoi que ce soit : 3 031 mots,
+            47 boutons, 20 titres, et 38 une fois l'analyse passée. Chaque carte
+            répond à une vraie question, et aucune ne disait par où commencer.
+            ⚠️ Elle ne cache rien : tout reste en dessous, dans le même ordre. */}
+        <StaggerItem>
+          <ProchaineEtape etape={etape} onAgir={agirSurLEtape} enCours={occupe} t={tr} />
+        </StaggerItem>
+
+        {/* ── Ce que le rejeu en cours a à dire, sur TOUTES les étapes ─────
+            ⚠️⚠️ UN REJEU LANCÉ D'AILLEURS NE DISAIT RIEN, PAS MÊME SES ERREURS.
+            Vu à l'écran : depuis « la prochaine chose à faire », j'appuie sur
+            « Lancer le test » alors que je suis à l'étape « Tes règles ». Le
+            calcul part, dure dix secondes, et rien ne bouge : la barre
+            d'avancement ET le message d'erreur vivaient tous les deux dans la
+            carte « Lancer », qui ne s'affiche qu'à l'étape « Le test ».
+
+            ⚠️ MA PREMIÈRE CORRECTION DÉPLAÇAIT LE TRADER vers cette carte. Elle
+            réparait le silence et en cassait autre chose : « Analyser à fond »
+            et « Chercher » vivent à l'étape « L'améliorer », leurs boutons
+            disent déjà « en cours », et leurs résultats atterrissent là. Les
+            arracher de la carte qu'ils lisaient pour les poser devant une barre
+            de progression est un remède pire que le mal.
+
+            ⚠️ CE QUI EST VRAI DANS LES DEUX CAS : l'avancement et l'erreur
+            appartiennent à la PAGE, pas à un bloc. Ils se lisent donc d'où
+            qu'on ait appuyé, et personne n'est déplacé. */}
+        {etat.phase === "telechargement" || etat.phase === "calcul" || etat.phase === "erreur" ? (
+          <StaggerItem id="bt-suivi">
+            <Card>
+              {etat.phase === "erreur" ? (
+                <p className="text-sm text-loss">{etat.message}</p>
+              ) : (
+                <>
+                  <p className="text-xs text-foreground-muted">
+                    {etat.phase === "telechargement"
+                      ? tr("bt_telechargement", { faits: etat.faits, total: etat.total }) +
+                        (etat.etape ? ` · ${tr("bt_telechargement_etape", { ...etat.etape })}` : "")
+                      : tr("bt_calcul")}
+                  </p>
+                  {etat.phase === "telechargement" ? (
+                    <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-surface">
+                      <div
+                        className="h-full rounded-full bg-accent transition-all"
+                        style={{
+                          width: `${Math.round((etat.faits / Math.max(1, etat.total)) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                  ) : null}
+                </>
+              )}
+            </Card>
+          </StaggerItem>
+        ) : null}
+
+        {/* ── 1. Le périmètre ────────────────────────────────────────────── */}
+        {etapeCourante === "strategie" ? (
+        <StaggerItem>
+          <Section
+            ancre="bt-periode"
+            numero={1}
+            titre={tr("bt_etape_perimetre")}
+            etat={`${nomDuMarche(instrument.code, instrument.nom, tr)} · ${de} → ${a}`}
+            faite
+            ouverte={section === "bt-periode"}
+            onBasculer={() => basculer("bt-periode")}
+          >
+            <Card>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Champ label={tr("bt_instrument")}>
+                <select
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                  value={code}
+                  onChange={(e) => changerInstrument(e.target.value)}
+                >
+                  {categoriesOrdonnees().map((cat) => (
+                    <optgroup key={cat} label={tr(`bt_cat_${cat}`)}>
+                      {INSTRUMENTS.filter((i) => i.categorie === cat).map((i) => (
+                        <option key={i.code} value={i.code}>
+                          {i.nom}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </Champ>
+              <Champ label={tr("bt_periode_de")}>
+                <Liste
+                  valeur={de}
+                  onChange={(v) => {
+                    setDe(v);
+                    if (v > a) setA(v);
+                    setResultat(null);
+                  }}
+                  options={moisDisponibles.map((m) => ({ valeur: m, label: m }))}
+                />
+              </Champ>
+              <Champ label={tr("bt_periode_a")}>
+                <Liste
+                  valeur={a}
+                  onChange={(v) => {
+                    setA(v);
+                    if (v < de) setDe(v);
+                    setResultat(null);
+                  }}
+                  options={moisDisponibles.filter((m) => m >= de).map((m) => ({ valeur: m, label: m }))}
+                />
+              </Champ>
+            </div>
+            <p className="mt-3 text-xs text-foreground-muted">
+              {tr("bt_donnees_source", { mois: moisEntre(de, a).length })}
+            </p>
+            </Card>
+          </Section>
+        </StaggerItem>
+        ) : null}
+
+        {/* ── 2. Partir de sa fiche ──────────────────────────────────────── */}
+        {etapeCourante === "strategie" ? (
+        <StaggerItem>
+          <Section
+            ancre="bt-fiche"
+            numero={2}
+            titre={tr("bt_etape_fiche")}
+            etat={
+              /**
+               * ⚠️⚠️ CETTE LIGNE DISAIT « TRADUITE EN PLAN » DÈS QU'UNE FICHE
+               * ÉTAIT CHOISIE, avant toute traduction, pendant que le bouton
+               * juste en dessous proposait encore de la traduire. Le résumé
+               * d'une section repliée existe pour qu'on n'ait PAS à l'ouvrir :
+               * c'est la seule ligne de la page où une contrevérité ne peut pas
+               * être rattrapée par ce qu'on voit à côté.
+               */
+              !strategieCourante
+                ? tr("bt_sec_fiche_aucune")
+                : !couverture
+                  ? tr("bt_sec_fiche_a_traduire", {
+                      nom: strategieCourante.name || tr("bt_sans_nom"),
+                    })
+                  : interpretationsALire > 0
+                    ? tr("bt_sec_fiche_interpretations", {
+                        nom: strategieCourante.name || tr("bt_sans_nom"),
+                        n: interpretationsALire,
+                      })
+                    : tr("bt_sec_fiche_traduite", {
+                        nom: strategieCourante.name || tr("bt_sans_nom"),
+                      })
+            }
+            faite={Boolean(couverture) && interpretationsALire === 0}
+            ouverte={section === "bt-fiche"}
+            onBasculer={() => basculer("bt-fiche")}
+          >
+          <Card>
+            <CardTitle className="mb-1">{tr("bt_etape_fiche")}</CardTitle>
+            <p className="mb-4 text-xs text-foreground-muted">{tr("bt_etape_fiche_aide")}</p>
+
+            {strategies.length === 0 ? (
+              <p className="text-sm text-foreground-muted">
+                {tr("bt_aucune_strategie")}{" "}
+                <Link href="/dashboard/strategy" className="text-accent underline">
+                  {tr("bt_creer_strategie")}
+                </Link>
+              </p>
+            ) : (
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <Champ label={tr("bt_ma_strategie")} className="flex-1">
+                  <select
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                    value={strategieId}
+                    onChange={(e) => setStrategieId(e.target.value)}
+                  >
+                    <option value="">{tr("bt_choisir")}</option>
+                    {strategies.map((s) => (
+                      <option key={s.id} value={s.id} disabled={!s.raw_text}>
+                        {s.name || tr("bt_sans_nom")}
+                        {s.raw_text ? "" : ` — ${tr("bt_sans_texte")}`}
+                      </option>
+                    ))}
+                  </select>
+                </Champ>
+                <button
+                  type="button"
+                  onClick={compiler}
+                  disabled={!strategieCourante?.raw_text || compilation === "encours"}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {compilation === "encours" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Wand2 className="h-4 w-4" />
+                  )}
+                  {tr("bt_compiler")}
+                </button>
+              </div>
+            )}
+
+            {compilationMsg ? <p className="mt-3 text-sm text-loss">{compilationMsg}</p> : null}
+            {couverture ? (
+              <CarteCouverture
+                couverture={couverture}
+                plan={plan}
+                contestes={contestes}
+                onContester={(champ) =>
+                  setContestes((prec) => {
+                    const suite = new Set(prec);
+                    if (suite.has(champ)) suite.delete(champ);
+                    else suite.add(champ);
+                    return suite;
+                  })
+                }
+                onOuvrirLEditeur={() => remonterVers("bt-reglages")}
+                t={tr}
+              />
+            ) : null}
+          </Card>
+          </Section>
+        </StaggerItem>
+        ) : null}
+
+        {/* ── Ce que tu as déjà testé sur cette stratégie ──────────────────
+            ⚠️⚠️ L'ARCHIVE ÉTAIT INATTEIGNABLE SANS RELANCER UN TEST. Elle vivait
+            sur « Ton plan », étape verrouillée tant qu'aucun rejeu n'a tourné :
+            revenir trois jours plus tard pour consulter ce qu'on avait déjà
+            mesuré obligeait à tout relancer d'abord. Or c'est exactement le
+            moment où on ne veut PAS relancer : on veut voir, et reprendre.
+
+            ⚠️ ET SA PLACE EST ICI, à l'étape où l'on choisit sa stratégie :
+            « qu'est-ce que j'ai déjà essayé » est une question qu'on se pose
+            AVANT de tester, et « reprendre ce plan » est un point de départ,
+            pas une conclusion. */}
+        {strategieId && etapeCourante === "strategie" ? (
+          <StaggerItem>
+            <Versions
+              versions={versions}
+              erreur={versionsErreur}
+              chargement={versionsChargement}
+              selection={comparees}
+              onSelectionner={basculerComparaison}
+              ecartsAvecLaFiche={ecartsDUneVersion}
+              onRecharger={reprendreVersion}
+              onSupprimer={supprimerUneVersion}
+              langue={lang}
+              t={tr}
+            />
+          </StaggerItem>
+        ) : null}
+
+        {/* ── 3. La méthode déclarée, et ce qu'elle exige pour exister ────
+            ⚠️⚠️ AVANT TOUT CHIFFRE, ET SANS EN PRODUIRE UN SEUL. Un trader
+            d'orderflow sur un CFD peut trouver ici toute son explication sans
+            qu'une bougie ait été lue : le volume qu'il regarde est celui des
+            clients de son courtier, pas celui du marché. */}
+        {etapeCourante === "strategie" ? (
+        <StaggerItem>
+          <Section
+            ancre="bt-methode"
+            numero={3}
+            titre={tr("bt_etape_methode")}
+            etat={
+              methode
+                ? tr(`bt_meth_${methode.code}`)
+                : tr("bt_sec_methode_aucune")
+            }
+            faite={Boolean(methode)}
+            ouverte={section === "bt-methode"}
+            onBasculer={() => basculer("bt-methode")}
+          >
+          <Methode
+            code={methodeCode}
+            instrument={instrument}
+            plan={plan}
+            onChoisir={choisirLaMethode}
+            echec={methodeNonEnregistree}
+            t={tr}
+          />
+          </Section>
+        </StaggerItem>
+        ) : null}
+
+        {/* ── 4. Le plan, de A à Z ────────────────────────────────────────
+            ⚠️⚠️ LA SEULE CARTE DE LA PAGE QUI NE SE TROMPE JAMAIS. Toutes les
+            autres rendent une estimation entourée d'un intervalle ; celle-ci
+            constate qu'une ligne est écrite ou qu'elle ne l'est pas. Et elle
+            fonctionne pour une méthode qu'on ne saura jamais rejouer. */}
+        {etapeCourante === "regles" ? (
+        <StaggerItem>
+          <Section
+            ancre="bt-completude"
+            numero={1}
+            titre={tr("bt_etape_completude")}
+            etat={tr("bt_sec_completude", {
+              ecrits: completude.ecrits,
+              total: completude.lignes.length,
+            })}
+            faite={completude.flous === 0 && completude.absents === 0}
+            ouverte={section === "bt-completude"}
+            onBasculer={() => basculer("bt-completude")}
+          >
+          <Completude
+            completude={completude}
+            reponses={reponses}
+            onEnregistrer={(r) => void enregistrerLesReponses(r)}
+            onBrouillon={setBrouillon}
+            peutEnregistrer={Boolean(strategieCourante)}
+            onChoisirUneFiche={() => remonterVers("bt-fiche")}
+            etat={etatReponses}
+            t={tr}
+          />
+          </Section>
+        </StaggerItem>
+        ) : null}
+
+        {/* ── 5. Les réglages du test, entièrement modifiables ─────────────
+            ⚠️⚠️ LA SECTION LA PLUS LOURDE DE LA PAGE : huit blocs, une trentaine
+            de champs. Dépliée par défaut, elle portait à elle seule la moitié du
+            mur qu'Axel décrit. Un trader qui part de sa fiche n'a aucune raison
+            de l'ouvrir, et celui qui règle à la main la cherchait au milieu. */}
+        {etapeCourante === "regles" ? (
+        <StaggerItem>
+          <Section
+            ancre="bt-reglages"
+            numero={2}
+            titre={tr("bt_etape_plan")}
+            /**
+             * ⚠️ SIX APPELS LITTÉRAUX PLUTÔT QU'UNE CLÉ CALCULÉE : les scanners
+             * qui vérifient qu'une phrase existe dans les quatre langues et
+             * qu'elle reçoit ses valeurs ne lisent que des clés écrites en
+             * toutes lettres. Une clé construite passerait sous leur nez.
+             */
+            etat={
+              etatReglages === "modifies"
+                ? tr("bt_sec_reglages_modifies", { n: modifications.length })
+                : etatReglages === "fiche"
+                  ? tr("bt_sec_reglages_fiche")
+                  : etatReglages === "construit"
+                    ? tr("bt_sec_reglages_construit")
+                    : etatReglages === "version"
+                      ? tr("bt_sec_reglages_version")
+                      : etatReglages === "base"
+                        ? tr("bt_sec_reglages_base")
+                        : tr("bt_sec_reglages_defaut")
+            }
+            faite={contestes.size === 0}
+            ouverte={section === "bt-reglages"}
+            onBasculer={() => basculer("bt-reglages")}
+          >
+          <Card>
+            <p className="mb-4 text-xs text-foreground-muted">{tr("bt_etape_plan_aide")}</p>
+            <EditeurPlan
+              plan={plan}
+              instrument={instrument}
+              onChange={appliquerManuel}
+              contestes={contestes}
+              t={tr}
+            />
+          </Card>
+          </Section>
+        </StaggerItem>
+        ) : null}
+
+        {/* ── 3 bis. Ce qui s'écarte de la fiche ──────────────────────────
+            ⚠️ JUSTE SOUS L'ÉDITEUR, et pas en bas de page. Un trader qui vient
+            d'appliquer une proposition doit lire ce qu'elle a changé au moment
+            où il regarde le réglage, pas trois cartes plus loin. La carte ne
+            s'affiche qu'une fois une fiche compilée : sans référence, il n'y a
+            rien à comparer, et un « aucun changement » sur un plan bricolé de
+            zéro serait un mensonge par construction. */}
+        {planFiche && etapeCourante === "regles" ? (
+          <StaggerItem>
+            <Modifications
+              modifications={modifications}
+              onAnnuler={(cle) => setPlan(annulerModification(cle, plan, planFiche))}
+              onToutAnnuler={() => {
+                setPlan(toutAnnuler(plan, planFiche));
+                setOrigines({});
+              }}
+              t={tr}
+            />
+          </StaggerItem>
+        ) : null}
+
+        {/* ── 5 bis. Ce qu'on peut affirmer sans rien lancer ──────────────
+            ⚠️⚠️ CES DEUX CARTES SONT AU-DESSUS DU BOUTON, ET C'EST VOLONTAIRE.
+            Elles ne demandent aucun backtest : cinq divisions sur ses coûts et
+            son risque, et la comparaison de ce qu'il a écrit avec ce que son
+            journal montre. Pour un trader dont la méthode n'est pas rejouable,
+            c'est tout ce que cette page peut lui donner, et c'est déjà
+            beaucoup. */}
+        {condamnations.length > 0 && etapeCourante === "regles" ? (
+          <StaggerItem id="bt-condamnation">
+            <Condamnation constats={condamnations} t={tr} />
+          </StaggerItem>
+        ) : null}
+
+        {constatsProfil.length > 0 && etapeCourante === "regles" ? (
+          <StaggerItem id="bt-profil">
+            <Profil
+              constats={constatsProfil}
+              marcheReel={marcheReelTestable}
+              onTesterSurSonMarche={(c) => changerInstrument(c, true)}
+              t={tr}
+            />
+          </StaggerItem>
+        ) : null}
+
+        {/* ── 5 bis bis. Ce que vaut ce marché, avant toute stratégie ──────
+            ⚠️⚠️ « CERTAINES STRATÉGIES SONT ADAPTÉES À DES ACTIFS PRÉCIS »,
+            répété plusieurs fois, et l'outil n'en faisait rien. Cette carte
+            mesure des propriétés du MARCHÉ sur les bougies seules, sans qu'aucune
+            stratégie n'entre dans le calcul, puis les confronte à ce que la
+            méthode DÉCLARE exiger. Ce n'est pas chercher le marché qui sort le
+            mieux : c'est vérifier qu'on apporte un marteau à un clou. */}
+        {resultat?.caractere && etapeCourante === "regles" ? (
+          <StaggerItem>
+            <CaractereDuMarche
+              caractere={resultat.caractere}
+              instrument={instrument}
+              uniteDeTemps={plan.uniteDeTemps ?? 1}
+              methode={methode}
+              onDeclarerMethode={() => remonterVers("bt-methode")}
+              t={tr}
+            />
+          </StaggerItem>
+        ) : null}
+
+        {/* ── 5 ter. Partir d'une base qui tient debout ────────────────────
+            ⚠️⚠️ LA RÉPONSE À « IL NE TROUVE PAS DE MOYEN DE L'AMÉLIORER ». La
+            recherche part toujours de SON plan : une descente par coordonnées
+            qui démarre d'un mauvais point reste dans le mauvais coin. Ces
+            bases-là viennent du référentiel, montées sur son marché, ses heures
+            et son risque. Elles ne promettent rien ; elles donnent un point de
+            départ complet, ce que l'outil ne savait pas faire. */}
+        {etapeCourante === "strategie" ? (
+        <StaggerItem id="bt-departs">
+          <Depart
+            departs={departs}
+            enCours={occupe}
+            style={style}
+            onStyle={setStyle}
+            onEssayer={essayerUnDepart}
+            t={tr}
+          />
+        </StaggerItem>
+        ) : null}
+
+        {/* ── Construire la sienne, geste par geste ──────────────────────────
+            ⚠️⚠️ APRÈS LES BASES, PAS AVANT. Choisir une méthode toute faite est
+            plus rapide et convient à la plupart ; construire la sienne est le
+            chemin de celui qui sait ce qu'il fait mais n'a jamais écrit ses
+            règles. Mettre le long avant le court ferait passer tout le monde
+            par sept questions dont il n'a pas besoin. */}
+        {etapeCourante === "strategie" ? (
+        <StaggerItem id="bt-construire">
+          <Construire
+            reponses={gestes}
+            resultat={construction}
+            onRepondre={(question, geste) =>
+              setGestes((g) => ({ ...g, [question]: g[question] === geste ? undefined : geste }))
+            }
+            onAssembler={assemblerLaConstruction}
+            occupe={occupe}
+            lang={lang}
+            t={tr}
+          />
+        </StaggerItem>
+        ) : null}
+
+        {/* ── 6. Lancer ──────────────────────────────────────────────────── */}
+        {/* ⚠️⚠️ VU À L'ÉCRAN : « 6. Lancer le test » s'affichait sur LES TROIS
+            étapes. Le bloc n'avait pas été affecté, donc il fuyait partout. Un
+            bouton « Lancer » présent à l'étape « Ta stratégie » invite à sauter
+            exactement ce que le parcours existe pour ordonner. */}
+        {etapeCourante === "test" ? (
+        <StaggerItem>
+          <Card>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <CardTitle>{tr("bt_etape_lancer")}</CardTitle>
+                <p className="mt-1 text-xs text-foreground-muted">
+                  {etat.phase === "telechargement"
+                    ? tr("bt_telechargement", { faits: etat.faits, total: etat.total }) +
+                      (etat.etape ? ` · ${tr("bt_telechargement_etape", { ...etat.etape })}` : "")
+                    : etat.phase === "calcul"
+                      ? tr("bt_calcul")
+                      : tr("bt_lancer_aide")}
+                </p>
+              </div>
+              <button
+                type="button"
+                // ⚠️ Pas `onClick={lancer}` : React passerait l'événement en
+                // premier argument, et le clic demanderait les propositions
+                // sans que personne ne l'ait voulu.
+                onClick={() => lancer()}
+                disabled={occupe}
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {occupe ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                {tr("bt_lancer")}
+              </button>
+            </div>
+            {etat.phase === "telechargement" ? (
+              <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-surface">
+                <div
+                  className="h-full rounded-full bg-accent transition-all"
+                  style={{ width: `${Math.round((etat.faits / Math.max(1, etat.total)) * 100)}%` }}
+                />
+              </div>
+            ) : null}
+            {etat.phase === "erreur" ? (
+              <p className="mt-3 text-sm text-loss">{etat.message}</p>
+            ) : null}
+          </Card>
+        </StaggerItem>
+        ) : null}
+
+        {/* ── 5. Le résultat ─────────────────────────────────────────────── */}
+        {resultat && resultat.apercus.length > 0 && etapeCourante === "test" ? (
+          <StaggerItem id="bt-apercus">
+            <Inspection
+              apercus={resultat.apercus}
+              total={resultat.trades.length}
+              langue={lang}
+              instrument={instrument}
+              verifie={verifie}
+              onVerifie={setVerifie}
+              t={tr}
+            />
+          </StaggerItem>
+        ) : null}
+
+        {resultat?.propositions && etapeCourante === "test" ? (
+          <StaggerItem id="bt-propositions">
+            <Propositions
+              propositions={resultat.propositions}
+              instrument={instrument}
+              tradesActuels={resultat.trades.length}
+              onAppliquer={(p) => appliquerPropose(p.plan, p.levier, p.objectif)}
+              t={tr}
+            />
+          </StaggerItem>
+        ) : null}
+
+      {/* ── Ce que les filtres ont réellement écarté ────────────────────
+            ⚠️ Placé JUSTE APRÈS les trades et AVANT le chiffre. Un filtre qui
+            n'écarte rien équivaut à pas de filtre, et rien dans le rapport ne
+            le montrerait : le résultat serait propre, il décrirait simplement
+            une autre stratégie que celle décrite dans la fiche. */}
+        {resultat && Object.keys(resultat.audit.refusesParFiltre).length > 0 && etapeCourante === "test" ? (
+          <StaggerItem>
+            <Card className="p-4 sm:p-5">
+              <p className="mb-2 text-sm font-medium text-foreground">{tr("bt_filtres_titre")}</p>
+              <ul className="space-y-1 text-xs text-foreground-muted">
+                {Object.entries(resultat.audit.refusesParFiltre).map(([type, n]) => (
+                  <li key={type} className="tabular-nums">
+                    {tr("bt_filtre_effet", {
+                      nom: nomDuFiltre(type, tr),
+                      refuses: n,
+                      total: resultat.audit.signauxSoumisAuxFiltres,
+                    })}
+                  </li>
+                ))}
+              </ul>
+              {/* ⚠️ PAS D'ALERTE SUR UN ÉCHANTILLON MINUSCULE. « 0 refus » sur
+                  sept signaux ne dit rien du filtre : sur sept tirages, ne
+                  jamais tomber du mauvais côté n'a rien d'étonnant. Crier au
+                  filtre inerte là-dessus, ce serait conclure sur trop peu de
+                  données, exactement ce que cette page refuse partout ailleurs. */}
+              {Object.entries(resultat.audit.refusesParFiltre)
+                .filter(([, n]) => n === 0 && resultat.audit.signauxSoumisAuxFiltres >= 30)
+                .map(([type]) => (
+                  <div
+                    key={type}
+                    className="mt-3 rounded-lg border border-warning/40 bg-warning/5 p-3"
+                  >
+                    <p className="text-xs font-medium text-warning">
+                      {tr("bt_filtre_inerte_titre")}
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-foreground-muted">
+                      {tr("bt_filtre_inerte", { nom: nomDuFiltre(type, tr) })}
+                    </p>
+                  </div>
+                ))}
+            </Card>
+          </StaggerItem>
+        ) : null}
+
+        {resultat && etapeCourante === "test" ? (
+          <StaggerItem>
+            <Resultat
+              lecture={resultat.lecture}
+              trades={resultat.trades}
+              audit={resultat.audit}
+              langue={lang}
+              traceDesDroites={plan.niveau.type === "trendline"}
+              instrument={instrument}
+              periode={{ de, a }}
+              moisManquants={resultat.moisManquants}
+              tentatives={tentatives}
+              tentativesDepuis={tentativesDepuis}
+              ms={resultat.ms}
+              verifie={verifie}
+              contestes={contestes.size}
+              suggestions={resultat.suggestions}
+              periodePlusLarge={periodePlusLarge}
+              // ⚠️ Une suggestion de réglage voisin ne cherche QUE de quoi
+              // remplir l'échantillon : son objectif est donc « avoir plus de
+              // trades », et il doit être consigné comme tel.
+              onAppliquer={(sug) => appliquerPropose(sug.plan, sug.levier, "plus_de_trades")}
+              risqueParTradePct={plan.gestion.risqueParTradePct}
+              maxPertesConsecutives={plan.gestion.maxPertesConsecutives}
+              t={tr}
+            />
+          </StaggerItem>
+        ) : null}
+
+        {/* l'avertissement d'un resultat perime, qui commente le rejeu */}
+        {resultatPerime && etapeCourante === "test" ? (
+          <StaggerItem>
+            <Card className="border-warning/40 bg-warning/[0.06] p-4 sm:p-5">
+              <p className="flex items-start gap-2 text-xs font-medium text-warning">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                {tr("bt_perime_titre")}
+              </p>
+              <p className="mt-1.5 pl-6 text-xs leading-relaxed text-foreground-muted">
+                {tr("bt_perime")}
+              </p>
+            </Card>
+          </StaggerItem>
+        ) : null}
+
+        {/* ── 4 ter. Un seul endroit pour lancer ce qui est long ───────────
+            ⚠️⚠️ C'EST LA CORRECTION QUI COMPTE. Sept boutons répartis sur sept
+            cartes lançaient chacun un test, et chacun effaçait le résultat des
+            six autres. Le trader cliquait, quelque chose apparaissait, et son
+            travail précédent disparaissait : « je peux appuyer à plein
+            d'endroits, au final je suis perdu ». Deux intentions, deux boutons,
+            un seul endroit. Toutes les cartes au-dessous ne font qu'AFFICHER. */}
+        {/* ⚠️⚠️ SUR L ETAPE QUI EN AFFICHE LE RESULTAT, ET PAS AVANT. Ces deux
+            boutons etaient sur « Le test », alors que TOUT ce qu ils produisent
+            (la recherche, le diagnostic, les marches comparables, le voisinage
+            des reglages) s affiche sur « L ameliorer ». Quelqu un qui arrivait a
+            l etape 4 y voyait les emplacements de ces mesures et plus aucun
+            bouton pour les lancer : ma propre regle, ecrite dans
+            prochaine-etape.ts, dit qu un constat qui nomme une action doit
+            porter le bouton. */}
+        {resultat && etapeCourante === "ameliorer" ? (
+          <StaggerItem>
+            <Card className="p-4 sm:p-5">
+              <h4 className="text-sm font-semibold text-foreground">{tr("bt_aller_titre")}</h4>
+              <p className="mt-1 text-xs leading-relaxed text-foreground-muted">
+                {tr("bt_aller_intro")}
+              </p>
+{/* ⚠️⚠️ CHAQUE BOUTON PORTE SA PHRASE, ET C'EST NÉ D'UN ÉCRAN OÙ IL N'Y
+                  EN AVAIT QU'UNE POUR DEUX. « Analyser à fond » et « Chercher »
+                  côte à côte, puis un seul paragraphe dessous, qui décrit le
+                  premier. Le second est le geste le plus lourd de la page,
+                  plusieurs minutes de calcul et le seul qui essaie des
+                  combinaisons : celui dont on a le plus besoin de savoir ce
+                  qu'il fait avant d'appuyer. */}
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <button
+                    type="button"
+                    disabled={occupe}
+                    onClick={analyserAFond}
+                    className="rounded-lg border border-accent/50 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/10 disabled:opacity-50"
+                  >
+                    {occupe ? tr("bt_aller_encours") : tr("bt_aller_analyser")}
+                  </button>
+                  <p className="mt-2 text-[11px] leading-relaxed text-foreground-muted">
+                    {tr("bt_aller_analyser_aide")}
+                  </p>
+                </div>
+                {fenetreIntacte && fenetreIntacte.mois >= MOIS_MIN_CONTROLE ? (
+                  <div>
+                    <button
+                      type="button"
+                      disabled={occupe}
+                      onClick={() =>
+                        lancer({
+                          exploration: {
+                            confirmationDe: fenetreIntacte.de,
+                            confirmationA: fenetreIntacte.a,
+                          },
+                        })
+                      }
+                      className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
+                    >
+                      {occupe ? tr("bt_exp_encours") : tr("bt_exp_lancer")}
+                    </button>
+                    <p className="mt-2 text-[11px] leading-relaxed text-foreground-muted">
+                      {tr("bt_aller_chercher_aide")}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            </Card>
+          </StaggerItem>
+        ) : null}
+
+        {/* ── 4 quater. Ce que la recherche a trouvé ──────────────────────
+            ⚠️ EN TÊTE DE TOUT CE QUI SUIT, ET C'EST LE POINT DE LA REFONTE. Le
+            trader vient ici avec un seul objectif : trouver quelque chose qui
+            tienne et repartir avec un plan à respecter. Les mesures qui suivent
+            servent à comprendre pourquoi ; celle-ci répond à la question. */}
+        {/* ── Les confluences, avec les autres produits d'« Analyser à fond »
+            ⚠️⚠️ ELLES S'AFFICHAIENT SUR « TON PLAN », la dernière étape, celle
+            du document à emporter : sept cartes de filtres non utilisés posées
+            APRÈS le plan. Elles n'étaient là que parce qu'elles partageaient un
+            fichier avec les piliers ; un découpage de fichier avait décidé
+            d'une place dans le parcours, et personne ne l'avait choisi. */}
+        {resultat?.confluences && etapeCourante === "ameliorer" ? (
+          <StaggerItem>
+            <Confluences
+              confluences={resultat.confluences}
+              nomDuFiltre={(type: string) => nomDuFiltre(type, tr)}
+              t={tr}
+            />
+          </StaggerItem>
+        ) : null}
+
+        {resultat && etapeCourante === "ameliorer" ? (
+          <StaggerItem>
+            <Trouver
+              exploration={resultat.exploration}
+              ecarts={ecartsDeLaRecherche}
+              fenetreDeConfirmation={
+                fenetreIntacte && fenetreIntacte.mois >= MOIS_MIN_CONTROLE
+                  ? { de: fenetreIntacte.de, a: fenetreIntacte.a }
+                  : null
+              }
+              t={tr}
+            />
+          </StaggerItem>
+        ) : null}
+
+        {/* ── 5. L'analyse de la stratégie ────────────────────────────────
+            ⚠️ AVANT LES CHIFFRES DE DÉTAIL, ET C'EST DÉLIBÉRÉ. Un trader nous a
+            écrit qu'on lui montrait « des chiffres sans réellement changer sa
+            stratégie ». Ce qui répond à sa question (est-ce viable, est-ce
+            cohérent, mes confluences servent-elles) doit se lire AVANT la
+            décomposition et l'export, pas trois cartes plus bas. */}
+        {/* ── Ce qui ne fonctionne pas ─────────────────────────────────
+            ⚠️⚠️ JUSTE APRÈS LE CHIFFRE, ET AVANT TOUT LE RESTE. Le verdict dit
+            « ça ne gagne pas » ; sans cette carte, le trader referme la page.
+            C'est le reproche qu'Axel a formulé trois fois. */}
+        {resultat && etapeCourante === "ameliorer" ? (
+          <StaggerItem id="bt-diagnostic">
+            <Diagnostic
+              diagnostics={diagnostics}
+              /* ⚠️ L'ANCRE VIENT DE `BLOC_I18N`, PAS DU NOM DU BLOC. Le
+                 diagnostic parle de `stop` et de `objectif` ; l'éditeur les
+                 range tous deux dans « Entrée, stop, objectif ». Deux tables
+                 qui se recoupent à la main finiraient par diverger. */
+              onAller={(bloc) =>
+                document
+                  .getElementById((BLOC_I18N[bloc] ?? "").replace("bt_bloc_", "bt-bloc-"))
+                  ?.scrollIntoView({ behavior: "smooth", block: "center" })
+              }
+              t={tr}
+            />
+          </StaggerItem>
+        ) : null}
+
+        {/* ── Le plan qu'il emporte ────────────────────────────────────
+            ⚠️⚠️ C'EST L'OBJECTIF DE L'ONGLET, et il n'était livré que sur un
+            parcours sur deux. « L'objectif principal est qu'à la fin,
+            l'utilisateur sorte avec un plan clair et complet de sa stratégie
+            afin de pouvoir être discipliné. » Le plan écrit existait, mais ne
+            s'affichait que dans la carte « Chercher » : traduire sa fiche,
+            lancer et lire ne produisait aucun document.
+            ⚠️ JUSTE AVANT « Ce qui est établi » : on lit d'abord ce qu'on
+            s'engage à faire, ensuite ce que la mesure en dit. L'inverse ferait
+            du plan une récompense accordée par le verdict. */}
+        {monPlan && etapeCourante === "plan" ? (
+          <StaggerItem id="bt-mon-plan">
+            <MonPlan
+              plan={monPlan}
+              onCopier={monPlanEnTexte}
+              onCompleter={() => remonterVers("bt-completude")}
+              t={tr}
+            />
+          </StaggerItem>
+        ) : null}
+
+        {resultat && synthese && etapeCourante === "plan" ? (
+          <StaggerItem id="bt-analyse">
+            <Analyse synthese={synthese} constats={resultat.constats} t={tr} />
+          </StaggerItem>
+        ) : null}
+
+        {/* ── 5 ter. La même méthode ailleurs ─────────────────────────────
+            ⚠️ Après l'analyse, parce que la question « est-ce que ça tient
+            ailleurs » n'a de sens qu'une fois qu'on sait ce que « ça » vaut ici.
+            Et avant l'export, parce que c'est une conclusion, pas un détail. */}
+        {resultat && etapeCourante === "ameliorer" ? (
+          <StaggerItem>
+            <Marches
+              marches={resultat.marches}
+              t={tr}
+            />
+          </StaggerItem>
+        ) : null}
+
+        {/* ── 5 bis. La liste complète, pour la regarder ailleurs ─────────
+            ⚠️ Les douze aperçus dessinés ne sont qu'un échantillon. Sur six
+            cents trades, quelqu'un qui veut vraiment vérifier doit pouvoir
+            ouvrir la liste entière dans son tableur. */}
+        {resultat && resultat.trades.length > 0 && etapeCourante === "test" ? (
+          <StaggerItem>
+            <Card className="p-4 sm:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="min-w-0 flex-1 text-[11px] leading-relaxed text-foreground-muted">
+                  {tr("bt_csv_aide")}
+                </p>
+                <button
+                  type="button"
+                  onClick={exporterCsv}
+                  className="shrink-0 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground-muted hover:bg-surface hover:text-foreground"
+                >
+                  {tr("bt_csv_exporter", { n: resultat.trades.length })}
+                </button>
+              </div>
+            </Card>
+          </StaggerItem>
+        ) : null}
+
+        {/* ── 5 ter. D'où vient le résultat ───────────────────────────────
+            ⚠️ JUSTE APRÈS L'INSPECTION VISUELLE ET AVANT LE VERDICT. Le trader
+            doit lire « ton résultat vient d'un seul mois » AVANT le chiffre
+            global, pas après : après, le chiffre est déjà installé et la nuance
+            arrive trop tard pour changer sa lecture. */}
+        {resultat?.concentration && etapeCourante === "ameliorer" ? (
+          <StaggerItem>
+            <Robustesse
+              concentration={resultat.concentration}
+              stabilite={resultat.stabilite}
+              instrument={instrument}
+              t={tr}
+            />
+          </StaggerItem>
+        ) : null}
+
+        {/* ── La sortie de secours, en fin d'étape 4 ────────────────────
+            ⚠️⚠️ DEMANDÉ EXPLICITEMENT : « si aucune amélioration est possible
+            alors tu proposes de chercher une autre stratégie, il clique sur le
+            bouton et hop ça efface tout, ça propose des stratégies ».
+            ⚠️ EN DERNIER, APRÈS LES PISTES. Le proposer avant reviendrait à dire
+            « laisse tomber » à quelqu'un qui n'a rien essayé. */}
+        {etapeCourante === "ameliorer" ? (
+          <StaggerItem>
+            <Card className="border-warning/40 bg-warning/[0.05]">
+              <h4 className="text-sm font-semibold text-foreground">
+                {tr("bt_recommencer_titre")}
+              </h4>
+              <p className="mt-1 text-xs leading-relaxed text-foreground-muted">
+                {tr("bt_recommencer_texte")}
+              </p>
+              <button
+                type="button"
+                onClick={repartirDeZero}
+                className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-warning/50 px-3 py-1.5 text-xs font-medium text-warning hover:bg-warning/10"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                {tr("bt_recommencer_bouton")}
+              </button>
+              <p className="mt-2 text-[11px] leading-snug text-foreground-muted">
+                {tr("bt_recommencer_avertit")}
+              </p>
+            </Card>
+          </StaggerItem>
+        ) : null}
+
+
+        {/* ── 5 quater. Le chemin, pas seulement l'espérance ──────────────
+            ⚠️ Une espérance par trade ne dit rien du chemin, et c'est le chemin
+            qui vide les comptes. Placée après la robustesse : savoir d'où vient
+            le résultat passe avant de le prolonger. */}
+        {/* la projection sur une annee de ces trades */}
+        {resultat?.projection && etapeCourante === "plan" ? (
+          <StaggerItem>
+            <ProjectionCarte donnees={resultat.projection} t={tr} />
+          </StaggerItem>
+        ) : null}
+
+        {/* ── 6 bis. L'historique des versions ────────────────────────────
+            ⚠️ IL S'AFFICHE MÊME SANS RÉSULTAT COURANT, contrairement aux cartes
+            au-dessus. Un trader qui rouvre la page trois jours plus tard doit
+            retrouver ce qu'il avait mesuré avant d'avoir à relancer quoi que ce
+            soit : une archive qui exige de refaire le travail pour être lue ne
+            sert à rien. */}
+
+        {/* ── 7. Contrôler ailleurs, puis enregistrer ──────────────────────
+            ⚠️ EN DERNIER, ET APRÈS LE VERDICT. C'est le seul endroit de la page
+            où un chiffre de backtest sort de l'écran pour entrer dans la façon
+            de trader de quelqu'un. Il ne s'ouvre qu'une fois un résultat obtenu
+            et une fiche compilée : sans référence, il n'y a rien à enregistrer,
+            et sans résultat, il n'y a rien à contrôler. */}
+        {/* l'enregistrement de la version */}
+        {resultat && planFiche && etapeCourante === "plan" ? (
+          <StaggerItem id="bt-enregistrer">
+            <Enregistrer
+              fenetre={fenetreIntacte}
+              periodeSuggeree={periodeSuggeree}
+              controleRequis={demandeUnControle(modifications)}
+              aDesModifications={modifications.length > 0}
+              controle={controleAffiche}
+              deduites={couverture?.deduites.length ?? 0}
+              lectureActuelle={resultat.lecture}
+              periode={{ de, a }}
+              peutEnregistrer={modifications.length > 0}
+              verifie={verifie}
+              apercuFiche={blocFiche}
+              champsRepris={repartition.repris}
+              champsNonRepris={repartition.nonRepris}
+              sauvegarde={sauvegarde}
+              onRaccourcir={raccourcirEtRelancer}
+              onAnalyser={analyserAFond}
+              onEnregistrer={enregistrer}
+              t={tr}
+            />
+          </StaggerItem>
+        ) : null}
+      </StaggerContainer>
+    </div>
+  );
+}
+
+/**
+ * LA CARTE DE COUVERTURE, qui est le vrai produit de la compilation.
+ *
+ * ⚠️ Elle affiche autant ce qui A ÉTÉ traduit que ce qui NE L'A PAS ÉTÉ. Un
+ * outil qui ne montrerait que la première liste laisserait croire que le chiffre
+ * porte sur toute la méthode du trader, ce qui est faux dans presque tous les cas.
+ */
+/**
+ * Ce trou de la fiche a-t-il ete comble dans le plan ?
+ *
+ * ⚠️ Repond sur ce que le TRADER a pose, pas sur ce que le socle fournit :
+ * un stop present parce qu'on l'a mis par defaut n'est pas un stop qu'il a
+ * choisi. Seuls les champs qu'il remplit lui-meme comptent ici.
+ */
+function estComble(champ: string, plan: PlanExecution): boolean {
+  if (champ === "risque") return (plan.gestion.risqueParTradePct ?? 0) > 0;
+  if (champ === "unite_de_temps") return (plan.uniteDeTemps ?? 1) > 1;
+  return false;
+}
+
+function CarteCouverture({
+  couverture,
+  plan,
+  contestes,
+  onContester,
+  onOuvrirLEditeur,
+  t,
+}: {
+  couverture: Couverture;
+  plan: PlanExecution;
+  contestes: Set<string>;
+  onContester: (champ: string) => void;
+  /** Voir `LigneInterpretation` : l'éditeur vit à une autre étape. */
+  onOuvrirLEditeur: () => void;
+  t: (k: string, v?: Record<string, string | number>) => string;
+}) {
+  // ⚠️ LE TRI PAR GRAVITÉ EST LE CŒUR DE CETTE CARTE, et il est né d'un échec
+  // précis : deux interprétations fausses, sur le niveau et sur le stop, sont
+  // passées inaperçues parce qu'elles voisinaient une note anodine sur le
+  // fuseau horaire, dans le même paragraphe gris. Voir `graviteDuChamp`.
+  const critiques = couverture.deduites.filter((d) => graviteDuChamp(d.champ) === "critique");
+  const mineures = couverture.deduites.filter((d) => graviteDuChamp(d.champ) !== "critique");
+
+  return (
+    <div className="mt-4 space-y-3 rounded-xl border border-border bg-surface/40 p-4">
+      <h4 className="text-sm font-semibold text-foreground">{t("bt_couverture")}</h4>
+
+      {/* ── Les interprétations qui touchent le cœur de la méthode ─────── */}
+      {critiques.length > 0 ? (
+        <div className="rounded-lg border border-warning/50 bg-warning/[0.07] p-3">
+          <p className="flex items-center gap-1.5 text-xs font-semibold text-warning">
+            <AlertTriangle className="h-3.5 w-3.5" />
+            {t(critiques.length === 1 ? "bt_deduites_critiques_1" : "bt_deduites_critiques", {
+              n: critiques.length,
+            })}
+          </p>
+          <p className="mt-1 text-[11px] leading-snug text-foreground-muted">
+            {t("bt_deduites_critiques_note")}
+          </p>
+          <ul className="mt-2.5 space-y-2">
+            {critiques.map((d, i) => (
+              <LigneInterpretation
+                key={`c-${i}`}
+                champ={d.champ}
+                pourquoi={d.pourquoi}
+                conteste={contestes.has(d.champ)}
+                onContester={() => onContester(d.champ)}
+                onOuvrirLEditeur={onOuvrirLEditeur}
+                t={t}
+              />
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {couverture.traduites.length > 0 ? (
+        <div>
+          <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-profit">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            {t(couverture.traduites.length === 1 ? "bt_traduites_1" : "bt_traduites", {
+              n: couverture.traduites.length,
+            })}
+          </p>
+          <ul className="space-y-1 pl-5 text-xs text-foreground-muted">
+            {couverture.traduites.map((x, i) => (
+              <li key={i}>
+                {/* ⚠️⚠️ VU À L'ÉCRAN, SIX LIGNES D'AFFILÉE : « … » → confirmations,
+                    → declencheur, → gestion, → stop. Le nom interne du bloc, dans
+                    la liste qui montre au trader ce que l'IA a retenu de SES
+                    règles. La section juste en dessous, elle, disait déjà
+                    « Filtres supplémentaires » et « Tes garde-fous » : deux
+                    écritures du même bloc à trois lignes d'écart. */}
+                « {x.phrase} » →{" "}
+                <span className="font-medium text-foreground">{nommerUnChamp(x.bloc, t)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {couverture.nonTraduites.length > 0 ? (
+        <div>
+          <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-warning">
+            <HelpCircle className="h-3.5 w-3.5" />
+            {t(
+              couverture.nonTraduites.length === 1 ? "bt_non_traduites_1" : "bt_non_traduites",
+              { n: couverture.nonTraduites.length },
+            )}
+          </p>
+          <ul className="list-disc space-y-1 pl-8 text-xs text-foreground-muted">
+            {couverture.nonTraduites.map((x, i) => (
+              <li key={i}>{x}</li>
+            ))}
+          </ul>
+          <p className="mt-1.5 pl-5 text-[11px] text-foreground-subtle">
+            {t("bt_non_traduites_note")}
+          </p>
+        </div>
+      ) : null}
+
+      {mineures.length > 0 ? (
+        <div>
+          <p className="mb-1.5 text-xs font-medium text-foreground-muted">{t("bt_deduites")}</p>
+          <ul className="space-y-2">
+            {mineures.map((d, i) => (
+              <LigneInterpretation
+                key={`m-${i}`}
+                champ={d.champ}
+                pourquoi={d.pourquoi}
+                conteste={contestes.has(d.champ)}
+                onContester={() => onContester(d.champ)}
+                onOuvrirLEditeur={onOuvrirLEditeur}
+                t={t}
+              />
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {couverture.absents.length > 0 ? (
+        <div className={cn("rounded-lg border border-loss/40 bg-loss/[0.06] p-3")}>
+          <p className="text-xs font-medium text-loss">{t("bt_absents")}</p>
+          <ul className="mt-1.5 space-y-1 pl-1 text-xs text-foreground">
+            {couverture.absents.map((c) => {
+              // ⚠️ LA LIGNE NE DISPARAIT PAS QUAND LE TRADER REMPLIT LE CHAMP,
+              // elle se coche. Ce que ce bloc constate, c'est que sa FICHE ne
+              // dit rien : la valeur qu'il pose ici ne rend pas sa fiche plus
+              // complete, et il devrait aller l'y ecrire. La faire disparaitre
+              // effacerait le seul rappel qui l'y pousse.
+              const comble = estComble(c, plan);
+              return (
+                <li key={c} className="flex items-start gap-1.5">
+                  {comble ? (
+                    <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-profit" />
+                  ) : (
+                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-current" />
+                  )}
+                  <span className={comble ? "text-foreground-muted line-through" : undefined}>
+                    {t(`bt_absent_${c}`)}
+                  </span>
+                  {comble ? (
+                    <span className="text-[11px] text-profit">{t("bt_comble_dans_le_plan")}</span>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+          <p className="mt-2 text-[11px] leading-snug text-foreground-muted">
+            {t("bt_absents_note")}
+          </p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Une interprétation, avec le bouton qui permet de la refuser.
+ *
+ * ⚠️ REFUSER NE CORRIGE RIEN AUTOMATIQUEMENT, et c'est tout l'intérêt. Deviner
+ * une seconde fois ce que le trader voulait dire répéterait exactement l'erreur
+ * d'origine. Le refus entoure de rouge le bloc concerné dans l'éditeur juste en
+ * dessous, et c'est lui qui tranche.
+ */
+function LigneInterpretation({
+  champ,
+  pourquoi,
+  conteste,
+  onContester,
+  onOuvrirLEditeur,
+  t,
+}: {
+  champ: string;
+  pourquoi: string;
+  conteste: boolean;
+  onContester: () => void;
+  /**
+   * Ouvrir l'éditeur sur ce bloc.
+   *
+   * ⚠️⚠️ « CORRIGE CE BLOC DANS LE PLAN CI-DESSOUS : IL EST ENTOURÉ DE ROUGE »
+   * DÉSIGNAIT UNE AUTRE ÉTAPE. Cette carte vit à l'étape « Ta stratégie » et
+   * l'éditeur à l'étape « Tes règles » : rien n'était entouré de rouge nulle
+   * part, puisque rien n'était rendu. Le trader vient de dire « ce n'est pas
+   * ça » sur une décision prise à sa place, c'est le pire moment pour
+   * l'envoyer chercher.
+   */
+  onOuvrirLEditeur: () => void;
+  t: (k: string, v?: Record<string, string | number>) => string;
+}) {
+  return (
+    <li
+      className={cn(
+        "rounded-lg border p-2.5",
+        conteste ? "border-loss/50 bg-loss/[0.06]" : "border-border/60 bg-background/40",
+      )}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        {/**
+          * ⚠️⚠️ VU À L'ÉCRAN : « uniteDeTemps : La fiche dit H1/H4… » et
+          * « stop : … dernier_pivot avec buffer ». Deux identifiants internes en
+          * tête des phrases les plus importantes de la page, celles où l'IA
+          * annonce ce qu'elle a décidé À LA PLACE du trader. Il ne peut pas
+          * contester un champ qu'il ne reconnaît pas.
+          */}
+        <p className="min-w-0 flex-1 text-xs text-foreground-muted">
+          <span className="font-medium text-foreground">{nommerUnChamp(champ, t)}</span> :{" "}
+          {sansCodeInterne(sansPhraseCoupee(pourquoi), t)}
+        </p>
+        <button
+          type="button"
+          onClick={onContester}
+          className={cn(
+            "shrink-0 rounded-md border px-2 py-1 text-[11px] font-medium transition-colors",
+            conteste
+              ? "border-loss/60 bg-loss/15 text-loss"
+              : "border-border text-foreground-muted hover:border-loss/50 hover:text-loss",
+          )}
+        >
+          {conteste ? (
+            <span className="flex items-center gap-1">
+              <X className="h-3 w-3" />
+              {t("bt_conteste")}
+            </span>
+          ) : (
+            t("bt_ce_nest_pas_ca")
+          )}
+        </button>
+      </div>
+      {conteste ? (
+        <div className="mt-1.5">
+          <p className="text-[11px] font-medium text-loss">{t("bt_corrige_le_bloc")}</p>
+          <button
+            type="button"
+            onClick={onOuvrirLEditeur}
+            className="mt-1.5 rounded-lg border border-loss/50 px-2.5 py-1 text-[11px] font-medium text-loss hover:bg-loss/10"
+          >
+            {t("bt_corrige_aller_editeur")}
+          </button>
+        </div>
+      ) : null}
+    </li>
+  );
+}
+

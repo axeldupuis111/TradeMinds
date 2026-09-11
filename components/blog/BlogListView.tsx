@@ -24,9 +24,9 @@ export default function BlogListView({ posts }: { posts: BlogPost[] }) {
   const dateLocale = DATE_LOCALE[lang] ?? "en-US";
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground force-dark">
       <PublicHeader />
-      <div className="max-w-3xl mx-auto px-6 py-14">
+      <main id="main-content" tabIndex={-1} className="max-w-3xl mx-auto px-6 py-14">
         <header className="mb-10">
           <h1 className="text-3xl font-bold text-foreground">{head.title}</h1>
           <p className="text-foreground-muted mt-2">{head.subtitle}</p>
@@ -60,7 +60,7 @@ export default function BlogListView({ posts }: { posts: BlogPost[] }) {
             );
           })}
         </div>
-      </div>
+      </main>
       <RiskDisclosure />
     </div>
   );

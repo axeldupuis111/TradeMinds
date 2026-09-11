@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/lib/LanguageContext";
 import { Download, X } from "lucide-react";
+import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 /**
  * "Install the app" button. Lets users install the PWA directly from the site
@@ -27,6 +28,8 @@ export default function InstallAppButton({ className }: { className?: string }) 
   const [isIOS, setIsIOS] = useState(false);
   const [installed, setInstalled] = useState(false);
   const [showIOS, setShowIOS] = useState(false);
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(showIOS, () => setShowIOS(false));
 
   useEffect(() => {
     // Detect "already installed / running as an app". iOS Safari doesn't support
@@ -83,7 +86,7 @@ export default function InstallAppButton({ className }: { className?: string }) 
       </button>
 
       {showIOS && (
-        <div
+        <div aria-label={t("install_ios_title")}
           className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4"
           onClick={() => setShowIOS(false)}
           role="dialog"

@@ -1,0 +1,277 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+import { formeDuVoisinage, mesurerStabilite, REGLAGES_MAX } from "./stabilite";
+import { socleDePlan } from "./compilation";
+import { coutsPourInstrument, instrumentParCode } from "./instruments";
+import type { Modification } from "./modifications";
+import type { PlanExecution, SerieM1 } from "./types";
+
+const NAS = instrumentParCode("NAS100")!;
+
+/** Une série synthétique, assez longue pour que des trades sortent. */
+function serie(n: number): SerieM1 {
+  const t = new Float64Array(n);
+  const o = new Int32Array(n);
+  const h = new Int32Array(n);
+  const l = new Int32Array(n);
+  const c = new Int32Array(n);
+  let x = 42;
+  let prix = 15_000_000;
+  const depart = Date.UTC(2024, 0, 1, 8, 0, 0);
+  for (let i = 0; i < n; i++) {
+    x = (x * 1103515245 + 12345) & 0x7fffffff;
+    prix += Math.round((x / 0x7fffffff - 0.5) * 3000);
+    const amp = 500 + (x % 900);
+    t[i] = depart + i * 60_000;
+    o[i] = prix;
+    h[i] = prix + amp;
+    l[i] = prix - amp;
+    c[i] = prix + Math.round((x % 200) - 100);
+  }
+  return { instrument: "NAS100", tailleTick: 0.001, t, o, h, l, c };
+}
+
+function plan(): PlanExecution {
+  return {
+    ...socleDePlan("NAS100", "Europe/Paris"),
+    uniteDeTemps: 5,
+    contexte: { fuseau: "Europe/Paris", debut: "00:00", fin: "23:59", jours: [0, 1, 2, 3, 4, 5, 6] },
+    niveau: { type: "liquidite_swing", pivots: 10 },
+    declencheur: { type: "balayage_retour" },
+    stop: { type: "structurel", bufferTicks: 200 },
+    objectif: { type: "multiple_r", r: 2 },
+    gestion: {},
+    couts: coutsPourInstrument(NAS),
+  };
+}
+
+const mod = (cle: string): Modification => ({
+  cle,
+  bloc: "niveau",
+  avant: "20",
+  apres: "10",
+  origine: "proposition",
+});
+
+describe("le voisinage du réglage choisi", () => {
+  const s = serie(60_000);
+
+  it("mesure autour de la valeur du trader, et la marque comme sienne", () => {
+    const r = mesurerStabilite(s, plan(), plan().couts, [mod("niveau_pivots")]);
+    expect(r).toHaveLength(1);
+    expect(r[0].cle).toBe("niveau_pivots");
+    const siennes = r[0].points.filter((p) => p.sienne);
+    expect(siennes).toHaveLength(1);
+    expect(siennes[0].valeur).toBe(10);
+  });
+
+  it("range les valeurs dans leur ordre naturel, sans classement", () => {
+    const r = mesurerStabilite(s, plan(), plan().couts, [mod("niveau_pivots")]);
+    const valeurs = r[0].points.map((p) => p.valeur);
+    expect([...valeurs].sort((a, b) => a - b)).toEqual(valeurs);
+  });
+
+  /**
+   * ⚠️⚠️ RIEN DE CHANGÉ NE VEUT PAS DIRE RIEN À REGARDER.
+   *
+   * Vu à l'écran : un trader dont le plan collait exactement à sa fiche lisait
+   * « un réglage qui ne tient pas à une valeur exacte : pas encore regardé »,
+   * définitivement, parce que la mesure ne partait que sur des réglages modifiés.
+   * Le pilier le plus utile de la page restait gris pour qui ne bricole pas. Un
+   * réglage compilé depuis sa fiche est le sien autant qu'un réglage tapé à la
+   * main, et la question se pose exactement pareil.
+   */
+  it("regarde autour de ses propres réglages quand il n'a rien changé", () => {
+    const r = mesurerStabilite(s, plan(), plan().couts, []);
+    expect(r.length).toBeGreaterThan(0);
+    // ⚠️ Et ça reste un CONTRÔLE : toujours aucun plan applicable en sortie.
+    for (const x of r) expect(x).not.toHaveProperty("plan");
+  });
+
+  /**
+   * ⚠️ La borne vaut aussi pour le repli : sans elle, un trader qui n'a rien
+   * changé paierait plus de backtests que celui qui a changé deux réglages.
+   */
+  it("le repli respecte la même borne que les réglages changés", () => {
+    expect(mesurerStabilite(s, plan(), plan().couts, []).length).toBeLessThanOrEqual(REGLAGES_MAX);
+  });
+
+  it("ignore un réglage dont ce plan n'a pas la forme", () => {
+    // Le plan n'a pas de trendline : sa tolérance de touche n'existe pas.
+    expect(mesurerStabilite(s, plan(), plan().couts, [mod("niveau_tolerance")])).toEqual([]);
+  });
+
+  /**
+   * ⚠️ Chaque point est un backtest complet. Sans borne, dix réglages changés
+   * feraient cinquante passes sur quatre ans, et l'onglet paraîtrait planté.
+   */
+  it("borne le nombre de réglages balayés", () => {
+    const beaucoup = [mod("niveau_pivots"), mod("objectif_r"), mod("niveau_touches")];
+    expect(mesurerStabilite(s, plan(), plan().couts, beaucoup).length).toBeLessThanOrEqual(
+      REGLAGES_MAX,
+    );
+  });
+
+  it("rend l'avancement pour que l'attente soit lisible", () => {
+    const vus: number[] = [];
+    mesurerStabilite(s, plan(), plan().couts, [mod("niveau_pivots")], (faits) => vus.push(faits));
+    expect(vus.length).toBeGreaterThan(0);
+    expect(vus[vus.length - 1]).toBe(vus.length);
+  });
+
+  /**
+   * ⚠️ Sous le seuil de conclusion, aucun chiffre. Une courbe de voisinage
+   * tracée sur trente trades par point serait une belle courbe de bruit, et une
+   * belle courbe est plus convaincante qu'un chiffre seul.
+   */
+  it("ne rend aucune espérance sous le seuil de conclusion", () => {
+    const courte = serie(3000);
+    for (const st of mesurerStabilite(courte, plan(), plan().couts, [mod("niveau_pivots")])) {
+      for (const p of st.points) {
+        if (p.trades < 100) expect(p.esperanceR).toBeNull();
+      }
+    }
+  });
+});
+
+/**
+ * ⚠️⚠️ LE GARDE-FOU QUI SÉPARE CE FICHIER DE LA PÊCHE AU MEILLEUR CHIFFRE.
+ *
+ * Ce module fait un balayage de paramètres, ce que le reste de la page refuse.
+ * Ce qui le rend acceptable, c'est qu'il ne rend AUCUN plan : on ne peut donc
+ * pas cliquer sur le voisin qui sort le mieux. Le jour où quelqu'un ajoutera un
+ * `plan` à la sortie « pour rendre ça pratique », ce test tombera, et c'est tout
+ * ce qu'on lui demande.
+ */
+describe("rien de ce que ce module rend n'est applicable", () => {
+  const source = readFileSync(join(process.cwd(), "lib/backtest/stabilite.ts"), "utf8");
+
+  /** Le corps d'une interface exportée. */
+  function corpsDe(nom: string): string {
+    const debut = source.indexOf(`export interface ${nom} {`);
+    expect(debut, `interface ${nom} introuvable`).toBeGreaterThan(-1);
+    const fin = source.indexOf("\n}", debut);
+    return source.slice(debut, fin);
+  }
+
+  /**
+   * ⚠️ ON VISE LES TYPES DE SORTIE, PAS LE FICHIER ENTIER. Le module manipule
+   * évidemment des plans en interne, c'est son travail : ce qu'il ne doit pas
+   * faire, c'est en RENDRE un, parce qu'un plan rendu devient tôt ou tard un
+   * bouton « appliquer » sur le voisin qui sort le mieux.
+   */
+  it.each(["Point", "Stabilite"])("« %s » ne porte aucun plan applicable", (nom) => {
+    expect(corpsDe(nom)).not.toMatch(/\bplan\b/i);
+  });
+
+  it("ne trie jamais son voisinage par résultat", () => {
+    const sansCommentaires = source
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/[^\n]*/g, "");
+    // Un tri qui toucherait à l'espérance, sous quelque forme que ce soit.
+    expect(sansCommentaires).not.toMatch(/\.sort\([^)]*esperance/i);
+    // Et aucun « le meilleur du voisinage », qui serait une recommandation.
+    expect(sansCommentaires).not.toMatch(/meilleurPoint|meilleureValeur|recommand/i);
+  });
+});
+
+/**
+ * ⚠️⚠️ VU À L'ÉCRAN : « Épaisseur de la droite · 9000 · 12000 · 15000 ».
+ *
+ * Ce sont des TICKS, là où le trader lit « 15 » partout ailleurs, y compris
+ * dans l'éditeur juste au-dessus et dans la liste des écarts. Mille fois trop
+ * grand, sur le tableau censé lui faire reconnaître SA valeur au milieu de ses
+ * voisines. Le voisinage rend désormais son unité, et l'écran convertit.
+ */
+
+/**
+ * ⚠️⚠️ VU À L'ÉCRAN : « Épaisseur de la droite · 9000 · 12000 · 15000 ».
+ *
+ * Ce sont des TICKS, là où le trader lit « 15 » partout ailleurs, y compris
+ * dans l'éditeur juste au-dessus et dans la liste des écarts. Mille fois trop
+ * grand, sur le tableau censé lui faire reconnaître SA valeur au milieu de ses
+ * voisines. Le voisinage rend désormais son unité, et l'écran convertit.
+ */
+describe("chaque réglage balayé dit dans quelle unité il se lit", () => {
+  const serieDeTest = serie(60_000);
+  const surTrendline = (): PlanExecution => ({
+    ...plan(),
+    niveau: { type: "trendline", pivots: 5, touchesMin: 3, toleranceTicks: 3000 },
+  });
+
+  it("la tolérance d'une trendline est en ticks", () => {
+    const r = mesurerStabilite(serieDeTest, surTrendline(), plan().couts, [
+      mod("niveau_tolerance"),
+    ]);
+    expect(r).toHaveLength(1);
+    expect(r[0].unite).toBe("ticks");
+  });
+
+  it("une largeur de pivot se compte en bougies", () => {
+    const r = mesurerStabilite(serieDeTest, plan(), plan().couts, [mod("niveau_pivots")]);
+    expect(r[0].unite).toBe("bougies");
+  });
+
+  it("un objectif se compte en R", () => {
+    const r = mesurerStabilite(serieDeTest, plan(), plan().couts, [mod("objectif_r")]);
+    expect(r[0].unite).toBe("r");
+  });
+
+  /**
+   * ⚠️ Aucun réglage ne doit sortir sans unité : le défaut d'affichage
+   * venait précisément de ce que personne n'avait à en déclarer une.
+   */
+  it("aucun réglage ne sort sans unité, repli compris", () => {
+    const tous = mesurerStabilite(serieDeTest, surTrendline(), plan().couts, []);
+    expect(tous.length).toBeGreaterThan(0);
+    for (const x of tous) {
+      expect(["ticks", "bougies", "r"], x.cle).toContain(x.unite);
+    }
+  });
+});
+
+/**
+ * ⚠️⚠️ VU À L'ÉCRAN, SOUS CINQ ESPÉRANCES TOUTES NÉGATIVES : « ton réglage est
+ * sur un plateau, pas sur un pic. C'EST LE BON SIGNE. » La forme était juste,
+ * la lecture ne l'était pas. Un plateau dit que le résultat ne tient pas à une
+ * valeur exacte ; quand ce résultat perd, il confirme la perte au lieu de
+ * rassurer, et c'est le contraire d'un bon signe.
+ */
+describe("un plateau entièrement sous zéro se dit autrement", () => {
+  const point = (valeur: number, esperanceR: number, sienne = false) => ({
+    valeur,
+    trades: 300,
+    esperanceR,
+    borneBasse: esperanceR - 0.1,
+    borneHaute: esperanceR + 0.1,
+    sienne,
+  });
+
+  it("nomme le plateau négatif quand tous les voisins perdent", () => {
+    const f = formeDuVoisinage([
+      point(1, -0.21),
+      point(2, -0.2, true),
+      point(3, -0.19),
+    ]);
+    expect(f).toBe("plateau_negatif");
+  });
+
+  it("reste un plateau ordinaire dès qu'une valeur mesurée gagne", () => {
+    const f = formeDuVoisinage([
+      point(1, 0.02),
+      point(2, -0.01, true),
+      point(3, -0.02),
+    ]);
+    expect(f).toBe("plateau");
+  });
+
+  it("un pic isolé reste un pic isolé", () => {
+    const f = formeDuVoisinage([
+      point(1, -0.9),
+      point(2, 0.4, true),
+      point(3, -0.9),
+    ]);
+    expect(f).toBe("pic_isole");
+  });
+});

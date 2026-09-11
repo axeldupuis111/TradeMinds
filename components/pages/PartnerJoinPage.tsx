@@ -1,5 +1,6 @@
 "use client";
 
+import { lienPartageable } from "@/lib/seo";
 import PublicHeader from "@/components/PublicHeader";
 import RiskDisclosure from "@/components/legal/RiskDisclosure";
 import { useEffect, useState } from "react";
@@ -48,9 +49,8 @@ export default function PartnerJoinPage() {
     }
   }, []);
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "https://tradediscipline.app";
-  const personalLink = result ? `${origin}/?ref=${result.code}` : "";
-  const statsLink = result ? `${origin}/partner/stats/${result.statsToken}` : "";
+  const personalLink = result ? lienPartageable(`/?ref=${result.code}`) : "";
+  const statsLink = result ? lienPartageable(`/partner/stats/${result.statsToken}`) : "";
 
   async function copy(value: string, which: "link" | "stats") {
     try {
@@ -89,7 +89,7 @@ export default function PartnerJoinPage() {
   return (
     <>
       <PublicHeader />
-      <div className="min-h-screen bg-background px-4 py-16 pt-24">
+      <main id="main-content" tabIndex={-1} className="min-h-screen bg-background px-4 py-16 pt-24 force-dark">
         <div className="max-w-lg mx-auto">
           {result ? (
             <div>
@@ -144,8 +144,8 @@ export default function PartnerJoinPage() {
 
               <form onSubmit={handleSubmit} className="mt-6 space-y-4">
                 <div>
-                  <label className="block text-sm text-foreground-muted mb-1">Code d&apos;inscription</label>
-                  <input
+                  <label htmlFor="partnerjoinpage-code-d-apos-inscription" className="block text-sm text-foreground-muted mb-1">Code d&apos;inscription</label>
+                  <input id="partnerjoinpage-code-d-apos-inscription"
                     className={`${inputClass} font-mono`}
                     value={joinCode}
                     onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
@@ -154,8 +154,8 @@ export default function PartnerJoinPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-foreground-muted mb-1">Nom et prénom</label>
-                  <input
+                  <label htmlFor="partnerjoinpage-nom-et-pr-nom" className="block text-sm text-foreground-muted mb-1">Nom et prénom</label>
+                  <input id="partnerjoinpage-nom-et-pr-nom"
                     className={inputClass}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -163,8 +163,8 @@ export default function PartnerJoinPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-foreground-muted mb-1">Email</label>
-                  <input
+                  <label htmlFor="partnerjoinpage-email" className="block text-sm text-foreground-muted mb-1">Email</label>
+                  <input id="partnerjoinpage-email"
                     type="email"
                     className={inputClass}
                     value={email}
@@ -189,7 +189,7 @@ export default function PartnerJoinPage() {
                   </label>
                 </div>
 
-                {error && <p className="text-loss text-sm">{error}</p>}
+                {error && <p role="alert" className="text-loss text-sm">{error}</p>}
 
                 <button
                   type="submit"
@@ -202,7 +202,7 @@ export default function PartnerJoinPage() {
             </>
           )}
         </div>
-      </div>
+      </main>
       <RiskDisclosure />
     </>
   );

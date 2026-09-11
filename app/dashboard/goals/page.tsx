@@ -1,6 +1,6 @@
 "use client";
 
-import { useLanguage } from "@/lib/LanguageContext";
+import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
@@ -13,6 +13,7 @@ import GrowBar from "@/components/animations/GrowBar";
 import { AnimatePresence, motion } from "framer-motion";
 import { Trash2, Plus, Target, CheckCircle2, PenLine, Layers, Flame, Repeat, Sparkles, Clock, CalendarDays, Flag, Crown, Scale, ShieldCheck, Zap, Gauge, TrendingUp, TrendingDown, Minus, Lock, X, Trophy, Activity } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { pourcent } from "@/lib/nombres";
 
 type Metric = "discipline_score" | "sessions" | "win_rate" | "trades_per_day" | "max_consecutive_losses";
 type Comparator = "gte" | "lte";
@@ -185,7 +186,7 @@ function heatCls(score: number | null): string {
 // Heatmap de régularité façon GitHub : ~13 semaines × 7 jours, colorée par le
 // score de discipline quotidien (échelle de qualité, pas d'« intensité »).
 // Repères mois + jours, « aujourd'hui » marqué, et stats de synthèse à droite.
-function DisciplineHeatmap({ data, t }: { data: { date: string; score: number }[]; t: (k: string) => string }) {
+function DisciplineHeatmap({ data, t }: { data: { date: string; score: number }[]; t: Traduire }) {
   const WEEKS = 13;
   const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const scoreByDate = new Map(data.map((h) => [h.date, h.score]));
@@ -278,7 +279,7 @@ function DisciplineHeatmap({ data, t }: { data: { date: string; score: number }[
       <div className="flex-1 grid grid-cols-3 gap-3 self-stretch lg:self-auto">
         <div className="rounded-xl border border-border bg-surface/30 p-4 flex flex-col justify-center">
           <p className="text-2xl font-black text-foreground tabular-nums leading-none">{daysTracked}</p>
-          <p className="text-xs text-muted mt-1.5">{t("goals_heatmap_days_tracked")}</p>
+          <p className="text-xs text-muted mt-1.5">{t("goals_heatmap_days_tracked", { n: daysTracked })}</p>
         </div>
         <div className="rounded-xl border border-border bg-surface/30 p-4 flex flex-col justify-center">
           <p className={`text-2xl font-black tabular-nums leading-none ${avgCls}`}>{avg == null ? "—" : avg}<span className="text-sm text-muted font-bold">{avg == null ? "" : "/100"}</span></p>
@@ -286,7 +287,7 @@ function DisciplineHeatmap({ data, t }: { data: { date: string; score: number }[
         </div>
         <div className="rounded-xl border border-border bg-surface/30 p-4 flex flex-col justify-center">
           <p className="text-2xl font-black text-profit tabular-nums leading-none">{disciplinedDays}</p>
-          <p className="text-xs text-muted mt-1.5">{t("goals_heatmap_disciplined")}</p>
+          <p className="text-xs text-muted mt-1.5">{t("goals_heatmap_disciplined", { n: disciplinedDays })}</p>
         </div>
       </div>
     </div>
@@ -295,7 +296,7 @@ function DisciplineHeatmap({ data, t }: { data: { date: string; score: number }[
 
 // Pastilles d'historique : chaque période passée évaluée rétroactivement
 // (✓ vert / ✗ rouge / neutre si aucune activité), la courante cerclée.
-function HistoryDots({ history, unit: u, t }: { history: PeriodHistory[]; unit: string; t: (k: string) => string }) {
+function HistoryDots({ history, unit: u, t }: { history: PeriodHistory[]; unit: string; t: Traduire }) {
   if (!history || history.length < 2) return null;
   return (
     <div className="flex items-center gap-[3px]">
@@ -476,9 +477,23 @@ export default function GoalsPage() {
       setNotice("echec");
       return;
     }
-    // Récurrence en 2e temps (best-effort si colonnes absentes).
+    /**
+     * Récurrence en 2e temps (les colonnes peuvent manquer sur une base non
+     * migrée).
+     *
+     * ⚠️ L'OBJECTIF EXISTE DÉJÀ À CE STADE : un échec ici ne le perd pas, il le
+     * laisse simplement non récurrent. On le DIT quand même, parce que le
+     * trader a coché « chaque semaine » et qu'il ne le reverrait pas revenir.
+     */
     if (recurring && inserted?.id) {
-      await supabase.from("goals").update({ recurring: true, period_key: periodKeyClient(p) }).eq("id", inserted.id);
+      const { error: erreurRecurrence } = await supabase
+        .from("goals")
+        .update({ recurring: true, period_key: periodKeyClient(p) })
+        .eq("id", inserted.id);
+      if (erreurRecurrence) {
+        console.error("[goals] récurrence refusée :", erreurRecurrence.message);
+        setNotice("echec");
+      }
     }
   }
 
@@ -729,11 +744,11 @@ export default function GoalsPage() {
         <KpiCardPremium layout="full" accentColor="amber" intensity="hero" className="mt-6">
           <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
             <div className="flex items-center gap-3.5">
-              <Flame className={`w-10 h-10 shrink-0 ${streak.current > 0 ? "text-warning" : "text-muted/50"}`} strokeWidth={1.75} />
+              <Flame className={`w-10 h-10 shrink-0 ${streak.current > 0 ? "text-warning" : "text-muted"}`} strokeWidth={1.75} />
               <div>
                 <div className="flex items-baseline gap-1.5 flex-wrap">
                   <CountUp end={streak.current} duration={1.1} className="text-3xl font-black tabular-nums text-foreground leading-none" />
-                  <span className="text-sm text-muted">{t("goals_streak_days")}</span>
+                  <span className="text-sm text-muted">{t("goals_streak_days", { n: streak.current })}</span>
                   {streak.isRecord && streak.current >= 3 && (
                     <span className="ml-1 inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-warning/15 text-warning">
                       <Crown className="w-3 h-3" strokeWidth={2} /> {t("goals_new_record")}
@@ -775,7 +790,7 @@ export default function GoalsPage() {
                     </svg>
                     <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-foreground tabular-nums">{achieved}/{goals.length}</span>
                   </div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted mt-1">{t("goals_ring_label")}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted mt-1">{t("goals_ring_label", { n: goals.length })}</p>
                 </div>
               )}
             </div>
@@ -783,7 +798,7 @@ export default function GoalsPage() {
           {nextMilestone && (
             <div className="mt-4">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[11px] text-foreground-muted">{t("goals_milestone_to_next").replace("{n}", String(nextMilestone - streak.current)).replace("{m}", String(nextMilestone))}</span>
+                <span className="text-[11px] text-foreground-muted">{t("goals_milestone_to_next", { n: nextMilestone - streak.current, m: nextMilestone })}</span>
                 <span className="text-[11px] text-foreground-muted tabular-nums">{streak.current}/{nextMilestone}</span>
               </div>
               <div className="h-1.5 bg-border rounded-full overflow-hidden">
@@ -825,7 +840,7 @@ export default function GoalsPage() {
         <div className={`mt-4 flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-sm ${notice === "echec" ? "border-loss/40 bg-loss/[0.06] text-foreground" : notice === "auto" ? "border-profit/30 bg-profit/[0.05] text-foreground" : "border-accent/30 bg-accent/[0.05] text-foreground"}`}>
           <Sparkles className={`w-4 h-4 shrink-0 ${notice === "echec" ? "text-loss" : notice === "auto" ? "text-profit" : "text-accent"}`} />
           <span>{notice === "echec" ? t("save_failed") : notice === "auto" ? t("goals_ai_auto") : t("goals_ai_manual")}</span>
-          <button onClick={() => setNotice(null)} className="ml-auto text-muted/50 hover:text-muted transition-colors" aria-label={t("close")}>
+          <button onClick={() => setNotice(null)} className="ml-auto text-muted hover:text-muted transition-colors" aria-label={t("close")}>
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -855,7 +870,7 @@ export default function GoalsPage() {
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-2xl font-black tabular-nums text-accent leading-none">{focusGoal.progress}%</p>
+                <p className="text-2xl font-black tabular-nums text-accent leading-none">{pourcent(focusGoal.progress)}</p>
                 <p className="text-[11px] text-muted mt-1 max-w-[160px]">{focusGap}</p>
               </div>
             </div>
@@ -882,7 +897,7 @@ export default function GoalsPage() {
                       <Plus className="w-3.5 h-3.5" /> {t("goals_add_quick")}
                     </button>
                     <button onClick={() => setDismissedRecos((s) => new Set(s).add(`${r.metric}:${r.period}`))}
-                      className="shrink-0 text-muted/40 hover:text-muted transition-colors p-1 -mr-1" aria-label={t("goals_reco_dismiss")} title={t("goals_reco_dismiss")}>
+                      className="shrink-0 text-muted hover:text-muted transition-colors p-1 -mr-1" aria-label={t("goals_reco_dismiss")} title={t("goals_reco_dismiss")}>
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -905,7 +920,7 @@ export default function GoalsPage() {
                     <>
                       {counts.met > 0 && (
                         <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-profit bg-profit/10 rounded-full px-2.5 py-1">
-                          <CheckCircle2 className="w-3 h-3" /> {counts.met} {t("goals_stat_met")}
+                          <CheckCircle2 className="w-3 h-3" /> {counts.met} {t("goals_stat_met", { n: counts.met })}
                         </span>
                       )}
                       {counts.progress > 0 && (
@@ -925,7 +940,7 @@ export default function GoalsPage() {
             ) : goals.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border p-10 text-center">
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-surface mb-3">
-                  <Target className="w-6 h-6 text-muted/50" />
+                  <Target className="w-6 h-6 text-muted" />
                 </div>
                 <p className="text-muted text-sm">{t("goals_empty_new")}</p>
                 <button
@@ -959,7 +974,7 @@ export default function GoalsPage() {
                           <HIcon className={`w-3.5 h-3.5 ${hs.icon}`} />
                         </span>
                         <span className="text-[13px] font-semibold text-foreground">{t(`goals_horizon_${h}`)}</span>
-                        <span className="text-[11px] text-muted/70 hidden sm:inline">{t(`goals_horizon_${h}_sub`)}</span>
+                        <span className="text-[11px] text-muted hidden sm:inline">{t(`goals_horizon_${h}_sub`)}</span>
                         <span className="ml-auto text-[11px] font-semibold text-muted bg-surface rounded-full px-2 py-0.5 tabular-nums">{rows.length}</span>
                       </div>
 
@@ -1001,7 +1016,7 @@ export default function GoalsPage() {
                                     {editingTarget === g.id ? (
                                       <div className="flex items-center gap-1 mt-0.5">
                                         <span className="text-[11px] text-muted">{g.comparator === "gte" ? "≥" : "≤"}</span>
-                                        <input
+                                        <input aria-label={t("goals_target")}
                                           type="number" autoFocus value={editValue}
                                           onChange={(e) => setEditValue(e.target.value)}
                                           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
@@ -1037,7 +1052,7 @@ export default function GoalsPage() {
                                     <p className={`font-medium text-sm leading-tight ${g.done ? "text-muted line-through" : "text-foreground"}`}>{g.title}</p>
                                     {g.recurring && (
                                       <div className="flex items-center gap-2 mt-0.5">
-                                        <span className="inline-flex items-center gap-0.5 text-[11px] text-muted/70">
+                                        <span className="inline-flex items-center gap-0.5 text-[11px] text-muted">
                                           <Repeat className="w-3 h-3" /> {t("goals_recurring_badge")}
                                         </span>
                                         {g.streak > 0 && (
@@ -1056,7 +1071,7 @@ export default function GoalsPage() {
                             <div className="hidden md:flex flex-col">
                               <span className="text-xs text-foreground-muted whitespace-nowrap">{periodLabel(g.period)}</span>
                               {g.period !== "day" && status !== "met" && (
-                                <span className="text-[10px] text-muted/60 tabular-nums whitespace-nowrap mt-0.5">{t("goals_days_left").replace("{n}", String(daysLeftIn(g.period)))}</span>
+                                <span className="text-[10px] text-muted tabular-nums whitespace-nowrap mt-0.5">{t("goals_days_left").replace("{n}", String(daysLeftIn(g.period)))}</span>
                               )}
                             </div>
 
@@ -1070,7 +1085,7 @@ export default function GoalsPage() {
                                   <span className={`text-xs font-bold tabular-nums whitespace-nowrap ${sv.text}`}>{g.value}{unit(g.metric)}</span>
                                 </>
                               ) : (
-                                <span className="text-xs text-muted/30">—</span>
+                                <span className="text-xs text-muted">—</span>
                               )}
                             </div>
 
@@ -1079,7 +1094,7 @@ export default function GoalsPage() {
                               {g.kind === "metric" && g.history ? (
                                 <HistoryDots history={g.history} unit={unit(g.metric)} t={t} />
                               ) : (
-                                <span className="text-xs text-muted/30">—</span>
+                                <span className="text-xs text-muted">—</span>
                               )}
                             </div>
 
@@ -1100,7 +1115,7 @@ export default function GoalsPage() {
                                 </button>
                               ) : (
                                 <button onClick={() => { setConfirmDelete(g.id); window.setTimeout(() => setConfirmDelete((c) => (c === g.id ? null : c)), 3500); }}
-                                  className="shrink-0 text-muted/40 hover:text-loss transition-all sm:opacity-0 sm:group-hover:opacity-100" aria-label={t("goals_delete")}>
+                                  className="shrink-0 text-muted hover:text-loss transition-all sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100" aria-label={t("goals_delete")}>
                                   <Trash2 className="w-4 h-4" strokeWidth={1.5} />
                                 </button>
                               )}
@@ -1137,7 +1152,7 @@ export default function GoalsPage() {
         <div className="mt-5 space-y-5">
           {!showDiscipline ? (
             <div className="flex items-start gap-3 rounded-2xl border border-dashed border-border p-6">
-              <Lock className="w-4 h-4 text-muted/60 shrink-0 mt-0.5" />
+              <Lock className="w-4 h-4 text-muted shrink-0 mt-0.5" />
               <p className="text-sm text-muted">{t("goals_discipline_empty")}</p>
             </div>
           ) : (
@@ -1184,7 +1199,7 @@ export default function GoalsPage() {
                             <GrowBar pct={edge.composed.winRate} className="rounded-full bg-profit" />
                           </div>
                           <p className="text-xs text-muted mt-2">
-                            {t("goals_edge_trades").replace("{n}", String(edge.composed.count))} · {t("goals_edge_avg")} <span className={edge.composed.avgNet >= 0 ? "text-profit" : "text-loss"}>{money(edge.composed.avgNet, displayCurrency)}</span>
+                            {t("goals_edge_trades", { n: String(edge.composed.count) })} · {t("goals_edge_avg")} <span className={edge.composed.avgNet >= 0 ? "text-profit" : "text-loss"}>{money(edge.composed.avgNet, displayCurrency)}</span>
                           </p>
                         </div>
                         <div className="rounded-xl border border-loss/30 bg-loss/[0.04] p-4">
@@ -1199,7 +1214,7 @@ export default function GoalsPage() {
                             <GrowBar pct={edge.impulsive.winRate} className="rounded-full bg-loss" />
                           </div>
                           <p className="text-xs text-muted mt-2">
-                            {t("goals_edge_trades").replace("{n}", String(edge.impulsive.count))} · {t("goals_edge_avg")} <span className={edge.impulsive.avgNet >= 0 ? "text-profit" : "text-loss"}>{money(edge.impulsive.avgNet, displayCurrency)}</span>
+                            {t("goals_edge_trades", { n: String(edge.impulsive.count) })} · {t("goals_edge_avg")} <span className={edge.impulsive.avgNet >= 0 ? "text-profit" : "text-loss"}>{money(edge.impulsive.avgNet, displayCurrency)}</span>
                           </p>
                         </div>
                       </div>
@@ -1217,7 +1232,7 @@ export default function GoalsPage() {
                     </>
                   ) : (
                     <div className="flex items-start gap-3 rounded-xl border border-dashed border-border p-4">
-                      <Lock className="w-4 h-4 text-muted/60 shrink-0 mt-0.5" />
+                      <Lock className="w-4 h-4 text-muted shrink-0 mt-0.5" />
                       <p className="text-sm text-muted">{t("goals_edge_locked")}</p>
                     </div>
                   )}
@@ -1263,7 +1278,7 @@ export default function GoalsPage() {
                           </span>
                         ) : (
                           <button onClick={() => addMetricGoal(s.metric, DEFAULT_TARGET[s.metric], "month")} disabled={busy}
-                            className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-accent hover:text-accent/70 transition-colors disabled:opacity-50">
+                            className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-accent hover:text-accent transition-colors disabled:opacity-50">
                             <Plus className="w-3 h-3" /> {t("goals_scorecard_track")}
                           </button>
                         )}
@@ -1324,13 +1339,13 @@ export default function GoalsPage() {
                 {createMode === "write" && (
                   <div className="mt-4">
                     <div className="flex flex-col sm:flex-row gap-2">
-                      <input
+                      <input aria-label={t("goals_custom_text_placeholder")}
                         type="text" value={customText} onChange={(e) => setCustomText(e.target.value)}
                         onKeyDown={(e) => { if (e.key === "Enter") addCustomGoal(); }}
                         placeholder={t("goals_custom_text_placeholder")} maxLength={120} autoFocus
                         className="flex-1 px-3 py-2.5 bg-surface border border-border rounded-lg text-foreground text-sm placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent"
                       />
-                      <select value={customPeriod} onChange={(e) => setCustomPeriod(e.target.value as Period)}
+                      <select aria-label={t("a11y_period")} value={customPeriod} onChange={(e) => setCustomPeriod(e.target.value as Period)}
                         className="px-3 py-2.5 bg-surface border border-border rounded-lg text-foreground text-sm">
                         {PERIODS.map((p) => <option key={p} value={p}>{periodLabel(p)}</option>)}
                       </select>
@@ -1339,7 +1354,7 @@ export default function GoalsPage() {
                       <input type="checkbox" checked={customRecurring} onChange={(e) => setCustomRecurring(e.target.checked)} className="accent-accent w-4 h-4" />
                       <span className="text-xs text-muted">{t("goals_recurring_label")}</span>
                     </label>
-                    <p className="text-xs text-muted/70 mt-2 flex items-center gap-1.5">
+                    <p className="text-xs text-muted mt-2 flex items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-accent shrink-0" /> {t("goals_ai_hint")}
                     </p>
                     <button onClick={addCustomGoal} disabled={busy || !customText.trim()}
@@ -1364,11 +1379,11 @@ export default function GoalsPage() {
                     <div className="mt-3 grid grid-cols-2 gap-2">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-semibold text-muted shrink-0">{METRIC_COMPARATOR[metric] === "gte" ? "≥" : "≤"}</span>
-                        <input type="number" value={target} onChange={(e) => setTarget(e.target.value)} placeholder={t("goals_target")}
+                        <input aria-label={t("goals_target")} type="number" value={target} onChange={(e) => setTarget(e.target.value)} placeholder={t("goals_target")}
                           className="w-full px-3 py-2.5 bg-surface border border-border rounded-lg text-foreground text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-accent" />
                         <span className="text-xs text-muted shrink-0">{unit(metric)}</span>
                       </div>
-                      <select value={period} onChange={(e) => setPeriod(e.target.value as Period)}
+                      <select aria-label={t("a11y_period")} value={period} onChange={(e) => setPeriod(e.target.value as Period)}
                         className="px-3 py-2.5 bg-surface border border-border rounded-lg text-foreground text-sm">
                         {PERIODS.map((p) => <option key={p} value={p}>{periodLabel(p)}</option>)}
                       </select>
@@ -1388,7 +1403,7 @@ export default function GoalsPage() {
                         <div className="flex-1 min-w-[200px]">
                           <p className="text-sm font-semibold text-foreground">{t(`pack_${pack.id}_title`)}</p>
                           <p className="text-xs text-muted mt-0.5">{t(`pack_${pack.id}_desc`)}</p>
-                          <p className="text-[11px] text-muted/70 mt-1.5">
+                          <p className="text-[11px] text-muted mt-1.5">
                             {t("goals_pack_contains")} : {pack.metrics.map((m) => metricLabel(m.metric)).join(" · ")} · {t(pack.habits[0].titleKey)}
                           </p>
                         </div>

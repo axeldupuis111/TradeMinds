@@ -13,11 +13,12 @@
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import ShareCardModal from "@/components/dashboard/ShareCardModal";
 import { CardHeader, CardTitle } from "@/components/ui/Card";
-import { useLanguage } from "@/lib/LanguageContext";
+import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { DEFAULT_CURRENCY, currencySymbol, money } from "@/lib/account-currency";
 import { cn } from "@/lib/cn";
 import { CalendarRange, Share2, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import { useMemo, useState } from "react";
+import { pourcent, nombre } from "@/lib/nombres";
 
 interface RecapTrade {
   open_time: string;
@@ -92,14 +93,14 @@ function DeltaBadge({ delta, suffix = "", invert = false }: { delta: number | nu
       )}
     >
       {delta > 0 ? "↑" : "↓"}
-      {Math.abs(delta) >= 100 ? Math.round(Math.abs(delta)) : Math.abs(delta).toFixed(Math.abs(delta) >= 10 ? 0 : 1)}
+      {Math.abs(delta) >= 100 ? Math.round(Math.abs(delta)) : nombre(Math.abs(delta), Math.abs(delta) >= 10 ? 0 : 1)}
       {suffix}
     </span>
   );
 }
 
 /** A short, rule-based "coach's note" on the week — no AI call, instant. */
-function weeklyCoachNote(cur: WeekStats, prev: WeekStats, t: (k: string) => string, currency: string): string {
+function weeklyCoachNote(cur: WeekStats, prev: WeekStats, t: Traduire, currency: string): string {
   if (cur.count === 0) return t("recap_note_no_trades");
   const pnl = fmtEur(cur.pnl, currency);
   if (cur.pnl > 0 && prev.count > 0 && prev.pnl < 0) return t("recap_note_comeback").replace("{pnl}", pnl);
@@ -164,7 +165,7 @@ export default function WeeklyRecap({
     {
       key: "winrate",
       label: t("recap_winrate"),
-      value: current.winrate !== null ? `${Math.round(current.winrate)}%` : "—",
+      value: current.winrate !== null ? `${pourcent(Math.round(current.winrate))}` : "—",
       delta: (
         <DeltaBadge
           delta={current.winrate !== null && previous.winrate !== null ? current.winrate - previous.winrate : null}
@@ -175,7 +176,7 @@ export default function WeeklyRecap({
     {
       key: "pf",
       label: t("recap_profit_factor"),
-      value: current.profitFactor !== null ? current.profitFactor.toFixed(2) : "—",
+      value: current.profitFactor !== null ? nombre(current.profitFactor, 2) : "—",
       delta: (
         <DeltaBadge
           delta={

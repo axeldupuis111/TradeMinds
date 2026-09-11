@@ -13,6 +13,7 @@ import NewsWindowGuard from "@/components/dashboard/NewsWindowGuard";
 import SignupAttribution from "@/components/dashboard/SignupAttribution";
 import StopTradingGuard from "@/components/dashboard/StopTradingGuard";
 import TimezoneSync from "@/components/dashboard/TimezoneSync";
+import TitreDePage from "@/components/dashboard/TitreDePage";
 import { DashboardRiskDisclosure } from "@/components/legal/RiskDisclosure";
 import { SubscriptionBanner } from "@/components/SubscriptionBanner";
 import { FoundingNotif } from "@/components/FoundingNotif";
@@ -216,6 +217,7 @@ export default function DashboardLayout({
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden relative">
         <AmbientBackground />
+        <TitreDePage />
         <TimezoneSync />
         <SignupAttribution />
         <StopTradingGuard />

@@ -112,3 +112,55 @@ describe("computeContracts (futures) — floors so risk never exceeds budget", (
     expect(risk).toBeLessThanOrEqual(1000);
   });
 });
+
+/**
+ * UN LOT NE DÉPASSE JAMAIS LE RISQUE DEMANDÉ.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN SUR LE CALCULATEUR DE LOT : « RISQUE MAX 500,00 € ·
+ * plafonné par ta règle de risque par trade », puis six lignes plus bas « LOT
+ * RECOMMANDÉ 0.67 » et « FONDS À RISQUE 502,50 € ». L'outil dont le métier est
+ * de risquer EXACTEMENT ce que le trader a décidé lui en proposait 2,50 € de
+ * plus que son propre plafond, sur le même écran que le plafond.
+ *
+ * ⚠️ LA RÈGLE ÉTAIT DÉJÀ ÉCRITE DOUZE LIGNES PLUS BAS, pour les futures :
+ * « FLOOR (never round up) — must never exceed riskAmount ». Un contrat est
+ * indivisible, donc l'auteur y avait pensé ; un lot se divise par centièmes, et
+ * l'arrondi a semblé inoffensif. Sur un compte prop avec une perte journalière
+ * plafonnée, il ne l'est pas.
+ */
+describe("le lot ne dépasse jamais le risque demandé", () => {
+  it("descend au centième inférieur plutôt que d'arrondir au plus proche", () => {
+    // 500 € / (75 pips × 10 €) = 0,6667 → 0,66 et non 0,67.
+    const r = computeLotSize({ riskEur: 500, slPips: 75, pipValuePerLot: 10 })!;
+    expect(r.lots).toBe(0.66);
+    expect(r.lots * 75 * 10).toBeLessThanOrEqual(500);
+  });
+
+  /**
+   * ⚠️ SUR MILLE COMBINAISONS, PAS SUR UN EXEMPLE. Un cas choisi à la main
+   * prouve qu'il marche une fois ; c'est l'invariant qui compte.
+   */
+  it("ne dépasse jamais, quelles que soient les valeurs", () => {
+    const fautes: string[] = [];
+    for (let risque = 10; risque <= 2000; risque += 37) {
+      for (let pips = 1; pips <= 200; pips += 7) {
+        for (const valeur of [1, 9, 10, 12.5]) {
+          const r = computeLotSize({ riskEur: risque, slPips: pips, pipValuePerLot: valeur });
+          if (!r) continue;
+          const engage = r.lots * pips * valeur;
+          // Une tolérance d'un millième d'euro pour les flottants, rien de plus.
+          if (engage > risque + 0.001) {
+            fautes.push(`${risque}€ / ${pips} pips / ${valeur} → ${engage.toFixed(2)}€`);
+          }
+        }
+      }
+    }
+    expect(fautes.slice(0, 5), `${fautes.length} dépassements`).toEqual([]);
+  });
+
+  /** ⚠️ Et il reste le plus grand lot possible sous le plafond, pas un plus petit. */
+  it("prend le plus grand lot qui tienne sous le plafond", () => {
+    const r = computeLotSize({ riskEur: 500, slPips: 75, pipValuePerLot: 10 })!;
+    expect((r.lots + 0.01) * 75 * 10).toBeGreaterThan(500);
+  });
+});

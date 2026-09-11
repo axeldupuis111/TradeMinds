@@ -1,0 +1,516 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+import de from "../i18n/de";
+import en from "../i18n/en";
+import es from "../i18n/es";
+import fr from "../i18n/fr";
+import { socleDePlan } from "./compilation";
+import { CODES_QUESTIONS, evaluerCompletude, type Completude } from "./completude";
+import { coutsPourInstrument, instrumentParCode } from "./instruments";
+import { composerMonPlan, QUESTIONS_HORS_MOTEUR } from "./mon-plan";
+import { phraseDuPlan } from "./phrases";
+import { composerPlanComplet } from "./plan-complet";
+import type { PlanExecution, TradeSimule } from "./types";
+
+const NAS = instrumentParCode("NAS100")!;
+
+function plan(): PlanExecution {
+  return {
+    ...socleDePlan("NAS100", "Europe/Paris"),
+    uniteDeTemps: 15,
+    contexte: { fuseau: "Europe/Paris", debut: "08:00", fin: "17:00", jours: [1, 2, 3, 4, 5] },
+    niveau: { type: "trendline", pivots: 10, touchesMin: 3, toleranceTicks: 3000 },
+    declencheur: { type: "cassure", mode: "cloture" },
+    confirmations: [{ type: "biais_moyenne", periode: 80 }],
+    stop: { type: "dernier_pivot", bufferTicks: 200 },
+    objectif: { type: "multiple_r", r: 2 },
+    gestion: { risqueParTradePct: 1, maxPertesConsecutives: 3 },
+    couts: coutsPourInstrument(NAS),
+  };
+}
+
+function trades(n = 200): TradeSimule[] {
+  return Array.from({ length: n }, (_, i) => {
+    const ms = Date.UTC(2025, 0, 1) + i * 86_400_000;
+    const r = i % 3 === 0 ? 1.98 : -1.02;
+    return {
+      signalMs: ms,
+      niveauSignal: 21_000_000,
+      entreeMs: ms,
+      sortieMs: ms + 3_600_000,
+      sens: (i % 2 ? "short" : "long") as TradeSimule["sens"],
+      entreeTicks: 21_000_000,
+      sortieTicks: 21_000_000 + Math.round(r * 1000),
+      risqueTicks: 40_000,
+      r,
+      rBrut: r + 0.02,
+      mfeR: Math.max(0, r),
+      maeR: Math.min(0, r),
+      motif: (i % 3 === 0 ? "objectif" : "stop") as TradeSimule["motif"],
+      collisionMemeBarre: false,
+    };
+  });
+}
+
+const completude = (reponses: Record<string, string>): Completude =>
+  evaluerCompletude({
+    plan: plan(),
+    reponses,
+    ficheTexte: "Je trade le Nasdaq en cassure de trendline.",
+  } as never);
+
+const composer = (reponses: Record<string, string> = {}) =>
+  composerMonPlan(composerPlanComplet(plan(), trades(), NAS), completude(reponses), reponses, null);
+
+/**
+ * LE PLAN QUE LE TRADER EMPORTE.
+ *
+ * ⚠️⚠️ C'EST L'OBJECTIF DE L'ONGLET, ÉNONCÉ PAR AXEL :
+ *
+ *   « L'objectif principal est qu'à la fin, l'utilisateur sorte avec un plan
+ *     clair et complet de sa stratégie afin de pouvoir être discipliné. »
+ *
+ * Ces tests protègent donc le document lui-même, pas les mesures qui
+ * l'alimentent : elles ont déjà les leurs.
+ */
+describe("le plan à emporter", () => {
+  it("contient les règles du moteur et les réponses du trader", () => {
+    const sans = composer();
+    const avec = composer({ ne_pas_trader: "Rien dans l'heure avant une annonce macro." });
+    expect(avec.reglees).toBeGreaterThan(3);
+    expect(avec.mesurees).toBeGreaterThan(0);
+    // ⚠️ UNE RÉPONSE DE PLUS, PAS « UNE SEULE ». Certaines des cinq questions
+    // sont déjà écrites par les blocs eux-mêmes : un filtre directionnel EST une
+    // réponse à « ton biais avant de chercher ». Le test mesure donc le DELTA,
+    // sinon il casserait à chaque fois qu'un bloc apprend à répondre.
+    expect(avec.ecrites).toBe(sans.ecrites + 1);
+    expect(avec.lignes.some((l) => l.cle === "bt_q_ne_pas_trader" && l.texte)).toBe(true);
+  });
+
+  /**
+   * ⚠️⚠️ UNE LIGNE MANQUANTE RESTE DANS LE DOCUMENT. La retirer donnerait un plan
+   * qui a l'air complet et ne l'est pas, ce qui est pire que pas de plan : le
+   * trader croirait avoir répondu.
+   */
+  it("garde les lignes qu'il n'a pas écrites, au lieu de les taire", () => {
+    const p = composer();
+    const c = completude({});
+    expect(p.manquantes).toBeGreaterThan(0);
+    expect(p.manquantes + p.ecrites).toBe(QUESTIONS_HORS_MOTEUR.length);
+    for (const code of QUESTIONS_HORS_MOTEUR) {
+      const l = p.lignes.find((x) => x.cle === `bt_q_${code}`);
+      expect(l, `${code} absente du document`).toBeTruthy();
+      // ⚠️ « flou » compte comme manquant DANS UN PLAN : une règle qu'on ne peut
+      // pas appliquer sans l'interpréter est le moment où la discipline se
+      // négocie.
+      const etat = c.lignes.find((x) => x.code === code)!.etat;
+      expect(l!.provenance, code).toBe(etat === "ecrit" ? "ecrite" : "manquante");
+    }
+  });
+
+  /**
+   * ⚠️ « FLOU » COMPTE COMME MANQUANT DANS UN PLAN. Une règle qu'on ne peut pas
+   * appliquer sans l'interpréter n'est pas une règle : c'est le moment où la
+   * discipline se négocie.
+   */
+  it("ne compte comme écrite qu'une réponse qui en est une", () => {
+    const p = composer({ ne_pas_trader: "   " });
+    expect(p.lignes.find((l) => l.cle === "bt_q_ne_pas_trader")!.provenance).toBe("manquante");
+  });
+
+  /**
+   * ⚠️ CHAQUE LIGNE PORTE SA SOURCE. « Ton stop se place derrière le dernier
+   * sommet » est une recopie de son réglage ; « attends-toi à neuf pertes
+   * d'affilée » est une découverte. Les aplatir ferait passer une mesure pour
+   * une décision.
+   */
+  it("distingue ce qu'il a réglé de ce que la mesure a trouvé", () => {
+    const p = composer();
+    const actif = p.lignes.find((l) => l.cle === "bt_plan_actif")!;
+    const serie = p.lignes.find((l) => l.cle === "bt_plan_serie_de_pertes")!;
+    expect(actif.provenance).toBe("reglee");
+    expect(serie.provenance).toBe("mesuree");
+  });
+
+  /**
+   * ⚠️⚠️ AUCUNE LIGNE DU MOTEUR NE DOIT DISPARAÎTRE. Ajouter une règle à
+   * `plan-complet.ts` sans la déclarer dans l'ordre du document la ferait sortir
+   * du plan sans que personne s'en aperçoive : c'est le genre de perte qu'on ne
+   * voit qu'en relisant le document ligne à ligne, donc jamais.
+   */
+  it("ne perd aucune ligne produite par le moteur", () => {
+    const moteur = composerPlanComplet(plan(), trades(), NAS);
+    const p = composerMonPlan(moteur, completude({}), {}, null);
+    for (const l of moteur.lignes) {
+      expect(
+        p.lignes.some((x) => x.cle === `bt_plan_${l.cle}`),
+        `${l.cle} a disparu du document`,
+      ).toBe(true);
+    }
+  });
+
+  /**
+   * ⚠️ ET AUCUNE NE DOIT Y FIGURER DEUX FOIS. Les questions dont le moteur donne
+   * déjà la réponse (les heures, le stop, le risque) sont volontairement hors du
+   * document : les redemander ferait dire deux fois la même chose avec deux
+   * formulations, ce que cette page passe son temps à corriger.
+   */
+  it("n'écrit aucune ligne deux fois", () => {
+    const p = composer();
+    const vues = p.lignes.map((l) => l.cle);
+    expect(vues.length).toBe(new Set(vues).size);
+  });
+
+  it("ne repose pas les questions auxquelles le moteur répond déjà", () => {
+    const p = composer();
+    const posees = p.lignes.filter((l) => l.cle.startsWith("bt_q_")).map((l) => l.cle);
+    for (const code of CODES_QUESTIONS) {
+      const attendue = (QUESTIONS_HORS_MOTEUR as readonly string[]).includes(code);
+      expect(posees.includes(`bt_q_${code}`), code).toBe(attendue);
+    }
+  });
+
+  /**
+   * ⚠️⚠️ LE DOCUMENT SE LIT EN ENTIER, DANS LES QUATRE LANGUES. C'est le seul
+   * écran de la page qu'un trader imprime : une clé manquante ou un
+   * remplacement oublié s'y verrait sur papier.
+   */
+  it("se rend entièrement, dans les quatre langues", () => {
+    const p = composer({ ne_pas_trader: "Rien avant une annonce." });
+    for (const [nom, dico] of Object.entries({ fr, en, es, de })) {
+      const t = (cle: string, valeurs?: Record<string, string | number>) => {
+        let sortie = (dico as Record<string, string>)[cle];
+        expect(sortie, `${cle} manquante en ${nom}`).toBeTruthy();
+        for (const [k, v] of Object.entries(valeurs ?? {})) {
+          sortie = sortie.split(`{${k}}`).join(String(v));
+        }
+        return sortie;
+      };
+      for (const l of p.lignes) {
+        const texte = l.cle.startsWith("bt_q_")
+          ? t(l.cle)
+          : phraseDuPlan(
+              { cle: l.cle.replace(/^bt_plan_/, ""), valeurs: l.valeurs ?? {}, deduite: false },
+              t,
+            );
+        expect(texte, `${l.cle} en ${nom}`).not.toMatch(/\{[a-zA-Z]+\}/);
+        expect(texte, `${l.cle} en ${nom}`).not.toMatch(/\b[a-z][a-z0-9]*(_[a-z0-9]+)+\b/);
+      }
+      // Les phrases propres à la carte.
+      for (const cle of [
+        "bt_mon_plan_titre",
+        "bt_mon_plan_intro",
+        "bt_mon_plan_a_ecrire",
+        "bt_mon_plan_complet",
+      ]) {
+        expect(t(cle)).toBeTruthy();
+      }
+      expect(t("bt_mon_plan_manquantes", { n: 2 })).not.toContain("{");
+      expect(t("bt_mon_plan_mesure", { etablis: 1, ouverts: 2 })).not.toContain("{");
+    }
+  });
+});
+
+/**
+ * ⚠️⚠️ LE PLAN N'EST PAS UN CERTIFICAT DE RENTABILITÉ, et c'est la ligne la plus
+ * facile à franchir sans s'en rendre compte. C'est un document qu'on imprime,
+ * qui liste des règles, et qui sort d'un outil de mesure : il a exactement la
+ * forme d'une promesse. Il ne doit jamais en devenir une.
+ *
+ * « Je ne veux pas que tu assures la rentabilité de quelqu'un. »
+ */
+describe("ce que le plan n'a pas le droit de dire", () => {
+  const PROMESSES: Record<string, RegExp> = {
+    fr: /rentable|tu gagneras|garantit?|assure(r)? (un|le) gain|stratégie gagnante/i,
+    en: /profitable|you will (win|earn)|guarantee|winning strategy/i,
+    es: /rentable|ganarás|garantiza|estrategia ganadora/i,
+    de: /profitabel|rentabel|du wirst gewinnen|garantiert|Gewinnstrategie/i,
+  };
+
+  for (const [nom, dico] of Object.entries({ fr, en, es, de })) {
+    it(`ne promet aucun gain en ${nom}`, () => {
+      const fautes: string[] = [];
+      for (const [cle, texte] of Object.entries(dico as Record<string, string>)) {
+        if (!cle.startsWith("bt_mon_plan_")) continue;
+        if (PROMESSES[nom].test(texte)) fautes.push(`${cle} → ${texte}`);
+      }
+      expect(fautes).toEqual([]);
+    });
+  }
+
+  /**
+   * ⚠️ ET LE MODULE NE TRIE NI NE FILTRE SUR LA PERFORMANCE. Un plan dont
+   * l'ordre dépendrait de l'espérance serait un classement déguisé en document.
+   */
+  it("ne classe rien sur la performance", () => {
+    const source = readFileSync(join(process.cwd(), "lib/backtest/mon-plan.ts"), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/.*$/gm, "");
+    for (const interdit of ["esperanceR", "totalR", "profitFactor", "tauxReussite", "sort("]) {
+      expect(source, `${interdit} intervient dans le document`).not.toContain(interdit);
+    }
+  });
+});
+
+/**
+ * ⚠️⚠️ « 1 ÉCRITES DE TA MAIN », VU À L'ÉCRAN DANS UNE CARTE ÉCRITE LA VEILLE.
+ *
+ * C'est la quatrième fois que ce défaut apparaît : « 1 essais », « 7.05 bougie »,
+ * « 1 ans », et maintenant celui-ci. Il ne se voit qu'avec la bonne valeur, donc
+ * jamais en relisant la rédaction.
+ *
+ * ⚠️ LA CORRECTION N'EST PAS UN PLURIEL DE PLUS, C'EST UNE FORME QUI N'EN A PAS
+ * BESOIN : le nombre APRÈS l'étiquette. « Écrit de ta main : 1 » ne s'accorde
+ * avec rien, dans aucune des quatre langues.
+ */
+describe("les comptes du plan ne s'accordent avec rien", () => {
+  const ETIQUETTES = ["reglee", "mesuree", "ecrite", "manquante"];
+
+  for (const [nom, dico] of Object.entries({ fr, en, es, de })) {
+    it(`les étiquettes existent et ne portent aucun nombre en ${nom}`, () => {
+      for (const e of ETIQUETTES) {
+        const texte = (dico as Record<string, string>)[`bt_mon_plan_entete_${e}`];
+        expect(texte, `bt_mon_plan_entete_${e} en ${nom}`).toBeTruthy();
+        // Une étiquette qui contient un {placeholder} redeviendrait une phrase
+        // à accorder.
+        expect(texte).not.toMatch(/\{[a-zA-Z]+\}/);
+      }
+    });
+  }
+
+  /**
+   * ⚠️ ET LA PHRASE FAUTIVE NE DOIT PAS REVENIR. Une clé supprimée qu'on
+   * réintroduit sans y penser est le chemin le plus court vers le même défaut.
+   */
+  it("ne réintroduit pas la phrase à accorder", () => {
+    for (const [nom, dico] of Object.entries({ fr, en, es, de })) {
+      expect((dico as Record<string, string>).bt_mon_plan_compte, nom).toBeUndefined();
+    }
+  });
+
+  /**
+   * ⚠️ LE COMPOSANT AFFICHE LA LÉGENDE, pas une phrase. Un test lit sa source :
+   * remettre un compte devant un mot recréerait le défaut sans qu'aucun autre
+   * test ne bronche.
+   */
+  it("le composant compose une légende", () => {
+    const source = readFileSync(join(process.cwd(), "components/backtest/MonPlan.tsx"), "utf8");
+    expect(source).toContain("bt_mon_plan_entete_");
+    expect(source).not.toContain("bt_mon_plan_compte");
+  });
+});
+
+/**
+ * ⚠️⚠️ VU À L'ÉCRAN, ET C'EST L'OBJECTIF DE L'ONGLET QUI TOMBAIT.
+ *
+ * Quatre réponses tapées, visibles dans leurs champs, et le document affichait
+ * toujours « Écrit de ta main : 1 · À écrire : 4 ». Le brouillon vivait dans la
+ * carte des treize questions et n'en sortait pas : il fallait un aller-retour en
+ * base pour que le plan reflète les propres mots du trader, et rien ne le
+ * disait. Il conclut que c'est cassé.
+ *
+ * ⚠️ NI « ÉCRITE » NI « MANQUANTE », LES DEUX RACCOURCIS MENTENT. Manquante
+ * ignore ce qu'il vient de taper sous ses yeux ; enregistrée annonce que sa
+ * fiche contient une ligne qui n'y est pas, et le coach y lirait autre chose
+ * que lui.
+ */
+describe("ce qu'il vient d'écrire, avant tout enregistrement", () => {
+  const AVEC = { regime: "Un marché qui va quelque part." };
+
+  it("compte la ligne comme écrite dès qu'il l'a tapée", () => {
+    const p = composerMonPlan(
+      composerPlanComplet(plan(), trades(), NAS),
+      completude(AVEC),
+      AVEC,
+      null,
+      ["regime"],
+    );
+    const l = p.lignes.find((x) => x.cle === "bt_q_regime")!;
+    expect(l.provenance).toBe("ecrite");
+    expect(l.texte).toBe(AVEC.regime);
+  });
+
+  it("mais dit qu'elle n'est pas encore dans sa fiche", () => {
+    const p = composerMonPlan(
+      composerPlanComplet(plan(), trades(), NAS),
+      completude(AVEC),
+      AVEC,
+      null,
+      ["regime"],
+    );
+    expect(p.lignes.find((x) => x.cle === "bt_q_regime")!.nonEnregistree).toBe(true);
+    expect(p.nonEnregistrees).toBe(1);
+  });
+
+  /**
+   * ⚠️ ET UNE FOIS ENREGISTRÉE, PLUS AUCUNE MENTION. Le signal doit disparaître,
+   * sinon il devient un décor que personne ne lit.
+   */
+  it("ne signale plus rien une fois la réponse dans la fiche", () => {
+    const p = composerMonPlan(
+      composerPlanComplet(plan(), trades(), NAS),
+      completude(AVEC),
+      AVEC,
+      null,
+      [],
+    );
+    expect(p.lignes.find((x) => x.cle === "bt_q_regime")!.nonEnregistree).toBeUndefined();
+    expect(p.nonEnregistrees).toBe(0);
+  });
+
+  it("a une rédaction dans les quatre langues", () => {
+    for (const [nom, dico] of Object.entries({ fr, en, es, de })) {
+      const d = dico as Record<string, string>;
+      expect(d.bt_mon_plan_non_enregistree, nom).toBeTruthy();
+      expect(d.bt_mon_plan_a_enregistrer, nom).toContain("{n}");
+    }
+  });
+});
+
+/**
+ * CE QUI SE RÉPÈTE À CHAQUE LIGNE RESTE COURT.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN, DANS LE DOCUMENT QUI EST L'OBJECTIF DE TOUT L'ONGLET :
+ * cinq lignes non écrites, et cinq fois le même paragraphe de trente mots,
+ * « Pas encore écrit. Cette ligne ne se déduit d'aucune mesure : c'est à toi de
+ * la poser, et c'est souvent celle qui manque aux plans qu'on n'arrive pas à
+ * suivre. » Le même texte part aussi cinq fois dans le presse-papier, puisque
+ * « Copier ce plan » recopie la même clé.
+ *
+ * ⚠️ L'EXPLICATION N'A PAS DISPARU, ELLE A ÉTÉ DITE UNE FOIS : elle a rejoint
+ * l'encart « il reste {n} lignes à écrire », qui s'affiche exactement une fois.
+ * Ce qui se répète autant de fois qu'il y a de lignes doit être un MARQUEUR.
+ */
+describe("le document ne se répète pas", () => {
+  /** Ce qui se répète par ligne : au plus une phrase courte. */
+  const PAR_LIGNE = ["bt_mon_plan_a_ecrire", "bt_mon_plan_non_enregistree"];
+
+  for (const [nom, dico] of Array.from(Object.entries({ fr, en, es, de }))) {
+    it(`les marqueurs répétés à chaque ligne restent des marqueurs en ${nom}`, () => {
+      for (const cle of PAR_LIGNE) {
+        const texte = (dico as Record<string, string>)[cle];
+        expect(texte, `${cle} en ${nom}`).toBeTruthy();
+        expect(texte.length, `${cle} en ${nom} : « ${texte} »`).toBeLessThanOrEqual(80);
+      }
+    });
+  }
+
+  /**
+   * ⚠️ ET L'EXPLICATION EXISTE TOUJOURS QUELQUE PART : la raccourcir sans la
+   * reloger ailleurs serait perdre ce qu'elle disait, ce qui est un autre
+   * défaut.
+   */
+  it("l'explication vit dans l'encart qui ne s'affiche qu'une fois", () => {
+    for (const [nom, dico] of Array.from(Object.entries({ fr, en, es, de }))) {
+      const encart = (dico as Record<string, string>).bt_mon_plan_manquantes;
+      expect(encart, `bt_mon_plan_manquantes en ${nom}`).toBeTruthy();
+      expect(encart.length, `bt_mon_plan_manquantes en ${nom}`).toBeGreaterThan(150);
+    }
+  });
+});
+
+/**
+ * ON NE DONNE PAS UN CHEMIN, ON DONNE LE GESTE.
+ *
+ * ⚠️⚠️ VU À L'ÉCRAN, DEPUIS L'ÉTAPE « TON PLAN » : « Réponds-y dans « Ton plan,
+ * de A à Z », PLUS HAUT. » Ce bloc-là n'est pas plus haut sur la page : il vit
+ * à une AUTRE étape du parcours, et rien de celle-ci n'est rendu pendant qu'on
+ * lit son plan. Le trader remonte, ne trouve rien, et conclut qu'il n'a pas
+ * compris la page.
+ *
+ * ⚠️ C'EST EXACTEMENT « LANCE LE TEST À L'ÉTAPE 3 » LU DEPUIS L'ÉTAPE 3, sous
+ * une autre forme : une indication de direction au lieu du geste. La règle
+ * tenue ici est donc générale : aucune phrase de ce document n'envoie le
+ * lecteur dans une direction, et le bouton fait le trajet.
+ */
+describe("le document n'envoie personne chercher un bloc", () => {
+  const DIRECTIONS: Record<string, RegExp> = {
+    fr: /plus haut|plus bas|ci-dessus|ci-dessous|remonte/i,
+    en: /above|below|scroll up|further down/i,
+    es: /más arriba|más abajo|arriba|abajo/i,
+    de: /weiter oben|weiter unten|oben|unten/i,
+  };
+
+  for (const [nom, dico] of Array.from(Object.entries({ fr, en, es, de }))) {
+    it(`aucune direction dans les phrases de la carte en ${nom}`, () => {
+      const d = dico as Record<string, string>;
+      const fautives = Object.keys(d)
+        .filter((c) => c.startsWith("bt_mon_plan_"))
+        .filter((c) => DIRECTIONS[nom].test(d[c]));
+      expect(
+        fautives,
+        `phrases qui indiquent une direction au lieu d'agir : ` + fautives.join(", "),
+      ).toEqual([]);
+    });
+  }
+
+  /** ⚠️ Et le geste existe vraiment : la carte porte le bouton, la page le branche. */
+  it("le bouton existe et mène au bloc des lignes à écrire", () => {
+    const carte = readFileSync(join(process.cwd(), "components/backtest/MonPlan.tsx"), "utf8");
+    expect(carte).toContain('t("bt_mon_plan_aller_completer")');
+    expect(carte).toContain('t("bt_mon_plan_aller_enregistrer")');
+    expect(carte).toContain("onClick={onCompleter}");
+    const page = readFileSync(join(process.cwd(), "app/dashboard/backtest/page.tsx"), "utf8");
+    expect(page).toContain('onCompleter={() => remonterVers("bt-completude")}');
+  });
+
+  it("et sa phrase existe dans les quatre langues", () => {
+    for (const [nom, dico] of Array.from(Object.entries({ fr, en, es, de }))) {
+      expect(
+        (dico as Record<string, string>).bt_mon_plan_aller_completer,
+        `bt_mon_plan_aller_completer en ${nom}`,
+      ).toBeTruthy();
+    }
+  });
+});
+
+/**
+ * LE DOCUMENT QUI SORT DE L'APPLICATION EMPORTE SON AVERTISSEMENT.
+ *
+ * ⚠️⚠️ VU EN COPIANT LE PLAN POUR DE VRAI : le texte mis dans le presse-papier
+ * portait « c'est le plus haut risque qui garde le recul de ton compte à
+ * 17.1 % » et « tu aurais traversé jusqu'à 7 pertes d'affilée », et rien
+ * d'autre. Collé dans un journal, imprimé, envoyé à quelqu'un, ce sont des
+ * chiffres de rejeu présentés comme des faits, sans la phrase qui les entoure
+ * partout à l'écran.
+ *
+ * ⚠️ L'ÉCRAN NE PROTÈGE QUE L'ÉCRAN. Trois cartes de la page portent
+ * l'avertissement ; aucune ne suit le texte quand il en sort. C'est le seul
+ * endroit de l'onglet où un chiffre voyage hors de son contexte.
+ */
+describe("le plan copié emporte l'avertissement", () => {
+  const page = readFileSync(join(process.cwd(), "app/dashboard/backtest/page.tsx"), "utf8");
+
+  /** Le corps de `monPlanEnTexte`, par comptage d'accolades. */
+  function corpsDeLExport(): string {
+    const debut = page.indexOf("const monPlanEnTexte = useCallback(");
+    expect(debut, "monPlanEnTexte introuvable").toBeGreaterThan(0);
+    const ouvrante = page.indexOf("{", page.indexOf("=>", debut));
+    let profondeur = 0;
+    for (let i = ouvrante; i < page.length; i++) {
+      if (page[i] === "{") profondeur++;
+      else if (page[i] === "}" && --profondeur === 0) return page.slice(ouvrante, i + 1);
+    }
+    throw new Error("fin de monPlanEnTexte introuvable");
+  }
+
+  it("l'export cite l'avertissement", () => {
+    expect(corpsDeLExport()).toContain('tr("bt_modif_avertissement")');
+  });
+
+  /** ⚠️ Et cette phrase dit bien ce qu'elle doit dire, dans les quatre langues. */
+  it("l'avertissement nomme le rejeu et refuse toute garantie", () => {
+    const attendus: Record<string, RegExp> = {
+      fr: /hypoth|pass/i,
+      en: /hypothetical|past/i,
+      es: /hipot|pasad/i,
+      de: /hypothet|vergangen/i,
+    };
+    for (const [nom, dico] of Array.from(Object.entries({ fr, en, es, de }))) {
+      const phrase = (dico as Record<string, string>).bt_modif_avertissement;
+      expect(phrase, `bt_modif_avertissement en ${nom}`).toBeTruthy();
+      expect(phrase, `bt_modif_avertissement en ${nom}`).toMatch(attendus[nom]);
+    }
+  });
+});

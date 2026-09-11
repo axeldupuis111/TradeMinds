@@ -1,5 +1,6 @@
 "use client";
 
+import { tradesConformes } from "@/lib/trades-conformes";
 import UpgradeBanner from "@/components/UpgradeBanner";
 import { money } from "@/lib/account-currency";
 import { useDisplayCurrency } from "@/lib/hooks/useDisplayCurrency";
@@ -10,7 +11,7 @@ import {
 } from "@/lib/hooks/useCoachChat";
 import CoachConfirmBox from "@/components/coach/CoachConfirmBox";
 import type { CategoryBreakdown } from "@/lib/discipline-score";
-import { useLanguage } from "@/lib/LanguageContext";
+import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { PLAN_LIMITS } from "@/lib/plan-limits";
 import { buildDemoAnalysis, type DemoTradeForAnalysis } from "@/lib/demo-fixtures";
@@ -20,6 +21,7 @@ import { track } from "@/lib/track";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import { enDate } from "@/lib/dates";
 
 // Action posée par le coach (chip affiché sous le message assistant).
 /**
@@ -223,7 +225,7 @@ const VIOLATION_TYPE_LABELS: Record<string, string> = {
   missing_setup_tag: "violation_missing_setup",
 };
 
-function ScoreBreakdownCard({ breakdown, score, t, className }: { breakdown: CategoryBreakdown[]; score: number; t: (k: string) => string; className?: string }) {
+function ScoreBreakdownCard({ breakdown, score, t, className }: { breakdown: CategoryBreakdown[]; score: number; t: Traduire; className?: string }) {
   const [open, setOpen] = useState(false);
   const hasDeductions = breakdown.some((b) => b.totalCapped > 0);
 
@@ -348,19 +350,19 @@ const DATA_FIELD_LABELS: Record<string, Record<string, string>> = {
   checklist: { fr: "Checklist", en: "Checklist", de: "Checkliste", es: "Checklist" },
 };
 
-function DataFieldsSummary({ fields, lang, t }: { fields?: DataFields; lang: string; t: (k: string) => string }) {
+function DataFieldsSummary({ fields, lang, t }: { fields?: DataFields; lang: string; t: Traduire }) {
   if (!fields) return null;
   const all = ["setup", "timing", "emotion", "rr", "checklist"];
   const missing = all.filter((k) => !fields[k as keyof DataFields]);
   const provided = all.length - missing.length;
 
   if (missing.length === 0) {
-    return <p className="text-xs text-muted/70 mt-1">{t("score_based_on_all")}</p>;
+    return <p className="text-xs text-muted mt-1">{t("score_based_on_all")}</p>;
   }
 
   const missingLabels = missing.map((k) => DATA_FIELD_LABELS[k][lang] || k).join(", ");
   const base = t("score_based_on_n").replace("{n}", String(provided));
-  return <p className="text-xs text-muted/70 mt-1">{base} ({missingLabels})</p>;
+  return <p className="text-xs text-muted mt-1">{base} ({missingLabels})</p>;
 }
 
 type PeriodKey = "today" | "yesterday" | "this_week" | "this_month" | "last_7_days" | "last_30_days" | "all";
@@ -509,11 +511,21 @@ export default function AnalysisPage() {
     setClearingChat(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setClearingChat(false); return; }
-    await supabase.from("chat_messages").delete().eq("user_id", user.id);
+    /**
+     * ⚠️⚠️ « EFFACER L'HISTORIQUE » VIDAIT L'ÉCRAN SANS VÉRIFIER LA BASE. Le
+     * client Supabase ne jette pas : un échec laissait le trader convaincu
+     * d'avoir effacé ses échanges, jusqu'au rechargement où ils revenaient
+     * tous. Sur une suppression, c'est le mensonge le plus coûteux.
+     */
+    const { error } = await supabase.from("chat_messages").delete().eq("user_id", user.id);
+    setClearingChat(false);
+    if (error) {
+      alert(t("save_failed"));
+      return;
+    }
     setChatMessages([]);
     setHasOlderChat(false);
     setShowOlderChat(false);
-    setClearingChat(false);
   }, [supabase, t, setChatMessages, setHasOlderChat]);
 
   // sendChatMessage et undoCoachAction vivent désormais dans
@@ -736,7 +748,14 @@ export default function AnalysisPage() {
           const scope = (data as { scope?: string }).scope;
           throw new Error(t(scope === "month" ? "api_error_monthly_limit" : "api_error_rate_limited"));
         }
-        throw new Error(data.error || "Erreur serveur.");
+        /**
+         * ⚠️ LA ROUTE RÉPONDAIT EN FRANÇAIS À TOUT LE MONDE, et cet écran
+         * affichait sa phrase telle quelle : « L'IA a renvoyé une réponse
+         * inexploitable » arrivait ainsi en français chez un lecteur anglais,
+         * espagnol ou allemand. Elle renvoie maintenant une CLÉ.
+         */
+        const code = (data as { code?: string }).code;
+        throw new Error(code ? t(code) : data.error || t("server_error"));
       }
 
       setAnalysis(data);
@@ -749,7 +768,7 @@ export default function AnalysisPage() {
           user_id: authUser.id,
           discipline_score: data.discipline_score,
           total_trades: data.total_trades,
-          conforming_trades: data.total_trades - (data.violations?.length || 0),
+          conforming_trades: tradesConformes(data.total_trades, data.violations as { trade_ids?: number[] }[]),
           analysis: data,
           score_breakdown: data.score_breakdown || null,
           period: selectedPeriod,
@@ -818,7 +837,7 @@ export default function AnalysisPage() {
         })),
         edge: (ins?.edge ?? []).map((h) => ({
           label: `${t(`edge_dim_${h.dimension}` as Parameters<typeof t>[0])} · ${edgeKeyLabel(h, lang)}`,
-          value: `${fmtEuro(h.netPnl, displayCurrency)} · ${t("analysis_edge_stats").replace("{n}", String(h.trades)).replace("{p}", String(h.winRate))}`,
+          value: `${fmtEuro(h.netPnl, displayCurrency)} · ${t("analysis_edge_stats", { n: String(h.trades), p: String(h.winRate) })}`,
           positive: h.kind === "best",
         })),
         strengths: a.strengths,
@@ -931,7 +950,7 @@ export default function AnalysisPage() {
               <span className="text-loss text-xl shrink-0">⚠️</span>
               <div className="flex-1">
                 <p className="text-sm font-semibold text-loss">{t("analysis_no_strategy")}</p>
-                <p className="text-xs text-loss/70 mt-1">{t("analysis_no_strategy_description")}</p>
+                <p className="text-xs text-loss mt-1">{t("analysis_no_strategy_description")}</p>
                 <Link href="/dashboard/strategy" className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline mt-2">
                   {t("analysis_no_strategy_cta")}
                 </Link>
@@ -975,7 +994,7 @@ export default function AnalysisPage() {
           )}
           {/* Period selector */}
           <div className="flex items-center gap-3 flex-wrap mb-3">
-            <select
+            <select aria-label={t("a11y_period")}
               value={selectedPeriod}
               onChange={(e) => setSelectedPeriod(e.target.value as PeriodKey)}
               className="px-3 py-2 bg-surface border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
@@ -987,16 +1006,14 @@ export default function AnalysisPage() {
             <span className={`text-sm ${filteredTradeCount === 0 ? "text-muted" : "text-foreground"}`}>
               {filteredTradeCount === 0
                 ? t("period_no_trades")
-                : filteredTradeCount === 1
-                  ? t("period_trades_count_one")
-                  : t("period_trades_count").replace("{n}", String(filteredTradeCount))}
+                : t("period_trades_count", { n: filteredTradeCount })}
             </span>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <button
               onClick={() => {
                 if (selectedPeriod === "all" && filteredTradeCount > 200) {
-                  alert(t("period_warning_large").replace("{n}", String(filteredTradeCount)));
+                  alert(t("period_warning_large", { n: String(filteredTradeCount) }));
                 }
                 runAnalysis();
               }}
@@ -1020,7 +1037,7 @@ export default function AnalysisPage() {
             ) : (
               aiRemaining !== null && !aiLimitReached && aiRemaining > 0 && (
                 <span className="text-muted text-sm">
-                  ({aiRemaining} {aiRemaining === 1 ? t("plan_ai_remaining_one") : t("plan_ai_remaining")})
+                  ({aiRemaining} {t("plan_ai_remaining", { n: aiRemaining })})
                 </span>
               )
             )}
@@ -1034,13 +1051,13 @@ export default function AnalysisPage() {
               <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
               <p className="text-muted">{t("analysis_loading")}</p>
             </div>
-            <p className="text-xs text-muted/60 mt-2 ml-8">{t("analysis_loading_hint")}</p>
+            <p className="text-xs text-muted mt-2 ml-8">{t("analysis_loading_hint")}</p>
           </div>
         )}
 
         {/* Error */}
         {error && (
-          <div className="flex items-start gap-3 p-4 bg-loss/10 border border-loss/30 rounded-xl animate-in fade-in duration-300">
+          <div role="alert" className="flex items-start gap-3 p-4 bg-loss/10 border border-loss/30 rounded-xl animate-in fade-in duration-300">
             <span className="text-loss text-xl shrink-0">❌</span>
             <div>
               <p className="text-sm font-semibold text-loss">{error}</p>
@@ -1104,7 +1121,7 @@ export default function AnalysisPage() {
                 {displayedAnalysis.total_trades} trades
               </p>
               <p className="text-muted text-sm mt-1">
-                {displayedAnalysis.violations.length} {displayedAnalysis.violations.length === 1 ? t("analysis_violation_detected_one") : t("analysis_violations_detected")}
+                {displayedAnalysis.violations.length} {t("analysis_violations_detected", { n: displayedAnalysis.violations.length })}
               </p>
             </div>
           </div>
@@ -1127,9 +1144,7 @@ export default function AnalysisPage() {
                     {fmtEuro(ins.violation_cost, displayCurrency)}
                   </span>
                   <span className="text-sm text-muted">
-                    {ins.violation_trade_count === 1
-                      ? t("analysis_cost_trades_one")
-                      : t("analysis_cost_trades").replace("{n}", String(ins.violation_trade_count))}
+                    {t("analysis_cost_trades", { n: ins.violation_trade_count })}
                   </span>
                 </div>
                 <p className="text-sm text-muted mt-2">
@@ -1282,7 +1297,7 @@ export default function AnalysisPage() {
                       {fmtEuro(h.netPnl, displayCurrency)}
                     </p>
                     <p className="text-xs text-muted mt-1">
-                      {t("analysis_edge_stats").replace("{n}", String(h.trades)).replace("{p}", String(h.winRate))}
+                      {t("analysis_edge_stats", { n: String(h.trades), p: String(h.winRate) })}
                     </p>
                   </div>
                 ))}
@@ -1331,7 +1346,7 @@ export default function AnalysisPage() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-foreground text-sm font-medium">{r.pair}</span>
                         <span className="text-muted text-xs uppercase">{r.direction}</span>
-                        <span className="text-muted/70 text-xs">
+                        <span className="text-muted text-xs">
                           {new Date(r.open_time).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
                         </span>
                         <span className={`ml-auto text-xs font-bold tabular-nums ${r.net_pnl >= 0 ? "text-profit" : "text-loss"}`}>
@@ -1452,7 +1467,7 @@ export default function AnalysisPage() {
                 </Link>
               ))}
             </div>
-            <p className="text-[11px] text-muted/70 mt-2">{t("teaser_hint")}</p>
+            <p className="text-[11px] text-muted mt-2">{t("teaser_hint")}</p>
           </section>
         )}
 
@@ -1462,7 +1477,7 @@ export default function AnalysisPage() {
             <div>
               <h2 className="text-lg font-semibold text-foreground">{t("coach_title")}</h2>
               <p className="text-muted text-sm mt-1">{t("coach_subtitle")}</p>
-              <p className="text-xs text-muted/60 mt-0.5 mb-4 flex items-center gap-1.5">
+              <p className="text-xs text-muted mt-0.5 mb-4 flex items-center gap-1.5">
                 <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
                 </svg>
@@ -1531,7 +1546,7 @@ export default function AnalysisPage() {
                       </button>
                     ))}
                   </div>
-                  <p className="text-center text-[11px] text-muted/70 mt-4">{t("coach_showcase_hint")}</p>
+                  <p className="text-center text-[11px] text-muted mt-4">{t("coach_showcase_hint")}</p>
                 </div>
               )}
               {chatMessages.map((msg, i) => (
@@ -1608,7 +1623,7 @@ export default function AnalysisPage() {
                       </div>
                     )}
                     {msg.created_at && (
-                      <p className={`text-[10px] text-muted/60 ${msg.role === "user" ? "text-right" : "text-left"}`}>
+                      <p className={`text-[10px] text-muted ${msg.role === "user" ? "text-right" : "text-left"}`}>
                         {new Date(msg.created_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
                       </p>
                     )}
@@ -1638,7 +1653,7 @@ export default function AnalysisPage() {
 
             {/* Input */}
             <div className="border-t border-border p-3 flex gap-2">
-              <input
+              <input aria-label={t("coach_placeholder")}
                 type="text"
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
@@ -1649,6 +1664,10 @@ export default function AnalysisPage() {
               />
               <button
                 onClick={sendChatMessage}
+                // ⚠️ Un bouton qui ne contient qu'une icône n'a AUCUN nom pour
+                // une lecture d'écran : celui-ci est celui qui envoie la
+                // question au coach.
+                aria-label={t("coach_send")}
                 disabled={chatLoading || !chatInput.trim() || (chatRemaining !== null && chatRemaining <= 0)}
                 className="px-4 py-2 bg-accent text-on-accent rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
               >
@@ -1668,9 +1687,7 @@ export default function AnalysisPage() {
                       désormais atteignable. Deux composants montrent ce
                       compteur, les deux doivent le montrer entier. */}
                   {chatRemaining > 0
-                    ? (chatRemaining === 1 ? t("coach_remaining_one") : t("coach_remaining"))
-                        .replace("{n}", String(chatRemaining))
-                        .replace("{m}", String(chat.monthlyRemaining))
+                    ? t("coach_remaining", { n: chatRemaining, m: chat.monthlyRemaining })
                     : t("coach_no_messages")}
                 </p>
               ) : (
@@ -1710,7 +1727,7 @@ export default function AnalysisPage() {
                 {displayedAnalysis.total_trades} trades
               </p>
               <p className="text-muted text-sm mt-1">
-                {displayedAnalysis.violations.length} {displayedAnalysis.violations.length === 1 ? t("analysis_violation_detected_one") : t("analysis_violations_detected")}
+                {displayedAnalysis.violations.length} {t("analysis_violations_detected", { n: displayedAnalysis.violations.length })}
               </p>
               <p className="text-xs text-muted mt-2">
                 {displayedAnalysis.discipline_score >= 90 ? t("band_excellent") :
@@ -1724,7 +1741,7 @@ export default function AnalysisPage() {
           ) : (
             <div className="bg-card border border-border rounded-xl p-6 card-shadow flex flex-col items-center text-center">
               <div className="w-20 h-20 rounded-full border-2 border-dashed border-border flex items-center justify-center mb-4">
-                <svg className="w-8 h-8 text-muted/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-8 h-8 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
                 </svg>
               </div>
@@ -1753,7 +1770,7 @@ export default function AnalysisPage() {
                     <div key={item.id} className="border border-border rounded-lg p-2.5">
                       <p className="text-xs text-accent font-medium truncate">Q: {item.question}</p>
                       <p className="text-[11px] text-muted mt-1 line-clamp-2">{item.answer}</p>
-                      <p className="text-[10px] text-muted/50 mt-1">{new Date(item.created_at).toLocaleDateString()}</p>
+                      <p className="text-[10px] text-muted mt-1">{enDate(item.created_at)}</p>
                     </div>
                   ))}
                 </div>
@@ -1932,7 +1949,10 @@ export default function AnalysisPage() {
                     {new Date(r.created_at).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}
                     {r.period_label && <span className="text-muted font-normal"> · {r.period_label}</span>}
                   </p>
-                  <p className="text-muted text-sm">{r.conforming_trades}/{r.total_trades} trades</p>
+                  {/* ⚠️ Borné à l'affichage aussi : deux analyses déjà enregistrées portent
+                      un -1 en base, et on ne réécrit pas l'historique d'un trader pour
+                      faire plaisir à un compteur. */}
+                  <p className="text-muted text-sm">{Math.max(0, r.conforming_trades ?? 0)}/{r.total_trades} trades</p>
                 </div>
                 <span className={`text-2xl font-bold ${r.discipline_score >= 90 ? "text-profit" : r.discipline_score >= 75 ? "text-green-400" : r.discipline_score >= 60 ? "text-yellow-400" : r.discipline_score >= 40 ? "text-orange-400" : "text-loss"}`}>
                   {r.discipline_score}

@@ -6,13 +6,14 @@ import CoachOperator from "@/components/landing/CoachOperator";
 import PublicHeader from "@/components/PublicHeader";
 import RiskDisclosure from "@/components/legal/RiskDisclosure";
 import { FoundingBanner } from "@/components/FoundingBanner";
-import { useLanguage } from "@/lib/LanguageContext";
+import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { localizedHref } from "@/lib/locale-href";
 import { PLAN_FEATURES, FREE_BENEFITS, PLUS_BENEFITS, PREMIUM_BENEFITS, planQuotaSegments } from "@/lib/plan-features";
 import Link from "next/link";
 import React, { useRef, useState, useEffect } from "react";
 import { motion, useInView, useReducedMotion, AnimatePresence, useMotionValue, useSpring, useTransform, useScroll } from "framer-motion";
 import type { TargetAndTransition, Transition } from "framer-motion";
+import { nombre } from "@/lib/nombres";
 
 /* ─────────────────────────────────────────────
    ANIMATION PRIMITIVES
@@ -101,7 +102,7 @@ function NumberCount({ end, decimals = 0, duration = 1700 }: { end: number; deci
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [end, reduced, duration]);
-  return <>{decimals > 0 ? val.toFixed(decimals) : Math.round(val)}</>;
+  return <>{decimals > 0 ? nombre(val, decimals) : Math.round(val)}</>;
 }
 
 /* Indicateur "live" — compteur d'inscrits qui monte (FOMO).
@@ -136,7 +137,7 @@ function LiveActivity() {
           className="text-xs font-bold tabular-nums"
           style={{ color: "rgb(var(--foreground))" }}
         >
-          {n.toLocaleString("fr-FR")}
+          {nombre(n)}
         </motion.span>
       </AnimatePresence>
       <svg className="w-2.5 h-2.5 shrink-0" style={{ color: "rgb(var(--profit))" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} aria-hidden>
@@ -883,7 +884,7 @@ function PlatformMarquee() {
 
   return (
     <section className="py-10 px-0 overflow-hidden" aria-label={t("marquee_caption")}>
-      <p className="text-center text-[11px] font-semibold uppercase tracking-[0.18em] mb-6" style={{ color: "rgb(var(--muted)/0.7)", fontStyle: "normal" }}>
+      <p className="text-center text-[11px] font-semibold uppercase tracking-[0.18em] mb-6" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>
         {t("marquee_caption")}
       </p>
       <div
@@ -998,7 +999,7 @@ function Problem() {
 ───────────────────────────────────────────── */
 const PLATFORMS = ["MT5", "MT4", "cTrader", "Binance", "Bybit", "OKX", "Bitget", "TradingView"];
 
-function BentoImport({ t }: { t: (k: string) => string }) {
+function BentoImport({ t }: { t: Traduire }) {
   return (
     <div className="h-full flex flex-col gap-4 p-6">
       <div
@@ -1028,7 +1029,7 @@ function BentoImport({ t }: { t: (k: string) => string }) {
         <p className="text-[10px] mb-2 font-medium" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("feature_import_formats")}</p>
         <div className="flex flex-wrap gap-1.5">
           {PLATFORMS.map((name) => (
-            <span key={name} className="px-2 py-0.5 rounded-md text-[10px] font-medium border" style={{ color: "rgb(var(--muted)/0.8)", borderColor: "rgb(var(--border))", background: "rgb(var(--surface))", fontStyle: "normal" }}>
+            <span key={name} className="px-2 py-0.5 rounded-md text-[10px] font-medium border" style={{ color: "rgb(var(--muted))", borderColor: "rgb(var(--border))", background: "rgb(var(--surface))", fontStyle: "normal" }}>
               {name}
             </span>
           ))}
@@ -1048,7 +1049,7 @@ function AiAvatar() {
   );
 }
 
-function BentoAIChat({ t }: { t: (k: string) => string }) {
+function BentoAIChat({ t }: { t: Traduire }) {
   const [showTyping, setShowTyping] = useState(true);
   const prefersReduced = useReducedMotion();
 
@@ -1149,7 +1150,7 @@ function BentoAIChat({ t }: { t: (k: string) => string }) {
   );
 }
 
-function BentoDisciplineScore({ t }: { t: (k: string) => string }) {
+function BentoDisciplineScore({ t }: { t: Traduire }) {
   const r = 34, circ = 2 * Math.PI * r;
   const rules = [
     { label: "SL ≤ 1%",                 ok: true  },
@@ -1217,7 +1218,7 @@ function BentoDisciplineScore({ t }: { t: (k: string) => string }) {
 }
 
 /* MetaTrader → TradeDiscipline live sync — animated connection */
-function BentoSync({ t }: { t: (k: string) => string }) {
+function BentoSync({ t }: { t: Traduire }) {
   const prefersReduced = useReducedMotion();
 
   const Node = ({ label, sub, children }: { label: string; sub?: string; children: React.ReactNode }) => (
@@ -1297,7 +1298,7 @@ function BentoSync({ t }: { t: (k: string) => string }) {
 }
 
 /* Strategy coach — natural language → setup rules, tags & params (real app behaviour) */
-function BentoStrategy({ t }: { t: (k: string) => string }) {
+function BentoStrategy({ t }: { t: Traduire }) {
   const prefersReduced = useReducedMotion();
   const violet = "rgb(167,139,250)";
 
@@ -1350,7 +1351,7 @@ function BentoStrategy({ t }: { t: (k: string) => string }) {
             </motion.svg>
             <span className="text-[9px] font-bold tracking-wider" style={{ color: violet, fontStyle: "normal" }}>IA</span>
           </div>
-          <svg className="w-4 h-4 rotate-90 lg:rotate-0" style={{ color: "rgb(var(--muted)/0.6)" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 rotate-90 lg:rotate-0" style={{ color: "rgb(var(--muted))" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </div>
@@ -1662,7 +1663,7 @@ const ROI_PAID_PLANS = [
   { nameKey: "plan_premium", price: "29.99€", perDay: "0.99€", tone: "--warning" },
 ];
 
-function RoiPayback({ t }: { t: (k: string) => string }) {
+function RoiPayback({ t }: { t: Traduire }) {
   const reduced = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
@@ -1759,7 +1760,7 @@ function RoiPayback({ t }: { t: (k: string) => string }) {
   );
 }
 
-function ROIBand({ t }: { t: (k: string) => string }) {
+function ROIBand({ t }: { t: Traduire }) {
   const points = [
     {
       tone: "--profit",
@@ -1842,7 +1843,7 @@ function ROIBand({ t }: { t: (k: string) => string }) {
    Rend la matrice partagée lib/plan-features.ts
    (la même que la page « gérer mon plan »).
 ───────────────────────────────────────────── */
-function CompareCell({ val, t }: { val: boolean | string; t: (k: string) => string }) {
+function CompareCell({ val, t }: { val: boolean | string; t: Traduire }) {
   if (val === true) {
     return (
       <svg role="img" aria-label={t("upgrade_included")} className="w-4 h-4 mx-auto" style={{ color: "rgb(var(--profit))" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1852,7 +1853,7 @@ function CompareCell({ val, t }: { val: boolean | string; t: (k: string) => stri
   }
   if (val === false) {
     return (
-      <svg role="img" aria-label={t("upgrade_not_included")} className="w-4 h-4 mx-auto" style={{ color: "rgb(var(--muted)/0.35)" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg role="img" aria-label={t("upgrade_not_included")} className="w-4 h-4 mx-auto" style={{ color: "rgb(var(--muted))" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
       </svg>
     );
@@ -1875,7 +1876,7 @@ function CompareCell({ val, t }: { val: boolean | string; t: (k: string) => stri
   return <span className="text-sm" style={{ color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}>{val}</span>;
 }
 
-function PricingCompareTable({ t }: { t: (k: string) => string }) {
+function PricingCompareTable({ t }: { t: Traduire }) {
   const [open, setOpen] = useState(false);
   return (
     <Reveal className="mt-8">
@@ -2653,7 +2654,7 @@ function Conduit({ fire, reverse = false, tone }: { fire: boolean; reverse?: boo
 }
 
 /* Petit rendu de résultat CONCRET, distinct par capacité, assemblé pièce à pièce. */
-function CoachOutcome({ step, show, t }: { step: CoachStep; show: boolean; t: (k: string) => string }) {
+function CoachOutcome({ step, show, t }: { step: CoachStep; show: boolean; t: Traduire }) {
   const reduced = useReducedMotion();
   const col = `rgb(var(${step.tone}))`;
   const container = {
@@ -2912,7 +2913,7 @@ export default function LandingPage() {
       <GridBackground />
       <PageAmbience />
       <PublicHeader showAnchors />
-      <main>
+      <main id="main-content" tabIndex={-1}>
         <Hero />
         <MarketTicker />
         <PlatformMarquee />
