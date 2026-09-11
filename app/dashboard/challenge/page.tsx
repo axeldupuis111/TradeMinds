@@ -176,7 +176,7 @@ function ProgressBar({
       <div className="flex justify-between text-sm mb-1">
         <span className="text-muted">{label}</span>
         <span className="text-foreground">
-          {money(value, currency)} / {money(max, currency)} · {pourcent(pct, 1)}
+          {money(value, currency, { digits: 2 })} / {money(max, currency, { digits: 2 })} · {pourcent(pct, 1)}
         </span>
       </div>
       <div className="h-3 bg-border rounded-full overflow-hidden">
@@ -229,11 +229,11 @@ function DailyLossGauge({
 
   let status: string;
   if (stopEur == null) {
-    status = `${money(lossEur, currency)} / ${money(challengeEur, currency)}`;
+    status = `${money(lossEur, currency, { digits: 2 })} / ${money(challengeEur, currency, { digits: 2 })}`;
   } else if (lossEur >= stopEur) {
-    status = t("gauge_stop_exceeded").replace("{amount}", money(lossEur - stopEur, currency));
+    status = t("gauge_stop_exceeded").replace("{amount}", money(lossEur - stopEur, currency, { digits: 2 }));
   } else {
-    status = t("gauge_remaining").replace("{amount}", money(stopEur - lossEur, currency));
+    status = t("gauge_remaining").replace("{amount}", money(stopEur - lossEur, currency, { digits: 2 }));
   }
 
   return (
@@ -245,7 +245,7 @@ function DailyLossGauge({
       <div className="relative h-4 text-xs text-muted">
         {stopPct != null && (
           <span className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: `${stopPct}%` }}>
-            {t("gauge_stop_marker")} · {money(stopEur as number, currency)}
+            {t("gauge_stop_marker")} · {money(stopEur as number, currency, { digits: 2 })}
           </span>
         )}
       </div>
@@ -256,7 +256,7 @@ function DailyLossGauge({
         )}
       </div>
       <div className="text-right text-xs text-muted mt-1">
-        {t("gauge_challenge_marker")} · {money(challengeEur, currency)}
+        {t("gauge_challenge_marker")} · {money(challengeEur, currency, { digits: 2 })}
       </div>
     </div>
   );
@@ -727,13 +727,13 @@ function AccountCard({
               </span>
             )}
           </div>
-          <p className="text-lg font-bold text-foreground">{money(balance, cur)}</p>
+          <p className="text-lg font-bold text-foreground">{money(balance, cur, { digits: 2 })}</p>
           {/* Equity : seulement position ouverte, sinon elle vaut le solde et
               afficher deux fois le même chiffre n'apprend rien. */}
           {stats.equity !== null ? (
             <p className="text-xs mt-0.5">
               <span className={stats.equity >= balance ? "text-profit" : "text-loss"}>
-                {t("challenge_equity")} {money(stats.equity, cur)}
+                {t("challenge_equity")} {money(stats.equity, cur, { digits: 2 })}
               </span>
               <span className="text-muted">
                 {" · "}
@@ -1622,10 +1622,10 @@ export default function ChallengePage() {
                   <div className="flex items-center gap-4">
                     <div className="text-right">
                       <p className={`text-lg font-bold ${pnl >= 0 ? "text-profit" : "text-loss"}`}>
-                        {money(pnl, accountCurrency(c), { signed: true })}
+                        {money(pnl, accountCurrency(c), { digits: 2, signed: true })}
                       </p>
                       <p className="text-muted text-sm">
-                        {t("challenge_final_balance")} {money(c.balance, accountCurrency(c))}
+                        {t("challenge_final_balance")} {money(c.balance, accountCurrency(c), { digits: 2 })}
                       </p>
                     </div>
                     <button
@@ -1657,7 +1657,7 @@ export default function ChallengePage() {
                   <p className="text-[11px] text-muted uppercase tracking-wider">{t("challenge_portfolio_capital")}</p>
                   {portfolioByCurrency.map(([curCode, sums]) => (
                     <p key={curCode} className="text-xl font-bold text-foreground tabular-nums mt-0.5">
-                      {money(sums.capital, curCode)}
+                      {money(sums.capital, curCode, { digits: 2 })}
                     </p>
                   ))}
                 </div>
@@ -1668,7 +1668,7 @@ export default function ChallengePage() {
                       key={curCode}
                       className={`text-xl font-bold tabular-nums mt-0.5 ${sums.pnl >= 0 ? "text-profit" : "text-loss"}`}
                     >
-                      {money(sums.pnl, curCode, { signed: true })}
+                      {money(sums.pnl, curCode, { digits: 2, signed: true })}
                     </p>
                   ))}
                 </div>
@@ -1733,7 +1733,7 @@ export default function ChallengePage() {
                               pnl > 0 ? "text-profit" : pnl < 0 ? "text-loss" : "text-muted"
                             }`}
                           >
-                            {money(pnl, accountCurrency(ac), { signed: true })}
+                            {money(pnl, accountCurrency(ac), { digits: 2, signed: true })}
                           </span>
                         </button>
                       );
