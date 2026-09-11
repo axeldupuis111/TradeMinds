@@ -4,7 +4,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { estimatePnl } from "@/lib/pnl-calculator";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useMemo, useState } from "react";
-import { useEchap } from "@/lib/hooks/useEchap";
+import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 interface OpenTrade {
   id: string;
@@ -40,8 +40,8 @@ function normalizeDirection(dir: string): "long" | "short" {
 }
 
 export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
-  // ⚠️ Échap ferme la fenêtre : voir lib/hooks/useEchap.ts.
-  useEchap(true, onClose);
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(true, onClose);
   const { t } = useLanguage();
   const supabase = createClient();
 

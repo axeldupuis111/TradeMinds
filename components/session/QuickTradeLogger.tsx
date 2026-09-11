@@ -10,7 +10,7 @@ import { useTradeGuard } from "@/lib/hooks/useTradeGuard";
 import { TradeGuardDialog } from "@/components/trades/TradeGuardDialog";
 import type { GuardWarning } from "@/lib/trade-guard";
 import { useState } from "react";
-import { useEchap } from "@/lib/hooks/useEchap";
+import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 const inputClass =
   "w-full px-3 py-2 bg-surface border border-border rounded-lg text-foreground placeholder-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent text-sm";
@@ -28,8 +28,8 @@ function nowHHMM() {
 }
 
 export default function QuickTradeLogger({ strategyId, pairs, onClose, onSaved }: Props) {
-  // ⚠️ Échap ferme la fenêtre : voir lib/hooks/useEchap.ts.
-  useEchap(true, onClose);
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(true, onClose);
   const { t } = useLanguage();
   const { selectedAccount } = useActiveAccount();
   const supabase = createClient();

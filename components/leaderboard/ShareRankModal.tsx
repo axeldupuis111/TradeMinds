@@ -13,7 +13,7 @@ import { Activity, Check, Copy, Download, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { enDate } from "@/lib/dates";
-import { useEchap } from "@/lib/hooks/useEchap";
+import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 export interface ShareRankStats {
   score: number;
@@ -38,8 +38,8 @@ function scoreHex(s: number): string {
 }
 
 export default function ShareRankModal({ stats, onClose }: { stats: ShareRankStats; onClose: () => void }) {
-  // ⚠️ Échap ferme la fenêtre : voir lib/hooks/useEchap.ts.
-  useEchap(true, onClose);
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(true, onClose);
   const { t } = useLanguage();
   const cardRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);

@@ -12,7 +12,7 @@ import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { verifierCoherence } from "@/lib/strategy-coherence";
 import { cn } from "@/lib/cn";
 import { pourcent } from "@/lib/nombres";
-import { useEchap } from "@/lib/hooks/useEchap";
+import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 const SESSION_LABELS: Record<string, string> = {
   london: "London (08:00–12:00 UTC)",
@@ -105,12 +105,12 @@ export default function StrategyPage() {
   const [isDirty, setIsDirty] = useState(false);
   const [toast, setToast] = useState<Toast | null>(null);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
-  // ⚠️ Échap ferme la fenêtre : voir lib/hooks/useEchap.ts.
-  useEchap(showUnsavedModal, () => setShowUnsavedModal(false));
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(showUnsavedModal, () => setShowUnsavedModal(false));
   const [strategies, setStrategies] = useState<{ id: string; name: string }[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  // ⚠️ Échap ferme la fenêtre : voir lib/hooks/useEchap.ts.
-  useEchap(showDeleteConfirm, () => setShowDeleteConfirm(false));
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(showDeleteConfirm, () => setShowDeleteConfirm(false));
   const [deleteTradeCount, setDeleteTradeCount] = useState(0);
   const [perf, setPerf] = useState<{
     count: number;

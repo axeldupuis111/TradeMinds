@@ -1,7 +1,7 @@
 "use client";
 
 import { useLanguage } from "@/lib/LanguageContext";
-import { useEchap } from "@/lib/hooks/useEchap";
+import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 interface WelcomePlusModalProps {
   isOpen: boolean;
@@ -11,8 +11,8 @@ interface WelcomePlusModalProps {
 }
 
 export function WelcomePlusModal({ isOpen, onClose, isPlanReady, plan = "plus" }: WelcomePlusModalProps) {
-  // ⚠️ Échap ferme la fenêtre : voir lib/hooks/useEchap.ts.
-  useEchap(isOpen, onClose);
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(isOpen, onClose);
   const { t } = useLanguage();
 
   if (!isOpen) return null;

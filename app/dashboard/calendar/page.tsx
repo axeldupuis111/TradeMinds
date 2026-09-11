@@ -23,7 +23,7 @@ import { displayEventTitle } from "@/lib/economic-event-labels";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { CalendarClock, CalendarDays, ChevronDown, Filter, Sparkles, X } from "lucide-react";
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { useEchap } from "@/lib/hooks/useEchap";
+import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 type EventRow = EconomicEvent & { id: string };
 
@@ -274,8 +274,8 @@ export default function CalendarPage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<EventRow | null>(null);
   const [showFilters, setShowFilters] = useState(false);
-  // ⚠️ Échap ferme la fenêtre : voir lib/hooks/useEchap.ts.
-  useEchap(showFilters, () => setShowFilters(false));
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(showFilters, () => setShowFilters(false));
 
   // Date range (investing.com-style) — pick a day/range, including the past.
   const [dateMode, setDateMode] = useState<DateMode>("upcoming");

@@ -2,7 +2,7 @@
 
 import { useLanguage } from "@/lib/LanguageContext";
 import { useState } from "react";
-import { useEchap } from "@/lib/hooks/useEchap";
+import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 type Platform = "mt5" | "mt4" | "ctrader" | "binance" | "bybit" | "tradingview" | "other";
 
@@ -29,8 +29,8 @@ interface Props {
 }
 
 export default function ExportGuideModal({ onClose }: Props) {
-  // ⚠️ Échap ferme la fenêtre : voir lib/hooks/useEchap.ts.
-  useEchap(true, onClose);
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(true, onClose);
   const { t } = useLanguage();
   const [platform, setPlatform] = useState<Platform>("mt5");
 

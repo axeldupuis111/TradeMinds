@@ -16,7 +16,7 @@ import { dailyQuotes } from "@/lib/translations";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useEchap } from "@/lib/hooks/useEchap";
+import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 const SESSION_LABELS: Record<string, string> = {
   london: "London (08:00–12:00 UTC)",
@@ -174,16 +174,16 @@ export default function SessionPage() {
   const [debrief, setDebrief] = useState<SessionDebrief | null>(null);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [showEmptyChecklistModal, setShowEmptyChecklistModal] = useState(false);
-  // ⚠️ Échap ferme la fenêtre : voir lib/hooks/useEchap.ts.
-  useEchap(showEmptyChecklistModal, () => setShowEmptyChecklistModal(false));
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(showEmptyChecklistModal, () => setShowEmptyChecklistModal(false));
   const [showQuickLogger, setShowQuickLogger] = useState(false);
   const [emotionFeedback, setEmotionFeedback] = useState<{ type: "warning" | "ok"; message: string } | null>(null);
 
   /** Historique par état, pour remplacer une hypothèse par sa mesure à lui. */
   const [tradesParEtat, setTradesParEtat] = useState<TradeEmotion[]>([]);
   const [showStopConfirm, setShowStopConfirm] = useState(false);
-  // ⚠️ Échap ferme la fenêtre : voir lib/hooks/useEchap.ts.
-  useEchap(showStopConfirm, () => setShowStopConfirm(false));
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(showStopConfirm, () => setShowStopConfirm(false));
   const [paused, setPaused] = useState(false);
   const [pausedAt, setPausedAt] = useState<string | null>(null);
   const [recentTrades, setRecentTrades] = useState<RecentTrade[]>([]);

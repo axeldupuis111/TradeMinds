@@ -16,7 +16,7 @@ import { ScoreRing } from "@/components/dashboard/ScoreRing";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { X } from "lucide-react";
 import { pourcent } from "@/lib/nombres";
-import { useEchap } from "@/lib/hooks/useEchap";
+import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 interface Stats { trades: number; winRate: number; totalPnl: number; sessions: number; avgDisciplineScore: number | null; tradingDays: number }
 interface Deltas { trades: number; winRate: number; sessions: number; avgDisciplineScore: number | null; tradingDays: number }
@@ -1066,8 +1066,8 @@ function ReviewCard({ icon, title, body, accent }: { icon: React.ReactNode; titl
 
 // Tiroir latéral : détail d'une journée cliquée dans le calendrier de discipline.
 function DayDetailDrawer({ date, onClose }: { date: string; onClose: () => void }) {
-  // ⚠️ Échap ferme le tiroir : voir lib/hooks/useEchap.ts.
-  useEchap(true, onClose);
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(true, onClose);
   const displayCurrency = useDisplayCurrency();
   const { t, lang } = useLanguage();
   const reduced = useReducedMotion();

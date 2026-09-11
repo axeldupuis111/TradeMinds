@@ -134,7 +134,7 @@ describe("les fenêtres modales se déclarent", () => {
    * peut fermer qu'en visant une croix à la souris enferme qui navigue au
    * clavier.
    */
-  it("chaque fenêtre modale se ferme au clavier", () => {
+  it("chaque fenêtre modale se ferme au clavier et reçoit le focus", () => {
     /**
      * ⚠️ UNE SEULE EXCEPTION, ÉCRITE DANS LE FICHIER LUI-MÊME : le voile
      * « STOP » du centre d'alertes. Il s'affiche parce qu'une règle de risque
@@ -147,7 +147,7 @@ describe("les fenêtres modales se déclarent", () => {
       const source = readFileSync(chemin, "utf8");
       if (!/role="(dialog|alertdialog)"/.test(source)) continue;
       if (!source.includes("fixed inset-0")) continue;
-      if (source.includes("useEchap") || source.includes("Escape")) continue;
+      if (source.includes("useFenetreModale") || source.includes("Escape")) continue;
       if (/NE SE FERME PAS À ÉCHAP, ET C'EST VOULU/.test(source)) continue;
       fautes.push(court(chemin));
     }

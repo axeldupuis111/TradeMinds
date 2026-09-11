@@ -11,7 +11,7 @@ import { track } from "@/lib/track";
 import { createClient } from "@/lib/supabase/client";
 import type { Lang } from "@/lib/translations";
 import { useEffect, useMemo, useState } from "react";
-import { useEchap } from "@/lib/hooks/useEchap";
+import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 interface Props {
   pairs: string[];
@@ -46,8 +46,8 @@ interface Account {
 
 
 export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, initialChecklist }: Props) {
-  // ⚠️ Échap ferme la fenêtre : voir lib/hooks/useEchap.ts.
-  useEchap(true, onClose);
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(true, onClose);
   const { t, lang } = useLanguage();
   const { plan, loading: planLoading } = usePlan();
   const { selectedAccountId: activeAccountId } = useActiveAccount();

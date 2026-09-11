@@ -25,7 +25,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { pourcent } from "@/lib/nombres";
 import { enDate } from "@/lib/dates";
-import { useEchap } from "@/lib/hooks/useEchap";
+import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
 
 export interface TradeDetail {
   id: string;
@@ -123,8 +123,8 @@ function SavedIndicator({ etat, echec }: { etat: boolean | null; echec: string }
 }
 
 export default function TradeDetailPanel({ trade, onClose, onSaved, onPrev, onNext, hasPrev = false, hasNext = false, navIndex, navTotal }: Props) {
-  // ⚠️ Échap ferme la fenêtre : voir lib/hooks/useEchap.ts.
-  useEchap(true, onClose);
+  // ⚠️ Échap ferme, et le focus entre puis revient : voir useFenetreModale.
+  useFenetreModale(true, onClose);
   const { t, lang } = useLanguage();
   const l = lang as Lang;
   const { plan, demoMode, loading: planLoading } = usePlan();
