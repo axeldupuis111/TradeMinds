@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtPrice } from "@/lib/prix-instrument";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
 import { DEFAULT_CURRENCY, commonCurrency, money, tradeCurrency } from "@/lib/account-currency";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -61,13 +62,6 @@ function netPnl(t: { pnl: number; commission: number | null; swap: number | null
   return t.pnl + (t.commission || 0) + (t.swap || 0);
 }
 
-/** Adapts decimal precision to instrument magnitude */
-function fmtPrice(p: number): string {
-  if (p >= 10000) return p.toFixed(0);
-  if (p >= 100)   return p.toFixed(2);
-  if (p >= 1)     return p.toFixed(4);
-  return p.toFixed(5);
-}
 
 /** ISO timestamp → HH:MM string, or null if invalid/missing */
 function fmtTime(iso: string | null | undefined): string | null {
