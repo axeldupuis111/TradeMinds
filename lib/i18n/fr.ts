@@ -353,7 +353,7 @@ const dict: Record<string, string> = {
   "strategy_pairs": "Paires tradées",
   "strategy_all_pairs": "Toutes les paires",
   "strategy_sessions": "Sessions autorisées",
-  "strategy_risk": "Risk Management",
+  "strategy_risk": "Gestion du risque",
   "strategy_rr": "RR min",
   "strategy_sl_max": "SL max (pips)",
   "strategy_daily_loss": "Perte max/jour (%)",
