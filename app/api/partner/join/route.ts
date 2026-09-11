@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createRep, findPartnerByJoinCode, type RepRow } from "@/lib/partners";
+import { LIMITES } from "@/lib/message-de-contact";
 
 /**
  * INSCRIPTION D'UN COLLABORATEUR, en self-service.
@@ -46,6 +47,11 @@ export async function POST(req: NextRequest) {
 
     if (name.length < 2) {
       return NextResponse.json({ error: "Nom trop court." }, { status: 400 });
+    }
+    // ⚠️ ET UNE BORNE HAUTE : la longueur minimale était vérifiée, la maximale
+    // non, sur une route publique qui écrit en base.
+    if (name.length > LIMITES.nom) {
+      return NextResponse.json({ error: "Nom trop long." }, { status: 400 });
     }
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
       return NextResponse.json({ error: "Email invalide." }, { status: 400 });
