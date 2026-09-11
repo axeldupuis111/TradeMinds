@@ -226,12 +226,26 @@ export default function SettingsPage() {
         return;
       }
       if (trimmed !== originalUsername) {
-        const { data: existing } = await supabase
+        /**
+         * ⚠️⚠️ CETTE LECTURE AUTORISE UNE ECRITURE, donc son echec doit
+         * l'INTERDIRE. Son `error` etait jete : une lecture refusee rendait
+         * `existing = null`, c'est-a-dire « ce pseudo est libre », et
+         * l'enregistrement partait quand meme. Meme regle que la deduplication
+         * de l'import CSV, corrigee le meme jour : ne pas savoir n'autorise
+         * pas a ecrire.
+         */
+        const { data: existing, error: erreurUnicite } = await supabase
           .from("profiles")
           .select("id")
           .eq("username", trimmed)
           .neq("id", user.id)
           .maybeSingle();
+        if (erreurUnicite) {
+          console.error("[reglages] unicite du pseudo invérifiable :", erreurUnicite.message);
+          showToast("error", t("settings_username_uncheckable"));
+          setSaving(false);
+          return;
+        }
         if (existing) {
           showToast("error", t("settings_username_taken"));
           setSaving(false);

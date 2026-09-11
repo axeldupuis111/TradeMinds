@@ -1378,6 +1378,7 @@ const dict: Record<string, string> = {
   "settings_username_invalid": "Formato inválido. 3-20 caracteres: a-z, 0-9, -, _.",
   "settings_username_forbidden": "Este nombre de usuario contiene términos prohibidos. Elige otro.",
   "settings_username_taken": "Este nombre de usuario ya está en uso.",
+  "settings_username_uncheckable": "Ahora mismo no se ha podido comprobar si este alias está libre. No se ha guardado nada: inténtalo de nuevo en un momento.",
   "settings_save": "Guardar",
   "settings_saved": "Ajustes guardados ✓",
   "settings_your_link": "Tu enlace público",

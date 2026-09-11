@@ -177,23 +177,48 @@ async function attachToPartnerCommunity(
       .maybeSingle()
     if (!community) return // code public (LANCEMENT) ou partenaire sans communauté
 
-    // Un membre retiré par l'animateur reste dehors : sans ce test, son
-    // prochain paiement le ferait rentrer par la fenêtre.
-    const { data: blocked } = await supabase
+    /**
+     * Un membre retiré par l'animateur reste dehors : sans ce test, son
+     * prochain paiement le ferait rentrer par la fenêtre.
+     *
+     * ⚠️⚠️ ET SON `error` ETAIT JETE, ce qui rendait ce test aussi fragile
+     * que son absence : une lecture refusee donne `blocked = null`, c'est-a-dire
+     * « il n'est pas bloque », et le membre exclu rentrait quand meme. Une
+     * lecture qui AUTORISE une ecriture doit l'INTERDIRE quand elle echoue.
+     *
+     * ⚠️ ON FERME PLUTOT QU'ON N'OUVRE : ne pas rattacher un membre
+     * legitime se rattrape d'un clic cote animateur, faire rentrer quelqu'un
+     * qu'il a sorti, non.
+     */
+    const { data: blocked, error: erreurBlocage } = await supabase
       .from('community_blocks')
       .select('user_id')
       .eq('community_id', community.id)
       .eq('user_id', userId)
       .maybeSingle()
+    if (erreurBlocage) {
+      console.error('[Webhook] Liste des exclus illisible, rattachement abandonne:', erreurBlocage.message)
+      return
+    }
     if (blocked) return
 
-    // First-touch, comme l'attribution marketing : on ne déplace pas quelqu'un
-    // d'une communauté à une autre parce qu'il s'est réabonné avec un autre code.
-    const { data: existing } = await supabase
+    /**
+     * First-touch, comme l'attribution marketing : on ne déplace pas quelqu'un
+     * d'une communauté à une autre parce qu'il s'est réabonné avec un autre code.
+     *
+     * ⚠️ Meme raison : lecture ratee, on ne sait pas s'il est deja membre,
+     * donc on n'insere pas. Une ligne en double ici ferait compter deux fois un
+     * membre dans les chiffres d'un partenaire.
+     */
+    const { data: existing, error: erreurAppartenance } = await supabase
       .from('community_members')
       .select('user_id')
       .eq('user_id', userId)
       .maybeSingle()
+    if (erreurAppartenance) {
+      console.error('[Webhook] Appartenance illisible, rattachement abandonne:', erreurAppartenance.message)
+      return
+    }
     if (existing) return
 
     const { error } = await supabase

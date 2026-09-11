@@ -90,6 +90,11 @@ export async function POST(req: Request) {
   }
 
   // 2. Global cache.
+  //
+  // FERMETURE VOLONTAIRE : l'erreur de cette lecture est VOLONTAIREMENT IGNORÉE.
+  // Elle ne garde aucune porte : la rater ne fait que recalculer une explication
+  // déjà connue, ce qui coûte un appel et ne produit rien de faux. Se fermer
+  // ici priverait le lecteur d'une explication pour une panne de cache.
   try {
     const { data: cached } = await supabase
       .from("economic_indicator_explanations")

@@ -675,13 +675,24 @@ async function addMember(admin: Admin, userId: string, rawName?: string) {
   const targetId = target.id as string;
   if (targetId === userId) return NextResponse.json({ error: "cc_err_already_member" }, { status: 409 });
 
-  // First-touch : on ne débauche pas le membre d'une autre communauté. À lui de
-  // quitter la première s'il veut changer.
-  const { data: existing } = await admin
+  /**
+   * First-touch : on ne débauche pas le membre d'une autre communauté. À lui de
+   * quitter la première s'il veut changer.
+   *
+   * ⚠️⚠️ SON `error` ETAIT JETE : une lecture refusee rend `existing = null`,
+   * c'est-a-dire « il n'est membre de personne », et l'animateur se serait
+   * approprie le membre d'une autre communaute sans que rien ne le signale.
+   * Une lecture qui AUTORISE une ecriture doit l'INTERDIRE quand elle echoue.
+   */
+  const { data: existing, error: erreurAppartenance } = await admin
     .from("community_members")
     .select("community_id")
     .eq("user_id", targetId)
     .maybeSingle();
+  if (erreurAppartenance) {
+    console.error("[community] appartenance illisible :", erreurAppartenance.message);
+    return NextResponse.json({ error: "server_error" }, { status: 500 });
+  }
   if (existing) {
     const code = existing.community_id === community.id ? "cc_err_already_here" : "cc_err_already_member";
     return NextResponse.json({ error: code }, { status: 409 });

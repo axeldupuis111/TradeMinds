@@ -276,6 +276,10 @@ async function handle(req: Request) {
   try {
     const in7 = new Date(today);
     in7.setDate(in7.getDate() + 7);
+    // FERMETURE VOLONTAIRE : erreur VOLONTAIREMENT IGNORÉE (sur une seule
+    // ligne, sinon aucun garde ne la reconnaît). Cette lecture n'autorise rien :
+    // elle enrichit le contexte du briefing, et son échec le rend seulement
+    // moins précis. Le briefing tient debout sans elle.
     const { data: events } = await supabase
       .from("economic_events")
       .select("event_time, currency, title, impact, forecast, previous")
