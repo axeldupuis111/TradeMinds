@@ -410,7 +410,11 @@ export default function AdminPage() {
               Créer la communauté
             </button>
             {comMessage && (
-              <p className={`text-sm ${comMessage.type === "success" ? "text-profit" : "text-loss"}`}>{comMessage.text}</p>
+              <p
+              role={comMessage.type === "success" ? "status" : "alert"}
+              aria-live={comMessage.type === "success" ? "polite" : "assertive"}
+              className={`text-sm ${comMessage.type === "success" ? "text-profit" : "text-loss"}`}
+            >{comMessage.text}</p>
             )}
           </div>
 
@@ -587,7 +591,11 @@ export default function AdminPage() {
           </div>
 
           {message && (
-            <p className={`text-sm ${message.type === "success" ? "text-profit" : "text-loss"}`}>
+            <p
+              role={message.type === "success" ? "status" : "alert"}
+              aria-live={message.type === "success" ? "polite" : "assertive"}
+              className={`text-sm ${message.type === "success" ? "text-profit" : "text-loss"}`}
+            >
               {message.text}
             </p>
           )}
@@ -736,7 +744,11 @@ export default function AdminPage() {
           </div>
 
           {modMessage && (
-            <p className={`text-sm ${modMessage.type === "success" ? "text-profit" : "text-loss"}`}>
+            <p
+              role={modMessage.type === "success" ? "status" : "alert"}
+              aria-live={modMessage.type === "success" ? "polite" : "assertive"}
+              className={`text-sm ${modMessage.type === "success" ? "text-profit" : "text-loss"}`}
+            >
               {modMessage.text}
             </p>
           )}

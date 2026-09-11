@@ -837,7 +837,10 @@ export default function GoalsPage() {
 
       {/* Bannière de feedback après création via IA */}
       {notice && (
-        <div className={`mt-4 flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-sm ${notice === "echec" ? "border-loss/40 bg-loss/[0.06] text-foreground" : notice === "auto" ? "border-profit/30 bg-profit/[0.05] text-foreground" : "border-accent/30 bg-accent/[0.05] text-foreground"}`}>
+        <div
+          role={notice === "echec" ? "alert" : "status"}
+          aria-live={notice === "echec" ? "assertive" : "polite"}
+          className={`mt-4 flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-sm ${notice === "echec" ? "border-loss/40 bg-loss/[0.06] text-foreground" : notice === "auto" ? "border-profit/30 bg-profit/[0.05] text-foreground" : "border-accent/30 bg-accent/[0.05] text-foreground"}`}>
           <Sparkles className={`w-4 h-4 shrink-0 ${notice === "echec" ? "text-loss" : notice === "auto" ? "text-profit" : "text-accent"}`} />
           <span>{notice === "echec" ? t("save_failed") : notice === "auto" ? t("goals_ai_auto") : t("goals_ai_manual")}</span>
           <button onClick={() => setNotice(null)} className="ml-auto text-muted hover:text-muted transition-colors" aria-label={t("close")}>

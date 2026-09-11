@@ -694,6 +694,8 @@ export default function SessionPage() {
         />
         {emotionFeedback && (
           <div
+            role={emotionFeedback.type === "warning" ? "alert" : "status"}
+            aria-live={emotionFeedback.type === "warning" ? "assertive" : "polite"}
             className={`rounded-xl border p-4 text-sm font-medium ${
               emotionFeedback.type === "warning"
                 ? "bg-loss/10 border-loss/30 text-loss"

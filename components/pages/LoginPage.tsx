@@ -239,13 +239,15 @@ export default function LoginPage() {
             </div>
 
             {errorMessage && (
-              <div className="bg-loss/10 border border-loss/20 rounded-lg px-3 py-2">
+              /* ⚠️ Annoncé : c'est l'écran où l'échec est le plus probable. */
+              <div role="alert" className="bg-loss/10 border border-loss/20 rounded-lg px-3 py-2">
                 <p className="text-loss text-sm">{errorMessage}</p>
               </div>
             )}
 
             {successMessage && (
-              <div className="bg-profit/10 border border-profit/20 rounded-lg px-3 py-2">
+              /* ⚠️ `status` et non `alert` : une réussite informe, elle ne coupe pas la parole. */
+              <div role="status" aria-live="polite" className="bg-profit/10 border border-profit/20 rounded-lg px-3 py-2">
                 <p className="text-profit text-sm">{successMessage}</p>
               </div>
             )}

@@ -114,4 +114,43 @@ describe("les messages qui surgissent sont annoncés", () => {
       expect(source, chemin).toContain('aria-live={toast.type === "error" ? "assertive" : "polite"}');
     }
   });
+
+  /**
+   * ── LA TROISIÈME ORTHOGRAPHE ────────────────────────────────────────────────
+   *
+   * ⚠️⚠️ UN MESSAGE NE S'APPELLE PAS TOUJOURS « error ». Trouvé en réimportant
+   * un CSV : « Tous les trades existent déjà. Aucun doublon importé. » s'affiche
+   * dans un `<p>` nu, parce que la variable s'appelle `message`. Dix messages
+   * dans ce cas, dont les DEUX de l'écran de connexion — celui où l'échec est
+   * le plus probable et où l'utilisateur n'a encore rien d'autre à lire.
+   *
+   * ⚠️ C'est la troisième fois que ce garde est élargi : `error`, puis
+   * `fieldErrors.champ`, maintenant `message` / `notice` / `toast`. La leçon
+   * n'est pas « il manquait un motif », c'est qu'un garde qui reconnaît les
+   * défauts À LEUR NOM DE VARIABLE protège la moitié du produit.
+   */
+  it("les messages qui ne s'appellent pas « erreur » sont annoncés aussi", () => {
+    const NOMS = "message|notice|toast|feedback|statut|avertissement";
+    const fautes: string[] = [];
+    let vus = 0;
+    for (const chemin of tous()) {
+      const source = sansCommentaires(readFileSync(chemin, "utf8"));
+      // ⚠️ Double barre oblique inverse : dans un gabarit, `\s` vaut « s ».
+      const motif = new RegExp(`\\{\\s*(\\w*(?:${NOMS})\\w*)(?:\\.\\w+)?\\s*&&`, "gi");
+      for (const m of Array.from(source.matchAll(motif))) {
+        const suite = source.slice(m.index! + m[0].length, m.index! + m[0].length + 200);
+        if (!/^\s*\(?\s*</.test(suite)) continue;
+        const b = /<(p|div|span)\b/.exec(suite);
+        if (!b) continue;
+        const debut = m.index! + m[0].length + b.index!;
+        const fin = finDeBalise(source, debut);
+        if (fin < 0) continue;
+        vus++;
+        if (/role=|aria-live/.test(source.slice(debut, fin + 1))) continue;
+        fautes.push(`${court(chemin)}:${source.slice(0, debut).split(SAUT).length} (${m[1]})`);
+      }
+    }
+    expect(vus, "aucun message trouvé : le motif ne cherche rien").toBeGreaterThan(5);
+    expect(fautes, "messages muets pour une lecture d'écran : " + fautes.join(", ")).toEqual([]);
+  });
 });

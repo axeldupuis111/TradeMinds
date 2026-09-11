@@ -1555,7 +1555,11 @@ export default function ChallengePage() {
         </div>
 
         {message && (
-          <p className={`text-sm mt-3 ${message.type === "success" ? "text-profit" : "text-loss"}`}>
+          <p
+            role={message.type === "success" ? "status" : "alert"}
+            aria-live={message.type === "success" ? "polite" : "assertive"}
+            className={`text-sm mt-3 ${message.type === "success" ? "text-profit" : "text-loss"}`}
+          >
             {message.text}
           </p>
         )}
