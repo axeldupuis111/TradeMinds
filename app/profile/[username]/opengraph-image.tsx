@@ -113,7 +113,7 @@ export default async function Image({ params }: { params: { username: string } }
          * qu'un lecteur voit du produit, et la seule qu'il ne peut pas
          * recouper.
          */
-        chargerLaSerieDeDiscipline(supabase, profile.id),
+        chargerLaSerieDeDiscipline(supabase, profile.id, { sansDemo: true }),
       ]);
 
       const nets = (trades ?? []).map((t) => t.pnl + (t.commission || 0) + (t.swap || 0));

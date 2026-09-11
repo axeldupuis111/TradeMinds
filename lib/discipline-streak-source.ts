@@ -93,16 +93,41 @@ export async function chargerLaSerieDeDiscipline(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: SupabaseClient<any, any, any>,
   userId: string,
+  options?: { sansDemo?: boolean },
 ): Promise<SerieDeDiscipline> {
   const [trades, gels] = await Promise.all([
-    fetchAllRows<{ emotion: string | null; open_time: string }>((from, to) =>
-      supabase
+    fetchAllRows<{ emotion: string | null; open_time: string }>((from, to) => {
+      /**
+       * ⚠️⚠️ LA SURFACE PUBLIQUE ÉCARTE LES TRADES DE DÉMONSTRATION, et le
+       * tableau de bord les garde. Ce n'est pas une incohérence : le profil
+       * public affiche déjà un nombre de trades hors démo (règle écrite dans
+       * la page), et une série gonflée par des trades fictifs y serait un
+       * chiffre faux montré à des inconnus. Dans le produit, à l'inverse, une
+       * démo sans série ne montrerait pas ce qu'elle est censée montrer.
+       *
+       * ⚠️ REPLI SANS LE FILTRE : la colonne `is_demo` n'existe pas encore
+       * partout, et une série absente serait pire qu'une série large.
+       */
+      const base = supabase
         .from("trades")
         .select("emotion, open_time")
         .eq("user_id", userId)
-        .order("id", { ascending: true })
-        .range(from, to),
-    ),
+        .order("id", { ascending: true });
+      if (!options?.sansDemo) return base.range(from, to);
+      return base
+        .eq("is_demo", false)
+        .range(from, to)
+        .then(async (res) =>
+          res.error
+            ? await supabase
+                .from("trades")
+                .select("emotion, open_time")
+                .eq("user_id", userId)
+                .order("id", { ascending: true })
+                .range(from, to)
+            : res,
+        );
+    }),
     // ⚠️ Table absente (migration non appliquée) : aucun gel, pas d'exception.
     supabase.from("streak_freezes").select("day").eq("user_id", userId),
   ]);

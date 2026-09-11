@@ -132,7 +132,7 @@ export default async function PublicProfilePage({ params }: Props) {
       .from("achievements")
       .select("key, unlocked_at")
       .eq("user_id", userId),
-    chargerLaSerieDeDiscipline(supabase, userId),
+    chargerLaSerieDeDiscipline(supabase, userId, { sansDemo: true }),
   ]);
 
   // Ordre chronologique refait ici : les pages sont lues dans l'ordre de `id`.

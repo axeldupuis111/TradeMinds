@@ -25,12 +25,31 @@ import { sansCommentaires } from "./sans-commentaires";
 describe("un seul chiffre de discipline", () => {
   const lire = (c: string) => sansCommentaires(readFileSync(join(process.cwd(), c), "utf8"));
 
+  /**
+   * ⚠️ ET LA SURFACE PUBLIQUE ÉCARTE LES TRADES DE DÉMONSTRATION. Le profil
+   * affiche déjà un nombre de trades hors démo : une série gonflée par des
+   * trades fictifs y serait un chiffre faux montré à des inconnus. Dans le
+   * produit, à l'inverse, une démo sans série ne montrerait pas ce qu'elle est
+   * censée montrer — d'où l'option, et pas deux calculs.
+   */
+  it("le profil et sa carte sociale comptent hors démonstration", () => {
+    for (const chemin of [
+      "app/profile/[username]/page.tsx",
+      "app/profile/[username]/opengraph-image.tsx",
+    ]) {
+      expect(lire(chemin), chemin).toMatch(/chargerLaSerieDeDiscipline\([^)]*sansDemo: true/);
+    }
+    // ⚠️ Et le tableau de bord, lui, ne passe pas l'option.
+    const jour = lire("components/dashboard/DayState.tsx");
+    expect(jour).toMatch(/chargerLaSerieDeDiscipline\(supabase, user\.id\)/);
+  });
+
   it("le profil public ne compte plus sa propre série", () => {
     const vue = lire("components/profile/PublicProfileView.tsx");
     expect(vue, "la vue recompte une série").not.toMatch(/let streak = 0;/);
     expect(vue, "la série doit arriver toute faite").toMatch(/serie: number;/);
     const page = lire("app/profile/[username]/page.tsx");
-    expect(page).toContain("chargerLaSerieDeDiscipline(supabase, userId)");
+    expect(page).toMatch(/chargerLaSerieDeDiscipline\(supabase, userId/);
   });
 
   /**
