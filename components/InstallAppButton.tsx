@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/lib/LanguageContext";
 import { Download, X } from "lucide-react";
+import { useEchap } from "@/lib/hooks/useEchap";
 
 /**
  * "Install the app" button. Lets users install the PWA directly from the site
@@ -27,6 +28,8 @@ export default function InstallAppButton({ className }: { className?: string }) 
   const [isIOS, setIsIOS] = useState(false);
   const [installed, setInstalled] = useState(false);
   const [showIOS, setShowIOS] = useState(false);
+  // ⚠️ Échap ferme la fenêtre : voir lib/hooks/useEchap.ts.
+  useEchap(showIOS, () => setShowIOS(false));
 
   useEffect(() => {
     // Detect "already installed / running as an app". iOS Safari doesn't support

@@ -22,6 +22,7 @@ import { lireTousLesTradesDuCompte, netDuTrade } from "@/lib/trades-du-compte";
 import { pourcent } from "@/lib/nombres";
 import { fetchAllRows, chunk, ID_CHUNK } from "@/lib/supabase-paginate";
 import { useEffect, useState, useCallback } from "react";
+import { useEchap } from "@/lib/hooks/useEchap";
 
 interface Challenge {
   id: string;
@@ -323,6 +324,8 @@ function EditAccountModal({
   onCancel: () => void;
   t: (key: string) => string;
 }) {
+  // ⚠️ Échap ferme la fenêtre : voir lib/hooks/useEchap.ts.
+  useEchap(true, onCancel);
   const [firm, setFirm] = useState(account.firm);
   const [accountNumber, setAccountNumber] = useState(account.account_number || "");
   const [accountType, setAccountType] = useState<"prop" | "personal">(account.type);
@@ -518,6 +521,8 @@ function DeleteAccountModal({
   onCancel: () => void;
   t: (key: string) => string;
 }) {
+  // ⚠️ Échap ferme la fenêtre : voir lib/hooks/useEchap.ts.
+  useEchap(true, onCancel);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -826,6 +831,8 @@ function DeleteModal({
   onCancel: () => void;
   t: (key: string) => string;
 }) {
+  // ⚠️ Échap ferme la fenêtre : voir lib/hooks/useEchap.ts.
+  useEchap(true, onCancel);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

@@ -16,6 +16,7 @@ import { normalizeTimezone } from "@/lib/timezone";
 import { normalizeUsername, validateUsername } from "@/lib/username-moderation";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useEchap } from "@/lib/hooks/useEchap";
 
 const LANGUAGES = [
   { code: "fr", label: "Français" },
@@ -84,6 +85,8 @@ export default function SettingsPage() {
   const [mtLoading, setMtLoading] = useState(true);
   const [mtGenerating, setMtGenerating] = useState(false);
   const [showMtRegenModal, setShowMtRegenModal] = useState(false);
+  // ⚠️ Échap ferme la fenêtre : voir lib/hooks/useEchap.ts.
+  useEchap(showMtRegenModal, () => setShowMtRegenModal(false));
   const [isDeleting, setIsDeleting] = useState(false);
 
   const hasChanges =

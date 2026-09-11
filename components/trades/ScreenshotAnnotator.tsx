@@ -6,6 +6,7 @@ import { X, Pencil, Minus, ArrowUpRight, Square, Circle, Undo2, Trash2, AlignJus
 import type { Shape, AnnotationTool } from "@/lib/annotations";
 import { hitTestShape } from "@/lib/annotations";
 import { shapeToSvg } from "@/components/trades/AnnotationOverlay";
+import { useEchap } from "@/lib/hooks/useEchap";
 
 /**
  * Vector annotation editor over a trade screenshot. The image is a plain <img>
@@ -27,6 +28,8 @@ export default function ScreenshotAnnotator({
   onSave: (shapes: Shape[]) => void;
   onClose: () => void;
 }) {
+  // ⚠️ Échap ferme la fenêtre : voir lib/hooks/useEchap.ts.
+  useEchap(true, onClose);
   const { t } = useLanguage();
   const wrapRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });

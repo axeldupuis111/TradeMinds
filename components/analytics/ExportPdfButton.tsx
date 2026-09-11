@@ -9,6 +9,7 @@ import { setDemoWatermark } from "@/lib/pdf/kit";
 import { createClient } from "@/lib/supabase/client";
 import { FileDown } from "lucide-react";
 import { useState } from "react";
+import { useEchap } from "@/lib/hooks/useEchap";
 
 interface ExportPdfButtonProps {
   /** Trades déjà filtrés par la page (période + compte + filtres avancés). */
@@ -26,6 +27,8 @@ export default function ExportPdfButton({ trades, periodLabel, accountLabel }: E
   const supabase = createClient();
   const [generating, setGenerating] = useState(false);
   const [showLocked, setShowLocked] = useState(false);
+  // ⚠️ Échap ferme la fenêtre : voir lib/hooks/useEchap.ts.
+  useEchap(showLocked, () => setShowLocked(false));
 
   // Le mode démo ouvre l'export : c'est tout l'intérêt de la visite guidée, et
   // le PDF produit ne contient que des données fictives, filigranées. Aucune

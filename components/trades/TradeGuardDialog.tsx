@@ -3,6 +3,7 @@
 import { useLanguage } from "@/lib/LanguageContext";
 import type { GuardWarning } from "@/lib/trade-guard";
 import { ShieldAlert } from "lucide-react";
+import { useEchap } from "@/lib/hooks/useEchap";
 
 const MESSAGE_KEY: Record<GuardWarning["type"], string> = {
   wrong_pair: "guard_wrong_pair",
@@ -30,6 +31,8 @@ export function TradeGuardDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  // ⚠️ Échap ferme la fenêtre : voir lib/hooks/useEchap.ts.
+  useEchap(true, onCancel);
   const { t } = useLanguage();
 
   return (

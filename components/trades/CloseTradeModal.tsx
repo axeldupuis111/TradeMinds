@@ -4,6 +4,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { estimatePnl } from "@/lib/pnl-calculator";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useMemo, useState } from "react";
+import { useEchap } from "@/lib/hooks/useEchap";
 
 interface OpenTrade {
   id: string;
@@ -39,6 +40,8 @@ function normalizeDirection(dir: string): "long" | "short" {
 }
 
 export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
+  // ⚠️ Échap ferme la fenêtre : voir lib/hooks/useEchap.ts.
+  useEchap(true, onClose);
   const { t } = useLanguage();
   const supabase = createClient();
 

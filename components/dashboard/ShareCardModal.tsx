@@ -14,6 +14,7 @@ import { Activity, Check, Copy, Download, Eye, EyeOff, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { pourcent } from "@/lib/nombres";
+import { useEchap } from "@/lib/hooks/useEchap";
 
 export interface ShareStats {
   pnl: number;
@@ -52,6 +53,8 @@ export default function ShareCardModal({
   currency?: string;
   onClose: () => void;
 }) {
+  // ⚠️ Échap ferme la fenêtre : voir lib/hooks/useEchap.ts.
+  useEchap(true, onClose);
   const { t, lang } = useLanguage();
   const cardRef = useRef<HTMLDivElement>(null);
   const [hideAmounts, setHideAmounts] = useState(false);

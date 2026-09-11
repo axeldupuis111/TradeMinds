@@ -13,6 +13,7 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { PLAN_FEATURES as features, FREE_BENEFITS, PLUS_BENEFITS, PREMIUM_BENEFITS, planQuotaSegments } from "@/lib/plan-features";
 import { enDateLongue } from "@/lib/dates";
 import { langueCourante, nombre } from "@/lib/nombres";
+import { useEchap } from "@/lib/hooks/useEchap";
 
 const faqKeys = [
   { q: "faq_upgrade_q1", a: "faq_upgrade_a1" },
@@ -27,6 +28,8 @@ export default function UpgradePage() {
   const hasStripeSubscription = subscriptionStatus !== null;
   const [annual, setAnnual] = useState(false);
   const [showDowngradeModal, setShowDowngradeModal] = useState(false);
+  // ⚠️ Échap ferme la fenêtre : voir lib/hooks/useEchap.ts.
+  useEchap(showDowngradeModal, () => setShowDowngradeModal(false));
   const [downgrading, setDowngrading] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [checkoutLoadingPlan, setCheckoutLoadingPlan] = useState<"plus" | "premium" | null>(null);

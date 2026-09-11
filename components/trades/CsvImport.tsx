@@ -11,6 +11,7 @@ import { track } from "@/lib/track";
 import { createClient } from "@/lib/supabase/client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { nombre } from "@/lib/nombres";
+import { useEchap } from "@/lib/hooks/useEchap";
 
 interface ActiveAccount {
   id: string;
@@ -83,6 +84,8 @@ function ColumnMappingModal({
   onCancel: () => void;
   t: (k: string) => string;
 }) {
+  // ⚠️ Échap ferme la fenêtre : voir lib/hooks/useEchap.ts.
+  useEchap(true, onCancel);
   const [mapping, setMapping] = useState<Partial<Record<MappableField, string>>>({});
 
   const mandatoryMapped = MAPPING_FIELDS.filter((f) => f.required).every((f) => mapping[f.key]);

@@ -124,6 +124,45 @@ describe("les fenêtres modales se déclarent", () => {
     expect(fautes, "dialogues plein écran sans aria-modal : " + fautes.join(", ")).toEqual([]);
   });
 
+
+  /**
+   * ⚠️⚠️ ÉCHAP FERME LA FENÊTRE. Vingt-trois des vingt-huit ne répondaient pas :
+   * cinq le faisaient, chacune avec son propre `useEffect` recopié. La
+   * convention était donc établie, appliquée une fois sur six.
+   *
+   * ⚠️ CE N'EST PAS UN CONFORT : une fenêtre qui recouvre la page et qu'on ne
+   * peut fermer qu'en visant une croix à la souris enferme qui navigue au
+   * clavier.
+   */
+  it("chaque fenêtre modale se ferme au clavier", () => {
+    /**
+     * ⚠️ UNE SEULE EXCEPTION, ÉCRITE DANS LE FICHIER LUI-MÊME : le voile
+     * « STOP » du centre d'alertes. Il s'affiche parce qu'une règle de risque
+     * écrite vient d'être franchie ; le congédier d'une touche réflexe, sans
+     * avoir lu, est exactement ce contre quoi il existe. Le test exige que la
+     * raison soit écrite sur place, pas tenue dans une liste à part.
+     */
+    const fautes: string[] = [];
+    for (const chemin of tous()) {
+      const source = readFileSync(chemin, "utf8");
+      if (!/role="(dialog|alertdialog)"/.test(source)) continue;
+      if (!source.includes("fixed inset-0")) continue;
+      if (source.includes("useEchap") || source.includes("Escape")) continue;
+      if (/NE SE FERME PAS À ÉCHAP, ET C'EST VOULU/.test(source)) continue;
+      fautes.push(court(chemin));
+    }
+    expect(fautes, "fenêtres qu'Échap ne ferme pas : " + fautes.join(", ")).toEqual([]);
+  });
+
+  /** ⚠️ Et l'exception reste unique : deux, et la règle ne veut plus rien dire. */
+  it("l'exception au clavier reste unique et écrite", () => {
+    let n = 0;
+    for (const chemin of tous()) {
+      if (/NE SE FERME PAS À ÉCHAP, ET C'EST VOULU/.test(readFileSync(chemin, "utf8"))) n++;
+    }
+    expect(n, "exceptions au clavier").toBe(1);
+  });
+
   /** ⚠️ Et un nom ne contient pas de trou : il serait annoncé à voix haute. */
   it("aucun nom de dialogue ne laisse un gabarit non rempli", () => {
     const fr = readFileSync(join(process.cwd(), "lib/i18n/fr.ts"), "utf8");

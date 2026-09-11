@@ -16,6 +16,7 @@ import { motion } from "framer-motion";
 import { CheckCircle2, AlertTriangle, Crosshair, Lock, Sparkles, X } from "lucide-react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
+import { useEchap } from "@/lib/hooks/useEchap";
 
 export interface SessionDebrief {
   score: number | null;
@@ -45,6 +46,8 @@ export default function SessionDebriefModal({
   currency?: string;
   onClose: () => void;
 }) {
+  // ⚠️ Échap ferme la fenêtre : voir lib/hooks/useEchap.ts.
+  useEchap(true, onClose);
   const { t } = useLanguage();
 
   const rows = debrief

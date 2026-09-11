@@ -199,6 +199,14 @@ export default function AlertCenter() {
   const undismissedCriticals = alerts.filter((a) => a.level === "critical" && !a.dismissed);
   const bannerAlerts = alerts.filter((a) => a.level !== "critical" || a.dismissed);
 
+  /**
+   * ⚠️ CE VOILE NE SE FERME PAS À ÉCHAP, ET C'EST VOULU. Toutes les autres
+   * fenêtres du produit le font (voir lib/hooks/useEchap.ts) ; celle-ci dit
+   * « STOP » parce qu'une règle de risque ÉCRITE vient d'être franchie. La
+   * congédier d'une touche réflexe, sans avoir lu, est exactement ce contre
+   * quoi elle existe. Elle reste accessible au clavier : le bouton de rejet
+   * est atteignable à la tabulation, et il faut le viser.
+   */
   // ── Critical overlay (undismissed criticals) ────────────────────────────────
   if (undismissedCriticals.length > 0) {
     return (
