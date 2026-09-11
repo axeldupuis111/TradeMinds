@@ -172,8 +172,24 @@ export function LanguageProvider({
          *
          * ⚠️ ET LE `try` NE PROTÈGE DE RIEN : le client Supabase ne jette pas.
          * Il ne couvre que `createClient` et `getUser`.
+         *
+         * ⚠️⚠️ LA CONDITION EST DANS LA REQUÊTE, PAS DANS LE COMPOSANT. Le
+         * `ref` au-dessus n'évite les doublons que dans une même page : il
+         * repart à zéro à chaque rechargement complet, et la ligne était donc
+         * réécrite à l'identique à chaque arrivée sur le site. Relevé sur le
+         * réseau : trois PATCH sur `profiles` pour une seule ouverture de
+         * « Mes trades ». `neq` laisse la base décider, sans lecture
+         * supplémentaire.
+         *
+         * ⚠️ ET LE CAS NUL EST EXPLICITE : en SQL, `NULL <> 'fr'` ne vaut pas
+         * VRAI mais NULL, donc un profil sans langue ne serait JAMAIS renseigné
+         * par un `neq` seul.
          */
-        await supabase.from("profiles").update({ language: lang }).eq("id", user.id);
+        await supabase
+          .from("profiles")
+          .update({ language: lang })
+          .eq("id", user.id)
+          .or(`language.is.null,language.neq.${lang}`);
       } catch {
         // Client impossible à créer ou session illisible : rien à faire ici.
       }

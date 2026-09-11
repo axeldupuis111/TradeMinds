@@ -85,7 +85,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
     // n'est pas encore passee. Sans ce repli, un select en echec ferait lire
     // « free » a un abonne payant (la colonne inconnue renvoie une erreur, pas
     // une valeur nulle) — regression bien plus grave que l'absence du mode demo.
-    const BASE_COLS = "plan, plan_expires_at, daily_ai_count, daily_ai_reset";
+    const BASE_COLS = "plan, plan_expires_at, daily_ai_count, daily_ai_reset, email";
     let { data, error: profileError } = await supabase
       .from("profiles")
       .select(`${BASE_COLS}, demo_mode`)
@@ -101,8 +101,15 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
 
     let effectivePlan: PlanType = "free";
     if (data) {
-      // Ensure email is synced in profile
-      if (user.email) {
+      /**
+       * ⚠️⚠️ ON N'ÉCRIT QUE SI C'EST DIFFÉRENT. Cette ligne réécrivait le même
+       * e-mail À CHAQUE CHARGEMENT DE PAGE : relevé sur le réseau, trois PATCH
+       * sur `profiles` pour une seule arrivée sur « Mes trades », dont deux qui
+       * remettaient la valeur déjà en place. Une écriture qui ne change rien
+       * n'est pas gratuite : elle réveille la ligne, ses déclencheurs et ses
+       * abonnements temps réel, pour chaque page vue de chaque abonné.
+       */
+      if (user.email && data.email !== user.email) {
         await supabase.from("profiles").update({ email: user.email }).eq("id", user.id);
       }
       // Check expiration
