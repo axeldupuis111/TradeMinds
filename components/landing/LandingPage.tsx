@@ -4,6 +4,7 @@ import DisciplineQuiz from "@/components/landing/DisciplineQuiz";
 import LiveDemo from "@/components/landing/LiveDemo";
 import CoachOperator from "@/components/landing/CoachOperator";
 import PublicHeader from "@/components/PublicHeader";
+import { INSTRUMENTS } from "@/lib/backtest/instruments";
 import RiskDisclosure from "@/components/legal/RiskDisclosure";
 import { FoundingBanner } from "@/components/FoundingBanner";
 import { useLanguage, type Traduire } from "@/lib/LanguageContext";
@@ -813,21 +814,22 @@ function HeroStoryChart() {
 }
 
 /* ─────────────────────────────────────────────
-   LIVE MARKET TICKER — bandeau prix défilant
-   Données décoratives (pas un vrai flux) — pur effet.
+   BANDEAU DES MARCHÉS COUVERTS
+
+   ⚠️⚠️ C'ÉTAIT UN FAUX RUBAN DE COTATIONS. Dix prix écrits en dur, avec leur
+   variation du jour et leur flèche verte ou rouge : « XAU/USD 2 384.10
+   +1,14 % ». Le commentaire du code disait « données décoratives », mais un
+   visiteur ne lit pas le code : sur le site d'un produit de trading, un ruban
+   qui défile avec des pourcentages colorés se lit comme une information de
+   marché. Ces chiffres dataient de 2024, et l'un des symboles (SOL/USD) ne
+   correspondait même à rien dans le produit.
+
+   ⚠️ CE QUI REMPLACE EST VRAI ET VEND MIEUX : la liste des marchés que le
+   backtest rejoue réellement, tirée du registre d'instruments. Le mouvement
+   reste, la promesse devient vérifiable, et elle se met à jour toute seule le
+   jour où un instrument s'ajoute.
 ───────────────────────────────────────────── */
-const TICKER_INSTRUMENTS = [
-  { sym: "EUR/USD", price: "1.0842", chg: "+0.32%", up: true },
-  { sym: "XAU/USD", price: "2 384.10", chg: "+1.14%", up: true },
-  { sym: "GBP/JPY", price: "198.42", chg: "-0.21%", up: false },
-  { sym: "BTC/USD", price: "67 240", chg: "+2.48%", up: true },
-  { sym: "US30", price: "39 118", chg: "+0.54%", up: true },
-  { sym: "NAS100", price: "18 902", chg: "-0.37%", up: false },
-  { sym: "ETH/USD", price: "3 512", chg: "+1.92%", up: true },
-  { sym: "USD/JPY", price: "156.78", chg: "+0.11%", up: true },
-  { sym: "GBP/USD", price: "1.2715", chg: "-0.18%", up: false },
-  { sym: "SOL/USD", price: "172.3", chg: "+4.21%", up: true },
-];
+const TICKER_INSTRUMENTS = INSTRUMENTS.map((i) => ({ sym: i.nom, code: i.code }));
 
 function MarketTicker() {
   const items = [...TICKER_INSTRUMENTS, ...TICKER_INSTRUMENTS];
@@ -844,25 +846,26 @@ function MarketTicker() {
         }}
       >
         <div className="ticker-track flex items-center gap-7 w-max">
-          {items.map((it, i) => {
-            const c = it.up ? "rgb(var(--profit))" : "rgb(var(--loss))";
-            return (
-              <div key={`${it.sym}-${i}`} className="flex items-center gap-2.5 shrink-0 whitespace-nowrap">
-                <span className="relative flex w-1.5 h-1.5">
-                  <span className="ticker-flash absolute inset-0 rounded-full" style={{ background: c, animationDelay: `${(i % 7) * 0.4}s` }} />
-                  <span className="relative w-1.5 h-1.5 rounded-full" style={{ background: c }} />
-                </span>
-                <span className="text-[13px] font-semibold tracking-wide" style={{ color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}>{it.sym}</span>
-                <span className="text-[13px] tabular-nums" style={{ color: COPY, fontStyle: "normal" }}>{it.price}</span>
-                <span className="text-[12px] font-bold tabular-nums inline-flex items-center gap-0.5" style={{ color: c, fontStyle: "normal" }}>
-                  <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} aria-hidden style={{ transform: it.up ? "none" : "rotate(180deg)" }}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
-                  </svg>
-                  {it.chg}
-                </span>
-              </div>
-            );
-          })}
+          {items.map((it, i) => (
+            <div key={`${it.code}-${i}`} className="flex items-center gap-2.5 shrink-0 whitespace-nowrap">
+              <span className="relative flex w-1.5 h-1.5">
+                <span
+                  className="ticker-flash absolute inset-0 rounded-full"
+                  style={{ background: "rgb(var(--accent))", animationDelay: `${(i % 7) * 0.4}s` }}
+                />
+                <span className="relative w-1.5 h-1.5 rounded-full" style={{ background: "rgb(var(--accent))" }} />
+              </span>
+              <span
+                className="text-[13px] font-semibold tracking-wide"
+                style={{ color: "rgb(var(--foreground)/0.85)", fontStyle: "normal" }}
+              >
+                {it.sym}
+              </span>
+              <span className="text-[13px] tabular-nums" style={{ color: COPY, fontStyle: "normal" }}>
+                {it.code}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
     </section>
