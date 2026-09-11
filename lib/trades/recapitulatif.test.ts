@@ -74,5 +74,15 @@ describe("l'outil qui donne les totaux au coach", () => {
     expect(src, "lecture non paginée : au-delà de mille trades le total serait faux").toMatch(
       /get_journal_summary[\s\S]{0,900}fetchAllRows/,
     );
+    /**
+     * ⚠️⚠️ ET IL N'ADDITIONNE PAS DES EUROS AVEC DES DOLLARS. La première
+     * version rendait « P&L net : -7 069,13 », c'est-à-dire -6 619,77 € plus
+     * -449,36 $ : un nombre qui ne désigne aucune somme d'argent. Le bandeau de
+     * « Mes Trades » ventile par devise depuis toujours, précisément pour ça.
+     */
+    expect(src, "le coach additionne des devises différentes").toContain("pnl_net_par_devise");
+    expect(src, "la ventilation par devise n'utilise pas le calcul partagé").toContain(
+      "sumByCurrency(",
+    );
   });
 });

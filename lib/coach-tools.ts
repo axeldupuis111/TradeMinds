@@ -19,7 +19,8 @@ import { appendCommitment, parseCoachMemory } from "@/lib/coach-memory";
 import { challengesForWeek, getCommunityChallenge, isoWeekKey } from "@/lib/community-challenges";
 import { lireTousLesTradesDuCompte } from "./trades-du-compte";
 import { fetchAllRows } from "@/lib/supabase-paginate";
-import { recapitulatif, type LigneDuRecapitulatif } from "@/lib/trades/recapitulatif";
+import { pnlNet, recapitulatif, type LigneDuRecapitulatif } from "@/lib/trades/recapitulatif";
+import { buildCurrencyMap, commonCurrency, sumByCurrency } from "@/lib/account-currency";
 import { projeter } from "./projection";
 import { palierSousLeSeuil, paliersDeTaille } from "./projection-levers";
 import { analyserSegments } from "./projection-segments";
@@ -2083,10 +2084,11 @@ export async function executeCoachTool(
        */
       case "get_journal_summary": {
         const compte = typeof input.account_id === "string" ? input.account_id : null;
-        const lignes = await fetchAllRows<LigneDuRecapitulatif>((from, to) => {
+        type LigneAvecCompte = LigneDuRecapitulatif & { challenge_id: string | null };
+        const lignes = await fetchAllRows<LigneAvecCompte>((from, to) => {
           let q = supabase
             .from("trades")
-            .select("pnl, commission, swap")
+            .select("pnl, commission, swap, challenge_id")
             .eq("user_id", userId)
             .eq("status", "closed");
           if (compte) q = q.eq("challenge_id", compte);
@@ -2094,17 +2096,39 @@ export async function executeCoachTool(
         });
         if (lignes === null) return fail("Lecture des trades impossible.");
         const r = recapitulatif(lignes);
+
+        /**
+         * ⚠️⚠️ ON N'ADDITIONNE PAS DES EUROS ET DES DOLLARS. La première version
+         * de cet outil rendait « P&L net : -7 069,13 », qui est la somme de
+         * -6 619,77 € et de -449,36 $ : un nombre qui ne désigne aucune somme
+         * d'argent. C'est précisément ce que le bandeau de « Mes Trades » refuse
+         * de faire, en ventilant par devise. Le coach doit refuser pareil,
+         * sinon il redit d'une autre façon un chiffre que l'écran a écarté.
+         */
+        const { data: comptes } = await supabase
+          .from("prop_challenges")
+          .select("id, currency, synced_currency")
+          .eq("user_id", userId);
+        const devises = buildCurrencyMap(
+          (comptes ?? []) as unknown as Parameters<typeof buildCurrencyMap>[0],
+        );
+        const parDevise = sumByCurrency(
+          lignes.map((t) => ({ pnl: pnlNet(t), challengeId: t.challenge_id })),
+          devises,
+        );
+        const commune = commonCurrency(lignes.map((t) => t.challenge_id), devises);
+
         return {
           result: {
             trades: r.trades,
             gagnants: r.gagnants,
             perdants: r.perdants,
             taux_de_reussite: `${r.tauxDeReussite.toFixed(1).replace(".", ",")} %`,
-            pnl_net: r.pnlNet,
-            meilleur: r.meilleur,
-            pire: r.pire,
-            note:
-              "Totaux complets, tous trades clôturés compris. Ne les recalcule pas à partir de find_trades.",
+            pnl_net_par_devise: Object.fromEntries(parDevise),
+            devise_unique: commune,
+            note: commune
+              ? "Totaux complets, tous trades clôturés compris."
+              : "Totaux complets. Le P&L est ventilé PAR DEVISE : ne les additionne jamais entre elles, la somme ne désignerait aucune somme d'argent.",
           },
         };
       }
