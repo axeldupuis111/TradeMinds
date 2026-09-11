@@ -148,4 +148,29 @@ describe("les écrans distinguent « rien » de « je n'ai pas pu lire »", () =
       expect(texte.length).toBeGreaterThan(30);
     }
   });
+
+  /**
+   * ⚠️⚠️ ET LES DEUX ÉCRANS QUI PASSENT PAR UNE ROUTE, pas par la base. Le
+   * CLASSEMENT ne regardait pas `res.ok` : un 500 rend un corps JSON valide,
+   * `data.entries` vaut `undefined`, et l'écran affichait « Sois le premier
+   * classé sur cette période ! » à quelqu'un dont on n'avait pas pu lire le
+   * classement. Le BILAN MENSUEL, lui, n'avait aucune branche « sinon » : il
+   * gardait son titre, son sous-titre, l'avertissement légal, et RIEN entre les
+   * deux. Pas un mot, pas une erreur.
+   */
+  it("le classement et le bilan disent qu'ils n'ont pas pu lire", () => {
+    const classement = lire("app/dashboard/leaderboard/page.tsx");
+    expect(classement, "res.ok n'est toujours pas regardé").toContain("if (!res.ok) throw new Error(");
+    expect(classement).toContain("setLectureRatee(true);");
+    expect(classement).toContain("<LectureRatee");
+    // La branche d'échec passe AVANT « personne dans le classement ».
+    expect(
+      classement.indexOf("lectureRatee ? ("),
+      "l'état vide est testé avant l'échec de lecture",
+    ).toBeLessThan(classement.indexOf("entries.length === 0 ? ("));
+
+    const bilan = lire("app/dashboard/review/page.tsx");
+    expect(bilan).toContain("setLectureRatee(!res.ok);");
+    expect(bilan).toContain("<LectureRatee");
+  });
 });

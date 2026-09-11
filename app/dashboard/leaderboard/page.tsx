@@ -1,6 +1,7 @@
 "use client";
 
 import { useLanguage, type Traduire } from "@/lib/LanguageContext";
+import LectureRatee from "@/components/LectureRatee";
 import { usePlan } from "@/lib/PlanContext";
 import { BADGE_EMOJI, BADGE_REWARDS, FREE_BADGE_KEY, computeBadges, type BadgeKey, type BadgeState } from "@/lib/badges";
 import { generateBadgeCertificate, hasCertificate, type CertLang } from "@/lib/badge-certificate";
@@ -144,12 +145,22 @@ export default function LeaderboardPage() {
   const [showShare, setShowShare] = useState(false);
   const [inviteCopied, setInviteCopied] = useState(false);
   const celebrated = useRef(false);
+  const [lectureRatee, setLectureRatee] = useState(false);
 
   const load = useCallback(async (d: Period, m: Mode) => {
     setLoading(true);
     try {
       const res = await fetch(`/api/leaderboard?days=${d}&mode=${m}`);
+      /**
+       * ⚠️⚠️ `res.ok` N'ETAIT PAS REGARDE. Un 500 rend un corps JSON tout
+       * a fait valide, `data.entries` vaut alors `undefined`, et l'ecran
+       * affichait « Sois le premier classe sur cette periode ! » a quelqu'un
+       * dont on n'avait simplement pas pu lire le classement. Mesure en
+       * production en faisant repondre 500 a la route.
+       */
+      if (!res.ok) throw new Error(`leaderboard ${res.status}`);
       const data = await res.json();
+      setLectureRatee(false);
       setEntries(data.entries ?? []); setAround(data.around ?? []); setSelf(data.self ?? null); setTotal(data.total ?? 0);
       setFeed(data.feed ?? []);
       // Célébration des badges que le serveur vient tout juste d'octroyer.
@@ -158,8 +169,9 @@ export default function LeaderboardPage() {
         setShowConfetti(true);
       }
     } catch {
-      // Network/parse failure → degrade to an empty board rather than leaving an
-      // unhandled rejection and stale data.
+      // ⚠️ On vide, mais on le DIT : un classement vide est une affirmation
+      // sur la communaute, pas un etat neutre.
+      setLectureRatee(true);
       setEntries([]); setAround([]); setSelf(null); setTotal(0); setFeed([]);
     } finally { setLoading(false); }
   }, []);
@@ -574,6 +586,8 @@ export default function LeaderboardPage() {
 
       {loading ? (
         <div className="skeleton h-40 rounded-xl mt-4" />
+      ) : lectureRatee ? (
+        <LectureRatee onReessayer={() => void load(days, mode)} />
       ) : entries.length === 0 ? (
         <div className="mt-4 rounded-xl border border-dashed border-border p-8 text-center">
           <p className="text-muted text-sm">{t("leaderboard_be_first")}</p>

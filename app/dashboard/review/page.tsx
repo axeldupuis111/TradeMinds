@@ -1,6 +1,7 @@
 "use client";
 
 import { useLanguage, type Traduire } from "@/lib/LanguageContext";
+import LectureRatee from "@/components/LectureRatee";
 import { currencySymbol, money } from "@/lib/account-currency";
 import { useDisplayCurrency } from "@/lib/hooks/useDisplayCurrency";
 import { usePlan } from "@/lib/PlanContext";
@@ -143,6 +144,7 @@ export default function MonthlyReviewPage() {
   const [compareMonth, setCompareMonth] = useState("");
   const [compareData, setCompareData] = useState<{ month: Month; stats: Stats } | null>(null);
   const [compareLoading, setCompareLoading] = useState(false);
+  const [lectureRatee, setLectureRatee] = useState(false);
 
   const loadStats = useCallback(async (mp: string | null) => {
     if (!isPaid) { setLoadingStats(false); return; }
@@ -150,6 +152,13 @@ export default function MonthlyReviewPage() {
     setReview(null); setRawSummary(null); setAiErreur(null);
     try {
       const res = await fetch(`/api/monthly-review${mp ? `?month=${mp}` : ""}`);
+      /**
+       * ⚠️⚠️ UN REFUS NE DONNAIT RIEN DU TOUT. Le `if (res.ok)` n'avait
+       * pas de branche « sinon » : la page gardait son titre, son sous-titre,
+       * l'avertissement legal, et RIEN entre les deux. Mesure en production en
+       * faisant repondre 500 a la route : pas un mot, pas une erreur.
+       */
+      setLectureRatee(!res.ok);
       if (res.ok) {
         const d = await res.json();
         setMonth(d.month); setStats(d.stats); setDeltas(d.deltas); setExtras(d.extras);
@@ -514,6 +523,8 @@ export default function MonthlyReviewPage() {
               <div className="skeleton h-10 w-80 rounded-xl" />
               <div className="skeleton h-48 rounded-xl" />
             </div>
+          ) : lectureRatee ? (
+            <LectureRatee onReessayer={() => void loadStats(monthParam)} />
           ) : stats && !hasContent ? (
             <div className="mt-4 rounded-xl border border-dashed border-border p-10 text-center">
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-surface mb-3">
