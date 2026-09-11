@@ -3966,7 +3966,7 @@ const dict: Record<string, string> = {
   "pubprofile_total_trades": "Operaciones totales",
   "pubprofile_winrate": "Tasa de acierto",
   "pubprofile_sessions": "Balances realizados",
-  "pubprofile_discipline": "Disciplina",
+  "pubprofile_discipline": "Disciplina media",
   "pubprofile_streak": "{n} {n|día de disciplina|días de disciplina}",
   "pubprofile_streak_sub": "Racha actual sin incumplir tus reglas",
   "pubprofile_chart_title": "Puntuación de disciplina a lo largo del tiempo",

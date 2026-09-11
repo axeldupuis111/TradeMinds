@@ -54,6 +54,7 @@ export default function PublicProfileView({
   reviews,
   sessionCount,
   achievements,
+  serie,
 }: {
   username: string;
   /** Membre fondateur : l'un des 100 premiers abonnés, statut à vie. */
@@ -64,6 +65,14 @@ export default function PublicProfileView({
   /** Total réel des bilans, compté en base : `reviews` est tronqué. */
   sessionCount: number;
   achievements: Achievement[];
+  /**
+   * La série de discipline, calculée par `lib/discipline-streak-source.ts`.
+   *
+   * ⚠️ ELLE ARRIVE TOUTE FAITE, et c'est le point : cette vue comptait ses
+   * propres bilans sans violation et annonçait « 0 jour » quand le tableau
+   * de bord en affichait 75, pour le même compte, le même jour.
+   */
+  serie: number;
 }) {
   const { t } = useLanguage();
   const stats = useMemo(() => {
@@ -97,18 +106,7 @@ export default function PublicProfileView({
     const scores = reviews.map((r) => r.discipline_score);
     const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
 
-    // Current streak
-    let streak = 0;
-    const seenDays = new Set<string>();
-    for (const r of reviews) {
-      const day = r.created_at.split("T")[0];
-      if (seenDays.has(day)) continue;
-      seenDays.add(day);
-      if (!r.analysis?.violations || r.analysis.violations.length === 0) streak++;
-      else break;
-    }
-
-    return { count, winrate, avgScore, streak, disciplineSeries };
+    return { count, winrate, avgScore, disciplineSeries };
   }, [trades, reviews]);
 
   return (
@@ -168,9 +166,9 @@ export default function PublicProfileView({
 
         {/* Streak */}
         <div className="bg-card border border-border rounded-xl p-5 mb-8 flex items-center gap-4">
-          <span className="text-4xl">{stats.streak > 0 ? "\u{1F525}" : "\u{2744}\u{FE0F}"}</span>
+          <span className="text-4xl">{serie > 0 ? "\u{1F525}" : "\u{2744}\u{FE0F}"}</span>
           <div>
-            <p className="text-xl font-bold text-foreground">{t("pubprofile_streak", { n: stats.streak })}</p>
+            <p className="text-xl font-bold text-foreground">{t("pubprofile_streak", { n: serie })}</p>
             <p className="text-xs text-muted">{t("pubprofile_streak_sub")}</p>
           </div>
         </div>

@@ -132,7 +132,7 @@ export default async function Image({ params }: { params: { username: string } }
     { label: "Trades", value: String(count), color: "white" },
     { label: "Winrate", value: `${winrate.toFixed(0)}%`, color: "white" },
     { label: "Sessions", value: String(sessions), color: "white" },
-    { label: "Discipline", value: `${avgScore.toFixed(0)}/100`, color: disciplineColor(avgScore) },
+    { label: "Avg. discipline", value: `${avgScore.toFixed(0)}/100`, color: disciplineColor(avgScore) },
   ];
 
   return new ImageResponse(
