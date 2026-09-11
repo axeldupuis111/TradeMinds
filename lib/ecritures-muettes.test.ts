@@ -108,6 +108,28 @@ describe("les écritures d'un geste du trader ne se taisent pas", () => {
     return null;
   }
 
+  /**
+   * L'INSTRUCTION ENTIÈRE : LA CHAÎNE D'APPELS, PAS UNE FENÊTRE DE N LIGNES.
+   *
+   * ⚠️⚠️ UNE FENÊTRE N'EST PAS UNE FRONTIÈRE, et c'est la QUATRIÈME fois que ce
+   * dépôt le paie. Les deux balayages ci-dessous s'arrêtaient au point-virgule,
+   * faute de quoi ils lisaient douze lignes : dans un fichier SANS
+   * point-virgule (le webhook Stripe), une LECTURE se voyait attribuer le
+   * `.insert(` de l'instruction suivante et passait pour une écriture muette.
+   *
+   * Une chaîne `supabase.from(…).select(…).eq(…)` se reconnaît toute seule :
+   * elle continue tant que la ligne suivante commence par un point.
+   */
+  function instruction(lignes: string[], i: number): string {
+    let bloc = lignes[i].trim() + " ";
+    for (let j = i + 1; j < lignes.length; j++) {
+      const suite = lignes[j].trim();
+      if (!suite.startsWith(".")) break;
+      bloc += suite + " ";
+    }
+    return bloc;
+  }
+
   it("balaie bien des fichiers, sinon ce test ne prouve rien", () => {
     const tous = PORTEE.flatMap((d) => fichiers(join(process.cwd(), d)));
     expect(tous.length).toBeGreaterThan(20);
@@ -123,11 +145,7 @@ describe("les écritures d'un geste du trader ne se taisent pas", () => {
           // Une instruction qui COMMENCE par `await …from(` : donc dont le
           // résultat n'est affecté à rien.
           if (!/^\s*await\s+\w+\s*$|^\s*await\s+\w+\.from\(/.test(ligne)) return;
-          let bloc = "";
-          for (let j = i; j < Math.min(i + 12, lignes.length); j++) {
-            bloc += lignes[j].trim() + " ";
-            if (/;\s*$/.test(lignes[j].trim())) break;
-          }
+          const bloc = instruction(lignes, i);
           if (!/\.(insert|update|upsert|delete)\(/.test(bloc)) return;
           // `.select()` rend les lignes touchées : l'appelant les lit forcément.
           if (/\.select\(/.test(bloc)) return;
@@ -279,11 +297,7 @@ describe("les écritures d'un geste du trader ne se taisent pas", () => {
         lignes.forEach((ligne, i) => {
           const m = /^\s*const\s*\{([^}]*)\}\s*=\s*await\s/.exec(ligne);
           if (!m) return;
-          let bloc = "";
-          for (let j = i; j < Math.min(i + 14, lignes.length); j++) {
-            bloc += lignes[j].trim() + " ";
-            if (/;\s*$/.test(lignes[j].trim())) break;
-          }
+          const bloc = instruction(lignes, i);
           if (!/\.(insert|update|upsert|delete)\(/.test(bloc)) return;
           vues++;
           if (/(?:^|[^A-Za-z0-9_$])error/.test(m[1])) return;

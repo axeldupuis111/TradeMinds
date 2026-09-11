@@ -25,15 +25,13 @@ import { describe, expect, it } from "vitest";
  * message de réussite passe par-dessus.
  */
 describe("la réussite n'est pas annoncée par-dessus un échec", () => {
-  const PORTEE = [
-    "app/dashboard",
-    "components/settings",
-    "components/session",
-    "components/trades",
-    "components/profile",
-    "components/community",
-    "components/dashboard",
-  ];
+  /**
+   * ⚠️ TOUT `app` ET TOUT `components`, et pas une liste de dossiers. La règle
+   * ne parle pas d'un écran en particulier, elle parle d'une façon d'écrire :
+   * la restreindre à sept dossiers, c'est refaire exactement le défaut qu'elle
+   * décrit, une règle posée puis appliquée à une partie de ce qu'elle vise.
+   */
+  const PORTEE = ["app", "components"];
 
   function fichiers(d: string, out: string[] = []): string[] {
     for (const f of readdirSync(d)) {
@@ -83,6 +81,15 @@ describe("la réussite n'est pas annoncée par-dessus un échec", () => {
         const parlantes = new Set<string>();
         for (const m of Array.from(src.matchAll(/(?:async\s+function|function)\s+(\w+)\s*\(/g))) {
           const i = src.indexOf("{", m.index! + m[0].length);
+          if (i < 0) continue;
+          if (DIT_ECHEC.test(corps(src, i))) parlantes.add(m[1]);
+        }
+        // ⚠️ ET LES FONCTIONS FLÉCHÉES : `const enregistrer = async () => {`.
+        // Ne connaître qu'une syntaxe protège la moitié du produit.
+        for (const m of Array.from(
+          src.matchAll(/(?:const|let)\s+(\w+)\s*=\s*(?:async\s*)?\([^)]*\)\s*(?::[^=]*)?=>\s*\{/g),
+        )) {
+          const i = src.indexOf("{", m.index! + m[0].length - 1);
           if (i < 0) continue;
           if (DIT_ECHEC.test(corps(src, i))) parlantes.add(m[1]);
         }

@@ -152,10 +152,16 @@ export async function GET(req: NextRequest) {
       if (toInsert.length > 0) {
         // ignoreDuplicates : une requête concurrente peut avoir octroyé le même
         // badge entre le select et l'insert — la contrainte unique tranche.
-        const { data: ins } = await admin
+        // ⚠️ `error` SE LIT, MÊME ICI. Sans lui, un octroi refusé donnait
+        // exactement le même corps de réponse qu'un octroi réussi : le trader
+        // a gagné son badge, l'écran ne le montre pas, et rien nulle part ne
+        // dit pourquoi. Le prochain chargement réessaie, donc on ne casse pas
+        // la réponse pour autant : on la rend honnête dans les journaux.
+        const { data: ins, error: erreurOctroi } = await admin
           .from("badge_awards")
           .upsert(toInsert, { onConflict: "user_id,badge_key", ignoreDuplicates: true })
           .select("badge_key, awarded_at, meta");
+        if (erreurOctroi) console.error("[classement] octroi de badge refusé :", erreurOctroi.message);
         inserted = (ins ?? []) as AwardRow[];
       }
       const awards: Record<string, { awardedAt: string; meta: Record<string, unknown> | null }> = {};
