@@ -243,10 +243,60 @@ describe("les écritures d'un geste du trader ne se taisent pas", () => {
       ["components/settings/PushNotificationsCard.tsx", /setPrefs\(\(p\) => \(\{ \.\.\.p, \[key\]: !value \}\)\)/],
       ["components/session/EmotionalCheck.tsx", /setSelected\(null\)/],
       ["components/trades/TradeList.tsx", /trades_delete_one_failed/],
+      /** ⚠️ La séance : démarrage muet, et clôture qui vidait l'écran sans vérifier. */
+      ["app/dashboard/session/page.tsx", /session_start_failed/],
+      ["app/dashboard/session/page.tsx", /session_end_failed/],
     ];
     for (const [chemin, motif] of attendus) {
       const source = readFileSync(join(process.cwd(), chemin), "utf8");
       expect(motif.test(source), `${chemin} ne reprend plus son état`).toBe(true);
     }
+  });
+
+  /**
+   * ── LA TROISIÈME FAÇON DE SE TAIRE ──────────────────────────────────────────
+   *
+   * ⚠️⚠️ NE PRENDRE QUE `data` EST AUSSI MUET QUE NE RIEN PRENDRE. Le premier
+   * balayage cherche une instruction qui COMMENCE par `await`, donc dont le
+   * résultat n'est affecté à rien. Il laissait passer
+   * `const { data: inserted } = await supabase.from("sessions").insert(…)` :
+   * l'`error` n'y est pas ignorée, elle n'est même pas nommée.
+   *
+   * ⚠️ TROUVÉ EN PRODUCTION, en faisant échouer depuis le navigateur toute
+   * écriture REST : le trader coche sa checklist, choisit son état émotionnel,
+   * clique « Démarrer la session », et RIEN ne se passe. Pas de séance, pas de
+   * message, pas même une erreur en console. Les trois autres gestes éprouvés le
+   * même jour (un réglage, la création d'un trade, sa suppression) disaient tous
+   * la vérité : c'est la moitié manquante de la même règle.
+   */
+  it("une écriture dont on ne prend que `data` est muette aussi", () => {
+    const fautes: string[] = [];
+    let vues = 0;
+    for (const d of PORTEE) {
+      for (const chemin of fichiers(join(process.cwd(), d))) {
+        const nom = chemin.split(/[\/]/).slice(-2).join("/");
+        const lignes = readFileSync(chemin, "utf8").split(SAUT);
+        lignes.forEach((ligne, i) => {
+          const m = /^\s*const\s*\{([^}]*)\}\s*=\s*await\s/.exec(ligne);
+          if (!m) return;
+          let bloc = "";
+          for (let j = i; j < Math.min(i + 14, lignes.length); j++) {
+            bloc += lignes[j].trim() + " ";
+            if (/;\s*$/.test(lignes[j].trim())) break;
+          }
+          if (!/\.(insert|update|upsert|delete)\(/.test(bloc)) return;
+          vues++;
+          if (/(?:^|[^A-Za-z0-9_$])error/.test(m[1])) return;
+          const amont = lignes.slice(Math.max(0, i - 8), i).join(" ");
+          if (/VOLONTAIREMENT IGNORÉ/.test(amont)) return;
+          fautes.push(`${nom}:${i + 1} ${bloc.slice(0, 80).trim()}`);
+        });
+      }
+    }
+    expect(vues, "aucune écriture destructurée : le motif ne cherche rien").toBeGreaterThan(0);
+    expect(
+      fautes,
+      "écritures dont l'`error` n'est même pas nommée : " + fautes.join(" | "),
+    ).toEqual([]);
   });
 });

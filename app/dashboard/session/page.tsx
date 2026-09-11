@@ -168,6 +168,8 @@ export default function SessionPage() {
   const [sessionHistory, setSessionHistory] = useState<SessionHistory[]>([]);
   const [saving, setSaving] = useState(false);
   const [ending, setEnding] = useState(false);
+  /** Ce que l'ecran doit dire quand une ecriture de seance echoue. */
+  const [erreurDeSeance, setErreurDeSeance] = useState<string | null>(null);
   // Débrief IA de fin de session
   const [debriefOpen, setDebriefOpen] = useState(false);
   const [debriefLoading, setDebriefLoading] = useState(false);
@@ -371,7 +373,12 @@ export default function SessionPage() {
     // la mesure de respect des regles. Perdue en silence, elle se reecrit au
     // rechargement suivant sans que personne ne comprenne pourquoi.
     const { error } = await supabase.from("strategies").update({ pretrade_checklist: list }).eq("id", strategy.id);
-    if (error) console.error("[seance] checklist non enregistree :", error.message);
+    if (error) {
+      console.error("[seance] checklist non enregistree :", error.message);
+      setErreurDeSeance(t("session_checklist_failed"));
+      return;
+    }
+    setErreurDeSeance(null);
   }
 
   async function handleStartClick() {
@@ -386,10 +393,20 @@ export default function SessionPage() {
   async function startSession() {
     if (!selectedEmotion) return;
     setSaving(true);
+    setErreurDeSeance(null);
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setSaving(false); return; }
+    if (!user) {
+      setErreurDeSeance(t("session_start_failed"));
+      setSaving(false);
+      return;
+    }
 
-    const { data: inserted } = await supabase
+    // ⚠️⚠️ NE PRENDRE QUE `data` EST AUSSI MUET QUE NE RIEN PRENDRE. Ici
+    // l'insertion ratee donnait `inserted = null` et la fonction rendait la
+    // main sans un mot : le trader coche sa checklist, choisit son etat,
+    // clique « Demarrer la session », et il ne se passe RIEN. Pas de seance,
+    // pas de message, pas meme une erreur en console.
+    const { data: inserted, error } = await supabase
       .from("sessions")
       .insert({
         user_id: user.id,
@@ -400,7 +417,13 @@ export default function SessionPage() {
       .select("id, created_at, emotion_before, checklist_completed")
       .single();
 
-    if (inserted) setActiveSession(inserted);
+    if (error || !inserted) {
+      console.error("[seance] demarrage non enregistre :", error?.message);
+      setErreurDeSeance(t("session_start_failed"));
+      setSaving(false);
+      return;
+    }
+    setActiveSession(inserted);
     setSaving(false);
   }
 
@@ -422,15 +445,22 @@ export default function SessionPage() {
     if (!activeSession) return;
     const endedSessionId = activeSession.id;
     setEnding(true);
-    localStorage.removeItem(`session_paused_${endedSessionId}`);
-    // ⚠️ L'ecran se vide juste apres. Si la cloture n'est pas ecrite, la seance
-    // reste ouverte en base et reapparait au rechargement, alors que le debrief
-    // vient d'etre lance dessus.
+    setErreurDeSeance(null);
+    // ⚠️⚠️ L'ecran se vidait QUOI QU'IL ARRIVE. Si la cloture n'est pas ecrite,
+    // la seance reste ouverte en base et reapparait au rechargement, alors que
+    // le debrief vient d'etre lance dessus : l'ecran disait « termine » et la
+    // base disait « en cours ». Une erreur en console ne prevenait personne.
     const { error: clotureError } = await supabase
       .from("sessions")
       .update({ active: false, ended_at: new Date().toISOString() })
       .eq("id", endedSessionId);
-    if (clotureError) console.error("[seance] cloture non enregistree :", clotureError.message);
+    if (clotureError) {
+      console.error("[seance] cloture non enregistree :", clotureError.message);
+      setErreurDeSeance(t("session_end_failed"));
+      setEnding(false);
+      return;
+    }
+    localStorage.removeItem(`session_paused_${endedSessionId}`);
     setActiveSession(null);
     setSelectedEmotion(null);
     setCheckedItems(new Set());
@@ -584,6 +614,11 @@ export default function SessionPage() {
               </button>
             </div>
           </div>
+          {erreurDeSeance && (
+            <p role="alert" aria-live="assertive" className="mt-3 text-sm text-loss">
+              {erreurDeSeance}
+            </p>
+          )}
         </div>
 
         {/* Paused banner */}
@@ -975,6 +1010,11 @@ export default function SessionPage() {
                 <p className="text-xs text-muted">{t("session_select_emotion_first")}</p>
               )}
             </div>
+            {erreurDeSeance && (
+              <p role="alert" aria-live="assertive" className="text-sm text-loss">
+                {erreurDeSeance}
+              </p>
+            )}
           </div>
         </div>
 
