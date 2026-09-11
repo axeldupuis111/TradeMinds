@@ -9,6 +9,7 @@ import { exitDemoModeFromClient } from "@/lib/demo-data";
 import { splitAlreadyImported, type DedupeTrade } from "@/lib/trades/dedupe-import";
 import { track } from "@/lib/track";
 import { createClient } from "@/lib/supabase/client";
+import { messageDErreurSupabase } from "@/lib/erreurs-de-base";
 import { useCallback, useEffect, useState } from "react";
 import { nombre } from "@/lib/nombres";
 import { useFenetreModale } from "@/lib/hooks/useFenetreModale";
@@ -396,7 +397,11 @@ export default function CsvImport({ strategyId, onImported }: Props) {
     setImporting(false);
 
     if (error) {
-      setMessage({ type: "error", text: error.message });
+      // ⚠️ Le message de Postgres part en console, pas a l'ecran : un
+      // « null value in column "pnl" violates not-null constraint » ne dit
+      // rien au trader, et il est en anglais.
+      console.error("[import] lignes refusees :", error.message);
+      setMessage({ type: "error", text: messageDErreurSupabase(error, t) });
     } else {
       const importedTrades = preview.map((tr) => ({
         open_time: tr.open_time,

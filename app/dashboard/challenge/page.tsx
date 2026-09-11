@@ -17,6 +17,7 @@ import { useLanguage, type Traduire } from "@/lib/LanguageContext";
 import { usePlan } from "@/lib/PlanContext";
 import { setDemoWatermark } from "@/lib/pdf/kit";
 import { createClient } from "@/lib/supabase/client";
+import { messageDErreurSupabase, messageDeBaseLisible } from "@/lib/erreurs-de-base";
 import { enDate, enJourEtMois } from "@/lib/dates";
 import { lireTousLesTradesDuCompte, netDuTrade } from "@/lib/trades-du-compte";
 import { pourcent } from "@/lib/nombres";
@@ -580,7 +581,8 @@ function AccountCard({
   isSelected: boolean;
   onSelect: () => void;
   onStatusChange: (id: string, status: "passed" | "failed") => void;
-  onEdit: (id: string, data: Partial<Challenge>) => void;
+  /** Renvoie vrai si la modification est bien enregistree. */
+  onEdit: (id: string, data: Partial<Challenge>) => Promise<boolean>;
   /** Renvoie null si le compte est parti, sinon le message a afficher. */
   onDelete: (id: string) => Promise<string | null>;
   onExportPdf: () => void;
@@ -630,7 +632,16 @@ function AccountCard({
       {showEdit && (
         <EditAccountModal
           account={ac}
-          onConfirm={(data) => { onEdit(ac.id, data); setShowEdit(false); }}
+          /**
+           * ⚠️⚠️ LA MODALE NE SE FERMAIT PAS APRES L'ECRITURE, ELLE SE
+           * fermait PENDANT. `onEdit` est asynchrone et n'etait pas attendue :
+           * l'ecriture refusee, la fenetre avait deja disparu avec la saisie
+           * du trader dedans, et il ne restait qu'un message d'erreur sur une
+           * page ou plus rien ne pouvait etre corrige.
+           */
+          onConfirm={async (data) => {
+            if (await onEdit(ac.id, data)) setShowEdit(false);
+          }}
           onCancel={() => setShowEdit(false)}
           t={t}
         />
@@ -1080,7 +1091,7 @@ export default function ChallengePage() {
 
     setSaving(false);
     if (error) {
-      setMessage({ type: "error", text: error.message });
+      setMessage({ type: "error", text: messageDErreurSupabase(error, t) });
     } else {
       setMessage({ type: "success", text: t("challenge_created") });
       setAccountNumber("");
@@ -1096,21 +1107,23 @@ export default function ChallengePage() {
     const { error } = await supabase.from("prop_challenges").update({ status }).eq("id", challengeId);
 
     if (error) {
-      setMessage({ type: "error", text: error.message });
+      setMessage({ type: "error", text: messageDErreurSupabase(error, t) });
     } else {
       setMessage({ type: "success", text: status === "passed" ? t("challenge_marked_passed") : t("challenge_marked_failed") });
       loadData();
     }
   }
 
-  async function handleEdit(challengeId: string, data: Partial<Challenge>) {
+  async function handleEdit(challengeId: string, data: Partial<Challenge>): Promise<boolean> {
     const { error } = await supabase.from("prop_challenges").update(data).eq("id", challengeId);
     if (error) {
-      setMessage({ type: "error", text: error.message });
-    } else {
-      setMessage({ type: "success", text: t("challenge_edit_success") });
-      loadData();
+      console.error("[compte] modification refusee :", error.message);
+      setMessage({ type: "error", text: messageDErreurSupabase(error, t) });
+      return false;
     }
+    setMessage({ type: "success", text: t("challenge_edit_success") });
+    loadData();
+    return true;
   }
 
   /**
@@ -1119,9 +1132,12 @@ export default function ChallengePage() {
    * le message brut de Postgres, en anglais et incomprehensible.
    */
   function deleteErrorMessage(message: string): string {
+    // ⚠️ LE REPLI N'EST PLUS LE MESSAGE BRUT. Le cas nommé ci-dessous dit ce
+    // qu'il faut faire ; tout le reste passe par le traducteur commun, sinon
+    // cette fonction traduisait un cas sur dix et laissait filer les autres.
     return /trades_challenge_id_fkey|foreign key constraint/i.test(message)
       ? t("challenge_delete_has_trades")
-      : message;
+      : messageDeBaseLisible(message, t);
   }
 
   /**

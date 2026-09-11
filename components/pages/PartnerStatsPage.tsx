@@ -35,13 +35,23 @@ export default function PartnerStatsPage({ token }: { token: string }) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    /**
+     * ⚠️ LE `.catch` ATTRAPE DEUX CHOSES TRÈS DIFFÉRENTES : le refus de la
+     * route, rédigé en français pour cette page, et la panne de `fetch`, dont
+     * le message est celui du navigateur (« Failed to fetch », « Load
+     * failed »). Le second ne se montre pas : il était affiché tel quel, en
+     * anglais, à un collaborateur francophone qui n'y peut rien.
+     */
     fetch(`/api/partner/stats/${token}`)
       .then(async (res) => {
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error ?? "Lien invalide.");
+        if (!res.ok) {
+          setError(typeof data.error === "string" ? data.error : "Lien invalide.");
+          return;
+        }
         setStats(data as Stats);
       })
-      .catch((e: Error) => setError(e.message));
+      .catch(() => setError("Connexion impossible. Vérifie ta connexion, puis recharge la page."));
   }, [token]);
 
   const link = stats ? lienPartageable(`/?ref=${stats.code}`) : "";
