@@ -66,9 +66,20 @@ describe("les boutons icône ont un nom", () => {
     return -1;
   }
 
-  /** Un `<svg>…</svg>`, ou un composant d'icône auto-fermant (`<X … />`). */
+  /**
+   * Un `<svg>…</svg>`, un composant d'icône auto-fermant (`<X … />`), ou une
+   * forme purement décorative.
+   *
+   * ⚠️⚠️ LA TROISIÈME A ÉTÉ AJOUTÉE APRÈS COUP : la bascule mensuel/annuel de
+   * la page Abonnement ne contient qu'un `<div>` rond, le bouton de
+   * l'interrupteur. Ni texte, ni icône : le garde ne la voyait pas, et une
+   * lecture d'écran annonçait « bouton », sans dire qu'on choisit une
+   * périodicité ni laquelle est choisie. Un élément vide est aussi muet qu'une
+   * icône, et pour la même raison.
+   */
   const SVG = /<svg\b[\s\S]*?<\/svg>/g;
   const ICONE = /<[A-Z][A-Za-z0-9]*\b[^<>]*\/>/g;
+  const DECOR = /<(div|span)\b[^<>]*\/>|<(div|span)\b[^<>]*>\s*<\/\2>/g;
 
   function boutonsSansNom(source: string): number[] {
     const lignes: number[] = [];
@@ -81,7 +92,7 @@ describe("les boutons icône ont un nom", () => {
       const interne = source.slice(ouvrante + 1, fin);
       if (interne.length > 1200) continue;
       // Ce qui reste une fois les icônes retirées : vide = bouton icône seule.
-      if (interne.replace(SVG, " ").replace(ICONE, " ").trim()) continue;
+      if (interne.replace(SVG, " ").replace(ICONE, " ").replace(DECOR, " ").trim()) continue;
       if (/aria-label|aria-labelledby|title=/.test(source.slice(debut, ouvrante + 1))) continue;
       if (interne.includes("sr-only")) continue;
       lignes.push(source.slice(0, debut).split(SAUT).length);
@@ -96,6 +107,8 @@ describe("les boutons icône ont un nom", () => {
     expect(boutonsSansNom(`<button onClick={() => x}>{t("k")}</button>`)).toHaveLength(0);
     expect(boutonsSansNom(`<button aria-label="Fermer"><X /></button>`)).toHaveLength(0);
     expect(boutonsSansNom(`<button><X /><span className="sr-only">Fermer</span></button>`)).toHaveLength(0);
+    // Un interrupteur qui ne contient qu'un rond est aussi muet qu'une icone.
+    expect(boutonsSansNom(`<button onClick={f}><div className="absolute" /></button>`)).toHaveLength(1);
   });
 
   it("aucun bouton purement icône n'est laissé sans nom", () => {

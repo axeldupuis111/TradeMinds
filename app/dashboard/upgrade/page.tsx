@@ -362,8 +362,15 @@ export default function UpgradePage() {
         <span className={`text-sm font-medium transition-colors ${!annual ? "text-foreground" : "text-muted"}`}>
           {t("plan_monthly")}
         </span>
+        {/* ⚠️ UN INTERRUPTEUR QUI N'EN DISAIT RIEN : ni son rôle, ni son
+            état, ni son nom. Une lecture d'écran annonçait « bouton », sans
+            moyen de savoir qu'on choisit entre mensuel et annuel, ni ce qui est
+            sélectionné. Les deux mots l'encadrent, sans rien qui les relie. */}
         <button
           onClick={() => setAnnual(!annual)}
+          role="switch"
+          aria-checked={annual}
+          aria-label={t("plan_annual")}
           className="relative w-14 h-7 rounded-full bg-surface border border-border transition-colors"
         >
           <div
