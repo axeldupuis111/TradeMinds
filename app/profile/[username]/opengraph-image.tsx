@@ -2,6 +2,7 @@ import { ImageResponse } from "next/og";
 import { createClient } from "@supabase/supabase-js";
 import { isUsernameDisplayable } from "@/lib/username-moderation";
 import { fetchAllRows } from "@/lib/supabase-paginate";
+import { chargerLaSerieDeDiscipline } from "@/lib/discipline-streak-source";
 
 /**
  * Dynamic Open Graph card for a public trader profile.
@@ -68,7 +69,7 @@ export default async function Image({ params }: { params: { username: string } }
       username = profile.username as string;
       // Trades démo exclus de l'image publique ; fallback sans filtre tant
       // que la colonne is_demo n'existe pas en prod.
-      const [trades, { data: reviews }, { count: sessionCount }] = await Promise.all([
+      const [trades, { data: reviews }, { count: sessionCount }, serie] = await Promise.all([
         // Lecture paginée : cette image porte un nombre de trades et un
         // winrate, et c'est ce que les réseaux sociaux affichent en aperçu. Non
         // bornée, la lecture s'arrête à 1 000 trades en silence (voir
@@ -104,6 +105,15 @@ export default async function Image({ params }: { params: { username: string } }
           .from("session_reviews")
           .select("id", { count: "exact", head: true })
           .eq("user_id", profile.id),
+        /**
+         * ⚠️⚠️ LA SÉRIE VIENT DU CALCUL PARTAGÉ. Cette image en tenait un
+         * QUATRIÈME, copié de la vue du profil : elle aurait donc annoncé
+         * « pas de série » sur la carte partagée pendant que la page,
+         * elle, affiche 75 jours. Une carte sociale est la première chose
+         * qu'un lecteur voit du produit, et la seule qu'il ne peut pas
+         * recouper.
+         */
+        chargerLaSerieDeDiscipline(supabase, profile.id),
       ]);
 
       const nets = (trades ?? []).map((t) => t.pnl + (t.commission || 0) + (t.swap || 0));
@@ -114,15 +124,7 @@ export default async function Image({ params }: { params: { username: string } }
       const scores = (reviews ?? []).map((r) => r.discipline_score as number);
       avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
 
-      const seen = new Set<string>();
-      for (const r of reviews ?? []) {
-        const day = (r.created_at as string).split("T")[0];
-        if (seen.has(day)) continue;
-        seen.add(day);
-        const viols = (r.analysis as { violations?: unknown[] } | null)?.violations;
-        if (!viols || viols.length === 0) streak++;
-        else break;
-      }
+      streak = serie.current;
     }
   } catch {
     // fall through to the generic card
