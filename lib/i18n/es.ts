@@ -2701,6 +2701,7 @@ const dict: Record<string, string> = {
   "db_erreur_donnee": "Uno de los valores introducidos no se acepta. Revisa los campos y reinténtalo.",
   "db_erreur_reseau": "Conexión perdida. No se ha guardado nada: comprueba tu conexión y reinténtalo.",
   "settings_save_error": "Error al guardar",
+  "settings_read_failed": "No se han podido leer tus ajustes: los campos de arriba no son los tuyos. Guardar está bloqueado hasta que la lectura funcione, para no sobrescribir nada.",
   "settings_profile_shared": "Tu perfil público mostrará: winrate, número de trades, profit factor y equity curve. Los importes en euros nunca se muestran.",
   "settings_profile_preview": "Ver mi perfil →",
   "ict_section_title": "Analytics",

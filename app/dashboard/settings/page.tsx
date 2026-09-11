@@ -67,6 +67,8 @@ export default function SettingsPage() {
   const [timezone, setTimezone] = useState("UTC");
   const [originalTimezone, setOriginalTimezone] = useState("UTC");
   const [loading, setLoading] = useState(true);
+  /** Vrai quand le profil n'a pas pu etre lu : on n'ecrit rien dans ce cas. */
+  const [lectureRatee, setLectureRatee] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -149,11 +151,35 @@ export default function SettingsPage() {
       setAuthProvider(provider);
     }
 
-    const { data } = await supabase
+    /**
+     * ⚠️⚠️ CETTE LECTURE DECIDE DE CE QUI SERA ECRIT, ET SON ECHEC
+     * EFFACAIT L'IDENTITE DU TRADER.
+     *
+     * Mesure en production en faisant repondre 500 a la lecture de `profiles` :
+     * le formulaire s'affiche avec un pseudo VIDE et le profil public
+     * DESACTIVE, sans un mot. Le trader croit voir ses reglages, change son
+     * fuseau horaire, enregistre, et le corps envoye est
+     * `{"username":null,"public_profile":false,...}` : son pseudo est efface,
+     * l'adresse publique qu'il a partagee ne repond plus, et il disparait du
+     * classement, qui exige un pseudo.
+     *
+     * ⚠️ `.single()` NE PERMETTAIT PAS DE FAIRE LA DIFFERENCE entre « aucune
+     * ligne » (compte tout neuf, situation normale) et « je n'ai pas pu lire » :
+     * il rend une erreur dans les deux cas. `.maybeSingle()` separe les deux.
+     */
+    const { data, error: erreurProfil } = await supabase
       .from("profiles")
       .select("username, public_profile, timezone, email_notif_session")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
+
+    if (erreurProfil) {
+      console.error("[reglages] profil illisible :", erreurProfil.message);
+      setLectureRatee(true);
+      setLoading(false);
+      return;
+    }
+    setLectureRatee(false);
 
     if (data) {
       setUsername(data.username || "");
@@ -175,6 +201,9 @@ export default function SettingsPage() {
 
   async function save() {
     if (!hasChanges) return;
+    // ⚠️ Ceinture ET bretelles : le bouton est deja desactive, mais cette
+    // fonction est la seule barriere entre un formulaire faux et la base.
+    if (lectureRatee) return;
     setSaving(true);
 
     const { data: { user } } = await supabase.auth.getUser();
@@ -510,13 +539,32 @@ export default function SettingsPage() {
         )}
       </section>
 
+      {/* ⚠️⚠️ ON N'ENREGISTRE PAS UN FORMULAIRE QU'ON N'A PAS PU REMPLIR.
+          Lecture ratee, les champs affichent des valeurs par defaut : les
+          enregistrer effacerait le pseudo et le profil public du trader. */}
+      {lectureRatee && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="flex flex-wrap items-center gap-3 rounded-xl border border-loss/40 bg-loss/[0.06] px-4 py-3.5 text-sm"
+        >
+          <p className="flex-1 text-foreground">{t("settings_read_failed")}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-3 py-1.5 bg-surface border border-border text-foreground rounded-lg text-sm hover:bg-border transition-colors"
+          >
+            {t("error_retry")}
+          </button>
+        </div>
+      )}
+
       {/* Save button */}
       <div className="flex justify-end">
         <button
           onClick={save}
-          disabled={!hasChanges || saving}
+          disabled={!hasChanges || saving || lectureRatee}
           className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-colors ${
-            hasChanges && !saving
+            hasChanges && !saving && !lectureRatee
               ? "bg-accent text-on-accent hover:bg-accent-hover"
               : "bg-surface border border-border text-muted opacity-50 cursor-not-allowed"
           }`}

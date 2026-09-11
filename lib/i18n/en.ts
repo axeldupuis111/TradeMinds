@@ -2701,6 +2701,7 @@ const dict: Record<string, string> = {
   "db_erreur_donnee": "One of the values entered was rejected. Check the fields, then try again.",
   "db_erreur_reseau": "Connection lost. Nothing was saved: check your connection and try again.",
   "settings_save_error": "Error saving settings",
+  "settings_read_failed": "Your settings could not be read: the fields above are not yours. Saving is blocked until the read succeeds, so that nothing gets overwritten.",
   "settings_profile_shared": "Your public profile will show: winrate, number of trades, profit factor, and equity curve. Euro amounts are never displayed.",
   "settings_profile_preview": "View my profile →",
   "ict_section_title": "Analytics",

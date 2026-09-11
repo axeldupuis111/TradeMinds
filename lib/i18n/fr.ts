@@ -2701,6 +2701,7 @@ const dict: Record<string, string> = {
   "db_erreur_donnee": "Une valeur saisie n'est pas acceptée. Vérifie les champs, puis réessaie.",
   "db_erreur_reseau": "Connexion perdue. Rien n'a été enregistré : vérifie ta connexion et réessaie.",
   "settings_save_error": "Erreur lors de la sauvegarde",
+  "settings_read_failed": "Tes réglages n'ont pas pu être lus : les champs ci-dessus ne sont pas les tiens. L'enregistrement est bloqué tant que la lecture n'a pas réussi, pour ne rien écraser.",
   "settings_profile_shared": "Ton profil public affichera : winrate, nombre de trades, profit factor, et equity curve. Les montants en euros ne sont jamais affichés.",
   "settings_profile_preview": "Voir mon profil →",
   "ict_section_title": "Analytics",

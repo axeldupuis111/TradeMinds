@@ -2701,6 +2701,7 @@ const dict: Record<string, string> = {
   "db_erreur_donnee": "Einer der eingegebenen Werte wurde abgelehnt. Prüfe die Felder und versuche es erneut.",
   "db_erreur_reseau": "Verbindung verloren. Es wurde nichts gespeichert: prüfe deine Verbindung und versuche es erneut.",
   "settings_save_error": "Fehler beim Speichern",
+  "settings_read_failed": "Deine Einstellungen konnten nicht gelesen werden: die Felder oben sind nicht deine. Speichern ist gesperrt, bis das Lesen klappt, damit nichts überschrieben wird.",
   "settings_profile_shared": "Dein öffentliches Profil zeigt: Winrate, Anzahl der Trades, Profit Factor und Equity Curve. Euro-Beträge werden nie angezeigt.",
   "settings_profile_preview": "Mein Profil ansehen →",
   "ict_section_title": "Analytics",
