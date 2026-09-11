@@ -217,6 +217,45 @@ describe("les accords du produit", () => {
     ).toEqual([]);
   });
 
+  /**
+   * ⚠️⚠️ ET LA MOITIÉ OUBLIÉE DE CETTE RÈGLE : LE DICTIONNAIRE.
+   *
+   * Le test précédent interdit aux COMPOSANTS de choisir leur forme avec deux
+   * clés sœurs. Quand on les a remplacées par `{n|singulier|pluriel}`, les
+   * sœurs ont bien disparu du code, et sont restées dans les quatre
+   * dictionnaires : douze clés `…_one` que plus personne ne nommait, traduites
+   * et maintenues pour rien, et surtout prêtes à être reprises par le premier
+   * qui les trouverait en cherchant « comment ce produit fait ses pluriels ».
+   *
+   * ⚠️ LES SŒURS ENCORE VIVANTES SONT CELLES QUE LE CODE NOMME, et elles sont
+   * déjà justifiées une par une dans les exceptions ci-dessus : au singulier,
+   * la phrase n'est pas la même phrase.
+   */
+  it("aucune clé sœur ne survit à la disparition de son appelant", () => {
+    function fichiers(d: string, out: string[] = []): string[] {
+      for (const f of readdirSync(d)) {
+        if (f === "node_modules" || f === ".next") continue;
+        const chemin = join(d, f);
+        if (statSync(chemin).isDirectory()) fichiers(chemin, out);
+        else if (/\.tsx?$/.test(chemin)) out.push(chemin);
+      }
+      return out;
+    }
+    let code = "";
+    for (const chemin of [...fichiers("app"), ...fichiers("components"), ...fichiers("lib")]) {
+      if (chemin.includes(join("lib", "i18n"))) continue;
+      code += readFileSync(chemin, "utf8") + "\n";
+    }
+    const source = readFileSync(join(process.cwd(), "lib/i18n/fr.ts"), "utf8");
+    const soeurs = Array.from(source.matchAll(/^\s*"([a-z0-9_]+_one)":/gm)).map((m) => m[1]);
+    expect(soeurs.length, "plus aucune clé sœur : le motif ne correspond plus").toBeGreaterThan(0);
+    const orphelines = soeurs.filter((cle) => !code.includes(`"${cle}"`));
+    expect(
+      orphelines,
+      "clés sœurs que plus personne ne nomme : " + orphelines.join(", "),
+    ).toEqual([]);
+  });
+
   /** ⚠️ Garde sur le garde : la fonction d'accord fait bien ce qu'on croit. */
   it("remplir choisit le singulier à un et le pluriel au-delà", () => {
     const g = "{n} {n|jour|jours}";

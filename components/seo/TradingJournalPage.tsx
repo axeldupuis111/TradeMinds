@@ -77,7 +77,7 @@ const CONTENT: Record<Locale, PageContent> = {
     aiItems: [
       { title: "Patterns destructeurs", desc: "Revenge trading après une perte, entrées FOMO, overtrading en fin de session : détectés et chiffrés en euros perdus." },
       { title: "Score de discipline", desc: "Chaque session est notée sur le comportement, pas sur le résultat : respect du plan, du risque, de ta checklist." },
-      { title: "Analyse visuelle", desc: "Attache un screenshot à ton trade et l'IA relit ton graphique comme un mentor : timing d'entrée, placement du stop, logique de sortie." },
+      { title: "Tes règles, pas une méthode générique", desc: "L'IA lit la fiche stratégie que tu as écrite et compte les jours où tu l'as tenue : risque par trade, trades par jour, arrêt après N pertes." },
       { title: "Coach qui agit", desc: "Le coach IA ne fait pas que discuter : il crée tes objectifs, annote tes trades et suit tes défis de discipline." },
     ],
     articlesTitle: "Pour aller plus loin",
@@ -143,7 +143,7 @@ const CONTENT: Record<Locale, PageContent> = {
     aiItems: [
       { title: "Destructive patterns", desc: "Revenge trading after a loss, FOMO entries, late-session overtrading: detected and priced in money lost." },
       { title: "Discipline score", desc: "Every session is scored on behavior, not outcome: plan compliance, risk respected, checklist completed." },
-      { title: "Visual analysis", desc: "Attach a screenshot to a trade and the AI rereads your chart like a mentor: entry timing, stop placement, exit logic." },
+      { title: "Your rules, not a generic method", desc: "The AI reads the strategy sheet you wrote and counts the days you held to it: risk per trade, trades per day, stop after N losses." },
       { title: "A coach that acts", desc: "The AI coach doesn't just chat: it creates your goals, annotates your trades and tracks your discipline challenges." },
     ],
     articlesTitle: "Go deeper",
@@ -209,7 +209,7 @@ const CONTENT: Record<Locale, PageContent> = {
     aiItems: [
       { title: "Destruktive Muster", desc: "Revenge-Trading nach einem Verlust, FOMO-Einstiege, Overtrading am Sessionende: erkannt und in verlorenem Geld beziffert." },
       { title: "Disziplin-Score", desc: "Jede Session wird nach Verhalten bewertet, nicht nach Ergebnis: Plantreue, Risiko eingehalten, Checkliste erledigt." },
-      { title: "Visuelle Analyse", desc: "Hänge einen Screenshot an einen Trade und die KI liest deinen Chart wie ein Mentor: Einstiegs-Timing, Stop-Platzierung, Exit-Logik." },
+      { title: "Deine Regeln, keine Standardmethode", desc: "Die KI liest deinen selbst geschriebenen Strategiezettel und zählt die Tage, an denen du dich daran gehalten hast: Risiko pro Trade, Trades pro Tag, Stopp nach N Verlusten." },
       { title: "Ein Coach, der handelt", desc: "Der KI-Coach redet nicht nur: Er erstellt deine Ziele, annotiert deine Trades und verfolgt deine Disziplin-Challenges." },
     ],
     articlesTitle: "Zum Weiterlesen",
@@ -275,7 +275,7 @@ const CONTENT: Record<Locale, PageContent> = {
     aiItems: [
       { title: "Patrones destructivos", desc: "Revenge trading tras una pérdida, entradas FOMO, overtrading al final de la sesión: detectados y cuantificados en dinero perdido." },
       { title: "Puntuación de disciplina", desc: "Cada sesión se puntúa por el comportamiento, no por el resultado: respeto del plan, del riesgo, de tu checklist." },
-      { title: "Análisis visual", desc: "Adjunta una captura a tu operación y la IA relee tu gráfico como un mentor: timing de entrada, colocación del stop, lógica de salida." },
+      { title: "Tus reglas, no un método genérico", desc: "La IA lee la ficha de estrategia que has escrito y cuenta los días en que la has respetado: riesgo por operación, operaciones por día, parada tras N pérdidas." },
       { title: "Un coach que actúa", desc: "El coach IA no solo conversa: crea tus objetivos, anota tus operaciones y sigue tus retos de disciplina." },
     ],
     articlesTitle: "Para profundizar",
