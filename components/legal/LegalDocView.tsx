@@ -65,7 +65,7 @@ export default function LegalDocView({ content, related }: Props) {
   return (
     <>
       <PublicHeader />
-      <div className="min-h-screen bg-background px-6 py-16 pt-24 force-dark">
+      <main id="main-content" tabIndex={-1} className="min-h-screen bg-background px-6 py-16 pt-24 force-dark">
         <div className="max-w-3xl mx-auto">
           <h1 className="text-3xl font-bold text-foreground mb-2">{doc.title}</h1>
           <p className="text-muted text-sm mb-10">{doc.updated}</p>
@@ -96,7 +96,7 @@ export default function LegalDocView({ content, related }: Props) {
             </Link>
           </div>
         </div>
-      </div>
+      </main>
       <RiskDisclosure />
     </>
   );

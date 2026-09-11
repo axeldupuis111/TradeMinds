@@ -2913,7 +2913,7 @@ export default function LandingPage() {
       <GridBackground />
       <PageAmbience />
       <PublicHeader showAnchors />
-      <main>
+      <main id="main-content" tabIndex={-1}>
         <Hero />
         <MarketTicker />
         <PlatformMarquee />

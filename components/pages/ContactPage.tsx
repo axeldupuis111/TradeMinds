@@ -40,7 +40,7 @@ export default function ContactPage() {
   return (
     <>
       <PublicHeader />
-      <div className="min-h-screen bg-background flex items-center justify-center px-4 py-16 pt-24 force-dark">
+      <main id="main-content" tabIndex={-1} className="min-h-screen bg-background flex items-center justify-center px-4 py-16 pt-24 force-dark">
         <div className="max-w-md w-full">
           <h1 className="text-2xl font-bold text-foreground">{t("contact_title")}</h1>
           <p className="text-muted mt-2 text-sm">{t("contact_subtitle")}</p>
@@ -86,7 +86,7 @@ export default function ContactPage() {
             <Link href={localizedHref("/faq", lang)} className="text-accent text-sm hover:underline">{t("contact_faq_link")}</Link>
           </div>
         </div>
-      </div>
+      </main>
       <RiskDisclosure />
     </>
   );

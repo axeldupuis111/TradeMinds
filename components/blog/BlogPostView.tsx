@@ -32,7 +32,7 @@ export default function BlogPostView({ post }: { post: BlogPost }) {
   return (
     <div className="min-h-screen bg-background text-foreground force-dark">
       <PublicHeader />
-      <article className="max-w-2xl mx-auto px-6 py-14">
+      <article id="main-content" tabIndex={-1} className="max-w-2xl mx-auto px-6 py-14">
         <Link
           href={localizedHref("/blog", lang)}
           className="inline-flex items-center gap-1 text-sm text-foreground-muted hover:text-foreground transition-colors"

@@ -49,7 +49,7 @@ export default function PartnerStatsPage({ token }: { token: string }) {
   return (
     <>
       <PublicHeader />
-      <div className="min-h-screen bg-background px-4 py-16 pt-24 force-dark">
+      <main id="main-content" tabIndex={-1} className="min-h-screen bg-background px-4 py-16 pt-24 force-dark">
         <div className="max-w-lg mx-auto">
           {error && <p className="text-loss text-sm">{error}</p>}
 
@@ -99,7 +99,7 @@ export default function PartnerStatsPage({ token }: { token: string }) {
             </>
           )}
         </div>
-      </div>
+      </main>
       <RiskDisclosure />
     </>
   );

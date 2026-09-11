@@ -14,6 +14,23 @@ export default function PublicHeader({ showAnchors = false }: PublicHeaderProps)
   const { lang, t } = useLanguage();
 
   return (
+    <>
+      {/**
+        ⚠️⚠️ CE LIEN MANQUAIT SUR TOUT LE SITE PUBLIC. Le tableau de bord en
+        avait un depuis longtemps ; la landing, la FAQ, le blog, le contact et
+        les pages légales, non. Un visiteur au clavier devait donc traverser
+        tout l'en-tête à chaque page avant d'atteindre le texte. Encore une
+        règle écrite une fois, appliquée d'un seul côté.
+
+        ⚠️ Invisible tant qu'il n'a pas le focus (`sr-only`), donc sans aucun
+        effet sur la mise en page.
+      */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-[100] focus:px-4 focus:py-2 focus:bg-card focus:border focus:border-accent focus:rounded-lg focus:text-foreground focus:text-sm"
+      >
+        {t("a11y_skip_to_content")}
+      </a>
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-[12px]">
       {/* Flux simple plutôt qu'un groupe central en `absolute left-1/2` :
           l'ancien centrage absolu n'avait aucune relation de flux avec le
@@ -96,5 +113,6 @@ export default function PublicHeader({ showAnchors = false }: PublicHeaderProps)
         </div>
       </div>
     </nav>
+    </>
   );
 }

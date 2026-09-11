@@ -369,7 +369,7 @@ export default function TradingJournalPage({ locale }: { locale: Locale }) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       <PublicHeader />
 
-      <main className="max-w-3xl mx-auto px-6 pt-28 pb-16">
+      <main id="main-content" tabIndex={-1} className="max-w-3xl mx-auto px-6 pt-28 pb-16">
         {/* Hero */}
         <header>
           <h1 className="text-4xl sm:text-5xl font-bold leading-tight tracking-tight">{c.h1}</h1>

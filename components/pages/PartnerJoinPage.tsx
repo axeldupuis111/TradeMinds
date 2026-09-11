@@ -89,7 +89,7 @@ export default function PartnerJoinPage() {
   return (
     <>
       <PublicHeader />
-      <div className="min-h-screen bg-background px-4 py-16 pt-24 force-dark">
+      <main id="main-content" tabIndex={-1} className="min-h-screen bg-background px-4 py-16 pt-24 force-dark">
         <div className="max-w-lg mx-auto">
           {result ? (
             <div>
@@ -202,7 +202,7 @@ export default function PartnerJoinPage() {
             </>
           )}
         </div>
-      </div>
+      </main>
       <RiskDisclosure />
     </>
   );
