@@ -16,7 +16,7 @@ import { KpiCards } from "@/components/dashboard/KpiCards";
 import { Sparkline } from "@/components/dashboard/Sparkline";
 import { CardHeader, CardTitle } from "@/components/ui/Card";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
-import { DEFAULT_CURRENCY, accountCurrency, buildCurrencyMap, money, tradeCurrency } from "@/lib/account-currency";
+import { DEFAULT_CURRENCY, accountCurrency, buildCurrencyMap, commonCurrency, money, tradeCurrency } from "@/lib/account-currency";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useTheme } from "@/lib/ThemeContext";
 import { Badge } from "@/components/ui/Badge";
@@ -105,6 +105,13 @@ interface Props {
   onboarding: OnboardingState;
   /** Vrai quand la lecture du journal s'est arretee en cours de route. */
   lectureIncomplete?: boolean;
+  /**
+   * TOUS les comptes et leur devise, clotures compris.
+   *
+   * ⚠️ La carte des devises se construisait sur les comptes ACTIFS, alors que
+   * les totaux et le calendrier portent sur TOUS les trades.
+   */
+  tousLesComptes?: { id: string; currency: string | null; synced_currency: string | null }[];
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -147,6 +154,7 @@ export default function DashboardContent({
   allowedPairs,
   onboarding,
   lectureIncomplete = false,
+  tousLesComptes,
 }: Props) {
   const { t } = useLanguage();
   const { plan, canUseAI, loading: planLoading } = usePlan();
@@ -188,7 +196,21 @@ export default function DashboardContent({
 
   // Le calendrier et les listes de trades peuvent mélanger les comptes : chaque
   // ligne porte alors la devise du sien.
-  const currencyMap = useMemo(() => buildCurrencyMap(activeAccounts), [activeAccounts]);
+  const currencyMap = useMemo(
+    () => buildCurrencyMap(tousLesComptes ?? activeAccounts),
+    [tousLesComptes, activeAccounts],
+  );
+
+  /**
+   * ⚠️⚠️ LES DEVISES REELLEMENT PRESENTES DANS CE QUI EST AFFICHE. Sans ça, un
+   * total « tous comptes » additionne des euros et des dollars et porte le
+   * symbole de l'un d'eux : mesuré en production sur la carte des fuites de
+   * capital, « −7 863 $ » pour un journal moitié euros.
+   */
+  const deviseUnique = useMemo(
+    () => commonCurrency(filteredAll.map((tr) => tr.challenge_id), currencyMap),
+    [filteredAll, currencyMap],
+  );
 
   const profitTargetAmount = displayAccount && displayAccount.profit_target_pct > 0
     ? (displayAccount.account_size * displayAccount.profit_target_pct) / 100
@@ -461,7 +483,7 @@ export default function DashboardContent({
       {/* ── Diagnostic : fuites de capital + insights IA ──────────────── */}
       <StaggerItem className="mt-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 [&>*]:min-w-0 lg:[&>*:only-child]:col-span-2">
-          <CapitalLeaks currency={displayCurrency} />
+          <CapitalLeaks currency={deviseUnique ?? displayCurrency} devisesMelangees={deviseUnique === null} />
           {canUseAI && (
             <AiInsights insights={insights} filteredAllLength={filteredAll.length} />
           )}

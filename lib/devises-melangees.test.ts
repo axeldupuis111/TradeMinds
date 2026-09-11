@@ -118,4 +118,47 @@ describe("les totaux en devises mêlées", () => {
       ).toBeTruthy();
     }
   });
+
+  /**
+   * ⚠️⚠️ ET LA CARTE QUI PORTE LA PROMESSE CENTRALE DU PRODUIT. « Tes fuites de
+   * capital » annonçait « −7 863 $ perdus sur 48 trades d'indiscipline » sur un
+   * journal à moitié en euros. Deux défauts en un, mesurés en production avec
+   * le compte « Tradovate » sélectionné :
+   *
+   *   - elle IGNORAIT le compte choisi (tout le reste de l'écran comptait
+   *     39 trades, elle en annonçait 85) ;
+   *   - et comme elle lisait tous les comptes, son total mêlait les devises.
+   */
+  it("la carte des fuites suit le compte choisi", () => {
+    const src = lire("components/dashboard/CapitalLeaks.tsx");
+    expect(src, "la carte ignore encore le compte choisi").toContain(
+      'if (selectedAccountId) requeteTrades.eq("challenge_id", selectedAccountId);',
+    );
+    expect(src, "elle ne se recharge pas quand le compte change").toContain(
+      "}, [selectedAccountId]);",
+    );
+    expect(src, "le total s'affiche encore en devises mêlées").toContain(
+      "{devisesMelangees ? (",
+    );
+  });
+
+  /**
+   * ⚠️ ET LE TABLEAU DE BORD CONNAÎT LA DEVISE DES COMPTES CLÔTURÉS. Sa carte
+   * des devises se construisait sur les comptes ACTIFS, alors que ses totaux et
+   * son calendrier portent sur TOUS les trades.
+   */
+  it("le tableau de bord construit sa carte des devises sur tous les comptes", () => {
+    const page = lire("app/dashboard/page.tsx");
+    expect(page).toContain(
+      'supabase.from("prop_challenges").select("id, currency, synced_currency").eq("user_id", userId!)',
+    );
+    expect(page).toContain("tousLesComptes={(tousLesComptes ?? []).map((c) => ({");
+
+    const contenu = lire("components/dashboard/DashboardContent.tsx");
+    expect(contenu).toContain("buildCurrencyMap(tousLesComptes ?? activeAccounts)");
+    expect(contenu, "la devise unique n'est pas déduite des trades affichés").toContain(
+      "commonCurrency(filteredAll.map((tr) => tr.challenge_id), currencyMap)",
+    );
+    expect(contenu).toContain("devisesMelangees={deviseUnique === null}");
+  });
 });

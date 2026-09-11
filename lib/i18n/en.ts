@@ -76,6 +76,7 @@ const dict: Record<string, string> = {
   "rtcoach_title": "Real-time coach",
   "rtcoach_based_on": "Based on your last {count} {count|trade|trades}",
   "leaks_title": "Your capital leaks",
+  "leaks_devises_melangees": "Your accounts do not all use the same currency, so a single total would be meaningless here. Pick one account at the top of the page to see it.",
   "leaks_subtitle": "What your discipline mistakes actually cost you",
   "leaks_total_label": "lost across {n} undisciplined {n|trade|trades}: that's the capital you can recover",
   "leaks_type_revenge": "Revenge trading (re-entered < 30 min after a loss)",

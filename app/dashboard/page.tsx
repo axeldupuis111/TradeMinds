@@ -58,6 +58,7 @@ export default async function DashboardPage() {
     { data: recentTrades },
     allTradesRows,
     { data: primaryStrategy },
+    { data: tousLesComptes },
   ] = await Promise.all([
     supabase.from("session_reviews").select("discipline_score, created_at, analysis, score_breakdown").eq("user_id", userId!).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     supabase.from("trades").select("pnl, commission, swap, challenge_id").eq("user_id", userId!).gte("open_time", monday),
@@ -78,6 +79,15 @@ export default async function DashboardPage() {
         .range(from, to),
     ),
     supabase.from("strategies").select("max_trades_per_day, max_consecutive_losses, risk_per_trade_pct, pairs").eq("user_id", userId!).order("created_at", { ascending: true }).limit(1).maybeSingle(),
+    /**
+     * ⚠️⚠️ LA DEVISE DE TOUS LES COMPTES, y compris CLOTURES. La carte des
+     * devises se construisait sur les comptes ACTIFS, alors que les totaux et
+     * le calendrier portent sur TOUS les trades : ceux d'un compte termine
+     * retombaient sur l'euro par defaut, ou pire, entraient dans un total
+     * portant le symbole d'une autre devise. Meme defaut qu'Analytics, mesure
+     * le meme jour.
+     */
+    supabase.from("prop_challenges").select("id, currency, synced_currency").eq("user_id", userId!),
   ]);
 
   // Ordre chronologique refait ici : les pages sont lues dans l'ordre stable de
@@ -138,6 +148,11 @@ export default async function DashboardPage() {
       }))}
       onboarding={onboarding}
       lectureIncomplete={lectureIncomplete}
+      tousLesComptes={(tousLesComptes ?? []).map((c) => ({
+        id: c.id,
+        currency: c.currency ?? null,
+        synced_currency: c.synced_currency ?? null,
+      }))}
     />
   );
 }

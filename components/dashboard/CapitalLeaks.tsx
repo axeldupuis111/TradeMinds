@@ -16,6 +16,7 @@ import CountUp from "@/components/animations/CountUp";
 import GrowBar from "@/components/animations/GrowBar";
 import { computeCapitalLeaks, computeDisciplineCurves, type CapitalLeak, type LeakTrade } from "@/lib/analytics/leaks";
 import { DEFAULT_CURRENCY, currencySymbol, money } from "@/lib/account-currency";
+import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
@@ -61,8 +62,24 @@ const LEAK_ICONS: Record<CapitalLeak["type"], React.ReactNode> = {
   bad_hour: <Clock className="w-3.5 h-3.5" strokeWidth={1.75} />,
 };
 
-export default function CapitalLeaks({ currency = DEFAULT_CURRENCY }: { currency?: string } = {}) {
-  // Devise du compte affiché ; euro en vue « tous les comptes ».
+export default function CapitalLeaks({
+  currency = DEFAULT_CURRENCY,
+  devisesMelangees = false,
+}: { currency?: string; devisesMelangees?: boolean } = {}) {
+  /**
+   * ⚠️⚠️ CETTE CARTE IGNORAIT LE COMPTE CHOISI, ET C'EST DEUX DEFAUTS EN
+   * UN. Mesure en production, compte « Tradovate » selectionne : tout le reste
+   * de l'ecran comptait ses 39 trades, et cette carte-ci annoncait « base sur
+   * tes 85 derniers trades » puis « -7 863 $ perdus sur 48 trades ».
+   *
+   * ⚠️ Le premier defaut est la contradiction : deux perimetres sous le meme
+   * ecran, sans que rien ne le dise. Le second est pire, parce qu'il touche le
+   * chiffre que cette carte met en avant : les 85 trades se repartissent sur
+   * des comptes en DOLLARS et en EUROS, et le total les additionnait pour
+   * coller le symbole de l'un d'eux. C'est le meme defaut qu'Analytics, dans la
+   * carte qui porte la promesse centrale du produit.
+   */
+  const { selectedAccountId } = useActiveAccount();
   const fmtEur = (n: number) => money(n, currency);
   const { t } = useLanguage();
   const [trades, setTrades] = useState<LeakTrade[] | null>(null);
@@ -76,14 +93,16 @@ export default function CapitalLeaks({ currency = DEFAULT_CURRENCY }: { currency
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || cancelled) return;
+      const requeteTrades = supabase
+        .from("trades")
+        .select("open_time, close_time, pnl, commission, swap, lot_size, pair, emotion")
+        .eq("user_id", user.id)
+        .eq("status", "closed");
+      // ⚠️ Le même périmètre que le reste de l'écran, sinon les deux chiffres
+      // se contredisent et celui-ci mélange les devises.
+      if (selectedAccountId) requeteTrades.eq("challenge_id", selectedAccountId);
       const [{ data: rows }, { data: strat }] = await Promise.all([
-        supabase
-          .from("trades")
-          .select("open_time, close_time, pnl, commission, swap, lot_size, pair, emotion")
-          .eq("user_id", user.id)
-          .eq("status", "closed")
-          .order("open_time", { ascending: false })
-          .limit(300),
+        requeteTrades.order("open_time", { ascending: false }).limit(300),
         supabase
           .from("strategies")
           .select("max_trades_per_day")
@@ -105,7 +124,7 @@ export default function CapitalLeaks({ currency = DEFAULT_CURRENCY }: { currency
     }
     load();
     return () => { cancelled = true; };
-  }, []);
+  }, [selectedAccountId]);
 
   const result = useMemo(
     () => (trades ? computeCapitalLeaks(trades, { maxTradesPerDay, minTrades: MIN_TRADES }) : null),
@@ -176,7 +195,17 @@ export default function CapitalLeaks({ currency = DEFAULT_CURRENCY }: { currency
       {/* Le chiffre qui fait mal — et qui motive. Masqué quand l'union des
           trades flagués est nette ≈ 0 (les gains compensent) : afficher
           « −0 € » contredirait les coûts par habitude listés dessous. */}
-      {result.totalRecoverable >= 1 && (
+      {/* ⚠️⚠️ PAS DE CHIFFRE UNIQUE EN DEVISES MELEES. Additionner des
+          euros et des dollars pour coller le symbole de l'un d'eux donnait
+          « -7 863 $ » a un journal a moitie en euros : le chiffre le plus
+          visible du tableau de bord, et le plus faux. Les couts par habitude
+          restent, eux : ce sont des parts du meme total, et la carte dit
+          desormais qu'il faut choisir un compte pour un montant juste. */}
+      {devisesMelangees ? (
+        <p role="status" className="text-xs text-foreground-muted mb-4">
+          {t("leaks_devises_melangees")}
+        </p>
+      ) : result.totalRecoverable >= 1 && (
         <>
           <div className="flex items-end gap-2 mb-1">
             <p className="text-3xl font-bold tracking-tight text-loss tabular-nums leading-none">

@@ -76,6 +76,7 @@ const dict: Record<string, string> = {
   "rtcoach_title": "Coach temps réel",
   "rtcoach_based_on": "Basé sur tes {count} derniers trades",
   "leaks_title": "Tes fuites de capital",
+  "leaks_devises_melangees": "Tes comptes n'ont pas tous la même devise : le montant total n'aurait aucun sens ici. Choisis un compte en haut de la page pour le voir.",
   "leaks_subtitle": "Ce que tes erreurs de discipline t'ont réellement coûté",
   "leaks_total_label": "perdus sur {n} {n|trade|trades} d'indiscipline : c'est le capital que tu peux récupérer",
   "leaks_type_revenge": "Revenge trading (repris < 30 min après une perte)",
