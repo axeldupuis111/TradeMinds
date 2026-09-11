@@ -13,9 +13,46 @@ export interface DedupeTrade {
   lot_size: number;
 }
 
-/** Clé de comparaison : ce qu'un CSV expose de façon fiable pour tous les brokers. */
+/**
+ * L'INSTANT, ET NON SON ORTHOGRAPHE.
+ *
+ * ── LE DÉFAUT, VU EN RÉIMPORTANT LE MÊME FICHIER ────────────────────────────
+ *
+ * ⚠️⚠️ LA CLÉ COMPARAIT DEUX CHAÎNES VENUES DE DEUX SOURCES QUI N'ÉCRIVENT PAS
+ * PAREIL. Le CSV donne « 2026-09-10 09:15:00 » et la base rend
+ * « 2026-09-10T09:15:00+00:00 » : le même instant, deux écritures, donc jamais
+ * la même clé. Résultat mesuré sur le compte réel : réimporter le fichier qu'on
+ * vient d'importer créait trois doublons, sans un mot, alors que le produit a
+ * la phrase toute prête (« Tous les trades existent déjà »).
+ *
+ * ⚠️ ET LE FUSEAU EST EXPLICITE. Un horodatage sans zone est envoyé tel quel à
+ * Postgres, qui le lit en UTC : on le relit donc en UTC ici aussi. Passer par
+ * `new Date("2026-09-10 09:15:00")` sans le « Z » le lirait dans le fuseau de
+ * la machine, et décalerait la clé d'une ou deux heures selon la saison.
+ */
+function instant(valeur?: string | null): string {
+  if (!valeur) return "";
+  const texte = valeur.trim().replace(" ", "T");
+  const aUneZone = /[zZ]$|[+-]\d{2}:?\d{2}$/.test(texte);
+  const d = new Date(aUneZone ? texte : texte + "Z");
+  return Number.isNaN(d.getTime()) ? valeur : d.toISOString();
+}
+
+/**
+ * Clé de comparaison : ce qu'un CSV expose de façon fiable pour tous les
+ * brokers, ramené à une forme unique.
+ *
+ * ⚠️ LE LOT AUSSI SE NORMALISE : « 0.10 » et 0.1 sont le même volume, et un
+ * broker qui exporte des décimales fixes ferait échouer la comparaison.
+ */
 export function dedupeKey(t: DedupeTrade): string {
-  return `${t.open_time || ""}|${t.pair}|${t.direction}|${t.lot_size}`;
+  const lot = Number(t.lot_size);
+  return [
+    instant(t.open_time),
+    String(t.pair || "").trim().toUpperCase(),
+    String(t.direction || "").trim().toLowerCase(),
+    Number.isFinite(lot) ? lot : t.lot_size,
+  ].join("|");
 }
 
 /**
