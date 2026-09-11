@@ -161,4 +161,46 @@ describe("les totaux en devises mêlées", () => {
     );
     expect(contenu).toContain("devisesMelangees={deviseUnique === null}");
   });
+
+  /**
+   * ── UN SEUL PÉRIMÈTRE PAR ÉCRAN ─────────────────────────────────────────────
+   *
+   * ⚠️⚠️ DEUX CARTES DU TABLEAU DE BORD LISAIENT TOUS LES COMPTES pendant que
+   * les huit autres suivaient celui qu'on venait de choisir. Mesuré avec
+   * « Tradovate » sélectionné : le reste de l'écran comptait ses trades, et ces
+   * deux cartes annonçaient « basé sur tes 85 derniers trades » en tirant leurs
+   * constats de comptes que le trader venait d'écarter.
+   *
+   * ⚠️ Et c'est ce qui fabriquait le mélange de devises : lire tous les comptes,
+   * c'est lire toutes les devises.
+   */
+  it("les cartes du tableau de bord lisent toutes le même périmètre", () => {
+    for (const chemin of [
+      "components/dashboard/CapitalLeaks.tsx",
+      "components/dashboard/PatternAlerts.tsx",
+    ]) {
+      const src = lire(chemin);
+      expect(src, `${chemin} n'écoute pas le compte choisi`).toContain("useActiveAccount()");
+      expect(src, `${chemin} ne filtre pas sa lecture`).toMatch(
+        /if \(selectedAccountId\) \w+\.eq\("challenge_id", selectedAccountId\);/,
+      );
+      expect(src, `${chemin} ne se recharge pas quand le compte change`).toContain(
+        "}, [selectedAccountId]);",
+      );
+    }
+  });
+
+  /**
+   * ⚠️ ET LA CARTE DES FUITES NE GARDE AUCUN MONTANT quand les devises se
+   * mêlent. Masquer le grand total et laisser « −9 244 $ » sur la ligne d'en
+   * dessous, c'est corriger une moitié du défaut et garder l'autre : ces
+   * coûts-là mêlent exactement les mêmes devises.
+   */
+  it("aucun montant ne survit au mélange dans la carte des fuites", () => {
+    const src = lire("components/dashboard/CapitalLeaks.tsx");
+    expect(src).toContain("{!devisesMelangees && (");
+    expect(src, "le contrefactuel de discipline s'affiche encore").toContain(
+      "{!devisesMelangees && curves && curves.finalGap > 0",
+    );
+  });
 });

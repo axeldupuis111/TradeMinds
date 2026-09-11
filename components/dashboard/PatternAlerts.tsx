@@ -15,6 +15,7 @@
  */
 
 import { createClient } from "@/lib/supabase/client";
+import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { cn } from "@/lib/cn";
 import { AlertTriangle, Clock, Flame, ShieldAlert, Sparkles, TrendingUp } from "lucide-react";
@@ -48,6 +49,7 @@ export default function PatternAlerts({ compact = false }: { compact?: boolean }
   const [trades, setTrades] = useState<TradeRow[] | null>(null);
   // Tick toutes les 5 min : l'alerte horaire suit la tranche en cours
   const [now, setNow] = useState(() => new Date());
+  const { selectedAccountId } = useActiveAccount();
 
   useEffect(() => {
     const supabase = createClient();
@@ -56,13 +58,21 @@ export default function PatternAlerts({ compact = false }: { compact?: boolean }
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || cancelled) return;
-      const { data } = await supabase
+      /**
+       * ⚠️⚠️ LE MEME PERIMETRE QUE LE RESTE DE L'ECRAN. Avec le compte
+       * « Tradovate » choisi, tout le tableau de bord comptait ses trades et
+       * cette carte annoncait « base sur tes 85 derniers trades », en tirant
+       * ses alertes de comptes que le trader venait d'ecarter. Deux perimetres
+       * sous le meme ecran, sans que rien ne le dise : c'est le defaut qu'on
+       * vient de corriger sur la carte des fuites de capital, juste a cote.
+       */
+      const requete = supabase
         .from("trades")
         .select("open_time, pnl, commission, swap, pair")
         .eq("user_id", user.id)
-        .eq("status", "closed")
-        .order("open_time", { ascending: false })
-        .limit(300);
+        .eq("status", "closed");
+      if (selectedAccountId) requete.eq("challenge_id", selectedAccountId);
+      const { data } = await requete.order("open_time", { ascending: false }).limit(300);
       if (!cancelled) setTrades(data || []);
     }
     load();
@@ -72,7 +82,7 @@ export default function PatternAlerts({ compact = false }: { compact?: boolean }
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, []);
+  }, [selectedAccountId]);
 
   const alerts = useMemo<Alert[]>(() => {
     if (!trades || trades.length < MIN_HOUR_TRADES) return [];

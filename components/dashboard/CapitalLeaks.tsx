@@ -232,7 +232,14 @@ export default function CapitalLeaks({
                   {t("leaks_trades_count", { n: leak.count })}
                 </span>
               </span>
-              <span className="text-xs font-bold text-loss tabular-nums shrink-0">−{fmtEur(leak.cost)}</span>
+              {/* ⚠️⚠️ PAS DE SYMBOLE ICI NON PLUS. Masquer le grand total et
+                  laisser « -9 244 $ » sur la ligne d'en dessous, c'est corriger
+                  une moitie du defaut et garder l'autre : ces couts-la melangent
+                  exactement les memes devises. La barre en dessous garde le
+                  classement, qui lui ne pretend pas a un montant. */}
+              {!devisesMelangees && (
+                <span className="text-xs font-bold text-loss tabular-nums shrink-0">−{fmtEur(leak.cost)}</span>
+              )}
             </div>
             <div className="h-1.5 rounded-full bg-surface overflow-hidden">
               <GrowBar
@@ -246,7 +253,10 @@ export default function CapitalLeaks({
       </div>
 
       {/* Discipline Backtest — et si tu avais respecté ton plan ? */}
-      {curves && curves.finalGap > 0 && curves.real.length >= 2 && (
+      {/* ⚠️ Le contrefactuel « et si tu avais respecte ton plan » compare deux
+          courbes de capital : en devises melees, l'ecart annonce n'existe sur
+          aucun compte. */}
+      {!devisesMelangees && curves && curves.finalGap > 0 && curves.real.length >= 2 && (
         <div className="mt-4 pt-3 border-t border-border/60">
           <div className="flex items-center justify-between gap-3 mb-2">
             <p className="text-xs font-semibold text-foreground">{t("leaks_curve_title")}</p>
