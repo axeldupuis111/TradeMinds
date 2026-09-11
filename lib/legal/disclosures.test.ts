@@ -199,8 +199,8 @@ describe("les témoignages n'existent pas sans leur avertissement", () => {
     ].some((c) => {
       const source = readFileSync(c, "utf8");
       if (c.endsWith("RiskDisclosure.tsx")) return false;
-      return Array.from(source.matchAll(/<RiskDisclosure[^>]*>/g)).some((m) =>
-        /testimonials/.test(m[0]),
+      return Array.from(source.matchAll(/<RiskDisclosure\b[^>]*>/g)).some((m) =>
+        /\btestimonials\b/.test(m[0]),
       );
     });
     expect(

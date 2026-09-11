@@ -66,8 +66,28 @@ describe("les messages qui surgissent sont annoncés", () => {
     let vus = 0;
     for (const chemin of tous()) {
       const source = sansCommentaires(readFileSync(chemin, "utf8"));
-      for (const m of Array.from(source.matchAll(/\{\s*(\w*(?:[eE]rror|[eE]rreur))\s*&&/g))) {
-        const b = /<(p|div|span)\b/.exec(source.slice(m.index! + m[0].length, m.index! + m[0].length + 200));
+      /**
+       * ⚠️⚠️ LE MOTIF NE CONNAISSAIT QU'UNE ORTHOGRAPHE. Il attrapait
+       * `{error && <p>}` et laissait passer `{fieldErrors.sl && <p>}` : quinze
+       * messages, dans les TROIS formulaires où l'on saisit un trade, tous
+       * muets. Trouvé en cliquant « Sauvegarder » sans stop loss : le formulaire
+       * refuse, l'écrit à côté du champ, et une lecture d'écran n'annonce rien
+       * du tout. Le bouton a l'air de ne rien faire.
+       *
+       * ⚠️ C'est le même défaut que celui décrit en tête de ce fichier, et le
+       * garde écrit pour lui ne couvrait que la moitié des façons de l'écrire.
+       */
+      for (const m of Array.from(
+        source.matchAll(/\{\s*(\w*(?:[eE]rror|[eE]rreur)s?(?:\.\w+)?)\s*&&/g),
+      )) {
+        /**
+         * ⚠️ ET LA BALISE DOIT SUIVRE IMMÉDIATEMENT. Sans ça, le motif attrape
+         * une interpolation de chaîne et va chercher la première balise trente
+         * lignes plus loin : il accuse alors un élément qui n'a rien à voir.
+         */
+        const suite = source.slice(m.index! + m[0].length, m.index! + m[0].length + 200);
+        if (!/^\s*\(?\s*</.test(suite)) continue;
+        const b = /<(p|div|span)\b/.exec(suite);
         if (!b) continue;
         const debut = m.index! + m[0].length + b.index!;
         const fin = finDeBalise(source, debut);

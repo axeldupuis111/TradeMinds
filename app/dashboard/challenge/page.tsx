@@ -1395,7 +1395,7 @@ export default function ChallengePage() {
                 className={formErrors.accountNumber ? inputErrorClass : inputClass}
               />
               {formErrors.accountNumber && (
-                <p className="text-red-500 text-xs mt-1">{t("challenge_field_required")}</p>
+                <p role="alert" className="text-red-500 text-xs mt-1">{t("challenge_field_required")}</p>
               )}
             </div>
             <div>
@@ -1427,7 +1427,7 @@ export default function ChallengePage() {
               </div>
               <p className="text-xs text-muted mt-1">{t("challenge_account_size_hint")}</p>
               {formErrors.accountSize && (
-                <p className="text-red-500 text-xs mt-1">{t("challenge_field_required")}</p>
+                <p role="alert" className="text-red-500 text-xs mt-1">{t("challenge_field_required")}</p>
               )}
             </div>
           </div>
@@ -1522,7 +1522,7 @@ export default function ChallengePage() {
                     className={formErrors.startDate ? inputErrorClass : inputClass}
                   />
                   {formErrors.startDate && (
-                    <p className="text-red-500 text-xs mt-1">{t("challenge_field_required")}</p>
+                    <p role="alert" className="text-red-500 text-xs mt-1">{t("challenge_field_required")}</p>
                   )}
                 </div>
                 <div>
@@ -1547,7 +1547,7 @@ export default function ChallengePage() {
                   className={formErrors.startDate ? inputErrorClass : inputClass}
                 />
                 {formErrors.startDate && (
-                  <p className="text-red-500 text-xs mt-1">{t("challenge_field_required")}</p>
+                  <p role="alert" className="text-red-500 text-xs mt-1">{t("challenge_field_required")}</p>
                 )}
               </div>
             </div>

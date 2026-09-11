@@ -244,7 +244,7 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
               placeholder={String(trade.entry_price)}
               className={`${inputClass} ${errors.exit ? "!border-loss" : ""}`}
             />
-            {errors.exit && <p className="text-loss text-xs mt-1">{errors.exit}</p>}
+            {errors.exit && <p role="alert" className="text-loss text-xs mt-1">{errors.exit}</p>}
           </div>
 
           {/* Close time */}
@@ -258,7 +258,7 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
               onChange={(e) => { setCloseTime(e.target.value); update("close_time"); }}
               className={`${inputClass} ${errors.close_time ? "!border-loss" : ""}`}
             />
-            {errors.close_time && <p className="text-loss text-xs mt-1">{errors.close_time}</p>}
+            {errors.close_time && <p role="alert" className="text-loss text-xs mt-1">{errors.close_time}</p>}
           </div>
 
           {/* P&L (auto-calculated, editable) */}
@@ -285,7 +285,7 @@ export default function CloseTradeModal({ tradeId, onClose, onSaved }: Props) {
               className={`${inputClass} ${errors.pnl ? "!border-loss" : ""} ${isFinite(pnlNum) ? (pnlPositive ? "text-profit" : "text-loss") : ""}`}
             />
             <p className="text-[11px] text-muted mt-1">{t("close_trade_pnl_hint")}</p>
-            {errors.pnl && <p className="text-loss text-xs mt-1">{errors.pnl}</p>}
+            {errors.pnl && <p role="alert" className="text-loss text-xs mt-1">{errors.pnl}</p>}
           </div>
 
           {/* Existing notes (read-only display) */}

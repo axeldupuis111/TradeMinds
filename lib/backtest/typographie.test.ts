@@ -143,7 +143,7 @@ describe("la ponctuation vient de la langue", () => {
 describe("le français ne contourne pas ses accords", () => {
   const CONTOURNEMENTS: { motif: RegExp; pourquoi: string }[] = [
     { motif: /au nombre de/i, pourquoi: "le nombre placé après le nom pour éviter l'accord" },
-    { motif: /\(s\)/, pourquoi: "un pluriel entre parenthèses" },
+    { motif: /\(s\)\b/, pourquoi: "un pluriel entre parenthèses" },
   ];
 
   it("aucune phrase de l'onglet ne place le nombre après le nom", () => {

@@ -300,7 +300,7 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
                 {t("manual_open_date")} <span className="text-loss">*</span>
               </label>
               <input id="manualtrademodal-manual-open-date" type="date" value={form.open_date} onChange={(e) => update("open_date", e.target.value)} className={`${inputClass} ${fieldErrors.open_date ? "!border-loss" : ""}`} />
-              {fieldErrors.open_date && <p className="text-loss text-xs mt-1">{fieldErrors.open_date}</p>}
+              {fieldErrors.open_date && <p role="alert" className="text-loss text-xs mt-1">{fieldErrors.open_date}</p>}
             </div>
             <div>
               <label htmlFor="manualtrademodal-manual-open-time" className="block text-sm text-muted mb-1">
@@ -340,7 +340,7 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
                 placeholder="XAUUSD"
                 className={`${inputClass} ${fieldErrors.pair ? "!border-loss" : ""}`}
               />
-              {fieldErrors.pair && <p className="text-loss text-xs mt-1">{fieldErrors.pair}</p>}
+              {fieldErrors.pair && <p role="alert" className="text-loss text-xs mt-1">{fieldErrors.pair}</p>}
               <datalist id="instrument-list">
                 {pairs.length > 0 && pairs.map((p) => <option key={`s-${p}`} value={p} />)}
                 {Object.entries(INSTRUMENTS).map(([cat, items]) => (
@@ -368,14 +368,14 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
                 {t("manual_lot")} <span className="text-loss">*</span>
               </label>
               <input id="manualtrademodal-manual-lot" type="number" step="0.01" min="0.01" value={form.lot_size} onChange={(e) => update("lot_size", e.target.value)} placeholder="0.10" className={`${inputClass} ${fieldErrors.lot_size ? "!border-loss" : ""}`} />
-              {fieldErrors.lot_size && <p className="text-loss text-xs mt-1">{fieldErrors.lot_size}</p>}
+              {fieldErrors.lot_size && <p role="alert" className="text-loss text-xs mt-1">{fieldErrors.lot_size}</p>}
             </div>
             <div>
               <label htmlFor="manualtrademodal-manual-entry" className="block text-sm text-muted mb-1">
                 {t("manual_entry")} <span className="text-loss">*</span>
               </label>
               <input id="manualtrademodal-manual-entry" type="number" step="any" value={form.entry_price} onChange={(e) => update("entry_price", e.target.value)} className={`${inputClass} ${fieldErrors.entry_price ? "!border-loss" : ""}`} />
-              {fieldErrors.entry_price && <p className="text-loss text-xs mt-1">{fieldErrors.entry_price}</p>}
+              {fieldErrors.entry_price && <p role="alert" className="text-loss text-xs mt-1">{fieldErrors.entry_price}</p>}
             </div>
             <div>
               <label htmlFor="manualtrademodal-manual-exit" className="block text-sm text-muted mb-1">
@@ -414,21 +414,21 @@ export default function ManualTradeModal({ pairs, strategyId, onClose, onSaved, 
                 {t("manual_sl")} {closedManually ? <span className="text-xs text-muted ml-1">{t("manual_optional")}</span> : <span className="text-loss ml-1">*</span>}
               </label>
               <input id="manualtrademodal-manual-sl" type="number" step="any" value={form.sl} onChange={(e) => update("sl", e.target.value)} className={`${inputClass} ${fieldErrors.sl ? "!border-loss" : ""}`} />
-              {fieldErrors.sl && <p className="text-loss text-xs mt-1">{fieldErrors.sl}</p>}
+              {fieldErrors.sl && <p role="alert" className="text-loss text-xs mt-1">{fieldErrors.sl}</p>}
             </div>
             <div>
               <label htmlFor="manualtrademodal-manual-tp" className="block text-sm text-muted mb-1 flex items-center">
                 {t("manual_tp")} {closedManually ? <span className="text-xs text-muted ml-1">{t("manual_optional")}</span> : <span className="text-loss ml-1">*</span>}
               </label>
               <input id="manualtrademodal-manual-tp" type="number" step="any" value={form.tp} onChange={(e) => update("tp", e.target.value)} className={`${inputClass} ${fieldErrors.tp ? "!border-loss" : ""}`} />
-              {fieldErrors.tp && <p className="text-loss text-xs mt-1">{fieldErrors.tp}</p>}
+              {fieldErrors.tp && <p role="alert" className="text-loss text-xs mt-1">{fieldErrors.tp}</p>}
             </div>
             <div>
               <label htmlFor="manualtrademodal-manual-pnl" className="block text-sm text-muted mb-1">
                 {t("manual_pnl")} <span className="text-loss">*</span>
               </label>
               <input id="manualtrademodal-manual-pnl" type="number" step="any" value={form.pnl} onChange={(e) => update("pnl", e.target.value)} className={`${inputClass} ${fieldErrors.pnl ? "!border-loss" : ""}`} />
-              {fieldErrors.pnl && <p className="text-loss text-xs mt-1">{fieldErrors.pnl}</p>}
+              {fieldErrors.pnl && <p role="alert" className="text-loss text-xs mt-1">{fieldErrors.pnl}</p>}
             </div>
           </div>
 
