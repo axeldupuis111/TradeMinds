@@ -595,7 +595,7 @@ export default function MonthlyReviewPage() {
                       <Target className="w-5 h-5 text-accent shrink-0" />
                       <div className="flex-1">
                         <p className="text-sm font-semibold text-foreground">{t("review_goals_title")}</p>
-                        <p className="text-xs text-muted">{t("review_goals_sub").replace("{met}", String(goalsSummary.met)).replace("{total}", String(goalsSummary.total))}</p>
+                        <p className="text-xs text-muted">{t("review_goals_sub", { met: goalsSummary.met, total: goalsSummary.total })}</p>
                       </div>
                       <span className="text-xs text-accent font-medium whitespace-nowrap">{t("review_goals_link")} →</span>
                     </Link>

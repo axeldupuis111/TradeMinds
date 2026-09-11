@@ -333,7 +333,7 @@ export function KpiCards({
     <KpiCardPremium
       label={useMonthFallback ? t("dash_month_trades") : t("dash_week_trades")}
       value={<CountUp end={weekCount} duration={1.2} />}
-      sublabel={`${weekWins} ${t("dash_wins")} · ${weekCount - weekWins} ${t("dash_losses")}`}
+      sublabel={`${weekWins} ${t("dash_wins", { n: weekWins })} · ${weekCount - weekWins} ${t("dash_losses", { n: weekCount - weekWins })}`}
       accentColor="green"
       visual={<WinRateGauge wins={weekWins} total={weekCount} />}
     />

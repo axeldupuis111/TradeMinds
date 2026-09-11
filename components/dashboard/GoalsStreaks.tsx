@@ -299,7 +299,7 @@ export default function GoalsStreaks() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-foreground font-bold text-lg">
-              {streak > 0 ? `${streak} ${t("goals_streak_days")}` : `0 ${t("goals_streak_days")}`}
+              {`${streak} ${t("goals_streak_days", { n: streak })}`}
             </p>
             {isRecord && streak >= 3 && (
               <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-warning/15 text-warning">

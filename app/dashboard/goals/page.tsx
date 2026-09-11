@@ -279,7 +279,7 @@ function DisciplineHeatmap({ data, t }: { data: { date: string; score: number }[
       <div className="flex-1 grid grid-cols-3 gap-3 self-stretch lg:self-auto">
         <div className="rounded-xl border border-border bg-surface/30 p-4 flex flex-col justify-center">
           <p className="text-2xl font-black text-foreground tabular-nums leading-none">{daysTracked}</p>
-          <p className="text-xs text-muted mt-1.5">{t("goals_heatmap_days_tracked")}</p>
+          <p className="text-xs text-muted mt-1.5">{t("goals_heatmap_days_tracked", { n: daysTracked })}</p>
         </div>
         <div className="rounded-xl border border-border bg-surface/30 p-4 flex flex-col justify-center">
           <p className={`text-2xl font-black tabular-nums leading-none ${avgCls}`}>{avg == null ? "—" : avg}<span className="text-sm text-muted font-bold">{avg == null ? "" : "/100"}</span></p>
@@ -287,7 +287,7 @@ function DisciplineHeatmap({ data, t }: { data: { date: string; score: number }[
         </div>
         <div className="rounded-xl border border-border bg-surface/30 p-4 flex flex-col justify-center">
           <p className="text-2xl font-black text-profit tabular-nums leading-none">{disciplinedDays}</p>
-          <p className="text-xs text-muted mt-1.5">{t("goals_heatmap_disciplined")}</p>
+          <p className="text-xs text-muted mt-1.5">{t("goals_heatmap_disciplined", { n: disciplinedDays })}</p>
         </div>
       </div>
     </div>
@@ -748,7 +748,7 @@ export default function GoalsPage() {
               <div>
                 <div className="flex items-baseline gap-1.5 flex-wrap">
                   <CountUp end={streak.current} duration={1.1} className="text-3xl font-black tabular-nums text-foreground leading-none" />
-                  <span className="text-sm text-muted">{t("goals_streak_days")}</span>
+                  <span className="text-sm text-muted">{t("goals_streak_days", { n: streak.current })}</span>
                   {streak.isRecord && streak.current >= 3 && (
                     <span className="ml-1 inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-warning/15 text-warning">
                       <Crown className="w-3 h-3" strokeWidth={2} /> {t("goals_new_record")}
@@ -790,7 +790,7 @@ export default function GoalsPage() {
                     </svg>
                     <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-foreground tabular-nums">{achieved}/{goals.length}</span>
                   </div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted mt-1">{t("goals_ring_label")}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted mt-1">{t("goals_ring_label", { n: goals.length })}</p>
                 </div>
               )}
             </div>
