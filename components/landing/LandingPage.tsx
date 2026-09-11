@@ -883,7 +883,7 @@ function PlatformMarquee() {
 
   return (
     <section className="py-10 px-0 overflow-hidden" aria-label={t("marquee_caption")}>
-      <p className="text-center text-[11px] font-semibold uppercase tracking-[0.18em] mb-6" style={{ color: "rgb(var(--muted)/0.7)", fontStyle: "normal" }}>
+      <p className="text-center text-[11px] font-semibold uppercase tracking-[0.18em] mb-6" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>
         {t("marquee_caption")}
       </p>
       <div
@@ -1028,7 +1028,7 @@ function BentoImport({ t }: { t: (k: string) => string }) {
         <p className="text-[10px] mb-2 font-medium" style={{ color: "rgb(var(--muted))", fontStyle: "normal" }}>{t("feature_import_formats")}</p>
         <div className="flex flex-wrap gap-1.5">
           {PLATFORMS.map((name) => (
-            <span key={name} className="px-2 py-0.5 rounded-md text-[10px] font-medium border" style={{ color: "rgb(var(--muted)/0.8)", borderColor: "rgb(var(--border))", background: "rgb(var(--surface))", fontStyle: "normal" }}>
+            <span key={name} className="px-2 py-0.5 rounded-md text-[10px] font-medium border" style={{ color: "rgb(var(--muted))", borderColor: "rgb(var(--border))", background: "rgb(var(--surface))", fontStyle: "normal" }}>
               {name}
             </span>
           ))}
@@ -1350,7 +1350,7 @@ function BentoStrategy({ t }: { t: (k: string) => string }) {
             </motion.svg>
             <span className="text-[9px] font-bold tracking-wider" style={{ color: violet, fontStyle: "normal" }}>IA</span>
           </div>
-          <svg className="w-4 h-4 rotate-90 lg:rotate-0" style={{ color: "rgb(var(--muted)/0.6)" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 rotate-90 lg:rotate-0" style={{ color: "rgb(var(--muted))" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </div>
@@ -1852,7 +1852,7 @@ function CompareCell({ val, t }: { val: boolean | string; t: (k: string) => stri
   }
   if (val === false) {
     return (
-      <svg role="img" aria-label={t("upgrade_not_included")} className="w-4 h-4 mx-auto" style={{ color: "rgb(var(--muted)/0.35)" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg role="img" aria-label={t("upgrade_not_included")} className="w-4 h-4 mx-auto" style={{ color: "rgb(var(--muted))" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
       </svg>
     );

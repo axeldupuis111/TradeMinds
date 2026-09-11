@@ -109,28 +109,54 @@ describe("les encres diluées restent lisibles", () => {
 
   it("aucune encre diluée ne passe sous 4,5:1", () => {
     const noms = Object.keys(JETONS).join("|");
-    const MOTIF = new RegExp(`\\btext-(${noms})/(\\d+)(?![\\w-])`, "g");
+    /**
+     * Les deux façons d'écrire la même chose.
+     *
+     * ⚠️⚠️ LA PREMIÈRE VERSION NE CONNAISSAIT QUE LES CLASSES TAILWIND. La
+     * landing, elle, pose ses couleurs en STYLE EN LIGNE :
+     * `style={{ color: "rgb(var(--muted)/0.7)" }}`. « Compatible avec tes
+     * plateformes », en haut de la page d'accueil, faisait 3,35:1 et le test
+     * restait vert. Un garde qui ne connaît qu'une syntaxe protège la moitié du
+     * produit en croyant le protéger tout entier.
+     */
+    const CLASSE = new RegExp(`\\btext-(${noms})/(\\d+)(?![\\w-])`, "g");
+    const EN_LIGNE = new RegExp(`color:\\s*["'\`]rgb\\(var\\(--(${noms})\\)\\s*/\\s*([0-9.]+)\\)`, "g");
     const fautes: string[] = [];
     let vues = 0;
     for (const chemin of [...fichiers("app"), ...fichiers("components")]) {
       if (HORS_MESURE.test(chemin)) continue;
       const nom = chemin.split(/[\\/]/).slice(-2).join("/");
-      readFileSync(chemin, "utf8")
-        .split(new RegExp(String.fromCharCode(13) + "?" + String.fromCharCode(10)))
-        .forEach((ligne, i) => {
-          for (const m of Array.from(ligne.matchAll(MOTIF))) {
+      const lignes = readFileSync(chemin, "utf8").split(
+        new RegExp(String.fromCharCode(13) + "?" + String.fromCharCode(10)),
+      );
+      lignes.forEach((ligne, i) => {
+          const trouves = [
+            ...Array.from(ligne.matchAll(CLASSE)).map((m) => [m[0], m[1], Number(m[2]) / 100] as const),
+            ...Array.from(ligne.matchAll(EN_LIGNE)).map((m) => [m[0], m[1], Number(m[2])] as const),
+          ];
+          if (trouves.length === 0) return;
+          /**
+           * ⚠️ CE QUI EST DÉCLARÉ DÉCORATIF N'EST PAS MESURÉ, et la déclaration
+           * est celle du code, pas une liste tenue à part : `aria-hidden` dit
+           * que l'élément ne porte aucune information. Le chevron entre deux
+           * étapes de la landing en est un. Un texte, lui, n'est jamais
+           * `aria-hidden` : si quelqu'un l'y met pour échapper à ce test, il
+           * l'aura d'abord retiré des lecteurs d'écran, ce qui se voit.
+           */
+          const contexte = lignes.slice(Math.max(0, i - 4), i + 1).join(" ");
+          if (/aria-hidden/.test(contexte)) return;
+          for (const [brut, cle, alpha] of trouves) {
             vues++;
-            const alpha = Number(m[2]) / 100;
             for (const [nomTheme, theme] of [
               ["sombre", sombre],
               ["clair", clair],
             ] as const) {
-              const encre = jeton(JETONS[m[1]], theme);
+              const encre = jeton(JETONS[cle], theme);
               for (const fondNom of FONDS) {
                 const fond = jeton(fondNom, theme);
                 const r = ratio(sur(encre, alpha, fond), fond);
                 if (r < 4.5) {
-                  fautes.push(`${nom}:${i + 1} ${m[0]} ${nomTheme} sur ${fondNom} ${r.toFixed(2)}:1`);
+                  fautes.push(`${nom}:${i + 1} ${brut} ${nomTheme} sur ${fondNom} ${r.toFixed(2)}:1`);
                 }
               }
             }
