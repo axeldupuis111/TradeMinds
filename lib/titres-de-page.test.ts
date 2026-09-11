@@ -102,6 +102,26 @@ describe("chaque page du tableau de bord porte son nom", () => {
    * le document continue de s'appeler « TradeDiscipline » : c'est la
    * différence entre « le code existe » et « il tourne ».
    */
+  /**
+   * ⚠️⚠️ ET L'EN-TÊTE TIRE DU MÊME ENDROIT. Il avait SA PROPRE carte de
+   * quatorze routes, avec un repli sur « Tableau de bord » : Analyse macro,
+   * Projection, Backtest, Ma communauté et l'admin affichaient donc « Tableau
+   * de bord » EN HAUT DE L'ÉCRAN, ce qui est pire qu'un onglet mal nommé. Deux
+   * cartes de la même chose, chacune tenue à moitié.
+   *
+   * ⚠️ LES TROIS LIBELLÉS LONGS RESTENT UN CHOIX, PAS UN OUBLI : l'en-tête a
+   * la place d'écrire « Tableau de bord », « Trades » et « Calendrier
+   * économique » là où la barre latérale doit tenir en deux mots.
+   */
+  it("l'en-tête ne tient pas sa propre carte des pages", () => {
+    const header = readFileSync(join(process.cwd(), "components", "Header.tsx"), "utf8");
+    expect(header, "l'en-tête a repris une carte à lui").not.toContain("PAGE_KEYS");
+    expect(header).toContain("nomDeLaPage(pathname, t)");
+    // ⚠️ Et ses exceptions restent trois, sinon la carte repousse en douce.
+    const longs = /const LIBELLES_LONGS[^}]*\}/.exec(header)?.[0] ?? "";
+    expect(Array.from(longs.matchAll(/"\/dashboard/g)), "libellés longs").toHaveLength(3);
+  });
+
   it("le poseur de titre est monté dans la mise en page du tableau de bord", () => {
     const layout = readFileSync(join(process.cwd(), "app", "dashboard", "layout.tsx"), "utf8");
     expect(layout).toContain("<TitreDePage />");

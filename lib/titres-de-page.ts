@@ -63,8 +63,32 @@ export const MARQUE = "TradeDiscipline";
  * passe par là.
  */
 export function titreDeLaPage(chemin: string, t: (cle: string) => string): string {
-  const nom = TITRES[chemin.replace(/\/+$/, "") || "/dashboard"];
-  if (!nom) return MARQUE;
-  const texte = "cle" in nom ? t(nom.cle) : nom.litteral;
+  const texte = nomDeLaPage(chemin, t);
   return texte ? `${texte} · ${MARQUE}` : MARQUE;
+}
+
+/**
+ * Le nom de la page, sans la marque : ce qu'on écrit EN HAUT DE L'ÉCRAN.
+ *
+ * ── LE DÉFAUT ───────────────────────────────────────────────────────────────
+ *
+ * ⚠️⚠️ L'EN-TÊTE AFFICHAIT « TABLEAU DE BORD » SUR CINQ PAGES QUI N'EN SONT
+ * PAS : Analyse macro, Projection, Backtest, Ma communauté et l'admin. Il
+ * tenait SA PROPRE carte de quatorze routes, avec un repli sur le tableau de
+ * bord pour tout ce qu'elle ignorait. Les cinq pages arrivées depuis n'y
+ * avaient jamais été ajoutées, et rien ne le disait : le repli a l'air d'un
+ * choix.
+ *
+ * ⚠️ C'EST LE MÊME DÉFAUT QUE LE TITRE DE L'ONGLET, réparé une heure plus tôt,
+ * à un endroit de plus : deux cartes de la même chose, chacune à moitié tenue.
+ * Il n'en reste qu'une, et un test la confronte à l'arborescence.
+ *
+ * ⚠️ LE CHEMIN INCONNU REND UNE CHAÎNE VIDE plutôt qu'un nom inventé : à
+ * l'en-tête de décider quoi montrer, et au test d'empêcher qu'une vraie page
+ * passe par là.
+ */
+export function nomDeLaPage(chemin: string, t: (cle: string) => string): string {
+  const nom = TITRES[chemin.replace(/\/+$/, "") || "/dashboard"];
+  if (!nom) return "";
+  return "cle" in nom ? t(nom.cle) : nom.litteral;
 }
