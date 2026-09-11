@@ -1,5 +1,6 @@
 "use client";
 
+import { tradesConformes } from "@/lib/trades-conformes";
 import UpgradeBanner from "@/components/UpgradeBanner";
 import { money } from "@/lib/account-currency";
 import { useDisplayCurrency } from "@/lib/hooks/useDisplayCurrency";
@@ -760,7 +761,7 @@ export default function AnalysisPage() {
           user_id: authUser.id,
           discipline_score: data.discipline_score,
           total_trades: data.total_trades,
-          conforming_trades: data.total_trades - (data.violations?.length || 0),
+          conforming_trades: tradesConformes(data.total_trades, data.violations as { trade_ids?: number[] }[]),
           analysis: data,
           score_breakdown: data.score_breakdown || null,
           period: selectedPeriod,
@@ -1941,7 +1942,10 @@ export default function AnalysisPage() {
                     {new Date(r.created_at).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}
                     {r.period_label && <span className="text-muted font-normal"> · {r.period_label}</span>}
                   </p>
-                  <p className="text-muted text-sm">{r.conforming_trades}/{r.total_trades} trades</p>
+                  {/* ⚠️ Borné à l'affichage aussi : deux analyses déjà enregistrées portent
+                      un -1 en base, et on ne réécrit pas l'historique d'un trader pour
+                      faire plaisir à un compteur. */}
+                  <p className="text-muted text-sm">{Math.max(0, r.conforming_trades ?? 0)}/{r.total_trades} trades</p>
                 </div>
                 <span className={`text-2xl font-bold ${r.discipline_score >= 90 ? "text-profit" : r.discipline_score >= 75 ? "text-green-400" : r.discipline_score >= 60 ? "text-yellow-400" : r.discipline_score >= 40 ? "text-orange-400" : "text-loss"}`}>
                   {r.discipline_score}
