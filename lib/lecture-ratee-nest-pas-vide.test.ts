@@ -111,4 +111,41 @@ describe("les écrans distinguent « rien » de « je n'ai pas pu lire »", () =
       }
     }
   });
+
+  /**
+   * ⚠️ ET LES DEUX AUTRES ÉCRANS QUI LISAIENT TOUT LE JOURNAL. Analytics disait
+   * « Aucune donnée pour cette période. » (mesuré : 85 trades, période « Tout »,
+   * lecture bloquée) et Projection en tire une CONSIGNE, « reviens quand tu
+   * auras cent trades » : une consigne fondée sur un fait faux est pire qu'un
+   * blanc, parce qu'elle fait agir.
+   */
+  it("Analytics et Projection ne prennent pas une lecture ratée pour un compte vide", () => {
+    for (const chemin of ["app/dashboard/analytics/page.tsx", "app/dashboard/projection/page.tsx"]) {
+      const src = lire(chemin);
+      expect(src, `${chemin} : le null de fetchAllRows n'est plus regardé`).toContain(
+        "=== null) {",
+      );
+      expect(src, `${chemin} : l'échec de lecture n'est pas retenu`).toContain(
+        "setLectureRatee(true);",
+      );
+      expect(src, `${chemin} : l'écran ne le dit pas`).toContain("<LectureRatee");
+    }
+  });
+
+  /**
+   * ⚠️ LE MESSAGE EST PARTAGÉ, ET C'EST VOULU : cinq écrans qui rédigent chacun
+   * leur « je n'ai pas pu lire » finiraient par en dire cinq choses différentes,
+   * et c'est de là que viennent les divergences dans ce dépôt.
+   */
+  it("le message de lecture ratée est le même partout", () => {
+    const src = lire("components/LectureRatee.tsx");
+    expect(src).toContain('role="alert"');
+    expect(src).toContain('aria-live="assertive"');
+    expect(src).toContain('t("lecture_impossible")');
+    for (const [nom, dico] of Object.entries({ fr: frDict, en: enDict, es: esDict, de: deDict })) {
+      const texte = (dico as Record<string, string>)["lecture_impossible"];
+      expect(texte, `lecture_impossible manque en ${nom}`).toBeTruthy();
+      expect(texte.length).toBeGreaterThan(30);
+    }
+  });
 });

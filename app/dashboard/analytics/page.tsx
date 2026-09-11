@@ -29,6 +29,7 @@ import {
 import { useLanguage } from "@/lib/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { fetchAllRows } from "@/lib/supabase-paginate";
+import LectureRatee from "@/components/LectureRatee";
 import { cn } from "@/lib/cn";
 import { pourcent } from "@/lib/nombres";
 import Link from "next/link";
@@ -163,6 +164,7 @@ export default function AnalyticsPage() {
   const [trades, setTrades] = useState<TradeRow[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [reviews, setReviews] = useState<SessionReview[]>([]);
+  const [lectureRatee, setLectureRatee] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // ── Filter state ──────────────────────────────────────────────────────────
@@ -227,10 +229,23 @@ export default function AnalyticsPage() {
           .limit(20),
       ]);
 
+      /**
+       * ⚠️⚠️ `?? []` DISAIT « TU N'AS RIEN » QUAND JE N'AVAIS PAS PU LIRE.
+       * `fetchAllRows` rend `null` des qu'une page echoue, et cette page
+       * affichait alors « Aucune donnee pour cette periode. » a un compte de
+       * 85 trades. Mesure en production en faisant repondre 500 aux lectures.
+       */
+      if (tradeData === null) {
+        setLectureRatee(true);
+        setLoading(false);
+        return;
+      }
+      setLectureRatee(false);
+
       // Les pages sont lues dans l'ordre stable de `id`, l'ordre chronologique
       // attendu par les blocs (drawdown, courbe, comparaisons) se refait ici.
       setTrades(
-        (tradeData ?? [])
+        tradeData
           .slice()
           .sort((a, b) => new Date(a.open_time).getTime() - new Date(b.open_time).getTime()),
       );
@@ -958,7 +973,9 @@ export default function AnalyticsPage() {
       </AnimatePresence>
 
       {/* ── Empty state ───────────────────────────────────────────────────── */}
-      {filtered.length === 0 ? (
+      {lectureRatee ? (
+        <LectureRatee onReessayer={() => window.location.reload()} />
+      ) : filtered.length === 0 ? (
         <p className="text-foreground-muted py-10 text-center">{t("analytics_no_data")}</p>
       ) : (
         <StaggerContainer staggerDelay={0.08} className="space-y-4">

@@ -647,6 +647,7 @@ const dict: Record<string, string> = {
   "trades_empty": "Ningún trade registrado.",
   "trades_load_failed": "Ahora mismo no se ha podido leer tu diario. Tus trades siguen ahí: es la pantalla la que no ha podido cargarlos.",
   "dash_read_incomplete": "No se ha podido leer tu diario por completo: lo que ves debajo está incompleto. No se ha perdido nada, recarga la página en un momento.",
+  "lecture_impossible": "No se han podido leer tus datos. No se ha perdido nada: es la pantalla la que no ha conseguido cargarlos.",
   "trades_col_date": "Fecha",
   "trades_col_pair": "Par",
   "trades_col_dir": "Dirección",

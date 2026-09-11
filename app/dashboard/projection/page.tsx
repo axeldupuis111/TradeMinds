@@ -55,6 +55,7 @@ import { mesurerAdherence, type Adherence } from "@/lib/strategy-adherence";
 import { verifierCoherence, type Coherence, type RegleStrategie } from "@/lib/strategy-coherence";
 import { createClient } from "@/lib/supabase/client";
 import { fetchAllRows } from "@/lib/supabase-paginate";
+import LectureRatee from "@/components/LectureRatee";
 import { AlertTriangle, CheckCircle2, HelpCircle, Lock, Sparkles, Target, TrendingDown, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -120,6 +121,7 @@ export default function ProjectionPage() {
   const [trades, setTrades] = useState<TradeRow[]>([]);
   const [strategies, setStrategies] = useState<StrategieRow[]>([]);
   const [chargement, setChargement] = useState(true);
+  const [lectureRatee, setLectureRatee] = useState(false);
   const [strategieId, setStrategieId] = useState<string>("all");
   const [annees, setAnnees] = useState<number>(2);
 
@@ -165,7 +167,19 @@ export default function ProjectionPage() {
         supabase.from("strategies").select(COLONNES_STRATEGIE).eq("user_id", user.id),
       ]);
       if (annule) return;
-      const chronologiques = (lignes ?? []).slice().sort(
+      /**
+       * ⚠️⚠️ `?? []` FAISAIT DIRE « PAS ENCORE DE QUOI CONCLURE » A UN
+       * COMPTE DE 85 TRADES. `fetchAllRows` rend `null` des qu'une page echoue,
+       * et cette page-ci en tire une CONSIGNE (« reviens quand tu auras cent
+       * trades ») : une consigne fondee sur un fait faux est pire qu'un blanc.
+       */
+      if (lignes === null) {
+        setLectureRatee(true);
+        setChargement(false);
+        return;
+      }
+      setLectureRatee(false);
+      const chronologiques = lignes.slice().sort(
         (a, b) => new Date(a.open_time).getTime() - new Date(b.open_time).getTime(),
       );
       setTrades(chronologiques);
@@ -495,6 +509,8 @@ export default function ProjectionPage() {
 
       {chargement ? (
         <Card className="p-8 text-center text-sm text-foreground-muted">…</Card>
+      ) : lectureRatee ? (
+        <LectureRatee onReessayer={() => window.location.reload()} />
       ) : projection.verdict === "insuffisant" ? (
         <EncartInsuffisant
           projection={projection}
