@@ -239,7 +239,24 @@ async function handleCheckoutCompleted(
   // Récupère le user_id depuis les metadata
   const userId = session.metadata?.supabase_user_id || session.client_reference_id
   if (!userId) {
+    /**
+     * ⚠️⚠️ LE CLIENT A PAYÉ ET SON PLAN NE BOUGERA JAMAIS. Sans
+     * `supabase_user_id`, on ne sait pas à qui attribuer l'abonnement : on
+     * sort, Stripe reçoit un 200, et personne n'apprend rien. C'est
+     * exactement la forme de l'incident de juillet, dont la conclusion
+     * écrite est qu'un 200 Stripe ne prouve rien.
+     *
+     * ⚠️ LA RÈGLE ÉTAIT DÉJÀ APPLIQUÉE UN PEU PLUS BAS, sur le plan
+     * irrésoluble (`alertWebhookFailure`). Elle manquait sur les trois
+     * sorties « utilisateur inconnu », qui sont les plus coûteuses : un
+     * abonnement créé depuis le tableau de bord Stripe n'a pas ces
+     * metadata.
+     */
     console.error('[Webhook] No supabase_user_id in session metadata')
+    await alertWebhookFailure(
+      'Stripe',
+      `checkout.session.completed ${session.id} : aucun supabase_user_id. Le paiement est encaissé et AUCUN plan n'a été activé.`
+    )
     return
   }
 
@@ -329,7 +346,13 @@ async function handleSubscriptionUpdated(
   // Récupère le user_id depuis les metadata de la subscription
   const userId = subscription.metadata?.supabase_user_id
   if (!userId) {
+    // ⚠️ Même silence, même conséquence : le changement de plan ne touche
+    // jamais le profil. Voir le commentaire de la session de paiement.
     console.error('[Webhook] No supabase_user_id in subscription metadata')
+    await alertWebhookFailure(
+      'Stripe',
+      `subscription.updated ${subscription.id} : aucun supabase_user_id, profil non mis à jour.`
+    )
     return
   }
 
@@ -391,7 +414,13 @@ async function handleSubscriptionDeleted(
 
   const userId = subscription.metadata?.supabase_user_id
   if (!userId) {
+    // ⚠️ Ici le coût change de côté : la résiliation n'atterrit pas et le
+    // compte garde un plan payant sans plus rien payer.
     console.error('[Webhook] No supabase_user_id in subscription metadata')
+    await alertWebhookFailure(
+      'Stripe',
+      `subscription.deleted ${subscription.id} : aucun supabase_user_id, le profil garde son plan payant.`
+    )
     return
   }
 
@@ -758,7 +787,19 @@ async function handleChargeRefunded(
   const subscription = await stripe.subscriptions.retrieve(subscriptionId)
   const userId = subscription.metadata?.supabase_user_id
   if (!userId) {
+    /**
+     * ⚠️⚠️ C'EST LA SORTIE LA PLUS COÛTEUSE DES QUATRE. L'argent est rendu au
+     * client, et sans identifiant on ne fait NI la reprise de commission, NI la
+     * rétrogradation : le partenaire garde une commission sur un encaissement
+     * qui n'existe plus, et le compte garde son accès. La règle écrite du
+     * barème est pourtant que la commission ne porte que sur les encaissements
+     * RÉELS.
+     */
     console.error('[Webhook] No supabase_user_id in subscription metadata')
+    await alertWebhookFailure(
+      'Stripe',
+      `remboursement sur ${subscription.id} : aucun supabase_user_id. Commission NON reprise et accès NON retiré.`
+    )
     return
   }
 
