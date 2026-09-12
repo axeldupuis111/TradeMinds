@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { locales, defaultLocale } from "./i18n/config";
 import { recopierLesCookies } from "./lib/recopier-les-cookies";
+import { cheminSansPrefixeParDefaut, doitCanonicaliserVersApex } from "./lib/canonique-www";
 
 const COOKIE_NAME = "NEXT_LOCALE";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 an
@@ -94,8 +95,11 @@ export async function middleware(request: NextRequest) {
   // Vercel et JAMAIS sur /api : les EA/cBots installés (MT4/MT5, cTrader,
   // NinjaTrader) postent sur www.tradediscipline.app en dur et leurs clients
   // HTTP transforment le POST redirigé en GET → 405 (incident du 2026-07-15).
+  //
+  // La décision vit dans lib/canonique-www.ts pour être testée : l'exception
+  // /api est la moitié qui compte, et rien ne la protégeait.
   const host = request.headers.get("host") ?? "";
-  if (host === "www.tradediscipline.app" && !pathname.startsWith("/api")) {
+  if (doitCanonicaliserVersApex(host, pathname)) {
     const url = request.nextUrl.clone();
     url.protocol = "https:";
     url.host = "tradediscipline.app";
@@ -169,7 +173,23 @@ export async function middleware(request: NextRequest) {
       .filter((l) => l !== defaultLocale)
       .includes(firstSegment);
 
-    // /en (default avec préfixe) ou /xx (invalide) → bypass auth, laisser Next.js renvoyer 404
+    /**
+     * Le préfixe de la langue PAR DÉFAUT mène à la même page, pas à un 404.
+     * `/en/pricing` → `/pricing`. Voir lib/canonique-www.ts : rien dans le
+     * produit n'émet ce lien, mais un lecteur qui remplace « fr » par « en »
+     * dans la barre d'adresse, ou un assistant qui devine l'adresse, tombait
+     * sur une page morte alors que la page existe.
+     */
+    const sansPrefixe = cheminSansPrefixeParDefaut(pathname, defaultLocale);
+    if (sansPrefixe) {
+      const url = request.nextUrl.clone();
+      url.pathname = sansPrefixe;
+      return NextResponse.redirect(url, 301);
+    }
+
+    // /xx (préfixe qui n'est pas une langue connue) → bypass auth, laisser
+    // Next.js renvoyer 404. Le rediriger inventerait une page pour n'importe
+    // quelle suite de deux lettres.
     if (!isValidNonDefaultLocale) {
       return NextResponse.next();
     }
