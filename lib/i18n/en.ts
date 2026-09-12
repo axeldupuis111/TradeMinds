@@ -2761,6 +2761,7 @@ const dict: Record<string, string> = {
   "strategy_tags_checklist": "Checklist",
   "ict_goto_trades": "Go to My Trades",
   "ict_kpi_discipline": "Discipline",
+  "an_kpi_discipline_moyenne": "Average discipline",
   "error_title": "Something went wrong",
   "error_subtitle": "Don't worry, your data is safe.",
   "error_retry": "Try again",

@@ -156,7 +156,13 @@ export function AnalyticsKpiCards({
         <KpiCardPremium
           layout="kpi"
           accentColor="cyan"
-          label={t("ict_kpi_discipline")}
+          /* ⚠️⚠️ LE LIBELLE DIT CE QUE MONTRE LE CHIFFRE. « Discipline » tout
+             court coiffait le score du DERNIER bilan, pendant que le profil
+             public du meme trader affichait sa MOYENNE sous « Discipline
+             moyenne » : 60/100 ici, 46/100 la-bas, sans rien pour comprendre
+             l ecart. La carte moyenne desormais sur la periode choisie, et le
+             dit. */
+          label={t("an_kpi_discipline_moyenne")}
           value={disciplineScore != null ? `${disciplineScore}/100` : "—"}
           trend={
             disciplineScore != null

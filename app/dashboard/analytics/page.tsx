@@ -239,7 +239,10 @@ export default function AnalyticsPage() {
           .select("created_at, discipline_score, analysis")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false })
-          .limit(20),
+          // ⚠️ La carte Discipline en fait désormais une MOYENNE sur la période
+          // choisie : vingt lignes suffisaient pour « la dernière », pas pour
+          // une moyenne. Un compte actif dépasse vingt bilans en un trimestre.
+          .limit(500),
       ]);
 
       /**
@@ -352,6 +355,45 @@ export default function AnalyticsPage() {
     }
     return t("analytics_all");
   }, [period, customDateFrom, customDateTo, t, dateLocale]);
+
+  /**
+   * LA DISCIPLINE DE LA PÉRIODE CHOISIE, EN MOYENNE.
+   *
+   * ⚠️⚠️ CETTE CARTE AFFICHAIT LE SCORE DU DERNIER BILAN, sous le seul mot
+   * « Discipline ». Mesuré en production sur le compte réel : elle annonçait
+   * 60/100 pendant que le PROFIL PUBLIC du même trader, sous « Discipline
+   * moyenne », annonçait 46/100. Deux chiffres pour le même fait, sur deux
+   * surfaces, dont l'une est celle qu'il partage. Rien ne permettait de
+   * comprendre l'écart : les deux libellés ne diffèrent que d'un mot.
+   *
+   * ⚠️ ET ELLE IGNORAIT LE SÉLECTEUR DE PÉRIODE, seule de sa rangée : P&L,
+   * winrate, trades, meilleur et pire le suivent tous. Choisir « 7 jours »
+   * laissait ce chiffre-là inchangé, sans rien dire.
+   *
+   * La moyenne sur la période réconcilie les deux : à « Tout », elle rend
+   * exactement le chiffre du profil public.
+   */
+  const disciplineMoyenne = useMemo(() => {
+    let bornes = reviews;
+    if (period !== "all") {
+      let debut: Date | null = null;
+      let fin: Date | null = null;
+      if (period === "7d") { debut = new Date(); debut.setDate(debut.getDate() - 7); }
+      else if (period === "30d") { debut = new Date(); debut.setDate(debut.getDate() - 30); }
+      else if (period === "90d") { debut = new Date(); debut.setDate(debut.getDate() - 90); }
+      else if (period === "custom") {
+        if (customDateFrom) debut = new Date(customDateFrom);
+        if (customDateTo) { fin = new Date(customDateTo); fin.setHours(23, 59, 59, 999); }
+      }
+      if (debut) bornes = bornes.filter((r) => new Date(r.created_at) >= debut!);
+      if (fin) bornes = bornes.filter((r) => new Date(r.created_at) <= fin!);
+    }
+    const scores = bornes
+      .map((r) => r.discipline_score)
+      .filter((v): v is number => typeof v === "number");
+    if (scores.length === 0) return undefined;
+    return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+  }, [reviews, period, customDateFrom, customDateTo]);
 
   // Devise de la page : celle du compte filtré, sinon celle que partagent tous
   // les comptes. À défaut l'euro — un total mélangeant EUR et USD n'a pas de
@@ -737,7 +779,6 @@ export default function AnalyticsPage() {
     );
   }
 
-  const latestScore = reviews.length > 0 ? reviews[0].discipline_score : undefined;
 
   // ── Pill style helper ─────────────────────────────────────────────────────
   const periodPillClass = (p: Period) =>
@@ -1051,7 +1092,7 @@ export default function AnalyticsPage() {
               bestTrade={bestTrade}
               worstTrade={worstTrade}
               profitFactor={profitFactor}
-              disciplineScore={latestScore}
+              disciplineScore={disciplineMoyenne}
               prevKpis={prevKpis}
               avgWin={avgWin}
               avgLoss={avgLoss}
