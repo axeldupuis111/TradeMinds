@@ -317,6 +317,31 @@ export const LIBELLE_DE_VIOLATION: Record<MechanicalViolationType, string> = {
   consecutive_losses: "trading poursuivi après N pertes consécutives",
 };
 
+/**
+ * Remplace les codes internes par leur nom lisible, DANS UN TEXTE REDIGE.
+ *
+ * ⚠️⚠️ LE TABLEAU DE BORD AFFICHAIT « La violation missing_tp recidive pour
+ * la 3e analyse consecutive ». Vu a l'ecran, sur la carte « Insights IA ». Le
+ * modele n'a rien invente : le prompt lui donne les codes, il en a besoin pour
+ * remplir le champ `violations[].type`, et rien ne lui interdisait de les
+ * reutiliser dans la PROSE. Cette prose est ensuite ENREGISTREE, donc le code
+ * reste a l'ecran jusqu'a la prochaine analyse.
+ *
+ * ⚠️ CORRIGE DES DEUX COTES : une regle de prompt nettoie ce qui sera
+ * ecrit, celle-ci nettoie ce qui l'a deja ete. Une regle de prompt seule
+ * laisserait les vingt-quatre analyses existantes telles quelles.
+ *
+ * ⚠️ ON NE TOUCHE QUE DES MOTS ENTIERS, et seulement des codes connus : un
+ * texte francais ne contient pas « missing_tp » par accident.
+ */
+export function sansCodesInternes(texte: string): string {
+  let sortie = texte;
+  for (const [code, libelle] of Object.entries(LIBELLE_DE_VIOLATION)) {
+    sortie = sortie.replace(new RegExp("(^|[^A-Za-z0-9_])" + code + "(?![A-Za-z0-9_])", "g"), "$1" + libelle);
+  }
+  return sortie;
+}
+
 /** Rend les violations mécaniques en bloc de faits pour le prompt. */
 export function renderMechanicalBlock(violations: MechanicalViolation[], total: number): string {
   if (violations.length === 0) {

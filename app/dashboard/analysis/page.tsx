@@ -1,6 +1,7 @@
 "use client";
 
 import { tradesConformes } from "@/lib/trades-conformes";
+import { sansCodesInternes } from "@/lib/analysis-selection";
 import LectureRatee from "@/components/LectureRatee";
 import UpgradeBanner from "@/components/UpgradeBanner";
 import { money } from "@/lib/account-currency";
@@ -20,7 +21,7 @@ import { createClient } from "@/lib/supabase/client";
 import { fetchAllRows } from "@/lib/supabase-paginate";
 import { track } from "@/lib/track";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { enDate } from "@/lib/dates";
 
@@ -125,6 +126,33 @@ interface DataFields {
   emotion: boolean;
   rr: boolean;
   checklist: boolean;
+}
+
+/**
+ * Le meme objet, sans un seul identifiant interne dans ses textes.
+ *
+ * ⚠️ Le champ `type` des violations GARDE son code : c'est une cle, pas une
+ * phrase, et l'ecran la traduit deja par `t(\`violation_${type}\`)`.
+ */
+function nettoyerLAnalyse(a: Analysis): Analysis {
+  const texte = (v: string | null | undefined) => (v ? sansCodesInternes(v) : v);
+  return {
+    ...a,
+    headline: texte(a.headline),
+    summary: texte(a.summary),
+    strengths: (a.strengths ?? []).map(sansCodesInternes),
+    recommendations: (a.recommendations ?? []).map(sansCodesInternes),
+    patterns: (a.patterns ?? []).map((p: Pattern) => ({ ...p, description: sansCodesInternes(p.description) })),
+    violations: (a.violations ?? []).map((v: Violation | LegacyViolation) => ({
+      ...v,
+      explanation: v.explanation ? sansCodesInternes(v.explanation) : v.explanation,
+    })),
+    trade_reviews: a.trade_reviews?.map((r: TradeReview) => ({
+      ...r,
+      comment: r.comment ? sansCodesInternes(r.comment) : r.comment,
+    })),
+    action_plan: a.action_plan?.map((x: ActionItem) => ({ ...x, title: sansCodesInternes(x.title) })),
+  };
 }
 
 interface Analysis {
@@ -924,7 +952,22 @@ export default function AnalysisPage() {
   const compareA = compareSelection.length >= 2 ? history.find((h) => h.id === compareSelection[0]) : null;
   const compareB = compareSelection.length >= 2 ? history.find((h) => h.id === compareSelection[1]) : null;
 
-  const displayedAnalysis = analysis;
+  /**
+   * ⚠️⚠️ LE CODE INTERNE NE SORT PAS, ET ON NETTOIE ICI, UNE FOIS. Vu sur
+   * le tableau de bord : « La violation missing_tp recidive pour la 3e analyse
+   * consecutive ». Le texte vient du modele, qui recoit les codes pour remplir
+   * le champ structure `violations[].type`, et rien ne lui interdisait de les
+   * reutiliser dans la prose.
+   *
+   * ⚠️ Cette prose est ENREGISTREE : une regle de prompt seule laisserait
+   * les analyses deja en base telles quelles. On nettoie donc a l'affichage, au
+   * SEUL endroit d'ou sortent la page et son export PDF : nettoyer a douze
+   * endroits de rendu, c'est en oublier un.
+   */
+  const displayedAnalysis = useMemo(
+    () => (analysis ? nettoyerLAnalyse(analysis) : analysis),
+    [analysis],
+  );
 
   if (planLoading) {
     return (

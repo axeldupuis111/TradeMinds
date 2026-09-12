@@ -306,7 +306,8 @@ VIOLATIONS MÉCANIQUES DÉJÀ COMPTÉES PAR LE SERVEUR (source FAISANT FOI) :
 <mechanical_violations>
 ${mechanicalBlock}
 </mechanical_violations>
-RÈGLE : pour les types wrong_pair, wrong_session, low_rr, sl_too_wide, missing_sl, missing_tp, max_trades_day et consecutive_losses, REPRENDS EXACTEMENT les "occurrences" ci-dessus. Ne les recompte pas depuis les trades détaillés plus bas : tu n'en vois qu'un extrait, tout recomptage serait faux. Ton travail sur ces violations est de les EXPLIQUER (champ "explanation") et de les hiérarchiser, pas de les dénombrer. Si un type n'apparaît pas ci-dessus, il n'y a pas de violation de ce type : ne l'invente pas.
+RÈGLE : pour les types wrong_pair, wrong_session, low_rr, sl_too_wide, missing_sl, missing_tp, max_trades_day et consecutive_losses, REPRENDS EXACTEMENT les "occurrences" ci-dessus.
+CES NOMS SONT DES CLÉS, PAS DES MOTS : ils vont dans le champ "type" et NULLE PART AILLEURS. N'en écris JAMAIS un seul dans une phrase rédigée (headline, summary, explanation, patterns, strengths, recommendations, commentaires) : le trader lit ces phrases telles quelles sur son tableau de bord, et "missing_tp" n'y veut rien dire. Dans une phrase, nomme la règle en français : « aucun TP renseigné », « SL au-delà du maximum », « trading poursuivi après des pertes consécutives ». Ne les recompte pas depuis les trades détaillés plus bas : tu n'en vois qu'un extrait, tout recomptage serait faux. Ton travail sur ces violations est de les EXPLIQUER (champ "explanation") et de les hiérarchiser, pas de les dénombrer. Si un type n'apparaît pas ci-dessus, il n'y a pas de violation de ce type : ne l'invente pas.
 Tu restes en revanche seul juge des violations COMPORTEMENTALES (revenge_trading, overtrading, lot_increase_after_loss, fomo) et de missing_setup_tag : appuie-les sur les statistiques agrégées et sur les trades détaillés.
 
 TRADES DÉTAILLÉS (${selection.indices.length} trades sur ${recentTrades.length}) :

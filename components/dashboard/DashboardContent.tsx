@@ -1,6 +1,7 @@
 "use client";
 
 import { fmtPrice } from "@/lib/prix-instrument";
+import { sansCodesInternes } from "@/lib/analysis-selection";
 import EquityCurve from "@/components/charts/EquityCurve";
 import TradingCalendar from "@/components/charts/TradingCalendar";
 import { AiInsights } from "@/components/dashboard/AiInsights";
@@ -273,7 +274,14 @@ export default function DashboardContent({
     if (a.patterns      && a.patterns.length      > 0) items.push(a.patterns[0].description);
     if (a.recommendations && a.recommendations.length > 0) items.push(a.recommendations[0]);
     if (a.strengths     && a.strengths.length     > 0) items.push(a.strengths[0]);
-    return items.slice(0, 4);
+    /**
+     * ⚠️⚠️ LE CODE INTERNE NE SORT PAS. Vu a l'ecran : « La violation
+     * missing_tp recidive pour la 3e analyse consecutive ». Le texte vient du
+     * modele, qui recoit les codes pour remplir un champ structure, et cette
+     * prose est ENREGISTREE : sans nettoyage a l'affichage, les analyses deja
+     * en base garderaient leur code pour toujours.
+     */
+    return items.slice(0, 4).map(sansCodesInternes);
   }, [lastReview]);
 
   // ── Date & salutation selon l'heure ───────────────────────────────────────
