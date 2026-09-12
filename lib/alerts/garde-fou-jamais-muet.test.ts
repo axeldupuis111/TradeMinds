@@ -41,7 +41,10 @@ vi.mock("@/lib/cron-alert", () => ({
   },
 }));
 
-const { checkDailyLossAlert } = await import("./daily-loss");
+// ⚠️ Import statique, PAS `await import(...)` : la cible TypeScript du dépôt
+// refuse le `await` au niveau racine. `vi.mock` est hissé au-dessus des
+// imports, les doublures sont donc bien en place.
+import { checkDailyLossAlert } from "./daily-loss";
 
 /** Une erreur PostgREST, telle que le client la rend : sans jamais lever. */
 const ERREUR = { message: "canceling statement due to statement timeout" };

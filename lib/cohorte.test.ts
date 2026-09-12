@@ -89,6 +89,30 @@ describe("la route du tunnel admin", () => {
     expect(route, "activatedAllUsers a disparu").toMatch(/activatedAllUsers:/);
   });
 
+  it("ne rapporte aucune étape à une autre étape", () => {
+    /**
+     * ⚠️⚠️ LES ÉTAPES NE SONT PAS EMBOÎTÉES. On peut démarrer un checkout sans
+     * avoir lancé d'analyse : le mur de paiement s'atteint aussi depuis la page
+     * des tarifs. Rapporter une étape à la précédente donne donc un taux qui ne
+     * veut rien dire, et le 2026-09-12 l'écran affichait « checkout démarré :
+     * 200 % » en production.
+     *
+     * Un taux au-dessus de 100 se voit. Le même calcul, sur des étapes proches,
+     * produit un taux faux que personne ne remarque : c'est pour ça que la
+     * règle porte sur le CALCUL et pas sur le résultat.
+     */
+    const page = sansCommentaires(
+      readFileSync(join(process.cwd(), "app/dashboard/admin/page.tsx"), "utf8"),
+    );
+    for (const etape of ["activated", "analyzed", "checkoutStarted"]) {
+      expect(
+        page,
+        `une étape du tunnel se rapporte à funnel.${etape} : les étapes ne ` +
+          `s'enchaînent pas, ce pourcentage peut dépasser 100 % et ne veut rien dire`,
+      ).not.toContain("base: funnel." + etape);
+    }
+  });
+
   it("signale une cohorte tronquée", () => {
     expect(route, "le plafond silencieux de PostgREST n'est plus détecté").toMatch(
       /cohorteTronquee/,

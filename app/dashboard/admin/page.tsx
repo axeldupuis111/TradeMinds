@@ -813,11 +813,24 @@ export default function AdminPage() {
                   ⚠️ Liste des inscrits tronquée par la base : les étapes ci-dessous sont sous-comptées.
                 </p>
               )}
+              {/*
+                ⚠️⚠️ CHAQUE ÉTAPE SE RAPPORTE AUX INSCRITS, PAS À L'ÉTAPE
+                PRÉCÉDENTE. Les étapes ne sont PAS emboîtées : on peut démarrer
+                un checkout sans avoir lancé d'analyse (le mur de paiement
+                s'atteint depuis la page des tarifs). Rapporter chaque étape à
+                la précédente donnait donc des taux qui ne veulent rien dire, et
+                le 2026-09-12 l'écran affichait « checkout démarré : 200 % » en
+                production.
+
+                Un pourcentage au-dessus de 100 a au moins le mérite de se
+                voir. Le même calcul, sur des étapes qui se suivent de peu,
+                produit silencieusement un taux faux.
+              */}
               {[
                 { label: "Inscrits sur la période", value: funnel.signups, base: null as number | null, tous: null as number | null },
-                { label: "…dont activés (import / démo / trade)", value: funnel.activated, base: funnel.signups, tous: funnel.activatedAllUsers ?? null },
-                { label: "…dont analyse IA lancée", value: funnel.analyzed, base: funnel.activated, tous: funnel.analyzedAllUsers ?? null },
-                { label: "…dont checkout démarré", value: funnel.checkoutStarted, base: funnel.analyzed, tous: funnel.checkoutStartedAllUsers ?? null },
+                { label: "Activés (import / démo / trade)", value: funnel.activated, base: funnel.signups, tous: funnel.activatedAllUsers ?? null },
+                { label: "Analyse IA lancée", value: funnel.analyzed, base: funnel.signups, tous: funnel.analyzedAllUsers ?? null },
+                { label: "Checkout démarré", value: funnel.checkoutStarted, base: funnel.signups, tous: funnel.checkoutStartedAllUsers ?? null },
               ].map((step) => (
                 <div key={step.label}>
                   <div className="flex items-center gap-3">
@@ -925,7 +938,11 @@ export default function AdminPage() {
                     </div>
                   ))}
               </div>
-              <p className="text-xs text-muted pt-2">Fenêtre : {funnel.days} derniers jours. Les % sont la conversion vers l&apos;étape précédente.</p>
+              <p className="text-xs text-muted pt-2">
+                Fenêtre : {funnel.days} derniers jours. Les étapes ne comptent que les inscrits de la période,
+                et chaque % se rapporte à eux (les étapes ne s&apos;enchaînent pas : un checkout peut démarrer
+                sans analyse préalable).
+              </p>
 
               {/* Coût IA réel — le chiffre à surveiller quand les utilisateurs arrivent */}
               <div className="mt-6 pt-4 border-t border-border">
