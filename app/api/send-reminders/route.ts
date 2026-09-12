@@ -139,6 +139,18 @@ export async function POST(req: Request) {
     supabase.from("push_subscriptions").select("user_id").order("user_id").range(from, to),
   );
 
+  /**
+   * ⚠️⚠️ « AUCUN ABONNÉ » ET « JE N'AI PAS PU LIRE » NE SONT PAS LA MÊME
+   * CHOSE. `fetchAllRows` rend `null` dès qu'une page échoue ; le `?? []`
+   * en faisait une liste vide, donc zéro notification envoyée, et le cron
+   * répondait 200 en annonçant `pushed: 0` comme un succès. Personne
+   * n'aurait vu passer une panne qui prive TOUS les traders de leur
+   * rappel. Le module `lib/cron-alert` existe exactement pour ça, et les
+   * crons voisins s'en servent déjà.
+   */
+  if (!pushSubs) {
+    await alertCronFailure("send-reminders", "push_subscriptions : lecture paginée incomplète");
+  }
   const pushUserIds = Array.from(new Set((pushSubs ?? []).map((s) => s.user_id)));
 
   if (pushUserIds.length > 0) {

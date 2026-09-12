@@ -116,7 +116,22 @@ export default async function Image({ params }: { params: { username: string } }
         chargerLaSerieDeDiscipline(supabase, profile.id, { sansDemo: true }),
       ]);
 
-      const nets = (trades ?? []).map((t) => t.pnl + (t.commission || 0) + (t.swap || 0));
+      /**
+       * ⚠️⚠️ `?? []` AURAIT PUBLIÉ « 0 TRADE, 0 % DE RÉUSSITE » SUR LA CARTE
+       * QUE LES RÉSEAUX SOCIAUX AFFICHENT. `fetchAllRows` rend `null` dès
+       * qu'une page échoue : l'image annonçait un compte vide à des
+       * inconnus, et c'est la seule surface du produit qu'un lecteur ne peut
+       * PAS recouper — il ne verra jamais la page derrière.
+       *
+       * ⚠️ La page publique, elle, traitait déjà le cas (`tradesComplets`),
+       * commentaire à l'appui. La règle était écrite, appliquée à une
+       * surface sur deux, et c'est la plus exposée qui restait dehors.
+       *
+       * On sort vers la carte générique : ne rien affirmer vaut mieux
+       * qu'affirmer zéro.
+       */
+      if (trades === null) throw new Error("lecture du journal incomplète");
+      const nets = trades.map((t) => t.pnl + (t.commission || 0) + (t.swap || 0));
       count = nets.length;
       winrate = count > 0 ? (nets.filter((p) => p > 0).length / count) * 100 : 0;
       sessions = sessionCount ?? 0;
@@ -124,10 +139,21 @@ export default async function Image({ params }: { params: { username: string } }
       const scores = (reviews ?? []).map((r) => r.discipline_score as number);
       avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
 
-      streak = serie.current;
+      // ⚠️ `complet` existe pour ça : une série lue à moitié ne s'affiche pas.
+      streak = serie.complet ? serie.current : 0;
     }
   } catch {
     // fall through to the generic card
+    // ⚠️ ET ON REPART DE ZÉRO : `found` a pu être posé à `true` avant
+    // l'échec, et la carte aurait alors affiché le pseudo du trader avec
+    // quatre tuiles à zéro, ce qui est exactement le chiffre faux qu'on
+    // refuse de publier.
+    found = false;
+    count = 0;
+    winrate = 0;
+    sessions = 0;
+    avgScore = 0;
+    streak = 0;
   }
 
   const tiles: { label: string; value: string; color: string }[] = [

@@ -216,7 +216,18 @@ async function handle(req: Request) {
     const idleDays = Math.floor((now - lastActivityTs) / DAY_MS);
     if (idleDays < MIN_IDLE_DAYS || idleDays >= MAX_IDLE_DAYS) { skipped++; continue; }
 
-    const trades = allTrades ?? [];
+    /**
+     * ⚠️ « AUCUN TRADE » ET « JE N'AI PAS PU LIRE » MENAIENT AU MÊME `continue`.
+     * Le mail n'était pas envoyé, ce qui est le bon réflexe (mieux vaut se
+     * taire qu'écrire un bilan faux), mais rien ne distinguait les deux :
+     * une panne de lecture privait silencieusement le trader de son message.
+     */
+    if (allTrades === null) {
+      console.error(`[reactivation] journal de ${user.id} non lu : mail non envoyé`);
+      skipped++;
+      continue;
+    }
+    const trades = allTrades;
     if (trades.length === 0) { skipped++; continue; }
     const nets = trades.map((tr) => tr.pnl + (tr.commission || 0) + (tr.swap || 0));
     // ⚠️ La carte porte TOUS les comptes, clotures compris : un P&L cumule

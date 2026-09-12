@@ -118,14 +118,18 @@ describe("les lectures qui agrègent un compte sont paginées", () => {
    * « je n'ai pas tout » en « il n'y a rien », ce qui est précisément le défaut
    * qu'on répare.
    */
-  it("les appelants distinguent « rien » de « lecture ratée »", () => {
-    for (const chemin of [
-      "components/dashboard/ChallengeGuardian.tsx",
-      "components/session/PositionSizer.tsx",
-      "app/dashboard/challenge/page.tsx",
-    ]) {
-      const source = readFileSync(join(process.cwd(), chemin), "utf8");
-      expect(source, chemin).toMatch(/=== null\)\s*(return|continue)/);
-    }
+  /**
+   * ⚠️⚠️ CE GARDE-CI A ÉTÉ RETIRÉ, ET C'EST VOULU. Il demandait « ce FICHIER
+   * teste-t-il un `null` quelque part ? », ce qui est une question sans
+   * rapport : vérifié par mutation, il restait VERT après réintroduction du
+   * défaut, parce que le fichier contenait d'autres `if (!x)`.
+   *
+   * Le vrai garde est dans `lib/lecture-paginee-nommee.test.ts` : il apparie
+   * le résultat paginé à SON nom, position par position dans le
+   * `Promise.all`, et il tombe quand on remet le défaut.
+   */
+  it("délègue la vérification du null au garde lié au nom", () => {
+    const garde = readFileSync(join(process.cwd(), "lib/lecture-paginee-nommee.test.ts"), "utf8");
+    expect(garde, "le garde lié au nom a disparu").toContain("chaque résultat paginé est testé sur SON nom");
   });
 });

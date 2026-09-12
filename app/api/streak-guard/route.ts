@@ -117,12 +117,22 @@ async function handle(req: Request) {
 
   for (const p of due) {
     const tz = (p.timezone as string) || "UTC";
-    const { data: reviews } = await supabase
+    const { data: reviews, error: erreurReviews } = await supabase
       .from("session_reviews")
       .select("user_id, created_at, discipline_score")
       .eq("user_id", p.id)
       .gte("created_at", sinceIso);
 
+    /**
+     * ⚠️ UNE LECTURE RATÉE DONNAIT UNE SÉRIE DE ZÉRO, donc « pas de série à
+     * protéger », donc aucune alerte. Le trader perdait sa série sans avoir
+     * reçu le rappel qui existe pour la sauver. Le client Supabase ne jette
+     * pas : sans lire `error`, les deux cas se ressemblaient.
+     */
+    if (erreurReviews) {
+      console.error(`[streak-guard] bilans de ${p.id} non lus : ${erreurReviews.message}`);
+      continue;
+    }
     const { streak, loggedToday } = streakAtRisk((reviews ?? []) as ReviewRow[], tz);
     if (loggedToday || streak < MIN_STREAK) continue;
 

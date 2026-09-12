@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { fetchAllByIds, fetchAllRows } from "@/lib/supabase-paginate";
 import { NextResponse } from "next/server";
 import { sendPushToUser } from "@/lib/push";
+import { alertCronFailure } from "@/lib/cron-alert";
 import {
   currenciesForPairs,
   impactEmoji,
@@ -89,6 +90,16 @@ async function handle(req: Request) {
   const subRows = await fetchAllRows<{ user_id: string }>((from, to) =>
     supabase.from("push_subscriptions").select("user_id").order("user_id").range(from, to),
   );
+  /**
+   * ⚠️⚠️ « AUCUN ABONNÉ » ÉTAIT AUSSI LA RÉPONSE À UNE PANNE. Une lecture
+   * paginée incomplète rend `null`, le `?? []` en faisait zéro abonné, et
+   * la route répondait 200 avec `reason: "no subscribers"`. L'annonce ne
+   * partait à personne et rien ne le disait.
+   */
+  if (!subRows) {
+    await alertCronFailure("economic-calendar-notify", "push_subscriptions : lecture paginée incomplète");
+    return NextResponse.json({ error: "subscribers query failed" }, { status: 500 });
+  }
   const subscribedIds = Array.from(new Set((subRows ?? []).map((r) => r.user_id)));
   if (subscribedIds.length === 0) return NextResponse.json({ notified: 0, reason: "no subscribers" });
 

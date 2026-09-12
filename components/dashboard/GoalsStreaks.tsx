@@ -9,8 +9,9 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Flame, Trophy, Gem, Target, Star, Lock, PartyPopper, Crown, Snowflake, type LucideIcon } from "lucide-react";
 import { KpiCardPremium } from "@/components/dashboard/KpiCardPremium";
+import LectureRatee from "@/components/LectureRatee";
 import { joursEmotionnels, serieDepuisLesTrades } from "@/lib/discipline-streak-source";
-import { weekStartLocalKey, browserTimezone } from "@/lib/timezone";
+import { weekStartLocalKey, browserTimezone, localDateKey } from "@/lib/timezone";
 import { BASE_FREEZE_QUOTA, freezeBonusFor } from "@/lib/badges";
 import { challengeFreezeBonus } from "@/lib/community-challenges";
 
@@ -64,6 +65,20 @@ export default function GoalsStreaks() {
   const [freezeCandidate, setFreezeCandidate] = useState<string | null>(null);
   const [freezing, setFreezing] = useState(false);
   const [loading, setLoading] = useState(true);
+  /**
+   * ⚠️⚠️ UNE LECTURE RATÉE AFFICHAIT « 0 JOUR DE DISCIPLINE ». La lecture
+   * paginée rend `null` dès qu'une page échoue, et le `|| []` juste en
+   * dessous en faisait un historique vide : la série tombait à zéro, le
+   * record aussi, et la flamme disparaissait. C'est le chiffre que cette
+   * carte existe pour montrer, et celui que le trader a mis des semaines à
+   * construire.
+   *
+   * ⚠️ Cette carte a DÉJÀ payé un défaut de cette famille : elle annonçait
+   * « 75 jours de discipline » pendant qu'« État du jour » affichait
+   * « STREAK DISCIPLINE 0 », sur le même écran. Le calcul est partagé
+   * depuis ; la lecture, elle, pouvait encore mentir toute seule.
+   */
+  const [lectureRatee, setLectureRatee] = useState(false);
   // Badge fraîchement débloqué dans cette session → confettis + bannière
   const [celebrating, setCelebrating] = useState<string | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -131,7 +146,10 @@ export default function GoalsStreaks() {
     // tableau de bord annonçait deux séries différentes sous le même nom, sur le
     // même écran. Voir lib/discipline-streak-source.ts.
     const frozenDays = new Set<string>((freezes || []).map((f) => (f as { day: string }).day));
-    const streaks = serieDepuisLesTrades(trades || [], frozenDays);
+    // ⚠️ `null` = je n'ai pas tout lu. Le transformer en `[]` inventerait une
+    // série de zéro jour à quelqu'un qui en a soixante-quinze.
+    setLectureRatee(trades === null);
+    const streaks = serieDepuisLesTrades(trades ?? [], frozenDays);
     const streakCount = streaks.current;
     setStreak(streaks.current);
     setRecord(streaks.record);
@@ -142,7 +160,10 @@ export default function GoalsStreaks() {
     // Les badges du classement (streak_7, regular, comeback…) ajoutent des
     // gels permanents au quota mensuel — récompense réelle des badges.
     const badgeBonus = freezeBonusFor((badgeAwards || []).map((a) => (a as { badge_key: string }).badge_key));
-    const monthPrefix = new Date().toISOString().slice(0, 7); // YYYY-MM
+    // ⚠️ Le mois DU TRADER : en UTC, le quota de gels d'un trader à Sydney
+    // changeait de mois dix heures trop tard, donc le 1er au matin il
+    // comptait encore les gels du mois précédent.
+    const monthPrefix = localDateKey(browserTimezone()).slice(0, 7); // YYYY-MM
     // Chaque défi communautaire réussi ce mois-ci offre +1 gel (plafonné pour
     // qu'une grosse semaine ne rende pas la série incassable).
     const challengeGels = challengeFreezeBonus(
@@ -293,6 +314,10 @@ export default function GoalsStreaks() {
       </AnimatePresence>
 
       <h2 className="text-sm font-semibold text-foreground mb-4">{t("goals_title")}</h2>
+
+      {/* ⚠️ Un zéro qu'on n'a pas lu n'est pas un zéro. On le dit avant tout
+          le reste, parce que tous les chiffres de cette carte en dépendent. */}
+      {lectureRatee && <LectureRatee onReessayer={load} />}
 
       {/* Streak + progression vers le prochain palier */}
       <div className="flex items-center gap-3 mb-2">
