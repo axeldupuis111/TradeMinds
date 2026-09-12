@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { cohorteTronquee, dansLaCohorte, tousUtilisateurs } from "@/lib/cohorte";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
@@ -10,10 +11,6 @@ import { NextRequest, NextResponse } from "next/server";
  *   checkout démarré · + payants actuels (hors fenêtre, état global).
  * Même garde admin que /api/admin/update-plan (ADMIN_EMAILS).
  */
-
-function distinct(rows: { user_id: string }[] | null): number {
-  return new Set((rows ?? []).map((r) => r.user_id)).size;
-}
 
 export async function GET(req: NextRequest) {
   // ── Garde admin (cookie session + liste blanche ADMIN_EMAILS) ────────────
@@ -40,6 +37,7 @@ export async function GET(req: NextRequest) {
 
   const [
     { count: signups },
+    { data: cohorteRows },
     { data: activationEvents, error: eventsErr },
     { data: analysisEvents },
     { data: checkoutEvents },
@@ -51,6 +49,13 @@ export async function GET(req: NextRequest) {
     { data: aiCallEvents },
   ] = await Promise.all([
     admin.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", since),
+    /**
+     * Les IDENTIFIANTS de la cohorte, pour pouvoir intersecter les étapes.
+     * Le comptage exact reste au-dessus : lui est juste à n'importe quelle
+     * taille, alors que cette liste peut être tronquée. On compare les deux
+     * plus bas.
+     */
+    admin.from("profiles").select("id").gte("created_at", since).limit(10000),
     admin.from("product_events").select("user_id")
       .in("event", ["csv_imported", "manual_trade_added", "demo_loaded"])
       .gte("created_at", since).limit(10000),
@@ -148,14 +153,33 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  const cohorte = new Set(((cohorteRows ?? []) as { id: string }[]).map((r) => r.id));
+
+  /**
+   * ⚠️ POSTGREST PLAFONNE EN SILENCE, avec un statut 200. Si la liste des
+   * identifiants est plus courte que le comptage exact, les étapes seraient
+   * sous-comptées sans que rien ne le signale : on le dit à l'écran plutôt
+   * que d'afficher un tunnel faux.
+   */
+  const tronquee = cohorteTronquee(signups, cohorte.size);
+
   return NextResponse.json({
     days,
+    cohorteTronquee: tronquee,
     // Table absente (migration non appliquée) → le front l'affiche clairement.
     eventsTableMissing: !!eventsErr,
     signups: signups ?? 0,
-    activated: distinct(activationEvents),
-    analyzed: distinct(analysisEvents),
-    checkoutStarted: distinct(checkoutEvents),
+    // Étapes du tunnel : cohorte uniquement, puisque le pourcentage affiché
+    // se lit « sur les inscrits de la fenêtre ».
+    activated: dansLaCohorte(activationEvents, cohorte),
+    analyzed: dansLaCohorte(analysisEvents, cohorte),
+    checkoutStarted: dansLaCohorte(checkoutEvents, cohorte),
+    // Les mêmes gestes, tous utilisateurs confondus : ce n'est PAS une étape
+    // de tunnel, c'est l'activité de la période. Les deux sont utiles, ils ne
+    // se remplacent pas.
+    activatedAllUsers: tousUtilisateurs(activationEvents),
+    analyzedAllUsers: tousUtilisateurs(analysisEvents),
+    checkoutStartedAllUsers: tousUtilisateurs(checkoutEvents),
     payingNow: payingNow ?? 0,
     billedNow: billedNow ?? 0,
     /**
@@ -166,8 +190,8 @@ export async function GET(req: NextRequest) {
      */
     revenueCountsFailed: !!payingErr || !!billedErr,
     // Échelle d'upgrade free→plus (2026-07-09)
-    tasterUsed: distinct(tasterEvents),
-    upgradeCtaUsers: distinct((upgradeCtaEvents ?? []) as { user_id: string }[]),
+    tasterUsed: tousUtilisateurs(tasterEvents),
+    upgradeCtaUsers: tousUtilisateurs((upgradeCtaEvents ?? []) as { user_id: string }[]),
     upgradeCtaBySource,
     // Coût IA réel sur la période (2026-08-06)
     aiCost,

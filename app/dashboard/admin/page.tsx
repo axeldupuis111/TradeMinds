@@ -42,6 +42,8 @@ export default function AdminPage() {
   const [funnel, setFunnel] = useState<{
     days: number; eventsTableMissing: boolean; signups: number;
     activated: number; analyzed: number; checkoutStarted: number; payingNow: number;
+    activatedAllUsers?: number; analyzedAllUsers?: number; checkoutStartedAllUsers?: number;
+    cohorteTronquee?: boolean;
     billedNow?: number; revenueCountsFailed?: boolean;
     tasterUsed: number; upgradeCtaUsers: number; upgradeCtaBySource: Record<string, number>;
     signupsBySource: Record<string, number>;
@@ -796,18 +798,46 @@ export default function AdminPage() {
           )}
           {funnel && !funnelLoading && (
             <div className="space-y-2">
+              {/*
+                ⚠️ CES ÉTAPES NE PORTENT QUE SUR LES INSCRITS DE LA FENÊTRE.
+                C'est ce que le pourcentage a toujours promis ; ça n'a pas
+                toujours été ce qu'il mesurait. L'activité tous utilisateurs
+                confondus est affichée à part, plus bas, parce qu'elle répond à
+                une autre question.
+              */}
+              {funnel.cohorteTronquee && (
+                <p className="text-sm text-loss">
+                  ⚠️ Liste des inscrits tronquée par la base : les étapes ci-dessous sont sous-comptées.
+                </p>
+              )}
               {[
-                { label: "Inscrits", value: funnel.signups, base: null as number | null },
-                { label: "Activés (import / démo / trade)", value: funnel.activated, base: funnel.signups },
-                { label: "Analyse IA lancée", value: funnel.analyzed, base: funnel.activated },
-                { label: "Checkout démarré", value: funnel.checkoutStarted, base: funnel.analyzed },
+                { label: "Inscrits sur la période", value: funnel.signups, base: null as number | null, tous: null as number | null },
+                { label: "…dont activés (import / démo / trade)", value: funnel.activated, base: funnel.signups, tous: funnel.activatedAllUsers ?? null },
+                { label: "…dont analyse IA lancée", value: funnel.analyzed, base: funnel.activated, tous: funnel.analyzedAllUsers ?? null },
+                { label: "…dont checkout démarré", value: funnel.checkoutStarted, base: funnel.analyzed, tous: funnel.checkoutStartedAllUsers ?? null },
               ].map((step) => (
-                <div key={step.label} className="flex items-center gap-3">
-                  <span className="text-sm text-muted flex-1">{step.label}</span>
-                  <span className="text-sm font-bold text-foreground tabular-nums">{step.value}</span>
-                  <span className="text-xs text-muted tabular-nums w-14 text-right">
-                    {step.base != null && step.base > 0 ? `${pourcent(Math.round((step.value / step.base) * 100))}` : "—"}
-                  </span>
+                <div key={step.label}>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-muted flex-1">{step.label}</span>
+                    <span className="text-sm font-bold text-foreground tabular-nums">{step.value}</span>
+                    <span className="text-xs text-muted tabular-nums w-14 text-right">
+                      {step.base != null && step.base > 0 ? `${pourcent(Math.round((step.value / step.base) * 100))}` : "—"}
+                    </span>
+                  </div>
+                  {/*
+                    Le même geste, tous utilisateurs confondus. Affiché seulement
+                    quand il diffère : sinon c'est du bruit, et confondu avec
+                    l'étape il gonflerait le taux de conversion.
+                  */}
+                  {step.tous != null && step.tous !== step.value && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-muted flex-1 pl-4">
+                        tous utilisateurs sur la période (hors cohorte comprise)
+                      </span>
+                      <span className="text-xs text-muted tabular-nums">{step.tous}</span>
+                      <span className="w-14" />
+                    </div>
+                  )}
                 </div>
               ))}
 
