@@ -261,7 +261,13 @@ export default function TradovateConnect() {
                           {enDateEtHeure(c.last_synced_at)}
                         </span>
                       )}
-                      {c.status === "error" && c.last_error && (
+                      {/*
+                        ⚠️ AFFICHÉ QUEL QUE SOIT LE STATUT. La cause n'était
+                        montrée que sur une connexion « error » : une connexion
+                        dont les TRADES passent mais dont le SOLDE échoue reste
+                        active, et son motif ne s'affichait donc jamais.
+                      */}
+                      {c.last_error && (
                         <span className="text-muted"> · {c.last_error}</span>
                       )}
                     </p>

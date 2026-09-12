@@ -91,9 +91,28 @@ export async function syncBrokerConnection(
     // numéro de compte, repli sur l'unique compte actif. Best-effort — une
     // écriture ratée ne doit pas marquer la connexion en erreur alors que les
     // trades, eux, sont bien passés.
+    /**
+     * ⚠️⚠️ « LES TRADES PASSENT » N'EST PAS « TOUT VA BIEN ». Le solde du
+     * broker peut échouer alors que les trades arrivent : numéro de compte
+     * inconnu, lecture impossible. Ce cas ne faisait qu'un `console.warn`, et
+     * la ligne juste en dessous écrivait `last_error: null` : la connexion
+     * s'affichait « active, synchronisée il y a 3 minutes », sans un mot,
+     * pendant que le solde affiché au trader restait figé.
+     *
+     * ⚠️ On NE passe PAS le statut à « error » : les trades, eux, sont bien
+     * arrivés, et couper la connexion serait pire. On retient la cause, qui
+     * s'affiche à côté de la connexion.
+     */
+    let causeDuSolde: string | null = null;
     if (snapshot) {
       const applied = await applyAccountSnapshot(admin, conn.user_id, snapshot);
       if (!applied.applied) {
+        causeDuSolde =
+          applied.reason === "unknown_account"
+            ? `solde non enregistré : aucun compte ne porte le numéro ${snapshot.account}`
+            : applied.reason === "read_failed"
+              ? "solde non enregistré : tes comptes n'ont pas pu être lus, le prochain passage réessaiera"
+              : "solde non enregistré : erreur d'écriture côté serveur";
         console.warn(
           `[Tradovate] état de compte non appliqué pour ${conn.user_id} (compte ${snapshot.account}) : ${applied.reason}`,
         );
@@ -102,7 +121,7 @@ export async function syncBrokerConnection(
 
     await admin
       .from("broker_connections")
-      .update({ status: "active", last_error: null, last_synced_at: new Date().toISOString() })
+      .update({ status: "active", last_error: causeDuSolde, last_synced_at: new Date().toISOString() })
       .eq("id", conn.id);
 
     return { ...result, challengeId };
