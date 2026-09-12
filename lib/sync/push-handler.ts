@@ -12,6 +12,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { checkDailyLossAlert, checkDrawdownAlert, resolveActiveChallengeId, getChallengeAccountMap } from "@/lib/alerts/daily-loss";
 import { checkTiltInsight } from "@/lib/alerts/tilt-insight";
 import { applyAccountSnapshot } from "./account-snapshot";
+import { challengeRattache } from "./rattachement";
 import {
   mapSource,
   mapDirection,
@@ -290,7 +291,7 @@ export async function syncPushTrades(body: PushSyncBody): Promise<NextResponse> 
   const accountMap = await getChallengeAccountMap(admin, userId);
   const fallbackChallengeId = await resolveActiveChallengeId(admin, userId);
   const resolveChallenge = (account: string): string | null =>
-    (account && accountMap.get(account)) || fallbackChallengeId;
+    challengeRattache(account, accountMap, fallbackChallengeId);
 
   // Cumul du P&L des trades insérés par challenge (pour l'alerte drawdown ciblée).
   const batchPnlByChallenge = new Map<string, number>();

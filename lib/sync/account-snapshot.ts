@@ -8,6 +8,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getChallengeAccountMap, resolveActiveChallengeId } from "@/lib/alerts/daily-loss";
 import type { AccountSnapshot } from "./push-parse";
+import { challengeRattache } from "./rattachement";
 
 export type SnapshotResult =
   | { applied: true; challengeId: string }
@@ -30,8 +31,11 @@ export async function applyAccountSnapshot(
   snap: AccountSnapshot,
 ): Promise<SnapshotResult> {
   const accountMap = await getChallengeAccountMap(admin, userId);
-  const challengeId =
-    accountMap.get(snap.account) ?? (await resolveActiveChallengeId(admin, userId));
+  const challengeId = challengeRattache(
+    snap.account,
+    accountMap,
+    await resolveActiveChallengeId(admin, userId),
+  );
 
   // Aucun compte TradeDiscipline ne porte ce numéro, et il y a plusieurs (ou
   // zéro) comptes actifs : on ne devine pas. Le motif remonte dans la réponse
