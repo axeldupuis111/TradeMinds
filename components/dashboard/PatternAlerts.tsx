@@ -15,6 +15,7 @@
  */
 
 import { createClient } from "@/lib/supabase/client";
+import { DEFAULT_CURRENCY, accountCurrency, money } from "@/lib/account-currency";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { cn } from "@/lib/cn";
@@ -49,7 +50,8 @@ export default function PatternAlerts({ compact = false }: { compact?: boolean }
   const [trades, setTrades] = useState<TradeRow[] | null>(null);
   // Tick toutes les 5 min : l'alerte horaire suit la tranche en cours
   const [now, setNow] = useState(() => new Date());
-  const { selectedAccountId } = useActiveAccount();
+  const { selectedAccount, selectedAccountId } = useActiveAccount();
+  const devise = selectedAccount ? accountCurrency(selectedAccount) : DEFAULT_CURRENCY;
 
   useEffect(() => {
     const supabase = createClient();
@@ -100,7 +102,9 @@ export default function PatternAlerts({ compact = false }: { compact?: boolean }
           id: "bad-hour",
           tone: "danger",
           icon: <Clock className="w-3.5 h-3.5" strokeWidth={1.75} />,
-          text: t("rtcoach_bad_hour", { hour, pnl: Math.round(total), count: hourTrades.length }),
+          // ⚠️ Montant DEJA FORMATE : la traduction collait un « € » en dur,
+          // et l'alerte parlait donc en euros sur un compte en dollars.
+          text: t("rtcoach_bad_hour", { hour, pnl: money(Math.round(total), devise), count: hourTrades.length }),
         });
       } else if (wr >= 65) {
         out.push({
@@ -171,7 +175,7 @@ export default function PatternAlerts({ compact = false }: { compact?: boolean }
     // Max 3 alertes, les dangers d'abord
     const order = { danger: 0, warning: 1, positive: 2 };
     return out.sort((a, b) => order[a.tone] - order[b.tone]).slice(0, 3);
-  }, [trades, now, t]);
+  }, [trades, now, t, devise]);
 
   if (alerts.length === 0) return null;
 

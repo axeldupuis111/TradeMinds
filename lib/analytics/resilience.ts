@@ -1,3 +1,4 @@
+import { DEFAULT_CURRENCY, money } from "@/lib/account-currency";
 import type { Traduire } from "@/lib/LanguageContext";
 import { type AnalyticsTrade, netPnl } from "./types";
 
@@ -357,7 +358,13 @@ function detectAverageRecovery(series: DrawdownPoint[], t: Translate): Resilienc
  * Detect revenge trading: trades within 90 min of a big loss (>= 1.5× avg loss).
  * Fire if >= 5 revenge trades AND their avg P&L is significantly worse than global.
  */
-function detectRevengeTrading(trades: AnalyticsTrade[], t: Translate): ResilienceInsight | null {
+/**
+ * ⚠️⚠️ LA DEVISE DESCEND JUSQU'ICI, parce que la TRADUCTION collait un
+ * « € » en dur : « un P&L moyen de -163€ vs -12€ global », sur un compte en
+ * dollars. Aucune resolution de compte ne pouvait corriger ca, le symbole etait
+ * dans la chaine. Le montant arrive donc deja formate.
+ */
+function detectRevengeTrading(trades: AnalyticsTrade[], t: Translate, devise: string): ResilienceInsight | null {
   const sorted = [...trades]
     .filter((t) => t.open_time)
     .sort((a, b) => new Date(a.open_time).getTime() - new Date(b.open_time).getTime());
@@ -399,7 +406,7 @@ function detectRevengeTrading(trades: AnalyticsTrade[], t: Translate): Resilienc
     id: "revenge_trading",
     type: "negative",
     title: t("resilience_ins_revenge_title"),
-    description: t("resilience_ins_revenge_desc", { count: String(revengeTrades.length), avg: revengeAvgPnl.toFixed(0), global: globalAvgPnl.toFixed(0) }),
+    description: t("resilience_ins_revenge_desc", { count: String(revengeTrades.length), avg: money(Math.round(revengeAvgPnl), devise), global: money(Math.round(globalAvgPnl), devise) }),
     strength: Math.min(1, Math.abs(revengeAvgPnl - globalAvgPnl) / (Math.abs(globalAvgPnl) + 1)),
   };
 }
@@ -408,11 +415,13 @@ function detectRevengeTrading(trades: AnalyticsTrade[], t: Translate): Resilienc
  * After 3+ win streaks, collect the 5 trades that follow each.
  * Fire if >= 5 such trades AND their P&L is worse than global avg.
  */
+/** ⚠️ Même raison : le montant arrive déjà formaté, voir detectRevengeTrading. */
 function detectAfterStreakPattern(
   trades: AnalyticsTrade[],
   streaks: Streak[],
   globalAvgPnl: number,
   t: Translate,
+  devise: string,
 ): ResilienceInsight | null {
   const sorted = [...trades]
     .filter((t) => t.open_time)
@@ -440,8 +449,8 @@ function detectAfterStreakPattern(
     type: "negative",
     title: t("resilience_ins_after_streak_title"),
     description: t("resilience_ins_after_streak_desc")
-      .replace("{avg}", afterAvgPnl.toFixed(0))
-      .replace("{global}", globalAvgPnl.toFixed(0)),
+      .replace("{avg}", money(Math.round(afterAvgPnl), devise))
+      .replace("{global}", money(Math.round(globalAvgPnl), devise)),
     strength: Math.min(1, Math.abs(afterAvgPnl - globalAvgPnl) / (Math.abs(globalAvgPnl) + 1)),
   };
 }
@@ -452,7 +461,11 @@ function detectAfterStreakPattern(
  * Generate up to 3 resilience insights, sorted by strength desc.
  * Returns [] if trades.length < 20 or no insights fire.
  */
-export function generateResilienceInsights(trades: AnalyticsTrade[], t: Translate): ResilienceInsight[] {
+export function generateResilienceInsights(
+  trades: AnalyticsTrade[],
+  t: Translate,
+  devise: string = DEFAULT_CURRENCY,
+): ResilienceInsight[] {
   if (trades.length < 20) return [];
 
   const sorted = [...trades]
@@ -471,8 +484,8 @@ export function generateResilienceInsights(trades: AnalyticsTrade[], t: Translat
     detectComeback(sorted, streaks, globalWR, t),
     detectAverageRecovery(ddSeries, t),
     detectPostLossDecline(sorted, streaks, globalWR, t),
-    detectRevengeTrading(sorted, t),
-    detectAfterStreakPattern(sorted, streaks, globalAvgPnl, t),
+    detectRevengeTrading(sorted, t, devise),
+    detectAfterStreakPattern(sorted, streaks, globalAvgPnl, t, devise),
   ];
 
   return candidates

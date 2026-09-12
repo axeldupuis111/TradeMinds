@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { money } from "./account-currency";
 import { checkTradeGuard, type GuardStrategy } from "./trade-guard";
 
 const strat: GuardStrategy = {
@@ -54,8 +55,15 @@ describe("checkTradeGuard", () => {
   });
 
   it("flags reaching the daily loss limit", () => {
-    const w = checkTradeGuard(strat, [], { pair: "XAUUSD" }, { dailyLossLimit: 500, netPnlToday: -520 });
-    expect(w).toEqual([{ type: "daily_loss", values: { lost: 520, limit: 500 } }]);
+    const w = checkTradeGuard(strat, [], { pair: "XAUUSD" }, { dailyLossLimit: 500, netPnlToday: -520, devise: "USD" });
+    /**
+     * ⚠️⚠️ LES MONTANTS ARRIVENT DEJA FORMATES, dans la devise du compte.
+     * La traduction collait un « € » en dur : « ta perte max du jour : 520€
+     * sur 500€ autorises », sur un compte en DOLLARS. Aucune resolution de
+     * compte ne pouvait corriger ca, le symbole etait dans la chaine, et
+     * c'est le message le plus consequent du produit : celui qui dit stop.
+     */
+    expect(w).toEqual([{ type: "daily_loss", values: { lost: money(520, "USD"), limit: money(500, "USD") } }]);
   });
 
   it("does not flag when still within the daily loss limit", () => {
@@ -64,8 +72,8 @@ describe("checkTradeGuard", () => {
   });
 
   it("flags the daily loss even without a strategy (account-level rule)", () => {
-    const w = checkTradeGuard(null, [], { pair: "XAUUSD" }, { dailyLossLimit: 300, netPnlToday: -300 });
-    expect(w).toEqual([{ type: "daily_loss", values: { lost: 300, limit: 300 } }]);
+    const w = checkTradeGuard(null, [], { pair: "XAUUSD" }, { dailyLossLimit: 300, netPnlToday: -300, devise: "USD" });
+    expect(w).toEqual([{ type: "daily_loss", values: { lost: money(300, "USD"), limit: money(300, "USD") } }]);
   });
 
   it("ignores the daily loss check when no limit is set", () => {

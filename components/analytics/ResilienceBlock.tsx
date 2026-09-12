@@ -389,7 +389,7 @@ function Zone({
 export function ResilienceBlock({ trades, currency = DEFAULT_CURRENCY }: Props) {
   const { t } = useLanguage();
   const reduced  = useReducedMotion();
-  const insights = useMemo(() => generateResilienceInsights(trades, t), [trades, t]);
+  const insights = useMemo(() => generateResilienceInsights(trades, t, currency), [trades, t, currency]);
 
   /* ── Empty state ──────────────────────────────────────────────────────── */
   if (trades.length < 20) {

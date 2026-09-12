@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useActiveAccount } from "@/lib/ActiveAccountContext";
+import { accountCurrency } from "@/lib/account-currency";
 import { checkTradeGuard, type GuardStrategy, type GuardWarning } from "@/lib/trade-guard";
 import { startOfLocalDayUtc, browserTimezone } from "@/lib/timezone";
 
@@ -70,6 +71,9 @@ export function useTradeGuard(strategyId: string | null | undefined) {
     return checkTradeGuard(strategyRef.current, todayRef.current, { pair }, {
       dailyLossLimit: dailyLossLimitRef.current,
       netPnlToday: netTodayRef.current,
+      // ⚠️ La devise du compte, sinon le message d'arret parle en euros a
+      // quelqu'un dont le compte est en dollars.
+      devise: selectedAccount ? accountCurrency(selectedAccount) : undefined,
     });
   }
 

@@ -1,3 +1,4 @@
+import { DEFAULT_CURRENCY, money } from "@/lib/account-currency";
 /**
  * trade-guard.ts
  * Pure "commitment device": confronts the trader with their OWN rules at the
@@ -41,10 +42,20 @@ export interface GuardWarning {
 }
 
 export interface GuardContext {
-  /** Max daily loss in account currency (€). Null/0 = no limit. */
+  /** Max daily loss in account currency. Null/0 = no limit. */
   dailyLossLimit?: number | null;
   /** Net P&L so far today (closed trades), in account currency. */
   netPnlToday?: number;
+  /**
+   * La devise du compte (« USD », « EUR »...).
+   *
+   * ⚠️⚠️ LE MESSAGE COLLAIT UN « € » DANS LA TRADUCTION : « Tu as atteint
+   * ta perte max du jour : 500€ sur 500€ autorises ». Vu sur un compte en
+   * DOLLARS. Aucune resolution de compte ne pouvait corriger ca, le symbole
+   * etait dans la chaine. Et c'est le message le plus consequent du produit :
+   * celui qui dit d'arreter.
+   */
+  devise?: string;
 }
 
 /**
@@ -68,7 +79,16 @@ export function checkTradeGuard(
   const limit = context.dailyLossLimit ?? null;
   const net = context.netPnlToday ?? 0;
   if (limit != null && limit > 0 && net <= -limit) {
-    warnings.push({ type: "daily_loss", values: { lost: Math.round(-net), limit: Math.round(limit) } });
+    // ⚠️ Montants DEJA FORMATES : la traduction ne connait pas la devise, et
+    // lui en coller une en dur la rend fausse pour tous les autres comptes.
+    const devise = context.devise ?? DEFAULT_CURRENCY;
+    warnings.push({
+      type: "daily_loss",
+      values: {
+        lost: money(Math.round(-net), devise),
+        limit: money(Math.round(limit), devise),
+      },
+    });
   }
 
   if (!strategy) return warnings;
