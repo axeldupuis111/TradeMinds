@@ -303,17 +303,26 @@ async function handle(req: Request) {
     // Only the trader's local Sunday-evening hour (dryRun bypasses the gate).
     if (!dryRun && !isWeeklyDue((user.timezone as string) || "UTC")) continue;
 
-    // Les trades démo ne partent jamais dans un email ; fallback sans filtre
-    // tant que la colonne is_demo n'existe pas (migration non appliquée).
-    let { data: trades } = await supabase
+    /**
+     * Les trades de démonstration ne partent jamais dans un email.
+     *
+     * ⚠️⚠️ LE REPLI SE DÉCLENCHAIT SUR N'IMPORTE QUELLE PANNE. Il existe pour
+     * un cas précis : la colonne `is_demo` peut manquer si la migration n'est
+     * pas appliquée. Écrit sur `data === null`, il retombait aussi sur une
+     * erreur passagère (réseau, délai, droits) et relançait alors la même
+     * lecture SANS le filtre : un e-mail nominatif partait avec des trades
+     * fictifs dedans, ce que la ligne au-dessus interdit. On regarde donc le
+     * MESSAGE, comme le fait déjà `lib/demo-data.ts`.
+     */
+    let { data: trades, error: erreurTrades } = await supabase
       .from("trades")
       .select("pnl, commission, swap, pair, challenge_id")
       .eq("user_id", user.id)
       .eq("status", "closed")
       .eq("is_demo", false)
       .gte("open_time", sinceIso);
-    if (trades === null) {
-      ({ data: trades } = await supabase
+    if (erreurTrades && /is_demo/.test(erreurTrades.message)) {
+      ({ data: trades, error: erreurTrades } = await supabase
         .from("trades")
         .select("pnl, commission, swap, pair, challenge_id")
         .eq("user_id", user.id)
@@ -321,8 +330,23 @@ async function handle(req: Request) {
         .gte("open_time", sinceIso));
     }
 
+    /**
+     * ⚠️ « AUCUN TRADE » ET « JE N'AI PAS PU LIRE » MENAIENT AU MÊME `continue`.
+     * Ne pas envoyer est le bon réflexe dans les deux cas (mieux vaut le
+     * silence qu'un bilan faux), mais rien ne les distinguait : une panne
+     * privait le trader de son rapport hebdomadaire sans laisser de trace.
+     */
+    if (erreurTrades || !trades) {
+      console.error(
+        `[weekly-report] journal de ${user.id} non lu, rapport non envoyé :`,
+        erreurTrades?.message,
+      );
+      skipped++;
+      continue;
+    }
+
     // Aucun trade cette semaine → pas d'email (pas de spam)
-    if (!trades || trades.length === 0) {
+    if (trades.length === 0) {
       skipped++;
       continue;
     }

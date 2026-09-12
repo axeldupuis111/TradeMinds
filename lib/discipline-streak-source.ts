@@ -117,8 +117,16 @@ export async function chargerLaSerieDeDiscipline(
       return base
         .eq("is_demo", false)
         .range(from, to)
+        /**
+         * ⚠️⚠️ LE REPLI NE VAUT QUE POUR LA COLONNE ABSENTE. Écrit sur
+         * `res.error` tout court, il retombait aussi sur une panne
+         * passagère (réseau, délai, droits) et relançait la lecture SANS
+         * le filtre : les trades de démonstration entraient alors dans un
+         * chiffre montré à des inconnus, ce que la règle écrite juste
+         * au-dessus interdit. On regarde le MESSAGE, comme `lib/demo-data`.
+         */
         .then(async (res) =>
-          res.error
+          res.error && /is_demo/.test(res.error.message)
             ? await supabase
                 .from("trades")
                 .select("emotion, open_time")

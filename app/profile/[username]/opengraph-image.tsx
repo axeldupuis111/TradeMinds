@@ -82,8 +82,16 @@ export default async function Image({ params }: { params: { username: string } }
             .eq("is_demo", false)
             .order("id", { ascending: true })
             .range(from, to)
+            /**
+             * ⚠️⚠️ LE REPLI NE VAUT QUE POUR LA COLONNE ABSENTE. Écrit sur
+             * `res.error` tout court, il retombait aussi sur une panne
+             * passagère (réseau, délai, droits) et relançait la lecture SANS
+             * le filtre : les trades de démonstration entraient alors dans un
+             * chiffre montré à des inconnus, ce que la règle écrite juste
+             * au-dessus interdit. On regarde le MESSAGE, comme `lib/demo-data`.
+             */
             .then(async (res) =>
-              res.error
+              res.error && /is_demo/.test(res.error.message)
                 ? await supabase
                     .from("trades")
                     .select("pnl, commission, swap")
