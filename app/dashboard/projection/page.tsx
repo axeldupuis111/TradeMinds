@@ -456,9 +456,16 @@ export default function ProjectionPage() {
           <span className="font-medium">
             {strategieCourante ? nomStrategie(strategieCourante) : t("proj_scope_all")}
           </span>
-          <span className="text-foreground-muted">
-            {t("proj_scope_trades", { n: String(perimetre.length) })}
-          </span>
+          {/* ⚠️⚠️ UN COMPTE QU'ON N'A PAS PU LIRE NE S'ANNONCE PAS. Ce libellé
+              affichait « 0 trade clôturé » au-dessus du bandeau qui dit, lui,
+              que la lecture a échoué : deux affirmations sur le même écran,
+              dont une fausse, et c'est la plus courte qu'on lit en premier.
+              Mesuré en production en faisant répondre 500 aux lectures. */}
+          {!lectureRatee && (
+            <span className="text-foreground-muted">
+              {t("proj_scope_trades", { n: String(perimetre.length) })}
+            </span>
+          )}
         </div>
       </header>
 

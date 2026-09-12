@@ -559,6 +559,7 @@ describe("la remise à zéro n'oublie aucun état", () => {
     // Des données chargées depuis la base, pas des choix : les rejeter
     // forcerait un aller-retour réseau pour rien.
     Strategies: "liste chargée depuis la base",
+    LectureRatee: "dit si cette liste a pu être lue, pas un réglage du plan",
     TradesReels: "journal réel, chargé depuis la base",
     Versions: "archive de la base, rechargée quand une fiche est choisie",
     VersionsErreur: "état de ce chargement",

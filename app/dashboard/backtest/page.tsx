@@ -235,6 +235,14 @@ export default function BacktestPage() {
   );
 
   const [strategies, setStrategies] = useState<StrategieRow[]>([]);
+  /**
+   * ⚠️⚠️ LA LECTURE DISTINGUAIT DÉJÀ L'ÉCHEC DE L'ABSENCE, ET NE LE DISAIT
+   * À PERSONNE. Le commentaire de la lecture est juste (« un `data` nul est
+   * un échec silencieux, pas une absence de stratégie »), mais la liste
+   * restait vide et l'écran annonçait « Aucune fiche choisie » avec un menu
+   * déroulant sans options. Le trader croit avoir perdu ses fiches.
+   */
+  const [lectureRatee, setLectureRatee] = useState(false);
   const [strategieId, setStrategieId] = useState<string>("");
   const [code, setCode] = useState<string>("XAUUSD");
   const [de, setDe] = useState<string>(DEBUT_PAR_DEFAUT);
@@ -570,8 +578,12 @@ export default function BacktestPage() {
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
       // ⚠️ Le client Supabase NE JETTE PAS : un `data` nul est un échec
-      // silencieux, pas une absence de stratégie. On distingue les deux.
-      if (!annule && data) setStrategies(data as StrategieRow[]);
+      // silencieux, pas une absence de stratégie. On distingue les deux,
+      // ET on le dit : distinguer sans le dire laisse l'écran affirmer
+      // « aucune fiche » à quelqu'un qui en a trois.
+      if (annule) return;
+      setLectureRatee(!data);
+      if (data) setStrategies(data as StrategieRow[]);
     })();
     return () => {
       annule = true;
@@ -2319,7 +2331,9 @@ export default function BacktestPage() {
                * c'est la seule ligne de la page où une contrevérité ne peut pas
                * être rattrapée par ce qu'on voit à côté.
                */
-              !strategieCourante
+              lectureRatee
+                ? tr("lecture_impossible")
+                : !strategieCourante
                 ? tr("bt_sec_fiche_aucune")
                 : !couverture
                   ? tr("bt_sec_fiche_a_traduire", {
@@ -2342,7 +2356,11 @@ export default function BacktestPage() {
             <CardTitle className="mb-1">{tr("bt_etape_fiche")}</CardTitle>
             <p className="mb-4 text-xs text-foreground-muted">{tr("bt_etape_fiche_aide")}</p>
 
-            {strategies.length === 0 ? (
+            {lectureRatee ? (
+              /* ⚠️ Surtout pas « tu n'as pas encore de stratégie, crée-en une » :
+                 le lien enverrait réécrire des fiches qui existent déjà. */
+              <p className="text-sm text-loss">{tr("lecture_impossible")}</p>
+            ) : strategies.length === 0 ? (
               <p className="text-sm text-foreground-muted">
                 {tr("bt_aucune_strategie")}{" "}
                 <Link href="/dashboard/strategy" className="text-accent underline">
