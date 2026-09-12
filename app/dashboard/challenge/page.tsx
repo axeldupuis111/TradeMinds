@@ -1,6 +1,7 @@
 "use client";
 
 import EquityCurve from "@/components/charts/EquityCurve";
+import LectureRatee from "@/components/LectureRatee";
 import {
   DEFAULT_CURRENCY,
   SUPPORTED_CURRENCIES,
@@ -913,6 +914,8 @@ export default function ChallengePage() {
   const [accountStatsMap, setAccountStatsMap] = useState<Record<string, AccountStats>>({});
   const [history, setHistory] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
+  /** Vrai quand la liste des comptes n'a pas pu etre lue : l'etat vide serait un mensonge. */
+  const [lectureRatee, setLectureRatee] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
@@ -927,14 +930,29 @@ export default function ChallengePage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
 
-    // Load all active accounts
-    const { data: actives } = await supabase
+    /**
+     * Load all active accounts.
+     *
+     * ⚠️⚠️ SON ECHEC MONTRAIT LE FORMULAIRE DE CREATION A QUELQU'UN QUI A
+     * DEJA CINQ COMPTES. Une lecture refusee rend `actives = null`, l'ecran
+     * tombe sur son etat « aucun compte », et la seule chose qu'il propose est
+     * d'en creer un : le trader en cree un DOUBLE. Mesure en production en
+     * faisant repondre 500 aux lectures.
+     */
+    const { data: actives, error: erreurComptes } = await supabase
       .from("prop_challenges")
       .select("*")
       .eq("user_id", user.id)
       .eq("status", "active")
       .order("created_at", { ascending: false });
 
+    if (erreurComptes) {
+      console.error("[comptes] liste illisible :", erreurComptes.message);
+      setLectureRatee(true);
+      setLoading(false);
+      return;
+    }
+    setLectureRatee(false);
     setActiveAccounts(actives || []);
 
     // Load history (passed/failed)
@@ -1289,6 +1307,16 @@ export default function ChallengePage() {
   );
   const portfolioWinrate = portfolio.trades > 0 ? portfolio.weightedWr / portfolio.trades : 0;
   const hasAccounts = activeAccounts.length > 0;
+
+  if (lectureRatee) {
+    return (
+      <div className="max-w-6xl mx-auto">
+        <h1 className="text-2xl font-bold text-foreground">{t("challenge_title")}</h1>
+        <p className="text-muted mt-1">{t("challenge_subtitle")}</p>
+        <LectureRatee onReessayer={() => window.location.reload()} />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto">

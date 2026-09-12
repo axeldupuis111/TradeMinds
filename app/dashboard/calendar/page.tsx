@@ -9,6 +9,7 @@
  */
 
 import { useLanguage, type Traduire } from "@/lib/LanguageContext";
+import LectureRatee from "@/components/LectureRatee";
 import { createClient } from "@/lib/supabase/client";
 import { usePersistentState } from "@/lib/hooks/usePersistentState";
 import {
@@ -270,6 +271,8 @@ export default function CalendarPage() {
   }, []);
 
   const [events, setEvents] = useState<EventRow[]>([]);
+  /** Vrai quand les annonces n'ont pas pu etre lues : ce n'est pas « aucune annonce ». */
+  const [lectureRatee, setLectureRatee] = useState(false);
   const [userCurrencies, setUserCurrencies] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<EventRow | null>(null);
@@ -333,13 +336,20 @@ export default function CalendarPage() {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { if (alive) { setEvents([]); setLoading(false); } return; }
-      const { data: rows } = await supabase
+      /**
+       * ⚠️⚠️ SON ECHEC ACCUSAIT LES FILTRES. Une lecture refusee rend
+       * `rows = null`, et la page affichait « Aucune annonce sur cette periode
+       * AVEC CES FILTRES » : le trader va regler des filtres qui n'y sont pour
+       * rien. Mesure en production en faisant repondre 500 aux lectures.
+       */
+      const { data: rows, error: erreurAnnonces } = await supabase
         .from("economic_events")
         .select("id, event_time, currency, title, impact, forecast, previous, actual")
         .gte("event_time", from.toISOString())
         .lte("event_time", to.toISOString())
         .order("event_time", { ascending: true });
       if (!alive) return;
+      setLectureRatee(!!erreurAnnonces);
       setEvents((rows as EventRow[] | null) ?? []);
       setLoading(false);
     })();
@@ -510,6 +520,8 @@ export default function CalendarPage() {
         <div className="space-y-1.5">
           {Array.from({ length: 6 }).map((_, i) => <div key={i} className="skeleton h-12 rounded-lg" />)}
         </div>
+      ) : lectureRatee ? (
+        <LectureRatee onReessayer={() => window.location.reload()} />
       ) : filtered.length === 0 ? (
         <p className="text-foreground-muted py-10 text-center">{t("cal_empty")}</p>
       ) : (

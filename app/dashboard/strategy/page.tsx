@@ -1,6 +1,7 @@
 "use client";
 
 import { useLanguage } from "@/lib/LanguageContext";
+import LectureRatee from "@/components/LectureRatee";
 import { money } from "@/lib/account-currency";
 import { useDisplayCurrency } from "@/lib/hooks/useDisplayCurrency";
 import Link from "next/link";
@@ -100,6 +101,8 @@ export default function StrategyPage() {
   }, [parsed, selectedAccount]);
   const [existingId, setExistingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  /** Vrai quand les fiches n'ont pas pu etre lues : un formulaire vide serait un mensonge. */
+  const [lectureRatee, setLectureRatee] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
@@ -203,11 +206,26 @@ export default function StrategyPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
 
-    const { data: allStrats } = await supabase
+    /**
+     * ⚠️⚠️ SON ECHEC MONTRAIT UN FORMULAIRE VIDE A QUELQU'UN QUI A TROIS
+     * FICHES. Une lecture refusee rend `allStrats = null`, la page retombe sur
+     * `resetForm()`, et le trader voit « 0 caracteres » la ou vivait sa methode.
+     * S'il la retape, il en cree une quatrieme. Mesure en production en faisant
+     * repondre 500 aux lectures.
+     */
+    const { data: allStrats, error: erreurFiches } = await supabase
       .from("strategies")
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: true });
+
+    if (erreurFiches) {
+      console.error("[strategie] fiches illisibles :", erreurFiches.message);
+      setLectureRatee(true);
+      setLoading(false);
+      return;
+    }
+    setLectureRatee(false);
 
     const list = (allStrats || []).map((s: Record<string, unknown>) => ({ id: s.id as string, name: (s.name as string) || "" }));
     setStrategies(list);
@@ -620,6 +638,10 @@ export default function StrategyPage() {
         <div className="min-w-0">
       <h1 className="text-2xl font-bold text-foreground">{t("strategy_title")}</h1>
       <p className="text-muted mt-1">{t("strategy_subtitle")}</p>
+
+      {/* ⚠️ Le formulaire vient APRES : un champ vide presente comme sa fiche
+          l'inviterait a retaper une methode qu'il a deja. */}
+      {lectureRatee && <LectureRatee onReessayer={() => window.location.reload()} />}
 
       {/* Strategy tabs */}
       {strategies.length > 0 && (

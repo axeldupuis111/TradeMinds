@@ -14,6 +14,7 @@
  */
 
 import { useLanguage } from "@/lib/LanguageContext";
+import LectureRatee from "@/components/LectureRatee";
 import { usePlan } from "@/lib/PlanContext";
 import { DEMO_MACRO } from "@/lib/demo-fixtures";
 import { motion, useReducedMotion } from "framer-motion";
@@ -87,6 +88,8 @@ export default function MacroPage() {
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
   const [locked, setLocked] = useState(false);
   const [loading, setLoading] = useState(true);
+  /** Vrai quand le briefing n'a pas pu etre lu : ce n'est pas « pas encore publie ». */
+  const [lectureRatee, setLectureRatee] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
 
@@ -106,15 +109,26 @@ export default function MacroPage() {
 
     let alive = true;
     setLoading(true);
+    /**
+     * ⚠️⚠️ `res.ok` N'ETAIT PAS REGARDE. Un 500 rend un corps JSON valide,
+     * `data.analyses` vaut `undefined`, et l'ecran disait « L'analyse du jour
+     * n'est pas encore disponible. Reviens un peu plus tard. » : un rendez-vous
+     * donne pour quelque chose qui existe deja. Mesure en production en faisant
+     * repondre 500 a la route.
+     */
     fetch(`/api/macro-analysis?lang=${lang}`)
-      .then((r) => r.json())
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`macro ${r.status}`);
+        return r.json();
+      })
       .then((data: { locked?: boolean; analyses?: Analysis[] }) => {
         if (!alive) return;
+        setLectureRatee(false);
         setLocked(!!data.locked);
         setAnalyses(data.analyses ?? []);
         setSelectedDate((data.analyses ?? [])[0]?.analysis_date ?? null);
       })
-      .catch(() => { if (alive) { setAnalyses([]); } })
+      .catch(() => { if (alive) { setLectureRatee(true); setAnalyses([]); } })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [lang, demoMode]);
@@ -181,6 +195,17 @@ export default function MacroPage() {
             <Sparkles className="w-4 h-4" /> {t("macro_locked_cta")}
           </Link>
         </div>
+      </div>
+    );
+  }
+
+  // ⚠️ « Je n'ai pas pu lire » passe AVANT « il n'y en a pas encore » : le
+  // second donne un rendez-vous, et un rendez-vous faux fait revenir pour rien.
+  if (lectureRatee) {
+    return (
+      <div>
+        {header}
+        <LectureRatee onReessayer={() => window.location.reload()} />
       </div>
     );
   }

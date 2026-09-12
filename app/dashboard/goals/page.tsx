@@ -1,6 +1,7 @@
 "use client";
 
 import { useLanguage, type Traduire } from "@/lib/LanguageContext";
+import LectureRatee from "@/components/LectureRatee";
 import { usePlan } from "@/lib/PlanContext";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
@@ -345,6 +346,8 @@ export default function GoalsPage() {
   const supabase = createClient();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
+  /** Vrai quand on n'a JAMAIS reussi a lire : l'etat vide serait un mensonge. */
+  const [lectureRatee, setLectureRatee] = useState(false);
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState<Tab>("goals");
   const [insights, setInsights] = useState<Insights | null>(null);
@@ -378,16 +381,30 @@ export default function GoalsPage() {
   const load = useCallback(async () => {
     try {
       const res = await fetch("/api/goals");
-      // Erreur serveur transitoire : on garde l'état affiché plutôt que des zéros.
-      if (!res.ok) return;
+      /**
+       * Erreur serveur transitoire : on garde l'état affiché plutôt que des zéros.
+       *
+       * ⚠️⚠️ MAIS AU PREMIER CHARGEMENT IL N'Y A RIEN A GARDER, et l'ecran
+       * tombait alors sur son etat vide : « Aucun objectif pour l'instant,
+       * fixe-toi un premier cap » avec un bouton « Creer mon premier objectif »,
+       * a quelqu'un qui en a cinq. Mesure en production en faisant repondre 500
+       * aux lectures. Une consigne fondee sur un fait faux fait AGIR : il allait
+       * recreer des objectifs qu'il avait deja.
+       */
+      if (!res.ok) {
+        setLectureRatee((deja) => deja || goals.length === 0);
+        return;
+      }
       const data = await res.json();
       setGoals(data.goals ?? []);
+      setLectureRatee(false);
     } catch {
       // réseau indisponible — on garde l'état affiché
+      setLectureRatee((deja) => deja || goals.length === 0);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [goals.length]);
   useEffect(() => { load(); }, [load]);
 
   // Célébration quand un objectif mesuré vient de passer à « atteint »
@@ -969,6 +986,8 @@ export default function GoalsPage() {
 
             {loading ? (
               <div className="skeleton h-48 rounded-2xl" />
+            ) : lectureRatee ? (
+              <LectureRatee onReessayer={() => void load()} />
             ) : goals.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border p-10 text-center">
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-surface mb-3">

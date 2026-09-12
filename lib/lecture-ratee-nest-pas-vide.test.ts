@@ -173,4 +173,48 @@ describe("les écrans distinguent « rien » de « je n'ai pas pu lire »", () =
     expect(bilan).toContain("setLectureRatee(!res.ok);");
     expect(bilan).toContain("<LectureRatee");
   });
+
+  /**
+   * ── LE BALAYAGE, PARCE QU'UNE LISTE DE CINQ ÉCRANS N'EST PAS UNE RÈGLE ──────
+   *
+   * ⚠️⚠️ SIX AUTRES ÉCRANS MENTAIENT ENCORE, trouvés en bloquant TOUTES les
+   * lectures et en parcourant le produit page par page plutôt qu'en corrigeant
+   * celles qu'un défaut m'avait signalées :
+   *
+   *   - Analyse IA : « Définis d'abord ta stratégie » (il en a trois), ce qui
+   *     bloque au passage la fonctionnalité qu'il paie ;
+   *   - Objectifs : « Créer mon premier objectif » (il en a cinq) ;
+   *   - Suivi de compte : le formulaire de création (il a cinq comptes) ;
+   *   - Stratégie : un formulaire VIDE, « 0 caractères », là où vit sa méthode ;
+   *   - Calendrier : « Aucune annonce avec CES FILTRES », qui accuse les filtres ;
+   *   - Analyse macro : « Reviens un peu plus tard », un rendez-vous pour rien.
+   *
+   * ⚠️ LES QUATRE PREMIERS FONT AGIR. Un écran vide laisse perplexe ; un écran
+   * qui propose de créer ce qu'on a déjà fabrique un doublon.
+   */
+  it("chaque écran qui montre un état vide sait aussi dire qu'il n'a pas lu", () => {
+    const ECRANS = [
+      "app/dashboard/goals/page.tsx",
+      "app/dashboard/analysis/page.tsx",
+      "app/dashboard/challenge/page.tsx",
+      "app/dashboard/strategy/page.tsx",
+      "app/dashboard/calendar/page.tsx",
+      "app/dashboard/macro/page.tsx",
+      "app/dashboard/analytics/page.tsx",
+      "app/dashboard/projection/page.tsx",
+      "app/dashboard/leaderboard/page.tsx",
+      "app/dashboard/review/page.tsx",
+    ];
+    const manquants: string[] = [];
+    for (const chemin of ECRANS) {
+      const src = lire(chemin);
+      const sait = src.includes("<LectureRatee") && /setLectureRatee|lectureRatee/.test(src);
+      if (!sait) manquants.push(chemin);
+    }
+    expect(
+      manquants,
+      "écrans qui affichent encore un état vide sans pouvoir dire qu'ils n'ont pas lu : " +
+        manquants.join(", "),
+    ).toEqual([]);
+  });
 });

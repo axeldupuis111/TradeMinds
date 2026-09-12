@@ -1,6 +1,7 @@
 "use client";
 
 import { tradesConformes } from "@/lib/trades-conformes";
+import LectureRatee from "@/components/LectureRatee";
 import UpgradeBanner from "@/components/UpgradeBanner";
 import { money } from "@/lib/account-currency";
 import { useDisplayCurrency } from "@/lib/hooks/useDisplayCurrency";
@@ -433,7 +434,10 @@ export default function AnalysisPage() {
   const [history, setHistory] = useState<SavedReview[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [tradeCount, setTradeCount] = useState(0);
-  const [hasStrategy, setHasStrategy] = useState(false);
+  /** `null` quand la lecture a echoue : ce n'est pas « il n'en a pas ». */
+  const [hasStrategy, setHasStrategy] = useState<boolean | null>(false);
+  /** Meme fait, nomme comme sur les dix autres ecrans : une convention se tient. */
+  const [lectureRatee, setLectureRatee] = useState(false);
   const [viewingHistory, setViewingHistory] = useState<string | null>(null);
   const [compareMode, setCompareMode] = useState(false);
   const [compareSelection, setCompareSelection] = useState<string[]>([]);
@@ -557,11 +561,19 @@ export default function AnalysisPage() {
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    const [{ count }, { data: strat }, trades] = await Promise.all([
+    const [{ count }, { data: strat, error: erreurStrategie }, trades] = await Promise.all([
       supabase
         .from("trades")
         .select("*", { count: "exact", head: true })
         .eq("user_id", user.id),
+      /**
+       * ⚠️⚠️ SON ECHEC ENVOYAIT LE TRADER REECRIRE UNE FICHE QU'IL A DEJA.
+       * Une lecture refusee rend `strat = null`, c'est-a-dire « aucune
+       * strategie », et la page affichait « Definis d'abord ta strategie dans
+       * l'onglet Strategie » a quelqu'un qui en a trois, en bloquant au passage
+       * la fonctionnalite qu'il paie. Mesure en production en faisant repondre
+       * 500 aux lectures. Une consigne fondee sur un fait faux fait AGIR.
+       */
       supabase
         .from("strategies")
         .select("id")
@@ -583,7 +595,9 @@ export default function AnalysisPage() {
     ]);
 
     setTradeCount(count || 0);
-    setHasStrategy(!!strat);
+    // ⚠️ TROIS ETATS : il en a une, il n'en a pas, on ne sait pas.
+    setLectureRatee(!!erreurStrategie);
+    setHasStrategy(erreurStrategie ? null : !!strat);
     setAllTrades(
       (trades ?? [])
         .slice()
@@ -947,7 +961,8 @@ export default function AnalysisPage() {
 
         {/* Launch button */}
         <div>
-          {!hasStrategy && (
+          {lectureRatee && <LectureRatee onReessayer={() => window.location.reload()} />}
+          {hasStrategy === false && (
             <div className="flex items-start gap-3 p-4 mb-4 bg-loss/10 border border-loss/30 rounded-xl animate-in fade-in duration-300">
               <span className="text-loss text-xl shrink-0">⚠️</span>
               <div className="flex-1">
