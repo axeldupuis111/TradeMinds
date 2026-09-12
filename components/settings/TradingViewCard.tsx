@@ -61,7 +61,7 @@ export default function TradingViewCard({ token, lectureRatee }: Props) {
       ) : etat === "lecture-ratee" ? (
         /* ⚠️ « Je n'ai pas pu lire » avant « tu n'en as pas » : la consigne de
            génération casserait la synchro de qui en a déjà un. */
-        <p className="text-xs text-loss">{t("lecture_impossible")}</p>
+        <p role="alert" className="text-xs text-loss">{t("lecture_impossible")}</p>
       ) : (
         <p className="text-xs text-muted">{t("sync_tv_no_token")}</p>
       )}

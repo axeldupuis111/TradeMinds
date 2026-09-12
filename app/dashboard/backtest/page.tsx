@@ -2359,7 +2359,7 @@ export default function BacktestPage() {
             {lectureRatee ? (
               /* ⚠️ Surtout pas « tu n'as pas encore de stratégie, crée-en une » :
                  le lien enverrait réécrire des fiches qui existent déjà. */
-              <p className="text-sm text-loss">{tr("lecture_impossible")}</p>
+              <p role="alert" className="text-sm text-loss">{tr("lecture_impossible")}</p>
             ) : strategies.length === 0 ? (
               <p className="text-sm text-foreground-muted">
                 {tr("bt_aucune_strategie")}{" "}

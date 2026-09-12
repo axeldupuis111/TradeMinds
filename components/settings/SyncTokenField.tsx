@@ -46,7 +46,7 @@ export default function SyncTokenField({ token, lectureRatee }: Props) {
   // consigne de génération est destructrice pour qui en a déjà un.
   const etat = etatDuJeton(token, lectureRatee);
   if (etat === "lecture-ratee") {
-    return <p className="text-xs text-loss mt-3">{t("lecture_impossible")}</p>;
+    return <p role="alert" className="text-xs text-loss mt-3">{t("lecture_impossible")}</p>;
   }
 
   // Sans token, le renvoyer vers l'endroit qui sait le créer est le seul

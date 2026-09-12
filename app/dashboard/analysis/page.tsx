@@ -1864,7 +1864,7 @@ export default function AnalysisPage() {
                   {[1, 2].map((i) => <div key={i} className="skeleton h-12 rounded w-full" />)}
                 </div>
               ) : aiHistoryLectureRatee ? (
-                <p className="text-loss text-xs">{t("lecture_impossible")}</p>
+                <p role="alert" className="text-loss text-xs">{t("lecture_impossible")}</p>
               ) : aiHistory.length === 0 ? (
                 <p className="text-muted text-xs">{t("coach_history_empty")}</p>
               ) : (
@@ -1910,7 +1910,7 @@ export default function AnalysisPage() {
                 ))}
               </div>
             ) : historyLectureRatee ? (
-              <p className="text-loss text-xs">{t("lecture_impossible")}</p>
+              <p role="alert" className="text-loss text-xs">{t("lecture_impossible")}</p>
             ) : history.length === 0 ? (
               <p className="text-muted text-xs">{t("analysis_no_history")}</p>
             ) : (
@@ -2040,7 +2040,7 @@ export default function AnalysisPage() {
             ))}
           </div>
         ) : historyLectureRatee ? (
-          <p className="text-loss text-sm">{t("lecture_impossible")}</p>
+          <p role="alert" className="text-loss text-sm">{t("lecture_impossible")}</p>
         ) : history.length === 0 ? (
           <p className="text-muted text-sm">{t("analysis_no_history")}</p>
         ) : (
